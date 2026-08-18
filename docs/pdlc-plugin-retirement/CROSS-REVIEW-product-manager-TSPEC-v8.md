@@ -45,5 +45,38 @@ FINDING: Low | delta | local | §6.1 lead sentence (TSPEC:1089) | says "Nine cla
 
 ## Positive Observations
 
+- **The self-recursion hazard was found and named by the author, not by a reviewer.** No prior
+  cross-review raised it. §5.5 now states plainly that a nested run over the surface would collect
+  its own host and spawn without bound, and that the failure is a hang rather than a false green
+  (TSPEC:918–922) — verified against the tree: `isInsideRunningTest()` exists at
+  `pdlc/workflows/__tests__/helpers/driftCapabilities.js:292` and is consulted only inside
+  `describeOrSkip` (`:309`–`:317`) and `itOrSkip` (`:324`–`:332`), so the TSPEC's claim that it does
+  not see a spawned run is exactly right. Anticipating the "someone will silently narrow the file
+  set to make it stop hanging" repair, and pre-empting it with an asserted list, is the kind of
+  thinking that keeps a gate honest a year from now.
+- **The `itOrSkip` argument order is now transcribed from the export, not paraphrased.** §5.5 reads
+  `itOrSkip(<leaf title>, "bash", <invariants>, fn)` — "name first, capability second, per the
+  exported signature" (TSPEC:991–993). Confirmed verbatim at `driftCapabilities.js:324`:
+  `export function itOrSkip(name, capability, unverifiedInvariants, body)`. Ten conversion sites
+  confirmed in `hookCompatibility.test.js` at `:84, :107, :132, :176, :202, :226, :335, :340, :353,
+  :364`, matching the "ten" literal §2.9's class-6 row now carries.
+- **The `testPathIgnorePatterns` fix went further than F-04 asked.** v7 flagged only that the fixture
+  would be filtered; the revision explains *why* the override is part of the oracle rather than a
+  detail ("pointing the child at the fixture without an override collects nothing and the red
+  construction fails loudly rather than proving anything", TSPEC:952–954), and separately reasons
+  about jest's default `testMatch` to keep §4.4's 99 and AT-1.3's recursive reading from diverging
+  (TSPEC:955–961). Both claims check out against `pdlc/workflows/package.json` — the three patterns
+  are as quoted and there is no `testMatch` override, so the default `**/__tests__/**/*.[jt]s?(x)`
+  does apply.
+- **Erratum 10 is the right instinct: widen the spec upstream, not the interpretation locally.**
+  §5.5 states its surface is wider than FSPEC's approved limb, argues why the widening serves
+  AT-1.3, notes it is a strict superset so nothing approved is lost while the edit is pending, and
+  routes the wording change to the owning document (TSPEC:832–840, :1204–1216). FSPEC's limb is
+  quoted accurately (`FSPEC:285`–`:287`). That is scope discipline handled exactly as the pipeline
+  intends.
+- **The v7 over-wide claim was retracted in the document's own voice.** "The earlier reading that
+  filed all four modules as 'hosts of R-8's re-homed assertions' was wrong on three of them"
+  (TSPEC:829–830). Documents that record their own corrections stay reviewable; this one does.
+
 ## Recommendation
 
