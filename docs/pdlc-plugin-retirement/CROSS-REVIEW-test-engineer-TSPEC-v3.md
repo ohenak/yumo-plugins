@@ -28,6 +28,45 @@ Unchanged sections already reviewed are not re-litigated.
 
 ## Positive Observations
 
+- **v2 F-01 is fully resolved and the fix is now deeper than the defect.** §4.5 clause 1(b) no
+  longer stops at the collection root: the new table enumerates `engine.dispatches.bySkill` /
+  `.byPhase` and all six `engine.outcomes` keys as fixed schema, stopping only at the
+  run-variable `<skill-name>` / `<phase>` keys. Both halves check out against
+  `pdlc/engine/lib/report.mjs`: `buildEngineBlock`'s defaults seed `dispatches = { bySkill: {},
+  byPhase: {} }` and `outcomes = { ran: 0, halted: 0, blocked: 0, refused: 0, "max-passes": 0,
+  idle: 0 }` (`:63`, `:71`), while `authSources`, `startup`, `retries`, `pauses`, `denials` are
+  each emitted as `Array.isArray(x) ? x.slice() : []` (`:82`–`:88`) and `loop` is a
+  scalar-or-object at its own key (`:90`). A lost outcome kind or dispatch axis now reds clause 1,
+  and a run that dispatched a different skill set still passes — which is exactly the property
+  AC-5.2's single behavioural-equivalence gate needed to keep.
+- **The two withdrawn citations are withdrawn out loud, not quietly overwritten.** §2.7 now states
+  the correction as a correction ("at `:48`, not `:47`; `:47` is the comment line"), matching
+  `pdlc/workflows/orchestrate-dev.js`; AT-3.3's evidence column explicitly retracts v0.2's claim
+  that `consolidationHookParity.test.js` already covered the exit-`0` conjunct. Verified in the
+  tree: that file has no hook-exit oracle at all, so the new stdout-JSON-plus-exit-`0` assertion
+  it now schedules is real coverage, not a duplicate. This is the second round running where a
+  retracted measurement was surfaced rather than smoothed over.
+- **§3.2's row split is the right shape, not a cosmetic renumber.** 4a and 4b are separated by
+  *observable*, not by cause: 4a is "nothing touched, parsing completes before any filesystem
+  access" and is assertable byte-identically; 4b explicitly denies that conjunct. TT-1 is
+  rescoped to 4a in the same edit, and §6.1 erratum 7 is amended to route the pair rather than
+  the merged row. The document now says plainly which arm has an oracle and which does not —
+  the failure mode v2 F-06 named (an arm with neither oracle nor codeable expectation) is gone
+  for 4a and reduced to a stated, visible gap for 4b (F-03).
+- **§4.4's re-home rationale is now measured rather than asserted.** The claim that
+  `bootstrap.test.js` is the repo's sole `100755` assertion holds (`grep -rn "100755"
+  pdlc/workflows/__tests__/*.test.js` → `:267`–`:268` only), and the claim that the only other
+  `126` reference is `driftOrdering.test.js`, itself class-3 deleted, holds too. The
+  partition-count correction (2 deleted / 3 surviving, not 4 + 1) is right about `FIVE_SCRIPTS`
+  as the module defines it — F-01 is about the set that *ships*, not about this measurement.
+- **TT-3 now names its collaborators, and both claims verify.** `indexMode` does live in
+  `helpers/driftHarness.js` (an M-8 member, hence the inline `git ls-files -s` re-derivation), and
+  `makeFreshClone` in `helpers/freshClone.js` is **not** an M-8 member; `grep -rl
+  "helpers/freshClone"` over `__tests__/` returns `bootstrap.test.js` alone, so the row's "after
+  the sweep `consumerCleanup.test.js` is that helper's sole consumer" is exact. v2 F-03's failure
+  mode — an implementer importing a deleted helper and getting a red load — cannot happen from
+  this text.
+
 ## Recommendation
 
 ## Verdict
