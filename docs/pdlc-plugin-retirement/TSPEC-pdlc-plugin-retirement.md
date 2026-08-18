@@ -796,19 +796,61 @@ run, passed, failed), because a suite that executed zero tests also exits 0 (E-2
 
 ### 5.5 Deleted, never skipped
 
-No `skip`, no pending marker, no assertion left vacuously true over an empty directory (C-8,
-BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip introduced in a
-*surviving* module during the sweep is the same defect.
+No **unregistered** `skip`, no pending marker, no assertion left vacuously true over an empty
+directory (C-8, BR-SWEEP-6). AT-1.3 asserts this repo-wide, not only over M-8's modules: a skip
+introduced in a *surviving* module is the same defect as one left behind.
 
-**Deleted, and nothing left orphaned.** AT-1.3's field set does not reach non-`*.test.js` files
-(REQ AC-1.3 counts `*.test.js` modules and names retained ones), so §2.6's helper dispositions get
-their own assertion, landing in `consumerCleanup.test.js` beside TT-3 in the class-3 commit: after
-the sweep, **every** file under `pdlc/workflows/__tests__/helpers/` is imported by at least one
-surviving module (re-derived by grepping the surviving `__tests__` tree, not from a transcribed
-list), and `helpers/freshClone.js` is imported by name — the positive direction, so that sweeping
-it as collateral reds rather than passing vacuously. This is what makes "`driftOrdering.js` is
-deleted because it ends consumer-less" and "`driftCapabilities.js` / `skipSink.js` survive because
-they do not" checkable rather than prose.
+**"Unregistered" reconciles this rule with TT-1b.** §5.2's TT-1b constructs an unreadable target
+(`chmod 000`), which cannot be constructed as root, so the row is root-conditional — and the module
+that hosts it (`consumerCleanup.test.js`) is one the sweep *introduces*, so a bare `it.skip` there
+would register exactly the marker AT-1.3 is written to catch. The repo already owns the mechanism
+that settles this: `itOrSkip` (`pdlc/workflows/__tests__/helpers/driftCapabilities.js`, exported
+alongside the frozen `SKIP_INVENTORY` ledger in the same module) is used this way by
+`skipSinkTransport.test.js` and `documentOracles.test.js`. TT-1b takes its skip through that sink
+with a `SKIP_INVENTORY` capability entry naming the root/`chmod 000` gap; the skip is then a
+*declared* capability gap carried on the ledger, not a silent pending marker. AT-1.3's clause reads
+"no skip absent from the skip sink's inventory", so a skip the sweep adds without a sink
+registration still fails it. Pinning the gate runner to non-root is not the alternative taken:
+capability, not the runner, decides, and a root CI runner must still report the gap rather than
+silently pass.
+
+**Deleted, nothing left orphaned.** AT-1.3's field set does not reach non-`*.test.js` files (REQ
+AC-1.3 counts `*.test.js` modules and names retained ones), so §2.6's helper dispositions get their
+own assertion, landing in `consumerCleanup.test.js` beside TT-3 in the class-3 commit: after the
+sweep, **every** surviving `*.js` file directly under `pdlc/workflows/__tests__/helpers/` is either
+(a) imported by at least one surviving test module or helper, **or** (b) referenced by Jest
+configuration in `pdlc/workflows/package.json` — the `globalSetup` / `globalTeardown` keys, which
+today name `__tests__/helpers/skipSinkSetup.js` and `__tests__/helpers/skipSinkTeardown.js`. Both
+channels are real wiring: neither setup file has an importer under `__tests__/*.test.js` today
+(`skipSinkTeardown.js`'s only mention is a comment in `driftHelpers.test.js`, a module M-8 deletes),
+yet both are load-bearing for the skip sink and both survive the sweep. A single-channel universal
+would therefore go red against green infrastructure.
+
+Three scope rules keep the assertion set-derived rather than a transcribed exception list:
+
+1. **Both channels are re-derived, not transcribed.** Channel (a) greps the *surviving* `__tests__`
+   tree; channel (b) reads the `globalSetup` / `globalTeardown` values out of
+   `pdlc/workflows/package.json` at assertion time. A future helper wired through either channel
+   passes without an edit here; one wired through neither reds.
+2. **Match import specifiers, not bare names.** Channel (a) matches the specifier forms actually
+   used — `"./helpers/<name>.js"` in `import`/`require` position and `new URL("./helpers/<name>.js",
+   …)` — not a bare-name grep, which a stale comment (exactly `driftHelpers.test.js`'s mention of
+   `skipSinkTeardown.js`) would satisfy. Channel (b) compares resolved paths, not substrings.
+3. **`*.js` directly under `helpers/`, not `helpers/bin/`.** M-8 deletes all three
+   `helpers/bin/*.sh` drivers, leaving that directory empty post-sweep; shell drivers are *spawned*,
+   not imported, so an import-graph oracle cannot judge them. Scoping the universal to `*.js` files
+   at the top level of `helpers/` keeps a later re-added shell driver from reddening the oracle for
+   a reason unrelated to orphan-freedom.
+
+The assertion is written in the positive direction on purpose — `helpers/freshClone.js` must be
+imported by name — so that a sweep taking collateral files with it reds instead of passing
+vacuously. Its coverage is the **survival** direction: it makes "`driftCapabilities.js` and
+`skipSink.js` survive and are still consumed" checkable rather than prose. The complementary claim
+that "`driftOrdering.js` ends the sweep consumer-less" is a **pre-sweep** measurement recorded in
+§2.6 (at the base commit its only importers are `bootstrap.test.js` and `drift*.test.js` modules,
+all of which the sweep deletes); once the file is gone no post-sweep predicate can distinguish
+"correctly deleted because consumer-less" from "deleted by mistake", so that half is justified by
+the §2.6 measurement, not re-checked by this oracle.
 
 ## 6. Open Questions
 
