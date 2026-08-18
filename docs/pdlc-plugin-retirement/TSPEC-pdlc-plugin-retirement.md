@@ -1045,6 +1045,22 @@ stated parts, together, close it:
      sweep's only new test module has the same falsifiability standard as the join itself.
    TT-1b's root-conditional row goes through `itOrSkip`, which is a helper call and not one of those
    tokens, so the check passes with the registered skip in place.
+   The scan's subject is `consumerCleanup.test.js` only. `fixtures/skipJoinTeardown.js` is deliberately
+   **not** in its scope and not in either child's file list (TE TSPEC v9 Q-02): it is a no-op module with
+   no test bodies, so a pending marker cannot appear in it, and widening the scan to a second file would
+   buy nothing the join does not already give. If it ever gains a body, it becomes an ordinary
+   swept-surface question and gets a table row like anything else.
+
+**Two operating notes on the children (PM TSPEC v9 Q-01, Q-02).** First, the host's own constructions
+are created with `mkdtempSync` under the **OS temp directory, never under the repo root** (§5.2). The
+green child runs `documentOracles.test.js`, whose `coveredViolations` walks the whole tree from `root`
+skipping only `.git/` and `node_modules/` (`pdlc/workflows/lib/document-oracles.mjs`,
+`coveredViolations`), so a fixture tree left inside the repo would red the child for a reason unrelated
+to skips; pinning the location keeps a red child readable as "the join failed". Second, because the
+children's file lists are literal transcriptions of §5.5's table, **every PLAN task that edits or adds a
+`*.test.js` module under `pdlc/workflows/__tests__/` carries the obligation to extend that table and both
+lists in the same task**; the set-equality assertion reds if it does not, but the reminder belongs in the
+PLAN rather than only in a failure message, and PLAN carries a one-line pointer back to this section.
 
 **The join is proven falsifiable, not merely stated.** A fixture module
 `__tests__/fixtures/skipJoinFalsifier.js` carries one bare `it.skip`. Two naming and
@@ -1333,7 +1349,10 @@ open; item 9 is resolved upstream in FSPEC v0.7 and is retained here for lineage
    touch `pipelineWiring.test.js`, `consolidationPreflight.test.js`, `documentOracles.test.js` and
    `orchestrateDevSkill.test.js`), because an assertion parked behind a bare `it.skip` during a
    deletion is the defect AT-1.3 exists to catch; a narrower "adds assertions" reading would leave the
-   sweep's most edit-heavy surviving modules unwatched (TE TSPEC v8 F-01/Q-01). §5.5 already works to
+   sweep's most edit-heavy surviving modules unwatched (TE TSPEC v8 F-01/Q-01). The rule shape also covers the sweep's *addition*-shaped edits without further
+   widening — `consolidationHookParity.test.js` (AT-3.3 clause 2's new assertion) and
+   `skillFiles.test.js` (AT-3.1's static half, §5.2) — which §5.5's table now enumerates; no further
+   upstream ask is created by admitting them, since both were already inside the requested limb. §5.5 already works to
    this wider set, which is a strict superset of the approved one, so nothing approved is lost while
    the edit is pending.
 
