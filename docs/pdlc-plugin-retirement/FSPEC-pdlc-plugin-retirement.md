@@ -6,14 +6,14 @@ feature: pdlc-plugin-retirement
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.15); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
+| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.16); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-*-FSPEC-v*.md`: SE v1, v3–v5, v7–v11; TE v1–v11 |
+| Cross-Reviews | `CROSS-REVIEW-*-FSPEC-v*.md`: SE v1, v3–v5, v7–v12; TE v1–v12 |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.9 | 2026-08-18 |
+| pdlc | Draft | Claude | 0.10 | 2026-08-18 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -538,9 +538,10 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
 - **BR-CLN-3a — Expectation is by name, and the name set is self-contained.** §3.5 step 2's
   classification rests on **L-11's** consumer-side installed-name set, carried by the cleanup
   step: not the manifest (deleted in class 7, and never installed consumer-side), not content. **Consequence, stated rather than left implicit:** a file with an
-  expected *name* and hand-modified *content* is removed like any other expected entry, because no
-  post-sweep artifact can distinguish it. Conservatism comes from the name predicate — one entry
-  the channel never installed refuses the whole invocation. REQ AC-4.3 (v0.15) scopes the
+  expected *name* and hand-modified *content* is removed like any other expected entry, because
+  the cleanup judges presence, not provenance — a deliberate scope decision, not an impossibility.
+  Conservatism comes from the name predicate — one entry
+  the channel never installed refuses the whole invocation. REQ AC-4.3 (v0.16) scopes the
   criterion to the unexpected-entry case and states that hand-modification of an expected entry is **not** covered (REQ C-9) — the rule stated here, not a reinterpretation of it.
 - **BR-CLN-4 — Refusal is checkable without reading the implementation, and its status is a fixed
   value.** A refusal names each unexpected path on **stderr** and exits **`3`** — not merely
@@ -603,7 +604,7 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
 | E-14 | The whole `SessionStart` event is dropped with the drift reporter | Fails L-4's set-equality: the consolidation nudge is a `SessionStart` survivor (REQ AC-1.7, US-04) |
 | E-15 | A consumer's config still carries `distribution.checkEnabled` after the sweep | Ignored silently. It never errors and never changes behaviour (BR-GATE-2) |
 | E-16 | The cleanup finds an entry whose **name** the retired channel never installed | Nothing is deleted in that invocation, every file stays byte-identical, each unexpected path is named on stderr, exit is `3` (BR-CLN-3, BR-CLN-3a, BR-CLN-4) |
-| E-16a | The cleanup finds a hand-modified file at an **expected** name | It is removed with the other expected entries: no post-sweep artifact can detect the modification (BR-CLN-3a). The operator's protection is the report of what was removed, and REQ AC-4.3 and C-9 (v0.15), which place a hand-modified expected entry outside the refusal predicate |
+| E-16a | The cleanup finds a hand-modified file at an **expected** name | It is removed with the other expected entries: the cleanup judges presence, not provenance, by REQ C-9's scope decision (BR-CLN-3a). The operator's protection is the report of what was removed, and REQ AC-4.3 and C-9 (v0.16), which place a hand-modified expected entry outside the refusal predicate |
 | E-16b | The cleanup finds a `.pdlc-tmp.*` file the retired channel left behind when a write was killed mid-rename | Treated as unexpected: refuse per E-16, even though the channel wrote the name — no post-sweep artifact proves the residue is junk rather than an operator's file. The stderr path tells the operator what to remove by hand before re-running (BR-CLN-3) |
 | E-17 | The cleanup is run in a repo with no leftovers, or run twice | Succeeds, changes nothing, says so, exits zero (BR-CLN-2) |
 | E-18 | The cleanup's target directory holds a file the consumer tracks in git | Treated as unexpected: refuse per E-16. Tracked files are never touched (BR-CLN-5) |
@@ -846,9 +847,10 @@ allow-list (§4.2 preamble), never an assumption of this FSPEC.
 
 ### 7.2 Upstream errata — resolved
 
-Five defects reached `REQ-pdlc-plugin-retirement.md` from this document's side: the three this
-FSPEC raised against v0.9, and the two upstream halves of TSPEC §6.1 errata 5 and 3, which a
-downstream-only edit could not close. All five are folded in upstream and are **closed**; REQ v0.15
+Six defects reached `REQ-pdlc-plugin-retirement.md` from this document's side: the three this
+FSPEC raised against v0.9, the two upstream halves of TSPEC §6.1 errata 5 and 3, which a
+downstream-only edit could not close, and one case of this FSPEC lagging a REQ rationale correction
+it did not itself raise. All six are folded in upstream and are **closed**; REQ v0.16
 (2026-08-18) is the version this FSPEC now traces. No criterion was relaxed in the FSPEC to work
 around any of them; where an erratum reversed a claim, the REQ and the measured baseline carry the
 same reversal rather than being left contradicting this document.
@@ -860,6 +862,7 @@ same reversal rather than being left contradicting this document.
 | 3 | AC-4.3 — asked the cleanup to detect a *hand-modified* file no post-sweep artifact can decide | AC-4.3 keeps the unexpected-entry case, states the post-refusal directory state, and C-9 drops the hand-edited clause it contradicted |
 | 4 | C-5's commit-class entry, AC-1.2's term-set rationale and baseline M-11h all still read the wave-gate `postWaveCommand` / `postWavePathspecs` pair as retired after TSPEC §6.1 erratum 5 established that the values survive (SE FSPEC v11 F-01) | **REQ v0.13**: C-5's entry and AC-1.2's rationale now state a prose-and-assertion edit, not a retirement — the reduced build step still emits M-9 into `pdlc/workflows/dist/` under O-3 and the configured command and pathspec keep naming live outputs; baseline M-11h corrected to match |
 | 5 | §A-1 and baseline M-11n read the sweep as **rewriting** `consolidate-learnings/SKILL.md`'s bundle reference to name a surviving execution path, which no post-sweep host can satisfy (TE FSPEC v11 F-02, SE FSPEC v11 F-03 — the upstream half of TSPEC §6.1 erratum 3) | **REQ v0.14**: the reference is **deleted, not rewritten**, and the same correction extends to the skill's delegation prose; baseline M-11n corrected. The capability question the correction exposed is answered by REQ O-8, **bound at v0.15** to successor `pdlc-consolidation-rehost` (`docs/_queue/QUEUE.md` Order 24) |
+| 6 | BR-CLN-3a and the E-16a row still stated REQ v0.15's superseded impossibility framing for C-9's rationale ("no post-sweep artifact can distinguish/detect the modification") and cited a stale "REQ AC-4.3 (v0.15)" pin after REQ restated the rationale (SE FSPEC v12 F-01) | **REQ v0.16**: C-9's rationale is restated as a scope decision — the cleanup judges presence, not provenance, not an impossibility. BR-CLN-3a and E-16a updated to match, and both citations moved from (v0.15) to (v0.16) |
 
 ### 7.3 Downstream errata — accepted
 
