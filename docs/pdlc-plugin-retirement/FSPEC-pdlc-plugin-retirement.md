@@ -6,14 +6,14 @@ feature: pdlc-plugin-retirement
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.12); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
+| Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.15); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-*-FSPEC-v*.md`: SE v1, v3–v5, v7–v9; TE v1–v9 |
+| Cross-Reviews | `CROSS-REVIEW-*-FSPEC-v*.md`: SE v1, v3–v5, v7–v11; TE v1–v11 |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.8 | 2026-08-18 |
+| pdlc | Draft | Claude | 0.9 | 2026-08-18 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -72,7 +72,7 @@ first deletion commit rather than this document.
 
 ## 2. Linked Requirements
 
-Every behaviour below traces to `REQ-pdlc-plugin-retirement.md` v0.11. No FSPEC section exists
+Every behaviour below traces to `REQ-pdlc-plugin-retirement.md` v0.15. No FSPEC section exists
 without a REQ parent; no REQ acceptance criterion is left without a behavioural home.
 
 | REQ item | Where specified here |
@@ -155,17 +155,19 @@ never a later one, because that leaves a commit asserting a file that no longer 
 | 3 | Queue drift gate | The gate and its `distribution.checkEnabled` key in `orchestrate-queue.js` (M-11i (a)), with the gate's workflow-suite coverage | After class 2 |
 | 4 | Drift hook | `check-workflow-drift.sh` (M-3) and its `SessionStart` registration in `pdlc/hooks/hooks.json` (M-11i) | After classes 1–3 |
 | 5 | Drift library and sync script | `pdlc-drift.sh` (M-2), `sync-workflows.sh` (M-1) | After class 4 |
-| 6 | Test corpus | M-8's 21 `*.test.js` and its six dedicated helpers, deleted (never skipped); the re-homing of assertions about **surviving** behaviour (queue triage around the gate, hook-manifest compatibility) into surviving modules; M-11p's deletions and edits, including the reduction of `helpers/driftGenerators.js` to what its surviving importers use | Re-homing lands in the **same** commit as, or earlier than, the deletion of its host file (REQ R-8) |
+| 6 | Test corpus | M-8's 21 `*.test.js` and its six dedicated helpers, deleted (never skipped) — **the count and `hookCompatibility.test.js`'s disposition are contested by TSPEC §6.1 erratum 6, which reads that module as reduced rather than deleted; not yet corrected here**; the re-homing of assertions about **surviving** behaviour (queue triage around the gate, hook-manifest compatibility) into surviving modules; M-11p's deletions and edits, including the reduction of `helpers/driftGenerators.js` to what its surviving importers use | Re-homing lands in the **same** commit as, or earlier than, the deletion of its host file (REQ R-8) |
 | 7 | Bundles and their emission | The three retired bundles (M-4, M-5, M-10) and the manifest (M-6, which REQ O-3 settles as not surviving), and the reduction of the build step (M-7) to emitting the probe CLI only | After class 6, so no surviving test asserts over a deleted bundle |
 | 8 | Ignore/worktree rows | `.worktreeinclude`'s single row and `.gitignore`'s row **with its rationale comment block** (M-11j); a file left with no remaining rows is deleted, not left empty | Any time after class 7 |
 | 9 | Document oracles | The packaging and advertised-version checks over `dist/`, the drift scan's generated-tree exemptions (M-11g), the surviving `documentOracles` assertion that CLAUDE.md *contains* the two retired script names (M-11f), and the re-fixturing of the `covered-violations/` tree (M-11e second disposition) | Same commit as, or after, class 7; the CLAUDE.md prose it guards moves in this commit (M-11f) |
-| 10 | Wave-gate config values | **Prose only** (TSPEC §6.1 erratum 5): `.claude/pdlc.config.example.json`'s `postWaveCommand` / `postWavePathspecs` **values stay** (they still regenerate the surviving probe CLI); only their CLAUDE.md prose is edited; `consolidationPreflight.test.js`'s two assertions (M-11h) survive, with `postWavePathspecs` tightened from containment to set-equality (C-6). The generic facility in `orchestrate-dev.js` and its `waveExecution` coverage are **not** touched | After class 7 (the edited prose names deleted outputs) |
-| 11 | Skills and banners | The two orchestration skills rewritten as delegators and `consolidate-learnings/SKILL.md`'s bundle reference **deleted, not rewritten** (no host survives to name); §3.3 step 4 disposes the capability (M-11n); the three workflow modules' header banners (M-11o, M-11i (b)); the surviving `orchestrateDevSkill` assertion that moves with `orchestrate-dev/SKILL.md` (M-11p) | Skill text and the assertion over it land together |
+| 10 | Wave-gate config values | **Prose only** (TSPEC §6.1 erratum 5, folded upstream into REQ C-5 and AC-1.2's rationale at REQ v0.13): `.claude/pdlc.config.example.json`'s `postWaveCommand` / `postWavePathspecs` **values stay on the branch that retains `pdlc/workflows/dist/`** — they still regenerate the surviving probe CLI. The TSPEC names the CLI's post-sweep home (§1.2, O-C); if that home is a new path, class 10 re-points the configured value and the pin below to follow it. Only their CLAUDE.md prose is edited. The **tightened** pin — `postWavePathspecs` **set-equals** the one-entry set naming the probe CLI's build path (C-6) — is asserted over the **tracked** `.claude/pdlc.config.example.json`, the only copy the gate can read; its host module is the TSPEC's. `consolidationPreflight.test.js`'s two assertions (M-11h) survive **at containment, untightened**: they read the operator's **untracked** `.claude/pdlc.config.json` behind a presence gate whose present-arm never runs in a fresh CI clone, so set-equality there would add no falsifiability to the required-check set while going red on an operator tree that legitimately adds a pathspec the generic facility permits. The generic facility in `orchestrate-dev.js` and its `waveExecution` coverage are **not** touched | After class 7 (the edited prose names deleted outputs) |
+| 11 | Skills and banners | The two orchestration skills rewritten as delegators; in `consolidate-learnings/SKILL.md` the edit covers **both** the bundle reference **and the delegation contract that names the module the bundle shipped** — the bundle reference is **deleted, not rewritten** (no host survives to name), and the delegation prose is restated for the pass §3.3 step 4 settles, so that after the sweep no sentence of that file names a host that no longer loads (M-11n as corrected at REQ v0.14); §3.3 step 4 disposes the capability; the three workflow modules' header banners (M-11o, M-11i (b)); the surviving `orchestrateDevSkill` assertion that moves with `orchestrate-dev/SKILL.md` (M-11p) | Skill text and the assertion over it land together |
 | 12 | Documentation | CLAUDE.md's bootstrap/sync/drift/worktree/distribution-channel prose, `pdlc/OPERATIONS.md`'s retired sections, both READMEs, `pdlc/RELEASE-CHECKLIST.md`'s retired rows (M-11k, M-11l); the superseding entry in `DECISIONS-plugin-distribution.md`; stale operator notes (REQ O-6) | Last of the deletion classes |
 | 13 | Consumer cleanup | The operator-invoked cleanup step of §3.5 and the operator documentation that describes it | Independent; may land any time, but its documentation is part of the one story class 12 tells |
 
 **Held classes.** Class 6 waits on TSPEC §6.1 erratum 6; classes 7–12
-waited on erratum 3, disposed in §3.3 step 4, releasing that hold. A held class leaves AC-1.1
+waited on erratum 3, disposed in §3.3 step 4, releasing *that* hold — but classes 7–12 stay
+blocked **transitively** behind class 6's own hold until erratum 6 is disposed, because class 7
+lands after class 6 and classes 8–12 chain off class 7. A held class leaves AC-1.1
 unsatisfied on an unmerged branch — **not** a C-7 red, never registered as a tolerated
 failure (REQ C-7).
 
@@ -190,13 +192,25 @@ For every commit of §3.1, in order:
 3. Where a document describes the required-check set, update the rows, the **count word** and the
    **named workflow files** together (§4.3).
 4. Rewrite, rather than delete, text whose subject survives — the release checklist rows restated
-   against the engine's release artifact. `consolidate-learnings/SKILL.md`'s bundle reference is
-   the exception: **deleted**, since after class 7 no host survives for a rewrite to name.
-   **Capability disposition, decided here (TSPEC §6.1 erratum 3):** the bundle-hosted unattended
-   run retires with the sweep; the skill survives, still operator-invocable in session as
-   `/pdlc:consolidate-learnings`, so no user-visible way to run
-   consolidation is lost and no SKILL.md advertises a dead host (REQ G-3, NG-1, NG-3). Re-hosting
-   it under the engine is successor work (REQ NG-5).
+   against the engine's release artifact. `consolidate-learnings/SKILL.md` is the exception twice
+   over: its bundle reference is **deleted**, since after class 7 no host survives for a rewrite to
+   name, and its delegation contract — the prose handing the pass to a workflow module and warning
+   that hand-running bypasses the machinery — is restated for what the pass now is.
+   **Capability disposition, decided upstream and recorded here (REQ §A-1 at v0.14 and REQ O-8;
+   raised as TSPEC §6.1 erratum 3):** the unattended, machinery-backed run retires with the sweep.
+   That is a real user-visible capability loss, not a bookkeeping edit. What survives is the
+   human-performed in-session pass under `/pdlc:consolidate-learnings`, and the rewritten SKILL.md
+   says exactly that rather than pointing at a module nothing loads (REQ G-3, NG-1, NG-3). The loss
+   is accepted and **bound**: REQ O-8 names the successor `pdlc-consolidation-rehost` —
+   `docs/_queue/QUEUE.md` Order 24, `docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md`
+   — raised before the first deletion commit; re-hosting under the engine is NG-5 work.
+   `pdlc/workflows/consolidate-learnings.js` is **not** swept: it sits outside M-8 and the surviving
+   `consolidation*.test.js` modules keep asserting over it, so it stays a tested module with no
+   loader until the successor re-homes it.
+   **Oracle for the survival claim (black-box, no skill execution):** post-sweep, every path
+   `consolidate-learnings/SKILL.md` names exists at HEAD and the file references no retired host —
+   both decidable by inspecting the file and the tree, so AT-3.3's "loads and runs when invoked"
+   exclusion stands unchanged.
 5. Correct stored operator notes describing the workflow-launcher registry cache and sync
    behaviours (REQ O-6) as part of this feature's Phase H step.
 6. Leave historical records untouched: `docs/completed/**`, `docs/discarded/**`, LEARNINGS and
@@ -526,7 +540,7 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   step: not the manifest (deleted in class 7, and never installed consumer-side), not content. **Consequence, stated rather than left implicit:** a file with an
   expected *name* and hand-modified *content* is removed like any other expected entry, because no
   post-sweep artifact can distinguish it. Conservatism comes from the name predicate — one entry
-  the channel never installed refuses the whole invocation. REQ AC-4.3 (v0.11) scopes the
+  the channel never installed refuses the whole invocation. REQ AC-4.3 (v0.15) scopes the
   criterion to the unexpected-entry case and states that hand-modification of an expected entry is **not** covered (REQ C-9) — the rule stated here, not a reinterpretation of it.
 - **BR-CLN-4 — Refusal is checkable without reading the implementation, and its status is a fixed
   value.** A refusal names each unexpected path on **stderr** and exits **`3`** — not merely
@@ -589,7 +603,7 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
 | E-14 | The whole `SessionStart` event is dropped with the drift reporter | Fails L-4's set-equality: the consolidation nudge is a `SessionStart` survivor (REQ AC-1.7, US-04) |
 | E-15 | A consumer's config still carries `distribution.checkEnabled` after the sweep | Ignored silently. It never errors and never changes behaviour (BR-GATE-2) |
 | E-16 | The cleanup finds an entry whose **name** the retired channel never installed | Nothing is deleted in that invocation, every file stays byte-identical, each unexpected path is named on stderr, exit is `3` (BR-CLN-3, BR-CLN-3a, BR-CLN-4) |
-| E-16a | The cleanup finds a hand-modified file at an **expected** name | It is removed with the other expected entries: no post-sweep artifact can detect the modification (BR-CLN-3a). The operator's protection is the report of what was removed, and REQ AC-4.3 and C-9 (v0.11), which place a hand-modified expected entry outside the refusal predicate |
+| E-16a | The cleanup finds a hand-modified file at an **expected** name | It is removed with the other expected entries: no post-sweep artifact can detect the modification (BR-CLN-3a). The operator's protection is the report of what was removed, and REQ AC-4.3 and C-9 (v0.15), which place a hand-modified expected entry outside the refusal predicate |
 | E-16b | The cleanup finds a `.pdlc-tmp.*` file the retired channel left behind when a write was killed mid-rename | Treated as unexpected: refuse per E-16, even though the channel wrote the name — no post-sweep artifact proves the residue is junk rather than an operator's file. The stderr path tells the operator what to remove by hand before re-running (BR-CLN-3) |
 | E-17 | The cleanup is run in a repo with no leftovers, or run twice | Succeeds, changes nothing, says so, exits zero (BR-CLN-2) |
 | E-18 | The cleanup's target directory holds a file the consumer tracks in git | Treated as unexpected: refuse per E-16. Tracked files are never touched (BR-CLN-5) |
@@ -797,7 +811,7 @@ committed transcript or from an observed run; none is satisfied by an agent repo
 
   Stated this way because whole-report value equality is unachievable by construction: a test
   written for it fails on a correct sweep, so the gate could not pass rather than being a strict
-  one. The excluded set here is exactly REQ AC-5.2's enumerated allowed-difference set at v0.11 —
+  one. The excluded set here is exactly REQ AC-5.2's enumerated allowed-difference set at v0.15 —
   no field is exempted here that the REQ does not exempt, and none it exempts is value-compared here.
 - **AT-5.3** (AC-5.3, G-5) *Who:* operator. *Given* HEAD after the sweep, *when* the probe CLI is
   invoked at its surviving repo path, directly, in a checkout of the consuming project, *then* it
@@ -812,7 +826,7 @@ not a note.
 |---|---|---|
 | O-A | **BL-03's adoption evidence is not citable at HEAD.** No run report is tracked in the repo at `b3f24fc6`. C-1's four thresholds are operator-judged and the reports are operator-captured | **Operator**, before the first deletion commit. The report paths and commits are transcribed into this FSPEC at C-6 re-measurement time (REQ BL-03) |
 | O-B | **BL-08's pre-sweep report and gate transcript are not yet captured.** Both are uncapturable after the sweep starts | **Operator**, at §3.0 step 4; committed at fixed paths in `docs/pdlc-plugin-retirement/` and cited by path + commit here |
-| O-C | **Which surviving directory holds the probe CLI's build after `dist/` retires** | **TSPEC** (REQ O-3). REQ v0.11 settles the manifest branch: the manifest does not survive, so AC-1.1's set-equality of the `dist/` entry set with `{M-9}` holds without exception. This FSPEC pins AC-1.3's literals only; see §1.2 |
+| O-C | **Which surviving directory holds the probe CLI's build after `dist/` retires** | **TSPEC** (REQ O-3). REQ v0.15 settles the manifest branch: the manifest does not survive, so AC-1.1's set-equality of the `dist/` entry set with `{M-9}` holds without exception. This FSPEC pins AC-1.3's literals only; see §1.2 |
 | O-D | **Phase MERGE's self-modification guard paths** once `pdlc/workflows/` and `.claude/workflows/` change meaning or cease to exist | **TSPEC** (REQ O-4); if the resolution needs engine-side change it binds to a successor REQ under NG-5 |
 | O-E | **Which surviving modules host the re-homed queue-triage and hook-manifest assertions** (L-6's rows) | **TSPEC** decides placement; the module names **and the re-homed assertion titles** are transcribed into L-6 at re-measurement time |
 | O-F | **BL-05's disposition of `QUEUE.md` row 8 (`pdlc-release-ci`)** | **Operator**, decided upstream per `pdlc-engine-distribution` O-3. AT-2.3 refuses to pass while the row still mandates the retired channel |
@@ -832,24 +846,31 @@ allow-list (§4.2 preamble), never an assumption of this FSPEC.
 
 ### 7.2 Upstream errata — resolved
 
-The three defects this FSPEC raised against `REQ-pdlc-plugin-retirement.md` v0.9 were folded
-in upstream and are **closed**; REQ v0.12 (2026-08-18) is the version this FSPEC now traces.
-No criterion was relaxed in the FSPEC to work around any of them.
+Five defects reached `REQ-pdlc-plugin-retirement.md` from this document's side: the three this
+FSPEC raised against v0.9, and the two upstream halves of TSPEC §6.1 errata 5 and 3, which a
+downstream-only edit could not close. All five are folded in upstream and are **closed**; REQ v0.15
+(2026-08-18) is the version this FSPEC now traces. No criterion was relaxed in the FSPEC to work
+around any of them; where an erratum reversed a claim, the REQ and the measured baseline carry the
+same reversal rather than being left contradicting this document.
 
 | # | Raised against | Resolution in REQ HEAD |
 |---|---|---|
 | 1 | AC-1.1 / O-3 — whether the manifest (M-6) survives for the probe CLI's build | O-3 states the manifest does **not** survive; AC-1.1's set-equality with `{M-9}` stands unopposed. Only *which* surviving directory holds the build is still open (O-C, TSPEC) |
 | 2 | AC-5.2 — allowed-difference set too narrow to be passable | AC-5.2 now enumerates the provenance fields **and** the report's eight run-variable collections, compared for presence, not content |
 | 3 | AC-4.3 — asked the cleanup to detect a *hand-modified* file no post-sweep artifact can decide | AC-4.3 keeps the unexpected-entry case, states the post-refusal directory state, and C-9 drops the hand-edited clause it contradicted |
+| 4 | C-5's commit-class entry, AC-1.2's term-set rationale and baseline M-11h all still read the wave-gate `postWaveCommand` / `postWavePathspecs` pair as retired after TSPEC §6.1 erratum 5 established that the values survive (SE FSPEC v11 F-01) | **REQ v0.13**: C-5's entry and AC-1.2's rationale now state a prose-and-assertion edit, not a retirement — the reduced build step still emits M-9 into `pdlc/workflows/dist/` under O-3 and the configured command and pathspec keep naming live outputs; baseline M-11h corrected to match |
+| 5 | §A-1 and baseline M-11n read the sweep as **rewriting** `consolidate-learnings/SKILL.md`'s bundle reference to name a surviving execution path, which no post-sweep host can satisfy (TE FSPEC v11 F-02, SE FSPEC v11 F-03 — the upstream half of TSPEC §6.1 erratum 3) | **REQ v0.14**: the reference is **deleted, not rewritten**, and the same correction extends to the skill's delegation prose; baseline M-11n corrected. The capability question the correction exposed is answered by REQ O-8, **bound at v0.15** to successor `pdlc-consolidation-rehost` (`docs/_queue/QUEUE.md` Order 24) |
 
 ### 7.3 Downstream errata — accepted
 
-Three TSPEC §6.1 errata are folded in here (v0.8); no other erratum edits this
-document.
+Three TSPEC §6.1 errata are folded in here (v0.8–v0.9); a fourth, erratum 10, is **open** and
+carries its own row below. Erratum 3's decision was not this document's to take: it is recorded
+upstream at §7.2 row 5 and only *applied* here.
 
 | # | Raised as | Edit made here |
 |---|---|---|
-| erratum 3 | `consolidate-learnings` loses its only execution host in class 7; M-11n's rewrite has nothing to name | Disposed in §3.3 step 4; class 11 amended |
-| erratum 5 | Class 10 listed the wave-gate config **values** as retired; both stay valid | Class 10 is now **prose only**; its assertion tightened to set-equality |
+| erratum 3 | `consolidate-learnings` loses its only execution host in class 7; M-11n's rewrite has nothing to name | **Decided upstream** (REQ §A-1 at v0.14, REQ O-8 bound at v0.15 — §7.2 row 5). Applied here: §3.3 step 4 records the accepted capability loss and its bound successor, and class 11's edit is widened from the bundle reference alone to the delegation prose as well |
+| erratum 5 | Class 10 listed the wave-gate config **values** as retired; both stay valid | Class 10 is now **prose only**; the tightened set-equality pin is re-pointed at the tracked `.claude/pdlc.config.example.json`, while `consolidationPreflight.test.js`'s presence-gated read of the operator's untracked config stays at containment. Upstream half at §7.2 row 4 |
 | TSPEC §6.1 erratum 9 | AT-1.3 / BR-SWEEP-6's "no skipped or pending test at all" has no satisfying runner once TT-1b's root-conditional `chmod 000` arm exists — and capability-gated skips already register on a root runner at HEAD, so the wider clause was already false | AT-1.3 and BR-SWEEP-6 now scope the prohibition to the **swept surface** (M-8's deleted modules and the hosts of R-8's re-homed assertions) and exempt a skip that reaches the run's **skip sink records**; the exemption is not keyed to `SKIP_INVENTORY` membership, because that inventory is deliberately not closed over registered skips. REQ AC-1.3 and C-8 are M-8-scoped, so this clause is no wider than upstream's *skipped-test* conjunct; AC-1.3's separate "present and passing" conjunct still binds re-homed hosts (SE v9 F-01). REQ needs no edit |
 | SE FSPEC v8 F-04 | Membership-only exemption lets the inventory be widened to buy a green gate without any skip firing | Not folded in as written: HEAD's comparator deliberately does not close over inventory membership, so an inventory-join clause would fail correct skips. The exemption is keyed to sink records instead; whether the sink comparator additionally pins a join, and how, is routed to TSPEC §5.5 |
+| TSPEC §6.1 erratum 10 | **Open.** AT-1.3 / BR-SWEEP-6's swept-surface limb names only M-8's deleted modules and the hosts of R-8's re-homed assertions, a narrower surface than the sweep actually edits — it covers neither a module reduced in place nor one edited for new assertions, so an `it.skip` landing there is the defect AT-1.3 exists to catch but sits outside the stated domain (SE FSPEC v11 F-02) | Not folded in at v0.9. The requested widening — the limb to cover every surviving `*.test.js` module under `pdlc/workflows/__tests__/` that the sweep creates, reduces in place or edits — is a criterion change, and it lands with erratum 6's membership correction rather than piecemeal; class 6's row already carries the contested-count flag |
