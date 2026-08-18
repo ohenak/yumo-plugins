@@ -8,12 +8,12 @@ feature: pdlc-plugin-retirement
 |---|---|
 | Upstream | `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.9); measured surface `docs/_constraints/pdlc-retirement-baseline.md` |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md`, `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md`, `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md`, `CROSS-REVIEW-software-engineer-FSPEC-v4.md`, `CROSS-REVIEW-test-engineer-FSPEC-v4.md` |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.4 | 2026-08-17 |
+| pdlc | Draft | Claude | 0.5 | 2026-08-17 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -401,14 +401,17 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   NG-1). Skill file locations do not move; if one ever did, every known `ptah.config.json`
   consumer is updated in the same change (REQ C-4).
 
-- **L-11 — `.claude/workflows/` installed names, pre-cleanup (7):** the four consumer paths the
+- **L-11 — `.claude/workflows/` installed names, pre-cleanup (9):** the four consumer paths the
   retired channel wrote — `consolidate-learnings.bundle.js`, `orchestrate-dev.bundle.js`,
-  `orchestrate-queue.bundle.js`, `pdlc-cli.mjs` — plus the three state entries it created beside
-  them, `.pdlc-drift-state.json`, `.pdlc-sync-manifest.json` and the `.pdlc-backups/` directory.
-  Any of the three may be absent; absence is never an error (§3.5 step 1). This set is
+  `orchestrate-queue.bundle.js`, `pdlc-cli.mjs` — the two pre-bundle paths the same channel
+  installed and later superseded, `orchestrate-dev.js` and `orchestrate-queue.js` (only a sync run
+  removed them; a drift-check-only consumer still holds them, reported and left in place) — plus the three state entries it created beside them, `.pdlc-drift-state.json`,
+  `.pdlc-sync-manifest.json` and the `.pdlc-backups/` directory.
+  Any member may be absent; absence is never an error (§3.5 step 1). This set is
   **consumer-side and is not L-1**: `distribution-manifest.json` is a repo-side build artifact the
   channel never installed, so a file of that name here is **unexpected** and refuses (E-16).
-  `.pdlc-backups/` is expected **as a whole directory**, removed with its contents; the
+  A crash-residue temp file the channel left mid-write is likewise **not** a member and refuses
+  (E-16b). `.pdlc-backups/` is expected **as a whole directory**, removed with its contents; the
   timestamped `.bak` files inside are never classified individually, their names being
   unenumerable in advance.
 
@@ -512,9 +515,10 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   value.** A refusal names each unexpected path on **stderr** and exits **`3`** — not merely
   "non-zero", which a missing interpreter (`127`) or an uncaught signal also satisfies, greening a
   refusal test on a step that never ran. `3` is the status the retired sync tooling used for this
-  case: an *unknown* row exited `3`, `local-edit`/`unverified` exited `2`, stale-or-missing exited
-  `1`, and a successful run exited `0` (`pdlc/hooks/scripts/sync-workflows.sh`, **five** terminal
-  exit statuses). The fifth, `4`, was that tooling's usage-error and write-failure status; the
+  case: an *unknown* row and two unmet evidence preconditions exited `3`, `local-edit`/`unverified`
+  exited `2`, stale-or-missing exited `1`, and a successful run exited `0`
+  (`pdlc/hooks/scripts/sync-workflows.sh`, **five** terminal exit statuses). The fifth, `4`, was
+  that tooling's usage-error, unrecognised-seam-token and write-failure status; the
   cleanup keeps `4` reserved for that class and never reuses it for refusal.
 - **BR-CLN-5 — Tracked files are never touched.** The cleanup removes only untracked consumer
   runtime state; a successful run leaves the repo's tracked files unchanged (REQ AC-4.1).
@@ -569,6 +573,7 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
 | E-15 | A consumer's config still carries `distribution.checkEnabled` after the sweep | Ignored silently. It never errors and never changes behaviour (BR-GATE-2) |
 | E-16 | The cleanup finds an entry whose **name** the retired channel never installed | Nothing is deleted in that invocation, every file stays byte-identical, each unexpected path is named on stderr, exit is `3` (BR-CLN-3, BR-CLN-3a, BR-CLN-4) |
 | E-16a | The cleanup finds a hand-modified file at an **expected** name | It is removed with the other expected entries: no post-sweep artifact can detect the modification (BR-CLN-3a). The operator's protection is the report of what was removed, and §7.2's erratum against REQ AC-4.3 |
+| E-16b | The cleanup finds a `.pdlc-tmp.*` file the retired channel left behind when a write was killed mid-rename | Treated as unexpected: refuse per E-16, even though the channel wrote the name — no post-sweep artifact proves the residue is junk rather than an operator's file. The stderr path tells the operator what to remove by hand before re-running (BR-CLN-3) |
 | E-17 | The cleanup is run in a repo with no leftovers, or run twice | Succeeds, changes nothing, says so, exits zero (BR-CLN-2) |
 | E-18 | The cleanup's target directory holds a file the consumer tracks in git | Treated as unexpected: refuse per E-16. Tracked files are never touched (BR-CLN-5) |
 | E-19 | The sweep bumps the plugin to a version outside the published engine's declared range | The handshake refuses every run from that commit on. Prevented by BR-VER-1: either the version stays in `0.23.x`, or BL-07's widened published release lands first |
@@ -718,7 +723,7 @@ committed transcript or from an observed run; none is satisfied by an agent repo
 
 - **AT-4.1** (AC-4.1) *Who:* operator in a repo that previously hosted the runtime copy. *Given* a
   `.claude/workflows/` holding **every** L-11 entry, its `.pdlc-backups/` directory non-empty,
-  *when* the cleanup runs once, *then* all seven are gone, backups directory with its contents,
+  *when* the cleanup runs once, *then* all nine are gone, backups directory with its contents,
   the directory left empty by that removal is gone, the repo's tracked files are unchanged, and
   the step exits `0` reporting each path it removed. Second construction, same expected outcome:
   the copy present with **no** drift-state record (a consumer that never enabled the hook) —
@@ -726,7 +731,9 @@ committed transcript or from an observed run; none is satisfied by an agent repo
 - **AT-4.2** (AC-4.2) *Who:* same operator. *Given* the cleanup has already run, *when* it runs
   again, *then* it succeeds, changes nothing and says so.
 - **AT-4.3** (AC-4.3) *Who:* same operator. *Given* a file inside the target directory whose name
-  the retired channel never installed, *when* the cleanup runs, *then* every file in the directory
+  the retired channel never installed — a name outside every L-11 member, so neither
+  `orchestrate-dev.js` nor `orchestrate-queue.js`, which the channel did install — *when* the
+  cleanup runs, *then* every file in the directory
   is byte-identical afterwards (compared by content, before and after), each unexpected path is
   named on **stderr**, and the exit status is exactly **`3`** — the value BR-CLN-4 fixes. "Non-zero"
   is not the oracle: `127` from a missing interpreter would satisfy it while proving the step never
