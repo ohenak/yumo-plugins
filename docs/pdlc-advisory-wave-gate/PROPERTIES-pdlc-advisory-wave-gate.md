@@ -302,7 +302,110 @@ from Oracle G, and the snapshot ref pattern `refs/pdlc/a6-snapshot-{waveNum}`.
 
 ## Coverage Matrix
 
-*(section pending)*
+### C-1. REQ acceptance criteria → properties
+
+Every criterion has at least one property; every property traces at least one criterion.
+
+| Criterion | Properties |
+|---|---|
+| AC-1.1 | PROP-SEAM-01, PROP-SEAM-06 |
+| AC-1.2 | PROP-SEAM-03 |
+| AC-1.3 | PROP-SEAM-04 |
+| AC-1.4 | PROP-SEAM-05, PROP-SEAM-09 |
+| AC-1.5 | PROP-SEAM-07, PROP-SEAM-08, PROP-SEAM-10 |
+| AC-2.1 | PROP-CTR-04, PROP-CTR-06 |
+| AC-2.2 | PROP-CTR-01, PROP-CTR-02, PROP-CTR-03, PROP-GATE-11 |
+| AC-2.3 | PROP-CTR-05, PROP-CTR-06, PROP-CTR-07 |
+| AC-2.4 | PROP-CTR-09, PROP-CTR-10, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13 |
+| AC-3.1 | PROP-ENV-01, PROP-ENV-02, PROP-ENV-08, PROP-ENV-11, PROP-ENV-12 |
+| AC-3.2 | PROP-ENV-04, PROP-ENV-05, PROP-ENV-06 |
+| AC-3.3 | PROP-ENV-10 |
+| AC-3.4 | PROP-ENV-07, PROP-CTR-08, PROP-REST-08 |
+| AC-3.5 | PROP-ENV-09, PROP-ENV-10 |
+| AC-4.1 | PROP-GATE-02, PROP-GATE-03, PROP-GATE-04, PROP-GATE-05 |
+| AC-4.2 | PROP-GATE-07 |
+| AC-4.3 | PROP-ENV-10 |
+| AC-4.4 | PROP-GATE-01, PROP-GATE-06, PROP-REST-01, PROP-REST-02 |
+| AC-4.5 | PROP-ENV-10, PROP-GATE-05, PROP-REST-04 (every prohibition property carries its paired positive) |
+| AC-4.6 | PROP-GATE-08, PROP-GATE-09 |
+| AC-5.1 | PROP-REST-01, PROP-REST-03, PROP-REST-05, PROP-REST-06 |
+| AC-5.2 | PROP-REST-09, PROP-SEAM-03, PROP-SEAM-04 |
+| AC-5.3 | PROP-REST-04, PROP-GATE-03 |
+| AC-6.1 | PROP-REC-01, PROP-REC-02, PROP-REST-08 |
+| AC-6.2 | PROP-REC-03, PROP-REC-04, PROP-REC-07 |
+| AC-6.3 | PROP-REC-05, PROP-REST-08 |
+| AC-6.4 | PROP-REC-06 |
+| NFR-1 | PROP-NFR-03, PROP-NFR-04 |
+| NFR-2 | PROP-SEAM-05, PROP-SEAM-06, PROP-SEAM-09 |
+| NFR-3 | PROP-NFR-02 |
+| NFR-4 | PROP-CTR-10 |
+| NFR-5 | PROP-GATE-10 |
+| NFR-6 | PROP-NFR-01 |
+
+### C-2. FSPEC acceptance tests → properties
+
+Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no id appears that FSPEC
+§6 does not carry.
+
+| AT | Property | AT | Property |
+|---|---|---|---|
+| AT-01-1 | PROP-SEAM-01 | AT-04-1 | PROP-GATE-05 |
+| AT-01-2 | PROP-SEAM-03 | AT-04-1a | PROP-GATE-03 |
+| AT-01-3 | PROP-SEAM-04 | AT-04-1b | PROP-GATE-04 |
+| AT-01-4 | PROP-SEAM-05 | AT-04-2 | PROP-GATE-01 |
+| AT-01-5 | PROP-SEAM-07 | AT-04-3 | PROP-GATE-07 |
+| AT-01-6 | PROP-SEAM-06 | AT-04-4 | PROP-GATE-05 |
+| AT-02-1 | PROP-CTR-01 | AT-04-5 | PROP-GATE-08 |
+| AT-02-2 | PROP-CTR-02, PROP-CTR-03 | AT-05-1 | PROP-REST-01 |
+| AT-02-3 | PROP-CTR-04 | AT-05-2 | PROP-REST-02 |
+| AT-02-4 | PROP-CTR-06 | AT-05-3 | PROP-REST-09 |
+| AT-02-5 | PROP-CTR-07 | AT-05-4 | PROP-REST-04 |
+| AT-02-6 | PROP-CTR-11 | AT-05-5 | PROP-REST-05 |
+| AT-02-7 | PROP-CTR-10 | AT-06-1 | PROP-REC-01 |
+| AT-02-8 | PROP-CTR-08 | AT-06-2 | PROP-REC-02 |
+| AT-02-9 | PROP-CTR-09 | AT-06-3 | PROP-REC-03 |
+| AT-03-1 | PROP-ENV-01 | AT-06-4 | PROP-REC-05 |
+| AT-03-2 | PROP-ENV-04 | AT-06-5 | PROP-REC-06 |
+| AT-03-3 | PROP-ENV-05 | AT-06-6 | PROP-REC-04 |
+| AT-03-4 | PROP-ENV-08 | AT-07-1 | PROP-NFR-03 |
+| AT-03-5 | PROP-ENV-10 | AT-07-2 | PROP-SEAM-02 |
+| AT-03-6 | PROP-ENV-09 | AT-07-2b | PROP-CFG-01, PROP-CFG-02 |
+| AT-03-7 | PROP-ENV-07 | AT-07-3 | PROP-GATE-10 |
+| AT-03-8 | PROP-ENV-06 | AT-07-4 | PROP-NFR-01 |
+| | | AT-07-5 | PROP-NFR-02 |
+
+### C-3. PLAN tasks → properties
+
+Every RED task in PLAN v1.2 carries at least one property, and every property names a PLAN-owned test
+file. The seven GREEN tasks (A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21) carry no
+properties of their own by construction: each turns the preceding RED batch's properties green.
+
+| Task | Test file | Properties |
+|---|---|---|
+| A6-00 | `advisoryWaveGate.test.js` (new) | Pre-flight importability gate — no behavioural property; it exists so batch 1 opens on a legible red |
+| A6-01 | `helpers/advisoryDoubles.js` | Fixture rows above; `SEAMS` literal half of PROP-SEAM-02 |
+| A6-02 | `advisoryEnvelope.test.js`, `advisoryConfig.test.js` | PROP-SEAM-01, PROP-CTR-01, PROP-ENV-01, PROP-ENV-06, PROP-ENV-07, PROP-ENV-10 (id set), PROP-REC-07, PROP-CFG-01, PROP-CFG-02 |
+| A6-03 | six collateral suites | PROP-SEAM-02 |
+| A6-04 | `pdlc/engine/__tests__/advisory-config-example.test.js` (new) | PROP-CFG-03 |
+| A6-07 | `advisoryWaveGate.test.js` | PROP-CTR-02, PROP-CTR-05 (unit half), PROP-ENV-02, PROP-ENV-03 (unit half), PROP-NFR-04 |
+| A6-09 | `advisoryWaveGate.test.js` | PROP-REST-01, PROP-REST-02, PROP-REST-03, PROP-REST-05, PROP-REST-06 |
+| A6-11 | `advisoryDriver.test.js` | PROP-CTR-10, PROP-GATE-11, PROP-NFR-01, PROP-NFR-02 |
+| A6-13 | `advisoryWaveGate.test.js` | PROP-CTR-04 (seam-op half), PROP-CTR-07, PROP-ENV-08 (seam-op half), PROP-ENV-11, PROP-GATE-02 (seam-op half) |
+| A6-15 | `advisoryWaveGate.test.js` | PROP-SEAM-07, PROP-SEAM-08, PROP-CTR-03, PROP-CTR-04, PROP-CTR-05, PROP-CTR-06, PROP-CTR-08, PROP-CTR-09, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13, PROP-ENV-03, PROP-ENV-04, PROP-ENV-05, PROP-ENV-08, PROP-ENV-09, PROP-ENV-10, PROP-ENV-12, PROP-GATE-01…-06, PROP-REST-07, PROP-REST-08, PROP-REST-09, PROP-REC-05, PROP-NFR-03 |
+| A6-16 | `advisoryRecord.test.js` | PROP-REC-01, PROP-REC-02 |
+| A6-17 | `advisoryEscalationLog.test.js` | PROP-REC-03, PROP-REC-04, PROP-REC-06 |
+| A6-19 | `waveExecution.test.js` | PROP-SEAM-03, PROP-SEAM-04, PROP-SEAM-10, PROP-GATE-07, PROP-GATE-08, PROP-GATE-09, PROP-GATE-10, PROP-REST-04, PROP-REST-09 |
+| A6-20 | `advisoryDisabled.test.js` | PROP-SEAM-05, PROP-SEAM-06, PROP-SEAM-09 |
+
+**File existence, verified at HEAD.** The ten edited suites all exist
+(`advisoryEnvelope`, `advisoryConfig`, `advisoryDriver`, `advisoryRecord`, `advisoryHarvest`,
+`consolidationProperties`, `advisoryDisabled`, `advisoryQueueSeams`, `advisoryEscalationLog`,
+`waveExecution`), as does `helpers/advisoryDoubles.js`. The two new files —
+`pdlc/workflows/__tests__/advisoryWaveGate.test.js` and
+`pdlc/engine/__tests__/advisory-config-example.test.js` — are both absent at HEAD and both are
+explicitly planned as new by A6-00 and A6-04. No property names a file that neither exists nor is
+planned.
+
 
 ## Gaps, Non-Properties and Routed Findings
 
