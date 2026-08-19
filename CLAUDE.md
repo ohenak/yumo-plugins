@@ -98,9 +98,8 @@ The second command is invoked by **bare path** — no `bash` or `sh` prefix. The
 | `check-scope-field` | PostToolUse: Write\|Edit | `hooks/scripts/check-scope-field.sh` | Warns if a `CROSS-REVIEW-*` / `CODE_REVIEW-*` doc is missing the `Scope:` field |
 | `check-req-size` | PostToolUse: Write\|Edit | `hooks/scripts/check-req-size.sh` | Warns if a `REQ-*.md` doc exceeds the pdlc REQ size budget (700 lines or 60 KB) |
 | `nudge-consolidation` | SessionStart | `hooks/scripts/nudge-consolidation.sh` | Reminds to run consolidate-learnings if stale LEARNINGS files are detected |
-| `check-workflow-drift` | SessionStart | `hooks/scripts/check-workflow-drift.sh` | Reports when the consumer's runtime copy has drifted from the built artifacts under `pdlc/workflows/dist/`, so a stale copy is announced rather than silently executed |
 
-Both `SessionStart` entries are registered in `hooks/hooks.json` as separate entries under the same event, each invoked via `${CLAUDE_PLUGIN_ROOT}`.
+The `SessionStart` entry is registered in `hooks/hooks.json`, invoked via `${CLAUDE_PLUGIN_ROOT}`.
 
 
 ### Artifact convention and entry points
