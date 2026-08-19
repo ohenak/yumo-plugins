@@ -956,11 +956,25 @@ operator, defaulting so that a repo that changes nothing gets today's behaviour:
 
 | Key | Type | Default | Validator | Notes |
 |---|---|---|---|---|
-| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not a misconfiguration: it is the **documented operator affordance** "keep the tier on, keep A6 off" — every red wave escalates with no dispatch and the sixth summary row reads zero, which is observably different from `advisory.enabled: false`, where the report carries no `advisory` key at all. Mirrored into `.claude/pdlc.config.example.json` and `pdlc/engine`'s `ci-arrangement` expectations |
+| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not a misconfiguration: it is the **documented operator affordance** "keep the tier on, keep A6 off" — every red wave escalates with no dispatch and the sixth summary row reads zero, which is observably different from `advisory.enabled: false`, where the report carries no `advisory` key at all. Mirrored into `.claude/pdlc.config.example.json`; no `pdlc/engine` expectation covers it today (see below) |
 
 `enabled`, `attemptBudget`, `seamBudgetMinutes` and `envelope` keep their shipped validators and
-defaults. `.claude/pdlc.config.example.json` — the tracked arrangement `pdlc/engine`'s
-`ci-arrangement` test reads — gains the key alongside them.
+defaults. `.claude/pdlc.config.example.json` — the tracked arrangement — gains the key alongside
+them.
+
+**Nothing mirrors that key into `pdlc/engine` today, and an earlier draft said otherwise (PM F-01,
+TE F-06, DEC-A6-04's consequences).** The tracked example carries exactly two sections, `dispatch`
+and `implementation`; `pdlc/engine/__tests__/ci-arrangement.test.js` contains zero occurrences of
+`advisory` and reads the example file only to assert `implementation.testCommand`. Adding
+`advisory.waveBudgetPerRun` to the example therefore breaks no engine expectation and requires no
+engine edit to stay green — which is exactly the problem: an affordance nothing asserts can ship
+into the example broken and undiscoverable, and the example is the operator's first and possibly
+only encounter with the key on a tier that ships off. This feature therefore **authors a new
+expectation** in `pdlc/engine/__tests__/ci-arrangement.test.js` — the example's `advisory` section
+parses, carries `waveBudgetPerRun`, and its value is a non-negative integer — beside the shipped
+`implementation.testCommand` test. It is a second-channel edit whose work is authoring a new
+assertion, not relocating an existing one. No FSPEC acceptance test ranges over it: the coverage is
+TSPEC-owned (§5.1), and without it no test in the feature's set would fail on a broken example.
 
 ### 4.5 What A6 writes, and where
 
