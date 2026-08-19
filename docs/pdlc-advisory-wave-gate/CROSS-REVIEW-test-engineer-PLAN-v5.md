@@ -44,7 +44,25 @@ that treats unexported symbols correctly by habit, not by luck.
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **A6-05 does not carry the "leave it unexported" instruction TSPEC v1.8 now addresses to Phase P.** The row (`:99`) heads its work "constants and vocabularies (TSPEC §3.1)" and then lists `ADVISORY_SEAM_PHASES.A6` in the same breath as `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS`, `ADVISORY_ROOT_CAUSES` and `A6_PROHIBITIONS` — every one of which §3.1's code block shows with a leading `export`. Nothing in PLAN contradicts the new instruction, and no task adds an export, so this is not a defect in the compression: an implementer following the row literally edits a bare `const` and adds no export, which is the required outcome. But the row is the only place an implementer looks, and the one distinction §3.1 spends a paragraph on is invisible there. Half a clause — "the table stays module-private; do not add `export`" — makes the guarantee local to the task that could break it. Not gating; fold into any later edit that touches A6-05. | §Batches, A6-05 (`PLAN:99`) |
+
+FINDING: Low | delta | nonlocal | §Batches, A6-05 (`PLAN:99`) | A6-05 lists `ADVISORY_SEAM_PHASES.A6` alongside four exported constants without restating TSPEC v1.8's new "leave the `const` unexported" instruction; PLAN plans no export anywhere, so the outcome is already correct — the instruction is simply not local to the task that owns the edit.
+
+No High and no Medium findings. Specifically, the three failure modes this cascade could have
+produced were each checked and none is present:
+
+- **A stale citation.** PLAN cites TSPEC §3.1 in A6-05 and A6-02 only for the constant surface. The
+  §3.1 code block is byte-unchanged across the erratum; only prose beneath it grew. Neither citation
+  points at text that no longer says what PLAN leans on.
+- **An orphaned oracle.** If PLAN had homed PROP-REC-07's assertion on the constant (an import-based
+  unit oracle), v1.8 would have stranded it — the constant is now permanently unexported by
+  decision, not by accident. PLAN never did: A6-02's import list omits the table, and A6-17 owns the
+  integration file §3.1 now names. The document was already written to the resolved shape.
+- **A batch-column desync introduced by re-homing.** No re-homing occurred, and A6-17's declared
+  batch 11 still equals `max(batch(A6-14)) + 1 = 10 + 1`. The escalation-write GREEN (A6-18, batch
+  12) still follows its RED, so PROP-REC-07's oracle is red for the reason batch 11 declares.
 
 ## Questions
 
