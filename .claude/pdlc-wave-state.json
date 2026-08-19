@@ -1,6 +1,1 @@
-{
-  "version": 1,
-  "feature": "pdlc-consolidation-agent",
-  "planHash": "7d394135",
-  "lastGreenWave": 12
-}
+{"version":1,"feature":"pdlc-plugin-retirement","planHash":"d20f09dc","lastGreenWave":22,"head":"0474aab3962d419edbbe6f776f04c0fe319d3637"}
