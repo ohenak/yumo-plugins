@@ -409,4 +409,53 @@ planned.
 
 ## Gaps, Non-Properties and Routed Findings
 
-*(section pending)*
+### G-1. Deliberate non-properties
+
+These are stated so that a later reader can tell a decision from an omission.
+
+| # | Not a property | Why |
+|---|---|---|
+| 1 | AC-2.2's **first-match precedence** between root-cause classes | Script-unenforceable without re-doing the diagnosis the seam was dispatched to perform; prompt-only per TSPEC §3.3. Its cost — AC-6.4's recurrence count is a function of agent judgement to that extent — is recorded in Oracle H rather than papered over |
+| 2 | Wall-clock **timing** of A6 relative to a green wave | NFR-5's claim is structural (A6 is reachable only from a red gate), so PROP-GATE-10 asserts dispatch counts on one run, never elapsed time |
+| 3 | **Coverage percentage** as an A6 oracle | Both `npm run test:coverage` floors — the aggregate `c8` block and the per-file branch ≥85 — are dominated by `orchestrate-dev.js`'s ~15k lines, so neither can fail on A6's branches specifically (TSPEC §5.4). The branch inventory is covered by enumeration in §§B–H above, not by the floor |
+| 4 | Per-seam **resolution counts** surviving the run | The advisory record is distilled into LEARNINGS and deleted after Phase PUB, so only escalations are durably countable. PROP-REC-06 asserts the positive half and the negative half explicitly; making resolutions durable is REQ O-2's, owned by `pdlc-engineering-loop` |
+| 5 | A6 firing on a **post-wave command failure** | Decided out (REQ Q-2, O-7, D-AWG-04). PROP-SEAM-03 asserts the dispatch count is `0` there, which is the property the decision implies |
+| 6 | A6 over the **V-wave** | No ownership-manifest row, so E-5/E-6 have no owned-path set to range over (AC-1.3, D-AWG-02). PROP-SEAM-04 is the observable |
+
+### G-2. Known-soft properties
+
+- **PROP-REST-03** is upstream-pending on OQ-7 and ships as `test.todo` until the erratum on FSPEC
+  BR-9 / AT-05-1 and REQ AC-5.1 returns a boundary. This is TSPEC §6 OQ-9's decision, not a gap this
+  document introduces.
+- **PROP-REC-06**'s negative half ("resolution counts are not derivable") is an absence assertion by
+  construction. It is paired with the positive half on the same log fixture, which is the strongest
+  available shape.
+- **PROP-NFR-03**'s partition is only as good as its transcribed literal. The set-equality is what
+  makes a rule silently becoming proposable a red test; a per-rule containment check would not.
+
+### G-3. Findings routed upstream (errata)
+
+Two defects in upstream documents are named here rather than absorbed into this document's
+properties. In both cases this document follows the TSPEC/PLAN reading, which is also what the
+shipped code does, and the FSPEC text is the one that needs the versioned edit.
+
+1. **FSPEC AT-01-4 forbids the oracle every other document requires.** It reads "The test asserts the
+   key is **absent**, not undefined." REQ NFR-2 requires the opposite reading — "the key is
+   undefined, not a six-row all-zero summary" — and TSPEC §5.2 ("the report's `advisory` key is
+   **absent** (`undefined`, not `null`)") and PLAN A6-20 ("carries no `advisory` key (`undefined`,
+   not `null`)") both pin the `undefined` form, which is also the shipped tier's own oracle
+   (`advisoryDisabled.test.js`, `expect(result.advisory).toBeUndefined()` at four sites). As written,
+   AT-01-4 rules out the assertion the rest of the chain mandates. PROP-SEAM-05 follows REQ/TSPEC.
+2. **FSPEC AT-06-1 mandates containment where TSPEC mandates set-equality.** AT-06-1 says
+   "Containment is deliberate: the entry keeps the tier's record shape …"; TSPEC §5.6's AT-06-1 row
+   says the entry's "field set asserted by set-equality against a transcribed literal, **not**
+   containment (TE F-15: a dropped field passes a containment check)", and PLAN A6-16 transcribes
+   the set-equality form. A containment oracle cannot fail on a dropped field, which is the defect
+   TSPEC's correction exists to catch. PROP-REC-01 follows TSPEC/PLAN.
+
+### G-4. Requirements-side gaps found while deriving
+
+None. Every REQ acceptance criterion and NFR yielded at least one falsifiable property (matrix C-1),
+and every FSPEC acceptance test has a home (matrix C-2). The two conflicts above are wording defects
+in an already-decided area, not missing requirements.
+
