@@ -525,3 +525,61 @@ equality, it is stated as such rather than as an absence.
   network surface Phase I does not already reach. *(NFR-3.)*
 
 ## 7. Open Questions
+
+**No question in this FSPEC is open against the operator.** The REQ's five operator questions were
+decided on 2026-08-13 and their provenance is recorded in
+`docs/_decisions/DECISIONS-advisory-wave-gate-questions.md` (Q-1…Q-5). This section carries forward
+only obligations on downstream authors, and the deferrals the REQ already made, so the TSPEC author
+inherits them from one place.
+
+### 7.1 Obligations carried to the TSPEC
+
+| # | Obligation | Owner | This FSPEC states |
+|---|---|---|---|
+| O-1 | The restoration mechanism behind BR-9, and the point at which the pre-A6 tree state is captured. Its failure mode is E-28. | Feature TSPEC | Only the observable: whole-tree, three triggers, wave agents' work intact |
+| O-3 | Reuse of the tier's exported model-rung resolver rather than restated literals | Feature TSPEC | Only that the rung is the tier's (AT-07-4) |
+| O-4 | How a wave's owned-path set is computed for E-5 and E-6, and how a proposal's changed paths are compared against it | Feature TSPEC | Only the membership rule (BR-4) |
+| O-5 | Whether the root-cause classification is derived by the seam or supplied by the wave's own agents | Feature TSPEC | Only the vocabulary and its totality (BR-2) |
+| O-8 | How an E-6 repair reaches committed state through the existing pathspec-scoped commit path, and how the later task's dispatch is told the promotion already exists | Feature TSPEC | Only the outcome: no resolved wave leaves the repair uncommitted (BR-12) |
+
+BR-12 is the one that most rewards early attention: it is a genuine gap against shipped scope
+(M-WG-12), not a restatement of it, and a TSPEC that treats it as already covered will ship an E-6
+resolution whose repair is stranded uncommitted.
+
+### 7.2 Deferrals — out of scope, with a named owner
+
+These are not open questions in this feature. They are recorded so a reviewer who notices the gap
+finds it already routed rather than raising it as a finding.
+
+| # | Deferred | Owner |
+|---|---|---|
+| O-2 | Persisting per-seam **resolution** counts, so resolution rate is measurable at all (E-31) | `pdlc-engineering-loop` (queue row 6) |
+| O-6 | Improving PLAN's dependency derivation, so a task is not scheduled before the task that promotes what it consumes | `pdlc-engineering-loop` (queue row 6) |
+| O-7 | Build-breaking source defects — post-wave command red — being outside A6's reach. A decision (Q-2), not an oversight; any remedy is a separate mechanism with its own trigger and budget, never a widened A6 | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-01 | Widening E-5/E-6 | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-02 | A6 coverage of the PROPERTIES V-wave — it has no owned-path set (E-05) | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-03 | A POSTMORTEM lifecycle and an approval skip for Phase I (M-WG-5, M-WG-6) | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-03b | Re-entry at the failed wave rather than wave 1 | `pdlc-wave-resume` (queue row 20) |
+| D-AWG-04 | Firing A6 on post-wave command failure | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-05 | Re-running the gate for `environmental` classifications without a repair (Q-3: no, in v1) | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-06 | Mode-aware Phase I halt reporting, and a structured halt record for a wave-gate halt | `pdlc-engineering-loop` (queue row 6) |
+
+### 7.3 Assumptions this FSPEC makes explicit
+
+- **A-1.** The two enumerations BL-06 requires — the transcribed set-equality surfaces this feature
+  reds, and a re-measurement of the BL-03 no-manifest notice that E-04's cardinality rests on — are
+  assumed complete before implementation planning. AT-07-2 is the observable; a planning round that
+  skips the enumeration will discover it as unexplained red suites.
+- **A-2.** The line references in `pdlc-wave-gate-baseline.md` §1–§2 were measured at an earlier
+  default-branch commit and have drifted; the symbol- and grep-anchored recipes in §3 still resolve.
+  This FSPEC cites facts by `M-WG-*` id at the baseline's stated `Version` (1.1), never by line, so
+  drift below a cited id does not invalidate a clause here — it invalidates the baseline row, which
+  is that file's change-control problem.
+- **A-3.** R-1 is accepted, not solved: a repair inside the wave's own production files can be the
+  wrong repair and still turn the suite green. The exclusion of test files (BR-5) removes the worst
+  version of it and Phase DOD's Final Codebase Review still runs over the result, but a residual risk
+  is real. That is why the tier ships disabled, and this FSPEC specifies no behaviour that assumes an
+  operator has enabled it.
+- **A-4.** R-3 is bounded honestly: `advisory.waveBudgetPerRun` bounds drift *within* an invocation
+  only. Drift across invocations is bounded by the operator arriving between them, not by a number,
+  and no clause here claims otherwise.
