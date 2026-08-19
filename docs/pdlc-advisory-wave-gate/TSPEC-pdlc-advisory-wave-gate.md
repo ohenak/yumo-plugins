@@ -349,6 +349,130 @@ export function citesGateOutput(evidence, gateOutput) : boolean
   anything. A paraphrase fails, costs one attempt, and the prompt states the rule — bounded by
   `attemptBudget`, which is the point of having one.
 
+### 3.4 Owned-path sets, and how a proposal is compared against them (O-4)
+
+```js
+export function waveOwnedPaths(waves, waveIndex) : string[]   // E-5 — pure
+export function laterOwnedPaths(waves, waveIndex) : string[]  // E-6 — pure
+export function ownedSetCovers(ownedSet, path) : boolean      // pure
+```
+
+The sets are not recomputed from the PLAN text. `computeWaves(tasks, iOwnership)` already annotates
+every task with its `files` array, straight from `parsePlanOwnership`'s rows, and Phase P has
+already gated that manifest against the task table (`validatePlanContract`). So:
+
+- **E-5** = the union of `task.files` over `waves[waveIndex]`.
+- **E-6** = the union of `task.files` over every `waves[j]` with `j > waveIndex`.
+
+`ownedSetCovers` reuses `pathsCollide` — the same predicate `computeWaves` uses to keep a wave
+ownership-disjoint — so a manifest row naming a directory (`pdlc/workflows/dist/`) covers files
+beneath it, and a run's envelope decision and its wave-packing decision cannot disagree about what
+a manifest row means.
+
+**Comparison happens twice, through the shipped `classifyEnvelope`, not through a new matcher.**
+`declaredScope` starts as `E-5 ∪ E-6` (exact manifest entries). `producedPaths()` then rewrites it
+**in place** to `E-5 ∪ E-6 ∪ {produced paths p : ∃ e ∈ (E-5 ∪ E-6), ownedSetCovers(e, p)}` before
+returning. X-d's `scope.includes(p)` is exact string membership, so without that widening a
+legitimately-owned file under a directory row would be refused, and with it a path under no row at
+all is still refused — which is exactly E-16's partial-proposal case and AC-3.3's "any path outside
+the computed set". The in-place mutation is mandatory and is the documented `buildA4SeamOps` idiom;
+a reassignment would be invisible to the driver's already-captured `gateCtx`.
+
+**E-6's symbol half is script-checked, in three conjuncts.** The verdict declares
+`PROMOTES: {symbol}` and `PROMOTES-TASK: {taskId}`; `apply` proceeds only if all three hold:
+
+1. `taskId` names a task in a wave strictly later than `waveIndex`;
+2. `symbol` occurs in that task's PLAN row text (`task.description`, which `waveImplementPrompt`
+   already reads) — the row "already undertakes to produce" it;
+3. `symbol` occurs in the captured gate output — the failure actually named it.
+
+Any conjunct failing refuses `out-of-envelope`. AT-03-4's companion — symbol half satisfied,
+path outside the later task's owned set — is refused by conjunct (2) of BR-4's rule instead, via
+X-d over `producedPaths`.
+
+**Exclusions still win.** `classifyEnvelope` walks `ADVISORY_EXCLUSIONS` in its shipped order —
+`X-a`, `X-e`, `X-d`, `X-b`, `X-c` — so a repair confined to the wave's own owned paths whose target
+is a test file is refused `revert-on-test-touch` (X-a, first) rather than permitted under E-5
+(AT-03-2), and a wave owning `pdlc/workflows/` is refused `out-of-envelope` (X-e, via
+`effectiveGuardPaths(undefined)` ⊇ `MERGE_GUARD_DEFAULTS` = `pdlc/workflows/`, `pdlc/skills/`,
+`pdlc/hooks/`, `.claude/workflows/`) — AT-03-3, and in this repository the common case. Neither
+behaviour is A6 code. The ordering is the reason AT-03-8's oracle must be sequence equality.
+
+### 3.5 Snapshot and restore (O-1)
+
+```js
+export async function captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit })
+  : Promise<{ head: string, tree: string, snap: string } | null>
+export async function restoreTreeSnapshot(snapshot, { _git, _sleep, emit }) : Promise<void>
+```
+
+Both run the plumbing of §2.5 through the injected `_git(argv)` transport, whose contract is
+`{ok, stdout, stderr}` and which never throws (`defaultGit`). `git add` and `git reset` go through
+`gitWithLockRetry`, because a wave's agents run in one shared tree and their tooling can still hold
+`.git/index.lock` for a second or two after the dispatch returned — the shipped reason
+`commitPaths` retries the same two verbs.
+
+- `captureTreeSnapshot` returns `null` on any `ok !== true`; the caller emits a notice and does not
+  dispatch. Refusing to act beats acting without a way back.
+- `restoreTreeSnapshot` **throws** on any `ok !== true`. The throw is what `doRevert` tags
+  `__isRevertFailure` and the driver's terminal catch rethrows — E-28, AT-05-5.
+
+`_git` is agent-transcribed at runtime, so a garbled reply reads as `ok !== true` and lands in the
+fail-closed arm. That is the correct direction: a snapshot A6 cannot prove it took is a snapshot it
+does not have.
+
+### 3.6 Committing an E-6 repair, and telling the later task (O-8)
+
+M-WG-12 is the gap: the wave commit loop commits only paths owned by tasks *in that wave*, and an
+E-6 promotion by construction lands in a later task's paths. Left alone, a resolved wave would
+strand its own repair as an uncommitted working-tree change.
+
+The fix widens the **pathspec** the existing writer passes, and adds no writer. After the per-task
+loop, inside the same `if (waveGit)` block and past the same green gate, one further `commitPaths`
+call runs with `paths` = the promotion's produced paths (already proven ⊆ the later task's owned
+set by §3.4), `what` = `Wave N advisory promotion (task T)`, and the same `provenance`. AT-04-3's
+oracle is over committing **writer identities** and the green-gate precondition, and its own text
+grants that "that scope may widen under O-8's E-6 resolution" — so the identity set stays
+`{per-task pathspec commit, post-wave-pathspec build-output commit}`, both still unreachable except
+past a green gate. **This is the load-bearing interpretive decision of the feature** and §6 records
+it as such: a reviewer who reads AT-04-3 as counting *call sites* rather than identities would
+require a different design, and that disagreement is cheaper to have now than in Phase I.
+
+The later task's dispatch is told through the prompt: `waveImplementPrompt(task, featureName,
+promotions)` gains an optional third argument, a `Map<taskId, {paths, symbol}>` threaded down the
+wave loop. When the map has a row for the task being dispatched, the prompt carries one clause
+naming the symbol and its paths and instructing the agent to revise what exists rather than
+rediscover it (BR-12). Absent a row, the prompt is byte-identical to today's — which is what keeps
+every existing prompt fixture green.
+
+The map lives in the Phase I scope, so the clause reaches a later task **in the same run**. Across
+runs it does not survive; the *commit* does, so the later task's agent finds the promotion in the
+tree either way. §6 O-Q3 records the asymmetry rather than leaving it to be discovered.
+
+### 3.7 The one change to the shipped driver
+
+`runAdvisorySeam` gains a single optional seam, defaulted so A1–A5 are unchanged in shape and in
+bytes:
+
+```js
+/** @property {null | ((raw: string, verdict: AdvisoryVerdict) =>
+ *    {ok: true} | {malformed: true, why: string} | {terminate: {outcome: string, reason: string|null}})} */
+seamOps.classifyReply
+```
+
+Called once per attempt, immediately after `parseAdvisoryVerdict` returns a well-formed verdict and
+after `_summarise` has run, and before RE-CHECK. Three returns, three shipped arms:
+
+| Return | Driver behaviour | Realises |
+|---|---|---|
+| `{ok:true}` (and the default `null`) | proceed to RE-CHECK | A1–A5, unchanged |
+| `{malformed:true}` | `attempts += 1`, budget check, `continue` — the **existing** malformed arm, reused verbatim | E-10, and E-09's tie-break for free: `parseAdvisoryVerdict` runs first, so a verdict that is both malformed and unclassifiable never reaches `classifyReply` |
+| `{terminate:{outcome,reason}}` | `terminate(...)` with `attempts` unchanged and `appliedSuccessfully:false` | E-08/E-11: escalate, **no** attempt consumed, **no** refusal reason — the record and escalation log still written, the root-cause class carried |
+
+Adding a hook rather than an `if (seam === "A6")` branch is not decoration: the driver's per-seam
+gate-exclusivity registry asserts that no seam has a private path through it, and a seam-name
+conditional inside the driver would be exactly that.
+
 ## 4. Data Model
 
 *(pending)*
