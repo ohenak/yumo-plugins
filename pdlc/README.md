@@ -83,9 +83,9 @@ claude plugin validate ./pdlc --strict
 ```
 
 `pdlc/workflows/*.js` are the ES module sources; `node pdlc/workflows/build-runtime.mjs`
-compiles them into the runnable artifacts under `pdlc/workflows/dist/` (`pdlc-cli.mjs`,
-`distribution-manifest.json`). Those artifacts are tracked and generated — never hand-edit
-them, and rebuild `pdlc/workflows/dist/` in the same commit as any workflow-source change.
+compiles them into the runnable artifact under `pdlc/workflows/dist/`, which holds exactly
+`pdlc-cli.mjs`. That artifact is tracked and generated — never hand-edit it, and rebuild
+`pdlc/workflows/dist/` in the same commit as any workflow-source change.
 `build-runtime.mjs --check` exits non-zero on drift.
 
 ## Install in another repo

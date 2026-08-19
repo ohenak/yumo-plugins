@@ -14,70 +14,27 @@ Definitions used below:
 
 ---
 
-## 1. AC-6.2a — the published package really carries `workflows/dist/`
+## 1. AC-6.2a — the published package really carries `workflows/dist/pdlc-cli.mjs`
 
 **When:** after publishing a release **and installing it** from the marketplace, against the
 *installed* copy — never against this working tree.
 
-**What must hold:** `$PLUGIN_ROOT/workflows/dist/` contains **both** runtime bundles —
-`orchestrate-dev.bundle.js` and `orchestrate-queue.bundle.js` — **and** `distribution-manifest.json`
-beside them, and the shipped packaging oracle reports no violation over that tree.
-
-**Runnable form.** The oracle ships inside the plugin, at
-`pdlc/workflows/lib/document-oracles.mjs`, so it can be run straight out of the installed package.
-`packagingViolations(root)` takes the **parent** of the plugin directory and returns an array of
-`{ clause, path, detail }`; an empty array is the pass.
-
-**Exactly one input returns an empty array without having verified anything: a manifest that is
-absent altogether.** That is why the three presence checks below are **not** redundant with the
-oracle — both halves are required for this row to pass. A manifest that is *present but
-unreadable* is **not** in that hole: it is reported as a `6.2(a)` violation on
-`pdlc/workflows/dist/distribution-manifest.json` whose `detail` names the specific failure. So a
-corrupt manifest fails this row on the oracle's own output rather than printing `present` three
-times and `packagingViolations -> []`.
-
-**`packagingViolations` is total: it never throws, for any bytes at the manifest path, and it never
-skips.** A manifest that is unreadable, is not valid JSON, is not a JSON object at all (`null`, an
-array, a bare scalar), carries neither the production `rows` array nor the simplified `entries`
-array, or whose rows/entries are not objects or are missing `pluginPath` / `path` / `pluginSha1`,
-all report `6.2(a)` — because a malformed manifest **is itself** a defect in the packaged set, which
-is the very thing this row asks about. Note the deliberate contrast with row 2's oracle
-(`advertisedVersionViolation`), which answers a question that can be genuinely *inapplicable* and so
-returns `{ skipped: … }` instead: that divergence is intended, and the reasoning is recorded in
-`pdlc/workflows/lib/document-oracles.mjs` between §10.2 and §10.3. Neither oracle throws, so a
-malformed input in this row can never abort the run before row 2 is reached.
+**What must hold:** `$PLUGIN_ROOT/workflows/dist/` contains exactly one file, `pdlc-cli.mjs` —
+the reduced build step's emitted set (REQ AC-1.1's set-equality). The pdlc-plugin-retirement sweep
+deleted the `orchestrate-dev.bundle.js` / `orchestrate-queue.bundle.js` / `distribution-manifest.json`
+trio (baseline M-4/M-5/M-6) along with the packaging oracle (`packagingViolations`) that used to
+check for them alongside `pdlc-cli.mjs`; `pdlc/workflows/lib/document-oracles.mjs` no longer
+exports that function. There is no JS oracle for this row anymore, so the check below is a plain
+file-presence check run against the installed package.
 
 ```sh
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:?point this at the installed pdlc plugin directory}"
-
-node -e '
-const { existsSync } = require("fs");
-const { basename, dirname, join } = require("path");
-const { pathToFileURL } = require("url");
-const pluginRoot = process.argv[1];
-const parentRoot = dirname(pluginRoot);
-let missing = 0;
-for (const f of ["orchestrate-dev.bundle.js", "orchestrate-queue.bundle.js", "distribution-manifest.json"]) {
-  const p = join(pluginRoot, "workflows", "dist", f);
-  const ok = existsSync(p);
-  if (!ok) missing++;
-  console.log((ok ? "present  " : "MISSING  ") + p);
-}
-if (basename(pluginRoot) !== "pdlc") console.log("NOTE: the oracle resolves <parent>/pdlc/ — this directory is not named pdlc");
-import(pathToFileURL(join(pluginRoot, "workflows", "lib", "document-oracles.mjs")).href).then((m) => {
-  const v = m.packagingViolations(parentRoot);
-  console.log("packagingViolations -> " + JSON.stringify(v));
-  process.exit(missing === 0 && v.length === 0 ? 0 : 1);
-});
-' "$PLUGIN_ROOT"
+ls -1 "$PLUGIN_ROOT/workflows/dist/"
 ```
 
-- [ ] All three files print `present`.
-- [ ] `packagingViolations -> []`.
-- [ ] The command exits `0`.
-
-Any non-empty array names the violated clause and the offending path; fix the packaging step and
-re-publish. Hosted automation of this row is deferred to D-DIST-06.
+- [ ] The command printed **exactly one** entry: `pdlc-cli.mjs`. Anything else — a missing file,
+  an extra file, or a directory that does not exist — fails this row; fix the packaging step and
+  re-publish. Hosted automation for this row is deferred, D-DIST-06.
 
 ---
 
