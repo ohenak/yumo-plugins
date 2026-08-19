@@ -36,6 +36,21 @@ table at line 300 when it runs to 306. Re-run over the full table, the sets are 
 
 ## Findings
 
+Two findings, both introduced by this round's TSPEC edit rather than by PLAN. No High.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | **A6-04's red-test assertion no longer matches the expectation TSPEC now specifies: `enabled` is missing from the asserted key set.** A6-04 states the new expectation as "example config's `advisory` section parses and carries `waveBudgetPerRun`, a non-negative integer (TSPEC §4.4, §5.1)" — one key. TSPEC at HEAD says, in both places A6-04 cites, that the expectation asserts the section "parses, carries `enabled` and `waveBudgetPerRun`, the latter a non-negative integer" (`TSPEC:1063`, §5.1 manifest row `:1181`, credited TE F-34). This is a two-key assertion cited as a one-key assertion. The gap matters for product reasons PLAN itself states: A6-06 ships the **whole** section precisely because JSON admits no comments and the copied-out block is "the only file that can tell an operator" what `waveBudgetPerRun: 0` **with `enabled: true`** means — E-33's documented "keep tier on, keep A6 off" affordance. With no `pdlc/README.md` row in scope (A6-06, confirmed), that example block is the affordance's sole teaching site, and this new test is its sole guard. An expectation that asserts only `waveBudgetPerRun` stays green if a later edit drops `enabled` from the example, silently retiring the pairing that makes E-33 legible. **Fix:** in A6-04, state the assertion as "`advisory` section parses and carries both `enabled` and `waveBudgetPerRun`, the latter a non-negative integer", matching §4.4 and §5.1 verbatim. One clause; no batching, ownership, or dependency consequence. | E-33; AC-1.4; TSPEC §4.4, §5.1 |
+| F-02 | Low | Local | **A6-03's "the six collateral transcription surfaces §1.3 names" is stale: §1.3 now names eight.** `PLAN:97` opens A6-03 with a cardinality borrowed from upstream, and this round's erratum expanded §1.3 from "Six shipped surfaces go red" to "Eight shipped surfaces go red" (`TSPEC:215`), the enumeration having been "short two sites". A reader who follows the pointer counts eight rows and cannot tell from the sentence which are outside A6-03 — in fact two are: the `.enabled` occurrence-count row is a *constraint* on A6 rather than an edit (owned as such by A6-18), and the constants rows belong to A6-02. No implementer loses work, because A6-03 enumerates its own surfaces explicitly in the very next clause and names all four bare row-count sites including `advisoryHarvest.test.js:726`; the count-word is the only stale token. **Fix:** either drop the cardinality ("the collateral transcription surfaces §1.3 names") or scope it ("the four collateral transcription rows of §1.3's eight surfaces"). | PLAN §Batches (A6-03); TSPEC §1.3 |
+
+**Tagged for the erratum protocol:**
+
+FINDING: Medium | delta | local | PLAN §Batches, A6-04 | A6-04 states the engine expectation as asserting `waveBudgetPerRun` alone; TSPEC §4.4/§5.1 at HEAD specify it asserts both `enabled` and `waveBudgetPerRun`, the latter non-negative. `enabled` is the key that makes E-33's "tier on, A6 off" pairing guarded, and the example block is its only teaching site.
+
+FINDING: Low | delta | local | PLAN §Batches, A6-03 | A6-03 cites "the six collateral transcription surfaces §1.3 names"; §1.3 at HEAD names eight. A6-03's own explicit enumeration remains correct and complete, so only the borrowed cardinality is stale.
+
+Both are `delta`: PLAN's text was accurate against TSPEC v1.6 in each case, and it is this round's edit that moved the upstream wording out from under it. Neither is a defect PLAN could have avoided.
+
 ## Questions
 
 ## Positive Observations
