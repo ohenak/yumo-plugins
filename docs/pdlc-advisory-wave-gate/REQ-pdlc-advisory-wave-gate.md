@@ -17,16 +17,15 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 |---|---|---|---|---|
 | pdlc | draft | Claude | 1.8 | 2026-08-18 |
 
-*v1.8 changelog (erratum round, round 4). Decided: AC-1.5's population is runs that reach Phase I
-and **evaluate wave mode** — the no-manifest legacy run, where BL-03's own carrier fires, is back
-inside the population; earlier halts and ledger skips stay outside (F-22, F-01). The
-`seamBudgetMinutes` window is stated **per attempt**, restarting on each attempt, with an A6
-invocation's worst case named as `attemptBudget` × the value in NFR-4, §5's config table and
-AC-2.4; no per-episode cap is introduced (F-23). Three referents are separated by term — *run*,
-*A6 invocation*, *attempt* — and R-3 now says run where it meant run (F-25). AC-4.1's conjuncts
-are keyed to A6 **applying a repair**, with *resolves* reserved for the green re-gate outcome the
-rest of the document gives it, each conjunct observable on a run of its own and (iii) named as a
-mutation fixture (F-24, F-02). Nothing else changed.*
+*v1.8 changelog (erratum round, round 4). Decided: AC-1.5's population is runs reaching Phase I
+and **evaluating wave mode**, so the no-manifest legacy run — where BL-03's own carrier fires — is
+back inside it, while earlier halts and ledger skips stay outside (F-22, F-01). `seamBudgetMinutes`
+is stated **per attempt**, restarting each attempt, with an invocation's worst case named as
+`attemptBudget` × the value in NFR-4, §5 and AC-2.4; no per-episode cap introduced (F-23). Terms
+separated — *run*, *A6 invocation*, *attempt* — and R-3 says run where it meant run (F-25).
+AC-4.1's conjuncts key on A6 **applying a repair**, *resolves* reserved for the green re-gate
+outcome, each conjunct on a run of its own, (iii) named a mutation fixture (F-24, F-02). Nothing
+else changed.*
 
 *v1.7 changelog (erratum round, round 3). Decided: AC-1.5's notice cardinality is scoped to runs
 reaching Phase I and executing a wave, earlier halts and ledger skips being outside the population
@@ -208,7 +207,7 @@ AC id. Reuse of the model-rung resolver rather than restatement of its literals 
 |---|---|---|---|
 | `advisory.enabled` | `false` | existing, unchanged | master switch; false ⇒ A6 inert (AC-1.4) |
 | `advisory.attemptBudget` | `3` | existing, reused | remediation attempts per A6 invocation, one invocation being A6 engaged on one red wave (AC-2.4) |
-| `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per attempt, measured dispatch to verdict; the deadline restarts on each attempt, so one A6 invocation may consume up to `attemptBudget` × this value (AC-2.4, NFR-4) |
+| `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per attempt, dispatch to verdict; deadline restarts each attempt, so one A6 invocation may consume up to `attemptBudget` × this value (AC-2.4, NFR-4) |
 | `advisory.envelope` | gains `E-5`, `E-6` (AC-3.1) | existing, extended | the per-seam allow-list |
 | `advisory.waveBudgetPerRun` | `2` | **new** | how many distinct waves A6 may resolve in one run (AC-2.4); exceeded ⇒ escalate |
 
@@ -259,10 +258,10 @@ requirements altitude.
   (BL-04), Then A6 does not apply, the phase behaves exactly as it does today, and the
   inapplicability is named once in the run report rather than being silently indistinguishable from
   a quiet seam. The observable is cardinality on a named surface, not mention, scoped to the runs
-  that can carry it: in a run **that reaches Phase I and evaluates wave mode** — whether it then
-  executes waves or takes the no-manifest legacy path — exactly one inapplicability notice — not
-  per wave — naming **every** absent prerequisite (both, in a run lacking manifest and script-owned
-  gate alike); none in a run where A6 applies. A run halting before Phase I, or skipping it on a
+  that can carry it: in a run **that reaches Phase I and evaluates wave mode** — executing waves or
+  taking the no-manifest legacy path alike — exactly one inapplicability notice, not per wave,
+  naming **every** absent prerequisite (both, in a run lacking manifest and script-owned gate
+  alike); none in a run where A6 applies. A run halting before Phase I, or skipping it on a
   recorded wave ledger, never evaluates wave mode and is outside the population, not a zero-count
   violation of it. Both prerequisites already emit a once-per-run
   notice on that surface: BL-04's when the script-owned gate degrades, BL-03's when the phase takes
@@ -307,9 +306,9 @@ requirements altitude.
   satisfiable on a long suite. *(US-02.)*
 - **AC-2.4** — Given the budgets of C-2, Then A6 escalates rather than retrying when any is
   exceeded: more than `advisory.attemptBudget` attempts on one wave, more than
-  `advisory.seamBudgetMinutes` on a single **attempt** (per attempt, dispatch to verdict; the
-  deadline restarts on each attempt, so one A6 invocation's worst case is `advisory.attemptBudget`
-  × that value — NFR-4 measures the same thing), or an attempt on a wave once A6 has
+  `advisory.seamBudgetMinutes` on a single **attempt** (per attempt, dispatch to verdict, the
+  deadline restarting each attempt — NFR-4 pins the window and its worst case), or an attempt on a
+  wave once A6 has
   already **resolved** `advisory.waveBudgetPerRun` distinct waves in this run. One attempt is one
   **repair→re-gate** cycle. Only resolutions consume the wave budget, which fixes the two oracles a
   test can disagree about: two waves A6 attempted and escalated leave the budget untouched, so a
@@ -371,14 +370,13 @@ requirements altitude.
   a repair** when an in-envelope, high-confidence proposal is written to the tree, and A6
   **resolves** the wave only in the outcome the rest of this document gives that word — an applied
   repair whose re-gate came back green (AC-4.6, AC-5.3). The observable is three positive
-  conjuncts, each on a run of its own, so three fixtures rather than one: (i) A6 applies a repair
-  and the re-gate is green ⇒ the wave is resolved, it proceeds, and that green invocation is in the
-  run's gate-invocation sequence (AC-4.4); (ii) A6 applies a repair and the re-gate is red ⇒ the
-  wave halts, the tree is restored (AC-5.1), and the halt is the wave's own gate halt (AC-5.2);
-  (iii) A6 applies a repair and **no** gate invocation follows ⇒ the wave halts. Conjunct (iii)
-  carries the prohibition: it fails exactly where a verdict stood in for a gate result, and it is
-  unreachable on an ordinary run, so its fixture mutates the shipped control flow to remove the
-  re-gate and asserts the halt survives.
+  conjuncts, each on a run of its own, so three fixtures: (i) applies, re-gate green ⇒ the wave is
+  resolved, proceeds, and that green invocation is in the run's gate-invocation sequence (AC-4.4);
+  (ii) applies, re-gate red ⇒ the wave halts, the tree is restored (AC-5.1), and the halt is the
+  wave's own gate halt (AC-5.2); (iii) applies and **no** gate invocation follows ⇒ the wave halts.
+  Conjunct (iii) carries the prohibition — it fails exactly where a verdict stood in for a gate
+  result — and is unreachable on an ordinary run, so its fixture mutates the shipped control flow
+  to drop the re-gate and asserts the halt survives.
 - **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
   not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
   command ran and post-wave pathspecs are configured, the build-output commit scoped to those
@@ -474,9 +472,9 @@ requirements altitude.
 - **NFR-3** — A6 holds no credentials the pipeline does not already hold, and reaches no network
   surface Phase I does not already reach.
 - **NFR-4** — No A6 **attempt** exceeds `advisory.seamBudgetMinutes`, measured over the window
-  AC-2.4 pins: dispatch to verdict on that one attempt. The deadline restarts on each attempt, so
-  an A6 invocation on one wave has a worst case of `advisory.attemptBudget` × that value — this
-  states shipped behaviour, and no cap over the invocation as a whole is required here.
+  AC-2.4 pins: dispatch to verdict on that one attempt. The deadline restarts each attempt, so an
+  A6 invocation on one wave has a worst case of `advisory.attemptBudget` × that value — shipped
+  behaviour, and no cap over the invocation as a whole is required here.
   Gate-command run time falls outside the window **structurally** — the gate runs between attempts,
   never inside one — so no subtraction is performed and no carve-out is needed. An overrun
   escalates as `budget-exhausted`.
