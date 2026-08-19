@@ -37,7 +37,15 @@ Every behavioural claim added this round was checked against the shipped code, n
 
 That last fact is what F-01 below turns on.
 
-## Prior findings
+## Prior findings (round 3)
+
+| ID | Severity | Status | Evidence |
+|----|----------|--------|----------|
+| F-01 | High | **Addressed, but the replacement rule is wrong** — see F-01 below | §3.2 step 6 no longer denies resolution to a two-attempt run: the suffix reading resolves `[post-wave, test, post-wave, test]` (`TSPEC:475-478`), and §5.2 gains the positive companion I asked for, with literal expected `invocations` and a `waveBudget.resolved` increment (`TSPEC:973-979`). The half I raised is fixed. But the new quantity drops the dispatch anchor, and with it the ability to refuse the defect the rule exists for |
+| F-02 | Medium | **Resolved** | All four clauses moved inside their cells; pipe counts now match their headers at `TSPEC:504`, `:511`, `:1061`, `:1062`. Nothing was lost in the move — each clause reads the same as it did past the pipe |
+| F-03 | Medium | **Resolved, and correctly grounded** | §2.5 names the disposition object in full and says *why* `model: "n/a"` rather than leaving it to the renderer: `renderAdvisoryEntry` destructures six members and interpolates `model` unguarded (`orchestrate-dev.js:2924`, `:2934`). §3.2 step 4 repeats the same literal, and §5.2's capture-failure fixture transcribes the rendered cell as `n/a`, not `undefined` |
+| Q-01 | — | **Still open upstream** | OQ-7's erratum on FSPEC BR-9 / AT-05-1 and REQ AC-5.1 has not landed: `FSPEC:204` and `:410` still read "tracked and untracked files alike, generated outputs included" with no `.gitignore` carve-out. Re-emitted this round |
+| Q-02 | — | **Answered** | §6 OQ-12 (`TSPEC:1197`) closes it by construction rather than by convention: A6 is only entered on an already-red gate, every non-`resolved` terminal returns `{resolved: false}`, and the call site rethrows the wave's halt — so `ADVISORY_SEAM_PHASES.A6`'s fixed `outcome: "halted"` cannot be a false record |
 
 ## Findings
 
