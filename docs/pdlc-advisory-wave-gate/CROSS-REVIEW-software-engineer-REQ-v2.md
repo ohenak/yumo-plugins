@@ -78,3 +78,6 @@ corrections to text that is now load-bearing (AC-4.2's "sole writer", §9's drif
 and F-14 are recorded, not gating.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
