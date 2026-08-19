@@ -515,10 +515,15 @@ Four closure claims, one test each:
 | BR-8 per-dispatch scalar | `totalBytesInjected` | present, equals `sum(rows[].bytesInjected)` |
 | BR-10 members | `orderKeys`, `thresholds` | set equality over `Object.keys(ruleInputs)` |
 | BR-9 catalogues | D.1's three arrays | one set-equality test each |
+| §A.5 per-dispatch observation | `corpusOutcome`, `orderKeys`, `corpusDiverged` | `DIVERGENT-CORPUS` fixture: run-level scalars equal dispatch 5's, each row carries its own, `corpusDiverged` true on exactly dispatches 3 and 5 |
 
 `orderKey: null` is BR-10's "explicit marker that it was absent or unparseable" — a JSON `null`
 carried in a **present** key, never an omitted key, so the two states are distinguishable in a
 serialised report.
+
+The per-dispatch `corpusOutcome`/`orderKeys`/`corpusDiverged` fields likewise sit outside BR-8's
+row enumeration — they describe the *dispatch's* corpus observation, not an injected document — so
+they do not widen the `rows[i]` key set AT-17 closes over.
 
 `phaseId`/`docType`/`mode` sit **outside** BR-8's closed row enumeration deliberately: they are
 per-dispatch context that lets an operator find the dispatch, and BR-8 closes over *row* fields.
