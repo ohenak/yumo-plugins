@@ -196,7 +196,126 @@ states differ by key presence, which is exactly the distinction REQ AC-4.4 names
 
 ## Interfaces
 
-*(section body follows)*
+Every signature below is a new export of `pdlc/workflows/orchestrate-dev.js` unless marked
+*module-private*. Types are given in the JSDoc dialect the module already uses.
+
+### I.1 The corpus predicate, restated *(discharges F-O-4 / REQ O-7)*
+
+```js
+/** The literal argv `consolidate-learnings.js` hands `_git` (LS_FILES_ARGV, :1338-1346),
+ *  restated here because the engine vendors only orchestrate-dev.js (prepack.mjs:20). */
+export const LEARNINGS_CORPUS_ARGV = Object.freeze([
+  "ls-files", "--cached", "--others", "--exclude-standard", "--",
+  ":(glob)docs/*/LEARNINGS-*.md",
+  ":(glob)docs/completed/*/LEARNINGS-*.md",
+]);
+```
+
+**The pin is an agreement oracle, not a second transcription.** `LS_FILES_ARGV` is module-private in
+`consolidate-learnings.js` — it is only ever *handed* to `_git`. So the pinning test drives
+`enumerateCorpus(fakeGit)` and asserts that the argv the fake observed `toEqual`s
+`LEARNINGS_CORPUS_ARGV` (T-PIN-1, §Test Strategy). This is a genuine cross-module agreement check:
+if either side changes its pathspec, the test reds. It is available at test time even though the
+import is not available at runtime — both modules live in `pdlc/workflows/` in this repository, and
+only the *vendored* subset is narrowed. `consolidationPredicate.test.js` establishes the
+`fakeGit(enumerateCorpus)` idiom (`pdlc/workflows/__tests__/consolidationPredicate.test.js:37-45`);
+this feature reuses it rather than transcribing the argv a third time.
+
+### I.2 Configuration
+
+```js
+export const LEARNINGS_CONFIG_PATH = MERGE_CONFIG_PATH;      // ".claude/pdlc.config.json"
+export const LEARNINGS_DEFAULTS = Object.freeze({
+  enabled: true, maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes: 20000,
+});
+
+/** @returns {{present: boolean, config: object, sectionMalformed: boolean, invalidKeys: string[]}} */
+export function parseLearningsConfig(text)
+export async function readLearningsConfigSafely(readFileFn, path)  // never throws
+```
+
+`parseLearningsConfig` is `parseAdvisoryConfig` (P-11, P-12) with **one deliberate divergence** and
+one addition:
+
+| Input | `parseAdvisoryConfig` | `parseLearningsConfig` | Why |
+|---|---|---|---|
+| file absent / unreadable / not JSON | defaults, `sectionMalformed:false` | `present:false` | same shape |
+| top-level not an object, or no `learningsInjection` key | defaults, `sectionMalformed:false` | `present:false` | BR-14: a misspelt section name is a stray top-level key and reads as absent — no unknown-key registry |
+| section present, not a plain object | `sectionMalformed:true` | `present:true, sectionMalformed:true` | BR-14 `NTC-MALFORMED` |
+| declared key wrong-typed | key defaults, name in `invalidKeys` | identical | BR-14 `NTC-KEYTYPE`; the run stays enabled |
+| — | `ADVISORY_DEFAULTS.enabled === false` | `LEARNINGS_DEFAULTS.enabled === true` | the sibling is opt-in per-key; here `enabled` defaults true **within a present section**, and an absent section is `present:false`, so the feature is still off until an operator writes the section |
+
+`present` is the new field, and it is the whole of AC-5.1a's "absent, not present-and-empty": the
+injector is built **only** when `present && config.enabled && !sectionMalformed`, and
+`buildFinalReport` receives `undefined` otherwise.
+
+The three thresholds validate as **non-negative integers** (`Number.isInteger(v) && v >= 0`), not
+positive ones — AC-4.4 requires `0` to be a *valid* admits-nothing configuration rather than an
+invalid key that falls back to its default. A negative or non-integer value is `NTC-KEYTYPE`.
+
+### I.3 The pure selection core
+
+```js
+/** @typedef {{path: string, feature: string, text: string|null, readOk: boolean}} CorpusEntry */
+/** @typedef {{path: string, orderKey: string|null, bytes: number, bounded: boolean,
+ *             position: number, material: string}} SelectedDoc */
+/** @typedef {{path: string, reason: string}} RejectedDoc */
+
+/** True iff `text`'s first non-blank line is a level-1 heading naming a LEARNINGS document.
+ *  Bytes only, no model call (F-O-1). */
+export function looksLikeLearningsDocument(text)
+
+/** The `Date Completed` cell as `YYYY-MM-DD`, or null when absent/unparseable (BR-4). */
+export function parseHarvestDate(text)
+
+/** BR-6's five priority sections, in priority order, bounded to `maxBytes` UTF-8 bytes. */
+export function extractInjectableMaterial(text, maxBytes)
+
+/** BR-4's total order: `orderKey` descending (null last), then path byte-ascending. */
+export function orderCorpus(entries)
+
+/** The whole of BR-2/BR-4/BR-5/BR-6, as one pure function.
+ *  @param {{entries: CorpusEntry[], feature: string, thresholds: object}} arg
+ *  @returns {{selected: SelectedDoc[], rejected: RejectedDoc[], totalBytes: number,
+ *             orderKeys: Array<{path: string, orderKey: string|null}>}} */
+export function selectLearnings({ entries, feature, thresholds })
+```
+
+`selectLearnings` takes **already-read bytes** and returns **no strings destined for the prompt
+except each document's material**; rendering is `renderLearningsBlock`'s. That separation is what
+lets AT-07 … AT-13 and AT-17 … AT-22 run as plain unit tests over literal fixtures with no seam,
+no harness and no model.
+
+### I.4 The IO shell and the injector
+
+```js
+/** @returns {Promise<{unlistable: true} | {unlistable: false, entries: CorpusEntry[]}>} — never throws */
+export async function gatherLearningsCorpus({ feature, _git, _readFile })
+
+/** @returns {string} — the block, or "" when `selected` is empty */
+export function renderLearningsBlock({ selected })
+
+/** @returns {null | ((ctx: {feature, docType, phaseId}) => Promise<string>)} */
+export function buildLearningsInjector({ config, sink, _git, _readFile, _log })
+```
+
+`buildLearningsInjector` returns `null` when the feature is off — so `dispatchAndVerify`'s
+attachment is `typeof _injectLearnings === "function" ? await _injectLearnings(ctx) : ""`, and a
+disabled run executes **no new code at all** past that one type check. That is the strongest form
+of AC-5.1a available: the disabled path is not "the enabled path with an empty result", it is a
+branch that never enters the feature.
+
+### I.5 Changed existing signatures
+
+| Function | Change | Compatibility |
+|---|---|---|
+| `dispatchAndVerify` | one added destructured param `_injectLearnings = null` | defaulted; every existing caller and test unchanged |
+| `reviewLoop` | same added param, forwarded in `wrapped` | defaulted; `reviewLoop.test.js` unchanged |
+| `main` | one added param `_learningsInjector` (test seam, defaults to the real builder) and the once-per-run config read | defaulted |
+| `buildFinalReport` | one added param `learningsInjection = undefined`, conditionally spread | defaulted; every report oracle that asserts key sets sees no new key on a disabled run |
+
+No function's **positional** signature changes; every addition is a defaulted named parameter,
+which is the module's established extension idiom (`_provenance`, `_runCommand`, `_sessionAgent`).
 
 ## Data Model
 
