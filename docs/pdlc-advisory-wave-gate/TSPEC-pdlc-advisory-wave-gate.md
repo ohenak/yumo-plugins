@@ -475,7 +475,97 @@ conditional inside the driver would be exactly that.
 
 ## 4. Data Model
 
-*(pending)*
+### 4.1 The A6 verdict trailer
+
+The tier's six lines are unchanged and parsed by the shipped `parseAdvisoryVerdict`; A6 adds three,
+read by its own total parsers and never by that function.
+
+| Line | Owner | Required | Read by |
+|---|---|---|---|
+| `SEAM: A6` | tier | yes | `parseAdvisoryVerdict` (wrong-seam ⇒ malformed) |
+| `DIAGNOSIS: {text}` | tier | yes, non-empty | `parseAdvisoryVerdict` |
+| `PROPOSED-ACTION: E-5 \| E-6 \| nothing` | tier | yes | `classifyEnvelope` X-c against `permittedActions` |
+| `CONFIDENCE: high \| low` | tier | yes | driver's GATE: only `high` authorises |
+| `WITHIN-ENVELOPE: yes \| no` | tier | advisory only | preserved data; never the membership decision |
+| `EVIDENCE: {c1, c2, …}` | tier | yes, non-empty | `parseAdvisoryVerdict`, then `citesGateOutput` |
+| `ROOT-CAUSE: {class}` | A6 | read totally | `parseA6RootCause` ⇒ `ADVISORY_ROOT_CAUSES` |
+| `PROMOTES: {symbol}` | A6 | E-6 only | §3.4's conjuncts 2 and 3 |
+| `PROMOTES-TASK: {taskId}` | A6 | E-6 only | §3.4's conjunct 1 |
+
+The asymmetry is deliberate and is the whole of BR-2 vs BR-3: a missing or wrong `EVIDENCE:` is
+malformed and costs an attempt; a missing or wrong `ROOT-CAUSE:` is *read* as `unclassified`, costs
+nothing, and authorises nothing.
+
+### 4.2 Root-cause vocabulary
+
+`ADVISORY_ROOT_CAUSES` is ordered and closed, and the order is the first-match rule: a failure
+matching two classes yields the earlier one (AC-2.2). Only the first two authorise any action, and
+each is bound to one envelope member:
+
+| # | Class | Authorises | Bound to |
+|---|---|---|---|
+| 1 | `plan-ordering-defect` | yes | `E-6` — the promotion a later task owes |
+| 2 | `wave-internal-defect` | yes | `E-5` — the wave's own owned paths |
+| 3 | `environmental` | no | — diagnosis only |
+| 4 | `unclassified` | no | — diagnosis only |
+
+The binding is enforced, not advisory: `classifyReply` terminates the invocation when the class is
+`environmental` or `unclassified` (whatever the confidence — E-11), and `apply` refuses a
+`PROPOSED-ACTION` whose envelope member does not match the class. `unclassified` is both a class an
+agent may state and the value every unreadable statement resolves to; that collapse is intentional
+and is what makes the receiving side total.
+
+### 4.3 A6's own state, per run and per wave
+
+| Datum | Scope | Shape | Purpose |
+|---|---|---|---|
+| `waveBudget` | run | `{ resolved: number }` | Only resolutions increment it (BR-11, E-27) |
+| `rungState` | run | `{ resolved: null \| {model, fallback} }` | The shipped per-run rung memo, threaded, not re-created (NFR-6) |
+| `promotions` | run | `Map<taskId, {paths, symbol}>` | §3.6's later-task prompt clause |
+| `advisoryDispositions` | run | `AdvisoryDisposition[]` | The shipped array; A6 pushes into it, so the sixth report row is populated by the shipped `advisorySummaryRows` |
+| `invocations` | wave | `("post-wave"\|"test")[]` | BR-7's ordered sequence oracle (§2.4) |
+| `snapshot` | wave | `{head, tree, snap}` | §3.5; one per wave, reused by every attempt |
+| `attempts` | invocation | `number` | The driver's, unchanged |
+
+Nothing here is module-level state. Every datum is created in the Phase I scope and threaded, for
+the reason the shipped `rungState` comment already gives: the bundle inlines this module into two
+artifacts and jest runs every test against one imported instance, so module state leaks across
+tests and across a queue invocation's delegated run.
+
+### 4.4 Configuration
+
+One key is added to the `advisory` section of `.claude/pdlc.config.json`, owned by the repo
+operator, defaulting so that a repo that changes nothing gets today's behaviour:
+
+| Key | Type | Default | Validator | Notes |
+|---|---|---|---|---|
+| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not an invalid one |
+
+`enabled`, `attemptBudget`, `seamBudgetMinutes` and `envelope` keep their shipped validators and
+defaults. `.claude/pdlc.config.example.json` — the tracked arrangement `pdlc/engine`'s
+`ci-arrangement` test reads — gains the key alongside them.
+
+### 4.5 What A6 writes, and where
+
+| Artifact | Path | Shape | When |
+|---|---|---|---|
+| Advisory record entry | `docs/{feature}/ADVISORY-{feature}.md` | The tier's `renderAdvisoryEntry` table, plus the root-cause class and, on a resolution, the repair's paths | Every terminal disposition, including the no-dispatch escalation |
+| Escalation log entry | `docs/_queue/ESCALATIONS.md` | The tier's `renderEscalationEntry`, root-cause class in the decision sentence | Every `escalated` disposition |
+| Report notice | run report `notices` | The tier's `ADVISORY ESCALATION: seam A6 …`; and, separately, a failed escalation-log write | Every escalation (E-30, AT-06-6) |
+| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}` | Every non-resolved wave (AC-6.3) |
+| Snapshot ref | `refs/pdlc/a6-snapshot` | A dangling commit | Every A6 invocation that reached the snapshot step |
+
+Two consequences worth stating rather than discovering:
+
+- **The record entry is written at seam termination, before a post-gate halt can be known.** So on a
+  resolution it says "a repair was applied and remains in the working tree", naming its paths — a
+  statement true at resolution time and still true after E-22's un-skip-guard halt, because BR-10's
+  three restoration triggers are exhaustive and a post-gate halt is not among them. That is how
+  AT-05-4's "the advisory record entry states a repair remains applied" is satisfiable at all.
+- **Only escalations are durably countable.** The advisory record is distilled into LEARNINGS and
+  deleted at Phase PUB (`pdlc-advisory-corpus-baseline.md` §1), so `plan-ordering-defect`
+  recurrence is countable from `ESCALATIONS.md` and resolution counts are not (AC-6.4's honest
+  limit, REQ O-2). A6 adds no persistence to change that, deliberately.
 
 ## 5. Test Strategy
 
