@@ -987,24 +987,55 @@ operator, defaulting so that a repo that changes nothing gets today's behaviour:
 
 | Key | Type | Default | Validator | Notes |
 |---|---|---|---|---|
-| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not a misconfiguration: it is the **documented operator affordance** "keep the tier on, keep A6 off" — every red wave escalates with no dispatch and the sixth summary row reads zero, which is observably different from `advisory.enabled: false`, where the report carries no `advisory` key at all. Mirrored into `.claude/pdlc.config.example.json`; no `pdlc/engine` expectation covers it today (see below) |
+| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not a misconfiguration: it is the **documented operator affordance** "keep the tier on, keep A6 off" — every red wave escalates with no dispatch and the sixth summary row reads zero, which is observably different from `advisory.enabled: false`, where the report carries no `advisory` key at all. Mirrored into `.claude/pdlc.config.example.json` as part of the whole `advisory` section (`enabled` beside it, so the "keep the tier on, keep A6 off" pairing is legible from the file alone); nothing in `pdlc/engine` covers it at HEAD, so the feature authors a purpose-named expectation in `pdlc/engine/__tests__/advisory-config-example.test.js` (see below). No `pdlc/README.md` edit is in scope |
 
 `enabled`, `attemptBudget`, `seamBudgetMinutes` and `envelope` keep their shipped validators and
 defaults. `.claude/pdlc.config.example.json` — the tracked arrangement — gains the key alongside
 them.
 
-**Nothing mirrors that key into `pdlc/engine` today, and an earlier draft said otherwise (PM F-01,
+**Nothing mirrors the key into `pdlc/engine` today, though an earlier draft said otherwise (PM F-01,
 TE F-06, DEC-A6-04's consequences).** The tracked example carries exactly two sections, `dispatch`
 and `implementation`; `pdlc/engine/__tests__/ci-arrangement.test.js` contains zero occurrences of
-`advisory` and reads the example file only to assert `implementation.testCommand`. Adding
-`advisory.waveBudgetPerRun` to the example therefore breaks no engine expectation and requires no
-engine edit to stay green — which is exactly the problem: an affordance nothing asserts can ship
+`advisory` and reads the example file only for `implementation.testCommand`. Adding
+`advisory.waveBudgetPerRun` to the example breaks no engine expectation and requires no
+engine edit to stay green — which is exactly the problem: an affordance nothing asserts on can ship
 into the example broken and undiscoverable, and the example is the operator's first and possibly
-only encounter with the key on a tier that ships off. This feature therefore **authors a new
-expectation** in `pdlc/engine/__tests__/ci-arrangement.test.js` — the example's `advisory` section
-parses, carries `waveBudgetPerRun`, and its value is a non-negative integer — beside the shipped
-`implementation.testCommand` test. It is a second-channel edit whose work is authoring a new
-assertion, not relocating an existing one. No FSPEC acceptance test ranges over it: the coverage is
+only encounter with the key, on a tier that ships off. The feature therefore **authors a new
+expectation** for it. Two corrections to how earlier rounds stated that, both landed in PLAN v1.1/v1.2
+and transcribed here:
+
+**Where the expectation lives.** It is authored in a **purpose-named new file**,
+`pdlc/engine/__tests__/advisory-config-example.test.js` — **not** in `ci-arrangement.test.js`, which
+earlier drafts of this section named. `ci-arrangement.test.js` declares a single oracle in its own
+header: FSPEC §5.1's CI arrangement — the `pr-tests.yml` job-name expansion and the
+`publish.yml`/PR-gate command set-equality. That it already happens to read the example config for
+`implementation.testCommand` is annotated in-file as serving that same §5.1 oracle, not as making the
+file a home for config-schema assertions. Hanging a config-schema assertion there would let an
+unrelated config-example edit redden the delivery-blocking `Engine tests (ubuntu-latest)` required
+check under a stated scope that names no such concern (PLAN A6-04, TE F-05/F-06, TE F-03).
+
+**What the example section literally contains.** The example gains the **whole** `advisory` section,
+not `waveBudgetPerRun` alone — `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}`. Both keys
+are load-bearing for the reader: JSON admits no comments, so the copied-out block is the only place
+the file can teach that `waveBudgetPerRun: 0` **with `enabled: true`** is E-33's documented
+"keep the tier on, keep A6 off" affordance rather than a misconfiguration, and that the shipped
+default is `1` on a tier whose own default is `false`. `enabled: false` beside it also keeps the
+example honest about the tier's ship state. The new expectation asserts exactly this shape: the
+`advisory` section parses, carries `enabled` and `waveBudgetPerRun`, and the latter is a
+non-negative integer (TE F-34).
+
+**No `pdlc/README.md` edit is in scope.** An earlier reading of E-33 implied the affordance also
+wanted prose in the plugin README; it does not, and the row is deliberately absent from §5.1's file
+map. `pdlc/README.md` carries zero occurrences of `advisory` at HEAD, so there is no section to join;
+no REQ, FSPEC or TSPEC row asks for one; the owning task commits only `.claude/pdlc.config.example.json`
+and the wave loop commits exactly `task.files` (`orchestrate-dev.js:14398`–`:14406`), so a README edit
+would strand uncommitted; and `pdlc/engine/__tests__/docs-uniqueness.test.js:122`–`:123` pins
+`pdlc/README.md:139` and `:145`, so an inserted line reddens the delivery-blocking
+`Engine tests (ubuntu-latest)` check. The affordance is carried by the example pairing alone
+(PLAN A6-06, PM F-02, TE F-01).
+
+This second-channel edit is therefore work authoring a new assertion in a new file, not relocating an
+existing one. No FSPEC acceptance test ranges over it — the coverage is
 TSPEC-owned (§5.1), and without it no test in the feature's set would fail on a broken example.
 
 ### 4.5 What A6 writes, and where
