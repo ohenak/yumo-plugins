@@ -658,10 +658,24 @@ single batch-1 PLAN task.
 
 | Double | Source | Use |
 |---|---|---|
-| `fakeGit({"ls-files": {ok, stdout}})` | `seams.js:413` | enumeration; `{ok:false}` scripts `RSN-UNLISTABLE` |
-| `fakeFs(contents, opts)` | `seams.js:245` | document reads; a path whose read must fail is scripted to throw **and**, in a sibling case, to return `null` — P-8 means both are real |
+| `fakeGit({"ls-files": {ok, stdout}})` | `seams.js:413` | enumeration in **this feature's** suites; `{ok:false}` scripts `RSN-UNLISTABLE` |
+| `fakeFs(contents, opts)` | `seams.js:245` | document reads; a path may fail by scripted throw **and**, in the sibling case, by returning `null`, because P-8 means both are real |
 | `buildLearningsCorpus(specs)` | new, `learningsFixtures.js` | synthesises documents with declared `Date Completed`, declared sections and declared byte sizes |
 | scripted `_agent` | `groundingPrompts.test.js` pattern | L3: captures every `(skill, prompt)` pair the run makes |
+| `fakeGit` from `__tests__/helpers/consolidationDoubles.js` | `consolidationDoubles.js:23`, re-exported from `mergeDoubles.js` | **only** in `learningsPredicatePin.test.js`, which drives `consolidate-learnings.js`'s `enumerateCorpus` |
+
+**Two `fakeGit`s exist in this repository, and they are not interchangeable — the pin test uses
+the sibling's.** `seams.js`'s `fakeGit` *is* the seam function and records `git.invocations` as
+`{argv, result}` objects (`seams.js:425-441`). `mergeDoubles.js`'s, re-exported through
+`consolidationDoubles.js`, hands the seam out as `git._git` and records bare argv arrays on
+`git.calls`. `consolidationPredicate.test.js` — the shipped idiom §I.1 tells the pin test to
+imitate — calls `enumerateCorpus(git._git)` and asserts `git.calls[0]` equals the argv literal
+(`:37-45`). Code written against `seams.js`'s shape would not run there: there is no `_git`
+property to pass and no `calls` array to assert on. So the rule is scoped rather than absolute:
+**`seams.js` is the only seam-double source for the four suites this feature adds over
+`orchestrate-dev.js`**, and `learningsPredicatePin.test.js` uses `consolidationDoubles.js` because
+it is testing the sibling module through the sibling module's own established harness. No new
+ad-hoc seam object is introduced either way.
 
 ### T.3 The recorded pre-feature baseline *(discharges F-O-5)*
 
