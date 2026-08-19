@@ -230,6 +230,192 @@ Tests.
 
 ## Business Rules
 
+### BR-1 — Exactly the authoring dispatches carry a block *(AC-1.1, AC-1.2)*
+
+A dispatch carries a block **if and only if** the pipeline classifies it as authoring at the moment
+it is composed. The classification is the pipeline's existing one, not a new list maintained by this
+feature: this rule consumes the classification, it does not restate the membership.
+
+- **Included:** creator, optimizer-round and erratum dispatches for REQ, FSPEC, TSPEC, PLAN,
+  DECISIONS and PROPERTIES — whichever of them a given run actually makes.
+- **Excluded:** every review dispatch, implementation, DoD verification and remediation, harvest,
+  ship, and every advisory seam.
+- The oracle is **set equality against the run that happened**, never a fixed count. A run with no
+  DECISIONS phase, a run whose Phase R has no creator because the REQ arrived authored, and a run
+  with five optimizer rounds each satisfy this rule as stated (AC-1.2).
+- Excluded dispatches are not merely "block-free": their prompts are **byte-identical** to the same
+  dispatch composed with injection disabled (BR-11).
+
+### BR-2 — Eligibility exclusions, applied in order *(AC-1.3, AC-2.6)*
+
+Applied to each candidate in this order; the first matching rule decides, and its id is the reason
+recorded:
+
+| Order | Rule | Excluded when | Reason id |
+|---|---|---|---|
+| 1 | **E-DISCARDED** | The document lies under `docs/discarded/` | *(not a corpus member; not recorded)* |
+| 2 | **E-SELF** | The document is `{f}`'s own LEARNINGS, at any path | `RSN-SELF` |
+
+Notes that make the rule total:
+
+- **Self-exclusion is by feature, not by path.** `{f}`'s own LEARNINGS is excluded whether it sits at
+  `docs/{f}/` or `docs/completed/{f}/`, and whether or not it was written by an earlier completed
+  attempt at the same feature. This holds in every phase of `{f}`'s run (AC-1.3).
+- **`docs/completed/{p}/` is eligible on exactly the same terms as `docs/{p}/`.** Archival is not a
+  demotion: a completed feature's lessons are the ones most likely to be settled (AC-2.6).
+- **Discarded documents are invisible, not merely unselected.** They are excluded before any
+  threshold is evaluated, so they cannot displace an eligible document from the count bound and do
+  not appear in the non-selection record — they were never candidates (AC-2.6).
+
+### BR-3 — Read-and-validate outcomes are total *(AC-4.2)*
+
+Each surviving candidate resolves to exactly one of four outcomes, and no other:
+
+| Outcome | Condition | Effect |
+|---|---|---|
+| **ok** | Read, parses as a LEARNINGS document, complete | Joins the eligible set |
+| **unreadable** | The read fails for any reason | Excluded, `RSN-UNREADABLE` |
+| **unparseable** | Read, but does not present as a LEARNINGS document | Excluded, `RSN-UNPARSEABLE` |
+| **truncated** | Read, presents as a LEARNINGS document, but ends mid-document | Excluded, `RSN-TRUNCATED` |
+
+`RSN-TRUNCATED` names a defect **in the source document**. It is never used for material this feature
+itself cut under BR-6 — that condition is the row's *bounded* flag, and the two must remain
+distinguishable in the report (AC-3.2).
+
+"Presents as a LEARNINGS document" is a shape judgement over the document's own conventional
+structure, not a completeness score: this feature reads the format and never re-scores it (NG-3).
+The precise predicate is TSPEC's, bounded by two requirements this rule fixes: it consults only the
+document's bytes, and it is decidable without a model call.
+
+### BR-4 — Ordering key: harvest completion date, with a total tiebreak *(AC-2.2, AC-2.5; binds REQ O-2)*
+
+**Primary key.** The date carried by the LEARNINGS document's own harvest metadata table in its
+`Date Completed` row, read as a calendar date, ordered **most recent first**.
+
+**Measured basis for this choice** *(REQ O-2's obligation, discharged here)*. Measured at HEAD on
+2026-08-19 across both repositories the REQ names, over the corpus REQ C-3 defines:
+
+| Repository | Corpus documents | Carrying a `Date Completed` row | Whose value begins with an ISO `YYYY-MM-DD` date |
+|---|---|---|---|
+| `yumo-plugins` (this repo) | 9 | 9 | 9 |
+| `regime-ledger` | 80 | 78 | 78 |
+| **Total** | **89** | **87** | **87** |
+
+Two `regime-ledger` documents carry no such row at all
+(`docs/completed/43-wheel-rationale-contract/`, `docs/completed/34-postgres-audit-repository/`), and
+some values carry free text after the date — for example
+`2026-06-09 (Phase H harvest; partial close-out)`. So the key is well-populated but **not
+guaranteed**, and the tiebreak below is load-bearing rather than theoretical: it is exercised by real
+documents on day one.
+
+**Total tiebreak.** Rank falls back to **byte order over the document's repository-relative path**,
+ascending, whenever the primary key is absent, unparseable, or equal between two documents. Since
+paths in the corpus are unique, the composite ordering is a **total order over the eligible set**.
+
+**Negative invariants** — the ordering never consults:
+
+- wall-clock time at composition,
+- any filesystem timestamp, including mtime and ctime,
+- git history, commit dates or authorship,
+- a model's judgement of relevance (NG-2),
+- anything outside the eligible documents' bytes and paths.
+
+Two consequences follow directly and are separately testable: permuting every corpus file's mtime and
+re-running yields an identical selection, and renaming a document's containing directory without
+changing its content **may** change its rank — because the path is part of the tiebreak — while
+changing nothing else about the document's eligibility. Where REQ AC-2.2 offered directory-rename
+rank-invariance as a testable property, this rule supersedes it: a total order that ignores the path
+cannot exist over documents whose primary key is missing or equal, and 2 of 89 measured documents
+have no primary key. The rename-invariant property is therefore replaced by the stronger and
+achievable one — **the ordering is a pure function of (key value, path) and of nothing else** —
+which AT-09 and AT-10 assert. *(This is a deliberate correction of an upstream expectation; see the
+ERRATUM line in this dispatch's report.)*
+
+### BR-5 — The count bound *(AC-2.1)*
+
+At most `learningsInjection.maxDocuments` documents contribute to any block. Where the eligible set
+is larger than that threshold, the count of contributing documents **equals** it exactly, so an
+eligible set of 5 and one of 50 produce the same document count. Documents cut here are recorded with
+`RSN-COUNT`.
+
+Where the eligible set is smaller, all of it is taken and no `RSN-COUNT` row is produced.
+
+### BR-6 — What is injected from a document, and how the byte bounds bind *(AC-2.3, AC-2.4; binds REQ O-4)*
+
+**Which part is injected.** A LEARNINGS document carries six conventional sections. This feature
+injects a **named subset, in a fixed priority order**:
+
+| Priority | Section | Injected |
+|---|---|---|
+| 1 | Cross-Feature Patterns | yes |
+| 2 | Non-Convergences | yes |
+| 3 | Rejected Proposals (with rationale) | yes |
+| 4 | Process Learnings | yes |
+| 5 | Open Items for Consolidation | yes |
+| — | Approval Record | **never** |
+
+Together with a one-line identification of the source feature and its `Date Completed` value, which
+is always injected first so a bounded document is still attributable.
+
+**Why this subset.** Cross-Feature Patterns ranks first because it is the section whose author was
+already generalising beyond their own feature — the material most likely to apply to a different
+one. The Approval Record is excluded outright: it is per-run bookkeeping about verdicts and anchors,
+of no use to an author, and keeping approval vocabulary out of an authoring prompt reinforces BR-11's
+boundary.
+
+**How the per-document bound binds.** Sections are taken in priority order until adding the next
+would exceed `learningsInjection.maxBytesPerDocument`; remaining sections are omitted. Where the
+**first** section alone exceeds the bound, it is taken up to the bound and cut. Either way the
+document's row carries the **bounded** flag (AC-2.3), and the block states that the document was
+abridged.
+
+**How the total bound binds.** Documents are accumulated in BR-4's order until the next document's
+bounded material would carry the running total past `learningsInjection.maxTotalBytes`. That document
+and every lower-ordered one are dropped **whole**, with `RSN-BYTES` (AC-2.4). No document is ever cut
+mid-document to make the total fit: the per-document bound of this rule is the only cut this feature
+makes.
+
+**Determinism.** Both bounds are byte counts over material derived from document bytes alone, so two
+runs over identical repository state produce byte-identical blocks, including order (AC-2.5).
+
+### BR-7 — The block's labelling and its place in the prompt *(AC-1.4)*
+
+The block opens with a preamble that states three things, in whatever wording TSPEC settles:
+
+1. the material is **context from prior features**, not from `{f}`;
+2. it is **neither a requirement of `{f}` nor an upstream document to be traced** — no traceability
+   obligation attaches to it, and no document the author produces must cite it;
+3. the author **may disregard it entirely** without leaving a gap in what they were asked to produce.
+
+Each contributing document's material is delimited and identified by its **source document path**, so
+an author reading a claim can find where it came from, and a bounded document is marked as abridged.
+
+**Placement is additive, never displacing.** The dispatch's grounding manifest, upstream documents and
+pacing contract appear unchanged and in their existing relative order (C-8). The block is added to
+the prompt; nothing existing is shortened, reordered or removed to make room for it. Where the
+declared bounds cannot be honoured alongside the existing content, the resolution is **less injected
+material**, never less existing content.
+
+### BR-8 — The per-dispatch record *(AC-3.1)*
+
+For each authoring dispatch, the run report carries a set of rows — one per **selected** document —
+whose fields are exactly:
+
+| Field | Content |
+|---|---|
+| source path | The document's repository-relative path |
+| order position | Its position in the selected order, 1-based |
+| bytes injected | Bytes of material contributed by this document |
+| bounded | Whether this document's material was cut by the per-document bound (BR-6) |
+
+plus one per-dispatch scalar: **total bytes injected**.
+
+The field enumeration is **closed**: a completeness test asserts set equality over it (DC-01). A
+dispatch that injected nothing carries an **empty set of rows**, not a missing field — the difference
+between "nothing was selected" and "nothing was recorded" must be visible in the report.
+
+BR-10's rule-input record is separate, run-level, and closed on its own terms; the two are not merged.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
