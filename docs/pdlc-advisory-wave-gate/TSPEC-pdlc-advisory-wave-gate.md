@@ -776,24 +776,57 @@ re-asserting the record schema would be a second, drifting copy of an oracle tha
 ### 5.2 What is asserted mechanically
 
 - **Totality of the A6-owned parsers.** `parseA6RootCause` and the promotion readers are asserted
-  over absent, empty, wrong-cased, duplicated and out-of-set inputs, and must return
-  `unclassified` / `null` rather than throw for every one. The oracle is that no input in the
-  fuzz set produces an exception, and that only exact members of `ADVISORY_ROOT_CAUSES` produce a
-  non-`unclassified` class.
-- **The ordered invocation sequence.** BR-7 is an ordered-sequence oracle over the wave's
-  `invocations` array — `["post-wave"]`, `["test"]`, `["post-wave", "test"]` — never a membership
-  or count check, because the defect it guards against is the test seam firing before the post-wave
-  gate has had its say.
-- **Root-cause-to-envelope binding.** A `test.each` over the four classes × the three proposed
-  actions asserts exactly the eight authorising cells of §4.2's table and refuses the rest.
+  over absent, empty, wrong-cased, duplicated and out-of-set inputs, and return `unclassified` /
+  `null` rather than throw on every one. The oracle is that no input in the fuzz set produces an
+  exception, and that only exact members of `ADVISORY_ROOT_CAUSES` produce a non-`unclassified`
+  class.
+
+- **The ordered invocation sequence.** BR-7's ordered-sequence oracle over the wave's
+  `invocations` array — `["post-wave", "test", "post-wave", "test"]` and the two truncated forms —
+  never a membership or count check, because the defect it guards against is the seam firing
+  before the post-wave gate has had its say.
+
+- **Root-cause-to-envelope binding.** A `test.each` over the four classes × three proposed actions
+  asserts exactly the two authorising cells of §4.2's table and refuses the rest. Note what this
+  does *not* assert: AC-2.2's first-match precedence, which is prompt-only per §3.3 and has no
+  script oracle to write.
+
 - **Restoration triggers are exhaustive.** BR-10's three triggers are asserted as a set, and the
-  post-gate halt case is asserted to *not* restore — the property that makes AT-05-4 satisfiable.
-- **Snapshot/restore round-trips including untracked files.** A wave that adds an untracked file
-  and is then restored must leave the file absent; a wave that adds a `.gitignore`d file must leave
-  it present, which is what pins `git clean -fd` over `-fdx` (O-1's decision).
-- **The disabled tier is byte-identical.** `advisoryDisabled.test.js` gains Phase I cases asserting
-  that with `advisory.enabled: false` the wave loop performs no A6 dispatch, no model resolution,
-  no snapshot ref, and produces a report whose `advisory` key is `undefined`.
+  post-gate un-skip halt is asserted to *not* restore — paired, per AC-4.5, with the positive
+  assertions that the repair is still present in the tree and that the halt report carries
+  §4.5's advisory fields. The pair is what makes AT-05-4 satisfiable rather than vacuous.
+
+- **Snapshot/restore round-trips run against a real temporary git repository, never a fake `_git`.**
+  This is the one place an injected double would be an echo of the assertion rather than a test of
+  it (TE F-04): BR-9's oracle is a *path-to-content-hash map* over the tree, and a fake transport
+  can only replay whatever the fixture told it to. The suite therefore builds a real repo —
+  `mkdtempSync` + `execFileSync("git", …)` with a `_git` adapter over it, the shape
+  `advisoryDodSeams.test.js` already ships for the A3 fixtures — and asserts:
+  1. the content-hash map taken immediately before A6 acted equals the map after restore, over
+     tracked and untracked files alike, generated outputs included;
+  2. a `git status`-level comparison is explicitly **not** the oracle, and a companion case pins
+     why: a re-run post-wave command that rewrites an already-dirty path passes a status
+     comparison and fails the hash-map one (AT-05-2's own stated reason);
+  3. an untracked file the wave added is absent after restore;
+  4. a `.gitignore`d file the wave added is still present after restore — the assertion that pins
+     `git clean -fd` over `-fdx`. **This case is written to the boundary that comes back from
+     §2.5's erratum**, not to this document's preference; until the erratum resolves it is written
+     as described here and flagged in the suite as upstream-pending.
+
+- **The capture-failure disposition.** `captureTreeSnapshot` failing yields, on one run: an
+  advisory record entry, an escalation entry, `attempts === 0`, an unchanged wave budget, the
+  halt on AT-05-3's literal with §4.5's fields attached, and no `_agent` call. Six positive
+  assertions on one fixture, not an absence check — the whole point of PM F-02 is that the
+  earlier design's outcome here was "nothing observable happened".
+
+- **The disabled tier is byte-identical, and the notice surface is part of what that means.**
+  `advisoryDisabled.test.js` gains Phase I cases asserting that under `advisory.enabled: false`
+  no A6 dispatch occurs, no model rung is resolved, no snapshot ref is created, the report's
+  `advisory` key is **absent** (`undefined`, not `null`), and — added per PM F-05 — that the
+  prerequisite notice surface is **identical** to the enabled-but-never-fired run, since §2.6's
+  hoist is unconditional by design. The created-file set is byte-identical to the pre-advisory
+  baseline (PROP-DIS-*).
+
 
 ### 5.3 What is verified by reading, not by assertion
 
