@@ -19,7 +19,7 @@ depends-on: []
 
 ## Scope
 
-This TSPEC owns the six questions FSPEC §Open Questions hands it (F-O-1 … F-O-7) plus the
+This TSPEC owns the seven questions FSPEC §Open Questions hands it (F-O-1 … F-O-7) plus the
 implementation shape they imply: **where the selection step lives, what its signature is, how the
 block reaches the composer, what the record's serialised form is, and how each catalogue id is
 registered.** Behaviour — eligibility, ordering, bounding, section choice, labelling, and the
@@ -154,6 +154,19 @@ Three properties of this attachment carry the load:
    and R-4's imported prior-feature decisions would reach code remediation. `docType` is still the
    pipeline's own value, not a new taxonomy — the condition consumes two existing fields rather
    than one, and both are already carried to the composition point.
+
+   **The coincidence is an invariant, and it is asserted, not assumed.** That
+   `LEARNINGS_TARGET_DOCTYPES` currently equals the `docType` set `converge()` drives at HEAD —
+   `REQ` (`orchestrate-dev.js:13766`), `FSPEC` (`:13774`), `TSPEC` (`:13807`), `DECISIONS`
+   (`:13874`), `PLAN` (`:13893`), `PROPERTIES` (`:13996`) — is today a coincidence between a
+   product boundary (C-1, NG-5) and this pipeline's phase list, and nothing structural keeps the
+   two equal: a seventh authoring phase added later would reach `dispatchAndVerify` carrying a
+   `docType` this feature never decided to feed. `learningsDispatchSet.test.js` therefore carries a
+   **set-equality assertion over the `docType`s that actually reach the injector** on a full
+   scripted run, against the hand-transcribed literal `LEARNINGS_TARGET_DOCTYPES` (DC-14) — so a
+   new phase reds this test and forces a product decision, rather than silently inheriting
+   injection. This is the oracle that makes NG-5's boundary mechanical instead of documentary.
+
 2. **Once per episode, not once per invocation.** `dispatchAndVerify`'s `for(;;)` loop may compose
    the prompt several times for one dispatch (the pacing budget). The injector is called **once,
    before the loop**, and the resulting string is held in a `const` and concatenated into every
@@ -287,9 +300,23 @@ export const LEARNINGS_CORPUS_ARGV = Object.freeze([
 `LEARNINGS_CORPUS_ARGV` (T-PIN-1, §Test Strategy). This is a genuine cross-module agreement check:
 if either side changes its pathspec, the test reds. It is available at test time even though the
 import is not available at runtime — both modules live in `pdlc/workflows/` in this repository, and
-only the *vendored* subset is narrowed. `consolidationPredicate.test.js` establishes the
-`fakeGit(enumerateCorpus)` idiom (`pdlc/workflows/__tests__/consolidationPredicate.test.js:37-45`);
-this feature reuses it rather than transcribing the argv a third time.
+only the *vendored* subset is narrowed.
+
+**Which `fakeGit`, and how many transcriptions.** `consolidationPredicate.test.js` establishes the
+idiom, and `learningsPredicatePin.test.js` follows *that* file exactly: it imports `fakeGit` from
+`__tests__/helpers/consolidationDoubles.js` (which re-exports `mergeDoubles.js`'s), calls
+`enumerateCorpus(git._git)` and asserts over `git.calls`. That is **not** `seams.js`'s `fakeGit`,
+which *is* the seam function and records to `git.invocations` — the two are not interchangeable
+(§T.2). The pin suite uses the consolidation double because the subject under test is
+`consolidate-learnings.js`'s own call; every other suite in this feature drives `orchestrate-dev.js`
+seams and uses `seams.js`.
+
+`consolidationPredicate.test.js` already keeps its own local transcription of the argv (`:23-31`),
+so `LEARNINGS_CORPUS_ARGV` is a third literal regardless. T-PIN-1 is deliberately a **three-way**
+agreement assertion: the argv `enumerateCorpus` actually hands `_git`, `LEARNINGS_CORPUS_ARGV`, and
+the existing test's literal are asserted mutually equal in one test. Two-way would let
+`consolidate-learnings.js` and its own test drift together while this feature's constant stayed
+correct-but-stale.
 
 ### I.2 Configuration
 
