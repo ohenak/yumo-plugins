@@ -937,6 +937,73 @@ not that nothing committed. AC-4.3 (prohibited operations) is the `(f)`…`(i)` 
 | Ignored-path-only repair | §3.3's `apply` observation (TE F-07) | a repair writing only a `.gitignore`d path yields `producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an escalation entry, and a tree carried no further. Flagged upstream-pending with §2.5's erratum |
 
 
+### 5.6 Every FSPEC acceptance test has a home
+
+TE F-03 is the finding that most changes what the PLAN can do: §5.1 and §5.2 enumerate *themes*,
+and a theme list is checked by containment, while FSPEC's AT set is a set. Nineteen ATs — AT-04-5
+and AT-07-1 among them, the E-6 promotion mechanism and the single largest test obligation in the
+spec — had no named test anywhere in the first draft. The table below is total over FSPEC §6: one
+row per AT, its test home, and the oracle in one line. The PLAN derives one red-test row per AT
+from it, so an AT with no home here is a task with no home there.
+
+| AT | Test home | Oracle in one line |
+|---|---|---|
+| AT-01-1 | `advisoryEnvelope.test.js` | `ADVISORY_SEAMS` set-equal to the six-member literal, and every catalogue-driven surface carries six rows |
+| AT-01-2 | `waveExecution.test.js` | on a dispatch failure and on a post-wave failure, the A6 call count is `0` and the halt is the shipped one — structural, per §2.3 |
+| AT-01-3 | `waveExecution.test.js` | V-wave red gate: A6 call count `0`, halt reason string and queue row equal the pre-A6 literals |
+| AT-01-4 | `advisoryDisabled.test.js` | `advisory.enabled: false`: no dispatch, no rung resolution, no snapshot ref, created-file set equals baseline, report `advisory` key **absent** |
+| AT-01-5 | `advisoryWaveGate.test.js` | one inapplicability statement over the whole notice surface on the both-absent fixture (§5.5's third added test) |
+| AT-01-6 | `advisoryDisabled.test.js` | tier enabled, no wave red: `advisory` key **present**, six rows, A6 counter `0` — paired with AT-01-4 |
+| AT-02-1 | `advisoryEnvelope.test.js` | `ADVISORY_ROOT_CAUSES` set-equal to the four-member literal |
+| AT-02-2 | `advisoryWaveGate.test.js` | absent class and out-of-set class both ⇒ `unclassified`, escalate, `attempts` unchanged (§3.3's `parseA6RootCause`) |
+| AT-02-3 | `advisoryWaveGate.test.js` | verdict both malformed and unclassifiable ⇒ malformed-verdict escalation, exactly one attempt consumed (E-09's tie-break, §3.7) |
+| AT-02-4 | `advisoryWaveGate.test.js` | diagnosis citing no gate output ⇒ malformed, one attempt (`citesGateOutput` false) |
+| AT-02-5 | `advisoryWaveGate.test.js` | gate output longer than `outputTail`'s 30 lines; the cited region is outside the tail and inside `gateResult.output` |
+| AT-02-6 | `advisoryWaveGate.test.js` | two escalated waves leave `waveBudget.resolved` at `0`; one resolved wave increments it to `1` |
+| AT-02-7 | `advisoryDriver.test.js` | one dispatch→verdict window against `seamBudgetMinutes`, plus the positive disposition companion — driver-owned, A6 passes the shipped config through |
+| AT-02-8 | `advisoryWaveGate.test.js` | `environmental` and `unclassified` each: disposition `escalated`, no repair, no restoration, **no** refusal reason, class present in the escalation entry — negatives paired with positives per AC-4.5 |
+| AT-02-9 | `advisoryWaveGate.test.js` | `attemptBudget` `1` ⇒ exactly one dispatch; `2` ⇒ exactly two; counted, never bounded |
+| AT-03-1 | `advisoryEnvelope.test.js` | `ENVELOPE_DEFAULTS` set-equal to `E-1`…`E-6` |
+| AT-03-2 | `advisoryWaveGate.test.js` | proposal inside the wave's owned paths but touching a test file ⇒ `revert-on-test-touch` (X-a), **not** the declared-scope reason — precedence made falsifiable |
+| AT-03-3 | `advisoryWaveGate.test.js` | wave owning a guard path, proposal confined to it ⇒ `out-of-envelope` (X-e via `effectiveGuardPaths`) |
+| AT-03-4 | `advisoryWaveGate.test.js` | E-6 proposal: permitted only when both halves hold; companion with a valid symbol but an out-of-set path is refused (§3.4's three conjuncts) |
+| AT-03-5 | `advisoryWaveGate.test.js` | **§5.5's prohibition table** — one test per excluded operation, plus set-equality on `A6_PROHIBITIONS` |
+| AT-03-6 | `advisoryWaveGate.test.js` | partly-inside/partly-outside proposal: no part present in the tree afterwards, wave not reported resolved (§5.5, `(i)` row) |
+| AT-03-7 | `advisoryEnvelope.test.js` | `ADVISORY_REFUSAL_REASONS` ordered-sequence equality, eight members, unchanged |
+| AT-03-8 | `advisoryEnvelope.test.js` | `ADVISORY_EXCLUSIONS` ordered-sequence equality over clause ids, unchanged by A6 |
+| AT-04-1 | `advisoryWaveGate.test.js` | verdict asserting the wave is fixed + red re-gate ⇒ three positives on one run: `escalated`, halt string equals AT-05-3's literal, resolved-wave count `0` |
+| AT-04-2 | `advisoryWaveGate.test.js` | the three worked `invocations` sequences of §2.4, compared as ordered sequences |
+| AT-04-3 | `waveExecution.test.js` | committing writer identities equal the pre-A6 baseline, both still past a green gate; scope widening is AT-04-5's, not this one's |
+| AT-04-4 | `advisoryWaveGate.test.js` | budget-exhausting red re-gate: refusal reason recorded, escalation entry written, pre-A6 behaviour taken — the AC-4.5 pairing, asserted positively |
+| AT-04-5 | `waveExecution.test.js` | **§3.6's promotion commit** — the repair is in the branch's committed state with no residual working-tree change, identified by the `message` literal and its pathspec; advisory record names the paths; later task's prompt carries the promotions clause. Companion: later-task paths outside every post-wave pathspec, which fails before the fix and passes after |
+| AT-05-1 | `advisoryWaveGate.test.js` | refusal, budget exhaustion and red re-gate each restore to the post-dispatch, pre-commit tree — the content-hash-map oracle of §5.2, on the real-repo fixture |
+| AT-05-2 | `advisoryWaveGate.test.js` | post-wave command writing generated outputs: whole-tree restore asserted, a repair-paths-only restore fails the same oracle |
+| AT-05-3 | `advisoryWaveGate.test.js` | halt reason string equals the pre-A6 literal, computed from the **first** pass's gate result (§2.3) |
+| AT-05-4 | `waveExecution.test.js` | green re-gate then un-skip halt: no restoration, repair still present, and **both** the record entry and the halt report state it and name the paths — the halt-report half is §4.5's new `fields` argument |
+| AT-05-5 | `advisoryWaveGate.test.js` | restoration itself failing: `__isRevertFailure` rethrown, wave halts naming the failed restoration, no commit of any kind reached |
+| AT-06-1 | `advisoryRecord.test.js` | an entry per invocation naming wave, root-cause class, envelope determination, action, citation — containment against the tier's shape, with the class assertion A6's own |
+| AT-06-2 | `advisoryRecord.test.js` | failed record write ⇒ action refused, tier's record-write-failure reason carried |
+| AT-06-3 | `advisoryEscalationLog.test.js` | escalation entry carries the class alongside the tier's fields, and one sentence stating what the operator must decide |
+| AT-06-4 | `advisoryWaveGate.test.js` | halt report following an escalation carries the root-cause class (§4.5's halt fields) |
+| AT-06-5 | `advisoryEscalationLog.test.js` | several runs escalating `plan-ordering-defect` are countable from `ESCALATIONS.md` — the durability argument of §4.5 |
+| AT-06-6 | `advisoryEscalationLog.test.js` | failed escalation-log write: disposition still `escalated`, halt unchanged, failure surfaced on the run report's notice channel, never upgraded to `resolved` |
+| AT-07-1 | `advisoryWaveGate.test.js` | **the BR-1…BR-16 partition**, driven by a stub agent double (no live model, no prompt), one case per proposable rule: BR-2 under its own outcome (`unclassified`, no reason, no attempt), BR-3 with `attemptBudget` `1`, BR-5, BR-6, BR-7, BR-8. The non-proposable rules are listed and justified in the same test as a transcribed literal, so the partition is total rather than sampled |
+| AT-07-2 | `advisoryEnvelope.test.js` + `advisoryConfig.test.js` + `advisoryDisabled.test.js` | every transcribed surface of §1.3 compared by set-equality against its literal; each fails while it still carries the pre-A6 value |
+| AT-07-2b | `advisoryConfig.test.js` | config key set equal to shipped keys + `waveBudgetPerRun`; default reads back `1`; `0` in yields `0` back and is absent from the invalid-key report (`nonNegativeInt`, E-33) |
+| AT-07-3 | `waveExecution.test.js` | one run: green wave's A6 dispatch count `0` **and** its per-task commit performed, red wave's count `≥ 1`. No timing assertion |
+| AT-07-4 | `advisoryDriver.test.js` | A6's resolved rung equals the tier's, from the shared `rungState` memo — no second resolution in a run that already resolved one |
+| AT-07-5 | `advisoryDriver.test.js` | A6's dispatch options equal a shipped seam's, member for member — tool grants, transport, environment |
+
+Two rows deserve a note rather than a line. **AT-07-1** is not a single test: it is a partition
+over BR-1…BR-16 in which every proposable rule gets a stub-double case and every non-proposable
+rule gets a transcribed justification asserted in the same file, so BR-16's claim that every §4
+boundary is script-enforced is discharged rather than sampled — with the one qualification §3.3
+records, that AC-2.2's precedence is prompt-only. **AT-04-5** is the only AT whose companion case
+is chosen to be **red against today's behaviour**: the shipped commit loop commits only paths
+owned by tasks in the wave (M-WG-12), so a later task's paths outside every post-wave pathspec
+leave the repair uncommitted. That case must fail before §3.6's promotion commit exists and pass
+after, which is what makes it a test of the fix rather than a description of it.
+
 ## 6. Open Questions
 
 | # | Question | Blocking? | Current disposition |
