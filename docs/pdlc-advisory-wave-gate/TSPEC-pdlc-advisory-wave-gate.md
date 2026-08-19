@@ -136,7 +136,7 @@ The FSPEC routed five obligations here (§7.1 there). Each is answered in one na
 | O-3 | Reuse of the tier's exported model rung | §2.2 | `runAdvisorySeam` already resolves the rung through `resolveAdvisoryRung`; A6 adds no rung code at all, so NFR-6 is discharged by not writing anything |
 | O-4 | How the owned-path set is computed and compared | §3.4, §4.3 | Computed from the same `parsePlanOwnership` rows `computeWaves` already annotates onto each task; compared by the tier's shipped `classifyEnvelope` X-d clause over a live `declaredScope` array, the `buildA4SeamOps` idiom |
 | O-5 | Whether the root cause is derived by the seam or supplied by the wave's agents | §3.3 | Supplied by the **A6 agent**, on its own `ROOT-CAUSE:` trailer line, read by a total parser; the wave's own agents are gone by gate time. Q-4's ownership-delivery check is *evidence*, never the verdict |
-| O-8 | How an E-6 repair reaches committed state, and how the later task is told | §2.5, §3.6 | The wave commit loop's existing `commitPaths` writer gains one more pathspec — the promotion's paths, scoped to the later task's owned set — and `waveImplementPrompt` gains a promotions clause read by that task's dispatch |
+| O-8 | How an E-6 repair reaches committed state, and how the later task is told | §2.5, §3.6 | **One further `commitPaths` call** after the per-task loop, inside the same `if (waveGit)` block, carrying the promotion's paths under its own `message` and `what` (§3.6); the owning task's own commit keeps its own pathspec, unwidened. Widening the existing per-task call is the rejected option A of `DECISIONS-pdlc-advisory-wave-gate.md`'s DEC-A6-02. `waveImplementPrompt` gains a promotions clause read by that task's dispatch |
 
 ### 1.2 Where the code goes
 
