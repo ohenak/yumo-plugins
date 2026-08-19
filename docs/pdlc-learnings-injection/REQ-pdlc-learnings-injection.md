@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — operator handoff 2026-08-10 relaying the `regime-ledger` `wheel-paper-portfolio` run (this REQ is its record); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | FSPEC, TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v2.md`, `CROSS-REVIEW-test-engineer-REQ-v2.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 1 findings addressed | Claude | 0.2 | 2026-08-18 |
+| pdlc | draft — round 2 findings addressed | Claude | 0.3 | 2026-08-18 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -70,11 +70,9 @@ rather than trust it:
    those two locations — tracked and untracked but not ignored, `docs/discarded/` excluded by
    pathspec, with a fail-open outcome when the listing itself fails
    (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that shipped **pass-side**
-   enumeration — the literal `git ls-files --cached --others --exclude-standard` pathspec pair
-   (`LS_FILES_ARGV`, `pdlc/workflows/consolidate-learnings.js`) inside the same JS bundle — rather
-   than authoring a second one (C-3, G-6). DEC-CONS-05 ships *one predicate, two enumerations*: the
-   pass and the Python `SessionStart` hook deliberately differ, so nothing here claims the readers
-   of this corpus agree as sets.
+   enumeration (`LS_FILES_ARGV`, `pdlc/workflows/consolidate-learnings.js`) inside the same JS
+   bundle rather than authoring a second one (C-3, G-6). DEC-CONS-05 ships *one predicate, two
+   enumerations*, so nothing here claims its readers agree as sets (C-3).
 3. **The prompt budget is already contested.** Authoring dispatches already carry the phase's
    grounding manifest, the upstream documents and the pacing contract. Anything this feature
    adds competes for the same budget, which is why every acceptance criterion below is stated
@@ -146,9 +144,9 @@ passes is exactly where an unattended queue does its work.
 ## 4. Constraints
 
 - **C-1 — The affected dispatches are those the pipeline already classifies as authoring.** Injection
-  applies to every dispatch the pipeline tags `dispatchKind: "authoring"` at HEAD — its creator,
-  optimizer and erratum dispatch sites in `orchestrate-dev.js` — whose target document is
-  REQ, FSPEC, TSPEC, PLAN, DECISIONS or PROPERTIES: the phase's creator dispatch where it has one,
+  applies to every dispatch the pipeline tags `dispatchKind: "authoring"` at HEAD (its creator,
+  optimizer and erratum sites in `orchestrate-dev.js`) whose target document is REQ, FSPEC,
+  TSPEC, PLAN, DECISIONS or PROPERTIES: the phase's creator dispatch where it has one,
   the optimizer (revision) dispatch of each review round, and an erratum dispatch against one of
   those documents. This is deliberately a rule over the taxonomy that already exists rather than a
   hand-counted set of six, because at HEAD Phase R has **no creator** (a REQ arrives already
@@ -164,11 +162,10 @@ passes is exactly where an unattended queue does its work.
   documents under `docs/{feature}/` and `docs/completed/{feature}/`, tracked or untracked,
   **excluding** files git ignores and excluding `docs/discarded/` — the definition
   `pdlc-consolidation-agent` already ships (§1.2 claim 2; DECISIONS-pdlc-consolidation-agent
-  § DEC-CONS-05). What is reused is the pass-side enumeration inside that JS bundle, not a definition
-  held equal across all readers of the corpus: DEC-CONS-05 pins the pass's and the hook's
-  enumerations literally rather than equal, having rejected both one shared implementation and an
-  enumeration set-equality assertion — the latter as red on correct code, on a measured divergence
-  set. No file in the corpus is written, moved, deleted or reformatted
+  § DEC-CONS-05). Reuse is of the pass-side enumeration in that JS bundle, not of a definition held
+  equal across its readers: DEC-CONS-05 pins the pass's and the `SessionStart` hook's enumerations
+  literally, having rejected both a shared implementation and an enumeration set-equality
+  assertion (red on correct code). No file in the corpus is written, moved, deleted or reformatted
   by this feature.
 
 - **C-4 — Injected material is labelled advisory, and its status is stated to the author.** The
@@ -204,7 +201,8 @@ passes is exactly where an unattended queue does its work.
   cannot be honoured alongside them, less is injected — never something existing removed.
 - **C-9 — Operator-visible strings are catalogued; every input state is total** *(DC-01)*. Every
   report line and notice this feature emits is a registered catalogue entry with an id a test can
-  assert on — including AC-3.2's exclusion-reason ids and AC-5.1b's malformed-configuration notice.
+  assert on — including AC-3.2's per-document reason and corpus-level outcome ids, and AC-5.1b's
+  malformed-configuration notice.
   On the receive side, every corpus input state and every configuration state — absent, malformed,
   truncated — resolves to a defined outcome (C-7, Group 4). How the catalogue is registered is
   TSPEC's; the closure of the set and the id-per-reason discipline are requirements.
@@ -233,7 +231,7 @@ a live run and re-deriving all three before they are treated as settled.
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | A LEARNINGS corpus of at least two prior features in the consumer repository | Files already on disk (`docs/{feature}/` and `docs/completed/{feature}/`) | **Met** in this repository and in `regime-ledger`. Does **not** gate FSPEC: AC-4.1's empty-corpus behaviour is a first-class specified state |
+| BL-01 | A LEARNINGS corpus of at least one prior feature in the consumer repository | Files already on disk (`docs/{feature}/` and `docs/completed/{feature}/`) | **Met** in this repository and in `regime-ledger`. Does **not** gate FSPEC: AC-4.1's empty-corpus behaviour is a first-class specified state |
 | BL-02 | The harvest metadata a LEARNINGS document carries, as the ordering input (§5 Group 2) | Existing convention, `harvest-learnings` output | Must exist at HEAD before FSPEC authoring; O-2 records the measured shape and the total fallback for documents lacking it |
 | BL-03 | `pdlc-consolidation-agent` delivered | PR merged | **Not required.** This feature composes with it (§1.3, G-6) but does not consume anything it produces; the queue row therefore declares no dependency on it |
 
@@ -254,9 +252,7 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   set carrying injected material equals exactly the set C-1's rule names — no more, no fewer — and
   every dispatch outside it (reviews, implementation, DoD verification and remediation, harvest,
   ship, advisory seams) is byte-identical to the same run with injection disabled — asserted under
-  AC-6.1's scripted fixtures, for the reason AC-4.3 gives: two live runs author different documents
-  and are not comparable. The oracle is a
-  set equality over the pipeline's own dispatch classification evaluated against the run that
+  AC-6.1's fixtures, not by comparing live runs (AC-4.3). The oracle is a set equality over the pipeline's own dispatch classification evaluated against the run that
   happened, so a run with no DECISIONS phase, or with five optimizer rounds, satisfies it as stated
   rather than vacuously.
 - **AC-1.3** *Given* a repository where `docs/{f}/LEARNINGS-{f}.md` already exists (a re-run of a
@@ -308,18 +304,21 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   is read, *then* it carries, per authoring dispatch: the source document paths selected, in the
   order used; the bytes injected per document; per document, whether its material was bounded
   (AC-2.3); and the total bytes injected. A dispatch that injected nothing carries an empty set of
-  rows, not a missing field. The enumeration is closed: a completeness test asserts set equality.
+  rows, not a missing field. The enumeration is closed over these per-dispatch row fields alone (a
+  completeness test asserts set equality); AC-3.3's rule inputs are a separate run-level record
+  with its own closure.
 - **AC-3.2** *Given* the same report, *when* it is read, *then* it also names the corpus documents
-  **not** selected, each with a reason drawn from a closed set of catalogued ids (C-9): `RSN-COUNT`
-  (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte bound), `RSN-SELF` (the
-  authored feature's own, C-2), `RSN-UNREADABLE`, `RSN-UNPARSEABLE` (read, not a LEARNINGS
-  document), `RSN-TRUNCATED` (cut mid-document), `RSN-UNLISTABLE` (the corpus listing itself
-  failed). A completeness test asserts set equality over these ids, so a silently deleted case fails
-  rather than passing by containment, and an operator can distinguish a corpus with nothing to give
-  from one that went unread.
+  **not** selected, each with a **per-document** reason drawn from a closed set of catalogued ids
+  (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
+  bound), `RSN-SELF` (the authored feature's own, C-2), `RSN-UNREADABLE`, `RSN-UNPARSEABLE` (read,
+  not a LEARNINGS document), `RSN-TRUNCATED` (cut mid-document). States in which no document is
+  known are **corpus-level outcomes**, recorded once per run, drawn from their own closed set:
+  `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). Two set-equality tests, one
+  per catalogue; with such an outcome recorded, AC-3.1's rows are present and empty.
 - **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce the
-  selection by hand against the same repository state, *then* every input the rule used is
-  present in the report and the reproduction matches (C-5).
+  selection by hand against the same repository state, *then* every input the rule used — the
+  ordering key value per document and the §4.1 thresholds in force — is in the report's run-level
+  record, and the reproduction matches (C-5).
 - **AC-3.4** *Given* an author who notices a defect in an injected LEARNINGS document, *when* the run
   finishes, *then* **no** erratum round is opened against any upstream document of `{f}` on account
   of it, and the report's AC-3.1 rows name the source document — the trace an operator follows. This
@@ -331,11 +330,12 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-4.1** *Given* a repository with no prior LEARNINGS document at all — the first feature
   ever run there — *when* the pipeline runs, *then* every authoring dispatch is composed exactly
   as it is today, the run completes with unchanged behaviour, and the report records that the
-  corpus was empty rather than omitting the field.
+  corpus-level `RSN-EMPTY` outcome (AC-3.2) rather than omitting the field.
 - **AC-4.2** *Given* a corpus file that cannot be read, that reads but does not parse as a LEARNINGS
   document, or that is truncated mid-document, *and* separately given a corpus listing that fails
-  outright, *when* selection runs, *then* the affected source is skipped with its AC-3.2 reason id
-  recorded, the remaining corpus is used normally (for a failed listing, nothing is injected), and
+  outright, *when* selection runs, *then* the affected document is skipped with its per-document
+  reason id recorded and the rest of the corpus used normally, a failed listing injects nothing and
+  records `RSN-UNLISTABLE` at corpus level (AC-3.2), and
   no exception, halt or POSTMORTEM results.
 - **AC-4.3** *Given* any corpus state whatsoever, *when* the convergence machinery is inspected,
   *then* no injection-derived value reaches any gate input: verdict parsing, structural completeness
@@ -346,8 +346,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   nondeterminism, and comparing them under AC-6.1's scripted fixtures is vacuous.
 - **AC-4.4** *Given* thresholds in §4.1 configured to values that admit nothing (zero documents
   or zero bytes), *when* the pipeline runs, *then* it behaves as an enabled run whose selection is
-  empty — AC-3.1's empty row set and AC-4.1's record, not AC-5.1a's absent key — rather than
-  treating the configuration as invalid and refusing.
+  empty — AC-3.1's empty rows, not AC-5.1a's absent key — rather than treating the configuration
+  as invalid and refusing.
 
 **Group 5 — inertness when disabled, and semantics preserved** *(G-5; NG-3, NG-4, NG-7)*
 
@@ -430,9 +430,9 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   lessons may file findings this feature's REQ never asked for. Revisit with O-3's evidence; a
   widening is a successor REQ with its own queue row.
 - **O-7** Bind this feature's corpus definition to `pdlc-consolidation-agent`'s **pass-side**
-  enumeration in the same JS bundle (C-3, §1.2 claim 2) — TSPEC's to specify, including how that
-  reuse is pinned. No test asserting agreement with the `SessionStart` hook is owed: DEC-CONS-05
-  rejected that oracle.
+  enumeration in the same JS bundle (C-3, §1.2 claim 2) — TSPEC's to specify, including how it is
+  pinned. No agreement test against the `SessionStart` hook is owed: DEC-CONS-05 rejected that
+  oracle.
 
 ### 7.1 Stopping rule for this REQ's review loop *(DC-09, pasted in deliberately)*
 
