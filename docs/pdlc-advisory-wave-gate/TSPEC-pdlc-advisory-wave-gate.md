@@ -394,7 +394,7 @@ export function buildA6SeamOps({
 | Member | Behaviour |
 |---|---|
 | `gatherEvidence` | Returns the **full captured gate output** (`gateResult.output`), never `outputTail`'s 30 lines. AT-02-5's oracle is a citation to a region the tail does not contain, and this is why it can exist (E-12, BR-3). Also computes the E-5 and E-6 owned-path sets (§3.4) and fills `declaredScope` in place |
-| `prompt` | States the four-class vocabulary, the two envelope members and their decidable rules, the `ROOT-CAUSE:`/`PROMOTES:`/`PROMOTES-TASK:` trailer lines, and the citation rule verbatim. Instructional only — BR-16: every one of these is *also* checked by the script, and no rule here is satisfied by having told the agent about it |
+| `prompt` | States the four-class vocabulary, the two envelope members, the decidable rules, the `ROOT-CAUSE:`/`PROMOTES:`/`PROMOTES-TASK:` trailer lines, and the citation rule verbatim. Instructional only for everything the script also checks — but see the precedence note below, which is the one rule the prompt carries alone |
 | `conditionHolds` | `async () => true` — an async arrow, not the literal `true`: the driver calls `await seamOps.conditionHolds()` and a literal would throw. `buildA3SeamOps` is the shipped precedent. It returns true unconditionally because the condition *is* the red gate, observed by the script one step earlier; re-running the suite to re-confirm it would double the wave's slowest cost. A `false` here would yield `no-action`, which is not a disposition this seam has |
 | `classifyReply` | §3.7's optional hook: BR-3's citation rule (⇒ malformed, one attempt) then BR-2's vocabulary read (⇒ escalate, no attempt) |
 | `apply` | Dispatches the repair edit, then returns `{ok:true}` **iff `producedPaths()` is non-empty** — that is the observation, stated so it cannot be read as an unspecified notion of "tree changed". `apply` calls the same `producedPaths` the driver calls at step 5, so the two can never disagree. An empty set is `{ok:false}` ⇒ `post-action-verification-failed`. **A repair writing only `.gitignore`d paths therefore reads as no change and is refused here**, which is the right disposition while §2.5's boundary sits with upstream: the seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone. If the erratum widens BR-9's oracle to ignored generated outputs, the widened capture arrives with a widened `producedPaths` and this row is unchanged; if it does not, the refusal is the documented outcome rather than a silent survival past step 5's CHECK. §5.5 gives it a test |
@@ -408,6 +408,37 @@ export function buildA6SeamOps({
 (`buildA5SeamOps`'s `apply` compares `verdict.proposedAction === "E-1"`, `buildA4SeamOps` declares
 `permittedActions = ["E-3"]`). `classifyEnvelope`'s X-c clause then refuses any other value with no
 A6-specific code.
+
+**One rule is prompt-only, and BR-16's claim is qualified to say so (PM F-04).** `parseA6RootCause`
+is a *membership* test against `ADVISORY_ROOT_CAUSES`: given a class the agent emitted, it says
+whether that class is in the closed set. It has no view of whether an *earlier* class in the
+ordered set also matched the failure, so AC-2.2's first-match rule ("a failure matching two
+classes takes the earlier one") lives in the prompt and nowhere else. The earlier draft's blanket
+claim — every rule here is also checked by the script — held for the vocabulary and the citation
+rule and did not hold for precedence; it is corrected rather than defended.
+
+The residual is bounded and is accepted knowingly:
+
+- **Not at risk: what the misclass authorises.** §4.2's class-to-envelope binding *is*
+  script-enforced, so a failure that should have read `plan-ordering-defect` but was declared
+  `wave-internal-defect` cannot reach E-6. It gets E-5, confined to the wave's own owned paths,
+  and every exclusion still applies. A misclass costs a wrong label, never a wider blast radius.
+- **At risk: AC-6.4's countability.** Recurrence counting keys on the `plan-ordering-defect`
+  class in `ESCALATIONS.md`, so an unenforceable ordering rule makes that count a function of
+  agent judgement. This is a real, accepted cost against AC-6.4 and is recorded as such rather
+  than left for a reader to discover; §6 OQ-3 already carries the PLAN-time-feedback question
+  the count feeds, and this note names why the count is softer than a script oracle would be.
+- **Why not a script conjunct.** A decidable precedence check would have to re-derive, from the
+  gate output alone, whether an earlier class matched — i.e. re-do the diagnosis the seam
+  dispatched an agent to do. That is the thing being delegated, so a script conjunct here would
+  either be a keyword heuristic (a new, unfalsifiable rule) or a re-implementation of the seam.
+  Neither is worth AC-6.4's precision; the prompt keeps the rule and this document says so.
+
+**The citation floor is a boundary, not a threshold in prose.** `A6_MIN_CITATION_CHARS` is `24`
+and it is load-bearing: at `23` normalised characters a citation is refused as malformed and
+costs one attempt, at `24` it is accepted. §5.5 pins both sides on the same fixture, since a
+floor asserted only from above passes an implementation that has no floor at all.
+
 
 Two pure helpers carry the rules that are A6's own:
 
