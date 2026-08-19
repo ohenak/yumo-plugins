@@ -19,26 +19,13 @@ one bounded and reversible repair attempt inside a declared file envelope, re-ru
 gate sequence, and — if the gate does not go green on its own — escalates and leaves the pipeline
 halting exactly as it halts today, with a diagnosis attached.
 
-**What this document adds over the REQ.** The REQ states the outcomes an operator can observe. This
-FSPEC states the *order* in which they become observable: the decision points inside one A6
-invocation, which condition wins when two apply, what each terminal disposition leaves on disk, and
-the Who/Given/When/Then tests that decide whether the behaviour shipped.
+**What this adds over the REQ.** The REQ states the outcomes an operator can observe; this FSPEC states the *order* in which they become observable: the decision points inside one invocation, which condition wins when two apply, what each terminal disposition leaves on disk, and the tests that decide whether the behaviour shipped.
 
-**What this document deliberately does not state.** No seam signature, no injected-dependency name,
-no algorithm for computing an owned-path set, no restoration mechanism, no field layout of any
-shipped record. Those are the TSPEC's, and the REQ already routes them there (O-1, O-3, O-4, O-5,
-O-8). Where behaviour that already ships is referenced, it is cited by `M-WG-*` id from
-`docs/_constraints/pdlc-wave-gate-baseline.md` v1.1, and tier behaviour by section id from
-`docs/_constraints/pdlc-advisory-corpus-baseline.md` (§1–§4), rather than restated.
+**What it deliberately does not state.** No seam signature, no injected-dependency name, no algorithm for computing an owned-path set, no restoration mechanism, no field layout of any shipped record — all the TSPEC's, routed there by REQ (O-1, O-3, O-4, O-5, O-8). Shipped behaviour is cited, never restated: `M-WG-*` ids from `docs/_constraints/pdlc-wave-gate-baseline.md` v1.1, tier behaviour by section id from `docs/_constraints/pdlc-advisory-corpus-baseline.md` (§1–§4).
 
-**Reading order.** §3 gives the single lifecycle end to end; §4 gives the rules that decide the
-branches §3 names; §5 gives what happens when an input is absent, malformed, or contradictory; §6
-gives the acceptance tests. A reader who wants only the boundary should read BR-4 through BR-9.
+**Reading order.** §3 the lifecycle end to end; §4 the rules deciding its branches; §5 absent, malformed and contradictory inputs; §6 the acceptance tests. For the boundary alone, read BR-4 through BR-9.
 
-**Inherited contracts.** A6 is an extension of a shipped tier, not a new mechanism (REQ C-1). The
-verdict shape, the confidence-and-envelope action gate, the ordered eight-member refusal-reason
-catalogue, the exclusion set, the per-feature advisory record, the escalation log, and the model
-rung are the tier's and are used unchanged. This FSPEC states only what A6 adds: one trigger, one
+**Inherited contracts.** A6 extends a shipped tier, not a new mechanism (REQ C-1). The verdict shape, the confidence-and-envelope action gate, the ordered eight-member refusal-reason catalogue, the exclusion set, the per-feature advisory record, the escalation log and the model rung are the tier's, used unchanged. A6 adds only: one trigger, one
 classification vocabulary, two envelope members, one config key, four prohibitions, and one
 re-gate-and-restore cycle.
 
@@ -72,11 +59,7 @@ not a gap. BL-06's enumeration — the transcribed set-equality surfaces that th
 input to planning, and this FSPEC states only the observable consequence: the surfaces named in
 M-WG-9 are expected to change, and a run in which they did not is a defect (AT-01-1, AT-07-2).
 
-**Where a requirement is deliberately not specified here.** REQ O-1 (restoration mechanism), O-3
-(rung resolver reuse), O-4 (owned-path computation and comparison), O-5 (whether the classification
-is derived by the seam or supplied by the wave's own agents) and O-8 (how an E-6 repair reaches
-committed state) are obligations on the TSPEC. This FSPEC states the outcome each must produce and
-nothing about how; §7 carries them forward so the TSPEC author inherits them from one place.
+**Where a requirement is deliberately not specified here.** REQ O-1, O-3, O-4, O-5 and O-8 are obligations on the TSPEC: this FSPEC states the outcome each must produce and nothing about how. §7.1 carries them forward so the TSPEC author inherits them from one place.
 
 ## 3. Behavioral Flow
 
@@ -90,63 +73,41 @@ pathspecs (M-WG-4). A6 sits between the third condition and the halt it causes. 
 
 ### 3.2 The A6 lifecycle
 
-**Step 1 — Applicability.** Before anything is dispatched, the run establishes whether A6 applies at
-all. It applies only when all four hold: the tier is enabled; Phase I is in wave mode on a valid
+**Step 1 — Applicability.** Before anything is dispatched, the run establishes whether A6 applies. It applies only when all four hold: the tier is enabled; Phase I is in wave mode on a valid
 ownership manifest (BL-03); a script-owned gate is configured (BL-04); and the wave is an ordinary
 implementation wave, not the final V-wave. If any fails, A6 does not apply, the phase behaves exactly
 as it does today, and inapplicability is stated once per run on the run's notice surface (§5 E-01,
 E-02, E-03).
 
-**Step 2 — Trigger.** A6 fires on exactly one condition: the script-owned test gate returning
-non-zero for an ordinary wave (M-WG-3). A dispatch-level failure (M-WG-1) and a post-wave command
-failure (M-WG-2) both halt exactly as today and never reach A6 (BR-1).
+**Step 2 — Trigger.** One condition only: the script-owned test gate returning non-zero for an ordinary wave (M-WG-3). A dispatch-level failure (M-WG-1) and a post-wave command failure (M-WG-2) halt exactly as today and never reach A6 (BR-1).
 
 **Step 3 — Budget admission.** Before dispatch, the run checks the wave budget: if A6 has already
 *resolved* `advisory.waveBudgetPerRun` distinct waves in this run, the wave escalates without any
 dispatch (BR-11). Attempt and time budgets are read at step 3b, not here.
 
-**Step 3b — Attempt admission.** The run reads the wave's consumed-attempt count against `advisory.attemptBudget`. If no attempt remains, the wave escalates with the tier's `budget-exhausted` reason and nothing further is dispatched (BR-11, E-24). Otherwise one attempt is available and control passes to step 4. Every arrival here reads the same counter — the first arrival and each return from step 8b alike — so the number of A6 dispatches on one wave never exceeds `advisory.attemptBudget`, and equals it exactly when every attempt ends in a red re-gate.
+**Step 3b — Attempt admission.** The run reads the wave's consumed-attempt count against `advisory.attemptBudget`. If no attempt remains, the wave escalates with the tier's `budget-exhausted` reason and nothing further is dispatched (BR-11, E-24). Otherwise one attempt is available and control passes to step 4. Every arrival here — the first, and each return from step 8b — reads the same counter, so A6 dispatches on one wave never exceed `advisory.attemptBudget` and equal it exactly when every attempt ends in a red re-gate (AT-02-9).
 
 **Step 4 — Diagnose.** A6 is dispatched on the tier's existing model rung, receives the gate
 command's captured output, and returns the tier's existing verdict carrying one added field: a
 root-cause classification drawn from a four-member closed vocabulary (BR-2). The diagnosis must cite
 the gate output it rests on (BR-3).
 
-**Step 5 — Authorisation.** The tier's existing rule decides whether any action is taken: only when
-the proposal is inside the envelope **and** confidence is high. A6 adds two envelope members, E-5 and
-E-6 (BR-4), keeps the tier's exclusions unchanged and precedence-first (BR-5), and adds four further
-prohibitions (BR-6). Two of the four classifications — `environmental` and `unclassified` — authorise
-nothing at all, whatever the confidence (BR-2).
+**Step 5 — Authorisation.** The tier's existing rule decides whether any action is taken: only when the proposal is inside the envelope **and** confidence is high. A6 adds two envelope members (BR-4), keeps the tier's exclusions unchanged and precedence-first (BR-5), and adds four prohibitions (BR-6). `environmental` and `unclassified` authorise nothing, whatever the confidence (BR-2).
 
 **Step 6 — Repair.** If and only if step 5 authorises it, the repair is applied to the working tree.
 Nothing is committed at this step or any other: A6 never commits (BR-8).
 
-**Step 7 — Re-gate.** The wave's whole gate sequence re-runs, in the order the wave itself ran it:
-the configured post-wave command first, then the test command (BR-7). Only that sequence returning
-success declares the wave green; no verdict field substitutes for it (BR-7).
+**Step 7 — Re-gate.** The wave's whole gate sequence re-runs in the order the wave ran it: post-wave command first, then test command. Only that sequence returning success declares the wave green; no verdict field substitutes for it (BR-7).
 
-**Step 8a — Green re-gate.** The wave proceeds past the gate into exactly the post-gate path it would
-have reached had the gate been green on the first pass. Any later check on that path may still halt
-the wave; such a halt is not a red re-gate and is not a restoration trigger (BR-10). Where the repair
-was authorised under E-6 and therefore touches paths a *later* PLAN task owns, the wave's commit step
-must still leave the repair in the branch's committed state, and the later task's dispatch is told
-the promotion already exists (BR-12).
+**Step 8a — Green re-gate.** The wave proceeds past the gate into exactly the post-gate path it would have reached had the gate been green on the first pass. A later check there may still halt the wave; that halt is neither a red re-gate nor a restoration trigger, and the repair stays applied (BR-10). Where the repair was authorised under E-6 and touches a *later* PLAN task's paths, the wave's commit step must still leave it committed and that task's dispatch is told so (BR-12).
 
 **Step 8b — Red re-gate.** The attempt is consumed, the **whole working tree** is restored to the
 state it stood in immediately before A6 acted — the wave's post-dispatch, pre-commit tree, with the
 wave agents' own uncommitted work intact — and control returns to step 3b's attempt check (BR-9).
 
-**Step 9 — Terminal disposition.** Every invocation ends in exactly one of: *resolved* (step 8a
-reached on a green re-gate); *escalated* (refusal, malformed verdict, budget exhaustion, or a red
-re-gate with no attempt left); or *no-action* (the tier disabled, or A6 inapplicable). An entry is
-appended to the feature's advisory record for every terminal disposition, and an escalation entry to
-the durable escalation log for every escalated one (BR-13). Record-write failure refuses the action
-rather than proceeding unrecorded, as the tier already requires.
+**Step 9 — Terminal disposition.** Exactly one of: *resolved* (step 8a on a green re-gate); *escalated* (refusal, malformed verdict, budget exhaustion, or a red re-gate with no attempt left); *no-action* (tier disabled, or A6 inapplicable). An advisory-record entry is appended for every disposition and an escalation-log entry for every escalated one (BR-13); a record-write failure refuses the action rather than proceeding unrecorded.
 
-**Step 10 — Halt, unchanged.** When A6 does not resolve the wave, the pipeline's existing behaviour
-proceeds untouched: the same halt with the same reason it emits today (M-WG-3), and the same queue
-row written `halted` (M-WG-7). The halt report additionally carries the diagnosis and its root-cause
-class. Escalation adds information; it never changes control flow (BR-14).
+**Step 10 — Halt, unchanged.** When A6 does not resolve the wave, the pipeline halts with the same reason it emits today (M-WG-3) and writes the same `halted` queue row (M-WG-7); the halt report additionally carries the diagnosis and its root-cause class. Escalation adds information, never control flow (BR-14).
 
 ### 3.3 The flow in one table
 
@@ -220,17 +181,7 @@ and reports that exclusion's reason, not a new one. E-5 therefore admits no act 
 do not already admit; the residual it leaves — a wrong repair of a permitted kind inside owned
 production files — is R-1, accepted in §7.3 A-3 and not solved here.
 
-**BR-5 — Exclusions win over permissions, always (AC-3.2).** The tier's existing exclusion set holds
-unchanged for A6, and its clauses take precedence over E-5 and E-6 wherever both could apply. Two
-consequences are named rather than discovered. First, the clause excluding any change to a test file
-or test configuration binds even when the failing test sits inside the wave's own owned paths:
-editing the test to turn a red gate green is the pipeline's most dangerous failure mode, and A6 sits
-closer to it than any other seam. Second, the clause excluding the self-modification guard paths
-holds unchanged, so in this repository a wave owning `pdlc/workflows/`, `pdlc/skills/`,
-`pdlc/hooks/` or `.claude/workflows/` escalates `out-of-envelope` — meaning the 2026-08-09 motivating
-incident would today be diagnosed and escalated, not repaired, while the 2026-08-11 incident in a
-consumer repository is unaffected. Relaxing either is out of scope and must never be taken without
-an operator. The shipped exclusion catalogue is **ordered**, and the order is load-bearing: classification
+**BR-5 — Exclusions win over permissions, always (AC-3.2).** The tier's existing exclusion set holds unchanged for A6 and takes precedence over E-5 and E-6 wherever both could apply. Two consequences, named rather than discovered. First, the test-artifact clause binds even when the failing test sits inside the wave's own owned paths: editing a test to turn a red gate green is the pipeline's most dangerous failure mode and A6 sits closest to it. Second, the self-modification guard clause holds, so a wave owning `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/` or `.claude/workflows/` escalates `out-of-envelope` — the 2026-08-09 motivating incident would today be diagnosed, not repaired, while the 2026-08-11 consumer-repository incident is unaffected. Relaxing either is out of scope without an operator. The shipped exclusion catalogue is **ordered**, and the order is load-bearing: classification
 walks it in order and the first matching clause decides which refusal reason is reported. Its
 oracle is therefore ordered-sequence equality over the shipped clause ids — the same unit
 BR-15's refusal reasons get, never set equality (AT-03-8) — because a reordering silently
@@ -245,18 +196,7 @@ compared by set-equality, so a deleted prohibition fails the suite instead of pa
 containment check, and each prohibited operation is additionally exercised one by one (AT-03-5).
 
 **BR-7 — Only the gate declares the wave green, and the whole sequence re-runs (AC-4.1, AC-4.4).** No
-advisory verdict substitutes for a gate result. After a repair, the wave's whole gate sequence
-re-runs in the order the wave itself ran it: the configured post-wave command first, then the test
-command. Re-running the post-wave command first is not incidental — a source-touching repair would
-otherwise re-red the gate for its own unbuilt outputs. A post-wave command failing on re-gate is a
-red re-gate, not an immediate halt as it is on the first pass; that pass reaches no test command, so
-it contributes a truncated sequence, which is an admitted form and not a defect. The observable is an
-**ordered sequence**: the gate-command invocations for a wave equal, as a sequence, the shipped
-sequence concatenated once per gate pass, where passes = 1 + attempts (the first pass is not an
-attempt), with a failing pass truncated at the failing command. One attempt gives
-`[post-wave, test, post-wave, test]`; `[post-wave, test, post-wave]` means the re-gate's post-wave
-command failed; `[test, test]` is a run with only a test command configured. Set equality is the
-wrong unit — it collapses duplicates and would admit a resolution declared on a single invocation.
+advisory verdict substitutes for a gate result. After a repair the wave's whole gate sequence re-runs in the order the wave ran it: post-wave command first, then test command — not incidental, since a source-touching repair would otherwise re-red the gate for its own unbuilt outputs. A post-wave command failing on re-gate is a red re-gate, not the first pass's immediate halt; it reaches no test command and contributes a truncated sequence, an admitted form. The observable is an **ordered sequence**: gate-command invocations for a wave equal the shipped sequence concatenated once per pass, passes = 1 + attempts (the first pass is not an attempt), a failing pass truncated at the failing command. AT-04-2 carries the three worked sequences. Set equality is the wrong unit: it collapses duplicates and would admit a resolution declared on a single invocation.
 
 **BR-8 — A6 never commits (AC-4.2).** The committing writers stay the two the wave already has: the
 pathspec-scoped per-task commit over a task's owned paths, and the build-output commit scoped to the
@@ -297,19 +237,13 @@ spanning up to `advisory.attemptBudget` dispatch/repair/re-gate cycles. The excl
 run time of **every** gate-command invocation inside that window, first pass and each re-gate
 alike; a slow suite therefore cannot starve the attempt budget, and a slow diagnosis is what the
 budget catches (E-25, AT-02-7); and more
-than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave
-budget: two waves A6 attempted and escalated leave the budget untouched and a third red wave still
-gets its attempt, whereas one wave A6 resolved exhausts the shipped default of `1` and the next red
-wave escalates without dispatch. An attempt is one repair-and-re-gate cycle.
+than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave budget — escalated waves leave it untouched (AT-02-6's two cases). An attempt is one repair-and-re-gate cycle.
 
 **BR-12 — An E-6 resolution does not leave the repair uncommitted (AC-4.6).** When A6 resolves a wave
 under E-6, once the wave's commit step completes the repair is part of the branch's committed state.
 This is a real gap in the shipped scope, not a restatement of it: the wave commit loop commits only
 paths owned by tasks *in that wave* (M-WG-12), and an E-6 repair by construction touches a later
-task's paths. The repair's paths, and the later PLAN task that owns them, are named in the advisory
-record, and that later task's dispatch is told its owned paths already carry the promotion so it
-revises what exists rather than rediscovering it. How the existing pathspec-scoped commit path comes
-to cover those paths is the TSPEC's (REQ O-8).
+task's paths. The repair's paths and the later PLAN task owning them are named in the advisory record, and that task's dispatch is told its owned paths already carry the promotion, so it revises what exists rather than rediscovering it. How the pathspec-scoped commit path comes to cover those paths is the TSPEC's (REQ O-8).
 
 **BR-13 — No action without a record; every escalation is durably logged (AC-6.1, AC-6.2).** An entry
 is appended to the feature's advisory record for every A6 invocation, naming the wave, the root-cause
@@ -587,15 +521,8 @@ finds it already routed rather than raising it as a finding.
 
 ### 7.3 Assumptions this FSPEC makes explicit
 
-- **A-1.** The two enumerations BL-06 requires — the transcribed set-equality surfaces this feature
-  reds, and a re-measurement of the BL-03 no-manifest notice that E-04's cardinality rests on — are
-  assumed complete before implementation planning. AT-07-2 is the observable; a planning round that
-  skips the enumeration will discover it as unexplained red suites.
-- **A-2.** The line references in `pdlc-wave-gate-baseline.md` §1–§2 were measured at an earlier
-  default-branch commit and have drifted; the symbol- and grep-anchored recipes in §3 still resolve.
-  This FSPEC cites facts by `M-WG-*` id at the baseline's stated `Version` (1.1), never by line, so
-  drift below a cited id does not invalidate a clause here — it invalidates the baseline row, which
-  is that file's change-control problem.
+- **A-1.** The two enumerations BL-06 requires — the transcribed set-equality surfaces this feature reds, and a re-measurement of the BL-03 no-manifest notice E-04's cardinality rests on — are assumed complete before implementation planning. AT-07-2 is the observable; skipping the enumeration surfaces later as unexplained red suites.
+- **A-2.** The line references in `pdlc-wave-gate-baseline.md` §1–§2 have drifted since they were measured; the symbol- and grep-anchored recipes in §3 still resolve. This FSPEC cites by `M-WG-*` id at the baseline's stated `Version` (1.1), never by line, so drift below a cited id invalidates the baseline row — that file's change-control problem — not a clause here.
 - **A-3.** R-1 is accepted, not solved: a repair inside the wave's own production files can be the
   wrong repair and still turn the suite green. The exclusion of test files (BR-5) removes the worst
   version of it and Phase DOD's Final Codebase Review still runs over the result, but a residual risk
