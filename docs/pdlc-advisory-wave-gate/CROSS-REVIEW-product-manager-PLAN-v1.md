@@ -19,6 +19,21 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01/F-02 share a root cause: batch 1's enumeration found the five files carrying the **member** literal `["A1","A2","A3","A4","A5"]` (`advisoryEnvelope.test.js:317`, `advisoryHarvest.test.js:573`, `advisoryRecord.test.js:496`/`:544`, `consolidationProperties.test.js:250`, `helpers/advisoryDoubles.js:271` — all five verified exactly as the PLAN names them) but not the two files carrying a bare **count** (`advisoryDisabled.test.js:622`, `advisoryQueueSeams.test.js:627`). Was the enumeration built from a member-literal grep? If so, is it worth stating the sweep the plan actually ran, so the next seam's author can re-run it rather than re-derive it? |
+| Q-02 | Is `waveBudgetPerRun: 0` reachable for an operator who has never opened the TSPEC? Related to F-06: the queue-level operator's mental model of "the tier is on but A6 is off" has no surface outside the spec chain. |
+| Q-03 | AC-1.5's population is "a run that reaches Phase I **and evaluates wave mode**", which explicitly includes "taking the no-manifest legacy path". Does `A6-15` (or any task) build the legacy-path run at all, or does the whole AT-01-5 allocation sit on wave-mode runs? |
+
+## Positive Observations
+
+- **The AT ledger is set-equal, and I checked it mechanically.** FSPEC §6 declares 47 ATs; the PLAN's traceability table carries 47; the two identifier sets are identical, including the awkward members `AT-04-1a`, `AT-04-1b` and `AT-07-2b`. Set-equality, not containment, is exactly the bar the plan claims for itself, and it holds.
+- **Every line citation in the document verifies.** `orchestrate-dev.js:14360` is the `if (scriptGate)` block and `:14364` the halt literal; `:1938`/`:1940`/`:1947` are `ENVELOPE_DEFAULTS`/`ADVISORY_DEFAULTS`/`ADVISORY_SEAMS`; `:1960` is `parseAdvisoryConfig`; `:10805` is the sub-batch cap comment; `:3499`/`:3503` are the SeamOps shallow copies; `:4449` is `parsePlanOwnership`; `:14143` is `scriptGate`; `advisoryDoubles.js:271`, `advisoryDriver.test.js:221`/`:846`, `advisoryDodSeams.test.js:371` all land where claimed. That is unusually careful for a plan of this size, and it is why F-01…F-03 read as a single enumeration blind spot rather than as looseness.
+- **The batch arithmetic is genuinely derived, not narrated.** Recomputing `batch = max(batch of deps) + 1` over all 22 tasks reproduces the stated 14 batches exactly, batch 1 lands on the five-task cap the plan predicts from `:10805`, and no two tasks in the same batch share a file in the ownership manifest (checked all 14 batches). Every task appears in exactly one manifest row and every manifest row names a task in the table.
+- **The eleven prohibition tests transcribe TSPEC §5.5 exactly.** 3 (`(f)` PLAN prose / task table / manifest) + 3 (`(g)` `testCommand` / `postWaveCommand` / `postWavePathspecs`) + 3 (`(h)` commit / push / tag) + 2 (`(i)` wholly outside / partly inside) = 11, each with a paired positive per AC-4.5. Under the "no absence-only oracles" bar this is the model the rest of the plan should be measured against — and F-05 is only visible because this row sets the standard so clearly.
+- **The verification commands are transcribed verbatim from the repo, including the one people get wrong.** `implementation.testCommand`, `postWaveCommand` and `postWavePathspecs` match `.claude/pdlc.config.json` character for character, and the coverage row correctly says `npm run test:coverage`, not `npm test:coverage`.
+- **Every P0 and P1 requirement group has planned tasks.** REQ-AWG-01…05 and 07 (P0) and REQ-AWG-06 (P1) each map to ATs that map to red/green task pairs; no requirement group is silently dropped, and the P1 record/escalation work is not deferred behind the P0 work in a way that would strand it.
+
 ## Positive Observations
 
 ## Recommendation
