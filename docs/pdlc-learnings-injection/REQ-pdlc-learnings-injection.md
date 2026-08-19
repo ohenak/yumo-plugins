@@ -309,8 +309,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   order used; the bytes injected per document; per document, whether its material was bounded
   (AC-2.3); and the total bytes injected. A dispatch that injected nothing carries an empty set of
   rows, not a missing field. The enumeration is closed over these per-dispatch row fields alone (a
-  completeness test asserts set equality); AC-3.3's rule inputs are a separate run-level record
-  with its own closure.
+  completeness test asserts set equality); AC-3.3's rule inputs are recorded separately, at the
+  loci and under the closures AC-3.3 names.
 - **AC-3.2** *Given* the same report, *when* it is read, *then* it also names the corpus documents
   **not** selected, each with a **per-document** reason drawn from a closed set of catalogued ids
   (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
@@ -323,12 +323,16 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   **third** closed catalogue with two members: the malformed-section notice (AC-5.1b) and the
   wrong-typed-declared-key notice (AC-5.1c). Three set-equality tests, one per
   catalogue; with a corpus-level outcome, AC-3.1's rows are present and empty.
-- **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce the
-  selection by hand against the same repository state, *then* every input the rule used — the
-  ordering key value per document and the §4.1 thresholds in force — is in the report's run-level
-  record, and the reproduction matches (C-5).
-  Those two members are a closed set: a completeness test asserts set equality over them, as
-  AC-3.2's catalogues do.
+- **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce **a given
+  authoring dispatch's** selection by hand against the corpus as it stood at that dispatch, *then*
+  every input the rule used is in the report and the reproduction matches (C-5). Reproducibility is
+  claimed **per dispatch, not per run**: the corpus may move mid-run — a feature harvested while the
+  run is in flight — so two authoring dispatches in one run may legitimately observe different
+  corpora, and one run-level record could not describe both. The inputs divide by locus accordingly:
+  the **ordering key value per document** is recorded **per authoring dispatch**, alongside AC-3.1's
+  rows for that dispatch; the **§4.1 thresholds in force** are recorded **once per run**, the
+  configuration being read once. Each locus's fields are a closed set: two completeness tests assert
+  set equality, one per locus, as AC-3.2's catalogues do.
 - **AC-3.4** *Given* an author who notices a defect in an injected LEARNINGS document, *when* the run
   finishes, *then* **no** erratum round is opened against any upstream document of `{f}` on account
   of it, and the report's AC-3.1 rows name the source document — the trace an operator follows. This
