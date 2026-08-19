@@ -376,8 +376,15 @@ corpus outcome, dispatch rows) is the conditionally-spread key. So:
 | present, not an object (`sectionMalformed`) | **absent** (behaviour is AC-5.1a's) | `NTC-MALFORMED` present (AC-5.1b) |
 | present, `enabled:true`, one key wrong-typed | present, run proceeds on defaults for that key | `NTC-KEYTYPE` present |
 
-AT-30 covers all three rows, and AT-32's three-notice closure is asserted over the run-level
-channel. §D.2's record is amended accordingly.
+The three rows are owned by three different ATs (TE F-04): row 1 is **AT-31**'s (`enabled:false`,
+and separately the absent section ⇒ no injection key, no notice); rows 2 and 3 are **AT-32**'s two
+cases (malformed section ⇒ key absent plus `NTC-MALFORMED`; wrong-typed declared key ⇒ key present,
+defaults for that key, plus `NTC-KEYTYPE`). **AT-30 owns none of them** — it is the
+admits-nothing-thresholds AT for AC-4.4 (`maxDocuments: 0`, `maxTotalBytes: 0` ⇒ enabled run, BR-8
+rows present and empty). AT-32's closure is a **two**-notice set equality, over `NTC-MALFORMED` and
+`NTC-KEYTYPE`, matching `LEARNINGS_NOTICES = Object.freeze(["NTC-MALFORMED", "NTC-KEYTYPE"])`
+exactly; a test written for a three-member set would red the frozen literal on day one. §D.2's
+record is amended accordingly (no `notices` key inside `learningsInjection`).
 
 The three thresholds validate as **non-negative integers** (`Number.isInteger(v) && v >= 0`), not
 positive ones — AC-4.4 requires `0` to be a *valid* admits-nothing configuration rather than an
@@ -905,7 +912,7 @@ a diluted file-level percentage never would have been:
 | Self path ⇒ `RSN-SELF` | AT-04 |
 | Outer `try/catch` ⇒ `RSN-UNLISTABLE` (BR-12 last row) | A fault-injection case in `learningsCorpus.test.js` |
 | Section malformed ⇒ `NTC-MALFORMED`, injector not built | AT-32 |
-| Key wrong-typed ⇒ `NTC-KEYTYPE`, proceeds on defaults | AT-30 |
+| Key wrong-typed ⇒ `NTC-KEYTYPE`, proceeds on defaults | AT-32 (second case) |
 
 Whether to additionally run a region-scoped `c8` invocation is left to PLAN as a cheap option; the
 inventory above is the obligation, and it does not depend on tooling that does not exist yet.
