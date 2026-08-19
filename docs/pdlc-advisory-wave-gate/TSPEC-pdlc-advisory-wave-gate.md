@@ -4,14 +4,44 @@
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.3) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active), `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.3 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.4 | 2026-08-20 |
 
 ## Changelog
+
+**v1.4 (round 4).** Three High (PM F-01, TE F-26, TE F-27) and three Medium addressed.
+PM F-01 / TE F-26 — §3.2 step 6's ledger rule: round 3's **suffix check** was satisfied by the
+wave's own pre-A6 pass, since A6 is only entered on a red first gate and that pass has already
+pushed `[post-wave, test]`, so a `verifyGate` returning `{passed: true}` without running anything
+was granted resolution and §5.5's mutation fixture could not fail. Restated as **growth since the
+last `apply`**: `apply` records `ledgerAtLastApply` as its first statement (`orchestrate-dev.js:3521`
+APPLY precedes `:3544` VERIFY in the driver's attempt loop), and resolution requires the tokens
+above that anchor to be exactly the configured gate sequence. TE F-26's proposed
+`length × (attempts + 1)` operand was **not** taken and the reason is recorded in §3.2: `attempts`
+is also consumed by preemption, dispatch error and malformed verdicts (`:3421`, `:3428`, `:3459`),
+which never gate, so that quantity re-creates v1.2's false-negative on a run whose first reply was
+malformed. Reconciled in §3.3's `apply` and `verifyGate` rows and §5.5.
+TE F-27 — §5.2's two-attempt companion carried §2.4's *one-attempt* four-token literal; corrected to
+the six tokens the run actually produces (first pass + two attempts), and the step-6 slice is
+asserted on the same run.
+TE F-28 — a second mutation fixture: a re-gate dropped on **attempt 2**, the shape that every
+unanchored quantity (suffix, non-empty growth, whole multiple) admits and only the `apply` anchor
+refuses (§5.5, now a two-row table).
+PM F-02 — §3.2 step 3's claim that AT-02-6 and the one-snapshot count already covered the
+capture-before-budget ordering was withdrawn as false in both halves; §5.2 gains a positive
+**wave entered over budget** case (escalates, no `_agent` call, snapshot still written).
+PM F-03 — the snapshot ref is now wave-scoped, `refs/pdlc/a6-snapshot-{waveNum}` (§2.5, §3.5, §4.5),
+so a later wave's capture no longer destroys the pre-repair record of an earlier resolved wave;
+§6 OQ-2 records why.
+PM Q-02 / TE Q-01, Q-02 answered: §5.2 adds a containment assertion that the failing git verb reaches
+the escalation entry, and a no-post-wave-command run pinning that the gate sequence is read from
+configuration rather than hard-coded at length two (§6 OQ-14, OQ-15).
+OQ-7's BR-9 `.gitignore` boundary remains open upstream and is re-emitted as an erratum this round.
+
 
 **v1.3 (round 3).** Two High (one finding, raised by both reviewers), four Medium/Low addressed.
 PM F-01 / TE F-21: §3.2 step 6's ledger rule was a growth-since-dispatch **equality**, which denied
@@ -1017,7 +1047,12 @@ re-asserting the record schema would be a second, drifting copy of an oracle tha
   `_git` double's recorded argv. A raw call count on `_git` counts the wrong thing, because
   `restoreTreeSnapshot` drives the same transport with `read-tree`/`clean`/`reset` and a two-attempt
   run restores at least once (TE F-25). The capture-failure fixture likewise transcribes the rendered
-  record's `Model` cell as the literal `n/a` — not `undefined` — per §2.5's disposition object.
+  record's `Model` cell as the literal `n/a` — not `undefined` — per §2.5's disposition object. The escalation entry carries one further, deliberately weak assertion: its text
+  **contains** the failing git verb observed on the `_git` double (`write-tree`, `commit-tree`,
+  `update-ref`, …). Containment, not equality, because §4.5's `diagnosis` sentence is fixed and
+  compared literally in §5.5 while the escalation entry's `decision` slot is free text (§6 OQ-13);
+  without this one line, the only place an operator learns *which* git call failed is uncovered
+  (PM Q-02).
 
 - **A resolved wave that took two attempts, with the ledger counted from the first pass.** The
   positive companion to §5.5's dropped-re-gate mutations: a fixture whose first `verifyGate` returns
@@ -1274,6 +1309,8 @@ after, which is what makes it a test of the fix rather than a description of it.
 | OQ-11 | Does §3.3's `apply` refusal of an ignored-path-only repair (`post-action-verification-failed`) stand on its own merits, independent of how OQ-7 resolves? | no | Yes. The seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone; if the erratum widens BR-9's oracle, the widened capture arrives with a widened `producedPaths` and the row is unchanged in either direction (PM Q-03) |
 | OQ-12 | Is there any run shape in which A6 escalates but Phase I does **not** go on to halt, making `ADVISORY_SEAM_PHASES.A6`'s fixed `outcome: "halted"` a false record? (PM Q-02) | no | No, and the question is closed here rather than deferred. A6 is only ever entered on an already-red wave test gate (§3.2 step 1), and every non-`resolved` terminal — tier gate, wave budget, capture failure, malformed verdict, out-of-envelope refusal, budget exhaustion, post-action-verification failure — returns `{resolved: false}`, on which the call site rethrows the wave's own halt. The only escape from the halt is a genuine `resolved`, which by definition writes no escalation. The constant is therefore true by construction, not by convention |
 | OQ-13 | Should the capture-failure diagnostic carry the underlying git failure (which verb, what `stderr`) rather than only the fixed sentence §4.5 pins? (TE Q-01) | no | Split by slot. §4.5's `diagnosis` field stays the fixed, transcribable sentence — §5.5 compares it literally and a variable tail would make that oracle untestable. The underlying failure belongs in the escalation entry's free-text `decision` slot, which is caller-supplied (§2.5) and carries no equality oracle; PLAN should have the call site interpolate the failing verb there. A failed **record** write on this path is separately not `record-write-failed`: that reason names a resolution withdrawn because it could not be recorded, and here nothing was proposed or applied (§2.5) |
+| OQ-14 | Does anything assert that the *failing git verb* named in §6 OQ-13's free-text `decision` slot actually reaches `ESCALATIONS.md`, given §4.5's `diagnosis` is fixed and §5.2's fixtures assert the record entry? | no | Yes, as of this round: the capture-failure fixture (§5.2) adds one **containment** assertion on the escalation entry — the entry's text contains the failing verb (`write-tree`, `commit-tree`, `update-ref`, …) as observed on the `_git` double. Containment, not equality, so the fixed-sentence equality oracle on `diagnosis` is untouched and the free-text slot stays free (PM Q-02). |
+| OQ-15 | Should the capture-failure fixture transcribe the record entry's Disposition cell as well as its `Model` cell, so both six-member renderings are pinned on one run? | no | It already pins the Disposition cell as a bare `escalated` with no refusal reason (§5.2, PM F-01 of round 2), and this round adds the `Model` cell literal `n/a`. Both cells are asserted on the same run, which is what TE Q-02 asked for; no further change. |
 
 None of these blocks PLAN authoring; OQ-7 blocks only the two test cases that transcribe its
 answer, and both are allocated. **Two entries warrant a DECISIONS document for this feature:**
