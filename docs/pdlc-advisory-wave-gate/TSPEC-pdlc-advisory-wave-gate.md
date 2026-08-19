@@ -1230,6 +1230,21 @@ rule:
 | `conjunct (iii): a dropped re-gate does not yield resolution` | `verifyGate` records its call and returns `{passed: true}` without running the gate sequence, on A6's **first** attempt | The slice above that attempt's `apply` anchor is empty. A suffix check would pass here, because the ledger's final tokens are the wave's own pre-A6 pass (§3.2 step 6) |
 | `conjunct (iii): a re-gate dropped on attempt 2 does not yield resolution` | Attempt 1 runs a genuine red sequence (driver reverts, `consumesAttempt: true`, `orchestrate-dev.js:3554-3568`); attempt 2's `verifyGate` returns `{passed: true}` without running anything | The ledger *has* grown since dispatch, by one whole clean sequence, and ends in one. Every unanchored quantity — suffix, non-empty growth, whole-multiple-of-the-sequence — passes. Only growth measured from attempt 2's `apply` is empty and refuses (TE F-28) |
 
+**What the mutation fixtures replace, and what they must also assert (TE F-30).** Each fixture runs
+the **real** `buildA6SeamOps` with exactly one member replaced — `{...seamOps, verifyGate: fake}` —
+so the real `apply` still writes `ledgerAnchor.value` and the real `producedPaths` still gates step 5.
+That matters twice over. It is the only construction under which the mutation is *the dropped
+re-gate* rather than a differently-broken seam; and it is why each fixture carries, beside the
+threefold negative above, one **positive assertion that the anchor was recorded**: on the attempt-2
+fixture, `invocations` is asserted to read the four tokens attempt 1 genuinely produced
+(`["post-wave", "test", "post-wave", "test"]`) and `ledgerAnchor.value` to equal `4` — the ledger
+demonstrably grew, the anchor demonstrably moved past that growth, and resolution is refused anyway.
+Without that half the pair is satisfied by a build that records no anchor at all, since a missing
+anchor refuses everything; with it, an implementation that never writes the carrier fails on the
+recorded value before it is ever asked about the disposition. The first fixture's companion half is
+the same shape one attempt earlier: `ledgerAnchor.value === 2`, the pre-A6 pass's two tokens below
+it, and an empty slice above.
+
 - the rule they falsify is the real one, stated in §3.2 step 6: resolution requires that the tokens
   appended to the wave's `invocations` ledger **since the last `apply`** are exactly the wave's
   configured gate sequence — not merely the `resolved` outcome the driver returns, not a suffix over
