@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — operator handoff 2026-08-10 relaying the `regime-ledger` `wheel-paper-portfolio` run (this REQ is its record); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | FSPEC, TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v2.md`, `CROSS-REVIEW-test-engineer-REQ-v2.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v3.md`, `CROSS-REVIEW-test-engineer-REQ-v3.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 2 findings addressed | Claude | 0.3 | 2026-08-18 |
+| pdlc | draft — round 3 findings addressed | Claude | 0.4 | 2026-08-19 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -69,10 +69,12 @@ rather than trust it:
    `docs/completed/{feature}/`. `pdlc-consolidation-agent` already ships an enumeration over exactly
    those two locations — tracked and untracked but not ignored, `docs/discarded/` excluded by
    pathspec, with a fail-open outcome when the listing itself fails
-   (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that shipped **pass-side**
-   enumeration (`LS_FILES_ARGV`, `pdlc/workflows/consolidate-learnings.js`) inside the same JS
-   bundle rather than authoring a second one (C-3, G-6). DEC-CONS-05 ships *one predicate, two
-   enumerations*, so nothing here claims its readers agree as sets (C-3).
+   (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that shipped
+   **pass-side** definition — the predicate `consolidate-learnings.js` declares (`LS_FILES_ARGV`) —
+   by restating and pinning it, not importing it: the engine vendors only `orchestrate-dev.js` and
+   `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs:20`), so `consolidate-learnings.js` is
+   unreachable from an authoring dispatch at runtime (C-3, G-6). DEC-CONS-05 ships *one predicate,
+   two enumerations*, and nothing in it claims readers agree on sets (C-3).
 3. **The prompt budget is already contested.** Authoring dispatches already carry the phase's
    grounding manifest, the upstream documents and the pacing contract. Anything this feature
    adds competes for the same budget, which is why every acceptance criterion below is stated
@@ -158,16 +160,16 @@ passes is exactly where an unattended queue does its work.
 - **C-2 — Self-exclusion.** The feature currently being authored never contributes its own
   LEARNINGS document to its own dispatch, in any phase, including a re-run of a feature whose
   LEARNINGS already exists from an earlier completed attempt.
-- **C-3 — The corpus definition, reused from consolidation's pass side, read-only.** The corpus is the LEARNINGS
-  documents under `docs/{feature}/` and `docs/completed/{feature}/`, tracked or untracked,
-  **excluding** files git ignores and excluding `docs/discarded/` — the definition
-  `pdlc-consolidation-agent` already ships (§1.2 claim 2; DECISIONS-pdlc-consolidation-agent
-  § DEC-CONS-05). Reuse is of the pass-side enumeration in that JS bundle, not of a definition held
-  equal across its readers: DEC-CONS-05 pins the pass's and the `SessionStart` hook's enumerations
-  literally, having rejected both a shared implementation and an enumeration set-equality
-  assertion (red on correct code). No file in the corpus is written, moved, deleted or reformatted
-  by this feature.
-
+- **C-3 — Corpus definition, reused from consolidation's pass side, read-only.** The corpus is
+  every LEARNINGS document under `docs/{feature}/` and `docs/completed/{feature}/`, tracked or
+  untracked, **excluding** files git ignores and excluding `docs/discarded/` — the definition
+  `pdlc-consolidation-agent` already ships (§1.2 claim 2; DECISIONS-pdlc-consolidation-agent §
+  DEC-CONS-05). Reuse is definitional, not by import: this feature restates that predicate and a
+  test pins the restatement against `consolidate-learnings.js`'s own declaration — DEC-CONS-05's
+  own evidence form, needing no packaging change (O-7). No claim is made that the definition is
+  held equal across readers: DEC-CONS-05 ships one predicate with two enumerations and rejected a
+  set-equality oracle against the `SessionStart` hook, so none is owed here. The feature reads
+  the corpus and writes nothing (NG-1, NG-4).
 - **C-4 — Injected material is labelled advisory, and its status is stated to the author.** The
   material arrives delimited and identified by its source document, and the author is told that
   it is prior-feature context, not a requirement of the feature being authored and not an
@@ -311,7 +313,9 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   **not** selected, each with a **per-document** reason drawn from a closed set of catalogued ids
   (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
   bound), `RSN-SELF` (the authored feature's own, C-2), `RSN-UNREADABLE`, `RSN-UNPARSEABLE` (read,
-  not a LEARNINGS document), `RSN-TRUNCATED` (cut mid-document). States in which no document is
+  not a LEARNINGS document), `RSN-TRUNCATED` (the source document is itself truncated
+  mid-document, C-7 — not a document this feature bounded under AC-2.3). States in which no document
+  is
   known are **corpus-level outcomes**, recorded once per run, drawn from their own closed set:
   `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). Two set-equality tests, one
   per catalogue; with such an outcome recorded, AC-3.1's rows are present and empty.
@@ -319,6 +323,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   selection by hand against the same repository state, *then* every input the rule used — the
   ordering key value per document and the §4.1 thresholds in force — is in the report's run-level
   record, and the reproduction matches (C-5).
+  Those two members are a closed set: a completeness test asserts set equality over them, as
+  AC-3.2's catalogues do.
 - **AC-3.4** *Given* an author who notices a defect in an injected LEARNINGS document, *when* the run
   finishes, *then* **no** erratum round is opened against any upstream document of `{f}` on account
   of it, and the report's AC-3.1 rows name the source document — the trace an operator follows. This
@@ -329,8 +335,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 - **AC-4.1** *Given* a repository with no prior LEARNINGS document at all — the first feature
   ever run there — *when* the pipeline runs, *then* every authoring dispatch is composed exactly
-  as it is today, the run completes with unchanged behaviour, and the report records that the
-  corpus-level `RSN-EMPTY` outcome (AC-3.2) rather than omitting the field.
+  as it is today, the run completes with unchanged behaviour, and the report records the
+  corpus-level `RSN-EMPTY` outcome (AC-3.2).
 - **AC-4.2** *Given* a corpus file that cannot be read, that reads but does not parse as a LEARNINGS
   document, or that is truncated mid-document, *and* separately given a corpus listing that fails
   outright, *when* selection runs, *then* the affected document is skipped with its per-document
@@ -351,10 +357,10 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 **Group 5 — inertness when disabled, and semantics preserved** *(G-5; NG-3, NG-4, NG-7)*
 
-- **AC-5.1a** *Given* `learningsInjection.enabled` set to `false`, or the configuration section
+- **AC-5.1a** *Given* `learningsInjection.enabled` is `false`, or the configuration section is
   absent, *when* the pipeline runs, *then* every composed dispatch is byte-identical to AC-6.2's
-  recorded baseline — the same comparand on both branches — and the run report
-  carries no injection summary at all — the key is absent, not present-and-empty.
+  recorded baseline — that committed pre-feature fixture, not a second branch of this run —
+  and no injection summary is carried: the key is absent, not present-and-empty.
 - **AC-5.1b** *Given* a configuration section present but malformed or unparseable (an operator typo
   such as `learningsInjectoin`), *when* the pipeline runs, *then* behaviour is AC-5.1a's **and** the
   report carries a catalogued notice naming the malformed configuration, so a typo is
@@ -364,6 +370,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   — a positive membership claim, not an absence-only one — and no file under `docs/_constraints/` or
   `docs/_decisions/`, no LEARNINGS document and no skill prompt is written, and no new index, cache
   or state file is created anywhere (NG-1, NG-4).
+  On a disabled run (AC-5.1a) the same window shows no corpus path touched at all, carrying that run's
+  zero-reads claim positively (C-7).
 - **AC-5.3** *Given* a run with injection active, *when* the documents it produces are scored,
   *then* the completeness criteria, required headings, verdict grammar, round windows and
   approval anchors are exactly those in force without it — this feature adds no new requirement
@@ -371,14 +379,16 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 **Group 6 — verification strategy** *(Team Principle 2)*
 
-- **AC-6.1** *Given* the test suite, *when* it runs in CI, *then* selection, bounding, ordering
-  and every fail-open state of Group 4 are exercised against fixture corpora with **no live
-  model calls**, and the determinism of AC-2.5 is asserted by comparing two compositions rather
-  than by inspection.
-- **AC-6.2** *Given* the disabled configuration, *when* the suite runs, *then* it asserts the
-  byte-identity of AC-5.1a against a recorded baseline, and asserts AC-5.1b's catalogued notice
-  fires for a malformed section, so a regression that leaks injected text into a disabled run — or
-  that silences an operator typo — is a test failure rather than a discovery.
+- **AC-6.1** *Given* the test suite, *when* it runs in CI, *then* selection, bounding, ordering,
+  AC-1.2's dispatch-set equality and non-authoring byte-identity, and every fail-open state in
+  Group 4 are exercised against fixture corpora with **no live model calls**, and determinism
+  (AC-2.5) is asserted by comparing two compositions rather than by inspection.
+- **AC-6.2** *Given* the disabled configuration, *when* the suite runs, *then* it asserts
+  byte-identity against **the recorded baseline** — a fixture composition captured from the
+  pre-feature HEAD (no injection seam present), committed and never regenerated by the branch under
+  test — and asserts that AC-5.1b's catalogued notice fires on a malformed section, so a regression
+  leaking injected text into a disabled run, or silencing the operator-typo notice, is a test
+  failure, not a production discovery.
 
 ## 6. Risks
 
@@ -429,10 +439,11 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   material. NG-5 excludes them for now, on the argument that a reviewer grounded in a prior feature's
   lessons may file findings this feature's REQ never asked for. Revisit with O-3's evidence; a
   widening is a successor REQ with its own queue row.
-- **O-7** Bind this feature's corpus definition to `pdlc-consolidation-agent`'s **pass-side**
-  enumeration in the same JS bundle (C-3, §1.2 claim 2) — TSPEC's to specify, including how it is
-  pinned. No agreement test against the `SessionStart` hook is owed: DEC-CONS-05 rejected that
-  oracle.
+- **O-7** — Pin this feature's corpus definition to `pdlc-consolidation-agent`'s **pass-side**
+  predicate by literal restatement plus a pinning test (C-3, §1.2 claim 2); TSPEC specifies the
+  pin's form. Import is unavailable: the engine vendors only `orchestrate-dev.js` and
+  `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs:20`). No agreement test against the
+  `SessionStart` hook is owed: DEC-CONS-05 rejected that oracle.
 
 ### 7.1 Stopping rule for this REQ's review loop *(DC-09, pasted in deliberately)*
 
