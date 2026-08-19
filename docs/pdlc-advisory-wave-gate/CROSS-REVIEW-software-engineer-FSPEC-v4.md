@@ -56,3 +56,8 @@ No High and no Medium findings. Both v3 Mediums are resolved at the root and ver
 
 VERDICT: Approved
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:cacf86e86918b989b0699268723e21c2ccd88841be6505c9e031a3dbfff188f3
+APPROVAL-HASH-NORMALIZED: sha256:cacf86e86918b989b0699268723e21c2ccd88841be6505c9e031a3dbfff188f3
+REVIEWED-COMMIT: 7b8b314c4a02c7558678aeaca28479b04d92b538
+UPSTREAM-STATE: REQ sha256:32ba7d949d59041db6d67de80c06c10d270c3e545c11473debe5694cfe851f6c
