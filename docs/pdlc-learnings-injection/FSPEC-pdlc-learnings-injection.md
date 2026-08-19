@@ -243,6 +243,10 @@ feature: this rule consumes the classification, it does not restate the membersh
 - **Included:** creator, optimizer-round and erratum dispatches for REQ, FSPEC, TSPEC, PLAN,
   DECISIONS and PROPERTIES — whichever of them a given run actually makes.
 - **Excluded:** every review dispatch, implementation, DoD verification and remediation, harvest,
+- The two lists illustrate what the pipeline's classification yields today; they are read
+  off it, not maintained here. Dispatches that run an authoring skill directly without
+  carrying the authoring classification — the POSTMORTEM dispatch, DoD document-finding —
+  are excluded because the classification excludes them, which is A-2's default.
   ship, and every advisory seam.
 - The oracle is **set equality against the run that happened**, never a fixed count. A run with no
   DECISIONS phase, a run whose Phase R has no creator because the REQ arrived authored, and a run
@@ -250,46 +254,53 @@ feature: this rule consumes the classification, it does not restate the membersh
 - Excluded dispatches are not merely "block-free": their prompts are **byte-identical** to the same
   dispatch composed with injection disabled (BR-11).
 
-### BR-2 — Eligibility exclusions, applied in order *(AC-1.3, AC-2.6)*
+### BR-2 — Corpus membership, and the one eligibility exclusion *(AC-1.3, AC-2.6)*
 
-Applied to each candidate in this order; the first matching rule decides, and its id is the reason
-recorded:
+**Corpus membership is not a rule this feature applies.** It is the enumeration REQ C-3
+pins: two location globs — `docs/{feature}/LEARNINGS-*.md` and
+`docs/completed/{feature}/LEARNINGS-*.md` — read over tracked and
+untracked-but-not-ignored files. F-O-4 keeps that restatement pinned to the shipped
+consolidation-side predicate. Documents under `docs/discarded/{feature}/` are never
+candidates (AC-2.6) because they sit one directory deeper than either glob reaches: no
+ordered rule fires on them and nothing about them enters the record. Promoting that to a
+separate `docs/discarded/` exclusion rule would change the answer for paths the shipped
+predicate *does* match, so this specification does not add one.
 
-| Order | Rule | Excluded when | Reason id |
-|---|---|---|---|
-| 1 | **E-DISCARDED** | The document lies under `docs/discarded/` | *(not a corpus member; not recorded)* |
-| 2 | **E-SELF** | The document is `{f}`'s own LEARNINGS, at any path | `RSN-SELF` |
+One exclusion then applies to candidates, and its reason id is recorded:
 
-Notes that make the rule total:
+| Rule | Excluded when | Reason id |
+|---|---|---|
+| **E-SELF** | The document is `{f}`'s own LEARNINGS, at any path | `RSN-SELF` |
 
-- **Self-exclusion is by feature, not by path.** `{f}`'s own LEARNINGS is excluded whether it sits at
-  `docs/{f}/` or `docs/completed/{f}/`, and whether or not it was written by an earlier completed
-  attempt at the same feature. This holds in every phase of `{f}`'s run (AC-1.3).
-- **`docs/completed/{p}/` is eligible on exactly the same terms as `docs/{p}/`.** Archival is not a
-  demotion: a completed feature's lessons are the ones most likely to be settled (AC-2.6).
-- **Discarded documents are invisible, not merely unselected.** They are excluded before any
-  threshold is evaluated, so they cannot displace an eligible document from the count bound and do
-  not appear in the non-selection record — they were never candidates (AC-2.6).
+- **Self-exclusion is by feature, not by path.** `{f}`'s own LEARNINGS is excluded whether
+  it sits under `docs/{f}/` or `docs/completed/{f}/`, and whether it was written by an
+  earlier completed attempt at the same feature. It holds in every phase of `{f}`'s run
+  (AC-1.3).
+- **`docs/completed/{p}/` documents are eligible on exactly the same terms as `docs/{p}/`
+  ones** (AC-2.6). Archival location changes nothing but the path used in BR-4's tiebreak.
 
 ### BR-3 — Read-and-validate outcomes are total *(AC-4.2)*
 
-Each surviving candidate resolves to exactly one of four outcomes, and no other:
+Each surviving candidate resolves to exactly one of three outcomes, and no other:
 
 | Outcome | Condition | Effect |
 |---|---|---|
-| **ok** | Read, parses as a LEARNINGS document, complete | Joins the eligible set |
-| **unreadable** | The read fails for any reason | Excluded, `RSN-UNREADABLE` |
-| **unparseable** | Read, but does not present as a LEARNINGS document | Excluded, `RSN-UNPARSEABLE` |
-| **truncated** | Read, presents as a LEARNINGS document, but ends mid-document | Excluded, `RSN-TRUNCATED` |
+| **ok** | Read, and presents a LEARNINGS document | Joins the eligible set |
+| **unreadable** | The read itself fails, for any reason | Excluded, `RSN-UNREADABLE` |
+| **unparseable** | Read, but does not present a LEARNINGS document | Excluded, `RSN-UNPARSEABLE` |
 
-`RSN-TRUNCATED` names a defect **in the source document**. It is never used for material this feature
-itself cut under BR-6 — that condition is the row's *bounded* flag, and the two must remain
-distinguishable in the report (AC-3.2).
+A document whose bytes stop mid-document is **unparseable**: it carries no separate reason
+id. No predicate over a document's own bytes separates truncation from a document that
+legitimately lacks later sections (E-19 makes such documents eligible, not defective), so a
+`RSN-TRUNCATED` id would name a branch no fixture could construct and no test could
+falsify. What matters to the report is preserved and stays testable: a document excluded as
+unparseable contributes nothing, whereas a document cut by BR-6's byte bound contributes and
+carries the *bounded* flag — the two are distinguishable in the record (AC-3.2).
 
-"Presents as a LEARNINGS document" is a shape judgement over the document's own conventional
-structure, not a completeness score: this feature reads the format and never re-scores it (NG-3).
-The precise predicate is TSPEC's, bounded by two requirements this rule fixes: it consults only the
-document's bytes, and it is decidable without a model call.
+"Presents a LEARNINGS document" is a shape judgement over the document's own conventional
+structure, not a completeness score: this feature never re-scores documents (NG-3). The
+precise predicate is TSPEC's (F-O-1), bounded by two requirements this rule fixes: it
+consults only the document's own bytes, and it is decidable without a model call.
 
 ### BR-4 — Ordering key: harvest completion date, with a total tiebreak *(AC-2.2, AC-2.5; binds REQ O-2)*
 
