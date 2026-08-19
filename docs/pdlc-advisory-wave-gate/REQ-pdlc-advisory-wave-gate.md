@@ -15,7 +15,13 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-18 |
+| pdlc | draft | Claude | 1.5 | 2026-08-18 |
+
+*v1.5 changelog: round 2 addressed. Decided: a red re-gate restores the whole tree, not the repair's
+paths, since the re-run post-wave command writes outside them (SE F-10); M-WG-4 has two committing
+writers (SE F-11); the re-gate oracle is the ordered invocation sequence (TE F-01); the baseline's
+§1–§2 recipes no longer resolve, and BL-06 owns reissuing them (SE F-12). AC-1.5, AC-2.2, AC-3.1 and
+the baseline citations corrected (SE F-13, F-14; TE F-02, F-03).*
 
 *v1.4 changelog: cross-review round 1 addressed (software-engineer, test-engineer). The branch
 carried a stale parallel v1.0; this document — main's v1.3 — supersedes it, and the branch is rebased
@@ -259,9 +265,8 @@ requirements altitude.
   (C-3): a verdict whose classification is absent or outside the set is read as `unclassified` rather
   than rejected, and — because `unclassified` authorises nothing — the wave escalates without
   consuming an attempt, since an attempt is a repair→re-gate cycle and no repair was attempted
-  (AC-2.4). This is distinct from the malformed verdict of AC-2.1, which does consume one, and
-  AC-2.1 is the more specific rule where both could read: a verdict that is malformed **and**
-  unclassifiable is judged malformed first, so the attempt is consumed.
+  (AC-2.4). This is distinct from the malformed verdict of AC-2.1, which does consume one; where both
+  could read — a verdict malformed **and** unclassifiable — AC-2.1 is the specific rule and wins.
   *(US-02, US-05.)*
 - **AC-2.3** — Given an A6 diagnosis, Then it cites the gate command's own output as its evidence. A
   diagnosis citing no gate output is malformed under AC-2.1 — the gate output is the only evidence
@@ -331,11 +336,11 @@ requirements altitude.
 - **AC-4.1** — Given any A6 invocation, Then it may never cause a wave to be treated as gated other
   than by the configured gate command re-running and returning success on its own. There is no path
   by which an advisory verdict substitutes for a gate result.
-- **AC-4.2** — Given any A6 invocation, Then it never commits. Committing stays the pipeline's, and
-  M-WG-4 names two writers, not one: the pathspec-scoped per-task commit of each task's owned paths,
-  and — where a post-wave command ran and post-wave pathspecs are configured — the build-output commit
-  scoped to those pathspecs. Both are reached only by a green gate, which is why a re-gate's
-  regenerated artifacts already have a committing writer without A6 acquiring one (AC-4.6).
+- **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
+  not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
+  command ran and post-wave pathspecs are configured, the build-output commit scoped to those
+  pathspecs. Both are reached only by a green gate — which is why a re-gate's regenerated artifacts
+  already have a writer without A6 acquiring one (AC-4.6).
 - **AC-4.3** — Given any A6 invocation, Then it never edits a test file or test configuration
   (AC-3.2), never edits the PLAN or its ownership manifest, and never edits the implementation
   configuration (AC-3.3).
@@ -348,14 +353,14 @@ requirements altitude.
   pair. A post-wave command that fails on the re-gate is a red re-gate, handled as one, not the
   immediate halt it would be on the wave's first pass. A green re-gate lets the wave proceed to the
   commit step it would have reached anyway; a red re-gate consumes one attempt and restores the
-  **whole working tree** in AC-5.1's unit, never the repair's paths alone: the re-run post-wave command
-  writes generated outputs at paths A6 never proposed and no envelope rule ranges over, so a per-path
-  restore would leave a halted tree carrying artifacts built from a repair no longer there. The run then
-  ends on the wave's own gate halt, from that restored tree (AC-5.2, M-WG-3). The oracle is an
-  observation of the run: the **ordered sequence** of configured gate-command invocations for the wave
-  is set-equal to the shipped sequence repeated once per attempt — `[post-wave, test, post-wave, test]`
-  where both are configured, `[test, test]` where only a test command is — so a resolution on a single
-  invocation, or a re-gate that skipped a configured command, is a defect and AC-4.1 is falsifiable.
+  **whole working tree** (AC-5.1), never the repair's paths alone: the re-run post-wave command writes
+  generated outputs at paths A6 never proposed and no envelope rule ranges over, so a per-path restore
+  would leave a halted tree carrying artifacts built from a repair no longer there; the run then ends
+  on the wave's own gate halt, from that restored tree (AC-5.2). The oracle is an observation of the
+  run: the **ordered sequence** of configured gate-command invocations for the wave is set-equal to the
+  shipped sequence repeated once per attempt — `[post-wave, test, post-wave, test]`, or `[test, test]`
+  where only a test command is configured — so a resolution on one invocation, or a re-gate skipping a
+  configured command, is a defect and AC-4.1 is falsifiable.
 
 - **AC-4.5** — Given AC-4.1 through AC-4.4, Then each has a failing test proving the prohibition
   holds, and each such test asserts the corresponding positive outcome on the same path — the
@@ -512,9 +517,11 @@ Every row must be checkable at gate time and must hold at HEAD before FSPEC auth
 `ENVELOPE_DEFAULTS` set-equality; C-2's `advisory.waveBudgetPerRun` reds the `ADVISORY_DEFAULTS`
 key-set comparison and the config fixtures transcribing it, two of which are disabled-tier fixtures
 (M-WG-9). That last point is not a contradiction with AC-1.4: inertness is over run behaviour, not
-over the shipped default tables. Line references recorded in the baseline's §1–§2 were measured at
-`c8aa22a4` and have since drifted; the symbol-based recipes still resolve, so BL-06's gate is
-unaffected. Also confirmed at the current base: D-AWG-06's `haltPhase: null` observation still holds
+over the shipped default tables. The baseline's §1–§2 were measured at `c8aa22a4`, and the earlier claim
+that symbol-anchored recipes survived was wrong: M-WG-2, M-WG-3 and M-WG-4 carry bare line ranges
+that no longer resolve, so BL-01's reader cannot reproduce the facts AC-4.2, AC-4.4 and AC-4.6 rest
+on — the facts re-verified true, the recipes did not. BL-06 also requires those three reissued in
+grep- or symbol-anchored form before FSPEC authoring. Also confirmed at the current base: D-AWG-06's `haltPhase: null` observation still holds
 — a wave-gate halt records no Phase I failure row, and `haltPhase` derives from that row.
 
 ## 10. Deferrals
