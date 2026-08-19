@@ -175,7 +175,91 @@ that owns that file for the batch in which the property lands.
 
 ## Oracles
 
-*(section pending)*
+Nine oracles in this set are easy to write in a shape that cannot fail. Each is pinned here with the
+exact quantity to compare, and with the wrong shape named so that Phase I transcribes neither.
+
+**O-A. The ledger is compared as a sequence, and resolution is anchored (PROP-GATE-01, -02, -03, -04).**
+The ledger is *not empty* when A6 is entered: the wave's own red first pass has already appended its
+tokens (TSPEC §2.3). Three wrong units are ruled out by name — set equality (collapses the duplicates
+and admits a resolution declared on one invocation); a suffix check over the whole ledger (satisfied
+by the pre-A6 pass's own tokens, so a `verifyGate` returning `{passed:true}` without running anything
+passes); and `growth === gateSequence.length × (attempts + 1)` (false on a run whose first reply is
+malformed, since `attempts` is consumed on paths that never reach `verifyGate` —
+`orchestrate-dev.js:3428`, `:3459`). The oracle is
+`sameSequence(invocations.slice(ledgerAnchor.value), gateSequence)` with
+`ledgerAnchor.value >= ledgerAtDispatch`, `gateSequence` read from the same `implConfig` the sequence
+helper reads.
+
+**O-B. Absence-shaped conjuncts sit at the whole-run seam, never at an injectable unit
+(PROP-GATE-04).** "No gate invocation followed the repair" is unreachable on an ordinary run, so it is
+asserted by mutation fixtures that keep the **real** `buildA6SeamOps` and replace exactly one member
+(`{...seamOps, verifyGate: fake}`). Each fixture carries a positive half — `ledgerAnchor.value === 2`
+on the attempt-1 fixture, `=== 4` on the attempt-2 fixture — so that an implementation writing no
+anchor at all fails on the recorded value rather than passing an absence check. The two fixtures are
+differently broken: attempt 2's `apply` re-anchors past attempt 1's genuine red sequence, so both
+drops leave an empty slice.
+
+**O-C. Preservation oracles carry positive-presence conjuncts (PROP-REST-01, -02, -03).** The
+restoration oracle is a path-to-content-hash map over a **real** temporary repository
+(`mkdtempSync` + `execFileSync("git", …)`, the shape `advisoryDodSeams.test.js:371` already ships),
+not an injected `_git` double, which could only echo the fixture. The fixture must contain content
+the wave actually changed and content the post-wave command actually rewrote, or "map equals map" is
+vacuous. The paired negative control is explicit: a `git status`-level comparison passes a per-path
+restore whenever the re-run post-wave command rewrote an already-dirty path, which is the case the
+rule exists to fail.
+
+**O-D. Behavioural counts, never raw call counts (PROP-REST-06, -07, PROP-CTR-09, -11, -12, -13).**
+`restoreTreeSnapshot` drives the same `_git` transport as `captureTreeSnapshot`, so a raw call count
+counts the wrong thing. The counted quantity is a capture-unique argv verb: `commit-tree === 1` over
+the double's recorded argv, and the `update-ref` target set for the ref-naming property. Dispatch
+counts are counted on the `_agent` double, never inferred from the disposition.
+
+**E. Named positive dispositions, because reason literals are shared (PROP-CTR-10).** `budget-exhausted`
+is emitted by both the attempt-budget and the seam-budget arms (E-24, E-25), so a non-escalation is
+not readable from the reason string alone. The slow-gate companion must assert the positive
+disposition `resolved` on a green re-gate, not merely the absence of `budget-exhausted`.
+
+**F. Precedence oracles assert the reason, not the refusal (PROP-ENV-04, -05).** "It was refused" is
+satisfied by any exclusion matching. The claim under test is that X-a matches *first*, so the oracle
+is the reported reason literal — `revert-on-test-touch` for the wave's own test file,
+`out-of-envelope` for a guard path — and the catalogue order itself is pinned separately by
+PROP-ENV-06's ordered-sequence equality.
+
+**G. Fixed strings are transcribed verbatim, from the normative source (PROP-REST-08, PROP-GATE-08).**
+Two literals are load-bearing and are quoted here so that no test author paraphrases them:
+
+- the capture-failure `diagnosis` field, TSPEC §4.5's fixed sentence:
+  `snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied`;
+- the E-6 promotion commit message, TSPEC §3.6:
+  `chore({feature}): wave {N} advisory promotion ({taskId})`, with the emit label
+  `Wave N advisory promotion (task T)`.
+
+The record entry's Disposition cell reads a bare `escalated` and its `Model` cell the literal `n/a`.
+The escalation entry's free-text `decision` slot is asserted by **containment** of the failing git
+verb (`write-tree`, `commit-tree`, `update-ref`), never by equality — §6 OQ-13/OQ-14's split.
+
+**H. The classification oracle is membership, and its known softness is stated (PROP-CTR-02).**
+`parseA6RootCause` is testable against `ADVISORY_ROOT_CAUSES` by exact membership. AC-2.2's
+first-match *precedence* between classes is not script-enforceable without re-doing the diagnosis the
+seam was dispatched to do, so it is prompt-only. The cost is named rather than hidden: AC-6.4's
+`plan-ordering-defect` recurrence count is a function of agent judgement to that extent. The blast
+radius is bounded by the class-to-envelope binding, which *is* enforced — a failure misclassified
+`wave-internal-defect` reaches E-5 only, confined to the wave's own owned paths.
+
+**I. Cardinality assertions are transcription surfaces (PROP-SEAM-02).** The enumeration bar is
+*transcription sites*, not member literals: a grep for `"A5"` or `SEAMS` structurally cannot find
+`expect(rows).toHaveLength(5)`. The derivation rule — grep for `advisory.rows` and `toHaveLength` as
+well as for seam members — is what the property carries, not the snapshot of four sites, so a site
+added later is still in scope.
+
+**Falsifiability check applied to every property above.** Each was checked against the five failure
+modes the te-author checklist names: preservation oracles have positive-presence conjuncts (O-C);
+absence-shaped conjuncts sit at the whole-run seam (O-B); identical-envelope behaviours are counted
+behaviourally (O-D); shared reason literals get named positive dispositions (E); and every
+prohibition property carries its AC-4.5 positive on the same run. Three properties are deliberately
+*weak* and say so: PROP-REC-06's negative half (resolution counts not derivable), PROP-NFR-03's
+prompt-only qualification, and PROP-REST-03's upstream-pending boundary.
+
 
 ## Fixtures
 
