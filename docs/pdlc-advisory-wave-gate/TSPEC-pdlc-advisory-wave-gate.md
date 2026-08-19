@@ -1138,8 +1138,8 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
 
 | File | Status | Carries |
 |---|---|---|
-| `.claude/pdlc.config.example.json` | edited | The `advisory` section gains `waveBudgetPerRun`, the operator-facing shape of §4.4's key |
-| `pdlc/engine/__tests__/ci-arrangement.test.js` | edited | A **new** expectation over that example key (§4.4): the `advisory` section parses, carries `waveBudgetPerRun`, non-negative integer. Nothing in the file asserts on `advisory` today, so this row is authored, not adjusted |
+| `.claude/pdlc.config.example.json` | edited | Gains the **whole** `advisory` section — `{"enabled": false, "waveBudgetPerRun": 1}` — the operator-facing shape of §4.4's key. `enabled` travels with it because JSON admits no comments and the pairing is the only thing that teaches E-33's `waveBudgetPerRun: 0` with `enabled: true` affordance |
+| `pdlc/engine/__tests__/advisory-config-example.test.js` | **new file** | The **new** expectation over that example section (§4.4): it parses, carries `enabled` and `waveBudgetPerRun`, and the latter is a non-negative integer. Authored, not adjusted — nothing in the engine suite asserts on `advisory` at HEAD. Deliberately **not** hung on `ci-arrangement.test.js`, whose stated oracle is FSPEC §5.1's CI arrangement alone: a config-schema assertion parked there would let an unrelated example edit redden the delivery-blocking `Engine tests (ubuntu-latest)` check under a scope that names no such concern (PLAN A6-04; earlier drafts of this map named `ci-arrangement.test.js`, corrected by erratum) |
 
 
 ### 5.2 What is asserted mechanically
