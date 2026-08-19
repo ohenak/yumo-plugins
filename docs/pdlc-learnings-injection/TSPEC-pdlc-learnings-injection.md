@@ -317,63 +317,6 @@ branch that never enters the feature.
 No function's **positional** signature changes; every addition is a defaulted named parameter,
 which is the module's established extension idiom (`_provenance`, `_runCommand`, `_sessionAgent`).
 
-### I.6 The rendered block, verbatim *(discharges F-O-2)*
-
-`renderLearningsBlock({selected})` returns `""` when `selected` is empty (A.2's suffix property) and
-otherwise exactly this string, no leading or trailing blank line beyond the ones shown:
-
-```text
---- BEGIN PRIOR-FEATURE LEARNINGS ---
-The material below is context from prior, unrelated features. It is not a requirement of
-{feature} and not an upstream document to be traced: no traceability row, citation or
-coverage obligation attaches to any of it. You may disregard it entirely without leaving a
-gap in what you were asked to produce.
-
-[1] docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md
-## 3. Non-Convergences
-…body…
-
-[2] docs/pdlc-engine-distribution/LEARNINGS-pdlc-engine-distribution.md (abridged)
-## 1. Cross-Feature Patterns
-…body…
---- END PRIOR-FEATURE LEARNINGS ---
-```
-
-**The delimiter pair is a reused idiom, not a new one.** `composeAgentPrompt` already wraps injected
-role text in `--- BEGIN ROLE DEFINITION: {name} ---` / `--- END ROLE DEFINITION: {name} ---`
-(`pdlc/engine/lib/skills.mjs`, the `BEGIN ROLE DEFINITION` template literal); the block adopts that
-shape so an author reading a prompt meets one delimiter convention rather than two. The literal
-`--- BEGIN PRIOR-FEATURE LEARNINGS ---` is the token AT-02's dispatch-universe partition greps for,
-so it is exported as `LEARNINGS_BLOCK_OPEN` and asserted by the test rather than transcribed twice.
-
-**The preamble discharges BR-7's three obligations in the order BR-7 states them**, and AT-05
-asserts byte equality against the exported constant, not a keyword match:
-
-| BR-7 obligation | Sentence carrying it |
-|---|---|
-| context from prior features, not from `{f}` | "context from prior, unrelated features. It is not a requirement of {feature}" |
-| neither a requirement nor a traceable upstream — no traceability obligation | "not an upstream document to be traced: no traceability row, citation or coverage obligation attaches" |
-| may be disregarded entirely, leaving no gap | "You may disregard it entirely without leaving a gap in what you were asked to produce." |
-
-`{feature}` is substituted from the dispatch context, on §6.3's fully-substituted rule (the same rule
-`branchPinClause` obeys — see its JSDoc in `orchestrate-dev.js`: "Fully substituted, per §6.3: no
-un-substituted placeholder reaches an operator-facing (or agent-facing) string"): no un-substituted placeholder may reach an
-agent-facing string, so a missing feature name is a construction error, not a rendered `{feature}`.
-
-**Per-document labelling** is the single line `[{position}] {sourcePath}` — 1-based position, the
-repository-relative path exactly as `git ls-files` reported it — followed by ` (abridged)` when and
-only when that document's material was cut by `maxBytesPerDocument` (BR-6/E-16). That satisfies
-BR-7's two labelling requirements — a claim's origin is findable, a bounded document is marked — and
-gives AT-05 and the report record the same two facts in the same two vocabularies (`position`,
-`bounded` in D.2; `[n]` and `(abridged)` here), which is what lets AT-22's operator reconstruct the
-block from the report alone.
-
-**Byte accounting follows D.5 exactly.** The preamble and the two delimiter lines belong to no
-document and are counted against no bound; each document's account carries its label line, its
-section headings and its section bodies. The consequence worth stating for the implementer: the
-prompt grows by roughly 420 bytes more than `totalBytesInjected` reports, and that fixed overhead is
-deliberately outside `maxTotalBytes` so that the bound means "material", not "material plus framing".
-
 ## Data Model
 
 ### D.1 The three catalogues, as frozen literals *(discharges F-O-3's registration half)*
