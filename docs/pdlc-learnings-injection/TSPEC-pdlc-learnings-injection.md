@@ -765,7 +765,11 @@ the check passes precisely when it should fail. The anchor is therefore a **hand
 digest literal in the guard test itself** (DC-14): one constant per `{caseId}`, copied by a human
 from the first capture, asserted against both the recomputed file digests and `MANIFEST.json`'s
 entries. Re-running the capture reds the guard test until someone edits that literal in a
-reviewable diff, which is the state mutation the review can actually see. The merge-base-sha
+reviewable diff, which is the state mutation the review can actually see. The assertion over those
+constants is **set equality on the `{caseId}` keys**, not containment (TE Q-03): containment lets a
+silently deleted baseline case pass, and a deleted case is exactly the failure that would otherwise
+make a byte-identity failure disappear rather than surface. Adding a legitimate L3 matrix case
+therefore also reds the guard until its constant is added — the same reviewable diff. The merge-base-sha
 ancestor check is kept as a second, weaker signal, but it is no longer load-bearing: TE F-05 is
 right that a later `main` commit is still an ancestor of HEAD, so ancestry alone does not
 distinguish pre-feature from mid-feature.
