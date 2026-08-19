@@ -709,48 +709,68 @@ text into a disabled run is a test failure rather than a production discovery.
   feature `{p}` and injection enabled at defaults, *when* any dispatch BR-1 names is composed —
   creator, optimizer round or erratum — *then* it contains material from at least one `{p}` document,
   delimited and identified by source path.
-- **AT-02** — *Given* a scripted run, *when* every dispatch it made is inspected, *then* the set
-  carrying a block **equals** the set BR-1's classification names over the dispatches that actually
-  happened — asserted as set equality, with fixtures covering a run with no DECISIONS phase, a run
-  whose Phase R has no creator, and a run with five optimizer rounds.
-- **AT-03** — *Given* the same fixtures, *when* each non-authoring dispatch prompt is compared with
-  the recorded baseline, *then* it is byte-identical.
-- **AT-04** — *Given* a fixture where `docs/{f}/LEARNINGS-{f}.md` exists, *when* any authoring
-  dispatch for `{f}` is composed in any phase, *then* it contains no material from that document, and
-  the report carries `RSN-SELF` for it.
-- **AT-05** — *Given* any dispatch carrying a block, *when* the block is inspected, *then* it states
-  that the material is prior-feature context, that it is neither a requirement of `{f}` nor an
-  upstream document to be traced, and that the author may disregard it.
+- **AT-02** — *Given* a scripted run, *when* **every agent invocation the run makes** is
+  inspected — the whole dispatch universe, not only those already classified authoring —
+  *then* the subset carrying a block **equals** the subset BR-1's classification names,
+  asserted as set equality over that universe, with fixtures covering a run with no
+  DECISIONS phase, a run whose Phase R has no creator, and a run with five optimizer rounds.
+- **AT-03** — *Given* the same fixtures and the same universe, *when* each non-authoring
+  dispatch's prompt is compared with the recorded pre-feature baseline, *then* it is
+  byte-identical.
+- **AT-04** — *Given* a fixture where `docs/{f}/LEARNINGS-{f}.md` exists, *when* an
+  authoring dispatch for `{f}` is composed in any phase, *then* it contains no material from
+  that document, the report carries a per-document `RSN-SELF` row for it, and **no**
+  corpus-level `RSN-EMPTY` is recorded — the document was known (E-06).
+- **AT-05** — *Given* a dispatch carrying a block, *when* the preamble is inspected, *then*
+  it is byte-equal to the preamble text transcribed literally from the wording TSPEC fixes
+  (F-O-2) — not matched by keyword search — and that text states the three things BR-7
+  requires.
 - **AT-06** — *Given* the same dispatch, *when* its prompt is diffed against the baseline, *then* the
   grounding manifest, upstream documents and pacing contract are present, unchanged, and in their
   existing relative order; the block is purely additive.
 
 ### Group 2 — bounded, deterministic selection
 
-- **AT-07** — *Given* fixture corpora of eligible size 1, exactly `maxDocuments`, and 50, *when*
-  dispatches are composed, *then* the contributing-document counts are 1, `maxDocuments` and
-  `maxDocuments` respectively, and only the third produces `RSN-COUNT` rows.
+- **AT-07** — *Given* fixture corpora of 1, `maxDocuments` and 50 eligible documents, sized
+  so that the total bound does not bind, *when* dispatches are composed, *then* the
+  contributing-document counts are 1, `maxDocuments` and `maxDocuments`, and only the third
+  produces `RSN-COUNT` rows. *And given* a corpus whose documents are large enough that
+  `maxTotalBytes` binds first under the same thresholds, *then* the contributing count is
+  strictly below `maxDocuments` with `RSN-BYTES` rows — the count bound is asserted under
+  both regimes rather than only where a fixture is small enough to make it bind (BR-5).
 - **AT-08** — *Given* an eligible set larger than `maxDocuments`, *when* selection runs, *then* the
   selected documents are the highest-ordered under BR-4, and every unselected one carries
   `RSN-COUNT`.
 - **AT-09** — *Given* two documents sharing a `Date Completed` value, *when* selection runs twice,
   *then* their relative order is byte order over path in both runs.
-- **AT-10** — *Given* a fixture containing a document with no `Date Completed` row, one whose value
-  carries trailing free text, and one whose value is unparseable as a date, *when* selection runs,
-  *then* all three remain eligible, the trailing-text document's date is read correctly, and the other
-  two rank by the path tiebreak. *And given* every corpus file's mtime is permuted and the run
-  repeated, *then* the selection and its order are identical.
-- **AT-11** — *Given* a document exceeding `maxBytesPerDocument`, and separately a document missing
-  some of BR-6's priority sections, *when* each is selected, *then* the material taken does not exceed
-  the bound, the first document's row carries the bounded flag, and the second contributes its present
-  sections in priority order without being marked unparseable.
-- **AT-12** — *Given* a document whose first priority section alone exceeds `maxBytesPerDocument`,
-  *when* it is selected, *then* material is taken up to the bound and the row is flagged bounded.
-- **AT-13** — *Given* selected documents whose combined material would exceed `maxTotalBytes`, and
-  separately a single document whose bounded material alone exceeds it, *when* composition runs,
+- **AT-10** — *Given* a fixture where one document has no `Date Completed` row, one value
+  carries trailing free text, and one value is an unparseable date, *when* selection runs,
+  *then* all three remain eligible, the trailing-text document's date is read correctly, and
+  the other two rank by the path tiebreak. *And given* the corpus's git commit order and its
+  ctime order are both the reverse of its `Date Completed` order, each file's mtime is
+  permuted, and the wall-clock time differs between two compositions, *then* the selection
+  and its order are identical in both.
+- **AT-11** — *Given* a document exceeding `maxBytesPerDocument`, and separately a document
+  missing some of BR-6's priority sections, *when* each is selected, *then* the contributed
+  bytes do not exceed the bound — the expected count computed from the fixture under BR-6's
+  accounting basis — the first document's row carries the bounded flag, and the second
+  contributes its present sections in priority order without being marked unparseable. *And
+  given* an unbounded document carrying all six conventional sections, *then* the set of
+  section names appearing in its block material **equals** BR-6's five injected names in
+  priority order, and the Approval Record's distinctive fixture text is absent **while** all
+  five injected sections' distinctive texts are present.
+- **AT-12** — *Given* a document whose first priority section alone exceeds
+  `maxBytesPerDocument`, *when* it is selected, *then* the material taken is cut at the
+  bound, its contributed bytes equal the bound as computed from the fixture, and its row is
+  flagged bounded.
+- **AT-13** — *Given* a fixture of eight eligible documents with `maxDocuments` 5, sized so
+  that `maxTotalBytes` drops the lowest-ordered of the five taken, *when* composition runs,
   *then* whole documents are dropped from the low end with `RSN-BYTES`, no document is cut
-  mid-document for the total, and in the second case the selection is empty with BR-8 rows present and
-  empty.
+  mid-document to make the total fit, the selected set is a prefix of the ordered eligible
+  set, no count-cut document is back-filled into the freed slot, and set equality is
+  asserted over the reason id recorded for each of the eight. *And given* a single document
+  whose bounded material alone exceeds `maxTotalBytes`, *then* the selection is empty and
+  BR-8's rows are present and empty.
 - **AT-14** — *Given* two runs over an identical fixture repository state, *when* the composed
   dispatches for the same document type are compared, *then* the blocks are byte-identical, including
   order.
@@ -772,23 +792,22 @@ text into a disabled run is a test failure rather than a production discovery.
   rather than a missing field, and the second records per dispatch what that dispatch actually used.
 - **AT-19** — *Given* a report, *when* it is read, *then* every known-but-unselected document carries
   exactly one per-document reason id, and a **completeness test asserts set equality** over
-  `RSN-COUNT`, `RSN-BYTES`, `RSN-SELF`, `RSN-UNREADABLE`, `RSN-UNPARSEABLE`, `RSN-TRUNCATED`.
+  `RSN-COUNT`, `RSN-BYTES`, `RSN-SELF`, `RSN-UNREADABLE`, `RSN-UNPARSEABLE`, `RSN-NO-MATERIAL`.
 - **AT-20** — *Given* a report, *when* corpus-level outcomes are read, *then* a second **completeness
   test asserts set equality** over `RSN-UNLISTABLE` and `RSN-EMPTY`, and neither catalogue's ids
   appear in the other's position.
 - **AT-21** — *Given* a run in which a corpus-level outcome was recorded, *when* the report is read,
   *then* BR-8's per-dispatch rows are present and empty for every authoring dispatch.
-- **AT-22** — *Given* an operator holding only the report, *when* the selection is reproduced by hand
-  against the same fixture state, *then* every rule input is present — the ordering key value per
-  document, including explicit absent/unparseable markers, and all three thresholds in force whether
-  configured or defaulted — a completeness test asserts set equality over those two members, and the
-  reproduction matches the recorded selection.
-- **AT-23** — *Given* a fixture in which an injected document contains a defect, *when* the run
-  finishes, *then* no erratum round was opened against any upstream document of `{f}` on that account,
-  no new author-emitted channel exists, and the report's rows name the source document.
-
-### Group 4 — fail-open under every corpus state
-
+- **AT-22** — *Given* an operator holding only the report and the fixture corpus, *when* the
+  report's run-level rule-input record is read — the ordering key value per corpus document,
+  with an explicit marker where absent or unparseable, and the three thresholds in force —
+  *then* it equals an expected selection **transcribed literally by hand and committed in
+  the fixture** (paths, in order), and a completeness test asserts set equality over the
+  record's two members. The test neither calls the production selector nor reimplements it.
+- **AT-23** — *Given* a run with injection active, *when* the author-emitted channels the
+  run requires are enumerated, *then* that set **equals** the recorded pre-feature baseline
+  set: no erratum round is opened on account of an injected document, no new channel appears,
+  and the only trace of an injected document is BR-8's rows naming source paths.
 - **AT-24** — *Given* a repository with no prior LEARNINGS at all, *when* the pipeline runs, *then*
   every authoring dispatch is byte-identical to the baseline composition, the run completes with
   unchanged behaviour, and the report records corpus-level `RSN-EMPTY`.
@@ -801,13 +820,16 @@ text into a disabled run is a test failure rather than a production discovery.
   corpus-level id — documents were known.
 - **AT-27** — *Given* a corpus file that reads but does not parse as a LEARNINGS document, *when*
   selection runs, *then* it carries `RSN-UNPARSEABLE` and the rest of the corpus is used normally.
-- **AT-28** — *Given* a corpus file truncated mid-document, *when* selection runs, *then* it carries
-  `RSN-TRUNCATED`, the rest is used normally, and the report distinguishes it from a document this
-  feature bounded under BR-6.
-- **AT-29** — *Given* any corpus state in the fixture matrix, *when* the convergence machinery is
-  inspected, *then* verdict parsing, structural completeness scoring, round-window arithmetic,
-  approval anchors and erratum routing consume nothing selection produced, and non-authoring dispatch
-  prompts stay byte-identical to the baseline.
+- **AT-28** — *Given* a corpus file whose bytes stop mid-document, and separately a
+  LEARNINGS document carrying none of BR-6's priority sections, *when* selection runs,
+  *then* the first carries `RSN-UNPARSEABLE`, the second carries `RSN-NO-MATERIAL` and
+  consumes no `maxDocuments` slot, the rest of the corpus is used normally, and neither is
+  recorded as a document bounded under BR-6.
+- **AT-29** — *Given* two scripted runs over the same fixture matrix differing **only** in
+  the injected block — one enabled, one disabled — *when* both complete, *then* parsed
+  verdicts, structural completeness scores, round-window counters, approval anchors and
+  erratum routes are equal member for member, asserted as set equality over those five, and
+  every non-authoring dispatch prompt is byte-identical to the recorded baseline.
 - **AT-30** — *Given* thresholds configured to admit nothing — `maxDocuments: 0`, and separately
   `maxTotalBytes: 0` — *when* the pipeline runs, *then* it behaves as an enabled run with an empty
   selection: BR-8's rows present and empty, **not** the absent key of a disabled run, and no refusal
@@ -821,23 +843,26 @@ text into a disabled run is a test failure rather than a production discovery.
 - **AT-32** — *Given* a configuration section present but malformed, such as `learningsInjectoin`,
   *when* the pipeline runs, *then* composition matches AT-31's and the report carries a catalogued
   notice naming the malformed configuration, so a typo is distinguishable from a deliberate disable.
-- **AT-33** — *Given* an enabled run, *when* the filesystem is observed for the whole run, *then* the
-  corpus paths touched are exactly the reads of the documents the report names — asserted as set
-  equality, a positive membership claim — and nothing under `docs/_constraints/` or `docs/_decisions/`
-  is written, no LEARNINGS document or skill prompt is written, and no new index, cache or state file
-  is created anywhere.
-- **AT-34** — *Given* a disabled run, *when* the same window is observed, *then* no corpus path is
-  touched at all.
+- **AT-33** — *Given* an enabled run, *when* the file-open calls under `docs/` are observed
+  over one window covering the whole run, *then* that observed set **equals** BR-15's
+  expected set — the corpus-root enumeration plus one attempt per report-named document
+  other than the `RSN-SELF` ones — the observed set is non-empty, nothing under
+  `docs/_constraints/` or `docs/_decisions/` is written, no LEARNINGS document or skill
+  prompt is written, and no index, cache or state file is created anywhere.
+- **AT-34** — *Given* a disabled run observed on the **same instrument and in the same test
+  as AT-33**, *when* the run completes, *then* no corpus path is touched at all, the composed
+  dispatches are byte-identical to the recorded pre-feature baseline, and the run reaches
+  completion — AT-33's non-empty observed set supplying the control that the instrument
+  fires when there is something to see.
 - **AT-35** — *Given* an enabled run, *when* the documents it produces are scored, *then* the
   completeness criteria, required headings, verdict grammar, round windows and approval anchors are
   exactly those in force without the feature.
 
 ### Branch coverage check
 
-Every row of §Edge Cases and Error Scenarios (E-01 … E-32) names an AT, and every AT above appears in
-§Linked Requirements' reverse trace. Every branch of the D-1 … D-11 decision table is exercised: D-1
-by AT-30/31/32, D-2 by AT-02/03, D-3 by AT-25, D-4 by AT-24, D-5 by AT-04/15/16, D-6 by
-AT-26/27/28, D-7 by AT-09/10, D-8 by AT-07/08, D-9 by AT-11/12, D-10 by AT-13, D-11 by AT-18/21/30.
+Every row of §Edge Cases and Error Scenarios (E-01 … E-33) names an AT, and every AT above appears in
+§Linked Requirements' reverse trace. Every branch of the D-1 … D-12 decision table is exercised: D-1
+by AT-30/31/32, D-2 by AT-02/03, D-3 by AT-25, D-4 by AT-24, D-5 by AT-04/15/16, D-6 by AT-26/27, D-7 by AT-09/10, D-8 by AT-07/08, D-9 by AT-11/12, D-10 by AT-13, D-11 by AT-18/21/30, D-12 by AT-28.
 
 ## Open Questions
 
