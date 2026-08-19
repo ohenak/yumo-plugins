@@ -141,10 +141,10 @@ including its own failure; no step raises to its caller (BR-12).
 2. **Absent section, or `enabled` false** → the flow stops here, the dispatch is composed exactly as
    it is composed today, and **no injection record of any kind is produced** (BR-14, AC-5.1a).
 3. **Section present but malformed** — `learningsInjection` present and not an object →
-   compose as in (2), **and** record a corpus-level malformed-configuration notice (BR-14,
+   compose as in (2), **and** record `NTC-MALFORMED` (BR-14,
    AC-5.1b). A misspelt section name is a stray top-level key, reading as absent (2). A
    **wrong-typed declared key** is not malformed: it takes its default, the flow continues at
-   (4), and a catalogued notice names the key.
+   (4), and `NTC-KEYTYPE` names the key.
 4. **Enabled** → continue, with thresholds resolved: each of REQ §4.1's three bounds takes its
    configured value if present and its default if not.
 5. If the dispatch is **not** one C-1 names as authoring, the flow stops here with no record
@@ -267,7 +267,9 @@ enters the record. A separate `docs/discarded/` exclusion rule would change the 
 paths the shipped predicate *does* match, so none is added here. One class remains: a document
 *directly*
 at `docs/discarded/LEARNINGS-x.md` does match the first glob — the case REQ C-3 and AC-2.6
-legislate against. None exists at HEAD; `ERRATUM: REQ` rides.
+legislate against. Its outcome here is **corpus member on ordinary terms**: the shipped
+enumeration matches it and no rule excludes it (E-35, AT-15). None exists at HEAD;
+`ERRATUM: REQ` rides.
 
 One exclusion then applies to candidates, and its reason id is recorded:
 
@@ -294,7 +296,9 @@ Truncation is **not a separate outcome**. Bytes stopping mid-document resolve un
 shape judgement as any candidate: eligible where what is present still reads as a LEARNINGS
 document (E-19), `RSN-UNPARSEABLE` where not (E-04). No predicate over a document's own bytes
 separates truncation from one legitimately lacking later sections, so `RSN-TRUNCATED` would
-name a branch no fixture could construct; the v0.2 edge retires with it, E-05 not reused. The
+name a branch no fixture could construct; the v0.2 edge retires with it, E-05 not reused.
+REQ AC-3.2's catalogue lists `RSN-TRUNCATED` and omits `RSN-NO-MATERIAL`, so BR-9's closed set
+differs from it by one deletion and one addition — `ERRATUM: REQ` rides. The
 report still keeps apart what matters: an unparseable document contributes nothing, while a
 document cut by BR-6's byte
 bound contributes and carries the *bounded* flag (AC-3.2).
@@ -587,8 +591,8 @@ Five states, five behaviours:
 |---|---|---|
 | Section **absent**, or the config file absent | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
 | `enabled: false` | Byte-identical to the recorded pre-feature baseline | No injection key at all |
-| Section present but **malformed** — `learningsInjection` present and not an object | Byte-identical to the recorded pre-feature baseline | A catalogued notice naming the malformed configuration |
-| Section present, a declared key **wrong-typed** | The enabled composition, that key at its default | A catalogued notice naming the key |
+| Section present but **malformed** — `learningsInjection` present and not an object | Byte-identical to the recorded pre-feature baseline | `NTC-MALFORMED`, naming the malformed configuration |
+| Section present, a declared key **wrong-typed** | The enabled composition, that key at its default | `NTC-KEYTYPE`, naming the key |
 | **Enabled**, with thresholds admitting nothing (zero documents or zero bytes) | The enabled composition, with an empty selection | BR-8's rows, **present and empty** |
 
 Three points carry load:
@@ -603,7 +607,7 @@ Three points carry load:
   adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b's
   example makes that typo the detectable case and no longer holds — `ERRATUM: REQ` rides.
 - **A wrong-typed declared key is not malformed.** It falls back to its default, the run stays
-  **enabled**, and a catalogued notice names the key — the per-key fallback plus invalid-key
+  **enabled**, and `NTC-KEYTYPE` names the key — the per-key fallback plus invalid-key
   notice the siblings ship (`parseAdvisoryConfig`, `orchestrate-dev.js`).
   Turning the feature off over one mistyped threshold would diverge from that for no stated
   reason (DC-08).
@@ -658,6 +662,7 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-04 | One document reads but is not a LEARNINGS document | `RSN-UNPARSEABLE`; the rest selected normally | AT-27 |
 | E-06 | Corpus contains only `{f}`'s own LEARNINGS | Empty selection, `RSN-SELF` row, empty BR-8 rows — not `RSN-EMPTY`, since a document *was* known | AT-04 |
 | E-07 | Corpus contains only documents under `docs/discarded/` | Corpus-level `RSN-EMPTY`; discarded documents appear in no record | AT-15 |
+| E-35 | A document sits directly at `docs/discarded/LEARNINGS-x.md` | Corpus member; eligible and selectable on ordinary terms — no exclusion rule fires | AT-15 |
 | E-08 | Every corpus document is unreadable | Empty block; every document carries `RSN-UNREADABLE`; no corpus-level id, since documents were known | AT-26 |
 
 ### Selection and bounding edges
@@ -684,11 +689,11 @@ behavioural branch, its outcome, and the test that asserts it.
 |---|---|---|---|
 | E-21 | Configuration section absent | Baseline-identical composition; no injection key | AT-31 |
 | E-22 | `enabled: false` | Baseline-identical composition; no injection key | AT-31 |
-| E-23 | Section present and not an object | Baseline-identical composition, plus a catalogued malformed-configuration notice; a misspelt section name reads as absent | AT-32 |
+| E-23 | Section present and not an object | Baseline-identical composition, plus `NTC-MALFORMED`; a misspelt section name reads as absent | AT-32 |
 | E-24 | `maxDocuments: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-25 | `maxTotalBytes: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-26 | One threshold configured, two defaulted | Configured value used for one, defaults for the others; all three appear in BR-10's record | AT-22 |
-| E-34 | A declared key is wrong-typed | Enabled run, that key at its default, plus a catalogued notice naming it — not baseline-identical | AT-32 |
+| E-34 | A declared key is wrong-typed | Enabled run, that key at its default, plus `NTC-KEYTYPE` naming it — not baseline-identical | AT-32 |
 
 ### Run-shape edges
 
@@ -795,7 +800,9 @@ text into a disabled run is a test failure rather than a production discovery.
 
 - **AT-15** — *Given* a fixture whose only LEARNINGS documents lie under `docs/discarded/`, *when*
   selection runs, *then* nothing is selected, the report carries corpus-level `RSN-EMPTY`, and no
-  discarded document appears in any record.
+  discarded document appears in any record. *And given* a one-file fixture holding exactly
+  `docs/discarded/LEARNINGS-x.md`, *then* that document is a corpus member, is selected, and
+  carries no exclusion reason (E-35).
 - **AT-16** — *Given* a corpus mixing `docs/{p}/` and `docs/completed/{p}/` documents, *when*
   selection runs, *then* both are eligible on identical terms and location affects rank only through
   the path tiebreak.
