@@ -110,6 +110,8 @@ not "matched by exactly one"; the partition's exactly-one obligation is over the
 | `docs/_queue/QUEUE.md` | queue prose, governed instead by the REQ's AC-2.3 | `QUEUE.md` |
 | `docs/pdlc-plugin-retirement/**` | this feature's own artifacts | 9 files at `0e86f11a` (the REQ and eight cross-reviews; 7 before round 4's two landed) |
 | `docs/PLAN-*.md`, `docs/design/**`, `docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md` | planning documents of already-shipped features; the third entry is that one file's literal path, deliberately not a `docs/*/PLAN-*.md` wildcard, which would also exempt a future feature's PLAN that re-introduces a retired name | `docs/PLAN-pdlc-integration-boundary-gates.md`, `docs/design/MASTER-PLAN-engineering-loop.md`, `docs/design/PROMPT-dev-orchestrate-dev-optimization.md`, `docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md` |
+| `pdlc/hooks/scripts/cleanup-consumer-workflows.sh` | routed upstream, TSPEC §6.1 erratum 4 — the sweep's own removal tool; its expected-name set is the retired vocabulary by construction (BR-CLN-3a), so its own source text is permanently a dependent-sweep hit | 1 file (not yet landed at this commit; lands under T30) |
+| `pdlc/workflows/__tests__/consumerCleanup.test.js` | routed upstream, TSPEC §6.1 erratum 4 — the tool's oracle; its fixtures must reproduce the same nine names to be a test of it, so it is a dependent-sweep hit for the same reason | 1 file (not yet landed at this commit; lands under T30) |
 
 **Two allow-listed files must survive still carrying the retired names**:
 `docs/_decisions/DECISIONS-plugin-distribution.md` (its superseding entry, required by the
