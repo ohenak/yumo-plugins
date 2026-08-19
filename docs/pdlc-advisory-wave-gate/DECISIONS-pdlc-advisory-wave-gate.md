@@ -225,10 +225,17 @@ that a first-class per-seam `enabled` map becomes the better surface.
 
 ### What follows from DEC-A6-01
 
-- **Two new git verbs enter this workflow**: `write-tree` and `commit-tree`, neither of which
-  `orchestrate-dev.js` uses today. Every test double for `_git` that A6 touches has to answer them,
-  which is why TSPEC §5.2's fixtures assert on the observed argv sequence rather than on outcomes
-  alone.
+- **Five new git verbs enter this workflow**, not two. `write-tree`, `commit-tree`, `update-ref`,
+  `read-tree` and `clean` each appear **zero** times in `orchestrate-dev.js` today; `git clean` in
+  particular is never invoked, the only `"clean"` strings in the module being `parseRebaseStatus`'s
+  rebase-status vocabulary, which is not a git verb at all. The verbs A6 reuses rather than
+  introduces are `add`, `reset` (shipped once, as `reset --hard` on the seam-revert path) and
+  `rev-parse`. The count matters because it sizes the double: every `_git` double A6 touches has to
+  answer all five, and the restore path is the half most easily left unanswered — which is why
+  TSPEC §5.2's fixtures assert on the observed argv sequence rather than on outcomes alone, and why
+  §5.5 counts a capture-*unique* verb (`commit-tree === 1`) rather than raw `_git` calls, since
+  `restoreTreeSnapshot` drives the same transport with `read-tree`/`clean`/`reset`. An
+  under-enumerated verb set is exactly how a restore-path double false-greens (TE F-02).
 - **Fail-closed in both directions.** Any capture or restore call returning `ok !== true` throws. On
   the restore side the throw surfaces through `seamOps.revert()`, which `runAdvisorySeam`'s
   `doRevert` tags `__isRevertFailure` and whose terminal catch rethrows rather than mapping to an
@@ -273,12 +280,31 @@ that a first-class per-seam `enabled` map becomes the better surface.
 
 ### What follows from DEC-A6-04
 
-- `.claude/pdlc.config.example.json` gains the key, and `pdlc/engine`'s `ci-arrangement` expectations
-  move with it; the tracked example arrangement is read by an engine test, so this is a two-channel
-  edit, not a one-file one.
+- `.claude/pdlc.config.example.json` gains the key, and `pdlc/engine`'s `ci-arrangement` test must
+  gain a **new** expectation over it. Nothing "moves": the tracked example carries exactly two
+  sections today, `dispatch` and `implementation`, with no `advisory` section at all, and
+  `pdlc/engine/__tests__/ci-arrangement.test.js` contains zero occurrences of `advisory` — it reads
+  the example file and asserts only on `implementation.testCommand`. Adding
+  `advisory.waveBudgetPerRun` to the example therefore breaks no engine expectation and, as things
+  stand, requires no engine edit to stay green. This is still a two-channel edit, but the second
+  channel's work is *authoring a new expectation*, which is a different size and a different risk
+  from relocating one — and no AT in the nineteen covers it yet (raised as an erratum on TSPEC,
+  which mirrors the same claim in §7). The product reason to do the work rather than drop the claim:
+  `waveBudgetPerRun: 0` is a documented operator affordance (REQ C-2, FSPEC E-33), the example is the
+  operator's first and possibly only encounter with the key on a tier that ships off by default, and
+  an affordance nothing asserts into the example can ship working and undiscoverable (PM F-01,
+  TE F-06).
 - `waveBudgetPerRun: 0` and `advisory.enabled: false` are **observably different** and must stay so:
   the former reports a sixth advisory row reading zero, the latter carries no `advisory` key at all.
-  Any future "simplification" that collapses them breaks AT-01-4 and AT-01-6 together.
+  **No AT in the current set falsifies a collapse of the two, and this consequence should not claim
+  one does.** AT-01-4 is the disabled-tier case; AT-01-6's premise is "tier enabled, **no wave
+  red**", so it never reaches the budget gate and says nothing about `0`; AT-07-2b is parse-level
+  only (`0` in, `0` back, absent from `invalidKeys`). Nothing anywhere exercises the behaviour this
+  entry rests on — `waveBudgetPerRun: 0` **on a red wave** ⇒ escalate, zero `_agent` calls, a sixth
+  row reading zero — even though TSPEC §5's coverage matrix lists "`waveBudgetPerRun: 0`" among the
+  tier-gate arms it covers. The behaviour is decided here and untested upstream; closing the gap is
+  an AT, not a decision, and is raised as an erratum on TSPEC (TE F-03). Until it lands, a future
+  "simplification" that collapses `0` into `enabled: false` passes the suite.
 
 ### What follows for the whole feature
 
@@ -286,6 +312,19 @@ that a first-class per-seam `enabled` map becomes the better surface.
   `ADVISORY_DEFAULTS.enabled` stays `false`, so the default-configured run is byte-identical to
   today's. This is what keeps all four ratings at "easy" reversibility.
 - Three transcribed set-equality surfaces move together when A6 lands — `ADVISORY_SEAMS`,
-  `ENVELOPE_DEFAULTS` and `ADVISORY_DEFAULTS` — each with a literal counterpart in the test suite.
-  That is the failure class A6 itself exists to survive, and the PLAN should sequence those edits as
-  one task, not three.
+  `ENVELOPE_DEFAULTS` and `ADVISORY_DEFAULTS`. The **constants** are three; their counterparts are
+  not, and the PLAN must be sized against the counterparts. The five-member seam literal
+  `["A1", "A2", "A3", "A4", "A5"]` is transcribed at six sites under `pdlc/workflows/__tests__/` —
+  the `ADVISORY_SEAMS` set-equality in `advisoryEnvelope`, a report-row assertion and a `test.each`
+  table in `advisoryRecord`, a harvest-row assertion in `advisoryHarvest`, a generator pick in
+  `consolidationProperties`, and a `SEAMS` constant inside the shared `advisoryDoubles` helper. The
+  four-member envelope literal `["E-1", "E-2", "E-3", "E-4"]` is transcribed at six more, including
+  `advisoryDoubles`' frozen `ADVISORY_DEFAULTS_SHAPE`, whose own comment records that it must be kept
+  in sync by hand because the real symbol does not exist yet at that task.
+- The shared double is the coupling the other two surfaces do not have: `advisoryDoubles.js` carries
+  *both* literals plus the frozen defaults shape, so a partial edit reddens tests in files that never
+  mention the changed constant, with a failure reason the record cannot predict. Sequencing all of
+  this as **one task remains the right call** — that co-movement is the failure class A6 itself
+  exists to survive — but it is one task touching roughly a dozen transcriptions and one shared
+  helper, not one task touching three constants. Sized as the latter, it invites exactly the partial
+  edit the set-equality discipline exists to catch (PM F-02).
