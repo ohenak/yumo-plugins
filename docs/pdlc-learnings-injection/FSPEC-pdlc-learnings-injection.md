@@ -131,6 +131,103 @@ this document deliberately references by name rather than transcribing by value.
 
 ## Behavioral Flow
 
+The flow runs **once per authoring dispatch**, at the point the dispatch's prompt is being composed
+and before it is sent. It has seven steps. Every step has a defined outcome for every input,
+including its own failure; no step raises to its caller (BR-12).
+
+### Step 0 — Decide whether to run at all
+
+1. Read the `learningsInjection` configuration section for the consumer repository.
+2. **Absent section, or `enabled` false** → the flow stops here, the dispatch is composed exactly as
+   it is composed today, and **no injection record of any kind is produced** (BR-14, AC-5.1a).
+3. **Section present but malformed** — unparseable, or present under a name that is not
+   `learningsInjection` in a way the pipeline can detect, such as an operator typo → behave as (2)
+   for the dispatch, **and** record the corpus-level malformed-configuration notice so the typo is
+   distinguishable from a deliberate disable (BR-14, AC-5.1b).
+4. **Enabled** → continue, with thresholds resolved: each of REQ §4.1's three bounds takes its
+   configured value if present and its default if not.
+5. If the dispatch is **not** one C-1 names as authoring, the flow stops here with no record
+   (BR-1) — this test is made for every dispatch, so that "no block" is a decision rather than an
+   omission.
+
+### Step 1 — Enumerate the corpus
+
+6. List the corpus as REQ C-3 defines it.
+7. **The listing fails** → no document is known. Record the corpus-level outcome `RSN-UNLISTABLE`,
+   compose the dispatch with an empty block, and continue the run (BR-12, AC-4.2). The flow never
+   converts "I could not find out" into "there is nothing".
+8. **The listing succeeds and is empty** → record the corpus-level outcome `RSN-EMPTY`, compose with
+   an empty block, continue (AC-4.1).
+9. **The listing succeeds and is non-empty** → the listed paths are the candidates; continue.
+
+### Step 2 — Apply eligibility exclusions
+
+10. For each candidate, apply BR-2's exclusion rules in the order stated there. An excluded candidate
+    is removed from consideration and gets its per-document reason id in the record; it counts toward
+    no threshold (AC-2.6).
+11. If no candidate survives, the outcome is an enabled run with an empty selection: an empty block,
+    an empty set of per-dispatch rows, and every candidate carrying its exclusion reason (BR-9).
+
+### Step 3 — Read and validate each surviving candidate
+
+12. Read each surviving candidate. **Unreadable** → excluded with `RSN-UNREADABLE`. **Read but not a
+    LEARNINGS document** → excluded with `RSN-UNPARSEABLE`. **Read, a LEARNINGS document, but
+    truncated mid-document** → excluded with `RSN-TRUNCATED` (BR-3). A single bad document never
+    stops the others being used (AC-4.2).
+13. What survives step 3 is the **eligible set**.
+
+### Step 4 — Order the eligible set
+
+14. Sort the eligible set by BR-4's ordering key, most recent first, with BR-4's total tiebreak
+    applied wherever the key is absent, unparseable or equal. The result is a **total order over the
+    eligible set that is a function of repository state alone** — no wall-clock time, no file mtime,
+    no model judgement (AC-2.2, C-5).
+
+### Step 5 — Apply the bounds
+
+15. Take the first `learningsInjection.maxDocuments` documents in the order; the rest are dropped
+    with `RSN-COUNT` (BR-5).
+16. For each taken document, extract its injectable material per BR-6 and bound it at
+    `learningsInjection.maxBytesPerDocument`; a document whose material was cut is flagged
+    **bounded** in its row (BR-6, AC-2.3).
+17. Accumulate the bounded material in order until adding the next document's material would exceed
+    `learningsInjection.maxTotalBytes`. That document and every one after it are dropped **whole**,
+    with `RSN-BYTES` (BR-6, AC-2.4). A document is never cut mid-document to make the total fit; the
+    per-document bound is the only cut this flow makes.
+18. What remains is the **selected set**, in order.
+
+### Step 6 — Compose and record
+
+19. Assemble the block: the advisory preamble required by BR-7, then each selected document's
+    material in the selected order, each delimited and identified by its source path.
+20. Add the block to the dispatch's prompt **without displacing anything** — the grounding manifest,
+    the upstream documents and the pacing contract appear unchanged and in their existing relative
+    order (BR-7, C-8).
+21. Emit the per-dispatch record (BR-8), the non-selection record (BR-9) and, once per run, the
+    rule-input record (BR-10).
+22. Dispatch. From this point the pipeline behaves exactly as it does without this feature: the same
+    completeness scoring, verdict parsing, round arithmetic, approval anchors and erratum routing,
+    consuming nothing this flow produced (BR-11, AC-4.3).
+
+### Decision points, named
+
+| # | Decision | Branches | Rule |
+|---|---|---|---|
+| D-1 | Is injection configured on? | absent / disabled / malformed / enabled | BR-14 |
+| D-2 | Is this dispatch an authoring dispatch? | yes / no | BR-1 |
+| D-3 | Did the corpus listing succeed? | ok / failed | BR-12 |
+| D-4 | Is the listing empty? | empty / non-empty | BR-12 |
+| D-5 | Is the candidate excluded by rule? | self / discarded / ineligible path | BR-2 |
+| D-6 | Did the candidate read and parse? | ok / unreadable / unparseable / truncated | BR-3 |
+| D-7 | Is the ordering key present and parseable? | yes / no → tiebreak | BR-4 |
+| D-8 | Does the count bound bind? | yes / no | BR-5 |
+| D-9 | Does the per-document byte bound bind? | yes → bounded flag / no | BR-6 |
+| D-10 | Does the total byte bound bind? | yes → whole-document drop / no | BR-6 |
+| D-11 | Is the selected set empty? | yes → empty block, empty rows / no | BR-8 |
+
+Every branch in this table has at least one acceptance test (DC-05); the mapping is in §Acceptance
+Tests.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
