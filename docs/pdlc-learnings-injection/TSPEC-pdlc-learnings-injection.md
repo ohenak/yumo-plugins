@@ -271,7 +271,9 @@ row, with the run-level record as its summary.
 The determinate expected value a test needs therefore exists on both sides: `DIVERGENT-CORPUS` (a
 new §T.6 fixture, five authoring dispatches where the scripted `_git` reply gains one path after
 dispatch 2 and fails at dispatch 5) asserts the run-level scalars equal dispatch 5's observation,
-each `dispatches[i]` carries its own, and `corpusDiverged` is `true` on exactly dispatches 3 and 5. `buildLearningsInjector` closes over it and pushes on each
+each `dispatches[i]` carries its own, and `corpusDiverged` is `true` on exactly dispatches 3 and 5.
+
+`buildLearningsInjector` closes over the sink and pushes on each
 call; `buildFinalReport` receives it as one new parameter and spreads it **conditionally**, on
 P-10's `advisory` precedent, so a disabled run's report has **no such key at all** (AC-5.1a) while
 an enabled run with an empty selection has the key present with empty rows (AC-4.4). Those two
@@ -340,11 +342,27 @@ one addition:
 | top-level not an object, or no `learningsInjection` key | defaults, `sectionMalformed:false` | `present:false` | BR-14: a misspelt section name is a stray top-level key and reads as absent — no unknown-key registry |
 | section present, not a plain object | `sectionMalformed:true` | `present:true, sectionMalformed:true` | BR-14 `NTC-MALFORMED` |
 | declared key wrong-typed | key defaults, name in `invalidKeys` | identical | BR-14 `NTC-KEYTYPE`; the run stays enabled |
-| — | `ADVISORY_DEFAULTS.enabled === false` | `LEARNINGS_DEFAULTS.enabled === true` | the sibling is opt-in per-key; here `enabled` defaults true **within a present section**, and an absent section is `present:false`, so the feature is still off until an operator writes the section |
+| — | `ADVISORY_DEFAULTS.enabled === false` | `LEARNINGS_DEFAULTS.enabled === true` | the sibling is opt-in per-key; here `enabled` defaults true **within a present section**, and an absent section is `present:false`, so the feature is still off until an operator writes the section — **which is FSPEC Step 0(2)'s resolution of a REQ-internal contradiction this TSPEC inherits rather than decides; see ERR-4** |
 
 `present` is the new field, and it is the whole of AC-5.1a's "absent, not present-and-empty": the
 injector is built **only** when `present && config.enabled && !sectionMalformed`, and
 `buildFinalReport` receives `undefined` otherwise.
+
+**The `present:true, sectionMalformed:true` state, in full.** AC-5.1b requires that state to be
+*both* AC-5.1a's behaviour *and* a reported notice, and those two pull against each other if
+`notices` lives inside a key that is absent. Resolved by giving the sink two parts with different
+presence rules: `notices` is carried **outside** the `learningsInjection` key, on
+`buildFinalReport`'s existing run-level notice channel, and `learningsInjection` (rule inputs,
+corpus outcome, dispatch rows) is the conditionally-spread key. So:
+
+| Config state | `learningsInjection` key | `NTC-*` notice |
+|---|---|---|
+| absent section, or `enabled:false` | absent (AC-5.1a) | none |
+| present, not an object (`sectionMalformed`) | **absent** (behaviour is AC-5.1a's) | `NTC-MALFORMED` present (AC-5.1b) |
+| present, `enabled:true`, one key wrong-typed | present, run proceeds on defaults for that key | `NTC-KEYTYPE` present |
+
+AT-30 covers all three rows, and AT-32's three-notice closure is asserted over the run-level
+channel. §D.2's record is amended accordingly.
 
 The three thresholds validate as **non-negative integers** (`Number.isInteger(v) && v >= 0`), not
 positive ones — AC-4.4 requires `0` to be a *valid* admits-nothing configuration rather than an
@@ -353,7 +371,8 @@ invalid key that falls back to its default. A negative or non-integer value is `
 ### I.3 The pure selection core
 
 ```js
-/** @typedef {{path: string, feature: string, text: string|null, readOk: boolean}} CorpusEntry */
+/** @typedef {{path: string, feature: string, text: string|null, readOk: boolean,
+ *             excluded: null | "RSN-SELF"}} CorpusEntry */
 /** @typedef {{path: string, orderKey: string|null, bytes: number, bounded: boolean,
  *             position: number, material: string}} SelectedDoc */
 /** @typedef {{path: string, reason: string}} RejectedDoc */
@@ -365,7 +384,12 @@ export function looksLikeLearningsDocument(text)
 /** The `Date Completed` cell as `YYYY-MM-DD`, or null when absent/unparseable (BR-4). */
 export function parseHarvestDate(text)
 
-/** BR-6's five priority sections, in priority order, bounded to `maxBytes` UTF-8 bytes. */
+/** BR-6's five priority sections, in priority order, bounded to `maxBytes` UTF-8 bytes of MATERIAL
+ *  (§D.5). `bounded` is decided at the cut, not re-derived downstream: `bytes` may be < `maxBytes`
+ *  on a bounded document, because the cut is character-safe.
+ *  @returns {{material: string, bounded: boolean, bytes: number,
+ *             sections: string[]}} — `sections` are the BR-6 priority names actually taken, and are
+ *             AT-11's section-set-equality operand. */
 export function extractInjectableMaterial(text, maxBytes)
 
 /** BR-4's total order: `orderKey` descending (null last), then path byte-ascending. */
@@ -378,6 +402,17 @@ export function orderCorpus(entries)
 export function selectLearnings({ entries, feature, thresholds })
 ```
 
+**`rejected[]` is total over `entries`, including the entries the shell never opened.** Every
+`CorpusEntry` whose `excluded` is `"RSN-SELF"` is emitted by `selectLearnings` as a
+`{sourcePath, reason: "RSN-SELF"}` row — the entry is *present* in the array with
+`text: null, readOk: false, excluded: "RSN-SELF"`, and `excluded` is tested **before** `readOk`, so
+a self document is never mis-reported as `RSN-UNREADABLE`. This is what gives BR-9's "every known
+document appears either as a BR-8 row or as a per-document reason row" a producible path for
+`RSN-SELF` while keeping §D.6's "decided before any read" true: the shell decides *not to read*,
+the pure selector decides *what to report*, and `rejected[]` stays the single owner of reject
+reasons. AC-1.3's row and AT-33/AT-34's paired footprint claim are then satisfiable by one fixture
+(a corpus listing containing `docs/{f}/LEARNINGS-{f}.md` for the feature being authored).
+
 `selectLearnings` takes **already-read bytes** and returns **no strings destined for the prompt
 except each document's material**; rendering is `renderLearningsBlock`'s. That separation is what
 lets AT-07 … AT-13 and AT-17 … AT-22 run as plain unit tests over literal fixtures with no seam,
@@ -386,7 +421,9 @@ no harness and no model.
 ### I.4 The IO shell and the injector
 
 ```js
-/** @returns {Promise<{unlistable: true} | {unlistable: false, entries: CorpusEntry[]}>} — never throws */
+/** `entries` contains one member per enumerated path, INCLUDING self documents (carried with
+ *  `excluded: "RSN-SELF"`, `text: null`, and never opened — §D.6, §I.3).
+ *  @returns {Promise<{unlistable: true} | {unlistable: false, entries: CorpusEntry[]}>} — never throws */
 export async function gatherLearningsCorpus({ feature, _git, _readFile })
 
 /** @returns {string} — the block, or "" when `selected` is empty */
