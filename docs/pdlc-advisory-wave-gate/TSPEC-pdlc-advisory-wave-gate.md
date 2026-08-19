@@ -236,24 +236,48 @@ The **capture** side is not symmetric with it, and PM F-02 is right that the fir
 silent. AC-6.1 binds on *any A6 invocation*, and by the time capture runs the invocation has
 happened: `runWaveGateSeam` was called, the tier gate passed, the wave budget was checked. A
 capture failure that halted with nothing written would leave the operator with a red wave, an
-engaged seam and no durable trace. So capture failure takes the same route step 3's
-no-dispatch budget escalation takes — the shipped `__preDispatch` escape — with:
+engaged seam and no durable trace. But the shipped `__preDispatch` escape is **not** available on
+this path, and the earlier draft's claim that it was is corrected here (PM F-02, TE F-13). The
+escape is a return value of `seamOps.gatherEvidence()`, read only inside `runAdvisorySeam`
+(`orchestrate-dev.js:3401-3410`), and `gatherEvidence` is called **inside the driver's attempt
+loop** (`while (true)`, `:3393-3396`), which `verifyGate`'s `consumesAttempt: true` re-enters
+(`:3554-3568`). Capture inside `gatherEvidence` would therefore re-capture on attempt 2 and
+destroy the one-snapshot-per-wave invariant below; capture before the driver is entered runs
+exactly once. The invariant wins: **the snapshot is taken at the call site, before
+`runAdvisorySeam` is entered** (§3.2 step 4), and the capture-failure path writes its durable
+artifacts by calling the tier's own exported primitives directly:
 
 | Field | Value on capture failure |
 |---|---|
-| Terminal disposition | `escalated`, reason `snapshot-unavailable` |
-| Attempts consumed | `0` — no `_agent` call, no rung resolution occurs (as in E-26) |
-| Advisory record entry | written, root-cause class `unclassified`, action refused (AC-6.1) |
-| Escalation-log entry | written, carrying the same class (AC-6.2) |
+| Terminal disposition | `escalated`, **no refusal reason** — `reason: null` |
+| Attempts consumed | `0` — no `_agent` call, no rung resolution, no driver entry at all |
+| Advisory record entry | written by `appendAdvisoryEntry({feature, disposition, _appendFile, _now})` (`orchestrate-dev.js:2965`) with `verdict: null`; the renderer's null-verdict fallbacks give Confidence/Envelope `n/a` and Diagnosis `no verdict was produced`, which is exactly true here (AC-6.1) |
+| Root-cause class | `unclassified` — no diagnosis was ever obtained |
+| Escalation-log entry | written by `appendEscalationEntry({disposition, ctx, _appendFile, _now})` (`:3090`), phase and phase-outcome read from `ADVISORY_SEAM_PHASES.A6` (§3.1), and a **caller-supplied `decision` sentence** naming `snapshot-unavailable` as the diagnostic (AC-6.2) |
+| Report notice | `ADVISORY_ESCALATIONS.seam({seam: "A6", feature, reason})` (`:1576-1581`), whose `reason` slot is free message text, carrying the same diagnostic sentence |
 | Wave budget | untouched — only `resolved` increments it (E-27) |
-| Halt | the wave's own `Wave N test gate failed` literal (AT-05-3), with §4.5's advisory halt fields attached (AC-6.3) |
+| Halt | the wave's own `Wave N test gate failed` literal (AT-05-3), with §4.5's advisory halt fields attached at the literal values §4.5 names (AC-6.3) |
 | Restoration | none performed, and none owed: nothing was dispatched, so nothing was applied |
 
-`snapshot-unavailable` is A6-local vocabulary in the *reason* position, not a new member of
-`ADVISORY_ROOT_CAUSES` — the root-cause class stays `unclassified`, because no diagnosis was
-ever obtained. §3.2 step 4 and §3.5 are stated to this one contract: "capture failure halts
-here" was the earlier, looser wording and is superseded; capture failure **escalates through
-`terminate`, then halts**, in that order. §5.1's new-suite row carries the case.
+**`snapshot-unavailable` is a diagnostic string, never a refusal reason (PM F-01).** REQ AC-3.4
+and FSPEC BR-15 are explicit: a diagnosis-only outcome is an escalation with no proposal, so it
+refuses nothing and needs no reason, and `ADVISORY_REFUSAL_REASONS` stays the frozen eight-member
+catalogue at `orchestrate-dev.js:2297-2306`. The reason position is therefore `null` — a
+first-class value in the shipped tier, which already passes `reason: pre.reason ?? null`
+(`:3406`) and renders a null reason as a bare `escalated` disposition (`renderAdvisoryEntry`,
+`:2922-2954`). The word `snapshot-unavailable` survives as prose in the escalation entry's
+decision sentence, in the report notice, and in §4.5's `diagnosis` halt field — the three places
+free text is allowed — and in no reason field anywhere. §5.6's AT-03-7 row (exactly eight
+members, in shipped order, A6 added none) therefore still passes as written.
+
+Ordering and failure discipline on this path, since no driver governs it: record write, then
+escalation entry, then notice, then halt. A failing record write cannot downgrade anything to
+`record-write-failed` — that reason names a *resolution* being withdrawn, and nothing was applied
+here — so it is caught and reported as a notice; a failing escalation-log write is likewise a
+notice, mirroring the shipped asymmetry at `:3331-3345`. §3.2 step 4 and §3.5 are stated to this
+one contract: "capture failure halts here" was the earlier, looser wording and is superseded;
+capture failure **escalates, then halts**, in that order. §5.1's new-suite row and §5.2's
+six-assertion fixture carry the case.
 
 ### 2.6 Ordering constraint: applicability is decided before the branch that hides it
 
