@@ -265,8 +265,23 @@ Last-write-wins is chosen over first-write-wins because the run-level record is 
 ended; it is chosen over "conflict is a notice" because a divergent corpus is not an error — a
 LEARNINGS file legitimately lands mid-run — and BR-14's notice catalogue is about configuration
 defects, not corpus movement. `corpusDiverged` is what makes the divergence *visible* without
-inventing an outcome id, and AC-3.3's hand-reproduction is then performed against the per-dispatch
-row, with the run-level record as its summary.
+inventing an outcome id.
+
+**Scoping AC-3.3, and what is left to REQ.** AC-3.3 states the reproduction inputs live in "the
+report's **run-level** record", and its *Given* is an operator reproducing the selection "against
+the same repository state" (REQ AC-3.3). On a **stable corpus** — every authoring dispatch of the
+run observing the same `{corpusOutcome, orderKeys}` — the run-level record *is* the locus AC-3.3
+names, and last-write-wins is an identity: this design satisfies AC-3.3 as written, unchanged.
+The divergent case is one AC-3.3's *Given* does not contemplate: there is no single "same
+repository state" to reproduce against, so a single run-level record cannot be the locus for every
+dispatch. The per-dispatch `{corpusOutcome, orderKeys, corpusDiverged}` fields are TSPEC's
+**extension** for that case, not a reinterpretation of AC-3.3's locus, and they are additive —
+nothing AC-3.3 requires is removed. Whether AC-3.3's locus should be restated to name the
+per-dispatch row for divergent runs is a **product decision about the record's contract**, not an
+engineering one, so it is routed as an erratum against REQ AC-3.3 (**ERR-6**) rather than settled
+here. Until REQ answers, the run-level record remains the stated locus and the per-dispatch rows
+are the mechanism that keeps a divergent run reconstructable; the design does not change under
+either resolution — only which rows AC-3.3's completeness test is asserted over.
 
 The determinate expected value a test needs therefore exists on both sides: `DIVERGENT-CORPUS` (a
 new §T.6 fixture, five authoring dispatches where the scripted `_git` reply gains one path after
