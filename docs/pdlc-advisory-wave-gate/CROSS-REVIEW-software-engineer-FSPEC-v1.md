@@ -92,3 +92,36 @@ pass whichever way the REQ resolves.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both in the acceptance tests rather than in the behaviour. F-01 is a single
+inverted phrase: E-04 and AT-01-5 ask an oracle to filter for A6-authored notices while specifying
+that A6 authors no notice of its own, so the test as written counts zero against the implementation
+the same paragraph describes. The REQ has the correct wording; restoring it fixes both sites.
+
+F-02 is the one worth the round. AT-04-3 ("committing writers unchanged") and AT-04-5 ("the E-6
+repair is committed") cannot both hold at HEAD, where the only writers are the per-task loop over
+this wave's `task.files` and the post-wave-pathspec commit (`orchestrate-dev.js:14396-14426`). The
+REQ's AC-4.2 names the gap precisely; the FSPEC lost that precision compressing it into a
+set-equality. Say which degree of freedom O-8 may spend — writer identity fixed, pathspec scope
+widened under an E-6 resolution — and both tests become buildable and the TSPEC author inherits a
+decided question instead of a contradiction.
+
+The nine Medium findings are individually one clause each. F-04, F-05 and F-08 are gaps a
+reader hits while trying to implement the loop: no step reads the attempt budget, "invocation" is
+undefined where the time budget depends on it, and the feature's own new config key has no
+malformed-input row. F-06 and F-07 are the round-3 REQ findings F-18 and F-19 arriving in the
+acceptance tests exactly as the round-4 review predicted; they are emitted upstream as errata as well
+as recorded here. F-09 and F-10 are the two I would fix even if nothing else changed — the post-gate
+halt is the single terminal state where the reversibility promise does not hold and the operator is
+not told, and E-5 as written admits arbitrary content change inside owned paths, which is a wider
+envelope than §7.3's accepted-risk paragraph describes.
+
+Nothing here contests the design. The lifecycle, the precedence rules, and the sequence-equality
+oracles are sound, and the document is unusually good at naming the alternative it rejected. Fix the
+two Highs and the document is implementable.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 9, "low": 3}
