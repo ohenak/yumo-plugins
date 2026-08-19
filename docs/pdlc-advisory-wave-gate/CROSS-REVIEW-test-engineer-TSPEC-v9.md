@@ -30,6 +30,56 @@ Nothing new is minted: no new test file, no new owning task, no new export, no b
 
 ## Findings
 
+Three findings, none gating. One is created by this round's changelog; two are inherited from v8 and
+were not touched by the edit.
+
+| ID | Severity | Scope | Tags | Finding | Section ref |
+|----|----------|-------|------|---------|-------------|
+| F-01 | Medium | Local | inherited, nonlocal | **§5.1's stated set-equality with §1.3 is still false on disk.** §5.1's preamble (`:1183`–`:1184`) claims the two file sets are "set-equal … checked as equality in both directions, not containment". `advisoryQueueSeams.test.js` appears in §1.3's table (`:243`, the bare row-count retarget list) and has no §5.1 row. Coverage is not lost — PLAN A6-03's manifest owns the file and its `:627` count flip — so this is a false invariant in a map future authors read, not a test hole. Carried unchanged from TE TSPEC v8 F-01; this round did not touch §5.1 or §1.3. | §5.1 (`:1180`–`:1198`), §1.3 (`:243`) |
+| F-02 | Low | Local | delta, local | **The v1.8 changelog reconciles against the v7 cross-reviews, not the v8 ones.** It states the upstream hashes match "the `UPSTREAM-STATE` anchors on both v7 cross-reviews" and disposes of "both v7 findings" (TE F-34, PM F-01/`ledgerAnchor`). The operative approvals are v8: TE v8 (`{"high":0,"medium":1,"low":1}`) and PM v8 (`{"high":0,"medium":1,"low":0}`), whose three findings — TE F-01, TE F-02, PM F-01's example-literal shape — get no disposition line. The hashes themselves are right (I re-derived both against the v8 anchors, below), so nothing substantive rides on this; the changelog just names the wrong round as the reconciliation baseline, which is exactly the kind of provenance line a later erratum wave trusts. | §Changelog v1.8 (`:14`–`:31`) |
+| F-03 | Low | Local | inherited, nonlocal | **§3.2 step 2's line anchor is one line wide.** The doc attributes "Read once, reused everywhere below …" to `orchestrate-dev.js:13675`–`:13677`; the comment occupies `:13676`–`:13677`, while `:13675` is the `parseAdvisoryConfig(advisoryConfigRaw)` call. PLAN A6-18 copies the same range. Carried unchanged from TE TSPEC v8 F-02. | §3.2 step 2 (`:45`, `:602`) |
+
+### Why the routed item is a real resolution, not a wording move
+
+The old text created an oracle vacuum: PROP-REC-07 was named a *unit* contract over a constant the
+test could not import. The fix does not paper over that — it relocates the proof onto a surface that
+already exists and already discriminates the defect.
+
+- **The oracle is positive-valued, not absence-shaped.** The A6 entry must read phase `I` and outcome
+  `halted`. That is an exact status value, not `!= unknown`. The `unknown`/`unknown` arm is asserted
+  separately as a negative control, which is the correct use of an absence-shaped string: as the
+  *expected* value on a fixture engineered to produce it, never as the pass condition on the happy path.
+- **The negative control is executable.** `runAdvisorySeam` is an exported function taking `seam` as a
+  free string (`orchestrate-dev.js:3224`), so a fixture can dispatch a seam id with no table row and
+  observe the fallback at `:3338` through the real append path. Had the seam id been closed over
+  internally, this arm would have been unreachable and I would have flagged it; it is not.
+- **It discriminates the omission it names.** Delete the `A6` row from the `const` and the entry reads
+  `unknown`/`unknown` — the test goes red through the shipped writer. An `expect(TABLE).toHaveProperty("A6")`
+  unit test would also go red, but only by restating the diff; it would stay green if the *caller* stopped
+  consulting the table at all. The chosen oracle fails in both cases. This is the DC-07 production-path
+  rule applied correctly.
+- **The A3–A5 rows are held on the same suite.** Asserting `DOD`/`halted` and `PUB`/`halted` alongside
+  A6 turns the new row into a non-regression check, so a sixth row added by clobbering the literal
+  cannot pass quietly.
+- **No export, and the refusal to export is argued from the oracle, not from taste.** §3.1 now says in
+  as many words that the only reason to export would be to enable the constant-import oracle §5.6 and
+  PROPERTIES both reject. That is the right ordering: the interface surface follows the proof strategy.
+
+### Upstream re-grounding (DEC-ERR-03)
+
+Both upstream documents are byte-identical to what I approved at v8, so nothing TSPEC compresses has
+moved and no absorption was owed this round:
+
+| Upstream | HEAD sha256 | v8 anchor | Match |
+|---|---|---|---|
+| REQ | `a10396e8…d9645` | `a10396e8…d9645` | yes |
+| FSPEC | `82f74a2d…61c3e` | `82f74a2d…61c3e` | yes |
+
+The REQ hash also equals the one carried in this dispatch. I re-read the AC-6.2 / AC-6.4 obligations
+TSPEC §3.1 now leans on and the §10.1 *Pipeline state* field definition the table derives; the
+document is still a faithful compression of both, and the delta narrows rather than widens what it
+claims about them.
+
 ## Questions
 
 ## Positive Observations
