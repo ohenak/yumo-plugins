@@ -200,8 +200,10 @@ requirements altitude.
 - **AC-1.5** — Given wave mode is not in effect (BL-03) or no script-owned gate is configured
   (BL-04), Then A6 does not apply and the phase behaves exactly as today, with the inapplicability
   named once in the run report rather than being silently indistinguishable from a quiet seam. The
-  observable is a cardinality, not a mention: exactly one inapplicability notice per phase, naming
-  which of BL-03 or BL-04 was absent, and none at all in a run where A6 applies. *(US-02.)*
+  observable is a cardinality on a named surface, not a mention: exactly one inapplicability notice
+  per run — not per wave — on the run's notice surface, naming which of BL-03 or BL-04 was absent,
+  and none at all in a run where A6 applies. BL-04's case already emits such a notice once per run
+  when the script-owned gate degrades; BL-03's has no equivalent today and acquires one. *(US-02.)*
 
 ### REQ-AWG-02 — The A6 contract (P0)
 
@@ -230,7 +232,9 @@ requirements altitude.
   *(US-02, US-05.)*
 - **AC-2.3** — Given an A6 diagnosis, Then it cites the gate command's own output as its evidence. A
   diagnosis citing no gate output is malformed under AC-2.1 — the gate output is the only evidence
-  that distinguishes a repair from a guess. *(US-02.)*
+  that distinguishes a repair from a guess. The evidence is the gate command's captured output as A6
+  receives it, not the truncated tail the halt message shows a human, so the criterion stays
+  satisfiable on a long suite. *(US-02.)*
 - **AC-2.4** — Given the budgets of C-2, Then A6 escalates rather than retrying when any is
   exceeded: more than `advisory.attemptBudget` attempts on one wave, more than
   `advisory.seamBudgetMinutes` on a single invocation (per invocation, dispatch to verdict, not
@@ -367,8 +371,12 @@ requirements altitude.
   only in an agent prompt.
 - **NFR-2** — With `advisory.enabled` false and the same inputs, the report's phase table, every
   phase outcome, and the run's created-file set are identical to the pre-A6 baseline, and the report
-  carries no A6 row. (Stated as an equality on named artifacts, since report text varies by
-  timestamp.)
+  carries no A6 row. The oracle is not absence alone, which an accidentally empty report also
+  satisfies: with the tier disabled the report's advisory summary is **absent** — the key is
+  undefined, not a six-row all-zero summary — exactly as the tier already requires when disabled
+  (`REQ-pdlc-advisory-tier` AC-1.6), and the phase outcomes and created-file set are equal to the
+  pre-A6 baseline on the same run. (Stated as an equality on named artifacts, since report text
+  varies by timestamp.)
 - **NFR-3** — A6 holds no credentials the pipeline does not already hold, and reaches no network
   surface Phase I does not already reach.
 - **NFR-4** — No A6 invocation exceeds `advisory.seamBudgetMinutes`, measured from dispatch to
