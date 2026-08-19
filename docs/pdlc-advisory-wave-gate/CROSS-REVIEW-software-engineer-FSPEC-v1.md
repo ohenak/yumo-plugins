@@ -107,7 +107,7 @@ set-equality. Say which degree of freedom O-8 may spend — writer identity fixe
 widened under an E-6 resolution — and both tests become buildable and the TSPEC author inherits a
 decided question instead of a contradiction.
 
-The nine Medium findings are individually one clause each. F-04, F-05 and F-08 are gaps a
+The eight Medium findings are individually one clause each. F-04, F-05 and F-08 are gaps a
 reader hits while trying to implement the loop: no step reads the attempt budget, "invocation" is
 undefined where the time budget depends on it, and the feature's own new config key has no
 malformed-input row. F-06 and F-07 are the round-3 REQ findings F-18 and F-19 arriving in the
@@ -124,4 +124,4 @@ two Highs and the document is implementable.
 ## Verdict
 
 VERDICT: Needs revision
-{"high": 2, "medium": 9, "low": 3}
+{"high": 2, "medium": 8, "low": 3}
