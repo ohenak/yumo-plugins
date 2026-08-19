@@ -201,11 +201,22 @@ Four decisions inside that:
 - **`git add -A` then `git reset --mixed`, never a bare `git stash`.** The capture is index-only and
   self-reversing, so the tree the wave agents left is the tree A6 diagnoses. The wave discipline
   (`Do NOT git commit`) means the index equals HEAD on entry, which is what makes the reset exact;
-  a wave that staged anything anyway loses only its *staging*, never its content, and §6 O-Q1
+  a wave that staged anything anyway loses only its *staging*, never its content, and §6 OQ-5
   records that as an accepted deviation.
-- **`clean -fd`, not `clean -fdx`.** `git add -A` skips ignored paths, so restoring must skip them
-  too, or the restore would delete `node_modules/` and `.claude/workflows/` — files that were never
-  in the snapshot and were never A6's to touch. Capture and restore share one ignore semantics.
+- **`clean -fd`, not `clean -fdx` — and the boundary is upstream's, not this document's.**
+  `git add -A` skips `.gitignore`d paths, so capture never records them; a restore that ran
+  `-fdx` would delete files the snapshot never held — `node_modules/`, `.claude/workflows/` —
+  which is a worse defect than the one it fixes. Capture and restore share one ignore semantics
+  because they must. But FSPEC BR-9 and AT-05-1 state the oracle over "tracked **and untracked**
+  files alike, generated outputs included" with no ignored-path carve-out, and REQ AC-5.1 states
+  it with none either. A wave whose post-wave command writes a generated output into an ignored
+  path is therefore inside the oracle as written and outside this mechanism. **This TSPEC does
+  not narrow AC-5.1 by design choice.** The carve-out is raised as an erratum on FSPEC BR-9 and
+  AT-05-1 (and REQ AC-5.1); this section transcribes whatever boundary comes back approved. If
+  upstream ratifies the carve-out, this bullet stands as written and §5.2 pins it. If upstream
+  instead holds ignored generated outputs inside the oracle, the mechanism grows a *scoped*
+  ignored-path capture — the post-wave pathspecs only, never the whole ignored tree — and this
+  bullet is rewritten to that. Until the erratum resolves, §6 OQ-7 carries the open boundary.
 - **One snapshot per wave, not per attempt.** BR-9 pins the restore target as "the wave's
   post-dispatch, pre-commit tree" — the state before A6 *first* acted. Every red re-gate on that
   wave restores to the same tree, so attempt 2 starts where attempt 1 started (§3.2 step 6).
@@ -214,12 +225,35 @@ Four decisions inside that:
   between "A6 left a tree it could neither repair nor restore" and "A6 left a tree, and here is the
   object name that has the original in it".
 
-**Failure is fail-closed.** Any capture or restore git call returning `ok !== true` is thrown from
-`seamOps.revert()`. `runAdvisorySeam`'s `doRevert` tags it `__isRevertFailure` and its terminal
-catch rethrows anything so tagged rather than mapping it to an escalation — shipped behaviour,
-relied on here rather than re-invented. The throw reaches Phase I as a halt, before any commit,
-which is AT-05-5. A capture that fails means A6 never dispatches at all: the seam refuses to act on
-a tree it cannot put back.
+**Failure is fail-closed, and failing still writes the record.** Any capture or restore git
+call returning `ok !== true` is thrown. On the **restore** side the throw comes out of
+`seamOps.revert()`; `runAdvisorySeam`'s `doRevert` tags it `__isRevertFailure` and its terminal
+catch rethrows the tagged error rather than mapping it to an escalation — shipped behaviour,
+relied on rather than re-invented. That throw reaches the Phase I halt before any commit
+(E-28, AT-05-5).
+
+The **capture** side is not symmetric with it, and PM F-02 is right that the first draft left it
+silent. AC-6.1 binds on *any A6 invocation*, and by the time capture runs the invocation has
+happened: `runWaveGateSeam` was called, the tier gate passed, the wave budget was checked. A
+capture failure that halted with nothing written would leave the operator with a red wave, an
+engaged seam and no durable trace. So capture failure takes the same route step 3's
+no-dispatch budget escalation takes — the shipped `__preDispatch` escape — with:
+
+| Field | Value on capture failure |
+|---|---|
+| Terminal disposition | `escalated`, reason `snapshot-unavailable` |
+| Attempts consumed | `0` — no `_agent` call, no rung resolution occurs (as in E-26) |
+| Advisory record entry | written, root-cause class `unclassified`, action refused (AC-6.1) |
+| Escalation-log entry | written, carrying the same class (AC-6.2) |
+| Wave budget | untouched — only `resolved` increments it (E-27) |
+| Halt | the wave's own `Wave N test gate failed` literal (AT-05-3), with §4.5's advisory halt fields attached (AC-6.3) |
+| Restoration | none performed, and none owed: nothing was dispatched, so nothing was applied |
+
+`snapshot-unavailable` is A6-local vocabulary in the *reason* position, not a new member of
+`ADVISORY_ROOT_CAUSES` — the root-cause class stays `unclassified`, because no diagnosis was
+ever obtained. §3.2 step 4 and §3.5 are stated to this one contract: "capture failure halts
+here" was the earlier, looser wording and is superseded; capture failure **escalates through
+`terminate`, then halts**, in that order. §5.1's new-suite row carries the case.
 
 ### 2.6 Ordering constraint: applicability is decided before the branch that hides it
 
@@ -463,7 +497,7 @@ every existing prompt fixture green.
 
 The map lives in the Phase I scope, so the clause reaches a later task **in the same run**. Across
 runs it does not survive; the *commit* does, so the later task's agent finds the promotion in the
-tree either way. §6 O-Q3 records the asymmetry rather than leaving it to be discovered.
+tree either way. §6 OQ-6 records the asymmetry rather than leaving it to be discovered.
 
 ### 3.7 The one change to the shipped driver
 
