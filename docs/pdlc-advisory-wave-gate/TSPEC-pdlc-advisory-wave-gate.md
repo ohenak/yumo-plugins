@@ -816,9 +816,12 @@ Two consequences worth stating rather than discovering:
 
 ### 5.1 Where the tests live
 
-This table is the PLAN's file-ownership manifest for the test half of the work, and it is now
-**set-equal to §1.3's edit list** — the earlier draft named seven files where §1.3 declares ten,
-which would have shipped a manifest smaller than the edit the document itself predicts (TE F-02).
+This table is the PLAN's file-ownership manifest for the test half of that work, and its file set
+is now **set-equal to §1.3's edit list**, not a subset of it: §1.3 and this table name the same
+test-side files, checked as an equality in both directions rather than by containment (TE F-02,
+TE F-19). The earlier draft's parenthetical arithmetic ("seven here, ten there") was itself the
+drift it was warning about, and is dropped in favour of the set-equality rule — the count belongs
+to whichever list is authoritative today, and §1.3 is.
 
 | File | Status | Carries |
 |---|---|---|
@@ -885,11 +888,17 @@ re-asserting the record schema would be a second, drifting copy of an oracle tha
      §2.5's erratum**, not to this document's preference; until the erratum resolves it is written
      as described here and flagged in the suite as upstream-pending.
 
-- **The capture-failure disposition.** `captureTreeSnapshot` failing yields, on one run: an
-  advisory record entry, an escalation entry, `attempts === 0`, an unchanged wave budget, the
-  halt on AT-05-3's literal with §4.5's fields attached, and no `_agent` call. Six positive
-  assertions on one fixture, not an absence check — the whole point of PM F-02 is that the
-  earlier design's outcome here was "nothing observable happened".
+- **The capture-failure disposition, with the writers named.** `captureTreeSnapshot` failing
+  yields, on one run: an advisory record entry, an escalation entry, `attempts === 0`, an unchanged
+  wave budget, a halt on AT-05-3's literal with §4.5's four fields attached at their literal values,
+  and no `_agent` call. Six positive assertions on one fixture, not an absence check — that is the
+  whole point of PM F-02 against the earlier design's outcome of "nothing observable happened". Two
+  further assertions come from this round: the record entry's Disposition cell reads a bare
+  `escalated` with **no** refusal reason (PM F-01, and a companion assertion pins
+  `ADVISORY_REFUSAL_REASONS` at its eight members on the same run), and `captureTreeSnapshot` is
+  called exactly **once** across a two-attempt run — the one-snapshot-per-wave invariant asserted
+  as a call count on the `_git` double, since that invariant is what forced the capture out of
+  `gatherEvidence` in the first place (TE F-13).
 
 - **The disabled tier is byte-identical, and the notice surface is part of what that means.**
   `advisoryDisabled.test.js` gains Phase I cases asserting that under `advisory.enabled: false`
