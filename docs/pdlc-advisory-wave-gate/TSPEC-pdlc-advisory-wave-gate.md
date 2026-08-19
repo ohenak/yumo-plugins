@@ -4,14 +4,35 @@
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.3) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (active) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (active) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.1 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.2 | 2026-08-20 |
 
 ## Changelog
+
+**v1.2 (round 2).** Three High findings and five Medium/Low addressed.
+PM F-01: the capture-failure escalation carries **no** refusal reason (`reason: null`) per REQ
+AC-3.4 and FSPEC BR-15's diagnosis-only clause; `snapshot-unavailable` survives as diagnostic
+prose in the escalation sentence, the notice and §4.5's `diagnosis` field, so
+`ADVISORY_REFUSAL_REASONS` stays eight members and §5.6's AT-03-7 row still passes (§2.5, §3.5,
+§5.2, §5.6).
+TE F-13 / PM F-02: the snapshot is captured at the call site, before `runAdvisorySeam` is entered
+— `gatherEvidence` sits inside the driver's attempt loop, so capturing there would re-capture on
+attempt 2 and break the one-snapshot-per-wave invariant. The `__preDispatch` escape is therefore
+unavailable on this path, and §2.5 / §3.2 step 4 name `appendAdvisoryEntry`,
+`appendEscalationEntry` and the notice as the writers instead (§2.5, §3.2, §3.5).
+TE F-14: §3.2 step 6 states the rule AC-4.1's conjunct (iii) needs — a resolution requires the
+`invocations` ledger to have grown by the wave's own gate sequence, not just a `resolved` outcome
+— which turns §5.5's dropped-re-gate fixture into a real red test.
+PM F-03 / TE F-18: §4.5 gives the capture-failure halt's four fields literal, transcribable values.
+TE F-15, F-16, F-17, F-19, F-20: set-equality oracles for AT-06-1 and AT-07-1, AT-05-1 marked
+upstream-pending with §5.2's case 4, `(h)`'s dispatch-options premise asserted, §5.1's file set
+declared set-equal to §1.3's rather than counted.
+Questions answered in place: TE Q-01 (§3.3's `gatherEvidence` row), TE Q-02 (§5.5's `(g)` row),
+PM Q-01/Q-02/Q-03 (§6 OQ-9…OQ-11).
 
 **v1.1 (round 1).** All six High findings addressed. PM F-01: the `.gitignore` carve-out is
 no longer decided here — it is raised as an erratum on FSPEC BR-9 / AT-05-1 and REQ AC-5.1,
