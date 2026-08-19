@@ -52,4 +52,34 @@ Every code citation added in v1.2 was re-run against HEAD; all land where claime
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v2 High findings are resolved, and both were verified against the repository rather than
+against the PLAN's own account of it. The four bare row-count sites the grep returns at HEAD are
+exactly the four A6-03, §1.3, batch 1's gate wording and the DoD checklist now name, including
+`advisoryHarvest.test.js:726`, whose member-lookup neighbourhood was the site that would have
+reddened batch 2 under a gate forbidding batch 2 from touching that file. The `pdlc/README.md`
+clause is gone, and the four grounds given for dropping it — no existing advisory content, no spec
+row demanding it, `task.files`-scoped commits, and `docs-uniqueness.test.js`'s absolute line pins —
+each verify.
+
+From the product lens, nothing in this round narrowed, reinterpreted or dropped an acceptance
+criterion. AC-1.4's inertness oracle is better protected than it was (A6-18's widened `.enabled`
+warning), AC-1.5's four arms survive from the previous round intact, and the only user-visible
+change in the round — dropping the README line — removes no obligation any REQ, FSPEC or TSPEC row
+carries.
+
+The two remaining findings are Low and cosmetic, both introduced by this round's own edits:
+
+1. **A6-03's "Both are folded…"** should read "All four are folded…" — stale referent from the
+   two→four expansion (F-01).
+2. **The DoD checklist's four-site continuation line** (`:315`) should re-indent from 2 spaces to
+   the 6 its siblings use (F-02).
+
+Neither gates. Fold both into the next edit that opens this document for any reason; if no such
+edit occurs, shipping as-is costs nothing.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
