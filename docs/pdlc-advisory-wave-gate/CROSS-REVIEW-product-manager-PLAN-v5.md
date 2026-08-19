@@ -99,4 +99,34 @@ No High. One new Medium introduced by this round's TSPEC edit; two findings inhe
 
 ## Recommendation
 
+**Approved with minor changes** — the prior approval still holds against TSPEC v1.8. PLAN remains a
+faithful compression of TSPEC as it now stands.
+
+This was a one-commit, single-item cascade, and it moved TSPEC toward PLAN rather than away from it. Of
+the three things v1.8 newly states, two require nothing of PLAN because PLAN and PROPERTIES were already
+built that way — the oracle's file home is the file A6-17 already owns, and no new owner is minted — and
+the third contradicts nothing PLAN says, because no PLAN task ever proposed exporting the constant.
+
+What is owed is one parenthetical: **A6-05 should say the sixth row lands on a module-private `const` and
+must not gain `export`** (F-03, Medium), because TSPEC now directs that instruction at Phase P by name and
+because A6-05 currently presents the constant in a list of five exported siblings with nothing marking it
+apart. Alongside it, the two v4 findings remain unlanded and unchanged: **A6-04's assertion should name
+`enabled` as well as `waveBudgetPerRun`** (F-01, Medium), and **A6-03's borrowed "six" should track §1.3's
+eight** (F-02, Low).
+
+All three are single-clause edits to task prose. None touches batching, ownership, dependencies, or the
+AT-coverage table, and none blocks Phase I from starting. They should ride the next edit that opens PLAN
+for any reason. If none occurs, shipping as-is costs a guard on `enabled` in the engine example, a stale
+count-word, and a small chance that an implementer widens a module's export surface by one constant that
+TSPEC has now said out loud it does not want widened.
+
+**Note on dispatch (repeated from v4, still unaddressed):** the completeness-gate headings supplied in the
+instructions (`## Overview` / `## Batches` / `## Dependencies` / `## Verification`) are PLAN's headings,
+not a cross-review's. I have again written the file in the format this reviewer role defines. Flagging in
+case the gate is pointed at cross-review files by mistake — this is now the second consecutive round it
+has appeared, which makes it a `Process` observation rather than a one-off.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
