@@ -144,8 +144,78 @@ has, and say what an operator reads in the `diagnosis` slot when no diagnosis ex
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §6 OQ-7 is marked "**yes, upstream**" blocking, and the erratum on FSPEC BR-9 / AT-05-1 and REQ AC-5.1 has not landed — the FSPEC is still v1.3 and the REQ v1.8. I have re-emitted the erratum lines in this review so the orchestrator routes them. If the round closes without them landing, is the TSPEC's transcription-on-return promise (§2.5) enough for PLAN authoring, or should Phase T hold? §6 says PLAN is unblocked and I agree, but the two allocated test cases (§5.2's round-trip, §5.5's ignored-path-only repair) cannot be written until the answer arrives. |
+| Q-02 | §3.4 documents `pathsCollide`'s trailing-slash precondition and gives it a test, but explicitly declines to fix it because widening the predicate would change wave packing. That leaves a live operator trap outside this feature: a manifest row spelled `pdlc/workflows/dist` is silently narrower than its author meant, everywhere in Phase I. Should this be a `Cross-Feature` item promoted to `docs/_constraints/DOMAIN-CONSTRAINTS.md` — "directory rows in a PLAN file-ownership manifest are written with a trailing slash" — or better, a Phase P lint, so the next feature's PLAN author is not relying on having read this TSPEC? |
+| Q-03 | §3.3's `apply` refuses a repair that writes only `.gitignore`d paths as `post-action-verification-failed`. That reason is a *refusal* in the AC-3.4 sense, and it is the one place where OQ-7's unresolved boundary produces an operator-visible verdict today. If upstream widens BR-9's oracle, does this row's disposition change, or does the refusal stand on its own merits? §3.3 says the row is unchanged either way; I read that as correct but would like it stated as a ruling rather than an aside. |
+
 ## Positive Observations
+
+- **§5.6 is the strongest thing in the revision, and it is stronger than F-03 asked for.** I asked
+  for the three P0 obligations to be given a home. §5.6 instead maps *every* FSPEC acceptance test
+  to a test file and a one-line oracle, and I checked it mechanically: the 45 AT identifiers in the
+  FSPEC and the 45 in §5.6 are the same set, no containment, no drift. That converts the PLAN's
+  red-test column from an authoring judgement into a transcription, which is exactly the property
+  §5.6 claims for it.
+- **§5.5 states shapes rather than filenames, and obeys its own rule.** Every prohibition row
+  carries a negative *and* a paired positive on the same run, and the rule is named `AC-4.5` in the
+  suite so it is greppable rather than tacit. The `(g)` row's positive — "the gate command actually
+  re-run is the pre-proposal one, asserted from the `invocations` array" — is the kind of assertion
+  that catches the failure mode that matters, not the one that is easy to write.
+- **AC-4.1's conjunct (iii) came back as a real mutation fixture, not a checkbox.** "Fails only if
+  the implementation lets an advisory verdict substitute for a gate result, which is BR-7's whole
+  content", plus the requirement that it be named in the PLAN as its own task so it cannot be
+  quietly folded into (i) or (ii). That is the drop-proofing the finding was about.
+- **F-04 was answered by qualifying a claim rather than defending it.** §3.3 now says the blanket
+  BR-16 claim "held for the vocabulary and the citation rule and did not hold for precedence; it is
+  corrected rather than defended", then states the residual against AC-6.4 in three bullets
+  separating what is at risk from what is not. A misclass costs a wrong label, never a wider blast
+  radius — that is the sentence a product reader needed and did not have.
+- **TE F-04's real-repo snapshot suite is a product win as well as a testing one.** §5.2 rejects the
+  injected `_git` double for the round-trip cases because "a fake transport can only replay the
+  fixture it was told to". BR-9's restoration promise is the one A6 makes to an operator whose tree
+  is at stake; proving it against a real repository is what makes the promise mean anything.
+- **§4.5's un-skip halt contract names what today's code cannot do before proposing the change.**
+  "The shipped un-skip halt cannot say it: it is `throw haltError(formatUnskipViolations(…))`, a
+  one-argument call with no `fields` object" — verified at `orchestrate-dev.js:14386` — and the
+  `undefined`-when-A6-did-not-fire row keeps the disabled tier's byte-identity claim honest.
+- **§5.4 replaced a reassuring coverage sentence with an unflattering accurate one.** "Coverage is
+  not an oracle here — it is a backstop, and A6 could pass both floors whether or not its own
+  branches are exercised", followed by an explicit branch inventory to carry the weight the floor
+  does not. I checked the two-stage description against `pdlc/workflows/package.json` and it is
+  exact. Documents rarely get less flattering under revision; this one did.
+- **§6 grew four rows and answered a question rather than deferring it.** OQ-5 through OQ-8 close
+  F-06 and F-07, and Q-03 came back as a ruling — `waveBudgetPerRun: 0` is a documented operator
+  affordance, observably distinct from `advisory.enabled: false` via AT-01-4 vs AT-01-6 — which is
+  better than the DECISIONS round I offered.
 
 ## Recommendation
 
+**Needs revision** — one High finding (F-01).
+
+All three of my prior High findings are resolved, and two of them (F-02's disposition table, F-03's
+§5.5/§5.6) are resolved more thoroughly than I asked. The single blocker is a defect introduced by
+the F-02 fix itself, and it is a small edit:
+
+1. **F-01** — drop `snapshot-unavailable` from the reason position. Report the capture-failure
+   escalation with no refusal reason per REQ AC-3.4's diagnosis-only clause and FSPEC BR-15, keep
+   the string as diagnostic prose in the record entry and escalation sentence, and update
+   `TSPEC:244`, `TSPEC:252` and §5.2's fixture at `TSPEC:549` together so §5.6's AT-03-7 row and
+   §2.2's "discharged by not writing code" claim stay true.
+
+F-02 and F-03 should be answered in the same revision — F-02 is three paragraphs reconciled to one
+ordering answer, F-03 is one table row — but neither gates the phase.
+
+The document under review is materially better than v1.0. The revision did not paper over the three
+Highs; it moved a boundary out of this document and into upstream where it belonged, gave a silent
+failure path a named disposition with six positive assertions, and turned a test section that named
+seven files into one that maps every acceptance test in the FSPEC to a home. Every claim about
+shipped code I checked this round held exactly as written, including the ones the author used to
+argue against their own first draft. F-01 is the cost of doing the F-02 work carefully in a hurry:
+the right closed set was defended, but it was the wrong closed set.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
