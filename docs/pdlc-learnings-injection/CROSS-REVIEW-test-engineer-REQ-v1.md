@@ -70,3 +70,8 @@ Concretely, to clear the bar:
 
 None of the four requires implementation-grade detail, and none of them is the kind of finding whose
 fix begets the next round's finding.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 3, "low": 1}
