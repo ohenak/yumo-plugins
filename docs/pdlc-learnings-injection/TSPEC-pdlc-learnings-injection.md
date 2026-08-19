@@ -739,17 +739,31 @@ asserted where they bind and each asserted *not* to bind where the other does.
 
 ### T.5 Acceptance test → suite mapping
 
-New suites, all under `pdlc/workflows/__tests__/`:
+New suites, under `pdlc/workflows/__tests__/`. **Every AT is listed individually and appears in
+exactly one row** — no ranges, so PLAN can derive per-suite tasks mechanically and a reviewer can
+check completeness by counting (TE F-12):
 
-| Suite | ATs | Layer |
-|---|---|---|
-| `learningsConfig.test.js` | AT-30, AT-32 (config states, three-notice closure) | L1 |
-| `learningsSelect.test.js` | AT-04, AT-07 … AT-14, AT-15, AT-16, AT-28 | L1 |
-| `learningsBlock.test.js` | AT-05, AT-11 (section-set equality), AT-12 | L1 |
-| `learningsCorpus.test.js` | AT-25, AT-26, AT-27 (shell + seam failures) | L2 |
-| `learningsRecord.test.js` | AT-17 … AT-22 (four closure tests, hand-transcribed rule-input record) | L1/L2 |
-| `learningsDispatchSet.test.js` | AT-01, AT-02, AT-03, AT-06, AT-23, AT-24, AT-29, AT-31, AT-33, AT-34, AT-35 | L3 |
-| `learningsPredicatePin.test.js` | T-PIN-1 (F-O-4) | L4 |
+| Suite | ATs | Count | Layer |
+|---|---|---|---|
+| `learningsConfig.test.js` | AT-30, AT-32 | 2 | L1 |
+| `learningsSelect.test.js` | AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-15, AT-16, AT-28 | 9 | L1 |
+| `learningsBlock.test.js` | AT-05, AT-11, AT-12 | 3 | L1 |
+| `learningsCorpus.test.js` | AT-25, AT-26, AT-27 | 3 | L2 |
+| `learningsRecord.test.js` | AT-17, AT-18, AT-19, AT-20, AT-21, AT-22 | 6 | L1/L2 |
+| `learningsDispatchSet.test.js` | AT-01, AT-02, AT-03, AT-06, AT-14, AT-23, AT-24, AT-29, AT-31, AT-33, AT-34, AT-35 | 12 | L3 |
+| `learningsPredicatePin.test.js` | T-PIN-1 (not an FSPEC AT — the F-O-4 cross-module pin) | — | L1 |
+
+**Closure claim: 2 + 9 + 3 + 3 + 6 + 12 = 35**, which is FSPEC's full inventory (AT-01 … AT-35),
+each assigned once. A PLAN task that adds an AT to a suite must therefore remove it from another,
+and a `learningsSuiteMap` assertion — the six suites' declared AT lists, hand-transcribed, asserted
+disjoint and equal to the 35-member literal — is what keeps this table honest as suites grow.
+
+**AT-11 and AT-12 belong to `learningsBlock.test.js`, not `learningsSelect.test.js`.** The earlier
+draft listed them in both, which would have let two PLAN tasks each claim to own them and neither
+actually write them. They are material-extraction claims — AT-11 asserts section-set equality over
+what BR-6 selected, AT-12 asserts the character-safe cut of §D.5 — so they sit with the renderer's
+suite, and `learningsSelect.test.js` covers only the eligibility, ordering and count rules that
+`selectLearnings` decides.
 
 ### T.6 The three L3 claims that need care
 
