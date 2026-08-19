@@ -103,10 +103,19 @@ read the rejection as a design commitment, not a tested one.
 ### DEC-A6-01: The pre-repair tree is captured as a dangling snapshot commit, never stashed
 
 **Decision.** Capture builds a commit object without touching the working tree — `git rev-parse
-HEAD`, `git add -A --`, `git write-tree`, `git commit-tree {tree} -p {head}`, `git update-ref
+HEAD`, `git add -A --`, `git write-tree`, `git commit-tree {tree} -p {head} -m "…"`, `git update-ref
 refs/pdlc/a6-snapshot-{waveNum}`, then `git reset --mixed {head}` to put the index back. Restore is
 `git read-tree --reset -u {tree}`, `git clean -fd`, `git reset --mixed {head}`. Both run through the
 injected `_git(argv)` transport, with `add` and `reset` going through `gitWithLockRetry`.
+
+The `-m "…"` on `commit-tree` is **not optional and not cosmetic**, and it is transcribed here
+verbatim from TSPEC §2.5's block for that reason. A `commit-tree` invoked without `-m` reads its
+message from stdin, and the injected transport is argv-only — it resolves `{ok, stdout, stderr}` and
+offers no stdin channel — so a `-m`-less capture blocks against the shipped transport. No test would
+catch the omission: §5.5's oracle is an **argv-sequence** assertion over the `_git` double's recorded
+argv (`commit-tree === 1`, plus an `update-ref` on the snapshot ref), and a double answers a
+`-m`-less argv as happily as a correct one. The literal belongs in the implementing task's argv, not
+in its judgement (TE F-01).
 
 **Constraints that forced the shape.** BR-9's oracle is content-level over tracked *and* untracked
 files, so path-scoped restoration is out. The wave's uncommitted work is the protected asset, so a
@@ -135,13 +144,30 @@ advisory promotion ({taskId})`, `what` = `Wave N advisory promotion (task T)`, a
 own `_git`, `_sleep`, `emit` and `provenance`. FSPEC BR-8's licence to "widen scope" is therefore
 read as *licence to commit the promotion*, not as licence to enlarge another task's pathspec.
 
+**This entry supersedes two pieces of upstream text that still describe the rejected option A
+shape.** TSPEC §1.1's obligation table, row O-8, resolves the obligation as "the wave commit loop's
+existing `commitPaths` writer gains one more pathspec — the promotion's paths, scoped to the later
+task's owned set", which read plainly *is* option A; TSPEC §3.6's body already says the opposite, so
+the row and the section disagree. FSPEC BR-8's clause "that scope may widen under O-8's E-6
+resolution" is permissive rather than wrong — it licenses this decision's shape too — so it is left
+standing and read through this entry. The O-8 row is not: a later reader who enters through the
+obligation table and follows traceability back to REQ reaches the rejected shape and never meets its
+rejection. Correcting that row is raised as an erratum on TSPEC (PM F-03, TE F-07).
+
 **Constraints that forced the shape.** Pathspec-scoped commits are the discipline M-WG-4 rests on;
 `commitPaths` requires `message` and `what` (it is not a two-argument call), so a new call is fully
 specified here rather than left to Phase I. AT-04-3's oracle is over writer *identities*, which both
 shapes preserve — the choice is therefore not test-forced, which is exactly why it is recorded here.
 
-**Reversibility:** easy, with one caveat — the commit *message* is asserted by AT-04-5, so a later
-reshaping is a test-visible change, not a silent one.
+**Reversibility:** easy, with one caveat — the commit *message* is asserted, so a later reshaping is
+a test-visible change, not a silent one. The oracle is **TSPEC's**, not FSPEC's: TSPEC §7's
+test-mapping row for AT-04-5 identifies the promotion commit "by its `message` literal and its
+pathspec", and §3.6 fixes that literal. FSPEC's own AT-04-5 asserts four other things — the repair in
+the branch's committed state, no residual working-tree change, the advisory record naming the paths,
+and the later task's dispatch being told — and does not range over the message at all. The caveat
+holds; only the citation needed fixing, and it needed fixing because "a test will catch it" is a
+reversibility rating an operator acts on, and it is true only of the test that actually catches it
+(PM F-04).
 
 **Re-evaluation triggers:** FSPEC BR-8 is rewritten to name the per-task commit explicitly; the wave
 loop stops being the sole writer past the gate; or operators report that a third commit per resolved
@@ -160,17 +186,32 @@ be derivable from what the halting wave knows. Phase I has no run id.
 
 **Reversibility:** easy — the name is computed in one function and printed in one halt field.
 
+**Known gap in the remedy's reach (PM F-05).** The "copy the ref" remedy below is documented in
+TSPEC §2.5 and in this record — neither of which an operator reads at halt time. FSPEC E-28 requires
+the halt to name the failed restoration and TSPEC requires it to name the ref, so at halt an operator
+learns the object's *name* but gets no indication that the ordinary next step after a halt —
+re-running the feature, which §2.5 itself describes — destroys it. Putting that sentence on the halt
+message is a product decision about an operator-facing obligation and therefore belongs in
+REQ/FSPEC, not here; the PM is routing it. This entry carries the gap in the meantime.
+
 **Re-evaluation triggers:** an operator investigation is ever lost to the re-run overwrite; a run id
 or capture timestamp becomes available in Phase I scope; or the accumulated refs (one per wave per
 run, in a namespace nothing prunes) become an operational complaint, at which point pruning and
-discrimination are decided together.
+discrimination are decided together; or the halt-message obligation the PM is routing to REQ lands,
+in which case the remedy stops being record-only and this entry's known gap closes.
 
 ### DEC-A6-04: `waveBudgetPerRun: 0` is a supported affordance, validated by a new `nonNegativeInt`
 
 **Decision.** `parseAdvisoryConfig` gains `nonNegativeInt` (`Number.isInteger(v) && v >= 0`) beside
 the shipped `positiveInt`, and `waveBudgetPerRun` is the only key that uses it. `0` means "keep the
-tier on, keep A6 off": every red wave escalates with no dispatch, and the sixth summary row is
-present reading zero. Per-key independent fallback is preserved — one bad key never retunes the
+tier on, keep A6 off" **at the dispatch level, not at the mechanism level**: every red wave still
+enters A6 and still *captures* — per TSPEC §3.2 step 3 the capture precedes the budget read, so an
+over-budget wave writes its `write-tree`/`commit-tree` pair and its
+`refs/pdlc/a6-snapshot-{waveNum}` — then escalates with `reason: "budget-exhausted"` and dispatches
+no agent. The sixth summary row is present reading zero. That ordering is deliberate, not incidental:
+it is what leaves an operator running with `0` a pre-repair snapshot to inspect. Read together with
+DEC-A6-03, `0` therefore still accumulates one ref per red wave; it suppresses agent calls, not
+git objects (TE F-04). Per-key independent fallback is preserved — one bad key never retunes the
 others.
 
 **Constraints that forced the shape.** E-33 requires `0` to survive as configured; `positiveInt`
