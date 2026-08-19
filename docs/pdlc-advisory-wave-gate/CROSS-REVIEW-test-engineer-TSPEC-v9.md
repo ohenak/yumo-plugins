@@ -82,8 +82,35 @@ claims about them.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The negative-control fixture needs a seam id absent from `ADVISORY_SEAM_PHASES`. Once A6 lands, all six catalogued seams have rows, so the fixture must use a non-catalogue id (`"A9"` or similar) passed straight to `runAdvisorySeam`. That is executable today and I am not blocking on it, but §3.1 leaves the fixture's shape to Phase P — worth one clause naming it so the implementer does not reach for a catalogue seam and find the arm unreachable. |
+
 ## Positive Observations
+
+- Resolving a "the export list is incomplete" finding by *narrowing* the claim rather than widening the
+  interface is the right instinct, and rare. The easy fix was one `export` keyword; it would have added a
+  public surface with no production reader purely to enable a test that restates its own fixture.
+- The delta names the negative control explicitly. Most specs stop at the positive assertion and leave the
+  falsifiability argument implicit; this one states what goes wrong when the row is missing and where the
+  observation lands, which is what makes PROP-REC-07 checkable by someone who did not write it.
+- Holding A3–A5's values on the same suite as the A6 assertion is a small choice with real regression value.
+- Every anchor I spot-checked in the delta holds: `:3108`, `:3338` and both fallback field expressions,
+  §5.1's `advisoryEscalationLog.test.js` row, PLAN A6-17's task and manifest rows, PROPERTIES' PROP-REC-07
+  wording. No new file and no new owner is minted, so PLAN's batch DAG and single-writer-per-batch
+  constraints are untouched by this round.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The routed item lands, and lands as a genuine testability improvement rather than a wording repair: an
+unexecutable unit contract has been replaced with an executable integration oracle that carries positive
+values, a negative control, and a non-regression companion. Upstream is unmoved and TSPEC remains a
+faithful compression of it. No High finding. F-01 and F-03 are inherited non-gating items from v8 that
+this round did not reach; F-02 is a provenance line in the round's own changelog. None blocks the phase.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
