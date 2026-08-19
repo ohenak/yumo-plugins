@@ -8,7 +8,7 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) |
+| Upstream | `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) |
 | Downstream | `pdlc-engineering-loop` |
 | Cross-Reviews | — |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
@@ -96,7 +96,7 @@ than the tier's other five:
 | | Consequence | Fact |
 |---|---|---|
 | No post-mortem is written | Phase I acquires no refusal marker and no `RESOLVED:` lifecycle, so nothing records *why* it stopped or forces anyone to say it was addressed | M-WG-5 |
-| Phase I has no approval skip | a re-invocation re-enters at wave 1 and re-dispatches **every** wave, including those whose commits already landed | M-WG-6 |
+| Phase I has no approval skip | a re-invocation carries no phase-level skip, so a human must re-invoke by hand rather than the pipeline resuming on its own | M-WG-6 |
 | The queue row goes `halted` | an unattended `/loop` stops here and waits for a human | M-WG-7 |
 
 **Correction, 2026-08-13.** The M-WG-6 row above previously claimed a re-invocation "re-enters
@@ -140,6 +140,20 @@ every suite that transitively imported the new module failed to load — reporte
 run rather than as a failing assertion. The gate went red and refused to commit, which is exactly
 right. The whole repair was one keyword, in a file the PLAN already named as a later task's
 deliverable. The pipeline had no way to make it, so an unattended run became an operator turn.
+
+**The corroborating incident (2026-08-11, `iv-snapshot-store-postgres`, consumer repo
+`regime-ledger`).** A Wave 2 `se-implement` agent delivered half of task T07's declared ownership:
+it wrote the NEW test module (`tests/shared/storage/test_file_discipline_array.py`) but never
+touched the MOD implementation file (`shared/storage/file_discipline.py`) the same PLAN row owned.
+The gate died at pytest *collection* — `ImportError: cannot import name 'read_committed_json_array'`
+— zero tests run, the whole scoped suite interrupted. Unlike the first incident, the repair lay
+entirely inside the failing wave's **own** owned paths: E-5 alone covers it, no E-6 needed, and it
+is the first live instance of the `wave-internal-defect` class (AC-2.2 #2). Recovery was manual:
+implement the missing symbol per the TSPEC section the test's own docstring cited, re-run the exact
+gate command to green, re-invoke. Two engine facts observed at this halt feed Q-4/Q-5 and D-AWG-06
+below: the halt report carried `haltPhase: null` with no structured record beyond the raw gate
+tail, and the recovery hint said "set the QUEUE row back to pending, then re-run the queue" although
+the run was a direct `pdlc dev` invocation with no queue in the loop.
 
 **The naive fix is the dangerous one.** Letting an agent decide that the gate should pass would put
 a model in charge of the gate that exists to catch it. This REQ takes the tier's existing split —
@@ -209,9 +223,9 @@ AC id. Reuse of the model-rung resolver rather than restatement of its literals 
 | `advisory.attemptBudget` | `3` | existing, reused | remediation attempts per A6 invocation, one invocation being A6 engaged on one red wave (AC-2.4) |
 | `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per attempt, dispatch to verdict; deadline restarts each attempt, so one A6 invocation may consume up to `attemptBudget` × this value (AC-2.4, NFR-4) |
 | `advisory.envelope` | gains `E-5`, `E-6` (AC-3.1) | existing, extended | the per-seam allow-list |
-| `advisory.waveBudgetPerRun` | `2` | **new** | how many distinct waves A6 may resolve in one run (AC-2.4); exceeded ⇒ escalate |
+| `advisory.waveBudgetPerRun` | `1` | **new** | how many distinct waves A6 may resolve in one run (AC-2.4); exceeded ⇒ escalate |
 
-`advisory.waveBudgetPerRun`'s default of 2 is a proposal, not a confirmed operator decision — Q-1.
+`advisory.waveBudgetPerRun`'s default `1` is an operator decision recorded under Q-1 (2026-08-13); the earlier proposal of `2` is superseded.
 
 **C-3 — Closed vocabularies.** A6's root-cause classification (AC-2.2) is a closed catalogue on the
 emitting side and a total function on the receiving side, per DC-01: an unrecognised or absent
@@ -529,6 +543,10 @@ requirements altitude.
 - **O-6** — Improving the PLAN's dependency derivation so that a task cannot be scheduled before the
   task that promotes what it consumes. Explicitly out of scope here (§4). Owner:
   `pdlc-engineering-loop` (queue row 6).
+- **O-7** — Build-breaking source defects (post-wave command red) are outside A6's reach by
+  decision, not by oversight (Q-2, 2026-08-13). Any remedy is a separate mechanism with its own
+  trigger and budget, and must not be modelled as a widened A6. Owner: `pdlc-engineering-loop`
+  (queue row 6).
 
 - **O-8** — How AC-4.6's E-6 repair reaches the committed state through the existing pathspec-scoped
   commit path, and how the later task's dispatch is told what already exists, are TSPEC's. This REQ
