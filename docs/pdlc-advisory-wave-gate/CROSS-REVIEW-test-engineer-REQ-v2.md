@@ -79,3 +79,6 @@ F-03 is a half-sentence disambiguation. None blocks; all three are cheap enough 
 version, and F-01 in particular should land before TSPEC derives the re-gate property from it.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
