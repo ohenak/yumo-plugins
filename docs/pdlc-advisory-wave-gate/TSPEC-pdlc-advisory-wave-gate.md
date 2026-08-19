@@ -2,16 +2,34 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.3) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.4) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active), `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md`, `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (active) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.5 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.6 | 2026-08-20 |
 
 ## Changelog
+
+**v1.6 (erratum round, Phase D).** Re-grounded on FSPEC v1.4 first, then the six raised items.
+Upstream absorbed: AT-04-1 split into three conjunct-scoped runs, so §5.6 gains AT-04-1a (green
+re-gate, carried by §5.2's two-attempt run) and AT-04-1b (suppressed re-gate, carried by §5.5's
+dropped-re-gate fixture, its construction O-1's); BR-11's seam-budget window is per **attempt**,
+worst case `attemptBudget × seamBudgetMinutes`, recorded on §5.6's AT-02-7 row. FSPEC's dropped
+carve-out is the seam-budget one, not the `.gitignore` one — OQ-7 stays open upstream and every
+upstream-pending flag in §3.3, §5.2, §5.5, §5.6 stands unchanged. Raised items: §1.1's O-8 row
+restated as the **added** `commitPaths` call it is, naming DEC-A6-02's rejected option A, so the
+row and §3.6 no longer disagree; §4.4's claim that the new key is mirrored into `pdlc/engine`'s
+`ci-arrangement` expectations withdrawn — that file asserts only `implementation.testCommand` and
+contains no `advisory` occurrence — and replaced by the **new** expectation this feature authors
+there, with §5.1 gaining the two second-channel rows (example config, engine test) outside its
+set-equality rule; `waveBudgetPerRun: 0` gains a behaviour arm in §5.2 (enabled tier, red wave,
+zero `_agent` calls, snapshot still taken, summary key present-and-zero) so §5.4's matrix row is
+no longer a claim nothing tests; §4.5's one-ref-per-wave property gains §5.2's two-red-wave
+fixture asserting `{a6-snapshot-1, a6-snapshot-2}` set-equality, which a fixed-name regression
+fails.
 
 **v1.5 (round 5).** One High (TE F-29), two Medium (TE F-30, PM F-01), two Low (TE F-31, PM F-02),
 two questions (TE Q-01, PM Q-02) addressed. TE F-29 — round 4's anchor was named but not plumbed:
