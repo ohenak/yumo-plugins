@@ -122,4 +122,4 @@ the gate is pointed at review files by mistake.
 ## Verdict
 
 VERDICT: Approved with minor changes
-{"high": 0, "medium": 1, "low": 2}
+{"high": 0, "medium": 1, "low": 1}
