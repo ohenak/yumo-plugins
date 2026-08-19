@@ -23,6 +23,17 @@ still asserts that HEAD or the REQ's own definitions no longer support is a find
 
 ## Raised Items — Landing Assessment
 
+The round carried five distinct items (the dispatch list repeats several of them from
+different raisers). Landing verdicts:
+
+| Item | Landed? | Evidence at HEAD |
+|---|---|---|
+| AC-1.5 notice cardinality unscoped (F-18) | **No — mis-landed** | REQ:265-266 scopes the population to a run "that reaches Phase I **and executes a wave**". F-18 asked for "runs that reach Phase I". The narrower scope excludes the no-manifest legacy run — the only run in which BL-03's carrier fires (`orchestrate-dev.js:14041-14045`) — i.e. exactly the case AC-1.5 exists to constrain. See F-01. |
+| AC-1.5's two carriers mutually exclusive (F-19) | Partially | REQ:270-274 now records the exclusivity and binds the requirement to whichever carrier fires, naming BL-03's as the both-absent carrier. The prose is correct against HEAD. It is however unmeasurable under the population the same edit wrote (F-01), so the fix does not stand on its own. |
+| NFR-4's carve-out and `attemptBudget`-starvation rationale false | Partially | REQ:471-475 deletes both the carve-out and the false rationale, and states the exclusion as structural. That much is right and matches HEAD: the gate runs between dispatches, never inside one. What did not land is the *granularity* of the window the raisers named — see F-02. |
+| §5 config table restated to AC-2.4's window | Partially | REQ:214 no longer says "excluding gate-command run time" and no longer implies subtraction, which is correct: HEAD performs none. It now says "per A6 invocation, measured dispatch to verdict", which inherits F-02's defect. |
+| AC-4.1's unbounded existential negative replaced | **No — regressed** | REQ:370-376 replaces one unfalsifiable-but-true sentence with three conjuncts, two of which are impossible under the REQ's own definition of "resolves". See F-03. |
+
 ## Findings
 
 ## Questions
