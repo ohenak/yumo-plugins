@@ -146,7 +146,8 @@ passes is exactly where an unattended queue does its work.
 ## 4. Constraints
 
 - **C-1 — The affected dispatches are those the pipeline already classifies as authoring.** Injection
-  applies to every dispatch the pipeline tags as an **authoring** dispatch whose target document is
+  applies to every dispatch the pipeline tags `dispatchKind: "authoring"` at HEAD — its creator,
+  optimizer and erratum dispatch sites in `orchestrate-dev.js` — whose target document is
   REQ, FSPEC, TSPEC, PLAN, DECISIONS or PROPERTIES: the phase's creator dispatch where it has one,
   the optimizer (revision) dispatch of each review round, and an erratum dispatch against one of
   those documents. This is deliberately a rule over the taxonomy that already exists rather than a
@@ -252,7 +253,9 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-1.2** *Given* the same run, *when* every dispatch the pipeline made is inspected, *then* the
   set carrying injected material equals exactly the set C-1's rule names — no more, no fewer — and
   every dispatch outside it (reviews, implementation, DoD verification and remediation, harvest,
-  ship, advisory seams) is byte-identical to the same run with injection disabled. The oracle is a
+  ship, advisory seams) is byte-identical to the same run with injection disabled — asserted under
+  AC-6.1's scripted fixtures, for the reason AC-4.3 gives: two live runs author different documents
+  and are not comparable. The oracle is a
   set equality over the pipeline's own dispatch classification evaluated against the run that
   happened, so a run with no DECISIONS phase, or with five optimizer rounds, satisfies it as stated
   rather than vacuously.
@@ -342,14 +345,15 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   pipeline converges" (G-4, G-5): comparing verdicts or round counts across live runs measures model
   nondeterminism, and comparing them under AC-6.1's scripted fixtures is vacuous.
 - **AC-4.4** *Given* thresholds in §4.1 configured to values that admit nothing (zero documents
-  or zero bytes), *when* the pipeline runs, *then* it behaves exactly as the disabled case and
-  records that it did, rather than treating the configuration as invalid and refusing.
+  or zero bytes), *when* the pipeline runs, *then* it behaves as an enabled run whose selection is
+  empty — AC-3.1's empty row set and AC-4.1's record, not AC-5.1a's absent key — rather than
+  treating the configuration as invalid and refusing.
 
 **Group 5 — inertness when disabled, and semantics preserved** *(G-5; NG-3, NG-4, NG-7)*
 
 - **AC-5.1a** *Given* `learningsInjection.enabled` set to `false`, or the configuration section
-  absent, *when* the pipeline runs, *then* the run's recorded count of corpus reads is zero, every
-  composed dispatch is byte-identical to the same run with the section absent, and the run report
+  absent, *when* the pipeline runs, *then* every composed dispatch is byte-identical to AC-6.2's
+  recorded baseline — the same comparand on both branches — and the run report
   carries no injection summary at all — the key is absent, not present-and-empty.
 - **AC-5.1b** *Given* a configuration section present but malformed or unparseable (an operator typo
   such as `learningsInjectoin`), *when* the pipeline runs, *then* behaviour is AC-5.1a's **and** the
