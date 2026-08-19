@@ -140,10 +140,10 @@ including its own failure; no step raises to its caller (BR-12).
 1. Read the `learningsInjection` configuration section for the consumer repository.
 2. **Absent section, or `enabled` false** → the flow stops here, the dispatch is composed exactly as
    it is composed today, and **no injection record of any kind is produced** (BR-14, AC-5.1a).
-3. **Section present but malformed** — unparseable, or present under a name that is not
-   `learningsInjection` in a way the pipeline can detect, such as an operator typo → behave as (2)
-   for the dispatch, **and** record the corpus-level malformed-configuration notice so the typo is
-   distinguishable from a deliberate disable (BR-14, AC-5.1b).
+3. **Section present but malformed** — `learningsInjection` present and not an object, or a
+   declared key carrying a wrong-typed value → compose as in (2), **and** record a
+   corpus-level malformed-configuration notice (BR-14, AC-5.1b). A misspelt section name is
+   a stray top-level key, so it reads as absent (2), not malformed.
 4. **Enabled** → continue, with thresholds resolved: each of REQ §4.1's three bounds takes its
    configured value if present and its default if not.
 5. If the dispatch is **not** one C-1 names as authoring, the flow stops here with no record
@@ -258,13 +258,12 @@ feature: this rule consumes the classification, it does not restate the membersh
 
 **Corpus membership is not a rule this feature applies.** It is the enumeration REQ C-3
 pins: two location globs — `docs/{feature}/LEARNINGS-*.md` and
-`docs/completed/{feature}/LEARNINGS-*.md` — read over tracked and
-untracked-but-not-ignored files. F-O-4 keeps that restatement pinned to the shipped
-consolidation-side predicate. Documents under `docs/discarded/{feature}/` are never
-candidates (AC-2.6) because they sit one directory deeper than either glob reaches: no
-ordered rule fires on them and nothing about them enters the record. Promoting that to a
-separate `docs/discarded/` exclusion rule would change the answer for paths the shipped
-predicate *does* match, so this specification does not add one.
+`docs/completed/{feature}/LEARNINGS-*.md` — over tracked and untracked-but-not-ignored
+files, restated literally and pinned to the shipped consolidation-side predicate (F-O-4).
+Documents under `docs/discarded/{feature}/` are never candidates (AC-2.6) because they sit
+one directory deeper than either glob reaches: no rule fires on them, and nothing about them
+enters the record. A separate `docs/discarded/` exclusion rule would change the answer for
+paths the shipped predicate *does* match, so none is added here.
 
 One exclusion then applies to candidates, and its reason id is recorded:
 
@@ -272,12 +271,10 @@ One exclusion then applies to candidates, and its reason id is recorded:
 |---|---|---|
 | **E-SELF** | The document is `{f}`'s own LEARNINGS, at any path | `RSN-SELF` |
 
-- **Self-exclusion is by feature, not by path.** `{f}`'s own LEARNINGS is excluded whether
-  it sits under `docs/{f}/` or `docs/completed/{f}/`, and whether it was written by an
-  earlier completed attempt at the same feature. It holds in every phase of `{f}`'s run
-  (AC-1.3).
-- **`docs/completed/{p}/` documents are eligible on exactly the same terms as `docs/{p}/`
-  ones** (AC-2.6). Archival location changes nothing but the path used in BR-4's tiebreak.
+- **Self-exclusion is by feature, not by path** — under `docs/{f}/` or `docs/completed/{f}/`,
+  including one left by an earlier completed attempt, in every phase of `{f}`'s run (AC-1.3).
+- **`docs/completed/{p}/` documents are eligible on the same terms as `docs/{p}/` ones**
+  (AC-2.6); archival location changes nothing but the path used in BR-4's tiebreak.
 
 ### BR-3 — Read-and-validate outcomes are total *(AC-4.2)*
 
@@ -289,13 +286,12 @@ Each surviving candidate resolves to exactly one of three outcomes, and no other
 | **unreadable** | The read itself fails, for any reason | Excluded, `RSN-UNREADABLE` |
 | **unparseable** | Read, but does not present a LEARNINGS document | Excluded, `RSN-UNPARSEABLE` |
 
-A document whose bytes stop mid-document is **unparseable**: it carries no separate reason
-id. No predicate over a document's own bytes separates truncation from a document that
-legitimately lacks later sections (E-19 makes such documents eligible, not defective), so a
-`RSN-TRUNCATED` id would name a branch no fixture could construct and no test could
-falsify. What matters to the report is preserved and stays testable: a document excluded as
-unparseable contributes nothing, whereas a document cut by BR-6's byte bound contributes and
-carries the *bounded* flag — the two are distinguishable in the record (AC-3.2).
+A document whose bytes stop mid-document is **unparseable**, with no separate reason id: no
+predicate over a document's own bytes separates truncation from a document that legitimately
+lacks later sections, which E-19 makes eligible rather than defective, so a `RSN-TRUNCATED`
+id would name a branch no fixture could construct. What the report must keep apart is kept
+apart: an unparseable document contributes nothing, while a document cut by BR-6's byte
+bound contributes and carries the *bounded* flag (AC-3.2).
 
 "Presents a LEARNINGS document" is a shape judgement over the document's own conventional
 structure, not a completeness score: this feature never re-scores documents (NG-3). The
@@ -348,24 +344,23 @@ ERRATUM line in this dispatch's report.)*
 
 ### BR-5 — The count bound *(AC-2.1)*
 
-**At most** `learningsInjection.maxDocuments` documents contribute to any block. The count
-of contributing documents equals `maxDocuments` only where the eligible set is at least that
-large **and** the total byte bound (BR-6) has not bound first; otherwise it is lower. The
-two bounds are independent, and on real corpora the total bound is the one that binds:
-measured at HEAD on 2026-08-19 over the 89-document corpus BR-4 tabulates, injectable
-material averages 13,278 bytes per document (max 41,180) and 87 of the 89 exceed
-`maxBytesPerDocument` on their own, so under REQ §4.1's declared values — five documents at
-6,000 bytes each against a 20,000-byte total — at most three can contribute. Whether the
-count bound is load-bearing at all under those values is REQ O-1's question; the live run
-that discharges O-1 should report the answer rather than leave it to be re-derived.
+**At most** `learningsInjection.maxDocuments` documents contribute to any block. The
+contributing count equals `maxDocuments` only where the eligible set is at least that large
+**and** the total byte bound (BR-6) has not bound first; otherwise it is lower. On real
+corpora the total bound is the one that binds: measured at HEAD on 2026-08-19 over the
+89-document corpus BR-4 tabulates, injectable material averages 13,278 bytes per document
+(max 41,180) and 87 of the 89 exceed `maxBytesPerDocument` alone, so under REQ §4.1's
+declared values — five documents at 6,000 bytes against a 20,000-byte total — at most three
+can contribute. Whether the count bound is load-bearing at all under those values is REQ
+O-1's question, and the live run discharging O-1 should report the answer rather than leave
+it to be re-derived.
 
-Documents cut here carry `RSN-COUNT`. Where the eligible set is smaller than the threshold,
+Documents cut here carry `RSN-COUNT`; where the eligible set is smaller than the threshold,
 all of it is taken and no `RSN-COUNT` row is produced.
 
 **No back-fill.** The count bound is applied first, over BR-4's order, and a document
 dropped later by the total byte bound does not promote a count-cut document into the slot it
-frees. The selected set is therefore always a prefix of the ordered eligible set, and the
-`RSN-COUNT` and `RSN-BYTES` rows are stable against each other (AT-13).
+frees. The selected set is therefore always a prefix of the ordered eligible set (AT-13).
 
 ### BR-6 — What is injected from a document, and how the byte bounds bind *(AC-2.3, AC-2.4; REQ O-4)*
 
@@ -387,7 +382,7 @@ value, always injected first so that even a bounded document stays attributable.
 These names identify sections by the conventional titles the harvest skill writes, where
 they carry numeric prefixes — `## 2. Cross-Feature Patterns`, `## 6. Approval Record`
 (`pdlc/skills/harvest-learnings/SKILL.md`, "LEARNINGS Document Format"). Which heading forms
-count as which section is F-O-1's obligation, not text to be matched literally from here.
+count as which section is F-O-1's, not text to be matched literally from here.
 
 **Why this subset.** Cross-Feature Patterns ranks first because it is the section where an
 author is already generalising beyond their own feature — the material most likely to apply
@@ -398,20 +393,20 @@ authoring prompt reinforces BR-11's boundary.
 **A document carrying no priority section contributes nothing and consumes no slot.**
 Measured at HEAD, at least one corpus document carries none of the five: `regime-ledger`'s
 `docs/completed/34-postgres-audit-repository/LEARNINGS-postgres-audit-repository.md` has
-`## Implementation Learnings`, `## Cross-Feature Findings` and `## Process Findings`, and no
-section of any other name. Such a document is eligible — it parses, and E-19 makes missing
-sections legitimate — but yields nothing, so it is dropped before the bounds are applied,
-with `RSN-NO-MATERIAL` (BR-9). Without this rule it would take a `maxDocuments` slot while
-injecting zero bytes, indistinguishable in BR-8's rows from a real contribution.
+`## Implementation Learnings`, `## Cross-Feature Findings` and `## Process Findings` only.
+Such a document is eligible — it parses, and E-19 makes missing sections legitimate — but
+yields nothing, so it is dropped before the bounds are applied, with `RSN-NO-MATERIAL`
+(BR-9). Otherwise it would take a `maxDocuments` slot while injecting zero bytes,
+indistinguishable in BR-8's rows from a real contribution.
 
 **The byte-accounting basis.** All three byte quantities measure the same bytes. A
-document's **contributed bytes** are every byte the block carries on that document's
-account: its identification line, its delimiters and source-path label (BR-7), and the
-section headings and bodies taken. `maxBytesPerDocument` bounds one document's contributed
-bytes; `maxTotalBytes` bounds their sum across selected documents; BR-8's *bytes injected*
-records that same quantity per document, and BR-8's per-dispatch total is that sum. The
-block's preamble (BR-7) belongs to no document and counts toward none of the three. An
-expected byte count is therefore computable from a fixture alone.
+document's **contributed bytes** are every byte the block carries on its account: its
+identification line, its delimiters and source-path label (BR-7), and the section headings
+and bodies taken. `maxBytesPerDocument` bounds one document's contributed bytes,
+`maxTotalBytes` bounds their sum across selected documents, and BR-8's *bytes injected*
+records that same quantity per document with its per-dispatch total as the sum. The block's
+preamble belongs to no document and counts toward none of the three, so an expected byte
+count is computable from a fixture alone.
 
 **How the per-document bound binds.** Sections are taken in priority order until the next
 one would exceed `learningsInjection.maxBytesPerDocument`; the remaining sections are
@@ -581,19 +576,19 @@ Four states, four behaviours:
 
 Three points carry load:
 
-- **Malformed means present and wrong-shaped.** That is the reading the repository's
-  sibling config readers already ship — `parseAdvisoryConfig` returns `sectionMalformed`
-  only where the section key is present but not an object, and `parseMergeConfig` carries
-  the same meaning (`pdlc/workflows/orchestrate-dev.js`). A **misspelt section name** is a
-  stray top-level key, not a present section, so it reads as absent: the run is
-  baseline-identical and no notice fires. Detecting the misspelling would need a closed
-  registry of legal top-level keys in `.claude/pdlc.config.json`, which does not exist and
-  would misfire on keys a later feature legitimately adds; an unknown-top-level-key rule is
-  **decided against** here. REQ AC-5.1b's example makes the operator typo the detectable
-  case and no longer holds — `ERRATUM: REQ` rides this round.
-- **An absent config file is the absent-section state**: no injection, no record. This
+- **Malformed means present and wrong-shaped** — the reading the repository's sibling
+  config readers already ship: `parseAdvisoryConfig` sets `sectionMalformed` only where the
+  section key is present and not an object, and `parseMergeConfig` carries the same meaning
+  (`pdlc/workflows/orchestrate-dev.js`). A **misspelt section name** is a stray top-level
+  key, not a present section, so it reads as absent: baseline-identical run, no notice.
+  Detecting it would need a closed registry of legal top-level keys in
+  `.claude/pdlc.config.json`, which does not exist and would misfire on keys a later feature
+  legitimately adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b's
+  example makes the operator typo the detectable case and no longer holds — `ERRATUM: REQ`
+  rides this round.
+- **An absent config file is the absent-section state**: no injection, no record. That
   differs deliberately from `parseAdvisoryConfig`, which defaults an absent file to
-  enabled-with-defaults. This feature adds material to authoring prompts, so it turns on
+  enabled-with-defaults; this feature adds material to authoring prompts, so it turns on
   only where an operator asked for it.
 - **Admits-nothing thresholds are a valid configuration, not an invalid one.** Zero
   documents or zero bytes is an enabled run with an empty selection — BR-8's rows present
@@ -608,16 +603,16 @@ computable so AT-33 can assert set equality:
 
 - **Observed set:** the file-open calls the run makes under `docs/`, over one observation
   window covering the whole run.
-- **Expected set:** the corpus-root enumeration itself, plus one open attempt for every
-  corpus document the report names — in BR-8's rows or in BR-9's per-document reason rows —
-  except those carrying `RSN-SELF`, which is decided from the path before any read.
-  `RSN-UNREADABLE` documents belong to the expected set: the failed attempt is the read.
+- **Expected set:** the corpus-root enumeration, plus one open attempt for every corpus
+  document the report names — in BR-8's rows or BR-9's per-document reason rows — except
+  those carrying `RSN-SELF`, decided from the path before any read. `RSN-UNREADABLE`
+  documents belong to it: the failed attempt is the read.
 
 Nothing under `docs/_constraints/` or `docs/_decisions/` is written, no LEARNINGS document
-or skill prompt is written, and no new index, cache or state file is created anywhere
-(NG-1, NG-4). On a disabled run the same instrument, in the same window, observes no corpus
-path at all — an absence claim that carries weight only because the enabled case on that
-same instrument shows it firing (AT-33, AT-34).
+or skill prompt is written, and no index, cache or state file is created anywhere (NG-1,
+NG-4). On a disabled run the same instrument, in the same window, observes no corpus path at
+all — an absence claim that carries weight only because the enabled case on that same
+instrument shows it firing (AT-33, AT-34).
 
 ### BR-16 — Pipeline semantics preserved *(AC-5.3)*
 
@@ -843,9 +838,13 @@ text into a disabled run is a test failure rather than a production discovery.
 - **AT-31** — *Given* `enabled: false`, and separately the configuration section absent, *when* the
   pipeline runs, *then* every composed dispatch is byte-identical to the recorded pre-feature
   baseline and no injection key is carried — absent, not present-and-empty.
-- **AT-32** — *Given* a configuration section present but malformed, such as `learningsInjectoin`,
-  *when* the pipeline runs, *then* composition matches AT-31's and the report carries a catalogued
-  notice naming the malformed configuration, so a typo is distinguishable from a deliberate disable.
+- **AT-32** — *Given* a configuration section present and not an object, and separately a
+  declared key carrying a wrong-typed value, *when* the pipeline runs, *then* the
+  composition matches AT-31's byte-for-byte and the report carries the catalogued notice
+  naming the malformed configuration. *And given* a misspelt section name
+  (`learningsInjectoin`), *then* the run is indistinguishable from the absent-section case
+  of AT-31 — no notice, by BR-14's decision against an unknown-top-level-key rule.
+
 - **AT-33** — *Given* an enabled run, *when* the file-open calls under `docs/` are observed
   over one window covering the whole run, *then* that observed set **equals** BR-15's
   expected set — the corpus-root enumeration plus one attempt per report-named document
