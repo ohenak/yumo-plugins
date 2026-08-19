@@ -210,3 +210,35 @@ operator reads it correctly.
   headers.
 
 ## Recommendation
+
+**Needs revision** — one High finding (F-01).
+
+Round 3's blockers are all genuinely closed: F-02 and F-03 are resolved and better grounded than I
+asked for, and F-01's two-attempt half is fixed with the positive companion case in place. The
+single blocker is that the replacement rule over-corrected: dropping the `since dispatch` anchor
+removed the only positional information that distinguishes a fresh gate sequence from the pre-A6
+pass's, so the rule now admits the dropped re-gate it was written to refuse, and §3.2 contradicts
+§5.5.
+
+To close:
+
+1. **F-01** — anchor the suffix. Record the ledger length at dispatch, and require the tokens
+   appended *since dispatch* to be non-empty and to end with the wave's configured gate sequence.
+   Reconcile §3.3's `verifyGate` row, §5.5's mutation bullet and §5.2's companion case to that one
+   wording, with the companion's expected value stated as the since-dispatch slice.
+
+Then, not gating but worth the same pass:
+
+2. **F-02** — drop the two coverage citations or add the one §5.2 case that earns them: a wave
+   entered over budget, escalating with no dispatch, with the snapshot ref asserted written.
+3. **F-03** — either name the ref per wave (`waveNum` is already a parameter) or state in §3.2 and
+   OQ-2 that the ref describes the most recent wave that captured, not the wave whose repair is in
+   the tree.
+
+One upstream item is unchanged and re-emitted below: OQ-7's BR-9 `.gitignore` boundary, open on
+FSPEC and REQ since round 1.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
