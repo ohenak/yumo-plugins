@@ -162,14 +162,19 @@ passes is exactly where an unattended queue does its work.
   LEARNINGS already exists from an earlier completed attempt.
 - **C-3 — Corpus definition, reused from consolidation's pass side, read-only.** The corpus is
   every LEARNINGS document under `docs/{feature}/` and `docs/completed/{feature}/`, tracked or
-  untracked, **excluding** files git ignores and excluding `docs/discarded/` — the definition
+  untracked, **excluding** files git ignores — the definition
   `pdlc-consolidation-agent` already ships (§1.2 claim 2; DECISIONS-pdlc-consolidation-agent §
   DEC-CONS-05). Reuse is definitional, not by import: this feature restates that predicate and a
   test pins the restatement against `consolidate-learnings.js`'s own declaration — DEC-CONS-05's
   own evidence form, needing no packaging change (O-7). No claim is made that the definition is
   held equal across readers: DEC-CONS-05 ships one predicate with two enumerations and rejected a
-  set-equality oracle against the `SessionStart` hook, so none is owed here. The feature reads
-  the corpus and writes nothing (NG-1, NG-4).
+  set-equality oracle against the `SessionStart` hook, so none is owed here. **No separate
+  `docs/discarded/` exclusion rule is added** *(erratum v0.5)*: documents under
+  `docs/discarded/{feature}/` sit one directory deeper than either location the shipped
+  enumeration reaches, so nothing about them enters the record, while a document lying
+  *directly* at `docs/discarded/LEARNINGS-*.md` is matched by that enumeration and is a corpus
+  member on ordinary terms. Adding an exclusion would change the answer for paths the shipped
+  predicate does match. The feature reads the corpus and writes nothing (NG-1, NG-4).
 - **C-4 — Injected material is labelled advisory, and its status is stated to the author.** The
   material arrives delimited and identified by its source document, and the author is told that
   it is prior-feature context, not a requirement of the feature being authored and not an
@@ -203,8 +208,8 @@ passes is exactly where an unattended queue does its work.
   cannot be honoured alongside them, less is injected — never something existing removed.
 - **C-9 — Operator-visible strings are catalogued; every input state is total** *(DC-01)*. Every
   report line and notice this feature emits is a registered catalogue entry with an id a test can
-  assert on — including AC-3.2's per-document reason and corpus-level outcome ids, and AC-5.1b's
-  malformed-configuration notice.
+  assert on — including AC-3.2's per-document reason ids, its corpus-level outcome ids, and the
+  configuration notices of AC-5.1b and AC-5.1c.
   On the receive side, every corpus input state and every configuration state — absent, malformed,
   truncated — resolves to a defined outcome (C-7, Group 4). How the catalogue is registered is
   TSPEC's; the closure of the set and the id-per-reason discipline are requirements.
