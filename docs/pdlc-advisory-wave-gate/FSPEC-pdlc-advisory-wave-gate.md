@@ -460,8 +460,7 @@ equality, it is stated as such rather than as an absence.
   set-equality over member ids. *Then* it is exactly `E-1`…`E-6`. One set-equality, not prose joining
   two sets. *(BR-4, AC-3.1.)*
 - **AT-03-2** — *Who:* the workflows suite. *Given* a proposal confined to the failing wave's own
-  owned paths, where one of those paths is a test file. *When* the envelope is classified. *Then* it
-  is refused on the test-artifact exclusion, not permitted under E-5. *(E-14, BR-5.)*
+  owned paths, where one of those paths is a test file. *When* the envelope is classified. *Then* it is refused, and the reason reported is the test-artifact exclusion's — the reason the ordered catalogue yields when that clause matches first — not the declared-scope exclusion's and not a permit under E-5. Asserting the reason is what makes the precedence claim falsifiable. *(E-14, BR-5.)*
 - **AT-03-3** — *Who:* the workflows suite. *Given* a wave owning a self-modification guard path and
   a proposal confined to it. *When* the envelope is classified. *Then* the refusal reason is
   `out-of-envelope`. *(E-15, BR-5.)*
@@ -469,23 +468,19 @@ equality, it is stated as such rather than as an absence.
   task undertakes to produce. *When* the envelope is classified. *Then* it is permitted only if
   **both** halves hold; a companion case satisfying the symbol half but changing a path outside that
   later task's owned set is refused. *(BR-4, AC-3.1.)*
-- **AT-03-5** — *Who:* the workflows suite. *Given* each excluded operation in BR-6 in turn — PLAN
-  edit, manifest edit, test-command change, post-wave-command change, post-wave-pathspec change,
-  commit, push, tag, and a path outside the computed set. *When* proposed. *Then* each is refused,
-  each asserted by its own test. *(E-17, E-18, AC-3.3, AC-3.5.)*
+- **AT-03-5** — *Who:* the workflows suite. *Given* each excluded operation in BR-6 in turn — PLAN edit, PLAN **task-table** edit, file-ownership-manifest edit, test-command change, post-wave-command change, post-wave-pathspec change, commit, push, tag, and a path outside the computed set. *When* proposed. *Then* each is refused, each asserted by its own test; and the prohibition id set `(f)`…`(i)` is separately compared by set-equality against its transcribed literal, so a deleted prohibition fails here rather than passing a containment check. *(E-17, E-18, BR-6, AC-3.3, AC-3.5.)*
 - **AT-03-6** — *Who:* the workflows suite. *Given* a proposal partly inside and partly outside the
   envelope. *When* it is evaluated. *Then* no part of it is present in the tree afterwards and the run
   does not report the wave resolved. *(E-16, AC-3.5.)*
 - **AT-03-7** — *Who:* the workflows suite. *Given* the refusal-reason catalogue. *When* compared by
-  set-equality. *Then* it still has exactly eight members in the shipped order; A6 added none. *(BR-15,
-  AC-3.4.)*
+  set-equality. *Then* it still has exactly eight members in the shipped order; A6 added none. Ordered-sequence equality, never set equality. *(BR-15, AC-3.4.)*
+- **AT-03-8** — *Who:* the workflows suite. *Given* the shipped exclusion catalogue. *When* compared against its transcribed literal. *Then* the comparison is **ordered-sequence** equality over clause ids and the sequence is unchanged by A6. The order decides which reason a matching proposal reports, so a reordering must fail this test where a set assertion would pass it. *(BR-5, AC-3.2.)*
 
 ### 6.4 FSPEC-AWG-04 — What A6 may never do
 
 - **AT-04-1** — *Who:* the workflows suite. *Given* any A6 verdict, including one asserting the wave
   is fixed with the highest confidence. *When* the configured gate command still returns non-zero on
-  re-gate. *Then* the wave is not treated as gated, and no path exists by which the verdict
-  substitutes for the gate result. *(BR-7, AC-4.1.)*
+  re-gate. *Then* three positive assertions on that one run: the terminal disposition equals `escalated`; the halt reason string equals the reason the pre-A6 pipeline emits for the same gate failure (AT-05-3's literal); and the count of waves the run reports resolved is `0`. No existential negative — "no path exists" is not assertable, and "not treated as gated" is satisfied by a run that halted for an unrelated reason. *(BR-7, AC-4.1.)*
 - **AT-04-2** — *Who:* the workflows suite. *Given* one A6 attempt on a wave with both commands
   configured. *When* the run completes. *Then* the ordered sequence of gate-command invocations for
   that wave equals `[post-wave, test, post-wave, test]`. Companion cases: a re-gate whose post-wave
@@ -493,9 +488,7 @@ equality, it is stated as such rather than as an absence.
   `[test, test]`. Asserted as a **sequence**, never as a set — set equality collapses duplicates and
   would admit a resolution declared on a single invocation. *(BR-7, AC-4.4.)*
 - **AT-04-3** — *Who:* the workflows suite. *Given* an A6 invocation of any outcome. *When* the run
-  completes. *Then* the set of committing writers for the wave is unchanged from the pre-A6 baseline:
-  the pathspec-scoped per-task commit and the post-wave-pathspec build-output commit, both reached
-  only past a green gate. *(BR-8, AC-4.2.)*
+  completes. *Then* the set of committing writer **identities** for the wave is unchanged from the pre-A6 baseline — the pathspec-scoped per-task commit and the post-wave-pathspec build-output commit, both still reached only past a green gate — and no commit is attributable to A6 itself. The assertion is over writer identity and the green-gate precondition, not over the pathspec scope those writers pass: that scope may widen under O-8's E-6 resolution, and AT-04-5 is where the widening is asserted. *(BR-8, AC-4.2.)*
 - **AT-04-4** — *Who:* the workflows suite. *Given* a red re-gate that exhausts the budget. *When* the
   wave halts. *Then* the refusal reason is recorded, the escalation entry is written, and the
   pre-A6 behaviour is taken — a positive assertion on all three, so the negative assertions of
@@ -503,15 +496,12 @@ equality, it is stated as such rather than as an absence.
 - **AT-04-5** — *Who:* an operator inspecting the branch. *Given* a wave A6 resolved under E-6. *When*
   the wave's commit step completes. *Then* the repair is in the branch's committed state and no
   uncommitted working-tree change from the repair remains; the advisory record names the repair's
-  paths and the later PLAN task that owns them; and that later task's dispatch is told the promotion
-  already exists. *(BR-12, AC-4.6.)*
+  paths and the later PLAN task that owns them; and that later task's dispatch is told the promotion already exists. Companion case, chosen to be red against today's behaviour: the same scenario where the later task's paths fall **outside** every configured post-wave pathspec, so the shipped per-task commit loop — which commits only paths owned by tasks *in* the wave (M-WG-12) — leaves the repair uncommitted. That case must fail before the fix and pass after; a fixture whose later-task paths happen to sit inside a post-wave pathspec asserts nothing new. *(BR-12, AC-4.6, M-WG-12.)*
 
 ### 6.5 FSPEC-AWG-05 — Reversibility and the unchanged halt
 
 - **AT-05-1** — *Who:* the workflows suite. *Given* a refusal, a budget exhaustion, and a red re-gate
-  in three separate runs. *When* each terminates. *Then* in each the working tree is observably
-  identical to the wave's post-dispatch, pre-commit tree, with the wave agents' own uncommitted work
-  intact. *(BR-9, AC-5.1.)*
+  in three separate runs. *When* each terminates. *Then* in each the working tree is observably identical to the wave's post-dispatch, pre-commit tree, with the wave agents' own uncommitted work intact. "Observably identical" is BR-9's content-level oracle: the path-to-content-hash map over tracked and untracked files, generated outputs included, equals the map taken before A6 acted. A `git status` comparison does not discriminate here and must not be the oracle. *(BR-9, AC-5.1.)*
 - **AT-05-2** — *Who:* the workflows suite. *Given* a red re-gate on a run with a configured post-wave
   command that writes generated outputs. *When* the tree is restored. *Then* those generated outputs
   match the pre-A6 tree too, demonstrating whole-tree rather than per-path restoration — a case a
@@ -519,9 +509,7 @@ equality, it is stated as such rather than as an absence.
 - **AT-05-3** — *Who:* an operator. *Given* a wave A6 did not resolve. *When* the run halts. *Then*
   the halt reason equals the reason the pre-A6 pipeline emits for the same gate failure, and the queue
   row is written `halted` exactly as today. *(BR-14, AC-5.2, M-WG-3, M-WG-7.)*
-- **AT-05-4** — *Who:* the workflows suite. *Given* a green re-gate followed by a post-gate check that
-  halts the wave. *When* the run halts. *Then* no restoration was performed and the outcome is not
-  recorded as a red re-gate. *(E-22, BR-10, AC-5.3.)*
+- **AT-05-4** — *Who:* the workflows suite. *Given* a green re-gate followed by a post-gate check that halts the wave — the un-skip guard, which runs after the gate and before the commits and halts on a skipped block owed by a completed task. *When* the run halts. *Then* no restoration was performed, the outcome is not recorded as a red re-gate, the repair A6 applied is still present in the working tree, and both the advisory record entry and the halt report state that a repair remains applied and name its paths. *(E-22, BR-10, AC-5.3.)*
 
 ### 6.6 FSPEC-AWG-06 — Record, escalation, report
 
