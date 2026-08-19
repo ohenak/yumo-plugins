@@ -61,6 +61,8 @@ Two distribution channels load different copies:
 
 `build-runtime.mjs --check` and `sync-workflows.sh --check` each exit non-zero on drift.
 
+The wave gate's `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and `postWavePathspecs` (`["pdlc/workflows/dist/"]`), configured in `.claude/pdlc.config.example.json`, survive the pdlc-plugin-retirement sweep unchanged: `pdlc/workflows/dist/` still holds the regenerated `pdlc-cli.mjs`, so this rebuild-and-stage step stays load-bearing after every wave that touches `pdlc/workflows/*.js` (DEC-08).
+
 Debugging note: `coveredViolations` (`pdlc/workflows/lib/document-oracles.mjs`) walks the **entire** tree under `root`, skipping only `.git/` and `node_modules/`, so an untracked local file (tool cache, editor backup, database) can fail a document oracle. If a document oracle is red locally but green in CI, check for untracked files before you touch code.
 
 ### Continuous integration
