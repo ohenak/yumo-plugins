@@ -1427,8 +1427,15 @@ TE F-03 is the finding that most changes what the PLAN can do: §5.1 and §5.2 e
 and a theme list is checked by containment, while FSPEC's AT set is a set. Nineteen ATs — AT-04-5
 and AT-07-1 among them, the E-6 promotion mechanism and the single largest test obligation in the
 spec — had no named test anywhere in the first draft. The table below is total over FSPEC §6: one
-row per AT, its test home, and the oracle in one line. The PLAN derives one red-test row per AT
-from it, so an AT with no home here is a task with no home there.
+row per AT, its test home, and the oracle in one line. The PLAN discharges this table by **set-equality over AT ids** — every AT in FSPEC §6 has a named home
+task in PLAN, and PLAN claims no AT this table does not — **not** by carrying one red-test row per AT.
+With forty-seven ATs, a row-per-AT rule would demand forty-seven red-test tasks and collide head-on
+with the batch-safety rules that actually govern PLAN's shape: rule 2's single-writer-per-batch
+constraint forces ATs sharing a test file into one owning task (A6-15 alone covers nineteen in
+`advisoryWaveGate.test.js`), and rule 1's derived `Batch` column cannot absorb that many tasks
+without shifting every downstream batch. So the obligation this table creates is coverage, not
+cardinality: an AT with no home in the table gets no home task in PLAN, and PLAN's own AT-coverage
+table is where the set-equality is checked (se-author erratum).
 
 | AT | Test home | Oracle in one line |
 |---|---|---|
