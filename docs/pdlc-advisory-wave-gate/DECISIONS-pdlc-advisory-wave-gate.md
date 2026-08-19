@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.5) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | none yet |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.0 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.1 | 2026-08-20 |
 
 ## Context
 
