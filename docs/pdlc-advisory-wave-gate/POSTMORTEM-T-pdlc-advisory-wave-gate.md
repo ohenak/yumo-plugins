@@ -7,7 +7,7 @@
 | Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1..v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1..v5.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
-RESOLVED: no
+RESOLVED: yes
 
 ---
 
@@ -181,3 +181,11 @@ Carry forward to LEARNINGS (Phase H):
   work into the first draft protects budget for the one mechanism that is
   actually hard.
 
+
+**Provenance**
+- Engine version: 0.2.0
+- Plugin version: 0.23.0
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
