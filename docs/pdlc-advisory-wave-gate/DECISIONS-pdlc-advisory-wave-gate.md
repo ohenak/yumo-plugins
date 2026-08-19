@@ -35,9 +35,12 @@ Constraints that shaped all four, none of them this feature's to change:
   as an alternative below.
 - **No new transport.** A6 gets `_git`, `_runCommand`, `_readFile`, `_appendFile` and `_agent`
   already threaded through Phase I (NFR-3). Anything a decision needs, it needs from those.
-- **The wave contract forbids agent commits.** `waveImplementPrompt` tells wave agents
-  `Do NOT git commit`, so at gate time the index equals HEAD and the uncommitted working tree *is*
-  the wave's work — the asset every restoration option is judged against.
+- **The wave contract forbids agent commits *and* agent staging.** `waveImplementPrompt` tells wave
+  agents, in full, `Do NOT run git add or git commit — the orchestrator verifies your work and
+  commits it.` The prohibition on `git add` is the load-bearing half: it is what makes "the index
+  equals HEAD at gate time" true, and that premise is what the `reset --mixed` exactness argument
+  rests on. With the index at HEAD, the uncommitted working tree *is* the wave's work — the asset
+  every restoration option is judged against.
 - **Advisory tier ships disabled** (`ADVISORY_DEFAULTS.enabled: false`). A decision that only
   changes behaviour under `advisory.enabled: true` costs a default-configured repo nothing, which
   is why the reversibility ratings below are as cheap as they are.
@@ -54,7 +57,7 @@ unbuildable. The rejection reason is stated against shipped code, not intuition.
 | **A. `git stash push --include-untracked`, `git stash pop` to restore** | One command each way, no plumbing | **Capture mutates the working tree.** `stash push` reverts the tree to HEAD as its *first* act, so the wave's uncommitted work — the exact asset BR-9 exists to protect — is removed at the moment A6 starts diagnosing it. The A6 agent would then diagnose an empty wave. A restore that pops it back is a second failure surface on the same asset, and `pop` on a dirty tree can conflict. No `stash` call exists anywhere in `orchestrate-dev.js` today, so this would also be a first |
 | **B. Copy the working tree aside with `_runCommand("cp -a …")` and copy back** | Reachable: `_runCommand(command)` is a real Phase I transport returning `{ok, output}` | Introduces a shell dependency and a filesystem path this workflow does not otherwise own, on a runtime whose modules cannot use `fs` or `process`. It also has no ignore semantics at all: a `cp -a` restore would have to decide by hand what `node_modules/` means. More mechanism, weaker guarantee |
 | **C. Restore only the paths the repair declared (`producedPaths`)** | Cheapest of all — no capture step | Does not satisfy BR-9. The re-run post-wave command writes into paths no envelope rule ranges over (generated bundles under `implementation.postWavePathspecs`), so a path-scoped restore provably leaves them changed. AC-5.1's oracle is content-level over the whole tree |
-| **D (chosen). A dangling snapshot commit built without touching the tree** | `git add -A` → `write-tree` → `commit-tree` → `update-ref refs/pdlc/a6-snapshot-{waveNum}` → `reset --mixed {head}`; restore is `read-tree --reset -u` + `clean -fd` + `reset --mixed` | — |
+| **D (chosen). A dangling snapshot commit built without touching the tree** | `git add -A` → `write-tree` → `commit-tree {tree} -p {head} -m "…"` → `update-ref refs/pdlc/a6-snapshot-{waveNum}` → `reset --mixed {head}`; restore is `read-tree --reset -u` + `clean -fd` + `reset --mixed` | — *save the same ignored-path boundary C is rejected on: `git add -A` skips `.gitignore`d paths, so D's snapshot never holds generated output written into an ignored path either. Whether AC-5.1's oracle ranges over ignored paths at all is upstream's open question (TSPEC §6 OQ-7), not D's answer* |
 
 ### For DEC-02 — how an E-6 promotion reaches git history
 
@@ -77,6 +80,15 @@ label" is therefore shipped precedent, not an invention.
 | **A. One fixed name, `refs/pdlc/a6-snapshot`** | A later wave's capture — including a no-dispatch, over-budget one — overwrites the record of an earlier, *resolved* wave's pre-repair tree, which is the tree an operator is most likely to want to inspect or undo (PM F-03) |
 | **B. Wave- and run-discriminated, e.g. `refs/pdlc/a6-snapshot-{runId}-{waveNum}`** | Not rejected on merit — deferred. Phase I has no run id in scope, and a capture timestamp would make the ref name unpredictable to the halt message that has to print it. The cost of omitting the discriminator is bounded and operator-side (below) |
 | **C (chosen). Wave-scoped, `refs/pdlc/a6-snapshot-{waveNum}`** | — |
+
+Option A's rejection is, as the AT set stands today, **stated but not falsifiable**. TSPEC §4.5
+asserts the property the rejection turns on — "one ref per wave, never overwritten by a later wave" —
+but every fixture that observes the ref (§3.2's over-budget case and §5.5's capture assertions) runs
+a *single* A6 wave and observes a single `update-ref`. A regression to the fixed name of option A
+would pass all of them. Making the rejection falsifiable needs one two-A6-wave run asserting
+set-equality over the observed `update-ref` targets (`{a6-snapshot-1, a6-snapshot-2}`); that is an
+oracle this document cannot mint, and it is raised as an erratum on TSPEC (TE F-05). Until it lands,
+read the rejection as a design commitment, not a tested one.
 
 ### For DEC-04 — whether `waveBudgetPerRun: 0` is a configuration error
 
