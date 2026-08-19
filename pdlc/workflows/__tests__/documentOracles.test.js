@@ -363,3 +363,82 @@ describe("T21: AT-1.5 — .worktreeinclude / .gitignore consumer-runtime row", (
     expect(gitignore).toEqual(expect.stringContaining("coverage/"));
   });
 });
+
+// PLAN T27/T28 — AT-2.1/2.2/2.3 (FSPEC §6.2, class 12, M-11k/M-11l). Class 12 is the last
+// deletion class: the instructional documents (CLAUDE.md, pdlc/OPERATIONS.md, both READMEs,
+// pdlc/RELEASE-CHECKLIST.md) still carried prose about the retired plugin-channel machinery
+// (build+sync fresh-clone bootstrap, the sync-manifest `unverified`/`--force` ladder, the
+// SessionStart drift hook, worktree consumer-copy caveats) after the machinery itself was
+// deleted by earlier classes. BR-DOC-2: removed, not deprecated — no pointer left behind.
+describe("T27/T28: AT-2.1/2.2/2.3 — one documented story (class 12)", () => {
+  const RETIRED_TERMS = [
+    "sync-workflows.sh",
+    "check-workflow-drift.sh",
+    "lib/pdlc-drift.sh",
+    ".worktreeinclude",
+    "unverified",
+    "--force",
+    "Fresh-clone bootstrap",
+  ];
+
+  test("AT-2.1: CLAUDE.md carries no instruction to build/sync/force-sync/check-drift/bootstrap a fresh clone's runtime artifacts, and M-11l's retired OPERATIONS.md headings are gone", () => {
+    const claudeMd = readFileSync(join(LIVE_ROOT, "CLAUDE.md"), "utf8");
+    for (const term of RETIRED_TERMS) {
+      expect(claudeMd).not.toEqual(expect.stringContaining(term));
+    }
+    expect(claudeMd).not.toEqual(expect.stringContaining("### Fresh-clone bootstrap"));
+
+    const operationsMd = readFileSync(join(LIVE_ROOT, "pdlc", "OPERATIONS.md"), "utf8");
+    // M-11l's four retired verbatim headings — quoted as they read at the sweep's base commit.
+    expect(operationsMd).not.toEqual(expect.stringContaining("## Workflow scripts and the runtime build"));
+    expect(operationsMd).not.toEqual(
+      expect.stringContaining("## When sync skips a row: `unverified` and `--force`"),
+    );
+    expect(operationsMd).not.toEqual(expect.stringContaining("## Worktrees"));
+    expect(operationsMd).not.toEqual(expect.stringContaining("## Distribution scripts"));
+    // M-11l names this heading as deliberately *not* retired — it describes the surviving path.
+    expect(operationsMd).toEqual(expect.stringContaining("## The engine channel (`pdlc/engine`)"));
+
+    // Exactly one described way to run the pipeline unattended: the headless engine CLI.
+    const pdlcReadme = readFileSync(join(LIVE_ROOT, "pdlc", "README.md"), "utf8");
+    expect(pdlcReadme).toEqual(expect.stringContaining("Headless engine"));
+    for (const term of RETIRED_TERMS) {
+      expect(pdlcReadme).not.toEqual(expect.stringContaining(term));
+    }
+
+    const rootReadme = readFileSync(join(LIVE_ROOT, "README.md"), "utf8");
+    for (const term of RETIRED_TERMS) {
+      expect(rootReadme).not.toEqual(expect.stringContaining(term));
+    }
+  });
+
+  test("AT-2.2: pdlc/RELEASE-CHECKLIST.md carries no row instructing a check that cannot be performed", () => {
+    const checklist = readFileSync(join(LIVE_ROOT, "pdlc", "RELEASE-CHECKLIST.md"), "utf8");
+    for (const term of RETIRED_TERMS) {
+      expect(checklist).not.toEqual(expect.stringContaining(term));
+    }
+    // The consolidation-bundle drift-gate distribution note described a mechanism (the queue's
+    // SessionStart drift gate) that classes 3 and 4 already deleted.
+    expect(checklist).not.toEqual(
+      expect.stringContaining("consolidation bundle's drift-gate consequence"),
+    );
+  });
+
+  test("AT-2.3: no live decision or open queue row mandates the retired copy channel", () => {
+    const decisions = readFileSync(
+      join(LIVE_ROOT, "docs", "_decisions", "DECISIONS-plugin-distribution.md"),
+      "utf8",
+    );
+    // Every superseded decision carries an explicit superseding entry naming this feature.
+    expect(decisions).toEqual(expect.stringContaining("superseded by `pdlc-plugin-retirement`"));
+
+    const queue = readFileSync(join(LIVE_ROOT, "docs", "_queue", "QUEUE.md"), "utf8");
+    const releaseCiRow = queue
+      .split("\n")
+      .find((line) => line.includes("pdlc-release-ci") && line.trim().startsWith("|"));
+    expect(releaseCiRow).toBeDefined();
+    for (const term of RETIRED_TERMS) {
+      expect(releaseCiRow).not.toEqual(expect.stringContaining(term));
+    }
+  });
+});
