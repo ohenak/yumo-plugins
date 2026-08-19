@@ -9,13 +9,15 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.3 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.4 | 2026-08-19 |
 
-**v1.1 (round 1).** All v1 High/Medium addressed: E-04/AT-01-5 counting oracle; AT-04-3 over writer identity; §3.2 step 3b; BR-11 window; seven ATs added, four restated as decidable oracles.
+**v1.1 (round 1).** All v1 High/Medium addressed: E-04/AT-01-5 counting oracle; AT-04-3 over writer identity; §3.2 step 3b; BR-11 window; seven ATs added, four restated as oracles.
 
-**v1.2 (round 2).** BR-11, E-25 and AT-02-7 restate the seam-budget window as one dispatch, dispatch→verdict (REQ AC-2.4), NFR-4's carve-out inherited; E-33 and AT-07-2b pin a non-negative validator so `0` survives; AT-07-1's BR-1…BR-16 partition made total. REQ NFR-4's rationale raised as an erratum.
+**v1.2 (round 2).** BR-11, E-25 and AT-02-7 restate the seam-budget window as dispatch→verdict (superseded by v1.4); E-33 and AT-07-2b pin a non-negative validator so `0` survives; AT-07-1's BR-1…BR-16 partition made total. REQ NFR-4's rationale raised as an erratum.
 
-**v1.3 (round 3).** AT-07-1's BR-2 arm now carries BR-2's own outcome — `unclassified`, no refusal reason, no attempt consumed — not the blanket refusal *Then* (TE F-01, High); its BR-3 arm pins `attemptBudget` `1` (TE F-03). AT-02-7's companion gains a positive disposition, its *Given* restated as one dispatch→verdict window (TE F-02/F-04, SE F-02). E-30 and AT-06-6 name the run report's notice channel as the failed-log-write carrier the inherited seam uses (SE F-01). REQ errata re-emitted.
+**v1.3 (round 3).** AT-07-1's BR-2 arm carries BR-2's own outcome (`unclassified`, no refusal reason, no attempt consumed), its BR-3 arm pins `attemptBudget` `1`; AT-02-7's companion gains a positive disposition and a one-window *Given*; E-30/AT-06-6 name the report's notice channel as the failed-log-write carrier. REQ errata re-emitted.
+
+**v1.4 (round 5, cascade).** AT-04-1 split to AC-4.1's three conjuncts, one run each (AT-04-1a green re-gate, AT-04-1b suppressed re-gate); "not assertable" rationale deleted (SE F-01, TE F-02). Seam budget per **attempt**, worst case `attemptBudget` × the value, carve-out dropped (SE F-02/F-03, TE F-01). AT-01-5, A-1, A-4 realigned (SE F-04…F-06, TE F-03/F-04). REQ errata landed in v1.7/v1.8.
 
 ## 1. Overview
 
@@ -210,13 +212,12 @@ trigger; the three triggers in BR-9 are exhaustive. One consequence is stated ra
 
 **BR-11 — Three budgets, and exceeding any of them escalates rather than retries (AC-2.4).** More
 than `advisory.attemptBudget` attempts on one wave; more than `advisory.seamBudgetMinutes` of working
-time on a single **attempt**, over the window AC-2.4 pins — dispatch→verdict on that one attempt,
-the deadline restarting each attempt — **not** cumulative across the wave, so the budget is re-armed
-for each of the up to `advisory.attemptBudget` cycles a wave may run and an A6 **invocation** (A6
-engaged on one red wave, REQ §5) has NFR-4's worst case of `advisory.attemptBudget` × that value.
-Gate-command run time falls outside that window structurally, no subtraction being performed:
-the gate command runs between attempts, never inside a dispatch→verdict window, so a slow suite
-cannot exhaust the seam budget and a slow diagnosis is what it catches (E-25, AT-02-7); and more
+time on a single **attempt**, over the window AC-2.4 pins — dispatch→verdict on that attempt, the
+deadline restarting each attempt — **not** cumulative, so an A6 **invocation** (A6 engaged on one red
+wave, REQ §5) has NFR-4's worst case of `attemptBudget` × that value. Gate-command run time
+falls outside the window structurally, no subtraction being performed: the gate runs between
+attempts, never inside a dispatch→verdict window, so a slow suite cannot exhaust the seam budget and
+a slow diagnosis is what it catches (E-25, AT-02-7); and more
 than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave budget — escalated waves leave it untouched (AT-02-6's two cases). An attempt is one repair-and-re-gate cycle.
 
 **BR-12 — An E-6 resolution does not leave the repair uncommitted (AC-4.6).** When A6 resolves a wave
@@ -288,7 +289,7 @@ E-02 and E-06 are **inherited-behaviour rows**: beyond A6's absence, which AT-01
 | E-22 | The re-gate is green, and a later post-gate check halts the wave anyway | Not a red re-gate and not a restoration trigger. The post-gate checks meant here are the ones the wave already runs after a green gate today — chiefly the un-skip guard, which halts the wave with its work uncommitted when an owned test file still carries a skipped block owed by a completed task. The wave halts on that check and the tree is whatever that path left, **including the repair A6 applied, which is not reverted**; the advisory record entry and the halt report both say so and name the repair's paths, so reversibility is never claimed where it does not hold (BR-10, AC-5.3). |
 | E-23 | The run ends on the wave's own gate halt | It ends on the restored tree — the tree as it stood before A6 acted, first-pass build outputs included (BR-9, AC-5.2). |
 | E-24 | `advisory.attemptBudget` is exhausted on one wave | Escalate; the reason is the tier's `budget-exhausted` (BR-11, BR-15). |
-| E-25 | `advisory.seamBudgetMinutes` is exceeded on one **attempt** | Escalate `budget-exhausted`, measured over BR-11's dispatch→verdict window on that attempt (NFR-4). |
+| E-25 | `advisory.seamBudgetMinutes` is exceeded on one **attempt** | Escalate `budget-exhausted`, measured over BR-11's per-attempt dispatch→verdict window (NFR-4). |
 | E-26 | A6 already resolved `advisory.waveBudgetPerRun` waves this run, and a further wave goes red | Escalate with no dispatch at all (BR-11). |
 | E-27 | A6 attempted and escalated on two earlier waves, and a third wave goes red | The third wave still gets its attempt: only resolutions consume wave budget (BR-11). |
 | E-28 | Restoration itself fails | The wave halts. A6 must never leave a tree it can neither repair nor restore, and the mechanism and its failure handling are the TSPEC's (REQ O-1, carried in §7). |
@@ -326,7 +327,7 @@ equality, it is stated as such rather than as an absence.
   equals the pre-A6 baseline for the same run, and the report carries no advisory summary key. The
   test asserts the key is **absent**, not undefined. *(E-01, NFR-2, AC-1.4.)*
 - **AT-01-5** — *Who:* an operator reading a run report. *Given* a run in which BL-03, BL-04, or both
-  are absent. *When* the run completes. *Then* an oracle scanning the run report's whole notice surface and counting inapplicability *statements*, whoever authored the carrier, counts exactly **one**, naming every absent prerequisite; and **zero** in a run where A6 applies. It must not filter for A6-authored notices — A6 authors none, so that count reads zero in both arms and falsifies nothing. Population: runs that reach Phase I **and evaluate wave mode** — wave-executing and no-manifest legacy runs alike, so the legacy arm is a fixture, not an exclusion; a run halting earlier or skipping Phase I on a recorded wave ledger is outside it. *(E-04, AC-1.5.)*
+  are absent. *When* the run completes. *Then* an oracle scanning the run report's whole notice surface and counting inapplicability *statements*, whoever authored the carrier, counts exactly **one**, naming every absent prerequisite; and **zero** in a run where A6 applies. It must not filter for A6-authored notices — A6 authors none, so that count reads zero in both arms and falsifies nothing. Population: runs that reach Phase I **and evaluate wave mode** — wave-executing and no-manifest legacy alike, the legacy arm a fixture, not an exclusion (ledger-skip and early-halt runs stay out). *(E-04, AC-1.5.)*
 - **AT-01-6** — *Who:* the workflows suite. *Given* the tier enabled and a run in which no wave gate goes red, so A6 never fires. *When* the run completes. *Then* the report's advisory summary key is **present**, carries six per-seam rows, and every A6 counter reads zero. Paired with AT-01-4's key-**absent** assertion on the disabled tier, the two make present-and-undefined fail on both sides. *(E-32, AC-1.1, NFR-2.)*
 
 ### 6.2 FSPEC-AWG-02 — Invocation contract
@@ -386,8 +387,15 @@ equality, it is stated as such rather than as an absence.
 ### 6.4 FSPEC-AWG-04 — What A6 may never do
 
 - **AT-04-1** — *Who:* the workflows suite. *Given* any A6 verdict, including one asserting the wave
-  is fixed with the highest confidence. *When* the configured gate command still returns non-zero on
-  re-gate. *Then* three positive assertions on that one run: the terminal disposition equals `escalated`; the halt reason string equals the reason the pre-A6 pipeline emits for the same gate failure (AT-05-3's literal); and the count of waves the run reports resolved is `0`. No existential negative — "no path exists" is not assertable, and "not treated as gated" is satisfied by a run that halted for an unrelated reason. *(BR-7, AC-4.1.)*
+  is fixed with the highest confidence. *When* the gate command still returns non-zero on re-gate. *Then* three positive assertions on that one run: disposition equals `escalated`; the halt reason equals the reason the pre-A6 pipeline emits for the same gate failure (AT-05-3's literal), so the halt is the wave's own; resolved-wave count `0`. AC-4.1's conjunct (ii); restoration is AT-05-1's. Each conjunct gets its own run — none exhibits two. *(BR-7, AC-4.1, AC-5.2.)*
+- **AT-04-1a** — *Who:* the workflows suite. *Given* an applied in-envelope repair. *When* the gate
+  re-runs green. *Then* the wave is reported resolved, proceeds, and that green invocation
+  appears in AT-04-2's sequence. Conjunct (i). *(BR-7, AC-4.1, AC-4.4.)*
+- **AT-04-1b** — *Who:* the workflows suite. *Given* an applied in-envelope repair. *When* **no**
+  gate invocation follows. *Then* the wave halts: not resolved, resolved-wave count `0`.
+  Conjunct (iii) carries the prohibition — it fails exactly where a verdict stood in for a gate
+  result — and is unreachable on an ordinary run, so the fixture suppresses the re-gate; the
+  construction is the TSPEC's (REQ O-1). *(BR-7, AC-4.1.)*
 - **AT-04-2** — *Who:* the workflows suite. *Given* one A6 attempt on a wave with both commands
   configured. *When* the run completes. *Then* the ordered sequence of gate-command invocations for
   that wave equals `[post-wave, test, post-wave, test]`. Companion cases: a re-gate whose post-wave
@@ -494,7 +502,7 @@ finds it already routed rather than raising it as a finding.
 
 ### 7.3 Assumptions this FSPEC makes explicit
 
-- **A-1.** The three enumerations BL-06 requires — the transcribed set-equality surfaces this feature reds, a re-measurement of the BL-03 no-manifest notice E-04's cardinality rests on, and a measurement of that notice's mutual exclusivity with BL-04's, which E-04 consumes as established fact — are assumed complete before implementation planning. AT-07-2 is the observable; skipping the enumeration surfaces later as unexplained red suites.
+- **A-1.** BL-06's three enumerations — the transcribed set-equality surfaces this feature reds, a re-measurement of the BL-03 no-manifest notice E-04's cardinality rests on, and that notice's mutual exclusivity with BL-04's, which E-04 consumes as fact — are assumed complete before implementation planning. AT-07-2 is the observable; skipping the enumeration surfaces later as unexplained red suites.
 - **A-2.** The line references in `pdlc-wave-gate-baseline.md` §1–§2 have drifted since they were measured; the symbol- and grep-anchored recipes in §3 still resolve. This FSPEC cites by `M-WG-*` id at the baseline's stated `Version` (1.1), never by line, so drift below a cited id invalidates the baseline row — that file's change-control problem — not a clause here.
 - **A-3.** R-1 is accepted, not solved: a repair inside the wave's own production files can be the
   wrong repair and still turn the suite green. The exclusion of test files (BR-5) removes the worst
