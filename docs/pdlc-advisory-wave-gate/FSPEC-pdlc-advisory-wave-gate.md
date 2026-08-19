@@ -362,4 +362,166 @@ these is left to judgement at run time.
 
 ## 6. Acceptance Tests
 
+Who/Given/When/Then. Each test names the FSPEC clause it falsifies. A test that can pass without the
+behaviour existing is not listed; where the only honest oracle is a set-equality or a sequence
+equality, it is stated as such rather than as an absence.
+
+### 6.1 FSPEC-AWG-01 — Seam, trigger, inertness
+
+- **AT-01-1** — *Who:* the workflows suite. *Given* the advisory seam catalogue and every surface
+  driven by it. *When* the catalogue is compared by set-equality against its transcribed literal.
+  *Then* it has six members including `A6`, and the catalogue-driven surfaces — the per-seam report
+  rows in particular — carry six rows where they carried five. A run in which the sixth row is absent
+  is a defect. *(BR-2 context; AC-1.1, M-WG-8, M-WG-9.)*
+- **AT-01-2** — *Who:* an operator running Phase I. *Given* a wave whose dispatch fails. *When* the
+  wave ends. *Then* no advisory agent is dispatched and the run halts exactly as today. Repeat with a
+  post-wave command failure; same result. *(BR-1, AC-1.2.)*
+- **AT-01-3** — *Who:* an operator running Phase I. *Given* the final V-wave carrying the PROPERTIES
+  tests. *When* its gate returns non-zero. *Then* A6 does not fire and the halt is byte-comparable to
+  today's. *(BR-1, AC-1.3.)*
+- **AT-01-4** — *Who:* the disabled-tier suite. *Given* `advisory.enabled` false. *When* a wave's gate
+  goes red. *Then* no advisory agent is dispatched, no model rung is resolved, the created-file set
+  equals the pre-A6 baseline for the same run, and the report carries no advisory summary key. The
+  test asserts the key is **absent**, not undefined. *(E-01, NFR-2, AC-1.4.)*
+- **AT-01-5** — *Who:* an operator reading a run report. *Given* a run in which BL-03, BL-04, or both
+  are absent. *When* the run completes. *Then* an oracle scanning the whole notice surface and
+  filtering for A6-authored inapplicability notices counts exactly **one**, naming every absent
+  prerequisite; and in a run where A6 applies it counts **zero**. *(E-04, AC-1.5.)*
+
+### 6.2 FSPEC-AWG-02 — Invocation contract
+
+- **AT-02-1** — *Who:* the workflows suite. *Given* the four-member classification vocabulary. *When*
+  compared by set-equality against its transcribed literal. *Then* it is exactly
+  `plan-ordering-defect`, `wave-internal-defect`, `environmental`, `unclassified`. A deleted or
+  invented class fails. *(BR-2, AC-2.2.)*
+- **AT-02-2** — *Who:* the workflows suite. *Given* a verdict whose classification is absent, and a
+  second whose classification is outside the set. *When* each is received. *Then* both read as
+  `unclassified`, both escalate, and the attempt count is unchanged in both. *(E-08, BR-2.)*
+- **AT-02-3** — *Who:* the workflows suite. *Given* a verdict that is both malformed and
+  unclassifiable. *When* it is received. *Then* the outcome is the malformed-verdict escalation and
+  exactly one attempt is consumed. *(E-09.)*
+- **AT-02-4** — *Who:* the workflows suite. *Given* a diagnosis citing no gate output. *When* it is
+  received. *Then* it is treated as malformed and escalates, consuming one attempt. *(E-10, BR-3.)*
+- **AT-02-5** — *Who:* the workflows suite. *Given* a gate output longer than the halt message's tail.
+  *When* A6 diagnoses. *Then* the evidence available to it is the full captured output, demonstrated
+  by a citation to a region the tail does not contain. *(E-12, BR-3.)*
+- **AT-02-6** — *Who:* an operator with `advisory.waveBudgetPerRun` at its default `1`. *Given* a run
+  in which A6 attempted and escalated on waves 1 and 2. *When* wave 3's gate goes red. *Then* wave 3
+  is dispatched. *Given instead* a run in which A6 **resolved** wave 1. *When* wave 2's gate goes red.
+  *Then* wave 2 escalates with no dispatch. Two oracles that a "counts every invocation" reading would
+  make disagree. *(E-26, E-27, BR-11.)*
+- **AT-02-7** — *Who:* the workflows suite. *Given* an invocation whose working time excluding
+  gate-command run time exceeds `advisory.seamBudgetMinutes`. *When* it terminates. *Then* it
+  escalates `budget-exhausted`; and a companion case with a slow gate command and fast working time
+  does **not** escalate, so the exclusion is falsifiable rather than decorative. *(E-25, NFR-4.)*
+
+### 6.3 FSPEC-AWG-03 — Envelope
+
+- **AT-03-1** — *Who:* the workflows suite. *Given* the shipped default envelope. *When* compared by
+  set-equality over member ids. *Then* it is exactly `E-1`…`E-6`. One set-equality, not prose joining
+  two sets. *(BR-4, AC-3.1.)*
+- **AT-03-2** — *Who:* the workflows suite. *Given* a proposal confined to the failing wave's own
+  owned paths, where one of those paths is a test file. *When* the envelope is classified. *Then* it
+  is refused on the test-artifact exclusion, not permitted under E-5. *(E-14, BR-5.)*
+- **AT-03-3** — *Who:* the workflows suite. *Given* a wave owning a self-modification guard path and
+  a proposal confined to it. *When* the envelope is classified. *Then* the refusal reason is
+  `out-of-envelope`. *(E-15, BR-5.)*
+- **AT-03-4** — *Who:* the workflows suite. *Given* a proposal under E-6 naming a symbol a later PLAN
+  task undertakes to produce. *When* the envelope is classified. *Then* it is permitted only if
+  **both** halves hold; a companion case satisfying the symbol half but changing a path outside that
+  later task's owned set is refused. *(BR-4, AC-3.1.)*
+- **AT-03-5** — *Who:* the workflows suite. *Given* each excluded operation in BR-6 in turn — PLAN
+  edit, manifest edit, test-command change, post-wave-command change, post-wave-pathspec change,
+  commit, push, tag, and a path outside the computed set. *When* proposed. *Then* each is refused,
+  each asserted by its own test. *(E-17, E-18, AC-3.3, AC-3.5.)*
+- **AT-03-6** — *Who:* the workflows suite. *Given* a proposal partly inside and partly outside the
+  envelope. *When* it is evaluated. *Then* no part of it is present in the tree afterwards and the run
+  does not report the wave resolved. *(E-16, AC-3.5.)*
+- **AT-03-7** — *Who:* the workflows suite. *Given* the refusal-reason catalogue. *When* compared by
+  set-equality. *Then* it still has exactly eight members in the shipped order; A6 added none. *(BR-15,
+  AC-3.4.)*
+
+### 6.4 FSPEC-AWG-04 — What A6 may never do
+
+- **AT-04-1** — *Who:* the workflows suite. *Given* any A6 verdict, including one asserting the wave
+  is fixed with the highest confidence. *When* the configured gate command still returns non-zero on
+  re-gate. *Then* the wave is not treated as gated, and no path exists by which the verdict
+  substitutes for the gate result. *(BR-7, AC-4.1.)*
+- **AT-04-2** — *Who:* the workflows suite. *Given* one A6 attempt on a wave with both commands
+  configured. *When* the run completes. *Then* the ordered sequence of gate-command invocations for
+  that wave equals `[post-wave, test, post-wave, test]`. Companion cases: a re-gate whose post-wave
+  command failed yields `[post-wave, test, post-wave]`; a run with only a test command yields
+  `[test, test]`. Asserted as a **sequence**, never as a set — set equality collapses duplicates and
+  would admit a resolution declared on a single invocation. *(BR-7, AC-4.4.)*
+- **AT-04-3** — *Who:* the workflows suite. *Given* an A6 invocation of any outcome. *When* the run
+  completes. *Then* the set of committing writers for the wave is unchanged from the pre-A6 baseline:
+  the pathspec-scoped per-task commit and the post-wave-pathspec build-output commit, both reached
+  only past a green gate. *(BR-8, AC-4.2.)*
+- **AT-04-4** — *Who:* the workflows suite. *Given* a red re-gate that exhausts the budget. *When* the
+  wave halts. *Then* the refusal reason is recorded, the escalation entry is written, and the
+  pre-A6 behaviour is taken — a positive assertion on all three, so the negative assertions of
+  AT-04-1 and AT-04-3 cannot be satisfied by accident. *(AC-4.5.)*
+- **AT-04-5** — *Who:* an operator inspecting the branch. *Given* a wave A6 resolved under E-6. *When*
+  the wave's commit step completes. *Then* the repair is in the branch's committed state and no
+  uncommitted working-tree change from the repair remains; the advisory record names the repair's
+  paths and the later PLAN task that owns them; and that later task's dispatch is told the promotion
+  already exists. *(BR-12, AC-4.6.)*
+
+### 6.5 FSPEC-AWG-05 — Reversibility and the unchanged halt
+
+- **AT-05-1** — *Who:* the workflows suite. *Given* a refusal, a budget exhaustion, and a red re-gate
+  in three separate runs. *When* each terminates. *Then* in each the working tree is observably
+  identical to the wave's post-dispatch, pre-commit tree, with the wave agents' own uncommitted work
+  intact. *(BR-9, AC-5.1.)*
+- **AT-05-2** — *Who:* the workflows suite. *Given* a red re-gate on a run with a configured post-wave
+  command that writes generated outputs. *When* the tree is restored. *Then* those generated outputs
+  match the pre-A6 tree too, demonstrating whole-tree rather than per-path restoration — a case a
+  repair-paths-only restore fails. *(BR-9, AC-4.4.)*
+- **AT-05-3** — *Who:* an operator. *Given* a wave A6 did not resolve. *When* the run halts. *Then*
+  the halt reason equals the reason the pre-A6 pipeline emits for the same gate failure, and the queue
+  row is written `halted` exactly as today. *(BR-14, AC-5.2, M-WG-3, M-WG-7.)*
+- **AT-05-4** — *Who:* the workflows suite. *Given* a green re-gate followed by a post-gate check that
+  halts the wave. *When* the run halts. *Then* no restoration was performed and the outcome is not
+  recorded as a red re-gate. *(E-22, BR-10, AC-5.3.)*
+
+### 6.6 FSPEC-AWG-06 — Record, escalation, report
+
+- **AT-06-1** — *Who:* an operator reading the feature's advisory record. *Given* any A6 invocation.
+  *When* it terminates. *Then* an entry names the wave, the root-cause class, the envelope
+  determination, the action taken or refused, and the gate-output citation. *(BR-13, AC-6.1.)*
+- **AT-06-2** — *Who:* the workflows suite. *Given* a record write that fails. *When* an action would
+  otherwise be taken. *Then* the action is refused and the outcome carries the tier's
+  record-write-failure reason. *(E-29, BR-13.)*
+- **AT-06-3** — *Who:* an operator reading the escalation log. *Given* an A6 escalation. *When* the
+  entry is written. *Then* it carries the root-cause class alongside the tier's required fields and
+  one sentence stating what the operator must decide. *(BR-13, AC-6.2.)*
+- **AT-06-4** — *Who:* an operator reading a halt report. *Given* a halt following an A6 escalation.
+  *When* the report is produced. *Then* it carries the diagnosis and its root-cause class. *(BR-14,
+  AC-6.3.)*
+- **AT-06-5** — *Who:* an operator counting recurrences. *Given* several runs in which A6 escalated
+  `plan-ordering-defect`. *When* the escalation log alone is read, with no run logs. *Then* the count
+  is derivable per feature. The companion negative is specified, not a gap: resolution counts are
+  **not** derivable after Phase PUB, and REQ O-2 owns that. *(E-31, AC-6.4.)*
+
+### 6.7 FSPEC-AWG-07 — Non-functional
+
+- **AT-07-1** — *Who:* the workflows suite. *Given* each boundary in §4. *When* an agent is prompted
+  to violate it. *Then* the violation is refused by the workflow script, with no reliance on the
+  prompt. *(BR-16, NFR-1.)*
+- **AT-07-2** — *Who:* the workflows suite. *Given* the transcribed set-equality surfaces M-WG-9
+  names — the seam catalogue, the envelope defaults, the advisory config key set, the two
+  catalogue-driven surfaces, and the disabled-tier fixtures. *When* the suite runs. *Then* each has
+  been updated for A6, `E-5`/`E-6`, and `advisory.waveBudgetPerRun`; this feature is not deliverable
+  as a purely additive change and a run in which a surface was not re-checked is a defect. *(R-5,
+  BL-06.)*
+- **AT-07-3** — *Who:* the workflows suite. *Given* a green wave. *When* the run completes. *Then* no
+  advisory agent was dispatched for it and no measurable wall-clock cost was added; A6 is reachable
+  only from a red gate. *(NFR-5.)*
+- **AT-07-4** — *Who:* the workflows suite. *Given* an A6 dispatch. *When* the model is resolved.
+  *Then* it is resolved through the tier's exported rung resolver, not through literals restated in
+  this feature's code. *(NFR-6, REQ O-3.)*
+- **AT-07-5** — *Who:* a security-minded reviewer. *Given* an A6 invocation. *When* its capabilities
+  are enumerated. *Then* it holds no credential the pipeline does not already hold and reaches no
+  network surface Phase I does not already reach. *(NFR-3.)*
+
 ## 7. Open Questions
