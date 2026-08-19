@@ -28,8 +28,8 @@ the Who/Given/When/Then tests that decide whether the behaviour shipped.
 no algorithm for computing an owned-path set, no restoration mechanism, no field layout of any
 shipped record. Those are the TSPEC's, and the REQ already routes them there (O-1, O-3, O-4, O-5,
 O-8). Where behaviour that already ships is referenced, it is cited by `M-WG-*` id from
-`docs/_constraints/pdlc-wave-gate-baseline.md` v1.1, and tier behaviour by `M-ADV-*`/section id from
-`docs/_constraints/pdlc-advisory-corpus-baseline.md`, rather than restated.
+`docs/_constraints/pdlc-wave-gate-baseline.md` v1.1, and tier behaviour by section id from
+`docs/_constraints/pdlc-advisory-corpus-baseline.md` (§1–§4), rather than restated.
 
 **Reading order.** §3 gives the single lifecycle end to end; §4 gives the rules that decide the
 branches §3 names; §5 gives what happens when an input is absent, malformed, or contradictory; §6
