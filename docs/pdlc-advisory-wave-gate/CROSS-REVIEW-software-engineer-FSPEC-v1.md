@@ -56,7 +56,39 @@ pass whichever way the REQ resolves.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On a green re-gate, an E-5 repair lands inside some wave task's owned paths and is therefore committed by that task's own `commitPaths` call (`orchestrate-dev.js:14397-14414`) under a message attributing the work to the task's agent. The advisory record names the repair (BR-13), but the commit does not. Is git-visible provenance for a machine-authored repair worth a clause, or is the record the intended single home? Not gating. |
+| Q-02 | A wave A6 resolves is committed and then recorded green in the wave ledger, so a later re-invocation skips it (`orchestrate-dev.js:14276-14290`). That is the right behaviour for a genuinely-fixed wave and cements the repair for a wrongly-fixed one, which is R-1's residual by another route. Should §7.3 A-3 name the ledger as part of the residual's surface? Not gating. |
+| Q-03 | BR-9 promises restoration "of the whole tree" while preserving "the wave agents' own uncommitted work" — coherent only as a snapshot-and-restore, not as a `git checkout -- .`-style revert. O-1 owns the mechanism, but does the FSPEC want to state the observable for files that are neither the wave's nor A6's — an operator's unrelated untracked file present before A6 acted? The document oracle in this repo is sensitive to exactly those. Not gating; O-1 can answer it. |
+| Q-04 | E-6 commits into a later task's owned paths, which is the one place this feature perturbs the batch-safety invariant that makes same-tree waves ownership-disjoint. Is a run in which that later task sits in the *same* wave as the failing one in scope, or is E-6 strictly cross-wave? BR-12's "later PLAN task" and M-WG-12's "later wave" are not the same set. |
+
 ## Positive Observations
+
+- **The oracle discipline is the strongest part of the document.** AT-04-2's sequence equality with
+  its three enumerated literals, AT-02-6's two-oracle wave-budget case, AT-02-7's companion case that
+  makes the NFR-4 carve-out falsifiable rather than decorative, and AT-05-2's generated-output case
+  that a per-path restore fails — each of these is a test a reader can build without inventing an
+  expected value, and each names the wrong alternative and why it is wrong. AT-04-4 in particular
+  pairs the negative assertions of AT-04-1 and AT-04-3 with positive ones on the same path, which is
+  the discipline AC-4.5 asks for and the thing most specs skip.
+- **BR-5's second consequence is the finding I expected to have to raise.** Naming that a wave owning
+  `pdlc/workflows/` escalates `out-of-envelope`, and that the 2026-08-09 motivating incident would
+  therefore be diagnosed rather than repaired *in this repository*, is an honest statement that the
+  feature does not fix its own motivating case here. It matches HEAD (`orchestrate-dev.js:2420-2424`).
+  Specs that quietly leave that inference to the reader ship a disappointed operator.
+- **§7.2 routes every deferral to a queue row that exists**, and §7.3's four assumptions are the kind
+  a TSPEC author actually needs — A-2's "the baseline's line recipes have drifted, so cite by id" is
+  precisely why this review re-measured every claim rather than trusting the recipe, and A-4's
+  honesty about `waveBudgetPerRun` bounding drift only within an invocation is worth more than a
+  reassuring sentence would have been.
+- **E-16's whole-proposal refusal matches shipped behaviour exactly** — X-d refuses the candidate
+  entire on any non-member path (`orchestrate-dev.js:2425-2430`), so "no part of it survives the seam"
+  is inherited rather than newly built, and AT-03-6 will pass on the tier's existing code path.
+- **The document knows what it is not.** §1's "what this document deliberately does not state" and
+  §2's "where a requirement is deliberately not specified here" meant I could review this at FSPEC
+  altitude without arguing about seam signatures. No finding in this review is a request for TSPEC
+  material, because the document never invited one.
 
 ## Recommendation
 
