@@ -140,10 +140,11 @@ including its own failure; no step raises to its caller (BR-12).
 1. Read the `learningsInjection` configuration section for the consumer repository.
 2. **Absent section, or `enabled` false** → the flow stops here, the dispatch is composed exactly as
    it is composed today, and **no injection record of any kind is produced** (BR-14, AC-5.1a).
-3. **Section present but malformed** — `learningsInjection` present and not an object, or a
-   declared key carrying a wrong-typed value → compose as in (2), **and** record a
-   corpus-level malformed-configuration notice (BR-14, AC-5.1b). A misspelt section name is
-   a stray top-level key, so it reads as absent (2), not malformed.
+3. **Section present but malformed** — `learningsInjection` present and not an object →
+   compose as in (2), **and** record a corpus-level malformed-configuration notice (BR-14,
+   AC-5.1b). A misspelt section name is a stray top-level key, so it reads as absent (2), not
+   malformed. A declared key carrying a **wrong-typed value** is not malformed: that key takes
+   its default, the flow continues at (4), and a catalogued notice names the key.
 4. **Enabled** → continue, with thresholds resolved: each of REQ §4.1's three bounds takes its
    configured value if present and its default if not.
 5. If the dispatch is **not** one C-1 names as authoring, the flow stops here with no record
@@ -565,13 +566,14 @@ here.
 
 ### BR-14 — Configuration states *(AC-4.4, AC-5.1a, AC-5.1b)*
 
-Four states, four behaviours:
+Five states, five behaviours:
 
 | State | Dispatch composition | Record |
 |---|---|---|
 | Section **absent**, or the config file absent | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
 | `enabled: false` | Byte-identical to the recorded pre-feature baseline | No injection key at all |
-| Section present but **malformed** — `learningsInjection` present and not an object, or present with a value of the wrong type for a declared key | Byte-identical to the recorded pre-feature baseline | A catalogued notice naming the malformed configuration |
+| Section present but **malformed** — `learningsInjection` present and not an object | Byte-identical to the recorded pre-feature baseline | A catalogued notice naming the malformed configuration |
+| Section present, a declared key **wrong-typed** | The enabled composition, that key at its default | A catalogued notice naming the wrong-typed keys |
 | **Enabled**, with thresholds admitting nothing (zero documents or zero bytes) | The enabled composition, with an empty selection | BR-8's rows, **present and empty** |
 
 Three points carry load:
@@ -586,6 +588,12 @@ Three points carry load:
   legitimately adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b's
   example makes the operator typo the detectable case and no longer holds — `ERRATUM: REQ`
   rides this round.
+- **A wrong-typed declared key is not malformed.** That key falls back to its default, the run
+  stays **enabled**, and a catalogued notice names the wrong-typed keys — the treatment the
+  sibling readers already ship, per-key fallback plus an invalid-key notice
+  (`parseAdvisoryConfig`, `pdlc/workflows/orchestrate-dev.js`). Silently turning the whole
+  feature off over one mistyped threshold would diverge from that precedent with no reason
+  stated, which DC-08 forbids.
 - **An absent config file is the absent-section state**: no injection, no record. That
   differs deliberately from `parseAdvisoryConfig`, which defaults an absent file to
   enabled-with-defaults; this feature adds material to authoring prompts, so it turns on
@@ -664,10 +672,11 @@ behavioural branch, its outcome, and the test that asserts it.
 |---|---|---|---|
 | E-21 | Configuration section absent | Baseline-identical composition; no injection key | AT-31 |
 | E-22 | `enabled: false` | Baseline-identical composition; no injection key | AT-31 |
-| E-23 | Section present and not an object, or a declared key with a wrong-typed value | Baseline-identical composition, plus a catalogued malformed-configuration notice; a misspelt section name reads as absent instead | AT-32 |
+| E-23 | Section present and not an object | Baseline-identical composition, plus a catalogued malformed-configuration notice; a misspelt section name reads as absent instead | AT-32 |
 | E-24 | `maxDocuments: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-25 | `maxTotalBytes: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-26 | One threshold configured, two defaulted | Configured value used for one, defaults for the others; all three appear in BR-10's record | AT-22 |
+| E-34 | A declared key carries a wrong-typed value | Enabled run with that key at its default, plus a catalogued notice naming the key — not baseline-identical | AT-32 |
 
 ### Run-shape edges
 
@@ -838,10 +847,12 @@ text into a disabled run is a test failure rather than a production discovery.
 - **AT-31** — *Given* `enabled: false`, and separately the configuration section absent, *when* the
   pipeline runs, *then* every composed dispatch is byte-identical to the recorded pre-feature
   baseline and no injection key is carried — absent, not present-and-empty.
-- **AT-32** — *Given* a configuration section present and not an object, and separately a
-  declared key carrying a wrong-typed value, *when* the pipeline runs, *then* the
-  composition matches AT-31's byte-for-byte and the report carries the catalogued notice
-  naming the malformed configuration. *And given* a misspelt section name
+- **AT-32** — *Given* a configuration section present and not an object, *when* the pipeline
+  runs, *then* the composition matches AT-31's byte-for-byte and the report carries the
+  catalogued notice naming the malformed configuration. *And given* a declared key carrying a
+  wrong-typed value, *then* the run is enabled, its composition carries a block selected under
+  that key's default value, and the report carries a notice naming the key. *And given* a
+  misspelt section name
   (`learningsInjectoin`), *then* the run is indistinguishable from the absent-section case
   of AT-31 — no notice, by BR-14's decision against an unknown-top-level-key rule.
 
