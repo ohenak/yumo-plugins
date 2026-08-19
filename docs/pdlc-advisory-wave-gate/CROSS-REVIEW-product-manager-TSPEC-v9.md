@@ -101,3 +101,9 @@ rationale prose with no behavioural consequence and does not gate.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 0}
+
+APPROVAL-HASH: sha256:79777fa6310e87180c6901e9d1b87ddcb9f926147fefb9f07c52720d0c5ff8d6
+APPROVAL-HASH-NORMALIZED: sha256:bc73cea449a7e223a2f343c6db612fb5221a7567cbbb50350e1e99397137bb14
+REVIEWED-COMMIT: a349767b569c1a1d50052f3484cf6ecf1fe1f449
+UPSTREAM-STATE: REQ sha256:a10396e88a52c1905b0d2cdfe0bbb2174b8f100888b7a7b2d69b0e0bd5ed9645
+UPSTREAM-STATE: FSPEC sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e
