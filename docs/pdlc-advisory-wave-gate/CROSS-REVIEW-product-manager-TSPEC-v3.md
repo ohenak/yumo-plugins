@@ -57,6 +57,116 @@ a rendering defect in how this round's new prose was attached to existing tables
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | §3.2 step 6's new ledger-growth rule, read literally, refuses a genuine resolution reached on attempt 2 or later — the case the attempt budget exists for | REQ AC-4.1 (i); AC-4.6; E-20 |
+| F-02 | Medium | Local | Three load-bearing clauses added this round are appended past their table row's final pipe, so a GFM renderer drops them | REQ AC-4.1 (iii); AC-7.x (NFR-3) |
+| F-03 | Medium | Local | The capture-failure record entry's `Model` cell has no specified value, and the shipped renderer will print `undefined` into an operator-facing record | REQ AC-6.1 |
+
+### F-01 — the step-6 ledger check discards a multi-attempt resolution (High, delta, local)
+
+§3.2 step 6 now reads (`TSPEC-pdlc-advisory-wave-gate.md:437-440`):
+
+> `resolved: true` requires **both** `outcome === "resolved"` **and** the wave's `invocations`
+> ledger (§2.4) having grown, since dispatch, by the wave's own gate sequence — the ordered
+> `["post-wave", "test"]` pair, or `["test"]` when no post-wave command is configured.
+
+The rule itself is right and I am glad it exists: TE F-14 was correct that §5.5's mutation fixture
+needed a stated rule to falsify, and BR-7 is the right authority for it. The defect is in the
+quantity the rule names. "Grown, since dispatch, by the ordered pair" is an equality over the whole
+growth since dispatch, and on any run that takes more than one attempt the growth since dispatch is
+**not** one pair.
+
+The shipped driver re-enters its attempt loop on a red re-gate: `verifyGate` returning
+`{passed: false, consumesAttempt: true}` reverts, increments `attempts` and `continue`s
+(`pdlc/workflows/orchestrate-dev.js:3545-3568`), with `attemptBudget` defaulting to `3`
+(§3.1's `ADVISORY_DEFAULTS`). So the ordinary shape of a *successful* two-attempt repair is:
+dispatch, apply, red re-gate (`[post-wave, test]` appended), revert, second dispatch, apply, green
+re-gate (`[post-wave, test]` appended again). Growth since dispatch is four tokens. §2.4's own
+worked table says as much for a single consumed attempt — `[post-wave, test, post-wave, test]`
+(`TSPEC:187`) — and its second row, `[post-wave, test, post-wave]`, shows growth need not even
+consist of whole pairs.
+
+Under the literal reading of step 6, that green, gate-verified wave is reported `{resolved: false}`,
+the wave budget is not incremented, and "the caller rethrows the first pass's halt". The product
+consequences are all bad and none of them are visible to the operator as what they are:
+
+1. **REQ AC-4.1 conjunct (i) is violated** (`REQ-pdlc-advisory-wave-gate.md:386-388`): a green
+   re-gate must yield a resolved wave, with the re-gate recorded as an invocation. Here the re-gate
+   ran, was green, and was recorded — and the wave is reported unresolved anyway.
+2. **The repair is left in the working tree while the run halts.** BR-9's three restoration
+   triggers are refusal, budget exhaustion and red re-gate (`FSPEC:198`, `REQ:441`); none fired, so
+   nothing is reverted. The operator gets a halt whose message is the first pass's
+   `Wave N test gate failed` literal, on a tree that now contains a machine-authored change that
+   *passed* the gate. FSPEC's own §BR-9 note (`FSPEC:209`) says the operator must never be told a
+   change was reverted when it was not; this is the mirror failure — the operator is told the gate
+   failed when it passed.
+3. **The feature's headline benefit is lost on exactly the runs it was bought for.** A repair that
+   lands first try is the easy case; the attempt budget exists because the second attempt is common.
+
+I do not think the author intends the literal reading — the sentence is plainly aimed at the
+`{passed: true}`-without-running mutation. But this document is PLAN's and Phase I's transcription
+source, and step 6 is written as a normative call-site rule with an exact expected value, so it will
+be transcribed as written.
+
+**To resolve:** state the quantity so it holds for every attempt count. The property that actually
+distinguishes the mutation is *the last `verifyGate` before the resolution appended the wave's gate
+sequence* — e.g. "the ledger's final tokens, since dispatch, are the wave's own gate sequence, and
+the ledger grew by at least one such sequence per attempt taken". Reconcile §3.2 step 6, §3.3's
+`verifyGate` row and §5.5's mutation-fixture bullet (`TSPEC:1019`) to one wording, and add a
+positive companion case to §5.5's fixture: a two-attempt run whose second re-gate is green is
+reported **resolved**, with the ledger showing `[post-wave, test, post-wave, test]`. Without that
+companion the mutation fixture passes on an implementation that resolves nothing at all, which is
+the same absence-only shape §5.5 elsewhere works hard to avoid.
+
+### F-02 — this round's new clauses are appended outside their tables (Medium, delta, local)
+
+Four clauses added this round were attached by extending an existing table row *past its final
+pipe*, so the row carries one more cell than the header declares. GFM discards the surplus cell,
+which means the text does not render:
+
+- `TSPEC:459` — §3.3's `gatherEvidence` row, header `| Member | Behaviour |` (2 columns), row has 4
+  pipes / 3 cells. The dropped cell is the one saying `gatherEvidence` deliberately does **not**
+  take the snapshot, and that the step-3 `__preDispatch` escape is not a per-attempt hazard
+  (TE Q-01).
+- `TSPEC:466` — §3.3's `verifyGate` row, same table, same shape. The dropped cell is the one saying
+  its append to `invocations` is what step 6 reads.
+- `TSPEC:1004` and `TSPEC:1005` — §5.5's `(g)` and `(h)` rows, header 4 columns, rows have 6 pipes
+  / 5 cells. The dropped cells are TE Q-02's "the fixture's repo **has** a config file on disk
+  before the run" (without which the byte-identity oracle is satisfied by absence) and TE F-17's
+  "the dispatch options object carries no key beyond the shipped seam's" (the premise that makes
+  `(h)`'s negative falsifiable).
+
+The prose is in the file, so this is not a lost decision — but it is invisible in every rendered
+view, and two of the four cells are the *only* statement of an oracle premise a test author must
+transcribe. The `(g)` clause in particular is the difference between a real test and one that
+passes vacuously, and it is exactly the class of defect §5.5 was written to prevent.
+
+**To resolve:** move each clause inside its row's final cell (or below the table as a labelled
+note). Mechanical check: every row in a table should have exactly `columns + 1` pipes.
+
+### F-03 — the capture-failure record entry's `Model` cell is unspecified (Medium, delta, local)
+
+§2.5's table specifies the capture-failure record entry as
+`appendAdvisoryEntry({feature, disposition, _appendFile, _now})` with `verdict: null`, and credits
+the renderer's null-verdict fallbacks for Confidence, Envelope and Diagnosis (`TSPEC:262`). Those
+fallbacks exist and are exactly as described. `Model` has no fallback:
+`renderAdvisoryEntry` computes `modelValue = fallback ? \`${model} (fallback)\` : model` and
+interpolates it unguarded (`orchestrate-dev.js:2934`, `:2947`). On this path no model was resolved —
+§2.5 says so itself, "no `_agent` call, no rung resolution, no driver entry at all" — so the
+disposition object has no `model`, and the operator's `ADVISORY-{feature}.md` gets
+`| Model | undefined |`.
+
+AC-6.1 requires a record entry for every A6 invocation that an operator can read and act on. An
+`undefined` cell is the kind of detail that reads as a bug in the tier rather than as "no model was
+involved", and it will be the first thing anyone notices on the one path where the operator is
+already dealing with a failure they did not expect.
+
+**To resolve:** name the literal `Model` value for this path in §2.5's table alongside the other
+fields — `n/a` matches the Confidence/Envelope fallbacks and needs no renderer change if the
+disposition simply carries `model: "n/a", fallback: false`. Add it to §5.2's capture-failure fixture
+assertions, which already transcribe the other cells.
+
 ## Questions
 
 ## Positive Observations
