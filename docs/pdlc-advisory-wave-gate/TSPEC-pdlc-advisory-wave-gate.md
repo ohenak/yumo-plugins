@@ -228,7 +228,126 @@ prerequisites when both are absent. Consequences, stated rather than discovered:
 
 ## 3. Interfaces
 
-*(pending)*
+Every signature below is a module-scope export of `pdlc/workflows/orchestrate-dev.js` unless marked
+*(module-private)*. Pure functions take their inputs; nothing reads `process`, a clock, or ambient
+state — the runtime forbids the first two outright and DC-04 forbids the third.
+
+### 3.1 Constants — the transcribed surfaces
+
+```js
+export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5", "A6"]);
+export const ENVELOPE_DEFAULTS = Object.freeze(["E-1", "E-2", "E-3", "E-4", "E-5", "E-6"]);
+export const ADVISORY_DEFAULTS = Object.freeze({
+  enabled: false, attemptBudget: 3, seamBudgetMinutes: 10,
+  waveBudgetPerRun: 1, envelope: ENVELOPE_DEFAULTS,
+});
+export const ADVISORY_ROOT_CAUSES = Object.freeze([
+  "plan-ordering-defect", "wave-internal-defect", "environmental", "unclassified",
+]);
+export const A6_PROHIBITIONS = Object.freeze(["f", "g", "h", "i"]);
+```
+
+`ADVISORY_SEAM_PHASES` gains `A6: { id: "I", outcome: "halted" }` so the escalation log's *Pipeline
+state* field is derived, not passed per call site — the shipped rationale for that table, unchanged.
+
+`parseAdvisoryConfig` gains one key. It cannot reuse the existing `positiveInt` helper: that
+validator requires `v >= 1`, and E-33 requires `0` to survive as a configured value rather than be
+reported invalid and defaulted. A sibling `nonNegativeInt` (`Number.isInteger(v) && v >= 0`) is
+added beside it, and `waveBudgetPerRun` is the only key that uses it. Per-key independent fallback
+is preserved: one bad key never retunes the others (the shipped contract).
+
+### 3.2 The call site — `runWaveGateSeam`
+
+*(module-private; injected into the Phase I loop as `runWaveGateSeamFn` so tests can substitute it,
+the way `runAdvisorySeamFn` is already injected.)*
+
+```js
+async function runWaveGateSeam({
+  feature, waveNum, waves, waveIndex, tasks, ownership, implConfig, scriptGate,
+  gateResult,          // the FIRST pass's { ok:false, output } — the evidence, untruncated
+  invocations,         // the per-wave sequence array (§2.4)
+  advisoryConfig, rungState, waveBudget,   // waveBudget: { resolved: number }
+  promotions,          // Map<taskId, {paths: string[], symbol: string}> — §3.6
+  _agent, _git, _runCommand, _readFile, _appendFile, _log, _now, _sleep, _notice,
+}) : Promise<{
+  resolved: boolean,
+  disposition: AdvisoryDisposition,
+  haltFields: { rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[] },
+  postWaveRan: boolean,
+}>
+```
+
+Control flow, in the order the FSPEC's §3.2 steps name:
+
+1. **Applicability** is already decided by the caller: this function is called only from the
+   wave-mode branch, only under `scriptGate`, only for an ordinary wave, only on a red test gate.
+   Steps 1 and 2 are therefore *structural* — there is no `if` to get wrong (BR-1, AC-1.2, AC-1.3).
+2. **Tier gate.** `advisoryConfig.enabled === false` returns `{resolved:false}` before anything
+   else — before the snapshot, before `buildA6SeamOps`, before any rung resolution. `runAdvisorySeam`
+   also returns early on a disabled config; the check is duplicated here deliberately, because
+   AC-1.4's inertness claim covers the *snapshot* too, and the snapshot is A6's, not the driver's.
+3. **Wave budget.** `waveBudget.resolved >= advisoryConfig.waveBudgetPerRun` ⇒ escalate with no
+   dispatch, via the shipped `{ __preDispatch: { outcome: "escalated", reason: "budget-exhausted" } }`
+   escape `gatherEvidence` already supports. The advisory record and the escalation log are still
+   written — that path runs through `terminate` — and no `_agent` call and no rung resolution occur
+   (E-26). Only `outcome === "resolved"` increments `waveBudget.resolved`, so two escalated waves
+   leave the budget untouched (E-27, AT-02-6).
+4. **Snapshot.** `captureTreeSnapshot` (§3.5). A capture failure halts here, before any dispatch.
+5. **Dispatch.** `runAdvisorySeam({ seam: "A6", seamOps: buildA6SeamOps(...), config, rungState, … })`.
+   Attempt budget, wall-clock budget, malformed-verdict handling, the GATE/CHECK envelope
+   evaluations, the advisory record, the escalation log and the `ADVISORY ESCALATION:` notice are all
+   the driver's, unchanged.
+6. **Terminal.** `outcome === "resolved"` ⇒ `resolved: true`, `waveBudget.resolved += 1`, and the
+   snapshot ref is left in place for the operator. Any other outcome ⇒ the tree has already been
+   restored by `seamOps.revert()` on the failing path, and the caller rethrows the first pass's
+   halt.
+
+### 3.3 `buildA6SeamOps` — the SeamOps the shipped driver consumes
+
+```js
+export function buildA6SeamOps({
+  feature, waveNum, waves, waveIndex, tasks, gateOutput, implConfig, scriptGate,
+  invocations, snapshot, _git, _runCommand,
+}) : SeamOps
+```
+
+| Member | Behaviour |
+|---|---|
+| `gatherEvidence` | Returns the **full captured gate output** (`gateResult.output`), never `outputTail`'s 30 lines. AT-02-5's oracle is a citation to a region the tail does not contain, and this is why it can exist (E-12, BR-3). Also computes the E-5 and E-6 owned-path sets (§3.4) and fills `declaredScope` in place |
+| `prompt` | States the four-class vocabulary, the two envelope members and their decidable rules, the `ROOT-CAUSE:`/`PROMOTES:`/`PROMOTES-TASK:` trailer lines, and the citation rule verbatim. Instructional only — BR-16: every one of these is *also* checked by the script, and no rule here is satisfied by having told the agent about it |
+| `conditionHolds` | `true`. The red gate is the condition, it was observed by the script one step earlier, and re-running the suite to re-confirm it would double the wave's slowest cost. A `false` here would yield `no-action`, which is not a disposition this seam has |
+| `classifyReply` | §3.7's optional hook: BR-3's citation rule (⇒ malformed, one attempt) then BR-2's vocabulary read (⇒ escalate, no attempt) |
+| `apply` | Dispatches the repair edit and returns `{ok:true}` iff the tree changed. A repair that changed nothing is `{ok:false}` ⇒ `post-action-verification-failed` |
+| `producedPaths` | `git diff --name-only` **unioned with** `git ls-files --others --exclude-standard`. The untracked half is not optional: a promotion that creates a new file would otherwise be invisible to the step-5 CHECK, and E-6's whole purpose is creating things |
+| `revert` | `restoreTreeSnapshot(snapshot)` (§3.5). Whole tree, every trigger |
+| `verifyGate` | Re-runs `runWaveGateSequence` — post-wave then test, appending to `invocations`. Returns `{passed:true}` on a green sequence; on red, `{passed:false, consumesAttempt:true}` so the driver restores, consumes one attempt and re-enters its loop, exhausting to `budget-exhausted` (BR-7, BR-9, E-20, E-24, AT-02-9) |
+| `declaredScope` | A **live array**, mutated in place (`.length = 0; push(...)`), never reassigned — the `buildA4SeamOps` idiom, required because the driver captures the reference once at GATE and the test doubles shallow-copy the SeamOps object |
+| `permittedActions` | `["E-5", "E-6"]`, narrowed per invocation: `E-6` is dropped when the wave is the last one, since there is no later task for a promotion to belong to |
+
+**`PROPOSED-ACTION:` carries an envelope member id**, not prose — the shipped convention
+(`buildA5SeamOps`'s `apply` compares `verdict.proposedAction === "E-1"`, `buildA4SeamOps` declares
+`permittedActions = ["E-3"]`). `classifyEnvelope`'s X-c clause then refuses any other value with no
+A6-specific code.
+
+Two pure helpers carry the rules that are A6's own:
+
+```js
+export function parseA6RootCause(raw) : string        // total; ∈ ADVISORY_ROOT_CAUSES
+export function citesGateOutput(evidence, gateOutput) : boolean
+```
+
+- `parseA6RootCause` reads the last `ROOT-CAUSE:` line with the same last-wins `extract` discipline
+  `parseAdvisoryVerdict` uses, trims it, and returns it iff it is a member of `ADVISORY_ROOT_CAUSES`.
+  Absent, empty, out-of-set, or non-string ⇒ `"unclassified"`. Total on the receiving side, closed
+  on the emitting side (C-3, DC-01, BR-2). It is deliberately **not** a sixth malformedness rule
+  inside `parseAdvisoryVerdict`: E-08's outcome (escalate, no attempt consumed) differs from E-07's
+  (escalate, one attempt consumed), and folding them into one parser would erase that difference.
+- `citesGateOutput` is BR-3's decidable rule: true iff some member of `verdict.evidence`, with
+  runs of whitespace collapsed and ends trimmed, is at least `A6_MIN_CITATION_CHARS` (24) long
+  **and** is a substring of the identically-normalised gate output. The floor exists because a
+  citation short enough to be guessed (`FAILED`, `Error`) is not evidence that the agent read
+  anything. A paraphrase fails, costs one attempt, and the prompt states the rule — bounded by
+  `attemptBudget`, which is the point of having one.
 
 ## 4. Data Model
 
