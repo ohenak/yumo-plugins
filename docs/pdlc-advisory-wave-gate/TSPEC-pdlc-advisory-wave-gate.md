@@ -25,7 +25,7 @@ contract AT-05-4 needs. TE F-02: §5.1's edit set now equals §1.3's. Mediums an
 place (§2.6 disabled-tier notices, §3.3 precedence residual and `apply`'s observation,
 §3.4 trailing-slash precondition, §5.4 coverage mechanics, §5.5 citation-floor boundary);
 lows fixed as cited (`async () => true`, `commitPaths`'s `message`, Phase H2 not Phase PUB,
-§6 rows OQ-5…OQ-7).
+§6 rows OQ-5…OQ-8).
 
 ## 1. Summary
 
@@ -599,7 +599,7 @@ pathspec would make one task's commit carry another task's paths, breaking the p
 discipline M-WG-4 rests on, and AT-04-3's oracle is over writer *identities*, which either shape
 preserves. But a load-bearing interpretive choice with a live alternative belongs in
 `DECISIONS-pdlc-advisory-wave-gate.md` with a re-evaluation trigger, not in a design paragraph
-that a later reader would have to reverse-engineer from AT-04-3. §6 OQ-6 carries it as a resolved
+that a later reader would have to reverse-engineer from AT-04-3. §6 OQ-8 carries it as a resolved
 question, and it is one of the two entries this feature's DECISIONS document is warranted for.
 
 ### 3.7 The one change to the shipped driver
@@ -692,7 +692,7 @@ operator, defaulting so that a repo that changes nothing gets today's behaviour:
 
 | Key | Type | Default | Validator | Notes |
 |---|---|---|---|---|
-| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not an invalid one |
+| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not a misconfiguration: it is the **documented operator affordance** "keep the tier on, keep A6 off" — every red wave escalates with no dispatch and the sixth summary row reads zero, which is observably different from `advisory.enabled: false`, where the report carries no `advisory` key at all. Mirrored into `.claude/pdlc.config.example.json` and `pdlc/engine`'s `ci-arrangement` expectations |
 
 `enabled`, `attemptBudget`, `seamBudgetMinutes` and `envelope` keep their shipped validators and
 defaults. `.claude/pdlc.config.example.json` — the tracked arrangement `pdlc/engine`'s
@@ -1012,8 +1012,22 @@ after, which is what makes it a test of the fix rather than a description of it.
 | OQ-2 | Should a run that halts with an applied-and-retained repair leave `refs/pdlc/a6-snapshot` in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. |
 | OQ-3 | Should `plan-ordering-defect` recurrence feed back into Phase P's PLAN lint, so a repeatedly-promoted dependency becomes a PLAN-time error? | no | Out of scope; recorded because `ESCALATIONS.md` is the durable corpus that would make it possible (AC-6.4, REQ O-2). |
 | OQ-4 | Should E-6 promotions be visible to the *queue* driver, so a halted feature's re-run starts from the corrected ordering? | no | No. Promotions are per-run state by §4.3, and a re-run re-derives batches from the PLAN, which the erratum protocol — not A6 — is responsible for correcting. |
+| OQ-5 | The staged-index deviation: capture is `git add -A` + `git reset --mixed`, so a wave that staged something before A6 ran gets its content restored but not its *staging*. | no | Accepted. The wave contract is `Do NOT git commit`, so the index equals HEAD on entry and the reset is exact in the ordinary case; in the extraordinary one the loss is staging, never content, which sits inside FSPEC BR-9's content-level oracle. Recorded here because §2.5 asserts it as recorded (PM F-07). |
+| OQ-6 | The cross-run promotion asymmetry: the later task's prompt clause lives in Phase I scope, so it reaches the later task in the same run only; the promotion *commit* survives across runs, the clause does not. | no | Accepted. A later task's agent finds the promotion in the tree either way; the clause is a shortcut, not the mechanism. Recorded here because §3.6 asserts it as recorded (PM F-07). |
+| OQ-7 | Does BR-9's restoration oracle range over `.gitignore`d paths? FSPEC BR-9 / AT-05-1 and REQ AC-5.1 say "tracked and untracked alike, generated outputs included" with no carve-out; §2.5's mechanism excludes ignored paths on both the capture and the restore side. | **yes, upstream** | Open, and **not decided here** — raised as an erratum on FSPEC BR-9 and AT-05-1, and on REQ AC-5.1. This TSPEC transcribes whichever boundary comes back. It does not block PLAN authoring: §5.2's round-trip case and §5.5's ignored-path-only repair test are the two places the answer lands, and both are already allocated. |
+| OQ-8 | E-6's commit shape: BR-8's licence reads as *widening an existing per-task commit's pathspec*; §3.6 instead adds a third `commitPaths` call with its own message and label. | no | **Resolved, and routed to DECISIONS** (PM F-06). The added call is the choice: widening a per-task commit would make one task's commit carry another task's paths, breaking the pathspec-scoping discipline M-WG-4 rests on, while AT-04-3's writer-identity oracle is satisfied by either shape. The product reviewer has ruled the added call acceptable. It gets a `DECISIONS-pdlc-advisory-wave-gate.md` entry with a re-evaluation trigger — *a reviewer or operator objecting to a third commit per resolved wave in git history* — rather than living as a design paragraph a later reader must reverse-engineer from AT-04-3. |
 
-None of these blocks PLAN authoring. OQ-1 and OQ-3 are recorded as candidates for DECISIONS if a
-reviewer disagrees with the dispositions above.
+None of these blocks PLAN authoring; OQ-7 blocks only the two test cases that transcribe its
+answer, and both are allocated. **Two entries warrant a DECISIONS document for this feature:**
+OQ-8's commit shape, and §2.5's choice of a dangling snapshot commit over `git stash` — the
+latter had a real alternative (stash) rejected for a stated reason (it mutates the working tree
+at capture time, which is exactly the state being protected), and a re-evaluation trigger (git
+gaining a non-mutating stash, or the wave contract permitting staged work). OQ-1 and OQ-3 remain
+candidates if a reviewer disagrees with the dispositions above.
 
-REVISION-COMPLETE: yes
+One question this round raised and answered in place rather than deferring (PM Q-03):
+`waveBudgetPerRun: 0` is a **documented operator affordance**, not an accident of the validator —
+"keep the tier on, keep A6 off" — and §4.4 now names it as such. It differs observably from
+`advisory.enabled: false`: the tier stays enabled, every red wave escalates with no dispatch, and
+the sixth summary row is present reading zero, where the disabled tier carries no `advisory` key
+at all (AT-01-4 vs AT-01-6).
