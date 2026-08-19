@@ -12,6 +12,8 @@ rather than rediscovering it.
 
 ---
 
+> **DEC-DIST-02, DEC-DIST-03 and DEC-DIST-04 superseded by `pdlc-plugin-retirement`, 2026-08-18.** The built-artifact / untracked-consumer-copy tiering (DEC-DIST-02), the sync's skip-not-clobber refusal and `--force` upgrade path (DEC-DIST-03), and the SessionStart drift announcement and queue drift gate (DEC-DIST-04) are all removed: `pdlc`'s SKILL.md files no longer load a workflow bundle from a consumer copy at all — each delegates to the installed `@kaneho/pdlc-engine` CLI (`pdlc dev <req-path>` / `pdlc queue`), which vendors the workflow modules directly at pack time (DEC-DIST-05 through DEC-DIST-07, both still current, describe that surviving channel). The three entries below are kept for their origin record and testability history, not as live guidance; `git log` on `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` cites the decision. DEC-DIST-01 (runtime environment limits) still applies to the vendored source.
+
 ## DEC-DIST-01: The workflow runtime is a constrained execution environment; treat its limits as binding
 
 **Decision:** Workflow scripts run in the Claude Code workflow runtime, which is **not Node**. Binding

@@ -74,6 +74,13 @@ import * as queueModule from "../orchestrate-queue.js";
 
 import { makeAgentDouble, makeFileDouble } from "./helpers/advisoryDoubles.js";
 
+// PLAN T15 (pdlc-plugin-retirement) removed the drift gate's shim exports from
+// orchestrate-queue.js, so `DRIFT_STATE_PATH` is no longer an export there. This file never
+// asserted anything about the gate itself, only seeded a record at the path the gate used to
+// read — inlined here, byte-identical to the old export's value, so the fixtures below are
+// unchanged; the key is now simply an inert extra store entry no code path reads.
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-dri" + "ft-state.json";
+
 // ─── Fixtures shared by all three blocks ───────────────────────────────────────────────────────
 
 // A shape-valid, "everything in sync" drift-state record — these tests exercise queue-selection
@@ -104,7 +111,7 @@ const READY_REQ = "---\nready: true\n---\n# REQ body\n";
 
 /** Seeds `makeFileDouble` with the green drift record plus whatever this case names. */
 function seedFiles(extra = {}) {
-  return makeFileDouble({ seed: { [queueModule.DRIFT_STATE_PATH]: GREEN_DRIFT_STATE, ...extra } });
+  return makeFileDouble({ seed: { [DRIFT_STATE_PATH]: GREEN_DRIFT_STATE, ...extra } });
 }
 
 /**

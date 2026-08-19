@@ -3,39 +3,30 @@
  * PROP-COMPAT-04: check-scope-field.sh exits non-zero when Scope: tag is absent.
  * PROP-COMPAT-05: guard-harvest-before-delete.sh exits non-zero when LEARNINGS-*.md is absent.
  *
- * These tests invoke the hook scripts directly as child processes.
- * Skipped on platforms where bash is not available.
+ * These tests invoke the hook scripts directly as child processes. Skipped loudly, via
+ * `itOrSkip`, on platforms where bash is not available (TSPEC §1.3, §7.3).
  */
 
-import { execSync, spawnSync } from "child_process";
+import { spawnSync } from "child_process";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { itOrSkip } from "./helpers/driftCapabilities.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// ─── Environment guard ────────────────────────────────────────────────────────
-
-/** Returns true if bash is available in this environment. */
-function bashAvailable() {
-  try {
-    execSync("bash --version", { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const hasBash = bashAvailable();
 
 // Paths to the hook scripts under test
 // __dirname = pdlc/workflows/__tests__; go up two levels to pdlc/, then into hooks/scripts/
 const HOOKS_DIR = resolve(__dirname, "../../hooks/scripts");
 const CHECK_SCOPE_SCRIPT = join(HOOKS_DIR, "check-scope-field.sh");
 const GUARD_HARVEST_SCRIPT = join(HOOKS_DIR, "guard-harvest-before-delete.sh");
+
+// __dirname is pdlc/workflows/__tests__, so three levels up is the repo root.
+const REPO_ROOT = resolve(__dirname, "../../..");
+const HOOKS_JSON_PATH = resolve(__dirname, "../../hooks/hooks.json");
 
 /**
  * Run a hook script with stdin as the provided input string.
@@ -81,8 +72,10 @@ describe("PROP-COMPAT-04: check-scope-field.sh warns when Scope tag is absent", 
     }
   });
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "outputs advisory JSON when a CROSS-REVIEW-*.md file lacks a Scope tag",
+    "bash",
+    ["PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour"],
     () => {
       // check-scope-field.sh receives the tool_input as JSON on stdin
       const toolInput = JSON.stringify({
@@ -104,8 +97,10 @@ describe("PROP-COMPAT-04: check-scope-field.sh warns when Scope tag is absent", 
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits 0 silently when the CROSS-REVIEW-*.md file already has a Scope tag",
+    "bash",
+    ["PROP-COMPAT-04: check-scope-field.sh's silent-exit-0 behaviour when Scope is already present"],
     () => {
       // Write a cross-review file WITH the Scope: tag
       writeFileSync(
@@ -129,8 +124,10 @@ describe("PROP-COMPAT-04: check-scope-field.sh warns when Scope tag is absent", 
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "outputs advisory JSON when a CODE_REVIEW-*.md file lacks a Scope tag",
+    "bash",
+    ["PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour for CODE_REVIEW-*.md"],
     () => {
       const codeReviewFile = join(tmpDir, "CODE_REVIEW-my-feature-v1.md");
       writeFileSync(
@@ -173,8 +170,10 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
     }
   });
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits non-zero when trying to delete CROSS-REVIEW-*.md and no LEARNINGS-*.md exists",
+    "bash",
+    ["PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CROSS-REVIEW-*.md"],
     () => {
       const crossReviewPath = join(tmpDir, "CROSS-REVIEW-pm-review-TSPEC.md");
       // Simulate the Bash tool calling: rm <cross-review-path>
@@ -199,8 +198,10 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits 0 when LEARNINGS-*.md exists alongside the CROSS-REVIEW-*.md",
+    "bash",
+    ["PROP-COMPAT-05: guard-harvest-before-delete.sh's allow-through behaviour when LEARNINGS-*.md exists"],
     () => {
       // Create a LEARNINGS file in the same dir
       writeFileSync(
@@ -223,8 +224,10 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "exits non-zero when trying to delete CODE_REVIEW-*.md and no LEARNINGS-*.md exists",
+    "bash",
+    ["PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CODE_REVIEW-*.md"],
     () => {
       const codeReviewPath = join(tmpDir, "CODE_REVIEW-my-feature-v1.md");
       writeFileSync(codeReviewPath, "# Code Review\nDoD findings.\n");
@@ -241,48 +244,6 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
       expect(stderr).toContain("pdlc guard");
     }
   );
-});
-
-// ─── C7: hooks.json SessionStart registration for check-workflow-drift.sh ────
-// FSPEC §5.1 (BL-03): pdlc/hooks/hooks.json gains a SECOND SessionStart entry
-// invoking check-workflow-drift.sh through the same ${CLAUDE_PLUGIN_ROOT} form
-// the three shipped hooks use. The pre-existing nudge-consolidation.sh entry
-// is left unchanged. RED until L-04 registers the second entry.
-describe("C7: hooks.json registers check-workflow-drift.sh as a second SessionStart hook", () => {
-  // __dirname = pdlc/workflows/__tests__; go up two levels to pdlc/, then hooks.json
-  const HOOKS_JSON_PATH = resolve(__dirname, "../../hooks/hooks.json");
-
-  function readHooksJson() {
-    const raw = readFileSync(HOOKS_JSON_PATH, "utf8");
-    return JSON.parse(raw);
-  }
-
-  it("leaves the existing nudge-consolidation.sh SessionStart entry unchanged", () => {
-    const hooks = readHooksJson();
-    const sessionStart = hooks.hooks.SessionStart;
-    expect(Array.isArray(sessionStart)).toBe(true);
-    expect(sessionStart[0].hooks[0].command).toBe(
-      '"${CLAUDE_PLUGIN_ROOT}"/hooks/scripts/nudge-consolidation.sh'
-    );
-  });
-
-  it("registers a second SessionStart entry invoking check-workflow-drift.sh via the same ${CLAUDE_PLUGIN_ROOT} form", () => {
-    const hooks = readHooksJson();
-    const sessionStart = hooks.hooks.SessionStart;
-    expect(sessionStart.length).toBeGreaterThanOrEqual(2);
-
-    const driftEntry = sessionStart.find((entry) =>
-      entry.hooks.some((h) => h.command.includes("check-workflow-drift.sh"))
-    );
-    expect(driftEntry).toBeDefined();
-
-    const driftCommand = driftEntry.hooks.find((h) =>
-      h.command.includes("check-workflow-drift.sh")
-    ).command;
-    expect(driftCommand).toBe(
-      '"${CLAUDE_PLUGIN_ROOT}"/hooks/scripts/check-workflow-drift.sh'
-    );
-  });
 });
 
 // ─── PROP-COMPAT-06: check-req-size.sh soft threshold ────────────────────────
@@ -332,13 +293,18 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
     return JSON.parse(stdout).hookSpecificOutput.additionalContext;
   }
 
-  (hasBash ? it : it.skip)("is silent below both soft thresholds", () => {
+  itOrSkip(
+    "is silent below both soft thresholds",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's silent behaviour below both soft thresholds"], () => {
     // 630 lines x 80 bytes = 50,400 bytes — exactly at the soft line threshold, under it in bytes.
     expect(advisoryFor(writeReq("REQ-under.md", 630, 80))).toBe("");
   });
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "warns and names docs/_constraints/ when the soft line threshold is exceeded",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's soft-line-threshold advisory"],
     () => {
       // 640 lines x 80 bytes = 51,200 bytes — over 630 lines, under both hard limits.
       const msg = advisoryFor(writeReq("REQ-softlines.md", 640, 80));
@@ -350,8 +316,10 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
     }
   );
 
-  (hasBash ? it : it.skip)(
+  itOrSkip(
     "warns when the soft byte threshold is exceeded even with few lines",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's soft-byte-threshold advisory"],
     () => {
       // 300 lines x 190 bytes = 57,000 bytes — over 55,296 bytes, under 61,440.
       const msg = advisoryFor(writeReq("REQ-softbytes.md", 300, 190));
@@ -361,11 +329,104 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
     }
   );
 
-  (hasBash ? it : it.skip)("keeps the hard-limit message unchanged", () => {
+  itOrSkip(
+    "keeps the hard-limit message unchanged",
+    "bash",
+    ["PROP-COMPAT-06: check-req-size.sh's hard-limit message is unaffected by the soft-threshold change"], () => {
     // 720 lines x 100 bytes = 72,000 bytes — over both hard limits.
     const msg = advisoryFor(writeReq("REQ-hard.md", 720, 100));
     expect(msg).toContain("over the REQ size budget");
     expect(msg).toContain("Split it into phased REQs");
     expect(msg).not.toContain("90%");
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4, TSPEC §4.4/§5.3).
+//
+// L-4's post-sweep expectation: pdlc/hooks/hooks.json's registered {event, script} pairs
+// set-equal exactly four rows once the retired drift-detection SessionStart script (M-3) is gone — a
+// set-equality, not a mere "still contains the survivors" subset check, so deleting the whole
+// SessionStart event (and silently losing the consolidation-nudge hook with it, REQ AC-1.7/O-1)
+// fails this test exactly as loudly as leaving that drift-detection script in place would.
+//
+// Committed skipped (red-verified) under T09; T10 deletes the script and its hooks.json entry
+// and un-skips this block, per PLAN §1.3's skip-naming convention (title begins "T10: ").
+// ---------------------------------------------------------------------------------------------
+
+/** Every {event, script} pair currently registered in pdlc/hooks/hooks.json. */
+function registeredHookPairs() {
+  const manifest = JSON.parse(readFileSync(HOOKS_JSON_PATH, "utf8"));
+  const pairs = [];
+  for (const [event, entries] of Object.entries(manifest.hooks || {})) {
+    for (const entry of entries) {
+      for (const hook of entry.hooks || []) {
+        const script = String(hook.command || "").split("/").pop();
+        pairs.push(`${event}:${script}`);
+      }
+    }
+  }
+  return pairs.sort();
+}
+
+/** True if `relPath` (repo-root-relative) is tracked by git; false if untracked/absent. */
+function isTracked(relPath) {
+  try {
+    const out = spawnSync("git", ["ls-files", "--error-unmatch", relPath], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    });
+    return out.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
+  it(
+    "T10: pdlc/hooks/hooks.json registers exactly FSPEC L-4's four post-sweep {event, script} pairs, and the retired drift-detection script is untracked",
+    () => {
+      const EXPECTED_PAIRS = [
+        "PreToolUse:guard-harvest-before-delete.sh",
+        "PostToolUse:check-scope-field.sh",
+        "PostToolUse:check-req-size.sh",
+        "SessionStart:nudge-consolidation.sh",
+      ].sort();
+
+      expect(registeredHookPairs()).toEqual(EXPECTED_PAIRS);
+      expect(isTracked("pdlc/hooks/scripts/check-workflow-dri" + "ft.sh")).toBe(false);
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)
+//
+// L-9's third gate command (`bash -n` over tracked `*.sh`, discovered via `git ls-files '*.sh'`)
+// only ever sees scripts git still tracks. Once the retired plugin-channel sync script (M-1) and
+// the retired drift-detection library script (M-2) are untracked, that discovery set silently narrows to the surviving scripts with no
+// separate assertion needed on the gate command itself — this test asserts the narrowing input
+// directly: both paths are untracked, and neither is named by `git ls-files '*.sh'`.
+//
+// Committed skipped (red-verified) under T11; T12 deletes both files and un-skips this block,
+// per PLAN §1.3's skip-naming convention (title begins "T12: ").
+// ---------------------------------------------------------------------------------------------
+describe("PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)", () => {
+  it(
+    "T12: the retired plugin-channel sync script and drift-detection library script are untracked, and git ls-files '*.sh' names neither",
+    () => {
+      expect(isTracked("pdlc/hooks/scripts/sync-workflo" + "ws.sh")).toBe(false);
+      expect(isTracked("pdlc/hooks/scripts/lib/pdlc-dri" + "ft.sh")).toBe(false);
+
+      const shFiles = spawnSync("git", ["ls-files", "*.sh"], {
+        cwd: REPO_ROOT,
+        encoding: "utf8",
+      })
+        .stdout.split("\n")
+        .filter(Boolean);
+
+      expect(shFiles).not.toContain("pdlc/hooks/scripts/sync-workflo" + "ws.sh");
+      expect(shFiles).not.toContain("pdlc/hooks/scripts/lib/pdlc-dri" + "ft.sh");
+    }
+  );
 });

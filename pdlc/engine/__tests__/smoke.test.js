@@ -324,69 +324,6 @@ test("a bad REQ path is refused by the module, not by the engine", async (t) => 
   assert.equal(calls.length, 0, "a rejected REQ path costs no dispatch");
 });
 
-// ─── the queue entry, same offline arrangement ───────────────────────────────
-
-test("pdlc queue is blocked by the drift gate in a repo with no .claude/workflows", async (t) => {
-  // A consumer repo of the kind this feature exists to enable — no
-  // `.claude/workflows/` at all — has no drift-state record, so
-  // orchestrate-queue's gate maps to row 1 and blocks BEFORE reading QUEUE.md.
-  // Documented here because it is a real contract mismatch, not a test artifact.
-  const root = makeConsumerRepo({
-    files: {
-      "docs/_queue/QUEUE.md": [
-        "| Order | Status | Feature | REQ Path | Depends-On |",
-        "|---|---|---|---|---|",
-        `| 1 | pending | ${FEATURE} | ${REQ_PATH} | - |`,
-        "",
-      ].join("\n"),
-    },
-  });
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-
-  const { transport, calls } = scriptedTransport(root);
-  const { report } = await runQueue({
-    cwd: root,
-    adapter: smokeAdapter(root, transport),
-    startup: { ok: true, reason: null },
-  });
-
-  assert.equal(report.outcome, "blocked");
-  assert.match(report.reason, /Drift gate row 1/);
-  assert.equal(calls.length, 0, "a blocked gate costs no dispatch");
-});
-
-test("pdlc queue runs its own Phase-0 triage once the drift gate is opted out", async (t) => {
-  // The opt-out the gate honours here lives in `.claude/pdlc.config.json`'s
-  // `distribution.checkEnabled: false` (CLAUDE.md's documented consumer opt-out) — the
-  // config-side gate added to reach exactly this arrangement: an engine-only consumer with
-  // no `.claude/workflows/` tree at all, and therefore no drift-state record ever written,
-  // could not previously reach ANY opt-out (the record-based one requires the record to
-  // exist). The config read is checked before the drift-state record is even attempted.
-  const root = makeConsumerRepo({
-    files: {
-      ".claude/pdlc.config.json": JSON.stringify({
-        distribution: { checkEnabled: false },
-      }),
-      "docs/_queue/QUEUE.md": [
-        "| Order | Status | Feature | REQ Path | Depends-On |",
-        "|---|---|---|---|---|",
-        "",
-      ].join("\n"),
-    },
-  });
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-
-  const { transport } = scriptedTransport(root);
-  const { report } = await runQueue({
-    cwd: root,
-    adapter: smokeAdapter(root, transport),
-    startup: { ok: true, reason: null },
-  });
-
-  // No rows at all → the module's own idle exit, which is what `--loop` stops on.
-  assert.ok(["idle", "no-queue"].includes(report.outcome), JSON.stringify(report));
-});
-
 // ─── the T48 corpus: five configurations, seven M-ENG-07 model-map rows ──────
 //
 // Every run below dispatches through the REAL adapter and the REAL
@@ -490,9 +427,9 @@ test("corpus run ii: queue Phase-0 triage dispatches on Sonnet (M-ENG-07 row 5)"
       "docs/_queue/QUEUE.md": queueMd(feature, reqPath),
       // The queue's drift gate runs BEFORE `QUEUE.md` is even read, and an
       // engine-only consumer has no `.claude/workflows/` tree and therefore no
-      // drift-state record to satisfy it. `distribution.checkEnabled: false` is
-      // CLAUDE.md's documented consumer opt-out — the same one the plain queue
-      // smoke test above uses.
+      // drift-state record to satisfy it. Setting the `distribution` config block's
+      // `checkEnabled` field to `false` is CLAUDE.md's documented consumer opt-out —
+      // the same one the plain queue smoke test above uses.
       ".claude/pdlc.config.json": JSON.stringify({ distribution: { checkEnabled: false } }),
     },
   });
@@ -527,8 +464,9 @@ test("corpus run iii: the A1 advisory seam dispatches on fable when it resolves 
     files: {
       [reqPath]: corpus.reqText(feature),
       "docs/_queue/QUEUE.md": queueMd(feature, reqPath),
-      // `distribution.checkEnabled: false` clears the queue's drift gate (see run
-      // ii); `advisory.enabled: true` is what puts the A1 seam in play at all.
+      // Setting the `distribution` config block's `checkEnabled` field to `false`
+      // clears the queue's drift gate (see run ii); `advisory.enabled: true` is
+      // what puts the A1 seam in play at all.
       ".claude/pdlc.config.json": JSON.stringify({
         distribution: { checkEnabled: false },
         advisory: { enabled: true },
@@ -562,8 +500,9 @@ test("corpus run iv: the A1 advisory seam falls back from fable to opus on a rea
     files: {
       [reqPath]: corpus.reqText(feature),
       "docs/_queue/QUEUE.md": queueMd(feature, reqPath),
-      // `distribution.checkEnabled: false` clears the queue's drift gate (see run
-      // ii); `advisory.enabled: true` is what puts the A1 seam in play at all.
+      // Setting the `distribution` config block's `checkEnabled` field to `false`
+      // clears the queue's drift gate (see run ii); `advisory.enabled: true` is
+      // what puts the A1 seam in play at all.
       ".claude/pdlc.config.json": JSON.stringify({
         distribution: { checkEnabled: false },
         advisory: { enabled: true },
@@ -698,4 +637,62 @@ test("corpus run v(b): an unparseable PLAN task table falls back to Haiku DAG ex
     assert.equal(records[0].model, "haiku");
     assert.equal(records[0].corpusRun, "run-vb");
   });
+});
+
+// ---------------------------------------------------------------------------------------------
+// T05: engine-side drift coverage removed (PLAN T04/T05, class 2). Skipped under T05 — red
+// until the drift-channel legs of this file and `fs-observation.test.js` are deleted and
+// `pdlc/engine/__tests__/fixtures/consumer-ac12/` is untracked. This block asserts the
+// ABSENCE those deletions produce, by reading each file's own source text and the git index
+// rather than by importing anything (PLAN §1.3 skip-naming convention).
+// ---------------------------------------------------------------------------------------------
+
+test("T05: no leg of the engine suite observes the consumer runtime copy via the drift gate", () => {
+  // Each target title below is built from two concatenated fragments so THIS
+  // assertion's own source text never contains it as one contiguous
+  // substring — otherwise a self-referential match would make this check
+  // permanently red, even after the real test it targets is deleted (T05).
+  const blockedTitle =
+    "pdlc queue is blocked by the drift gate" + " in a repo with no .claude/workflows";
+  const optedOutTitle =
+    "pdlc queue runs its own Phase-0 triage" + " once the drift gate is opted out";
+
+  const thisFileSource = readFileSync(fileURLToPath(import.meta.url), "utf8");
+  assert.ok(
+    !thisFileSource.includes(blockedTitle),
+    "smoke.test.js must not carry the drift-gate-blocked leg once the drift-channel is removed"
+  );
+  assert.ok(
+    !thisFileSource.includes(optedOutTitle),
+    "smoke.test.js must not carry the drift-gate-opt-out leg once the drift-channel is removed"
+  );
+
+  const fsObservationPath = path.join(engineRoot, "__tests__", "fs-observation.test.js");
+  const fsObservationSource = readFileSync(fsObservationPath, "utf8");
+  assert.ok(
+    !fsObservationSource.includes(
+      "clause 3 holds on a recording with the opt-out's read-set (no drift-state read)"
+    ),
+    "fs-observation.test.js must not carry the PROP-READ-2/AT-ENG-48 opt-out-holds leg once removed"
+  );
+  assert.ok(
+    !fsObservationSource.includes(
+      "clause 3 fails on a recording with the no-opt-out read-set (drift-state read observed)"
+    ),
+    "fs-observation.test.js must not carry the PROP-READ-2/AT-ENG-48 no-opt-out-fails leg once removed"
+  );
+});
+
+test("T05: pdlc/engine/__tests__/fixtures/consumer-ac12/ is not a tracked path", () => {
+  const tracked = execFileSync(
+    "git",
+    ["ls-files", "pdlc/engine/__tests__/fixtures/consumer-ac12/"],
+    { cwd: repoRoot, encoding: "utf8" }
+  ).trim();
+  assert.equal(
+    tracked,
+    "",
+    "no file under fixtures/consumer-ac12/ may remain tracked once its only consumer's " +
+      "retired cases are deleted with it (M-11e)"
+  );
 });

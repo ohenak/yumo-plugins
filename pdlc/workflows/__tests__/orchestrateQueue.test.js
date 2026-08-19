@@ -7,7 +7,6 @@
 import main, {
   meta,
   DEFAULT_QUEUE_PATH,
-  DRIFT_STATE_PATH,
   parseQueue,
   parseReqFrontmatter,
   parseTriageVerdict,
@@ -26,6 +25,13 @@ import main, {
 // the absence is an assertion failure in one test rather than a dead file.
 import * as queueModule from "../orchestrate-queue.js";
 import { fakeFs, fakeGit } from "./helpers/seams.js";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ORCHESTRATE_QUEUE_SOURCE_PATH = path.join(__dirname, "..", "orchestrate-queue.js");
 
 /**
  * RLH-19: shape-tolerant unwrap of `updateQueueStatus`.
@@ -328,29 +334,9 @@ describe("triagePrompt", () => {
 
 // ─── main() — end-to-end pickup logic ────────────────────────────────────────
 describe("main()", () => {
-  // A shape-valid, "everything in sync" drift-state record (T-13, orchestrator-authorized
-  // fixture update): these tests predate the drift gate (T-04/T-11/T-12/T-13) and exercise
-  // pipeline-selection behavior downstream of it, not the gate itself (that is
-  // queueDriftGate.test.js's job) — so every main()-block fixture below supplies a green
-  // record at DRIFT_STATE_PATH, letting the gate proceed to the pre-existing QUEUE.md read
-  // exactly as it did before the gate was wired.
-  const GREEN_DRIFT_STATE = JSON.stringify({
-    schemaVersion: 1,
-    baselineStatus: "resolved",
-    baselineReason: null,
-    checkEnabled: true,
-    rows: [{ id: "orchestrate-dev", state: "in-sync", reason: null }],
-    retiredPresent: [],
-    writeFailures: [],
-    generatedBy: "hook",
-    pluginVersion: "0.10.0",
-    syncCommand: null,
-  });
-
-  // Build an injectable in-memory filesystem. Every fixture gets a green drift-state record
-  // by default (overridable via files[DRIFT_STATE_PATH]) so the gate always proceeds.
+  // Build an injectable in-memory filesystem.
   function makeFs(files) {
-    const store = { [DRIFT_STATE_PATH]: GREEN_DRIFT_STATE, ...files };
+    const store = { ...files };
     return {
       store,
       readFile: async (p) => (p in store ? store[p] : null),
@@ -896,5 +882,54 @@ describe("RLH-19 continued — B2: the 7-argument evidence call vs. the 6-argume
     expect(result.detail).toContain("pending");
     expect(git.callCount).toBe(0);
     expect(fs.files[QUEUE_PATH]).toBe(SAMPLE_QUEUE);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// PLAN T06/T08 — drift gate retirement (class 3, FSPEC L-6 row 1, TSPEC §4.4/§5.3).
+//
+// The skipped leg below asserts the ABSENCE T08 produces: no drift-gate symbol exported and no
+// drift-gate config-key parse left in orchestrate-queue.js's own source text, following
+// PLAN §1.3's skip-naming convention (title begins "T08: "). It is read from source text rather
+// than import, mirroring T04/T05's technique, so a static import of a since-deleted name never
+// makes this file itself fail to load.
+//
+// The live leg restates FSPEC L-6 row 1: the four disposition assertions above (`:366`, `:379`,
+// `:457`, `:496` at HEAD) are the covering evidence that makes re-homing `queueDriftGate.test.js`'s
+// queue-triage assertions unnecessary, and TSPEC §5.3 lists them as protected — class 3 (T08) must
+// not edit them. This test stays live (never skipped) across every batch in this feature.
+// ---------------------------------------------------------------------------------------------
+
+describe("PLAN T06/T08 — drift gate retirement (class 3)", () => {
+  it("T08: orchestrate-queue.js exports no drift-gate symbol and parses no drift-gate config key", () => {
+    const source = readFileSync(ORCHESTRATE_QUEUE_SOURCE_PATH, "utf8");
+
+    // Split so this assertion's own source text never contains the searched-for fragments as one
+    // contiguous substring (PLAN §1.3) — a self-referential match would keep this permanently red.
+    const driftGateSymbols = [
+      "validateDrift" + "Record",
+      "mapDrift" + "State",
+      "readDriftState" + "Safely",
+      "parseDistributionCheckEnabled" + "OptOut",
+    ];
+    for (const symbol of driftGateSymbols) {
+      expect(source).not.toContain(`export function ${symbol}`);
+      expect(source).not.toContain(`export async function ${symbol}`);
+    }
+    expect(source).not.toContain("distribution" + ".checkEnabled");
+    expect(source).not.toContain("DRIFT_STATE" + "_PATH");
+  });
+
+  it("restates FSPEC L-6 row 1's four protected triage titles hosted in this file", () => {
+    const source = readFileSync(__filename, "utf8");
+    const protectedTitles = [
+      "returns no-queue when the queue file is missing",
+      "runs the pipeline for a ready entry and sets awaiting-merge",
+      "skips a blocked entry per triage and reports idle when none are ready",
+      "sets halted status when the pipeline halts",
+    ];
+    for (const title of protectedTitles) {
+      expect(source).toContain(`it("${title}"`);
+    }
   });
 });

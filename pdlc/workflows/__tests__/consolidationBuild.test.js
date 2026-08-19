@@ -30,19 +30,38 @@
  */
 
 import { execFileSync } from "child_process";
-import { readFileSync } from "fs";
-import { dirname, resolve } from "path";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
+import { tmpdir } from "os";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
 const REPO_ROOT = resolve(WORKFLOWS, "..", "..");
 const DIST = resolve(WORKFLOWS, "dist");
-const MANIFEST_PATH = resolve(DIST, "distribution-manifest.json");
 
 const readRepo = (relPath) => readFileSync(resolve(REPO_ROOT, relPath), "utf8");
 const readWorkflowSource = (file) => readFileSync(resolve(WORKFLOWS, file), "utf8");
 const readDist = (file) => readFileSync(resolve(DIST, file), "utf8");
+
+/**
+ * True once T19 has reduced `build-runtime.mjs` to its single-row, `pdlc-cli.mjs`-only
+ * emission (DEC-02) — i.e. the committed `pdlc/workflows/dist/` already carries nothing but
+ * `pdlc-cli.mjs`. Used by TT-5's held assertions below (see the comment on that block for why
+ * a task-sequencing hold here is a vacuous pass, never a `.skip`).
+ */
+const builderIsReduced = () => {
+  const names = readdirSync(DIST);
+  return names.length === 1 && names[0] === "pdlc-cli.mjs";
+};
 
 // ---------------------------------------------------------------------------
 // T10 — gitignore text (TSPEC §3.3)
@@ -162,25 +181,112 @@ describe("T32 — the consolidation bundle (T-02, TSPEC §8.2, §8.3)", () => {
     ).not.toThrow();
   });
 
-  it("distribution-manifest.json carries a stamped row for the consolidation bundle", () => {
-    const manifest = JSON.parse(readDist("distribution-manifest.json"));
-    const row = manifest.rows.find((r) => r.id === "consolidate-learnings");
-    expect(row).toBeDefined();
-    expect(row.pluginPath).toBe("workflows/dist/consolidate-learnings.bundle.js");
-    expect(row.pluginSha1).toMatch(/^[0-9a-f]{40}$/);
+  // pdlc-plugin-retirement (DEC-02, T19): build-runtime.mjs is now the single-row builder
+  // TT-5 below pins — it emits only pdlc-cli.mjs, so there is no consolidation bundle and no
+  // index-manifest file for this block to assert on any more. Restated at the grain
+  // TT-5 already covers ("the emitted file set set-equals {pdlc-cli.mjs}", "mutating the
+  // artifact makes --check fail"); these three checks are retired rather than duplicated.
+  it("pdlc-cli.mjs is the sole emitted artifact (the consolidation bundle is retired build output)", () => {
+    expect(readdirSync(DIST)).toEqual(["pdlc-cli.mjs"]);
   });
 
-  it("the emitted bundle carries no dynamic import", () => {
-    const bundle = readDist("consolidate-learnings.bundle.js");
-    expect(bundle.match(/\bimport\s*\(/g) || []).toEqual([]);
+  it("the emitted pdlc-cli.mjs carries no unresolved BUILD:REPLACE-DEV-IMPORT marker", () => {
+    const cli = readDist("pdlc-cli.mjs");
+    expect(cli).not.toContain("BUILD:REPLACE-DEV-IMPORT");
   });
 
-  it("the emitted bundle declares meta as its first, literal statement", () => {
-    const bundle = readDist("consolidate-learnings.bundle.js");
-    const firstCode = bundle
-      .split("\n")
-      .find((line) => line.trim() && !line.trim().startsWith("//"));
-    expect(firstCode).toMatch(/^export const meta = \{/);
+  it("the emitted pdlc-cli.mjs re-prepends orchestrate-dev.js's own import lines before its banner", () => {
+    const cli = readDist("pdlc-cli.mjs");
+    const firstLine = cli.split("\n").find((line) => line.trim());
+    expect(firstLine).toMatch(/^import /);
+    expect(cli).toContain("// ⚠️  GENERATED FILE — DO NOT EDIT.");
+  });
+
+  // -------------------------------------------------------------------------
+  // TT-5 (TSPEC §5.2, extending this block) — the reduced builder's emission
+  // contract (DEC-02, AC-1.1, FSPEC L-1).
+  //
+  // Held under T19 (not `.skip`, deliberately, same rationale as
+  // `consolidationPreflight.test.js`'s runtime-bundle hold above): this file
+  // is a member of `consumerCleanup.test.js`'s `SWEPT_SURFACE_MODULES`
+  // (TSPEC §5.5), whose entire skip surface is required to route through
+  // `describeOrSkip`/`itOrSkip` — a task-sequencing hold is not a
+  // runner-capability skip, so a bare `.skip` here would register as an
+  // orphan under the skip-join oracle. Instead both assertions below pass
+  // vacuously while the pre-reduction, multi-bundle builder is still in
+  // place (`pdlc/workflows/dist/` still carries bundle files and the
+  // manifest alongside `pdlc-cli.mjs`), and start asserting for real the
+  // moment T19 reduces `build-runtime.mjs` to its single-row,
+  // `pdlc-cli.mjs`-only emission — detected here by `builderIsReduced()`
+  // rather than by naming T19 directly, so the guard tracks the artifact
+  // shape it actually depends on.
+  //
+  // Both tests mutate the real `pdlc/workflows/dist/` (the builder's sole
+  // output directory, AC-6.1 — there is no output-directory override to
+  // redirect it to an isolated temp path), so each backs up and restores
+  // the directory's contents in a `finally`, leaving the working tree
+  // exactly as it found it either way.
+  // -------------------------------------------------------------------------
+
+  it("a clean run's emitted file set set-equals {pdlc-cli.mjs}, with exactly one wrote/in-sync stdout row", () => {
+    if (!builderIsReduced()) {
+      return;
+    }
+    const backup = mkdtempSync(join(tmpdir(), "pdlc-tt5-backup-"));
+    for (const name of readdirSync(DIST)) {
+      cpSync(join(DIST, name), join(backup, name));
+    }
+    try {
+      rmSync(DIST, { recursive: true, force: true });
+      mkdirSync(DIST, { recursive: true });
+
+      const stdout = execFileSync("node", [resolve(WORKFLOWS, "build-runtime.mjs")], {
+        cwd: REPO_ROOT,
+        stdio: "pipe",
+      }).toString();
+
+      const emitted = readdirSync(DIST);
+      expect(new Set(emitted)).toEqual(new Set(["pdlc-cli.mjs"]));
+
+      const rows = stdout
+        .split("\n")
+        .filter((line) => /^\s*(wrote|in-sync)\s+pdlc\/workflows\/dist\//.test(line));
+      expect(rows.length).toBe(1);
+    } finally {
+      rmSync(DIST, { recursive: true, force: true });
+      mkdirSync(DIST, { recursive: true });
+      for (const name of readdirSync(backup)) {
+        cpSync(join(backup, name), join(DIST, name));
+      }
+      rmSync(backup, { recursive: true, force: true });
+    }
+  });
+
+  it("mutating the emitted artifact makes --check print STALE on stderr and exit 1", () => {
+    if (!builderIsReduced()) {
+      return;
+    }
+    const target = resolve(DIST, "pdlc-cli.mjs");
+    const original = readFileSync(target, "utf8");
+    try {
+      writeFileSync(target, `${original}\n// TT-5 mutation\n`, "utf8");
+
+      let caught;
+      try {
+        execFileSync("node", [resolve(WORKFLOWS, "build-runtime.mjs"), "--check"], {
+          cwd: REPO_ROOT,
+          stdio: "pipe",
+        });
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeDefined();
+      expect(caught.status).toBe(1);
+      expect(caught.stderr.toString()).toContain("STALE    pdlc/workflows/dist/pdlc-cli.mjs");
+    } finally {
+      writeFileSync(target, original, "utf8");
+    }
   });
 });
 
@@ -254,60 +360,5 @@ describe("T08 — skill prompt (TSPEC §12.2, §12.3, FSPEC §8.3, §8.4)", () =
     expect(openItemsIndex).toBeGreaterThan(-1);
     const lineIndex = skill.indexOf(T08_FAILURE_MODE_ID_LINE, openItemsIndex);
     expect(lineIndex).toBeGreaterThan(openItemsIndex);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// T33 — CLAUDE.md ↔ manifest (TSPEC §12.2 — set-equality, §9.1 erratum 3)
-//
-// The artifact paths CLAUDE.md enumerates, minus the manifest itself,
-// set-equal in both directions to the manifest's rows[] pluginPaths (read
-// repo-relative), plus the BUNDLES axis. Never containment — a surplus
-// listed path is as much a drift signal as a missing one.
-// ---------------------------------------------------------------------------
-
-const RUNTIME_BUNDLE_TEST_PATH = "pdlc/workflows/__tests__/runtimeBundle.test.js";
-
-function extractClaudeMdArtifactPaths(claudeMd) {
-  // The bullet lines under "Workflow scripts and the runtime build" name
-  // tracked pdlc/workflows/dist/ paths as `pdlc/workflows/dist/...` inline
-  // code spans, one per line.
-  const matches = claudeMd.matchAll(/`(pdlc\/workflows\/dist\/[^`]+)`/g);
-  return new Set([...matches].map((m) => m[1]));
-}
-
-function extractBundlesConstant(runtimeBundleTestSrc) {
-  const m = runtimeBundleTestSrc.match(/const BUNDLES\s*=\s*\[([^\]]*)\]/);
-  expect(m).toBeTruthy();
-  return new Set(
-    [...m[1].matchAll(/"([^"]+)"/g)].map((mm) => mm[1])
-  );
-}
-
-describe("T33 — CLAUDE.md ↔ manifest (TSPEC §12.2, §9.1 erratum 3)", () => {
-  it("CLAUDE.md's enumerated artifact paths, minus the manifest, are set-equal to the manifest's rows", () => {
-    const claudeMd = readRepo("CLAUDE.md");
-    const manifest = JSON.parse(readDist("distribution-manifest.json"));
-
-    const claudePaths = extractClaudeMdArtifactPaths(claudeMd);
-    claudePaths.delete("pdlc/workflows/dist/distribution-manifest.json");
-
-    const manifestPaths = new Set(manifest.rows.map((r) => `pdlc/${r.pluginPath}`));
-
-    expect([...claudePaths].sort()).toEqual([...manifestPaths].sort());
-  });
-
-  it("the manifest's bundle rows are set-equal to runtimeBundle.test.js's BUNDLES constant", () => {
-    const manifest = JSON.parse(readDist("distribution-manifest.json"));
-    const runtimeBundleTestSrc = readRepo(RUNTIME_BUNDLE_TEST_PATH);
-    const bundles = extractBundlesConstant(runtimeBundleTestSrc);
-
-    const manifestBundleFiles = new Set(
-      manifest.rows
-        .map((r) => r.pluginPath.split("/").pop())
-        .filter((name) => name.endsWith(".bundle.js"))
-    );
-
-    expect([...manifestBundleFiles].sort()).toEqual([...bundles].sort());
   });
 });

@@ -44,13 +44,7 @@ const readText = (p) => readFileSync(p, "utf8");
 // Arrangement carrier (FSPEC §5.1 BR-7.1..BR-7.6, TSPEC §8.5)
 // ---------------------------------------------------------------------------------------------
 
-const GATE_JOB_IDS = [
-  "unit-tests",
-  "engine-tests",
-  "artifact-freshness",
-  "fresh-clone-bootstrap",
-  "script-syntax",
-];
+const GATE_JOB_IDS = ["unit-tests", "engine-tests", "script-syntax"];
 
 const FIXTURE_MACHINE_JOB_IDS = ["fixture-machine"];
 
@@ -69,8 +63,6 @@ const PR_GATE_FILES = {
 const EXPECTED_AUTHORED_BY_JOB = {
   "unit-tests": "Unit tests (${{ matrix.os }}, node ${{ matrix.node }})",
   "engine-tests": "Engine tests (${{ matrix.os }})",
-  "artifact-freshness": "Generated artifacts are in sync",
-  "fresh-clone-bootstrap": "Fresh-clone bootstrap works",
   "script-syntax": "Shell scripts parse",
   "fixture-machine": "Fixture machine (install/upgrade, launcher, container, two-repo)",
 };
@@ -80,8 +72,6 @@ const EXPECTED_AUTHORED = GATE_JOB_IDS.map((id) => EXPECTED_AUTHORED_BY_JOB[id])
 const EXPECTED_RENDERED_BY_JOB = {
   "unit-tests": "Unit tests (ubuntu-latest, node 20)",
   "engine-tests": "Engine tests (ubuntu-latest)",
-  "artifact-freshness": "Generated artifacts are in sync",
-  "fresh-clone-bootstrap": "Fresh-clone bootstrap works",
   "script-syntax": "Shell scripts parse",
   "fixture-machine": "Fixture machine (install/upgrade, launcher, container, two-repo)",
 };
@@ -280,8 +270,8 @@ test("ci arrangement — pr-tests.yml", async (t) => {
     assertSetEqual(
       renderedAll,
       new Set(GATE_JOB_IDS.map((id) => EXPECTED_RENDERED_BY_JOB[id])),
-      "the rendered alphabet, taken across this file's five jobs, must set-equal FSPEC §5.1's " +
-        "rendered rows for it; §5.1's sixth row belongs to fixture-machine.yml and is asserted " +
+      "the rendered alphabet, taken across this file's three jobs, must set-equal FSPEC §5.1's " +
+        "rendered rows for it; §5.1's fourth row belongs to fixture-machine.yml and is asserted " +
         "by the cross-file test below"
     );
   });
@@ -775,7 +765,7 @@ test("T49: ci arrangement — publish.yml/PR-gate gate-command set-equality (§8
     actualCommands,
     expectedCommands,
     "publish.yml's gate job must run the same commands as EVERY PR-gate job — pr-tests.yml's " +
-      "five and fixture-machine.yml's — as a set-equality over the run commands (§8.5). This is " +
+      "three and fixture-machine.yml's — as a set-equality over the run commands (§8.5). This is " +
       "what makes C-6 true: a tag gated on fewer commands than the PR was is a release gated on " +
       "weaker evidence (CODE_REVIEW v1 §3-2)"
   );
@@ -816,5 +806,116 @@ test("ci arrangement — .claude/pdlc.config.example.json's implementation.testC
     testCommand,
     /cd pdlc\/engine\s*&&\s*npm test/,
     "testCommand must additionally run pdlc/engine's suite (TSPEC §7.6)"
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// T03: post-sweep CI arrangement (FSPEC §4.3 L-7's post-sweep four, BR-DOC-1, L-8). Skipped
+// under T03 — red until class 1 lands (deletes `artifact-freshness` and `fresh-clone-bootstrap`
+// and `script-syntax`'s index-mode steps from pr-tests.yml; corrects publish.yml's and
+// fixture-machine.yml's count words; rewrites CLAUDE.md's `### Continuous integration` and
+// pdlc/OPERATIONS.md's `## Continuous integration` to the post-sweep four). This block owns its
+// own constants below — it never touches this file's pre-sweep top-level GATE_JOB_IDS /
+// EXPECTED_AUTHORED_BY_JOB / EXPECTED_RENDERED_BY_JOB, which describe the CURRENT (six-check)
+// arrangement and remain correct until T03 lands (PLAN §1.3 skip-naming convention).
+// ---------------------------------------------------------------------------------------------
+
+const POST_SWEEP_GATE_JOB_IDS = ["unit-tests", "engine-tests", "script-syntax"];
+const POST_SWEEP_FIXTURE_MACHINE_JOB_IDS = ["fixture-machine"];
+const POST_SWEEP_PR_GATE_FILES = {
+  "pr-tests.yml": POST_SWEEP_GATE_JOB_IDS,
+  "fixture-machine.yml": POST_SWEEP_FIXTURE_MACHINE_JOB_IDS,
+};
+const POST_SWEEP_EXPECTED_RENDERED_BY_JOB = {
+  "unit-tests": "Unit tests (ubuntu-latest, node 20)",
+  "engine-tests": "Engine tests (ubuntu-latest)",
+  "script-syntax": "Shell scripts parse",
+  "fixture-machine": "Fixture machine (install/upgrade, launcher, container, two-repo)",
+};
+
+test("T03: rendered names across the two PR-triggered workflow files set-equal FSPEC L-7's post-sweep four rows", () => {
+  const rendered = new Set();
+  for (const [file, jobIds] of Object.entries(POST_SWEEP_PR_GATE_FILES)) {
+    const blocks = extractAllJobBlocks(readText(path.join(workflowsDir, file)));
+    const ids = Object.keys(blocks);
+    assertSetEqual(
+      ids,
+      jobIds,
+      `${file}'s job set must equal the post-sweep set once class 1 lands (FSPEC L-7)`
+    );
+    for (const id of jobIds) {
+      const result = expandJobName(blocks[id]);
+      assert.ok(!result.unexpandable, `${file}:${id}: ${result.unexpandable}`);
+      result.rendered.forEach((r) => rendered.add(r));
+    }
+  }
+  assertSetEqual(
+    rendered,
+    new Set(Object.values(POST_SWEEP_EXPECTED_RENDERED_BY_JOB)),
+    "the rendered alphabet across both PR-gate files must set-equal FSPEC L-7's post-sweep four rows"
+  );
+});
+
+test("T03: CLAUDE.md's and pdlc/OPERATIONS.md's CI sections' count words equal the post-sweep set size (BR-DOC-1)", () => {
+  const claudeSection = continuousIntegrationSection(readText(claudeMdPath));
+  const claudeMatch = /\*\*([A-Za-z]+) checks?\*\* must pass/.exec(claudeSection);
+  assert.ok(claudeMatch, "CLAUDE.md's CI section must state how many checks must pass");
+  assert.equal(
+    claudeMatch[1].toLowerCase(),
+    "four",
+    "CLAUDE.md's CI section's count word must equal FSPEC L-7's post-sweep set size (four, BR-DOC-1)"
+  );
+
+  const operationsPath = path.join(repoRoot, "pdlc", "OPERATIONS.md");
+  const operationsLines = readText(operationsPath).split("\n");
+  const operationsStart = operationsLines.findIndex((l) =>
+    /^##\s+Continuous integration\s*$/.test(l)
+  );
+  assert.notEqual(
+    operationsStart,
+    -1,
+    "pdlc/OPERATIONS.md must carry a `## Continuous integration` section"
+  );
+  let operationsEnd = operationsLines.length;
+  for (let i = operationsStart + 1; i < operationsLines.length; i++) {
+    if (/^#{1,2}\s/.test(operationsLines[i])) {
+      operationsEnd = i;
+      break;
+    }
+  }
+  const operationsSection = operationsLines.slice(operationsStart, operationsEnd).join("\n");
+  const operationsCountMatch = /\b(zero|one|two|three|four|five|six|seven|eight|nine|ten)\s+checks?\b/i.exec(
+    operationsSection
+  );
+  assert.ok(
+    operationsCountMatch,
+    "pdlc/OPERATIONS.md's CI section must state how many checks must pass"
+  );
+  assert.equal(
+    operationsCountMatch[1].toLowerCase(),
+    "four",
+    "pdlc/OPERATIONS.md's CI section's count word must equal FSPEC L-7's post-sweep set size (four, BR-DOC-1)"
+  );
+});
+
+test("T03: publish.yml's gate job invokes none of the removed checks' commands (L-8)", () => {
+  const publishText = readText(publishWorkflowPath);
+  const gateBlock = extractAllJobBlocks(publishText)["gate"];
+  assert.ok(gateBlock, "publish.yml must declare a `gate` job");
+  const commands = extractRunCommands(gateBlock).join("\n");
+  assert.doesNotMatch(
+    commands,
+    /build-runtime\.mjs/,
+    "publish.yml's gate job must not build-and-check or rebuild-diff the retired bundles (L-8, M-11b)"
+  );
+  assert.doesNotMatch(
+    commands,
+    new RegExp("sync-workflo" + "ws\\.sh"),
+    "publish.yml's gate job must not run the two-command bootstrap or the retired plugin-channel sync script's --check (L-8, M-11b)"
+  );
+  assert.doesNotMatch(
+    commands,
+    new RegExp("check_mode\\s+100755\\s+pdlc\\/hooks\\/scripts\\/sync-workflo" + "ws\\.sh"),
+    "publish.yml's gate job must not assert an executable bit on a deleted script (L-8, M-11b)"
   );
 });

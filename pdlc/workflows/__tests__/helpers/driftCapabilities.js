@@ -1,13 +1,14 @@
 /**
  * driftCapabilities.js — Runner capability policy and skip-loudly vocabulary (TSPEC §1.3, §7.3).
  *
- * Four runner capabilities gate fixtures: `bash`, `git` (>= 2.7.0), a hash utility
- * (`shasum`|`sha1sum`|`openssl`), and non-root uid (`uid-nonroot`). A test whose fixture is
- * unconstructible on this runner skips loudly — it never silently passes and it never silently
- * disappears (TSPEC §1.3).
+ * Five runner capabilities gate fixtures: `bash`, `git` (>= 2.7.0), a hash utility
+ * (`shasum`|`sha1sum`|`openssl`), non-root uid (`uid-nonroot`), and a Python interpreter
+ * (`python3`|`python`|`py`, mirroring `nudge-consolidation.sh`'s own probe). A test whose
+ * fixture is unconstructible on this runner skips loudly — it never silently passes and it
+ * never silently disappears (TSPEC §1.3).
  *
  * Contract (TSPEC §1.3, normative):
- *   1. `capability` is one of the four keys above, or a `+`-joined conjunction of them. It is
+ *   1. `capability` is one of the five keys above, or a `+`-joined conjunction of them. It is
  *      probed once per file and memoised; probes are `execFileSync` with `stdio: "pipe"` inside
  *      try/catch, and `process.getuid` for uid (absent on Windows => treated as non-root).
  *   2. `unverifiedInvariants` is a non-empty array of strings. `describeOrSkip`/`itOrSkip` throw
@@ -19,7 +20,7 @@
  *      machine-readable inventory array.
  */
 
-import { execFileSync } from "child_process";
+import { execFileSync, spawnSync } from "child_process";
 import { appendSkipRecord } from "./skipSink.js";
 
 // ─── Printed skip reasons (TSPEC §7.3) ─────────────────────────────────────────────────
@@ -30,6 +31,8 @@ const PRINTED_REASONS = Object.freeze({
   hash: "no sha1 utility (shasum/sha1sum/openssl) on PATH; every managed row would classify unknown/hash-tool-absent",
   git: "git is not on PATH (or is older than 2.7.0), so `git worktree list --porcelain` is unavailable",
   bash: "bash is not available on this runner",
+  python:
+    "no usable Python interpreter (python3/python/py) on PATH, mirroring nudge-consolidation.sh's own probe",
 });
 
 const KNOWN_CAPABILITIES = Object.keys(PRINTED_REASONS);
@@ -84,6 +87,13 @@ export const INVARIANTS_PROP_CLS_03_RSN_04_L3_L4 = Object.freeze([
   "totality side-attribution verified over nine leaves constructible on runner (L0, L1, L2, L5, L6, L7, L8, L9, L10); two existence-indeterminate leaves L3 and L4 are not",
 ]);
 
+// T08 (PLAN, TSPEC §3.2 row 4b) — the cleanup-consumer-workflows.sh contract's TT-1b: an
+// unreadable (`chmod 000`) target directory. Root always bypasses permission bits, so this
+// construction is unconstructible on a uid-0 runner.
+export const INVARIANTS_TT_1B = Object.freeze([
+  "TSPEC §3.2 row 4b: an unreadable target directory exits exactly 4 and names the failing path on stderr",
+]);
+
 /**
  * The named uid-0 skip inventory (TSPEC §1.3 ∪ PROPERTIES §11.1), as a frozen array of
  * `{name, capability, unverifiedInvariants}` records. `REGISTERED_SKIPS` below is checked
@@ -120,6 +130,112 @@ export const SKIP_INVENTORY = Object.freeze([
     name: "PROP-CLS-03, PROP-RSN-04 (L3/L4 half)",
     capability: "uid-nonroot",
     unverifiedInvariants: INVARIANTS_PROP_CLS_03_RSN_04_L3_L4,
+  }),
+  Object.freeze({ name: "TT-1b", capability: "uid-nonroot", unverifiedInvariants: INVARIANTS_TT_1B }),
+  Object.freeze({
+    name: "PROP-COMPAT-04 (CROSS-REVIEW missing Scope)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-04 (Scope already present)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-04: check-scope-field.sh's silent-exit-0 behaviour when Scope is already present",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-04 (CODE_REVIEW missing Scope)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-04: check-scope-field.sh's advisory-JSON-on-missing-Scope behaviour for CODE_REVIEW-*.md",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-05 (CROSS-REVIEW, no LEARNINGS)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CROSS-REVIEW-*.md",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-05 (LEARNINGS present)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-05: guard-harvest-before-delete.sh's allow-through behaviour when LEARNINGS-*.md exists",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-05 (CODE_REVIEW, no LEARNINGS)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-05: guard-harvest-before-delete.sh's blocking behaviour for CODE_REVIEW-*.md",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (below both soft thresholds)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's silent behaviour below both soft thresholds",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (soft line threshold)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's soft-line-threshold advisory",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (soft byte threshold)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's soft-byte-threshold advisory",
+    ],
+  }),
+  Object.freeze({
+    name: "PROP-COMPAT-06 (hard-limit message unchanged)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "PROP-COMPAT-06: check-req-size.sh's hard-limit message is unaffected by the soft-threshold change",
+    ],
+  }),
+  Object.freeze({
+    name: "T09 positive-identity fixture (nudge-consolidation.sh)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §7.1 pin (b): HEAD and the widened CORPUS_GLOBS enumerate the same set below the no-regression pair's identity fixture",
+    ],
+  }),
+  Object.freeze({
+    name: "T09 divergent-fixture (nudge-consolidation.sh)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §7.1 pin (b): HEAD and the widened CORPUS_GLOBS diverge above the no-regression pair's THRESHOLD fixture",
+    ],
+  }),
+  Object.freeze({
+    name: "T25 AT-P7 differential predicate harness (nudge-consolidation.sh)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §11.3(f): AT-P7's differential predicate harness rows over nudge-consolidation.sh",
+    ],
+  }),
+  Object.freeze({
+    name: "T25 pathspec semantics (nudge-consolidation.sh)",
+    capability: "bash",
+    unverifiedInvariants: [
+      "TSPEC §7.1 pin (a): the hook's `git ls-files` pathspec argv, exercised through a real git repository",
+    ],
+  }),
+  Object.freeze({
+    name: "AT-3.3 clause 2 (nudge-consolidation.sh stdout-JSON-plus-exit-0)",
+    capability: "bash+python",
+    unverifiedInvariants: [
+      "TSPEC §5.2 AT-3.3 clause 2: nudge-consolidation.sh exits 0 and its stdout parses as hookSpecificOutput.additionalContext JSON",
+    ],
   }),
 ]);
 
@@ -185,11 +301,25 @@ function probeUidNonroot() {
   return process.getuid() !== 0;
 }
 
+/** Mirrors nudge-consolidation.sh's own probe (nudge-consolidation.sh:13-20). */
+function probePython() {
+  for (const cand of ["python3", "python", "py"]) {
+    try {
+      const r = spawnSync(cand, ["-c", "import sys"], { stdio: "pipe" });
+      if (r.status === 0) return true;
+    } catch {
+      // try next candidate
+    }
+  }
+  return false;
+}
+
 const PROBES = Object.freeze({
   bash: probeBash,
   git: probeGit,
   hash: probeHash,
   "uid-nonroot": probeUidNonroot,
+  python: probePython,
 });
 
 function isCapabilityAvailable(key) {

@@ -43,7 +43,7 @@ Two things do not.
 **The cross-repo dead end.** When a learning says *a skill prompt itself should change*, the skill
 writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` — a four-column markdown table,
 `| Source LEARNINGS | Target skill | Proposed change | Rationale |`
-(`pdlc/skills/consolidate-learnings/SKILL.md:75`) — **in the consuming repo**, while the skills it names live in `yumo-plugins/pdlc/skills/`. Nothing
+(`pdlc/skills/consolidate-learnings/SKILL.md:80`) — **in the consuming repo**, while the skills it names live in `yumo-plugins/pdlc/skills/`. Nothing
 carries the proposal across that boundary: no `gh pr create` and no cross-repo push exists outside Phase PUB's own-repo `ship-pr`. Propose-only is
 correct — agents changing the prompts that govern agents must pass through human judgment — but *propose-only* and *hand-transcribed* are different
 requirements, and the skill enforces the second while intending only the first.
@@ -82,8 +82,8 @@ the loop once and each tick runs a pass with no per-pass invocation. Nothing in 
 **One predicate for "un-consolidated", named.** Two definitions existed when this REQ was written, and disagreed: the hook's basename test
 (then `pending = [p for p in learnings if os.path.basename(p) not in logtext]` — the pending filter, now `pdlc/hooks/scripts/nudge-consolidation.sh:73-74`,
 against `docs/_decisions/.consolidation-log.md`, the log path, now `:63`) and the
-skill's date boundary (`Date Completed` after the last logged pass — the boundary step, `pdlc/skills/consolidate-learnings/SKILL.md:56`). **This feature adopts the basename
-test** — durable against LEARNINGS date edits and already shipped — and updates `SKILL.md:56` to match. Every AC below saying "un-consolidated" or
+skill's date boundary (`Date Completed` after the last logged pass — the boundary step, `pdlc/skills/consolidate-learnings/SKILL.md:61`). **This feature adopts the basename
+test** — durable against LEARNINGS date edits and already shipped — and updates `SKILL.md:61` to match. Every AC below saying "un-consolidated" or
 "accumulated since the last pass" means exactly this predicate.
 
 **The predicate's corpus is a delimited region, not the whole log.** The predicate was a bare
@@ -248,7 +248,7 @@ pass — the never-fires failure this datum prevents.
 - **AC-2.3** — Given the pattern-vs-coincidence bar (recurs across ≥2 unrelated features, or a single occurrence stating a standing invariant), Then it
   is unchanged and still governs every promotion.
 - **AC-2.4** — Given the pass completes, Then `docs/_decisions/.consolidation-log.md` records date, consumed basenames (exactly the AC-1.1 predicate's
-  set), promoted and deferred items, as today (`pdlc/skills/consolidate-learnings/SKILL.md:64`).
+  set), promoted and deferred items, as today (`pdlc/skills/consolidate-learnings/SKILL.md:69`).
 
 ### REQ-CONS-03 — Pipeline-file promotion as a pull request
 
@@ -632,7 +632,7 @@ week has both empty. That pairing already distinguishes a corpus nothing can rea
 **In scope:** the `/loop`-driven cadence trigger and the volume trigger evaluated by the pass, in the
 stated tick order, including the empty-datum bootstrap; the single un-consolidated predicate over
 the delimited consumed block plus the legacy region — including the matching edits to
-`pdlc/skills/consolidate-learnings/SKILL.md:56`, to `pdlc/hooks/scripts/nudge-consolidation.sh:73-74`
+`pdlc/skills/consolidate-learnings/SKILL.md:61`, to `pdlc/hooks/scripts/nudge-consolidation.sh:73-74`
 (the pending filter) and to `:60` (`CORPUS_GLOBS`, widened to `docs/completed/*/`); reuse of the shipped two-rung advisory ladder
 (`resolveAdvisoryRung`, `orchestrate-dev.js:2060`) with reported fallback; PR promotion with scoped
 credential, in both the same-repo (AC-3.8) and two-repo configurations, plus the pathspec-scoped

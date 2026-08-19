@@ -72,6 +72,13 @@ import * as queue from "../orchestrate-queue.js";
 
 import { makeAgentDouble, makeGitDouble, makeGhDouble, makeFileDouble } from "./helpers/advisoryDoubles.js";
 
+// PLAN T15 (pdlc-plugin-retirement) removed the drift gate's shim exports from
+// orchestrate-queue.js, so `DRIFT_STATE_PATH` is no longer an export there. This file never
+// asserted anything about the gate itself, only seeded a record at the path the gate used to
+// read — inlined here, byte-identical to the old export's value, so the fixtures below are
+// unchanged; the key is now simply an inert extra store entry no code path reads.
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-dri" + "ft-state.json";
+
 /**
  * A SeamOps whose members are inert defaults, built by property assignment —
  * the PROP-INFRA-01 hygiene scan forbids object literals carrying member
@@ -140,7 +147,7 @@ describe("A-33 — disabled-tier equivalence", () => {
   describe("T-10-1 / PROP-DIS-01 — per-seam pre-advisory outcome, no dispatch", () => {
     test("A1 — queue needs-human triage: candidate escalated/held exactly as today, no advisory dispatch", async () => {
       const files = {
-        [queue.DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
+        [DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
         [queue.DEFAULT_QUEUE_PATH]:
           "| Order | Status | Feature | REQ Path | Depends-On |\n|---|---|---|---|---|\n" +
           "| 1 | pending | feat-a1 | docs/feat-a1/REQ-feat-a1.md | — |\n",
@@ -174,7 +181,7 @@ describe("A-33 — disabled-tier equivalence", () => {
 
     test("A2 — queue re-grounding: stale-REQ candidate skipped exactly as today, no advisory dispatch", async () => {
       const files = {
-        [queue.DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
+        [DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
         [queue.DEFAULT_QUEUE_PATH]:
           "| Order | Status | Feature | REQ Path | Depends-On |\n|---|---|---|---|---|\n" +
           "| 1 | pending | feat-a2 | docs/feat-a2/REQ-feat-a2.md | — |\n",
@@ -656,9 +663,15 @@ describe("A-33 — disabled-tier equivalence", () => {
       expect(matches).toHaveLength(3);
     });
 
-    test("dist/*.bundle.js is never part of the scanned set (would double every hit)", () => {
-      // Documented as a non-scanned path — this is a assertion about scope, not a file read: the
-      // scan above reads only the two named module sources, never anything under `dist/`.
+    test("dist/'s retired per-module runtime artifacts are never part of the scanned set (would double every hit)", () => {
+      // Documented as a non-scanned path — this is an assertion about scope, not a file read: the
+      // scan above reads only the two named module sources, never anything under `dist/`. Since
+      // pdlc-plugin-retirement (DEC-02), `pdlc/workflows/dist/` no longer contains any
+      // standalone per-module runtime artifact at all (the builder emits only `pdlc-cli.mjs`), so the historical
+      // "would double every hit" hazard this test named is gone by construction, not merely
+      // avoided by staying out of the scanned set. The assertion is kept as a scope pin rather
+      // than deleted: it still documents that the scan above is source-file-scoped, not
+      // directory-scoped, which stays true regardless of what does or doesn't live under `dist/`.
       expect(true).toBe(true);
     });
   });

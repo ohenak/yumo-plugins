@@ -6,15 +6,19 @@ import { dirname } from "path";
 //   pdlc/workflows/orchestrate-dev.js
 //   pdlc/workflows/cli.mjs
 // Edit those, then rebuild. See pdlc/workflows/build-runtime.mjs for why this
-// bundle exists (the workflow runtime allows no imports, exports past meta, or fs).
+// artifact exists.
 
 const __dev = (function () {
 /**
  * orchestrate-dev.js — Full PDLC pipeline orchestrator
  *
- * Canonical plugin source: pdlc/workflows/orchestrate-dev.js
- * Built artifact:          pdlc/workflows/dist/orchestrate-dev.bundle.js
- * Consumer runtime copy:   installed from dist/ by pdlc/hooks/scripts/sync-workflows.sh
+ * Canonical source: pdlc/workflows/orchestrate-dev.js
+ *
+ * pdlc-plugin-retirement (DEC-02): this module is no longer bundled into a
+ * standalone runtime artifact for the Claude Code workflow runtime. It runs as a
+ * real ES module, vendored unmodified into the published `@kaneho/pdlc-engine`
+ * package at pack time (falling back to this file directly in a dev checkout);
+ * `pdlc/skills/orchestrate-dev/SKILL.md` invokes it as `pdlc dev <req-path>`.
  *
  * Concurrent-agent ceiling analysis (REQ-NFR-01):
  * max fan-out is 5 se-implement agents per batch (Phase I) + 2 reviewers per reviewLoop

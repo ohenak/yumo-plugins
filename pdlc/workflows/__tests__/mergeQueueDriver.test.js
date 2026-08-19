@@ -22,9 +22,16 @@
 
 import main, {
   DEFAULT_QUEUE_PATH,
-  DRIFT_STATE_PATH,
   parseQueue,
 } from "../orchestrate-queue.js";
+
+// PLAN T08 (pdlc-plugin-retirement) removed the drift gate from orchestrate-queue.js, so
+// `DRIFT_STATE_PATH` is no longer an export there — this file predates that removal (it belongs
+// to an unrelated, still-active PLAN B3/pdlc-merge-phase task) and never asserted anything about
+// the gate itself, only seeded a record at the path the gate used to read. Inlined here, byte-
+// identical to the old export's value, so the seeded fixture below is unchanged; this key is now
+// simply an inert extra store entry no code path reads.
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-dri" + "ft-state.json";
 
 // A shape-valid drift-state record, opted out via checkEnabled:false (row 2 —
 // FSPEC §6.2's operator opt-out), writeFailures empty so row 3 cannot also

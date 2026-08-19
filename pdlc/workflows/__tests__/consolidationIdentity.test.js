@@ -214,12 +214,14 @@ describe("T15 — identity and merge (L1)", () => {
       expect(new Set(merged.map((p) => p.failureModeId))).toEqual(new Set([idA, idB]));
     });
 
-    test("AT-F3: an authored source file plus its rebuilt dist/ bundle — this layer sees one proposal, the source file's, once the generated candidate is already excluded", () => {
-      // Scope boundary (file header): the exclusion of `pdlc/workflows/dist/orchestrate-dev.bundle.js`
-      // itself is `deriveProposals`'s job (TSPEC §7.4 pipeline, not exported at this layer) and is
-      // covered end to end at L2. What `mergeProposals`/`failureModeId` can be shown to do, given
-      // only the authored candidate they would actually receive, is exactly AT-F3's positive half:
-      // one proposal, `artifact` being the source file.
+    test("AT-F3: an authored source file plus its rebuilt build output — this layer sees one proposal, the source file's, once the generated candidate is already excluded", () => {
+      // Scope boundary (file header): the exclusion of generated build output under
+      // `pdlc/workflows/dist/` (post pdlc-plugin-retirement / DEC-02, that directory holds only
+      // `pdlc-cli.mjs`, not a per-source standalone bundle artifact) is `deriveProposals`'s job (TSPEC
+      // §7.4 pipeline, not exported at this layer) and is covered end to end at L2. What
+      // `mergeProposals`/`failureModeId` can be shown to do, given only the authored candidate
+      // they would actually receive, is exactly AT-F3's positive half: one proposal, `artifact`
+      // being the source file.
       const source = "pdlc/workflows/orchestrate-dev.js";
       const id = failureModeId("P", source);
       const proposals = [

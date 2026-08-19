@@ -24,10 +24,6 @@ const REPO_ROOT = join(__dirname, "..", "..", "..");
 const DEV_SOURCE = readFileSync(join(__dirname, "..", "orchestrate-dev.js"), "utf8");
 const ADAPTER_SOURCE = readFileSync(join(__dirname, "..", "runtime-adapter.js"), "utf8");
 const BUILD_SOURCE = readFileSync(join(__dirname, "..", "build-runtime.mjs"), "utf8");
-const BUNDLE_TEST_SOURCE = readFileSync(
-  join(__dirname, "runtimeBundle.test.js"),
-  "utf8"
-);
 const VOCAB_SOURCE = readFileSync(
   join(REPO_ROOT, "docs", "_constraints", "pdlc-consolidation-vocabularies.md"),
   "utf8"
@@ -94,15 +90,13 @@ describe("T00 — BL-PREREQ: runtime-adapter.js source-text presence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. build-runtime.mjs — five declarations, source-text presence.
+// 4. build-runtime.mjs — three declarations, source-text presence.
 // ---------------------------------------------------------------------------
 
 describe("T00 — BL-PREREQ: build-runtime.mjs source-text presence", () => {
   test.each([
     ["stripModuleSyntax", /\bfunction stripModuleSyntax\s*\(/],
     ["wrapModule", /\bfunction wrapModule\s*\(/],
-    ["QUEUE_META", /\bconst QUEUE_META\s*=/],
-    ["QUEUE_ENTRY", /\bconst QUEUE_ENTRY\s*=/],
     ["bundles", /\bconst bundles\s*=/],
   ])("%s is present in source", (_name, pattern) => {
     expect(BUILD_SOURCE).toMatch(pattern);
@@ -110,39 +104,7 @@ describe("T00 — BL-PREREQ: build-runtime.mjs source-text presence", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. runtimeBundle.test.js — two frozen scan sets, source-text presence,
-//    plus the negative half T13 turns positive: neither set carries this
-//    feature's new members today.
-// ---------------------------------------------------------------------------
-
-describe("T00 — BL-PREREQ: runtimeBundle.test.js scan sets", () => {
-  test("AT19_SEAM_NAMES is declared", () => {
-    expect(BUNDLE_TEST_SOURCE).toMatch(/\bconst AT19_SEAM_NAMES\s*=/);
-  });
-
-  test("AWAIT_SCAN_SOURCES is declared", () => {
-    expect(BUNDLE_TEST_SOURCE).toMatch(/\bconst AWAIT_SCAN_SOURCES\s*=/);
-  });
-
-  test("both scan sets now carry this feature's new members (T13's additions, applied)", () => {
-    // Was recorded here as the negative half, T00 (snapshot authoring day):
-    // neither scan set carried this feature's new members yet. T13 (wave 4)
-    // then legitimately added them alongside runtimeBundle.test.js's own
-    // scan-set changes.
-    //
-    // operator applied this assertion's inversion by hand on 2026-08-09 after
-    // the wave-4 gate halt. This assertion inverted to match what the tree
-    // now carries, not deleted: it still pins the members' presence, which is
-    // what BL-PREREQ is recording. T13 is now a partial no-op; the pipeline
-    // will re-verify.
-    expect(BUNDLE_TEST_SOURCE).toContain("consolidate-learnings.js");
-    expect(BUNDLE_TEST_SOURCE).toContain("_envPresent");
-    expect(BUNDLE_TEST_SOURCE).toContain("_makeTempDir");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 6. Shipped test-double helpers — imported, resolved by import.
+// 5. Shipped test-double helpers — imported, resolved by import.
 // ---------------------------------------------------------------------------
 
 describe("T00 — BL-PREREQ: shipped test-double helpers", () => {
@@ -177,7 +139,7 @@ describe("T00 — BL-PREREQ: shipped test-double helpers", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. pdlc-consolidation-vocabularies.md — Version cell, read directly.
+// 6. pdlc-consolidation-vocabularies.md — Version cell, read directly.
 // ---------------------------------------------------------------------------
 
 describe("T00 — BL-PREREQ: pdlc-consolidation-vocabularies.md Version cell", () => {
@@ -187,7 +149,7 @@ describe("T00 — BL-PREREQ: pdlc-consolidation-vocabularies.md Version cell", (
 });
 
 // ---------------------------------------------------------------------------
-// 8. .claude/pdlc.config.json — branch on presence, positive assertion in
+// 7. .claude/pdlc.config.json — branch on presence, positive assertion in
 //    both arms (PLAN §3). Neither arm is vacuous and neither depends on the
 //    operator's tracking decision: this repo's CI matrix runs the absent
 //    arm (the file is untracked), the maintainer's tree runs the present
@@ -219,5 +181,32 @@ describe("T00 — .claude/pdlc.config.json presence gate", () => {
       });
       expect(result.config.testCommand).toBeNull();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pdlc-plugin-retirement class 10 (T25/T26) — wave-gate prose only (DEC-08,
+// TSPEC §2.2). `.claude/pdlc.config.example.json`'s postWaveCommand and
+// postWavePathspecs survive the sweep unchanged: `pdlc/workflows/dist/`
+// still holds the regenerated `pdlc-cli.mjs`, so the wave-gate's rebuild
+// step stays load-bearing. Only CLAUDE.md's prose is corrected to say so —
+// no config value moves.
+// ---------------------------------------------------------------------------
+
+describe("class 10 — wave-gate prose is post-sweep accurate (DEC-08)", () => {
+  const exampleConfigPath = join(REPO_ROOT, ".claude", "pdlc.config.example.json");
+  const exampleConfig = JSON.parse(readFileSync(exampleConfigPath, "utf8"));
+  const claudeMd = readFileSync(join(REPO_ROOT, "CLAUDE.md"), "utf8");
+
+  test("postWaveCommand and postWavePathspecs are unchanged post-sweep", () => {
+    expect(exampleConfig.implementation.postWaveCommand).toBe(
+      "node pdlc/workflows/build-runtime.mjs",
+    );
+    expect(exampleConfig.implementation.postWavePathspecs).toContain("pdlc/workflows/dist/");
+  });
+
+  test("CLAUDE.md documents that both wave-gate config values stay load-bearing post-sweep", () => {
+    expect(claudeMd).toEqual(expect.stringContaining("postWaveCommand"));
+    expect(claudeMd).toEqual(expect.stringContaining("postWavePathspecs"));
   });
 });

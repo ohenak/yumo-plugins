@@ -14,9 +14,10 @@
 // batch, not yet a dependency): every fixture here is built locally, and no fixture depends on
 // git visibility for the AT-P7 block (§11.3(f)) — `classifyCorpus` is driven directly there.
 //
-// PY_BIN is probed once at module scope, exactly like the shipped hook's own probe
-// (`nudge-consolidation.sh:13-20`). Finding no interpreter declares every differential row
-// `test.skip` and warns once; there is no degraded path on which a subset still runs. The
+// The bash+python capability gate (helpers/driftCapabilities.js) mirrors the shipped hook's
+// own probe (`nudge-consolidation.sh:13-20`): finding no interpreter skips every
+// differential row loudly (TSPEC §7.3), once per row, via itOrSkip; there is no degraded
+// path on which a subset still runs. The
 // executed-row counter is incremented by each differential row as its *last* statement and read
 // by its own unconditional top-level `test()`, declared last in this file — never an `afterAll`,
 // which jest does not run when every test in a block is skipped. The assertion is that `executed`
@@ -30,6 +31,7 @@ import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 
 import { classifyCorpus } from "../consolidate-learnings.js";
+import { itOrSkip } from "./helpers/driftCapabilities.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
@@ -37,40 +39,11 @@ const HOOK_PATH = join(REPO_ROOT, "pdlc", "hooks", "scripts", "nudge-consolidati
 const HOOK_SOURCE = readFileSync(HOOK_PATH, "utf8");
 
 // ---------------------------------------------------------------------------
-// Environment guards — bash and a usable Python interpreter, probed once.
+// Environment guards — capability-gated via helpers/driftCapabilities.js (TSPEC §1.3, §7.3).
+// nudge-consolidation.sh requires bash and a Python interpreter (python3/python/py) on PATH;
+// this file gates its own bash+python-dependent rows the same way hookCompatibility.test.js
+// gates its bash-dependent ones, rather than hand-rolling a second skip-loudly vocabulary.
 // ---------------------------------------------------------------------------
-
-function bashAvailable() {
-  try {
-    execSync("bash --version", { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-const hasBash = bashAvailable();
-
-/** Mirrors the shipped hook's own probe (nudge-consolidation.sh:13-20). */
-function probePyBin() {
-  for (const cand of ["python3", "python", "py"]) {
-    try {
-      const r = spawnSync(cand, ["-c", "import sys"], { stdio: "pipe" });
-      if (r.status === 0) return cand;
-    } catch {
-      // try the next candidate
-    }
-  }
-  return null;
-}
-const PY_BIN = probePyBin();
-if (!PY_BIN) {
-  // eslint-disable-next-line no-console
-  console.warn(
-    "consolidationHookParity.test.js: no usable Python interpreter found among " +
-      "python3/python/py; every differential row is reported as skipped, not run."
-  );
-}
-const canRunDifferential = hasBash && !!PY_BIN;
 
 // Shared, incremented only by a differential row's own test body as its last statement.
 let executed = 0;
@@ -200,8 +173,10 @@ describe("T09 — CORPUS_GLOBS and the no-regression pair", () => {
     expect(comprehensionLine).toContain("CORPUS_GLOBS");
   });
 
-  (canRunDifferential ? test : test.skip)(
+  itOrSkip(
     "positive-identity fixture — byte-identical additionalContext, transcribed message",
+    "bash+python",
+    ["TSPEC §7.1 pin (b): HEAD and the widened CORPUS_GLOBS enumerate the same set below the no-regression pair's identity fixture"],
     () => {
       const workDir = makeTempRoot("pdlc-hookparity-pos-");
       const root = join(workDir, "root");
@@ -224,8 +199,10 @@ describe("T09 — CORPUS_GLOBS and the no-regression pair", () => {
     }
   );
 
-  (canRunDifferential ? test : test.skip)(
+  itOrSkip(
     "divergence fixture — widened corpus crosses the threshold, HEAD does not",
+    "bash+python",
+    ["TSPEC §7.1 pin (b): HEAD and the widened CORPUS_GLOBS diverge above the no-regression pair's THRESHOLD fixture"],
     () => {
       const workDir = makeTempRoot("pdlc-hookparity-div-");
       const root = join(workDir, "root");
@@ -258,6 +235,46 @@ describe("T09 — CORPUS_GLOBS and the no-regression pair", () => {
 
       rmSync(workDir, { recursive: true, force: true });
       executed += 1; // last statement
+    }
+  );
+});
+
+// ---------------------------------------------------------------------------
+// AT-3.3 clause 2 (TSPEC §5.2): nudge-consolidation.sh's stdout-JSON-plus-exit-0 contract.
+// The parity corpus above already spawns the hook through `runHook`, but never asserted its
+// exit status; this closes that gap directly, beside the parity corpus, without touching the
+// PROP-COMPAT-04/05/06 assertions already carried by hookCompatibility.test.js for the other
+// three surviving hooks.json entries (check-scope-field.sh, check-req-size.sh,
+// guard-harvest-before-delete.sh).
+// ---------------------------------------------------------------------------
+
+describe("AT-3.3 clause 2 — nudge-consolidation.sh stdout-JSON-plus-exit-0", () => {
+  itOrSkip(
+    "exits 0 and emits well-formed hookSpecificOutput.additionalContext JSON",
+    "bash+python",
+    [
+      "TSPEC §5.2 AT-3.3 clause 2: nudge-consolidation.sh exits 0 and its stdout parses as hookSpecificOutput.additionalContext JSON",
+    ],
+    () => {
+      const workDir = makeTempRoot("pdlc-hookparity-at33-");
+      const root = join(workDir, "root");
+      mkdirSync(root, { recursive: true });
+      // THRESHOLD (nudge-consolidation.sh:25) is 5 — the hook only emits
+      // hookSpecificOutput JSON at or above it; below it stdout is empty (exit 0 either way).
+      writeLearnings(root, ["docs/feat-a", "docs/feat-b", "docs/feat-c", "docs/feat-d", "docs/feat-e"]);
+
+      const hookRun = runHook(HOOK_PATH, root);
+      expect(hookRun.exitCode).toBe(0);
+
+      const trimmed = hookRun.stdout.trim();
+      let parsed;
+      expect(() => {
+        parsed = JSON.parse(trimmed);
+      }).not.toThrow();
+      expect(typeof parsed.hookSpecificOutput.additionalContext).toBe("string");
+      expect(parsed.hookSpecificOutput.additionalContext.length).toBeGreaterThan(0);
+
+      rmSync(workDir, { recursive: true, force: true });
     }
   );
 });
@@ -340,7 +357,11 @@ const AT_P7_TABLE = [
 
 describe("T25 — AT-P7", () => {
   AT_P7_TABLE.forEach((row) => {
-    (canRunDifferential ? test : test.skip)(row.name, () => {
+    itOrSkip(
+      row.name,
+      "bash+python",
+      ["TSPEC §11.3(f): AT-P7's differential predicate harness rows over nudge-consolidation.sh"],
+      () => {
       const workDir = makeTempRoot("pdlc-atp7-");
       const root = join(workDir, "root");
       mkdirSync(root, { recursive: true });
@@ -379,8 +400,10 @@ describe("T25 — AT-P7", () => {
 // ---------------------------------------------------------------------------
 
 describe("T25 — pathspec semantics", () => {
-  (hasBash ? test : test.skip)(
+  itOrSkip(
     "pin (a)'s exact argv, through a real git in a temp repository the case builds",
+    "bash",
+    ["TSPEC §7.1 pin (a): the hook's `git ls-files` pathspec argv, exercised through a real git repository"],
     () => {
       const repo = makeTempRoot("pdlc-pathspec-");
       execSync("git init -q", { cwd: repo });

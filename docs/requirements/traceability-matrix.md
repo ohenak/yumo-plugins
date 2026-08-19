@@ -148,3 +148,16 @@ Upstream: `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.
 | US-04 | REQ-EDIST-04 | §3 F-6 |
 | US-05 | REQ-EDIST-05 | §3 F-4 (pin branch) |
 | US-06 | REQ-EDIST-05 | §3 F-4 (dev-mode branch); §5.3 |
+
+## pdlc-plugin-retirement
+
+Upstream: `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.9). Downstream:
+`docs/pdlc-plugin-retirement/FSPEC-pdlc-plugin-retirement.md` (`FSPEC-RET-01`, v0.1).
+Authoritative per-criterion mapping lives in §2 of the FSPEC; roll-up below.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | G-1, G-2, AC-1.1–AC-1.8, AC-5.1 | §3.1, §3.4, §4.1, §4.2; AT-1.1–AT-1.8, AT-5.1 |
+| US-02 | G-1, C-3, AC-1.2, AC-1.4, AC-1.6 | §3.1 classes 1–9, §4.2 L-2/L-3, §4.3 L-7/L-8; AT-1.2, AT-1.4, AT-1.6 |
+| US-03 | G-4, AC-4.1–AC-4.4 | §3.5, §4.5; AT-4.1–AT-4.4 |
+| US-04 | G-2, NG-1, C-2, AC-1.7, AC-3.1, AC-3.3 | §3.4, §4.2 L-4/L-10, §4.4; AT-1.7, AT-3.1, AT-3.3 |

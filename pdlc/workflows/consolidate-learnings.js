@@ -1,9 +1,15 @@
 /**
  * consolidate-learnings.js — LEARNINGS consolidation pass
  *
- * Canonical plugin source: pdlc/workflows/consolidate-learnings.js
- * Built artifact:          pdlc/workflows/dist/consolidate-learnings.bundle.js
- * Consumer runtime copy:   installed from dist/ by pdlc/hooks/scripts/sync-workflows.sh
+ * Canonical source: pdlc/workflows/consolidate-learnings.js
+ *
+ * pdlc-plugin-retirement (REQ O-8): this module is no longer bundled into a standalone
+ * runtime artifact, and — unlike orchestrate-dev.js / orchestrate-queue.js — is not yet vendored into
+ * `@kaneho/pdlc-engine` either, so no host currently loads it at runtime. Until it is re-hosted
+ * (tracked as the successor `pdlc-consolidation-rehost` feature, `docs/_queue/QUEUE.md` Order
+ * 24), `pdlc/skills/consolidate-learnings/SKILL.md` performs the pass this file describes
+ * in-session, by hand, using this module's exported helpers as its contract of record rather
+ * than as code any pipeline invokes directly.
  *
  * Purpose
  * -------

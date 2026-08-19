@@ -36,6 +36,13 @@ import { makePopulatedProvenance, makeRecordingGit } from "./helpers/provenanceD
 import { fakeFs } from "./helpers/seams.js";
 import { makeFileDouble, makeAgentDouble } from "./helpers/advisoryDoubles.js";
 
+// PLAN T15 (pdlc-plugin-retirement) removed the drift gate's shim exports from
+// orchestrate-queue.js, so `DRIFT_STATE_PATH` is no longer an export there. This file never
+// asserted anything about the gate itself, only seeded a record at the path the gate used to
+// read — inlined here, byte-identical to the old export's value, so the fixtures below are
+// unchanged; the key is now simply an inert extra store entry no code path reads.
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-dri" + "ft-state.json";
+
 const GREEN_DRIFT_STATE = JSON.stringify({
   schemaVersion: 1,
   baselineStatus: "resolved",
@@ -198,7 +205,7 @@ describe("T30: commitAdvisoryRecord's recorded git commit -m argv contains prove
 
     const files = makeFileDouble({
       seed: {
-        [queueModule.DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
+        [DRIFT_STATE_PATH]: GREEN_DRIFT_STATE,
         [queueModule.DEFAULT_QUEUE_PATH]: QUEUE_HEADER + queueRow(1, "pending", feature, reqPath),
         [reqPath]: READY_REQ,
       },

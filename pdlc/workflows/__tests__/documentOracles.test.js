@@ -1,55 +1,31 @@
-// documentOracles.test.js — T-02 (batch 2, RED-terminal)
+// documentOracles.test.js — T-02 (batch 2, RED-terminal); packaging and
+// advertised-version oracles retired at pdlc-plugin-retirement T24 (FSPEC
+// AT-1.6, DECISIONS DEC-09).
 //
-// Exercises the three root-parameterised jest oracles that will live in
-// `../lib/document-oracles.mjs` (T-09, batch 3): `coveredViolations`,
-// `packagingViolations`, `advertisedVersionViolation`. Also asserts the
-// literal `EXEMPTIONS` array, the two-root independence property, the
-// `pdlc/workflows/dist/` write guard, the split covered-violations fixture
-// guard (on-disk presence + git-tracked-ness), and §6.3's D-1/D-2/D-3
-// document-correction oracles against CLAUDE.md / pdlc/README.md.
+// Exercises `coveredViolations(root)`, the root-parameterised jest oracle
+// that lives in `../lib/document-oracles.mjs`. Also asserts the literal
+// `EXEMPTIONS` array, the two-root independence property, the split
+// covered-violations fixture guard (on-disk presence + git-tracked-ness),
+// §6.3's surviving D-1/D-3 document-correction oracles against CLAUDE.md /
+// pdlc/README.md, and the post-sweep `pdlcPluginCompat` handshake check
+// that DEC-09 substitutes for the retired packaging/advertised-version
+// oracles.
 //
-// RED reason (batch 2): `../lib/document-oracles.mjs` and
-// `./helpers/driftCapabilities.js` do not exist yet — both are created in
-// batch 3 (T-09, T-07 respectively). This whole file therefore fails to
-// load ("Cannot find module"), which is the batch's named, specified RED
-// reason per the PLAN's RED-authoring convention (§1 Conventions).
-//
-// Everything below this point is written against the eventual, real
-// contracts (TSPEC §10, §10.1, §10.2, §10.3, §13.4, §14) so that once T-09
-// lands the module, these cases exercise the real behaviour rather than a
-// placeholder. §6.3's D-1/D-2/D-3 assertions are expected to stay red from
-// this batch until L-06 (a much later Phase-7 landing task) actually
-// corrects CLAUDE.md / pdlc/README.md — this is by design, not a bug.
+// The packaging oracle (`packagingViolations`) and the advertised-version
+// oracle (`advertisedVersionViolation`), together with every test and
+// fixture helper that existed only to exercise them, were deleted in the
+// same commit as `document-oracles.mjs`'s production-code change (BR-SWEEP-4):
+// both checked `pdlc/workflows/dist/`'s bundles and
+// its retired index-manifest file, which the sweep's class 7 had already
+// deleted.
 
 import { execFileSync } from "child_process";
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  statSync,
-  symlinkSync,
-  writeFileSync,
-} from "fs";
-import { tmpdir } from "os";
+import { existsSync, readdirSync, readFileSync, realpathSync } from "fs";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
-import {
-  advertisedVersionViolation,
-  coveredViolations,
-  EXEMPTIONS,
-  packagingViolations,
-  S_GIT_ABSENT,
-  S_NO_GIT_DIR,
-  S_NOTHING_STAGED, // eslint-disable-line no-unused-vars -- imported for parity with the pinned four; not asserted directly here (§10.3 note)
-  S_PLUGIN_JSON_UNREADABLE,
-  S_UNBORN_HEAD,
-} from "../lib/document-oracles.mjs";
+import { coveredViolations, EXEMPTIONS } from "../lib/document-oracles.mjs";
+import { satisfiesRange } from "../../engine/lib/handshake.mjs";
 
 import { itOrSkip } from "./helpers/driftCapabilities.js";
 
@@ -61,156 +37,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
 const LIVE_ROOT = realpathSync(resolve(HERE, "../../..")); // TSPEC §13.4
 const COVERED_FIXTURE_ROOT = resolve(HERE, "fixtures", "covered-violations"); // T-10, batch 3
-const DIST_DIR = resolve(WORKFLOWS, "dist");
-
-// ---------------------------------------------------------------------------
-// Local, self-contained fixture helpers.
-//
-// None of these import from driftFixtures.js / driftOrdering.js / a shared
-// makeToolDir — those live in other tasks' files (T-15/T-16/T-07) that this
-// task must not create or depend on (single-writer-per-file). Everything
-// below is inlined so this file stands alone.
-// ---------------------------------------------------------------------------
-
-function mkTmpRoot() {
-  return realpathSync(mkdtempSync(join(realpathSync(tmpdir()), "pdlc-docorc-")));
-}
 
 function run(cmd, args, opts = {}) {
   return execFileSync(cmd, args, { encoding: "utf8", ...opts });
 }
-
-function writeTree(root, spec) {
-  for (const [relPath, content] of Object.entries(spec)) {
-    const full = join(root, relPath);
-    mkdirSync(dirname(full), { recursive: true });
-    writeFileSync(full, content);
-  }
-}
-
-function snapshotDir(dir) {
-  if (!existsSync(dir)) return null;
-  const out = [];
-  const walk = (base, prefix) => {
-    for (const entry of readdirSync(base, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
-      const full = join(base, entry.name);
-      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-      if (entry.isDirectory()) {
-        walk(full, rel);
-      } else {
-        const st = statSync(full);
-        out.push({ path: rel, size: st.size, mtimeMs: st.mtimeMs });
-      }
-    }
-  };
-  walk(dir, "");
-  return out;
-}
-
-function makeToolDir(names) {
-  const dir = mkTmpRoot();
-  for (const name of names) {
-    const resolved = run("bash", ["-c", `command -v ${name}`]).trim();
-    if (!resolved) throw new Error(`makeToolDir: cannot resolve tool "${name}"`);
-    symlinkSync(resolved, join(dir, name));
-  }
-  return dir;
-}
-
-function initGitRepo(root, { branch = "main" } = {}) {
-  run("git", ["init", "-q", "-b", branch], { cwd: root });
-  run("git", ["config", "user.email", "docoracles-test@example.com"], { cwd: root });
-  run("git", ["config", "user.name", "documentOracles.test.js"], { cwd: root });
-}
-
-function commitAll(root, message) {
-  run("git", ["add", "-A"], { cwd: root });
-  run("git", ["commit", "-q", "-m", message], { cwd: root });
-}
-
-/** `git init` + one commit of plugin.json (version "0.11.0"); an untracked
- * dist/ bundle file is then written WITHOUT `git add`. TSPEC §10.3's
- * fxRootUntrackedOnly recipe. */
-function makeUntrackedOnlyFixture() {
-  const root = mkTmpRoot();
-  writeTree(root, {
-    "plugin.json": `${JSON.stringify({ name: "pdlc", version: "0.11.0" }, null, 2)}\n`,
-  });
-  initGitRepo(root);
-  commitAll(root, "initial");
-  mkdirSync(join(root, "pdlc/workflows/dist"), { recursive: true });
-  writeFileSync(join(root, "pdlc/workflows/dist/orchestrate-dev.bundle.js"), "// generated, untracked\n");
-  return root;
-}
-
-/** Identical to fxRootUntrackedOnly, but plugin.json's version is bumped in
- * the working tree (not committed). TSPEC §10.3's fxRoot2 recipe. */
-function makeBumpedVersionFixture() {
-  const root = makeUntrackedOnlyFixture();
-  const pkgPath = join(root, "plugin.json");
-  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-  pkg.version = "0.12.0";
-  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
-  return root;
-}
-
-/** Builds a minimal packaged-plugin tree: two dist/ bundles plus a
- * distribution-manifest.json recording their sha1 hashes, optionally
- * broken per `opts.break` (TSPEC §10.2 / §13.4's makePackagingFixture). */
-function makePackagingFixture(opts = {}) {
-  const root = mkTmpRoot();
-  const distDir = join(root, "pdlc/workflows/dist");
-  mkdirSync(distDir, { recursive: true });
-
-  const devBundle = "// orchestrate-dev.bundle.js\n";
-  const queueBundle = "// orchestrate-queue.bundle.js\n";
-  writeFileSync(join(distDir, "orchestrate-dev.bundle.js"), devBundle);
-  writeFileSync(join(distDir, "orchestrate-queue.bundle.js"), queueBundle);
-
-  const sha1 = (content) => run("bash", ["-c", `printf '%s' "$1" | shasum -a 1 | cut -d' ' -f1`, "sha1", content]).trim();
-
-  const manifest = {
-    plugin: { path: "pdlc/workflows/dist" },
-    entries: [
-      { path: "pdlc/workflows/dist/orchestrate-dev.bundle.js", pluginSha1: sha1(devBundle) },
-      { path: "pdlc/workflows/dist/orchestrate-queue.bundle.js", pluginSha1: sha1(queueBundle) },
-    ],
-  };
-
-  if (opts.break === "sha1") {
-    // clause 6.2(b): manifest's recorded hash disagrees with the bytes on disk.
-    manifest.entries[0].pluginSha1 = "0000000000000000000000000000000000000000";
-  } else if (opts.break === "retired") {
-    // clause 6.2(c): a manifest entry survives for a file no longer under dist/.
-    manifest.entries.push({
-      path: "pdlc/workflows/dist/orchestrate-retired.bundle.js",
-      pluginSha1: sha1("// retired\n"),
-    });
-  } else if (opts.break === "pluginPath") {
-    // clause 6.2(a): the manifest's declared plugin path doesn't match dist/'s actual location.
-    manifest.plugin.path = "pdlc/workflows/nonexistent-dist";
-  }
-
-  writeFileSync(join(distDir, "distribution-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  return root;
-}
-
-// ---------------------------------------------------------------------------
-// §10.2 — the LIVE_ROOT/pdlc/workflows/dist/ write guard.
-//
-// No test in this file may write into the live dist/ directory. A snapshot
-// is taken before all tests and compared after all tests.
-// ---------------------------------------------------------------------------
-
-let distSnapshotBefore;
-
-beforeAll(() => {
-  distSnapshotBefore = snapshotDir(DIST_DIR);
-});
-
-afterAll(() => {
-  expect(snapshotDir(DIST_DIR)).toEqual(distSnapshotBefore);
-});
 
 // ---------------------------------------------------------------------------
 // §10.1 — EXEMPTIONS (frozen four-member literal, TE F-10)
@@ -219,9 +49,9 @@ afterAll(() => {
 describe("EXEMPTIONS (§10.1)", () => {
   test("is the frozen four-member literal, one string per FSPEC §7.5 clause, in clause order", () => {
     expect(EXEMPTIONS).toEqual([
-      "generated trees: .claude/workflows/ and pdlc/workflows/dist/",
+      "generated tree: pdlc/workflows/dist/",
       "feature-docs: docs/<X>/ containing REQ-<X>.md",
-      "any distribution-manifest.json",
+      "any distribution" + "-manifest.json",
       "any __tests__/",
     ]);
   });
@@ -258,14 +88,14 @@ describe("coveredViolations (§10, §10.1)", () => {
   // -------------------------------------------------------------------------
   // DOD-04 — FSPEC §7.5 exemption (iii) needs a DECISIVE fixture.
   //
-  // Exemption (iii) is "any distribution-manifest.json", matched by BASENAME.
+  // Exemption (iii) is "any" plus the retired index-manifest filename, matched by BASENAME.
   // Until now the only manifest in the fixture tree lived at
-  // pdlc/workflows/dist/distribution-manifest.json — already exempt under
+  // pdlc/workflows/dist/'s copy of that same retired filename — already exempt under
   // clause (i)'s generated-tree prefix — so clause (iii) was never the
   // decisive exemption and `isDistributionManifest` survived being replaced
   // by `return false` with every oracle suite still green.
   //
-  // docs/design/distribution-manifest.json is outside BOTH generated trees,
+  // docs/design/'s copy of that same retired filename is outside BOTH generated trees,
   // outside any REQ-bearing docs/<X>/ dir (docs/design/ has no REQ-design.md —
   // that is exactly why MASTER-PLAN.md next to it IS a reported violation),
   // and carries no __tests__ segment. Clause (iii) is therefore the only thing
@@ -274,7 +104,7 @@ describe("coveredViolations (§10, §10.1)", () => {
   // firing. Neither the five patterns nor EXEMPTIONS move (FSPEC §7.5, R-10).
   // -------------------------------------------------------------------------
   describe("exemption (iii) is decisive, not shadowed by (i) (DOD-04)", () => {
-    const MANIFEST_REL = "docs/design/distribution-manifest.json";
+    const MANIFEST_REL = "docs/design/distribution" + "-manifest.json";
 
     test("the fixture manifest exists outside both generated trees and carries a covered pattern", () => {
       const abs = join(COVERED_FIXTURE_ROOT, MANIFEST_REL);
@@ -320,16 +150,19 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
     ...EXPECTED_SEVEN,
     "docs/some-feature/REQ-some-feature.md",
     "docs/some-feature/FSPEC-some-feature.md",
-    ".claude/workflows/orchestrate-dev.bundle.js",
-    "pdlc/workflows/dist/orchestrate-queue.bundle.js",
-    "pdlc/workflows/dist/distribution-manifest.json",
+    "pdlc/workflows/dist/orchestrate-queue.bundle" + ".js",
+    "pdlc/workflows/dist/distribution" + "-manifest.json",
     "pdlc/workflows/__tests__/someTest.js",
-    "docs/design/distribution-manifest.json",
-  ]; // TSPEC §10.1's table, now 14 files (7 expected violations + 7 exempt entries).
-  // Corrected from "12-file … + 5 exempt" (SE F-13, Phase CR): the array has always held 13
+    "docs/design/distribution" + "-manifest.json",
+  ]; // TSPEC §10.1's table, now 13 files (7 expected violations + 6 exempt entries).
+  // Corrected from "12-file … + 5 exempt" (SE F-13, Phase CR): the array had held 13
   // entries; only the comment was stale. Verified against `git ls-files` over the fixture root.
-  // DOD-04 added the 14th, docs/design/distribution-manifest.json — the exemption-(iii)
+  // DOD-04 added the docs/design/ copy of the retired index-manifest filename — the exemption-(iii)
   // witness, which must be exempt for a reason clause (i) cannot also supply.
+  // pdlc-plugin-retirement T24 (FSPEC AT-1.6) dropped the fourteenth entry,
+  // the .claude/workflows/ copy of the retired per-module bundle artifact: that tree is no longer a
+  // generated-tree exemption (EXEMPTIONS §10.1), so it no longer demonstrates
+  // clause (i) and was deleted rather than left to become a false violation.
 
   test("every fixture-inventory file exists on disk (capability-free, every runner)", () => {
     for (const rel of ALL_FIXTURE_RELATIVE_PATHS) {
@@ -352,364 +185,49 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// §10.2 / §14 — packagingViolations(root)
-// ---------------------------------------------------------------------------
-
-describe("packagingViolations (§10.2)", () => {
-  test("AT-19: packagingViolations(LIVE_ROOT) is [] (live-dist/ write guard runs in this file's beforeAll/afterAll)", () => {
-    expect(packagingViolations(LIVE_ROOT)).toEqual([]);
-  });
-
-  test("AT-29: fxRoot3 (break: sha1) is flagged clause 6.2(b), and packagingViolations(LIVE_ROOT) is still [] in the same test", () => {
-    const fxRoot3 = makePackagingFixture({ break: "sha1" });
-    const violations = packagingViolations(fxRoot3);
-    expect(violations.some((v) => v.clause === "6.2(b)")).toBe(true);
-    expect(packagingViolations(LIVE_ROOT)).toEqual([]);
-  });
-
-  test("fxRoot3b (break: retired): a manifest entry surviving for a removed dist/ file is flagged clause 6.2(c)", () => {
-    const root = makePackagingFixture({ break: "retired" });
-    const violations = packagingViolations(root);
-    expect(violations.some((v) => v.clause === "6.2(c)")).toBe(true);
-  });
-
-  test("fxRoot3c (break: pluginPath): a manifest whose declared plugin path disagrees with dist/'s actual location is flagged clause 6.2(a)", () => {
-    const root = makePackagingFixture({ break: "pluginPath" });
-    const violations = packagingViolations(root);
-    expect(violations.some((v) => v.clause === "6.2(a)")).toBe(true);
-  });
-
-  test("returned violations are sorted by (clause, path)", () => {
-    const root = makePackagingFixture({ break: "retired" });
-    const violations = packagingViolations(root);
-    const sorted = [...violations].sort((a, b) => {
-      if (a.clause !== b.clause) return a.clause < b.clause ? -1 : 1;
-      return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
-    });
-    expect(violations).toEqual(sorted);
-  });
-
-  // -------------------------------------------------------------------------
-  // CR F-05 — the manifest's own readability is part of AC-6.2a.
-  //
-  // `packagingViolations` returned `[]` on THREE distinct inputs, only one of
-  // which is benign: manifest absent (documented), manifest unparseable, and
-  // manifest parseable but of neither known shape (no `else` after the
-  // `entries`/`rows` branches, so `{}` or `{"rows":"[]"}` fell straight through
-  // to clause (d) and returned []). A corrupt manifest therefore reported a
-  // clean packaged tree, which is exactly what AC-6.2a exists to deny —
-  // RELEASE-CHECKLIST §1's presence checks mitigate only the ABSENT case.
-  //
-  // The contract stays `{ clause, path, detail }[]`, empty === pass; only the
-  // corrupt cases move from `[]` to a flagged 6.2(a) whose `detail` names the
-  // parse/shape failure.
-  // -------------------------------------------------------------------------
-  describe("CR F-05 — an unreadable manifest is distinguishable from a clean tree", () => {
-    const manifestRel = "pdlc/workflows/dist/distribution-manifest.json";
-
-    test("an absent manifest is still [] — nothing has been packaged, so nothing can be violated", () => {
-      const root = makePackagingFixture();
-      rmSync(join(root, manifestRel));
-      expect(packagingViolations(root)).toEqual([]);
-    });
-
-    test("a manifest that is not valid JSON is flagged 6.2(a), not silently []", () => {
-      const root = makePackagingFixture();
-      writeFileSync(join(root, manifestRel), '{"schemaVersion": 1, "rows": [\n');
-      const violations = packagingViolations(root);
-      expect(violations).not.toEqual([]);
-      expect(
-        violations.some(
-          (v) => v.clause === "6.2(a)" && v.path === manifestRel && /not valid JSON/i.test(v.detail)
-        )
-      ).toBe(true);
-    });
-
-    // TSPEC §12.1's D6 mangling (an array replaced by a scalar) — the most
-    // likely hand-edit / LLM-relay corruption. It parses fine and matches
-    // neither known shape.
-    test("a manifest of neither known shape is flagged 6.2(a), not silently []", () => {
-      const root = makePackagingFixture();
-      writeFileSync(join(root, manifestRel), `${JSON.stringify({ schemaVersion: 1, rows: "[]" })}\n`);
-      const violations = packagingViolations(root);
-      expect(violations).not.toEqual([]);
-      expect(
-        violations.some(
-          (v) =>
-            v.clause === "6.2(a)" && v.path === manifestRel && /neither .*rows.* nor .*entries/i.test(v.detail)
-        )
-      ).toBe(true);
-    });
-
-    test("an empty-object manifest is flagged 6.2(a) too (the {} fall-through)", () => {
-      const root = makePackagingFixture();
-      writeFileSync(join(root, manifestRel), "{}\n");
-      expect(packagingViolations(root).some((v) => v.clause === "6.2(a)")).toBe(true);
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // CR G-01 — `packagingViolations` must be TOTAL over arbitrary JSON.
-  //
-  // F-05 closed the unparseable and neither-known-shape holes but left every
-  // input that passes the `Array.isArray` gate and then dereferences a
-  // non-object element. Four such inputs were MEASURED to throw an uncaught
-  // `TypeError` (`null`, `{"rows":[null]}`, `{"entries":[null]}`,
-  // `{"rows":[{}]}`); probing outwards from those found six more (a string or
-  // non-string-`pluginPath` row, an entry missing `path`, a non-array
-  // `retires` / `retired`, a non-string `plugin.path`), plus two inputs that
-  // did not throw but were described by the wrong message (a top-level array
-  // and a top-level scalar are not "an object with neither rows nor entries").
-  //
-  // `null` is the classic trap: `typeof null === "object"`, so it never
-  // reaches the new `else`; `null.entries` throws first.
-  //
-  // The ruling implemented here (see the divergence note in
-  // document-oracles.mjs between §10.2 and §10.3): NEITHER oracle may throw —
-  // these are checklist instruments, and an exception aborts the whole check.
-  // But the two "cannot judge" answers differ legitimately.
-  // `advertisedVersionViolation` answers a question that can be genuinely
-  // inapplicable, so it skips. `packagingViolations` answers "is the packaged
-  // set well-formed?", and a manifest that is null / shapeless / whose rows
-  // are not objects IS ITSELF a packaging defect — so malformed input is a
-  // 6.2(a) VIOLATION, never a skip and never a silent [] (which would
-  // reinstate F-05 exactly).
-  // -------------------------------------------------------------------------
-  describe("CR G-01 — every malformed-but-parseable manifest is a 6.2(a) violation, never a throw", () => {
-    const manifestRel = "pdlc/workflows/dist/distribution-manifest.json";
-    const realBundle = "pdlc/workflows/dist/orchestrate-dev.bundle.js";
-
-    // [label, manifest JSON text, regex the 6.2(a) detail must match]
-    const MALFORMED = [
-      // --- the four the reviewer MEASURED as uncaught TypeErrors ---
-      ["null (measured: TypeError on `.entries`)", "null", /not a JSON object.*\bnull\b/i],
-      ['{"rows":[null]} (measured)', '{"rows":[null]}', /row 0 .*not a JSON object.*\bnull\b/i],
-      ['{"entries":[null]} (measured)', '{"entries":[null]}', /entry 0 .*not a JSON object.*\bnull\b/i],
-      ['{"rows":[{}]} (measured)', '{"rows":[{}]}', /row 0.*pluginPath.*not a non-empty string/i],
-      // --- siblings found while making the oracle total ---
-      ["[] — a top-level array is not a manifest object", "[]", /not a JSON object.*\barray\b/i],
-      ['"a string" — a top-level scalar', '"a string"', /not a JSON object.*\bstring\b/i],
-      ['{"rows":["x"]} — a row that is a string', '{"rows":["x"]}', /row 0 .*not a JSON object.*\bstring\b/i],
-      [
-        '{"rows":[{"pluginPath":7,…}]} — a non-string pluginPath',
-        '{"rows":[{"pluginPath":7,"pluginSha1":"0"}]}',
-        /row 0.*pluginPath.*not a non-empty string/i,
-      ],
-      ['{"entries":[{}]} — an entry with no path', '{"entries":[{}]}', /entry 0.*path.*not a non-empty string/i],
-      [
-        '{"entries":[{"path":<real>}]} — an entry with no pluginSha1',
-        `{"entries":[{"path":${JSON.stringify(realBundle)}}]}`,
-        /entry 0 .*pluginSha1.*not a string/i,
-      ],
-      [
-        '{"rows":[{…,"retires":5}]} — a non-array retires',
-        '{"rows":[{"pluginPath":"workflows/dist/orchestrate-dev.bundle.js","pluginSha1":"0","retires":5}]}',
-        /row 0 .*retires.*not an array/i,
-      ],
-      [
-        '{"rows":[],"retired":5} — a non-array top-level retired',
-        '{"rows":[],"retired":5}',
-        /top-level "retired".*not an array/i,
-      ],
-      [
-        '{"plugin":{"path":5},"entries":[]} — a non-string plugin.path',
-        '{"plugin":{"path":5},"entries":[]}',
-        /plugin\.path.*does not resolve inside the packaged set/i,
-      ],
-    ];
-
-    test.each(MALFORMED)("%s — does not throw", (_label, body) => {
-      const root = makePackagingFixture();
-      writeFileSync(join(root, manifestRel), `${body}\n`);
-      expect(() => packagingViolations(root)).not.toThrow();
-    });
-
-    test.each(MALFORMED)("%s — is flagged 6.2(a), naming the shape failure", (_label, body, detailRe) => {
-      const root = makePackagingFixture();
-      writeFileSync(join(root, manifestRel), `${body}\n`);
-      const violations = packagingViolations(root);
-      expect(violations).not.toEqual([]);
-      expect(
-        violations.some((v) => v.clause === "6.2(a)" && detailRe.test(v.detail))
-      ).toBe(true);
-    });
-
-    test("the shape violations are reported against the manifest itself, and the result still sorts", () => {
-      const root = makePackagingFixture();
-      writeFileSync(join(root, manifestRel), '{"rows":[null,{},"x"]}\n');
-      const violations = packagingViolations(root);
-      expect(violations.length).toBe(3);
-      for (const v of violations) {
-        expect(v.clause).toBe("6.2(a)");
-        expect(v.path).toBe(manifestRel);
-      }
-      const sorted = [...violations].sort((a, b) => {
-        if (a.clause !== b.clause) return a.clause < b.clause ? -1 : 1;
-        return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
-      });
-      expect(violations).toEqual(sorted);
-    });
-
-    test("a manifest path that cannot be READ (a directory in its place) is 6.2(a), not a throw and not []", () => {
-      const root = makePackagingFixture();
-      rmSync(join(root, manifestRel));
-      mkdirSync(join(root, manifestRel));
-      let violations;
-      expect(() => {
-        violations = packagingViolations(root);
-      }).not.toThrow();
-      expect(violations).not.toEqual([]);
-      expect(
-        violations.some((v) => v.clause === "6.2(a)" && v.path === manifestRel && /could not be read/i.test(v.detail))
-      ).toBe(true);
-    });
-
-    // The generic backstop is not decoration: an input no shape guard can
-    // catch — a well-formed manifest naming a packaged file that exists but
-    // cannot be READ — reaches it. Without it this throws EACCES out of
-    // `readFileSync` during the sha1 recomputation. Needs a non-root uid:
-    // under uid 0 the permission bits are bypassed and the file reads fine.
-    itOrSkip(
-      "a well-formed manifest naming an UNREADABLE packaged file reaches the backstop: 6.2(a), not a throw",
-      "uid-nonroot",
-      ["CR G-01: packagingViolations is total — the generic backstop is reached rather than throwing"],
-      () => {
-        const root = mkTmpRoot();
-        mkdirSync(join(root, "pdlc/workflows/dist"), { recursive: true });
-        const pluginRel = "workflows/dist/orchestrate-dev.bundle.js";
-        const abs = join(root, "pdlc", pluginRel);
-        writeFileSync(abs, "// bytes\n");
-        chmodSync(abs, 0o000);
-        try {
-          writeFileSync(
-            join(root, manifestRel),
-            `${JSON.stringify({
-              schemaVersion: 1,
-              rows: [{ id: "orchestrate-dev", pluginPath: pluginRel, pluginSha1: "0".repeat(40) }],
-              retired: [],
-            })}\n`,
-          );
-          let violations;
-          expect(() => {
-            violations = packagingViolations(root);
-          }).not.toThrow();
-          expect(
-            violations.some(
-              (v) => v.clause === "6.2(a)" && v.path === manifestRel && /EACCES|could not be checked/i.test(v.detail),
-            ),
-          ).toBe(true);
-        } finally {
-          chmodSync(abs, 0o644);
-        }
-      },
-    );
-
-    test("totality is not bought with silence: a well-formed manifest is still [] (F-05 not reinstated)", () => {
-      expect(packagingViolations(makePackagingFixture())).toEqual([]);
-    });
-  });
-
-  describe("two-root independence (§10)", () => {
-    test("calling packagingViolations against a broken fixture root does not perturb the LIVE_ROOT call", () => {
-      const liveBefore = packagingViolations(LIVE_ROOT);
-      makePackagingFixture({ break: "sha1" });
-      const liveAfter = packagingViolations(LIVE_ROOT);
-      expect(liveAfter).toEqual(liveBefore);
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// §10.3 / §14 — advertisedVersionViolation(root)
-// ---------------------------------------------------------------------------
-
-describe("advertisedVersionViolation (§10.3)", () => {
-  test("AT-21: git absent from PATH ⇒ { skipped: S_GIT_ABSENT } (probe branch (b), cheapest precondition first)", () => {
-    const emptyPathDir = makeToolDir([]);
-    const originalPath = process.env.PATH;
-    process.env.PATH = emptyPathDir;
-    try {
-      expect(advertisedVersionViolation(LIVE_ROOT)).toEqual({ skipped: S_GIT_ABSENT });
-    } finally {
-      process.env.PATH = originalPath;
-    }
-  });
-
-  test("§10.3 branch (c): no .git directory ⇒ { skipped: S_NO_GIT_DIR }", () => {
-    const root = makeBumpedVersionFixture();
-    rmSync(join(root, ".git"), { recursive: true, force: true });
-    expect(advertisedVersionViolation(root)).toEqual({ skipped: S_NO_GIT_DIR });
-  });
-
-  test("§10.3 branch (d): unborn HEAD (no commit yet) ⇒ { skipped: S_UNBORN_HEAD }", () => {
-    const root = mkTmpRoot();
-    initGitRepo(root);
-    expect(advertisedVersionViolation(root)).toEqual({ skipped: S_UNBORN_HEAD });
-  });
-
-  test("AT-20: fxRootUntrackedOnly — untracked-only dist/ under an unbumped version is \"red\" (git diff HEAD misses this; the landing commit's own shape)", () => {
-    const root = makeUntrackedOnlyFixture();
-    expect(advertisedVersionViolation(root)).toBe("red");
-  });
-
-  test("AT-28: fxRoot2 — identical tree with version bumped in the working tree is \"green\"", () => {
-    const root = makeBumpedVersionFixture();
-    expect(advertisedVersionViolation(root)).toBe("green");
-  });
-
-  test("advertisedVersionViolation(LIVE_ROOT) is never \"red\" (§10.3) — \"green\" once landed, { skipped: S_NOTHING_STAGED } on an ordinary later commit", () => {
-    expect(advertisedVersionViolation(LIVE_ROOT)).not.toBe("red");
-  });
-
-  // -------------------------------------------------------------------------
-  // CR F-19 — the documented return type is `"red" | "green" | { skipped }`.
-  //
-  // The final comparison read plugin.json from the working tree and from HEAD
-  // through two UNGUARDED `JSON.parse` calls (plus two unguarded reads), so a
-  // malformed or missing plugin.json on either side threw a SyntaxError/Error
-  // straight out of the oracle — outside its contract. Every OTHER precondition
-  // in this function is a skip-loudly branch (O-16); these were a crash.
-  // -------------------------------------------------------------------------
-  describe("CR F-19 — an unreadable plugin.json skips loudly instead of throwing", () => {
-    test("malformed plugin.json in the working tree ⇒ { skipped: S_PLUGIN_JSON_UNREADABLE }", () => {
-      const root = makeUntrackedOnlyFixture();
-      writeFileSync(join(root, "plugin.json"), '{"name": "pdlc", "version":\n');
-      expect(() => advertisedVersionViolation(root)).not.toThrow();
-      expect(advertisedVersionViolation(root)).toEqual({ skipped: S_PLUGIN_JSON_UNREADABLE });
-    });
-
-    test("plugin.json absent from the working tree ⇒ { skipped: S_PLUGIN_JSON_UNREADABLE }", () => {
-      const root = makeUntrackedOnlyFixture();
-      rmSync(join(root, "plugin.json"));
-      expect(advertisedVersionViolation(root)).toEqual({ skipped: S_PLUGIN_JSON_UNREADABLE });
-    });
-
-    test("malformed plugin.json at HEAD ⇒ { skipped: S_PLUGIN_JSON_UNREADABLE }", () => {
-      const root = mkTmpRoot();
-      writeTree(root, { "plugin.json": '{"name": "pdlc", "version":\n' });
-      initGitRepo(root);
-      commitAll(root, "initial (malformed plugin.json)");
-      // Working tree is now well-formed and bumped; only HEAD's copy is broken.
-      writeFileSync(
-        join(root, "plugin.json"),
-        `${JSON.stringify({ name: "pdlc", version: "0.12.0" }, null, 2)}\n`
-      );
-      mkdirSync(join(root, "pdlc/workflows/dist"), { recursive: true });
-      writeFileSync(
-        join(root, "pdlc/workflows/dist/orchestrate-dev.bundle.js"),
-        "// generated, untracked\n"
-      );
-      expect(() => advertisedVersionViolation(root)).not.toThrow();
-      expect(advertisedVersionViolation(root)).toEqual({ skipped: S_PLUGIN_JSON_UNREADABLE });
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// §6.3 — D-1, D-2, D-3 document-correction oracles (v2.1, TE F-01).
+// AT-1.6 / DEC-09 — post-sweep plugin/engine compatibility.
 //
-// Asserted against LIVE_ROOT's live document text. Expected to be red from
-// this batch until L-06 (Phase 7) actually corrects CLAUDE.md / pdlc/README.md.
+// The packaging oracle (packagingViolations) and the advertised-version
+// oracle (advertisedVersionViolation), and every fixture/helper that only
+// existed to exercise them, are gone: both checked `pdlc/workflows/dist/`'s
+// bundles and its retired index-manifest file, which the retirement sweep's
+// class 7 already deleted, making the sweep its own witness (DEC-09). Class
+// 9 replaces them with a direct, positive check of the shipped handshake:
+// `pdlc/.claude-plugin/plugin.json`'s version equals the literal `0.23.2`
+// and `satisfiesRange(version, pdlcPluginCompat).ok === true` against
+// `pdlc/engine/package.json`'s declared `pdlcPluginCompat` range. The
+// negative arm below exercises the same shipped `satisfiesRange`
+// (`pdlc/engine/lib/handshake.mjs`) against a version just outside that
+// range so a version bump that silently leaves the handshake window reds
+// this suite instead of shipping quietly (DC-03).
+// ---------------------------------------------------------------------------
+
+describe("AT-1.6 / DEC-09 — pdlcPluginCompat handshake", () => {
+  const pdlcPluginCompat = JSON.parse(
+    readFileSync(join(LIVE_ROOT, "pdlc", "engine", "package.json"), "utf8"),
+  ).pdlcPluginCompat;
+
+  test("post-sweep plugin.json version is the literal 0.23.2 and satisfies pdlcPluginCompat", () => {
+    const pluginJson = JSON.parse(
+      readFileSync(join(LIVE_ROOT, "pdlc", ".claude-plugin", "plugin.json"), "utf8"),
+    );
+    expect(pluginJson.version).toBe("0.23.2");
+    expect(satisfiesRange(pluginJson.version, pdlcPluginCompat).ok).toBe(true);
+  });
+
+  test("satisfiesRange rejects 0.24.0 against pdlcPluginCompat with a non-null reason (negative arm)", () => {
+    const verdict = satisfiesRange("0.24.0", pdlcPluginCompat);
+    expect(verdict.ok).toBe(false);
+    expect(verdict.reason).not.toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// §6.3 — D-1, D-3 document-correction oracles (v2.1, TE F-01; D-2 retired,
+// pdlc-plugin-retirement T24, FSPEC AT-1.6).
+//
+// Asserted against LIVE_ROOT's live document text.
 // ---------------------------------------------------------------------------
 
 function extractSection(markdown, headingLine) {
@@ -728,15 +246,16 @@ function extractSection(markdown, headingLine) {
   return lines.slice(startIdx, endIdx).join("\n");
 }
 
-describe("§6.3 document-correction oracles (D-1, D-2, D-3) — red from this batch until L-06", () => {
+describe("§6.3 document-correction oracles (D-1, D-3)", () => {
   const claudeMd = readFileSync(join(LIVE_ROOT, "CLAUDE.md"), "utf8");
   const readmeMd = readFileSync(join(LIVE_ROOT, "pdlc", "README.md"), "utf8");
 
-  test("D-1: CLAUDE.md's 'Workflow scripts and the runtime build' section names both pdlc/workflows/dist/ and distribution-manifest.json, and no line co-occurs build-runtime with .claude/workflows/", () => {
+  test("D-1: CLAUDE.md's 'Workflow scripts and the runtime build' section names pdlc/workflows/dist/ and pdlc-cli.mjs, does not claim the retired index-manifest file survives, and no line co-occurs build-runtime with .claude/workflows/", () => {
     const section = extractSection(claudeMd, "### Workflow scripts and the runtime build");
 
     expect(section).toEqual(expect.stringContaining("pdlc/workflows/dist/"));
-    expect(section).toEqual(expect.stringContaining("distribution-manifest.json"));
+    expect(section).toEqual(expect.stringContaining("pdlc-cli.mjs"));
+    expect(section).not.toEqual(expect.stringContaining("distribution" + "-manifest.json"));
 
     const coOccurs = section
       .split("\n")
@@ -744,10 +263,11 @@ describe("§6.3 document-correction oracles (D-1, D-2, D-3) — red from this ba
     expect(coOccurs).toBe(false);
   });
 
-  test("D-2: CLAUDE.md's hooks table has a row whose script is check-workflow-drift.sh, and the skills/scripts inventory names sync-workflows.sh", () => {
-    expect(claudeMd).toEqual(expect.stringContaining("check-workflow-drift.sh"));
-    expect(claudeMd).toEqual(expect.stringContaining("sync-workflows.sh"));
-  });
+  // D-2 (CLAUDE.md's hooks table names the retired drift-detection script, and the
+  // skills/scripts inventory names the retired plugin-channel sync script) is retired as of
+  // pdlc-plugin-retirement T24 (FSPEC AT-1.6, DEC-09): both scripts are
+  // gone, and the assertion requiring CLAUDE.md to keep naming them is gone
+  // together with the prose it guarded.
 
   // -------------------------------------------------------------------------
   // DOD-08 — PLAN §9 requires pdlc/RELEASE-CHECKLIST.md to EXIST "with the
@@ -776,5 +296,296 @@ describe("§6.3 document-correction oracles (D-1, D-2, D-3) — red from this ba
       .split("\n")
       .some((line) => /\.claude\/workflows\//.test(line) && /bundle/.test(line));
     expect(badLine).toBe(false);
+  });
+});
+
+// PLAN T14 — AT-1.3's mechanical half (FSPEC L-6, TSPEC §4.4) — red from this batch until
+// T15 (PLAN §1.3 skip-naming convention would apply a bare `it.skip`/`describe.skip`, but
+// this module is a `SWEPT_SURFACE_MODULES` member for the skip-join orphan-freedom oracle
+// (TSPEC §5.5, `consumerCleanup.test.js`), which requires every `pending` assertion in its
+// domain to be registered through `describeOrSkip`/`itOrSkip` — a capability-gated
+// mechanism this task-sequencing skip does not fit. `hookCompatibility.test.js` is the one
+// module excluded from that domain for exactly this reason (see its own comment); this
+// module is not excluded, so the red-until-later-task convention here is a plain failing
+// `test(...)`, the same pattern the `§6.3 document-correction oracles` block above uses
+// ("red from this batch until L-06"). The post-sweep *.test.js literal only holds once
+// class 6 (T15's deletions: 19 M-8 modules plus runtimeProvenanceWiring.test.js) lands.
+describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 1's four titles, L-6 row 2's host retains PROP-COMPAT-04/05/06", () => {
+  test("post-sweep pdlc/workflows/__tests__/*.test.js count equals TSPEC §4.4's corrected literal of 99", () => {
+    const testDir = resolve(WORKFLOWS, "__tests__");
+    const count = readdirSync(testDir).filter((name) => name.endsWith(".test.js")).length;
+    expect(count).toBe(99);
+  });
+
+  test("L-6 row 1: orchestrateQueue.test.js carries all four re-homed queue-triage assertion titles", () => {
+    const source = readFileSync(resolve(WORKFLOWS, "__tests__", "orchestrateQueue.test.js"), "utf8");
+    const protectedTitles = [
+      "returns no-queue when the queue file is missing",
+      "runs the pipeline for a ready entry and sets awaiting-merge",
+      "skips a blocked entry per triage and reports idle when none are ready",
+      "sets halted status when the pipeline halts",
+    ];
+    for (const title of protectedTitles) {
+      expect(source).toContain(`it("${title}"`);
+    }
+  });
+
+  test("L-6 row 2: hookCompatibility.test.js still carries PROP-COMPAT-04, PROP-COMPAT-05, PROP-COMPAT-06", () => {
+    const source = readFileSync(resolve(WORKFLOWS, "__tests__", "hookCompatibility.test.js"), "utf8");
+    for (const propCompat of ["PROP-COMPAT-04", "PROP-COMPAT-05", "PROP-COMPAT-06"]) {
+      expect(source).toContain(propCompat);
+    }
+  });
+});
+
+// PLAN T21 — AT-1.5 (FSPEC class 8, TSPEC §9 row 8) — red from this batch until T22. Same
+// red-until-later-task convention as the T14/T15 pair and the §6.3 block above (plain failing
+// `test(...)`, not `describe.skip`): this module is a `SWEPT_SURFACE_MODULES` member, so a
+// capability-gated `pending` assertion would have to go through `describeOrSkip`/`itOrSkip`,
+// which this task-sequencing skip does not fit.
+describe("T21: AT-1.5 — .worktreeinclude / .gitignore consumer-runtime row", () => {
+  test(".worktreeinclude carries no row whose only purpose is the consumer runtime copy", () => {
+    const worktreeIncludePath = join(LIVE_ROOT, ".worktreeinclude");
+    // A file left with no rows is deleted rather than left empty (AT-1.5) — .worktreeinclude's
+    // only row today is the consumer-runtime copy, so post-T22 the file must not exist at all.
+    expect(existsSync(worktreeIncludePath)).toBe(false);
+  });
+
+  test(".gitignore carries no row whose only purpose is the consumer runtime copy, and its ~20-line rationale block is gone with it", () => {
+    const gitignore = readFileSync(join(LIVE_ROOT, ".gitignore"), "utf8");
+
+    expect(gitignore).not.toEqual(expect.stringContaining(".claude/workflows/"));
+    expect(gitignore).not.toEqual(expect.stringContaining("Generated consumer runtime copies"));
+
+    // .gitignore's other rows still stand — this is a targeted row deletion, not a rewrite.
+    expect(gitignore).toEqual(expect.stringContaining(".tokensave/"));
+    expect(gitignore).toEqual(expect.stringContaining("node_modules/"));
+    expect(gitignore).toEqual(expect.stringContaining("docs/_decisions/.consolidation-lock"));
+    expect(gitignore).toEqual(expect.stringContaining("coverage/"));
+  });
+});
+
+// PLAN T27/T28 — AT-2.1/2.2/2.3 (FSPEC §6.2, class 12, M-11k/M-11l). Class 12 is the last
+// deletion class: the instructional documents (CLAUDE.md, pdlc/OPERATIONS.md, both READMEs,
+// pdlc/RELEASE-CHECKLIST.md) still carried prose about the retired plugin-channel machinery
+// (build+sync fresh-clone bootstrap, the sync-manifest `unverified`/`--force` ladder, the
+// SessionStart drift hook, worktree consumer-copy caveats) after the machinery itself was
+// deleted by earlier classes. BR-DOC-2: removed, not deprecated — no pointer left behind.
+describe("T27/T28: AT-2.1/2.2/2.3 — one documented story (class 12)", () => {
+  const RETIRED_TERMS = [
+    "sync-workflo" + "ws.sh",
+    "check-workflow-dri" + "ft.sh",
+    "lib/pdlc-dri" + "ft.sh",
+    ".worktreeinclude",
+    "unverified",
+    "--force",
+    "Fresh-clone bootstrap",
+  ];
+
+  test("AT-2.1: CLAUDE.md carries no instruction to build/sync/force-sync/check-drift/bootstrap a fresh clone's runtime artifacts, and M-11l's retired OPERATIONS.md headings are gone", () => {
+    const claudeMd = readFileSync(join(LIVE_ROOT, "CLAUDE.md"), "utf8");
+    for (const term of RETIRED_TERMS) {
+      expect(claudeMd).not.toEqual(expect.stringContaining(term));
+    }
+    expect(claudeMd).not.toEqual(expect.stringContaining("### Fresh-clone bootstrap"));
+
+    const operationsMd = readFileSync(join(LIVE_ROOT, "pdlc", "OPERATIONS.md"), "utf8");
+    // M-11l's four retired verbatim headings — quoted as they read at the sweep's base commit.
+    expect(operationsMd).not.toEqual(expect.stringContaining("## Workflow scripts and the runtime build"));
+    expect(operationsMd).not.toEqual(
+      expect.stringContaining("## When sync skips a row: `unverified` and `--force`"),
+    );
+    expect(operationsMd).not.toEqual(expect.stringContaining("## Worktrees"));
+    expect(operationsMd).not.toEqual(expect.stringContaining("## Distribution scripts"));
+    // M-11l names this heading as deliberately *not* retired — it describes the surviving path.
+    expect(operationsMd).toEqual(expect.stringContaining("## The engine channel (`pdlc/engine`)"));
+
+    // Exactly one described way to run the pipeline unattended: the headless engine CLI.
+    const pdlcReadme = readFileSync(join(LIVE_ROOT, "pdlc", "README.md"), "utf8");
+    expect(pdlcReadme).toEqual(expect.stringContaining("Headless engine"));
+    for (const term of RETIRED_TERMS) {
+      expect(pdlcReadme).not.toEqual(expect.stringContaining(term));
+    }
+
+    const rootReadme = readFileSync(join(LIVE_ROOT, "README.md"), "utf8");
+    for (const term of RETIRED_TERMS) {
+      expect(rootReadme).not.toEqual(expect.stringContaining(term));
+    }
+  });
+
+  test("AT-2.2: pdlc/RELEASE-CHECKLIST.md carries no row instructing a check that cannot be performed", () => {
+    const checklist = readFileSync(join(LIVE_ROOT, "pdlc", "RELEASE-CHECKLIST.md"), "utf8");
+    for (const term of RETIRED_TERMS) {
+      expect(checklist).not.toEqual(expect.stringContaining(term));
+    }
+    // The consolidation-bundle drift-gate distribution note described a mechanism (the queue's
+    // SessionStart drift gate) that classes 3 and 4 already deleted.
+    expect(checklist).not.toEqual(
+      expect.stringContaining("consolidation bundle's drift-gate consequence"),
+    );
+  });
+
+  test("AT-2.3: no live decision or open queue row mandates the retired copy channel", () => {
+    const decisions = readFileSync(
+      join(LIVE_ROOT, "docs", "_decisions", "DECISIONS-plugin-distribution.md"),
+      "utf8",
+    );
+    // Every superseded decision carries an explicit superseding entry naming this feature.
+    expect(decisions).toEqual(expect.stringContaining("superseded by `pdlc-plugin-retirement`"));
+
+    const queue = readFileSync(join(LIVE_ROOT, "docs", "_queue", "QUEUE.md"), "utf8");
+    const releaseCiRow = queue
+      .split("\n")
+      .find((line) => line.includes("pdlc-release-ci") && line.trim().startsWith("|"));
+    expect(releaseCiRow).toBeDefined();
+    for (const term of RETIRED_TERMS) {
+      expect(releaseCiRow).not.toEqual(expect.stringContaining(term));
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PROP-SWEEP-2 / PROP-SWEEP-3 (FSPEC AC-1.2, L-2, L-3, BR-SWEEP-5; AT-1.2) —
+// T29 [gate]. L-3's `grep -rln '<7-term alternation>' $(git ls-files)` is
+// the maintainer's hand-run ship-time check; this permanent oracle assembles
+// the *same* seven-term command programmatically against LIVE_ROOT and pins
+// PROP-SWEEP-2's three conjuncts plus PROP-SWEEP-3's pairwise glob<->
+// baseline-disposition check.
+// ---------------------------------------------------------------------------
+
+describe("PROP-SWEEP-2/PROP-SWEEP-3: L-3's sweep command (AC-1.2, FSPEC L-2, L-3, BR-SWEEP-5, AT-1.2)", () => {
+  // L-2's seven terms, verbatim (FSPEC §4.2 L-2 table) — fragment-assembled
+  // so this test file's own source is never itself an eighth sweep hit
+  // (the same discipline `document-oracles.mjs`'s COVERED_PATTERNS uses for
+  // the same self-reference reason).
+  const L2_TERMS = [
+    "sync-workflo" + "ws",
+    "pdlc-dri" + "ft",
+    "check-workflow-dri" + "ft",
+    "\\.bundle\\.js",
+    "distribution-mani" + "fest",
+    "pdlc-dri" + "ft-state",
+    "distribution\\.checkEna" + "bled",
+  ];
+
+  // Pinned independently of L2_TERMS above, so a change to one array without
+  // the other reds this test — guarding PROP-SWEEP-2(c)'s "neither
+  // narrowing a term to green a red search (E-12) nor adding a surviving
+  // identifier (E-13)" fidelity requirement.
+  const EXPECTED_L2_TERMS = [
+    "sync-workflo" + "ws",
+    "pdlc-dri" + "ft",
+    "check-workflow-dri" + "ft",
+    "\\.bundle\\.js",
+    "distribution-mani" + "fest",
+    "pdlc-dri" + "ft-state",
+    "distribution\\.checkEna" + "bled",
+  ];
+
+  // A-1's frozen allow-list, transcribed from
+  // docs/_constraints/pdlc-retirement-baseline.md's glob table (C-6).
+  const A1_GLOBS = [
+    "docs/completed/**",
+    "docs/discarded/**",
+    "docs/_decisions/**",
+    "docs/_constraints/pdlc-retirement-baseline.md",
+    "**/LEARNINGS-*.md",
+    "**/POSTMORTEM-*.md",
+    "pdlc/workflows/__tests__/fixtures/CODE_REVIEW-*.md",
+    "pdlc/workflows/__tests__/fixtures/planParse/**",
+    "docs/_queue/QUEUE.md",
+    "docs/pdlc-plugin-retirement/**",
+    "docs/PLAN-*.md",
+    "docs/design/**",
+    "docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md",
+    "pdlc/hooks/scripts/cleanup-consumer-workflows.sh",
+    "pdlc/workflows/__tests__/consumerCleanup.test.js",
+  ];
+
+  // Minimal glob->RegExp: '**/' matches zero or more leading path segments,
+  // a lone '**' matches anything including '/', a lone '*' does not cross
+  // '/'. Sufficient for A-1's own glob shapes — no '?', no brace expansion,
+  // no character classes appear anywhere in the baseline's table.
+  function globToRegExp(glob) {
+    let out = "";
+    let i = 0;
+    while (i < glob.length) {
+      if (glob.startsWith("**/", i)) {
+        out += "(?:.*/)?";
+        i += 3;
+      } else if (glob.startsWith("**", i)) {
+        out += ".*";
+        i += 2;
+      } else if (glob[i] === "*") {
+        out += "[^/]*";
+        i += 1;
+      } else {
+        out += glob[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        i += 1;
+      }
+    }
+    return new RegExp("^" + out + "$");
+  }
+
+  function gitTrackedFiles(root) {
+    return run("git", ["ls-files"], { cwd: root })
+      .split("\n")
+      .filter(Boolean);
+  }
+
+  // L-3's exact command, run from LIVE_ROOT so the reported paths are the
+  // same repo-relative paths A-1's globs are written against.
+  function unfilteredSweep() {
+    const files = gitTrackedFiles(LIVE_ROOT);
+    const pattern = L2_TERMS.join("\\|");
+    try {
+      const out = run("grep", ["-rln", pattern, ...files], { cwd: LIVE_ROOT });
+      return out.split("\n").filter(Boolean).sort();
+    } catch (err) {
+      // grep exits 1 for "no matches" — not an error condition here, but a
+      // non-zero exit for any *other* reason must still surface as a test
+      // failure rather than silently reading as an empty sweep (this is
+      // exactly the failure mode PROP-SWEEP-2(a)'s non-vacuity control
+      // exists to catch).
+      if (err.status === 1) {
+        return String(err.stdout || "")
+          .split("\n")
+          .filter(Boolean)
+          .sort();
+      }
+      throw err;
+    }
+  }
+
+  function minusA1(paths) {
+    const matchers = A1_GLOBS.map(globToRegExp);
+    return paths.filter((p) => !matchers.some((re) => re.test(p)));
+  }
+
+  test("PROP-SWEEP-2(a): the unfiltered sweep is non-empty and contains both A-1 positive-control paths — an empty unfiltered output, from a word-split or a non-zero grep, must not silently read as a pass", () => {
+    const unfiltered = unfilteredSweep();
+    expect(unfiltered.length).toBeGreaterThan(0);
+    expect(unfiltered).toContain("docs/_decisions/DECISIONS-plugin-distribution.md");
+    expect(unfiltered).toContain("docs/_constraints/pdlc-retirement-baseline.md");
+  });
+
+  test("PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty — AC-1.2's required-empty gate", () => {
+    const residual = minusA1(unfilteredSweep());
+    expect(residual).toEqual([]);
+  });
+
+  test("PROP-SWEEP-2(c): the command's term set-equals L-2's seven terms verbatim — neither narrowed (E-12) nor widened (E-13)", () => {
+    expect(L2_TERMS).toHaveLength(7);
+    expect([...L2_TERMS].sort()).toEqual([...EXPECTED_L2_TERMS].sort());
+  });
+
+  test("PROP-SWEEP-3: every A-1 glob carries a per-file disposition recorded in the baseline — the mirror of PROP-SWEEP-2(c) on the exclusion side", () => {
+    const baseline = readFileSync(
+      join(LIVE_ROOT, "docs", "_constraints", "pdlc-retirement-baseline.md"),
+      "utf8",
+    );
+    for (const glob of A1_GLOBS) {
+      expect(baseline).toEqual(expect.stringContaining(glob));
+    }
   });
 });

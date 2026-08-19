@@ -1873,7 +1873,7 @@ another task's file, that is the spanning convention at work, not a contradictio
 | `consolidationHookParity.test.js` | L4 + L3 | T04 | T09, T25 | PROP-COR-07, PROP-COR-08, PROP-COR-12, PROP-COR-13, PROP-FIX-03 |
 | `consolidationTraceability.test.js` | L3 | — (T05; green on write **once §13.3 erratum 8 lands** — short one id, `AT-K3b`, until then: §12.4's AT-K row) | — | PROP-TRC-01 |
 | `consolidationRung.test.js` | L2 | T06 | T11, T31 | PROP-PASS-06, PROP-PASS-07 |
-| `runtimeBundle.test.js` (**exists at HEAD**) | L3 | — | T13 | PROP-BLD-03 |
+| runtimeBundle.test.js — retired by pdlc-plugin-retirement, deleted at HEAD (see PLAN T28) | L3 | — | T13 | PROP-BLD-03 |
 | `consolidationPredicate.test.js` | L1 | T14 | T25 | PROP-COR-01…06, PROP-CFG-01, PROP-CFG-02 |
 | `consolidationIdentity.test.js` | L1 + L2 (folds) | T15 | T26, T31 | PROP-ID-01…03, PROP-MRG-01, PROP-MRG-03, PROP-MRG-04, PROP-RTE-03, PROP-RTE-04 |
 | `consolidationParse.test.js` | L1 | T16 | T26 | PROP-REC-01…06, PROP-TRG-03, PROP-TRG-06 |
@@ -1887,8 +1887,9 @@ another task's file, that is the spanning convention at work, not a contradictio
 | `consolidationReport.test.js` | L1 + L2 | T24 | T29, T31 | PROP-RPT-01…09, PROP-MRG-03 (item 4), PROP-CFG-03 |
 | `helpers/seams.js`, `helpers/driftGenerators.js` (**exist at HEAD**) | — | — | — | reused by PROP-DBL-*, PROP-GEN-* (DC-08: reuse, never re-declare) |
 
-Every file named above is either **explicitly planned new** by PLAN §4 or **exists at HEAD** and is
-marked so; no property names a file that is neither. The AT-Q properties sit in
+Every file named above is either **explicitly planned new** by PLAN §4, **exists at HEAD** and is
+marked so, or was retired by a later feature (`pdlc-plugin-retirement`) and is marked so; no
+property names a file that is neither. The AT-Q properties sit in
 `consolidationRoute.test.js` because PLAN T21 owns AT-Q1 … AT-Q13 in its `T30 — clone and seams` and
 `T31 — routes end to end` blocks; a trailer placing them in `consolidationPass.test.js` would put
 them in a file no RED task creates them in.

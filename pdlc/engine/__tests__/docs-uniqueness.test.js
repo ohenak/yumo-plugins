@@ -119,6 +119,6 @@ test("AT-2.2: the plugin's three `claude plugin install` sites are asserted as a
   };
 
   locate("README.md", 115, "claude plugin install");
-  locate("pdlc/README.md", 139, "claude plugin install");
-  locate("pdlc/README.md", 145, "claude plugin install");
+  locate("pdlc/README.md", 98, "claude plugin install");
+  locate("pdlc/README.md", 104, "claude plugin install");
 });

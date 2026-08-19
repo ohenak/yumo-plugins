@@ -425,7 +425,7 @@ exactly this, because this feature writes those record types into the same file.
 | File:line at HEAD | Shipped behaviour | Behaviour after this feature |
 |---|---|---|
 | `pdlc/hooks/scripts/nudge-consolidation.sh:41` | `pending = [p for p in learnings if os.path.basename(p) not in logtext]` — bare substring over the whole file (read at `:36-37`) | the same test, scoped to the two regions above |
-| `pdlc/skills/consolidate-learnings/SKILL.md:56` | was "Every `docs/*/LEARNINGS-*.md` with a Date Completed after the last logged pass is in scope" — a **date** boundary | replaced by the §3.2 predicate, so the skill prose and the pass agree |
+| `pdlc/skills/consolidate-learnings/SKILL.md:61` | was "Every `docs/*/LEARNINGS-*.md` with a Date Completed after the last logged pass is in scope" — a **date** boundary | replaced by the §3.2 predicate, so the skill prose and the pass agree |
 
 The `Date Completed` boundary is not merely a second definition; it disagrees with the first in a way
 that matters — `Date Completed` is a body field an editor can change after a pass consumed the file,
@@ -716,8 +716,8 @@ target. The subject `artifact` is the same field in all three rows and is never 
 
 | Promotion kind | Destination (the `target`) | Shape |
 |---|---|---|
-| Domain invariant future REQs must respect | append to `docs/_constraints/DOMAIN-CONSTRAINTS.md` | as today (`pdlc/skills/consolidate-learnings/SKILL.md:61`) |
-| Architectural decision now project-level | `docs/_decisions/DECISIONS-{topic}.md` | the path shape is today's (`pdlc/skills/consolidate-learnings/SKILL.md:62`); **`{topic}`'s derivation is new and this feature changes the convention** — see below |
+| Domain invariant future REQs must respect | append to `docs/_constraints/DOMAIN-CONSTRAINTS.md` | as today (`pdlc/skills/consolidate-learnings/SKILL.md:66`) |
+| Architectural decision now project-level | `docs/_decisions/DECISIONS-{topic}.md` | the path shape is today's (`pdlc/skills/consolidate-learnings/SKILL.md:67`); **`{topic}`'s derivation is new and this feature changes the convention** — see below |
 | Process learning about a skill prompt, checklist or workflow phase | the subject `artifact` itself — the file the learning is about | **propose, never apply**: §6 (PR) or §5.3 (proposal file) |
 
 **`{topic}` is derived, not chosen** (AC-2.2 states the destination; the derivation is this layer's).
@@ -763,19 +763,19 @@ anything the log records, so two passes would disagree. Consequences, stated exa
   pass orphans, renames or duplicates them.
 - Consolidating a hand-named file with a derived one is an **operator merge**, not a pass action, and
   is out of scope here exactly as every other retrospective migration is (REQ §5).
-- The skill's own instruction at `pdlc/skills/consolidate-learnings/SKILL.md:62` states the
+- The skill's own instruction at `pdlc/skills/consolidate-learnings/SKILL.md:67` states the
   destination without stating how `{topic}` is chosen. This feature edits that line to carry the
   derivation, so the manual entry point and the pass cannot diverge — listed in §15.3.
 
 The pattern-vs-coincidence bar is **unchanged and still governs every promotion**: recurs across ≥2
 unrelated features, **or** a single occurrence stating a standing invariant that obviously
-generalises (`SKILL.md:59`). Running on a cadence does not lower it (NFR-3) — the trigger decides
+generalises (`SKILL.md:64`). Running on a cadence does not lower it (NFR-3) — the trigger decides
 *whether a pass runs*, never *what clears the bar*, and the two are evaluated at different steps
 (§2.2 step 3–4 vs step 9). NFR-3a's trigger field is what makes "the bar held on both" checkable
 after the fact rather than asserted.
 
 The pass records date, consumed basenames (exactly the §3.3 pair's set), promoted items and deferred
-items in `docs/_decisions/.consolidation-log.md` (AC-2.4, `SKILL.md:64`) — under the §10 record
+items in `docs/_decisions/.consolidation-log.md` (AC-2.4, `SKILL.md:69`) — under the §10 record
 grammar, which is where this feature's additions to that log live.
 
 ### 5.3 The proposal file
@@ -817,7 +817,7 @@ say so explicitly (§14.4); the behaviour specified here is unambiguous either w
 it in both halves.
 
 The file supersedes nothing about the shipped four-column proposal table
-(`pdlc/skills/consolidate-learnings/SKILL.md:75`): that shape remains the fallback's presentation,
+(`pdlc/skills/consolidate-learnings/SKILL.md:80`): that shape remains the fallback's presentation,
 now carrying the concrete diff rather than a prose description of it, because the PR route is the
 primary channel and the file is what it degrades to.
 
@@ -2513,7 +2513,7 @@ rather than left to be discovered downstream.
 | Path | Change | Section |
 |---|---|---|
 | `pdlc/hooks/scripts/nudge-consolidation.sh` | predicate at `:41` scoped to the two regions; corpus glob at `:28` widened to include `docs/completed/*/` | §3.1, §3.2 |
-| `pdlc/skills/consolidate-learnings/SKILL.md` | `:56` (was the `Date Completed` date boundary) now carries the §3.2 predicate; `:62`'s `DECISIONS-{topic}.md` route gains the §5.2 derivation (`{topic} = failure-mode-id`), so the manual entry point and the pass cannot diverge | §3.2, §5.2 |
+| `pdlc/skills/consolidate-learnings/SKILL.md` | `:61` (was the `Date Completed` date boundary) now carries the §3.2 predicate; `:67`'s `DECISIONS-{topic}.md` route gains the §5.2 derivation (`{topic} = failure-mode-id`), so the manual entry point and the pass cannot diverge | §3.2, §5.2 |
 | **`pdlc/workflows/orchestrate-dev.js`** — a **guard-set** path | `resolveAdvisoryRung` (`:1833`) gains an **optional `skill` parameter defaulting to `ADVISORY_RUNG_SKILL`** (`:1797`), threaded to the dispatch at `:1841` and to the memoised path at `:1844-1849`. Every existing call site is unchanged (AT-M10). This is the one edit this feature makes to already-shipped behaviour, and the only reason §2.6's reuse story compiles | §2.6 item 2, §14.1 T-05 |
 | **`pdlc/workflows/dist/orchestrate-dev.bundle.js`**, **`pdlc/workflows/dist/orchestrate-queue.bundle.js`** and **`pdlc/workflows/dist/pdlc-cli.mjs`** | all **three** rebuilt, **in the same commit** as the row above. `CLAUDE.md` requires it, and each of the three inlines the dev module wholesale — the `bundles` array carries three entries (`build-runtime.mjs:448-471`; the third, `{ file: "pdlc-cli.mjs", id: "pdlc-cli", contents: cliArtifact }`, is `:464-470` — its opening brace is `:464` and the `file:` key `:465` — and `cliArtifact` is composed at `:291`) — so the widened resolver's bytes live in **three** tracked artifacts as well as in the source. Verified at HEAD: `resolveAdvisoryRung` is defined at `dist/orchestrate-dev.bundle.js:1994`, `dist/orchestrate-queue.bundle.js:1970` and `dist/pdlc-cli.mjs:1843`, and all three are `git ls-files`-tracked. **The count is load-bearing:** CI's `Generated artifacts are in sync` job rebuilds and diffs *every* artifact, so a commit that rebuilds two of the three fails it | §14.1 T-02 |
 | `pdlc/skills/harvest-learnings/SKILL.md` | a `Phases exercised` row added to the metadata table (`:70-79`); a `failure-mode-id` line added to the §5 Open Items convention | §8.3, §8.4 |

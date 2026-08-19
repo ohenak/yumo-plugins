@@ -69,11 +69,28 @@ const FSPEC = "docs/completed/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-
 const TSPEC = "docs/completed/pdlc-consolidation-agent/TSPEC-pdlc-consolidation-agent.md";
 const PLAN = "docs/completed/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md";
 const VOCAB = "docs/_constraints/pdlc-consolidation-vocabularies.md";
+// `pdlc-plugin-retirement`'s class-11 edit (DEC-10, T20) re-cites the SKILL's
+// bundle reference (`:11`) and delegation-contract prose (`:8`–`:13`); these
+// four documents ground that claim, dual-approved in the same review rounds.
+const RETIREMENT_BASELINE = "docs/_constraints/pdlc-retirement-baseline.md";
+const DECISIONS_RETIREMENT = "docs/pdlc-plugin-retirement/DECISIONS-pdlc-plugin-retirement.md";
+const PLAN_RETIREMENT = "docs/pdlc-plugin-retirement/PLAN-pdlc-plugin-retirement.md";
+const TSPEC_RETIREMENT = "docs/pdlc-plugin-retirement/TSPEC-pdlc-plugin-retirement.md";
 
 // The citers known at the time of writing. Not the document set — a floor under
 // the derived one, so a `git grep` that silently returns nothing (no git, wrong
 // cwd, changed flag) fails loudly instead of passing vacuously over zero files.
-const KNOWN_CITERS = [REQ, FSPEC, TSPEC, PLAN, VOCAB];
+const KNOWN_CITERS = [
+  REQ,
+  FSPEC,
+  TSPEC,
+  PLAN,
+  VOCAB,
+  RETIREMENT_BASELINE,
+  DECISIONS_RETIREMENT,
+  PLAN_RETIREMENT,
+  TSPEC_RETIREMENT,
+];
 
 // Review artifacts record the anchor state of a past round and must not be swept.
 const EXCLUDED_CITER = /(CROSS-REVIEW|CODE_REVIEW|POSTMORTEM)-/;
@@ -141,9 +158,66 @@ const CELL_ANCHOR_RE = /`:(\d+)(?:-(\d+))?`/g;
 // to the file the line already named, so it does not make the row ambiguous —
 // a *second directory* does.
 const QUALIFIED_SKILL_RE = /([a-z0-9-]+)\/SKILL\.md/g;
-const namesOnlyThisSkill = (line) => {
-  const dirs = new Set([...line.matchAll(QUALIFIED_SKILL_RE)].map((m) => m[1]));
-  return dirs.size === 1 && dirs.has("consolidate-learnings");
+
+// A cell anchor's owner is resolved by the *nearest preceding* file token on its
+// line, not by whether the line names exactly one skill. A row can legitimately
+// name `consolidate-learnings/SKILL.md` and, later in the same sentence, a test
+// file (e.g. `skillFiles.test.js`'s `RLH-SKILL-08` (`:196`)) whose own bare
+// `:NNN` anchors point into that test file, not into the SKILL. The whole-line
+// heuristic this replaced could not tell the two apart when only one `dir/
+// SKILL.md` appeared on the line, which is exactly what made TSPEC's row for
+// class 11 misattribute `skillFiles.test.js`'s `:196`/`:209` to the SKILL —
+// line numbers past the file's own length.
+// Durable tokens set the row's ambient subject for the rest of the sentence:
+// a `dir/SKILL.md` mention (any skill) or a bare `word.test.js` mention (a test
+// file named without its own line number, e.g. the continuation half of
+// `skillFiles.test.js`'s `RLH-SKILL-08` (`:196`)). Once one appears, it stays
+// the nearest-preceding answer until a later durable token replaces it —
+// crucially, a *bare* mention of some other filename with no attached line
+// number (`pdlc/workflows/consolidate-learnings.js`, `orchestrate-dev.js`) is
+// not durable and is not even tokenised: prose that merely names a module in
+// passing must not evict the row's real subject.
+const DURABLE_TOKEN_RE = /(?<skillDir>[a-z0-9-]+)\/SKILL\.md|(?<testFile>[A-Za-z][\w-]*\.test\.js)/g;
+// A transient token is a fully qualified `otherfile:NNN` citation to some file
+// that is not this SKILL (e.g. `publish-preflight.mjs:221`). It only claims a
+// bare cell-anchor that is *tightly* adjacent to it (nothing but whitespace or
+// a dash in between, the `` `:221`–`:222` `` range-continuation shape) — it
+// does not become the row's ambient subject, so prose further along the same
+// row (the `` `:8`–`:13` `` delegation-contract pair, said of the SKILL two
+// sentences later) still resolves against the last durable token.
+const TRANSIENT_TOKEN_RE = /(?<otherFile>(?!SKILL\.md)[\w./-]+\.(?:mjs|js|json|sh|md)):(?<num>\d+)/g;
+const TIGHT_GAP_RE = /^[\s`–-]*$/;
+const cellAnchorsFor = (line, i) => {
+  const durable = [...line.matchAll(DURABLE_TOKEN_RE)].map((m) => ({
+    index: m.index,
+    skillDir: m.groups.skillDir ?? null,
+  }));
+  const transient = [...line.matchAll(TRANSIENT_TOKEN_RE)].map((m) => ({
+    index: m.index,
+    end: m.index + m[0].length,
+  }));
+  // Fallback for an anchor with no preceding durable token at all (e.g. a
+  // table row whose content and cell-anchors come first, with the file name
+  // only appearing in a *trailing* column — PLAN-pdlc-consolidation-agent's
+  // T07 row is exactly this shape). In that case there is no ambient subject
+  // yet to inherit, so the anchor is attributed by the same rule the old
+  // whole-line heuristic used: only when the line names exactly one skill
+  // directory (test-file mentions don't count as ambiguity here, since a
+  // trailing-only skill mention is not competing with a preceding one).
+  const skillDirs = new Set(durable.map((t) => t.skillDir).filter(Boolean));
+  const soleSkillDir = skillDirs.size === 1 ? [...skillDirs][0] : null;
+
+  const anchors = [];
+  for (const m of line.matchAll(CELL_ANCHOR_RE)) {
+    const nearestTransient = transient.filter((t) => t.end <= m.index).at(-1);
+    if (nearestTransient && TIGHT_GAP_RE.test(line.slice(nearestTransient.end, m.index))) continue;
+    const nearestDurable = durable.filter((t) => t.index < m.index).at(-1);
+    const owner = nearestDurable ? nearestDurable.skillDir : soleSkillDir;
+    if (owner === "consolidate-learnings") {
+      anchors.push({ line: i + 1, from: Number(m[1]), to: Number(m[2] ?? m[1]) });
+    }
+  }
+  return anchors;
 };
 
 /**
@@ -162,13 +236,7 @@ const citationsIn = (text) =>
     const qualified = [...line.matchAll(CITATION_RE)]
       .filter((m) => (m[1] ?? "consolidate-learnings") === "consolidate-learnings")
       .map((m) => ({ line: i + 1, from: Number(m[2]), to: Number(m[3] ?? m[2]) }));
-    const cell = namesOnlyThisSkill(line)
-      ? [...line.matchAll(CELL_ANCHOR_RE)].map((m) => ({
-          line: i + 1,
-          from: Number(m[1]),
-          to: Number(m[2] ?? m[1]),
-        }))
-      : [];
+    const cell = cellAnchorsFor(line, i);
     return [...qualified, ...cell];
   });
 
@@ -257,6 +325,32 @@ const CLAIMS = [
     id: "proposal-path",
     skillContent: /^When a learning says a skill prompt itself should change/,
     sites: [{ doc: VOCAB, sentence: /^\| Proposal artifact \|/ }],
+  },
+  // ─── pdlc-plugin-retirement's class-11 edit (DEC-10, T20, REQ O-8) ────────
+  // Four documents ground the same two-part claim: the bundle reference at
+  // `:11` is deleted (not rewritten), and the delegation-contract prose at
+  // `:8`–`:13` is restated. `RETIREMENT_BASELINE`'s M-11n row and TSPEC's
+  // class-11 row each carry all three anchors on one line; PLAN carries them
+  // split across its T20 row (`:11`/`:8`/`:13`) and its batch-DAG paragraph
+  // (`:11` again, deduplicated by the claimed/actual sets below); DECISIONS
+  // cites only the bundle half.
+  {
+    id: "class11-not-run-itself",
+    skillContent: /^This skill delegates to a workflow script\. It does not run the pass itself\.$/,
+    sites: [
+      { doc: RETIREMENT_BASELINE, sentence: /^\| M-11n \|/ },
+      { doc: PLAN_RETIREMENT, sentence: /^\| T20 \| 11 \|/ },
+      { doc: TSPEC_RETIREMENT, sentence: /^\| 11 \| two delegator rewrites/ },
+    ],
+  },
+  {
+    id: "class11-hand-run-bypasses",
+    skillContent: /^the pass by hand bypasses the machinery this skill exists to drive: the `\.consolidation-log\.md`$/,
+    sites: [
+      { doc: RETIREMENT_BASELINE, sentence: /^\| M-11n \|/ },
+      { doc: PLAN_RETIREMENT, sentence: /^\| T20 \| 11 \|/ },
+      { doc: TSPEC_RETIREMENT, sentence: /^\| 11 \| two delegator rewrites/ },
+    ],
   },
 ];
 

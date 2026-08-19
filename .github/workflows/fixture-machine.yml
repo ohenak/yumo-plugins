@@ -2,10 +2,10 @@ name: Fixture machine
 
 # PLAN T50 (TSPEC §12.1's "Fixture-machine" row, §9.2, §9.3 AT-2.5, §9.4
 # AT-2.6). A NEW, additive workflow file — not `pr-tests.yml`, which renders
-# five checks of its own: this file adds no job to `pr-tests.yml` and edits
+# three checks of its own: this file adds no job to `pr-tests.yml` and edits
 # no `name:` key in it, so Phase PUB's literal polling of `pr-tests.yml`'s
 # checks keeps working untouched. BR-7.5's contract spans the
-# trigger-derived §5.1 set of six PR-gate jobs — this file is row 6 of that
+# trigger-derived §5.1 set of four PR-gate jobs — this file is row 4 of that
 # set, because it declares `on: pull_request` below.
 #
 # Capability gating (TE round-1 Q-01): the container, real-spawn and
