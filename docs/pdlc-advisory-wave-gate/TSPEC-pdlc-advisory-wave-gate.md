@@ -413,6 +413,15 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    written — that path runs through `terminate` — and no `_agent` call and no rung resolution occur
    (E-26). Only `outcome === "resolved"` increments `waveBudget.resolved`, so two escalated waves
    leave the budget untouched (E-27, AT-02-6).
+   Because that escape is read inside `runAdvisorySeam`, the budget check resolves *after* step 4's
+   capture: an over-budget wave still captures a snapshot and still rewrites `refs/pdlc/a6-snapshot`,
+   then escalates without dispatching. This is deliberate and costs one `write-tree`/`commit-tree`
+   pair; the alternative — hoisting the pure `waveBudget` read above the capture — was rejected so
+   that the record and escalation writes stay on the shipped `terminate` path rather than being
+   re-implemented at the call site, as the capture-failure path below is forced to do. Two oracles
+   read this explicitly: AT-02-6 asserts a snapshot ref **is** written on a budget-escalated wave,
+   and §5.2's one-snapshot-per-wave call count is once *per wave entered*, no-dispatch waves included
+   (TE F-24).
 4. **Snapshot.** `captureTreeSnapshot` (§3.5) runs **here, at the call site, before
    `runAdvisorySeam` is entered** — once per wave, never per attempt (§2.5). It cannot live in
    `gatherEvidence`: that is called inside the driver's attempt loop (`orchestrate-dev.js:3393`)
@@ -421,7 +430,9 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    A capture failure (`null` return) therefore cannot use the `__preDispatch` escape step 3 uses —
    the escape is read inside the driver (`:3401-3410`) and the driver is never entered. Instead
    `runWaveGateSeam` itself writes the durable trace, in this order: `appendAdvisoryEntry`
-   (`verdict: null`, `reason: null`, `attempts: 0`), then `appendEscalationEntry` with a
+   (the full disposition object is `{seam: "A6", outcome: "escalated", reason: null, verdict: null,
+   attempts: 0, model: "n/a", fallback: false}` — all six members `renderAdvisoryEntry` reads, since
+   it interpolates `model` unguarded, §2.5), then `appendEscalationEntry` with a
    caller-supplied `decision` sentence naming `snapshot-unavailable`, then the
    `ADVISORY ESCALATION:` notice, then return `{resolved: false}` carrying §4.5's halt fields at
    their literal values. No `_agent` call, no rung resolution, no attempt consumed, budget
