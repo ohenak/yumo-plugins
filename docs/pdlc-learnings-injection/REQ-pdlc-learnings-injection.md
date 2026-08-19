@@ -350,8 +350,9 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   ever run there — *when* the pipeline runs, *then* every authoring dispatch is composed exactly
   as it is today, the run completes with unchanged behaviour, and the report records the
   corpus-level `RSN-EMPTY` outcome (AC-3.2).
-- **AC-4.2** *Given* a corpus file that cannot be read, that reads but does not parse as a LEARNINGS
-  document, or that is truncated mid-document, *and* separately given a corpus listing that fails
+- **AC-4.2** *Given* a corpus file that cannot be read, or that reads but does not parse as a
+  LEARNINGS document — the outcome a file truncated mid-document resolves to when its remaining
+  bytes no longer present one *(erratum v0.5)* — *and* separately given a corpus listing that fails
   outright, *when* selection runs, *then* the affected document is skipped with its per-document
   reason id recorded and the rest of the corpus used normally, a failed listing injects nothing and
   records `RSN-UNLISTABLE` at corpus level (AC-3.2), and
@@ -366,7 +367,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-4.4** *Given* thresholds in §4.1 configured to values that admit nothing (zero documents
   or zero bytes), *when* the pipeline runs, *then* it behaves as an enabled run whose selection is
   empty — AC-3.1's empty rows, not AC-5.1a's absent key — rather than treating the configuration
-  as invalid and refusing.
+  as invalid and refusing. A declared key carrying the wrong type is AC-5.1c's state, likewise
+  enabled *(erratum v0.5)*.
 
 **Group 5 — inertness when disabled, and semantics preserved** *(G-5; NG-3, NG-4, NG-7)*
 
