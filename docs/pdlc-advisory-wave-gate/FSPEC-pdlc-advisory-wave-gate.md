@@ -211,7 +211,14 @@ four-member default envelope, each with a decidable membership rule:
 | E-6 | completing a promotion the PLAN schedules for a **later** task | the gate output names a symbol or artifact that a later task's PLAN row already undertakes to produce, **and** every path the proposal would change is a member of that later task's owned-path set |
 
 Nothing else A6 proposes is in the envelope. The shipped envelope becomes one closed six-member set,
-assertable by a single set-equality over member ids, never by prose joining two sets.
+assertable by a single set-equality over member ids, never by prose joining two sets. E-5 and E-6 are not two further act kinds beside `E-1`…`E-4`: A6 widens the envelope's semantics
+from act kinds alone to act-plus-scope. `E-1`…`E-4` name what may be done; E-5 and E-6 name
+where a repair may land. A proposal is in the envelope only when both readings hold — an act the
+shipped set already names, landing inside the path scope E-5 or E-6 computes. A proposal whose
+changed paths fall outside that scope is refused by the tier's existing declared-scope exclusion
+and reports that exclusion's reason, not a new one. E-5 therefore admits no act the shipped four
+do not already admit; the residual it leaves — a wrong repair of a permitted kind inside owned
+production files — is R-1, accepted in §7.3 A-3 and not solved here.
 
 **BR-5 — Exclusions win over permissions, always (AC-3.2).** The tier's existing exclusion set holds
 unchanged for A6, and its clauses take precedence over E-5 and E-6 wherever both could apply. Two
@@ -223,13 +230,19 @@ holds unchanged, so in this repository a wave owning `pdlc/workflows/`, `pdlc/sk
 `pdlc/hooks/` or `.claude/workflows/` escalates `out-of-envelope` — meaning the 2026-08-09 motivating
 incident would today be diagnosed and escalated, not repaired, while the 2026-08-11 incident in a
 consumer repository is unaffected. Relaxing either is out of scope and must never be taken without
-an operator.
+an operator. The shipped exclusion catalogue is **ordered**, and the order is load-bearing: classification
+walks it in order and the first matching clause decides which refusal reason is reported. Its
+oracle is therefore ordered-sequence equality over the shipped clause ids — the same unit
+BR-15's refusal reasons get, never set equality (AT-03-8) — because a reordering silently
+changes the reason A6 reports while a set assertion still passes.
 
 **BR-6 — Four further prohibitions, as a closed set (AC-3.3, AC-4.3).** In addition to the tier's
 exclusions, A6 may not: (f) change the PLAN, its task table, or its file-ownership manifest; (g)
 change implementation configuration — the test command, the post-wave command, or the post-wave
 pathspecs; (h) commit, push, or tag; (i) touch any path outside the set E-5 and E-6 compute for this
-invocation.
+invocation. These four are a closed set and are asserted as one: the prohibition ids `(f)`…`(i)` are
+compared by set-equality, so a deleted prohibition fails the suite instead of passing a
+containment check, and each prohibited operation is additionally exercised one by one (AT-03-5).
 
 **BR-7 — Only the gate declares the wave green, and the whole sequence re-runs (AC-4.1, AC-4.4).** No
 advisory verdict substitutes for a gate result. After a repair, the wave's whole gate sequence
@@ -249,7 +262,11 @@ wrong unit — it collapses duplicates and would admit a resolution declared on 
 pathspec-scoped per-task commit over a task's owned paths, and the build-output commit scoped to the
 configured post-wave pathspecs, both reached only past a green gate (M-WG-4). Where post-wave
 pathspecs are configured, the re-gate's regenerated artifacts already have a writer; only paths a
-*later* task owns remain the gap BR-12 closes.
+*later* task owns remain the gap BR-12 closes. The invariant A6 preserves is the writer **identity** set, not the pathspec scope those writers
+pass: the two writers above stay the only ones, and a green gate stays their precondition. The
+scope of the per-task pathspec commit may widen under O-8's E-6 resolution — that is the degree
+of freedom BR-12 hands the TSPEC author — so no clause here asserts set-equality over committed
+paths (AT-04-3).
 
 **BR-9 — Restoration is whole-tree, and has exactly three triggers (AC-5.1, AC-4.4).** On a refusal,
 on budget exhaustion, and on a red re-gate, the working tree is left observably identical to the state
@@ -257,16 +274,29 @@ it stood in immediately before A6 acted: the wave's post-dispatch, pre-commit tr
 agents' own uncommitted work intact. Restoration is of the **whole** tree, never of the repair's paths
 alone, because a re-run post-wave command writes generated outputs into paths A6 never proposed and no
 envelope rule ranges over; a per-path restore would leave the halted tree carrying artifacts built
-from a repair that is no longer present.
+from a repair that is no longer present. "Observably identical" is a content-level oracle, not a `git status` one: the map from path to
+content hash, taken over tracked and untracked files alike and including generated outputs,
+equals the same map taken immediately before A6 acted. A status-level comparison would pass a
+per-path restore whenever the re-run post-wave command rewrote paths the wave had already
+dirtied — the very case this rule exists to fail (AT-05-2).
 
 **BR-10 — A post-gate halt is not a restoration trigger (AC-4.4, AC-5.3).** A green re-gate lets the
 wave proceed past the gate into the same post-gate path it would have reached anyway, and a later
 check on that path may still halt the wave. That halt is neither a red re-gate nor a restoration
-trigger; the three triggers in BR-9 are exhaustive.
+trigger; the three triggers in BR-9 are exhaustive. One consequence is stated here rather than left to be discovered: on this path the repair A6
+applied stays in the working tree, because no restoration trigger fired. The advisory record
+entry and the halt report therefore both state that a repair remains applied and name its paths,
+so the operator arriving at the halt is never told that a machine-authored change was reverted
+when it was not (AC-5.1, AC-5.3, E-22).
 
 **BR-11 — Three budgets, and exceeding any of them escalates rather than retries (AC-2.4).** More
 than `advisory.attemptBudget` attempts on one wave; more than `advisory.seamBudgetMinutes` of working
-time on a single invocation, measured excluding time spent running the gate command (NFR-4); and more
+time on a single invocation, measured excluding time spent running the gate command (NFR-4) — an **invocation** being one A6 episode on one wave, opening when that wave's gate first
+returns non-zero and step 3b admits an attempt, closing at step 9's terminal disposition, and so
+spanning up to `advisory.attemptBudget` dispatch/repair/re-gate cycles. The exclusion covers the
+run time of **every** gate-command invocation inside that window, first pass and each re-gate
+alike; a slow suite therefore cannot starve the attempt budget, and a slow diagnosis is what the
+budget catches (E-25, AT-02-7); and more
 than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave
 budget: two waves A6 attempted and escalated leave the budget untouched and a third red wave still
 gets its attempt, whereas one wave A6 resolved exhausts the shipped default of `1` and the next red
