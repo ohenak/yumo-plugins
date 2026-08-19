@@ -26,10 +26,39 @@ displacing them.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|-------------|
+| F-26 | Medium | Local | NFR-4's structural rationale now says "the gate runs between attempts, never inside one" (REQ:492). Under the attempt-granular vocabulary this round just adopted, that is false at HEAD: `verifyGate` is invoked at `orchestrate-dev.js:3535-3537`, inside the same `while (true)` iteration that opened at `:3393`, and A5-3 defines one attempt as one act → re-poll cycle (`:3388-3391`, `:3543-3550`) — so the gate runs *inside* an attempt. What is true, and what the carve-out-free conclusion actually rests on, is that the gate runs outside the **measured window**: the `Promise.race` at `:3417` closes at verdict (`:3416`), and the gate is reached only after that. The requirement itself (window = dispatch to verdict on one attempt) and the conclusion (no subtraction, no carve-out) both stand; only the sentence naming *what* the gate is outside of is wrong. Suggested repair, one clause: "the gate runs after the verdict that closes the window, never inside it". | §7 NFR-4 (REQ:488-494) |
+
+FINDING: Medium | delta | local | §7 NFR-4 (REQ:492) | Rationale says the gate "runs between attempts, never inside one"; at HEAD `verifyGate` (orchestrate-dev.js:3535) is inside the attempt loop (`:3393`) and A5-3 counts the re-poll as part of the attempt. The gate is outside the *measured window* (the race at `:3417` ends at verdict), not outside the attempt. Requirement and conclusion unaffected; one clause to repair.
+
 ## Questions
+
+| ID | Question |
+|----|----------|
+| Q-06 | AC-4.1(iii)'s fixture is now declared to mutate shipped control flow to drop the re-gate. Is that mutation expected to be a TSPEC-level seam (an injected gate op the fixture omits) rather than a source edit? The REQ correctly does not answer this — recording it so TSPEC picks it up deliberately rather than by default. |
 
 ## Positive Observations
 
+- The AC-1.5 rewrite fixes the population *and* keeps the mutual-exclusivity clause meaningful in the
+  same stroke: naming BL-03's carrier as the one that fires in a both-absent run turns F-19's
+  exclusivity sentence from an unbound assertion into the criterion's own fixture selector.
+- The budget correction resisted the tempting over-correction. Naming `attemptBudget` × the value as
+  a *worst case* and explicitly declining to introduce a per-invocation cap keeps the REQ a
+  description of shipped behaviour instead of a new requirement smuggled in as a fix.
+- Separating "applies a repair" from "resolves" was the load-bearing move for AC-4.1, and it was made
+  consistently with AC-2.4's "only resolutions consume the wave budget" and AC-4.6/AC-5.3 rather than
+  locally.
+- The v1.8 changelog names what was decided in `F-` vocabulary and states "Nothing else changed",
+  which the diff bears out — 42 insertions, 23 deletions, all inside the four named sites.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The four routed High items and the two te-review items all landed, and nothing previously approved
+was broken by landing them. One Medium remains: NFR-4's rationale clause misnames what the gate is
+outside of (F-26). It does not gate the round — no High finding stands, delta or inherited — and can
+be repaired in the next ordinary revision of this document.
 
 ## Verdict
