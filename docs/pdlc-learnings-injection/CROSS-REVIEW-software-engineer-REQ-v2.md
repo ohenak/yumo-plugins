@@ -33,3 +33,35 @@ v1). Prior findings F-01…F-10 checked for resolution; unchanged sections not r
 | F-04 | Medium | Local | **`delta` `local` — "records that it did" contradicts "no injection summary at all".** AC-5.1a requires "the run's recorded count of corpus reads is zero" *and* "the run report carries no injection summary at all — the key is absent, not present-and-empty"; AC-4.4 (zero-valued thresholds) requires behaviour "exactly as the disabled case" *and* "records that it did". A count and a record need a field; the disabled case forbids the field. Name the one place each record lives, or state that zero-valued thresholds are the *enabled-with-empty-selection* case (report present, empty rows per AC-3.1) rather than the disabled case. | AC-5.1a, AC-4.4, AC-3.1 |
 | F-05 | Medium | Local | **`delta` `local` — `RSN-UNLISTABLE` is a corpus-level state inside a per-document enumeration.** AC-3.2 requires the report to name "corpus documents available but **not** selected, each with a reason drawn from a closed set of catalogued ids", and includes `RSN-UNLISTABLE` in that set. When the listing itself fails no document is known, so there is no row to carry the id, and the set-equality check AC-3.1/AC-3.2 ask for cannot be written over one domain. Split the catalogue: per-document reasons (`RSN-COUNT`, `RSN-BYTES`, `RSN-SELF`, `RSN-UNREADABLE`, `RSN-UNPARSEABLE`, `RSN-TRUNCATED`) versus corpus-level outcomes (`RSN-UNLISTABLE`, empty corpus), each with its own closed enumeration. The shipped seam already returns the corpus-level shape as a distinct union member — `{unlistable: true, detail}` (`consolidate-learnings.js:1348-1354`) — so the split matches the code this feature reuses. | AC-3.2, AC-3.1, C-9 |
 | F-06 | Low | Local | **`delta` `local` — BL-01 and AC-1.1 disagree on the corpus floor.** AC-1.1 was relaxed this round to "at least one prior feature `{p}`"; BL-01 still reads "at least two features in the consumer repository". Make BL-01 one. | BL-01, AC-1.1 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does this feature intend to *call* `enumerateCorpus` (`consolidate-learnings.js:1348`) from the orchestrator, or to re-declare the same argv in `orchestrate-dev.js`? Both are defensible inside one bundle; F-01's fix reads differently depending on which, and O-7 is the place to say. |
+| Q-02 | AC-4.2 routes a failed listing to "nothing is injected". Is that per-dispatch (each dispatch re-lists, so a transient failure degrades one dispatch) or per-run (list once, cache for the run)? NG-4 forbids a state file but not an in-process value, and the answer changes what R-1's per-run cost measurement in O-1 is measuring. |
+
+## Positive Observations
+
+- The three factual repairs this round all check out against HEAD rather than against intent: the pass's enumeration is exactly the two `:(glob)` pathspecs with `--cached --others --exclude-standard` (`consolidate-learnings.js:1337-1345`), the fail-open listing outcome is a real union member and not an aspiration (`:1348-1354`), and the erratum author dispatch C-1 now includes genuinely exists (`orchestrate-dev.js:9438`, `:12810`).
+- AC-2.2's tiebreak was checked empirically, not assumed: `git ls-files --cached --others --exclude-standard` over the two pathspecs emits a **single byte-ordered stream across tracked and untracked entries** (verified in a scratch repository where an untracked `docs/aaa/…` sorts ahead of a tracked `docs/bbb/…`). The stated fallback is therefore free — it is what the shipped enumeration already yields — and the two negative properties AC-2.2 adds (permuted mtimes, renamed containing directory) are testable before O-2 lands.
+- AC-4.3 is much stronger than its v1 form. Replacing "same verdicts and round counts across runs" with "no injection-derived value reaches any gate input", and saying in the criterion itself why the cross-run comparison would have measured model nondeterminism, is the rare case of a REQ recording *why* the weaker oracle was rejected.
+- C-5's rewrite is honest in a way that costs it something: conceding that the runtime-adapter channel makes listing and reading model-mediated, and then scoping the determinism claim to model *judgement* plus a deterministic transport, is harder to write than the original absolute and is the version an implementer can satisfy.
+- §7.1's pasted stopping rule is well-placed. This round closed four Highs and opened one; that is the churn exception it names, and the one open blocker is a citation scope error, not a contested requirement.
+
+## Recommendation
+
+**Needs revision**
+
+One High. F-01 is a bounded edit in three places — §1.2 claim 2, C-3, O-7 — that keeps the reuse
+intent while telling the truth about DEC-CONS-05: reuse the **pass-side** enumeration seam inside the
+same JS bundle, and drop the "one shared definition across all readers" framing plus the shared
+agreement test, both of which the cited decision rejected on measured evidence. Nothing else in this
+round blocks. F-03, F-04 and F-05 are worth taking in the same pass because each is a defect a test
+engineer would otherwise have to resolve by guessing, and F-05 in particular decides the shape of the
+set-equality assertion AC-3.1 and AC-3.2 both ask for.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 4, "low": 1}
