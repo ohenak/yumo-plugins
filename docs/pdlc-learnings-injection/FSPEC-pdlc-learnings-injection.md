@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.4); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.6); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5}.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.4 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.5 | 2026-08-19 |
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
@@ -267,9 +267,8 @@ one directory deeper than either glob reaches: no rule fires on them, and nothin
 enters the record. A separate `docs/discarded/` exclusion rule would change the answer for
 paths the shipped predicate *does* match, so none is added here. One class remains: a document
 *directly*
-at `docs/discarded/LEARNINGS-x.md` does match the first glob — the case REQ C-3 and AC-2.6
-legislate against. Its outcome: **corpus member on ordinary terms**
-(E-35, AT-15). None exists at HEAD; `ERRATUM: REQ` rides.
+at `docs/discarded/LEARNINGS-x.md` does match the first glob. Its outcome: **corpus member on
+ordinary terms** (E-35, AT-15), which is what REQ AC-2.6 states.
 
 One exclusion then applies to candidates, and its reason id is recorded:
 
@@ -297,7 +296,7 @@ shape judgement as any candidate: eligible where what is present still reads as 
 document (E-19), `RSN-UNPARSEABLE` where not (E-04). No predicate over a document's own bytes
 separates truncation from one legitimately lacking later sections, so `RSN-TRUNCATED` would
 name a branch no fixture could construct; the v0.2 edge retires with it, E-05 not reused.
-REQ AC-3.2's catalogue lists `RSN-TRUNCATED` and omits `RSN-NO-MATERIAL`; BR-9 differs on both — `ERRATUM: REQ` rides. The
+REQ AC-3.2 carries the same catalogue: `RSN-NO-MATERIAL` is a member and truncation is not. The
 report still keeps apart what matters: an unparseable document contributes nothing, while a
 document cut by BR-6's byte
 bound contributes and carries the *bounded* flag (AC-3.2).
@@ -343,13 +342,11 @@ paths in the corpus are unique, the composite ordering is a **total order over t
 Two consequences follow directly and are separately testable: permuting every corpus file's mtime and
 re-running yields an identical selection, and renaming a document's containing directory without
 changing its content **may** change its rank — because the path is part of the tiebreak — while
-changing nothing else about the document's eligibility. Where REQ AC-2.2 offered directory-rename
-rank-invariance as a testable property, this rule supersedes it: a total order that ignores the path
-cannot exist over documents whose primary key is missing or equal, and 2 of 89 measured documents
-have no primary key. The rename-invariant property is therefore replaced by the stronger and
-achievable one — **the ordering is a pure function of (key value, path) and of nothing else** —
-which AT-09 and AT-10 assert. *(This is a deliberate correction of an upstream expectation; see the
-ERRATUM line in this dispatch's report.)*
+changing nothing else about the document's eligibility. Directory-rename rank-invariance is not
+claimed: a total order that ignores the path cannot exist over documents whose primary key is
+missing or equal, and 2 of 89 measured documents have no primary key. The property asserted instead
+is the stronger and achievable one — **the ordering is a pure function of (key value, path) and of
+nothing else** — which AT-09 and AT-10 assert, and which REQ AC-2.2 states in the same terms.
 
 ### BR-5 — The count bound *(AC-2.1)*
 
@@ -363,10 +360,9 @@ form the corpus writes) and 87 of
 the 89 exceed `maxBytesPerDocument` alone, so under REQ §4.1's
 declared values — five documents at 6,000 bytes against a 20,000-byte total — at most three
 can contribute. Whether the count bound is load-bearing under those values is REQ
-O-1's question, which the live run discharging O-1 should report. REQ AC-2.1 still asserts the
-count *equals* the threshold for
-any corpus above it, which the measurement above falsifies under §4.1's values —
-`ERRATUM: REQ` rides this round.
+O-1's question, which the live run discharging O-1 should report. REQ AC-2.1 states the same
+bound and disclaims count equality under §4.1's values, which is what the measurement above
+shows; the fixture that makes the count cut binding is REQ O-8's, carried at F-O-7.
 
 Documents cut here carry `RSN-COUNT`; where the eligible set is smaller than the threshold,
 all of it is taken and no `RSN-COUNT` row is produced.
@@ -514,7 +510,7 @@ Rules binding the three catalogues:
   every authoring dispatch of the run.
 - Where documents are known, every one of them appears either as a BR-8 row or as a per-document
   reason row. No corpus document is silently absent from the report.
-- Excluded-by-`docs/discarded/` documents are the sole exception, and by construction: they are not
+- Documents nested under `docs/discarded/{feature}/` are the sole exception, and by construction: they are not
   corpus members at all (BR-2), so there is nothing to report.
 
 ### BR-10 — Hand-reproducibility *(AC-3.3)*
@@ -603,8 +599,8 @@ Three points carry load:
   key, not a present section, so it reads as absent: baseline-identical run, no notice.
   Detecting it would need a closed registry of legal top-level keys in
   `.claude/pdlc.config.json`, which does not exist and would misfire on keys a later feature
-  adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b's
-  example makes that typo the detectable case and no longer holds — `ERRATUM: REQ` rides.
+  adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b reads a misspelt
+  section name as absent on the same terms.
 - **A wrong-typed declared key is not malformed.** It falls back to its default, the run stays
   **enabled**, and `NTC-KEYTYPE` names the key — the per-key fallback plus invalid-key
   notice the siblings ship (`parseAdvisoryConfig`, `orchestrate-dev.js`).
@@ -660,7 +656,7 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-03 | One document unreadable, others fine | That one `RSN-UNREADABLE`; the rest selected normally | AT-26 |
 | E-04 | One document reads but is not a LEARNINGS document | `RSN-UNPARSEABLE`; the rest selected normally | AT-27 |
 | E-06 | Corpus contains only `{f}`'s own LEARNINGS | Empty selection, `RSN-SELF` row, empty BR-8 rows — not `RSN-EMPTY`, since a document *was* known | AT-04 |
-| E-07 | Corpus contains only documents under `docs/discarded/` | Corpus-level `RSN-EMPTY`; discarded documents appear in no record | AT-15 |
+| E-07 | Corpus contains only documents under `docs/discarded/{feature}/` (nested) | Corpus-level `RSN-EMPTY`; discarded documents appear in no record | AT-15 |
 | E-35 | A document directly at `docs/discarded/LEARNINGS-x.md` | Corpus member; eligible and selectable — no exclusion fires | AT-15 |
 | E-08 | Every corpus document is unreadable | Empty block; every document carries `RSN-UNREADABLE`; no corpus-level id, since documents were known | AT-26 |
 
@@ -797,7 +793,8 @@ text into a disabled run is a test failure rather than a production discovery.
   The two compositions are made in **two separate process invocations**, so that a block
   cached in-process across dispatches (E-32) cannot pass as determinism.
 
-- **AT-15** — *Given* a fixture whose only LEARNINGS documents lie under `docs/discarded/`, *when*
+- **AT-15** — *Given* a fixture whose only LEARNINGS documents lie under
+  `docs/discarded/{feature}/LEARNINGS-*.md` (nested, not the direct path), *when*
   selection runs, *then* nothing is selected, the report carries corpus-level `RSN-EMPTY`, and no
   discarded document appears in any record. *And given* a one-file fixture holding exactly
   `docs/discarded/LEARNINGS-x.md`, *then* it is a corpus member, is selected, and carries no
@@ -819,8 +816,8 @@ text into a disabled run is a test failure rather than a production discovery.
   exactly one per-document reason id, and a **completeness test asserts set equality** over
   `RSN-COUNT`, `RSN-BYTES`, `RSN-SELF`, `RSN-UNREADABLE`, `RSN-UNPARSEABLE`, `RSN-NO-MATERIAL`.
 - **AT-20** — *Given* a report, *when* corpus-level outcomes are read, *then* a second **completeness
-  test asserts set equality** over `RSN-UNLISTABLE` and `RSN-EMPTY`, and neither catalogue's ids
-  appear in the other's position.
+  test asserts set equality** over `RSN-UNLISTABLE` and `RSN-EMPTY`, and no catalogue's ids appear
+  in another catalogue's position, across all three of BR-9's catalogues.
 - **AT-21** — *Given* a run in which a corpus-level outcome was recorded, *when* the report is read,
   *then* BR-8's per-dispatch rows are present and empty for every authoring dispatch.
 - **AT-22** — *Given* an operator holding only the report and the fixture corpus, *when* the
@@ -918,6 +915,7 @@ AT-28.
 | F-O-4 | The pin of BR-2's corpus definition to `consolidate-learnings.js`'s pass-side predicate by literal restatement plus a pinning test — REQ O-7 restated, unchanged. Import remains unavailable: the engine vendors only `orchestrate-dev.js` and `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs`, `MODULE_NAMES`). | TSPEC |
 | F-O-5 | How the recorded pre-feature baseline of AC-6.2 is captured and committed, given it must never be regenerated by the branch under test. | TSPEC / PROPERTIES |
 | F-O-6 | Where the selection step sits relative to dispatch composition, and how the block reaches the composer without displacing existing content (BR-7). | TSPEC |
+| F-O-7 | A named non-default-threshold fixture that makes the count bound (BR-5) the binding cut, so `RSN-COUNT` is exercised and not merely named by BR-9's set-equality test — REQ O-8 restated, unchanged: under §4.1's defaults the byte bounds bind first on measured corpora. | TSPEC |
 
 ### Still open, unresolved by design
 
