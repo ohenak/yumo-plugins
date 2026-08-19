@@ -271,8 +271,9 @@ artifacts by calling the tier's own exported primitives directly:
 | Field | Value on capture failure |
 |---|---|
 | Terminal disposition | `escalated`, **no refusal reason** — `reason: null` |
+| Disposition object, in full | the six members `renderAdvisoryEntry` destructures (`orchestrate-dev.js:2924`) are all named literally, because it interpolates them unguarded: `{seam: "A6", outcome: "escalated", reason: null, verdict: null, model: "n/a", fallback: false}` (plus `attempts: 0`). `model` is `"n/a"` because no rung was ever resolved — without it `advisoryEntrySingleLine(model)` is `String(undefined)` and the operator-facing record ships a literal `| Model | undefined |` cell on exactly the path AC-6.1 exists to make legible (PM F-03, TE F-22). No renderer change is needed; the value is supplied by the caller |
 | Attempts consumed | `0` — no `_agent` call, no rung resolution, no driver entry at all |
-| Advisory record entry | written by `appendAdvisoryEntry({feature, disposition, _appendFile, _now})` (`orchestrate-dev.js:2965`) with `verdict: null`; the renderer's null-verdict fallbacks give Confidence/Envelope `n/a` and Diagnosis `no verdict was produced`, which is exactly true here (AC-6.1) |
+| Advisory record entry | written by `appendAdvisoryEntry({feature, disposition, _appendFile, _now})` (`orchestrate-dev.js:2965`) with `verdict: null`; the renderer's null-verdict fallbacks give Confidence/Envelope `n/a` and Diagnosis `no verdict was produced`, which is exactly true here (AC-6.1). The Model cell has **no** renderer fallback, so its value is carried by the disposition itself — see the row above |
 | Root-cause class | `unclassified` — no diagnosis was ever obtained |
 | Escalation-log entry | written by `appendEscalationEntry({disposition, ctx, _appendFile, _now})` (`:3090`), phase and phase-outcome read from `ADVISORY_SEAM_PHASES.A6` (§3.1), and a **caller-supplied `decision` sentence** naming `snapshot-unavailable` as the diagnostic (AC-6.2) |
 | Report notice | `ADVISORY_ESCALATIONS.seam({seam: "A6", feature, reason})` (`:1576-1581`), whose `reason` slot is free message text, carrying the same diagnostic sentence |
