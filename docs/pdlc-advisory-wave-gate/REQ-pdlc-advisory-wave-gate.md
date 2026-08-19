@@ -24,7 +24,10 @@ onto `origin/main` (SE F-01). Decided this round: the self-modification guard pa
 ninth reason (SE F-04, AC-3.4); a re-gate re-runs the wave's whole gate sequence in shipped order (SE
 F-03, TE F-07, AC-4.4); an E-6 repair's committed fate is stated (SE F-02, AC-4.6, O-8). BL-05, BL-06,
 AC-1.5, AC-2.2, AC-2.4, AC-3.1, AC-5.1 and D-AWG-03 corrected. The shipped-behaviour evidence for all
-of it is measured in `pdlc-wave-gate-baseline.md` v1.1 (M-WG-9…M-WG-12) rather than restated here.*
+of it is measured in `pdlc-wave-gate-baseline.md` v1.1 (M-WG-9…M-WG-12) rather than restated here.
+At 90 % of the size ceiling the resolved-question provenance of §8 was relocated verbatim to
+`docs/_decisions/DECISIONS-advisory-wave-gate-questions.md` and replaced by a one-row-per-question
+decision table; the document ends this round smaller than it started.*
 
 *v1.3 changelog: the three questions left open in v1.2 are decided (operator delegated
 adjudication, 2026-08-13). Q-1 — `advisory.waveBudgetPerRun` default is **1**, not the proposed 2.
@@ -177,8 +180,12 @@ requirements altitude.
   *(Traces: US-01, US-05.)*
 - **AC-1.2** — Given a Phase I wave, Then A6 fires on **exactly one** condition: the script-owned
   test gate returning non-zero (M-WG-3). It does **not** fire on a dispatch-level failure (M-WG-1) —
-  there is no completed work to repair — nor on a post-wave command failure (M-WG-2), whose repair is
-  a rebuild the script has already attempted. Both continue to halt exactly as today. *(US-03.)*
+  there is no completed work to repair — nor on a post-wave command failure (M-WG-2). **Correction,
+  2026-08-13:** the post-wave command runs exactly once and its failure halts immediately
+  (`orchestrate-dev.js:12331-12343`); the single run is the detection, not an attempted rebuild, so
+  the earlier "already attempted" framing overstated what the script does. Both continue to halt
+  exactly as today; what M-WG-2's exclusion means in practice — that a build-breaking source defect
+  is permanently outside A6's reach — is Q-2's decision, recorded as O-7. *(US-03.)*
 - **AC-1.3** — Given the final V-wave that carries the PROPERTIES tests, Then A6 does not fire, and
   its gate failure halts exactly as today. The V-wave has no ownership-manifest row, so E-5 and E-6
   have no owned-path set to be confined to; a seam whose envelope cannot be evaluated must not act.
@@ -386,8 +393,10 @@ requirements altitude.
   right failure direction: a seam that does nothing is recoverable, a seam that does the wrong thing
   is not.
 - **R-3 — Compounding drift across waves.** Several repairs in one run can carry the branch away
-  from what the PLAN describes, with no review between them. `advisory.waveBudgetPerRun` (default 2)
-  bounds it; Q-1 asks the operator to confirm the number.
+  from what the PLAN describes, with no review between them. `advisory.waveBudgetPerRun` (default 1)
+  bounds it at one resolved wave per invocation (Q-1, decided). The bound is honest about its
+  reach: a per-run knob bounds drift within an invocation only, and drift across invocations is
+  bounded by the operator arriving between them, not by this number.
 - **R-4 — This seam treats a symptom.** The motivating incident's root cause was a PLAN whose task
   ordering did not reflect a real dependency. A6 makes that class survivable; it does not make the
   PLAN correct, and a pipeline that routinely repairs its own waves has a Phase P problem it can now
@@ -422,18 +431,19 @@ requirements altitude.
   states only the outcome: no resolved wave leaves its repair uncommitted. Owner: this feature's
   TSPEC.
 
-**Open questions for the operator** — all resolved 2026-08-13; kept with their analysis for provenance:
+**Operator questions — all decided 2026-08-13.** The reasoning behind each, with the corrections that
+were made to the REQ's own claims while answering them, is recorded verbatim in
+`docs/_decisions/DECISIONS-advisory-wave-gate-questions.md` (Q-1…Q-5) rather than carried here. No
+question in this REQ is open.
 
-- **Q-1** — `advisory.waveBudgetPerRun` default of **2** is proposed, not confirmed. Alternatives: 1
-  (one repair per run, maximally conservative) or unbounded-within-`attemptBudget` (no cross-wave
-  cap). Proposed default is 2 because the motivating incident would have consumed one and left
-  headroom for a second unrelated failure without letting a run repair itself indefinitely.
-- **Q-2** — Should A6 also fire on a post-wave command failure (M-WG-2)? Proposed **no** (AC-1.2),
-  because that failure is a build failure the script has already attempted and its repair is
-  usually the same repair a wave task owes. Bound as D-AWG-04 if the operator wants it revisited.
-- **Q-3** — Should `environmental` classifications be permitted to re-run the gate once without any
-  repair, as seam A5's E-1 permits for a flaky check? Proposed **no** for v1 — a flaky suite is a
-  test-quality defect this pipeline should surface, not absorb. Bound as D-AWG-05.
+| # | Question | Decision |
+|---|---|---|
+| Q-1 | May A6 repair a second distinct wave in one run, before any human has seen the first? | **No.** `advisory.waveBudgetPerRun` ships at `1` (C-2, AC-2.4). Revisitable at `2` once wave resume demonstrably resumes the failed wave, not settled forever. |
+| Q-2 | Should A6 also fire on a post-wave command failure (M-WG-2)? | **No** (AC-1.2). The consequence is accepted and named: a source defect breaking the post-wave command is permanently outside A6's reach, recorded as O-7. |
+| Q-3 | May an `environmental` classification re-run the gate once without a repair? | **No** for v1; D-AWG-05 stands. A6's re-run would be the same machine and the same tree, so the A5 analogy it was argued from is weaker than v1.1 implied, not stronger. |
+| Q-4 | Should a deterministic per-task ownership-delivery check feed A6 as diagnosis input? | **Yes**, as a signal and never a verdict, when the tier is enabled. The tier-off half is routed to D-AWG-06, keeping AC-1.4's inertness contract unamended. |
+| Q-5 | Should gate-output evidence distinguish a collection error from failing assertions? | **Yes**, as an evidence signal inside the existing classes, not a fifth class; best-effort with a defined absent state, since `testCommand` is arbitrary operator config. The full gate output is available to A6 even though the halt message truncates. |
+
 
 ## 9. Prerequisites
 
