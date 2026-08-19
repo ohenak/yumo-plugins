@@ -206,12 +206,14 @@ trigger; the three triggers in BR-9 are exhaustive. One consequence is stated ra
 
 **BR-11 — Three budgets, and exceeding any of them escalates rather than retries (AC-2.4).** More
 than `advisory.attemptBudget` attempts on one wave; more than `advisory.seamBudgetMinutes` of working
-time on a single invocation, measured excluding time spent running the gate command (NFR-4) — an **invocation** being one A6 episode on one wave, opening when that wave's gate first
-returns non-zero and step 3b admits an attempt, closing at step 9's terminal disposition, and so
-spanning up to `advisory.attemptBudget` dispatch/repair/re-gate cycles. The exclusion covers the
-run time of **every** gate-command invocation inside that window, first pass and each re-gate
-alike; a slow suite therefore cannot starve the attempt budget, and a slow diagnosis is what the
-budget catches (E-25, AT-02-7); and more
+time on a single invocation, an **invocation** being one A6 dispatch measured dispatch→verdict,
+exactly as REQ AC-2.4 defines it and as the shipped tier already measures — **not** cumulative
+across the wave, so the seam budget is re-armed for each of the up to `advisory.attemptBudget`
+dispatch/repair/re-gate cycles the wave may run. NFR-4's gate-command carve-out is inherited and
+structural, not a new subtraction A6 performs: the gate command runs between dispatches, never
+inside a dispatch→verdict window, so there is no gate-command run time within the measured window
+to exclude, first pass or re-gate. A slow suite therefore cannot exhaust the seam budget, and a
+slow diagnosis is what the budget catches (E-25, AT-02-7); and more
 than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave budget — escalated waves leave it untouched (AT-02-6's two cases). An attempt is one repair-and-re-gate cycle.
 
 **BR-12 — An E-6 resolution does not leave the repair uncommitted (AC-4.6).** When A6 resolves a wave
