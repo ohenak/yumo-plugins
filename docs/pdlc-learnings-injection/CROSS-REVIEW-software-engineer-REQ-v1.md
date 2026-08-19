@@ -40,4 +40,18 @@
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision**
+
+Four High findings. The document's shape, altitude and fail-open treatment are sound; what needs to change is a small, bounded set of factual corrections about HEAD:
+
+1. **F-01** — restate C-1 and AC-1.1/AC-1.2 over `(phase, slot)` pairs rather than "six documents", covering Phase R's absent creator, Phase D's conditionality, and per-round optimizer recurrence.
+2. **F-02** — record the shipped corpus enumerator (`consolidate-learnings.js:1339-1352`) and the `_listFiles` limitation in §1.2, and state that corpus membership is that same enumeration rather than a new one.
+3. **F-03** — scope C-5/AC-2.5 to the channel where "no model call" is true, and add the `unreadable`-listing state to C-7.
+4. **F-04** — split AC-5.1 so a malformed configuration keeps the disabled behaviour but emits a catalogued, report-visible signal, per DC-01.
+
+The six Medium findings are worth taking in the same pass — F-07, F-09 and F-10 in particular change what a test engineer can actually assert — but they are not what gates this round.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 6, "low": 0}
