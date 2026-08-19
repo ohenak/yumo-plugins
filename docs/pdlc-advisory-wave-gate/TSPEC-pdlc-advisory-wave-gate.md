@@ -230,7 +230,7 @@ capture:   git rev-parse HEAD                        → head
            git add -A --                              (stages tracked + untracked; ignores .gitignore)
            git write-tree                             → tree
            git commit-tree {tree} -p {head} -m "…"    → snap
-           git update-ref refs/pdlc/a6-snapshot {snap}
+           git update-ref refs/pdlc/a6-snapshot-{waveNum} {snap}
            git reset --mixed {head}                   (index back as it was; worktree untouched)
 
 restore:   git read-tree --reset -u {tree}            (index + worktree ← snapshot)
@@ -262,10 +262,16 @@ Four decisions inside that:
 - **One snapshot per wave, not per attempt.** BR-9 pins the restore target as "the wave's
   post-dispatch, pre-commit tree" — the state before A6 *first* acted. Every red re-gate on that
   wave restores to the same tree, so attempt 2 starts where attempt 1 started (§3.2 step 6).
-- **A durable ref, so a failed restore is recoverable.** `refs/pdlc/a6-snapshot` is not a branch,
-  is never pushed, and is overwritten per wave. E-28's halt names it, which is the difference
-  between "A6 left a tree it could neither repair nor restore" and "A6 left a tree, and here is the
-  object name that has the original in it".
+- **A durable ref per wave, so a failed restore is recoverable.** `refs/pdlc/a6-snapshot-{waveNum}`
+  is not a branch and is never pushed. The ref is **wave-scoped, not run-scoped** (PM F-03):
+  `captureTreeSnapshot` already takes `waveNum` (§3.5), and a single fixed name would let a later
+  wave's capture overwrite the record of an earlier wave's pre-repair tree — including a wave whose
+  repair was gate-verified, retained and committed, which is the one tree an operator is most
+  likely to want to inspect or undo. A run that resolves wave 1 and then escalates over budget on
+  wave 2 therefore ends holding both refs, each naming the tree its own wave started from. E-28's
+  halt names the ref for the halting wave, which is the difference between "A6 left a tree it could
+  neither repair nor restore" and "A6 left a tree, and here is the object name that has the original
+  in it". The refs are dangling commit objects; nothing in this feature deletes them (§6 OQ-2).
 
 **Failure is fail-closed, and failing still writes the record.** Any capture or restore git
 call returning `ok !== true` is thrown. On the **restore** side the throw comes out of
@@ -435,14 +441,20 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    (E-26). Only `outcome === "resolved"` increments `waveBudget.resolved`, so two escalated waves
    leave the budget untouched (E-27, AT-02-6).
    Because that escape is read inside `runAdvisorySeam`, the budget check resolves *after* step 4's
-   capture: an over-budget wave still captures a snapshot and still rewrites `refs/pdlc/a6-snapshot`,
-   then escalates without dispatching. This is deliberate and costs one `write-tree`/`commit-tree`
-   pair; the alternative — hoisting the pure `waveBudget` read above the capture — was rejected so
-   that the record and escalation writes stay on the shipped `terminate` path rather than being
-   re-implemented at the call site, as the capture-failure path below is forced to do. Two oracles
-   read this explicitly: AT-02-6 asserts a snapshot ref **is** written on a budget-escalated wave,
-   and §5.2's one-snapshot-per-wave call count is once *per wave entered*, no-dispatch waves included
-   (TE F-24).
+   capture: an over-budget wave still captures a snapshot and still writes its wave-scoped snapshot
+   ref, then escalates without dispatching. This is deliberate and costs one
+   `write-tree`/`commit-tree` pair; the alternative — hoisting the pure `waveBudget` read above the
+   capture — was rejected so that the record and escalation writes stay on the shipped `terminate`
+   path rather than being re-implemented at the call site, as the capture-failure path below is
+   forced to do. The ordering is load-bearing, so it carries its own oracle rather than an appeal
+   to existing ones: §5.2 adds a **wave entered over budget** case asserting, on one run, that the
+   wave escalates with `reason: "budget-exhausted"`, that no `_agent` call occurs, and that the
+   snapshot was still taken (`commit-tree === 1` and an `update-ref` on
+   `refs/pdlc/a6-snapshot-{waveNum}` observed on the `_git` double). Round 3's claim that AT-02-6
+   and §5.2's one-snapshot-per-wave count already covered this was wrong in both halves and is
+   withdrawn: AT-02-6 (§5.6, FSPEC §3.2) scopes only the budget arithmetic — two escalated waves
+   leave `waveBudget.resolved` at `0` — and says nothing about snapshots, and §5.2's snapshot count
+   runs on a *dispatching* wave, so no no-dispatch wave appears in it (TE F-24, PM F-02).
 4. **Snapshot.** `captureTreeSnapshot` (§3.5) runs **here, at the call site, before
    `runAdvisorySeam` is entered** — once per wave, never per attempt (§2.5). It cannot live in
    `gatherEvidence`: that is called inside the driver's attempt loop (`orchestrate-dev.js:3393`)
@@ -696,6 +708,8 @@ Both run the plumbing of §2.5 through the injected `_git(argv)` transport, whos
 `.git/index.lock` for a second or two after the dispatch returned — the shipped reason
 `commitPaths` retries the same two verbs.
 
+- `captureTreeSnapshot` writes its ref as `refs/pdlc/a6-snapshot-{waveNum}` — the `waveNum` it
+  already takes is what makes the record per-wave rather than per-run (§2.5, PM F-03).
 - `captureTreeSnapshot` returns `null` on any `ok !== true`, and it is called by `runWaveGateSeam`
   at §3.2 step 4 — outside `runAdvisorySeam`, exactly once per wave. The caller does not simply
   decline to dispatch, and it cannot use the `__preDispatch` escape (that is a `gatherEvidence`
@@ -863,7 +877,7 @@ defaults. `.claude/pdlc.config.example.json` — the tracked arrangement `pdlc/e
 | Escalation log entry | `docs/_queue/ESCALATIONS.md` | The tier's `renderEscalationEntry`, root-cause class in the decision sentence | Every `escalated` disposition |
 | Report notice | run report `notices` | The tier's `ADVISORY ESCALATION: seam A6 …`; and, separately, a failed escalation-log write | Every escalation (E-30, AT-06-6) |
 | Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}`, at the literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
-| Snapshot ref | `refs/pdlc/a6-snapshot` | A dangling commit | Every A6 invocation that reached the snapshot step |
+| Snapshot ref | `refs/pdlc/a6-snapshot-{waveNum}` | A dangling commit | Every A6 invocation that reached the snapshot step; one ref per wave, never overwritten by a later wave (§2.5, PM F-03) |
 
 Two consequences worth stating rather than discovering:
 
@@ -1219,7 +1233,7 @@ after, which is what makes it a test of the fix rather than a description of it.
 | # | Question | Blocking? | Current disposition |
 |---|---|---|---|
 | OQ-1 | Should `waveBudgetPerRun: 0` be rejected at parse time rather than accepted as a configured value that escalates every wave pre-dispatch? | no | Accepted as configured, per E-33; the behaviour is coherent but undocumented upstream. See the FSPEC erratum on E-33. |
-| OQ-2 | Should a run that halts with an applied-and-retained repair leave `refs/pdlc/a6-snapshot` in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. |
+| OQ-2 | Should a run that halts with an applied-and-retained repair leave its snapshot ref in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. Round 4 makes the name wave-scoped (`refs/pdlc/a6-snapshot-{waveNum}`, §2.5) so that this promise survives a multi-wave run: under the earlier single fixed name, a later wave's capture — including a no-dispatch over-budget one — rewrote the ref and destroyed the record of an earlier, resolved wave's pre-repair tree (PM F-03). |
 | OQ-3 | Should `plan-ordering-defect` recurrence feed back into Phase P's PLAN lint, so a repeatedly-promoted dependency becomes a PLAN-time error? | no | Out of scope; recorded because `ESCALATIONS.md` is the durable corpus that would make it possible (AC-6.4, REQ O-2). |
 | OQ-4 | Should E-6 promotions be visible to the *queue* driver, so a halted feature's re-run starts from the corrected ordering? | no | No. Promotions are per-run state by §4.3, and a re-run re-derives batches from the PLAN, which the erratum protocol — not A6 — is responsible for correcting. |
 | OQ-5 | The staged-index deviation: capture is `git add -A` + `git reset --mixed`, so a wave that staged something before A6 ran gets its content restored but not its *staging*. | no | Accepted. The wave contract is `Do NOT git commit`, so the index equals HEAD on entry and the reset is exact in the ordinary case; in the extraordinary one the loss is staging, never content, which sits inside FSPEC BR-9's content-level oracle. Recorded here because §2.5 asserts it as recorded (PM F-07). |
