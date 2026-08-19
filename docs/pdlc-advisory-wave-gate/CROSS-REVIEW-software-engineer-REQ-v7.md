@@ -73,3 +73,8 @@ while leaving every reference to them in place. No new decision is required to r
 restore the five reverted sites (`REQ:11` Upstream path, `:99` M-WG-6 row, §1's 2026-08-11 incident
 paragraph, `:212`/`:214` budget default, §9's O-7) to their v6-approved wording, then re-anchor.
 F-05–F-08 are recorded, non-gating, and F-06/F-07 can ride along in the same edit.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 4, "low": 0}
