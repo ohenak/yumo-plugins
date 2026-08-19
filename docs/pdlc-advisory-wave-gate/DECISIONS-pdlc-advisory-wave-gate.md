@@ -169,3 +169,70 @@ cannot express that; the shipped validator must not change, because A1–A5's ke
 that a first-class per-seam `enabled` map becomes the better surface.
 
 ## Consequences
+
+### What follows from DEC-A6-01
+
+- **Two new git verbs enter this workflow**: `write-tree` and `commit-tree`, neither of which
+  `orchestrate-dev.js` uses today. Every test double for `_git` that A6 touches has to answer them,
+  which is why TSPEC §5.2's fixtures assert on the observed argv sequence rather than on outcomes
+  alone.
+- **Fail-closed in both directions.** Any capture or restore call returning `ok !== true` throws. On
+  the restore side the throw surfaces through `seamOps.revert()`, which `runAdvisorySeam`'s
+  `doRevert` tags `__isRevertFailure` and whose terminal catch rethrows rather than mapping to an
+  escalation — shipped behaviour, relied on rather than re-invented.
+- **Capture failure escalates, then halts** — in that order — writing its record through
+  `appendAdvisoryEntry` and `appendEscalationEntry` directly, because the driver is never entered.
+  The `__preDispatch` escape is unavailable on this path: it is a return value of
+  `seamOps.gatherEvidence()`, and `gatherEvidence` is called *inside* the driver's `while (true)`
+  attempt loop, which a `consumesAttempt: true` gate re-enters — capture there would re-capture on
+  attempt 2 and break the one-snapshot-per-wave invariant.
+- **A wave that staged something anyway loses its staging, never its content.** The `reset --mixed`
+  is exact only because the wave contract keeps the index equal to HEAD. This is an accepted
+  deviation, inside BR-9's content-level oracle (TSPEC §6 OQ-5).
+- **The ignored-path boundary is inherited, not set here.** If the OQ-7 erratum returns holding
+  ignored generated outputs inside AC-5.1, this decision's mechanism grows an arm; the *stash*
+  rejection is unaffected either way.
+
+### What follows from DEC-A6-02
+
+- A resolved wave with a promotion produces **three** commit kinds on the branch: per-task commits,
+  the promotion commit, and (when a post-wave command ran with pathspecs configured) the build-output
+  commit. An operator reading `git log` sees the promotion as its own entry with its own message —
+  the intended legibility, and the reason the message literal is fixed in TSPEC §3.6 rather than
+  left to Phase I.
+- The later task's dispatch is *also* told through the prompt: `waveImplementPrompt` gains an
+  optional third argument, a `Map<taskId, {paths, symbol}>`. Absent a row the prompt is
+  byte-identical to today's, which is what keeps every existing prompt fixture green.
+- **Cross-run asymmetry, accepted.** The map lives in Phase I scope, so the prompt clause reaches a
+  later task in the same run only; the *commit* survives across runs, so a later run's agent finds
+  the promotion in the tree regardless. The clause is a shortcut, not the mechanism (TSPEC §6 OQ-6).
+
+### What follows from DEC-A6-03
+
+- The promise A6 makes an operator is **run-scoped**: the pre-repair tree of a halting wave is
+  recoverable *until the next run of that feature*. What an overwrite costs is inspectability of a
+  pre-repair tree, never content — a retained repair is gate-verified and committed in its own wave
+  commit.
+- The documented operator remedy, until DEC-A6-03 is revisited: copy the ref before re-running a
+  halted feature.
+- Refs accumulate — one dangling commit object per wave per run — and nothing in this feature deletes
+  them (TSPEC §6 OQ-2).
+
+### What follows from DEC-A6-04
+
+- `.claude/pdlc.config.example.json` gains the key, and `pdlc/engine`'s `ci-arrangement` expectations
+  move with it; the tracked example arrangement is read by an engine test, so this is a two-channel
+  edit, not a one-file one.
+- `waveBudgetPerRun: 0` and `advisory.enabled: false` are **observably different** and must stay so:
+  the former reports a sixth advisory row reading zero, the latter carries no `advisory` key at all.
+  Any future "simplification" that collapses them breaks AT-01-4 and AT-01-6 together.
+
+### What follows for the whole feature
+
+- None of the four decisions changes behaviour for a repo that configures nothing:
+  `ADVISORY_DEFAULTS.enabled` stays `false`, so the default-configured run is byte-identical to
+  today's. This is what keeps all four ratings at "easy" reversibility.
+- Three transcribed set-equality surfaces move together when A6 lands — `ADVISORY_SEAMS`,
+  `ENVELOPE_DEFAULTS` and `ADVISORY_DEFAULTS` — each with a literal counterpart in the test suite.
+  That is the failure class A6 itself exists to survive, and the PLAN should sequence those edits as
+  one task, not three.
