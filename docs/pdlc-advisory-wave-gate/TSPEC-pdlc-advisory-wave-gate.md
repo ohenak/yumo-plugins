@@ -276,6 +276,31 @@ prerequisites when both are absent. Consequences, stated rather than discovered:
   the whole notice surface and must not filter for A6 authorship — A6 authors none, by construction,
   and this is why.
 
+
+Two questions the reviewers asked of this hoist, answered here rather than in Phase I:
+
+- **The hoist is unconditional, and that is deliberate (PM F-05).** The implementation-config
+  read and the `scriptGate` computation move above `if (!waveMode)` with **no** `advisory.enabled`
+  guard, so a run with the tier switched off emits exactly the same prerequisite notices as a run
+  with it on. The notices describe *prerequisites* — no valid file-ownership manifest, no
+  script-owned test gate — not the seam; A6 authors none of them (that is §2.6's whole point).
+  NFR-2 pins the created-file set and the phase outcomes, not report prose, so this satisfies its
+  letter; AC-1.4's spirit is served because the sentence an operator reads is true whether or not
+  the tier exists. §5.2's disabled-tier bullet is extended to pin this answer rather than leave it
+  unasserted: under `advisory.enabled: false` the prerequisite notice surface is **identical** to
+  the enabled-but-never-fired run, and the `advisory` report key is still absent.
+
+- **Exactly one inapplicability statement, because only the emit site is shared (TE F-08).** The
+  hoist moves the *computation* of `implConfig` and `scriptGate`; it does **not** move either
+  `emit` call. The legacy branch keeps one widened notice naming whichever prerequisites are
+  absent — one statement, listing one or two causes — and the wave-mode branch keeps its
+  `if (!scriptGate)` emit, unreachable from the legacy branch because the branches are mutually
+  exclusive. A run with no manifest **and** no `testCommand` therefore emits one statement naming
+  both, never two. AT-01-5 counts statements over the whole notice surface, so this is the
+  load-bearing shape: the widened notice must be built as a single message with a list, never as
+  two `emit` calls in sequence. §5.5 gives it a test on the both-absent fixture, which is the only
+  configuration where the difference is observable.
+
 ## 3. Interfaces
 
 Every signature below is a module-scope export of `pdlc/workflows/orchestrate-dev.js` unless marked
