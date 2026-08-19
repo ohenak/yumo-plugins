@@ -842,11 +842,41 @@ whole module, so unrelated `fs` use elsewhere in `orchestrate-dev.js` does not r
 
 ### T.7 Coverage and CI
 
-The new code lands in `orchestrate-dev.js`, which is already inside the `c8` `include` set
-(`pdlc/workflows/package.json` `c8.include`) and subject to the per-file ≥85% branch floor that
-`test:coverage` stage 2 enforces. Every catalogue-closure test and every fail-open branch is
-therefore load-bearing for the existing gate; no CI configuration changes. The suite runs under the
-existing `pdlc/engine CI (ubuntu-latest)` required check.
+The new code lands in `orchestrate-dev.js`, which is already inside `c8`'s `include` set
+(`pdlc/workflows/package.json`), and `test:coverage` stage 2 re-reports the run with
+`--per-file --branches 85`. No CI configuration changes, and the suites run under the existing
+`pdlc/engine CI (ubuntu-latest)` required check.
+
+**But that gate does not detect this feature's uncovered branches, and the earlier draft claimed it
+did (TE F-09).** `--per-file` is per *file*, and `orchestrate-dev.js` is ~15k lines, so the floor is
+enforced against the whole module's aggregate. The package's own `//c8-per-file` note makes exactly
+this point about granularity in the other direction — it added stage 2 because a small module could
+hide under the aggregate. A new ~300-line region can sit substantially uncovered without moving the
+file's aggregate below 85%, so "every catalogue-closure test and fail-open branch is therefore
+load-bearing on an existing gate" was not true.
+
+What actually covers the new region is an **explicit per-branch AT inventory over the fail-open
+arms**, owned by this TSPEC rather than by a coverage percentage. Each arm below is named, and each
+names the AT that enters it — a PLAN task that leaves one unentered is visible by inspection, which
+a diluted file-level percentage never would have been:
+
+| Fail-open arm | Entered by |
+|---|---|
+| `!reply.ok` from `_git` ⇒ `RSN-UNLISTABLE` | AT-25 |
+| `_readFile` returns `null` ⇒ `RSN-UNREADABLE` | AT-26 |
+| `_readFile` throws ⇒ `RSN-UNREADABLE` | AT-26 (second case; P-8 makes both real) |
+| Empty enumeration ⇒ `RSN-EMPTY` | AT-24 |
+| `looksLikeLearningsDocument` false ⇒ `RSN-UNPARSEABLE` | AT-27 |
+| No BR-6 section present ⇒ `RSN-NO-MATERIAL` | AT-28 |
+| Count bound cuts ⇒ `RSN-COUNT` | AT-08, AT-13, and the `COUNT-BINDING` fixture (§T.4) |
+| Byte bound cuts ⇒ `RSN-BYTES` | AT-07, and the `BYTES-BINDING` fixture (§T.4) |
+| Self path ⇒ `RSN-SELF` | AT-04 |
+| Outer `try/catch` ⇒ `RSN-UNLISTABLE` (BR-12 last row) | A fault-injection case in `learningsCorpus.test.js` |
+| Section malformed ⇒ `NTC-MALFORMED`, injector not built | AT-32 |
+| Key wrong-typed ⇒ `NTC-KEYTYPE`, proceeds on defaults | AT-30 |
+
+Whether to additionally run a region-scoped `c8` invocation is left to PLAN as a cheap option; the
+inventory above is the obligation, and it does not depend on tooling that does not exist yet.
 
 ## Open Questions
 
