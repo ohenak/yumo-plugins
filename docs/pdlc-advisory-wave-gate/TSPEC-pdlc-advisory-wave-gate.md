@@ -570,7 +570,7 @@ async function runWaveGateSeam({
   feature, waveNum, waves, waveIndex, tasks, ownership, implConfig, scriptGate,
   gateResult,          // the FIRST pass's { ok:false, output } — the evidence, untruncated
   invocations,         // the per-wave sequence array (§2.4)
-  advisoryTierOn,      // the resolved boolean from `orchestrate-dev.js:13678` — NOT a fresh `.enabled` read
+  advisoryTierOn,      // the resolved boolean from the run-level `advisoryTierOn` assignment — NOT a fresh `.enabled` read
   advisoryConfig, rungState, waveBudget,   // waveBudget: { resolved: number }
   promotions,          // Map<taskId, {paths: string[], symbol: string}> — §3.6
   _agent, _git, _runCommand, _readFile, _appendFile, _log, _now, _sleep, _notice,
@@ -592,14 +592,18 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    also returns early on a disabled config; the *gate* is duplicated here deliberately, because
    AC-1.4's inertness claim covers the *snapshot* too, and the snapshot is A6's, not the driver's.
    What is duplicated is the tier **gate**, never the tier **read**. `runWaveGateSeam` receives the
-   already-resolved `advisoryTierOn` boolean (`orchestrate-dev.js:13678`) as a parameter and performs
+   already-resolved `advisoryTierOn` boolean (`const advisoryTierOn = advisoryConfigResult.config.enabled`
+   in `orchestrate-dev.js`) as a parameter and performs
    no `.enabled` access of its own. A literal `advisoryConfig.enabled === false` here — or any
    `.enabled` token at all, comments and strings included — would make PROP-DIS-06's count four and
    go red (§1.3's `.enabled` row): the oracle matches `/\.enabled\b/g` over the raw source text of
    `orchestrate-dev.js` and `orchestrate-queue.js` with only `parseAdvisoryConfig`'s body excised
-   (`advisoryDisabled.test.js:634`–`:658`), and today's exactly-three sites are `orchestrate-dev.js:3258`,
-   `:13678` and `orchestrate-queue.js:1318`. It would also contradict the shipped design intent stated
-   at `orchestrate-dev.js:13675`–`:13677` — "Read once, reused everywhere below … so the tier's own
+   (`advisoryDisabled.test.js:634`–`:658`), and today's exactly-three sites are `runAdvisorySeam`'s disabled-tier early return
+   (`if (!config || config.enabled === false)`), the run-level `const advisoryTierOn =
+   advisoryConfigResult.config.enabled`, and `orchestrate-queue.js`'s `finish` closure
+   (`advisoryConfig.config.enabled ? advisorySummaryRows(...) : undefined`). It would also contradict
+   the shipped design intent stated
+   in the comment sitting directly above that assignment — "Read once, reused everywhere below … so the tier's own
    master switch is inspected from source text exactly once here."
 3. **Wave budget.** `waveBudget.resolved >= advisoryConfig.waveBudgetPerRun` ⇒ escalate with no
    dispatch, via the shipped `{ __preDispatch: { outcome: "escalated", reason: "budget-exhausted" } }`
