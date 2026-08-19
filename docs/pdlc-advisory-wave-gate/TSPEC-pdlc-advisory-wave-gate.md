@@ -1052,13 +1052,23 @@ asserts the halt survives:
   running the gate sequence — a mutation, stated in the test's name (`conjunct (iii): a dropped
   re-gate must not yield a resolution`);
 - the rule it falsifies is a real one, stated in §3.2 step 6: a resolution requires the wave's
-  `invocations` ledger to have grown by the wave's own gate sequence since dispatch, not merely a
-  `resolved` outcome from the driver. Without that rule the fixture would assert a property no
+  `invocations` ledger to **end with** the wave's own gate sequence, appended by the `verifyGate`
+  call that produced the resolution — a suffix check, not a growth-since-dispatch equality, and not
+  merely a `resolved` outcome from the driver. The equality wording would deny resolution to a
+  legitimate two-attempt run (PM F-01 / TE F-21); the suffix check still refuses this fixture,
+  because a dropped re-gate appends nothing and the ledger's final tokens are a stale earlier pair
+  or nothing at all.
+  Without that rule the fixture would assert a property no
   specified design ever states, and would fail an implementation that is doing what this document
   told it to do (TE F-14) — which is why the rule was added to §3 rather than the assertion
   softened here;
 - the assertion is positive and threefold on one run: the terminal disposition is not
   `resolved`, the wave halts on AT-05-3's literal, and the run reports `0` waves resolved;
+- the fixture is **paired with a positive companion** (§5.2): a two-attempt run whose first
+  `verifyGate` is red (`consumesAttempt: true`) and whose second is green is asserted **resolved**,
+  with `invocations` reading `["post-wave", "test", "post-wave", "test"]` and `waveBudget.resolved`
+  incremented. Without the companion the mutation fixture passes against an implementation that
+  resolves nothing at all — the absence-only shape this section exists to refuse (PM F-01);
 - it is a mutation test in the strict sense — it fails if and only if the implementation lets an
   advisory verdict substitute for a gate result, which is BR-7's whole content.
 
