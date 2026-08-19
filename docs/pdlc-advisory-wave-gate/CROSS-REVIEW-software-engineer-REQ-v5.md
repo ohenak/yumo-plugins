@@ -45,6 +45,25 @@ different raisers). Landing verdicts:
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-06 | For F-23: is the intended product bound per-attempt (describe HEAD) or per-episode (change HEAD)? If per-episode, that is new behaviour in a REQ that otherwise only compresses shipped behaviour, and it needs a BL/M row plus an FSPEC obligation rather than an NFR sentence. |
+| Q-07 | For F-22: should the ledger-skip run (`orchestrate-dev.js:14267-14283`) be excluded from the population by name, so the exclusion is checkable rather than inferred from "executes a wave"? |
+
+## Positive Observations
+
+- The carve-out deletion in NFR-4 is correct and well-argued: HEAD performs no subtraction, and the "structural, the gate runs between invocations" phrasing (REQ:472-474) is the right way to say why none is needed. The false `attemptBudget`-starvation rationale is fully gone, not softened.
+- The §5 config row (REQ:214) and NFR-4 now say the same thing as each other; the previous round's table/NFR divergence is resolved.
+- BL-06 (REQ:562) was widened to measure the carrier exclusivity, so the F-19 claim is not merely asserted in prose — it acquires a pre-FSPEC measurement obligation. That is the right instinct even though F-22 currently leaves it without a population to measure over.
+- The mutual-exclusivity description at REQ:270-274 checks out exactly against HEAD's two arms (`:14041` vs the wave arm's `:14143`), including the non-obvious consequence that BL-04's carrier is unreachable in a both-absent run.
+
 ## Positive Observations
 
 ## Recommendation
+
+**Needs revision** — three High findings. All three sit inside text this round's edit wrote, and all three are cheap to fix: one conjunct removed from AC-1.5's population (F-22), one word changed from "invocation" to "attempt/dispatch" in NFR-4, §5 and AC-2.4 plus an honest worst-case sentence (F-23), and one antecedent renamed in AC-4.1's conjuncts (F-24). No finding requires re-opening a decision, and none touches an unedited section other than F-25's vocabulary sweep.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 1, "low": 0}
