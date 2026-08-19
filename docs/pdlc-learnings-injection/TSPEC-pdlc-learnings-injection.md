@@ -772,9 +772,31 @@ Recorded here in summary; DECISIONS owns the full form.
 | Corpus enumeration seam | `_git` with the pinned pathspec | `_listFiles` — non-recursive, basenames only, no gitignore knowledge; would be a *different* predicate wearing C-3's name |
 | Block placement in the prompt | appended after `opener` | inserted before `PACING_CONTRACT_CLAUSE` — reorders existing content relative to itself and forfeits the structural byte-identity of §A.2 property 3 |
 | Corpus caching | none of our own; rely on `rtReadFile`'s revalidating cache | a run-scoped memo — cheaper, but contradicts E-32 and would let AT-14 pass on a cache rather than on determinism |
-| `enabled` default | `true` **within a present section**, feature off while the section is absent | `parseAdvisoryConfig`'s absent-file-is-defaults reading — this feature adds material to authoring prompts, so it turns on only where an operator asked for it (BR-14) |
+| `enabled` default | **Not decided here — see OQ.2 and ERR-4.** TSPEC implements `present && config.enabled && !sectionMalformed` provisionally, because AC-5.1a's "or the configuration section absent" is the only *testable* statement in the pair | The alternative reading — REQ §4.1's bare `true` default with no second gate, which G-1's "no configuration change required" implies — is not rejected on engineering grounds; it is a live product question this TSPEC has no authority to settle |
 
 ### Still open, unresolved by design
+
+**OQ.2 — does the feature ship on, or off, in a repository with no `learningsInjection` section?**
+*Blocked on the REQ erratum ERR-4 raises; TSPEC cannot close it.* REQ carries two statements that
+cannot both hold. G-1 promises lessons reach every authoring dispatch "with **no configuration
+change required**", and AC-1.1 exercises the feature "with `learningsInjection.enabled` at its
+default", which REQ §4.1 declares to be `true` with no second gate — that trio ships the feature
+**on** in a bare repository. AC-5.1a states the disabled outcome for "`enabled` false, **or the
+configuration section absent**" — which ships it **off** in exactly that repository. This
+repository is that case: it holds no `.claude/pdlc.config.json` `learningsInjection` section, and
+9 corpus documents (P-5), so the two readings disagree about today's HEAD, not about a corner.
+
+TSPEC implements the `present` gate provisionally so that *something* is testable, and records the
+consequence honestly: **on the shipping default, AC-1.1's "then" does not hold in this
+repository.** If REQ resolves toward G-1, three things change and nothing else does — §I.2's gate
+drops `present` (an absent section reads as enabled-with-defaults), the divergence table's last
+row loses its "feature still off until the operator writes a section" clause, and §I.4's "a
+disabled run executes no new code at all" narrows to explicitly-`false` runs. The `present` field
+itself survives either resolution, because AC-5.1a's report-key distinction (absent, not
+present-and-empty) needs it regardless. No suite in §T.5 changes shape; the bare-repository case
+in §T.6 changes its expected value from "empty block" to "non-empty block", which is why this is
+better settled before Phase P than during implementation.
+
 
 F-Q-1 … F-Q-4 (FSPEC) and REQ O-1, O-3, O-5, O-6 are carried unchanged. Nothing in this TSPEC
 depends on their answers.
@@ -799,3 +821,14 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   call, not an open under `docs/` (§I.1, §A.3), so on the instrument BR-15 describes — file-open
   calls under `docs/` — the enumeration contributes **no** member. As written, AT-33's set equality
   cannot hold.
+- **ERR-4 (REQ G-1 / AC-1.1 versus AC-5.1a).** REQ decides the shipping default twice, in opposite
+  directions, and FSPEC Step 0(2) / BR-14 inherited one side without flagging the other. G-1 ("no
+  configuration change required") and AC-1.1 ("with `learningsInjection.enabled` at its default",
+  against REQ §4.1's declared default of `true`) together mean a repository with no
+  `learningsInjection` section **receives** injected material. AC-5.1a says a repository whose
+  "configuration section [is] absent" produces a byte-identical, injection-free dispatch. Both
+  cannot hold, and this repository at HEAD — no config section, 9 corpus documents (P-5) — is the
+  case they disagree about, so the contradiction is load-bearing rather than theoretical. The
+  choice is a product decision (does an operator opt in, or opt out?), not an engineering one, so
+  it is routed to REQ rather than absorbed here; §OQ.2 records what TSPEC does provisionally and
+  exactly what changes under either resolution.
