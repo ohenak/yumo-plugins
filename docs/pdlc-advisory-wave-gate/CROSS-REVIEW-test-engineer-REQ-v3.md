@@ -84,3 +84,6 @@ obligations complete, but neither gates approval on its own.
 
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 0}
