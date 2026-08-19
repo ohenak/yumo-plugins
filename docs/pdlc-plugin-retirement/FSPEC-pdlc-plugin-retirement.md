@@ -13,7 +13,7 @@ feature: pdlc-plugin-retirement
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.11 | 2026-08-18 |
+| pdlc | Draft | Claude | 0.12 | 2026-08-18 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -841,7 +841,7 @@ allow-list (§4.2 preamble), never an assumption of this FSPEC.
 | # | Assumption | Veto path |
 |---|---|---|
 | ASM-1 | The **rendered check** of `fixture-machine.yml` survives the sweep unchanged — it names no retired artifact at the base commit (verified by L-3's search over that file). Its comment header is edited in class 1 for the count word alone (BR-DOC-1a); no `name:` key, trigger or step changes | If a retired name lands in the file before the sweep, L-7's post-sweep set and BR-DOC-1's count word change |
-| ASM-2 | Re-homed assertions land in modules that already exist, so L-5's post-sweep count is 119 − 22 = 97 | If the TSPEC creates a new module for them, L-5 is corrected at re-measurement, not loosened |
+| ASM-2 | Re-homed assertions land in modules that already exist, so L-5's post-sweep count is 119 − 21 + 1 = 99 | If the TSPEC creates a new module for them, L-5 is corrected at re-measurement, not loosened |
 | ASM-3 | The consumer cleanup ships as an operator-invoked step in the plugin's script surface; its exit convention follows the retired sync tooling (BR-CLN-4) | Its form and home are the TSPEC's; the behaviour of §3.5 and §4.5 binds whatever form is chosen |
 | ASM-4 | The delegator skills invoke the engine's installed CLI entrypoint (`pdlc`, `pdlc/engine/bin/pdlc.mjs` at the base commit); the resolution mechanism is the TSPEC's | If the engine's invocation surface changes, BR-DEL-1…4 still bind |
 
@@ -867,7 +867,7 @@ edit was required to resolve it.
 | 4 | C-5's commit-class entry, AC-1.2's term-set rationale and baseline M-11h all still read the wave-gate `postWaveCommand` / `postWavePathspecs` pair as retired after TSPEC §6.1 erratum 5 established that the values survive (SE FSPEC v11 F-01) | **REQ v0.13**: C-5's entry and AC-1.2's rationale now state a prose-and-assertion edit, not a retirement — the reduced build step still emits M-9 into `pdlc/workflows/dist/` under O-3 and the configured command and pathspec keep naming live outputs; baseline M-11h corrected to match |
 | 5 | §A-1 and baseline M-11n read the sweep as **rewriting** `consolidate-learnings/SKILL.md`'s bundle reference to name a surviving execution path, which no post-sweep host can satisfy (TE FSPEC v11 F-02, SE FSPEC v11 F-03 — the upstream half of TSPEC §6.1 erratum 3) | **REQ v0.14**: the reference is **deleted, not rewritten**, and the same correction extends to the skill's delegation prose; baseline M-11n corrected. The capability question the correction exposed is answered by REQ O-8, **bound at v0.15** to successor `pdlc-consolidation-rehost` (`docs/_queue/QUEUE.md` Order 24) |
 | 6 | BR-CLN-3a and the E-16a row still stated REQ v0.15's superseded impossibility framing for C-9's rationale ("no post-sweep artifact can distinguish/detect the modification") and cited a stale "REQ AC-4.3 (v0.15)" pin after REQ restated the rationale (SE FSPEC v12 F-01) | **REQ v0.16**: C-9's rationale is restated as a scope decision — the cleanup judges presence, not provenance, not an impossibility. BR-CLN-3a and E-16a updated to match, and both citations moved from (v0.15) to (v0.16) |
-| 7 | L-5 pinned "Post-sweep expectation: 97" while TSPEC §4.4 and the shipped T13 gate (`pdlc/engine/__tests__/preflight-baseline.test.js`) already carried the corrected 99, and FSPEC:158 self-flagged the count as "not yet corrected here" instead of closing it (CODE_REVIEW-pdlc-plugin-retirement-v1.md finding 4) | No REQ edit needed: AC-1.3 cites this FSPEC by reference, not the literal itself, so it was already correct in REQ HEAD. Corrected here instead — L-5 now reads 99 (§4.2), and FSPEC:158's self-flag is resolved |
+| 7 | L-5 pinned "Post-sweep expectation: 97" while TSPEC §4.4 and the shipped T13 gate (`pdlc/engine/__tests__/preflight-baseline.test.js`) already carried the corrected 99, and FSPEC:158 self-flagged the count as "not yet corrected here" instead of closing it (CODE_REVIEW-pdlc-plugin-retirement-v1.md finding 4) | No REQ edit needed: AC-1.3 cites this FSPEC by reference, not the literal itself, so it was already correct in REQ HEAD. Corrected here instead — L-5 now reads 99 (§4.2), and FSPEC:158's self-flag is resolved. ASM-2's derivation was left pointing at the superseded 97 by this same edit and is corrected in this follow-up (§7.1) to 119 − 21 + 1 = 99, matching L-5 and TSPEC §4.4 (CODE_REVIEW-pdlc-plugin-retirement-v2.md finding N-1) |
 
 ### 7.3 Downstream errata — accepted
 
