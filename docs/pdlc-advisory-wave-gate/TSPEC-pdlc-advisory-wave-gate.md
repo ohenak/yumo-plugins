@@ -984,7 +984,7 @@ TSPEC-owned (§5.1), and without it no test in the feature's set would fail on a
 | Escalation log entry | `docs/_queue/ESCALATIONS.md` | The tier's `renderEscalationEntry`, root-cause class in the decision sentence | Every `escalated` disposition |
 | Report notice | run report `notices` | The tier's `ADVISORY ESCALATION: seam A6 …`; and, separately, a failed escalation-log write | Every escalation (E-30, AT-06-6) |
 | Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}`, at the literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
-| Snapshot ref | `refs/pdlc/a6-snapshot-{waveNum}` | A dangling commit | Every A6 invocation that reached the snapshot step; one ref per wave, never overwritten by a later wave (§2.5, PM F-03) |
+| Snapshot ref | `refs/pdlc/a6-snapshot-{waveNum}` | A dangling commit | Every A6 invocation that reached the snapshot step; one ref per wave, never overwritten by a later wave (§2.5, PM F-03), asserted on §5.2's two-red-wave run — a single-wave fixture cannot see it |
 
 Two consequences worth stating rather than discovering:
 
@@ -1174,6 +1174,24 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
   any fixture (PM F-02, TE F-24). Without it a later refactor could hoist the pure `waveBudget` read
   above the capture — the exact change §3.2 says was rejected — and nothing would go red.
 
+- **`waveBudgetPerRun: 0` has a behaviour arm, not only a parse arm (TE F-03).** AT-07-2b is
+  parse-level (`0` in, `0` back, absent from `invalidKeys`), AT-01-4 is the disabled tier and
+  AT-01-6 never reaches the budget gate, so until this fixture nothing exercised the affordance
+  §4.4 documents. One run, tier **enabled**, `waveBudgetPerRun: 0`, first wave's script gate red:
+  the disposition is `escalated` with `reason: "budget-exhausted"`, the `_agent` double records
+  **zero** calls, the snapshot was still taken (§3.2 step 3's capture-before-budget order, as in
+  the bullet above), and the report's advisory summary key is **present** with the sixth row's
+  counters at zero — the assertion that separates this arm from `advisory.enabled: false`, where
+  the key is absent entirely (AT-01-4). Without the present-and-zero conjunct a later
+  "simplification" collapsing `0` into `enabled: false` would pass the suite.
+- **Two A6 waves in one run write two refs (PM F-05's ref-naming decision, DEC-A6-03).** §4.5's
+  "one ref per wave, never overwritten by a later wave" is unobservable on a single-wave fixture:
+  a regression to one fixed name passes every assertion in this section. One run with two waves
+  whose gates both go red therefore asserts the set of `update-ref` targets observed on the `_git`
+  double is set-equal to `{refs/pdlc/a6-snapshot-1, refs/pdlc/a6-snapshot-2}` — two distinct
+  targets, each written once. A fixed-name regression writes one target twice and fails on both
+  conjuncts.
+
 - **The gate sequence is read from configuration, never hard-coded at length two.** A run configured
   with a `testCommand` and **no** `postWaveCommand` (§2.4's third row) asserts the ledger reads
   `["test", "test"]` on a one-attempt green run and that the wave resolves — the step-6 check
@@ -1239,7 +1257,7 @@ left to the floor:
 | Confidence | `high` authorises, `low` does not |
 | Snapshot | capture ok / capture fails, restore ok / restore fails |
 | Restoration triggers | refusal, budget exhaustion, red re-gate — and the post-gate halt that is none of them |
-| Tier and budget gates | disabled tier, `waveBudgetPerRun: 0`, budget exhausted, attempt budget exhausted |
+| Tier and budget gates | disabled tier, `waveBudgetPerRun: 0` (the behaviour arm, §5.2), budget exhausted, attempt budget exhausted |
 | Verdict parsing | well-formed, malformed, citation at 23 chars, citation at 24 chars |
 | Owned-path matching | exact row, directory row with trailing slash, directory row without |
 
