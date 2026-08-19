@@ -151,8 +151,8 @@ note). Mechanical check: every row in a table should have exactly `columns + 1` 
 `appendAdvisoryEntry({feature, disposition, _appendFile, _now})` with `verdict: null`, and credits
 the renderer's null-verdict fallbacks for Confidence, Envelope and Diagnosis (`TSPEC:262`). Those
 fallbacks exist and are exactly as described. `Model` has no fallback:
-`renderAdvisoryEntry` computes `modelValue = fallback ? \`${model} (fallback)\` : model` and
-interpolates it unguarded (`orchestrate-dev.js:2934`, `:2947`). On this path no model was resolved —
+`renderAdvisoryEntry` computes `modelValue` as the fallback-suffixed `model` or the bare `model`,
+and interpolates it unguarded (`orchestrate-dev.js:2934`, `:2947`). On this path no model was resolved —
 §2.5 says so itself, "no `_agent` call, no rung resolution, no driver entry at all" — so the
 disposition object has no `model`, and the operator's `ADVISORY-{feature}.md` gets
 `| Model | undefined |`.
@@ -169,6 +169,70 @@ assertions, which already transcribe the other cells.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §6 OQ-7's erratum on FSPEC BR-9 / AT-05-1 and REQ AC-5.1 still has not landed — REQ is v1.8 and FSPEC v1.3, unchanged since round 1. I have re-emitted the erratum lines this round. OQ-9's ruling that Phase T need not hold is right and I accept it; the question I want recorded is what PLAN does if the erratum is still open when Phase I reaches AT-05-1's task. Does the pending expected value become a skipped test, or a task that blocks its wave? |
+| Q-02 | §3.1 says `ADVISORY_SEAM_PHASES` gains `A6: {id: "I", outcome: "halted"}`. On the capture-failure path the phase outcome recorded in `ESCALATIONS.md` is therefore `halted`, which is true of the wave — but the escalation is written *before* the halt is thrown (§2.5's stated order). Is there any run shape where A6 escalates and the phase does not go on to halt, making the constant's fixed `halted` a false record? I could not construct one, and if the author cannot either, saying so in §3.1 closes the question permanently. |
+
 ## Positive Observations
 
+- **F-01 was fixed by finding a better reason than the one I gave.** I asked for the reason position
+  to be `null` because AC-3.4 forbids a ninth member. The document does that, and then explains
+  *why* `null` is a first-class value the shipped tier already handles — `reason: pre.reason ?? null`
+  at `:3406`, the bare-`escalated` render at `:2926`, `n/a` in the escalation entry at `:3065`. I
+  checked all three; they hold. The word `snapshot-unavailable` now lives in exactly the three
+  free-text slots the document names and nowhere else.
+- **The F-02 correction is the rarest kind: the document says it was wrong.** "The shipped
+  `__preDispatch` escape is **not** available on this path, and the earlier draft's claim that it
+  was is corrected here." Then it gives the mechanical reason — `gatherEvidence` sits inside the
+  attempt loop, `consumesAttempt: true` re-enters it, so capture there would re-capture over the
+  tree attempt 1 already changed. That reason is better than my finding: I only noticed the escape
+  was out of reach, not that putting capture in reach would break the invariant.
+- **§4.5's four literal halt-field values are transcribable, and the `diagnosis` sentence is
+  honest.** "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was
+  applied" — AC-6.3 asks for a diagnosis and the honest one here is that none could be obtained.
+  `repairPaths: []` rather than `undefined`, justified by halt-report shape consistency, is the kind
+  of detail that stops a Phase I author inventing an answer.
+- **§5.1 dropped the arithmetic instead of updating it.** "The earlier draft's parenthetical
+  arithmetic ('seven here, ten there') was itself the drift it was warning about." Replacing a
+  count with a set-equality rule against a named authoritative list is the correct fix, and it
+  generalises.
+- **§5.6's AT-07-1 oracle became a set-equality with a named literal.** `BR-1…BR-16` minus the
+  proposable set must equal the transcribed non-proposable set, so a rule that silently becomes
+  proposable reddens the test. That is the completeness discipline stated as an executable rule
+  rather than as an intention, and AT-06-1's field-set equality does the same for the record schema.
+- **§6 grew three rows that answer rather than defer.** OQ-9, OQ-10 and OQ-11 each carry a ruling —
+  including OQ-10 routing the trailing-slash trap to Phase H for promotion to the constraint corpus
+  with a Phase P lint named as the eventual enforcement point. That is the right home for it, and a
+  better answer than the one I asked for.
+- **§5.2's new one-snapshot-per-wave call-count assertion is the right proof for the right claim.**
+  `captureTreeSnapshot` called exactly once across a two-attempt run, asserted as a call count on
+  the `_git` double — because that invariant is precisely what forced the capture out of
+  `gatherEvidence`. The design decision and its test are the same statement.
+
 ## Recommendation
+
+**Needs revision** — one High finding (F-01).
+
+All three prior findings are resolved, two of them more thoroughly than I asked. The single blocker
+is a quantity in a rule that is otherwise a genuine improvement, and it is a small edit:
+
+1. **F-01** — restate §3.2 step 6's ledger condition so it holds for any attempt count (the last
+   `verifyGate` before the resolution appended the wave's gate sequence), reconcile §3.3's
+   `verifyGate` row and §5.5's fixture bullet to the same wording, and add the positive companion
+   case: a two-attempt run with a green second re-gate is reported **resolved**.
+
+Then, not gating but worth doing in the same pass:
+
+2. **F-02** — move the four appended clauses inside their table rows; three of them are the only
+   statement of an oracle premise.
+3. **F-03** — name the `Model` cell's literal value on the capture-failure path.
+
+One note for the erratum channel rather than for this document: the BR-9 `.gitignore` boundary
+(OQ-7) is still open upstream after two rounds. I have re-emitted it.
+
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
