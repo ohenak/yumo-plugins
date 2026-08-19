@@ -1019,13 +1019,38 @@ re-asserting the record schema would be a second, drifting copy of an oracle tha
   run restores at least once (TE F-25). The capture-failure fixture likewise transcribes the rendered
   record's `Model` cell as the literal `n/a` — not `undefined` — per §2.5's disposition object.
 
-- **A resolved wave that took two attempts.** The positive companion to §5.5's dropped-re-gate
-  mutation: a fixture whose first `verifyGate` returns `{passed: false, consumesAttempt: true}` and
-  whose second returns `{passed: true}` asserts the run reports the wave **resolved**, that
-  `waveBudget.resolved` incremented by one, and that `invocations` reads
-  `["post-wave", "test", "post-wave", "test"]` — the suffix check of §3.2 step 6 holding at an
-  attempt count above one. Without this case the mutation fixture passes against an implementation
-  that resolves nothing at all, which is the absence-only shape §5.5 works to avoid (PM F-01).
+- **A resolved wave that took two attempts, with the ledger counted from the first pass.** The
+  positive companion to §5.5's dropped-re-gate mutations: a fixture whose first `verifyGate` returns
+  `{passed: false, consumesAttempt: true}` and whose second returns `{passed: true}` asserts the run
+  reports the wave **resolved**, that `waveBudget.resolved` incremented by one, and that
+  `invocations` reads `["post-wave", "test", "post-wave", "test", "post-wave", "test"]` — **six**
+  tokens, not four. Three sequence runs happen on that run and the ledger records all three: the
+  wave's own first pass, which is red and is what causes A6 to be entered at all (§2.3), then A6's
+  attempt 1, then A6's attempt 2. Round 3 wrote the four-token literal here, which is §2.4's
+  *one-attempt* row — first pass plus one re-gate — and would have had Phase P transcribe a red test
+  against a correct implementation (TE F-27). The step-6 check is asserted on the same run over the
+  quantity it actually reads: the slice above the second `apply` is exactly `["post-wave", "test"]`,
+  and it is that slice, not the ledger's tail, that grants the resolution (§3.2 step 6). Without
+  this case the mutation fixtures pass against an implementation that resolves nothing at all, which
+  is the absence-only shape §5.5 works to avoid (PM F-01).
+
+- **A wave entered over budget still captures, and dispatches nothing.** One run, three positive
+  facts and one negative: `waveBudget.resolved` already at `waveBudgetPerRun` on entry ⇒ the
+  disposition is `escalated` with `reason: "budget-exhausted"`, an advisory record entry and an
+  escalation entry are written, the snapshot was still taken (`commit-tree === 1` and an
+  `update-ref` on `refs/pdlc/a6-snapshot-{waveNum}` observed on the `_git` double), and no `_agent`
+  call occurs. This is the oracle §3.2 step 3's capture-before-budget ordering was previously
+  claimed to already have and did not: AT-02-6 scopes budget arithmetic only, and the
+  one-snapshot-per-wave count above runs on a dispatching wave, so no no-dispatch wave appeared in
+  any fixture (PM F-02, TE F-24). Without it a later refactor could hoist the pure `waveBudget` read
+  above the capture — the exact change §3.2 says was rejected — and nothing would go red.
+
+- **The gate sequence is read from configuration, never hard-coded at length two.** A run configured
+  with a `testCommand` and **no** `postWaveCommand` (§2.4's third row) asserts the ledger reads
+  `["test", "test"]` on a one-attempt green run and that the wave resolves — the step-6 check
+  comparing a one-token sequence against a one-token slice. An implementation that hard-codes 2
+  passes every other fixture in this section and fails this one (TE Q-01).
+
 
 - **The disabled tier is byte-identical, and the notice surface is part of what that means.**
   `advisoryDisabled.test.js` gains Phase I cases asserting that under `advisory.enabled: false`
@@ -1111,41 +1136,45 @@ fails the suite rather than passing a containment check. Then, one by one:
 | `(h)` commit, push, tag | three tests, one per verb, driven through the `_git` double | no `commit`/`push`/`tag` argv reached the transport | the committing writer identities on that run equal the pre-A6 baseline (AT-04-3's oracle), and the refusal is recorded — The premise is asserted too, not assumed: the run's dispatch options object carries no key beyond the shipped seam's, so `_git` really is the only transport A6's agent can reach and the negative is falsifiable (TE F-17, §3.3, AT-07-5) |
 | `(i)` path outside E-5 ∪ E-6 | two tests: wholly outside; partly inside and partly outside (E-16) | no part of the proposal is present in the tree afterwards | `out-of-envelope` recorded, escalation written, and the run does **not** report the wave resolved |
 
-**AC-4.1's conjunct (iii) — the mutation fixture (REQ v1.8, erratum round 4, F-24).** Conjuncts
-(i) and (ii) are ordinary fixtures: applied repair + green re-gate ⇒ resolved; applied repair +
-red re-gate ⇒ halt, restore. Conjunct (iii) — *A6 applies a repair and **no** gate invocation
-follows ⇒ the wave halts* — is unreachable on an ordinary run, because the code always re-gates.
-It is asserted by a fixture that **mutates the shipped control flow to drop the re-gate** and then
-asserts the halt survives:
+**AC-4.1's conjunct (iii): two mutation fixtures (REQ v1.8, erratum round 4, F-24; TE F-28).**
+Conjuncts (i) and (ii) are ordinary fixtures: an applied repair + a green re-gate ⇒ resolved; an
+applied repair + a red re-gate ⇒ halt, restore. Conjunct (iii) — *A6 applies a repair and **no** gate
+invocation follows ⇒ the wave halts* — is unreachable on an ordinary run, because the shipped driver
+always re-gates. It is asserted by fixtures that **mutate the shipped control flow to drop a
+re-gate** and assert the halt survives. Two are written, because one drop shape does not pin the
+rule:
 
-- the fixture injects a `verifyGate` that records the call and returns `{passed: true}` without
-  running the gate sequence — a mutation, stated in the test's name (`conjunct (iii): a dropped
-  re-gate must not yield a resolution`);
-- the rule it falsifies is a real one, stated in §3.2 step 6: a resolution requires the wave's
-  `invocations` ledger to **end with** the wave's own gate sequence, appended by the `verifyGate`
-  call that produced the resolution — a suffix check, not a growth-since-dispatch equality, and not
-  merely a `resolved` outcome from the driver. The equality wording would deny resolution to a
-  legitimate two-attempt run (PM F-01 / TE F-21); the suffix check still refuses this fixture,
-  because a dropped re-gate appends nothing and the ledger's final tokens are a stale earlier pair
-  or nothing at all.
-  Without that rule the fixture would assert a property no
-  specified design ever states, and would fail an implementation that is doing what this document
-  told it to do (TE F-14) — which is why the rule was added to §3 rather than the assertion
-  softened here;
-- the assertion is positive and threefold on one run: the terminal disposition is not
+| Fixture | Mutation | What only the real rule refuses |
+|---|---|---|
+| `conjunct (iii): a dropped re-gate does not yield resolution` | `verifyGate` records its call and returns `{passed: true}` without running the gate sequence, on A6's **first** attempt | The slice above that attempt's `apply` anchor is empty. A suffix check would pass here, because the ledger's final tokens are the wave's own pre-A6 pass (§3.2 step 6) |
+| `conjunct (iii): a re-gate dropped on attempt 2 does not yield resolution` | Attempt 1 runs a genuine red sequence (driver reverts, `consumesAttempt: true`, `orchestrate-dev.js:3554-3568`); attempt 2's `verifyGate` returns `{passed: true}` without running anything | The ledger *has* grown since dispatch, by one whole clean sequence, and ends in one. Every unanchored quantity — suffix, non-empty growth, whole-multiple-of-the-sequence — passes. Only growth measured from attempt 2's `apply` is empty and refuses (TE F-28) |
+
+- the rule they falsify is the real one, stated in §3.2 step 6: resolution requires that the tokens
+  appended to the wave's `invocations` ledger **since the last `apply`** are exactly the wave's
+  configured gate sequence — not merely the `resolved` outcome the driver returns, not a suffix over
+  the whole ledger, and not a growth-since-dispatch multiple of `attempts`. Round 2's
+  growth-since-dispatch equality denied resolution to a legitimate two-attempt run (PM F-01 /
+  TE F-21); round 3's suffix check granted resolution to the first fixture above (PM F-01 / TE F-26);
+  a multiple of `attempts + 1` denies it to a run whose first reply was malformed, since `attempts`
+  is also consumed on paths that never gate (`orchestrate-dev.js:3428`, `:3459`). The anchored rule
+  is the one that refuses both fixtures and admits both legitimate runs;
+- without such a rule the fixtures would assert a property no specified design ever states, and
+  would fail an implementation for doing what the document told it to do (TE F-14) — which is why
+  the rule was added to §3 and the assertion is not softened here;
+- each fixture's assertion is positive and threefold on one run: the terminal disposition is not
   `resolved`, the wave halts on AT-05-3's literal, and the run reports `0` waves resolved;
-- the fixture is **paired with a positive companion** (§5.2): a two-attempt run whose first
+- both are paired with the **positive companions** in §5.2: the two-attempt run whose first
   `verifyGate` is red (`consumesAttempt: true`) and whose second is green is asserted **resolved**,
-  with `invocations` reading `["post-wave", "test", "post-wave", "test"]` and `waveBudget.resolved`
-  incremented. Without the companion the mutation fixture passes against an implementation that
-  resolves nothing at all — the absence-only shape this section exists to refuse (PM F-01);
-- it is a mutation test in the strict sense — it fails if and only if the implementation lets an
+  with `invocations` reading `["post-wave", "test", "post-wave", "test", "post-wave", "test"]` (six
+  tokens — first pass plus two attempts, TE F-27) and `waveBudget.resolved` incremented. Without the
+  companions the mutation fixtures pass against an implementation that resolves nothing at all — the
+  absence-only shape this section exists to refuse (PM F-01);
+- both are mutation tests in the strict sense — they fail if and only if the implementation lets an
   advisory verdict substitute for a gate result, which is BR-7's whole content.
 
-This fixture is named in the PLAN as its own task so it cannot be quietly folded into (i) and (ii)
-and lost; its absence from the first draft read as a drop rather than a judgement, and it is not
+Both fixtures are named in the PLAN as their own tasks so they cannot be quietly folded into (i) and
+(ii) and lost; their absence in the first draft read as a drop rather than a judgement, and it was
 a drop.
-
 **AC-4.2 / AC-4.3 negative-plus-positive pairs.** AC-4.2 ("A6 never commits") is asserted as
 writer-identity equality against the pre-A6 baseline **plus** the positive that the wave's own
 commits still happened past a green gate — an assertion that the tree was committed by the wave,
