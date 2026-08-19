@@ -355,7 +355,8 @@ contributing count equals `maxDocuments` only where the eligible set is at least
 **and** the total byte bound (BR-6) has not bound first; otherwise it is lower. On real
 corpora the total bound is the one that binds: measured at HEAD on 2026-08-19 over the
 89-document corpus BR-4 tabulates, injectable material averages 13,278 bytes per document
-(max 41,180, under strict title matching on BR-6's five names) and 87 of
+(max 41,180, matching BR-6's five names in the numeric-prefixed
+`## N. Title` form the corpus writes) and 87 of
 the 89 exceed `maxBytesPerDocument` alone, so under REQ §4.1's
 declared values — five documents at 6,000 bytes against a 20,000-byte total — at most three
 can contribute. Whether the count bound is load-bearing under those values is REQ
@@ -471,7 +472,7 @@ between "nothing was selected" and "nothing was recorded" must be visible in the
 
 BR-10's rule-input record is separate, run-level, and closed on its own terms; the two are not merged.
 
-### BR-9 — Non-selection reasons: two closed catalogues *(AC-3.2, AC-4.1)*
+### BR-9 — Non-selection reasons and notices: three closed catalogues *(AC-3.2, AC-4.1)*
 
 **Per-document catalogue.** Every corpus document that was known but did not contribute carries
 exactly one reason id from this closed set:
@@ -493,13 +494,19 @@ their own closed set:
 | `RSN-UNLISTABLE` | The corpus listing failed outright (BR-12) |
 | `RSN-EMPTY` | The listing succeeded and found nothing |
 
-Rules binding the two catalogues:
+**Notice catalogue.** BR-14's configuration notices carry ids from their own closed set:
+
+| Id | Meaning |
+|---|---|
+| `NTC-MALFORMED` | The section is present and not an object (BR-14) |
+| `NTC-KEYTYPE` | A declared key is wrong-typed and took its default (BR-14) |
+
+Rules binding the three catalogues:
 
 - Each catalogue is **closed**: a completeness test per catalogue asserts set equality over its
   members (DC-01, C-9). A new reason may not be emitted without being added to a catalogue and its
   test.
-- The catalogues are **disjoint in kind**: a corpus-level id is never used as a per-document reason
-  and vice versa.
+- The catalogues are **disjoint in kind**: no id is used in another catalogue's position.
 - Where a corpus-level outcome is recorded, BR-8's per-dispatch rows are **present and empty** for
   every authoring dispatch of the run.
 - Where documents are known, every one of them appears either as a BR-8 row or as a per-document
