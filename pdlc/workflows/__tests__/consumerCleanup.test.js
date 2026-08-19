@@ -291,39 +291,49 @@ describe("T30: cleanup-consumer-workflows.sh contract", () => {
   });
 
   describe("TT-4: property — the classifier is name-only and all-or-nothing", () => {
-    const SEED = resolveSeed(1337);
+    const BASE_SEED = resolveSeed(1337);
+    // Draw count deliberately > 1 (TE F-02): PROP-CLEAN-8 claims the invariant holds over
+    // *arbitrary* subsets of the nine expected names, not just one hand-picked draw per branch.
+    // Even indices feed the "subset alone" branch, odd indices the "subset + unexpected" branch,
+    // so the two branches never share a seed while still all deriving from the one literal
+    // (PDLC_PROP_SEED still overrides every draw via resolveSeed).
+    const DRAWS = 20;
 
-    it("a random subset of expected names alone removes exactly that subset, exit 0", () => {
-      const rng = seeded(SEED);
-      const target = makeFullTarget(workdir);
-      const subset = EXPECTED_ENTRIES.filter(() => rng.int(0, 1) === 1);
-      // Rebuild the target holding only the drawn subset.
-      rmSync(target, { recursive: true, force: true });
-      mkdirSync(target, { recursive: true });
-      for (const name of subset) {
-        if (name === ".pdlc-backups") mkdirSync(path.join(target, name), { recursive: true });
-        else writeFileSync(path.join(target, name), `${name} content\n`);
+    it("a random subset of expected names alone removes exactly that subset, exit 0 (iterated over 20 draws)", () => {
+      for (let i = 0; i < DRAWS; i++) {
+        const rng = seeded(BASE_SEED + i * 2);
+        const target = makeFullTarget(workdir);
+        const subset = EXPECTED_ENTRIES.filter(() => rng.int(0, 1) === 1);
+        // Rebuild the target holding only the drawn subset.
+        rmSync(target, { recursive: true, force: true });
+        mkdirSync(target, { recursive: true });
+        for (const name of subset) {
+          if (name === ".pdlc-backups") mkdirSync(path.join(target, name), { recursive: true });
+          else writeFileSync(path.join(target, name), `${name} content\n`);
+        }
+        const result = runScript([workdir], workdir);
+        expect(result.status).toBe(0);
+        expect(existsSync(target)).toBe(false);
       }
-      const result = runScript([workdir], workdir);
-      expect(result.status).toBe(0);
-      expect(existsSync(target)).toBe(false);
     });
 
-    it("a random subset of expected names plus one unexpected name removes nothing, exit 3", () => {
-      const rng = seeded(SEED + 1);
-      const target = makeFullTarget(workdir);
-      const subset = EXPECTED_ENTRIES.filter(() => rng.int(0, 1) === 1);
-      rmSync(target, { recursive: true, force: true });
-      mkdirSync(target, { recursive: true });
-      for (const name of subset) {
-        if (name === ".pdlc-backups") mkdirSync(path.join(target, name), { recursive: true });
-        else writeFileSync(path.join(target, name), `${name} content\n`);
+    it("a random subset of expected names plus one unexpected name removes nothing, exit 3 (iterated over 20 draws)", () => {
+      for (let i = 0; i < DRAWS; i++) {
+        const rng = seeded(BASE_SEED + i * 2 + 1);
+        const target = makeFullTarget(workdir);
+        const subset = EXPECTED_ENTRIES.filter(() => rng.int(0, 1) === 1);
+        rmSync(target, { recursive: true, force: true });
+        mkdirSync(target, { recursive: true });
+        for (const name of subset) {
+          if (name === ".pdlc-backups") mkdirSync(path.join(target, name), { recursive: true });
+          else writeFileSync(path.join(target, name), `${name} content\n`);
+        }
+        writeFileSync(path.join(target, "unexpected-name.txt"), "not classified\n");
+        const before = snapshot(target);
+        const result = runScript([workdir], workdir);
+        expect(result.status).toBe(3);
+        expect(snapshot(target)).toEqual(before);
       }
-      writeFileSync(path.join(target, "unexpected-name.txt"), "not classified\n");
-      const before = snapshot(target);
-      const result = runScript([workdir], workdir);
-      expect(result.status).toBe(3);
-      expect(snapshot(target)).toEqual(before);
     });
   });
 });

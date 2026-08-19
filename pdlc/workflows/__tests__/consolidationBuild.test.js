@@ -32,7 +32,6 @@
 import { execFileSync } from "child_process";
 import {
   cpSync,
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -41,14 +40,13 @@ import {
   writeFileSync,
 } from "fs";
 import { tmpdir } from "os";
-import { basename, dirname, join, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
 const REPO_ROOT = resolve(WORKFLOWS, "..", "..");
 const DIST = resolve(WORKFLOWS, "dist");
-const MANIFEST_PATH = resolve(DIST, "distribution-manifest.json");
 
 const readRepo = (relPath) => readFileSync(resolve(REPO_ROOT, relPath), "utf8");
 const readWorkflowSource = (file) => readFileSync(resolve(WORKFLOWS, file), "utf8");
@@ -362,110 +360,5 @@ describe("T08 — skill prompt (TSPEC §12.2, §12.3, FSPEC §8.3, §8.4)", () =
     expect(openItemsIndex).toBeGreaterThan(-1);
     const lineIndex = skill.indexOf(T08_FAILURE_MODE_ID_LINE, openItemsIndex);
     expect(lineIndex).toBeGreaterThan(openItemsIndex);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// T33 — CLAUDE.md ↔ manifest (TSPEC §12.2 — set-equality, §9.1 erratum 3)
-//
-// CLAUDE.md's "Workflow scripts and the runtime build" section no longer
-// spells out each `pdlc/workflows/dist/*.bundle.js` path individually — it
-// collapses them into the collective "the bundles" and names only the two
-// non-bundle artifacts verbatim: `pdlc-cli.mjs` and `distribution-manifest.json`.
-// The set-equal check now runs at that grain: the bare filenames the section
-// spells out must set-equal the manifest's non-bundle row basenames plus the
-// manifest's own filename, and the section must still say "the bundles" —
-// which is only true while the manifest actually has bundle rows. Never
-// containment — a surplus name is as much a drift signal as a missing one.
-// ---------------------------------------------------------------------------
-
-const RUNTIME_BUNDLE_TEST_PATH = "pdlc/workflows/__tests__/runtimeBundle.test.js";
-
-function claudeMdRuntimeBuildSection(claudeMd) {
-  const heading = "### Workflow scripts and the runtime build";
-  const start = claudeMd.indexOf(heading);
-  expect(start).toBeGreaterThan(-1);
-  const rest = claudeMd.slice(start + heading.length);
-  const nextHeadingOffset = rest.search(/\n### /);
-  return nextHeadingOffset === -1 ? rest : rest.slice(0, nextHeadingOffset);
-}
-
-function extractClaudeMdBareArtifactFilenames(section) {
-  // A bare `name.ext` inline code span — no `/` — is a per-file name spelled
-  // out verbatim, as opposed to `pdlc/workflows/dist/` (a directory, named
-  // in prose) or a shell/command span (contains spaces).
-  const matches = section.matchAll(/`([A-Za-z0-9_-]+\.[A-Za-z0-9]+)`/g);
-  return new Set([...matches].map((m) => m[1]));
-}
-
-function extractBundlesConstant(runtimeBundleTestSrc) {
-  const m = runtimeBundleTestSrc.match(/const BUNDLES\s*=\s*\[([^\]]*)\]/);
-  expect(m).toBeTruthy();
-  return new Set(
-    [...m[1].matchAll(/"([^"]+)"/g)].map((mm) => mm[1])
-  );
-}
-
-// Held under T19 (not `.skip`, deliberately — same SWEPT_SURFACE_MODULES rationale as the
-// TT-5 block above): this file is a member of `consumerCleanup.test.js`'s
-// `SWEPT_SURFACE_MODULES` (TSPEC §5.5), so a bare `.skip` for a permanent architectural
-// retirement would still register as an orphan under the skip-join oracle. T19 (DEC-02)
-// permanently deletes `distribution-manifest.json` as build output — it is not coming back —
-// so the two tests below now guard on the manifest's absence and pass vacuously; CLAUDE.md's
-// "Workflow scripts and the runtime build" prose is PLAN class-12 (T28) territory, out of
-// T19/T20's scope, so this block does not speculate about its post-T28 shape.
-describe("T33 — CLAUDE.md ↔ manifest (TSPEC §12.2, §9.1 erratum 3)", () => {
-  it("CLAUDE.md's workflow-build section names every non-bundle manifest artifact and the manifest file itself, verbatim", () => {
-    if (!existsSync(MANIFEST_PATH)) {
-      return;
-    }
-    const claudeMd = readRepo("CLAUDE.md");
-    const manifest = JSON.parse(readDist("distribution-manifest.json"));
-
-    const section = claudeMdRuntimeBuildSection(claudeMd);
-    const claudeNames = extractClaudeMdBareArtifactFilenames(section);
-
-    const nonBundleRowNames = new Set(
-      manifest.rows.filter((r) => !r.pluginPath.endsWith(".bundle.js")).map((r) => basename(r.pluginPath))
-    );
-    nonBundleRowNames.add(basename(MANIFEST_PATH));
-
-    expect([...claudeNames].sort()).toEqual([...nonBundleRowNames].sort());
-  });
-
-  it("CLAUDE.md's workflow-build section describes the manifest's remaining rows collectively as \"the bundles\"", () => {
-    if (!existsSync(MANIFEST_PATH)) {
-      return;
-    }
-    const claudeMd = readRepo("CLAUDE.md");
-    const manifest = JSON.parse(readDist("distribution-manifest.json"));
-    const section = claudeMdRuntimeBuildSection(claudeMd);
-
-    const bundleRowCount = manifest.rows.filter((r) => r.pluginPath.endsWith(".bundle.js")).length;
-    expect(bundleRowCount).toBeGreaterThan(0);
-    expect(section).toMatch(/\bthe bundles\b/);
-  });
-
-  // Held under T19 (not `.skip`, deliberately): this file is a member of consumerCleanup.test.js's
-  // `SWEPT_SURFACE_MODULES` (TSPEC §5.5), whose entire skip surface is required to route through
-  // `describeOrSkip`/`itOrSkip` — a task-sequencing hold is not a runner-capability skip, so a bare
-  // `.skip` here would register as an orphan under the skip-join oracle. Instead this test passes
-  // vacuously while `runtimeBundle.test.js` is absent (PLAN T15 deleted it) and resumes asserting
-  // its real content the moment T17/T19 restores a file at `RUNTIME_BUNDLE_TEST_PATH`.
-  it("the manifest's bundle rows are set-equal to runtimeBundle.test.js's BUNDLES constant", () => {
-    if (!existsSync(join(REPO_ROOT, RUNTIME_BUNDLE_TEST_PATH))) {
-      return;
-    }
-    const manifest = JSON.parse(readDist("distribution-manifest.json"));
-    const runtimeBundleTestSrc = readRepo(RUNTIME_BUNDLE_TEST_PATH);
-    const bundles = extractBundlesConstant(runtimeBundleTestSrc);
-
-    const manifestBundleFiles = new Set(
-      manifest.rows
-        .map((r) => r.pluginPath.split("/").pop())
-        .filter((name) => name.endsWith(".bundle.js"))
-    );
-
-    expect([...manifestBundleFiles].sort()).toEqual([...bundles].sort());
   });
 });
