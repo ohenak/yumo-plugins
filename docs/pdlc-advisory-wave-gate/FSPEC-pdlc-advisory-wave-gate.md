@@ -300,6 +300,66 @@ satisfied by telling the agent about it.
 
 ## 5. Edge Cases and Error Scenarios
 
+Each row states an input condition, the specified behaviour, and the rule it follows from. None of
+these is left to judgement at run time.
+
+### 5.1 Applicability and inertness
+
+| # | Condition | Specified behaviour |
+|---|---|---|
+| E-01 | `advisory.enabled` is false | A6 is provably inert: no advisory agent is dispatched, no model rung is resolved, and the run's created-file set is byte-identical to the pre-A6 baseline for the same run. The report carries **no** advisory summary key at all — the key is absent, not present-and-undefined and not a six-row all-zero table (NFR-2). Inertness is over run behaviour only: the shipped default tables — the envelope's new members, the new config key, and the fixtures that transcribe them — do change, and AC-1.4 does not claim otherwise. |
+| E-02 | No script-owned gate is configured (BL-04 absent) | A6 does not apply; the wave degrades to the legacy self-report gate exactly as today. |
+| E-03 | Phase I is not in wave mode — no valid ownership manifest (BL-03 absent) | A6 does not apply; the phase takes the legacy path exactly as today. |
+| E-04 | Both BL-03 and BL-04 are absent | Still **exactly one** inapplicability notice on the run's notice surface, naming every absent prerequisite. The observable is a cardinality on a named surface, not a mention: exactly one notice per run, not per wave, and none at all in a run where A6 applies. The shipped once-per-run notices are the carriers — the inapplicability statement is added to them, never emitted beside them — so the count stays one under an oracle that scans the whole surface filtering for A6-authored notices (AC-1.5). |
+| E-05 | The failing wave is the final V-wave carrying the PROPERTIES tests | A6 does not fire and the gate failure halts exactly as today (BR-1). |
+| E-06 | The run is on the legacy worktree path | A6 does not apply; wave mode is a precondition of the seam existing at all (REQ §4). |
+
+### 5.2 Verdict and classification
+
+| # | Condition | Specified behaviour |
+|---|---|---|
+| E-07 | The verdict is malformed | Escalation consuming one attempt, never a pass — the tier's existing rule, unchanged (AC-2.1). |
+| E-08 | The classification field is absent, or carries a value outside the four-member set | Read as `unclassified` rather than rejected; because `unclassified` authorises nothing, the wave escalates **without** consuming an attempt (BR-2). |
+| E-09 | The verdict is both malformed **and** unclassifiable, so E-07 and E-08 could both read | E-07 wins and one attempt is consumed. AC-2.1's rule is the more specific one; there is no case in which the answer is ambiguous. |
+| E-10 | The diagnosis cites no gate output | Malformed under E-07: escalation, one attempt consumed (BR-3). |
+| E-11 | The classification is `environmental` or `unclassified` and confidence is high | Still no action. Confidence does not promote a diagnosis-only class into an authorising one (BR-2). |
+| E-12 | The gate output is very long and the halt message truncates it | The criterion is satisfied against the output A6 receives, not the truncated tail shown to a human (BR-3). |
+| E-13 | The gate output distinguishes an import/collection error from a failing assertion | That is evidence *inside* the existing classes, never a fifth class, and it is best-effort: `testCommand` is arbitrary operator configuration, so an absent distinction is a defined state and not an error (REQ Q-5). |
+
+### 5.3 Envelope and refusal
+
+| # | Condition | Specified behaviour |
+|---|---|---|
+| E-14 | The proposal changes a test file or test configuration, and that file is inside the wave's own owned paths | Refused. The exclusion takes precedence over E-5 (BR-5). |
+| E-15 | The failing wave owns a self-modification guard path — `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` | Refused `out-of-envelope` (BR-5). In this repository that is the common case, and the 2026-08-09 motivating incident is among it. |
+| E-16 | The proposal is partly inside and partly outside the envelope | No part of it survives the seam. The wave escalates and the run does not report the wave resolved (AC-3.5). There is no partial application. |
+| E-17 | The proposal would change the PLAN, its manifest, or implementation configuration | Refused; each excluded operation is asserted by its own test (BR-6, AC-3.5). |
+| E-18 | The proposal would commit, push, or tag | Refused (BR-6, BR-8). |
+| E-19 | The outcome is diagnosis-only, so there is no proposal to refuse | An escalation with no refusal reason. The eight-member reason set is not extended (BR-15). |
+
+### 5.4 Re-gate, restoration, and budgets
+
+| # | Condition | Specified behaviour |
+|---|---|---|
+| E-20 | The re-gate's post-wave command fails | A red re-gate, not an immediate halt: the attempt is consumed, the whole tree is restored, and the invocation sequence for that pass is truncated at the failing command — an admitted form, not a defect (BR-7). |
+| E-21 | Only a test command is configured, with no post-wave command | The sequence is `[test, test]` for one attempt. A re-gate that skips a configured command is a defect; a sequence that never had the command is not (BR-7). |
+| E-22 | The re-gate is green, and a later post-gate check halts the wave anyway | Not a red re-gate and not a restoration trigger. The wave halts on that check, and the tree is whatever that path left (BR-10). |
+| E-23 | The run ends on the wave's own gate halt | It ends on the restored tree — the tree as it stood before A6 acted, first-pass build outputs included (BR-9, AC-5.2). |
+| E-24 | `advisory.attemptBudget` is exhausted on one wave | Escalate; the reason is the tier's `budget-exhausted` (BR-11, BR-15). |
+| E-25 | `advisory.seamBudgetMinutes` is exceeded on one invocation | Escalate `budget-exhausted`. The budget is measured excluding gate-command run time, without which a slow suite ends the invocation inside attempt 1 and `attemptBudget` never binds (NFR-4). |
+| E-26 | A6 already resolved `advisory.waveBudgetPerRun` waves this run, and a further wave goes red | Escalate with no dispatch at all (BR-11). |
+| E-27 | A6 attempted and escalated on two earlier waves, and a third wave goes red | The third wave still gets its attempt: only resolutions consume wave budget (BR-11). |
+| E-28 | Restoration itself fails | The wave halts. A6 must never leave a tree it can neither repair nor restore, and the mechanism and its failure handling are the TSPEC's (REQ O-1, carried in §7). |
+
+### 5.5 Record, escalation, and reporting
+
+| # | Condition | Specified behaviour |
+|---|---|---|
+| E-29 | The advisory record cannot be written | The action is refused rather than taken unrecorded — the tier's existing rule, unchanged (BR-13). |
+| E-30 | The escalation log cannot be written | The escalation still happens and the operator is still told; a failed log write never upgrades an escalation into a resolution, and never changes the halt. |
+| E-31 | A `plan-ordering-defect` recurs across runs | It is countable per feature from the durable escalation log without run logs (AC-6.4). **Honest limit:** because the per-feature advisory record is distilled into LEARNINGS and deleted at Phase PUB, A6's *resolution* counts do not survive the run — only escalations are durably countable. Making resolution counts durable is out of scope and bound in REQ O-2. |
+| E-32 | The tier is enabled but A6 never fires in a run | The advisory summary carries a sixth row reading zero, as it carries five today. Enabled-but-quiet is an all-zero summary, not an absent key (AC-1.1, NFR-2). |
+
 ## 6. Acceptance Tests
 
 ## 7. Open Questions
