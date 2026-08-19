@@ -38,8 +38,43 @@ respectively. The §8 relocation is genuinely verbatim: `diff` of the removed bl
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | AC-4.4 says a post-wave failure on the re-gate *"is a red re-gate, handled as one, not the immediate halt it would be on the wave's first pass."* On the first pass that failure throws before the gate is ever reached (`orchestrate-dev.js:14350-14356`), so a post-wave failure at re-gate time is necessarily A6's own doing — which reads right. What is the halt the run ends on after the revert: AC-5.2's *"same halt … same reason it emits today (M-WG-3)"* is the **test-gate** halt, and the tree at that point is back to a state where the post-wave command passed. Worth one clause confirming that, since it is the only place the two halt texts could diverge. |
+| Q-06 | AC-3.2's consequence — a wave owning `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/` or `.claude/workflows/` escalates `out-of-envelope` — is correct at HEAD and correctly scoped to the *shipped* defaults: the advisory gate builds its guard set with `effectiveGuardPaths(undefined)` (`orchestrate-dev.js:3500`), so an operator's own `merge.guardPaths` additions do **not** reach A6. Is that asymmetry intended (A6 guarded by the shipped four, Phase MERGE by the shipped four plus configured extras), or is it a fact the REQ should name so TSPEC does not quietly change it? |
+| Q-07 | AC-6.4 counts resolutions so that a Phase P problem is a choice rather than a side-effect (R-4). With AC-3.2 as written, in this repo almost every wave of this very feature owns `pdlc/workflows/` and therefore escalates without a repair. Does AC-6.4's countability distinguish "escalated, guard-path" from "escalated, no repair possible"? Otherwise the metric reads as a healthy pipeline in exactly the repo where A6 is structurally inert. |
+
 ## Positive Observations
 
+- Every round-1 High is answered at REQ altitude, in observable-outcome form, with the mechanism
+  pushed to TSPEC (O-8 for the E-6 commit, O-1 for the restoration) rather than smuggled into an AC.
+  AC-4.6 in particular states a fate rather than a design.
+- AC-2.4's rewrite is the strongest edit of the round. *"Only resolutions consume the wave budget"*
+  plus the two worked cases (two escalations leave the budget untouched; one resolution exhausts the
+  shipped default of `1`) turns a knob into a testable contract.
+- The §1 correction is the right instinct exercised against the document's own argument: the ledger
+  file does exist here, untracked, recording `{"feature":"pdlc-consolidation-agent","planHash":
+  "7d394135","lastGreenWave":12}` — a completed feature, no resume — so the stronger "no record has
+  ever survived" claim was withdrawn while the economics argument it supported was left standing on
+  the preconditions. Withdrawing a convenient claim on re-measurement is not common.
+- The §8 relocation is verbatim, not paraphrased, and the decision table that replaced it is
+  one row per question with the decision in it. The document shrank while gaining content.
+- AC-3.4's resolution of F-04 lands on the shipped surface rather than inventing one: the escalation
+  entry already renders an absent refusal reason as `n/a` (`orchestrate-dev.js:3065`), so
+  "an escalation without a refusal" needs no new machinery.
+- The guard-path consequence in AC-3.2 is named rather than discovered, including the admission that
+  the 2026-08-09 motivating incident would today be escalated, not repaired. Naming the case where
+  your own feature does not fire is the honest version of this section.
+
 ## Recommendation
+
+**Needs revision**
+
+One High (F-10) blocks: AC-4.4's re-gate now runs a build, and the revert contract it points at is
+written in a different unit than the paths that build touches. It is a one-clause fix — say whether
+restoration covers the artifacts the re-gate's post-wave command wrote — and it stays inside REQ
+altitude, since it is an observable of the halted tree, not a mechanism. F-11 and F-12 are
+corrections to text that is now load-bearing (AC-4.2's "sole writer", §9's drift reassurance); F-13
+and F-14 are recorded, not gating.
 
 ## Verdict
