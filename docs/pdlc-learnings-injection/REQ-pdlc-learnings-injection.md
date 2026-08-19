@@ -15,7 +15,9 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 3 findings addressed | Claude | 0.4 | 2026-08-19 |
+| pdlc | draft — round 3 findings addressed; erratum v0.5 | Claude | 0.5 | 2026-08-19 |
+
+**Erratum v0.5** — targeted edit absorbing FSPEC decisions; nothing else changed. C-3/AC-2.6: no separate `docs/discarded/` exclusion — depth, not a rule (BR-2). AC-2.1: the count is a cap, not an equality above the threshold (BR-5). AC-2.2: ordering is a pure function of (key value, path); directory-rename invariance withdrawn (BR-4). AC-3.2/AC-4.2: `RSN-TRUNCATED` replaced by `RSN-NO-MATERIAL`; three closed catalogues (BR-9). AC-5.1b split into AC-5.1b (present, not an object) and AC-5.1c (wrong-typed key, run stays enabled); misspelt-section example withdrawn (BR-14).
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
