@@ -42,3 +42,31 @@ All HEAD claims below were checked against the tree, not inferred.
 - AC-2.5 and AC-6.1 together specify determinism as a comparison of two compositions rather than by inspection, and AC-6.2 pins the disabled case to a recorded baseline — both are stated as tests that can fail, not as intentions.
 - The §1.2 "what exists at HEAD" section is a real premise list rather than framing, and it checked out: no authoring dispatch composed anywhere in `orchestrate-dev.js` references another feature's LEARNINGS (the only reads are the harvest phase and the Tier-2 approval anchor at `:8778`), and both corpus locations are pre-existing conventions this feature reads rather than invents.
 - Every threshold in §4.1 carries an owner and a named consuming AC, and O-1 obliges re-deriving all three from a live measurement before they are treated as settled — the defaults are declared as a starting point rather than smuggled in as facts.
+
+## Recommendation
+
+**Needs revision**
+
+Five High findings, and they are not all of one kind. F-06 through F-09 are implementability and
+oracle-falsifiability defects of the sort DC-09 says to route downstream rather than to hold a REQ
+open for, and they are filed as Medium/Low for exactly that reason. The five blockers are different:
+F-01, F-02 and F-03 contest **scope** — the set of dispatches this feature affects is stated as a
+closed six that HEAD does not have (no REQ creator dispatch; a conditional DECISIONS phase; optimizer
+and erratum dispatches also tagged `authoring`), and AC-3.4 quietly widens scope to what an author
+must produce, against G-5. F-04 is an internal contradiction between two enumerated contracts that
+cannot both be met. F-05 is a standing-constraint violation with direct bearing on how this very
+review loop terminates.
+
+Concretely, to clear the bar:
+
+1. Restate C-1's affected set over the dispatch taxonomy that exists (`dispatchKind` plus phase
+   membership), decide REQ's membership given Phase R has no creator, and say explicitly whether
+   optimizer and erratum dispatches are in or out (F-01, F-02).
+2. Resolve AC-3.4 in one direction — drop the positive conjunct, or define the emit grammar and
+   amend G-5 (F-03).
+3. Add the per-selected-document bounded flag to AC-3.1's enumeration and re-close AC-3.2's reason
+   set, so AC-2.3 and the report contract agree (F-04).
+4. Paste the DC-09 stopping rule into the document (F-05).
+
+None of the four requires implementation-grade detail, and none of them is the kind of finding whose
+fix begets the next round's finding.
