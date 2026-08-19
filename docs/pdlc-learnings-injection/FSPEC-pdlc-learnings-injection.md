@@ -287,10 +287,13 @@ Each surviving candidate resolves to exactly one of three outcomes, and no other
 | **unreadable** | The read itself fails, for any reason | Excluded, `RSN-UNREADABLE` |
 | **unparseable** | Read, but does not present a LEARNINGS document | Excluded, `RSN-UNPARSEABLE` |
 
-A document whose bytes stop mid-document is **unparseable**, with no separate reason id: no
-predicate over a document's own bytes separates truncation from a document that legitimately
-lacks later sections, which E-19 makes eligible rather than defective, so a `RSN-TRUNCATED`
-id would name a branch no fixture could construct. What the report must keep apart is kept
+Truncation is **not a separate outcome**. A document whose bytes stop mid-document resolves
+under the same shape judgement as any other candidate: eligible where what it does present
+still reads as a LEARNINGS document (E-19's case), `RSN-UNPARSEABLE` where it does not
+(E-04's case). No predicate over a document's own bytes separates truncation from a document
+that legitimately lacks later sections, so a `RSN-TRUNCATED` id would name a branch no
+fixture could construct; the v0.2 truncation edge is retired with it, and its number (E-05)
+is not reused. What the report must keep apart is kept
 apart: an unparseable document contributes nothing, while a document cut by BR-6's byte
 bound contributes and carries the *bounded* flag (AC-3.2).
 
@@ -643,7 +646,6 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-02 | Corpus listing fails outright | Empty block; corpus-level `RSN-UNLISTABLE`; run continues | AT-25 |
 | E-03 | One document unreadable, others fine | That one `RSN-UNREADABLE`; the rest selected normally | AT-26 |
 | E-04 | One document reads but is not a LEARNINGS document | `RSN-UNPARSEABLE`; the rest selected normally | AT-27 |
-| E-05 | One document's bytes stop mid-document | `RSN-UNPARSEABLE`; the rest are selected normally; it contributes nothing, unlike a bounded document | AT-28 |
 | E-06 | Corpus contains only `{f}`'s own LEARNINGS | Empty selection, `RSN-SELF` row, empty BR-8 rows — not `RSN-EMPTY`, since a document *was* known | AT-04 |
 | E-07 | Corpus contains only documents under `docs/discarded/` | Corpus-level `RSN-EMPTY`; discarded documents appear in no record | AT-15 |
 | E-08 | Every corpus document is unreadable | Empty block; every document carries `RSN-UNREADABLE`; no corpus-level id, since documents were known | AT-26 |
@@ -827,11 +829,10 @@ text into a disabled run is a test failure rather than a production discovery.
   corpus-level id — documents were known.
 - **AT-27** — *Given* a corpus file that reads but does not parse as a LEARNINGS document, *when*
   selection runs, *then* it carries `RSN-UNPARSEABLE` and the rest of the corpus is used normally.
-- **AT-28** — *Given* a corpus file whose bytes stop mid-document, and separately a
-  LEARNINGS document carrying none of BR-6's priority sections, *when* selection runs,
-  *then* the first carries `RSN-UNPARSEABLE`, the second carries `RSN-NO-MATERIAL` and
-  consumes no `maxDocuments` slot, the rest of the corpus is used normally, and neither is
-  recorded as a document bounded under BR-6.
+- **AT-28** — *Given* a LEARNINGS document carrying none of BR-6's priority sections, *when*
+  selection runs, *then* it carries `RSN-NO-MATERIAL`, consumes no `maxDocuments` slot, the
+  rest of the corpus is used normally, and it is not recorded as a document bounded under
+  BR-6.
 - **AT-29** — *Given* two scripted runs over the same fixture matrix differing **only** in
   the injected block — one enabled, one disabled — *when* both complete, *then* parsed
   verdicts, structural completeness scores, round-window counters, approval anchors and
