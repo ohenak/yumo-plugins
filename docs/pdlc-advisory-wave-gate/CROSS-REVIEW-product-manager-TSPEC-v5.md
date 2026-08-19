@@ -41,6 +41,73 @@ the mechanism to O-1 and so carries no conflicting claim.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | §5.2's two-attempt positive companion describes its fixture by the values `verifyGate` *returns* — the same phrasing §5.5 uses for a fixture that **injects** `verifyGate` — while its assertions (six ledger tokens, a non-empty slice above the second `apply`) are only satisfiable if the real `verifyGate` runs and appends. Read the way its neighbour reads, the positive companion is unsatisfiable | REQ AC-4.1 (iii); AC-4.6 |
+| F-02 | Low | Local | §2.5 and OQ-2 promise the wave-scoped ref preserves each wave's pre-repair record, but the scoping is per *wave number*, not per run: a later run's wave 1 overwrites `refs/pdlc/a6-snapshot-1` from the halted run an operator is still investigating. Nothing deletes the refs either, so the cost the section tallies is incomplete in both directions | REQ AC-5.1; §6 OQ-2 |
+
+### F-01 — the positive companion is described in the mutation fixtures' vocabulary (Medium, delta, local)
+
+§5.2 now reads (`TSPEC:1058-1062`): "a fixture whose first `verifyGate` returns
+`{passed: false, consumesAttempt: true}` and whose second returns `{passed: true}` asserts the run
+reports the wave **resolved** … and that `invocations` reads
+`["post-wave", "test", "post-wave", "test", "post-wave", "test"]` — **six** tokens".
+
+§5.5's mutation fixtures are described in the same vocabulary, one section later
+(`TSPEC:1176-1178`): "`verifyGate` records its call and returns `{passed: true}` **without running
+the gate sequence**". There the phrase means an injected double replacing the shipped op — that is
+the mutation, and it is the point.
+
+Compose the two readings. If Phase I transcribes §5.2's sentence the way §5.5's sentence must be
+transcribed — inject a `verifyGate` double returning red then green — nothing appends to
+`invocations`. The ledger stays at the pre-A6 pass's `["post-wave", "test"]`, the six-token literal
+is false, and the slice above the second `apply` is empty, so the wave the fixture asserts
+**resolved** is refused by the very rule the fixture exists to demonstrate. The positive companion
+becomes a red test against a correct implementation — the same failure class TE F-27 caught in the
+four-token literal last round, arriving this time through the fixture's construction rather than its
+expected value.
+
+The intended reading is recoverable: six tokens can only come from three real sequence runs driven
+by a `_runCommand` double that fails once and then passes, with the shipped `verifyGate` left in
+place. But the document does not say so, and it is the one bullet in §5.2 where the distinction is
+load-bearing — everywhere else in the section the doubles are named explicitly (`_git` double,
+`_agent` call count).
+
+This is Medium rather than High because the six-token literal and the "slice above the second
+`apply`" assertion together make the intended construction inferable, and because §5.5's paired-
+companion sentence points back at the same run; nothing here reopens F-01's substance, which is
+genuinely closed. It is worth fixing because the pairing is the only thing standing between §5.5's
+two mutation fixtures and the absence-only shape they were written to escape — if the companion is
+transcribed wrong and deleted as flaky, the mutations pass against an implementation that resolves
+nothing.
+
+**To resolve** — one clause in that bullet: state that the run keeps the shipped `verifyGate` and
+drives red-then-green through the injected `_runCommand`, and that the two attempts' outcomes are
+therefore observed rather than stipulated. Optionally mirror it in §5.5's table by saying what those
+two fixtures replace, since the contrast is what makes each fixture legible.
+
+### F-02 — the ref promise is scoped to a run, and the section does not say so (Low, delta, local)
+
+§2.5 (`TSPEC:295-303`) and OQ-2 (`TSPEC:1300`) now argue that a fixed ref name "destroyed the record
+of an earlier, resolved wave's pre-repair tree", and that wave-scoping preserves it. Both hold
+within a run. Neither holds across runs: `refs/pdlc/a6-snapshot-{waveNum}` is derived from the wave
+number alone, so a re-run of a halted feature — the ordinary next step after the halt OQ-2 is
+written about — reaches wave 1, captures, and overwrites the ref an operator was told to keep for
+recovery. The exact loss F-03 named is still reachable; only its trigger moved from "a later wave"
+to "the next run".
+
+The second half is the unbounded accumulation the same bullet half-acknowledges ("nothing in this
+feature deletes them"): one dangling commit per wave per run, on a ref namespace no other tool
+prunes. Individually trivial; worth a sentence where the cost is being tallied for the reader,
+because it is the operator, not the pipeline, who is left holding it.
+
+Low because content is never at risk — a resolved wave's repair is gate-verified and committed in
+the wave's own commit, so this is inspectability, exactly as I priced F-03 last round.
+
+**To resolve** — either state the scope honestly in OQ-2 ("the record survives a multi-wave run; a
+subsequent run's same-numbered wave overwrites it, and the refs are never pruned"), or, if a
+cheap run-scoped discriminator is already in hand at capture time, use it in the name.
+
 ## Questions
 
 ## Positive Observations
