@@ -43,6 +43,30 @@ All six blocking findings from v1 are discharged, and discharged by design chang
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §A.2's `learningsDispatchSet.test.js` set-equality over "the `docType`s that actually reach the injector" is the right oracle for the seventh-phase hazard — but on a scripted run, does it range over the `docType`s *observed at the injector call site* (which requires an instrument inside the closure) or over the report's `dispatches[i].docType` rows? Only the first reds when a new phase's dispatch reaches `dispatchAndVerify` and is *rejected* by `injectHere` — the second never sees it, which is the case the assertion exists for. |
+| Q-02 | §A.5 records `corpusDiverged` as "differs from the immediately preceding authoring dispatch". Is dispatch 1 `false` (no predecessor) or `null`? `DIVERGENT-CORPUS` asserts "true on exactly dispatches 3 and 5", which implies `false` — worth stating, since a `null` first row would fail a `.every(r => r.corpusDiverged === false)` style assertion. |
+| Q-03 | §T.3's capture writes one file per `{caseId}/{dispatchIndex}`. When the L3 matrix legitimately gains a case, the guard test's hand-transcribed digest literal gains a constant. Does the guard assert *set equality* over `{caseId}` keys (so a silently deleted case reds) or containment? Set equality is the only version that catches a baseline case being dropped to make a byte-identity failure go away. |
+
 ## Positive Observations
 
+- **Every High finding was answered by changing the design, not by adding a sentence.** §I.3's `excluded` field, §D.5's three pools, §A.5's last-write-wins table with a fixture that has determinate expected values, and §T.3's worktree split are all structural answers. The §T.3 answer in particular is the one I did not expect to be solvable cleanly — separating "the subject must be pre-feature" from "the harness may be branch code" is exactly the right cut, and I confirmed it is executable rather than plausible: builtins-only imports, `"type": "module"`, `main` as default export.
+- **§T.7's retraction is the best paragraph in the document.** It states the previous claim, states why it was false, and replaces a percentage with a twelve-row inventory that a PLAN reviewer can check by inspection. Retracting a coverage claim in the document's own voice is rarer than it should be.
+- **The AT-29 fix is a genuine falsifiability argument, not a stronger assertion.** Making contamination *possible* (prompt-echoing agent, gate grammar in the corpus) and then naming two mutations that red the test converts an identity that held vacuously into one that holds as evidence. F-03 is about one provenance sentence in the supporting prose, not about the mechanism.
+- **The grounded-premises table survives a second independent pass.** I re-checked the new and amended rows: P-2b's Phase CR call (`:14551-14556`), `roundDocType`'s `undefined`-vs-`null` distinction (`:7306`) and its forwarding (`:7342-7358`); the six `converge` doc types (`:13766`, `:13774`, `:13807`, `:13874`, `:13893`, `:13996`); `rtGit` at `runtime-adapter.js:1003` and the eviction loop at `:459-465`; `consolidationDoubles.js:23`'s re-export. All hold. The corpus re-measurement holds too: 9 documents, all bare ISO `Date Completed`.
+- **§OQ.2 / ERR-4 is the right shape for an inherited contradiction.** Implementing the testable half provisionally, stating in advance exactly which three things change under the other resolution, and observing that no suite in §T.5 changes shape, means the phase does not have to stall on a product question — and the honest note that "on the shipping default, AC-1.1's *then* does not hold in this repository" is the sentence that makes the erratum unignorable.
+- **`LEARNINGS_TARGET_DOCTYPES` being frozen *and* hand-transcribed in AT-02** is the DC-14 discipline applied without being asked twice.
+
 ## Recommendation
+
+**Needs revision** — two High findings, both narrow and both in sections this revision rewrote.
+
+The design is done. Nothing in §A, §I or §D needs to change for either finding: F-01 is a suite-assignment and layer label (move `AT-30`/`AT-32` to the L3 suite, or declare `learningsConfig.test.js` seam-driven and relabel it), and F-02 is one missing test case plus a corrected citation (the retry-iteration pair needs its own named case; AT-23 is not it). The four Medium findings are wording and instrument-scoping: three swapped AT ids and a stale "three-notice" count (F-04), a fixture-provenance sentence that needs re-sourcing the way ERR-5 taught (F-03), a porcelain instrument that needs a temp repo (F-05), and one erratum to route rather than absorb (F-06).
+
+I want to record that this is the strongest revision I have reviewed on this feature: six High findings discharged without a single one being argued away, and two of the fixes (§T.3, §T.7) are better than what I asked for.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 4, "low": 1}
