@@ -643,7 +643,7 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   behaviour "differs deliberately from `parseAdvisoryConfig`, which defaults an absent file to
   enabled-with-defaults". `parseAdvisoryConfig` does not: `ADVISORY_DEFAULTS.enabled` is `false`
   (`orchestrate-dev.js:1944-1949`) and `parseAdvisoryConfig(null)` returns exactly those defaults
-  (`:1975`). The divergence the bullet describes does not exist, and the reasoning it supports
+  (`:1971`). The divergence the bullet describes does not exist, and the reasoning it supports
   needs a different premise.
 - **ERR-2 (FSPEC §Edge Cases, run-shape edges).** The branch inventory has no row for the erratum
   **land-proof retry** dispatch (`orchestrate-dev.js:12915`), which carries
