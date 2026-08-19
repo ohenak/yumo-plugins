@@ -15,36 +15,37 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.5 | 2026-08-18 |
+| pdlc | draft | Claude | 1.6 | 2026-08-18 |
 
-*v1.5 changelog: round 2 addressed. Decided: a red re-gate restores the whole tree, not the repair's
-paths, since the re-run post-wave command writes outside them (SE F-10); M-WG-4 has two committing
-writers (SE F-11); the re-gate oracle is the ordered invocation sequence (TE F-01); the baseline's
-§1–§2 recipes no longer resolve, and BL-06 owns reissuing them (SE F-12). AC-1.5, AC-2.2, AC-3.1 and
-the baseline citations corrected (SE F-13, F-14; TE F-02, F-03).*
+*v1.6 changelog: round 3 addressed. Decided: AC-4.4's oracle is **sequence** equality over the
+shipped sequence concatenated once per gate pass (passes = 1 + attempts), each pass truncated at
+its first failing command, so a red-post-wave re-gate is admitted (SE F-15, TE F-02); a green
+re-gate carries the wave past the gate, and a later post-gate halt is no restore trigger (TE F-03); AC-1.5's carriers are the once-per-run notices both prerequisites already emit,
+the inapplicability added to them (TE F-01); BL-06 widened to every drifted §1–§2 recipe plus the
+BL-03 notice measurement (SE F-16, TE F-04); AC-4.2's post-wave clause made conditional (SE F-17).*
 
-*v1.4 changelog: cross-review round 1 addressed (software-engineer, test-engineer). The branch
-carried a stale parallel v1.0; this document — main's v1.3 — supersedes it, and the branch is rebased
-onto `origin/main` (SE F-01). Decided this round: the self-modification guard paths bind A6 unchanged
-(TE F-01, AC-3.2); a diagnosis-only outcome is an escalation without a refusal rather than a missing
-ninth reason (SE F-04, AC-3.4); a re-gate re-runs the wave's whole gate sequence in shipped order (SE
-F-03, TE F-07, AC-4.4); an E-6 repair's committed fate is stated (SE F-02, AC-4.6, O-8). BL-05, BL-06,
-AC-1.5, AC-2.2, AC-2.4, AC-3.1, AC-5.1 and D-AWG-03 corrected. The shipped-behaviour evidence for all
-of it is measured in `pdlc-wave-gate-baseline.md` v1.1 (M-WG-9…M-WG-12) rather than restated here.
-At 90 % of the size ceiling the resolved-question provenance of §8 was relocated verbatim to
-`docs/_decisions/DECISIONS-advisory-wave-gate-questions.md` and replaced by a one-row-per-question
-decision table; the document ends this round smaller than it started.*
+*v1.5 changelog: round 2 addressed. Decided: a red re-gate restores the whole tree, not the
+repair's paths (SE F-10); M-WG-4 names two committing writers (SE F-11); the re-gate oracle is an
+ordered invocation sequence (TE F-01); the baseline's §1–§2 recipes no longer resolve and BL-06
+owns reissuing them (SE F-12). AC-1.5, AC-2.2, AC-3.1 and the baseline corrected (SE F-13, F-14;
+TE F-02, F-03).*
 
-*v1.3 changelog: the three questions left open in v1.2 are decided (operator delegated
-adjudication, 2026-08-13). Q-1 — `advisory.waveBudgetPerRun` default is **1**, not the proposed 2.
-Q-2 — **no**; A6 does not fire on post-wave command failure, and the build-breaking defect class is
-named unreachable and routed to O-7. Q-4's disabled-tier half — routed to D-AWG-06; AC-1.4 and
-PROP-DIS-03 are untouched. No question in this REQ is open.*
+*v1.4 changelog: cross-review round 1 addressed. The branch's stale parallel v1.0 superseded by
+main's v1.3 after rebase (SE F-01). Decided: guard paths bind A6 unchanged (TE F-01, AC-3.2); a
+diagnosis-only outcome escalates without a ninth refusal reason (SE F-04, AC-3.4); the re-gate
+re-runs the wave's gate sequence in shipped order (SE F-03, TE F-07, AC-4.4); E-6 repair's
+committed fate stated (SE F-02, AC-4.6, O-8). Shipped-behaviour evidence measured into
+`pdlc-wave-gate-baseline.md` v1.1 (M-WG-9…M-WG-12) rather than restated here; §8's
+resolved-question provenance relocated to the decision document.*
 
-*v1.2 changelog: Q-3, Q-4's diagnosis half, and Q-5 answered; Q-1, Q-2, and Q-4's disabled-tier half
-left open for the operator; AC-1.2's "already attempted" rationale corrected to the single-run
-post-wave behaviour; M-WG-6's re-entry claim corrected against the shipped interim wave ledger;
-D-AWG-03's approval-skip ownership flagged as `pdlc-wave-resume`'s, `Binds` cell unchanged.*
+*v1.3 changelog: v1.2's three open questions decided by delegated operator adjudication,
+2026-08-13 — budget default `1` (Q-1); no A6 firing on a post-wave command failure, that defect
+class routed to O-7 (Q-2); Q-4's disabled-tier half routed to D-AWG-06, AC-1.4 and PROP-DIS-03
+untouched. No question stated in this REQ is open; per-question provenance lives in
+`docs/_decisions/DECISIONS-advisory-wave-gate-questions.md`.*
+
+*v1.2 changelog: Q-3, Q-4's diagnosis half and Q-5 answered; AC-1.2's "already attempted"
+rationale, M-WG-6's re-entry claim and D-AWG-03's approval-skip ownership corrected.*
 
 > **Scope in one line.** A sixth advisory seam — **A6**, at the Phase I implementation-wave gate —
 > so that a wave whose gate goes red gets one bounded, reversible, gate-verified remediation attempt
@@ -235,12 +236,17 @@ requirements altitude.
   AC-3.1's envelope members and C-2's new key change those tables and the fixtures transcribing them
   by design (BL-06). *(US-03.)*
 - **AC-1.5** — Given wave mode is not in effect (BL-03) or no script-owned gate is configured
-  (BL-04), Then A6 does not apply and the phase behaves exactly as today, with the inapplicability
-  named once in the run report rather than being silently indistinguishable from a quiet seam. The
-  observable is a cardinality on a named surface, not a mention: exactly one inapplicability notice
-  per run — not per wave — on the run's notice surface, naming **every** absent prerequisite (both,
-  in a run lacking manifest and script-owned gate alike), and none at all in a run where A6 applies. BL-04's case already emits such a notice once per run
-  when the script-owned gate degrades; BL-03's has no equivalent today and acquires one. *(US-02.)*
+  (BL-04), Then A6 does not apply, the phase behaves exactly as it does today, and the
+  inapplicability is named once in the run report rather than being silently indistinguishable from
+  a quiet seam. The observable is cardinality on a named surface, not mention: exactly one
+  inapplicability notice per run — not per wave — on the run's notice surface, naming **every**
+  absent prerequisite (both, in a run lacking manifest and script-owned gate alike), and none in a
+  run where A6 applies. Both prerequisites already emit a once-per-run notice on that surface:
+  BL-04's when the script-owned gate degrades, BL-03's when the phase takes
+  the no-manifest legacy path (BL-06 measures the latter into the baseline). Those shipped notices
+  are the carriers — the inapplicability is **added to** them, never emitted beside them — so the
+  count stays one and the oracle scans the whole surface rather than filtering for A6-authored
+  notices. *(US-02.)*
 
 ### REQ-AWG-02 — The A6 contract (P0)
 
@@ -339,28 +345,34 @@ requirements altitude.
 - **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
   not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
   command ran and post-wave pathspecs are configured, the build-output commit scoped to those
-  pathspecs. Both are reached only by a green gate — so a re-gate's regenerated artifacts already have
-  a writer, and only the paths a *later* task owns remain the gap AC-4.6 and O-8 close.
+  pathspecs. Both are reached only by a green gate. Where both writers are configured — as in this repo — a re-gate's regenerated artifacts already have a writer, and only the paths a *later*
+  task owns remain the gap AC-4.6 and O-8 close; otherwise those artifacts are uncommitted too and
+  fall to O-8 alike.
 - **AC-4.3** — Given any A6 invocation, Then it never edits a test file or test configuration
   (AC-3.2), never edits the PLAN or its ownership manifest, and never edits the implementation
   configuration (AC-3.3).
 - **AC-4.4** — Given a repair is applied, Then the wave's **whole gate sequence re-runs, in the order
   the wave ran it** — the configured post-wave command where one is configured, then the configured
   test command (M-WG-2, M-WG-3) — and reaches its own verdict. Re-running the test command alone is
-  not a re-gate: the shipped order builds before it gates, because a wave that edits sources leaves
-  generated artifacts a freshness assertion then reds, so a source-touching repair would re-red on
-  its own unbuilt outputs — the outcome in this repo, whose configured commands are exactly that
-  pair. A post-wave command that fails on the re-gate is a red re-gate, handled as one, not the
-  immediate halt it would be on the wave's first pass. A green re-gate lets the wave proceed to the
-  commit step it would have reached anyway; a red re-gate consumes one attempt and restores the
-  **whole working tree** (AC-5.1), never the repair's paths alone: the re-run post-wave command writes
-  generated outputs at paths A6 never proposed and no envelope rule ranges over, so a per-path restore
-  would leave a halted tree carrying artifacts built from a repair no longer there; the run then ends
-  on the wave's own gate halt, from that restored tree (AC-5.2). The oracle is an observation of the
-  run: the **ordered sequence** of configured gate-command invocations for the wave is set-equal to the
-  shipped sequence repeated once per attempt — `[post-wave, test, post-wave, test]`, or `[test, test]`
-  where only a test command is configured — so a resolution on one invocation, or a re-gate skipping a
-  configured command, is a defect and AC-4.1 is falsifiable.
+  not a re-gate: the shipped order builds before it gates, so a source-touching repair would re-red
+  on its own unbuilt outputs. A post-wave command failing on the re-gate is a red re-gate, not the
+  immediate halt it would be on the first pass; that pass reaches no test command, so it contributes
+  a truncated sequence — an admitted form, not a defect. A green re-gate lets the wave proceed
+  **past the gate**, into the same post-gate path it would have reached anyway; a later check on that path may still halt the wave, and such a halt is neither a
+  red re-gate nor a restore trigger (AC-5.1's triggers are exactly refusal, budget exhaustion and
+  red re-gate). A red re-gate consumes one attempt and restores the **whole working tree** (AC-5.1),
+  never the repair's paths alone: the re-run post-wave command writes generated outputs at paths A6
+  never proposed and no envelope rule ranges over, so a per-path restore would leave a halted tree
+  carrying artifacts built from a repair no longer present. The run then ends on the wave's own gate
+  halt from that restored tree (AC-5.2), which is the tree as it stood before A6 acted, first-pass
+  build outputs included. The oracle is an observation of the run: the **ordered sequence** of configured gate-command invocations for the wave equals, **as a
+  sequence**, the shipped sequence concatenated once per gate pass — passes = 1 + attempts,
+  the first pass not being an attempt (AC-2.4) — each pass truncated at its first failing command.
+  One attempt gives `[post-wave, test, post-wave, test]`; `[post-wave, test, post-wave]` where the
+  re-gate's post-wave command failed; `[test, test]` where only a test command is configured.
+  Set equality is not the unit: it collapses the duplicates and admits a resolution declared on one
+  invocation, the defect this criterion excludes. A re-gate skipping a configured command is a
+  defect too, and AC-4.1 is falsifiable.
 
 - **AC-4.5** — Given AC-4.1 through AC-4.4, Then each has a failing test proving the prohibition
   holds, and each such test asserts the corresponding positive outcome on the same path — the
@@ -385,8 +397,8 @@ requirements altitude.
 - **AC-5.2** — Given A6 does not resolve the wave, Then the pipeline's existing behaviour proceeds
   unchanged: the same halt, carrying the same reason it emits today (M-WG-3), and the same queue-row
   write to `halted` (M-WG-7). Escalation adds information; it never changes control flow. *(US-04.)*
-- **AC-5.3** — Given A6 resolves the wave, Then the run continues into the wave's normal commit step
-  and on to the next wave, and the resolution is visible in the report rather than leaving a
+- **AC-5.3** — Given A6 resolves the wave, Then the run continues along the wave's normal post-gate
+  path, its commit step and on to the next wave, and the resolution is visible in the report rather than leaving a
   successful run indistinguishable from one that never needed the seam. *(US-01, US-02.)*
 
 ### REQ-AWG-06 — Record, escalation and report (P1)
@@ -510,19 +522,18 @@ Every row must be checkable at gate time and must hold at HEAD before FSPEC auth
 | BL-03 | The feature under implementation carries a valid PLAN file-ownership manifest, so Phase I runs in wave mode | Phase P's own gate on the PLAN | Checked per run; absent it, AC-1.5 applies and A6 does not fire |
 | BL-04 | A configured implementation test command and an injected command transport, so the gate is script-owned rather than self-reported | `.claude/pdlc.config.json` + runtime seam (M-WG-3) | Checked per run; absent either, AC-1.5 applies |
 | BL-05 | `pdlc-consolidation-agent` has landed on the default branch | Its per-feature docs are at `docs/completed/pdlc-consolidation-agent/` on the default branch — the observable form, since queue row 2 was retired from the table on 2026-08-12 once merged and no longer states a status | Operator sequencing decision, 2026-08-09: this seam is taken up after that feature lands |
-| BL-06 | Every transcribed set-equality assertion this feature reds is identified — the seam catalogue, the envelope defaults and the advisory config key set alike, together with the surfaces compared against the catalogue — so each is changed deliberately rather than discovered by a red suite | M-WG-9's measured sites, re-verified at the then-current base | Must be enumerated before implementation planning |
+| BL-06 | Two enumerations complete: every transcribed set-equality assertion this feature reds — seam catalogue, envelope defaults, advisory config key set, and the surfaces compared against the catalogue — and every drifted positional recipe in the baseline's §1–§2, each reissued in grep- or symbol-anchored form together with the BL-03 no-manifest notice AC-1.5 rests on | M-WG-9's measured sites and the baseline's §1–§2 recipes, re-run against the current base | Set-equality enumeration before implementation planning; reissue and BL-03 measurement before FSPEC authoring |
 
-**BL-06 scope, corrected 2026-08-18.** The reds are not confined to the seam catalogue. `A6` reds the
-`ADVISORY_SEAMS` transcriptions and the surfaces compared against them; `E-5`/`E-6` red the
-`ENVELOPE_DEFAULTS` set-equality; C-2's `advisory.waveBudgetPerRun` reds the `ADVISORY_DEFAULTS`
-key-set comparison and the config fixtures transcribing it, two of which are disabled-tier fixtures
-(M-WG-9). That last point is not a contradiction with AC-1.4: inertness is over run behaviour, not
-over the shipped default tables. The baseline's §1–§2 were measured at `c8aa22a4`, and the earlier claim
-that symbol-anchored recipes survived was wrong: M-WG-2, M-WG-3 and M-WG-4 carry bare line ranges
-that no longer resolve, so BL-01's reader cannot reproduce the facts AC-4.2, AC-4.4 and AC-4.6 rest
-on — the facts re-verified true, the recipes did not. BL-06 also requires those three reissued in
-grep- or symbol-anchored form before FSPEC authoring. Also confirmed at the current base: D-AWG-06's `haltPhase: null` observation still holds
-— a wave-gate halt records no Phase I failure row, and `haltPhase` derives from that row.
+**BL-06 scope, corrected 2026-08-18.** The reds are not confined to the seam catalogue: `A6` reds the
+`ADVISORY_SEAMS` transcriptions and the surfaces compared against them, `E-5`/`E-6` red the
+`ENVELOPE_DEFAULTS` set-equality, and C-2's `advisory.waveBudgetPerRun` reds the `ADVISORY_DEFAULTS`
+key-set comparison and the config fixtures transcribing it, two of them disabled-tier fixtures
+(M-WG-9). That last point does not contradict AC-1.4: inertness is over run behaviour, not the
+shipped default tables. Nor is the recipe drift confined to the three rows AC-4.2, AC-4.4 and AC-4.6
+rest on — every positional line-range recipe in §1–§2, the M-WG-1…M-WG-8 rows and §1's V-wave
+trailer sentence alike, is drifted until re-run, so BL-01's reader cannot reproduce those facts
+today; the facts re-verified true, the recipes did not. Also confirmed at the current base: D-AWG-06's `haltPhase: null` observation still holds — a wave-gate halt records no Phase I
+failure row, and `haltPhase` derives from that row.
 
 ## 10. Deferrals
 
