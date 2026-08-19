@@ -44,3 +44,32 @@ load-bearing claim in the document is false at HEAD or contradicts another site 
 | F-08 | Medium | Process | **A tier-1 approval anchor survived a rebase that reverted the approved bytes.** v6's `APPROVAL-HASH`/`REVIEWED-COMMIT: 2e262298` records approval of a tree that is no longer reachable from HEAD, and nothing in the pipeline signalled that an approved erratum round had been undone. Any phase trusting the anchor is trusting bytes that no longer exist. Worth harvesting: an anchor-commit reachability check at phase entry makes this class detectable without a reviewer re-diffing by hand. | v6 anchors, this round's delta |
 
 DEFERRED: Q-06 from v6 (whether AC-4.1(iii)'s mutation fixture should target an injected gate seam rather than a source edit) stays open for TSPEC; no decision taken here.
+
+## Questions
+
+| ID | Question |
+|----|----------|
+| Q-07 | Is the restore best done as a `git checkout 2e262298 -- <REQ path>` of the five reverted sites, or by re-applying the round-3 edits by hand? The former reproduces the approved bytes exactly and lets the v6 approval hash be recomputed meaningfully; the latter risks a second partial landing. Not a REQ question — recording it for whoever performs the repair. |
+| Q-08 | Did the same rebase revert content in the sibling artifacts (FSPEC, TSPEC, PLAN, PROPERTIES, DECISIONS)? I verified only that TSPEC/PLAN/PROPERTIES still pin `waveBudgetPerRun: 1`, i.e. that they were *not* reverted at that site. A branch-wide check against the other phases' approval anchors is cheap and worth doing before the next phase trusts any of them. |
+
+## Positive Observations
+
+- Nothing that was authored forward in round 4 regressed. AC-1.5's population wording, the
+  per-attempt `seamBudgetMinutes` correction across §5/AC-2.4/NFR-4, AC-4.1's three conjuncts and
+  R-3's *run* vocabulary are byte-intact at HEAD; I re-diffed each against the v6 evidence.
+- The document's redundancy is what caught the loss. Because C-2, R-3, §9's Q-1 row and the v1.3
+  changelog each independently state the budget default, a silent revert at one site became a
+  visible contradiction rather than a quiet wrong constant — the same holds for O-7 and for the
+  M-WG-6 correction. That redundancy is worth keeping.
+- The four reverted sites are all restorable from a commit that still exists in the reflog, so the
+  repair is mechanical and carries no new decision — the freeze is not an obstacle here.
+
+## Recommendation
+
+**Needs revision**
+
+Four High findings, all of the same cause: the rebase dropped previously approved round-3 bytes
+while leaving every reference to them in place. No new decision is required to resolve any of them —
+restore the five reverted sites (`REQ:11` Upstream path, `:99` M-WG-6 row, §1's 2026-08-11 incident
+paragraph, `:212`/`:214` budget default, §9's O-7) to their v6-approved wording, then re-anchor.
+F-05–F-08 are recorded, non-gating, and F-06/F-07 can ride along in the same edit.
