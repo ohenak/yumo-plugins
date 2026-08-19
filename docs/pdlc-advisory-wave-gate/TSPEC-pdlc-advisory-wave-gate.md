@@ -941,9 +941,21 @@ re-asserting the record schema would be a second, drifting copy of an oracle tha
   further assertions come from this round: the record entry's Disposition cell reads a bare
   `escalated` with **no** refusal reason (PM F-01, and a companion assertion pins
   `ADVISORY_REFUSAL_REASONS` at its eight members on the same run), and `captureTreeSnapshot` is
-  called exactly **once** across a two-attempt run — the one-snapshot-per-wave invariant asserted
-  as a call count on the `_git` double, since that invariant is what forced the capture out of
-  `gatherEvidence` in the first place (TE F-13).
+  called exactly **once** across a two-attempt run — the one-snapshot-per-wave invariant, since that
+  invariant is what forced the capture out of `gatherEvidence` in the first place (TE F-13). The
+  counted quantity is a **capture-unique argv verb, not the transport**: `commit-tree === 1` over the
+  `_git` double's recorded argv. A raw call count on `_git` counts the wrong thing, because
+  `restoreTreeSnapshot` drives the same transport with `read-tree`/`clean`/`reset` and a two-attempt
+  run restores at least once (TE F-25). The capture-failure fixture likewise transcribes the rendered
+  record's `Model` cell as the literal `n/a` — not `undefined` — per §2.5's disposition object.
+
+- **A resolved wave that took two attempts.** The positive companion to §5.5's dropped-re-gate
+  mutation: a fixture whose first `verifyGate` returns `{passed: false, consumesAttempt: true}` and
+  whose second returns `{passed: true}` asserts the run reports the wave **resolved**, that
+  `waveBudget.resolved` incremented by one, and that `invocations` reads
+  `["post-wave", "test", "post-wave", "test"]` — the suffix check of §3.2 step 6 holding at an
+  attempt count above one. Without this case the mutation fixture passes against an implementation
+  that resolves nothing at all, which is the absence-only shape §5.5 works to avoid (PM F-01).
 
 - **The disabled tier is byte-identical, and the notice surface is part of what that means.**
   `advisoryDisabled.test.js` gains Phase I cases asserting that under `advisory.enabled: false`
