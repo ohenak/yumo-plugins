@@ -59,3 +59,7 @@ F-01 is the one worth folding into the next revision that touches this document:
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 3}
+
+APPROVAL-HASH: sha256:32ba7d949d59041db6d67de80c06c10d270c3e545c11473debe5694cfe851f6c
+APPROVAL-HASH-NORMALIZED: sha256:ed6d6c06cbe90159b979f728994337a18553c22a1fb2b7c401082f5d5ca4f713
+REVIEWED-COMMIT: 6565080a9efbd4a524d6d5bf1296b0b6ed6712c5
