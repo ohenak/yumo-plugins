@@ -10,6 +10,7 @@
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-19 | First authored against TSPEC v1.6 and DECISIONS (DEC-A6-01…DEC-A6-04). |
+| 1.1 | 2026-08-19 | Cross-review round 1 (PM, TE). Two bare row-count transcription surfaces folded into batch 1's A6-03 (PM F-01/F-02, TE F-01/F-02); `pathsCollide` dropped from A6-00's pre-flight probe as unexported (TE F-03); A6-18's tier gate restated as receiving the resolved `advisoryTierOn`, preserving PROP-DIS-06's exact count of three (PM F-03); AT-01-5 allocation corrected to AC-1.5's disjunction plus a zero-count discriminator (PM F-04, F-05); OQ-7 pending marker pinned to `test.todo` (TE F-04); engine-suite verification made explicit and re-homed off `ci-arrangement.test.js` (TE F-05, F-06); A6-07 given a real edge to A6-00 (TE F-07); coverage "cannot fail" claim withdrawn (TE F-08); example config documents the whole `advisory` section (PM F-06). |
 
 ---
 
@@ -303,7 +304,11 @@ containment check: an AT with no row has no home, and a row naming no AT is a de
       a loosened `toContain`: `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS`,
       `advisoryRecord.test.js`'s per-seam `test.each`, `advisoryDriver.test.js`'s
       `GATE_EXCLUSIVITY_REGISTRY`, `advisoryHarvest.test.js`, `consolidationProperties.test.js`,
-      `helpers/advisoryDoubles.js`'s `SEAMS`.
+      `helpers/advisoryDoubles.js`'s `SEAMS`, and the two bare row-count assertions
+      (`advisoryDisabled.test.js:622`, `advisoryQueueSeams.test.js:627`) now reading `6`.
+- [ ] AC-1.5's inapplicability notice is checked on all four arms — BL-03 absent alone, BL-04
+      absent alone, both absent (one statement, never two), and the **zero-count** run where A6
+      applies — so the notice is not satisfiable by a carrier that emits it unconditionally.
 - [ ] Every prohibition test `(f)`…`(i)` asserts its **paired positive** on the same run (AC-4.5); no
       prohibition rests on a negative assertion alone.
 - [ ] Both AC-4.1 conjunct (iii) mutation fixtures replace exactly one member of a **real**
@@ -313,7 +318,8 @@ containment check: an AT with no row has no home, and a row naming no AT is a de
       the pre-advisory baseline and no `advisory` key on the report (AT-01-4).
 - [ ] Steps 1–3, 5 and 7 of the wave loop, and the V-wave's own gate, are unchanged — their halt
       literals and queue rows compared to the pre-A6 values byte for byte (AT-01-2, AT-01-3, AT-05-3).
-- [ ] `cd pdlc/engine && npm test` green, covering A6-04's example-config expectation that the wave
+- [ ] `cd pdlc/engine && npm ci && npm test` green, covering A6-04's example-config expectation
+      in its own `advisory-config-example.test.js`, with `ci-arrangement.test.js` untouched that the wave
       gate never runs.
 - [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/workflows/dist/` is committed.
 - [ ] `cd pdlc/workflows && npm run test:coverage` passes both stages.
