@@ -92,3 +92,8 @@ DEFERRED: M-WG-6's "no phase-level skip" clause (F-01) — tighten to "no approv
 FINDING: Medium | inherited | local | §1 M-WG-6 row (`REQ:109`) | "carries no phase-level skip" is narrower than HEAD, which skips Phase I on a complete ledger (`orchestrate-dev.js:14272`-`:14286`); the correction paragraph below already qualifies it.
 FINDING: Medium | inherited | nonlocal | §6 AC-1.2 (`REQ:267`) | raw anchor `orchestrate-dev.js:12331-12343` points at DEC-ROUNDS-02 round-cap prose; the real post-wave-command site is `:14351`-`:14361`. Claim true, anchor stale.
 FINDING: Low | delta | local | v1.9 changelog (`REQ:24`) | says "§9's O-7"; O-7 is in §8 Obligations (`REQ:558`), §9 is Prerequisites.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
