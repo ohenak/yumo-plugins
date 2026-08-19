@@ -1069,6 +1069,16 @@ Two of the rows are ones the first draft missed for a reason worth naming: `advi
 A6's record and log obligations belong beside them rather than in the new file. A new suite
 re-asserting the record schema would be a second, drifting copy of an oracle that already holds.
 
+**Two files outside the workflows suite are also touched, and the set-equality rule above does not
+range over them.** That rule pairs this table with §1.3's transcribed-surface list, which is a
+`pdlc/workflows` inventory by construction; these two belong to the engine channel and to
+configuration, and are listed here so the PLAN's file-ownership manifest carries them:
+
+| File | Status | Carries |
+|---|---|---|
+| `.claude/pdlc.config.example.json` | edited | The `advisory` section gains `waveBudgetPerRun`, the operator-facing shape of §4.4's key |
+| `pdlc/engine/__tests__/ci-arrangement.test.js` | edited | A **new** expectation over that example key (§4.4): the `advisory` section parses, carries `waveBudgetPerRun`, non-negative integer. Nothing in the file asserts on `advisory` today, so this row is authored, not adjusted |
+
 
 ### 5.2 What is asserted mechanically
 
