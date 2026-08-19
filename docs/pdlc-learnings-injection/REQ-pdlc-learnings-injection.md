@@ -324,12 +324,14 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   **not** selected, each with a **per-document** reason drawn from a closed set of catalogued ids
   (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
   bound), `RSN-SELF` (the authored feature's own, C-2), `RSN-UNREADABLE`, `RSN-UNPARSEABLE` (read,
-  not a LEARNINGS document), `RSN-TRUNCATED` (the source document is itself truncated
-  mid-document, C-7 — not a document this feature bounded under AC-2.3). States in which no document
-  is
+  not a LEARNINGS document), `RSN-NO-MATERIAL` (eligible, but carrying none of the material the
+  bounding rule takes). Truncation is **not** a member *(erratum v0.5)*: a truncated file either
+  still presents as a LEARNINGS document, in which case it is eligible, or it does not and carries
+  `RSN-UNPARSEABLE`. States in which no document is
   known are **corpus-level outcomes**, recorded once per run, drawn from their own closed set:
-  `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). Two set-equality tests, one
-  per catalogue; with such an outcome recorded, AC-3.1's rows are present and empty.
+  `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). The configuration notices of
+  AC-5.1b and AC-5.1c form a **third** closed catalogue. Three set-equality tests, one
+  per catalogue; with a corpus-level outcome recorded, AC-3.1's rows are present and empty.
 - **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce the
   selection by hand against the same repository state, *then* every input the rule used — the
   ordering key value per document and the §4.1 thresholds in force — is in the report's run-level
