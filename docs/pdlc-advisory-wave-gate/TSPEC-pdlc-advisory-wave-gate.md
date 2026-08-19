@@ -980,8 +980,8 @@ fails the suite rather than passing a containment check. Then, one by one:
 | Prohibition | Proposals exercised, each its own test | Negative asserted | Paired positive asserted on the same run |
 |---|---|---|---|
 | `(f)` PLAN, task table, ownership manifest | three tests: a PLAN prose edit, a PLAN **task-table** edit, a file-ownership-manifest edit | the path is not present in the tree afterwards | disposition `escalated`, the shipped refusal reason (`out-of-envelope`) recorded on the advisory record entry, escalation entry written, wave halts on AT-05-3's literal |
-| `(g)` implementation configuration | three tests: `testCommand`, `postWaveCommand`, `postWavePathspecs` | `.claude/pdlc.config.json` byte-identical after the run | same four positives; additionally the gate command actually re-run is the pre-proposal one, asserted from the `invocations` array |
-| `(h)` commit, push, tag | three tests, one per verb, driven through the `_git` double | no `commit`/`push`/`tag` argv reached the transport | the committing writer identities on that run equal the pre-A6 baseline (AT-04-3's oracle), and the refusal is recorded |
+| `(g)` implementation configuration | three tests: `testCommand`, `postWaveCommand`, `postWavePathspecs` | `.claude/pdlc.config.json` byte-identical after the run | same four positives; additionally the gate command actually re-run is the pre-proposal one, asserted from the `invocations` array |The fixture's repo **has** a `.claude/pdlc.config.json` on disk before the run: byte-identity over an absent file is satisfied by absence, which is not the property meant (TE Q-02) |
+| `(h)` commit, push, tag | three tests, one per verb, driven through the `_git` double | no `commit`/`push`/`tag` argv reached the transport | the committing writer identities on that run equal the pre-A6 baseline (AT-04-3's oracle), and the refusal is recorded |The premise is asserted too, not assumed: the run's dispatch options object carries no key beyond the shipped seam's, so `_git` really is the only transport A6's agent can reach and the negative is falsifiable (TE F-17, §3.3, AT-07-5) |
 | `(i)` path outside E-5 ∪ E-6 | two tests: wholly outside; partly inside and partly outside (E-16) | no part of the proposal is present in the tree afterwards | `out-of-envelope` recorded, escalation written, and the run does **not** report the wave resolved |
 
 **AC-4.1's conjunct (iii) — the mutation fixture (REQ v1.8, erratum round 4, F-24).** Conjuncts
@@ -991,12 +991,18 @@ follows ⇒ the wave halts* — is unreachable on an ordinary run, because the c
 It is asserted by a fixture that **mutates the shipped control flow to drop the re-gate** and then
 asserts the halt survives:
 
-- the fixture injects a `verifyGate` that records its call and returns without running the gate
-  sequence — the mutation, stated in the test's name (`conjunct (iii): a dropped re-gate must not
-  yield a resolution`);
-- the assertion is positive and threefold on that one run: the terminal disposition is not
+- the fixture injects a `verifyGate` that records the call and returns `{passed: true}` without
+  running the gate sequence — a mutation, stated in the test's name (`conjunct (iii): a dropped
+  re-gate must not yield a resolution`);
+- the rule it falsifies is a real one, stated in §3.2 step 6: a resolution requires the wave's
+  `invocations` ledger to have grown by the wave's own gate sequence since dispatch, not merely a
+  `resolved` outcome from the driver. Without that rule the fixture would assert a property no
+  specified design ever states, and would fail an implementation that is doing what this document
+  told it to do (TE F-14) — which is why the rule was added to §3 rather than the assertion
+  softened here;
+- the assertion is positive and threefold on one run: the terminal disposition is not
   `resolved`, the wave halts on AT-05-3's literal, and the run reports `0` waves resolved;
-- it is a mutation test in the strict sense — it fails if and only if an implementation lets an
+- it is a mutation test in the strict sense — it fails if and only if the implementation lets an
   advisory verdict substitute for a gate result, which is BR-7's whole content.
 
 This fixture is named in the PLAN as its own task so it cannot be quietly folded into (i) and (ii)
