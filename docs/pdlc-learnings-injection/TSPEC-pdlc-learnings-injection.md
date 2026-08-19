@@ -868,12 +868,20 @@ responses irrespective of the prompt it receives, no injected byte can reach any
 path, and the assertion holds identically over a correct implementation and a broken one. The fix
 is to make contamination *possible* in the fixture, so that its absence is a result:
 
-1. **The fixture corpus quotes gate grammar, because the real corpus does.** Six of the nine corpus
-   documents at HEAD contain literal `VERDICT:`, `ERRATUM:` or `REVISION-COMPLETE:` lines —
-   `LEARNINGS-pdlc-review-loop-hardening.md` alone carries seven. `buildLearningsCorpus` therefore
-   synthesises documents carrying `VERDICT: Needs revision`, `ERRATUM: REQ: …` and
-   `REVISION-COMPLETE: no` lines in their section bodies. This is not a contrived hostile fixture;
-   it is what the shipped corpus looks like, which is exactly why BR-11's isolation claim matters.
+1. **The fixture corpus quotes gate grammar, and the fixture is deliberately stronger than the real
+   corpus (TE F-03, re-sourced in the way ERR-5 taught).** Six of the nine corpus documents at HEAD
+   contain `VERDICT:`, `ERRATUM:` or `REVISION-COMPLETE:` **token occurrences** —
+   `LEARNINGS-pdlc-review-loop-hardening.md` alone carries seven — but every one of them is
+   **inline**, inside prose or a backticked table cell, and **zero** occur line-initial at HEAD
+   (measured over the corpus predicate's documents; a fixture author looking for a bare trailer
+   line in the shipped corpus will not find one). `buildLearningsCorpus` nevertheless synthesises
+   documents carrying **line-initial** `VERDICT: Needs revision`, `ERRATUM: REQ: …` and
+   `REVISION-COMPLETE: no` lines in their section bodies: the gate parsers are trailer-line
+   sensitive, so a line-initial occurrence is the shape most likely to contaminate a gate input,
+   and testing isolation against the *stronger* corpus is the right choice. The fixture is
+   therefore a deliberate strengthening of a real pattern, not a hand-transcription of one — and
+   the two are not conflated here, because a reader who believed it were transcribed would look for
+   a sample that is not in the repository.
 2. **The scripted `_agent` echoes prompt-derived content into its response.** Each scripted reply
    appends the final 200 bytes of the prompt it was handed. So if the block reaches the composed
    prompt at all — which on an enabled run it does — those quoted grammar lines reach the response
