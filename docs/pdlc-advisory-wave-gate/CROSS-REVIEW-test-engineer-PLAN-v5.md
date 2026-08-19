@@ -87,8 +87,16 @@ produced were each checked and none is present:
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+The v4 approval holds against TSPEC v1.8. The erratum was a clarification of §3.1's visibility
+grammar plus a statement of where PROP-REC-07's oracle lives; PLAN was already compressed to that
+shape, so no task, no batch, no dependency edge, no ownership-manifest row and no verification-map
+row needs to change. The single Low (F-01) asks for half a clause in A6-05 restating that the table
+stays module-private — desirable locality, not a correctness gap, and not worth a round of its own.
+Fold it into any later edit touching A6-05. Phase I may proceed on this PLAN.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
