@@ -9,9 +9,34 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.8 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.9 | 2026-08-20 |
 
 ## Changelog
+
+**v1.9 (erratum round, Phase PR).** Re-grounded on upstream HEAD first: REQ and FSPEC are unchanged
+from the state v1.8 was authored against and from the `UPSTREAM-STATE` anchors on both v8
+cross-reviews, so nothing upstream was decided this round and no absorption is owed. Three raised
+items, all of them stale prose rather than design changes. PM F-01 (Medium): §4.4 claimed the example
+config's literal `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}` was where an operator learns
+E-33's `waveBudgetPerRun: 0`-with-`enabled: true` affordance — but that literal shows neither `0` nor
+`enabled: true`, so it teaches no such thing. The claim is withdrawn in all four places it appeared
+(§4.4's key table, §4.4's example paragraph, §4.4's README-disposition close, §5.1's example row):
+the example carries the shipped defaults only, the `0` affordance is carried by behaviour and its test
+(the new `nonNegativeInt` validator plus FSPEC AT-07-2b's "`0` in yields `0` back"), and no
+operator-facing documentation carrier is in this feature's scope — a prose carrier would need its own
+REQ requirement naming it (PM Q-01). No behaviour changed; the overclaim was rationale, not contract.
+TE F-01 (Medium): §5.1 asserted set-equality with §1.3's test-side edit list in both directions, which
+was false in both — §1.3 named `advisoryQueueSeams.test.js` with no row here, and §5.1 has always
+carried behavioural homes §1.3 never mentions. §5.1 now states the true invariant, **§5.1 ⊇ §1.3**,
+and gains the missing `advisoryQueueSeams.test.js` row (PLAN A6-05 already owns the file, so no
+ownership moved). TE F-02 (Low): §3.2 step 2's design-intent citation pointed at a comment range that
+does not carry the quoted sentence. Rather than shift the range, every `orchestrate-dev.js` /
+`orchestrate-queue.js` line pin in §1.3 and §3.2 is re-anchored to stable content per DEC-DOC-01 —
+`runAdvisorySeam`'s disabled-tier early return, the run-level `const advisoryTierOn =
+advisoryConfigResult.config.enabled`, and `orchestrate-queue.js`'s `finish` closure. This was overdue:
+those three pins (`:3258`, `:13678`, `:1318`) were correct at the reviewed commit and had already
+drifted to `:3262`, `:13682` and `:1265` at HEAD, while the symbol anchors and the `.enabled`-counts-three
+constraint they serve are unchanged.
 
 **v1.8 (erratum round, Phase PR).** Re-grounded on upstream HEAD first: REQ
 (`sha256:a10396e8…`, v1.8) and FSPEC (`sha256:82f74a2d…`, v1.4) are byte-identical to the state
