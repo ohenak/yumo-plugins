@@ -38,7 +38,7 @@ PM F-01 / TE F-26 — §3.2 step 6's ledger rule: round 3's **suffix check** was
 wave's own pre-A6 pass, since A6 is only entered on a red first gate and that pass has already
 pushed `[post-wave, test]`, so a `verifyGate` returning `{passed: true}` without running anything
 was granted resolution and §5.5's mutation fixture could not fail. Restated as **growth since the
-last `apply`**: `apply` records `ledgerAtLastApply` as its first statement (`orchestrate-dev.js:3521`
+last `apply`**: `apply` records the anchor as its first statement (spelled `ledgerAtLastApply` in v1.4; carried by the `ledgerAnchor` carrier from v1.5) (`orchestrate-dev.js:3521`
 APPLY precedes `:3544` VERIFY in the driver's attempt loop), and resolution requires the tokens
 above that anchor to be exactly the configured gate sequence. TE F-26's proposed
 `length × (attempts + 1)` operand was **not** taken and the reason is recorded in §3.2: `attempts`
