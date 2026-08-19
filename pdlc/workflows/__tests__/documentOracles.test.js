@@ -250,11 +250,12 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
   const claudeMd = readFileSync(join(LIVE_ROOT, "CLAUDE.md"), "utf8");
   const readmeMd = readFileSync(join(LIVE_ROOT, "pdlc", "README.md"), "utf8");
 
-  test("D-1: CLAUDE.md's 'Workflow scripts and the runtime build' section names both pdlc/workflows/dist/ and distribution-manifest.json, and no line co-occurs build-runtime with .claude/workflows/", () => {
+  test("D-1: CLAUDE.md's 'Workflow scripts and the runtime build' section names pdlc/workflows/dist/ and pdlc-cli.mjs, does not claim distribution-manifest.json survives, and no line co-occurs build-runtime with .claude/workflows/", () => {
     const section = extractSection(claudeMd, "### Workflow scripts and the runtime build");
 
     expect(section).toEqual(expect.stringContaining("pdlc/workflows/dist/"));
-    expect(section).toEqual(expect.stringContaining("distribution-manifest.json"));
+    expect(section).toEqual(expect.stringContaining("pdlc-cli.mjs"));
+    expect(section).not.toEqual(expect.stringContaining("distribution-manifest.json"));
 
     const coOccurs = section
       .split("\n")

@@ -52,7 +52,7 @@ Every plugin follows this layout:
 
 ### Workflow scripts and the runtime build
 
-`pdlc/workflows/*.js` are ES modules with jest coverage (`cd pdlc/workflows && npm test`). The Claude Code workflow runtime cannot load them directly, so `node pdlc/workflows/build-runtime.mjs` generates the runnable artifacts into `pdlc/workflows/dist/` (`pdlc-cli.mjs` and `distribution-manifest.json`). These are tracked and generated — **never edit them**, and rebuild `pdlc/workflows/dist/` in the same commit as any workflow-source change. Every injected IO call must be `await`ed: the adapter's implementations are async, the test doubles are sync.
+`pdlc/workflows/*.js` are ES modules with jest coverage (`cd pdlc/workflows && npm test`). The Claude Code workflow runtime cannot load them directly, so `node pdlc/workflows/build-runtime.mjs` generates the runnable artifact into `pdlc/workflows/dist/`, which holds exactly `pdlc-cli.mjs`. This is tracked and generated — **never edit it**, and rebuild `pdlc/workflows/dist/` in the same commit as any workflow-source change. Every injected IO call must be `await`ed: the adapter's implementations are async, the test doubles are sync.
 
 These modules are vendored into the published npm package (`pdlc/engine`, `@kaneho/pdlc-engine`) at pack time, falling back to this repo's `pdlc/workflows/` in a dev checkout — that engine channel is the only way the pipeline runs. `pdlc`'s SKILL.md files no longer load a workflow bundle directly; each delegates to the installed engine CLI (`pdlc dev <req-path>` / `pdlc queue`).
 
