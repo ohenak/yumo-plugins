@@ -39,14 +39,25 @@ halt the next wave rather than drive it.
 
 **Two facts about this feature that shape the batching.**
 
-1. **The feature is not purely additive** (TSPEC §1.3). Six shipped surfaces transcribe the
+1. **The feature is not purely additive** (TSPEC §1.3). Eight shipped surfaces transcribe the
    five-member seam set today and go red the moment `ADVISORY_SEAMS` gains `A6` — verified:
    `advisoryEnvelope.test.js`, `advisoryHarvest.test.js`, `consolidationProperties.test.js`,
    `advisoryRecord.test.js`, `__tests__/helpers/advisoryDoubles.js` (`SEAMS` literal at
-   `advisoryDoubles.js:271`), and `advisoryDriver.test.js`'s `GATE_EXCLUSIVITY_REGISTRY`
-   (`advisoryDriver.test.js:221`, keys compared to `ADVISORY_SEAMS` at `:846`). Batch 1 retargets
-   all six **before** batch 2 touches the constant, so the red is the intended signal and never a
+   `advisoryDoubles.js:271`), `advisoryDriver.test.js`'s `GATE_EXCLUSIVITY_REGISTRY`
+   (`advisoryDriver.test.js:221`, keys compared to `ADVISORY_SEAMS` at `:846`), and two
+   **bare row-count** surfaces a member-literal grep does not find because they name no seam:
+   `advisoryDisabled.test.js`'s `expect(result.advisory.rows).toHaveLength(5)` (`:622`,
+   PROP-DIS-05's enabled-but-quiet case) and `advisoryQueueSeams.test.js`'s
+   `expect(report.advisory.rows).toHaveLength(5)` (`:627`), the queue's share of the same
+   `advisorySummaryRows` list that `ADVISORY_SEAMS` drives (`orchestrate-dev.js:2989`–`:2992`,
+   imported at `orchestrate-queue.js:41` and used at `:1319`). Batch 1 retargets all eight
+   **before** batch 2 touches the constant, so the red is the intended signal and never a
    mystery red discovered mid-wave.
+
+   The enumeration bar this list has to clear is *transcription sites*, not *member literals*:
+   a row-count assertion is as coupled to `ADVISORY_SEAMS`'s cardinality as a seam-name list is,
+   and greps for `"A5"` or `SEAMS` miss it. Batch 1's set is derived by grepping the suite for
+   `advisory.rows` and `toHaveLength` as well as for seam members.
 2. **Almost all production code lives in one file.** Batch-safety rule 2 (single writer per file per
    batch) therefore serialises the implementation tasks completely: `orchestrate-dev.js` is written
    by exactly one task per batch, and parallelism exists only among test-side tasks in the odd
