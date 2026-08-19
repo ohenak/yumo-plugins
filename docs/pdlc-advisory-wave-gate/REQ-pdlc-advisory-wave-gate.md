@@ -339,8 +339,8 @@ requirements altitude.
 - **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
   not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
   command ran and post-wave pathspecs are configured, the build-output commit scoped to those
-  pathspecs. Both are reached only by a green gate — which is why a re-gate's regenerated artifacts
-  already have a writer without A6 acquiring one (AC-4.6).
+  pathspecs. Both are reached only by a green gate — so a re-gate's regenerated artifacts already have
+  a writer, and only the paths a *later* task owns remain the gap AC-4.6 and O-8 close.
 - **AC-4.3** — Given any A6 invocation, Then it never edits a test file or test configuration
   (AC-3.2), never edits the PLAN or its ownership manifest, and never edits the implementation
   configuration (AC-3.3).
