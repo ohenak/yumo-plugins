@@ -394,8 +394,8 @@ equality, it is stated as such rather than as an absence.
 - **AT-04-1b** — *Who:* the workflows suite. *Given* an applied in-envelope repair. *When* **no**
   gate invocation follows. *Then* the wave halts: not resolved, resolved-wave count `0`.
   Conjunct (iii) carries the prohibition — it fails where a verdict stood in for a gate
-  result — and is unreachable on an ordinary run, so the fixture suppresses the re-gate; the
-  construction is the TSPEC's (REQ O-1). *(BR-7, AC-4.1.)*
+  result — and is unreachable on an ordinary run, so the fixture suppresses the re-gate; its
+  construction is the TSPEC's (O-1). *(BR-7, AC-4.1.)*
 - **AT-04-2** — *Who:* the workflows suite. *Given* one A6 attempt on a wave with both commands
   configured. *When* the run completes. *Then* the ordered sequence of gate-command invocations for
   that wave equals `[post-wave, test, post-wave, test]`. Companion cases: a re-gate whose post-wave
