@@ -38,3 +38,17 @@ Every symbol the new §1 text names exists at HEAD and behaves as described:
   resume knob after a wave-gate halt.
 
 The claim that survives this round is therefore the strong one, and it holds.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **M-WG-6's new first clause is narrower than HEAD.** The rewritten row says "a re-invocation carries no phase-level skip". HEAD does have one: with a *complete* ledger (`recorded.lastGreenWave === waves.length`, feature and planHash matching, recorded head an ancestor of HEAD) the run sets `startWave = waves.length + 1` and emits "Skipping Phase I (wave ledger …): all N waves of this plan were committed and recorded green by an earlier run" (`orchestrate-dev.js:14272`–`:14286`). The row's *second* clause — a human must re-invoke by hand rather than the pipeline resuming on its own — is true and is the load-bearing half (the queue row goes `halted`, M-WG-7). The correction paragraph three lines below already states the qualification correctly, and D-AWG-03b (`REQ:615`) restates it accurately, so the document does not contradict itself the way v7 F-04 flagged. Not gating: no AC or downstream test derives from this cell, and wave resume is explicitly out of scope (§4, `REQ:211`, routed to `pdlc-wave-resume` queue row 20). Repair (one clause): "no *approval-record* skip — the ledger's conditional skip aside (see the correction below), a human must re-invoke by hand". | §1 M-WG-6 row (`REQ:109`) |
+| F-02 | Medium | Local | **AC-1.2 still carries a drifted raw line anchor.** `orchestrate-dev.js:12331-12343` (`REQ:267`) is offered as proof that "the post-wave command runs exactly once and its failure halts immediately". Those lines at HEAD are the DEC-ROUNDS-02 lifetime-round-cap comment block — unrelated. The *claim* is true: `implConfig.postWaveCommand` is invoked once per wave via `runCommandFn` and a non-pass throws `haltError` with no retry (`orchestrate-dev.js:14351`–`:14361`). So this is a stale anchor on a sound claim, not a false claim — inherited, untouched by the delta, and the same defect class v7 F-06 fixed for §1 but that was never routed for this site. Repair: replace the numeric range with the symbol, e.g. "(`orchestrate-dev.js`, the single `implConfig.postWaveCommand` invocation inside the wave loop; a non-pass throws `haltError` with no retry)". Per DEC-DOC-01 the raw `file:line` form is the underlying issue. | §6 AC-1.2 (`REQ:267`) |
+| F-03 | Low | Local | **v1.9 changelog mislocates O-7.** The changelog says the restoration covers "§9's O-7" (`REQ:24`); O-7 sits in §8 Obligations (`REQ:558`), while §9 is Prerequisites (`REQ:582`). Cosmetic — the restoration itself is correct and complete. | v1.9 changelog (`REQ:24`) |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | None blocking. F-01's clause and F-02's anchor are both single-line edits that need no decision; either can ride the next erratum or be folded into the TSPEC-time citation sweep. |
