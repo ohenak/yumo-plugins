@@ -1070,7 +1070,7 @@ operator, defaulting so that a repo that changes nothing gets today's behaviour:
 
 | Key | Type | Default | Validator | Notes |
 |---|---|---|---|---|
-| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not a misconfiguration: it is the **documented operator affordance** "keep the tier on, keep A6 off" — every red wave escalates with no dispatch and the sixth summary row reads zero, which is observably different from `advisory.enabled: false`, where the report carries no `advisory` key at all. Mirrored into `.claude/pdlc.config.example.json` as part of the whole `advisory` section (`enabled` beside it, so the "keep the tier on, keep A6 off" pairing is legible from the file alone); nothing in `pdlc/engine` covers it at HEAD, so the feature authors a purpose-named expectation in `pdlc/engine/__tests__/advisory-config-example.test.js` (see below). No `pdlc/README.md` edit is in scope |
+| `waveBudgetPerRun` | integer ≥ 0 | `1` | `nonNegativeInt` | `0` is a legal configured value (E-33), not a misconfiguration: it is the **intended operator configuration** (honoured, not documented anywhere operator-facing this feature ships) "keep the tier on, keep A6 off" — every red wave escalates with no dispatch and the sixth summary row reads zero, which is observably different from `advisory.enabled: false`, where the report carries no `advisory` key at all. Mirrored into `.claude/pdlc.config.example.json` as part of the whole `advisory` section (`enabled` beside it, so the tier's ship state is legible beside the budget — the example carries the shipped defaults `false`/`1` only, and teaches no "keep the tier on, keep A6 off" pairing; that has no documentation carrier in scope, PM F-01); nothing in `pdlc/engine` covers it at HEAD, so the feature authors a purpose-named expectation in `pdlc/engine/__tests__/advisory-config-example.test.js` (see below). No `pdlc/README.md` edit is in scope |
 
 `enabled`, `attemptBudget`, `seamBudgetMinutes` and `envelope` keep their shipped validators and
 defaults. `.claude/pdlc.config.example.json` — the tracked arrangement — gains the key alongside
@@ -1234,7 +1234,7 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
 
 | File | Status | Carries |
 |---|---|---|
-| `.claude/pdlc.config.example.json` | edited | Gains the **whole** `advisory` section — `{"enabled": false, "waveBudgetPerRun": 1}` — the operator-facing shape of §4.4's key. `enabled` travels with it because JSON admits no comments and the pairing is the only thing that teaches E-33's `waveBudgetPerRun: 0` with `enabled: true` affordance |
+| `.claude/pdlc.config.example.json` | edited | Gains the **whole** `advisory` section — `{"enabled": false, "waveBudgetPerRun": 1}` — the operator-facing shape of §4.4's key. `enabled` travels with it because the section ships as a unit and the reader needs the tier's ship state beside the budget's. The literal is the shipped-default pairing only — it does not teach E-33's `0`-with-`enabled: true` affordance, which has no documentation carrier in scope (§4.4, PM F-01) |
 | `pdlc/engine/__tests__/advisory-config-example.test.js` | **new file** | The **new** expectation over that example section (§4.4): it parses, carries `enabled` and `waveBudgetPerRun`, and the latter is a non-negative integer. Authored, not adjusted — nothing in the engine suite asserts on `advisory` at HEAD. Deliberately **not** hung on `ci-arrangement.test.js`, whose stated oracle is FSPEC §5.1's CI arrangement alone: a config-schema assertion parked there would let an unrelated example edit redden the delivery-blocking `Engine tests (ubuntu-latest)` check under a scope that names no such concern (PLAN A6-04; earlier drafts of this map named `ci-arrangement.test.js`, corrected by erratum) |
 
 
@@ -1622,7 +1622,7 @@ gaining a non-mutating stash, or the wave contract permitting staged work). OQ-1
 candidates if a reviewer disagrees with the dispositions above.
 
 One question this round raised and answered in place rather than deferring (PM Q-03):
-`waveBudgetPerRun: 0` is a **documented operator affordance**, not an accident of the validator —
+`waveBudgetPerRun: 0` is a **intended operator configuration** (honoured, not documented anywhere operator-facing this feature ships), not an accident of the validator —
 "keep the tier on, keep A6 off" — and §4.4 now names it as such. It differs observably from
 `advisory.enabled: false`: the tier stays enabled, every red wave escalates with no dispatch, and
 the sixth summary row is present reading zero, where the disabled tier carries no `advisory` key
