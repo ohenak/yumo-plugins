@@ -43,8 +43,39 @@ later wave's owned paths would indeed be left uncommitted. Every cited path exis
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Under F-01: where only `implementation.testCommand` is configured and no post-wave command exists, is the intended re-gate observation `[test, test]` exactly, or is a single re-invocation of a *composite* operator command acceptable as "the whole sequence"? The answer decides whether the property is written over the transport's invocation list or over its argument list. |
+| Q-02 | AC-3.2 now makes the motivating incident escalate rather than repair in **this** repo, since every wave here owns `pdlc/workflows/`. Is A6 therefore expected to demonstrate its value in this repo only through the escalation path, with the repair path proven exclusively on consumer-repo-shaped fixtures? PROPERTIES will need to know which side the load-bearing tests sit on. |
+
 ## Positive Observations
 
+- Every claim the revision added is measurable and measured true. AC-3.2's guard-path binding, AC-3.4's
+  "no ninth reason", AC-4.4's gate order and AC-4.6's uncommitted-repair premise each resolved to a
+  specific line I could read, and each said what the REQ said it said. Three High findings closed
+  without a single unverifiable assertion added is the good version of an erratum round.
+- AC-1.5 is the model fix in this round: it replaced "named once in the run report" with a cardinality
+  on a named surface, then paired it with the negative case (none at all in a run where A6 applies).
+  That is a set-equality, not a mention, and it is the shape F-01 still wants for AC-4.4.
+- NFR-2's disabled-state oracle now distinguishes absent from all-zero, which is exactly the
+  distinction the shipped suite already draws — the REQ and the code now describe the same observable.
+- AC-2.4's budget rule is stated as the two oracles a test must separate rather than as a policy,
+  which is what made F-03 (v1) collapse cleanly.
+- Relocating §8's provenance to `DECISIONS-advisory-wave-gate-questions.md` and leaving a one-row
+  decision table kept the document under the size budget (547 lines) while making every question's
+  answer readable in one screen. The REQ got smaller while getting more complete.
+- §1's withdrawal of the "no wave-state ledger ever survived here" claim, after re-measuring and
+  finding an untracked ledger file, is a correction against the author's own argument. Reviewers see
+  that rarely and should say so when they do.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+All three v1 High findings are resolved, and the resolutions are grounded in code rather than in
+prose. Two Medium and one Low remain: F-01 asks AC-4.4's oracle to match the strength of AC-4.4's own
+clause, F-02 is a one-token version pin that the baseline file's change-control rule requires, and
+F-03 is a half-sentence disambiguation. None blocks; all three are cheap enough to fold into the next
+version, and F-01 in particular should land before TSPEC derives the re-gate property from it.
 
 ## Verdict
