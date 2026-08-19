@@ -51,11 +51,23 @@ opposite.
 
 ## Confirmation Findings (tagged)
 
-_pending_
+Machine-readable form of the findings above. All six are `delta` — none was present against the
+REQ this FSPEC was approved over — and all six are `local`, each sitting on a REQ clause the
+erratum rounds edited.
+
+FINDING: High | delta | local | §6.4 AT-04-1 | AC-4.1's observable is now three positive conjuncts on three separate runs, including a mutation fixture that drops the re-gate and asserts the halt survives; AT-04-1 still asserts three conjuncts on one red-re-gate run and argues the prohibition is not assertable.
+FINDING: High | delta | local | §4 BR-11 | BR-11 defines "invocation" as one A6 dispatch "as REQ AC-2.4 defines it"; AC-2.4 now puts the window on the attempt and §5 defines an A6 invocation as A6 engaged on one red wave, so the FSPEC re-fuses terms the erratum separated and cites the separating clause as authority.
+FINDING: Medium | delta | local | §4 BR-11 | BR-11 inherits "NFR-4's gate-command carve-out"; NFR-4 deleted the carve-out and states no subtraction is performed, and the v1.2/v1.3 changelog still reports both re-emitted REQ errata as open when they landed in REQ v1.7/v1.8.
+FINDING: Medium | delta | local | §6.1 AT-01-5 | AT-01-5's "Population: runs that reach Phase I" is wider than AC-1.5's "reaches Phase I and evaluates wave mode" and than the FSPEC's own E-04, admitting ledger-skip runs REQ places outside the population.
+FINDING: Medium | delta | local | §7.3 A-1 | BL-06 now requires a third enumeration, the mutual exclusivity of BL-03's notice with BL-04's; A-1 still books two, while E-04 consumes that exclusivity as established fact.
+FINDING: Low | delta | local | §7.3 A-4 | A-4 states R-3's bound as "within an invocation"; R-3 now says within a single run, drift across runs — the retired vocabulary changes the claim's reach.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v3/v4, still open and still non-gating, and REQ HEAD has now answered half of it: NFR-4 names the worst case for one A6 invocation as `attemptBudget` × `seamBudgetMinutes`, and says explicitly that "no cap over the invocation as a whole is required here" (`REQ:487-489`). That is the operator decision the question was asking for. Should BR-11 carry the same sentence, so the FSPEC reader learns the total is deliberately unbounded from the FSPEC rather than only from the REQ? |
+| Q-02 | Conjunct (iii)'s fixture mutates shipped control flow to drop the re-gate (`REQ:392-395`). Is the intended mutation seam the wave-gate call site in `pdlc/workflows/orchestrate-dev.js`, exercised through the injected command transport the rest of §6 already uses, or a separate harness? The FSPEC is the right place to say which, since it is the document that names how the ATs get their doubles, and F-01's repair needs an answer to be writable. |
 
 ## Positive Observations
 
