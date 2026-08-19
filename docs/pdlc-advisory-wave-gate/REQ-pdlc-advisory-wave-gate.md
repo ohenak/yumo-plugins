@@ -15,7 +15,17 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.8 | 2026-08-18 |
+| pdlc | draft | Claude | 1.9 | 2026-08-19 |
+
+*v1.9 changelog (erratum round 5). Restoration, not decision. A rebase onto `origin/main` had
+reverted five previously approved round-3 sites while leaving every reference to them in place;
+all five are restored to their approved wording: the Upstream row's `docs/completed/…` path
+(F-03), §1's corrected M-WG-6 row (F-04), §1's 2026-08-11 corroborating incident paragraph (F-05),
+§5 C-2's `advisory.waveBudgetPerRun` default `1` per Q-1 (F-01), and §9's O-7 (F-02). Two Medium
+corrections ride along: §1's ledger citations now name stable symbols instead of line numbers that
+had drifted ~2 000 lines (F-06), and NFR-4 now says the measured window closes at the attempt's
+verdict rather than that the gate "runs between attempts" — the conclusion (no subtraction, no
+carve-out) is unchanged (F-07). No decision reopened.*
 
 *v1.8 changelog (erratum round, round 4). Decided: AC-1.5's population is runs reaching Phase I
 and **evaluating wave mode**, so the no-manifest legacy run — where BL-03's own carrier fires — is
@@ -101,14 +111,15 @@ than the tier's other five:
 
 **Correction, 2026-08-13.** The M-WG-6 row above previously claimed a re-invocation "re-enters
 at wave 1 and re-dispatches every wave, including those whose commits already landed." The source
-no longer does that *unconditionally* — the interim wave ledger (`orchestrate-dev.js:9976` ff.,
-resume logic `:12191-12280`) and `implementation.startWave` can skip already-committed waves — but
+no longer does that *unconditionally* — the interim wave ledger (`orchestrate-dev.js`, exported
+`WAVE_STATE_PATH` and `parseWaveLedger`, consumed by the resume block that emits "Notice: the wave
+ledger … was ignored") and `implementation.startWave` can skip already-committed waves — but
 **wave-1 re-entry is what is still observed in practice**, so the row is far closer to true than to
 false. Four preconditions gate the ledger, and each of them fails routinely:
 
 - **It is written only under the script-owned gate.** The write sits inside the `if (scriptGate)`
-  branch (`:12345`-`:12429`), and `scriptGate` requires both `implementation.testCommand` and a
-  `_runCommand` seam (`:12128`). A self-report-gate run records nothing, ever.
+  branch, and `scriptGate` is defined as requiring both `implementation.testCommand` and a
+  `_runCommand` transport. A self-report-gate run records nothing, ever.
 - **It is written only after a wave goes green and its work is committed.** A run that halts at
   wave N records nothing for wave N — and a run that halts at wave 1 records nothing at all, which
   is exactly the wave-gate-failure case this REQ exists for.
@@ -489,8 +500,9 @@ requirements altitude.
   AC-2.4 pins: dispatch to verdict on that one attempt. The deadline restarts each attempt, so an
   A6 invocation on one wave has a worst case of `advisory.attemptBudget` × that value — shipped
   behaviour, and no cap over the invocation as a whole is required here.
-  Gate-command run time falls outside the window **structurally** — the gate runs between attempts,
-  never inside one — so no subtraction is performed and no carve-out is needed. An overrun
+  Gate-command run time falls outside the window **structurally** — the window closes at the
+  attempt's verdict, and the gate runs after that verdict, not within the measured span — so no
+  subtraction is performed and no carve-out is needed. An overrun
   escalates as `budget-exhausted`.
 - **NFR-5** — A6 adds no wall-clock cost to a green wave: it is reachable only from a red gate.
 - **NFR-6** — A6 runs on the advisory tier's existing model rung, resolved through the tier's
