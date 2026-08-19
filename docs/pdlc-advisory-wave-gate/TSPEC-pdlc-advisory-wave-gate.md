@@ -4,14 +4,34 @@
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.3) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active), `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active), `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md`, `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (active) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.4 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.5 | 2026-08-20 |
 
 ## Changelog
+
+**v1.5 (round 5).** One High (TE F-29), two Medium (TE F-30, PM F-01), two Low (TE F-31, PM F-02),
+two questions (TE Q-01, PM Q-02) addressed. TE F-29 — round 4's anchor was named but not plumbed:
+`buildA6SeamOps` is a top-level export, so its `apply` cannot assign into `runWaveGateSeam`'s scope,
+and a property on the returned SeamOps object is lost to the shallow copies the driver reads through
+(`orchestrate-dev.js:3499`, `:3503`, `:3521`, `:3546`) and §5.5's fixtures write through. The anchor
+now gets the `declaredScope` idiom — a **mutable `ledgerAnchor` carrier** created per wave by
+`runWaveGateSeam`, passed into `buildA6SeamOps`, written in place by `apply`, read at step 6 — named
+in §3.2's code block, §3.3's signature and its own row. TE F-31 — the carrier's initial value is
+stated (`{value: -1}`, fail-closed) with both wrong choices named, and the first conjunct is marked
+defensive and fixture-free. TE Q-01 — the carrier's lifetime is tied to `invocations`' lifetime, one
+per wave. TE F-30 — §5.5's mutation fixtures now say what they replace (one member of the **real**
+SeamOps) and each carries a positive assertion that the anchor was recorded, so a build that never
+writes the carrier fails them. PM F-01 — §5.2's two-attempt companion states that it keeps the
+shipped `verifyGate` and drives red-then-green through `_runCommand`, so its six-token ledger is
+observed rather than stipulated. PM F-02 — §2.5 and OQ-2 now record what wave-scoping does not buy:
+a re-run overwrites wave 1's ref and nothing prunes the refs. PM Q-02 — the gate-sequence
+enumeration is closed: a post-wave-only arrangement cannot reach A6, since `scriptGate` requires
+`implConfig.testCommand` (`orchestrate-dev.js:14143-14144`). OQ-7's `.gitignore` boundary is
+re-emitted upstream, unchanged (PM Q-01).
 
 **v1.4 (round 4).** Three High (PM F-01, TE F-26, TE F-27) and three Medium addressed.
 PM F-01 / TE F-26 — §3.2 step 6's ledger rule: round 3's **suffix check** was satisfied by the
