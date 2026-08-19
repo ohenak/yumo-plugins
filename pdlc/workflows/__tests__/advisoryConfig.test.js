@@ -28,7 +28,7 @@
 
 import * as devModule from "../orchestrate-dev.js";
 
-import { makeFileDouble, makeAdvisoryConfig, makeAdvisoryGenerators, resolveSeed } from "./helpers/advisoryDoubles.js";
+import { makeFileDouble, makeAdvisoryGenerators, resolveSeed } from "./helpers/advisoryDoubles.js";
 
 // Same per-repo config home Phase MERGE and the distribution gate already use
 // (`orchestrate-dev.js:43`), aliased by `ADVISORY_CONFIG_PATH` at TSPEC §3.1/§3.2 — transcribed
@@ -36,10 +36,20 @@ import { makeFileDouble, makeAdvisoryConfig, makeAdvisoryGenerators, resolveSeed
 // *reader*, never on a `_readFile` call scoped to this literal path, per its own "O-3" rule).
 const ADVISORY_CONFIG_PATH = ".claude/pdlc.config.json";
 
-// `ADVISORY_DEFAULTS` (TSPEC §3.1), transcribed via the shared double rather than re-declared —
-// `makeAdvisoryConfig()` returns `{ config, sectionMalformed, invalidKeys }` at exactly the
-// defaults, so `.config` is the literal this file compares against.
-const ADVISORY_DEFAULTS = makeAdvisoryConfig().config;
+// `ADVISORY_DEFAULTS` (TSPEC §3.1), re-declared here as a local literal rather than sourced from
+// the shared `helpers/advisoryDoubles.js` double: that double's `ADVISORY_DEFAULTS_SHAPE` is
+// A6-01's file (same batch, no ordering guaranteed against this task) and still carries the
+// pre-A6 four-key shape. This file's own transcription is therefore the ground truth for
+// PROP-CFG-01/-02 until A6-01 lands and both literals agree; kept in sync with TSPEC §3.1's
+// `{ enabled: false, attemptBudget: 3, seamBudgetMinutes: 10, waveBudgetPerRun: 1,
+// envelope: ENVELOPE_DEFAULTS }` verbatim, including the new `waveBudgetPerRun: 1` key.
+const ADVISORY_DEFAULTS = Object.freeze({
+  enabled: false,
+  attemptBudget: 3,
+  seamBudgetMinutes: 10,
+  waveBudgetPerRun: 1,
+  envelope: Object.freeze(["E-1", "E-2", "E-3", "E-4", "E-5", "E-6"]),
+});
 
 // Arbitrary literal seed for this file's one generator-driven property (P-1), overridable via
 // `PDLC_PROP_SEED` per `driftGenerators.js`'s §1.3 rule 1 (reached here only through
@@ -81,6 +91,30 @@ describe("PROP-CFG-01 — parseAdvisoryConfig is total and never throws", () => 
     expect(Object.keys(result).sort()).toEqual(["config", "invalidKeys", "sectionMalformed"]);
     expect(Array.isArray(result.invalidKeys)).toBe(true);
     expect(typeof result.sectionMalformed).toBe("boolean");
+  });
+});
+
+// -----------------------------------------------------------------------------
+// PROP-CFG-01 (A6-02): ADVISORY_DEFAULTS' key set gains `waveBudgetPerRun`, resolved
+// set-equal — never `toContain` — against the shipped keys plus the new one, and the
+// default's own value reads back the literal `1` (TSPEC §3.1).
+// -----------------------------------------------------------------------------
+
+describe("PROP-CFG-01 (A6-02) — ADVISORY_DEFAULTS set-equal shipped keys plus waveBudgetPerRun", () => {
+  test("ADVISORY_DEFAULTS' own key set is exactly the five keys, set-equality", () => {
+    expect(Object.keys(ADVISORY_DEFAULTS).sort()).toEqual(
+      ["attemptBudget", "enabled", "envelope", "seamBudgetMinutes", "waveBudgetPerRun"].sort()
+    );
+  });
+
+  test("waveBudgetPerRun defaults to 1", () => {
+    expect(ADVISORY_DEFAULTS.waveBudgetPerRun).toBe(1);
+  });
+
+  test("parseAdvisoryConfig(null)'s config carries waveBudgetPerRun defaulted to 1", () => {
+    const { config } = devModule.parseAdvisoryConfig(null);
+    expect(config.waveBudgetPerRun).toBe(1);
+    expect(Object.keys(config).sort()).toEqual(Object.keys(ADVISORY_DEFAULTS).sort());
   });
 });
 
@@ -146,6 +180,51 @@ describe("PROP-CFG-03 — one out-of-range key falls back alone (T-01-6)", () =>
     expect(config.attemptBudget).toBe(4);
     expect(config.seamBudgetMinutes).toBe(7);
     expect(invalidKeys).toEqual(["enabled"]);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// PROP-CFG-02 (A6-02): waveBudgetPerRun validates through a `nonNegativeInt` sibling of the
+// shipped `positiveInt` — `0` must survive as a configured value (E-33, DEC-A6-04), reading
+// back `0` and absent from invalidKeys, while -1 / 1.5 / "x" / null are invalid and fall back
+// to the default `1`. Per-key independent fallback: a bad waveBudgetPerRun must never retune
+// a sibling key, and a bad sibling key must never retune waveBudgetPerRun (TSPEC §3.1, §4.4).
+// -----------------------------------------------------------------------------
+
+describe("PROP-CFG-02 (A6-02) — waveBudgetPerRun validates through nonNegativeInt (E-33)", () => {
+  test("waveBudgetPerRun: 0 survives as configured, reads back 0, and is not reported invalid", () => {
+    const raw = JSON.stringify({ advisory: { waveBudgetPerRun: 0 } });
+    const { config, invalidKeys } = devModule.parseAdvisoryConfig(raw);
+    expect(config.waveBudgetPerRun).toBe(0);
+    expect(invalidKeys).not.toContain("waveBudgetPerRun");
+  });
+
+  test.each([
+    ["negative integer", -1],
+    ["non-integer float", 1.5],
+    ["non-numeric string", "x"],
+    ["null", null],
+  ])("waveBudgetPerRun: %s (%j) falls back to the default and is reported invalid", (_label, value) => {
+    const raw = JSON.stringify({ advisory: { waveBudgetPerRun: value } });
+    const { config, invalidKeys } = devModule.parseAdvisoryConfig(raw);
+    expect(config.waveBudgetPerRun).toBe(ADVISORY_DEFAULTS.waveBudgetPerRun);
+    expect(invalidKeys).toEqual(["waveBudgetPerRun"]);
+  });
+
+  test("an out-of-range waveBudgetPerRun does not retune a valid sibling key", () => {
+    const raw = JSON.stringify({ advisory: { waveBudgetPerRun: -1, attemptBudget: 5 } });
+    const { config, invalidKeys } = devModule.parseAdvisoryConfig(raw);
+    expect(config.attemptBudget).toBe(5);
+    expect(config.waveBudgetPerRun).toBe(ADVISORY_DEFAULTS.waveBudgetPerRun);
+    expect(invalidKeys).toEqual(["waveBudgetPerRun"]);
+  });
+
+  test("an out-of-range sibling key does not retune a valid waveBudgetPerRun", () => {
+    const raw = JSON.stringify({ advisory: { waveBudgetPerRun: 2, attemptBudget: -1 } });
+    const { config, invalidKeys } = devModule.parseAdvisoryConfig(raw);
+    expect(config.waveBudgetPerRun).toBe(2);
+    expect(config.attemptBudget).toBe(ADVISORY_DEFAULTS.attemptBudget);
+    expect(invalidKeys).toEqual(["attemptBudget"]);
   });
 });
 

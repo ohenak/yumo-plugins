@@ -575,9 +575,9 @@ describe("A-27 — post-PUB distil + report summary", () => {
 
       expect(result.outcome).toBe("success");
       expect(result.advisory).toBeTruthy();
-      expect(result.advisory.rows).toHaveLength(5);
+      expect(result.advisory.rows).toHaveLength(6);
       const seamNames = result.advisory.rows.map((r) => r.seam).sort();
-      expect(seamNames).toEqual(["A1", "A2", "A3", "A4", "A5"]);
+      expect(seamNames).toEqual(["A1", "A2", "A3", "A4", "A5", "A6"]);
       for (const row of result.advisory.rows) {
         expect(row.invocations).toBe(row.resolved + row.escalated + row.noAction);
       }
@@ -730,7 +730,7 @@ describe("A-27 — post-PUB distil + report summary", () => {
       // S-5: the queue's own report carries the A1/A2 advisory summary; a dev-side report never
       // reaches these two rows, but the queue's own always can.
       expect(result.advisory).toBeTruthy();
-      expect(result.advisory.rows).toHaveLength(5);
+      expect(result.advisory.rows).toHaveLength(6);
       const a1Row = result.advisory.rows.find((r) => r.seam === "A1");
       expect(a1Row.invocations).toBeGreaterThanOrEqual(0);
     });

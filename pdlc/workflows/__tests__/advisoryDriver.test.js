@@ -224,6 +224,7 @@ const GATE_EXCLUSIVITY_REGISTRY = {
   A3: { gate: null, action: "none" },
   A4: { gate: "declared", action: "apply-rebase-fix" },
   A5: { gate: "declared", action: "apply-pub-fix" },
+  A6: { gate: "declared", action: "E-6" },
 };
 
 // ─── Generated per-seam gate-exclusivity cases (PROP-GATE-01…05) ────────────────────────────────

@@ -541,7 +541,7 @@ describe("T-08-10 / PROP-SUM-02 — the literal six-row summary table and the in
     }
   });
 
-  test.each(["A1", "A2", "A3", "A4", "A5"])(
+  test.each(["A1", "A2", "A3", "A4", "A5", "A6"])(
     "the identity holds on seam %s for an arbitrary mix of outcomes",
     (targetSeam) => {
       const dispositions = [
