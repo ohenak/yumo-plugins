@@ -27,8 +27,27 @@ The problem is what the delta stopped short of. The same REQ erratum cycle that 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | When two declared keys are wrong-typed in the same config, does the report carry two `NTC-KEYTYPE` entries (one per key) or one naming both? AT-32 pins the single-key case with literals; the multi-key shape is still free, and it is the shape a set-equality-over-notices test cannot decide by itself. REQ AC-5.1c ("the report carries a catalogued notice naming it", REQ:373-376) does not settle it either. (Carried from v4 Q-01.) |
+| Q-02 | Does a wrong-typed `enabled` key (e.g. `enabled: "false"`) fall to the `true` default and run **enabled** with `NTC-KEYTYPE`? BR-14's table treats `enabled` as one of the declared keys, and REQ:220 lists `learningsInjection.enabled` among the §4.1 keys AC-5.1c ranges over, which reads that way — but no AT pins it, and a per-key fallback that turns the feature *on* against apparent operator intent is the one case worth a named fixture. (Carried from v3 Q-02 and v4 Q-02, still unanswered.) |
+
 ## Positive Observations
+
+- **The delta is exactly right in kind, just incomplete in extent.** Adding `AC-5.1c` to FSPEC-LRN-15, giving it its own `AC-5.1c | BR-14 | AT-32` coverage row, and widening BR-14's heading is the correct three-site response to an upstream AC split — traceability row, coverage row, rule heading. Many specs update the coverage table and leave the index row stale; this one did both, and AT-32 already carried the wrong-typed-key conjunct with named literals, so the new mapping points at a real oracle rather than a promise.
+- **The REQ adopted the FSPEC's positions wholesale, which is the erratum channel working.** All four divergences this FSPEC raised in earlier rounds — truncation not being a reason id, the direct-`docs/discarded/` class, the count bound not reaching equality under measured corpora, and the misspelt-section-name case — now read back in the REQ in the FSPEC's own terms (REQ:273-275, 302-303, 318-320, 371-372). That is a downstream document successfully correcting its upstream on four separate points in one cycle. F-01 is the bookkeeping tail of a channel that did its job, not a design failure.
+- **BR-9's three-catalogue structure survived the REQ's independent restatement.** REQ:320-325 now describes the same three closed sets with the same membership and "three set-equality tests, one per catalogue", arrived at from the REQ side. The FSPEC's ids (`NTC-MALFORMED`, `NTC-KEYTYPE`) refine the REQ's prose descriptions without contradicting them — the correct altitude split, with the REQ owning the count and closure and the FSPEC owning the names.
+- **The measurement at BR-4/BR-5 is still the document's strongest evidence.** The 89-document corpus figures (13,278-byte mean, 41,180 max, 87 of 89 over `maxBytesPerDocument`, FSPEC:360-366) are what forced the REQ's AC-2.1 correction. A spec that measures its own corpus and then changes its parent's acceptance criterion is doing the work fixtures otherwise discover late.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding, and it is narrow and mechanical. The FSPEC's three-line delta correctly absorbed the REQ's new AC-5.1c, but the same upstream cycle closed all four divergences this FSPEC declares `ERRATUM: REQ` against, and none of the declarations was retracted. Each now states as fact something the REQ at HEAD contradicts — AC-3.2 does list `RSN-NO-MATERIAL` and does exclude truncation (REQ:318-320), AC-2.6 does make the direct `docs/discarded/` file a corpus member (REQ:302-303), AC-2.1 does disclaim count equality under measured values (REQ:273-275), and AC-5.1b does treat a misspelt section name as absent (REQ:371-372). That is a factual contradiction with the upstream document on load-bearing claims, and the erratum lines are routed instructions that would open phantom rounds against a REQ needing no further correction. The fix is four clause deletions plus restatement as agreement; no decision is reopened and no substantive prose moves. F-02 and F-03 are the unchanged wording items carried from v4 and remain non-gating — both are single-sentence edits that can ride the same revision.
+
+DEFERRED: AT-15 and E-07 could mirror REQ AC-2.6's own two-clause phrasing verbatim rather than being reworded independently, which would keep the nested/direct split synchronised across both documents by construction.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
