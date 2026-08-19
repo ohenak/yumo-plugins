@@ -36,10 +36,16 @@ jobs:
   # set-equality, not by memory.
   gate:
     name: Gate (PR checks re-run at the tag)
+    # (checkout below fetches full history: the engine suite's pre-flight
+    # baseline gate resolves the pre-sweep ancestor via origin/main, which a
+    # shallow tag checkout cannot provide — same fix as pr-tests.yml's
+    # Engine tests job.)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
