@@ -373,3 +373,270 @@ a single feature's evidence because it is an invariant of this consolidation mec
 under-tagging is what suppresses the second occurrence that would otherwise justify promotion.
 
 **Applies to:** all reviews, `harvest-learnings`
+
+---
+
+## DC-14: An oracle never sources its expected value from the code under test
+
+**Constraint:** An assertion is an oracle only if its expected value is independent of the subject.
+Three shapes recur and all three pass vacuously:
+
+- **Implementation echo.** `expect(lines).toEqual([MERGE_ESCALATIONS.queue(...)])` resolves both
+  sides through the same frozen catalogue; garbling every template in source left a ~2 930-test
+  suite green. Transcribe the expected value into the test, or derive it from a *different* source
+  (the spec, a golden captured before the change) — never import it from the module under test.
+- **Absence-only.** "no merge API call exists", "never logged, never written", "not refused",
+  "no `describe.skip` survives" are satisfied by an unrelated broken precondition, an exception
+  path, or an empty input set. **Every absence assertion needs a positive conjunct on the same
+  path in the same case** — assert what the path *does* call, not only what it does not.
+- **Set-equality that degrades.** A set-equality oracle states its exclusions in the row and is
+  never weakened to containment; when it is delegated, split or generated, each falsifier is
+  re-exercised. `AT-3.8a` carried four falsifiers, three survived delegation and the only one that
+  mattered — "a *removed* member fails" — died silently while the oracle read complete.
+
+Corollary for prose: a comment or document that asserts "X is enforced by Y" names Y as an existing
+test id. A claim with no citable oracle has no expiry date.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-merge-phase` (§2 — implementation-echo
+oracles, differential goldens, the ticked DoD box that asserted a test-local id list rather than
+coverage), `pdlc-review-loop-hardening` (§2, §4.1 — gates written as predicates over procedure
+rather than equalities over output; the dominant defect class was doc/comment claims with no test),
+`pdlc-consolidation-agent` (§2 — absence-only oracles filed independently by three reviewers across
+three documents; §4.6 vacuous green over ~133 skipped tests), `pdlc-headless-engine` (§2 `F-03`,
+`F-05` — three set-equality harnesses self-describing and vacuous),
+`pdlc-engine-distribution` (§2 — set-equality oracles degrade silently when delegated),
+`pdlc-advisory-tier` (§4 — `refusalReasonFor`'s precedence had zero production callers).
+
+**Applies to:** PROPERTIES, implementation, `te-review`, `dod-verify`
+
+---
+
+## DC-15: An oracle that walks a live tree measures the host, not the diff
+
+**Constraint:** Any oracle that enumerates files under a root ranges over **tracked files only**, or
+declares its skip set as part of its contract. A walk that skips only `.git/` and `node_modules/`
+reads editor backups, tool caches, coverage output, worktree symlinks and sibling agents' state
+directories, and turns red for reasons no reviewer can attribute to the change under review.
+
+Two mechanical consequences:
+
+- **`.gitignore` trailing-slash patterns do not match symlinks.** `node_modules/` ignores the
+  directory and not a symlinked `node_modules`, so any `git status --porcelain`-clean assertion must
+  be measured in a tracked-files-only detached checkout, not in a developer worktree.
+- **A permitted-red ledger entry records the environment that makes it red.** A red that disappears
+  on a clean clone is a different category from one caused by the code, and merging the two hides
+  the only question worth asking. State which it is beside the entry.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-review-loop-hardening` (§4.4 — `AT-22` carried
+as "1 permitted red" through an entire run's gate arithmetic; it was `.tokensave/tokensave.db`, and
+the clean clone was `70 skipped, 1170 passed, 0 failed`), `pdlc-merge-phase` (§5 item 3 — the trap
+pre-registered in PLAN §8 paid for itself three times), `pdlc-advisory-tier` (§4 — a DoD round spent
+budget re-establishing the same fact, on `.tokensave/` and `pdlc/workflows/coverage/`),
+`pdlc-engine-distribution` (§4 — `.claude/` and `.serena/`; every reviewer re-derived it
+independently), `pdlc-plugin-retirement` (§2 — symlinked `node_modules` reddened AT-4.1/AT-22
+across two DoD rounds).
+
+**Applies to:** TSPEC, PROPERTIES, implementation, all reviews
+
+---
+
+## DC-16: A gate that decides a phase reads committed state, never a transcript
+
+**Constraint:** Any gate whose verdict can halt a phase reads the **committed file** and derives its
+indices from a **directory listing**. A dispatch response trailer is an accelerator for the loop
+inside the current invocation and nothing else; a counter held by the dispatcher is not an index.
+
+- **Verdict.** A gate that reads only `parseVerdict(response)` converts a lost or malformed trailer
+  into a phase halt while the approving file sits committed on the branch. Fall back to the
+  file-side read (`extractFileVerdict`) before halting, and name in the halt message which channel
+  decided.
+- **Index.** A round or version number computed by the dispatcher instructs an agent to overwrite
+  history. Derive `-v{N}` from the highest `CODE_REVIEW-*-v{N}.md` present on the branch.
+- **Halt reason.** A halt names the evidence it read and enumerates what it left unrouted. A halt
+  mid-iteration that silently drops queued work is unrecoverable without a post-mortem.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-consolidation-agent` (§4.5 — three of nine halt
+episodes were bookkeeping, not defects; two lost trailers over committed approving files, one DoD
+dispatch that ordered a merged four-round-old artifact overwritten), `pdlc-headless-engine` (§4.2,
+§4.3 — Phase D halted on a response trailer while the files on disk read `Approved with minor
+changes`; the project already knew the rule and the erratum path, added later, did not inherit it),
+`pdlc-engine-distribution` (§4 — five consecutive DoD dispatches carried a stale version number),
+`pdlc-plugin-retirement` (§4 — `POSTMORTEM-I` and the `halted` queue row were both written by the
+operator because the engine wrote neither). Narrower already-landed instance: `DEC-ERR-02` in
+`DECISIONS-review-severity-bars.md`, which covers the erratum delta confirmation only.
+
+**Applies to:** workflow gates, `orchestrate-dev`, `dod-verify`, engine backlog
+
+---
+
+## DC-17: One section owns each normative question; a restatement is not an amendment
+
+**Constraint:** For every normative rule there is exactly one owning section. Any other document,
+changelog row, dispatch brief or summary paragraph that states the same rule states it **no more
+precisely** than the owner does. A restatement that narrows, widens or re-derives the rule is a
+defect in the restatement, not a competing amendment — and it is repaired by deleting the copy, not
+by reconciling the copies.
+
+Three corollaries the corpus paid for separately:
+
+- **A dispatch brief may narrow attention; it may not narrow permission.** Where a brief and the
+  PLAN disagree about the change surface, the PLAN governs.
+- **A derived quantity is stated once, marked advisory, and gates are written as predicates over the
+  procedure — never as equalities over the output.** When a reviewer disputes a derived number, they
+  re-derive it from the stated procedure and report the *procedure*, not the number.
+- **A shared normative file needs an owner, a stated set-equality range, and a version pin** before
+  anything cites it; a file under `docs/_constraints/` with no change-control clause is a governance
+  surface with no governor.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-review-loop-hardening` (§2 row 1, §4.2, §4.7 —
+"owning-section-wins" applied three times in one run; the feature built to catch restated-constraint
+drift shipped two instances of it in its own TSPEC, and its Phase I brief forbade the nine `SKILL.md`
+edits its own PLAN mandated), `pdlc-consolidation-agent` (§2 — both Phase R windows died on rules
+written for sections that did not exist; the constraints file's own change-control clause was
+breached by the commit that introduced it, filed identically by both reviewers in nine separate
+rounds), `pdlc-engine-distribution` (§1 Phase P — one reviewer saw incomplete downward routing where
+the other saw an unauthorised relocation of an acceptance set REQ AC-1.3 owns),
+`pdlc-merge-phase` (§2 — a second writer to one artifact needs an owner named in the spec, with
+precedence stated).
+
+**Applies to:** REQ, FSPEC, TSPEC, PLAN, dispatch briefs, all reviews
+
+---
+
+## DC-18: A claim carried by N documents needs an N-document guard
+
+**Constraint:** When prose transcribes a fact — a count, a check-name set, a path list, a capability
+statement — that prose is an oracle surface. It is guarded by a check that ranges over a **glob**,
+not over an enumerated list of files, because the enumeration is exactly what goes stale. A guard
+written over one file's copy of a claim does not bind the sibling that carries the same claim.
+
+- Guard the **shape**, not the value: a count-word regex over the prose, not a hard-coded count.
+- When a diff falsifies a shipped claim, grep the claim's words across `SKILL.md` files, `CLAUDE.md`,
+  `README`, `OPERATIONS.md`, `RELEASE-CHECKLIST.md` and `QUEUE.md`, and rank **agent-read prompts
+  above operator prose** — a false sentence in a skill prompt is executed.
+- Retired machinery outlives its mechanism in operator-facing prose by default. A retirement's
+  doc-fidelity oracle ranges over the glob; one that asserts over an enumerated file list will pass
+  while four operator-facing documents still describe the thing that was deleted.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-engine-distribution` (§2, §4 — DoD rounds 6–8
+chased one count-transcribing comment through `publish.yml`, `fixture-machine.yml`, `QUEUE.md` and
+`RELEASE-CHECKLIST.md`, each round writing a file-scoped guard for a multi-file claim),
+`pdlc-merge-phase` (§2 — "the pipeline never auto-merges" was stated in six places and the diff
+falsified all six; `boundary_gaps: 7`), `pdlc-plugin-retirement` (§2 — Phase CR found four
+operator-facing documents describing retired machinery after AC-2.x sweep oracles passed, exactly
+the class REQ R-7 predicted), `pdlc-review-loop-hardening` (§4.1 — five of seven dominant-class
+defects were doc or comment claims that outlived the truth). Companion mechanism: `DEC-ERR-04`.
+
+**Applies to:** implementation, DoD, `dod-verify`, all reviews
+
+---
+
+## DC-19: A wave gate proves the suite ran; no PLAN wave ends red
+
+**Constraint:** The Phase I gate runs the whole configured suite after every wave and halts on
+failure. Three obligations follow, and they are PLAN-authoring obligations, not agent behaviour:
+
+- **No RED-terminal wave.** A `🔴 failing tests` task and its `🟢 implement` successor land in the
+  same wave, or the red task authors its cases `describe.skip`-ped and the green task un-skips them
+  (with the un-skip sweep itself asserted). A red destined for the gated suite cannot span a wave
+  boundary; a red destined for a suite *outside* the gate can.
+- **A gate asserts the suite ran, not merely that it did not fail.** "0 failed" is satisfied by a
+  suite that was skipped, by a harness that reports no `failed` token, and by fifteen waves of
+  `describe.skip`. The un-skip check is per-file.
+- **Every PLAN row whose deliverable is a named property is gated on that property's assertion
+  executing.** A task that claims to carry `PROP-X` and ships no executing assertion for it passes
+  a task-id gate and fails at DoD.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-consolidation-agent` (§4.6 — ~133 skipped tests
+at peak, fifteen waves "complete" and hollow, ~40 dispatches to recover; fixed durably by
+`checkWaveUnskips`), `pdlc-advisory-tier` (§2 — RED-terminal waves are unsatisfiable under the
+script-owned gate; the two workable shapes are named there), `pdlc-headless-engine` (§4.7 — reds for
+the gated suite must land in the same wave; `pdlc/engine/__tests__/` is the safe home for cross-wave
+reds), `pdlc-engine-distribution` (§2 — the un-skip check is per-file, recorded as a PLAN gap in DoD
+item 17), `pdlc-plugin-retirement` (§1 DOD, §2 — PLAN T29 claimed PROP-SWEEP-2/3 and shipped no
+executing assertion; two remediation rounds). Mechanism decisions: `DECISIONS-wave-gates.md`.
+
+**Applies to:** PLAN authoring, `se-author`, `tech-lead`, Phase I
+
+---
+
+## DC-20: Repo-wide state edited inside one feature's window needs a review lane
+
+**Constraint:** A feature may edit shared state — `.claude/pdlc.config.json`, `.github/workflows/*`,
+`CLAUDE.md`, files under `docs/_constraints/` — but that edit does not inherit the feature's review
+coverage merely by appearing in its diff. Two obligations:
+
+- **Re-derive at HEAD, never transcribe.** Any spec that pins a CI job, a matrix, a check name or a
+  command cites file:line at HEAD and is re-derived by the reviewer. A stated set-equality is only
+  testable against the alphabet that actually exists: authored template strings are not the rendered
+  check names GitHub reports.
+- **Relocated content needs a lane.** Normative material moved out of a size-capped REQ into
+  `docs/_constraints/` leaves the pipeline's review surface entirely — no docType, no round window,
+  no cross-review file, not a member of `ERRATUM_DOC_TYPES`. Either give the destination a lane, or
+  require the relocation to be re-derived in the same round that performs it. A measured-fact file
+  accretes summary prose that no oracle checks; prose in such a file that is derivable from the rows
+  is deleted, not maintained.
+
+Neighbouring rule: DC-07 (work that skips a phase inherits zero review coverage). DC-07 is about
+*when* the work happened; DC-20 is about *where the artifact lives*.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-headless-engine` (§2 — three separate halts and
+blocking findings trace to one config key, `implementation.testCommand`, edited mid-implementation
+inside another feature's wave gate; `F-14` built a two-platform remediation on an `os:` matrix that
+did not exist at HEAD; `pdlc-engine-baseline.md`'s relocated measured facts were approved as
+citations for six rounds and audited for the first time in the erratum round that halted Phase F),
+`pdlc-consolidation-agent` (§1 Phase R window 2 — relocation to buy size opened a fresh
+ownership/oracle-range seam that the loop then died on), `pdlc-engine-distribution` (§2 — REQ
+AC-3.4's check-name equality was authored against template strings while Phase PUB polls rendered
+names), `pdlc-plugin-retirement` (§1 Phase D — `docs/_constraints/pdlc-retirement-baseline.md` still
+asserted the opposite of the corrected REQ).
+
+**Applies to:** REQ, TSPEC, PLAN, `pm-author` §5e relocation, all reviews
+
+---
+
+## DC-21: An ordering obligation needs a gate at the moment it binds
+
+**Constraint:** An obligation whose deadline falls before any commit exists — "commit the pre-sweep
+report before the first deletion commit", "capture the golden before the change" — cannot be carried
+by an in-flight PLAN row. It needs a mechanical guard (a hook, a wave-gate pre-flight, a
+first-commit check) or it is discovered only in the post-mortem, at which point it **cannot be
+un-violated**. An artifact produced afterwards may salvage the substantive comparison; it never
+discharges the ordering.
+
+The same shape applies to one-time evidence: an acceptance criterion closed by a spec-acknowledged
+one-time observation with no continuous guard needs a first-class disposition, or every subsequent
+DoD round re-reports it as an open finding.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-plugin-retirement` (§4 — REQ BL-08 placed a
+Phase-0 pre-implementation obligation with no mechanical guard; the first deletion commit
+`2c706a54` landed before anyone noticed, and `6049c0bf` was explicitly rejected as a retroactive
+substitute), `pdlc-engine-distribution` (§4 — AC-4.4's revert half and AC-6.2's bundle-side root
+were closed on `EVIDENCE-*.md` one-time observations and re-reported open in all eight DoD rounds),
+corroborated by `pdlc-merge-phase` (§5 item 8 — PLAN §8 K-1's deferred two-runner reading, where the
+deferral decays into an assumption if nobody actually reads it).
+
+**Applies to:** REQ authoring, PLAN, `dod-verify`, hooks
+
+---
+
+## DC-22: Two writers on one branch need a lock, not an inference
+
+**Constraint:** Before writing to a shared branch, *measure* quiescence — recent commits, running
+tasks, an explicit lease — rather than infer it from a reported status. An agent's `completed` status
+describes what it reported, not what it is doing; a queue row's state describes what was last
+written, not who is writing now. Where two orchestrators can address the same branch (a
+hand-orchestrated session and an engine run, a supervisor and a mid-batch agent), the exclusion is a
+lock with a lease, and its absence is a near-miss waiting on timing.
+
+This is DC-02 ("measure, don't infer") applied to orchestration — the layer that assumed itself
+exempt.
+
+**Origin:** promoted 2026-08-19 from LEARNINGS `pdlc-review-loop-hardening` (§4.6 — two orchestrating
+writers committed to one feature branch simultaneously; the supervisor inferred quiescence from a
+`completed` status, and the collision was caught by the agent's own `SHARED-FILE-RACE` guard, not by
+the supervisor), `pdlc-plugin-retirement` (§4 — a hand-orchestrated session interleaved with a live
+`@kaneho/pdlc-engine` run at 09:48; content-addressed round derivation meant the two composed without
+conflict, which the LEARNINGS records as luck, not design).
+
+**Applies to:** orchestration, `orchestrate-dev`, `orchestrate-queue`, engine backlog

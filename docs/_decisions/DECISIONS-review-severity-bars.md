@@ -332,3 +332,49 @@ the High-only convergence bar (DEC-BAR-01), the lifetime round cap (DEC-ROUNDS-0
 protocol's delta confirmations, which are already delta-scoped by construction. The predicate fails
 OPEN: a round record it cannot read imposes no freeze, and a forced phase — where the approval search
 does not run — is frozen only by the round-index trigger.
+
+---
+
+## DEC-ERR-04: an erratum is complete only when the reverse grep finds no surviving statement of the corrected claim
+
+**Decision.** An erratum round's completion condition is not "the named document now says the right
+thing". It is: **grep the corrected claim, in its reversed form, across `REQ`, `FSPEC`, `TSPEC` and
+`docs/_constraints/`, and find nothing**. If any document still carries the claim the erratum
+corrects — in a rationale paragraph, an appendix, a changelog entry, a measured-fact row, a
+downstream literal in a PLAN or PROPERTIES row — the erratum is not done, whatever the erratum item
+named.
+
+The routed item names a *symptom coordinate*, not the extent of the fix. The obligation is that the
+false statement is absent from the corpus afterwards.
+
+**Rationale.** Three features halted on the same shape, in three directions.
+
+- **Downstream-only landing.** `pdlc-plugin-retirement` Phase D: errata 3 and 5 landed in the FSPEC,
+  which correctly recorded the corrected REQ C-5 / AC-1.2 rationale — while REQ §A-1 and
+  `docs/_constraints/pdlc-retirement-baseline.md` (M-11h, M-11n) still asserted the opposite. The
+  first confirmation halted. Recovery was upstream-first, across two commits, and one erratum had to
+  be routed to REQ O-8 as a deferred successor.
+- **Downstream literals left behind.** `pdlc-engine-distribution` Phase PR: the erratum wave
+  propagated *up* (child confirmed before parent, per `DEC-ERR-03`) and nothing owned propagating
+  *down* — `PLAN:146`, `PLAN:458` and `PROP-LAUNCH-3` were left discriminating on an assertion
+  string that existed in no shipped module.
+- **Sibling sites in the same document.** `pdlc-headless-engine` Phase T: the routed item's
+  coordinates were site-scoped, and the same `BR-MODEL-3` claim lived in a preamble the edit did not
+  touch. Grep alone did not find it — the second site used a pronoun for the subject. Hence the
+  companion obligation: **a claim worth an erratum carries its owning id inline**, so duplicates are
+  findable, and the erratum's change note enumerates the sites checked.
+
+`DEC-ERR-01` decides what is absorbed rather than routed, and `DEC-ERR-03` decides that the
+confirmation is a superset check against upstream HEAD. Neither states what makes the *edit* itself
+complete. This does.
+
+**Consequences.**
+- An erratum edit's change note enumerates the sites swept and states the grep that was run.
+- `docs/_constraints/` files are in the sweep set even though they are not pipeline artifacts and
+  carry no review lane (DC-20) — they are where the surviving false statement was found twice.
+- An erratum that discovers the repair needs a **new upstream decision** escalates rather than
+  landing an unauthorised single-layer edit (`pdlc-engine-distribution` Phase P).
+
+**Testability.** Prompt-level, not mechanical, today: the sweep is a stated completion condition in
+the author-side dispatch. The mechanical form — a reverse-grep lint over the corrected claim — is
+proposed in `CONSOLIDATION-PROPOSAL-2026-08-19-1.md`.
