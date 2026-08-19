@@ -503,7 +503,9 @@ learningsInjection: {
       corpusDiverged: false,        // true iff differs from the preceding authoring dispatch
     },
   ],
-  notices: [ { id: "NTC-KEYTYPE", key: "maxDocuments" } ],
+  // NO `notices` key here — see §I.2: NTC-* notices are carried on buildFinalReport's
+  // run-level notice channel, OUTSIDE this conditionally-spread key, because AC-5.1b
+  // requires a malformed-section run to report a notice while `learningsInjection` is absent.
 }
 ```
 
@@ -516,6 +518,15 @@ Four closure claims, one test each:
 | BR-10 members | `orderKeys`, `thresholds` | set equality over `Object.keys(ruleInputs)` |
 | BR-9 catalogues | D.1's three arrays | one set-equality test each |
 | §A.5 per-dispatch observation | `corpusOutcome`, `orderKeys`, `corpusDiverged` | `DIVERGENT-CORPUS` fixture: run-level scalars equal dispatch 5's, each row carries its own, `corpusDiverged` true on exactly dispatches 3 and 5 |
+
+**Notices are not a member of this record.** `NTC-MALFORMED` and `NTC-KEYTYPE` are pushed onto
+`buildFinalReport`'s existing run-level notice channel (§I.2), never onto `learningsInjection`.
+If they lived here, AC-5.1b's state (section present but not an object) could not be satisfied:
+that state must produce AC-5.1a's behaviour — `learningsInjection` **absent** — *and* a report
+carrying `NTC-MALFORMED`, which is impossible if the notice's only home is the absent key. With
+the notice channel outside, the three config states are byte-distinguishable in the report:
+AC-5.1a (disabled/absent ⇒ no key, no notice), AC-5.1b (malformed ⇒ no key, `NTC-MALFORMED`),
+AC-5.1c (wrong-typed key ⇒ key present with empty-or-normal rows, `NTC-KEYTYPE`).
 
 `orderKey: null` is BR-10's "explicit marker that it was absent or unparseable" — a JSON `null`
 carried in a **present** key, never an omitted key, so the two states are distinguishable in a
