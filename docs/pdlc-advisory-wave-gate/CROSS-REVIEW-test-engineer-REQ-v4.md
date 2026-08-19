@@ -55,3 +55,7 @@ All four v3 findings — the High on AC-1.5's shipped-behaviour claim and the th
 
 F-01 is the one worth folding into the next revision that touches this document: AC-5.3's universal is falsified by a post-gate halt AC-4.4 explicitly permits, and the fix is one conditioning clause plus one sentence naming the report observable. F-02, F-03 and F-04 are single-phrase clarifications that make three oracles transcribable without inference; none changes a decision, and none needs its own round.
 
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
