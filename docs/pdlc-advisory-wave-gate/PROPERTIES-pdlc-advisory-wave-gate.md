@@ -424,6 +424,7 @@ These are stated so that a later reader can tell a decision from an omission.
 
 ### G-2. Known-soft properties
 
+- **PROP-CFG-03 is invisible to the wave gate that runs this feature.** Its home is the engine-channel file `pdlc/engine/__tests__/advisory-config-example.test.js` (A6-04), while this repo's `.claude/pdlc.config.json` sets `implementation.testCommand` to a `cd pdlc/workflows && npm test …` command only. So neither A6-04's RED nor its GREEN is observable in a Phase I wave gate or in the V-wave: both are asserted by CI's `Engine tests (ubuntu-latest)` job, which runs `npm ci && npm test` in `pdlc/engine` (PLAN §"Engine channel" row). A batch reported green by the wave gate therefore carries no evidence about PROP-CFG-03 either way; read the CI job, not the wave. The same holds for A6-06's edit to the example config.
 - **PROP-REST-03** is upstream-pending on OQ-7 and ships as `test.todo` until the erratum on FSPEC
   BR-9 / AT-05-1 and REQ AC-5.1 returns a boundary. This is TSPEC §6 OQ-9's decision, not a gap this
   document introduces.
