@@ -35,3 +35,18 @@ Two edits beyond the routed findings landed, and both are corrections in the sam
 - **The fifth retraction was found without being routed.** BR-4's "deliberate correction of an upstream expectation" parenthetical was not in any v5 finding, and the author removed it in the same pass and replaced it with a checkable claim about REQ AC-2.2. Retracting an unrouted stale claim in a frozen round is the harder half of erratum hygiene.
 - **REQ O-8 was absorbed as a named TSPEC obligation, not as prose.** F-O-7 (FSPEC:918) carries the non-default-threshold fixture that makes `RSN-COUNT` a binding cut, with the reason stated: under §4.1's defaults the byte bounds bind first, so the count cap has no exercise. This is the testing-lens point that matters most in the delta — without that fixture, `RSN-COUNT` would be *named* by BR-9's set-equality test and *never exercised* by any behavioural one, which is exactly the shape of a catalogue entry that passes forever. Routing it to TSPEC as an entry obligation, matching REQ O-8 (REQ:455-457), keeps it from being discovered late.
 - **The nested/direct split is now stated identically in all four places it appears.** BR-2, BR-9's exception bullet, E-07 and AT-15 all say `docs/discarded/{feature}/` for the never-candidate class and reserve the direct path for E-35. A test author reading any one of them builds the fixture the others expect.
+
+## Recommendation
+
+**Approved**
+
+The delta discharges all three v5 findings and introduces no defect. The High finding was mechanical — four routed `ERRATUM: REQ` declarations stating as fact divergences the REQ had already closed — and the revision retracted all four, plus an unrouted fifth in BR-4, restating each as agreement with a claim I checked line by line against the REQ at HEAD: AC-2.6 (REQ:300-303), AC-3.2 (REQ:314-320), AC-2.1 (REQ:273-275), AC-5.1b (REQ:371-372), AC-2.2 (REQ:284-286). All five hold; `grep -ni erratum` over the FSPEC leaves only subject-matter uses. The Medium and Low wording items are fixed at every site they appear, and the substantive prose — the 89-document measurement, the glob reasoning, the total-order argument — moved not at all, so nothing previously approved was disturbed. From the testing lens the document is now writable-against: AT-15's two clauses take disjoint fixtures, AT-20 falsifies cross-catalogue id reuse over all three sets, and the one catalogue id with no behavioural exercise under default thresholds (`RSN-COUNT`) is carried to TSPEC as a named fixture obligation at F-O-7 rather than left to the set-equality test alone.
+
+DEFERRED: Q-02's wrong-typed `enabled` case deserves a named fixture at TSPEC — it is the one per-key fallback that turns the feature on against apparent operator intent, and BR-14's table implies the behaviour without an AT pinning it.
+
+DEFERRED: AT-20's three-catalogue disjointness conjunct now needs a fixture in which a configuration notice and a per-document reason are both present in one run; TSPEC should say which fixture carries it, since the config-notice catalogue is populated on a path (malformed/wrong-typed config) orthogonal to the corpus fixtures AT-19/AT-20 otherwise use.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
