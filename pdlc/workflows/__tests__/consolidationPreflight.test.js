@@ -183,3 +183,30 @@ describe("T00 — .claude/pdlc.config.json presence gate", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// pdlc-plugin-retirement class 10 (T25/T26) — wave-gate prose only (DEC-08,
+// TSPEC §2.2). `.claude/pdlc.config.example.json`'s postWaveCommand and
+// postWavePathspecs survive the sweep unchanged: `pdlc/workflows/dist/`
+// still holds the regenerated `pdlc-cli.mjs`, so the wave-gate's rebuild
+// step stays load-bearing. Only CLAUDE.md's prose is corrected to say so —
+// no config value moves.
+// ---------------------------------------------------------------------------
+
+describe("class 10 — wave-gate prose is post-sweep accurate (DEC-08)", () => {
+  const exampleConfigPath = join(REPO_ROOT, ".claude", "pdlc.config.example.json");
+  const exampleConfig = JSON.parse(readFileSync(exampleConfigPath, "utf8"));
+  const claudeMd = readFileSync(join(REPO_ROOT, "CLAUDE.md"), "utf8");
+
+  test("postWaveCommand and postWavePathspecs are unchanged post-sweep", () => {
+    expect(exampleConfig.implementation.postWaveCommand).toBe(
+      "node pdlc/workflows/build-runtime.mjs",
+    );
+    expect(exampleConfig.implementation.postWavePathspecs).toContain("pdlc/workflows/dist/");
+  });
+
+  test("CLAUDE.md documents that both wave-gate config values stay load-bearing post-sweep", () => {
+    expect(claudeMd).toEqual(expect.stringContaining("postWaveCommand"));
+    expect(claudeMd).toEqual(expect.stringContaining("postWavePathspecs"));
+  });
+});
