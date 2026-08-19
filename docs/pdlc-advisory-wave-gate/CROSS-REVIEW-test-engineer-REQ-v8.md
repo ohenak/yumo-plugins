@@ -52,3 +52,43 @@ The claim that survives this round is therefore the strong one, and it holds.
 | ID | Question |
 |----|---------|
 | Q-01 | None blocking. F-01's clause and F-02's anchor are both single-line edits that need no decision; either can ride the next erratum or be folded into the TSPEC-time citation sweep. |
+
+## Positive Observations
+
+- **The restoration is a true restoration, and in one place better than the bytes it restores.** All
+  five reverted sites are back with their approved meaning, and the M-WG-6 row was not restored
+  literally — round-3's bytes (`fe2d7426:89`) still carried the pre-correction claim that its own
+  correction paragraph retracted three lines later. v1.9 rewrote the row so the row and the
+  correction agree. That removes the self-contradiction v7 F-04 named at its root rather than
+  reinstating it, which is the right call and is why F-04 does not reappear as a High here.
+- **The §1 citation rewrite is exactly the durable fix.** Swapping `:9976`/`:12191-12280`/`:12345-12429`
+  for exported symbols and a verbatim emitted string means the next rebase cannot silently falsify
+  §1 again — a grep for `WAVE_STATE_PATH` or for the notice text will keep finding the mechanism no
+  matter how far it moves. This is the citation form a TSPEC/PROPERTIES author can transcribe into a
+  fixture without re-deriving anything. Worth promoting as the house style for engine citations.
+- **NFR-4's new phrasing is falsifiable where the old one was not.** "The window closes at the
+  attempt's verdict, and the gate runs after that verdict" names a measurable boundary — a test can
+  assert the measured span ends at the verdict timestamp. "The gate runs between attempts" named an
+  ordering that could not be observed from the budget's own instrumentation. The conclusion (no
+  subtraction, no carve-out) is unchanged, so nothing downstream moves.
+- **The C-2 repair re-aligns the whole chain with no downstream rework.** With `1` back in C-2, the
+  approved TSPEC (`:523`, `:1069`), PROPERTIES (PROP-CFG-01/02/03, PROP-CTR-11) and PLAN (A6-05) are
+  consistent with the REQ again. PROP-CFG-01's set-equality-plus-value oracle over `ADVISORY_DEFAULTS`
+  would have gone red against an implementer reading `2`; that trap is closed.
+- **Size stays inside budget:** 624 lines / 50,316 bytes, against the 700-line / 60 KB REQ bound.
+
+## Recommendation
+
+**Approved with minor changes**
+
+All four v7 High findings are resolved and verified against HEAD source rather than against the
+document's own account of itself. No delta-introduced defect and no factual contradiction with HEAD
+remains. The two Medium findings and one Low are precision repairs on non-load-bearing text; none
+gates, and none requires a decision.
+
+DEFERRED: AC-1.2's stale `orchestrate-dev.js:12331-12343` anchor (F-02) — fold into the TSPEC-time citation sweep with the rest of the raw `file:line` anchors.
+DEFERRED: M-WG-6's "no phase-level skip" clause (F-01) — tighten to "no approval-record skip" whenever §1 is next touched.
+
+FINDING: Medium | inherited | local | §1 M-WG-6 row (`REQ:109`) | "carries no phase-level skip" is narrower than HEAD, which skips Phase I on a complete ledger (`orchestrate-dev.js:14272`-`:14286`); the correction paragraph below already qualifies it.
+FINDING: Medium | inherited | nonlocal | §6 AC-1.2 (`REQ:267`) | raw anchor `orchestrate-dev.js:12331-12343` points at DEC-ROUNDS-02 round-cap prose; the real post-wave-command site is `:14351`-`:14361`. Claim true, anchor stale.
+FINDING: Low | delta | local | v1.9 changelog (`REQ:24`) | says "§9's O-7"; O-7 is in §8 Obligations (`REQ:558`), §9 is Prerequisites.
