@@ -1,0 +1,57 @@
+# Cross-Review: test-engineer — TSPEC
+
+**Reviewer:** test-engineer
+**Document reviewed:** `docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` (v1.3)
+**Date:** 2026-08-20
+**Iteration:** 4
+**Scope:** Local
+**Delta base:** `f370eb5c` (the v3 review's base) → HEAD, 90 insertions / 21 deletions, TSPEC only
+
+## Round-3 findings: disposition
+
+| Prior finding | Verdict | Evidence |
+|---|---|---|
+| F-21 High — step 6's ledger rule under-determined on a multi-attempt run | **Not resolved; the replacement rule has a worse failure mode** | The growth-equality was replaced with a suffix check (§3.2 step 6, §3.3's `verifyGate` row, §5.5). The suffix check is satisfied by the first pass's own gate tokens, so it can no longer fail on the mutation it exists to catch — see F-26. The two-attempt literal it is stated against also contradicts §2.4 — see F-27 |
+| F-22 Medium — capture-failure disposition named three fields, renderer reads six | **Resolved** | §2.5's new "Disposition object, in full" row and §3.2 step 4 both name `{seam, outcome, reason, verdict, attempts, model: "n/a", fallback: false}`. Checked against the renderer: `renderAdvisoryEntry` destructures exactly `{seam, outcome, reason, verdict, model, fallback}` (`orchestrate-dev.js:2924`) and `advisoryEntrySingleLine` is a bare `String(value)` with no null branch (`:2905`), so `model` really is the one member with no fallback. §5.2 now transcribes the `Model` cell as the literal `n/a` |
+| F-23 Medium — four table rows carried a cell past the final pipe | **Resolved** | All four clauses moved inside their cells (§3.3's `gatherEvidence` and `verifyGate` rows; §5.5's `(g)` and `(h)` rows), joined with an em dash. No trailing-pipe cell remains in the round's content |
+| F-24 Medium — steps 3 and 4 no longer run in numbered order, unstated | **Resolved** | §3.2 step 3 now states that the budget escape resolves inside `runAdvisorySeam`, after step 4's capture, that a no-dispatch wave therefore still captures and still rewrites `refs/pdlc/a6-snapshot`, and why the ordering was kept (record/escalation writes stay on the shipped `terminate` path). Both dependent oracles are named: AT-02-6 asserts the ref **is** written on a budget-escalated wave, and §5.2's call count is once per wave *entered* |
+| F-25 Low — one-snapshot assertion counted the `_git` double, not argv | **Resolved** | §5.2 now counts `commit-tree === 1` over the double's recorded argv, and says why: `restoreTreeSnapshot` drives the same transport with `read-tree`/`clean`/`reset`. Cross-checked against §2.5's sketch — `commit-tree` appears on the capture side only, so it is genuinely capture-unique |
+| Q-01, Q-02 | **Answered** | §6 OQ-13 splits the capture-failure diagnostic by slot (fixed sentence in §4.5's `diagnosis` because §5.5 compares it literally; underlying git verb into the escalation entry's free-text `decision`), and confirms `record-write-failed` is not this path's reason. OQ-12 closes the `ADVISORY_SEAM_PHASES.A6` question by construction. §5.5's `(g)` row now asserts the config file exists before the run |
+
+Both findings below are in this round's new content.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-26 | High | Local | **The suffix check is satisfied by the first pass's own gate tokens, so §5.5's dropped-re-gate mutation fixture can no longer fail — the rule went from too strict to unfalsifiable.** §3.2 step 6 now reads: "read the ledger's final tokens and require that they are the wave's configured gate sequence". But the same `invocations` array already carries the wave's *first pass* — §2.3's call site passes `invocations` into `runWaveGateSequence` before A6 is ever entered, and §2.4 states a token is pushed before each `runCommandFn` call "whether or not that call passes". So when a mutated `verifyGate` returns `{passed: true}` having run nothing, the ledger is `[post-wave, test]` — the first pass's pair — and its final tokens **are** the wave's gate sequence. The check passes, the resolution is granted, and the fixture goes green against exactly the mutant BR-7 exists to refuse. The document asserts the opposite twice (§3.2 step 6: "the ledger's final tokens are a *stale* earlier attempt's pair, or nothing at all, and the check fails"; §3.3's `verifyGate` row repeats it) — a stale pair still ends in the gate sequence, so the stated consequence does not follow from the stated rule, and "or nothing at all" is unreachable because the first pass always appended two tokens. The suffix quantity cannot separate "the resolving `verifyGate` appended a sequence" from "some earlier call did", which is the whole content of AC-4.1 conjunct (iii). A quantity that does separate them, and that survives every attempt count: read the ledger length at dispatch and require **growth-since-dispatch === sequence length × (`attempts` + 1)**, `attempts` being the member the terminal disposition already carries (`orchestrate-dev.js:3297`, `:3300`) — every attempt ran exactly one full sequence. A one-attempt green run grows by 2 with `attempts: 0`; the two-attempt green run of §5.2's new companion grows by 4 with `attempts: 1`; the dropped re-gate grows by 0 and fails whatever the attempt count. Whatever quantity is chosen, it must be one the fixture can falsify — please restate it and reconcile §3.3's row and §5.5's bullet to it | §3.2 step 6, §3.3 (`verifyGate`), §5.5 (AC-4.1 (iii)), §5.2 |
+| F-27 | High | Local | **The new two-attempt companion case transcribes a ledger literal this document's own §2.4 says belongs to a one-attempt run — an implementer transcribing it writes a red test against a correct implementation.** §5.2's new positive companion asserts a run whose first `verifyGate` is red and whose second is green reads `invocations` `["post-wave", "test", "post-wave", "test"]`; §3.2 step 6, §3.3's `verifyGate` row, §5.5's fourth bullet and the v1.3 changelog all repeat that four-token literal for the same two-attempt run. §2.4's table gives four tokens for **"one attempt, red re-gate"** — first pass `[post-wave, test]` plus one re-gate `[post-wave, test]`. A run with a red re-gate *and* a green one is three sequence runs, `[post-wave, test, post-wave, test, post-wave, test]`, six tokens. Since §5.2's whole purpose is to be a transcribable expected value (the positive companion that stops the mutation fixture from passing against an implementation that resolves nothing), a wrong literal is the most expensive kind of defect here: the implementer either ships a failing test or repairs it by pasting the run's actual output, which is the implementation echo §5 works to forbid. Fix the literal in all five places, or state explicitly in §2.4 that the first pass is excluded from the ledger the step-6 check reads — but that second option needs AT-04-2's operand renamed, since AT-04-2 asserts §2.4's table as written | §5.2, §3.2 step 6, §3.3 (`verifyGate`), §5.5, Changelog v1.3 |
+| F-28 | Medium | Local | **Only one mutation shape is fixtured, and it is the shape any candidate rule catches; the attempt-2 drop is the one that discriminates.** §5.5's fixture drops the re-gate on the wave's first A6 attempt. Under F-26's suffix wording that case is already unfalsifiable, but even under a corrected rule it is the easy half: growth is zero and every proposed quantity refuses it. The case that separates a real rule from a decorative one is a `verifyGate` that runs a genuine red sequence on attempt 1 (driver reverts, `consumesAttempt: true`, `orchestrate-dev.js:3554-3568`) and then returns `{passed: true}` without running anything on attempt 2 — the ledger has grown by a full sequence since dispatch, and it ends in one. Add that as a second mutation fixture asserting the same threefold positive (disposition not `resolved`, halt on AT-05-3's literal, `0` waves resolved), so the rule chosen in F-26 is pinned by the case it was chosen for | §5.5, §5.2 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | With F-26 corrected, does the step-6 check still hold on the third row of §2.4's configuration table (test command only, no post-wave command), where the sequence length is 1? A growth rule of `1 × (attempts + 1)` works, but §5.2's fixture set does not currently carry a no-post-wave run at all, so nothing would catch a rule that hard-codes 2. Worth one fixture. |
+| Q-02 | §5.2's capture-failure fixture now transcribes the `Model` cell as `n/a`. Does it also assert the Disposition cell reads a bare `escalated` on that same run — i.e. that `reason: null` survives the renderer's `outcome === "escalated" && reason` branch (`orchestrate-dev.js:2926-2927`)? The v3 text pinned that for the record entry generally; it reads as covered, but naming it on the capture-failure run would make the six-member disposition's two riskiest members (`reason`, `model`) both transcribed on one run. |
+
+## Positive Observations
+
+- F-22's answer is the kind I like to see: rather than asking for a renderer change, the revision went and read what the renderer actually destructures and supplied the missing member from the caller. I checked `:2924` and `:2905` and the document's account of both is exact — `advisoryEntrySingleLine` really has no null branch, so `model: "n/a"` is load-bearing and not defensive decoration.
+- F-25's fix improved on the request. I asked for a counted argv verb; the revision picked `commit-tree`, said why the transport count is wrong (`restoreTreeSnapshot` drives the same double), and cross-checked the verb against §2.5's capture/restore sketch so the uniqueness claim is visible rather than asserted.
+- F-24's answer states the *cost* of the ordering it kept — one `write-tree`/`commit-tree` pair on a no-dispatch wave — and then names the two oracles that now read the ordering explicitly. A design note that tells a test author what to assert is worth more than one that tells them what is true.
+- OQ-13 is a good answer to a question I expected to be deferred: it splits the diagnostic by slot on exactly the right criterion (which slot carries an equality oracle), and it volunteers the `record-write-failed` distinction I raised in passing.
+- Every code citation added this round checks out: `:2924`, `:2905`, `:2965`, `:3090`, `:3401-3410`, `:3393-3396`, `:3554-3568`, `:1576-1581`. Four rounds in, the citation discipline in this document is the reason I can review the deltas at speed.
+
+## Recommendation
+
+**Needs revision**
+
+Two High findings, both narrow and both in this round's fix to F-21. F-26 is the substantive one: the suffix restatement removed the false-negative I raised but introduced a false-positive, because the ledger the check reads already contains the first pass's gate sequence — so the mutation fixture that AC-4.1 conjunct (iii) rests on can no longer go red. A growth-since-dispatch quantity keyed to the disposition's own `attempts` member holds at every attempt count and refuses the mutant; any quantity works provided the fixture can falsify it. F-27 is mechanical: the two-attempt ledger literal is a one-attempt literal, repeated in five places, and it is precisely a value Phase P will transcribe into a test. F-28 asks for the second mutation fixture that would have caught F-26 before I did.
+
+No upstream defects found this round; OQ-7's BR-9 boundary remains the one open erratum, already routed.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 0}
