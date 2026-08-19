@@ -69,8 +69,12 @@ rather than trust it:
    `docs/completed/{feature}/`. `pdlc-consolidation-agent` already ships an enumeration over exactly
    those two locations — tracked and untracked but not ignored, `docs/discarded/` excluded by
    pathspec, with a fail-open outcome when the listing itself fails
-   (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that definition rather
-   than authoring a second one (C-3, G-6).
+   (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that shipped **pass-side**
+   enumeration — the literal `git ls-files --cached --others --exclude-standard` pathspec pair
+   (`LS_FILES_ARGV`, `pdlc/workflows/consolidate-learnings.js`) inside the same JS bundle — rather
+   than authoring a second one (C-3, G-6). DEC-CONS-05 ships *one predicate, two enumerations*: the
+   pass and the Python `SessionStart` hook deliberately differ, so nothing here claims the readers
+   of this corpus agree as sets.
 3. **The prompt budget is already contested.** Authoring dispatches already carry the phase's
    grounding manifest, the upstream documents and the pacing contract. Anything this feature
    adds competes for the same budget, which is why every acceptance criterion below is stated
@@ -155,12 +159,15 @@ passes is exactly where an unattended queue does its work.
 - **C-2 — Self-exclusion.** The feature currently being authored never contributes its own
   LEARNINGS document to its own dispatch, in any phase, including a re-run of a feature whose
   LEARNINGS already exists from an earlier completed attempt.
-- **C-3 — One corpus definition, shared with consolidation, read-only.** The corpus is the LEARNINGS
+- **C-3 — The corpus definition, reused from consolidation's pass side, read-only.** The corpus is the LEARNINGS
   documents under `docs/{feature}/` and `docs/completed/{feature}/`, tracked or untracked,
   **excluding** files git ignores and excluding `docs/discarded/` — the definition
   `pdlc-consolidation-agent` already ships (§1.2 claim 2; DECISIONS-pdlc-consolidation-agent
-  § DEC-CONS-05). Where that definition changes, this feature's changes with it: two consumers of
-  one corpus must not drift apart. No file in the corpus is written, moved, deleted or reformatted
+  § DEC-CONS-05). What is reused is the pass-side enumeration inside that JS bundle, not a definition
+  held equal across all readers of the corpus: DEC-CONS-05 pins the pass's and the hook's
+  enumerations literally rather than equal, having rejected both one shared implementation and an
+  enumeration set-equality assertion — the latter as red on correct code, on a measured divergence
+  set. No file in the corpus is written, moved, deleted or reformatted
   by this feature.
 
 - **C-4 — Injected material is labelled advisory, and its status is stated to the author.** The
@@ -418,9 +425,10 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   material. NG-5 excludes them for now, on the argument that a reviewer grounded in a prior feature's
   lessons may file findings this feature's REQ never asked for. Revisit with O-3's evidence; a
   widening is a successor REQ with its own queue row.
-- **O-7** Bind this feature's corpus definition to the one `pdlc-consolidation-agent` already ships,
-  as a single shared definition rather than a second implementation of the same rule (C-3, §1.2
-  claim 2) — TSPEC's to specify, including whether a shared test asserts the two agree.
+- **O-7** Bind this feature's corpus definition to `pdlc-consolidation-agent`'s **pass-side**
+  enumeration in the same JS bundle (C-3, §1.2 claim 2) — TSPEC's to specify, including how that
+  reuse is pinned. No test asserting agreement with the `SessionStart` hook is owed: DEC-CONS-05
+  rejected that oracle.
 
 ### 7.1 Stopping rule for this REQ's review loop *(DC-09, pasted in deliberately)*
 
