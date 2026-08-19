@@ -416,16 +416,14 @@ equality, it is stated as such rather than as an absence.
   wave ends. *Then* no advisory agent is dispatched and the run halts exactly as today. Repeat with a
   post-wave command failure; same result. *(BR-1, AC-1.2.)*
 - **AT-01-3** — *Who:* an operator running Phase I. *Given* the final V-wave carrying the PROPERTIES
-  tests. *When* its gate returns non-zero. *Then* A6 does not fire and the halt is byte-comparable to
-  today's. *(BR-1, AC-1.3.)*
+  tests. *When* its gate returns non-zero. *Then* A6 does not fire, no advisory agent is dispatched, and the halt reason string and the queue row written equal those the pre-A6 pipeline produces for the same gate failure. Named artifacts, not whole run text, which varies by timestamp (NFR-2). *(BR-1, AC-1.3.)*
 - **AT-01-4** — *Who:* the disabled-tier suite. *Given* `advisory.enabled` false. *When* a wave's gate
   goes red. *Then* no advisory agent is dispatched, no model rung is resolved, the created-file set
   equals the pre-A6 baseline for the same run, and the report carries no advisory summary key. The
   test asserts the key is **absent**, not undefined. *(E-01, NFR-2, AC-1.4.)*
 - **AT-01-5** — *Who:* an operator reading a run report. *Given* a run in which BL-03, BL-04, or both
-  are absent. *When* the run completes. *Then* an oracle scanning the whole notice surface and
-  filtering for A6-authored inapplicability notices counts exactly **one**, naming every absent
-  prerequisite; and in a run where A6 applies it counts **zero**. *(E-04, AC-1.5.)*
+  are absent. *When* the run completes. *Then* an oracle scanning the run report's whole notice surface, counting inapplicability *statements* whoever authored the carrier, counts exactly **one**, naming every absent prerequisite; and in a run where A6 applies it counts **zero**. The oracle must not filter for A6-authored notices: A6 authors none, the statement rides the shipped carriers, and an author-filtered count reads zero in both arms and so falsifies nothing. Population: runs that reach Phase I. A run halting earlier, and a run skipping Phase I on a recorded wave ledger, are outside the criterion, not failures of it. *(E-04, AC-1.5.)*
+- **AT-01-6** — *Who:* the workflows suite. *Given* the tier enabled and a run in which no wave gate goes red, so A6 never fires. *When* the run completes. *Then* the report's advisory summary key is **present**, carries six per-seam rows, and every A6 counter reads zero. Paired with AT-01-4's key-**absent** assertion on the disabled tier, the two make present-and-undefined fail on both sides. *(E-32, AC-1.1, NFR-2.)*
 
 ### 6.2 FSPEC-AWG-02 — Invocation contract
 
@@ -452,7 +450,9 @@ equality, it is stated as such rather than as an absence.
 - **AT-02-7** — *Who:* the workflows suite. *Given* an invocation whose working time excluding
   gate-command run time exceeds `advisory.seamBudgetMinutes`. *When* it terminates. *Then* it
   escalates `budget-exhausted`; and a companion case with a slow gate command and fast working time
-  does **not** escalate, so the exclusion is falsifiable rather than decorative. *(E-25, NFR-4.)*
+  does **not** escalate, so the exclusion is falsifiable rather than decorative. The window measured is the invocation as BR-11 defines it — one A6 episode on one wave — and the exclusion covers every gate-command invocation inside it, first pass and each re-gate alike. *(E-25, NFR-4, BR-11.)*
+- **AT-02-8** — *Who:* the workflows suite. *Given* a verdict classified `environmental`, and a second classified `unclassified`, each carrying no repair proposal. *When* each is received. *Then* in both the terminal disposition is `escalated`, no repair is applied and no restoration is performed, the outcome carries **no** refusal reason, and the escalation-log entry carries the root-cause class. The assertion on the absent reason is paired with the positive assertions beside it, so a run that never reached the seam cannot satisfy it. *(E-11, E-19, BR-2, BR-15.)*
+- **AT-02-9** — *Who:* the workflows suite. *Given* `advisory.attemptBudget` at `1` and a wave whose re-gate stays red. *When* the wave terminates. *Then* exactly **one** A6 dispatch occurred on that wave and the disposition is `escalated` with `budget-exhausted`. *Given instead* `advisory.attemptBudget` at `2` under the same red re-gate. *Then* exactly **two** dispatches occurred. Counted, never bounded: a "no more than" oracle passes an implementation that dispatches none. *(E-24, BR-11, §3.2 step 3b.)*
 
 ### 6.3 FSPEC-AWG-03 — Envelope
 
