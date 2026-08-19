@@ -516,19 +516,50 @@ Control flow, in the order the FSPEC's §3.2 steps name:
 
    - step 4 records `const ledgerAtDispatch = invocations.length` before `runAdvisorySeam` is
      entered — the floor below which nothing counts;
-   - `buildA6SeamOps`' own `apply` (§3.3) records `ledgerAtLastApply = invocations.length` on every
+   - `buildA6SeamOps`' own `apply` (§3.3) records the ledger position of *this* repair on every
      call, as its first statement, before it dispatches the repair edit. `apply` is A6's code, it
      runs once per attempt, and the driver runs it strictly before that attempt's `verifyGate`
      (`orchestrate-dev.js:3521` APPLY, `:3544` VERIFY, one iteration of the attempt loop).
+
+   **The anchor needs a carrier, not a variable (TE F-29).** `buildA6SeamOps` is a top-level export
+   (§3.3), so its `apply` cannot assign into `runWaveGateSeam`'s scope, and a scalar property set on
+   the returned SeamOps object would not survive the shallow copies the driver and the fixtures both
+   work with: the driver reads members off whatever object it was handed
+   (`orchestrate-dev.js:3499`, `:3503`, `:3521`, `:3546`), and §5.5's mutation fixtures hand it
+   `{...seamOps, verifyGate: fake}`. Either mistake silently inverts the rule back into a tail read
+   — `invocations.slice(undefined)` is the whole ledger — which is round 3's defect restored as an
+   implementation detail. The anchor therefore gets the `declaredScope` treatment (§3.3): a
+   **mutable carrier created by `runWaveGateSeam` and passed into `buildA6SeamOps`**, written in
+   place by `apply` and read at step 6:
+
+   ```js
+   const ledgerAnchor = { value: -1 };   // created at step 4, beside `ledgerAtDispatch`
+   // … passed to buildA6SeamOps({ …, invocations, ledgerAnchor, … })
+   // … inside `apply`, first statement:  ledgerAnchor.value = invocations.length;
+   ```
+
+   `-1` is the fail-closed initial value, and it is a *stated* value, not an omission: `undefined`
+   would make `invocations.slice(ledgerAnchor.value)` read the whole ledger and restore the suffix
+   defect, and `invocations.length` at build time would equal `ledgerAtDispatch`, making the first
+   conjunct below vacuous and the slice a growth-since-dispatch read — the two wrong choices, named
+   so Phase P transcribes neither (TE F-31). The carrier's lifetime is `invocations`' lifetime: both
+   are created per wave, in the wave loop's own scope (§2.4, §4.3), so a wave-2 seam cannot start
+   holding wave 1's anchor even if a later refactor hoists `buildA6SeamOps` construction (TE Q-01).
 
    The step-6 check is then, with `gateSequence` read from the same `implConfig` the sequence helper
    reads — `["post-wave", "test"]`, or `["test"]` alone when no post-wave command is configured
    (§2.4's third row), never a hard-coded length:
 
    ```js
-   ledgerAtLastApply >= ledgerAtDispatch &&
-   sameSequence(invocations.slice(ledgerAtLastApply), gateSequence)
+   ledgerAnchor.value >= ledgerAtDispatch &&
+   sameSequence(invocations.slice(ledgerAnchor.value), gateSequence)
    ```
+
+   The first conjunct is defensive and no fixture falsifies it: it is false only before any `apply`
+   has run, and the shipped driver reaches a `resolved` outcome only after a successful ACT
+   (`orchestrate-dev.js:3521`), so step 6 is never entered with the anchor still at `-1`. It is kept
+   because the fail-closed reading of a missing anchor belongs in the check as well as in the
+   initial value; Phase P should not go hunting for the fixture that falsifies it (TE F-31).
 
    **Why anchored growth and not a suffix check (PM F-01, TE F-26).** The ledger is not empty at
    dispatch. A6 is entered *because* the wave's first pass ran and went red (§2.3, step 1), so the
