@@ -467,27 +467,62 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    outcome from the seam ops' own returns, so a `verifyGate` that answers `{passed: true}` without
    running anything would yield `resolved` — an advisory verdict substituting for a gate result,
    which is exactly what BR-7 forbids. The call site therefore re-checks the one thing it can
-   observe independently: `resolved: true` requires **both** `outcome === "resolved"` **and**
-   that the wave's `invocations` ledger (§2.4) *ends with* the wave's own gate sequence, appended
-   by the `verifyGate` call that produced the resolution. The quantity is a **suffix check, not a
-   growth-since-dispatch equality**: read the ledger's final tokens and require that they are the
-   wave's configured gate sequence — the ordered `["post-wave", "test"]` pair, or `["test"]` alone
-   when no post-wave command is configured (§2.4's third row). Stated that way the rule holds at
-   every attempt count. A red re-gate re-enters the driver's attempt loop (`verifyGate` returns
-   `{passed: false, consumesAttempt: true}`, the driver reverts, increments `attempts` and
-   `continue`s — `orchestrate-dev.js:3545-3568`), so a two-attempt run that greens on attempt 2
-   carries `[post-wave, test, post-wave, test]`: its final tokens are the wave's gate sequence, and
-   it resolves. The v1.2 growth-equality wording denied resolution to exactly that run — a green,
-   gate-verified wave reported unresolved, its repair left in the tree with no restoration trigger
-   fired, and the operator told the gate failed when it passed (PM F-01, TE F-21). What the suffix
-   check still refuses is the defect it was written for: a `verifyGate` that returns
-   `{passed: true}` without running the gate appends nothing, so the ledger's final tokens are a
-   *stale* earlier attempt's pair, or nothing at all, and the check fails. When it fails,
-   `runWaveGateSeam` returns `{resolved: false}`, the wave budget is not incremented, and the
-   caller rethrows the first pass's halt. This is the rule AC-4.1's conjunct (iii) needs in order
-   to be falsifiable: without it §5.5's dropped-re-gate mutation fixture asserts a property no
-   specified rule ever states (TE F-14). On a genuine `resolved`, `waveBudget.resolved += 1` and the snapshot ref is left in
-   place for the operator. Any other outcome ⇒ the tree has already been restored by
+   observe independently: `resolved: true` requires **both** `outcome === "resolved"` **and** that
+   the wave's `invocations` ledger (§2.4) *grew, since the last repair was applied, by exactly one
+   full gate sequence*. Two anchors make that decidable, and both are recorded by A6's own code
+   rather than inferred:
+
+   - step 4 records `const ledgerAtDispatch = invocations.length` before `runAdvisorySeam` is
+     entered — the floor below which nothing counts;
+   - `buildA6SeamOps`' own `apply` (§3.3) records `ledgerAtLastApply = invocations.length` on every
+     call, as its first statement, before it dispatches the repair edit. `apply` is A6's code, it
+     runs once per attempt, and the driver runs it strictly before that attempt's `verifyGate`
+     (`orchestrate-dev.js:3521` APPLY, `:3544` VERIFY, one iteration of the attempt loop).
+
+   The step-6 check is then, with `gateSequence` read from the same `implConfig` the sequence helper
+   reads — `["post-wave", "test"]`, or `["test"]` alone when no post-wave command is configured
+   (§2.4's third row), never a hard-coded length:
+
+   ```js
+   ledgerAtLastApply >= ledgerAtDispatch &&
+   sameSequence(invocations.slice(ledgerAtLastApply), gateSequence)
+   ```
+
+   **Why anchored growth and not a suffix check (PM F-01, TE F-26).** The ledger is not empty at
+   dispatch. A6 is entered *because* the wave's first pass ran and went red (§2.3, step 1), so the
+   ledger already reads `[post-wave, test]` — the wave's own configured sequence — before the seam
+   starts. Round 3's suffix wording is therefore satisfied by the pre-A6 pass's own tokens: a
+   `verifyGate` that returns `{passed: true}` without running anything appends nothing, the final
+   tokens are still that first pair, the suffix matches and resolution is granted. That is the exact
+   defect the rule exists to refuse and the one §5.5's mutation fixtures are written to catch.
+   Growth measured from an anchor cannot be satisfied by tokens that lie below the anchor.
+
+   **Why the anchor is the last `apply` and not `attempts` (TE F-26's proposed operand, corrected).**
+   A quantity of the form `growth-since-dispatch === gateSequence.length × (attempts + 1)` is right
+   about the two runs TE names but false on a third the driver ships: `attempts` is incremented on
+   paths that never reach `verifyGate` at all — preemption (`orchestrate-dev.js:3421`), dispatch
+   error (`:3428`) and a malformed verdict (`:3459`) each consume an attempt and `continue` without
+   running a gate. A run whose first reply is malformed and whose second repairs and greens ends
+   `attempts: 1` having run exactly one sequence, so the multiplier rule would deny resolution to a
+   green, gate-verified wave — the same false-negative class as v1.2's growth-equality (PM F-01),
+   reintroduced through a different operand. Anchoring on the last `apply` is indifferent to how
+   many attempts were spent getting there and asks only the question BR-7 asks: *did the gate run
+   over the tree as it stands after the repair that is being credited?*
+
+   The rule holds at every attempt count and discriminates both mutation shapes §5.5 fixtures
+   (TE F-28): a one-attempt green run appends one sequence after its single `apply` and resolves;
+   the two-attempt run that greens on attempt 2 (§5.2's positive companion) applies twice — the
+   second `apply` re-anchors after the driver's revert — and its slice after the second `apply` is
+   one clean sequence, so it resolves; a re-gate dropped on attempt 1 leaves an empty slice; a
+   re-gate dropped on attempt 2 leaves an empty slice *even though attempt 1 ran a genuine red
+   sequence*, because attempt 2's `apply` moved the anchor past it. Both drops fail, which is what
+   makes AC-4.1's conjunct (iii) falsifiable rather than a property no specified rule states
+   (TE F-14).
+
+   When the check fails, `runWaveGateSeam` returns `{resolved: false}`, the wave budget is not
+   incremented, and the caller rethrows the first pass's halt. On a genuine `resolved`,
+   `waveBudget.resolved += 1` and the wave's snapshot ref (`refs/pdlc/a6-snapshot-{waveNum}`, §2.5)
+   is left in place for the operator. Any other outcome ⇒ the tree has already been restored by
    `seamOps.revert()` on the failing path, and the caller rethrows the first pass's halt.
 
 ### 3.3 `buildA6SeamOps` — the SeamOps the shipped driver consumes
