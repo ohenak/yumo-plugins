@@ -391,20 +391,38 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    written — that path runs through `terminate` — and no `_agent` call and no rung resolution occur
    (E-26). Only `outcome === "resolved"` increments `waveBudget.resolved`, so two escalated waves
    leave the budget untouched (E-27, AT-02-6).
-4. **Snapshot.** `captureTreeSnapshot` (§3.5). A capture failure does **not** halt silently
-   here: it takes §2.5's `snapshot-unavailable` route — the same `__preDispatch` escape step 3
-   uses — so the advisory record entry and the escalation entry are written, no `_agent` call
-   and no rung resolution occur, no attempt is consumed, and the function returns
-   `{resolved: false}` carrying §4.5's halt fields. The wave then halts on its own gate literal
-   at the call site. Escalate first, halt second.
+4. **Snapshot.** `captureTreeSnapshot` (§3.5) runs **here, at the call site, before
+   `runAdvisorySeam` is entered** — once per wave, never per attempt (§2.5). It cannot live in
+   `gatherEvidence`: that is called inside the driver's attempt loop (`orchestrate-dev.js:3393`)
+   and `verifyGate`'s `consumesAttempt: true` re-enters it (`:3554-3568`), which would re-capture
+   over the tree attempt 1 already changed.
+   A capture failure (`null` return) therefore cannot use the `__preDispatch` escape step 3 uses —
+   the escape is read inside the driver (`:3401-3410`) and the driver is never entered. Instead
+   `runWaveGateSeam` itself writes the durable trace, in this order: `appendAdvisoryEntry`
+   (`verdict: null`, `reason: null`, `attempts: 0`), then `appendEscalationEntry` with a
+   caller-supplied `decision` sentence naming `snapshot-unavailable`, then the
+   `ADVISORY ESCALATION:` notice, then return `{resolved: false}` carrying §4.5's halt fields at
+   their literal values. No `_agent` call, no rung resolution, no attempt consumed, budget
+   untouched. The wave then halts on its own gate literal at the call site. Escalate first,
+   halt second.
 5. **Dispatch.** `runAdvisorySeam({ seam: "A6", seamOps: buildA6SeamOps(...), config, rungState, … })`.
    Attempt budget, wall-clock budget, malformed-verdict handling, the GATE/CHECK envelope
    evaluations, the advisory record, the escalation log and the `ADVISORY ESCALATION:` notice are all
    the driver's, unchanged.
-6. **Terminal.** `outcome === "resolved"` ⇒ `resolved: true`, `waveBudget.resolved += 1`, and the
-   snapshot ref is left in place for the operator. Any other outcome ⇒ the tree has already been
-   restored by `seamOps.revert()` on the failing path, and the caller rethrows the first pass's
-   halt.
+6. **Terminal.** `outcome === "resolved"` alone is **not** sufficient. The driver derives its
+   outcome from the seam ops' own returns, so a `verifyGate` that answers `{passed: true}` without
+   running anything would yield `resolved` — an advisory verdict substituting for a gate result,
+   which is exactly what BR-7 forbids. The call site therefore re-checks the one thing it can
+   observe independently: `resolved: true` requires **both** `outcome === "resolved"` **and** the
+   wave's `invocations` ledger (§2.4) having grown, since dispatch, by the wave's own gate
+   sequence — the ordered `["post-wave", "test"]` pair, or `["test"]` when no post-wave command is
+   configured (§2.4's third row). If the ledger did not grow, `runWaveGateSeam` returns
+   `{resolved: false}`, the wave budget is not incremented, and the caller rethrows the first
+   pass's halt. This is the rule AC-4.1's conjunct (iii) needs in order to be falsifiable: without
+   it, §5.5's dropped-re-gate mutation fixture asserts a property no specified rule ever states
+   (TE F-14). On a genuine `resolved`, `waveBudget.resolved += 1` and the snapshot ref is left in
+   place for the operator. Any other outcome ⇒ the tree has already been restored by
+   `seamOps.revert()` on the failing path, and the caller rethrows the first pass's halt.
 
 ### 3.3 `buildA6SeamOps` — the SeamOps the shipped driver consumes
 
