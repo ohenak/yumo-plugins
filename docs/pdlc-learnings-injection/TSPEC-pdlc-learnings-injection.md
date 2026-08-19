@@ -916,8 +916,21 @@ created **anywhere**. So the write half is carried by two checks that do not dep
 
 | Check | Mechanism | Catches |
 |---|---|---|
-| Working-tree delta | `git status --porcelain` over tracked **and** untracked files before and after an L3 run, asserted empty except for paths the fixture itself declares | Any file the run creates anywhere, by any means |
+| Working-tree delta | `git status --porcelain` over tracked **and** untracked files, run in a **dedicated temp git repository that is the L3 run's `cwd`**, captured before and after, asserted **set-equal** — an empty delta, with no exemption list at all | Any file the run creates anywhere, by any means |
 | Static seam discipline | The new region contains no reference to `fs.`, `writeFileSync`, `mkdirSync`, `appendFileSync` or `require("fs")`, asserted by scanning the source span between the region's sentinel comments | The write before it happens, with a diagnostic naming the symbol |
+
+**The porcelain instrument needs its own repository, and no exemptions (TE F-05, PM Q-01).** Run
+against the checkout, the check would red on unrelated dirt — `.claude/workflows/.pdlc-drift-state.json`
+is modified in an ordinary working tree, and CI checkouts carry build artefacts — and the only way
+to keep it green would be to grow the "paths the fixture declares" exemption list until it cannot
+fail. Worse, that list is exactly where someone would eventually park a state file NG-4 forbids,
+which is PM Q-01's concern: an exemption list is a place to hide the defect the check exists to
+catch. So the check has **no exemption list**: the L3 run's `cwd` is a temp directory made a git
+repository in the test's own setup (`git init`, fixture inputs committed), the before-set and
+after-set are `git status --porcelain` captures around the run, and the assertion is set equality
+between them. Any path the run creates or modifies — declared or not, tracked or not — is a
+failure. Fixture inputs are committed **before** the capture, so they are not in the delta, and the
+test needs no judgement call about what is legitimate.
 
 The static check is what makes the claim maintainable — the porcelain delta proves it for the runs
 the fixture happens to exercise, while the source scan proves it for every run — and together they
