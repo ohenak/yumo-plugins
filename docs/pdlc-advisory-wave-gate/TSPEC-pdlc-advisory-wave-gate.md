@@ -177,7 +177,7 @@ Phase I or into `runAdvisorySeam`.
 ### 1.3 What is deliberately not additive
 
 R-5 and BL-06 said this feature cannot ship as a purely additive change, and the grounding confirms
-it. Six shipped surfaces go red the moment `A6` is declared, and every one is a *transcribed
+it. Eight shipped surfaces go red the moment `A6` is declared, and every one is a *transcribed
 literal* in a test rather than a computed value:
 
 | Surface | Site | Change |
@@ -188,6 +188,8 @@ literal* in a test rather than a computed value:
 | Per-seam report rows | `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality and its `test.each` seam list | six rows |
 | Gate-exclusivity registry | `advisoryDriver.test.js`'s `GATE_EXCLUSIVITY_REGISTRY` key set, asserted equal to `ADVISORY_SEAMS` | gains an `A6` block |
 | Harvest / property seam lists | `advisoryHarvest.test.js`, `consolidationProperties.test.js`, `helpers/advisoryDoubles.js`'s `SEAMS` | six members |
+| Bare row-count assertions | **Four** sites assert `rows).toHaveLength(5)` on a report's advisory rows: `advisoryDisabled.test.js:622` (PROP-DIS-05's enabled-but-quiet case, whose per-row `invocations === 0` loop already covers the new row unchanged), `advisoryQueueSeams.test.js:627`, and **both** sites in `advisoryHarvest.test.js` — `:571`, one line above that file's seam-name literal, and `:726`, whose neighbourhood is a member *lookup* (`rows.find((r) => r.seam === "A1")`) rather than a member list, so an instruction to retarget seam literals never reaches it | `5` → `6` |
+| `.enabled` occurrence count | `advisoryDisabled.test.js:634`–`:658` (PROP-DIS-06) counts `/\.enabled\b/` over `orchestrate-dev.js` + `orchestrate-queue.js` raw source with `parseAdvisoryConfig`'s body excised, and requires exactly **three** — today `orchestrate-dev.js:3258`, `:13678`, `orchestrate-queue.js:1318` | **unchanged at three** — a constraint on A6, not an edit: §3.2 step 2's tier gate must receive the resolved boolean and add no fourth `.enabled` token |
 
 A PLAN that treats any of these as incidental will discover them as unexplained red suites in the
 middle of a wave — which is, with some irony, exactly the failure class A6 exists to survive.
