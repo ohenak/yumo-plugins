@@ -22,8 +22,35 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AC-5.1 requires reverting the repair while leaving the wave agents' *uncommitted* work intact. At that point the tree holds uncommitted output from every task in the wave and nothing distinguishes it by author. What observable does the REQ intend — "the repair's paths are restored to their pre-A6 content" (per-path, decidable) or "the tree is restored" (needs a snapshot taken before A6 acts)? O-1 defers the mechanism; the *observable* is REQ-level. |
+| Q-02 | If an E-6 repair does land (see F-02) and the later wave's task then runs with its owned files already partially written, is that task expected to be idempotent over A6's edit, or is the later task's dispatch expected to be told what A6 did? Nothing in §6 covers the hand-off. |
+| Q-03 | AC-1.5 says inapplicability is "named once in the run report". Is that a new report key, or a line in an existing surface? AC-1.1 already commits to the per-seam rows going from five to six; if the A6 row itself can carry `not-applicable`, AC-1.5 may cost nothing new. |
+| Q-04 | AC-2.2 class 1 `plan-ordering-defect` is decided from gate output naming "a symbol, file or artifact that the PLAN itself schedules for a later task". Deciding that requires parsing the PLAN's task table from within the seam — while AC-3.3 (f) forbids A6 changing the PLAN, reading it is presumably intended. Is PLAN read access in scope for A6, and is `parsePlanTasks` the intended reader? |
+
 ## Positive Observations
+
+- Every measured-fact citation I sampled from `docs/_constraints/pdlc-wave-gate-baseline.md` holds at HEAD: `evaluateWaveDispatch` declared `:8283` / called `:10299` (M-WG-1), the build-then-gate block `:10301-10329` (M-WG-2, M-WG-3), the pathspec-scoped commit loop `:10334-10364` (M-WG-4), `FORCE_PHASE_TOKENS` as a six-member set with no `I` (`:4585`, M-WG-6), the `status: "halted"` queue write (`:10805`, M-WG-7), and `ADVISORY_SEAMS` frozen at five with the set-equality assertion at `advisoryEnvelope.test.js:317` (M-WG-8). Holding these in a cited baseline instead of restating them in the REQ is the right call and it survived verification.
+- §5 C-2's config claims match the shipped defaults exactly: `ADVISORY_DEFAULTS` = `{enabled: false, attemptBudget: 3, seamBudgetMinutes: 10, envelope: ENVELOPE_DEFAULTS}` (`orchestrate-dev.js:1660-1668`).
+- NFR-6 and BL-02 are correct and well-aimed: `resolveAdvisoryRung` really is exported (`orchestrate-dev.js:1833`) and really is the one ladder (doc comment `:1800-1802`), so "reuse the resolver, do not restate the ladder" is enforceable rather than aspirational.
+- AC-6.4's "honest limit" on resolution counts is accurate — `pdlc-advisory-corpus-baseline.md` §4 says exactly that escalations are durable and resolutions are observable only as absence. A REQ that names the metric it *cannot* deliver and bounds it in an obligation (O-2) is the behaviour I want to see more of.
+- AC-1.3's V-wave carve-out matches the code's own reasoning: the V-wave has no manifest row and is the one dispatch that commits its own work, with the gate running "as verification rather than as permission" (`orchestrate-dev.js:10383-10397`). Excluding it is right, and for the reason stated.
+- Every tier AC id cited (AC-2.2, AC-3.4, AC-3.6, AC-9.2, NFR-1, BL-01) exists in `REQ-pdlc-advisory-tier.md` and says what this REQ says it says. Cross-feature citations to nonexistent authorities have shipped here before; these are clean.
 
 ## Recommendation
 
+**Needs revision**
+
+The design intent is sound and the altitude is right — the split between "diagnosing is delegable, authorising is not" is the correct extension of the tier, and the gate stays the only thing that can declare a wave green. Five High findings block it.
+
+F-01 is the cheapest to clear and should be cleared first: the branch is reviewing a v1.0 draft that the default branch has already carried to v1.3 with operator adjudications, including an answer to Q-1 that contradicts this text. Rebase onto `origin/main`, re-issue at v1.3, and F-06/F-07/F-09 may resolve in the process.
+
+F-02, F-03 and F-04 are the substantive ones and survive any rebase unless v1.3 addressed them: an E-6 repair that no commit step owns (F-02), a re-gate whose meaning is under-specified against the shipped build-then-gate order and which re-reds by construction under this repo's own config (F-03), and a refusal-reason set with no member for the seam's most likely outcome (F-04). Each needs an acceptance criterion stating the observable outcome; none needs a mechanism, so all three stay inside REQ altitude. F-05 needs BL-06 widened to the envelope-default transcription sites and AC-1.4/NFR-2 scoped so they stop contradicting AC-3.1.
+
+Noting the REQ's own DC-09 stopping rule: these are not oracle-deferrable implementability gaps. F-01 contests the document's currency, and F-02/F-03/F-04 contest observable outcomes the REQ commits to — all four are REQ-level content, not TSPEC entry obligations.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 3, "low": 1}
