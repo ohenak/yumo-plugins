@@ -880,6 +880,63 @@ and `pdlc/workflows/dist/` committed in the wave that edits the module; the repo
 it.
 
 
+### 5.5 Prohibitions, paired positives, and the tests neither review found a home for
+
+PM F-03 is right that the first draft had no surface for three P0 obligations. They are allocated
+here, in shapes rather than filenames, because a filename is not an oracle.
+
+**The rule the whole subsection obeys (AC-4.5).** For every test that proves a prohibition holds,
+the same test asserts the corresponding **positive** outcome on the same run: the refusal reason
+is recorded, the escalation entry is written, and the pre-A6 behaviour is taken. A negative
+assertion alone is satisfied by a run in which the seam never fired, which is the exact failure
+mode A6's licence to exist depends on not having. Every row below is written to that rule, and
+`AC-4.5` is named in the suite so the rule is greppable rather than tacit.
+
+**One test per prohibition, `(f)`…`(i)` (AT-03-5, AC-3.3, AC-3.5).** The id set is separately
+compared by set-equality against `A6_PROHIBITIONS`'s transcribed literal, so a deleted prohibition
+fails the suite rather than passing a containment check. Then, one by one:
+
+| Prohibition | Proposals exercised, each its own test | Negative asserted | Paired positive asserted on the same run |
+|---|---|---|---|
+| `(f)` PLAN, task table, ownership manifest | three tests: a PLAN prose edit, a PLAN **task-table** edit, a file-ownership-manifest edit | the path is not present in the tree afterwards | disposition `escalated`, the shipped refusal reason (`out-of-envelope`) recorded on the advisory record entry, escalation entry written, wave halts on AT-05-3's literal |
+| `(g)` implementation configuration | three tests: `testCommand`, `postWaveCommand`, `postWavePathspecs` | `.claude/pdlc.config.json` byte-identical after the run | same four positives; additionally the gate command actually re-run is the pre-proposal one, asserted from the `invocations` array |
+| `(h)` commit, push, tag | three tests, one per verb, driven through the `_git` double | no `commit`/`push`/`tag` argv reached the transport | the committing writer identities on that run equal the pre-A6 baseline (AT-04-3's oracle), and the refusal is recorded |
+| `(i)` path outside E-5 ∪ E-6 | two tests: wholly outside; partly inside and partly outside (E-16) | no part of the proposal is present in the tree afterwards | `out-of-envelope` recorded, escalation written, and the run does **not** report the wave resolved |
+
+**AC-4.1's conjunct (iii) — the mutation fixture (REQ v1.8, erratum round 4, F-24).** Conjuncts
+(i) and (ii) are ordinary fixtures: applied repair + green re-gate ⇒ resolved; applied repair +
+red re-gate ⇒ halt, restore. Conjunct (iii) — *A6 applies a repair and **no** gate invocation
+follows ⇒ the wave halts* — is unreachable on an ordinary run, because the code always re-gates.
+It is asserted by a fixture that **mutates the shipped control flow to drop the re-gate** and then
+asserts the halt survives:
+
+- the fixture injects a `verifyGate` that records its call and returns without running the gate
+  sequence — the mutation, stated in the test's name (`conjunct (iii): a dropped re-gate must not
+  yield a resolution`);
+- the assertion is positive and threefold on that one run: the terminal disposition is not
+  `resolved`, the wave halts on AT-05-3's literal, and the run reports `0` waves resolved;
+- it is a mutation test in the strict sense — it fails if and only if an implementation lets an
+  advisory verdict substitute for a gate result, which is BR-7's whole content.
+
+This fixture is named in the PLAN as its own task so it cannot be quietly folded into (i) and (ii)
+and lost; its absence from the first draft read as a drop rather than a judgement, and it is not
+a drop.
+
+**AC-4.2 / AC-4.3 negative-plus-positive pairs.** AC-4.2 ("A6 never commits") is asserted as
+writer-identity equality against the pre-A6 baseline **plus** the positive that the wave's own
+commits still happened past a green gate — an assertion that the tree was committed by the wave,
+not that nothing committed. AC-4.3 (prohibited operations) is the `(f)`…`(i)` table above.
+
+**Four tests neither AT covers, added because this document made a claim that needs one:**
+
+| Test | Why it exists | Oracle |
+|---|---|---|
+| Owned-path row spellings | §3.4's trailing-slash precondition (TE F-06) | manifest row `pdlc/workflows/dist/` covers `…/dist/x.js`; row `pdlc/workflows/dist` refuses the same path as `out-of-envelope`. Both asserted, so the precondition is visible rather than latent |
+| Citation floor boundary | §3.3's `A6_MIN_CITATION_CHARS = 24` (TE F-09) | a 23-normalised-character citation is malformed and consumes one attempt; a 24-character one is accepted. Both sides on one fixture — a floor asserted only from above passes an implementation with no floor |
+| Both-prerequisites-absent notice | §2.6's single-statement shape (TE F-08) | a run with no ownership manifest **and** no `testCommand` emits exactly **one** inapplicability statement naming both causes, not two. The only configuration where the hoist could regress AT-01-5 |
+| Ignored-path-only repair | §3.3's `apply` observation (TE F-07) | a repair writing only a `.gitignore`d path yields `producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an escalation entry, and a tree carried no further. Flagged upstream-pending with §2.5's erratum |
+
+
 ## 6. Open Questions
 
 | # | Question | Blocking? | Current disposition |
