@@ -15,7 +15,27 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-09 |
+| pdlc | draft | Claude | 1.4 | 2026-08-18 |
+
+*v1.4 changelog: cross-review round 1 addressed (software-engineer, test-engineer). The branch
+carried a stale parallel v1.0; this document — main's v1.3 — supersedes it, and the branch is rebased
+onto `origin/main` (SE F-01). Decided this round: the self-modification guard paths bind A6 unchanged
+(TE F-01, AC-3.2); a diagnosis-only outcome is an escalation without a refusal rather than a missing
+ninth reason (SE F-04, AC-3.4); a re-gate re-runs the wave's whole gate sequence in shipped order (SE
+F-03, TE F-07, AC-4.4); an E-6 repair's committed fate is stated (SE F-02, AC-4.6, O-8). BL-05, BL-06,
+AC-1.5, AC-2.2, AC-2.4, AC-3.1, AC-5.1 and D-AWG-03 corrected. The shipped-behaviour evidence for all
+of it is measured in `pdlc-wave-gate-baseline.md` v1.1 (M-WG-9…M-WG-12) rather than restated here.*
+
+*v1.3 changelog: the three questions left open in v1.2 are decided (operator delegated
+adjudication, 2026-08-13). Q-1 — `advisory.waveBudgetPerRun` default is **1**, not the proposed 2.
+Q-2 — **no**; A6 does not fire on post-wave command failure, and the build-breaking defect class is
+named unreachable and routed to O-7. Q-4's disabled-tier half — routed to D-AWG-06; AC-1.4 and
+PROP-DIS-03 are untouched. No question in this REQ is open.*
+
+*v1.2 changelog: Q-3, Q-4's diagnosis half, and Q-5 answered; Q-1, Q-2, and Q-4's disabled-tier half
+left open for the operator; AC-1.2's "already attempted" rationale corrected to the single-run
+post-wave behaviour; M-WG-6's re-entry claim corrected against the shipped interim wave ledger;
+D-AWG-03's approval-skip ownership flagged as `pdlc-wave-resume`'s, `Binds` cell unchanged.*
 
 > **Scope in one line.** A sixth advisory seam — **A6**, at the Phase I implementation-wave gate —
 > so that a wave whose gate goes red gets one bounded, reversible, gate-verified remediation attempt
