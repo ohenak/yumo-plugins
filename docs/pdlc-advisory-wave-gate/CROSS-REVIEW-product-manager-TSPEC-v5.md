@@ -110,7 +110,66 @@ cheap run-scoped discriminator is already in hand at capture time, use it in the
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | OQ-7's `.gitignore` boundary has now been open on FSPEC BR-9 / AT-05-1 for four rounds; `FSPEC:204` and `:410` are unchanged and still say "generated outputs included", while §3.3's `apply` row refuses a repair that writes only ignored paths and §5.2's round-trip case pins `git clean -fd` over `-fdx`. TSPEC has done everything it can here — both halves are written to the boundary and flagged upstream-pending. Re-emitted as an erratum below; is there a reason it has not landed on FSPEC, or has the routing simply not reached it? |
+| Q-02 | §5.2's new configuration-driven case asserts `["test", "test"]` for a `testCommand`-only run. §2.4's third row is the source of that shape — does any fixture cover the *other* truncated form (a configured post-wave command with no test command), or is that arrangement excluded by `implementation.testCommand` being required upstream? One sentence either way would close the enumeration rather than leave a reader counting rows. |
+
 ## Positive Observations
 
+- **The anchor is A6's own code, not an inference about the driver.** The fix I proposed recorded a
+  dispatch-time floor; the document went further and anchored on `apply`, which A6 owns and which
+  the driver runs once per attempt strictly before VERIFY. I checked the ordering rather than
+  taking it (`orchestrate-dev.js:3521` APPLY, `:3546` VERIFY, one iteration). Anchoring on a
+  quantity the seam writes itself is the stronger construction, and it is why the attempt-2 drop —
+  a shape my own fix would have admitted, since growth-since-dispatch is non-empty there — is
+  refused.
+
+- **TE's proposed operand was taken seriously and then correctly refused, in writing.** §3.2's
+  "Why the anchor is the last `apply` and not `attempts`" paragraph names the three code paths that
+  consume an attempt without gating and cites each (`:3421`, `:3428`, `:3459`). All three check out.
+  Rejecting a reviewer's suggested fix with a cited counter-example, rather than adopting it to
+  close the finding, is the behaviour that keeps a review loop honest.
+
+- **§5.5 became a two-row table, and the second row is the one that matters.** The attempt-2 drop
+  is precisely the shape every unanchored quantity admits — suffix, non-empty growth, whole
+  multiples — and the table says so per row, in the "what only the real rule refuses" column. That
+  column turns a fixture list into a statement about which rules are excluded, which is what a
+  mutation fixture is for.
+
+- **The withdrawal in §3.2 step 3 is explicit rather than quiet.** Round 3's coverage claim is
+  named wrong "in both halves" and the replacement oracle is stated in the same paragraph. A
+  document that records its own retracted claims is one a later reader can trust about the claims
+  it keeps.
+
+- **F-03's fix carried its reasoning into OQ-2.** The ref name changed *and* the open question
+  explains what the old name cost, so the decision survives the diff that made it.
+
+- **OQ-14's containment assertion is scoped exactly as narrowly as it should be.** One line, on the
+  free-text slot, leaving §5.5's fixed-sentence equality oracle untouched — the answer to Q-02 does
+  not weaken the oracle it sits next to.
+
 ## Recommendation
+
+**Approved with minor changes** — no High findings.
+
+Round 4's single blocker is genuinely closed, and closed at the right layer: step 6's quantity is
+now anchored on `apply`, a position A6 records itself, and the anchoring is reconciled across §3.2,
+§3.3, §5.2 and §5.5 rather than stated once. F-02's false coverage claim was withdrawn and replaced
+with a positive one-run oracle; F-03's ref is wave-scoped everywhere, with the reasoning preserved
+in OQ-2. Both remaining findings are non-gating:
+
+1. **F-01 (Medium)** — say, in §5.2's two-attempt bullet, that the run keeps the shipped
+   `verifyGate` and drives red-then-green through `_runCommand`, so the bullet cannot be read in
+   §5.5's injection vocabulary.
+2. **F-02 (Low)** — state in OQ-2 that the record survives a multi-wave *run*, that a later run's
+   same-numbered wave overwrites it, and that nothing prunes the refs.
+
+One upstream item is unchanged and re-emitted below: OQ-7's BR-9 `.gitignore` boundary, open since
+round 1 and still unlanded on FSPEC.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
 
