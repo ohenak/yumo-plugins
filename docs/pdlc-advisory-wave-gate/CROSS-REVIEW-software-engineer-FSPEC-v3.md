@@ -29,7 +29,25 @@ Scope of this round: the v1.2 diff only. Two Medium, no High.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | With the window now per-dispatch, total A6 wall-clock on one wave is bounded only by `attemptBudget × (seamBudgetMinutes + gate runtime)`. That is the shipped tier's own property and O-1/O-8 leave the mechanism to TSPEC, so not gating — but is it worth one sentence in BR-11 saying the wave's total A6 time is deliberately unbounded, so no implementer invents a cap? |
+| Q-02 | AT-07-1's partition names BR-9…BR-16 non-proposable "by construction". BR-16 is itself the rule that every §4 boundary is script-enforced; is the self-reference intended to be read as vacuously satisfied, or should BR-16 be excluded from the enumeration it quantifies over? Readability only — the partition is total and disjoint as written. |
+
 ## Positive Observations
 
+- **F-01 was fixed at the definition, not at the assertion.** BR-11, E-25 and AT-02-7 all moved to the same window in one pass (FSPEC:211-216, :288, :354), and the carve-out was re-explained as structural rather than deleted — so NFR-4 still means something and the companion case in AT-02-7 now discriminates the per-dispatch window from the episode window instead of testing a subtraction nobody performs. That is the harder of the two available repairs and the one that leaves the document honest about what it inherits.
+- **The `0` fix was made red-today on purpose.** E-33 does not merely assert non-negative validation; it names the shipped positive-integer validator as the thing it diverges from and AT-07-2b asserts the round-trip that validator fails (FSPEC:290, :442). An implementer who reaches for reuse gets a failing test rather than a silently coerced operator setting.
+- **AT-07-1's partition is total and disjoint, and says so.** Proposable {BR-2, BR-3, BR-5, BR-6, BR-7, BR-8} plus non-proposable {BR-1, BR-4, BR-9…BR-16} covers BR-1…BR-16 exactly once (FSPEC:437). BR-16's "every §4 boundary is script-enforced" is now discharged by enumeration rather than sampled — the completeness discipline this pipeline asks for, applied without being asked twice.
+- **The erratum was left upstream instead of being absorbed.** v1.2's changelog says so explicitly (FSPEC:16). Repairing a false upstream rationale inside the derived document is the failure mode this protocol exists to prevent, and the author declined it.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+No High findings. The round-2 High (BR-11's episode-scoped window) is resolved at the root: the window is now REQ AC-2.4's per-dispatch one, matching the shipped per-attempt race, and NFR-4's carve-out is correctly re-characterised as inherited and structural. The `0`-honouring validator and the E-33 ordering are also closed.
+
+Two Medium findings remain, both one-sentence fixes and neither gating. F-01: E-30/AT-06-6 should name the carrier the inherited mechanism actually uses (the run report's notice channel), or state plainly that re-surfacing it in the halt report is new behaviour A6 adds. F-02: give AT-02-7's companion a positive outcome on the same path so it cannot be satisfied by a run that never reached the seam.
+
+The REQ NFR-4 rationale and the REQ:205 "per wave invocation" phrasing are upstream defects, re-emitted as errata rather than folded in here.
 
