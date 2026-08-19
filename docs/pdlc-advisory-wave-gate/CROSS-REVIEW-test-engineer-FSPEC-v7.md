@@ -40,3 +40,27 @@ DEFERRED: sweep BR-11 and AT-02-7 to REQ NFR-4's verdict-relative wording, and g
 | ID | Question |
 |----|---------|
 | Q-01 | AT-02-7's companion is described as "slow gate command, every dispatch→verdict window inside budget". Under REQ's corrected wording, is the intended fixture one dispatch plus one slow green re-gate, or two dispatches with the slow gate between them? Both prove the exclusion; only the first matches the `resolved`-on-green-re-gate disposition the Then asserts. Naming which one is intended removes the ambiguity F-01 describes at its source. |
+
+## Positive Observations
+
+- **The REQ restoration round cost the FSPEC nothing, and that is checkable rather than assumed.** Every one of the five restored round-3 sites has a live FSPEC consumer (2026-08-11 incident at BR-5, O-7 at §3.1, C-2's default at E-33/AT-07-2b, M-WG-6 at D-AWG-03), and each consumer reads correctly against the restored text. A restoration round that quietly invalidated a downstream oracle is the usual hazard here; none did.
+- **The FSPEC's symbol-only citation discipline made F-06 a non-event downstream.** Because the FSPEC never inherited the REQ's `orchestrate-dev.js:NNNN` anchors, the ~2 000-line drift that forced the REQ correction propagated no stale claim into any acceptance test. This is the citation convention paying for itself.
+- **AT-07-2b remains the strongest completeness oracle in the document, and the restored C-2 default keeps it honest.** Set-equality over the full advisory key catalogue against a literal transcribed from the spec, with the default read back from the module and never the reverse, plus the `0`-in/`0`-out companion that the shipped positive-integer validator fails (FSPEC:456). A deleted key fails it; an implementation echo cannot pass it.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The FSPEC is unchanged this round, so nothing in it can have been broken by a delta. The upstream
+REQ v1.9 erratum re-derivation is clean at every site but one: BR-11's and AT-02-7's inherited
+"between attempts" mechanism is the exact sentence REQ NFR-4 replaced, and it is inaccurate at the
+terminal gate pass that AT-02-7's own companion fixture occupies. That divergence changes no
+assertion, no fixture value and no disposition — the structural-exclusion conclusion holds under
+both phrasings — so it is Medium and does not gate a frozen round. The v6 Medium on AT-04-1b's
+unnamed disposition is carried forward unresolved for the same reason the delta is empty. Both are
+one-clause edits recorded as DEFERRED for the next non-frozen revision.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
