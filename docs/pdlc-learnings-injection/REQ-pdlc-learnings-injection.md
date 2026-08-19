@@ -275,8 +275,10 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 - **AC-2.1** *Given* a corpus of `N` prior LEARNINGS documents for any `N`, *when* a dispatch is
   composed, *then* the number of source documents contributing to it is at most
-  `learningsInjection.maxDocuments`, and for `N` greater than that threshold the count equals it
-  exactly — a corpus of 5 and a corpus of 50 produce the same document count.
+  `learningsInjection.maxDocuments` for every `N` — a corpus of 5 and a corpus of 50 both stay
+  under that cap. The count reaches the threshold only where the byte bounds (AC-2.3, AC-2.4) do
+  not bind first; under §4.1's declared values the byte bounds are what bind on measured corpora,
+  so "equals it exactly above the threshold" is **not** claimed *(erratum v0.5)*.
 - **AC-2.2** *Given* a corpus whose `N` exceeds `learningsInjection.maxDocuments`, *when* a dispatch
   is composed, *then* the selected documents are the highest-ordered under a total ordering that is
   a function of repository state alone, with a **total tiebreak**: where the ordering key is absent,
@@ -285,8 +287,10 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   path, as the shipped corpus enumeration already does (DEC-CONS-05). The ordering never consults
   wall-clock time, file mtime, or a model's judgement (C-5, NG-2). The ordering key itself is O-2's
   to bind before FSPEC authoring; two properties are testable today without it: permuting file
-  mtimes and re-running yields an identical selection, and renaming a document's containing
-  directory without changing its content does not change its rank.
+  mtimes and re-running yields an identical selection, and the ordering is a pure function of
+  (ordering key value, repository-relative path) and nothing else. Directory-rename rank
+  invariance is **not** claimed *(erratum v0.5)*: the path is load-bearing in the tiebreak, and
+  the tiebreak is exercised by real documents that carry no ordering key.
 - **AC-2.3** *Given* a corpus containing a document larger than
   `learningsInjection.maxBytesPerDocument`, *when* it is selected, *then* the material taken from it
   does not exceed that threshold, the total across selected documents does not exceed
@@ -300,9 +304,11 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-2.5** *Given* two runs over an identical repository state, *when* the two composed
   dispatches for the same document type are compared, *then* the injected material is
   byte-identical, including order (G-3, C-5).
-- **AC-2.6** *Given* a corpus containing a LEARNINGS document under `docs/discarded/`, *when*
-  selection runs, *then* that document is not selected and does not count toward any threshold
-  (C-3); *and given* one under `docs/completed/{p}/`, it is eligible on the same terms as one
+- **AC-2.6** *Given* a corpus containing a LEARNINGS document under `docs/discarded/{p}/`,
+  *when* selection runs, *then* that document is neither selected nor named in any report record,
+  because C-3's enumeration does not reach that depth; *and given* one lying directly at
+  `docs/discarded/LEARNINGS-*.md`, it is a corpus member on ordinary terms *(erratum v0.5)*;
+  *and given* one under `docs/completed/{p}/`, it is eligible on the same terms as one
   under `docs/{p}/`.
 
 **Group 3 — observability** *(US-03; G-3; C-9)*
