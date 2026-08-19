@@ -17,7 +17,7 @@
 
 **v1.3 (round 3).** AT-07-1's BR-2 arm carries BR-2's own outcome (`unclassified`, no refusal reason, no attempt consumed), its BR-3 arm pins `attemptBudget` `1`; AT-02-7's companion gains a positive disposition and a one-window *Given*; E-30/AT-06-6 name the report's notice channel as the failed-log-write carrier. REQ errata re-emitted.
 
-**v1.4 (round 5, cascade).** AT-04-1 split to AC-4.1's three conjuncts, a run each (AT-04-1a green re-gate, AT-04-1b suppressed re-gate); "not assertable" rationale deleted (SE F-01, TE F-02). Seam budget per **attempt**, worst case `attemptBudget` × the value, carve-out dropped (SE F-02/F-03, TE F-01). AT-01-5, A-1, A-4 realigned (SE F-04…F-06, TE F-03/F-04). REQ errata landed in v1.7/v1.8.
+**v1.4 (round 5).** AT-04-1 split to AC-4.1's three conjuncts, a run each (AT-04-1a green re-gate, AT-04-1b suppressed re-gate); "not assertable" rationale deleted (SE F-01, TE F-02). Seam budget per **attempt**, worst case `attemptBudget` × the value, carve-out dropped (SE F-02/F-03, TE F-01). AT-01-5, A-1, A-4 realigned (SE F-04…F-06, TE F-03/F-04). REQ errata landed in v1.7/v1.8.
 
 ## 1. Overview
 
