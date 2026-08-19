@@ -9,11 +9,13 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.2 | 2026-08-18 |
+| pdlc | Draft | Claude | 1.3 | 2026-08-19 |
 
-**v1.1 (round 1).** Addressed every High and Medium in the v1 cross-reviews: notice oracle in E-04/AT-01-5 restored to counting statements; AT-04-3 restated over writer identity; attempt-admission step 3b added to §3.2; invocation window defined in BR-11; seven ATs added and AT-04-1, AT-07-1, AT-07-3, AT-07-5 restated as positive, mechanically decidable oracles.
+**v1.1 (round 1).** All v1 High/Medium addressed: E-04/AT-01-5 counting oracle; AT-04-3 over writer identity; §3.2 step 3b; BR-11 window; seven ATs added, four restated as decidable oracles.
 
-**v1.2 (round 2).** F-01 (High): BR-11, E-25 and AT-02-7 restate the seam-budget window as one dispatch, dispatch→verdict, per REQ AC-2.4 and the shipped per-attempt race; NFR-4's carve-out is inherited. E-33 and AT-07-2b pin a non-negative-integer validator so `0` survives; E-33 moved after E-28. AT-07-1's partition over BR-1…BR-16 made total; E-30 names the halt report as carrier, AT-06-6 inherits it; AT-04-3's attribution conjunct dropped. REQ NFR-4's rationale was raised as an erratum, not folded in.
+**v1.2 (round 2).** BR-11, E-25 and AT-02-7 restate the seam-budget window as one dispatch, dispatch→verdict (REQ AC-2.4), NFR-4's carve-out inherited; E-33 and AT-07-2b pin a non-negative validator so `0` survives; AT-07-1's BR-1…BR-16 partition made total. REQ NFR-4's rationale raised as an erratum.
+
+**v1.3 (round 3).** AT-07-1's BR-2 arm now carries BR-2's own outcome — `unclassified`, no refusal reason, no attempt consumed — not the blanket refusal *Then* (TE F-01, High); its BR-3 arm pins `attemptBudget` `1` (TE F-03). AT-02-7's companion gains a positive disposition, its *Given* restated as one dispatch→verdict window (TE F-02/F-04, SE F-02). E-30 and AT-06-6 name the run report's notice channel as the failed-log-write carrier the inherited seam uses (SE F-01). REQ errata re-emitted.
 
 ## 1. Overview
 
@@ -296,7 +298,7 @@ E-02 and E-06 are **inherited-behaviour rows**: beyond A6's absence, which AT-01
 | # | Condition | Specified behaviour |
 |---|---|---|
 | E-29 | The advisory record cannot be written | The action is refused rather than taken unrecorded — the tier's existing rule, unchanged (BR-13). |
-| E-30 | The escalation log cannot be written | The escalation still happens and the operator is still told; the carrier is the halt report, which BR-14 already makes carry the diagnosis and root-cause class and here also states the log write failed. A failed log write never upgrades an escalation to a resolution and never changes the halt (BR-13, BR-14, AT-06-6). |
+| E-30 | The escalation log cannot be written | The escalation still happens and the operator is still told; the carrier for the write failure is the run report's notice channel, which the tier already downgrades a failed escalation-log write onto, while the halt report goes on carrying BR-14's diagnosis and root-cause class. Re-surfacing it in the halt report would be new behaviour, not inherited. A failed log write never upgrades an escalation to a resolution and never changes the halt (BR-13, BR-14, AT-06-6). |
 | E-31 | A `plan-ordering-defect` recurs across runs | It is countable per feature from the durable escalation log without run logs (AC-6.4). **Honest limit:** because the per-feature advisory record is distilled into LEARNINGS and deleted at Phase PUB, A6's *resolution* counts do not survive the run — only escalations are durably countable. Making resolution counts durable is out of scope and bound in REQ O-2. |
 | E-32 | The tier is enabled but A6 never fires in a run | The advisory summary carries a sixth row reading zero, as it carries five today. Enabled-but-quiet is an all-zero summary, not an absent key (AC-1.1, NFR-2). |
 
@@ -348,10 +350,13 @@ equality, it is stated as such rather than as an absence.
   is dispatched. *Given instead* a run in which A6 **resolved** wave 1. *When* wave 2's gate goes red.
   *Then* wave 2 escalates with no dispatch. Two oracles that a "counts every invocation" reading would
   make disagree. *(E-26, E-27, BR-11.)*
-- **AT-02-7** — *Who:* the workflows suite. *Given* an invocation whose working time excluding
-  gate-command run time exceeds `advisory.seamBudgetMinutes`. *When* it terminates. *Then* it
-  escalates `budget-exhausted`; and a companion case with a slow gate command and fast working time
-  does **not** escalate, so the exclusion is falsifiable rather than decorative. The window is BR-11's: one dispatch, dispatch→verdict. The companion's slow gate command sits between dispatches, outside every measured window, so it cannot escalate. *(E-25, NFR-4, BR-11.)*
+- **AT-02-7** — *Who:* the workflows suite. *Given* one A6 dispatch whose dispatch→verdict elapsed
+  time exceeds `advisory.seamBudgetMinutes`. *When* the wave terminates. *Then* it escalates with
+  `budget-exhausted`; and a companion case with a slow gate command whose every dispatch→verdict
+  window stays inside budget terminates `resolved` on a green re-gate — a named positive disposition,
+  since E-24 shares the `budget-exhausted` literal, so a non-escalation is not readable from the
+  reason string alone. The window is BR-11's: one dispatch, dispatch→verdict; the
+  companion's slow gate command sits between dispatches, outside every measured window. *(E-25, NFR-4, BR-11.)*
 - **AT-02-8** — *Who:* the workflows suite. *Given* a verdict classified `environmental`, and a second classified `unclassified`, each carrying no repair proposal. *When* each is received. *Then* in both the terminal disposition is `escalated`, no repair is applied and no restoration is performed, the outcome carries **no** refusal reason, and the escalation-log entry carries the root-cause class. The assertion on the absent reason is paired with the positive assertions beside it, so a run that never reached the seam cannot satisfy it. *(E-11, E-19, BR-2, BR-15.)*
 - **AT-02-9** — *Who:* the workflows suite. *Given* `advisory.attemptBudget` at `1` and a wave whose re-gate stays red. *When* the wave terminates. *Then* exactly **one** A6 dispatch occurred on that wave and the disposition is `escalated` with `budget-exhausted`. *Given instead* `advisory.attemptBudget` at `2` under the same red re-gate. *Then* exactly **two** dispatches occurred. Counted, never bounded: a "no more than" oracle passes an implementation that dispatches none. *(E-24, BR-11, §3.2 step 3b.)*
 
@@ -430,11 +435,11 @@ equality, it is stated as such rather than as an absence.
   `plan-ordering-defect`. *When* the escalation log alone is read, with no run logs. *Then* the count
   is derivable per feature. The companion negative is specified, not a gap: resolution counts are
   **not** derivable after Phase PUB, and REQ O-2 owns that. *(E-31, AC-6.4.)*
-- **AT-06-6** — *Who:* the workflows suite. *Given* an escalation whose escalation-log write fails. *When* the wave terminates. *Then* the disposition is still `escalated`, the halt reason is unchanged from AT-05-3's literal, the failure to log is surfaced in the halt report, the carrier E-30 names, and the disposition is never upgraded to `resolved`. Contrast AT-06-2: a failed **record** write refuses the action, a failed **escalation-log** write does not undo the escalation. *(E-30, BR-13.)*
+- **AT-06-6** — *Who:* the workflows suite. *Given* an escalation whose escalation-log write fails. *When* the wave terminates. *Then* the disposition is still `escalated`, the halt reason is unchanged from AT-05-3's literal, the failure to log is surfaced on the carrier E-30 names — the run report's notice channel — and the disposition is never upgraded to `resolved`. Contrast AT-06-2: a failed **record** write refuses the action, a failed **escalation-log** write does not undo the escalation. *(E-30, BR-13.)*
 
 ### 6.7 FSPEC-AWG-07 — Non-functional
 
-- **AT-07-1** — *Who:* the workflows suite. *Given* each **agent-proposable** boundary in §4 — E-5's scope rule, E-6's two halves, and the rules the partition below names proposable. *When* a stub agent double returns a violating proposal — no live model, no prompt, the form AT-03-5 already uses. *Then* the proposal is refused by the workflow script, the shipped refusal reason is reported, and the working tree is unchanged. The partition over BR-1…BR-16 is total, so no rule is left silently unlisted; BR-16's claim that every §4 boundary is script-enforced is discharged, not sampled. **Proposable, asserted here:** BR-2 (a class outside the vocabulary), BR-3 (a diagnosis citing no gate output), BR-5, BR-6, BR-7 (a verdict asserting the wave is fixed, AT-04-1's case re-run through the stub double), BR-8. **Not proposable, by construction:** BR-1, BR-4, BR-9…BR-16, each decided by the script before or after any proposal is read, so no proposal can violate it. *(BR-16, NFR-1.)*
+- **AT-07-1** — *Who:* the workflows suite. *Given* each **agent-proposable** boundary in §4 — E-5's scope rule, E-6's two halves, and the rules the partition below names proposable. *When* a stub agent double returns a violating proposal — no live model, no prompt, the form AT-03-5 already uses. *Then* the proposal is refused by the workflow script, the shipped refusal reason is reported, and the working tree is unchanged — **except the BR-2 arm**, which carries BR-2's own outcome instead: an out-of-set class reads `unclassified`, authorises nothing, and the wave escalates with **no** refusal reason and **no** attempt consumed, the tree still unchanged (the shipped catalogue holds no reason for an out-of-vocabulary class; AT-02-8 pins the same path). The BR-3 arm pins `advisory.attemptBudget` to `1`, so the reported reason is the malformed-verdict one rather than the budget one a longer fixture would terminate on. The partition over BR-1…BR-16 is total, so no rule is left silently unlisted; BR-16's claim that every §4 boundary is script-enforced is discharged, not sampled. **Proposable, asserted here:** BR-2 (a class outside the vocabulary, under its own *Then* above), BR-3 (a diagnosis citing no gate output), BR-5, BR-6, BR-7 (a verdict asserting the wave is fixed, AT-04-1's case re-run through the stub double), BR-8. **Not proposable, by construction:** BR-1, BR-4, BR-9…BR-16, each decided by the script before or after any proposal is read, so no proposal can violate it. *(BR-16, NFR-1, BR-2, BR-3, AT-02-8.)*
 - **AT-07-2** — *Who:* the workflows suite. *Given* the transcribed set-equality surfaces M-WG-9
   names — the seam catalogue, the envelope defaults, the advisory config key set, the two
   catalogue-driven surfaces, and the disabled-tier fixtures. *When* the suite runs. *Then* each has
