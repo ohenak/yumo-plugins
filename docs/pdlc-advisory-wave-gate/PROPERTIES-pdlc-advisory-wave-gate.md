@@ -263,7 +263,42 @@ prompt-only qualification, and PROP-REST-03's upstream-pending boundary.
 
 ## Fixtures
 
-*(section pending)*
+Fixtures are named here so that the same double is not re-invented per property, and so that each
+one's *normative source* is identifiable. All doubles live in
+`pdlc/workflows/__tests__/helpers/advisoryDoubles.js` (PLAN task A6-01, the `[Fake first]` task)
+unless the row says otherwise.
+
+| Fixture | Shape | Used by | Source of truth |
+|---|---|---|---|
+| `SEAMS` literal | Six members, `["A1","A2","A3","A4","A5","A6"]`; verified at HEAD as five at `helpers/advisoryDoubles.js:271` | PROP-SEAM-01, -02 | TSPEC §3.1 |
+| Recording `_git` double | Records argv per call; the counted quantities are **verbs** (`commit-tree`, `update-ref`, `read-tree`, `clean`, `reset`) and the `update-ref` target set, never the raw call count | PROP-REST-06, -07, -08, PROP-CTR-12, PROP-ENV-10 `(h)` | TSPEC §5.2 |
+| Real-repository fixture builder | `mkdtempSync` + `execFileSync("git", …)` with a `_git` adapter over it — the shape `advisoryDodSeams.test.js:371` already ships for the A3 fixtures | PROP-REST-01, -02, -03, -05 | TSPEC §5.2 |
+| A6 agent double | Emits the tier's six verdict lines plus `ROOT-CAUSE:`, `PROMOTES:` and `PROMOTES-TASK:` trailers; parameterised over class, proposed action, confidence and evidence | PROP-CTR-*, PROP-ENV-*, PROP-NFR-03 | TSPEC §4.1 |
+| `_runCommand` double | Drives red-then-green re-gates by outcome, **not** by stubbing `verifyGate`: the real `verifyGate` runs `runWaveGateSequence`, which is what appends the ledger tokens | PROP-GATE-01, -03, -06 | TSPEC §5.2 |
+| Mutation fixtures | `{...seamOps, verifyGate: fake}` over the **real** `buildA6SeamOps`; one drops the re-gate on attempt 1, one on attempt 2 | PROP-GATE-04 | TSPEC §5.5 |
+| Ownership-manifest fixtures | One wave-set with a directory row spelled `pdlc/workflows/dist/` and one spelled `pdlc/workflows/dist`; a later-wave task whose PLAN row text names the promoted symbol | PROP-ENV-02, -03, -08 | TSPEC §3.4 |
+| Gate-output fixture | Longer than `outputTail`'s 30 lines, with a distinguishable region below the tail boundary and a symbol name the E-6 conjunct can find | PROP-CTR-05, -07, PROP-ENV-08 | TSPEC §3.3 |
+| Citation-floor pair | One citation of 23 normalised characters and one of 24, on the same run | PROP-CTR-05 | TSPEC §3.3 (`A6_MIN_CITATION_CHARS = 24`) |
+| Config fixtures | `waveBudgetPerRun` at `1`, `0`, `-1`, `1.5`, `"x"`, `null`, and absent; plus tier-off (`enabled: false`) and tier-on-A6-off (`enabled: true, waveBudgetPerRun: 0`) whole-config arms | PROP-CFG-01, -02, PROP-CTR-13, PROP-SEAM-05 | TSPEC §3.1, §4.4 |
+| Example-config fixture | The tracked `.claude/pdlc.config.example.json` itself, read by the engine-channel test | PROP-CFG-03 | TSPEC §4.4 |
+| Pre-A6 baseline | The halt reason string, queue row and created-file set captured from the shipped pipeline on the same inputs; the gate-failure literal is `orchestrate-dev.js`'s existing `Error: Wave {N} test gate failed — \`{testCommand}\` did not pass. Output tail:\n{tail}` | PROP-SEAM-03, -04, -05, PROP-REST-09, PROP-GATE-05 | `orchestrate-dev.js` wave loop, M-WG-3 |
+
+**Verbatim-string discipline.** Every fixture string that also appears in a normative document is
+transcribed from that document, not paraphrased: the four root-cause class names and the eight
+refusal reasons from TSPEC §3.1 (the latter verified byte-for-byte against
+`orchestrate-dev.js:2297`–`:2306`), the five exclusion ids in their shipped order
+(`orchestrate-dev.js:2311`), the capture-failure `diagnosis` sentence and promotion commit message
+from Oracle G, and the snapshot ref pattern `refs/pdlc/a6-snapshot-{waveNum}`.
+
+**Two fixture-level hazards, stated so they are not rediscovered.**
+
+1. *Do not transcribe the two-attempt positive companion in the mutation fixtures' vocabulary.*
+   Injecting a `verifyGate` double that returns `{passed:false}` then `{passed:true}` appends no
+   tokens, leaves the ledger at the pre-A6 pass's `["post-wave","test"]`, and makes the six-token
+   literal a red test against a correct implementation (TSPEC §5.2).
+2. *Do not use `test.skip` for the upstream-pending case.* `orchestrate-dev.js`'s skip guard matches
+   `/\b(describe|test|it)\.skip\s*\(/`; PROP-REST-03's pending case uses `test.todo` (PLAN A6-09).
+
 
 ## Coverage Matrix
 
