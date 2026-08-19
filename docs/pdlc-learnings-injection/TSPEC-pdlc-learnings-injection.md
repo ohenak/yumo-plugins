@@ -32,9 +32,9 @@ One new region of `pdlc/workflows/orchestrate-dev.js`: a pure selector (`selectL
 already-read corpus, a thin IO shell (`gatherLearningsCorpus`) that reaches the filesystem through
 seams the module already injects, a config parser (`parseLearningsConfig`) modelled on the
 `parseAdvisoryConfig` sibling three hundred lines above it, and a per-run closure
-(`buildLearningsInjector`) that `main()` hangs off `wrapperSeams` so that **every** dispatch the
-pipeline classifies `dispatchKind: "authoring"` picks it up at one place — `dispatchAndVerify` —
-rather than at each of its four call sites. The block is appended to the composed prompt as a
+(`buildLearningsInjector`) that `main()` hangs off `wrapperSeams` so that every dispatch REQ C-1
+names — `dispatchKind: "authoring"` **and** a target document type in C-1's six — picks it up at one
+place, `dispatchAndVerify`, rather than at each of its four call sites. The block is appended to the composed prompt as a
 suffix that is the empty string whenever nothing is selected, which is what makes AC-4.1's and
 AC-5.1a's byte-identity claims hold by construction rather than by test.
 
@@ -92,7 +92,11 @@ New region, placed immediately after `parseAdvisoryConfig`/`readAdvisoryConfigSa
 | `selectLearnings({entries, feature, thresholds})` | pure | the whole selection rule |
 | `gatherLearningsCorpus({feature, _git, _readFile})` | IO shell | never throws |
 | `renderLearningsBlock(selection)` | pure | — |
-| `buildLearningsInjector({config, notices, sink, _git, _readFile, _log})` | factory | returns an async closure |
+| `buildLearningsInjector({config, sink, _git, _readFile, _log})` | factory | returns an async closure or `null` |
+
+(BR-14's notices are pushed by `main()` onto the same `sink` before the injector is built, so the
+injector takes no `notices` parameter; §I.4's signature is the one signature, and §A.2's diagram
+agrees with it.)
 
 The split is the testability contract: **every rule FSPEC states is in a pure function**, and the
 only impure member is the twelve-line shell that turns two seam calls into the array the pure
@@ -105,30 +109,62 @@ harness, because those tests never touch the shell.
 main()
  ├─ readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH)   ← ONCE per run
  ├─ parseLearningsConfig(text) → {config, sectionMalformed, invalidKeys}
- ├─ notices.push(NTC-MALFORMED / NTC-KEYTYPE …)                    ← BR-14
+ ├─ sink.notices.push(NTC-MALFORMED / NTC-KEYTYPE …)               ← BR-14
  ├─ injector = buildLearningsInjector({...})                       ← null when disabled
  └─ wrapperSeams._injectLearnings = injector
       ├─ converge() ──────────► wrappedDispatch ─┐
       ├─ routeErrata() ───────► wrappedDispatch ─┼─► dispatchAndVerify
       └─ reviewLoop() ────────► runWrapped ──────┘        │
-                                                          │  dispatchKind === "authoring"
+                                                          │  INJECTION_TARGET(dispatchKind, docType)
                                                           ▼
                                         block = await _injectLearnings({feature, docType, phaseId})
-                                        prompt = basePrompt + PACING + opener + block
+                                        prompt = basePrompt + PACING + opener + block   (per iteration)
 ```
+
+**The attachment condition, in full.** The block is composed when **both** hold:
+
+```js
+export const LEARNINGS_TARGET_DOCTYPES = Object.freeze([
+  "REQ", "FSPEC", "TSPEC", "PLAN", "DECISIONS", "PROPERTIES",
+]);
+const injectHere =
+  dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType);
+```
+
+When `injectHere` is false the injector is **not called at all**: no corpus is enumerated, no
+document is read, no `dispatches[]` row is recorded and the block is `""`. Phase CR's optimizer
+round therefore contributes nothing to AC-3.1's rows and nothing to AC-5.2's filesystem footprint,
+and its prompt is byte-identical to the disabled run's. `LEARNINGS_TARGET_DOCTYPES` is a frozen
+array for the same reason D.1's catalogues are (DC-14): AT-02's expected authoring subset is
+hand-transcribed against C-1's six names, not imported from this constant.
 
 Three properties of this attachment carry the load:
 
-1. **One attachment point, four call sites.** P-2/P-3: all four `dispatchKind: "authoring"` sites
-   reach `dispatchAndVerify`, and it is the only function that sees `dispatchKind` at composition
-   time. Attaching there makes BR-1 *consume* the pipeline's classification instead of restating a
-   membership list — which is exactly what BR-1 demands and what a per-call-site approach could not
-   give, since it would have to be kept in sync by hand with a fifth site added later.
+1. **One attachment point, four call sites — and a target-document test the classification does
+   not give.** P-2a/P-3: all four `dispatchKind: "authoring"` code sites reach `dispatchAndVerify`,
+   and it is the only function that sees both `dispatchKind` and `docType` at composition time.
+   Attaching there is what keeps BR-1 from restating a call-site membership list that would drift
+   the moment a fifth site appeared. But `dispatchKind` **alone is wider than REQ C-1** (P-2b,
+   P-2c): `reviewLoop` is shared, and Phase CR calls it with `docType: null` over a directory
+   target (`orchestrate-dev.js:14551-14556`), so its optimizer round — `se-author` remediating the
+   shipped codebase — is authoring-classified while being exactly what C-1's "whose target document
+   is REQ, FSPEC, TSPEC, PLAN, DECISIONS or PROPERTIES" and NG-5 exclude. The `docType` conjunct is
+   therefore load-bearing, not defensive: without it AC-1.2's set equality fails against a strict
+   superset, AC-4.3's byte-identity for non-authoring dispatches fails on every full pipeline run,
+   and R-4's imported prior-feature decisions would reach code remediation. `docType` is still the
+   pipeline's own value, not a new taxonomy — the condition consumes two existing fields rather
+   than one, and both are already carried to the composition point.
 2. **Once per episode, not once per invocation.** `dispatchAndVerify`'s `for(;;)` loop may compose
    the prompt several times for one dispatch (the pacing budget). The injector is called **once,
-   before the loop**, and the resulting string is concatenated into every iteration's prompt. That
-   is what "re-composed per authoring dispatch" (FSPEC BR-1, E-29) means operationally: one
-   selection, one record row-set, per dispatch — not per retry.
+   before the loop**, and the resulting string is held in a `const` and concatenated into every
+   iteration's prompt. The loop legitimately mutates `opener` per iteration (the near-miss hint and
+   the PLAN-lint feed-forward clause, `orchestrate-dev.js:8972-8977`); the block is concatenated
+   **after** the mutated `opener` at composition time (`:8978`), so a retry iteration carries the
+   *same block bytes* appended to a *possibly different* opener. AT-23 pins that pair: for a
+   fixture whose first iteration trips the PLAN-lint feed-forward, the second iteration's prompt
+   differs from the first only inside `opener`, and its block substring is byte-identical. That is
+   what "re-composed per authoring dispatch" (FSPEC BR-1, E-29) means operationally: one selection,
+   one record row-set, per dispatch — not per retry.
 3. **A suffix, never an insertion.** The block is appended after `opener`, so the existing
    `basePrompt` / `PACING_CONTRACT_CLAUSE` / `opener` text and its order are untouched (BR-7, C-8).
    `_injectLearnings` returns `""` — not a marker, not a header — whenever nothing is selected, so
@@ -170,9 +206,15 @@ On the plain-Node channel the shell is one `git ls-files` plus N `readFileSync` 
 On the Claude Code runtime channel both seams are model-mediated, and this is the feature's real
 cost: the first authoring dispatch of a run pays a chunked read of every corpus document (measured
 at HEAD: 9 documents, 300,152 bytes total, mean 33,350). Every later authoring dispatch pays one
-*probe* per document instead of a full read, because `rtReadFile` revalidates a cached entry by
-size+sha and serves the cached text when they match (P-9), and the whole corpus fits inside the
-2 MiB cache budget with room to spare.
+*probe* per document instead of a full read, **where the entry is still resident**, because
+`rtReadFile` revalidates a cached entry by size+sha and serves the cached text when they match
+(P-9). Residency is not a guarantee this design can make: `RT_READ_CACHE_MAX_BYTES` is a *shared*
+2 MiB budget with oldest-inserted eviction across every read the run makes
+(`runtime-adapter.js:459-465`), and 300,152 bytes of LEARNINGS competes with the run's spec,
+cross-review and code reads. The honest claim is that the corpus *can* fit and that a warm probe is
+the cheap path when it does — the probe-vs-full-read count T-O-3 asks the operator to report is the
+measurement that would settle it, and it is asked for precisely because this claim is not
+structural.
 
 Two consequences are recorded rather than designed around:
 
@@ -190,7 +232,33 @@ Two consequences are recorded rather than designed around:
 
 `main()` owns a run-scoped sink, in the shape `notices` already has
 (`orchestrate-dev.js:12110`): an array of per-dispatch records plus at most one corpus-level
-outcome and one rule-input record. `buildLearningsInjector` closes over it and pushes on each
+outcome and one rule-input record.
+
+**The run-level singletons are LAST-WRITE-WINS, and every dispatch's own values are also kept on
+its own row.** Selection runs per dispatch over the state that dispatch observed (E-32, and AT-14
+forbids an in-process memo), so two dispatches in one run may legitimately observe different
+corpora — different `orderKeys`, or dispatch 1 listable and dispatch 5 `RSN-UNLISTABLE`. The rule:
+
+| Field | Scope | Rule |
+|---|---|---|
+| `corpusOutcome` | run-level | the value the **last** authoring dispatch of the run observed |
+| `ruleInputs` | run-level | the `orderKeys`/`thresholds` the **last** authoring dispatch observed |
+| `dispatches[i].corpusOutcome` | per-dispatch | that dispatch's own value, always recorded |
+| `dispatches[i].orderKeys` | per-dispatch | that dispatch's own ordering keys, always recorded |
+| `dispatches[i].corpusDiverged` | per-dispatch | `true` iff this dispatch's `{corpusOutcome, orderKeys}` differ from the immediately preceding authoring dispatch's |
+
+Last-write-wins is chosen over first-write-wins because the run-level record is an operator's
+*current-state* summary and the last dispatch is the one closest to the state on disk when the run
+ended; it is chosen over "conflict is a notice" because a divergent corpus is not an error — a
+LEARNINGS file legitimately lands mid-run — and BR-14's notice catalogue is about configuration
+defects, not corpus movement. `corpusDiverged` is what makes the divergence *visible* without
+inventing an outcome id, and AC-3.3's hand-reproduction is then performed against the per-dispatch
+row, with the run-level record as its summary.
+
+The determinate expected value a test needs therefore exists on both sides: `DIVERGENT-CORPUS` (a
+new §T.6 fixture, five authoring dispatches where the scripted `_git` reply gains one path after
+dispatch 2 and fails at dispatch 5) asserts the run-level scalars equal dispatch 5's observation,
+each `dispatches[i]` carries its own, and `corpusDiverged` is `true` on exactly dispatches 3 and 5. `buildLearningsInjector` closes over it and pushes on each
 call; `buildFinalReport` receives it as one new parameter and spreads it **conditionally**, on
 P-10's `advisory` precedent, so a disabled run's report has **no such key at all** (AC-5.1a) while
 an enabled run with an empty selection has the key present with empty rows (AC-4.4). Those two
