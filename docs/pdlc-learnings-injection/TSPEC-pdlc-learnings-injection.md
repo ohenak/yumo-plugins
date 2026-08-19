@@ -558,8 +558,14 @@ const ISO_DATE_RE  = /^(\d{4}-\d{2}-\d{2})\b/;
 ```
 
 `parseHarvestDate` matches the harvest metadata table's row, trims the cell, and takes an ISO
-prefix. The `\b`-anchored prefix match is what makes E-13's measured
-`2026-06-09 (Phase H harvest; partial close-out)` parse to `2026-06-09` rather than to `null`.
+prefix. The The `\b`-anchored prefix match makes an annotated cell such as
+`2026-06-09 (Phase H harvest; partial close-out)` parse to `2026-06-09` rather than `null`. **That
+sample is FSPEC E-13's, and it is not measured in this repository:** all 9 corpus documents at HEAD
+carry a bare ISO `Date Completed` value (P-5, re-verified for this revision), so the tolerance is
+defensive against a shape the corpus does not currently exhibit rather than a fix for an observed
+one. E-13's own "measured: occurs at HEAD" parenthetical is wrong on this corpus — raised as ERR-5.
+Keeping the tolerance is still right (the annotated form is what a partial close-out writes, and
+BR-4 must not turn it into `null`), but no fixture may claim it was sampled from this repository.
 No `Date` object is constructed: the key is compared as a **string**, descending, which for
 zero-padded ISO dates is the same order as chronological and avoids a timezone-dependent parse
 (C-5's "no clock"). A value that is not an ISO prefix is `null` and falls to the tiebreak (E-14).
@@ -567,28 +573,61 @@ zero-padded ISO dates is the same order as chronological and avoids a timezone-d
 Sort comparator, in full:
 
 ```js
-(a, b) => (a.orderKey === b.orderKey ? 0
-          : a.orderKey === null ? 1 : b.orderKey === null ? -1
-          : b.orderKey < a.orderKey ? -1 : 1)
-       || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
+(a, b) =>
+  (a.orderKey === b.orderKey ? 0
+   : a.orderKey === null ? 1
+   : b.orderKey === null ? -1
+   : b.orderKey < a.orderKey ? -1 : 1)
+  || Buffer.compare(Buffer.from(a.path, "utf8"), Buffer.from(b.path, "utf8"))
 ```
 
 Paths are unique within one `git ls-files` reply, so the composite is a **total order** and the
 sort's stability is not relied on.
 
+**The tiebreak is byte order, and the comparator now says so.** AC-2.2 fixes the tiebreak as byte
+order over the document path. JavaScript's `<`/`>` on strings is UTF-16 **code-unit** order, which
+agrees with UTF-8 byte order on every ASCII path — all 9 corpus paths at HEAD (P-5) — but diverges
+outside the BMP, where a supplementary-plane path sorts before a `U+E000`–`U+FFFF` one under
+code-unit order and after it under byte order. Determinism holds either way, so this is not a
+correctness bug; it is the stated rule and the implemented rule being two different rules.
+`Buffer.compare` makes them one, and no ASCII-only restriction on paths has to be assumed for the
+document to be true.
+
 ### D.5 Byte accounting
 
-All three byte quantities are **UTF-8 byte lengths** (`Buffer.byteLength(s, "utf8")`), of exactly
-the substrings the block carries on a document's account (BR-6): its identification line, its
-delimiters and source-path label, and each section heading and body taken. The block's preamble
-belongs to no document and is counted in none of the three — which is what makes AT-11's and
-AT-12's expected counts computable by hand from a fixture.
+All byte quantities are **UTF-8 byte lengths** (`Buffer.byteLength(s, "utf8")`). The accounting is
+stated as three disjoint pools so that no quantity is defined in terms of a decision that depends
+on it:
+
+| Pool | What is in it | Bounded by |
+|---|---|---|
+| **Material** — one per selected document | Only the section headings and bodies taken from that document under BR-6 | `maxBytesPerDocument`, per document; and `maxTotalBytes` over the sum |
+| **Per-document framing** | That document's `<<< path — feature {p}, completed {d} >>>` opener, its `ABRIDGED` annotation when present, and its `<<< end path >>>` closer | Nothing — framing is never cut |
+| **Block framing** | The `--- PRIOR-FEATURE LEARNINGS …` header, the four-sentence advisory preamble (§OQ.1), and the `--- END PRIOR-FEATURE LEARNINGS ---` trailer | Nothing — emitted once, only when `selected` is non-empty |
+
+**`maxBytesPerDocument` bounds material only, and so does `bytesInjected`.** This is the whole of
+what TE F-02 asked to be made non-circular: the `ABRIDGED: bounded to 6000 bytes` marker is
+emitted *because* a document was bounded, so if it were charged to that document's own budget the
+budget would depend on its own outcome. It is not charged. `extractInjectableMaterial(text,
+maxBytes)` sees only document text and returns `{material, bounded, bytes}` with
+`bytes = Buffer.byteLength(material, "utf8") <= maxBytes`; the renderer adds framing afterwards and
+never feeds framing back into the bound. `bytesInjected` in the BR-8 row equals that `bytes`,
+`totalBytesInjected` equals their sum, and `maxTotalBytes` is checked against that same sum — so
+all three of REQ §4.1's thresholds range over one pool, not three different ones.
+
+**Consequences, stated because tests depend on them.** The realised block is larger than
+`totalBytesInjected` by a framing constant plus one opener/closer pair per selected document;
+that difference is real prompt cost and is what T-O-3's live measurement reports against REQ O-1,
+which is why §A.4 does not claim the thresholds bound prompt growth exactly. AT-11's and AT-12's
+expected counts are therefore hand-computable from the fixture alone: sum the section headings and
+bodies BR-6 selects, ignore every delimiter. A fixture that wants to pin framing cost asserts on
+the rendered block length, not on `bytesInjected`.
 
 **Cutting is character-safe.** Where the first priority section alone exceeds
 `maxBytesPerDocument` (E-16), the material taken is the longest **character** prefix whose UTF-8
 length is ≤ the bound, so a cut never splits a multi-byte codepoint. The consequence, stated so
-AT-12's oracle is written correctly: contributed bytes are ≤ the bound and **equal** it only where
-the cut happens to land on a character boundary. AT-12's fixture is therefore ASCII, so its
+AT-12's oracle is written correctly: contributed bytes are ≤ the bound, and **equal** to it only
+where the cut happens to land on a character boundary. AT-12's fixture is therefore ASCII, so the
 expected count is the bound exactly; a separate case pins the multi-byte behaviour at ≤.
 
 ### D.6 Self-exclusion, decided from the path
