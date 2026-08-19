@@ -4,14 +4,35 @@
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.3) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (active) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.2 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.3 | 2026-08-20 |
 
 ## Changelog
+
+**v1.3 (round 3).** Two High (one finding, raised by both reviewers), four Medium/Low addressed.
+PM F-01 / TE F-21: §3.2 step 6's ledger rule was a growth-since-dispatch **equality**, which denied
+resolution to a legitimate two-attempt run — green re-gate reported unresolved, repair left in the tree,
+no restoration trigger fired, operator told the gate failed when it passed. Restated as a **suffix
+check** (the ledger's final tokens are the wave's own gate sequence, appended by the `verifyGate` call
+that produced the resolution), which holds at every attempt count and still refuses the dropped-re-gate
+defect; reconciled in §3.3's `verifyGate` row and §5.5's mutation-fixture bullet, and paired with a new
+positive companion case in §5.2 (two-attempt run, green on attempt 2, asserted **resolved** with
+`invocations` `[post-wave, test, post-wave, test]`).
+PM F-03 / TE F-22: the capture-failure disposition now names all six members `renderAdvisoryEntry`
+destructures — `model: "n/a"`, `fallback: false` — because `model` has no renderer fallback and an
+unnamed one ships a literal `| Model | undefined |` cell into the operator-facing record (§2.5, §3.2
+step 4, §5.2).
+PM F-02 / TE F-23: four clauses added in round 2 were appended past a table row's final pipe and were
+dropped by the GFM renderer; moved inside their cells (§3.3 two rows, §5.5 two rows).
+TE F-24: §3.2 states explicitly that the wave-budget escape resolves inside `runAdvisorySeam`, after
+step 4's capture, so a no-dispatch wave still captures — and says why that ordering was kept.
+TE F-25: §5.2's one-snapshot-per-wave assertion now counts a capture-unique argv verb
+(`commit-tree === 1`), not calls on the `_git` double, which `restoreTreeSnapshot` also drives.
+PM Q-02 and TE Q-01 answered in §6 (OQ-12, OQ-13).
 
 **v1.2 (round 2).** Three High findings and five Medium/Low addressed.
 PM F-01: the capture-failure escalation carries **no** refusal reason (`reason: null`) per REQ
