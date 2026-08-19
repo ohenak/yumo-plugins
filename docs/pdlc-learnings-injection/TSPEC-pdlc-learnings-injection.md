@@ -173,9 +173,15 @@ Three properties of this attachment carry the load:
    iteration's prompt. The loop legitimately mutates `opener` per iteration (the near-miss hint and
    the PLAN-lint feed-forward clause, `orchestrate-dev.js:8972-8977`); the block is concatenated
    **after** the mutated `opener` at composition time (`:8978`), so a retry iteration carries the
-   *same block bytes* appended to a *possibly different* opener. AT-23 pins that pair: for a
-   fixture whose first iteration trips the PLAN-lint feed-forward, the second iteration's prompt
-   differs from the first only inside `opener`, and its block substring is byte-identical. That is
+   *same block bytes* appended to a *possibly different* opener. **No FSPEC AT owns this invariant, so TSPEC names the case
+   (TE F-02).** AT-23 does *not* pin it — AT-23 is about author-emitted channels equalling the
+   pre-feature baseline set — and no other AT is even incidentally sensitive to per-iteration
+   re-selection: an implementation calling the injector inside the `for(;;)` loop still passes
+   AT-02 (set equality over *which* dispatches carry a block, not how often it is produced),
+   AT-33 (the same read paths, merely re-read) and AT-14 (two whole-process runs, not two
+   iterations of one loop). The failure mode is real: re-selection on iteration 2 over a corpus
+   that moved mid-dispatch yields different block bytes inside a single dispatch, and duplicate
+   `dispatches[]` rows for it. The `RETRY-ITERATION` fixture (§T.6) is the owning case. That is
    what "re-composed per authoring dispatch" (FSPEC BR-1, E-29) means operationally: one selection,
    one record row-set, per dispatch — not per retry.
 3. **A suffix, never an insertion.** The block is appended after `opener`, so the existing
@@ -832,6 +838,23 @@ for the same document (`orchestrate-dev.js:12915`) — see §Open Questions ERR-
 scripted `_git` reply gains one path after dispatch 2 and fails outright at dispatch 5. It pins the
 last-write-wins rule: run-level `corpusOutcome` and `ruleInputs` equal dispatch 5's observation,
 each `dispatches[i]` carries its own, and `corpusDiverged` is `true` on exactly dispatches 3 and 5.
+
+**`RETRY-ITERATION` — one selection per dispatch, not per loop iteration (TE F-02).** A TSPEC-owned
+L3 case (no FSPEC AT owns §A.2's property 2; not counted in the 35-AT closure above). The fixture
+drives a single PLAN authoring dispatch whose first iteration trips the PLAN-lint feed-forward, so
+`dispatchAndVerify`'s `for(;;)` loop composes the prompt at least twice with a mutated `opener`
+(`orchestrate-dev.js:8972-8978`), and its scripted `_git` reply **changes between iterations** —
+the second reply gains one corpus path — so a per-iteration selector would demonstrably produce
+different bytes. Three assertions:
+
+| # | Assertion | Kills |
+|---|---|---|
+| 1 | exactly **one** `dispatches[]` row exists for the dispatch | duplicate rows from per-iteration recording |
+| 2 | exactly **one** `LEARNINGS_CORPUS_ARGV` `_git` call is made for the dispatch, observed on the double's call log | re-enumeration inside the loop |
+| 3 | iteration 2's prompt differs from iteration 1's **only inside `opener`**, and its block substring is byte-identical to iteration 1's | re-selection over the moved corpus |
+
+Assertion 2 is the one that fails fast under the loop-placement bug even when the moved corpus
+happens to select identically; assertion 3 is the one that fails when it does not.
 
 **AT-29 — gate-input isolation, and why the scripted agent must be prompt-sensitive.** Two scripted
 runs over the same fixture matrix, differing only in `learningsInjection.enabled`; the comparison is
