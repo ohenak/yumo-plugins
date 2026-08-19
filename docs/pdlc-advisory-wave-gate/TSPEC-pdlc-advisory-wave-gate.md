@@ -434,14 +434,26 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    outcome from the seam ops' own returns, so a `verifyGate` that answers `{passed: true}` without
    running anything would yield `resolved` — an advisory verdict substituting for a gate result,
    which is exactly what BR-7 forbids. The call site therefore re-checks the one thing it can
-   observe independently: `resolved: true` requires **both** `outcome === "resolved"` **and** the
-   wave's `invocations` ledger (§2.4) having grown, since dispatch, by the wave's own gate
-   sequence — the ordered `["post-wave", "test"]` pair, or `["test"]` when no post-wave command is
-   configured (§2.4's third row). If the ledger did not grow, `runWaveGateSeam` returns
-   `{resolved: false}`, the wave budget is not incremented, and the caller rethrows the first
-   pass's halt. This is the rule AC-4.1's conjunct (iii) needs in order to be falsifiable: without
-   it, §5.5's dropped-re-gate mutation fixture asserts a property no specified rule ever states
-   (TE F-14). On a genuine `resolved`, `waveBudget.resolved += 1` and the snapshot ref is left in
+   observe independently: `resolved: true` requires **both** `outcome === "resolved"` **and**
+   that the wave's `invocations` ledger (§2.4) *ends with* the wave's own gate sequence, appended
+   by the `verifyGate` call that produced the resolution. The quantity is a **suffix check, not a
+   growth-since-dispatch equality**: read the ledger's final tokens and require that they are the
+   wave's configured gate sequence — the ordered `["post-wave", "test"]` pair, or `["test"]` alone
+   when no post-wave command is configured (§2.4's third row). Stated that way the rule holds at
+   every attempt count. A red re-gate re-enters the driver's attempt loop (`verifyGate` returns
+   `{passed: false, consumesAttempt: true}`, the driver reverts, increments `attempts` and
+   `continue`s — `orchestrate-dev.js:3545-3568`), so a two-attempt run that greens on attempt 2
+   carries `[post-wave, test, post-wave, test]`: its final tokens are the wave's gate sequence, and
+   it resolves. The v1.2 growth-equality wording denied resolution to exactly that run — a green,
+   gate-verified wave reported unresolved, its repair left in the tree with no restoration trigger
+   fired, and the operator told the gate failed when it passed (PM F-01, TE F-21). What the suffix
+   check still refuses is the defect it was written for: a `verifyGate` that returns
+   `{passed: true}` without running the gate appends nothing, so the ledger's final tokens are a
+   *stale* earlier attempt's pair, or nothing at all, and the check fails. When it fails,
+   `runWaveGateSeam` returns `{resolved: false}`, the wave budget is not incremented, and the
+   caller rethrows the first pass's halt. This is the rule AC-4.1's conjunct (iii) needs in order
+   to be falsifiable: without it §5.5's dropped-re-gate mutation fixture asserts a property no
+   specified rule ever states (TE F-14). On a genuine `resolved`, `waveBudget.resolved += 1` and the snapshot ref is left in
    place for the operator. Any other outcome ⇒ the tree has already been restored by
    `seamOps.revert()` on the failing path, and the caller rethrows the first pass's halt.
 
