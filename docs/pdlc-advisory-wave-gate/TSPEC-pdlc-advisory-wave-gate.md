@@ -302,6 +302,17 @@ Four decisions inside that:
   halt names the ref for the halting wave, which is the difference between "A6 left a tree it could
   neither repair nor restore" and "A6 left a tree, and here is the object name that has the original
   in it". The refs are dangling commit objects; nothing in this feature deletes them (§6 OQ-2).
+  **The promise is run-scoped, and the section says so rather than letting the reader assume more.**
+  The name is derived from the wave number alone, so a *re-run* of a halted feature — the ordinary
+  next step after a halt — reaches wave 1, captures, and overwrites `refs/pdlc/a6-snapshot-1`, the
+  very ref the operator was told to keep. The loss F-03 named is narrowed, not eliminated: its
+  trigger moves from "a later wave" to "the next run". The cost is bounded and it is the operator's,
+  not the pipeline's: a retained repair is gate-verified and committed in its own wave commit, so
+  what an overwritten ref costs is *inspectability of the pre-repair tree*, never content. In the
+  other direction the refs accumulate — one dangling commit per wave per run, in a namespace no
+  other tool prunes. An operator who wants a snapshot to survive the next run should copy the ref
+  before re-running; a run-scoped discriminator in the name is recorded as the remedy if that ever
+  proves too sharp an edge (§6 OQ-2, PM F-02).
 
 **Failure is fail-closed, and failing still writes the record.** Any capture or restore git
 call returning `ok !== true` is thrown. On the **restore** side the throw comes out of
@@ -1358,7 +1369,7 @@ after, which is what makes it a test of the fix rather than a description of it.
 | # | Question | Blocking? | Current disposition |
 |---|---|---|---|
 | OQ-1 | Should `waveBudgetPerRun: 0` be rejected at parse time rather than accepted as a configured value that escalates every wave pre-dispatch? | no | Accepted as configured, per E-33; the behaviour is coherent but undocumented upstream. See the FSPEC erratum on E-33. |
-| OQ-2 | Should a run that halts with an applied-and-retained repair leave its snapshot ref in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. Round 4 makes the name wave-scoped (`refs/pdlc/a6-snapshot-{waveNum}`, §2.5) so that this promise survives a multi-wave run: under the earlier single fixed name, a later wave's capture — including a no-dispatch over-budget one — rewrote the ref and destroyed the record of an earlier, resolved wave's pre-repair tree (PM F-03). |
+| OQ-2 | Should a run that halts with an applied-and-retained repair leave its snapshot ref in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. Round 4 makes the name wave-scoped (`refs/pdlc/a6-snapshot-{waveNum}`, §2.5) so that this promise survives a multi-wave run: under the earlier single fixed name, a later wave's capture — including a no-dispatch over-budget one — rewrote the ref and destroyed the record of an earlier, resolved wave's pre-repair tree (PM F-03). Round 5 records what wave-scoping still does **not** buy (PM F-02): the name carries no run discriminator, so re-running a halted feature overwrites wave 1's ref, and nothing prunes the refs that survive — one dangling commit per wave per run. Both costs are the operator's and neither touches content, so the disposition stands; a run id or capture timestamp in the ref name is the recorded remedy if the overwrite ever costs an investigation. |
 | OQ-3 | Should `plan-ordering-defect` recurrence feed back into Phase P's PLAN lint, so a repeatedly-promoted dependency becomes a PLAN-time error? | no | Out of scope; recorded because `ESCALATIONS.md` is the durable corpus that would make it possible (AC-6.4, REQ O-2). |
 | OQ-4 | Should E-6 promotions be visible to the *queue* driver, so a halted feature's re-run starts from the corrected ordering? | no | No. Promotions are per-run state by §4.3, and a re-run re-derives batches from the PLAN, which the erratum protocol — not A6 — is responsible for correcting. |
 | OQ-5 | The staged-index deviation: capture is `git add -A` + `git reset --mixed`, so a wave that staged something before A6 ran gets its content restored but not its *staging*. | no | Accepted. The wave contract is `Do NOT git commit`, so the index equals HEAD on entry and the reset is exact in the ordinary case; in the extraordinary one the loss is staging, never content, which sits inside FSPEC BR-9's content-level oracle. Recorded here because §2.5 asserts it as recorded (PM F-07). |
