@@ -36,7 +36,22 @@ All four v3 findings are resolved and no new High is open. The findings below ar
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Under F-01: for a wave A6 resolved whose run then halts on the un-skip guard, does the run report show the wave as resolved *and* the run as halted, or does the halt suppress the resolution row? AC-6.1's advisory record and AC-5.2's unchanged halt both fire; only the report's own shape is unstated, and it is the observable a PROPERTIES test would assert on. |
+
 ## Positive Observations
 
+- AC-4.4's oracle is now the strongest one in the document. It states the unit (sequence, not set), says why the weaker unit is wrong and which specific false green it admits, gives three literal expected sequences rather than a construction rule, and names the truncation case as an *admitted form* rather than leaving a red-looking sequence to be argued about later. That is a criterion an author can transcribe into a test without asking anything.
+- The F-01 repair was made by measurement, not by wording. Rather than narrowing the scan to A6-authored notices — the easy escape, and the one that would have quietly changed the oracle — the revision adopted the shipped notices as carriers, which is what makes the cardinality-of-one true by branch structure at `orchestrate-dev.js:14041`/`:14119` instead of true by convention.
+- AC-4.2 now states both halves of the conditional, including the "otherwise" branch where no build-output writer is configured. Claims that read true only in this repo have been a recurring shape in this document; this round it was caught and generalised before FSPEC could inherit it.
+- BL-06 moved from an enumeration of three rows to a universal over the section. Enumerations under-include silently and universals do not, and that change is the difference between a baseline obligation that can be declared complete while stale and one that cannot.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+All four v3 findings — the High on AC-1.5's shipped-behaviour claim and the three Mediums on the re-gate oracle, the post-gate halt and BL-06's scope — are resolved, each verified against code at HEAD rather than against the changelog. No High finding is open, so the REQ is testable enough to carry into FSPEC.
+
+F-01 is the one worth folding into the next revision that touches this document: AC-5.3's universal is falsified by a post-gate halt AC-4.4 explicitly permits, and the fix is one conditioning clause plus one sentence naming the report observable. F-02, F-03 and F-04 are single-phrase clarifications that make three oracles transcribable without inference; none changes a decision, and none needs its own round.
 
