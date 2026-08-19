@@ -462,11 +462,13 @@ requirements altitude.
   varies by timestamp.)
 - **NFR-3** — A6 holds no credentials the pipeline does not already hold, and reaches no network
   surface Phase I does not already reach.
-- **NFR-4** — No A6 invocation exceeds `advisory.seamBudgetMinutes`, measured over the window AC-2.4
-  pins: dispatch to verdict on that one invocation, not cumulative across the wave. Gate-command run
-  time falls outside it **structurally** — the gate runs between invocations, never inside one — so
-  no subtraction is performed and no carve-out is needed. An overrun escalates as
-  `budget-exhausted`.
+- **NFR-4** — No A6 **attempt** exceeds `advisory.seamBudgetMinutes`, measured over the window
+  AC-2.4 pins: dispatch to verdict on that one attempt. The deadline restarts on each attempt, so
+  an A6 invocation on one wave has a worst case of `advisory.attemptBudget` × that value — this
+  states shipped behaviour, and no cap over the invocation as a whole is required here.
+  Gate-command run time falls outside the window **structurally** — the gate runs between attempts,
+  never inside one — so no subtraction is performed and no carve-out is needed. An overrun
+  escalates as `budget-exhausted`.
 - **NFR-5** — A6 adds no wall-clock cost to a green wave: it is reachable only from a red gate.
 - **NFR-6** — A6 runs on the advisory tier's existing model rung, resolved through the tier's
   exported resolver rather than through restated literals
@@ -486,8 +488,8 @@ requirements altitude.
   is not.
 - **R-3 — Compounding drift across waves.** Several repairs in one run can carry the branch away
   from what the PLAN describes, with no review between them. `advisory.waveBudgetPerRun` (default 1)
-  bounds it at one resolved wave per invocation (Q-1, decided). The bound is honest about its
-  reach: a per-run knob bounds drift within an invocation only, and drift across invocations is
+  bounds it at one resolved wave per run (Q-1, decided). The bound is honest about its
+  reach: a per-run knob bounds drift within a single run only, and drift across runs is
   bounded by the operator arriving between them, not by this number.
 - **R-4 — This seam treats a symptom.** The motivating incident's root cause was a PLAN whose task
   ordering did not reflect a real dependency. A6 makes that class survivable; it does not make the
