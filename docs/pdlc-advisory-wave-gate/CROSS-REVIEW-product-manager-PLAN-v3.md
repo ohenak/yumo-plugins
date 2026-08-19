@@ -19,6 +19,22 @@
 
 ## Findings
 
+Two Low findings, both cosmetic residue of this round's own edits. No High, no Medium.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **A6-03's "Both are folded into this existing batch-1 task" is stale wording left by the two→four expansion.** The sentence sat immediately after "the two bare row-count assertions" in v1.1, where "Both" had a referent. The list above it now enumerates four sites, so "Both" reads as though only two of the four are folded in — the opposite of the paragraph's own preceding sentence ("All four sites flip `5` → `6` in this task"). No implementer is likely to be misled given the explicit "All four" one clause earlier, which is why this is Low and not Medium, but the sentence is a leftover, not a choice. **Fix:** "All four are folded into this existing batch-1 task rather than given a sixth batch-1 task of their own." | AC-1.4; PLAN §Batches (A6-03) |
+| F-02 | Low | Local | **The DoD checklist's four-site continuation line is indented to 2 spaces where its siblings use 6.** `PLAN-pdlc-advisory-wave-gate.md:315` (`` `advisoryHarvest.test.js:571`, `advisoryHarvest.test.js:726`) now reading `6`. ``) breaks the 6-space continuation the rest of that `- [ ]` item and every neighbouring item uses. It still renders as one list item — 2 spaces is a valid lazy continuation — so nothing is lost to a reader or to the completeness gate; it is a diff artifact worth one keystroke while the section is open. **Fix:** re-indent to 6 spaces to match the item's other continuation lines. | PLAN §Definition of Done |
+
+### Verification performed on this round's new claims
+
+Every code citation added in v1.2 was re-run against HEAD; all land where claimed.
+
+- `ci-arrangement.test.js:39` is `const configPath = path.join(repoRoot, ".claude", "pdlc.config.example.json")` — the example-config read A6-04 now concedes.
+- `ci-arrangement.test.js:799`–`:825` is the `implementation.testCommand` test, and the file's own comment at `:796` annotates it exactly as A6-04 says: *"implementation.testCommand (unrelated to §5.1; unchanged by this task)"*.
+- `advisoryDisabled.test.js:653`–`:657` matches `/\.enabled\b/g` over `sourceExcludingParser(DEV_SOURCE) + "\n" + sourceExcludingParser(QUEUE_SOURCE)` — raw source text, no comment or string stripping. A6-18's widened warning ("any `.enabled` token at all, comments and strings included") is a correct reading of that oracle, and a stricter one than the `config.enabled === false` literal it replaces.
+- The `implementation.testCommand`/engine-scoping premise A6-04 and A6-06 both rest on holds against the config the wave gate actually reads: `.claude/pdlc.config.json`'s `testCommand` is `cd pdlc/workflows && npm test …` with no engine leg. (Worth stating explicitly because the *example* config at `.claude/pdlc.config.example.json` **does** carry `(cd pdlc/engine && npm test) && …`, and `ci-arrangement.test.js:810`–`:822` asserts it must. The PLAN's out-of-band `cd pdlc/engine && npm ci && npm test` obligation in A6-04/A6-06 and its "Engine channel — **not** covered by the batch gate" verification row are therefore right about this repo's live config, not accidentally right.)
+
 ## Questions
 
 ## Positive Observations
