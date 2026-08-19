@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 3; erratum v0.6 corrects §1.2 claim 2 to HEAD's enumeration, enumerates AC-3.2's notice catalogue, adds O-8 | Claude | 0.6 | 2026-08-19 |
+| pdlc | draft — round 5; erratum v0.7 scopes AC-5.1a to an explicit `false` (an absent section ships enabled, AC-1.1) and moves AC-3.3's reproduction inputs to a per-dispatch locus | Claude | 0.7 | 2026-08-19 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -365,15 +365,19 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 **Group 5 — inertness when disabled, and semantics preserved** *(G-5; NG-3, NG-4, NG-7)*
 
-- **AC-5.1a** *Given* `learningsInjection.enabled` is `false`, or the configuration section is
-  absent, *when* the pipeline runs, *then* every composed dispatch is byte-identical to AC-6.2's
-  recorded baseline — that committed pre-feature fixture, not a second branch of this run —
-  and no injection summary is carried: the key is absent, not present-and-empty.
+- **AC-5.1a** *Given* `learningsInjection.enabled` is explicitly `false`, *when* the pipeline runs,
+  *then* every composed dispatch is byte-identical to AC-6.2's recorded baseline — that committed
+  pre-feature fixture, not a second branch of this run — and no injection summary is carried: the
+  key is absent, not present-and-empty. An **absent configuration section is not this state**: no
+  consumer repository carries the section at HEAD, so absent must read as §4.1's declared defaults,
+  which leave `enabled` at `true` and the run injecting under AC-1.1. Disablement is an explicit
+  act, and there is no second gate beyond this key (G-1).
 - **AC-5.1b** *Given* the `learningsInjection` section present but **not an object** — malformed
   as the repository's sibling config readers already read it — *when* the pipeline runs,
-  *then* behaviour is AC-5.1a's **and** the report carries a catalogued notice naming it, so a
-  malformed section is distinguishable from a deliberate disable (DC-01, C-9). A **misspelt
-  section name** reads as absent and is AC-5.1a's state; no unknown-key registry is required.
+  *then* behaviour is AC-5.1a's byte-identical inertness **and** the report carries a catalogued
+  notice naming it, so a malformed section is distinguishable from a deliberate disable (DC-01,
+  C-9). A **misspelt section name** reads as absent, and is therefore the default-enabled state
+  above, not an inert one — consistent with AC-5.1c; no unknown-key registry is required.
 - **AC-5.1c** *Given* the section well-shaped but a **declared §4.1 key wrong-typed**, *when* the
   pipeline runs, *then* the run stays **enabled** with that key at its default and the report
   carries a catalogued notice naming it — a mistyped threshold does not disable the feature.
