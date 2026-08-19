@@ -356,12 +356,18 @@ requirements altitude.
 ### REQ-AWG-04 — What A6 may never do (P0)
 
 - **AC-4.1** — Given any A6 invocation, Then a wave is treated as gated only where the configured
-  gate command re-ran and returned success on its own. The observable is three positive conjuncts on
-  one run: (i) A6 resolves and the re-gate is green ⇒ the wave proceeds and that green invocation is
-  in the run's gate-invocation sequence (AC-4.4); (ii) A6 resolves and the re-gate is red ⇒ the wave
-  halts, the tree is restored (AC-5.1), and the halt is the wave's own gate halt (AC-5.2); (iii) A6
-  resolves and **no** gate invocation follows ⇒ the wave halts. Conjunct (iii) carries the
-  prohibition: it fails exactly where a verdict stood in for a gate result.
+  gate command re-ran and returned success on its own. Two terms are held apart here: A6 **applies
+  a repair** when an in-envelope, high-confidence proposal is written to the tree, and A6
+  **resolves** the wave only in the outcome the rest of this document gives that word — an applied
+  repair whose re-gate came back green (AC-4.6, AC-5.3). The observable is three positive
+  conjuncts, each on a run of its own, so three fixtures rather than one: (i) A6 applies a repair
+  and the re-gate is green ⇒ the wave is resolved, it proceeds, and that green invocation is in the
+  run's gate-invocation sequence (AC-4.4); (ii) A6 applies a repair and the re-gate is red ⇒ the
+  wave halts, the tree is restored (AC-5.1), and the halt is the wave's own gate halt (AC-5.2);
+  (iii) A6 applies a repair and **no** gate invocation follows ⇒ the wave halts. Conjunct (iii)
+  carries the prohibition: it fails exactly where a verdict stood in for a gate result, and it is
+  unreachable on an ordinary run, so its fixture mutates the shipped control flow to remove the
+  re-gate and asserts the halt survives.
 - **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
   not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
   command ran and post-wave pathspecs are configured, the build-output commit scoped to those
