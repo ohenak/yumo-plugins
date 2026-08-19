@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.4); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
-| Cross-Reviews | *(none yet — v1 draft)* |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.1 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.2 | 2026-08-19 |
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
@@ -774,6 +774,9 @@ text into a disabled run is a test failure rather than a production discovery.
 - **AT-14** — *Given* two runs over an identical fixture repository state, *when* the composed
   dispatches for the same document type are compared, *then* the blocks are byte-identical, including
   order.
+  The two compositions are made in **two separate process invocations**, so that a block
+  cached in-process across dispatches (E-32) cannot pass as determinism.
+
 - **AT-15** — *Given* a fixture whose only LEARNINGS documents lie under `docs/discarded/`, *when*
   selection runs, *then* nothing is selected, the report carries corpus-level `RSN-EMPTY`, and no
   discarded document appears in any record.
@@ -897,4 +900,8 @@ by AT-30/31/32, D-2 by AT-02/03, D-3 by AT-25, D-4 by AT-24, D-5 by AT-04/15/16,
 
 - **A-1** — Consumer repositories carry `.claude/pdlc.config.json` already, for `implementation.testCommand` and the advisory tier, so §4.1's keys have a home that needs no new mechanism. REQ O-5 asks the operator to confirm this placement; no rule in this document depends on the answer, and the keys move together if it changes.
 - **A-2** — The pipeline's existing authoring classification is stable enough to be consumed rather than restated (BR-1). If a future phase introduces a dispatch kind that is authoring in spirit but not so classified, BR-1 excludes it by construction, and that is the correct default: widening is explicit, never implicit.
-- **A-3** — LEARNINGS documents will continue to carry the six conventional sections BR-6 names. Where a document carries fewer, BR-6 degrades to what is present (E-19); where a future harvest adds a seventh, it is not injected until this rule is amended.
+- **A-3** — Most LEARNINGS documents carry the conventional sections BR-6 names, but not
+  all do. Where a document carries fewer, BR-6 degrades to those present (E-19); where it
+  carries none of them — measured at HEAD, at least one does (E-33) — it is dropped with
+  `RSN-NO-MATERIAL` and consumes no slot; where a future harvest adds a seventh section, it
+  is not injected until this rule is amended.
