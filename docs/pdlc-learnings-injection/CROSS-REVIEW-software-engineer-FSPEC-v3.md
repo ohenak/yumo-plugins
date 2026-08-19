@@ -42,3 +42,25 @@ against HEAD.
 - Retiring `RSN-TRUNCATED` was carried through consistently across every surface it touched in one edit — BR-3's outcome table and paragraph, E-05 deleted rather than left dangling, AT-28 rewritten to the single remaining branch, the branch-coverage line updated to "E-01 … E-34, less retired E-05", and D-12's exercise pointer preserved. The only loose end is upstream (F-02), not internal.
 - The AT-11 hardening names the failure mode it prevents rather than gesturing at it: expected value committed as a literal, recomputed by hand, never derived in the test. That is the anti-echo rule stated in a form an implementer cannot satisfy accidentally.
 - The v2 findings were answered by narrowing claims rather than by widening them: BR-2 names the residual `docs/discarded/` class instead of quietly re-scoping AC-2.6, BR-5 says outright that AC-2.1 is falsified under §4.1's values, and both route an erratum instead of leaving REQ and FSPEC to disagree in silence.
+
+## Recommendation
+
+**Needs revision**
+
+The round's only High from v2 is fully discharged, and the three Mediums/Lows with it. One new High
+stands, and it is delta-introduced by the round's own edit: BR-5's added qualifier "under strict
+title matching on BR-6's five names" names a basis that measures 0 bytes on every corpus document at
+HEAD and contradicts BR-6's own statement that the conventional titles carry numeric prefixes. The
+numbers in the paragraph are right; the sentence describing how they were obtained is not, and it is
+the sentence TSPEC will read when pinning F-O-1's heading form. The fix is one clause.
+
+F-02 and F-03 are one-line additions each — an `ERRATUM: REQ` beside the `RSN-TRUNCATED` retirement,
+and ids plus a closed catalogue for BR-14's two notices. F-04 is wording alignment across AT-12 and
+AT-13. Nothing in this round disturbs the architecture: pure function over observed state, fail-open
+at every corpus and configuration state, closed catalogues with per-catalogue completeness tests, and
+byte-identity against a committed pre-feature baseline as the disabled-path oracle.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
