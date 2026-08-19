@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.2 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.3 | 2026-08-19 |
 
 ## Scope
 
@@ -709,6 +709,12 @@ the feature having changed a prompt it promised not to change. The two are disti
 mechanically, not by intent: a legitimate re-capture **adds or replaces whole `{caseId}` directories
 while leaving every retained file's digest unchanged**, so the guard test below reds on any
 re-capture that alters a retained prompt, whatever the reason given in the commit message.
+
+**The committed baseline is not an NG-4 violation.** NG-1/NG-4 and AC-5.2 forbid the *run* from
+creating an index, cache or state file; the baseline directory and `MANIFEST.json` are committed
+test fixtures, written once by a script a human invokes and never touched by `main()` on any run.
+The §T.6 write-side instrument makes this mechanical rather than definitional: it asserts the run's
+working-tree delta is empty, which a run that wrote to `MANIFEST.json` would fail.
 
 **The falsifying anchor lives outside the capture script's own output (TE F-05, DC-03).** A guard
 test that only compares the fixture directory against a `MANIFEST.json` the same script wrote
