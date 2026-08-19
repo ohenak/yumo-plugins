@@ -416,6 +416,145 @@ between "nothing was selected" and "nothing was recorded" must be visible in the
 
 BR-10's rule-input record is separate, run-level, and closed on its own terms; the two are not merged.
 
+### BR-9 — Non-selection reasons: two closed catalogues *(AC-3.2, AC-4.1)*
+
+**Per-document catalogue.** Every corpus document that was known but did not contribute carries
+exactly one reason id from this closed set:
+
+| Id | Meaning |
+|---|---|
+| `RSN-COUNT` | Dropped by the count bound (BR-5) |
+| `RSN-BYTES` | Dropped whole by the total byte bound (BR-6) |
+| `RSN-SELF` | `{f}`'s own LEARNINGS (BR-2) |
+| `RSN-UNREADABLE` | The read failed (BR-3) |
+| `RSN-UNPARSEABLE` | Read, but not a LEARNINGS document (BR-3) |
+| `RSN-TRUNCATED` | Read, a LEARNINGS document, but truncated mid-document (BR-3) |
+
+**Corpus-level catalogue.** States in which **no document is known** are recorded once per run, from
+their own closed set:
+
+| Id | Meaning |
+|---|---|
+| `RSN-UNLISTABLE` | The corpus listing failed outright (BR-12) |
+| `RSN-EMPTY` | The listing succeeded and found nothing |
+
+Rules binding the two catalogues:
+
+- Each catalogue is **closed**: a completeness test per catalogue asserts set equality over its
+  members (DC-01, C-9). A new reason may not be emitted without being added to a catalogue and its
+  test.
+- The catalogues are **disjoint in kind**: a corpus-level id is never used as a per-document reason
+  and vice versa.
+- Where a corpus-level outcome is recorded, BR-8's per-dispatch rows are **present and empty** for
+  every authoring dispatch of the run.
+- Where documents are known, every one of them appears either as a BR-8 row or as a per-document
+  reason row. No corpus document is silently absent from the report.
+- Excluded-by-`docs/discarded/` documents are the sole exception, and by construction: they are not
+  corpus members at all (BR-2), so there is nothing to report.
+
+### BR-10 — Hand-reproducibility *(AC-3.3)*
+
+The run report carries a **run-level rule-input record** whose members are exactly:
+
+| Member | Content |
+|---|---|
+| ordering key values | Per corpus document, the `Date Completed` value the ordering read, or an explicit marker that it was absent or unparseable |
+| thresholds in force | The three REQ §4.1 values actually used for the run, whether configured or defaulted |
+
+This enumeration is **closed**, with its own completeness test asserting set equality over the two
+members (DC-01), independently of BR-8's and BR-9's closures.
+
+The behavioural claim this record exists to make good: **an operator holding only the run report can
+reproduce the selection by hand against the same repository state and get the same answer.** If a
+future rule change adds an input to the selection that is not in this record, the record is wrong,
+and AT-22 is the test that says so.
+
+### BR-11 — Gate-input isolation *(AC-4.3, AC-1.2)*
+
+No value this feature produces reaches any convergence machinery. Specifically, none of the
+following consumes the block, the record, the reason ids or the thresholds:
+
+- verdict parsing,
+- structural completeness scoring,
+- round-window arithmetic,
+- approval anchors,
+- erratum routing,
+- POSTMORTEM production and the queue lifecycle.
+
+And: every **non-authoring** dispatch prompt is byte-identical to the same dispatch composed with
+injection disabled.
+
+The falsifiable form of this rule is a comparison **under scripted fixtures**, not across live runs:
+comparing verdicts or round counts between two live runs measures model nondeterminism, and comparing
+them where the fixture scripts the verdicts is vacuous. What AT-03 and AT-29 compare is composed
+prompt bytes and gate inputs, which are deterministic under fixtures.
+
+### BR-12 — Fail-open is unconditional and total *(AC-4.1, AC-4.2)*
+
+Every corpus state resolves to a defined outcome. The complete mapping:
+
+| Corpus state | Outcome |
+|---|---|
+| Directory absent / no corpus documents | Empty block; corpus-level `RSN-EMPTY` |
+| Listing fails outright | Empty block; corpus-level `RSN-UNLISTABLE` |
+| One document unreadable | That one skipped with `RSN-UNREADABLE`; the rest used normally |
+| One document unparseable | That one skipped with `RSN-UNPARSEABLE`; the rest used normally |
+| One document truncated | That one skipped with `RSN-TRUNCATED`; the rest used normally |
+| A document exceeds the per-document bound | Bounded per BR-6 and flagged; still contributes |
+| Selection step fails in any other way | Empty block; corpus-level `RSN-UNLISTABLE` — the worst case is always "inject nothing, record why" |
+
+In **no** corpus state does this feature produce an exception that escapes to the pipeline, a halt, a
+POSTMORTEM, or a changed convergence outcome. "I could not find out" never collapses into "there is
+nothing": those two states carry different corpus-level ids, and that distinction is the point of
+having two.
+
+### BR-13 — Injected material has no erratum channel *(AC-3.4)*
+
+A defect an author notices in an injected LEARNINGS document is **not** an erratum against any
+upstream document of `{f}`: a sibling feature's LEARNINGS is not `{f}`'s upstream. No erratum round is
+opened on account of it, and this feature adds no author-emitted channel of its own. The trace an
+operator follows is BR-8's rows, which name the source document. Nothing new is required of any
+author (G-5, NG-3); the operator-side record of such observations is REQ O-3's, not a deliverable
+here.
+
+### BR-14 — Configuration states *(AC-4.4, AC-5.1a, AC-5.1b)*
+
+Four states, four distinct behaviours:
+
+| State | Dispatch composition | Record |
+|---|---|---|
+| Section **absent** | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
+| `enabled: false` | Byte-identical to the recorded pre-feature baseline | No injection key at all |
+| Section present but **malformed** (e.g. `learningsInjectoin`) | Byte-identical to the recorded pre-feature baseline | A catalogued notice naming the malformed configuration |
+| **Enabled**, thresholds admitting nothing (zero documents or zero bytes) | An enabled composition whose selection is empty | BR-8's rows, **present and empty** |
+
+The last two rows carry the load:
+
+- A **typo must not be byte-identical to a deliberate disable**. Both compose the same prompt, but the
+  malformed case emits a catalogued notice, so an operator who meant to enable the feature learns
+  that they did not (DC-01, C-9).
+- **Admits-nothing thresholds are valid configuration, not invalid.** Zero documents or zero bytes is
+  an enabled run with an empty selection — BR-8's empty rows — never a refusal to run and never
+  AC-5.1a's absent key. The pipeline does not validate the operator's arithmetic.
+
+### BR-15 — Filesystem footprint *(AC-5.2)*
+
+On an **enabled** run, the corpus paths touched over the whole run are **exactly** the reads of the
+documents BR-8 and BR-9 name — a positive membership claim, not an absence-only one. And nothing is
+written: no file under `docs/_constraints/` or `docs/_decisions/`, no LEARNINGS document, no skill
+prompt, and no new index, cache or state file anywhere (NG-1, NG-4).
+
+On a **disabled** run, the same observation window shows **no corpus path touched at all** — the
+zero-reads claim is carried positively rather than inferred from the absence of an assertion.
+
+### BR-16 — Pipeline semantics preserved *(AC-5.3)*
+
+On a run with injection active, the completeness criteria, required headings, verdict grammar, round
+windows and approval anchors that score the documents produced are exactly those in force without it.
+This feature changes **what an author is told**, never **what the pipeline requires an author to
+produce**. It adds no required section, no new heading, no new verdict token and no new approval
+condition.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
