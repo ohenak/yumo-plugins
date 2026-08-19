@@ -15,7 +15,18 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.7 | 2026-08-18 |
+| pdlc | draft | Claude | 1.8 | 2026-08-18 |
+
+*v1.8 changelog (erratum round, round 4). Decided: AC-1.5's population is runs that reach Phase I
+and **evaluate wave mode** — the no-manifest legacy run, where BL-03's own carrier fires, is back
+inside the population; earlier halts and ledger skips stay outside (F-22, F-01). The
+`seamBudgetMinutes` window is stated **per attempt**, restarting on each attempt, with an A6
+invocation's worst case named as `attemptBudget` × the value in NFR-4, §5's config table and
+AC-2.4; no per-episode cap is introduced (F-23). Three referents are separated by term — *run*,
+*A6 invocation*, *attempt* — and R-3 now says run where it meant run (F-25). AC-4.1's conjuncts
+are keyed to A6 **applying a repair**, with *resolves* reserved for the green re-gate outcome the
+rest of the document gives it, each conjunct observable on a run of its own and (iii) named as a
+mutation fixture (F-24, F-02). Nothing else changed.*
 
 *v1.7 changelog (erratum round, round 3). Decided: AC-1.5's notice cardinality is scoped to runs
 reaching Phase I and executing a wave, earlier halts and ledger skips being outside the population
