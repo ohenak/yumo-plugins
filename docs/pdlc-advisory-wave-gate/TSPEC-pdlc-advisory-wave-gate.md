@@ -843,13 +843,42 @@ covered:
 
 ### 5.4 Coverage and the CI floor
 
-The workflows suite runs under c8 with an aggregate branch floor of 85% enforced per module. A6's
-new module surface is branch-dense — four root-cause classes, three envelope members, three
-restoration triggers, two confidence values — so the new test file is written to exercise every
-branch of the terminating classifier rather than to reach the floor incidentally. The
-`Generated artifacts in sync` check requires `node pdlc/workflows/build-runtime.mjs` to be re-run
-and `pdlc/workflows/dist/` committed in the same wave that edits this module; the repo's
-`implementation.postWavePathspecs` already names that directory, so the per-wave commit carries it.
+The earlier draft said "aggregate branch floor 85% enforced per module", which is two mechanisms
+run together and neither one accurately (TE F-05). What `npm run test:coverage` actually does,
+from `pdlc/workflows/package.json`:
+
+| Stage | Command | Enforces |
+|---|---|---|
+| 1 | `c8 npm test -- --runInBand` | the `c8` block's floors **in aggregate** over the include set: branches 85, lines 90, functions 90, statements 90 |
+| 2 | `c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0` | branch ≥ 85% on **every included module individually**; the other three are zeroed here because they are already enforced in aggregate at stage 1 |
+
+The include set is exactly `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs` —
+`dist/` is generated and `__tests__/` is the instrument, so neither is subject.
+
+The consequence for this feature is the one that matters, and it is not reassuring: **all of A6
+lands inside `orchestrate-dev.js`**, a ~15k-line module that dominates both the aggregate and its
+own per-file number. Neither floor can fail on A6's branches specifically; a few hundred
+uncovered new branches move that file's percentage by a fraction of a point. So coverage is not
+an oracle here — it is a backstop that A6 will pass whether or not its own branches are
+exercised. The branch inventory is therefore enumerated deliberately in §5.5 and §5.6 rather than
+left to the floor:
+
+| Branch family | Arms |
+|---|---|
+| Root-cause class | 4 classes × {authorises E-5, authorises E-6, authorises nothing} |
+| Envelope member | E-5, E-6, and the refused third value |
+| Confidence | `high` authorises, `low` does not |
+| Snapshot | capture ok / capture fails, restore ok / restore fails |
+| Restoration triggers | refusal, budget exhaustion, red re-gate — and the post-gate halt that is none of them |
+| Tier and budget gates | disabled tier, `waveBudgetPerRun: 0`, budget exhausted, attempt budget exhausted |
+| Verdict parsing | well-formed, malformed, citation at 23 chars, citation at 24 chars |
+| Owned-path matching | exact row, directory row with trailing slash, directory row without |
+
+`Generated artifacts in sync` still requires `node pdlc/workflows/build-runtime.mjs` to be re-run
+and `pdlc/workflows/dist/` committed in the wave that edits the module; the repo's
+`implementation.postWavePathspecs` already names that directory, so the per-wave commit carries
+it.
+
 
 ## 6. Open Questions
 
