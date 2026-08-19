@@ -39,3 +39,26 @@ falsifiability, edge-case completeness. Unchanged sections approved in v2 are no
 - **Both new REQ contradictions were found by measurement and declared, not smoothed over.** BR-5 now states outright that REQ AC-2.1's "the count *equals* the threshold" is falsified under §4.1's own values, because 87 of 89 documents exceed `maxBytesPerDocument` and the total bound admits at most three (FSPEC:355-363). Re-deriving over this repository's corpus reproduces the shape of that claim: the per-document bound binds first for nearly every document, so the count bound is not load-bearing at the declared values. Filing that as an erratum rather than quietly restating AC-2.1 is the right handling.
 - **The wrong-typed-key decision is grounded in shipped sibling behaviour, and the citation checks out.** `parseAdvisoryConfig` and `parseMergeConfig` in `pdlc/workflows/orchestrate-dev.js` set their malformed flag only where the section key is present and not an object, and fall back per key otherwise — exactly the split BR-14 now adopts (FSPEC:589-600). The behaviour change this round makes is toward the repository's existing convention, not away from it.
 - **AT-11 and AT-22 now share one discipline for expected values** — hand-transcribed literals committed with the fixture — which is the property the remaining Medium (F-02) asks AT-32 to inherit rather than a new idea being introduced.
+
+## Recommendation
+
+**Needs revision**
+
+All five v2 findings are resolved, and the High one is resolved at the right altitude: truncation
+is gone as a branch, not renamed, and every surviving branch keeps a constructible fixture. Nothing
+that was approved in v2 was broken by this revision.
+
+One High is open, and it is introduced by this round rather than inherited. Splitting
+wrong-typed-key out of "malformed" is a good decision — it matches what the sibling readers ship —
+but it makes the report emit a *second* kind of notice, and notices have no closed catalogue and no
+set-equality test, while every reason id has both. BR-9's own closure rule and REQ C-9 both require
+one. The fix is a third catalogue table with two named ids plus an AT in AT-19/AT-20's shape;
+serialised form can stay with F-O-3 in TSPEC. F-02 asks AT-32's new conjunct to name its key and
+assert BR-10's record against literals, F-03 asks BR-2's newly named `docs/discarded/LEARNINGS-x.md`
+class to be given an outcome and a fixture, and F-04 is a one-cell edit to D-1. None of the three is
+structural.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
