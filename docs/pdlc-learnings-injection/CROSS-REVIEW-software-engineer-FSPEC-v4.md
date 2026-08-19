@@ -34,3 +34,41 @@ re-measured against HEAD.
 |----|---------|
 | Q-01 | BR-5's per-document average of 13,278 bytes is unverifiable from this repository: 80 of the 89 documents live in `regime-ledger`, and the 9 local ones average 25,430 under the basis BR-5 now names. The max (41,175 here vs 41,180 quoted) is clearly local, so the 89-document average implies ~11,900 for the `regime-ledger` 80 — plausible for smaller, more numerous features, but nothing in this repo can confirm it. Was the average taken with the same extraction as the max, and is the ledger-side figure recoverable if a TSPEC fixture needs to reproduce it? |
 | Q-02 | E-33's "(measured: occurs at HEAD)" still stands unchanged (FSPEC:682): no local corpus document carries zero BR-6 material — all 9 carry between 9,223 and 41,175 bytes. If the observation is a `regime-ledger` one, saying so in the parenthetical would make `RSN-NO-MATERIAL` a branch a reader can go and look at, the way BR-4's table does for its own counts. |
+
+## Positive Observations
+
+- The v3 High was fixed by correcting the sentence rather than the numbers, which was the right
+  direction: the measurement was always taken ordinal-tolerantly, and the round re-measured its way
+  to that conclusion instead of re-stating the numbers to match a wrong basis. Re-running the
+  measurement here reproduces 41,175 against the quoted 41,180, so the clause TSPEC will read for
+  F-O-1 now points at a predicate that selects real material in every corpus document at HEAD.
+- Introducing `NTC-MALFORMED` and `NTC-KEYTYPE` did more than name two notices: it turned BR-14's
+  five-state table into something a completeness test can close over, and AT-32's oracle moved from
+  "the notice text mentions the key" — a containment check — to set equality over the catalogue plus
+  a fixture-literal selection and a named default (`maxDocuments` at 5, matching `REQ-…md:221`).
+  That is the C-9 closure discipline applied to the notice surface, not just asserted about it.
+- AT-32's wrong-typed clause is now a full positive oracle: enabled run, `maxDocuments` at its §4.1
+  default while the other two thresholds keep their configured values, selection equal to a literal,
+  and the notice naming the key. Nothing in it can pass by absence, which is what the sibling
+  precedent (`parseAdvisoryConfig`'s `invalidKeys` fallback, `pdlc/workflows/orchestrate-dev.js:1986-2031`)
+  actually does.
+- The `docs/discarded/` residual class was answered with a stated outcome (E-35) rather than left as
+  a note that a case exists — the E-07 collision in F-03 is a wording overlap, not a retreat from
+  the decision.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The round's only High is fully discharged and no new High stands. Three Mediums and one Low are
+one-clause edits that need no re-measurement: quote BR-6's full section titles in O-4 (or say once
+that the names are prefixes), add the `ERRATUM: REQ` line beside BR-9's three-catalogue rule for
+AC-3.2's "two set-equality tests", qualify E-07 and AT-15's first clause as `docs/discarded/{feature}/`
+so E-35 stops contradicting them, and name BR-5's byte-accounting convention. None of them change a
+behaviour the document specifies, and none blocks TSPEC authoring — F-03 is the one worth landing
+before a fixture gets built off AT-15.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 1}
