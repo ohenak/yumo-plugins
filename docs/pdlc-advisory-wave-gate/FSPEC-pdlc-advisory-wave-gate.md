@@ -103,7 +103,9 @@ failure (M-WG-2) both halt exactly as today and never reach A6 (BR-1).
 
 **Step 3 — Budget admission.** Before dispatch, the run checks the wave budget: if A6 has already
 *resolved* `advisory.waveBudgetPerRun` distinct waves in this run, the wave escalates without any
-dispatch (BR-11). Attempt and time budgets are checked inside the invocation, not here.
+dispatch (BR-11). Attempt and time budgets are read at step 3b, not here.
+
+**Step 3b — Attempt admission.** The run reads the wave's consumed-attempt count against `advisory.attemptBudget`. If no attempt remains, the wave escalates with the tier's `budget-exhausted` reason and nothing further is dispatched (BR-11, E-24). Otherwise one attempt is available and control passes to step 4. Every arrival here reads the same counter — the first arrival and each return from step 8b alike — so the number of A6 dispatches on one wave never exceeds `advisory.attemptBudget`, and equals it exactly when every attempt ends in a red re-gate.
 
 **Step 4 — Diagnose.** A6 is dispatched on the tier's existing model rung, receives the gate
 command's captured output, and returns the tier's existing verdict carrying one added field: a
@@ -132,8 +134,7 @@ the promotion already exists (BR-12).
 
 **Step 8b — Red re-gate.** The attempt is consumed, the **whole working tree** is restored to the
 state it stood in immediately before A6 acted — the wave's post-dispatch, pre-commit tree, with the
-wave agents' own uncommitted work intact — and control returns to step 3's budget check for a further
-attempt if one remains (BR-9).
+wave agents' own uncommitted work intact — and control returns to step 3b's attempt check (BR-9).
 
 **Step 9 — Terminal disposition.** Every invocation ends in exactly one of: *resolved* (step 8a
 reached on a green re-gate); *escalated* (refusal, malformed verdict, budget exhaustion, or a red
@@ -151,15 +152,20 @@ class. Escalation adds information; it never changes control flow (BR-14).
 
 | Step | Decision | Green branch | Red branch |
 |---|---|---|---|
-| 1 | Does A6 apply? | continue | phase behaves as today; one notice per run |
+| 1 | Does A6 apply? | continue | phase behaves exactly as today; one inapplicability notice per run |
 | 2 | Which condition ended the wave? | test gate red ⇒ continue | dispatch or post-wave failure ⇒ halt as today |
 | 3 | Wave budget left? | continue | escalate, no dispatch |
-| 4 | Verdict well formed, classification present? | continue | escalate, one attempt consumed |
-| 5 | Inside envelope, high confidence, class authorises action? | continue | escalate with a refusal reason, no attempt consumed |
-| 6 | — | repair applied to working tree | — |
-| 7 | Does the whole gate sequence pass? | wave green | restore whole tree, consume attempt, back to step 3 |
+| 3b | Attempt left on this wave? | continue | escalate `budget-exhausted`, no dispatch |
+| 4 | Verdict well formed, and does the diagnosis cite gate output? | continue | escalate, one attempt consumed (E-07, E-10) |
+| 4b | Classification present and inside the four-member set? | continue | reads `unclassified`; escalate, **no** attempt consumed (BR-2, E-08) |
+| 5 | Inside envelope, high confidence, and does the class authorise action? | continue | escalate with a refusal reason, no attempt consumed |
+| 6 | — | repair applied to the working tree | — |
+| 7 | Does the whole gate sequence pass? | wave green | restore whole tree, consume attempt, back to step 3b |
+| 8a/8b | — | wave proceeds past the gate | see step 7's red branch |
 | 9 | — | resolved | escalated |
-| 10 | — | wave proceeds | halt exactly as today, with diagnosis attached |
+| 10 | — | wave proceeds | halt exactly as today, diagnosis attached |
+
+Steps 4 and 4b are separate decisions because they consume differently: a malformed verdict or an uncited diagnosis costs one attempt (E-07, E-10), while an absent or out-of-set classification costs none (BR-2, E-08). Where both apply, E-09's tie-break governs.
 
 ## 4. Business Rules
 
