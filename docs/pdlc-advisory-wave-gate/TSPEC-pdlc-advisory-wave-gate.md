@@ -1183,12 +1183,16 @@ Two consequences worth stating rather than discovering:
 
 ### 5.1 Where the tests live
 
-This table is the PLAN's file-ownership manifest for the test half of that work, and its file set
-is now **set-equal to §1.3's edit list**, not a subset of it: §1.3 and this table name the same
-test-side files, checked as an equality in both directions rather than by containment (TE F-02,
-TE F-19). The earlier draft's parenthetical arithmetic ("seven here, ten there") was itself the
-drift it was warning about, and is dropped in favour of the set-equality rule — the count belongs
-to whichever list is authoritative today, and §1.3 is.
+This table is PLAN's file-ownership manifest for the test half of the work, and it is a
+**superset of §1.3's test-side edit list**, not a set-equal twin of it: every test-side file §1.3
+names appears here, and this table additionally carries the behavioural homes §1.3 has no reason to
+mention (`advisoryWaveGate.test.js`, `waveExecution.test.js`, `advisoryEscalationLog.test.js`, and
+the two engine-channel files below). Containment in that one direction is the invariant a downstream
+author can check; the earlier draft claimed equality in both directions, which was false in both —
+§1.3 named `advisoryQueueSeams.test.js` with no row here (now added), and this table has always
+named behavioural files §1.3 does not (TE F-01, TE F-02, TE F-19). The earlier parenthetical
+arithmetic ("seven here, ten there") was itself the drift it warned about and stays dropped: the
+count belongs to whichever list is authoritative for it, and for the transcription surface that is §1.3.
 
 | File | Status | Carries |
 |---|---|---|
@@ -1196,6 +1200,7 @@ to whichever list is authoritative today, and §1.3 is.
 | `pdlc/workflows/__tests__/advisoryEnvelope.test.js` | edited | The two transcribed set-equality surfaces (§1.3) |
 | `pdlc/workflows/__tests__/advisoryConfig.test.js` | edited | The re-declared `ADVISORY_DEFAULTS`, plus `waveBudgetPerRun`'s non-negative validator (AT-07-2b) |
 | `pdlc/workflows/__tests__/advisoryDriver.test.js` | edited | PROP-GATE-06's `GATE_EXCLUSIVITY_REGISTRY`-keys-equal-`ADVISORY_SEAMS` assertion, plus `classifyReply`'s three arms (§3.7) |
+| `pdlc/workflows/__tests__/advisoryQueueSeams.test.js` | edited | The queue-report row-count surface (§1.3): `expect(report.advisory.rows).toHaveLength(5)` becomes `6`. Transcription only — PLAN A6-05 owns it |
 | `pdlc/workflows/__tests__/advisoryDisabled.test.js` | edited | The disabled-tier byte-identity cases, extended per §5.2 |
 | `pdlc/workflows/__tests__/waveExecution.test.js` | edited | Wave-loop call-site behaviour: A6 reachable only from the red script-gate arm, the un-skip halt's new optional `fields`, the promotion commit |
 | `pdlc/workflows/__tests__/advisoryRecord.test.js` | edited | The per-seam `rows.map((r) => r.seam)` `test.each` list gains A6 (§1.3); **and** AC-6.1/AC-6.2's record assertions for A6 — an entry per invocation, the failed-record-write refusal (AT-06-1, AT-06-2) |
