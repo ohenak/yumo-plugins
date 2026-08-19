@@ -4,12 +4,28 @@
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.3) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | (active) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (active) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.0 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.1 | 2026-08-20 |
+
+## Changelog
+
+**v1.1 (round 1).** All six High findings addressed. PM F-01: the `.gitignore` carve-out is
+no longer decided here — it is raised as an erratum on FSPEC BR-9 / AT-05-1 and REQ AC-5.1,
+and §2.5 / §5.2 now transcribe the boundary as *pending upstream*, not as a TSPEC narrowing.
+PM F-02: snapshot-capture failure gets a named terminal disposition that writes an advisory
+record entry and an escalation entry, reconciled across §2.5, §3.2, §3.5, §4.5 and §5.1.
+PM F-03 + TE F-03: §5.5 allocates one test per prohibition `(f)`…`(i)`, AC-4.5's paired
+positive rule, and AC-4.1's conjunct-(iii) mutation fixture; §5.6 maps every FSPEC AT to a
+test home and a one-line oracle. TE F-01: §4.5 gains the post-gate un-skip halt-report
+contract AT-05-4 needs. TE F-02: §5.1's edit set now equals §1.3's. Mediums answered in
+place (§2.6 disabled-tier notices, §3.3 precedence residual and `apply`'s observation,
+§3.4 trailing-slash precondition, §5.4 coverage mechanics, §5.5 citation-floor boundary);
+lows fixed as cited (`async () => true`, `commitPaths`'s `message`, Phase H2 not Phase PUB,
+§6 rows OQ-5…OQ-7).
 
 ## 1. Summary
 
