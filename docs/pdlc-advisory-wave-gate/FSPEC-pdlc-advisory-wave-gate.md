@@ -50,6 +50,34 @@ rung.
 
 ## 2. Linked Requirements
 
+Every clause below traces to `REQ-pdlc-advisory-wave-gate` v1.6. The FSPEC unit is the behavioural
+group, one per REQ requirement id, so a reader holding either document can move between them without
+a concordance.
+
+| FSPEC id | Behaviour | Traces REQ | Traces US |
+|---|---|---|---|
+| FSPEC-AWG-01 | The seam, its single trigger, and its inertness | REQ-AWG-01 (AC-1.1…AC-1.5) | US-01, US-02, US-03, US-05 |
+| FSPEC-AWG-02 | The A6 invocation contract: verdict, classification, evidence, budgets | REQ-AWG-02 (AC-2.1…AC-2.4) | US-02, US-03, US-04, US-05 |
+| FSPEC-AWG-03 | The envelope: two added members, inherited exclusions, added prohibitions, refusal reporting | REQ-AWG-03 (AC-3.1…AC-3.5) | US-01, US-03, US-04 |
+| FSPEC-AWG-04 | What A6 may never do: declare green, commit, edit tests or PLAN or config; and the re-gate sequence | REQ-AWG-04 (AC-4.1…AC-4.6) | US-01, US-03, US-04 |
+| FSPEC-AWG-05 | Reversibility, and the unchanged halt | REQ-AWG-05 (AC-5.1…AC-5.3) | US-01, US-02, US-04 |
+| FSPEC-AWG-06 | Record, escalation, report, and countability | REQ-AWG-06 (AC-6.1…AC-6.4) | US-02, US-05 |
+| FSPEC-AWG-07 | Non-functional behaviour: enforcement site, disabled-tier equivalence, budgets, rung | REQ-AWG-07 (NFR-1…NFR-6) | US-03, US-04 |
+
+**Prerequisites this FSPEC assumes hold at HEAD** (REQ §9). BL-01 the shipped tier; BL-02 the tier's
+exported model-rung resolver; BL-05 `pdlc-consolidation-agent` landed. BL-03 (valid PLAN ownership
+manifest, so Phase I is in wave mode) and BL-04 (a configured script-owned gate) are *not* assumed:
+they are checked per run, and their absence is specified behaviour here (§3 step 1, §5 E-01/E-02),
+not a gap. BL-06's enumeration — the transcribed set-equality surfaces that this feature reds — is an
+input to planning, and this FSPEC states only the observable consequence: the surfaces named in
+M-WG-9 are expected to change, and a run in which they did not is a defect (AT-01-1, AT-07-2).
+
+**Where a requirement is deliberately not specified here.** REQ O-1 (restoration mechanism), O-3
+(rung resolver reuse), O-4 (owned-path computation and comparison), O-5 (whether the classification
+is derived by the seam or supplied by the wave's own agents) and O-8 (how an E-6 repair reaches
+committed state) are obligations on the TSPEC. This FSPEC states the outcome each must produce and
+nothing about how; §7 carries them forward so the TSPEC author inherits them from one place.
+
 ## 3. Behavioral Flow
 
 ## 4. Business Rules
