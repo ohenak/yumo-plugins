@@ -185,11 +185,16 @@ requirements altitude.
   *(US-03.)*
 - **AC-1.4** — Given `advisory.enabled` is false, Then A6 is provably inert: no advisory agent is
   dispatched, no model resolution is attempted, the wave halt is the one that ships today, and the
-  run's created-file set and phase outcomes are identical to the pre-A6 baseline. *(US-03.)*
+  run's created-file set and phase outcomes are identical to the pre-A6 baseline. Inertness is a
+  claim about the run — no dispatch, no model resolution, the halt that ships today, the same created
+  files, the same phase outcomes — and not a claim that the shipped default tables are unchanged:
+  AC-3.1's envelope members and C-2's new key change those tables and the fixtures transcribing them
+  by design (BL-06). *(US-03.)*
 - **AC-1.5** — Given wave mode is not in effect (BL-03) or no script-owned gate is configured
   (BL-04), Then A6 does not apply and the phase behaves exactly as today, with the inapplicability
-  named once in the run report rather than being silently indistinguishable from a quiet seam.
-  *(US-02.)*
+  named once in the run report rather than being silently indistinguishable from a quiet seam. The
+  observable is a cardinality, not a mention: exactly one inapplicability notice per phase, naming
+  which of BL-03 or BL-04 was absent, and none at all in a run where A6 applies. *(US-02.)*
 
 ### REQ-AWG-02 — The A6 contract (P0)
 
@@ -210,15 +215,24 @@ requirements altitude.
   | 4 | `unclassified` | none of the above is decidable from the gate output |
 
   The set is asserted by set-equality, so a deleted or invented class fails the suite. `environmental`
-  and `unclassified` are diagnosis-only: neither authorises any action. *(US-02, US-05.)*
+  and `unclassified` are diagnosis-only: neither authorises any action. The receiving side is total
+  (C-3): a verdict whose classification is absent or outside the set is read as `unclassified` rather
+  than rejected, and — because `unclassified` authorises nothing — the wave escalates without
+  consuming an attempt, since an attempt is a repair→re-gate cycle and no repair was attempted
+  (AC-2.4). This is distinct from the malformed verdict of AC-2.1, which does consume one.
+  *(US-02, US-05.)*
 - **AC-2.3** — Given an A6 diagnosis, Then it cites the gate command's own output as its evidence. A
   diagnosis citing no gate output is malformed under AC-2.1 — the gate output is the only evidence
   that distinguishes a repair from a guess. *(US-02.)*
 - **AC-2.4** — Given the budgets of C-2, Then A6 escalates rather than retrying when any is
   exceeded: more than `advisory.attemptBudget` attempts on one wave, more than
-  `advisory.seamBudgetMinutes` of working time on one wave, or an attempt on a wave beyond the
-  `advisory.waveBudgetPerRun`-th distinct wave A6 has already resolved in this run. One attempt is
-  one **repair→re-gate** cycle. *(US-04.)*
+  `advisory.seamBudgetMinutes` on a single invocation (per invocation, dispatch to verdict, not
+  cumulative across the wave — NFR-4 measures the same thing), or an attempt on a wave once A6 has
+  already **resolved** `advisory.waveBudgetPerRun` distinct waves in this run. One attempt is one
+  **repair→re-gate** cycle. Only resolutions consume the wave budget, which fixes the two oracles a
+  test can disagree about: two waves A6 attempted and escalated leave the budget untouched, so a
+  third red wave still gets an attempt; one wave A6 resolved exhausts the shipped default of 1, so
+  the next red wave escalates without a dispatch. *(US-04.)*
 
 ### REQ-AWG-03 — The envelope (P0)
 
@@ -230,13 +244,25 @@ requirements altitude.
   | E-5 | a repair confined to the failing wave's **own** owned paths | every path the proposal would change is a member of the union of the owned-path sets the PLAN's ownership manifest assigns to that wave's tasks |
   | E-6 | completing a promotion the PLAN schedules for a **later** task | the gate output names a symbol or artifact that a later task's PLAN row already undertakes to produce, **and** every path the proposal would change is a member of that later task's owned-path set |
 
-  Nothing else A6 proposes is in the envelope. *(US-01, US-03.)*
+  Nothing else A6 proposes is in the envelope. E-5 and E-6 are stated in the tier's own envelope
+  shape — an id, a permitted action, and the rule deciding membership — so the envelope stays one
+  closed set of six over one schema, assertable by a single set-equality (M-WG-9), rather than two
+  schemas joined by prose. *(US-01, US-03.)*
 - **AC-3.2** — Given the tier's existing exclusion set (`REQ-pdlc-advisory-tier` AC-3.4), Then it
   holds unchanged for A6, and clause (a) — **any** change to a test file or test configuration —
   takes precedence over E-5 and E-6 wherever they would otherwise permit a change. This binds even
   when the test file is one the failing wave itself created in this same run: a wave whose own test
   is wrong escalates. Turning a red gate green by editing a test is the pipeline's most dangerous
-  failure mode, and A6 sits closer to it than any other seam. *(US-03.)*
+  failure mode, and A6 sits closer to it than any other seam. Clause (e), the self-modification guard
+  paths, holds unchanged and takes precedence in the same way, and A6 adds no carve-out for a wave
+  that happens to own them: the guard paths are already inside every seam's exclusion set with the
+  shipped defaults, not only Phase MERGE's (M-WG-10). The consequence is named rather than
+  discovered — in a repo that modifies this pipeline, including this one, a wave owning
+  `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/` or `.claude/workflows/` escalates
+  `out-of-envelope`, so the 2026-08-09 motivating incident would today be diagnosed and escalated,
+  not repaired; the 2026-08-11 incident, in a consumer repo, is unaffected. Relaxing this is
+  D-AWG-01's, and it is the widening that must never be taken without the operator: an agent editing
+  the pipeline that supervises it is the risk the guard exists to refuse. *(US-03.)*
 - **AC-3.3** — Given A6, Then these are excluded in addition, as a closed set: (f) any change to the
   PLAN, its task table, or its file-ownership manifest; (g) any change to the implementation
   configuration — the test command, the post-wave command, or the post-wave pathspecs; (h) any
@@ -245,7 +271,12 @@ requirements altitude.
 - **AC-3.4** — Given any refusal, Then it is reported with a reason drawn from the tier's existing
   closed, ordered refusal-reason set (`REQ-pdlc-advisory-tier` AC-3.6), which A6 **does not extend**:
   the set stays at eight members, and an A6 refusal that cannot be expressed in it is a defect in
-  this REQ rather than a licence to add a ninth. *(US-03.)*
+  this REQ rather than a licence to add a ninth. A diagnosis-only outcome is **not** a refusal and
+  needs no member: when the class is `environmental` or `unclassified` A6 proposes nothing, so the
+  escalation carries the root-cause class and no refusal reason — which the shipped escalation entry
+  already expresses, rendering that field as not-applicable (M-WG-11). The eight are complete for A6
+  because every A6 refusal refuses a *proposal*; an outcome with no proposal escalates without one.
+  *(US-03.)*
 - **AC-3.5** — Given a proposal or a produced change that violates AC-3.1, AC-3.2 or AC-3.3, Then no
   part of it survives the seam, the wave escalates, and the run is not reported as having resolved
   that wave. Each excluded operation enumerated in AC-3.2 and AC-3.3 is asserted by its own test.
@@ -262,13 +293,31 @@ requirements altitude.
 - **AC-4.3** — Given any A6 invocation, Then it never edits a test file or test configuration
   (AC-3.2), never edits the PLAN or its ownership manifest, and never edits the implementation
   configuration (AC-3.3).
-- **AC-4.4** — Given a repair is applied, Then the configured gate command **re-runs** and reaches
-  its own verdict. A green re-gate lets the wave proceed to the commit step it would have reached
-  anyway; a red re-gate reverts the repair whole (AC-5.1) and consumes one attempt.
+- **AC-4.4** — Given a repair is applied, Then the wave's **whole gate sequence re-runs, in the order
+  the wave ran it** — the configured post-wave command where one is configured, then the configured
+  test command (M-WG-2, M-WG-3) — and reaches its own verdict. Re-running the test command alone is
+  not a re-gate: the shipped order builds before it gates, because a wave that edits sources leaves
+  generated artifacts a freshness assertion then reds, so a source-touching repair would re-red on
+  its own unbuilt outputs — the outcome in this repo, whose configured commands are exactly that
+  pair. A post-wave command that fails on the re-gate is a red re-gate, handled as one, not the
+  immediate halt it would be on the wave's first pass. A green re-gate lets the wave proceed to the
+  commit step it would have reached anyway; a red re-gate reverts the repair whole (AC-5.1) and
+  consumes one attempt. The oracle is an observation of the run, not a claim about it: the configured
+  command transport is invoked again for that wave — the test command at least twice in total, its
+  last invocation green — so a resolution reported on a single invocation is a defect and AC-4.1 is
+  falsifiable rather than asserted.
 - **AC-4.5** — Given AC-4.1 through AC-4.4, Then each has a failing test proving the prohibition
   holds, and each such test asserts the corresponding positive outcome on the same path — the
   refusal reason recorded, the escalation entry written, the pre-A6 behaviour taken — because a
   negative assertion alone is satisfied by accident. *(US-03.)*
+- **AC-4.6** — Given A6 resolves a wave under E-6, Then once that wave's commit step completes the
+  repair is part of the branch's committed state: a resolved wave never leaves an A6 repair behind as
+  an uncommitted working-tree change, which is what the shipped per-wave commit scope would otherwise
+  do with paths owned by a task in a *later* wave (M-WG-12). The repair's paths and the later PLAN
+  task that owns them are named in the advisory record (AC-6.1), and that later task's dispatch is
+  told which of its owned paths already carry the promotion, so it revises what exists rather than
+  rediscovering it. How the existing pathspec-scoped commit path comes to cover paths no task in the
+  wave owns is TSPEC's (O-8). *(US-01, US-04.)*
 
 ### REQ-AWG-05 — Reversibility and the unchanged halt (P0)
 
@@ -276,7 +325,7 @@ requirements altitude.
   observably identical to its state immediately before A6 acted — which is the wave's
   **post-dispatch, pre-commit** tree, with the wave agents' own uncommitted work intact. A6 never
   destroys the wave's work in the course of failing to repair it. The mechanism of restoration is
-  TSPEC's to choose (O-4). *(US-04.)*
+  TSPEC's to choose (O-1). *(US-04.)*
 - **AC-5.2** — Given A6 does not resolve the wave, Then the pipeline's existing behaviour proceeds
   unchanged: the same halt, carrying the same reason it emits today (M-WG-3), and the same queue-row
   write to `halted` (M-WG-7). Escalation adds information; it never changes control flow. *(US-04.)*
