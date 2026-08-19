@@ -765,32 +765,80 @@ what BR-6 selected, AT-12 asserts the character-safe cut of §D.5 — so they si
 suite, and `learningsSelect.test.js` covers only the eligibility, ordering and count rules that
 `selectLearnings` decides.
 
-### T.6 The three L3 claims that need care
+### T.6 The L3 claims that need care
 
-**AT-02 — dispatch-universe set equality.** The universe is "every agent invocation the run makes",
-not "every invocation already classified authoring" — asserting over the latter would be vacuous.
-The scripted `_agent` records `(skill, prompt)` for every call; the *expected* authoring subset is
-derived from the fixture's own phase script (which phases ran, how many optimizer rounds, whether
-an erratum fired), transcribed by hand into the test, and compared by set equality against the
-subset whose prompt contains the block delimiter. Three run shapes are fixtured: no DECISIONS phase
-(E-27), Phase R with no creator (E-28), five optimizer rounds (E-29). **A fourth is added here that
-FSPEC's inventory does not carry:** an erratum round whose land-proof retry fires a *second*
-authoring dispatch for the same document (`orchestrate-dev.js:12915`) — see §Open Questions
-ERR-2.
+**AT-02 — the dispatch-universe set equality.** The expected set comes from the fixture's own phase
+script (which phases ran, how many optimizer rounds, whether an erratum fired), transcribed by hand
+into the test and compared by set equality against the dispatches whose prompt carries the block
+delimiter. Three run shapes are fixtured: a run with no DECISIONS phase (E-27), a Phase R with no
+creator (E-28), and one with five optimizer rounds (E-29). **A fourth is added that FSPEC's
+inventory does not carry:** the erratum round's land-proof retry fires a *second* authoring dispatch
+for the same document (`orchestrate-dev.js:12915`) — see §Open Questions ERR-2.
 
-**AT-29 — gate-input isolation.** Two scripted runs over the same fixture matrix, differing only in
-`learningsInjection.enabled`. The comparison is over five recorded values (parsed verdicts,
-completeness scores, round-window counters, approval anchors, erratum routes), asserted as set
-equality over those five names *and* member-for-member equality of their values — not over the run
-reports as a whole, which legitimately differ by the `learningsInjection` key itself.
+**`DIVERGENT-CORPUS` — the multi-dispatch fixture §A.5 needs.** Five authoring dispatches where the
+scripted `_git` reply gains one path after dispatch 2 and fails outright at dispatch 5. It pins the
+last-write-wins rule: run-level `corpusOutcome` and `ruleInputs` equal dispatch 5's observation,
+each `dispatches[i]` carries its own, and `corpusDiverged` is `true` on exactly dispatches 3 and 5.
 
-**AT-33/AT-34 — filesystem footprint.** The instrument is the `fakeFs`/`fakeGit` call log, not a
-real-filesystem tracer: both doubles already record every call in order (`seams.js`). The observed
-set is the set of paths `_readFile` was called with that start with `docs/`; the expected set is
-`gatherLearningsCorpus`'s enumeration reply minus the `RSN-SELF` paths. Both tests live in **one
-test file and share one instrument**, so AT-34's absence claim is paired with AT-33's non-empty
-positive on the same instrument (DC-03: no absence-only oracle). Note that the enumeration itself
-is a `_git` call, not a `docs/` open — see §Open Questions ERR-3.
+**AT-29 — gate-input isolation, and why the scripted agent must be prompt-sensitive.** Two scripted
+runs over the same fixture matrix, differing only in `learningsInjection.enabled`; the comparison is
+over five recorded gate inputs (parsed verdicts, completeness scores, round-window counters,
+approval anchors, erratum routes), asserted as set equality over the five names and
+member-for-member equality of values — not over the reports as wholes, which legitimately differ by
+the `learningsInjection` key itself.
+
+TE F-06 is right that this is vacuous as ordinarily written: if the scripted `_agent` returns fixed
+responses irrespective of the prompt it receives, no injected byte can reach any gate input by any
+path, and the assertion holds identically over a correct implementation and a broken one. The fix
+is to make contamination *possible* in the fixture, so that its absence is a result:
+
+1. **The fixture corpus quotes gate grammar, because the real corpus does.** Six of the nine corpus
+   documents at HEAD contain literal `VERDICT:`, `ERRATUM:` or `REVISION-COMPLETE:` lines —
+   `LEARNINGS-pdlc-review-loop-hardening.md` alone carries seven. `buildLearningsCorpus` therefore
+   synthesises documents carrying `VERDICT: Needs revision`, `ERRATUM: REQ: …` and
+   `REVISION-COMPLETE: no` lines in their section bodies. This is not a contrived hostile fixture;
+   it is what the shipped corpus looks like, which is exactly why BR-11's isolation claim matters.
+2. **The scripted `_agent` echoes prompt-derived content into its response.** Each scripted reply
+   appends the final 200 bytes of the prompt it was handed. So if the block reaches the composed
+   prompt at all — which on an enabled run it does — those quoted grammar lines reach the response
+   text the gates parse, and any gate that scans loosely will pick them up.
+
+**The concrete mutations that red AT-29**, stated so the test's power is checkable rather than
+asserted: (a) compose the block into `basePrompt` ahead of the verdict-grammar instructions instead
+of appending it after `opener`, so the erratum-route scanner sees the corpus's quoted `ERRATUM:`
+lines; (b) have the verdict parser scan the whole prompt+response concatenation rather than the
+response's trailer region. Under either mutation the enabled run records extra erratum routes or a
+different parsed verdict and AT-29 reds. Under the shipped design — block appended last, gates
+parsing only the response's own trailer — the five values are identical, and that identity is now
+evidence rather than a tautology.
+
+**AT-33/AT-34 — the filesystem footprint, and the two halves of AC-5.2.** The read half is observed
+on the `fakeFs`/`fakeGit` call log, since the doubles already record every call in order
+(`seams.js`). The observed set is the set of paths `_readFile` was called with under `docs/`. The
+expected set is **hand-transcribed** (TE F-10, DC-14): it is written out literally in the test from
+the fixture's own scripted `ls-files` stdout, minus the self paths, also written out by hand.
+Deriving it from `gatherLearningsCorpus`'s enumeration reply — as the earlier draft did — sources
+the expectation from the code under test, so an enumeration bug and a read-loop bug that drift
+together leave the test green. The two tests live in **one test file and share one instrument**, so
+AT-34's absence claim is paired with AT-33's non-empty positive on that same instrument (DC-03: no
+absence-only oracle). Note that the enumeration itself is a `_git` call, not an open under `docs/`,
+and so contributes no member — see ERR-3.
+
+**AC-5.2's *write* half needs a different instrument, and the seam log cannot carry it (PM F-03).**
+The call log observes only writes routed through injected seams; a direct `fs.writeFileSync` or
+`mkdirSync` in the new region — precisely the regression NG-4 exists to prevent — is invisible to
+it. AC-5.2 says the filesystem is observed across the whole run and no index, cache or state file is
+created **anywhere**. So the write half is carried by two checks that do not depend on the seams:
+
+| Check | Mechanism | Catches |
+|---|---|---|
+| Working-tree delta | `git status --porcelain` over tracked **and** untracked files before and after an L3 run, asserted empty except for paths the fixture itself declares | Any file the run creates anywhere, by any means |
+| Static seam discipline | The new region contains no reference to `fs.`, `writeFileSync`, `mkdirSync`, `appendFileSync` or `require("fs")`, asserted by scanning the source span between the region's sentinel comments | The write before it happens, with a diagnostic naming the symbol |
+
+The static check is what makes the claim maintainable — the porcelain delta proves it for the runs
+the fixture happens to exercise, while the source scan proves it for every run — and together they
+cover NG-1 and NG-4 without a real-filesystem tracer. Both are scoped to the new region, not the
+whole module, so unrelated `fs` use elsewhere in `orchestrate-dev.js` does not red them.
 
 ### T.7 Coverage and CI
 
