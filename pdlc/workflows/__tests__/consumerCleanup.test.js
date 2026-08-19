@@ -128,7 +128,7 @@ function runScript(args, cwd) {
 // Un-skipped by T30's commit, when the script is created (class 13, PLAN §4 kind-1 red/green
 // pair T07 -> T30).
 // ---------------------------------------------------------------------------------------------
-describe.skip("T30: cleanup-consumer-workflows.sh contract", () => {
+describe("T30: cleanup-consumer-workflows.sh contract", () => {
   let workdir;
 
   beforeEach(() => {
