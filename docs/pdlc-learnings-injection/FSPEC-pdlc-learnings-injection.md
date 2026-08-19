@@ -348,17 +348,29 @@ ERRATUM line in this dispatch's report.)*
 
 ### BR-5 — The count bound *(AC-2.1)*
 
-At most `learningsInjection.maxDocuments` documents contribute to any block. Where the eligible set
-is larger than that threshold, the count of contributing documents **equals** it exactly, so an
-eligible set of 5 and one of 50 produce the same document count. Documents cut here are recorded with
-`RSN-COUNT`.
+**At most** `learningsInjection.maxDocuments` documents contribute to any block. The count
+of contributing documents equals `maxDocuments` only where the eligible set is at least that
+large **and** the total byte bound (BR-6) has not bound first; otherwise it is lower. The
+two bounds are independent, and on real corpora the total bound is the one that binds:
+measured at HEAD on 2026-08-19 over the 89-document corpus BR-4 tabulates, injectable
+material averages 13,278 bytes per document (max 41,180) and 87 of the 89 exceed
+`maxBytesPerDocument` on their own, so under REQ §4.1's declared values — five documents at
+6,000 bytes each against a 20,000-byte total — at most three can contribute. Whether the
+count bound is load-bearing at all under those values is REQ O-1's question; the live run
+that discharges O-1 should report the answer rather than leave it to be re-derived.
 
-Where the eligible set is smaller, all of it is taken and no `RSN-COUNT` row is produced.
+Documents cut here carry `RSN-COUNT`. Where the eligible set is smaller than the threshold,
+all of it is taken and no `RSN-COUNT` row is produced.
 
-### BR-6 — What is injected from a document, and how the byte bounds bind *(AC-2.3, AC-2.4; binds REQ O-4)*
+**No back-fill.** The count bound is applied first, over BR-4's order, and a document
+dropped later by the total byte bound does not promote a count-cut document into the slot it
+frees. The selected set is therefore always a prefix of the ordered eligible set, and the
+`RSN-COUNT` and `RSN-BYTES` rows are stable against each other (AT-13).
 
-**Which part is injected.** A LEARNINGS document carries six conventional sections. This feature
-injects a **named subset, in a fixed priority order**:
+### BR-6 — What is injected from a document, and how the byte bounds bind *(AC-2.3, AC-2.4; REQ O-4)*
+
+From each contributing LEARNINGS document, a **named subset of sections, in a fixed priority
+order**:
 
 | Priority | Section | Injected |
 |---|---|---|
@@ -369,29 +381,53 @@ injects a **named subset, in a fixed priority order**:
 | 5 | Open Items for Consolidation | yes |
 | — | Approval Record | **never** |
 
-Together with a one-line identification of the source feature and its `Date Completed` value, which
-is always injected first so a bounded document is still attributable.
+Together with a one-line identification of the source feature and its `Date Completed`
+value, always injected first so that even a bounded document stays attributable.
 
-**Why this subset.** Cross-Feature Patterns ranks first because it is the section whose author was
-already generalising beyond their own feature — the material most likely to apply to a different
-one. The Approval Record is excluded outright: it is per-run bookkeeping about verdicts and anchors,
-of no use to an author, and keeping approval vocabulary out of an authoring prompt reinforces BR-11's
-boundary.
+These names identify sections by the conventional titles the harvest skill writes, where
+they carry numeric prefixes — `## 2. Cross-Feature Patterns`, `## 6. Approval Record`
+(`pdlc/skills/harvest-learnings/SKILL.md`, "LEARNINGS Document Format"). Which heading forms
+count as which section is F-O-1's obligation, not text to be matched literally from here.
 
-**How the per-document bound binds.** Sections are taken in priority order until adding the next
-would exceed `learningsInjection.maxBytesPerDocument`; remaining sections are omitted. Where the
-**first** section alone exceeds the bound, it is taken up to the bound and cut. Either way the
-document's row carries the **bounded** flag (AC-2.3), and the block states that the document was
-abridged.
+**Why this subset.** Cross-Feature Patterns ranks first because it is the section where an
+author is already generalising beyond their own feature — the material most likely to apply
+to a different one. Approval Record is excluded outright: it is per-run bookkeeping about
+verdicts and anchors, of no use to an author, and keeping approval vocabulary out of an
+authoring prompt reinforces BR-11's boundary.
 
-**How the total bound binds.** Documents are accumulated in BR-4's order until the next document's
-bounded material would carry the running total past `learningsInjection.maxTotalBytes`. That document
-and every lower-ordered one are dropped **whole**, with `RSN-BYTES` (AC-2.4). No document is ever cut
-mid-document to make the total fit: the per-document bound of this rule is the only cut this feature
-makes.
+**A document carrying no priority section contributes nothing and consumes no slot.**
+Measured at HEAD, at least one corpus document carries none of the five: `regime-ledger`'s
+`docs/completed/34-postgres-audit-repository/LEARNINGS-postgres-audit-repository.md` has
+`## Implementation Learnings`, `## Cross-Feature Findings` and `## Process Findings`, and no
+section of any other name. Such a document is eligible — it parses, and E-19 makes missing
+sections legitimate — but yields nothing, so it is dropped before the bounds are applied,
+with `RSN-NO-MATERIAL` (BR-9). Without this rule it would take a `maxDocuments` slot while
+injecting zero bytes, indistinguishable in BR-8's rows from a real contribution.
 
-**Determinism.** Both bounds are byte counts over material derived from document bytes alone, so two
-runs over identical repository state produce byte-identical blocks, including order (AC-2.5).
+**The byte-accounting basis.** All three byte quantities measure the same bytes. A
+document's **contributed bytes** are every byte the block carries on that document's
+account: its identification line, its delimiters and source-path label (BR-7), and the
+section headings and bodies taken. `maxBytesPerDocument` bounds one document's contributed
+bytes; `maxTotalBytes` bounds their sum across selected documents; BR-8's *bytes injected*
+records that same quantity per document, and BR-8's per-dispatch total is that sum. The
+block's preamble (BR-7) belongs to no document and counts toward none of the three. An
+expected byte count is therefore computable from a fixture alone.
+
+**How the per-document bound binds.** Sections are taken in priority order until the next
+one would exceed `learningsInjection.maxBytesPerDocument`; the remaining sections are
+omitted. If the **first** section alone exceeds the bound, it is taken up to the bound and
+cut. Either way the document's row carries the **bounded** flag (AC-2.3) and the block
+states that the document is abridged.
+
+**How the total bound binds.** Documents are accumulated in BR-4's order until the next
+document's contributed bytes would carry the running total past
+`learningsInjection.maxTotalBytes`; that document and every lower-ordered one is dropped
+**whole**, with `RSN-BYTES` (AC-2.4). No document is ever cut mid-document to make a total
+fit — the per-document bound is the only cut this feature makes — and no back-fill follows
+(BR-5).
+
+**Determinism.** Both bounds and every byte count are derived from bytes alone, so two runs
+over identical repository state produce byte-identical blocks, in the same order (AC-2.5).
 
 ### BR-7 — The block's labelling and its place in the prompt *(AC-1.4)*
 
@@ -420,7 +456,7 @@ whose fields are exactly:
 |---|---|
 | source path | The document's repository-relative path |
 | order position | Its position in the selected order, 1-based |
-| bytes injected | Bytes of material contributed by this document |
+| bytes injected | The document's contributed bytes, as BR-6 defines them |
 | bounded | Whether this document's material was cut by the per-document bound (BR-6) |
 
 plus one per-dispatch scalar: **total bytes injected**.
@@ -443,7 +479,7 @@ exactly one reason id from this closed set:
 | `RSN-SELF` | `{f}`'s own LEARNINGS (BR-2) |
 | `RSN-UNREADABLE` | The read failed (BR-3) |
 | `RSN-UNPARSEABLE` | Read, but not a LEARNINGS document (BR-3) |
-| `RSN-TRUNCATED` | Read, a LEARNINGS document, but truncated mid-document (BR-3) |
+| `RSN-NO-MATERIAL` | Eligible, but carries none of BR-6's priority sections (BR-6) |
 
 **Corpus-level catalogue.** States in which **no document is known** are recorded once per run, from
 their own closed set:
