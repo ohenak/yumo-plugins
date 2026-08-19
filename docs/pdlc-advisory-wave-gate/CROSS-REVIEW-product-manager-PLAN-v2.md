@@ -48,3 +48,30 @@ written — `pdlc/workflows/package.json`'s `c8.include` is exactly
 - **`A6-00`'s `pathsCollide` withdrawal is stated with its own failure mode.** `function pathsCollide(a, b)` at `orchestrate-dev.js:4726` carries no `export` and is referenced only at `:10961` — verified — so an import-based existence assertion would have opened batch 1 on a red whose own gate wording ("red there means the baseline moved and this PLAN is invalid") would have misdiagnosed. Naming that misreading in the task text is what makes the removal safe rather than merely convenient.
 - **The AC-1.5 correction went further than the finding asked.** v1 F-04 asked for the disjunction and F-05 for the discriminator; the revision delivers both plus the sentence that makes arm (iv) load-bearing ("without it a carrier that emits the notice unconditionally satisfies (i)–(iii) and nothing catches it"), and propagates the four arms into the AT coverage row and the DoD checklist rather than leaving them in one cell. A P0 acceptance criterion's central observable is now falsifiable in both directions.
 - **Every code citation added this round verifies.** `orchestrate-dev.js:2989`–`:2992`, `:3258`, `:13675`–`:13678`, `:4726`, `:10961`, `:11146`–`:11150`, `:11213`, `:11285`, `orchestrate-queue.js:41`/`:1318`, `pdlc/workflows/package.json`'s `test:coverage` and its three-file `c8.include`, and the absence of both `advisoryWaveGate.test.js` and `pdlc/engine/__tests__/advisory-config-example.test.js` all land where claimed. F-01 and F-02 are enumeration gaps, not citation looseness — the document remains unusually careful for its size.
+
+## Recommendation
+
+**Needs revision**
+
+All four v1 Highs are genuinely resolved, and the AC-1.5 and PROP-DIS-06 repairs are better
+than the findings asked for. Two Highs remain, both narrow and both consequences of this
+round's edits rather than new territory:
+
+1. **Name all four bare row-count sites in `A6-03`**, not two: add
+   `advisoryHarvest.test.js:571` and `:726` to the task text and to batch 1's gate wording.
+   `:726` is the one a member-literal reading of the instruction cannot reach, and
+   `advisoryHarvest.test.js` has no owner after batch 1 — so leaving it unnamed reproduces
+   exactly the batch-2 halt v1 F-01 described. (F-01)
+2. **Close `A6-06`'s `pdlc/README.md` hole** one of two ways: own the file (Source File cell
+   + manifest row + TSPEC §5.1 erratum, and say the line *creates* an advisory subsection,
+   since none exists), or drop the README clause and let the `enabled` + `waveBudgetPerRun`
+   pairing carry the affordance alone. As written the sentence directs a write that the
+   wave loop cannot commit. (F-02)
+
+*(Non-gating)* Reconcile the Overview's "eleven test-side files" with the manifest's twelve
+paths by naming the fixture helper separately. (F-03)
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
