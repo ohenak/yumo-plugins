@@ -28,11 +28,11 @@
 //     path being absent at HEAD is expected once the batch that retires it
 //     has landed. The gate exists to catch a typo'd or never-real baseline
 //     path (T-1), not to keep asserting that retired files still exist. A
-//     path is accepted if it exists at HEAD, or if it existed at the
-//     pre-sweep ancestor (`git merge-base origin/main HEAD`, falling back to
-//     `main` if `origin/main` is unavailable) — i.e. it was real before any
-//     retirement batch ran. A typo'd/never-real path fails both arms; a path
-//     legitimately swept by a landed batch passes the ancestor arm.
+//     path is accepted if it exists at HEAD, or if it was ever tracked in
+//     HEAD's history (`git rev-list -1 HEAD -- <path>` non-empty) — i.e. it
+//     was real before the retirement batch that swept it. A typo'd/never-real
+//     path fails both arms; a path legitimately swept by a landed batch
+//     passes the history arm on any branch, including main after merge.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -165,28 +165,24 @@ const BASELINE_M8_HELPER_PATHS = [
   "../../workflows/__tests__/helpers/bin/percent-encode-driver.sh",
 ];
 
-// Resolves the pre-sweep ancestor: the commit before any retirement batch
-// ran, against which a since-deleted baseline path can still be checked.
-// Tries `origin/main` first (the usual PR base), falling back to `main` for
-// checkouts without that remote-tracking ref.
-function resolvePreSweepAncestor(cwd) {
-  const refCandidates = ["origin/main", "main"];
-  const errors = [];
-  for (const ref of refCandidates) {
-    try {
-      return execFileSync("git", ["merge-base", ref, "HEAD"], { cwd, encoding: "utf8" }).trim();
-    } catch (error) {
-      errors.push(`${ref}: ${error.message}`);
-    }
-  }
-  throw new Error(
-    `could not resolve a pre-sweep ancestor via origin/main or main: ${errors.join("; ")}`,
-  );
+// A since-deleted baseline path is still a REAL path if it was ever tracked
+// in HEAD's own history. `git rev-list -1 HEAD -- <path>` names the last
+// commit that touched it, or prints nothing for a path that never existed —
+// which is the one failure this gate is for (a typo'd or invented baseline
+// row). A merge-base against origin/main was tried first and is wrong on
+// purpose-built grounds: once the sweep is merged, HEAD is ON main and the
+// merge-base degenerates to HEAD itself, reddening the gate on every
+// post-merge (and tag-publish) run for paths the sweep deleted by design.
+function everExistedInHistory(cwd, repoRelativePath) {
+  const out = execFileSync("git", ["rev-list", "-1", "HEAD", "--", repoRelativePath], {
+    cwd,
+    encoding: "utf8",
+  }).trim();
+  return out !== "";
 }
 
-test("T01 pre-flight: every M-1…M-6, M-9, M-10 and M-8-helper path in the measured baseline exists at HEAD, or existed at the pre-sweep ancestor", () => {
+test("T01 pre-flight: every M-1…M-6, M-9, M-10 and M-8-helper path in the measured baseline exists at HEAD, or was tracked at some ancestor of HEAD", () => {
   const repoRoot = repoPathOf("../../..");
-  const preSweepAncestor = resolvePreSweepAncestor(repoRoot);
 
   for (const relativePath of [...BASELINE_M_ROW_PATHS, ...BASELINE_M8_HELPER_PATHS]) {
     const absolutePath = repoPathOf(relativePath);
@@ -195,12 +191,9 @@ test("T01 pre-flight: every M-1…M-6, M-9, M-10 and M-8-helper path in the meas
     }
 
     const repoRelativePath = relative(repoRoot, absolutePath);
-    assert.doesNotThrow(
-      () =>
-        execFileSync("git", ["cat-file", "-e", `${preSweepAncestor}:${repoRelativePath}`], {
-          cwd: repoRoot,
-        }),
-      `expected baseline path to exist at HEAD or at pre-sweep ancestor ${preSweepAncestor}: ${relativePath}`,
+    assert.ok(
+      everExistedInHistory(repoRoot, repoRelativePath),
+      `expected baseline path to exist at HEAD or in HEAD's history: ${relativePath}`,
     );
   }
 });
