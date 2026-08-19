@@ -49,6 +49,122 @@ That last fact is what F-01 below turns on.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | §3.2 step 6's suffix check passes on the exact defect it was written to refuse: the first pass already appended the wave's gate sequence, so the ledger ends with it whether or not the re-gate ran | REQ AC-4.1 (iii); FSPEC BR-7 |
+| F-02 | Medium | Local | §3.2 step 3's new capture-before-budget paragraph claims two oracles read it explicitly; neither does. AT-02-6 says nothing about snapshots, and §5.2's count fixture runs a dispatching wave, not a no-dispatch one | REQ AC-4.6; AC-7.x (traceability) |
+| F-03 | Medium | Local | The same paragraph prices the over-budget capture at "one `write-tree`/`commit-tree` pair", omitting that it also rewrites the single fixed `refs/pdlc/a6-snapshot` — discarding the recovery record OQ-2 promised the operator for an earlier resolved wave | REQ AC-5.1; §6 OQ-2 |
+
+### F-01 — the suffix check cannot see the defect it replaced (High, delta, local)
+
+§3.2 step 6 now reads (`TSPEC-pdlc-advisory-wave-gate.md:470-475`): `resolved: true` requires
+`outcome === "resolved"` **and** that the wave's `invocations` ledger *ends with* the wave's own
+gate sequence — stated explicitly as "a **suffix check, not a growth-since-dispatch equality**:
+read the ledger's final tokens and require that they are the wave's configured gate sequence".
+
+The two-attempt half of that is right, and it fixes my round-3 finding. But the ledger does not
+start empty at dispatch. `runWaveGateSequence` pushes a token before each command call whether or
+not it passes (§2.4, `TSPEC:196-205`), and A6 is only ever entered **because** that first pass ran
+and its test command went red (§2.3, §3.2 step 1). So at the moment of dispatch the ledger already
+reads `[post-wave, test]` — precisely the wave's own gate sequence. §2.4's own table says so: the
+"one attempt, red re-gate" row is `[post-wave, test, post-wave, test]`, four tokens for two runs of
+the sequence, the first of which is the pre-A6 pass.
+
+Now apply the rule as written to the mutation §5.5 exists for. A `verifyGate` that returns
+`{passed: true}` without running anything appends nothing, so the ledger is still `[post-wave,
+test]`. Its final tokens **are** the wave's configured gate sequence. The suffix check passes. The
+call site reports the wave resolved.
+
+The document asserts the opposite two sentences later — "a dropped re-gate appends nothing, so the
+ledger's final tokens are a *stale* earlier attempt's pair, or nothing at all, and the check fails"
+(`TSPEC:483-486`). That sentence is not derivable from the rule above it: a suffix check reads
+values, and stale tokens and fresh tokens are the same values. Nothing in the rule as stated
+carries the position information that would tell them apart. The word "stale" is doing work the
+specified quantity cannot do — which is exactly the work the deleted `since dispatch` anchor used
+to do.
+
+The product consequences, in order of severity:
+
+1. **BR-7's whole content goes unenforced.** BR-7 forbids an advisory verdict substituting for a
+   gate result. Under this rule a repair that A6 authored can be reported as gate-verified when the
+   gate was never re-run — the tier's single most consequential failure mode, and the one the
+   call-site re-check was added for.
+2. **REQ AC-4.1 conjunct (iii) becomes unfalsifiable again**, which is the exact state TE F-14
+   raised and this rule was written to escape. Round 3 fixed one direction and reopened the other.
+3. **§5.5's mutation fixture becomes unsatisfiable by a conforming implementation.** §5.5 asserts
+   the dropped-re-gate run does **not** resolve, halts on AT-05-3's literal, and reports `0` waves
+   resolved (`TSPEC:1088-1091`). An implementation that transcribes step 6 faithfully resolves that
+   run, so the test is red with no code change that both satisfies it and matches this document.
+   Phase I inherits an unresolvable contradiction between §3 and §5, and PLAN mints tasks for both.
+
+**To resolve** — keep the anchor and make it a suffix over the anchored slice. Concretely: at step
+4/5, before `runAdvisorySeam` is entered, record `const ledgerAtDispatch = invocations.length`;
+at step 6 require that the tokens appended *since dispatch* are (a) non-empty and (b) end with the
+wave's configured gate sequence. That holds at every attempt count — a two-attempt run appends
+`[post-wave, test, post-wave, test]` after dispatch and passes — and it refuses the dropped re-gate,
+which appends nothing at all and fails clause (a). Reconcile the same wording in three places that
+now carry the unanchored version: §3.3's `verifyGate` row (`TSPEC:511`), §5.5's mutation bullet
+(`TSPEC:1076-1082`), and §5.2's companion case (`TSPEC:973-979`), whose expected value should be
+stated as the tokens appended since dispatch rather than the whole array, so the two fixtures pin
+one quantity.
+
+### F-02 — two oracles claimed for the capture-before-budget decision; neither covers it (Medium, delta, local)
+
+§3.2 step 3's new paragraph (`TSPEC:437-444`) states a real design decision — the wave-budget
+escape resolves inside `runAdvisorySeam`, *after* step 4's capture, so an over-budget wave still
+captures and still rewrites the snapshot ref — and closes with: "Two oracles read this explicitly:
+AT-02-6 asserts a snapshot ref **is** written on a budget-escalated wave, and §5.2's
+one-snapshot-per-wave call count is once *per wave entered*, no-dispatch waves included."
+
+Neither holds:
+
+- **AT-02-6 says nothing about snapshots.** FSPEC's text (`FSPEC:348-352`) and this document's own
+  §5.6 row (`TSPEC:1137`) both scope it to dispatch and budget arithmetic: two escalated waves leave
+  `waveBudget.resolved` at `0`; one resolved wave increments it to `1`. No snapshot ref, no capture.
+- **§5.2's count fixture runs a dispatching wave.** The bullet counts `commit-tree === 1` across a
+  **two-attempt run** (`TSPEC:964-969`) — a wave that was dispatched and repaired. It cannot
+  witness "no-dispatch waves included", because no no-dispatch wave appears in it.
+
+So a behaviour this round newly made normative — capture happens even when nothing will be
+dispatched — ships with zero test coverage while the document tells PLAN it has two. The harm is
+downstream and mechanical: PLAN reads §3.2, sees the coverage claim, and mints no task; Phase I
+implements the ordering; nothing ever fails if a later refactor hoists the budget read above the
+capture, which is precisely the change the paragraph says was rejected.
+
+**To resolve:** either drop the two citations and state plainly that the ordering is design-level
+with no oracle, or — better, since the paragraph argues the ordering is load-bearing — add one
+§5.2 case: a wave entered over budget, asserted to escalate with no dispatch **and** to have
+written the snapshot ref (`commit-tree === 1`, `update-ref` observed on the `_git` double). One
+run, both facts positive.
+
+### F-03 — the over-budget capture's cost is understated: it also discards the operator's recovery ref (Medium, inherited, local)
+
+The same paragraph prices the retained ordering as costing "one `write-tree`/`commit-tree` pair".
+It costs one more thing the document does not name here. `refs/pdlc/a6-snapshot` is a **single
+fixed ref** (`TSPEC:233`), rewritten by "every A6 invocation that reached the snapshot step"
+(`TSPEC:831`). §6 OQ-2 (`TSPEC:1187`) rules that the ref is deliberately left in place after a halt
+because it "is the only mechanical record of the pre-repair tree once the wave has halted", and
+§3.2 step 6 repeats the promise for the resolved path: "the snapshot ref is left in place for the
+operator".
+
+Compose those with this round's new statement. Wave 1 resolves; its pre-repair snapshot is left for
+the operator. Wave 2 goes red, is over budget, captures anyway per this paragraph, rewrites the ref
+to wave 2's tree, escalates without dispatching, and the run halts. The operator now holds a ref
+describing a tree in which nothing was ever repaired, and wave 1's machine-authored repair — the
+one thing they might want to inspect or undo — has no mechanical record left. That is the promise
+of OQ-2 and step 6 failing on a run shape this paragraph newly makes reachable.
+
+I am rating this Medium rather than High because the resolved wave's repair is gate-verified and
+lands in the wave's own commit, so the loss is inspectability rather than recoverability, and the
+fixed ref name predates this round. But this paragraph is where the cost is now being tallied for
+the reader, and the tally is incomplete.
+
+**To resolve** — cheapest fix is naming: `captureTreeSnapshot` already takes `waveNum` (§3.5,
+`TSPEC:653`), so write `refs/pdlc/a6-snapshot-{waveNum}` and every wave's record survives the run.
+If the single ref is deliberate, say so in the same paragraph and in OQ-2 — "the ref describes the
+most recent wave that reached the snapshot step, not the wave whose repair is in the tree" — so the
+operator reads it correctly.
+
 ## Questions
 
 ## Positive Observations
