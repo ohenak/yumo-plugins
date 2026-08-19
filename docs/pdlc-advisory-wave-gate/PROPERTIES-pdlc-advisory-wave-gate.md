@@ -153,7 +153,7 @@ that owns that file for the batch in which the property lands.
 | PROP-REC-04 | Given an escalation whose log write fails, the disposition must still be `escalated`, the halt reason must be unchanged from PROP-REST-09's literal, the write failure must be surfaced on the run report's notice channel, and the disposition must never be upgraded to `resolved` | Error handling | Integration | AC-6.2, AT-06-6, E-30 | `advisoryEscalationLog.test.js` (A6-17) |
 | PROP-REC-05 | Given a halt following an A6 escalation, the halt report must carry the diagnosis and the root-cause class in its `advisory` fields — not only the advisory record file | Observability | Integration | AC-6.3, AT-06-4, BR-14, TSPEC §4.5 | `advisoryWaveGate.test.js` (A6-15) |
 | PROP-REC-06 | Given several runs in which A6 escalated `plan-ordering-defect`, the per-feature count must be derivable from `ESCALATIONS.md` alone, with no run logs. Paired negative, specified rather than a gap: resolution counts must **not** be derivable after Phase PUB, the advisory record being distilled and deleted | Observability | Integration | AC-6.4, AT-06-5, E-31, REQ O-2 | `advisoryEscalationLog.test.js` (A6-17) |
-| PROP-REC-07 | `ADVISORY_SEAM_PHASES` must gain `A6: {id: "I", outcome: "halted"}`, so the escalation log's *Pipeline state* field is derived from the table rather than passed per call site | Contract | Unit | AC-6.2, TSPEC §3.1, §6 OQ-12 | `advisoryEnvelope.test.js` (A6-02) |
+| PROP-REC-07 | Given an A6 escalation, the escalation-log entry's *Pipeline state* field must read phase `I` with outcome `halted`, and the A3–A5 entries written by the same shipped path on the same suite must keep their own values (`DOD`/`halted`, `PUB`/`halted`) — the field is derived per seam, never passed per call site. The oracle is the **written entry**, not the constant: `ADVISORY_SEAM_PHASES` is module-private at `orchestrate-dev.js:3108` and TSPEC §3.1 does not export it, but an unregistered seam falls back to the literal `unknown` at `orchestrate-dev.js:3338`, so a missing `A6` row is observable as `unknown`/`unknown` in the entry. The `unknown` arm is the negative control, asserted on a fixture whose seam is absent from the table | Contract | Integration | AC-6.2, TSPEC §3.1, §6 OQ-12 | `advisoryEscalationLog.test.js` (A6-17) |
 
 ### G. Configuration (`PROP-CFG-*`)
 
@@ -384,7 +384,7 @@ properties of their own by construction: each turns the preceding RED batch's pr
 |---|---|---|
 | A6-00 | `advisoryWaveGate.test.js` (new) | Pre-flight importability gate — no behavioural property; it exists so batch 1 opens on a legible red |
 | A6-01 | `helpers/advisoryDoubles.js` | Fixture rows above; `SEAMS` literal half of PROP-SEAM-02 |
-| A6-02 | `advisoryEnvelope.test.js`, `advisoryConfig.test.js` | PROP-SEAM-01, PROP-CTR-01, PROP-ENV-01, PROP-ENV-06, PROP-ENV-07, PROP-ENV-10 (id set), PROP-REC-07, PROP-CFG-01, PROP-CFG-02 |
+| A6-02 | `advisoryEnvelope.test.js`, `advisoryConfig.test.js` | PROP-SEAM-01, PROP-CTR-01, PROP-ENV-01, PROP-ENV-06, PROP-ENV-07, PROP-ENV-10 (id set), PROP-CFG-01, PROP-CFG-02 |
 | A6-03 | six collateral suites | PROP-SEAM-02 |
 | A6-04 | `pdlc/engine/__tests__/advisory-config-example.test.js` (new) | PROP-CFG-03 |
 | A6-07 | `advisoryWaveGate.test.js` | PROP-CTR-02, PROP-CTR-05 (unit half), PROP-ENV-02, PROP-ENV-03 (unit half), PROP-NFR-04 |
@@ -393,7 +393,7 @@ properties of their own by construction: each turns the preceding RED batch's pr
 | A6-13 | `advisoryWaveGate.test.js` | PROP-CTR-04 (seam-op half), PROP-CTR-07, PROP-ENV-08 (seam-op half), PROP-ENV-11, PROP-GATE-02 (seam-op half) |
 | A6-15 | `advisoryWaveGate.test.js` | PROP-SEAM-07, PROP-SEAM-08, PROP-CTR-03, PROP-CTR-04, PROP-CTR-05, PROP-CTR-06, PROP-CTR-08, PROP-CTR-09, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13, PROP-ENV-03, PROP-ENV-04, PROP-ENV-05, PROP-ENV-08, PROP-ENV-09, PROP-ENV-10, PROP-ENV-12, PROP-GATE-01…-06, PROP-REST-07, PROP-REST-08, PROP-REST-09, PROP-REC-05, PROP-NFR-03 |
 | A6-16 | `advisoryRecord.test.js` | PROP-REC-01, PROP-REC-02 |
-| A6-17 | `advisoryEscalationLog.test.js` | PROP-REC-03, PROP-REC-04, PROP-REC-06 |
+| A6-17 | `advisoryEscalationLog.test.js` | PROP-REC-03, PROP-REC-04, PROP-REC-06, PROP-REC-07 |
 | A6-19 | `waveExecution.test.js` | PROP-SEAM-03, PROP-SEAM-04, PROP-SEAM-10, PROP-GATE-07, PROP-GATE-08, PROP-GATE-09, PROP-GATE-10, PROP-REST-04, PROP-REST-09 |
 | A6-20 | `advisoryDisabled.test.js` | PROP-SEAM-05, PROP-SEAM-06, PROP-SEAM-09 |
 
