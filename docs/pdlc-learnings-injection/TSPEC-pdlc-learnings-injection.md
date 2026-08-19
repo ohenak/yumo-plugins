@@ -319,7 +319,141 @@ which is the module's established extension idiom (`_provenance`, `_runCommand`,
 
 ## Data Model
 
-*(section body follows)*
+### D.1 The three catalogues, as frozen literals *(discharges F-O-3's registration half)*
+
+Each of BR-9's catalogues is one `Object.freeze`d array of string ids, exported, and each is the
+operand of its own set-equality test (DC-01, C-9). Arrays rather than enums so a test can assert
+`toEqual` against a hand-transcribed literal without importing the module's own value as its
+expectation (DC-14).
+
+```js
+export const LEARNINGS_REJECT_REASONS = Object.freeze([
+  "RSN-COUNT", "RSN-BYTES", "RSN-SELF", "RSN-UNREADABLE", "RSN-UNPARSEABLE", "RSN-NO-MATERIAL",
+]);
+export const LEARNINGS_CORPUS_OUTCOMES = Object.freeze(["RSN-UNLISTABLE", "RSN-EMPTY"]);
+export const LEARNINGS_NOTICES = Object.freeze(["NTC-MALFORMED", "NTC-KEYTYPE"]);
+```
+
+**Disjointness in kind** (BR-9) is enforced structurally, not by convention: a reject reason can
+only appear in a `rejected[].reason` field, a corpus outcome only in the run-level
+`corpusOutcome` field, and a notice only in `notices[].id`. The three fields have three different
+value domains, and one test per field asserts that every value it ever carries is a member of that
+field's catalogue.
+
+### D.2 The report record *(discharges F-O-3's serialisation half)*
+
+`buildFinalReport`'s new key, present only on an enabled, well-configured run:
+
+```js
+learningsInjection: {
+  // BR-10 — run-level, exactly two members, closed
+  ruleInputs: {
+    orderKeys: [ { path: "docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md",
+                   orderKey: "2026-08-02" },
+                 { path: "docs/x/LEARNINGS-x.md", orderKey: null } ],
+    thresholds: { maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
+  },
+  // BR-9 — at most one, run-level; null when documents were known
+  corpusOutcome: null,            // | "RSN-UNLISTABLE" | "RSN-EMPTY"
+  // BR-8/BR-9 — one entry per authoring dispatch, in dispatch order
+  dispatches: [
+    {
+      phaseId: "T", docType: "TSPEC", mode: "creator",   // context, not a BR-8 row field
+      rows: [ { sourcePath: "…", position: 1, bytesInjected: 5871, bounded: true } ],
+      totalBytesInjected: 5871,
+      rejected: [ { sourcePath: "…", reason: "RSN-BYTES" } ],
+    },
+  ],
+  notices: [ { id: "NTC-KEYTYPE", key: "maxDocuments" } ],
+}
+```
+
+Four closure claims, one test each:
+
+| Enumeration | Members | Test |
+|---|---|---|
+| BR-8 row fields | `sourcePath`, `position`, `bytesInjected`, `bounded` | set equality over `Object.keys(row)` |
+| BR-8 per-dispatch scalar | `totalBytesInjected` | present, equals `sum(rows[].bytesInjected)` |
+| BR-10 members | `orderKeys`, `thresholds` | set equality over `Object.keys(ruleInputs)` |
+| BR-9 catalogues | D.1's three arrays | one set-equality test each |
+
+`orderKey: null` is BR-10's "explicit marker that it was absent or unparseable" — a JSON `null`
+carried in a **present** key, never an omitted key, so the two states are distinguishable in a
+serialised report.
+
+`phaseId`/`docType`/`mode` sit **outside** BR-8's closed row enumeration deliberately: they are
+per-dispatch context that lets an operator find the dispatch, and BR-8 closes over *row* fields.
+`AT-17`'s set equality is asserted over `rows[i]`, which is the enumeration BR-8 actually states.
+
+### D.3 The document-shape predicate *(discharges F-O-1)*
+
+```js
+const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
+export function looksLikeLearningsDocument(text) {
+  if (typeof text !== "string") return false;
+  const first = text.split("\n").find((line) => line.trim() !== "");
+  return first !== undefined && LEARNINGS_HEADING_RE.test(first.trim());
+}
+```
+
+Grounded: all 9 corpus documents at HEAD open with `# LEARNINGS — {feature}` (P-6), which is the
+form `pdlc/skills/harvest-learnings/SKILL.md` §"LEARNINGS Document Format" prescribes. It consults
+only the document's own bytes and is decidable without a model call — FSPEC BR-3's two bounds.
+
+It is deliberately **weak**: it must accept E-19's document missing later sections and E-33's
+document carrying none of BR-6's five, because those are eligible-and-reportable states, not
+`RSN-UNPARSEABLE` ones. A truncated file keeps its first line, so it stays eligible — which is
+exactly BR-3's statement that truncation is not a separate outcome, and why no fixture can
+construct an `RSN-TRUNCATED`.
+
+### D.4 The ordering key
+
+```js
+const DATE_ROW_RE  = /^\|\s*Date Completed\s*\|\s*([^|]*)\|/m;
+const ISO_DATE_RE  = /^(\d{4}-\d{2}-\d{2})\b/;
+```
+
+`parseHarvestDate` matches the harvest metadata table's row, trims the cell, and takes an ISO
+prefix. The `\b`-anchored prefix match is what makes E-13's measured
+`2026-06-09 (Phase H harvest; partial close-out)` parse to `2026-06-09` rather than to `null`.
+No `Date` object is constructed: the key is compared as a **string**, descending, which for
+zero-padded ISO dates is the same order as chronological and avoids a timezone-dependent parse
+(C-5's "no clock"). A value that is not an ISO prefix is `null` and falls to the tiebreak (E-14).
+
+Sort comparator, in full:
+
+```js
+(a, b) => (a.orderKey === b.orderKey ? 0
+          : a.orderKey === null ? 1 : b.orderKey === null ? -1
+          : b.orderKey < a.orderKey ? -1 : 1)
+       || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
+```
+
+Paths are unique within one `git ls-files` reply, so the composite is a **total order** and the
+sort's stability is not relied on.
+
+### D.5 Byte accounting
+
+All three byte quantities are **UTF-8 byte lengths** (`Buffer.byteLength(s, "utf8")`), of exactly
+the substrings the block carries on a document's account (BR-6): its identification line, its
+delimiters and source-path label, and each section heading and body taken. The block's preamble
+belongs to no document and is counted in none of the three — which is what makes AT-11's and
+AT-12's expected counts computable by hand from a fixture.
+
+**Cutting is character-safe.** Where the first priority section alone exceeds
+`maxBytesPerDocument` (E-16), the material taken is the longest **character** prefix whose UTF-8
+length is ≤ the bound, so a cut never splits a multi-byte codepoint. The consequence, stated so
+AT-12's oracle is written correctly: contributed bytes are ≤ the bound and **equal** it only where
+the cut happens to land on a character boundary. AT-12's fixture is therefore ASCII, so its
+expected count is the bound exactly; a separate case pins the multi-byte behaviour at ≤.
+
+### D.6 Self-exclusion, decided from the path
+
+`RSN-SELF` (BR-2, AC-1.3) is decided **before any read**, from the path alone: an entry whose path
+is `docs/{f}/…` or `docs/completed/{f}/…` for the feature being authored. `gatherLearningsCorpus`
+therefore never opens a self document, which is what BR-15's expected-set exclusion of `RSN-SELF`
+documents requires. Self-exclusion is by *feature directory*, not by filename, so a re-run of a
+harvested feature is excluded whichever of the two locations its LEARNINGS sits in (E-31).
 
 ## Test Strategy
 
