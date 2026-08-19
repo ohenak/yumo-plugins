@@ -40,7 +40,29 @@ Scope of this pass: only sections the v1.1 diff touched. Every claim below re-me
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Under the corrected (per-dispatch) window, does the wave still need a second bound on total episode time — a slow suite re-run `attemptBudget` times is bounded only by `attemptBudget × suite runtime`, which no clause caps? Not gating: the shipped tier has the same property, and O-1/O-8 do not depend on it. If the answer is "yes", it is a REQ decision, not an FSPEC one. |
+| Q-02 | E-33's explicit `0` and `advisory.enabled: false` now name two ways to make A6 inert, with different report shapes (E-01 says the advisory key is absent entirely; E-32 says the sixth row reads zero). Is the difference deliberate — "tier off" versus "seam off" — and worth one sentence, so the operator reading a zero row knows which setting produced it? |
+
 ## Positive Observations
+
+- **The two Highs were closed at their roots, not patched at the assertion.** F-01's fix restored the oracle to counting statements *and* scoped its population in the same pass, so E-04 and AT-01-5 now say one thing; F-02's fix rewrote BR-8's invariant to writer identity and then said out loud which degree of freedom BR-12 hands the TSPEC author (FSPEC:188-192). That is the harder and more durable of the two available repairs.
+- **Step 3b is the right shape.** Making the attempt counter a named step that both the first arrival and step 8b's return read (FSPEC:90) turns the previously unbounded-looking loop into something an implementer can build without inventing a policy, and AT-02-9's two-case counted oracle ("counted, never bounded: a 'no more than' oracle passes an implementation that dispatches none") is exactly the discipline the round asked for.
+- **The compression cost the document nothing load-bearing.** 184 lines removed against 97 added, and the rationale that went was duplication between §4 and §5/§6 — every rule I traced still states its proposition once, with its REQ clause attached. Holding a size budget while adding seven ATs is not the usual outcome of a revision round.
+- **E-22 and BR-10 now name a concrete check class** (the un-skip guard that halts a wave whose owned test file still carries a skipped block), which is what makes AT-05-4 constructible from the FSPEC alone rather than requiring the TSPEC first.
 
 ## Recommendation
 
+**Needs revision**
+
+One High, and it is the only thing standing between this document and approval. F-01: BR-11's episode-scoped invocation window contradicts REQ AC-2.4's explicit "per invocation, dispatch to verdict, **not** cumulative across the wave" (`REQ:299`) and the shipped per-attempt race it inherits (`orchestrate-dev.js:3371-3384`, `:3417`, `elapsedMs: 0` at `:3430`/`:3461`/`:3557`). This is a change I asked for in F-05 and the author answered honestly; the answer just went one step further than the REQ licenses, and the step it took is a new budget mechanism in a feature whose safety case rests on adding none. Restate the window as the shipped per-dispatch one, mark the gate-command carve-out inherited, and let the erratum fix the REQ rationale that made the wider reading look necessary.
+
+F-02 is worth fixing in the same pass and is cheap: one sentence in E-33 saying this key's validator is a non-negative-integer variant, and one round-trip assertion in AT-07-2b. Left as written, the most natural implementation silently turns an operator's `0` into `1`.
+
+Everything else from round 1 is closed. The lifecycle, the envelope semantics, the writer-identity invariant, the restoration oracle and the acceptance-test discipline all hold, and no finding in this round contests the design.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
