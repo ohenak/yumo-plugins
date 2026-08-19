@@ -27,7 +27,21 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | BR-2 says the receiving side is total — an absent or out-of-set classification reads as `unclassified` — and E-08 says that escalates *without* consuming an attempt. E-07 says a malformed verdict escalates *consuming* one. Is a verdict whose classification field is present but of the wrong **type** (a number, an array) malformed under E-07 or out-of-set under E-08? E-09 resolves the both-apply case only when the verdict is independently malformed. A test author writing the E-08 table needs the type case pinned. |
+| Q-02 | BR-11 measures `seamBudgetMinutes` "excluding time spent running the gate command", and AT-02-7 wants a companion case with a slow gate and fast working time that does **not** escalate. On a red re-gate the invocation runs the gate sequence up to three more times. Is *every* gate invocation excluded, including the re-gate passes, or only the first? The AT is only falsifiable once that is fixed. |
+| Q-03 | Step 8a says an E-6 resolution tells "the later task's dispatch that the promotion already exists". If that later task sits in a wave the run never reaches — because a subsequent wave halts first — is the advisory record entry alone the operator's evidence, or is there a further observable? AT-04-5 assumes the wave's commit step completes and does not cover the halt-before-later-wave case. |
+| Q-04 | E-04 requires "exactly one" A6-authored inapplicability notice per run, carried by the shipped once-per-run notices. AT-01-5's oracle scans "the whole notice surface" — is that surface the run report object, the emitted notice stream, or both? A oracle over one but not the other can count one while the operator sees two. |
+
 ## Positive Observations
+
+- **§4's oracle discipline is unusually strong for an FSPEC.** BR-7 does not merely say "the gate re-runs" — it names the observable as an **ordered sequence**, gives three worked expected sequences (`[post-wave, test, post-wave, test]`, the truncated `[post-wave, test, post-wave]`, the no-post-wave `[test, test]`), and states in the spec itself why set equality is the wrong unit. AT-04-2 then transcribes those literals rather than deriving them. That is exactly the shape a test author can implement without a clarifying question, and I verified the ordering claim holds at HEAD: the post-wave command runs before the test gate (`pdlc/workflows/orchestrate-dev.js:14347-14368`).
+- **AT-02-6 is built as a discriminating pair.** "Two oracles that a 'counts every invocation' reading would make disagree" — two escalated waves leave the budget untouched, one resolved wave exhausts it — is a test designed to fail against the plausible wrong implementation rather than to confirm the right one. Same for AT-03-4's both-halves-of-E-6 companion and AT-05-2's whole-tree-vs-per-path case.
+- **AT-04-4 is explicitly the positive companion to the negative assertions.** The FSPEC names the reason in the AT itself: "a positive assertion on all three, so the negative assertions of AT-04-1 and AT-04-3 cannot be satisfied by accident." That the author reached for this unprompted is why F-04 and F-05 are narrow fixes rather than a structural rewrite of §6.
+- **The closed catalogues are asserted by set-equality against transcribed literals, not against the module under test.** AT-02-1 spells the four classes out; AT-03-1 spells `E-1`…`E-6`; AT-03-7 pins the refusal catalogue at eight in shipped order. I confirmed the shipped starting points (`ADVISORY_SEAMS` five members at `pdlc/workflows/orchestrate-dev.js:1947`, `ENVELOPE_DEFAULTS` four at `:1938`, `ADVISORY_REFUSAL_REASONS` eight at `:2297`), so the transcriptions are honest and the deltas are the ones §6 claims.
+- **§5 is genuinely exhaustive on the hard cases.** E-09's precedence tie-break, E-16's no-partial-application, E-20's truncated sequence as an admitted form, E-27's escalations-don't-consume-wave-budget, and E-31's honest limit on resolution counts are all cases a weaker spec would have left to run-time judgement. F-02 asks for tests, not for more rows.
+- **Non-goals are bound to the tests.** §1's "restated from REQ §4 because they bound this spec's tests" and §7.2's deferral table with named owners mean a reviewer who spots a gap finds it already routed. That saved several findings here.
 
 ## Recommendation
 
