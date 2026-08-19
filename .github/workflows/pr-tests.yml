@@ -98,6 +98,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The pre-flight baseline gate (preflight-baseline.test.js) resolves the
+          # pre-sweep ancestor via `git merge-base origin/main HEAD` and checks the
+          # baseline doc's partition-closure commit is an ancestor — both need full
+          # history, which the default shallow checkout does not provide.
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v4
