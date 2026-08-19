@@ -1098,13 +1098,19 @@ unrelated config-example edit redden the delivery-blocking `Engine tests (ubuntu
 check under a stated scope that names no such concern (PLAN A6-04, TE F-05/F-06, TE F-03).
 
 **What the example section literally contains.** The example gains the **whole** `advisory` section,
-not `waveBudgetPerRun` alone — `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}`. Both keys
-are load-bearing for the reader: JSON admits no comments, so the copied-out block is the only place
-the file can teach that `waveBudgetPerRun: 0` **with `enabled: true`** is E-33's documented
-"keep the tier on, keep A6 off" affordance rather than a misconfiguration, and that the shipped
-default is `1` on a tier whose own default is `false`. `enabled: false` beside it also keeps the
-example honest about the tier's ship state. The new expectation asserts exactly this shape: the
-`advisory` section parses, carries `enabled` and `waveBudgetPerRun`, and the latter is a
+not `waveBudgetPerRun` alone — `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}`. That literal is
+the **shipped-default pairing and nothing more**: a tier that ships off, and a budget that ships at `1`.
+Both keys are load-bearing for the reader in exactly that sense — the example shows the state an operator
+actually inherits, and `enabled: false` beside the budget keeps it honest about the tier's ship state.
+It does **not** teach E-33's `waveBudgetPerRun: 0`-with-`enabled: true` affordance, and this TSPEC does not
+claim it does: JSON admits no comments, the example carries no `0` and no `enabled: true`, and no
+operator-facing documentation carrier for that affordance is in this feature's scope (PM F-01). What the
+feature does guarantee about `0` is behavioural and fully asserted: the new `nonNegativeInt` validator
+honours a configured `0` instead of substituting the default, and FSPEC AT-07-2b's companion case pins
+"`0` in yields `0` back, and the key is absent from the invalid-key report". Whether operators should also be
+*told* about the affordance in prose is a product decision that would need its own REQ/FSPEC requirement
+naming a carrier (PM Q-01); it is deliberately not decided here. The new expectation asserts exactly the
+shape above: the `advisory` section parses, carries `enabled` and `waveBudgetPerRun`, and the latter is a
 non-negative integer (TE F-34).
 
 **No `pdlc/README.md` edit is in scope.** An earlier reading of E-33 implied the affordance also
@@ -1114,7 +1120,9 @@ no REQ, FSPEC or TSPEC row asks for one; the owning task commits only `.claude/p
 and the wave loop commits exactly `task.files` (`orchestrate-dev.js:14398`–`:14406`), so a README edit
 would strand uncommitted; and `pdlc/engine/__tests__/docs-uniqueness.test.js:122`–`:123` pins
 `pdlc/README.md:139` and `:145`, so an inserted line reddens the delivery-blocking
-`Engine tests (ubuntu-latest)` check. The affordance is carried by the example pairing alone
+`Engine tests (ubuntu-latest)` check. The `0` affordance therefore has **no documentation carrier in this feature at all**; it is carried by
+behaviour and its test (the `nonNegativeInt` validator plus AT-07-2b), and a prose carrier would need a
+follow-up REQ to own it (PM F-01, PM Q-01)
 (PLAN A6-06, PM F-02, TE F-01).
 
 This second-channel edit is therefore work authoring a new assertion in a new file, not relocating an
