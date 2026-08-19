@@ -29,3 +29,51 @@ re-litigated.
 | F-03 | Low | Local | **`delta` `local` — AC-1.2 delegates its oracle to AC-6.1's fixtures, which do not cover it.** AC-1.2 is now "asserted under AC-6.1's fixtures", but AC-6.1 enumerates "selection, bounding, ordering and every fail-open state of Group 4" — the dispatch-set equality and the non-authoring byte-identity of Group 1 are not in that list, so the criterion points at a fixture owner that has not accepted it. Add AC-1.2's set equality to AC-6.1's enumeration (one clause), or drop the delegation and let AC-1.2 name its own fixture. | AC-1.2, AC-6.1 |
 | F-04 | Low | Local | **`delta` `local` — `RSN-TRUNCATED`'s gloss collides with AC-2.3's bounding.** AC-3.2 glosses `RSN-TRUNCATED` as "cut mid-document", but AC-2.3's per-document bound also cuts a document and that document is **selected**, carrying the bounded flag — while AC-3.2's whole catalogue is reasons a document was **not** selected. AC-4.2 disambiguates by context (it lists truncation beside unreadable and unparseable, i.e. a source-side state), which is why this is Low rather than Medium. Re-gloss as "the source document is itself truncated mid-document (C-7) — not a document this feature bounded under AC-2.3", so no test engineer has to infer it from a sibling criterion. | AC-3.2, AC-2.3, AC-4.2 |
 | F-05 | Low | Local | **`delta` `local` — AC-4.1 reads ungrammatically after the F-05 re-point.** "the report records that the corpus-level `RSN-EMPTY` outcome (AC-3.2) rather than omitting the field" — the "that" from the old wording survived the edit. Drop it. | AC-4.1 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Given F-01's packaging measurement, does the feature still want *any* code-level coupling to `consolidate-learnings.js`, or is a literal `LS_FILES_ARGV` pin (a test that reads both declarations and asserts the argv match) the whole of the reuse? The second reads truer to DEC-CONS-05's own evidence form and needs no packaging change; C-3 currently implies the first. |
+| Q-02 | C-1's rule admits the erratum **land-proof retry** dispatch (`orchestrate-dev.js:12915`, also tagged `dispatchKind: "authoring"`, same document target) as well as the first erratum pass. Intended? A rule over the tag says yes, and AC-1.2's set equality picks it up automatically — worth one clause in C-1 so a test engineer counting sites does not read it as a leak. |
+
+## Positive Observations
+
+- The F-01 rewrite is materially more honest than v2's: "DEC-CONS-05 ships *one predicate, two
+  enumerations*, so nothing here claims its readers agree as sets" is checkable against
+  `DECISIONS-pdlc-consolidation-agent.md:422` and the rejected-alternatives block at `:462-476`, and
+  O-7's "no agreement test is owed" closes the oracle question rather than deferring it. The
+  remaining problem is packaging, not authority.
+- C-1's move to `dispatchKind: "authoring"` is exactly the right kind of correction: it replaced a
+  claim I could not check with one I could, in four grep-able sites, and it proved my v2 finding
+  wrong rather than accommodating it. That is the cheapest possible way to end a citation dispute.
+- The AC-3.2 catalogue split is the strongest edit of the round. Two closed sets with two
+  set-equality tests, corpus-level outcomes recorded once per run, and `RSN-EMPTY` added so an
+  empty corpus is a named state rather than a missing field — this matches the shipped seam's own
+  union shape (`consolidate-learnings.js:1348-1354`) and it decides the assertion shape the test
+  engineer was otherwise going to guess.
+- AC-3.3's "run-level record" and AC-3.1's "closed over these per-dispatch row fields alone" split
+  the closure into two enumerations that can each actually be set-equal. The previous single closure
+  could not be, and no reviewer had named it.
+- AC-4.4's rewrite is a real semantic decision, not a wording fix: zero-threshold configuration is
+  now an enabled run with an empty selection, which keeps the disabled branch's absent-key
+  invariant falsifiable.
+
+## Recommendation
+
+**Needs revision**
+
+One High. F-01 is a bounded edit in the same three places as last round — §1.2 claim 2, C-3, O-7 —
+and it does not cost the reuse intent: pin the argv literally (DEC-CONS-05's own evidence form),
+record that the engine vendors only `orchestrate-dev.js` and `orchestrate-queue.js`, and delete the
+"same JS bundle" phrase. Left as written, an implementer adds a cross-module import that works in
+this checkout and breaks in the published package.
+
+F-02 is worth taking in the same pass: it decides whether AC-5.1a's oracle can fail at all, and it
+is the one open question the test engineer cannot resolve without guessing. F-03, F-04 and F-05 are
+one clause each.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 3}
