@@ -232,8 +232,9 @@ requirements altitude.
   (BL-04), Then A6 does not apply and the phase behaves exactly as today, with the inapplicability
   named once in the run report rather than being silently indistinguishable from a quiet seam. The
   observable is a cardinality on a named surface, not a mention: exactly one inapplicability notice
-  per run — not per wave — on the run's notice surface, naming which of BL-03 or BL-04 was absent,
-  and none at all in a run where A6 applies. BL-04's case already emits such a notice once per run
+  per run — not per wave — on the run's notice surface, naming **every** absent prerequisite, since
+  a run can lack the ownership manifest and the script-owned gate alike and one notice then names
+  both; and none at all in a run where A6 applies. BL-04's case already emits such a notice once per run
   when the script-owned gate degrades; BL-03's has no equivalent today and acquires one. *(US-02.)*
 
 ### REQ-AWG-02 — The A6 contract (P0)
@@ -259,7 +260,9 @@ requirements altitude.
   (C-3): a verdict whose classification is absent or outside the set is read as `unclassified` rather
   than rejected, and — because `unclassified` authorises nothing — the wave escalates without
   consuming an attempt, since an attempt is a repair→re-gate cycle and no repair was attempted
-  (AC-2.4). This is distinct from the malformed verdict of AC-2.1, which does consume one.
+  (AC-2.4). This is distinct from the malformed verdict of AC-2.1, which does consume one, and
+  AC-2.1 is the more specific rule where both could read: a verdict that is malformed **and**
+  unclassifiable is judged malformed first, so the attempt is consumed.
   *(US-02, US-05.)*
 - **AC-2.3** — Given an A6 diagnosis, Then it cites the gate command's own output as its evidence. A
   diagnosis citing no gate output is malformed under AC-2.1 — the gate output is the only evidence
@@ -286,10 +289,11 @@ requirements altitude.
   | E-5 | a repair confined to the failing wave's **own** owned paths | every path the proposal would change is a member of the union of the owned-path sets the PLAN's ownership manifest assigns to that wave's tasks |
   | E-6 | completing a promotion the PLAN schedules for a **later** task | the gate output names a symbol or artifact that a later task's PLAN row already undertakes to produce, **and** every path the proposal would change is a member of that later task's owned-path set |
 
-  Nothing else A6 proposes is in the envelope. E-5 and E-6 are stated in the tier's own envelope
-  shape — an id, a permitted action, and the rule deciding membership — so the envelope stays one
-  closed set of six over one schema, assertable by a single set-equality (M-WG-9), rather than two
-  schemas joined by prose. *(US-01, US-03.)*
+  Nothing else A6 proposes is in the envelope. The shipped set-equality is over member **ids**
+  alone (M-WG-9), so it widens from four members to six; the permitted action and the deciding rule
+  are this document's presentation of each member, not fields of a shipped record. The envelope
+  stays one closed set of six, assertable by that single set-equality rather than by prose joining
+  two sets. *(US-01, US-03.)*
 - **AC-3.2** — Given the tier's existing exclusion set (`REQ-pdlc-advisory-tier` AC-3.4), Then it
   holds unchanged for A6, and clause (a) — **any** change to a test file or test configuration —
   takes precedence over E-5 and E-6 wherever they would otherwise permit a change. This binds even
