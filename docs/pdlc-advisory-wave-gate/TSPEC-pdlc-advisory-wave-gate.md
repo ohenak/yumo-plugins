@@ -480,6 +480,27 @@ ownership-disjoint — so a manifest row naming a directory (`pdlc/workflows/dis
 beneath it, and a run's envelope decision and its wave-packing decision cannot disagree about what
 a manifest row means.
 
+**`ownedSetCovers`'s prefix coverage has a spelling precondition, and it is an operator-visible
+one (TE F-06).** It reuses `pathsCollide` (`orchestrate-dev.js`, `pathsCollide`), whose directory
+rule is written on the trailing slash: `a/b/` collides with `a/b/c.js`, `a/b` does not — the
+docblock says so and the implementation is three `startsWith` lines that do exactly that. So the
+claim that a manifest row naming a directory covers the files beneath it is true **only of a row
+written with a trailing slash**. A manifest row spelled `pdlc/workflows/dist` refuses a produced
+file `pdlc/workflows/dist/orchestrate-dev.bundle.js` as `out-of-envelope`, and refuses it
+silently — the operator sees a refusal reason, not a spelling diagnosis.
+
+This is inherited behaviour, not new: `computeWaves` packs waves with the same predicate, so the
+slash-less row is already narrower than its author meant everywhere else in Phase I too. A6 does
+not fix it here — widening `pathsCollide` would change wave packing, which is out of this
+feature's envelope — but it does two things about it:
+
+1. States the precondition where the E-5/E-6 claim is made, so a PLAN author reading §3.4 knows
+   directory rows are written `dir/`.
+2. Gives it a test over both spellings (§5.5): slash-ful row covers, slash-less row refuses with
+   `out-of-envelope`. No FSPEC AT covers the slash-less case, and it is the realistic operator
+   error, so the test exists to make the boundary visible rather than to pin a new rule.
+
+
 **Comparison happens twice, through the shipped `classifyEnvelope`, not through a new matcher.**
 `declaredScope` starts as `E-5 ∪ E-6` (exact manifest entries). `producedPaths()` then rewrites it
 **in place** to `E-5 ∪ E-6 ∪ {produced paths p : ∃ e ∈ (E-5 ∪ E-6), ownedSetCovers(e, p)}` before
@@ -523,8 +544,11 @@ Both run the plumbing of §2.5 through the injected `_git(argv)` transport, whos
 `.git/index.lock` for a second or two after the dispatch returned — the shipped reason
 `commitPaths` retries the same two verbs.
 
-- `captureTreeSnapshot` returns `null` on any `ok !== true`; the caller emits a notice and does not
-  dispatch. Refusing to act beats acting without a way back.
+- `captureTreeSnapshot` returns `null` on any `ok !== true`. The caller does not simply decline
+  to dispatch: per §2.5 and §3.2 step 4 it escalates through the `__preDispatch` escape with
+  reason `snapshot-unavailable`, writing the advisory record entry and the escalation entry, and
+  only then lets the wave halt on its own gate literal. Refusing to act beats acting without a
+  way back — and refusing to act while writing nothing down is what the first draft got wrong.
 - `restoreTreeSnapshot` **throws** on any `ok !== true`. The throw is what `doRevert` tags
   `__isRevertFailure` and the driver's terminal catch rethrows — E-28, AT-05-5.
 
