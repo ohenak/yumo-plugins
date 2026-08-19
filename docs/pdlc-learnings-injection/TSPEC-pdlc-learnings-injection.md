@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | REQ → FSPEC → **TSPEC** — `docs/pdlc-learnings-injection/FSPEC-pdlc-learnings-injection.md` (v0.5); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.3 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.4 | 2026-08-19 |
 
 ## Scope
 
@@ -153,7 +153,10 @@ Three properties of this attachment carry the load:
    superset, AC-4.3's byte-identity for non-authoring dispatches fails on every full pipeline run,
    and R-4's imported prior-feature decisions would reach code remediation. `docType` is still the
    pipeline's own value, not a new taxonomy — the condition consumes two existing fields rather
-   than one, and both are already carried to the composition point.
+   than one, and both are already carried to the composition point. FSPEC BR-1 as written forbids
+   this conjunct ("consumes the classification, it does not restate the membership"), and AT-02's
+   expected set inherits the ambiguity, so the divergence is **routed as ERR-7**, not resolved
+   silently in code (TE F-06).
 
    **The coincidence is an invariant, and it is asserted, not assumed.** That
    `LEARNINGS_TARGET_DOCTYPES` currently equals the `docType` set `converge()` drives at HEAD —
@@ -264,7 +267,7 @@ corpora — different `orderKeys`, or dispatch 1 listable and dispatch 5 `RSN-UN
 | `ruleInputs` | run-level | the `orderKeys`/`thresholds` the **last** authoring dispatch observed |
 | `dispatches[i].corpusOutcome` | per-dispatch | that dispatch's own value, always recorded |
 | `dispatches[i].orderKeys` | per-dispatch | that dispatch's own ordering keys, always recorded |
-| `dispatches[i].corpusDiverged` | per-dispatch | `true` iff this dispatch's `{corpusOutcome, orderKeys}` differ from the immediately preceding authoring dispatch's |
+| `dispatches[i].corpusDiverged` | per-dispatch | `true` iff this dispatch's `{corpusOutcome, orderKeys}` differ from the immediately preceding authoring dispatch's; **`false` — never `null` — on the first dispatch of a run**, which has no predecessor to differ from (TE Q-02), so `dispatches.every(r => r.corpusDiverged === false)` is a valid stable-corpus assertion |
 
 Last-write-wins is chosen over first-write-wins because the run-level record is an operator's
 *current-state* summary and the last dispatch is the one closest to the state on disk when the run
