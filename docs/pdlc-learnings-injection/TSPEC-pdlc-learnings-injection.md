@@ -480,7 +480,8 @@ field's catalogue.
 
 ```js
 learningsInjection: {
-  // BR-10 — run-level, exactly two members, closed
+  // BR-10 — run-level, exactly two members, closed. Run-level scalars are
+  // LAST-WRITE-WINS across authoring dispatches (§A.5); each dispatch also keeps its own.
   ruleInputs: {
     orderKeys: [ { path: "docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md",
                    orderKey: "2026-08-02" },
@@ -496,6 +497,10 @@ learningsInjection: {
       rows: [ { sourcePath: "…", position: 1, bytesInjected: 5871, bounded: true } ],
       totalBytesInjected: 5871,
       rejected: [ { sourcePath: "…", reason: "RSN-BYTES" } ],
+      // §A.5 — this dispatch's OWN observation, so a divergent-corpus run stays reconstructable
+      corpusOutcome: null,          // this dispatch's value, not the run's last
+      orderKeys: [ /* … as observed by THIS dispatch … */ ],
+      corpusDiverged: false,        // true iff differs from the preceding authoring dispatch
     },
   ],
   notices: [ { id: "NTC-KEYTYPE", key: "maxDocuments" } ],
