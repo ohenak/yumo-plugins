@@ -705,18 +705,38 @@ defaults. `.claude/pdlc.config.example.json` — the tracked arrangement `pdlc/e
 | Advisory record entry | `docs/{feature}/ADVISORY-{feature}.md` | The tier's `renderAdvisoryEntry` table, plus the root-cause class and, on a resolution, the repair's paths | Every terminal disposition, including the no-dispatch escalation |
 | Escalation log entry | `docs/_queue/ESCALATIONS.md` | The tier's `renderEscalationEntry`, root-cause class in the decision sentence | Every `escalated` disposition |
 | Report notice | run report `notices` | The tier's `ADVISORY ESCALATION: seam A6 …`; and, separately, a failed escalation-log write | Every escalation (E-30, AT-06-6) |
-| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}` | Every non-resolved wave (AC-6.3) |
+| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}` | Every A6-touched halt: a non-resolved wave (AC-6.3), a `snapshot-unavailable` escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
 | Snapshot ref | `refs/pdlc/a6-snapshot` | A dangling commit | Every A6 invocation that reached the snapshot step |
 
 Two consequences worth stating rather than discovering:
 
-- **The record entry is written at seam termination, before a post-gate halt can be known.** So on a
-  resolution it says "a repair was applied and remains in the working tree", naming its paths — a
-  statement true at resolution time and still true after E-22's un-skip-guard halt, because BR-10's
-  three restoration triggers are exhaustive and a post-gate halt is not among them. That is how
-  AT-05-4's "the advisory record entry states a repair remains applied" is satisfiable at all.
+- **The post-gate un-skip halt is a designed carrier, not an inherited one (TE F-01).** BR-10's
+  three restoration triggers are exhaustive, so a wave A6 *resolved* whose un-skip guard then
+  halts keeps its repair in the working tree — and AT-05-4 requires that both the advisory record
+  entry **and the halt report** say so and name the repair's paths. The shipped un-skip halt
+  cannot say it: it is `throw haltError(formatUnskipViolations(waveNum, unskip.violations))`,
+  a one-argument call with no `fields` object, so today the report carries violations and nothing
+  else. AT-05-4's halt-report conjunct is therefore unsatisfiable without a change, and this is
+  the change:
+
+  | Aspect | Contract |
+  |---|---|
+  | Call shape | the un-skip `haltError` gains a **second argument**, `{ advisory: waveAdvisoryFields }`, exactly as the test-gate halt in §2.3 does |
+  | Value when A6 did not fire on this wave | `undefined` — the argument is omitted and the halt is byte-identical to today's, which keeps every shipped un-skip fixture green and keeps the disabled tier's byte-identity claim (§5.2) true |
+  | Value when A6 resolved this wave | `{rootCause, diagnosis, repairApplied: true, repairPaths}` — the same object §4.5's row names, read from the wave's A6 outcome |
+  | Restoration | none. The un-skip halt is not one of BR-10's triggers, and §5.2 asserts the *absence* of restoration on this path alongside the positive assertion that the repair is still present |
+  | Message string | unchanged — `formatUnskipViolations`'s output is not rewritten. The diagnosis travels in `fields`, never in the reason string, which is what lets AT-05-3's literal comparison and AC-6.3 both hold |
+
+  The record entry is written at termination, before this halt is known, which is why it states
+  "repair applied and remains in the working tree" and names the paths at resolution time rather
+  than reporting the halt: the entry describes what A6 did, the halt report describes what the
+  wave then hit. Q-02 of the test-engineer review asks whether this shape is the intended
+  disposition for "repair greened the gate by skipping a test" — it is: A6 caught post-gate is a
+  **retained** repair with a halt beside it, never a refusal, because refusing would restore, and
+  restoring here would silently undo work that passed the gate.
+
 - **Only escalations are durably countable.** The advisory record is distilled into LEARNINGS and
-  deleted at Phase PUB (`pdlc-advisory-corpus-baseline.md` §1), so `plan-ordering-defect`
+  deleted at Phase H2's distil (`pdlc-advisory-corpus-baseline.md` §1), so `plan-ordering-defect`
   recurrence is countable from `ESCALATIONS.md` and resolution counts are not (AC-6.4's honest
   limit, REQ O-2). A6 adds no persistence to change that, deliberately.
 
