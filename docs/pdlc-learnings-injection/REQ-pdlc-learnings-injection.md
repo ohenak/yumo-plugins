@@ -15,9 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 3 findings addressed; erratum v0.5 | Claude | 0.5 | 2026-08-19 |
-
-**Erratum v0.5** — targeted edit absorbing FSPEC decisions; nothing else changed. C-3/AC-2.6: no separate `docs/discarded/` exclusion — depth, not a rule (BR-2). AC-2.1: the count is a cap, not an equality above the threshold (BR-5). AC-2.2: ordering is a pure function of (key value, path); directory-rename invariance withdrawn (BR-4). AC-3.2/AC-4.2: `RSN-TRUNCATED` replaced by `RSN-NO-MATERIAL`; three closed catalogues (BR-9). AC-5.1b split into AC-5.1b (present, not an object) and AC-5.1c (wrong-typed key, run stays enabled); misspelt-section example withdrawn (BR-14).
+| pdlc | draft — round 3; erratum v0.5 absorbs FSPEC BR-2/4/5/9/14 (C-3, C-9, AC-2.1/2.2/2.6/3.2/4.2/4.4/6.2; AC-5.1b split) | Claude | 0.5 | 2026-08-19 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -170,13 +168,8 @@ passes is exactly where an unattended queue does its work.
   test pins the restatement against `consolidate-learnings.js`'s own declaration — DEC-CONS-05's
   own evidence form, needing no packaging change (O-7). No claim is made that the definition is
   held equal across readers: DEC-CONS-05 ships one predicate with two enumerations and rejected a
-  set-equality oracle against the `SessionStart` hook, so none is owed here. **No separate
-  `docs/discarded/` exclusion rule is added** *(erratum v0.5)*: documents under
-  `docs/discarded/{feature}/` sit one directory deeper than either location the shipped
-  enumeration reaches, so nothing about them enters the record, while a document lying
-  *directly* at `docs/discarded/LEARNINGS-*.md` is matched by that enumeration and is a corpus
-  member on ordinary terms. Adding an exclusion would change the answer for paths the shipped
-  predicate does match. The feature reads the corpus and writes nothing (NG-1, NG-4).
+  set-equality oracle against the `SessionStart` hook, so none is owed here. `docs/discarded/` gets
+  **no exclusion rule of its own** (AC-2.6). The feature reads the corpus and writes nothing (NG-1, NG-4).
 - **C-4 — Injected material is labelled advisory, and its status is stated to the author.** The
   material arrives delimited and identified by its source document, and the author is told that
   it is prior-feature context, not a requirement of the feature being authored and not an
@@ -210,8 +203,8 @@ passes is exactly where an unattended queue does its work.
   cannot be honoured alongside them, less is injected — never something existing removed.
 - **C-9 — Operator-visible strings are catalogued; every input state is total** *(DC-01)*. Every
   report line and notice this feature emits is a registered catalogue entry with an id a test can
-  assert on — including AC-3.2's per-document reason ids, its corpus-level outcome ids, and the
-  configuration notices of AC-5.1b and AC-5.1c.
+  assert on — including AC-3.2's per-document reason and corpus-level outcome ids, and the
+  AC-5.1b/AC-5.1c configuration notices.
   On the receive side, every corpus input state and every configuration state — absent, malformed,
   truncated — resolves to a defined outcome (C-7, Group 4). How the catalogue is registered is
   TSPEC's; the closure of the set and the id-per-reason discipline are requirements.
@@ -277,10 +270,9 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 - **AC-2.1** *Given* a corpus of `N` prior LEARNINGS documents for any `N`, *when* a dispatch is
   composed, *then* the number of source documents contributing to it is at most
-  `learningsInjection.maxDocuments` for every `N` — a corpus of 5 and a corpus of 50 both stay
-  under that cap. The count reaches the threshold only where the byte bounds (AC-2.3, AC-2.4) do
-  not bind first; under §4.1's declared values the byte bounds are what bind on measured corpora,
-  so "equals it exactly above the threshold" is **not** claimed *(erratum v0.5)*.
+  `learningsInjection.maxDocuments` for every `N`. It reaches that cap only where the byte bounds
+  (AC-2.3, AC-2.4) do not bind first; under §4.1's values they bind on measured corpora, so
+  equality above it is **not** claimed.
 - **AC-2.2** *Given* a corpus whose `N` exceeds `learningsInjection.maxDocuments`, *when* a dispatch
   is composed, *then* the selected documents are the highest-ordered under a total ordering that is
   a function of repository state alone, with a **total tiebreak**: where the ordering key is absent,
@@ -290,9 +282,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   wall-clock time, file mtime, or a model's judgement (C-5, NG-2). The ordering key itself is O-2's
   to bind before FSPEC authoring; two properties are testable today without it: permuting file
   mtimes and re-running yields an identical selection, and the ordering is a pure function of
-  (ordering key value, repository-relative path) and nothing else. Directory-rename rank
-  invariance is **not** claimed *(erratum v0.5)*: the path is load-bearing in the tiebreak, and
-  the tiebreak is exercised by real documents that carry no ordering key.
+  (ordering key value, repository-relative path) and nothing else. Rank invariance under a
+  directory rename is **not** claimed: the path is load-bearing here.
 - **AC-2.3** *Given* a corpus containing a document larger than
   `learningsInjection.maxBytesPerDocument`, *when* it is selected, *then* the material taken from it
   does not exceed that threshold, the total across selected documents does not exceed
@@ -306,12 +297,10 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-2.5** *Given* two runs over an identical repository state, *when* the two composed
   dispatches for the same document type are compared, *then* the injected material is
   byte-identical, including order (G-3, C-5).
-- **AC-2.6** *Given* a corpus containing a LEARNINGS document under `docs/discarded/{p}/`,
-  *when* selection runs, *then* that document is neither selected nor named in any report record,
-  because C-3's enumeration does not reach that depth; *and given* one lying directly at
-  `docs/discarded/LEARNINGS-*.md`, it is a corpus member on ordinary terms *(erratum v0.5)*;
-  *and given* one under `docs/completed/{p}/`, it is eligible on the same terms as one
-  under `docs/{p}/`.
+- **AC-2.6** *Given* a LEARNINGS document under `docs/discarded/{p}/`, *when* selection runs,
+  *then* it is neither selected nor recorded, C-3's enumeration not reaching that depth; *and
+  given* one directly at `docs/discarded/LEARNINGS-*.md`, it is a corpus member on ordinary terms;
+  *and given* one under `docs/completed/{p}/`, it is eligible as one under `docs/{p}/` is.
 
 **Group 3 — observability** *(US-03; G-3; C-9)*
 
@@ -326,14 +315,13 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   **not** selected, each with a **per-document** reason drawn from a closed set of catalogued ids
   (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
   bound), `RSN-SELF` (the authored feature's own, C-2), `RSN-UNREADABLE`, `RSN-UNPARSEABLE` (read,
-  not a LEARNINGS document), `RSN-NO-MATERIAL` (eligible, but carrying none of the material the
-  bounding rule takes). Truncation is **not** a member *(erratum v0.5)*: a truncated file either
-  still presents as a LEARNINGS document, in which case it is eligible, or it does not and carries
-  `RSN-UNPARSEABLE`. States in which no document is
+  not a LEARNINGS document), `RSN-NO-MATERIAL` (eligible, carrying none of the material the
+  bounding rule takes). Truncation is **not** a member: a truncated file is either still a
+  LEARNINGS document, so eligible, or `RSN-UNPARSEABLE`. States in which no document is
   known are **corpus-level outcomes**, recorded once per run, drawn from their own closed set:
   `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). The configuration notices of
-  AC-5.1b and AC-5.1c form a **third** closed catalogue. Three set-equality tests, one
-  per catalogue; with a corpus-level outcome recorded, AC-3.1's rows are present and empty.
+  AC-5.1b and AC-5.1c form a **third** closed catalogue. Three set-equality tests, one per
+  catalogue; with a corpus-level outcome, AC-3.1's rows are present and empty.
 - **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce the
   selection by hand against the same repository state, *then* every input the rule used — the
   ordering key value per document and the §4.1 thresholds in force — is in the report's run-level
@@ -353,8 +341,7 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   as it is today, the run completes with unchanged behaviour, and the report records the
   corpus-level `RSN-EMPTY` outcome (AC-3.2).
 - **AC-4.2** *Given* a corpus file that cannot be read, or that reads but does not parse as a
-  LEARNINGS document — the outcome a file truncated mid-document resolves to when its remaining
-  bytes no longer present one *(erratum v0.5)* — *and* separately given a corpus listing that fails
+  LEARNINGS document — where a truncated file lands — *and* separately given a listing that fails
   outright, *when* selection runs, *then* the affected document is skipped with its per-document
   reason id recorded and the rest of the corpus used normally, a failed listing injects nothing and
   records `RSN-UNLISTABLE` at corpus level (AC-3.2), and
@@ -369,8 +356,7 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-4.4** *Given* thresholds in §4.1 configured to values that admit nothing (zero documents
   or zero bytes), *when* the pipeline runs, *then* it behaves as an enabled run whose selection is
   empty — AC-3.1's empty rows, not AC-5.1a's absent key — rather than treating the configuration
-  as invalid and refusing. A declared key carrying the wrong type is AC-5.1c's state, likewise
-  enabled *(erratum v0.5)*.
+  as invalid and refusing. A wrong-typed key is AC-5.1c's state, likewise enabled.
 
 **Group 5 — inertness when disabled, and semantics preserved** *(G-5; NG-3, NG-4, NG-7)*
 
@@ -378,18 +364,14 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   absent, *when* the pipeline runs, *then* every composed dispatch is byte-identical to AC-6.2's
   recorded baseline — that committed pre-feature fixture, not a second branch of this run —
   and no injection summary is carried: the key is absent, not present-and-empty.
-- **AC-5.1b** *Given* the `learningsInjection` section present but **not an object** — the
-  present-but-wrong-shaped reading the repository's sibling configuration readers already ship —
-  *when* the pipeline runs, *then* behaviour is AC-5.1a's **and** the report carries a catalogued
-  notice naming the malformed configuration, so a malformed section is distinguishable from a
-  deliberate disable rather than byte-identical to it (DC-01, C-9). A **misspelt section name** is
-  a stray top-level key, reads as an absent section, and is AC-5.1a's state: detecting it would
-  need a registry of legal top-level keys that does not exist, and no such rule is required
-  *(erratum v0.5)*.
-- **AC-5.1c** *Given* the section present and well-shaped but a **declared §4.1 key carrying the
-  wrong type**, *when* the pipeline runs, *then* the run stays **enabled** with that key at its
-  §4.1 default, and the report carries a catalogued notice naming the key — a mistyped threshold
-  does not turn the feature off *(erratum v0.5)*.
+- **AC-5.1b** *Given* the `learningsInjection` section present but **not an object** — malformed
+  as the repository's sibling config readers already read it — *when* the pipeline runs,
+  *then* behaviour is AC-5.1a's **and** the report carries a catalogued notice naming it, so a
+  a malformed section is distinguishable from a deliberate disable (DC-01, C-9). A **misspelt
+  section name** reads as absent and is AC-5.1a's state; no unknown-key registry is required.
+- **AC-5.1c** *Given* the section well-shaped but a **declared §4.1 key wrong-typed**, *when* the
+  pipeline runs, *then* the run stays **enabled** with that key at its default and the report
+  carries a catalogued notice naming it — a mistyped threshold does not disable the feature.
 - **AC-5.2** *Given* a run with injection active, *when* the filesystem is observed for the whole
   run, *then* the corpus paths touched are exactly the reads of the documents AC-3.1 and AC-3.2 name
   — a positive membership claim, not an absence-only one — and no file under `docs/_constraints/` or
@@ -412,9 +394,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   byte-identity against **the recorded baseline** — a fixture composition captured from the
   pre-feature HEAD (no injection seam present), committed and never regenerated by the branch under
   test — and asserts that AC-5.1b's catalogued notice fires on a section that is present and not an
-  object, and AC-5.1c's on a wrong-typed declared key, so a regression
-  leaking injected text into a disabled run, or silencing either notice, is a test
-  failure, not a production discovery.
+  object, and AC-5.1c's on a wrong-typed key, so a regression leaking injected text into a
+  disabled run, or silencing either notice, is a test failure, not a production discovery.
 
 ## 6. Risks
 
