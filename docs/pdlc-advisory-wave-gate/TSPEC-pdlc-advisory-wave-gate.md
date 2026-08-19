@@ -495,6 +495,7 @@ async function runWaveGateSeam({
   feature, waveNum, waves, waveIndex, tasks, ownership, implConfig, scriptGate,
   gateResult,          // the FIRST pass's { ok:false, output } — the evidence, untruncated
   invocations,         // the per-wave sequence array (§2.4)
+  advisoryTierOn,      // the resolved boolean from `orchestrate-dev.js:13678` — NOT a fresh `.enabled` read
   advisoryConfig, rungState, waveBudget,   // waveBudget: { resolved: number }
   promotions,          // Map<taskId, {paths: string[], symbol: string}> — §3.6
   _agent, _git, _runCommand, _readFile, _appendFile, _log, _now, _sleep, _notice,
@@ -511,10 +512,20 @@ Control flow, in the order the FSPEC's §3.2 steps name:
 1. **Applicability** is already decided by the caller: this function is called only from the
    wave-mode branch, only under `scriptGate`, only for an ordinary wave, only on a red test gate.
    Steps 1 and 2 are therefore *structural* — there is no `if` to get wrong (BR-1, AC-1.2, AC-1.3).
-2. **Tier gate.** `advisoryConfig.enabled === false` returns `{resolved:false}` before anything
+2. **Tier gate.** `advisoryTierOn === false` returns `{resolved:false}` before anything
    else — before the snapshot, before `buildA6SeamOps`, before any rung resolution. `runAdvisorySeam`
-   also returns early on a disabled config; the check is duplicated here deliberately, because
+   also returns early on a disabled config; the *gate* is duplicated here deliberately, because
    AC-1.4's inertness claim covers the *snapshot* too, and the snapshot is A6's, not the driver's.
+   What is duplicated is the tier **gate**, never the tier **read**. `runWaveGateSeam` receives the
+   already-resolved `advisoryTierOn` boolean (`orchestrate-dev.js:13678`) as a parameter and performs
+   no `.enabled` access of its own. A literal `advisoryConfig.enabled === false` here — or any
+   `.enabled` token at all, comments and strings included — would make PROP-DIS-06's count four and
+   go red (§1.3's `.enabled` row): the oracle matches `/\.enabled\b/g` over the raw source text of
+   `orchestrate-dev.js` and `orchestrate-queue.js` with only `parseAdvisoryConfig`'s body excised
+   (`advisoryDisabled.test.js:634`–`:658`), and today's exactly-three sites are `orchestrate-dev.js:3258`,
+   `:13678` and `orchestrate-queue.js:1318`. It would also contradict the shipped design intent stated
+   at `orchestrate-dev.js:13675`–`:13677` — "Read once, reused everywhere below … so the tier's own
+   master switch is inspected from source text exactly once here."
 3. **Wave budget.** `waveBudget.resolved >= advisoryConfig.waveBudgetPerRun` ⇒ escalate with no
    dispatch, via the shipped `{ __preDispatch: { outcome: "escalated", reason: "budget-exhausted" } }`
    escape `gatherEvidence` already supports. The advisory record and the escalation log are still
