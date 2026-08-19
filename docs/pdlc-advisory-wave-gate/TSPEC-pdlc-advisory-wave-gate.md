@@ -744,20 +744,34 @@ Two consequences worth stating rather than discovering:
 
 ### 5.1 Where the tests live
 
+This table is the PLAN's file-ownership manifest for the test half of the work, and it is now
+**set-equal to §1.3's edit list** — the earlier draft named seven files where §1.3 declares ten,
+which would have shipped a manifest smaller than the edit the document itself predicts (TE F-02).
+
 | File | Status | Carries |
 |---|---|---|
-| `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | new | A6's parsers, envelope classification, invocation ordering, snapshot/restore, budget |
-| `pdlc/workflows/__tests__/advisoryEnvelope.test.js` | edited | The two transcribed set-equality oracles (§1.3) |
-| `pdlc/workflows/__tests__/advisoryConfig.test.js` | edited | The re-declared `ADVISORY_DEFAULTS` literal, plus `waveBudgetPerRun`'s validator |
-| `pdlc/workflows/__tests__/advisoryDriver.test.js` | edited | PROP-GATE-06's `GATE_EXCLUSIVITY_REGISTRY`-keys-equal-`ADVISORY_SEAMS` oracle; `classifyReply`'s three returns |
-| `pdlc/workflows/__tests__/advisoryDisabled.test.js` | edited | The disabled-tier byte-identity properties, extended over Phase I |
-| `pdlc/workflows/__tests__/waveExecution.test.js` | edited | Wave-loop call-site behaviour with A6 absent and present |
-| `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` | edited | The `SEAMS` literal and an A6 reply builder |
+| `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | new | A6's parsers, envelope classification, invocation ordering, snapshot/restore, wave budget, the prohibition tests of §5.5, the capture-failure disposition, the post-gate un-skip halt fields |
+| `pdlc/workflows/__tests__/advisoryEnvelope.test.js` | edited | The two transcribed set-equality surfaces (§1.3) |
+| `pdlc/workflows/__tests__/advisoryConfig.test.js` | edited | The re-declared `ADVISORY_DEFAULTS`, plus `waveBudgetPerRun`'s non-negative validator (AT-07-2b) |
+| `pdlc/workflows/__tests__/advisoryDriver.test.js` | edited | PROP-GATE-06's `GATE_EXCLUSIVITY_REGISTRY`-keys-equal-`ADVISORY_SEAMS` assertion, plus `classifyReply`'s three arms (§3.7) |
+| `pdlc/workflows/__tests__/advisoryDisabled.test.js` | edited | The disabled-tier byte-identity cases, extended per §5.2 |
+| `pdlc/workflows/__tests__/waveExecution.test.js` | edited | Wave-loop call-site behaviour: A6 reachable only from the red script-gate arm, the un-skip halt's new optional `fields`, the promotion commit |
+| `pdlc/workflows/__tests__/advisoryRecord.test.js` | edited | The per-seam `rows.map((r) => r.seam)` `test.each` list gains A6 (§1.3); **and** AC-6.1/AC-6.2's record assertions for A6 — an entry per invocation, the failed-record-write refusal (AT-06-1, AT-06-2) |
+| `pdlc/workflows/__tests__/advisoryEscalationLog.test.js` | edited | AC-6.2/AC-6.4's log assertions for A6: the escalation entry's decision sentence carries the root-cause class, and a failed log write never undoes the escalation (AT-06-3, AT-06-5, AT-06-6) |
+| `pdlc/workflows/__tests__/advisoryHarvest.test.js` | edited | The harvest seam list, six members (§1.3) |
+| `pdlc/workflows/__tests__/consolidationProperties.test.js` | edited | The property-side seam list, six members (§1.3) |
+| `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` | edited | The `SEAMS` literal and the A6 double |
 
-The six transcribed surfaces of §1.3 go red on the first constant edit. That is the intended
-signal, not collateral: each is a set-equality or ordered-sequence oracle that exists precisely so
-that adding a seam cannot be silently additive. Each edit is a transcription of the new value, never
-a loosening of the assertion to a subset or `toContain` check.
+The `edited` rows on the transcribed surfaces of §1.3 go red on the first constant edit. That is
+the intended signal, not collateral: each of those set-equality and ordered-sequence oracles
+exists precisely so that adding a seam cannot be silently additive. Each edit is a transcription
+of the new value, never a loosening of the assertion to a subset or a `toContain` check.
+
+Two of the rows are ones the first draft missed for a reason worth naming: `advisoryRecord` and
+`advisoryEscalationLog` already exist and already own AC-6.x's shape for the shipped seams, so
+A6's record and log obligations belong beside them rather than in the new file. A new suite
+re-asserting the record schema would be a second, drifting copy of an oracle that already holds.
+
 
 ### 5.2 What is asserted mechanically
 
