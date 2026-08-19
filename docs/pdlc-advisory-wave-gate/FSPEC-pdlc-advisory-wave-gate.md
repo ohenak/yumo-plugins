@@ -80,6 +80,87 @@ nothing about how; §7 carries them forward so the TSPEC author inherits them fr
 
 ## 3. Behavioral Flow
 
+### 3.1 Baseline — the wave as it behaves today
+
+One Phase I wave runs its members in parallel in one shared tree, told not to commit. Three
+conditions end the wave, in this order, with nothing committed: a dispatch-level failure (M-WG-1);
+the configured post-wave command failing (M-WG-2); the script-owned test gate failing (M-WG-3). Only
+past a green gate does anything commit, pathspec-scoped, per task and then for the post-wave
+pathspecs (M-WG-4). A6 sits between the third condition and the halt it causes. It sits nowhere else.
+
+### 3.2 The A6 lifecycle
+
+**Step 1 — Applicability.** Before anything is dispatched, the run establishes whether A6 applies at
+all. It applies only when all four hold: the tier is enabled; Phase I is in wave mode on a valid
+ownership manifest (BL-03); a script-owned gate is configured (BL-04); and the wave is an ordinary
+implementation wave, not the final V-wave. If any fails, A6 does not apply, the phase behaves exactly
+as it does today, and inapplicability is stated once per run on the run's notice surface (§5 E-01,
+E-02, E-03).
+
+**Step 2 — Trigger.** A6 fires on exactly one condition: the script-owned test gate returning
+non-zero for an ordinary wave (M-WG-3). A dispatch-level failure (M-WG-1) and a post-wave command
+failure (M-WG-2) both halt exactly as today and never reach A6 (BR-1).
+
+**Step 3 — Budget admission.** Before dispatch, the run checks the wave budget: if A6 has already
+*resolved* `advisory.waveBudgetPerRun` distinct waves in this run, the wave escalates without any
+dispatch (BR-11). Attempt and time budgets are checked inside the invocation, not here.
+
+**Step 4 — Diagnose.** A6 is dispatched on the tier's existing model rung, receives the gate
+command's captured output, and returns the tier's existing verdict carrying one added field: a
+root-cause classification drawn from a four-member closed vocabulary (BR-2). The diagnosis must cite
+the gate output it rests on (BR-3).
+
+**Step 5 — Authorisation.** The tier's existing rule decides whether any action is taken: only when
+the proposal is inside the envelope **and** confidence is high. A6 adds two envelope members, E-5 and
+E-6 (BR-4), keeps the tier's exclusions unchanged and precedence-first (BR-5), and adds four further
+prohibitions (BR-6). Two of the four classifications — `environmental` and `unclassified` — authorise
+nothing at all, whatever the confidence (BR-2).
+
+**Step 6 — Repair.** If and only if step 5 authorises it, the repair is applied to the working tree.
+Nothing is committed at this step or any other: A6 never commits (BR-8).
+
+**Step 7 — Re-gate.** The wave's whole gate sequence re-runs, in the order the wave itself ran it:
+the configured post-wave command first, then the test command (BR-7). Only that sequence returning
+success declares the wave green; no verdict field substitutes for it (BR-7).
+
+**Step 8a — Green re-gate.** The wave proceeds past the gate into exactly the post-gate path it would
+have reached had the gate been green on the first pass. Any later check on that path may still halt
+the wave; such a halt is not a red re-gate and is not a restoration trigger (BR-10). Where the repair
+was authorised under E-6 and therefore touches paths a *later* PLAN task owns, the wave's commit step
+must still leave the repair in the branch's committed state, and the later task's dispatch is told
+the promotion already exists (BR-12).
+
+**Step 8b — Red re-gate.** The attempt is consumed, the **whole working tree** is restored to the
+state it stood in immediately before A6 acted — the wave's post-dispatch, pre-commit tree, with the
+wave agents' own uncommitted work intact — and control returns to step 3's budget check for a further
+attempt if one remains (BR-9).
+
+**Step 9 — Terminal disposition.** Every invocation ends in exactly one of: *resolved* (step 8a
+reached on a green re-gate); *escalated* (refusal, malformed verdict, budget exhaustion, or a red
+re-gate with no attempt left); or *no-action* (the tier disabled, or A6 inapplicable). An entry is
+appended to the feature's advisory record for every terminal disposition, and an escalation entry to
+the durable escalation log for every escalated one (BR-13). Record-write failure refuses the action
+rather than proceeding unrecorded, as the tier already requires.
+
+**Step 10 — Halt, unchanged.** When A6 does not resolve the wave, the pipeline's existing behaviour
+proceeds untouched: the same halt with the same reason it emits today (M-WG-3), and the same queue
+row written `halted` (M-WG-7). The halt report additionally carries the diagnosis and its root-cause
+class. Escalation adds information; it never changes control flow (BR-14).
+
+### 3.3 The flow in one table
+
+| Step | Decision | Green branch | Red branch |
+|---|---|---|---|
+| 1 | Does A6 apply? | continue | phase behaves as today; one notice per run |
+| 2 | Which condition ended the wave? | test gate red ⇒ continue | dispatch or post-wave failure ⇒ halt as today |
+| 3 | Wave budget left? | continue | escalate, no dispatch |
+| 4 | Verdict well formed, classification present? | continue | escalate, one attempt consumed |
+| 5 | Inside envelope, high confidence, class authorises action? | continue | escalate with a refusal reason, no attempt consumed |
+| 6 | — | repair applied to working tree | — |
+| 7 | Does the whole gate sequence pass? | wave green | restore whole tree, consume attempt, back to step 3 |
+| 9 | — | resolved | escalated |
+| 10 | — | wave proceeds | halt exactly as today, with diagnosis attached |
+
 ## 4. Business Rules
 
 ## 5. Edge Cases and Error Scenarios
