@@ -459,7 +459,7 @@ whose fields are exactly:
 | bytes injected | The document's contributed bytes, as BR-6 defines them |
 | bounded | Whether this document's material was cut by the per-document bound (BR-6) |
 
-plus one per-dispatch scalar: **total bytes injected**.
+plus one per-dispatch scalar: **total bytes injected**, the sum of the rows' contributed bytes.
 
 The field enumeration is **closed**: a completeness test asserts set equality over it (DC-01). A
 dispatch that injected nothing carries an **empty set of rows**, not a missing field — the difference
@@ -550,7 +550,7 @@ Every corpus state resolves to a defined outcome. The complete mapping:
 | Listing fails outright | Empty block; corpus-level `RSN-UNLISTABLE` |
 | One document unreadable | That one skipped with `RSN-UNREADABLE`; the rest used normally |
 | One document unparseable | That one skipped with `RSN-UNPARSEABLE`; the rest used normally |
-| One document truncated | That one skipped with `RSN-TRUNCATED`; the rest used normally |
+| One document carries no priority section | That one is skipped with `RSN-NO-MATERIAL`; the rest are used normally |
 | A document exceeds the per-document bound | Bounded per BR-6 and flagged; still contributes |
 | Selection step fails in any other way | Empty block; corpus-level `RSN-UNLISTABLE` — the worst case is always "inject nothing, record why" |
 
@@ -570,33 +570,54 @@ here.
 
 ### BR-14 — Configuration states *(AC-4.4, AC-5.1a, AC-5.1b)*
 
-Four states, four distinct behaviours:
+Four states, four behaviours:
 
 | State | Dispatch composition | Record |
 |---|---|---|
-| Section **absent** | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
+| Section **absent**, or the config file absent | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
 | `enabled: false` | Byte-identical to the recorded pre-feature baseline | No injection key at all |
-| Section present but **malformed** (e.g. `learningsInjectoin`) | Byte-identical to the recorded pre-feature baseline | A catalogued notice naming the malformed configuration |
-| **Enabled**, thresholds admitting nothing (zero documents or zero bytes) | An enabled composition whose selection is empty | BR-8's rows, **present and empty** |
+| Section present but **malformed** — `learningsInjection` present and not an object, or present with a value of the wrong type for a declared key | Byte-identical to the recorded pre-feature baseline | A catalogued notice naming the malformed configuration |
+| **Enabled**, with thresholds admitting nothing (zero documents or zero bytes) | The enabled composition, with an empty selection | BR-8's rows, **present and empty** |
 
-The last two rows carry the load:
+Three points carry load:
 
-- A **typo must not be byte-identical to a deliberate disable**. Both compose the same prompt, but the
-  malformed case emits a catalogued notice, so an operator who meant to enable the feature learns
-  that they did not (DC-01, C-9).
-- **Admits-nothing thresholds are valid configuration, not invalid.** Zero documents or zero bytes is
-  an enabled run with an empty selection — BR-8's empty rows — never a refusal to run and never
-  AC-5.1a's absent key. The pipeline does not validate the operator's arithmetic.
+- **Malformed means present and wrong-shaped.** That is the reading the repository's
+  sibling config readers already ship — `parseAdvisoryConfig` returns `sectionMalformed`
+  only where the section key is present but not an object, and `parseMergeConfig` carries
+  the same meaning (`pdlc/workflows/orchestrate-dev.js`). A **misspelt section name** is a
+  stray top-level key, not a present section, so it reads as absent: the run is
+  baseline-identical and no notice fires. Detecting the misspelling would need a closed
+  registry of legal top-level keys in `.claude/pdlc.config.json`, which does not exist and
+  would misfire on keys a later feature legitimately adds; an unknown-top-level-key rule is
+  **decided against** here. REQ AC-5.1b's example makes the operator typo the detectable
+  case and no longer holds — `ERRATUM: REQ` rides this round.
+- **An absent config file is the absent-section state**: no injection, no record. This
+  differs deliberately from `parseAdvisoryConfig`, which defaults an absent file to
+  enabled-with-defaults. This feature adds material to authoring prompts, so it turns on
+  only where an operator asked for it.
+- **Admits-nothing thresholds are a valid configuration, not an invalid one.** Zero
+  documents or zero bytes is an enabled run with an empty selection — BR-8's rows present
+  and empty — never a refusal to run and never AC-5.1a's absent key. The pipeline does not
+  second-guess an operator's arithmetic.
 
 ### BR-15 — Filesystem footprint *(AC-5.2)*
 
-On an **enabled** run, the corpus paths touched over the whole run are **exactly** the reads of the
-documents BR-8 and BR-9 name — a positive membership claim, not an absence-only one. And nothing is
-written: no file under `docs/_constraints/` or `docs/_decisions/`, no LEARNINGS document, no skill
-prompt, and no new index, cache or state file anywhere (NG-1, NG-4).
+On an **enabled** run, the corpus paths touched are **exactly** the reads the record
+accounts for — a positive membership claim, not an absence-only one. Both sides are made
+computable so AT-33 can assert set equality:
 
-On a **disabled** run, the same observation window shows **no corpus path touched at all** — the
-zero-reads claim is carried positively rather than inferred from the absence of an assertion.
+- **Observed set:** the file-open calls the run makes under `docs/`, over one observation
+  window covering the whole run.
+- **Expected set:** the corpus-root enumeration itself, plus one open attempt for every
+  corpus document the report names — in BR-8's rows or in BR-9's per-document reason rows —
+  except those carrying `RSN-SELF`, which is decided from the path before any read.
+  `RSN-UNREADABLE` documents belong to the expected set: the failed attempt is the read.
+
+Nothing under `docs/_constraints/` or `docs/_decisions/` is written, no LEARNINGS document
+or skill prompt is written, and no new index, cache or state file is created anywhere
+(NG-1, NG-4). On a disabled run the same instrument, in the same window, observes no corpus
+path at all — an absence claim that carries weight only because the enabled case on that
+same instrument shows it firing (AT-33, AT-34).
 
 ### BR-16 — Pipeline semantics preserved *(AC-5.3)*
 
@@ -619,7 +640,7 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-02 | Corpus listing fails outright | Empty block; corpus-level `RSN-UNLISTABLE`; run continues | AT-25 |
 | E-03 | One document unreadable, others fine | That one `RSN-UNREADABLE`; the rest selected normally | AT-26 |
 | E-04 | One document reads but is not a LEARNINGS document | `RSN-UNPARSEABLE`; the rest selected normally | AT-27 |
-| E-05 | One document truncated mid-document | `RSN-TRUNCATED`; the rest selected normally; **not** confused with a bounded document | AT-28 |
+| E-05 | One document's bytes stop mid-document | `RSN-UNPARSEABLE`; the rest are selected normally; it contributes nothing, unlike a bounded document | AT-28 |
 | E-06 | Corpus contains only `{f}`'s own LEARNINGS | Empty selection, `RSN-SELF` row, empty BR-8 rows — not `RSN-EMPTY`, since a document *was* known | AT-04 |
 | E-07 | Corpus contains only documents under `docs/discarded/` | Corpus-level `RSN-EMPTY`; discarded documents appear in no record | AT-15 |
 | E-08 | Every corpus document is unreadable | Empty block; every document carries `RSN-UNREADABLE`; no corpus-level id, since documents were known | AT-26 |
@@ -640,6 +661,7 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-18 | A single document's bounded material alone exceeds `maxTotalBytes` | It is dropped whole with `RSN-BYTES`; the selection is empty; BR-8 rows present and empty | AT-13 |
 | E-19 | A LEARNINGS document is missing one or more of BR-6's priority sections | Present sections injected in priority order; absent ones skipped silently; document is **not** unparseable for it | AT-11 |
 | E-20 | Corpus mixes `docs/{p}/` and `docs/completed/{p}/` documents | Both eligible on identical terms; archival affects nothing but the path used in the tiebreak | AT-16 |
+| E-33 | A LEARNINGS document carries none of BR-6's priority sections (measured: occurs at HEAD) | `RSN-NO-MATERIAL`; consumes no `maxDocuments` slot; the rest are used normally | AT-28 |
 
 ### Configuration edges
 
@@ -647,7 +669,7 @@ behavioural branch, its outcome, and the test that asserts it.
 |---|---|---|---|
 | E-21 | Configuration section absent | Baseline-identical composition; no injection key | AT-31 |
 | E-22 | `enabled: false` | Baseline-identical composition; no injection key | AT-31 |
-| E-23 | Section present but malformed (`learningsInjectoin`) | Baseline-identical composition **plus** a catalogued malformed-configuration notice | AT-32 |
+| E-23 | Section present and not an object, or a declared key with a wrong-typed value | Baseline-identical composition, plus a catalogued malformed-configuration notice; a misspelt section name reads as absent instead | AT-32 |
 | E-24 | `maxDocuments: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-25 | `maxTotalBytes: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-26 | One threshold configured, two defaulted | Configured value used for one, defaults for the others; all three appear in BR-10's record | AT-22 |
