@@ -115,4 +115,6 @@ re-opened by any of these.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 1}
+
