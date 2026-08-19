@@ -584,7 +584,7 @@ const ISO_DATE_RE  = /^(\d{4}-\d{2}-\d{2})\b/;
 ```
 
 `parseHarvestDate` matches the harvest metadata table's row, trims the cell, and takes an ISO
-prefix. The The `\b`-anchored prefix match makes an annotated cell such as
+prefix. The `\b`-anchored prefix match makes an annotated cell such as
 `2026-06-09 (Phase H harvest; partial close-out)` parse to `2026-06-09` rather than `null`. **That
 sample is FSPEC E-13's, and it is not measured in this repository:** all 9 corpus documents at HEAD
 carry a bare ISO `Date Completed` value (P-5, re-verified for this revision), so the tolerance is
@@ -1069,3 +1069,29 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   prefix match), so nothing downstream changes; what needs correcting is the provenance claim, since
   a fixture author reading "measured" would look for a sample that is not there. Either drop the
   parenthetical or re-source it.
+- **ERR-6 (REQ AC-3.3).** AC-3.3 places every reproduction input in the report's **run-level**
+  record, and its *Given* is reproduction "against the same repository state". Selection is
+  per-dispatch over the state that dispatch observed (E-32, AT-14 forbids an in-process memo), so
+  two authoring dispatches in one run may legitimately observe different corpora — a LEARNINGS file
+  landing mid-run, or enumeration failing at dispatch 5 after succeeding at dispatch 1. In that
+  case there is no single repository state for a single run-level record to describe. TSPEC keeps
+  the run-level record (last-write-wins, §A.5) and adds per-dispatch `{corpusOutcome, orderKeys,
+  corpusDiverged}` so the run stays reconstructable, but whether AC-3.3's *locus* should be
+  restated to name the per-dispatch row on a divergent run — and therefore which rows its
+  completeness test asserts set equality over — is a product decision about the record's contract.
+  Routed to REQ rather than reinterpreted here; §A.5 records what TSPEC does in the meantime.
+- **ERR-7 (FSPEC BR-1).** BR-1 states a dispatch carries a block "**if and only if** the pipeline
+  classifies it as authoring at the moment it is composed", and that the rule "consumes the
+  classification, it does not restate the membership"; AT-02's expected set is "the subset BR-1's
+  classification names". The classification alone is **wider** than REQ C-1: `reviewLoop` is
+  shared, and Phase CR calls it with `docType: null` over a directory target
+  (`orchestrate-dev.js:14551-14556`), the `null` surviving as `roundDocType` (`:7306`) and being
+  forwarded to `dispatchAndVerify` (`:7342-7358`) with `dispatchKind: "authoring"`. That optimizer
+  round — `se-author` remediating shipped code — is authoring-classified while being exactly what
+  C-1 and NG-5 exclude. TSPEC therefore adds the `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct
+  (§A.2), which BR-1 as written forbids. AT-02 consequently has two contradictory readings of its
+  expected set — FSPEC's (every authoring-classified dispatch, including Phase CR's optimizer) and
+  TSPEC's (C-1's six document types) — and a test written to FSPEC reds a correct implementation.
+  BR-1 needs to state the two-conjunct rule (classification **and** target document type), or state
+  the exclusion explicitly; TSPEC cannot amend BR-1, and resolving the conflict silently in code
+  would leave the defect in the document AT-02 is written from.
