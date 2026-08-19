@@ -71,11 +71,47 @@ FINDING: Low | delta | local | §7.3 A-4 | A-4 states R-3's bound as "within an 
 
 ## Positive Observations
 
-_pending_
+- **Most of the compression survived an upstream edit that touched six clauses.** Flows §3.2, the
+  refusal catalogue, restoration triggers BR-9/BR-10, the writer-identity invariant BR-8 and the
+  ordered-sequence oracle AT-04-2 are all untouched in substance by REQ v1.7/v1.8. The document
+  was written close enough to the requirement's altitude that a two-round erratum wave landed as
+  wording and oracle-shape work, not as a rewrite.
+- **The two re-emitted errata were resolved at the root, and the FSPEC's reading was vindicated.**
+  BR-11 argued from v1.1 that the gate-command exclusion is structural rather than a subtraction,
+  and that the window sits on one dispatch. REQ v1.8 now says exactly that. Declining to absorb a
+  false upstream rationale into a derived document, and re-emitting it for three rounds instead,
+  was the right call — the fix landed where it belonged.
+- **E-04 already carries the population exclusion AC-1.5 has now adopted.** The FSPEC said that a
+  run halting before Phase I, or skipping it on a recorded wave ledger, is outside the criterion
+  (`FSPEC:252`) before REQ said so. F-04 is a stale sentence in one AT, not a gap in the
+  document's understanding.
+- **`waveBudgetPerRun` was already run-scoped everywhere it counts.** Step 3b and BR-11 both say
+  "in one run" (`FSPEC:91`, `:219`), so R-3's re-wording leaves only the A-4 prose behind.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+Two High findings, so the FSPEC does not hold as-is against REQ at HEAD.
+
+The behavioural core is intact: nothing the FSPEC says the system *does* is contradicted by REQ
+v1.8. Both Highs are about the FSPEC no longer being a faithful compression of upstream text it
+leans on. F-01 is the substantive one — AC-4.1's observable was rewritten from an unbounded
+negative into three conjuncts on three runs, and the conjunct upstream says carries the
+prohibition (applies a repair, no gate invocation follows, wave halts) has no oracle anywhere in
+§6.4, while AT-04-1's rationale argues that such an assertion cannot be written. That is not a
+citation drift; it is a coverage hole that reaches PROPERTIES and the implementation. F-02 is the
+vocabulary one — BR-11 defines "invocation" as one dispatch and attributes the definition to the
+very clause the erratum round rewrote to hold *run*, *A6 invocation* and *attempt* apart, so the
+FSPEC would propagate the fused term into TSPEC and undo F-25.
+
+Concretely, to reach Approved: split AT-04-1 into REQ's three fixtures and add the drop-the-re-gate
+mutation run (F-01); restate BR-11's seam budget as per-attempt, reserve "invocation" for A6
+engaged on one wave, re-point the AC-2.4 citation and carry the `attemptBudget` × window worst
+case (F-02); drop the inherited carve-out noun and record the resolved errata in a v1.4 changelog
+line (F-03); narrow AT-01-5's population to AC-1.5's phrase (F-04); widen A-1 to BL-06's three
+enumerations (F-05); and substitute *run* for *invocation* in A-4 (F-06). No settled decision is
+re-opened by any of these.
 
 ## Verdict
 
