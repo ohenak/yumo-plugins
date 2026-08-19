@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 3; erratum v0.5 absorbs FSPEC BR-2/4/5/9/14 (C-3, C-9, AC-2.1/2.2/2.6/3.2/4.2/4.4/6.2; AC-5.1b split) | Claude | 0.5 | 2026-08-19 |
+| pdlc | draft — round 3; erratum v0.6 corrects §1.2 claim 2 to HEAD's enumeration, enumerates AC-3.2's notice catalogue, adds O-8 | Claude | 0.6 | 2026-08-19 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -67,8 +67,8 @@ rather than trust it:
 2. **The corpus is on disk, conventional, and already enumerated by shipped code.** Per-feature
    LEARNINGS live at `docs/{feature}/LEARNINGS-{feature}.md`; completed features are archived under
    `docs/completed/{feature}/`. `pdlc-consolidation-agent` already ships an enumeration over exactly
-   those two locations — tracked and untracked but not ignored, `docs/discarded/` excluded by
-   pathspec, with a fail-open outcome when the listing itself fails
+   those two path shapes — tracked and untracked but not ignored, reaching one directory
+   level under `docs/` — with a fail-open outcome when the listing itself fails
    (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that shipped
    **pass-side** definition — the predicate `consolidate-learnings.js` declares (`LS_FILES_ARGV`) —
    by restating and pinning it, not importing it: the engine vendors only `orchestrate-dev.js` and
@@ -319,8 +319,9 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   bounding rule takes). Truncation is **not** a member: a truncated file is either still a
   LEARNINGS document, so eligible, or `RSN-UNPARSEABLE`. States in which no document is
   known are **corpus-level outcomes**, recorded once per run, drawn from their own closed set:
-  `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). The configuration notices of
-  AC-5.1b and AC-5.1c form a **third** closed catalogue. Three set-equality tests, one per
+  `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). The configuration notices form a
+  **third** closed catalogue with two members: the malformed-section notice (AC-5.1b) and the
+  wrong-typed-declared-key notice (AC-5.1c). Three set-equality tests, one per
   catalogue; with a corpus-level outcome, AC-3.1's rows are present and empty.
 - **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce the
   selection by hand against the same repository state, *then* every input the rule used — the
@@ -367,7 +368,7 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-5.1b** *Given* the `learningsInjection` section present but **not an object** — malformed
   as the repository's sibling config readers already read it — *when* the pipeline runs,
   *then* behaviour is AC-5.1a's **and** the report carries a catalogued notice naming it, so a
-  a malformed section is distinguishable from a deliberate disable (DC-01, C-9). A **misspelt
+  malformed section is distinguishable from a deliberate disable (DC-01, C-9). A **misspelt
   section name** reads as absent and is AC-5.1a's state; no unknown-key registry is required.
 - **AC-5.1c** *Given* the section well-shaped but a **declared §4.1 key wrong-typed**, *when* the
   pipeline runs, *then* the run stays **enabled** with that key at its default and the report
@@ -451,6 +452,9 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   pin's form. Import is unavailable: the engine vendors only `orchestrate-dev.js` and
   `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs:20`). No agreement test against the
   `SessionStart` hook is owed: DEC-CONS-05 rejected that oracle.
+- **O-8** — Because §4.1's byte bounds bind first on measured corpora (AC-2.1), the count
+  cap and `RSN-COUNT` (AC-3.2) have no exercise under default thresholds. TSPEC owes a named
+  non-default-threshold fixture that makes the count cut the binding one.
 
 ### 7.1 Stopping rule for this REQ's review loop *(DC-09, pasted in deliberately)*
 

@@ -87,7 +87,7 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | FSPEC-LRN-12 | Fail-open under every corpus state | AC-4.1, AC-4.2 |
 | FSPEC-LRN-13 | Gate-input isolation | AC-4.3 |
 | FSPEC-LRN-14 | Admits-nothing configuration | AC-4.4 |
-| FSPEC-LRN-15 | Disabled and malformed configuration | AC-5.1a, AC-5.1b |
+| FSPEC-LRN-15 | Disabled and malformed configuration | AC-5.1a, AC-5.1b, AC-5.1c |
 | FSPEC-LRN-16 | Filesystem footprint | AC-5.2 |
 | FSPEC-LRN-17 | Pipeline semantics preserved | AC-5.3 |
 
@@ -115,6 +115,7 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | AC-4.4 | BR-5, BR-14 | AT-30 |
 | AC-5.1a | BR-14 | AT-31 |
 | AC-5.1b | BR-14 | AT-32 |
+| AC-5.1c | BR-14 | AT-32 |
 | AC-5.2 | BR-15 | AT-33, AT-34 |
 | AC-5.3 | BR-16 | AT-35 |
 | AC-6.1 | §Acceptance Tests preamble | all ATs |
@@ -581,7 +582,7 @@ operator follows is BR-8's rows, which name the source document. Nothing new is 
 author (G-5, NG-3); the operator-side record of such observations is REQ O-3's, not a deliverable
 here.
 
-### BR-14 — Configuration states *(AC-4.4, AC-5.1a, AC-5.1b)*
+### BR-14 — Configuration states *(AC-4.4, AC-5.1a, AC-5.1b, AC-5.1c)*
 
 Five states, five behaviours:
 
