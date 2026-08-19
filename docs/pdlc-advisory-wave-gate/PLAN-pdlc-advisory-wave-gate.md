@@ -229,9 +229,14 @@ boundary the erratum returns. Nothing else in this plan reads that answer, becau
 | Artifacts in sync | `node pdlc/workflows/build-runtime.mjs --check` | CI's `Generated artifacts in sync` check; green only if the wave commits carried `dist/` |
 
 Coverage is a backstop here, not an oracle (TSPEC §5.4): A6 lands inside a ~15k-line module that
-dominates both its aggregate and its per-file number, so no floor will fail on A6's branches
-specifically. The branch inventory is discharged by the enumerated cases in the task table, not by
-the percentage.
+dominates both its aggregate and its per-file number, so a coverage floor is a poor detector of an
+A6-specific gap. That is a dilution argument, not a guarantee, and it is deliberately **not** stated
+as "the floor cannot fail" — `orchestrate-dev.js` is itself one of the three files carried at
+`--per-file --branches 85` (`pdlc/workflows/package.json`'s `scripts.test:coverage`, verified), so a
+large enough block of unhit A6 branches can move the per-file number under the floor. A6-21 therefore
+records the pre-A6 and post-A6 per-file branch percentages for `orchestrate-dev.js` in its commit
+message, so any regression is attributable rather than mysterious. The branch inventory itself is
+discharged by the enumerated cases in the task table, not by the percentage.
 
 ### AT coverage — one row per FSPEC acceptance test
 
@@ -244,7 +249,7 @@ containment check: an AT with no row has no home, and a row naming no AT is a de
 | AT-01-2 | A6-19 | A6-21 | waveExecution.test.js |
 | AT-01-3 | A6-19 | A6-21 | waveExecution.test.js |
 | AT-01-4 | A6-20 | A6-21 | advisoryDisabled.test.js |
-| AT-01-5 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-01-5 | A6-15 | A6-18 | advisoryWaveGate.test.js — four arms: BL-03-absent alone, BL-04-absent alone, both-absent (one statement, not two), and the zero-count run where A6 applies |
 | AT-01-6 | A6-20 | A6-21 | advisoryDisabled.test.js |
 | AT-02-1 | A6-02 | A6-05 | advisoryEnvelope.test.js |
 | AT-02-2 | A6-07, A6-15 | A6-08, A6-18 | advisoryWaveGate.test.js — parser unit half in A6-07, escalation/attempts half in A6-15 |
