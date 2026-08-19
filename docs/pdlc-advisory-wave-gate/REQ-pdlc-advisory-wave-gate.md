@@ -15,7 +15,16 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.6 | 2026-08-18 |
+| pdlc | draft | Claude | 1.7 | 2026-08-18 |
+
+*v1.7 changelog (erratum round, round 3). Decided: AC-1.5's notice cardinality is scoped to runs
+reaching Phase I and executing a wave, earlier halts and ledger skips being outside the population
+(F-18); its two carriers are mutually exclusive, so the requirement binds whichever fires and BL-03's
+alone serves a both-absent run (F-19), BL-06 widened to measure that; AC-4.1's unbounded negative
+replaced by three positive conjuncts; NFR-4's carve-out and its `attemptBudget`-starvation rationale
+deleted as false under the per-invocation dispatch→verdict window AC-2.4 pins — the exclusion is
+structural, no subtraction performed — and §5's config table restated to that window. Nothing else
+changed.*
 
 *v1.6 changelog: round 3 addressed. Decided: AC-4.4's oracle is **sequence** equality over the
 shipped sequence concatenated once per gate pass (passes = 1 + attempts), each pass truncated at
@@ -188,7 +197,7 @@ AC id. Reuse of the model-rung resolver rather than restatement of its literals 
 |---|---|---|---|
 | `advisory.enabled` | `false` | existing, unchanged | master switch; false ⇒ A6 inert (AC-1.4) |
 | `advisory.attemptBudget` | `3` | existing, reused | remediation attempts per wave invocation (AC-2.4) |
-| `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per wave invocation, excluding gate-command run time (NFR-4) |
+| `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per A6 invocation, measured dispatch to verdict, not cumulative across the wave (AC-2.4, NFR-4) |
 | `advisory.envelope` | gains `E-5`, `E-6` (AC-3.1) | existing, extended | the per-seam allow-list |
 | `advisory.waveBudgetPerRun` | `2` | **new** | how many distinct waves A6 may resolve in one run (AC-2.4); exceeded ⇒ escalate |
 
@@ -238,14 +247,19 @@ requirements altitude.
 - **AC-1.5** — Given wave mode is not in effect (BL-03) or no script-owned gate is configured
   (BL-04), Then A6 does not apply, the phase behaves exactly as it does today, and the
   inapplicability is named once in the run report rather than being silently indistinguishable from
-  a quiet seam. The observable is cardinality on a named surface, not mention: exactly one
-  inapplicability notice per run — not per wave — on the run's notice surface, naming **every**
-  absent prerequisite (both, in a run lacking manifest and script-owned gate alike), and none in a
-  run where A6 applies. Both prerequisites already emit a once-per-run notice on that surface:
-  BL-04's when the script-owned gate degrades, BL-03's when the phase takes
+  a quiet seam. The observable is cardinality on a named surface, not mention, scoped to the runs
+  that can carry it: in a run **that reaches Phase I and executes a wave**, exactly one
+  inapplicability notice — not per wave — naming **every** absent prerequisite (both, in a run
+  lacking manifest and script-owned gate alike); none in a run where A6 applies. A run halting
+  before Phase I, or skipping it on a recorded wave ledger, executes no wave and is outside the
+  population, not a zero-count violation of it. Both prerequisites already emit a once-per-run
+  notice on that surface: BL-04's when the script-owned gate degrades, BL-03's when the phase takes
   the no-manifest legacy path (BL-06 measures the latter into the baseline). Those shipped notices
-  are the carriers — the inapplicability is **added to** them, never emitted beside them — so the
-  count stays one and the oracle scans the whole surface rather than filtering for A6-authored
+  are the carriers — the inapplicability is **added to** them, never emitted beside them — and they
+  are **mutually exclusive**: a run takes either the wave path or the no-manifest legacy path, so at
+  most one is reachable, BL-03's in a both-absent run. The requirement binds whichever fires, which
+  names every absent prerequisite including one whose own carrier was unreachable — so the count
+  stays one and the oracle scans the whole surface rather than filtering for A6-authored
   notices. *(US-02.)*
 
 ### REQ-AWG-02 — The A6 contract (P0)
@@ -339,9 +353,13 @@ requirements altitude.
 
 ### REQ-AWG-04 — What A6 may never do (P0)
 
-- **AC-4.1** — Given any A6 invocation, Then it may never cause a wave to be treated as gated other
-  than by the configured gate command re-running and returning success on its own. There is no path
-  by which an advisory verdict substitutes for a gate result.
+- **AC-4.1** — Given any A6 invocation, Then a wave is treated as gated only where the configured
+  gate command re-ran and returned success on its own. The observable is three positive conjuncts on
+  one run: (i) A6 resolves and the re-gate is green ⇒ the wave proceeds and that green invocation is
+  in the run's gate-invocation sequence (AC-4.4); (ii) A6 resolves and the re-gate is red ⇒ the wave
+  halts, the tree is restored (AC-5.1), and the halt is the wave's own gate halt (AC-5.2); (iii) A6
+  resolves and **no** gate invocation follows ⇒ the wave halts. Conjunct (iii) carries the
+  prohibition: it fails exactly where a verdict stood in for a gate result.
 - **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
   not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
   command ran and post-wave pathspecs are configured, the build-output commit scoped to those
@@ -436,10 +454,11 @@ requirements altitude.
   varies by timestamp.)
 - **NFR-3** — A6 holds no credentials the pipeline does not already hold, and reaches no network
   surface Phase I does not already reach.
-- **NFR-4** — No A6 invocation exceeds `advisory.seamBudgetMinutes`, measured from dispatch to
-  verdict **less** the time spent running the gate command — without that carve-out a slow suite
-  ends every invocation inside attempt 1 and `advisory.attemptBudget` never binds. An overrun
-  escalates as `budget-exhausted`.
+- **NFR-4** — No A6 invocation exceeds `advisory.seamBudgetMinutes`, measured over the window AC-2.4
+  pins: dispatch to verdict on that one invocation, not cumulative across the wave. Gate-command run
+  time falls outside it **structurally** — the gate runs between invocations, never inside one — so
+  no subtraction is performed and no carve-out is needed. An overrun escalates as
+  `budget-exhausted`.
 - **NFR-5** — A6 adds no wall-clock cost to a green wave: it is reachable only from a red gate.
 - **NFR-6** — A6 runs on the advisory tier's existing model rung, resolved through the tier's
   exported resolver rather than through restated literals
@@ -522,7 +541,7 @@ Every row must be checkable at gate time and must hold at HEAD before FSPEC auth
 | BL-03 | The feature under implementation carries a valid PLAN file-ownership manifest, so Phase I runs in wave mode | Phase P's own gate on the PLAN | Checked per run; absent it, AC-1.5 applies and A6 does not fire |
 | BL-04 | A configured implementation test command and an injected command transport, so the gate is script-owned rather than self-reported | `.claude/pdlc.config.json` + runtime seam (M-WG-3) | Checked per run; absent either, AC-1.5 applies |
 | BL-05 | `pdlc-consolidation-agent` has landed on the default branch | Its per-feature docs are at `docs/completed/pdlc-consolidation-agent/` on the default branch — the observable form, since queue row 2 was retired from the table on 2026-08-12 once merged and no longer states a status | Operator sequencing decision, 2026-08-09: this seam is taken up after that feature lands |
-| BL-06 | Two enumerations complete: every transcribed set-equality assertion this feature reds — seam catalogue, envelope defaults, advisory config key set, and the surfaces compared against the catalogue — and every drifted positional recipe in the baseline's §1–§2, each reissued in grep- or symbol-anchored form together with the BL-03 no-manifest notice AC-1.5 rests on | M-WG-9's measured sites and the baseline's §1–§2 recipes, re-run against the current base | Set-equality enumeration before implementation planning; reissue and BL-03 measurement before FSPEC authoring |
+| BL-06 | Two enumerations complete: every transcribed set-equality assertion this feature reds — seam catalogue, envelope defaults, advisory config key set, and the surfaces compared against the catalogue — and every drifted positional recipe in the baseline's §1–§2, each reissued in grep- or symbol-anchored form together with the BL-03 no-manifest notice AC-1.5 rests on, and the mutual exclusivity of that notice with BL-04's | M-WG-9's measured sites and the baseline's §1–§2 recipes, re-run against the current base | Set-equality enumeration before implementation planning; reissue and BL-03 measurement before FSPEC authoring |
 
 **BL-06 scope, corrected 2026-08-18.** The reds are not confined to the seam catalogue: `A6` reds the
 `ADVISORY_SEAMS` transcriptions and the surfaces compared against them, `E-5`/`E-6` red the
