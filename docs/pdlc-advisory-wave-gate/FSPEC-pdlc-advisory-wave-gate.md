@@ -163,6 +163,141 @@ class. Escalation adds information; it never changes control flow (BR-14).
 
 ## 4. Business Rules
 
+Each rule states one decidable proposition and names the REQ clause it realises. Where two rules
+could both apply, the precedence rule says which wins; there is no case in which the answer is
+"either".
+
+**BR-1 — One trigger, and it is the test gate (AC-1.2, AC-1.3).** A6 fires when, and only when, the
+script-owned test gate returns non-zero for an ordinary implementation wave. It does not fire on a
+dispatch-level failure — there is no completed work to repair. It does not fire on a post-wave command
+failure — the single run is the detection, and the consequence, that a build-breaking source defect is
+permanently outside A6's reach, is a decision (REQ O-7), not an oversight. It does not fire for the
+final V-wave, which carries no ownership-manifest row and therefore gives E-5 and E-6 no owned-path
+set to range over: a seam whose envelope cannot be evaluated must not act.
+
+**BR-2 — The classification vocabulary is closed on one side and total on the other (AC-2.2, C-3).**
+Every A6 verdict carries a root-cause classification drawn from exactly this set:
+
+| # | Class | Meaning | Authorises action? |
+|---|---|---|---|
+| 1 | `plan-ordering-defect` | the failure names a symbol, file or artifact the PLAN itself schedules for a **later** task than the one that consumed it | yes, subject to E-6 |
+| 2 | `wave-internal-defect` | the failure is attributable to work this wave produced, inside paths this wave owns | yes, subject to E-5 |
+| 3 | `environmental` | the failure reproduces independently of this wave's diff — a pre-existing red, a missing tool, a transport failure | no |
+| 4 | `unclassified` | none of the above is decidable from the gate output | no |
+
+The set is asserted by set-equality, so a deleted or invented class fails the suite. The receiving
+side is total: a classification that is absent, or outside the set, reads as `unclassified` rather
+than being rejected. Because `unclassified` authorises nothing, such a wave escalates **without
+consuming an attempt** — an attempt is a repair-and-re-gate cycle, and no repair was attempted.
+
+**BR-3 — A diagnosis without gate-output evidence is malformed (AC-2.3, AC-2.1).** The gate output is
+the only evidence that distinguishes a repair from a guess, so a diagnosis citing none is malformed
+under the tier's existing rule and escalates, consuming one attempt. The evidence available to A6 is
+the gate command's captured output as A6 receives it, not the truncated tail the halt message shows a
+human, so the rule stays satisfiable on a long suite.
+
+**BR-4 — The envelope gains exactly two members (AC-3.1).** A6 adds E-5 and E-6 to the shipped
+four-member default envelope, each with a decidable membership rule:
+
+| # | Permitted | Decidable rule |
+|---|---|---|
+| E-5 | a repair confined to the failing wave's **own** owned paths | every path the proposal would change is a member of the union of the owned-path sets the PLAN's ownership manifest assigns to that wave's tasks |
+| E-6 | completing a promotion the PLAN schedules for a **later** task | the gate output names a symbol or artifact that a later task's PLAN row already undertakes to produce, **and** every path the proposal would change is a member of that later task's owned-path set |
+
+Nothing else A6 proposes is in the envelope. The shipped envelope becomes one closed six-member set,
+assertable by a single set-equality over member ids, never by prose joining two sets.
+
+**BR-5 — Exclusions win over permissions, always (AC-3.2).** The tier's existing exclusion set holds
+unchanged for A6, and its clauses take precedence over E-5 and E-6 wherever both could apply. Two
+consequences are named rather than discovered. First, the clause excluding any change to a test file
+or test configuration binds even when the failing test sits inside the wave's own owned paths:
+editing the test to turn a red gate green is the pipeline's most dangerous failure mode, and A6 sits
+closer to it than any other seam. Second, the clause excluding the self-modification guard paths
+holds unchanged, so in this repository a wave owning `pdlc/workflows/`, `pdlc/skills/`,
+`pdlc/hooks/` or `.claude/workflows/` escalates `out-of-envelope` — meaning the 2026-08-09 motivating
+incident would today be diagnosed and escalated, not repaired, while the 2026-08-11 incident in a
+consumer repository is unaffected. Relaxing either is out of scope and must never be taken without
+an operator.
+
+**BR-6 — Four further prohibitions, as a closed set (AC-3.3, AC-4.3).** In addition to the tier's
+exclusions, A6 may not: (f) change the PLAN, its task table, or its file-ownership manifest; (g)
+change implementation configuration — the test command, the post-wave command, or the post-wave
+pathspecs; (h) commit, push, or tag; (i) touch any path outside the set E-5 and E-6 compute for this
+invocation.
+
+**BR-7 — Only the gate declares the wave green, and the whole sequence re-runs (AC-4.1, AC-4.4).** No
+advisory verdict substitutes for a gate result. After a repair, the wave's whole gate sequence
+re-runs in the order the wave itself ran it: the configured post-wave command first, then the test
+command. Re-running the post-wave command first is not incidental — a source-touching repair would
+otherwise re-red the gate for its own unbuilt outputs. A post-wave command failing on re-gate is a
+red re-gate, not an immediate halt as it is on the first pass; that pass reaches no test command, so
+it contributes a truncated sequence, which is an admitted form and not a defect. The observable is an
+**ordered sequence**: the gate-command invocations for a wave equal, as a sequence, the shipped
+sequence concatenated once per gate pass, where passes = 1 + attempts (the first pass is not an
+attempt), with a failing pass truncated at the failing command. One attempt gives
+`[post-wave, test, post-wave, test]`; `[post-wave, test, post-wave]` means the re-gate's post-wave
+command failed; `[test, test]` is a run with only a test command configured. Set equality is the
+wrong unit — it collapses duplicates and would admit a resolution declared on a single invocation.
+
+**BR-8 — A6 never commits (AC-4.2).** The committing writers stay the two the wave already has: the
+pathspec-scoped per-task commit over a task's owned paths, and the build-output commit scoped to the
+configured post-wave pathspecs, both reached only past a green gate (M-WG-4). Where post-wave
+pathspecs are configured, the re-gate's regenerated artifacts already have a writer; only paths a
+*later* task owns remain the gap BR-12 closes.
+
+**BR-9 — Restoration is whole-tree, and has exactly three triggers (AC-5.1, AC-4.4).** On a refusal,
+on budget exhaustion, and on a red re-gate, the working tree is left observably identical to the state
+it stood in immediately before A6 acted: the wave's post-dispatch, pre-commit tree, with the wave
+agents' own uncommitted work intact. Restoration is of the **whole** tree, never of the repair's paths
+alone, because a re-run post-wave command writes generated outputs into paths A6 never proposed and no
+envelope rule ranges over; a per-path restore would leave the halted tree carrying artifacts built
+from a repair that is no longer present.
+
+**BR-10 — A post-gate halt is not a restoration trigger (AC-4.4, AC-5.3).** A green re-gate lets the
+wave proceed past the gate into the same post-gate path it would have reached anyway, and a later
+check on that path may still halt the wave. That halt is neither a red re-gate nor a restoration
+trigger; the three triggers in BR-9 are exhaustive.
+
+**BR-11 — Three budgets, and exceeding any of them escalates rather than retries (AC-2.4).** More
+than `advisory.attemptBudget` attempts on one wave; more than `advisory.seamBudgetMinutes` of working
+time on a single invocation, measured excluding time spent running the gate command (NFR-4); and more
+than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave
+budget: two waves A6 attempted and escalated leave the budget untouched and a third red wave still
+gets its attempt, whereas one wave A6 resolved exhausts the shipped default of `1` and the next red
+wave escalates without dispatch. An attempt is one repair-and-re-gate cycle.
+
+**BR-12 — An E-6 resolution does not leave the repair uncommitted (AC-4.6).** When A6 resolves a wave
+under E-6, once the wave's commit step completes the repair is part of the branch's committed state.
+This is a real gap in the shipped scope, not a restatement of it: the wave commit loop commits only
+paths owned by tasks *in that wave* (M-WG-12), and an E-6 repair by construction touches a later
+task's paths. The repair's paths, and the later PLAN task that owns them, are named in the advisory
+record, and that later task's dispatch is told its owned paths already carry the promotion so it
+revises what exists rather than rediscovering it. How the existing pathspec-scoped commit path comes
+to cover those paths is the TSPEC's (REQ O-8).
+
+**BR-13 — No action without a record; every escalation is durably logged (AC-6.1, AC-6.2).** An entry
+is appended to the feature's advisory record for every A6 invocation, naming the wave, the root-cause
+class, the envelope determination, the action taken or refused, and the gate-output citation the
+diagnosis rests on. The tier's existing rule holds: an action taken with no record written is a
+defect, and a failed record write refuses the action. Every escalation additionally appends an entry
+to the escalation log carrying the root-cause class alongside the fields the tier already requires,
+and stating in one sentence what the operator must decide.
+
+**BR-14 — Escalation adds information and never changes control flow (AC-5.2, AC-6.3).** When A6 does
+not resolve the wave, the pipeline halts with the same reason it emits today and writes the same
+`halted` queue row. The halt report carries the diagnosis and its root-cause class, so the operator's
+turn starts with the diagnosis on the halt path and not only in a file they must go find.
+
+**BR-15 — Refusal reasons are the tier's eight, unextended (AC-3.4).** Any refusal reports a reason
+drawn from the tier's existing closed, ordered eight-member refusal-reason set. A6 does not extend it:
+if an A6 refusal cannot be expressed in that set, that is a defect in this specification, not a
+missing ninth reason. A diagnosis-only outcome — `environmental` or `unclassified` — is not a refusal;
+it is an escalation with no proposal to refuse, and it needs no reason.
+
+**BR-16 — Enforcement lives in the workflow script (NFR-1, C-4).** Every boundary in §4 is enforced
+by the code that runs the pipeline. A prompt instruction is not a control, and no rule here is
+satisfied by telling the agent about it.
+
 ## 5. Edge Cases and Error Scenarios
 
 ## 6. Acceptance Tests
