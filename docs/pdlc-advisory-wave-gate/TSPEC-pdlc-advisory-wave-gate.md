@@ -761,10 +761,26 @@ defaults. `.claude/pdlc.config.example.json` — the tracked arrangement `pdlc/e
 | Advisory record entry | `docs/{feature}/ADVISORY-{feature}.md` | The tier's `renderAdvisoryEntry` table, plus the root-cause class and, on a resolution, the repair's paths | Every terminal disposition, including the no-dispatch escalation |
 | Escalation log entry | `docs/_queue/ESCALATIONS.md` | The tier's `renderEscalationEntry`, root-cause class in the decision sentence | Every `escalated` disposition |
 | Report notice | run report `notices` | The tier's `ADVISORY ESCALATION: seam A6 …`; and, separately, a failed escalation-log write | Every escalation (E-30, AT-06-6) |
-| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}` | Every A6-touched halt: a non-resolved wave (AC-6.3), a `snapshot-unavailable` escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
+| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}`, at the literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
 | Snapshot ref | `refs/pdlc/a6-snapshot` | A dangling commit | Every A6 invocation that reached the snapshot step |
 
 Two consequences worth stating rather than discovering:
+
+- **The capture-failure halt's four fields have literal values, not derived ones (PM F-03, TE
+  F-18).** On that path no agent was dispatched, so there is no diagnosis to carry and no repair
+  to name, and the row above would otherwise read as an omission rather than a decision. The
+  values are fixed and transcribable, which is what lets §5.5's fixture assert them rather than
+  compare against whatever the implementation happens to produce:
+
+  | Field | Value on a capture-failure halt |
+  |---|---|
+  | `rootCause` | `"unclassified"` — §2.5's table, no diagnosis was ever obtained |
+  | `diagnosis` | the fixed sentence `snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied` — the one place this diagnostic is required to appear verbatim, and the string §5.5 transcribes |
+  | `repairApplied` | `false` |
+  | `repairPaths` | `[]` — the empty array, not `undefined`: the field is present so the halt report's shape is the same on every A6-touched halt |
+
+  AC-6.3 asks that an A6-touched halt carry a diagnosis; here the honest diagnosis is that none
+  could be obtained, and the fixed sentence says exactly that rather than leaving the field null.
 
 - **The post-gate un-skip halt is a designed carrier, not an inherited one (TE F-01).** BR-10's
   three restoration triggers are exhaustive, so a wave A6 *resolved* whose un-skip guard then
