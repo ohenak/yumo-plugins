@@ -127,7 +127,7 @@ its record, escalation and report surface; the root-cause vocabulary; tests.
 - Fixing the **PLAN dependency derivation** that produced the motivating incident. A6 makes that
   class of defect survivable, not absent — see R-4 and O-6.
 - Giving Phase I a POSTMORTEM lifecycle (M-WG-5) or an approval skip (M-WG-6). Both are real gaps;
-  neither is this seam's (see D-AWG-03).
+  neither is this seam's (D-AWG-03, D-AWG-03b).
 - The V-wave carrying the PROPERTIES tests. It has no ownership-manifest row, so the envelope's
   owned-path rules have no set to range over there (AC-1.3, D-AWG-02).
 - The worktree exception path. Wave mode requires a valid ownership manifest (BL-03); without one
@@ -410,10 +410,11 @@ requirements altitude.
   PLAN correct, and a pipeline that routinely repairs its own waves has a Phase P problem it can now
   ignore. AC-6.4's countability and O-6 exist so that ignoring it is a choice rather than a
   side-effect.
-- **R-5 — The catalogue change is not additive.** A sixth seam reds the transcribed set-equality
-  tests by design (M-WG-8). That is the intended signal, but it means this feature cannot be
-  delivered as a purely additive change and every catalogue-driven surface must be re-checked
-  (BL-06).
+- **R-5 — The change is not additive, and not only in the catalogue.** A sixth seam reds the
+  transcribed `ADVISORY_SEAMS` set-equalities by design (M-WG-8), and so do the two envelope members
+  and the new config key on their own transcribed sets (M-WG-9). That is the intended signal, but it
+  means this feature cannot be delivered as a purely additive change and every transcribed surface —
+  including the disabled-tier fixtures — must be re-checked (BL-06).
 
 ## 8. Obligations
 
