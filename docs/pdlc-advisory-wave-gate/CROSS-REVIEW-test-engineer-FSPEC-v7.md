@@ -64,3 +64,8 @@ one-clause edits recorded as DEFERRED for the next non-frozen revision.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 0}
+
+APPROVAL-HASH: sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e
+APPROVAL-HASH-NORMALIZED: sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e
+REVIEWED-COMMIT: 98cc007d5a78ded66ea29278323bc5be515276fb
+UPSTREAM-STATE: REQ sha256:817b67455ae1d90589c336c88d72914eb3105a49c50a3d54eaa9083fc918a7a8
