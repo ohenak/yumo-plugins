@@ -69,7 +69,33 @@ No High. One new Medium introduced by this round's TSPEC edit; two findings inhe
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Non-blocking, for whoever lands F-03. TSPEC's negative control — "a fixture whose seam is absent from the table" reading `unknown`/`unknown` — is the one part of PROP-REC-07's oracle that needs a fixture PLAN does not currently describe anywhere. A6-17's cell names the root-cause class, durability, and the failed-write arm, but no synthetic absent seam. PROPERTIES carries it and PLAN has no PROP-coverage table to keep in sync, so this is not a completeness gap. It is worth one clause in A6-17 anyway, so the implementer does not discover the fixture requirement only when reading PROPERTIES mid-batch-11. |
+| Q-02 | Carried unchanged from v3 and v4, still non-blocking: the `enabled: true` + `waveBudgetPerRun: 0` affordance remains discoverable only if an operator opens the example and infers the pairing. No REQ or FSPEC row asks for more, so it is not a finding — but it stays a good candidate for a one-line note in the feature's LEARNINGS, so a future operator-documentation pass picks it up. |
+
 ## Positive Observations
+
+- **PROPERTIES was right first, and TSPEC deferred to it rather than to its own table.** The tempting fix
+  for a constant missing from an export list is to add it to the export list. TSPEC instead reasoned that
+  exporting would exist only to let a unit test import the constant, and that asserting "a frozen literal
+  contains the row it was just edited to contain restates the diff rather than testing behaviour"
+  (`:538`–`:539`). That is the correct product call — the user-visible thing is the escalation entry an
+  operator reads, not the shape of a module's exports — and it means the round *narrowed* the delivered
+  interface instead of widening it. Nothing downstream had to move.
+- **PLAN's export discipline is what made this cascade cheap.** Four of PLAN's four `export` mentions are
+  records of things deliberately *not* exported, with the reasoning attached each time (A6-00 on
+  `pathsCollide`, and the manifest rows on `ownedSetCovers`, the snapshot pair, and `buildA6SeamOps`). A
+  PLAN with the opposite habit would have had a task to unwind here. This one had nothing to correct —
+  only something to say out loud, which is all F-03 asks for.
+- **The file-home claim checks out on both sides.** TSPEC asserts that PROPERTIES maps PROP-REC-07 onto
+  A6-17 and that no new file or owner is minted. I verified rather than accepted it: PROPERTIES `:157`
+  names `advisoryEscalationLog.test.js` (A6-17), PLAN's manifest gives that file to A6-17 alone, and
+  §5.1's edited-files list already carried it for AC-6.2. Three independent sources, one answer.
+- **Fifth round, and I still have not found a PLAN citation that does not verify.** Every anchor I
+  re-ran this round lands at HEAD. The one anchor gap this round surfaces is an *absence* — PLAN gives
+  `ADVISORY_SEAM_PHASES` no line anchor at all, which is why nothing went stale when TSPEC pinned it to
+  `orchestrate-dev.js:3108`.
 
 ## Recommendation
 
