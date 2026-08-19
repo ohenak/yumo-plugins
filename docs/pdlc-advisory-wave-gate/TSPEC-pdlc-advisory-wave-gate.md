@@ -562,16 +562,21 @@ M-WG-12 is the gap: the wave commit loop commits only paths owned by tasks *in t
 E-6 promotion by construction lands in a later task's paths. Left alone, a resolved wave would
 strand its own repair as an uncommitted working-tree change.
 
-The fix widens the **pathspec** the existing writer passes, and adds no writer. After the per-task
-loop, inside the same `if (waveGit)` block and past the same green gate, one further `commitPaths`
-call runs with `paths` = the promotion's produced paths (already proven ⊆ the later task's owned
-set by §3.4), `what` = `Wave N advisory promotion (task T)`, and the same `provenance`. AT-04-3's
-oracle is over committing **writer identities** and the green-gate precondition, and its own text
-grants that "that scope may widen under O-8's E-6 resolution" — so the identity set stays
-`{per-task pathspec commit, post-wave-pathspec build-output commit}`, both still unreachable except
-past a green gate. **This is the load-bearing interpretive decision of the feature** and §6 records
-it as such: a reviewer who reads AT-04-3 as counting *call sites* rather than identities would
-require a different design, and that disagreement is cheaper to have now than in Phase I.
+After the per-task loop, inside the same `if (waveGit)` block and past the same green gate, one
+further `commitPaths` call runs with the **full argument set the shipped writer requires** — it
+is not a two-argument call:
+
+| Argument | Value |
+|---|---|
+| `paths` | the promotion's produced paths, already proven ⊆ the later task's owned set (§3.4) |
+| `message` | `chore({feature}): wave {N} advisory promotion ({taskId})` — required by `commitPaths`; the per-task and build-output calls both pass one, and omitting it is not optional |
+| `what` | `Wave N advisory promotion (task T)` — the emit label, not the commit message |
+| `_git`, `_sleep`, `emit`, `provenance` | the wave loop's own, unchanged |
+
+The literal `message` matters beyond the call compiling: AT-04-5's oracle inspects the branch and
+must identify this commit by its message and its pathspec, so the message is spelled here rather
+than left to Phase I. `provenance` is passed unchanged, so the promotion commit carries the same
+trailer the wave's other commits do.
 
 The later task's dispatch is told through the prompt: `waveImplementPrompt(task, featureName,
 promotions)` gains an optional third argument, a `Map<taskId, {paths, symbol}>` threaded down the
@@ -583,6 +588,19 @@ every existing prompt fixture green.
 The map lives in the Phase I scope, so the clause reaches a later task **in the same run**. Across
 runs it does not survive; the *commit* does, so the later task's agent finds the promotion in the
 tree either way. §6 OQ-6 records the asymmetry rather than leaving it to be discovered.
+
+
+**This interpretation is routed to DECISIONS, not settled in this paragraph (PM F-06).** FSPEC
+BR-8's licence — "that scope may widen under O-8's E-6 resolution" — reads naturally as *widening
+the existing per-task commit's pathspec*, and this design instead *adds a call* with its own
+`what` label, which surfaces in git history as a third commit. The product reviewer has ruled the
+added call acceptable, and the engineering argument for it stands: widening a per-task commit's
+pathspec would make one task's commit carry another task's paths, breaking the pathspec-scoping
+discipline M-WG-4 rests on, and AT-04-3's oracle is over writer *identities*, which either shape
+preserves. But a load-bearing interpretive choice with a live alternative belongs in
+`DECISIONS-pdlc-advisory-wave-gate.md` with a re-evaluation trigger, not in a design paragraph
+that a later reader would have to reverse-engineer from AT-04-3. §6 OQ-6 carries it as a resolved
+question, and it is one of the two entries this feature's DECISIONS document is warranted for.
 
 ### 3.7 The one change to the shipped driver
 
