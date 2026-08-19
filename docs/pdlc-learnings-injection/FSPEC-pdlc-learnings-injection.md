@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.4); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2}.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.2 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.3 | 2026-08-19 |
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
@@ -142,9 +142,9 @@ including its own failure; no step raises to its caller (BR-12).
    it is composed today, and **no injection record of any kind is produced** (BR-14, AC-5.1a).
 3. **Section present but malformed** — `learningsInjection` present and not an object →
    compose as in (2), **and** record a corpus-level malformed-configuration notice (BR-14,
-   AC-5.1b). A misspelt section name is a stray top-level key, so it reads as absent (2), not
-   malformed. A declared key carrying a **wrong-typed value** is not malformed: that key takes
-   its default, the flow continues at (4), and a catalogued notice names the key.
+   AC-5.1b). A misspelt section name is a stray top-level key, reading as absent (2). A
+   **wrong-typed declared key** is not malformed: it takes its default, the flow continues at
+   (4), and a catalogued notice names the key.
 4. **Enabled** → continue, with thresholds resolved: each of REQ §4.1's three bounds takes its
    configured value if present and its default if not.
 5. If the dispatch is **not** one C-1 names as authoring, the flow stops here with no record
@@ -243,12 +243,12 @@ feature: this rule consumes the classification, it does not restate the membersh
 
 - **Included:** creator, optimizer-round and erratum dispatches for REQ, FSPEC, TSPEC, PLAN,
   DECISIONS and PROPERTIES — whichever of them a given run actually makes.
-- **Excluded:** every review dispatch, implementation, DoD verification and remediation, harvest,
+- **Excluded:** every review dispatch, implementation, DoD verification and remediation,
+  harvest, ship, and every advisory seam.
 - The two lists illustrate what the pipeline's classification yields today; they are read
   off it, not maintained here. Dispatches that run an authoring skill directly without
   carrying the authoring classification — the POSTMORTEM dispatch, DoD document-finding —
   are excluded because the classification excludes them, which is A-2's default.
-  ship, and every advisory seam.
 - The oracle is **set equality against the run that happened**, never a fixed count. A run with no
   DECISIONS phase, a run whose Phase R has no creator because the REQ arrived authored, and a run
   with five optimizer rounds each satisfy this rule as stated (AC-1.2).
@@ -264,7 +264,10 @@ files, restated literally and pinned to the shipped consolidation-side predicate
 Documents under `docs/discarded/{feature}/` are never candidates (AC-2.6) because they sit
 one directory deeper than either glob reaches: no rule fires on them, and nothing about them
 enters the record. A separate `docs/discarded/` exclusion rule would change the answer for
-paths the shipped predicate *does* match, so none is added here.
+paths the shipped predicate *does* match, so none is added here. One class remains: a document
+*directly*
+at `docs/discarded/LEARNINGS-x.md` does match the first glob — the case REQ C-3 and AC-2.6
+legislate against. None exists at HEAD; `ERRATUM: REQ` rides.
 
 One exclusion then applies to candidates, and its reason id is recorded:
 
@@ -287,14 +290,13 @@ Each surviving candidate resolves to exactly one of three outcomes, and no other
 | **unreadable** | The read itself fails, for any reason | Excluded, `RSN-UNREADABLE` |
 | **unparseable** | Read, but does not present a LEARNINGS document | Excluded, `RSN-UNPARSEABLE` |
 
-Truncation is **not a separate outcome**. A document whose bytes stop mid-document resolves
-under the same shape judgement as any other candidate: eligible where what it does present
-still reads as a LEARNINGS document (E-19's case), `RSN-UNPARSEABLE` where it does not
-(E-04's case). No predicate over a document's own bytes separates truncation from a document
-that legitimately lacks later sections, so a `RSN-TRUNCATED` id would name a branch no
-fixture could construct; the v0.2 truncation edge is retired with it, and its number (E-05)
-is not reused. What the report must keep apart is kept
-apart: an unparseable document contributes nothing, while a document cut by BR-6's byte
+Truncation is **not a separate outcome**. Bytes stopping mid-document resolve under the same
+shape judgement as any candidate: eligible where what is present still reads as a LEARNINGS
+document (E-19), `RSN-UNPARSEABLE` where not (E-04). No predicate over a document's own bytes
+separates truncation from one legitimately lacking later sections, so `RSN-TRUNCATED` would
+name a branch no fixture could construct; the v0.2 edge retires with it, E-05 not reused. The
+report still keeps apart what matters: an unparseable document contributes nothing, while a
+document cut by BR-6's byte
 bound contributes and carries the *bounded* flag (AC-3.2).
 
 "Presents a LEARNINGS document" is a shape judgement over the document's own conventional
@@ -353,11 +355,14 @@ contributing count equals `maxDocuments` only where the eligible set is at least
 **and** the total byte bound (BR-6) has not bound first; otherwise it is lower. On real
 corpora the total bound is the one that binds: measured at HEAD on 2026-08-19 over the
 89-document corpus BR-4 tabulates, injectable material averages 13,278 bytes per document
-(max 41,180) and 87 of the 89 exceed `maxBytesPerDocument` alone, so under REQ §4.1's
+(max 41,180, under strict title matching on BR-6's five names) and 87 of
+the 89 exceed `maxBytesPerDocument` alone, so under REQ §4.1's
 declared values — five documents at 6,000 bytes against a 20,000-byte total — at most three
-can contribute. Whether the count bound is load-bearing at all under those values is REQ
-O-1's question, and the live run discharging O-1 should report the answer rather than leave
-it to be re-derived.
+can contribute. Whether the count bound is load-bearing under those values is REQ
+O-1's question, which the live run discharging O-1 should report. REQ AC-2.1 still asserts the
+count *equals* the threshold for
+any corpus above it, which the measurement above falsifies under §4.1's values —
+`ERRATUM: REQ` rides this round.
 
 Documents cut here carry `RSN-COUNT`; where the eligible set is smaller than the threshold,
 all of it is taken and no `RSN-COUNT` row is produced.
@@ -576,7 +581,7 @@ Five states, five behaviours:
 | Section **absent**, or the config file absent | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
 | `enabled: false` | Byte-identical to the recorded pre-feature baseline | No injection key at all |
 | Section present but **malformed** — `learningsInjection` present and not an object | Byte-identical to the recorded pre-feature baseline | A catalogued notice naming the malformed configuration |
-| Section present, a declared key **wrong-typed** | The enabled composition, that key at its default | A catalogued notice naming the wrong-typed keys |
+| Section present, a declared key **wrong-typed** | The enabled composition, that key at its default | A catalogued notice naming the key |
 | **Enabled**, with thresholds admitting nothing (zero documents or zero bytes) | The enabled composition, with an empty selection | BR-8's rows, **present and empty** |
 
 Three points carry load:
@@ -588,15 +593,13 @@ Three points carry load:
   key, not a present section, so it reads as absent: baseline-identical run, no notice.
   Detecting it would need a closed registry of legal top-level keys in
   `.claude/pdlc.config.json`, which does not exist and would misfire on keys a later feature
-  legitimately adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b's
-  example makes the operator typo the detectable case and no longer holds — `ERRATUM: REQ`
-  rides this round.
-- **A wrong-typed declared key is not malformed.** That key falls back to its default, the run
-  stays **enabled**, and a catalogued notice names the wrong-typed keys — the treatment the
-  sibling readers already ship, per-key fallback plus an invalid-key notice
-  (`parseAdvisoryConfig`, `pdlc/workflows/orchestrate-dev.js`). Silently turning the whole
-  feature off over one mistyped threshold would diverge from that precedent with no reason
-  stated, which DC-08 forbids.
+  adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b's
+  example makes that typo the detectable case and no longer holds — `ERRATUM: REQ` rides.
+- **A wrong-typed declared key is not malformed.** It falls back to its default, the run stays
+  **enabled**, and a catalogued notice names the key — the per-key fallback plus invalid-key
+  notice the siblings ship (`parseAdvisoryConfig`, `orchestrate-dev.js`).
+  Turning the feature off over one mistyped threshold would diverge from that for no stated
+  reason (DC-08).
 - **An absent config file is the absent-section state**: no injection, no record. That
   differs deliberately from `parseAdvisoryConfig`, which defaults an absent file to
   enabled-with-defaults; this feature adds material to authoring prompts, so it turns on
@@ -674,11 +677,11 @@ behavioural branch, its outcome, and the test that asserts it.
 |---|---|---|---|
 | E-21 | Configuration section absent | Baseline-identical composition; no injection key | AT-31 |
 | E-22 | `enabled: false` | Baseline-identical composition; no injection key | AT-31 |
-| E-23 | Section present and not an object | Baseline-identical composition, plus a catalogued malformed-configuration notice; a misspelt section name reads as absent instead | AT-32 |
+| E-23 | Section present and not an object | Baseline-identical composition, plus a catalogued malformed-configuration notice; a misspelt section name reads as absent | AT-32 |
 | E-24 | `maxDocuments: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-25 | `maxTotalBytes: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-26 | One threshold configured, two defaulted | Configured value used for one, defaults for the others; all three appear in BR-10's record | AT-22 |
-| E-34 | A declared key carries a wrong-typed value | Enabled run with that key at its default, plus a catalogued notice naming the key — not baseline-identical | AT-32 |
+| E-34 | A declared key is wrong-typed | Enabled run, that key at its default, plus a catalogued notice naming it — not baseline-identical | AT-32 |
 
 ### Run-shape edges
 
@@ -756,15 +759,15 @@ text into a disabled run is a test failure rather than a production discovery.
   ctime order are both the reverse of its `Date Completed` order, each file's mtime is
   permuted, and the wall-clock time differs between two compositions, *then* the selection
   and its order are identical in both.
-- **AT-11** — *Given* a document exceeding `maxBytesPerDocument`, and separately a document
-  missing some of BR-6's priority sections, *when* each is selected, *then* the contributed
-  bytes do not exceed the bound — the expected count computed from the fixture under BR-6's
-  accounting basis — the first document's row carries the bounded flag, and the second
-  contributes its present sections in priority order without being marked unparseable. *And
+- **AT-11** — *Given* a document exceeding `maxBytesPerDocument`, and separately one missing
+  some of BR-6's priority sections, *when* each is selected, *then* the contributed
+  bytes do not exceed the bound and equal an expected count **committed with the fixture as a
+  literal integer**, recomputed by hand when the fixture changes, never derived in the test — the first document's row carries the bounded flag, and the second
+  contributes its present sections in priority order, not marked unparseable. *And
   given* an unbounded document carrying all six conventional sections, *then* the set of
   section names appearing in its block material **equals** BR-6's five injected names in
   priority order, and the Approval Record's distinctive fixture text is absent **while** all
-  five injected sections' distinctive texts are present.
+  five injected sections' texts are present.
 - **AT-12** — *Given* a document whose first priority section alone exceeds
   `maxBytesPerDocument`, *when* it is selected, *then* the material taken is cut at the
   bound, its contributed bytes equal the bound as computed from the fixture, and its row is
@@ -817,6 +820,8 @@ text into a disabled run is a test failure rather than a production discovery.
   run requires are enumerated, *then* that set **equals** the recorded pre-feature baseline
   set: no erratum round is opened on account of an injected document, no new channel appears,
   and the only trace of an injected document is BR-8's rows naming source paths.
+### Group 4 — fail-open under corpus state
+
 - **AT-24** — *Given* a repository with no prior LEARNINGS at all, *when* the pipeline runs, *then*
   every authoring dispatch is byte-identical to the baseline composition, the run completes with
   unchanged behaviour, and the report records corpus-level `RSN-EMPTY`.
@@ -831,8 +836,7 @@ text into a disabled run is a test failure rather than a production discovery.
   selection runs, *then* it carries `RSN-UNPARSEABLE` and the rest of the corpus is used normally.
 - **AT-28** — *Given* a LEARNINGS document carrying none of BR-6's priority sections, *when*
   selection runs, *then* it carries `RSN-NO-MATERIAL`, consumes no `maxDocuments` slot, the
-  rest of the corpus is used normally, and it is not recorded as a document bounded under
-  BR-6.
+  rest of the corpus is used normally, and it is not recorded as bounded under BR-6.
 - **AT-29** — *Given* two scripted runs over the same fixture matrix differing **only** in
   the injected block — one enabled, one disabled — *when* both complete, *then* parsed
   verdicts, structural completeness scores, round-window counters, approval anchors and
@@ -850,12 +854,11 @@ text into a disabled run is a test failure rather than a production discovery.
   baseline and no injection key is carried — absent, not present-and-empty.
 - **AT-32** — *Given* a configuration section present and not an object, *when* the pipeline
   runs, *then* the composition matches AT-31's byte-for-byte and the report carries the
-  catalogued notice naming the malformed configuration. *And given* a declared key carrying a
-  wrong-typed value, *then* the run is enabled, its composition carries a block selected under
-  that key's default value, and the report carries a notice naming the key. *And given* a
-  misspelt section name
-  (`learningsInjectoin`), *then* the run is indistinguishable from the absent-section case
-  of AT-31 — no notice, by BR-14's decision against an unknown-top-level-key rule.
+  catalogued malformed-configuration notice. *And given* a wrong-typed declared key, *then* the
+  run is enabled, its block is selected under that key's default, and the report carries a
+  notice naming the key. *And given* a misspelt
+  section name (`learningsInjectoin`), *then* the run is indistinguishable from AT-31's
+  absent-section case — no notice, per BR-14's decision against an unknown-key rule.
 
 - **AT-33** — *Given* an enabled run, *when* the file-open calls under `docs/` are observed
   over one window covering the whole run, *then* that observed set **equals** BR-15's
@@ -874,9 +877,12 @@ text into a disabled run is a test failure rather than a production discovery.
 
 ### Branch coverage check
 
-Every row of §Edge Cases and Error Scenarios (E-01 … E-33) names an AT, and every AT above appears in
+Every row of §Edge Cases and Error Scenarios (E-01 … E-34, less retired E-05) names an AT, and
+every AT above appears in
 §Linked Requirements' reverse trace. Every branch of the D-1 … D-12 decision table is exercised: D-1
-by AT-30/31/32, D-2 by AT-02/03, D-3 by AT-25, D-4 by AT-24, D-5 by AT-04/15/16, D-6 by AT-26/27, D-7 by AT-09/10, D-8 by AT-07/08, D-9 by AT-11/12, D-10 by AT-13, D-11 by AT-18/21/30, D-12 by AT-28.
+by AT-30/31/32, D-2 by AT-02/03, D-3 by AT-25, D-4 by AT-24, D-5 by AT-04/16, D-6 by AT-26/27,
+D-7 by AT-09/10, D-8 by AT-07/08, D-9 by AT-11/12, D-10 by AT-13, D-11 by AT-18/21/30, D-12 by
+AT-28.
 
 ## Open Questions
 
