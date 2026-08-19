@@ -830,3 +830,30 @@ describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 
     }
   });
 });
+
+// PLAN T21 — AT-1.5 (FSPEC class 8, TSPEC §9 row 8) — red from this batch until T22. Same
+// red-until-later-task convention as the T14/T15 pair and the §6.3 block above (plain failing
+// `test(...)`, not `describe.skip`): this module is a `SWEPT_SURFACE_MODULES` member, so a
+// capability-gated `pending` assertion would have to go through `describeOrSkip`/`itOrSkip`,
+// which this task-sequencing skip does not fit.
+describe("T21: AT-1.5 — .worktreeinclude / .gitignore consumer-runtime row", () => {
+  test(".worktreeinclude carries no row whose only purpose is the consumer runtime copy", () => {
+    const worktreeIncludePath = join(LIVE_ROOT, ".worktreeinclude");
+    // A file left with no rows is deleted rather than left empty (AT-1.5) — .worktreeinclude's
+    // only row today is the consumer-runtime copy, so post-T22 the file must not exist at all.
+    expect(existsSync(worktreeIncludePath)).toBe(false);
+  });
+
+  test(".gitignore carries no row whose only purpose is the consumer runtime copy, and its ~20-line rationale block is gone with it", () => {
+    const gitignore = readFileSync(join(LIVE_ROOT, ".gitignore"), "utf8");
+
+    expect(gitignore).not.toEqual(expect.stringContaining(".claude/workflows/"));
+    expect(gitignore).not.toEqual(expect.stringContaining("Generated consumer runtime copies"));
+
+    // .gitignore's other rows still stand — this is a targeted row deletion, not a rewrite.
+    expect(gitignore).toEqual(expect.stringContaining(".tokensave/"));
+    expect(gitignore).toEqual(expect.stringContaining("node_modules/"));
+    expect(gitignore).toEqual(expect.stringContaining("docs/_decisions/.consolidation-lock"));
+    expect(gitignore).toEqual(expect.stringContaining("coverage/"));
+  });
+});
