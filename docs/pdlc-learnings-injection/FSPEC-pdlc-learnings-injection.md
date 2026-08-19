@@ -58,7 +58,7 @@ how the corpus predicate is pinned to `consolidate-learnings.js` (REQ O-7). Thos
 
 | Term | Meaning in this document |
 |---|---|
-| **corpus** | The set of LEARNINGS documents defined by REQ C-3 — under `docs/{feature}/` or `docs/completed/{feature}/`, tracked or untracked but not ignored, excluding `docs/discarded/`. |
+| **corpus** | The set of LEARNINGS documents REQ C-3 defines: what the consolidation-side enumeration matches under `docs/{feature}/` and `docs/completed/{feature}/`, tracked or untracked but not git-ignored. Documents under `docs/discarded/{feature}/` fall outside that enumeration by its shape, not by a separate exclusion rule (BR-2). |
 | **candidate** | A corpus document after the corpus has been enumerated, before eligibility is decided. |
 | **eligible** | A candidate that survives every exclusion rule in BR-2 and is readable and parseable (BR-3). |
 | **selected** | An eligible document whose material appears in the composed block. |
@@ -104,7 +104,7 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | AC-2.3 | BR-6 | AT-11, AT-12 |
 | AC-2.4 | BR-6 | AT-13 |
 | AC-2.5 | BR-4, BR-6 | AT-14 |
-| AC-2.6 | BR-2 (E-DISCARDED), BR-2 note | AT-15, AT-16 |
+| AC-2.6 | BR-2 (corpus shape), BR-2 note | AT-15, AT-16 |
 | AC-3.1 | BR-8 | AT-17, AT-18 |
 | AC-3.2 | BR-9 | AT-19, AT-20, AT-21 |
 | AC-3.3 | BR-10 | AT-22 |
@@ -160,20 +160,20 @@ including its own failure; no step raises to its caller (BR-12).
    an empty block, continue (AC-4.1).
 9. **The listing succeeds and is non-empty** → the listed paths are the candidates; continue.
 
-### Step 2 — Apply eligibility exclusions
+### Step 2 — Apply the eligibility exclusion
 
-10. For each candidate, apply BR-2's exclusion rules in the order stated there. An excluded candidate
-    is removed from consideration and gets its per-document reason id in the record; it counts toward
+10. Apply BR-2's exclusion to each candidate. An excluded candidate is removed from
+    consideration and gets a per-document reason id in the record; it counts toward
     no threshold (AC-2.6).
-11. If no candidate survives, the outcome is an enabled run with an empty selection: an empty block,
-    an empty set of per-dispatch rows, and every candidate carrying its exclusion reason (BR-9).
+11. If no candidate survives, the outcome is an enabled run with an empty selection: empty
+    block, empty per-dispatch rows, every candidate carrying its exclusion reason (BR-9).
 
 ### Step 3 — Read and validate each surviving candidate
 
-12. Read each surviving candidate. **Unreadable** → excluded with `RSN-UNREADABLE`. **Read but not a
-    LEARNINGS document** → excluded with `RSN-UNPARSEABLE`. **Read, a LEARNINGS document, but
-    truncated mid-document** → excluded with `RSN-TRUNCATED` (BR-3). A single bad document never
-    stops the others being used (AC-4.2).
+12. Read each surviving candidate. **Unreadable** → excluded with `RSN-UNREADABLE`. **Read
+    but not a LEARNINGS document** — including a document whose bytes stop mid-document —
+    → excluded with `RSN-UNPARSEABLE` (BR-3). A single bad document never stops the others
+    being used (AC-4.2).
 13. What survives step 3 is the **eligible set**.
 
 ### Step 4 — Order the eligible set
@@ -185,15 +185,18 @@ including its own failure; no step raises to its caller (BR-12).
 
 ### Step 5 — Apply the bounds
 
-15. Take the first `learningsInjection.maxDocuments` documents in the order; the rest are dropped
-    with `RSN-COUNT` (BR-5).
-16. For each taken document, extract its injectable material per BR-6 and bound it at
+15. Drop any eligible document carrying none of BR-6's priority sections, with
+    `RSN-NO-MATERIAL` — it consumes no slot — then take the first
+    `learningsInjection.maxDocuments` of the rest in BR-4's order; the remainder are
+    dropped with `RSN-COUNT` (BR-5, BR-6).
+16. For each taken document, extract its injectable material per BR-6, bounded by
     `learningsInjection.maxBytesPerDocument`; a document whose material was cut is flagged
     **bounded** in its row (BR-6, AC-2.3).
-17. Accumulate the bounded material in order until adding the next document's material would exceed
-    `learningsInjection.maxTotalBytes`. That document and every one after it are dropped **whole**,
-    with `RSN-BYTES` (BR-6, AC-2.4). A document is never cut mid-document to make the total fit; the
-    per-document bound is the only cut this flow makes.
+17. Accumulate contributed bytes in order until the next document would carry the running
+    total past `learningsInjection.maxTotalBytes`; that document and every lower-ordered
+    one is dropped whole with `RSN-BYTES` (BR-6, AC-2.4). No document is ever cut
+    mid-document to make a total fit, and no count-cut document is promoted into a slot a
+    byte drop frees (BR-5).
 18. What remains is the **selected set**, in order.
 
 ### Step 6 — Compose and record
@@ -217,13 +220,14 @@ including its own failure; no step raises to its caller (BR-12).
 | D-2 | Is this dispatch an authoring dispatch? | yes / no | BR-1 |
 | D-3 | Did the corpus listing succeed? | ok / failed | BR-12 |
 | D-4 | Is the listing empty? | empty / non-empty | BR-12 |
-| D-5 | Is the candidate excluded by rule? | self / discarded / ineligible path | BR-2 |
-| D-6 | Did the candidate read and parse? | ok / unreadable / unparseable / truncated | BR-3 |
+| D-5 | Is the candidate excluded by rule? | self / not excluded | BR-2 |
+| D-6 | Did the candidate read and parse? | ok / unreadable / unparseable | BR-3 |
 | D-7 | Is the ordering key present and parseable? | yes / no → tiebreak | BR-4 |
 | D-8 | Does the count bound bind? | yes / no | BR-5 |
 | D-9 | Does the per-document byte bound bind? | yes → bounded flag / no | BR-6 |
 | D-10 | Does the total byte bound bind? | yes → whole-document drop / no | BR-6 |
 | D-11 | Is the selected set empty? | yes → empty block, empty rows / no | BR-8 |
+| D-12 | Does the document carry any priority section? | yes / no → `RSN-NO-MATERIAL` | BR-6 |
 
 Every branch in this table has at least one acceptance test (DC-05); the mapping is in §Acceptance
 Tests.
