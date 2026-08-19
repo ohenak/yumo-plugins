@@ -73,8 +73,39 @@ than the tier's other five:
 | Phase I has no approval skip | a re-invocation re-enters at wave 1 and re-dispatches **every** wave, including those whose commits already landed | M-WG-6 |
 | The queue row goes `halted` | an unattended `/loop` stops here and waits for a human | M-WG-7 |
 
-So the operator arrives at a stop with no diagnosis, and the cheapest way forward is to re-run the
-most expensive phase in the pipeline from its beginning.
+**Correction, 2026-08-13.** The M-WG-6 row above previously claimed a re-invocation "re-enters
+at wave 1 and re-dispatches every wave, including those whose commits already landed." The source
+no longer does that *unconditionally* — the interim wave ledger (`orchestrate-dev.js:9976` ff.,
+resume logic `:12191-12280`) and `implementation.startWave` can skip already-committed waves — but
+**wave-1 re-entry is what is still observed in practice**, so the row is far closer to true than to
+false. Four preconditions gate the ledger, and each of them fails routinely:
+
+- **It is written only under the script-owned gate.** The write sits inside the `if (scriptGate)`
+  branch (`:12345`-`:12429`), and `scriptGate` requires both `implementation.testCommand` and a
+  `_runCommand` seam (`:12128`). A self-report-gate run records nothing, ever.
+- **It is written only after a wave goes green and its work is committed.** A run that halts at
+  wave N records nothing for wave N — and a run that halts at wave 1 records nothing at all, which
+  is exactly the wave-gate-failure case this REQ exists for.
+- **It is ignored when the PLAN's wave layout changes** (`planHash`), so any PLAN edit between
+  invocations — routine when remediating a halt — returns the next run to wave 1 with a notice.
+- **It is ignored when the recorded commit is not an ancestor of HEAD.** Phase DOD step 0 rebases
+  `feat-{feature}` onto the default branch, rewriting those commits, so a post-DOD re-invocation
+  fails corroboration.
+
+Corroborating evidence, **re-measured 2026-08-18** and corrected: the ledger file does now exist in
+this repo's tree — one untracked `.claude/pdlc-wave-state.json`, recording a green wave for
+`pdlc-consolidation-agent` against a `planHash` for a PLAN that has since been superseded — so the
+stronger claim v1.2 made, that no record has ever survived here, no longer holds and is withdrawn.
+What the single surviving record does not show is a resume: it names a feature that completed, and
+every one of the four preconditions above still gates its use. Separately, the consumer runtime copy
+under `.claude/workflows/` is still out of sync with the built artifacts — the drift check exits
+non-zero with three rows stale and one missing — and a stale copy is announced but silently
+executed.
+
+The consequence for this REQ is that the seam's economics argument stands as originally written:
+the expensive part of a wave-gate stop is still a from-scratch Phase I re-run in the common case,
+not merely the operator's turn to re-invoke. Closing the gap between what the ledger ships and what
+it delivers is `pdlc-wave-resume`'s (queue row 20) work, not this seam's.
 
 **The motivating incident (2026-08-09, `pdlc-consolidation-agent`).** A wave-2 task authored a new
 module importing four symbols from an existing one. Three were exported; the fourth's promotion was
