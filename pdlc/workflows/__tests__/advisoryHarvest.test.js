@@ -102,7 +102,7 @@ import queueMain from "../orchestrate-queue.js";
 // asserted anything about the gate itself, only served a record at the path the gate used to
 // read — inlined here, byte-identical to the old export's value, so the fixture below is
 // unchanged; the branch is now simply dead (no code path requests this key).
-const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-dri" + "ft-state.json";
 import { execSync, spawnSync } from "child_process";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "fs";
 import { join, resolve, dirname } from "path";

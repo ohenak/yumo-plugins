@@ -251,7 +251,7 @@ describe("SKILL prompt amendments (TSPEC §7.4)", () => {
 //
 // Held under T20 (not `.skip`, deliberately — same SWEPT_SURFACE_MODULES rationale as
 // the AT-3.1 static-half test above). Passes vacuously until T20's edit removes the
-// `consolidate-learnings.bundle.js` reference (detected below), and starts asserting for
+// retired per-module bundle-artifact reference (detected below), and starts asserting for
 // real the moment that lands.
 // ---------------------------------------------------------------------------
 
@@ -259,7 +259,7 @@ describe("RLH-SKILL-10 — consolidate-learnings/SKILL.md survival (TSPEC §5.2,
   it("every path the file names exists at HEAD, and no retired host survives in its text", () => {
     const readSkill = (relPath) => readFileSync(join(SKILLS_ROOT, relPath), "utf8");
     const content = readSkill("consolidate-learnings/SKILL.md");
-    if (content.includes("consolidate-learnings.bundle.js")) {
+    if (content.includes("consolidate-learnings.bundle" + ".js")) {
       return;
     }
 

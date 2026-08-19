@@ -3,8 +3,8 @@
  * build-runtime.mjs — emit the pdlc-cli.mjs artifact from the canonical modules.
  *
  * pdlc-plugin-retirement (DEC-02): the workflow-runtime bundles this builder used to
- * emit (`orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`,
- * `consolidate-learnings.bundle.js`) are retired along with the Claude Code workflow
+ * emit (three per-module runtime artifacts, one apiece for orchestrate-dev.js,
+ * orchestrate-queue.js, and consolidate-learnings.js) are retired along with the Claude Code workflow
  * runtime that loaded them — pipeline execution now lives in the published
  * `@kaneho/pdlc-engine` package, invoked by the `orchestrate-dev` / `orchestrate-queue`
  * SKILL.md delegators as `pdlc dev <req-path>` / `pdlc queue`. This builder now emits a

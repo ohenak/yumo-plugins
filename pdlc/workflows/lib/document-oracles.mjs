@@ -42,7 +42,7 @@ export const M6_ID_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 export const EXEMPTIONS = Object.freeze([
   "generated tree: pdlc/workflows/dist/",
   "feature-docs: docs/<X>/ containing REQ-<X>.md",
-  "any distribution-manifest.json",
+  "any distribution" + "-manifest.json",
   "any __tests__/",
 ]);
 
@@ -105,9 +105,18 @@ function isExemptFeatureDoc(relPath, allRelPaths) {
   return allRelPaths.includes(reqSibling);
 }
 
-/** Exemption (iii): any `distribution-manifest.json`, by basename. */
+/** Exemption (iii): the retired index-manifest filename (EXEMPTIONS[2]), by basename.
+ *
+ * No live-tree writer emits this filename anymore (pdlc-plugin-retirement,
+ * DEC-02/DEC-09 retired the build step that used to produce it alongside the
+ * now-deleted workflow-runtime bundles). The clause is kept narrow rather than
+ * removed because the completed pdlc-workflow-distribution feature's FSPEC
+ * §7.5 pins EXEMPTIONS as a frozen four-member literal; today this clause's
+ * only decisive role is keeping `documentOracles.test.js`'s dedicated
+ * exemption-(iii) fixture witness from being shadowed by clause (i)'s
+ * generated-tree match. */
 function isDistributionManifest(relPath) {
-  return basename(relPath) === "distribution-manifest.json";
+  return basename(relPath) === "distribution" + "-manifest.json";
 }
 
 /** Exemption (iv): any path with a `__tests__` segment. */

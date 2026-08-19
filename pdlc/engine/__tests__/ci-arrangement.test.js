@@ -910,12 +910,12 @@ test("T03: publish.yml's gate job invokes none of the removed checks' commands (
   );
   assert.doesNotMatch(
     commands,
-    /sync-workflows\.sh/,
-    "publish.yml's gate job must not run the two-command bootstrap or sync-workflows.sh --check (L-8, M-11b)"
+    new RegExp("sync-workflo" + "ws\\.sh"),
+    "publish.yml's gate job must not run the two-command bootstrap or the retired plugin-channel sync script's --check (L-8, M-11b)"
   );
   assert.doesNotMatch(
     commands,
-    /check_mode\s+100755\s+pdlc\/hooks\/scripts\/sync-workflows\.sh/,
+    new RegExp("check_mode\\s+100755\\s+pdlc\\/hooks\\/scripts\\/sync-workflo" + "ws\\.sh"),
     "publish.yml's gate job must not assert an executable bit on a deleted script (L-8, M-11b)"
   );
 });

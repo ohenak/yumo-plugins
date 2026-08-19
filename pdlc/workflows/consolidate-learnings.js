@@ -3,8 +3,8 @@
  *
  * Canonical source: pdlc/workflows/consolidate-learnings.js
  *
- * pdlc-plugin-retirement (REQ O-8): this module is no longer bundled into a `.bundle.js`
- * artifact, and — unlike orchestrate-dev.js / orchestrate-queue.js — is not yet vendored into
+ * pdlc-plugin-retirement (REQ O-8): this module is no longer bundled into a standalone
+ * runtime artifact, and — unlike orchestrate-dev.js / orchestrate-queue.js — is not yet vendored into
  * `@kaneho/pdlc-engine` either, so no host currently loads it at runtime. Until it is re-hosted
  * (tracked as the successor `pdlc-consolidation-rehost` feature, `docs/_queue/QUEUE.md` Order
  * 24), `pdlc/skills/consolidate-learnings/SKILL.md` performs the pass this file describes

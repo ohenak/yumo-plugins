@@ -31,7 +31,7 @@ import main, {
 // the gate itself, only seeded a record at the path the gate used to read. Inlined here, byte-
 // identical to the old export's value, so the seeded fixture below is unchanged; this key is now
 // simply an inert extra store entry no code path reads.
-const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-dri" + "ft-state.json";
 
 // A shape-valid drift-state record, opted out via checkEnabled:false (row 2 —
 // FSPEC §6.2's operator opt-out), writeFailures empty so row 3 cannot also

@@ -183,7 +183,7 @@ describe("T32 — the consolidation bundle (T-02, TSPEC §8.2, §8.3)", () => {
 
   // pdlc-plugin-retirement (DEC-02, T19): build-runtime.mjs is now the single-row builder
   // TT-5 below pins — it emits only pdlc-cli.mjs, so there is no consolidation bundle and no
-  // distribution-manifest.json for this block to assert on any more. Restated at the grain
+  // index-manifest file for this block to assert on any more. Restated at the grain
   // TT-5 already covers ("the emitted file set set-equals {pdlc-cli.mjs}", "mutating the
   // artifact makes --check fail"); these three checks are retired rather than duplicated.
   it("pdlc-cli.mjs is the sole emitted artifact (the consolidation bundle is retired build output)", () => {

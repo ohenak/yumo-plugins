@@ -217,7 +217,7 @@ describe("T15 — identity and merge (L1)", () => {
     test("AT-F3: an authored source file plus its rebuilt build output — this layer sees one proposal, the source file's, once the generated candidate is already excluded", () => {
       // Scope boundary (file header): the exclusion of generated build output under
       // `pdlc/workflows/dist/` (post pdlc-plugin-retirement / DEC-02, that directory holds only
-      // `pdlc-cli.mjs`, not a per-source `.bundle.js` artifact) is `deriveProposals`'s job (TSPEC
+      // `pdlc-cli.mjs`, not a per-source standalone bundle artifact) is `deriveProposals`'s job (TSPEC
       // §7.4 pipeline, not exported at this layer) and is covered end to end at L2. What
       // `mergeProposals`/`failureModeId` can be shown to do, given only the authored candidate
       // they would actually receive, is exactly AT-F3's positive half: one proposal, `artifact`

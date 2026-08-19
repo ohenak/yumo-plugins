@@ -3,7 +3,7 @@
 //
 // ORIGINAL premise (pre-retirement): `orchestrate-dev.js`'s advisory core was reached from
 // `orchestrate-queue.js` only through a shared `__dev` IIFE that `build-runtime.mjs` produced by
-// inlining both modules' stripped bodies into hand-authored `.bundle.js` artifacts (real ES
+// inlining both modules' stripped bodies into hand-authored per-module bundle artifacts (real ES
 // `import`/`export` could not survive the Claude Code workflow runtime's loader). This file's
 // original obligation was a build-time regression proof: that A-32's edit to the dev module's
 // export list and the queue module's prelude stayed additive across that inlining.
@@ -15,7 +15,7 @@
 // queue.js` reaches the advisory core through an ordinary `import { ... } from "./orchestrate-
 // dev.js"` — the reachability question A-32 answered by construction is no longer a build-time
 // concern at all, so the paren-balance `wrapModule()` extraction and the shipped-bundle /
-// distribution-manifest structural checks this file used to carry are gone (baseline M-11p: "the
+// shipped-index-manifest structural checks this file used to carry are gone (baseline M-11p: "the
 // dev module's export-list and queue module's prelude wrapModule() tests, `SHIPPED_BUNDLES`
 // structural-constraint tests, and the four-row manifest test — all bundle-era, all removed").
 //

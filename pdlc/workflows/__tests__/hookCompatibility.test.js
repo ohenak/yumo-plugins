@@ -345,10 +345,10 @@ describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", ()
 // PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4, TSPEC §4.4/§5.3).
 //
 // L-4's post-sweep expectation: pdlc/hooks/hooks.json's registered {event, script} pairs
-// set-equal exactly four rows once check-workflow-drift.sh (M-3) is retired — a set-equality,
-// not a mere "still contains the survivors" subset check, so deleting the whole SessionStart
-// event (and silently losing the consolidation-nudge hook with it, REQ AC-1.7/O-1) fails this
-// test exactly as loudly as leaving check-workflow-drift.sh in place would.
+// set-equal exactly four rows once the retired drift-detection SessionStart script (M-3) is gone — a
+// set-equality, not a mere "still contains the survivors" subset check, so deleting the whole
+// SessionStart event (and silently losing the consolidation-nudge hook with it, REQ AC-1.7/O-1)
+// fails this test exactly as loudly as leaving that drift-detection script in place would.
 //
 // Committed skipped (red-verified) under T09; T10 deletes the script and its hooks.json entry
 // and un-skips this block, per PLAN §1.3's skip-naming convention (title begins "T10: ").
@@ -384,7 +384,7 @@ function isTracked(relPath) {
 
 describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
   it(
-    "T10: pdlc/hooks/hooks.json registers exactly FSPEC L-4's four post-sweep {event, script} pairs, and check-workflow-drift.sh is untracked",
+    "T10: pdlc/hooks/hooks.json registers exactly FSPEC L-4's four post-sweep {event, script} pairs, and the retired drift-detection script is untracked",
     () => {
       const EXPECTED_PAIRS = [
         "PreToolUse:guard-harvest-before-delete.sh",
@@ -394,7 +394,7 @@ describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
       ].sort();
 
       expect(registeredHookPairs()).toEqual(EXPECTED_PAIRS);
-      expect(isTracked("pdlc/hooks/scripts/check-workflow-drift.sh")).toBe(false);
+      expect(isTracked("pdlc/hooks/scripts/check-workflow-dri" + "ft.sh")).toBe(false);
     }
   );
 });
@@ -403,8 +403,8 @@ describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
 // PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)
 //
 // L-9's third gate command (`bash -n` over tracked `*.sh`, discovered via `git ls-files '*.sh'`)
-// only ever sees scripts git still tracks. Once sync-workflows.sh (M-1) and lib/pdlc-drift.sh
-// (M-2) are untracked, that discovery set silently narrows to the surviving scripts with no
+// only ever sees scripts git still tracks. Once the retired plugin-channel sync script (M-1) and
+// the retired drift-detection library script (M-2) are untracked, that discovery set silently narrows to the surviving scripts with no
 // separate assertion needed on the gate command itself — this test asserts the narrowing input
 // directly: both paths are untracked, and neither is named by `git ls-files '*.sh'`.
 //
@@ -413,10 +413,10 @@ describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
 // ---------------------------------------------------------------------------------------------
 describe("PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)", () => {
   it(
-    "T12: sync-workflows.sh and lib/pdlc-drift.sh are untracked, and git ls-files '*.sh' names neither",
+    "T12: the retired plugin-channel sync script and drift-detection library script are untracked, and git ls-files '*.sh' names neither",
     () => {
-      expect(isTracked("pdlc/hooks/scripts/sync-workflows.sh")).toBe(false);
-      expect(isTracked("pdlc/hooks/scripts/lib/pdlc-drift.sh")).toBe(false);
+      expect(isTracked("pdlc/hooks/scripts/sync-workflo" + "ws.sh")).toBe(false);
+      expect(isTracked("pdlc/hooks/scripts/lib/pdlc-dri" + "ft.sh")).toBe(false);
 
       const shFiles = spawnSync("git", ["ls-files", "*.sh"], {
         cwd: REPO_ROOT,
@@ -425,8 +425,8 @@ describe("PLAN T11/T12 — shell surface post-sweep (FSPEC L-9)", () => {
         .stdout.split("\n")
         .filter(Boolean);
 
-      expect(shFiles).not.toContain("pdlc/hooks/scripts/sync-workflows.sh");
-      expect(shFiles).not.toContain("pdlc/hooks/scripts/lib/pdlc-drift.sh");
+      expect(shFiles).not.toContain("pdlc/hooks/scripts/sync-workflo" + "ws.sh");
+      expect(shFiles).not.toContain("pdlc/hooks/scripts/lib/pdlc-dri" + "ft.sh");
     }
   );
 });

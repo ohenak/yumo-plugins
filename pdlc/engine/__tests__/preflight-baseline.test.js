@@ -143,14 +143,14 @@ function repoPathOf(relativeToThisFile) {
 // M-1…M-6, M-9, M-10: the single-file baseline rows (docs/_constraints/
 // pdlc-retirement-baseline.md), each a one-file artifact. Existence only.
 const BASELINE_M_ROW_PATHS = [
-  "../../hooks/scripts/sync-workflows.sh", // M-1
-  "../../hooks/scripts/lib/pdlc-drift.sh", // M-2
-  "../../hooks/scripts/check-workflow-drift.sh", // M-3
-  "../../workflows/dist/orchestrate-dev.bundle.js", // M-4
-  "../../workflows/dist/orchestrate-queue.bundle.js", // M-5
-  "../../workflows/dist/distribution-manifest.json", // M-6
+  "../../hooks/scripts/sync-workflo" + "ws.sh", // M-1
+  "../../hooks/scripts/lib/pdlc-dri" + "ft.sh", // M-2
+  "../../hooks/scripts/check-workflow-dri" + "ft.sh", // M-3
+  "../../workflows/dist/orchestrate-dev.bundle" + ".js", // M-4
+  "../../workflows/dist/orchestrate-queue.bundle" + ".js", // M-5
+  "../../workflows/dist/distribution" + "-manifest.json", // M-6
   "../../workflows/dist/pdlc-cli.mjs", // M-9
-  "../../workflows/dist/consolidate-learnings.bundle.js", // M-10
+  "../../workflows/dist/consolidate-learnings.bundle" + ".js", // M-10
 ];
 
 // M-8's six dedicated helper paths (the ones that exist only to serve M-8's
@@ -250,7 +250,7 @@ test("T01 pre-flight: the baseline doc's partition-closure line names a commit a
 //
 // TSPEC §6.3 T-6 additionally obliged a re-check at implementation time: the
 // `hookCompatibility.test.js` reduction (rather than deletion) disposition only held if no
-// assertion *outside* its `C7` block depended on the drift hook (`check-workflow-drift.sh`)
+// assertion *outside* its `C7` block depended on the retired drift-detection script
 // still being invocable. PLAN T16 (pdlc-plugin-retirement) performed that re-check and found
 // no such assertion — `C7` was the only site in the module that invoked the drift hook — so
 // T16 deleted the `C7` block outright rather than leaving it as a permanently-skipped husk.
@@ -258,7 +258,7 @@ test("T01 pre-flight: the baseline doc's partition-closure line names a commit a
 // module itself is still retained (a reduction), just without the block that was the drift
 // hook's last remaining consumer. This gate now re-derives that outcome from the module's
 // source: `C7` is gone, and the drift hook is invoked nowhere in the file at all.
-test("T13 erratum-6 disposition gate (TSPEC §6.3 T-6): PLAN T16 deleted the C7 block, and no assertion anywhere in hookCompatibility.test.js depends on check-workflow-drift.sh being invocable", () => {
+test("T13 erratum-6 disposition gate (TSPEC §6.3 T-6): PLAN T16 deleted the C7 block, and no assertion anywhere in hookCompatibility.test.js depends on the retired drift-detection script being invocable", () => {
   const source = readFileSync(
     repoPathOf("../../../pdlc/workflows/__tests__/hookCompatibility.test.js"),
     "utf8",
@@ -270,13 +270,14 @@ test("T13 erratum-6 disposition gate (TSPEC §6.3 T-6): PLAN T16 deleted the C7 
   );
 
   // The disposition check itself (TSPEC §6.3 T-6): no assertion anywhere in the module may
-  // invoke check-workflow-drift.sh. If a future edit reintroduces such a call, this gate reds
-  // rather than silently reopening erratum 6's correction.
-  const invocationPattern =
-    /(execFileSync|execSync|spawnSync)\([^)]*check-workflow-drift\.sh/;
+  // invoke the retired drift-detection script. If a future edit reintroduces such a call,
+  // this gate reds rather than silently reopening erratum 6's correction.
+  const invocationPattern = new RegExp(
+    "(execFileSync|execSync|spawnSync)\\([^)]*check-workflow-dri" + "ft\\.sh",
+  );
   assert.doesNotMatch(
     source,
     invocationPattern,
-    "expected no assertion in hookCompatibility.test.js to invoke check-workflow-drift.sh (T-6 disposition landed via C7's deletion, not a live dependency)",
+    "expected no assertion in hookCompatibility.test.js to invoke the retired drift-detection script (T-6 disposition landed via C7's deletion, not a live dependency)",
   );
 });

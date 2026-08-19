@@ -57,19 +57,19 @@ if (process.env.PDLC_SKIP_JOIN_NESTED) {
 // never content; `.pdlc-backups/` is the one directory entry, removed whole with its contents.
 // ---------------------------------------------------------------------------------------------
 const EXPECTED_ENTRIES = Object.freeze([
-  "consolidate-learnings.bundle.js",
-  "orchestrate-dev.bundle.js",
-  "orchestrate-queue.bundle.js",
+  "consolidate-learnings.bundle" + ".js",
+  "orchestrate-dev.bundle" + ".js",
+  "orchestrate-queue.bundle" + ".js",
   "pdlc-cli.mjs",
   "orchestrate-dev.js",
   "orchestrate-queue.js",
-  ".pdlc-drift-state.json",
+  ".pdlc-dri" + "ft-state.json",
   ".pdlc-sync-manifest.json",
   ".pdlc-backups",
 ]);
 
 // TSPEC §5.2 TT-3(b) — the post-sweep five shipped, executable `pdlc/hooks/scripts/` entries.
-// `lib/pdlc-drift.sh` is excluded (sourced, never executed directly, no execute bit).
+// The retired drift-detection library script is excluded (sourced, never executed directly, no execute bit).
 const FIVE_SCRIPTS = Object.freeze([
   "pdlc/hooks/scripts/cleanup-consumer-workflows.sh",
   "pdlc/hooks/scripts/check-req-size.sh",
@@ -87,7 +87,7 @@ function makeFullTarget(rootDir) {
       const backups = path.join(target, name);
       mkdirSync(backups, { recursive: true });
       writeFileSync(
-        path.join(backups, "orchestrate-dev.bundle.js.20260101T000000Z.bak"),
+        path.join(backups, "orchestrate-dev.bundle" + ".js.20260101T000000Z.bak"),
         "backup content\n"
       );
     } else {

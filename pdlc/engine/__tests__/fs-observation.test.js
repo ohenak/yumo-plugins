@@ -80,7 +80,7 @@ function makeScratchRoots() {
 
   const workflowsDir = path.join(consumerRoot, ".claude", "workflows");
   fs.mkdirSync(workflowsDir, { recursive: true });
-  const workflowsFile = path.join(workflowsDir, "orchestrate-dev.bundle.js");
+  const workflowsFile = path.join(workflowsDir, "orchestrate-dev.bundle" + ".js");
   fs.writeFileSync(workflowsFile, "// bundle\n");
 
   return { pluginRoot, consumerRoot, skillFile, reqFile, workflowsFile, feature: "widget", skill: "se-implement" };

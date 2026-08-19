@@ -84,6 +84,21 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
 | 23 | done | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |  |
 | 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
+| 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |
+
+**Row 25 (`pdlc-retirement-operator-verification`) added 2026-08-18 to bind
+`pdlc-plugin-retirement`'s nine `PENDING-OPERATOR` acceptance criteria to a successor.**
+CODE_REVIEW-pdlc-plugin-retirement-v1.md §3 finding 6(b) found that AC-3.1 (transcript
+half), AC-3.2, AC-3.4, AC-3.5, AC-3.6, AC-4.4, AC-5.3, and the two P0 criteria AC-5.1 and
+AC-5.2 were bound only to prose in two ledger documents
+(`docs/pdlc-plugin-retirement/POSTSWEEP-RUN-*.md`,
+`docs/pdlc-plugin-retirement/OPERATOR-OBSERVATIONS-*.md`) — not to a queue row or successor
+REQ, so a runbook step or bare prose mention was not a successor per the same criterion's own
+rule. This row and its (not yet authored) REQ own the operator-acceptance run that discharges
+AC-5.1, AC-5.2, and AC-4.4, and the AT-3.1/AT-3.2/AT-3.4/AT-3.5/AT-3.6/AT-5.3 live-dispatch
+observations that back them; the two ledger documents remain the evidence template the run
+fills in, not the successor itself. `Order` 25 is next free after 24; the row stays `blocked`
+until `pdlc-plugin-retirement`'s sweep lands and an operator run is scheduled.
 
 **Row 24 (`pdlc-consolidation-rehost`) added 2026-08-18 to bind `pdlc-plugin-retirement`
 REQ O-8's successor obligation.** O-8 records the operator's choice of option (a) —

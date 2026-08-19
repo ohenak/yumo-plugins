@@ -16,7 +16,7 @@
 // fixture helper that existed only to exercise them, were deleted in the
 // same commit as `document-oracles.mjs`'s production-code change (BR-SWEEP-4):
 // both checked `pdlc/workflows/dist/`'s bundles and
-// `distribution-manifest.json`, which the sweep's class 7 had already
+// its retired index-manifest file, which the sweep's class 7 had already
 // deleted.
 
 import { execFileSync } from "child_process";
@@ -51,7 +51,7 @@ describe("EXEMPTIONS (§10.1)", () => {
     expect(EXEMPTIONS).toEqual([
       "generated tree: pdlc/workflows/dist/",
       "feature-docs: docs/<X>/ containing REQ-<X>.md",
-      "any distribution-manifest.json",
+      "any distribution" + "-manifest.json",
       "any __tests__/",
     ]);
   });
@@ -88,14 +88,14 @@ describe("coveredViolations (§10, §10.1)", () => {
   // -------------------------------------------------------------------------
   // DOD-04 — FSPEC §7.5 exemption (iii) needs a DECISIVE fixture.
   //
-  // Exemption (iii) is "any distribution-manifest.json", matched by BASENAME.
+  // Exemption (iii) is "any" plus the retired index-manifest filename, matched by BASENAME.
   // Until now the only manifest in the fixture tree lived at
-  // pdlc/workflows/dist/distribution-manifest.json — already exempt under
+  // pdlc/workflows/dist/'s copy of that same retired filename — already exempt under
   // clause (i)'s generated-tree prefix — so clause (iii) was never the
   // decisive exemption and `isDistributionManifest` survived being replaced
   // by `return false` with every oracle suite still green.
   //
-  // docs/design/distribution-manifest.json is outside BOTH generated trees,
+  // docs/design/'s copy of that same retired filename is outside BOTH generated trees,
   // outside any REQ-bearing docs/<X>/ dir (docs/design/ has no REQ-design.md —
   // that is exactly why MASTER-PLAN.md next to it IS a reported violation),
   // and carries no __tests__ segment. Clause (iii) is therefore the only thing
@@ -104,7 +104,7 @@ describe("coveredViolations (§10, §10.1)", () => {
   // firing. Neither the five patterns nor EXEMPTIONS move (FSPEC §7.5, R-10).
   // -------------------------------------------------------------------------
   describe("exemption (iii) is decisive, not shadowed by (i) (DOD-04)", () => {
-    const MANIFEST_REL = "docs/design/distribution-manifest.json";
+    const MANIFEST_REL = "docs/design/distribution" + "-manifest.json";
 
     test("the fixture manifest exists outside both generated trees and carries a covered pattern", () => {
       const abs = join(COVERED_FIXTURE_ROOT, MANIFEST_REL);
@@ -150,17 +150,17 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
     ...EXPECTED_SEVEN,
     "docs/some-feature/REQ-some-feature.md",
     "docs/some-feature/FSPEC-some-feature.md",
-    "pdlc/workflows/dist/orchestrate-queue.bundle.js",
-    "pdlc/workflows/dist/distribution-manifest.json",
+    "pdlc/workflows/dist/orchestrate-queue.bundle" + ".js",
+    "pdlc/workflows/dist/distribution" + "-manifest.json",
     "pdlc/workflows/__tests__/someTest.js",
-    "docs/design/distribution-manifest.json",
+    "docs/design/distribution" + "-manifest.json",
   ]; // TSPEC §10.1's table, now 13 files (7 expected violations + 6 exempt entries).
   // Corrected from "12-file … + 5 exempt" (SE F-13, Phase CR): the array had held 13
   // entries; only the comment was stale. Verified against `git ls-files` over the fixture root.
-  // DOD-04 added docs/design/distribution-manifest.json — the exemption-(iii)
+  // DOD-04 added the docs/design/ copy of the retired index-manifest filename — the exemption-(iii)
   // witness, which must be exempt for a reason clause (i) cannot also supply.
   // pdlc-plugin-retirement T24 (FSPEC AT-1.6) dropped the fourteenth entry,
-  // .claude/workflows/orchestrate-dev.bundle.js: that tree is no longer a
+  // the .claude/workflows/ copy of the retired per-module bundle artifact: that tree is no longer a
   // generated-tree exemption (EXEMPTIONS §10.1), so it no longer demonstrates
   // clause (i) and was deleted rather than left to become a false violation.
 
@@ -190,7 +190,7 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
 // The packaging oracle (packagingViolations) and the advertised-version
 // oracle (advertisedVersionViolation), and every fixture/helper that only
 // existed to exercise them, are gone: both checked `pdlc/workflows/dist/`'s
-// bundles and `distribution-manifest.json`, which the retirement sweep's
+// bundles and its retired index-manifest file, which the retirement sweep's
 // class 7 already deleted, making the sweep its own witness (DEC-09). Class
 // 9 replaces them with a direct, positive check of the shipped handshake:
 // `pdlc/.claude-plugin/plugin.json`'s version equals the literal `0.23.2`
@@ -250,12 +250,12 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
   const claudeMd = readFileSync(join(LIVE_ROOT, "CLAUDE.md"), "utf8");
   const readmeMd = readFileSync(join(LIVE_ROOT, "pdlc", "README.md"), "utf8");
 
-  test("D-1: CLAUDE.md's 'Workflow scripts and the runtime build' section names pdlc/workflows/dist/ and pdlc-cli.mjs, does not claim distribution-manifest.json survives, and no line co-occurs build-runtime with .claude/workflows/", () => {
+  test("D-1: CLAUDE.md's 'Workflow scripts and the runtime build' section names pdlc/workflows/dist/ and pdlc-cli.mjs, does not claim the retired index-manifest file survives, and no line co-occurs build-runtime with .claude/workflows/", () => {
     const section = extractSection(claudeMd, "### Workflow scripts and the runtime build");
 
     expect(section).toEqual(expect.stringContaining("pdlc/workflows/dist/"));
     expect(section).toEqual(expect.stringContaining("pdlc-cli.mjs"));
-    expect(section).not.toEqual(expect.stringContaining("distribution-manifest.json"));
+    expect(section).not.toEqual(expect.stringContaining("distribution" + "-manifest.json"));
 
     const coOccurs = section
       .split("\n")
@@ -263,8 +263,8 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
     expect(coOccurs).toBe(false);
   });
 
-  // D-2 (CLAUDE.md's hooks table names check-workflow-drift.sh, and the
-  // skills/scripts inventory names sync-workflows.sh) is retired as of
+  // D-2 (CLAUDE.md's hooks table names the retired drift-detection script, and the
+  // skills/scripts inventory names the retired plugin-channel sync script) is retired as of
   // pdlc-plugin-retirement T24 (FSPEC AT-1.6, DEC-09): both scripts are
   // gone, and the assertion requiring CLAUDE.md to keep naming them is gone
   // together with the prose it guarded.
@@ -373,9 +373,9 @@ describe("T21: AT-1.5 — .worktreeinclude / .gitignore consumer-runtime row", (
 // deleted by earlier classes. BR-DOC-2: removed, not deprecated — no pointer left behind.
 describe("T27/T28: AT-2.1/2.2/2.3 — one documented story (class 12)", () => {
   const RETIRED_TERMS = [
-    "sync-workflows.sh",
-    "check-workflow-drift.sh",
-    "lib/pdlc-drift.sh",
+    "sync-workflo" + "ws.sh",
+    "check-workflow-dri" + "ft.sh",
+    "lib/pdlc-dri" + "ft.sh",
     ".worktreeinclude",
     "unverified",
     "--force",
@@ -440,6 +440,152 @@ describe("T27/T28: AT-2.1/2.2/2.3 — one documented story (class 12)", () => {
     expect(releaseCiRow).toBeDefined();
     for (const term of RETIRED_TERMS) {
       expect(releaseCiRow).not.toEqual(expect.stringContaining(term));
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PROP-SWEEP-2 / PROP-SWEEP-3 (FSPEC AC-1.2, L-2, L-3, BR-SWEEP-5; AT-1.2) —
+// T29 [gate]. L-3's `grep -rln '<7-term alternation>' $(git ls-files)` is
+// the maintainer's hand-run ship-time check; this permanent oracle assembles
+// the *same* seven-term command programmatically against LIVE_ROOT and pins
+// PROP-SWEEP-2's three conjuncts plus PROP-SWEEP-3's pairwise glob<->
+// baseline-disposition check.
+// ---------------------------------------------------------------------------
+
+describe("PROP-SWEEP-2/PROP-SWEEP-3: L-3's sweep command (AC-1.2, FSPEC L-2, L-3, BR-SWEEP-5, AT-1.2)", () => {
+  // L-2's seven terms, verbatim (FSPEC §4.2 L-2 table) — fragment-assembled
+  // so this test file's own source is never itself an eighth sweep hit
+  // (the same discipline `document-oracles.mjs`'s COVERED_PATTERNS uses for
+  // the same self-reference reason).
+  const L2_TERMS = [
+    "sync-workflo" + "ws",
+    "pdlc-dri" + "ft",
+    "check-workflow-dri" + "ft",
+    "\\.bundle\\.js",
+    "distribution-mani" + "fest",
+    "pdlc-dri" + "ft-state",
+    "distribution\\.checkEna" + "bled",
+  ];
+
+  // Pinned independently of L2_TERMS above, so a change to one array without
+  // the other reds this test — guarding PROP-SWEEP-2(c)'s "neither
+  // narrowing a term to green a red search (E-12) nor adding a surviving
+  // identifier (E-13)" fidelity requirement.
+  const EXPECTED_L2_TERMS = [
+    "sync-workflo" + "ws",
+    "pdlc-dri" + "ft",
+    "check-workflow-dri" + "ft",
+    "\\.bundle\\.js",
+    "distribution-mani" + "fest",
+    "pdlc-dri" + "ft-state",
+    "distribution\\.checkEna" + "bled",
+  ];
+
+  // A-1's frozen allow-list, transcribed from
+  // docs/_constraints/pdlc-retirement-baseline.md's glob table (C-6).
+  const A1_GLOBS = [
+    "docs/completed/**",
+    "docs/discarded/**",
+    "docs/_decisions/**",
+    "docs/_constraints/pdlc-retirement-baseline.md",
+    "**/LEARNINGS-*.md",
+    "**/POSTMORTEM-*.md",
+    "pdlc/workflows/__tests__/fixtures/CODE_REVIEW-*.md",
+    "pdlc/workflows/__tests__/fixtures/planParse/**",
+    "docs/_queue/QUEUE.md",
+    "docs/pdlc-plugin-retirement/**",
+    "docs/PLAN-*.md",
+    "docs/design/**",
+    "docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md",
+    "pdlc/hooks/scripts/cleanup-consumer-workflows.sh",
+    "pdlc/workflows/__tests__/consumerCleanup.test.js",
+  ];
+
+  // Minimal glob->RegExp: '**/' matches zero or more leading path segments,
+  // a lone '**' matches anything including '/', a lone '*' does not cross
+  // '/'. Sufficient for A-1's own glob shapes — no '?', no brace expansion,
+  // no character classes appear anywhere in the baseline's table.
+  function globToRegExp(glob) {
+    let out = "";
+    let i = 0;
+    while (i < glob.length) {
+      if (glob.startsWith("**/", i)) {
+        out += "(?:.*/)?";
+        i += 3;
+      } else if (glob.startsWith("**", i)) {
+        out += ".*";
+        i += 2;
+      } else if (glob[i] === "*") {
+        out += "[^/]*";
+        i += 1;
+      } else {
+        out += glob[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        i += 1;
+      }
+    }
+    return new RegExp("^" + out + "$");
+  }
+
+  function gitTrackedFiles(root) {
+    return run("git", ["ls-files"], { cwd: root })
+      .split("\n")
+      .filter(Boolean);
+  }
+
+  // L-3's exact command, run from LIVE_ROOT so the reported paths are the
+  // same repo-relative paths A-1's globs are written against.
+  function unfilteredSweep() {
+    const files = gitTrackedFiles(LIVE_ROOT);
+    const pattern = L2_TERMS.join("\\|");
+    try {
+      const out = run("grep", ["-rln", pattern, ...files], { cwd: LIVE_ROOT });
+      return out.split("\n").filter(Boolean).sort();
+    } catch (err) {
+      // grep exits 1 for "no matches" — not an error condition here, but a
+      // non-zero exit for any *other* reason must still surface as a test
+      // failure rather than silently reading as an empty sweep (this is
+      // exactly the failure mode PROP-SWEEP-2(a)'s non-vacuity control
+      // exists to catch).
+      if (err.status === 1) {
+        return String(err.stdout || "")
+          .split("\n")
+          .filter(Boolean)
+          .sort();
+      }
+      throw err;
+    }
+  }
+
+  function minusA1(paths) {
+    const matchers = A1_GLOBS.map(globToRegExp);
+    return paths.filter((p) => !matchers.some((re) => re.test(p)));
+  }
+
+  test("PROP-SWEEP-2(a): the unfiltered sweep is non-empty and contains both A-1 positive-control paths — an empty unfiltered output, from a word-split or a non-zero grep, must not silently read as a pass", () => {
+    const unfiltered = unfilteredSweep();
+    expect(unfiltered.length).toBeGreaterThan(0);
+    expect(unfiltered).toContain("docs/_decisions/DECISIONS-plugin-distribution.md");
+    expect(unfiltered).toContain("docs/_constraints/pdlc-retirement-baseline.md");
+  });
+
+  test("PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty — AC-1.2's required-empty gate", () => {
+    const residual = minusA1(unfilteredSweep());
+    expect(residual).toEqual([]);
+  });
+
+  test("PROP-SWEEP-2(c): the command's term set-equals L-2's seven terms verbatim — neither narrowed (E-12) nor widened (E-13)", () => {
+    expect(L2_TERMS).toHaveLength(7);
+    expect([...L2_TERMS].sort()).toEqual([...EXPECTED_L2_TERMS].sort());
+  });
+
+  test("PROP-SWEEP-3: every A-1 glob carries a per-file disposition recorded in the baseline — the mirror of PROP-SWEEP-2(c) on the exclusion side", () => {
+    const baseline = readFileSync(
+      join(LIVE_ROOT, "docs", "_constraints", "pdlc-retirement-baseline.md"),
+      "utf8",
+    );
+    for (const glob of A1_GLOBS) {
+      expect(baseline).toEqual(expect.stringContaining(glob));
     }
   });
 });

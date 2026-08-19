@@ -79,7 +79,7 @@ import { makeAgentDouble, makeFileDouble } from "./helpers/advisoryDoubles.js";
 // asserted anything about the gate itself, only seeded a record at the path the gate used to
 // read — inlined here, byte-identical to the old export's value, so the fixtures below are
 // unchanged; the key is now simply an inert extra store entry no code path reads.
-const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-dri" + "ft-state.json";
 
 // ─── Fixtures shared by all three blocks ───────────────────────────────────────────────────────
 

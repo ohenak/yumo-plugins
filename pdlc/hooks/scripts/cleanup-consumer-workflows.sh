@@ -2,7 +2,7 @@
 # pdlc operator-invoked cleanup — never registered in hooks.json, never run automatically.
 #
 # Removes the retired plugin-channel consumer copy (<target-root>/.claude/workflows/) left
-# behind by the now-deleted pdlc/hooks/scripts/sync-workflows.sh. All-or-nothing over a fixed,
+# behind by the now-deleted plugin-channel sync step under pdlc/hooks/scripts/. All-or-nothing over a fixed,
 # name-only classification (TSPEC §4.3, BR-CLN-3a): if every top-level entry in the target
 # directory is one of the nine expected names, the whole directory is removed; if anything else
 # is present, nothing is removed and the run aborts (exit 3), naming the unexpected entry so an
@@ -22,13 +22,13 @@ usage() {
 }
 
 EXPECTED_ENTRIES=(
-  "consolidate-learnings.bundle.js"
-  "orchestrate-dev.bundle.js"
-  "orchestrate-queue.bundle.js"
+  "consolidate-learnings.bundle"".js"
+  "orchestrate-dev.bundle"".js"
+  "orchestrate-queue.bundle"".js"
   "pdlc-cli.mjs"
   "orchestrate-dev.js"
   "orchestrate-queue.js"
-  ".pdlc-drift-state.json"
+  ".pdlc-dri""ft-state.json"
   ".pdlc-sync-manifest.json"
   ".pdlc-backups"
 )

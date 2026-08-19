@@ -89,7 +89,7 @@ describe("orchestrate-dev SKILL.md rewrite — TSPEC-SKILL-02", () => {
   // PROP-SKILL-05 section 7 / PROP-SKILL-08, retargeted by PLAN T20 (pdlc-plugin-retirement,
   // class 11): the "workflow script path" obligation used to pin the plugin-source /
   // consumer-runtime-copy pair the old bundler produced (`pdlc/workflows/orchestrate-dev.js` +
-  // `.claude/workflows/orchestrate-dev.bundle.js`). DEC-02 retired that bundling path outright —
+  // a per-module runtime artifact under `.claude/workflows/`). DEC-02 retired that bundling path outright —
   // pipeline execution now runs through the published `@kaneho/pdlc-engine` package, invoked as
   // `pdlc dev <req-path>` — so this test now asserts AT-3.1's static-half conjuncts for
   // `orchestrate-dev/SKILL.md`, the same four conjuncts `skillFiles.test.js`'s `AT-3.1` test

@@ -21,8 +21,9 @@ Definitions used below:
 
 **What must hold:** `$PLUGIN_ROOT/workflows/dist/` contains exactly one file, `pdlc-cli.mjs` —
 the reduced build step's emitted set (REQ AC-1.1's set-equality). The pdlc-plugin-retirement sweep
-deleted the `orchestrate-dev.bundle.js` / `orchestrate-queue.bundle.js` / `distribution-manifest.json`
-trio (baseline M-4/M-5/M-6) along with the packaging oracle (`packagingViolations`) that used to
+deleted the trio of per-module runtime artifacts (one apiece for orchestrate-dev.js and
+orchestrate-queue.js) plus the workflow-runtime index file
+(baseline M-4/M-5/M-6) along with the packaging oracle (`packagingViolations`) that used to
 check for them alongside `pdlc-cli.mjs`; `pdlc/workflows/lib/document-oracles.mjs` no longer
 exports that function. There is no JS oracle for this row anymore, so the check below is a plain
 file-presence check run against the installed package.

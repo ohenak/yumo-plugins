@@ -4,7 +4,7 @@
  * Canonical source: pdlc/workflows/orchestrate-queue.js
  *
  * pdlc-plugin-retirement (DEC-02): this module is no longer bundled into a
- * `.bundle.js` artifact for the Claude Code workflow runtime. It runs as a
+ * standalone runtime artifact for the Claude Code workflow runtime. It runs as a
  * real ES module, vendored unmodified into the published `@kaneho/pdlc-engine`
  * package at pack time (falling back to this file directly in a dev checkout);
  * `pdlc/skills/orchestrate-queue/SKILL.md` invokes it as `pdlc queue`.

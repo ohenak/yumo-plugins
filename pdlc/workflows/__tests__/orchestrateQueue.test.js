@@ -889,7 +889,7 @@ describe("RLH-19 continued — B2: the 7-argument evidence call vs. the 6-argume
 // PLAN T06/T08 — drift gate retirement (class 3, FSPEC L-6 row 1, TSPEC §4.4/§5.3).
 //
 // The skipped leg below asserts the ABSENCE T08 produces: no drift-gate symbol exported and no
-// `distribution.checkEnabled` parse left in orchestrate-queue.js's own source text, following
+// drift-gate config-key parse left in orchestrate-queue.js's own source text, following
 // PLAN §1.3's skip-naming convention (title begins "T08: "). It is read from source text rather
 // than import, mirroring T04/T05's technique, so a static import of a since-deleted name never
 // makes this file itself fail to load.
@@ -901,7 +901,7 @@ describe("RLH-19 continued — B2: the 7-argument evidence call vs. the 6-argume
 // ---------------------------------------------------------------------------------------------
 
 describe("PLAN T06/T08 — drift gate retirement (class 3)", () => {
-  it("T08: orchestrate-queue.js exports no drift-gate symbol and parses no distribution.checkEnabled key", () => {
+  it("T08: orchestrate-queue.js exports no drift-gate symbol and parses no drift-gate config key", () => {
     const source = readFileSync(ORCHESTRATE_QUEUE_SOURCE_PATH, "utf8");
 
     // Split so this assertion's own source text never contains the searched-for fragments as one

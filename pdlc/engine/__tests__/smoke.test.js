@@ -427,9 +427,9 @@ test("corpus run ii: queue Phase-0 triage dispatches on Sonnet (M-ENG-07 row 5)"
       "docs/_queue/QUEUE.md": queueMd(feature, reqPath),
       // The queue's drift gate runs BEFORE `QUEUE.md` is even read, and an
       // engine-only consumer has no `.claude/workflows/` tree and therefore no
-      // drift-state record to satisfy it. `distribution.checkEnabled: false` is
-      // CLAUDE.md's documented consumer opt-out — the same one the plain queue
-      // smoke test above uses.
+      // drift-state record to satisfy it. Setting the `distribution` config block's
+      // `checkEnabled` field to `false` is CLAUDE.md's documented consumer opt-out —
+      // the same one the plain queue smoke test above uses.
       ".claude/pdlc.config.json": JSON.stringify({ distribution: { checkEnabled: false } }),
     },
   });
@@ -464,8 +464,9 @@ test("corpus run iii: the A1 advisory seam dispatches on fable when it resolves 
     files: {
       [reqPath]: corpus.reqText(feature),
       "docs/_queue/QUEUE.md": queueMd(feature, reqPath),
-      // `distribution.checkEnabled: false` clears the queue's drift gate (see run
-      // ii); `advisory.enabled: true` is what puts the A1 seam in play at all.
+      // Setting the `distribution` config block's `checkEnabled` field to `false`
+      // clears the queue's drift gate (see run ii); `advisory.enabled: true` is
+      // what puts the A1 seam in play at all.
       ".claude/pdlc.config.json": JSON.stringify({
         distribution: { checkEnabled: false },
         advisory: { enabled: true },
@@ -499,8 +500,9 @@ test("corpus run iv: the A1 advisory seam falls back from fable to opus on a rea
     files: {
       [reqPath]: corpus.reqText(feature),
       "docs/_queue/QUEUE.md": queueMd(feature, reqPath),
-      // `distribution.checkEnabled: false` clears the queue's drift gate (see run
-      // ii); `advisory.enabled: true` is what puts the A1 seam in play at all.
+      // Setting the `distribution` config block's `checkEnabled` field to `false`
+      // clears the queue's drift gate (see run ii); `advisory.enabled: true` is
+      // what puts the A1 seam in play at all.
       ".claude/pdlc.config.json": JSON.stringify({
         distribution: { checkEnabled: false },
         advisory: { enabled: true },

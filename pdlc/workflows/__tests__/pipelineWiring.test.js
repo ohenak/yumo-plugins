@@ -499,8 +499,8 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
     expect(addedSeams).toHaveLength(5);
 
     // meta gains a second inputs entry beside reqPath (TSPEC §3.1). Prior to
-    // pdlc-plugin-retirement (T19, DEC-02) the built `orchestrate-dev.bundle.js`
-    // carried its own hand-maintained `DEV_META` copy of this surface (CR F-1);
+    // pdlc-plugin-retirement (T19, DEC-02) the built per-module runtime artifact for
+    // orchestrate-dev.js carried its own hand-maintained `DEV_META` copy of this surface (CR F-1);
     // that bundle and its copy are now retired build output — this module's own
     // `meta` is the sole surviving surface. RLH-CR-F7 below asserts it directly.
     const inputNames = meta.inputs.map((input) => input.name);
