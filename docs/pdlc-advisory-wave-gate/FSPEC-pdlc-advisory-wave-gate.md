@@ -510,12 +510,12 @@ equality, it is stated as such rather than as an absence.
   the halt reason equals the reason the pre-A6 pipeline emits for the same gate failure, and the queue
   row is written `halted` exactly as today. *(BR-14, AC-5.2, M-WG-3, M-WG-7.)*
 - **AT-05-4** — *Who:* the workflows suite. *Given* a green re-gate followed by a post-gate check that halts the wave — the un-skip guard, which runs after the gate and before the commits and halts on a skipped block owed by a completed task. *When* the run halts. *Then* no restoration was performed, the outcome is not recorded as a red re-gate, the repair A6 applied is still present in the working tree, and both the advisory record entry and the halt report state that a repair remains applied and name its paths. *(E-22, BR-10, AC-5.3.)*
+- **AT-05-5** — *Who:* the workflows suite. *Given* a red re-gate whose restoration itself fails. *When* the wave terminates. *Then* the wave halts, the halt names the failed restoration, and no commit of any kind is reached — the tree is never carried forward as if restored. *(E-28, BR-9.)*
 
 ### 6.6 FSPEC-AWG-06 — Record, escalation, report
 
 - **AT-06-1** — *Who:* an operator reading the feature's advisory record. *Given* any A6 invocation.
-  *When* it terminates. *Then* an entry names the wave, the root-cause class, the envelope
-  determination, the action taken or refused, and the gate-output citation. *(BR-13, AC-6.1.)*
+  *When* it terminates. *Then* an entry names the wave, the root-cause class, the envelope determination, the action taken or refused, and the gate-output citation. Containment is deliberate: the entry keeps the shape the tier's record already has, and the closed assertion belongs to the tier's own entry-shape test; the only addition A6 owes is the root-cause class, which is asserted present here. *(BR-13, AC-6.1.)*
 - **AT-06-2** — *Who:* the workflows suite. *Given* a record write that fails. *When* an action would
   otherwise be taken. *Then* the action is refused and the outcome carries the tier's
   record-write-failure reason. *(E-29, BR-13.)*
@@ -529,27 +529,21 @@ equality, it is stated as such rather than as an absence.
   `plan-ordering-defect`. *When* the escalation log alone is read, with no run logs. *Then* the count
   is derivable per feature. The companion negative is specified, not a gap: resolution counts are
   **not** derivable after Phase PUB, and REQ O-2 owns that. *(E-31, AC-6.4.)*
+- **AT-06-6** — *Who:* the workflows suite. *Given* an escalation whose escalation-log write fails. *When* the wave terminates. *Then* the disposition is still `escalated`, the halt reason is unchanged from AT-05-3's literal, the failure to log is surfaced to the operator, and the disposition is never upgraded to `resolved`. The contrast with AT-06-2 is the point: a failed **record** write refuses the action, a failed **escalation-log** write does not undo the escalation. *(E-30, BR-13.)*
 
 ### 6.7 FSPEC-AWG-07 — Non-functional
 
-- **AT-07-1** — *Who:* the workflows suite. *Given* each boundary in §4. *When* an agent is prompted
-  to violate it. *Then* the violation is refused by the workflow script, with no reliance on the
-  prompt. *(BR-16, NFR-1.)*
+- **AT-07-1** — *Who:* the workflows suite. *Given* each **agent-proposable** boundary in §4, enumerated rather than inferred: E-5's scope rule, E-6's two halves, the tier's exclusions (BR-5), each prohibition in BR-6, and the no-commit rule (BR-8). *When* a stub agent double returns a proposal that violates it — no live model and no prompt involved, the form AT-03-5 already uses. *When* it is evaluated. *Then* the proposal is refused by the workflow script, the shipped refusal reason is reported, and the working tree is unchanged. BR-13, BR-14 and BR-16 are excluded by construction: no agent submits a proposal against them. *(BR-16, NFR-1.)*
 - **AT-07-2** — *Who:* the workflows suite. *Given* the transcribed set-equality surfaces M-WG-9
   names — the seam catalogue, the envelope defaults, the advisory config key set, the two
   catalogue-driven surfaces, and the disabled-tier fixtures. *When* the suite runs. *Then* each has
-  been updated for A6, `E-5`/`E-6`, and `advisory.waveBudgetPerRun`; this feature is not deliverable
-  as a purely additive change and a run in which a surface was not re-checked is a defect. *(R-5,
-  BL-06.)*
-- **AT-07-3** — *Who:* the workflows suite. *Given* a green wave. *When* the run completes. *Then* no
-  advisory agent was dispatched for it and no measurable wall-clock cost was added; A6 is reachable
-  only from a red gate. *(NFR-5.)*
+  been updated for A6, `E-5`/`E-6`, and `advisory.waveBudgetPerRun`; this feature is not deliverable as a purely additive change and a run in which a surface was not re-checked is a defect. Assertion, not narration: each surface is compared by set-equality against its transcribed literal, and the comparison fails when a surface still carries its pre-A6 literal. *(R-5, BL-06.)*
+- **AT-07-2b** — *Who:* the workflows suite. *Given* the advisory config key set as the module under test exposes it. *When* compared by set-equality against a literal transcribed from this spec — the shipped keys plus `waveBudgetPerRun`. *Then* the sets are equal, and the default read back for `waveBudgetPerRun` equals `1`. The literal is transcribed from the spec and the value is read back from the module, never the reverse; the parse-and-default fixtures are asserted in the same test so a key added without a default fails. *(C-2, BR-11, E-33.)*
+- **AT-07-3** — *Who:* the workflows suite. *Given* a green wave. *When* the run completes. *Then*, on that one run, the A6 dispatch count for the green wave equals `0` **and** the green wave reached its post-gate commit step with its per-task commit performed; and in the same run a red-gated wave has an A6 dispatch count of `≥ 1`. The two counts on one run distinguish "nothing ran" from "the path was never reached", which an absence-only assertion cannot. No timing assertion: wall-clock cost is not decidable in a unit suite, and NFR-5 rests on the reachability claim, not on a stopwatch. *(NFR-5.)*
 - **AT-07-4** — *Who:* the workflows suite. *Given* an A6 dispatch. *When* the model is resolved.
   *Then* it is resolved through the tier's exported rung resolver, not through literals restated in
   this feature's code. *(NFR-6, REQ O-3.)*
-- **AT-07-5** — *Who:* a security-minded reviewer. *Given* an A6 invocation. *When* its capabilities
-  are enumerated. *Then* it holds no credential the pipeline does not already hold and reaches no
-  network surface Phase I does not already reach. *(NFR-3.)*
+- **AT-07-5** — *Who:* the workflows suite. *Given* an A6 dispatch and a dispatch of an already-shipped advisory seam in the same run. *When* the two dispatches' options are compared. *Then* A6's tool grants, transport and environment equal the shipped seam's, member for member — the same reuse argument AT-07-4 makes for the model rung. A6 introduces no capability of its own, so equality against a shipped seam is the whole assertion; no reviewer judgement is left inside §6. *(NFR-3.)*
 
 ## 7. Open Questions
 
