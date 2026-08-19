@@ -44,8 +44,43 @@ which is at `:14396`).
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Under F-01: is A6's inapplicability notice meant to *replace* the shipped legacy-path notice at `orchestrate-dev.js:14041-14045` in the no-manifest case, or to sit beside it? The answer decides whether the PROPERTIES oracle counts notices on the whole surface or filters to A6-authored ones, and whether an existing shipped string becomes this feature's to own. |
+| Q-02 | Under F-03: when a repaired wave goes green on re-gate and then halts on the un-skip guard, does the run report that as a resolved-then-halted wave (attempt consumed, tree as repaired) or as an unresolved one (tree restored per AC-5.1)? The two produce different observable end states and PROPERTIES will need one of them named. |
+
+
 ## Positive Observations
 
+- The three v2 findings are all closed, and closed by measurement rather than by
+  assertion. AC-4.2 in particular went from a single-writer claim to naming both
+  writers with the exact scoping each uses, and both halves read true at
+  `orchestrate-dev.js:14396-14426`. That is the shape of correction that survives
+  into a test.
+- AC-3.1's rewrite is the round's best edit: it replaced a design argument about
+  envelope schema shape with a statement of what the shipped assertion actually
+  compares (ids, `advisoryEnvelope.test.js:284`), which turns "widen four to six"
+  into a one-line, mechanically checkable change instead of a schema debate.
+- §9 withdrew its own earlier claim that the symbol-anchored recipes survived and
+  said plainly that it was wrong. Withdrawing a verification claim you previously
+  made is rarer than it should be, and it is what let me find the residual drift in
+  F-04 quickly rather than re-deriving the whole baseline.
+- AC-2.2's precedence sentence closed v2 F-03 in half a line without disturbing the
+  class table, and the class set is still asserted by set-equality — the right
+  operator in the right place, which is exactly the contrast F-02 asks AC-4.4 to draw.
+
+
 ## Recommendation
+
+**Needs revision** — one High finding.
+
+F-01 is the blocker and it is a small edit: AC-1.5 rests on "BL-03's case has no
+equivalent today", and the equivalent is at `orchestrate-dev.js:14041-14045`,
+emitted once per run on the same surface. Correct the claim and say which notice
+the cardinality oracle counts. F-02 (sequence-equality, not set-equality) should
+land in the same revision — it silently re-opens the false-green that v2 F-01
+closed. F-03 and F-04 are cheap and would leave the re-gate and baseline-repair
+obligations complete, but neither gates approval on its own.
+
 
 ## Verdict
