@@ -38,4 +38,31 @@
 
 ## Recommendation
 
+**Needs revision**
+
+Four High findings. This is a strong plan — the batch derivation, the ownership manifest, the AT
+set-equality and every one of its line citations hold up under mechanical checking — and three of
+the four Highs are one repairable blind spot rather than four separate defects.
+
+Exactly what to change:
+
+1. **Add a batch-1 task** (a sibling of `A6-03`) owning `pdlc/workflows/__tests__/advisoryDisabled.test.js`
+   and `pdlc/workflows/__tests__/advisoryQueueSeams.test.js`, retargeting the bare five-row counts at
+   `advisoryDisabled.test.js:622` and `advisoryQueueSeams.test.js:627` to six. Add both files to the
+   file-ownership manifest. Without this, Phase I halts at batch 2's own gate. (F-01, F-02)
+2. **Restate `A6-18`'s tier gate** as receiving the already-resolved `advisoryTierOn` boolean
+   (`orchestrate-dev.js:13678`), performing no new `.enabled` read, so PROP-DIS-06's exact count of
+   three and the shipped invariant at `orchestrate-dev.js:13675-13677` both survive. If a fourth read
+   is genuinely intended, a batch-≤11 task must own the counter change instead. (F-03)
+3. **Correct `A6-15`'s AT-01-5 fixture** from "(no `testCommand`, no `postWaveCommand`)" to
+   "no PLAN file-ownership manifest **and** no `testCommand`", per AC-1.5's BL-03/BL-04 and
+   TSPEC:1376. (F-04)
+4. **Add AT-01-5's zero-count arm** to `A6-15`: a run where A6 applies carries zero inapplicability
+   statements. (F-05)
+5. *(Low, non-gating)* Have `A6-06` write the whole `advisory` section so the example config is
+   copy-able, or drop "documented" from TSPEC §4.4's description of `waveBudgetPerRun: 0`. (F-06)
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 1, "low": 1}
