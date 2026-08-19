@@ -367,7 +367,12 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    written — that path runs through `terminate` — and no `_agent` call and no rung resolution occur
    (E-26). Only `outcome === "resolved"` increments `waveBudget.resolved`, so two escalated waves
    leave the budget untouched (E-27, AT-02-6).
-4. **Snapshot.** `captureTreeSnapshot` (§3.5). A capture failure halts here, before any dispatch.
+4. **Snapshot.** `captureTreeSnapshot` (§3.5). A capture failure does **not** halt silently
+   here: it takes §2.5's `snapshot-unavailable` route — the same `__preDispatch` escape step 3
+   uses — so the advisory record entry and the escalation entry are written, no `_agent` call
+   and no rung resolution occur, no attempt is consumed, and the function returns
+   `{resolved: false}` carrying §4.5's halt fields. The wave then halts on its own gate literal
+   at the call site. Escalate first, halt second.
 5. **Dispatch.** `runAdvisorySeam({ seam: "A6", seamOps: buildA6SeamOps(...), config, rungState, … })`.
    Attempt budget, wall-clock budget, malformed-verdict handling, the GATE/CHECK envelope
    evaluations, the advisory record, the escalation log and the `ADVISORY ESCALATION:` notice are all
@@ -390,9 +395,9 @@ export function buildA6SeamOps({
 |---|---|
 | `gatherEvidence` | Returns the **full captured gate output** (`gateResult.output`), never `outputTail`'s 30 lines. AT-02-5's oracle is a citation to a region the tail does not contain, and this is why it can exist (E-12, BR-3). Also computes the E-5 and E-6 owned-path sets (§3.4) and fills `declaredScope` in place |
 | `prompt` | States the four-class vocabulary, the two envelope members and their decidable rules, the `ROOT-CAUSE:`/`PROMOTES:`/`PROMOTES-TASK:` trailer lines, and the citation rule verbatim. Instructional only — BR-16: every one of these is *also* checked by the script, and no rule here is satisfied by having told the agent about it |
-| `conditionHolds` | `true`. The red gate is the condition, it was observed by the script one step earlier, and re-running the suite to re-confirm it would double the wave's slowest cost. A `false` here would yield `no-action`, which is not a disposition this seam has |
+| `conditionHolds` | `async () => true` — an async arrow, not the literal `true`: the driver calls `await seamOps.conditionHolds()` and a literal would throw. `buildA3SeamOps` is the shipped precedent. It returns true unconditionally because the condition *is* the red gate, observed by the script one step earlier; re-running the suite to re-confirm it would double the wave's slowest cost. A `false` here would yield `no-action`, which is not a disposition this seam has |
 | `classifyReply` | §3.7's optional hook: BR-3's citation rule (⇒ malformed, one attempt) then BR-2's vocabulary read (⇒ escalate, no attempt) |
-| `apply` | Dispatches the repair edit and returns `{ok:true}` iff the tree changed. A repair that changed nothing is `{ok:false}` ⇒ `post-action-verification-failed` |
+| `apply` | Dispatches the repair edit, then returns `{ok:true}` **iff `producedPaths()` is non-empty** — that is the observation, stated so it cannot be read as an unspecified notion of "tree changed". `apply` calls the same `producedPaths` the driver calls at step 5, so the two can never disagree. An empty set is `{ok:false}` ⇒ `post-action-verification-failed`. **A repair writing only `.gitignore`d paths therefore reads as no change and is refused here**, which is the right disposition while §2.5's boundary sits with upstream: the seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone. If the erratum widens BR-9's oracle to ignored generated outputs, the widened capture arrives with a widened `producedPaths` and this row is unchanged; if it does not, the refusal is the documented outcome rather than a silent survival past step 5's CHECK. §5.5 gives it a test |
 | `producedPaths` | `git diff --name-only` **unioned with** `git ls-files --others --exclude-standard`. The untracked half is not optional: a promotion that creates a new file would otherwise be invisible to the step-5 CHECK, and E-6's whole purpose is creating things |
 | `revert` | `restoreTreeSnapshot(snapshot)` (§3.5). Whole tree, every trigger |
 | `verifyGate` | Re-runs `runWaveGateSequence` — post-wave then test, appending to `invocations`. Returns `{passed:true}` on a green sequence; on red, `{passed:false, consumesAttempt:true}` so the driver restores, consumes one attempt and re-enters its loop, exhausting to `budget-exhausted` (BR-7, BR-9, E-20, E-24, AT-02-9) |
