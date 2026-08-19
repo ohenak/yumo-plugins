@@ -121,8 +121,6 @@ claude plugin install pdlc
 /loop run /pdlc:orchestrate-queue
 ```
 
-Working **on this repo** rather than installing from it? The runtime artifacts are generated, so a fresh clone has none. See [pdlc/README.md](pdlc/README.md#fresh-clone-bootstrap) for the two-command bootstrap and the drift tooling.
-
 ### Hooks
 
 | Hook | When | Effect |
@@ -130,7 +128,6 @@ Working **on this repo** rather than installing from it? The runtime artifacts a
 | `guard-harvest-before-delete` | Before any `rm`/`del` Bash call | Blocks deletion of `CROSS-REVIEW-*` or `CODE_REVIEW-*` files unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | After Write or Edit | Warns if a skill output doc is missing the `Scope:` field |
 | `nudge-consolidation` | Session start | Reminds to run `consolidate-learnings` when stale LEARNINGS files are detected |
-| `check-workflow-drift` | Session start | Reports when the consumer's runtime copy has drifted from the built artifacts, so a stale copy is announced rather than silently executed |
 
 ---
 

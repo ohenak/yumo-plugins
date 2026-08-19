@@ -258,7 +258,7 @@ describe("T05 — PROPERTIES §12.2 property→file map (CR F-08)", () => {
     });
   });
 
-  test.skip("every file §12.2 names exists on disk — a property cannot be covered by a file that is not there — held under T28: docs sweep updates stale runtimeBundle citation", () => {
+  test("every file §12.2 names exists on disk — a property cannot be covered by a file that is not there", () => {
     const missing = [...files]
       .filter((name) => !existsSync(join(TESTS_DIR, name)))
       .sort();

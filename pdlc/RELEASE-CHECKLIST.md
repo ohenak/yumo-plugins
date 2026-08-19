@@ -136,7 +136,7 @@ rough p95; take the 9th-fastest) and record all four fields below.
 ```sh
 # Example: the SessionStart drift check, 10 warm runs.
 for i in $(seq 1 10); do
-  /usr/bin/time -p pdlc/hooks/scripts/check-workflow-drift.sh >/dev/null
+  /usr/bin/time -p pdlc/hooks/scripts/nudge-consolidation.sh >/dev/null
 done 2>&1 | awk '/^real/ { print $2 }' | sort -n
 ```
 
@@ -145,7 +145,7 @@ Record, in this document, at the next release:
 | Field | Value |
 |---|---|
 | Date observed | _(unrecorded)_ |
-| Entrypoint measured | _(unrecorded — e.g. `check-workflow-drift.sh` or `sync-workflows.sh`)_ |
+| Entrypoint measured | _(unrecorded — e.g. `nudge-consolidation.sh`)_ |
 | Artifact count / total size | _(unrecorded)_ |
 | Wall clock, p95 over 10 warm runs | _(unrecorded)_ |
 | Reference machine | _(unrecorded)_ |
@@ -181,30 +181,17 @@ script and a JS parser — easy to break by an innocent-looking rewording of eit
 - [ ] `cd pdlc/workflows && npm test -- __tests__/advisoryHarvest.test.js` is green on the
       release tree (bash present, so the guard-integration cases actually ran — 0 skipped).
 
-**4c. BL-01 — the `"fable"` rung dispatch is still unverified until recorded.** PLAN A-34's
+**4c. BL-01 — the `"fable"` rung dispatch is still not confirmed until recorded.** PLAN A-34's
 manual verification (`docs/completed/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md`)
-shipped in its admissible form (ii): `RESULT: unverified — no runtime available`. The
-obligation carries forward here so it is re-asked at every release rather than forgotten:
-in a fresh session with a synced `.claude/workflows/` copy and `advisory.enabled: true`,
+shipped in its admissible form (ii), recording that no runtime was available to exercise the
+dispatch. The obligation carries forward here so it is re-asked at every release rather than forgotten:
+in a fresh session with the pdlc engine installed and `advisory.enabled: true`,
 drive one advisory seam to a dispatch on `"fable"` and paste the runtime's own output into
 that file under `RESULT: verified`, naming the §3.4 ladder branch that fired. Once recorded,
 delete this row.
 
 - [ ] Either MANUAL-VERIFICATION now records `RESULT: verified` with pasted runtime output,
       or this release consciously ships with BL-01 still open (note it in the release notes).
-
----
-
-## 5. The consolidation bundle's drift-gate consequence (no owning AC — a distribution note)
-
-This row states a fact for the release note, not a gate: it owns no acceptance criterion because it
-describes a **distribution consequence**, not a behaviour.
-
-`pdlc/workflows/dist/` now ships `consolidate-learnings.bundle.js` alongside the existing bundles and
-`distribution-manifest.json`. The **first** `orchestrate-queue` invocation in a consuming repo after
-this feature's release lands is blocked by the SessionStart drift gate — `docs/_queue/QUEUE.md` is
-never even read — until `pdlc/hooks/scripts/sync-workflows.sh` runs and refreshes the untracked
-`.claude/workflows/` consumer copy to include the new artifact. Say so in the release note.
 
 ---
 

@@ -2,33 +2,6 @@
 
 Deep-dive companion to the repo-root `CLAUDE.md`, split out to keep the always-loaded context small. The workflow sources (`pdlc/workflows/*.js`), the SKILL.md files, and their tests are the source of truth for behavior; this file records the operational contracts, operator decisions, and gotchas that are not derivable from reading a single module.
 
-## Workflow scripts and the runtime build
-
-`pdlc/workflows/*.js` are ES modules with jest coverage (`cd pdlc/workflows && npm test`). The Claude Code workflow runtime cannot load them directly: `export const meta` must be the first statement and a pure literal, no other `export` is permitted, and `import` / `import()` / `process` / `fs` / `fetch` do not exist there.
-
-`node pdlc/workflows/build-runtime.mjs` therefore generates the runnable artifacts into `pdlc/workflows/dist/`:
-
-- `pdlc/workflows/dist/orchestrate-dev.bundle.js`
-- `pdlc/workflows/dist/orchestrate-queue.bundle.js` (inlines `orchestrate-dev` too — the queue calls it in-process)
-- `pdlc/workflows/dist/consolidate-learnings.bundle.js`
-- `pdlc/workflows/dist/pdlc-cli.mjs`
-- `pdlc/workflows/dist/distribution-manifest.json` — one row per artifact (id, plugin path, sha1, retired predecessors), plus the plugin version those bytes were built at
-
-These are the tracked, shipped outputs. **Which copy is loaded depends on the channel** (see *The engine channel* below) — there are two:
-
-- **Plugin channel (Claude Code workflow runtime).** The copy the runtime loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
-- **Engine channel (`pdlc/engine`).** The engine resolves its own root: the workflow modules **vendored inside the installed npm package** (`vendor/workflows/`), falling back to this repo's `pdlc/workflows/` when running from a dev checkout (`pdlc/engine/lib/run.mjs`'s two-root resolution). It never reads `.claude/workflows/`, and `sync-workflows.sh` is not part of its install (CODE_REVIEW v1 §3-4).
-
-All are **generated — never edit them**. `build-runtime.mjs --check` exits non-zero when an artifact under `pdlc/workflows/dist/` is stale, `__tests__/runtimeBundle.test.js` asserts freshness plus the runtime's structural constraints, and `pdlc/hooks/scripts/sync-workflows.sh --check` exits non-zero when the consumer copy has drifted from the built artifacts.
-
-`pdlc/workflows/runtime-adapter.js` is inlined by the build (never imported). It re-expresses Node capabilities — file read/write, existence checks, `gh pr view` CI polling, worktree merges — as `agent()` calls, and bridges the `agent` / `parallel` / `pipeline` signature differences between the module stubs and the runtime. It reaches the pipeline through the modules' existing dependency-injection parameters (`_agent`, `_readFile`, `_writeFile`, `_checkFile`, `_checkCi`, `_mergeWorktree`, …), so the modules remain the single tested source of truth.
-
-Consequence for anyone editing a workflow source: **every injected IO call must be `await`ed** (the adapter's implementations are async, the test doubles are sync), and `pdlc/workflows/dist/` must be rebuilt in the same commit.
-
-`pdlc/workflows/lib/document-oracles.mjs` is ordinary Node production code, **not** part of the bundle — the runtime never loads it. Every export is a pure function of a `root` directory path (no `process.cwd()`, no ambient state), so tests, the release checklist and any future CLI can probe two roots in the same process. It provides `coveredViolations` (document-drift scan), `packagingViolations`, and `advertisedVersionViolation`.
-
-One consequence worth knowing before you debug a mystery red: `coveredViolations` walks the **entire** tree under `root`, skipping only `.git/` and `node_modules/`. An untracked local file — a tool cache, an editor backup, a database — can therefore fail a document oracle for reasons that have nothing to do with your diff. If a document oracle is red locally but green in CI, check for untracked files before you touch the code.
-
 ## Review loop mechanics
 
 Three behaviours of the review loop are load-bearing and easy to violate accidentally:
@@ -67,25 +40,6 @@ Keep every job deterministic: Phase PUB halts the pipeline on any failure, so a 
 
 `pdlc/RELEASE-CHECKLIST.md` carries the pre-release commitments that CI cannot check mechanically.
 
-## When sync skips a row: `unverified` and `--force`
-
-A plain `sync-workflows.sh` **deliberately refuses to overwrite** two classes of consumer file, and reports rather than clobbers:
-
-| State | Meaning | Plain sync |
-|---|---|---|
-| `local-edit` | the consumer copy was hand-edited since it was synced | skipped, warns |
-| `unverified` | **no sync-manifest entry** — provenance unknown, so the file may be either | skipped, warns |
-
-`unverified` is the state every pre-existing `.claude/workflows/` tree lands in the first time this mechanism runs: the copies predate the manifest, so nothing records where they came from. It is deliberately safe in **both** directions — an unverified file is never assumed to be a stale generated artifact, and never assumed to be precious.
-
-The upgrade path is **`sync-workflows.sh --force`**, which overwrites skipped rows. It is safe to run when you have confirmed you have no hand-edits worth keeping under `.claude/workflows/` — and every overwrite is backed up first (`§5.7`'s backup-then-write), so the prior content is recoverable. Do **not** run `--force` reflexively: the tool demands it precisely because it cannot tell your edits from a stale copy. If `--check` exits non-zero on a tree you did not expect to be dirty, read the warnings before forcing.
-
-## Worktrees
-
-A worktree Claude Code creates for you is a supported consumer: the repo-root `.worktreeinclude` lists `.claude/workflows/`, so the generated artifacts come across with the worktree.
-
-A worktree you create yourself with `git worktree add` is **not** a supported consumer. Its `.claude/workflows/` is empty, so workflow invocations there fail with "workflow not found", while the drift tooling resolves the main worktree and reports that tree as in sync — a green report that does not describe the tree the runtime reads. Per-worktree consumer state is deferred to D-DIST-07 (queue row 6). Until it lands, work from the main worktree or from a Claude-created one.
-
 ## Model selection
 
 The workflow scripts pin a model per phase via the runtime `agent()` `model` option:
@@ -123,17 +77,9 @@ run is byte-identical to the pre-advisory baseline (`advisoryDisabled.test.js`, 
   `ciStatus` provenance is always a real `checkPrCi` observation, never an advisory verdict
   field.
 
-## Distribution scripts
-
-| Script | Role |
-|---|---|
-| `hooks/scripts/sync-workflows.sh` | Installs the untracked consumer copy from `pdlc/workflows/dist/`. `--check` classifies every row without copying any artifact — it still writes the drift-state record (and the directory that holds it, if missing); it emits a warning line only for a row that is `unverified`, `local-edit`, a write failure, or a degraded/unresolved baseline, so a tree that is only `stale`/`missing` can print nothing at all — a `stale` or `missing` row is signalled purely through the non-zero exit code, not through stdout/stderr text |
-| `hooks/scripts/check-workflow-drift.sh` | The `SessionStart` drift reporter above; a thin, advisory wrapper over the same comparison |
-| `hooks/scripts/lib/pdlc-drift.sh` | Shared, **sourced** library for the two scripts above — deliberately not executable |
-
 ## The engine channel (`pdlc/engine`)
 
-`pdlc/engine/` is the **second** distribution channel for the same pipeline, published to npm as `@kaneho/pdlc-engine` (`pdlc/engine/package.json`). Everything above about `.claude/workflows/` describes the *plugin* channel only; a reader of this file alone used to be unable to learn that this channel exists (CODE_REVIEW v1 §3-4).
+`pdlc/engine/` is the distribution channel for the pipeline, published to npm as `@kaneho/pdlc-engine` (`pdlc/engine/package.json`). It is the only channel: `pdlc`'s SKILL.md files delegate to the installed engine CLI rather than loading a workflow bundle directly.
 
 | Fact | Where |
 |---|---|

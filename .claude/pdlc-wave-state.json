@@ -1,7 +1,1 @@
-{
-  "version": 1,
-  "feature": "pdlc-engine-distribution",
-  "planHash": "93a1ffdf",
-  "lastGreenWave": 17,
-  "head": "ee0b817d9ad55c3da528582fe5bcf9ab3dc5f355"
-}
+{"version":1,"feature":"pdlc-plugin-retirement","planHash":"d20f09dc","lastGreenWave":22,"head":"0474aab3962d419edbbe6f776f04c0fe319d3637"}

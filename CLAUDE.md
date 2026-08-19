@@ -52,14 +52,11 @@ Every plugin follows this layout:
 
 ### Workflow scripts and the runtime build
 
-`pdlc/workflows/*.js` are ES modules with jest coverage (`cd pdlc/workflows && npm test`). The Claude Code workflow runtime cannot load them directly, so `node pdlc/workflows/build-runtime.mjs` generates the runnable artifacts into `pdlc/workflows/dist/` (the bundles, `pdlc-cli.mjs`, and `distribution-manifest.json`). These are tracked and generated — **never edit them**, and rebuild `pdlc/workflows/dist/` in the same commit as any workflow-source change. Every injected IO call must be `await`ed: the adapter's implementations are async, the test doubles are sync.
+`pdlc/workflows/*.js` are ES modules with jest coverage (`cd pdlc/workflows && npm test`). The Claude Code workflow runtime cannot load them directly, so `node pdlc/workflows/build-runtime.mjs` generates the runnable artifacts into `pdlc/workflows/dist/` (`pdlc-cli.mjs` and `distribution-manifest.json`). These are tracked and generated — **never edit them**, and rebuild `pdlc/workflows/dist/` in the same commit as any workflow-source change. Every injected IO call must be `await`ed: the adapter's implementations are async, the test doubles are sync.
 
-Two distribution channels load different copies:
+These modules are vendored into the published npm package (`pdlc/engine`, `@kaneho/pdlc-engine`) at pack time, falling back to this repo's `pdlc/workflows/` in a dev checkout — that engine channel is the only way the pipeline runs. `pdlc`'s SKILL.md files no longer load a workflow bundle directly; each delegates to the installed engine CLI (`pdlc dev <req-path>` / `pdlc queue`).
 
-- **Plugin channel**: the runtime loads an untracked consumer copy under `.claude/workflows/`, produced by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
-- **Engine channel** (`pdlc/engine`, published as `@kaneho/pdlc-engine`): workflow modules are vendored into the npm package at pack time, falling back to this repo's `pdlc/workflows/` in a dev checkout; it never reads `.claude/workflows/`.
-
-`build-runtime.mjs --check` and `sync-workflows.sh --check` each exit non-zero on drift.
+`build-runtime.mjs --check` exits non-zero on drift.
 
 The wave gate's `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and `postWavePathspecs` (`["pdlc/workflows/dist/"]`), configured in `.claude/pdlc.config.example.json`, survive the pdlc-plugin-retirement sweep unchanged: `pdlc/workflows/dist/` still holds the regenerated `pdlc-cli.mjs`, so this rebuild-and-stage step stays load-bearing after every wave that touches `pdlc/workflows/*.js` (DEC-08).
 
@@ -77,20 +74,6 @@ The gate Phase PUB polls spans **two** PR-triggered workflow files — `.github/
 | `Fixture machine (install/upgrade, launcher, container, two-repo)` | `fixture-machine.yml` — install/upgrade, launcher, container and two-repo legs over `pdlc/engine/**` |
 
 This table is the human-facing citation of FSPEC §5.1's required-check set, and it is oracle-covered: `pdlc/engine/__tests__/ci-arrangement.test.js` derives the rows and the count word from §5.1 itself, so a check added to the gate without being added here goes red. `pdlc/OPERATIONS.md` carries the per-check rationale and the determinism rule; `pdlc/RELEASE-CHECKLIST.md` carries the pre-release commitments CI cannot check mechanically.
-
-### Fresh-clone bootstrap
-
-Runtime artifacts are generated, so a fresh clone has none. Two commands, **in this order**, bring a clone to a working state — no published release, no installed plugin, no `${CLAUDE_PLUGIN_ROOT}`, no network:
-
-```bash
-node pdlc/workflows/build-runtime.mjs     # generates pdlc/workflows/dist/ and distribution-manifest.json
-pdlc/hooks/scripts/sync-workflows.sh      # copies those artifacts into the consumer's .claude/workflows/
-```
-
-The order is not interchangeable: the sync step copies what the build step produced, so running it first has nothing to copy.
-
-The second command is invoked by **bare path** — no `bash` or `sh` prefix. The shipped hook scripts carry their execute bit precisely so this works; an invocation that exits 126 means the bit was lost. Verify afterwards with `pdlc/hooks/scripts/sync-workflows.sh --check`, which exits 0 once every row is in sync.
-
 
 ### Hooks
 
@@ -117,7 +100,7 @@ The parsing contracts for these files — verdict grammar, approval anchors and 
 
 ### Deep-dive reference
 
-`pdlc/OPERATIONS.md` carries the full operational detail split out of this file: review loop mechanics, the phase graph and erratum channel, implementation waves, the CI check table, sync `unverified`/`--force` semantics, worktrees, model selection, the advisory tier, distribution scripts, the engine channel, and the artifact/queue parsing contracts. Read it before debugging pipeline behavior or editing workflow sources.
+`pdlc/OPERATIONS.md` carries the full operational detail split out of this file: review loop mechanics, the phase graph and erratum channel, implementation waves, the CI check table, worktrees, model selection, the advisory tier, the engine channel, and the artifact/queue parsing contracts. Read it before debugging pipeline behavior or editing workflow sources.
 
 ### Ptah engine integration
 
