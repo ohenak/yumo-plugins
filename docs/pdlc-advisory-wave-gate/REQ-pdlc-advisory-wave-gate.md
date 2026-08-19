@@ -232,9 +232,8 @@ requirements altitude.
   (BL-04), Then A6 does not apply and the phase behaves exactly as today, with the inapplicability
   named once in the run report rather than being silently indistinguishable from a quiet seam. The
   observable is a cardinality on a named surface, not a mention: exactly one inapplicability notice
-  per run — not per wave — on the run's notice surface, naming **every** absent prerequisite, since
-  a run can lack the ownership manifest and the script-owned gate alike and one notice then names
-  both; and none at all in a run where A6 applies. BL-04's case already emits such a notice once per run
+  per run — not per wave — on the run's notice surface, naming **every** absent prerequisite (both,
+  in a run lacking manifest and script-owned gate alike), and none at all in a run where A6 applies. BL-04's case already emits such a notice once per run
   when the script-owned gate degrades; BL-03's has no equivalent today and acquires one. *(US-02.)*
 
 ### REQ-AWG-02 — The A6 contract (P0)
@@ -289,11 +288,10 @@ requirements altitude.
   | E-5 | a repair confined to the failing wave's **own** owned paths | every path the proposal would change is a member of the union of the owned-path sets the PLAN's ownership manifest assigns to that wave's tasks |
   | E-6 | completing a promotion the PLAN schedules for a **later** task | the gate output names a symbol or artifact that a later task's PLAN row already undertakes to produce, **and** every path the proposal would change is a member of that later task's owned-path set |
 
-  Nothing else A6 proposes is in the envelope. The shipped set-equality is over member **ids**
-  alone (M-WG-9), so it widens from four members to six; the permitted action and the deciding rule
-  are this document's presentation of each member, not fields of a shipped record. The envelope
-  stays one closed set of six, assertable by that single set-equality rather than by prose joining
-  two sets. *(US-01, US-03.)*
+  Nothing else A6 proposes is in the envelope. The shipped set-equality is over member **ids** alone
+  (M-WG-9), so it widens from four members to six; the permitted action and the deciding rule are this
+  document's presentation of each member, not fields of a shipped record. The envelope stays one closed
+  set of six, assertable by that one set-equality rather than by prose joining two sets. *(US-01, US-03.)*
 - **AC-3.2** — Given the tier's existing exclusion set (`REQ-pdlc-advisory-tier` AC-3.4), Then it
   holds unchanged for A6, and clause (a) — **any** change to a test file or test configuration —
   takes precedence over E-5 and E-6 wherever they would otherwise permit a change. This binds even
@@ -333,9 +331,11 @@ requirements altitude.
 - **AC-4.1** — Given any A6 invocation, Then it may never cause a wave to be treated as gated other
   than by the configured gate command re-running and returning success on its own. There is no path
   by which an advisory verdict substitutes for a gate result.
-- **AC-4.2** — Given any A6 invocation, Then it never commits, and the pipeline's existing
-  pathspec-scoped per-task commit path remains the sole writer of wave commits — still reached only
-  after a green gate (M-WG-4).
+- **AC-4.2** — Given any A6 invocation, Then it never commits. Committing stays the pipeline's, and
+  M-WG-4 names two writers, not one: the pathspec-scoped per-task commit of each task's owned paths,
+  and — where a post-wave command ran and post-wave pathspecs are configured — the build-output commit
+  scoped to those pathspecs. Both are reached only by a green gate, which is why a re-gate's
+  regenerated artifacts already have a committing writer without A6 acquiring one (AC-4.6).
 - **AC-4.3** — Given any A6 invocation, Then it never edits a test file or test configuration
   (AC-3.2), never edits the PLAN or its ownership manifest, and never edits the implementation
   configuration (AC-3.3).
@@ -347,11 +347,16 @@ requirements altitude.
   its own unbuilt outputs — the outcome in this repo, whose configured commands are exactly that
   pair. A post-wave command that fails on the re-gate is a red re-gate, handled as one, not the
   immediate halt it would be on the wave's first pass. A green re-gate lets the wave proceed to the
-  commit step it would have reached anyway; a red re-gate reverts the repair whole (AC-5.1) and
-  consumes one attempt. The oracle is an observation of the run, not a claim about it: the configured
-  command transport is invoked again for that wave — the test command at least twice in total, its
-  last invocation green — so a resolution reported on a single invocation is a defect and AC-4.1 is
-  falsifiable rather than asserted.
+  commit step it would have reached anyway; a red re-gate consumes one attempt and restores the
+  **whole working tree** in AC-5.1's unit, never the repair's paths alone: the re-run post-wave command
+  writes generated outputs at paths A6 never proposed and no envelope rule ranges over, so a per-path
+  restore would leave a halted tree carrying artifacts built from a repair no longer there. The run then
+  ends on the wave's own gate halt, from that restored tree (AC-5.2, M-WG-3). The oracle is an
+  observation of the run: the **ordered sequence** of configured gate-command invocations for the wave
+  is set-equal to the shipped sequence repeated once per attempt — `[post-wave, test, post-wave, test]`
+  where both are configured, `[test, test]` where only a test command is — so a resolution on a single
+  invocation, or a re-gate that skipped a configured command, is a defect and AC-4.1 is falsifiable.
+
 - **AC-4.5** — Given AC-4.1 through AC-4.4, Then each has a failing test proving the prohibition
   holds, and each such test asserts the corresponding positive outcome on the same path — the
   refusal reason recorded, the escalation entry written, the pre-A6 behaviour taken — because a
