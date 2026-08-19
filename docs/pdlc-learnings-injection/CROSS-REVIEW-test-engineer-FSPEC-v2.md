@@ -50,3 +50,14 @@ testability, oracle falsifiability, edge-case completeness.
 - **BR-6's section-name citation checks out at HEAD.** `pdlc/skills/harvest-learnings/SKILL.md:87,103,110` carry `## 2. Cross-Feature Patterns`, `## 5. Open Items for Consolidation` and `## 6. Approval Record` under the numeric-prefix convention BR-6 describes, and routing which heading forms count as which section to F-O-1 rather than fixing literal strings here is the right altitude call.
 - **AT-07's second regime is a genuinely good catch on the revision's own initiative.** Asserting the count bound under a corpus where `maxTotalBytes` binds first — contributing count strictly below `maxDocuments`, with `RSN-BYTES` rows — prevents the count-bound test from passing only in the toy regime where fixtures are small enough for it to bind. Paired with BR-5's measured admission that the total bound is the one that binds on real corpora, this is the sort of test that survives contact with production.
 - **AT-14's two-process requirement and AT-34's shared-instrument requirement both landed as stated**, and neither was weakened in the process — the disabled-run claim now rides on a control that is proven to fire.
+
+## Recommendation
+
+**Needs revision**
+
+All four v1 High findings are resolved, and resolved at the right altitude — the byte-accounting basis, the dispatch universe, the section set-equality pair, and the malformed-configuration predicate are each now decidable from the document alone. One High remains, and it is a residue of this round's own good decision rather than a new design problem: removing `RSN-TRUNCATED` was right, but E-05 and AT-28 still demand a truncated fixture produce `RSN-UNPARSEABLE`, which BR-3's own argument says no byte predicate can decide. Deleting the branch (option a) is a two-line edit; pinning the boundary with a fixture pair (option b) costs a sentence in BR-3. Either discharges it. F-03 is a copy-editing repair to BR-1's bullet, and F-02 a wording change in AT-11. Nothing structural is outstanding.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
