@@ -9,7 +9,9 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.0 | 2026-08-18 |
+| pdlc | Draft | Claude | 1.1 | 2026-08-18 |
+
+**v1.1 (cross-review round 1).** Addressed every High and Medium finding in `CROSS-REVIEW-software-engineer-FSPEC-v1.md` and `CROSS-REVIEW-test-engineer-FSPEC-v1.md`: the notice oracle in E-04/AT-01-5 restored to counting statements rather than A6-authored notices; AT-04-3 restated over writer identity; an attempt-admission step (3b) added to §3.2; the invocation window defined in BR-11; new ATs AT-01-6, AT-02-8, AT-02-9, AT-03-8, AT-05-5, AT-06-6, AT-07-2b; AT-04-1, AT-07-1, AT-07-3 and AT-07-5 restated as positive, mechanically decidable oracles. Rationale duplicated between §4 and §5/§6 was compressed in the same pass to hold the size budget.
 
 ## 1. Overview
 
