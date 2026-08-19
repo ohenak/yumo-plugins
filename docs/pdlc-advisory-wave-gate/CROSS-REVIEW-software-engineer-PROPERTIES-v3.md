@@ -26,6 +26,14 @@ introduces.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | PROPERTIES' Overview still scopes itself to **"TSPEC v1.6 (§2–§5)"** (`PROPERTIES-pdlc-advisory-wave-gate.md:25`, echoed in the v1.0 changelog row at `:12`), while TSPEC HEAD is v1.8. The cited version predates my own approval too — v1.7 was already the approved state — so this is not a regression from this round's edit, and no *substantive* claim in PROPERTIES depends on it: every §3.1 and §5.6 assertion I re-checked matches HEAD prose. It is a stale provenance label on an otherwise accurate document, and cheapest to fix while the document is open. | Overview → Scope; changelog v1.0 row |
+
+FINDING: Low | inherited | nonlocal | Overview → Scope (`:25`) | Version label cites TSPEC v1.6; TSPEC HEAD is v1.8. Pre-existed the v1.7 approval, no dependent claim is wrong, label-only.
+
+No High and no Medium findings. The single Low is not gating.
+
 ## Questions
 
 ## Positive Observations
