@@ -4,12 +4,13 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES**` |
 | Downstream | `IMPL` and its tests |
-| Cross-Reviews | *(none yet — active while Phase PT runs)* |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md` (active while Phase PT runs) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-19 | First authored against REQ v1.8, FSPEC v1.4, TSPEC v1.6, DECISIONS (DEC-A6-01…DEC-A6-04) and PLAN v1.2. |
+| 1.1 | 2026-08-19 | Round 1 cross-review findings addressed: PROP-REC-07 re-homed to `advisoryEscalationLog.test.js` with an observable escalation-entry oracle (SE F-01); PROP-GATE-02 restated as ledger-segment assertions ahead of TSPEC's structure (SE F-04); PROP-CFG-03 cites the `ci-arrangement.test.js` precedent and pins the `testCommand` blast radius (SE F-03); §G-2 names CI's `Engine tests` job as A6-04's executor (SE F-02); E-13 recorded as a non-property and E-17/E-18 traced on PROP-ENV-10 (SE F-05); PROP-SEAM-02's remaining member-literal anchors pinned (PM F-01). |
 
 ---
 
