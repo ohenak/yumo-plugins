@@ -15,3 +15,23 @@
 | F-03 | Low | **Resolved** | AT-20's second conjunct now reads "no catalogue's ids appear in another catalogue's position, across all three of BR-9's catalogues" (FSPEC:819-820), matching BR-9's rule over three sets (FSPEC:509) and REQ:323-325's "Three set-equality tests, one per catalogue". `NTC-KEYTYPE` in a per-document reason position now fails an oracle. |
 
 Two edits beyond the routed findings landed, and both are corrections in the same direction rather than new decisions. BR-4's rename-invariance passage dropped a fifth erratum declaration ("*This is a deliberate correction of an upstream expectation*") and now claims the property "is the stronger and achievable one — the ordering is a pure function of (key value, path) and of nothing else — … which REQ AC-2.2 states in the same terms" (FSPEC:345-349). Verified: REQ:284-286 states "the ordering is a pure function of (ordering key value, repository-relative path) and nothing else. Rank invariance under a directory rename is **not** claimed". BR-9's exception bullet was tightened from "Excluded-by-`docs/discarded/` documents" to "Documents nested under `docs/discarded/{feature}/`" (FSPEC:513), which is the same narrowing as F-02 applied to the reporting-completeness rule — necessary, since under the old wording the direct-path member of E-35 read as exempt from "no corpus document is silently absent from the report".
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | No findings. Every v5 finding is resolved, no delta-introduced defect was found, and each factual claim the delta makes about the upstream REQ was checked against the REQ at HEAD (v0.6, REQ:18) and holds. | — |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | When two declared keys are wrong-typed in the same config, does the report carry two `NTC-KEYTYPE` entries (one per key) or one naming both? AT-32 pins the single-key case with literals; the multi-key shape is still free, and a set-equality-over-notices test cannot decide it by itself. REQ AC-5.1c (REQ:373-376) does not settle it either. (Carried from v4/v5; a TSPEC-altitude question, not an FSPEC gap.) |
+| Q-02 | Does a wrong-typed `enabled` key (e.g. `enabled: "false"`) fall to the `true` default and run **enabled** with `NTC-KEYTYPE`? BR-14's table treats `enabled` as a declared key and REQ:220 lists it among the §4.1 keys AC-5.1c ranges over, which reads that way — but no AT pins it, and a per-key fallback that turns the feature *on* against apparent operator intent is worth a named fixture at TSPEC. (Carried from v3/v4/v5.) |
+
+## Positive Observations
+
+- **The erratum channel closed cleanly on both ends.** Four divergences this FSPEC raised were adopted by the REQ in v0.5/v0.6, and this round the FSPEC retracted all four declarations and restated them as agreement rather than deleting the prose that earned them. BR-5's 89-document measurement (FSPEC:357-362), BR-2's glob reasoning (FSPEC:262-271) and BR-4's total-order argument all survive intact — the evidence stayed, only the routing instruction went. That is the correct shape for a retraction: a reader can still see *why* the REQ says what it now says.
+- **The fifth retraction was found without being routed.** BR-4's "deliberate correction of an upstream expectation" parenthetical was not in any v5 finding, and the author removed it in the same pass and replaced it with a checkable claim about REQ AC-2.2. Retracting an unrouted stale claim in a frozen round is the harder half of erratum hygiene.
+- **REQ O-8 was absorbed as a named TSPEC obligation, not as prose.** F-O-7 (FSPEC:918) carries the non-default-threshold fixture that makes `RSN-COUNT` a binding cut, with the reason stated: under §4.1's defaults the byte bounds bind first, so the count cap has no exercise. This is the testing-lens point that matters most in the delta — without that fixture, `RSN-COUNT` would be *named* by BR-9's set-equality test and *never exercised* by any behavioural one, which is exactly the shape of a catalogue entry that passes forever. Routing it to TSPEC as an entry obligation, matching REQ O-8 (REQ:455-457), keeps it from being discovered late.
+- **The nested/direct split is now stated identically in all four places it appears.** BR-2, BR-9's exception bullet, E-07 and AT-15 all say `docs/discarded/{feature}/` for the never-candidate class and reserve the direct path for E-35. A test author reading any one of them builds the fixture the others expect.
