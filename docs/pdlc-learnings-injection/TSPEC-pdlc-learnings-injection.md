@@ -568,4 +568,90 @@ existing `pdlc/engine CI (ubuntu-latest)` required check.
 
 ## Open Questions
 
-*(section body follows)*
+### Entry obligations discharged here
+
+| FSPEC obligation | Where |
+|---|---|
+| F-O-1 — the "presents as a LEARNINGS document" predicate | §D.3 |
+| F-O-2 — the advisory preamble's wording and the block's delimiters | §OQ.1 below |
+| F-O-3 — serialised form of BR-8/BR-9/BR-10 and catalogue registration | §D.1, §D.2 |
+| F-O-4 — the pin to `consolidate-learnings.js`'s pass-side predicate | §I.1, §T.5 (`learningsPredicatePin.test.js`) |
+| F-O-5 — how the pre-feature baseline is captured and committed | §T.3 |
+| F-O-6 — where the selection step sits and how the block reaches the composer | §A.1, §A.2 |
+| F-O-7 — the named non-default-threshold fixture exercising the count bound | §T.4 (`COUNT-BINDING`) |
+
+### OQ.1 The block's rendered form *(discharges F-O-2)*
+
+Fixed here so AT-05 can transcribe it literally rather than keyword-match it:
+
+```
+--- PRIOR-FEATURE LEARNINGS (advisory context) ---
+The documents below are LEARNINGS harvested from OTHER features in this repository. They are
+context, not content of {f}. They are neither a requirement of {f} nor an upstream document to be
+traced: nothing you write must cite them, and no traceability obligation attaches to them. You may
+disregard them entirely without leaving a gap in what you were asked to produce.
+
+<<< docs/completed/{p}/LEARNINGS-{p}.md — feature {p}, completed 2026-08-02 >>>
+## 2. Cross-Feature Patterns
+…
+<<< end docs/completed/{p}/LEARNINGS-{p}.md >>>
+
+<<< docs/{q}/LEARNINGS-{q}.md — feature {q}, completed 2026-07-30 (ABRIDGED: bounded at 6000 bytes) >>>
+…
+<<< end docs/{q}/LEARNINGS-{q}.md >>>
+--- END PRIOR-FEATURE LEARNINGS ---
+```
+
+The preamble states BR-7's three things in three sentences; the per-document delimiter carries the
+source path (so a claim is traceable to a file) and the `ABRIDGED` marker discharges BR-6's "the
+block states that the document is abridged". The whole block is prefixed with `\n\n` when non-empty
+and is **exactly `""`** when `selected` is empty (§A.2 property 3).
+
+### Named obligations carried forward
+
+| # | Obligation | Owner |
+|---|---|---|
+| T-O-1 | The four-suite PLAN must serialise writers on `orchestrate-dev.js`: every task in this feature writes that one file, so single-writer-per-batch (DC/PLAN batch rule 2) forces a mostly serial batch chain. The PLAN owes an explicit per-phase file-ownership manifest making that visible rather than a prose note. | PLAN |
+| T-O-2 | The pre-feature baseline capture (§T.3) must run **before** the first production edit lands on the branch, or the merge-base it records is no longer a pre-feature commit. This is a PLAN ordering obligation with a gate at the moment it binds (DC-21), not a step to be remembered. | PLAN |
+| T-O-3 | REQ O-1's live-run measurement must report, alongside realised prompt sizes, the **read** cost §A.4 names: bytes read per authoring dispatch and probe-vs-full-read counts on the Claude Code channel. The read is unbounded where the injection is bounded, and that is the term most likely to move the thresholds. | operator / O-1 |
+| T-O-4 | PROPERTIES owes a property over `orderCorpus`: for any corpus, the output is a permutation of the input and the comparator is a strict weak ordering — the mechanical form of BR-4's "total order over the eligible set". | PROPERTIES |
+| T-O-5 | PROPERTIES owes the totality property C-7 asserts: for **any** `{entries, feature, thresholds}` drawn from the generators, `selectLearnings` returns without throwing and every input path appears exactly once across `selected ∪ rejected`. | PROPERTIES |
+
+### Load-bearing alternatives weighed and rejected
+
+Recorded here in summary; DECISIONS owns the full form.
+
+| Decision | Chosen | Rejected, and why |
+|---|---|---|
+| Module placement | inside `orchestrate-dev.js` | a new `pdlc/workflows/learnings-injection.js` — not vendored (P-1), so it would pass CI and be absent in production; extending `MODULE_NAMES` changes the engine's distribution contract for one feature |
+| Attachment point | `dispatchAndVerify` | the four call sites individually — would restate BR-1's membership by hand and drift the moment a fifth site appears |
+| Corpus enumeration seam | `_git` with the pinned pathspec | `_listFiles` — non-recursive, basenames only, no gitignore knowledge; would be a *different* predicate wearing C-3's name |
+| Block placement in the prompt | appended after `opener` | inserted before `PACING_CONTRACT_CLAUSE` — reorders existing content relative to itself and forfeits the structural byte-identity of §A.2 property 3 |
+| Corpus caching | none of our own; rely on `rtReadFile`'s revalidating cache | a run-scoped memo — cheaper, but contradicts E-32 and would let AT-14 pass on a cache rather than on determinism |
+| `enabled` default | `true` **within a present section**, feature off while the section is absent | `parseAdvisoryConfig`'s absent-file-is-defaults reading — this feature adds material to authoring prompts, so it turns on only where an operator asked for it (BR-14) |
+
+### Still open, unresolved by design
+
+F-Q-1 … F-Q-4 (FSPEC) and REQ O-1, O-3, O-5, O-6 are carried unchanged. Nothing in this TSPEC
+depends on their answers.
+
+### Defects found in upstream documents
+
+Raised as errata rather than fixed here (the finding's document is not this one):
+
+- **ERR-1 (FSPEC BR-14).** The third load-bearing bullet says this feature's absent-config-file
+  behaviour "differs deliberately from `parseAdvisoryConfig`, which defaults an absent file to
+  enabled-with-defaults". `parseAdvisoryConfig` does not: `ADVISORY_DEFAULTS.enabled` is `false`
+  (`orchestrate-dev.js:1944-1949`) and `parseAdvisoryConfig(null)` returns exactly those defaults
+  (`:1975`). The divergence the bullet describes does not exist, and the reasoning it supports
+  needs a different premise.
+- **ERR-2 (FSPEC §Edge Cases, run-shape edges).** The branch inventory has no row for the erratum
+  **land-proof retry** dispatch (`orchestrate-dev.js:12915`), which carries
+  `dispatchKind: "authoring"` and is therefore a second block-carrying dispatch inside one erratum
+  round. E-30 names "an erratum dispatch is made" in the singular; AT-02's fixture list does not
+  cover it. DC-05 wants a row and an AT.
+- **ERR-3 (FSPEC BR-15).** The expected set is defined as "the corpus-root enumeration, plus one
+  open attempt for every corpus document the report names". The enumeration is a `git ls-files`
+  call, not an open under `docs/` (§I.1, §A.3), so on the instrument BR-15 describes — file-open
+  calls under `docs/` — the enumeration contributes **no** member. As written, AT-33's set equality
+  cannot hold.
