@@ -81,7 +81,7 @@ dispatcher rather than run as written. Batch 1 is exactly five tasks for that re
 | A6-10 | **GREEN** — `captureTreeSnapshot` (`rev-parse HEAD`, `add -A`, `write-tree`, `commit-tree`, `update-ref refs/pdlc/a6-snapshot-{waveNum}`; returns `null` on any `ok !== true`) and `restoreTreeSnapshot` (`read-tree --reset -u`, `clean -fd`, `reset --mixed`; throws on any `ok !== true`), both over the injected `_git` transport, with `add` and `reset` through `gitWithLockRetry` for the reason `commitPaths` already retries them. DEC-A6-01 (dangling snapshot commit, never `git stash`) and DEC-A6-03 (wave-scoped ref, no run discriminator). | — | `pdlc/workflows/orchestrate-dev.js` | 6 | A6-09 | ⬚ |
 | A6-11 | **RED** — the driver's one new optional seam (TSPEC §3.7): `classifyReply`'s three arms — `{ok:true}` and the default `null` proceed to RE-CHECK, A1–A5 unchanged in shape and bytes; `{malformed:true}` reuses the **existing** malformed arm (`attempts += 1`, budget check, `continue`), which gives E-09's tie-break for free since `parseAdvisoryVerdict` runs first; `{terminate:{outcome,reason}}` terminates with `attempts` unchanged and `appliedSuccessfully:false`. Plus A6's rung parity (resolved rung equals the tier's, read from the shared `rungState` memo, no second resolution in a run) and dispatch-option parity member by member — tool grants, transport, environment. Covers AT-02-7, AT-07-4, AT-07-5. | `pdlc/workflows/__tests__/advisoryDriver.test.js` | — | 7 | A6-10 | ⬚ |
 | A6-12 | **GREEN** — `runAdvisorySeam` gains the optional `seamOps.classifyReply` hook, called once per attempt after `parseAdvisoryVerdict` returns a well-formed verdict and after `_summarise`, before RE-CHECK; default `null`. A hook, never an `if (seam === "A6")` branch — the per-seam gate-exclusivity registry asserts no seam has a private path through the driver. | — | `pdlc/workflows/orchestrate-dev.js` | 8 | A6-11 | ⬚ |
-| A6-13 | **RED** — `buildA6SeamOps` member contracts (TSPEC §3.3): `gatherEvidence` passing the **full** `gateResult.output`, not `outputTail`'s 30 lines, and filling `declaredScope` in place; `classifyReply` over the four-class `ROOT-CAUSE:` trailer; `conditionHolds`; `apply` writing `ledgerAnchor.value = invocations.length` as its **first** statement, before it dispatches anything, and returning `{ok:true}` iff `producedPaths()` is non-empty (an empty set is `{ok:false}` ⇒ `post-action-verification-failed`, which is also the disposition for a repair writing only `.gitignore`d paths — OQ-11, stands independently of OQ-7); `producedPaths` as `git diff --name-only` **unioned with** `git ls-files --others --exclude-standard`, the untracked half not optional because an E-6 promotion creates files; `revert`; `verifyGate` re-running the wave's own gate sequence and re-entering `budget-exhausted`; `permittedActions` narrowing `E-6` away on the last wave; the `ledgerAnchor` carrier initialised `{value: -1}` (fail-closed). | `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | — | 9 | A6-12 | ⬚ |
+| A6-13 | **RED** — `buildA6SeamOps` member contracts (TSPEC §3.3): `gatherEvidence` passing the **full** `gateResult.output`, not `outputTail`'s 30 lines, and filling `declaredScope` in place; `classifyReply` over the four-class `ROOT-CAUSE:` trailer; `conditionHolds`; `apply` writing `ledgerAnchor.value = invocations.length` as its **first** statement, before it dispatches anything, and returning `{ok:true}` iff `producedPaths()` is non-empty (an empty set is `{ok:false}` ⇒ `post-action-verification-failed`, which is also the disposition for a repair writing only `.gitignore`d paths — OQ-11, stands independently of OQ-7); `producedPaths` as `git diff --name-only` **unioned with** `git ls-files --others --exclude-standard`, the untracked half not optional because an E-6 promotion creates files; `revert`; `verifyGate` re-running the wave's own gate sequence and re-entering `budget-exhausted`; `permittedActions` narrowing `E-6` away on the last wave; the `ledgerAnchor` carrier initialised `{value: -1}` (fail-closed). Covers AT-02-3, AT-02-5, AT-03-4 (seam-op half). | `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | — | 9 | A6-12 | ⬚ |
 | A6-14 | **GREEN** — implement `buildA6SeamOps` and its private helpers. `declaredScope` and `ledgerAnchor` are mutated in place and never reassigned, and nothing is hung on the returned SeamOps object: the driver shallow-copies it (`orchestrate-dev.js:3499`, `:3503`), which is exactly how the round-4 design lost its anchor. | — | `pdlc/workflows/orchestrate-dev.js` | 10 | A6-13 | ⬚ |
 | A6-15 | **RED** — the call site `runWaveGateSeam` end to end (TSPEC §3.2, §5.2, §5.5). Tier gate: one inapplicability statement over the whole notice surface on the both-absent fixture (no `testCommand`, no `postWaveCommand`). Wave budget: two escalated waves leave `waveBudget.resolved` at `0`, one resolved wave increments it to `1`, and a wave entered over budget still captures its snapshot and still writes its record and escalation entry with **no** `_agent` call. Capture failure: six positive assertions on one run — record entry whose Disposition cell reads bare `escalated` with **no** refusal reason, `Model` cell the literal `n/a`, escalation entry text **containing** the failing git verb observed on the `_git` double, `attempts === 0`, unchanged budget, `commit-tree === 1` across a two-attempt run — plus a companion pinning `ADVISORY_REFUSAL_REASONS`'s eight members on the same run. Resolution: the step-6 growth-since-last-`apply` rule, the two-attempt positive companion asserting the six tokens a red-then-green run produces, and the **two mutation fixtures** for AC-4.1 conjunct (iii), each replacing exactly one member of a **real** `buildA6SeamOps` result (`{...seamOps, verifyGate: fake}`) and each carrying its positive half (`ledgerAnchor.value === 2` on the attempt-1 fixture; `=== 4` with `["post-wave","test","post-wave","test"]` on the attempt-2 fixture). Prohibitions `(f)`…`(i)`: eleven tests, id set compared by set-equality against `A6_PROHIBITIONS`, every one carrying its paired positive per AC-4.5. Plus the BR-1…BR-16 partition against an agent double, the halt literal, and §4.5's halt fields. Covers AT-01-5, AT-02-2, AT-02-4, AT-02-6, AT-02-8, AT-02-9, AT-03-2, AT-03-3, AT-03-4, AT-03-5, AT-03-6, AT-04-1, AT-04-1a, AT-04-1b, AT-04-2, AT-04-4, AT-05-3, AT-06-4, AT-07-1. | `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | — | 11 | A6-14 | ⬚ |
 | A6-16 | **RED** — AC-6.1's record obligations, beside the shipped record oracle rather than in a second drifting copy: the entry an A6 invocation writes names the wave, root-cause class, envelope determination and action, and its **field set is compared by set-equality** against the transcribed literal, never by containment (a dropped field passes a containment check); a failed record write refuses the action and carries the tier's record-write-failure reason. Covers AT-06-1, AT-06-2. | `pdlc/workflows/__tests__/advisoryRecord.test.js` | — | 11 | A6-14 | ⬚ |
@@ -204,4 +204,100 @@ boundary the erratum returns. Nothing else in this plan reads that answer, becau
 
 ## Verification
 
-*(section pending)*
+### Commands
+
+| What | Command | Where it runs |
+|---|---|---|
+| Wave gate (every batch) | `cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'` | `implementation.testCommand` in `.claude/pdlc.config.json`, script-owned |
+| Post-wave command (every batch) | `node pdlc/workflows/build-runtime.mjs` | `implementation.postWaveCommand`; its output under `pdlc/workflows/dist/` is committed via `implementation.postWavePathspecs` |
+| Coverage backstop | `cd pdlc/workflows && npm run test:coverage` | two stages: `c8` aggregate floors, then `c8 report --per-file --branches 85` over `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs` |
+| Engine channel | `cd pdlc/engine && npm ci && npm test` | **not** covered by the wave gate — A6-04's expectation lives in `pdlc/engine/__tests__/`, which `implementation.testCommand` does not run. A6-04/A6-06 must be verified by this command and by CI's `Engine tests (ubuntu-latest)` check |
+| Artifacts in sync | `node pdlc/workflows/build-runtime.mjs --check` | CI's `Generated artifacts in sync` check; green only if the wave commits carried `dist/` |
+
+Coverage is a backstop here, not an oracle (TSPEC §5.4): A6 lands inside a ~15k-line module that
+dominates both its aggregate and its per-file number, so no floor will fail on A6's branches
+specifically. The branch inventory is discharged by the enumerated cases in the task table, not by
+the percentage.
+
+### AT coverage — one row per FSPEC acceptance test
+
+Forty-seven ATs in FSPEC §6, forty-seven rows here. This table is set-equal to FSPEC's AT set, not a
+containment check: an AT with no row has no home, and a row naming no AT is a defect in this table.
+
+| AT | Red-test task | Green task | Test home |
+|---|---|---|---|
+| AT-01-1 | A6-02 | A6-05 | advisoryEnvelope.test.js |
+| AT-01-2 | A6-19 | A6-21 | waveExecution.test.js |
+| AT-01-3 | A6-19 | A6-21 | waveExecution.test.js |
+| AT-01-4 | A6-20 | A6-21 | advisoryDisabled.test.js |
+| AT-01-5 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-01-6 | A6-20 | A6-21 | advisoryDisabled.test.js |
+| AT-02-1 | A6-02 | A6-05 | advisoryEnvelope.test.js |
+| AT-02-2 | A6-07, A6-15 | A6-08, A6-18 | advisoryWaveGate.test.js — parser unit half in A6-07, escalation/attempts half in A6-15 |
+| AT-02-3 | A6-13 | A6-14 | advisoryWaveGate.test.js |
+| AT-02-4 | A6-07, A6-15 | A6-08, A6-18 | advisoryWaveGate.test.js — `citesGateOutput` unit half in A6-07 |
+| AT-02-5 | A6-13 | A6-14 | advisoryWaveGate.test.js |
+| AT-02-6 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-02-7 | A6-11 | A6-12 | advisoryDriver.test.js |
+| AT-02-8 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-02-9 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-03-1 | A6-02 | A6-05 | advisoryEnvelope.test.js |
+| AT-03-2 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-03-3 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-03-4 | A6-13, A6-15 | A6-14, A6-18 | advisoryWaveGate.test.js — three conjuncts as seam-op unit, then end to end |
+| AT-03-5 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-03-6 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-03-7 | A6-02 | A6-05 | advisoryEnvelope.test.js |
+| AT-03-8 | A6-02 | A6-05 | advisoryEnvelope.test.js |
+| AT-04-1 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-04-1a | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-04-1b | A6-15 | A6-18 | advisoryWaveGate.test.js — dropped-re-gate mutation fixtures |
+| AT-04-2 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-04-3 | A6-19 | A6-21 | waveExecution.test.js |
+| AT-04-4 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-04-5 | A6-19 | A6-21 | waveExecution.test.js — the one AT whose companion is red against shipped behaviour |
+| AT-05-1 | A6-09, A6-15 | A6-10, A6-18 | advisoryWaveGate.test.js — real-repo hash-map oracle; ignored-path case pending on OQ-7 |
+| AT-05-2 | A6-09 | A6-10 | advisoryWaveGate.test.js |
+| AT-05-3 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-05-4 | A6-19 | A6-21 | waveExecution.test.js |
+| AT-05-5 | A6-09 | A6-10 | advisoryWaveGate.test.js |
+| AT-06-1 | A6-16 | A6-18 | advisoryRecord.test.js |
+| AT-06-2 | A6-16 | A6-18 | advisoryRecord.test.js |
+| AT-06-3 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
+| AT-06-4 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-06-5 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
+| AT-06-6 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
+| AT-07-1 | A6-15 | A6-18 | advisoryWaveGate.test.js — BR-1…BR-16 partition |
+| AT-07-2 | A6-02, A6-03, A6-20 | A6-05, A6-21 | advisoryEnvelope.test.js + advisoryConfig.test.js + advisoryDisabled.test.js |
+| AT-07-2b | A6-02 | A6-05 | advisoryConfig.test.js |
+| AT-07-3 | A6-19 | A6-21 | waveExecution.test.js |
+| AT-07-4 | A6-11 | A6-12 | advisoryDriver.test.js |
+| AT-07-5 | A6-11 | A6-12 | advisoryDriver.test.js |
+
+### Definition of Done
+
+- [ ] All twenty-two tasks at ✅, with each green batch's wave gate green under
+      `implementation.testCommand` and `build-runtime.mjs` clean.
+- [ ] Every one of the forty-seven ATs above has a passing test in the named home; the AT set in this
+      table is set-equal to FSPEC §6's, checked both directions.
+- [ ] Every transcribed surface of TSPEC §1.3 carries the six-member value by **set-equality**, never
+      a loosened `toContain`: `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS`,
+      `advisoryRecord.test.js`'s per-seam `test.each`, `advisoryDriver.test.js`'s
+      `GATE_EXCLUSIVITY_REGISTRY`, `advisoryHarvest.test.js`, `consolidationProperties.test.js`,
+      `helpers/advisoryDoubles.js`'s `SEAMS`.
+- [ ] Every prohibition test `(f)`…`(i)` asserts its **paired positive** on the same run (AC-4.5); no
+      prohibition rests on a negative assertion alone.
+- [ ] Both AC-4.1 conjunct (iii) mutation fixtures replace exactly one member of a **real**
+      `buildA6SeamOps` result and each asserts its positive anchor value (`ledgerAnchor.value === 2`
+      and `=== 4`).
+- [ ] The disabled tier is provably inert, including **no snapshot**: created files byte-identical to
+      the pre-advisory baseline and no `advisory` key on the report (AT-01-4).
+- [ ] Steps 1–3, 5 and 7 of the wave loop, and the V-wave's own gate, are unchanged — their halt
+      literals and queue rows compared to the pre-A6 values byte for byte (AT-01-2, AT-01-3, AT-05-3).
+- [ ] `cd pdlc/engine && npm test` green, covering A6-04's example-config expectation that the wave
+      gate never runs.
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/workflows/dist/` is committed.
+- [ ] `cd pdlc/workflows && npm run test:coverage` passes both stages.
+- [ ] `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0 (consumer runtime not left stale).
+- [ ] OQ-7's erratum either landed and is transcribed in A6-09's ignored-path case, or that one case
+      is still marked upstream-pending with its expected value named — never silently dropped.
