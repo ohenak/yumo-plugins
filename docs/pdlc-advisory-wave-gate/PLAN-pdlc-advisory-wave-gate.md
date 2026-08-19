@@ -24,7 +24,8 @@ halt on its pre-A6 literal with a diagnosis attached.
 
 **Where it lands.** One production file: `pdlc/workflows/orchestrate-dev.js` (TSPEC §1.2 — the
 workflow runtime loads one bundled artifact, so every advisory-tier symbol lives in one module).
-Twelve test-side files, ten of which already exist. One second-channel pair
+Eleven test-side files under `pdlc/workflows/__tests__`, ten of which already exist —
+`advisoryWaveGate.test.js` is the one new file (verified absent today). One second-channel pair
 (`.claude/pdlc.config.example.json`, `pdlc/engine/__tests__/ci-arrangement.test.js`). No new module,
 no new transport, no new credential.
 
@@ -53,7 +54,7 @@ halt the next wave rather than drive it.
 
 **Not in scope here.** OQ-7 (`.gitignore`d paths inside BR-9's restoration oracle) is upstream-pending
 on FSPEC `BR-9` / `AT-05-1` and REQ `AC-5.1`. Per TSPEC §6 OQ-9 the plan does **not** wait for it:
-task `A6-12` mints the ignored-path round-trip case with its expected value marked pending, and
+task `A6-09` mints the ignored-path round-trip case with its expected value marked pending, and
 transcribes whichever boundary the erratum returns.
 
 ## Batches
