@@ -42,6 +42,19 @@ document's prose:
 
 ## Prior findings — disposition
 
+| Prior | Severity | Status | Evidence |
+|---|---|---|---|
+| F-01 `snapshot-unavailable` occupied the reason position, extending a closed set REQ AC-3.4 forbids extending | High | **Resolved** | §2.5's field table now reads "no refusal reason — `reason: null`"; the word survives only as prose in the escalation decision sentence, the notice and §4.5's `diagnosis`. §5.6's AT-03-7 row still asserts eight members in shipped order, and a companion assertion pinning the catalogue is added to §5.2's fixture. The remedy is exactly the one AC-3.4 and BR-15 name |
+| F-02 the `__preDispatch` escape was named as the capture-failure carrier, but capture precedes the driver | Medium | **Resolved, and better than asked** | §2.5, §3.2 step 4 and §3.5 now agree on one answer: capture runs at the call site, the escape is explicitly unavailable, and `runWaveGateSeam` writes the record entry, the escalation entry and the notice itself in a stated order. The reason given — capture inside `gatherEvidence` would re-capture on attempt 2 and destroy the one-snapshot-per-wave invariant — is verifiable at `:3393` and `:3554-3568`, and it is a stronger reason than the one I had |
+| F-03 §4.5's halt-fields row did not say what the four fields hold on the capture-failure path | Low | **Resolved** | §4.5 gains a four-row literal table: `rootCause` `"unclassified"`, a fixed `diagnosis` sentence, `repairApplied` `false`, `repairPaths` `[]` — transcribable values, not derived ones, which is what lets §5.5 assert them |
+| Q-01 does Phase T hold for the BR-9 erratum? | — | **Answered** | §6 OQ-9: no. Both dependent cases are marked upstream-pending and PLAN mints them with the expected value named as pending |
+| Q-02 promote the trailing-slash trap to the constraint corpus? | — | **Answered** | §6 OQ-10: recommended, routed to Phase H for promotion, with this feature's PLAN carrying the slash as a Phase P authoring requirement |
+| Q-03 does the ignored-path-only refusal stand independent of OQ-7? | — | **Answered** | §6 OQ-11: yes, in either direction |
+
+All three prior findings are genuinely closed. The two findings below are **delta** — both were
+introduced by this round's edits, in the sections that fixed the prior findings — and one Medium is
+a rendering defect in how this round's new prose was attached to existing tables.
+
 ## Findings
 
 ## Questions
