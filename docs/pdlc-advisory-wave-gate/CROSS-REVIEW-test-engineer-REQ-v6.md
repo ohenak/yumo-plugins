@@ -45,3 +45,7 @@ FINDING: Medium | delta | local | §6 AC-4.1 conjunct (ii) | "applies, re-gate r
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 0}
+
+APPROVAL-HASH: sha256:a10396e88a52c1905b0d2cdfe0bbb2174b8f100888b7a7b2d69b0e0bd5ed9645
+APPROVAL-HASH-NORMALIZED: sha256:4760cc28ac2b9caa8b503d40984b72241d9b297190f5a9c757cb41bd87256e58
+REVIEWED-COMMIT: 2e2622980cf33ec2211e327ebf67846525096a76
