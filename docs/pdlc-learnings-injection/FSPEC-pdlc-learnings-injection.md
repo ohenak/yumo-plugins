@@ -557,6 +557,71 @@ condition.
 
 ## Edge Cases and Error Scenarios
 
+This is the **branch inventory** DC-05 scores the Acceptance Tests section against. Every row names a
+behavioural branch, its outcome, and the test that asserts it.
+
+### Corpus states
+
+| # | Scenario | Outcome | AT |
+|---|---|---|---|
+| E-01 | No prior LEARNINGS anywhere — the first feature ever run in the repository | Every authoring dispatch composed exactly as today; run completes unchanged; corpus-level `RSN-EMPTY` | AT-24 |
+| E-02 | Corpus listing fails outright | Empty block; corpus-level `RSN-UNLISTABLE`; run continues | AT-25 |
+| E-03 | One document unreadable, others fine | That one `RSN-UNREADABLE`; the rest selected normally | AT-26 |
+| E-04 | One document reads but is not a LEARNINGS document | `RSN-UNPARSEABLE`; the rest selected normally | AT-27 |
+| E-05 | One document truncated mid-document | `RSN-TRUNCATED`; the rest selected normally; **not** confused with a bounded document | AT-28 |
+| E-06 | Corpus contains only `{f}`'s own LEARNINGS | Empty selection, `RSN-SELF` row, empty BR-8 rows — not `RSN-EMPTY`, since a document *was* known | AT-04 |
+| E-07 | Corpus contains only documents under `docs/discarded/` | Corpus-level `RSN-EMPTY`; discarded documents appear in no record | AT-15 |
+| E-08 | Every corpus document is unreadable | Empty block; every document carries `RSN-UNREADABLE`; no corpus-level id, since documents were known | AT-26 |
+
+### Selection and bounding edges
+
+| # | Scenario | Outcome | AT |
+|---|---|---|---|
+| E-09 | Eligible count exactly equals `maxDocuments` | All taken; no `RSN-COUNT` row | AT-07 |
+| E-10 | Eligible count exceeds `maxDocuments` | Exactly `maxDocuments` taken; remainder `RSN-COUNT` | AT-07, AT-08 |
+| E-11 | Two documents share a `Date Completed` value | Tiebreak by path byte order; order is stable across runs | AT-09 |
+| E-12 | A document has no `Date Completed` row (measured: 2 of 89 at HEAD) | Ranked by tiebreak alone; still eligible; never excluded for it | AT-10 |
+| E-13 | A `Date Completed` value carries free text after the date (measured: occurs at HEAD) | The date is read; the trailing text does not make the key unparseable | AT-10 |
+| E-14 | A `Date Completed` value is entirely unparseable as a date | Treated as absent; tiebreak applies; document remains eligible | AT-10 |
+| E-15 | One document exceeds `maxBytesPerDocument` | Material cut at the bound per BR-6; row flagged **bounded**; document still contributes | AT-11 |
+| E-16 | A document's **first** priority section alone exceeds `maxBytesPerDocument` | That section taken up to the bound and cut; row flagged bounded | AT-12 |
+| E-17 | Combined material would exceed `maxTotalBytes` | Whole documents dropped from the low end with `RSN-BYTES`; never a mid-document cut for the total | AT-13 |
+| E-18 | A single document's bounded material alone exceeds `maxTotalBytes` | It is dropped whole with `RSN-BYTES`; the selection is empty; BR-8 rows present and empty | AT-13 |
+| E-19 | A LEARNINGS document is missing one or more of BR-6's priority sections | Present sections injected in priority order; absent ones skipped silently; document is **not** unparseable for it | AT-11 |
+| E-20 | Corpus mixes `docs/{p}/` and `docs/completed/{p}/` documents | Both eligible on identical terms; archival affects nothing but the path used in the tiebreak | AT-16 |
+
+### Configuration edges
+
+| # | Scenario | Outcome | AT |
+|---|---|---|---|
+| E-21 | Configuration section absent | Baseline-identical composition; no injection key | AT-31 |
+| E-22 | `enabled: false` | Baseline-identical composition; no injection key | AT-31 |
+| E-23 | Section present but malformed (`learningsInjectoin`) | Baseline-identical composition **plus** a catalogued malformed-configuration notice | AT-32 |
+| E-24 | `maxDocuments: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
+| E-25 | `maxTotalBytes: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
+| E-26 | One threshold configured, two defaulted | Configured value used for one, defaults for the others; all three appear in BR-10's record | AT-22 |
+
+### Run-shape edges
+
+| # | Scenario | Outcome | AT |
+|---|---|---|---|
+| E-27 | Run makes no DECISIONS phase | Set equality holds over the dispatches that happened; no fixed count is asserted | AT-02 |
+| E-28 | Phase R has no creator — the REQ arrived already authored | Only the optimizer dispatches for REQ carry blocks; set equality still holds | AT-02 |
+| E-29 | A phase runs five optimizer rounds | Each round's authoring dispatch carries a block, re-composed per dispatch | AT-01, AT-02 |
+| E-30 | An erratum dispatch is made | It carries a block, on the same terms as any authoring dispatch | AT-01 |
+| E-31 | `{f}` is a re-run and `docs/{f}/LEARNINGS-{f}.md` already exists | `RSN-SELF` in every phase; no material from it anywhere | AT-04 |
+| E-32 | Corpus changes mid-run (a file appears between two dispatches) | Each dispatch selects over the state **it** observed; the report records what each dispatch actually used, so the difference is visible rather than hidden | AT-18 |
+
+### Non-scenarios — stated so they are not re-litigated
+
+- **An author disputing an injected document.** No erratum, no new channel, no requirement on the
+  author (BR-13). The observation lands in REQ O-3's operator record.
+- **Two authors in the same run receiving different material.** Permitted and expected: each dispatch
+  selects independently, and E-32 makes the difference reportable. Nothing requires the run to pin one
+  selection for its whole duration.
+- **A reviewer receiving the block.** Out of scope by NG-5 and BR-1; widening is REQ O-6's successor
+  REQ, not an implicit extension of this one.
+
 ## Acceptance Tests
 
 ## Open Questions
