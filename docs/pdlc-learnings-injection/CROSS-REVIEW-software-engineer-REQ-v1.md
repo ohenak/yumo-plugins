@@ -22,11 +22,21 @@
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | Is injection re-composed on **every** optimizer round, or once per phase? At §4.1's caps this is the difference between ~120 KB and ~120 KB × rounds of added prompt across a run; R-1's mitigation reads as if the answer were "once per phase", but C-1 is written over dispatches. |
+| Q-02 | Is the CR phase's `se-author` optimizer (`orchestrate-dev.js:3713`) in or out? It is an SE authoring dispatch, it is not one of C-1's six documents, and AC-1.2's exclusion list ("reviews, implementation, DoD, harvest, ship, advisory") does not name it either. |
+| Q-03 | Is the engine the only channel this REQ commits to? `pdlc/CLAUDE.md`'s note that SKILL.md files now delegate to the installed engine CLI would let F-03 be resolved by scoping rather than by rewording C-5 — but the runtime-adapter path is still shipped code. |
+| Q-04 | AC-4.4 makes a zero-valued threshold behave "exactly as disabled records did", while AC-5.1 requires the disabled state to write **no** injection summary key. Does a zero-configured run therefore also drop the summary, and if so how does an operator distinguish "capped to nothing" from "switched off"? |
+| Q-05 | C-2 excludes the authored feature's own LEARNINGS. On a re-run of an **archived** feature, the own-feature document lives at `docs/completed/{f}/LEARNINGS-{f}.md`, not `docs/{f}/`. Is self-exclusion keyed on feature name (both locations) or on path? |
 
 ## Positive Observations
 
-_(filled below)_
+- The Group 4 fail-open criteria are the strongest part of the document: C-7 is stated as total over corpus states, and AC-4.1–AC-4.4 give a test engineer four distinct failing tests without further interpretation. This is the DC-01 receive-side discipline done properly — F-04 is the one gap in an otherwise complete treatment.
+- §1.3's table separating this feature from `pdlc-consolidation-agent` is doing real work: "what needs to have happened" and "whose judgement decides" are exactly the two axes on which the two mechanisms could have collided, and NG-1/NG-2 as absolutes rather than defaults make R-5's mitigation checkable.
+- AC-2.6's `docs/discarded/` exclusion matches HEAD behaviour rather than assuming it — `docs/completed/pdlc-consolidation-agent/DECISIONS-pdlc-consolidation-agent.md:512-517` measured that the `:(glob)` pathspec shape, not `--exclude-standard`, is what excludes it.
+- O-5's premise checks out and can be closed with evidence already on disk: `.claude/pdlc.config.json` is `MERGE_CONFIG_PATH` (`orchestrate-dev.js:48`), the advisory tier shares the same file (`:1937`), and `implementation.testCommand` reads from it — a `learningsInjection` section is the third instance of an established pattern, not a new surface.
+- §4.1 declaring the thresholds as "a declared point, not a measured floor" and binding O-1 to re-derive them from a live run is the honest version of a number nobody can yet know. Prefer this to a fabricated justification.
 
 ## Recommendation
 
