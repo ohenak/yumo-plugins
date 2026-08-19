@@ -435,14 +435,14 @@ export function buildA6SeamOps({
 
 | Member | Behaviour |
 |---|---|
-| `gatherEvidence` | Returns the **full captured gate output** (`gateResult.output`), never `outputTail`'s 30 lines. AT-02-5's oracle is a citation to a region the tail does not contain, and this is why it can exist (E-12, BR-3). Also computes the E-5 and E-6 owned-path sets (§3.4) and fills `declaredScope` in place |
+| `gatherEvidence` | Returns the **full captured gate output** (`gateResult.output`), never `outputTail`'s 30 lines. AT-02-5's oracle is a citation to a region the tail does not contain, and this is why it can exist (E-12, BR-3). Also computes the E-5 and E-6 owned-path sets (§3.4) and fills `declaredScope` in place |Two things it deliberately does **not** do: it does not take the snapshot (that is the call site's, §3.2 step 4, so the one-snapshot-per-wave invariant survives the driver's attempt loop), and its step-3 wave-budget `__preDispatch` escape is not a per-attempt hazard — the escape terminates on the driver's *first* `gatherEvidence` call, so the loop is never re-entered and the budget is read exactly once (TE Q-01) |
 | `prompt` | States the four-class vocabulary, the two envelope members, the decidable rules, the `ROOT-CAUSE:`/`PROMOTES:`/`PROMOTES-TASK:` trailer lines, and the citation rule verbatim. Instructional only for everything the script also checks — but see the precedence note below, which is the one rule the prompt carries alone |
 | `conditionHolds` | `async () => true` — an async arrow, not the literal `true`: the driver calls `await seamOps.conditionHolds()` and a literal would throw. `buildA3SeamOps` is the shipped precedent. It returns true unconditionally because the condition *is* the red gate, observed by the script one step earlier; re-running the suite to re-confirm it would double the wave's slowest cost. A `false` here would yield `no-action`, which is not a disposition this seam has |
 | `classifyReply` | §3.7's optional hook: BR-3's citation rule (⇒ malformed, one attempt) then BR-2's vocabulary read (⇒ escalate, no attempt) |
 | `apply` | Dispatches the repair edit, then returns `{ok:true}` **iff `producedPaths()` is non-empty** — that is the observation, stated so it cannot be read as an unspecified notion of "tree changed". `apply` calls the same `producedPaths` the driver calls at step 5, so the two can never disagree. An empty set is `{ok:false}` ⇒ `post-action-verification-failed`. **A repair writing only `.gitignore`d paths therefore reads as no change and is refused here**, which is the right disposition while §2.5's boundary sits with upstream: the seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone. If the erratum widens BR-9's oracle to ignored generated outputs, the widened capture arrives with a widened `producedPaths` and this row is unchanged; if it does not, the refusal is the documented outcome rather than a silent survival past step 5's CHECK. §5.5 gives it a test |
 | `producedPaths` | `git diff --name-only` **unioned with** `git ls-files --others --exclude-standard`. The untracked half is not optional: a promotion that creates a new file would otherwise be invisible to the step-5 CHECK, and E-6's whole purpose is creating things |
 | `revert` | `restoreTreeSnapshot(snapshot)` (§3.5). Whole tree, every trigger |
-| `verifyGate` | Re-runs `runWaveGateSequence` — post-wave then test, appending to `invocations`. Returns `{passed:true}` on a green sequence; on red, `{passed:false, consumesAttempt:true}` so the driver restores, consumes one attempt and re-enters its loop, exhausting to `budget-exhausted` (BR-7, BR-9, E-20, E-24, AT-02-9) |
+| `verifyGate` | Re-runs `runWaveGateSequence` — post-wave then test, appending to `invocations`. Returns `{passed:true}` on a green sequence; on red, `{passed:false, consumesAttempt:true}` so the driver restores, consumes one attempt and re-enters its loop, exhausting to `budget-exhausted` (BR-7, BR-9, E-20, E-24, AT-02-9) |Its append to `invocations` is also what the call site's step-6 ledger check reads: a `verifyGate` that returns `{passed:true}` without appending the wave's gate sequence cannot produce a resolution (§3.2 step 6, AC-4.1 (iii)) |
 | `declaredScope` | A **live array**, mutated in place (`.length = 0; push(...)`), never reassigned — the `buildA4SeamOps` idiom, required because the driver captures the reference once at GATE and the test doubles shallow-copy the SeamOps object |
 | `permittedActions` | `["E-5", "E-6"]`, narrowed per invocation: `E-6` is dropped when the wave is the last one, since there is no later task for a promotion to belong to |
 
@@ -450,6 +450,15 @@ export function buildA6SeamOps({
 (`buildA5SeamOps`'s `apply` compares `verdict.proposedAction === "E-1"`, `buildA4SeamOps` declares
 `permittedActions = ["E-3"]`). `classifyEnvelope`'s X-c clause then refuses any other value with no
 A6-specific code.
+
+**A6's dispatch options equal the shipped seams', with no additional grant (TE F-17).** The
+`_agent` call `runAdvisorySeam` makes for A6 is the driver's own, so the tool grants the repair
+agent receives are whatever the shipped tier already gives A3/A4 — A6 adds no option, and in
+particular no capability by which the agent could run `git` itself. That is the premise `(h)`'s
+prohibition test depends on: "no `commit`/`push`/`tag` argv reached the `_git` transport" is only
+falsifiable if `_git` is the *only* transport A6's agent can reach, so §5.5's `(h)` row asserts
+the premise as well as the conclusion — the dispatch options object observed on the run carries
+no key beyond the shipped seam's (AT-07-5).
 
 **One rule is prompt-only, and BR-16's claim is qualified to say so (PM F-04).** `parseA6RootCause`
 is a *membership* test against `ADVISORY_ROOT_CAUSES`: given a class the agent emitted, it says
@@ -586,11 +595,16 @@ Both run the plumbing of §2.5 through the injected `_git(argv)` transport, whos
 `.git/index.lock` for a second or two after the dispatch returned — the shipped reason
 `commitPaths` retries the same two verbs.
 
-- `captureTreeSnapshot` returns `null` on any `ok !== true`. The caller does not simply decline
-  to dispatch: per §2.5 and §3.2 step 4 it escalates through the `__preDispatch` escape with
-  reason `snapshot-unavailable`, writing the advisory record entry and the escalation entry, and
-  only then lets the wave halt on its own gate literal. Refusing to act beats acting without a
-  way back — and refusing to act while writing nothing down is what the first draft got wrong.
+- `captureTreeSnapshot` returns `null` on any `ok !== true`, and it is called by `runWaveGateSeam`
+  at §3.2 step 4 — outside `runAdvisorySeam`, exactly once per wave. The caller does not simply
+  decline to dispatch, and it cannot use the `__preDispatch` escape (that is a `gatherEvidence`
+  return value, read inside the driver, which is never entered here): per §2.5 it writes the
+  advisory record entry and the escalation entry itself, with **no refusal reason** — the escalation
+  is a diagnosis-only outcome per REQ AC-3.4 and FSPEC BR-15, and `snapshot-unavailable` is
+  diagnostic prose in the escalation sentence, the notice and §4.5's `diagnosis` field, never a
+  ninth member of `ADVISORY_REFUSAL_REASONS` — and only then lets the wave halt on its own gate
+  literal. Refusing to act beats acting without a way back — and refusing to act while writing
+  nothing down is what the first draft got wrong.
 - `restoreTreeSnapshot` **throws** on any `ok !== true`. The throw is what `doRevert` tags
   `__isRevertFailure` and the driver's terminal catch rethrows — E-28, AT-05-5.
 
