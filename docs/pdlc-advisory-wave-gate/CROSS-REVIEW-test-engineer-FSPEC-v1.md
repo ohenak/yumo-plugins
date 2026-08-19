@@ -45,4 +45,22 @@
 
 ## Recommendation
 
+**Needs revision**
+
+Five High findings, and the shape of them is consistent: §4's business rules are testable, and §6 does not yet finish the job of turning three of them into oracles. The document is close. Nothing here asks for new behaviour, a new rule, or a re-architecture — every fix is a rewrite of an acceptance test into a form a suite can run and fail.
+
+Concretely, to reach Approved:
+
+1. **F-01** — replace AT-07-1 with an enumerated list of agent-proposable boundaries, each driven by a stub agent double returning the violating proposal, each asserting a shipped refusal reason and an unchanged tree. Drop "prompted to violate" and "with no reliance on the prompt" as oracles; they are the rationale, not the assertion.
+2. **F-02** — add one AT each for E-11, E-28, E-30 and E-32, and either cover E-02/E-06 or say in §5 that they are inherited-behaviour rows with no new observable. E-11 and E-28 are the two that matter: the first is the rule an implementer is most likely to collapse into the tier's existing two-conjunct gate, the second is the feature's worst failure mode.
+3. **F-03** — add a config-key-set AT with a transcribed literal including `waveBudgetPerRun` and its default `1`. Today that key's existence and default are asserted nowhere, and AT-07-2's "has been updated" cannot fail.
+4. **F-04, F-05** — give AT-07-3 and AT-04-1 positive conjuncts on the same path. AT-04-4 already shows the pattern the author intended; these two just have not been brought up to it.
+
+The Medium findings (F-06…F-11) are worth taking in the same pass because they are cheap: F-07 and F-08 are one set-equality assertion each, F-09 and F-12 are a sentence naming the comparison surface, F-06 is one numbered step. F-11 is the one Medium I would not defer — BR-12 is the feature's real gap against shipped scope, and a test that cannot red against today's behaviour will not protect it.
+
+What is already right is worth saying plainly: BR-7's ordered-sequence oracle, AT-02-6's discriminating pair, and AT-04-4's deliberate positive companion are better than most specs reach at this phase, and they are why this review is a list of local repairs rather than a request to rethink §6.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 6, "low": 3}
