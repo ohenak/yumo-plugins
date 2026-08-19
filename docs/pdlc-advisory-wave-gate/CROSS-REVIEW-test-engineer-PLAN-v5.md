@@ -66,11 +66,24 @@ produced were each checked and none is present:
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Not blocking, and repeated from the PROPERTIES round rather than raised anew: PROP-REC-07's negative control needs a seam id absent from `ADVISORY_SEAM_PHASES`, and once A6-05 lands all six catalogued seams have rows, so the fixture must use a synthetic non-catalogue id. A6-17's row does not name that fixture shape. It is a test-authoring detail inside a task PROPERTIES already scopes, so I am not filing it as a finding against PLAN — recording it only so the batch-11 author does not reach for a catalogue seam and find the arm unreachable. No answer needed this round. |
 
 ## Positive Observations
 
-_pending_
+- The erratum resolved in the direction PLAN had already taken. A6-02's import list and A6-17's file
+  home were written before v1.8 existed and match its instruction exactly; the round cost PLAN
+  nothing because the compression was faithful to the *behaviour* rather than to the export block.
+- §3.1's new paragraph makes explicit the reason PLAN was right: an oracle that imports a frozen
+  literal and asserts it contains the row it was just edited to contain restates the diff. Having
+  that reasoning in the upstream document protects A6-02 from a future round trying to "complete"
+  the constant surface by adding the table back.
+- A6-00's exclusion of `pathsCollide` (`:94`) shows the same discipline applied a round earlier:
+  PLAN distinguishes exported from module-private symbols before planning an import-based assertion,
+  which is precisely the check that would have caught the v1.7 gap upstream.
+- The verification map (`:295`–`:298`) still routes AT-06-3/-5/-6 through A6-17 RED to A6-18 GREEN,
+  so the escalation entry's field values are proved on the production write path, not on a builder.
 
 ## Recommendation
 
