@@ -134,7 +134,73 @@ directory row — `pdlc/workflows/dist/` is written by the post-wave command and
 
 ## Dependencies
 
-*(section pending)*
+### Why the chain is this serial
+
+Almost every production edit lands in `pdlc/workflows/orchestrate-dev.js` (TSPEC §1.2), and
+batch-safety rule 2 allows one writer per file per batch. So `orchestrate-dev.js` is written by
+exactly one task per batch, and the seven implementation tasks (A6-05, A6-08, A6-10, A6-12, A6-14,
+A6-18, A6-21) are necessarily serial. Parallelism exists only among test-side tasks, in batches 1,
+11 and 13. This was verified mechanically, not asserted: `parsePlanTasks` +
+`computeTopologicalBatches` + `computeWaves` over this document reproduce the fourteen batches
+labelled above, task for task.
+
+### Red-before-green edges
+
+Every green task lists its red task in `Deps` — never id-order luck:
+
+| Green task | Red task(s) it depends on | What the red proves before the green exists |
+|---|---|---|
+| A6-05 | A6-01, A6-02, A6-03 | six-member seam and envelope literals, `waveBudgetPerRun`, `A6` registry row all fail against the shipped five-member surfaces |
+| A6-06 | A6-04 | the example config carries no `advisory` section at all today |
+| A6-08 | A6-07 | `waveOwnedPaths`, `laterOwnedPaths`, `ownedSetCovers`, `parseA6RootCause`, `citesGateOutput` are not exported |
+| A6-10 | A6-09 | `captureTreeSnapshot` / `restoreTreeSnapshot` are not exported; the real-repo round-trip oracle has nothing to run against |
+| A6-12 | A6-11 | `seamOps.classifyReply` is not read by `runAdvisorySeam`, so the terminate arm never fires |
+| A6-14 | A6-13 | `buildA6SeamOps` is not exported |
+| A6-18 | A6-15, A6-16, A6-17 | `runWaveGateSeam` does not exist, so no disposition, record entry or escalation entry is written |
+| A6-21 | A6-19, A6-20 | the wave loop still throws unconditionally at `:14364`; M-WG-12 still strands an E-6 promotion uncommitted |
+
+### Batch-safety rules, as applied here
+
+1. **Batch column derived, not narrated.** `batch == max(batch of deps) + 1`, sources in batch 1,
+   sub-batches capped at five (`orchestrate-dev.js:10805`).
+2. **Single writer per file per batch.** Checked file by file: `orchestrate-dev.js` appears in
+   batches 2, 4, 6, 8, 10, 12 and 14, once each. `advisoryWaveGate.test.js` appears in batches 1, 3,
+   5, 9 and 11, once each. `advisoryDriver.test.js` in batches 1 and 7. `advisoryRecord.test.js` in
+   batches 1 and 11. No file has two writers in one batch, in either the source or the test column.
+3. **Shared prerequisites are serial and singly owned.** `helpers/advisoryDoubles.js` — the one file
+   every later suite reads — is owned by exactly one batch-1 task, A6-01, and by nothing else. The
+   `[Fake first]` label is on that task and it precedes every production task.
+4. **Subpackage-qualified paths.** Every `Test File`, `Source File` and manifest cell carries a
+   repo-root-relative path. There are no bare basenames: two suites in this feature
+   (`advisoryRecord.test.js` in `pdlc/workflows/__tests__` and `ci-arrangement.test.js` in
+   `pdlc/engine/__tests__`) live in different trees, and a bare name would be ambiguous between the
+   two channels.
+5. **Task ids are spelled identically** in the `#` column and in every `Deps` cell — no emphasis in
+   one and bare in the other.
+
+### Integration points in the shipped code
+
+| Integration point | Location, verified | Touched by |
+|---|---|---|
+| Wave loop's script-owned test gate, today an unconditional throw | `pdlc/workflows/orchestrate-dev.js:14360`, halt literal built at `:14364` | A6-21 |
+| Post-wave command, must keep its message byte for byte | `:14347`–`:14357` | A6-21 (read only) |
+| `scriptGate` resolution | `:14143` | A6-21 (read only) |
+| Advisory constants block | `:1938` (`ENVELOPE_DEFAULTS`), `:1940` (`ADVISORY_DEFAULTS`), `:1947` (`ADVISORY_SEAMS`) | A6-05 |
+| `parseAdvisoryConfig` and its per-key validators | `:1960` | A6-05 |
+| `runAdvisorySeam`'s attempt loop — APPLY precedes VERIFY, which is what makes the `ledgerAnchor` rule decidable | `:3499`, `:3503`, `:3521`, `:3544`, `:3554` | A6-12, A6-14, A6-18 (read); A6-12 (write) |
+| `resolveAdvisoryRung` and the per-run rung memo | `:2111` | none — reused unchanged (NFR-6, O-3) |
+| `classifyEnvelope`, `appendAdvisoryEntry`, `appendEscalationEntry` | shipped, unchanged | none — reused unchanged (BR-5, AC-6.1, AC-6.2) |
+| `computeWaves` / `parsePlanOwnership` / `pathsCollide`, the source of the owned-path sets | `:4449` (`parsePlanOwnership`) | A6-08 (read) |
+| `commitPaths` and `gitWithLockRetry` | shipped | A6-10, A6-21 |
+| Gate-exclusivity registry, the reason A6 gets a hook and not a seam-name branch | `pdlc/workflows/__tests__/advisoryDriver.test.js:221`, `:846` | A6-03, A6-11 |
+
+### Upstream dependency that is still open
+
+OQ-7 — whether BR-9's restoration oracle ranges over `.gitignore`d paths — is pending as an erratum
+on FSPEC `BR-9` / `AT-05-1` and REQ `AC-5.1`. It does not block any task: A6-09 mints the
+ignored-path round trip with its expected value named and marked pending, and transcribes the
+boundary the erratum returns. Nothing else in this plan reads that answer, because A6-13's
+`apply` refusal for an ignored-path-only repair stands on its own merits either way (OQ-11).
 
 ## Verification
 
