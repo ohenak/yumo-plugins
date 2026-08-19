@@ -569,8 +569,78 @@ Two consequences worth stating rather than discovering:
 
 ## 5. Test Strategy
 
-*(pending)*
+### 5.1 Where the tests live
+
+| File | Status | Carries |
+|---|---|---|
+| `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | new | A6's parsers, envelope classification, invocation ordering, snapshot/restore, budget |
+| `pdlc/workflows/__tests__/advisoryEnvelope.test.js` | edited | The two transcribed set-equality oracles (§1.3) |
+| `pdlc/workflows/__tests__/advisoryConfig.test.js` | edited | The re-declared `ADVISORY_DEFAULTS` literal, plus `waveBudgetPerRun`'s validator |
+| `pdlc/workflows/__tests__/advisoryDriver.test.js` | edited | PROP-GATE-06's `GATE_EXCLUSIVITY_REGISTRY`-keys-equal-`ADVISORY_SEAMS` oracle; `classifyReply`'s three returns |
+| `pdlc/workflows/__tests__/advisoryDisabled.test.js` | edited | The disabled-tier byte-identity properties, extended over Phase I |
+| `pdlc/workflows/__tests__/waveExecution.test.js` | edited | Wave-loop call-site behaviour with A6 absent and present |
+| `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` | edited | The `SEAMS` literal and an A6 reply builder |
+
+The six transcribed surfaces of §1.3 go red on the first constant edit. That is the intended
+signal, not collateral: each is a set-equality or ordered-sequence oracle that exists precisely so
+that adding a seam cannot be silently additive. Each edit is a transcription of the new value, never
+a loosening of the assertion to a subset or `toContain` check.
+
+### 5.2 What is asserted mechanically
+
+- **Totality of the A6-owned parsers.** `parseA6RootCause` and the promotion readers are asserted
+  over absent, empty, wrong-cased, duplicated and out-of-set inputs, and must return
+  `unclassified` / `null` rather than throw for every one. The oracle is that no input in the
+  fuzz set produces an exception, and that only exact members of `ADVISORY_ROOT_CAUSES` produce a
+  non-`unclassified` class.
+- **The ordered invocation sequence.** BR-7 is an ordered-sequence oracle over the wave's
+  `invocations` array — `["post-wave"]`, `["test"]`, `["post-wave", "test"]` — never a membership
+  or count check, because the defect it guards against is the test seam firing before the post-wave
+  gate has had its say.
+- **Root-cause-to-envelope binding.** A `test.each` over the four classes × the three proposed
+  actions asserts exactly the eight authorising cells of §4.2's table and refuses the rest.
+- **Restoration triggers are exhaustive.** BR-10's three triggers are asserted as a set, and the
+  post-gate halt case is asserted to *not* restore — the property that makes AT-05-4 satisfiable.
+- **Snapshot/restore round-trips including untracked files.** A wave that adds an untracked file
+  and is then restored must leave the file absent; a wave that adds a `.gitignore`d file must leave
+  it present, which is what pins `git clean -fd` over `-fdx` (O-1's decision).
+- **The disabled tier is byte-identical.** `advisoryDisabled.test.js` gains Phase I cases asserting
+  that with `advisory.enabled: false` the wave loop performs no A6 dispatch, no model resolution,
+  no snapshot ref, and produces a report whose `advisory` key is `undefined`.
+
+### 5.3 What is verified by reading, not by assertion
+
+Three claims in this TSPEC are grounded in the shipped source and cannot be re-asserted without
+re-implementing the thing under test, so they are recorded here as read-verified rather than
+covered:
+
+1. `parseAdvisoryVerdict`'s last-wins `extract` semantics and its five malformedness rules are
+   unchanged by A6; A6 adds parsers beside it and edits none of its rules.
+2. The shipped per-run rung memo (`rungState`) is threaded into A6 rather than re-created, so a
+   run that has already resolved a rung for A3–A5 performs no second model resolution (NFR-6).
+3. `advisorySummaryRows` needs no edit to emit A6's row: it maps over `ADVISORY_SEAMS`, so the
+   sixth row appears from the §3.1 constant change alone.
+
+### 5.4 Coverage and the CI floor
+
+The workflows suite runs under c8 with an aggregate branch floor of 85% enforced per module. A6's
+new module surface is branch-dense — four root-cause classes, three envelope members, three
+restoration triggers, two confidence values — so the new test file is written to exercise every
+branch of the terminating classifier rather than to reach the floor incidentally. The
+`Generated artifacts in sync` check requires `node pdlc/workflows/build-runtime.mjs` to be re-run
+and `pdlc/workflows/dist/` committed in the same wave that edits this module; the repo's
+`implementation.postWavePathspecs` already names that directory, so the per-wave commit carries it.
 
 ## 6. Open Questions
 
-*(pending)*
+| # | Question | Blocking? | Current disposition |
+|---|---|---|---|
+| OQ-1 | Should `waveBudgetPerRun: 0` be rejected at parse time rather than accepted as a configured value that escalates every wave pre-dispatch? | no | Accepted as configured, per E-33; the behaviour is coherent but undocumented upstream. See the FSPEC erratum on E-33. |
+| OQ-2 | Should a run that halts with an applied-and-retained repair leave `refs/pdlc/a6-snapshot` in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. |
+| OQ-3 | Should `plan-ordering-defect` recurrence feed back into Phase P's PLAN lint, so a repeatedly-promoted dependency becomes a PLAN-time error? | no | Out of scope; recorded because `ESCALATIONS.md` is the durable corpus that would make it possible (AC-6.4, REQ O-2). |
+| OQ-4 | Should E-6 promotions be visible to the *queue* driver, so a halted feature's re-run starts from the corrected ordering? | no | No. Promotions are per-run state by §4.3, and a re-run re-derives batches from the PLAN, which the erratum protocol — not A6 — is responsible for correcting. |
+
+None of these blocks PLAN authoring. OQ-1 and OQ-3 are recorded as candidates for DECISIONS if a
+reviewer disagrees with the dispositions above.
+
+REVISION-COMPLETE: yes
