@@ -1382,7 +1382,7 @@ from it, so an AT with no home here is a task with no home there.
 | AT-02-4 | `advisoryWaveGate.test.js` | diagnosis citing no gate output ⇒ malformed, one attempt (`citesGateOutput` false) |
 | AT-02-5 | `advisoryWaveGate.test.js` | gate output longer than `outputTail`'s 30 lines; the cited region is outside the tail and inside `gateResult.output` |
 | AT-02-6 | `advisoryWaveGate.test.js` | two escalated waves leave `waveBudget.resolved` at `0`; one resolved wave increments it to `1` |
-| AT-02-7 | `advisoryDriver.test.js` | one dispatch→verdict window against `seamBudgetMinutes`, plus the positive disposition companion — driver-owned, A6 passes the shipped config through |
+| AT-02-7 | `advisoryDriver.test.js` | one dispatch→verdict window against `seamBudgetMinutes`, the window being **per attempt** since FSPEC v1.4's BR-11 (worst case `attemptBudget × seamBudgetMinutes` on one wave), plus the positive disposition companion — driver-owned, A6 passes the shipped config through |
 | AT-02-8 | `advisoryWaveGate.test.js` | `environmental` and `unclassified` each: disposition `escalated`, no repair, no restoration, **no** refusal reason, class present in the escalation entry — negatives paired with positives per AC-4.5 |
 | AT-02-9 | `advisoryWaveGate.test.js` | `attemptBudget` `1` ⇒ exactly one dispatch; `2` ⇒ exactly two; counted, never bounded |
 | AT-03-1 | `advisoryEnvelope.test.js` | `ENVELOPE_DEFAULTS` set-equal to `E-1`…`E-6` |
@@ -1394,6 +1394,8 @@ from it, so an AT with no home here is a task with no home there.
 | AT-03-7 | `advisoryEnvelope.test.js` | `ADVISORY_REFUSAL_REASONS` ordered-sequence equality, eight members, unchanged — A6 adds none, and the capture-failure path is what would have added a ninth had §2.5 not put the diagnostic in prose instead (PM F-01) |
 | AT-03-8 | `advisoryEnvelope.test.js` | `ADVISORY_EXCLUSIONS` ordered-sequence equality over clause ids, unchanged by A6 |
 | AT-04-1 | `advisoryWaveGate.test.js` | verdict asserting the wave is fixed + red re-gate ⇒ three positives on one run: `escalated`, halt string equals AT-05-3's literal, resolved-wave count `0` |
+| AT-04-1a | `advisoryWaveGate.test.js` | FSPEC v1.4's conjunct (i): applied in-envelope repair + green re-gate ⇒ wave reported resolved, proceeds, and that green invocation appears in AT-04-2's sequence — §5.2's two-attempt six-token run is the carrier |
+| AT-04-1b | `advisoryWaveGate.test.js` | FSPEC v1.4's conjunct (iii): applied repair, **no** gate invocation follows ⇒ wave halts, not resolved, resolved-wave count `0`. Unreachable on an ordinary run, so the fixture is §5.5's dropped-re-gate mutation, whose construction is this TSPEC's (O-1) |
 | AT-04-2 | `advisoryWaveGate.test.js` | the three worked `invocations` sequences of §2.4, compared as ordered sequences |
 | AT-04-3 | `waveExecution.test.js` | committing writer identities equal the pre-A6 baseline, both still past a green gate; scope widening is AT-04-5's, not this one's |
 | AT-04-4 | `advisoryWaveGate.test.js` | budget-exhausting red re-gate: refusal reason recorded, escalation entry written, pre-A6 behaviour taken — the AC-4.5 pairing, asserted positively |
