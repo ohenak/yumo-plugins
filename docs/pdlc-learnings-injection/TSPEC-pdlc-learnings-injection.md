@@ -919,15 +919,43 @@ source path (so a claim is traceable to a file) and the `ABRIDGED` marker discha
 block states that the document is abridged". The whole block is prefixed with `\n\n` when non-empty
 and is **exactly `""`** when `selected` is empty (§A.2 property 3).
 
+### OQ.3 — how C-8's "less is injected" half is discharged
+
+C-8 has two halves. The **non-displacement** half is structural and needs no measurement: the block
+is appended after `opener` and never inserted into or between `basePrompt`,
+`PACING_CONTRACT_CLAUSE` and `opener`, so no existing content is displaced, shortened or reordered
+(§A.2 property 3). The **"when the bound cannot be honoured alongside them, less is injected"**
+half is *not* discharged by that, and the earlier draft left it unaddressed — PM F-04 is right that
+the sentence names a mechanism and the document did not.
+
+**It is discharged by static caps alone, and that is a deliberate limitation.** §4.1's three
+thresholds bound the addition unconditionally: material never exceeds `maxBytesPerDocument` per
+document or `maxTotalBytes` in total, whatever else the prompt carries. What the design does *not*
+do is measure the rest of the prompt and shrink the injection when the dispatch is already large —
+there is no dynamic budget, because nothing in the module knows a prompt ceiling to budget against,
+and inventing one would be a product decision about degradation order that REQ has not made.
+
+So the honest statement is: **C-8's second half is satisfied only in the weak sense that the
+injection is bounded a priori, not in the strong sense that it yields under pressure.** The
+obligation to find out whether that is enough belongs to REQ O-1 / T-O-3, which already measures
+realised prompt sizes per dispatch and per run. If that measurement shows the static caps do not
+honour C-8 — realised prompts crowding at the caps, or a correlation between injection size and
+degraded output — then the consequence is named here rather than discovered later: **the caps
+move (a REQ §4.1 change, not a code change), or REQ decides the displacement order and this feature
+gains a dynamic budget as a follow-on.** Either way it is an upstream decision, and R-1's
+mitigation clause is what routes it there. Nothing in this TSPEC's structure has to change for
+either outcome, which is why it is recorded as an open question rather than a design risk.
+
 ### Named obligations carried forward
 
 | # | Obligation | Owner |
 |---|---|---|
 | T-O-1 | The four-suite PLAN must serialise writers on `orchestrate-dev.js`: every task in this feature writes that one file, so single-writer-per-batch (DC/PLAN batch rule 2) forces a mostly serial batch chain. The PLAN owes an explicit per-phase file-ownership manifest making that visible rather than a prose note. | PLAN |
-| T-O-2 | The pre-feature baseline capture (§T.3) must run **before** the first production edit lands on the branch, or the merge-base it records is no longer a pre-feature commit. This is a PLAN ordering obligation with a gate at the moment it binds (DC-21), not a step to be remembered. | PLAN |
+| T-O-2 | The pre-feature baseline capture (§T.3) must run **before** the first production edit lands on the branch, or the merge-base no longer records a pre-feature commit. PLAN owes this as an ordering obligation with a gate moment that binds (DC-21), not a step someone remembers. **Note the rationale is about *when*, not about merge-base stability (TE F-15):** the merge-base itself moves under rebase or a merge from `main`, so §T.3 does not recompute it — `MANIFEST.json` records the resolved sha at capture time and the guard test's hand-transcribed digests are pinned to that recorded sha, so a later rebase cannot silently re-point the baseline at a commit that already contains feature code. | PLAN |
 | T-O-3 | REQ O-1's live-run measurement must report, alongside realised prompt sizes, the **read** cost §A.4 names: bytes read per authoring dispatch and probe-vs-full-read counts on the Claude Code channel. The read is unbounded where the injection is bounded, and that is the term most likely to move the thresholds. | operator / O-1 |
 | T-O-4 | PROPERTIES owes a property over `orderCorpus`: for any corpus, the output is a permutation of the input and the comparator is a strict weak ordering — the mechanical form of BR-4's "total order over the eligible set". | PROPERTIES |
 | T-O-5 | PROPERTIES owes the totality property C-7 asserts: for **any** `{entries, feature, thresholds}` drawn from the generators, `selectLearnings` returns without throwing and every input path appears exactly once across `selected ∪ rejected`. | PROPERTIES |
+| T-O-6 | PROPERTIES owes a property over `extractInjectableMaterial`, the third parameterisable pure function (TE F-11): for **any** document text and **any** non-negative `maxBytes`, the returned `bytes` equals `Buffer.byteLength(material, "utf8")` and is ≤ `maxBytes`, `material` is a whole-character prefix of what BR-6 selects (it round-trips through UTF-8 decode without a replacement character), and `bounded` is `true` exactly when material was cut. Example-only coverage (AT-11, AT-12) pins two byte counts; the char-safety claim of §D.5 is a statement about all inputs and needs a generator. | PROPERTIES |
 
 ### Load-bearing alternatives weighed and rejected
 
@@ -1000,3 +1028,12 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   choice is a product decision (does an operator opt in, or opt out?), not an engineering one, so
   it is routed to REQ rather than absorbed here; §OQ.2 records what TSPEC does provisionally and
   exactly what changes under either resolution.
+- **ERR-5 (FSPEC E-13).** The row is annotated "(measured: occurs at HEAD)", but it does not occur
+  at HEAD. Running the corpus predicate and reading each document's `Date Completed` cell yields 9
+  bare ISO values (`2026-06-02` … `2026-08-18`); no corpus document carries free text after the
+  date. The only occurrence of the sampled string
+  `2026-06-09 (Phase H harvest; partial close-out)` in this repository is inside this feature's own
+  review documents. The *rule* E-13 states is right and TSPEC implements it (§D.4's `\b`-anchored
+  prefix match), so nothing downstream changes; what needs correcting is the provenance claim, since
+  a fixture author reading "measured" would look for a sample that is not there. Either drop the
+  parenthetical or re-source it.
