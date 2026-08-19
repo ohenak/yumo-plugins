@@ -55,3 +55,9 @@ overclaim in rationale prose with no behavioural consequence — it does not gat
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 0}
+
+APPROVAL-HASH: sha256:c0ee14a4e69efd994c5d1d4d0c1d0b32c9f0e31e948a6f37127a209b1e20585a
+APPROVAL-HASH-NORMALIZED: sha256:5e98d8c5bc07321610ece3b57593d7ce23338257bc3df6234ffbb7e414db2b72
+REVIEWED-COMMIT: 61a9605d89fd093e227a23d106bf9d0e0f1705cd
+UPSTREAM-STATE: REQ sha256:a10396e88a52c1905b0d2cdfe0bbb2174b8f100888b7a7b2d69b0e0bd5ed9645
+UPSTREAM-STATE: FSPEC sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e
