@@ -196,8 +196,8 @@ AC id. Reuse of the model-rung resolver rather than restatement of its literals 
 | Threshold | Default | Status | Meaning |
 |---|---|---|---|
 | `advisory.enabled` | `false` | existing, unchanged | master switch; false ⇒ A6 inert (AC-1.4) |
-| `advisory.attemptBudget` | `3` | existing, reused | remediation attempts per wave invocation (AC-2.4) |
-| `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per A6 invocation, measured dispatch to verdict, not cumulative across the wave (AC-2.4, NFR-4) |
+| `advisory.attemptBudget` | `3` | existing, reused | remediation attempts per A6 invocation, one invocation being A6 engaged on one red wave (AC-2.4) |
+| `advisory.seamBudgetMinutes` | `10` | existing, reused | working time per attempt, measured dispatch to verdict; the deadline restarts on each attempt, so one A6 invocation may consume up to `attemptBudget` × this value (AC-2.4, NFR-4) |
 | `advisory.envelope` | gains `E-5`, `E-6` (AC-3.1) | existing, extended | the per-seam allow-list |
 | `advisory.waveBudgetPerRun` | `2` | **new** | how many distinct waves A6 may resolve in one run (AC-2.4); exceeded ⇒ escalate |
 
@@ -296,8 +296,9 @@ requirements altitude.
   satisfiable on a long suite. *(US-02.)*
 - **AC-2.4** — Given the budgets of C-2, Then A6 escalates rather than retrying when any is
   exceeded: more than `advisory.attemptBudget` attempts on one wave, more than
-  `advisory.seamBudgetMinutes` on a single invocation (per invocation, dispatch to verdict, not
-  cumulative across the wave — NFR-4 measures the same thing), or an attempt on a wave once A6 has
+  `advisory.seamBudgetMinutes` on a single **attempt** (per attempt, dispatch to verdict; the
+  deadline restarts on each attempt, so one A6 invocation's worst case is `advisory.attemptBudget`
+  × that value — NFR-4 measures the same thing), or an attempt on a wave once A6 has
   already **resolved** `advisory.waveBudgetPerRun` distinct waves in this run. One attempt is one
   **repair→re-gate** cycle. Only resolutions consume the wave budget, which fixes the two oracles a
   test can disagree about: two waves A6 attempted and escalated leave the budget untouched, so a
