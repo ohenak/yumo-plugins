@@ -9,9 +9,44 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.6 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.7 | 2026-08-20 |
 
 ## Changelog
+
+**v1.7 (erratum round, Phase P).** Re-grounded on upstream HEAD first: REQ and FSPEC are byte-identical
+to the state v1.6 already absorbed (FSPEC v1.4), so nothing upstream was decided this round and no
+absorption was owed. Then the six raised items, all of them TSPEC prose gone stale against PLAN v1.1/v1.2
+rather than design changes.
+
+§1.3's transcription enumeration was short by two sites and is now **eight** surfaces, not six. It gains a
+**bare row-count** row naming **four** sites, not the two the item list named — HEAD (PLAN v1.2, A6-03)
+also knows `advisoryHarvest.test.js:571` and `:726`, the second of which sits beside a member *lookup*
+rather than a member list and so is missed by any instruction to retarget seam literals — plus a
+`.enabled`-count row recording PROP-DIS-06 as a surface that stays **unchanged at three** and therefore
+constrains A6 rather than being edited by it.
+
+§3.2 step 2 no longer contradicts `orchestrate-dev.js:13675`–`:13677`. The tier **gate** is still duplicated
+at the call site (AC-1.4's inertness covers the snapshot, which is A6's and not the driver's), but the tier
+**read** is not: `runWaveGateSeam` now receives the resolved `advisoryTierOn` boolean as a parameter, added
+to §3.2's signature block, so no fourth `.enabled` token appears and PROP-DIS-06 still counts three.
+
+§4.4 and §5.1 re-home the second-channel expectation off `ci-arrangement.test.js` — whose stated oracle is
+FSPEC §5.1's CI arrangement alone — onto the purpose-named new file
+`pdlc/engine/__tests__/advisory-config-example.test.js`, so a config-schema assertion cannot redden the
+delivery-blocking `Engine tests (ubuntu-latest)` check under a scope that names no such concern. §4.4 also
+pins the example's literal shape (`{"enabled": false, "waveBudgetPerRun": 1}` — the whole `advisory` section,
+since JSON admits no comments and the pairing is the only thing teaching E-33's `0`-with-`enabled: true`
+affordance, TE F-34) and records that **no `pdlc/README.md` edit is in scope**: the file carries no `advisory`
+section to join, the owning task commits only the example, and `docs-uniqueness.test.js:122`–`:123` line-pins
+that README.
+
+§5.6's discharge rule is corrected from "one red-test row per AT" — which at forty-seven ATs would collide
+with batch-safety rules 1 and 2, A6-15 alone owning nineteen in one file — to **set-equality over AT ids**
+against PLAN's own AT-coverage table. Coverage, not cardinality.
+
+Also carried, from round 6 and restated in round 7: `ledgerAnchor`'s two stated creation sites are reconciled
+onto the step-4 site, with the per-wave guarantee stated directly rather than inherited from `invocations`'
+scope (PM F-02/v6, PM F-01/v7).
 
 **v1.6 (erratum round, Phase D).** Re-grounded on FSPEC v1.4 first, then the six raised items.
 Upstream absorbed: AT-04-1 split into three conjunct-scoped runs, so §5.6 gains AT-04-1a (green
