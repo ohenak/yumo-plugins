@@ -167,6 +167,46 @@ operator reads it correctly.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | OQ-7's erratum on FSPEC BR-9 / AT-05-1 and REQ AC-5.1 has now been open for three rounds; `FSPEC:204` and `:410` are unchanged. §5.2's ignored-path round-trip and §5.6's AT-05-1 are both parked on it. If it does not land before Phase P, does the author want OQ-9's ruling restated as a PLAN authoring instruction — "mint the red-test task with the expected value literally marked pending, and name the erratum in the task row" — so the pending value cannot be silently transcribed as whichever boundary the implementer assumes? |
+| Q-02 | §6 OQ-13 routes the underlying git failure (verb, `stderr`) into the escalation entry's free-text `decision` slot and says "PLAN should have the call site interpolate the failing verb there". Since §4.5's `diagnosis` stays fixed and §5.2's fixtures assert the record entry rather than the escalation entry, is anything asserting that the verb actually reaches the escalation log? If not, the one place the operator learns *which* git call failed is uncovered — a one-line containment assertion on the escalation entry would close it without touching the equality oracle. |
+
 ## Positive Observations
+
+- **The two-attempt companion case is the right shape, and its expected value is a literal.**
+  §5.2's new fixture asserts `resolved`, a `waveBudget.resolved` increment, and `invocations`
+  reading `["post-wave", "test", "post-wave", "test"]` written out in full rather than derived from
+  the implementation (`TSPEC:973-979`). That is the positive pairing I asked for, and it is stated
+  in the form that cannot echo the code under test. It is also the fixture that will expose F-01
+  the moment the rule is anchored properly — the two live in the same section for a reason.
+
+- **§5.2's snapshot count was fixed for a reason better than the one it was given.** Counting
+  `commit-tree === 1` over the recorded argv instead of calls on the `_git` double is right because
+  `restoreTreeSnapshot` drives the same transport (`TSPEC:232-238` shows the two verb sets are
+  disjoint), so the old count would have gone green on a run that captured twice and restored
+  never. The document says exactly that, and the verbs check out.
+
+- **§2.5's disposition row explains the value instead of just naming it.** "`model` is `n/a`
+  because no rung was ever resolved — without it `advisoryEntrySingleLine(model)` is
+  `String(undefined)` and the operator-facing record ships a literal `| Model | undefined |` cell on
+  exactly the path AC-6.1 exists to make legible." I checked `renderAdvisoryEntry`: the
+  destructuring, the `modelValue` ternary and the unguarded interpolation are all as described. A
+  reader who has never opened the renderer now knows why the caller supplies the value.
+
+- **OQ-12 closes my question by construction rather than by assertion.** The answer walks every
+  non-`resolved` terminal, shows each returns `{resolved: false}`, and shows the only escape from
+  the halt is a genuine resolution that writes no escalation — so `ADVISORY_SEAM_PHASES.A6`'s fixed
+  `outcome: "halted"` is true by structure. That is a stronger answer than the test I would have
+  asked for, because it removes the run shape rather than covering it.
+
+- **OQ-13 splits by slot instead of compromising.** Fixed sentence stays in `diagnosis` because
+  §5.5 compares it literally; the variable detail goes to the free-text `decision` slot that carries
+  no equality oracle. It also pre-empts a misreading I would have raised later — that a failed
+  record write on this path is not `record-write-failed`, since nothing was proposed or applied.
+
+- **The GFM fix preserved every clause.** Moving four clauses inside their cells is the kind of
+  edit that quietly loses a sentence; all four survived intact, and the pipe counts now match their
+  headers.
 
 ## Recommendation
