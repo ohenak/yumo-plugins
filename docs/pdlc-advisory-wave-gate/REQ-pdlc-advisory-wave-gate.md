@@ -417,7 +417,12 @@ requirements altitude.
   task that promotes what it consumes. Explicitly out of scope here (§4). Owner:
   `pdlc-engineering-loop` (queue row 6).
 
-**Open questions for the operator:**
+- **O-8** — How AC-4.6's E-6 repair reaches the committed state through the existing pathspec-scoped
+  commit path, and how the later task's dispatch is told what already exists, are TSPEC's. This REQ
+  states only the outcome: no resolved wave leaves its repair uncommitted. Owner: this feature's
+  TSPEC.
+
+**Open questions for the operator** — all resolved 2026-08-13; kept with their analysis for provenance:
 
 - **Q-1** — `advisory.waveBudgetPerRun` default of **2** is proposed, not confirmed. Alternatives: 1
   (one repair per run, maximally conservative) or unbounded-within-`attemptBudget` (no cross-wave
@@ -440,8 +445,18 @@ Every row must be checkable at gate time and must hold at HEAD before FSPEC auth
 | BL-02 | The tier's model-rung resolver is exported and reusable, so NFR-6 needs no restated literals | `pdlc-advisory-corpus-baseline.md` §3, at its stated `Version` | Must exist at HEAD; a restated pair of literals is acceptable only with a named drift observable, never with a named risk |
 | BL-03 | The feature under implementation carries a valid PLAN file-ownership manifest, so Phase I runs in wave mode | Phase P's own gate on the PLAN | Checked per run; absent it, AC-1.5 applies and A6 does not fire |
 | BL-04 | A configured implementation test command and an injected command transport, so the gate is script-owned rather than self-reported | `.claude/pdlc.config.json` + runtime seam (M-WG-3) | Checked per run; absent either, AC-1.5 applies |
-| BL-05 | `pdlc-consolidation-agent` is merged | PR merged (queue row 2) | Operator sequencing decision, 2026-08-09: this seam is taken up after that feature lands |
-| BL-06 | The transcribed seam-catalogue set-equality assertions are identified, so the sixth member is added deliberately rather than discovered by a red suite | M-WG-8's measured sites, re-verified at the then-current base | Must be enumerated before implementation planning |
+| BL-05 | `pdlc-consolidation-agent` has landed on the default branch | Its per-feature docs are at `docs/completed/pdlc-consolidation-agent/` on the default branch — the observable form, since queue row 2 was retired from the table on 2026-08-12 once merged and no longer states a status | Operator sequencing decision, 2026-08-09: this seam is taken up after that feature lands |
+| BL-06 | Every transcribed set-equality assertion this feature reds is identified — the seam catalogue, the envelope defaults and the advisory config key set alike, together with the surfaces compared against the catalogue — so each is changed deliberately rather than discovered by a red suite | M-WG-9's measured sites, re-verified at the then-current base | Must be enumerated before implementation planning |
+
+**BL-06 scope, corrected 2026-08-18.** The reds are not confined to the seam catalogue. `A6` reds the
+`ADVISORY_SEAMS` transcriptions and the surfaces compared against them; `E-5`/`E-6` red the
+`ENVELOPE_DEFAULTS` set-equality; C-2's `advisory.waveBudgetPerRun` reds the `ADVISORY_DEFAULTS`
+key-set comparison and the config fixtures transcribing it, two of which are disabled-tier fixtures
+(M-WG-9). That last point is not a contradiction with AC-1.4: inertness is over run behaviour, not
+over the shipped default tables. Line references recorded in the baseline's §1–§2 were measured at
+`c8aa22a4` and have since drifted; the symbol-based recipes still resolve, so BL-06's gate is
+unaffected. Also confirmed at the current base: D-AWG-06's `haltPhase: null` observation still holds
+— a wave-gate halt records no Phase I failure row, and `haltPhase` derives from that row.
 
 ## 10. Deferrals
 
@@ -451,6 +466,14 @@ Every deferral binds to a queue row that exists today.
 |---|---|---|---|
 | D-AWG-01 | Widening the envelope beyond E-5/E-6 | Requires escalation-log evidence about which A6 escalations were routinely rubber-stamped (R-2) | `pdlc-engineering-loop` (queue row 6) |
 | D-AWG-02 | A6 coverage of the PROPERTIES V-wave | Needs an owned-path set the V-wave does not have today (AC-1.3) | `pdlc-engineering-loop` (queue row 6) |
-| D-AWG-03 | A POSTMORTEM lifecycle and/or an approval skip for Phase I (M-WG-5, M-WG-6) | A real gap, but about re-invocation economics rather than about this seam | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-03 | A POSTMORTEM lifecycle for Phase I (M-WG-5) | A real gap, but about re-invocation economics rather than about this seam | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-03b | Re-entry after a wave halt actually resuming at the failed wave (M-WG-6) | The mechanism ships — the interim wave ledger — but its preconditions do not hold in practice (§1), so the gap is one of reliability, not of design | `pdlc-wave-resume` (queue row 20) |
 | D-AWG-04 | Firing A6 on a post-wave command failure (Q-2) | Deliberately excluded from v1's single trigger | `pdlc-engineering-loop` (queue row 6) |
 | D-AWG-05 | Gate re-run without repair for `environmental` classifications (Q-3) | Absorbing flakiness is a decision that needs evidence it is flakiness | `pdlc-engineering-loop` (queue row 6) |
+| D-AWG-06 | Mode-aware Phase I halt reporting: recovery hint distinguishes a queue run from a direct `pdlc dev` invocation, and a wave-gate halt writes a structured halt record (observed 2026-08-11: `haltPhase: null`, reason only in the run-report JSON) | Engine report-surface work, not seam behaviour | `pdlc-engineering-loop` (queue row 6) Also owns the tier-off ownership-delivery diagnosis line routed here by Q-4b (2026-08-13). |
+
+**D-AWG-03 ownership, decided 2026-08-18** (superseding the 2026-08-13 note that left it open). The
+approval-skip half of D-AWG-03 is not `pdlc-engineering-loop`'s: the interim wave ledger and
+`implementation.startWave`'s resume-at-failed-wave behaviour landed in `87d9c6ad` as
+`pdlc-wave-resume`'s (queue row 20) deliverable, and what remains is making them fire. It is split
+out as D-AWG-03b above and bound there; D-AWG-03 keeps the POSTMORTEM half only.
