@@ -604,9 +604,13 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    would make `invocations.slice(ledgerAnchor.value)` read the whole ledger and restore the suffix
    defect, and `invocations.length` at build time would equal `ledgerAtDispatch`, making the first
    conjunct below vacuous and the slice a growth-since-dispatch read — the two wrong choices, named
-   so Phase P transcribes neither (TE F-31). The carrier's lifetime is `invocations`' lifetime: both
-   are created per wave, in the wave loop's own scope (§2.4, §4.3), so a wave-2 seam cannot start
-   holding wave 1's anchor even if a later refactor hoists `buildA6SeamOps` construction (TE Q-01).
+   so Phase P transcribes neither (TE F-31). The carrier is created at the **step-4 site named in the code block above**, beside
+   `ledgerAtDispatch` and inside A6's own region — not in the wave loop's scope where `invocations`
+   is created, which demonstrably predates A6 (the wave's pre-A6 gate pass already pushes into it).
+   The per-wave guarantee earlier rounds wanted from an `invocations`-shaped lifetime holds anyway,
+   and is what Phase P should transcribe: the anchor is created once per A6 dispatch, A6 runs at most
+   once per wave, therefore no wave can hold another wave's anchor — true even if a later refactor
+   hoists `buildA6SeamOps` construction (TE Q-01, PM F-02/v6, PM F-01/v7).
 
    The step-6 check is then, with `gateSequence` read from the same `implConfig` the sequence helper
    reads — `["post-wave", "test"]`, or `["test"]` alone when no post-wave command is configured
