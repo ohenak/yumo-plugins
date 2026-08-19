@@ -53,8 +53,73 @@ Both are `delta`: PLAN's text was accurate against TSPEC v1.6 in each case, and 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Non-blocking, for whoever lands F-01. TSPEC §4.4 scopes non-negativity to `waveBudgetPerRun` ("the latter") and asks only that `enabled` be *carried*. Is a presence check on `enabled` the intent, or should the expectation also pin it to `false` — matching the shipped default and the example's own honesty about the tier's ship state? I read TSPEC as deliberately asking only for presence, so that a future operator-facing example flipping the demo value does not redden the engine suite. Worth one clause in A6-04 either way, so the implementer does not have to guess. |
+| Q-02 | Carried unchanged from v3, still non-blocking: the `enabled: true` + `waveBudgetPerRun: 0` affordance remains discoverable only to an operator who opens the example and infers the pairing. No REQ or FSPEC row asks for more, so this is not a finding — but it stays a good candidate for a one-line note in this feature's LEARNINGS, so a future operator-documentation pass picks it up. |
+
+
 ## Positive Observations
+
+- **The re-home landed in PLAN before TSPEC, and PLAN's version was the better-argued one.** A6-04
+  already carried the purpose-named-file decision with four grounds — `ci-arrangement.test.js`'s
+  self-declared single oracle (`:1`–`:21`), its zero occurrences of `advisory`, the fact that it
+  already reads the example config for an unrelated reason (`:39`, `:799`–`:825`, annotated in-file),
+  and the delivery-blocking consequence of parking a config-schema assertion on a required check.
+  TSPEC v1.7 adopts the decision and the reasoning. This is the cascade working in the healthy
+  direction: the downstream document found the defect, and the erratum round made upstream say what
+  the implementers had already reasoned their way to.
+
+- **The §5.6 correction cost PLAN nothing because PLAN was already built the right way.** TSPEC's
+  old one-red-test-row-per-AT rule would have demanded forty-seven red-test tasks and collided with
+  the batch-safety rules — A6-15 alone owns nineteen ATs in one file. PLAN never encoded the
+  cardinality rule; it built an AT-coverage table instead. When TSPEC corrected the obligation to
+  set-equality of ids, PLAN satisfied the new rule on the first check with zero edits. Compressing
+  upstream's *intent* rather than its *phrasing* is what made that free.
+
+- **A6-06 already says "whole `advisory` section, not just `waveBudgetPerRun`", with the reason.**
+  The single most likely way to under-deliver this round's TSPEC change would be to ship the example
+  with only the budget key. PLAN pre-empted it, and stated the E-33 rationale inline rather than
+  citing it — which is why F-01 is a one-clause omission in the *test* row rather than a real gap in
+  the delivered artifact.
+
+- **Citation discipline held across a fourth round.** Every PLAN citation I re-ran against HEAD in
+  this pass still lands: the four bare row-count sites, `orchestrate-dev.js:14398`–`:14406`,
+  `docs-uniqueness.test.js:122`–`:123`, `pdlc/README.md:139`/`:145`. Across four rounds I have not
+  found a citation in this PLAN that does not verify.
+
 
 ## Recommendation
 
+**Approved with minor changes** — the prior approval still holds against TSPEC v1.7.
+
+PLAN remains a faithful compression of TSPEC as it now stands. Of the seven passages this erratum
+round moved, five leave PLAN exactly right — three because PLAN drove the change and upstream caught
+up (the engine-test re-home, the whole-section example, `advisoryTierOn`), one because PLAN compressed
+intent rather than phrasing and satisfied the corrected §5.6 rule unedited, and one because TSPEC
+explicitly leaves it untranscribed (`ledgerAnchor`'s creation site). The set-equality obligation §5.6
+newly imposes was checked mechanically, not read: 47 ids on both sides, sets identical.
+
+Two passages left stale text in PLAN, neither gating:
+
+1. **A6-04 should assert `enabled` as well as `waveBudgetPerRun`** (F-01, Medium). One clause. The
+   shipped artifact stays correct either way — A6-06 delivers the whole section — but without this
+   the affordance's only guard is one key thin.
+2. **A6-03's "six ... surfaces §1.3 names" should read eight, or drop the count** (F-02, Low).
+   Cosmetic; A6-03's own enumeration is complete and correct.
+
+No High finding, so this does not re-open the document. Both fixes are single-clause edits to task
+prose that touch no batching, ownership, dependency, or AT-coverage structure; they can ride the next
+edit that opens PLAN for any reason. If none occurs, shipping as-is costs the guard on `enabled` and
+nothing else.
+
+**Note on this dispatch:** the completeness-gate headings supplied in my instructions
+(`## Overview` / `## Batches` / `## Dependencies` / `## Verification`) are PLAN's headings, not a
+cross-review's. I have written this file in the cross-review format my role defines. Flagging in case
+the gate is pointed at review files by mistake.
+
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
