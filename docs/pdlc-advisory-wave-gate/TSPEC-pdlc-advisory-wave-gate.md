@@ -1087,9 +1087,16 @@ re-asserting the record schema would be a second, drifting copy of an oracle tha
   (PM Q-02).
 
 - **A resolved wave that took two attempts, with the ledger counted from the first pass.** The
-  positive companion to §5.5's dropped-re-gate mutations: a fixture whose first `verifyGate` returns
-  `{passed: false, consumesAttempt: true}` and whose second returns `{passed: true}` asserts the run
-  reports the wave **resolved**, that `waveBudget.resolved` incremented by one, and that
+  positive companion to §5.5's dropped-re-gate mutations. **The run keeps the shipped `verifyGate`
+  and every other shipped seam op; the red-then-green outcome is driven through the injected
+  `_runCommand`**, whose test-command double fails on its first re-gate and passes on its second.
+  Nothing about the sequence is stipulated: the real `verifyGate` runs `runWaveGateSequence`, which
+  appends the tokens, and the real `apply` moves `ledgerAnchor.value`, so both attempts' outcomes and
+  the six-token ledger below are *observed*. Transcribing this case in §5.5's vocabulary — injecting
+  a `verifyGate` double that returns `{passed:false}` then `{passed:true}` — would append nothing,
+  leave the ledger at the pre-A6 pass's `["post-wave", "test"]`, and make the six-token literal a red
+  test against a correct implementation (PM F-01, the same class as TE F-27). So constructed, the
+  fixture asserts the run reports the wave **resolved**, that `waveBudget.resolved` incremented by one, and that
   `invocations` reads `["post-wave", "test", "post-wave", "test", "post-wave", "test"]` — **six**
   tokens, not four. Three sequence runs happen on that run and the ledger records all three: the
   wave's own first pass, which is red and is what causes A6 to be entered at all (§2.3), then A6's
@@ -1116,7 +1123,14 @@ re-asserting the record schema would be a second, drifting copy of an oracle tha
   with a `testCommand` and **no** `postWaveCommand` (§2.4's third row) asserts the ledger reads
   `["test", "test"]` on a one-attempt green run and that the wave resolves — the step-6 check
   comparing a one-token sequence against a one-token slice. An implementation that hard-codes 2
-  passes every other fixture in this section and fails this one (TE Q-01).
+  passes every other fixture in this section and fails this one (TE Q-01). §2.4's *other* truncated
+  form — a re-gate whose post-wave command fails, leaving `[post-wave, test, post-wave]` — is a red
+  outcome, not a resolution, and is covered by the ordinary red-re-gate fixtures; there is no
+  post-wave-command-only arrangement to cover, because A6 is entered only under `scriptGate`, and
+  `scriptGate` is `Boolean(implConfig.testCommand) && typeof runCommandFn === "function"`
+  (`orchestrate-dev.js:14143-14144`). A wave with a post-wave command and no test command runs the
+  legacy self-report gate and never reaches this seam at all (§3.2 step 1). The enumeration is
+  therefore closed at these two configured shapes (PM Q-02).
 
 
 - **The disabled tier is byte-identical, and the notice surface is part of what that means.**
