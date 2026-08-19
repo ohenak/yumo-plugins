@@ -39,3 +39,8 @@
 ## Recommendation
 
 **Needs revision** — F-01 is a High finding: AC-1.5's population predicate and its carrier clause contradict each other, and the criterion as written binds in no run. F-02 is a Low and can ride along.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
