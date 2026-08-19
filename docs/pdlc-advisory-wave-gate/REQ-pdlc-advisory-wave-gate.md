@@ -248,11 +248,12 @@ requirements altitude.
   (BL-04), Then A6 does not apply, the phase behaves exactly as it does today, and the
   inapplicability is named once in the run report rather than being silently indistinguishable from
   a quiet seam. The observable is cardinality on a named surface, not mention, scoped to the runs
-  that can carry it: in a run **that reaches Phase I and executes a wave**, exactly one
-  inapplicability notice — not per wave — naming **every** absent prerequisite (both, in a run
-  lacking manifest and script-owned gate alike); none in a run where A6 applies. A run halting
-  before Phase I, or skipping it on a recorded wave ledger, executes no wave and is outside the
-  population, not a zero-count violation of it. Both prerequisites already emit a once-per-run
+  that can carry it: in a run **that reaches Phase I and evaluates wave mode** — whether it then
+  executes waves or takes the no-manifest legacy path — exactly one inapplicability notice — not
+  per wave — naming **every** absent prerequisite (both, in a run lacking manifest and script-owned
+  gate alike); none in a run where A6 applies. A run halting before Phase I, or skipping it on a
+  recorded wave ledger, never evaluates wave mode and is outside the population, not a zero-count
+  violation of it. Both prerequisites already emit a once-per-run
   notice on that surface: BL-04's when the script-owned gate degrades, BL-03's when the phase takes
   the no-manifest legacy path (BL-06 measures the latter into the baseline). Those shipped notices
   are the carriers — the inapplicability is **added to** them, never emitted beside them — and they
