@@ -29,6 +29,34 @@ faithful compression of the current text, not whether the routed item landed.
 
 ## What changed upstream, and what PLAN owes it
 
+The round settled one item raised by se-review: §3.1's export list omitted `ADVISORY_SEAM_PHASES` while
+the prose below it said the table gains an `A6` row. TSPEC resolved it **in the direction PROPERTIES had
+already taken** rather than by widening the interface. Three things are now stated at HEAD that were not
+stated at v1.7:
+
+| TSPEC v1.8 says (HEAD) | PLAN's corresponding text | Still faithful? |
+|---|---|---|
+| `ADVISORY_SEAM_PHASES` is marked *(module-private)* in §3.1 and is "absent from the export list above **by construction, not by omission**" (`:531`–`:535`) | A6-05 lists `ADVISORY_SEAM_PHASES.A6 = {id: "I", outcome: "halted"}` among the constants it transcribes, under a header citing §3.1. It never says "export", and A6-02's constant-surface RED suite — which imports every other constant A6-05 touches — deliberately does **not** import this one. | **Yes, but silent.** PLAN asserts nothing false. It also no longer carries an instruction TSPEC now directs at Phase P by name. See F-03. |
+| The behavioural oracle for the sixth row is the **written escalation entry**, not the constant: A6 entry reads phase `I` / outcome `halted`, A3–A5 keep `DOD`/`halted` and `PUB`/`halted`, and a seam absent from the table reads `unknown`/`unknown` as the negative control (`:540`–`:551`) | A6-17 owns `advisoryEscalationLog.test.js` and covers AC-6.2 / AC-6.4, asserting the entry "carries the root-cause class and the tier's fields". Pipeline state is one of the tier's fields. | **Yes.** The file home TSPEC names is the file PLAN already owns. |
+| "PROPERTIES maps PROP-REC-07 onto that file's owning PLAN task (A6-17), so **no new file and no new owner is minted** by this reconciliation" (`:552`–`:554`) | PROPERTIES `:157` maps PROP-REC-07 → `advisoryEscalationLog.test.js` (A6-17); PLAN's manifest gives that file to A6-17 and to nothing else. | **Yes.** Verified on both sides. No batching, ownership, or dependency consequence. |
+
+**No new obligation is created by this round beyond a wording one.** I checked the two places where a
+cascade of this shape usually bites and neither does here:
+
+- **No PLAN task adds `export` to this constant.** Grepping PLAN for `export` returns four hits, all of
+  them the *opposite* claim — A6-00's note that `pathsCollide` is unexported, and the manifest rows
+  recording that `ownedSetCovers`, `captureTreeSnapshot`/`restoreTreeSnapshot`, and `buildA6SeamOps`
+  are "not exported". PLAN's standing habit is to keep the surface narrow, which is why TSPEC's
+  correction found nothing to contradict.
+- **PLAN carries no PROPERTIES-coverage table**, only the AT-coverage table (`:251`). There is therefore
+  no set-equality obligation over PROP ids for the new PROP-REC-07 sentence to break. The AT set is
+  untouched by this round — no AT was added, removed, or re-homed in `a349767b`.
+
+Both v4 findings survive unchanged, because PLAN never moved and TSPEC still says at HEAD what made them
+findings: §4.4 (`:1103`) and §5.1 (`:1221`) still require the new engine expectation to assert that
+`advisory` "carries `enabled` and `waveBudgetPerRun`, the latter a non-negative integer", and §1.3
+(`:232`) still reads "Eight shipped surfaces". They are carried below as `inherited`.
+
 ## Findings
 
 ## Questions
