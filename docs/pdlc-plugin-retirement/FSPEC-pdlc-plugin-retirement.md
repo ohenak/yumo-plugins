@@ -13,7 +13,7 @@ feature: pdlc-plugin-retirement
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.10 | 2026-08-18 |
+| pdlc | Draft | Claude | 0.11 | 2026-08-18 |
 
 **FSPEC-RET-01** — behavioural specification of the retirement sweep, its gates, its
 pinned literals and the consumer cleanup step.
@@ -155,7 +155,7 @@ never a later one, because that leaves a commit asserting a file that no longer 
 | 3 | Queue drift gate | The gate and its `distribution.checkEnabled` key in `orchestrate-queue.js` (M-11i (a)), with the gate's workflow-suite coverage | After class 2 |
 | 4 | Drift hook | `check-workflow-drift.sh` (M-3) and its `SessionStart` registration in `pdlc/hooks/hooks.json` (M-11i) | After classes 1–3 |
 | 5 | Drift library and sync script | `pdlc-drift.sh` (M-2), `sync-workflows.sh` (M-1) | After class 4 |
-| 6 | Test corpus | M-8's 21 `*.test.js` and its six dedicated helpers, deleted (never skipped) — **the count and `hookCompatibility.test.js`'s disposition are contested by TSPEC §6.1 erratum 6, which reads that module as reduced rather than deleted; not yet corrected here**; the re-homing of assertions about **surviving** behaviour (queue triage around the gate, hook-manifest compatibility) into surviving modules; M-11p's deletions and edits, including the reduction of `helpers/driftGenerators.js` to what its surviving importers use | Re-homing lands in the **same** commit as, or earlier than, the deletion of its host file (REQ R-8) |
+| 6 | Test corpus | M-8's 21 `*.test.js` and its six dedicated helpers, deleted (never skipped) — **the count and `hookCompatibility.test.js`'s disposition were contested by TSPEC §6.1 erratum 6, which reads that module as reduced rather than deleted; corrected here at L-5 (§7.2 row 7)**; the re-homing of assertions about **surviving** behaviour (queue triage around the gate, hook-manifest compatibility) into surviving modules; M-11p's deletions and edits, including the reduction of `helpers/driftGenerators.js` to what its surviving importers use | Re-homing lands in the **same** commit as, or earlier than, the deletion of its host file (REQ R-8) |
 | 7 | Bundles and their emission | The three retired bundles (M-4, M-5, M-10) and the manifest (M-6, which REQ O-3 settles as not surviving), and the reduction of the build step (M-7) to emitting the probe CLI only | After class 6, so no surviving test asserts over a deleted bundle |
 | 8 | Ignore/worktree rows | `.worktreeinclude`'s single row and `.gitignore`'s row **with its rationale comment block** (M-11j); a file left with no remaining rows is deleted, not left empty | Any time after class 7 |
 | 9 | Document oracles | The packaging and advertised-version checks over `dist/`, the drift scan's generated-tree exemptions (M-11g), the surviving `documentOracles` assertion that CLAUDE.md *contains* the two retired script names (M-11f), and the re-fixturing of the `covered-violations/` tree (M-11e second disposition) | Same commit as, or after, class 7; the CLAUDE.md prose it guards moves in this commit (M-11f) |
@@ -403,7 +403,7 @@ assumptions are numbered `ASM-1`…`ASM-4` (§7.1) to keep the two apart.
   `driftLadder`, `driftMessageSplit`, `driftMessages`, `driftOrdering`, `driftRecordShape`,
   `driftRelpath`, `driftRepoRoot`, `driftSync`, `driftWriteFailure`, `hookCompatibility`,
   `queueDriftGate`, `runtimeBundle`, `worktreeInclude`) plus M-11p's `runtimeProvenanceWiring`.
-  **Post-sweep expectation: 97**, on the rule that re-homed assertions land in modules that
+  **Post-sweep expectation: 99**, on the rule that re-homed assertions land in modules that
   already exist. If re-homing creates a new module, this literal is corrected at re-measurement
   time — never reconciled by a test that counts loosely (REQ AC-1.3).
 - **L-6 — Re-homed assertions, by host module *and* by assertion title.** Two rows, each naming
@@ -853,7 +853,11 @@ downstream-only edit could not close, and one case of this FSPEC lagging a REQ r
 it did not itself raise. All six are folded in upstream and are **closed**; REQ v0.16
 (2026-08-18) is the version this FSPEC now traces. No criterion was relaxed in the FSPEC to work
 around any of them; where an erratum reversed a claim, the REQ and the measured baseline carry the
-same reversal rather than being left contradicting this document.
+same reversal rather than being left contradicting this document. Row 7 below is a seventh,
+differently-sourced correction: DoD-driven rather than upstream-driven, it corrects a stale literal
+this FSPEC carried past the point its own downstream (TSPEC, then the shipped test suite) had
+already moved on from, and is recorded here using this ledger's row convention even though no REQ
+edit was required to resolve it.
 
 | # | Raised against | Resolution in REQ HEAD |
 |---|---|---|
@@ -863,6 +867,7 @@ same reversal rather than being left contradicting this document.
 | 4 | C-5's commit-class entry, AC-1.2's term-set rationale and baseline M-11h all still read the wave-gate `postWaveCommand` / `postWavePathspecs` pair as retired after TSPEC §6.1 erratum 5 established that the values survive (SE FSPEC v11 F-01) | **REQ v0.13**: C-5's entry and AC-1.2's rationale now state a prose-and-assertion edit, not a retirement — the reduced build step still emits M-9 into `pdlc/workflows/dist/` under O-3 and the configured command and pathspec keep naming live outputs; baseline M-11h corrected to match |
 | 5 | §A-1 and baseline M-11n read the sweep as **rewriting** `consolidate-learnings/SKILL.md`'s bundle reference to name a surviving execution path, which no post-sweep host can satisfy (TE FSPEC v11 F-02, SE FSPEC v11 F-03 — the upstream half of TSPEC §6.1 erratum 3) | **REQ v0.14**: the reference is **deleted, not rewritten**, and the same correction extends to the skill's delegation prose; baseline M-11n corrected. The capability question the correction exposed is answered by REQ O-8, **bound at v0.15** to successor `pdlc-consolidation-rehost` (`docs/_queue/QUEUE.md` Order 24) |
 | 6 | BR-CLN-3a and the E-16a row still stated REQ v0.15's superseded impossibility framing for C-9's rationale ("no post-sweep artifact can distinguish/detect the modification") and cited a stale "REQ AC-4.3 (v0.15)" pin after REQ restated the rationale (SE FSPEC v12 F-01) | **REQ v0.16**: C-9's rationale is restated as a scope decision — the cleanup judges presence, not provenance, not an impossibility. BR-CLN-3a and E-16a updated to match, and both citations moved from (v0.15) to (v0.16) |
+| 7 | L-5 pinned "Post-sweep expectation: 97" while TSPEC §4.4 and the shipped T13 gate (`pdlc/engine/__tests__/preflight-baseline.test.js`) already carried the corrected 99, and FSPEC:158 self-flagged the count as "not yet corrected here" instead of closing it (CODE_REVIEW-pdlc-plugin-retirement-v1.md finding 4) | No REQ edit needed: AC-1.3 cites this FSPEC by reference, not the literal itself, so it was already correct in REQ HEAD. Corrected here instead — L-5 now reads 99 (§4.2), and FSPEC:158's self-flag is resolved |
 
 ### 7.3 Downstream errata — accepted
 
