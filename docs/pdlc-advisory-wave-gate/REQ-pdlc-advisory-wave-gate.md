@@ -57,7 +57,7 @@ D-AWG-03's approval-skip ownership flagged as `pdlc-wave-resume`'s, `Binds` cell
 Phase I runs implementation as **waves**: topologically ordered, ownership-disjoint groups of tasks
 dispatched in parallel into one shared tree, told not to commit, with the orchestrator itself
 owning the gate. Measured facts about that gate live in
-`docs/_constraints/pdlc-wave-gate-baseline.md` v1.0 and are cited here by id.
+`docs/_constraints/pdlc-wave-gate-baseline.md` v1.1 and are cited here by id.
 
 Three conditions end a wave, in order: a dispatch-level failure (M-WG-1), a post-wave command
 failure (M-WG-2), and the script-owned test gate (M-WG-3). All three halt the run, and none of them
@@ -196,8 +196,8 @@ instruction is not a control (inherits `REQ-pdlc-advisory-tier` NFR-1).
 
 **C-5 — Size discipline.** This REQ is measured against `pdlc/hooks/scripts/check-req-size.sh`
 (700 lines / 61,440 bytes) at authoring time and at the start of every review round. Measured facts
-about shipped behaviour are held in `docs/_constraints/pdlc-wave-gate-baseline.md` and cited by
-`M-WG-*` id rather than restated, both to keep this document inside its budget and to keep it at
+about shipped behaviour are held in `docs/_constraints/pdlc-wave-gate-baseline.md` v1.1 and cited
+by `M-WG-*` id rather than restated, both to keep this document inside its budget and to keep it at
 requirements altitude.
 
 ## 6. Acceptance Criteria
