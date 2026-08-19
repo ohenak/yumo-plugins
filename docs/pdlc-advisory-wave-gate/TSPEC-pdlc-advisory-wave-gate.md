@@ -9,9 +9,26 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.7 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.8 | 2026-08-20 |
 
 ## Changelog
+
+**v1.8 (erratum round, Phase PR).** Re-grounded on upstream HEAD first: REQ
+(`sha256:a10396e8…`, v1.8) and FSPEC (`sha256:82f74a2d…`, v1.4) are byte-identical to the state
+v1.7 was authored against and to the `UPSTREAM-STATE` anchors on both v7 cross-reviews. Nothing
+upstream was decided this round, so no absorption is owed and no `BR-`/`E-`/`AC-` vocabulary moved.
+One raised item, from se-review: §3.1's export list omitted `ADVISORY_SEAM_PHASES` while the prose
+below it required that table to gain an `A6` row, and the shipped table is a module-private `const`
+at `orchestrate-dev.js:3108` — leaving PROPERTIES' PROP-REC-07 with no executable unit contract.
+Resolved in the direction PROPERTIES already took rather than by widening the interface: the table
+is now explicitly marked *(module-private)* in §3.1, its absence from the export list is stated as
+construction rather than omission, and the section names the behavioural oracle — the written
+escalation entry, with the `unknown`/`unknown` fallback at `orchestrate-dev.js:3338` as the
+negative control that makes a missing `A6` row observable from outside the module. Phase P is told
+in as many words to transcribe the sixth row and leave the `const` unexported. Both v7 findings
+were checked against the document on disk and are already reflected in v1.7 — TE F-34's example-config
+literal shape in §4.4 and §5.1's row, and PM F-01's `ledgerAnchor` creation-site reconciliation in
+§3.2 — so neither was rewritten.
 
 **v1.7 (erratum round, Phase P).** Re-grounded on upstream HEAD first: REQ and FSPEC are byte-identical
 to the state v1.6 already absorbed (FSPEC v1.4), so nothing upstream was decided this round and no
@@ -511,8 +528,31 @@ export const ADVISORY_ROOT_CAUSES = Object.freeze([
 export const A6_PROHIBITIONS = Object.freeze(["f", "g", "h", "i"]);
 ```
 
-`ADVISORY_SEAM_PHASES` gains `A6: { id: "I", outcome: "halted" }` so the escalation log's *Pipeline
-state* field is derived, not passed per call site — the shipped rationale for that table, unchanged.
+`ADVISORY_SEAM_PHASES` *(module-private)* gains `A6: { id: "I", outcome: "halted" }` so the
+escalation log's *Pipeline state* field is derived, not passed per call site — the shipped rationale
+for that table, unchanged. **It stays module-private, and is therefore absent from the export list
+above by construction, not by omission.** The shipped table is a bare `const` at
+`orchestrate-dev.js:3108`; A6 adds a sixth row to it and changes nothing else about its visibility.
+Exporting it would be a widening this feature has no use for: no call site outside the module reads
+it, and the only reason to export would be to let a unit test import the constant — which is the
+oracle shape §5.6 and PROPERTIES both reject, because asserting that a frozen literal contains a
+row it was just edited to contain restates the diff rather than testing behaviour.
+
+The behavioural oracle is the **written escalation entry**, not the constant, and it is already
+executable against the module-private table. `appendEscalationEntry`'s caller reads
+`ADVISORY_SEAM_PHASES[seam]` and falls back to the literal `"unknown"` for both fields when the seam
+has no row (`orchestrate-dev.js:3338`, `phase: placement ? placement.id : "unknown"` and the
+`phaseOutcome` line beside it). A missing `A6` row is therefore observable from outside the module:
+the entry reads `unknown`/`unknown` instead of `I`/`halted`. PROPERTIES' PROP-REC-07 is written to
+exactly this shape — the A6 entry must read phase `I` / outcome `halted`, the A3–A5 entries written
+by the same shipped path on the same suite must keep `DOD`/`halted` and `PUB`/`halted`, and the
+`unknown` arm is asserted as the negative control on a fixture whose seam is absent from the table.
+That is a positive-value oracle over an integration surface, it discriminates the omission it names,
+and it needs no export. Its file home is `advisoryEscalationLog.test.js` — already on §5.1's
+edited-files list for AC-6.2 — and PROPERTIES maps PROP-REC-07 onto that file's owning PLAN task
+(A6-17), so no new file and no new owner is minted by this reconciliation. Phase P should
+transcribe the sixth row and leave the `const` unexported; a PLAN task that adds `export` here is
+outside this TSPEC's interface surface (se-review erratum, Phase PR).
 
 `parseAdvisoryConfig` gains one key. It cannot reuse the existing `positiveInt` helper: that
 validator requires `v >= 1`, and E-33 requires `0` to survive as a configured value rather than be
