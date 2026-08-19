@@ -784,7 +784,7 @@ check completeness by counting (TE F-12):
 
 | Suite | ATs | Count | Layer |
 |---|---|---|---|
-| `learningsConfig.test.js` | AT-30, AT-32 | 2 | L1 |
+| `learningsConfig.test.js` | AT-30, AT-32 | 2 | **L3** (seam-driven whole run) |
 | `learningsSelect.test.js` | AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-15, AT-16, AT-28 | 9 | L1 |
 | `learningsBlock.test.js` | AT-05, AT-11, AT-12 | 3 | L1 |
 | `learningsCorpus.test.js` | AT-25, AT-26, AT-27 | 3 | L2 |
@@ -796,6 +796,20 @@ check completeness by counting (TE F-12):
 each assigned once. A PLAN task that adds an AT to a suite must therefore remove it from another,
 and a `learningsSuiteMap` assertion — the six suites' declared AT lists, hand-transcribed, asserted
 disjoint and equal to the 35-member literal — is what keeps this table honest as suites grow.
+
+**`learningsConfig.test.js` is an L3 suite, not an L1 one (TE F-01).** Both of its ATs are stated
+*"when the pipeline runs"*: AT-30 requires an enabled run whose BR-8 rows are **present and empty**
+— a claim only a whole run can make, since the distinction from a disabled run is the presence of
+the `learningsInjection` key in the finished report — and AT-32 requires the composition to match
+AT-31's byte-for-byte *and* the report to carry `NTC-MALFORMED` on the run-level notice channel.
+An L1 unit test over `parseLearningsConfig` can falsify neither clause: it sees the parse result,
+never the report key set and never a composed prompt. The suite therefore drives `main()` over the
+full seam set with a scripted `_agent`, on the `advisoryDisabled.test.js` pattern (that file's
+default export runs the pipeline the same way, `pdlc/workflows/__tests__/advisoryDisabled.test.js`)
+— the file keeps its config-focused name because its subject is the configuration states, but its
+**instrument** is a whole run. `parseLearningsConfig`'s own pure-unit assertions (shape of
+`{present, config, sectionMalformed, invalidKeys}`) live in the same file as supporting tests that
+carry no AT id, which is why the AT counts above are unchanged: 2 + 9 + 3 + 3 + 6 + 12 = 35.
 
 **AT-11 and AT-12 belong to `learningsBlock.test.js`, not `learningsSelect.test.js`.** The earlier
 draft listed them in both, which would have let two PLAN tasks each claim to own them and neither
