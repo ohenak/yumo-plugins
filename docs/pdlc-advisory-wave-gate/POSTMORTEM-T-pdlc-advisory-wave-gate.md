@@ -64,6 +64,19 @@ One process finding is worth routing out of this feature: PM F-07 (Low) records 
 
 ## 4. Pattern of Disagreement
 
+There is no disagreement *between reviewers*. The round-6 findings fall into three clusters that share one shape: **the PLAN asserts facts about a substrate that moved, and the erratum round re-measured only the part it was routed to re-measure.**
+
+| Cluster | Findings | What the PLAN says | What HEAD / upstream says |
+|---|---|---|---|
+| A — withdrawn upstream claim, re-asserted | PM F-01 (High, delta), PM F-02 (High, inherited) | A6-06 ships the example config's `advisory` section so an operator can see `enabled: true` with `waveBudgetPerRun: 0`, E-33's "tier on, A6 off" affordance; A6-04 justifies asserting both keys by that pairing | TSPEC v1.9 withdrew that claim in four places and v1.10 restates the withdrawal: §5.1's file-map row and §4.4 pin the literal `{"enabled": false, "waveBudgetPerRun": 1}` — shipped defaults, tier off, "no documentation carrier in scope". `.claude/pdlc.config.example.json` carries no `advisory` key at HEAD (verified) |
+| B — pins upstream already re-anchored | PM F-03 (Medium), PM F-04 (Medium), TE F-02 (Medium) | Six `file:line` pins across the Overview, batch-1 gate wording, the DoD checklist and A6-18, plus a pre-drift `toHaveLength(5)` passage in the Overview | The same lines drifted in `e3b9d5a3`; TSPEC v1.10's changelog records re-anchoring them to stable content per DEC-DOC-01. The PLAN is now the only document in the set still carrying the drifted numerals — and carries them in a checklist an implementer ticks off |
+| C — new claim, unmeasured | TE F-01 (High, delta), TE F-03 (Medium, Cross-Feature) | The Overview's HEAD-drift note states every HEAD failure is closed by A6-05's green step | `npm test` at HEAD shows 28 failures across 9 suites. At least two are outside A6-05's reach: `documentOracles` T15 (99 vs 100, coupled to another feature's sweep) and PROP-SWEEP-2(b) (14 tracked `.claude/workflows/.pdlc-backups/*.bak` files — verified tracked at HEAD). Separately, `consumerCleanup.test.js` AT-4.1 asserts a clean `git status --porcelain` inside the wave gate's own scope and is red on the hook-rewritten tracked `.pdlc-drift-state.json` (verified dirty at HEAD) |
+
+Two secondary observations:
+
+1. **The disagreement is not about the routed decision.** Both lenses accepted keep-and-re-derive on its measured merits and confirmed the `Batch` column re-derives unchanged. Had round 6 been scored on the erratum's charter alone, it would have been a clean confirmation.
+2. **Cluster C is self-inflicted by exactly one sentence.** The remedy note needed to say "every *advisory-suite* failure is closed by A6-05's green step". Scoped that way it is true and TE says so; unscoped it makes the PLAN responsible for two failures no task owns, and it converts the batch-1 inherited-red rule from a checkable precondition into an instruction that will fire "escalate" on a hook artefact at every wave boundary, not just wave 1.
+
 ## 5. Best-Guess Root Cause
 
 ## 6. Recommendation
