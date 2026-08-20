@@ -270,7 +270,38 @@ third case.
 
 ## Deferred
 
+Observations that would be improvements rather than defects, recorded and not raised as findings
+under the freeze:
+
+DEFERRED: PROPERTIES `PROP-BOUND-07`'s hand-computed literal rule sums declared section lengths with no join term, and under §D.3 step 2 under-counts by `2 × (n − 1)` per document — propagate the join term at PROPERTIES review.
+DEFERRED: No test named in §T.5 pins §D.3's join rule directly; a junction assertion (`"{last body line}\n\n## "`) would turn an off-by-N count mismatch into a named failure.
+DEFERRED: §D.3's `\r\n` clause is a total rule over an input space that is empty at HEAD; if a fixture ever introduces `\r\n`, the stated obligation should become an actual fixture rather than a prohibition.
+DEFERRED: §D.5's paragraph now carries one unwrapped ~200-character line ("bytes per section and a conforming implementation reds a literal fixture. A fixture that wants to pin framing cost asserts on"), inconsistent with the file's ~100-column wrapping.
+DEFERRED: ERR-8 stands open against FSPEC Step 5 items 15/16; it is recorded with a suggested fix in this TSPEC and needs no re-routing from this review.
+
 ## Positive Observations
+
+- The `sections[]` redefinition is a better answer than the one my v13 finding asked for. I asked
+  for the oracle to move off `sections[]`; the delta moved the oracle **and** redefined the field so
+  the two can no longer disagree. A supporting assertion that is derivable from the primary one is
+  worth writing; an independent report of intent is not.
+- §T.5's sentence "That argument is a design reason no exclusion branch is needed; it is not a
+  test" is the clearest statement of the design-argument/oracle distinction anywhere in this
+  document set. It is the reason the Approval-Record absence conjunct survives as a test instead of
+  being optimised away as redundant with §D.3's allow-list.
+- The assembly rule is written as a *procedure a fixture author executes*, in three numbered steps
+  with the arithmetic consequence spelled out ("`n` sections ⇒ `n − 1` joins"). Specifications that
+  fix a literal oracle usually stop at the property; this one goes to the arithmetic, which is what
+  a hand-recomputed integer actually needs.
+- The `\r\n` clause measures its own exposure with the command that proves it, and then constrains
+  future fixtures rather than leaving the tolerance to rot. I re-ran the `git grep` — no match — and
+  cross-checked the fixture builder's `lines.join("\n")`; both halves of the claim hold.
+- F-02's correction is handled honestly: rather than deleting the overreaching argument, §D.3 keeps
+  the E-33 argument where it holds (substring/token-overlap/fuzzy), states plainly that it "does not
+  reach" the prefix candidate, and rejects prefix on a separate, weaker, *stated* ground. That is
+  how a wrong argument for a right decision should be repaired.
+- ERR-8's write-up names the consequence for the reader who matters ("a PLAN author reading the
+  procedure sequentially") and supplies the fix, instead of only recording the discrepancy.
 
 ## Recommendation
 
