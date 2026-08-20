@@ -251,7 +251,22 @@ third case.
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T-O-6's corpus conjunct: is the intended bound "large enough that no cut occurs", or should the conjunct be restated over the document's matched headings (a matcher property) rather than over `sections[]` (now an assembly property)? Either is fine; the second is closer to what the conjunct is trying to prove about §D.3's matcher. |
+| Q-02 | Does the `+2 bytes per join` term need to reach PROPERTIES `PROP-BOUND-07` before implementation, or is the TSPEC's §D.5 formula the single source a fixture author will actually consult? |
+| Q-03 | For AT-11's block scan, is the third fixture's corpus single-document by construction? If a later fixture change adds a second selected document, the unscoped scan reds without the implementation changing. |
+
+*(All three are recorded for the author's convenience; none is a blocking question under the freeze.)*
+
 ## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | §D.3 redefines `sections[]` as bound-dependent ("at least one byte of its normalised text survives in `material`"), but T-O-6's corpus-driven conjunct still states `sections` equals the intersection of `BR6_SECTION_NAMES` with the document's level-2 headings, over a domain explicitly declared as "any non-negative `maxBytes`" including `0`. Written literally the conjunct reds against a conforming implementation at every cutting bound — the failure mode T-O-6's own first half exists to prevent. Add the no-cut qualifier | §T.6 *Named obligations carried forward*, T-O-6; §D.3 "`sections[]` is defined over the assembled result" |
+| F-02 | Low | Local | §I.3's JSDoc states "`bytes` is the sum of the normalised section lengths plus 2 per join" unconditionally; the identity holds only on the uncut path. §D.5's restatement is correctly scoped to AT-11/AT-12's hand-computable counts | §I.3 `extractInjectableMaterial` JSDoc |
+| F-03 | Low | Local | §T.5's AT-11 oracle scans the **whole** rendered block for `SECTION_HEADING_RE` and asserts equality with `BR6_SECTION_NAMES`, where FSPEC AT-11 asserts over "the set of section names appearing in **its** block material". The two coincide only while that fixture selects exactly one document; scope the scan to the document's `<<< {path} … >>>` / `<<< end {path} >>>` extent (§OQ.1) | §T.5 "AT-11's oracle reads the rendered block", first table row |
+| F-04 | Low | Local | §D.5 retains "sum the section headings and bodies BR-6 selects, **ignore every delimiter**" immediately before the sentence that adds "**2 bytes per join**". The join separator is a delimiter, so the two clauses read as contradicting each other until the reader reaches the parenthetical. Rewrite the older clause rather than qualifying it | §D.5 "AT-11's and AT-12's expected counts are therefore hand-computable" |
 
 ## Deferred
 
