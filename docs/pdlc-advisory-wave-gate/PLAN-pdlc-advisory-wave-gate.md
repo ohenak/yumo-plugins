@@ -130,11 +130,23 @@ still holds: exactly one task per wave owns the production file.
      green on the same edit. None of them needs a later wave's production arm, so the wave map and
      `Batch` column are unchanged from v1.3.
 
-     **The scope of that claim is the advisory suites, and it is not the whole tree.** `cd
-     pdlc/workflows && npm test` at HEAD reports **9 suites failed, 28 tests failed, 3846 passed**
-     (re-measured this round) — the 24 advisory failures above plus **four reds outside them**, three
-     in `documentOracles.test.js` and one in `consumerCleanup.test.js`. Each is named here with an
-     owner and a disposition rather than left to be rediscovered at a wave boundary:
+     **The scope of that claim is the advisory suites, and it is not the whole tree.** The whole-tree
+     figure is **state-dependent, and must be read conditionally** — the unconditional
+     "9 suites / 28 failed / 3846 passed" earlier revisions pinned holds only on a *dirty* tree
+     (PM v7 F-03, TE v7 F-02). Measured this round with `cd pdlc/workflows && npm test` at HEAD on a
+     tree satisfying this document's own clean-tree precondition:
+
+     | Tree state | Suites failed | Tests failed | Passed | Failing set |
+     |---|---|---|---|---|
+     | Clean (`git status --porcelain` empty) | **8** | **27** | **3847** | 24 advisory + 3 in `documentOracles.test.js` |
+     | Any dirty *tracked* path | 9 | 28 | 3846 | the above **+ AT-4.1** in `consumerCleanup.test.js` |
+
+     The enumeration, not the total, is the invariant: 24 advisory failures plus three in
+     `documentOracles.test.js` always, plus AT-4.1 **iff** a tracked file is dirty. An implementer
+     who satisfies the clean-tree precondition will see 27/8/3847; one who has let the `SessionStart`
+     hook rewrite `.claude/workflows/.pdlc-drift-state.json` will see 28/9/3846 and the extra member
+     is AT-4.1, never anything else. Each red is named below with an owner and a disposition rather
+     than left to be rediscovered at a wave boundary:
 
      - **`documentOracles.test.js`'s T15 count literal.** The
        `post-sweep pdlc/workflows/__tests__/*.test.js count equals TSPEC §4.4's corrected literal of 99`
@@ -160,7 +172,7 @@ still holds: exactly one task per wave owns the production file.
        red-until marker for the coupled sweep's L-06, and `coveredViolations` walks the entire tree
        under `root` skipping only `.git/` and `node_modules/`, so any untracked local file — tool
        cache, editor backup, database — reddens it. **Disposition: out of scope, do not close, do not
-       escalate.** It is listed here only so an implementer who sees 28 rather than 24 failures can
+       escalate.** It is listed here only so an implementer who sees 27 (or 28) rather than 24 failures can
        account for the difference without treating it as drift.
      - **`consumerCleanup.test.js`'s `AT-4.1: full-set cleanup removes all nine expected entries and
        the emptied directory, tracked files unchanged, exit 0`.** It asserts `git status --porcelain`
