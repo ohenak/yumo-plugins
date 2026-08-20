@@ -3108,6 +3108,233 @@ export function buildA6SeamOps({
   };
 }
 
+// TSPEC §2.4 — exact array equality (length AND order). `runWaveGateSeam`'s step 6 compares the
+// ledger's growth since the last `apply()` against the wave's own configured gate sequence; a
+// suffix-shaped check here is the exact defect §3.2 step 6 exists to refuse.
+export function sameSequence(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  return a.every((v, i) => v === b[i]);
+}
+
+// TSPEC §2.4 — the wave's own configured gate sequence, in order, read from the SAME `implConfig`
+// the sequence table names: `["post-wave", "test"]` when a post-wave command is configured,
+// `["test"]` alone otherwise. Never a hard-coded length (TSPEC §3.2 step 6).
+export function gateSequenceFor(implConfig) {
+  return implConfig && implConfig.postWaveCommand ? ["post-wave", "test"] : ["test"];
+}
+
+/**
+ * `runWaveGateSeam` — TSPEC §3.2, the A6 call site (PLAN A6-18). Fires only from the wave-mode
+ * branch, only under `scriptGate`, only for an ordinary wave, only on a red FIRST-pass test gate —
+ * steps 1 and 2 of §3.2 are therefore structural, never an `if` this function itself gets wrong
+ * (BR-1, AC-1.2/1.3).
+ *
+ * Receives the ALREADY-RESOLVED run-level `advisoryTierOn` boolean (read once, at the call
+ * site in `orchestrate-dev.js`, off the parsed advisory config's own enabled flag) and performs
+ * NO read of that flag itself — PROP-DIS-06's exact count of three such reads across
+ * `orchestrate-dev.js`/`orchestrate-queue.js` depends on it.
+ *
+ * @param {object} args - see TSPEC §3.2 for the full shape
+ * @returns {Promise<{resolved: boolean, disposition: object|null,
+ *   haltFields: {rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[]},
+ *   postWaveRan: boolean}>}
+ */
+export async function runWaveGateSeam({
+  feature,
+  waveNum,
+  waves,
+  waveIndex,
+  tasks,
+  implConfig,
+  scriptGate,
+  gateResult,
+  invocations,
+  advisoryTierOn,
+  advisoryConfig,
+  rungState,
+  waveBudget,
+  _agent,
+  _git,
+  _runCommand,
+  _readFile,
+  _appendFile,
+  _log,
+  _now,
+  _sleep,
+  _notice,
+}) {
+  const notice = typeof _notice === "function" ? _notice : () => {};
+  const noHaltFields = { rootCause: "unclassified", diagnosis: "", repairApplied: false, repairPaths: [] };
+
+  // TSPEC §3.2 step 2 — the tier gate, duplicated deliberately: `runAdvisorySeam` also returns
+  // early on a disabled config, but AC-1.4's inertness claim covers the SNAPSHOT too, which is
+  // A6's, not the driver's. Returns before the snapshot, before `buildA6SeamOps`, before any rung
+  // resolution — no config flag read here (see the doc comment above).
+  if (advisoryTierOn === false) {
+    return { resolved: false, disposition: null, haltFields: noHaltFields, postWaveRan: false };
+  }
+
+  // TSPEC §3.2 step 6 — the anchors. Created HERE, beside the snapshot, inside A6's own region —
+  // not in the wave loop's scope where `invocations` is created, which predates A6.
+  const ledgerAtDispatch = invocations.length;
+  const ledgerAnchor = { value: -1 };
+
+  // TSPEC §3.2 step 4 / §2.5 — the snapshot, once per wave, before `runAdvisorySeam` is entered.
+  const snapshot = await captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit: () => {} });
+
+  if (!snapshot) {
+    // §2.5's capture-failure table: the shipped `__preDispatch` escape is NOT available here (it
+    // is a `gatherEvidence` return value, read only inside `runAdvisorySeam`, which is never
+    // entered on this path) — this function writes the durable trace itself, in order: record,
+    // then escalation entry, then notice, then the caller halts.
+    const disposition = {
+      seam: "A6",
+      outcome: "escalated",
+      reason: null,
+      verdict: null,
+      attempts: 0,
+      model: "n/a",
+      fallback: false,
+    };
+    try {
+      await appendAdvisoryEntry({ feature, disposition, _appendFile, _now });
+    } catch (err) {
+      notice(
+        `ADVISORY record write failed for seam A6: ${err && err.message ? err.message : String(err)}`
+      );
+    }
+    const decision =
+      "A6's wave-tree snapshot could not be captured (snapshot-unavailable); no repair was " +
+      "proposed and none was applied — the wave's red gate needs a human look.";
+    try {
+      await appendEscalationEntry({
+        disposition,
+        ctx: {
+          feature,
+          seam: "A6",
+          phase: ADVISORY_SEAM_PHASES.A6.id,
+          phaseOutcome: ADVISORY_SEAM_PHASES.A6.outcome,
+          decision,
+        },
+        _appendFile,
+        _now,
+      });
+    } catch (err) {
+      notice(
+        `ADVISORY escalation log write failed for seam A6: ${err && err.message ? err.message : String(err)}`
+      );
+    }
+    notice(ADVISORY_ESCALATIONS.seam({ seam: "A6", feature, reason: decision }));
+
+    return {
+      resolved: false,
+      disposition,
+      haltFields: {
+        rootCause: "unclassified",
+        diagnosis:
+          "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied",
+        repairApplied: false,
+        repairPaths: [],
+      },
+      postWaveRan: false,
+    };
+  }
+
+  // TSPEC §3.2 step 5 — dispatch. `buildA6SeamOps` is WRAPPED, never modified: the wave-budget
+  // escape (step 3) and the root-cause / repair-path capture A6's own record entry needs both live
+  // in this wrapper, so `buildA6SeamOps`'s own unit contract (PLAN A6-14) is untouched.
+  const baseSeamOps = buildA6SeamOps({
+    feature,
+    waveNum,
+    waves,
+    waveIndex,
+    tasks,
+    gateOutput: gateResult && gateResult.output,
+    implConfig,
+    scriptGate,
+    invocations,
+    ledgerAnchor,
+    snapshot,
+    _git,
+    _runCommand,
+  });
+
+  let capturedRootCause = null;
+  let capturedRepairPaths = [];
+
+  const seamOps = {
+    ...baseSeamOps,
+    gatherEvidence: async () => {
+      // TSPEC §3.2 step 3 — the wave budget, read through the shipped `__preDispatch` escape
+      // `gatherEvidence` already supports. Resolves AFTER step 4's capture (deliberately): an
+      // over-budget wave still captures a snapshot and still writes its snapshot ref before
+      // escalating with no dispatch (E-26). Only a `resolved` outcome increments the budget below.
+      if (waveBudget.resolved >= advisoryConfig.waveBudgetPerRun) {
+        return { __preDispatch: { outcome: "escalated", reason: "budget-exhausted" } };
+      }
+      return baseSeamOps.gatherEvidence();
+    },
+    classifyReply: (raw, verdict) => {
+      // TSPEC §4.2 — the root-cause class, captured here (once per attempt, on every well-formed
+      // reply) so a terminal disposition — resolved or escalated — can name it on the record and
+      // in the halt fields, without widening `renderAdvisoryEntry`'s own seven-field contract.
+      capturedRootCause = parseA6RootCause(raw);
+      return baseSeamOps.classifyReply(raw, verdict);
+    },
+    producedPaths: async () => {
+      const produced = await baseSeamOps.producedPaths();
+      capturedRepairPaths = produced;
+      return produced;
+    },
+  };
+
+  const terminal = await runAdvisorySeam({
+    seam: "A6",
+    feature,
+    seamOps,
+    config: advisoryConfig,
+    rungState,
+    _agent,
+    _appendFile,
+    _readFile,
+    _git,
+    _log,
+    _now,
+    _sleep,
+    _notice,
+  });
+
+  // TSPEC §3.2 step 6 — `outcome === "resolved"` alone is not sufficient (BR-7): the ledger must
+  // have grown, since the LAST `apply()`, by exactly one full gate sequence.
+  const gateSequence = gateSequenceFor(implConfig);
+  const grew =
+    ledgerAnchor.value >= ledgerAtDispatch &&
+    sameSequence(invocations.slice(ledgerAnchor.value), gateSequence);
+  const resolved = terminal.outcome === "resolved" && grew;
+
+  // Only a genuine resolution increments the budget (E-27) — a step-6 mismatch never does, even
+  // when the driver's own outcome read `resolved`.
+  if (resolved) waveBudget.resolved += 1;
+
+  const postWaveRan = invocations.slice(ledgerAtDispatch).includes("post-wave");
+
+  return {
+    resolved,
+    disposition: terminal,
+    haltFields: {
+      rootCause: capturedRootCause || "unclassified",
+      diagnosis:
+        terminal.verdict && terminal.verdict.diagnosis
+          ? terminal.verdict.diagnosis
+          : "no verdict was produced",
+      repairApplied: resolved,
+      repairPaths: resolved ? capturedRepairPaths : [],
+    },
+    postWaveRan,
+  };
+}
+
 // ─── TSPEC §9 — the advisory record (PLAN A-21) ────────────────────────────
 //
 // `docs/{feature}/ADVISORY-{feature}.md` — append-only, one `##` entry per invocation, in
@@ -14455,11 +14682,47 @@ export default async function main({
       const iContract = iOwnership ? validatePlanContract(tasks, iOwnership) : null;
       const waveMode = Boolean(iOwnership) && iContract !== null && iContract.ok === true;
 
+      // TSPEC §2.6 — hoisted above the `!waveMode` branch, unconditionally (no advisory-config
+      // guard): AC-1.5 is a disjunction ("wave mode not in effect (BL-03) OR no script-owned gate
+      // configured (BL-04)"), and a no-manifest run could not previously say anything about its
+      // test command because the config was read only inside the wave-mode branch. The hoist moves
+      // the COMPUTATION only — neither `emit` call below moves — so the two branches stay mutually
+      // exclusive and a both-absent run still emits exactly ONE inapplicability statement (TE F-08).
+      const implRaw = await readMergeConfigSafely(readFileFn, MERGE_CONFIG_PATH);
+      const implParsed = parseImplementationConfig(implRaw);
+      const implConfig = implParsed.config;
+      const scriptGate =
+        Boolean(implConfig.testCommand) && typeof runCommandFn === "function";
+
       if (!waveMode) {
+        // AC-1.5's disjunction, both arms named in ONE statement when both are absent (never two
+        // `emit` calls — AT-01-5 counts inapplicability statements over the whole notice surface).
+        const causes = ["no valid file-ownership manifest on this PLAN"];
+        if (!scriptGate) {
+          const missingHalf = [];
+          if (!implConfig.testCommand) missingHalf.push(`implementation.testCommand in ${MERGE_CONFIG_PATH}`);
+          if (typeof runCommandFn !== "function") missingHalf.push("the _runCommand transport");
+          causes.push(
+            `no script-owned test gate (${missingHalf.join(" and ")} ` +
+              `${missingHalf.length > 1 ? "are" : "is"} absent)`
+          );
+        }
         emit(
-          "Implementation: no valid file-ownership manifest on this PLAN — running the " +
-            "worktree exception path (isolated batches, merge-back, self-report gate)."
+          `Implementation: ${causes.join(" and ")} — running the worktree exception path ` +
+            "(isolated batches, merge-back, self-report gate)."
         );
+        if (implParsed.sectionMalformed) {
+          emit(
+            `Notice: the "implementation" section of ${MERGE_CONFIG_PATH} is not an object — ` +
+              `using defaults for every implementation key.`
+          );
+        }
+        for (const key of implParsed.invalidKeys) {
+          emit(
+            `Notice: implementation.${key} in ${MERGE_CONFIG_PATH} is not a valid value — ` +
+              `using the default.`
+          );
+        }
 
         // TSPEC-IMPL-02: Topological batching
         const batches = computeTopologicalBatches(tasks);
@@ -14537,9 +14800,9 @@ export default async function main({
       // ─── Wave mode (M-5 + M-6) ────────────────────────────────────────────
       const waves = computeWaves(tasks, iOwnership);
 
-      const implRaw = await readMergeConfigSafely(readFileFn, MERGE_CONFIG_PATH);
-      const implParsed = parseImplementationConfig(implRaw);
-      const implConfig = implParsed.config;
+      // `implConfig`/`scriptGate` are computed once, above the `!waveMode` branch (§2.6) — this
+      // branch keeps only its OWN emit calls, unreachable from the legacy branch, so a run that
+      // enters wave mode still reports its own config notices exactly as before the hoist.
       if (implParsed.sectionMalformed) {
         emit(
           `Notice: the "implementation" section of ${MERGE_CONFIG_PATH} is not an object — ` +
@@ -14557,8 +14820,6 @@ export default async function main({
       // halves — a command that constitutes the suite in this repo, and a
       // transport to run it through. Missing either, the gate degrades to the
       // legacy self-report scan and says which half is missing, once.
-      const scriptGate =
-        Boolean(implConfig.testCommand) && typeof runCommandFn === "function";
       if (!scriptGate) {
         const missing = [];
         if (!implConfig.testCommand) missing.push(`implementation.testCommand in ${MERGE_CONFIG_PATH}`);

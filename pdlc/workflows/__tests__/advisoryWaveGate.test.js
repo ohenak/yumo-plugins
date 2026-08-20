@@ -30,6 +30,13 @@ import {
 } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import {
+  makeAgentDouble,
+  makeA6ReplyText,
+  makeFileDouble,
+  makeFakeClock,
+  makeAdvisoryConfig,
+} from "./helpers/advisoryDoubles.js";
 
 describe("A6-00 pre-flight gate: advisory-tier baseline exports exist at HEAD", () => {
   test.each([
@@ -926,5 +933,253 @@ describe("A6-14: ledgerAnchor carrier — TSPEC §3.3 (fail-closed initialisatio
       _git,
     });
     expect(ledgerAnchor.value).toBe(-1);
+  });
+});
+
+// ─── A6-18: runWaveGateSeam — TSPEC §3.2, the A6 call site (PLAN A6-18) ────────────────────────
+//
+// The full end-to-end wiring: `runWaveGateSeam` driving the real `runAdvisorySeam` + the real
+// `buildA6SeamOps` against a real temporary git repository (`createA6TempRepo`, A6-10's own
+// fixture, reused rather than re-authored), a real `_runCommand` fake standing in for the wave's
+// post-wave/test gate, and the canonical `_agent`/`_appendFile`/`_now`/`_sleep` doubles from
+// `helpers/advisoryDoubles.js`. Unit-level member contracts are A6-14's job (above); this section
+// is the seam-level integration TSPEC §3.2 itself describes.
+
+const { runWaveGateSeam } = devModule;
+
+function makeA6RunCommand(script = {}) {
+  const calls = [];
+  const _runCommand = async (cmd) => {
+    calls.push(cmd);
+    const entry = Object.prototype.hasOwnProperty.call(script, cmd) ? script[cmd] : { ok: true };
+    return typeof entry === "function" ? entry(cmd) : entry;
+  };
+  return { _runCommand, calls };
+}
+
+function makeA6RunArgs(overrides = {}) {
+  const files = makeFileDouble();
+  const clock = makeFakeClock();
+  return {
+    feature: "pdlc-advisory-wave-gate",
+    waveNum: 1,
+    waves: makeA6Waves(),
+    waveIndex: 0,
+    tasks: [],
+    implConfig: { postWaveCommand: null, testCommand: "npm test" },
+    scriptGate: true,
+    gateResult: { output: "the gate went red at the eslint step" },
+    invocations: [],
+    advisoryTierOn: true,
+    advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1 }).config,
+    rungState: {},
+    waveBudget: { resolved: 0 },
+    _appendFile: files._appendFile,
+    _readFile: files._readFile,
+    _now: clock._now,
+    _sleep: clock._sleep,
+    _notice: () => {},
+    _log: () => {},
+    ...overrides,
+  };
+}
+
+describe("A6-18: runWaveGateSeam — the tier gate (AC-1.4, PROP-DIS-06)", () => {
+  test("advisoryTierOn === false short-circuits before any snapshot, dispatch, or record write", async () => {
+    const gitCalls = [];
+    const _git = async (argv) => {
+      gitCalls.push(argv);
+      return { ok: true, stdout: "", stderr: "" };
+    };
+    const agent = makeAgentDouble({ script: [] });
+    const result = await runWaveGateSeam(
+      makeA6RunArgs({ advisoryTierOn: false, _git, _agent: agent, _runCommand: makeA6RunCommand()._runCommand })
+    );
+    expect(result).toEqual({
+      resolved: false,
+      disposition: null,
+      haltFields: { rootCause: "unclassified", diagnosis: "", repairApplied: false, repairPaths: [] },
+      postWaveRan: false,
+    });
+    expect(gitCalls).toEqual([]);
+    expect(agent.calls).toEqual([]);
+  });
+});
+
+describe("A6-18: runWaveGateSeam — snapshot capture failure (TSPEC §2.5, AT-06-3)", () => {
+  test("a failed capture escalates with the exact fixed disposition and never dispatches the agent", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const _git = async (argv) =>
+        argv[0] === "write-tree"
+          ? { ok: false, stdout: "", stderr: "fatal: unable to write tree object" }
+          : repo._git(argv);
+      const agent = makeAgentDouble({ script: [] });
+      const notices = [];
+      const args = makeA6RunArgs({
+        _git,
+        _agent: agent,
+        _runCommand: makeA6RunCommand()._runCommand,
+        _notice: (msg) => notices.push(msg),
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(result.disposition).toEqual({
+        seam: "A6",
+        outcome: "escalated",
+        reason: null,
+        verdict: null,
+        attempts: 0,
+        model: "n/a",
+        fallback: false,
+      });
+      expect(result.haltFields.repairApplied).toBe(false);
+      expect(result.haltFields.repairPaths).toEqual([]);
+      expect(agent.calls).toEqual([]);
+      expect(args.waveBudget.resolved).toBe(0);
+
+      expect(notices.some((n) => n.startsWith("ADVISORY ESCALATION: seam A6 for pdlc-advisory-wave-gate"))).toBe(
+        true
+      );
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+describe("A6-18: runWaveGateSeam — wave-budget exhaustion (TSPEC §3.2 step 3, §2.5 ordering)", () => {
+  test("an already-exhausted budget escalates with reason budget-exhausted, but the snapshot is still taken first", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const gitCalls = [];
+      const _git = async (argv) => {
+        gitCalls.push(argv);
+        return repo._git(argv);
+      };
+      const agent = makeAgentDouble({ script: [] });
+      const args = makeA6RunArgs({
+        _git,
+        _agent: agent,
+        _runCommand: makeA6RunCommand()._runCommand,
+        waveBudget: { resolved: 1 }, // waveBudgetPerRun is 1 in makeA6RunArgs' default config
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("budget-exhausted");
+      expect(agent.calls).toEqual([]);
+      expect(args.waveBudget.resolved).toBe(1);
+
+      const commitTreeCalls = gitCalls.filter((argv) => argv[0] === "commit-tree");
+      const updateRefCalls = gitCalls.filter((argv) => argv[0] === "update-ref");
+      expect(commitTreeCalls.length).toBe(1);
+      expect(updateRefCalls.some((argv) => argv.includes("refs/pdlc/a6-snapshot-1"))).toBe(true);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+describe("A6-18: runWaveGateSeam — step-6 resolution (TSPEC §3.2 step 6, BR-7)", () => {
+  test("a well-formed reply followed by a full green gate sequence resolves, and increments waveBudget.resolved", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const _git = repo._git;
+      const agent = makeAgentDouble({
+        script: [makeA6ReplyText({ proposedAction: "E-5", rootCause: "wave-internal-defect", evidence: ["the gate went red at the eslint step"] })],
+      });
+      const { _runCommand } = makeA6RunCommand({ "npm test": { ok: true } });
+      const args = makeA6RunArgs({
+        _git,
+        _agent: agent,
+        _runCommand,
+        implConfig: { postWaveCommand: null, testCommand: "npm test" },
+        scriptGate: true,
+      });
+
+      // A6's `apply()` needs producedPaths() to be non-empty (TSPEC §3.3): the repair writes a
+      // tracked change to the fixture's own tracked file before the seam runs.
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(true);
+      expect(result.disposition.outcome).toBe("resolved");
+      expect(result.haltFields.repairApplied).toBe(true);
+      expect(result.haltFields.rootCause).toBe("wave-internal-defect");
+      expect(args.invocations).toEqual(["test"]);
+      expect(args.waveBudget.resolved).toBe(1);
+      expect(result.postWaveRan).toBe(false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("a two-token gate sequence (post-wave then test, implConfig.postWaveCommand set) resolves and marks postWaveRan", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const _git = repo._git;
+      const agent = makeAgentDouble({
+        script: [makeA6ReplyText({ proposedAction: "E-5", rootCause: "wave-internal-defect", evidence: ["the gate went red at the eslint step"] })],
+      });
+      const { _runCommand } = makeA6RunCommand({ "npm run build": { ok: true }, "npm test": { ok: true } });
+      const args = makeA6RunArgs({
+        _git,
+        _agent: agent,
+        _runCommand,
+        implConfig: { postWaveCommand: "npm run build", testCommand: "npm test" },
+        scriptGate: true,
+      });
+
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(true);
+      expect(args.invocations).toEqual(["post-wave", "test"]);
+      expect(result.postWaveRan).toBe(true);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("a red re-gate (post-wave fails) never resolves and never increments waveBudget.resolved", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const _git = repo._git;
+      // Every attempt gets the same well-formed reply; every re-gate's post-wave command fails,
+      // so `runAdvisorySeam` exhausts its attempt budget and escalates rather than resolving.
+      const agent = makeAgentDouble({
+        script: [
+          makeA6ReplyText({ proposedAction: "E-5", rootCause: "wave-internal-defect", evidence: ["the gate went red at the eslint step"] }),
+          makeA6ReplyText({ proposedAction: "E-5", rootCause: "wave-internal-defect", evidence: ["the gate went red at the eslint step"] }),
+          makeA6ReplyText({ proposedAction: "E-5", rootCause: "wave-internal-defect", evidence: ["the gate went red at the eslint step"] }),
+        ],
+      });
+      const { _runCommand } = makeA6RunCommand({ "npm run build": { ok: false } });
+      const args = makeA6RunArgs({
+        _git,
+        _agent: agent,
+        _runCommand,
+        implConfig: { postWaveCommand: "npm run build", testCommand: "npm test" },
+        scriptGate: true,
+        advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget: 3 }).config,
+      });
+
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(args.waveBudget.resolved).toBe(0);
+      expect(args.invocations.filter((t) => t === "post-wave").length).toBeGreaterThan(0);
+      expect(args.invocations).not.toContain("test");
+    } finally {
+      repo.cleanup();
+    }
   });
 });
