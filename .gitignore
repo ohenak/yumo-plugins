@@ -15,3 +15,7 @@ docs/_decisions/.consolidation-lock
 
 # Coverage output (c8 / lcov) — measured, never committed
 coverage/
+
+# Timestamped pre-edit backup blobs the workflow sync path writes locally —
+# not build output, not source; never meant to be tracked (A6-00).
+.pdlc-backups/

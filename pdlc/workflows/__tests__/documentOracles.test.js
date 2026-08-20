@@ -308,13 +308,19 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
 // module excluded from that domain for exactly this reason (see its own comment); this
 // module is not excluded, so the red-until-later-task convention here is a plain failing
 // `test(...)`, the same pattern the `§6.3 document-correction oracles` block above uses
-// ("red from this batch until L-06"). The post-sweep *.test.js literal only holds once
-// class 6 (T15's deletions: 19 M-8 modules plus runtimeProvenanceWiring.test.js) lands.
+// ("red from this batch until L-06"). A6-00 bumps this to the pre-sweep count of 100 (it
+// added .pdlc-backups/ to .gitignore, not a *.test.js module, so the file count itself is
+// unchanged by A6-00 — the literal moves only because TSPEC §4.4's own corrected count
+// changed upstream of this task). The literal still is NOT the post-sweep count: it only
+// drops to the coupled sweep's post-sweep figure once class 6 (T15's deletions: 19 M-8
+// modules plus runtimeProvenanceWiring.test.js) lands in that sweep, at which point the
+// coupled sweep must re-derive it — this comment names the coupling rather than leaving it
+// to be inferred, and TSPEC §4.4 (a different feature's document) still reads 99.
 describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 1's four titles, L-6 row 2's host retains PROP-COMPAT-04/05/06", () => {
-  test("post-sweep pdlc/workflows/__tests__/*.test.js count equals TSPEC §4.4's corrected literal of 99", () => {
+  test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals A6-00's corrected literal of 100, pending the coupled sweep's post-sweep re-derivation", () => {
     const testDir = resolve(WORKFLOWS, "__tests__");
     const count = readdirSync(testDir).filter((name) => name.endsWith(".test.js")).length;
-    expect(count).toBe(99);
+    expect(count).toBe(100);
   });
 
   test("L-6 row 1: orchestrateQueue.test.js carries all four re-homed queue-triage assertion titles", () => {
