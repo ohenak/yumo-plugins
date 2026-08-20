@@ -130,6 +130,62 @@ transitively depends on LI-06 through LI-15's `Deps`.
 
 ## File-ownership manifest
 
+Every physical file this feature creates or modifies, with its **writing** owner(s). Where a file
+has more than one owner they are listed in batch order and **no two share a batch** — this table is
+the mechanical audit of the single-writer-per-batch premise (batch-safety rule 2), and it is the
+only thing preventing a last-writer-wins race the green gate cannot detect.
+
+**Read the `Test File` column of §Batches as "the suite this task must turn green", not as "the
+suite this task writes."** Authorship is *this* table alone. A green task names the red suite it
+satisfies; it does not edit it. Where a green task legitimately must touch a suite file (none does
+in this feature), the manifest would carry a second owner row in a later batch.
+
+### Production and generated
+
+| File | Owner(s), in batch order | Batches |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | LI-15, LI-16, LI-17, LI-18, LI-19, LI-20, LI-21, LI-22 | 7, 8, 9, 10, 11, 12, 13, 14 |
+| `.gitignore` | LI-04 | 3 |
+| `scripts/capture-learnings-baseline.mjs` (new directory) | LI-05 | 3 |
+| `pdlc/workflows/dist/pdlc-cli.mjs` | **none** — regenerated and staged by the wave gate's `postWaveCommand` / `postWavePathspecs` (`.claude/pdlc.config.example.json`), once per wave | 7–14 |
+
+**The `orchestrate-dev.js` row is why batches 7–14 each carry exactly one task.** Eight source
+edits, eight batches, one writer each. Nothing about the split is stylistic: two same-batch tasks
+appending to a 15,311-line file would silently drop each other's region and leave the suite green
+on the survivor.
+
+### Tests, helpers and fixtures
+
+| File | Owner | Batch |
+|---|---|---|
+| `pdlc/workflows/__tests__/helpers/learningsFixtures.js` | LI-02 | 2 |
+| `pdlc/workflows/__tests__/learningsCaptureScript.test.js` | LI-03 | 2 |
+| `pdlc/workflows/__tests__/learningsPredicatePin.test.js` | LI-13 | 2 |
+| `pdlc/workflows/__tests__/learningsSelect.test.js` | LI-07 | 3 |
+| `pdlc/workflows/__tests__/learningsBlock.test.js` | LI-08 | 3 |
+| `pdlc/workflows/__tests__/learningsCorpus.test.js` | LI-09 | 3 |
+| `pdlc/workflows/__tests__/learningsBaselineGuard.test.js` | LI-06 | 4 |
+| `pdlc/workflows/__tests__/fixtures/learnings-baseline/**` (incl. `MANIFEST.json`) | LI-06 | 4 |
+| `pdlc/workflows/__tests__/learningsRecord.test.js` | LI-10 | 5 |
+| `pdlc/workflows/__tests__/learningsDispatchSet.test.js` | LI-11 | 5 |
+| `pdlc/workflows/__tests__/learningsConfig.test.js` | LI-12 | 5 |
+| `pdlc/workflows/__tests__/learningsSuiteMap.test.js` | LI-14 | 6 |
+
+Fifteen files, fifteen distinct owners across the two tables; the only multi-owner file is
+`orchestrate-dev.js`, and its eight owners occupy eight different batches.
+
+### Read-only for this feature — no task owns them
+
+`pdlc/workflows/consolidate-learnings.js` (the pin's subject: it is *driven*, never edited — a
+change here would be a change to the shipped consolidation predicate, which this feature exists to
+follow rather than to move), `pdlc/workflows/__tests__/helpers/seams.js`,
+`helpers/consolidationDoubles.js`, `helpers/mergeDoubles.js`,
+`pdlc/workflows/__tests__/consolidationPredicate.test.js` (LI-13 asserts *against* its literal;
+editing it would collapse the three-way agreement into a two-way one),
+`pdlc/workflows/runtime-adapter.js`, `pdlc/workflows/build-runtime.mjs`, and every `pdlc/skills/**`
+SKILL.md — this feature changes what an author is told, never what the pipeline requires (BR-16),
+so no SKILL text moves.
+
 ## Dependencies
 
 ## Traceability
