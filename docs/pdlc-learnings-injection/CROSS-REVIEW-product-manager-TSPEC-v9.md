@@ -158,11 +158,53 @@ No High and no Medium findings. All six are Low; four are inherited from rounds 
 one (F-01) is the mechanical consequence of this round's version bump, and one (F-02) is a
 bibliographic row I should have caught earlier and am recording now rather than carrying silently.
 
-## Findings
-
 ## Positive Observations
 
+- **The freeze held for a second consecutive upstream round.** The TSPEC is byte-identical to the
+  state approved at v7 and re-confirmed at v8. Two upstream cascades in a row have arrived and the
+  document has not acquired a single opportunistic edit riding along with them. That is what makes a
+  freeze mean something, and it is why this confirmation cost one read of a nine-line diff.
+- **Citing upstream by spec id is paying for itself, visibly.** The FSPEC version bumped, its header
+  block was rewritten, and not one TSPEC claim needed re-verification — because the TSPEC references
+  "BR-9/BR-10", "E-21…E-34", "AC-3.3", never a line number in FSPEC. `grep "FSPEC:[0-9]"` over the
+  document still returns nothing. Contrast F-06's `orchestrate-dev.js` anchors, which drift on every
+  unrelated commit: the same document demonstrates both sides of DEC-DOC-01.
+- **The erratum was honest about its own scope, and about its predecessor's inaccuracy.** The v0.10
+  entry does not just fix the row — it records that the v0.9 entry's claim to have already fixed it
+  was wrong. A revision history that corrects itself is worth more than one that quietly overwrites,
+  and it is the reason I could scope this round in minutes.
+- **The routing of v8's Q-02 worked exactly as designed.** I raised the stale Cross-Reviews row as a
+  question against FSPEC rather than folding it into a TSPEC verdict; it landed as an FSPEC erratum
+  and cascaded back here for confirmation. Nothing about that path required a TSPEC revision, and
+  nothing about it let the defect sit unfixed.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+TSPEC still holds as approved against FSPEC v0.10. The upstream edit was header-only — a
+Cross-Reviews row correction, a version bump, and a revision-history entry — and it changed no rule,
+edge case, acceptance test, notice, config state, or traceability row that this TSPEC compresses. I
+re-read the upstream text this document leans on at its current version, by content, and found it
+still says the same things in the same way.
+
+Six Low findings, no Medium, no High, so nothing here is gating. Four are inherited pointer/anchor
+nits already recorded at v7 and v8. F-01 (stale "FSPEC v0.9" labels) is the mechanical consequence
+of this round's version bump and should be swept when the document next opens. F-02 (TSPEC's own
+Cross-Reviews row stale at v6) is the downstream twin of the very defect this erratum fixed
+upstream, tagged `Process` because the recurrence is the signal.
+
+Product lens satisfied, unchanged from v7 and v8: the feature ships **on** in a repository that says
+nothing (G-1, AC-1.1); disablement is an explicit act that removes the report key (AC-5.1a); a
+malformed section fails open with `NTC-MALFORMED` (AC-5.1b); a wrong-typed key fails open with
+`NTC-KEYTYPE` (AC-5.1c); reproducibility is claimed per dispatch at the two loci AC-3.3 names, with
+one set-equality test each. No P0 or P1 requirement is omitted, narrowed, or reinterpreted, and no
+behaviour outside the REQ's scope has appeared.
+
+DEFERRED: bump the "FSPEC v0.9" labels to v0.10 and extend the TSPEC Cross-Reviews row through the
+current round (F-01, F-02), next time this document is opened.
+DEFERRED: close F-03/F-04's §I.3-for-§I.2 and §T.2-for-§T.6 pointers, F-05's stale bare-repository
+note, and F-06's `orchestrate-dev.js` line anchors in one editorial pass during PLAN authoring.
 
 ## Delta-Confirmation Findings
 
