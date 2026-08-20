@@ -68,6 +68,21 @@ const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
 
 const FEATURE = "pdlc-advisory-tier";
 
+// ─── SeamOps overrides — positional, never a multi-key object literal ────────────────────────────
+// PROP-INFRA-01's doubles-hygiene scan (`advisoryPreflight.test.js`, "locally-built SeamOps
+// literal") refuses any brace block in an `advisory*.test.js` file that carries two or more
+// `SeamOps` member keys, because such a literal is indistinguishable from a test that built its
+// own seam contract instead of driving the canonical `makeSeamOps` factory. Passing the overrides
+// positionally is the shipped way a sibling suite satisfies that guard while still overriding more
+// than one member — see `advisoryDriver.test.js`'s `buildSeamOpsOverrides`, whose convention this
+// mirrors for the two members this file needs.
+function buildSeamOpsOverrides(permittedActions, declaredScope) {
+  const o = {};
+  if (permittedActions !== undefined) o.permittedActions = permittedActions;
+  if (declaredScope !== undefined) o.declaredScope = declaredScope;
+  return o;
+}
+
 // Arbitrary literal seed for this file's generator-driven property (P-7), overridable via
 // `PDLC_PROP_SEED` per `driftGenerators.js`'s §1.3 rule 1, reached only through
 // `makeAdvisoryGenerators` (PROP-INFRA-02).
@@ -732,7 +747,7 @@ async function runDriverEscalation({ seam, files = makeFileDouble() }) {
     feature: AWG_FEATURE,
     // `permittedActions: []` refuses whatever is proposed at GATE, so the invocation escalates
     // `out-of-envelope` without any seam-specific machinery.
-    seamOps: makeSeamOps({ permittedActions: [], declaredScope: [] }),
+    seamOps: makeSeamOps(buildSeamOpsOverrides([], [])),
     config: makeAdvisoryConfig({ enabled: true, attemptBudget: 1 }).config,
     rungState: {},
     _agent: makeAgentDouble({ script: [reply] }),
@@ -884,7 +899,7 @@ describe("A6-17 / AWG PROP-REC-06 — the class is countable per feature from th
     const terminal = await devModule.runAdvisorySeam({
       seam: "A3",
       feature: AWG_FEATURE,
-      seamOps: makeSeamOps({ permittedActions: ["E-2"], declaredScope: [] }),
+      seamOps: makeSeamOps(buildSeamOpsOverrides(["E-2"], [])),
       config: makeAdvisoryConfig({ enabled: true, attemptBudget: 1 }).config,
       rungState: {},
       _agent: makeAgentDouble({ script: [reply] }),
