@@ -190,3 +190,9 @@ previously approved was broken. One Low `Process` finding remains (a pair of dri
 the verbatim-string paragraph); per the approval rules that is non-gating, and it should be absorbed
 opportunistically rather than by opening a round for it.
 
+FINDING: Low | inherited | nonlocal | Fixtures → "Verbatim-string discipline" | raw `file:line` pins `orchestrate-dev.js:2297`–`:2306` (refusal reasons) and `:2311` (exclusion ids) violate DEC-DOC-01 and have drifted — the catalogue is at `:2301`–`:2310` and `:2311` is a comment; re-anchor to `ADVISORY_REFUSAL_REASONS` and the exclusion-set declaration
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
