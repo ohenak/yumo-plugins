@@ -173,3 +173,22 @@ sentence by sentence.
   parsed contract bit-identical lets the next reviewer trust this confirmation without redoing it.
 
 ## Recommendation
+
+**Approved with minor changes** — the round-11 approval of PLAN stands against DECISIONS at
+`84deee10`. PLAN remains a faithful compression of its upstream at HEAD. The single upstream edit
+deletes a duplicated integer from a rationale paragraph and records round-9 reviews; no decision
+entry moved, nothing PLAN cites was withdrawn, narrowed or renumbered, no new P0/P1 obligation
+entered, and no task, batch, wave, dependency edge or ownership cell needs to move. The four Lows
+are all non-gating and none requires a PLAN edit to preserve faithfulness: F-01 and F-02 are
+deferred single-site tidy-ups for whenever PLAN is next edited substantively, F-03 belongs in
+TSPEC §1.3, F-04 in the workflow's completeness gate.
+
+FINDING: Low | inherited | nonlocal | PLAN Overview HEAD-drift note, "column (1), the four gate-demanded edits" | Column (1)'s four is stated in DECISIONS, SIZING and PLAN. All three agree at HEAD; POSTMORTEM-D §6 step 1 directs DECISIONS to keep it. Cheapest fix is for PLAN's Overview to cite the appendix rather than restate the count. Not a faithfulness defect — the restatement is accurate.
+FINDING: Low | inherited | nonlocal | PLAN Definition of Done, inherited-residual bullet | Still inlines `28 total / 14 closable` instead of pointing at the Overview's HEAD-drift note, the declared single owner of the residue figures. Carried unchanged from rounds 10 and 11; PLAN bytes did not move. Deferred tidy-up.
+FINDING: Low | inherited | nonlocal | TSPEC §1.3 "Sizing hygiene residue" / PLAN Overview HEAD-drift note, class-3 row | Upstream TSPEC still says A-1's frozen glob list "exempts only LEARNINGS-* and POSTMORTEM-*"; shipped A1_GLOBS carries sixteen globs. Conclusion holds, but "only" under-states what is already exempt. PLAN's own covers/does-not-cover wording is accurate at HEAD; fix belongs in TSPEC §1.3, not PLAN.
+FINDING: Low | inherited | nonlocal | Workflow completeness gate (not PLAN) | The dispatcher supplied PLAN's authoring headings as the completeness gate for this review artifact. Carried since round 5. Mis-dispatch in the workflow, not a defect in the document under review; routed to harvest.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 4}
