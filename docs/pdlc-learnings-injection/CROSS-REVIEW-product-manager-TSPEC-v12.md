@@ -36,7 +36,28 @@ F-O-1's widening, which is an obligation *transferred to this document*.
 
 ## Architecture
 
-_pending_
+The delta touches no architectural claim in TSPEC. §A.1's placement of the selection step, §A.2's
+dispatch-classification argument, §A.3's `_git`-not-`_listFiles` reasoning, §A.4's "the thresholds
+do not bound prompt growth exactly" caveat and §A.5's `notices` threading all rest on BR-1 …
+BR-5, BR-14 and BR-15 — none of which FSPEC v0.13 edited. I re-read BR-1 and BR-15 at HEAD to be
+sure the v0.12 wording I approved in v11 survived this round unchanged: it did, byte-for-byte.
+
+One architectural consequence of the delta is worth stating so the author can size the fix, though
+it does not itself become a finding beyond F-01:
+
+- **`maxBytesPerDocument: 0` is now a run-shape edge, not just a bound edge.** E-36 places it
+  beside `maxDocuments: 0` and `maxTotalBytes: 0` as an *enabled, empty-selection* run. §A.4's
+  argument that the enabled/disabled distinction is carried by the presence of the
+  `learningsInjection` report key — not by the block's emptiness — is what makes the third case
+  behave correctly, and it already holds. So the architecture absorbs E-36 without change; what
+  does not absorb it is TSPEC's restatement of AT-30 (F-01) and its reject-arm inventory.
+
+- **The material-only basis is now upstream's, not just TSPEC's.** §A.4's caveat that the realised
+  block is larger than `totalBytesInjected` by a framing constant is, after v0.13, a restatement of
+  FSPEC BR-6 rather than a TSPEC-side reconciliation of it. The paragraph stays correct as written;
+  a future edit could cite BR-6 directly instead of arguing the point, but nothing is false.
+
+No finding in this section.
 
 ## Interfaces
 
