@@ -77,6 +77,106 @@ oracle, and because three of them guard oracles that would otherwise silently st
 
 ## Properties
 
+Every row carries: the property, its **Category** and **Test level**, the upstream ids it traces to,
+and the PLAN task that **reds** it and the task that **greens** it. A property with no owning task is
+a defect in this document or in the PLAN, not a nice-to-have.
+
+### Group A — The dispatch universe *(BR-1, AC-1.1, AC-1.2, AC-1.4; TSPEC §A.2)*
+
+- **PROP-DISPATCH-01:** `dispatchAndVerify` **must** compose a prior-feature LEARNINGS block when,
+  and only when, **both** `dispatchKind === "authoring"` **and** `docType ∈ LEARNINGS_TARGET_DOCTYPES`
+  (`REQ`, `FSPEC`, `TSPEC`, `PLAN`, `DECISIONS`, `PROPERTIES`) hold at composition time.
+  *Contract / Integration · L3 · AC-1.1, AC-1.2, BR-1, AT-01, AT-02 · red LI-11 · green LI-20.*
+- **PROP-DISPATCH-02:** The set of `docType` values observed **at the composition site** over a full
+  scripted run **must equal** `LEARNINGS_TARGET_DOCTYPES ∪ {null, "LEARNINGS"}`, and the set for which
+  `injectHere` returned true **must equal** `LEARNINGS_TARGET_DOCTYPES` — both as equality, never
+  containment, both operands hand-transcribed.
+  *Contract · L3 · AC-1.2, NG-5, TSPEC §A.2 consequence (b) · red LI-11 · green LI-20.*
+- **PROP-DISPATCH-03:** Every dispatch **outside** BR-1's rule — reviews, implementation, DoD
+  verification and remediation, harvest, ship, advisory seams, **and** the authoring-classified Phase
+  CR optimizer whose `docType` is `null` — **must** compose a prompt byte-identical to the recorded
+  pre-feature baseline.
+  *Contract · L3 · AC-1.2, AC-4.3, BR-11, AT-03 · red LI-11 · green LI-20.*
+- **PROP-DISPATCH-04:** The injector **must** be invoked exactly **once per authoring episode**, before
+  `dispatchAndVerify`'s `for(;;)` loop — never once per loop iteration — even where the corpus moves
+  between iterations.
+  *Idempotency · L3 · TSPEC §A.2 property 2, §T.6 `RETRY-ITERATION` · red LI-11 · green LI-20.*
+- **PROP-DISPATCH-05:** A dispatch carrying a block **must** carry its existing `basePrompt`,
+  `PACING_CONTRACT_CLAUSE` and `opener` unchanged, in their existing relative order, with the block
+  appended as a pure suffix; nothing existing is shortened, reordered or removed.
+  *Contract · L3 · AC-1.4, C-8, BR-7, AT-06 · red LI-11 · green LI-20.*
+- **PROP-DISPATCH-06:** `renderLearningsBlock({selected})` **must** return **exactly** `""` — not a
+  header, not a marker, not whitespace — when `selected` is empty, so that an empty corpus, an
+  unlistable corpus and an admits-nothing configuration each yield a character-for-character
+  pre-feature prompt.
+  *Functional · L1 · AC-4.1, AC-4.4, AT-24, TSPEC §A.2 property 3 · red LI-08 · green LI-17.*
+- **PROP-DISPATCH-07:** The `_recordDocType` probe seam **must** be plumbed through all five
+  hand-written hops (`main`'s params, the `wrapperSeams` object literal, `reviewLoop`'s params,
+  `reviewLoop`'s `wrapped` closure, `dispatchAndVerify`'s params) and **must** default to a no-op at
+  each, so an uninstrumented run is byte-unchanged.
+  *Integration · L3 · TSPEC §A.2 consequence (d), AC-4.3 · red LI-11 · green LI-20.*
+
+### Group B — Corpus enumeration, eligibility and read outcomes *(BR-2, BR-3, C-3, O-7)*
+
+- **PROP-CORPUS-01:** `LEARNINGS_CORPUS_ARGV`, the argv `consolidate-learnings.js`'s `enumerateCorpus`
+  actually hands `_git`, and `consolidationPredicate.test.js`'s own transcribed literal **must** be
+  mutually equal — a three-way agreement, never two-way.
+  *Contract · L4 · C-3, O-7, F-O-4, TSPEC §I.1 `LI-T-PIN-1` · red LI-13 · green LI-15.*
+- **PROP-CORPUS-02:** `gatherLearningsCorpus` **must** make exactly **one** `_git(LEARNINGS_CORPUS_ARGV)`
+  enumeration call per authoring dispatch, and **must not** reach the filesystem by any path other than
+  `_git` and `_readFile`.
+  *Contract · L2 · AC-5.2, BR-15, TSPEC §A.3 · red LI-09 · green LI-18.*
+- **PROP-CORPUS-03:** A LEARNINGS document nested at `docs/discarded/{p}/LEARNINGS-*.md` **must not** be
+  selected and **must not** appear in any record — *and* a document directly at
+  `docs/discarded/LEARNINGS-x.md` **must** be a corpus member, be selected, and carry **no** exclusion
+  reason. The two clauses are one property: the second is the positive control for the first.
+  *Data Integrity · L1 (clauses 1, 4) + L2/L3 (clauses 2, 3) · AC-2.6, E-07, E-35, AT-15 · red LI-07 ·
+  green LI-16 (eligibility clauses), LI-19 (`RSN-EMPTY` and no-record clauses).*
+- **PROP-CORPUS-04:** A document under `docs/completed/{p}/` **must** be eligible on terms identical to
+  one under `docs/{p}/`; archival location **must** affect rank only through BR-4's path tiebreak.
+  *Data Integrity · L1 · AC-2.6, E-20, AT-16 · red LI-07 · green LI-16.*
+- **PROP-CORPUS-05:** `{f}`'s own LEARNINGS **must** be excluded by feature directory
+  (`docs/{f}/…` or `docs/completed/{f}/…`), decided from the path **before any read**; it **must**
+  appear as an `RSN-SELF` row, its path **must never** be passed to `_readFile`, and the dispatch
+  **must not** record corpus-level `RSN-EMPTY` — a document *was* known.
+  *Data Integrity / Security-of-scope · L1 + L2 · AC-1.3, C-2, E-06, E-31, AT-04, TSPEC §D.6 ·
+  red LI-07 · green LI-16.*
+- **PROP-CORPUS-06:** Each surviving candidate **must** resolve to exactly one of three outcomes and no
+  other: eligible; `RSN-UNREADABLE` where `_readFile` returns `null` **or** throws (both shapes are
+  real); `RSN-UNPARSEABLE` where it reads but does not present a LEARNINGS document.
+  *Error Handling · L2 · AC-4.2, BR-3, E-03, E-04, E-08, AT-26, AT-27 · red LI-09 · green LI-18.*
+- **PROP-CORPUS-07:** `looksLikeLearningsDocument` **must** accept a document missing later sections and
+  a document truncated mid-body (its first line survives), and **must** reject a file whose first
+  non-blank line is not a level-1 `LEARNINGS` heading. No `RSN-TRUNCATED` id **must** ever be emitted.
+  *Functional · L1 · BR-3, E-19, E-33, F-O-1, TSPEC §D.3 · red LI-07 · green LI-16.*
+- **PROP-CORPUS-08:** `gatherLearningsCorpus` **must never** throw past `dispatchAndVerify`: an
+  exception raised anywhere inside it — including from a seam — **must** resolve to
+  `{unlistable: true}` and corpus-level `RSN-UNLISTABLE`.
+  *Error Handling · L2 · C-7, BR-12 last row, TSPEC §T.7 · red LI-09 · green LI-18.*
+
+### Group C — Ordering *(BR-4, AC-2.2, AC-2.5, C-5)*
+
+- **PROP-ORDER-01:** `orderCorpus` **must** order by `orderKey` **descending with `null` last**, then by
+  **UTF-8 byte order over the repository-relative path ascending** — compared with `Buffer.compare`,
+  not JavaScript's `<`/`>` code-unit comparison — yielding a **total** order over the eligible set.
+  *Functional · L1 · AC-2.2, BR-4, E-11, AT-09, TSPEC §D.4 · red LI-07 · green LI-16.*
+- **PROP-ORDER-02:** `parseHarvestDate` **must** return the ISO `YYYY-MM-DD` prefix of the harvest
+  metadata `Date Completed` cell — including where trailing free text follows it — and `null` where the
+  row is absent or the value is not an ISO prefix. A `null` key **must never** make a document
+  ineligible.
+  *Data Integrity · L1 · BR-4, E-12, E-13, E-14, AT-10 · red LI-07 · green LI-16.*
+- **PROP-ORDER-03:** The ordering **must** be a pure function of `(orderKey value, path)` and nothing
+  else: permuting every corpus file's mtime, reversing git commit order and ctime order against the
+  `Date Completed` order, and moving the wall clock between two compositions **must** leave the selected
+  set and its order identical.
+  *Idempotency · L1 · AC-2.2, AC-2.5, C-5, BR-4 negative invariants, AT-10 · red LI-07 · green LI-16.*
+- **PROP-ORDER-04:** The ordering **must not** construct a `Date` object, read a clock, or consult git
+  history, filesystem timestamps or a model's judgement. Keys are compared as **strings**.
+  *Security-of-determinism · L1 · C-5, NG-2, BR-4, TSPEC §D.4 · red LI-07 · green LI-16.*
+- **PROP-ORDER-05:** Two compositions of the same document type over an identical repository state, made
+  in **two separate process invocations**, **must** produce byte-identical blocks including order.
+  *Idempotency · L3 · AC-2.5, AT-14 · red LI-11 · green LI-20.*
+
 ## Oracles
 
 ## Fixtures
