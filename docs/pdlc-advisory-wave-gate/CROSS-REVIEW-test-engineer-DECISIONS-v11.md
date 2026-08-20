@@ -135,6 +135,44 @@ downstream contract.
 
 ## Consequences
 
+**For this document.** DECISIONS v1.9 is approved against REQ `817b6745…`, FSPEC `82f74a2d…` and
+TSPEC `1531143c…`. The approval anchor advances from `sha256:25f8e954…` to `sha256:84deee10…`; the
+three `UPSTREAM-STATE` anchors are unchanged from v10 because upstream is unchanged from v10.
+
+**For the testing surface.** Nothing moved. `DEC-A6-01`…`DEC-A6-04` are byte-frozen through ten
+rounds, and every property they constrain — the dangling-snapshot capture and restoration oracle, the
+`commitPaths`-owned E-6 promotion, the wave-scoped ref name with no run discriminator, and
+`waveBudgetPerRun: 0` as a supported affordance validated by `nonNegativeInt` — is unaffected by this
+delta. No PROPERTIES entry, no test level assignment and no fixture derived from this document needs
+revisiting on account of `8a44b84b`.
+
+**For the erratum machinery.** This round is evidence that the absorbed-item path works as intended:
+the upstream erratum genuinely owed DECISIONS nothing, the document said so explicitly rather than
+silently, and the claim was falsifiable by grep in one command. A no-op recorded in prose that a
+reviewer can check in seconds is strictly better than a no-op left implicit — the pattern is worth
+keeping.
+
+## Positive Observations
+
+- **The fix landed in the exact wording the finding proposed, and the sole-carrier claim was made
+  explicit.** v9 F-01 suggested "the already-migrated-sites bullet is folded into column (2)"; `:30`
+  now reads precisely that, and the paragraph names `SIZING-…md` as the one place the figure lives.
+  That second half is what stops the finding recurring — a fix that only deletes leaves the next
+  author free to re-add.
+- **The absorption is stated with its evidence, not asserted.** "DECISIONS carries no hygiene note, no
+  sweep figure and no disposition of the residue" is a claim shaped so a reviewer can falsify it with
+  a single grep. It survived that grep. Claims written to be checkable are the cheapest thing an
+  author can do for a reviewer, and this document keeps doing it.
+- **Re-grounding was done before editing, and said so.** The paragraph records which upstream hashes
+  were re-read and which moved, which is why this confirmation could be bounded rather than a full
+  sweep. That discipline is what converted a potentially expensive DEC-ERR-03 check into three hash
+  comparisons.
+- **The frozen core stayed frozen under an edit that touched the same file.** Ten rounds of preamble
+  churn with zero drift inside `## Decision` is the property that makes the decision entries citable
+  by PLAN and PROPERTIES at all.
+- **The round's other two findings were correctly routed away.** PM v9 F-01 belongs to PLAN and F-02
+  to harvest; the paragraph says so and does not manufacture a DECISIONS edit to look responsive.
+
 ## Recommendation
 
 ## Verdict
