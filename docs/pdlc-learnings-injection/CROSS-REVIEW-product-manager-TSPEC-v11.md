@@ -58,7 +58,33 @@ the `converge()` call sites now resolve at `:13908`, `:13916`, `:13949`, `:14016
 
 ## Interfaces
 
-_(pending)_
+The delta touched no interface, no signature and no seam. §I.3's predicate, §I.5's changed-signature
+table (`dispatchAndVerify`'s `_injectLearnings`, `reviewLoop`'s forwarded param, `main`'s
+`_learningsInjector`, `buildFinalReport`'s conditionally-spread `learningsInjection`) are
+byte-unchanged in the diff. Nothing to re-approve.
+
+What the delta did change is how the **ground-truth table** cites those seams, so I re-walked every
+citation in §Ground-truth against the repository at HEAD:
+
+| Row | Citation after the delta | Resolves at HEAD |
+|---|---|---|
+| P-2a | Four sites by symbol: `converge()` phase creator; `erratumRound()` author + land-proof retry; `reviewLoop()`'s positional `runWrapped(optimizer, optPrompt, doc, "authoring", …)` | **Yes** — three object-literal `dispatchKind: "authoring"` properties and one positional argument, exactly four, matching the "four code sites" count the row asserts |
+| P-2b | Phase CR's `reviewLoop({ doc, phase: "CR", docType: null, … })`; `roundDocType = docType === undefined ? docTypeFromPath(doc) : docType`; `wrapped` forwarding to `dispatchAndVerify` | **Yes** — the quoted `roundDocType` line is verbatim at HEAD, and `wrapped` forwards `docType: roundDocType` |
+| P-3 | `dispatchAndVerify({… dispatchKind, feature, _readFile, _listFiles, _git, _log})`, `:8862-8878`; prompt composition at `:8978` | Yes — anchors still land |
+| P-4 | `LS_FILES_ARGV` / `enumerateCorpus`, `consolidate-learnings.js:1338-1346` / `:1349-1355` | Yes |
+| P-7 | `defaultGit`, `orchestrate-dev.js:11658-11676`; `rtGit`, `runtime-adapter.js:1003` | **Anchor stale** — `defaultGit` is at `:11698`; `:11658` is `defaultWriteFile`. `rtGit` resolves. Claim itself true (F-01) |
+| P-8 | `defaultReadFile`, `orchestrate-dev.js:11513-11519`; `rtReadFile`, `runtime-adapter.js:493-505` | **Anchor stale** — `defaultReadFile` is at `:11553`; `:11513` is a `log` helper. Claim true: it returns `null` on any error, and `rtReadFile` rethrows an exhausted probe (F-01) |
+| P-9 | `runtime-adapter.js:494-522`, `:124`, `:459-465` | Yes — `RT_READ_CACHE_MAX_BYTES = 2097152` at `:124`, the eviction loop at `:459-465` |
+| P-10 | Conditional spread by symbol in `buildFinalReport` | **Yes** — `...(advisory ? { advisory } : {})` is one of the trailing spreads at HEAD; the de-anchoring also fixed the previously-stale `:15167` |
+| P-11 / P-12 | `parseAdvisoryConfig` at `:1980-1983` / `:1985-2010` | Yes — both quotes verbatim |
+| §A.3 | `defaultListFiles`, `orchestrate-dev.js:11586-11605` | **Anchor stale** — `defaultListFiles` is at `:11626` (F-03) |
+| §A.5 | `notices` sink shape, `orchestrate-dev.js:12110` | **Anchor stale** — the `main()` sink is at `:12150` (F-04) |
+| §Test fixtures | `seams.js:245` / `:413` / `:425-441`, `consolidationDoubles.js:23` | Yes — all four resolve |
+
+The pattern is worth naming for the record: `orchestrate-dev.js` moved under this branch
+(`472e505c` most recently), shifting anchors by +40 in the seam region and +142 in the
+phase/dispatch region. The erratum de-anchored the three cells the item list named and left the
+sibling cells with the same drift — which is precisely the churn DEC-DOC-01 was recorded to end.
 
 ## Data Model
 
