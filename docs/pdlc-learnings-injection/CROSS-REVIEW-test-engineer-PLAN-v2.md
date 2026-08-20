@@ -231,7 +231,128 @@ for a feature that authors fourteen new files. Filed as F-04, Medium.
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | LI-23's `corpusOutcome` set equality is unsatisfiable as written: the observed field carries `null` on every healthy dispatch, and the inventory must run healthy dispatches to reach `RSN-COUNT`/`RSN-BYTES`/`RSN-SELF`. Scope the assertion to non-`null` observed values | LI-23; §Traceability twelve-arm table |
+| F-02 | Medium | Local | The green-terminal gate row (batches 1, 4, 6) omits the "every pre-existing test's status is unchanged from the baseline" conjunct its three sibling gate rows carry, so those batches have no oracle for a regression they could cause — batch 4 commits a fixture subtree into a tree `coveredViolations` walks in full | §Verification, the three gate wordings |
+| F-03 | Medium | Local | LI-07 calls FSPEC AT-15 "three clauses"; it has four — E-35's directly-pathed document is a corpus member, is selected, and carries no exclusion reason. An implementer transcribing the row drops a positive-selection clause | LI-07; §Traceability AT-15 split-green row |
+| F-04 | Medium | Local | §The measured baseline states `consumerCleanup.test.js`'s `AT-4.1` asserts porcelain "over **tracked** files"; the call has no `-uno`, so untracked `??` entries red it too — the likelier dirt in a feature that authors fourteen new files | §Verification, the measured baseline |
+| F-05 | Low | Local | `LI-T-SUITEMAP` static-parses six named suite files, so an `LI-AT-` name registered in any of the other eight new suites escapes the closure check. Set equality over the directory rather than over a hardcoded six would close it | LI-14; DoD 1 |
+| F-06 | Low | Local | The `→ LI-06` edge rationale cites "the L3 byte-identity claims (AT-23, AT-24, AT-31)", which LI-23 does not carry; LI-23's real reason for the edge is the shared L3 fixture matrix | §Dependencies, why each edge exists |
+
+### F-01 (Medium) — the arm inventory's corpus-outcome equality cannot pass as stated
+
+LI-23 is the right answer to F-07 and I want it to ship. Its arithmetic is also better than it
+needed to be: I checked all three catalogues member by member against the twelve-arm table and two
+of them close **exactly** — the six `LEARNINGS_REJECT_REASONS` members are each entered by a named
+arm and no arm contributes anything outside them, and the two `LEARNINGS_NOTICES` members likewise.
+That is a genuinely tight set equality, and it is why the suite is worth having.
+
+The third does not close. TSPEC §D.2 pins the healthy value of the field explicitly —
+`corpusOutcome: null, // | "RSN-UNLISTABLE" | "RSN-EMPTY"` (`TSPEC:612`, repeated at `:626`) — and
+three of the twelve arms (`RSN-COUNT`, `RSN-BYTES`, `RSN-SELF`) are *rejection* arms that fire on
+runs whose corpus **is** listable and non-empty. Driving them necessarily observes
+`corpusOutcome === null`. The observed set is `{null, "RSN-UNLISTABLE", "RSN-EMPTY"}` and
+`LEARNINGS_CORPUS_OUTCOMES` has two members, so `LI-T-ARMS-{n}` reds at batch 13 for a reason that
+is not a defect in the implementation — and the batch-13 ledger row says the ledger is empty there,
+so the wave halts on a correct implementation.
+
+**What to change:** one clause in LI-23 and the matching clause in the twelve-arm table's closing
+paragraph — *"every **non-`null`** `corpusOutcome` value observed"*. Do not fix it by adding `null`
+to the expected literal: `null` is not a catalogue member, and a test whose expected value is
+"catalogue ∪ {null}" no longer transcribes the frozen literal it exists to pin. The non-`null`
+scoping keeps the assertion a literal transcription of `LEARNINGS_CORPUS_OUTCOMES`. Worth stating
+in the row too that the healthy `null` is separately asserted by the record suite, so scoping it out
+here is not a coverage loss.
+
+*(TSPEC §D.1's own domain wording has the same gap — "one test per domain asserts that every value
+it ever carries is a member of that field's catalogue" (`TSPEC:589–592`) is false for the
+`corpusOutcome` domain as `TSPEC:612` defines it. Routed as an erratum, not charged to this PLAN.)*
+
+### F-02 (Medium) — the green-terminal gate cannot fail on a regression
+
+The revision correctly split one gate wording into three. Two of the three carry a
+pre-existing-status conjunct and the third does not:
+
+- RED-terminal (2, 3, 5): "…**and** every pre-existing test's status is unchanged from the baseline
+  above."
+- Mixed (7–13): "…no other test's status moves from the measured baseline."
+- Green-terminal (1, 4, 6): "The batch's new suite is **green on authoring** … None has a red
+  episode, and none may be *given* one by inventing a symbol for it to miss."
+
+The third states only what the batch's own new file does. A batch that greened its own suite and
+reddened three others satisfies it as written. That is not hypothetical for batch 4: LI-06 commits
+`__tests__/fixtures/learnings-baseline/**` — an entire new subtree of prompt text — into a tree
+that `coveredViolations` walks in full, skipping only `.git/` and `node_modules/`
+(`pdlc/workflows/lib/document-oracles.mjs`), and that the porcelain instrument of
+`consumerCleanup.test.js:149` reads at the repository root. Batch 1 and batch 6 are lower risk but
+free to cover.
+
+**What to change:** append the conjunct from the row above it — *"…and every pre-existing test's
+status is unchanged from the measured baseline"* — to the green-terminal row. One clause, and all
+three gate wordings then share the same invariant.
+
+### F-03 (Medium) — AT-15's fourth clause is not in the clause enumeration
+
+LI-07's new passage is a good piece of work: it is precisely right that AT-15 cannot be greened
+whole by LI-16, that it must stay one test in one suite so the partition survives, and that
+"eligibility/ordering/count only" scopes rules rather than licensing a dropped clause. The
+enumeration it hangs that on is short by one.
+
+`FSPEC:836–841` gives AT-15 as: *Given* nested `docs/discarded/{feature}/LEARNINGS-*.md`, *then*
+(1) nothing is selected, (2) the report carries corpus-level `RSN-EMPTY`, (3) no discarded document
+appears in any record. ***And given*** *a one-file fixture holding exactly
+`docs/discarded/LEARNINGS-x.md`, then* (4) it is a corpus member, is selected, and carries no
+exclusion reason (E-35). The PLAN names (1), (2), (3) and says "only the first is the pure core's".
+Clause (4) is also the pure core's, and it is the *positive* half of the pair — the assertion that
+keeps clause (1) from being an absence-only oracle over path handling.
+
+The coverage is not actually lost: LI-02 ships `DISCARDED-DIRECT` explicitly "for AT-15 and AT-16",
+so the fixture exists and its purpose is named. The defect is that the row an implementer
+transcribes from enumerates three of four clauses, and a set-equality reader would conclude the
+fourth is out of scope.
+
+**What to change:** state AT-15 as four clauses, with (1) and (4) greened by LI-16 and (2)/(3) by
+LI-19, and carry the same split into §Traceability's AT-15 row ("LI-16 for the eligibility clauses
+— both the nested exclusion and E-35's direct-path inclusion").
+
+### F-04 (Medium) — porcelain is not tracked-only
+
+`pdlc/workflows/__tests__/consumerCleanup.test.js:144–154` runs
+`execFileSync("git", ["status", "--porcelain"], {cwd: <repo root>})` and asserts the output is `""`.
+No `-uno`, so the default `-unormal` applies and untracked files appear as `??`. I confirmed this
+empirically: touching a file at the repository root produces `?? <path>` in that exact invocation.
+
+The PLAN's conclusion ("any uncommitted edit anywhere in the repository … reds it") is therefore
+correct and understated, but the mechanism it gives is wrong in the direction that matters here.
+This feature authors fourteen new files; the state an implementer will most often be in mid-batch is
+"new file written, not yet added", which the PLAN's wording implies is safe and which in fact reds a
+pre-existing suite that all three gate wordings measure against.
+
+**What to change:** *"asserts `git status --porcelain` at the repository root is empty — untracked
+files included, since the call carries no `-uno`, so a new test file that has been written but not
+committed reds it exactly as an uncommitted edit does."*
+
+### F-05 (Low) — the closure check is closed over six files, not over the directory
+
+`LI-T-SUITEMAP` asserts the six AT-bearing suites' lists are pairwise disjoint and set-equal to the
+35-member literal, read by static parse of those six files. Nine other new test files exist by the
+end of the feature (`premises`, `captureScript`, `predicatePin`, `baselineGuard`, `suiteMap`,
+`armInventory` and the helper). An `LI-AT-` name registered in one of those is invisible: the six
+lists still partition 35, and the duplicate ships. This is not new in v0.2 — LI-23 makes it one file
+wider, which is what brought it back into view. Cheap fix: enumerate `__tests__/learnings*.test.js`
+from disk, assert the *set of files carrying `LI-AT-` names* equals the six, then partition. That
+makes the closure a set equality over the directory rather than over a hardcoded list.
+
+### F-06 (Low) — an edge rationale extended to a task it does not describe
+
+`§Dependencies` → *why each edge exists* now reads
+`LI-10, LI-11, LI-12, LI-23 → LI-06 | data | the L3 byte-identity claims (AT-23, AT-24, AT-31)
+compare against committed baseline prompts`. LI-23 carries no FSPEC AT and asserts nothing about
+bytes; its tests are `LI-T-ARMS-1…3` over reason-code sets. Its real reason for depending on LI-06
+is the L3 fixture matrix and the batch-5 co-location with the suites whose fixtures it shares.
+Split the row, or extend the justification: *"…and LI-23 for the L3 fixture matrix the twelve arms
+are driven through"*. The batch column is unaffected either way.
 
 ## Questions
 
