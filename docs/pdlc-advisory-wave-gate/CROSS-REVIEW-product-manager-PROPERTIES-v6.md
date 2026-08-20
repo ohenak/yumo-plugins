@@ -73,6 +73,40 @@ revert-versus-re-derive disposition to PLAN's Phase I rather than settling it he
 
 ## Oracles
 
+The oracles section is byte-unchanged. I re-measured the repository facts it asserts, since those
+are the only things that can have gone stale under a freeze round:
+
+- **O-A's "`attempts` is consumed on paths that never reach `verifyGate`"** still holds:
+  `orchestrate-dev.js:3425` increments `attempts` on the preemption path
+  (`// the in-flight attempt counts as consumed by the preemption (T-02-5)`), with further
+  increments at `:3432` and `:3463`. The two raw pins the paragraph carries (`:3428`, `:3459`) have
+  drifted by a few lines and no longer land on the increments they name — the claim is true, the
+  anchors are stale. Same DEC-DOC-01 class as F-01, Low, `Process`, non-gating.
+- **O-C's real-repository fixture shape** resolves: `advisoryDodSeams.test.js:371` is
+  `mkdtempSync(join(tmpdir(), "pdlc-a3-fixture-"))` inside
+  `T-05-5 — A3's working tree is byte-identical to its pre-invocation state (real git repo)`. The
+  document is describing a shape that ships, not one it hopes for.
+- **G's two verbatim literals are exact transcriptions of TSPEC, not paraphrases.** The
+  capture-failure sentence in TSPEC §4.5 (`TSPEC:1255`, `diagnosis` row) reads
+  `snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied` —
+  character-for-character what PROPERTIES quotes. The promotion commit message
+  (`chore({feature}): wave {N} advisory promotion ({taskId})`) and its distinct emit label
+  (`Wave N advisory promotion (task T)`) likewise match TSPEC §3.6 exactly, including the
+  message/label split. This is the discipline the task brief asks for: expected values transcribed
+  from the spec, never derived from the code under test.
+- **E's shared-literal reasoning** holds at HEAD: `budget-exhausted` is a single member of the
+  frozen catalogue at `orchestrate-dev.js:2301`, so the document is right that a reason string alone
+  cannot distinguish the attempt-budget from the seam-budget arm, and right to demand the positive
+  `resolved` disposition as the companion.
+
+**Oracle-quality bars from the task brief, re-checked.** No absence-only oracles: O-B pairs each
+absence conjunct with a recorded `ledgerAnchor.value` (`=== 2` / `=== 4`), O-C pairs the map equality
+with a named negative control, and E forbids reading non-escalation from a shared reason literal.
+No implementation echoes in the document's own oracles: O-C explicitly rejects an injected `_git`
+double "which could only echo the fixture", and G quotes TSPEC rather than the implementation.
+Completeness by set-equality is carried where an enumeration exists — PROP-ENV-06's ordered-sequence
+equality over the catalogue, and PROP-SEAM-02's set equality over the seam list.
+
 ## Fixtures
 
 ## Findings
