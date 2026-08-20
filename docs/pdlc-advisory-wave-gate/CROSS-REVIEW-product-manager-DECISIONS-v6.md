@@ -121,3 +121,6 @@ bullet, the seam re-derivation, the seven already-migrated sites, and the closin
 verified clean against HEAD.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
