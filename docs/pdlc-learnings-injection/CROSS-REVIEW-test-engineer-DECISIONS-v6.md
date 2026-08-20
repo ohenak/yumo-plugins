@@ -74,7 +74,32 @@ reopens a decision, and neither blocks the phase.
 
 ## Decision
 
-_pending_
+**DECISIONS still holds as approved against FSPEC v0.13.** Reading (c) — Approved with minor
+changes, six Medium and two Low findings, none gating, none reopening a decision.
+
+Every claim in DECISIONS that reaches into FSPEC, re-derived against HEAD rather than against the
+v0.12 bytes v5 recorded:
+
+| DECISIONS claim | FSPEC at HEAD (v0.13) | Verdict |
+|---|---|---|
+| `DEC-LI-05`: block is a suffix, `""` when the selection is empty; byte-identity holds by construction | BR-14's enabled empty-selection run is unchanged; E-36 routes the new `maxBytesPerDocument: 0` case *into* it, and AT-30 now asserts all three zeros against the same "rows present and empty, not the absent key" oracle | **Holds, with one more input** — the delta adds an empty-selection path, which is the path this decision makes safe by construction |
+| `DEC-LI-05` §Constraints: "FSPEC `BR-7`, which fixes what the block must convey but not where it sits" | BR-7 unchanged in what it fixes; v0.13 only removes the preamble/delimiters from the *byte charge*, not from BR-7's ownership, and F-O-2 still routes their wording to TSPEC | **Holds** |
+| `DEC-LI-08`: bound the addition with REQ §4.1's static thresholds only — per-document bytes, total bytes, document count — applied unconditionally | The three thresholds still exist, still apply unconditionally, still own no dynamic budget. But they now bound **material only**: framing "is charged to no threshold" (BR-6) | **Decision holds; the sentence drifts** — "bound the addition" over-claims, since the addition is material *plus* uncharged framing → F-01 |
+| `DEC-LI-08` §Stated honestly: C-8's second half satisfied in the weak sense, "the injection is bounded a priori"; closing condition is REQ O-1 measurement of "realised prompts crowding the caps" | Same accounting change; a conforming block can exceed `maxTotalBytes` by its framing without any threshold binding | **Drifts** — the crowding test the paragraph prescribes compares two now-different quantities → F-01 |
+| `D-O-4`: "realised prompt sizes **against REQ §4.1's caps**", the input C-8's weak half needs | ditto | **Drifts, and this is the load-bearing one** — it is the obligation that owns the acknowledged gap's closing condition → F-01 |
+| `D-O-3`: properties over `extractInjectableMaterial` — "byte bound, whole-character prefix, `bounded` exactly when cut" | BR-6 at HEAD carves the zero bound out of the cut-and-flag rule: at `maxBytesPerDocument: 0` the document **yields nothing**, is dropped with `RSN-NO-MATERIAL` before the total bound and consumes no slot — it does **not** take 0 bytes and carry the `bounded` flag, which is what the unamended "first section alone exceeds the bound → taken up to the bound and cut, either way `bounded`" rule predicts | **Obligation survives, its stated clause is now incomplete** — a bound-generating property written from this clause over a domain that includes 0 goes RED against a v0.13-conforming implementation → F-02 |
+| `DEC-LI-10`: closed catalogues, hand-transcribed expected sets, including `RSN-*` | The `RSN-*` **id set** is unchanged; only `RSN-NO-MATERIAL`'s gloss widened ("yields no material — carries none of BR-6's priority sections, **or** the per-document bound is zero and admits none") | **Holds** — set-equality expectations transcribe ids, not glosses; no transcription moves |
+| §Decisions deliberately NOT taken, row 2: "The ordering key, the section subset, and the eligibility rule → FSPEC `BR-4`, `BR-6`, `BR-3`" | The *subset* is still BR-6's and eligibility still BR-3's; F-O-1 now additionally routes the **recognition rule** for both to TSPEC | **Holds** — placement is unchanged; ownership of the matching mechanism was never claimed here |
+| `DEC-LI-06`: no cache; read cost `O(dispatches × corpus bytes)`; `D-O-6`'s call counts | Untouched by this delta | **Holds** (v5's F-04 reversibility-ground finding still unlanded → F-06) |
+| `DEC-LI-03` §Re-evaluation trigger, citing FSPEC `A-2` | `A-2` at HEAD (line-leading in §Assumptions) quantifies only over a dispatch satisfying "**neither** conjunct in the pipeline's own terms yet is authoring in spirit"; the trigger attributes to it a sentence over "authoring in spirit but not classified". Unchanged by this round — the `A-2` edit was `c1d7218e`, inside v5's recorded state | **Inherited drift, unmoved** → F-07 |
+| `DEC-LI-07`'s divergence paragraph and `D-O-9`; §Decisions deliberately NOT taken row 4 | Unchanged by this round; both were measured against TSPEC in v5 and remain unlanded | **Inherited** → F-03, F-04 |
+| Header version note and `DEC-LI-07` §Context pins ("TSPEC v0.5", "FSPEC v0.7") | HEAD is REQ v0.9, **FSPEC v0.13**, TSPEC v0.7 | **Inherited, deepened by one version** → F-05 |
+
+The two findings this round *adds* (F-01, F-02) are both tagged **delta**: the pre-round FSPEC bytes
+made `DEC-LI-08`'s "bound the addition" and `D-O-3`'s cut-and-flag clause literally correct, and it
+is this round's edit that made them not so. That provenance is the right one — these route into
+DECISIONS' own revision loop, not back to FSPEC, because FSPEC's new position is the better one and
+the document is what must catch up.
 
 ## Consequences
 
