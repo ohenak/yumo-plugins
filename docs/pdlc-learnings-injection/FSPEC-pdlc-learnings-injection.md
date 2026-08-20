@@ -8,14 +8,21 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.6); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.8); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6}.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.5 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.6 | 2026-08-19 |
+
+
+> **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
+> `enabled: true` default: absent section, absent file or misspelt name is a default-enabled
+> run; a malformed section fails open to those defaults with `NTC-MALFORMED` (AC-5.1a/b).
+> `ADVISORY_DEFAULTS` leaves `enabled` `false`, so that contrast is corrected; E-13's rule
+> stands, its provenance declared not measured.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
@@ -87,7 +94,7 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | FSPEC-LRN-12 | Fail-open under every corpus state | AC-4.1, AC-4.2 |
 | FSPEC-LRN-13 | Gate-input isolation | AC-4.3 |
 | FSPEC-LRN-14 | Admits-nothing configuration | AC-4.4 |
-| FSPEC-LRN-15 | Disabled and malformed configuration | AC-5.1a, AC-5.1b, AC-5.1c |
+| FSPEC-LRN-15 | Disablement, and mistakes that do not disable | AC-5.1a, AC-5.1b, AC-5.1c |
 | FSPEC-LRN-16 | Filesystem footprint | AC-5.2 |
 | FSPEC-LRN-17 | Pipeline semantics preserved | AC-5.3 |
 
@@ -113,13 +120,13 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | AC-4.2 | BR-3, BR-12 | AT-25, AT-26, AT-27, AT-28 |
 | AC-4.3 | BR-11 | AT-03, AT-29 |
 | AC-4.4 | BR-5, BR-14 | AT-30 |
-| AC-5.1a | BR-14 | AT-31 |
+| AC-5.1a | BR-14 | AT-31, AT-32 |
 | AC-5.1b | BR-14 | AT-32 |
 | AC-5.1c | BR-14 | AT-32 |
 | AC-5.2 | BR-15 | AT-33, AT-34 |
 | AC-5.3 | BR-16 | AT-35 |
 | AC-6.1 | §Acceptance Tests preamble | all ATs |
-| AC-6.2 | §Acceptance Tests preamble, AT-31, AT-32 | AT-31, AT-32 |
+| AC-6.2 | §Acceptance-test preamble, AT-31 | AT-31 |
 
 ### Binding constraints inherited
 
@@ -138,14 +145,16 @@ including its own failure; no step raises to its caller (BR-12).
 
 ### Step 0 — Decide whether to run at all
 
-1. Read the `learningsInjection` configuration section for the consumer repository.
-2. **Absent section, or `enabled` false** → the flow stops here, the dispatch is composed exactly as
+1. Read the `learningsInjection` section, if any, for the consumer repository.
+2. **Absent section, absent config file, or a misspelt section name** → the configuration
+   reads as REQ §4.1's declared defaults, which leave `enabled` at `true`, and the flow
+   continues at (4) (BR-14, AC-5.1a). **Section present but malformed** — `learningsInjection`
+   present and not an object — is that same enabled-on-defaults flow **plus** a recorded
+   `NTC-MALFORMED`, so a configuration mistake stays distinguishable from a deliberate
+   disable (BR-14, AC-5.1b). A **wrong-typed declared key** likewise takes its
+   default and is named by `NTC-KEYTYPE`.
+3. **`enabled` explicitly `false`** → the flow stops here, the dispatch is composed exactly as
    it is composed today, and **no injection record of any kind is produced** (BR-14, AC-5.1a).
-3. **Section present but malformed** — `learningsInjection` present and not an object →
-   compose as in (2), **and** record `NTC-MALFORMED` (BR-14,
-   AC-5.1b). A misspelt section name is a stray top-level key, reading as absent (2). A
-   **wrong-typed declared key** is not malformed: it takes its default, the flow continues at
-   (4), and `NTC-KEYTYPE` names the key.
 4. **Enabled** → continue, with thresholds resolved: each of REQ §4.1's three bounds takes its
    configured value if present and its default if not.
 5. If the dispatch is **not** one C-1 names as authoring, the flow stops here with no record
@@ -218,7 +227,7 @@ including its own failure; no step raises to its caller (BR-12).
 
 | # | Decision | Branches | Rule |
 |---|---|---|---|
-| D-1 | Is injection configured on? | absent / disabled / malformed / wrong-typed key / enabled | BR-14 |
+| D-1 | Disabled by an explicit `enabled: false`? | disabled / enabled — absent, malformed and wrong-typed read as enabled on §4.1's defaults | BR-14 |
 | D-2 | Is this dispatch an authoring dispatch? | yes / no | BR-1 |
 | D-3 | Did the corpus listing succeed? | ok / failed | BR-12 |
 | D-4 | Is the listing empty? | empty / non-empty | BR-12 |
@@ -584,9 +593,9 @@ Five states, five behaviours:
 
 | State | Dispatch composition | Record |
 |---|---|---|
-| Section **absent**, or the config file absent | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
-| `enabled: false` | Byte-identical to the recorded pre-feature baseline | No injection key at all |
-| Section present but **malformed** — `learningsInjection` present and not an object | Byte-identical to the recorded pre-feature baseline | `NTC-MALFORMED`, naming the malformed configuration |
+| Section **absent**, the config file absent, or the section name misspelt | The enabled composition, on §4.1's declared defaults | BR-8's rows; no notice |
+| `enabled: false` | Byte-identical to the recorded pre-feature baseline | **No injection key at all** — absent, not present-and-empty |
+| Section present but **malformed** — `learningsInjection` present and not an object | The enabled composition, on §4.1's declared defaults | `NTC-MALFORMED`, naming the malformed configuration |
 | Section present, a declared key **wrong-typed** | The enabled composition, that key at its default | `NTC-KEYTYPE`, naming the key |
 | **Enabled**, with thresholds admitting nothing (zero documents or zero bytes) | The enabled composition, with an empty selection | BR-8's rows, **present and empty** |
 
@@ -596,7 +605,7 @@ Three points carry load:
   config readers already ship: `parseAdvisoryConfig` sets `sectionMalformed` only where the
   section key is present and not an object, and `parseMergeConfig` carries the same meaning
   (`pdlc/workflows/orchestrate-dev.js`). A **misspelt section name** is a stray top-level
-  key, not a present section, so it reads as absent: baseline-identical run, no notice.
+  key, not a present section, so it reads as absent: a default-enabled run, no notice.
   Detecting it would need a closed registry of legal top-level keys in
   `.claude/pdlc.config.json`, which does not exist and would misfire on keys a later feature
   adds; an unknown-top-level-key rule is **decided against**. REQ AC-5.1b reads a misspelt
@@ -606,10 +615,12 @@ Three points carry load:
   notice the siblings ship (`parseAdvisoryConfig`, `orchestrate-dev.js`).
   Turning the feature off over one mistyped threshold would diverge from that for no stated
   reason (DC-08).
-- **An absent config file is the absent-section state**: no injection, no record. That
-  differs deliberately from `parseAdvisoryConfig`, which defaults an absent file to
-  enabled-with-defaults; this feature adds material to authoring prompts, so it turns on
-  only where an operator asked for it.
+- **An absent config file is the absent-section state**: §4.1's declared defaults apply, so
+  the run injects with `enabled` at `true` and records no notice. `parseAdvisoryConfig`'s
+  own `ADVISORY_DEFAULTS` leave `enabled` at `false` (`pdlc/workflows/orchestrate-dev.js`);
+  this feature's default differs deliberately, because REQ §4.1 declares `enabled: true` and
+  G-1 requires that a repository already holding LEARNINGS files need no configuration
+  change to receive them.
 - **Admits-nothing thresholds are a valid configuration, not an invalid one.** Zero
   documents or zero bytes is an enabled run with an empty selection — BR-8's rows present
   and empty — never a refusal to run and never AC-5.1a's absent key. The pipeline does not
@@ -668,7 +679,7 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-10 | Eligible count exceeds `maxDocuments` | Exactly `maxDocuments` taken; remainder `RSN-COUNT` | AT-07, AT-08 |
 | E-11 | Two documents share a `Date Completed` value | Tiebreak by path byte order; order is stable across runs | AT-09 |
 | E-12 | A document has no `Date Completed` row (measured: 2 of 89 at HEAD) | Ranked by tiebreak alone; still eligible; never excluded for it | AT-10 |
-| E-13 | A `Date Completed` value carries free text after the date (measured: occurs at HEAD) | The date is read; the trailing text does not make the key unparseable | AT-10 |
+| E-13 | A `Date Completed` row carrying free text after the date (declared; not seen at HEAD) | The leading date is read; trailing text does not make it unparseable | AT-10 |
 | E-14 | A `Date Completed` value is entirely unparseable as a date | Treated as absent; tiebreak applies; document remains eligible | AT-10 |
 | E-15 | One document exceeds `maxBytesPerDocument` | Material cut at the bound per BR-6; row flagged **bounded**; document still contributes | AT-11 |
 | E-16 | A document's **first** priority section alone exceeds `maxBytesPerDocument` | That section taken up to the bound and cut; row flagged bounded | AT-12 |
@@ -682,13 +693,13 @@ behavioural branch, its outcome, and the test that asserts it.
 
 | # | Scenario | Outcome | AT |
 |---|---|---|---|
-| E-21 | Configuration section absent | Baseline-identical composition; no injection key | AT-31 |
+| E-21 | Configuration section absent | Enabled composition on §4.1's declared defaults; no notice | AT-32 |
 | E-22 | `enabled: false` | Baseline-identical composition; no injection key | AT-31 |
-| E-23 | Section present and not an object | Baseline-identical composition, plus `NTC-MALFORMED`; a misspelt section name reads as absent | AT-32 |
+| E-23 | Section present, not an object | Enabled composition on §4.1's defaults, plus `NTC-MALFORMED`; a misspelt name reads as absent | AT-32 |
 | E-24 | `maxDocuments: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-25 | `maxTotalBytes: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-26 | One threshold configured, two defaulted | Configured value used for one, defaults for the others; all three appear in BR-10's record | AT-22 |
-| E-34 | A declared key is wrong-typed | Enabled run, that key at its default, plus `NTC-KEYTYPE` naming it — not baseline-identical | AT-32 |
+| E-34 | A declared key wrong-typed | Enabled run, that key at its default, plus `NTC-KEYTYPE` naming it | AT-32 |
 
 ### Run-shape edges
 
@@ -859,18 +870,21 @@ text into a disabled run is a test failure rather than a production discovery.
 
 ### Group 5 — inertness when disabled, and semantics preserved
 
-- **AT-31** — *Given* `enabled: false`, and separately the configuration section absent, *when* the
-  pipeline runs, *then* every composed dispatch is byte-identical to the recorded pre-feature
-  baseline and no injection key is carried — absent, not present-and-empty.
-- **AT-32** — *Given* a configuration section present and not an object, *when* the pipeline
-  runs, *then* the composition matches AT-31's byte-for-byte and the report carries
-  `NTC-MALFORMED`. *And given* `maxDocuments: "five"` with the other two thresholds configured,
-  *then* the run is enabled, BR-10's record shows `maxDocuments` at its §4.1 default literal 5
-  while the other two show their configured values, the selection equals a fixture literal, and
-  `NTC-KEYTYPE` names `maxDocuments`. *And* a **completeness test asserts set equality** over `NTC-MALFORMED` and
-  `NTC-KEYTYPE`. *And given* a misspelt
-  section name (`learningsInjectoin`), *then* the run is indistinguishable from AT-31's
-  absent-section case — no notice, per BR-14's decision against an unknown-key rule.
+- **AT-31** — *Given* `learningsInjection.enabled` is explicitly `false`, *when* the
+  pipeline runs, *then* every composed dispatch is byte-identical to the recorded
+  pre-feature baseline and no injection key is carried — absent, not present-and-empty.
+- **AT-32** — *Given* the section absent, *and separately* the file absent, *and
+  separately* a misspelt name (`learningsInjectoin`), *when* the
+  pipeline runs, *then* each of the three injects on §4.1's declared defaults, its
+  composition equals the enabled-run composition, and **no** notice is recorded — BR-14's
+  default-enabled reading and its decision against an unknown-key registry.
+  *And given* the section present and not an object, *then* the composition still equals
+  that enabled composition and the report carries `NTC-MALFORMED`. *And given*
+  `maxDocuments: "five"` with the other two thresholds configured, *then* the run is
+  enabled, BR-10's record shows `maxDocuments` at §4.1's default literal 5 beside the two
+  configured values, the selection equals a fixture literal, and `NTC-KEYTYPE` names
+  `maxDocuments`. *And* the **completeness test
+  asserts set equality** over the notices: exactly `NTC-MALFORMED` and `NTC-KEYTYPE`.
 
 - **AT-33** — *Given* an enabled run, *when* the file-open calls under `docs/` are observed
   over one window covering the whole run, *then* that observed set **equals** BR-15's
