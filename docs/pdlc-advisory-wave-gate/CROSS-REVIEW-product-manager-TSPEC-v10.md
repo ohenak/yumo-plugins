@@ -116,3 +116,45 @@ DEFERRED: Whether the four premature test edits should be reverted so Phase I op
 |----|---------|
 | Q-01 | *(v9 Q-01 — **closed**.)* §4.4 now answers it: the `0` affordance is honoured and asserted but deliberately undocumented, and a prose carrier would need its own REQ/FSPEC requirement. No further answer needed. |
 | Q-02 | Does anything in this feature's scope add `"A6"` to `ADVISORY_SEAMS` (`orchestrate-dev.js:1951`), or does §3.1's exported-list change depend on a task owned elsewhere? Four assertions at HEAD are already red waiting on exactly that constant, so the answer determines whether Phase I opens green or red. Non-gating for the TSPEC's own correctness. |
+
+## Positive Observations
+
+- The PM F-01 repair went past the minimum. I asked for one overclaiming clause to be dropped; the
+  round withdrew it in five places, named what actually carries the `0` affordance (behaviour plus
+  `nonNegativeInt` and AT-07-2b), and then said plainly that the affordance has *no* documentation
+  carrier in scope. Documents rarely volunteer "we do not cover this"; that sentence is worth more
+  to a downstream reader than the claim it replaced.
+- Declining to decide the discoverability question, and naming the REQ/FSPEC requirement that would
+  own it, is the TSPEC staying inside its mandate. That is the behaviour I want to see repeated: a
+  product gap recorded and routed, not quietly closed by an engineering document.
+- Replacing a false set-equality with a true containment is the harder and better choice. §5.1 ⊇ §1.3
+  is a weaker statement, and it is checkable — I checked it mechanically and it holds with no residue.
+  A weaker invariant that is true beats a stronger one that was false in both directions.
+- Re-anchoring the `.enabled` pins to symbols proved its own worth inside one round: all three
+  numerals had already drifted (`:3258`→`:3262`, `:13678`→`:13682`, `:1318`→`:1265`) while the
+  symbols and the exactly-three constraint held. Every re-anchored claim resolved on first check.
+
+## Recommendation
+
+**Needs revision**
+
+Two High findings, both narrow and both correctable in prose without reopening any decision:
+
+1. **F-01** — Restate the v1.9 changelog's re-grounding paragraph against REQ v1.9 (`sha256:817b6745…`).
+   The conclusion "no absorption is owed" is correct and I verified it independently; only the
+   byte-identity evidence offered for it is false.
+2. **F-02** — Restate §5.1 `:1236` (and, while adjacent, inherited §1.3 `:268`) against HEAD: the
+   `5`→`6` transcription is already applied at all four sites and is red pending `"A6"` joining
+   `ADVISORY_SEAMS`. The owned work is to make it green, not to make the edit.
+
+Neither requires a design change, a new decision, or upstream absorption. F-03 is repository
+hygiene owned outside this document, and F-04 is a wording nicety; neither gates.
+
+Everything I blocked on in v9 is resolved, and the three repairs this round shipped are each
+correct where they point. The document is close; it is the two current-state claims, not the design,
+that are behind the tree.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
