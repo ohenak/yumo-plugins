@@ -228,6 +228,52 @@ counterfactual that makes this round cheap.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+PROPERTIES still holds as approved against FSPEC v0.13. No property is contradicted, no expected
+value or transcribed literal changes, no REQ acceptance criterion lost its property coverage, and
+§C.1's 35-of-35 AT partition is intact because E-36 rides on the existing AT-30 rather than adding
+an AT id. The erratum's byte-accounting decision landed on the reading PROPERTIES already asserts,
+so the cascade retired a divergence instead of creating one.
+
+Four edits close the round, all inside this document and none touching PLAN, TSPEC or REQ:
+
+1. **F-01** — extend `PROP-CONFIG-04` (or add `PROP-CONFIG-09`, per Q-01) with the
+   `maxBytesPerDocument: 0` arm: enabled run, BR-8 rows present and empty, **every** corpus document
+   carrying `RSN-NO-MATERIAL`, **no** `maxDocuments` slot consumed. Trace `AC-4.4, BR-14, BR-9, E-36,
+   AT-30`. It lands in `learningsConfig.test.js` under existing LI-12/LI-21, so §C.3 gains a member,
+   not a task.
+2. **F-01, cont.** — strike §G.2.1 and its §G.3 bullet; the gap is closed upstream.
+3. **F-02** — strike §G.2.2 and re-word its §G.3 bullet: FSPEC BR-6 and TSPEC §D.5 now agree on
+   material-only accounting, `PROP-BOUND-07` is the compression of both, and the residual item is
+   TSPEC's AT-11 count alone (Q-03).
+4. **F-03, F-04** — re-word §F.3's attribution sentence to say F-O-1 **owns** both heading rules and
+   TSPEC has discharged only the first; widen `PROP-BOUND-06`'s subject from "carries none of BR-6's
+   five priority sections" to BR-9's stated meaning, "yields no material", keeping the
+   carries-no-section case as the arm the `NO-MATERIAL` fixture drives.
+
+None of the four is gating. Held at Medium and Low deliberately: the product promise REQ AC-4.4
+makes — a zero threshold is a valid admits-nothing value that produces an enabled, empty-selection
+run rather than a refusal — is asserted by `PROP-CONFIG-04` today for two of its three routes, and
+the third route reaches the same user-visible outcome. What is wrong is the document's account of
+its own upstream, which misleads the next reader and the implementer, and one arm of an AT left
+unasserted — real, actionable, and not a reason to halt or to re-open the phase.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §G.2.1 states `maxBytesPerDocument: 0` "is undecided upstream and therefore untested here" and that "AT-30 exercises `maxDocuments: 0` and `maxTotalBytes: 0` only". FSPEC v0.13 decides it — E-36, BR-6's zero-bound clause, and AT-30's third arm asserting every corpus document carries `RSN-NO-MATERIAL` — so the stated premise is false at HEAD and the newly added arm is asserted by no property. `PROP-CONFIG-04` still enumerates two zeros; §C.1's AT-30 row now under-covers the AT it claims. | §G.2 gap 1 / `PROP-CONFIG-04` / §C.1 AT-30 row |
+| F-02 | Medium | delta | local | §G.2.2 records a live contradiction — "TSPEC §D.5 says material only … FSPEC BR-6's worked example charges the identification line and delimiters" — that FSPEC v0.13 closed: BR-6 now says contributed bytes are material only and framing "count[s] toward none of the three quantities". The gap's conditional ("if FSPEC's reading is the intended one, both properties' expected counts change and LI-08's row changes with them") now resolves to *no change*, so the text tells an implementer to expect a recomputation that will not happen. §G.3's matching bullet, and the AT-11 bullet whose premise it supplies, carry the same staleness. | §G.2 gap 2 / §G.3 routed errata |
+| F-03 | Low | delta | local | §F.3 says "which heading forms count as which section is F-O-1's, not this document's to decide — FSPEC BR-6 delegates it and TSPEC's F-O-1 discharge covers only the document-shape predicate", and §G.3's fourth bullet frames the item as BR-6 delegating to an obligation that does not name the rule. FSPEC v0.13's F-O-1 now explicitly owns **both** heading-recognition rules, so the attribution is stale even though the substantive gap — TSPEC unchanged, second rule undischarged — is unaffected. | §F.3 heading-forms note / §G.3 bullet 4 |
+| F-04 | Low | delta | local | `PROP-BOUND-06`'s subject is "a document carrying **none** of BR-6's five priority sections", which was BR-9's whole meaning for `RSN-NO-MATERIAL` at approval. BR-9 at HEAD reads "yields no material — it carries none of BR-6's priority sections, **or** the per-document bound is zero and admits none", and D-12 is restated as "Does the document yield any material?". The property is still true but is now the narrower half of the reason id it names, and the `NO-MATERIAL` fixture drives only that half. | `PROP-BOUND-06` / §F `NO-MATERIAL` fixture |
+
+FINDING: Medium | delta | local | §G.2 gap 1 / PROP-CONFIG-04 / §C.1 AT-30 row | `maxBytesPerDocument: 0` is declared undecided upstream and deliberately untested, but FSPEC v0.13 decides it (E-36, BR-6 zero-bound clause, AT-30 third arm with its `RSN-NO-MATERIAL` conjunct); no property asserts the new arm and §C.1's AT-30 row under-covers the AT it claims
+FINDING: Medium | delta | local | §G.2 gap 2 / §G.3 routed errata | The "byte accounting of framing is specified two ways" gap records an FSPEC/TSPEC contradiction that FSPEC v0.13 closed in PROPERTIES' favour; its conditional about recomputed counts and a changed LI-08 row now resolves to no change, and the dependent §G.3 bullets inherit the stale premise
+FINDING: Low | delta | local | §F.3 heading-forms note / §G.3 bullet 4 | The section-heading recognition rule is described as delegated by BR-6 to an obligation that does not name it, but FSPEC v0.13's F-O-1 explicitly owns both heading rules; the substantive gap (TSPEC undischarged) is unchanged, only the attribution is stale
+FINDING: Low | delta | local | PROP-BOUND-06 / §F NO-MATERIAL fixture | `PROP-BOUND-06` states `RSN-NO-MATERIAL` only over "carries none of BR-6's five priority sections", while BR-9 at HEAD widens the reason to "yields no material", including the zero per-document bound; the property is true but narrower than the id it names
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
