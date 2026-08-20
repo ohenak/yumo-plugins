@@ -131,7 +131,60 @@ bytes I approved at v12/v13.
 
 ## Edge Cases and Error Scenarios
 
+No E-row is inside the diff hunks. I checked the rows the edited rules could have stranded:
+
+- **E-27 / E-28 / E-29** (FSPEC:762-764) name AT-02 as their owner and describe the set-equality and
+  no-fixed-count properties. AT-02's fixture list gained a fourth member this round; the three E-rows'
+  fixtures are still in that list verbatim, so no E-row lost its owner or its fixture.
+- **E-06 / `RSN-SELF`** — BR-15 still carves it out as "decided from the path before any read", and
+  AT-04 still requires the per-document `RSN-SELF` row with no corpus-level `RSN-EMPTY`. Unchanged by
+  the set-vs-count correction, which touches only how the remaining members are compared.
+- **`RSN-UNREADABLE`** — still explicitly inside the expected set ("the failed attempt is the read").
+  Preserved verbatim.
+
+The widened complement in BR-11 gains no new edge-case owner and needs none: the states it adds are
+byte-identity claims already covered by AT-03 and AT-29, whose populations widened with it. Widening
+an exclusion only widens a population an existing AT already quantifies over — it cannot orphan a row.
+
+The branch-coverage paragraph's first sentence (every E-row names an AT, every AT appears in the
+reverse trace) is unchanged and still holds over these bytes.
+
 ## Acceptance Tests
+
+Three ATs moved, and the movement is in the right direction in every case.
+
+**AT-02 (edited).** My v13 F-03 lands. The fixture list is now "a run with no DECISIONS phase, a run
+whose Phase R has no creator, a run with five optimizer rounds, and a run containing an
+authoring-classified dispatch whose target is none of the six C-1 document types — so reverting
+BR-1's second conjunct reds this test." The added trailing clause is the part I care about most: it
+states the mutation the fixture exists to catch, in the AT itself, so an implementer who prunes the
+fixture can see what they are pruning. That is a mutation-check contract written into the spec, not
+merely a fixture enumeration. The universe clause ("the whole dispatch universe, not only those
+already classified authoring") is unchanged and remains what makes an over-injection observable.
+
+**AT-03 (edited).** Now quantifies over "the prompt of each dispatch **outside BR-1's rule** —
+including the authoring-classified dispatch with no C-1 target". Tracks BR-11 exactly, and the
+"including" clause names the member that would otherwise be silently absent from the population a
+test author constructs. Same fixtures, same baseline comparison, wider and now-enumerable population.
+
+**AT-29 (edited).** Its final conjunct became "every dispatch prompt outside BR-1's rule is
+byte-identical to the recorded baseline", matching BR-11 and AT-03. The five-way set equality over
+verdicts, completeness scores, round-window counters, approval anchors and erratum routes is
+untouched, so the AC-4.3 gate-input oracle keeps the shape I approved.
+
+**AT-33 (not edited — and it should have been).** Its expected set still reads "exactly one attempt
+per report-named document other than the `RSN-SELF` ones", i.e. the count formulation, while BR-15
+now says sets of paths and not counts. See F-01; the fix is one clause. Everything else in AT-33
+survives: the observed set is asserted **non-empty** (the control that stops AT-34's absence claim
+being vacuous), the enumeration-contributes-no-member clause is present, and the write-side boundary
+conjuncts are intact. AT-34 still names AT-33 as its same-instrument, same-test control.
+
+The **branch-coverage mapping** (FSPEC:968-975) was updated for D-2's third branch and is the only
+mapping line that needed to move; D-1 and D-3 … D-12 mappings are byte-identical. AT-01, AT-04
+through AT-28, AT-30 through AT-32, AT-34 and AT-35 are unchanged from the bytes I approved.
+
+Line-wrapping in the edited AT-33 and BR-15 bullets still runs past the document's column width
+mid-clause (FSPEC:693, FSPEC:949) — cosmetic, worth a re-wrap on the next touch, not a finding.
 
 ## Open Questions
 
