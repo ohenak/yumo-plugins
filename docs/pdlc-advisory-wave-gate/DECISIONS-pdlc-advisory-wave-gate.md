@@ -153,15 +153,17 @@ advisory promotion ({taskId})`, `what` = `Wave N advisory promotion (task T)`, a
 own `_git`, `_sleep`, `emit` and `provenance`. FSPEC BR-8's licence to "widen scope" is therefore
 read as *licence to commit the promotion*, not as licence to enlarge another task's pathspec.
 
-**This entry supersedes two pieces of upstream text that still describe the rejected option A
-shape.** TSPEC §1.1's obligation table, row O-8, resolves the obligation as "the wave commit loop's
-existing `commitPaths` writer gains one more pathspec — the promotion's paths, scoped to the later
-task's owned set", which read plainly *is* option A; TSPEC §3.6's body already says the opposite, so
-the row and the section disagree. FSPEC BR-8's clause "that scope may widen under O-8's E-6
-resolution" is permissive rather than wrong — it licenses this decision's shape too — so it is left
-standing and read through this entry. The O-8 row is not: a later reader who enters through the
-obligation table and follows traceability back to REQ reaches the rejected shape and never meets its
-rejection. Correcting that row is raised as an erratum on TSPEC (PM F-03, TE F-07).
+**Upstream now states this shape, and cites this entry for the rejection.** v1.1 of this record
+superseded two pieces of upstream text that described option A; one of the two has since been
+corrected. TSPEC §1.1's obligation table, row O-8, no longer resolves the obligation by widening an
+existing pathspec: at v1.10 it reads "**One further `commitPaths` call** after the per-task loop,
+inside the same `if (waveGit)` block, carrying the promotion's paths under its own `message` and
+`what` (§3.6); the owning task's own commit keeps its own pathspec, unwidened", and names "the
+rejected option A of `DECISIONS-pdlc-advisory-wave-gate.md`'s DEC-A6-02" explicitly. The row and
+§3.6's body agree, and the reader who enters through the obligation table now meets the rejection
+where v1.5 hid it (PM F-03, TE F-07 — landed). What remains is one, not two: FSPEC BR-8's clause
+"that scope may widen under O-8's E-6 resolution" is permissive rather than wrong — it licenses this
+decision's shape too — so it is left standing and read through this entry.
 
 **Constraints that forced the shape.** Pathspec-scoped commits are the discipline M-WG-4 rests on;
 `commitPaths` requires `message` and `what` (it is not a two-argument call), so a new call is fully
