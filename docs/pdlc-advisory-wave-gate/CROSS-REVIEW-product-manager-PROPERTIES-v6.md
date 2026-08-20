@@ -148,8 +148,34 @@ DEFERRED: The `e3b9d5a3` revert-versus-re-derive disposition is deferred by TSPE
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | This is round 6 on a document that did not change in round 5→6 and that carries zero High and zero Medium findings across two consecutive rounds. Is the phase converged from the orchestrator's side, or is a dispatch being re-issued against an already-approved artifact? Nothing in the document is owed; if a round is being spent, it should be spent on Phase I rather than here. |
+| Q-02 | Carried from v4/v5 and still open outside this document: once Phase I opens, who records the `e3b9d5a3` disposition (revert vs re-derive)? Three documents defer it and none makes it. Not a PROPERTIES finding — flagged so it is not lost at harvest. |
+
+
 ## Positive Observations
+
+- **The document held up under independent re-measurement, not just re-reading.** I re-derived the PLAN-task coverage by set comparison (22 ids each side, empty diff) and resolved all thirteen named test files on disk rather than trusting my own v5 notes. Both came back clean, which is the strongest evidence available that §C-3 is a genuine compression of the PLAN and not a hand-maintained list that has drifted.
+- **The verbatim literals are transcribed, not paraphrased.** TSPEC §4.5's capture-failure sentence and §3.6's promotion commit message match character-for-character. This is the discipline that keeps a test from encoding what the implementation happens to emit.
+- **The oracle section anticipates the exact false-green shapes a reviewer would look for.** O-B pairs every absence conjunct with a recorded positive value, O-C names its negative control, and E refuses to read a disposition from a shared reason literal. These were written before anyone asked for them.
+- **Round 4's re-anchoring is still paying off.** The anchors that were converted to symbols and test titles (`SEAMS`, `configPath`, the `implementation.testCommand` test) all still resolve at HEAD, while the two paragraphs that kept raw line pins have drifted again. The mechanism is visibly earning its keep.
+
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The document is byte-identical to the bytes I approved in v5, all five upstream digests are
+unmoved, and every repository claim I re-measured at HEAD is true. There is no revision in this
+round, so the freeze's first blocking category (a defect this delta introduced) is vacuous, and the
+second (a factual contradiction with HEAD or an upstream document) came back empty after direct
+measurement. Two Low `Process` findings remain — both stale raw `file:line` anchors under
+DEC-DOC-01, neither load-bearing — which per the approval rules do not gate. Nothing must change for
+this phase to close.
+
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
