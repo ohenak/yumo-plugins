@@ -36,7 +36,36 @@ glob list, recorded below as F-01 (Low, upstream's to fix, not PLAN's).
 
 ## Batches
 
-_(pending)_
+PLAN's task table, batch composition and wave map are untouched by this cascade, and the upstream
+edit imposes no change on them. Re-verified mechanically at HEAD rather than asserted:
+
+| Check | Result at HEAD |
+|---|---|
+| `parsePlanTasks` over PLAN | **11 tasks** (`A6-00, A6-01, A6-04, A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21`) |
+| `validatePlanContract` | `{"ok": true}` — 11 ownership rows, 0 unknown ids, 0 near-misses |
+| `computeWaves` | **7 waves**, every boundary green |
+| PLAN bytes vs. the round-10 approval commit `b902f40b` | identical |
+
+**The one batch the erratum bears on is A6-00, and it holds unchanged.** TSPEC now names *"A6-00's
+Edit 1"* as co-owner of the residue figures. A6-00's Edit 1 exists at HEAD, is spelled exactly that
+way in the task row, and carries the same arithmetic TSPEC now points at: untrack the 14 tracked
+`.claude/workflows/.pdlc-backups/*.bak` blobs (`git rm --cached`) **and** add the bare rule `.pdlc-backups/`
+to `.gitignore` in the same step, which "closes **14 of `PROP-SWEEP-2(b)`'s 28 residual paths**; the
+other 14 are not closable here". TSPEC's new sentence — "Untracking the `.bak` class closes **14 of
+the 28**; the other 14 are not closable on this branch" — is the same claim in the same direction.
+The pointer resolves; it does not dangle.
+
+**No scope entered PLAN through this edit.** TSPEC added no requirement, no surface and no task: the
+paragraph closes with "Sizing and routing only; the disposition is not re-litigated here and no
+design claim moves", and the §1.3 end-state surface table below it is byte-unchanged (the eight
+transcription surfaces, the `.enabled` occurrence count of three). So there is no new P0/P1 obligation
+for PLAN's batch list to absorb, and no batch that should have gained a task and did not.
+
+**No batch lost its basis, either.** The completeness direction matters as much as the scope-creep
+direction: every A6 task still traces to a §1.3 surface or a §5.1 manifest row that survives at
+`1531143c`. I re-read the surface table and the `.enabled` row at HEAD against A6-05's and A6-18's
+task text; the transcription targets and the three-occurrence `.enabled` constraint are unchanged, so
+the two tasks most tightly coupled to §1.3 are still faithful compressions of it.
 
 ## Dependencies
 
