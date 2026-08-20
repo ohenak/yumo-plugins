@@ -64,6 +64,47 @@ F-01 below, Medium and non-gating.
 
 ## Architecture
 
+**The delta's one structural move: `sections[]` becomes derived, not reported.** Before this round
+`sections` was "the CANONICAL BR-6 priority names actually taken" — a report of the matcher's
+intent. §D.3 now defines it over the *assembled and cut* result: "A canonical name is in
+`sections[]` iff at least one byte of its normalised text survives in `material`". That is the
+change F-01 asked for and it is better than what I asked for: it removes the possibility that
+`sections` and `material` disagree, it makes the zero-bound `sections: []` fall out of the general
+rule instead of needing its own clause, and it turns the `sections[]` assertion from an independent
+claim into a redundancy check over `material` — which is exactly what a *supporting* assertion
+should be.
+
+The cost is that `sections[]` is now a function of `maxBytes`, and one downstream obligation still
+reads it as a function of the document alone (§T.6's T-O-6 corpus conjunct, F-01 below). That is
+the only place the redefinition did not propagate; I checked the other three consumers and all
+three survive it:
+
+- §D.3's AT-28 reading — "empty intersection ⇒ empty `sections[]` ⇒ `RSN-NO-MATERIAL`" — is
+  unaffected: at an empty intersection nothing is taken at any bound.
+- §I.3's zero-bound short-circuit return `{material: "", bounded: false, bytes: 0, sections: []}`
+  is now *implied* by the derivability rule rather than asserted alongside it, which is the
+  consistency the round was after.
+- §D.5's `RSN-NO-MATERIAL` single branch ("one branch covering both of BR-9's disjuncts") is
+  strengthened by it: *yields no material* and *`sections` is empty* are now the same predicate by
+  definition, not by coincidence of two rules agreeing.
+
+**The assembly rule is the right shape for a test document to fix.** It is stated as a procedure a
+fixture author executes (split, drop trailing blank lines, rejoin, join with `"\n\n"`, cut once),
+not as a property an implementation should satisfy — so two people hand-computing AT-11's literal
+get the same integer. The interior-blank-line carve-out ("only the trailing run is dropped, so the
+count does not depend on how many blank lines the author left before the next heading") is the
+clause that actually removes the ambiguity, since that is the one thing a fixture author varies
+without thinking. Cutting **once over the assembled string** rather than per extent is also what
+keeps E-16 ("first section alone exceeds the bound") a consequence rather than a special case;
+FSPEC E-16 (`FSPEC §Edge cases`, E-16) and AT-12 both read cleanly under it.
+
+**Nothing in the delta widened the L1/L3 split or the AT inventory.** §T.5's suite table still
+reads `learningsBlock.test.js | AT-05, AT-11, AT-12 | 3 | L1`, and the new oracle table adds
+assertions to an existing test rather than a test to the inventory — so the 35-AT count I recounted
+in v13 is unchanged and no suite acquired an unowned claim. The three mutations §T.5 names for
+AT-11 (heading-without-body renderer; substring-widened matcher; whole-document renderer) all land
+inside `learningsBlock.test.js`'s own subject, so none of them needs a second file to observe.
+
 ## Interfaces
 
 ## Data Model
