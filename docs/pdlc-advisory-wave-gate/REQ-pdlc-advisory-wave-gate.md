@@ -154,9 +154,10 @@ whose recorded head is an ancestor of the branch tip; it is a working-tree obser
 artifact — so the stronger claim v1.2
 made, that no record has ever survived here, no longer holds and is withdrawn.
 What the single surviving record does not show is a resume: it names a wave sequence that ran to
-completion, and every one of the four preconditions above still gates its use. Separately, the consumer runtime copy
-under `.claude/workflows/` is still out of sync with the built artifacts — the drift check exits
-non-zero with three rows stale and one missing — and a stale copy is announced but silently
+completion, and every one of the four preconditions above still gates its use. Separately, and as a working-tree
+observation only: `node pdlc/workflows/build-runtime.mjs --check` reports the tracked artifact
+in-sync and exits `0`, while the consumer runtime copy under `.claude/workflows/` — gitignored, so
+not reproducible by another reviewer — differs from it, and such a copy is announced but silently
 executed.
 
 The consequence for this REQ is that the seam's economics argument stands as originally written:
