@@ -49,7 +49,24 @@ So the gate correction really is TSPEC's to land, and this FSPEC needed no behav
 
 ## Upstream Re-Verification at HEAD
 
-<!-- pending -->
+REQ moved v0.8 → v0.9 in `a2353445` (+14/-8). Three substantive changes. I checked each against what
+FSPEC says today:
+
+| REQ v0.9 change | FSPEC still faithful? | Notes |
+|---|---|---|
+| §1.2 claim 2 restated: `consolidate-learnings.js`'s `enumerateCorpus` is total but the pass around it marks itself `failed`; **this feature deliberately diverges and fails open** (`RSN-UNLISTABLE`) | **Yes** | FSPEC never claimed the sibling's listing was fail-open. BR-12 and Step 1(7) state only this feature's own behaviour, and F-O-4 restates O-7's pin as a literal-restatement obligation without inheriting the sibling's failure semantics. Nothing to correct. |
+| AC-5.1b now names `orchestrate-dev.js`'s `parseImplementationConfig` as the precedent | **Yes** | BR-14 cites `parseAdvisoryConfig`/`parseMergeConfig` for the *same* behaviour (defaults + explicit notice, per-key fallback + invalid-key list). All three symbols verified present in the cited file. Compatible; see F-03 for the one hygiene nit. |
+| AC-3.1's closure **scoped to each selected document's row**, with AC-3.2's and AC-3.3's records explicitly sitting **outside** that set, each closed at **its own locus** | **No — see F-01, F-02** | AC-3.2's corpus-level outcomes and AC-3.3's ordering-key values are both **per authoring dispatch** upstream. FSPEC BR-9 records corpus-level outcomes "once per run" and BR-10 records the rule inputs as a single "run-level" record with one completeness test. |
+
+The AC-3.1 row is where the compression has drifted. Note this drift predates the v0.8 erratum: the
+per-dispatch locus for AC-3.3 arrived at REQ v0.7 (`c1180acb`) and for AC-3.2 at REQ v0.8
+(`386e4f0c`), while FSPEC's own v0.6 erratum claimed to re-ground on REQ v0.8. So both findings are
+**inherited**, not introduced by this edit — but they are live against upstream at HEAD, and
+DEC-ERR-03 requires me to file them here even though they are not in the routed-item list.
+
+BR-8 itself is fine, and AT-18 already tests the mid-run corpus-change case for BR-8's rows — which
+is exactly why the neighbouring records being run-level is inconsistent rather than merely
+under-specified.
 
 ## Findings
 
