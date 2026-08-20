@@ -401,11 +401,25 @@ that a first-class per-seam `enabled` map becomes the better surface.
   says nothing about envelope members — but `PROP-CFG-02` deep-equals the *whole* literal against
   `parseAdvisoryConfig`'s output for five inputs (absent file, no `advisory` section, unparseable
   JSON, top-level array, non-object section), and `toEqual` descends into `envelope`. Run at HEAD,
-  all five are red and each diff drops `"E-5"`, `"E-6"` **and** `"waveBudgetPerRun": 1`. One
-  consequence worth handing PLAN: the two oracles do not clear together. `advisoryEnvelope`'s
-  equality goes green on A6-02's envelope growth alone; `PROP-CFG-02` needs A-17's
-  `ADVISORY_DEFAULTS` — `waveBudgetPerRun` included — as well, so an implementer who lands A6-02 and
-  sees `advisoryConfig` still red has not regressed anything. TSPEC §1.3's
+  all five are red and each diff drops `"E-5"`, `"E-6"` **and** `"waveBudgetPerRun": 1`. (The
+  citation is to `advisoryConfig.test.js`'s `describe("PROP-CFG-02 — absent/unreadable/malformed
+  input yields ADVISORY_DEFAULTS (T-01-1)")`, **not** to PROPERTIES' `PROP-CFG-02`, which is the
+  `waveBudgetPerRun`-through-`nonNegativeInt` property and ships in this same file under a second
+  `describe` wearing the same id, `PROP-CFG-02 (A6-02)`. `PROP-CFG-01` collides the same way. A
+  reader who follows the id into PROPERTIES lands on the wrong property; follow the file and the
+  `T-01-1` deep-equality instead — PM v7 F-03. The collision is worth knowing at the bench too, since
+  a red `PROP-CFG-02` names either property.) **These two oracles clear together, at one wave
+  boundary** (TE v7 F-01, correcting v1.5): PLAN v1.3's **Green step (A6-05 proper)** lands
+  `export const ENVELOPE_DEFAULTS` + `E-5`, `E-6` and `export const ADVISORY_DEFAULTS` gaining
+  `waveBudgetPerRun` in the *same* green step of the *same* task, so nothing splits them in time.
+  v1.5 said the opposite, and keyed it to `A-17` — a task id that does not exist in PLAN v1.3 (`0`
+  matches; it survives only in `helpers/advisoryDoubles.js`'s hand-sync comment, "authored by A-17,
+  a downstream task", which is where this record picked it up) — and to `A6-02` as if it landed
+  production, when PLAN's v1.3 restructure row folded `A6-02` into `A6-05` as a **red test step**.
+  The operative reassurance was therefore backwards and is withdrawn: at `A6-05`'s wave boundary a
+  still-red `advisoryConfig` means the green step is **incomplete**, and the wave gate — which has
+  no expected-red channel — will halt on it. Scheduling is PLAN's to state; this record states the
+  taxonomy only, and points at `A6-05` for when. TSPEC §1.3's
   `ENVELOPE_DEFAULTS` row is the drift row for the first; §1.3's `ADVISORY_DEFAULTS` row records a
   *different* drift (`waveBudgetPerRun` already present against an absent production key) and says
   nothing about that file's envelope member, so the `advisoryConfig` envelope observation is this
