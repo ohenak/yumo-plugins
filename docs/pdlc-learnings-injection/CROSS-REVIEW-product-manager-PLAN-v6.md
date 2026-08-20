@@ -45,7 +45,62 @@ No finding is High. **PLAN still holds as approved.**
 
 ## Batches
 
-_pending_
+I walked the four task rows that carry material this delta touched. **None of their instructions
+changes.** Three of them were already written to the reading TSPEC has now adopted.
+
+**LI-01 (batch 1, the premise pre-flight) — TSPEC P-2a has come to LI-01's wording, not the other
+way round.**
+
+At approval time TSPEC P-2a said "Four code sites carry `dispatchKind: \"authoring\"`" and listed
+four line anchors. That phrasing is literally false as a grep — a search for `dispatchKind:
+"authoring"` returns three, because the fourth site is a positional argument. LI-01 already said so
+and already fixed it, on TE F-12: it commissions "P-2a as **three object-literal `dispatchKind:
+\"authoring\"` sites plus one positional `\"authoring\"` argument at the review-loop optimizer
+call** — measured at HEAD, and the phrasing matters because a literal grep … returns 3, not 4".
+TSPEC P-2a at HEAD now reads "three object-literal `dispatchKind: \"authoring\"` properties …
+plus one positional argument, `reviewLoop()`'s optimizer call `runWrapped(optimizer, optPrompt,
+doc, \"authoring\", …)`". That is LI-01's sentence. The row is now the faithful reading of both
+documents rather than a correction of one.
+
+The same holds for LI-01's four-member structural key. PLAN keys the set equality by *(enclosing
+named function, prompt-source symbol)* — `(erratumRound, erratumAuthorPrompt)`, `(erratumRound,
+the land-proof-retry inline template)`, `(converge, creatorPrompt)`, `(reviewLoop, optimizerPrompt
+— positional argument 4 of runWrapped)`. TSPEC's new P-2a names exactly those four by enclosing
+symbol and call shape. The key remains injective over them, and LI-01's premise suite stays green
+at batch 1 by construction.
+
+**LI-01's P-10 assertion survives the de-anchoring.** PLAN commissions "`buildFinalReport` takes a
+`notices = []` parameter and spreads `advisory` conditionally" — a structural claim, never
+positional, and PM F-07's "existence and shape only" rule. TSPEC P-10 dropped `:15167` and now
+cites `buildFinalReport`'s returned object literal by symbol. LI-01 asserts the same fact and never
+transcribed the anchor.
+
+**LI-23 and §Traceability's arm table (batch 5) — TSPEC §D.1 has come to PLAN's non-`null`
+scoping.**
+
+| Locus | TSPEC at approval | TSPEC at HEAD | Effect on PLAN |
+|---|---|---|---|
+| §D.1 domain tests | "one test per domain asserts that **every value** it ever carries is a member of that field's catalogue" | "every **non-`null`** value"; `v === null \|\| catalogue.includes(v)`; `null` deliberately not a catalogue member; scoping vacuous for `rejected[].reason` and `notices[].id` | LI-23 already asserts "every **non-`null`** `corpusOutcome` value … set-equal to the frozen catalogue", and already gives TSPEC's own reason (`null` is §D.2's healthy value; `RSN-COUNT`/`RSN-BYTES`/`RSN-SELF` cannot be driven without observing it) and already forbids the wrong repair (`LEARNINGS_CORPUS_OUTCOMES ∪ {null}`). Doubly grounded now |
+
+Before this delta, LI-23's non-`null` scoping was a PLAN-local departure from a literal reading of
+§D.1, justified by TE F-01 and by §D.2. It is now what §D.1 asks for verbatim. A test author
+working from TSPEC at HEAD and one working from PLAN write the same three set equalities.
+
+**LI-11 (batch 5, the RED dispatch-universe suite) — unchanged, and its AT-02/AT-33 oracles are now
+grounded in an upstream that no longer routes them as contested.** The composition-site probe
+(accepted set `= LEARNINGS_TARGET_DOCTYPES`, observed set `= LEARNINGS_TARGET_DOCTYPES ∪ {null,
+\"LEARNINGS\"}`) is what §A.2's `docType` conjunct requires; §A.2 at HEAD calls that conjunct an
+implementation of BR-1 rather than a divergence. AT-33's hand-transcribed read set with the
+enumeration excluded is what ERR-3's closure text now states outright. Both oracles were already
+written this way.
+
+**LI-11's fourth run shape (§T.6) — one loose thread, and it is not PLAN's to pull.** TSPEC §T.6
+still says the erratum land-proof retry is "A fourth [run shape] added **that FSPEC's inventory
+does not carry**", and this delta only de-anchored its citation. FSPEC at HEAD carries four shapes
+of its own, the fourth being a different shape (authoring-classified, non-C-1 target). PLAN line
+539 repeats TSPEC's claim. That mismatch is already routed as **v5 F-02** against this PLAN, and
+the TSPEC-side half belongs to TSPEC's own confirmation round; I do not re-raise it here, and I
+reconcile my Scope tag with v5 rather than double-counting the same defect.
 
 ## Dependencies
 
