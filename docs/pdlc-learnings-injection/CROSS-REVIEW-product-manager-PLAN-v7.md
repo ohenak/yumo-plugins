@@ -258,3 +258,6 @@ FINDING: Medium | inherited | nonlocal | §Verification, claim 4 ("measured base
 FINDING: Low | inherited | nonlocal | §Overview, upstream matter row, LI-01 edge rationale, §Changelog | Four pins still read FSPEC v0.10 / TSPEC v0.6; HEAD is FSPEC v0.13 / TSPEC v0.7.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 1}
