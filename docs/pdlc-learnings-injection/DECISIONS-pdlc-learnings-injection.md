@@ -67,6 +67,22 @@ than import), the departure is itself forced by G-A.
 
 ## Options Considered
 
+The ten decisions below were each taken against a named alternative. This table is the index; the
+reasoning, the constraints and the reversibility are in the entry.
+
+| # | Question | Chosen | Leading alternative, rejected |
+|---|---|---|---|
+| DEC-LI-01 | Where does the code live? | inside `orchestrate-dev.js` | a new `pdlc/workflows/learnings-injection.js` — not vendored (G-A) |
+| DEC-LI-02 | How is the rule made testable? | pure selection core + one IO shell | a selector that reads files itself |
+| DEC-LI-03 | Where does the block attach? | `dispatchAndVerify`, on two conjuncts | the four call sites individually; or the classification alone |
+| DEC-LI-04 | How is the corpus enumerated? | `_git` with a restated pathspec + a pinning test | `_listFiles`; or importing `consolidate-learnings.js` |
+| DEC-LI-05 | How does the block reach the prompt? | appended suffix, `""` when empty | inserted before the pacing contract |
+| DEC-LI-06 | Is the corpus cached? | no feature-owned cache | a run-scoped memo |
+| DEC-LI-07 | What does an absent config section mean? | an enabled run on declared defaults | a second `present` gate (TSPEC's provisional reading) |
+| DEC-LI-08 | How is prompt growth bounded? | static caps only | a dynamic budget that shrinks under pressure |
+| DEC-LI-09 | How is the pre-feature baseline captured? | committed fixture pinned to a recorded sha | recompute the merge-base at test time |
+| DEC-LI-10 | How are reason and notice ids registered? | frozen literals, hand-transcribed in tests | derive expected sets from the constants |
+
 ## Decision
 
 ## DEC-LI-01: The feature ships inside `orchestrate-dev.js`, not as a new workflow module
