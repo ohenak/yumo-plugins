@@ -172,7 +172,7 @@ Three properties of this attachment carry the load:
 
    **The assertion ranges over the composition site, not over the report rows (TE Q-01).** The two
    candidate operands are not equivalent, and only one catches the case the assertion exists for.
-   `dispatches[i].docType` is written only for dispatches that were *accepted* — a seventh
+   `dispatches[i].docType` is written only for dispatches the injector was actually called for — a seventh
    authoring phase whose `docType` reaches `dispatchAndVerify` and is **rejected** by `injectHere`
    produces no `dispatches[]` row at all, so a report-sourced set equality stays green through
    exactly the drift it was written to detect. The operand is therefore the set of `docType`s
@@ -183,14 +183,55 @@ Three properties of this attachment carry the load:
    scripted run. The probe is a test seam on the module's established `_`-prefixed idiom, not
    production behaviour, and it is the only instrument that sees a `docType` the feature declined.
 
-   Two consequences a PLAN task must carry. First, the run driving it has to exercise every
-   authoring phase — a scripted matrix short of the six `converge` doc types makes the equality
-   pass by omission, so the fixture asserts the observed set equals the literal, never merely that
-   it is contained in it. Second, `null` is an expected member of the observed set (Phase CR,
-   P-2b), so the assertion's expected value is `LEARNINGS_TARGET_DOCTYPES ∪ {null}` at the
-   composition site while `LEARNINGS_TARGET_DOCTYPES` alone is the accepted set — the difference
-   between the two is precisely the `docType` conjunct's work, and asserting both makes P-2c's
-   claim falsifiable rather than narrated.
+   Four consequences a PLAN task must carry.
+
+   **(a) The run has to exercise every authoring phase.** A scripted matrix short of the six
+   `converge` doc types makes the equality pass by omission, so the fixture asserts the observed
+   set equals the literal, never merely that it is contained in it.
+
+   **(b) The composition-site expected value is the full site enumeration, not the accepted set
+   (PM F-01).** Two members reach `dispatchAndVerify` that `LEARNINGS_TARGET_DOCTYPES` does not
+   contain, and both are real at HEAD, not defensive flourishes:
+
+   | Member | Where it enters | Measured at HEAD |
+   |---|---|---|
+   | `null` | Phase CR's `reviewLoop({ doc: "docs/${featureName}/", phase: "CR", docType: null … })`, forwarded unchanged because `roundDocType` keeps an explicit `null` | `orchestrate-dev.js` Phase CR call site; `roundDocType = docType === undefined ? docTypeFromPath(doc) : docType` |
+   | `"LEARNINGS"` | Phase H's `wrappedDispatch({ skill: "harvest-learnings", … docType: "LEARNINGS", dispatchKind: "harvest" … })`, which spreads `wrapperSeams` straight into `dispatchAndVerify` | the harvest dispatch in `main()`'s Phase H block |
+
+   So the assertion's expected value at the composition site is
+   `LEARNINGS_TARGET_DOCTYPES ∪ {null, "LEARNINGS"}`, while `LEARNINGS_TARGET_DOCTYPES` alone is
+   the **accepted** set — the set of `docType`s for which `injectHere` returned true. The
+   difference between the two sets is precisely the `docType` and `dispatchKind` conjuncts' work,
+   and asserting both makes P-2c's claim falsifiable rather than narrated. Transcribing the
+   accepted-set literal alone at the composition site reds a correct implementation the first time
+   it runs — and the predictable repair under time pressure is to relax set equality to
+   containment, which is exactly the weakening that would let a seventh authoring phase inherit
+   injection silently. Set equality stands on both sides; containment is never the fix.
+
+   **(c) The probe fires once per episode, beside the injector, not inside the retry loop
+   (TE Q-01).** `_recordDocType(docType)` is called at the same point in `dispatchAndVerify` as the
+   injector — once, **before** the `for(;;)` loop, immediately before `injectHere` is evaluated
+   (property 2 below). Set equality would absorb per-iteration duplicates and so would not red
+   either way, but the `RETRY-ITERATION` fixture's call-log assertions are counting-shaped: a probe
+   inside the loop makes the two instruments disagree about what one dispatch looks like. One call
+   per episode, on both arms of `injectHere`.
+
+   **(d) The probe seam has to be plumbed through all four hand-written hops (TE F-01).** No hop
+   spreads caller-supplied keys, so adding the seam to `mainDev` alone yields a probe that observes
+   the six `converge` doc types and never `null` — and the `∪ {null, "LEARNINGS"}` assertion then
+   fails for a plumbing reason that reads as a product bug. The PLAN task names every site, and the
+   seam defaults to a no-op at each so the shipped path is byte-unchanged (AC-4.3):
+
+   | # | Edit site | Why it is not free |
+   |---|---|---|
+   | 1 | `mainDev`'s destructured params | `_recordDocType: recordDocTypeFn = () => {}` alongside `_recordQueueRow`'s defaulted-recorder precedent |
+   | 2 | the `wrapperSeams` object literal | an enumerated literal, not a spread; this hop alone carries Phase H's `"LEARNINGS"` into `wrappedDispatch`'s `...wrapperSeams` |
+   | 3 | `reviewLoop`'s destructured params | `reviewLoop` receives `...wrapperSeams` but destructures a fixed list |
+   | 4 | `reviewLoop`'s `wrapped` closure | it re-lists its seven seams **by hand** when calling `dispatchAndVerify`; Phase CR's `null` reaches the composition site through this path and no other |
+   | 5 | `dispatchAndVerify`'s destructured params | a fixed seven-seam destructure; `_recordDocType` is added with a no-op default so an uninjected run is unchanged |
+
+   `_recordQueueRow` is the shipped precedent for the shape — an injected recorder seam with a
+   default implementation, not a doer — so this adds no new idiom to the module.
 
 2. **Once per episode, not once per invocation.** `dispatchAndVerify`'s `for(;;)` loop may compose
    the prompt several times for one dispatch (the pacing budget). The injector is called **once,
