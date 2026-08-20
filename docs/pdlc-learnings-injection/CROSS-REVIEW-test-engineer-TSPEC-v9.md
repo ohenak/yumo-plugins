@@ -94,7 +94,33 @@ frozen document on its own.
 
 ## Data Model
 
-_pending_
+The TSPEC's data model is where the previous cascade (`523e2df9`, the v0.9 locus corrections) did
+real work, so it is where I looked hardest for residue. All four load-bearing shapes still
+transcribe upstream exactly at v0.10:
+
+| TSPEC shape | Upstream at FSPEC v0.10 | Verdict |
+|---|---|---|
+| §D.1 four field domains — `corpusOutcome`, per-document `reason`, `orderKeys`, `runMirror.corpusOutcome` | "Corpus-level outcomes, per-document reasons and ordering key values are recorded **per authoring dispatch**… run-level mirrors are additive, not oracles" (v0.9 paragraph, unedited) | faithful |
+| §D.2 `ruleInputs.thresholds` at run level | "§4.1 thresholds stay run-level" (same paragraph); BR-9 body "thresholds once per run" (`FSPEC:247`) | faithful |
+| BR-10 two-loci record | "The rule inputs sit at **two loci**, reproducibility being claimed per dispatch, not per run (AC-3.3)" (`FSPEC:555`); "BR-10's rule-input record is separate and closed at its own two loci; the records are not merged" (`:507`) | faithful |
+| Per-document catalogue rows | "**Per-document catalogue.** Recorded **per authoring dispatch**, alongside BR-8's rows" (`:511`) | faithful |
+
+The AT closure also still balances against upstream: FSPEC still carries the AT-* set the TSPEC's
+2+9+3+3+6+12 = 35 partition maps onto, and the AC-3.3 → BR-10 → AT-22 traceability row (`:143`)
+that the v0.9 round corrected is intact — the v0.10 erratum did not disturb the traceability table
+it claims (accurately, this time) to have left alone.
+
+Two data-model observations carry forward from v8 unchanged, both `inherited`:
+
+- **F-02 below (was v8 F-01, Medium):** §D.1's fourth domain requires a membership test on
+  `runMirror.corpusOutcome` while §A.5 forbids any §T.6 fixture asserting on the mirror. Upstream's
+  wording — "run-level mirrors are additive, not oracles" — is the *source* of the tension and is
+  unchanged at v0.10, so this is a PLAN-time wording repair exactly as recorded, not a cascade
+  defect.
+- **F-04 below (was v8 F-03, Low):** still no closure test over `Object.keys(ruleInputs)` itself.
+  Upstream asks for two per-locus completeness tests (`FSPEC:868`, "**two** completeness tests
+  assert set equality, one per BR-10 locus") and the TSPEC provides exactly two. Additive, as
+  before.
 
 ## Test Strategy
 
