@@ -141,11 +141,34 @@ asks for and is what surfaced F-04.
 
 ## Positive Observations
 
-_pending_
+- **The decision most exposed to this delta was vindicated by it.** DEC-LI-03 rejected the
+  single-conjunct gate on *measured* grounds — Phase CR's `reviewLoop({docType: null})` call, traced
+  through `roundDocType` into `dispatchAndVerify` — rather than on a reading of FSPEC's wording.
+  FSPEC v0.11/v0.12 then arrived at the same two-conjunct rule and named the same branch. An entry
+  written against the codebase and against REQ C-1, not against a sentence in FSPEC, is one that
+  upstream rewording costs nothing.
+- **DEC-LI-10's transcription source was the right one.** `LEARNINGS_TARGET_DOCTYPES`' expected
+  membership is transcribed from **REQ C-1's** six names, not from FSPEC's restatement of them. FSPEC
+  moved twice this span; the transcription did not have to.
+- **The habit of naming which sibling owns a question is still what makes this document
+  re-checkable.** Every claim in the table above was verifiable in one grep because DECISIONS cites
+  `BR-1`, `BR-14`, `BR-15`, `E-32`, `AC-5.2`, `C-1` by id. That habit is also what makes F-01/F-02
+  detectable rather than invisible — worth keeping, with the pins refreshed.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes** — DECISIONS still holds as approved against FSPEC at HEAD.
+
+No High finding: no decision is contradicted by FSPEC v0.11–v0.12, no binding transcription has gone
+wrong (DEC-LI-07's `BR-14` five-state table and DEC-LI-10's C-1 six-type set both check out), and the
+one substantive upstream move — BR-1's second conjunct made explicit — reinforces DEC-LI-03 rather
+than undermining it.
+
+Four citation defects recorded, all single-passage edits for the next authoring pass on this
+document: F-01 and F-02 describe upstream questions as open that upstream has closed (both
+`inherited`, raised at v3, bytes unchanged since), F-03 is stale version pins now two FSPEC minor
+versions behind, and F-04 is this round's own — DEC-LI-03's trigger paraphrases `A-2` by its
+pre-erratum wording. None blocks PLAN or PROPERTIES.
 
 ## Delta-Confirmation Findings
 
