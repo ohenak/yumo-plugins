@@ -85,6 +85,75 @@ explicitly outside the byte accounting rather than inside it.
 
 ## Business Rules
 
+### BR-6 byte-accounting basis — resolved
+
+The routed item was a contradiction with TSPEC §D.5, which charges **material only** and leaves
+framing charged to nothing. BR-6 (`:479-490`) now states the same rule from the behavioural side:
+contributed bytes are "the section headings and bodies taken from it, and nothing else"; the
+identification line, per-document delimiters, source-path label and block preamble "count toward
+none of the three quantities".
+
+Checked against TSPEC §D.5's three-pool table (`:770-773`): **Material** is bounded by
+`maxBytesPerDocument` per document and `maxTotalBytes` over the sum; **Per-document framing** and
+**Block framing** are bounded by nothing. The two documents now agree pool for pool, and the
+direction of the fix is the right one — the FSPEC moved to the accounting the implementation can
+actually produce (`extractInjectableMaterial` bounds `Buffer.byteLength(material)` and the renderer
+adds framing afterwards, TSPEC `:778-781`), rather than obliging the renderer to feed framing back
+into the bound.
+
+Two consequences I checked rather than assumed:
+
+- **BR-8 stays coherent.** `bytes injected` is "the document's contributed bytes, as BR-6 defines
+  them" and the per-dispatch scalar is "the sum of the rows' contributed bytes" (`:537-540`).
+  Under material-only accounting the sum identity still holds exactly, and it is now *simpler* to
+  hold: no preamble constant has to be excluded from a sum of rows that never included it.
+- **The "computable from a fixture alone" claim survives and improves.** Previously it required
+  knowing the delimiter and identification-line bytes, which are F-O-2's (TSPEC's) to settle — so
+  the old basis made an FSPEC-level expected byte count depend on an unresolved obligation. The new
+  basis removes that dependency. The added clause "a document is never abridged to pay for the
+  annotation that says it was abridged" is a genuine behavioural argument, not decoration.
+
+BR-5's measured claim (`:425-433`) is unaffected: it was already stated over *injectable material*
+(13,278 bytes average, max 41,180, 87 of 89 over `maxBytesPerDocument`), which is the quantity the
+new basis measures. Had it been stated over whole-document bytes the erratum would have invalidated
+it; it was not.
+
+### BR-6 zero per-document bound — resolved at the normative locus
+
+`maxBytesPerDocument: 0` is now decided (`:495-498`): no material is admissible, each document
+yields nothing, is dropped before the total bound with `RSN-NO-MATERIAL`, consumes no slot, and the
+run is BR-14's enabled empty-selection run. That is the reading most consistent with the rest of the
+document — it makes the zero bound behave like BR-6's existing "yields nothing" drop rather than
+inventing a fourth outcome — and it is inside REQ AC-4.4's "zero bytes" clause.
+
+One wording residue (F-02): the paragraph states the general rule unconditionally — "If the
+**first** section alone exceeds the bound, it is taken up to the bound and cut. **Either way** the
+document's row carries the **bounded** flag" — and only then introduces "Where the bound is
+**zero**". A zero bound *is* a bound the first section exceeds, so the general sentence covers the
+zero case before the carve-out withdraws it. Precedence is recoverable from reading order and from
+the carve-out's explicitness, so this is Low, but "Either way" wants a qualifier ("Either way,
+**for a non-zero bound**, …").
+
+### BR-9 — resolved
+
+The `RSN-NO-MATERIAL` catalogue entry (`:560`) now reads "yields no material — it carries none of
+BR-6's priority sections, or the per-document bound is zero and admits none", and D-12 (`:297`) is
+restated as "Does the document yield any material?". Widening the reason id rather than minting a
+new one is the right call: it keeps BR-9's catalogue closed (DC-01's completeness test over the
+reason set is unchanged, and no new id needs catalogue registration under F-O-3), and the operator
+reading a report sees one reason for one observable — the document contributed nothing.
+
+### F-O-1 ownership — resolved
+
+BR-6 (`:373-376`) delegates "which heading forms count as which section" to F-O-1, and F-O-1
+(`:1009`) now explicitly owns **two** rules on the same terms — the document-shape predicate for
+BR-3, **and** the rule by which a heading counts as one of BR-6's named sections, "whether the
+numbered form, the bare title or a prefix of it is matched" — both bounded by the same two
+requirements the FSPEC fixes (bytes only, no model call). The delegation now names a real owner
+with the alternatives enumerated, which is what the routed item asked for and what makes the
+obligation dischargeable rather than open-ended. The consequence for TSPEC §D.3 is Q-01, below;
+it is a downstream catch-up, not a defect of this FSPEC.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
