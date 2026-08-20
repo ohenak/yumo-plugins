@@ -133,6 +133,32 @@ missing" count, or cite the command that produces it.
 
 ## Positive Observations
 
+- **The acceptance criteria are oracle-grade, and unusually so for a REQ.** AC-4.4 specifies gate
+  re-invocation as an *ordered sequence* equality — `[post-wave, test, post-wave, test]` for one
+  attempt — and explicitly rejects set equality with the reason it fails (*"it collapses the duplicates
+  and admits a resolution declared on one invocation"*). That is a completeness-by-set-equality
+  argument made correctly, including the case where the weaker relation would pass a defect.
+- **No absence-only oracles.** AC-4.1 converts an unbounded prohibition into three positive conjuncts,
+  each on a run of its own, and names conjunct (iii) as unreachable on an ordinary run with a mutated
+  control-flow fixture to reach it. AC-4.5 then generalises the rule: *"each such test asserts the
+  corresponding positive outcome on the same path … because a negative assertion alone is satisfied by
+  accident."* This is the discipline stated as a requirement rather than left to the test author.
+- **No implementation echoes in the enumerations.** Every catalogue the REQ constrains — the seam list,
+  the envelope members, the config keys — is required to be transcribed literally into tests, and
+  M-WG-9/BL-06 enumerate the transcription sites so a catalogue change reds a known set. The transcriptions
+  are real: `advisoryEnvelope.test.js:284,317`, `advisoryHarvest.test.js:580`, `advisoryRecord.test.js:496`.
+- **Altitude is held throughout, deliberately.** §8's O-1/O-4/O-5/O-8 push restoration mechanism, owned-path
+  computation, classification derivation and commit-path extension to the TSPEC rather than deciding them
+  here. C-2 declares every threshold with a default and a named owner (repo operator) — verified shipped:
+  `enabled: false` `:1945`, `attemptBudget: 3` `:1946`, `seamBudgetMinutes: 10` `:1947`,
+  `waveBudgetPerRun: 1` `:1948` in `pdlc/workflows/orchestrate-dev.js`. There is no undeclared threshold
+  in this document, which is the failure mode I most expect to find and did not.
+- **The document is honest about its own weaknesses.** R-3 states plainly that a per-run knob bounds drift
+  within a run only; R-4 concedes the seam treats a symptom; §1's v1.11 changelog *withdraws* a stronger
+  claim v1.2 had made after re-measurement. Findings F-02 and F-04 are both about evidence going stale
+  around a document that has been consistently careful with evidence.
+
+
 ## Recommendation
 
 ## Verdict
