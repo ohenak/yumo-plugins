@@ -38,3 +38,45 @@ by the repository at HEAD. Neither is present.
 
 No High finding from the engineering lens. Nothing the delta touched broke a clause that
 worked before, and no changed clause contradicts HEAD.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | *(delta, local — non-gating.)* AC-5.1b attributes the notice to the parser: "the same response `orchestrate-dev.js`'s `parseImplementationConfig` ships, whose malformed section yields defaults plus an explicit operator notice" (`REQ:388-390`). The parser ships only the *flag*: it returns `{config: IMPLEMENTATION_DEFAULTS, sectionMalformed: true, invalidKeys: []}` and emits nothing (`pdlc/workflows/orchestrate-dev.js:191-210`). The notice is emitted by one caller, on the wave-mode path (`:14130-14135`); the other call site drops the flag and emits nothing (`:11913`, `parseImplementationConfig(implRaw).config`). The AC's *decision* — fail open on defaults, with a catalogued notice — is unaffected and remains implementable; only the precedent sentence over-attributes. **Fix (not owed this round):** say "the reader-plus-caller path around `parseImplementationConfig` ships this response — defaults from the parser, the notice from its caller", or drop the "whose …" clause. | AC-5.1b (`REQ:388-390`) |
+
+DEFERRED: §1.2's "byte order over the document path, as the shipped corpus enumeration already does (DEC-CONS-05)" (`REQ:285`) — the ordering fact is true of `git ls-files` output, but DEC-CONS-05 decides evidence form for the predicate, not ordering; inherited, nonlocal, untouched by this delta.
+DEFERRED: O-2's ordering key is still unbound (`REQ:286-288`); FSPEC/TSPEC authoring must bind it before AC-2.2 is fully testable, as the REQ itself already flags.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| — | None. Q-01 from v9 is answered by AC-3.2's parenthetical and is closed. |
+
+## Positive Observations
+
+- The erratum did exactly the repair the TE's v9 High named: it separates `enumerateCorpus`'s
+  totality from the pass's `failed` policy — two different facts the prior text had collapsed —
+  and then owns this feature's divergence as a decision of its own rather than borrowing a
+  sibling precedent that pointed the other way.
+- The AC-3.1/AC-3.2/AC-3.3 partition is now explicit. A completeness-test author can read
+  three disjoint enumerations with three set-equality obligations off the page without
+  inferring which record each closure covers.
+- The document stays at REQ altitude throughout the delta: every added sentence states an
+  observable outcome or names a shipped behaviour with a citation; none of them specifies a
+  seam signature, an algorithm, or an internal string.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves my v9 F-01 and answers Q-01, introduces no defect, and contradicts nothing
+at HEAD. No High findings from the engineering lens across three consecutive rounds. F-01 is a
+Low attribution imprecision in a precedent clause; it does not gate and can ride along with any
+later edit.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
