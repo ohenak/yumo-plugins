@@ -155,16 +155,51 @@ class provably grows with this very file once committed.
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | PLAN's Overview HEAD-drift note prints `28` residual paths with class 3 at `10`, "measured 2026-08-19"; re-running `PROP-SWEEP-2(b)` at HEAD on that same date returns **34**, class 3 at **16**. This was a non-gating DEFERRED in v10, when the figure lived only in PLAN. TSPEC's erratum now states the 28 and the three-class partition itself and names PLAN's note as the owner of "the figures themselves", so a stale dated integer here is now the authority an upstream document defers to. Restate class 3 as `10 + one per cross-review file committed since 2026-08-19` (PLAN's own growth rule, already written two lines below) and let the total follow, instead of a dated integer that is wrong the day it is written. The 14-closable numerator is unaffected and needs no change. | Overview → HEAD-drift note, three-class partition table |
+| F-02 | Medium | Local | The wave-1 *(specifics)* paragraph still narrates that A6-00's step *"adds `.claude/workflows/.pdlc-backups/` to `.gitignore`"* — the anchored literal that A6-00's Edit 1 explicitly retires (*"that exact literal, not an anchored path"*) because `documentOracles.test.js`'s T21 asserts `not.toEqual(expect.stringContaining(".claude/workflows/"))` and is **green at HEAD**. Four sites carry the bare `.pdlc-backups/` rule; this fifth contradicts them. An implementer who follows the recap reddens a currently-passing oracle, and the wave gate would surface that as drift. Sweep the recap to the bare literal. Inherited from v1.8's rule flip, but newly load-bearing because TSPEC now forwards readers into A6-00's Edit 1 for the rule's form. | Batches → wave 1 (specifics), inherited-red paragraph |
+| F-03 | Low | Process | TSPEC's new paragraph restates the very figures it declares PLAN owns (`28`, `14 of the 28`, the three class members). Single-owner discipline — the principle round 9 applied when it stripped the duplicate figures out of PLAN's DoD — argues the upstream restatement should carry the classes and the owner but point at PLAN for the integers, or it will desync the next time the residual is re-measured. Not PLAN's defect and not actionable in PLAN; recorded so harvest can route it, since this is the third round in which a duplicated count has drifted between documents. | TSPEC §1.3 *"Sizing the hygiene residue"* ↔ PLAN Overview |
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | None. F-01 and F-02 both have a single obvious fix already written elsewhere in this document; neither needs an author decision. |
 
 ## Positive Observations
 
-_pending_
+- **The compression survived the cascade in the direction that matters.** Everything the erratum
+  added, PLAN already said and said more precisely — same three classes, same members, same owners,
+  same closable numerator, same growth rule, plus a provenance caveat upstream does not carry. There
+  is no claim in PLAN that TSPEC no longer supports, which is the failure mode this confirmation
+  exists to catch.
+- **Round 9's class-split is why today's 28→34 drift costs a Medium instead of a red ship gate.**
+  Set-equality was placed only on the closed class and membership on the growing one. I confirmed
+  empirically that class 2 is still exactly four and class 3 has already moved by six — under the
+  round-8 shape, this branch would be blocked at the boundary right now. Choosing the strongest oracle
+  each class can actually carry, rather than the strongest oracle available, is what kept the gate
+  falsifiable and passing at once.
+- **The erratum disclaims ownership instead of forking it.** TSPEC sizes the residue only so a reader
+  cannot mistake the `.bak` blobs for the whole of it, and says in terms that the disposition is not
+  re-litigated there. That is the right boundary between a test-strategy document and a plan, and it
+  is why this round needed no PLAN edit to the task table.
+- **The 14-closable numerator holds exactly, and is still falsifiable.** `git ls-files` returns 14
+  tracked `.bak` blobs and the oracle prints all 14 as residual, so A6-00's step will be observable as
+  a 14-path reduction and cannot be false-greened by a no-op.
+- **Class-2 provenance reproduces to the commit.** All four artifacts are added by `e3b9d5a3`, the
+  bundles carry the older `3991b4d5` add whose tree is empty at merge-base `1efb9a3b`, and PLAN names
+  `ls-tree`-at-merge-base as the deciding leg rather than claiming the legs merely agree.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+PLAN still holds as approved against TSPEC as it now stands. The erratum moved sizing and routing
+only; it contradicts nothing in PLAN, forecloses no task, and moves no batch, wave, dependency edge or
+ownership cell — the shipped parser reads the same 11 tasks, 11 manifest rows and 7 waves it read at
+approval. Two Medium findings, neither gating: the residue figures PLAN now owns on upstream's behalf
+no longer reproduce on their own measurement date (F-01), and one inherited recap still spells the
+retired anchored `.gitignore` literal that a green oracle forbids (F-02). Both fixes are already
+written elsewhere in this document and touch no task row.
+
