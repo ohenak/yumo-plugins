@@ -92,6 +92,66 @@ Two upstream couplings I checked and found intact:
 
 ## Verification
 
+Everything below was run on this branch at HEAD.
+
+**1. The pre-flight gate is green, and green for the right reason.**
+`npm test -- __tests__/advisoryWaveGate.test.js` passes. Its thirteen assertions are
+`expect(mod[name]).toBeDefined()` — existence only, no shape — so the seam-cardinality drift
+cannot mask a baseline break, and a red there still means what A6-00's row says it means. The
+routed "does A6-00 still discriminate" question is answered correctly, and the answer is
+structural, not incidental.
+
+**2. The advisory suites are red exactly as the document enumerates.**
+Running the nine suites the document names: `advisoryWaveGate` and `consolidationProperties` pass;
+the other seven fail with 24 failures. Split: `advisoryConfig` 14, `advisoryEnvelope` 4,
+`advisoryRecord` 1 (= 19), `advisoryDriver` 1, `advisoryHarvest` 2, `advisoryDisabled` 1,
+`advisoryQueueSeams` 1 (= 5). Every named cause is present and production-side:
+`ADVISORY_SEAMS` five-member, `ENVELOPE_DEFAULTS` four-member, `ADVISORY_ROOT_CAUSES` and
+`A6_PROHIBITIONS` absent, `waveBudgetPerRun` absent, and `advisoryDriver`'s PROP-GATE-06 comparing
+a six-key `GATE_EXCLUSIVITY_REGISTRY` against the five-member constant. The `19 + 5` claim is
+exact.
+
+**3. The whole-suite picture is not the one the document describes.**
+`cd pdlc/workflows && npm test` at HEAD: **9 suites failed, 28 tests failed**, 3846 passed. The
+two extra suites are `documentOracles.test.js` and `consumerCleanup.test.js`, and neither appears
+in the plan's enumeration:
+
+- `documentOracles.test.js` T15 asserts
+  `readdirSync(__tests__).filter(.test.js).length === 99`. Tracked count at `e3b9d5a3^` was **99**;
+  at `e3b9d5a3` and at HEAD it is **100**. The extra file is `advisoryWaveGate.test.js` itself.
+  This test was green before the early landing and is red because of it.
+- `documentOracles.test.js` PROP-SWEEP-2(b) reports 25 unswept paths, of which the tracked ones are
+  the 14 `.claude/workflows/.pdlc-backups/*.bak` files: `0` tracked at `e3b9d5a3^`, `14` at HEAD.
+  Same commit. (The rest of that diff — `.serena/cache/…`, `.tokensave/tokensave.db` — is local
+  tool cache, the known `coveredViolations` whole-tree walk, and not attributable to the branch.)
+- `consumerCleanup.test.js` AT-4.1 asserts `git status --porcelain` is empty and reports
+  `M .claude/workflows/.pdlc-drift-state.json` — a tracked file a session hook rewrites with a
+  fresh timestamp. Environmental rather than authored, but in wave-gate scope. That is F-03.
+
+**4. Why the round missed items in (3), and why it matters.**
+`implementation.testCommand` is
+`cd pdlc/workflows && npm test -- --testPathIgnorePatterns … 'documentOracles'`. Measured through
+that command, the plan's enumeration is complete and the wave-1 gate reasoning holds. But the
+document's own DoD requires `cd pdlc/workflows && npm run test:coverage`, which is
+`c8 npm test -- --runInBand` with **no** ignore patterns, and `.github/workflows/pr-tests.yml`'s
+unit-tests job runs that same `npm run test:coverage`. Both run `documentOracles`. So the two reds
+in (3) do not halt a wave — they fail the DoD and turn the PR red, and no task in this plan closes
+either. No workflows-side test file is created by any A6 task (A6-04's new file is under
+`pdlc/engine`), so the count stays at 100 through the end of the feature while the oracle stays
+pinned at 99. That is F-01.
+
+**5. Batch-1 anchors do not resolve at HEAD.**
+The four row-count sites cited as `advisoryDisabled.test.js:622`, `advisoryQueueSeams.test.js:627`,
+`advisoryHarvest.test.js:571` and `:726` are, at HEAD, at `:629`, `:634`, `:578` and `:733`; the
+cited lines now hold a `describe` title, a `_readAdvisoryConfig` double, a `_git` double and a
+`pushCalls` assertion respectively. `helpers/advisoryDoubles.js:271`'s `SEAMS` literal is at
+`:354`. F-02 and F-05.
+
+**6. The inherited-red framing itself is sound.**
+"Confirm the failing set is exactly the listed one — not produce it" is the right oracle for a wave
+that opens red, and it is falsifiable because the document commits to a count (19 + 5) and to named
+causes. Fix F-01 and this framing becomes checkable end to end.
+
 ## Findings
 
 ## Questions
