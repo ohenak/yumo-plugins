@@ -223,7 +223,9 @@ harvest-channel deferral is the wrong disposition for a rule that halts phases. 
 
 ## Resolution
 
-RESOLVED: yes (2026-08-20, operator)
+RESOLVED: yes
+
+Resolved 2026-08-20 by operator.
 
 Disposition — recommendation accepted in full:
 
