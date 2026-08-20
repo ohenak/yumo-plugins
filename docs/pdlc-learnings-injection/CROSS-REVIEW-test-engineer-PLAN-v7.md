@@ -97,6 +97,74 @@ TSPEC v0.7. This was v6's F-03, unresolved and now two erratum rounds further be
 
 ## Verification
 
+**Oracle falsifiability under the new byte basis.** The edit removes framing from every threshold, so
+each planned byte oracle stays falsifiable in both directions and gets *more* deterministic, not
+less: `LI-AT-12`'s ASCII fixture makes the expected count equal the bound exactly (no delimiter
+arithmetic to get wrong), `LI-AT-07`'s two `BYTES-BINDING` regimes still bind on material sums, and
+LI-21's `ruleInputs.thresholds` set equality is a key-set assertion untouched by what the values
+measure. No planned assertion becomes vacuous, and none becomes uncomputable.
+
+**Where falsifiability is now missing.** E-36's branch has no oracle anywhere in the PLAN. The
+correct oracle is positive on three conjuncts, per the absence-based-oracle rule — not
+`selection is empty` alone, which a disabled run, a refusal or a crashed injector would also satisfy:
+
+1. the report **key is present** with BR-8 rows present and empty (enabled, not the absent key of a
+   disabled run);
+2. **every** corpus document appears in `rejected[]` with reason exactly `RSN-NO-MATERIAL` — set
+   equality over paths, not "at least one";
+3. **no slot consumed** — no document carries `RSN-COUNT`, which is the conjunct that falsifies the
+   plausible wrong implementation (zero-byte cut counted as a contribution, slots burned, later
+   documents rejected for count rather than material).
+
+Conjunct 3 is the one that makes the test able to fail; without it the case is nearly a tautology
+next to the existing `maxTotalBytes: 0` case.
+
+**Mutation check on the planned suite.** Revert the guarded behaviour — make `extractInjectableMaterial`
+treat a zero bound as "take the first section anyway" — and the PLAN's twelve `learnings*.test.js`
+suites as currently specified stay **green**: no fixture configures `maxBytesPerDocument: 0`, and
+LI-23's arm inventory asserts reason-code set equality over arms it drives, not over this one. A
+load-bearing branch that survives its own mutation is the definition of uncovered.
+
+**DoD.** Clauses 1–3 and 5–13 are unaffected by this edit. Clause 4's baseline byte-identity promise
+still reads wider than FSPEC's AT-03/AT-29 and TSPEC §A.2 ("outside BR-1's rule") — v6's F-04,
+inherited and untouched by this round; the v0.13 edit neither worsens nor repairs it, and I do not
+re-raise it as new. The DoD's coverage floor (`--per-file --branches 85`) is unchanged and still
+enforced by LI-23's inventory suite over the fail-open region.
+
+**Traceability.** FSPEC's own branch-coverage check now reads "E-01 … E-36, less retired E-05" and
+routes E-36 to AT-30. PLAN's fail-open-arm table and coverage map still stop at the pre-erratum edge
+set and the narrower `RSN-NO-MATERIAL` meaning (F-02), so a DoD verifier walking FSPEC → AT → task
+lands on a task row that does not name the branch it is supposed to own.
+
+## Positive Observations
+
+- The byte-basis erratum resolves a genuine FSPEC↔TSPEC↔PLAN three-way divergence **in PLAN's
+  favour**: LI-08's "material only, ignoring every delimiter" was the correct compression all along
+  and is now literally what upstream says. One less place where an implementer had to know which
+  document wins.
+- FSPEC's zero-bound decision explicitly names the *"consumes no slot"* consequence rather than
+  leaving it to inference — that is what let me state a three-conjunct falsifiable oracle above
+  instead of asking a clarifying question.
+- No batch, edge, fixture, file-ownership row or `[Fake first]` ordering moved. An erratum that
+  leaves the DAG arithmetic untouched is an erratum a PLAN can absorb in one edit.
+
+## Recommendation
+
+**Needs revision** (one High finding, F-01).
+
+Exactly what must change, in order:
+
+1. **TSPEC first** (owning phase): absorb E-36 into §T.5's AT-30 note and broaden the reason table's
+   `RSN-NO-MATERIAL` row to FSPEC's wording ("yields no material — no BR-6 section, **or** the
+   per-document bound is zero"). PLAN's precedence rule makes TSPEC the document PLAN compresses.
+2. **PLAN, one touch**: extend LI-12's `LI-AT-30` enumeration to three thresholds with the
+   three-conjunct oracle above, add the E-36 row to the fail-open-arm / coverage tables, and refresh
+   the three stale version labels (Upstream field, §Overview, §Dependencies' LI-01 reason).
+
+No task needs to move batch, no fixture is invalidated, no red test is mis-ordered, and no oracle
+this PLAN already schedules became unfalsifiable. Everything else I approved in v6 still holds
+against FSPEC v0.13.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
