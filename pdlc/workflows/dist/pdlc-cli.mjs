@@ -3372,6 +3372,32 @@ async function runAdvisorySeam({
     return lastReason;
   }
 
+  // The malformed arm (`attempts += 1`, budget check, `continue`) — shared verbatim by
+  // `parseAdvisoryVerdict`'s own malformed result AND by `seamOps.classifyReply`'s
+  // `{malformed:true}` return (TSPEC §3.7). Returns the terminal disposition when the budget is
+  // exhausted, or `null` when the attempt loop should simply `continue`.
+  async function consumeMalformedAttempt() {
+    attempts += 1;
+    if (
+      budgetExceeded({
+        attempts,
+        attemptBudget: config.attemptBudget,
+        elapsedMs: 0,
+        waitMs: readWaitMs(),
+        seamBudgetMinutes: config.seamBudgetMinutes,
+      })
+    ) {
+      // BOTH signals are true here whenever the single-attempt budget is what ran out, so
+      // which one is reported is decided by `ADVISORY_REFUSAL_REASONS`' order — `malformed-
+      // verdict` precedes `budget-exhausted`, hence this file's header interpretive decision 2
+      // (a one-attempt budget whose one response is unparseable reports the malformed response,
+      // not the exhausted budget). Re-ordering the catalogue re-orders this outcome.
+      const reason = refuse({ "malformed-verdict": attempts === 1, "budget-exhausted": true });
+      return await terminate({ outcome: "escalated", reason, verdict: null, attempts, appliedSuccessfully: false });
+    }
+    return null;
+  }
+
   // Every `seamOps.revert()` call goes through here so a thrown revert failure can be
   // distinguished, downstream, from an ordinary unclassified throw (BR-5).
   async function doRevert() {
@@ -3548,28 +3574,43 @@ async function runAdvisorySeam({
 
       const parsed = parseAdvisoryVerdict(raced.raw, seam);
       if (parsed.malformed) {
-        attempts += 1;
-        if (
-          budgetExceeded({
-            attempts,
-            attemptBudget: config.attemptBudget,
-            elapsedMs: 0,
-            waitMs: readWaitMs(),
-            seamBudgetMinutes: config.seamBudgetMinutes,
-          })
-        ) {
-          // BOTH signals are true here whenever the single-attempt budget is what ran out, so
-          // which one is reported is decided by `ADVISORY_REFUSAL_REASONS`' order — `malformed-
-          // verdict` precedes `budget-exhausted`, hence this file's header interpretive decision 2
-          // (a one-attempt budget whose one response is unparseable reports the malformed response,
-          // not the exhausted budget). Re-ordering the catalogue re-orders this outcome.
-          const reason = refuse({ "malformed-verdict": attempts === 1, "budget-exhausted": true });
-          return await terminate({ outcome: "escalated", reason, verdict: null, attempts, appliedSuccessfully: false });
-        }
+        const malformedTerminal = await consumeMalformedAttempt();
+        if (malformedTerminal) return malformedTerminal;
         continue;
       }
 
       verdict = parsed.verdict;
+
+      // ── TSPEC §3.7 — `seamOps.classifyReply`, the one optional seam the driver exposes ──────
+      // Called once per attempt, right here: after `parseAdvisoryVerdict` returns a well-formed
+      // verdict and after `_summarise` has already run (above), before RE-CHECK. A hook, never an
+      // `if (seam === "A6")` branch — the per-seam gate-exclusivity registry
+      // (`advisoryDriver.test.js`'s `GATE_EXCLUSIVITY_REGISTRY`, PROP-GATE-06) asserts no seam has
+      // a private path through this driver, so A6's own behaviour hangs entirely off this member
+      // being present on its `SeamOps`, never off `seam` itself. Absent (the shipped default for
+      // A1–A5) or `{ok:true}`: proceed to RE-CHECK, unchanged in shape and bytes.
+      if (typeof seamOps.classifyReply === "function") {
+        const classification = seamOps.classifyReply(raced.raw, verdict);
+        if (classification && classification.malformed) {
+          // The EXISTING malformed arm, reused verbatim — this is what gives E-09's tie-break for
+          // free: `parseAdvisoryVerdict` runs first, so a verdict that is both malformed and
+          // unclassifiable never reaches `classifyReply` at all.
+          const malformedTerminal = await consumeMalformedAttempt();
+          if (malformedTerminal) return malformedTerminal;
+          continue;
+        }
+        if (classification && classification.terminate) {
+          // E-08/E-11 — `attempts` unchanged (no attempt consumed) and `appliedSuccessfully:
+          // false` (nothing was ever applied on this path).
+          return await terminate({
+            outcome: classification.terminate.outcome,
+            reason: classification.terminate.reason ?? null,
+            verdict,
+            attempts,
+            appliedSuccessfully: false,
+          });
+        }
+      }
 
     // ── step 3b RE-CHECK — the seam condition may already be gone (V-7, R-4) ────────────────
     // Runs BEFORE the gate: a condition that has resolved itself is `no-action`
