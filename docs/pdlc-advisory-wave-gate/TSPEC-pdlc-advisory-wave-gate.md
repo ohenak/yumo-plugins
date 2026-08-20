@@ -19,7 +19,12 @@ as it actually stands (PM F-02, TE F-01) — the A6 test-side transcription thos
 as future work has already landed at HEAD in commit `e3b9d5a3`, while the production constant it
 transcribes against has not, so the suites are red at HEAD. Both sections now describe HEAD and
 state the residue explicitly. §3.2 step 2's queue-side `.enabled` quotation gains its elided
-conjuncts (PM F-04) and §6's open-question close gains a missing article (TE F-03). The choice of
+conjuncts (PM F-04), §1.3's four row-count pins and its PROP-DIS-06 pin are re-anchored to stable
+content per DEC-DOC-01 (they had drifted with `e3b9d5a3`), and §6's open-question close gains a
+missing article (TE F-03). PM F-03 and TE F-02 are repository/branch hygiene — a docs-labelled
+commit carrying source edits and 4.7 MB of tracked `.pdlc-backups/*.bak` files, and a `REVIEWED-COMMIT`
+anchor no longer reachable from HEAD — and are recorded here without a document edit, since neither
+is fixable in this document. The choice of
 remedy for the early-landed transcription — revert it, or re-derive PLAN's A6 batches around it —
 is PLAN's and Phase I's to make, not this document's, and is routed there as an erratum.
 
