@@ -54,7 +54,33 @@ No High findings. Nothing in the FSPEC v0.9 follow-through delta falsifies a TSP
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v7, still open and still not a finding: §D.1 makes the run-level mirror a fourth field domain with its own membership test (`TSPEC:588-594`), while §D.2 says an implementation that omits `runMirror` entirely still conforms (`TSPEC:607-610`). Both are true and consistent — a membership test over an absent field is vacuously green — but it means one of the four domain tests can pass without ever observing a value. That is the P-phase author's call to make (three domains plus a documented non-oracle, or four with the vacuity noted); REQ permits either (`REQ:325-330`, "if carried"). |
+| Q-02 | FSPEC's header still lists `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6,7,8,9}.md` (`FSPEC:12`) although v10 and v11 exist on this branch for both reviewers. The v0.9 revision-history entry claims "Header Cross-Reviews row … corrected", so the intent was there and the row is simply behind. That is an FSPEC defect, not a TSPEC one — routed as an ERRATUM rather than folded into this verdict. |
+
 ## Positive Observations
+
+- **The frozen round held.** The TSPEC is byte-identical to the state I approved at v7. When an
+  upstream document moves and the downstream one does not need to move with it, not moving is the
+  correct behaviour, and it is the behaviour that keeps a freeze meaningful. There is no
+  opportunistic edit riding along with an upstream-triggered round.
+- **The TSPEC cites upstream by version and spec id, not by line.** `grep "FSPEC:[0-9]"` over the
+  document returns nothing; every upstream reference is "FSPEC v0.9 BR-9/BR-10", "E-21…E-34",
+  "AC-3.2/AC-3.3" (`TSPEC:326`, `:469`, `:1275`, `:1295`). That is precisely why the FSPEC's +7/−4
+  line shift could not break a single downstream citation. The same discipline applied to the
+  `orchestrate-dev.js` anchors would have made F-04 impossible too — the contrast is the argument
+  for DEC-DOC-01, visible inside one document.
+- **Every code claim I re-checked is still true at HEAD, by content.** Four `dispatchKind:
+  "authoring"` sites (`orchestrate-dev.js:7663`, `:12861`, `:12955`, `:13657`), the single
+  conditional advisory spread (`:15309`), `dispatchAndVerify`'s seam destructure (`:8862`),
+  `parseAdvisoryConfig`'s present-and-not-a-plain-object reading (`:1980-1983`) and the
+  `roundDocType` null-survival line (`:7306`). The feature's product-facing grounding — key absent
+  when disabled, fail-open with a notice when malformed — rests on precedent that still exists.
+- **The FSPEC delta was scoped honestly.** Its own revision-history entry says "Locus corrections
+  only; no new behaviour", and the diff bears that out: a moved paragraph and one heading-name fix.
+  An upstream edit that says what it did and did only that is what makes a cheap downstream
+  confirmation like this one possible.
 
 ## Recommendation
 
