@@ -240,6 +240,69 @@ row binds it.
 
 ## Traceability
 
+### Acceptance test → suite → red task → green task
+
+All 35 FSPEC acceptance tests, each appearing **exactly once** — the assignment is TSPEC §T.5's and
+is transcribed, not re-decided. Jest names carry the `LI-` prefix (§Overview).
+
+| ATs | Suite | Red (writes) | Green (satisfies) |
+|---|---|---|---|
+| AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-15, AT-16, AT-28 | `learningsSelect.test.js` | LI-07 | LI-16 |
+| AT-05, AT-11, AT-12 | `learningsBlock.test.js` | LI-08 | LI-17 |
+| AT-25, AT-26, AT-27 | `learningsCorpus.test.js` | LI-09 | LI-18 |
+| AT-17, AT-18, AT-19, AT-21 (L1/L2); AT-20, AT-22 (L3) | `learningsRecord.test.js` | LI-10 | LI-19 |
+| AT-01, AT-02, AT-03, AT-06, AT-14, AT-23, AT-24, AT-29, AT-31, AT-33, AT-34, AT-35 | `learningsDispatchSet.test.js` | LI-11 | LI-20, then LI-21 for the report-shape rows |
+| AT-30, AT-32 | `learningsConfig.test.js` | LI-12 | LI-21 |
+
+**Count: 9 + 3 + 3 + 6 + 12 + 2 = 35.** LI-14's `LI-T-SUITEMAP` asserts exactly this partition
+mechanically, so the arithmetic above is checked by a test rather than by a reader.
+
+### TSPEC-local cases (no FSPEC AT id, not in the 35)
+
+| Case | Suite | Red | Green |
+|---|---|---|---|
+| `LI-T-PIN-1` — three-way predicate agreement (§I.1) | `learningsPredicatePin.test.js` | LI-13 | LI-15 |
+| composition-site set equality, both operands (§A.2 consequence b) | `learningsDispatchSet.test.js` | LI-11 | LI-20 |
+| `LI-T-RETRY-1…3` — one selection per dispatch (§A.2 property 2, §T.6) | `learningsDispatchSet.test.js` | LI-11 | LI-20 |
+| porcelain write-delta + static seam scan (§T.6, AC-5.2 write half) | `learningsDispatchSet.test.js` | LI-11 | LI-15 (sentinels), LI-20/LI-21 (behaviour) |
+| `LI-T-IGNORE`, `LI-T-WORKTREE` (§T.3 obligations 1 and 2) | `learningsCaptureScript.test.js` | LI-03 | LI-04, LI-05 |
+| baseline digest guard, set equality over `{caseId}` (§T.3) | `learningsBaselineGuard.test.js` | — (authored green over the fresh capture) | LI-06 |
+| `LI-T-SUITEMAP` — §T.5 closure | `learningsSuiteMap.test.js` | LI-14 | LI-15 |
+
+### TSPEC fail-open branch inventory → entering task
+
+TSPEC §T.7 is explicit that the `--per-file --branches 85` gate cannot see this region inside a
+15,311-line file, so the inventory is the coverage obligation. Every arm has an entering task:
+
+| Fail-open arm | Entered by | Task |
+|---|---|---|
+| `!reply.ok` ⇒ `RSN-UNLISTABLE` | AT-25 | LI-09 / LI-18 |
+| `_readFile` → `null` ⇒ `RSN-UNREADABLE` | AT-26 case 1 | LI-09 / LI-18 |
+| `_readFile` throws ⇒ `RSN-UNREADABLE` | AT-26 case 2 | LI-09 / LI-18 |
+| empty enumeration ⇒ `RSN-EMPTY` | AT-24 | LI-11 / LI-20 |
+| not a LEARNINGS document ⇒ `RSN-UNPARSEABLE` | AT-27 | LI-09 / LI-18 |
+| no BR-6 section ⇒ `RSN-NO-MATERIAL` | AT-28 | LI-07 / LI-16 |
+| count bound ⇒ `RSN-COUNT` | AT-08, AT-13, `COUNT-BINDING` | LI-07 / LI-16 |
+| byte bound ⇒ `RSN-BYTES` | AT-07, `BYTES-BINDING` | LI-07 / LI-16 |
+| self path ⇒ `RSN-SELF` | AT-04 | LI-07 / LI-16 |
+| outer `try/catch` ⇒ `RSN-UNLISTABLE` | fault-injection case | LI-09 / LI-18 |
+| malformed section ⇒ `NTC-MALFORMED`, run enabled | AT-32 case 2 | LI-12 / LI-21 |
+| wrong-typed key ⇒ `NTC-KEYTYPE`, defaults | AT-32 case 3 | LI-12 / LI-21 |
+
+Twelve arms, twelve entering tasks. A task that leaves one unentered is visible here by
+inspection, which a diluted file-level percentage never would have been.
+
+### TSPEC obligations and open questions → where they land
+
+| Obligation | Landing |
+|---|---|
+| F-O-1 … F-O-7 (discharged in TSPEC) | implemented by LI-15 (F-O-3 registration, F-O-4), LI-16 (F-O-1), LI-17 (F-O-2), LI-19 (F-O-3 serialisation), LI-06 (F-O-5), LI-20 (F-O-6), LI-02 (F-O-7) |
+| T-O-1 — serialise writers on `orchestrate-dev.js`, with an explicit manifest | §File-ownership manifest; batches 7–14 |
+| T-O-2 — capture the baseline before the first production edit | LI-06 at batch 4, bound by LI-15's `Deps` edge |
+| T-O-3 — live-run read-cost measurement | **not a task** — operator, against REQ O-1 |
+| T-O-4, T-O-5, T-O-6 | **not tasks** — PROPERTIES, Phase P |
+| OQ.3 / C-8's second half | no task: TSPEC records that static caps discharge it only in the weak sense, and that moving the caps is a REQ §4.1 change |
+
 ## Verification
 
 ## Open questions and upstream errata
