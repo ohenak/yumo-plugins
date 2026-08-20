@@ -1800,3 +1800,142 @@ describe("A6-15: runAdvisorySeam — PROP-GATE-04 (conjunct iii, Oracle O-B): no
     }
   });
 });
+
+// ─── A6-15/A6-13 (CR round 1, PM F-01 / TE F-01): E-6's three conjuncts ─────
+//
+// PROP-ENV-08. Until CR round 1 the `PROMOTES:`/`PROMOTES-TASK:` trailers existed only inside
+// the prompt string and nothing read them, so E-6 admitted any path any later wave owned. The
+// conjuncts now run in `buildA6SeamOps.classifyReply` and are observable two ways, both asserted
+// below: a failing conjunct removes E-6 from the live `permittedActions` (the shipped X-c clause
+// then refuses `out-of-envelope`, before ACT), and a holding one narrows `declaredScope`'s E-6
+// half to the NAMED task's owned set (X-d then refuses at CHECK, after a revert).
+
+const E6_SYMBOL = "renderPromotedThing";
+const E6_GATE_OUTPUT = `the gate went red: ReferenceError: ${E6_SYMBOL} is not defined at writer.js:12`;
+
+function makeE6Waves({ laterDescription = `add ${E6_SYMBOL} to the writer`, laterId = "T2" } = {}) {
+  return [
+    [{ id: "T1", files: ["a.js"], description: "wave one work" }],
+    [{ id: laterId, files: ["b.js"], description: laterDescription }],
+    [{ id: "T3", files: ["d.js"], description: "a different later task" }],
+  ];
+}
+
+function makeE6Args(repo, { reply, gateOutput = E6_GATE_OUTPUT, waves = makeE6Waves(), files, clock }) {
+  return makeA6RunArgs({
+    _git: repo._git,
+    _agent: makeAgentDouble({ script: [reply] }),
+    _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+    waves,
+    gateResult: { output: gateOutput },
+    ...(files ? { _appendFile: files._appendFile, _readFile: files._readFile } : {}),
+    ...(clock ? { _now: clock._now } : {}),
+  });
+}
+
+describe("A6-15: PROP-ENV-08 — an E-6 proposal is permitted only when all three conjuncts hold", () => {
+  test("all three hold: the promotion is applied, the wave resolves, and the record names the task and the paths", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const files = makeFileDouble();
+      const args = makeE6Args(repo, {
+        files,
+        reply: makeA6ReplyText({
+          proposedAction: "E-6",
+          rootCause: "plan-ordering-defect",
+          promotes: E6_SYMBOL,
+          promotesTask: "T2",
+          evidence: [E6_GATE_OUTPUT],
+        }),
+      });
+      // The repair writes T2's own owned path — the one file the narrowed scope admits.
+      writeFileSync(join(repo.dir, "b.js"), `export function ${E6_SYMBOL}() {}\n`);
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("resolved");
+      expect(result.resolved).toBe(true);
+      // AC-4.6 — the repair's paths and the later PLAN task that owns them, on the record.
+      const record = files.files["docs/pdlc-advisory-wave-gate/ADVISORY-pdlc-advisory-wave-gate.md"];
+      expect(record).toMatch(/\| Repair paths \| b\.js \|/);
+      expect(record).toMatch(/\| Promotes \| renderPromotedThing \|/);
+      expect(record).toMatch(/\| Promotes task \| T2 \|/);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  // One arm per conjunct. Each carries the paired positive above on the SAME fixture shape: only
+  // the named conjunct's input differs, so a refusal here cannot be explained by fixture drift.
+  test.each([
+    [
+      "conjunct 1 — PROMOTES-TASK names a task that is not in a strictly later wave",
+      { promotesTask: "T1" },
+      {},
+    ],
+    [
+      "conjunct 2 — the symbol does not occur in that task's PLAN row text",
+      { promotesTask: "T2" },
+      { waves: makeE6Waves({ laterDescription: "add somethingEntirelyDifferent to the writer" }) },
+    ],
+    [
+      "conjunct 3 — the symbol does not occur in the captured gate output",
+      { promotesTask: "T2" },
+      { gateOutput: "the gate went red at the eslint step, with no symbol named anywhere in it" },
+    ],
+  ])("%s — refused out-of-envelope, nothing applied", async (_label, replyOverrides, argOverrides) => {
+    const repo = createA6TempRepo();
+    try {
+      const gateOutput = argOverrides.gateOutput || E6_GATE_OUTPUT;
+      const args = makeE6Args(repo, {
+        ...argOverrides,
+        gateOutput,
+        reply: makeA6ReplyText({
+          proposedAction: "E-6",
+          rootCause: "plan-ordering-defect",
+          promotes: E6_SYMBOL,
+          evidence: [gateOutput],
+          ...replyOverrides,
+        }),
+      });
+      writeFileSync(join(repo.dir, "b.js"), `export function ${E6_SYMBOL}() {}\n`);
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("out-of-envelope");
+      expect(result.resolved).toBe(false);
+      expect(result.haltFields.repairApplied).toBe(false);
+      // Refused at GATE, before ACT: the re-gate never ran, so the ledger never grew.
+      expect(args.invocations).toEqual([]);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("companion: the symbol half holds but the change lands outside the NAMED task's owned set — refused through X-d", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeE6Args(repo, {
+        reply: makeA6ReplyText({
+          proposedAction: "E-6",
+          rootCause: "plan-ordering-defect",
+          promotes: E6_SYMBOL,
+          promotesTask: "T2",
+          evidence: [E6_GATE_OUTPUT],
+        }),
+      });
+      // `d.js` is owned by T3 — a later wave, so the pre-CR union admitted it; T2 is the task the
+      // promotion named, and the narrowed scope is `{a.js, b.js}`.
+      writeFileSync(join(repo.dir, "d.js"), `export function ${E6_SYMBOL}() {}\n`);
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("out-of-envelope");
+      expect(result.resolved).toBe(false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
