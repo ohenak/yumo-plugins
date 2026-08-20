@@ -293,6 +293,148 @@ a defect in this document or in the PLAN, not a nice-to-have.
   of an injected document is BR-8's rows naming source paths.
   *Contract · L3 · AC-3.4, C-6, BR-13, AT-23 · red LI-11 · green LI-21.*
 
+### Group G — Fail-open under every corpus state *(BR-12, C-7, AC-4.1, AC-4.2)*
+
+- **PROP-FAILOPEN-01:** All **twelve** fail-open arms of TSPEC §T.7 **must** be entered by the suite,
+  and the arms' observed vocabulary **must** be set-equal to the three frozen catalogues:
+  non-`null` `corpusOutcome` values = `LEARNINGS_CORPUS_OUTCOMES`, `rejected[].reason` values =
+  `LEARNINGS_REJECT_REASONS`, `notices[].id` values = `LEARNINGS_NOTICES`. Set equality in every case,
+  so an arm that silently stops being entered **and** an invented code both red.
+  *Error Handling / Observability · L2/L3 · C-7, C-9, BR-12, TSPEC §T.7, DoD 3 · red LI-23 · green LI-21.*
+- **PROP-FAILOPEN-02:** **No** corpus state — directory absent, listing failing, one document unreadable,
+  every document unreadable, unparseable, truncated, no priority section, or exceeding every bound —
+  **must** produce an exception escaping to the pipeline, a halt, a POSTMORTEM, or a changed convergence
+  outcome. The run **must** reach the same terminal outcome as the disabled run over the same fixture.
+  *Error Handling · L3 · G-4, C-7, AC-4.2, BR-12, AT-25 · red LI-11 · green LI-21.*
+- **PROP-FAILOPEN-03:** `RSN-UNLISTABLE` and `RSN-EMPTY` **must** stay distinct: a failed listing
+  **must** record `RSN-UNLISTABLE`, an empty successful listing **must** record `RSN-EMPTY`, and neither
+  **must** be substitutable for the other. "I could not find out" **must never** collapse into "there is
+  nothing". Both are observed on the same fixture family, so the distinction is a positive result rather
+  than an absence.
+  *Error Handling · L2/L3 · C-7, BR-12, E-01, E-02, AT-24, AT-25 · red LI-09, LI-11 · green LI-18, LI-20.*
+- **PROP-FAILOPEN-04:** Documents were-known states **must not** produce a corpus-level id: a corpus
+  containing only `{f}`'s own LEARNINGS, and a corpus every document of which is unreadable, **must**
+  record per-document rows with `corpusOutcome === null`, not `RSN-EMPTY`.
+  *Error Handling · L1/L2 · E-06, E-08, AT-04, AT-26 · red LI-07, LI-09 · green LI-16, LI-18.*
+
+### Group H — Configuration *(BR-14, AC-4.4, AC-5.1a, AC-5.1b, AC-5.1c)*
+
+- **PROP-CONFIG-01:** An **absent** `learningsInjection` section, an **absent** config file, and a
+  **misspelt** section name (`learningsInjectoin`) **must** each yield an **enabled** run on §4.1's
+  declared defaults with **no** notice, whose composition equals the enabled-run composition — and that
+  comparison target **must itself** be asserted to carry the C-4-delimited block, so the equality is not
+  vacuously true against an empty injection.
+  *Contract · L3 · AC-5.1a, AC-5.1b, BR-14, E-21, AT-32 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-02:** A section **present and not an object** **must** yield an enabled run on §4.1's
+  defaults, the `learningsInjection` report key **present**, and `NTC-MALFORMED` on the run-level notice
+  channel — three positive conjuncts, so the state is distinguishable from a deliberate disable.
+  *Error Handling / Observability · L3 · AC-5.1b, BR-14, E-23, AT-32 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-03:** A **wrong-typed declared key** (`maxDocuments: "five"`, the other two configured)
+  **must** yield an enabled run, that key at its default, `ruleInputs.thresholds.maxDocuments` equal to
+  the literal `5` beside the two configured values, a selection equal to a fixture literal, and
+  `NTC-KEYTYPE` **naming** `maxDocuments`.
+  *Error Handling / Observability · L3 · AC-5.1c, BR-14, E-26, E-34, AT-32 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-04:** The three thresholds **must** validate as **non-negative** integers
+  (`Number.isInteger(v) && v >= 0`): `0` is a **valid** admits-nothing value, a negative or non-integer
+  value is `NTC-KEYTYPE`. `maxDocuments: 0` and `maxTotalBytes: 0` **must** each yield an **enabled** run
+  with BR-8's rows present and empty — never AC-5.1a's absent key, never a refusal to run.
+  *Error Handling · L3 · AC-4.4, BR-14, E-24, E-25, AT-30 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-05:** `enabled: false`, **explicitly**, **must** be the only disabling state:
+  `buildLearningsInjector` **must** return `null` on `config.enabled === false` **alone** — no `present`
+  conjunct, no `!sectionMalformed` conjunct — the report **must** carry **no** `learningsInjection` key
+  at all, and every composed dispatch **must** be byte-identical to the recorded pre-feature baseline.
+  *Contract · L3 · AC-5.1a, AC-6.2, BR-14, E-22, AT-31, TSPEC §I.4 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-06:** `NTC-*` notices **must** be carried on `buildFinalReport`'s existing run-level
+  `notices` channel, **never** inside `learningsInjection` — so an explicitly disabled run, which carries
+  no such key, still has a home for a configuration defect.
+  *Contract · L3 · AC-5.1b, AC-5.1c, TSPEC §I.2, §D.2 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-07:** `LEARNINGS_NOTICES` **must** have exactly **two** members, and AT-32's completeness
+  test **must** assert set equality over exactly `NTC-MALFORMED` and `NTC-KEYTYPE`. A test written for a
+  three-member set reds the frozen literal on day one.
+  *Contract · L3 · C-9, BR-9, AT-32, TSPEC §D.1 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-08:** The configuration **must** be read **once per run** via
+  `readLearningsConfigSafely`, which **must never** throw, and `LEARNINGS_CONFIG_PATH` **must** be
+  `MERGE_CONFIG_PATH` — no second config file, no per-phase override, no per-feature allow-list (NG-7).
+  *Contract · L3 · §4.1, NG-7, AC-3.3, TSPEC §I.2 · red LI-12 · green LI-21.*
+
+### Group I — Gate-input isolation, footprint and preserved semantics *(BR-11, BR-15, BR-16)*
+
+- **PROP-ISOLATE-01:** Over two scripted runs differing **only** in `learningsInjection.enabled`, the
+  five recorded gate inputs — parsed verdicts, structural completeness scores, round-window counters,
+  approval anchors, erratum routes — **must** be equal member for member, asserted as set equality over
+  the five names **and** value equality per member. Contamination **must be made possible** in the
+  fixture: the corpus carries **line-initial** `VERDICT:`, `ERRATUM:` and `REVISION-COMPLETE:` lines, and
+  the scripted `_agent` echoes the final 200 bytes of the prompt it was handed into its response.
+  *Security / Integration · L3 · AC-4.3, G-5, BR-11, AT-29 · red LI-11 · green LI-21.*
+- **PROP-ISOLATE-02:** On an enabled run, the completeness criteria, required headings, verdict grammar,
+  round windows and approval anchors scoring the documents produced **must** be exactly those in force
+  without the feature. No required section, no new heading, no new verdict token, no new approval
+  condition, and no SKILL.md text moves.
+  *Contract · L3 · AC-5.3, G-5, NG-3, BR-16, AT-35 · red LI-11 · green LI-20.*
+- **PROP-FOOTPRINT-01:** On an enabled run, the set of paths under `docs/` the run opens **must equal**
+  BR-15's expected set — exactly one attempt per report-named document other than the `RSN-SELF` ones —
+  where the expected set is **hand-transcribed** from the fixture's scripted `ls-files` stdout minus the
+  self paths, never derived from `gatherLearningsCorpus`. The observed set **must** be non-empty.
+  *Security / Observability · L3 · AC-5.2, BR-15, AT-33 · red LI-11 · green LI-20.*
+- **PROP-FOOTPRINT-02:** On a disabled run observed on the **same instrument in the same test file**,
+  **no** corpus path **must** be touched at all, the composed dispatches **must** be byte-identical to
+  the recorded baseline, and the run **must** reach completion — the absence claim carrying weight only
+  because PROP-FOOTPRINT-01's non-empty positive shows the instrument firing.
+  *Security · L3 · AC-5.2, BR-15, AT-34 · red LI-11 · green LI-21.*
+- **PROP-FOOTPRINT-03:** The working-tree delta of a full run, captured as `git status --porcelain`
+  before and after in a **dedicated temporary git repository that is the run's `cwd`**, **must** be
+  set-equal — an empty delta, **with no exemption list at all**. Nothing under `docs/_constraints/` or
+  `docs/_decisions/`, no LEARNINGS document, no skill prompt, and no index, cache or state file is
+  written anywhere.
+  *Security · L3 · AC-5.2, NG-1, NG-4, BR-15, TSPEC §T.6 · red LI-11 · green LI-20/LI-21.*
+- **PROP-FOOTPRINT-04:** The source span between LI-15's two sentinel comments **must** contain no
+  reference to `fs.`, `writeFileSync`, `mkdirSync`, `appendFileSync` or `require("fs")`, asserted by a
+  static scan scoped to that span — the check that covers every run, not only the runs a fixture
+  exercises.
+  *Security · L3 (static) · AC-5.2, NG-4, TSPEC §T.6 · red LI-11 · green LI-15.*
+
+### Group J — Properties of the test apparatus itself
+
+These have owning tasks and oracles because each guards an oracle that would otherwise stop firing
+silently — the failure mode a coverage percentage cannot see.
+
+- **PROP-META-01:** The premises suite **must** assert each of P-1…P-10 **structurally, never
+  positionally**, and **must never** assert an absence that this PLAN's own tasks are scheduled to
+  falsify. The four authoring call sites **must** be asserted as **set equality** keyed by
+  `(enclosing named function, prompt-source symbol)` — `(erratumRound, erratumAuthorPrompt)`,
+  `(erratumRound, land-proof-retry inline template)`, `(converge, creatorPrompt)`,
+  `(reviewLoop, optimizerPrompt — positional argument 4 of runWrapped)` — never by
+  `(enclosing function, argument position)`, which is not injective over these four. A **fifth**
+  authoring site reds this suite at batch 1.
+  *Observability · L1 (static) · TSPEC §A.2 property 1, H-1 · red — · green LI-01 (green on authoring).*
+- **PROP-META-02:** `.gitignore` **must** ignore `/.baseline-worktree/` **root-anchored**: three
+  conjuncts — the root path **is** ignored, a nested
+  `pdlc/workflows/__tests__/fixtures/x/.baseline-worktree` is **not**, and
+  `pdlc/workflows/__tests__/fixtures/learnings-baseline/` is **not**. Conjuncts 2 and 3 are what give
+  root-anchoring an oracle; a bare `.baseline-worktree`, `*` or `.baseline*` rule passes conjunct 1
+  alone while un-tracking fixture material this feature commits.
+  *Contract · L1 (against a dedicated temp git repo with real `git`) · TSPEC §T.3 obligation 1 ·
+  red LI-03 · green LI-04.*
+- **PROP-META-03:** A forced throw injected **between** materialise and remove — through the capture
+  script's fixture/import seam, `git` staying real — **must** leave the `.baseline-worktree` path
+  **absent** *and* the temp repo's `git worktree list` showing **no entry** for it. The second conjunct
+  is what distinguishes `git worktree remove` from `rm -rf` and **must not** be dropped or degraded to
+  an argv assertion.
+  *Error Handling · L1 (temp git repo) · TSPEC §T.3 obligation 2 · red LI-03 · green LI-05.*
+- **PROP-META-04:** The baseline guard **must** anchor on **hand-transcribed** SHA-256 literals — one per
+  `{caseId}`, copied by a human from the first capture — asserted against both the recomputed file
+  digests **and** `MANIFEST.json`'s entries, with **set equality over the `{caseId}` keys**, never
+  containment. Its falsification is LI-06's recorded three-step mutation proof: flip one byte, delete one
+  whole `{caseId}` directory, add a spurious one — each step reds a **different** clause, and a step that
+  does not red is a halt.
+  *Data Integrity · L1 · AC-6.2, TSPEC §T.3, DC-14 · red — (authored green) · green LI-06.*
+- **PROP-META-05:** The suite-map closure **must** be taken over the **directory**, not over a hardcoded
+  six: enumerate `__tests__/learnings*.test.js` from disk by **static parse of the file text** (never by
+  importing the suite), compute the set of files registering at least one `LI-AT-` jest test **title**,
+  assert that set **equal** to the six AT-bearing suites, then assert the six declared AT lists pairwise
+  **disjoint** and **set-equal** to the 35-member literal `AT-01 … AT-35`.
+  *Contract · L1 (static) · TSPEC §T.5 closure, DoD 1 · red — (green on authoring) · green LI-14.*
+
 ## Oracles
 
 ## Fixtures
