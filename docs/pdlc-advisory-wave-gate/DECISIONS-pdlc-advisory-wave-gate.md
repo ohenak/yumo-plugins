@@ -356,14 +356,26 @@ that a first-class per-seam `enabled` map becomes the better surface.
   the `ADVISORY_SEAMS` set-equality in `advisoryEnvelope`, a report-row assertion and a `test.each`
   table in `advisoryRecord`, a harvest-row assertion in `advisoryHarvest`, a generator pick in
   `consolidationProperties`, and a `SEAMS` constant inside the shared `advisoryDoubles` helper. The
-  four-member envelope literal `["E-1", "E-2", "E-3", "E-4"]` is transcribed at six more code
-  sites — `advisoryEnvelope`'s `ENVELOPE_DEFAULTS` set-equality, two in `advisoryDisabled`, one in
-  `advisoryHarvest`, and two in `helpers/advisoryDoubles.js` (the frozen `ADVISORY_DEFAULTS_SHAPE`
-  and the property generator's shuffle) — **plus a seventh in prose**: the `advisoryDoubles` comment
-  that records why the frozen shape must be hand-synced restates the literal itself. A comment that
-  restates a set-equality literal is a maintenance site like any other — it is what a later editor
-  reads to decide whether the copy below is still right — so the envelope's hand-sync surface is
-  seven, not six (TE v2 F-03).
+  four-member envelope literal `["E-1", "E-2", "E-3", "E-4"]` is a smaller but more confusing
+  surface, because part of it has already migrated ahead of production. Re-derived from HEAD
+  (PM v4 F-03, TE v4 F-01 — v1.2's list named a site that had moved and omitted one that had not):
+  the literal's **production definition** is `ENVELOPE_DEFAULTS` in `orchestrate-dev.js`; **five
+  test-side transcriptions** still carry it — two in `advisoryDisabled.test.js`, one in
+  `advisoryHarvest.test.js`, and two in `helpers/advisoryDoubles.js` (the frozen
+  `ADVISORY_DEFAULTS_SHAPE` and the property generator's shuffle); and there is **a sixth in
+  prose** — the `advisoryDoubles` comment that records why the frozen shape must be hand-synced
+  restates the literal itself. A comment that restates a set-equality literal is a maintenance site
+  like any other — it is what a later editor reads to decide whether the copy below is still right —
+  so the envelope's hand-sync surface is **seven, not six** (TE v2 F-03): one definition, five
+  transcriptions, one comment.
+- Two envelope sites are **already at the post-A6 six-member value and need no edit**:
+  `advisoryEnvelope.test.js`'s `ENVELOPE_DEFAULTS` set-equality (which v1.2 wrongly listed as a
+  four-member site) and `advisoryConfig.test.js`'s re-declared `ADVISORY_DEFAULTS` literal. Both
+  assert against a production default that still has four members, which is why TSPEC §1.3 records
+  them as drift rows rather than as work. A reader who goes to either expecting a four-member
+  literal to edit finds an assertion already at its target — the reason the enumeration above is
+  stated as a count of what still moves, not as a file list to walk. §1.3 remains the carrier of
+  which surfaces have drifted; this entry only sizes the task.
 - The shared double is the coupling the other two surfaces do not have: `advisoryDoubles.js` carries
   *both* literals plus the frozen defaults shape, so a partial edit reddens tests in files that never
   mention the changed constant, with a failure reason the record cannot predict. Sequencing all of
