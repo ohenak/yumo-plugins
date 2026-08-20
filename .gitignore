@@ -6,6 +6,9 @@
 # Anchored so the covered-violations fixture's nested .claude/ tree is untouched.
 /.claude/pdlc.config.json
 .claude/.headroom_wrap_marker.json
+# Local drift-check state — accidentally committed once by a review agent's
+# docs commit; anchored for the same fixture-tree reason as pdlc.config.json.
+/.claude/workflows/.pdlc-drift-state.json
 
 # Disposable baseline-diff worktree created by the learnings-capture script.
 # Anchored so a nested fixture directory of the same name (used by LI-T-IGNORE's
