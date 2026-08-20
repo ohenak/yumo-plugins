@@ -307,3 +307,9 @@ missing the shape upstream added. No High finding, so the cascade confirmation d
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 7}
+
+APPROVAL-HASH: sha256:eff5a19bffcc35383ae71b18a43ec71418411f885ebfd99f63865d6377ba72d3
+APPROVAL-HASH-NORMALIZED: sha256:91726204b43da70f7025bd7e0423498212e5dea7f4ecf377de823f5868c6d7af
+REVIEWED-COMMIT: 0f7d75927d84acd7eb6a80d5d89132b6c9f53cae
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
+UPSTREAM-STATE: FSPEC sha256:fb18dbda1cef8497143e931894d09b83871657b9c8108305948cc03566b0727c
