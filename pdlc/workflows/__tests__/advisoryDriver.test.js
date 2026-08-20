@@ -903,7 +903,7 @@ describe("A-31 — A1/A2 gate exclusivity", () => {
 // (former A6-11's red step, folded in per PLAN v1.3 restructure — AT-02-7, AT-07-4, AT-07-5)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe("A6-12 — classifyReply hook (TSPEC §3.7)", () => {
+describe("A6-12 / PROP-GATE-11 — classifyReply hook (TSPEC §3.7)", () => {
   it("`{ok:true}` proceeds to RE-CHECK exactly like the absent (default null) hook — A1–A5 unchanged (AT-02-7)", async () => {
     const config = makeAdvisoryConfig({ enabled: true }).config;
 
@@ -1012,7 +1012,7 @@ describe("A6-12 — rung parity: resolved rung equals the tier's, read from the 
   });
 });
 
-describe("A6-12 — dispatch-option parity: A6's `_agent` options equal a shipped seam's, member for member (AT-07-5)", () => {
+describe("A6-12 / PROP-NFR-02 — dispatch-option parity: A6's `_agent` options equal a shipped seam's, member for member (AT-07-5)", () => {
   it("A6's dispatch options carry no key beyond the shipped seam's — tool grants, transport, environment (no additional grant)", async () => {
     // `resolveAdvisoryRung` is the ONE ladder every seam dispatches through (module scope, no
     // per-seam variant) — `_agent(skill, prompt, {model})` is the entire options object any seam's

@@ -79,7 +79,7 @@ const {
   ADVISORY_ROOT_CAUSES,
 } = devModule;
 
-describe("A6-08: waveOwnedPaths — E-5, the union of task.files over the wave", () => {
+describe("A6-08 / PROP-ENV-02: waveOwnedPaths — E-5, the union of task.files over the wave", () => {
   test("unions task.files across every task in the target wave", () => {
     const waves = [
       [{ id: "T1", files: ["a.js"] }, { id: "T2", files: ["b.js", "c.js"] }],
@@ -104,7 +104,7 @@ describe("A6-08: waveOwnedPaths — E-5, the union of task.files over the wave",
   });
 });
 
-describe("A6-08: laterOwnedPaths — E-6, the union of task.files over every later wave", () => {
+describe("A6-08 / PROP-ENV-02: laterOwnedPaths — E-6, the union of task.files over every later wave", () => {
   test("unions task.files across every wave strictly after waveIndex", () => {
     const waves = [
       [{ id: "T1", files: ["a.js"] }],
@@ -135,7 +135,7 @@ describe("A6-08: laterOwnedPaths — E-6, the union of task.files over every lat
   });
 });
 
-describe("A6-08: ownedSetCovers — delegates to pathsCollide (§3.4, TE F-06)", () => {
+describe("A6-08 / PROP-ENV-03: ownedSetCovers — delegates to pathsCollide (§3.4, TE F-06)", () => {
   test("an exact-path row covers only that path", () => {
     expect(ownedSetCovers(["a/b.js"], "a/b.js")).toBe(true);
     expect(ownedSetCovers(["a/b.js"], "a/c.js")).toBe(false);
@@ -166,7 +166,7 @@ describe("A6-08: ownedSetCovers — delegates to pathsCollide (§3.4, TE F-06)",
   });
 });
 
-describe("A6-08: parseA6RootCause — total over the closed ADVISORY_ROOT_CAUSES vocabulary", () => {
+describe("A6-08 / PROP-CTR-02: parseA6RootCause — total over the closed ADVISORY_ROOT_CAUSES vocabulary", () => {
   test("a well-formed trailer returns the named class", () => {
     expect(parseA6RootCause("ROOT-CAUSE: plan-ordering-defect")).toBe("plan-ordering-defect");
   });
@@ -211,7 +211,7 @@ describe("A6-08: parseA6RootCause — total over the closed ADVISORY_ROOT_CAUSES
   });
 });
 
-describe("A6-08: citesGateOutput — BR-3's decidable citation rule, floored at A6_MIN_CITATION_CHARS", () => {
+describe("A6-08 / PROP-CTR-05: citesGateOutput — BR-3's decidable citation rule, floored at A6_MIN_CITATION_CHARS", () => {
   test("true when a normalised evidence entry is a substring of the normalised gate output", () => {
     const gateOutput = "some preamble\nTypeError: cannot read property 'x' of undefined\nmore log";
     expect(citesGateOutput(["TypeError: cannot read property 'x' of undefined"], gateOutput)).toBe(
@@ -318,7 +318,7 @@ function createA6TempRepo() {
   return { dir, git, status, _git, cleanup };
 }
 
-describe("A6-10: captureTreeSnapshot / restoreTreeSnapshot round-trip over a real temporary git repo (TSPEC §2.5/§3.5, AT-05-1)", () => {
+describe("A6-10 / PROP-REST-01: captureTreeSnapshot / restoreTreeSnapshot round-trip over a real temporary git repo (TSPEC §2.5/§3.5, AT-05-1)", () => {
   test("the content-hash map taken immediately before A6 acts equals the map after restore, over tracked and untracked files alike, generated outputs included", async () => {
     const repo = createA6TempRepo();
     try {
@@ -378,7 +378,7 @@ describe("A6-10: captureTreeSnapshot / restoreTreeSnapshot round-trip over a rea
   });
 });
 
-describe("A6-10: a git-status-level comparison is explicitly NOT the oracle (TSPEC §5.2, AT-05-2)", () => {
+describe("A6-10 / PROP-REST-02: a git-status-level comparison is explicitly NOT the oracle (TSPEC §5.2, AT-05-2)", () => {
   test("re-running the post-wave command rewrites an already-dirty path without changing its status line, but the hash map catches it", async () => {
     const repo = createA6TempRepo();
     try {
@@ -400,7 +400,7 @@ describe("A6-10: a git-status-level comparison is explicitly NOT the oracle (TSP
   });
 });
 
-describe("A6-10: restoreTreeSnapshot throws on any ok !== true (TSPEC §3.5, AT-05-5) — tagged __isRevertFailure and rethrown by the driver's terminal catch", () => {
+describe("A6-10 / PROP-REST-05: restoreTreeSnapshot throws on any ok !== true (TSPEC §3.5, AT-05-5) — tagged __isRevertFailure and rethrown by the driver's terminal catch", () => {
   test("throws when read-tree fails", async () => {
     const _git = async (argv) =>
       argv[0] === "read-tree"
@@ -451,7 +451,7 @@ describe("A6-10: restoreTreeSnapshot throws on any ok !== true (TSPEC §3.5, AT-
   });
 });
 
-describe("A6-10: captureTreeSnapshot writes the wave-scoped ref refs/pdlc/a6-snapshot-{waveNum} (TSPEC §2.5/§3.5, DEC-A6-03)", () => {
+describe("A6-10 / PROP-REST-06: captureTreeSnapshot writes the wave-scoped ref refs/pdlc/a6-snapshot-{waveNum} (TSPEC §2.5/§3.5, DEC-A6-03)", () => {
   test("update-ref targets refs/pdlc/a6-snapshot-{waveNum} for the given wave number", async () => {
     const calls = [];
     const _git = async (argv) => {
@@ -499,7 +499,7 @@ describe("A6-10: captureTreeSnapshot writes the wave-scoped ref refs/pdlc/a6-sna
 // is the pending marker for a boundary that is genuinely upstream's to resolve (§2.5's erratum on
 // FSPEC BR-9 / AT-05-1, REQ AC-5.1), not this task's.
 test.todo(
-  "A6-10: a .gitignore'd file the wave added is still present after restore (git clean -fd, not -fdx) — expected: hashTree(repo.dir) still contains the ignored generated path with its wave-added content, unchanged by capture or restore; pending OQ-7's upstream erratum on the ignored-path boundary",
+  "A6-10 / PROP-REST-03: a .gitignore'd file the wave added is still present after restore (git clean -fd, not -fdx) — expected: hashTree(repo.dir) still contains the ignored generated path with its wave-added content, unchanged by capture or restore; pending OQ-7's upstream erratum on the ignored-path boundary",
 );
 
 // ─── A6-14 (former A6-13 red step + A6-14 green): buildA6SeamOps, TSPEC §3.3 ──────────────────
@@ -532,7 +532,7 @@ function makeRecordingGit(responses = {}) {
   return { _git, calls };
 }
 
-describe("A6-14: buildA6SeamOps.gatherEvidence — TSPEC §3.3 (AT-02-5)", () => {
+describe("A6-14 / PROP-CTR-07: buildA6SeamOps.gatherEvidence — TSPEC §3.3 (AT-02-5)", () => {
   test("returns the FULL captured gate output, never outputTail's 30 lines", async () => {
     const longOutput = Array.from({ length: 50 }, (_, i) => `line ${i}`).join("\n");
     const { _git } = makeRecordingGit();

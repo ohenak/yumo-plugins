@@ -940,7 +940,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     return { calls, fn };
   }
 
-  it("AT-01-2: a post-wave command failure halts before A6 is ever called", async () => {
+  it("AT-01-2 / PROP-SEAM-03: a post-wave command failure halts before A6 is ever called", async () => {
     const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
     const CONFIG_WITH_POST_WAVE = JSON.stringify({
       implementation: {
@@ -962,7 +962,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(a6.calls.length).toBe(0);
   });
 
-  it("AT-01-3: the V-wave's own separate gate call site never calls A6 either", async () => {
+  it("AT-01-3 / PROP-SEAM-04: the V-wave's own separate gate call site never calls A6 either", async () => {
     const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
     let n = 0;
     const result = await main(
@@ -1133,7 +1133,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(result.haltAdvisory).toBeUndefined();
   });
 
-  it("AT-04-5: an A6-resolved E-6 repair promotes a LATER wave's owned file into its own dedicated commit, on top of (never widening) the owning task's own pathspec", async () => {
+  it("AT-04-5 / PROP-GATE-08: an A6-resolved E-6 repair promotes a LATER wave's owned file into its own dedicated commit, on top of (never widening) the owning task's own pathspec", async () => {
     const a6 = makeA6Fake({
       resolved: true,
       disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },

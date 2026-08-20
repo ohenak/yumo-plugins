@@ -617,7 +617,7 @@ describe("A-33 — disabled-tier equivalence", () => {
   // summary with six zero rows, distinguishing enabled-but-quiet from disabled.
   // =================================================================================================
 
-  describe("T-10-5 / PROP-DIS-05 — enabled-but-quiet reports six zero rows (S-1)", () => {
+  describe("T-10-5 / PROP-DIS-05 / PROP-SEAM-06 — enabled-but-quiet reports six zero rows (S-1)", () => {
     test("with the tier enabled and no seam firing, buildFinalReport carries six zero rows, not `undefined`", async () => {
       const configText = JSON.stringify({
         advisory: { enabled: true, attemptBudget: 3, seamBudgetMinutes: 10, envelope: ["E-1", "E-2", "E-3", "E-4"] },
@@ -643,7 +643,7 @@ describe("A-33 — disabled-tier equivalence", () => {
   // the gate red, the only way to reach `runWaveGateSeam`'s own tier check at all.
   // =================================================================================================
 
-  describe("AT-01-4 / AT-07-2 — a disabled-tier red wave gate never touches A6", () => {
+  describe("AT-01-4 / AT-07-2 / PROP-SEAM-05 — a disabled-tier red wave gate never touches A6", () => {
     test("halts byte-identically to the pre-A6 shape: no dispatch, no snapshot, no advisory/haltAdvisory keys", async () => {
       const configText = JSON.stringify({
         implementation: { testCommand: "npm test" },

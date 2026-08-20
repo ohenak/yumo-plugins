@@ -255,7 +255,7 @@ describe("T-03-4 — two triggers at once report the earlier reason (§5.3 order
 // literal (an invented or deleted reason fails; order asserted separately because it is observable).
 // ---------------------------------------------------------------------------
 
-describe("T-03-5 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue, in order", () => {
+describe("T-03-5 / PROP-ENV-07 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue, in order", () => {
   test("deep-equals the ordered literal", () => {
     expect(devModule.ADVISORY_REFUSAL_REASONS).toEqual([
       "prohibited-action",
@@ -279,7 +279,7 @@ describe("T-03-5 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue,
 // capability probes (PROP-ENV-12).
 // ---------------------------------------------------------------------------
 
-describe("T-03-8 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality against transcribed literals", () => {
+describe("T-03-8 / PROP-ENV-01 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality against transcribed literals", () => {
   test("ENVELOPE_DEFAULTS equals {E-1, E-2, E-3, E-4, E-5, E-6} as a set (A6-02 adds E-5, E-6)", () => {
     expect([...devModule.ENVELOPE_DEFAULTS].sort()).toEqual(["E-1", "E-2", "E-3", "E-4", "E-5", "E-6"]);
   });
