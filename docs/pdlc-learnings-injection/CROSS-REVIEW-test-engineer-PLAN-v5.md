@@ -81,7 +81,43 @@ half only; none of the four re-worded ATs is a ledger entry, so the ledger's ari
 
 ## Verification
 
-_pending_
+**Where PLAN still describes the old upstream. This is the whole of what the cascade broke.**
+
+**1. §Errata — the BR-1 row is discharged and PLAN says it is live (F-01).** The row reads "**FSPEC
+BR-1** still states the rule 'consumes the classification, it does not restate the membership', while
+TSPEC §A.2 adds the load-bearing `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct", under a heading that
+says "Two defects in FSPEC v0.10 still live at HEAD". At HEAD, FSPEC BR-1 reads "**both** hold: the
+pipeline classifies the dispatch as authoring, **and** the target document is one of REQ, FSPEC, TSPEC,
+PLAN, DECISIONS or PROPERTIES (REQ C-1)". The conflict PLAN routes no longer exists, and the stated
+consequence — "LI-11's AT-02 has two contradictory expected sets… a reviewer scoring it against BR-1
+would reject a correct test" — is now false in both halves. The task row's chosen reading is the one that
+won, so no test changes; the routing table is what is stale. Left standing it re-raises a settled contract
+into the next erratum round.
+
+**2. §Errata — the BR-15 row is likewise discharged (F-02).** PLAN says BR-15's expected set "includes
+'the corpus-root enumeration'… but the enumeration is a `git ls-files` call and contributes no member",
+concluding "LI-11's AT-33 set equality cannot hold as FSPEC states it". FSPEC at HEAD states the expected
+set as "exactly one attempt per report-named document except the `RSN-SELF` ones, the enumeration and
+candidate paths contributing no member" — verbatim PLAN's own objection, adopted. AT-33's hand-transcribed
+oracle is unaffected; the row's claim about upstream is not.
+
+**3. DoD 4 compresses the pre-erratum byte-identity promise (F-03).** DoD 4 closes "every **non-authoring**
+dispatch likewise (AC-4.3)". FSPEC AT-03 and AT-29 now both say "outside BR-1's rule" — explicitly
+"including an authoring-classified dispatch with no C-1 target". Those are different sets: an
+authoring-classified optimizer round with `docType: null` is *inside* PLAN's DoD clause's exemption and
+*outside* FSPEC's byte-identity promise. This is the one place the narrowing has a verification
+consequence rather than a documentation one — DoD is the gate a verifier reads, and under PLAN's wording
+an implementation that injected into the `null`-target round would satisfy DoD 4 while failing AT-03.
+The suite itself is safe (LI-11 authors AT-03/AT-29 from FSPEC at batch 5, and LI-20's `injectHere`
+already carries the conjunct), which is why this is Medium and not High: the oracle exists, the gate's
+restatement of it is narrower than the oracle.
+
+**What I checked and found still faithful.** BR-11's complement wording (v0.12) — PLAN cites no BR-11
+clause. D-2's three-branch split — PLAN carries no decision-table transcription. A-2's rewrite — PLAN
+cites no A-numbered assumption. REQ, TSPEC and DECISIONS are byte-identical to the versions v4 approved
+against (only FSPEC and cross-review files moved in `a7aa181e..HEAD`), so no second cascade is in play.
+The mutation-proof obligations PLAN owns (LI-06's three-step baseline proof, LI-01's premise set equality,
+H-5's forbidden containment relaxation) are untouched by this edit and remain as approved.
 
 ## Delta-Confirmation Findings
 
