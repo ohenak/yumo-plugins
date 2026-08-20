@@ -185,11 +185,43 @@ filing it.
 
 ## Positive Observations
 
-_(pending)_
+- **The `null`-scoping fix explains itself instead of hedging.** "The non-`null` scoping is
+  load-bearing … not a hedge" followed by the reason (`null` means "documents were known") makes the
+  next reader able to check the rule against FSPEC E-06 without re-deriving it. It also explicitly
+  refuses the wrong fix — adding `null` to `LEARNINGS_CORPUS_OUTCOMES` — and says why. Keep this
+  style for domain statements.
+- **ERR-7's closure preserves the history rather than erasing it.** The entry still records that the
+  divergence was real, what it would have broken, and which upstream version settled it. A future
+  reader asking "why does §A.2 have two conjuncts?" gets the whole answer in one place.
+- **The de-anchoring picked identifiers that will survive the next refactor.** Enclosing symbol plus
+  call shape (P-2a), a returned-object-literal description with its sibling keys (P-10), and a
+  verbatim prompt opener (ERR-2) are all stable under line movement — exactly DEC-DOC-01's intent,
+  not a minimal compliance gesture.
+- **P-2a's "four sites" count survived the swap.** De-anchoring a counted claim is where a silent
+  drop hides; the symbol citations still enumerate exactly four at HEAD.
+- **§A.2's byte-identity phrasing tracked upstream's re-quantification.** Changing "non-authoring"
+  to "outside BR-1's rule" was not on the routed item list; the author noticed FSPEC v0.12 had moved
+  underneath the sentence and fixed it. That is the DEC-ERR-03 discipline applied from the author
+  side.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+The delta resolves all four routed items and breaks nothing v10 approved. The four findings are Low
+and inherited: stale `orchestrate-dev.js` line anchors in cells the item list did not name, of
+exactly the class DEC-DOC-01 rates Low/`Process`. Each underlying claim remains true at HEAD and
+recoverable from the symbol named in the same cell, so none is a contradiction with the repository.
+
+Not blocking, but worth folding into the next edit that touches this document:
+
+1. De-anchor P-7 (`defaultGit`), P-8 (`defaultReadFile`), §A.3 (`defaultListFiles`) and §A.5 (the
+   `main()` `notices` sink) by symbol, as P-2a and P-10 now are — the symbols are already named, so
+   the line ranges can simply be deleted.
+2. De-anchor §A.2's six per-phase `docType` citations; the `docType` literals and phase ids identify
+   the sites more stably than the numbers do.
+3. Optionally, replace the header's Cross-Reviews enumeration with FSPEC's "every round present on
+   branch" formulation, so it stops going stale each round.
 
 ## Delta-Confirmation Findings
 

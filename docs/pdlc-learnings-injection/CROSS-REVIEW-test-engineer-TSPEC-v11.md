@@ -204,7 +204,39 @@ unfalsifiable oracle — the failure mode I look for in exactly this kind of edi
 
 ## Open Questions
 
-_pending_
+**ERR-7 — correctly CLOSED (my v10 F-02, resolved).** TSPEC's closure narrates the history and cites
+v0.11 for the two-conjunct restatement and v0.12 for the complement's propagation. Verified against
+BR-1 at HEAD: the "if and only if … **both** hold" wording, the "load-bearing, not defensive"
+sentence and the naming of the code-review phase's optimizer round as the excluded branch are all
+present. §A.2's routing clause is gone. A test author now reads one expected set for AT-02, not two.
+
+**ERR-3 — correctly CLOSED (my v10 F-03, resolved).** Verified against BR-15 at HEAD: "Both sides
+are compared as **sets of paths**, not as counts" and "The corpus enumeration that lists candidate
+paths contributes **no** member: it opens no file under `docs/`, so this instrument does not see
+it." That is precisely the correction ERR-3 asked for, and TSPEC's closure text attributes it to
+v0.11 with v0.12's set-not-count refinement — accurate.
+
+**ERR-2 — correctly still open.** I re-checked upstream: E-30 still reads "An erratum dispatch is
+made" in the singular, and AT-02's fixture list still does not name the land-proof retry. HEAD does
+fire a second authoring dispatch for the same document (`erratumRound()`'s second `wrappedDispatch`,
+whose prompt opens "Your previous edit to this ${target} did not land the following expected
+token" — I confirmed that prompt text verbatim at `:12955`). The citation is now by symbol and
+prompt-opening rather than by line, which is both DEC-DOC-01-compliant and more durable than the
+line was. Leaving ERR-2 open is right.
+
+**ERR-4 and ERR-6** are unchanged and still correctly closed against REQ v0.9, whose sha matches
+this dispatch.
+
+**Version-string residue.** The header's Upstream row now reads FSPEC v0.12, but five body passages
+still say "FSPEC v0.9" — §A.5 (`REQ v0.9 AC-3.2/AC-3.3 and FSPEC v0.9 BR-9/BR-10 settle the loci`),
+§I.3's E-21…E-34 row-ownership sentence, §T's `learningsRecord.test.js` row, and ERR-4/ERR-6's
+closure text. I re-checked each cited proposition against FSPEC at HEAD: BR-9/BR-10's loci, the
+E-21…E-34 rows and BR-9/BR-10's ordering-key wording are all still present and still say the same
+thing, so nothing is falsified — the document simply names a version that no longer exists in five
+places while its header names the right one (F-03). Repair at the next TSPEC edit.
+
+**Nothing new routed upstream.** This round raises no question that FSPEC or REQ must answer; every
+finding below is repairable inside this TSPEC or at PLAN-transcription time.
 
 ## Positive Observations
 
