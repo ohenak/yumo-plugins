@@ -36,7 +36,18 @@ Tagging note: F-01 is `Cross-Feature`. It is another feature's oracle (the coupl
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | If F-01's remainder is genuinely out of scope, does anything in this pipeline stop the residual from *growing* while the feature is in flight? Each cross-review file this phase writes is a tracked file naming sweep terms, so the count a PUB-time reviewer measures will not be the count this plan records. Naming that in the disposition ("this number grows with each round; re-measure, do not carry it forward") costs a sentence and saves a rediscovery — the same move the SIZING appendix already makes for its three columns. |
+| Q-02 | A6-00's row now owns two files (`advisoryWaveGate.test.js` and `documentOracles.test.js`) and two non-file acts (`git rm --cached` of the `.bak` blobs, and the 99 to 100 literal bump). The untracking is described as recorded "in A6-00's row rather than in the file-ownership manifest". Can the wave commit arm — which iterates exactly `task.files` — commit a removal of paths that appear in no task's `files` list? If not, this is a manual step outside the wave loop and worth marking as such, so an implementer following the manifest does not silently skip it. Non-blocking; it does not change batching. |
+| Q-03 | Carried from v3 to v6, still non-blocking: with the example config now shipping `{"enabled": false, "waveBudgetPerRun": 1}` and no README row in scope, E-33's "keep the tier on, keep A6 off" configuration ships with **no** operator-facing discoverability at all. That is upstream's explicit decision and this plan is right to follow it, but it is worth one line in the feature's LEARNINGS so a future operator-documentation pass picks it up rather than rediscovering it. |
+
 ## Positive Observations
+
+- **The round's routed work landed cleanly and in full.** All six actionable round-6 findings are closed, and three are closed better than asked: A6-06 does not merely name the literal, it records *why* `enabled: true` would be wrong ("would flip the advisory tier **on** by default in repos that copy the example"); the pin sweep did not just fix six pins, it added a standing rule to the *Integration points* table so the class does not return; and the Overview's pre-drift enumeration is not just tense-marked but given a heading that tells a reader which state they are reading before they read it.
+- **The AT table's set-equality claim is true, and I checked it mechanically rather than reading it.** "Forty-seven ATs in FSPEC section 6, forty-seven rows here … set-equal to FSPEC's AT set, not a containment check" — the id sets diff clean in both directions, 47 = 47. That is the claim most likely to rot quietly across seven rounds of upstream movement, and it has not.
+- **The discharged-verification pattern is the right product answer to the drift, and it is written so an implementer can act on it.** A6-00 and A6-01 keep their wave-1 slots, each says exactly what to confirm and what a red would mean ("a red here would mean the baseline rotted underneath `e3b9d5a3` — a different and worse problem"), and each says "do not re-create / do not re-type". F-02 asks only that the one task which missed the pattern be given it; nothing new needs inventing.
+- **The SIZING relocation is cited, not merely performed.** The Overview's pointer to the sizing appendix states the three columns, the reason it moved out of DECISIONS ("those totals are measurements of a moving tree whose consumer is this document's batch sizing"), and the instruction that matters most — "Re-measure it, do not carry it forward, before sizing any A6-05 successor". A decision record that tells the next reader when it expires is rare.
 
 ## Recommendation
 
