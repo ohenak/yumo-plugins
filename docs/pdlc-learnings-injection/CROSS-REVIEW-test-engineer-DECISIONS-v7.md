@@ -123,10 +123,41 @@ have surfaced F-03, F-04, F-05 and F-07 mechanically. Recorded rather than re-fi
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | *(carried from v6 F-01, unlanded — this delta did not touch these bytes.)* `DEC-LI-08`'s decision text says the caps "bound the addition" and §Stated-honestly says injection is "bounded a priori"; `D-O-4` asks for realised prompt sizes measured **against REQ §4.1's caps**. FSPEC v0.13 charges the block's framing — identification line, per-document delimiters, source-path label, preamble — to **no** threshold, so the caps bound *material only* and a conforming block can exceed `maxTotalBytes` with nothing binding. The caps' shape (static, no dynamic budget) is unaffected; the imprecision lands on the one gap this document admits and the obligation meant to close it. Fix: say the caps bound *material*, and split `D-O-4` into realised **material** bytes (comparable to §4.1) and realised **block** bytes (the growth term a displacement decision would act on) | `DEC-LI-08` §Decision, §Stated honestly; obligations table `D-O-4` |
+| F-02 | Medium | Local | *(carried from v6 F-02, unlanded.)* `D-O-3`'s `extractInjectableMaterial` clause — "byte bound, whole-character prefix, `bounded` exactly when cut" — does not cover the zero bound FSPEC v0.13 decided: at `maxBytesPerDocument: 0` the document yields nothing and is dropped `RSN-NO-MATERIAL` (E-36, AT-30), so it is not "0 bytes carrying `bounded`". Downstream risk is now **lower** than at v6: TSPEC v0.9 §I.3 states the short-circuit in the signature contract (`maxBytes <= 0` returns `{material: "", bounded: false, bytes: 0, sections: []}` *before* the cut) and PROPERTIES authors read TSPEC. The stale paraphrase remains a reader hazard in the document that owns the obligation. Fix: add the zero-bound conjunct and state the property's bound domain | Obligations table `D-O-3` (FSPEC `BR-6`, E-36, AT-30; TSPEC §I.3) |
+| F-03 | Low | Process | Two consecutive cascade rounds have found only stale present-tense claims about sibling documents. A mechanical sweep of present-tense sibling claims at the top of each cascade round would have surfaced four of this round's six edits without a reviewer re-deriving each one. Not a defect of this document; routed to process learnings | §Scope, grounding pin, and how to read this document |
+
+**DEFERRED items** (freeze-scope: observations, not blocking findings, not decisions to reopen):
+
+DEFERRED: `DEC-LI-07` now says "No live upstream gap remains" as a present-tense claim about TSPEC's bytes — the class of sentence that has caused the last two rounds' findings; consider phrasing it as "as of TSPEC v0.9, sha256:22dee8ce…" so it dates itself.
+DEFERRED: `D-O-9`'s row is retained struck-through with "TSPEC (closed)" in the Owner column; a future reader scanning the Owner column for open obligations must read the strikethrough to know it is discharged — a `Status` column would make the discharge machine-readable.
+DEFERRED: `DEC-LI-10`'s new "what the completeness tests do not falsify" paragraph is the pattern the other catalogue-transcription entries would benefit from; consider generalising it once, rather than per entry.
+DEFERRED: the §Decisions-deliberately-NOT-taken row 4 cell now carries the settled contract in full; that content is arguably PROPERTIES-facing guidance that would be read more reliably from a `D-O` obligation row than from a non-decision table cell.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | `D-O-6` is now the sole falsifier of a wrongly-`null` `corpusOutcome`. Should PROPERTIES additionally carry a *mutation* check on it — revert the `RSN-UNLISTABLE` record at dispatch 5 and expect RED — given that a single obligation now guards an invariant no other test can see? Not a finding: the obligation as written is sufficient; the question is whether the sole-falsifier status earns explicit mutation coverage at final codebase review. |
 
 ## Positive Observations
 
+- The `DEC-LI-06` re-grounding (v6 F-06) is the round's best edit. It replaces a reversibility claim resting on `BR-15` — an oracle structurally unable to falsify it, since set-of-paths comparison is blind to repeat opens — with one resting on `E-32` and `D-O-6`'s counts, and it says *why* `BR-15` cannot see a memo, quoting FSPEC verbatim. It also keeps the cache-*file* case with AC-5.2, where it does belong. That is the distinction between "which oracle would red" applied correctly in both directions.
+- `D-O-6`'s "load-bearing twice over … neither conjunct may be dropped as redundant" is exactly the anti-trim guard an obligation carrying two independent falsifiers needs, and `DEC-LI-10` states the dependency from the other side too, so a reader arriving from either document finds it.
+- The AC-3.3 non-decision row now names the false-green mechanism in the words a test author needs — "green on a single-dispatch fixture and silently wrong on `AT-18`'s divergent run" — rather than only naming the correct locus.
+- Every quotation the delta introduced is byte-faithful to its source at HEAD: FSPEC `A-2` (line 1029), `E-32` (line 786), `BR-15` (line 709). Verbatim quoting rather than paraphrase is what made this round's verification cheap.
+- `D-O-9` retained as a struck-through row rather than deleted: the erratum's trace survives, which is the difference between an obligation that was discharged and one that was never written.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+Six of eight v6 findings landed and verify against upstream at HEAD, including four TSPEC-facing
+claims that had to survive a v0.7 → v0.9 move underneath them. The two unlanded items are the
+pre-existing Mediums; neither invalidates a decision, voids an obligation, or produces a wrong test.
+No High finding, old or new. Nothing this delta introduced contradicts the repository at HEAD or an
+upstream document.
 
 ## Verdict
