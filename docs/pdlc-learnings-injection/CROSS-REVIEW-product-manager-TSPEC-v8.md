@@ -31,6 +31,16 @@ behaviour? I checked both against HEAD, by content rather than by position.
 
 ## Prior findings disposition
 
+| Prior | Severity | Status | Evidence |
+|---|---|---|---|
+| F-01 (v7) `OQ.2` and `ERR-4` point at §I.3 for the gate that lives in §I.2 | Low | **Open, unchanged** | The document did not move, so the pointer did not move. `TSPEC:1237` still reads "§I.3's gate", `TSPEC:1277` still reads "§I.3 and §D.2 are written on the answer", while the corrected gate paragraph is at `TSPEC:441-448` inside §I.2 Configuration (`TSPEC:417`) and §I.3 (`TSPEC:486`) is the pure selection core with no gate in it. Non-gating, carried forward. |
+| F-02 (v7) §A.5's closing sentence cites §T.2 for the per-dispatch loci; §T.2 is the doubles table | Low | **Open, unchanged** | `TSPEC:359-361` unchanged; §T.2 (`TSPEC:799`) is still the `fakeGit`/`fakeFs`/scripted-`_agent` table and the per-dispatch assertions still live in §T.6's `DIVERGENT-CORPUS` (`TSPEC:987-992`). Non-gating, carried forward. |
+| F-03 (v7) `OQ.2`'s bare-repository note is stale against the AT-32 mapping | Low | **Open, unchanged** | `TSPEC:1241-1244` unchanged; `FSPEC:719` still maps E-21 to AT-32 and `TSPEC:952-958` still assigns it to `learningsConfig.test.js`. Non-gating, carried forward. |
+
+None of the three was resolved, because no revision was attempted — this round was dispatched on
+upstream movement, not on an author edit. All three remain Low, all three remain precisely
+enough named to close in one pass whenever the document is next opened.
+
 ## Findings
 
 ## Questions
