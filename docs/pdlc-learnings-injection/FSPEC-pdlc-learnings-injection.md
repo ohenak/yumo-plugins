@@ -76,8 +76,8 @@ depends-on: []
 
 `orchestrate-dev` composes every dispatch it makes from a fixed set of parts: the skill prompt, the
 phase's grounding manifest, the upstream documents, and the pacing contract. This feature adds one
-more part — a **prior-learnings block** — to the dispatches the pipeline already classifies as
-authoring, and to no others.
+more part — a **prior-learnings block** — to exactly the dispatches BR-1's rule names, and to no
+others.
 
 The block is assembled by a **selection step** that runs once per authoring dispatch, immediately
 before the dispatch is composed. The step is a pure function of repository state and configuration:
