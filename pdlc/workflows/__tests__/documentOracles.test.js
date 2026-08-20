@@ -353,17 +353,22 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
 // unchanged by A6-00 — the literal moves only because TSPEC §4.4's own corrected count
 // changed upstream of this task). CR round 1 then moved the count itself for the first
 // time: closing TE F-06 required an enabled-tier, `mainDev`-driven A6 module, landed as
-// `advisoryWaveGateMain.test.js`, so the pre-sweep figure is 101. The literal still is
+// `advisoryWaveGateMain.test.js`, so the pre-sweep figure was 101. CODE_REVIEW v1 §1 finding 3
+// moves it a second time, for the same kind of reason: closing that finding required generative
+// (`fast-check`) properties for A6's five pure helpers, landed as a module of their own rather
+// than folded into `advisoryWaveGate.test.js` — the table-driven cases there pin the named
+// examples and remain the readable documentation of intent, while the new module pins the laws
+// those examples are instances of. Hence 102. The literal still is
 // NOT the post-sweep count: it only
 // drops to the coupled sweep's post-sweep figure once class 6 (T15's deletions: 19 M-8
 // modules plus runtimeProvenanceWiring.test.js) lands in that sweep, at which point the
 // coupled sweep must re-derive it — this comment names the coupling rather than leaving it
 // to be inferred, and TSPEC §4.4 (a different feature's document) still reads 99.
 describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 1's four titles, L-6 row 2's host retains PROP-COMPAT-04/05/06", () => {
-  test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals CR round 1's corrected literal of 101, pending the coupled sweep's post-sweep re-derivation", () => {
+  test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals CODE_REVIEW v1's corrected literal of 102, pending the coupled sweep's post-sweep re-derivation", () => {
     const testDir = resolve(WORKFLOWS, "__tests__");
     const count = readdirSync(testDir).filter((name) => name.endsWith(".test.js")).length;
-    expect(count).toBe(101);
+    expect(count).toBe(102);
   });
 
   test("L-6 row 1: orchestrateQueue.test.js carries all four re-homed queue-triage assertion titles", () => {

@@ -3221,3 +3221,425 @@ describe("A6-07 / PROP-NFR-04: the five pure helpers read no `process`, no clock
     }
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CODE_REVIEW v1 §1 finding 2 — the uncovered A6 error arms
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// The review measured A6's own added regions at 252/297 branches = 84.85%, below the
+// 85% bar, and named the uncovered statements: `orchestrate-dev.js:3283, 3435, 3461,
+// 12544, 12577, 12586, 12612`. Every one is an ERROR arm — a happy path was never the
+// gap. They fall into four groups, and each group gets its block below:
+//
+//   :3283          `sameSequence`'s non-array guard
+//   :3435, :3461   the record- and escalation-log WRITE-FAILURE notice arms in the
+//                  capture-failure disposition path
+//   :12577, :12586, :12612
+//                  `captureTreeSnapshot`'s `rev-parse` / `add` / `reset` failure arms —
+//                  the three verbs the existing PROP-REST-08 `test.each` does not drive
+//                  (it covers `write-tree`, `commit-tree` and `update-ref`)
+//   :12544         `gitWithLockRetry`'s post-loop `return result`
+//
+// The last one is the interesting one and is treated separately at the end.
+
+describe("CR v1 §1-2 / sameSequence (:3283): the non-array guard", () => {
+  const { sameSequence } = devModule;
+
+  // TSPEC §2.4 — step 6 compares the ledger's growth against the wave's configured gate
+  // sequence. A non-array on either side is not "an empty sequence that trivially matches";
+  // it is an unusable comparison, and the only safe answer is `false`.
+  test.each([
+    ["left is null", null, ["a"]],
+    ["right is null", ["a"], null],
+    ["left is undefined", undefined, []],
+    ["right is undefined", [], undefined],
+    ["left is a string", "a,b", ["a", "b"]],
+    ["right is a string", ["a", "b"], "a,b"],
+    ["left is an object", { 0: "a", length: 1 }, ["a"]],
+    ["right is an object", ["a"], { 0: "a", length: 1 }],
+    ["both are non-arrays", null, null],
+  ])("%s → false, never a coerced match", (_label, a, b) => {
+    expect(sameSequence(a, b)).toBe(false);
+  });
+
+  test("the guard is not swallowing the real comparison: equal arrays still match, unequal ones still do not", () => {
+    // Non-vacuity. A `sameSequence` that returned `false` unconditionally would pass every
+    // case above.
+    expect(sameSequence(["a", "b"], ["a", "b"])).toBe(true);
+    expect(sameSequence([], [])).toBe(true);
+    expect(sameSequence(["a", "b"], ["b", "a"])).toBe(false);
+    expect(sameSequence(["a"], ["a", "b"])).toBe(false);
+  });
+});
+
+describe("CR v1 §1-2 / captureTreeSnapshot (:12577, :12586, :12612): the rev-parse, add and reset failure arms", () => {
+  // The existing PROP-REST-08 `test.each` drives `write-tree`, `commit-tree` and `update-ref`.
+  // These are the other three verbs `captureTreeSnapshot` can fail on. All six behave the same
+  // way by contract (TSPEC §2.5): return `null`, never throw, and write the failing verb into
+  // the caller's live `failure` carrier so the escalation can name the diagnostic.
+  //
+  // `add` and `reset` are the two that route through `gitWithLockRetry`, so their stderr is
+  // deliberately NON-transient — a transient stderr would send them round the retry loop, which
+  // is a different property (covered in the last block below).
+  test.each([
+    ["rev-parse", "fatal: not a git repository"],
+    ["add", "fatal: pathspec is unusable"],
+    ["reset", "fatal: reset is not possible"],
+  ])("`%s` failing → null return, and failure.verb names it", async (verb, stderr) => {
+    const repo = createA6TempRepo();
+    try {
+      const seen = [];
+      const _git = async (argv) => {
+        seen.push(argv[0]);
+        return argv[0] === verb ? { ok: false, stdout: "", stderr } : repo._git(argv);
+      };
+      const failure = { verb: null };
+
+      const result = await captureTreeSnapshot({
+        feature: "pdlc-advisory-wave-gate",
+        waveNum: 1,
+        _git,
+        _sleep: async () => {},
+        emit: () => {},
+        failure,
+      });
+
+      expect(result).toBeNull();
+      expect(failure.verb).toBe(verb);
+      // The failure is observed where it happens, not inferred at the end: the capture stops at
+      // the failing verb and never reaches the ones that follow it.
+      expect(seen).toContain(verb);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("the `failure` carrier is optional — a caller that omits it still gets a null return, not a throw", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const _git = async (argv) =>
+        argv[0] === "rev-parse" ? { ok: false, stdout: "", stderr: "fatal: no HEAD" } : repo._git(argv);
+      await expect(
+        captureTreeSnapshot({
+          feature: "pdlc-advisory-wave-gate",
+          waveNum: 1,
+          _git,
+          _sleep: async () => {},
+          emit: () => {},
+        })
+      ).resolves.toBeNull();
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("a non-object `failure` is ignored rather than written through", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const _git = async (argv) =>
+        argv[0] === "add" ? { ok: false, stdout: "", stderr: "fatal: add is unusable" } : repo._git(argv);
+      await expect(
+        captureTreeSnapshot({
+          feature: "pdlc-advisory-wave-gate",
+          waveNum: 1,
+          _git,
+          _sleep: async () => {},
+          emit: () => {},
+          failure: "not-an-object",
+        })
+      ).resolves.toBeNull();
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+describe("CR v1 §1-2 / the capture-failure disposition's write-failure arms (:3435, :3461)", () => {
+  // §2.5's capture-failure path writes its own durable trace: record entry, then escalation
+  // entry, then notice, then the caller halts. Both writes are wrapped in `try/catch` — a
+  // failed durable write must DEGRADE the trace, never abort the halt, because the halt is the
+  // thing the operator actually needs. Neither catch had a test.
+  //
+  // The oracle is the notice text plus the return value: A6 still reports `resolved: false`
+  // with Oracle G's exact halt fields, so the wave still halts on the pre-A6 reason.
+
+  const RECORD_PATH = "docs/pdlc-advisory-wave-gate/ADVISORY-pdlc-advisory-wave-gate.md";
+  const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
+
+  const ORACLE_G_HALT_FIELDS = {
+    rootCause: "unclassified",
+    diagnosis:
+      "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied",
+    repairApplied: false,
+    repairPaths: [],
+  };
+
+  /** A capture that fails on `write-tree`, which is what drives the disposition path at all. */
+  const failingCapture = (repo) => async (argv) =>
+    argv[0] === "write-tree"
+      ? { ok: false, stdout: "", stderr: "fatal: unable to write tree object" }
+      : repo._git(argv);
+
+  /**
+   * A file double whose `_appendFile` throws for ONE path and behaves for every other, so each
+   * catch arm is reached in isolation and the other write is still observable.
+   */
+  function makeThrowingFileDouble(failingPath, error) {
+    const files = makeFileDouble();
+    return {
+      files,
+      _readFile: files._readFile,
+      _appendFile: async (path, contents) => {
+        if (path === failingPath) throw error;
+        return files._appendFile(path, contents);
+      },
+    };
+  }
+
+  test("a throwing record write is noticed, does not abort the halt, and the escalation entry is still written", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const notices = [];
+      const double = makeThrowingFileDouble(RECORD_PATH, new Error("disk full writing the record"));
+
+      const result = await runWaveGateSeam(
+        makeA6RunArgs({
+          _git: failingCapture(repo),
+          _agent: makeAgentDouble({ script: [] }),
+          _runCommand: makeA6RunCommand()._runCommand,
+          _appendFile: double._appendFile,
+          _readFile: double._readFile,
+          _notice: (m) => notices.push(m),
+          waveBudget: { resolved: 0 },
+        })
+      );
+
+      // The notice names the seam and carries the underlying message — an operator reading it
+      // has to know WHICH durable write was lost and why.
+      expect(notices).toContainEqual(
+        "ADVISORY record write failed for seam A6: disk full writing the record"
+      );
+
+      // Degraded, not aborted: the halt still happens on exactly Oracle G's fields.
+      expect(result.resolved).toBe(false);
+      expect(result.haltFields).toEqual(ORACLE_G_HALT_FIELDS);
+
+      // The record is genuinely absent (the write threw) while the escalation — the write that
+      // FOLLOWS it — still landed. That ordering is the point: one lost write does not cascade.
+      expect(double.files.files[RECORD_PATH]).toBeUndefined();
+      expect(double.files.files[ESCALATIONS_PATH]).toBeDefined();
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("a throwing escalation-log write is noticed, does not abort the halt, and the record entry survives", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const notices = [];
+      const double = makeThrowingFileDouble(
+        ESCALATIONS_PATH,
+        new Error("ESCALATIONS.md is not writable")
+      );
+
+      const result = await runWaveGateSeam(
+        makeA6RunArgs({
+          _git: failingCapture(repo),
+          _agent: makeAgentDouble({ script: [] }),
+          _runCommand: makeA6RunCommand()._runCommand,
+          _appendFile: double._appendFile,
+          _readFile: double._readFile,
+          _notice: (m) => notices.push(m),
+          waveBudget: { resolved: 0 },
+        })
+      );
+
+      expect(notices).toContainEqual(
+        "ADVISORY escalation log write failed for seam A6: ESCALATIONS.md is not writable"
+      );
+
+      expect(result.resolved).toBe(false);
+      expect(result.haltFields).toEqual(ORACLE_G_HALT_FIELDS);
+
+      // The mirror image of the case above: the earlier write landed, the later one did not.
+      expect(double.files.files[RECORD_PATH]).toBeDefined();
+      expect(double.files.files[ESCALATIONS_PATH]).toBeUndefined();
+
+      // And the seam-level escalation notice is STILL emitted — losing the durable log must not
+      // also lose the operator-facing one, or the failure would be completely silent.
+      expect(notices.some((m) => m.includes("A6"))).toBe(true);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test.each([
+    ["a non-Error throw", "a bare string blew up", "a bare string blew up"],
+    ["an Error with no message", new Error(""), "Error"],
+  ])(
+    "%s is still reported: the notice falls back to String(err) rather than reading `undefined`",
+    async (_label, thrown, expectedFragment) => {
+      const repo = createA6TempRepo();
+      try {
+        const notices = [];
+        const double = makeThrowingFileDouble(RECORD_PATH, thrown);
+
+        await runWaveGateSeam(
+          makeA6RunArgs({
+            _git: failingCapture(repo),
+            _agent: makeAgentDouble({ script: [] }),
+            _runCommand: makeA6RunCommand()._runCommand,
+            _appendFile: double._appendFile,
+            _readFile: double._readFile,
+            _notice: (m) => notices.push(m),
+            waveBudget: { resolved: 0 },
+          })
+        );
+
+        const recordNotice = notices.find((m) =>
+          m.startsWith("ADVISORY record write failed for seam A6:")
+        );
+        expect(recordNotice).toBeDefined();
+        expect(recordNotice).toContain(expectedFragment);
+        expect(recordNotice).not.toContain("undefined");
+      } finally {
+        repo.cleanup();
+      }
+    }
+  );
+});
+
+describe("CR v1 §1-2 / gitWithLockRetry (:12544): the retry loop's classification and exhaustion arms", () => {
+  const { gitWithLockRetry, GIT_LOCK_RETRIES, GIT_LOCK_RETRY_DELAY_MS } = devModule;
+
+  /** A transport that returns a scripted sequence of results, one per call. */
+  function scriptedGit(results) {
+    const calls = [];
+    return {
+      calls,
+      _git: async (argv) => {
+        calls.push(argv);
+        return results[Math.min(calls.length - 1, results.length - 1)];
+      },
+    };
+  }
+
+  const fail = (stderr) => ({ ok: false, stdout: "", stderr });
+  const ok = { ok: true, stdout: "done", stderr: "" };
+
+  test("a first-try success returns immediately, with no retry and no sleep", async () => {
+    const git = scriptedGit([ok]);
+    const sleeps = [];
+    const result = await gitWithLockRetry(["add", "-A"], {
+      _git: git._git,
+      _sleep: async (ms) => sleeps.push(ms),
+      emit: () => {},
+      label: "L",
+    });
+    expect(result).toBe(ok);
+    expect(git.calls.length).toBe(1);
+    expect(sleeps).toEqual([]);
+  });
+
+  // The four transient classifications, each with the sentence it emits. These are the strings
+  // an operator reads when a wave stalls, so they are asserted verbatim rather than by fragment.
+  test.each([
+    ["index.lock", "fatal: Unable to create '.git/index.lock': File exists", ".git/index.lock is held"],
+    ["unparseable adapter", "unparseable adapter response", "adapter response was unparseable"],
+    ["shell mangling (no matches)", "zsh: no matches found: *.js", "the transport shell mangled the command"],
+    ["shell mangling (not found)", "sh: git: command not found", "the transport shell mangled the command"],
+    ["wrong cwd", "error: pathspec 'x' did not match any files", "the transport ran git outside the repository root"],
+  ])("%s is transient: it retries, sleeps, and names the reason", async (_label, stderr, reason) => {
+    const git = scriptedGit([fail(stderr), ok]);
+    const sleeps = [];
+    const emitted = [];
+    const result = await gitWithLockRetry(["add", "-A"], {
+      _git: git._git,
+      _sleep: async (ms) => sleeps.push(ms),
+      emit: (m) => emitted.push(m),
+      label: "A6 wave 1: snapshot add",
+    });
+
+    expect(result).toBe(ok);
+    expect(git.calls.length).toBe(2);
+    expect(sleeps).toEqual([GIT_LOCK_RETRY_DELAY_MS]);
+    expect(emitted).toEqual([
+      `A6 wave 1: snapshot add: ${reason} — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +
+        `(attempt 1 of ${GIT_LOCK_RETRIES})`,
+    ]);
+  });
+
+  test("a NON-transient failure returns the failing result on the first attempt — no retry, no sleep, no emit", async () => {
+    // The documented reason: retrying a rejected commit hook five times just delays the halt.
+    const failing = fail("error: failed to push some refs");
+    const git = scriptedGit([failing]);
+    const sleeps = [];
+    const emitted = [];
+    const result = await gitWithLockRetry(["push"], {
+      _git: git._git,
+      _sleep: async (ms) => sleeps.push(ms),
+      emit: (m) => emitted.push(m),
+      label: "L",
+    });
+    expect(result).toBe(failing);
+    expect(git.calls.length).toBe(1);
+    expect(sleeps).toEqual([]);
+    expect(emitted).toEqual([]);
+  });
+
+  test("a null transport result is treated as a non-transient failure and returned as-is", async () => {
+    const git = scriptedGit([null]);
+    const result = await gitWithLockRetry(["status"], {
+      _git: git._git,
+      _sleep: async () => {},
+      emit: () => {},
+      label: "L",
+    });
+    expect(result).toBeNull();
+    expect(git.calls.length).toBe(1);
+  });
+
+  test("EXHAUSTION: a persistently transient failure stops after GIT_LOCK_RETRIES retries and returns the LAST result", async () => {
+    // This is the arm `:12544` sits on. The loop runs `attempt = 0 … GIT_LOCK_RETRIES`
+    // inclusive, so the transport is called GIT_LOCK_RETRIES + 1 times and sleeps
+    // GIT_LOCK_RETRIES times — the final attempt returns rather than sleeping again.
+    const last = fail("fatal: Unable to create '.git/index.lock': File exists (final)");
+    const git = scriptedGit([fail("fatal: Unable to create '.git/index.lock': File exists"), last]);
+    const sleeps = [];
+    const emitted = [];
+
+    const result = await gitWithLockRetry(["add", "-A"], {
+      _git: git._git,
+      _sleep: async (ms) => sleeps.push(ms),
+      emit: (m) => emitted.push(m),
+      label: "L",
+    });
+
+    expect(result).toBe(last);
+    expect(git.calls.length).toBe(GIT_LOCK_RETRIES + 1);
+    expect(sleeps.length).toBe(GIT_LOCK_RETRIES);
+    expect(emitted.length).toBe(GIT_LOCK_RETRIES);
+    // The last emitted line counts the final retry, so the operator can see the budget run out.
+    expect(emitted[emitted.length - 1]).toContain(
+      `(attempt ${GIT_LOCK_RETRIES} of ${GIT_LOCK_RETRIES})`
+    );
+  });
+
+  test("the loop is bounded by GIT_LOCK_RETRIES, not by the transport eventually succeeding", async () => {
+    // Non-vacuity for the exhaustion case above: if the bound were removed this would not
+    // terminate, and if the bound were off by one the counts would move together.
+    const git = scriptedGit([fail("unparseable adapter response")]);
+    let sleeps = 0;
+    const result = await gitWithLockRetry(["write-tree"], {
+      _git: git._git,
+      _sleep: async () => {
+        sleeps += 1;
+      },
+      emit: () => {},
+      label: "L",
+    });
+    expect(result.ok).toBe(false);
+    expect(git.calls.length).toBe(GIT_LOCK_RETRIES + 1);
+    expect(sleeps).toBe(GIT_LOCK_RETRIES);
+  });
+});
