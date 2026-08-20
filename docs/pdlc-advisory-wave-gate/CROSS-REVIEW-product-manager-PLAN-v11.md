@@ -69,7 +69,35 @@ the two tasks most tightly coupled to §1.3 are still faithful compressions of i
 
 ## Dependencies
 
-_(pending)_
+**Upstream dependency edges re-walked at HEAD.** This confirmation's question is not "did the routed
+item land" but "is PLAN still a faithful compression of the upstream it now leans on". The edges PLAN
+draws on TSPEC are these, each re-read at `1531143c`:
+
+| PLAN site | Upstream it leans on | State at `1531143c` |
+|---|---|---|
+| Overview HEAD-drift note, class-1/2/3 partition | §1.3's hygiene-residue prose | **Changed by this edit** — now sizes the residue at 28/3 classes and routes ownership *to* this note. Agrees with it. |
+| Overview HEAD-drift note, "keep and re-derive" decision | §1.3 + §6's routed fork ("a repo and PLAN decision, not a TSPEC one") | Unchanged. The routing sentence survives verbatim; the appended erratum note sits after it and does not re-open it. |
+| A6-00 Edit 1 (untrack + ignore) | §1.3 hygiene note | **Changed** — now names A6-00's Edit 1 as owner. Agrees with A6-00's text. |
+| A6-05 transcription steps | §1.3's eight-surface end-state table | Byte-unchanged. |
+| A6-18 `.enabled` gate | §1.3's `.enabled` occurrence row (three) | Byte-unchanged. |
+| A6-04 / A6-06 example-config and engine-channel steps | §4.4, §5.1 | Byte-unchanged since round 10's approval. |
+
+**Ordering is unaffected.** The erratum adds no artifact, no surface and no owner, so no task acquires
+a new predecessor and none loses one. `computeWaves` returns the same 7 waves over the same 11 tasks,
+and the wave-1 inherited-red rule — which is where a residue-sizing change *could* have bitten, since
+batch 1's gate wording enumerates the expected failing set — still names the same set: 27 failed / 8
+suites clean, 28 / 9 dirty with AT-4.1 as the extra member. TSPEC's new paragraph makes no claim about
+suite counts and therefore cannot contradict that wording.
+
+**Direction-of-ownership check.** The edit is the *good* direction for a PLAN: an upstream document
+that was restating a downstream-owned figure now defers to the downstream owner. The failure mode I
+looked for is the opposite one — upstream quietly becoming a second source of truth for a number PLAN
+owns, so the two drift on the next measurement. TSPEC guards against that explicitly ("at PLAN's dated
+2026-08-19 measurement", "the figures themselves are owned by PLAN's Overview HEAD-drift note and
+A6-00's Edit 1, which this document does not restate further"). Tying the figure to *PLAN's dated
+measurement* rather than to HEAD is the load-bearing choice: class 3 grows by one per committed
+cross-review file, so a HEAD-anchored restatement upstream would have been stale within this very
+round. It is not.
 
 ## Verification
 
