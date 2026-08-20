@@ -493,3 +493,438 @@ describe("A6-10: captureTreeSnapshot writes the wave-scoped ref refs/pdlc/a6-sna
 test.todo(
   "A6-10: a .gitignore'd file the wave added is still present after restore (git clean -fd, not -fdx) — expected: hashTree(repo.dir) still contains the ignored generated path with its wave-added content, unchanged by capture or restore; pending OQ-7's upstream erratum on the ignored-path boundary",
 );
+
+// ─── A6-14 (former A6-13 red step + A6-14 green): buildA6SeamOps, TSPEC §3.3 ──────────────────
+//
+// Member contracts only — unit tests over the SeamOps object `buildA6SeamOps` returns, with a
+// recording fake `_git`/`_runCommand`, never the full `runAdvisorySeam` integration (that is
+// A6-18's job). Covers AT-02-3, AT-02-5, AT-03-4 (seam-op half).
+
+const { buildA6SeamOps } = devModule;
+
+function makeA6Waves() {
+  return [
+    [{ id: "T1", files: ["a.js"] }],
+    [{ id: "T2", files: ["b.js", "c.js"] }],
+    [{ id: "T3", files: ["d.js"] }],
+  ];
+}
+
+function makeRecordingGit(responses = {}) {
+  const calls = [];
+  const _git = async (argv) => {
+    calls.push(argv);
+    const key = argv[0];
+    if (Object.prototype.hasOwnProperty.call(responses, key)) {
+      const r = responses[key];
+      return typeof r === "function" ? r(argv) : r;
+    }
+    return { ok: true, stdout: "", stderr: "" };
+  };
+  return { _git, calls };
+}
+
+describe("A6-14: buildA6SeamOps.gatherEvidence — TSPEC §3.3 (AT-02-5)", () => {
+  test("returns the FULL captured gate output, never outputTail's 30 lines", async () => {
+    const longOutput = Array.from({ length: 50 }, (_, i) => `line ${i}`).join("\n");
+    const { _git } = makeRecordingGit();
+    const seamOps = buildA6SeamOps({
+      feature: "pdlc-advisory-wave-gate",
+      waveNum: 1,
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: longOutput,
+      implConfig: { postWaveCommand: null, testCommand: "npm test" },
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    const evidence = await seamOps.gatherEvidence();
+    expect(evidence).toBe(longOutput);
+    // The line-0 marker sits well past outputTail's 30-line window.
+    expect(evidence).toContain("line 0");
+    expect(evidence).toContain("line 49");
+  });
+
+  test("fills declaredScope in place with E-5 ∪ E-6 for a non-last wave", async () => {
+    const { _git } = makeRecordingGit();
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    expect(seamOps.declaredScope).toEqual([]);
+    await seamOps.gatherEvidence();
+    expect(seamOps.declaredScope.slice().sort()).toEqual(["a.js", "b.js", "c.js", "d.js"]);
+  });
+
+  test("E-6 is empty on the last wave — declaredScope is E-5 only", async () => {
+    const { _git } = makeRecordingGit();
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 2,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    await seamOps.gatherEvidence();
+    expect(seamOps.declaredScope).toEqual(["d.js"]);
+  });
+});
+
+describe("A6-14: buildA6SeamOps.classifyReply — TSPEC §3.3/§3.7 (AT-02-3)", () => {
+  function makeSeamOps(gateOutput) {
+    const { _git } = makeRecordingGit();
+    return buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput,
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+  }
+
+  test("a well-cited, well-classified reply proceeds — {ok:true}", () => {
+    const gateOutput = "prefix " + "x".repeat(30) + " suffix";
+    const seamOps = makeSeamOps(gateOutput);
+    const verdict = { evidence: ["x".repeat(30)] };
+    expect(seamOps.classifyReply("ROOT-CAUSE: environmental", verdict)).toEqual({ ok: true });
+  });
+
+  test("citation too short (BR-3) reads malformed, EVEN when the class is also absent (AT-02-3's tie-break)", () => {
+    const gateOutput = "prefix " + "x".repeat(30) + " suffix";
+    const seamOps = makeSeamOps(gateOutput);
+    const verdict = { evidence: ["short"] };
+    expect(seamOps.classifyReply("DIAGNOSIS: no trailer at all", verdict)).toEqual({ malformed: true });
+  });
+
+  test("a well-cited but unclassifiable reply terminates escalated, no attempt consumed (BR-2)", () => {
+    const gateOutput = "prefix " + "x".repeat(30) + " suffix";
+    const seamOps = makeSeamOps(gateOutput);
+    const verdict = { evidence: ["x".repeat(30)] };
+    expect(seamOps.classifyReply("ROOT-CAUSE: agent-was-confused", verdict)).toEqual({
+      terminate: { outcome: "escalated", reason: null },
+    });
+  });
+});
+
+describe("A6-14: buildA6SeamOps.conditionHolds — TSPEC §3.3", () => {
+  test("an async arrow that always resolves true", async () => {
+    const { _git } = makeRecordingGit();
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    const result = seamOps.conditionHolds();
+    expect(result).toBeInstanceOf(Promise);
+    await expect(result).resolves.toBe(true);
+  });
+});
+
+describe("A6-14: buildA6SeamOps.producedPaths — TSPEC §3.3/§3.4", () => {
+  test("unions git diff --name-only with git ls-files --others --exclude-standard", async () => {
+    const { _git } = makeRecordingGit({
+      diff: { ok: true, stdout: "a.js\nb.js\n", stderr: "" },
+      "ls-files": { ok: true, stdout: "new-untracked.js\n", stderr: "" },
+    });
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    const produced = await seamOps.producedPaths();
+    expect(produced.sort()).toEqual(["a.js", "b.js", "new-untracked.js"]);
+  });
+
+  test("the untracked half is not optional — an E-6 promotion creates a file git diff never sees", async () => {
+    const { _git } = makeRecordingGit({
+      diff: { ok: true, stdout: "", stderr: "" },
+      "ls-files": { ok: true, stdout: "promoted-symbol.js\n", stderr: "" },
+    });
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    expect(await seamOps.producedPaths()).toEqual(["promoted-symbol.js"]);
+  });
+
+  test("widens declaredScope in place for a produced path covered by an owned directory row (§3.4)", async () => {
+    const { _git } = makeRecordingGit({
+      diff: { ok: true, stdout: "pdlc/workflows/dist/bundle.js\n", stderr: "" },
+      "ls-files": { ok: true, stdout: "", stderr: "" },
+    });
+    const waves = [[{ id: "T1", files: ["pdlc/workflows/dist/"] }]];
+    const seamOps = buildA6SeamOps({
+      waves,
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    await seamOps.gatherEvidence();
+    expect(seamOps.declaredScope).toEqual(["pdlc/workflows/dist/"]);
+    await seamOps.producedPaths();
+    expect(seamOps.declaredScope).toContain("pdlc/workflows/dist/bundle.js");
+  });
+});
+
+describe("A6-14: buildA6SeamOps.apply — TSPEC §3.3", () => {
+  test("writes ledgerAnchor.value = invocations.length into the CALLER's carrier, reading the length at call time", async () => {
+    const invocations = ["post-wave", "test"]; // a prior attempt already appended two tokens
+    const ledgerAnchor = { value: -1 };
+    const { _git } = makeRecordingGit({ diff: { ok: true, stdout: "a.js\n", stderr: "" } });
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations,
+      ledgerAnchor,
+      snapshot: {},
+      _git,
+    });
+    invocations.push("post-wave"); // a later token lands before apply is actually called
+    await seamOps.apply();
+    expect(ledgerAnchor.value).toBe(3);
+  });
+
+  test("writes ledgerAnchor.value BEFORE dispatching anything — set even when producedPaths' own _git call then fails", async () => {
+    const invocations = ["post-wave", "test"];
+    const ledgerAnchor = { value: -1 };
+    const _git = async () => ({ ok: false, stdout: "", stderr: "boom" });
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations,
+      ledgerAnchor,
+      snapshot: {},
+      _git,
+    });
+    await seamOps.apply();
+    expect(ledgerAnchor.value).toBe(2);
+  });
+
+  test("returns {ok:true} when producedPaths() is non-empty", async () => {
+    const { _git } = makeRecordingGit({
+      diff: { ok: true, stdout: "a.js\n", stderr: "" },
+    });
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    expect(await seamOps.apply()).toEqual({ ok: true });
+  });
+
+  test("returns {ok:false} when producedPaths() is empty — an empty repair, including a .gitignore'd-only write (OQ-11)", async () => {
+    const { _git } = makeRecordingGit({
+      diff: { ok: true, stdout: "", stderr: "" },
+      "ls-files": { ok: true, stdout: "", stderr: "" },
+    });
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    expect(await seamOps.apply()).toEqual({ ok: false });
+  });
+});
+
+describe("A6-14: buildA6SeamOps.revert — TSPEC §3.3/§3.5", () => {
+  test("delegates to restoreTreeSnapshot(snapshot)", async () => {
+    const calls = [];
+    const _git = async (argv) => {
+      calls.push(argv);
+      return { ok: true, stdout: "sha\n", stderr: "" };
+    };
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: { head: "h", tree: "t", snap: "s" },
+      _git,
+    });
+    await seamOps.revert();
+    expect(calls.some((argv) => argv[0] === "read-tree")).toBe(true);
+    expect(calls.some((argv) => argv[0] === "clean")).toBe(true);
+    expect(calls.some((argv) => argv[0] === "reset")).toBe(true);
+  });
+
+  test("propagates restoreTreeSnapshot's throw on failure", async () => {
+    const _git = async (argv) =>
+      argv[0] === "read-tree" ? { ok: false, stdout: "", stderr: "fatal" } : { ok: true, stdout: "", stderr: "" };
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: { head: "h", tree: "t", snap: "s" },
+      _git,
+    });
+    await expect(seamOps.revert()).rejects.toThrow();
+  });
+});
+
+describe("A6-14: buildA6SeamOps.verifyGate — TSPEC §3.3/§3.2 step 6", () => {
+  test("re-runs post-wave then test, appending one token per command to invocations, and passes on green", async () => {
+    const invocations = [];
+    const commands = [];
+    const _runCommand = async (cmd) => {
+      commands.push(cmd);
+      return { ok: true, output: "" };
+    };
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: { postWaveCommand: "npm run build", testCommand: "npm test" },
+      scriptGate: true,
+      invocations,
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _runCommand,
+    });
+    const outcome = await seamOps.verifyGate();
+    expect(outcome).toEqual({ passed: true });
+    expect(invocations).toEqual(["post-wave", "test"]);
+    expect(commands).toEqual(["npm run build", "npm test"]);
+  });
+
+  test("a red re-gate returns {passed:false, consumesAttempt:true} — re-enters the driver's loop toward budget-exhausted", async () => {
+    const invocations = [];
+    const _runCommand = async (cmd) =>
+      cmd === "npm test" ? { ok: false, output: "FAIL" } : { ok: true, output: "" };
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: { postWaveCommand: "npm run build", testCommand: "npm test" },
+      scriptGate: true,
+      invocations,
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _runCommand,
+    });
+    const outcome = await seamOps.verifyGate();
+    expect(outcome).toEqual({ passed: false, consumesAttempt: true });
+    expect(invocations).toEqual(["post-wave", "test"]);
+  });
+});
+
+describe("A6-14: buildA6SeamOps.permittedActions — TSPEC §3.3 (AT-03-4's seam-op half)", () => {
+  test("carries E-6 on a non-last wave", () => {
+    const { _git } = makeRecordingGit();
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    expect(new Set(seamOps.permittedActions)).toEqual(new Set(["E-5", "E-6"]));
+  });
+
+  test("narrows E-6 away on the last wave — there is no later task for a promotion to belong to", () => {
+    const { _git } = makeRecordingGit();
+    const seamOps = buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 2,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+    });
+    expect(seamOps.permittedActions).toEqual(["E-5"]);
+  });
+});
+
+describe("A6-14: ledgerAnchor carrier — TSPEC §3.3 (fail-closed initialisation)", () => {
+  test("a fresh carrier the call site initialises to {value: -1} is untouched until apply() runs", () => {
+    const ledgerAnchor = { value: -1 };
+    const { _git } = makeRecordingGit();
+    buildA6SeamOps({
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: {},
+      scriptGate: true,
+      invocations: [],
+      ledgerAnchor,
+      snapshot: {},
+      _git,
+    });
+    expect(ledgerAnchor.value).toBe(-1);
+  });
+});

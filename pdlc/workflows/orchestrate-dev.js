@@ -2975,6 +2975,139 @@ export async function buildA5SeamOps({
   };
 }
 
+// ─── TSPEC §3.3 — A6's SeamOps for a wave-gate repair (PLAN A6-14) ─────────
+//
+// `buildA6SeamOps({feature, waveNum, waves, waveIndex, tasks, gateOutput, implConfig, scriptGate,
+// invocations, ledgerAnchor, snapshot, _git, _runCommand})`. `declaredScope` is the `buildA4SeamOps`
+// idiom — a live array, mutated in place (`.length = 0; push(...)` at `gatherEvidence`, widened
+// in place again by `producedPaths`), never reassigned, because the driver captures the reference
+// once at GATE (`gateCtx.declaredScope`, `proposalCandidate.paths`) and the fixtures shallow-copy
+// the returned SeamOps object (`{ ...seamOps }`), which only keeps array *references* live.
+// `ledgerAnchor` is the SAME idiom applied to a `{value: number}` carrier the call site owns —
+// `apply`'s first statement writes `ledgerAnchor.value = invocations.length` into the caller's
+// carrier, before it calls `producedPaths` (its own first `_git` transport call), so the anchor
+// always names the ledger position immediately BEFORE this attempt's own repair (§3.2 step 6).
+//
+// @param {{feature: string, waveNum: number, waves: Array, waveIndex: number, tasks: Array,
+//          gateOutput: string, implConfig: {postWaveCommand: string|null, testCommand: string|null},
+//          scriptGate: boolean, invocations: string[], ledgerAnchor: {value: number},
+//          snapshot: {head: string, tree: string, snap: string}, _git: Function,
+//          _runCommand: Function}} args
+// @returns {SeamOps}
+export function buildA6SeamOps({
+  feature,
+  waveNum,
+  waves,
+  waveIndex,
+  tasks,
+  gateOutput,
+  implConfig,
+  scriptGate,
+  invocations,
+  ledgerAnchor,
+  snapshot,
+  _git,
+  _runCommand,
+} = {}) {
+  const declaredScope = [];
+  const isLastWave = !Array.isArray(waves) || waveIndex >= waves.length - 1;
+  // TSPEC §3.3 — `permittedActions` narrows `E-6` away on the last wave: there is no later task
+  // for a promotion to belong to.
+  const permittedActions = isLastWave ? ["E-5"] : ["E-5", "E-6"];
+
+  async function gatherEvidence() {
+    // TSPEC §3.4 — declaredScope starts as E-5 ∪ E-6 (exact manifest entries); `producedPaths`
+    // widens it in place later, never here.
+    const e5 = waveOwnedPaths(waves, waveIndex);
+    const e6 = isLastWave ? [] : laterOwnedPaths(waves, waveIndex);
+    declaredScope.length = 0;
+    declaredScope.push(...new Set([...e5, ...e6]));
+    // TSPEC §3.3 — the FULL captured gate output, never `outputTail`'s 30 lines (AT-02-5, E-12).
+    return String(gateOutput || "");
+  }
+
+  async function producedPathsImpl() {
+    const diffPaths = await readGitFileList(["diff", "--name-only"], _git);
+    // TSPEC §3.3 — the untracked half is not optional: an E-6 promotion creates files, which
+    // `git diff --name-only` alone would never see.
+    const untracked = await readGitFileList(["ls-files", "--others", "--exclude-standard"], _git);
+    const produced = [...new Set([...diffPaths, ...untracked])];
+    // TSPEC §3.4 — widen declaredScope in place: a produced path covered by an owned directory
+    // row joins the set, so a legitimately-owned file under a directory row is not refused.
+    for (const p of produced) {
+      if (!declaredScope.includes(p) && ownedSetCovers(declaredScope, p)) {
+        declaredScope.push(p);
+      }
+    }
+    return produced;
+  }
+
+  return {
+    gatherEvidence,
+    prompt: (evidence) =>
+      [
+        `Wave ${waveNum} of ${feature}'s gate went red. Diagnose the failure from the captured`,
+        `output below, citing the exact region that shows it (at least ${A6_MIN_CITATION_CHARS}`,
+        `normalised characters, verbatim from the output).`,
+        `Classify with a trailer line ROOT-CAUSE: one of ${ADVISORY_ROOT_CAUSES.join(", ")}.`,
+        `If the failure is a plan-ordering-defect fixable by a later PLAN task, also state`,
+        `PROMOTES: {symbol} and PROMOTES-TASK: {taskId}.`,
+        `Captured gate output:`,
+        evidence,
+      ].join("\n"),
+    // TSPEC §3.7 / §3.3 — BR-3's citation rule runs first (⇒ malformed, one attempt consumed),
+    // then BR-2's vocabulary read (⇒ escalate, no attempt) — this order is what gives AT-02-3's
+    // tie-break: a reply that fails the citation check is malformed regardless of its class.
+    classifyReply: (raw, verdict) => {
+      const evidence = verdict && Array.isArray(verdict.evidence) ? verdict.evidence : [];
+      if (!citesGateOutput(evidence, gateOutput)) {
+        return { malformed: true };
+      }
+      const rootCause = parseA6RootCause(raw);
+      if (rootCause === "unclassified") {
+        return { terminate: { outcome: "escalated", reason: null } };
+      }
+      return { ok: true };
+    },
+    // TSPEC §3.3 — an async arrow, not the literal `true`: the driver `await`s this. The
+    // condition IS the red gate, already observed by the script one step earlier.
+    conditionHolds: async () => true,
+    apply: async () => {
+      // TSPEC §3.3 — the FIRST statement, before anything is dispatched (before the first `_git`
+      // transport call `producedPathsImpl` makes): a write into the caller's own carrier, never a
+      // local variable and never a property on the returned SeamOps object.
+      ledgerAnchor.value = invocations.length;
+      const produced = await producedPathsImpl();
+      // TSPEC §3.3 — `{ok:true}` iff `producedPaths()` is non-empty; an empty set (including a
+      // repair that wrote only `.gitignore`d paths, OQ-11) is `{ok:false}`.
+      return { ok: produced.length > 0 };
+    },
+    producedPaths: producedPathsImpl,
+    revert: async () => {
+      await restoreTreeSnapshot(snapshot, { _git, _sleep: async () => {}, emit: () => {} });
+    },
+    verifyGate: async () => {
+      // TSPEC §3.3 — re-runs the wave's own gate sequence (post-wave then test), appending one
+      // token per command to the shared `invocations` array; a red re-gate declares
+      // `consumesAttempt: true` so the driver re-enters its loop and exhausts to
+      // `budget-exhausted` rather than terminating immediately.
+      if (implConfig && implConfig.postWaveCommand && typeof _runCommand === "function") {
+        const post = await _runCommand(implConfig.postWaveCommand);
+        invocations.push("post-wave");
+        if (!post || post.ok !== true) return { passed: false, consumesAttempt: true };
+      }
+      if (scriptGate && implConfig && typeof _runCommand === "function") {
+        const test = await _runCommand(implConfig.testCommand);
+        invocations.push("test");
+        if (!test || test.ok !== true) return { passed: false, consumesAttempt: true };
+      }
+      return { passed: true };
+    },
+    declaredScope,
+    permittedActions,
+  };
+}
+
 // ─── TSPEC §9 — the advisory record (PLAN A-21) ────────────────────────────
 //
 // `docs/{feature}/ADVISORY-{feature}.md` — append-only, one `##` entry per invocation, in
