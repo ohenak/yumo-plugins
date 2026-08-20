@@ -219,7 +219,7 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `maxDocuments` for every corpus size `N`. Under the `COUNT-BINDING` fixture (8 documents, one
   200-byte priority section each, `maxDocuments: 3`) exactly **3** documents **must** contribute and
   exactly **5** **must** carry `RSN-COUNT`.
-  *Functional · L1 · AC-2.1, BR-5, E-09, E-10, AT-07, AT-08, F-O-7/O-8, TSPEC §T.4 · red LI-07 ·
+  *Functional · L1 · AC-2.1, BR-5, E-09, E-10, AT-07, AT-08, F-O-7, TSPEC §T.4 · red LI-07 ·
   green LI-16.*
 - **PROP-BOUND-02:** Under the mirror `BYTES-BINDING` fixture (8 documents of 7,000 injectable bytes
   under §4.1's declared values) the contributing count **must** be strictly below `maxDocuments`, with
@@ -237,8 +237,9 @@ a defect in this document or in the PLAN, not a nice-to-have.
   set; and no count-cut document **must** be back-filled into a freed slot.
   *Data Integrity · L1 · AC-2.4, BR-5 no-back-fill, BR-6, E-17, E-18, AT-13 · red LI-07 · green LI-16.*
 - **PROP-BOUND-05:** The material taken from an unbounded document **must** be exactly BR-6's five
-  priority sections that the document carries, **as an ordered sequence in priority order** (Cross-Feature
-  Patterns, Non-Convergences, Rejected Proposals, Process Learnings, Open Items for Consolidation), and
+  priority sections that the document carries, **as an ordered sequence in priority order**
+  (`Cross-Feature Patterns`, `Non-Convergences`, `Rejected Proposals (with rationale)`,
+  `Process Learnings`, `Open Items for Consolidation` — FSPEC BR-6's names verbatim), and
   the Approval Record's text **must** be absent while all five present sections' texts **must** be
   present — both conjuncts, so the oracle is not vacuous on a fixture that never carried the excluded
   section.
@@ -248,11 +249,34 @@ a defect in this document or in the PLAN, not a nice-to-have.
   rest of the corpus **must** be used normally.
   *Functional · L1 · BR-6, BR-9, E-33, AT-28 · red LI-07 · green LI-16.*
 - **PROP-BOUND-07:** All three §4.1 byte thresholds **must** range over one pool — **material only**.
-  `bytesInjected` for a row **must** equal `Buffer.byteLength(material, "utf8")` for that document;
-  `totalBytesInjected` **must** equal the sum of the rows' `bytesInjected`; and per-document framing
-  (opener, `ABRIDGED` annotation, closer) and block framing (header, preamble, trailer) **must** be
-  charged to **no** bound and to no row.
+  `bytesInjected` for a row **must** equal the **hand-computed literal** byte count of that document's
+  declared sections in the fixture, transcribed at fixture-authoring time; `totalBytesInjected`
+  **must** equal the hand-computed sum of those literals; and per-document framing (opener, `ABRIDGED`
+  annotation, closer) and block framing (header, preamble, trailer) **must** be charged to **no** bound
+  and to no row. Neither expected value may be written as an expression over the implementation's own
+  output — `bytesInjected === Buffer.byteLength(material)` where `material` is what the extractor
+  returned is an identity no implementation can fail, and an implementation charging framing to every
+  row **and** to the total satisfies it, which is exactly mutation M-5. The framing cost of the fixture
+  is stated as its own literal beside the material counts, so the test proves the two numbers **differ**
+  — that difference is what M-5 reds.
   *Data Integrity · L1 · AC-2.3, AC-2.4, TSPEC §D.5 · red LI-08 · green LI-17.*
+- **PROP-BOUND-08** *(real-corpus arm — the recognition rule):* Driven over a **real** corpus document
+  read from the live `LEARNINGS_CORPUS_ARGV` `git ls-files` output (first path in UTF-8 byte order, not
+  a synthetic fixture), `extractInjectableMaterial` **must** return a section set **equal** to the
+  intersection of BR-6's five names with the `## N. Title` headings that document actually carries, and
+  **must** exclude its `## 6. Approval Record`. The observed set **must** be non-empty, and the
+  document's own heading lines **must** be asserted present in the fixture text — the positive-presence
+  conjunct that stops the property greening over a document whose headings the matcher never saw.
+  Measured at HEAD: all 9 corpus documents carry `## 1. Non-Convergences`, `## 2. Cross-Feature
+  Patterns`, `## 3. Rejected Proposals (with rationale)`, `## 4. Process Learnings` and
+  `## 5. Open Items for Consolidation`. This is the arm that defeats the fixture-and-matcher-drift
+  mutation: a matcher written against a wrong heading spelling greens on every synthetic fixture
+  written to the same wrong spelling, and yields `RSN-NO-MATERIAL` on every real document. A synthetic
+  fixture structurally cannot falsify it. Carries **no** FSPEC AT id — a supporting test in
+  `learningsBlock.test.js`, so §T.5's 35-member partition and `LI-T-SUITEMAP`'s disjointness are
+  unchanged.
+  *Data Integrity · L1 (real corpus, read-only) · AC-2.3, BR-6, F-O-1, TSPEC §D.5 · red LI-08 ·
+  green LI-17.*
 
 ### Group E — The rendered block *(BR-7, AC-1.4, F-O-2, TSPEC §OQ.1)*
 
