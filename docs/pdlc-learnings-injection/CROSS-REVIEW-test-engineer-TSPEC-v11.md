@@ -117,7 +117,49 @@ reds. Carried forward from v10 as F-06.
 
 ## Data Model
 
-_pending_
+**Items 1 and 2 (§D.1's domain-membership wording versus `corpusOutcome`'s `null`) — landed, and
+landed well.** The sentence now reads "one test per domain asserts that every **non-`null`** value it
+ever carries is a member of that field's catalogue", and the paragraph explains *why* the scoping is
+not a hedge: `null` is the healthy value of `dispatches[i].corpusOutcome` and of
+`runMirror.corpusOutcome` (§D.2 still shows `corpusOutcome: null, // | "RSN-UNLISTABLE" |
+"RSN-EMPTY"`), meaning "documents were known", so an unscoped membership assertion would red on
+every happy-path run. The contradiction the item routed is gone: §D.1 and §D.2 now agree.
+
+Three things about this edit are worth naming because they are what keeps the oracle falsifiable —
+the usual failure mode of a "scope the assertion to exclude the failing case" repair is an oracle
+that can no longer fail:
+
+1. **The catalogue set-equality test is explicitly untouched.** `null` is stated as deliberately
+   **not** a member of `LEARNINGS_CORPUS_OUTCOMES`, whose set-equality operand stays exactly
+   `["RSN-UNLISTABLE", "RSN-EMPTY"]`. The scoping lives in the *domain* test, not in the catalogue,
+   so an implementation that adds a seventh reason still reds DC-01's set equality.
+2. **The scoped predicate is written out** — `v === null || catalogue.includes(v)` — rather than
+   left to the PLAN author to invent. A reader cannot accidentally implement it as "skip the
+   assertion when any value is null".
+3. **A positive non-`null` assertion exists elsewhere and is named.** §T.6's `DIVERGENT-CORPUS`
+   fixture asserts `dispatches[5].corpusOutcome === "RSN-UNLISTABLE"` on the per-dispatch locus, so
+   the catalogue's members are positively exercised somewhere; the domain test is not the only thing
+   standing between the implementation and an all-`null` field.
+
+The paragraph also correctly notes the scoping is vacuous for `rejected[].reason` and
+`notices[].id`, which carry no `null`, so their tests are unchanged. That is the right narrowing —
+it does not weaken the two domains that never needed it.
+
+**The residual `runMirror` domain (v10 F-08) is now weaker, not resolved.** §D.1 keeps
+`runMirror.corpusOutcome` as the fourth domain while §A.5 and §T.6 forbid asserting on the mirror
+("It asserts **nothing about `runMirror`**"), and §D.2 states the mirror's value is deliberately
+unconstrained and may be omitted entirely by a conforming implementation. With the non-`null`
+scoping added, that fourth domain test can now be satisfied by a run in which the mirror is `null`
+throughout — or absent — for every fixture in the suite. It cannot red, and it cannot mislead
+either; it is a documentary constraint on which ids *may* appear. Still Low, still a PLAN-time
+wording repair: either name the fixture that gives the mirror a non-`null` value, or drop the fourth
+domain and say the mirror is shape-tested only (F-05).
+
+**Closure count.** No closed set moved this round: `LEARNINGS_REJECT_REASONS` (6),
+`LEARNINGS_CORPUS_OUTCOMES` (2), `LEARNINGS_NOTICES` (2), `ruleInputs.thresholds` (3 keys) are
+byte-identical to what v10 approved, and each still has a named set-equality operand. The
+outstanding gap is the same one v10 recorded: no closure test over `Object.keys(ruleInputs)`' own key
+set, so a future sibling of `thresholds` lands unrecorded without reddening anything (F-07).
 
 ## Test Strategy
 
