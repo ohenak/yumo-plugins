@@ -70,11 +70,38 @@ under-specified.
 
 ## Findings
 
-<!-- pending -->
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | BR-9 records corpus-level outcomes at the **wrong locus**: "recorded once per run". REQ AC-3.2 (v0.8, unchanged in v0.9) records them **per authoring dispatch**, and says a run-level mirror "if carried, is additive, **is not the oracle**, and has a deliberately unconstrained value that nothing asserts on". AT-20 inherits the ambiguity — it asserts set equality over `RSN-UNLISTABLE`/`RSN-EMPTY` without naming the locus, so an implementation can satisfy AT-20 with a single run-level field and still fail AC-3.2. Same drift in BR-9's per-document catalogue, which never states its locus at all ("Every corpus document that was known but did not contribute carries exactly one reason id") while AC-3.2 pins it **per authoring dispatch**. | BR-9; Step 1(7)(8); AT-19, AT-20, AT-21; E-02 |
+| F-02 | High | Local | BR-10 defines "a **run-level** rule-input record" whose two members are ordering key values *and* thresholds, closed by **one** completeness test. REQ AC-3.3 splits the loci deliberately and gives the reason: "the corpus may move mid-run … so two authoring dispatches in one run may legitimately observe different corpora, and **one run-level record could not describe both**". Upstream records the **ordering key value per document per authoring dispatch**, thresholds **once per run**, and requires **two** completeness tests, one per locus. AT-22 encodes the merged version ("the report's run-level rule-input record is read … a completeness test asserts set equality over the record's two members"), so as written AT-22 is **green against a report that cannot reproduce a second dispatch's selection** — the exact false-green AC-3.3 exists to prevent. BR-8's closing line ("BR-10's rule-input record is separate, run-level") carries the same error. | BR-10; BR-8 (closing line); AT-22; E-26 |
+| F-03 | Low | Process | Header hygiene: the Cross-Reviews field still reads `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6}.md` while rounds v7, v8 and now v9 exist on branch. Minor, but the field is the trail a later harvest follows to find which rounds bound this document. | Header table |
+
+Both High findings are **inherited** and **nonlocal** — they sit outside the sections the v0.8
+erratum touched, and the erratum did not introduce them. They are still gating: the rigour bar is any
+open High, old or new, anywhere in the document.
+
+### What would resolve F-01 and F-02
+
+Both are locus corrections, not new behaviour, and neither requires re-opening a settled decision:
+
+1. **BR-9** — state that corpus-level outcomes and per-document reason rows are recorded **per
+   authoring dispatch**; if a run-level mirror is carried, say explicitly that it is additive and not
+   the oracle (upstream's words), so no test may assert on it.
+2. **BR-10** — split the record into two loci: ordering key values **per authoring dispatch**
+   (alongside BR-8's rows for that dispatch), thresholds **once per run**; declare **two**
+   completeness tests, one per locus. Fix BR-8's closing cross-reference to match.
+3. **AT-20 / AT-22** — name the locus in the Given/Then, and add the falsifying case AC-3.3 implies:
+   a run where the corpus changes between two authoring dispatches, where the per-dispatch
+   ordering-key record for dispatch 2 differs from dispatch 1 and each reproduces its **own**
+   selection by hand. AT-18 already sets this fixture up for BR-8's rows, so the fixture exists and
+   the extra assertions are cheap. Without that case, a merged run-level record passes.
 
 ## Questions
 
-<!-- pending -->
+| ID | Question |
+|----|---------|
+| Q-01 | When a corpus-level outcome (`RSN-UNLISTABLE`/`RSN-EMPTY`) differs between two authoring dispatches of one run — listing fails for the first, succeeds and finds documents for the second — is that a state you intend to be representable? AC-3.2's per-dispatch locus says yes; BR-9's "once per run" says no. The answer decides whether F-01 is a wording fix or a behavioural one. |
+| Q-02 | Does AC-3.2's "deliberately unconstrained value that nothing asserts on" (new in REQ v0.9) need a corresponding negative statement in FSPEC, so a downstream author does not write an oracle against the run-level mirror? I read it as worth one sentence in BR-9. |
 
 ## Positive Observations
 
