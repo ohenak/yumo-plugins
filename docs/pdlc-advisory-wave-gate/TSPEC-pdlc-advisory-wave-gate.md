@@ -681,7 +681,7 @@ Control flow, in the order the FSPEC's §3.2 steps name:
    (`advisoryDisabled.test.js`'s PROP-DIS-06 block), and today's exactly-three sites are `runAdvisorySeam`'s disabled-tier early return
    (`if (!config || config.enabled === false)`), the run-level `const advisoryTierOn =
    advisoryConfigResult.config.enabled`, and `orchestrate-queue.js`'s `finish` closure
-   (`advisoryConfig.config.enabled ? advisorySummaryRows(...) : undefined`). It would also contradict
+   (`advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled ? advisorySummaryRows(...) : undefined` — the first two conjuncts are guards, and only the third is an `.enabled` token). It would also contradict
    the shipped design intent stated
    in the comment sitting directly above that assignment — "Read once, reused everywhere below … so the tier's own
    master switch is inspected from source text exactly once here."
@@ -1709,7 +1709,7 @@ gaining a non-mutating stash, or the wave contract permitting staged work). OQ-1
 candidates if a reviewer disagrees with the dispositions above.
 
 One question this round raised and answered in place rather than deferring (PM Q-03):
-`waveBudgetPerRun: 0` is a **intended operator configuration** (honoured, not documented anywhere operator-facing this feature ships), not an accident of the validator —
+`waveBudgetPerRun: 0` is an **intended operator configuration** (honoured, not documented anywhere operator-facing this feature ships), not an accident of the validator —
 "keep the tier on, keep A6 off" — and §4.4 now names it as such. It differs observably from
 `advisory.enabled: false`: the tier stays enabled, every red wave escalates with no dispatch, and
 the sixth summary row is present reading zero, where the disabled tier carries no `advisory` key
