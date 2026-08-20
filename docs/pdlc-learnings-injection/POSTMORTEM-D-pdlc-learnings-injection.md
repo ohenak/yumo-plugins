@@ -223,7 +223,27 @@ harvest-channel deferral is the wrong disposition for a rule that halts phases. 
 
 ## Resolution
 
-RESOLVED: no
+RESOLVED: yes (2026-08-20, operator)
+
+Disposition — recommendation accepted in full:
+
+- Recommendation 1–2 (re-score v9 as R2, re-open FSPEC): the locus corrections both
+  confirmers agreed on landed as FSPEC v0.9 — BR-9/BR-10 per-authoring-dispatch locus,
+  Step 21, AT-20/AT-21/AT-22, header Cross-Reviews row through v9, AC-6.2 traceability
+  row, and answers to se Q-01 / te Q-01 / te Q-02 (commits `cbb0a63e`, `523e2df9`).
+  The FSPEC hash moved, so the staleness gate re-opens FSPEC review under ordinary
+  budgets on the next run; Phase D re-dispatches after it re-approves. ERR-4 itself
+  needed no change — both confirmers verified it landed correctly.
+- Systemic items 4–8 escalated out of the harvest channel and landed on this branch
+  before the re-run:
+  - item 4, engine bounded restatement retry before fail-closed + item 7 prompt
+    `findingGrammarClause()` halting-reading correction: `472e505c`;
+  - items 5–6, review-skill `## Delta-Confirmation Findings` skeleton slot and
+    Provenance/Locality table split: `42289c5e`, leniency-sentence fix `d015ff89`;
+  - item 8, `check-finding-grammar.sh` PostToolUse lint: `eef6fedb`, oracle
+    enumeration updates in `hookCompatibility`/`consumerCleanup` tests follow-on.
+  Fixed engine packed from this checkout and installed globally so the re-run loads
+  the corrected workflows (vendor-first resolution).
 
 Pending operator action on recommendation 1–2: re-score the v9 confirmation at R2, re-open the FSPEC
 approval, land the BR-9/BR-10/Step 21/AT-20–AT-22 locus corrections plus the two header/traceability
