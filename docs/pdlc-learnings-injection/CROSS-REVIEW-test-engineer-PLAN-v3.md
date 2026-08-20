@@ -284,7 +284,55 @@ module and a fixture subtree, which register no jest test)"*.
 
 ## Questions
 
+Both of my v2 questions are answered in v0.3 — Q-01 by P-A-4 (LI-02's declared path surface already
+covers every arm, and a thirteenth fixture shape would belong in LI-02, which LI-23 already depends
+on), Q-02 by P-A-5 (the second manifest row is an edit to this PLAN, committed before the
+re-capture runs). Both answers are bars rather than preferences, and both are enforceable by the
+mechanism they name. One new question, not gating.
+
+| ID | Question |
+|----|---------|
+| Q-01 | P-A-3 admits the case where a PROPERTIES suite lands red on this branch before batch 14 and says "its rows enter the ledger by name for the batches in which they are red". The ledger is a table inside this document. Does that mean the PLAN is re-versioned mid-wave to add those rows (as P-A-5 requires for the manifest), or is the amendment recorded elsewhere? The two live tables would then have the same rule, which is worth stating once rather than twice |
+
 ## Positive Observations
+
+- **Every one of the six findings was resolved at the clause an implementer transcribes from.** F-03
+  did not become "AT-15 has more clauses than stated" — it became a four-clause enumeration with
+  both fixtures named in order, both green attributions assigned, and the falsifiability argument
+  for clause (4) written into the row ("without it clause (1) is an absence-only oracle over path
+  handling"). That argument is now in the PLAN rather than in my review, which is where it does
+  work.
+- **F-01's fix does the harder thing and forbids the easy repair.** The row could have said "scope
+  it to non-`null`" and stopped. Instead it says why `LEARNINGS_CORPUS_OUTCOMES ∪ {null}` must not
+  be used — "`null` is not a catalogue member and the expected value would stop being a literal
+  transcription of the frozen catalogue, which is the whole point of the assertion". An implementer
+  hitting the red at batch 13 will reach for exactly that repair, and the row pre-empts it.
+- **F-05 came back stronger than I asked for.** I suggested enumerating the directory and asserting
+  the file set. v0.3 does that *and* solves the problem I had not thought through: the suite map's
+  own transcribed literal mentions all 35 `LI-AT-` ids, so a textual scan would include the suite in
+  its own expected set. Keying on **registered jest titles** rather than textual mentions is the
+  detail that makes the closure work, and it is stated in the row rather than left for the
+  implementer to discover as a red.
+- **PM F-07's resolution is the right answer under the testing lens too.** Dropping the four
+  absence claims from the standing premise suite is not a weakening: three of the four are falsified
+  by this PLAN's own tasks between batches 1 and 4, so asserting them would have reddened at batch 3
+  and halted the wave on a correct implementation — the same failure mode as v2's F-01, one document
+  section over. And nothing is lost, because `LI-T-IGNORE` conjunct (1) is a *positive* standing
+  oracle over the same fact once LI-04 lands.
+- **P-2a's promotion to a set equality is the cheapest possible early warning.** A fifth authoring
+  call site is the change most likely to silently widen this feature's blast radius, and asserting
+  the four sites by enclosing function and argument position at **batch 1** surfaces it seven
+  batches before LI-11's composition-site equality would. I re-measured the keying against HEAD: it
+  admits exactly the four intended sites and excludes the two `mode: "authoring"` literals and the
+  two reads, which is not obvious and is stated precisely enough to implement.
+- **P-A-5 makes the manifest honest.** "A contract the dispatcher cannot read enforces nothing" is
+  the correct principle, and applying it means a re-capture is auditable by the same mechanism as
+  every other write rather than by a completion note nobody diffs.
+- **Nothing regressed.** No task row was added or removed, no `Deps` cell or manifest cell changed,
+  the batch DAG is untouched, the AT-15 re-split does not desynchronise the expected-red ledger
+  (AT-15 is still one test, still red until batch 11), and the directory-wide closure introduces no
+  new edge obligation and no thirteenth test file after batch 6. I checked each of those rather than
+  assuming them.
 
 ## Recommendation
 
