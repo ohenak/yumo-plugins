@@ -39,11 +39,20 @@ No citation in this FSPEC points at text the REQ no longer carries, and none par
 
 ## Behavioral Flow
 
-_pending_
+Unchanged by this delta and re-confirmed against upstream by sampling, not re-read in full (delta protocol).
+
+Step 0(2)'s three configuration branches — absent section → §4.1 defaults with `enabled` at `true` and the flow continuing at (4); present-but-malformed → default-enabled plus `NTC-MALFORMED`; explicit `false` → today's byte-identical dispatch with no injection record — still map one-to-one onto `REQ:378-395` (AC-5.1a/b/c). The v0.8 note's claim that there is "no second gate beyond that key" continues to hold at REQ HEAD: AC-5.1a conditions disablement on `enabled` being *explicitly* `false`, and AC-5.1b/AC-5.1c both resolve to enabled, so no configuration state other than the explicit key suppresses injection. That claim was the subject of an earlier erratum and it is the one I would expect a header-only edit to be able to disturb; it is intact.
+
+Step (4)'s threshold resolution still reads all three bounds from REQ §4.1 with the defaults quoted above.
 
 ## Business Rules
 
-_pending_
+Untouched by the delta. Two carried observations from v11 remain open and remain non-blocking:
+
+- **BR-9** (`:509`) — the per-document prose lost the "exactly one" quantifier that AT-19's set-equality oracle actually asserts. Wording only; the oracle is the contract and it is unambiguous. Inherited, nonlocal, Low.
+- **BR-14** (`:619`) — re-verified against `REQ:385-393`: the decision against an unknown-top-level-key registry, the misspelt-key reading, and the deliberate divergence of this feature's default from the surrounding config convention all still match the REQ text at HEAD, including `REQ:650`'s counterpart rationale. No drift.
+
+No business rule cites a REQ id that has moved, been renumbered, or changed force since v11.
 
 ## Edge Cases and Error Scenarios
 
