@@ -39,6 +39,60 @@ reading — rather than swallowing it because an intermediate document shares th
 
 ## Batches
 
+I walked the task rows that carry material the delta touched. **Three hold; one is narrowed.**
+
+**LI-12 (batch 5, RED configuration suite) — the one row the delta falsifies.** PLAN commissions
+`LI-AT-30` as exactly: "(`maxDocuments: 0`, `maxTotalBytes: 0` ⇒ an **enabled** run whose BR-8 rows
+are present and empty)". FSPEC AT-30 at HEAD reads:
+
+> *Given* thresholds configured to admit nothing — `maxDocuments: 0`, separately `maxTotalBytes: 0`,
+> **and separately `maxBytesPerDocument: 0`** — … *and* in the `maxBytesPerDocument: 0` case **every
+> corpus document carries `RSN-NO-MATERIAL`** (E-36).
+
+Three cases, not two, and the third carries a per-document reason assertion the other two do not.
+PLAN's parenthetical is not decorative here — this PLAN's own precedent settled that. AT-15 was
+rewritten in v0.3 to spell out **four** clauses precisely because a test author works from the task
+row, and an under-enumerated gloss ships an under-asserted test that the AT-partition oracle
+(`LI-T-SUITEMAP`, which keys on ids, not clauses) will green anyway. The same failure mode is now
+live for AT-30, and nothing else in the document mentions the zero bound: `maxBytesPerDocument: 0`
+appears nowhere in PLAN, and `E-36` appears nowhere in PLAN.
+
+**Which task would own it is not obvious from the current text, and that is part of the finding.**
+The zero-bound behaviour spans two seams PLAN assigns to different tasks — `extractInjectableMaterial`
+must yield nothing at bound zero (LI-16, batch 7) and `selectLearnings` must drop the document with
+`RSN-NO-MATERIAL` before the total bound and consume no slot (LI-16 too), while the enabled-run,
+empty-selection report shape is LI-12's red and LI-21's green (batch 13). LI-16's row commissions
+`extractInjectableMaterial` with "`bounded` decided at the cut" and `selectLearnings` with a
+`rejected[]` "total over `entries`", so the production behaviour is plausibly inside existing task
+scope — but no row states the zero case, and a scope that has to be inferred is not commissioned.
+
+**The AT count claim survives.** §Traceability opens "All 35 FSPEC acceptance tests, each appearing
+**exactly once**", and closes with the arithmetic "(8 + 1) + 3 + 3 + (5 + 1) + 12 + 2 = 35". FSPEC
+v0.13 added an **edge** (E-36) and widened an **existing** AT; it added no AT. The partition, its
+per-suite assignment and `LI-T-SUITEMAP`'s closure are untouched, and the row `| AT-30, AT-32 |
+learningsConfig.test.js | LI-12 | LI-21 |` still names the right suite and the right owners. It is
+the clause enumeration inside LI-12's prose that is stale, not the partition.
+
+**LI-08 and LI-17 (batches 3 and 9) — the byte-accounting delta moves FSPEC to meet them.** LI-08
+requires expected byte counts "hand-computed from the fixture over **material only**, ignoring every
+delimiter (§D.5)"; LI-17 requires that "Framing is never charged to any byte bound (§D.5)". Under
+FSPEC v0.12 both sentences were in tension with §D.5's own text, which charged the identification
+line and the per-document delimiters to `maxBytesPerDocument`. They were faithful to TSPEC §D.5,
+which has said material-only throughout ("**`maxBytesPerDocument` bounds material only, and so does
+`bytesInjected`.** This is the whole of it"). FSPEC v0.13 adopts that reading verbatim and grounds
+it in REQ AC-2.3. Two task rows that were quietly divergent from FSPEC are now exactly right, and
+LI-08's hand-computed fixture arithmetic — the thing that would have had to be recomputed had the
+decision gone the other way — needs no change.
+
+**LI-16 (batch 7) absorbs F-O-1's widening without an edit.** §Traceability maps `F-O-1 … F-O-7` with
+"LI-16 (F-O-1)". F-O-1 now owns two heading-recognition rules rather than one. Both land in LI-16:
+that row already commissions `looksLikeLearningsDocument` (the BR-3 predicate, "deliberately weak")
+**and** `extractInjectableMaterial` ("BR-6 priority order"), and the second rule — whether a heading
+is matched by numbered form, bare title or prefix — is exactly the internal of the latter. The
+obligation grew; its owner did not change, and the owner's row already reaches the new surface. No
+finding. The matching assertion also exists: LI-08's `LI-AT-11` is "section-set equality over what
+BR-6 selected", which is the oracle the widened F-O-1 needs.
+
 ## Dependencies
 
 ## Verification
