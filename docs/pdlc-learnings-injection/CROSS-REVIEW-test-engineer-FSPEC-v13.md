@@ -182,6 +182,33 @@ divergence should be re-grounded on these bytes when it is next revised.
   the direction that makes PLAN LI-11's transcription mechanical rather than interpretive.
 ## Recommendation
 
+**Approved with minor changes**
+
+All four routed items land, and they land in the form that matters for testability: BR-1 states both
+of REQ C-1's conjuncts and names the discriminating dispatch, BR-15's expected set is enumerable from
+the report alone, and AT-02/AT-33 transcribe both corrections. Nothing I approved at v12 is broken —
+no ordering, bounding, config, record or edge-case text moved, and every citation the delta adds
+resolves to live REQ text at the dispatch digest.
+
+Three non-gating findings remain, none High. F-01 (Medium, inherited) is the one worth landing before
+implementation: decision row D-2 still asks the one-conjunct question that BR-1 just stopped asking,
+and since FSPEC:277-278 makes that table the branch catalogue tests are mapped from, the
+discriminating branch currently has no name. F-02 and F-03 are Low precision items inside the edited
+bullets. All three are one- to two-line edits.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | Decision row D-2 asks "Is this dispatch an authoring dispatch? yes / no" and cites BR-1, which now states a two-conjunct rule; since FSPEC:277-278 makes this table the branch catalogue every AT maps from (DC-05), the discriminating branch (authoring-classified, target not one of the six) is not a named branch and the table demands no test for it. Give D-2 the two-conjunct question or split the target-document test into its own D-row. | §Behavioral Flow → Decision points, named (D-2) |
+| F-02 | Low | delta | local | BR-15's revised expected set says "**exactly** one open attempt for every corpus document …" — multiset phrasing — while the observed side and AT-33 are set equalities over file-open calls under `docs/`. A production path that opens a selected document twice reds under one reading and greens under the other. REQ AC-5.2 claims paths, not counts; state that the oracle is set-of-paths, or make at-most-one-open-per-path an explicit part of the claim. | §Business Rules → BR-15 (expected set) |
+| F-03 | Low | delta | local | AT-02's fixture list (no DECISIONS phase / no Phase R creator / five optimizer rounds) discriminates only the first conjunct; no fixture is named for the case the new second conjunct decides — an authoring-tagged dispatch whose target is none of the six (the code-review phase's optimizer round, which BR-1 names three lines above). Add it so reverting the `docType` conjunct is guaranteed to red. | §Acceptance Tests → AT-02 |
+
+FINDING: Medium | inherited | nonlocal | §Behavioral Flow → Decision points, named (D-2) | D-2 still asks the one-conjunct question ("Is this dispatch an authoring dispatch? yes / no") that BR-1 just stopped asking; because FSPEC:277-278 makes this table the DC-05 branch catalogue, the discriminating branch (authoring-classified, target document not one of the six) has no name and no required AT
+FINDING: Low | delta | local | §Business Rules → BR-15 (expected set) | "exactly one open attempt for every corpus document" is multiset phrasing against a set-equality oracle; a document opened twice on the production path reds under one reading and greens under the other, and REQ AC-5.2 claims paths rather than counts
+FINDING: Low | delta | local | §Acceptance Tests → AT-02 | the fixture list names no run containing an authoring-tagged dispatch whose target is none of the six document types, so the fixtures do not by themselves guarantee that reverting BR-1's second conjunct reds
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
