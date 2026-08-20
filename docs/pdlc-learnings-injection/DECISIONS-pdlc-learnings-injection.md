@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 0.1 | 2026-08-19 |
+| pdlc | draft — round 1 revision: corrects the `_git` never-throws seam contract against `rtGit` at HEAD (DEC-LI-02, DEC-LI-04), makes DEC-LI-09's recorded-sha guard falsifiable, gives DEC-LI-03's funnelling premise a source-level guard, records the TSPEC divergence as an emitted erratum with obligation `D-O-9`, and adds obligations `D-O-6`…`D-O-8` | Claude | 0.2 | 2026-08-19 |
 
 ## Scope, grounding pin, and how to read this document
 
@@ -637,9 +637,11 @@ would make the per-dispatch observation (E-32) depend on timing, which is what d
   (DEC-LI-01), and the batch rule is single-writer-per-batch for both source and test files. PLAN
   owes an explicit per-phase **file-ownership manifest** making that visible, not a prose note, and
   should expect a long batch chain rather than wide waves (TSPEC `T-O-1`).
-- **The read cost is unbounded where the injection is bounded** (DEC-LI-06). REQ O-1's live
-  measurement must report bytes read per authoring dispatch and probe-vs-full-read counts on the
-  Claude Code channel, alongside realised prompt sizes (`T-O-3`); that term, not the injected bytes,
+- **The read cost is unbounded where the injection is bounded** (DEC-LI-06), and because the entry
+  refuses a cache, the refusal needs a positive call-count oracle to defend it (`D-O-6`) — the
+  Hard-to-reverse decision must not be the undefended one. REQ O-1's live measurement must report
+  bytes read per authoring dispatch and probe-vs-full-read counts on the Claude Code channel,
+  alongside realised prompt sizes (`T-O-3`); that term, not the injected bytes,
   is the one most likely to move the thresholds.
 - **The baseline is a one-way artefact** (DEC-LI-09). Capture must land **before** the first
   production edit, as an ordering obligation with a gate moment that binds — PLAN owes this as a
