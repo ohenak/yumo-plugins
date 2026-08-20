@@ -255,7 +255,7 @@ so no SKILL text moves.
 | 3 | LI-04, LI-05, LI-07, LI-08, LI-09 | ignore rule, capture script, the three L1/L2 red suites | mixed: LI-04/LI-05 green their own oracles, LI-07…LI-09 **red** |
 | 4 | LI-06 | **the T-O-2 gate moment** — capture, commit, guard | green (guard passes over the fresh capture) |
 | 5 | LI-10, LI-11, LI-12, LI-23 | the three L3 red suites, which need the baseline, plus the fail-open arm inventory | **red** |
-| 6 | LI-14 | closure over the six AT-bearing suites | **green** — `LI-T-SUITEMAP` reads six files that all exist at the end of batch 5 and has no symbol under test, so it is green on authoring (TE F-02) |
+| 6 | LI-14 | closure over the six AT-bearing suites | **green** — `LI-T-SUITEMAP` statically parses the `learnings*.test.js` directory, whose six AT-bearing suites all exist at the end of batch 5 (TE F-05), and has no symbol under test, so it is green on authoring (TE F-02) |
 | 7–13 | LI-15 … LI-21 | the serial source lane, one edit per batch | **mixed**, against §Verification's per-batch expected-red ledger: every suite whose green task has landed is green, every other new suite is still red for its specified reason, and no pre-existing test's status moves |
 | 14 | LI-22 | refactor, inventory cross-check, close | green — the only unqualified full-suite-green gate in the feature |
 
