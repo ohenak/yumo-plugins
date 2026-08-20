@@ -129,6 +129,41 @@ off (F-03).
 
 ## Oracles
 
+The oracles are where a cascade usually breaks, because an oracle transcribes an upstream number or
+an upstream sentence. I re-read the ones that touch the changed FSPEC text.
+
+| Oracle / matrix | Leans on | Still faithful at FSPEC HEAD? |
+|---|---|---|
+| §C.1 AT-30 row → `PROP-CONFIG-04`, `PROP-RECORD-02` | AT-30's statement | **Partially.** The row is still true as a claim of ownership; the AT's third arm and its `RSN-NO-MATERIAL` conjunct are unasserted (F-01) |
+| §C.1 "35 of 35 covered"; §C.4 count table (`FSPEC acceptance tests 35`) | TSPEC §T.5 partition | **Yes.** E-36 rides on AT-30; no AT id added or retired; `PROP-META-05`'s partition oracle does not red |
+| §C.2 AC → property matrix, AC-4.4 row | REQ AC-4.4 | **Yes.** REQ is byte-identical to my v2 approval; AC-4.4 keeps `PROP-CONFIG-04` |
+| §O.8 mutation ledger, M-5 | BR-6 byte basis | **Yes, and strengthened** — M-5 is now a mutation away from FSPEC *and* TSPEC §D.5 |
+| §O.9 generated arms for T-O-6 (`bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`) | TSPEC §D.5 | **Yes.** Stated over material; a zero `maxBytes` is inside the generated domain, so the generated arm already ranges over the newly decided case even though no *example* property names it |
+| §G.1 carried-obligation table (T-O-4/5/6) | TSPEC | **Yes.** TSPEC unchanged |
+| Reject-catalogue set equalities (`PROP-FAILOPEN-01`, `PROP-RECORD-03`, `PROP-CONFIG-07`) | BR-9 / TSPEC §D.2 member lists | **Yes.** Membership unchanged; only `RSN-NO-MATERIAL`'s *meaning* widened |
+| §C.3 PLAN task ↔ property matrix (LI-08/LI-12/LI-17/LI-21) | PLAN | **Yes.** PLAN is byte-identical to my v2 approval; the F-01 fix lands inside LI-12/LI-21's existing `learningsConfig.test.js` rows and needs no new task |
+
+Two oracle-adjacent statements are now **assertions about upstream that upstream contradicts**, and
+they are the substance of F-01 and F-02:
+
+- §G.2.1 — "**`maxBytesPerDocument: 0` is undecided upstream and therefore untested here.** AT-30
+  exercises `maxDocuments: 0` and `maxTotalBytes: 0` only … REQ AC-4.4's 'zero bytes' branch does not
+  say whether the outcome is `RSN-NO-MATERIAL`, `RSN-BYTES`, or a zero-byte contribution." FSPEC at
+  HEAD says exactly which: `RSN-NO-MATERIAL`, no slot consumed, enabled empty-selection run (E-36),
+  and AT-30 now exercises all three zeros. The premise for deliberately not asserting it is gone.
+- §G.2.2 — "**Byte accounting of framing is specified two ways.** TSPEC §D.5 says material only,
+  framing never charged; FSPEC BR-6's worked example charges the identification line and delimiters."
+  FSPEC BR-6 no longer charges either. The contradiction this gap records is closed, and the
+  conditional it carries — "if FSPEC's reading is the intended one, both properties' expected counts
+  change and LI-08's row changes with them" — now resolves to *no change*, which is a materially
+  different message to the implementer than the one the text sends.
+
+§G.3's routed-errata list carries the same two items plus "TSPEC's AT-11 byte count, which inherits
+FSPEC's framing arithmetic and so cannot be right if §D.5 is". That third bullet's *premise* has
+changed — AT-11's count no longer inherits FSPEC's framing arithmetic, because FSPEC has none — but
+its *conclusion* is unaffected and arguably sharper: TSPEC is unchanged, so if its AT-11 count was
+computed with framing charged, it is now at odds with FSPEC as well. Re-word, do not delete.
+
 ## Fixtures
 
 ## Questions
