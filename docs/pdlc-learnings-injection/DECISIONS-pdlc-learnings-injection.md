@@ -525,4 +525,19 @@ repository adopts a generated-catalogue mechanism with its own falsifying anchor
 
 ## Decisions deliberately NOT taken here
 
+Four questions that a reader might expect in this document are **not** decided here, and each is
+placed rather than left dangling:
+
+| Question | Owner, and why not here |
+|---|---|
+| The threshold *values* (`maxBytesPerDocument`, `maxTotalBytes`, document count) | REQ §4.1 (DC-18). Engineering owns the mechanism, product owns the numbers; DEC-LI-08 depends on their existence, not on their values. |
+| The ordering key, the section subset, and the eligibility rule | FSPEC `BR-4`, `BR-6`, `BR-3`. These are behaviour, and this document does not re-decide behaviour. |
+| Widening injection to review roles | REQ O-6. DEC-LI-03's gate is an expression, so the widening is cheap — but it is a product decision about what a reviewer should see. |
+| Whether AC-3.3's reproduction record belongs at run level or per dispatch on a divergent run | REQ, via the erratum raised below. TSPEC keeps the run-level record (last-write-wins) and adds per-dispatch `{corpusOutcome, orderKeys, corpusDiverged}` so a divergent run stays reconstructable; which locus the completeness test asserts over is a contract decision, not an implementation one. |
+
+One further non-decision is worth naming because its absence is easy to mistake for an oversight:
+**there is no retry, backoff or degraded-mode ladder** for a failed enumeration or an unreadable
+document. Fail-open (G-4) plus a catalogued reason row is the whole error strategy; adding a retry
+would make the per-dispatch observation (E-32) depend on timing, which is what determinism forbids.
+
 ## Consequences
