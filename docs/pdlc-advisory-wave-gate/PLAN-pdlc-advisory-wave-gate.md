@@ -510,21 +510,37 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
       (`.claude/pdlc.config.json`), so the engine suite is never exercised at a wave boundary and an
       engine-side red would otherwise surface only in CI.
 - [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/workflows/dist/` is committed.
-- [ ] `cd pdlc/workflows && npm run test:coverage` passes both stages. This command runs the whole
-      suite with no `--testPathIgnorePatterns`, so it inherits every red listed in the Overview's
-      HEAD-drift note, not just the advisory ones — the two items below must be closed before it can
-      go green, and the third is an inherited condition, not a defect of this feature.
-- [ ] `documentOracles.test.js`'s *"post-sweep pdlc/workflows/\_\_tests\_\_/\*.test.js count equals
-      TSPEC §4.4's corrected literal of 99"*, under the T15 describe, reads `100`, not `99`. **Owner: A6-00** — the file whose landing made the
-      count 100 is `advisoryWaveGate.test.js`, authored by A6-00 in `e3b9d5a3`, so A6-00 also owns
-      the literal (TE Q-01). Its manifest row names `documentOracles.test.js` for exactly this
-      reason; changing the literal without changing A6-00's owned-file set would violate the
-      single-writer rule.
-- [ ] The 14 tracked `.claude/workflows/.pdlc-backups/*.bak` blobs are untracked (`git rm --cached`),
-      which closes `documentOracles.test.js`'s *"PROP-SWEEP-2(b): the unfiltered sweep minus A-1's
-      frozen glob list is empty — AC-1.2's required-empty gate"* for free
-      (TE Q-02). This is Phase I housekeeping with no test to write; if the blobs stay tracked, that
-      oracle stays red for the life of the branch and every full-suite run above stays red with it.
+- [ ] `cd pdlc/workflows && npm run test:coverage` passes both stages **for every test this feature
+      owns**. This command runs the whole suite with no `--testPathIgnorePatterns`, so it inherits
+      every red listed in the Overview's HEAD-drift note, not just the advisory ones. Two of those
+      reds are closed by the items below; **two are inherited and stay red on this branch**
+      (`AT-22 [red-until-L-06]` and `PROP-SWEEP-2(b)`'s 14 unclosable residual paths), so this leg is
+      read as "no red outside the named inherited set", not as a bare exit-0. Recording it as a bare
+      exit-0 would make this Definition of Done unsatisfiable by construction (PM v7 F-01).
+- [ ] `documentOracles.test.js`'s T15 count test reads `100`, not `99`, **in its assertion, its
+      title and its block comment together**. The title still says *"post-sweep
+      pdlc/workflows/\_\_tests\_\_/\*.test.js count equals TSPEC §4.4's corrected literal of 99"* and the
+      comment above it still says the literal "only holds once class 6 … lands"; shipping the bumped
+      assertion under the old name is the stale-name trap this plan makes A6-05 fix elsewhere (TE v7
+      F-03). **Owner: A6-00** — the file whose landing made the count 100 is `advisoryWaveGate.test.js`,
+      authored by A6-00 in `e3b9d5a3`, so A6-00 also owns the literal (TE Q-01). Its manifest row names
+      `documentOracles.test.js` for exactly this reason; changing the literal without changing A6-00's
+      owned-file set would violate the single-writer rule. The cited authority is the coupled sweep's
+      TSPEC §4.4, which still says 99: after this edit the literal is a *pre*-sweep count of 100 that
+      the sweep must re-derive when its deletions land, and the comment must say so.
+- [ ] The 14 tracked `.claude/workflows/.pdlc-backups/*.bak` blobs are untracked (`git rm --cached`) **and**
+      `.claude/workflows/.pdlc-backups/` is in `.gitignore`. Both halves, or the blobs become 14
+      untracked paths and permanently red `consumerCleanup.test.js`'s AT-4.1 — the clean-tree
+      precondition this document imposes at every wave boundary (TE v7 F-01).
+- [ ] `documentOracles.test.js`'s *"PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list
+      is empty"* is understood as **inherited and not closable here**, the same way `AT-22` is. The
+      item above closes 14 of its 28 residual paths; the other 14 — `.claude/workflows/.pdlc-drift-state.json`,
+      the two `.bundle.js` artifacts, `pdlc-cli.mjs`, and this feature's own `TSPEC`/`PLAN`/`DECISIONS`/
+      `PROPERTIES`/`CROSS-REVIEW-*` documents — are outside any act available to Phase I, because A-1's
+      frozen glob list covers neither `docs/{feature}/` specs nor `CROSS-REVIEW-*`, and every further
+      cross-review round adds one. **Route to the coupled sweep's owner** (extend A-1's glob list); do
+      not treat the residual red as an A6 regression, and do not read the full-suite legs above as
+      requiring it green (PM v7 F-01).
 - [ ] `documentOracles.test.js`'s `AT-22 [red-until-L-06]` is understood as **inherited, not owned**:
       it belongs to the coupled sweep's L-06 and reddens on any untracked file anywhere in the tree
       (`coveredViolations` walks the whole tree under `root`, skipping only `.git/` and
