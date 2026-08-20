@@ -158,6 +158,51 @@ ERR-8 entry.
 
 ## Data Model
 
+**`sections[]`'s new definition is bound-dependent, and T-O-6's second conjunct was not carried
+along.** §D.3 now defines membership as "at least one byte of its normalised text survives in
+`material`", so at a bound that cuts mid-way through the third section, `sections` is the first
+three. T-O-6 (§ *Named obligations carried forward*) still states its corpus conjunct without a
+bound qualifier:
+
+> A second, corpus-driven conjunct covers §D.3's matcher: for a real corpus document, `sections`
+> equals the intersection of `BR6_SECTION_NAMES` with the level-2 headings it carries, ordinals
+> and an optional trailing gloss ignored.
+
+T-O-6's own domain, stated two sentences earlier, is "**any** document text and **any** non-negative
+`maxBytes`", and it deliberately keeps `0` in that domain. Written literally over that domain the
+corpus conjunct is false for every bound that cuts — including `0`, where the same paragraph
+already carves out `sections: []`. This is the exact failure mode T-O-6's first half exists to
+prevent ("A generated-bound property written from the cut-and-flag rule alone with `0` in its
+domain reds against a conforming implementation"), reintroduced one conjunct later by the
+redefinition this round made. The fix is one clause: state the corpus conjunct at a bound large
+enough that no cut occurs (or `maxBytes = Infinity`), where "surviving in `material`" and "matched
+in the document" coincide. F-01 below, Medium — the property is not yet written, and PROPERTIES'
+own `PROP-BOUND-05` is already scoped to "an unbounded document"
+(`PROPERTIES-pdlc-learnings-injection.md:245`), so the mis-scoped obligation is recoverable rather
+than shipped.
+
+**The `+2 bytes per join` term does not yet exist downstream.** PROPERTIES `PROP-BOUND-07` requires
+`bytesInjected` to "equal the **hand-computed literal** byte count of that document's declared
+sections in the fixture" and `totalBytesInjected` to be "the hand-computed sum of those literals"
+(`PROPERTIES-pdlc-learnings-injection.md:257-260`) — a sum over section lengths with no join term.
+Under §D.3 step 2 that under-counts by `2 × (n − 1)` for an `n`-section document. This is a
+downstream propagation, not a defect of the TSPEC (the TSPEC is the authority for assembly and the
+PROPERTIES text was written before the rule existed), so I record it rather than route it: it will
+surface at PROPERTIES review, and it is worth naming here because `PROP-BOUND-07`'s whole point is
+that the literal must not be derived from the implementation — an author who cannot reproduce the
+integer by hand is the author who reaches for `Buffer.byteLength(material)`. Deferred below.
+
+**`\r\n` handling is stated and bounded, and the boundary is enforced by a fixture obligation.**
+§D.3 preserves `\r` as an interior byte and strips it only where the whole line is whitespace, then
+constrains the exposure: "No fixture may introduce `\r\n` without stating what it expects here."
+That is the right way to write a tolerance whose input space is empty at HEAD — the rule is total,
+the corpus claim is measured (I re-ran the `git grep` and it matches nothing), and the fixture
+obligation stops the rule from silently becoming load-bearing later.
+
+**Everything else in the data model is unchanged this round** — `LEARNINGS_NOTICES`, BR-8's row key
+set, `RSN-*`'s catalogue, `parseHarvestDate`'s `null` fallback and `parseLearningsConfig`'s return
+shape are all outside the diff, and I did not re-review them.
+
 ## Test Strategy
 
 ## Open Questions
