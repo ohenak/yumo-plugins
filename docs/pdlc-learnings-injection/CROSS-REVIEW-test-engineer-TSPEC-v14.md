@@ -205,6 +205,50 @@ shape are all outside the diff, and I did not re-review them.
 
 ## Test Strategy
 
+**AT-11's oracle table is the strongest thing this delta adds, and it satisfies all three bars this
+round tests against.**
+
+| Bar | How §T.5's table meets it |
+|---|---|
+| No implementation echoes | Every expected value is a literal from the spec or the fixture: `BR6_SECTION_NAMES` as an ordered list transcribed from BR-6, a fixture-authored Approval-Record marker string, and each section's own body marker. Nothing is read back from `extractInjectableMaterial`. `sections[]` is explicitly demoted "per DC-14" so the producer's report cannot become the expected value |
+| No absence-only oracles | The Approval-Record absence conjunct is paired on the same instrument with the five-texts-present conjunct, and §T.5 says why in the document ("so an all-empty block cannot pass the absence half"). The pairing is a stated requirement of the oracle, not a reviewer's inference |
+| Set equality over the full enumeration | The first conjunct is equality against the whole of `BR6_SECTION_NAMES`, **ordered** — "since 'in priority order' is part of the claim". A deleted case reds; a reordered one reds too, which containment would not catch |
+
+The three named mutations are the right three, and I checked each is actually falsifying under the
+document's own rules: a renderer emitting a heading without its body reds the texts-present
+conjunct (and *only* that conjunct — which is why the conjunct earns its place); a matcher widened
+to substring admits an `Approval Record`-adjacent heading and reds the absence conjunct; a renderer
+emitting whole documents reds the absence conjunct as well. §T.5 states the last point explicitly —
+the absence conjunct "cannot be dropped as redundant with §D.3's allow-list argument. That argument
+is a design reason no exclusion branch is needed; it is not a test." That sentence is the exact
+distinction I have been trying to get into this document since v11, and it is now in the document
+rather than in my review.
+
+**The assembly rule closes the literal-oracle hole without weakening any oracle.** AT-12's ASCII
+cut fixture was already insensitive to the join rule; AT-11's non-cut expected count was not, and
+now is computable. Neither AT's assertion was relaxed to achieve it — the fix went into the
+specification of the value, not into the tolerance of the assertion, which is the correct direction.
+
+**§D.3's fixture obligations remain, and one was added.** The pre-existing obligation (at least one
+fixture carries a non-canonical-but-matching form, so rules 1 and 3 are pinned by a test rather
+than by the builder's habitual `## N. Title` shape) is untouched, and the delta adds the `\r\n`
+obligation. Both are stated as constraints on fixture authorship rather than as prose hopes.
+
+**Residual coverage question, recorded not gating.** No test named in §T.5 pins the **assembly**
+rule itself as distinct from the counts it produces — i.e. nothing asserts that two sections
+non-adjacent in the document are joined by exactly one blank line, or that a section's trailing
+blank lines are dropped. AT-11's literal byte count is sensitive to both, so a violation reds
+*something*; but it reds as an off-by-N integer mismatch whose diagnosis is a hand recount, rather
+than as a named failure. A one-line addition to AT-11's table — assert the block contains the two
+adjacent sections' junction as `"{last body line}\n\n## "` — would make the join rule falsifiable
+directly. Deferred; the freeze bars me from asking for it as a finding, and the coverage is
+adequate without it.
+
+**Routing branches and coverage-mode gates:** unchanged this round. The enabled/disabled, malformed,
+three-threshold and `RSN-*` branches all keep their L3 workflow-level owners, and the delta added
+no branch. D-12's branch (`FSPEC §Decision points, named`, D-12) remains owned by AT-28 and AT-30's
+third case.
+
 ## Open Questions
 
 ## Findings
