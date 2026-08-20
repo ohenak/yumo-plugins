@@ -134,6 +134,139 @@ state* reads `I` / `halted`, with an `unknown` negative control) have no test at
 into both writers, and add PROP-REC-03/-04/-06/-07's tests — including PROP-REC-06's counting
 oracle over a multi-escalation `ESCALATIONS.md` and its specified paired negative.
 
+### F-05 (High) — AC-1.5's notice is new production code with no test
+
+The legacy-path notice was widened on this branch. `git diff main...HEAD --
+pdlc/workflows/orchestrate-dev.js` shows the single-cause literal replaced by a `causes` array
+(`orchestrate-dev.js:14765-14780`), and TSPEC §2.6's hoist moved the config read above the
+`!waveMode` branch so a no-manifest run can name the missing gate half too.
+
+No test exercises it. `grep -rn "worktree exception path\|no valid file-ownership manifest"
+__tests__/*.js` returns two comments and no assertion. The only notice assertions in the suite are
+the two pre-existing BL-04 ones (`waveExecution.test.js:552-578`), which filter for the literal
+`"Notice: the script-owned test gate is unavailable"` — a **containment** check on one carrier, not
+PROP-SEAM-07's count of inapplicability *statements* over the whole notice surface.
+
+That leaves all four arms the PLAN's own DoD checklist names (`PLAN` line 534: *"AC-1.5's
+inapplicability notice is checked on all four arms"*) unproven:
+
+- (i) BL-03 absent alone — no test touches the widened legacy notice at all;
+- (ii) BL-04 absent alone — covered only by the pre-existing containment check, not by a count;
+- (iii) both absent — **PROP-SEAM-08**, which TSPEC §5.5 calls *"the only configuration where the
+  hoist could regress AT-01-5"*, has no test; nothing proves one `emit` rather than two;
+- (iv) the zero-count discriminator — absent, and it is the arm that makes (i)–(iii) falsifiable.
+  Without it a carrier that emitted the notice unconditionally would satisfy every other arm.
+
+`PROP-SEAM-07` and `PROP-SEAM-08` appear in no file under `__tests__/`.
+
+**What must change:** add the four arms as PLAN A6-18 specifies, each counting statements over the
+whole `emit` surface with no authorship filter, and each asserting the cause text it expects — arm
+(iii) asserting a count of exactly one **and** that the single statement names both causes.
+
+### F-06 (High) — the seam is never reached from `main()` on a run where it fires
+
+Every test of the wave-loop call site injects a fake seam: `makeA6Fake`
+(`waveExecution.test.js:927-934`) is passed as `extra: { _runWaveGateSeam: a6.fn }` in all eight A6
+tests in that block (`:935`, `:957`, `:978`, `:1010`, `:1043`, `:1069`, `:1084`, `:1114`, `:1128`).
+Every test of the seam itself calls the exported `runWaveGateSeam` (or `runAdvisorySeam`) directly
+— `advisoryWaveGate.test.js` never imports `main`.
+
+The consequence is the DC-07 pattern precisely: the outer interface is faked, so the proof
+traverses neither the real seam nor the real wiring. `result.haltAdvisory` is asserted equal to
+`haltFields` (`waveExecution.test.js:1066`, `:1111`) — but `haltFields` is the object the fixture
+itself handed the loop, so the assertion is an identity, not an oracle on A6's output. AC-6.3's
+claim ("the halt report carries the diagnosis and the root-cause class") is therefore proven only
+against hand-written values; PROP-REC-05, whose home is `advisoryWaveGate.test.js`, appears in no
+test file.
+
+The one main()-driven test that reaches the real `runWaveGateSeam` is the **disabled-tier** case
+(`advisoryDisabled.test.js:646-701`), which is well built — real transports, positive
+`se-implement` dispatch count, `write-tree` absence, both report keys undefined. It proves the
+early-return branch at `orchestrate-dev.js:3224-3226` and nothing past it.
+
+**What must change:** one enabled-tier integration test driven through `mainDev` with **no**
+`_runWaveGateSeam` injection, a red `_runCommand` on the first pass and a green one on the re-gate,
+asserting on the real seam's outputs: the run's `haltAdvisory` (or its absence on a resolution), the
+`ADVISORY-{feature}.md` bytes written through the real `_appendFile`, and a call-count oracle that
+the agent double was dispatched ≥1 on the served flow. A second such run with a persistently red
+re-gate gives the escalation half.
+
+### F-07 (Medium) — NFR-4's window has no falsifying test
+
+The implementation is right: the deadline is constructed fresh per attempt and only after
+`dispatched` (`orchestrate-dev.js:3889-3897`), and `verifyGate` runs after the race settles, so
+gate-command time is structurally outside the measured span, exactly as NFR-4 claims.
+
+The proof is missing. PROP-CTR-10 asks for two runs — one dispatch exceeding the budget escalating
+`budget-exhausted`, **and** *"a companion run whose gate command is slow but whose every
+dispatch→verdict window stays inside budget must terminate `resolved` on a green re-gate."* The
+companion is the only thing that can falsify "gate time is excluded"; without it, an implementation
+that folded gate time into the window would pass every shipped test. The one budget test in the
+named home (`advisoryDriver.test.js:541-553`) is a pre-existing `A2` fixture with a
+never-resolving agent and no gate-command conjunct at all.
+
+### F-08 (Medium) — the refusal arms have no A6 fixture
+
+`grep -c` over `__tests__/advisoryWaveGate.test.js` returns **0** for each of
+`revert-on-test-touch`, `out-of-envelope` and `prohibited-action`. So on an A6 fixture:
+
+- **PROP-ENV-04** (AC-3.2) — a proposal confined to the wave's own owned paths where one is a test
+  file must refuse with X-a's `revert-on-test-touch`, *not* X-d's reason and not a permit under
+  E-5. The precedence claim is the whole point of AC-3.2, and nothing asserts it for A6.
+- **PROP-ENV-05** (AC-3.2 clause (e)) — a wave owning `pdlc/workflows/` must refuse
+  `out-of-envelope`. The wiring is right — `guardPaths: effectiveGuardPaths(undefined)` at
+  `orchestrate-dev.js:4034` applies the shipped defaults to every seam — but this repo *is* the
+  repo AC-3.2 names, so this is the arm most likely to be exercised in anger and it is unasserted.
+- **PROP-ENV-09** (AC-3.5) — a partly-in, partly-out proposal must leave **no part** in the tree.
+- **PROP-ENV-12** — an out-of-set `PROPOSED-ACTION:` must be refused by the shipped X-c clause.
+
+The generic `classifyEnvelope` unit tests in `advisoryEnvelope.test.js` cover the clauses in
+isolation; they do not cover A6's `permittedActions`/`declaredScope` reaching them, which is what
+these four properties are about.
+
+### F-09 (Medium) — PROPERTIES' `Home` column is not mechanically checkable
+
+Grepping each of the 79 property ids in PROPERTIES against `pdlc/workflows/__tests__/` and
+`pdlc/engine/__tests__/` finds no occurrence for 34 of them. Some of those are genuinely covered
+under a different title (`PROP-CTR-02` by the `parseA6RootCause` totality block,
+`PROP-CTR-05` by the `citesGateOutput` block, `PROP-REST-01`/`-02`/`-05` by the `A6-10`
+snapshot/restore blocks) — but that is exactly the problem: a reviewer cannot tell "covered under
+another name" from "not covered" without reading all 4 000 tests, and in this round the distinction
+turned out to matter for at least ten ids (F-03, F-04, F-05, F-07, F-08 above).
+
+Cite the property id in the `describe`/`test` title, as `advisoryWaveGate.test.js` already does for
+`PROP-CTR-03`, `PROP-GATE-03` and friends. Tagged `Process` because the lesson is about how this
+pipeline makes traceability auditable, not about this feature.
+
+### F-10 (Low) — the declared coverage gate does not run
+
+`package.json`'s `test:coverage` script is `c8 npm test … && c8 report --check-coverage --per-file
+--branches 85 …`, but `c8` is not installed in `pdlc/workflows/node_modules` — `npm run
+test:coverage` exits with `sh: c8: command not found`. I measured the floor out-of-band with
+`npx c8@10` and it passes (88.07 % branch on `orchestrate-dev.js`), so this is a gate-runnability
+finding, not a coverage finding. Per DC-09 the claim must rest on the actual gate command; restore
+the devDependency install (or pin the invocation to `npx c8`) so the declared gate is the gate.
+
+### F-11 (Low) — the two ledger writers disagree about token ordering
+
+`runWaveGateSequence` pushes its token **before** invoking the command
+(`orchestrate-dev.js:3137`, `:3145`); `buildA6SeamOps.verifyGate` pushes it **after** the command
+returns (`orchestrate-dev.js:3096`, `:3101`). On every path either transport takes today the
+observable ledger is identical, so no shipped test can tell them apart — but a `_runCommand` that
+*throws* on the re-gate loses its token, and AC-4.4's sequence oracle then reads a ledger
+indistinguishable from one where that command was never configured. Since TSPEC §2.4 extracted
+`runWaveGateSequence` precisely so *"a re-gate that skipped a configured command would require a
+second code path"*, having the second writer push in the other order re-introduces a difference the
+extraction was meant to remove. Make `verifyGate` push first, and add a throwing-transport case.
+
+### F-12 (Low) — the local branch has diverged from its remote
+
+`git rev-list --left-right --count HEAD...origin/feat-pdlc-advisory-wave-gate` reports `1016 / 298`.
+Local HEAD (`a0fa1bca`, 2026-08-20) is newer than the remote tip (`e0d5525b`, 2026-08-19) and
+carries the implementation, so reviewing local HEAD is the right call and I did not pull in the
+shared tree per the parallel-fan-out rule. Recording it so the orchestrator can reconcile before the
+next push — 298 remote-only commits is not a fast-forward.
+
 ## Questions
 
 ## Positive Observations
