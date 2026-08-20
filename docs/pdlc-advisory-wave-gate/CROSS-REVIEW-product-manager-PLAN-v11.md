@@ -211,3 +211,11 @@ list), F-02 belongs in the workflow's completeness gate. Neither blocks, and nei
 this approval standing. The round-10 deferral (one-site rule for the `28 / 14` figure in the DoD
 bullet) remains the one tidy-up worth taking when PLAN is next edited for any other reason.
 
+
+FINDING: Low | delta | local | TSPEC §1.3 "Sizing the hygiene residue" / PLAN Overview HEAD-drift note class-3 row | This round's upstream paragraph says A-1's frozen glob list "exempts only LEARNINGS-* and POSTMORTEM-*"; the shipped A1_GLOBS carries sixteen globs (docs/pdlc-plugin-retirement/**, docs/_decisions/**, docs/completed/**, docs/PLAN-*.md and others). The conclusion holds — this feature's docs and CROSS-REVIEW-* are genuinely unexempted — but the "only" under-states what is already exempt. PLAN does not inherit the error; its covers/does-not-cover wording is accurate at HEAD. Fix belongs in TSPEC §1.3, not in PLAN.
+FINDING: Low | inherited | nonlocal | Definition of Done, inherited-residual bullet | Carried from round 10 and unchanged (PLAN bytes did not move): the DoD bullet still restates `28 total / 14 closable` inline two clauses after telling the reader the Overview's HEAD-drift note is the single owner of those figures. Non-blocking, and now slightly more worth taking since upstream defers to that same single site. Deferred tidy-up for the next time PLAN is edited.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
