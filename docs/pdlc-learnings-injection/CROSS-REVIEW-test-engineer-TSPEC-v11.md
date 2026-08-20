@@ -43,7 +43,48 @@ not falsified claims.
 
 ## Architecture
 
-_pending_
+**Item 3 (P-2a's stale anchors) — landed, and re-verified at HEAD.** The row no longer carries
+`:13515`, `:12821`, `:12915`. It now names four sites by enclosing symbol and call shape. I checked
+each against `pdlc/workflows/orchestrate-dev.js` at HEAD:
+
+| TSPEC's claim | HEAD |
+|---|---|
+| `converge()`'s phase-creator `wrappedDispatch({… docType, dispatchKind: "authoring", phaseId, sessionKey })` | `converge` opens at `:13628`; the creator `wrappedDispatch` carries `dispatchKind: "authoring"` at `:13657`, with exactly the named property shape |
+| two inside `erratumRound()`, both `wrappedDispatch({… docType: target, dispatchKind: "authoring", … })` | `erratumRound` opens at `:12790`; both sites (`:12861` erratum author, `:12955` land-proof retry) are inside it and both pass `docType: target` |
+| `reviewLoop()`'s optimizer `runWrapped(optimizer, optPrompt, doc, "authoring", authorSessionKey(feature, roundDocType, phase))` | verbatim at `:7663` |
+| **four** sites total | `grep 'dispatchKind: "authoring"'` yields exactly `:12861`, `:12955`, `:13657`; the positional `"authoring"` argument is `:7663` — four, no fifth |
+
+The count, the symbol attribution and the two call shapes are all correct, and the citation is now
+readable without a line number, which is what DEC-DOC-01 asks for.
+
+**Item 4 (P-10's stale conditional-spread anchor) — landed, and re-verified at HEAD.**
+`buildFinalReport` is defined at `:15240`; its returned object literal ends with four trailing
+conditional spreads, `...(prUrl …)`, `...(ciStatus …)`, `...(haltReason …)`, `...(advisory ?
+{ advisory } : {})` at `:15309`. TSPEC's new cell names exactly that quartet and exactly that
+position. The old `:15167` was, as routed, a §4.7 comment. Correct.
+
+**P-2b — landed, no regression.** The Phase CR call is restated as `reviewLoop({ doc: <the feature's
+docs directory>, phase: "CR", docType: null, … })` with `roundDocType = docType === undefined ?
+docTypeFromPath(doc) : docType` quoted inline. At HEAD `reviewLoop`'s `wrapped` helper forwards
+`docType: roundDocType` into `dispatchAndVerify` at `:7342-7358`, so the `null`-survival chain the
+`docType` conjunct rests on is intact. This is the load-bearing premise of §A.2 and it still holds.
+
+**Absorption of FSPEC v0.11/v0.12 into §A.2 — faithful.** §A.2 no longer routes the `docType`
+conjunct as a divergence. I diffed its new paraphrase against BR-1 at HEAD: BR-1 reads "**both**
+hold: the pipeline classifies it as authoring, **and** its target document is one of REQ, FSPEC,
+TSPEC, PLAN, DECISIONS or PROPERTIES (REQ C-1)", names the second conjunct "load-bearing, not
+defensive", and names "the code-review phase's optimizer round at HEAD" as the excluded branch.
+TSPEC's quotation and its attribution of the complement to BR-11/AT-03/AT-29/D-2 are accurate, and
+D-2 at FSPEC:274 does carry the three-way branch table TSPEC credits it with.
+
+**What the round left stale in this section.** The invariant paragraph immediately below still
+enumerates `converge()`'s six `docType`s by line — `REQ` `:13766`, `FSPEC` `:13774`, `TSPEC`
+`:13807`, `DECISIONS` `:13874`, `PLAN` `:13893`, `PROPERTIES` `:13996`. At HEAD those lines are
+`forceParse.badTokens`, `harvestStatus: "Not run"` and `let prUrl` respectively; the real call sites
+are `:13908`, `:13916`, `:13949`, `:14016`, `:14035`, `:14138`. The **claim** — that the six
+`docType`s `converge()` drives equal `LEARNINGS_TARGET_DOCTYPES` — is true at HEAD, and the
+set-equality oracle §A.2 specifies over it is unaffected. But this is the same defect class the
+round was dispatched to fix, one paragraph below the row it fixed (F-02).
 
 ## Interfaces
 
