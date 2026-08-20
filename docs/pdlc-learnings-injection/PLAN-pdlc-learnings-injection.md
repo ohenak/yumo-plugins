@@ -341,7 +341,7 @@ mechanically, so the arithmetic above is checked by a test rather than by a read
 | `LI-T-IGNORE`, `LI-T-WORKTREE` (§T.3 obligations 1 and 2) | `learningsCaptureScript.test.js` | LI-03 | LI-04, LI-05 |
 | baseline digest guard, set equality over `{caseId}` (§T.3) | `learningsBaselineGuard.test.js` | — (authored green over the fresh capture; falsified instead by LI-06's recorded three-step mutation proof, TE F-04) | LI-06 |
 | `LI-T-ARMS-1…3` — observed reason codes set-equal to the three frozen catalogues (§D.1, §T.7) | `learningsArmInventory.test.js` | LI-23 | LI-21 |
-| `LI-T-SUITEMAP` — §T.5 closure | `learningsSuiteMap.test.js` | — (**green on authoring**: six suite files, static parse, no symbol under test — TE F-02) | LI-14 itself |
+| `LI-T-SUITEMAP` — §T.5 closure | `learningsSuiteMap.test.js` | — (**green on authoring**: static parse of the twelve matching `learnings*.test.js` files, six of them AT-bearing, no symbol under test — TE F-02, F-03) | LI-14 itself |
 
 ### TSPEC fail-open branch inventory → entering task
 
