@@ -149,8 +149,8 @@ quantifier makes the list illustrative rather than a catalogue, so nothing is un
 list now sits three lines above a rule whose whole point is that the `LI-T-`/`LI-AT-` partition is
 checked by set equality, and a reader may take it for the enumeration. Filed as F-03, Low.
 
-**LI-10's new clause is the positive half I asked for, and it is falsifiable as written.** "`
-dispatches[i].corpusOutcome === null` asserted on dispatches 1, 2 and 4" is an exact value on named
+**LI-10's new clause is the positive half I asked for, and it is falsifiable as written.**
+"`dispatches[i].corpusOutcome === null` asserted on dispatches 1, 2 and 4" is an exact value on named
 rows of a named fixture — not "healthy dispatches record no outcome", which `undefined` would
 satisfy. The row states the mutant it kills ("an implementation recording `undefined`, `""` or
 omitting the key entirely on healthy dispatches is green everywhere"), which is the right form: the
