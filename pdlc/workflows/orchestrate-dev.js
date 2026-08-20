@@ -1963,6 +1963,46 @@ export const ADVISORY_ROOT_CAUSES = Object.freeze([
 // TSPEC §3.1 — A6's own prohibited-operation letters (§5.5's prohibition table, PROP-ENV-10).
 export const A6_PROHIBITIONS = Object.freeze(["f", "g", "h", "i"]);
 
+// AC-3.3's four letters, each mapped to the paths it removes from A6's declared scope — the
+// production reader `A6_PROHIBITIONS` did not have before CR round 1 (PM F-04, TE F-02). Two of
+// the four letters are path-shaped and are enforced HERE, by subtraction, regardless of what the
+// ownership manifest assigns to the failing wave:
+//
+//   (f) the PLAN, its task table and its ownership manifest — one physical file, `docs/{feature}/
+//       PLAN-{feature}.md`; the task table and the manifest are sections of it, so subtracting the
+//       file subtracts all three.
+//   (g) the implementation configuration — `testCommand`, the post-wave command and the post-wave
+//       pathspecs all live in `.claude/pdlc.config.json` (`ADVISORY_CONFIG_PATH === MERGE_CONFIG_PATH`).
+//
+// The other two are structural, and stay so — a subtraction could not express either:
+//   (h) commit / push / tag: A6's SeamOps exposes no committing transport at all (`buildA6SeamOps`
+//       returns no member that runs `commit`, `push` or `tag`); the wave loop is the only committer.
+//   (i) any path outside the computed E-5/E-6 set: that IS `classifyEnvelope`'s X-d clause over
+//       `declaredScope`, evaluated twice (GATE and CHECK) by the shipped driver.
+//
+// Keyed by letter so the catalogue is walked, never transcribed: dropping a letter from
+// `A6_PROHIBITIONS` drops its subtraction, which is what makes the constant load-bearing.
+const A6_PROHIBITION_PATHS = Object.freeze({
+  f: (feature) => [`docs/${feature}/PLAN-${feature}.md`],
+  g: () => [ADVISORY_CONFIG_PATH],
+  h: () => [], // structural — no committing transport exists on A6's SeamOps
+  i: () => [], // structural — classifyEnvelope's X-d clause over declaredScope
+});
+
+/**
+ * The set of paths A6 may never declare or produce, whatever the ownership manifest says
+ * (AC-3.3 (f)/(g), AC-4.3). Derived by walking `A6_PROHIBITIONS`, so the catalogue has exactly
+ * one production reader and no second hand-maintained list. Pure.
+ *
+ * @param {string} feature
+ * @returns {string[]}
+ */
+export function a6ProhibitedPaths(feature) {
+  return A6_PROHIBITIONS.flatMap((letter) =>
+    typeof A6_PROHIBITION_PATHS[letter] === "function" ? A6_PROHIBITION_PATHS[letter](feature) : []
+  );
+}
+
 // TSPEC §3.3 — the citation floor `citesGateOutput` enforces (PROP-CTR-05, TE F-09). A citation
 // normalised to fewer than this many characters is refused as malformed even if it is a verbatim
 // substring of the gate output, because a short-enough string (`"FAILED"`, `"Error"`) is not
@@ -2348,6 +2388,32 @@ export function parseA6RootCause(raw) {
   }
 
   return value !== undefined && ADVISORY_ROOT_CAUSES.includes(value) ? value : "unclassified";
+}
+
+/**
+ * TSPEC §3.4 — the E-6 promotion trailers, read by the same last-wins, trim-tolerant discipline
+ * `parseA6RootCause` uses for `ROOT-CAUSE:`. Pure and total: a non-string, an absent trailer and
+ * an empty value all yield `null` for that half, and neither half is ever inferred from the other.
+ * `PROMOTES-TASK:` does not match the `PROMOTES:` prefix (the character after `PROMOTES` is `-`,
+ * not `:`), so the two are read independently from the same reply.
+ *
+ * CR round 1 (PM F-01 / TE F-01): before this, both trailers existed only inside the prompt string
+ * and nothing read either one — E-6's decidable rule lived in an agent prompt, which NFR-1 forbids.
+ *
+ * @param {string} raw - the agent's raw reply text
+ * @returns {{symbol: string|null, taskId: string|null}}
+ */
+export function parseA6Promotion(raw) {
+  if (typeof raw !== "string" || raw.trim() === "") return { symbol: null, taskId: null };
+  const read = (prefix) => {
+    let value;
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(prefix)) value = trimmed.slice(prefix.length).trim();
+    }
+    return value === undefined || value === "" ? null : value;
+  };
+  return { symbol: read("PROMOTES:"), taskId: read("PROMOTES-TASK:") };
 }
 
 /**
@@ -3012,8 +3078,32 @@ export function buildA6SeamOps({
   const declaredScope = [];
   const isLastWave = !Array.isArray(waves) || waveIndex >= waves.length - 1;
   // TSPEC §3.3 — `permittedActions` narrows `E-6` away on the last wave: there is no later task
-  // for a promotion to belong to.
+  // for a promotion to belong to. A live array, like `declaredScope`: the driver reads it at GATE
+  // through `seamOps.permittedActions`, so narrowing it in place (below, on a failed E-6 conjunct)
+  // is what makes X-c refuse — no second matcher, no A6-private path through the driver.
   const permittedActions = isLastWave ? ["E-5"] : ["E-5", "E-6"];
+  const baseActions = isLastWave ? ["E-5"] : ["E-5", "E-6"];
+
+  // AC-3.3 (f)/(g) — subtracted from every scope this seam declares, whatever the manifest says.
+  const prohibitedPaths = new Set(a6ProhibitedPaths(feature));
+  const admissible = (paths) => paths.filter((p) => !prohibitedPaths.has(p));
+
+  // The record's own annotations (AC-6.1, AC-4.6): captured as the invocation runs, read once by
+  // `annotate` at the driver's step 7 RECORD (CR round 1, PM F-03 / TE F-03).
+  let capturedRootCauseForRecord = null;
+  let capturedPromotion = null;
+  let capturedPromotionHolds = false;
+  let capturedProduced = [];
+
+  /** Look a `PROMOTES-TASK:` id up among the tasks of waves strictly LATER than this one. */
+  function laterTaskById(taskId) {
+    for (let j = waveIndex + 1; j < (waves ? waves.length : 0); j++) {
+      for (const task of waves[j] || []) {
+        if (task && task.id === taskId) return task;
+      }
+    }
+    return null;
+  }
 
   async function gatherEvidence() {
     // TSPEC §3.4 — declaredScope starts as E-5 ∪ E-6 (exact manifest entries); `producedPaths`
@@ -3021,7 +3111,7 @@ export function buildA6SeamOps({
     const e5 = waveOwnedPaths(waves, waveIndex);
     const e6 = isLastWave ? [] : laterOwnedPaths(waves, waveIndex);
     declaredScope.length = 0;
-    declaredScope.push(...new Set([...e5, ...e6]));
+    declaredScope.push(...admissible([...new Set([...e5, ...e6])]));
     // TSPEC §3.3 — the FULL captured gate output, never `outputTail`'s 30 lines (AT-02-5, E-12).
     return String(gateOutput || "");
   }
@@ -3035,10 +3125,12 @@ export function buildA6SeamOps({
     // TSPEC §3.4 — widen declaredScope in place: a produced path covered by an owned directory
     // row joins the set, so a legitimately-owned file under a directory row is not refused.
     for (const p of produced) {
+      if (prohibitedPaths.has(p)) continue; // AC-3.3 (f)/(g): never widened into by a directory row
       if (!declaredScope.includes(p) && ownedSetCovers(declaredScope, p)) {
         declaredScope.push(p);
       }
     }
+    capturedProduced = produced;
     return produced;
   }
 
@@ -3064,8 +3156,50 @@ export function buildA6SeamOps({
         return { malformed: true };
       }
       const rootCause = parseA6RootCause(raw);
+      capturedRootCauseForRecord = rootCause;
       if (rootCause === "unclassified") {
         return { terminate: { outcome: "escalated", reason: null } };
+      }
+
+      // TSPEC §3.4 — E-6's symbol half, script-checked in three conjuncts (NFR-1: enforced in the
+      // workflow script, never only in the prompt). Evaluated HERE because `classifyReply` is the
+      // one hook that runs after the reply is parsed and before the driver reads `declaredScope`
+      // and `permittedActions` at GATE — both are live arrays, so narrowing them in place is
+      // visible to the shipped `classifyEnvelope` without a second matcher.
+      //
+      // Both arrays are re-derived from the invocation's base on EVERY attempt, so a failed
+      // conjunct on attempt 1 cannot narrow attempt 2's envelope (the driver re-enters the loop
+      // on a red re-gate and calls this hook again).
+      permittedActions.length = 0;
+      permittedActions.push(...baseActions);
+      const e5Base = waveOwnedPaths(waves, waveIndex);
+      capturedPromotion = null;
+      capturedPromotionHolds = false;
+      if (verdict && verdict.proposedAction === "E-6") {
+        const promotion = parseA6Promotion(raw);
+        const laterTask = promotion.taskId ? laterTaskById(promotion.taskId) : null;
+        const holds = Boolean(
+          promotion.symbol &&
+            laterTask && // (1) PROMOTES-TASK names a task in a strictly later wave
+            String(laterTask.description || "").includes(promotion.symbol) && // (2) that row undertakes it
+            String(gateOutput || "").includes(promotion.symbol) // (3) the failure named it
+        );
+        capturedPromotion = promotion;
+        capturedPromotionHolds = holds;
+        declaredScope.length = 0;
+        if (holds) {
+          // Conjunct-satisfying: E-6's half of the scope narrows from the union over EVERY later
+          // wave to the named task's own owned set — AC-3.1's "that later task's owned-path set",
+          // singular. Anything else the repair produces is refused by X-d at step 5 CHECK.
+          declaredScope.push(...admissible([...new Set([...e5Base, ...(laterTask.files || [])])]));
+        } else {
+          // Any conjunct failing refuses `out-of-envelope` (TSPEC §3.4) — expressed by removing
+          // E-6 from `permittedActions`, which is exactly the shipped X-c clause's reason, and by
+          // narrowing the scope back to E-5 so nothing outside the failing wave can survive CHECK.
+          declaredScope.push(...admissible([...new Set(e5Base)]));
+          const i = permittedActions.indexOf("E-6");
+          if (i >= 0) permittedActions.splice(i, 1);
+        }
       }
       return { ok: true };
     },
@@ -3083,6 +3217,27 @@ export function buildA6SeamOps({
       return { ok: produced.length > 0 };
     },
     producedPaths: producedPathsImpl,
+    // AC-6.1 / AC-4.6 — the record annotations, read once by the driver's step 7 RECORD. Optional
+    // and absent on A1–A5, so their record and escalation bytes are unchanged (CR round 1, PM
+    // F-03 / TE F-03, and the answer to both reviewers' Q-02: the renderers widen, the widening is
+    // driven by fields only A6 supplies).
+    //
+    // `wave` and `rootCause` are named on EVERY terminal disposition — an operator reading
+    // `ADVISORY-{feature}.md` after a multi-wave run must be able to tell which wave an entry
+    // belongs to, and AC-6.4 needs the class countable off the durable log even when the outcome
+    // was a refusal. The promotion fields are named only where a repair actually survived: a
+    // reverted proposal's paths are not "the repair's paths".
+    annotate: ({ outcome, appliedSuccessfully } = {}) => {
+      const applied = outcome === "resolved" && appliedSuccessfully === true;
+      return {
+        wave: waveNum,
+        rootCause: capturedRootCauseForRecord || "unclassified",
+        ...(applied && capturedProduced.length > 0 ? { repairPaths: [...capturedProduced] } : {}),
+        ...(applied && capturedPromotionHolds && capturedPromotion && capturedPromotion.taskId
+          ? { promotionTask: capturedPromotion.taskId, promotionSymbol: capturedPromotion.symbol }
+          : {}),
+      };
+    },
     revert: async () => {
       await restoreTreeSnapshot(snapshot, { _git, _sleep: async () => {}, emit: () => {} });
     },
@@ -3091,14 +3246,19 @@ export function buildA6SeamOps({
       // token per command to the shared `invocations` array; a red re-gate declares
       // `consumesAttempt: true` so the driver re-enters its loop and exhausts to
       // `budget-exhausted` rather than terminating immediately.
+      // The token is pushed BEFORE the command runs, matching `runWaveGateSequence`
+      // (`invocations.push` precedes its own `_runCommand` call). CR round 1, TE F-11: pushing
+      // after the call loses the token when the transport THROWS, and AC-4.4's sequence oracle
+      // then reads a ledger indistinguishable from one where the command was never configured —
+      // re-introducing the very divergence §2.4's extraction existed to remove.
       if (implConfig && implConfig.postWaveCommand && typeof _runCommand === "function") {
-        const post = await _runCommand(implConfig.postWaveCommand);
         invocations.push("post-wave");
+        const post = await _runCommand(implConfig.postWaveCommand);
         if (!post || post.ok !== true) return { passed: false, consumesAttempt: true };
       }
       if (scriptGate && implConfig && typeof _runCommand === "function") {
-        const test = await _runCommand(implConfig.testCommand);
         invocations.push("test");
+        const test = await _runCommand(implConfig.testCommand);
         if (!test || test.ok !== true) return { passed: false, consumesAttempt: true };
       }
       return { passed: true };
@@ -3231,7 +3391,15 @@ export async function runWaveGateSeam({
   const ledgerAnchor = { value: -1 };
 
   // TSPEC §3.2 step 4 / §2.5 — the snapshot, once per wave, before `runAdvisorySeam` is entered.
-  const snapshot = await captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit: () => {} });
+  const captureFailure = { verb: null };
+  const snapshot = await captureTreeSnapshot({
+    feature,
+    waveNum,
+    _git,
+    _sleep,
+    emit: () => {},
+    failure: captureFailure,
+  });
 
   if (!snapshot) {
     // §2.5's capture-failure table: the shipped `__preDispatch` escape is NOT available here (it
@@ -3246,6 +3414,12 @@ export async function runWaveGateSeam({
       attempts: 0,
       model: "n/a",
       fallback: false,
+      // This path builds its own disposition rather than going through the driver's `terminate`,
+      // so it must supply the same annotations `annotate` would have (AC-6.1, AC-6.2): a
+      // capture-failure escalation is still an A6 entry an operator has to attribute to a wave,
+      // and still needs a class on the durable log (CR round 1, TE F-04's second paragraph).
+      wave: waveNum,
+      rootCause: "unclassified",
     };
     try {
       await appendAdvisoryEntry({ feature, disposition, _appendFile, _now });
@@ -3254,9 +3428,14 @@ export async function runWaveGateSeam({
         `ADVISORY record write failed for seam A6: ${err && err.message ? err.message : String(err)}`
       );
     }
+    // PROP-REST-08 — the decision sentence names the git verb that failed, observed on the
+    // transport, not merely the fact of failure: an operator reading `ESCALATIONS.md` has to know
+    // whether `write-tree` failed (a repository problem) or `update-ref` did (a concurrent-run
+    // problem). The verb falls back to the outcome word when the carrier was never written.
     const decision =
-      "A6's wave-tree snapshot could not be captured (snapshot-unavailable); no repair was " +
-      "proposed and none was applied — the wave's red gate needs a human look.";
+      `A6's wave-tree snapshot could not be captured (snapshot-unavailable; git ` +
+      `${captureFailure.verb || "snapshot"} failed); no repair was proposed and none was ` +
+      "applied — the wave's red gate needs a human look.";
     try {
       await appendEscalationEntry({
         disposition,
@@ -3327,8 +3506,11 @@ export async function runWaveGateSeam({
     },
     classifyReply: (raw, verdict) => {
       // TSPEC §4.2 — the root-cause class, captured here (once per attempt, on every well-formed
-      // reply) so a terminal disposition — resolved or escalated — can name it on the record and
-      // in the halt fields, without widening `renderAdvisoryEntry`'s own seven-field contract.
+      // reply) so a terminal disposition — resolved or escalated — can name it in the halt fields.
+      // The record's and the escalation log's copies of the same class come from `annotate`
+      // (`buildA6SeamOps`), which the driver's step 7 reads: CR round 1 (PM F-02/F-03, TE
+      // F-03/F-04) established that the class must be a countable FIELD on both durable artifacts,
+      // so `renderAdvisoryEntry`/`renderEscalationEntry` do widen — for seams that annotate.
       capturedRootCause = parseA6RootCause(raw);
       return baseSeamOps.classifyReply(raw, verdict);
     },
@@ -3414,6 +3596,7 @@ function advisoryEntrySingleLine(value) {
  */
 export function renderAdvisoryEntry(disposition, { now }) {
   const { seam, outcome, reason, verdict, model, fallback } = disposition;
+  const { wave, rootCause, repairPaths, promotionTask, promotionSymbol } = disposition;
 
   const dispositionValue =
     outcome === "escalated" && reason ? `${outcome} — ${reason}` : outcome;
@@ -3432,10 +3615,26 @@ export function renderAdvisoryEntry(disposition, { now }) {
     "| Field | Value |",
     "|---|---|",
     `| Seam | ${seam} |`,
+    // AC-6.1's per-seam fields, emitted only where the seam supplied them through `annotate`
+    // (CR round 1, PM F-03 / TE F-03). A1–A5 supply none, so their entries keep the shipped
+    // five-row table byte for byte; A6's entry names the wave and the class it was told to name,
+    // and — on a resolution that promoted a later task's symbol — the repair's paths and the task
+    // that owns them (AC-4.6).
+    ...(wave === undefined || wave === null ? [] : [`| Wave | ${advisoryEntrySingleLine(wave)} |`]),
     `| Confidence | ${advisoryEntrySingleLine(confidence)} |`,
     `| Envelope | ${envelope} |`,
     `| Disposition | ${advisoryEntrySingleLine(dispositionValue)} |`,
     `| Model | ${advisoryEntrySingleLine(modelValue)} |`,
+    ...(rootCause ? [`| Root cause | ${advisoryEntrySingleLine(rootCause)} |`] : []),
+    ...(Array.isArray(repairPaths) && repairPaths.length > 0
+      ? [`| Repair paths | ${advisoryEntrySingleLine(repairPaths.join(", "))} |`]
+      : []),
+    ...(promotionTask
+      ? [
+          `| Promotes | ${advisoryEntrySingleLine(promotionSymbol || "(unnamed symbol)")} |`,
+          `| Promotes task | ${advisoryEntrySingleLine(promotionTask)} |`,
+        ]
+      : []),
     "",
     `**Diagnosis.** ${advisoryEntrySingleLine(diagnosis)}`,
     "",
@@ -3463,7 +3662,7 @@ export async function appendAdvisoryEntry({ feature, disposition, _appendFile, _
 
 /**
  * `advisorySummaryRows(dispositions)` — pure (TSPEC §9.4). `ADVISORY_SEAMS` drives the row list
- * (S-1), so five rows always appear and a seam that never fired is visibly zero. The per-row and
+ * (S-1), so six rows always appear and a seam that never fired is visibly zero. The per-row and
  * total identity `invocations === resolved + escalated + noAction` holds by construction. Each
  * row also carries the `model`/`fallback` of its LAST invocation (S-2) — undefined/falsy when the
  * seam never fired.
@@ -3534,7 +3733,7 @@ const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
  * @returns {string}
  */
 export function renderEscalationEntry(disposition, ctx, { now }) {
-  const { reason, verdict } = disposition;
+  const { reason, verdict, rootCause } = disposition;
   const { feature, seam, phase, phaseOutcome, decision } = ctx;
   const iso = new Date(now).toISOString();
 
@@ -3555,6 +3754,12 @@ export function renderEscalationEntry(disposition, ctx, { now }) {
     `| Feature | ${feature} |`,
     `| Seam | ${seam} |`,
     `| Refusal reason | ${advisoryEntrySingleLine(reason ?? "n/a")} |`,
+    // AC-6.2 — the root-cause class alongside the fields the tier already requires, and the field
+    // AC-6.4's countability rests on: `plan-ordering-defect` must be countable per feature from
+    // this durable log alone, without reading a run log or the (PUB-distilled) advisory record.
+    // Emitted only where the seam annotated one, so A1–A5's entries are unchanged (CR round 1,
+    // PM F-02 / TE F-04).
+    ...(rootCause ? [`| Root cause | ${advisoryEntrySingleLine(rootCause)} |`] : []),
     "",
     `**Diagnosis.** ${advisoryEntrySingleLine(diagnosis)}`,
     "",
@@ -3817,6 +4022,16 @@ export async function runAdvisorySeam({
     let finalOutcome = outcome;
     let finalReason = reason;
     log("RECORD");
+    // `seamOps.annotate` — the second optional seam member (after `classifyReply`), and the same
+    // shape of hook: pure, total, absent by default. A seam whose criteria name fields the tier's
+    // seven do not cover (A6's wave number, root-cause class and promotion — AC-6.1, AC-6.2,
+    // AC-4.6) supplies them here, and the renderers emit only the fields present. A1–A5 supply no
+    // `annotate`, so every record and escalation entry they write is byte-identical to before —
+    // and, as with `classifyReply`, there is no `if (seam === "A6")` anywhere in this driver.
+    const annotations =
+      typeof seamOps.annotate === "function"
+        ? seamOps.annotate({ outcome: finalOutcome, appliedSuccessfully }) || {}
+        : {};
     const disposition = {
       seam,
       outcome: finalOutcome,
@@ -3825,6 +4040,7 @@ export async function runAdvisorySeam({
       attempts,
       model: rungState.resolved ? rungState.resolved.model : undefined,
       fallback: rungState.resolved ? rungState.resolved.fallback : false,
+      ...annotations,
     };
     try {
       await appendAdvisoryEntry({ feature, disposition, _appendFile, _now });
@@ -3841,6 +4057,9 @@ export async function runAdvisorySeam({
       attempts,
       model: rungState.resolved ? rungState.resolved.model : undefined,
       fallback: rungState.resolved ? rungState.resolved.fallback : false,
+      // The same annotations ride the terminal object, so the escalation-log writer below sees
+      // them too (AC-6.2's class on `ESCALATIONS.md`, which AC-6.4's countability rests on).
+      ...annotations,
       // AC-6.3 — present only when a `_summarise` seam produced something, so a seam without one
       // carries no key at all rather than an `undefined` the halt would have to `?? ""` away.
       ...(summary ? { classificationSummary: summary } : {}),
@@ -12336,9 +12555,18 @@ export async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
  * @param {{feature: string, waveNum: number, _git: function, _sleep: function, emit: function}} args
  * @returns {Promise<{head: string, tree: string, snap: string} | null>}
  */
-export async function captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit }) {
+export async function captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit, failure }) {
+  // `failure` is the optional live carrier the caller owns — the `ledgerAnchor` idiom again
+  // (TSPEC §3.3): written in place with the git verb that failed, so the escalation this capture
+  // failure causes can name the diagnostic instead of only the outcome (PROP-REST-08, CR round 1
+  // PM F-07). Absent for every caller that does not want it; the return value is unchanged.
+  const fail = (verb) => {
+    if (failure && typeof failure === "object") failure.verb = verb;
+    return null;
+  };
+
   const headResult = await _git(["rev-parse", "HEAD"]);
-  if (!headResult || headResult.ok !== true) return null;
+  if (!headResult || headResult.ok !== true) return fail("rev-parse");
   const head = String(headResult.stdout || "").trim();
 
   const add = await gitWithLockRetry(["add", "-A"], {
@@ -12347,10 +12575,10 @@ export async function captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit
     emit,
     label: `A6 wave ${waveNum}: snapshot add`,
   });
-  if (!add || add.ok !== true) return null;
+  if (!add || add.ok !== true) return fail("add");
 
   const treeResult = await _git(["write-tree"]);
-  if (!treeResult || treeResult.ok !== true) return null;
+  if (!treeResult || treeResult.ok !== true) return fail("write-tree");
   const tree = String(treeResult.stdout || "").trim();
 
   const commitResult = await _git([
@@ -12361,11 +12589,11 @@ export async function captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit
     "-m",
     `A6 snapshot: wave ${waveNum} pre-repair tree (${feature})`,
   ]);
-  if (!commitResult || commitResult.ok !== true) return null;
+  if (!commitResult || commitResult.ok !== true) return fail("commit-tree");
   const snap = String(commitResult.stdout || "").trim();
 
   const updateRef = await _git(["update-ref", `refs/pdlc/a6-snapshot-${waveNum}`, snap]);
-  if (!updateRef || updateRef.ok !== true) return null;
+  if (!updateRef || updateRef.ok !== true) return fail("update-ref");
 
   const reset = await gitWithLockRetry(["reset", "--mixed", head], {
     _git,
@@ -12373,7 +12601,7 @@ export async function captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit
     emit,
     label: `A6 wave ${waveNum}: snapshot reset`,
   });
-  if (!reset || reset.ok !== true) return null;
+  if (!reset || reset.ok !== true) return fail("reset");
 
   return { head, tree, snap };
 }

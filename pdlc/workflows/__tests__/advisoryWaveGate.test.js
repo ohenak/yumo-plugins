@@ -1034,6 +1034,11 @@ describe("A6-18: runWaveGateSeam — snapshot capture failure (TSPEC §2.5, AT-0
         attempts: 0,
         model: "n/a",
         fallback: false,
+        // CR round 1 (TE F-04): the capture-failure path builds its own disposition, and carries
+        // the same two annotations every other A6 disposition carries — the wave an operator has
+        // to attribute the entry to, and the class AC-6.4 counts off the durable log.
+        wave: 1,
+        rootCause: "unclassified",
       });
       expect(result.haltFields.repairApplied).toBe(false);
       expect(result.haltFields.repairPaths).toEqual([]);
