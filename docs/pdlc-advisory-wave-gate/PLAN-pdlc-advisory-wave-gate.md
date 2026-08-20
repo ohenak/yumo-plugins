@@ -375,8 +375,11 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 - [ ] Steps 1–3, 5 and 7 of the wave loop, and the V-wave's own gate, are unchanged — their halt
       literals and queue rows compared to the pre-A6 values byte for byte (AT-01-2, AT-01-3, AT-05-3).
 - [ ] `cd pdlc/engine && npm ci && npm test` green, covering A6-04's example-config expectation
-      in its own `advisory-config-example.test.js`, with `ci-arrangement.test.js` untouched that the wave
-      gate never runs.
+      in its own `advisory-config-example.test.js`, covering both `enabled` and `waveBudgetPerRun`, and
+      with `ci-arrangement.test.js` untouched. This leg is run by hand and by CI, **not** by the wave
+      gate: `implementation.testCommand` scopes the gate to `cd pdlc/workflows && npm test …`
+      (`.claude/pdlc.config.json`), so the engine suite is never exercised at a wave boundary and an
+      engine-side red would otherwise surface only in CI.
 - [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/workflows/dist/` is committed.
 - [ ] `cd pdlc/workflows && npm run test:coverage` passes both stages.
 - [ ] `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0 (consumer runtime not left stale).
