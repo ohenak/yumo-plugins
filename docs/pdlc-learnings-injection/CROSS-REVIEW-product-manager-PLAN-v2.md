@@ -32,6 +32,11 @@ Scope of attention: the v0.1→v0.2 delta only (185 insertions, 67 deletions acr
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | LI-01's premise suite is meant to red "the moment a rebase moves a premise mid-wave" (H-1). Once F-07's absence claims are removed, does the suite still red on the one premise a mid-wave rebase is most likely to move — a **fifth** `dispatchKind: "authoring"` site (H-1's own example)? P-2a is now phrased as "three object-literal sites plus one positional argument at the review-loop optimizer call", which is a count over two different syntactic shapes; a set-equality-style assertion over the four *call sites* would red on a fifth, while an assertion that "three object literals exist" would not. This is a product question, not a style one: H-5 says a seventh authoring phase is a REQ C-1/NG-5 decision, and this suite is the only mechanism that surfaces it before the composition-site set equality reds much later at batch 12. |
+| Q-05 | The expected-red ledger reaches empty "after batch 13", and DoD 10 places the three PROPERTIES obligations (T-O-4…T-O-6) "outside this PLAN's task rows, inside the feature's Definition of Done". If Phase P authors those properties against the same region while batches 7–13 are still running, do they enter the ledger, or are they out of the gate's scope entirely? The ledger's strongest property — "a suite dropping out of the ledger early is as much a failure as one lingering" — depends on the feature's own test set being closed, and PROPERTIES is the one member of that set the PLAN does not schedule. |
+
 ## Positive Observations
 
 ## Recommendation
