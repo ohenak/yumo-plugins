@@ -116,6 +116,53 @@ protects BR-6's product intent from a plausible implementation shortcut.
 
 ## Data Model
 
+**`BR6_SECTION_NAMES` diffed against BR-6's table, name by name.** Contract-fidelity checks are
+mechanical, so I ran this one literally rather than reading for sense:
+
+| Priority | FSPEC BR-6 table | TSPEC `BR6_SECTION_NAMES` | Match |
+|---|---|---|---|
+| 1 | Cross-Feature Patterns | `"Cross-Feature Patterns"` | exact |
+| 2 | Non-Convergences | `"Non-Convergences"` | exact |
+| 3 | Rejected Proposals (with rationale) | `"Rejected Proposals (with rationale)"` | exact, gloss included |
+| 4 | Process Learnings | `"Process Learnings"` | exact |
+| 5 | Open Items for Consolidation | `"Open Items for Consolidation"` | exact |
+| — | Approval Record — **never** injected | absent from the array | correct by construction |
+
+Five for five, in order, with the array's index carrying the priority. No sixth value, no internal
+variant, no renaming.
+
+**Approval Record's exclusion is structural, not a branch.** BR-6 marks it "**never**" injected,
+and FSPEC gives a product reason: it is per-run verdict bookkeeping, and keeping approval
+vocabulary out of an authoring prompt reinforces BR-11's boundary. §D.3 achieves it by omission —
+`Approval Record` is not in `BR6_SECTION_NAMES`, "so is never matched, never taken, and needs no
+exclusion branch". A never-injected requirement enforced by absence from the allow-list cannot be
+defeated by a missed conditional. This is the stronger discharge of BR-6's `never`.
+
+**The `## 6.` deviation is handled without a special case.** §D.3 cites
+`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md`, whose sixth section is
+`## 6. Phase PUB Retroactive Cross-Review (2026-06-24)` rather than `Approval Record`. I confirmed
+that heading exists verbatim. Under the allow-list rule it is simply not one of the five. The same
+mechanism that excludes Approval Record excludes an unanticipated sixth section — so a corpus
+document deviating from the harvest skill's format degrades safely instead of leaking bookkeeping
+into an authoring prompt.
+
+**Corpus claims re-measured.** Every empirical assertion §D.3 makes, I ran rather than trusted:
+
+- The §I.1 predicate — `git ls-files --cached --others --exclude-standard --
+  ':(glob)docs/*/LEARNINGS-*.md' ':(glob)docs/completed/*/LEARNINGS-*.md'` — returns exactly **9**
+  paths at HEAD, matching P-5 and every "9 corpus documents" claim in the section. A naive
+  `docs/**` sweep returns 11; the two extra sit under `docs/discarded/`, which the `:(glob)`
+  semantics exclude because `*` does not cross `/`. The count is right for the stated reason.
+- All 9 write the numbered form, with ordinals running `1. Non-Convergences`,
+  `2. Cross-Feature Patterns`, `3. Rejected Proposals (with rationale)`, `4. Process Learnings`,
+  `5. Open Items for Consolidation` — confirming both the "every one writes the numbered form"
+  claim and the priority-inversion warning.
+- All 9 write the **glossed** `Rejected Proposals (with rationale)`, which is precisely why §D.3
+  declares the un-glossed tolerance *not measured*. That provenance label is accurate.
+
+The document distinguishes measured from defensive claims correctly throughout the new material —
+the discipline ERR-5 was raised to enforce, applied here without being asked.
+
 ## Test Strategy
 
 ## Open Questions
