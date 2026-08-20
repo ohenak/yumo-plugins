@@ -43,11 +43,26 @@ No BR, E-row, AC mapping or flow step outside those four loci changed, so the ap
 
 ## Behavioral Flow
 
-_pending_
+Untouched by the delta; re-confirmed by sampling, not re-read (delta protocol).
+
+One consistency echo of the BR-1 correction lands here and is worth recording. The decision table's `D-2` row (`:265`) still reads *"Is this dispatch an authoring dispatch? — yes / no"*, and the flow prose at `:70` still describes the block as added *"to the dispatches the pipeline already classifies as authoring"*. Both point at BR-1 as their rule, so an implementer who follows the pointer reaches the corrected two-conjunct text and cannot get the behaviour wrong; but read alone they restate the single-conjunct form the erratum just removed. A-2 at `:995` has the same shape ("the pipeline's existing authoring classification is stable enough to be consumed rather than restated") — still true of both conjuncts, since the target document type is equally the pipeline's own value, but it now names only one of them. These are wording echoes, not behavioural divergence: Low, recorded as F-03.
+
+Step 0(2)'s configuration branches, step (4)'s threshold resolution and the per-dispatch locus for corpus outcomes are all outside this delta's four hunks and remain as approved at v12.
 
 ## Business Rules
 
-_pending_
+**BR-1 (`:282-306`) — routed items 1 and 3: landed, and correctly.** The rule is now an iff over a conjunction, with both conjuncts sourced to the pipeline's own values and the second one explicitly declared load-bearing rather than defensive. That last sentence is the part that matters downstream: it forecloses a later reader deciding the conjunct is belt-and-braces and dropping it. The Included/Excluded lists below the rule are unchanged and still correct under the new rule — they were already the six C-1 document types — and the note that they "illustrate what the pipeline's classification yields today" continues to hold.
+
+This is what TSPEC §A.2 was written against and what PLAN LI-11's composition-site set equality transcribes: an implementer reading BR-1 alone now derives the same set as an implementer reading TSPEC §A.2, which was the defect. TSPEC ERR-3 is discharged at the FSPEC layer.
+
+**BR-15 (`:673-689`) — routed items 2 and 4: landed, and correctly.** Two independent defects are fixed in one paragraph:
+
+- The instrument and its expected set now agree. The observed set is defined as "the file-open calls the run makes under `docs/`"; the expected set no longer claims a member for the corpus-root enumeration, and says why in the instrument's own terms — the enumeration "opens no file under `docs/`, so this instrument does not see it". The FSPEC states this observationally and does not name the mechanism (`git ls-files`), which is the right altitude: the mechanism is TSPEC material, the *no-member* consequence is the behavioural claim, and the claim is true of any enumeration that does not open corpus files. If the TSPEC later chose a directory-walk implementation that does open files, the FSPEC sentence would be the thing that fails, which is the correct direction of pressure.
+- Membership is now enumerable: "**exactly** one open attempt for every corpus document the report names … Membership is therefore fully enumerable from the report alone, so a test may transcribe it as an equality." That is precisely the property PLAN LI-11 needs in order to transcribe the set as an equality rather than a containment.
+
+The `RSN-SELF` carve-out and the `RSN-UNREADABLE`-belongs ("the failed attempt is the read") clause are preserved from the approved text, and both remain consistent with REQ AC-5.2, which measures reads rather than namings.
+
+**BR-11 (`:583-597`) — not touched, and now inconsistent with BR-1.** Its closing sentence still reads *"every **non-authoring** dispatch prompt is byte-identical to the same dispatch composed with injection disabled."* Before this delta, "non-authoring" and "outside BR-1's rule" denoted the same set and the sentence was exact. After it they do not: the code-review phase's optimizer round is authoring-classified and outside BR-1's rule, so BR-11 as written makes no byte-identity claim about it, while REQ AC-1.2 explicitly does. BR-11 is the rule AC-1.2 traces to for that half (`:140` maps AC-1.2 → BR-1, BR-11), so the traceability row now points at a rule that under-delivers its AC. This is the substance of F-01.
 
 ## Edge Cases and Error Scenarios
 
