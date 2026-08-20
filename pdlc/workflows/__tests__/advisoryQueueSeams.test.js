@@ -631,7 +631,7 @@ describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…0
       _phase: () => {},
     });
     expect(report.advisory).toBeTruthy();
-    expect(report.advisory.rows).toHaveLength(5); // ADVISORY_SEAMS drives the row list (S-1)
+    expect(report.advisory.rows).toHaveLength(6); // ADVISORY_SEAMS drives the row list (S-1)
     const a1Row = report.advisory.rows.find((r) => r.seam === "A1");
     const a2Row = report.advisory.rows.find((r) => r.seam === "A2");
     expect(a1Row.invocations).toBe(1);

@@ -84,7 +84,14 @@
 
 import * as dev from "../orchestrate-dev.js";
 
-import { makeAgentDouble, makeSeamOps, makeFileDouble, makeFakeClock, makeAdvisoryConfig } from "./helpers/advisoryDoubles.js";
+import {
+  makeAgentDouble,
+  makeSeamOps,
+  makeFileDouble,
+  makeFakeClock,
+  makeAdvisoryConfig,
+  makeA6ReplyText,
+} from "./helpers/advisoryDoubles.js";
 
 /** This file's feature name, threaded to every `runAdvisorySeam` call below. */
 const FEATURE = "pdlc-advisory-tier";
@@ -140,24 +147,40 @@ function buildSeamOpsOverrides(
   return o;
 }
 
+// ─── withClassifyReply — TSPEC §3.7's optional hook (A6-12) ──────────────────────────────────────
+// `makeSeamOps` (canonical, `advisoryDoubles.js`) has no `classifyReply` member — it is not a
+// `spy()`-wrapped call-recorder like the rest of `SeamOps`, and `advisoryDoubles.js` is outside
+// this task's file ownership. `classifyReply` is a plain, optional property `runAdvisorySeam`
+// reads directly off the SeamOps object (absent ⇒ the shipped `null` default, TSPEC §3.7), so
+// attaching it here — after `makeSeamOps` builds everything else — is the whole of what "installing
+// the hook" means for a test double.
+function withClassifyReply(seamOps, classifyReply) {
+  if (classifyReply !== undefined) seamOps.classifyReply = classifyReply;
+  return seamOps;
+}
+
 // ─── invokeDriver — the one call site every case below goes through ─────────────────────────────
 // Assembles `runAdvisorySeam`'s full parameter set (TSPEC §4.4) from canonical doubles, so no
 // individual test re-states the plumbing. `fileDouble`/`appendFile` are optional seams for the
 // record-write-failure cases (PROP-LIFE-07, T-08-2); `now` seeds the fake clock for the budget
 // cases (T-02-5).
-async function invokeDriver({ seam, config, seamOps, agent, fileDouble, appendFile, now, clock }) {
+async function invokeDriver({ seam, config, seamOps, agent, fileDouble, appendFile, now, clock, rungState }) {
   const files = fileDouble || makeFileDouble();
   const fakeClock = clock || makeFakeClock(now !== undefined ? { start: now } : undefined);
   // The report's notice channel (TSPEC §10.2 N-4). Captured for every invocation so AC-4.6's O-1
   // triple can be asserted on the same path that produced the disposition, rather than needing a
   // second, differently-plumbed call.
   const notices = [];
+  // `rungState` defaults to a fresh, per-call memo — the shape every existing case in this file
+  // depends on. A6-12's rung-parity cases pass their OWN object, shared across two `invokeDriver`
+  // calls, so the second call reads the first's `resolved` write (TSPEC §3.4 "lazy, once per run").
+  const state = rungState || {};
   const disposition = await dev.runAdvisorySeam({
     seam,
     feature: FEATURE,
     seamOps,
     config,
-    rungState: {},
+    rungState: state,
     _agent: agent,
     _appendFile: appendFile || files._appendFile,
     _writeFile: files._writeFile,
@@ -168,7 +191,7 @@ async function invokeDriver({ seam, config, seamOps, agent, fileDouble, appendFi
     _sleep: fakeClock._sleep,
     _notice: (message) => notices.push(String(message)),
   });
-  return { disposition, fileDouble: files, clock: fakeClock, notices };
+  return { disposition, fileDouble: files, clock: fakeClock, notices, rungState: state };
 }
 
 // ─── The AC-4.6 / O-1 escalation triple, asserted on ONE path ───────────────────────────────────
@@ -224,6 +247,7 @@ const GATE_EXCLUSIVITY_REGISTRY = {
   A3: { gate: null, action: "none" },
   A4: { gate: "declared", action: "apply-rebase-fix" },
   A5: { gate: "declared", action: "apply-pub-fix" },
+  A6: { gate: "declared", action: "E-6" },
 };
 
 // ─── Generated per-seam gate-exclusivity cases (PROP-GATE-01…05) ────────────────────────────────
@@ -872,4 +896,148 @@ describe("A-24 — A5 gate exclusivity", () => {
 
 describe("A-31 — A1/A2 gate exclusivity", () => {
   gateExclusivityCases(["A1", "A2"]);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A6-12 — `seamOps.classifyReply` (TSPEC §3.7), rung parity, dispatch-option parity
+// (former A6-11's red step, folded in per PLAN v1.3 restructure — AT-02-7, AT-07-4, AT-07-5)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+describe("A6-12 / PROP-GATE-11 — classifyReply hook (TSPEC §3.7)", () => {
+  it("`{ok:true}` proceeds to RE-CHECK exactly like the absent (default null) hook — A1–A5 unchanged (AT-02-7)", async () => {
+    const config = makeAdvisoryConfig({ enabled: true }).config;
+
+    const seamOpsWithHook = withClassifyReply(
+      makeSeamOps(buildSeamOpsOverrides(["E-5", "E-6"], ["owned/path.js"])),
+      () => ({ ok: true })
+    );
+    const agentWithHook = makeAgentDouble({ script: [makeA6ReplyText({ proposedAction: "E-5" })] });
+    const { disposition: withHook } = await invokeDriver({ seam: "A6", config, seamOps: seamOpsWithHook, agent: agentWithHook });
+
+    const seamOpsNoHook = makeSeamOps(buildSeamOpsOverrides(["E-5", "E-6"], ["owned/path.js"]));
+    const agentNoHook = makeAgentDouble({ script: [makeA6ReplyText({ proposedAction: "E-5" })] });
+    const { disposition: noHook } = await invokeDriver({ seam: "A6", config, seamOps: seamOpsNoHook, agent: agentNoHook });
+
+    // Same shape and same terminal outcome either way — the hook returning `{ok:true}` is not
+    // observably different from the hook being absent entirely (TSPEC §3.7's table, row 1).
+    expect(withHook.outcome).toBe(noHook.outcome);
+    expect(withHook.attempts).toBe(noHook.attempts);
+    expect(seamOpsWithHook.calls.conditionHolds.length).toBe(1);
+    expect(seamOpsNoHook.calls.conditionHolds.length).toBe(1);
+  });
+
+  it("`{malformed:true}` reuses the existing malformed arm verbatim — attempts += 1, budget checked, loop continues (AT-02-7)", async () => {
+    // Two-attempt budget: attempt 1's reply is well-formed but `classifyReply` calls it malformed;
+    // attempt 2's reply is well-formed and `classifyReply` waves it through — proving the loop
+    // really re-entered rather than terminating on attempt 1.
+    const config = makeAdvisoryConfig({ enabled: true, attemptBudget: 2 }).config;
+    let calls = 0;
+    const classifyReply = () => {
+      calls += 1;
+      return calls === 1 ? { malformed: true, why: "not classifiable yet" } : { ok: true };
+    };
+    const seamOps = withClassifyReply(
+      makeSeamOps(buildSeamOpsOverrides(["E-5", "E-6"], ["owned/path.js"])),
+      classifyReply
+    );
+    const agent = makeAgentDouble({
+      script: [makeA6ReplyText({ proposedAction: "E-5" }), makeA6ReplyText({ proposedAction: "E-5" })],
+    });
+    const { disposition } = await invokeDriver({ seam: "A6", config, seamOps, agent });
+
+    expect(agent.calls.length).toBe(2);
+    expect(disposition.attempts).toBe(1); // only the malformed-classified attempt consumed budget
+    expect(disposition.outcome).not.toBe("escalated");
+  });
+
+  it("`{malformed:true}` on a single-attempt budget escalates `malformed-verdict`, exactly as an unparseable reply would (AT-02-7, E-09/E-10)", async () => {
+    const config = makeAdvisoryConfig({ enabled: true, attemptBudget: 1 }).config;
+    const seamOps = withClassifyReply(
+      makeSeamOps(buildSeamOpsOverrides(["E-5", "E-6"], ["owned/path.js"])),
+      () => ({ malformed: true, why: "not classifiable" })
+    );
+    const agent = makeAgentDouble({ script: [makeA6ReplyText({ proposedAction: "E-5" })] });
+    const { disposition, fileDouble, notices } = await invokeDriver({ seam: "A6", config, seamOps, agent });
+
+    assertEscalationTriple({ disposition, fileDouble, notices, seamOps });
+    expect(disposition.reason).toBe("malformed-verdict");
+    expect(disposition.attempts).toBe(1);
+  });
+
+  it("`{terminate:{outcome,reason}}` terminates with `attempts` UNCHANGED and `appliedSuccessfully:false` — E-08/E-11 (AT-07-4, AT-07-5)", async () => {
+    const config = makeAdvisoryConfig({ enabled: true }).config;
+    const seamOps = withClassifyReply(
+      makeSeamOps(buildSeamOpsOverrides(["E-5", "E-6"], ["owned/path.js"])),
+      () => ({ terminate: { outcome: "escalated", reason: "environmental" } })
+    );
+    const agent = makeAgentDouble({ script: [makeA6ReplyText({ proposedAction: "E-5" })] });
+    const { disposition, notices } = await invokeDriver({ seam: "A6", config, seamOps, agent });
+
+    // `attempts` unchanged: the well-formed reply that reached `classifyReply` never incremented
+    // the loop's attempt counter (only the malformed arm and dispatch-error/preemption paths do).
+    expect(disposition.attempts).toBe(0);
+    expect(disposition.outcome).toBe("escalated");
+    expect(disposition.reason).toBe("environmental");
+    // `appliedSuccessfully: false` — nothing was ever applied on this path, so `apply`/`revert`
+    // never ran and RE-CHECK/GATE/ACT were never reached either.
+    expect(seamOps.calls.conditionHolds.length).toBe(0);
+    expect(seamOps.calls.apply.length).toBe(0);
+    expect(seamOps.calls.revert.length).toBe(0);
+    expect(notices.some((n) => n.includes("ADVISORY ESCALATION:"))).toBe(true);
+  });
+});
+
+describe("A6-12 — rung parity: resolved rung equals the tier's, read from the shared rungState memo (AT-07-4)", () => {
+  it("a rung already resolved by an earlier seam in the same run is reused verbatim — no second resolution, one dispatch", async () => {
+    const config = makeAdvisoryConfig({ enabled: true }).config;
+    // Simulates a prior seam invocation in this run having already resolved the fallback rung
+    // (TSPEC §3.4's `_state.resolved`, memoised and threaded — never re-created per seam).
+    const sharedRungState = { resolved: { model: "opus", fallback: true } };
+
+    const seamOps = withClassifyReply(
+      makeSeamOps(buildSeamOpsOverrides(["E-5", "E-6"], ["owned/path.js"])),
+      () => ({ ok: true })
+    );
+    const agent = makeAgentDouble({ script: [makeA6ReplyText({ proposedAction: "E-5" })] });
+    const { disposition } = await invokeDriver({ seam: "A6", config, seamOps, agent, rungState: sharedRungState });
+
+    // Exactly one dispatch — the cached rung is read, not re-resolved through the M-1/M-2 ladder
+    // (which would cost a second `_agent` call before this attempt's real one).
+    expect(agent.calls.length).toBe(1);
+    expect(agent.calls[0].opts.model).toBe("opus");
+    expect(disposition.model).toBe("opus");
+    expect(disposition.fallback).toBe(true);
+    // The memo itself is untouched — "no second resolution in a run".
+    expect(sharedRungState.resolved).toEqual({ model: "opus", fallback: true });
+  });
+});
+
+describe("A6-12 / PROP-NFR-02 — dispatch-option parity: A6's `_agent` options equal a shipped seam's, member for member (AT-07-5)", () => {
+  it("A6's dispatch options carry no key beyond the shipped seam's — tool grants, transport, environment (no additional grant)", async () => {
+    // `resolveAdvisoryRung` is the ONE ladder every seam dispatches through (module scope, no
+    // per-seam variant) — `_agent(skill, prompt, {model})` is the entire options object any seam's
+    // call can carry, A6 included. This pins that observably: A2's and A6's `opts` are structurally
+    // identical, key for key, on a fresh (never-yet-resolved) rung.
+    const configA2 = makeAdvisoryConfig({ enabled: true }).config;
+    const seamOpsA2 = makeSeamOps(buildSeamOpsOverrides(["rewrite-citation"], ["owned/path.js"]));
+    const agentA2 = makeAgentDouble({
+      script: [verdictFixture({ seam: "A2", proposedAction: "rewrite-citation", confidence: "high", withinEnvelope: "yes" })],
+    });
+    await invokeDriver({ seam: "A2", config: configA2, seamOps: seamOpsA2, agent: agentA2 });
+
+    const configA6 = makeAdvisoryConfig({ enabled: true }).config;
+    const seamOpsA6 = withClassifyReply(
+      makeSeamOps(buildSeamOpsOverrides(["E-5", "E-6"], ["owned/path.js"])),
+      () => ({ ok: true })
+    );
+    const agentA6 = makeAgentDouble({ script: [makeA6ReplyText({ proposedAction: "E-5" })] });
+    await invokeDriver({ seam: "A6", config: configA6, seamOps: seamOpsA6, agent: agentA6 });
+
+    expect(agentA2.calls.length).toBe(1);
+    expect(agentA6.calls.length).toBe(1);
+    // Member for member — same key set, no A6-only addition (the premise TSPEC §3.3's "no
+    // commit/push/tag argv reached `_git`" prohibition test depends on being falsifiable).
+    expect(Object.keys(agentA6.calls[0].opts).sort()).toEqual(Object.keys(agentA2.calls[0].opts).sort());
+    expect(agentA6.calls[0].opts).toEqual({ model: agentA2.calls[0].opts.model });
+  });
 });

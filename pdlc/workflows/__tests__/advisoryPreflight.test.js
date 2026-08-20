@@ -129,11 +129,16 @@ describe("§2.4 — implementation.testCommand pre-flight repair pin", () => {
         .split(/\s+/)
         .map((tok) => tok.replace(/^['"]|['"]$/g, ""));
 
+      // `documentOracles` is deliberately NOT in this set (CODE_REVIEW v1 §1-4).
+      // It was excluded because AT-22 was environment-sensitive against LIVE_ROOT;
+      // that sensitivity is now fixed in the test itself, so the file runs in the
+      // gate. Excluding it also suppressed `PROP-SWEEP-2(b)`, the retirement
+      // sweep's required-empty gate — which is how §1-5's red landed invisibly.
+      // Re-adding an exclusion here re-opens that hole and must red this test.
       const expected = new Set([
         "/node_modules/",
         "/__tests__/helpers/",
         "/__tests__/fixtures/",
-        "documentOracles",
       ]);
       expect(new Set(patterns)).toEqual(expected);
     } else {

@@ -4,8 +4,8 @@
 |---|---|
 | Kind | **Project-level shared reference.** Read-only measured input; **not** a pipeline artifact, not reviewed, not queue-eligible. |
 | Cited by | `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (§1, §4, §5, §8) |
-| Version | 1.0 · 2026-08-09 |
-| Verified at | default-branch commit `c8aa22a4` |
+| Version | 1.1 · 2026-08-18 |
+| Verified at | §1–§2 at default-branch commit `c8aa22a4`; §3 at `1efb9a3b` |
 
 **Why this file exists.** `REQ-pdlc-advisory-wave-gate` states requirements over behaviour that
 already ships. Under the pm-author altitude rule a REQ may not carry file/line-cited internals, and
@@ -50,3 +50,16 @@ The advisory tier's own measured facts — that it ships disabled, that `ESCALAT
 durable per-seam record, and that the model-rung ladder is a reusable resolver rather than a pair of
 literals — are **not restated here**. They are measured in
 `docs/_constraints/pdlc-advisory-corpus-baseline.md` §1–§3 and cited from there.
+
+## 3. Facts added for the v1 cross-review round (measured 2026-08-18)
+
+Measured at `origin/main` `1efb9a3b`. The §1–§2 line references were measured at `c8aa22a4` and have
+since drifted; the grep recipes still resolve, and the recipes below are deliberately symbol-based
+rather than positional for that reason.
+
+| # | Fact | Measured by |
+|---|---|---|
+| M-WG-9 | **Three transcribed set-equality surfaces gate a catalogue change, not one.** `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS` and the `ADVISORY_DEFAULTS` key set are each compared against a literal transcribed into a test, and two further catalogue-driven surfaces — the gate-exclusivity registry key set and the per-seam report-row list — are compared against `ADVISORY_SEAMS` itself. Adding a seam, an envelope member or a config key therefore reds a known, enumerable set of assertions. | `grep -rn "ADVISORY_SEAMS\|ENVELOPE_DEFAULTS\|ADVISORY_DEFAULTS" pdlc/workflows/__tests__/` — set-equality sites in `advisoryEnvelope.test.js` (`ENVELOPE_DEFAULTS` and `ADVISORY_SEAMS`), `advisoryConfig.test.js` (`ADVISORY_DEFAULTS` key set), `advisoryDriver.test.js` (PROP-GATE-06 registry key set), `advisoryRung.test.js` (report rows), plus the catalogue transcriptions in `advisoryHarvest.test.js`, `advisoryRecord.test.js` and `consolidationProperties.test.js` |
+| M-WG-10 | **The self-modification guard paths are inside every advisory seam's exclusion set, not only Phase MERGE's.** Exclusion `X-e` evaluates the shipped guard-path defaults — `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` — through the same matcher Phase MERGE uses, and the seam context supplies those defaults unconditionally rather than from merge configuration. A proposal touching a guard path is refused `out-of-envelope`. | `grep -n "ADVISORY_EXCLUSIONS = \|guardPaths: effectiveGuardPaths" pdlc/workflows/orchestrate-dev.js`; `MERGE_GUARD_DEFAULTS` for the path list |
+| M-WG-11 | **An escalation with no refusal reason is already representable.** The escalation-log entry renders its refusal-reason field as `n/a` when the disposition carries none, so a seam that diagnoses without proposing an action needs no ninth refusal reason to be logged. | `grep -n "Refusal reason" pdlc/workflows/orchestrate-dev.js` |
+| M-WG-12 | **The wave commit loop commits only paths owned by tasks in that wave.** It iterates the wave's own tasks and commits each task's manifest-owned paths pathspec-scoped, then — only if the post-wave command ran — the configured post-wave pathspecs. A changed path owned by a task in a *later* wave is committed by nothing in this wave and survives as an uncommitted working-tree change. | `grep -n "for (const task of wave)" pdlc/workflows/orchestrate-dev.js`, and the `commitPaths` calls that follow it |

@@ -255,7 +255,7 @@ describe("T-03-4 — two triggers at once report the earlier reason (§5.3 order
 // literal (an invented or deleted reason fails; order asserted separately because it is observable).
 // ---------------------------------------------------------------------------
 
-describe("T-03-5 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue, in order", () => {
+describe("T-03-5 / PROP-ENV-07 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue, in order", () => {
   test("deep-equals the ordered literal", () => {
     expect(devModule.ADVISORY_REFUSAL_REASONS).toEqual([
       "prohibited-action",
@@ -279,9 +279,9 @@ describe("T-03-5 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue,
 // capability probes (PROP-ENV-12).
 // ---------------------------------------------------------------------------
 
-describe("T-03-8 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality against transcribed literals", () => {
-  test("ENVELOPE_DEFAULTS equals {E-1, E-2, E-3, E-4} as a set", () => {
-    expect([...devModule.ENVELOPE_DEFAULTS].sort()).toEqual(["E-1", "E-2", "E-3", "E-4"]);
+describe("T-03-8 / PROP-ENV-01 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality against transcribed literals", () => {
+  test("ENVELOPE_DEFAULTS equals {E-1, E-2, E-3, E-4, E-5, E-6} as a set (A6-02 adds E-5, E-6)", () => {
+    expect([...devModule.ENVELOPE_DEFAULTS].sort()).toEqual(["E-1", "E-2", "E-3", "E-4", "E-5", "E-6"]);
   });
 
   test("ADVISORY_EXCLUSIONS equals {X-a, X-b, X-c, X-d, X-e} as a set, and TSPEC §5.1's evaluation order as a list", () => {
@@ -309,13 +309,42 @@ describe("T-03-8 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality agains
 
 // ---------------------------------------------------------------------------
 // ADVISORY_SEAMS — the fifth transcribed-literal set-equality this file's task text names alongside
-// the three above.
+// the three above. A6-02 retargets it to the six-seam catalogue (PROP-SEAM-01, AT-01-1).
 // ---------------------------------------------------------------------------
 
-describe("ADVISORY_SEAMS equals {A1, A2, A3, A4, A5}", () => {
-  test("deep-equals the five-seam literal and is frozen", () => {
-    expect(devModule.ADVISORY_SEAMS).toEqual(["A1", "A2", "A3", "A4", "A5"]);
+describe("ADVISORY_SEAMS equals {A1, A2, A3, A4, A5, A6}", () => {
+  test("deep-equals the six-seam literal, in order, and is frozen", () => {
+    expect(devModule.ADVISORY_SEAMS).toEqual(["A1", "A2", "A3", "A4", "A5", "A6"]);
     expect(Object.isFrozen(devModule.ADVISORY_SEAMS)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ADVISORY_ROOT_CAUSES — PROP-CTR-01, AT-02-1: the four-member root-cause classification
+// catalogue, set-equality against the transcribed literal (TSPEC §3.1).
+// ---------------------------------------------------------------------------
+
+describe("ADVISORY_ROOT_CAUSES equals {plan-ordering-defect, wave-internal-defect, environmental, unclassified}", () => {
+  test("set-equals the four-member literal", () => {
+    expect([...devModule.ADVISORY_ROOT_CAUSES].sort()).toEqual(
+      ["environmental", "plan-ordering-defect", "unclassified", "wave-internal-defect"].sort()
+    );
+  });
+
+  test("is frozen", () => {
+    expect(Object.isFrozen(devModule.ADVISORY_ROOT_CAUSES)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A6_PROHIBITIONS — PROP-ENV-10, AT-03-5: the four-member letter catalogue of A6's own
+// prohibited operations (f, g, h, i), set-equality against the transcribed literal.
+// ---------------------------------------------------------------------------
+
+describe("A6_PROHIBITIONS equals {f, g, h, i}", () => {
+  test("deep-equals the four-member literal, in order, and is frozen", () => {
+    expect(devModule.A6_PROHIBITIONS).toEqual(["f", "g", "h", "i"]);
+    expect(Object.isFrozen(devModule.A6_PROHIBITIONS)).toBe(true);
   });
 });
 

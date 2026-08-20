@@ -247,7 +247,7 @@ describe("T19 — the property suite (L5)", () => {
         const presentSeams = new Set();
         for (let e = 0; e < n; e += 1) {
           const feature = `feat-${i}-${e}`;
-          const seam = rng.pick(["A1", "A2", "A3", "A4", "A5"]);
+          const seam = rng.pick(["A1", "A2", "A3", "A4", "A5", "A6"]);
           const dropFeature = rng.int(0, 4) === 0;
           const dropSeam = !dropFeature && rng.int(0, 4) === 0;
           const entry = {};

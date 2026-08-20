@@ -614,11 +614,11 @@ describe("A-33 — disabled-tier equivalence", () => {
 
   // =================================================================================================
   // T-10-5 / PROP-DIS-05 — tier enabled, no seam condition arising: the report carries an advisory
-  // summary with five zero rows, distinguishing enabled-but-quiet from disabled.
+  // summary with six zero rows, distinguishing enabled-but-quiet from disabled.
   // =================================================================================================
 
-  describe("T-10-5 / PROP-DIS-05 — enabled-but-quiet reports five zero rows (S-1)", () => {
-    test("with the tier enabled and no seam firing, buildFinalReport carries five zero rows, not `undefined`", async () => {
+  describe("T-10-5 / PROP-DIS-05 / PROP-SEAM-06 — enabled-but-quiet reports six zero rows (S-1)", () => {
+    test("with the tier enabled and no seam firing, buildFinalReport carries six zero rows, not `undefined`", async () => {
       const configText = JSON.stringify({
         advisory: { enabled: true, attemptBudget: 3, seamBudgetMinutes: 10, envelope: ["E-1", "E-2", "E-3", "E-4"] },
       });
@@ -626,10 +626,76 @@ describe("A-33 — disabled-tier equivalence", () => {
 
       expect(result.outcome).toBe("success");
       expect(result.advisory).toBeDefined();
-      expect(result.advisory.rows).toHaveLength(5);
+      expect(result.advisory.rows).toHaveLength(6);
       for (const row of result.advisory.rows) {
         expect(row.invocations).toBe(0);
       }
+    });
+  });
+
+  // =================================================================================================
+  // AT-01-4 / AT-07-2 (PLAN A6-21) — the A6 wave gate extends T-10-1's "disabled ⇒ pre-advisory
+  // outcome, no dispatch" claim to the script-owned test gate: a disabled tier's red wave halts
+  // EXACTLY as it did before A6 existed — no seam dispatch, no snapshot, no ADVISORY/ESCALATIONS
+  // write, and no `haltAdvisory`/`advisory` report key at all. `T-10-1`..`T-10-5` above never reach
+  // this call site (their fixture's `testCommand` is unset, so wave mode falls back to the
+  // self-report gate) — this is the one case in this file that configures `testCommand` and forces
+  // the gate red, the only way to reach `runWaveGateSeam`'s own tier check at all.
+  // =================================================================================================
+
+  describe("AT-01-4 / AT-07-2 / PROP-SEAM-05 — a disabled-tier red wave gate never touches A6", () => {
+    test("halts byte-identically to the pre-A6 shape: no dispatch, no snapshot, no advisory/haltAdvisory keys", async () => {
+      const configText = JSON.stringify({
+        implementation: { testCommand: "npm test" },
+        advisory: disabledConfig(),
+      });
+      const harness = makeScenarioHarness({ configText });
+      const gitCalls = [];
+      const _git = async (argv) => {
+        gitCalls.push(Array.isArray(argv) ? argv : []);
+        return harness._git(argv);
+      };
+      const dispatched = [];
+      const _agent = async (skill, prompt, opts) => {
+        dispatched.push(skill);
+        return makeScenarioAgent()(skill, prompt, opts);
+      };
+
+      const result = await mainDev({
+        reqPath: SCENARIO_REQ_PATH,
+        forcePhases: null,
+        _agent,
+        _parallel: (promises) => Promise.all(promises),
+        _checkFile: () => ({ ok: true }),
+        _readFile: harness._readFile,
+        _writeFile: harness._writeFile,
+        _appendFile: harness._appendFile,
+        _git,
+        _hashFile: harness._hashFile,
+        _phase: () => {},
+        _pipeline: async (label, fn) => fn(),
+        _mergeWorktree: async () => ({ ok: true }),
+        _checkCi: async () => "passed",
+        // The gate itself, red on every call — the wave never gets to a green
+        // re-run, faked or real; a disabled tier attempts none.
+        _runCommand: async () => ({ ok: false, output: "FAIL src/one.test.js\nTests: 1 failed, 4 passed\n" }),
+      });
+
+      expect(result.outcome).toBe("halted");
+      expect(result.haltReason).toContain("Error: Wave 1 test gate failed");
+      expect(result.haltReason).toContain("npm test");
+      expect(result.haltReason).toContain("Tests: 1 failed, 4 passed");
+      // The positive half of "no dispatch": TASK-01's own implementation call DID
+      // happen (the wave was dispatched); nothing past it (no diagnosis turn) did.
+      expect(dispatched.filter((s) => s === "se-implement").length).toBe(1);
+      // No snapshot: A6's own `write-tree` capture call never happened.
+      expect(gitCalls.some((a) => a[0] === "write-tree")).toBe(false);
+      // No ADVISORY/ESCALATIONS record written.
+      expect([...harness.created].some((p) => /(^|\/)ADVISORY-/.test(p))).toBe(false);
+      expect([...harness.created].some((p) => p.endsWith("ESCALATIONS.md"))).toBe(false);
+      // Neither report key a disabled tier is entitled to.
+      expect(result.advisory).toBeUndefined();
+      expect(result.haltAdvisory).toBeUndefined();
     });
   });
 

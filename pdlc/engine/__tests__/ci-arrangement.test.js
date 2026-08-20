@@ -807,6 +807,27 @@ test("ci arrangement — .claude/pdlc.config.example.json's implementation.testC
     /cd pdlc\/engine\s*&&\s*npm test/,
     "testCommand must additionally run pdlc/engine's suite (TSPEC §7.6)"
   );
+
+  // CODE_REVIEW v1 §1-4 (pdlc-advisory-wave-gate): the shipped default must not
+  // exclude `documentOracles`. That file carries `PROP-SWEEP-2(b)`, the retirement
+  // sweep's required-empty gate, and `AT-22`'s repo-wide covered-violations check.
+  // While it was excluded, a red sweep landed with the wave gate green — §1-5.
+  // Only the three structural patterns may be ignored; anything naming a test
+  // FILE is a coverage exemption on a served flow and must red here.
+  const ignoreArgs = testCommand.match(/--testPathIgnorePatterns(?:=(\S+)|\s+(.+))$/);
+  assert.ok(ignoreArgs, "testCommand must end in --testPathIgnorePatterns arguments");
+  const patterns = (ignoreArgs[1] !== undefined ? ignoreArgs[1] : ignoreArgs[2])
+    .trim()
+    .split(/\s+/)
+    .map((tok) => tok.replace(/^['"]|['"]$/g, ""))
+    .sort();
+  assert.deepEqual(
+    patterns,
+    ["/__tests__/fixtures/", "/__tests__/helpers/", "/node_modules/"],
+    "the shipped gate command may ignore only node_modules and the two non-test support " +
+      "directories — excluding a test file (e.g. `documentOracles`) hides a served flow " +
+      "from the wave gate (CODE_REVIEW v1 §1-4)"
+  );
 });
 
 // ---------------------------------------------------------------------------------------------

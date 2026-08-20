@@ -485,15 +485,15 @@ describe("P-6 — renderAdvisoryEntry is total over the generated verdict × dis
 });
 
 // ---------------------------------------------------------------------------
-// PROP-SUM-01 — advisorySummaryRows(dispositions) is pure and always emits five rows, one per
+// PROP-SUM-01 — advisorySummaryRows(dispositions) is pure and always emits six rows, one per
 // ADVISORY_SEAMS member, zero counts included, driven off the exported constant (S-1).
 // ---------------------------------------------------------------------------
 
-describe("PROP-SUM-01 — advisorySummaryRows always emits five rows, zero counts included", () => {
-  test("an empty disposition list still produces all five seams with zero counts", () => {
+describe("PROP-SUM-01 — advisorySummaryRows always emits six rows, zero counts included", () => {
+  test("an empty disposition list still produces all six seams with zero counts", () => {
     const { rows, total } = devModule.advisorySummaryRows([]);
 
-    expect(rows.map((r) => r.seam)).toEqual(["A1", "A2", "A3", "A4", "A5"]);
+    expect(rows.map((r) => r.seam)).toEqual(["A1", "A2", "A3", "A4", "A5", "A6"]);
     for (const row of rows) {
       expect(row).toMatchObject({ invocations: 0, resolved: 0, escalated: 0, noAction: 0 });
     }
@@ -541,7 +541,7 @@ describe("T-08-10 / PROP-SUM-02 — the literal six-row summary table and the in
     }
   });
 
-  test.each(["A1", "A2", "A3", "A4", "A5"])(
+  test.each(["A1", "A2", "A3", "A4", "A5", "A6"])(
     "the identity holds on seam %s for an arbitrary mix of outcomes",
     (targetSeam) => {
       const dispositions = [
@@ -580,5 +580,116 @@ describe("PROP-SUM-03 — the summary names the model actually used and marks a 
     const row = rows.find((r) => r.seam === "A1");
 
     expect(row.fallback).toBeFalsy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AWG PROP-REC-01 (pdlc-advisory-wave-gate) — A6's record entry carries the wave, the root-cause
+// class, and (on an E-6 resolution) the repair's paths and the owning task, asserted by
+// SET-EQUALITY over the entry's field set rather than by containment (CR round 1, PM F-03 /
+// TE F-03). Two ids named `PROP-REC-01` exist across features: the advisory-tier one asserted
+// above (renderer purity) and this feature's; this block is titled `AWG` to keep the two apart.
+//
+// Grounding for the labels asserted below: `renderAdvisoryEntry`
+// (pdlc/workflows/orchestrate-dev.js:3623-3637) emits `Wave`, `Root cause`, `Repair paths`,
+// `Promotes` and `Promotes task` conditionally, from top-level disposition fields that only
+// `buildA6SeamOps`'s `annotate` hook supplies. Set-equality is what makes that conditionality
+// falsifiable in BOTH directions: it fails if A6 loses a field, and it fails if A1–A5's
+// five-row table silently grows one.
+// ---------------------------------------------------------------------------
+
+// Like `extractFieldNames`, but tolerant of the MULTI-WORD labels A6 introduces (`Root cause`,
+// `Repair paths`, `Promotes task`) — the shipped single-word extractor above would silently drop
+// exactly the rows this property exists to pin, which is why this block does not reuse it.
+function extractAllFieldNames(rendered) {
+  const names = [];
+  for (const line of rendered.split("\n")) {
+    const tableMatch = line.match(/^\|\s*([A-Za-z][A-Za-z ]*[A-Za-z])\s*\|/);
+    if (tableMatch && tableMatch[1] !== "Field") { names.push(tableMatch[1]); continue; }
+    const proseMatch = line.match(/^\*\*([A-Za-z]+)\.\*\*/);
+    if (proseMatch) names.push(proseMatch[1]);
+  }
+  return names;
+}
+
+// An A6 disposition as `runAdvisorySeam.terminate()` assembles it: the seven tier fields plus the
+// annotation `buildA6SeamOps.annotate` returns for a wave-gate repair.
+function a6Disposition(overrides = {}) {
+  return disposition({
+    seam: "A6",
+    verdict: {
+      seam: "A6",
+      diagnosis: "wave 2's gate failed because task T-04 landed the symbol T-06 imports.",
+      proposedAction: "E-6",
+      confidence: "high",
+      withinEnvelope: true,
+      evidence: ["pdlc/workflows/orchestrate-dev.js:120 — missing export"],
+    },
+    wave: 2,
+    rootCause: "plan-ordering-defect",
+    ...overrides,
+  });
+}
+
+describe("AWG PROP-REC-01 — A6's advisory entry names wave, root cause, repair paths and promotion", () => {
+  test("an E-6 resolution's entry carries exactly the tier's fields plus Wave, Root cause, Repair paths, Promotes, Promotes task", () => {
+    const entry = devModule.renderAdvisoryEntry(
+      a6Disposition({ repairPaths: ["a.js", "b.js"], promotionTask: "T-06", promotionSymbol: "renderGate" }),
+      { now: NOW }
+    );
+
+    expect(extractAllFieldNames(entry)).toEqual([
+      "Seam",
+      "Wave",
+      "Confidence",
+      "Envelope",
+      "Disposition",
+      "Model",
+      "Root cause",
+      "Repair paths",
+      "Promotes",
+      "Promotes task",
+      "Diagnosis",
+      "Evidence",
+    ]);
+    expect(entry).toContain("| Wave | 2 |");
+    expect(entry).toContain("| Root cause | plan-ordering-defect |");
+    expect(entry).toContain("| Repair paths | a.js, b.js |");
+    expect(entry).toContain("| Promotes | renderGate |");
+    expect(entry).toContain("| Promotes task | T-06 |");
+  });
+
+  test("a non-promoting A6 resolution carries Wave and Root cause but NEITHER promotion row", () => {
+    const entry = devModule.renderAdvisoryEntry(a6Disposition({ repairPaths: ["a.js"] }), { now: NOW });
+
+    expect(extractAllFieldNames(entry)).toEqual([
+      "Seam", "Wave", "Confidence", "Envelope", "Disposition", "Model",
+      "Root cause", "Repair paths", "Diagnosis", "Evidence",
+    ]);
+  });
+
+  test("an escalating A6 invocation still names its wave and class, and claims no repair paths", () => {
+    const entry = devModule.renderAdvisoryEntry(
+      a6Disposition({ outcome: "escalated", reason: "out-of-envelope" }),
+      { now: NOW }
+    );
+
+    expect(extractAllFieldNames(entry)).toEqual([
+      "Seam", "Wave", "Confidence", "Envelope", "Disposition", "Model",
+      "Root cause", "Diagnosis", "Evidence",
+    ]);
+    expect(entry).toContain("| Disposition | escalated — out-of-envelope |");
+    expect(entry).not.toContain("| Repair paths |");
+  });
+
+  test("wave 0 is named, not suppressed — the falsy-wave boundary", () => {
+    const entry = devModule.renderAdvisoryEntry(a6Disposition({ wave: 0 }), { now: NOW });
+    expect(entry).toContain("| Wave | 0 |");
+  });
+
+  test("A1–A5's five-row table is unchanged: no A6 field leaks into a tier seam's entry", () => {
+    expect(extractAllFieldNames(devModule.renderAdvisoryEntry(disposition(), { now: NOW }))).toEqual([
+      ...RECORD_FIELD_NAMES,
+    ]);
   });
 });

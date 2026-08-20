@@ -1256,7 +1256,8 @@ export default async function main({
   // Accumulates one entry per seam invocation this pass — `{...disposition, seam}` — so the
   // queue's own report can carry the same advisory summary the dev-side final report does
   // (TSPEC §9.4 S-5). Declared before `finish` is invoked (never before it is CLOSED OVER, which
-  // is fine); `advisorySummaryRows` guarantees five rows, a seam that never fired visibly zero.
+  // is fine); `advisorySummaryRows` guarantees one row per `ADVISORY_SEAMS` member —
+  // six since A6 joined it — a seam that never fired visibly zero.
   const advisoryDispositions = [];
   const finish = (fields) =>
     buildQueueReport({

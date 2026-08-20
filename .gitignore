@@ -15,3 +15,27 @@ docs/_decisions/.consolidation-lock
 
 # Coverage output (c8 / lcov) — measured, never committed
 coverage/
+
+# Timestamped pre-edit backup blobs the workflow sync path writes locally —
+# not build output, not source; never meant to be tracked (A6-00).
+.pdlc-backups/
+
+# Machine-local pdlc consumer runtime + wave ledger — never shared (CODE_REVIEW v1 §1-1).
+# `.claude/workflows/` holds per-machine consumer copies of the engine runtime;
+# `.claude/pdlc-wave-state.json` is the local wave ledger REQ §1 describes as a
+# working-tree observation. Both are regenerated per machine, never shared.
+# (Retired names are deliberately not spelled here: this file is tracked, so naming
+# them would make it a retirement-sweep hit — PROP-SWEEP-2(b).)
+#
+# The leading slash is load-bearing, not decorative: per gitignore(5) an unanchored
+# `.claude/workflows/` would match at every depth and reach the checked-in
+# covered-violations fixture's nested `.claude/workflows/`, making future fixture files
+# un-`git add`-able without `-f`. Anchoring confines the rule to this repo root.
+#
+# What these rules do NOT do (measured at pdlc-retirement T22, still true):
+#   - They do not change the `listAllFiles()` oracle in lib/document-oracles.mjs, which
+#     walks the tree with readdirSync and never consults git.
+#   - They do not untrack anything already tracked; the `git rm --cached` in this commit is
+#     what untracks the six paths. These rules only stop a re-add.
+/.claude/workflows/
+/.claude/pdlc-wave-state.json

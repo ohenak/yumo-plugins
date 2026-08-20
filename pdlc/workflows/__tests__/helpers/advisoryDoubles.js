@@ -13,6 +13,11 @@
 // Nothing here touches a real clock, filesystem, network, `gh` or `git` — every export is a
 // plain, synchronous or async, pure-data fake (mirroring `mergeDoubles.js`'s own header rule).
 
+import { execFileSync } from "child_process";
+import { mkdtempSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+
 import { seeded, resolveSeed, fakeGit, fakeGhRun, passingGh, fakeSleep, fakeNow, FIXED_NOW_MS } from "./mergeDoubles.js";
 
 // ─── Re-exports (PLAN §6.1, §6.5 — reuse, never re-author) ─────────────────
@@ -68,6 +73,84 @@ export function makeAgentDouble({ script = [], throwOn = new Set() } = {}) {
   };
   agent.calls = calls;
   return agent;
+}
+
+// ─── makeA6ReplyText — the A6 agent reply fixture (TSPEC §3.3, §7.3) ──────
+//
+// A6's agent reply is the shipped `SEAM`/`DIAGNOSIS`/`PROPOSED-ACTION`/`CONFIDENCE`/
+// `WITHIN-ENVELOPE`/`EVIDENCE` grammar `parseAdvisoryVerdict` reads (the same grammar every other
+// seam's own locally-declared `verdictFixture` builds — PROP-INFRA-01/-02 exempt those plain,
+// per-file fixture builders from this file's single-canonical-source rule), plus three trailer
+// lines that belong to A6 alone and are read by separate parsers: `ROOT-CAUSE:` (`parseA6RootCause`,
+// membership in `ADVISORY_ROOT_CAUSES`), and `PROMOTES:` / `PROMOTES-TASK:` (E-6's three-conjunct
+// symbol/task check, TSPEC §3.4). Centralised here — rather than declared per test file like the
+// other seams' fixtures — because PLAN A6-01 names it as shared fixture infrastructure every A6
+// test file (batches 7–14) draws from, not a one-file-only builder.
+//
+// `evidence` defaults to a 24+ character line so `citesGateOutput`'s floor (`A6_MIN_CITATION_CHARS`)
+// is satisfied by default; a test asserting the floor's boundary overrides it explicitly.
+export function makeA6ReplyText({
+  diagnosis = "diagnosis text",
+  proposedAction = "E-5",
+  confidence = "high",
+  withinEnvelope = "yes",
+  evidence = ["gate output line long enough to cite"],
+  rootCause = "wave-internal-defect",
+  promotes = "",
+  promotesTask = "",
+} = {}) {
+  const lines = [
+    "SEAM: A6",
+    `DIAGNOSIS: ${diagnosis}`,
+    `PROPOSED-ACTION: ${proposedAction}`,
+    `CONFIDENCE: ${confidence}`,
+    `WITHIN-ENVELOPE: ${withinEnvelope}`,
+    `EVIDENCE: ${evidence.join(", ")}`,
+    `ROOT-CAUSE: ${rootCause}`,
+  ];
+  if (promotes) lines.push(`PROMOTES: ${promotes}`);
+  if (promotesTask) lines.push(`PROMOTES-TASK: ${promotesTask}`);
+  return lines.join("\n");
+}
+
+// ─── makeRealRepoFixture — a real, disposable git repository (TSPEC §5.2, §5.5) ──
+//
+// Generalises the `createTempA3Repo` shape `advisoryDodSeams.test.js:371` already ships (T-05-5's
+// byte-identical-tree assertion) so A6's own real-repository fixtures (the snapshot/restore cases
+// `restoreTreeSnapshot` and `captureTreeSnapshot` need — TSPEC §3.5, §5.2) do not re-author it.
+// Nothing here is a double: `_git` shells out to the real `git` binary against a throwaway
+// `mkdtempSync` working tree, and every method mirrors `createTempA3Repo`'s own — `status()`/
+// `head()` for assertions, `_git(argv)` for driving `captureTreeSnapshot`/`restoreTreeSnapshot`
+// directly, and `cleanup()` (best-effort, mirrors the shipped `try { rmSync } catch {}` shape) so a
+// test's `afterEach`/`finally` never itself has to know the fixture is disk-backed.
+export function makeRealRepoFixture({ prefix = "pdlc-advisory-fixture-" } = {}) {
+  const repoDir = mkdtempSync(join(tmpdir(), prefix));
+  const git = (...args) => execFileSync("git", args, { cwd: repoDir, encoding: "utf8" });
+  git("init", "-b", "main");
+  git("config", "user.email", "test@example.com");
+  git("config", "user.name", "Test");
+  execFileSync("sh", ["-c", "echo 'hello' > file.txt"], { cwd: repoDir });
+  git("add", "file.txt");
+  git("commit", "-m", "initial commit");
+
+  const status = () => execFileSync("git", ["status", "--porcelain"], { cwd: repoDir, encoding: "utf8" });
+  const head = () => execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoDir, encoding: "utf8" }).trim();
+  const _git = async (argv) => {
+    try {
+      const stdout = execFileSync("git", argv, { cwd: repoDir, encoding: "utf8" });
+      return { ok: true, stdout, stderr: "" };
+    } catch (err) {
+      return { ok: false, stdout: "", stderr: err.message };
+    }
+  };
+  const cleanup = () => {
+    try {
+      rmSync(repoDir, { recursive: true, force: true });
+    } catch {
+      // best-effort cleanup
+    }
+  };
+  return { repoDir, status, head, _git, cleanup };
 }
 
 // ─── makeSeamOps — the `SeamOps` double (TSPEC §13.3 row 5, §4.3) ──────────
@@ -268,7 +351,7 @@ export function makeAdvisoryConfig(overrides = {}) {
 export function makeAdvisoryGenerators(seed) {
   const rng = seeded(seed);
 
-  const SEAMS = ["A1", "A2", "A3", "A4", "A5"];
+  const SEAMS = ["A1", "A2", "A3", "A4", "A5", "A6"];
   const CONFIDENCE = ["high", "low"];
   const REFUSAL_REASONS = [
     "prohibited-action",
