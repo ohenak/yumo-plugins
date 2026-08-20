@@ -95,6 +95,40 @@ BR-6 selected", which is the oracle the widened F-O-1 needs.
 
 ## Dependencies
 
+**No edge in the batch ladder changes, and the delta adds none.** The v0.13 erratum touched a
+byte-accounting basis, a decision-table branch, an edge row, an acceptance test and a named
+obligation. None of those is an ordering constraint, an integration point or a structural obligation
+that §Dependencies leans on. I checked the edges that touch the affected rows.
+
+| Edge | Justification PLAN gives | Against FSPEC v0.13 | Verdict |
+|---|---|---|---|
+| LI-12 → LI-06 | LI-12 is L3 and drives `main()` over the full seam set, so it depends on the baseline capture (T-O-2) | Unaffected — AT-30 gaining a third case does not change which seams the suite drives or when the baseline must exist | Holds |
+| LI-21 → LI-12 | red-before-green: LI-21 greens `learningsConfig.test.js` | Unaffected — if LI-12's row is widened to three cases, LI-21 remains the green and the edge is the same edge | Holds |
+| LI-16 → LI-07 | red-before-green over the selection suite | Unaffected — the zero-bound behaviour, wherever it is commissioned, lands inside seams LI-16 already owns | Holds |
+| LI-15 → LI-06 | **T-O-2**, structural: the first production edit may not precede the baseline capture | Unaffected | Holds |
+| LI-23 → LI-06 | the L3 fixture matrix the twelve arms are driven through | The arm inventory's `RSN-NO-MATERIAL` arm gains a second *cause* upstream, not a thirteenth arm — `LEARNINGS_CORPUS_OUTCOMES` and the reason catalogue are unchanged in TSPEC and in FSPEC's reason table (the row's text widened; the id set did not) | Holds |
+
+**The twelve-arm inventory is worth one extra sentence, because it is the place a widened reason
+could have leaked into a count.** LI-23 asserts set equality over non-`null` `corpusOutcome`
+observations against a frozen catalogue, and FSPEC v0.13's edit to the `RSN-NO-MATERIAL` row widens
+what the id *means* without minting an id. The reason catalogue in FSPEC's §Reason ids and TSPEC's
+`LEARNINGS_*` frozen sets both carry the same six document-level reasons before and after. So
+LI-23's arithmetic, its `Deps` edge and P-A-4's answer ("no thirteenth fixture shape is scheduled")
+all stand. What changes is only which *fixtures* can reach the `RSN-NO-MATERIAL` arm — and P-A-4
+already routes that: "If implementation finds an arm that no declared fixture reaches, the shape
+belongs in **LI-02**." The zero-bound case is reached through `parseLearningsConfig` inputs, not a
+new corpus shape, so even that clause is not invoked.
+
+**§Upstream and downstream documents still holds in substance, and is stale in its pins.** The
+`depends-on` list is still empty and no queue row binds this feature; PROPERTIES still owes T-O-4,
+T-O-5 and T-O-6, and TSPEC's §Named obligations still carries all three. What is now wrong is the
+version pin: PLAN's §Overview reads "Behaviour lives in REQ v0.9 / FSPEC **v0.10** / TSPEC v0.6",
+and the upstream matter row, the LI-01 edge rationale and the changelog's 0.1 row repeat the same
+three numbers. FSPEC is at **v0.13** and TSPEC at v0.7. This is the same defect I raised as v6's
+F-03, two FSPEC versions deeper; it remains Low, because no reading of a version number changes
+what a task builds, and it remains **inherited** — the v0.13 edit made it staler, it did not
+introduce it.
+
 ## Verification
 
 ## Positive Observations
