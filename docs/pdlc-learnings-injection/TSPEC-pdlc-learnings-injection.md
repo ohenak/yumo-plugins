@@ -1260,17 +1260,14 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   call, not an open under `docs/` (§I.1, §A.3), so on the instrument BR-15 describes — file-open
   calls under `docs/` — the enumeration contributes **no** member. As written, AT-33's set equality
   cannot hold.
-- **ERR-4 (REQ G-1 / AC-1.1 versus AC-5.1a).** REQ decides the shipping default twice, in opposite
-  directions, and FSPEC Step 0(2) / BR-14 inherited one side without flagging the other. G-1 ("no
-  configuration change required") and AC-1.1 ("with `learningsInjection.enabled` at its default",
-  against REQ §4.1's declared default of `true`) together mean a repository with no
-  `learningsInjection` section **receives** injected material. AC-5.1a says a repository whose
-  "configuration section [is] absent" produces a byte-identical, injection-free dispatch. Both
-  cannot hold, and this repository at HEAD — no config section, 9 corpus documents (P-5) — is the
-  case they disagree about, so the contradiction is load-bearing rather than theoretical. The
-  choice is a product decision (does an operator opt in, or opt out?), not an engineering one, so
-  it is routed to REQ rather than absorbed here; §OQ.2 records what TSPEC does provisionally and
-  exactly what changes under either resolution.
+- **ERR-4 (REQ G-1 / AC-1.1 versus AC-5.1a) — CLOSED, resolved by REQ v0.9.** REQ once decided the
+  shipping default twice, in opposite directions, and FSPEC Step 0(2) / BR-14 inherited one side.
+  REQ v0.9 resolved it toward G-1: an absent `learningsInjection` section is **not** a disabled
+  state, it reads as §4.1's declared `enabled: true`, "there is no second gate key", and a
+  malformed section fails **open** with a catalogued notice (AC-5.1a, AC-5.1b). FSPEC v0.9 records
+  the same and leaves the gate correction to this document ("No behavioural change; the gate
+  correction is TSPEC's to land"). §I.3 and §D.2 are written on that answer; no question remains
+  routed to REQ on this point.
 - **ERR-5 (FSPEC E-13).** The row is annotated "(measured: occurs at HEAD)", but it does not occur
   at HEAD. Running the corpus predicate and reading each document's `Date Completed` cell yields 9
   bare ISO values (`2026-06-02` … `2026-08-18`); no corpus document carries free text after the
@@ -1280,17 +1277,15 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   prefix match), so nothing downstream changes; what needs correcting is the provenance claim, since
   a fixture author reading "measured" would look for a sample that is not there. Either drop the
   parenthetical or re-source it.
-- **ERR-6 (REQ AC-3.3).** AC-3.3 places every reproduction input in the report's **run-level**
-  record, and its *Given* is reproduction "against the same repository state". Selection is
-  per-dispatch over the state that dispatch observed (E-32, AT-14 forbids an in-process memo), so
-  two authoring dispatches in one run may legitimately observe different corpora — a LEARNINGS file
-  landing mid-run, or enumeration failing at dispatch 5 after succeeding at dispatch 1. In that
-  case there is no single repository state for a single run-level record to describe. TSPEC keeps
-  the run-level record (last-write-wins, §A.5) and adds per-dispatch `{corpusOutcome, orderKeys,
-  corpusDiverged}` so the run stays reconstructable, but whether AC-3.3's *locus* should be
-  restated to name the per-dispatch row on a divergent run — and therefore which rows its
-  completeness test asserts set equality over — is a product decision about the record's contract.
-  Routed to REQ rather than reinterpreted here; §A.5 records what TSPEC does in the meantime.
+- **ERR-6 (REQ AC-3.3) — CLOSED, resolved by REQ v0.9.** ERR-6 asked whether AC-3.3's locus should
+  be restated to name the per-dispatch row, selection being per-dispatch over the state that
+  dispatch observed (E-32; AT-14 forbids an in-process memo). REQ v0.9 answered yes: reproducibility
+  is claimed "**per dispatch, not per run**", the ordering key value per document is recorded per
+  authoring dispatch alongside AC-3.1's rows, the §4.1 thresholds once per run, and **two**
+  completeness tests assert set equality, one per locus. AC-3.2 settled corpus-level outcomes the
+  same way, with a run-level mirror "additive, is not the oracle, and has a deliberately
+  unconstrained value that nothing asserts on"; FSPEC v0.9 BR-9/BR-10 carry both. §A.5, §D.1, §D.2,
+  the closure table and §T.6's `DIVERGENT-CORPUS` fixture are written on that answer.
 - **ERR-7 (FSPEC BR-1).** BR-1 states a dispatch carries a block "**if and only if** the pipeline
   classifies it as authoring at the moment it is composed", and that the rule "consumes the
   classification, it does not restate the membership"; AT-02's expected set is "the subset BR-1's
