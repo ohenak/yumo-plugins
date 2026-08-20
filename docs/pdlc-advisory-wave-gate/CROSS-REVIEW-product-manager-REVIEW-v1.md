@@ -253,11 +253,48 @@ promotion actually carries.
 
 ## Questions
 
-_TBD_
+| ID | Question |
+|----|---------|
+| Q-01 | F-01: was the E-6 conjunct check consciously deferred (in which case it belongs in DECISIONS with a re-evaluation trigger, and REQ AC-3.1's rule needs restating to the union semantics actually shipped), or simply missed in A6-14? The answer changes whether this is a code fix or a REQ erratum. |
+| Q-02 | F-02/F-03: AC-6.1 and AC-6.2 add fields to two artifacts the advisory *tier* owns. Is the intended shape a widened `renderAdvisoryEntry`/`renderEscalationEntry` (a tier-level change touching A1–A5's fixtures) or an A6-only `_summarise`-style channel? TSPEC §3.2's comment at `orchestrate-dev.js:3327` implies the latter but does not say. |
+| Q-03 | F-08: is the pipeline willing to ship a P0 reversibility criterion (AC-5.1) with one arm pending an upstream question, or should Phase CR hold until OQ-7's erratum lands? I have routed the erratum; the hold decision is the orchestrator's. |
 
 ## Positive Observations
 
-_TBD_
+- **The trigger is structural, not conditional, and it is proven at the production call site.**
+  A6 is reachable from exactly one place — the wave-mode, script-gate, ordinary-wave, red-first-pass
+  test-gate branch (`orchestrate-dev.js:15125-15150`) — so AC-1.2 and AC-1.3 are enforced by control
+  flow rather than by an `if` that could drift. `waveExecution.test.js:935` and `:957` drive `main`
+  itself to prove a post-wave failure and the V-wave never reach A6.
+- **AC-4.4's re-gate oracle is implemented as sequence equality, exactly as written.**
+  `gateSequenceFor` reads the sequence from `implConfig` (`:3122-3124`), `sameSequence` compares
+  length *and* order (`:3115-3119`), and step 6 refuses a `resolved` outcome whose ledger did not
+  grow by one full sequence since the last `apply` (`:3360-3366`). The six-token two-attempt case is
+  asserted literally (`advisoryWaveGate.test.js:1542`). This is the criterion most easily satisfied
+  by a set-equality shortcut, and the shortcut was refused.
+- **AC-4.1's conjunct (iii) is proven by mutation, not by prose.** The unreachable
+  "no gate invocation follows the repair" case is driven by replacing one member of a *real*
+  `buildA6SeamOps` result (`advisoryWaveGate.test.js:1654`), which is the only honest way to
+  falsify a prohibition that an ordinary run cannot reach.
+- **AC-1.4's inertness covers the snapshot, not just the dispatch.** The tier gate is duplicated
+  inside `runWaveGateSeam` (`:3222-3226`) ahead of `captureTreeSnapshot`, and it consumes an
+  already-resolved boolean rather than re-reading `.enabled` — which keeps the disabled-run
+  created-file set genuinely identical, and keeps the existing exact-count oracle intact.
+- **AC-5.2's "escalation adds information, never control flow" is visible in one line.**
+  `throw haltError(testGateMessage, a6.disposition ? { advisory: a6.haltFields } : undefined)`
+  (`:15163`) keeps the halt message byte-identical and attaches the diagnostic conditionally, so a
+  disabled-tier halt carries no `haltAdvisory` key at all — asserted positively *and* negatively
+  (`waveExecution.test.js:1043`, `:1069`).
+- **AC-6.3 reaches the operator.** `haltAdvisory` rides the report object (`:16011`) and the CLI
+  serialises the whole report to stdout (`dist/pdlc-cli.mjs:16168`), which the skill relays verbatim
+  — so the diagnosis and class are on the halt path, not only in a file the operator must find.
+- **AC-1.1 is transcribed literally, in both directions.** `ADVISORY_SEAMS` is asserted equal to the
+  six-member literal (`advisoryEnvelope.test.js:317`) and the report's row list is asserted equal to
+  the same literal (`advisoryRecord.test.js:496`) — a set-equality that a deleted seam fails, with no
+  expected value derived from the code under test.
+- **AT-04-5's fixture was chosen to be red against today's behaviour.** The promoted path sits
+  outside every configured post-wave pathspec (`waveExecution.test.js:133-135` configures none), which
+  is the condition FSPEC demands and the easy fixture to get wrong.
 
 ## Recommendation
 
