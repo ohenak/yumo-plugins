@@ -615,14 +615,16 @@ const AWG_GATE_OUTPUT = "the gate went red at the eslint step";
 // One full A6 invocation through the shipped call site. `reply` is the agent's raw text; the
 // returned handle exposes the seam's own result plus everything the run wrote or said, so each
 // property below reads its oracle off the written artifact rather than off an internal.
-async function runA6Escalation({ reply, appendThrowsOn = new Set(), waveNum = 2 } = {}) {
+async function runA6Escalation({ reply, appendThrowsOn = new Set(), waveNum = 2, files: sharedFiles, feature = AWG_FEATURE } = {}) {
   const repo = makeRealRepoFixture({ prefix: "pdlc-a6-esc-" });
-  const files = makeFileDouble({ throwOn: appendThrowsOn });
+  // A caller may pass its own file double to accumulate several runs' entries in ONE
+  // `ESCALATIONS.md`, which is exactly what AWG PROP-REC-06's counting oracle needs.
+  const files = sharedFiles || makeFileDouble({ throwOn: appendThrowsOn });
   const clock = makeFakeClock();
   const notices = [];
   try {
     const result = await devModule.runWaveGateSeam({
-      feature: AWG_FEATURE,
+      feature,
       waveNum,
       waves: [[{ id: "T1", files: ["a.js"] }], [{ id: "T2", files: ["b.js"] }]],
       waveIndex: 1,
@@ -699,5 +701,204 @@ describe("A6-17 / AWG PROP-REC-03 — an A6 escalation logs the root-cause class
 
     expect(extractFieldLabels(log)).toEqual([...AWG_A6_FIELD_ORDER]);
     expect(log).toContain("| Root cause | unclassified |");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AWG PROP-REC-07 — *Pipeline state* is derived PER SEAM, never passed per call site: A6's entry
+// reads phase `I` with outcome `halted`, while A3–A5's entries written by the same shipped writer
+// keep their own values. The oracle is the WRITTEN ENTRY, not the constant: `ADVISORY_SEAM_PHASES`
+// is module-private (orchestrate-dev.js:3805) and unexported, but an unregistered seam falls back
+// to the literal `unknown` at the call site (orchestrate-dev.js:4079-4080), so a missing `A6` row
+// would be observable here as `unknown — unknown`. That fallback is the negative control.
+// ---------------------------------------------------------------------------
+
+// Drives the tier driver directly for seams that have no wave-gate call site — the only way to
+// observe the per-seam derivation for a seam OTHER than A6, and the only way to reach the
+// unregistered-seam fallback (no shipped call site passes an unknown seam).
+async function runDriverEscalation({ seam, files = makeFileDouble() }) {
+  const clock = makeFakeClock();
+  const reply = [
+    `SEAM: ${seam}`,
+    "DIAGNOSIS: the gate is red for a reason this seam may not act on",
+    "PROPOSED-ACTION: E-2",
+    "CONFIDENCE: high",
+    "WITHIN-ENVELOPE: yes",
+    "EVIDENCE: the gate output line this reply cites verbatim",
+  ].join("\n");
+
+  const terminal = await devModule.runAdvisorySeam({
+    seam,
+    feature: AWG_FEATURE,
+    // `permittedActions: []` refuses whatever is proposed at GATE, so the invocation escalates
+    // `out-of-envelope` without any seam-specific machinery.
+    seamOps: makeSeamOps({ permittedActions: [], declaredScope: [] }),
+    config: makeAdvisoryConfig({ enabled: true, attemptBudget: 1 }).config,
+    rungState: {},
+    _agent: makeAgentDouble({ script: [reply] }),
+    _appendFile: files._appendFile,
+    _readFile: files._readFile,
+    _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+    _now: clock._now,
+    _sleep: clock._sleep,
+    _notice: () => {},
+    _log: () => {},
+  });
+  return { terminal, log: files.files[ESCALATIONS_PATH] };
+}
+
+describe("A6-17 / AWG PROP-REC-07 — Pipeline state is derived per seam", () => {
+  test("A6's written entry reads phase I, outcome halted", async () => {
+    const { log } = await runA6Escalation({ reply: awgOutOfEnvelopeReply() });
+    expect(log).toContain("**Pipeline state.** I — halted");
+  });
+
+  test.each([
+    ["A3", "DOD — halted"],
+    ["A4", "DOD — halted"],
+    ["A5", "PUB — halted"],
+  ])("%s's entry keeps its own value on the same shipped writer", async (seam, expected) => {
+    const { terminal, log } = await runDriverEscalation({ seam });
+    expect(terminal.outcome).toBe("escalated");
+    expect(log).toContain(`**Pipeline state.** ${expected}`);
+  });
+
+  test("negative control — an unregistered seam falls back to `unknown — unknown`, which is what a missing A6 row would look like", async () => {
+    const { log } = await runDriverEscalation({ seam: "A9" });
+    expect(log).toContain("**Pipeline state.** unknown — unknown");
+  });
+
+  test("A6 and A5 entries appended to the same log keep DIFFERENT pipeline states", async () => {
+    const files = makeFileDouble();
+    await runDriverEscalation({ seam: "A5", files });
+    const before = files.files[ESCALATIONS_PATH];
+    const { log } = await runA6Escalation({ reply: awgOutOfEnvelopeReply(), files });
+
+    expect(before).toContain("**Pipeline state.** PUB — halted");
+    expect(log.startsWith(before)).toBe(true);
+    expect(log.slice(before.length)).toContain("**Pipeline state.** I — halted");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AWG PROP-REC-04 — a failed escalation-log write never changes the disposition. The seam stays
+// `escalated`, the halt fields are byte-for-byte what a successful write would have produced, the
+// failure is surfaced on the report's notice channel, and nothing is upgraded to `resolved`
+// (E-30; the asymmetry with §9.2's record write, which does revert — PROP-ESC-05 above).
+// ---------------------------------------------------------------------------
+
+describe("A6-17 / AWG PROP-REC-04 — a failed escalation-log write is surfaced, never healed", () => {
+  test("the seam's result is identical to the succeeding-write run, and the failure rides the notice channel", async () => {
+    const reply = awgOutOfEnvelopeReply();
+    const clean = await runA6Escalation({ reply });
+    const failed = await runA6Escalation({ reply, appendThrowsOn: new Set([ESCALATIONS_PATH]) });
+
+    expect(failed.result).toEqual(clean.result);
+    expect(failed.result.resolved).toBe(false);
+    expect(failed.result.disposition.outcome).toBe("escalated");
+    expect(failed.log).toBeUndefined();
+
+    // Both notices are present: the operator is told the seam escalated EVEN THOUGH the log could
+    // not be reached, and is told separately that the log write itself failed.
+    // Order is not asserted: no upstream document fixes the two notices' relative order, and
+    // pinning the shipped one would be a property inventing a choice (PLAN P-9). Count and content
+    // ARE asserted — exactly two notices, one of each kind.
+    expect(failed.notices).toHaveLength(2);
+    expect(failed.notices).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("ADVISORY ESCALATION: seam A6"),
+        expect.stringContaining("ADVISORY escalation log write failed for seam A6"),
+      ])
+    );
+  });
+
+  test("no notice claims a resolution, and the advisory record still carries the escalated disposition", async () => {
+    const files = makeFileDouble({ throwOn: new Set([ESCALATIONS_PATH]) });
+    const { result } = await runA6Escalation({ reply: awgOutOfEnvelopeReply(), files });
+    const record = files.files[`docs/${AWG_FEATURE}/ADVISORY-${AWG_FEATURE}.md`];
+
+    expect(result.disposition.outcome).toBe("escalated");
+    expect(record).toContain("| Disposition | escalated — out-of-envelope |");
+    expect(record).not.toContain("| Disposition | resolved |");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AWG PROP-REC-06 — `plan-ordering-defect` escalations are countable PER FEATURE from
+// `ESCALATIONS.md` alone: no run log, no advisory record. The paired negative is specified, not a
+// gap: resolutions are NOT countable from this log, because the driver writes here only for an
+// `escalated` terminal disposition (orchestrate-dev.js:4075) and the advisory record that does
+// carry resolutions is distilled into LEARNINGS and deleted after Phase PUB (REQ O-2).
+// ---------------------------------------------------------------------------
+
+// The counting oracle an operator would actually run, expressed once: split the append-only log on
+// its entry headings and read the two fields the count is scoped by. Deliberately structural — it
+// reads only the log's own bytes, so a count it produces is a count a human with `grep` can too.
+function countEscalations(log, { feature, rootCause }) {
+  return log
+    .split(/^## /m)
+    .slice(1)
+    .filter((entry) => entry.includes(`| Feature | ${feature} |`) && entry.includes(`| Root cause | ${rootCause} |`))
+    .length;
+}
+
+describe("A6-17 / AWG PROP-REC-06 — the class is countable per feature from the log alone", () => {
+  test("four runs across two features and two classes yield the right per-feature count", async () => {
+    const files = makeFileDouble();
+    await runA6Escalation({ reply: awgOutOfEnvelopeReply("plan-ordering-defect"), files, waveNum: 2 });
+    await runA6Escalation({ reply: awgOutOfEnvelopeReply("environmental"), files, waveNum: 3 });
+    await runA6Escalation({ reply: awgOutOfEnvelopeReply("plan-ordering-defect"), files, waveNum: 4 });
+    const { log } = await runA6Escalation({
+      reply: awgOutOfEnvelopeReply("plan-ordering-defect"),
+      files,
+      feature: "some-other-feature",
+    });
+
+    expect(countEscalations(log, { feature: AWG_FEATURE, rootCause: "plan-ordering-defect" })).toBe(2);
+    expect(countEscalations(log, { feature: AWG_FEATURE, rootCause: "environmental" })).toBe(1);
+    expect(countEscalations(log, { feature: "some-other-feature", rootCause: "plan-ordering-defect" })).toBe(1);
+    expect(countEscalations(log, { feature: AWG_FEATURE, rootCause: "wave-internal-defect" })).toBe(0);
+  });
+
+  test("the count needs no run log and no advisory record — the log's own bytes suffice", async () => {
+    const files = makeFileDouble();
+    await runA6Escalation({ reply: awgOutOfEnvelopeReply("plan-ordering-defect"), files });
+    const { log } = await runA6Escalation({ reply: awgOutOfEnvelopeReply("plan-ordering-defect"), files, waveNum: 3 });
+
+    // Re-parsed from a copy of the bytes alone, with every other artifact discarded.
+    expect(countEscalations(String(log), { feature: AWG_FEATURE, rootCause: "plan-ordering-defect" })).toBe(2);
+  });
+
+  test("negative half — a RESOLVED invocation writes an advisory-record entry and nothing to ESCALATIONS.md, so resolution counts are not derivable from this log", async () => {
+    const files = makeFileDouble();
+    const clock = makeFakeClock();
+    const reply = [
+      "SEAM: A3",
+      "DIAGNOSIS: a stale citation the seam may rewrite",
+      "PROPOSED-ACTION: E-2",
+      "CONFIDENCE: high",
+      "WITHIN-ENVELOPE: yes",
+      "EVIDENCE: the citation line this reply names verbatim",
+    ].join("\n");
+
+    const terminal = await devModule.runAdvisorySeam({
+      seam: "A3",
+      feature: AWG_FEATURE,
+      seamOps: makeSeamOps({ permittedActions: ["E-2"], declaredScope: [] }),
+      config: makeAdvisoryConfig({ enabled: true, attemptBudget: 1 }).config,
+      rungState: {},
+      _agent: makeAgentDouble({ script: [reply] }),
+      _appendFile: files._appendFile,
+      _readFile: files._readFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _now: clock._now,
+      _sleep: clock._sleep,
+      _notice: () => {},
+      _log: () => {},
+    });
+
+    expect(terminal.outcome).toBe("resolved");
+    expect(files.files[`docs/${AWG_FEATURE}/ADVISORY-${AWG_FEATURE}.md`]).toContain("| Disposition | resolved |");
+    expect(files.files[ESCALATIONS_PATH]).toBeUndefined();
   });
 });
