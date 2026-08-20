@@ -31,6 +31,22 @@ DEC-LI-08's body) were approved in v1 and are not re-litigated.
 
 ## Verification of new claims
 
+Every load-bearing new claim was re-run against HEAD, not read back out of the document.
+
+| New claim | Where | Verified |
+|---|---|---|
+| `defaultGit` wraps `execFileSync` in `try` and converts non-zero exit to `{ok:false,…}` | DEC-LI-02, DEC-LI-04 | **Holds** — `pdlc/workflows/orchestrate-dev.js`, `defaultGit`. |
+| `rtGit` awaits `RT.agent` with **no** `try`, so a rejected host call rejects `rtGit` | DEC-LI-02, DEC-LI-04 | **Holds** — `pdlc/workflows/runtime-adapter.js`, `async function rtGit(argv)` opens `const out = await RT.agent(` with no guard through to its return. |
+| Siblings `rtReadChunk`, `rtReadProbe`, `rtHashFile`, `rtCliQuery` all wrap their `await` | DEC-LI-02 | **Holds** — each of the four has a `try {` / `} catch` pair around the await inside its own body. The asymmetry the document names is real, and it is the asymmetry that makes the correction load-bearing rather than pedantic. |
+| `rtGit`'s docblock claims "never throws" | DEC-LI-02 | **Holds** — the docblock reads "Returns { ok, stdout, stderr } and never throws; the caller interprets." The document is right that the docblock is the trap: a future agent reading only the docblock would rebuild exactly the design v0.1 had. |
+| TSPEC still builds the injector on `present && config.enabled && !sectionMalformed` and still carries `OQ.2`/`ERR-4` open | DEC-LI-07, `D-O-9` | **Holds at HEAD** — TSPEC is unchanged at v0.5 (`16f30820` is its latest commit); §I.3 at `:435`, the `enabled`-default row at `:1179`, `OQ.2` at `:1183`, `ERR-4` at `:1228`. The erratum is live, not already discharged. |
+| REQ §4.1 declares `learningsInjection.enabled` default `true` with no second gate | DEC-LI-07 | **Holds** — REQ `:223` gives the bare `true` default; AC-5.1a (`:378`) makes explicit `false` the only disabling state, AC-5.1b/c (`:387`, `:395`) keep malformed and wrong-typed configuration **enabled**. DEC-LI-07 follows the settled product decision. |
+| TSPEC `ERR-6` already routes the AC-3.3 locus question to REQ | "NOT taken" table | **Holds** — TSPEC `:353` and `:1248`. |
+| `DEC-LAYER-01` supports "REQ §4.1 owns the threshold values" | DEC-LI-08, "NOT taken" table | **Does not hold** — see F-01. `DEC-LAYER-01` fixes what an **FSPEC** may not carry (tie-breaks, reader indices, seam permitted-sets, fixture construction → TSPEC/PROPERTIES); it says nothing about REQ owning tunable numbers. |
+| `DEC-ERR-01` is available as this feature's erratum id | DEC-LI-07 | **Does not hold** — see F-02. `DEC-ERR-01` is an occupied project-level id. |
+| Four authoring-classified dispatch producers, all reaching `dispatchAndVerify` | DEC-LI-03 | **Holds** — re-verified from v1: three `dispatchKind: "authoring"` object literals plus `reviewLoop`'s positional `"authoring"` through `runWrapped`. |
+| Corpus predicate returns **9** documents at HEAD | DEC-LI-06 trigger | **Holds** — re-ran `LEARNINGS_CORPUS_ARGV`'s frozen argv; 9. |
+
 ## Findings
 
 ## Questions
