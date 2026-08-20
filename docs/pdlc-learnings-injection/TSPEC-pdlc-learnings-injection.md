@@ -316,49 +316,55 @@ Two consequences are recorded rather than designed around:
 ### A.5 Threading the record to the report
 
 `main()` owns a run-scoped sink, in the shape `notices` already has
-(`orchestrate-dev.js:12110`): an array of per-dispatch records plus at most one corpus-level
-outcome and one rule-input record.
+(`orchestrate-dev.js:12110`): an array of per-dispatch records, each carrying that dispatch's own
+corpus outcome and ordering keys, plus one run-level thresholds record.
 
-**The run-level singletons are LAST-WRITE-WINS, and every dispatch's own values are also kept on
-its own row.** Selection runs per dispatch over the state that dispatch observed (E-32, and AT-14
-forbids an in-process memo), so two dispatches in one run may legitimately observe different
-corpora — different `orderKeys`, or dispatch 1 listable and dispatch 5 `RSN-UNLISTABLE`. The rule:
+**The oracle locus is the dispatch row; the run-level mirror is carried but unasserted.** Selection
+runs per dispatch over the state that dispatch observed (E-32, and AT-14 forbids an in-process
+memo), so two dispatches in one run may legitimately observe different corpora — different
+`orderKeys`, or dispatch 1 listable and dispatch 5 `RSN-UNLISTABLE`. REQ v0.9 AC-3.2/AC-3.3 and
+FSPEC v0.9 BR-9/BR-10 settle the loci; this table transcribes them, it does not decide them:
 
 | Field | Scope | Rule |
 |---|---|---|
-| `corpusOutcome` | run-level | the value the **last** authoring dispatch of the run observed |
-| `ruleInputs` | run-level | the `orderKeys`/`thresholds` the **last** authoring dispatch observed |
-| `dispatches[i].corpusOutcome` | per-dispatch | that dispatch's own value, always recorded |
-| `dispatches[i].orderKeys` | per-dispatch | that dispatch's own ordering keys, always recorded |
+| `dispatches[i].corpusOutcome` | per-dispatch | that dispatch's own value, always recorded — **BR-9's oracle locus**, alongside AC-3.1's rows for that dispatch (REQ AC-3.2) |
+| `dispatches[i].orderKeys` | per-dispatch | that dispatch's own ordering keys, always recorded — **BR-10's per-dispatch locus** (REQ AC-3.3, FSPEC BR-10) |
+| `ruleInputs.thresholds` | run-level | the three REQ §4.1 values actually in force, recorded **once per run**, the configuration being read once — **BR-10's second locus** |
+| `corpusOutcome` (run-level), `ruleInputs.orderKeys` (run-level) | run-level mirror | **carried, additive, not the oracle**: last-write-wins by construction, and **nothing asserts on its value** (REQ AC-3.2 "a run-level mirror, if carried, is additive, is not the oracle, and has a deliberately unconstrained value"; FSPEC BR-9, BR-10) |
 | `dispatches[i].corpusDiverged` | per-dispatch | `true` iff this dispatch's `{corpusOutcome, orderKeys}` differ from the immediately preceding authoring dispatch's; **`false` — never `null` — on the first dispatch of a run**, which has no predecessor to differ from (TE Q-02), so `dispatches.every(r => r.corpusDiverged === false)` is a valid stable-corpus assertion |
 
-Last-write-wins is chosen over first-write-wins because the run-level record is an operator's
-*current-state* summary and the last dispatch is the one closest to the state on disk when the run
-ended; it is chosen over "conflict is a notice" because a divergent corpus is not an error — a
-LEARNINGS file legitimately lands mid-run — and BR-14's notice catalogue is about configuration
-defects, not corpus movement. `corpusDiverged` is what makes the divergence *visible* without
-inventing an outcome id.
+**Why the mirror is kept even though nothing asserts on it (TE Q-01).** Upstream permits either
+choice ("if carried"); this TSPEC carries it, so an operator reading the report top-down sees the
+run's closing corpus state without scanning every dispatch row. Because it is not the oracle, its
+last-write-wins fill rule is an implementation convenience, not a testable claim, and no fixture in
+§T.6 may assert on it — an implementation that dropped the mirror entirely would still conform, so
+a test that pinned its value would red against a conforming implementation.
 
-**Scoping AC-3.3, and what is left to REQ.** AC-3.3 states the reproduction inputs live in "the
-report's **run-level** record", and its *Given* is an operator reproducing the selection "against
-the same repository state" (REQ AC-3.3). On a **stable corpus** — every authoring dispatch of the
-run observing the same `{corpusOutcome, orderKeys}` — the run-level record *is* the locus AC-3.3
-names, and last-write-wins is an identity: this design satisfies AC-3.3 as written, unchanged.
-The divergent case is one AC-3.3's *Given* does not contemplate: there is no single "same
-repository state" to reproduce against, so a single run-level record cannot be the locus for every
-dispatch. The per-dispatch `{corpusOutcome, orderKeys, corpusDiverged}` fields are TSPEC's
-**extension** for that case, not a reinterpretation of AC-3.3's locus, and they are additive —
-nothing AC-3.3 requires is removed. Whether AC-3.3's locus should be restated to name the
-per-dispatch row for divergent runs is a **product decision about the record's contract**, not an
-engineering one, so it is routed as an erratum against REQ AC-3.3 (**ERR-6**) rather than settled
-here. Until REQ answers, the run-level record remains the stated locus and the per-dispatch rows
-are the mechanism that keeps a divergent run reconstructable; the design does not change under
-either resolution — only which rows AC-3.3's completeness test is asserted over.
+**Why `corpusDiverged` is kept, on its own terms (TE Q-02).** Its justification is no longer a
+defence of last-write-wins. It is the field that makes corpus movement *observable* without
+inventing a reason id and without an operator diffing two dispatch rows by hand:
+`dispatches.every(r => r.corpusDiverged === false)` is a one-line stable-corpus assertion, and on a
+divergent run it names exactly which dispatches moved. A divergent corpus is not an error — a
+LEARNINGS file legitimately lands mid-run — so it is deliberately not a BR-14 notice, that
+catalogue being about configuration defects rather than corpus movement.
 
-The determinate expected value a test needs therefore exists on both sides: `DIVERGENT-CORPUS` (a
+**AC-3.3's locus, as settled upstream (ERR-6, closed).** ERR-6 asked whether AC-3.3's locus should
+be restated to name the per-dispatch row. REQ v0.9 answered yes: the ordering key value per
+document is recorded **per authoring dispatch, alongside AC-3.1's rows for that dispatch**, and the
+§4.1 thresholds in force are recorded **once per run**, with **two** completeness tests asserting
+set equality, one per locus (REQ AC-3.3; FSPEC BR-10 "Each locus's fields are a **closed** set:
+**two** completeness tests"). AC-3.2 settled the corpus-level outcome the same way — per authoring
+dispatch, with the run-level mirror explicitly unconstrained. This document is written on those
+answers; nothing here is provisional and no question remains routed to REQ on this point. The
+mechanism did not change under the resolution — the per-dispatch fields were already designed here
+— only which rows the completeness tests are asserted over, which is what §T.2 and §D.2 now state.
+
+The determinate expected value a test needs therefore exists per dispatch: `DIVERGENT-CORPUS` (a
 new §T.6 fixture, five authoring dispatches where the scripted `_git` reply gains one path after
-dispatch 2 and fails at dispatch 5) asserts the run-level scalars equal dispatch 5's observation,
-each `dispatches[i]` carries its own, and `corpusDiverged` is `true` on exactly dispatches 3 and 5.
+dispatch 2 and fails at dispatch 5) asserts that each `dispatches[i]` carries **its own**
+`{corpusOutcome, orderKeys}` — dispatch 5's row carries `RSN-UNLISTABLE`, dispatches 3 and 4 carry
+the grown key set, dispatches 1 and 2 the original one — and that `corpusDiverged` is `true` on
+exactly dispatches 3 and 5. It asserts **nothing** about the run-level mirror.
 
 `buildLearningsInjector` closes over the sink and pushes on each
 call; `buildFinalReport` receives it as one new parameter and spreads it **conditionally**, on
