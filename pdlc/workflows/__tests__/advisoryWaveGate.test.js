@@ -1537,8 +1537,53 @@ describe("A6-15: runWaveGateSeam — PROP-REST-08: capture-failure's record cont
       expect(recordEntry).toMatch(/\| Disposition \| escalated \|/);
       expect(recordEntry).toMatch(/\| Model \| n\/a \|/);
 
+      // PM F-07 — the escalation entry's decision sentence names the GIT VERB that failed, not
+      // merely the fact of a failure: an operator reading `ESCALATIONS.md` has to tell a broken
+      // repository (`write-tree`) from a concurrent run (`update-ref`). `toBeDefined()` alone
+      // would pass on an entry that said nothing at all.
       const escalationEntry = files.files["docs/_queue/ESCALATIONS.md"];
       expect(escalationEntry).toBeDefined();
+      const decideLine = escalationEntry.split("\n").find((l) => l.startsWith("**Decide:**"));
+      expect(decideLine).toContain("snapshot-unavailable");
+      expect(decideLine).toContain("git write-tree failed");
+      expect(escalationEntry).toContain("| Refusal reason | n/a |");
+      expect(escalationEntry).toContain("| Root cause | unclassified |");
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test.each([
+    ["write-tree", "git write-tree failed"],
+    ["commit-tree", "git commit-tree failed"],
+    ["update-ref", "git update-ref failed"],
+  ])("the failing verb %s is the verb the escalation entry names", async (verb, expected) => {
+    const repo = createA6TempRepo();
+    try {
+      const _git = async (argv) =>
+        argv[0] === verb
+          ? { ok: false, stdout: "", stderr: `fatal: ${verb} failed` }
+          : repo._git(argv);
+      const files = makeFileDouble();
+      const result = await runWaveGateSeam(
+        makeA6RunArgs({
+          _git,
+          _agent: makeAgentDouble({ script: [] }),
+          _runCommand: makeA6RunCommand()._runCommand,
+          _appendFile: files._appendFile,
+          _readFile: files._readFile,
+        })
+      );
+
+      expect(result.resolved).toBe(false);
+      const decideLine = files.files["docs/_queue/ESCALATIONS.md"]
+        .split("\n")
+        .find((l) => l.startsWith("**Decide:**"));
+      expect(decideLine).toContain(expected);
+      // The verb is specific, not a catch-all: the other two verbs are not claimed.
+      for (const other of ["write-tree", "commit-tree", "update-ref"].filter((v) => v !== verb)) {
+        expect(decideLine).not.toContain(`git ${other} failed`);
+      }
     } finally {
       repo.cleanup();
     }
@@ -2204,6 +2249,95 @@ describe("A6-15: PROP-ENV-04 / PROP-ENV-05 / PROP-ENV-12 — the precedence and 
       expect(result.disposition.outcome).toBe("escalated");
       expect(result.disposition.reason).toBe("out-of-envelope");
       expect(result.resolved).toBe(false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+// ─── A6-15: PROP-REC-05 — the halt's own diagnostic, on the report ────────────────────────────
+//
+// AC-6.3/BR-14: an operator reading the run report must see the diagnosis and the root-cause class
+// WITHOUT opening the advisory record — the record is PUB-distilled and deleted (REQ O-2), so a
+// halt whose only diagnosis lived there is a halt with no diagnosis a week later. The payload is
+// `runWaveGateSeam`'s `haltFields`, which the shipped wave loop forwards verbatim as
+// `haltError(msg, { advisory: a6.haltFields })` (orchestrate-dev.js:15399) and `buildRunReport`
+// surfaces as `haltAdvisory` (orchestrate-dev.js:16204). This block owns the payload's CONTENT
+// over the real seam; `waveExecution.test.js`'s `haltAdvisory` cases own the forwarding, over an
+// injected seam fake — together they close the path from reply to report.
+
+describe("A6-15: runWaveGateSeam — PROP-REC-05: the halt fields carry the class and the diagnosis", () => {
+  test("an out-of-envelope escalation's halt fields name the reply's class and its diagnosis sentence", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const files = makeFileDouble();
+      const result = await runWaveGateSeam(
+        makeA6RunArgs({
+          _git: repo._git,
+          _agent: makeAgentDouble({
+            script: [
+              makeA6ReplyText({
+                proposedAction: "E-2",
+                rootCause: "plan-ordering-defect",
+                diagnosis: "wave 1 needs a symbol T3 owns",
+                evidence: ["the gate went red at the eslint step"],
+              }),
+            ],
+          }),
+          _runCommand: makeA6RunCommand()._runCommand,
+          _appendFile: files._appendFile,
+          _readFile: files._readFile,
+          advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget: 1 }).config,
+        })
+      );
+
+      expect(result.resolved).toBe(false);
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.haltFields).toEqual({
+        rootCause: "plan-ordering-defect",
+        diagnosis: "wave 1 needs a symbol T3 owns",
+        repairApplied: false,
+        repairPaths: [],
+      });
+      // The point of the property: the two operator-facing facts are readable off the halt payload
+      // ALONE, with the record file discarded.
+      expect(result.haltFields.diagnosis).not.toBe("");
+      expect(ADVISORY_ROOT_CAUSES).toContain(result.haltFields.rootCause);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("a reply naming no class still yields a halt payload — `unclassified`, never an absent key", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const files = makeFileDouble();
+      const result = await runWaveGateSeam(
+        makeA6RunArgs({
+          _git: repo._git,
+          _agent: makeAgentDouble({
+            script: [
+              makeA6ReplyText({
+                proposedAction: "E-2",
+                rootCause: "not-a-class",
+                diagnosis: "the failure was not classified",
+                evidence: ["the gate went red at the eslint step"],
+              }),
+            ],
+          }),
+          _runCommand: makeA6RunCommand()._runCommand,
+          _appendFile: files._appendFile,
+          _readFile: files._readFile,
+        })
+      );
+
+      expect(Object.keys(result.haltFields).sort()).toEqual([
+        "diagnosis",
+        "repairApplied",
+        "repairPaths",
+        "rootCause",
+      ]);
+      expect(result.haltFields.rootCause).toBe("unclassified");
     } finally {
       repo.cleanup();
     }
