@@ -16103,7 +16103,8 @@ export default async function main({
     ciStatus,
     dodVerifiedCommit,
     headSha: await readCurrentHead(),
-    // S-1: an enabled tier always reports its five rows, even when every one reads zero
+    // S-1: an enabled tier always reports one row per member of `ADVISORY_SEAMS` — six
+    // since A6 joined the catalogue — even when every one reads zero
     // invocations (this run's `advisoryDispositions` stayed empty) — only a disabled tier
     // leaves the field itself absent (see `buildFinalReport`'s own conditional spread).
     advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,

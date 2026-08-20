@@ -2343,3 +2343,84 @@ describe("A6-15: runWaveGateSeam — PROP-REC-05: the halt fields carry the clas
     }
   });
 });
+
+// ─── A6-15: PROP-GATE-04 — the two ledger writers agree about token ordering ───────────────────
+//
+// CR round 1, TE F-11: `runWaveGateSequence` pushes each token BEFORE invoking the command, and
+// `buildA6SeamOps.verifyGate` now does the same. On every non-throwing path the two orders are
+// observationally identical, so only a transport that THROWS can tell them apart — a re-gate whose
+// command throws must still leave its token, or AC-4.4's sequence oracle reads a ledger
+// indistinguishable from one where the command was never configured at all.
+
+describe("A6-15: buildA6SeamOps.verifyGate — PROP-GATE-04: a throwing transport still leaves its token", () => {
+  test("a re-gate whose test command throws leaves [\"post-wave\",\"test\"], exactly as a red one would", async () => {
+    const { _git } = makeRecordingGit();
+    const invocations = [];
+    const seamOps = buildA6SeamOps({
+      feature: "pdlc-advisory-wave-gate",
+      waveNum: 1,
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: { postWaveCommand: "npm run build", testCommand: "npm test" },
+      scriptGate: true,
+      invocations,
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+      _runCommand: async (cmd) => {
+        if (cmd === "npm test") throw new Error("transport died mid-gate");
+        return { ok: true };
+      },
+    });
+
+    await expect(seamOps.verifyGate()).rejects.toThrow("transport died mid-gate");
+    expect(invocations).toEqual(["post-wave", "test"]);
+  });
+
+  test("the same sequence a RED (non-throwing) re-gate leaves — the two transports are indistinguishable on the ledger", async () => {
+    const { _git } = makeRecordingGit();
+    const invocations = [];
+    const seamOps = buildA6SeamOps({
+      feature: "pdlc-advisory-wave-gate",
+      waveNum: 1,
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: { postWaveCommand: "npm run build", testCommand: "npm test" },
+      scriptGate: true,
+      invocations,
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+      _runCommand: async (cmd) => ({ ok: cmd !== "npm test" }),
+    });
+
+    expect(await seamOps.verifyGate()).toEqual({ passed: false, consumesAttempt: true });
+    expect(invocations).toEqual(["post-wave", "test"]);
+  });
+
+  test("a post-wave command that throws leaves its own token and never reaches the test token", async () => {
+    const { _git } = makeRecordingGit();
+    const invocations = [];
+    const seamOps = buildA6SeamOps({
+      feature: "pdlc-advisory-wave-gate",
+      waveNum: 1,
+      waves: makeA6Waves(),
+      waveIndex: 0,
+      gateOutput: "",
+      implConfig: { postWaveCommand: "npm run build", testCommand: "npm test" },
+      scriptGate: true,
+      invocations,
+      ledgerAnchor: { value: -1 },
+      snapshot: {},
+      _git,
+      _runCommand: async () => {
+        throw new Error("build transport died");
+      },
+    });
+
+    await expect(seamOps.verifyGate()).rejects.toThrow("build transport died");
+    expect(invocations).toEqual(["post-wave"]);
+  });
+});
