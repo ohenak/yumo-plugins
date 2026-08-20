@@ -15,7 +15,11 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.9 | 2026-08-19 |
+| pdlc | draft | Claude | 1.10 | 2026-08-20 |
+
+*v1.10 changelog (DoD remediation, CODE_REVIEW v1 finding 7). §1's corroborating-evidence paragraph
+re-measured at the branch tip: `.claude/pdlc-wave-state.json` is tracked, not untracked, and the
+record it holds is this feature's own completed wave sequence. No decision reopened.*
 
 *v1.9 changelog (erratum round 5). Restoration, not decision. A rebase onto `origin/main` had
 reverted five previously approved round-3 sites while leaving every reference to them in place;
@@ -129,12 +133,12 @@ false. Four preconditions gate the ledger, and each of them fails routinely:
   `feat-{feature}` onto the default branch, rewriting those commits, so a post-DOD re-invocation
   fails corroboration.
 
-Corroborating evidence, **re-measured 2026-08-18** and corrected: the ledger file does now exist in
-this repo's tree — one untracked `.claude/pdlc-wave-state.json`, recording a green wave for
-`pdlc-consolidation-agent` against a `planHash` for a PLAN that has since been superseded — so the
-stronger claim v1.2 made, that no record has ever survived here, no longer holds and is withdrawn.
-What the single surviving record does not show is a resume: it names a feature that completed, and
-every one of the four preconditions above still gates its use. Separately, the consumer runtime copy
+Corroborating evidence, **re-measured 2026-08-20** and corrected: the ledger file does now exist in
+this repo's tree — one tracked `.claude/pdlc-wave-state.json`, recording a green last wave for this
+feature's own run, whose recorded head is an ancestor of the branch tip — so the stronger claim v1.2
+made, that no record has ever survived here, no longer holds and is withdrawn.
+What the single surviving record does not show is a resume: it names a wave sequence that ran to
+completion, and every one of the four preconditions above still gates its use. Separately, the consumer runtime copy
 under `.claude/workflows/` is still out of sync with the built artifacts — the drift check exits
 non-zero with three rows stale and one missing — and a stale copy is announced but silently
 executed.
