@@ -130,7 +130,7 @@ sees an empty stdin rather than an error. Measured against real git: `git commit
 capture does not fail loudly at the seam — it writes a valid, unlabelled snapshot commit, and the
 operator who later inspects `refs/pdlc/a6-snapshot-{waveNum}` finds an object with nothing on it
 saying which wave or which repair it belongs to, which is the whole point of capturing it.
-No test catches the omission either: §5.5's oracle is an **argv-sequence** assertion over the `_git`
+No test catches the omission either: §5.2's oracle is an **argv-sequence** assertion over the `_git`
 double's recorded argv (`commit-tree === 1`, plus an `update-ref` on the snapshot ref), and a double
 answers a `-m`-less argv as happily as a correct one. The literal belongs in the implementing task's
 argv, not in its judgement.
@@ -180,7 +180,7 @@ specified here rather than left to Phase I. AT-04-3's oracle is over writer *ide
 shapes preserve — the choice is therefore not test-forced, which is exactly why it is recorded here.
 
 **Reversibility:** easy, with one caveat — the commit *message* is asserted, so a later reshaping is
-a test-visible change, not a silent one. The oracle is **TSPEC's**, not FSPEC's: TSPEC §7's
+a test-visible change, not a silent one. The oracle is **TSPEC's**, not FSPEC's: TSPEC §5.6's
 test-mapping row for AT-04-5 identifies the promotion commit "by its `message` literal and its
 pathspec", and §3.6 fixes that literal. FSPEC's own AT-04-5 asserts four other things — the repair in
 the branch's committed state, no residual working-tree change, the advisory record naming the paths,
