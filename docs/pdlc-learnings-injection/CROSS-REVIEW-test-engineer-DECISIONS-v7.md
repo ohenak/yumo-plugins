@@ -161,3 +161,6 @@ No High finding, old or new. Nothing this delta introduced contradicts the repos
 upstream document.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
