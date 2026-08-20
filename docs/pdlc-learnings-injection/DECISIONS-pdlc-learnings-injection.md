@@ -410,7 +410,7 @@ earlier AC-5.1a that read an **absent** section as the disabled state), and it t
 a provisional second gate — `present && config.enabled && !sectionMalformed` — recording the
 question as open (`OQ.2`, `ERR-4`). REQ v0.9 has since settled it: AC-5.1a is now scoped to an
 **explicit** `enabled: false`, states that an absent section reads as §4.1's declared defaults, and
-says in terms that "there is no second gate beyond this key (G-1)". FSPEC v0.7 `BR-14` carries the
+says in terms that "there is no second gate beyond this key (G-1)". FSPEC `BR-14` (v0.13 at HEAD) carries the
 same five states.
 
 **Decision.** The gate is `config.enabled` alone:
@@ -454,17 +454,18 @@ DC-01's closed-catalogue rule for the two notices.
 **Reversibility.** Easy — one conjunct — but it is a **product** lever, not an engineering one:
 changing it means changing REQ §4.1's declared default, not the parser.
 
-**The divergence from TSPEC is a recorded erratum, not a silent departure.** TSPEC v0.5 still builds
-the injector on `present && config.enabled && !sectionMalformed` (§I.3) and still carries `OQ.2` and
-`ERR-4` open, because it was authored while REQ v0.7 contradicted itself. REQ v0.9 settled the
-question and this entry follows the settled decision, so TSPEC and DECISIONS now disagree in writing.
-That matters beyond bookkeeping: **PROPERTIES and PLAN authors read TSPEC, not this document**, so an
-`AT-31`/`AT-32` written against §I.3 would be red against the correct implementation. The divergence
-is therefore raised as **DEC-ERR-01 against TSPEC** (see the erratum item emitted with this
-revision), asking TSPEC to close `OQ.2`, retire `ERR-4` as settled upstream, drop the `present` and
-`sectionMalformed` conjuncts from §I.3, and align `LEARNINGS_DEFAULTS` with REQ §4.1's bare `true`.
-Until TSPEC lands that edit, `D-O-5` is the standing protection on the IMPL side and this paragraph
-is the standing notice on the authoring side; neither substitutes for the TSPEC edit itself.
+**The divergence from TSPEC was a recorded erratum, and it has landed.** For one round TSPEC and
+this document disagreed in writing: TSPEC v0.5 built the injector on
+`present && config.enabled && !sectionMalformed` (§I.3) and carried `OQ.2` and `ERR-4` open, because
+it was authored while REQ contradicted itself. That mattered beyond bookkeeping — **PROPERTIES and
+PLAN authors read TSPEC, not this document**, so an `AT-31`/`AT-32` written against the provisional
+§I.3 would have been red against the correct implementation — so the divergence was raised as
+**DEC-ERR-01 against TSPEC** rather than resolved silently. TSPEC has since made all four edits: at
+HEAD (v0.9) §I.3's gate drops `present` and `sectionMalformed`, `OQ.2` is settled, `ERR-4` is
+recorded **CLOSED, resolved REQ v0.9**, and `LEARNINGS_DEFAULTS.enabled` is `true` with an absent
+section leaving it there. `D-O-9` is therefore **discharged**, and this entry and TSPEC §I.3 now
+state the same gate. `D-O-5` remains live for a different reason: it is an IMPL-side prohibition on
+reintroducing `present` as a condition, which no upstream edit discharges.
 
 **Re-evaluation triggers.** *Mechanically detected* — REQ changes the declared default (the
 five-state configuration table is transcribed from FSPEC `BR-14`, so a `BR-14` change reds the
