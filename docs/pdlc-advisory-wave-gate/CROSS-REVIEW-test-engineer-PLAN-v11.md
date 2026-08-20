@@ -116,7 +116,42 @@ would now need and lack.
 
 ## Verification
 
-_pending_
+Every claim below was re-derived at HEAD this round; nothing is carried on the strength of v10.
+
+| Check | Command / oracle | Result |
+|---|---|---|
+| Upstream bytes match dispatch | `shasum -a 256` over REQ/FSPEC/TSPEC/DECISIONS | All four match; only TSPEC differs from my v10 UPSTREAM-STATE |
+| Erratum extent | `git show 1f2a4fbf -- TSPEC` | +18/-1, confined to §0 changelog and §1.3; no table, seam list or oracle name touched |
+| PLAN bytes frozen | `git log -- PLAN` | Unchanged since `b902f40b` (my v10 REVIEWED-COMMIT) |
+| Residual size | `PROP-SWEEP-2(b)` run at HEAD | **34** paths, 14 / 4 / 16 — PLAN prints 28 with class 3 at 10 (**F-01**) |
+| Closable numerator | `git ls-files .claude/workflows/` | Exactly 14 tracked `.bak` blobs, all 14 in the residual — "closes 14" holds |
+| Class-2 set-equality | residual output | Exactly the four named artifacts; `.pdlc-sync-manifest.json` correctly excluded |
+| Class-3 membership predicate | residual output | All 16 under `docs/pdlc-advisory-wave-gate/**`, no `.bak` member — DoD leg survives the growth |
+| Class-2 provenance | `git log --diff-filter=A` per path, `git ls-tree 1efb9a3b` | All four added by `e3b9d5a3`; bundles also by ancestor `3991b4d5`; merge-base tree empty — PLAN's caveat still exact |
+| Dispatcher contract | shipped parser over PLAN | 11 tasks, 11 manifest rows, 7 waves — identical to v10 |
+| T21 still green | `documentOracles.test.js` T21 | Green at HEAD, so the anchored spelling in the wave-1 recap is live risk (**F-02**) |
+
+**Why F-01 is Medium and not High.** The falsifiability of the DoD does not depend on the integer.
+The round-9 split I approved in v10 put set-equality only on the class that is closed (class 2, four
+named paths, exactly reproduced today) and a membership predicate on the class designed to grow
+(class 3), so the day-scale drift 28→34 passes through the gate without false-greening or
+false-redding anything. What breaks is the reader's contract, and now upstream's: TSPEC defers to a
+figure that does not reproduce on the date it is stamped with. The fix is the one my v10 DEFERRED
+already described — state class 3 as `10 + one per cross-review file committed since {date}` rather
+than as a dated integer, and let the total follow — and it is cheap, local, and touches no task row.
+
+**Why F-02 is Medium and not High.** Four of the five sites carry the correct bare rule, and the two
+that instruct the implementer — A6-00's Edit 1 and the DoD checklist — are among them, each with the
+T21 rationale attached. The fifth site is narration inside the wave-1 gate paragraph. An implementer
+following the task row lands the right rule; only one reading the gate recap in isolation lands the
+wrong one. Real, cheap to fix, not a reason to hold the plan.
+
+**Mutation spot-check on the load-bearing oracle.** The claim A6-00 Edit 1 rests on is that the
+`.bak` class is closable. I checked the guard can still fail: all 14 blobs are present in today's
+residual output, so untracking them is observable as a 14-path reduction, and a no-op edit cannot
+false-green it. The complementary claim — that the other paths are *not* closable here — is likewise
+still true: 4 branch-introduced runtime artifacts plus 16 feature documents remain, and the document
+class provably grows with this very file once committed.
 
 ## Findings
 
