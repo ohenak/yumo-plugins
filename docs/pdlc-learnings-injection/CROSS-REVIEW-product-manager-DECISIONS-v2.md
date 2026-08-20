@@ -49,7 +49,22 @@ Every load-bearing new claim was re-run against HEAD, not read back out of the d
 
 ## Findings
 
+Both are new, both introduced by this round's edits, both in changed regions. Neither is High:
+neither narrows, reinterprets nor drops a REQ acceptance criterion, and neither changes what the
+feature does. They are traceability defects in citations a downstream author will follow.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **`DEC-LAYER-01` does not support the claim it is now cited for** (DEC-LI-08 "Constraints that forced the shape"; "Decisions deliberately NOT taken" threshold row). `DEC-LAYER-01` is titled "An FSPEC states the observable and names the artefact that will pin it; it does not carry the artefact", and its enumerated classes are all **FSPEC → TSPEC/PROPERTIES** hand-downs (tie-break algorithms, per-field reader indices, seam verb permitted-sets, fixture construction). It has nothing to say about **REQ** owning tunable numbers, which is a different boundary in the other direction. The v1 fix I suggested offered this swap, so the round replaced one unsupported citation with another rather than dropping the borrowed authority. The claim needs none: REQ `:223`'s defaults table *is* the product's declaration of the numbers, and DEC-LI-08 depends only on their existence. **Fix:** cite REQ §4.1 directly and drop the project-decision reference in both places. | REQ §4.1 |
+| F-02 | Medium | Cross-Feature | **The erratum is raised under an id that is already occupied at project level, and the occupant is a rule about erratum routing.** DEC-LI-07 says the divergence "is therefore raised as **DEC-ERR-01 against TSPEC**". `DEC-ERR-01` is a promoted project-level decision — "A collision whose upstream has already decided is absorbed, not routed" (`docs/_decisions/DECISIONS-review-severity-bars.md:88`), read by every author and reviewer role before authoring. A PLAN or PROPERTIES author who follows the reference lands on a rule that reads, in this exact situation, as an instruction *not* to route — the opposite of what the paragraph intends. (The document's substantive handling is correct: REQ v0.9 decided, this document **absorbed** the decision onto the settled form, and the TSPEC ask is that TSPEC absorb it too rather than a re-raise upstream. Only the label is wrong.) The obligations table gets this right — `D-O-9` is the tracked item, keyed to no colliding id — so the fix is local. **Fix:** drop the `DEC-ERR-01` label from DEC-LI-07 and refer to the erratum by its obligation (`D-O-9`) and its emitted item; if a feature-local erratum id is wanted, use a namespace that cannot collide with `docs/_decisions/` (e.g. `LI-ERR-01`). Cross-Feature because the collision hazard is generic: any feature minting `DEC-*` ids for local items will shadow promoted project decisions. | REQ G-1, AC-5.1a/b/c |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried from v1, still open and still not blocking)* DEC-LI-07 ships the feature **on** at upgrade with no opt-in step, which is exactly what REQ G-1 asks for. Nothing in the document or TSPEC hands `pdlc/OPERATIONS.md` the operator-facing note that a consumer repository will start seeing injected context after an engine upgrade. Is that PLAN's to own, or does it belong in the ship-side checklist? |
+| Q-02 | `D-O-6`'s call-count oracle asserts counts over the **injected Node-channel seams**. On the Claude Code channel the platform read cache (`RT_READ_CACHE_MAX_BYTES`, 2 MiB) sits underneath, so the *observable* per-dispatch read cost differs between channels while E-32's behavioural guarantee is identical. Is the operator report (`D-O-4` / `T-O-3`) expected to distinguish the two, or is the Node-channel count the number that moves the thresholds? |
+| Q-03 | DEC-LI-06's new review prompt is "corpus count passes ~30, or measured bytes per authoring dispatch pass 2 MiB". Both are good observable proxies. Neither has a mechanism that fires — is a periodic check of the corpus count something `D-O-4`'s report should carry, so the prompt arrives without anyone remembering to look? |
 
 ## Positive Observations
 
