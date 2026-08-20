@@ -56,15 +56,27 @@ No business rule cites a REQ id that has moved, been renumbered, or changed forc
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+Untouched. E-13's measured two-repository provenance, restored at v0.7 and confirmed at v7/v9, is unchanged in these bytes and its upstream basis (`REQ:74`, `RSN-UNLISTABLE` failing open) is unchanged at HEAD. The corpus-state edge cases (`RSN-EMPTY`, `RSN-UNLISTABLE`, `RSN-COUNT`, `RSN-NO-MATERIAL`) still match `REQ:332-362`'s catalogue membership, including the point that truncation is *not* a catalogue member.
+
+One structural note on the delta's own class of defect: a header row that enumerates rounds is an error surface that regenerates. It was wrong at v0.9, was asserted corrected while still wrong, and is accurate now only until the next round lands — this very review, v12, makes it stale again the moment it is committed. That is documentation hygiene, not behaviour, and I recorded it at v11 as a deferred item; I record it again below at Low because the erratum chose to re-enumerate rather than adopt a glob, so the failure mode is re-armed rather than retired.
 
 ## Acceptance Tests
 
-_pending_
+Untouched by the delta. Re-checked the two anchors this document type has previously got wrong:
+
+- The AC-6.2 traceability row still resolves to `§Acceptance Tests preamble` (`:748`/`:750`), the heading fixed at v11, and still names AT-31, AT-32. Both tests exist (`:899`, `:902`).
+- AT-32 retains the positive-presence conjunct added at v0.7, so its equality check cannot go vacuously green — the defect class recorded in project memory as the consolidation-agent vacuous-green lesson.
+- AT-20/AT-21/AT-22 still name the per-dispatch locus and still exercise AT-18's changing-corpus fixture, matching `REQ:336-345`.
+
+AT-22's subject/predicate slip (it describes the rule-input record where it means the reproduced selection) is carried forward unresolved from v10/v11. Wording only; the no-production-selector clause pins the intent unambiguously.
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Will the next non-frozen FSPEC edit convert the header `Cross-Reviews` row to a glob (`…-FSPEC-v*.md`)? Re-enumerating through v11 discharges the routed item but leaves the row structurally unable to stay accurate across rounds — it is stale again as of this review. No answer is required to approve. |
+
+No open question here gates the confirmation; the decision freeze is respected and neither item requires an upstream decision.
 
 ## Delta-Confirmation Findings
 
