@@ -559,10 +559,19 @@ export function parseHarvestDate(text)
  *  `maxBytes <= 0` short-circuits BEFORE the cut and returns
  *  `{material: "", bounded: false, bytes: 0, sections: []}` for every `text` — no cut occurs, so
  *  `bounded` is false, and the caller drops the document `RSN-NO-MATERIAL` (E-36, §D.5).
+ *  `material` is assembled by §D.3: each taken extent normalised (trailing blank lines dropped,
+ *  no trailing newline), joined in priority order with "\n\n", then cut once as a whole — so
+ *  `bytes` is the sum of the normalised section lengths plus 2 per join.
  *  @returns {{material: string, bounded: boolean, bytes: number,
- *             sections: string[]}} — `sections` are the CANONICAL BR-6 priority names actually
- *             taken (not the document's literal heading text), and are AT-11's
- *             section-set-equality operand. */
+ *             sections: string[]}} — `sections` are the CANONICAL BR-6 priority names whose
+ *             normalised text has at least one byte surviving in `material` (§D.3), not the
+ *             document's literal heading text. `sections` is a SUPPORTING assertion, NOT AT-11's
+ *             operand: AT-11 asserts section-set equality over the names appearing in the rendered
+ *             BLOCK material, which is the artifact the requirement is about (§T.5). Asserting over
+ *             this return alone could not falsify a renderer that takes a section and then drops it
+ *             from the emitted block — an oracle reading the producer's own report of what it
+ *             intended, which is DC-14's shape ("an oracle never sources its expected value from
+ *             the code under test"). */
 export function extractInjectableMaterial(text, maxBytes)
 
 /** BR-4's total order: `orderKey` descending (null last), then path byte-ascending. */
