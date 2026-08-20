@@ -464,20 +464,24 @@ yields nothing, so it is dropped before the bounds are applied, with `RSN-NO-MAT
 (BR-9). Otherwise it would take a `maxDocuments` slot while injecting zero bytes,
 indistinguishable in BR-8's rows from a real contribution.
 
-**The byte-accounting basis.** All three byte quantities measure the same bytes. A
-document's **contributed bytes** are every byte the block carries on its account: its
-identification line, its delimiters and source-path label (BR-7), and the section headings
-and bodies taken. `maxBytesPerDocument` bounds one document's contributed bytes,
-`maxTotalBytes` bounds their sum across selected documents, and BR-8's *bytes injected*
-records that same quantity per document with its per-dispatch total as the sum. The block's
-preamble belongs to no document and counts toward none of the three, so an expected byte
-count is computable from a fixture alone.
+**The byte-accounting basis.** All three byte quantities measure the same bytes: a
+document's **material** — the section headings and bodies taken from it. Framing carries no
+byte charge: the identification line, the document's delimiters and source-path label, and
+the block's preamble (BR-7) count toward none of the three quantities, so a document is never
+abridged to pay for the annotation that says it was abridged, and an expected byte count is
+computable from a fixture alone. `maxBytesPerDocument` bounds one document's material,
+`maxTotalBytes` bounds the sum of material across selected documents, and BR-8's *bytes
+injected* records that same quantity per document with its per-dispatch total as the sum
+(REQ AC-2.3, which bounds "the material taken").
 
 **How the per-document bound binds.** Sections are taken in priority order until the next
 one would exceed `learningsInjection.maxBytesPerDocument`; the remaining sections are
 omitted. If the **first** section alone exceeds the bound, it is taken up to the bound and
 cut. Either way the document's row carries the **bounded** flag (AC-2.3) and the block
-states that the document is abridged.
+states that the document is abridged. Where the bound is **zero**, no material is
+admissible from any document: each yields nothing, is dropped before the total bound with
+`RSN-NO-MATERIAL` (BR-9) and consumes no slot, and the run is the enabled, empty-selection
+run BR-14 describes (E-36, AT-30).
 
 **How the total bound binds.** Documents are accumulated in BR-4's order until the next
 document's contributed bytes would carry the running total past
