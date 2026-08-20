@@ -19,7 +19,7 @@ depends-on: []
 
 ## Overview
 
-**What this document is.** The falsifiable proof system for pdlc-learnings-injection: **68 properties**
+**What this document is.** The falsifiable proof system for pdlc-learnings-injection: **69 properties**
 over the region PLAN §Batches builds, each traced to a REQ acceptance criterion, an FSPEC business
 rule or acceptance test, and the PLAN task that reds and greens it. It restates no behaviour —
 behaviour lives in REQ v0.9 / FSPEC / TSPEC v0.6 and is referenced by id (`AC-`, `BR-`, `E-`, `AT-`,
@@ -854,32 +854,40 @@ apparatus block) and each carrying **no** AT id by design, so §T.5's counts are
 
 ### C.2 REQ acceptance criteria → properties
 
+**This matrix is bidirectional.** An AC may list a property only if that property's own trace line
+carries the AC id; a property whose trace names only `BR-`, `E-`, `C-` or `§` ids is covered by the
+BR/AT matrices, not padded into an AC row here. Five rows carrying such padding at v1 were struck in
+this revision (PROP-CORPUS-08 under AC-2.2/AC-2.5, PROP-BLOCK-03 under AC-3.1…AC-3.3, PROP-ORDER-05
+under AC-2.1/AC-2.3/AC-2.4, PROP-RECORD-11 under AC-4.1/AC-4.2, PROP-FAILOPEN-04 under
+AC-4.4/AC-5.1a/b/c); **no AC lost its last property** in the process, and PROP-ORDER-05 gained the
+genuine row it was missing under AC-6.1.
+
 | AC | Properties |
 |---|---|
 | AC-1.1 | PROP-DISPATCH-01 |
 | AC-1.2 | PROP-DISPATCH-01, PROP-DISPATCH-02, PROP-DISPATCH-03 |
 | AC-1.3 | PROP-CORPUS-05 |
 | AC-1.4 | PROP-BLOCK-01, PROP-BOUND-07, PROP-DISPATCH-05 |
-| AC-2.1 | PROP-BOUND-01, PROP-BOUND-02, PROP-ORDER-05 |
-| AC-2.2 | PROP-CORPUS-08, PROP-ORDER-01, PROP-ORDER-03 |
-| AC-2.3 | PROP-BLOCK-02, PROP-BOUND-03, PROP-BOUND-05, PROP-BOUND-07, PROP-ORDER-05 |
-| AC-2.4 | PROP-BOUND-04, PROP-BOUND-07, PROP-ORDER-05 |
-| AC-2.5 | PROP-CORPUS-08, PROP-ORDER-03, PROP-ORDER-05 |
+| AC-2.1 | PROP-BOUND-01, PROP-BOUND-02 |
+| AC-2.2 | PROP-ORDER-01, PROP-ORDER-03 |
+| AC-2.3 | PROP-BLOCK-02, PROP-BOUND-03, PROP-BOUND-05, PROP-BOUND-07, PROP-BOUND-08 |
+| AC-2.4 | PROP-BOUND-04, PROP-BOUND-07 |
+| AC-2.5 | PROP-ORDER-03, PROP-ORDER-05 |
 | AC-2.6 | PROP-CORPUS-03, PROP-CORPUS-04 |
-| AC-3.1 | PROP-BLOCK-03, PROP-RECORD-01, PROP-RECORD-02 |
-| AC-3.2 | PROP-BLOCK-03, PROP-RECORD-03, PROP-RECORD-04, PROP-RECORD-05, PROP-RECORD-08, PROP-RECORD-09 |
-| AC-3.3 | PROP-BLOCK-03, PROP-CONFIG-08, PROP-RECORD-06, PROP-RECORD-07, PROP-RECORD-09, PROP-RECORD-10 |
+| AC-3.1 | PROP-RECORD-01, PROP-RECORD-02 |
+| AC-3.2 | PROP-RECORD-03, PROP-RECORD-04, PROP-RECORD-05, PROP-RECORD-08, PROP-RECORD-09 |
+| AC-3.3 | PROP-CONFIG-08, PROP-RECORD-06, PROP-RECORD-07, PROP-RECORD-09, PROP-RECORD-10 |
 | AC-3.4 | PROP-BLOCK-03, PROP-RECORD-11 |
-| AC-4.1 | PROP-DISPATCH-06, PROP-RECORD-11 |
-| AC-4.2 | PROP-CORPUS-06, PROP-FAILOPEN-02, PROP-RECORD-11 |
-| AC-4.3 | PROP-DISPATCH-03, PROP-DISPATCH-07, PROP-ISOLATE-01 |
-| AC-4.4 | PROP-CONFIG-04, PROP-DISPATCH-06, PROP-FAILOPEN-04 |
-| AC-5.1a | PROP-CONFIG-01, PROP-CONFIG-04, PROP-CONFIG-05, PROP-FAILOPEN-04 |
-| AC-5.1b | PROP-CONFIG-01, PROP-CONFIG-02, PROP-CONFIG-06, PROP-FAILOPEN-04 |
-| AC-5.1c | PROP-CONFIG-03, PROP-CONFIG-06, PROP-FAILOPEN-04 |
+| AC-4.1 | PROP-DISPATCH-06 |
+| AC-4.2 | PROP-CORPUS-06, PROP-FAILOPEN-02 |
+| AC-4.3 | PROP-DISPATCH-03, PROP-DISPATCH-07, PROP-DISPATCH-08, PROP-ISOLATE-01 |
+| AC-4.4 | PROP-CONFIG-04, PROP-DISPATCH-06 |
+| AC-5.1a | PROP-CONFIG-01, PROP-CONFIG-04, PROP-CONFIG-05 |
+| AC-5.1b | PROP-CONFIG-01, PROP-CONFIG-02, PROP-CONFIG-06 |
+| AC-5.1c | PROP-CONFIG-03, PROP-CONFIG-06 |
 | AC-5.2 | PROP-CORPUS-02, PROP-FOOTPRINT-01, PROP-FOOTPRINT-02, PROP-FOOTPRINT-03, PROP-FOOTPRINT-04 |
 | AC-5.3 | PROP-ISOLATE-02 |
-| AC-6.1 | PROP-META-05 (suite-map closure), PROP-META-01 (no live-run comparison), and every L1/L2 row above — AC-6.1 is a statement *about* the suite, discharged by the partition rather than by a behaviour |
+| AC-6.1 | **clause 1 (no live model calls):** PROP-META-06 — every enumerated `learnings*.test.js` suite shown by static parse to drive a scripted double, with no live transport symbol, asserted as set equality over the suite files. **clause 2 (determinism asserted by comparing two compositions):** PROP-ORDER-05, two compositions in two separate process invocations. PROP-META-05 supports both by keeping the suite set closed; the partition alone is **not** the discharge |
 | AC-6.2 | PROP-CONFIG-05, PROP-META-04 |
 
 
