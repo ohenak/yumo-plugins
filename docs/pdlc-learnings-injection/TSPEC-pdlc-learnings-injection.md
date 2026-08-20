@@ -632,24 +632,28 @@ learningsInjection: {
 }
 ```
 
-Four closure claims, one test each:
+Closure claims, one test each. BR-10's single run-level closure is **split in two**, one per locus,
+as REQ AC-3.3 and FSPEC BR-10 require ("two completeness tests assert set equality, one per
+locus"); a single containment-shaped test over one merged record could not red when a per-dispatch
+member was deleted, which is exactly the deleted-case-must-red property the P phase owes:
 
 | Enumeration | Members | Test |
 |---|---|---|
 | BR-8 row fields | `sourcePath`, `position`, `bytesInjected`, `bounded` | set equality over `Object.keys(row)` |
 | BR-8 per-dispatch scalar | `totalBytesInjected` | present, equals `sum(rows[].bytesInjected)` |
-| BR-10 members | `orderKeys`, `thresholds` | set equality over `Object.keys(ruleInputs)` |
-| BR-9 catalogues | D.1's three arrays | one set-equality test each |
-| §A.5 per-dispatch observation | `corpusOutcome`, `orderKeys`, `corpusDiverged` | `DIVERGENT-CORPUS` fixture: run-level scalars equal dispatch 5's, each row carries its own, `corpusDiverged` true on exactly dispatches 3 and 5 |
+| **BR-10 locus 1 — per authoring dispatch** | `orderKeys`, and per entry `path`, `orderKey` | set equality over the dispatch record's rule-input field set **and** over `Object.keys(dispatches[i].orderKeys[j])` — asserted on `dispatches[i]`, never on the mirror |
+| **BR-10 locus 2 — once per run** | `maxDocuments`, `maxBytesPerDocument`, `maxTotalBytes` | set equality over `Object.keys(ruleInputs.thresholds)` |
+| BR-9 catalogues | D.1's three arrays | one set-equality test each, over the **four** field domains of §D.1 |
+| §A.5 per-dispatch observation | `dispatches[i].corpusOutcome`, `dispatches[i].orderKeys`, `dispatches[i].corpusDiverged` | `DIVERGENT-CORPUS` fixture: each row carries **its own** observation (dispatch 5 `RSN-UNLISTABLE`, dispatches 3–4 the grown key set), `corpusDiverged` true on exactly dispatches 3 and 5; **nothing is asserted about `runMirror`** |
 
 **Notices are not a member of this record.** `NTC-MALFORMED` and `NTC-KEYTYPE` are pushed onto
 `buildFinalReport`'s existing run-level notice channel (§I.2), never onto `learningsInjection`.
-If they lived here, AC-5.1b's state (section present but not an object) could not be satisfied:
-that state must produce AC-5.1a's behaviour — `learningsInjection` **absent** — *and* a report
-carrying `NTC-MALFORMED`, which is impossible if the notice's only home is the absent key. With
-the notice channel outside, the three config states are byte-distinguishable in the report:
-AC-5.1a (disabled/absent ⇒ no key, no notice), AC-5.1b (malformed ⇒ no key, `NTC-MALFORMED`),
-AC-5.1c (wrong-typed key ⇒ key present with empty-or-normal rows, `NTC-KEYTYPE`).
+If they lived here, an explicitly disabled run (AC-5.1a: `learningsInjection` **absent**) would
+have nowhere to report a configuration defect at all, and the notice catalogue's closure would be
+conditional on the gate. With the notice channel outside, the config states stay
+byte-distinguishable in the report: AC-5.1a (`enabled:false` ⇒ no key, no notice), AC-5.1b
+(malformed section ⇒ key **present**, the run enabled on §4.1's defaults, plus `NTC-MALFORMED`),
+AC-5.1c (wrong-typed declared key ⇒ key present with empty-or-normal rows, `NTC-KEYTYPE`).
 
 `orderKey: null` is BR-10's "explicit marker that it was absent or unparseable" — a JSON `null`
 carried in a **present** key, never an omitted key, so the two states are distinguishable in a
