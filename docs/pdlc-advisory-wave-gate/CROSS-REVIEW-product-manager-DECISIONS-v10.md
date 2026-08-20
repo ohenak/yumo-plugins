@@ -105,6 +105,31 @@ to DECISIONS' compression.
 
 ## Consequences
 
+- **No document edit is owed by DECISIONS for this cascade.** Its bytes stay at v1.8. The single
+  finding is Low and lands on TSPEC's changelog/version discipline, not here; addressing it does not
+  require reopening any decision entry.
+- **The v9 approval anchor should be re-stamped, not inherited.** My v9 carried
+  `UPSTREAM-STATE: TSPEC sha256:4a092e85…`, which no longer exists. This round's anchors record
+  `sha256:1531143c…`, so the next reader can tell that the TSPEC edge was re-measured rather than
+  assumed — that is the whole product of an upstream-cascade round.
+- **Product fidelity is unchanged.** Nothing in the delta touches the four decisions' product
+  content: the no-op-by-default guarantee (`ADVISORY_DEFAULTS.enabled` stays `false`), the
+  `waveBudgetPerRun: 0`-vs-`enabled: false` observable distinction (REQ C-2, FSPEC E-33), the
+  operator-facing example-config obligation, or the E-6 repair/O-8 ordering. No P0/P1 requirement
+  changes its mapping.
+- **The routing target is now shared, which is a mild concentration risk worth naming for Phase P.**
+  Both DECISIONS (`:373-375`) and TSPEC §1.3 now point at *PLAN's Overview HEAD-drift note* as the
+  owner of measured, short-shelf-life figures — and DECISIONS additionally points at
+  `SIZING-…md`, itself cited from that same note. That is one owner with three inbound pointers,
+  which is the correct shape (one measurer, many pointers) and the shape my v9 F-01 asked for. It
+  only stays correct if PLAN's note actually absorbs TSPEC's 28/3-class figures rather than leaving
+  a second copy in TSPEC; that is PLAN's confirmation to make, not this document's, and I raise it
+  as Q-01 rather than as a finding against DECISIONS.
+- **Round economics.** This is the tenth DECISIONS round and the first in which the answer was
+  reached without asking the author for an edit. The relocation at v1.8 is what made a cascade
+  confirmation cheap: with no measured totals in the document, the only surface exposed to an
+  upstream re-measurement was four role-level citations, all of which held.
+
 ## Findings
 
 ## Questions
