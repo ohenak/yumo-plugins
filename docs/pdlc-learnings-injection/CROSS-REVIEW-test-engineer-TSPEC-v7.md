@@ -40,3 +40,43 @@ sections I own.
   E-34 wrong-typed ⇒ enabled + `NTC-KEYTYPE` (`FSPEC:716-722`). Owning ATs match FSPEC's column.
 - No consumer `learningsInjection` section exists at HEAD (`.claude/` carries only
   `pdlc.config.example.json`), so AC-1.1's bare-repository premise the delta now leans on is true.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **§D.1's fourth field domain and §A.5's "no fixture may assert on the mirror" cannot both be followed literally.** §D.1 (`:588-594`) requires "one test per domain" over four domains, the fourth being `runMirror.corpusOutcome`, qualified as "a membership test only". §A.5 (`:340-345`) says "no fixture in §T.6 may assert on it — an implementation that dropped the mirror entirely would still conform", and FSPEC BR-9 (`FSPEC:537-538`) says of the run-level mirror "nothing asserts on it (AC-3.2)". A membership assertion is still an assertion, and against an implementation that dropped the mirror it reads `undefined` and reds. This is not blocking — this TSPEC decides to carry the mirror, so the test is green against the design it governs, and both sides state the same intent (the mirror is not the oracle) — but a PLAN author reads two instructions and needs one. Cheapest resolution: state in §D.1 that the mirror's domain test is guarded on the mirror being carried, or drop the fourth domain and let the three catalogue closures plus the per-dispatch domain test stand. | §D.1 `:588-594` vs §A.5 `:340-345`, `FSPEC:537-538` |
+| F-02 | Medium | Local | **`present` is now justified by a sentence its own next clause refutes.** §I.3 (`:441-448`) says the injector is gated on `config.enabled` **alone** — correct under REQ v0.9 AC-5.1a — and then keeps `present` because "AC-5.1a's report distinction … must still be expressible: `buildFinalReport` receives `undefined` when, and only when, `config.enabled` is `false`". If key presence is decided by `enabled` alone, `present` is not what expresses the distinction, and no test in §T.5/§T.6 asserts on it beyond the shape assertion at `:966-968`. A field carried in a returned shape with no consumer and no behavioural oracle is the dead-config shape DC-07 warns about. Either name a real consumer (the `NTC-MALFORMED`-vs-absent-section reporting split reads like the intended one, since §I.3's rows 1 and 3 differ only in whether the section was present) or say plainly that `present` survives as parser-diagnostic state, tested only for shape. | §I.3 `:441-448`, §T.5 `:966-968` |
+| F-03 | Low | Local | **No closure test remains over `ruleInputs`' own key set.** v6's row asserted set equality over `Object.keys(ruleInputs)`; the split correctly replaced it with the two per-locus tests, but nothing now reds if a future rule input is added as a third `ruleInputs` sibling of `thresholds` rather than inside it. Upstream requires two tests and gets two, so this is additive; §D.2's `runMirror` sibling is the precedent showing the record level is unclosed. | §T.2 `:645-652`, §D.2 `:598-612` |
+
+DEFERRED: §T.2's BR-10 locus-1 row folds two distinct set equalities (the dispatch record's rule-input field set, and each `orderKeys[j]` entry's keys) into one cell — worth two rows when PLAN transcribes it.
+DEFERRED: §D.1's "four field domains" and "D.1's three catalogues" sit one line apart in §T.2's table; a half-sentence saying why the counts differ would save the PLAN author a re-derivation.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does the `DIVERGENT-CORPUS` fixture's dispatch 5 still produce BR-8 rows "present and empty" *and* a `corpusDiverged: true`, i.e. do both the corpus-outcome branch and the divergence comparison run on a dispatch whose listing failed? §T.6 asserts both; §A.5's rule defines `corpusDiverged` over `{corpusOutcome, orderKeys}`, so it should hold, but the fixture is the one place where a failed listing and a divergence flag co-occur and it is worth one explicit sentence for the implementer. |
+
+## Positive Observations
+
+- **The revision moved oracle loci without moving the mechanism, exactly as v6 predicted it could.** `dispatches[i].{corpusOutcome, orderKeys, corpusDiverged}` were already designed; this round re-pointed the assertions onto them and deleted the run-level oracles. That is the cheap shape of a spec correction, and it kept `DIVERGENT-CORPUS` — the fixture doing the real falsifying work — intact.
+- **The completeness split is stated as a red-test property, not as a bookkeeping change.** "A containment-shaped test over one merged record would not red when a per-dispatch member is deleted" (`:641-644`) is the deleted-case-must-red obligation named in the document that PLAN derives from, which is where it is cheapest to honour.
+- **Closed errata are closed with their resolutions transcribed and their rejected alternatives retained.** ERR-4, ERR-6 and OQ.2 each carry what REQ v0.9 decided *and* what this TSPEC had provisionally carried, so the DECISIONS reader can see the shape of the correction rather than only its outcome.
+- **`corpusDiverged`'s justification was rewritten on its own terms.** It no longer defends last-write-wins; it defends `dispatches.every(r => r.corpusDiverged === false)` as a one-line stable-corpus oracle with a defined value on the first dispatch. That is a falsifiable positive assertion, not an absence-shaped one.
+- **The `main`/`mainDev` correction is the kind of small factual fix that stops a PLAN task from being written against a symbol that does not exist.** Verified at HEAD.
+
+## Recommendation
+
+**Approved with minor changes.** Every High finding I raised in v6 is resolved, and resolved at the
+locus upstream settled on rather than by re-wording around it. Nothing in the delta breaks a claim
+that held before, and no load-bearing claim contradicts the repository or REQ/FSPEC v0.9 at HEAD —
+I re-checked the five seam sites, the export name, the test-import pattern, the config-state rows
+against FSPEC E-21…E-34, and the bare-repository premise in code rather than in prose. F-01 and
+F-02 are wording repairs a PLAN author can absorb; neither changes a fixture, a suite assignment or
+the 35-AT closure.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
