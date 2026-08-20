@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.1 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.2 | 2026-08-20 |
 
 ## Overview
 
@@ -33,7 +33,7 @@ Behaviour lives in REQ v0.9 / FSPEC v0.10 / TSPEC v0.6 and is referenced by id (
 `AT-`, `§`), never copied. What a row states that no upstream document does is *process*: when the
 work happens, who owns which file, which test comes first, and what stops.
 
-The work decomposes into **22 tasks across 14 batches**. The shape is dominated by one fact:
+The work decomposes into **23 tasks across 14 batches**. The shape is dominated by one fact:
 almost every production change lands in a single physical file, `pdlc/workflows/orchestrate-dev.js`
 (666 KB, 15,311 lines at HEAD), which by batch-safety rule 2 makes the **source lane fully
 serial** — one source-writing task per batch, batches 7–14 — while the test, fixture and script
@@ -46,15 +46,16 @@ Every path this PLAN names was checked on `feat-pdlc-learnings-injection`:
 
 | Path | State at HEAD | Owner |
 |---|---|---|
-| `pdlc/workflows/orchestrate-dev.js` | exists — `MERGE_CONFIG_PATH` (`:48`), `parseAdvisoryConfig` (`:1964`), `reviewLoop` (`:7266`), `dispatchAndVerify` (`:8862`), `main` default export (`:12022`), `buildFinalReport` (`:15240`) | modified |
-| `pdlc/workflows/consolidate-learnings.js` | exists — `LS_FILES_ARGV` module-private (`:1338`), `enumerateCorpus` exported (`:1349`) | **read-only**, never modified |
-| `pdlc/workflows/__tests__/helpers/seams.js` | exists — `fakeFs` (`:245`), `fakeGit` (`:413`) | read-only |
-| `pdlc/workflows/__tests__/helpers/consolidationDoubles.js` | exists — re-exports `mergeDoubles.js`'s `fakeGit` (`:35`) | read-only |
+| `pdlc/workflows/orchestrate-dev.js` | exists — `MERGE_CONFIG_PATH`, `parseAdvisoryConfig`, `reviewLoop`, `dispatchAndVerify`, `main` default export, `buildFinalReport` all resolve by symbol name | modified |
+| `pdlc/workflows/consolidate-learnings.js` | exists — `LS_FILES_ARGV` module-private, `enumerateCorpus` exported (`export async function`) | **read-only**, never modified |
+| `pdlc/workflows/__tests__/helpers/seams.js` | exists — exports `fakeFs`, `fakeGit` | read-only |
+| `pdlc/workflows/__tests__/helpers/consolidationDoubles.js` | exists — re-exports `mergeDoubles.js`'s `fakeGit` | read-only |
 | `pdlc/workflows/__tests__/helpers/learningsFixtures.js` | **new** | LI-02 |
-| the seven suites of TSPEC §T.5, plus `learningsSuiteMap.test.js` and `learningsCaptureScript.test.js` | **all new** — no file of any of these names exists under `pdlc/workflows/__tests__/` | LI-03, LI-07…LI-14 |
+| the seven suites of TSPEC §T.5, plus `learningsSuiteMap.test.js`, `learningsCaptureScript.test.js`, `learningsBaselineGuard.test.js`, `learningsPremises.test.js` and `learningsArmInventory.test.js` | **all new** — no file of any of these names exists under `pdlc/workflows/__tests__/`; a case-insensitive `learnings` listing of that directory is empty at HEAD | LI-01, LI-03, LI-06, LI-07…LI-14, LI-23 |
 | `pdlc/workflows/__tests__/fixtures/learnings-baseline/` | **new** (the `fixtures/` directory exists; this subtree does not) | LI-06 |
 | `scripts/capture-learnings-baseline.mjs` | **new, and so is its directory** — the repository root has no `scripts/` at HEAD. TSPEC §T.3 pins the path; this PLAN schedules its creation rather than relocating it | LI-05 |
 | `.gitignore` | exists (599 B); `git check-ignore -v .baseline-worktree` exits non-zero, which is TSPEC §T.3's measured finding and LI-03's red | LI-04 |
+| `pdlc/workflows/package.json` | exists; `c8.include` is exactly `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs` | **no task** — the capture script's coverage disposition is an explicit exemption, §Verification DoD 11 |
 | `pdlc/workflows/dist/pdlc-cli.mjs` | exists (671 KB), generated | **no task** — see below |
 
 **`dist/` has no owning task, and that is deliberate.** The consuming arrangement runs
