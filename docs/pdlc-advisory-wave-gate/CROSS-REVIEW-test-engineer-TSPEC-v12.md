@@ -137,7 +137,44 @@ disturbed and the erratum does not earn a follow-up revision round on its own ac
 
 ## Obligations
 
+| ID | Item |
+|----|------|
+| Q-01 | None blocking. F-01's version bump is the only item worth folding into whatever edit lands next on this document; F-02 and F-03 can ride the same edit or be left as recorded observations, since no oracle and no gate reads this paragraph. |
+
+Delta-confirmation tags (also emitted as `FINDING:` lines with the verdict trailer): F-01 is
+`{delta, local}` — the erratum edit is what changed the bytes without changing the version. F-02 and
+F-03 are `{delta, local}` — both sit inside the text the erratum introduced.
+
 ## Positive Observations
 
+- The paragraph does the thing that makes a routed item genuinely closable: it names a **specific
+  oracle case** (`PROP-SWEEP-2(b)`, by file and by verbatim test title) as the instrument that
+  measures the residue, so the size claim is falsifiable by re-running one test rather than by
+  agreeing with prose. I could re-derive every figure from that citation alone.
+- The three-class partition is exactly right at HEAD — no residual path escapes it, and no empty
+  fourth class is invented. The class boundaries are also the *ownership* boundaries, which is what
+  makes the routing meaningful rather than decorative.
+- It resists the temptation to re-litigate. The disposition stays with PLAN's Overview HEAD-drift
+  note and A6-00's Edit 1, and the paragraph says so explicitly, so there is now exactly one owner of
+  the figures instead of two competing ones.
+- It states its own reason for existing (*"so that no reader mistakes the `.bak` blobs for the whole
+  residue"*), which is the right altitude for a TSPEC: size and route, do not decide.
+- The growth mechanism for class 3 is disclosed rather than hidden, so a future reader who measures
+  a larger number will read it as expected behaviour, not as a regression. F-02 and F-03 are
+  refinements of that disclosure, not objections to it.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+The delta resolves the routed item — the residue is now sized with a measured, dated, oracle-backed
+figure, partitioned into three classes, and routed to a named owner — and it breaks nothing that was
+previously approved. Upstream REQ v1.9 and FSPEC v1.4 are unchanged at HEAD and the document remains
+a faithful compression of both. The three Low findings are refinements of the new paragraph's own
+wording; none gates.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
 
