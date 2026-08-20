@@ -919,8 +919,10 @@ the `learningsInjection` key in the finished report — and AT-32 requires the c
 AT-31's byte-for-byte *and* the report to carry `NTC-MALFORMED` on the run-level notice channel.
 An L1 unit test over `parseLearningsConfig` can falsify neither clause: it sees the parse result,
 never the report key set and never a composed prompt. The suite therefore drives `main()` over the
-full seam set with a scripted `_agent`, on the `advisoryDisabled.test.js` pattern (that file's
-default export runs the pipeline the same way, `pdlc/workflows/__tests__/advisoryDisabled.test.js`)
+full seam set with a scripted `_agent`, on the `advisoryDisabled.test.js` pattern (that file
+imports `orchestrate-dev.js`'s default export as `mainDev` and calls it directly —
+`import mainDev, * as dev from "../orchestrate-dev.js"`,
+`pdlc/workflows/__tests__/advisoryDisabled.test.js`)
 — the file keeps its config-focused name because its subject is the configuration states, but its
 **instrument** is a whole run. `parseLearningsConfig`'s own pure-unit assertions (shape of
 `{present, config, sectionMalformed, invalidKeys}`) live in the same file as supporting tests that
