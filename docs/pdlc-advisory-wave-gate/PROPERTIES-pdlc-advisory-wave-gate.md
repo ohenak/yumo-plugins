@@ -421,11 +421,15 @@ properties of their own by construction: each turns the preceding RED batch's pr
 **File existence, verified at HEAD.** The ten edited suites all exist
 (`advisoryEnvelope`, `advisoryConfig`, `advisoryDriver`, `advisoryRecord`, `advisoryHarvest`,
 `consolidationProperties`, `advisoryDisabled`, `advisoryQueueSeams`, `advisoryEscalationLog`,
-`waveExecution`), as does `helpers/advisoryDoubles.js`. The two new files —
-`pdlc/workflows/__tests__/advisoryWaveGate.test.js` and
-`pdlc/engine/__tests__/advisory-config-example.test.js` — are both absent at HEAD and both are
-explicitly planned as new by A6-00 and A6-04. No property names a file that neither exists nor is
-planned.
+`waveExecution`), as does `helpers/advisoryDoubles.js`. The two files this document and PLAN call
+**new** — `pdlc/workflows/__tests__/advisoryWaveGate.test.js` (A6-00) and
+`pdlc/engine/__tests__/advisory-config-example.test.js` (A6-04) — **also exist at HEAD**, landed
+early by commit `e3b9d5a3`. Following TSPEC §5.1's *Status column caveat*, `new` here denotes each
+file's required end state, not work outstanding: both are on disk, the latter red because
+`.claude/pdlc.config.example.json` carries no `advisory` section at HEAD. The disposition of the
+early-landed edits — revert them, or re-derive PLAN's A6 batches around them — is PLAN's and Phase
+I's call (TSPEC §1.3), not this document's. The invariant this paragraph exists to state is
+unaffected: no property names a file that neither exists nor is planned.
 
 
 ## Gaps, Non-Properties and Routed Findings
