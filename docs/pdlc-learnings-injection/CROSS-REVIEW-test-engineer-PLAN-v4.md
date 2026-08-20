@@ -124,6 +124,62 @@ ledger reaches empty. The two statements agree.
 
 ## Verification
 
+**The batch-6 gate row and the §T.5 green column now say what the batch ladder says (F-03 closed).**
+Both changed in the same round and to the same wording. The gate row reads
+"`learningsSuiteMap.test.js` statically parsing the `learnings*.test.js` directory, whose six
+AT-bearing suites all exist at the end of batch 5 and whose other six matching files register
+`LI-T-` titles only, so the closure is already equal to six at authoring", and §T.5's green column
+reads "static parse of the twelve matching `learnings*.test.js` files, six of them AT-bearing, no
+symbol under test". Three statements of the same fact — ladder, gate row, §T.5 — now agree, and the
+one a dispatcher reads is no longer the narrow one. The green-terminal row's other conjunct ("every
+pre-existing test's status is unchanged from the measured baseline") survived the edit intact.
+
+**The naming rule closes the gap the closure opened (F-02 closed), and it closes it at the right
+altitude.** Stating it once as a universal rule in §Test-name namespacing is better than enumerating
+two more rows' test names, because it also covers a *seventh* suite nobody has thought of yet. The
+paragraph does the two things that make it enforceable: it names the mechanism that enforces it
+(`LI-T-SUITEMAP`'s equality at six) and it names the latency (batches 1 and 4 are green-terminal, so
+a slip surfaces at batch 6 "in a message pointing at the suite map rather than at the file that
+caused it"). That last clause is the operational note an implementer debugging the red will need.
+
+One residue: the older sentence two paragraphs up still enumerates the TSPEC-local names as
+"`LI-T-PIN-1`, `LI-T-RETRY-1…3`, `LI-T-IGNORE`, `LI-T-WORKTREE`, `LI-T-SUITEMAP`" and does not
+include `LI-T-ARMS-1…3`, which LI-23's row names and DoD 3 relies on. The new paragraph's universal
+quantifier makes the list illustrative rather than a catalogue, so nothing is unenforced — but the
+list now sits three lines above a rule whose whole point is that the `LI-T-`/`LI-AT-` partition is
+checked by set equality, and a reader may take it for the enumeration. Filed as F-03, Low.
+
+**LI-10's new clause is the positive half I asked for, and it is falsifiable as written.** "`
+dispatches[i].corpusOutcome === null` asserted on dispatches 1, 2 and 4" is an exact value on named
+rows of a named fixture — not "healthy dispatches record no outcome", which `undefined` would
+satisfy. The row states the mutant it kills ("an implementation recording `undefined`, `""` or
+omitting the key entirely on healthy dispatches is green everywhere"), which is the right form: the
+clause exists because a specific wrong implementation would otherwise pass. Paired with LI-23's
+non-`null`-scoped set equality, the `corpusOutcome` domain now has both halves — the catalogue
+equality over observed non-`null` values, and the exact healthy value on the majority path.
+
+**P-A-3's universe is now the twelve suites (F-04 closed), and the ledger's arithmetic is unchanged
+by the correction.** The count moved from fourteen manifest rows to twelve ledger-eligible suites;
+the batch-13 row still shrinks to empty over the same set it always did, because the two rows
+removed from the count — `__tests__/helpers/learningsFixtures.js` and
+`__tests__/fixtures/learnings-baseline/` — never appeared in a ledger row. This was a wording fix
+with no gate consequence, and it did not acquire one.
+
+**DoD 13 is a record obligation, not a test, and the PLAN says so.** "Neither record is a test — the
+four absence measurements at HEAD stop being checkable after batch 4 by construction (that is
+exactly why they left the standing suite, PM F-07)". I want to be explicit that I accept this under
+my lens: the four absence claims are falsified on schedule by this PLAN's own tasks, so no standing
+oracle *can* hold them, and a DoD clause requiring the note is the strongest available mechanism.
+The positive standing oracle over the same ground still exists where it can — `LI-T-IGNORE`
+conjunct (1) after LI-04 — so DoD 13 is covering only the genuinely unassertable residue.
+
+**Nothing in the coverage material, the porcelain instrument, or the halt conditions changed.** My
+v2/v3 measurements stand: 98 suites, 3828 passed, `orchestrate-dev.js` at 88.14 % branch,
+`--per-file --branches 85` exiting 0, and `consumerCleanup.test.js:149-153` running
+`git status --porcelain` with no `-uno`. H-1 is untouched and still names "a fifth `dispatchKind:
+"authoring"` site" as its halt trigger — which is precisely the claim F-01 is about, since after the
+re-key it is the *keyed set* that decides whether a fifth site is seen.
+
 ## Findings
 
 ## Questions
