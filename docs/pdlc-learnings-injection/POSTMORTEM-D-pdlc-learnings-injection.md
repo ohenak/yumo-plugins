@@ -49,3 +49,46 @@ Grammar conformance across this branch is **decaying, not stable**. Line-leading
 
 The last conforming file on either channel is `CROSS-REVIEW-test-engineer-FSPEC-v8.md`. Four
 approving rounds since then carried zero lines and were ungated purely because they approved.
+
+## Reviewers
+
+| Channel | Verdict | Self-declared tags | Parseable `FINDING:` lines | Gate contribution |
+|---|---|---|---|---|
+| se-review (`CROSS-REVIEW-software-engineer-FSPEC-v9.md`) | Needs revision — `{"high":1,"medium":0,"low":2}` | F-01 `inherited` `nonlocal` High; F-02, F-03 `inherited` `nonlocal` Low | **0** | Synthetic `High \| delta \| nonlocal \| (untagged confirmation)` |
+| te-review (`CROSS-REVIEW-test-engineer-FSPEC-v9.md`) | Needs revision — `{"high":2,"medium":0,"low":1}` | F-01, F-02 High, stated in prose as **inherited** and **nonlocal**; F-03 Low | **0** | Synthetic `High \| delta \| nonlocal \| (untagged confirmation)` |
+
+Both reviewers wrote complete, tagged findings — as a markdown findings table whose `Scope` column
+reads `Local`, with the real provenance/locality tags rendered as inline code *inside* the
+finding-text cell (se-review: `` `inherited` `nonlocal` — BR-9, BR-10 and AT-20/21/22 still specify a
+run-level locus… ``; te-review: a prose paragraph under the table, "Both High findings are
+**inherited** and **nonlocal**"). That is semantically complete and mechanically invisible:
+`parseConfirmationFindings` scans for line-leading `FINDING:` and splits on the first four pipes; it
+does not read table cells, and neither reviewer's `Scope` column value (`Local`, `Process`) is even
+one of the two axes the grammar wants.
+
+## Pattern of Disagreement
+
+**None on substance, on either axis.** Both confirmers independently reached the same disposition and
+the same two defects, from opposite lenses:
+
+| Question | se-review | te-review | Agreement |
+|---|---|---|---|
+| Did the routed ERR-4 item land? | Yes — TSPEC-scoped, FSPEC needed no behavioural change; verified Step 0(2), D-1, BR-14 against REQ v0.9 AC-5.1a | Yes — same, plus `grep`-verified that `§I.2/§I.4/§OQ.2` do not exist in this FSPEC and that `parseAdvisoryConfig`/`parseMergeConfig`/`parseImplementationConfig` all exist in `orchestrate-dev.js` | Identical |
+| Did the delta break anything approved? | No — delta confined to header rows and the erratum note | No — same | Identical |
+| BR-9 / corpus-level outcome locus | F-01 (High): "recorded once per run" contradicts REQ AC-3.2's per-authoring-dispatch locus and its "additive, is not the oracle" mirror | F-01 (High): same, plus AT-20 satisfiable by a single run-level field | Same defect, same severity |
+| BR-10 / rule-input record | F-01 (folded): one run-level record with one completeness test vs REQ AC-3.3's two loci and two completeness tests | F-02 (High): same, and names AT-22 as a **false green** against a report that cannot reproduce a second dispatch's selection | Same defect, same severity |
+| Header Cross-Reviews row three rounds stale | F-02 (Low) | F-03 (Low) | Identical |
+| Provenance / locality of the Highs | `inherited`, `nonlocal` — "I missed it in earlier rounds rather than the ground moving underneath" | `inherited`, `nonlocal` — drift dates to REQ v0.7 (`c1180acb`) and v0.8 (`386e4f0c`) | Identical, with independent dating |
+
+There is no reviewer-vs-reviewer disagreement to adjudicate. There are two other disagreements, and
+both are with the machinery:
+
+1. **Reviewer vs parser.** Both reviewers declared tags; neither declared them where the parser
+   reads. The fail-closed rule then overwrote both declarations with their opposite (`inherited` →
+   `delta`).
+2. **Reviewer vs gate semantics.** te-review states "they are still gating: the rigour bar is any
+   open High, old or new, anywhere in the document." The engine disagrees: `erratumGateDecision`
+   filters `highDelta = severity High && provenance delta`, so an `inherited` High is **not** gating
+   on the erratum channel — it routes to R2, which re-opens the owning phase's approval and lets the
+   pipeline move forward. The reviewers reasoned about the outcome they wanted (a revision) and
+   assumed the tags were annotation rather than parser input.
