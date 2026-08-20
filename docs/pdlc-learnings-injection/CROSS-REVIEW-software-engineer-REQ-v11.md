@@ -92,7 +92,21 @@ it as written:
 
 ## Findings
 
+No finding below is a defect in the REQ. The REQ was owed no edit this round and its text is
+sound against every upstream it cites. All three are tagged `nonlocal` because the round's edit
+set on this document is empty, so nothing is inside a changed section.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Cross-Feature | *(delta, nonlocal.)* The routed item's **TSPEC half has not landed.** `TSPEC:435` still reads "injector is built **only** when `present && config.enabled && !sectionMalformed`"; the divergence-table row at `TSPEC:432` still says "an absent section is `present:false`, so the feature is still off until an operator writes the section"; `TSPEC:448` still maps the malformed state to "**absent** (behaviour is AC-5.1a's)", which is the opposite of REQ `AC-5.1b`'s "the run stays **enabled** on §4.1's declared defaults"; and `OQ.2` is still open at `TSPEC:1179-1183`, where it justifies the provisional gate by quoting `AC-5.1a`'s "or the configuration section absent" — **text REQ v0.9 no longer contains** (`REQ:378-386` scopes `AC-5.1a` to an explicit `enabled: false` and says an absent section "is not this state"). Consequence, in TSPEC's own words as `DECISIONS:441-443` restates it: an `AT-31`/`AT-32` authored against §I.3 would be red against the correct implementation, and the feature would ship **off** in this repository, which carries no `.claude/pdlc.config.json` at all — the exact case `G-1` exists to serve. **Not gating on the REQ** and not filed High, because the obligation is landed, owned and sequenced: `DEC-LI-07` decides it, `DEC-ERR-01` raises it against TSPEC, `D-O-9` (`DECISIONS:664`) owns it to TSPEC with the deadline "before `AT-31`/`AT-32` are authored against §I.3", and `D-O-5` (`DECISIONS:660`) guards the IMPL side meanwhile. **What must not happen:** this round being recorded as "item resolved" and `D-O-9` losing its deadline. The TSPEC erratum is still owed. | TSPEC `§I.2`/`§I.4`/`§OQ.2` vs `REQ:378-390` |
+| F-02 | Low | Local | *(inherited, nonlocal.)* FSPEC's upstream pointer still reads "**REQ** — `…REQ-pdlc-learnings-injection.md` (v0.8)" (`FSPEC:11`) while the REQ is at v0.9. The FSPEC **body** is correctly re-grounded — its v0.6/v0.7 erratum notes and `BR-14` carry REQ v0.9's settled five states, so this is a stale version pointer, not stale content. It matters only because `DEC-LI-07` and this round both reason from "FSPEC v0.7 is grounded on REQ v0.9", and the header currently denies it. **Fix:** bump the pointer to v0.9 with the next FSPEC touch. | `FSPEC:11` |
+| F-03 | Low | Local | *(inherited, nonlocal — carried unchanged from v10 F-01.)* `AC-5.1b` still attributes the operator notice to the parser: "the same response `orchestrate-dev.js`'s `parseImplementationConfig` ships, whose malformed section yields defaults plus an explicit operator notice" (`REQ:386-388`). Re-verified at HEAD this round and still imprecise: the parser ships only the flag — `{config: IMPLEMENTATION_DEFAULTS, sectionMalformed: true, invalidKeys: []}`, emitting nothing (`orchestrate-dev.js:191-210`). The notice comes from one caller on the wave-mode path (`orchestrate-dev.js:14130-14135`); the other call site drops the flag entirely (`:11913`). The AC's decision is unaffected and remains implementable. **Fix (still not owed):** "the reader-plus-caller path around `parseImplementationConfig` ships this response — defaults from the parser, the notice from its caller", or drop the "whose …" clause. | `AC-5.1b` (`REQ:386-388`) |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Was this round dispatched against the REQ deliberately, or was the item mis-slotted? The item names three TSPEC sections and asks for a TSPEC edit; the REQ is its authority, not its subject. If the intent was to confirm the REQ still says what `DEC-LI-07` claims it says, the answer is yes (see the re-verification table). If the intent was to confirm the TSPEC erratum landed, the answer is no (F-01), and the round should be re-dispatched against `TSPEC-pdlc-learnings-injection.md`. I have answered both readings so neither is left open. |
 
 ## Risks
 
