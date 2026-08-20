@@ -117,6 +117,34 @@ this section is next edited, exactly as the round-4 edit absorbed the `:271` and
 
 ## Fixtures
 
+The delta touched two fixture rows; I re-read the whole inventory against upstream at HEAD anyway,
+since DEC-ERR-03 makes the document — not the item list — my scope.
+
+- **`SEAMS` literal row** — changed from "verified at HEAD as five at `helpers/advisoryDoubles.js:271`"
+  to "`const SEAMS` declaration already carries the six-member form at HEAD (TSPEC §1.3), so this
+  fixture row records the required end state, not an edit outstanding". Both halves check out: the
+  declaration is six-member, and TSPEC §1.3's HEAD table says "`advisoryHarvest.test.js`,
+  `consolidationProperties.test.js` and `helpers/advisoryDoubles.js` already carry six members and an
+  A6 double". The old row asserted a fact that was false at HEAD; the new one is true and carries the
+  end-state framing consistently with the rest of the document.
+- **Example-config fixture row** — re-anchored off `:39` / `:799`–`:819` to `const configPath` and the
+  `implementation.testCommand` test title, with the two `testCommand` regexes now quoted inline rather
+  than pointed at by line. Strictly better: the baseline the advisory-key addition must leave standing
+  is now stated, not referenced.
+- **Config fixtures** (`waveBudgetPerRun` ∈ {`1`, `0`, `-1`, `1.5`, `"x"`, `null`, absent}, plus the
+  tier-off and tier-on-A6-off arms) — unchanged, and still match REQ §5 C-2's restored default of `1`
+  and TSPEC §4.4's validator. No cascade damage.
+- **Mutation, ownership-manifest, gate-output and citation-floor fixtures** — untouched this round and
+  trace to TSPEC §3.3, §3.4, §5.2, §5.5, none of which moved between the v4 dispatch and this one.
+- **Pre-A6 baseline row** — unchanged; the gate-failure literal it pins is on the production side of
+  `orchestrate-dev.js`, which TSPEC §1.3 still records as not having moved.
+- **Verbatim-string discipline paragraph** — the only fixture-adjacent text carrying stale evidence
+  (see Oracles; F-01 below).
+
+No fixture in the inventory depends on the pre-`e3b9d5a3` test-side baseline any more. That was the
+whole of the cascade damage v4 identified, and the delta confined and closed it without reopening the
+fixture plan.
+
 ## Findings
 
 ## Questions
