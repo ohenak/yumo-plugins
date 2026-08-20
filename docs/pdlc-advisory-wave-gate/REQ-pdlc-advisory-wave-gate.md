@@ -285,7 +285,8 @@ requirements altitude.
   test gate returning non-zero (M-WG-3). It does **not** fire on a dispatch-level failure (M-WG-1) —
   there is no completed work to repair — nor on a post-wave command failure (M-WG-2). **Correction,
   2026-08-13:** the post-wave command runs exactly once and its failure halts immediately
-  (`orchestrate-dev.js:12331-12343`); the single run is the detection, not an attempted rebuild, so
+  (the wave gate sequence's `failed: "post-wave"` early return, and the wave loop's `haltError` on
+  it); the single run is the detection, not an attempted rebuild, so
   the earlier "already attempted" framing overstated what the script does. Both continue to halt
   exactly as today; what M-WG-2's exclusion means in practice — that a build-breaking source defect
   is permanently outside A6's reach — is Q-2's decision, recorded as O-7. *(US-03.)*
@@ -359,7 +360,11 @@ requirements altitude.
   **repair→re-gate** cycle. Only resolutions consume the wave budget, which fixes the two oracles a
   test can disagree about: two waves A6 attempted and escalated leave the budget untouched, so a
   third red wave still gets an attempt; one wave A6 resolved exhausts the shipped default of 1, so
-  the next red wave escalates without a dispatch. *(US-04.)*
+  the next red wave escalates without a dispatch. `advisory.waveBudgetPerRun` admits any integer
+  ≥ 0, `0` being a configured operator mode rather than a misconfiguration: with the tier enabled
+  and the budget at `0`, every red wave escalates with no dispatch, and that run is distinguishable
+  from AC-1.4 inertness on the run report — the per-seam A6 row is present and reads zero, where
+  under `advisory.enabled: false` the report carries no advisory section at all. *(US-04.)*
 
 ### REQ-AWG-03 — The envelope (P0)
 
@@ -406,7 +411,8 @@ requirements altitude.
   *(US-03.)*
 - **AC-3.5** — Given a proposal or a produced change that violates AC-3.1, AC-3.2 or AC-3.3, Then no
   part of it survives the seam, the wave escalates, and the run is not reported as having resolved
-  that wave. Each excluded operation enumerated in AC-3.2 and AC-3.3 is asserted by its own test.
+  that wave. Every excluded operation enumerated in AC-3.2 and AC-3.3 carries that outcome; the
+  test decomposition is PROPERTIES'.
   *(US-03, US-04.)*
 
 ### REQ-AWG-04 — What A6 may never do (P0)
@@ -416,13 +422,12 @@ requirements altitude.
   a repair** when an in-envelope, high-confidence proposal is written to the tree, and A6
   **resolves** the wave only in the outcome the rest of this document gives that word — an applied
   repair whose re-gate came back green (AC-4.6, AC-5.3). The observable is three positive
-  conjuncts, each on a run of its own, so three fixtures: (i) applies, re-gate green ⇒ the wave is
+  conjuncts, each on a run of its own: (i) applies, re-gate green ⇒ the wave is
   resolved, proceeds, and that green invocation is in the run's gate-invocation sequence (AC-4.4);
   (ii) applies, re-gate red ⇒ the wave halts, the tree is restored (AC-5.1), and the halt is the
   wave's own gate halt (AC-5.2); (iii) applies and **no** gate invocation follows ⇒ the wave halts.
   Conjunct (iii) carries the prohibition — it fails exactly where a verdict stood in for a gate
-  result — and is unreachable on an ordinary run, so its fixture mutates the shipped control flow
-  to drop the re-gate and asserts the halt survives.
+  result — and is unreachable on an ordinary run; how a fixture reaches it is PROPERTIES'.
 - **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
   not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
   command ran and post-wave pathspecs are configured, the build-output commit scoped to those
