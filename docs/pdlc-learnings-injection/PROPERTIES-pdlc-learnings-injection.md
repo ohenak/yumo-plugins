@@ -19,7 +19,7 @@ depends-on: []
 
 ## Overview
 
-**What this document is.** The falsifiable proof system for pdlc-learnings-injection: 47 properties
+**What this document is.** The falsifiable proof system for pdlc-learnings-injection: **68 properties**
 over the region PLAN §Batches builds, each traced to a REQ acceptance criterion, an FSPEC business
 rule or acceptance test, and the PLAN task that reds and greens it. It restates no behaviour —
 behaviour lives in REQ v0.9 / FSPEC / TSPEC v0.6 and is referenced by id (`AC-`, `BR-`, `E-`, `AT-`,
@@ -48,13 +48,18 @@ properties below stand on was re-measured against the repository, not read off a
 **Test pyramid, and why it lands where it does.** TSPEC §T.1's four layers are the shape:
 
 ```
-        /   L3   \        12 + 2 + 4 ATs — main() under a scripted _agent; no live model
-       /----------\       (dispatch universe, config states, footprint, gate isolation)
-      /     L2     \      3 ATs — gatherLearningsCorpus / buildLearningsInjector over seams.js doubles
+        /   L3   \        16 ATs — main() under a scripted _agent; no live model
+       /----------\       (learningsDispatchSet 12 + learningsConfig 2 + AT-20/AT-22)
+      /     L2     \      3 ATs — gatherLearningsCorpus over seams.js doubles (learningsCorpus)
      /--------------\
-    /       L1       \    12 ATs + supporting units — pure functions over literal fixtures
-   /__________________\   plus L4: one cross-module pin against consolidate-learnings.js
+    /       L1       \    16 ATs + supporting units — pure functions over literal fixtures
+   /__________________\   (learningsSelect 9 + learningsBlock 3 + learningsRecord's remaining 4)
+                          plus L4: one cross-module pin against consolidate-learnings.js
 ```
+
+The split is TSPEC §T.5's, taken suite by suite: 16 / 3 / 16 = 35. `learningsRecord.test.js`
+**straddles** — §T.5 puts AT-20 and AT-22 at L3 over the `DIVERGENT-CORPUS` run and its other four
+ATs at L1/L2 — which is why no single row of §C.1's partition maps one-to-one onto a layer.
 
 There are **no E2E tests and no live model calls at any layer** (AC-6.1). The L3 tier is large for a
 feature this size, and deliberately so: five of this feature's claims — the dispatch-universe set
