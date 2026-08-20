@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.10) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md`, `CROSS-REVIEW-product-manager-DECISIONS-v6.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v6.md`, `CROSS-REVIEW-product-manager-DECISIONS-v7.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v7.md`, `CROSS-REVIEW-product-manager-DECISIONS-v8.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v8.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md`, `CROSS-REVIEW-product-manager-DECISIONS-v6.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v6.md`, `CROSS-REVIEW-product-manager-DECISIONS-v7.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v7.md`, `CROSS-REVIEW-product-manager-DECISIONS-v8.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v8.md`, `CROSS-REVIEW-product-manager-DECISIONS-v9.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v9.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.8 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.9 | 2026-08-19 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -27,10 +27,27 @@ every commit, its consumer is PLAN's batch sizing, and it produced a finding in 
 consecutive review rounds while `DEC-A6-01`…`DEC-A6-04` stood byte-frozen. v1.8 moves it whole to
 `SIZING-pdlc-advisory-wave-gate.md`, a PLAN appendix cited from PLAN's Overview HEAD-drift note, and
 leaves a pointer plus the one number that belongs beside the decisions. Two changes were made in the
-move: the "twelve already-migrated sites" bullet is folded into column (2) as one enumeration read
+move: the already-migrated-sites bullet is folded into column (2) as one enumeration read
 two ways, and the clause that reconciled the two counts is deleted rather than reworded — a sentence
 naming two counts inherits the staleness of whichever one was not re-run, which is the defect
 generator POSTMORTEM-D §5 names. No decision entry is touched, and no count is restated here.
+
+**On v1.9 (Phase-P erratum round, TE v9 F-01).** Two current-state repairs, no design change. (1) The
+v1.8 paragraph above quoted the relocated bullet by its cardinality ("the *twelve* already-migrated
+sites"); accurate as a description of what moved, but a HEAD measurement sitting in the one document
+whose stated purpose is to hold none, and readable as a current claim by anyone who does not parse it
+as a quotation. The integer is dropped; the bullet is named by subject instead, which loses nothing —
+no reader needs the old bullet's cardinality to understand the move. `SIZING-pdlc-advisory-wave-gate.md`
+remains the sole carrier of that number. (2) The Cross-Reviews cell records the round-9 reviews.
+Re-grounded on upstream at HEAD before editing: REQ (`sha256:817b6745…`) and FSPEC
+(`sha256:82f74a2d…`) are unchanged from the state v1.8 was authored against; TSPEC moved
+(`sha256:4a092e85…` → `sha256:1531143c…`) within v1.10, whose added text sizes
+`PROP-SWEEP-2(b)`'s residue in §1.3 and routes its partition, owners and figures to PLAN's
+Overview HEAD-drift note and A6-00's Edit 1. Nothing in that erratum is owed here: DECISIONS carries
+no hygiene note, no sweep figure and no disposition of the residue, and no design claim moved, so the
+absorption is a recorded no-op rather than an edit. The round's two remaining findings are likewise
+not DECISIONS edits — PM v9 F-01 asks PLAN to cite the appendix rather than restate column (1)'s
+count, and PM v9 F-02 is a harvest item about the pipeline's missing evidence-appendix artifact class.
 
 ## Context
 
