@@ -87,7 +87,29 @@ unchanged LI-14 row now disagrees with this paragraph — F-11 below, Low.
 
 ## Dependencies
 
-_pending_
+No `Deps` cell changed in the delta, and none needed to. Two dependency-shaped questions the delta
+does answer, both correctly:
+
+- **P-A-6 (answers my Q-06) — Phase P's scheduling dependency on this wave is now recorded.** The
+  answer separates authoring from committing, which is the distinction my question was probing:
+  "Author whenever; commit at the first point the suite is green, which in practice is after LI-21
+  (batch 13)." It states the product consequence plainly — the PROPERTIES **document** is prose and
+  may land at any time, the PROPERTIES **suite** lands in one commit once green — and it says out
+  loud that yes, Phase P has a scheduling dependency on this wave and no task row in this PLAN owns
+  either artifact. That is the honest answer rather than the convenient one, and it leaves the
+  operator a decision they can act on.
+- **P-A-7 (answers TE Q-01) — the amendment locus is unified with P-A-5.** "A live table is amended
+  by an edit to this PLAN, committed before the run it governs" now covers both the expected-red
+  ledger and the §File-ownership manifest under one rule. From the product lens this matters because
+  both tables are read by a dispatcher to decide whether a batch passed; an amendment recorded in a
+  completion note is invisible to the thing that enforces it. The generalisation does not widen any
+  gate — it names where an existing obligation is written down.
+
+The dependency graph LI-14 sits on is unchanged and still consistent with the new §Overview
+paragraph: LI-14's `Deps` are LI-07…LI-12 (the six AT-bearing suites), its batch is 6, and the two
+suites the new paragraph adds to its enforcement surface (LI-01 batch 1, LI-06 batch 4) are already
+transitively upstream, so the wider read needs no new edge — as the LI-14 row already argued for the
+directory-wide closure ("a file that does not yet exist can only fail to *contribute* a member").
 
 ## Verification
 
