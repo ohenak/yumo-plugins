@@ -41,3 +41,66 @@ cross-review front-matter rows.
 | ID | Question |
 |----|---------|
 | Q-01 | §D.1 makes the run-level mirror a **fourth** field domain with its own membership test (`TSPEC:588-594`), while §D.2 says an implementation that omitted `runMirror` entirely still conforms (`TSPEC:607-610`). Both can be true — a membership test over an absent field is vacuously green — but that means one of the four domain tests can pass without ever observing a value. That is a testability question rather than a product one, so I am not raising it as a finding; I flag it only so the PROPERTIES author decides deliberately whether the mirror's domain test is worth authoring at all, or whether §D.1's "four domains" should be three domains plus a documented non-oracle. Upstream permits either (`REQ:325-330` "if carried"). |
+
+## Positive Observations
+
+- **The revision transcribed the answers; it did not re-open the questions.** Both v6 High findings
+  asked for the same thing: stop hedging, write down what REQ v0.9 and FSPEC v0.9 decided. Every
+  edit does exactly that and says so in the text — "this table transcribes them, it does not decide
+  them" (`TSPEC:326-327`), "This document is written on those answers; nothing here is provisional"
+  (`TSPEC:357-358`). No new design appeared under cover of a fix, which is the failure mode a
+  frozen round is most exposed to.
+- **The errata were closed honestly rather than erased.** `ERR-4` and `ERR-6` are marked CLOSED with
+  the resolution quoted and the sections it governs named (`TSPEC:1271-1278`, `TSPEC:1288-1296`),
+  and `OQ.2` keeps the contradiction it once recorded as history (`TSPEC:1227-1244`). A reader
+  arriving from any of the prior cross-reviews that cited those errata can still follow the thread
+  to its answer. The rejected-alternatives table gained the matching row — the provisional
+  `present && config.enabled && !sectionMalformed` gate is now listed as rejected, with the reason
+  ("would ship the feature off in exactly the repository AC-1.1 exercises"), which is the right
+  place for a design that was carried and then dropped.
+- **The locus split is the substantive win, not a wording change.** BR-10's closure was one
+  containment-shaped test over a merged record; it is now two set-equality tests, one per locus
+  (`TSPEC:645-648`), so deleting a per-dispatch ordering-key member now reds. That is the
+  deleted-case-must-red property the P phase owes, and it could not have been written against the
+  old single-locus record.
+- **The oracle/mirror boundary is stated in a way a property author cannot misread.** The mirror is
+  named additive, its fill rule demoted to "an implementation convenience, not a testable claim",
+  and the consequence spelled out — "a test that pinned its value would red against a conforming
+  implementation" (`TSPEC:338-341`). `DIVERGENT-CORPUS` then carries determinate per-dispatch
+  expected values (dispatch 5 `RSN-UNLISTABLE`, 3–4 the grown key set, 1–2 the original,
+  `corpusDiverged` true on exactly 3 and 5) with the non-assertion on the mirror stated positively
+  alongside them, so the negative claim is not left standing on its own.
+- **`corpusDiverged` was re-justified rather than left orphaned.** Its old rationale was a defence
+  of last-write-wins, which the resolution deleted. The revision noticed and gave it its own terms —
+  the one-line stable-corpus assertion, and the reason a divergent corpus is deliberately not a
+  BR-14 notice (`TSPEC:343-350`). Fields whose justification evaporates usually survive unexamined;
+  this one did not.
+- **Every code claim I could check is true at HEAD.** Five hops, five real destructure sites; the
+  `advisoryDisabled.test.js` import quoted verbatim; `main` as the default export; the `advisory`
+  conditional-spread precedent that AC-5.1a's key-absence rides on (`orchestrate-dev.js:15167`);
+  the erratum land-proof retry that adds AT-02's fourth run shape (`orchestrate-dev.js:12915`).
+
+DEFERRED: F-01/F-02's §I.3-for-§I.2 and §T.2-for-§T.6 pointers, and F-03's "§T.6 bare-repository
+case", can be fixed in the PLAN-authoring pass with the section names to hand.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both blocking findings from v6 are resolved, and resolved in the only way a frozen round allows —
+by transcribing decisions REQ v0.9 and FSPEC v0.9 had already taken, with the errata that raised
+them closed against the answers. I checked the revision for the two things that could still block:
+nothing the delta introduced broke behaviour that worked before, and no load-bearing claim in the
+document now contradicts REQ, FSPEC or the repository at HEAD. The three Low findings are stale
+section pointers, non-gating, and named precisely enough to fix in one pass.
+
+Product lens is satisfied: the feature ships **on** in a bare repository (G-1, AC-1.1), disablement
+is an explicit act (AC-5.1a), a malformed section fails open with a notice (AC-5.1b), a wrong-typed
+key fails open with a notice (AC-5.1c), and reproducibility is claimed per dispatch at the two loci
+AC-3.3 names. No P0 or P1 requirement is omitted or narrowed, and nothing outside REQ's scope has
+been added.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
