@@ -76,6 +76,33 @@ document class is therefore complete at HEAD despite not naming it.
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC at HEAD.** Reading (a) above is the outcome, but
+only after (b) and (c) were falsified on the bytes rather than on the commit message.
+
+Edge-by-edge, the four claims DECISIONS makes that touch the changed upstream text:
+
+| DECISIONS claim | Upstream at HEAD | Holds? |
+|---|---|---|
+| `:333` — "TSPEC §5.1's status caveat and §1.3 are the carriers of repo state for this feature" | §1.3 now carries *more* repo state (the 28/3-class residue), §5.1's status caveat untouched by this edit | Yes — strengthened |
+| `:334` — "whether the early-landed edits are reverted or PLAN's batches are re-derived around them is PLAN's call" | TSPEC changelog v1.10, verbatim at HEAD: "is PLAN's and Phase I's to make, not this document's, and is routed there as an erratum" | Yes — verbatim agreement |
+| `:373-375` — short-shelf-life totals live in `SIZING-…`, "cited from PLAN's Overview HEAD-drift note; this entry deliberately restates none of them" | TSPEC's new paragraph routes its own figures to the *same* carrier, "PLAN's Overview HEAD-drift note and A6-00's Edit 1" | Yes — same routing target, no competing carrier introduced |
+| `DEC-A6-01`…`DEC-A6-04` bodies, citing TSPEC §1.1/O-8, §2.5, §3.2, §3.6, §5.1, §5.2, §6 OQ-2/5/7 | None of those sections is touched by `1f2a4fbf`; `git show 1f2a4fbf` is confined to the changelog and §1.3 | Yes — outside the delta |
+
+The four decision entries remain byte-identical to bytes approved on substance in earlier rounds,
+and none of them compresses the §1.3 text this edit changed. The one place DECISIONS reaches into
+§1.3 reaches for its *role* ("carrier of repo state", "PLAN's call"), not for any figure — the exact
+compression shape that survives an upstream re-measurement. That is the v1.8 relocation paying off
+one round after it landed: had the three-column sizing block still lived in DECISIONS, an upstream
+edit re-sizing a residue would have had to be diffed against a competing set of counts here.
+
+One genuine, non-gating consequence of the edit does reach this document, recorded as F-01 below:
+TSPEC's bytes changed while its version label stayed at **1.10**, and DECISIONS cites "TSPEC v1.10"
+by label in five places (`:40`, `:105`, `:345`, and the surrounding prose at `:44`, `:349`). Those
+citations still resolve to the right sections and the right claims — nothing they assert was edited
+— but the label now names two byte states, which is the ambiguity `UPSTREAM-STATE` hashes exist to
+resolve and version labels do not. It is a Low, and it belongs to TSPEC's changelog discipline, not
+to DECISIONS' compression.
+
 ## Consequences
 
 ## Findings
