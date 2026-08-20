@@ -131,6 +131,50 @@ introduce it.
 
 ## Verification
 
+**The decision-branch table is the second place the zero-bound decision lands, and it is narrowed
+the same way.** §Traceability's reason-branch table carries the row:
+
+> `| no BR-6 section ⇒ RSN-NO-MATERIAL | AT-28 | LI-07 / LI-16 |`
+
+FSPEC v0.13 restated both the branch and the reason. D-12 is now "Does the document **yield any
+material**?", and `RSN-NO-MATERIAL` is now "Eligible, but yields no material — it carries none of
+BR-6's priority sections, **or the per-document bound is zero and admits none**". FSPEC's own
+closure sentence is explicit that this must be exercised: "Every branch of the D-1 … D-12 decision
+table is exercised" (DC-05), and the new edge row names its test — "E-36 … AT-30". PLAN's table
+states one of the two causes and names AT-28 alone. This is a Medium rather than a second High: the
+row is a *branch-to-owner* map, and the owners it names (LI-07 red, LI-16 green) are the same owners
+the second cause would get. The gap is that the branch's second cause is unstated and its AT
+(AT-30) is not cross-referenced, so nothing in PLAN connects the reason to the config suite.
+
+**The expected-red ledger absorbs the fix without amendment.** Batches 7–13 gate on a per-batch
+ledger stated in **test names**. Widening `LI-AT-30` adds cases to a test name that is already in
+the ledger — `learningsConfig.test.js` is red from batch 5 and greened by LI-21 at batch 13 — so
+no ledger row is added, removed or moved. Had FSPEC minted a new AT, the ledger and the 35-count
+partition would both have needed edits; it did not, and they do not. This is why F-01 is a bounded
+correction to two rows rather than a re-plan.
+
+**DoD 1 still reads correctly.** "All 35 FSPEC acceptance tests implemented, each in exactly one
+suite, each named `LI-AT-{N}`" — 35 is still the count at FSPEC v0.13, and AT-30 is still one test
+in one suite. The DoD is satisfied by a three-case `LI-AT-30` exactly as by a two-case one, which is
+precisely why the DoD cannot catch F-01 and why the task row has to carry the clause count itself.
+
+**Claim 4's baseline scoping is unchanged and still narrower than upstream.** §Verification scopes
+the measured baseline's byte-identity to "every **non-authoring** dispatch (AC-4.3)". FSPEC AT-03
+and AT-29, and TSPEC §A.2, both say the promise is over dispatches **outside BR-1's rule** — which
+deliberately includes the authoring-classified Phase CR optimizer round with no C-1 target. This is
+v5's F-03 and v6's F-02, still open because PLAN has had no revision pass since. The v0.13 edit did
+not touch AT-03 or AT-29, so I record it **inherited** and at the Scope tag the earlier rounds
+reconciled (Local, Medium) rather than escalating it for a third appearance.
+
+**§Open questions and upstream errata still misdescribes TSPEC, unchanged from v6.** The section's
+preamble routes two defects to FSPEC as "first raised in TSPEC v0.6 (as ERR-3 and ERR-7)" and the
+BR-1 row asserts that TSPEC §A.2 **adds** a `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct that BR-1
+forbids. TSPEC v0.7 marks both errata CLOSED by name and §A.2 now says the opposite in terms — the
+predicate "implements BR-1 directly", not a divergence from it. FSPEC v0.13 is, if anything, one
+more witness that the routed items landed: its changelog records the erratum rounds and nothing in
+the BR-1 or AT-02/AT-33 material was reopened. Inherited, Medium, unchanged from v6's F-01 —
+recorded so the revision pass that lands F-01 and F-02 lands this too.
+
 ## Positive Observations
 
 ## Recommendation
