@@ -465,12 +465,13 @@ yields nothing, so it is dropped before the bounds are applied, with `RSN-NO-MAT
 indistinguishable in BR-8's rows from a real contribution.
 
 **The byte-accounting basis.** All three byte quantities measure the same bytes: a
-document's **material** — the section headings and bodies taken from it. Framing carries no
+document's **contributed bytes** are its **material** — the section headings and bodies
+taken from it, and nothing else. Framing carries no
 byte charge: the identification line, the document's delimiters and source-path label, and
 the block's preamble (BR-7) count toward none of the three quantities, so a document is never
 abridged to pay for the annotation that says it was abridged, and an expected byte count is
-computable from a fixture alone. `maxBytesPerDocument` bounds one document's material,
-`maxTotalBytes` bounds the sum of material across selected documents, and BR-8's *bytes
+computable from a fixture alone. `maxBytesPerDocument` bounds one document's contributed bytes,
+`maxTotalBytes` bounds their sum across selected documents, and BR-8's *bytes
 injected* records that same quantity per document with its per-dispatch total as the sum
 (REQ AC-2.3, which bounds "the material taken").
 
