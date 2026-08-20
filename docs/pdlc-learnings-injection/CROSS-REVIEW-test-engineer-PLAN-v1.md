@@ -317,4 +317,39 @@ erratum, not charged to this document.)
 
 ## Recommendation
 
-<!-- pending -->
+**Needs revision**
+
+Five High findings, and all five are about the same class of defect: a gate or an oracle that cannot
+be evaluated, or cannot fail. The decomposition itself is sound — the batch math re-derives, the
+single-writer manifest is real, TDD order holds across all 22 rows, and the measured baseline
+reproduces to the digit. What must change before implementation begins:
+
+1. **F-01** — replace the "full suite green" gate for batches 7–13 with a per-batch expected-red
+   ledger naming the suites and test-name prefixes still expected red, shrinking monotonically to an
+   unqualified green at batch 14.
+2. **F-02** — resolve `LI-T-SUITEMAP`: either make LI-14 green-terminal and drop the clause from
+   LI-15, or name the conjunct that LI-15 actually greens.
+3. **F-03** — LI-03 names its instrument: a dedicated temp git repository as the script's `cwd` with
+   real `git`, the throw injected through the fixture/import seam, so `git worktree list` has a real
+   referent.
+4. **F-04** — LI-06 gains the three-step mutation proof (byte flip, deleted `{caseId}`, spurious
+   `{caseId}`) as a gated, recorded part of the task.
+5. **F-05** — LI-01 gains an owned artifact: a premise-pin suite in batch 1 plus a written record of
+   the engine-failure triage, so batch 1's gate is falsifiable and H-1 has a detector.
+
+The four Medium findings (F-06 anchoring conjuncts, F-07 mechanising the fail-open inventory, F-08
+the ungated capture script, F-09 the unmeasured coverage baseline) are not gating but each closes a
+place where this feature's coverage story currently rests on a reading rather than a run. The three
+Low findings are transcription defects in summary prose whose underlying tables are correct.
+
+Two upstream defects this document correctly declines to fix itself — FSPEC BR-1's
+"consumes the classification, does not restate the membership" versus TSPEC §A.2's
+`docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct, and FSPEC BR-15's expected set including a
+`git ls-files` enumeration on an instrument defined as file-opens under `docs/` — are both live at
+HEAD (`FSPEC-pdlc-learnings-injection.md:274`, `:658`) and are routed as errata, not charged to this
+PLAN's verdict. Two further TSPEC defects surfaced during verification are routed the same way.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 4, "low": 3}
