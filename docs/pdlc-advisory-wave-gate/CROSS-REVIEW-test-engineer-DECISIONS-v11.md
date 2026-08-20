@@ -93,6 +93,46 @@ byte-identical.
 
 ## Decision
 
+**The delta resolves what it set out to resolve and breaks nothing I previously approved.** No High,
+Medium or Low finding is raised by this confirmation, so no `FINDING:` line is emitted.
+
+Two things I looked at hard and deliberately did **not** file, with the reasoning on the record so the
+next round does not have to rediscover it:
+
+**1. The word "twelve" still exists in DECISIONS — at `:36`, inside the v1.9 paragraph, as a
+quotation of the text it removed.** My v9 F-01 objected to an integer living in the one document whose
+stated purpose is to hold none, on the grounds that it "will read as a current claim to anyone who
+does not parse it as a quotation". The narrow version of that objection technically survives the fix:
+the number moved from `:30` to `:36` rather than leaving the file.
+
+I am not filing it, and I want the reason to be binding rather than polite. The new instance is
+italicised, introduced as what the *previous revision said*, immediately followed by "The integer is
+dropped" and by "`SIZING-…` remains the sole carrier of that number". It is a quotation under erasure —
+the surrounding sentence tells the reader in the same breath that the figure is not this document's to
+carry. More importantly, the remedy has a regress: any edit that strips the quotation must itself be
+recorded in an erratum paragraph that describes what was stripped, and the natural way to describe it
+is to quote it. This round is the point to stop, and the way to stop is to not file the finding rather
+than to file it and mark it wontfix. If a future compaction ever collapses the v1.8/v1.9 preamble
+paragraphs into one, the quotation should disappear with them; until then it stays.
+
+**2. The Cross-Reviews cell records rounds 1–9, while round 10 exists on disk.**
+`CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v10.md` landed before `8a44b84b` and are not
+in the cell. This is a real omission in the narrow sense, but the edit is titled and scoped as the
+round-9 erratum, my v10 was an upstream-cascade confirmation against unchanged bytes, and the cell has
+never been a gate input — the `APPROVAL-HASH` / `REVIEWED-COMMIT` / `UPSTREAM-STATE` anchors carry the
+traceability that matters mechanically. Filing a Low here would buy a metadata edit that immediately
+goes stale again the moment this file (v11) is committed. Recorded as Q-01 instead.
+
+Neither observation is a testability defect, and neither touches a decision entry, an oracle, or a
+downstream contract.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The Cross-Reviews cell lags reality by one round by construction: any edit that records round N is itself reviewed in round N+1, whose filenames it cannot contain. Is the cell meant to be a complete index (in which case it is permanently one round stale and should say so) or a record of the rounds the *current revision responds to* (in which case v1.9's cell is exactly right and a future reader should not read the gap as an omission)? A one-clause convention note would settle it for every artifact in the pipeline, not just this one. |
+| Q-02 | Carried forward unresolved from v10: two byte-distinct TSPECs (`4a092e85…`, `1531143c…`) both answer to the human-readable label "v1.10", and DECISIONS names its upstream by that label in five places. Nothing is wrong downstream today and the sha anchors catch it mechanically, but the label no longer distinguishes what the anchor does. This is the round's best harvest candidate. |
+
 ## Consequences
 
 ## Recommendation
