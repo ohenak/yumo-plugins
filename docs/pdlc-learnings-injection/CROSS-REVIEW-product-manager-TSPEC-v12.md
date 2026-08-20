@@ -96,7 +96,49 @@ into F-01's fix keeps the comment honest.
 
 ## Data Model
 
-_pending_
+This is where the delta's good news lands, and where its second High lands.
+
+**§D.5's byte accounting is now upstream-true — the contradiction closed in TSPEC's favour.**
+Before this round FSPEC BR-6 defined a document's *contributed bytes* as "its identification line,
+its delimiters and source-path label (BR-7), **and** the section headings and bodies taken", while
+TSPEC §D.5 defined three disjoint pools with `maxBytesPerDocument` and `bytesInjected` bounding
+**material only** and framing charged to nothing. That was a genuine divergence in a
+product-visible quantity (what AC-2.3's *bounded* flag means, and what a fixture's expected byte
+count is). FSPEC v0.13 resolves it by adopting TSPEC's basis verbatim in substance — "a document's
+**contributed bytes** are its **material** — the section headings and bodies taken from it, and
+nothing else … the identification line, the document's delimiters and source-path label, and the
+block's preamble (BR-7) count toward none of the three quantities" — and names the reason TSPEC
+gave (TE F-02's circularity: "a document is never abridged to pay for the annotation that says it
+was abridged"), grounded on REQ AC-2.3's "the material taken". §D.5's pool table, the
+`extractInjectableMaterial` contract, the "hand-computable from the fixture alone" claim and the
+character-safe cutting paragraph are all still exact against HEAD. Nothing to change.
+
+**§D.3 discharges only half of F-O-1 as it now stands (F-02).** FSPEC's obligation row is now:
+"Two heading-recognition rules, on the same terms: the predicate for 'presents as a LEARNINGS
+document' (BR-3), **and** the rule by which a heading counts as one of BR-6's named sections —
+whether the numbered form, the bare title or a prefix of it is matched. Both are bounded by two
+requirements this FSPEC fixes: each consults only the document's bytes, and each is decidable
+without a model call." TSPEC §D.3 is titled "The document-shape predicate *(discharges F-O-1)*"
+and answers the first rule only, with `LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/`. There is no
+second-rule statement anywhere in the document: §I.3's doc comment says only "BR-6's five priority
+sections, in priority order", and P-6 in the ground-truth table *observes* that corpus headings
+take the `## N. Title` form without turning that observation into a matching rule. §Open Questions'
+entry-obligation table then records F-O-1 as discharged, citing §D.3.
+
+This matters at the product lens, not merely the bookkeeping one. The section-heading matching rule
+decides which material a document contributes, and therefore what AC-2.1's priority ordering and
+AC-2.3's bound actually operate on. Two implementations differing only in whether they match the
+bare title or require the numbered prefix select different bytes from the same corpus — and the
+`## N. Title` form is a convention of `harvest-learnings/SKILL.md`, not an invariant of documents
+already on disk. FSPEC has deliberately declined to fix it and named TSPEC the owner; TSPEC must
+answer, or the question is owned by nobody and gets decided by whichever regex the implementer
+writes.
+
+Everything else in §D is untouched by the delta: §D.1's non-`null`-scoped domain membership,
+§D.2's record shape, `LEARNINGS_CORPUS_OUTCOMES` and the frozen reason/notice catalogues (§D.1,
+line-600 literal) are unchanged upstream and remain faithful. Note that `RSN-NO-MATERIAL` is
+already a member of the frozen reason catalogue, so F-01's fix costs no catalogue change — only a
+correction of what the id means and when it is emitted.
 
 ## Test Strategy
 
