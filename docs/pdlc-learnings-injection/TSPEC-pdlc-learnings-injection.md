@@ -1284,15 +1284,20 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   (`:1971`). The divergence the bullet describes does not exist, and the reasoning it supports
   needs a different premise.
 - **ERR-2 (FSPEC §Edge Cases, run-shape edges).** The branch inventory has no row for the erratum
-  **land-proof retry** dispatch (`orchestrate-dev.js:12915`), which carries
+  **land-proof retry** dispatch (`erratumRound()`'s second `wrappedDispatch` in
+  `orchestrate-dev.js`, the one whose prompt opens "Your previous edit to this ${target} did not
+  land the following expected token"; cited by symbol per DEC-DOC-01), which carries
   `dispatchKind: "authoring"` and is therefore a second block-carrying dispatch inside one erratum
   round. E-30 names "an erratum dispatch is made" in the singular; AT-02's fixture list does not
   cover it. DC-05 wants a row and an AT.
-- **ERR-3 (FSPEC BR-15).** The expected set is defined as "the corpus-root enumeration, plus one
-  open attempt for every corpus document the report names". The enumeration is a `git ls-files`
-  call, not an open under `docs/` (§I.1, §A.3), so on the instrument BR-15 describes — file-open
-  calls under `docs/` — the enumeration contributes **no** member. As written, AT-33's set equality
-  cannot hold.
+- **ERR-3 (FSPEC BR-15) — CLOSED, resolved by FSPEC v0.11.** The expected set was defined as "the
+  corpus-root enumeration, plus one open attempt for every corpus document the report names". The
+  enumeration is a `git ls-files` call, not an open under `docs/` (§I.1, §A.3), so on the
+  instrument BR-15 describes — file-open calls under `docs/` — the enumeration contributes **no**
+  member, and AT-33's set equality could not hold as written. FSPEC v0.11 dropped the enumeration
+  from the expected read set on exactly that ground and states the membership as an enumerable
+  equality; v0.12 states it as a set rather than a count. AT-33 tracks the correction; nothing in
+  this TSPEC changes.
 - **ERR-4 (REQ G-1 / AC-1.1 versus AC-5.1a) — CLOSED, resolved by REQ v0.9.** REQ once decided the
   shipping default twice, in opposite directions, and FSPEC Step 0(2) / BR-14 inherited one side.
   REQ v0.9 resolved it toward G-1: an absent `learningsInjection` section is **not** a disabled
@@ -1319,18 +1324,16 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   same way, with a run-level mirror "additive, is not the oracle, and has a deliberately
   unconstrained value that nothing asserts on"; FSPEC v0.9 BR-9/BR-10 carry both. §A.5, §D.1, §D.2,
   the closure table and §T.6's `DIVERGENT-CORPUS` fixture are written on that answer.
-- **ERR-7 (FSPEC BR-1).** BR-1 states a dispatch carries a block "**if and only if** the pipeline
-  classifies it as authoring at the moment it is composed", and that the rule "consumes the
-  classification, it does not restate the membership"; AT-02's expected set is "the subset BR-1's
-  classification names". The classification alone is **wider** than REQ C-1: `reviewLoop` is
-  shared, and Phase CR calls it with `docType: null` over a directory target
-  (`orchestrate-dev.js:14551-14556`), the `null` surviving as `roundDocType` (`:7306`) and being
-  forwarded to `dispatchAndVerify` (`:7342-7358`) with `dispatchKind: "authoring"`. That optimizer
-  round — `se-author` remediating shipped code — is authoring-classified while being exactly what
-  C-1 and NG-5 exclude. TSPEC therefore adds the `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct
-  (§A.2), which BR-1 as written forbids. AT-02 consequently has two contradictory readings of its
-  expected set — FSPEC's (every authoring-classified dispatch, including Phase CR's optimizer) and
-  TSPEC's (C-1's six document types) — and a test written to FSPEC reds a correct implementation.
-  BR-1 needs to state the two-conjunct rule (classification **and** target document type), or state
-  the exclusion explicitly; TSPEC cannot amend BR-1, and resolving the conflict silently in code
-  would leave the defect in the document AT-02 is written from.
+- **ERR-7 (FSPEC BR-1) — CLOSED, resolved by FSPEC v0.11 and v0.12.** BR-1 once stated that a
+  dispatch carries a block "if and only if the pipeline classifies it as authoring at the moment it
+  is composed", a classification **wider** than REQ C-1: `reviewLoop` is shared, and Phase CR calls
+  it with `docType: null` over a directory target, the `null` surviving as `roundDocType` and being
+  forwarded to `dispatchAndVerify` with `dispatchKind: "authoring"`, so that optimizer round —
+  `se-author` remediating shipped code — was authoring-classified while being exactly what C-1 and
+  NG-5 exclude. AT-02 therefore had two contradictory readings of its expected set. **FSPEC v0.11**
+  restated BR-1 as the two-conjunct rule — authoring classification **and** a target document among
+  C-1's six — naming the second conjunct load-bearing rather than defensive and naming Phase CR's
+  optimizer round as the excluded branch; **v0.12** carried the complement through BR-11, AT-03,
+  AT-29 and D-2, and gave AT-02 the fixture that reds when the second conjunct is reverted. §A.2's
+  `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct now implements BR-1 as written rather than
+  diverging from it; no question remains routed to FSPEC on this point.
