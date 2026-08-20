@@ -69,7 +69,36 @@ upstream text it now leans on, at its current version.
 
 ## Oracles
 
-_TBD_
+I re-verified every anchor PROPERTIES offers as an oracle site against HEAD, in one pass rather
+than one per round.
+
+| PROPERTIES anchor | State at HEAD | Verdict |
+|---|---|---|
+| `advisoryDisabled.test.js:622` (bare count) | assertion is at `:629` and reads `toHaveLength(6)` | drifted **and** inverted |
+| `advisoryQueueSeams.test.js:627` | at `:634`, reads `toHaveLength(6)` | drifted and inverted |
+| `advisoryHarvest.test.js:571` | at `:578`, reads `toHaveLength(6)` | drifted and inverted |
+| `advisoryHarvest.test.js:726` | at `:733`, reads `toHaveLength(6)` | drifted and inverted |
+| `advisoryHarvest.test.js:573` (seam literal) | `:573` is `_runAdvisorySeam,` | drifted |
+| `helpers/advisoryDoubles.js:271` (`SEAMS` literal) | `:271` is a bare `//` comment line | drifted |
+| `advisoryRecord.test.js:496` | still `["A1"…"A5"]` ordered equality | correct — and the one surface §1.3 agrees is untranscribed |
+| `advisoryRecord.test.js:544` | `test.each([… "A6"])` — already six | correct pin, stale premise |
+| `advisoryDriver.test.js:221`, `:846` | `GATE_EXCLUSIVITY_REGISTRY` decl / set-equality `it` | correct |
+| `consolidationProperties.test.js:250` | six-member `rng.pick` list | correct pin, already transcribed |
+| `ci-arrangement.test.js:39` | `const configPath = …pdlc.config.example.json` | correct |
+| `ci-arrangement.test.js:799`–`:819` | the two `testCommand` regexes are at `:798` and `:807`; `:819` is unrelated comment text | drifted |
+
+Two conclusions. First, the *"All four such sites are verified at HEAD"* sentence in the Overview's
+derivation rule 1 is false in both coordinates at once — the lines moved and the values flipped
+from `5` to `6`. Second, the two files PROPERTIES records as *"verified absent at HEAD"* both exist:
+`pdlc/workflows/__tests__/advisoryWaveGate.test.js` (1.8K) and
+`pdlc/engine/__tests__/advisory-config-example.test.js` (2.5K). TSPEC v1.10's new §5.1 Status-column
+caveat says exactly this — *"both `new` files already exist at HEAD … both are on disk"* — so this
+is not a PROPERTIES-only staleness, it is a direct contradiction of the upstream text PROPERTIES
+compresses.
+
+The oracle *designs* are unaffected: every one of these is a set-equality or a cardinality
+assertion whose form PROPERTIES fixes correctly, and none of the drift changes which oracle owns
+which property. The repair is to the current-state prose and the anchors, not to the oracles.
 
 ## Fixtures
 
