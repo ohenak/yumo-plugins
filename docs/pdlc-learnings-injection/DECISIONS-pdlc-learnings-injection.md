@@ -493,6 +493,36 @@ obligation redundant (it would still not make the `finally` redundant).
 
 ## DEC-LI-10: Reason and notice ids are frozen literals, hand-transcribed in tests
 
+**Context.** The feature emits three closed catalogues: per-document rejection reasons (`RSN-*`),
+corpus-level outcomes, and configuration notices (`NTC-MALFORMED`, `NTC-KEYTYPE`). REQ C-9 and
+FSPEC require each catalogue to be closed, with a completeness test asserting set equality.
+
+**Decision.** Each catalogue is a frozen literal in `orchestrate-dev.js`, and every completeness test
+asserts against a **hand-transcribed** expected set — not against the constant it is testing. The
+same applies to `LEARNINGS_TARGET_DOCTYPES`, whose expected membership is transcribed from REQ C-1's
+six names.
+
+**Alternatives considered.**
+
+- **Derive the expected set from the exported constant** — rejected: the assertion becomes
+  `X === X` and passes for any edit, including deleting a member. This is the vacuous-oracle pattern
+  DC-14 exists to prevent, and the repository has shipped it accidentally before
+  (`docs/_decisions/DECISIONS-test-oracle-mechanics.md`).
+- **Use free-form strings at each emit site, with no catalogue** — rejected: closure is then
+  unassertable, and a typo produces a new "reason" no report reader can group.
+- **Derive the id from an enum-like object keyed by the reason** — rejected as the first alternative
+  with indirection: the test still reads its expectation from the implementation.
+
+**Constraints that forced the shape.** REQ C-9 (closed catalogues), DC-01 (set-equality completeness
+tests), DC-14 (hand-transcribed expectations for closed sets).
+
+**Reversibility.** Easy per catalogue, but adding a member is deliberately a two-file edit — the
+constant and the transcribed expectation — which is the reviewable diff the decision is buying.
+
+**Re-evaluation triggers.** A catalogue grows past the size where hand transcription is maintainable
+(the notices catalogue has two members and the reasons catalogue is small, so this is not near); the
+repository adopts a generated-catalogue mechanism with its own falsifying anchor.
+
 ## Decisions deliberately NOT taken here
 
 ## Consequences
