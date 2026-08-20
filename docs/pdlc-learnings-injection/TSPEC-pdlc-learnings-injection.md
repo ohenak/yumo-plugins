@@ -465,9 +465,11 @@ conditionally-spread key, present iff the run is enabled. So:
 | present, not an object (`sectionMalformed`) | **present** — fail-open, enabled on §4.1's defaults (AC-5.1b) | `NTC-MALFORMED` present |
 | present, `enabled:true`, one declared key wrong-typed | present, the run proceeds on that key's default (AC-5.1c) | `NTC-KEYTYPE` present |
 
-The three rows are owned by three different ATs (TE F-04): row 1 is **AT-31**'s (`enabled:false`,
-and separately the absent section ⇒ no injection key, no notice); rows 2 and 3 are **AT-32**'s two
-cases (malformed section ⇒ key absent plus `NTC-MALFORMED`; wrong-typed declared key ⇒ key present,
+The four rows are owned by three different ATs (TE F-04): row 1 (absent section, or present with
+`enabled:true`) is the default-configured run **AT-01/AT-31** already exercise for byte-presence of
+the key; row 2 is **AT-31**'s (`enabled:false` explicitly ⇒ no injection key, no notice); rows 3
+and 4 are **AT-32**'s two cases (malformed section ⇒ key **present**, run enabled on §4.1's
+defaults, plus `NTC-MALFORMED`; wrong-typed declared key ⇒ key present,
 defaults for that key, plus `NTC-KEYTYPE`). **AT-30 owns none of them** — it is the
 admits-nothing-thresholds AT for AC-4.4 (`maxDocuments: 0`, `maxTotalBytes: 0` ⇒ enabled run, BR-8
 rows present and empty). AT-32's closure is a **two**-notice set equality, over `NTC-MALFORMED` and
