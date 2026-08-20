@@ -68,6 +68,47 @@ feature does. They are traceability defects in citations a downstream author wil
 
 ## Positive Observations
 
+- **The seam-contract correction (F-03) went further than the finding asked, in the direction that
+  protects the user.** I suggested recording a residual risk and widening the shell's `try`. The
+  revision instead re-derived the contract from both channels, found the docblock at
+  `runtime-adapter.js` asserting "never throws" over code that demonstrably can reject, and named
+  the docblock as the trap that would recreate the bug. This is the difference between a document
+  that records a decision and one that defends it: REQ C-7/G-4 and FSPEC `BR-12` promise fail-open
+  **unconditionally**, and the promise now holds on the channel the pipeline actually runs on.
+- **`D-O-7` is the obligation I would most have missed.** "Every double specified elsewhere returns
+  `{ok: false}`, so without this one the fail-open guarantee ships green and untested on the channel
+  that actually runs the pipeline" — that is a correct diagnosis of a vacuous-green risk, and it
+  turns the DEC-LI-02 correction into something PROPERTIES must prove rather than something the
+  prose asserts.
+- **DEC-LI-09's new sha guard is a positive check where an absence check would have been accepted.**
+  Conjunct 2 asserts what the pre-feature commit *does* contain (no `selectLearnings`,
+  `gatherLearningsCorpus`, `LEARNINGS_CORPUS_ARGV`) and the entry then says which conjunct is
+  load-bearing and why conjunct 1 alone is insufficient. Naming the weaker conjunct as weak is
+  exactly the honesty that lets a later reader trust the stronger one.
+- **The re-evaluation triggers are now sorted into *mechanically detected* and *review-time
+  judgement*, with observable proxies for the judgement ones.** This is a small formatting change
+  carrying a large product effect: an operator reading REQ O-1's report can now tell which of these
+  decisions will tell them when they have gone stale and which will not. DEC-LI-03's new
+  producer-set guard converts its own trigger from hope to mechanism, and the entry says so in those
+  words.
+- **`D-O-9` names the ordering constraint, not just the ask.** "PROPERTIES and PLAN read TSPEC, so
+  this must land before `AT-31`/`AT-32` are authored against §I.3" is the sentence that stops the
+  divergence from costing a red test suite and a confused author two phases from now.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+No High finding. All six v1 findings are resolved, three of them (F-01, F-02, F-03) with more work
+than the finding asked for, and none of the revisions broke a section that was previously approved —
+I re-verified the seam claims, the funnelling premise, the corpus count, the REQ §4.1 defaults and
+the TSPEC staleness at HEAD rather than reading them back out of the document. The two new findings
+are citation defects a reader would trip over, not decisions I would change: F-02 (Medium) points a
+downstream author at a project rule that reads as the opposite instruction, and F-01 (Low) borrows
+authority the claim does not need. Both are single-sentence edits. The document ships as it stands
+if they are folded into the next authoring pass.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
