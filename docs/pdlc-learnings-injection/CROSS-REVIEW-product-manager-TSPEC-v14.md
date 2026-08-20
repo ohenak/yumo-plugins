@@ -150,6 +150,48 @@ predates this delta; the delta only sharpened what "sum" means. It is a Low, rec
 
 ## Test Strategy
 
+**AT-11's three conjuncts now each have an owner, and the transcription is faithful.** I diffed
+§T.5's new table against FSPEC's AT-11 clause by clause:
+
+| FSPEC AT-11, final sentence | §T.5's conjunct | Faithful? |
+|---|---|---|
+| "the set of section names appearing in its block material **equals** BR-6's five injected names in priority order" | Scan the rendered block for `SECTION_HEADING_RE` lines, map through §D.3's rule, assert the list **equals** `BR6_SECTION_NAMES` as an **ordered** list | Yes — set-equality over the full enumeration, not containment, and "in priority order" is preserved as orderedness rather than dropped |
+| "the Approval Record's distinctive fixture text is absent" | `block.includes(marker) === false` on a marker occurring nowhere else in the corpus | Yes |
+| "**while** all five injected sections' texts are present" | For each of the five, assert the block contains that section's **body** marker, not only its heading | Yes |
+
+This is the three-part review bar met without my having to ask for it. **Set-equality, not
+containment:** the first conjunct asserts equality against `BR6_SECTION_NAMES` in full, so deleting
+a case reds. **No absence-only oracle:** §T.5 states the absence conjunct is *"paired per DC-03 with
+the positive below on the same instrument so an all-empty block cannot pass the absence half"* —
+which is precisely the failure the pairing rule exists to catch, named explicitly. **No
+implementation echo:** the expected value is `BR6_SECTION_NAMES` as transcribed from BR-6 plus the
+fixture's own marker strings; §T.5 says in as many words that `sections[]` is *"the producer's own
+report"* and is asserted **in addition, never instead**, citing DC-14. All three demands are
+satisfied on the face of the spec.
+
+**The killing mutations are named, and each reds a specific conjunct.** §T.5 lists three: a renderer
+that emits a taken section's heading without its body (reds conjunct 3); a matcher widened to
+substring (reds the absence conjunct); a renderer that emits whole documents instead of selected
+material (reds the absence conjunct). The document then explains why the absence conjunct cannot be
+dropped as redundant with §D.3's allow-list argument — *"That argument is a design reason no
+exclusion branch is needed; it is not a test."* That distinction is the right one and is the
+sentence I would have written as a finding had it been missing.
+
+**The test file the oracles land in exists.** §T.5 assigns all three conjuncts to
+`learningsBlock.test.js`; `pdlc/workflows/__tests__/learningsBlock.test.js` is on disk at HEAD,
+alongside `learningsSelect.test.js`, `learningsCorpus.test.js`, `learningsPremises.test.js`,
+`learningsPredicatePin.test.js` and `learningsCaptureScript.test.js`. The split §T.5 asserts —
+block-material claims with the renderer's suite, eligibility/ordering/count claims with
+`learningsSelect.test.js` — matches the files that exist, so this is an assignment to a real seam,
+not a naming aspiration.
+
+**The dead-oracle risk the delta removes is a real one.** Before this delta, AT-11's set equality
+read `sections[]`. Since `sections[]` is what the extractor reports, an implementation that took the
+five sections and then failed to render three of them into the block would have passed AT-11 while
+the authoring dispatch received a third of the material the REQ promises. That is the
+producer-reports-its-own-intent shape, and it is now closed on the artifact the requirement is about.
+No test coverage was lost in the move: `sections[]` is still asserted, as a supporting equality.
+
 ## Open Questions
 
 ## Findings
