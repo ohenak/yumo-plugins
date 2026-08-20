@@ -83,8 +83,8 @@ Every claim below was checked against this repository at HEAD on 2026-08-19.
 | P-4 | The corpus predicate is a single `git ls-files` argv, not a directory walk | `LS_FILES_ARGV`, `pdlc/workflows/consolidate-learnings.js:1338-1346`, consumed by `enumerateCorpus` at `:1349-1355` |
 | P-5 | That predicate, run at HEAD, yields 9 documents, 9 of which carry a `Date Completed` row whose value is a bare ISO date | `git ls-files --cached --others --exclude-standard -- ':(glob)docs/*/LEARNINGS-*.md' ':(glob)docs/completed/*/LEARNINGS-*.md'`, cross-checked against each file's line 7 |
 | P-6 | Every corpus document's first line is `# LEARNINGS — {feature}`, and the section headings are the `## N. Title` form | measured over all 9; the form is what `pdlc/skills/harvest-learnings/SKILL.md` §"LEARNINGS Document Format" writes |
-| P-7 | `_git(argv)` returns `{ok, stdout, stderr}` and never throws, on both channels | `defaultGit`, `orchestrate-dev.js:11658-11676`; `rtGit`, `pdlc/workflows/runtime-adapter.js:1003` |
-| P-8 | `_readFile(path)` returns `null` for an absent file and may **throw** on transport failure | `defaultReadFile`, `orchestrate-dev.js:11513-11519` (returns `null` on any error); `rtReadFile`, `runtime-adapter.js:493-505` (returns `null` for absent, rethrows an exhausted probe) |
+| P-7 | `_git(argv)` returns `{ok, stdout, stderr}` and never throws, on both channels | `defaultGit`, `orchestrate-dev.js`; `rtGit`, `pdlc/workflows/runtime-adapter.js` |
+| P-8 | `_readFile(path)` returns `null` for an absent file and may **throw** on transport failure | `defaultReadFile`, `orchestrate-dev.js` (returns `null` on any error); `rtReadFile`, `runtime-adapter.js` (returns `null` for absent, rethrows an exhausted probe) |
 | P-9 | The runtime read seam already carries a revalidating cache, so a re-read of an unchanged document costs one probe rather than a full chunked read — but the budget is **shared across every read the run makes**, with oldest-inserted eviction, so cache residency is not guaranteed to this corpus | `rtReadFile`'s `rtCacheGet`/size+sha revalidation, `runtime-adapter.js:494-522`; `RT_READ_CACHE_MAX_BYTES = 2097152`, `:124`; `rtCachePut`'s eviction loop, `:459-465` |
 | P-10 | A conditionally-spread report key is the shipped way to express "absent, not present-and-empty" | `...(advisory ? { advisory } : {})`, one of the trailing conditional spreads (`prUrl`, `ciStatus`, `haltReason`, `advisory`) in `buildFinalReport`'s returned object literal, `orchestrate-dev.js` — cited by symbol, not line, per DEC-DOC-01 |
 | P-11 | The malformed-section reading this feature copies is "present and not a plain object" | `parseAdvisoryConfig`: `if (!isPlainObject(parsed) \|\| !("advisory" in parsed)) return degraded(false); … if (!isPlainObject(section)) return degraded(true)`, `orchestrate-dev.js:1980-1983` |
@@ -197,8 +197,9 @@ Three properties of this attachment carry the load:
 
    **The coincidence is an invariant, and it is asserted, not assumed.** That
    `LEARNINGS_TARGET_DOCTYPES` currently equals the `docType` set `converge()` drives at HEAD —
-   `REQ` (`orchestrate-dev.js:13766`), `FSPEC` (`:13774`), `TSPEC` (`:13807`), `DECISIONS`
-   (`:13874`), `PLAN` (`:13893`), `PROPERTIES` (`:13996`) — is today a coincidence between a
+   `REQ`, `FSPEC`, `TSPEC`, `DECISIONS`, `PLAN`, `PROPERTIES`, each the `docType` of one
+   `converge()` phase-creator call in `orchestrate-dev.js` (cited by enclosing symbol and call
+   shape, not line, per DEC-DOC-01) — is today a coincidence between a
    product boundary (C-1, NG-5) and this pipeline's phase list, and nothing structural keeps the
    two equal: a seventh authoring phase added later would reach `dispatchAndVerify` carrying a
    `docType` this feature never decided to feed. `learningsDispatchSet.test.js` therefore carries a
@@ -310,7 +311,7 @@ holds:
 | Read each path | `_readFile(path)` | `null` **or throw** ⇒ that document alone gets `RSN-UNREADABLE` (P-8; the `try/catch` is mandatory, since `rtReadFile` throws where `defaultReadFile` returns `null`) |
 
 **Why `_git` and not `_listFiles`.** `_listFiles` is non-recursive and returns basenames only
-(`defaultListFiles`, `orchestrate-dev.js:11586-11605`), so reconstructing C-3's two-level,
+(`defaultListFiles`, `orchestrate-dev.js`), so reconstructing C-3's two-level,
 tracked-and-untracked-but-not-ignored predicate from it would require three listings plus a
 reimplementation of `.gitignore` — a *different* predicate wearing the same name. The whole of
 REQ C-3/O-7 is that this feature uses **the predicate consolidation ships**, and that predicate is a
@@ -353,7 +354,7 @@ Two consequences are recorded rather than designed around:
 ### A.5 Threading the record to the report
 
 `main()` owns a run-scoped sink, in the shape `notices` already has
-(`orchestrate-dev.js:12110`): an array of per-dispatch records, each carrying that dispatch's own
+(the `notices` sink in `orchestrate-dev.js`'s `main`): an array of per-dispatch records, each carrying that dispatch's own
 corpus outcome and ordering keys, plus one run-level thresholds record.
 
 **The oracle locus is the dispatch row; the run-level mirror is carried but unasserted.** Selection
