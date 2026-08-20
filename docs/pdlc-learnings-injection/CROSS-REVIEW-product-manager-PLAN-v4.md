@@ -149,11 +149,18 @@ description of the universe the set equality is taken over. The 35-member AT cov
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-11 | Low | Local | **LI-14's row still says an errant `LI-AT-` title could hide "in one of the eight other new suites", which the delta's own recount contradicts.** The new §Overview namespacing paragraph (PLAN:93-99) and P-A-3 (PLAN:556) both now count the directory correctly: twelve `learnings*.test.js` suites, six AT-bearing, therefore **six** non-AT suites where a stray `LI-AT-` title could hide. "Eight" is the old fourteen-row arithmetic (fourteen manifest test rows minus six), and it counts `__tests__/helpers/learningsFixtures.js` and `__tests__/fixtures/learnings-baseline/` — a helper module and a fixture subtree that register no jest title and are not matched by the `learnings*.test.js` glob LI-14 enumerates. Nothing about the assertion changes; the risk is a reader reconciling LI-14 against §Overview and looking for two suites that cannot exist, which is the same reconciliation cost F-10 flagged in P-A-3. **Fix:** in LI-14, replace "one of the eight other new suites" with "one of the six other suites the glob matches" — the same recount the delta already applied everywhere else | PLAN §Batches LI-14; §Overview namespacing paragraph; P-A-3 |
+
+No High findings. F-11 does not block; it is the last residue of the fourteen-vs-twelve recount and
+belongs in the same pass as any other tidy.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-08 | LI-10's healthy-`null` clause asserts `corpusOutcome === null` on `DIVERGENT-CORPUS` dispatches **1, 2 and 4** — the three dispatches where the corpus is both listable and unchanged. Dispatch **3** is the interesting middle case: the corpus diverged (`corpusDiverged` true) but the listing succeeded, so `corpusOutcome` should still be `null`. Is dispatch 3's exclusion deliberate — because divergence is asserted there and the row wanted the healthy-`null` clause to read over undisturbed dispatches only — or incidental? I am not asking for a change: an implementation that invented a `"RSN-DIVERGED"` outcome on dispatch 3 would red LI-23's set equality against the frozen catalogue, so the case is covered elsewhere. But if the answer is "deliberate", one clause saying why would stop a future reader from widening the assertion to all four healthy dispatches and thinking they closed a hole. |
 
 ## Positive Observations
 
