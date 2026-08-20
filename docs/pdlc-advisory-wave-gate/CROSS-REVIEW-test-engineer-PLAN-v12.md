@@ -150,7 +150,45 @@ this one.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | None. F-01, F-02 and F-03 each have a single obvious fix already written elsewhere in PLAN or in the appendix; none needs an author decision. |
+
 ## Positive Observations
+
+- **The erratum shrank upstream's claim surface and PLAN survived it unchanged.** v1.9 removed the
+  last HEAD measurement from DECISIONS. Nothing PLAN cites went with it: the relocation account, the
+  *"column (1)'s four"* sentence and all four `DEC-A6-0x` entries are byte-identical, so the
+  compression PLAN performs still has the same upstream text underneath it.
+- **The design citations inside task rows are the ones that matter, and none moved.** A6-10's
+  snapshot mechanism (`DEC-A6-01`, `DEC-A6-03`) and A6-21's promotion-commit message form
+  (`DEC-A6-02`) are stated identically in both documents, so the red steps those rows promise remain
+  falsifiable against a live upstream decision rather than a withdrawn one.
+- **The class-split DoD keeps absorbing growth without a false green or a false red.** The residual
+  moved 34 → 35 between confirmations purely because a cross-review file was committed. Set-equality
+  on the closed class still holds exactly; membership on the growing class still holds. That is the
+  round-9 fix earning its keep for the second time.
+- **The 14-closable numerator is exact and mutation-checked.** `git ls-files` returns 14 tracked
+  `.bak` blobs and the oracle prints all 14 in the residual, so A6-00 Edit 1 produces an observable
+  14-path reduction and cannot be satisfied by a no-op.
+- **The dispatcher reads what it read at approval.** The shipped parser returns 11 tasks, 11
+  manifest rows and 7 waves over the unmodified document — the machine-level contract this
+  confirmation exists to protect is intact.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+PLAN still holds as approved against DECISIONS as it now stands. The erratum was a
+measurement-removal and a bookkeeping update: it contradicts nothing in PLAN, forecloses no task,
+withdraws no decision PLAN cites, and moves no batch, wave, dependency edge or ownership cell — the
+shipped parser reads the same 11 tasks, 11 manifest rows and 7 waves it read at approval. Three
+non-gating findings: two inherited (the dated residual figures no longer reproduce, F-01; one recap
+still spells the retired anchored `.gitignore` literal, F-02) and one created by the delta's
+ownership statement (PLAN is now a second carrier of figures upstream declares single-carrier, F-03).
+All three fixes are already written elsewhere in PLAN or its appendix and touch no task row.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
