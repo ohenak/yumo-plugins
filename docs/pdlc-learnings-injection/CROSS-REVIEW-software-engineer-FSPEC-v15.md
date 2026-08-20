@@ -156,6 +156,36 @@ it is a downstream catch-up, not a defect of this FSPEC.
 
 ## Edge Cases and Error Scenarios
 
+E-36 (`:775`) is new and sits with the other two zeros:
+
+| Row | Text | Verdict |
+|---|---|---|
+| E-24 | `maxDocuments: 0` → enabled run, empty selection, BR-8 rows present and empty → AT-30 | Unchanged |
+| E-25 | `maxTotalBytes: 0` → same → AT-30 | Unchanged |
+| **E-36** | `maxBytesPerDocument: 0` → no document yields material; every one carries `RSN-NO-MATERIAL` and consumes no slot; enabled run, empty selection, BR-8 rows present and empty → AT-30 | Lands; matches BR-6's carve-out word for word in outcome |
+
+The third zero is no longer reachable-but-undecided. E-36 is strictly more specific than E-24/E-25
+— it pins the reason id as well as the run shape — which is correct, because the reason id is the
+only thing that distinguishes it from a corpus that legitimately carries no priority sections.
+
+Rows I re-checked for collateral damage from the accounting change, since they are all stated over
+byte quantities:
+
+- **E-15** (`:756`) "One document exceeds `maxBytesPerDocument` → material cut to the bound; row
+  flagged **bounded**; document still contributes" — still correct; under material-only accounting
+  the trigger is the document's material exceeding the bound, which is what BR-5's measurement
+  already reports for 87 of 89 documents.
+- **E-16** (`:757`) first priority section alone exceeds the bound → taken up to the bound and cut
+  — unaffected; the cut point is a material offset either way.
+- **E-18** (`:759`) a single document's **bounded material** alone exceeds `maxTotalBytes` →
+  dropped whole with `RSN-BYTES` — already phrased over bounded *material*, so the erratum makes it
+  more exactly true, not less.
+- **E-33** (`:762`) document carrying none of BR-6's priority sections → `RSN-NO-MATERIAL`,
+  consumes no slot → AT-28 — unchanged and still distinct from E-36 (document-shaped cause vs.
+  configuration-shaped cause, same reason id).
+
+No edge row was invalidated by the new basis, and no row now double-counts framing.
+
 ## Acceptance Tests
 
 ## Open Questions
