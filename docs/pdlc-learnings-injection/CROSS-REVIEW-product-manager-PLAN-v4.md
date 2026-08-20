@@ -164,11 +164,63 @@ belongs in the same pass as any other tidy.
 
 ## Positive Observations
 
-_pending_
+- **F-09's fix names the property, not just the patch.** The row could have swapped one key for
+  another and moved on. Instead it states why the old key failed (two sites share `erratumRound` and
+  the sole object argument), enumerates the four pairs so an implementer can transcribe them, and
+  then adds the general rule — "Any injective structural key serves; what may not survive is a key
+  two of the four sites share". That last sentence is what makes the fix survive a refactor that
+  renames `erratumAuthorPrompt`, and it is the difference between a corrected sentence and a
+  corrected specification.
+- **The delta records the code reading that made the fix necessary.** LI-01 now carries the
+  structural fact — `missingAgainst` closes before the retry, so the retry is nested only in plain
+  `if` blocks — inside the row itself. A future author re-deriving the key does not have to re-read
+  `orchestrate-dev.js:12919-12955` to know why the two erratum sites are siblings rather than
+  nested. That is the cheapest possible form of preserved measurement.
+- **LI-10 and LI-23 are now mutually anchored, so the delegation cannot rot silently.** LI-23 says
+  the healthy `null` "is asserted by … `DIVERGENT-CORPUS`'s **dispatches 1, 2 and 4** (LI-10 /
+  LI-19), and LI-10's row carries that clause by name". LI-10 carries it. Deleting either half now
+  leaves a dangling named reference rather than an absence-only oracle nobody notices — which is the
+  failure mode the pairing rule exists to prevent.
+- **DoD 13 closes the loop F-07 opened rather than papering over it.** F-07 moved four absence claims
+  out of a standing suite because this PLAN's own tasks falsify them between batches 1 and 4. That
+  was correct but left the measurements depending on habit. DoD 13 makes the completion note a
+  checked deliverable, and P-A-8 states the reasoning in the same terms — "the only thing preserving
+  them is a batch-1 habit". A PLAN that notices its own unchecked obligation and adds a gate for it
+  is the behaviour I want to see repeated.
+- **P-A-6 answers the scheduling question honestly instead of narrowing it.** It would have been
+  easier to write "PROPERTIES is out of scope" and stop. The answer instead concedes the dependency
+  ("yes — Phase P has a scheduling dependency on this wave, and it is recorded here"), splits
+  document from suite, and names the one point where the suite can go green. That is a product
+  answer an operator can schedule against.
+- **P-A-7 generalises two rules into one without widening either.** "A live table is amended by an
+  edit to this PLAN, committed before the run it governs" covers the ledger and the manifest with a
+  single sentence, and grounds it in the reason a PM cares about: a dispatcher enforces only what it
+  can read.
+- **The three FSPEC-facing statements stayed routed.** The delta did not quietly resolve BR-1 or
+  BR-15 inside a task row while it was editing nearby material — §Open questions still carries both
+  as upstream errata with their downstream consequence attached to LI-11. I re-raise both below so
+  they reach FSPEC's author.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+My one blocking finding from v3 (F-09) is resolved, and resolved against the code rather than only
+on paper — I re-measured all four authoring dispatch sites at HEAD and the new
+`(enclosing named function, prompt-source symbol)` key is injective over them, so LI-01 is green at
+batch 1 as the row claims. F-10 is resolved. Both of my open questions (Q-06, Q-07) are answered in
+the artifact as P-A-6 and P-A-8, with DoD 13 giving Q-07's answer a gate. I scanned the changed
+sections for regressions and found none: the 35-member AT coverage baseline, the expected-red
+ledger, the file-ownership manifest and every `Deps` cell are untouched, and the three places
+describing `LI-T-SUITEMAP`'s read now agree with each other.
+
+One **Low** finding remains (F-11 — LI-14's stale "eight other new suites", now contradicted by the
+delta's own recount to twelve files and six AT-bearing suites). It does not block; fold it into the
+next pass on this document. Q-08 asks whether dispatch 3's exclusion from LI-10's healthy-`null`
+clause is deliberate — no change required either way.
+
+Two upstream **FSPEC** defects remain open and are re-raised as errata below, not folded into this
+verdict: this PLAN routes both correctly and is not the document that can fix them.
 
 ## Verdict
 
