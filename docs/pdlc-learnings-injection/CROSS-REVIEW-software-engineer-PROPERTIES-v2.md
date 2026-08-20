@@ -230,4 +230,32 @@ silently re-points the arm at a different document the day a `docs/completed/a�
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three v1 High findings are resolved, each by a structural change rather than a wording patch, and
+I re-measured every existing-code claim the revision introduced — the two `dispatchAndVerify` call
+sites, the direct `agentFn("se-implement", waveImplementPrompt(…))` wave dispatch, the 9-of-9 corpus
+heading measurement, `LEARNINGS_TARGET_DOCTYPES`'s placement inside LI-15's sentinels, §4.1's
+thresholds, and PLAN's fourteen-row manifest. All correct. Traceability still closes mechanically:
+69 properties defined, 69 accounted for in §C.3, no dangling upstream id, no AC left without a
+property, and the 16 / 3 / 16 pyramid split reconciles against TSPEC §T.5 suite by suite.
+
+The five remaining findings are Medium and Low and cost a line or two each:
+
+1. **F-01** — add `AC-6.1` to PROP-ORDER-05's trace (and settle AC-1.4 / AC-5.1a in either direction),
+   so §C.2's own bidirectionality rule holds everywhere it is stated.
+2. **F-02** — extend §C.1's AT-less enumeration with the three properties this revision added.
+3. **F-03** — make the shared static walk's set equality compare against §C.4's hand-transcribed
+   twelve-suite literal rather than against the walk's own output.
+4. **F-04**, **F-05** — anchor PROP-FOOTPRINT-04 on a token the sentinel region owns exclusively, and
+   transcribe PROP-BOUND-08's expected section set as the five BR-6 names with the computed
+   intersection demoted to a fixture precondition.
+
+None of these blocks implementation. F-03 is the one I would land before LI-14 authors
+`learningsSuiteMap.test.js`, since it changes what that suite asserts; the other four are document
+bookkeeping and oracle wording that can ride any later commit.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 2}
