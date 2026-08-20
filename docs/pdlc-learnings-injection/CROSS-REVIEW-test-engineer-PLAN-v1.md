@@ -170,6 +170,101 @@ rebase moves a premise mid-wave, which is what H-1 is for. The engine-triage hal
 test; it needs a named written artifact (a line in the task's completion note citing the CI run) so
 the H-2 decision is auditable.
 
+### F-06 (Medium) — `LI-T-IGNORE` cannot see the anchoring it is paired with
+
+LI-03 states the oracle as one conjunct: `git check-ignore .baseline-worktree` exits 0 at the
+repository root. LI-04 promises rather more than that — `/.baseline-worktree/`, "root-anchored the
+way `/.claude/pdlc.config.json` already is, so a nested fixture directory of that name is
+untouched". Nothing asserts the second half. A bare `.baseline-worktree` line, or `*`, or
+`.baseline*`, all pass the stated oracle while breaking the property LI-04 exists to preserve — and
+an over-broad rule would silently un-track fixture material this feature is about to commit under
+`__tests__/fixtures/`.
+
+**What must change:** LI-T-IGNORE gets its paired conjuncts, all three checkable with the same
+`git check-ignore` probe: (1) `.baseline-worktree` at the root **is** ignored; (2) a nested
+`pdlc/workflows/__tests__/fixtures/x/.baseline-worktree` is **not** ignored; (3) an unrelated
+sibling path (e.g. `pdlc/workflows/__tests__/fixtures/learnings-baseline/`) is **not** ignored. (2)
+and (3) are the positive-pairing this feature demands everywhere else.
+
+### F-07 (Medium) — the coverage obligation is discharged by reading, not by running
+
+TSPEC §T.7 and this PLAN both accept that the `--per-file --branches 85` gate cannot see a ~300-line
+region inside a 15,311-line file (verified: `pdlc/workflows/package.json:9`, `c8.include` is the
+three module files), and both conclude that the twelve-arm fail-open inventory **is** the coverage
+obligation. The inventory in §Traceability is good work — every arm has a named entering AT and task.
+But its discharge is LI-22 "walked row by row", a human reading in a refactor task, producing no
+artifact. Nothing reds when an arm silently stops being entered — for instance when a fixture edit
+in LI-11 makes the `RSN-EMPTY` path unreachable, or when the outer `try/catch` arm's fault injection
+stops reaching the catch after LI-18's refactor.
+
+**What must change:** make the inventory mechanical, cheaply. The catalogues are already frozen
+literals in TSPEC §D.1, so the instrument is a set-equality test, not a coverage tool: one non-AT
+test (owned by LI-14 or a new row before LI-22) that accumulates the reason codes actually observed
+across the new suites' runs — `corpusOutcome` values and `rejected[].reason` values, plus the two
+`NTC-*` notices — and asserts the observed set **equals** the frozen catalogue. Set equality, not
+containment, so both a missing arm and an invented code red. If that accumulation is judged too
+invasive, the fallback is P-Q-3's region-scoped `c8` invocation with a hard `--branches 85` on the
+region — but taken unconditionally, not "only if it costs nothing".
+
+### F-08 (Medium) — the new capture script sits outside every coverage gate
+
+`scripts/capture-learnings-baseline.mjs` is new production-adjacent code — it drives `main()`,
+shells out to `git`, and writes committed fixtures. `pdlc/workflows/package.json`'s `c8.include` is
+`["orchestrate-dev.js", "orchestrate-queue.js", "build-runtime.mjs"]`, all resolved relative to
+`pdlc/workflows`, so the new script is measured by nothing. Two named oracles cover two of its
+behaviours; its argument handling, merge-base resolution, manifest writing and per-file digesting
+are covered by neither a floor nor an inventory. `pdlc/workflows/package.json` also appears in no
+row of the file-ownership manifest, so adding it to `c8.include` currently has no owner.
+
+**What must change:** decide explicitly and record it. Either add the script to the coverage gate —
+which requires a `package.json` row in the manifest, owned by a batch-3 task alongside LI-05 — or
+state the exemption in DoD 11 with its justification (a human-invoked one-shot tool) *and* name the
+oracles that stand in its place. Silence is the one option that leaves a new module ungated.
+
+### F-09 (Medium) — DoD 11's coverage gate has no measured baseline
+
+§The measured baseline measures `npm test` in both packages to the digit. DoD 11 then requires
+`npm run test:coverage` to pass "both stages, unchanged from baseline expectations" — a comparison
+against a baseline this document never took. `test:coverage` is a two-stage command
+(`pdlc/workflows/package.json:9`) whose stage 2 applies `--per-file --branches 85` to
+`orchestrate-dev.js` itself; adding a ~300-line region with twelve fail-open arms to that file moves
+that number, and nobody currently knows in which direction or from what.
+
+**What must change:** run `npm run test:coverage` at HEAD and record its stage-2 per-file numbers in
+§The measured baseline beside the two suite counts, so DoD 11 names a real prior value. If the
+command does not currently pass at HEAD, that is a second H-2-shaped pre-flight item for LI-01 and
+belongs in the halt table.
+
+### F-10 (Low) — the change-surface table's new-suite row omits LI-06's files
+
+§Overview's change-surface table lists "the seven suites of TSPEC §T.5, plus `learningsSuiteMap.test.js`
+and `learningsCaptureScript.test.js` … **all new**", owned by "LI-03, LI-07…LI-14".
+`learningsBaselineGuard.test.js` and `__tests__/fixtures/learnings-baseline/` are LI-06's, and LI-06
+is outside that owner range; the fixtures subtree gets its own row but the guard suite does not
+appear at all. The file-ownership manifest is complete and correct, so this is a transcription gap
+in the summary, not a real ownership hole — but the change-surface table is the one a reviewer greps.
+
+### F-11 (Low) — the manifest's closing arithmetic does not reconcile
+
+"Fifteen files, fifteen distinct owners across the two tables" does not match the tables: the two
+tables carry 16 file rows (4 + 12), one of which (`dist/pdlc-cli.mjs`) is deliberately unowned, LI-06
+owns two rows, and the distinct-owner count across both tables is 21 of the 22 tasks (LI-01 owns
+none — see F-05). The audit itself is sound and its load-bearing claim — "the only multi-owner file
+is `orchestrate-dev.js`, and its eight owners occupy eight different batches" — is true. Restate the
+closing sentence so the count a reader checks matches the tables above it.
+
+### F-12 (Low) — P-2a's pre-flight will halt on a premise that holds
+
+LI-01 asks the implementer to assert "the four `dispatchKind: \"authoring\"` sites". At HEAD there
+are three sites spelled that way — `orchestrate-dev.js:12861`, `:12955`, `:13657` — and a fourth
+that is a positional `"authoring"` argument to `runWrapped` at `:7663`. A literal grep therefore
+returns 3 and, under H-1's wording ("a premise no longer holds — e.g. … a fifth
+`dispatchKind: "authoring"` site exists"), halts the feature on a premise that is in fact intact.
+Restate the premise by shape — "three object-literal `dispatchKind: \"authoring\"` sites plus the
+positional argument at the review-loop optimizer call" — which is also the phrasing the
+premise-pin suite of F-05 would assert. (TSPEC's own anchors for these sites are stale; routed as an
+erratum, not charged to this document.)
+
 ## Questions
 
 <!-- pending -->
