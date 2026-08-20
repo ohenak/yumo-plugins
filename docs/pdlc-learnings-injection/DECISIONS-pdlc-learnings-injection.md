@@ -296,6 +296,47 @@ the prompt; a future prompt-composition refactor that stops building `prompt` by
 
 ## DEC-LI-06: No feature-owned cache or run-scoped memo
 
+**Context.** A run makes many authoring dispatches. Each one re-enumerates the corpus and re-reads
+the selected documents, so the naive cost is *O(dispatches × corpus bytes)*. A run-scoped memo would
+reduce that to one enumeration and one read per document per run.
+
+**Decision.** The feature owns **no** cache, memo or index. Every dispatch enumerates and reads
+afresh, over the repository state *that dispatch* observed.
+
+**Alternatives considered.**
+
+- **A run-scoped memo of the corpus** — rejected on two grounds, one behavioural and one about what
+  the tests would then prove. Behaviourally it contradicts FSPEC E-32: selection is per-dispatch over
+  the state that dispatch observed, so a LEARNINGS document landing mid-run, or an enumeration that
+  fails at dispatch 5 after succeeding at dispatch 1, must be visible. Evidentially, a memo would let
+  the determinism test pass **because the second call never happened** — green on a cache rather than
+  on the rule, which is the vacuous-oracle failure this repository has paid for before
+  (`docs/_decisions/DECISIONS-test-oracle-mechanics.md`).
+- **A persisted index or cache file under `docs/` or `.claude/`** — rejected outright: REQ NG-4 and
+  FSPEC `BR-15` state that the run creates no index, cache or state file anywhere, and AC-5.2's
+  filesystem-footprint oracle asserts it.
+- **Memoise only the enumeration, not the reads** — rejected: it is the same E-32 violation on the
+  cheaper half, and it splits the observed-state story across two different moments in the run,
+  which makes the per-dispatch record harder to reason about than the cost it saves.
+
+**Constraints that forced the shape.** FSPEC E-32 (per-dispatch observation), REQ NG-4 and `BR-15`
+(no new artefacts), AC-5.2 (positive-membership filesystem oracle).
+
+**Cost, stated plainly.** The re-read is not free, and this entry does not pretend otherwise. On the
+Claude Code channel the platform read seam already carries a revalidating cache (`rtReadFile` in
+`pdlc/workflows/runtime-adapter.js`), so an unchanged document usually costs a size+sha probe rather
+than a full chunked read — but the cache is **shared across every read the run makes**, is capped at
+`RT_READ_CACHE_MAX_BYTES` (2 MiB) and evicts oldest-inserted, so residency is not guaranteed to this
+corpus. That is why the read cost, not the injected-byte cost, is the term flagged to REQ O-1's live
+measurement (TSPEC `T-O-3`): the injection is bounded, the read is not.
+
+**Reversibility.** Hard, not because the code is hard to add but because a cache changes observable
+behaviour that oracles depend on. Adding one later means revisiting E-32 and AC-5.2 upstream first.
+
+**Re-evaluation triggers.** REQ O-1's measurement shows read cost dominating a run; the corpus grows
+past the point where per-dispatch re-reading is affordable; FSPEC relaxes E-32 to a run-scoped
+observation.
+
 ## DEC-LI-07: An absent configuration section is an enabled run, and no configuration mistake disables the feature
 
 ## DEC-LI-08: The injection is bounded by static caps only; there is no dynamic prompt budget
