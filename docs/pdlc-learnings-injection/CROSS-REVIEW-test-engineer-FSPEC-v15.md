@@ -161,6 +161,40 @@ approved at v14.
 
 ## Edge Cases and Error Scenarios
 
+**E-36 (new).** "`maxBytesPerDocument: 0` → No document yields material: every one carries
+`RSN-NO-MATERIAL` and consumes no slot; enabled run, empty selection, BR-8 rows present and empty →
+AT-30." The row is well-formed for this table's contract: a named trigger, a fully positive outcome,
+and a named AT. Three positive conjuncts, not an absence claim — the reason id is asserted by value,
+the slot consumption is asserted at zero, and the run shape is asserted as *enabled with empty rows*
+rather than "not disabled". That last distinction is the one that matters most here, because the
+failure mode this row exists to catch (a zero threshold read as "off") produces the disabled run's
+**absent key**, which an absence-only oracle would not separate from an empty-rows run.
+
+**E-19 (unedited) still owns its own cause.** E-19 is the measured, real-corpus document that carries
+none of BR-6's five sections and yields `RSN-NO-MATERIAL` at default thresholds. E-36 shares the
+reason id but not the trigger, and both name an AT, so neither row absorbs the other and no row lost
+an owner. The pair is worth keeping distinct in the table precisely because a mutation that broke the
+zero-bound path would leave E-19 green.
+
+**The E-row range statement was updated** — "Every row of §Edge Cases and Error Scenarios (E-01 …
+**E-36**, less retired E-05) names an AT" (FSPEC:988). This is the small bookkeeping line errata
+routinely miss, and missing it would have made the completeness claim false by one row the moment
+E-36 landed. It travelled.
+
+I checked the rows the basis change could have stranded:
+
+- **E-rows over `maxTotalBytes`** (the `RSN-BYTES` family) describe whole-document drops from the low
+  end and make no framing claim, so the material-only basis changes their expected sizes in a fixture
+  but not their stated outcomes. AT-13's fixture is "sized so that `maxTotalBytes` drops the
+  lowest-ordered of the five taken" — a relative sizing constraint, still satisfiable, now more
+  easily since the fixture author no longer needs delimiter bytes to compute the boundary.
+- **The bounded-flag rows** still route through AT-11/AT-12, whose literal counts are now computable
+  (see §Business Rules). No row is orphaned.
+- **BR-14's config-state table row** "Enabled, with thresholds admitting nothing (zero documents or
+  zero bytes) → the enabled composition, with an empty selection → BR-8's rows, present and empty"
+  (FSPEC:669) is unedited and now has three instantiating thresholds instead of two. Widening the set
+  of triggers that reach an already-stated outcome cannot orphan the row.
+
 ## Acceptance Tests
 
 ## Open Questions
