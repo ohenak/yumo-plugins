@@ -85,6 +85,21 @@ disturbs it.
 
 ## Delta-Confirmation Findings
 
+No findings.
+
+## Positive Observations
+
+- The erratum is minimal and honest: it fixes the row *and* records that the earlier note
+  overclaimed, instead of quietly editing the older entry. That is the behaviour that keeps a
+  revision history usable as evidence.
+- Upstream was genuinely re-read rather than asserted: REQ at HEAD hashes to the dispatch digest,
+  and every citation the recent notes lean on still resolves to live upstream text.
+
 ## Recommendation
 
+**Approved**
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
