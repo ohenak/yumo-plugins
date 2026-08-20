@@ -542,10 +542,25 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 - [ ] `cd pdlc/workflows && npm run test:coverage` passes both stages **for every test this feature
       owns**. This command runs the whole suite with no `--testPathIgnorePatterns`, so it inherits
       every red listed in the Overview's HEAD-drift note, not just the advisory ones. Two of those
-      reds are closed by the items below; **two are inherited and stay red on this branch**
-      (`AT-22 [red-until-L-06]` and `PROP-SWEEP-2(b)`'s 14 unclosable residual paths), so this leg is
-      read as "no red outside the named inherited set", not as a bare exit-0. Recording it as a bare
-      exit-0 would make this Definition of Done unsatisfiable by construction (PM v7 F-01).
+      reds are closed by the items below; **two are inherited and stay red on this branch**. Recording
+      the leg as a bare exit-0 would make this Definition of Done unsatisfiable by construction (PM v7
+      F-01), but reading it as "no red outside the named inherited set" is a human-applied leniency
+      over an absence-shaped condition, which cannot fail — a newly-reddened test sits inside the same
+      suite leg the reader was just told to read leniently (TE v8 F-03). The leg is therefore stated as
+      a **set-equality on failing test titles**, which can: at DoD the run's set of failing tests is
+      exactly
+
+      - `AT-22 [red-until-L-06]: coveredViolations(LIVE_ROOT) is empty post-landing`
+      - `PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty — AC-1.2's required-empty gate`
+
+      and **nothing else** — checked both directions, so a red this feature introduces (for example
+      the T21 `.gitignore` case A6-00's Edit 1 must not break) fails the leg rather than hiding inside
+      it. `PROP-SWEEP-2(b)` additionally carries a positive check on *its own* failure output: the
+      residual it prints set-equals the enumerated inherited paths of the Overview's HEAD-drift note —
+      class 2's four `.claude/workflows/` runtime artifacts plus class 3's `docs/pdlc-advisory-wave-gate/**`
+      documents and this feature's `CROSS-REVIEW-*` files, and **no** `.pdlc-backups/*.bak` blob. A
+      residual containing a fifteenth class member is a regression even though the test was already
+      red.
 - [ ] `documentOracles.test.js`'s T15 count test reads `100`, not `99`, **in its assertion, its
       title and its block comment together**. The title still says *"post-sweep
       pdlc/workflows/\_\_tests\_\_/\*.test.js count equals TSPEC §4.4's corrected literal of 99"* and the
