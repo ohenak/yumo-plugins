@@ -35,8 +35,14 @@ Eleven test-side files under `pdlc/workflows/__tests__`, **all eleven of which e
 authored early and landed in `e3b9d5a3`; it carries A6-00's pre-flight gate and is the one advisory
 suite **green** at HEAD. The manifest's twelfth path under that directory is the shared fixture
 `__tests__/helpers/advisoryDoubles.js`, not a `*.test.js` file. One second-channel pair
-(`.claude/pdlc.config.example.json`, `pdlc/engine/__tests__/advisory-config-example.test.js`, the
-second of which is new). No new module,
+(`.claude/pdlc.config.example.json`, `pdlc/engine/__tests__/advisory-config-example.test.js`).
+**Both members of that pair exist at HEAD**: `git show --name-status e3b9d5a3` lists *two* added
+test files, `advisoryWaveGate.test.js` **and** `advisory-config-example.test.js`, so the drift
+commit landed two of this plan's "new" test files, not one — earlier revisions of this paragraph
+said "the second of which is new" and were measured wrong (PM v7 F-02). TSPEC §5.1's **Status
+column caveat** said so before v1.5 was written: "`edited` and `new` describe the file's state, not
+the work outstanding". A6-04 is therefore *discharged by verification* on the A6-00/A6-01 pattern,
+not an authoring step; see its row. No new module,
 no new transport, no new credential.
 
 **Shape of the plan.** Eleven tasks in seven waves, every wave boundary green. Red→green TDD
