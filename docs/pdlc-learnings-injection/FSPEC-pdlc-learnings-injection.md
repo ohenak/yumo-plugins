@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.12 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.13 | 2026-08-20 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -66,6 +66,19 @@ depends-on: []
 > reds when the second conjunct is reverted. The Overview and A-2 no longer restate one conjunct
 > when deferring to BR-1. BR-15's expected set is stated as a set, not a count. The header
 > Cross-Reviews row stops hand-enumerating rounds. No behavioural change.
+
+> **v0.13 erratum (Phase PR items; re-grounded on REQ v0.9 at HEAD, unchanged — no upstream
+> decision to absorb).** Three decisions land. BR-6's byte-accounting basis is **material only**:
+> a document's contributed bytes are the section headings and bodies taken, and framing — the
+> identification line, the per-document delimiters and source-path label, the block preamble — is
+> charged to no threshold, which is what REQ AC-2.3 bounds ("the material taken") and removes the
+> contradiction with TSPEC's accounting. `maxBytesPerDocument: 0` is decided: no document yields
+> material, every one carries `RSN-NO-MATERIAL` and consumes no slot, and the run is the enabled,
+> empty-selection run of BR-14 — recorded as E-36 and exercised by AT-30 beside the other two
+> zeros; BR-9's `RSN-NO-MATERIAL` meaning and D-12's question are stated over "yields material"
+> rather than "carries a section". F-O-1 now owns **both** heading-recognition rules — the
+> document-shape predicate and the rule by which a heading counts as one of BR-6's named sections
+> — so BR-6's delegation names a real owner. No other change.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
