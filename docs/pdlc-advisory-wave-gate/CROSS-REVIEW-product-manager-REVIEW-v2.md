@@ -214,4 +214,34 @@ noise.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All six of v1's High findings are closed, and closed at the production caller rather than at a
+builder: E-6's rule is decided in the workflow script and narrows the scope to the named task
+(F-01); the root-cause class is a countable field on `ESCALATIONS.md` (F-02); the advisory record
+names wave, class, repair paths and promotion, asserted by set-equality (F-03); the prohibition
+catalogue has a production reader and eleven refusal tests with paired positives (F-04); AC-1.5's
+cardinality is counted on four arms through `mainDev`, discriminator included (F-05); AC-4.6's
+dispatch clause is driven through `main` with a byte-identical negative (F-06). Both v1 Mediums that
+were actionable here are closed (F-07), and both Lows (F-09, F-10). Nothing I approved in v1 moved:
+A1–A5's record and escalation bytes are pinned unchanged, the disabled-tier inertness arms still
+pass, and the regenerated `dist/pdlc-cli.mjs` is in sync.
+
+Three non-gating items remain, none of them a defect of what this round changed:
+
+1. **F-01** — the E-5-labelled proposal's scope. Routed upstream (`ERRATUM: TSPEC`); the code is
+   faithful to TSPEC §3.4 as written. If the erratum lands the union as intended, the record's
+   promotion rows should key off `groupPromotedPaths` so record and branch agree.
+2. **F-02** — AC-5.1's ignored-path arm, still pending OQ-7. Unchanged since v1, upstream.
+3. **F-03** — `documentOracles.test.js` red for corpus/local-cache reasons, outside this feature.
+
+One note for harvest, unchanged in substance from v1 and now with a happier ending: every one of
+this round's six fixes was an **already-allocated PLAN line** (A6-18's escalation-log tests, the
+eleven prohibition tests, AC-1.5's four arms) that a green wave gate had let pass unlanded. The
+signal worth preserving is not that the fixes were hard — they were not — but that a wave can close
+green over allocations its PLAN made and its tests did not assert.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
