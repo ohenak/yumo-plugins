@@ -129,7 +129,58 @@ invocation halts the wave") and leave the unreachability argument to PROPERTIES.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | At `waveBudgetPerRun: 0` with the tier enabled, does A6 still *classify* a red wave (producing a root-cause class on the escalation) or does it escalate with no dispatch at all? The TSPEC says "no dispatch", which implies no classification — but AC-6.4's countability of `plan-ordering-defect` then silently loses its input in that mode. Which does the REQ intend? |
+| Q-02 | AC-1.5 scopes the notice population to runs "that reach Phase I and evaluate wave mode". A run that reaches Phase I, evaluates wave mode, finds both prerequisites present, and *then* halts on a dispatch-level failure (M-WG-1) before any gate runs is inside the population and A6 applies — so the criterion demands zero notices. Is that the intent, and is there a fixture that defeats the earlier dispatch-halt branch to prove the zero is a real zero rather than an unreached assertion? |
+| Q-03 | AC-4.4 admits a truncated sequence `[post-wave, test, post-wave]` when the re-gate's post-wave command fails. Since AC-1.2 excludes post-wave failure from A6's trigger entirely, is the re-gate's post-wave failure classified, or does it escalate unclassified? The two criteria are consistent but the outcome is not stated in either. |
+
+## Positive Observations
+
+- **The oracle discipline in this document is the strongest I have reviewed in this repo.** AC-4.4's
+  ordered-sequence oracle explicitly rejects set equality with the reason stated inline ("it collapses
+  the duplicates and admits a resolution declared on one invocation, the defect this criterion
+  excludes"). That is the completeness-by-set-equality principle applied *and* correctly refused where
+  sequence is the unit — a distinction most specs get wrong in the other direction.
+- **AC-4.1's three positive conjuncts are a textbook repair of an absence-only oracle.** The v1.8
+  changelog records replacing an unbounded negative with three positive conjuncts, and AC-4.5
+  generalises the rule ("each such test asserts the corresponding positive outcome on the same path
+  … because a negative assertion alone is satisfied by accident"). Every prohibition in REQ-AWG-04
+  is paired with what happens instead.
+- **Both closed catalogues are asserted by set-equality, and the REQ says so at the point of
+  definition.** AC-2.2 ("a deleted or invented class fails the suite") and AC-3.1 ("set-equality over
+  member ids alone") both hold at HEAD, and AC-1.1 and R-5 are honest that this makes the change
+  non-additive rather than pretending otherwise.
+- **The totality rule in AC-2.2 is precisely disambiguated against AC-2.1.** An unclassifiable verdict
+  escalates *without* consuming an attempt because no repair was attempted; a malformed verdict
+  consumes one; and where both could read, the specific rule is named as winning. The shipped
+  normaliser implements exactly the stated default.
+- **§1's corroborating-evidence paragraph withdraws a stronger claim the author had previously made.**
+  v1.11 re-measures the wave ledger, finds it untracked and gitignored, and explicitly records that
+  the v1.10 statement was the opposite and is withdrawn. I verified the current state and v1.11 is
+  correct. A document that narrates its own retraction is doing the thing that makes measured
+  baselines trustworthy.
+- **BL-06 pre-discloses its own recipe drift.** Rather than leaving reviewers to discover that the
+  baseline's positional `sed -n` recipes no longer resolve, §9 names the drift, scopes it to every
+  positional recipe in §1–§2, and separates "the facts re-verified true, the recipes did not". F-02
+  exists only because one anchor in the REQ's own body sits outside that disclosure.
+
 ## Positive Observations
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. Every existing-behaviour claim the REQ makes about the pipeline verified true
+against the working tree at HEAD — the six-member catalogues, the four-class root-cause set, the
+eight-member refusal set, the three budget defaults, the shared gate-sequence implementation, the
+per-wave commit scope, and §1's re-measured ledger state. The two Medium findings are additive:
+F-01 asks for an AC behind a shipped operator mode that currently traces to none, and F-03 asks E-6's
+first conjunct to either become decidable or name its downstream owner as its sibling rules do. The
+two Low findings are a stale line anchor (F-02) and three sentences of fixture design that belong to
+PROPERTIES (F-04).
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
