@@ -213,4 +213,18 @@ loop rather than halting the phase.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §Errata states "Two defects in **FSPEC v0.10** are still live at HEAD" and quotes BR-1 as saying "consumes the classification, it does not restate the membership" and BR-15's expected set as including "the corpus-root enumeration". FSPEC at HEAD says neither: v0.11/v0.12 gave BR-1 the two-conjunct rule and made BR-15's expected set exactly one attempt per report-named document with the enumeration contributing no member. Retire both rows, record v0.11 as the resolving version, keep one provenance line for harvest | §Errata raised from this document's authoring (PLAN:520-531) |
+| F-02 | Medium | delta | local | §Errata's ERR-2 paragraph says AT-02's fixture list adds a fourth shape "beyond FSPEC's three". FSPEC AT-02 now enumerates four itself, and its fourth — "a run containing an authoring-classified dispatch whose target is none of the six C-1 document types" — is a different shape from TSPEC's retry fixture and is named in neither LI-11 nor LI-02. Coverage exists (LI-11's composition-site probe reds on reverting the second conjunct), the mapping does not: name the shape in LI-11's fixture list and §Traceability, and correct the count | §Errata ERR-2 paragraph (PLAN:538) and LI-11 (PLAN:151) |
+| F-03 | Medium | delta | local | §The measured baseline claim 4 scopes baseline byte-identity to "every **non-authoring** dispatch (AC-4.3)", which was FSPEC AT-29's own wording at approval time. AT-03 and AT-29 now say "every dispatch **outside BR-1's rule**", explicitly including an authoring-classified dispatch with no C-1 target — the Phase CR optimizer round, the most frequently composed dispatch in a real run. PLAN's compression is now narrower than the promise it summarises; restate the clause in FSPEC's current terms | §The measured baseline, claim 4 (PLAN:493) |
+
+FINDING: Medium | delta | local | §Errata raised from this document's authoring (PLAN:520-531) | Both routed FSPEC errata are recorded as "still live at HEAD" and quote BR-1/BR-15 text that FSPEC v0.11/v0.12 replaced; retire the rows and record the resolving version.
+FINDING: Medium | delta | local | §Errata ERR-2 paragraph (PLAN:538) and LI-11 (PLAN:151) | "beyond FSPEC's three" undercounts FSPEC AT-02's now-four fixture shapes, and its new authoring-classified non-C-1-target shape is unnamed in LI-11 and LI-02 despite being covered by the composition-site probe.
+FINDING: Medium | delta | local | §The measured baseline, claim 4 (PLAN:493) | Baseline byte-identity is scoped to "every non-authoring dispatch" where FSPEC AT-03/AT-29 now require "every dispatch outside BR-1's rule", including authoring-classified dispatches with no C-1 target.
+
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 0}
