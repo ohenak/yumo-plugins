@@ -62,7 +62,7 @@ rather than assuming it (`LI-10 … | 5 | LI-02, LI-06 | ⬚ |`, `LI-23 … | 5 
 |---|---|---|---|
 | `(erratumRound, erratumAuthorPrompt)` | `orchestrate-dev.js:12861` | `erratumRound` (`:12790`) | `basePrompt: erratumAuthorPrompt({…})` — the symbol is at the slot |
 | `(erratumRound, the land-proof-retry inline template)` | `:12955` | `erratumRound` (`:12790`) | `basePrompt:` a bare template literal (`ERRATUM ROUND … LAND-PROOF RETRY.`) — no symbol |
-| `(converge, creatorPrompt)` | `:13657` | `converge` (`:13628`) | `basePrompt: creatorPromptExtra ? `${basePrompt}…` : basePrompt` — `creatorPrompt` is bound one line earlier, `const basePrompt = creatorPrompt(phaseId, …)` at `:13656` |
+| `(converge, creatorPrompt)` | `:13657` | `converge` (`:13628`) | a conditional expression over the local `basePrompt` (`creatorPromptExtra ? …template… : basePrompt`) — `creatorPrompt` is bound one line earlier, `const basePrompt = creatorPrompt(phaseId, …)` at `:13656` |
 | `(reviewLoop, optimizerPrompt — positional argument 4 of runWrapped)` | `:7663` | `reviewLoop` (`:7266`) | `runWrapped(optimizer, optPrompt, doc, "authoring", …)` — `optimizerPrompt` is bound at `const optPrompt = optimizerPrompt(…)`, `:7660` |
 
 The key is injective over these four, so batch 1 is green on authoring as the row promises. The two
