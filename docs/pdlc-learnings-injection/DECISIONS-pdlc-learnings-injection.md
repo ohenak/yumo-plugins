@@ -222,6 +222,44 @@ excluded, and widening must be explicit).
 
 ## DEC-LI-04: Corpus enumeration goes through `_git` with a restated pathspec, not `_listFiles` and not an import
 
+**Context.** REQ C-3 pins corpus membership to the enumeration the consolidation side already
+performs: two location globs over tracked **and untracked-but-not-ignored** files. That predicate
+ships, as `LS_FILES_ARGV` in `pdlc/workflows/consolidate-learnings.js`, consumed by `enumerateCorpus`.
+
+**Decision.** Restate the pathspec literally as a frozen `LEARNINGS_CORPUS_ARGV` inside
+`orchestrate-dev.js`, run it through the injected `_git` seam, and add a **pinning test** that fails
+if the two argv literals diverge.
+
+**Alternatives considered.**
+
+- **`import { LS_FILES_ARGV } from "./consolidate-learnings.js"`** — rejected, and this is the one
+  place where the preferred posture (reuse, don't restate) loses to a hard constraint. G-A:
+  `consolidate-learnings.js` is not in `MODULE_NAMES`, so the import resolves in this repository and
+  is **absent** in every consumer repository — a module-load failure of `orchestrate-dev.js` itself,
+  i.e. the pipeline fails to start rather than degrading. The pinning test is the compensating
+  control, and it is the reason the restatement is honest rather than a fork.
+- **Enumerate with `_listFiles`** — rejected on measured behaviour, not taste. `defaultListFiles`
+  does a single non-recursive `readdirSync`, filters directories out and returns **basenames only**
+  (`orchestrate-dev.js`); it has no gitignore knowledge and no glob. Reproducing C-3 on it would mean
+  walking `docs/` and `docs/completed/` by hand and re-implementing the ignore rules — a *different*
+  predicate wearing C-3's name, which is worse than either alternative because it would pass a
+  same-shape test while disagreeing with consolidation about which documents exist.
+- **Walk the filesystem directly with `fs`** — rejected: it bypasses the seams, so AC-6.1's
+  model-free suites could not fake it, and it inherits the `_listFiles` predicate problem.
+
+**Constraints that forced the shape.** G-A again (no third vendored module); REQ C-3's
+tracked-or-untracked-but-not-ignored requirement, which only `git ls-files` decides correctly; and
+the seam contract that `_git` never throws on either channel, so the shell's failure handling is a
+check of `ok`, not a `catch`.
+
+**Reversibility.** Easy. If `MODULE_NAMES` ever grows to include `consolidate-learnings.js`, the
+restatement collapses into an import and the pinning test becomes redundant — a deletion, not a
+migration.
+
+**Re-evaluation triggers.** `MODULE_NAMES` gains `consolidate-learnings.js`; the consolidation-side
+predicate changes (the pinning test is what surfaces this, by design); REQ C-3 stops being defined by
+reference to the consolidation enumeration.
+
 ## DEC-LI-05: The block is an appended suffix that is `""` when empty, not an insertion
 
 ## DEC-LI-06: No feature-owned cache or run-scoped memo
