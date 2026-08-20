@@ -100,7 +100,44 @@ HEAD, so the trigger fires on the same condition — only the sentence quoting i
 
 ## Consequences
 
-_pending_
+**For this round.** The confirmation approves. FSPEC v0.11–v0.12 absorbed a rule DECISIONS had
+already reasoned to, and re-decided nothing DECISIONS owns. Four findings stand, all citation
+defects, none blocking: PLAN and PROPERTIES read DECISIONS for rationale and read FSPEC/TSPEC for
+contract, and those two documents agree with each other at HEAD.
+
+**For the next authoring pass on DECISIONS**, the edits I would make, unchanged from v3 plus one:
+
+1. Replace the AC-3.3 locus row in *"Decisions deliberately NOT taken here"* with the settled
+   answer: FSPEC `BR-10` fixes two loci — ordering-key values per authoring dispatch, §4.1
+   thresholds once per run — one completeness test each, run-level mirror additive and unasserted.
+   Keep the row; change what it says. (F-01)
+2. Rewrite DEC-LI-07's *"divergence from TSPEC"* paragraph in the past tense: `DEC-ERR-01` landed in
+   TSPEC v0.6, `ERR-4` is CLOSED, the gate is `config.enabled` alone, and `D-O-9` is discharged
+   rather than outstanding. (F-02)
+3. Repin: header `Upstream` row and `**Upstream version note**` to TSPEC v0.6 / FSPEC v0.12; DEC-LI-07's
+   *"FSPEC v0.7 `BR-14`"* to v0.12 (the cited `BR-14` text is unchanged, so this is a pin edit only).
+   (F-03)
+4. Align DEC-LI-03's re-evaluation trigger with `A-2` as reworded: the excluded-by-construction
+   default now covers a dispatch failing **either** conjunct, and the authoring-classified non-C-1
+   target is named by `BR-1` itself rather than left to `A-2`. One clause. (F-04)
+
+**For the pipeline.** This is the second consecutive confirmation where every finding against
+DECISIONS is a stale sentence about a sibling document, and none is a wrong decision. That is a
+durable signal, not a run of bad luck. DECISIONS is the only artifact in this pipeline whose value
+partly comes from *narrating upstream state* — "TSPEC still carries `ERR-4` open", "FSPEC `A-2`'s
+stated default is…" — which is genuinely useful to a future agent and is also the one property that
+guarantees staleness the moment a sibling moves, with nothing mechanically detecting it. Two
+`Process`-flavoured harvest candidates fall out: (a) an upstream-quote convention for DECISIONS —
+cite the **spec id** and the claim, never the version-pinned sentence, so a reworded upstream
+paragraph does not falsify a rationale record; (b) a cascade check that re-reads DECISIONS' explicit
+"still open / owned there" pointers against the named owner's current status, since those are the
+sentences that go false silently.
+
+**On this confirmation itself.** The routed item list was FSPEC's BR-1/BR-11/BR-15 erratum — none of
+which names DECISIONS. Confirming on the item list alone would have returned a clean approval over
+four stale citations, three of them already outstanding. Re-reading the upstream text this document
+leans on, at HEAD, across the whole span since the recorded `UPSTREAM-STATE`, is what DEC-ERR-03
+asks for and is what surfaced F-04.
 
 ## Positive Observations
 
