@@ -24,6 +24,16 @@ Invoked as `/pdlc:<skill>`:
 | `harvest-learnings` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes the harvested files |
 | `consolidate-learnings` | Merges LEARNINGS across features into project-level knowledge |
 
+## Hooks
+
+| Hook | Trigger | Script | Purpose |
+|---|---|---|---|
+| `guard-harvest-before-delete` | PreToolUse: Bash | `hooks/scripts/guard-harvest-before-delete.sh` | Blocks deletion of a `CROSS-REVIEW-*` or `CODE_REVIEW-*` file unless a `LEARNINGS-{feature}.md` exists on the branch |
+| `check-scope-field` | PostToolUse: Write\|Edit | `hooks/scripts/check-scope-field.sh` | Warns if a `CROSS-REVIEW-*` / `CODE_REVIEW-*` doc is missing the `Scope:` field |
+| `check-req-size` | PostToolUse: Write\|Edit | `hooks/scripts/check-req-size.sh` | Warns if a `REQ-*.md` doc exceeds the pdlc REQ size budget (700 lines or 60 KB) |
+| `check-finding-grammar` | PostToolUse: Write\|Edit | `hooks/scripts/check-finding-grammar.sh` | Warns if an erratum-round `CROSS-REVIEW-*` doc has findings not expressed as line-leading `FINDING:` lines (the only form the engine's fail-closed gate reads) |
+| `nudge-consolidation` | SessionStart | `hooks/scripts/nudge-consolidation.sh` | Reminds to run consolidate-learnings if stale LEARNINGS files are detected |
+
 ## Review loop mechanics
 
 - **Round indices are derived, not assumed.** `deriveRoundWindow` computes the round window

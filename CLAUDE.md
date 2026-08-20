@@ -82,6 +82,7 @@ This table is the human-facing citation of FSPEC §5.1's required-check set, and
 | `guard-harvest-before-delete` | PreToolUse: Bash | `hooks/scripts/guard-harvest-before-delete.sh` | Blocks deletion of any `CROSS-REVIEW-*` or `CODE_REVIEW-*` file unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | PostToolUse: Write\|Edit | `hooks/scripts/check-scope-field.sh` | Warns if a `CROSS-REVIEW-*` / `CODE_REVIEW-*` doc is missing the `Scope:` field |
 | `check-req-size` | PostToolUse: Write\|Edit | `hooks/scripts/check-req-size.sh` | Warns if a `REQ-*.md` doc exceeds the pdlc REQ size budget (700 lines or 60 KB) |
+| `check-finding-grammar` | PostToolUse: Write\|Edit | `hooks/scripts/check-finding-grammar.sh` | Warns if an erratum-round `CROSS-REVIEW-*` doc has findings not expressed as line-leading `FINDING:` lines (the only form the engine's fail-closed gate reads) |
 | `nudge-consolidation` | SessionStart | `hooks/scripts/nudge-consolidation.sh` | Reminds to run consolidate-learnings if stale LEARNINGS files are detected |
 
 The `SessionStart` entry is registered in `hooks/hooks.json`, invoked via `${CLAUDE_PLUGIN_ROOT}`.
