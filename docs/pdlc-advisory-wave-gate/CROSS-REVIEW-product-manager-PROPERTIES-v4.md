@@ -33,7 +33,21 @@ acceptance criterion, and no property lost its requirement.
 
 ## Properties
 
-*(pending)*
+Re-read of the properties this document leans on upstream surfaces that moved, at their current
+version:
+
+| PROPERTIES text | Upstream at HEAD | Still faithful? |
+|---|---|---|
+| PROP-CTR-10 — `seamBudgetMinutes` measured per attempt over the dispatch→verdict window, with a companion run whose *gate command is slow* but whose every dispatch→verdict window stays inside budget | REQ v1.9 NFR-4 now reads "the window closes at the attempt's verdict, and the gate runs after that verdict, not within the measured span" (replacing "the gate runs between attempts, never inside one") | **Yes — improved.** PROP-CTR-10's slow-gate companion is precisely the case the old wording could not justify. The restatement makes the property the criterion's oracle rather than an extension of it |
+| PROP-CFG-01 / PROP-CFG-02 — `waveBudgetPerRun` default `1`; `0` survives as configured, `-1`/`1.5`/`"x"`/`null` fall back to `1` | REQ §5 C-2's default `1` restored (REQ F-01); TSPEC §4.4 unchanged on type, default and validator | Yes — the contract cells match in both documents |
+| PROP-CTR-13 — tier enabled + `waveBudgetPerRun: 0` ⇒ escalate `budget-exhausted`, snapshot still taken, `report.advisory` **present** with the sixth row at zero | TSPEC §4.4 rewords the affordance from "documented operator affordance" to "**intended operator configuration** (honoured, not documented anywhere operator-facing this feature ships)" | Yes. PROPERTIES never claimed a documentation carrier — it asserts the *behaviour* and the observable that separates this arm from `enabled: false`. The upstream correction withdrew a rationale claim, not a behavioural one, so PROP-CTR-13 is untouched |
+| PROP-CFG-03 — example carries the whole `advisory` section `{"enabled": false, "waveBudgetPerRun": 1}`, asserted in the purpose-named new engine file, never in `ci-arrangement.test.js` | TSPEC §5.1's engine-channel row now says the literal "is the shipped-default pairing only — it does not teach E-33's `0`-with-`enabled: true` affordance" | Yes. PROP-CFG-03 asserts shape and parse, and explicitly parks the assertion off `ci-arrangement.test.js` — the same disposition TSPEC still carries |
+| PROP-DIS-06 / §1.3's `.enabled`-counts-three constraint | TSPEC §3.2 step 2 and §1.3 re-anchored the three sites from `:3258` / `:13678` / `:1318` to symbol anchors (`runAdvisorySeam`'s disabled-tier early return, the run-level `advisoryTierOn` assignment, `orchestrate-queue.js`'s `finish` closure); the count is unchanged at three | Yes — PROPERTIES states the constraint, not the line numbers, so the re-anchoring passes through cleanly |
+| PROP-SEAM-02 — cardinality surfaces are transcription surfaces; four sites named "verified at HEAD" as `expect(rows).toHaveLength(5)` at `advisoryDisabled.test.js:622`, `advisoryQueueSeams.test.js:627`, `advisoryHarvest.test.js:571`, `:726` | TSPEC §1.3 re-grounds: all four sites "already read `toHaveLength(6)`" at HEAD, and re-anchors its own pins to block titles per DEC-DOC-01 | **The property yes, the evidence no.** Measured at HEAD: the four sites are `:629`, `:634`, `:578`, `:733` and all read `(6)`. See F-02 |
+| "File existence, verified at HEAD" — the two new files "are both absent at HEAD and both are explicitly planned as new" | TSPEC §5.1's new Status caveat: both are "on disk", `advisory-config-example.test.js` red because the example carries no `advisory` section | **No.** Both exist at HEAD; the sentence is false against upstream and against the tree. See F-01 |
+
+No acceptance criterion was narrowed, broadened or re-triggered by either upstream edit, and the
+AC→property map in §C-1 still resolves for every P0/P1 criterion, NFR-4 included.
 
 ## Oracles
 
