@@ -148,22 +148,49 @@ in this feature), the manifest would carry a second owner row in a later batch.
 
 ### Production and generated
 
-| File | Owner(s), in batch order | Batches |
+One row per **(file, owning task)** pair — never one row listing several owners in a cell. The
+dispatcher parses this table's `Owner` cells as task ids and reconciles them against §Batches; a
+cell reading `LI-15, LI-16, …` parses as one unknown id, and a cell reading `none` parses as a
+stale row for a task that does not exist. Both are contract violations, so files with no owning
+task are stated in prose below the table instead.
+
+| File | Owner | Batch |
 |---|---|---|
-| `pdlc/workflows/orchestrate-dev.js` | LI-15, LI-16, LI-17, LI-18, LI-19, LI-20, LI-21, LI-22 | 7, 8, 9, 10, 11, 12, 13, 14 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-15 | 7 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-16 | 8 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-17 | 9 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-18 | 10 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-19 | 11 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-20 | 12 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-21 | 13 |
+| `pdlc/workflows/orchestrate-dev.js` | LI-22 | 14 |
 | `.gitignore` | LI-04 | 3 |
 | `scripts/capture-learnings-baseline.mjs` (new directory) | LI-05 | 3 |
-| `pdlc/workflows/dist/pdlc-cli.mjs` | **none** — regenerated and staged by the wave gate's `postWaveCommand` / `postWavePathspecs` (`.claude/pdlc.config.example.json`), once per wave | 7–14 |
 
-**The `orchestrate-dev.js` row is why batches 7–14 each carry exactly one task.** Eight source
+**The `orchestrate-dev.js` rows are why batches 7–14 each carry exactly one task.** Eight source
 edits, eight batches, one writer each. Nothing about the split is stylistic: two same-batch tasks
 appending to a 15,311-line file would silently drop each other's region and leave the suite green
 on the survivor.
+
+**Two files this feature touches the behaviour of are owned by no task, deliberately.**
+
+- `pdlc/workflows/dist/pdlc-cli.mjs` — regenerated and staged by the wave gate's `postWaveCommand`
+  (`node pdlc/workflows/build-runtime.mjs`) and `postWavePathspecs`
+  (`.claude/pdlc.config.example.json`), once per wave, in every wave from 7 to 14. Giving it a task
+  row would put a second writer on the one file every source task already touches. A hand edit to
+  `dist/` is a halt condition (§Verification).
+- `pdlc/workflows/package.json` — **not** modified: `scripts/capture-learnings-baseline.mjs` is
+  deliberately left outside `c8.include`, which is exactly `orchestrate-dev.js`,
+  `orchestrate-queue.js`, `build-runtime.mjs` and is resolved relative to `pdlc/workflows/` (a
+  root-level script cannot be included from there without changing the `c8` block's root). The
+  exemption, its justification and the two named oracles that stand in for a coverage floor are
+  recorded in §Verification DoD 11 rather than left silent (TE F-08).
 
 ### Tests, helpers and fixtures
 
 | File | Owner | Batch |
 |---|---|---|
+| `pdlc/workflows/__tests__/learningsPremises.test.js` | LI-01 | 1 |
 | `pdlc/workflows/__tests__/helpers/learningsFixtures.js` | LI-02 | 2 |
 | `pdlc/workflows/__tests__/learningsCaptureScript.test.js` | LI-03 | 2 |
 | `pdlc/workflows/__tests__/learningsPredicatePin.test.js` | LI-13 | 2 |
@@ -171,14 +198,21 @@ on the survivor.
 | `pdlc/workflows/__tests__/learningsBlock.test.js` | LI-08 | 3 |
 | `pdlc/workflows/__tests__/learningsCorpus.test.js` | LI-09 | 3 |
 | `pdlc/workflows/__tests__/learningsBaselineGuard.test.js` | LI-06 | 4 |
-| `pdlc/workflows/__tests__/fixtures/learnings-baseline/**` (incl. `MANIFEST.json`) | LI-06 | 4 |
+| `pdlc/workflows/__tests__/fixtures/learnings-baseline/` (incl. `MANIFEST.json`) | LI-06 | 4 |
 | `pdlc/workflows/__tests__/learningsRecord.test.js` | LI-10 | 5 |
 | `pdlc/workflows/__tests__/learningsDispatchSet.test.js` | LI-11 | 5 |
 | `pdlc/workflows/__tests__/learningsConfig.test.js` | LI-12 | 5 |
+| `pdlc/workflows/__tests__/learningsArmInventory.test.js` | LI-23 | 5 |
 | `pdlc/workflows/__tests__/learningsSuiteMap.test.js` | LI-14 | 6 |
 
-Fifteen files, fifteen distinct owners across the two tables; the only multi-owner file is
-`orchestrate-dev.js`, and its eight owners occupy eight different batches.
+**The arithmetic, restated so it reconciles with the tables above it (TE F-11).** Twenty-four rows
+over **seventeen distinct files** — ten production rows over three files (`orchestrate-dev.js`
+eight times, `.gitignore` and the capture script once each) and fourteen test rows over fourteen
+files. **Every one of the 23 tasks in §Batches owns at least one row**, which is the invariant the
+dispatcher's manifest check enforces and which LI-01 did not satisfy before TE F-05. The only
+multi-owner file is `orchestrate-dev.js`, and its eight owners occupy eight different batches; the
+only task owning two files is LI-06, whose guard suite and guarded fixture subtree are committed
+together by construction. No two rows share a batch and a file.
 
 ### Read-only for this feature — no task owns them
 
