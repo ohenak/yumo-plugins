@@ -116,6 +116,27 @@ costlier than it was.
 
 ## Positive Observations
 
+- **v1.8's relocation is what makes this confirmation cheap, and it paid off exactly where predicted.**
+  The erratum that moved is a *measurement* paragraph — 28 tracked paths, three classes, 14 closable.
+  Two rounds ago that is precisely the kind of content DECISIONS carried, and a TSPEC re-measurement
+  would have cascaded into a stale integer in the decision record. Because v1.8 pushed every
+  short-shelf-life number out to `SIZING` and PLAN, DECISIONS had **no surface** for this delta to
+  falsify: `grep -nE 'bak|SWEEP|hygiene|residu'` returns nothing. That is the intended effect of the
+  relocation, observed working on its first real test.
+- **The delta routes rather than duplicates.** The new paragraph could easily have restated the
+  partition and the disposition of each class in TSPEC; instead it states the size, says why it
+  states only the size ("so that no reader of this paragraph mistakes the `.bak` blobs for the whole
+  residue"), and names the owner. One home per figure is the rule the sizing postmortem produced,
+  and TSPEC is now following it in the same direction DECISIONS did.
+- **The erratum is self-describing in the changelog.** The appended sentence states what was
+  under-stated, what replaces it, where it is routed, and — crucially for a cascade reviewer — that
+  "no design claim moves". That claim was independently checkable against the diff in about a minute,
+  and it held: both hunks are confined to the changelog and to one insertion inside §1.3.
+- **The `UPSTREAM-STATE` sha anchors did their job.** My v9 file recorded `TSPEC sha256:4a092e85…`;
+  the dispatch names `1531143c…`. The drift was detectable mechanically without reading either
+  document, which is the whole point of writing those anchors, and it is why Q-01 is a question about
+  labelling rather than a finding about a missed cascade.
+
 ## Decision
 
 ## Consequences
