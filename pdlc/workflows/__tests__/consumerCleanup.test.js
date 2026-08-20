@@ -68,10 +68,12 @@ const EXPECTED_ENTRIES = Object.freeze([
   ".pdlc-backups",
 ]);
 
-// TSPEC §5.2 TT-3(b) — the post-sweep five shipped, executable `pdlc/hooks/scripts/` entries.
+// TSPEC §5.2 TT-3(b) — the post-sweep shipped, executable `pdlc/hooks/scripts/` entries
+// (six since check-finding-grammar.sh landed per POSTMORTEM-D item 8).
 // The retired drift-detection library script is excluded (sourced, never executed directly, no execute bit).
-const FIVE_SCRIPTS = Object.freeze([
+const SHIPPED_SCRIPTS = Object.freeze([
   "pdlc/hooks/scripts/cleanup-consumer-workflows.sh",
+  "pdlc/hooks/scripts/check-finding-grammar.sh",
   "pdlc/hooks/scripts/check-req-size.sh",
   "pdlc/hooks/scripts/check-scope-field.sh",
   "pdlc/hooks/scripts/guard-harvest-before-delete.sh",
@@ -284,7 +286,7 @@ describe("T30: cleanup-consumer-workflows.sh contract", () => {
       clone.cleanup();
     });
 
-    it.each(FIVE_SCRIPTS)("%s is index mode 100755 in a fresh clone", (rel) => {
+    it.each(SHIPPED_SCRIPTS)("%s is index mode 100755 in a fresh clone", (rel) => {
       const out = execFileSync("git", ["ls-files", "-s", "--", rel], {
         cwd: clone.root,
         encoding: "utf8",
@@ -294,7 +296,7 @@ describe("T30: cleanup-consumer-workflows.sh contract", () => {
     });
 
     it("the enumeration set-equals the tracked executable scripts under pdlc/hooks/scripts/ (one-directional: tracked-executable ⇒ enumerated)", () => {
-      expect(liveExecutable).toEqual(new Set(FIVE_SCRIPTS));
+      expect(liveExecutable).toEqual(new Set(SHIPPED_SCRIPTS));
     });
   });
 

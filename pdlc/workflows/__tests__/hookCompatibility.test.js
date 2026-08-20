@@ -384,11 +384,12 @@ function isTracked(relPath) {
 
 describe("PLAN T09/T10 — hook manifest post-sweep (FSPEC L-4)", () => {
   it(
-    "T10: pdlc/hooks/hooks.json registers exactly FSPEC L-4's four post-sweep {event, script} pairs, and the retired drift-detection script is untracked",
+    "T10: pdlc/hooks/hooks.json registers exactly the five shipped {event, script} pairs (FSPEC L-4's four post-sweep + check-finding-grammar, POSTMORTEM-D item 8), and the retired drift-detection script is untracked",
     () => {
       const EXPECTED_PAIRS = [
         "PreToolUse:guard-harvest-before-delete.sh",
         "PostToolUse:check-scope-field.sh",
+        "PostToolUse:check-finding-grammar.sh",
         "PostToolUse:check-req-size.sh",
         "SessionStart:nudge-consolidation.sh",
       ].sort();
