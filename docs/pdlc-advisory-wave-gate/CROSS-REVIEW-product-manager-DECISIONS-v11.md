@@ -159,3 +159,10 @@ that correctly — without breaking anything previously approved. DECISIONS rema
 compression of REQ/FSPEC/TSPEC at HEAD, re-measured this round rather than inherited. The single
 Low finding (F-01) is inherited, owned by TSPEC's version-label hygiene, and gates nothing; both
 questions are editorial and routed elsewhere. No edit to this document is required.
+
+FINDING: Low | inherited | nonlocal | DECISIONS `## Context` / `DEC-A6-01` / O-8 passage ("TSPEC v1.10" grounding citations) | TSPEC's bytes moved under an unchanged `v1.10` label, so DECISIONS' three "TSPEC v1.10" citations name a label covering two byte states; all three claims still hold at HEAD, the fix is a TSPEC version bump, no DECISIONS edit is owed
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
