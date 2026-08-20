@@ -25,6 +25,7 @@ import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 import { coveredViolations, EXEMPTIONS } from "../lib/document-oracles.mjs";
+import { ADVISORY_DEFAULTS, ADVISORY_SEAMS, ENVELOPE_DEFAULTS } from "../orchestrate-dev.js";
 import { satisfiesRange } from "../../engine/lib/handshake.mjs";
 
 import { itOrSkip } from "./helpers/driftCapabilities.js";
@@ -492,6 +493,89 @@ describe("`.claude/` machine-local state is untracked and stays untracked (CODE_
       "pdlc/workflows/__tests__/fixtures/covered-violations/.claude/workflows/orchestrate-dev.bun" +
       "dle.js";
     expect(isIgnored(fixtureNested)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CODE_REVIEW v1 §1-6 (pdlc-advisory-wave-gate) — the runbook's advisory-tier
+// disclosure family. Four claims in pdlc/OPERATIONS.md's "Advisory tier" section
+// were falsified by A6's arrival: the seam count, the seam enumeration, the
+// config-key list (and its "four-member" envelope wording) and the per-seam row
+// count. They went stale because every one of them was hand-transcribed prose
+// with no oracle tying it to the constant it describes. These tests derive the
+// expected text FROM the shipped constants, so the next seam or config key reds
+// the runbook rather than silently outdating it.
+//
+// `CLAUDE.md` and `README.md` carry no seam-count prose — checked at review time
+// and re-checked here, so the family stays confined to this one file.
+// ---------------------------------------------------------------------------
+
+describe("pdlc/OPERATIONS.md advisory-tier disclosure family tracks the shipped constants (CODE_REVIEW v1 §1-6)", () => {
+  const COUNT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight"];
+
+  function advisorySection() {
+    const operationsMd = readFileSync(join(LIVE_ROOT, "pdlc", "OPERATIONS.md"), "utf8");
+    const start = operationsMd.indexOf("## Advisory tier");
+    expect(start).toBeGreaterThan(-1);
+    const rest = operationsMd.slice(start + 3);
+    const end = rest.indexOf("\n## ");
+    return end === -1 ? rest : rest.slice(0, end);
+  }
+
+  test("(a) the remediation-seam count word equals ADVISORY_SEAMS.length", () => {
+    const section = advisorySection();
+    const expected = COUNT_WORDS[ADVISORY_SEAMS.length];
+    expect(section).toEqual(expect.stringContaining(`${expected}\nnamed seams`));
+    // and no other count word is used for the same noun
+    for (const word of COUNT_WORDS) {
+      if (word === expected) continue;
+      expect(section).not.toEqual(expect.stringContaining(`${word}\nnamed seams`));
+      expect(section).not.toEqual(expect.stringContaining(`${word} named seams`));
+    }
+  });
+
+  test("(b) the seam bullet enumerates every member of ADVISORY_SEAMS", () => {
+    const section = advisorySection();
+    const bullet = section.slice(section.indexOf("- **Seams:**"));
+    for (const seam of ADVISORY_SEAMS) {
+      expect([seam, bullet.includes(`\`${seam}\``)]).toEqual([seam, true]);
+    }
+  });
+
+  test("(c) the config-key list names every key of ADVISORY_DEFAULTS and no stale envelope arity", () => {
+    const section = advisorySection();
+    const bullet = section.slice(section.indexOf("- **Config keys**"));
+    for (const key of Object.keys(ADVISORY_DEFAULTS)) {
+      expect([key, bullet.includes(`\`${key}\``)]).toEqual([key, true]);
+    }
+    // The envelope's arity is described in words; it must match ENVELOPE_DEFAULTS.
+    const expectedArity = COUNT_WORDS[ENVELOPE_DEFAULTS.length];
+    expect(bullet).toEqual(expect.stringContaining(`${expectedArity}-member literal`));
+    for (const word of COUNT_WORDS) {
+      if (word === expectedArity) continue;
+      expect(bullet).not.toEqual(expect.stringContaining(`${word}-member literal`));
+    }
+  });
+
+  test("(d) the reporting bullet's per-seam row count equals ADVISORY_SEAMS.length", () => {
+    const section = advisorySection();
+    const bullet = section.slice(section.indexOf("- **Reporting:**"));
+    const expected = COUNT_WORDS[ADVISORY_SEAMS.length];
+    expect(bullet).toEqual(expect.stringContaining(`${expected} per-seam rows`));
+    for (const word of COUNT_WORDS) {
+      if (word === expected) continue;
+      expect(bullet).not.toEqual(expect.stringContaining(`${word} per-seam rows`));
+    }
+  });
+
+  test("the disclosure family is confined to OPERATIONS.md — CLAUDE.md and README.md carry no seam-count prose", () => {
+    for (const relPath of ["CLAUDE.md", "README.md"]) {
+      const text = readFileSync(join(LIVE_ROOT, relPath), "utf8");
+      for (const word of COUNT_WORDS) {
+        expect(text).not.toEqual(expect.stringContaining(`${word} named seams`));
+        expect(text).not.toEqual(expect.stringContaining(`${word} per-seam rows`));
+      }
+    }
   });
 });
 

@@ -49,7 +49,7 @@ The workflow scripts pin a model per phase via the runtime `agent()` `model` opt
 
 ## Advisory tier (off by default)
 
-An **advisory tier** lets the pipeline attempt one bounded, reversible remediation at five
+An **advisory tier** lets the pipeline attempt one bounded, reversible remediation at six
 named seams before escalating to a human. It ships **disabled**: `.claude/pdlc.config.json` →
 `advisory.enabled` defaults to `false`, and with it false (or the section absent/malformed)
 the tier is provably inert — no dispatch, no model resolution, and the created-file set of a
@@ -59,10 +59,17 @@ run is byte-identical to the pre-advisory baseline (`advisoryDisabled.test.js`, 
   `A2` queue stale-REQ re-grounding (rewrites citation *location text only*, then commits
   REQ + record pathspec-scoped in its own `verifyGate`), `A3`/`A4` Phase DOD verify/remediate
   assists, `A5` Phase PUB CI-red diagnosis (acts only inside a decidable envelope; a
-  non-`escalated` outcome re-polls, `escalated` falls through to the byte-identical halt).
+  non-`escalated` outcome re-polls, `escalated` falls through to the byte-identical halt),
+  `A6` Phase I wave-gate remediation — fires on exactly one condition, a red **script-owned**
+  gate command, never on a PROPERTIES V-wave and never without an ownership manifest. It never
+  commits and never edits a test file, the PLAN or the config; it re-runs the same gate it was
+  dispatched on, and a refusal, a budget exhaustion or a red re-gate restores the whole working
+  tree from a wave-scoped snapshot before falling through to the wave's own halt.
 - **Config keys** (`parseAdvisoryConfig` — per-key independent fallback, one bad key never
   retunes the rest): `enabled` (false), `attemptBudget` (3), `seamBudgetMinutes` (10),
-  `envelope` (four-member literal). The master switch is tested first.
+  `waveBudgetPerRun` (1 — A6's per-run dispatch ceiling), `envelope` (six-member literal:
+  `ENVELOPE_DEFAULTS` is E-1…E-6, A6 having added E-5 and E-6). The master switch is tested
+  first.
 - **Two artifacts, one lifecycle rule.** Per-feature `docs/{feature}/ADVISORY-{feature}.md` —
   an append-only disposition record, committed pathspec-scoped at the seam that wrote it
   (H-2b durability; the queue commits it itself when an adjudication picks nothing). After
@@ -71,7 +78,7 @@ run is byte-identical to the pre-advisory baseline (`advisoryDisabled.test.js`, 
   `CROSS-REVIEW-*`/`CODE_REVIEW-*`; a refusal is a notice, never a halt). Non-feature-scoped
   `docs/_queue/ESCALATIONS.md` — a single append-only escalation log, never distilled and
   never deleted.
-- **Reporting:** the final report's `advisory` field carries five per-seam rows on both the
+- **Reporting:** the final report's `advisory` field carries six per-seam rows on both the
   success and halt paths (all-zero rows when enabled-but-quiet; the key is **absent** —
   `undefined`, not `null` — when disabled, per AC-1.6's "carries no advisory summary"), and
   `ciStatus` provenance is always a real `checkPrCi` observation, never an advisory verdict
