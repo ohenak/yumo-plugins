@@ -192,9 +192,9 @@ No edge row was invalidated by the new basis, and no row now double-counts frami
 and separately `maxBytesPerDocument: 0`, all three asserting the enabled empty-selection run —
 BR-8 rows present and empty, not the absent key of a disabled run, no refusal — plus, for the
 third, "every corpus document carries `RSN-NO-MATERIAL` (E-36)". The extra conjunct is what makes
-the third case falsifiable rather than a restatement of the first two: without it, a build that
-selected five zero-byte bounded documents would still satisfy "empty rows"… no, it would not, but
-it *would* satisfy a weaker reading of "empty selection", and the reason-id assertion closes that.
+the third case falsifiable rather than a restatement of the first two: it pins *why* the selection
+is empty, so a build that reached emptiness by some other route — dropping the corpus on a parse
+error, say, or recording `RSN-COUNT` for everything past `maxDocuments` — is red rather than green.
 
 This is the AT the F-01 flow drift bites. Written against BR-6, AT-30's third case passes; written
 against §Behavioral Flow step 15, it fails — the implementer sees 84 `RSN-COUNT` rows and 5 bounded
@@ -222,7 +222,32 @@ exercises that decision's no-material branch through a second cause).
 
 ## Open Questions
 
+**F-O-1 is now correctly scoped, and that is what makes TSPEC §D.3 incomplete.** F-O-1 (`:1009`)
+owns two heading-recognition rules; TSPEC's discharge at §D.3 (`:699-706`) supplies only the
+document-shape predicate, `LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/`, and TSPEC's F-O-1 row
+(`:1165`) is written over that one rule. The matcher inside `extractInjectableMaterial`
+(`:102`, `:526`) is still unspecified: nothing downstream says whether
+`## 3. Rejected Proposals (with rationale)` is matched on the numbered form, the bare title, or a
+prefix of it — the very three alternatives F-O-1 now enumerates.
+
+I am **not** filing that as a finding of this confirmation. My scope is this FSPEC measured against
+its upstream at HEAD, and against REQ v0.9 the FSPEC is faithful; the gap is a downstream document
+failing to discharge an obligation that this round has only just stated properly. It belongs to the
+TSPEC's own round, where it is now well-posed rather than ownerless. It is recorded here as Q-01 so
+the orchestrator can route it rather than lose it.
+
+The remaining FSPEC obligations are untouched by this erratum and were approved at v14: F-O-2 (the
+preamble wording and delimiters — now cleanly outside the byte accounting, which slightly reduces
+its blast radius), F-O-3 (serialised record forms and catalogue registration — unchanged, since no
+new reason id was minted), F-O-4 (the `consolidate-learnings.js` corpus pin), F-O-7 (REQ O-8's
+count-cut fixture).
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | F-O-1 now owns two rules; TSPEC §D.3 discharges one. Does the TSPEC re-open for the `extractInjectableMaterial` matcher (numbered form / bare title / prefix), and does the choice need pinning against the corpus BR-6 measured — where the conventional `## N. Title` form is what the harvest skill writes but at least one HEAD document deviates? Not a finding against this FSPEC; routing question only. |
+| Q-02 | TSPEC `:786` describes `totalBytesInjected` as "framing constant plus one opener/closer pair per selected document". If that is the *report scalar* rather than a realised-prompt-growth estimate, it contradicts BR-8's "sum of the rows' contributed bytes" under the newly agreed material-only basis. I read it as the latter and did not file it; worth one sentence of confirmation in the TSPEC round. |
 
 ## Positive Observations
 
