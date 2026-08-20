@@ -118,4 +118,20 @@ as *evidence that nothing relocates* rather than as guidance about where the new
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+Both v4 findings are resolved without weakening any claim: the envelope enumeration is re-derived
+from HEAD and now closes arithmetically, and the date correction carries the note it was owed plus a
+convention that prevents the next cascade from becoming a finding. The delta's two citation repoints
+land on sections that actually carry the cited oracles, and its one new repo claim — the engine
+expectation authored and red — reproduces on execution with the stated cause. No open High finding,
+old or new. Two non-gating findings are recorded against the same bullet pair; both resolve in a
+clause and should ride the next edit that opens the file.
+
 ## Verdict
+
+FINDING: Medium | delta | local | "What follows is the whole feature", envelope-literal bullet | enumeration is framed as "a count of what still moves", but only `advisoryEnvelope.test.js:284` compares the literal against production; the five transcriptions are inputs (`advisoryDisabled.test.js:136`, `:623`, `advisoryHarvest.test.js:203`, `advisoryDoubles.js:325`, `:423`) that stay green when `ENVELOPE_DEFAULTS` grows, and TSPEC §1.3 lists none of them.
+FINDING: Low | delta | local | "Two envelope sites are already at the post-A6 six-member value" bullet | "Both assert against a production default that still has four members" holds for `advisoryEnvelope.test.js:284` only; `advisoryConfig.test.js:51`'s envelope value is never asserted (PROP-CFG-01 asserts key set at `:104-106`, `waveBudgetPerRun` at `:111`, key-set equality at `:117`).
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
