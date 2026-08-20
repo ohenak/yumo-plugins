@@ -8,14 +8,26 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → **TSPEC** — `docs/pdlc-learnings-injection/FSPEC-pdlc-learnings-injection.md` (v0.9); `REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| Upstream | REQ → FSPEC → **TSPEC** — `docs/pdlc-learnings-injection/FSPEC-pdlc-learnings-injection.md` (v0.12); `REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md`, `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md`, `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md`, `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.6 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.7 | 2026-08-20 |
+
+> **v0.7 erratum (Phase P items; re-grounded on FSPEC v0.12 / REQ v0.9 at HEAD).** Upstream moved:
+> FSPEC v0.11 restated **BR-1 with both conjuncts** (authoring classification **and** a C-1 target
+> document type) and dropped the corpus enumeration from BR-15's expected read set; v0.12 carried
+> BR-1's complement through BR-11, AT-03, AT-29 and D-2. Absorbed here: the two routed defects those
+> versions settle — **ERR-7** and **ERR-3** — are marked CLOSED, §A.2 no longer routes the
+> `docType` conjunct as a divergence from BR-1 and states BR-11's complement as "outside BR-1's
+> rule" rather than "non-authoring". Raised items landed: §D.1's domain-membership wording is
+> scoped to **non-`null`** values, so the `corpusOutcome` domain's healthy `null` (§D.2) is no
+> longer contradicted; the ground-truth anchors for the `dispatchKind: "authoring"` sites (P-2a,
+> ERR-2) and the conditional-spread precedent (P-10) are restated as symbol/shape citations per
+> DEC-DOC-01, the previous line anchors having been stale at HEAD. No behavioural change.
 
 ## Scope
 
