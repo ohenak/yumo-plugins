@@ -601,8 +601,9 @@ following consumes the block, the record, the reason ids or the thresholds:
 - erratum routing,
 - POSTMORTEM production and the queue lifecycle.
 
-And: every **non-authoring** dispatch prompt is byte-identical to the same dispatch composed with
-injection disabled.
+And: every dispatch prompt **outside BR-1's rule** — whether it fails the authoring conjunct or the
+C-1 target-document conjunct — is byte-identical to the same dispatch composed with injection
+disabled.
 
 The falsifiable form of this rule is a comparison **under scripted fixtures**, not across live runs:
 comparing verdicts or round counts between two live runs measures model nondeterminism, and comparing
@@ -682,13 +683,14 @@ On an **enabled** run, the corpus paths touched are **exactly** the reads the re
 accounts for — a positive membership claim, not an absence-only one. Both sides are made
 computable so AT-33 can assert set equality:
 
-- **Observed set:** the file-open calls the run makes under `docs/`, over one observation
-  window covering the whole run.
-- **Expected set:** **exactly** one open attempt for every corpus document the report names
+- **Observed set:** the paths under `docs/` the run opens, over one observation window
+  covering the whole run.
+- **Expected set:** the corpus documents the report names
   — in BR-8's rows or BR-9's per-document reason rows — except those carrying `RSN-SELF`,
   decided from the path before any read. `RSN-UNREADABLE` documents belong to it: the failed
-  attempt is the read. Membership is therefore fully enumerable from the report alone, so a
-  test may transcribe it as an equality. The corpus enumeration that lists candidate paths
+  attempt is the read. Both sides are compared as **sets of paths**, not as counts, so a
+  document opened more than once neither adds a member nor changes the verdict (REQ AC-5.2).
+  Membership is therefore fully enumerable from the report alone. The corpus enumeration that lists candidate paths
   contributes **no** member: it opens no file under `docs/`, so this instrument does not see it.
 
 Nothing under `docs/_constraints/` or `docs/_decisions/` is written, no LEARNINGS document
