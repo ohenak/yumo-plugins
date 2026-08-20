@@ -1006,7 +1006,7 @@ AT-28.
 ### Assumptions
 
 - **A-1** — Consumer repositories carry `.claude/pdlc.config.json` already, for `implementation.testCommand` and the advisory tier, so §4.1's keys have a home that needs no new mechanism. REQ O-5 asks the operator to confirm this placement; no rule in this document depends on the answer, and the keys move together if it changes.
-- **A-2** — The pipeline's existing authoring classification is stable enough to be consumed rather than restated (BR-1). If a future phase introduces a dispatch kind that is authoring in spirit but not so classified, BR-1 excludes it by construction, and that is the correct default: widening is explicit, never implicit.
+- **A-2** — The pipeline's existing values that BR-1's two conjuncts read — the authoring classification and the dispatch's target document type — are stable enough to be consumed rather than restated (BR-1). If a future phase introduces a dispatch that satisfies neither conjunct in the pipeline's own terms yet is authoring in spirit, BR-1 excludes it by construction, and that is the correct default: widening is explicit, never implicit.
 - **A-3** — Most LEARNINGS documents carry the conventional sections BR-6 names, but not
   all do. Where a document carries fewer, BR-6 degrades to those present (E-19); where it
   carries none of them — measured at HEAD, at least one does (E-33) — it is dropped with
