@@ -137,14 +137,85 @@ What this confirmation had to establish, and whether it did:
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **(inherited, nonlocal)** Carried unchanged from v10 F-01. AC-5.1b attributes the operator notice to the reader: "the same response `orchestrate-dev.js`'s `parseImplementationConfig` ships, whose malformed section yields defaults plus an explicit operator notice" (REQ:391-393). At HEAD the function returns `{config: IMPLEMENTATION_DEFAULTS, sectionMalformed: true, invalidKeys: []}` and emits nothing (`orchestrate-dev.js:192-209`); the notice is the caller's (`:14130-14134`), and the JSDoc says so ("The caller emits a notice naming each degraded key", `:300-301`). The second call site keeps only `.config` (`:11913`), so at that site a malformed section yields defaults with **no** notice. The precedent the AC leans on is real — defaults plus notice is what the shipped pipeline does in wave mode — so the decision is undisturbed; the imprecision is one a TSPEC author pinning "the reader reports" would encode as the wrong seam, which is the failure mode this round's routed item is itself an instance of. **Fix (non-gating):** "…yields defaults, on which its caller emits an explicit operator notice (`orchestrate-dev.js:14130-14134`)". | AC-5.1b (REQ:391-393) |
+| F-02 | Low | Local | **(inherited, nonlocal)** Carried unchanged from v10 F-02. AC-3.2's mirror clause exempts an operator-visible field from every oracle: the run-level mirror is "additive, is not the oracle, and has a **deliberately unconstrained value that nothing asserts on**" (REQ:326-327). The per-dispatch oracle remains positively asserted so falsifiability is unchanged, but a mirror whose value contradicts the dispatch records it summarises would be undetectable by the suite and still green, while an operator reading the report top-down meets the contradiction first. **Fix (non-gating, or absorb at TSPEC):** drop the clause, or bound it with one consistency assertion — if a mirror is carried, it agrees with the dispatch records it summarises. | AC-3.2 (REQ:326-327) |
+
+Both findings pre-date this round's dispatch and neither is a defect any edit introduced —
+there was no edit. Neither meets the blocking bar under the freeze.
+
+DEFERRED: v10's two `DEFERRED:` lines stand unchanged and remain TSPEC-time routing notes — (a) AC-3.1's set-equality test is vacuous for a dispatch that selected nothing, so the empty-dispatch assertion belongs to AC-3.2's "rows present and empty"; (b) §1.2 claim 2's three code claims should reach TSPEC as a literal restatement pin against `consolidate-learnings.js:1348-1355` and `:587-593`, per C-3/O-7's pinning discipline.
+DEFERRED: When the TSPEC erratum lands, `AT-31`/`AT-32` should assert the absent-section case positively — dispatch runs, injection record present, corpus rows non-empty on a repository with a corpus — rather than only asserting that the `learningsInjection` key is present. An absence-shaped or key-presence-only oracle would pass under the old `present &&` gate too, and would not falsify the very reading this erratum retires.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | `D-O-9` obliges the TSPEC erratum to land "before `AT-31`/`AT-32` are authored against §I.3". Is PROPERTIES authoring sequenced behind that erratum in the queue, or could a PROPERTIES round start from TSPEC v0.5's `present &&` gate in the meantime? This is a scheduling question, not a REQ defect — the REQ is not the document that can answer it — but it is the mechanism by which this settled question could still produce red tests against a correct implementation. |
 
 ## Risks
 
+- **The settlement is authoritative in two documents and contradicted in a third.** REQ v0.9 and
+  FSPEC v0.7 agree; TSPEC v0.5 still gates on `present && … && !sectionMalformed`. Test authors
+  read TSPEC. Until the erratum lands, the risk is not that the REQ is wrong but that a correct
+  implementation of it reds against ATs written from the stale gate — the two-readings hazard
+  TSPEC's own `ERR-7` names.
+- **`RSN-UNLISTABLE` remains the one corpus-level outcome with no natural fixture.** It needs a
+  failing `git ls-files` reply through the injected seam. A suite that never exercises it leaves
+  this feature's most-argued divergence — fails open where the sibling pass fails its run —
+  unproven while every catalogue set-equality test still passes.
+- **§1.2 claim 2 has now been rewritten across four rounds and re-verified across two.** It is
+  correct at HEAD, but it is background prose describing another module's behaviour, which is
+  precisely the kind of claim that goes stale silently. Only a restatement pin turns a future
+  sibling change into a red test rather than a wrong REQ.
+- **Eleven rounds on one document.** The last two produced no REQ-side defect. Further rounds
+  addressed to this REQ should carry a real routed item or be declined at dispatch.
+
 ## Obligations
+
+- Both Lows are single-clause edits, unchanged from v10. They can ride any future erratum
+  touching this document or be absorbed at TSPEC time, at the author's discretion.
+- `D-O-9` (DECISIONS v0.2) is the live obligation this round's item belongs to: TSPEC closes
+  `OQ.2`, retires `ERR-4`, drops the `present`/`sectionMalformed` conjuncts from §I.3 and aligns
+  `LEARNINGS_DEFAULTS` with REQ §4.1. It must land before `AT-31`/`AT-32` are authored.
+- O-7's pinning obligation still covers more surface than when written: the restatement pin
+  should cover the pass-side `failed` transition (`consolidate-learnings.js:587-593`), not only
+  `LS_FILES_ARGV`.
 
 ## Positive Observations
 
+- **The REQ said the decidable thing early enough to be leaned on.** AC-5.1a does not merely set
+  a default; it names the state that would otherwise be conflated ("An absent configuration
+  section is not this state"), gives the reason from the repository ("no consumer repository
+  carries the section at HEAD"), and closes the door explicitly ("no second gate beyond this
+  key"). That last clause is what makes the TSPEC erratum mechanical rather than a re-argument —
+  a reviewer can diff a conjunct against a sentence.
+- **The routing worked as designed.** The contradiction was found by PM review of TSPEC v1,
+  routed upward as an erratum, settled in the REQ, recorded in DECISIONS as `DEC-LI-07` with an
+  explicit obligation row naming the sections to correct, and is now being pushed back down. No
+  document closed a question it did not own.
+- **Every upstream premise re-verified clean at HEAD**, including the two that describe another
+  module's behaviour and the vendoring premise behind C-3/G-6. Nothing rotted between rounds.
+- **REQ and FSPEC give a test author exactly one behaviour** for the absent, malformed and
+  wrong-typed configuration states, with the AT bindings already drawn (`FSPEC:128-130`). The
+  "write the test right now" check passes on all three states from the REQ alone.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. The routed item requires no REQ change: its subject sections belong to TSPEC,
+and the REQ-side settlement it cites is present and correct in the reviewed bytes. Nothing
+previously approved regressed — the bytes are identical to those approved at v10 — and all five
+upstream premises re-verify at HEAD. The two Low findings are inherited attribution and
+scope-of-assertion refinements that do not block.
+
+The outstanding work is downstream and already recorded as `D-O-9`: TSPEC closes `OQ.2`, retires
+`ERR-4`, and drops the `present`/`sectionMalformed` conjuncts from §I.3, before `AT-31`/`AT-32`
+are authored.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
