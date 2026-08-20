@@ -3152,11 +3152,19 @@ export function buildA6SeamOps({
     // tie-break: a reply that fails the citation check is malformed regardless of its class.
     classifyReply: (raw, verdict) => {
       const evidence = verdict && Array.isArray(verdict.evidence) ? verdict.evidence : [];
+      // The class is captured BEFORE the citation check, though it is READ after it: the
+      // outcome order above is unchanged (a citation failure is still malformed regardless of
+      // class), but the durable artifacts must not disagree about what the reply claimed. The
+      // A6 call site's own `classifyReply` wrapper (`runWaveGateSeam`) captures the class on
+      // every reply for the halt fields, so capturing it only past the citation gate here made a
+      // malformed-verdict escalation read `plan-ordering-defect` on the halt report and
+      // `unclassified` on `ESCALATIONS.md` — an operator counting AC-6.4's class off the log
+      // alone would undercount exactly those (CR round 1, TE F-04).
+      const rootCause = parseA6RootCause(raw);
+      capturedRootCauseForRecord = rootCause;
       if (!citesGateOutput(evidence, gateOutput)) {
         return { malformed: true };
       }
-      const rootCause = parseA6RootCause(raw);
-      capturedRootCauseForRecord = rootCause;
       if (rootCause === "unclassified") {
         return { terminate: { outcome: "escalated", reason: null } };
       }

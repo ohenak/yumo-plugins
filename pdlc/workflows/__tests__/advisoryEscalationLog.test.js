@@ -42,7 +42,20 @@ import { fileURLToPath } from "url";
 
 import * as devModule from "../orchestrate-dev.js";
 
-import { makeFileDouble, makeAdvisoryGenerators, resolveSeed, FIXED_NOW_MS } from "./helpers/advisoryDoubles.js";
+import {
+  makeFileDouble,
+  makeAdvisoryGenerators,
+  resolveSeed,
+  FIXED_NOW_MS,
+  // A6 (pdlc-advisory-wave-gate) additions — see the `AWG PROP-REC-*` blocks at the end of this
+  // file, which drive the shipped `runWaveGateSeam` rather than calling the renderer directly.
+  makeRealRepoFixture,
+  makeAgentDouble,
+  makeA6ReplyText,
+  makeFakeClock,
+  makeAdvisoryConfig,
+  makeSeamOps,
+} from "./helpers/advisoryDoubles.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEV_SOURCE = readFileSync(join(__dirname, "..", "orchestrate-dev.js"), "utf8");
@@ -78,6 +91,12 @@ const FIELD_LABEL_MAP = {
   "proposed action": "proposedAction",
   evidence: "evidence",
   "pipeline state": "pipelineState",
+  // AC-6.2 (pdlc-advisory-wave-gate) — the class a seam ANNOTATES. A1–A5 annotate nothing, so
+  // their entries still carry exactly the eight labels above and PROP-ESC-01's set-equality is
+  // unchanged; A6's entry carries this ninth row, pinned by `AWG_A6_FIELD_ORDER` below. Mapping it
+  // here (rather than leaving it to surface as `UNKNOWN(root cause)`) is what lets the A6 block
+  // assert its position, not merely its presence.
+  "root cause": "rootCause",
 };
 
 const REQUIRED_FIELD_ORDER = [
@@ -554,5 +573,131 @@ describe("P-7 — renderEscalationEntry: totality + decision-first + append-safe
     for (let i = 0; i < 5; i += 1) {
       expect(genA.entryFields()).toEqual(genB.entryFields());
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A6-17 — pdlc-advisory-wave-gate's escalation-log properties (AWG PROP-REC-03, -04, -06, -07).
+//
+// Two features' property ids collide on the `PROP-REC-*` prefix; every block below is titled
+// `AWG` for the wave-gate feature's numbering, and the tier's own `PROP-ESC-*` blocks above are
+// untouched.
+//
+// These are Integration-level, and the caller they drive is the SHIPPED one: `runWaveGateSeam`
+// (orchestrate-dev.js:3490+), the production A6 call site, which builds the real `buildA6SeamOps`,
+// enters the real `runAdvisorySeam`, and reaches the real `appendEscalationEntry` through the
+// driver's own step-7 writer at orchestrate-dev.js:4076-4078. Nothing below constructs a
+// disposition literal and hands it to the renderer — a renderer that emitted the class perfectly
+// while no production path ever annotated one would pass such a test and fail the operator
+// (CR round 1: an AC claiming an operator-visible artifact is only met when a production caller
+// produces it). `_git` is a real, disposable repository (`makeRealRepoFixture`) because A6's step 4
+// captures a tree snapshot before dispatching; every other collaborator is a canonical double.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const AWG_FEATURE = "pdlc-advisory-wave-gate";
+
+// The escalation entry's field order for an A6 escalation: the tier's eight, with the annotated
+// class immediately after the refusal reason (orchestrate-dev.js:3762).
+const AWG_A6_FIELD_ORDER = Object.freeze([
+  "decision",
+  "feature",
+  "seam",
+  "refusalReason",
+  "rootCause",
+  "diagnosis",
+  "proposedAction",
+  "evidence",
+  "pipelineState",
+]);
+
+const AWG_GATE_OUTPUT = "the gate went red at the eslint step";
+
+// One full A6 invocation through the shipped call site. `reply` is the agent's raw text; the
+// returned handle exposes the seam's own result plus everything the run wrote or said, so each
+// property below reads its oracle off the written artifact rather than off an internal.
+async function runA6Escalation({ reply, appendThrowsOn = new Set(), waveNum = 2 } = {}) {
+  const repo = makeRealRepoFixture({ prefix: "pdlc-a6-esc-" });
+  const files = makeFileDouble({ throwOn: appendThrowsOn });
+  const clock = makeFakeClock();
+  const notices = [];
+  try {
+    const result = await devModule.runWaveGateSeam({
+      feature: AWG_FEATURE,
+      waveNum,
+      waves: [[{ id: "T1", files: ["a.js"] }], [{ id: "T2", files: ["b.js"] }]],
+      waveIndex: 1,
+      tasks: [],
+      implConfig: { postWaveCommand: null, testCommand: "npm test" },
+      scriptGate: true,
+      gateResult: { output: AWG_GATE_OUTPUT },
+      invocations: [],
+      advisoryTierOn: true,
+      advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget: 1 }).config,
+      rungState: {},
+      waveBudget: { resolved: 0 },
+      _git: repo._git,
+      _agent: makeAgentDouble({ script: [reply] }),
+      _runCommand: async () => ({ ok: true }),
+      _appendFile: files._appendFile,
+      _readFile: files._readFile,
+      _now: clock._now,
+      _sleep: clock._sleep,
+      _notice: (n) => notices.push(n),
+      _log: () => {},
+    });
+    return { result, notices, log: files.files[ESCALATIONS_PATH] };
+  } finally {
+    repo.cleanup();
+  }
+}
+
+// An out-of-envelope A6 reply: well-formed, cites the gate output verbatim, names a class, and
+// proposes an action A6's envelope does not permit (E-2) — so the seam refuses at GATE and
+// escalates without touching the tree.
+function awgOutOfEnvelopeReply(rootCause = "plan-ordering-defect") {
+  return makeA6ReplyText({
+    proposedAction: "E-2",
+    rootCause,
+    evidence: [AWG_GATE_OUTPUT],
+    diagnosis: "wave 2's gate needs a symbol a later task owns",
+  });
+}
+
+describe("A6-17 / AWG PROP-REC-03 — an A6 escalation logs the root-cause class alongside the tier's fields", () => {
+  test("the written entry declares exactly the tier's eight fields plus Root cause, in order", async () => {
+    const { result, log } = await runA6Escalation({ reply: awgOutOfEnvelopeReply() });
+
+    expect(result.disposition.outcome).toBe("escalated");
+    expect(log).toBeDefined();
+    expect(extractFieldLabels(log)).toEqual([...AWG_A6_FIELD_ORDER]);
+    expect(log).toContain("| Root cause | plan-ordering-defect |");
+    expect(log).toContain(`| Feature | ${AWG_FEATURE} |`);
+    expect(log).toContain("| Refusal reason | out-of-envelope |");
+  });
+
+  test("the decision sentence is first and states what the operator must decide", async () => {
+    const { log } = await runA6Escalation({ reply: awgOutOfEnvelopeReply() });
+    const decideLine = log.split("\n").find((l) => l.startsWith("**Decide:**"));
+
+    expect(decideLine).toBeDefined();
+    expect(extractFieldLabels(log)[0]).toBe("decision");
+    expect(decideLine).toContain("out-of-envelope");
+    expect(decideLine).toContain("changed nothing");
+  });
+
+  test.each(["plan-ordering-defect", "wave-internal-defect", "environmental"])(
+    "the class the reply named (%s) is the class the log carries — not a fixed literal",
+    async (rootCause) => {
+      const { log } = await runA6Escalation({ reply: awgOutOfEnvelopeReply(rootCause) });
+      expect(log).toContain(`| Root cause | ${rootCause} |`);
+    }
+  );
+
+  test("a reply naming no class still logs one row, reading `unclassified` — the field is total", async () => {
+    const reply = makeA6ReplyText({ proposedAction: "E-2", rootCause: "not-a-class", evidence: [AWG_GATE_OUTPUT] });
+    const { log } = await runA6Escalation({ reply });
+
+    expect(extractFieldLabels(log)).toEqual([...AWG_A6_FIELD_ORDER]);
+    expect(log).toContain("| Root cause | unclassified |");
   });
 });
