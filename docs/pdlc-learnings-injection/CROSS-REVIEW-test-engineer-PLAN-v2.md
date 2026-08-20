@@ -356,12 +356,84 @@ are driven through"*. The batch column is unaffected either way.
 
 ## Questions
 
-_pending_
+All five of my v1 questions are answered in v0.2 — Q-01 by LI-21 naming the report-shape rows as
+`LI-AT-23`/`LI-AT-24`/`LI-AT-31`, Q-02 by LI-14 declaring static parse over import, Q-03 by LI-03's
+temp-repo instrument, Q-04 by LI-02's no-jest-globals rule, Q-05 by batch 3's per-suite gate reading.
+Two new questions, neither gating.
+
+| ID | Question |
+|----|---------|
+| Q-01 | LI-23 drives all twelve arms "in-file over its own fixtures", and its `rejected[].reason` equality is tight against the six-member catalogue. Does it therefore need its own AC-2.6-shaped path fixtures for `RSN-SELF`, or does `buildLearningsCorpus`'s spec surface (LI-02, now carrying declared repository paths) already cover every arm's fixture need? If a thirteenth fixture shape is required, LI-02 is where it belongs and its row does not currently name it |
+| Q-02 | P-A-1 says a mid-feature re-capture becomes "a second owner row in the manifest for both files, in the batch that needs it". Does that row get added to the PLAN at the time (making the manifest a live document the dispatcher re-reads), or is the amendment recorded only in the task's completion note? The dispatcher's manifest check is what enforces single-writer, so the answer decides whether a re-capture is auditable by the same mechanism as everything else |
 
 ## Positive Observations
 
-_pending_
+- **Every one of my five High findings was answered at the mechanism, not at the wording.** F-05 did
+  not become a stronger sentence about pre-flight rigour — it became a suite with an owner, a batch,
+  a manifest row and a stated failure mode ("it reds the moment a rebase moves a premise mid-wave").
+  F-04 did not become a promise to be careful — it became three named mutations, each targeting a
+  different clause, with "a step that does not red is a halt, not a pass". That is the difference
+  between a document that has absorbed a review and one that has deflected it.
+- **The expected-red ledger is the best artifact in this revision.** It is stated in test names
+  where suites split, it shrinks by exactly what each task claims and no more, and it reaches empty
+  one batch before the unqualified gate so batch 14 has something green to refactor against. The
+  stipulation that early-greening is as much a failure as lingering-red is what makes it a set
+  equality rather than a containment check — a dispatcher can evaluate all seven rows mechanically.
+- **The coverage baseline was measured, not asserted, and it reproduces to the digit.** I re-ran
+  both stages: 98 suites, 3828 passed, `orchestrate-dev.js` at 88.14 % branch. The finding that the
+  bare `npm run test:coverage` never reaches stage 2 (stage 1 has no ignore patterns and inherits
+  `documentOracles`) is the kind of thing a document usually discovers during implementation. H-8
+  turning the 3.14-point headroom into a named halt condition, with "lowering the floor to fit the
+  code is the repair that must not be made", is exactly the right shape for a coverage claim.
+- **LI-23's two tight set equalities.** Six reject reasons, six arms, no member unreachable and no
+  arm outside the catalogue; two notices, two arms. That the third equality has a `null` problem
+  does not diminish this — the inventory was designed so that the catalogues and the arms are the
+  same twelve facts counted two ways, which is what makes "an arm silently stops being entered" red
+  a test instead of surviving a reading.
+- **LI-14's disposition is the honest one.** The easy fix to F-02 was to invent a symbol for the
+  suite map to miss so it could have a red episode like everything else. The revision refused that
+  explicitly — "none may be *given* one by inventing a symbol for it to miss" — and instead stated
+  what the suite actually is: green on authoring, valuable as regression pressure. A PLAN that
+  declines a false red to preserve a uniform-looking table is a PLAN I trust on the other rows.
+- **The split greens are modelled rather than hidden.** AT-15 across LI-16/LI-19 and AT-22 across
+  LI-19/LI-21 each get a §Traceability row, an edge, a ledger entry and a restated count
+  (`(8+1) + 3 + 3 + (5+1) + 12 + 2 = 35`, "a split green is two green tasks for one test, never two
+  tests"). The alternative — attributing both loci to LI-19 — would have halted batch 11 on a
+  correct test, and the row says so.
+- **P-A-1 and P-A-2 answer the two questions a task actually depends on**, and answer them with a
+  bar rather than a preference: a re-capture is an amendment to LI-06 owned by the task that caused
+  it, with the mutation proof re-run because re-transcription is exactly the operation whose slips
+  it catches; and a moved premise halts first, then classifies on "does fixing it decide something
+  REQ has not decided". Both are testable distinctions, not judgement calls.
+- **Nothing regressed.** The batch column re-derives cleanly over 23 rows including three new edges,
+  no same-batch same-new-file collision was introduced, every implementation task still has a
+  preceding red-test row naming the same suite, and the manifest arithmetic now reconciles with the
+  tables it summarises.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+All five v1 High findings are resolved, and resolved structurally: LI-01 has an owned falsifiable
+artifact, LI-14's terminal state matches what its assertion can actually do, LI-03 names a real
+instrument in a real temp repository, LI-06's unfalsifiable guard has three named mutations, and
+batches 7–13 have a ledger a dispatcher can evaluate. The four Mediums and three Lows are resolved
+too. I re-derived the batch DAG over all 23 rows and re-ran the coverage measurement; both check out
+exactly as documented.
+
+Six new findings, none gating. Three are one-clause fixes to material the revision newly added and
+should be made before implementation begins, because each is a decision an implementer would
+otherwise have to make alone at the point of authoring:
+
+1. **F-01** — scope LI-23's `corpusOutcome` equality to **non-`null`** observed values; as written
+   it reds at batch 13 against a correct implementation, on an empty ledger row.
+2. **F-02** — append the pre-existing-status conjunct to the green-terminal gate row, so batches 1,
+   4 and 6 can fail on a regression they cause.
+3. **F-03** — state AT-15 as four clauses, with E-35's direct-path inclusion greened by LI-16.
+4. **F-04** — correct the porcelain mechanism to include untracked files.
+5. **F-05**, **F-06** — the suite map's closure over the directory, and one edge rationale.
+
+One upstream defect this PLAN correctly does not own is routed as an erratum: TSPEC §D.1's
+domain-membership wording (`TSPEC:589–592`) is false for the `corpusOutcome` domain as §D.2 defines
+it (`TSPEC:612`), which is the same `null` gap F-01 describes one level down. It is charged to the
+TSPEC, not to this verdict.
