@@ -196,6 +196,92 @@ the bare `npm run test:coverage` never reaches stage 2. DoD 11, DoD 12 and H-8 a
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | LI-23 scopes its `corpusOutcome` equality to non-`null` and delegates the healthy `null` to "`learningsRecord.test.js`'s BR-9 per-dispatch rows (LI-10 / LI-19)", but neither LI-10's row nor TSPEC §D.2's `DIVERGENT-CORPUS` row names a healthy-`null` assertion. The positive half of the pairing that justifies the scoping is not stated anywhere an implementer transcribes from | LI-23; LI-10; §Traceability twelve-arm table |
+| F-02 | Low | Local | The directory-wide closure makes `LI-T-`-prefixed test naming a gate input for all six non-AT suites, but LI-01's and LI-06's rows do not declare their test names (LI-03, LI-13, LI-14, LI-23 all do). An `LI-AT-`-prefixed title in either reds `LI-T-SUITEMAP` at batch 6 | LI-01; LI-06; LI-14 |
+| F-03 | Low | Local | The green-terminal gate row still justifies batch 6 as "`learningsSuiteMap.test.js` over **six** suite files that already exist"; after the F-05 fix the suite reads twelve and its green-on-authoring depends on the other six registering no `LI-AT-` title. The batch ladder row was updated; this one was not | §Verification, the three gate wordings |
+| F-04 | Low | Local | P-A-3 gives the ledger's universe as "the fourteen `learnings*` files the manifest owns"; two of those fourteen rows are a helper module and a fixture directory, which register no jest test and cannot carry a red/green status. The universe is the twelve `learnings*.test.js` suites | §Open questions, P-A-3 |
+
+### F-01 (Medium) — the delegated positive assertion is not named in any row
+
+The non-`null` scoping is right, and v0.3 states the reasoning better than my finding did: `null`
+is the healthy value of the field (`TSPEC:612`, `corpusOutcome: null, // | "RSN-UNLISTABLE" |
+"RSN-EMPTY"`), three of the twelve arms cannot be driven without observing it, and expecting
+`LEARNINGS_CORPUS_OUTCOMES ∪ {null}` would stop the expected value being a literal transcription of
+the frozen catalogue. The row forbids that repair explicitly, which is exactly right.
+
+What carries the weight of the scoping being *safe* is the next clause: "Scoping it out is not a
+coverage loss — the healthy `null` is asserted by `learningsRecord.test.js`'s BR-9 per-dispatch
+rows (LI-10 / LI-19)." I went looking for that assertion and could not find it named:
+
+- LI-10's row says the suite asserts "`dispatches[i].corpusOutcome`, `dispatches[i].orderKeys`,
+  `corpusDiverged` true on exactly dispatches 3 and 5" over `DIVERGENT-CORPUS`. It names the
+  divergence oracle and the `RSN-UNLISTABLE` dispatch; it does not say any dispatch is asserted to
+  carry `null`.
+- TSPEC §D.2's `§A.5 per-dispatch observation` row (`TSPEC:651`) says "each row carries **its own**
+  observation (dispatch 5 `RSN-UNLISTABLE`, dispatches 3–4 the grown key set)" — again naming only
+  the non-`null` and the ordering halves.
+
+The fixture makes it *reachable*: `DIVERGENT-CORPUS` is five authoring dispatches whose `_git`
+reply gains a path after dispatch 2 and fails at dispatch 5, so dispatches 1–4 are healthy and
+their `corpusOutcome` is `null`. So the coverage very likely exists in the implementer's head. But
+this is precisely the shape the review bar exists for: a negative-scoped oracle (`observed
+non-null values equal the catalogue`) is justified by a positive assertion on the same path, and
+that positive assertion has to be somewhere a test gets written from. As the rows stand, an
+implementer could write `learningsRecord.test.js` asserting only dispatch 5's `RSN-UNLISTABLE` and
+the key sets, satisfy every named clause of LI-10, and ship a feature in which **no test anywhere
+asserts that a healthy dispatch records `corpusOutcome === null`**. That is a real hole: it is the
+value the field carries on the overwhelming majority of runs, and an implementation that recorded
+`undefined`, `""` or omitted the key entirely on healthy dispatches would be green everywhere.
+
+**What to change:** one clause in LI-10's row — *"including the healthy value: `dispatches[i]
+.corpusOutcome === null` asserted on dispatches 1, 2 and 4, which is the positive half LI-23's
+non-`null` scoping delegates here"* — and, if you want the delegation legible from the other end,
+the same pointer in LI-23's sentence ("…asserted by `learningsRecord.test.js`'s dispatch-1/2/4
+rows"). No new task, no new fixture, no batch change: `DIVERGENT-CORPUS` already produces the
+dispatches, and LI-10 already owns the suite.
+
+### F-02 (Low) — the closure makes test naming load-bearing in two rows that do not state it
+
+`LI-T-SUITEMAP` now computes "the set of `__tests__/learnings*.test.js` files registering at least
+one `LI-AT-` jest test title" and asserts it **equal** to six. That is the right form. Its
+consequence is that the *absence* of `LI-AT-` titles in the other six matching files is now a gate
+input rather than a stylistic matter. Four of those six declare their names in their rows —
+`LI-T-IGNORE`/`LI-T-WORKTREE`, `LI-T-PIN-1`, `LI-T-ARMS-1…3`, `LI-T-SUITEMAP` — and would be hard
+to get wrong. Two do not: LI-01 describes `learningsPremises.test.js` as "one structural assertion
+per premise" without naming the tests, and LI-06 describes the digest guard without naming its
+tests. Neither carries a FSPEC AT, so nobody *should* reach for an `LI-AT-` name — but the PLAN's
+own convention section says `LI-AT-{N}` is the AT naming and is silent on what a non-AT test is
+called, and batch 1 and batch 4 are both green-terminal batches where a naming slip surfaces only
+two and then five batches later, at batch 6, as a `LI-T-SUITEMAP` red whose message points at the
+wrong file. **Fix:** state the names in both rows (`LI-T-PREMISE-{n}`, `LI-T-BASELINE-{n}` or
+whatever the author prefers), or add one sentence to the naming convention: *"only the six
+AT-bearing suites use `LI-AT-` titles; every other test in the feature is named `LI-T-*`, and
+`LI-T-SUITEMAP` enforces that."* The second is one sentence and covers all six at once.
+
+### F-03 (Low) — one of the two batch-6 justifications was updated, the other was not
+
+`§Traceability`'s batch ladder now reads "`LI-T-SUITEMAP` statically parses the
+`learnings*.test.js` directory, whose six AT-bearing suites all exist at the end of batch 5 (TE
+F-05), and has no symbol under test". §Verification's green-terminal gate row still reads
+"`learningsSuiteMap.test.js` over **six** suite files that already exist (batch 6)". The gate row is
+the one a dispatcher reads to decide whether batch 6 passed, and its justification for
+green-on-authoring is now narrower than what the suite actually asserts — the suite reads twelve
+files, and its greenness depends on six of them *not* contributing. **Fix:** copy the ladder row's
+phrasing into the gate row. One clause, and the two statements of the same fact agree again.
+
+### F-04 (Low) — "fourteen files" counts two things that cannot be red
+
+P-A-3's answer to PM Q-05 is a good tightening and I want it kept. The count in it is off by the
+two manifest rows that are not suites: `__tests__/helpers/learningsFixtures.js` (a helper module,
+and LI-02's row explicitly forbids jest globals in it) and `__tests__/fixtures/learnings-baseline/`
+(a committed fixture subtree). Fourteen is the right count of *manifest rows*; the ledger's
+universe is the **twelve** `learnings*.test.js` suites, which is also exactly the set the batch-13
+row shrinks to empty over. **Fix:** *"the ledger's universe is exactly the twelve
+`learnings*.test.js` suites the §File-ownership manifest owns (its other two test rows are a helper
+module and a fixture subtree, which register no jest test)"*.
+
 ## Questions
 
 ## Positive Observations
