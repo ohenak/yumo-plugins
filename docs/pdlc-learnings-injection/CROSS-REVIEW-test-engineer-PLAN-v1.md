@@ -267,11 +267,53 @@ erratum, not charged to this document.)
 
 ## Questions
 
-<!-- pending -->
+| ID | Question |
+|----|---------|
+| Q-01 | Which rows of `learningsDispatchSet.test.js` are the "report-shape rows" LI-20 does not green and LI-21 does? Naming them (by `LI-AT-` id) is a precondition for F-01's expected-red ledger, and AT-23/AT-24/AT-31 read like the intended set — but the row leaves it to inference |
+| Q-02 | Does `LI-T-SUITEMAP` read each suite's registered test names by static parse of the file text, or by importing the suite? The two have different failure modes at batch 6 (a static parse is green immediately; an import may throw on a missing symbol) and F-02's disposition depends on the answer |
+| Q-03 | Which repository do LI-03's `git check-ignore` and `git worktree list` probes run against — the developer's live checkout, or a temp repo? DoD 8 puts every other git-touching instrument in a dedicated temp repository; these two rows are silent |
+| Q-04 | LI-05's capture script (repo root, `.mjs`) imports the L3 fixture matrix from `pdlc/workflows/__tests__/helpers/learningsFixtures.js`. Is that import direction intended to be permanent, and does anything stop the helper from acquiring a jest-only dependency (`expect`, `jest.fn`) that would break the script? A one-line note in LI-02 ("no jest globals in this helper") would pin it |
+| Q-05 | Batch 3's terminal state is described as "mixed" — LI-04/LI-05 green their own oracles while LI-07…LI-09 are red. Is the dispatcher's batch gate able to express a mixed terminal state at all, or does batch 3 need the same per-suite ledger F-01 asks for in batches 7–13? |
 
 ## Positive Observations
 
-<!-- pending -->
+- **The batch column re-derives cleanly.** I recomputed `batch == max(dep batch) + 1` for all 22
+  rows from the declared `Deps` edges: every one matches the column, ids are unique, every
+  dependency resolves, and the graph is acyclic. LI-14 → six suites → batch 6, and LI-15's
+  `Deps` of LI-06/LI-13/LI-14 → batch 7, are the two that most easily go wrong and both are right.
+- **T-O-2 is bound structurally, not by memory.** LI-15 → LI-06 is a single edge that makes "no
+  production edit before the capture" a property of the DAG. H-3 then names the failure mode if it
+  is ever violated. This is the correct way to encode an ordering obligation.
+- **No same-batch same-new-file collision exists.** Batch 2 (three distinct new files), batch 3
+  (`.gitignore`, the new script, three distinct suites), batch 5 (three distinct suites) and the
+  serial source lane 7–14 are all single-writer, and the manifest states the invariant it audits.
+  The "`Test File` means the suite this task must green, not the suite it writes" note is exactly
+  the disambiguation that prevents a phantom second writer.
+- **Every green task has a red predecessor referencing the same suite** — LI-04/LI-05 → LI-03,
+  LI-16 → LI-07, LI-17 → LI-08, LI-18 → LI-09, LI-19 → LI-10, LI-20 → LI-11, LI-21 → LI-12, and
+  LI-15 → LI-13/LI-14. TDD order holds across the whole table.
+- **Set equality over containment, repeatedly and deliberately** — the baseline `{caseId}` keys, the
+  composition-site probe on both operands, the BR-8 row-field set, the two-member notice set, the
+  suite-map partition, and H-5's refusal to relax the composition-site equality to containment.
+  This is the discipline that makes a deleted case fail rather than disappear.
+- **No implementation echoes.** AT-33's expected read set is hand-transcribed from the fixture's
+  scripted `ls-files` stdout "never derived from `gatherLearningsCorpus`"; AT-05's rendered form is
+  transcribed from TSPEC §OQ.1 rather than keyword-matched; the composition-site expectation and the
+  baseline digests are hand-transcribed. Each of these is a place a lazier PLAN would have imported
+  the answer from the code under test.
+- **Absence-only oracles are refused where it matters.** LI-11's "loop is live" material asserts
+  positive membership, LI-19's `corpusDiverged` is pinned to `false` (never `null`) on the first
+  dispatch, and LI-10 is explicit that `runMirror` is asserted by *nothing* because upstream leaves
+  it unconstrained — refusing to over-assert is as much testing discipline as refusing to
+  under-assert.
+- **The measured baseline reproduces exactly**, including the three `pdlc/engine` failures that halt
+  the arrangement's `testCommand` before this feature's suites run, and the PLAN routes them to an
+  LI-01 triage with H-2 rather than guessing. `.gitignore`'s missing rule, the absent `scripts/`
+  directory, and the prior feature's `AT-22`/`AT-23` names in `documentOracles.test.js` all check
+  out — the last of which justifies the `LI-` namespacing rule that runs through the whole document.
+- **`dist/` is correctly left unowned**, with the arrangement's `postWaveCommand` /
+  `postWavePathspecs` cited and verified in `.claude/pdlc.config.example.json`. Giving it a task row
+  would have manufactured the very multi-writer race the manifest exists to prevent.
 
 ## Recommendation
 
