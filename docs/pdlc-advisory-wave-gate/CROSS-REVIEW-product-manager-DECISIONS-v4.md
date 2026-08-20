@@ -63,3 +63,68 @@ engine expectation belongs — naming the file upstream explicitly rules out.
 | F-05 | Low | Local | **DEC-A6-02's reversibility paragraph cites "TSPEC §7's test-mapping row for AT-04-5"; TSPEC v1.10 has no §7.** Line 174. The claim is correct and the row exists — `TSPEC…md:1659`, in §5.6 "Every FSPEC acceptance test has a home", identifying the promotion commit "by the `message` literal and its pathspec" — so only the pointer is wrong. It matters slightly more than an ordinary typo because the sentence's point is that the caveat rests on *that specific* oracle. Repoint to §5.6 | — |
 | F-06 | Low | Local | **DEC-A6-01's rewritten paragraph attributes the capture argv-sequence oracle to §5.5; it is §5.2's.** Line 122: "§5.5's oracle is an **argv-sequence** assertion over the `_git` double's recorded argv (`commit-tree === 1`, plus an `update-ref` on the snapshot ref)". At HEAD that oracle is stated at `TSPEC…md:1383` and `:1419`, both inside §5.2; §5.5 (`:1520-1611`) owns the prohibition/paired-positive table and the fixed `diagnosis` comparison. Inherited pointer, carried through a sentence the round otherwise rewrote correctly. Repoint to §5.2 | — |
 | F-07 | Low | Local | **The version bump moves the date backwards.** Line 12 reads `1.2 | 2026-08-19`; v1.1 was dated `2026-08-20`. One of the two is wrong (today is 2026-08-19, so v1.1's is the likelier error), but as it stands the header says revision 1.2 predates revision 1.1, which is exactly the provenance a re-read months later leans on. Reconcile both rows in one edit | Traceability (Team Principle 3) |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | TSPEC §5.1's status caveat leaves "whether the early-landed edits are reverted or PLAN's batches are re-derived around them" to PLAN. Whichever way that lands, DEC-A6-04's engine-channel bullet and the whole-feature sizing paragraph are the two places in this record that assert repo state, so both will need one more pass after PLAN decides. Is the intent that this document re-grounds now (F-02/F-03 as written) and again after PLAN, or that it points at TSPEC §1.3/§5.1 as the single carrier of repo state and stops asserting it itself? I would prefer the second — it removes a whole class of staleness from a record whose value is that it stays readable for months — but the choice is the author's and either is coherent. |
+| Q-02 | The four decisions are unchanged in substance this round, and I re-verified each against v1.10: DEC-A6-01's dangling-commit capture, DEC-A6-02's separate `commitPaths` call, DEC-A6-03's wave-scoped ref, DEC-A6-04's `nonNegativeInt`. No rejected option became reachable. Flagging only that OQ-7 remains the one live upstream dependency this document is exposed to, unchanged since v3. No action requested. |
+
+## Positive Observations
+
+- **The `-m`-less `commit-tree` correction is the strongest thing in this round.** v1.1 said the
+  omission would *block* against the argv-only transport; that was a plausible-sounding claim nobody
+  had run. The rewrite replaces it with a measured one — empty stdin, exit `0`, a valid commit with
+  an empty message — and then draws the product consequence, which is the one that matters: the
+  operator who later opens `refs/pdlc/a6-snapshot-{waveNum}` finds an object with nothing on it
+  saying which wave it belongs to. I re-ran it against real git and it reproduces exactly. Trading a
+  loud-failure story for a silent-corruption story is a strictly better record, and admitting v1.1
+  was wrong in the same sentence is what makes it trustworthy.
+- **The three closure edits are honest in both directions.** Each of DEC-A6-02, -03 and -04 now says
+  what it claimed, that the claim was routed upstream, and that it landed — rather than quietly
+  deleting the old text. "This entry's v1.1 revision recorded the rejection as 'stated but not
+  falsifiable' … It landed" preserves the reasoning trail a later reader needs to judge whether the
+  closure is real. That is the difference between a record and a changelog.
+- **The pin overshot my ask in the right direction.** I asked for v1.6; the round pinned v1.10 and
+  re-verified against it, which is why F-01–F-03 of v3 could be closed with citations that still
+  resolve four TSPEC revisions later.
+- **Every finding below High is a pointer or a count, not a decision.** After four rounds the four
+  decisions have not needed a substantive correction since v1.1. The residue is bookkeeping on a
+  document that has been right about mechanism throughout.
+
+## Recommendation
+
+**Needs revision** — one High finding (F-01).
+
+The four decisions remain a faithful compression of TSPEC v1.10: no rejected option became
+reachable, no chosen mechanism lost its upstream basis, and the three closure edits this round
+landed are accurate where I could check them against upstream *and* against the code. What blocks is
+narrower and specific: DEC-A6-04's consequence bullet still opens by telling an implementer to hang
+the example-config expectation on `ci-arrangement.test.js`, which upstream rules out by name and for
+a stated delivery-blocking reason, and only rules it out itself four sentences later in text this
+round appended. A reader who acts on the first sentence does the thing TSPEC §5.1 was corrected to
+prevent.
+
+Exactly what to change:
+
+1. **F-01 (blocking)** — line 294: replace "`pdlc/engine`'s `ci-arrangement` test must gain a new
+   expectation over it" with a channel-level statement ("`pdlc/engine` must gain a new expectation
+   over it, in its own file — below"), keeping the later `ci-arrangement` sentences as evidence and
+   as the explicit non-home.
+2. **F-02** — lines 299–301: restate the engine-channel premises in the tense HEAD supports (the
+   expectation is authored and red pending the example section) and cite TSPEC §5.1's status caveat
+   rather than re-deriving repo state.
+3. **F-03** — lines 341–348: re-derive the envelope enumeration from HEAD (five four-member code
+   sites, plus `advisoryConfig.test.js:51`, plus the `advisoryDoubles` prose site), or label it as
+   the pre-`e3b9d5a3` baseline and defer to TSPEC §1.3. Keep the "seven, not six" correction.
+4. **F-05** — line 174: `§7` → `§5.6`.
+5. **F-06** — line 122: `§5.5` → `§5.2`.
+6. **F-07** — line 12: reconcile the v1.1/v1.2 dates.
+
+F-04 asks for no edit to this document.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 4}
