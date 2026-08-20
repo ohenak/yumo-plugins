@@ -220,6 +220,56 @@ Re-checked and holding, round over round:
 
 ## Open Questions
 
+This section of TSPEC is where the cascade concentrates, because two of its seven ERR items were
+open **against** the FSPEC text this round rewrote.
+
+| TSPEC item | State before this window | State against FSPEC v0.12 |
+|---|---|---|
+| ERR-1 | open | untouched by the window; still open |
+| ERR-2 (land-proof retry has no branch-inventory row) | open, DC-05 wants a row and an AT | untouched; still open — v0.12 did not add the row, and §T.6 still carries the fixture unilaterally |
+| **ERR-3 (BR-15 expected set)** | open: the quoted definition made AT-33's set equality unsatisfiable | **resolved upstream.** The quoted sentence no longer exists; the enumeration explicitly contributes no member. Close it. |
+| ERR-4 | CLOSED by REQ v0.9 | unchanged |
+| ERR-5 (E-13's "measured" provenance) | open | untouched by the window; still open |
+| ERR-6 | CLOSED by REQ v0.9 | unchanged |
+| **ERR-7 (BR-1 forbids the `docType` conjunct)** | open: "BR-1 needs to state the two-conjunct rule … or state the exclusion explicitly" | **resolved upstream.** BR-1 states exactly that, names the conjunct load-bearing, and names the code-review optimizer as the excluded case. AT-02's "two contradictory readings" are now one reading — TSPEC's. Close it. |
+
+Leaving ERR-3 and ERR-7 open as written is the substantive residue of this round. Both now quote
+upstream sentences that no longer exist, and both instruct a downstream reader to treat a settled
+question as live: ERR-7 in particular tells a test author that "a test written to FSPEC reds a
+correct implementation", which at v0.12 is false and could reasonably cause them to hedge AT-02's
+expected set rather than assert it. Neither is High — the engineering answer both items argue for
+is the one upstream adopted, so nothing in the design or the oracles changes — but both are
+`delta`, caused by this window, and both are cheap: close the item, cite FSPEC v0.12, and drop
+§A.2's "routed as ERR-7" clause.
+
+Carried, unchanged, still not gating:
+
+- **Q-01** — does `DIVERGENT-CORPUS`'s dispatch 5 produce BR-8 rows "present and empty" **and**
+  `corpusDiverged: true`? Carried from v7/v8/v9, still unanswered in TSPEC, still a PLAN-time
+  fixture question rather than a document defect.
+- §T.2's BR-10 locus-1 row still folds two distinct set equalities into one cell (carried v7).
+- §D.1's "four field domains" and §T.2's "three catalogues" still sit one line apart with no
+  half-sentence reconciling the counts (carried v7).
+- Positional `orchestrate-dev.js` anchors still want symbol citations at PLAN-transcription time
+  (carried v8/v9; the file has not moved, so the anchors are exactly as stale as recorded, no more).
+
+**Positive observations for this round:**
+
+- The erratum resolved a genuine upstream/downstream conflict rather than papering it. ERR-7 had
+  been open since TSPEC v0.5 and was the one place where a test written faithfully to FSPEC would
+  have red-ed a correct implementation. Upstream fixing BR-1 — rather than TSPEC quietly amending
+  it in code — is the outcome the routing was for, and it validates the decision to route.
+- BR-15's set-vs-count restatement is a testability improvement in its own right: it removes a
+  count-shaped expectation whose first term was not observable on the instrument, and it says out
+  loud that AT-33 cannot see re-reads, which is what makes the `RETRY-ITERATION` fixture's
+  counting-shaped call-log assertions necessary rather than belt-and-braces.
+- AT-02 gaining an explicit mutation obligation in its own text ("so reverting BR-1's second
+  conjunct reds this test") is the strongest form an AT can take. The only work left is for TSPEC
+  to transcribe it.
+- The edit remains bounded and honest: 33 insertions, 19 deletions, a self-describing changelog
+  entry that accurately claims "No behavioural change", and no touched locus, catalogue or
+  traceability row. Verified against the diff, not the changelog's word.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
