@@ -48,6 +48,20 @@ High-severity counts had gone 4→7→2→0→0 (PM) and 3→4→1→0→0 (TE):
 
 ## 3. Reviewers
 
+| Role | Rounds | Round-6 verdict | Residual at halt |
+|---|---|---|---|
+| product-manager | 1–6 | Needs revision | F-01 (High), F-02 (High), F-03/F-04 (Medium), F-05/F-06/F-07 (Low) |
+| test-engineer | 1–6 | Needs revision | F-01 (High), F-02/F-03 (Medium), F-04/F-05 (Low) |
+
+Both lenses stayed in lane and both opened round 6 by confirming the routed work landed:
+
+- **PM** measured the erratum against upstream HEAD per DEC-ERR-03 rather than against the item list, and recorded all routed items discharged — the batch column re-derived and shown, not asserted; the revert-vs-keep fork answered once and unambiguously; two unrouted improvements (inherited-red gate rule, stale-test-name rename step) noted as genuine additions. Its findings are requirement-fidelity shaped: what E-33 / AC-1.4 and TSPEC §4.4/§5.1 now say versus what the PLAN compresses them into.
+- **TE** independently checked one of the three measured reasons for the keep decision, confirmed the pre-flight gate green and the cardinality drift incapable of masking baseline rot, and praised the "observe red in-session" re-reading as a falsifiable precondition. Its findings are oracle-and-HEAD shaped: whether a claim about the tree can be checked, and whether the wave gate can actually go green where the document says it will.
+
+**No reviewer-versus-reviewer contradiction exists.** The two lenses independently and separately raised the *same* stale-pin defect (PM F-03 as Medium/nonlocal, TE F-02 as Medium/local), differing only on severity and on whether it is inherited or delta. Nothing one reviewer signed off on was refuted by the other in this round, or in any of the six. The disagreement is author-versus-HEAD.
+
+One process finding is worth routing out of this feature: PM F-07 (Low) records that for the **third consecutive round** the cross-review invocation supplied the PLAN's own top-level headings (`## Overview` / `## Batches` / `## Dependencies` / `## Verification`) as the completeness gate for a *cross-review* document, whose role-defined headings are `## Findings` / `## Questions` / `## Positive Observations` / `## Recommendation` / `## Verdict`. That is a dispatcher wiring defect, not an authoring defect, and it has now survived three harvests.
+
 ## 4. Pattern of Disagreement
 
 ## 5. Best-Guess Root Cause
