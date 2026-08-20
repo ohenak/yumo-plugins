@@ -82,6 +82,35 @@ rounds tagged it the same way, and per tag-selection discipline I reconcile rath
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC as it now stands.** No decision it takes is
+contradicted by TSPEC v0.7; the round's substantive move (ERR-7 closed, §A.2 restated as
+BR-1-conformant) lands on the same side of the argument `DEC-LI-03` already made. One new citation
+defect from this delta, four inherited from v3/v4, all non-gating.
+
+### Clause-by-clause re-verification against TSPEC at HEAD
+
+| DECISIONS claim | TSPEC v0.7 at HEAD | Holds? |
+|---|---|---|
+| `DEC-LI-03` decision: gate is `dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType)` | §I.3's `injectHere` is the identical expression, over the identical frozen six-name catalogue | Yes — byte-identical |
+| `DEC-LI-03` rejection of `dispatchKind` alone, citing Phase CR's `reviewLoop({docType: null})` surviving into `dispatchAndVerify` | §A.2 and `P-2b` state the same trace, now cited by symbol and call shape rather than line; the conclusion is unchanged | Yes |
+| `DEC-LI-03` rejection of `docType` alone: *"admits every reviewer round and violates `BR-1`'s exclusion list"* | FSPEC `BR-1`'s **Excluded** bullet is intact at HEAD (every review dispatch, implementation, DoD, harvest, ship, advisory seams); TSPEC §A.2 defers to it | Yes |
+| `G-B`: four `dispatchKind: "authoring"` sites — *"the three object-literal sites plus `reviewLoop`'s positional `\"authoring\"` argument to `runWrapped`"* | `P-2a` as rewritten enumerates exactly that decomposition, in the same terms, de-anchored per `DEC-DOC-01` | Yes — the delta moved TSPEC **toward** DECISIONS' citation style |
+| `G-C`: Phase CR's `reviewLoop({doc: \`docs/${featureName}/\`, phase: "CR", docType: null, …})` | `P-2b` at HEAD, same call shape, line anchors removed | Yes |
+| `DEC-LI-10`: three closed catalogues, hand-transcribed expectations, set equality per `DC-01`/`DC-14` | §D.1's edit scopes the *domain* tests to non-`null` values; the catalogue **set-equality** test is explicitly unchanged (`["RSN-UNLISTABLE", "RSN-EMPTY"]`), and `null` is deliberately not a member | Yes — the instrument DECISIONS relies on is the one left untouched |
+| `DEC-LI-06` constraints: `BR-15`'s no-index/no-cache/no-state-file clause and `E-32` per-dispatch observation | `ERR-3`'s closure concerns `BR-15`'s **expected read set**, not the no-artefact clause; `E-32` untouched | Yes |
+| `DEC-LI-08` / §Consequences citing TSPEC `T-O-3` (read-cost measurement) and `T-O-1` (serial PLAN, file-ownership manifest) | Both obligations present and unchanged at HEAD | Yes |
+| §Scope: *"no behaviour rule (FSPEC `BR-1` … `BR-16`) is re-decided here"* | §A.2 now says the two-conjunct gate implements BR-1 as written; DECISIONS decides attachment point, not membership | Yes — strengthened |
+| Non-decision row: AC-3.3 record locus *"open, routed to REQ via TSPEC `ERR-6`"* | `ERR-6` recorded **CLOSED** since TSPEC v0.6; §369 states the settled locus | **No** — F-01 (inherited, v3) |
+| `DEC-LI-07` + `D-O-9` + the `DEC-LI-07` summary row: TSPEC *"still builds the injector on `present && config.enabled && !sectionMalformed`"*, *"still carries `OQ.2` and `ERR-4` open"*, `DEC-ERR-01` outstanding | `ERR-4` and `ERR-6` CLOSED, `OQ.2` closed, §I.3 gates on `config.enabled` alone, `LEARNINGS_DEFAULTS` aligned — all since v0.6 | **No** — F-02 (inherited, v3) |
+| Header/upstream-note pins: `TSPEC v0.5`, `FSPEC v0.7`; `DEC-LI-07`'s *"FSPEC v0.7 `BR-14`"* | TSPEC **v0.7**, FSPEC **v0.12** | **No** — F-03 (inherited, widened again) |
+| `DEC-LI-03` trigger paraphrasing FSPEC `A-2` as *"authoring in spirit but not so classified"* | `A-2` at HEAD: *"satisfies **neither** conjunct … yet is authoring in spirit"* | **No** — F-04 (inherited, v4) |
+| **Upstream version note**: *"TSPEC v0.5 was authored against FSPEC v0.5 / REQ v0.7. Upstream has since moved … this document is grounded on the **current** upstream, so `DEC-LI-07` decides what TSPEC still carries provisionally"* | TSPEC v0.7's header is pinned to **FSPEC v0.12 / REQ v0.9** and its erratum note records the re-grounding explicitly | **No** — F-05, this round's own |
+
+F-01 through F-04 were raised at v3/v4 against bytes that have not moved since; they are recorded
+here as `inherited` so this round routes back to the owning phase rather than halting. F-05 is this
+round's own and is Low: it is a framing sentence whose premise the delta dissolved, not a false
+statement about what any rule requires.
+
 ## Consequences
 
 ## Positive Observations
