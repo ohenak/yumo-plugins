@@ -739,7 +739,7 @@ they do not widen the `rows[i]` key set AT-17 closes over.
 per-dispatch context that lets an operator find the dispatch, and BR-8 closes over *row* fields.
 `AT-17`'s set equality is asserted over `rows[i]`, which is the enumeration BR-8 actually states.
 
-### D.3 The document-shape predicate *(discharges F-O-1)*
+### D.3 The two heading-recognition rules *(discharges F-O-1, both halves)*
 
 ```js
 const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
