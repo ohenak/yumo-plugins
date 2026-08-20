@@ -24,7 +24,10 @@
 
 **What gets built.** A sixth advisory seam, `A6`, fires at exactly one place — the Phase I wave
 loop's script-owned test gate in `pdlc/workflows/orchestrate-dev.js` — the wave loop's `if (scriptGate)`
-arm, today an unconditional `throw haltError("Error: Wave ${waveNum} test gate failed …")`. A6
+arm — the one whose halt literal reads `Error: Wave ${waveNum} test gate failed …`, not the V-wave's
+`if (scriptGate)` arm with its `Error: V-wave ${vWaveNum} PROPERTIES test gate failed` literal —
+where a failing gate today falls straight through `if (!gate || gate.ok !== true)` to
+`throw haltError(…)` with no repair path in between (TE v8 F-04, PM v8 F-03). A6
 snapshots the whole tree, attempts one bounded in-envelope repair, re-runs the wave's own gate
 sequence, and either resolves the wave or restores the snapshot byte-identically and lets the wave
 halt on its pre-A6 literal with a diagnosis attached.
@@ -366,7 +369,7 @@ production state, shared fixtures). What each task's red steps prove before its 
 | A6-12 | former A6-11 | `seamOps.classifyReply` is not read by `runAdvisorySeam`, so the terminate arm never fires |
 | A6-14 | former A6-13 | `buildA6SeamOps` is not exported |
 | A6-18 | former A6-15, A6-16, A6-17 | `runWaveGateSeam` does not exist, so no disposition, record entry or escalation entry is written |
-| A6-21 | former A6-19, A6-20 | the wave loop's `if (scriptGate) {` arm still carries its unconditional `throw haltError(…)`; M-WG-12 still strands an E-6 promotion uncommitted |
+| A6-21 | former A6-19, A6-20 | the wave-loop `if (scriptGate) {` arm — the one whose halt literal is `Error: Wave ${waveNum} test gate failed …`, not the V-wave's — still runs `if (!gate \|\| gate.ok !== true)` straight into `throw haltError(…)` with no repair path between them; M-WG-12 still strands an E-6 promotion uncommitted |
 
 ### Batch-safety rules, as applied here
 
@@ -402,7 +405,7 @@ finding rather than as drift.
 
 | Integration point | Location, verified | Touched by |
 |---|---|---|
-| Wave loop's script-owned test gate, today an unconditional throw | `pdlc/workflows/orchestrate-dev.js`, the `if (scriptGate) {` arm inside the per-wave loop, whose halt literal reads ``Error: Wave ${waveNum} test gate failed — `${implConfig.testCommand}` did not pass.`` | A6-21 |
+| Wave loop's script-owned test gate, today a bare failure→throw with no repair path | `pdlc/workflows/orchestrate-dev.js`, the `if (scriptGate) {` arm inside the per-wave loop, whose halt literal reads ``Error: Wave ${waveNum} test gate failed — `${implConfig.testCommand}` did not pass.`` | A6-21 |
 | Post-wave command, must keep its message byte for byte | same loop, the `if (implConfig.postWaveCommand && typeof runCommandFn === "function")` block, halt literal ``Error: Wave ${waveNum} post-wave command failed`` and success emit ``Wave ${waveNum} post-wave: … passed`` | A6-21 (read only) |
 | `scriptGate` resolution | `const scriptGate =` binding earlier in the same wave loop, with its `if (!scriptGate)` self-report fallback | A6-21 (read only) |
 | Advisory constants block | the `ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS` and `ADVISORY_SEAMS` declarations, adjacent in that order | A6-05 |
