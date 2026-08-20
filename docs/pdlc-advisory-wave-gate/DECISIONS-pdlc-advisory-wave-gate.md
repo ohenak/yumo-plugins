@@ -4,12 +4,21 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.10) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.2 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.3 | 2026-08-19 |
+
+**On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
+carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
+saying so, which left the history reading as though it ran backwards. The correction stands and
+this is the note it was owed. Related convention, adopted here so the next reader does not
+re-derive it: a finding is resolved against **upstream at the time of the edit**, not against the
+upstream version the finding cited. Where the two differ, the resolving text says which version it
+landed on — as the engine-channel and O-8 passages below do for TSPEC v1.10 against findings
+written at v1.5/v1.6.
 
 ## Context
 
