@@ -174,3 +174,6 @@ cascade. The one Low finding (F-01) is a version-label hygiene item owned by TSP
 nothing, and both questions are routed elsewhere.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
