@@ -368,7 +368,8 @@ exactly dispatches 3 and 5. It asserts **nothing** about the run-level mirror.
 
 `buildLearningsInjector` closes over the sink and pushes on each
 call; `buildFinalReport` receives it as one new parameter and spreads it **conditionally**, on
-P-10's `advisory` precedent, so a disabled run's report has **no such key at all** (AC-5.1a) while
+P-10's `advisory` precedent, so an explicitly disabled run's report has **no such key at all**
+(AC-5.1a) while
 an enabled run with an empty selection has the key present with empty rows (AC-4.4). Those two
 states differ by key presence, which is exactly the distinction REQ AC-4.4 names.
 
@@ -465,11 +466,12 @@ conditionally-spread key, present iff the run is enabled. So:
 | present, not an object (`sectionMalformed`) | **present** — fail-open, enabled on §4.1's defaults (AC-5.1b) | `NTC-MALFORMED` present |
 | present, `enabled:true`, one declared key wrong-typed | present, the run proceeds on that key's default (AC-5.1c) | `NTC-KEYTYPE` present |
 
-The four rows are owned by three different ATs (TE F-04): row 1 (absent section, or present with
-`enabled:true`) is the default-configured run **AT-01/AT-31** already exercise for byte-presence of
-the key; row 2 is **AT-31**'s (`enabled:false` explicitly ⇒ no injection key, no notice); rows 3
-and 4 are **AT-32**'s two cases (malformed section ⇒ key **present**, run enabled on §4.1's
-defaults, plus `NTC-MALFORMED`; wrong-typed declared key ⇒ key present,
+The four rows are owned by two ATs (TE F-04), matching FSPEC v0.9's E-21…E-34 rows: row 1 (section
+absent, and separately the file absent) is **AT-32**'s first case — an enabled composition on
+§4.1's declared defaults with **no** notice (E-21); row 2 is **AT-31**'s (`enabled:false`
+explicitly ⇒ baseline-identical composition, no injection key, no notice — E-22); rows 3 and 4 are
+**AT-32**'s remaining cases (malformed section ⇒ key **present**, run enabled on §4.1's defaults,
+plus `NTC-MALFORMED` — E-23; wrong-typed declared key ⇒ key present,
 defaults for that key, plus `NTC-KEYTYPE`). **AT-30 owns none of them** — it is the
 admits-nothing-thresholds AT for AC-4.4 (`maxDocuments: 0`, `maxTotalBytes: 0` ⇒ enabled run, BR-8
 rows present and empty). AT-32's closure is a **two**-notice set equality, over `NTC-MALFORMED` and
