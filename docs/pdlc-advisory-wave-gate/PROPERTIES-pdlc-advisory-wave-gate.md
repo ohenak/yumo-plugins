@@ -4,13 +4,14 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES**` |
 | Downstream | `IMPL` and its tests |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md` (active while Phase PT runs) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`…`-v4.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md`…`-v4.md` (active while Phase PT runs) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-19 | First authored against REQ v1.8, FSPEC v1.4, TSPEC v1.6, DECISIONS (DEC-A6-01…DEC-A6-04) and PLAN v1.2. |
 | 1.1 | 2026-08-19 | Round 1 cross-review findings addressed: PROP-REC-07 re-homed to `advisoryEscalationLog.test.js` with an observable escalation-entry oracle (SE F-01); PROP-GATE-02 restated as ledger-segment assertions ahead of TSPEC's structure (SE F-04); PROP-CFG-03 cites the `ci-arrangement.test.js` precedent and pins the `testCommand` blast radius (SE F-03); §G-2 names CI's `Engine tests` job as A6-04's executor (SE F-02); E-13 recorded as a non-property and E-17/E-18 traced on PROP-ENV-10 (SE F-05); PROP-SEAM-02's remaining member-literal anchors pinned (PM F-01). |
+| 1.2 | 2026-08-20 | **Round-4 upstream-cascade erratum, re-grounded on TSPEC v1.10 (`sha256:1531143c…`) and DECISIONS (`sha256:84deee10…`) at HEAD.** Overview's "Where the tests live", the file-existence paragraph and Fixtures no longer claim `advisoryWaveGate.test.js` / `advisory-config-example.test.js` are absent at HEAD — both are on disk, landed early by `e3b9d5a3`, and `new` denotes required end state per TSPEC §5.1's Status column caveat (PM F-01, SE F-01). Derivation rule 1 now records the four bare row-count sites as already reading `toHaveLength(6)` and red at HEAD, anchored by block title as TSPEC §1.3 re-anchored them (PM F-02, SE F-02). PROP-SEAM-02's raw line pins re-anchored to symbols and block titles per DEC-DOC-01, naming `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality as the one untranscribed test-side literal (SE F-03). PROP-CFG-03, the Example-config fixture and the `SEAMS` fixture row re-anchored off `ci-arrangement.test.js:39` / `:799`–`:819` and `advisoryDoubles.js:271` (PM F-03, SE F-04). Scope now cites TSPEC v1.10 (SE F-05). Re-grounding note: Phase P's routed item on §1.3's repository-hygiene note (`PROP-SWEEP-2(b)`'s residual sized as the `.bak` blobs alone and routed nowhere) is **absorbed at HEAD** — TSPEC v1.10 §1.3 now states the 28-path three-class residual, that untracking the `.bak` class closes 14, and routes the partition, owners and figures to PLAN's Overview HEAD-drift note and A6-00's Edit 1; §1.3 is TSPEC's section and no PROPERTIES text asserts the superseded sizing. No property statement, category, level assignment, oracle form or PLAN home changed in this round. |
 
 ---
 
