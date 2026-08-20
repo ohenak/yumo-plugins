@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.10) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.3 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.4 | 2026-08-19 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -351,35 +351,61 @@ that a first-class per-seam `enabled` map becomes the better surface.
   today's. This is what keeps all four ratings at "easy" reversibility.
 - Three transcribed set-equality surfaces move together when A6 lands — `ADVISORY_SEAMS`,
   `ENVELOPE_DEFAULTS` and `ADVISORY_DEFAULTS`. The **constants** are three; their counterparts are
-  not, and the PLAN must be sized against the counterparts. The five-member seam literal
-  `["A1", "A2", "A3", "A4", "A5"]` is transcribed at six sites under `pdlc/workflows/__tests__/` —
-  the `ADVISORY_SEAMS` set-equality in `advisoryEnvelope`, a report-row assertion and a `test.each`
-  table in `advisoryRecord`, a harvest-row assertion in `advisoryHarvest`, a generator pick in
-  `consolidationProperties`, and a `SEAMS` constant inside the shared `advisoryDoubles` helper. The
-  four-member envelope literal `["E-1", "E-2", "E-3", "E-4"]` is a smaller but more confusing
-  surface, because part of it has already migrated ahead of production. Re-derived from HEAD
-  (PM v4 F-03, TE v4 F-01 — v1.2's list named a site that had moved and omitted one that had not):
-  the literal's **production definition** is `ENVELOPE_DEFAULTS` in `orchestrate-dev.js`; **five
-  test-side transcriptions** still carry it — two in `advisoryDisabled.test.js`, one in
-  `advisoryHarvest.test.js`, and two in `helpers/advisoryDoubles.js` (the frozen
-  `ADVISORY_DEFAULTS_SHAPE` and the property generator's shuffle); and there is **a sixth in
-  prose** — the `advisoryDoubles` comment that records why the frozen shape must be hand-synced
-  restates the literal itself. A comment that restates a set-equality literal is a maintenance site
-  like any other — it is what a later editor reads to decide whether the copy below is still right —
-  so the envelope's hand-sync surface is **seven, not six** (TE v2 F-03): one definition, five
-  transcriptions, one comment.
-- Two envelope sites are **already at the post-A6 six-member value and need no edit**:
-  `advisoryEnvelope.test.js`'s `ENVELOPE_DEFAULTS` set-equality (which v1.2 wrongly listed as a
-  four-member site) and `advisoryConfig.test.js`'s re-declared `ADVISORY_DEFAULTS` literal. Both
-  assert against a production default that still has four members, which is why TSPEC §1.3 records
-  them as drift rows rather than as work. A reader who goes to either expecting a four-member
-  literal to edit finds an assertion already at its target — the reason the enumeration above is
-  stated as a count of what still moves, not as a file list to walk. §1.3 remains the carrier of
-  which surfaces have drifted; this entry only sizes the task.
+  not, and the PLAN must be sized against the counterparts. Both literals are re-derived from HEAD
+  below (PM v5 F-01, closing what PM v4 F-03 / TE v4 F-01 opened): v1.2 sized the seam half against
+  a pre-`e3b9d5a3` repository, and v1.3 re-derived only the envelope half — which left the two
+  literals described in two different tenses inside one paragraph, the seam list reading as checked
+  because its neighbour had been. They are now described in one tense.
+- **The seam literal survives at one site, not six.** `["A1", "A2", "A3", "A4", "A5"]` is carried at
+  exactly one place under `pdlc/workflows/__tests__/` at HEAD: `advisoryRecord.test.js`'s
+  `rows.map((r) => r.seam)` equality inside `PROP-SUM-01` — the site TSPEC §1.3's per-seam-report-rows
+  row singles out as "**the one test-side literal not yet transcribed**". The five sites v1.2 listed
+  beside it already read `["A1" … "A6"]` and are folded into the already-migrated bullet below.
+- **The envelope literal is one definition, five hand-copies and one comment — and only one
+  oracle.** The **production definition** is `ENVELOPE_DEFAULTS` in `orchestrate-dev.js`. **Five
+  test-side transcriptions** still carry the four-member value: `advisoryDisabled.test.js`'s local
+  `disabledConfig()` fixture and its inline enabled-config object, `advisoryHarvest.test.js`'s
+  config fixture, and the frozen `ADVISORY_DEFAULTS_SHAPE` plus the property generator's shuffle in
+  `helpers/advisoryDoubles.js`. A **sixth site is prose** — the `advisoryDoubles` comment that
+  records why the frozen shape must be hand-synced restates the literal itself. A comment that
+  restates a set-equality literal is a maintenance site like any other, so the envelope's hand-sync
+  surface is **seven, not six** (TE v2 F-03): one definition, five transcriptions, one comment. The
+  count is unchanged at seven since v1.2 but its members are not — the production definition enters
+  as the already-migrated `advisoryEnvelope` assertion leaves (PM v5 F-03).
+- **None of those five transcriptions is an oracle** (TE v5 F-01). Each is an *input* — config
+  objects fed to the code under test, a double's frozen shape, a generator's shuffle — so when
+  `ENVELOPE_DEFAULTS` grows to six members all five stay green and no gate demands their edit. The
+  only envelope oracle that fails on drift is `advisoryEnvelope.test.js`'s
+  `[...ENVELOPE_DEFAULTS].sort()` equality, and that one is already at six. The five are hand-*copy*
+  surfaces: what a later editor reads to decide whether the copy below is still right, where a stale
+  copy silently re-scopes a fixture instead of reddening a suite. That is a real maintenance
+  argument — it is the one the shared-double bullet below rests on — but it is a different claim
+  from "still moves", which is how v1.3 framed the count. An implementer sizing A6 off the older
+  wording would budget five edits no gate asks for.
+- **Seven sites across both literals are already at the post-A6 value and need no edit.** Seam:
+  the `ADVISORY_SEAMS` set-equality in `advisoryEnvelope.test.js`, the `test.each` table in
+  `advisoryRecord.test.js`, the harvest-row assertion in `advisoryHarvest.test.js`, the generator
+  pick in `consolidationProperties.test.js`, and the `SEAMS` constant in
+  `helpers/advisoryDoubles.js`. Envelope: `advisoryEnvelope.test.js`'s `ENVELOPE_DEFAULTS`
+  set-equality (which v1.2 wrongly listed as a four-member site) and `advisoryConfig.test.js`'s
+  re-declared `ADVISORY_DEFAULTS` literal. Only the first of those two asserts against production
+  and is therefore red today (TE v5 F-02); `advisoryConfig`'s six-member envelope is never compared
+  to anything — `PROP-CFG-01` asserts that file's *key set*, its `waveBudgetPerRun` value, and
+  key-set equality against `parseAdvisoryConfig(null)`, never the envelope's members. TSPEC §1.3's
+  `ENVELOPE_DEFAULTS` row is the drift row for the first; §1.3's `ADVISORY_DEFAULTS` row records a
+  *different* drift (`waveBudgetPerRun` already present against an absent production key) and says
+  nothing about that file's envelope member, so the `advisoryConfig` envelope observation is this
+  record's own and not §1.3's (PM v5 F-02). A reader who goes to any of these seven expecting a
+  literal to edit finds the target value already in place. §1.3 remains the carrier of which
+  surfaces have drifted; this entry only sizes the task.
 - The shared double is the coupling the other two surfaces do not have: `advisoryDoubles.js` carries
   *both* literals plus the frozen defaults shape, so a partial edit reddens tests in files that never
   mention the changed constant, with a failure reason the record cannot predict. Sequencing all of
   this as **one task remains the right call** — that co-movement is the failure class A6 itself
-  exists to survive — but it is one task touching roughly a dozen transcriptions and one shared
-  helper, not one task touching three constants. Sized as the latter, it invites exactly the partial
-  edit the set-equality discipline exists to catch (PM F-02).
+  exists to survive — but the size to hand PLAN is: three production constants, **one** test-side
+  literal a gate still demands (`advisoryRecord`'s `rows.map` equality), and **six** hand-copy
+  surfaces — the five envelope inputs and the comment that restates one of them — which no gate
+  demands but which a later editor will read. Not "roughly a dozen transcriptions" (v1.3's figure,
+  inflated by five seam sites that had already migrated), and not "one task touching three
+  constants" either. Sized as the latter, it invites exactly the partial edit the set-equality
+  discipline exists to catch (PM F-02).
