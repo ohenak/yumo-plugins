@@ -543,7 +543,7 @@ document known to that dispatch but not contributing to it carries one reason id
 | `RSN-SELF` | `{f}`'s own LEARNINGS (BR-2) |
 | `RSN-UNREADABLE` | The read failed (BR-3) |
 | `RSN-UNPARSEABLE` | Read, but not a LEARNINGS document (BR-3) |
-| `RSN-NO-MATERIAL` | Eligible, but carries none of BR-6's priority sections (BR-6) |
+| `RSN-NO-MATERIAL` | Eligible, but yields no material — it carries none of BR-6's priority sections, or the per-document bound is zero and admits none (BR-6) |
 
 **Corpus-level catalogue.** States in which **no document is known** are recorded **per authoring
 dispatch** too, from their own closed set:
