@@ -1237,8 +1237,10 @@ last row loses its "feature still off until the operator writes a section" claus
 disabled run executes no new code at all" narrows to explicitly-`false` runs. The `present` field
 itself survives, because AC-5.1a's report-key distinction (absent, not present-and-empty) needs it
 regardless. No suite in §T.5 changes shape; the bare-repository case
-in §T.6 changes its expected value from "empty block" to "non-empty block", which is why this is
-better settled before Phase P than during implementation.
+in §T.6 now carries the settled expected value — a **non-empty** block, this repository holding 9
+corpus documents (P-5) and no `learningsInjection` section — where the provisional gate expected an
+empty one. That was the one expected value the resolution moved, and it is now fixed before Phase P
+rather than discovered during implementation.
 
 
 F-Q-1 … F-Q-4 (FSPEC) and REQ O-1, O-3, O-5, O-6 are carried unchanged. Nothing in this TSPEC
