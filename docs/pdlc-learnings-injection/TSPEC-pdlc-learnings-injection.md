@@ -170,6 +170,28 @@ Three properties of this attachment carry the load:
    new phase reds this test and forces a product decision, rather than silently inheriting
    injection. This is the oracle that makes NG-5's boundary mechanical instead of documentary.
 
+   **The assertion ranges over the composition site, not over the report rows (TE Q-01).** The two
+   candidate operands are not equivalent, and only one catches the case the assertion exists for.
+   `dispatches[i].docType` is written only for dispatches that were *accepted* — a seventh
+   authoring phase whose `docType` reaches `dispatchAndVerify` and is **rejected** by `injectHere`
+   produces no `dispatches[]` row at all, so a report-sourced set equality stays green through
+   exactly the drift it was written to detect. The operand is therefore the set of `docType`s
+   **observed at the composition site**, sampled on both arms of `injectHere`: a
+   `_recordDocType(docType)` probe seam, defaulted to a no-op and injected only by this suite,
+   called in `dispatchAndVerify` immediately *before* `injectHere` is evaluated, and asserted
+   set-equal to the hand-transcribed `LEARNINGS_TARGET_DOCTYPES` literal (DC-14) after a full
+   scripted run. The probe is a test seam on the module's established `_`-prefixed idiom, not
+   production behaviour, and it is the only instrument that sees a `docType` the feature declined.
+
+   Two consequences a PLAN task must carry. First, the run driving it has to exercise every
+   authoring phase — a scripted matrix short of the six `converge` doc types makes the equality
+   pass by omission, so the fixture asserts the observed set equals the literal, never merely that
+   it is contained in it. Second, `null` is an expected member of the observed set (Phase CR,
+   P-2b), so the assertion's expected value is `LEARNINGS_TARGET_DOCTYPES ∪ {null}` at the
+   composition site while `LEARNINGS_TARGET_DOCTYPES` alone is the accepted set — the difference
+   between the two is precisely the `docType` conjunct's work, and asserting both makes P-2c's
+   claim falsifiable rather than narrated.
+
 2. **Once per episode, not once per invocation.** `dispatchAndVerify`'s `for(;;)` loop may compose
    the prompt several times for one dispatch (the pacing budget). The injector is called **once,
    before the loop**, and the resulting string is held in a `const` and concatenated into every
