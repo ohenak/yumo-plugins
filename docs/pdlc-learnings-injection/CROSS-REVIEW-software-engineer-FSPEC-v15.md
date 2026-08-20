@@ -48,6 +48,41 @@ not hand-enumerated`, so v15 does not stale it — the v14 fix holds.
 
 ## Behavioral Flow
 
+**The one substantive gap this round leaves (F-01).** The erratum edited BR-6, BR-9, D-12, E-36
+and AT-30, but not the numbered flow. Step 15 (`:255-258`) still reads:
+
+> Drop any eligible document **carrying none of BR-6's priority sections**, with
+> `RSN-NO-MATERIAL` — it consumes no slot — then take the first
+> `learningsInjection.maxDocuments` of the rest in BR-4's order …
+
+and step 16 applies the per-document bound only *after* that drop and *after* the count cut. Run
+`maxBytesPerDocument: 0` against the flow as written, with §4.1's default `maxDocuments: 5`:
+
+1. Step 15 drops nothing — every corpus document carries priority sections.
+2. Step 15 takes the first five in BR-4's order; the remaining 84 are dropped with **`RSN-COUNT`**,
+   not `RSN-NO-MATERIAL`.
+3. Step 16 extracts zero bytes from each of the five and — under D-9 and BR-6's unqualified
+   "Either way the document's row carries the **bounded** flag" — flags them **bounded** and
+   **selected**, i.e. five BR-8 rows with `bytes injected: 0`.
+
+BR-6's new carve-out (`:495-498`), E-36 (`:775`) and AT-30 (`:944-948`) all say the opposite:
+no document yields material, **every** one carries `RSN-NO-MATERIAL`, none consumes a slot, and
+the selection is empty. Two readings of the same configuration now exist in the document, and
+they differ in exactly the observable AT-30 asserts (`RSN-COUNT` rows and five bounded selected
+rows vs. 89 `RSN-NO-MATERIAL` rows and an empty selection).
+
+Why this is Medium and not High: BR-6 is the normative locus for both bounds, the carve-out there
+is explicit and unambiguous, and §Behavioral Flow is declared a summary of the business rules
+rather than a competing normative text. An implementer following BR-6 gets AT-30 right. The fix is
+one clause in step 15 — drop any eligible document that **yields no material** (none of BR-6's
+priority sections, *or* a zero per-document bound admits none) — plus the matching qualifier on
+D-9's branch (`:294`), so that D-12 is reached before D-9 flags a zero-byte take as `bounded`.
+
+Nothing else in §Behavioral Flow was disturbed. Steps 16–17 remain consistent with the
+material-only basis: step 17's "Accumulate contributed bytes" now accumulates material only, which
+is what BR-6 and TSPEC §D.5 both say, and step 19's assembly of preamble/delimiters is now
+explicitly outside the byte accounting rather than inside it.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
