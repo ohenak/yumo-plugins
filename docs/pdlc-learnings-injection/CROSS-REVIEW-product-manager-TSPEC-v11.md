@@ -88,7 +88,41 @@ sibling cells with the same drift — which is precisely the churn DEC-DOC-01 wa
 
 ## Data Model
 
-_(pending)_
+This is where the primary routed item landed, and it landed correctly.
+
+**Before:** "one test per domain asserts that every value it ever carries is a member of that
+field's catalogue" — false for `dispatches[i].corpusOutcome` and `runMirror.corpusOutcome`, whose
+healthy value §D.2 fixes as `null`.
+
+**After:** the assertion is scoped to every **non-`null`** value, with the reason stated rather than
+hedged — `null` "means 'documents were known', not 'an outcome outside the catalogue'", so an
+unscoped membership assertion "would red on every happy-path run". The domain test is spelled out as
+`v === null || catalogue.includes(v)`, `null` is stated to be deliberately **not** a member of
+`LEARNINGS_CORPUS_OUTCOMES`, and the two non-nullable domains (`rejected[].reason`, `notices[].id`)
+are called out as vacuously scoped and unchanged.
+
+Product-lens checks on that edit:
+
+- **Consistent with §D.2 at HEAD.** Both `corpusOutcome` sites carry `null, // | "RSN-UNLISTABLE" |
+  "RSN-EMPTY"`. The contradiction the item named is gone, in both loci, not just the dispatch row.
+- **Consistent with FSPEC's semantics for `null`.** FSPEC E-06 decides exactly this: a corpus
+  containing only `{f}`'s own LEARNINGS yields an `RSN-SELF` row and "**not** `RSN-EMPTY`, since a
+  document *was* known". TSPEC's "`null` means documents were known" is that clause compressed, not
+  a new product decision.
+- **Catalogue unchanged and still upstream-true.** `LEARNINGS_CORPUS_OUTCOMES` remains exactly
+  `["RSN-UNLISTABLE", "RSN-EMPTY"]`, matching FSPEC's corpus-outcome table (`RSN-UNLISTABLE` — the
+  listing failed outright, BR-12; `RSN-EMPTY` — the listing succeeded and found nothing) and the
+  set-equality completeness test FSPEC AT-26 asserts over those two ids. Adding `null` to the
+  catalogue would have been the tempting wrong fix — it would have broken that set equality and
+  blurred "known but nothing selected" against "outcome recorded". The delta explicitly refuses it.
+- **The oracle locus is untouched.** §D.1 still says the mirror's domain test "is a membership test
+  only … so it does not turn the mirror into an oracle", preserving REQ AC-3.2's per-dispatch locus
+  and FSPEC BR-9/BR-10. The scoping narrows an assertion; it does not move the oracle.
+- **No product decision was made in the TSPEC.** The edit is a test-scoping statement about a value
+  upstream already decided. Nothing here belongs in REQ or FSPEC.
+
+The four-domain count (TE F-04) and the disjointness-in-kind argument are unchanged and still
+correct against BR-9.
 
 ## Test Strategy
 
