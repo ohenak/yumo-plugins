@@ -36,3 +36,38 @@ Each claim re-derived from the repository, not from the document's prose:
 §5.1's new caveat is also true: `pdlc/workflows/__tests__/advisoryWaveGate.test.js` exists and its first line reads `// advisoryWaveGate.test.js -- PLAN A6-00 (batch 1, no deps).`, and `pdlc/engine/__tests__/advisory-config-example.test.js` exists and is **red** on `node --test` (`# fail 1`) because `.claude/pdlc.config.example.json` carries no `advisory` key at HEAD — which is what the row claims. `e3b9d5a3` is indeed titled `docs(cross-review): …` while carrying `.claude/workflows/.pdlc-backups/*.bak` and regenerated bundles, matching the document's account of how the drift landed.
 
 The round also fixed the §3.2 step 2 quotation (PM F-04): `orchestrate-queue.js:1265` reads `advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled`, and the document now quotes all three conjuncts and notes only the third is a `.enabled` token — so the exactly-three PROP-DIS-06 pin and the quotation no longer disagree.
+
+## Findings
+
+| ID | Severity | Scope | Tags | Finding | Section ref |
+|----|----------|-------|------|---------|-------------|
+| — | — | — | — | None. No High finding remains; the delta introduced no defect and no load-bearing claim in the changed sections contradicts the repository at HEAD. | — |
+
+DEFERRED: PLAN's A6-00 / A6-04 / A6-05 batch columns still need re-deriving (or `e3b9d5a3`'s test-side edits reverting) now that most transcription work has already landed — TSPEC correctly routes this as a PLAN erratum rather than deciding it here.
+DEFERRED: A6-00's pre-flight gate was written to detect exactly the baseline drift that has now landed around it; whether it still discriminates once the drift is inside its own baseline is a PLAN/implementation question, not a TSPEC one.
+DEFERRED: `consumerCleanup.test.js` / `documentOracles.test.js` redness at HEAD looks like collateral from `e3b9d5a3`'s `.bak`/bundle sweep rather than A6 work; worth confirming it clears with whichever remedy PLAN picks.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| — | None blocking. The one open question from v10 (was the early transcription intentional or an accidental `git add -A`) is now answered *inside* the document as "a repo and PLAN decision, not a TSPEC one", with both remedies named — which is the right disposition for a frozen round. |
+
+## Positive Observations
+
+- The re-grounding was done the honest way: rather than deleting the "required end state" table or pretending the surfaces are untouched, v1.10 keeps the design claim (declaring `A6` cannot be additive) and adds a separate at-HEAD residue table beside it. Both readings survive — an implementer knows what the end state must be *and* what has already moved.
+- Every row of that residue table is independently checkable and checks out, including the subtle one: `advisoryRecord.test.js`'s `rows.map` equality is the single literal that did *not* early-land, and the table says so rather than rounding the whole file to "already done".
+- §5.1's Status-column caveat fixes the class of defect, not just the instance: it states once that `new`/`edited` describe required end state rather than outstanding work, so the two files that already exist on disk stop reading as false.
+- Refusing to decide the remedy here and routing it as a PLAN erratum is the correct seam. A TSPEC cannot resolve a batching question, and inventing one in a frozen round would have been worse than naming it.
+- The §3.2 quotation fix removes a real oracle hazard: with only one conjunct quoted, a reader could have added a fourth `.enabled` token believing the guard needed it and silently broken PROP-DIS-06.
+
+## Recommendation
+
+**Approved**
+
+My one High from v10 is resolved and verified against HEAD; the Medium (branch anchor) no longer applies to this round, and the Low is fixed. The delta is confined to changelog, §1.3, §3.2, §5.1 and §6, introduces no design change, and every factual claim it adds is true of the repository at HEAD. The remaining repo-state problem is real but is a PLAN/implementation remedy, correctly routed and recorded above as DEFERRED.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
