@@ -36,6 +36,54 @@ new routing target contradicts what DECISIONS says about the same territory.
 
 ## Options Considered
 
+Three readings of "does DECISIONS still hold" were available, and only the third answers the
+dispatch's DEC-ERR-03 framing:
+
+- **Item-list only** — confirm the routed erratum items landed in TSPEC. Necessary, not sufficient,
+  and explicitly rejected by the dispatch. It would pass a DECISIONS that cited a sentence the
+  erratum rewrote.
+- **Full re-review of DECISIONS** — rejected as out of scope and as re-litigation of settled
+  decisions. DECISIONS' bytes did not change; nothing in it is newly wrong of its own accord.
+- **Citation-fidelity sweep against upstream at its current version** (chosen) — enumerate every
+  claim DECISIONS makes *about* TSPEC, re-read each cited passage at `sha256:1531143c…`, and ask
+  whether the compression still holds. Then, separately, read the delta's own new text and ask
+  whether it says anything about territory DECISIONS also speaks to.
+
+Executing the chosen reading:
+
+**Every TSPEC citation in DECISIONS, re-checked at HEAD.** A `grep -n 'TSPEC'` over DECISIONS
+returns 17 sites. Fourteen name a section that the delta did not touch (§1.1 row O-8 at `:179`,
+§2.5 at `:136` and `:222`, §3.2 step 3's capture-before-budget order at `:240`, §3.6's fixed message
+literal at `:293`, §5.1's file-ownership map at `:321`, §5.2's argv-sequence fixtures at `:267` and
+its budget-zero arm at `:349`, §5.6's restoration oracle at `:195`, §6 OQ-2/OQ-5/OQ-6/OQ-7 at
+`:311`, `:283`, `:300`, `:81`/`:156`/`:164`). Each was verified unchanged by the diff being confined
+to the changelog and to one insertion inside §1.3 — no hunk header in the interval reaches any of
+them.
+
+**The one citation that touches the changed section.** `:333` reads *"TSPEC §5.1's status caveat and
+§1.3 are the carriers of repo state for this feature, and whether the early-landed edits are
+reverted or PLAN's batches are re-derived around them is PLAN's call."* This is the single place
+DECISIONS leans on §1.3, and it leans on §1.3's **role**, not on any figure inside it. The delta
+makes §1.3 carry *more* repo state and re-affirms the same routing — its closing sentence says the
+disposition "is not re-litigated here" and its predecessor paragraph still says the remedy choice
+"is PLAN's and Phase I's to make". The compression is not merely still true; the delta moves in its
+direction. Verified: §1.3's pre-delta paragraph at `TSPEC:290–304` still ends on "is a repo and PLAN
+decision, not a TSPEC one", and §5.1's status caveat is untouched.
+
+**The version-label citation.** DECISIONS `:5` and four prose sites name upstream as "TSPEC v1.10".
+TSPEC's version cell still reads `1.10` at HEAD — the erratum appended to the existing v1.10
+changelog entry rather than opening a v1.11. The citation is therefore accurate as written, and I
+file no finding on it; see Q-01 for why I still think it is worth naming.
+
+**Does the delta's new text collide with DECISIONS?** The new paragraph's routing targets both exist
+and both carry what it says they carry: PLAN's Overview HEAD-drift note (which DECISIONS `:28` and
+`:374` also cite, for the *sizing appendix* pointer) and A6-00's Edit 1, which states the same
+"closes 14 of `PROP-SWEEP-2(b)`'s 28 residual paths" figure verbatim. DECISIONS makes no residue,
+`.bak`, sweep or tracked-path claim of its own — `grep -nE 'bak|SWEEP|hygiene|residu'` over DECISIONS
+returns zero hits — so there is no surface on which the two can disagree. DECISIONS' own relationship
+to PLAN's HEAD-drift note is the sizing-appendix citation, and that still resolves: `PLAN:266` points
+at `SIZING-pdlc-advisory-wave-gate.md` from inside the note, exactly as `DECISIONS:28` claims.
+
 ## Findings
 
 ## Questions
