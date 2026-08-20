@@ -110,7 +110,29 @@ set on this document is empty, so nothing is inside a changed section.
 
 ## Risks
 
+- **R-1 — the "resolved" bookkeeping risk (primary).** The mechanical shape of this round is a
+  green confirmation over an empty delta. If that is recorded as "the routed item resolved", the
+  one artifact that still carries the contradiction — TSPEC — loses the round that was supposed to
+  fix it, and `D-O-9`'s deadline ("before `AT-31`/`AT-32` are authored") silently passes.
+  Mitigation: F-01, and the Obligations section below.
+- **R-2 — authoring order.** PROPERTIES and PLAN authors read TSPEC, not DECISIONS. Until the
+  TSPEC erratum lands, any `AT-31`/`AT-32` authored from §I.3 encodes the wrong gate, and the
+  error surfaces only at implementation as a red test against correct code. This is the concrete
+  cost `DECISIONS:441-443` already priced; it is not a new risk, but it is now one round older.
+- **R-3 — divergence living in three documents.** The settled rule currently exists in REQ
+  `AC-5.1a`/`AC-5.1b`, FSPEC `BR-14`, and `DEC-LI-07`, while its negation exists in TSPEC §I.3 and
+  `OQ.2`. Three-against-one is a stable state to *read* and an unstable one to *maintain*; the
+  longer it stands, the more likely a fourth document is authored from the wrong one.
+
 ## Obligations
+
+Carried out of this round. Neither is owed by the REQ.
+
+| ID | Obligation | Owner |
+|----|---|---|
+| SE-O-1 | The TSPEC erratum of `DEC-ERR-01` / `D-O-9` remains **open**: close `OQ.2`, retire `ERR-4` as settled upstream, drop the `present` and `sectionMalformed` conjuncts from §I.3 (`TSPEC:435`), correct the divergence-table row at `TSPEC:432` and the malformed row at `TSPEC:448`, and align `LEARNINGS_DEFAULTS` with REQ §4.1's bare `true`. This confirmation does **not** discharge it. | TSPEC / se-author |
+| SE-O-2 | Bump FSPEC's upstream pointer to REQ v0.9 (`FSPEC:11`) on the next FSPEC touch (F-02). | FSPEC / se-author |
+| SE-O-3 | `AC-5.1b`'s precedent clause (F-03, third round carried) may ride along with any later REQ edit. It has now survived three rounds as a Low; it should not be allowed to become invisible. If no further REQ edit occurs, closing it is optional. | REQ / se-author |
 
 ## Positive Observations
 
