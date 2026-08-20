@@ -198,11 +198,45 @@ correction is to record the resolution, not to change the work.
 
 ## Positive Observations
 
-_pending_
+- **PLAN was ahead of TSPEC on two loci, and TSPEC came to it.** LI-01's P-2a phrasing ("three
+  object-literal sites plus one positional argument", TE F-12) and LI-23's non-`null` corpus-outcome
+  scoping (TE F-01) were both PLAN-local corrections of a literal reading of TSPEC v0.6. TSPEC v0.7
+  now states both itself. That is the review loop working in the direction it is supposed to: a
+  downstream document's precision propagating back up rather than being flattened.
+- **PLAN cites nothing positionally.** The DEC-DOC-01 sweep that rewrote four TSPEC citations found
+  no work to do here, because every PLAN reference to code is a symbol, a parameter name or a call
+  shape — LI-01 goes further and forbids positional assertions outright ("one **structural** (never
+  positional) assertion per premise"). A PLAN written with line anchors would have needed a
+  correcting pass this round.
+- **The §Errata section did its job and can now be retired on the record.** It existed to stop a
+  test author writing LI-11 from FSPEC and reddening a correct implementation. Both routed items
+  were fixed upstream, in the documents that owned them, without PLAN editing FSPEC or resolving
+  anything silently in a task row. Retiring it is a bookkeeping act, not a retreat.
+- **Nothing in the delta reaches the batch ladder.** Fourteen batches, twenty-two rows, four
+  ordering obligations — zero re-ordering, zero re-scoping, zero new rows. An upstream erratum round
+  that leaves the work breakdown untouched is the cheap kind, and it is worth saying so.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+PLAN v0.4 still holds as approved against TSPEC v0.7. No task row's instruction, dependency edge or
+verification gate is falsified; the delta moved TSPEC toward this PLAN on every substantive locus.
+Three corrections should be folded into PLAN's next pass, alongside v5's still-unaddressed F-01/F-02
+(this PLAN has had no revision round since):
+
+1. **F-01** — rewrite §Errata: TSPEC v0.7 marks ERR-3 and ERR-7 CLOSED, and the BR-1 row's claim
+   that "TSPEC §A.2 adds" a conjunct BR-1 forbids is contradicted by §A.2's current text. Record
+   FSPEC v0.11/v0.12 as the resolving versions and keep one provenance line for harvest.
+2. **F-02** — widen §Verification claim 4 from "every non-authoring dispatch" to the complement both
+   upstreams now state, "every dispatch outside BR-1's rule, including an authoring-classified
+   dispatch with no C-1 target". Same defect as v5 F-03, now with TSPEC §A.2 as a second witness.
+3. **F-03** — refresh the four stale version pins (front matter, §Overview, the LI-01 edge
+   rationale, the changelog 0.1 row) to TSPEC v0.7 / FSPEC v0.12.
+
+F-01 and F-02 sit in sections this TSPEC edit changed the ground under, so both are `delta` and
+`local` and route back to this document's ordinary revision loop. F-03 is `delta`/`local` on the
+version field the erratum bumped. No finding halts the phase.
 
 ## Delta-Confirmation Findings
 
