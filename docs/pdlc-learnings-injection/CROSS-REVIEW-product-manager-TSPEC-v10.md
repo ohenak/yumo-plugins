@@ -195,6 +195,13 @@ re-wording makes AT-33's expected set easier to write, not different in kind.
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v7, v8 and v9; still open, still not a finding. §D.1 gives the run-level mirror its own membership test as a fourth field domain, while §D.2 says an implementation that omits `runMirror` entirely still conforms. Both are true and consistent — a membership test over an absent field is vacuously green — but one of four domain tests can pass without observing a value. The P-phase author's call (three domains plus a documented non-oracle, or four with the vacuity noted); REQ v0.9 permits either ("if carried"). Unmoved by this delta. |
+| Q-02 | **Discharged at v9** (FSPEC's Cross-Reviews row), and this round shows the fix generalised: FSPEC v0.12 stopped hand-enumerating the row altogether rather than re-enumerating it. Nothing left open here. |
+| Q-03 | Re-raised, with new evidence. Should the header Cross-Reviews row be hand-maintained at all? It went stale in FSPEC twice, and is stale in TSPEC now (F-05). FSPEC v0.12 answered locally by replacing the enumeration with `v{N}` plus "every round present on this branch". That is a fix a hook or a template could make once for every pdlc document instead of each reviewer spending rounds on it. Not a question for this document — routed to harvest, `Process`. |
+| Q-04 | New, and the only genuinely open one this round raises. TSPEC's erratum log distinguishes CLOSED items (ERR-4, ERR-6 — each naming the upstream version that resolved it) from live ones (ERR-1, ERR-2, ERR-3, ERR-5, ERR-7). ERR-3 and ERR-7 are now resolved upstream but still read as live (F-01, F-02). Who closes them, and when? My reading: the same editorial pass that bumps the version labels (F-04), owned by the next author round on TSPEC, before PLAN authoring consumes §T.6. It is not this confirmation's job to edit TSPEC, and I am not asking for a revision round to do it — but the closure should not wait until an implementer discovers the log describes a contradiction that no longer exists. |
+
 ## Findings
 
 ## Positive Observations
