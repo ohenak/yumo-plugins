@@ -144,6 +144,52 @@ not byte-exact is a fixture that reds for a conforming implementation. F-04 belo
 
 ## Data Model
 
+**`sections[]` now has a stated content rule, and it is the right one — but it is pointed at the
+wrong oracle.** §I.3 now says `sections` carries the **canonical** `BR6_SECTION_NAMES` taken, "not
+the document's literal heading text", while §D.3 says the material carries the heading "in the
+document's own literal form, ordinal included". Making that split explicit is a genuine improvement:
+it stops a fixture builder and a matcher from drifting into a shared wrong spelling, and it gives
+PROPERTIES a clean corpus-driven conjunct (`sections` equals the intersection of
+`BR6_SECTION_NAMES` with the document's level-2 headings, ordinals and gloss ignored), which T-O-6
+now states.
+
+The cost of making the split explicit is that it exposes an operand substitution that was invisible
+while the two were conflated. FSPEC's AT-11 asserts:
+
+> the set of section names appearing **in its block material** equals BR-6's five injected names in
+> priority order, and the Approval Record's distinctive fixture text is absent **while** all five
+> injected sections' texts are present
+
+§I.3 says `sections` "are AT-11's section-set-equality operand", and §T.5 restates AT-11 as
+"section-set equality over what BR-6 selected". Those are different assertions now that canonical
+names and literal block text are formally different things:
+
+1. `sections[]` is the extractor's own report of what it believes it took. Asserting over it cannot
+   falsify a renderer that takes a section and then drops it from the emitted block — the exact
+   "produced artifact contains X, proved against the builder rather than the artifact" shape
+   DC-07 exists to prevent. AT-11 is placed in `learningsBlock.test.js` precisely because it is a
+   claim about the **block**; its oracle should read the block.
+2. The Approval-Record conjunct has no home anywhere in the TSPEC. §D.3 explains why no exclusion
+   branch is needed (`Approval Record` is simply not in `BR6_SECTION_NAMES`), which is a good design
+   argument and not a test — an implementation that matched on a substring, or that emitted whole
+   documents, would satisfy every `sections[]` equality the TSPEC names and still leak the Approval
+   Record into an authoring prompt, which is the leak BR-11 and NG-5 care about.
+3. The "all five injected sections' **texts** are present" conjunct is likewise unowned. Set
+   equality over canonical names holds even if a section's body is dropped and only its heading
+   taken.
+
+This is F-01 below, High and `inherited`: the pre-round bytes already said `sections` is AT-11's
+operand and already carried neither the Approval-Record nor the section-text conjunct, and FSPEC's
+AT-11 wording has not moved since the v1 review (I checked with `git log -S`). It does not ask FSPEC
+to move — it asks §I.3/§T.5 to restate AT-11's oracle over the rendered block, with `sections[]` as
+a supporting assertion rather than the operand.
+
+**Elsewhere the data model is unchanged and still checks out.** `parseLearningsConfig`'s return
+shrinks to `{config, sectionMalformed, invalidKeys}` and both distinctions the dropped field carried
+are re-homed with a stated mechanism (`config.enabled` for AC-5.1a's report-key distinction,
+`sectionMalformed`-implies-present for the malformed case). `LEARNINGS_NOTICES`'s two-member frozen
+literal, BR-8's row key set and AT-17's closure are untouched by this round.
+
 ## Test Strategy
 
 ## Open Questions
