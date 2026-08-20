@@ -278,7 +278,39 @@ Phase I or into `runAdvisorySeam`.
 
 R-5 and BL-06 said this feature cannot ship as a purely additive change, and the grounding confirms
 it. Eight shipped surfaces go red the moment `A6` is declared, and every one is a *transcribed
-literal* in a test rather than a computed value:
+literal* in a test rather than a computed value.
+
+**State of these surfaces at HEAD (re-grounded, PM F-02 / TE F-01).** The table below was written
+as future work and is no longer that. Commit `e3b9d5a3` — titled `docs(cross-review): …` but
+carrying test-side edits and a sweep of tracked `.claude/workflows/.pdlc-backups/*.bak` and bundle
+artifacts alongside them — landed almost all of the transcription ahead of Phase I. The production
+side did not move: `orchestrate-dev.js` still declares
+`export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"])` and
+`ADVISORY_SEAM_PHASES` still carries five rows. The two halves therefore disagree at HEAD and the
+workflows suite is **red before Phase I opens** — e.g. `advisoryQueueSeams.test.js`'s row-count
+assertion now reads `toHaveLength(6)` against a five-row report. The `Change` column below reads as
+"required end state", not "edit still to make"; the `At HEAD` column records which half of each
+surface has already moved:
+
+| Surface | At HEAD | Residue |
+|---|---|---|
+| `ADVISORY_SEAMS` assertion | `advisoryEnvelope.test.js` already asserts the six-member list | production constant still five members |
+| `ENVELOPE_DEFAULTS` assertion | `advisoryEnvelope.test.js` already asserts `{E-1 … E-6}` | production default still four members |
+| `ADVISORY_DEFAULTS` re-declared literal | `advisoryConfig.test.js` already carries `waveBudgetPerRun: 1` | production default key absent |
+| Per-seam report rows | `advisoryRecord.test.js`'s `test.each` list already carries `A6`; its `rows.map((r) => r.seam)` equality **still reads `["A1" … "A5"]`** | the one test-side literal not yet transcribed |
+| Gate-exclusivity registry | `advisoryDriver.test.js` already carries an `A6` block | production registry has no `A6` |
+| Harvest / property seam lists | `advisoryHarvest.test.js`, `consolidationProperties.test.js` and `helpers/advisoryDoubles.js` already carry six members and an A6 double | production seam list still five |
+| Bare row-count assertions | all four sites already read `toHaveLength(6)` | production report still yields five rows |
+| `.enabled` occurrence count | unchanged at three, as required | none |
+
+Whether the remedy is to revert `e3b9d5a3`'s test-side edits and let Phase I make them in PLAN
+order, or to keep them and re-derive PLAN's A6 batches (and A6-00's pre-flight gate, which was
+written to detect exactly this kind of baseline drift) around what has already landed, is a repo
+and PLAN decision, not a TSPEC one. It is routed to PLAN as an erratum. This section's design claim
+is unaffected either way: these surfaces are transcribed literals, so declaring `A6` cannot be
+additive.
+
+The required end state of each surface:
 
 | Surface | Site | Change |
 |---|---|---|
