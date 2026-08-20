@@ -11864,6 +11864,115 @@ async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
 }
 
 /**
+ * A6's dangling-snapshot-commit capture (TSPEC §2.5/§3.5, O-1). Built without touching the
+ * working tree: stages tracked AND untracked files (`git add -A` — `.gitignore`d paths are
+ * skipped, per §2.5's ignore-semantics bullet), writes that index as a tree, wraps it in a commit
+ * parented on the current `HEAD`, records it under a WAVE-SCOPED ref (never run-scoped — DEC-A6-03,
+ * PM F-03: a fixed name would let a later wave's capture overwrite an earlier wave's pre-repair
+ * tree), then resets the index back to `HEAD` so the working tree A6 diagnoses is exactly the tree
+ * the wave's agents left. `git add` goes through `gitWithLockRetry` for the same transient-lock
+ * reason `commitPaths` already retries it (a wave's agents can still hold `.git/index.lock` for a
+ * second or two after the dispatch returned).
+ *
+ * Returns `null` on any `ok !== true` — never throws. The caller (`runWaveGateSeam`, §3.2 step 4)
+ * cannot use the shipped `__preDispatch` escape here (that is a `gatherEvidence` return value, read
+ * only inside `runAdvisorySeam`, which is never entered on this path); a `null` return is how it
+ * learns to write the capture-failure disposition itself, per §2.5's table.
+ *
+ * @param {{feature: string, waveNum: number, _git: function, _sleep: function, emit: function}} args
+ * @returns {Promise<{head: string, tree: string, snap: string} | null>}
+ */
+async function captureTreeSnapshot({ feature, waveNum, _git, _sleep, emit }) {
+  const headResult = await _git(["rev-parse", "HEAD"]);
+  if (!headResult || headResult.ok !== true) return null;
+  const head = String(headResult.stdout || "").trim();
+
+  const add = await gitWithLockRetry(["add", "-A"], {
+    _git,
+    _sleep,
+    emit,
+    label: `A6 wave ${waveNum}: snapshot add`,
+  });
+  if (!add || add.ok !== true) return null;
+
+  const treeResult = await _git(["write-tree"]);
+  if (!treeResult || treeResult.ok !== true) return null;
+  const tree = String(treeResult.stdout || "").trim();
+
+  const commitResult = await _git([
+    "commit-tree",
+    tree,
+    "-p",
+    head,
+    "-m",
+    `A6 snapshot: wave ${waveNum} pre-repair tree (${feature})`,
+  ]);
+  if (!commitResult || commitResult.ok !== true) return null;
+  const snap = String(commitResult.stdout || "").trim();
+
+  const updateRef = await _git(["update-ref", `refs/pdlc/a6-snapshot-${waveNum}`, snap]);
+  if (!updateRef || updateRef.ok !== true) return null;
+
+  const reset = await gitWithLockRetry(["reset", "--mixed", head], {
+    _git,
+    _sleep,
+    emit,
+    label: `A6 wave ${waveNum}: snapshot reset`,
+  });
+  if (!reset || reset.ok !== true) return null;
+
+  return { head, tree, snap };
+}
+
+/**
+ * A6's restore, the inverse of `captureTreeSnapshot` (TSPEC §2.5/§3.5, O-1): `read-tree --reset -u`
+ * puts the index AND working tree back to the snapshot's tree, `clean -fd` drops whatever the
+ * repair added that the snapshot never held (deliberately `-fd`, never `-fdx`: `-x` would delete
+ * `.gitignore`d paths the snapshot never recorded in the first place — a worse defect than the one
+ * being fixed), and `reset --mixed` puts the index back to the snapshot's `HEAD` so the restored
+ * state matches exactly what capture saw. `reset` goes through `gitWithLockRetry` for the same
+ * reason `add` does above.
+ *
+ * THROWS on any `ok !== true` — never returns a sentinel. This is deliberate (unlike
+ * `captureTreeSnapshot`'s `null`): the throw is what `runAdvisorySeam`'s `doRevert` tags
+ * `__isRevertFailure`, which the driver's terminal catch rethrows instead of mapping to an
+ * ordinary escalation (BR-5, E-28, AT-05-5) — an unrevertable tree must never be silently absorbed.
+ *
+ * @param {{head: string, tree: string, snap: string}} snapshot
+ * @param {{_git: function, _sleep: function, emit: function}} seams
+ * @returns {Promise<void>}
+ */
+async function restoreTreeSnapshot(snapshot, { _git, _sleep, emit }) {
+  const readTree = await _git(["read-tree", "--reset", "-u", snapshot.tree]);
+  if (!readTree || readTree.ok !== true) {
+    throw new Error(
+      `A6 restore failed: \`git read-tree --reset -u ${snapshot.tree}\` — ` +
+        `${String((readTree && readTree.stderr) || "no output").trim()}`
+    );
+  }
+
+  const clean = await _git(["clean", "-fd"]);
+  if (!clean || clean.ok !== true) {
+    throw new Error(
+      `A6 restore failed: \`git clean -fd\` — ${String((clean && clean.stderr) || "no output").trim()}`
+    );
+  }
+
+  const reset = await gitWithLockRetry(["reset", "--mixed", snapshot.head], {
+    _git,
+    _sleep,
+    emit,
+    label: "A6 restore: reset",
+  });
+  if (!reset || reset.ok !== true) {
+    throw new Error(
+      `A6 restore failed: \`git reset --mixed ${snapshot.head}\` — ` +
+        `${String((reset && reset.stderr) || "no output").trim()}`
+    );
+  }
+}
+
+/**
  * The sentence every wave-commit halt ends with. The distinction it draws is the
  * one an operator needs: the WORK is fine — it was gated by the orchestrator's own
  * suite run before this commit was attempted — and only the recording of it
