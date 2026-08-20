@@ -35,6 +35,35 @@ confirmation cannot approve.
 
 ## Batches
 
+Re-derived mechanically from the task table at HEAD (`batch == max(dep batch) + 1`):
+
+| Task | Deps | Dep batches | Derived | Column | OK |
+|---|---|---|---|---|---|
+| A6-00 | — | — | 1 | 1 | yes |
+| A6-01 | — | — | 1 | 1 | yes |
+| A6-04 | — | — | 1 | 1 | yes |
+| A6-05 | — | — | 1 | 1 | yes |
+| A6-06 | A6-04 | 1 | 2 | 2 | yes |
+| A6-08 | A6-00, A6-05 | 1, 1 | 2 | 2 | yes |
+| A6-10 | A6-08 | 2 | 3 | 3 | yes |
+| A6-12 | A6-10 | 3 | 4 | 4 | yes |
+| A6-14 | A6-12 | 4 | 5 | 5 | yes |
+| A6-18 | A6-14 | 5 | 6 | 6 | yes |
+| A6-21 | A6-18 | 6 | 7 | 7 | yes |
+
+**The routed batch-column item is resolved.** Graph is acyclic, ids unique, every dependency
+resolves to a declared task, and no column understates its derivation. The A6-00/A6-04/A6-05 rows
+keep their wave-1 slots for reasons the document now states rather than assumes: A6-00 because its
+answer is the precondition for trusting the drift analysis, A6-04 because it is test-only on a
+channel the wave gate does not run, A6-05 because its green step is what closes the inherited red.
+
+Same-batch same-new-file check, batch 1 (the only batch with parallelism): A6-00 owns
+`advisoryWaveGate.test.js` (and is told not to re-create it), A6-01 owns
+`helpers/advisoryDoubles.js`, A6-04 owns the new `pdlc/engine/__tests__/advisory-config-example.test.js`,
+A6-05 owns the eight advisory suites plus `orchestrate-dev.js`. No two batch-1 tasks create or
+append the same file, and single-writer-per-file-per-batch holds for `orchestrate-dev.js`
+throughout. A6-08's later write to `advisoryWaveGate.test.js` is batch 2, serialized behind A6-00.
+
 ## Dependencies
 
 ## Verification
