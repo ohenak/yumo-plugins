@@ -28,6 +28,24 @@ Scope note: the PLAN's routed items were all judged **discharged** by both revie
 
 ## 2. Iterations
 
+Six PLAN cross-review rounds ran. Rounds 4 and 5 were already approving from both lenses; round 6 is the erratum delta confirmation that reopened the document.
+
+| Round | PLAN rev | PM verdict | PM findings | TE verdict | TE findings |
+|---|---|---|---|---|---|
+| 1 | v1.0 | Needs revision | 6 (4H / 1M / 1L) | Needs revision | 8 (3H / 3M / 2L) |
+| 2 | v1.1 | Needs revision | 9 (7H / 0M / 2L) | Needs revision | 12 (4H / 3M / 5L) |
+| 3 | v1.2 | Approved w/ minor | 5 (2H / 0M / 3L) | Approved w/ minor | 6 (1H / 0M / 5L) |
+| 4 | v1.3 | Approved w/ minor | 2 (0H / 1M / 1L) | Approved w/ minor | 3 (0H / 0M / 3L) |
+| 5 | v1.3 rev | Approved w/ minor | 3 (0H / 2M / 1L) | Approved w/ minor | 1 (0H / 0M / 1L) |
+| 6 | **v1.4 (erratum)** | **Needs revision** | 7 (2H / 2M / 3L) | **Needs revision** | 5 (1H / 2M / 2L) |
+
+Two structural events sit inside this trajectory and explain its shape:
+
+- **v1.3 was an operator restructure, not a review response.** The 14-batch red→green alternation could not pass the shipped wave gate (`implementation.testCommand` is a plain exit-code gate at every wave boundary, no expected-red channel), so wave 1 halted. Eleven tasks in seven waves replaced it, with every former RED task folded into its GREEN successor as named in-task steps.
+- **v1.4 is an erratum round, not round 6 of ordinary refinement.** Its charter was narrow — resolve the revert-vs-keep fork TSPEC §6 routed — but it landed against upstream that had moved four TSPEC minor versions since the PLAN was last grounded.
+
+High-severity counts had gone 4→7→2→0→0 (PM) and 3→4→1→0→0 (TE): a converged document. Round 6 put High back on the board (2 PM, 1 TE) on material that was **not** in the routed item list. The reopening is the signal, not the volume.
+
 ## 3. Reviewers
 
 ## 4. Pattern of Disagreement
