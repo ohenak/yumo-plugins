@@ -112,13 +112,19 @@ refs/pdlc/a6-snapshot-{waveNum}`, then `git reset --mixed {head}` to put the ind
 injected `_git(argv)` transport, with `add` and `reset` going through `gitWithLockRetry`.
 
 The `-m "…"` on `commit-tree` is **not optional and not cosmetic**, and it is transcribed here
-verbatim from TSPEC §2.5's block for that reason. A `commit-tree` invoked without `-m` reads its
-message from stdin, and the injected transport is argv-only — it resolves `{ok, stdout, stderr}` and
-offers no stdin channel — so a `-m`-less capture blocks against the shipped transport. No test would
-catch the omission: §5.5's oracle is an **argv-sequence** assertion over the `_git` double's recorded
-argv (`commit-tree === 1`, plus an `update-ref` on the snapshot ref), and a double answers a
-`-m`-less argv as happily as a correct one. The literal belongs in the implementing task's argv, not
-in its judgement (TE F-01).
+verbatim from TSPEC §2.5's block for that reason — but the failure mode is silence, not a block, and
+v1.1's account of it was wrong (TE v2 F-01, carried here rather than across another round). A
+`commit-tree` invoked without `-m` reads its message from stdin; the shipped transport `defaultGit`
+runs `execFileSync("git", args, { stdio: "pipe", encoding: "utf8" })` with no `input`, so the child
+sees an empty stdin rather than an error. Measured against real git: `git commit-tree {tree} -p HEAD
+</dev/null` exits `0` and prints an object id, with an **empty commit message**. So a `-m`-less
+capture does not fail loudly at the seam — it writes a valid, unlabelled snapshot commit, and the
+operator who later inspects `refs/pdlc/a6-snapshot-{waveNum}` finds an object with nothing on it
+saying which wave or which repair it belongs to, which is the whole point of capturing it.
+No test catches the omission either: §5.5's oracle is an **argv-sequence** assertion over the `_git`
+double's recorded argv (`commit-tree === 1`, plus an `update-ref` on the snapshot ref), and a double
+answers a `-m`-less argv as happily as a correct one. The literal belongs in the implementing task's
+argv, not in its judgement.
 
 **Constraints that forced the shape.** BR-9's oracle is content-level over tracked *and* untracked
 files, so path-scoped restoration is out. The wave's uncommitted work is the protected asset, so a
