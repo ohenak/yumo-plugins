@@ -219,6 +219,45 @@ outside this confirmation's scope. Neither was touched by this delta and neither
 
 ## Positive Observations
 
+- **Both routed items are closed by one coherent piece of writing, not two patches.** My item and
+  te-author's were the same gap seen from the product and testing lenses; the response is a single
+  rule specified once, in the section that records the discharge. Neither reviewer got a bespoke
+  paragraph addressed at them.
+- **The prefix-match rejection is argued from upstream's own measured example.** Rather than
+  asserting strictness as a preference, §D.3 shows that a looser rule would make FSPEC's one
+  measured `RSN-NO-MATERIAL` document (E-33) and its acceptance test (AT-28) unreachable by
+  construction. That is a requirement-traceable decision, and it is the kind of reasoning that
+  makes the rule reviewable years later.
+- **Priority is pinned to `BR6_SECTION_NAMES`'s index, with the corpus trap named explicitly.** The
+  document points out that the corpus's own numbering inverts BR-6's top two rankings, so an
+  implementer who reads priority off the heading ordinal would silently invert Cross-Feature
+  Patterns and Non-Convergences in every document. Naming the plausible wrong implementation is
+  what protects BR-6's stated product rationale.
+- **Approval Record's `never` is enforced by absence from the allow-list, not by a branch.** The
+  strongest available discharge of a never-inject requirement, and it generalises for free to the
+  unanticipated `## 6. Phase PUB Retroactive Cross-Review` deviation in the real corpus.
+- **Measured and defensive claims are labelled apart, unprompted.** The ordinal rule is marked
+  measured (9/9); the un-glossed tolerance is marked *not* measured, with the reason it exists
+  anyway. This is ERR-5's lesson applied without being asked for.
+- **The fixture obligation anticipates its own false green.** Requiring a fixture in the
+  non-canonical-but-matching form recognises that every real document and every default builder
+  writes the numbered glossed form, so rules 1 and 3 would otherwise be tautologically green.
+- **The heading rename is small and honest.** `*(discharges F-O-1, both halves)*` makes the
+  section's title match what its body now carries — a reader tracing F-O-1 from FSPEC lands on the
+  answer, not on a pointer or a half-truth.
+
+## Recommendation
+
+**Approved.**
+
+The delta resolves both routed items. Re-measured against upstream at HEAD (REQ `ff605dd3…`, FSPEC
+`ae75fa62…` — both matching the dispatch digests exactly), the TSPEC remains a faithful compression:
+`BR6_SECTION_NAMES` reproduces BR-6's five names and priority order exactly, Approval Record's
+`never` is preserved structurally, F-O-1's three enumerated heading forms are each explicitly
+decided, and both of F-O-1's bounds — bytes only, no model call — hold. Nothing I previously
+approved was weakened, narrowed, or reinterpreted, and no citation in the changed section points at
+upstream text that HEAD no longer carries (DEC-ERR-03).
+
 ## Delta-Confirmation Findings
 
 ## Verdict
