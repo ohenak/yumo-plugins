@@ -173,4 +173,36 @@ the real `_appendFile` wrote.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All six of v1's High findings are closed, and closed at the level they were filed: the behaviour
+each AC claims now exists in the shipped code, is reached from the shipped call site, and has an
+oracle that can fail. Nothing this round's delta touched regressed — the advisory and wave suites
+are 661 green with one deliberate `test.todo`, the whole workflow suite's only two reds are the
+same `documentOracles` residuals PLAN v1.7/v1.8 declares inherited (`AT-22`,
+`PROP-SWEEP-2(b)`), and `node build-runtime.mjs --check` reports the regenerated
+`dist/pdlc-cli.mjs` in sync.
+
+The DC-09 floor holds **on the declared gate command**, not out of band: `npm run test:coverage`
+exits 0, with stage 2's `--per-file --branches 85` enforced over the `c8` include set —
+`orchestrate-dev.js` 88.11 % branch / 97.37 % lines, `orchestrate-queue.js` 88.75 %,
+`build-runtime.mjs` 88.23 %. v1's F-10 is withdrawn: `c8@^10.1.3` was always declared at
+`package.json:12`; only my local `node_modules` lacked it.
+
+Three things are worth doing before ship, none of them gating:
+
+1. **F-01** — give `PROP-NFR-03` its partition test, or record in PROPERTIES that it is deferred.
+   It is the last enumerated contract on this feature checked by containment rather than
+   set-equality, and the sweep this round performed makes the gap newly visible.
+2. **F-02** — pin `A6_PROHIBITION_PATHS`' key set against `A6_PROHIBITIONS`, so the letter
+   catalogue's subtraction table cannot drift in the untested direction.
+3. **F-03** — drive one E-6 promotion through `mainDev`'s two-wave fixture, so conjunct 2's
+   dependence on `computeWaves`' `description` field is proven on the production shape.
+
+F-04 (the `1045 / 298` divergence against `origin/feat-pdlc-advisory-wave-gate`) is for the
+orchestrator to reconcile before the next push; it is not a defect of the work.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
