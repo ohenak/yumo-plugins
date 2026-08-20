@@ -375,8 +375,13 @@ that a first-class per-seam `enabled` map becomes the better surface.
 - **None of those five transcriptions is an oracle** (TE v5 F-01). Each is an *input* — config
   objects fed to the code under test, a double's frozen shape, a generator's shuffle — so when
   `ENVELOPE_DEFAULTS` grows to six members all five stay green and no gate demands their edit. The
-  only envelope oracle that fails on drift is `advisoryEnvelope.test.js`'s
-  `[...ENVELOPE_DEFAULTS].sort()` equality, and that one is already at six. The five are hand-*copy*
+  envelope's drift oracles are **two**, not one (PM v6 F-01, TE v6 F-01): `advisoryEnvelope.test.js`'s
+  `[...ENVELOPE_DEFAULTS].sort()` equality under `T-03-8`, and `advisoryConfig.test.js`'s
+  `PROP-CFG-02` deep equality (`expect(config).toEqual(ADVISORY_DEFAULTS)`), which compares the
+  parsed production config member-for-member and therefore descends into `envelope`. Both already
+  carry the six-member value, so neither needs an edit either — they flip red→green when production
+  moves. That is a third category beside "gate-demanded edit" and "ungated hand-copy", and it is the
+  one the record previously lost (PM v6 Q-01); the closing size line below names all three. The five are hand-*copy*
   surfaces: what a later editor reads to decide whether the copy below is still right, where a stale
   copy silently re-scopes a fixture instead of reddening a suite. That is a real maintenance
   argument — it is the one the shared-double bullet below rests on — but it is a different claim
@@ -388,10 +393,19 @@ that a first-class per-seam `enabled` map becomes the better surface.
   pick in `consolidationProperties.test.js`, and the `SEAMS` constant in
   `helpers/advisoryDoubles.js`. Envelope: `advisoryEnvelope.test.js`'s `ENVELOPE_DEFAULTS`
   set-equality (which v1.2 wrongly listed as a four-member site) and `advisoryConfig.test.js`'s
-  re-declared `ADVISORY_DEFAULTS` literal. Only the first of those two asserts against production
-  and is therefore red today (TE v5 F-02); `advisoryConfig`'s six-member envelope is never compared
-  to anything — `PROP-CFG-01` asserts that file's *key set*, its `waveBudgetPerRun` value, and
-  key-set equality against `parseAdvisoryConfig(null)`, never the envelope's members. TSPEC §1.3's
+  re-declared `ADVISORY_DEFAULTS` literal. **Both** of those two assert against production and both
+  are red today, measured at HEAD (PM v6 F-01, TE v6 F-01 — which retracts the second half of
+  TE v5 F-02, the claim v1.4 transcribed). `advisoryConfig`'s is not a *dedicated* envelope
+  assertion, which is what made it easy to miss: `PROP-CFG-01` does assert only that file's *key
+  set*, its `waveBudgetPerRun` value, and key-set equality against `parseAdvisoryConfig(null)`, and
+  says nothing about envelope members — but `PROP-CFG-02` deep-equals the *whole* literal against
+  `parseAdvisoryConfig`'s output for five inputs (absent file, no `advisory` section, unparseable
+  JSON, top-level array, non-object section), and `toEqual` descends into `envelope`. Run at HEAD,
+  all five are red and each diff drops `"E-5"`, `"E-6"` **and** `"waveBudgetPerRun": 1`. One
+  consequence worth handing PLAN: the two oracles do not clear together. `advisoryEnvelope`'s
+  equality goes green on A6-02's envelope growth alone; `PROP-CFG-02` needs A-17's
+  `ADVISORY_DEFAULTS` — `waveBudgetPerRun` included — as well, so an implementer who lands A6-02 and
+  sees `advisoryConfig` still red has not regressed anything. TSPEC §1.3's
   `ENVELOPE_DEFAULTS` row is the drift row for the first; §1.3's `ADVISORY_DEFAULTS` row records a
   *different* drift (`waveBudgetPerRun` already present against an absent production key) and says
   nothing about that file's envelope member, so the `advisoryConfig` envelope observation is this
