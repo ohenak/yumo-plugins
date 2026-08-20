@@ -111,16 +111,54 @@ No fixture is newly required by this round, because this round introduced no del
 
 ## Findings
 
-_(pending)_
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Process | Residual raw `orchestrate-dev.js:NNNN` pins are ~4 lines short of HEAD: `ADVISORY_SEAM_PHASES` cited `:3108`, actually `:3112`; the `ADVISORY_SEAM_PHASES[seam]` lookup cited `:3338`, actually `:3342`; the ledger note's `:3428`/`:3459` are stale (`:3428` is blank; the `ADVISORY ESCALATION:` notice lives elsewhere); refusal catalogue cited `:2297`–`:2306`, actually `:2301`–`:2310`; `ADVISORY_EXCLUSIONS` cited `:2311`, actually `:2315`. DEC-DOC-01 asks for symbol/heading anchors instead. Carried forward unresolved from v5 F-01; non-gating. | PROP-REC-07; PROP-GATE ledger note; Fixtures / Overview refusal-and-exclusion rows |
+
+No High or Medium findings. F-01 is inherited from the pre-round bytes — this round introduced
+no delta, so it cannot have introduced a defect, and no load-bearing claim contradicts HEAD or
+an upstream document.
+
+DEFERRED: sweep the residual raw `orchestrate-dev.js:NNNN` pins (F-01) onto symbol/block-title anchors per DEC-DOC-01 at the next erratum opportunity for this document.
+DEFERRED: consider whether an empty-delta round should be recorded in the document's changelog at all, or left to the cross-review history alone — a process question, not a content one.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | This round was dispatched as iteration 6 but the document did not move since the round-5 approval (`0c0475a7`) and no upstream hash changed. Was a revision expected to land and fail to commit, or is this an intentional confirmation round? Nothing in the tree suggests lost work — `git status` is clean — but the orchestrator is better placed than I am to tell a deliberate re-dispatch from a dropped edit. |
 
 ## Positive Observations
 
-_(pending)_
+- The document's round-5 state is genuinely stable: five upstream hashes and the document hash
+  all reproduce exactly, which is what makes an empty-delta round cheap to adjudicate instead
+  of forcing a full re-read.
+- The round-4 re-anchoring work continues to pay off. Every claim I re-verified against code
+  this round that was anchored by symbol or block title (`ADVISORY_SEAMS`, `SEAMS`,
+  `const configPath` / `implementation.testCommand`) is still accurate; every claim that has
+  drifted is one of the raw `file:line` pins DEC-DOC-01 warns about. The failure mode is
+  behaving exactly as the decision predicted.
+- The seam-cardinality narrative — six on the test side, five in production, wave opens red —
+  still matches both HEAD (`orchestrate-dev.js:1951`) and TSPEC §1.3, so a Phase I author
+  reading either document meets the same baseline.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes.**
+
+The delta under review is empty: the document is byte-identical to the round-5 bytes I
+approved, and all five upstream documents hash to the anchors recorded in that approval. Under
+the freeze, neither blocking category applies — there is no defect this revision introduced
+(there was no revision) and no load-bearing claim that contradicts the repository at HEAD or an
+upstream document (I re-verified the code-dependent claims: `ADVISORY_SEAMS` still five at
+`orchestrate-dev.js:1951`, `ADVISORY_SEAM_PHASES` still declared and consumed as described, the
+eight refusal reasons and five exclusion ids still present, both `new` test files on disk).
+
+The single open item is the inherited Low DEC-DOC-01 citation drift carried forward from v5.
+It is recorded, not gating, and should be swept at the next erratum opportunity rather than
+held against Phase I.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
