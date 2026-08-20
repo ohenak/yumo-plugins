@@ -518,17 +518,15 @@ a halt condition — and with the ledger in place there is no batch for which th
 
 ### Errata raised from this document's authoring
 
-Two defects in **FSPEC v0.10** are still live at HEAD and both bear directly on task rows here. They
-were first raised by TSPEC v0.6 (as ERR-3 and ERR-7) and are re-raised because FSPEC v0.10 — whose
-changelog records erratum rounds for BR-14, E-13 and the AC-6.2 traceability row — does not carry a
-correction for either, and a test author writing LI-11 from FSPEC rather than TSPEC would write a
-failing test against a correct implementation. This PLAN does not edit FSPEC and does not resolve
-either silently in a task row; both are routed.
+Both defects this PLAN routed at v0.1 — raised by TSPEC v0.6 as **ERR-3** and **ERR-7** — are
+**CLOSED at HEAD**, resolved upstream by FSPEC v0.11/v0.12 and marked CLOSED in TSPEC's erratum
+register. Neither is re-raised, and the two task rows they touched need no change, because both
+were already written to TSPEC's reading and TSPEC's reading is now FSPEC's:
 
-| Item | Effect on this PLAN if unresolved |
-|---|---|
-| **FSPEC BR-1** still states the rule "consumes the classification, it does not restate the membership", while TSPEC §A.2 adds the load-bearing `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct that Phase CR's `docType: null` optimizer round requires | LI-11's AT-02 has two contradictory expected sets. The task row is written to **TSPEC's** reading, and says so; a reviewer scoring it against BR-1 would reject a correct test |
-| **FSPEC BR-15**'s expected set includes "the corpus-root enumeration" on an instrument defined as "file-open calls under `docs/`", but the enumeration is a `git ls-files` call and contributes no member | LI-11's AT-33 set equality cannot hold as FSPEC states it. The row is written to TSPEC §T.6's reading — hand-transcribed read paths, enumeration excluded |
+| Item | Status at HEAD | Effect on this PLAN |
+|---|---|---|
+| **ERR-7 (FSPEC BR-1)** — BR-1 once made the block follow the pipeline's authoring *classification* alone, a set wider than REQ C-1, so `LI-AT-02` had two contradictory expected sets | **CLOSED.** FSPEC v0.11 restated BR-1 as the **two-conjunct** rule — authoring-classified **and** a target document among C-1's six — naming Phase CR's `docType: null` optimizer round as the excluded branch; v0.12 carried the complement through BR-11, AT-03, AT-29 and D-2. TSPEC §A.2's `docType ∈ LEARNINGS_TARGET_DOCTYPES` predicate **implements BR-1 directly** and adds no conjunct BR-1 lacks | None. LI-11's `LI-AT-02` row already carries the two-conjunct reading and is now scoring-consistent with FSPEC as well as TSPEC |
+| **ERR-3 (FSPEC BR-15)** — the expected read set once included "the corpus-root enumeration" on an instrument defined as file-open calls under `docs/`, which a `git ls-files` call cannot join | **CLOSED.** FSPEC v0.11 dropped the enumeration from the expected read set on exactly that ground; v0.12 states the membership as a **set** rather than a count | None. LI-11's `LI-AT-33` row already excludes the enumeration and hand-transcribes the read set (TSPEC §T.6) |
 
 TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5) are unchanged by this document and are not
 re-raised here: ERR-5's provenance was corrected in FSPEC's v0.7 erratum round (E-13 now reads
