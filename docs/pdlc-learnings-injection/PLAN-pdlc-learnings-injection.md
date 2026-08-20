@@ -90,6 +90,15 @@ cases follow the same rule: `LI-T-PIN-1`, `LI-T-RETRY-1…3`, `LI-T-IGNORE`, `LI
 `LI-T-SUITEMAP`. Throughout this document a bare `AT-{N}` refers to **FSPEC's** numbering; the jest
 name is always the `LI-` form.
 
+**Only the six AT-bearing suites carry `LI-AT-` titles; every other test this feature adds is named
+`LI-T-*`, and `LI-T-SUITEMAP` enforces that** (TE F-02). This is a gate input, not a style
+preference: LI-14's closure is taken over the `learnings*.test.js` directory and asserts the set of
+files registering at least one `LI-AT-` title **equal** to six, so an `LI-AT-`-prefixed title in any
+of the six non-AT suites reds batch 6 — including the two whose rows do not enumerate their test
+names, `learningsPremises.test.js` (LI-01) and `learningsBaselineGuard.test.js` (LI-06). Batches 1
+and 4 are green-terminal, so a naming slip there surfaces only at batch 6, in a message pointing at
+the suite map rather than at the file that caused it.
+
 ### Out of scope for this PLAN
 
 The three PROPERTIES obligations TSPEC carries forward — T-O-4 (`orderCorpus` permutation and
