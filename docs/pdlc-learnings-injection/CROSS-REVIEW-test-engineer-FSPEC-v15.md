@@ -197,6 +197,49 @@ I checked the rows the basis change could have stranded:
 
 ## Acceptance Tests
 
+**AT-30 (edited).** The third zero joins the other two in the same AT: "*Given* thresholds configured
+to admit nothing — `maxDocuments: 0`, separately `maxTotalBytes: 0`, and separately
+`maxBytesPerDocument: 0` … *then* it behaves as an enabled run with an empty selection: BR-8's rows
+present and empty, **not** the absent key of a disabled run, and no refusal to run; *and* in the
+`maxBytesPerDocument: 0` case every corpus document carries `RSN-NO-MATERIAL` (E-36)."
+
+Two things I want to record about this shape, because both are the falsifiability property I would
+otherwise have asked for:
+
+1. **The three zeros are separate legs of one AT, not one merged fixture.** "separately" is doing
+   real work — a single fixture with all three thresholds at zero would pass under an implementation
+   that honours only one of them, because any one zero produces the same empty selection. Three legs
+   means three independently falsifiable assertions, and a mutation that drops the per-document zero
+   check reds exactly one leg.
+2. **The per-document leg carries its own discriminating conjunct.** The shared conjunct (enabled,
+   empty rows, no refusal) is identical across all three zeros and therefore cannot tell them apart;
+   the added "every corpus document carries `RSN-NO-MATERIAL`" is what separates the zero-bound leg
+   from the `maxDocuments: 0` leg, where documents are not-selected for a different reason. Without
+   it, the third leg would be a duplicate of the first and would false-green a `maxBytesPerDocument`
+   implementation that ignored the threshold entirely and dropped everything for an unrelated cause.
+   The AT names the reason id by value; this is the positive-mechanism conjunct, and it is present.
+
+The `not the absent key of a disabled run` conjunct is retained across all three legs, which is the
+control that keeps the enabled/disabled distinction falsifiable rather than an absence claim.
+
+**AT-11 and AT-12 (unedited, and repaired by the delta anyway).** Both demand an expected contributed-
+byte count "committed with the fixture as a literal integer, recomputed by hand when the fixture
+changes, never derived in the test". The material-only basis is what makes that literal derivable by
+the fixture author at all (see §Business Rules). No edit needed; the ATs are strictly more
+implementable than when I approved them.
+
+**Nothing in the delta touches AT-01 … AT-29 or AT-31 … AT-35.** The branch-coverage paragraph's D-12
+mapping still resolves — D-12's "no" branch is now exercised by both E-19's AT and AT-30's third leg,
+which is redundancy in the useful direction. The paragraph's D-9 mapping is untouched and still names
+AT-11/AT-12; those cover the non-zero bind, which is what D-9's label describes and all it should be
+asked to cover once F-01's qualifier lands.
+
+One carried-over oracle divergence is still open and is not this delta's doing: **AT-33** (FSPEC:973)
+still spells its expected set as "exactly one attempt per report-named document other than the
+`RSN-SELF` ones" — a count formulation — while BR-15 (FSPEC:710) says both sides are compared as sets
+of paths and "a document opened more than once neither adds a member nor changes the verdict". I
+raised this at v14 as F-01; the v0.13 erratum did not route it. Re-filed here as `inherited` (F-03).
+
 ## Open Questions
 
 ## Positive Observations
