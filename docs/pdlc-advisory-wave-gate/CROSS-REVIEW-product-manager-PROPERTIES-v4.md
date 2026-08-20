@@ -131,8 +131,44 @@ cascade damage is confined to the two grounding paragraphs and does not reach th
 
 ## Positive Observations
 
-*(pending)*
+- **The property set survived a two-document upstream move without a single semantic drift.** REQ
+  restated NFR-4 and TSPEC reworded §4.4's affordance — both the kind of edit that usually strands a
+  downstream property — and neither reached a `PROP-*` row. PROP-CTR-10's slow-gate companion run is
+  now *better* justified than it was under the old NFR-4 wording, and PROP-CTR-13 asserts the
+  behaviour that TSPEC now says is the `0` affordance's only carrier. That is a document that
+  compressed the *criteria* rather than the prose around them.
+- **PROP-CFG-03 called the `ci-arrangement.test.js` question correctly before upstream did.** It
+  parks the example-config assertion in a purpose-named file and leaves `ci-arrangement.test.js`
+  unowned; TSPEC §5.1 and §4.4 have since restated the same disposition twice, in this round's own
+  words. Downstream converging on upstream is the healthy direction of travel.
+- **The drift that did land is confined and self-limiting.** PROPERTIES itself says the derivation
+  *rule*, not the four-site snapshot, is what PROP-SEAM-02 carries — so the one paragraph that went
+  stale had already told the reader not to lean on it. Only the file-existence paragraph asserts
+  HEAD state without that hedge, and it is one paragraph.
+- **AC-6.2's trace chain is still intact end to end** after the round: AC-6.2 → PROP-REC-03/-04/-07
+  → A6-17 → `advisoryEscalationLog.test.js`, which §5.1 still carries as an `edited` file. The v3
+  confirmation walked this chain; nothing in v1.9 or v1.10 broke a hop.
 
 ## Recommendation
 
-*(pending)*
+**Needs revision** — on one High finding, with a narrow and fully-specified remedy.
+
+PROPERTIES is still a faithful compression of the *decisions* in TSPEC and REQ at HEAD. What it is
+no longer faithful to is upstream's account of the *baseline* those decisions will be implemented
+against: TSPEC §1.3 and §5.1 were re-grounded on HEAD in this round, and PROPERTIES' two
+corresponding grounding paragraphs were not, so the two documents now say opposite things about
+whether two named test files exist.
+
+Exactly what must change, and nothing else:
+
+1. **F-01 (High)** — restate §"File existence, verified at HEAD": both new-status files exist at
+   HEAD; `new` denotes required end state, not outstanding work (mirroring TSPEC §5.1's Status
+   column caveat); the disposition of `e3b9d5a3` is PLAN's and Phase I's. Keep the closing
+   invariant sentence.
+2. **F-02 (Medium)** — re-anchor derivation rule 1's four sites to the block titles TSPEC §1.3 now
+   uses, and describe them as already transcribed and red, not as pending `(5)`→`(6)` edits.
+3. **F-03 (Low, Process)** — replace the `ci-arrangement.test.js:39` / `:799`–`:819` raw anchors
+   with the resolving symbol or block title while the file is open.
+
+Do not re-open the property set, the AC map, the fixture plan or the `e3b9d5a3` disposition. This
+is a grounding restatement of two paragraphs, mirroring one upstream has already made.
