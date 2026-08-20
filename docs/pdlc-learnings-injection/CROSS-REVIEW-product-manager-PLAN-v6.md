@@ -139,7 +139,62 @@ behind by the same pass that fixes F-01 and F-02.
 
 ## Verification
 
-_pending_
+I re-read §Verification's five closure claims, §Traceability's three tables, and §Errata against
+TSPEC at HEAD.
+
+**Claim 2 (TSPEC-local cases) holds and is now better grounded.** It requires green on
+`LI-T-PIN-1`, "the composition-site set equality on **both** operands", `LI-T-RETRY-1…3`,
+`LI-T-IGNORE`, `LI-T-WORKTREE`, the baseline digest guard, the porcelain write-delta and the static
+seam scan. Every one of those is a TSPEC-local case TSPEC still carries; the composition-site probe
+is precisely the oracle §A.2's now-endorsed `docType` conjunct needs.
+
+**Claim 3 (twelve fail-open arms) holds verbatim.** It already reads "asserted by
+`learningsArmInventory.test.js` (LI-23) as set equality against the three frozen catalogues", and
+§Traceability's arm table already carries the non-`null` scoping with §D.2 as its reason. TSPEC
+§D.1 now states that scoping itself. PLAN's compression and TSPEC's text agree word for word.
+
+**Claim 4 is the one §Verification defect, and it is the second upstream to falsify it.** PLAN
+scopes baseline byte-identity to "every **non-authoring** dispatch (AC-4.3)". At approval time that
+was TSPEC §A.2's own phrase ("AC-4.3's byte-identity for non-authoring dispatches"). §A.2 at HEAD
+says "AC-4.3's byte-identity for the dispatches **outside BR-1's rule**" — deliberately widened,
+because Phase CR's optimizer round is authoring-classified and *is* covered by the promise. FSPEC
+AT-03/AT-29 made the same move one round earlier, which is why I raised this as **v5 F-03**. I
+re-raise it here rather than deferring to v5: v5 recorded FSPEC as the falsifying upstream, and the
+correcting pass now has to satisfy both, so the finding's evidence changes even though its fix does
+not. The Scope tag is reconciled with v5's (Local, Medium), not escalated.
+
+**§Traceability's three tables hold.** The 35-AT partition, the TSPEC-local case list and the
+twelve-arm map all key on TSPEC ids that this delta did not renumber, retire or re-own. §"TSPEC
+obligations and open questions → where they land" maps F-O-1…F-O-7 to tasks — all seven still
+discharged in TSPEC, none reopened — and its OQ.3 row still matches TSPEC's disposition.
+
+**§Errata is where PLAN now misdescribes TSPEC, and this is the round's substantive finding.** The
+section's preamble says the two defects "were first raised by **TSPEC v0.6** (as ERR-3 and ERR-7)
+and are re-raised because FSPEC v0.10 … does not carry a correction for either". TSPEC v0.7 marks
+**both CLOSED by name**: ERR-3 "CLOSED, resolved by FSPEC v0.11 … AT-33 tracks the correction;
+nothing in this TSPEC changes"; ERR-7 "CLOSED, resolved by FSPEC v0.11 and v0.12 … no question
+remains routed to FSPEC on this point". PLAN is now the last document in the chain still routing
+them.
+
+The BR-1 row is worse than stale, because it makes a claim **about TSPEC** that TSPEC contradicts:
+"TSPEC §A.2 **adds** the load-bearing `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct" that BR-1
+forbids, with the consequence "LI-11's AT-02 has two contradictory expected sets … a reviewer
+scoring it against BR-1 would reject a correct test". §A.2 at HEAD says the opposite in terms:
+"This is FSPEC BR-1 as it now stands, **not a divergence from it** … §I.3's `docType ∈
+LEARNINGS_TARGET_DOCTYPES` predicate implements BR-1 directly." There is no longer a second
+expected set, and a reviewer scoring LI-11 against BR-1 at HEAD now *accepts* the test. The row's
+stated risk is extinct, and leaving it standing invites a future pass to "resolve" a conflict that
+no longer exists.
+
+**§"TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5)" is now the wrong list.** With ERR-3 and
+ERR-7 closed, ERR-4 and ERR-6 already closed in TSPEC v0.5, TSPEC's live set is exactly ERR-1,
+ERR-2 and ERR-5 — which is what PLAN says, so that sentence survives by luck. The sentence above it
+does not.
+
+None of this reaches a task row. LI-11's instruction, its fixture list and its two contested
+oracles are unchanged and correct; §Errata's function was to warn a test author away from writing
+LI-11 from FSPEC, and that hazard has been removed upstream rather than by any edit here. The
+correction is to record the resolution, not to change the work.
 
 ## Positive Observations
 
