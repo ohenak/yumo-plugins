@@ -44,7 +44,42 @@ PLAN claim, forecloses a PLAN task, or moves a batch, wave, dependency edge or o
 
 ## Batches
 
-_pending_
+The task table, the `Batch` column, the wave map and the file-ownership manifest are untouched by this
+round — PLAN's bytes did not move — so the batch-DAG check is not re-run from scratch. What I did
+re-check is the only place the erratum could have reached: the two task-bearing sites TSPEC now names
+as owners of the residue figures.
+
+| Site | What TSPEC now defers to it for | Holds at HEAD? |
+|---|---|---|
+| Overview HEAD-drift note (three-class partition table) | the partition, the per-class counts, the owners | Partition and owners **yes**; the class-3 count and the 28 total **no longer reproduce** (F-01) |
+| A6-00 Edit 1 (untrack + ignore) | the 14-closable numerator and the ignore-rule form | Numerator **yes** — exactly 14 `.bak` blobs are tracked and all 14 are in the residual today; rule form is stated three ways in PLAN and a fourth site still spells the retired anchored form (F-02) |
+
+**Re-measurement.** I ran the oracle itself rather than trusting either document:
+`NODE_OPTIONS=--experimental-vm-modules npx jest __tests__/documentOracles.test.js -t "unfiltered sweep"`.
+`PROP-SWEEP-2(b)` prints **34 residual paths** at HEAD, partitioned 14 / 4 / 16:
+
+- **Class 1 — 14 `.claude/workflows/.pdlc-backups/*.bak` blobs.** Exactly the count A6-00 Edit 1
+  claims, and `git ls-files .claude/workflows/` confirms 14 tracked `.bak` paths, no more. The
+  "closes 14" numerator is intact, and no `.bak` blob has left the residual, so A6-00's step is still
+  falsifiable in the direction it needs to be.
+- **Class 2 — exactly the four artifacts PLAN names**, `.pdlc-drift-state.json`,
+  `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`, `pdlc-cli.mjs`. `.pdlc-sync-manifest.json`
+  is tracked in the same directory and still correctly absent, since it carries no L-2 term. The DoD's
+  set-equality leg on this class therefore still passes for the right reason.
+- **Class 3 — 16 feature documents**, against PLAN's dated `10`. All 16 match
+  `docs/pdlc-advisory-wave-gate/**` and none is a `.bak` blob, so the DoD's *membership* predicate on
+  this class — the round-9 fix I approved in v10 — still holds. That fix is exactly what keeps this
+  drift non-gating: had round 9 left set-equality here, the ship boundary would be red today.
+
+So the arithmetic PLAN owns is 14 + 4 + 16 = **34**, not 28, on the same calendar day PLAN dates its
+measurement to. PLAN's own growth rule reconciles it; the printed integer does not.
+
+**Provenance of class 2, re-run against the erratum's new wording.** TSPEC now says the four are
+"all four branch-introduced by the same commit". `git log --diff-filter=A` per path returns `e3b9d5a3`
+(2026-08-19) for all four — plus, for the two bundles only, the older `3991b4d5` (2026-07-27), which
+`git ls-tree 1efb9a3b` shows absent from the merge-base tree. PLAN's provenance note already names
+`ls-tree`-at-merge-base as the deciding leg and already carries the two-adding-commits caveat, so
+PLAN is *more* precise than the new upstream sentence, not in conflict with it. No finding.
 
 ## Dependencies
 
