@@ -71,6 +71,38 @@ housekeeping.
 
 ## Interfaces
 
+**Product-facing surfaces, re-checked against upstream at HEAD.** The interfaces this feature
+exposes to a user are: the `learningsInjection` config section, the advisory block injected into an
+authoring dispatch, the run-report key, and the notice catalogue. The FSPEC delta touched none of
+their definitions, so the TSPEC's transcription of each is unchanged in status:
+
+- **Config section.** Absent → enabled (G-1, AC-1.1). Explicit `enabled: false` → key absent from
+  the report (AC-5.1a). Malformed section → fail open + `NTC-MALFORMED` (AC-5.1b). Wrong-typed key
+  → fail open + `NTC-KEYTYPE` (AC-5.1c). All four still stated identically in FSPEC v0.10.
+- **Advisory block.** Eligibility, ordering, and bound are still FSPEC BR-9/BR-10's; the TSPEC still
+  transcribes rather than re-decides them (`TSPEC:326` says so explicitly, and that self-description
+  remains accurate).
+- **Run report.** `present`-shaped, per dispatch, with the run-level mirror optional (§D.1/§D.2).
+  Upstream still permits either shape — see Q-01, carried.
+- **Notices.** `NTC-MALFORMED` / `NTC-KEYTYPE` ids unchanged in FSPEC's catalogue.
+
+**Cross-Reviews row, the thing the erratum actually fixed.** FSPEC's row now runs through v11, and
+both `CROSS-REVIEW-software-engineer-FSPEC-v10/v11.md` and `CROSS-REVIEW-test-engineer-FSPEC-v10/v11.md`
+exist on this branch — so the row is now accurate. That closes my v8 Q-02 cleanly.
+
+**A symmetric defect now exists downstream, and it is inherited, not new.** The TSPEC's own
+Cross-Reviews row (`TSPEC:13`) enumerates product-manager and test-engineer TSPEC cross-reviews
+v1…v6, while v7 and v8 exist on this branch for both reviewers (and this file will make v9). This is
+exactly the defect FSPEC just corrected in itself, one document downstream. It was already present
+in the bytes I approved at v7 and v8 — I raised its FSPEC twin at v8 but did not check the TSPEC's
+own row, which is my miss, not the author's regression. It is non-behavioural, it does not affect a
+single acceptance criterion, and it is `inherited`: Low, and explicitly non-gating (F-02 below).
+
+That the same header row went stale in two documents in the same feature, and was caught by
+different rounds weeks apart, is `Process`-scope signal rather than a product defect: the
+Cross-Reviews row is hand-maintained and drifts every time a review round lands, which is precisely
+the shape of thing a mechanical check should own instead of a reviewer's attention.
+
 ## Data Model
 
 ## Test Strategy
