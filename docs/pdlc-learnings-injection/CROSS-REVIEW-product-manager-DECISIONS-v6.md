@@ -173,6 +173,27 @@ rather than file them.
 
 ## Positive Observations
 
+- **`DEC-LI-08` was written at the right altitude, and this delta proved it.** The entry decides
+  *which* quantities bound the injection and refuses to decide *what they measure* or *what values
+  they take* — so an erratum that re-founded the measurement basis from "framing plus material" to
+  "material only" passed straight through it without touching a word. An entry written one level
+  lower ("contributed bytes include the identification line and delimiters") would have gone false
+  this round. Restraint about which layer owns a claim is what made this confirmation cheap.
+- **The non-decision table sent the question to the right owner.** DECISIONS placed "the section
+  subset" with FSPEC `BR-6` and declined to re-decide it. `BR-6` is exactly where the accounting
+  basis, the zero-bound behaviour and the heading-rule delegation all landed. Naming the sibling that
+  owns a question, rather than leaving it dangling, is what let me verify the whole reading in one
+  hop.
+- **`DEC-LI-05`'s structural guarantee absorbed a brand-new empty-selection path at zero cost.**
+  `maxBytesPerDocument: 0` is a way of reaching an empty selection that did not exist when the entry
+  was written, and it needs no new argument, because byte-identity was made a property of
+  concatenation rather than a property tested per path. A decision that converts a testable
+  invariant into a construction is the kind that survives upstream churn.
+- **`DEC-LI-06`'s cost story got stronger without being touched.** The entry stakes its
+  re-evaluation trigger on read cost dominating injected-byte cost; the erratum shrank injected bytes
+  further by freeing framing from every threshold. The asymmetry it flagged to REQ O-1 is now wider
+  than when it was written.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
