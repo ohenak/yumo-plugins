@@ -107,6 +107,46 @@ DECISIONS or from DECISIONS back into this PLAN.
 
 ## Verification
 
+**Every oracle PLAN names is still falsifiable, and still falsifiable the same way.** The three
+places a TSPEC edit could have broken an oracle, checked directly:
+
+1. **The domain-membership oracles (§D.1, LI-23 / `LI-T-ARMS-1…3`).** TSPEC's new scoping — "every
+   **non-`null`** value it ever carries is a member of that field's catalogue", with the test
+   reading `v === null || catalogue.includes(v)` — is precisely LI-23's row, and the catalogue's
+   set-equality test is explicitly unchanged. The oracle stays a **set equality, never containment**,
+   so an arm that stops being entered still reds and an invented code still reds. The positive
+   conjunct for the healthy value has not been dropped: it lives in LI-10's `DIVERGENT-CORPUS` rows
+   asserting `dispatches[i].corpusOutcome === null` on dispatches 1, 2 and 4. Non-`null` scoping
+   plus a named positive assertion elsewhere is not an absence-only oracle — the healthy state is
+   asserted exactly, by value, in a task row that names the delegation.
+
+2. **The composition-site oracle (§A.2, LI-11).** §A.2's *conclusion* is unchanged; only its
+   provenance moved from "divergence routed as ERR-7" to "implements BR-1 as written". LI-11 still
+   asserts the probe set equal to `LEARNINGS_TARGET_DOCTYPES ∪ {null, "LEARNINGS"}` and the accepted
+   set equal to `LEARNINGS_TARGET_DOCTYPES`, both hand-transcribed, both equality. The mutation
+   proof AT-02 now carries upstream — revert BR-1's second conjunct and expect RED — is exactly what
+   this pair of equalities produces: dropping the `docType` conjunct makes the accepted set a strict
+   superset and reds the second equality. The oracle got *more* support from the edit, not less.
+
+3. **The AT-33 read-set oracle (§T.6, ERR-3).** TSPEC's closure states "AT-33 tracks the correction;
+   nothing in this TSPEC changes", so LI-11's hand-transcribed expected read set — the scripted
+   `ls-files` stdout minus the self paths, **never derived from `gatherLearningsCorpus`** — remains
+   the right instrument, and remains falsifiable independently of the implementation it tests.
+
+**Definition of Done.** Clauses 1–3 and 5–13 are unaffected. Clause 4 is the one v5 finding still
+open on PLAN's own bytes: it promises baseline byte-identity for "every non-authoring dispatch
+(AC-4.3)", a paraphrase that was faithful to FSPEC v0.10 and is now narrower than **both** upstreams
+— FSPEC v0.12's AT-03/AT-29 and TSPEC v0.7 §A.2 now say "outside BR-1's rule". An
+authoring-classified optimizer round with `docType: null` sits inside DoD 4's exemption and outside
+what the oracle promises, so an implementation injecting into that round would pass the DoD gate
+while failing AT-03. TSPEC moving to the same wording as FSPEC does not resolve this; it removes the
+last reading under which DoD 4's paraphrase was defensible. It remains Medium: the oracle LI-11
+authors is correct, the DoD's prose restatement of it is not, and the repair is one clause.
+
+**Nothing here justifies reopening the revision loop.** No red test is mis-ordered, no fixture is
+invalidated, no coverage obligation is lost, and no oracle became unfalsifiable. The findings below
+are all stale prose about upstream state, repairable in one touch of this document.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
