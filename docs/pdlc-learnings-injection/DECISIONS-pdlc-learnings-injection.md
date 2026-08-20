@@ -175,6 +175,51 @@ on file mtime rather than a document's own bytes) — which would itself be an F
 
 ## DEC-LI-03: One attachment point (`dispatchAndVerify`), gated on two conjuncts, not four call sites
 
+**Context.** Four code sites carry the authoring classification: the phase creator inside `converge`,
+`reviewLoop`'s optimizer round (which passes `"authoring"` positionally to `runWrapped`), the erratum
+author, and the erratum land-proof retry. All four reach `dispatchAndVerify`, which composes the
+prompt from `basePrompt`, `PACING_CONTRACT_CLAUSE` and `opener`.
+
+**Decision.** Attach once, in `dispatchAndVerify`, behind
+
+```js
+const injectHere =
+  dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType);
+```
+
+When `injectHere` is false the injector is **not called at all**: no enumeration, no read, no report
+row, and an empty block.
+
+**Alternatives considered.**
+
+- **Attach at each of the four call sites** — rejected. It restates by hand a membership the pipeline
+  already computes, and it drifts silently the moment a fifth authoring site appears: the new site
+  simply does not inject, and no test fails, because the oracle (`AC-1.2`) is a set equality *against
+  the run that happened*. A rule that cannot notice its own omission is not a rule.
+- **Gate on `dispatchKind === "authoring"` alone** — rejected on measured grounds. `reviewLoop` is
+  shared, and Phase CR calls it with `doc: \`docs/${featureName}/\``, `phase: "CR"`, `docType: null`;
+  the `null` survives `reviewLoop`'s `roundDocType` derivation and is forwarded to
+  `dispatchAndVerify`. So the classification alone admits Phase CR's optimizer — `se-author`
+  remediating **shipped code**, with no target document at all — which is exactly what REQ C-1 and
+  NG-5 exclude. The single-conjunct gate is not simpler in effect; it is wrong.
+- **Gate on `docType` alone** — rejected: review dispatches for a document also carry a `docType`, so
+  this admits every reviewer round and violates `BR-1`'s exclusion list.
+- **Add a new `injectLearnings: true` flag at each authoring site** — rejected: it is the
+  four-call-site alternative with an extra field, and it introduces a second classification that can
+  disagree with the pipeline's own.
+
+**Constraints that forced the shape.** REQ C-1 is a two-part rule (authoring-classified **and**
+target document ∈ six types). `dispatchAndVerify` is the only function that sees both parts at
+composition time, which makes it the only place the two-conjunct gate can be written once.
+
+**Reversibility.** Easy. The gate is one expression and one frozen array; widening to review roles
+(REQ O-6) is an edit to the conjunction, not to the architecture.
+
+**Re-evaluation triggers.** A fifth authoring code site appears that does **not** funnel through
+`dispatchAndVerify`; REQ O-6 widens injection to review roles; the pipeline introduces a dispatch
+kind that is authoring in spirit but not so classified (FSPEC A-2's stated default is that it is
+excluded, and widening must be explicit).
+
 ## DEC-LI-04: Corpus enumeration goes through `_git` with a restated pathspec, not `_listFiles` and not an import
 
 ## DEC-LI-05: The block is an appended suffix that is `""` when empty, not an insertion
