@@ -459,7 +459,7 @@ export const LEARNINGS_DEFAULTS = Object.freeze({
   enabled: true, maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes: 20000,
 });
 
-/** @returns {{present: boolean, config: object, sectionMalformed: boolean, invalidKeys: string[]}} */
+/** @returns {{config: object, sectionMalformed: boolean, invalidKeys: string[]}} */
 export function parseLearningsConfig(text)
 export async function readLearningsConfigSafely(readFileFn, path)  // never throws
 ```
@@ -469,21 +469,26 @@ one addition:
 
 | Input | `parseAdvisoryConfig` | `parseLearningsConfig` | Why |
 |---|---|---|---|
-| file absent / unreadable / not JSON | defaults, `sectionMalformed:false` | `present:false` | same shape |
-| top-level not an object, or no `learningsInjection` key | defaults, `sectionMalformed:false` | `present:false` | BR-14: a misspelt section name is a stray top-level key and reads as absent — no unknown-key registry |
-| section present, not a plain object | `sectionMalformed:true` | `present:true, sectionMalformed:true` | BR-14 `NTC-MALFORMED` |
+| file absent / unreadable / not JSON | defaults, `sectionMalformed:false` | identical | same shape |
+| top-level not an object, or no `learningsInjection` key | defaults, `sectionMalformed:false` | identical | BR-14: a misspelt section name is a stray top-level key and reads as absent — no unknown-key registry |
+| section present, not a plain object | `sectionMalformed:true` | identical | BR-14 `NTC-MALFORMED`; `sectionMalformed` is `true` only when the section **is** present, so it carries the present/absent distinction by itself |
 | declared key wrong-typed | key defaults, name in `invalidKeys` | identical | BR-14 `NTC-KEYTYPE`; the run stays enabled |
 | — | `ADVISORY_DEFAULTS.enabled === false` | `LEARNINGS_DEFAULTS.enabled === true` | the sibling is opt-in per key; `enabled` defaults to `true` **within the section**, and an absent section leaves `enabled` at that declared default, so the feature ships **on** in a bare repository (REQ §4.1 `learningsInjection.enabled | true | consumer config`; REQ v0.9 AC-5.1a "an absent section is not a disabled state … there is no second gate key"; G-1) |
 
-**`present` is a report-shape field, not a gate (REQ v0.9 AC-5.1a).** The injector is built on
-`config.enabled` **alone**. There is no `present` conjunct and no `!sectionMalformed` conjunct:
+**There is no `present` field: it had no consumer, so it is removed (TE F-06).** Earlier revisions
+returned one and justified it as expressing AC-5.1a's report-key distinction, but §I.3's gate drops
+it, no rule branches on it and no oracle in §T.5 reads it — a field whose removal reds nothing is
+not part of the contract. The two distinctions it was carrying both have owners already: the
+enabled/disabled report-key distinction is `config.enabled` (`buildFinalReport` receives
+`undefined` when, and only when, `config.enabled` is `false`), and the section-present-but-malformed
+distinction is `sectionMalformed`, which is `true` only on a present section. The injector is built
+on `config.enabled` **alone**. There is no `!sectionMalformed` conjunct either:
 disablement is an explicit act (`enabled: false`), an absent section reads as §4.1's declared
 defaults and therefore as **enabled**, and a malformed section fails **open** — the run stays
 enabled on those same defaults and the report carries a catalogued notice naming the malformed
-section (REQ AC-5.1b; FSPEC BR-14, Step 0(2)). `present` survives only because AC-5.1a's report
-distinction — the `learningsInjection` key **absent**, not present-and-empty — still has to be
-expressible: `buildFinalReport` receives `undefined` when, and only when, `config.enabled` is
-`false`.
+section (REQ AC-5.1b; FSPEC BR-14, Step 0(2)). AC-5.1a's report distinction — the `learningsInjection` key
+**absent**, not present-and-empty — is expressed by that same gate: `buildFinalReport` receives
+`undefined` when, and only when, `config.enabled` is `false`.
 
 **The `present:true, sectionMalformed:true` state, in full.** AC-5.1b makes this state an
 **enabled** run: the declared defaults are in force, injection happens as on any default-configured
@@ -1134,7 +1139,7 @@ imports `orchestrate-dev.js`'s default export — the function is named `main` �
 `pdlc/workflows/__tests__/advisoryDisabled.test.js`)
 — the file keeps its config-focused name because its subject is the configuration states, but its
 **instrument** is a whole run. `parseLearningsConfig`'s own pure-unit assertions (shape of
-`{present, config, sectionMalformed, invalidKeys}`) live in the same file as supporting tests that
+`{config, sectionMalformed, invalidKeys}`) live in the same file as supporting tests that
 carry no AT id, which is why the AT counts above are unchanged: 2 + 9 + 3 + 3 + 6 + 12 = 35.
 
 **AT-11 and AT-12 belong to `learningsBlock.test.js`, not `learningsSelect.test.js`.** The earlier
@@ -1416,9 +1421,9 @@ explicit act (`enabled: false`) and a malformed section failing open plus a noti
 three edits the resolution would force, and they have now been made: §I.3's gate drops `present`
 and `!sectionMalformed` (an absent section reads as enabled-with-defaults), the divergence table's
 last row loses its "feature still off until the operator writes a section" clause, and §I.4's "a
-disabled run executes no new code at all" narrows to explicitly-`false` runs. The `present` field
-itself survives, because AC-5.1a's report-key distinction (absent, not present-and-empty) needs it
-regardless. No suite in §T.5 changes shape; the bare-repository case
+disabled run executes no new code at all" narrows to explicitly-`false` runs. The `present` field itself has since been
+removed (§I.2, TE F-06): AC-5.1a's report-key distinction is carried by `config.enabled` and the
+present/absent-section distinction by `sectionMalformed`, so nothing read it. No suite in §T.5 changes shape; the bare-repository case
 in §T.6 now carries the settled expected value — a **non-empty** block, this repository holding 9
 corpus documents (P-5) and no `learningsInjection` section — where the provisional gate expected an
 empty one. That was the one expected value the resolution moved, and it is now fixed before Phase P
