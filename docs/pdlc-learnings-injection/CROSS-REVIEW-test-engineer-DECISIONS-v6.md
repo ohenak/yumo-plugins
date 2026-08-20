@@ -178,8 +178,32 @@ FINDING: Low | inherited | nonlocal | DEC-LI-10; D-O-6 (TSPEC §D.1) | TSPEC's d
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes** — DECISIONS still holds as approved against FSPEC v0.13.
+
+The erratum round changed a quantity definition underneath this document rather than a behaviour it
+compresses: `maxBytesPerDocument`, `maxTotalBytes` and BR-8's *bytes injected* now measure material
+only, with framing charged to no threshold. No decision is invalidated by that. `DEC-LI-08`'s shape
+(static caps, no dynamic budget) survives both of its rejections intact, and `DEC-LI-05` is
+strengthened — the newly decided `maxBytesPerDocument: 0` case (E-36) routes into BR-14's enabled
+empty-selection run, adding a third configuration to the `""`-concatenation path whose safety this
+decision established by construction, all three asserted by AT-30 against one oracle. No `D-O`
+obligation is voided. So this confirmation is approving, and no High finding is raised on either
+axis.
+
+Two items should land in DECISIONS' next revision, neither reopening a decision:
+
+- **F-01** — restate `DEC-LI-08`'s caps as bounding *material*, and split `D-O-4` into realised
+  material bytes (comparable to §4.1) and realised block bytes (the growth term). This is the
+  closing condition for the document's one acknowledged gap, so it should say which number closes it.
+- **F-02** — add the zero-bound conjunct to `D-O-3` and state the property's bound domain. This is
+  the only drift in this round that, followed literally, produces a wrong test rather than a
+  misdirected reader.
+
+Five inherited items (F-03…F-08, all measured in v4/v5 and still unlanded because DECISIONS' bytes
+have not moved) ride along unchanged; F-04 remains the highest-consequence of them for the PROPERTIES
+author.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 6, "low": 2}
