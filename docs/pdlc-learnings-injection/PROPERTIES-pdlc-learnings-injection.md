@@ -735,7 +735,7 @@ repository's own corpus.
 | `DISCARDED-DIRECT` | `docs/discarded/LEARNINGS-x.md` — the **direct** child, the positive control paired with the row above | an exclusion written against the nested path shape alone |
 | `COMPLETED-MIXED` | two `docs/completed/{f}/LEARNINGS-{f}.md` plus two `docs/{f}/LEARNINGS-{f}.md` | a catalogue that enumerates only the live tree, or only the completed tree |
 | `COUNT-BINDING` | 8 documents × one 200-byte Cross-Feature Patterns section | the `RSN-COUNT` precedence problem of §O.7 — byte cuts binding first |
-| `BYTES-BINDING` | 2 documents, the second's material straddling `maxTotalBytes` | a whole-document drop where a per-document bound was specified, and back-fill |
+| `BYTES-BINDING` | **8 documents of 7,000 injectable bytes each** under §4.1's declared values (`maxDocuments: 5`, `maxBytesPerDocument: 6000`, `maxTotalBytes: 20000`) — the mirror of `COUNT-BINDING`, matching PROP-BOUND-02 and TSPEC §T.4. Expected split, stated as a literal beside `COUNT-BINDING`'s 3/5: each document bounded to 6,000, so exactly **3 contribute**, **5 carry `RSN-BYTES`**, **0 carry `RSN-COUNT`** — the contributing count strictly below `maxDocuments`, and document 4 left unpromoted behind document 3 | a whole-document drop where a per-document bound was specified; **back-fill** (only a corpus with a document ranked below the byte cut can exhibit it — two documents cannot); and a count bound asserted where it does not bind |
 | `DIVERGENT-CORPUS` | 4 dispatches, dispatch 3 alone enumerating unlistable | `corpusOutcome` recorded run-wide instead of per dispatch; and the healthy `null` |
 | `RETRY-ITERATION` | one dispatch driven to a second `for(;;)` iteration | per-iteration re-selection (PROP-DISPATCH-04) |
 | `MALFORMED-CONFIG` | `learningsInjection` present but not an object | `NTC-MALFORMED` conflated with disablement |
@@ -769,21 +769,37 @@ Three families of literal are transcribed, not paraphrased:
 
 - **The C-4 block delimiters and preamble** — transcribed from FSPEC §C.4's normative text, asserted by
   byte-equality (PROP-BLOCK-01), whitespace-normalised only where the spec itself wraps.
-- **The five BR-6 section headings** — `Cross-Feature Patterns`, `Non-Convergences`,
-  `Rejected Proposals`, `Process Learnings`, `Open Items` — transcribed from the harvest-learnings
-  skill's "LEARNINGS Format" section, the source the real corpus is written against. All 9 HEAD
-  corpus documents were checked to carry them in this spelling.
+- **The five BR-6 section headings**, transcribed from **FSPEC BR-6's priority table verbatim** —
+  `Cross-Feature Patterns`, `Non-Convergences`, `Rejected Proposals (with rationale)`,
+  `Process Learnings`, `Open Items for Consolidation`, plus `Approval Record`, which is **never**
+  injected. FSPEC BR-6 states that these names identify sections by the conventional titles the
+  harvest skill writes, **where they carry numeric prefixes** — `## 2. Cross-Feature Patterns`,
+  `## 6. Approval Record` (`pdlc/skills/harvest-learnings/SKILL.md`, "LEARNINGS Document Format").
+  Re-measured at HEAD, all 9 corpus documents write the headings in that numbered form and in exactly
+  that spelling: `## 1. Non-Convergences`, `## 2. Cross-Feature Patterns`,
+  `## 3. Rejected Proposals (with rationale)`, `## 4. Process Learnings`,
+  `## 5. Open Items for Consolidation` — **9 of 9** for every one of the five, and **0 of 9** carry a
+  bare `Rejected Proposals` or a bare `Open Items`. Fixtures are written to the numbered form, and
+  **which heading forms count as which section is F-O-1's, not this document's to decide** — FSPEC
+  BR-6 delegates it and TSPEC's F-O-1 discharge covers only the document-shape predicate, which is
+  routed as an erratum in §G.3. What this document can and does pin is the consequence: PROP-BOUND-08
+  drives extraction over a **real** corpus document, so a matcher and a synthetic fixture written to
+  the same wrong spelling red instead of greening together.
 - **The three frozen catalogues** — `LEARNINGS_REJECT_REASONS`, `LEARNINGS_CORPUS_OUTCOMES`,
   `LEARNINGS_NOTICES` — transcribed member-for-member from TSPEC §D.2 into the arm-inventory test as
   set-equality expectations (PROP-FAILOPEN-01, PROP-RECORD-03, PROP-CONFIG-07).
 
 ### F.4 Seam doubles
 
-L2 properties drive `helpers/seams.js`'s `fakeFs` (`:245`) and `fakeGit` (`:413`), re-exported through
-`helpers/consolidationDoubles.js` (`:35`). Call logs on those doubles are the operands for every
-call-count oracle in §O.3 and for PROP-FOOTPRINT-01/02. The `_recordDocType` and `_readFile` probe
-seams are injected the same way `advisoryDisabled.test.js:70` injects `mainDev`; no property in this
-document reads a private module binding directly.
+L2 properties drive `helpers/seams.js`'s exported `fakeFs` and `fakeGit`, re-exported by name through
+`helpers/consolidationDoubles.js`. Call logs on those doubles are the operands for every call-count
+oracle in §O.3 and for PROP-FOOTPRINT-01/02. The `_recordDocType` and `_readFile` probe seams are
+injected on `advisoryDisabled.test.js`'s pattern — that file imports `orchestrate-dev.js`'s default
+export under the local alias `mainDev` (`import mainDev, * as dev from "../orchestrate-dev.js"`) and
+calls it directly; no property in this document reads a private module binding directly.
+`learningsPredicatePin.test.js` is the **one** suite that takes `fakeGit` from
+`helpers/consolidationDoubles.js` rather than `helpers/seams.js`, because its subject is the sibling
+module and the two doubles are different shapes (PLAN LI-13).
 
 ## Coverage Matrix
 
