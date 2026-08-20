@@ -12,7 +12,7 @@
 **Halt text:** Phase T halted — the delta-confirmation round for the PLAN erratum round returned non-approving from both lenses: `[pm-review, te-review]`.
 **Document at halt:** `PLAN-pdlc-advisory-wave-gate.md` v1.4 (`d912eea9`)
 
-RESOLVED: no
+RESOLVED: yes
 
 ---
 
