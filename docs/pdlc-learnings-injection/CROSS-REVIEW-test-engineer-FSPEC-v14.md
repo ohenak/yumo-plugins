@@ -247,4 +247,17 @@ neither conjunct" where the exclusion set is "fails at least one".
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | BR-15's expected set now says both sides are compared as **sets of paths, not counts** (REQ AC-5.2 claims paths), but AT-33 — which transcribes it and which PLAN LI-11 reads — still says "exactly one attempt per report-named document other than the `RSN-SELF` ones". A production path that opens a selected document twice is green under the rule and red under the oracle. Restate AT-33's expected set as a set of paths, or make at-most-one-open-per-path an explicit conjunct of BR-15's claim. | §Acceptance Tests → AT-33 (vs §Business Rules → BR-15) |
+| F-02 | Medium | delta | local | BR-11, AT-03 and AT-29 now quantify over "every dispatch prompt **outside BR-1's rule** — whether it fails the authoring conjunct or the C-1 target-document conjunct", but the upstream clause the traceability row `AC-4.3 \| BR-11 \| AT-03, AT-29` (FSPEC:164) sends a reader to still reads "**non-authoring** dispatch prompts stay byte-identical to the disabled run" (REQ:367), echoed at REQ AC-6.1 (REQ:412). The FSPEC's reading is the correct one — it follows AC-1.2, which AC-4.3 itself cites, and REQ:18 records the v0.8 erratum closing that outside set — but the cited clause no longer says it the same way, and the weaker wording is what a later reader resolves against. Route the AC-4.3/AC-6.1 wording to the REQ. | §Business Rules → BR-11; §Linked Requirements traceability row AC-4.3 |
+| F-03 | Low | delta | local | A-2 now reads "If a future phase introduces a dispatch that satisfies **neither** conjunct in the pipeline's own terms yet is authoring in spirit, BR-1 excludes it by construction". BR-1 excludes dispatches failing **at least one** conjunct; "neither" describes a strict subset and omits the very case this erratum exists for (authoring-classified, target not one of the six). Say "fails either conjunct". | §Open Questions → Assumptions (A-2) |
+
+FINDING: Medium | delta | nonlocal | §Acceptance Tests → AT-33 (vs §Business Rules → BR-15) | the erratum corrected BR-15's oracle to sets of paths rather than counts but left AT-33 transcribing "exactly one attempt per report-named document", so rule and oracle now disagree on a document opened twice and the AT is the side PLAN LI-11 transcribes
+FINDING: Medium | delta | local | §Business Rules → BR-11; traceability row AC-4.3 | BR-11/AT-03/AT-29 now quantify over dispatches outside BR-1's two-conjunct rule while the cited upstream clause REQ AC-4.3 (echoed at AC-6.1) still says "non-authoring dispatch prompts"; the FSPEC's reading follows AC-1.2 and is correct, but the citation no longer matches its authority's words and the REQ wording should be routed back
+FINDING: Low | delta | local | §Open Questions → Assumptions (A-2) | A-2 says BR-1 excludes a dispatch that "satisfies neither conjunct" where the exclusion set is dispatches failing at least one conjunct, so as written it omits the authoring-classified/non-C-1-target case this erratum exists for
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
