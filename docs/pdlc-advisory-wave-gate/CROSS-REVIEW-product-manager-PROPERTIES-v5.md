@@ -147,9 +147,46 @@ fixture plan.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Process | The **Verbatim-string discipline** paragraph (Fixtures) pins the eight refusal reasons to `orchestrate-dev.js:2297`–`:2306` and the five exclusion ids to `orchestrate-dev.js:2311`. Both are raw `file:line` anchors, neither is runtime-measured evidence, and both have drifted: `ADVISORY_REFUSAL_REASONS` opens at `:2301` with members at `:2302`–`:2309`, and `:2311` is now a comment line. **Fix:** anchor to the symbol names (`ADVISORY_REFUSAL_REASONS`, and the exclusion-set `const` declaration immediately below it) as this round already did for `const SEAMS` and `const configPath`. Non-gating; absorb whenever this paragraph is next edited | AC-7.2 (`DECISIONS-review-severity-bars.md`, DEC-DOC-01); TSPEC §3.1 |
+
+No High or Medium findings. Every round-4 finding (F-01 High, F-02 Medium, F-03 Low) is landed and
+verified at HEAD; no previously approved content was broken by the edit.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The v1.2 changelog row records Phase P's routed item on §1.3's repository-hygiene note as **absorbed at HEAD**, reasoning that §1.3 is TSPEC's section and no PROPERTIES text asserts the superseded `.bak`-only sizing. I confirmed both halves: TSPEC v1.10 §1.3 now states the 28-path three-class residual and routes the partition to PLAN's Overview HEAD-drift note and A6-00's Edit 1, and PLAN v1.7's changelog carries the same 28/14 figures. No PROPERTIES text cites the sizing at all. Nothing owed here — recorded so the harvest phase can see the check was made rather than assumed |
+| Q-02 | Carried from v4 and now answerable: the disposition of `e3b9d5a3` (revert vs re-derive) is stated in TSPEC §1.3, PLAN's Overview and now this PROPERTIES as PLAN's and Phase I's call. Three documents defer to a decision none of them makes. That is correct per-document behaviour, but it means the decision has no home yet — worth confirming Phase I opens with it rather than discovering it. Not a PROPERTIES finding |
 
 ## Positive Observations
 
+- **The fix was exactly the scope v4 specified — two grounding paragraphs plus two citation
+  re-anchors — and nothing more.** The property set, categories, levels, oracle forms, PLAN homes and
+  AC map are byte-identical in the diff. An erratum that stays inside its own blast radius is the
+  cheapest kind to confirm, and this one did.
+- **The new paragraph states its own correction out loud.** "Earlier versions of this paragraph
+  recorded both files as *'verified absent at HEAD'*; that is false at HEAD and is the negation of the
+  upstream this document compresses." A reader of the next version can see what moved and why without
+  a diff. That is the standard the other pipeline documents have been converging on.
+- **PROP-SEAM-02 got better, not just correct.** Naming `advisoryRecord.test.js`'s `rows.map` equality
+  as the single untranscribed literal, and distinguishing the end state from the edit list, makes the
+  property readable as a contract rather than a to-do — which is what a property is for.
+- **The re-anchoring caught real drift, not just style.** `advisoryDoubles.js:271` had moved to `:354`;
+  DEC-DOC-01 compliance was the mechanism that surfaced it. That is the constraint earning its keep.
+- **The document declined to make PLAN's decision for it,** twice and explicitly. Correct lens
+  discipline.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves every routed item, and I re-verified the document against all five upstream
+digests at HEAD rather than against the item list: REQ, FSPEC, TSPEC, DECISIONS and PLAN all match the
+dispatched hashes, and nothing this PROPERTIES now cites has moved out from under it. Nothing
+previously approved was broken. One Low `Process` finding remains (a pair of drifted raw line pins in
+the verbatim-string paragraph); per the approval rules that is non-gating, and it should be absorbed
+opportunistically rather than by opening a round for it.
 
