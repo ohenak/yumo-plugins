@@ -135,9 +135,28 @@ no product reason to reopen it. Two product-relevant checks only:
   AC-5.1a, AC-5.1b, AC-5.1c each still resolve through a named AT. Nothing in the delta orphaned an
   AC or left one provable only by inspection.
 
-## Test Strategy
-
 ## Open Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v7 and v8, still open, still not a finding: §D.1 makes the run-level mirror a fourth field domain with its own membership test, while §D.2 says an implementation that omits `runMirror` entirely still conforms. Both are true and consistent — a membership test over an absent field is vacuously green — but one of the four domain tests can pass without observing a value. That is the P-phase author's call (three domains plus a documented non-oracle, or four with the vacuity noted); REQ v0.9 permits either ("if carried"). |
+| Q-02 | v8's Q-02 is **discharged** by this round's erratum: FSPEC's Cross-Reviews row now enumerates through v11 and matches the files on the branch. Recorded here so the routing is visible end to end — raised as a question at v8, landed as a header erratum at FSPEC v0.10, confirmed here. |
+| Q-03 | Should the header Cross-Reviews row be maintained by hand at all? It has now gone stale in FSPEC (fixed this round) and is stale in TSPEC (F-02). The row is derivable from the filesystem, so a hook could keep it correct for free and reviewers would stop spending rounds on it. Not a finding against this document; a question for harvest. |
+
+## Findings
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | The TSPEC's Upstream row (`TSPEC:11`) pins `FSPEC-pdlc-learnings-injection.md (v0.9)`, and in-body citations at `TSPEC:326`, `:469`, `:943`, `:1275`, `:1295` read "FSPEC v0.9 …". FSPEC is v0.10 at HEAD. Every referent (BR-9, BR-10, E-21…E-34, AT-18/AT-20/AT-22) is unchanged in v0.10, so no claim is falsified — only the version label is stale. **Fix:** bump the four/five "v0.9" FSPEC labels to "v0.10" next time this document is opened; do not re-verify the content, it is byte-identical. | REQ AC-1.1, AC-3.2, AC-3.3, AC-5.1a |
+| F-02 | Low | Process | The TSPEC's own Cross-Reviews row (`TSPEC:13`) enumerates product-manager/test-engineer TSPEC cross-reviews v1…v6, while v7 and v8 exist on this branch for both reviewers (v9 lands with this file). This is the same defect FSPEC corrected in itself this round, one document downstream; it was present in the bytes approved at v7 and v8. **Fix:** extend the row through the current round, and consider deriving it mechanically (Q-03). | REQ — traceability/bibliographic, no AC |
+| F-03 | Low | Local | Inherited from v7/v8, unchanged and unresolved because no revision was attempted: `OQ.2` (`TSPEC:1237`) and `ERR-4` (`TSPEC:1277`) attribute the corrected gate to §I.3; the gate is at `TSPEC:441-448` inside §I.2 Configuration, and §I.3 (`TSPEC:486`) is the pure selection core with no gate. **Fix:** restore "§I.2" at both sites. | REQ AC-5.1a, AC-5.1b |
+| F-04 | Low | Local | Inherited from v7/v8, unchanged: §A.5's closing sentence (`TSPEC:359-361`) cites §T.2 for the per-dispatch loci; §T.2 (`TSPEC:799`) is the doubles table and the assertions live in §T.6's `DIVERGENT-CORPUS` (`TSPEC:987-992`). **Fix:** cite §T.6 and §D.2. | REQ AC-3.2, AC-3.3 |
+| F-05 | Low | Local | Inherited from v7/v8, unchanged: `OQ.2`'s bare-repository note (`TSPEC:1241-1244`) is stale against the AT mapping — FSPEC maps E-21 to AT-32 and §T.5 assigns AT-32 to `learningsConfig.test.js` (`TSPEC:952-958`). **Fix:** drop or re-point the note. | REQ G-1, AC-1.1, AC-5.1a |
+| F-06 | Low | Process | Inherited from v8, unchanged and still drifting: the TSPEC's raw `file:line` anchors into `orchestrate-dev.js` (§Premises P-1/P-2a/P-10) no longer match HEAD positions. Per DEC-DOC-01 a raw `file:line` citation is a `Process`-scope Low, and drift is the failure mode that decision anticipates. Every underlying claim remains true by symbol. **Fix:** re-anchor on `main`, `_recordQueueRow`, `wrapperSeams`, `dispatchAndVerify`, `buildFinalReport`. | REQ AC-1.1 (grounding premises) |
+
+No High and no Medium findings. All six are Low; four are inherited from rounds already approved,
+one (F-01) is the mechanical consequence of this round's version bump, and one (F-02) is a
+bibliographic row I should have caught earlier and am recording now rather than carrying silently.
 
 ## Findings
 
