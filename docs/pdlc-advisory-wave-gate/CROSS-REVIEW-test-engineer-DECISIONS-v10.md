@@ -139,7 +139,44 @@ costlier than it was.
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC as it now stands.**
+
+The delta is sizing and routing inside TSPEC §1.3 plus its changelog summary. DECISIONS' only lean on
+§1.3 is a role claim — that §1.3 and §5.1's status caveat are the carriers of repo state for this
+feature, and that the revert-vs-re-derive remedy is PLAN's call — and the delta strengthens both
+halves of that claim rather than disturbing either. Every other TSPEC section DECISIONS cites is
+byte-unchanged in the reviewed interval. DECISIONS carries no figure, no repo-state measurement and
+no residue claim that the new 28-and-14 measurement could falsify, because v1.8 deliberately removed
+that class of content from the record. No decision entry is reopened, and no compression in the
+document has become unfaithful.
+
+Nothing in this confirmation gates. The two questions are routed to TSPEC's author (Q-01, a
+labelling convention) and PLAN's (Q-02, a date-stamp on a figure PLAN owns); neither is a defect of
+this document and neither is filed as a finding.
+
 ## Consequences
+
+## Consequences
+
+- **The approval anchor moves forward.** This round's `REVIEWED-COMMIT` and `UPSTREAM-STATE` re-bind
+  DECISIONS' approval to TSPEC `sha256:1531143c…`. A future cascade dispatch measuring against
+  `4a092e85…` would be reading a stale anchor; v10 is the current one.
+- **DECISIONS' cascade exposure is now structurally small, and this round is the evidence.** With the
+  volatile measurements relocated, the only ways a TSPEC edit can reach this document are (a) a
+  design change in §2/§3/§5.2/§5.6/§6, or (b) a change to §1.3's or §5.1's *role* as repo-state
+  carrier. Both are narrow and both are cheap to check. Future cascade confirmations on this document
+  can reasonably be scoped to that pair rather than to a full citation sweep — which is a durable
+  saving, not a one-round convenience.
+- **The residual-count mechanism means TSPEC's 28 is stale on commit, by design.** The paragraph's
+  own third class grows by one per committed cross-review file, so this file makes it 29. TSPEC
+  date-stamps the figure and routes ownership to PLAN, which is the right handling — but any reader
+  who quotes "28" without the date will be quoting a number that was never intended to be stable.
+  DECISIONS is insulated from this and should stay that way: it should not acquire a residue figure
+  in any future round.
+- **Q-01 is unaddressed process risk, not feature risk.** Two byte-distinct TSPECs answer to the
+  label "v1.10". Nothing downstream is wrong today, and the sha anchors catch it mechanically, but
+  the human-readable label no longer distinguishes what the anchor does. If harvest wants one durable
+  lesson from this round, that is the one.
 
 ## Recommendation
 
