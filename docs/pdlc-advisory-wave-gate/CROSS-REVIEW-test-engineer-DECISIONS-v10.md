@@ -86,6 +86,27 @@ at `SIZING-pdlc-advisory-wave-gate.md` from inside the note, exactly as `DECISIO
 
 ## Findings
 
+**None.** No High, Medium or Low finding is raised by this confirmation.
+
+The table is empty by measurement, not by deference. What I checked, and what would have produced a
+finding had it failed:
+
+| Check | Would have been | Result |
+|---|---|---|
+| Any DECISIONS citation naming a TSPEC section whose bytes changed in `9a1934db..HEAD`, where the changed text alters what the citation asserts | High, `delta`, `nonlocal` | One citation touches §1.3 (`DECISIONS:333`); it cites §1.3's **role** as repo-state carrier, which the delta enlarges rather than contradicts |
+| The delta rewriting the "revert vs. keep-and-re-derive is PLAN's call" routing DECISIONS `:334` compresses | High, `delta`, `nonlocal` | Routing unchanged and restated ("the disposition is not re-litigated here") |
+| DECISIONS stating a residue / tracked-path / sweep figure that the delta's 28-and-14 measurement now falsifies | High, `delta`, `nonlocal` | DECISIONS carries no such figure — zero hits for `bak\|SWEEP\|hygiene\|residu` |
+| The version label DECISIONS cites (`TSPEC v1.10`) having moved | Medium, `delta`, `nonlocal` | Still `1.10` at HEAD; citation accurate as written |
+| The delta's new routing targets (PLAN Overview HEAD-drift note, A6-00 Edit 1) being absent, or contradicting DECISIONS' own citation of that same note | Medium, `delta`, `nonlocal` | Both exist and carry the stated content; `PLAN:266` and `PLAN:309` confirm |
+| A design claim moving in the delta and thereby reopening a decision entry `DEC-A6-01`…`DEC-A6-04` compresses | High, `delta`, `nonlocal` | The delta touches no §2/§3/§5.2/§5.6/§6 text; both hunks are sizing and routing |
+| My v9 Low (the preamble's relocated integer at `DECISIONS:30`) — still open, and does the upstream move change its severity? | Low, `inherited`, `nonlocal` | Still open and still Low; **not re-filed** — it is a v9 finding already on the record, and re-filing it here would inflate this round's counts and misreport it as cascade-caused |
+
+The last row is the only judgement call in the table. My v9 Low stands unaddressed at HEAD
+(`DECISIONS:30` still quotes "the already-migrated-sites bullet folded into column (2)"), but this
+round's question is whether the *upstream move* broke DECISIONS, and it did not. Carrying a prior
+round's open non-blocking finding forward as a new finding of this round would make the erratum look
+costlier than it was.
+
 ## Questions
 
 ## Positive Observations
