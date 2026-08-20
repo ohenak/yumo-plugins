@@ -28,7 +28,15 @@ import main, {
   evaluateWaveDispatch,
   scanSkipTokens,
   parseImplementationConfig,
+  // A6's root-cause vocabulary: this file's `haltFields` fixtures must draw their `rootCause`
+  // from it, or they assert a shape A6 can never produce (CR round 1, PM F-10). The guard below
+  // is what keeps that true as fixtures are added.
+  ADVISORY_ROOT_CAUSES,
 } from "../orchestrate-dev.js";
+
+import { readFileSync as readFixtureSource } from "fs";
+import { dirname as fixtureDirname, join as fixtureJoin } from "path";
+import { fileURLToPath as fixtureFileURLToPath } from "url";
 
 const FEATURE = "test-feat";
 const REQ_PATH = `docs/${FEATURE}/REQ-${FEATURE}.md`;
@@ -1011,7 +1019,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     const a6 = makeA6Fake({
       resolved: true,
       disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
-      haltFields: { rootCause: "flaky-test", diagnosis: "a transient failure", repairApplied: false, repairPaths: [] },
+      haltFields: { rootCause: "environmental", diagnosis: "a transient failure", repairApplied: false, repairPaths: [] },
       postWaveRan: false,
     });
     const gitCalls = [];
@@ -1083,7 +1091,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
 
   it("AT-05-4: an un-skip halt on the SAME wave A6 just resolved carries that wave's advisory fields as haltAdvisory", async () => {
     const a6HaltFields = {
-      rootCause: "flaky-test",
+      rootCause: "environmental",
       diagnosis: "a transient failure, now resolved",
       repairApplied: false,
       repairPaths: [],
@@ -1130,7 +1138,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
       resolved: true,
       disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
       haltFields: {
-        rootCause: "cross-file-drift",
+        rootCause: "plan-ordering-defect",
         diagnosis: "the fix landed in T2's own file",
         repairApplied: true,
         // `src/two.js` is T2's (wave 2) owned file — LATER than wave 1, where the
@@ -2390,5 +2398,25 @@ describe("computePlanHash — the ledger's plan fingerprint", () => {
 
   it("changes when two waves are merged into one", () => {
     expect(computePlanHash([[WAVES[0][0], WAVES[1][0]]])).not.toBe(computePlanHash(WAVES));
+  });
+});
+
+// ─── A6 fixture hygiene (CR round 1, PM F-10) ────────────────────────────────
+//
+// Every `rootCause:` literal in this file is a stand-in for what `runWaveGateSeam` returns, and
+// `parseA6RootCause` only ever returns a member of `ADVISORY_ROOT_CAUSES` — a fixture naming
+// anything else (`flaky-test`, `cross-file-drift`) tests a shape production cannot emit, and a
+// reader takes it for the real vocabulary. Scanned off this file's own source so a fixture added
+// later is covered without anyone remembering to extend a list.
+describe("A6 fixture hygiene — every haltFields fixture names a real root-cause class", () => {
+  it("no `rootCause:` literal in this file sits outside ADVISORY_ROOT_CAUSES", () => {
+    const source = readFixtureSource(
+      fixtureJoin(fixtureDirname(fixtureFileURLToPath(import.meta.url)), "waveExecution.test.js"),
+      "utf8"
+    );
+    const used = [...source.matchAll(/rootCause:\s*"([^"]+)"/g)].map((m) => m[1]);
+
+    expect(used.length).toBeGreaterThan(0);
+    expect([...new Set(used)].filter((c) => !ADVISORY_ROOT_CAUSES.includes(c))).toEqual([]);
   });
 });
