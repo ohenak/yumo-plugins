@@ -116,6 +116,12 @@ Carry forward to LEARNINGS (Phase H):
 
 ## Appendix A — prior Phase T halt (review-cap, resolved)
 
+This file previously recorded an earlier, unrelated Phase T halt: the **TSPEC review-cap halt** of 2026-08-19, where TSPEC cross-review reached `MAX_REVIEW_ROUNDS 5` without converging on the wave gate's resolution predicate (the `ledgerAnchor` mechanism, refined across rounds 2→5). That halt was resolved — round-5 findings were addressed in TSPEC v1.5, the confirmation round ran, and the TSPEC went on to converge and be approved at **v1.10** in round 11 (`7f81a59d`, `921128f1`).
+
+Its full text is preserved in git at `447cd7dc:docs/pdlc-advisory-wave-gate/POSTMORTEM-T-pdlc-advisory-wave-gate.md` (retrieve with `git show`). Its carry-forward learnings — that a rule and the signature carrying its value must be edited in the same write, that an existing in-document idiom should be grepped for before inventing a second one, and that round-1 finding volume is the practical constraint on convergence — remain live and are unaffected by the present halt.
+
+The current halt is a different class (`ERRATUM-PROTOCOL`, on the PLAN's delta-confirmation round) and is tracked by the `RESOLVED:` marker at the top of this file.
+
 ---
 
 **Provenance**
