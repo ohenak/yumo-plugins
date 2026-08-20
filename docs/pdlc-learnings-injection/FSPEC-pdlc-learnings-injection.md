@@ -992,7 +992,7 @@ AT-28.
 
 | # | Obligation | Owner |
 |---|---|---|
-| F-O-1 | The predicate for "presents as a LEARNINGS document" (BR-3), bounded by two requirements this FSPEC fixes: it consults only the document's bytes, and it is decidable without a model call. | TSPEC |
+| F-O-1 | Two heading-recognition rules, on the same terms: the predicate for "presents as a LEARNINGS document" (BR-3), **and** the rule by which a heading counts as one of BR-6's named sections — whether the numbered form, the bare title or a prefix of it is matched. Both are bounded by two requirements this FSPEC fixes: each consults only the document's bytes, and each is decidable without a model call. | TSPEC |
 | F-O-2 | The wording of BR-7's advisory preamble and the block's delimiters — this FSPEC fixes what the preamble must convey, not what it says. | TSPEC |
 | F-O-3 | The serialised form of BR-8, BR-9 and BR-10's records in the run report, and the catalogue registration of every id and notice they emit (C-9). | TSPEC |
 | F-O-4 | The pin of BR-2's corpus definition to `consolidate-learnings.js`'s pass-side predicate by literal restatement plus a pinning test — REQ O-7 restated, unchanged. Import remains unavailable: the engine vendors only `orchestrate-dev.js` and `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs`, `MODULE_NAMES`). | TSPEC |
