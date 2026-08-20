@@ -126,6 +126,74 @@ file appears after batch 6. The ledger correctly never lists `learningsSuiteMap`
 
 ## Verification
 
+**The green-terminal gate now carries the conjunct its siblings carry (F-02 closed).** All three
+non-trivial gate wordings now share one invariant — "every pre-existing test's status is unchanged
+from the measured baseline" — and the fourth (batch 14) is the unqualified full-suite green. The
+row also states *why*, naming batch 4 as the batch that commits a fixture subtree into a tree
+`coveredViolations` walks in full (`pdlc/workflows/lib/document-oracles.mjs`, skipping only `.git/`
+and `node_modules/`). A batch that greens its own suite and reds three others now fails the gate at
+batches 1, 4 and 6 as it already did at 2, 3, 5 and 7–13.
+
+**The porcelain mechanism is now exact (F-04 closed), and I re-measured it.**
+`pdlc/workflows/__tests__/consumerCleanup.test.js:149-153` is
+
+```js
+const tracked = execFileSync("git", ["status", "--porcelain"], {
+  cwd: path.resolve(__dirname, "..", "..", ".."),
+  encoding: "utf8",
+});
+expect(tracked).toBe("");
+```
+
+No `-uno`, so `-unormal` applies and untracked paths appear as `??`. v0.3's restatement — "a new
+test file that has been **written but not committed** reds it exactly as an uncommitted edit to a
+tracked file does — and 'fourteen new files, one of them written a moment ago' is the state an
+implementer is in for most of this feature" — is the correct mechanism, and it draws the right
+operational conclusion from it. The misleading word "tracked" is gone.
+
+**The expected-red ledger still reconciles after the AT-15 re-split.** This was the one place the
+F-03 fix could have desynchronised a gate. It does not. AT-15 remains **one test in one suite**;
+LI-16 now greens two of its four clauses instead of one, but the test as a whole still stays red
+until LI-19, so the batch-8/9/10 rows correctly keep listing `LI-AT-15` and the batch-11 row
+correctly says "`LI-AT-15` greens here". The ledger still shrinks monotonically by exactly what
+each task claims and still reaches empty at batch 13.
+
+**DoD 1's closure clause matches LI-14's row, and DoD 4's broken sentence join is repaired.** DoD 1
+now reads "green over the hand-transcribed partition **and over the directory-wide closure** — the
+set of `__tests__/learnings*.test.js` files registering an `LI-AT-` title equals the six AT-bearing
+suites", which is the same assertion in the same terms as the task row. DoD 4 regained its lost
+"The claim is:" and now parses as one sentence.
+
+**Batch 6's ladder row was updated to the directory-wide read; the gate wording row was not.** The
+final commit of this round fixed the ladder row (`§Traceability`'s batch ladder) to say
+`LI-T-SUITEMAP` "statically parses the `learnings*.test.js` directory". The green-terminal gate row
+in §Verification still justifies batch 6 as green-on-authoring by "`learningsSuiteMap.test.js` over
+**six** suite files that already exist". That justification is now narrower than the assertion the
+suite makes: green-on-authoring at batch 6 depends on all *twelve* matching files, not six — on the
+other six registering no `LI-AT-` title. The conclusion is still true, and I verified it is
+(the other six register `LI-T-` names), but the stated reason no longer covers the assertion.
+Filed as F-03, Low.
+
+**P-A-3's ledger universe is stated in files, and two of those files have no test status.** The new
+answer says "the ledger's universe is exactly the fourteen `learnings*` files the §File-ownership
+manifest owns". The manifest's test section does have fourteen rows — but two of them,
+`__tests__/helpers/learningsFixtures.js` and `__tests__/fixtures/learnings-baseline/`, are a helper
+module and a fixture directory: neither registers a jest test, so neither can be red or green and
+neither can enter or leave a ledger row. The ledger's actual universe is the **twelve**
+`learnings*.test.js` suites. The substantive answer to PM Q-05 — PROPERTIES is outside the
+universe, and a PROPERTIES suite may land on this branch only green or else by name in the ledger
+— is right and is a good tightening. Filed as F-04, Low, for the count.
+
+**P-A-5 is the answer I hoped for.** A mid-feature re-capture's second manifest row goes into *this
+document*, committed before the re-capture runs, because "a contract the dispatcher cannot read
+enforces nothing". That makes a re-capture auditable by the same mechanism as everything else
+rather than by a completion note nobody diffs, and it is consistent with the manifest already being
+the single-writer authority.
+
+**Nothing in the coverage material changed**, so my v2 measurement stands: 98 suites, 3828 passed,
+`orchestrate-dev.js` at 88.14 % branch, `--per-file --branches 85` exiting 0, and the finding that
+the bare `npm run test:coverage` never reaches stage 2. DoD 11, DoD 12 and H-8 are untouched.
+
 ## Findings
 
 ## Questions
