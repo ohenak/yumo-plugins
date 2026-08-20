@@ -299,23 +299,33 @@ that a first-class per-seam `enabled` map becomes the better surface.
   `advisory.waveBudgetPerRun` to the example therefore breaks no engine expectation and, as things
   stand, requires no engine edit to stay green. This is still a two-channel edit, but the second
   channel's work is *authoring a new expectation*, which is a different size and a different risk
-  from relocating one — and no AT in the nineteen covers it yet (raised as an erratum on TSPEC,
-  which mirrors the same claim in §7). The product reason to do the work rather than drop the claim:
+  from relocating one. That work now has an owner: TSPEC §4.4 carries the claim, and §5.1's
+  file-ownership map assigns the expectation to a **new file**,
+  `pdlc/engine/__tests__/advisory-config-example.test.js` — deliberately *not* to
+  `ci-arrangement.test.js`, whose stated oracle is FSPEC §5.1's CI arrangement alone, and which a
+  config-schema assertion would let an unrelated example edit redden under the delivery-blocking
+  `Engine tests (ubuntu-latest)` check. No FSPEC acceptance test ranges over it and none is expected
+  to: upstream states the coverage as TSPEC-owned (§5.1), so this is a deliberate allocation, not an
+  open gap. The product reason to do the work rather than drop the claim:
   `waveBudgetPerRun: 0` is a documented operator affordance (REQ C-2, FSPEC E-33), the example is the
   operator's first and possibly only encounter with the key on a tier that ships off by default, and
   an affordance nothing asserts into the example can ship working and undiscoverable (PM F-01,
   TE F-06).
 - `waveBudgetPerRun: 0` and `advisory.enabled: false` are **observably different** and must stay so:
   the former reports a sixth advisory row reading zero, the latter carries no `advisory` key at all.
-  **No AT in the current set falsifies a collapse of the two, and this consequence should not claim
-  one does.** AT-01-4 is the disabled-tier case; AT-01-6's premise is "tier enabled, **no wave
-  red**", so it never reaches the budget gate and says nothing about `0`; AT-07-2b is parse-level
-  only (`0` in, `0` back, absent from `invalidKeys`). Nothing anywhere exercises the behaviour this
-  entry rests on — `waveBudgetPerRun: 0` **on a red wave** ⇒ escalate, zero `_agent` calls, a sixth
-  row reading zero — even though TSPEC §5's coverage matrix lists "`waveBudgetPerRun: 0`" among the
-  tier-gate arms it covers. The behaviour is decided here and untested upstream; closing the gap is
-  an AT, not a decision, and is raised as an erratum on TSPEC (TE F-03). Until it lands, a future
-  "simplification" that collapses `0` into `enabled: false` passes the suite.
+  **The collapse is falsified upstream at TSPEC v1.10.** v1.1 of this entry recorded that nothing
+  exercised the behaviour it rests on — the FSPEC ATs reach `0` only obliquely (AT-01-4 is the
+  disabled-tier case; AT-01-6's premise is "tier enabled, **no wave red**", so it never reaches the
+  budget gate; AT-07-2b is parse-level only, `0` in, `0` back, absent from `invalidKeys`) — and
+  routed the missing behaviour arm upstream (TE F-03). It landed. TSPEC §5.2 now carries the
+  fixture written to exactly this spec: one run, tier **enabled**, `waveBudgetPerRun: 0`, the first
+  wave's script gate red, disposition `escalated` with `reason: "budget-exhausted"`, the `_agent`
+  double recording **zero** calls, the snapshot still taken (§3.2 step 3's capture-before-budget
+  order), and the report's advisory summary key **present** with the sixth row's counters at zero.
+  That present-and-zero conjunct is what separates this arm from `advisory.enabled: false`, where
+  the key is absent entirely (AT-01-4) — so a future "simplification" collapsing `0` into
+  `enabled: false` now fails the suite rather than passing it. The behaviour is decided here and
+  asserted upstream; nothing further is owed by this record.
 
 ### What follows for the whole feature
 
