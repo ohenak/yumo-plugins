@@ -13,9 +13,32 @@
 
 ## Changelog
 
-**v1.9 (erratum round, Phase PR).** Re-grounded on upstream HEAD first: REQ and FSPEC are unchanged
-from the state v1.8 was authored against and from the `UPSTREAM-STATE` anchors on both v8
-cross-reviews, so nothing upstream was decided this round and no absorption is owed. Three raised
+**v1.10 (erratum round, Phase PR).** Two current-state repairs, no design change: the v1.9
+re-grounding paragraph below is corrected (PM F-01) and §1.3 / §5.1 are re-grounded on the branch
+as it actually stands (PM F-02, TE F-01) — the A6 test-side transcription those sections described
+as future work has already landed at HEAD in commit `e3b9d5a3`, while the production constant it
+transcribes against has not, so the suites are red at HEAD. Both sections now describe HEAD and
+state the residue explicitly. §3.2 step 2's queue-side `.enabled` quotation gains its elided
+conjuncts (PM F-04) and §6's open-question close gains a missing article (TE F-03). The choice of
+remedy for the early-landed transcription — revert it, or re-derive PLAN's A6 batches around it —
+is PLAN's and Phase I's to make, not this document's, and is routed there as an erratum.
+
+**v1.9 (erratum round, Phase PR).** *(Re-grounding claim corrected in v1.10 per PM F-01. The
+conclusion below stands; the byte-identity evidence originally offered for it did not.)* On the
+upstream at HEAD: FSPEC is unchanged (`sha256:82f74a2d…`, v1.4) from the state v1.8 was authored
+against and from the `UPSTREAM-STATE` anchors on both v8 cross-reviews, but REQ is **not** — REQ
+moved to v1.9 (`sha256:817b6745…`) in commit `e619b6d6`, which landed at 16:42:31, about fifteen
+minutes before this round's first TSPEC commit, so the original "REQ unchanged" wording was false
+when written rather than stale. No absorption is owed even so, and this was re-verified rather than
+assumed. REQ v1.9's own changelog calls itself "Restoration, not decision … No decision reopened":
+five of its seven items restore previously approved wording lost to a rebase, and the two
+substantive items are corrections that leave conclusions intact — §1's ledger citations re-anchored
+to stable content (`WAVE_STATE_PATH`, `parseWaveLedger`, the `scriptGate` definition) per
+DEC-DOC-01, and NFR-4 restated because the shipped `verifyGate` runs inside each attempt iteration,
+which makes the old "between attempts, never inside one" clause false. Two consequences were checked
+against this document directly: REQ §5's C-2 row carries `advisory.waveBudgetPerRun` default `1`,
+which agrees with §4.4's default `1` here, and NFR-4's rewording is not cited anywhere in this
+TSPEC, so no clause here inherits the corrected sentence. Three raised
 items, all of them stale prose rather than design changes. PM F-01 (Medium): §4.4 claimed the example
 config's literal `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}` was where an operator learns
 E-33's `waveBudgetPerRun: 0`-with-`enabled: true` affordance — but that literal shows neither `0` nor
