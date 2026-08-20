@@ -240,7 +240,54 @@ proposition, and none gate.
 
 ## Open Questions
 
-_pending_
+**Q-01 — Is `bounded` `true` or `false` when `maxBytesPerDocument` is `0`?** §D.5 decides `bounded`
+"at the cut", and at a zero bound nothing is taken, so no cut occurs — yet the document is
+maximally abridged. Under E-36 the document never reaches a BR-8 row, so the flag is unobservable
+*there*; but T-O-6's property quantifies over **any** non-negative `maxBytes`. Decide it in TSPEC
+before PROPERTIES writes the generator, or exclude `0` from the property's domain explicitly with a
+stated reason. (Basis of F-04.)
+
+**Q-02 — Does `maxTotalBytes: 0` now drop or select?** The erratum decided the per-document zero
+(drop, `RSN-NO-MATERIAL`, no slot) but left E-25's total zero as it was: "Enabled run, empty
+selection, BR-8 rows present and empty". Two zeros with the same observable outcome may reach it by
+different routes — one through `RSN-NO-MATERIAL`, the other presumably through `RSN-BYTES` — and
+BR-9 requires **every** known document to carry a reason. If both zeros are asserted with the same
+oracle, a fixture cannot tell the routes apart and a regression that swapped them would stay green.
+Not a finding against this TSPEC (upstream owns the two edges), but AT-30's three cases should
+assert their **reason ids** distinctly, not merely "rows empty".
+
+**Q-03 — Which repair round owns F-01 and F-02?** Both are delta-and-local, both are repairable in
+TSPEC alone, and neither asks FSPEC to move again. My reading is that one bounded follow-up round
+on TSPEC discharges both: F-01 is a restatement of §T.6's drop condition over *yields no material*,
+and F-02 is a new §D.3-shaped subsection stating BR-6's heading-matching rule and re-glossing
+F-O-1 in §T.6's obligation map. If the orchestrator instead routes this to TSPEC's ordinary
+revision loop, both findings survive the transfer unchanged.
+
+**Q-04 — Does the PLAN already carry a task that would silently absorb F-02?** PLAN was authored
+against F-O-1's single-rule wording. If a task exists for "implement `looksLikeLearningsDocument`
+and its pin test", it will look complete while the second rule remains unwritten. Worth a check
+when the TSPEC repair lands, so the PLAN grows the matching-rule task rather than inheriting an
+implicit one.
+
+**Assumption I relied on.** The dispatch's two upstream hashes match the working tree
+(`ae75fa62…` FSPEC, `ff605dd3…` REQ, both verified by `shasum -a 256`), and REQ is genuinely
+unchanged this round — so every finding below is about FSPEC's movement only, and the REQ-anchored
+claims I confirmed at v11 (AC-2.3's "material taken", AC-4.4's admits-nothing zeros, AC-5.1a's
+report-key distinction, §4.1's declared defaults) are undisturbed.
+
+## Positive Observations
+
+- The material-only basis lands FSPEC on **TSPEC's** side of a contradiction I have been tracking
+  since v10. §D.5's three-pool table needed no edit to absorb it — a good sign that the accounting
+  was specified at the right altitude.
+- `maxBytesPerDocument: 0` was reachable-but-undecided before this round; deciding it as
+  drop-with-`RSN-NO-MATERIAL` (rather than select-with-zero-bytes) is the choice that keeps BR-8's
+  rows meaningful, and E-36 + AT-30 give it both an edge id and a named test.
+- The erratum's header note states its own scope ("No other change") and I confirmed that against
+  the diff: BR-1's two conjuncts, BR-15's set equality and the four dispatch sites are byte-stable
+  from v0.12. A scoped erratum is a reviewable erratum.
+- §I.2's non-negative-integer threshold validation, written for AC-4.4's other two zeros, extends
+  to the new zero with no edit — the kind of generality that makes an erratum cheap.
 
 ## Delta-Confirmation Findings
 
