@@ -229,8 +229,9 @@ writes today and E-33's section-less document is an eligible state, not an `RSN-
 **Carried findings, re-verified at HEAD.** The two Mediums and the anchor Lows from v11 are
 unresolved because TSPEC's bytes have not moved; I re-checked each rather than copying it forward.
 §T.6's AT-02 fixture list still carries three of upstream's four dispatch run shapes (F-05,
-inherited); `present` is still returned by `parseLearningsConfig` with no named consumer and no
-behavioural oracle (F-06, inherited); §A.2's six `converge()` `docType` line anchors and the four
+inherited); `present` is still returned by `parseLearningsConfig` with no consumer in §I.3's gate
+(which drops it) and no behavioural oracle in §T.5 — §OQ's rationale keeps it for AC-5.1a's
+report-key distinction, but no test reads it (F-06, inherited); §A.2's six `converge()` `docType` line anchors and the four
 seam anchors in §Ground-truth P-7/P-8, §A.4 and §A.5 are still stale against HEAD (F-07, F-08,
 inherited, DEC-DOC-01); and the header's Upstream row, already one version behind at v11, is now
 two — it reads FSPEC **v0.12** where HEAD is **v0.13**, alongside the five passages still citing
