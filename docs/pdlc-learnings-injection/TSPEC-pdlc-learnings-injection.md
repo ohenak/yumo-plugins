@@ -970,7 +970,12 @@ all three of REQ §4.1's thresholds range over one pool, not three different one
 that difference is real prompt cost and is what T-O-3's live measurement reports against REQ O-1,
 which is why §A.4 does not claim the thresholds bound prompt growth exactly. AT-11's and AT-12's
 expected counts are therefore hand-computable from the fixture alone: sum the section headings and
-bodies BR-6 selects, ignore every delimiter. A fixture that wants to pin framing cost asserts on
+bodies BR-6 selects, ignore every delimiter. **"Sum" is now a mechanical procedure, not a
+judgement** (TE v13 F-04): §D.3's assembly rule fixes it as the sum of each taken section's
+*normalised* byte length — heading line through its last non-blank byte, trailing blank lines
+dropped, no trailing newline — plus **2 bytes per join** (`n` sections ⇒ `n − 1` joins for the
+`"\n\n"` separators). Without that rule two conforming implementations differ by one to several
+bytes per section and a conforming implementation reds a literal fixture. A fixture that wants to pin framing cost asserts on
 the rendered block length, not on `bytesInjected`.
 
 **The zero bound yields nothing; it does not yield an empty bounded document (E-36).** FSPEC
@@ -990,7 +995,15 @@ nothing, each is dropped **before** the total bound with `RSN-NO-MATERIAL` (BR-9
   on *yields no material*, which is BR-9's and D-12's restated form and covers both disjuncts with
   one branch: the structural case (the document carries none of `BR6_SECTION_NAMES`, §D.3, E-33)
   and the zero-bound case (E-36). There is no second branch and no zero-bound special case in the
-  selector.
+  selector. **This orders extraction before the count bound, where FSPEC's Step 5 procedure drops
+  on the structural condition at item 15 and extracts at item 16, after the count cut** — so a
+  reader implementing Step 5 literally would extract only the documents that survived the count
+  bound and would never observe the zero-bound drop for the rest. The observable outcomes are
+  identical (at any non-zero bound *yields no material* and *carries no BR-6 heading* are the same
+  predicate; at a zero bound BR-6/E-36 demand the no-slot behaviour Step 5's ordering cannot
+  produce), so this is a sequencing gap in upstream's procedural prose rather than a divergence in
+  behaviour — raised as ERR-8, and the rule the implementer follows is this one: **extract for every
+  eligible document, then apply the count and total bounds.**
 - Consequently at `maxBytesPerDocument: 0` every corpus document carries `RSN-NO-MATERIAL`,
   `selected` is empty, `renderLearningsBlock` returns `""`, and `totalBytesInjected` is `0` with
   BR-8's rows **present and empty** — the enabled-run shape, not the disabled one (AT-30's third
