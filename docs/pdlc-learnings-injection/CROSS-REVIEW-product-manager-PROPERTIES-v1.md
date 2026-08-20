@@ -241,7 +241,53 @@ pull toward these anchors is a habit of the authoring skills, not of this featur
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §G.2.2 chooses TSPEC §D.5's byte-accounting reading (material only) over FSPEC BR-6's (identification line and delimiters charged to the document) and says so plainly. That is the right call procedurally — but FSPEC is the product-normative document, and if the erratum resolves in FSPEC's favour, PROP-BOUND-07, PROP-BLOCK-02, the `BYTES-BINDING` and `COUNT-BINDING` fixture arithmetic and LI-08's hand-computed AT-11/AT-12 counts all move together. Is there a reason to prefer TSPEC's reading beyond "PLAN already computed it that way", and should the fixtures be authored in a shape that survives either resolution (e.g. framing bytes held as a named constant the expected values are stated in terms of)? |
+| Q-02 | PROP-CORPUS-03's positive control asserts `docs/discarded/LEARNINGS-x.md` — a *direct* child — is a corpus member and carries no exclusion reason. I confirmed against `LS_FILES_ARGV` that the glob `:(glob)docs/*/LEARNINGS-*.md` does match that path, so the property is faithful to the shipped predicate. Is it also what the product wants? A document a team deliberately moved to `docs/discarded/` reads to an operator as withdrawn, and injecting it into an author's prompt at the direct-child depth while excluding it one level down is a distinction no author would predict. If the answer is "faithfulness to the pin wins", the property is right as written — but the reasoning belongs in FSPEC BR-2 rather than being discoverable only from the glob. |
+| Q-03 | §G.2.4 states the residual risk plainly: the §O.8 mutation ledger is a written obligation checked by a reviewer, not by CI, and the `--per-file --branches 85` gate cannot see a ~300-line region inside a 15,311-line module. PROP-FAILOPEN-01 is offered as the mechanical substitute. Does the DoD for this feature name a human step that walks the twelve M-rows, and who owns it — LI-22's refactor-and-close, or Phase DOD? |
+| Q-04 | PROP-META-04 requires SHA-256 literals "copied by a human from the first capture". Once the baseline is committed, what distinguishes a legitimate re-capture (a new L3 matrix case) from an illegitimate one in review? §F.2 says a legitimate re-capture leaves every *retained* digest unchanged, which is checkable — is that rule written anywhere a reviewer of the re-capture PR will see it, or only here? |
+
 ## Positive Observations
+
+- **The premises are measured, and the measurements are right.** I re-ran every row of §Overview's
+  premise table against HEAD and found none overstated — including the two that are easiest to get
+  wrong and most consequential: that `grep -c 'dispatchKind: "authoring"'` returns **3**, not 4, with
+  the fourth site being a positional argument at `runWrapped(optimizer, optPrompt, doc, "authoring", …)`
+  (`orchestrate-dev.js:7663`), and that the corpus at HEAD is exactly 9 documents once
+  `LS_FILES_ARGV`'s two globs are applied. Writing "a literal grep returns 3, not 4" into the document
+  is the kind of precision that stops a future reader from silently correcting it the wrong way.
+- **PROP-DISPATCH-02's choice of operand is the strongest single idea in the document.** §O.4's
+  argument — that a report-sourced set equality stays green through exactly the drift it was written to
+  detect, because a rejected `docType` produces no `dispatches[]` row — identifies a real hole in the
+  obvious oracle and closes it with the `_recordDocType` probe. The follow-on ("the predictable repair
+  under time pressure is to relax equality to containment — which is the weakening that lets a seventh
+  phase inherit injection silently") anticipates how the property will be attacked, not just how it
+  will be tested. Keep this section verbatim through any revision.
+- **Every negative claim is paired.** I checked §O.1's table against the properties it covers and the
+  pairing holds throughout: `RSN-SELF` with a `_readFile`-log exclusion *and* `corpusOutcome === null`;
+  `enabled: false` with both an absent report key *and* baseline-equal prompts; PROP-FOOTPRINT-02's
+  zero-reads absence resting on PROP-FOOTPRINT-01's non-empty positive *on the same instrument in the
+  same test file*. PROP-CORPUS-03 in particular states its two clauses as one property and says why —
+  "the second is the positive control for the first" — which is exactly the right way to keep a reviewer
+  from splitting them later.
+- **The catalogues are set-equalities, and the document knows why.** `LEARNINGS_REJECT_REASONS`,
+  `LEARNINGS_CORPUS_OUTCOMES` and `LEARNINGS_NOTICES` are all asserted by set equality over
+  hand-transcribed literals (PROP-FAILOPEN-01, PROP-RECORD-03, PROP-CONFIG-07), M-11 in the ledger names
+  "relax any catalogue test to containment" as a mutation that must red, and PROP-CONFIG-07 goes further
+  by pinning the member *count* so a three-member test reds on day one.
+- **PROP-RECORD-04's insistence on asserting the healthy `null` positively** — and the paragraph
+  explaining why it cannot be folded into the arm-inventory suite without destroying that suite's
+  literal-transcription property — is a subtle distinction correctly drawn.
+- **The gaps are declared rather than papered over.** §G.2 names five, including two that cost the
+  document coverage (`maxBytesPerDocument: 0`, mutation testing not mechanised) and one that is a
+  deliberate refusal to assert (`runMirror`). "Inventing the answer here would freeze a guess into the
+  suite" is the correct instinct, and routing to an erratum rather than editing upstream is the correct
+  mechanism.
+- **Traceability discipline holds where it counts.** All 23 PLAN tasks appear in §C.3 with a red or
+  green owner; the two tasks owning no property (LI-02, LI-22) are named with reasons; the three
+  split-ownership properties are explained rather than left as bookkeeping noise; and every test file
+  named is either a PLAN manifest row or a file I confirmed exists.
 
 ## Recommendation
 
