@@ -136,6 +136,43 @@ Carried out of this round. Neither is owed by the REQ.
 
 ## Positive Observations
 
+- **The REQ correctly received no edit.** The routed item reads as pressure on `AC-5.1a`, and the
+  cheap wrong move would have been to touch it again. `AC-5.1a`/`AC-5.1b` are settled, internally
+  consistent, and now serve as the authority two downstream documents cite. Leaving a settled AC
+  alone under a round that names it is the right call.
+- **`DEC-LI-07` is the model of how to record an unlanded divergence.** It does not paper over the
+  disagreement: it names the contradicting section, states in terms that "TSPEC and DECISIONS now
+  disagree in writing", prices the concrete consequence (`AT-31`/`AT-32` red against correct
+  code), raises an erratum, assigns an owner, sets a deadline, and installs an interim guard —
+  then explicitly refuses to let the guard count as the fix ("neither substitutes for the TSPEC
+  edit itself"). That last sentence is what makes this round safe to approve.
+- **Every shipped-code citation in the REQ still resolves at HEAD**, including the two that moved
+  most in earlier rounds (`enumerateCorpus`'s totality and the pass's `failed` policy). Nine
+  documents changed on this branch since v10 and not one of them invalidated a REQ anchor.
+- **The rejected alternative in `DEC-LI-07` is argued on measurement, not taste** — `ADVISORY_DEFAULTS.enabled`
+  is `false` and this feature's default is `true`, so the two readers share shape but not posture.
+  An earlier FSPEC draft had this backwards; the decision names that and corrects it rather than
+  quietly reversing.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+The REQ is unchanged since the commit I approved at v10, owed nothing this round, and still a
+faithful compression of every upstream it cites at that upstream's current version — verified
+anchor by anchor above, not assumed from the empty delta.
+
+No High finding. F-01 is Medium and points **away** from this document: the routed item's TSPEC
+half is genuinely unlanded, but it is landed *as a decision* with a named owner, an erratum, a
+deadline and an interim guard, which is a tracked obligation rather than a dropped item. Gating
+the REQ on it would demand an edit to a correct document and re-open a settled AC — the opposite
+of what the item asks for. F-02 and F-03 are Low and non-gating.
+
+**The one thing this approval must not be read as:** discharge of `D-O-9`. The TSPEC erratum is
+still owed, and it must land before `AT-31`/`AT-32` are authored against §I.3. If the orchestrator
+intended this round to confirm *that* edit, it should be re-dispatched against the TSPEC (Q-01).
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
