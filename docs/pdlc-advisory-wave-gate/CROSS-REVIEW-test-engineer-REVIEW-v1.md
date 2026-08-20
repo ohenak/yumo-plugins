@@ -269,7 +269,43 @@ next push — 298 remote-only commits is not a fast-forward.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01: was the E-6 conjunct check consciously deferred (in which case it needs a DECISIONS entry and a narrowed AC-3.1), or did it fall out of A6-14's green step? The `PROMOTES`/`PROMOTES-TASK` prompt lines suggest the latter — the prompt asks for the fields nothing then reads. |
+| Q-02 | F-03/F-04: the wrapper comment at `orchestrate-dev.js:3329-3331` says the class is captured *"so a terminal disposition … can name it on the record and in the halt fields, without widening `renderAdvisoryEntry`'s own seven-field contract."* If the contract may not widen, where was the class meant to land on the record — inside the Diagnosis prose? That would not satisfy AC-6.4's countability. |
+| Q-03 | F-06: is there a reason `advisoryWaveGate.test.js` never imports `main`, beyond fixture cost? The disabled-tier test in `advisoryDisabled.test.js` shows the harness can drive `mainDev` with real transports through a red wave gate, so the enabled-tier twin looks cheap. |
+| Q-04 | PLAN's A6 task rows all still read `⬚` in the Status column although the work has landed. Is the checkbox column considered non-load-bearing, or was the update missed? (Raised as an ERRATUM to PLAN rather than folded into this verdict.) |
+
 ## Positive Observations
+
+- **The snapshot/restore oracle is exactly right.** `advisoryWaveGate.test.js:320-401` runs the
+  round trip over a **real temporary git repo** and compares a path→content-hash map across tracked
+  and untracked files, then adds the companion (`:380-401`) proving a `git status`-level comparison
+  would pass where the hash map fails. That is a falsifiable oracle where a `_git` double could only
+  have echoed the fixture, and the companion is the mutation check that makes the first test mean
+  something.
+- **AC-4.1 conjunct (iii) is genuinely mutation-tested.** The two fixtures at
+  `advisoryWaveGate.test.js:1654-1795` replace only `verifyGate` on a **real** `buildA6SeamOps`
+  result and each carries its positive half (`ledgerAnchor.value === 2`, then `=== 4` with the
+  four-token ledger). An implementation writing no anchor fails on the recorded value rather than
+  passing by absence. This is the pattern the rest of the suite should copy.
+- **Sequence, not set.** `sameSequence` (`orchestrate-dev.js:3111-3115`) is exact length-and-order
+  equality and the step-6 check slices from the anchor, not from the wave start
+  (`orchestrate-dev.js:3364-3368`) — so a resolution declared on one invocation cannot pass. The
+  six-token two-attempt run (`:1542-1589`) and the `["test","test"]` no-post-wave run (`:1591-1618`)
+  pin both shapes.
+- **`gateSequenceFor` reads `implConfig`,** never a hard-coded length, and PROP-GATE-06's test
+  falsifies the alternative directly.
+- **The disabled-tier inertness test is production-path.** `advisoryDisabled.test.js:646-701` drives
+  `mainDev` with the real seam and asserts the *positive* half ("`se-implement` dispatched exactly
+  once") alongside every absence, rather than absence alone.
+- **The pending OQ-7 boundary is `test.todo`, not `test.skip`** — correct per PROP-REST-03, and it
+  keeps the repo's own un-skip guard honest.
+- **Totality is properly tested.** `parseA6RootCause`'s eight arms (`:168-211`) include non-string,
+  wrong-case, duplicated-last-wins and empty-value, and `citesGateOutput` pins the 23/24-character
+  floor on both sides (`:232-239`) rather than only the accepting side.
+- **Coverage is real, not asserted.** 88.07 % branch on a 16 000-line module, measured on the shipped
+  suite, with `dist/` and `__tests__/` correctly excluded as generated and as the instrument.
 
 ## Recommendation
 
