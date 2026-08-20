@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6,7,8,9}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6,7,8,9,10,11}.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.9 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.10 | 2026-08-19 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -43,6 +43,12 @@ depends-on: []
 > mirrors are additive, not oracles (se-review Q-01, te-review Q-01/Q-02). AT-20/AT-21/AT-22 name
 > the locus and exercise AT-18's changing-corpus fixture. Header Cross-Reviews row and the AC-6.2
 > traceability row corrected. Locus corrections only; no new behaviour.
+
+> **v0.10 erratum (header only).** Upstream re-read at HEAD (REQ v0.9, unchanged); no upstream
+> decision to absorb. The header Cross-Reviews row still enumerated `v{1…9}` although
+> `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v10/v11` exist on this branch — the v0.9
+> entry's claim that the row was corrected was inaccurate. The row now enumerates through v11.
+> Header correction only; no behavioural change.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
