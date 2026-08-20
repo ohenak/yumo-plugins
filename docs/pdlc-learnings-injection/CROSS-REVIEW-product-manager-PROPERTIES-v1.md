@@ -148,6 +148,97 @@ newly added suite that skips the double reds rather than being missed.* Then cor
 to name PROP-META-06 for clause 1 and PROP-ORDER-05 for clause 2, and drop the PROP-META-01
 attribution.
 
+### F-03 (Medium) — the headline property count contradicts the reconciliation table
+
+§Overview opens: *"the falsifiable proof system for pdlc-learnings-injection: **47 properties** over
+the region PLAN §Batches builds."* §C.4's reconciliation says *"Properties in this document | **66** |
+Groups A–J."* I counted the group bullets: A 7, B 9, C 6, D 7, E 3, F 11, G 4, H 8, I 6, J 5 = **66**,
+and 66 distinct `PROP-` ids appear in the document. §C.4 is right; §Overview is a stale number from an
+earlier draft.
+
+This matters more than an arithmetic slip because §C.4 is the audit surface — the row "Properties with
+**no** owning task | 0" is only checkable against a trustworthy total, and a reader who takes 47 as the
+denominator cannot reconcile §C.3's task table. **To resolve:** change 47 to 66 in §Overview.
+
+### F-04 (Medium) — five §C.2 rows credit an AC to a property that does not claim it
+
+The AC → property matrix is the instrument that proves every requirement has a property. Five of its
+rows attribute an AC to a property whose own trace line names different criteria:
+
+| §C.2 row | Property credited | What that property's own trace line says |
+|---|---|---|
+| AC-2.2, AC-2.5 | PROP-CORPUS-08 | *"C-7, BR-12 last row, TSPEC §T.7"* — it is the never-throws property, and has nothing to do with ordering or determinism |
+| AC-3.1, AC-3.2, AC-3.3 | PROP-BLOCK-03 | *"AC-3.4, BR-7, BR-13, TSPEC §OQ.1"* — AC-3.4 only |
+| AC-2.1, AC-2.3, AC-2.4 | PROP-ORDER-05 | *"AC-2.5, AT-14"* — determinism only, not the bounds |
+| AC-4.1, AC-4.2 | PROP-RECORD-11 | *"AC-3.4, C-6, BR-13, AT-23"* — the no-erratum property |
+| AC-4.4, AC-5.1a, AC-5.1b, AC-5.1c | PROP-FAILOPEN-04 | *"E-06, E-08, AT-04, AT-26"* — no AC-4.x or AC-5.x id at all |
+
+I checked whether any AC is left uncovered once these are struck, and none is: AC-2.2 keeps
+PROP-ORDER-01, AC-3.1 keeps PROP-RECORD-01/02, AC-4.1 keeps PROP-DISPATCH-06, AC-4.2 keeps
+PROP-CORPUS-06 and PROP-FAILOPEN-02, and the AC-5.1 family keeps PROP-CONFIG-01/02/03/05/06. So this
+is padding, not a hole — which is exactly why it is Medium and not High. But padding in a coverage
+matrix is a durable hazard: the next revision that legitimately retires a property will read this
+matrix, see two entries under an AC, retire one, and leave the AC covered only by an entry that never
+asserted it. **To resolve:** make §C.2 bidirectional — an AC may list a property only if that
+property's own trace line carries the AC id — and add the missing genuine rows the exercise surfaces
+(PROP-ORDER-05 under AC-6.1, per F-02).
+
+### F-05 (Medium) — PROP-RECORD-09 is a property with no instrument
+
+§Oracles opens with the document's own bar: *"A property whose mutation is not stated here has not
+been shown to have an oracle."* PROP-RECORD-09 — *"**No** test **must** assert on `runMirror`'s
+value"* — is given a category (Contract), a level (L1–L3) and owners (red LI-10, green LI-19), but
+appears nowhere in §O.1–§O.9 and carries no mutation in the §O.8 ledger. Its subject is the test suite,
+not the production code, so unlike an ordinary property it cannot be red by an implementation change:
+LI-19 "greening" it means nothing observable happened.
+
+I confirmed the underlying product judgement is sound — `runMirror` appears in neither REQ nor FSPEC,
+so declining to pin it drops no requirement, and pinning it would indeed red a conforming
+implementation. The defect is the form, not the decision. **To resolve:** either give it the same
+static-scan treatment its Group J siblings get (PROP-META-01 and PROP-META-05 are both explicit static
+parses — a scan of `learnings*.test.js` for `runMirror` is the same instrument, and would sit naturally
+beside the PROP-META-06 of F-02), or demote it out of §Properties into a §G.2 authoring constraint,
+where §G.2.3 already states the same thing in prose.
+
+### F-06 (Low) — "two named test files" followed by ten
+
+§C.4 reads: *"**Two** named test files this document depends on **do not yet exist** —
+`learningsSelect.test.js`, `learningsBlock.test.js`, `learningsCorpus.test.js`,
+`learningsRecord.test.js`, `learningsDispatchSet.test.js`, `learningsConfig.test.js`,
+`learningsArmInventory.test.js`, `learningsCaptureScript.test.js`, `helpers/learningsFixtures.js` and
+`fixtures/learnings-baseline/` are all planned new files."* Ten items follow the word "two". The
+underlying claim is correct and I verified it — `ls pdlc/workflows/__tests__ | grep -i learnings`
+returns nothing and all ten are PLAN manifest rows — so only the numeral is wrong. Note the PLAN
+manifest carries **fourteen** new test rows, so if the intent was to enumerate the full set, four are
+missing (`learningsPremises`, `learningsPredicatePin`, `learningsBaselineGuard`, `learningsSuiteMap`).
+**To resolve:** state the count that matches the enumeration, or enumerate all fourteen.
+
+### F-07 (Low) — the test-pyramid figure does not sum to 35 and diverges from TSPEC §T.5
+
+§Overview's pyramid annotates L3 as "12 + 2 + 4 ATs", L2 as "3 ATs" and L1 as "12 ATs" — 18 + 3 + 12 =
+**33**, against the 35 the same document asserts everywhere else. TSPEC §T.5's layer assignment gives
+L3 = 12 (`learningsDispatchSet`) + 2 (`learningsConfig`) + 2 (AT-20 and AT-22 from `learningsRecord`)
+= 16, with `learningsRecord`'s remaining four at L1/L2; the pyramid's "+ 4" appears to be counting
+footprint and gate-isolation ATs (AT-29, AT-33, AT-34, AT-35) that are already inside
+`learningsDispatchSet`'s twelve. Since §C.1's "2 + 9 + 3 + 3 + 6 + 12 = 35" is correct and is the
+partition PROP-META-05 actually asserts, this is a presentational figure only — but it is the first
+thing a reader sees. **To resolve:** relabel the pyramid to §T.5's split (L3 16 / L2 3 / L1 16, with the
+L1/L2 straddle named) or drop the numerals and keep the shape.
+
+### F-08 (Low, Process) — raw `file:line` anchors in §F.4
+
+§F.4 cites `helpers/seams.js`'s `fakeFs` (`:245`) and `fakeGit` (`:413`),
+`helpers/consolidationDoubles.js` (`:35`) and `advisoryDisabled.test.js:70`. DEC-DOC-01
+(`docs/_decisions/DECISIONS-review-severity-bars.md`) names table-cell anchors of the form
+`` (`:70-79`) `` as the pattern to avoid, because the line number is a property of the file's current
+layout rather than of the claim being cited. The anchors are all accurate today — I verified
+`seams.js:245` is `export function fakeFs`, `:413` is `export function fakeGit`,
+`consolidationDoubles.js:35` is the re-export line and `advisoryDisabled.test.js:70` is
+`import mainDev, * as dev from "../orchestrate-dev.js"` — and each is accompanied by the symbol name,
+which is most of what the decision asks for. **To resolve:** drop the bare numerals and keep the
+symbols; the symbol names alone already identify all four unambiguously. Filed `Process` because the
+pull toward these anchors is a habit of the authoring skills, not of this feature.
+
 ## Questions
 
 ## Positive Observations
