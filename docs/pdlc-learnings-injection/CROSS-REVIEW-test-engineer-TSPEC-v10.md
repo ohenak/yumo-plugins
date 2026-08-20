@@ -84,6 +84,42 @@ carries forward unrepaired and unchanged in severity.
 
 ## Interfaces
 
+Interface contracts are where a cascade does its quiet damage: TSPEC's paraphrases of upstream
+sentences are what break when upstream re-words. Re-read against FSPEC v0.12:
+
+- **§I.2 / §I.4 — the `config.enabled` gate.** Untouched upstream in this window. BR-14 and Step
+  0(2) still carry REQ §4.1's fail-open reading with no second gate key (REQ AC-5.1a), and TSPEC's
+  compression is still one-for-one. ERR-4 remains correctly marked CLOSED.
+- **§I.3 — `present` is report shape, not a gate.** Upstream unmoved; the v8 finding (no
+  behavioural oracle, only a shape assertion, with no named consumer) survives untouched as an
+  *inherited* Medium. This cascade neither fixed nor worsened it. F-03 below.
+- **Seam signatures (`_readFile` / `_listFiles` / `_git`, and the `_recordDocType` probe).** FSPEC
+  constrains outcomes, not seam design; nothing in this window contradicts TSPEC's choices. The
+  `_recordDocType` probe seam in particular becomes *more* clearly justified at v0.12: BR-1 now
+  positively asserts that an authoring-classified non-C-1 dispatch is outside the rule, and the
+  probe is still the only instrument that can see a `docType` the feature declined (report rows
+  cannot — the rejected dispatch produces no row).
+- **Notice and reason catalogues (`NTC-*`, `RSN-*`).** Untouched upstream; TSPEC's transcription is
+  still one-for-one. `RSN-SELF`'s "decided from the path before any read" survives verbatim in
+  BR-15, which is the sentence §D.6 leans on.
+- **The block delimiter and suffix contract (BR-7, C-8).** Untouched.
+
+**One interface-level label lag.** §A.2 argues the `docType` conjunct is load-bearing because,
+without it, "AC-4.3's byte-identity **for non-authoring dispatches** fails on every full pipeline
+run". Upstream deliberately retired that quantifier this round: BR-11 and AT-29 now read "every
+dispatch prompt **outside BR-1's rule** — whether it fails the authoring conjunct or the C-1
+target-document conjunct". TSPEC's sentence is still *true* (the non-authoring dispatches are a
+subset), but it names the narrower set upstream just widened, and it is the sentence a PLAN author
+transcribes into the byte-identity fixture's quantifier. One-word repair, Low severity: F-04.
+
+**Version labels.** The v9 finding stands unrepaired and has drifted further: TSPEC's front-matter
+Upstream row still cites FSPEC "(v0.9)", and five body passages (§D.2's loci table preamble, the
+E-21…E-34 row-ownership note, the AT-20/AT-22 test-file row, and two Open-Questions entries) still
+say "FSPEC v0.9". HEAD is v0.12. As in v9, every cited *proposition* is still present upstream —
+BR-9/BR-10's loci, the E-21…E-34 rows and the AT-20/AT-22 halves are byte-identical — so no claim
+is falsified and nothing is gating. Because TSPEC's bytes did not move this round, this is now
+`inherited`, not `delta`: F-06.
+
 ## Data Model
 
 ## Test Strategy
