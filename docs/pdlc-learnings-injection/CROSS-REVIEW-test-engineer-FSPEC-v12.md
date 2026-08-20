@@ -50,13 +50,38 @@ No citation in this FSPEC points at text upstream no longer carries.
 
 ## Behavioral Flow
 
+Untouched by this delta. `git diff 523e2df9..9a4b7593 --stat` is confined to the header table and
+the revision-note block; no Step 0-N text, no ordering or bounding step, changed a byte. The flow I
+approved at v10/v11 stands as approved.
+
 ## Business Rules
+
+Untouched. BR-9's per-document catalogue, BR-10's two-locus table with its "Once per run" §4.1
+threshold row, BR-14's default-enabled reading of an absent section — all outside the diff hunks
+and all still consistent with REQ v0.9 as checked above.
 
 ## Edge Cases and Error Scenarios
 
+Untouched. E-13's measured two-repository provenance, E-26's routing of the three §4.1 thresholds
+to the run-level record, and the `RSN-EMPTY` / `RSN-UNLISTABLE` / `NTC-MALFORMED` outcomes are all
+outside the delta and still match REQ:74, REQ:357, REQ:362, REQ:373.
+
 ## Acceptance Tests
 
+Untouched, and this is the part of a header erratum most likely to go wrong indirectly — a version
+bump can strand a traceability row. It does not here: no traceability row references a version
+number, the AC-6.2 row still points at `§Acceptance Tests preamble` (the heading that exists), and
+AT-20/AT-21/AT-22 still name their BR-10 locus and assert **set equality** per locus, so deleting a
+member of either catalogue still reds. AT-22's anti-echo clause (expected selection transcribed by
+hand into the fixture, "neither calls the production selector nor reimplements it") and AT-32's
+positive-presence conjunct — the two oracles whose falsifiability I most cared about across this
+document's history — are byte-identical to the bytes I approved at v11.
+
 ## Open Questions
+
+No new question. My one carried `DEFERRED:` item is unchanged and still non-blocking: BR-9's notice
+catalogue leaves its emission locus unstated, routed to TSPEC. This delta neither addresses nor
+disturbs it.
 
 ## Delta-Confirmation Findings
 
