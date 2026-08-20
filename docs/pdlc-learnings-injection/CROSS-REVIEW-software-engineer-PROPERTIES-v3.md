@@ -213,4 +213,48 @@ FINDING: Low | delta | local | §G.3 item 4 and §F.3's F-O-1 paragraph | The ro
 
 ## Recommendation
 
+**Needs revision**
+
+PROPERTIES does **not** still hold as approved against FSPEC v0.13. Two High findings, both created by
+the delta and both concentrated on the one decision the delta made that PROPERTIES had deliberately
+declined to anticipate — `maxBytesPerDocument: 0`.
+
+The honest framing is that this is the *success* case of an erratum, not a regression by the TE author.
+PROPERTIES routed two of these questions upstream itself (§G.3) and wrote down, in §G.2.1, exactly
+where the answer would land when it arrived: "when FSPEC decides, the property belongs in Group H
+beside PROP-CONFIG-04 and costs one case in `learningsConfig.test.js`." FSPEC has now decided. The
+document is not wrong about anything it chose to assert; it is a compression of an FSPEC that no longer
+exists in two places, and it has an unowned behaviour it explicitly promised to own once upstream spoke.
+
+What must change, in the order I would do it:
+
+1. **F-02 — add the zero-per-document property** to Group H, beside PROP-CONFIG-04, and add the mirror
+   fixture (a document that *carries* material, run at `maxBytesPerDocument: 0`) so the oracle
+   distinguishes `RSN-NO-MATERIAL` from `RSN-BYTES` and from a zero-byte `bounded: true` row. Then
+   rewrite §G.2.1 from "undecided upstream, no property asserts it" to a discharge note naming the new
+   property, and update §C.1's AT-30 row. Cheapest satisfying form: extend PROP-BOUND-06 with the
+   second disjunct (F-03) and let the new Group H property assert the run-level shape — every document
+   rejected, no slot consumed, enabled run, BR-8 rows present and empty.
+2. **F-01 — bound PROP-BOUND-03's domain.** One clause: `maxBytesPerDocument > 0`. Then say, in §O.9 or
+   §G.1, whether T-O-6's generated arm excludes `maxBytes = 0` or delegates it to the new property. This
+   is the finding I would land *before* LI-08 authors its red tests, since it changes what the
+   generated arm may sample; F-02's property is additive and can land with LI-12/LI-21.
+3. **F-03, F-04, F-05 — the bookkeeping.** Widen PROP-BOUND-06's antecedent to BR-9's two disjuncts;
+   mark §G.2.2 resolved and strike the two §G.3 items the delta answered; narrow §G.3's F-O-1 item to
+   TSPEC's outstanding discharge.
+
+Nothing here touches the 69-property inventory's structure, the traceability closure, the pyramid split,
+or any of the material I approved at v2. My five v2 findings (one Medium on §C.2's bidirectionality
+rows, one on §C.1's AT-less enumeration, one Medium on the shared static walk's operand, two Low on
+PROP-FOOTPRINT-04's anchor token and PROP-BOUND-08's expected-set transcription) remain open as
+recorded and are not re-litigated in this round. Note that the delta partially overtakes my v2 F-05:
+with F-O-1 now owning the section-matching rule, transcribing PROP-BOUND-08's expected set as the five
+BR-6 names has a named upstream owner to defer to, which makes that fix easier than it was.
+
+**One thing I want to record as a positive.** The framing-bytes conflict (my §G.2.2 concern, PROPERTIES'
+own routed erratum, and the reason mutation M-5 sat on contested ground) is now closed, and it closed
+toward the reading PROPERTIES and TSPEC already held. A document that routes a conflict upstream
+instead of guessing, and then gets the answer it argued for, is the pipeline working as designed — the
+cost of that discipline is exactly this confirmation round, and it is a good trade.
+
 ## Verdict
