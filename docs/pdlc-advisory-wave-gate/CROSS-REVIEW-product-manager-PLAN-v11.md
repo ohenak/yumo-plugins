@@ -165,13 +165,49 @@ number.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from rounds 3–10, still non-blocking and now nearly moot: this feature ships no operator-facing documentation of the `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}` example beyond the example file itself. That was an explicit upstream decision, correctly followed here, and this cascade does not disturb it. Worth one LEARNINGS line so a future operator-documentation pass picks it up. |
+| Q-02 | Carried from rounds 7–10: A6-00's untrack step is a non-file act (an index-only removal of 14 `.bak` paths) while the wave commit arm iterates exactly `task.files`. Answered in prior rounds as safe because `.gitignore` is in the ownership manifest and the removal is staged in the same step; no new evidence this round changes that. Recorded for continuity, not re-opened. |
+| Q-03 | New this round, informational: now that TSPEC defers the residue figures to PLAN, is there value in PLAN's HEAD-drift note carrying a one-line "upstream defers here" back-pointer, so a future editor re-measuring the 28 knows a second document's prose depends on the date staying accurate? Not requested as a change — the figures are already dated and their growth rule is stated, which is the substantive protection. |
 
 ## Positive Observations
 
-_(pending)_
+- **The erratum moves ownership toward the document that already owned it, and PLAN was ready for
+  it.** Round 9 consolidated these figures into a single dated site precisely so a second restatement
+  could not drift; this round upstream stopped restating and pointed at that site instead. That is the
+  consolidation paying off exactly where it was designed to, and it is why this cascade needed no PLAN
+  edit at all — the property being confirmed was built two rounds before it was tested.
+- **Upstream anchored its restatement to PLAN's *dated measurement*, not to HEAD.** This is the
+  single choice that keeps the cascade benign. Class 3 grows by one per committed cross-review file,
+  so a HEAD-anchored figure in TSPEC would have gone stale during this very round — as it happens, it
+  already would have. Tying the number to the owner's dated measurement means the two documents cannot
+  diverge no matter how many review rounds follow.
+- **The class-split DoD check absorbed real growth without a false red.** Re-measured at HEAD, class
+  3 has grown since the dated measurement, exactly as PLAN predicts. The membership predicate on
+  `docs/pdlc-advisory-wave-gate/**` takes that in stride where round 8's set-equality would have
+  mis-fired at the ship boundary. The design was argued abstractly in round 9; this round it is
+  observed working under load.
+- **The routed pointers resolve to text that says the same thing in the same direction.** "PLAN's
+  Overview HEAD-drift note and A6-00's Edit 1" both exist, are spelled as cited, and carry the same
+  arithmetic (28 / 14 closable / 14 not). A routing sentence that names its target precisely enough to
+  be checked mechanically is the difference between a real handoff and a gesture at one.
+- **The structural contract is untouched and cheaply re-verifiable.** 11 tasks, `ok: true`, 7 waves,
+  0 ownership near-misses — the same numbers as round 10, replayed with the shipped parsers rather
+  than asserted. A prose-only cascade that leaves the machine-checkable surface identical is what lets
+  the next reviewer trust this confirmation without redoing it.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes** — the round-10 approval of PLAN stands against TSPEC at `1531143c`.
+
+PLAN is still a faithful compression of its upstream at HEAD. The single upstream edit sizes a residue
+PLAN already sized identically, and routes its ownership to two PLAN sites that exist, are named
+correctly, and carry the same figures. Nothing PLAN cites was withdrawn, narrowed or renumbered; no
+new P0/P1 obligation entered; no task, batch, wave, dependency edge or ownership cell needs to move.
+
+The two Lows are both non-PLAN fixes: F-01 belongs in TSPEC §1.3 (drop the "only" before A-1's glob
+list), F-02 belongs in the workflow's completeness gate. Neither blocks, and neither is a condition of
+this approval standing. The round-10 deferral (one-site rule for the `28 / 14` figure in the DoD
+bullet) remains the one tidy-up worth taking when PLAN is next edited for any other reason.
 
