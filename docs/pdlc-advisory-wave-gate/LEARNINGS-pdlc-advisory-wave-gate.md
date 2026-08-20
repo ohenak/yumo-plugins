@@ -103,3 +103,75 @@ The handed open-promotion list was empty (no open promotions recorded in `docs/_
 12. **A batch of remediations touching a shared fact must be re-measured after the last commit in the batch.** DoD v1 finding 7's fix was falsified by the very next commit, which was finding 1's fix. Target: `dod-verify` / `se-implement` guidance.
 
 ## 6. Approval Record
+
+The durable (tier-2) record of every approving cross-review round. Every `Approval Hash` and `Reviewed Commit` cell below was **copied verbatim** out of the `CROSS-REVIEW-*` file's `APPROVAL-HASH:` / `REVIEWED-COMMIT:` header line before that file was deleted. Nothing was recomputed at harvest time. Where a file carried no such header line, the cell reads `unavailable` — 22 of the 65 approving rounds predate the anchor convention or were emitted without it, which is itself part of the §4 process signal about anchor discipline.
+
+Two approving rounds are **not** in the table: `CROSS-REVIEW-{product-manager,test-engineer}-REVIEW-v2.md` (round 2, both `Approved with minor changes`, both anchors `unavailable`). `REVIEW` — the Phase REVIEW codebase-review lens — is outside the six-member document-type enumeration this section admits, so it is recorded here in prose rather than given a row with an out-of-vocabulary type.
+
+| Document Type | Round | Role | Verdict | Approval Hash | Reviewed Commit |
+|---|---|---|---|---|---|
+| REQ | 2 | test-engineer | Approved with minor changes | unavailable | unavailable |
+| REQ | 4 | software-engineer | Approved with minor changes | sha256:32ba7d949d59041db6d67de80c06c10d270c3e545c11473debe5694cfe851f6c | 6565080a9efbd4a524d6d5bf1296b0b6ed6712c5 |
+| REQ | 4 | test-engineer | Approved with minor changes | sha256:32ba7d949d59041db6d67de80c06c10d270c3e545c11473debe5694cfe851f6c | 6565080a9efbd4a524d6d5bf1296b0b6ed6712c5 |
+| REQ | 6 | software-engineer | Approved with minor changes | sha256:a10396e88a52c1905b0d2cdfe0bbb2174b8f100888b7a7b2d69b0e0bd5ed9645 | 2e2622980cf33ec2211e327ebf67846525096a76 |
+| REQ | 6 | test-engineer | Approved with minor changes | sha256:a10396e88a52c1905b0d2cdfe0bbb2174b8f100888b7a7b2d69b0e0bd5ed9645 | 2e2622980cf33ec2211e327ebf67846525096a76 |
+| REQ | 8 | software-engineer | Approved with minor changes | sha256:817b67455ae1d90589c336c88d72914eb3105a49c50a3d54eaa9083fc918a7a8 | e619b6d60118487b7c3d1cc6c3d2db79856b3ef7 |
+| REQ | 8 | test-engineer | Approved with minor changes | sha256:817b67455ae1d90589c336c88d72914eb3105a49c50a3d54eaa9083fc918a7a8 | e619b6d60118487b7c3d1cc6c3d2db79856b3ef7 |
+| FSPEC | 2 | test-engineer | Approved with minor changes | unavailable | unavailable |
+| FSPEC | 3 | software-engineer | Approved with minor changes | unavailable | unavailable |
+| FSPEC | 4 | software-engineer | Approved | sha256:cacf86e86918b989b0699268723e21c2ccd88841be6505c9e031a3dbfff188f3 | 7b8b314c4a02c7558678aeaca28479b04d92b538 |
+| FSPEC | 4 | test-engineer | Approved with minor changes | sha256:cacf86e86918b989b0699268723e21c2ccd88841be6505c9e031a3dbfff188f3 | 7b8b314c4a02c7558678aeaca28479b04d92b538 |
+| FSPEC | 6 | software-engineer | Approved with minor changes | sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e | c3ae2087d33ba08cb767b70b0ae61c981e5b18ed |
+| FSPEC | 6 | test-engineer | Approved with minor changes | sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e | c3ae2087d33ba08cb767b70b0ae61c981e5b18ed |
+| FSPEC | 7 | software-engineer | Approved with minor changes | sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e | 98cc007d5a78ded66ea29278323bc5be515276fb |
+| FSPEC | 7 | test-engineer | Approved with minor changes | sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e | 98cc007d5a78ded66ea29278323bc5be515276fb |
+| TSPEC | 5 | product-manager | Approved with minor changes | unavailable | unavailable |
+| TSPEC | 6 | product-manager | Approved with minor changes | sha256:93385165ef7c7ad8ce2c87d990c48007fa80090dcd8980cb980513692611b4f2 | 85463b70f1d19954b78fdfc9184c09fe69d1c56f |
+| TSPEC | 6 | test-engineer | Approved with minor changes | sha256:93385165ef7c7ad8ce2c87d990c48007fa80090dcd8980cb980513692611b4f2 | 85463b70f1d19954b78fdfc9184c09fe69d1c56f |
+| TSPEC | 7 | product-manager | Approved with minor changes | sha256:0610e311f5e0b206c7781e3d75e00fa70799ad013c6b219d7cac87afab0e9bba | f6a45cc52e9aa727c6d757a2ccd3c8635971e8e2 |
+| TSPEC | 7 | test-engineer | Approved with minor changes | sha256:0610e311f5e0b206c7781e3d75e00fa70799ad013c6b219d7cac87afab0e9bba | f6a45cc52e9aa727c6d757a2ccd3c8635971e8e2 |
+| TSPEC | 8 | product-manager | Approved with minor changes | sha256:c0ee14a4e69efd994c5d1d4d0c1d0b32c9f0e31e948a6f37127a209b1e20585a | 61a9605d89fd093e227a23d106bf9d0e0f1705cd |
+| TSPEC | 8 | test-engineer | Approved with minor changes | sha256:c0ee14a4e69efd994c5d1d4d0c1d0b32c9f0e31e948a6f37127a209b1e20585a | 61a9605d89fd093e227a23d106bf9d0e0f1705cd |
+| TSPEC | 9 | product-manager | Approved with minor changes | sha256:79777fa6310e87180c6901e9d1b87ddcb9f926147fefb9f07c52720d0c5ff8d6 | a349767b569c1a1d50052f3484cf6ecf1fe1f449 |
+| TSPEC | 9 | test-engineer | Approved with minor changes | sha256:79777fa6310e87180c6901e9d1b87ddcb9f926147fefb9f07c52720d0c5ff8d6 | a349767b569c1a1d50052f3484cf6ecf1fe1f449 |
+| TSPEC | 11 | product-manager | Approved with minor changes | sha256:4a092e85e8f3b58740dd02b09831a056a0dc7d28b1b13786f5ba8a664994ced3 | c61f42942ca4b5fb29a15d1c41edad902dade03a |
+| TSPEC | 11 | test-engineer | Approved | sha256:4a092e85e8f3b58740dd02b09831a056a0dc7d28b1b13786f5ba8a664994ced3 | c61f42942ca4b5fb29a15d1c41edad902dade03a |
+| TSPEC | 12 | product-manager | Approved with minor changes | sha256:1531143c923857242241c61a35d43fc9677e152d6cca1162533778bb0c30c004 | 1f2a4fbfcd8588f0b7a5bc25265c02b8d3aa8ea1 |
+| TSPEC | 12 | test-engineer | Approved with minor changes | sha256:1531143c923857242241c61a35d43fc9677e152d6cca1162533778bb0c30c004 | 1f2a4fbfcd8588f0b7a5bc25265c02b8d3aa8ea1 |
+| PLAN | 3 | product-manager | Approved with minor changes | sha256:bfb7dc37498abd7aef4a55d54d5adba7537d7cac345d20530afbcf0e664bb37f | c8981e48bfe6e2fa400a33718dbcd9cc1e86bd0a |
+| PLAN | 3 | test-engineer | Approved with minor changes | sha256:bfb7dc37498abd7aef4a55d54d5adba7537d7cac345d20530afbcf0e664bb37f | c8981e48bfe6e2fa400a33718dbcd9cc1e86bd0a |
+| PLAN | 4 | product-manager | Approved with minor changes | sha256:bfb7dc37498abd7aef4a55d54d5adba7537d7cac345d20530afbcf0e664bb37f | 350980b213efb61c87a4fdecd95db751ece31e52 |
+| PLAN | 4 | test-engineer | Approved with minor changes | sha256:bfb7dc37498abd7aef4a55d54d5adba7537d7cac345d20530afbcf0e664bb37f | 350980b213efb61c87a4fdecd95db751ece31e52 |
+| PLAN | 5 | product-manager | Approved with minor changes | sha256:bfb7dc37498abd7aef4a55d54d5adba7537d7cac345d20530afbcf0e664bb37f | 4ecf9c72890e4568ae33338a414b694616ad7de8 |
+| PLAN | 5 | test-engineer | Approved with minor changes | sha256:bfb7dc37498abd7aef4a55d54d5adba7537d7cac345d20530afbcf0e664bb37f | 4ecf9c72890e4568ae33338a414b694616ad7de8 |
+| PLAN | 8 | product-manager | Approved with minor changes | unavailable | unavailable |
+| PLAN | 9 | test-engineer | Approved with minor changes | unavailable | unavailable |
+| PLAN | 10 | product-manager | Approved with minor changes | sha256:e97acf667401b6327ae7d92a5f083361038299bdb3a215801f9bfe5f18f39f48 | b902f40b964b52e437d76ba1c43d319530fe5fe2 |
+| PLAN | 10 | test-engineer | Approved | sha256:e97acf667401b6327ae7d92a5f083361038299bdb3a215801f9bfe5f18f39f48 | b902f40b964b52e437d76ba1c43d319530fe5fe2 |
+| PLAN | 11 | product-manager | Approved with minor changes | sha256:e97acf667401b6327ae7d92a5f083361038299bdb3a215801f9bfe5f18f39f48 | df90d1f850c943009ef11f118a751b8d9cc6310c |
+| PLAN | 11 | test-engineer | Approved with minor changes | sha256:e97acf667401b6327ae7d92a5f083361038299bdb3a215801f9bfe5f18f39f48 | df90d1f850c943009ef11f118a751b8d9cc6310c |
+| PLAN | 12 | product-manager | Approved with minor changes | sha256:e97acf667401b6327ae7d92a5f083361038299bdb3a215801f9bfe5f18f39f48 | 570fbe11cd8261478dd62735d3f99c0da2f450e2 |
+| PLAN | 12 | test-engineer | Approved with minor changes | sha256:e97acf667401b6327ae7d92a5f083361038299bdb3a215801f9bfe5f18f39f48 | 570fbe11cd8261478dd62735d3f99c0da2f450e2 |
+| PROPERTIES | 1 | product-manager | Approved with minor changes | unavailable | unavailable |
+| PROPERTIES | 2 | product-manager | Approved with minor changes | sha256:7a88c5f01e4850d4e0c11e1865b4bbc7ed08f952cfa8b6ed0f68afc331ab502d | 7f8dcda6aa0898030c78ea68dadf87cec17c054f |
+| PROPERTIES | 2 | software-engineer | Approved with minor changes | sha256:7a88c5f01e4850d4e0c11e1865b4bbc7ed08f952cfa8b6ed0f68afc331ab502d | 7f8dcda6aa0898030c78ea68dadf87cec17c054f |
+| PROPERTIES | 3 | product-manager | Approved with minor changes | sha256:7a88c5f01e4850d4e0c11e1865b4bbc7ed08f952cfa8b6ed0f68afc331ab502d | 87d4c23367e29e4ecc28f5df4fc9317f74a69b06 |
+| PROPERTIES | 3 | software-engineer | Approved with minor changes | sha256:7a88c5f01e4850d4e0c11e1865b4bbc7ed08f952cfa8b6ed0f68afc331ab502d | 87d4c23367e29e4ecc28f5df4fc9317f74a69b06 |
+| PROPERTIES | 5 | product-manager | Approved with minor changes | sha256:8a9fe1d7050e405cb095c52211bb0d189c17059da4493c220fb99d78d5f04258 | 0c0475a7fa7c9beef6fadb0a5a0b3e4e588611a2 |
+| PROPERTIES | 5 | software-engineer | Approved with minor changes | sha256:8a9fe1d7050e405cb095c52211bb0d189c17059da4493c220fb99d78d5f04258 | 0c0475a7fa7c9beef6fadb0a5a0b3e4e588611a2 |
+| PROPERTIES | 6 | product-manager | Approved with minor changes | sha256:8a9fe1d7050e405cb095c52211bb0d189c17059da4493c220fb99d78d5f04258 | 99f136a5218bdf97a220677265aa7ee07ef6a4b9 |
+| PROPERTIES | 6 | software-engineer | Approved with minor changes | sha256:8a9fe1d7050e405cb095c52211bb0d189c17059da4493c220fb99d78d5f04258 | 99f136a5218bdf97a220677265aa7ee07ef6a4b9 |
+| DECISIONS | 1 | product-manager | Approved with minor changes | unavailable | unavailable |
+| DECISIONS | 2 | product-manager | Approved with minor changes | sha256:5145d90af8ed14261979b0c46fa60791c11ac9fd672950f1fab634f7e6c5ccc3 | d40e14e2c45b6b74657c790295584fee9a9b7089 |
+| DECISIONS | 2 | test-engineer | Approved with minor changes | sha256:5145d90af8ed14261979b0c46fa60791c11ac9fd672950f1fab634f7e6c5ccc3 | d40e14e2c45b6b74657c790295584fee9a9b7089 |
+| DECISIONS | 3 | product-manager | Approved with minor changes | unavailable | unavailable |
+| DECISIONS | 4 | test-engineer | Approved with minor changes | unavailable | unavailable |
+| DECISIONS | 5 | test-engineer | Approved with minor changes | unavailable | unavailable |
+| DECISIONS | 6 | test-engineer | Approved with minor changes | unavailable | unavailable |
+| DECISIONS | 8 | test-engineer | Approved with minor changes | unavailable | unavailable |
+| DECISIONS | 9 | product-manager | Approved with minor changes | sha256:25f8e9542816737d16ee043bcce0555ce67c21296cfb2052c014840592e7464d | 9a1934db2f55f77300dc64709b90fd803c5540f9 |
+| DECISIONS | 9 | test-engineer | Approved with minor changes | sha256:25f8e9542816737d16ee043bcce0555ce67c21296cfb2052c014840592e7464d | 9a1934db2f55f77300dc64709b90fd803c5540f9 |
+| DECISIONS | 10 | product-manager | Approved with minor changes | sha256:25f8e9542816737d16ee043bcce0555ce67c21296cfb2052c014840592e7464d | 153babdbee9b71c76fef393cded225a5720bc2b8 |
+| DECISIONS | 10 | test-engineer | Approved | sha256:25f8e9542816737d16ee043bcce0555ce67c21296cfb2052c014840592e7464d | 153babdbee9b71c76fef393cded225a5720bc2b8 |
+| DECISIONS | 11 | product-manager | Approved with minor changes | sha256:84deee10d5c5743a60ac0279bf3135f67e1430d4e9976176f6b2691adf5833dc | 8a44b84b485e0b722430d42fcd4e85cd22766892 |
+| DECISIONS | 11 | test-engineer | Approved | sha256:84deee10d5c5743a60ac0279bf3135f67e1430d4e9976176f6b2691adf5833dc | 8a44b84b485e0b722430d42fcd4e85cd22766892 |
