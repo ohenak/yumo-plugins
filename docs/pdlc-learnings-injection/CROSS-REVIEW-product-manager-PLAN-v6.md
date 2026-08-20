@@ -240,4 +240,17 @@ version field the erratum bumped. No finding halts the phase.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §Errata's preamble says two defects "were first raised by TSPEC v0.6 (as ERR-3 and ERR-7)" and are still live at HEAD, and its BR-1 row says "TSPEC §A.2 **adds** the load-bearing `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct" that BR-1 forbids, with the consequence that "LI-11's AT-02 has two contradictory expected sets". TSPEC v0.7 marks both errata CLOSED by name ("no question remains routed to FSPEC on this point"), and §A.2 now says "This is FSPEC BR-1 as it now stands, **not a divergence from it** … §I.3's predicate implements BR-1 directly". PLAN is the last document still routing the conflict, and the row's stated risk is extinct. Retire both rows, record FSPEC v0.11/v0.12 as resolving, keep one provenance line for harvest | §Open questions and upstream errata — preamble and both table rows |
+| F-02 | Medium | delta | local | §Verification claim 4 scopes baseline byte-identity to "every **non-authoring** dispatch (AC-4.3)", which was TSPEC §A.2's own wording at approval time. §A.2 at HEAD says "AC-4.3's byte-identity for the dispatches **outside BR-1's rule**", matching FSPEC AT-03/AT-29 and deliberately including the authoring-classified Phase CR optimizer round. PLAN's compression is narrower than the promise it summarises. Same defect as v5 F-03, now with a second falsifying upstream; Scope tag reconciled with v5 rather than escalated | §Verification, claim 4 ("The measured baseline") |
+| F-03 | Low | delta | local | Four version pins name upstreams that no longer exist: front matter "`TSPEC-…` (v0.6); `FSPEC-…` (v0.10)", §Overview's "Behaviour lives in REQ v0.9 / FSPEC v0.10 / TSPEC v0.6", the LI-01 edge rationale "a premise that has moved since TSPEC v0.6", and the changelog 0.1 row. TSPEC is v0.7 and FSPEC v0.12 at HEAD. Nothing an implementer builds changes, but this is the field a later reviewer reads to decide whether an approval is current | Front matter Upstream row; §Overview; §Dependencies "Why each edge exists"; §Changelog |
+
+FINDING: Medium | delta | local | §Open questions and upstream errata (preamble and both rows) | Both routed errata are described as live and "first raised by TSPEC v0.6", and the BR-1 row claims TSPEC §A.2 diverges from BR-1; TSPEC v0.7 marks ERR-3 and ERR-7 CLOSED and §A.2 now states it implements BR-1 directly.
+FINDING: Medium | delta | local | §Verification claim 4 ("The measured baseline") | Baseline byte-identity is scoped to "every non-authoring dispatch" where TSPEC §A.2 now says "the dispatches outside BR-1's rule", which includes the authoring-classified Phase CR optimizer round.
+FINDING: Low | delta | local | Front matter Upstream row, §Overview, §Dependencies edge rationale, §Changelog | Four pins still cite TSPEC v0.6 and FSPEC v0.10; HEAD is TSPEC v0.7 and FSPEC v0.12.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
