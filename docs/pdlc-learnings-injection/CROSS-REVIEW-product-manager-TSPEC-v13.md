@@ -38,6 +38,38 @@ table, and BR-6's delegation sentence — rather than trusting the TSPEC's parap
 
 ## Architecture
 
+**Where the obligation now sits, and whether that placement is coherent.**
+
+F-O-1 is an obligation FSPEC delegates *to TSPEC*. The product question is not which file the
+regex lives in — that is se-review's lens — but whether the document records the obligation as
+discharged in the same place it actually discharges it, so a reader tracing FSPEC → TSPEC lands on
+the answer rather than a pointer.
+
+Before this round the document was incoherent on exactly that point: §D.3's heading claimed the
+discharge, the obligations table (§ obligations, F-O-1 row) claimed the discharge, and only one of
+the two rules was written down. The delta closes the triangle:
+
+| Locus | State at HEAD |
+|---|---|
+| §D.3 heading | Names *both* halves explicitly — `*(discharges F-O-1, both halves)*` |
+| §D.3 body | Rule 1: `looksLikeLearningsDocument` / `LEARNINGS_HEADING_RE`. Rule 2: `BR6_SECTION_NAMES` + `SECTION_HEADING_RE` + `GLOSS_RE`, three matching rules, extent, duplicates |
+| Obligations table F-O-1 row | "**both** heading-recognition rules (FSPEC v0.13) … §D.3 — the predicate (`LEARNINGS_HEADING_RE`) and the section matcher (`BR6_SECTION_NAMES`, optional ordinal, optional gloss, otherwise exact)" |
+| §I.3 `extractInjectableMaterial` JSDoc | Points at the rule (`optional N. ordinal (discarded — priority comes from BR6_SECTION_NAMES's index, never from …)`) without restating it |
+| v0.8 erratum note (header) | Records item (3) as landed, naming what §D.3 gained |
+
+I checked the last row specifically for the failure mode this document has hit before: two loci
+each stating a rule, drifting apart. §I.3 does **not** restate the matcher — it cites §D.3's
+decision and carries only the contract (`sections` are canonical names, not literal heading text).
+One normative statement, one pointer. That is the right shape.
+
+**Scope of the delta.** Nothing outside §D.3's heading changed in `4e16392d`, and the substantive
+commit touched §D.3 only. I re-read §D.4 (the ordering key) and §D.5 immediately downstream of the
+edit to confirm the new section-extent rule did not silently move a boundary they depend on; it did
+not — §D.4 keys off the harvest metadata table, which is not a BR-6 section, and §D.5's
+`RSN-NO-MATERIAL` path consumes `sections: []`, which the new rule produces rather than redefines.
+
+No previously approved material was weakened, narrowed, or reinterpreted by this delta.
+
 ## Interfaces
 
 ## Data Model
