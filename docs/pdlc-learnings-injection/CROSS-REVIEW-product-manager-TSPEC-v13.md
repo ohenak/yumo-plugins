@@ -165,7 +165,57 @@ the discipline ERR-5 was raised to enforce, applied here without being asked.
 
 ## Test Strategy
 
+Reviewed only for whether the new rule stays *provable* against the acceptance criteria it serves —
+depth of test design is te-review's lens, not mine.
+
+**The delta is testable rather than merely stated.** §D.3 closes with an explicit fixture
+obligation: *"At least one fixture must carry a non-canonical-but-matching form (bare title, or the
+un-glossed `Rejected Proposals`) so rules 1 and 3 are pinned by a test rather than assumed from the
+fixture builder's `## N. Title` shape."* This is the right instinct and names the exact false-green
+this feature is prone to — every corpus document and, by default, every fixture builder writes the
+numbered glossed form, so rules 1 and 3 would be tautologically satisfied by fixtures that never
+exercise them. Rule 2 is separately pinned by E-33/AT-28 from upstream. All three rules therefore
+have a route to red.
+
+**Traceability of the new rule to the ACs it serves.**
+
+| AC / upstream item | How §D.3's matcher is exercised |
+|---|---|
+| AT-11 (section-set equality) | `sections[]` is canonical `BR6_SECTION_NAMES`, never literal heading text — so fixture builder and matcher cannot drift into a shared wrong spelling |
+| AT-28 / E-33 (`RSN-NO-MATERIAL`) | The same rule read negatively: empty intersection ⇒ empty `sections[]` ⇒ `RSN-NO-MATERIAL` |
+| E-19 (document missing later sections) | Absent name skipped silently; predicate stays deliberately weak so the document remains eligible |
+| E-36 / AT-30 (`maxBytesPerDocument: 0`) | Zero-bound branch returns `sections: []` before the bounds; unchanged by this delta |
+| T-O-6 (PROPERTIES) | Carries a corpus-driven conjunct written against §D.3's matcher: `sections` equals the intersection of `BR6_SECTION_NAMES` with the level-2 headings a real document carries, ordinals and optional gloss ignored |
+
+The canonical-names decision deserves specific credit as a testability choice with a product
+consequence: because `sections[]` reports canonical names rather than the document's literal
+heading, AT-11's oracle compares against BR-6's vocabulary directly. A misspelling shared between
+fixture and implementation cannot pass.
+
+**T-O-6 was already updated to match.** The obligation routed to PROPERTIES names §D.3's matcher
+explicitly and states the corpus-driven conjunct in the matcher's own terms. The downstream
+obligation and the newly written rule agree — the delta did not leave PROPERTIES holding a stale
+description of a rule that has since been written down.
+
+**Determinism is total.** The duplicates rule ("if a name matches more than one heading, the first
+occurrence in document order is the section and later ones are ignored — a total rule, so no
+document text can make extraction non-deterministic") means no corpus document, however malformed,
+can produce an ambiguous extraction. For a feature whose output is injected into an authoring
+prompt, a total rule here is what makes run-to-run reports comparable.
+
 ## Open Questions
+
+None. This confirmation raises no questions and leaves no item open.
+
+For the record, three things I checked that could have been questions and were already answered in
+the text: whether §I.3 and §D.3 might drift as two statements of one rule (§I.3 cites, does not
+restate); whether the un-glossed tolerance was being passed off as measured (it is explicitly
+declared not measured); and whether the `## 6.` corpus deviation needed a special case (it does
+not, by the allow-list construction).
+
+Pre-existing items **ERR-5** (FSPEC E-13's "measured: occurs at HEAD" parenthetical, wrong on this
+corpus) and the `docs/discarded/` scoping rationale are already recorded in the TSPEC and are
+outside this confirmation's scope. Neither was touched by this delta and neither is a finding here.
 
 ## Positive Observations
 
