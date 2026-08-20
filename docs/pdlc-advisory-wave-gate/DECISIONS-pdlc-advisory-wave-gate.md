@@ -81,14 +81,17 @@ label" is therefore shipped precedent, not an invention.
 | **B. Wave- and run-discriminated, e.g. `refs/pdlc/a6-snapshot-{runId}-{waveNum}`** | Not rejected on merit — deferred. Phase I has no run id in scope, and a capture timestamp would make the ref name unpredictable to the halt message that has to print it. The cost of omitting the discriminator is bounded and operator-side (below) |
 | **C (chosen). Wave-scoped, `refs/pdlc/a6-snapshot-{waveNum}`** | — |
 
-Option A's rejection is, as the AT set stands today, **stated but not falsifiable**. TSPEC §4.5
-asserts the property the rejection turns on — "one ref per wave, never overwritten by a later wave" —
-but every fixture that observes the ref (§3.2's over-budget case and §5.5's capture assertions) runs
-a *single* A6 wave and observes a single `update-ref`. A regression to the fixed name of option A
-would pass all of them. Making the rejection falsifiable needs one two-A6-wave run asserting
-set-equality over the observed `update-ref` targets (`{a6-snapshot-1, a6-snapshot-2}`); that is an
-oracle this document cannot mint, and it is raised as an erratum on TSPEC (TE F-05). Until it lands,
-read the rejection as a design commitment, not a tested one.
+Option A's rejection **is falsifiable at TSPEC v1.10**, and the loop that made it so closed
+upstream. This entry's v1.1 revision recorded the rejection as "stated but not falsifiable" — every
+fixture that observed the ref (§3.2's over-budget case, §5.5's capture assertions) ran a *single* A6
+wave and saw a single `update-ref`, so a regression to option A's fixed name passed all of them —
+and routed the missing oracle upstream (TE F-05). It landed. §4.5's snapshot-ref row now qualifies
+"one ref per wave, never overwritten by a later wave" as asserted on §5.2's two-red-wave run, a
+property a single-wave fixture cannot see; and §5.2 carries the fixture: one run, two A6 waves, both
+gates red, the set of `update-ref` targets observed on the `_git` double set-equal to
+`{refs/pdlc/a6-snapshot-1, refs/pdlc/a6-snapshot-2}` — two distinct targets, each written once, so a
+fixed-name regression writes one target twice and fails on both conjuncts. Read the rejection as a
+tested commitment.
 
 ### For DEC-04 — whether `waveBudgetPerRun: 0` is a configuration error
 
