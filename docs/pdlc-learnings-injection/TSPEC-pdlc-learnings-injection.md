@@ -736,6 +736,76 @@ document carrying none of BR-6's five, because those are eligible-and-reportable
 exactly BR-3's statement that truncation is not a separate outcome, and why no fixture can
 construct an `RSN-TRUNCATED`.
 
+**F-O-1's second rule — when a heading counts as one of BR-6's named sections.** FSPEC v0.13
+widened F-O-1 from the document-shape predicate to *both* heading-recognition rules and assigned
+both here. This is the second, and it is `extractInjectableMaterial`'s section matcher:
+
+```js
+const BR6_SECTION_NAMES = Object.freeze([
+  "Cross-Feature Patterns",            // priority 1
+  "Non-Convergences",                  // priority 2
+  "Rejected Proposals (with rationale)",// priority 3
+  "Process Learnings",                 // priority 4
+  "Open Items for Consolidation",      // priority 5
+]);
+const SECTION_HEADING_RE = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/;
+const GLOSS_RE = /[ \t]*\([^()]*\)$/;
+```
+
+A line is a candidate section heading iff `SECTION_HEADING_RE` matches it — **exactly two** `#`
+characters, so a `###` sub-heading inside a section is body text, not a boundary. The captured
+title is then matched against `BR6_SECTION_NAMES` by this rule, in order:
+
+1. **The ordinal prefix is optional and carries no meaning.** `## 2. Cross-Feature Patterns` and
+   `## Cross-Feature Patterns` are the same section. The number is stripped and discarded — it is
+   *not* the priority. Measured over the 9 corpus documents at HEAD (the §I.1 glob): every one
+   writes the numbered form, and in every one the ordinals run `1. Non-Convergences`,
+   `2. Cross-Feature Patterns`, `3. Rejected Proposals (with rationale)`, `4. Process Learnings`,
+   `5. Open Items for Consolidation` — i.e. the document's own numbering is **not** BR-6's priority
+   order (BR-6 ranks Cross-Feature Patterns first, which the documents number 2). Priority comes
+   from `BR6_SECTION_NAMES`'s index and from nowhere else; reading it off the heading would invert
+   the first two sections of every document in the corpus.
+2. **Comparison is exact and case-sensitive** on the remaining title, after trimming. No prefix
+   match, no substring match, no case folding, no normalisation beyond the ordinal strip and the
+   gloss of rule 3. This is forced by FSPEC's own measurement, not chosen for strictness: E-33's
+   document — `regime-ledger`'s `LEARNINGS-postgres-audit-repository.md`, with
+   `## Implementation Learnings`, `## Cross-Feature Findings` and `## Process Findings` — must
+   yield **nothing** and be dropped `RSN-NO-MATERIAL`. Under a prefix or fuzzy rule
+   `Cross-Feature Findings` would match `Cross-Feature Patterns` and `Process Findings` would match
+   `Process Learnings`, and FSPEC's one measured `RSN-NO-MATERIAL` document would become a
+   contributing one — E-33 and AT-28 would be unreachable by construction.
+3. **A trailing parenthetical gloss is optional**, and only that. `GLOSS_RE` is stripped from both
+   sides of the comparison, so `## 3. Rejected Proposals` matches priority 3 exactly as
+   `## 3. Rejected Proposals (with rationale)` does. The tolerance exists because BR-6's own name
+   for that section carries the gloss while the section is the only one of the five whose title
+   reads naturally without it; it is **not** measured (9 of 9 corpus documents write the glossed
+   form), and it is stated as a defensive tolerance in the sense of §D.4's date-cell tolerance, not
+   as a fix for an observed shape. Note the gloss rule cannot rescue rule 2's cases: stripping
+   `(…)` from `Cross-Feature Findings` leaves `Cross-Feature Findings`.
+
+**A section's extent** is its heading line through the line before the next line matching
+`/^##[ \t]/` — any level-2 heading, whether or not it is one of the five — or end of document.
+The heading line itself is part of the material (BR-6: "the section headings and bodies taken"),
+in the document's own literal form, ordinal included; the canonical name is used for
+`sections[]` and for priority, never rewritten into the injected text.
+
+**Duplicates and absences.** If a name matches more than one heading, the **first** occurrence in
+document order is the section and later ones are ignored — a total rule, so no document text can
+make extraction non-deterministic. An absent name is skipped silently (E-19). `Approval Record`
+is not in `BR6_SECTION_NAMES` and so is never matched, never taken, and needs no exclusion branch
+— which is why `## 6. Phase PUB Retroactive Cross-Review (2026-06-24)` in
+`docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md`, a sixth-section deviation
+from the harvest skill's form, is simply not one of the five and needs no special case.
+
+**What this makes writable.** `sections[]` is the list of **canonical** `BR6_SECTION_NAMES` taken,
+in priority order — so AT-11's section-set equality and PROPERTIES' corpus-driven section-set
+property compare canonical names against the intersection of `BR6_SECTION_NAMES` with the headings
+a real document carries, and a fixture builder and a matcher cannot drift into a shared wrong
+spelling. AT-28's oracle is the same rule read negatively: empty intersection ⇒ empty `sections[]`
+⇒ `RSN-NO-MATERIAL` (§D.5). At least one fixture must carry a non-canonical-but-matching form
+(bare title, or the un-glossed `Rejected Proposals`) so rules 1 and 3 are pinned by a test rather
+than assumed from the fixture builder's `## N. Title` shape.
+
 ### D.4 The ordering key
 
 ```js
