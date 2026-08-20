@@ -98,6 +98,31 @@ touches only DECISIONS' front matter.
 
 ## Verification
 
+Every claim in this confirmation is measured, not inferred. Commands and results:
+
+| # | I checked | How | Result |
+|---|---|---|---|
+| V-1 | The delta is exactly one commit | hashed every DECISIONS blob in `git log -20` and matched the dispatch shas | `25f8e954` (round-11 approval) → `84deee10` (HEAD) is the single commit `8a44b84b`, +20/−3 |
+| V-2 | The delta touches no decision entry | `git show 8a44b84b -- DECISIONS`, hunk headers `@@ -4` and `@@ -27` | `DEC-A6-01`…`DEC-A6-04` (headings 144/185/226/252) are outside both hunks; byte-frozen |
+| V-3 | PLAN's own bytes unchanged | `git diff df90d1f8..HEAD -- PLAN` | empty |
+| V-4 | Other upstreams unchanged | `git diff df90d1f8..HEAD` over REQ, FSPEC, TSPEC, SIZING **and** dispatch shas vs. round 11's `UPSTREAM-STATE` trailer | empty diff; REQ `817b6745`, FSPEC `82f74a2d`, TSPEC `1531143c` all identical |
+| V-5 | The dropped integer is not one PLAN sources from DECISIONS | grepped PLAN for `twelve` / `already-migrated`; read its Overview citation | PLAN cites `SIZING-pdlc-advisory-wave-gate.md` for column (2); the DECISIONS occurrence removed was a quotation inside a relocation rationale, cited by nobody |
+| V-6 | The appendix still carries the figures PLAN restates | read `SIZING` headings at HEAD | Column (1) **four**, column (2) **twelve** (ten oracles + two green inputs), column (3) **twenty-five** — all three match PLAN's Overview |
+| V-7 | PLAN's claim *about* DECISIONS still true | read DECISIONS `## Consequences` at HEAD | "The number an implementer must not get wrong is **four**" present; no other numeric from the block remains |
+| V-8 | PLAN's structural contract still holds | replayed the shipped parsers (`parsePlanTasks`, `validatePlanContract`, `computeWaves`) against PLAN at HEAD | 11 tasks, `{"ok": true}`, 7 waves — same as round 11 |
+
+**On V-5, the one thing that could have made this cascade non-benign.** The failure mode to look for
+in a "figure deleted upstream" delta is a downstream document that reads the figure *from* the
+deleted site. PLAN does not: the consolidation done in PLAN v1.6 pointed the Overview at the
+appendix and left DECISIONS out of the read path for every column but (1). So the delete removes a
+copy, not a source. That property was designed two rounds ago and is what this round observes
+working.
+
+**Verification legs PLAN promises are undisturbed.** The DoD's full-suite leg (set-equality on the
+two expected-failing test titles plus the positive check on `PROP-SWEEP-2(b)`'s printed residual)
+and the class-split membership predicate take their inputs from TSPEC §1.3 and PLAN's own dated
+measurement. Neither is sourced from DECISIONS, and neither moved.
+
 ## Findings
 
 ## Questions
