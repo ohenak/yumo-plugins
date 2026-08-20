@@ -247,3 +247,20 @@ Exactly what must change, all in one edit, header included:
    welcome, not required.
 
 No other section of TSPEC needs to move, and nothing approved in v10/v11 is withdrawn.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | TSPEC restates AT-30 as two admits-nothing cases (`maxDocuments: 0`, `maxTotalBytes: 0`); FSPEC AT-30 at HEAD names three, adding `maxBytesPerDocument: 0` with every corpus document carrying `RSN-NO-MATERIAL` (new E-36). §T.6's fail-open arm inventory likewise lists only "No BR-6 section present" for `RSN-NO-MATERIAL`, while BR-9's catalogue now also covers "the per-document bound is zero and admits none" and D-12 is restated as "yields any material". The third case has an observable outcome the other two do not produce and needs a non-empty corpus fixture. | §I.2 (AT-30 parenthetical), §T.5 (`learningsConfig.test.js`), §T.6 (fail-open arms) |
+| F-02 | High | delta | local | FSPEC F-O-1 now assigns TSPEC **two** heading-recognition rules — the "presents as a LEARNINGS document" predicate **and** the rule by which a heading counts as one of BR-6's named sections (numbered form / bare title / prefix). TSPEC discharges only the first (§D.3) and records F-O-1 as fully discharged. The unstated rule decides which material a document contributes, so AC-2.1's ordering and AC-2.3's bound operate on an undefined selection; the `## N. Title` form is a SKILL.md convention, not an invariant of documents on disk. | §D.3, §Open Questions entry-obligation table (F-O-1 row) |
+| F-03 | Low | delta | local | Header pins upstream FSPEC `(v0.12)` and the v0.7 erratum note is titled "re-grounded on FSPEC v0.12 / REQ v0.9 at HEAD"; FSPEC is v0.13 at HEAD. The REQ v0.9 pin remains correct. No body claim is false because of the pin, but it promises a version that no longer exists. | Header table (Upstream row), v0.7 erratum note |
+
+FINDING: High | delta | local | §I.2 AT-30 parenthetical, §T.5 learningsConfig.test.js, §T.6 fail-open arms | TSPEC restates AT-30 as two zeros and `RSN-NO-MATERIAL` as "no BR-6 section present"; FSPEC v0.13 adds `maxBytesPerDocument: 0` as AT-30's third case (E-36) with every corpus document carrying `RSN-NO-MATERIAL` and consuming no slot, and widens BR-9/D-12 to "yields material" — the third case has no test obligation and no reject arm in TSPEC
+FINDING: High | delta | local | §D.3 and §Open Questions entry-obligation table, F-O-1 row | FSPEC F-O-1 now hands TSPEC two heading-recognition rules; TSPEC discharges only the document-shape predicate and states no rule for when a heading counts as one of BR-6's named sections (numbered form, bare title, or prefix), leaving the material selection AC-2.1 orders and AC-2.3 bounds undefined while recording the obligation as discharged
+FINDING: Low | delta | local | Header table Upstream row and v0.7 erratum note | Upstream pin still reads FSPEC v0.12; HEAD is v0.13 (REQ v0.9 pin remains correct)
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
