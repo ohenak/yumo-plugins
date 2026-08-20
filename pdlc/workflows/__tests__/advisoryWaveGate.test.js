@@ -21,6 +21,7 @@ import * as devModule from "../orchestrate-dev.js";
 import { execFileSync } from "child_process";
 import { createHash } from "crypto";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -1928,6 +1929,275 @@ describe("A6-15: PROP-ENV-08 — an E-6 proposal is permitted only when all thre
       // `d.js` is owned by T3 — a later wave, so the pre-CR union admitted it; T2 is the task the
       // promotion named, and the narrowed scope is `{a.js, b.js}`.
       writeFileSync(join(repo.dir, "d.js"), `export function ${E6_SYMBOL}() {}\n`);
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("out-of-envelope");
+      expect(result.resolved).toBe(false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+// ─── A6-15 (CR round 1, PM F-04 / TE F-02): AC-3.3's eleven prohibited operations ──
+//
+// PROP-ENV-10. `A6_PROHIBITIONS` was previously asserted set-equal to its own letters and read by
+// nothing; the eleven refusals it names had no test. Each arm below drives `runWaveGateSeam` to
+// the operation and asserts the refusal, and each carries a paired positive on the same fixture —
+// for the path arms, the companion in-scope repair that DOES resolve (`prohibitionPositive`).
+
+const PLAN_PATH = "docs/pdlc-advisory-wave-gate/PLAN-pdlc-advisory-wave-gate.md";
+const IMPL_CONFIG_PATH = ".claude/pdlc.config.json";
+
+/** Waves whose manifest deliberately assigns the failing wave the two prohibited paths. */
+function makeProhibitionWaves() {
+  return [
+    [{ id: "T1", files: ["a.js", PLAN_PATH, IMPL_CONFIG_PATH], description: "wave one work" }],
+    [{ id: "T2", files: ["b.js"], description: "later work" }],
+  ];
+}
+
+function makeProhibitionArgs(repo, overrides = {}) {
+  return makeA6RunArgs({
+    _git: repo._git,
+    _agent: makeAgentDouble({
+      script: [
+        makeA6ReplyText({
+          proposedAction: "E-5",
+          rootCause: "wave-internal-defect",
+          evidence: ["the gate went red at the eslint step"],
+        }),
+      ],
+    }),
+    _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+    waves: makeProhibitionWaves(),
+    ...overrides,
+  });
+}
+
+/** Write `relative` inside the fixture repo, creating parent directories as needed. */
+function writeInRepo(repo, relative, contents) {
+  const full = join(repo.dir, relative);
+  mkdirSync(join(full, ".."), { recursive: true });
+  writeFileSync(full, contents);
+}
+
+describe("A6-15: PROP-ENV-10 — each prohibited operation is refused by its own test, with its paired positive", () => {
+  // (f) the PLAN, its task table and its ownership manifest; (g) the implementation configuration.
+  // All six arms hold the manifest constant — it ASSIGNS the failing wave both paths — so what
+  // refuses them is `a6ProhibitedPaths`' subtraction, not an accident of ownership.
+  test.each([
+    ["(f) PLAN prose edit", PLAN_PATH, "## Summary\n\nrewritten prose\n"],
+    ["(f) PLAN task-table edit", PLAN_PATH, "| # | Task | Deps |\n|---|---|---|\n| T9 | new | none |\n"],
+    ["(f) PLAN ownership-manifest edit", PLAN_PATH, "### File-ownership manifest\n\n| File | Owner |\n"],
+    ["(g) testCommand change", IMPL_CONFIG_PATH, '{"implementation":{"testCommand":"npm run other"}}\n'],
+    ["(g) post-wave-command change", IMPL_CONFIG_PATH, '{"implementation":{"postWaveCommand":"echo skip"}}\n'],
+    ["(g) post-wave-pathspec change", IMPL_CONFIG_PATH, '{"implementation":{"postWavePathspecs":["dist/"]}}\n'],
+  ])("%s is refused out-of-envelope", async (_label, path, contents) => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeProhibitionArgs(repo);
+      writeInRepo(repo, path, contents);
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("out-of-envelope");
+      expect(result.resolved).toBe(false);
+      expect(result.haltFields.repairApplied).toBe(false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("paired positive: the same manifest, the same seam, a repair confined to `a.js` — resolves", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeProhibitionArgs(repo);
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("resolved");
+      expect(result.resolved).toBe(true);
+      expect(result.haltFields.repairPaths).toEqual(["a.js"]);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  // (h) commit, push, tag. Structural, and asserted as such: A6's SeamOps exposes no committing
+  // transport, so the oracle is the argv ledger of the `_git` double over a run that DID resolve
+  // (the paired positive) — an absence proved on a run that reached every step, not on a run that
+  // refused early and could not have committed anyway.
+  test.each([["commit"], ["push"], ["tag"]])(
+    "(h) a resolved A6 run performs no `git %s`",
+    async (verb) => {
+      const repo = createA6TempRepo();
+      try {
+        const gitCalls = [];
+        const _git = async (argv) => {
+          gitCalls.push(argv);
+          return repo._git(argv);
+        };
+        const args = makeProhibitionArgs(repo, { _git });
+        writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
+
+        const result = await runWaveGateSeam(args);
+
+        expect(result.resolved).toBe(true); // paired positive: the run reached its resolution
+        expect(gitCalls.filter((argv) => argv[0] === verb)).toEqual([]);
+        // `commit-tree` is the snapshot primitive, not a commit: it writes no ref to any branch.
+        expect(gitCalls.some((argv) => argv[0] === "commit-tree")).toBe(true);
+      } finally {
+        repo.cleanup();
+      }
+    }
+  );
+});
+
+// ─── A6-15 (CR round 1, TE F-08 / PM F-04): the refusal arms on an A6 fixture ──
+//
+// PROP-ENV-10's (i) arms, PROP-ENV-09, PROP-ENV-04, PROP-ENV-05 and PROP-ENV-12. The generic
+// `classifyEnvelope` unit tests cover each clause in isolation; what was missing is A6's OWN
+// `permittedActions`/`declaredScope` reaching them. The two (i) arms write their paths DURING the
+// dispatch — after `captureTreeSnapshot` has already run — so the snapshot genuinely predates the
+// repair and PROP-ENV-09's "no part of it survives" is an observation of the restored tree rather
+// than of a file the snapshot itself recorded.
+
+/** The canonical agent double, wrapped so the repair lands while the seam is mid-attempt. */
+function makeRepairingAgent(repo, reply, writes) {
+  const base = makeAgentDouble({ script: [reply] });
+  // Deliberately NOT `async`: the driver races the dispatch against its wall-clock deadline, and
+  // the doubles settle synchronously at the same microtask hop depth, so an extra `await` hop in
+  // this wrapper would lose that race and preempt every attempt (`runAdvisorySeam`'s own comment
+  // on why `dispatched` is constructed before `deadline`). The write is synchronous; the base
+  // double's promise is returned unwrapped.
+  const agent = (skill, prompt, opts) => {
+    for (const [path, contents] of Object.entries(writes)) writeInRepo(repo, path, contents);
+    return base(skill, prompt, opts);
+  };
+  agent.calls = base.calls;
+  return agent;
+}
+
+const E5_REPLY = makeA6ReplyText({
+  proposedAction: "E-5",
+  rootCause: "wave-internal-defect",
+  evidence: ["the gate went red at the eslint step"],
+});
+
+describe("A6-15: PROP-ENV-10 (i) / PROP-ENV-09 — outside-the-envelope paths, and no part surviving", () => {
+  test.each([
+    ["(i) wholly outside the computed set", { "unowned.js": "outside\n" }, ["unowned.js"]],
+    ["(i) partly inside, partly outside", { "a.js": "inside\n", "unowned.js": "outside\n" }, ["a.js", "unowned.js"]],
+  ])("%s — refused out-of-envelope and no part of it survives", async (_label, writes, paths) => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: makeRepairingAgent(repo, E5_REPLY, writes),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("out-of-envelope");
+      expect(result.resolved).toBe(false);
+      // PROP-ENV-09 — the whole proposal is gone, the in-envelope half included.
+      for (const path of paths) {
+        expect(existsSync(join(repo.dir, path))).toBe(false);
+      }
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("paired positive: the same during-dispatch write confined to `a.js` resolves and survives", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "inside\n" }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(true);
+      expect(existsSync(join(repo.dir, "a.js"))).toBe(true);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+describe("A6-15: PROP-ENV-04 / PROP-ENV-05 / PROP-ENV-12 — the precedence and vocabulary arms on an A6 fixture", () => {
+  test("PROP-ENV-04: a proposal confined to the wave's OWN owned paths, one of which is a test file, refuses `revert-on-test-touch` — X-a first, never X-d, never a permit under E-5", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: makeAgentDouble({ script: [E5_REPLY] }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+        waves: [
+          [{ id: "T1", files: ["src/writer.js", "__tests__/writer.test.js"], description: "wave one" }],
+          [{ id: "T2", files: ["b.js"], description: "later" }],
+        ],
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("revert-on-test-touch");
+      expect(args.invocations).toEqual([]); // refused at GATE: nothing was applied, nothing re-gated
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("PROP-ENV-05: a wave owning a self-modification guard path refuses `out-of-envelope` through the shipped X-e clause", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: makeAgentDouble({ script: [E5_REPLY] }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+        waves: [
+          [{ id: "T1", files: ["pdlc/workflows/orchestrate-dev.js"], description: "wave one" }],
+          [{ id: "T2", files: ["b.js"], description: "later" }],
+        ],
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("out-of-envelope");
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("PROP-ENV-12: a PROPOSED-ACTION outside `permittedActions` is refused by X-c, with no A6-specific code path", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: makeAgentDouble({
+          script: [
+            makeA6ReplyText({
+              proposedAction: "E-2",
+              rootCause: "wave-internal-defect",
+              evidence: ["the gate went red at the eslint step"],
+            }),
+          ],
+        }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
 
       const result = await runWaveGateSeam(args);
 
