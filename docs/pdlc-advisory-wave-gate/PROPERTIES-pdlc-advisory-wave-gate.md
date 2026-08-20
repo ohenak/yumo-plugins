@@ -22,18 +22,29 @@ at exactly one place — a Phase I implementation wave whose script-owned test g
 sequence, and otherwise leaves the pipeline's control flow exactly as it ships today.
 
 **Scope.** Properties derive from REQ v1.8 (AC-1.1…AC-6.4, NFR-1…NFR-6), FSPEC v1.4 (BR-1…BR-16,
-E-01…E-33, AT-01-1…AT-07-5), TSPEC v1.6 (§2–§5) and DECISIONS (DEC-A6-01…DEC-A6-04). Every property
+E-01…E-33, AT-01-1…AT-07-5), TSPEC v1.10 (§2–§5) and DECISIONS (DEC-A6-01…DEC-A6-04). Every property
 names the requirement or spec section it derives from and the PLAN task that owns its test file. No
 property ranges over the wave gate itself, wave partitioning, or the commit discipline: those are
 correct today (M-WG-3, M-WG-4) and REQ §4 puts them out of scope.
 
-**Where the tests live.** One new suite, `pdlc/workflows/__tests__/advisoryWaveGate.test.js`
-(verified absent at HEAD), carries the seam's own behaviour; ten existing suites under
-`pdlc/workflows/__tests__` are edited (all ten verified present at HEAD, including
-`advisoryEscalationLog.test.js` and `waveExecution.test.js`); one new engine-channel file,
-`pdlc/engine/__tests__/advisory-config-example.test.js` (verified absent at HEAD), carries the
+**Where the tests live.** One suite, `pdlc/workflows/__tests__/advisoryWaveGate.test.js`, carries
+the seam's own behaviour; ten existing suites under `pdlc/workflows/__tests__` are edited (all ten
+verified present at HEAD, including `advisoryEscalationLog.test.js` and `waveExecution.test.js`);
+one engine-channel file, `pdlc/engine/__tests__/advisory-config-example.test.js`, carries the
 example-config expectation. Test homes below are PLAN-owned: no property names a file the PLAN's
 file-ownership manifest does not assign to a task.
+
+**The `new` files are on disk at HEAD, and `new` means required end state.** Earlier versions of
+this paragraph recorded both files as *"verified absent at HEAD"*; that is false at HEAD and is the
+negation of the upstream this document compresses. Per TSPEC §5.1's *Status column caveat*, "`edited`
+and `new` describe each file's required end state, not work outstanding … both are on disk, the
+latter red because `.claude/pdlc.config.example.json` carries no `advisory` section at HEAD." Both
+exist at HEAD — `advisoryWaveGate.test.js` and `advisory-config-example.test.js` — because commit
+`e3b9d5a3` landed most of the test half ahead of Phase I while the production half did not move, so
+the workflows suite is **red before Phase I opens** (TSPEC §1.3's *"State of these surfaces at
+HEAD"* table). Whether those early-landed edits are reverted or PLAN's A6 batches are re-derived
+around them is PLAN's and Phase I's call, not this document's (TSPEC §1.3). No property statement,
+level assignment, oracle form or PLAN home changes on that account.
 
 **Test levels.** The pyramid here is deliberately bottom-heavy, and one level assignment is
 load-bearing rather than economical:
@@ -48,11 +59,20 @@ load-bearing rather than economical:
 **Two derivation rules this document applies throughout**, both inherited from the specs rather than
 invented here:
 
-1. **Cardinality surfaces are transcription surfaces.** A bare `expect(rows).toHaveLength(5)` is as
-   coupled to `ADVISORY_SEAMS`' cardinality as a seam-name list is. All four such sites are verified
-   at HEAD — `advisoryDisabled.test.js:622`, `advisoryQueueSeams.test.js:627`,
-   `advisoryHarvest.test.js:571`, `advisoryHarvest.test.js:726` — and are property-covered as one
-   set (PROP-SEAM-02), not left to a member-literal grep that structurally cannot find them.
+1. **Cardinality surfaces are transcription surfaces.** A bare `expect(rows).toHaveLength(…)` on a
+   report's advisory rows is as coupled to `ADVISORY_SEAMS`' cardinality as a seam-name list is.
+   There are four such sites, anchored here by block title rather than by line per DEC-DOC-01, as
+   TSPEC §1.3 re-anchored the same four: `advisoryDisabled.test.js`'s
+   `T-10-5 / PROP-DIS-05 — enabled-but-quiet reports five zero rows (S-1)` block;
+   `advisoryQueueSeams.test.js`'s assertion carrying the trailing comment
+   `ADVISORY_SEAMS drives the row list (S-1)`; and **both** sites in `advisoryHarvest.test.js` — the
+   one immediately above that file's `seamNames` literal, and the one whose neighbourhood is a member
+   *lookup* (`rows.find((r) => r.seam === "A1")`) rather than a member list. All four **already read
+   `toHaveLength(6)` at HEAD** and are red there against a five-row report (TSPEC §1.3's
+   *"State of these surfaces at HEAD"* table): the pending edit is the production constant, not these
+   assertions. The rule is unchanged by that — the sites are transcription surfaces either way, and
+   are property-covered as one set (PROP-SEAM-02), not left to a member-literal grep that structurally
+   cannot find them.
 2. **No absence-only oracle stands alone.** Every prohibition property carries a positive conjunct
    asserted on the same run (REQ AC-4.5): the disposition reached, the refusal reason recorded, the
    escalation entry written, or the shipped behaviour taken. Properties whose only assertion would
