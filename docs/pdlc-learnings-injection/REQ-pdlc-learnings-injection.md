@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 7; erratum v0.8 moves AC-3.2's not-selected rows and corpus-level outcomes to the same per-dispatch locus AC-3.3 uses, decides the malformed `learningsInjection` section fails open with a notice (AC-5.1b), and closes AC-1.2's outside-set over authoring-tagged dispatches with no C-1 document type | Claude | 0.8 | 2026-08-19 |
+| pdlc | draft — round 7; erratum v0.8 moves AC-3.2's not-selected rows and corpus-level outcomes to the same per-dispatch locus AC-3.3 uses, decides the malformed `learningsInjection` section fails open with a notice (AC-5.1b), and closes AC-1.2's outside-set over authoring-tagged dispatches with no C-1 document type; erratum v0.9 restates §1.2 claim 2's unlistable behaviour against shipped code and names this feature's divergence, scopes AC-3.1's closure to each selected document's row, and names the implementation-config reader in AC-5.1b | Claude | 0.9 | 2026-08-19 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -68,8 +68,11 @@ rather than trust it:
    LEARNINGS live at `docs/{feature}/LEARNINGS-{feature}.md`; completed features are archived under
    `docs/completed/{feature}/`. `pdlc-consolidation-agent` already ships an enumeration over exactly
    those two path shapes — tracked and untracked but not ignored, reaching one directory
-   level under `docs/` and one under `docs/completed/` — with a fail-open outcome when the listing itself fails
-   (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that shipped
+   level under `docs/` and one under `docs/completed/`. Its listing failure is **not** fail-open:
+   `consolidate-learnings.js`'s `enumerateCorpus` is total — it returns an unlistable outcome rather
+   than throwing — but the pass around it then marks itself `failed` and stops on that outcome.
+   This feature deliberately diverges and fails **open** (`RSN-UNLISTABLE`, AC-3.2), because a failed
+   listing must not halt an authoring dispatch (G-4, C-7). This feature reuses that shipped
    **pass-side** definition — the predicate `consolidate-learnings.js` declares (`LS_FILES_ARGV`) —
    by restating and pinning it, not importing it: the engine vendors only `orchestrate-dev.js` and
    `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs:20`), so `consolidate-learnings.js` is
@@ -310,8 +313,10 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   order used; the bytes injected per document; per document, whether its material was bounded
   (AC-2.3); and the total bytes injected. A dispatch that injected nothing carries an empty set of
   rows, not a missing field. The enumeration is closed over these per-dispatch row fields alone (a
-  completeness test asserts set equality); AC-3.3's rule inputs are recorded separately, at the
-  loci and under the closures AC-3.3 names.
+  completeness test asserts set equality) — that closure is over each **selected document's row**,
+  not over the dispatch record as a whole. AC-3.2's per-dispatch not-selected rows and corpus-level
+  outcomes, and AC-3.3's rule inputs, share the dispatch record but sit outside AC-3.1's set, each
+  closed by its own completeness test at the loci AC-3.2 and AC-3.3 name.
 - **AC-3.2** *Given* the same report, *when* it is read, *then* it also names, **per authoring dispatch**, the corpus documents
   **not** selected for that dispatch, each with a **per-document** reason drawn from a closed set of catalogued ids
   (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
@@ -320,7 +325,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   bounding rule takes). Truncation is **not** a member: a truncated file is either still a
   LEARNINGS document, so eligible, or `RSN-UNPARSEABLE`. States in which no document is
   known are **corpus-level outcomes**, recorded **per authoring dispatch**, alongside AC-3.1's rows
-  for that dispatch (a run-level mirror, if carried, is additive and is not the oracle), drawn from
+  for that dispatch (a run-level mirror, if carried, is additive, is not the oracle, and has a
+  deliberately unconstrained value that nothing asserts on), drawn from
   their own closed set:
   `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). The configuration notices form a
   **third** closed catalogue with two members: the malformed-section notice (AC-5.1b) and the
@@ -382,8 +388,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   catalogued notice naming the malformed section, so it is distinguishable from a deliberate
   disable (DC-01, C-9). Fail-open is the decided response: disablement is the explicit
   `enabled: false` of AC-5.1a and no non-deliberate configuration mistake turns the feature off
-  (G-1, G-4, C-7) — the same response the sibling reader ships, which keeps running on its declared
-  defaults and reports. A **misspelt section name** reads as absent, and is therefore the same
+  (G-1, G-4, C-7) — the same response `orchestrate-dev.js`'s `parseImplementationConfig` ships,
+  whose malformed section yields defaults plus an explicit operator notice. A **misspelt section name** reads as absent, and is therefore the same
   default-enabled state — consistent with AC-5.1c; no unknown-key registry is required.
 - **AC-5.1c** *Given* the section well-shaped but a **declared §4.1 key wrong-typed**, *when* the
   pipeline runs, *then* the run stays **enabled** with that key at its default and the report
