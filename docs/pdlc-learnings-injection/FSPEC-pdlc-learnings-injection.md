@@ -773,7 +773,7 @@ text into a disabled run is a test failure rather than a production discovery.
   delimited and identified by source path.
 - **AT-02** — *Given* a scripted run, *when* **every agent invocation the run makes** is
   inspected — the whole dispatch universe, not only those already classified authoring —
-  *then* the subset carrying a block **equals** the subset BR-1's classification names,
+  *then* the subset carrying a block **equals** the subset BR-1's two-conjunct rule names,
   asserted as set equality over that universe, with fixtures covering a run with no
   DECISIONS phase, a run whose Phase R has no creator, and a run with five optimizer rounds.
 - **AT-03** — *Given* the same fixtures and the same universe, *when* each non-authoring
@@ -929,8 +929,8 @@ text into a disabled run is a test failure rather than a production discovery.
 
 - **AT-33** — *Given* an enabled run, *when* the file-open calls under `docs/` are observed
   over one window covering the whole run, *then* that observed set **equals** BR-15's
-  expected set — the corpus-root enumeration plus one attempt per report-named document
-  other than the `RSN-SELF` ones — the observed set is non-empty, nothing under
+  expected set — exactly one attempt per report-named document other than the `RSN-SELF`
+  ones, the enumeration of candidate paths contributing no member — the observed set is non-empty, nothing under
   `docs/_constraints/` or `docs/_decisions/` is written, no LEARNINGS document or skill
   prompt is written, and no index, cache or state file is created anywhere.
 - **AT-34** — *Given* a disabled run observed on the **same instrument and in the same test
