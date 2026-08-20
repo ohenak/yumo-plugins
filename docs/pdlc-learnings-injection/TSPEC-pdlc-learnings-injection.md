@@ -601,8 +601,15 @@ export const LEARNINGS_NOTICES = Object.freeze(["NTC-MALFORMED", "NTC-KEYTYPE"])
 only appear in a `rejected[].reason` field, a corpus outcome only in a **corpus-outcome field** —
 `dispatches[i].corpusOutcome`, the oracle locus (REQ AC-3.2), and its run-level mirror
 `runMirror.corpusOutcome` — and a notice only in `notices[].id`. That is **four** field domains,
-not three (TE F-04), and one test per domain asserts that every value it ever carries is a member
-of that field's catalogue. The mirror's domain test is a membership test only: it constrains which
+not three (TE F-04), and one test per domain asserts that every **non-`null`** value it ever carries
+is a member of that field's catalogue. The non-`null` scoping is load-bearing for the two
+corpus-outcome domains, not a hedge: `null` is the healthy value of `dispatches[i].corpusOutcome`
+and of `runMirror.corpusOutcome` (§D.2) — it means "documents were known", not "an outcome outside
+the catalogue" — so an unscoped membership assertion would red on every happy-path run. `null` is
+deliberately **not** a member of `LEARNINGS_CORPUS_OUTCOMES`, whose set-equality test stays exactly
+`["RSN-UNLISTABLE", "RSN-EMPTY"]`; the domain test reads "`v === null || catalogue.includes(v)`".
+The `rejected[].reason` and `notices[].id` domains carry no `null` value, so the scoping is vacuous
+there and their tests are unchanged. The mirror's domain test is a membership test only: it constrains which
 *ids* may appear there, never which id does, so it does not turn the mirror into an oracle.
 
 ### D.2 The report record *(discharges F-O-3's serialisation half)*
