@@ -70,6 +70,32 @@ narrowed or withdrawn upstream by it.
 
 ## Dependencies
 
+**Upstream dependency edges re-walked at HEAD.** This confirmation's question is not "did the routed
+item land" but "is PLAN still a faithful compression of the upstream it now leans on". Every edge
+PLAN draws on DECISIONS, re-read against `84deee10`:
+
+| PLAN site | Upstream it leans on | State at `84deee10` |
+|---|---|---|
+| Overview HEAD-drift note, "the three-column size … is in a PLAN appendix, not in DECISIONS" | DECISIONS `## Consequences`, "The sizing of that co-movement lives in `SIZING-…`, not here" | Byte-unchanged. Still says exactly this. |
+| Overview HEAD-drift note, "DECISIONS now keeps only column (1)'s four" | DECISIONS `## Consequences`, "The number an implementer must not get wrong is **four**" | Byte-unchanged, and now *more* true: the delta removed the last other integer (the quoted "twelve") from the document. |
+| Changelog 1.6, "DECISIONS v1.8 relocated its three-column A6 sizing block … per POSTMORTEM-D §6 steps 1–2 and PM v8 Q-01" | DECISIONS v1.8 relocation paragraph | The paragraph survives; only its quotation of the moved bullet's cardinality changed. PLAN's row is a historical statement about *which revision performed the move*, which v1.9 does not disturb — the relocation still happened at v1.8. |
+| A6-10 steps | `DEC-A6-01`, `DEC-A6-03` | Byte-unchanged. |
+| A6-21 promotion commit | `DEC-A6-02` | Byte-unchanged. |
+| A6-04 / A6-06 engine-channel steps | `DEC-A6-04` | Byte-unchanged. |
+
+**One version-pin worth naming, and why it is not a finding.** PLAN's Upstream cell reads
+`REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` without a version pin, so the header cannot go stale on
+a DECISIONS revision bump. The only DECISIONS version number PLAN carries is in changelog row 1.6,
+and it is tense-correct as written ("DECISIONS v1.8 relocated …") — an account of a past event, not
+a claim about HEAD. This is the shape the earlier rounds pushed PLAN into, and it is why a version
+bump upstream costs PLAN nothing.
+
+**Ordering and wave map.** Wave 1's inherited-red framing, the class-1/2/3 residue partition, and
+the DoD's class-split full-suite leg all take their figures from TSPEC §1.3 and PLAN's own dated
+measurement, neither of which this delta touches. The dependency graph (`computeWaves` → 7 waves,
+boundaries green) is unchanged, and no new dependency edge is created or removed by an edit that
+touches only DECISIONS' front matter.
+
 ## Verification
 
 ## Findings
