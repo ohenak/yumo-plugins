@@ -143,4 +143,25 @@ correctly did not receive one — the instrument changed underneath it, not the 
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | A-2's exclusion clause says a future dispatch "that satisfies **neither** conjunct … yet is authoring in spirit" is excluded by construction. BR-1 excludes a dispatch that fails **either** conjunct, not only one that fails both — the very case the erratum was written for (authoring-classified, target outside the six) satisfies one conjunct and is still excluded, so A-2 read standalone describes a narrower default than BR-1 implements. Wording only; BR-1 is normative and correct. Fix: "satisfies neither" → "does not satisfy both". | `### Assumptions` → A-2 (`:1009`) |
+| F-02 | Low | inherited | nonlocal | `## Behavioral Flow` Step 0 item 5 still reads "If the dispatch is **not** one C-1 names as authoring" — the single-classification-conjunct phrasing the erratum removed from the Overview, D-2 and A-2, surviving in the one prose site the sweep did not reach. It defers to C-1, which is two-conjunct, so no behavioural divergence; but this is now the only place in the document where a reader can pick up the superseded reading. Fix: "not one C-1's rule names" or restate both conjuncts as D-2 does. | `## Behavioral Flow` → Step 0, item 5 (`:204`) |
+| F-03 | Low | delta | local | BR-15's new sentence — "compared as **sets of paths**, not as counts, so a document opened more than once neither adds a member nor changes the verdict (REQ AC-5.2)" — cites AC-5.2 for a tolerance AC-5.2 does not state. AC-5.2 constrains which corpus *paths* are touched and is silent on repeat opens; the set projection is a sound FSPEC-local instrument decision, but the parenthetical presents it as upstream's. Fix: drop the citation, or split it — cite AC-5.2 for the path-set equality and state the duplicate-open tolerance as this document's decision. | `### BR-15 — Filesystem footprint` (`:690-692`) |
+
+FINDING: Low | delta | local | `### Assumptions` → A-2 (`:1009`) | A-2 says a future dispatch satisfying "neither" conjunct is excluded by construction; BR-1 excludes a dispatch failing either conjunct, so A-2 standalone states a narrower default than BR-1 implements — wording only, BR-1 normative and correct
+FINDING: Low | inherited | nonlocal | `## Behavioral Flow` → Step 0, item 5 (`:204`) | Step 0 item 5 still says "not one C-1 names as authoring", the single-conjunct phrasing removed elsewhere this round; defers to C-1 so behaviour is right, but it is now the only site reproducing the superseded reading
+FINDING: Low | delta | local | `### BR-15 — Filesystem footprint` (`:690-692`) | The duplicate-open tolerance ("a document opened more than once neither adds a member nor changes the verdict") is cited to REQ AC-5.2, which constrains paths touched and is silent on repeat opens; the tolerance is a sound FSPEC-local instrument decision, not an upstream claim
+
+## Recommendation
+
+**Approved with minor changes.** All three routed items landed, the delta breaks nothing
+previously approved, and the document remains a faithful compression of REQ v0.9 at HEAD.
+The three Low findings are wording and citation precision — none changes behaviour, none
+gates. F-01 and F-02 are worth folding into any later touch of this document; F-03 is worth
+resolving before the TSPEC's filesystem harness is designed against BR-15 (Q-02).
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
