@@ -71,7 +71,29 @@ their PLAN task homes are byte-identical to the version I reviewed in v4.
 
 ## Oracles
 
-_(pending)_
+The delta's load-bearing claim is derivation rule 1's re-grounding, and it is a claim about existing
+code, so I checked all four sites on disk rather than trusting the prose.
+
+| Site as PROPERTIES anchors it | On disk at HEAD | Verdict |
+|---|---|---|
+| `advisoryDisabled.test.js`'s `T-10-5 / PROP-DIS-05 — enabled-but-quiet reports five zero rows (S-1)` block | block title matches verbatim; `expect(result.advisory.rows).toHaveLength(6)` at `:629` | ✅ |
+| `advisoryQueueSeams.test.js`'s assertion with trailing comment `ADVISORY_SEAMS drives the row list (S-1)` | `:634`, `toHaveLength(6)`, comment verbatim | ✅ |
+| `advisoryHarvest.test.js`, the site immediately above the `seamNames` literal | `:578` `toHaveLength(6)`, `:579` `const seamNames = …` | ✅ |
+| `advisoryHarvest.test.js`, the site whose neighbourhood is `rows.find((r) => r.seam === "A1")` | `:733` `toHaveLength(6)`, `:734` the lookup | ✅ |
+
+All four read six and are red against a five-row report, because
+`orchestrate-dev.js`'s `ADVISORY_SEAMS` is still the frozen five-member array — which is what TSPEC
+§1.3 records as the unmoved production half. So PROPERTIES' new sentence is now the same statement
+its upstream makes, in the same direction, and a Phase I author reading either one will expect the
+same baseline: red before the wave opens, with the production constant as the pending edit.
+
+The anchoring style is the other thing worth confirming: these are block titles and trailing
+comments, not `file:line`, so the round did not trade one drift-prone citation for another. That is
+DEC-DOC-01 applied, not merely cited.
+
+Oracle *forms* are unchanged everywhere. No property gained or lost a positive conjunct, no
+absence-only oracle appeared, and the negative controls (PROP-REC-07's `unknown`/`unknown` arm,
+PROP-SEAM-05's byte-for-byte baseline) read exactly as approved.
 
 ## Fixtures
 
