@@ -76,6 +76,25 @@ guard are untouched by this edit and stand as approved in v6.
 
 ## Dependencies
 
+**Batch DAG.** Re-derived nothing new: the edit adds no task, no file and no edge, so every
+`batch == max(dep batch) + 1` relation I verified in v6 is arithmetically untouched. The E-36 repair
+lands inside LI-12 (batch 5, deps LI-02 batch 2 / LI-06 batch 4) and is greened by LI-21 (batch 13,
+deps LI-20 / LI-12 / LI-23) — both already in the graph, both already ordered red-before-green. No
+new batch, no new same-batch same-new-file collision: `learningsConfig.test.js` is LI-12's alone.
+
+**Upstream precedence.** PLAN's own contract — "where a row and the TSPEC disagree, the TSPEC wins" —
+now points at a TSPEC that has **not** absorbed the v0.13 erratum. At HEAD, TSPEC §T.5's AT-30 note
+("AT-30 owns none of them … an enabled run whose BR-8 rows are present and empty") and its reason
+table (`No BR-6 section present ⇒ RSN-NO-MATERIAL`, AT-28) both still carry the pre-erratum, narrower
+readings. So F-01 and F-02 below are not PLAN inventing something: PLAN is a faithful compression of
+**TSPEC**, and the unlanded absorption sits one level up. That is where the repair should start —
+absorb E-36 and the broadened `RSN-NO-MATERIAL` into TSPEC, then take the one-touch PLAN edit — and
+it is why I do not ask for a full PLAN revision loop.
+
+**Version citations.** PLAN's Upstream field still reads `TSPEC (v0.6)` / `FSPEC (v0.10)`, and
+§Overview still says "Behaviour lives in REQ v0.9 / FSPEC v0.10 / TSPEC v0.6". HEAD is FSPEC v0.13 /
+TSPEC v0.7. This was v6's F-03, unresolved and now two erratum rounds further behind (F-04).
+
 ## Verification
 
 ## Delta-Confirmation Findings
