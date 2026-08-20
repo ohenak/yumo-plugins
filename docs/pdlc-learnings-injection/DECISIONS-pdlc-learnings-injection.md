@@ -95,6 +95,42 @@ entry says so in its own Reversibility row rather than in prose elsewhere.
 
 ## DEC-LI-01: The feature ships inside `orchestrate-dev.js`, not as a new workflow module
 
+**Context.** The feature adds roughly a dozen symbols — a config parser, four pure predicates/
+extractors, a selector, an IO shell, a renderer and an injector factory. `orchestrate-dev.js` is
+already the repository's largest module, so the instinct is to give the new region its own file.
+
+**Decision.** All of it lands in `pdlc/workflows/orchestrate-dev.js`, in one contiguous region placed
+immediately after `parseAdvisoryConfig` / `readAdvisoryConfigSafely`, so the two config readers a
+reviewer must compare sit adjacent.
+
+**Alternatives considered.**
+
+- **A new `pdlc/workflows/learnings-injection.js`** — rejected, and the rejection is mechanical, not
+  stylistic. `pdlc/engine/scripts/prepack.mjs` vendors exactly `MODULE_NAMES = ["orchestrate-dev.js",
+  "orchestrate-queue.js"]` into `pdlc/engine/vendor/workflows/`. A third file is present in this
+  repository's test run and **absent from every consumer repository the engine installs into**: the
+  feature would be green in CI and missing in production, in the failure mode that is hardest to
+  notice because nothing errors — the injector simply never exists.
+- **Extend `MODULE_NAMES` to three** — rejected. That is an edit to the engine's distribution
+  contract, whose blast radius is every consumer repository and whose own oracles live in
+  `pdlc/engine/__tests__/`. Paying a distribution-contract change for one feature's file layout
+  inverts the cost: the thing being bought is reviewer convenience, and the thing being risked is
+  the install path of every plugin consumer.
+- **Put the pure half in a new file and the shell in `orchestrate-dev.js`** — rejected for the same
+  reason as the first alternative; the pure half is where every FSPEC rule lives, so vendoring it is
+  not optional.
+
+**Constraints that forced the shape.** G-A (two-module vendoring) is a hard compatibility constraint
+of the engine channel, not a preference.
+
+**Reversibility.** Easy in one direction, hard in the other. Extracting the region into its own
+module later is a mechanical move *if and only if* `MODULE_NAMES` is extended in the same change;
+extracting it without that is the rejected alternative wearing a refactor's clothes.
+
+**Re-evaluation triggers.** `prepack.mjs` gains a glob-based or directory-based vendoring rule;
+`orchestrate-dev.js` is split for reasons unrelated to this feature; the engine ships a plugin
+mechanism that lets a consumer repository load workflow modules by name.
+
 ## DEC-LI-02: A pure selection core with one twelve-line IO shell, not an IO-carrying selector
 
 ## DEC-LI-03: One attachment point (`dispatchAndVerify`), gated on two conjuncts, not four call sites
