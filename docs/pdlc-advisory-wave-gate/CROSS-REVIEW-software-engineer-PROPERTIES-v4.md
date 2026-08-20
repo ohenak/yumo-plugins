@@ -102,7 +102,32 @@ which property. The repair is to the current-state prose and the anchors, not to
 
 ## Fixtures
 
-_TBD_
+PROPERTIES' §"Fixtures and generators" rows were re-checked against the upstream sections they
+cite at their current bytes.
+
+- **Config fixtures** (`:283`) — `waveBudgetPerRun` at `1`, `0`, `-1`, `1.5`, `"x"`, `null`, absent,
+  plus the tier-off and tier-on-A6-off whole-config arms, citing TSPEC §3.1 and §4.4. §3.1 is
+  untouched by v1.10; §4.4's rewrite narrowed a *rationale* claim, not the key table's type,
+  default or validator (`integer ≥ 0`, `1`, `nonNegativeInt` — unchanged). The fixture set still
+  covers exactly the arms §4.4 requires, including the `0` arm the rewrite went out of its way to
+  keep behaviourally guaranteed. No cascade.
+- **Example-config fixture** (`:284`) — reads the tracked `.claude/pdlc.config.example.json` and
+  names `ci-arrangement.test.js:39` and `:799`–`:819` as the pre-edit baseline. The *design* here
+  survives v1.10 intact: §5.1 still routes the new assertion to the purpose-named
+  `advisory-config-example.test.js` and still keeps `ci-arrangement.test.js` unowned. But the
+  `:799`–`:819` range no longer points at the `testCommand` regex pair (F-04), and the fixture's
+  implicit premise that the engine-channel file is yet to be authored is contradicted by §5.1's new
+  caveat (folded into F-01).
+- **Fixtures for the seam's own behaviour** — the `_agent` / `_git` / `_runCommand` doubles and the
+  snapshot round-trip fixture cite §5.2, which v1.10 did not touch. Unchanged.
+
+One fixture-adjacent gap the re-grounding creates and PROPERTIES cannot currently express: because
+`e3b9d5a3` landed the test half without the production half, the workflows suite is red *before*
+Phase I opens, so a "these oracles go red on the first constant edit" framing no longer describes
+the baseline a Phase I author will meet. TSPEC v1.10 routes the *remedy* (revert vs. re-derive
+PLAN's A6 batches) to PLAN, and I agree that is not PROPERTIES' call. What is PROPERTIES' call is
+not asserting a HEAD state that is no longer the HEAD state; that is F-01/F-02, and it is a prose
+repair, not a fixture redesign.
 
 ## Delta-Confirmation Findings
 
