@@ -298,8 +298,43 @@ promotion actually carries.
 
 ## Recommendation
 
-_TBD_
+**Needs revision**
+
+Six High findings, so the bar is not met. This is not a rejection of the shape of the work: the
+seam's trigger, its budgets, its re-gate sequence oracle, its reversibility mechanism and its
+disabled-tier inertness are all implemented faithfully and proven at the production call site, and
+several of the hardest criteria (AC-4.1 conjunct iii, AC-4.4, AC-1.4) are handled better than the
+usual bar. What is missing clusters in one place — the **record-and-report tail** of the feature, plus
+the one envelope rule that bounds A6's reach into other tasks' paths.
+
+Exactly what must change before this can be approved:
+
+1. **F-01** — implement TSPEC §3.4's three E-6 conjuncts inside `apply`, narrow E-6's `declaredScope`
+   contribution to the named later task, refuse `out-of-envelope` on any conjunct failure, and land
+   PROP-ENV-08's positive plus its out-of-set companion. Alternatively, if this was a deliberate
+   deferral, take it back to REQ/DECISIONS — the union semantics that shipped are a different
+   product rule from the one AC-3.1 states, and that decision is not engineering's to make silently.
+2. **F-02** — carry the root-cause class onto the A6 escalation-log entry, and land
+   PROP-REC-03/-04/-07 in `advisoryEscalationLog.test.js` as PLAN A6-18 allocates. Until then
+   AC-6.4's countability claim is false.
+3. **F-03** — add the wave, the root-cause class, and (on an E-6 resolution) the repair's paths and
+   owning task to the advisory record entry, asserted by set-equality over the field set.
+4. **F-04** — land the eleven prohibition refusal tests with their paired positives, and give
+   `A6_PROHIBITIONS` a production reader or remove it.
+5. **F-05** — land AC-1.5's four arms, the zero-count discriminator included.
+6. **F-06** — drive `waveImplementPrompt`'s promotion clause from a test, with PROP-GATE-09's
+   byte-identical negative.
+
+F-07 and F-09/F-10 are cheap and can ride the same revision. F-08 is routed upstream as an erratum
+and is not counted against this implementation; whether Phase CR holds for it is Q-03.
+
+One process note for harvest: five of the six High findings are *unlanded PLAN allocations* — PLAN
+A6-18 names `advisoryEscalationLog.test.js`, the eleven prohibition tests, AC-1.5's four arms and the
+record red step explicitly, and the wave that closed reported green because the suite it left behind
+does not assert them. A wave gate that is green over an allocation the PLAN made and the wave did not
+land is worth a durable signal of its own.
 
 ## Verdict
 
-_TBD_
+VERDICT: Needs revision
+{"high": 6, "medium": 2, "low": 2}
