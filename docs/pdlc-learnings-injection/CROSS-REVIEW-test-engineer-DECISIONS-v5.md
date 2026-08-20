@@ -158,4 +158,28 @@ FINDING: Low | delta | local | DEC-LI-10 / D-O-6 against TSPEC §D.1 | This delt
 
 ## Recommendation
 
+**Approved with minor changes** — DECISIONS still holds as approved against TSPEC v0.7. The erratum
+round moved TSPEC **toward** this document on the one point where the two documents were in stated
+conflict: `ERR-7` is closed with the `docType` conjunct kept, so `DEC-LI-03`'s gate is now the rule
+both FSPEC and TSPEC state, and `P-2a`/`P-2b`'s de-anchored citations now read the way `G-B`/`G-C`
+already wrote them. No decision is invalidated, no `D-O` obligation loses falsifying power in a way
+that would halt, and the confirmation is approving.
+
+What should land in DECISIONS' next revision, none of it reopening a decision: F-01 (restate
+`DEC-LI-07`'s divergence paragraph as settled and mark `D-O-9` discharged), F-02 (replace row 4 with
+the settled two-locus answer and drop the `ERR-6` routing), F-04 and F-05 (v4's two unlanded items),
+F-03 (refresh the version pins in one pass) and F-06 (name `D-O-6`'s positive-value case as the sole
+surviving falsifier of a wrongly-`null` corpus outcome). F-02 is the one worth landing **before**
+PROPERTIES transcribes oracles — it is the only item in this round with a route to a false green.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 4, "low": 2}
+
+APPROVAL-HASH: sha256:85888c03f8ee43c2e50dd26bea040d3a1716180f17dd1f582dc86e0ac736d5b6
+APPROVAL-HASH-NORMALIZED: sha256:85888c03f8ee43c2e50dd26bea040d3a1716180f17dd1f582dc86e0ac736d5b6
+REVIEWED-COMMIT: 82bd5869a765350f65436e7ea35005bc2c2ff48c
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
+UPSTREAM-STATE: FSPEC sha256:fb18dbda1cef8497143e931894d09b83871657b9c8108305948cc03566b0727c
+UPSTREAM-STATE: TSPEC sha256:f629d29d23386297f5e3ec490530f7ed6b697ec63c56acf6711d7fee14a530d5
