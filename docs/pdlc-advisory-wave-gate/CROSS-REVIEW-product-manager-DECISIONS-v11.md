@@ -35,7 +35,33 @@ upstream* — is a faithful compression of TSPEC at HEAD, not merely a plausible
 
 ## Options Considered
 
-*(pending)*
+Three readings of the delta were open before I checked bytes; two are falsified, one holds.
+
+**(a) The delta is cosmetic — a version bump and a bookkeeping cell — so confirmation is a
+formality.** Rejected. The new v1.9 paragraph asserts four checkable things about upstream: that
+REQ and FSPEC are unchanged from v1.8's authoring state; that TSPEC moved `4a092e85…` →
+`1531143c…` *within* v1.10; that TSPEC's added text sizes `PROP-SWEEP-2(b)`'s residue in §1.3 and
+routes its partition, owners and figures to PLAN's Overview HEAD-drift note and A6-00's Edit 1;
+and that DECISIONS carries no hygiene note, no sweep figure and no residue disposition. Every one
+is falsifiable, so each was checked rather than read.
+
+**(b) Dropping the integer breaks the v1.8 note's account of what moved.** Rejected on bytes. The
+sentence now reads "the already-migrated-sites bullet is folded into column (2) as one enumeration
+read two ways". `SIZING-pdlc-advisory-wave-gate.md` line 83 titles that column *"sites already at
+the post-A6 value: **twelve**, of which **ten** are oracles red at HEAD and **two** are green
+inputs"* — the subject-named bullet resolves to exactly one column there, unambiguously, and the
+appendix's own v1.0 changelog row still quotes the old bullet by name including its integer. The
+move is fully reconstructible from the pointer; the cardinality was doing no work in the sentence.
+Dropping it is a strict improvement, because the integer was a HEAD measurement sitting in the one
+document whose stated purpose is to hold none.
+
+**(c) Re-carrying upstream hashes in DECISIONS prose re-imports the short-shelf-life problem
+POSTMORTEM-D §6 exists to prevent.** Rejected, and worth stating why, because the shapes look
+alike. A content hash is not a measurement of the tree that drifts silently: it is a *self-dating
+citation anchor*, which is exactly what POSTMORTEM-D §6 step 1 asks a document to carry in place of
+a total. A stale hash announces its own staleness on the next re-grounding; a stale integer does
+not. This is the same distinction that made v1.8's relocation the right call, applied in the other
+direction.
 
 ## Decision
 
