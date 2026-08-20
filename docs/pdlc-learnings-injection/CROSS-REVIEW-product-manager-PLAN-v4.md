@@ -113,7 +113,39 @@ directory-wide closure ("a file that does not yet exist can only fail to *contri
 
 ## Verification
 
-_pending_
+Every claim in the delta that asserts something about code or about this repository's current state,
+re-measured at HEAD of `feat-pdlc-learnings-injection`:
+
+| Delta claim | Measured | Verdict |
+|---|---|---|
+| Four authoring dispatch sites, three object-literal and one positional | `orchestrate-dev.js:12861`, `:12955`, `:13657` carry `dispatchKind: "authoring"`; `orchestrate-dev.js:7663` passes `"authoring"` positionally to `runWrapped` | Holds |
+| `erratumAuthorPrompt` dispatch and land-proof retry are both `wrappedDispatch({…})` calls inside `erratumRound` | `erratumRound` declared at `orchestrate-dev.js:12790`; both call sites (`:12861`, `:12955`) lie inside it | Holds — and this is precisely why the old key was not injective |
+| `const missingAgainst = async () => {…}` closes before the retry | Opens `orchestrate-dev.js:12919`, returns at `:12927`, closes before the `if (stillMissing.length > 0)` block containing `:12955` | Holds |
+| `(converge, creatorPrompt)` | `converge` declared `orchestrate-dev.js:13628`; `const basePrompt = creatorPrompt(phaseId, featureName, …)` at `:13656`, dispatch at `:13657` | Holds |
+| `(reviewLoop, optimizerPrompt — positional argument 4 of runWrapped)` | `reviewLoop` exported at `orchestrate-dev.js:7266`; `const optPrompt = optimizerPrompt(doc, phase, feature, …)` at `:7656`, `runWrapped(optimizer, optPrompt, doc, "authoring", …)` at `:7659-7664` — `"authoring"` is argument 4 | Holds |
+| Twelve `learnings*.test.js` suites in the manifest; the other two test rows are a helper and a fixture subtree (P-A-3) | Twelve distinct `learnings*.test.js` names appear across the document; the two non-suite rows are `__tests__/helpers/learningsFixtures.js` and `__tests__/fixtures/learnings-baseline/` | Holds |
+| All twelve suites exist by end of batch 5, so batch 6's directory closure is well-defined | Latest-batch suites are LI-12 and LI-23, both batch 5 | Holds |
+| Suite files are all new — no `learnings*` file exists under `pdlc/workflows/__tests__/` at HEAD | Re-measured: the directory still contains no file matching `learnings*` (case-insensitive) | Holds — the batch-1 pre-flight measurement DoD 13 now preserves is still true today |
+
+**DoD 13 (answers my Q-07) — the two written records now have a clause that requires them.** The new
+clause reads: "LI-01's completion note exists and carries both of its written records … the one-time
+pre-flight measurement of the §Overview change-surface table's four absence claims at HEAD, and the
+H-2 engine-failure triage citing the CI run that decides it." P-A-8 gives the reason in the same
+terms I asked in: neither record is a test, the absence claims stop being checkable after batch 4 by
+construction (that is exactly why F-07 moved them out of the standing suite), and without a DoD
+clause the only thing preserving them is a batch-1 habit. This closes the loop F-07 opened — F-07
+took the absence claims out of the suite, and DoD 13 is what keeps them from evaporating entirely.
+
+**§Verification's batch-6 green-terminal row and §Traceability's §T.5 green column now use the batch
+ladder's phrasing.** Both read as a static parse of the twelve matching `learnings*.test.js` files,
+six AT-bearing, rather than "six suite files" — so the three places a reader can learn what
+`LI-T-SUITEMAP` reads now agree on the number of files read and the number that contribute. The
+green-terminal justification keeps its pre-existing-status conjunct.
+
+**Expected-red ledger unchanged and still a set equality.** No ledger row moved in the delta, and
+P-A-3's narrowing from fourteen to twelve does not add or remove a ledger member — it corrects the
+description of the universe the set equality is taken over. The 35-member AT coverage baseline
+(§Traceability) is untouched.
 
 ## Findings
 
