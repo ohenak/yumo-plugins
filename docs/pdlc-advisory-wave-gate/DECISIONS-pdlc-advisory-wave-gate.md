@@ -483,22 +483,33 @@ that a first-class per-seam `enabled` map becomes the better surface.
   drift;
   (3) **ungated hand-copy surfaces** — which no gate demands but which a later editor reads, and
   which the prose-site rule ("a comment that restates a set-equality literal is a maintenance site
-  like any other") makes **twenty, not six** (TE v6 F-02, corrected for membership by PM v7 F-02 and
-  TE v7 F-03). v1.4 applied that rule to the envelope half only; v1.5 applied it to the seam half
+  like any other") makes **twenty-five, not six** (TE v6 F-02, corrected for membership by PM v7 F-02 / TE v7 F-03
+  and raised to twenty-five by PM v8 F-02 / TE v8 F-01, which ran the recipe printed below over the
+  whole surface that recipe names — this round published it, and running it is what found the last
+  five). v1.4 applied that rule to the envelope half only; v1.5 applied it to the seam half
   but stopped at the three suites it had already been reading, and mis-included one site. Applied to
-  both halves and to the whole tree it yields **twelve seam prose sites** — in `advisoryRecord.test.js`,
+  both halves and to the whole tree it yields **seventeen seam prose sites** — in `advisoryRecord.test.js`,
   `PROP-SUM-01`'s header comment ("always emits five rows, one per `ADVISORY_SEAMS` member"), its
   `describe` title and its `test` title ("all five seams"); in `advisoryDisabled.test.js`,
   `T-10-5 / PROP-DIS-05`'s header comment, `describe` title and `test` title (all "five zero rows");
   in `advisoryHarvest.test.js`, `T-08-6`'s header comment, `describe` title, `it` title ("carries
   five rows, four of them all-zero") and the "five rows always, zero counts included" comment; and in
   `advisoryDriver.test.js`, the `T-03-6` comment above the registry ("the five per-seam
-  gate-exclusivity cases, one per `ADVISORY_SEAMS` member (PROP-GATE-01…05)") and the generated-cases
-  banner that repeats "(PROP-GATE-01…05)" while the registry banner four lines above it already reads
-  "PROP-GATE-01…06". It yields a further **eight** hand-copy sites on the envelope/defaults side: the five test-side
+  gate-exclusivity cases, one per `ADVISORY_SEAMS` member (PROP-GATE-01…05)") the generated-cases
+  banner that repeats "(PROP-GATE-01…05)" while the registry banner above it already reads
+  "PROP-GATE-01…06" (the offset v1.6 gave for that banner was wrong and is simply dropped — the
+  content anchors carry the argument, per `DEC-DOC-01`; TE v8 F-02), and the **two generated `it`
+  titles** that restate the same range, `${seam} — verifyGate is null; resolved is unreachable on
+  every path … (PROP-GATE-01…05, TSPEC §5.5, §6.5)` and `${seam} — resolved is reachable only
+  through its declared verifyGate … (PROP-GATE-01…05)` — the sharpest of the seam sites, because
+  once `A6` joins the registry those titles *print* at runtime naming a five-member range for the
+  A6 case (TE v8 F-01); and in `orchestrate-dev.js`, the **three production-side prose sites** in
+  the very file the green step edits: "`ADVISORY_SEAMS` drives the row list (S-1), so five rows
+  always appear", "still carries five zero rows rather than `undefined` (T-10-5)" and "S-1: an
+  enabled tier always reports its five rows" (PM v8 F-02). It yields a further **eight** hand-copy sites on the envelope/defaults side: the five test-side
   input transcriptions, `helpers/advisoryDoubles.js`'s hand-sync comment, `advisoryConfig.test.js`'s
   "`ADVISORY_DEFAULTS`' own key set is exactly the five keys" title (already at the post-A6 count),
-  and — the sharpest of the twenty — `orchestrate-dev.js`'s `envelope: ENVELOPE_DEFAULTS, // the
+  and — the sharpest of the envelope side — `orchestrate-dev.js`'s `envelope: ENVELOPE_DEFAULTS, // the
   four-member literal above`, a comment sitting on a line the green step itself changes, which
   becomes actively false the moment `E-5`/`E-6` land.
   Two corrections to v1.5's eleven, both of which change membership rather than the total's
@@ -510,7 +521,10 @@ that a first-class per-seam `enabled` map becomes the better surface.
   `advisoryDisabled.test.js`'s A-15 capture note ("five seams" = the seams of an earlier run),
   `advisoryQueueSeams.test.js`'s "five canonical shapes" (double kinds),
   `advisoryEnvelope.test.js`'s "five `ADVISORY_REFUSAL_REASONS` members" (a different vocabulary),
-  and `pipelineWiring.test.js`'s `_`-prefixed `NEW_SEAMS` (a different notion of seam).
+  `pipelineWiring.test.js`'s `_`-prefixed `NEW_SEAMS` (a different notion of seam), and — from the
+  production-side sweep this round added — `orchestrate-dev.js`'s "all five are total" (the record
+  parsers) and "when all five are satisfied" (LEARNINGS sections), neither of which has an advisory
+  referent.
   **How to re-derive this number instead of trusting it** — the count is a measurement with a short
   shelf life, and three rounds have now shipped a stale one: grep the advisory suites *and*
   `orchestrate-dev.js` for both `five` and `01…05`-style range restatements, read each hit in
