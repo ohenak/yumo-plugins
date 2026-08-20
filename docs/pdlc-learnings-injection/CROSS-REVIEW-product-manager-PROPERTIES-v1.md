@@ -291,3 +291,35 @@ pull toward these anchors is a habit of the authoring skills, not of this featur
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, so the bar is not met — but both are close-range fixes, and neither touches the
+document's architecture. The proof system itself is sound: 25 of 25 REQ acceptance criteria carry a
+property, all 23 PLAN tasks own a red or a green, all 35 FSPEC acceptance tests are claimed, the
+absence-only-oracle and set-equality disciplines hold throughout, and the premises are measured rather
+than asserted. What must change:
+
+1. **F-01** — correct §F.3's five BR-6 section names to FSPEC BR-6's verbatim spelling
+   (`Rejected Proposals (with rationale)`, `Open Items for Consolidation`) and the numbered
+   `## N. Title` form; correct the falsified measurement sentence; fix PROP-BOUND-05's third name; and
+   add a property whose oracle drives `extractInjectableMaterial` over a **real** corpus document, so
+   fixture-and-matcher drift reds instead of greening.
+2. **F-02** — add a static-scan property (suggested PROP-META-06, owned by LI-14) that asserts every
+   `learnings*.test.js` suite drives a scripted agent double and references no live transport, and
+   correct §C.2's AC-6.1 row to name it and PROP-ORDER-05 instead of PROP-META-01.
+
+Then, non-gating but worth taking in the same pass: the 47/66 count (F-03), the five padded §C.2 rows
+(F-04), PROP-RECORD-09's missing instrument (F-05), and the three presentational items (F-06, F-07,
+F-08).
+
+Four upstream defects are routed as errata in this dispatch's final message and are **not** counted
+against this document: FSPEC's BR-6-versus-TSPEC-§D.5 framing-byte conflict, FSPEC's undecided
+`maxBytesPerDocument: 0`, FSPEC's F-O-1 scope (BR-6 delegates the section-heading form to an open
+question that §Open Questions scopes to the document-shape predicate only) and the TSPEC consequences
+of both, plus §T.5's AT-15 suite assignment. §G.3 already identifies four of these independently, which
+is itself worth noting: the document found its own upstream defects before a reviewer did.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 3}
