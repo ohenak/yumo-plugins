@@ -73,6 +73,36 @@ behind an AT; for this AC it now points at two of the three rules that own it (F
 
 ## Behavioral Flow
 
+**D-12 (edited).** The row now asks "Does the document yield any material?" with branches
+"yes / no → `RSN-NO-MATERIAL`", replacing "Does the document carry any priority section?". This is
+the right generalisation: the zero-bound document *carries* priority sections and still contributes
+nothing, so the old question and the reason id it gated had diverged the moment E-36 was decided.
+Because FSPEC:296-297 makes this table the DC-05 branch catalogue, restating the question over
+"yields material" is what makes AT-30's zero-bound leg a **branch of a named decision** rather than
+an unowned special case.
+
+**D-9 did not travel with it, and it should have (F-01).** D-9 (FSPEC:294) still reads "Does the
+per-document byte bound bind? → **yes → bounded flag** / no". Under `maxBytesPerDocument: 0` the
+per-document bound binds in the strongest possible way, and yet no bounded flag is produced — the
+document is dropped with `RSN-NO-MATERIAL` and has no BR-8 row to flag. A test author enumerating
+D-9's branches to satisfy the DC-05 claim therefore has a branch label whose stated outcome is false
+for one reachable input, and the two rows now answer the same fixture inconsistently: D-9 says
+"bounded flag", D-12 says "`RSN-NO-MATERIAL`". One qualifier on D-9's yes-branch ("→ bounded flag,
+except where the bound is zero (D-12)") resolves it. This is a Medium, not a High: AT-30 asserts the
+D-12 outcome explicitly, so the oracle a test author would actually write is unambiguous — but the
+decision table is the artefact PLAN transcribes when it enumerates branch coverage, and it currently
+promises a flag the run does not emit.
+
+**Steps 16-17 (FSPEC:259-263, unedited).** Step 16 still says the material is "cut if it exceeds
+`learningsInjection.maxBytesPerDocument`" and marked **bounded**; step 17 accumulates contributed
+bytes. Neither step makes a framing claim of its own, so both survive the basis change intact — step
+17's "contributed bytes" now resolves to BR-6's material-only definition, which is the only
+definition in the document. Step 19's block-composition step (FSPEC:271) is where the preamble and
+delimiters are produced, and it makes no byte-accounting claim, so the "framing is charged to
+nothing" rule has no contradicting flow step to reconcile with. Clean.
+
+No other flow step, and no decision row other than D-12, is inside the diff.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
