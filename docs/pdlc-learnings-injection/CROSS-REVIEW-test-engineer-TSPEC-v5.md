@@ -54,3 +54,22 @@ seventh value. The delta's expected set is complete, and `erratumDocTypesBelow` 
 widen it because it only slices that frozen array.
 
 No claim in the delta contradicts the repository at HEAD.
+
+## Findings
+
+Nothing blocking. Under the frozen-round contract a finding blocks only if the delta broke
+something that worked, or if a load-bearing claim contradicts HEAD; neither applies. Both findings
+below are completeness gaps *inside* the new text, and both are PLAN task-text fixes.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **(b) widened the expected set with two non-authoring members, but (a)'s run-scope obligation still says only "every authoring phase" — so a fixture can satisfy (a) in full and still red.** `null` enters at Phase CR (a review round, not an authoring one) and `"LEARNINGS"` at Phase H (`dispatchKind: "harvest"`). Neither is an authoring phase, so "the run has to exercise every authoring phase" is now strictly weaker than what the assertion demands: a scripted matrix that drives R→PR faithfully and stops before CR and H observes six members, compares against eight, and reds — for a fixture-scope reason that reads as a product bug, which is the exact failure mode (d) was written to prevent one paragraph later. The information needed is already present — (b)'s table names where each member enters — so this is one clause, not new work: state that the driving run must reach **Phase CR and Phase H as well**, and that Phase H must not be stubbed out (`PHASE_H_ENABLED` is `true` at `:24`, so the shipped path reaches it, but a fixture that scripts around harvest silently drops `"LEARNINGS"`). | §A.2 (a) `:188-190` vs (b) `:192-217` |
+| F-02 | Low | Local | **"all four hand-written hops" heads a table of five numbered edit sites.** The prose numeral is the stale one — my v4 F-01 named four sites and the revision correctly found a fifth (`dispatchAndVerify`'s own destructure, `:8862-8878`), which is the terminus rather than a hop, so the sentence is defensible on a careful reading. It is still a count a PLAN author transcribes under time pressure against a table they are told has four rows. Say "five edit sites — four hops and the destination", or drop the numeral and let the table carry the count. | §A.2 (d) `:219` |
+
+DEFERRED: v3 F-01 (AT-32's byte-identity operand still unnamed) and v3 F-02 (`RETRY-ITERATION` is named as a case at `:209` but still owns no suite file) remain open and non-gating; both belong in PLAN task text.
+
+## Questions
+
+None. My v4 Q-01 is answered in (c) (`:210-217`) — once per episode, before the `for(;;)` loop,
+beside the injector, on both arms — and the answer names the reason the placement matters
+(`RETRY-ITERATION`'s call-log assertions are counting-shaped) rather than merely asserting it.
