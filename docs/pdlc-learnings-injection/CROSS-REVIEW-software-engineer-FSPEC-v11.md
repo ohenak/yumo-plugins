@@ -59,3 +59,8 @@ No High finding. Under the decision freeze, a blocking finding must be either a 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 3}
+
+APPROVAL-HASH: sha256:764414d0d049480ae616dd04fdc5fc44a70f268674d704766d0b191189c492e0
+APPROVAL-HASH-NORMALIZED: sha256:764414d0d049480ae616dd04fdc5fc44a70f268674d704766d0b191189c492e0
+REVIEWED-COMMIT: cb220f5af3e206ae6403939cb48a9ace4eb0132b
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
