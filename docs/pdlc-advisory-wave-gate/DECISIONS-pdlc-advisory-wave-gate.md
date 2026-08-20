@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.7 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.8 | 2026-08-19 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -19,6 +19,18 @@ re-derive it: a finding is resolved against **upstream at the time of the edit**
 upstream version the finding cited. Where the two differ, the resolving text says which version it
 landed on — as the engine-channel and O-8 passages below do for TSPEC v1.10 against findings
 written at v1.5/v1.6.
+**On v1.8, and the sizing block that used to live here (POSTMORTEM-D §6 steps 1–2, PM v8 Q-01).**
+Through v1.7 the `## Consequences` section carried a three-column sizing block — how many surfaces
+A6's constants touch, how many already read the post-A6 value, how many are ungated prose. It is a
+measurement of the working tree, not a consequence of a decision: its truth conditions move with
+every commit, its consumer is PLAN's batch sizing, and it produced a finding in each of five
+consecutive review rounds while `DEC-A6-01`…`DEC-A6-04` stood byte-frozen. v1.8 moves it whole to
+`SIZING-pdlc-advisory-wave-gate.md`, a PLAN appendix cited from PLAN's Overview HEAD-drift note, and
+leaves a pointer plus the one number that belongs beside the decisions. Two changes were made in the
+move: the "twelve already-migrated sites" bullet is folded into column (2) as one enumeration read
+two ways, and the clause that reconciled the two counts is deleted rather than reworded — a sentence
+naming two counts inherits the staleness of whichever one was not re-run, which is the defect
+generator POSTMORTEM-D §5 names. No decision entry is touched, and no count is restated here.
 
 ## Context
 
@@ -349,195 +361,21 @@ that a first-class per-seam `enabled` map becomes the better surface.
 - None of the four decisions changes behaviour for a repo that configures nothing:
   `ADVISORY_DEFAULTS.enabled` stays `false`, so the default-configured run is byte-identical to
   today's. This is what keeps all four ratings at "easy" reversibility.
-- Three transcribed set-equality surfaces move together when A6 lands — `ADVISORY_SEAMS`,
-  `ENVELOPE_DEFAULTS` and `ADVISORY_DEFAULTS`. The **constants** are three; their counterparts are
-  not, and the PLAN must be sized against the counterparts. Both literals are re-derived from HEAD
-  below (PM v5 F-01, closing what PM v4 F-03 / TE v4 F-01 opened): v1.2 sized the seam half against
-  a pre-`e3b9d5a3` repository, and v1.3 re-derived only the envelope half — which left the two
-  literals described in two different tenses inside one paragraph, the seam list reading as checked
-  because its neighbour had been. They are now described in one tense.
-- **The seam literal survives at one site, not six.** `["A1", "A2", "A3", "A4", "A5"]` is carried at
-  exactly one place under `pdlc/workflows/__tests__/` at HEAD: `advisoryRecord.test.js`'s
-  `rows.map((r) => r.seam)` equality inside `PROP-SUM-01` — the site TSPEC §1.3's per-seam-report-rows
-  row singles out as "**the one test-side literal not yet transcribed**". The five sites v1.2 listed
-  beside it already read `["A1" … "A6"]` and are folded into the already-migrated bullet below.
-- **The envelope literal is one definition, five hand-copies and one comment — and only one
-  oracle.** The **production definition** is `ENVELOPE_DEFAULTS` in `orchestrate-dev.js`. **Five
-  test-side transcriptions** still carry the four-member value: `advisoryDisabled.test.js`'s local
-  `disabledConfig()` fixture and its inline enabled-config object, `advisoryHarvest.test.js`'s
-  config fixture, and the frozen `ADVISORY_DEFAULTS_SHAPE` plus the property generator's shuffle in
-  `helpers/advisoryDoubles.js`. A **sixth site is prose** — the `advisoryDoubles` comment that
-  records why the frozen shape must be hand-synced restates the literal itself. A comment that
-  restates a set-equality literal is a maintenance site like any other, so the envelope's hand-sync
-  surface is **seven, not six** (TE v2 F-03): one definition, five transcriptions, one comment. The
-  count is unchanged at seven since v1.2 but its members are not — the production definition enters
-  as the already-migrated `advisoryEnvelope` assertion leaves (PM v5 F-03).
-- **None of those five transcriptions is an oracle** (TE v5 F-01). Each is an *input* — config
-  objects fed to the code under test, a double's frozen shape, a generator's shuffle — so when
-  `ENVELOPE_DEFAULTS` grows to six members all five stay green and no gate demands their edit. The
-  envelope's drift oracles are **two**, not one (PM v6 F-01, TE v6 F-01): `advisoryEnvelope.test.js`'s
-  `[...ENVELOPE_DEFAULTS].sort()` equality under `T-03-8`, and `advisoryConfig.test.js`'s
-  `PROP-CFG-02` deep equality (`expect(config).toEqual(ADVISORY_DEFAULTS)`), which compares the
-  parsed production config member-for-member and therefore descends into `envelope`. Both already
-  carry the six-member value, so neither needs an edit either — they flip red→green when production
-  moves. That is a third category beside "gate-demanded edit" and "ungated hand-copy", and it is the
-  one the record previously lost (PM v6 Q-01); the closing size line below names all three. The five are hand-*copy*
-  surfaces: what a later editor reads to decide whether the copy below is still right, where a stale
-  copy silently re-scopes a fixture instead of reddening a suite. That is a real maintenance
-  argument — it is the one the shared-double bullet below rests on — but it is a different claim
-  from "still moves", which is how v1.3 framed the count. An implementer sizing A6 off the older
-  wording would budget five edits no gate asks for.
-- **Twelve sites across both literals are already at the post-A6 value and need no edit**
-  (PM v8 F-01, correcting v1.6's "seven"). The seven was v1.2's reading carried forward, and v1.6
-  reconciled it against column (2)'s ten by asserting the ten were the *oracles among* the seven —
-  a subset relation the two integers refute. Re-derived here from the same
-  `npm test -- __tests__/advisory` run that produced column (2), the population is twelve, and the
-  true relation is the reverse of the one v1.6 stated: **column (2) *is* the oracle part of this
-  bullet** — its ten members are exactly the sites here that assert against production, which is why
-  they are red at HEAD — and the residue is **two inputs**, the `consolidationProperties.test.js`
-  generator pick (`rng.pick(["A1" … "A6"])`) and `helpers/advisoryDoubles.js`'s `SEAMS` constant,
-  green today because nothing compares them to production. Seam side (nine): `advisoryEnvelope.test.js`'s
-  `ADVISORY_SEAMS` six-member deep-equality, `advisoryRecord.test.js`'s `PROP-SUM-02` `test.each`
-  table, `advisoryHarvest.test.js`'s `T-08-6` harvest-row assertion **and** its `T-08-8` row count,
-  `advisoryDisabled.test.js`'s `T-10-5 / PROP-DIS-05`, `advisoryQueueSeams.test.js`'s `S-5`
-  row-list assertion, `advisoryDriver.test.js`'s `PROP-GATE-06` key-set equality, plus the two
-  green inputs above. Envelope side (three): `advisoryEnvelope.test.js`'s `ENVELOPE_DEFAULTS`
-  set-equality (which v1.2 wrongly listed as a four-member site) and the two readings of what v1.6
-  called `advisoryConfig.test.js`'s "re-declared `ADVISORY_DEFAULTS` literal" — its `PROP-CFG-02`
-  deep-equality and its `PROP-CFG-01` key-set equality. The five that v1.6's seven omitted —
-  `PROP-CFG-01`, `PROP-GATE-06`, `T-08-8`, `PROP-DIS-05` and `advisoryQueueSeams`'s row list — are
-  precisely the ones an implementer reading "seven sites … need no edit" would have budgeted an edit
-  for, against PLAN's own A6-05 red step ("At HEAD most of this step is **verification, not
-  editing**"). All four bare `toHaveLength(6)` sites read `6` at HEAD, checked individually.
-  **All three** envelope-side sites assert against production and all three
-  are red today, measured at HEAD (PM v6 F-01, TE v6 F-01 — which retracts the second half of
-  TE v5 F-02, the claim v1.4 transcribed). `advisoryConfig`'s is not a *dedicated* envelope
-  assertion, which is what made it easy to miss: `PROP-CFG-01` does assert only that file's *key
-  set*, its `waveBudgetPerRun` value, and key-set equality against `parseAdvisoryConfig(null)`, and
-  says nothing about envelope members — but `PROP-CFG-02` deep-equals the *whole* literal against
-  `parseAdvisoryConfig`'s output for five inputs (absent file, no `advisory` section, unparseable
-  JSON, top-level array, non-object section), and `toEqual` descends into `envelope`. Run at HEAD,
-  all five are red and each diff drops `"E-5"`, `"E-6"` **and** `"waveBudgetPerRun": 1`. (The
-  citation is to `advisoryConfig.test.js`'s `describe("PROP-CFG-02 — absent/unreadable/malformed
-  input yields ADVISORY_DEFAULTS (T-01-1)")`, **not** to PROPERTIES' `PROP-CFG-02`, which is the
-  `waveBudgetPerRun`-through-`nonNegativeInt` property and ships in this same file under a second
-  `describe` wearing the same id, `PROP-CFG-02 (A6-02)`. `PROP-CFG-01` collides the same way. A
-  reader who follows the id into PROPERTIES lands on the wrong property; follow the file and the
-  `T-01-1` deep-equality instead — PM v7 F-03. The collision is worth knowing at the bench too, since
-  a red `PROP-CFG-02` names either property.) **These two oracles clear together, at one wave
-  boundary** (TE v7 F-01, correcting v1.5): PLAN's `A6-05` row — cited by task row rather than by
-  version, since the claim was measured at HEAD and PLAN's revision table has since moved past the
-  v1.3 this passage used to name (PM v8 F-03) — carries a **Green step (A6-05 proper)** that lands
-  `export const ENVELOPE_DEFAULTS` + `E-5`, `E-6` and `export const ADVISORY_DEFAULTS` gaining
-  `waveBudgetPerRun` in the *same* green step of the *same* task, so nothing splits them in time.
-  v1.5 said the opposite, and keyed it to `A-17` — a task id that does not exist in PLAN at all
-  (`0` matches at HEAD; it survives only in `helpers/advisoryDoubles.js`'s hand-sync comment, "authored by A-17,
-  a downstream task", which is where this record picked it up) — and to `A6-02` as if it landed
-  production, when PLAN's v1.3 restructure row folded `A6-02` into `A6-05` as a **red test step**.
-  The operative reassurance was therefore backwards and is withdrawn: at `A6-05`'s wave boundary a
-  still-red `advisoryConfig` means the green step is **incomplete**, and the wave gate — which has
-  no expected-red channel — will halt on it. Scheduling is PLAN's to state; this record states the
-  taxonomy only, and points at `A6-05` for when. TSPEC §1.3's
-  `ENVELOPE_DEFAULTS` row is the drift row for the first; §1.3's `ADVISORY_DEFAULTS` row records a
-  *different* drift (`waveBudgetPerRun` already present against an absent production key) and says
-  nothing about that file's envelope member, so the `advisoryConfig` envelope observation is this
-  record's own and not §1.3's (PM v5 F-02). A reader who goes to any of these twelve expecting a
-  literal to edit finds the target value already in place. §1.3 remains the carrier of which
-  surfaces have drifted; this entry only sizes the task.
+- **The sizing of that co-movement lives in `SIZING-pdlc-advisory-wave-gate.md`, not here.** Three
+  transcribed set-equality surfaces move together when A6 lands — `ADVISORY_SEAMS`,
+  `ENVELOPE_DEFAULTS` and `ADVISORY_DEFAULTS` — and the **constants** are three while their
+  counterparts are not. The number an implementer must not get wrong is **four**: those three
+  production constants plus the one test-side literal a gate still demands
+  (`advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality inside `PROP-SUM-01`). Every other
+  total — which sites already carry the post-A6 value, which oracles flip red→green with no edit at
+  all, how many ungated prose sites restate the old cardinality, which apparent hits are false
+  positives, and the recipe for re-deriving each — is a measurement of the working tree with a short
+  shelf life, whose consumer is PLAN's batch sizing rather than this record. Those totals are
+  enumerated and re-measured in `SIZING-pdlc-advisory-wave-gate.md`, cited from PLAN's Overview
+  HEAD-drift note; this entry deliberately restates none of them (POSTMORTEM-D §6 steps 1–2,
+  PM v8 Q-01).
 - The shared double is the coupling the other two surfaces do not have: `advisoryDoubles.js` carries
   *both* literals plus the frozen defaults shape, so a partial edit reddens tests in files that never
   mention the changed constant, with a failure reason the record cannot predict. Sequencing all of
   this as **one task remains the right call** — that co-movement is the failure class A6 itself
-  exists to survive — but the size to hand PLAN is three columns, not one number:
-  (1) **gate-demanded edits** — three production constants plus **one** test-side literal
-  (`advisoryRecord`'s `rows.map` equality inside `PROP-SUM-01`);
-  (2) **oracles that flip red→green with no edit at all** — **ten**, not the two v1.5 named
-  (PM v7 F-01, TE v7 F-02). v1.5 enumerated the envelope half and carried the seam half over on
-  memory, which is the third round running that the same pair has been half-re-derived, so this
-  round counted by *running* the suites rather than reading them: `npm test -- __tests__/advisory`
-  at HEAD is 24 failed / 386 passed across 15 suites. Fourteen of those failures are members of
-  this column — assertions that already carry the post-A6 value and go green on production growth
-  alone — across ten sites. Envelope side (three sites, seven failures): `advisoryEnvelope.test.js`'s
-  `T-03-8` `ENVELOPE_DEFAULTS` set-equality; `advisoryConfig.test.js`'s `PROP-CFG-02` deep-equal
-  (five inputs, five failures); and `PROP-CFG-01`'s "`parseAdvisoryConfig(null)`'s config carries
-  `waveBudgetPerRun` defaulted to 1", whose key-set equality is red on the absent production key.
-  Seam side (seven sites, seven failures), all red against the five-member
-  `export const ADVISORY_SEAMS` in `orchestrate-dev.js`'s advisory constants block:
-  `advisoryEnvelope.test.js`'s `ADVISORY_SEAMS` six-member deep-equality; `advisoryDriver.test.js`'s
-  `PROP-GATE-06` key-set equality (its `GATE_EXCLUSIVITY_REGISTRY` already carries the `A6` row, so
-  the diff is one line, `+ "A6"`); `advisoryHarvest.test.js`'s `T-08-6` (six rows plus the
-  `seamNames` equality) **and** its `T-08-8` row count, which no review named and only the run
-  surfaced; `advisoryDisabled.test.js`'s `T-10-5 / PROP-DIS-05`; the `ADVISORY_SEAMS drives the row list (S-1)`
-  assertion inside `advisoryQueueSeams.test.js`'s **`S-5`** (the `S-1` is the trailing comment on the
-  assertion; `S-5` is the name the runner prints and the one to match a red run against — PM v8 F-04,
-  TE v8 Q-02); and `advisoryRecord.test.js`'s `PROP-SUM-02`
-  `test.each` identity case, whose `A6` entry finds no row. All ten clear at `A6-05`'s single wave
-  boundary per the bullet above — there is no point at which the suite is uniformly green mid-task,
-  and a member still red at that boundary is an incomplete green step, not a false alarm. The
-  symmetric signal is worth stating because the wave gate cannot raise it: a member of this column
-  that goes **green before** `A6-05`'s green step means production moved outside the task that owns
-  it, which is drift to escalate rather than progress to bank (PM v8 Q-02). **The
-  other ten failures are not this column:** `ADVISORY_ROOT_CAUSES`, `A6_PROHIBITIONS`, the seven
-  `nonNegativeInt` validator arms and `P-1` are red because production lacks a symbol A6 *creates*,
-  not a member it *grows*, so they size as new behaviour under column (1)'s task rather than as
-  drift;
-  (3) **ungated hand-copy surfaces** — which no gate demands but which a later editor reads, and
-  which the prose-site rule ("a comment that restates a set-equality literal is a maintenance site
-  like any other") makes **twenty-five, not six** (TE v6 F-02, corrected for membership by PM v7 F-02 / TE v7 F-03
-  and raised to twenty-five by PM v8 F-02 / TE v8 F-01, which ran the recipe printed below over the
-  whole surface that recipe names — this round published it, and running it is what found the last
-  five). v1.4 applied that rule to the envelope half only; v1.5 applied it to the seam half
-  but stopped at the three suites it had already been reading, and mis-included one site. Applied to
-  both halves and to the whole tree it yields **seventeen seam prose sites** — in `advisoryRecord.test.js`,
-  `PROP-SUM-01`'s header comment ("always emits five rows, one per `ADVISORY_SEAMS` member"), its
-  `describe` title and its `test` title ("all five seams"); in `advisoryDisabled.test.js`,
-  `T-10-5 / PROP-DIS-05`'s header comment, `describe` title and `test` title (all "five zero rows");
-  in `advisoryHarvest.test.js`, `T-08-6`'s header comment, `describe` title, `it` title ("carries
-  five rows, four of them all-zero") and the "five rows always, zero counts included" comment; and in
-  `advisoryDriver.test.js`, the `T-03-6` comment above the registry ("the five per-seam
-  gate-exclusivity cases, one per `ADVISORY_SEAMS` member (PROP-GATE-01…05)") the generated-cases
-  banner that repeats "(PROP-GATE-01…05)" while the registry banner above it already reads
-  "PROP-GATE-01…06" (the offset v1.6 gave for that banner was wrong and is simply dropped — the
-  content anchors carry the argument, per `DEC-DOC-01`; TE v8 F-02), and the **two generated `it`
-  titles** that restate the same range, `${seam} — verifyGate is null; resolved is unreachable on
-  every path … (PROP-GATE-01…05, TSPEC §5.5, §6.5)` and `${seam} — resolved is reachable only
-  through its declared verifyGate … (PROP-GATE-01…05)` — the sharpest of the seam sites, because
-  once `A6` joins the registry those titles *print* at runtime naming a five-member range for the
-  A6 case (TE v8 F-01); and in `orchestrate-dev.js`, the **three production-side prose sites** in
-  the very file the green step edits: "`ADVISORY_SEAMS` drives the row list (S-1), so five rows
-  always appear", "still carries five zero rows rather than `undefined` (T-10-5)" and "S-1: an
-  enabled tier always reports its five rows" (PM v8 F-02). It yields a further **eight** hand-copy sites on the envelope/defaults side: the five test-side
-  input transcriptions, `helpers/advisoryDoubles.js`'s hand-sync comment, `advisoryConfig.test.js`'s
-  "`ADVISORY_DEFAULTS`' own key set is exactly the five keys" title (already at the post-A6 count),
-  and — the sharpest of the envelope side — `orchestrate-dev.js`'s `envelope: ENVELOPE_DEFAULTS, // the
-  four-member literal above`, a comment sitting on a line the green step itself changes, which
-  becomes actively false the moment `E-5`/`E-6` land.
-  Two corrections to v1.5's eleven, both of which change membership rather than the total's
-  direction: `advisoryRecord.test.js`'s "the table stays exactly five rows regardless of the injected
-  newline" is **not** a member — it counts the diagnosis table's five `| Field | Value |` rows (Seam,
-  Confidence, Envelope, Disposition, Model), does not move at A6, and its twin at the head of the
-  same file was already correctly uncounted (TE v7 F-03) — and `advisoryDriver.test.js`'s two sites
-  above were missing. The other excluded false positives, each read in context rather than grepped:
-  `advisoryDisabled.test.js`'s A-15 capture note ("five seams" = the seams of an earlier run),
-  `advisoryQueueSeams.test.js`'s "five canonical shapes" (double kinds),
-  `advisoryEnvelope.test.js`'s "five `ADVISORY_REFUSAL_REASONS` members" (a different vocabulary),
-  `pipelineWiring.test.js`'s `_`-prefixed `NEW_SEAMS` (a different notion of seam), and — from the
-  production-side sweep this round added — `orchestrate-dev.js`'s "all five are total" (the record
-  parsers) and "when all five are satisfied" (LEARNINGS sections), neither of which has an advisory
-  referent.
-  **How to re-derive this number instead of trusting it** — the count is a measurement with a short
-  shelf life, and three rounds have now shipped a stale one: grep the advisory suites *and*
-  `orchestrate-dev.js` for both `five` and `01…05`-style range restatements, read each hit in
-  context, and keep only those whose referent is `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS` or
-  `ADVISORY_DEFAULTS`. The one-pattern grep is what missed `advisoryDriver.test.js`'s
-  "(PROP-GATE-01…05)", which contains no digit-free cardinality word at all.
-  **`dist/pdlc-cli.mjs` is in no column** (PM v6/v7 Q-02): it carries its own copies of
-  `ENVELOPE_DEFAULTS` and of the "four-member literal above" comment, but it is a generated artifact
-  that is never hand-edited — the wave gate's own `postWaveCommand` regenerates it and stages
-  `pdlc/workflows/dist/` (CLAUDE.md, DEC-08). An implementer who greps the constant repo-wide will
-  find it; the instruction is to leave it alone and let the gate rebuild it.
-  Column (3)'s tail is long and will stay long; the number an implementer must not get
-  wrong is column (1)'s four, and it is small. Not "roughly a dozen transcriptions" (v1.3's figure,
-  inflated by five seam sites that had already migrated), and not "one task touching three
-  constants" either. Sized as the latter, it invites exactly the partial edit the set-equality
-  discipline exists to catch (PM F-02).
+  exists to survive. That is a decision-shaped claim and stays here; its sizing does not.
