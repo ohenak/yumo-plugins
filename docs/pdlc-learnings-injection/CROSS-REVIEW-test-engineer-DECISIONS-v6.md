@@ -103,7 +103,56 @@ the document is what must catch up.
 
 ## Consequences
 
-_pending_
+**For PROPERTIES, the next reader.** Nothing here blocks it, but one item is now a false-green
+generator and is worth landing before `D-O-3`'s properties are authored. `D-O-3` asks for a property
+over `extractInjectableMaterial` with three conjuncts, one of which is "`bounded` exactly when cut".
+The natural way to write that is a generated bound over non-negative integers plus a generated
+document, asserting `bounded === (takenBytes < availableBytes)`. At `bound === 0` FSPEC v0.13 says
+the document yields nothing and leaves the selection entirely with `RSN-NO-MATERIAL` — it is not a
+`bounded` document at all. The property author has three outcomes available and only one is right:
+generate from 1 upward and silently lose the newly-decided edge (a coverage hole `AT-30` catches only
+at the workflow level, never at the unit level), keep 0 in the domain and go RED against a correct
+implementation, or shrink the bound domain *and* add the zero-case conjunct FSPEC now specifies.
+`D-O-3` should say the third out loud. This is the one place in this round where the drift, followed
+literally, produces a wrong test rather than a misdirected reader.
+
+**For the operator report (`D-O-4`) and the acknowledged C-8 gap.** `DEC-LI-08` is the only entry in
+this document that *admits* an unclosed gap and names its closing condition, which makes the
+precision of that condition load-bearing in a way the other entries' prose is not. Under
+material-only accounting the report has to carry two numbers where it previously carried one:
+realised **material** bytes, comparable to `maxTotalBytes` and the sole quantity the thresholds
+govern, and realised **block** bytes, which is what actually lands in the prompt and what any future
+displacement decision would have to yield against. Reporting only the first hides the growth term;
+reporting only the second and comparing it to §4.1 manufactures overruns. The fix is one sentence in
+`D-O-4` and one in §Stated honestly — no decision moves, and `DEC-LI-08`'s shape (static caps, no
+dynamic budget) is unaffected either way.
+
+**On what the delta made better.** Two things, worth recording because a cascade round that only
+reports drift misreads the direction of travel. First, `DEC-LI-05` is strengthened: v0.13 routes the
+zero-per-document-bound case into BR-14's enabled empty-selection run, so a third distinct
+configuration now reaches the `""`-concatenation path whose safety this decision established by
+construction, and `AT-30` asserts all three against the same oracle. A decision that survives having
+its input space widened without an added conjunct is a decision that was made at the right altitude.
+Second, F-O-1's widening removes an ownership hole that sat directly under `DEC-LI-02`'s
+never-throwing-parser family: the rule by which a heading counts as one of BR-6's named sections
+previously had no named owner, and `looksLikeLearningsDocument`'s totality obligation in `D-O-3`
+implicitly assumed one existed. It now does, on the same bytes-only, no-model-call terms, which is
+the constraint `D-O-3`'s totality property needs to be writable as stated.
+
+**Process note, carried from v5 and reinforced (F-08 in that round's terms, not re-filed here).**
+v5's lesson was that recording an `UPSTREAM-STATE:` sha is a statement of what was current, not a
+claim that anything was checked. This round is the second consecutive one to find that the *only*
+stale material in an unchanged DECISIONS is a present-tense claim about a sibling document's state
+or a quantity definition owned upstream. Both classes share a signature: a sentence whose truth
+depends on someone else's current bytes rather than on this feature's behaviour. A cascade round
+that greps this document for present-tense sibling claims and for every upstream-owned unit of
+measurement would have found F-01 and F-03 mechanically. That is a cheap addition to the role's
+cascade protocol and I record it rather than re-file it.
+
+**What this round did not do.** I did not re-read DECISIONS end to end, did not re-derive its
+code-level claims against HEAD, and did not revisit any settled decision. I read FSPEC at HEAD in the
+sections `c1d7218e..cfb3d4d6` touched, plus every FSPEC section DECISIONS cites or depends on for a
+quantity definition.
 
 ## Delta-Confirmation Findings
 
