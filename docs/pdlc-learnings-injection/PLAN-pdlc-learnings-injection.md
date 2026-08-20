@@ -290,14 +290,16 @@ is transcribed, not re-decided. Jest names carry the `LI-` prefix (§Overview).
 
 | ATs | Suite | Red (writes) | Green (satisfies) |
 |---|---|---|---|
-| AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-15, AT-16, AT-28 | `learningsSelect.test.js` | LI-07 | LI-16 |
+| AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-16, AT-28 | `learningsSelect.test.js` | LI-07 | LI-16 |
+| AT-15 (same suite, **split green**) | `learningsSelect.test.js` | LI-07 | LI-16 for the eligibility clause; **LI-19** for the corpus-level `RSN-EMPTY` and no-record clauses |
 | AT-05, AT-11, AT-12 | `learningsBlock.test.js` | LI-08 | LI-17 |
 | AT-25, AT-26, AT-27 | `learningsCorpus.test.js` | LI-09 | LI-18 |
-| AT-17, AT-18, AT-19, AT-21 (L1/L2); AT-20, AT-22 (L3) | `learningsRecord.test.js` | LI-10 | LI-19 |
-| AT-01, AT-02, AT-03, AT-06, AT-14, AT-23, AT-24, AT-29, AT-31, AT-33, AT-34, AT-35 | `learningsDispatchSet.test.js` | LI-11 | LI-20, then LI-21 for the report-shape rows |
+| AT-17, AT-18, AT-19, AT-21 (L1/L2); AT-20 (L3) | `learningsRecord.test.js` | LI-10 | LI-19 |
+| AT-22 (L3, **split green** — BR-10's two loci) | `learningsRecord.test.js` | LI-10 | LI-19 for locus 1 (`dispatches[i].orderKeys`); **LI-21** for locus 2 (`ruleInputs.thresholds`) |
+| AT-01, AT-02, AT-03, AT-06, AT-14, AT-23, AT-24, AT-29, AT-31, AT-33, AT-34, AT-35 | `learningsDispatchSet.test.js` | LI-11 | LI-20, then LI-21 for the **report-shape rows, which are exactly AT-23, AT-24 and AT-31** |
 | AT-30, AT-32 | `learningsConfig.test.js` | LI-12 | LI-21 |
 
-**Count: 9 + 3 + 3 + 6 + 12 + 2 = 35.** LI-14's `LI-T-SUITEMAP` asserts exactly this partition
+**Count: (8 + 1) + 3 + 3 + (5 + 1) + 12 + 2 = 35**, the split-green rows contributing their AT once each — a split green is two green tasks for one test, never two tests. LI-14's `LI-T-SUITEMAP` asserts exactly this partition
 mechanically, so the arithmetic above is checked by a test rather than by a reader.
 
 ### TSPEC-local cases (no FSPEC AT id, not in the 35)
@@ -309,8 +311,9 @@ mechanically, so the arithmetic above is checked by a test rather than by a read
 | `LI-T-RETRY-1…3` — one selection per dispatch (§A.2 property 2, §T.6) | `learningsDispatchSet.test.js` | LI-11 | LI-20 |
 | porcelain write-delta + static seam scan (§T.6, AC-5.2 write half) | `learningsDispatchSet.test.js` | LI-11 | LI-15 (sentinels), LI-20/LI-21 (behaviour) |
 | `LI-T-IGNORE`, `LI-T-WORKTREE` (§T.3 obligations 1 and 2) | `learningsCaptureScript.test.js` | LI-03 | LI-04, LI-05 |
-| baseline digest guard, set equality over `{caseId}` (§T.3) | `learningsBaselineGuard.test.js` | — (authored green over the fresh capture) | LI-06 |
-| `LI-T-SUITEMAP` — §T.5 closure | `learningsSuiteMap.test.js` | LI-14 | LI-15 |
+| baseline digest guard, set equality over `{caseId}` (§T.3) | `learningsBaselineGuard.test.js` | — (authored green over the fresh capture; falsified instead by LI-06's recorded three-step mutation proof, TE F-04) | LI-06 |
+| `LI-T-ARMS-1…3` — observed reason codes set-equal to the three frozen catalogues (§D.1, §T.7) | `learningsArmInventory.test.js` | LI-23 | LI-21 |
+| `LI-T-SUITEMAP` — §T.5 closure | `learningsSuiteMap.test.js` | — (**green on authoring**: six suite files, static parse, no symbol under test — TE F-02) | LI-14 itself |
 
 ### TSPEC fail-open branch inventory → entering task
 
@@ -332,8 +335,7 @@ TSPEC §T.7 is explicit that the `--per-file --branches 85` gate cannot see this
 | malformed section ⇒ `NTC-MALFORMED`, run enabled | AT-32 case 2 | LI-12 / LI-21 |
 | wrong-typed key ⇒ `NTC-KEYTYPE`, defaults | AT-32 case 3 | LI-12 / LI-21 |
 
-Twelve arms, twelve entering tasks. A task that leaves one unentered is visible here by
-inspection, which a diluted file-level percentage never would have been.
+Twelve arms, twelve entering tasks. **The table is the map; `learningsArmInventory.test.js` (LI-23) is the oracle** (TE F-07): it drives all twelve arms and asserts the observed `corpusOutcome`, `rejected[].reason` and notice ids **set-equal** to `LEARNINGS_CORPUS_OUTCOMES`, `LEARNINGS_REJECT_REASONS` and `LEARNINGS_NOTICES`, so an arm that silently stops being entered reds a test rather than surviving a reading. LI-22's row-by-row walk remains as the human cross-check that this table and that suite still name the same twelve arms — a diluted file-level percentage would have shown neither.
 
 ### TSPEC obligations and open questions → where they land
 
@@ -341,6 +343,7 @@ inspection, which a diluted file-level percentage never would have been.
 |---|---|
 | F-O-1 … F-O-7 (discharged in TSPEC) | implemented by LI-15 (F-O-3 registration, F-O-4), LI-16 (F-O-1), LI-17 (F-O-2), LI-19 (F-O-3 serialisation), LI-06 (F-O-5), LI-20 (F-O-6), LI-02 (F-O-7) |
 | T-O-1 — serialise writers on `orchestrate-dev.js`, with an explicit manifest | §File-ownership manifest; batches 7–14 |
+| §T.7's coverage obligation — the fail-open inventory, the `--per-file` floor being blind to the region | LI-23 authors the inventory suite, LI-21 greens it, LI-22 cross-checks it against the table above; DoD 3 |
 | T-O-2 — capture the baseline before the first production edit | LI-06 at batch 4, bound by LI-15's `Deps` edge |
 | T-O-3 — live-run read-cost measurement | **not a task** — operator, against REQ O-1 |
 | T-O-4, T-O-5, T-O-6 | **not tasks** — PROPERTIES, Phase P |
