@@ -96,7 +96,44 @@ The only "data" the delta introduces is a set of counts, so I treated them as cl
 
 ## Verification
 
+**Upstream fidelity re-check (DEC-ERR-03).** The confirmation is scoped to the document against its
+upstream at HEAD, not to the routed-item list, so I re-read the upstream anchors rather than
+assuming them:
+
+| Upstream | Version at HEAD | Digest at HEAD | TSPEC's recorded anchor | Verdict |
+|---|---|---|---|---|
+| REQ | 1.9 | `sha256:817b6745…` | v1.9, `sha256:817b6745…` (v1.9 changelog) | Faithful |
+| FSPEC | 1.4 | `sha256:82f74a2d…` | v1.4, `sha256:82f74a2d…` (header + v1.9 changelog) | Faithful |
+
+Neither upstream has moved since the approval round: the last REQ commit is `e619b6d6` (v1.9) and
+the last FSPEC commit is `0737fdc5` (v1.4), both already absorbed. Nothing the document cites has
+changed wording or stopped saying what TSPEC compresses it as saying. No inherited upstream-drift
+finding is owed.
+
+**What I re-ran, rather than read.** Per the falsifiability bar, every count in the delta was
+re-derived from the tree, not taken from the prose: the seven-term sweep over `git ls-files`, the
+fifteen-glob subtraction reproduced from the oracle's own helper, the class-1/2/3 partition of the
+result, and the merge-base tracked-set check behind the class-2 provenance claim. The oracle case
+name and file path in the citation were confirmed to exist verbatim.
+
+**Testability impact of the delta: none, in either direction.** The paragraph adds no acceptance
+criterion, no oracle obligation and no test-level assignment. It also does not weaken one: it does
+not tell Phase I to expect `PROP-SWEEP-2(b)` green, and PLAN's batch-1 gate wording already carries
+the matching inherited-red rule (*"PROP-SWEEP-2(b) is only partly closed … the oracle stays red at
+the wave boundary"*). Document and PLAN agree on the expected-red channel, which is the property
+that actually matters for Phase I not mistaking an unowned red for drift. Previously approved
+content is intact.
+
 ## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|-------------|
+| F-01 | Low | Process | The document's bytes changed but its version did not: the header still reads **v1.10** and the erratum is appended inside the existing v1.10 changelog entry rather than opening a v1.11 row. Two distinct byte states now both answer to "TSPEC v1.10", while downstream `PLAN`/`PROPERTIES` cite the document by version. Prior erratum rounds (v1.9 → v1.10) each took a new version row; this one did not. Mechanical traceability still works via the tier-1 commit/hash anchors, which is why this is Low. Suggested fix: open a v1.11 row carrying the erratum sentence and bump the header. | Header table; Changelog v1.10 |
+| F-02 | Low | Local | The absolute pair **28 total / 14 not closable** is already stale on the same calendar day — the same subtraction reports 32 / 18 at review-time HEAD, because class 3 grew by five committed cross-review files. The paragraph date-stamps the figure, attributes it to PLAN and states the growth mechanism, so it does not mislead; but PLAN v1.9 deliberately removed the same absolute pair from the DoD for exactly this reason. Suggested fix: keep the invariant half (*"14 are closable here; the remainder is class 2 plus a class 3 that grows"*) and drop the standalone `28`/`14`, letting PLAN's dated note be the single owner of the numbers, as the paragraph's own last sentence already promises. | §1.3, *"Sizing the hygiene residue"* |
+| F-03 | Low | Local | *"which therefore grow by one per **committed** cross-review file"* over-states the growth rule: only cross-review files that quote one of L-2's seven grep terms enter the sweep. At HEAD, ten of the feature's committed cross-review files are residual members and several others are not. Suggested fix: qualify as *"per committed cross-review file that quotes an L-2 term"* — which also documents the avoidance discipline reviewers can apply. | §1.3, *"Sizing the hygiene residue"* |
+
+All three are Low. No High and no Medium finding is raised, so the previously approved status is not
+disturbed and the erratum does not earn a follow-up revision round on its own account.
 
 ## Obligations
 
