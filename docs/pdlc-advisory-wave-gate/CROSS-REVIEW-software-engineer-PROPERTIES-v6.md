@@ -66,11 +66,48 @@ to the approved round; nothing to re-litigate.
 
 ## Oracles
 
-_(pending)_
+Oracle forms are byte-identical to the round-5 bytes I approved, so the three standing bars
+carry forward unchanged and I re-state their disposition rather than re-deriving them:
+
+- **No implementation echoes.** No oracle imports or derives its expected value from the code
+  under test; expected values remain literal transcriptions from the spec. The one place this
+  could have regressed silently is the seam list, where a lazy fix would swap a literal for
+  `devModule.ADVISORY_SEAMS`. The document still describes the intended end state as literal
+  six-member transcriptions plus the one remaining `["A1" … "A5"]` literal in
+  `advisoryRecord.test.js` — not as a derivation from production. Intact.
+- **No absence-only oracles.** Every negative assertion still carries its paired positive
+  conjunct on the same path (PROP-REC-07 and PROP-SEAM-05 were the two I checked closely in
+  round 5; their text is unchanged).
+- **Completeness by set-equality.** The enumerated contracts still pin set-equality over the
+  full enumeration rather than containment: the `GATE_EXCLUSIVITY_REGISTRY` set-equality,
+  `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality, `advisoryHarvest.test.js`'s
+  `seamNames` equality, and the `SEAMS` literal in `helpers/advisoryDoubles.js`. A deleted case
+  still fails.
+
+The two enumerations these oracles range over are also unmoved in production, which is what
+keeps the set-equality bar meaningful: `ADVISORY_REFUSAL_REASONS` is still an eight-member
+frozen array at `pdlc/workflows/orchestrate-dev.js:2301`–`:2310`, and `ADVISORY_EXCLUSIONS` is
+still `["X-a", "X-e", "X-d", "X-b", "X-c"]` at `:2315`. The document's counts (eight refusal
+reasons, five exclusion ids) are therefore still factually correct; only its line pins are
+short by four, which is the inherited Low.
 
 ## Fixtures
 
-_(pending)_
+Unchanged from the approved round; no fixture row, generator, or verbatim-string obligation was
+edited. The fixture-side claims that depend on code rather than on the document still hold:
+
+- The `SEAMS` literal in `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` remains the
+  test-double enumeration the fixtures section anchors, re-anchored in round 4 off a raw line
+  pin and still anchored by symbol rather than by `file:line` — so it cannot drift the way the
+  residual `orchestrate-dev.js` pins have.
+- The example-config fixture row is still anchored on the `const configPath` /
+  `implementation.testCommand` test in `pdlc/engine/__tests__/ci-arrangement.test.js` and
+  spells its two regexes inline; those regexes remain byte-identical to the ones in
+  PROP-CFG-03, so there is no duplication drift between property and fixture.
+- The verbatim-string discipline paragraph below the fixtures table is unchanged and still
+  governs; exact user-facing strings remain owned by the lowest layer that pins them.
+
+No fixture is newly required by this round, because this round introduced no delta.
 
 ## Findings
 
