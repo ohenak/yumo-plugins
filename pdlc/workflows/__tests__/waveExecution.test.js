@@ -1185,6 +1185,112 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(t1Add).toBeTruthy();
     expect(t1Add).not.toContain("src/two.js");
   });
+
+  // ── PROP-GATE-09 (AC-4.6) — the later task's DISPATCH is told about the promotion ──
+  //
+  // CR round 1, PM F-06: the production assembler existed and was correctly placed
+  // (`waveImplementPrompt`'s `promotionsClause`, populated from the wave loop's `promotions`
+  // map at COMMIT time), but no test drove it — half of AC-4.6 shipped unproven. These two
+  // run the SAME fixture as AT-04-5 above and differ in exactly one input: whether wave 1's
+  // A6 resolved an E-6 repair into T2's owned path. The negative is byte-identical, which is
+  // what makes the positive's clause attributable to the promotion and to nothing else.
+  const promotionFixtureArgs = (a6, gitCalls, record) =>
+    unskipArgs(
+      [
+        'describe("the block that really runs", () => {',
+        '  it("asserts something", () => {});',
+        "});",
+        "",
+      ].join("\n"),
+      {
+        record,
+        git: makeGit(gitCalls),
+        runCommand: (() => {
+          let n = 0;
+          return async () => {
+            n += 1;
+            return n === 1
+              ? { ok: false, output: "Tests: 1 failed, 39 passed\n" }
+              : { ok: true, output: "Tests: 40 passed\n" };
+          };
+        })(),
+        extra: { _runWaveGateSeam: a6.fn },
+      }
+    );
+
+  const t2Prompt = (record) => {
+    const dispatch = record.find(
+      (c) => c.skill === "se-implement" && String(c.prompt).startsWith("Implement task T2:")
+    );
+    expect(dispatch).toBeTruthy();
+    return String(dispatch.prompt);
+  };
+
+  const E6_RESOLVED_A6 = {
+    resolved: true,
+    disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
+    haltFields: {
+      rootCause: "plan-ordering-defect",
+      diagnosis: "the fix landed in T2's own file",
+      repairApplied: true,
+      repairPaths: ["src/two.js"],
+    },
+    postWaveRan: false,
+  };
+
+  const NO_REPAIR_A6 = {
+    resolved: true,
+    disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
+    haltFields: {
+      rootCause: "wave-internal-defect",
+      diagnosis: "the wave's own test file drifted",
+      repairApplied: true,
+      // Wave 1's OWN owned path: an E-5 repair, so no later task is promoted into.
+      repairPaths: ["src/one.js"],
+    },
+    postWaveRan: false,
+  };
+
+  it("PROP-GATE-09 (AC-4.6): the later task's dispatch names the promoted paths it already owns", async () => {
+    const record = [];
+    const result = await main(promotionFixtureArgs(makeA6Fake(E6_RESOLVED_A6), [], record));
+
+    expect(result.outcome).toBe("success");
+    const prompt = t2Prompt(record);
+    // The clause is addressed to T2 and names T2's OWN promoted path — the whole point of
+    // AC-4.6 is that T2 revises what exists rather than rediscovering it.
+    expect(prompt).toContain(
+      "An earlier wave's advisory gate repair (seam A6) already committed a fix into paths you " +
+        "own: src/two.js. It is on this branch already — read it, build on it, and do not revert it."
+    );
+    // Wave 1's own task is never told about a repair into someone else's path.
+    const t1 = record.find(
+      (c) => c.skill === "se-implement" && String(c.prompt).startsWith("Implement task T1:")
+    );
+    expect(String(t1.prompt)).not.toContain("advisory gate repair (seam A6)");
+  });
+
+  it("PROP-GATE-09 (paired negative): with no E-6 promotion the SAME dispatch is byte-identical", async () => {
+    const withRecord = [];
+    const withoutRecord = [];
+    const withResult = await main(promotionFixtureArgs(makeA6Fake(E6_RESOLVED_A6), [], withRecord));
+    const withoutResult = await main(promotionFixtureArgs(makeA6Fake(NO_REPAIR_A6), [], withoutRecord));
+
+    expect(withResult.outcome).toBe("success");
+    expect(withoutResult.outcome).toBe("success");
+
+    const withPrompt = t2Prompt(withRecord);
+    const withoutPrompt = t2Prompt(withoutRecord);
+
+    // Byte-identical apart from the clause: the no-promotion run must not merely omit the
+    // path list, it must not grow the paragraph at all (a run where A6 never fires — every
+    // disabled-tier run included — dispatches exactly today's prompt).
+    expect(withoutPrompt).not.toContain("advisory gate repair (seam A6)");
+    const clause =
+      "An earlier wave's advisory gate repair (seam A6) already committed a fix into paths you " +
+      "own: src/two.js. It is on this branch already — read it, build on it, and do not revert it.\n";
+    expect(withPrompt.replace(clause, "")).toBe(withoutPrompt);
+  });
 });
 
 // ─── Phase I: git failures ────────────────────────────────────────────────────
