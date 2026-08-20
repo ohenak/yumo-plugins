@@ -188,7 +188,130 @@ Three structural observations about where the disagreement lived:
 
 ## 5. Best-Guess Root Cause
 
+**Proximate cause: a DECISIONS document took on a repository measurement as a first-class section,
+and a measurement of a moving tree cannot converge inside a review loop that re-measures it one
+column at a time.**
+
+The `Consequences` sizing block answers a real and well-motivated question — how big is A6's
+transcription surface, so PLAN does not size it as "one task, three constants". Both lenses agree the
+question is worth answering and the answer has repeatedly improved. But the block's content is
+**24 test failures, twelve already-migrated sites, twenty-five hand-copy surfaces, and a set of
+excluded false positives**, all of which are facts about HEAD rather than facts about a decision.
+Three properties of that content make it structurally incompatible with a five-round cap:
+
+- **Its truth conditions move.** `e3b9d5a3` landed test-side transcriptions ahead of Phase I, so the
+  advisory suites are red at HEAD by design and the counts change with each such commit.
+- **It has no oracle.** A decision can be checked against its alternatives; an enumeration can only
+  be checked by re-running the enumeration, and each reviewer re-runs it slightly better than the
+  last. Rounds 7 and 8 escalated from grep to running the suites to running the recipe over
+  production code — three different sweeps, three different totals, each correct for its surface.
+- **It is explicitly de-weighted by the document itself** ("the number an implementer must not get
+  wrong is column (1)'s four, and it is small") while nonetheless carrying every High in the window.
+  The block that the record says matters least is the block that consumed five rounds.
+
+**Contributing cause: the repair pattern was "fix the challenged half", and a reconciliation clause
+makes that impossible.** PM's F-05 names this exactly, and the mechanism is worth stating: when a
+round re-derives column (2) and then writes a sentence relating column (2) to a *neighbouring*
+count, the new sentence is a claim about both counts — so it inherits the staleness of the one that
+was not re-run, and it converts a stale number into a stale *relation*, which is a strictly worse
+defect because it reads as reconciled. v1.6 is the clearest instance: it re-derived column (2)
+beautifully by running the suite, and the very act of reconciling it against the carried-forward
+"seven" produced round 8's blocking High. Four consecutive rounds show the same shape.
+
+**Contributing cause: reviewer verification improved faster than the document could absorb it.**
+This is not a criticism of either lens — it is the honest cost account. Rounds 1–6 were reviewed by
+reading; round 7 introduced running the suites; round 8 introduced running the document's own
+published recipe over the whole surface it names. Each escalation found true residue that the
+previous method could not have found (`T-08-8` is the crisp example: four rounds of reading missed
+it; one run found it). A loop where the measurement instrument sharpens every round will keep
+producing findings for as long as the loop runs, independent of author quality.
+
+**Contributing cause (smaller): one reviewer error was faithfully transcribed and had to be
+unwound.** TE v5 F-02's second half was wrong, v1.4 transcribed it, and TE v6 F-01 retracted it. Two
+of the five window rounds were partly spent on that cycle. This is the healthy version of the
+failure — the lens that erred caught it — but it costs a round.
+
+**Not the cause:**
+
+- *Not the decisions.* `DEC-A6-01…04` were approved on substance and byte-frozen from round 5. No
+  round-4-to-8 High touches a decision, an alternative, a reversibility rating or a re-evaluation
+  trigger.
+- *Not author non-responsiveness.* Every round produced cited commits; every reviewer verified them
+  as landing; several exceeded the ask. v1.7 addresses **all** round-8 findings, PM F-01 through
+  F-04 and TE F-01 through F-02, plus PM Q-02's early-green drift signal.
+- *Not reviewer disagreement.* One superset/subset integer split (§4), resolved by taking the
+  superset. No lens contradicted the other on substance in eight rounds.
+- *Not severity inflation.* Every window High is a verified, falsifiable defect; this postmortem
+  re-checked the round-8 pair independently (`grep -c "A-17"` on PLAN is `0`; the four bare
+  `toHaveLength(6)` sites read `6`; seventeen + eight = twenty-five as v1.7 states).
+- *Not the cap being mis-set.* Five rounds is the right budget for a decision record. The document
+  simply contains a section that is not a decision record.
+
 ## 6. Recommendation
+
+**Re-invoke Phase D for one confirmation round. Do not re-author, do not re-open the decisions, and
+before that round, move the sizing block out of DECISIONS.**
+
+The halt is a budget expiry, not a defect: v1.7 already answers every round-8 finding from both
+lenses. `MAX_LIFETIME_ROUNDS = 15` leaves seven rounds of headroom, and the expected cost of
+confirmation is one round. But re-invoking with the sizing block still in place re-opens the same
+seam that produced five consecutive Highs, so the ordered steps are:
+
+1. **Relocate the sizing block to PLAN (or to a `SIZING-` appendix PLAN cites), leaving DECISIONS
+   with a pointer and column (1)'s four.** This is the highest-value step and it is the one PM Q-01
+   and the document's own "the number an implementer must not get wrong is column (1)'s four" both
+   argue for. The block's consumer is PLAN's batch sizing; its content is a measurement of HEAD with
+   a short shelf life; and DECISIONS is the one artifact in the set that is supposed to be stable
+   after approval. Keep the published re-derivation recipe with it — the recipe is the durable
+   artifact, the totals are not. If relocation is judged out of scope at this stage, apply step 2
+   instead and accept that the block will need re-measuring at Phase I.
+2. **If the block stays, collapse the failing seam rather than re-welding it (PM Q-01).** Fold the
+   "twelve already-migrated sites" bullet into column (2) as one enumeration read two ways — twelve
+   sites at the post-A6 value, of which the ten oracles are red today and the two inputs are green —
+   and delete the reconciliation clause entirely. A reconciliation clause between two counts is the
+   defect generator identified in §5; removing it removes the class.
+3. **Adopt the one-sentence rule as a standing authoring check.** Before committing an edit to any
+   enumeration: *if this sentence names two counts, re-run both.* This is PM F-05's rule and it is
+   mechanically checkable by the author at write time, which the "re-derive" guidance it replaces
+   was not.
+4. **Run round 9 as a pure delta confirmation with scope stated in the dispatch.** Both lenses have
+   pre-committed to what they want: PM's F-01 wants twelve and the true relation (landed,
+   `17bf0e92`), F-02 wants twenty-five (landed, `31d9105b`), F-03 wants PLAN cited by task row
+   (landed, `9e81ad0d`), F-04 wants `S-5` beside the `advisoryQueueSeams` quote (landed); TE's F-01
+   wants the two `advisoryDriver` `it` titles (landed inside the twenty-five) and F-02 wants the
+   "four lines above it" offset dropped (landed — dropped, not corrected, per `DEC-DOC-01`). Scope
+   the round to those six items plus the step-1/step-2 relocation, and state that
+   `DEC-A6-01…04` are byte-frozen and out of scope.
+5. **Then flip `RESOLVED: no` → `RESOLVED: yes` in this file and re-invoke `orchestrate-dev`.**
+6. **If round 9 returns a sixth consecutive single-High on the sizing block, do not author a tenth
+   revision.** Delete the block from DECISIONS by fiat, record that deletion as a fifth decision
+   entry (`DEC-A6-05`: sizing evidence lives with the plan that consumes it, not with the record
+   that motivates it), and move to Phase P. Five rounds of correct-but-superseded integers is the
+   measured cost of keeping it; that is now evidence, not speculation.
+
+Carry forward to LEARNINGS (Phase H):
+
+- **A DECISIONS document should not carry a measurement of the working tree.** Decisions are stable
+  after approval; measurements of a moving HEAD are not, and a review loop cannot converge on one.
+  Route repository sizing to the artifact that consumes it (PLAN) and keep the *recipe* rather than
+  the *total* in the durable record.
+- **When a round re-measures one population, it must re-measure every population its edit puts in
+  the same sentence** (PM F-05, fourth consecutive recurrence — a promotion candidate). A
+  reconciliation clause between two counts is a claim about both, and a stale relation reads as
+  reconciled, which is worse than a stale number that reads as stale.
+- **A seam between two counts that fails in three or more consecutive rounds should be removed, not
+  re-welded** (PM Q-01). Fold the counts into one enumeration read two ways.
+- **A converging finding volume with a pinned single High per round is the cap's real trigger
+  signal.** Rounds 4–8 each closed one High and opened exactly one new one in the same paragraph.
+  Detecting "same section, N consecutive rounds, one High each" is cheaper than the rounds it would
+  save, and this is now the second phase in this feature to exhibit it.
+- **A run beats a reading, and the escalation should happen in round 1.** `T-08-8` survived four
+  rounds of careful reading by both lenses and fell to the first `npm test`. Where a claim is a
+  count of test sites, the authoring dispatch should run the suite before the first review, not in
+  response to the fourth finding.
+- **Landing test-side transcriptions ahead of the phase that plans them (`e3b9d5a3`) makes every
+  downstream count a measurement of a red tree.** The convenience is local; the cost lands on every
+  artifact that has to describe HEAD until Phase I closes it.
 
 ---
 
