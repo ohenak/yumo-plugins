@@ -439,7 +439,7 @@ measures on a dirty one will misread its own gate.
 **The per-batch expected-red ledger** (PM F-04, TE F-01). Read as: *after* this batch's task lands,
 these and only these of the feature's own tests are still red. It shrinks monotonically to empty.
 
-| After batch | Task | Still expected red |
+| After batch | Landed by | Still expected red |
 |---|---|---|
 | 7 | LI-15 | `learningsSelect`, `learningsBlock`, `learningsCorpus`, `learningsRecord`, `learningsDispatchSet`, `learningsConfig`, `learningsArmInventory` (whole suites) |
 | 8 | LI-16 | `learningsSelect` → **`LI-AT-15` only** (its corpus-level `RSN-EMPTY` and no-record clauses); `learningsBlock`, `learningsCorpus`, `learningsRecord`, `learningsDispatchSet`, `learningsConfig`, `learningsArmInventory` |
