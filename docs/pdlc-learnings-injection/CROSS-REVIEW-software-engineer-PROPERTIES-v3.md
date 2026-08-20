@@ -124,6 +124,41 @@ here was re-checked only for citation validity against the new bytes and is unaf
 
 ## Oracles
 
+The oracle sections were re-read against the delta for two things: an oracle whose *operand* changed
+meaning, and a defeater that the delta either strengthened or made moot.
+
+- **§O.8's M-5 — strengthened, no edit needed.** M-5 is "charge per-document framing to
+  `maxBytesPerDocument`", killed by PROP-BOUND-07 because `bytesInjected` stops equalling the
+  hand-computed material count. At v2 this mutation sat on contested ground: an implementation charging
+  framing was arguably conforming to FSPEC BR-6 as it then read, so M-5 was mutating toward one
+  upstream document and away from another. The delta removes the ambiguity — charging framing is now a
+  spec violation under both FSPEC and TSPEC, and M-5 is an unambiguous mutation of a settled rule. This
+  is the delta's clearest win for this document.
+- **§O.7's precedence argument — unaffected.** §O.7 fixes the reason-id precedence as
+  `RSN-NO-MATERIAL`, then the count cut, then the byte cut, and BR-6's new zero paragraph is written in
+  that same order ("dropped **before** the total bound with `RSN-NO-MATERIAL` … and consumes no slot").
+  Upstream landed the ordering §O.7 already assumed. The inherited `87 of 89` figure and its locally
+  checkable 9-of-9 / 19,340–50,695-bytes restatement are untouched by the delta; my v2 handling of them
+  stands.
+- **§O.7's new-blocking-causes rule is what F-02 trips.** The section's own argument is that a
+  newly-reachable blocking cause must acquire a defeater rather than inherit one. `maxBytesPerDocument: 0`
+  is exactly a newly-*decided* blocking cause: before the delta it was an undecided configuration and
+  §G.2.1's deliberate silence was defensible; after it, it is a specified path to an empty selection
+  with a specified reason id, and §O.7's rule says it needs its own oracle. The property F-02 asks for
+  is the defeater — and it is not vacuous, because a fixture with a non-empty document at
+  `maxBytesPerDocument: 0` distinguishes `RSN-NO-MATERIAL` (correct) from `RSN-BYTES` (the plausible
+  wrong answer §G.2.1 itself lists) and from a zero-byte `bounded: true` row (the answer PROP-BOUND-03
+  currently mandates).
+- **§O.1's three static-scan absences, §O.2's byte-identity oracles, §O.3–§O.6** — none takes an operand
+  from BR-6's accounting basis, AT-30, D-12 or F-O-1. Re-read, unchanged, no finding. My v2 F-03 (make
+  the shared static walk compare against §C.4's hand-transcribed literal) remains open as recorded and
+  is untouched by this delta.
+- **§O.9's generated arms.** Two of the three parameterised obligations (T-O-4 permutation/strict weak
+  ordering, T-O-5 totality) are indifferent to the delta. The third, T-O-6, is the one F-01 names: its
+  generated arm quantifies over inputs of §D.5 including `maxBytes = 0`, so whatever precondition
+  PROP-BOUND-03 acquires must be mirrored in the generator's domain, or the boundary must be routed to
+  the new property. Stating which of the two is intended is part of resolving F-01.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
