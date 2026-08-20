@@ -192,6 +192,49 @@ literal, BR-8's row key set and AT-17's closure are untouched by this round.
 
 ## Test Strategy
 
+**AT-30's third case is now a falsifiable oracle, not an emptiness check.** §I.2 requires the
+zero-bound fixture's oracle to be a set equality over the reject rows — every enumerated non-self
+path present with `RSN-NO-MATERIAL`, none `bounded` — and explicitly rejects the weaker "`selected`
+is empty" reading, because an implementation that selected the documents with `bytes: 0` would pass
+the weaker one and violate E-36's no-slot clause. It then names the mutation: reverting §D.5's
+`maxBytes <= 0` short-circuit to the cut-and-flag path reds the fixture. That is exactly the
+positive-conjunct structure the absence-oracle bar asks for (exact status + named reason + the
+retention/row assertion), and it is stated by the document rather than left to the implementer.
+
+**AT-02's fourth shape carries its mutation obligation and a sole owner.** §T.6 assigns it to
+`learningsDispatchSet.test.js` and states why sole ownership matters ("no other file may claim it,
+or the mutation check exists twice and is maintained in neither"), and its oracle is the existing
+set equality rather than a new bespoke assertion — with BR-1's second conjunct reverted, the
+code-review optimizer dispatch joins the block-carrying set and the hand-transcribed expected set
+stops matching. I verified the fixture is real: FSPEC:812 enumerates the four shapes and states the
+mutation obligation in the same sentence.
+
+**T-O-6 now states its own carve-out instead of leaving PROPERTIES to discover it.** The paragraph
+is unusually good: it names both failure modes of the naive property (with `0` in the domain and the
+cut-and-flag rule, the property reds against a conforming implementation; with `0` excluded, the
+edge falls to AT-30's L3 case with no unit oracle) and resolves them — keep `0` in the domain, state
+the zero conjunct. The added corpus-driven conjunct for §D.3's matcher is the property this feature
+most needs, since it is the one assertion that runs the matcher against text nobody wrote as a
+fixture. v12 F-04's undecided `bounded` value is closed.
+
+**§D.3's fixture obligation is the right shape.** "At least one fixture must carry a
+non-canonical-but-matching form (bare title, or the un-glossed `Rejected Proposals`) so rules 1 and
+3 are pinned by a test rather than assumed from the fixture builder's `## N. Title` shape" — this is
+the finding I would otherwise have filed. A fixture builder that only ever emits the numbered,
+glossed form leaves the ordinal-strip and gloss-strip branches unexercised while looking green.
+
+**What the strategy still does not cover.** Two gaps, both recorded below:
+
+- AT-11's oracle reads the extractor's report rather than the block (F-01). The suite placement is
+  right; the operand is not.
+- No test in §T.5 pins the material **assembly** rule, and none can while §D.3 stops at per-section
+  extent (F-04). AT-12's ASCII cut fixture pins the bound-equals-count case, which happens to be
+  insensitive to the join rule; AT-11's non-cut expected count is not.
+
+Neither is a coverage-mode gate or routing-branch gap: the routing branches this feature introduces
+(enabled/disabled, malformed, three zero thresholds, `RSN-*` catalogue) all have L3 workflow-level
+owners in §T.5, and I re-checked that the 35-AT inventory is disjoint and complete after this round.
+
 ## Open Questions
 
 ## Recommendation
