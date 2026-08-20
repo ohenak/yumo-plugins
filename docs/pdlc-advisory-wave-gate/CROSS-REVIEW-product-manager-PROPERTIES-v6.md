@@ -109,6 +109,26 @@ equality over the catalogue, and PROP-SEAM-02's set equality over the seam list.
 
 ## Fixtures
 
+Unchanged since v5, and every fixture claim I can measure still measures true:
+
+| Fixture row | Claim | Measured at HEAD |
+|---|---|---|
+| Doubles home | All doubles live in `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` (A6-01) | File exists; `const SEAMS` at `:354` carries the six-member form `["A1" … "A6"]` — the end state the row records |
+| Real-repository fixture builder | Shape already ships as `advisoryDodSeams.test.js:371` | Resolves: `mkdtempSync(join(tmpdir(), "pdlc-a3-fixture-"))` |
+| Config fixtures | `waveBudgetPerRun` ∈ {`1`, `0`, `-1`, `1.5`, `"x"`, `null`, absent}, plus tier-off and tier-on-A6-off arms | Unchanged; still matches REQ §5 C-2's default `1` and TSPEC §4.4's validator, both at the digests v5 recorded |
+| Example-config fixture | Tracked `.claude/pdlc.config.example.json`; `ci-arrangement.test.js`'s module-scope `configPath` is the precedent, and the `implementation.testCommand` regexes are the pre-edit baseline | `pdlc/engine/__tests__/ci-arrangement.test.js` exists with that `configPath` symbol and that test title; anchored by symbol/title, not line pin |
+| Verbatim-string discipline | Eight refusal reasons in shipped order (`orchestrate-dev.js:2297`–`:2306`), five exclusion ids (`:2311`) | **Both pins stale.** `ADVISORY_REFUSAL_REASONS` declares at `:2301` with members `:2302`–`:2309`; `ADVISORY_EXCLUSIONS` now declares at `:2315`. The *content* claims are exact — eight reasons in the order transcribed, five exclusion ids `["X-a", "X-e", "X-d", "X-b", "X-c"]` — only the anchors point at the wrong lines |
+
+The verbatim-string row is the one item carried from v5 and it has, if anything, drifted further
+(the exclusion-set pin `:2311` pointed at a comment when I measured it in round 5; the declaration
+now sits at `:2315`). This is exactly the failure mode DEC-DOC-01 exists to prevent, and exactly why
+the fix is to anchor on the symbol names rather than to re-pin the numbers. It is Low and `Process`,
+not gating: no property, no oracle, and no acceptance criterion depends on the line number — the
+transcribed literals themselves are correct against HEAD.
+
+No fixture introduces behaviour the REQ does not ask for, and no fixture is dead: every one named
+above is claimed by at least one property in §A–§H and by at least one PLAN task in §C-3.
+
 ## Findings
 
 ## Questions
