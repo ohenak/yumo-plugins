@@ -130,6 +130,127 @@ an entry belongs to, which is the first question AC-6.1 orders the record to ans
 entry, and assert the field set by set-equality against the transcribed literal as PLAN A6-18's
 record red step requires — containment would pass a dropped field.
 
+### F-04 (High) — AC-3.3's prohibitions are asserted by no test, and the catalogue has no reader
+
+AC-3.5 is explicit: *"Each excluded operation enumerated in AC-3.2 and AC-3.3 is asserted by **its
+own test**."* AC-4.5 adds the paired-positive rule. PLAN A6-18 sizes it: *"Prohibitions `(f)`…`(i)`:
+eleven tests, id set compared by set-equality against `A6_PROHIBITIONS`, every one carrying its
+paired positive per AC-4.5."*
+
+Shipped: `A6_PROHIBITIONS` (`orchestrate-dev.js:1964`) is asserted set-equal to `["f","g","h","i"]`
+and frozen (`__tests__/advisoryEnvelope.test.js:344-347`) and that is all. `grep -rn A6_PROHIBITIONS`
+over the repository returns the declaration, the generated `dist/pdlc-cli.mjs` copy, and that one
+test — **no production code path reads it**, and `advisoryWaveGate.test.js` never mentions it
+(`grep -n A6_PROHIBITIONS __tests__/advisoryWaveGate.test.js` → no output). None of the eleven
+refusal cases exists: no test drives A6 to a PLAN edit, a task-table edit, an ownership-manifest
+edit, a `testCommand`/post-wave-command/post-wave-pathspec change, a commit, a push, a tag, a
+wholly-outside path, or a partly-outside path.
+
+Two distinct product problems ride on this. (a) The exported catalogue is dead config in the sense
+DC-07 names — a declared contract with no production caller, whose only assertion is that it equals
+itself. (b) AC-3.3's four prohibitions are the boundary that keeps A6 out of the PLAN and out of git
+history; asserting the *letters* proves nothing about the *refusals*. The tier-wide exclusions do
+hold in production and are tested — `runAdvisorySeam` builds its context with
+`guardPaths: effectiveGuardPaths(undefined)` (`:4034`), so AC-3.2's clause (e) binds A6 — but that
+covers AC-3.2, not AC-3.3.
+
+**To resolve:** land the eleven refusal tests with their paired positives against `runWaveGateSeam`,
+and either wire `A6_PROHIBITIONS` into the refusal path that consumes it or drop the constant so no
+reader mistakes it for an enforced contract.
+
+### F-05 (High) — AC-1.5's cardinality oracle is untested, discriminator included
+
+AC-1.5 makes the observable explicit: *"The observable is **cardinality on a named surface**, not
+mention … exactly one inapplicability notice, not per wave, naming every absent prerequisite …
+none in a run where A6 applies."* AT-01-5 and PROP-SEAM-07 restate it, and PLAN A6-18 allocates four
+arms: BL-03 alone, BL-04 alone, both absent, and **the zero-count discriminator**.
+
+The production carrier is correctly built: the config read is hoisted above the `!waveMode` branch
+(`orchestrate-dev.js:14756-14761`) and the causes are joined into one `emit`
+(`:14767-14778`), which is the right shape. But no test counts anything. `grep -rn "inapplicab"
+pdlc/workflows/__tests__/` returns nothing; `grep -rn "worktree exception path"` returns two
+incidental mentions in `implPhase.test.js:301` and `waveExecution.test.js:430`, neither of which
+counts statements or asserts the both-absent single-statement shape. PROP-SEAM-07 is uncited
+anywhere under `__tests__/`.
+
+The missing arm that matters most is the zero-count discriminator PLAN names: *"without it a carrier
+that emits the notice unconditionally satisfies (i)–(iii) and nothing catches it."* As shipped,
+AC-1.5 is a claim with no falsifier — the one thing the criterion's own text says it must not be
+("silently indistinguishable from a quiet seam").
+
+**To resolve:** land the four arms as PLAN A6-18 allocates, counting statements over the whole
+notice surface with no authorship filter, including the run-where-A6-applies zero case.
+
+### F-06 (High) — the later task is told about a promotion by production code no test drives
+
+AC-4.6: *"The repair's paths and the later PLAN task that owns them are named in the advisory record
+(AC-6.1), and **that later task's dispatch is told which of its owned paths already carry the
+promotion**, so it revises what exists rather than rediscovering it."*
+
+The production assembler exists and is correctly placed: `waveImplementPrompt(task, featureName,
+promotions)` builds the clause (`orchestrate-dev.js:10203-10219`), and the wave loop populates
+`promotions` at commit time (`:15239`) so no task is told about a repair not yet on the branch.
+That much is good design. What is missing is any test that drives it: `grep -rn "already committed a
+fix into paths"` and `grep -rn "waveImplementPrompt"` over `pdlc/workflows/__tests__/` both return
+nothing, and PROP-GATE-09 — which requires the positive clause **and** a byte-identical negative when
+the map has no row — is uncited.
+
+`waveExecution.test.js:1128` (AT-04-5) does drive the production path for the *commit* half, and
+does it well: it asserts the dedicated `chore(test-feat): wave 1 advisory promotion (T2)` commit, the
+pathspec `["add","--","src/two.js"]`, and that T1's own `add` was not widened — on a fixture whose
+later-task path sits outside every configured post-wave pathspec, so it is genuinely red against
+pre-A6 behaviour. But that same test asserts neither of AC-4.6's other two clauses (the record
+naming, F-03; the dispatch clause here), so half the criterion ships unproven.
+
+**To resolve:** extend AT-04-5 (or add PROP-GATE-09's own test) to assert the dispatched prompt for
+the later task contains the promotion clause naming its paths, plus the byte-identical negative.
+
+### F-07 (Medium) — a content-free oracle where the property demands containment
+
+PROP-REST-08 requires, on the capture-failure run, *"an escalation entry is written whose text
+**contains the failing git verb** observed on the `_git` double."* The shipped test asserts only
+existence (`__tests__/advisoryWaveGate.test.js:1533-1534`):
+
+```js
+const escalationEntry = files.files["docs/_queue/ESCALATIONS.md"];
+expect(escalationEntry).toBeDefined();
+```
+
+An entry whose decision sentence lost the diagnostic — the operator-relevant content — passes. The
+record half of the same test is properly transcribed (`| Disposition | escalated |`, `| Model | n/a |`),
+which is what makes this one stand out as a weakened oracle rather than a design choice.
+
+**To resolve:** assert containment of the observed failing verb, as the property specifies.
+
+### F-08 (Medium, Process) — AC-5.1's ignored-path arm ships as `test.todo`
+
+The suite reports `1 todo`: `__tests__/advisoryWaveGate.test.js:500`, the `.gitignore`d-path restore
+round trip, marked pending on TSPEC §6 OQ-7. The shipped restore runs `git clean -fd`
+(`orchestrate-dev.js:12408`), not `-fdx`, so a `.gitignore`d file A6 wrote survives a restore — while
+AC-5.1 says the tree must be *"observably identical to its state immediately before A6 acted"* with
+no carve-out, and FSPEC BR-9 / AT-05-1 say "tracked and untracked alike, generated outputs included."
+
+The pending marker is honestly placed and the reasoning in the surrounding comment is sound; the
+defect is upstream, not here, and I am routing it as an erratum on REQ and FSPEC rather than scoring
+it against this implementation. I record it Medium/Process because shipping a P0 reversibility
+criterion with an unresolved boundary is a state the pipeline should surface, not absorb.
+
+### F-09 (Low) — stale cardinality prose after the catalogue went to six
+
+`orchestrate-dev.js:3466` still reads *"so five rows always appear"* and `:14393` *"an
+enabled-but-quiet run still carries five zero rows"*, after `ADVISORY_SEAMS` became six members
+(`:1952`). The behaviour is correct and tested by literal transcription
+(`advisoryEnvelope.test.js:317`, `advisoryRecord.test.js:496`); only the prose drifted.
+
+### F-10 (Low) — a fixture uses a root-cause class outside AC-2.2's closed set
+
+`waveExecution.test.js:1135` builds its A6 reply with `rootCause: "cross-file-drift"`, which is not a
+member of AC-2.2's closed, ordered set (`plan-ordering-defect`, `wave-internal-defect`,
+`environmental`, `unclassified`, transcribed at `orchestrate-dev.js:1956-1961`). Nothing validates
+`haltFields` at that call site so the test passes, but a fixture is documentation: a reader takes the
+vocabulary it uses as authorised. Use `plan-ordering-defect`, which is also the class an E-6
+promotion actually carries.
+
 ## Questions
 
 _TBD_
