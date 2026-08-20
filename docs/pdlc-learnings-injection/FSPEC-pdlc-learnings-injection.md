@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.6 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.7 | 2026-08-19 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -23,6 +23,11 @@ depends-on: []
 > run; a malformed section fails open to those defaults with `NTC-MALFORMED` (AC-5.1a/b).
 > `ADVISORY_DEFAULTS` leaves `enabled` `false`, so that contrast is corrected; E-13's rule
 > stands, its provenance declared not measured.
+
+> **v0.7 erratum follow-up (FSPEC v7 delta-confirmation findings).** E-13's provenance is
+> restored to its measured two-repository scope; the AC-6.2 traceability row is restored
+> to AT-31, AT-32; and AT-32 gains a positive-presence conjunct so its equality check is
+> no longer vacuously green.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
@@ -126,7 +131,7 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | AC-5.2 | BR-15 | AT-33, AT-34 |
 | AC-5.3 | BR-16 | AT-35 |
 | AC-6.1 | §Acceptance Tests preamble | all ATs |
-| AC-6.2 | §Acceptance-test preamble, AT-31 | AT-31 |
+| AC-6.2 | §Acceptance-test preamble, AT-31, AT-32 | AT-31, AT-32 |
 
 ### Binding constraints inherited
 
@@ -679,7 +684,7 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-10 | Eligible count exceeds `maxDocuments` | Exactly `maxDocuments` taken; remainder `RSN-COUNT` | AT-07, AT-08 |
 | E-11 | Two documents share a `Date Completed` value | Tiebreak by path byte order; order is stable across runs | AT-09 |
 | E-12 | A document has no `Date Completed` row (measured: 2 of 89 at HEAD) | Ranked by tiebreak alone; still eligible; never excluded for it | AT-10 |
-| E-13 | A `Date Completed` row carrying free text after the date (declared; not seen at HEAD) | The leading date is read; trailing text does not make it unparseable | AT-10 |
+| E-13 | A `Date Completed` row carrying free text after the date (measured: 2 of 89 at HEAD, both in regime-ledger; none in yumo-plugins) | The leading date is read; trailing text does not make it unparseable | AT-10 |
 | E-14 | A `Date Completed` value is entirely unparseable as a date | Treated as absent; tiebreak applies; document remains eligible | AT-10 |
 | E-15 | One document exceeds `maxBytesPerDocument` | Material cut at the bound per BR-6; row flagged **bounded**; document still contributes | AT-11 |
 | E-16 | A document's **first** priority section alone exceeds `maxBytesPerDocument` | That section taken up to the bound and cut; row flagged bounded | AT-12 |
@@ -876,7 +881,10 @@ text into a disabled run is a test failure rather than a production discovery.
 - **AT-32** — *Given* the section absent, *and separately* the file absent, *and
   separately* a misspelt name (`learningsInjectoin`), *when* the
   pipeline runs, *then* each of the three injects on §4.1's declared defaults, its
-  composition equals the enabled-run composition, and **no** notice is recorded — BR-14's
+  composition equals the enabled-run composition — **and that enabled-run comparison
+  target is itself asserted to carry the injected LEARNINGS block** (the
+  C-4-delimited advisory material, per AC-1.1), so the equality is not vacuously true
+  against an empty injection — and **no** notice is recorded — BR-14's
   default-enabled reading and its decision against an unknown-key registry.
   *And given* the section present and not an object, *then* the composition still equals
   that enabled composition and the report carries `NTC-MALFORMED`. *And given*
