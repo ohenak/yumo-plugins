@@ -994,13 +994,27 @@ PLAN task is required**, and no obligation is deferred to implementation.
    properties' expected counts change and LI-08's row changes with them. Routed as an erratum.
 3. **`runMirror` is deliberately unasserted** (PROP-RECORD-09). This is a gap by decision, not by
    oversight: upstream leaves its value unconstrained, an implementation omitting it entirely conforms,
-   and a test pinning it would red a conforming implementation. If a later revision constrains it, this
-   negative property must be retired in the same change.
+   and a test pinning it would red a conforming implementation. The **decision** is a gap; the
+   **property is not uninstrumented** — as of this revision it is enforced by the static
+   `learnings*.test.js` walk in `learningsSuiteMap.test.js` (LI-14), the same instrument PROP-META-05
+   and PROP-META-06 use, so a later suite that pins the field reds rather than being noticed by a
+   reviewer. §G.2.3's prose statement of the same constraint stands, now as commentary on a mechanised
+   property rather than as its only home. If a later revision constrains `runMirror`, this negative
+   property must be retired in the same change.
 4. **Mutation testing is not mechanised.** §O.8's ledger is a written obligation checked by a reviewer,
    not by a tool. The `--per-file --branches 85` gate cannot see a ~300-line region inside a
    15,311-line module (`orchestrate-dev.js` sits at 88.14 %), which is precisely why PROP-FAILOPEN-01
    exists as the mechanical substitute for the coverage claim. The residual risk — a mutation in O.8's
-   list that no test catches — is not currently detected by CI.
+   list that no test catches — is not currently detected by CI. **PROP-META-04's three-step mutation
+   proof belongs in this paragraph too**: it is a one-time *human* procedure, performed by hand before
+   LI-06's commit and recorded verbatim in that task's completion note (flip one byte; delete one whole
+   `{caseId}` directory; add a spurious one — each reds a different clause, and a step that does not
+   red is a halt). It is the right discipline for an oracle authored after its subject, and it is not
+   mechanised: it guards the *expected* side of every byte-identity oracle in the feature, so a reader
+   auditing residual risk should find it listed here rather than derive it from a property's
+   parenthetical. Its standing counterpart — a legitimate re-capture leaves every **retained** digest
+   unchanged (§F.2, §O.2) — is the rule a reviewer of a future re-capture PR applies, and it is
+   checkable.
 5. **Real-agent behaviour is out of scope.** Every property is asserted against scripted `_agent`
    replies. Whether an author agent's *output quality* improves from an injected block is unfalsifiable
    here, and REQ's non-goals say so; PROP-ISOLATE-01/02 assert only that the block cannot change gate
@@ -1013,6 +1027,12 @@ Emitted as line items in this dispatch's final message; **no upstream document w
 - FSPEC's BR-6 worked example versus TSPEC §D.5 on framing bytes (gap 2 above).
 - FSPEC's missing edge decision for `maxBytesPerDocument: 0` (gap 1 above).
 - TSPEC's AT-11 byte count, which inherits FSPEC's framing arithmetic and so cannot be right if §D.5 is.
+- FSPEC BR-6's delegation of the section-heading recognition rule to F-O-1, where TSPEC's F-O-1
+  discharge (§D.3) covers only the *document*-shape predicate (`LEARNINGS_HEADING_RE`) and leaves
+  `extractInjectableMaterial`'s section matcher unspecified — so no upstream text says whether
+  `## 3. Rejected Proposals (with rationale)` is matched on the numbered form, the bare title, or a
+  prefix. PROP-BOUND-08's real-corpus arm bounds this document's exposure to the gap; it does not
+  close it.
 - TSPEC's suite assignment for AT-15, whose clauses 2–3 (corpus-level `RSN-EMPTY`, no discarded document
   in any record) are asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite — the
   mismatch PLAN LI-07/LI-19 already work around by carrying an expected-red ledger entry.
