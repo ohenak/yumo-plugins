@@ -79,6 +79,32 @@ falsifiable against.
 
 ## Dependencies
 
+**Document-level dependency edge.** PLAN's upstream chain is `REQ → FSPEC → TSPEC → DECISIONS →
+PLAN`, and the sizing appendix hangs off PLAN (`SIZING`'s own header states
+`TSPEC → DECISIONS → PLAN → SIZING`). The erratum tightened that shape rather than disturbing it:
+DECISIONS now holds no HEAD measurement at all, PLAN's appendix holds them, and PLAN's Overview
+cites the appendix. The direction of compression is still correct — nothing PLAN depends on has
+been withdrawn, and nothing new upstream demands a PLAN edit.
+
+**Task-level dependency edges.** Unchanged: A6-00 (⊥) → A6-05/A6-01 → A6-06 → A6-08 → A6-10 →
+A6-12 → A6-14 → A6-18 → A6-21, with A6-04 at batch 1 and A6-06 depending on A6-04. `computeWaves`
+resolves this to seven waves, ids unique, graph acyclic, every declared dependency resolving — the
+same result the dispatcher read at approval. No same-batch same-new-file collision is introduced,
+because no file-ownership cell moved.
+
+**What the erratum did *not* foreclose.** No decision entry was edited, so no testing approach the
+PROPERTIES document needs is newly closed off; the reversibility ratings ("easy", all four) and the
+`ADVISORY_DEFAULTS.enabled = false` default that makes the disabled-tier byte-identity oracle
+(A6-21's former-A6-20 red step) possible are untouched. The re-evaluation triggers in
+`DEC-A6-01…DEC-A6-04` remain observable in the same way they were when I approved PLAN at v10.
+
+**One routed item lands on PLAN, not on this confirmation's verdict.** DECISIONS v1.9 records PM v9
+F-01 — *"asks PLAN to cite the appendix rather than restate column (1)'s count"*. That is a
+product-manager finding routed to PLAN's ordinary revision loop; I record its testing-lens
+counterpart as F-03 (duplicate carrier of moving figures is the drift generator POSTMORTEM-D §5
+names) and note that it is non-gating: PLAN already carries the citation, and its restated integers
+reproduce the appendix exactly today.
+
 ## Verification
 
 ## Findings
