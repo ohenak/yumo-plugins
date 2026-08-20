@@ -122,6 +122,48 @@ is falsified and nothing is gating. Because TSPEC's bytes did not move this roun
 
 ## Data Model
 
+The window touched no BR-8/BR-9/BR-10 field list, no locus assignment and no catalogue row, so
+§D.1–§D.4's transcriptions are unaffected. Re-verified the four that would have moved if anything
+had:
+
+| TSPEC data-model claim | Upstream at v0.12 | Status |
+|---|---|---|
+| §D.1 — per-document catalogue rows recorded per authoring dispatch, `runMirror.corpusOutcome` additive and unasserted | BR-9's "Recorded **per authoring dispatch**, alongside BR-8's rows" unchanged | faithful |
+| §D.2 — `ruleInputs.thresholds` at run level, `orderKeys` per dispatch | BR-10's two-loci wording unchanged | faithful |
+| §D.3/§D.4 — notice catalogue, `Date Completed` prefix match | unchanged | faithful |
+| §D.5 — UTF-8 byte accounting, cut never splits a codepoint | unchanged | faithful |
+
+**§D.6 is the one section the window actually reaches, and it comes out stronger.** §D.6 says
+`RSN-SELF` is decided from the path before any read, "which is what BR-15's expected-set exclusion
+of `RSN-SELF` documents requires". BR-15 still carries that exclusion in the same words at v0.12
+("except those carrying `RSN-SELF`, decided from the path before any read"), so the compression
+holds. What changed around it is the **shape** of the expected set:
+
+- **Was (v0.10):** "the corpus-root enumeration, plus **exactly** one open attempt for every corpus
+  document the report names" — a count-shaped definition whose first term (the enumeration) is a
+  `git ls-files` call that opens nothing under `docs/`.
+- **Is (v0.12):** "the corpus documents the report names … Both sides are compared as **sets of
+  paths**, not as counts, so a document opened more than once neither adds a member nor changes the
+  verdict (REQ AC-5.2)", with the enumeration explicitly contributing **no** member.
+
+That is exactly the repair TSPEC's ERR-3 asked for, and it lands the way TSPEC argued it should
+(§I.1, §A.3: the enumeration is an argv, not an open). Two data-model consequences:
+
+1. **ERR-3 is now stale in its own quotation.** It still quotes the v0.10 definition verbatim and
+   concludes "As written, AT-33's set equality cannot hold." Upstream no longer says it, and the
+   conclusion no longer applies. F-01 below (Low): close ERR-3 as resolved, citing v0.12, rather
+   than leaving a PLAN author to reconcile a contradiction that only exists in the older bytes.
+2. **The de-duplication clause is a load-bearing negative for §T.6, and TSPEC already covers it.**
+   BR-15 now states positively that a document opened more than once does not change AT-33's
+   verdict. That makes AT-33 structurally blind to per-iteration re-selection — which is precisely
+   what §A.2's property 2 and the `RETRY-ITERATION` fixture were written to cover, and TSPEC says
+   so already ("AT-33 (the same read paths, merely re-read)"). The upstream edit converts TSPEC's
+   inference into an upstream statement. No change owed; recorded as a positive observation.
+
+Two data-model observations carry forward from v8/v9 unchanged and `inherited`: §D.1's fourth
+domain (membership on `runMirror.corpusOutcome` while §A.5 forbids asserting on the mirror) and the
+absent closure test over `Object.keys(ruleInputs)`' own key set. Neither is touched by this window.
+
 ## Test Strategy
 
 ## Open Questions
