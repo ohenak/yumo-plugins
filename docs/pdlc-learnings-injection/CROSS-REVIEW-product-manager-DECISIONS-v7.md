@@ -108,6 +108,39 @@ a precision nit on a landing-version attribution, not a false state.
 
 ## Consequences
 
+**PLAN and PROPERTIES are unblocked on this document's account.** The two findings that had a
+downstream cost are the two that closed. F-01's stale AC-3.3 row would have told a PROPERTIES
+author that the locus question was open and routed to REQ; it now hands them the settled contract
+and, in the same row, the trap: a completeness or membership assertion aimed at `runMirror` is
+"green on a single-dispatch fixture and silently wrong on AT-18's divergent run". That is the
+absence-only-oracle failure mode named at the exact place a test author would hit it. F-02's
+undischarged `D-O-9` would have told the same author to wait for a TSPEC edit that had already
+landed; `AT-31`/`AT-32` may now be authored against §I.3 as written.
+
+**One durable observation about how these five findings survived four rounds.** All five were
+citation- or currency-defects, and all five were invisible to every mechanical gate the pipeline
+runs: nothing falsifies a header pin, nothing notices that an obligation was discharged in the
+*target* document without a signal routing back to the document that raised it, and nothing dates
+a "current upstream" sentence written in timeless voice. The v6 review filed these three as
+`Process` candidates; this round is the evidence that they close only when a human re-reads
+upstream, since the delta that closed them was authored from the cross-review, not from a red test.
+I am not re-filing them here — they belong to harvest, and v6 already carries them — but the
+fourth-round-to-close latency is the number worth keeping.
+
+**The `D-O-6` dependency is now written down where it can be seen.** The new `DEC-LI-10` paragraph
+and the extended `D-O-6` row make explicit a coupling that was previously only derivable: because
+TSPEC §D.1's membership tests are scoped to non-`null`, dropping `D-O-6`'s behavioural conjunct as
+"redundant with the count conjunct" would silently remove the only falsifier of a `null` corpus
+outcome recorded where a catalogued reason was required. That is exactly the kind of cross-obligation
+dependency a later optimizer round deletes by accident, and it is now guarded by prose in both
+places rather than in neither.
+
+**Deferred items** — recorded, not opened, per the freeze:
+
+DEFERRED: `D-O-9`'s "DISCHARGED at TSPEC v0.9" attributes the discharge to the version where the edits are observed rather than the version where they landed; a future pass could name the landing version.
+DEFERRED: The AC-3.3 non-decision row is now the longest cell in the table and carries the `runMirror` test-targeting warning; that warning may deserve promotion to an obligation row rather than living inside a non-decision cell.
+DEFERRED: The three `Process` candidates from v6 (unfalsifiable header pins, discharge-without-routing, dated claims in timeless voice) remain unaddressed by any gate and are now demonstrated over five rounds; they belong to harvest.
+
 ## Findings
 
 ## Positive Observations
