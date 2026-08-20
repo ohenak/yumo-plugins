@@ -99,7 +99,24 @@ belongs to TSPEC's changelog discipline; no DECISIONS edit is owed.
 
 ## Consequences
 
-*(pending)*
+- **No document edit is owed by this confirmation.** DECISIONS stays at v1.9. The single finding
+  is Low, inherited, and lands on TSPEC's version-label discipline; addressing it does not require
+  reopening a decision entry, and it gates nothing.
+- **The v9/v10 approval anchors carry forward unchanged on the upstream axis.** Round 10 already
+  re-stamped `UPSTREAM-STATE: TSPEC sha256:1531143c…`, and upstream has not moved since. This
+  round's anchors record the same three hashes against the new `REVIEWED-COMMIT`, so the next
+  reader can tell the document edge — not upstream — is what moved.
+- **Product fidelity is unchanged.** Nothing in the delta touches the four decisions' product
+  content. A repo that configures nothing still gets a byte-identical run.
+- **The relocation keeps paying.** This is the second consecutive round where a delta that would
+  once have collided with locally-carried counts cost nothing to confirm: with the sizing block in
+  `SIZING-…md`, the only surfaces exposed to re-measurement are role-level citations, and they held
+  again. The v1.9 edit extends that discipline one step further by evicting the last quoted integer.
+- **One shape to watch, not a finding.** v1.9 establishes a convention of recording upstream hashes
+  in DECISIONS prose per erratum round. It is the right anchor type, but it accumulates: at v1.12
+  the front matter would carry four such paragraphs. Worth a harvest note on whether re-grounding
+  records belong in the changelog cell rather than as body paragraphs — raised as Q-01, not filed
+  as a finding, because nothing is wrong at HEAD.
 
 ## Findings
 
