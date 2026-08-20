@@ -131,6 +131,21 @@ above is claimed by at least one property in §A–§H and by at least one PLAN 
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Process | **Verbatim-string-discipline citation pins are stale (carried, inherited, unchanged).** The Fixtures paragraph pins the eight refusal reasons at `orchestrate-dev.js:2297`–`:2306` and the five exclusion ids at `:2311`. At HEAD, `ADVISORY_REFUSAL_REASONS` declares at `orchestrate-dev.js:2301` (members `:2302`–`:2309`) and `ADVISORY_EXCLUSIONS` at `:2315`. Raw `file:line` anchors that are not runtime-measured evidence are a DEC-DOC-01 finding, and these have now drifted twice. **Fix:** re-anchor on the symbol names `ADVISORY_REFUSAL_REASONS` and `ADVISORY_EXCLUSIONS`, as PROP-SEAM-02 and PROP-CFG-03 were already re-anchored in round 4. The transcribed literals themselves are correct and nothing depends on the numbers, so this does not gate. | AC-7.2 (`DECISIONS-review-severity-bars.md`, DEC-DOC-01); TSPEC §3.1 |
+| F-02 | Low | Process | **Two more raw line pins in Oracles O-A have drifted.** `orchestrate-dev.js:3428` and `:3459` are cited for "`attempts` is consumed on paths that never reach `verifyGate`". The claim is true — `attempts += 1` occurs at `:3425` (preemption), `:3432` and `:3463` — but neither pin lands on the increment it names. Same DEC-DOC-01 class as F-01; fold into the same sweep by anchoring on the preemption and malformed-verdict branches by name. | AC-7.2 (DEC-DOC-01) |
+
+No High and no Medium findings. Under the freeze the two admissible blocking categories are both
+empty: there is no revision in this round, so nothing was introduced; and every load-bearing
+repository claim I re-measured (test-file existence, the four `toHaveLength(6)` sites, the six-member
+`SEAMS` declaration, the eight-member refusal catalogue, the two verbatim TSPEC strings, PLAN-task
+set equality) is true at HEAD.
+
+DEFERRED: Re-anchor the verbatim-string and O-A citations on symbol names in the next edit this document takes for any reason (F-01, F-02) — not worth opening a round on its own.
+DEFERRED: `advisoryRecord.test.js:505` asserts `rows.map((r) => r.seam)).toEqual([...devModule.ADVISORY_SEAMS])`, deriving its expected value from the module under test — an implementation echo that would false-green a seam-list regression. `:496`'s literal five-member equality is the one PROP-SEAM-02 already names; the echo at `:505` is a repository condition for Phase I's A6-03 to resolve, not a defect of this document.
+DEFERRED: The `e3b9d5a3` revert-versus-re-derive disposition is deferred by TSPEC §1.3, PLAN's Overview and this document alike; correct per-document behaviour, but the decision still has no home and should be settled when Phase I opens.
+
 ## Questions
 
 ## Positive Observations
