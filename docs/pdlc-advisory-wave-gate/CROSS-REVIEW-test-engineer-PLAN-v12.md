@@ -107,6 +107,39 @@ reproduce the appendix exactly today.
 
 ## Verification
 
+Everything below was **run**, not read, at HEAD of `feat-pdlc-advisory-wave-gate`.
+
+| Claim | Command / oracle | Result |
+|---|---|---|
+| Upstream at dispatch hashes | `shasum -a 256` over REQ/FSPEC/TSPEC/DECISIONS | All four reproduce the dispatch hashes; DECISIONS is the only one moved since v11 (`25f8e954…` → `84deee10…`) |
+| Erratum extent | `git show 8a44b84b -- DECISIONS` | +20/-3, confined to the Cross-Reviews cell, the version row, one word in the v1.8 paragraph, and a new v1.9 paragraph. No decision entry, no `## Consequences` bullet touched |
+| PLAN bytes frozen | `git log -- PLAN` | Unchanged since `b902f40b` (my v11 REVIEWED-COMMIT interval) |
+| *"DECISIONS now keeps only column (1)'s four"* | grep over DECISIONS at HEAD | **Holds** — `four` survives in `What follows for the whole feature`; `twelve` / `twenty-five` appear nowhere as current claims |
+| PLAN's three-column figures vs the appendix | grep over `SIZING-pdlc-advisory-wave-gate.md` | Exact match: column (1) **four**, column (2) **twelve** (= **ten** oracles + **two** green inputs), column (3) **twenty-five** |
+| Dispatcher contract | shipped `parsePlanTasks` / `parsePlanOwnership` / `computeWaves` over PLAN | **11 tasks, 11 manifest rows, 7 waves** — identical to v10 and v11 |
+| Closable numerator | `git ls-files \| grep -c '\.bak$'` | **14** tracked `.bak` blobs, all 14 present in the residual — A6-00 Edit 1's *"closes 14"* still holds and still cannot be false-greened by a no-op |
+| Residual size | `npx jest __tests__/documentOracles.test.js -t "unfiltered sweep"` | **35** paths: **14** `.bak` + **4** consumer-runtime + **17** feature documents. PLAN prints `28` and class 3 `10` (**F-01**) |
+| Class-2 set-equality leg | same oracle's printed residual | Exactly the four named artifacts (`.pdlc-drift-state.json`, both `.bundle.js`, `pdlc-cli.mjs`); `.pdlc-sync-manifest.json` still correctly absent — DoD's set-equality leg passes for the right reason |
+| Class-3 membership leg | same oracle's printed residual | All 17 under `docs/pdlc-advisory-wave-gate/**`, none a `.bak` blob — the round-9 membership predicate I approved in v10 still holds, and is exactly what keeps day-scale growth (34 → 35 since v11) non-gating |
+| T21 still green | `documentOracles.test.js` T21 | Green at HEAD; the anchored spelling in wave 1's recap remains a live red risk (**F-02**) |
+
+**Why the residual drift is still Medium, not High.** The DoD's falsifiability rests on the two
+class-scoped legs, not on the printed integer: set-equality on class 2 (a closed set of four, exactly
+reproduced today) and a *membership* predicate on class 3 (a set the pipeline is designed to grow).
+Both pass at 35 exactly as they passed at 28 and at 34. The stale integer misleads a reader; it does
+not false-green or false-red a gate. It has now drifted on two consecutive confirmations, which is
+why the fix I proposed in v11 — restate class 3 as `10 + one per committed cross-review file` (PLAN's
+own growth rule, already written two paragraphs below) rather than as a dated integer — is the one
+that stops it recurring.
+
+**Mutation spot-check on the load-bearing oracle.** A6-00 Edit 1's claim is that the `.bak` class is
+closable here. Reverting the guarded behaviour — leaving the 14 blobs tracked — leaves all 14 in the
+printed residual, so the step's effect is an observable 14-path reduction and a no-op edit cannot
+false-green it. The complementary claim (the other classes are *not* closable on this branch) is
+likewise still true: the 4 branch-introduced runtime artifacts and the 17 feature documents remain,
+and the document class provably mints a new member on every committed cross-review file — including
+this one.
+
 ## Findings
 
 ## Questions
