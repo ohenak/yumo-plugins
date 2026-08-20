@@ -339,6 +339,60 @@ observation.
 
 ## DEC-LI-07: An absent configuration section is an enabled run, and no configuration mistake disables the feature
 
+**Context.** REQ §4.1 declares `learningsInjection.enabled` with a default of `true`. TSPEC v0.5 was
+authored while REQ carried a contradiction (G-1's "no configuration change required" against an
+earlier AC-5.1a that read an **absent** section as the disabled state), and it therefore implemented
+a provisional second gate — `present && config.enabled && !sectionMalformed` — recording the
+question as open (`OQ.2`, `ERR-4`). REQ v0.9 has since settled it: AC-5.1a is now scoped to an
+**explicit** `enabled: false`, states that an absent section reads as §4.1's declared defaults, and
+says in terms that "there is no second gate beyond this key (G-1)". FSPEC v0.7 `BR-14` carries the
+same five states.
+
+**Decision.** The gate is `config.enabled` alone:
+
+| Config state | Behaviour | Record |
+|---|---|---|
+| section absent / file absent / section name misspelt | enabled, on declared defaults | `BR-8` rows, no notice |
+| `enabled: false` (explicit) | byte-identical to the recorded pre-feature baseline | **no injection key at all** |
+| section present, not an object | enabled, on declared defaults | `NTC-MALFORMED` |
+| declared key wrong-typed | enabled, that key at its default | `NTC-KEYTYPE` |
+| enabled, thresholds admitting nothing | enabled, empty selection | `BR-8` rows, present and empty |
+
+The `present` flag survives as a **reported** field — AC-5.1a's "absent, not present-and-empty"
+report-key distinction still needs it — but it is no longer a gate.
+
+**Alternatives considered.**
+
+- **Keep TSPEC's `present` gate** — rejected because it now contradicts settled upstream. Its only
+  merit was that, while REQ was self-contradictory, it was the reading that made *something*
+  testable; that merit expired with REQ v0.9. Concretely it would ship the feature **off** in this
+  repository, which holds no `.claude/pdlc.config.json` at all and 9 corpus documents — i.e. off in
+  exactly the case G-1 exists to serve.
+- **Copy `parseAdvisoryConfig`'s posture wholesale** — rejected on a *measured* distinction that an
+  earlier FSPEC draft got backwards. `ADVISORY_DEFAULTS.enabled` is `false`, so an absent advisory
+  section is a disabled advisory tier; this feature's declared default is `true`, so the two readers
+  share their **shape** (per-key independent fallback, `invalidKeys`, `sectionMalformed` meaning
+  present-and-not-an-object) and deliberately differ in their **default value**. The nearer
+  precedent for fail-open-on-malformed is `parseImplementationConfig`, whose malformed section
+  yields `IMPLEMENTATION_DEFAULTS` plus a caller-reported degradation.
+- **Treat a malformed section, or a wrong-typed threshold, as a disable** — rejected. Disablement is
+  an explicit act (G-1, G-4); turning an advisory feature off over one mistyped number is a silent
+  behaviour change an operator did not ask for, and it diverges from both shipped siblings for no
+  stated reason.
+- **Detect a misspelt section name via a registry of legal top-level keys** — rejected. No such
+  registry exists in `.claude/pdlc.config.json`, and one would misfire on every key a later feature
+  adds. A misspelt section is a stray top-level key, therefore absent, therefore default-enabled.
+
+**Constraints that forced the shape.** REQ G-1, G-4, C-7 and AC-5.1a/b/c as of v0.9; FSPEC `BR-14`;
+DC-01's closed-catalogue rule for the two notices.
+
+**Reversibility.** Easy — one conjunct — but it is a **product** lever, not an engineering one:
+changing it means changing REQ §4.1's declared default, not the parser.
+
+**Re-evaluation triggers.** REQ changes the declared default; operators report unwanted injection in
+repositories that never opted in; a future feature introduces the top-level-key registry that would
+make a misspelt section detectable.
+
 ## DEC-LI-08: The injection is bounded by static caps only; there is no dynamic prompt budget
 
 ## DEC-LI-09: The pre-feature baseline is a committed fixture pinned to a recorded sha, not a recomputed merge-base
