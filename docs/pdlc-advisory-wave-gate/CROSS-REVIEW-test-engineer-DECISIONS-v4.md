@@ -47,7 +47,16 @@ unlabelled snapshot commit) is the right one. v2 F-03 (seventh transcription sit
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The re-enumerated envelope-literal sites misattribute one of the six.** The delta expands "six more" into a named list: "`advisoryEnvelope`'s `ENVELOPE_DEFAULTS` set-equality, two in `advisoryDisabled`, one in `advisoryHarvest`, and two in `helpers/advisoryDoubles.js`". Five check out verbatim — `advisoryDisabled.test.js:136` and `:623`, `advisoryHarvest.test.js:203`, `advisoryDoubles.js:325` (frozen shape) and `:423` (generator shuffle). The sixth does not: `advisoryEnvelope.test.js:284` asserts `[...ENVELOPE_DEFAULTS].sort()` equals `["E-1" … "E-6"]` — the **six-member** post-A6 value, already migrated ahead of production, which still exports the four-member literal (`orchestrate-dev.js:1942`). TSPEC records exactly this asymmetry as a live drift row: "`advisoryEnvelope.test.js` already asserts `{E-1 … E-6}` \| production default still four members" (`TSPEC:303`, and `TSPEC:323`). So the four-member literal has five test-side transcription sites plus its production definition, not six test-side ones. The total the bullet is arguing for — seven hand-sync surfaces — survives either way, and the sequencing conclusion is unaffected; but a PLAN or PROPERTIES reader who takes the list literally will go to `advisoryEnvelope.test.js` expecting a four-member literal to edit and find a six-member assertion that is already at its target value. Naming that site as the already-migrated one, or dropping it and counting `ENVELOPE_DEFAULTS`' own definition instead, makes the list match HEAD | "What follows for the whole feature", envelope-literal bullet |
+| F-02 | Low | Local | **Version 1.2 is dated earlier than version 1.1.** The metadata table reads `| pdlc | Draft | Claude | 1.2 | 2026-08-19 |`; v1.1 carried `2026-08-20`. Upstream TSPEC v1.10 also carries `2026-08-19` (`TSPEC:12`), so the new date is the consistent one and v1.1's was the outlier — but as it stands the revision history reads as moving backwards in time, which is the one thing a date column exists to prevent. Not gating, and not worth a round of its own | Metadata table |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The revision re-grounded against TSPEC v1.10 while my v3 findings cited v1.6, and in the engine-channel case that meant landing somewhere other than where my finding pointed (new purpose-named file, not `ci-arrangement.test.js`). That is the right call and I want to say so explicitly rather than have it read as a deviation. Is there a convention for marking "resolved against a later upstream than the finding cited"? A one-clause note in the changelog line would have saved me a re-derivation, and would save the next reader one |
 
 ## Positive Observations
 
