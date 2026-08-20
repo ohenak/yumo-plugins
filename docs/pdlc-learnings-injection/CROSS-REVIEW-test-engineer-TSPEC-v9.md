@@ -124,7 +124,35 @@ Two data-model observations carry forward from v8 unchanged, both `inherited`:
 
 ## Test Strategy
 
-_pending_
+A header-only upstream erratum cannot change what must be tested, and this one does not. The
+strategy checks I would re-run on a substantive cascade were run anyway, against FSPEC v0.10, and
+all pass:
+
+- **Every FSPEC AT still has a TSPEC home.** The AT-* population is unchanged (110 `AT-` mentions
+  at v0.10, the same text the v0.9 round left), and §T.1–§T.6's suite assignment still partitions
+  35 ATs across `learningsSelect`, `learningsRecord`, `learningsConfig`, `learningsNotice`,
+  `advisoryDisabled` and the integration suite. No AT was orphaned by the edit, because no AT was
+  touched by it.
+- **Per-dispatch oracles survive.** §T.2's split — per-dispatch `orderKeys` set equality on
+  `dispatches[i]`, run-level set equality over `Object.keys(ruleInputs.thresholds)` — still matches
+  `FSPEC:868` word for word. This is the assertion the v0.9 cascade repaired, and it did not
+  regress under v0.10.
+- **Positive-conjunct discipline holds.** AT-32's positive-presence conjunct (added at FSPEC v0.7
+  precisely so its equality check could not be vacuously green) is still in upstream and still
+  mirrored in the TSPEC; the `DIVERGENT-CORPUS` fixture still asserts exact status plus named
+  reason rather than an absence-shaped `!= ok`.
+- **Property-based coverage.** The ordering/selection rule remains the parameterisable component
+  here and the TSPEC still calls for a property strategy over corpus permutations alongside the
+  example ATs; nothing upstream withdrew the input space that strategy ranges over.
+- **Mutation-sensitivity of the load-bearing oracles** is a PLAN/implementation-time obligation and
+  is unchanged by this round.
+
+The only testing-lens residue of this cascade is documentary: a PLAN author transcribing §D.1 or
+§T.2 will see them cite "FSPEC v0.9" and must resolve that against a v0.10 file. Since the cited
+propositions are byte-identical, this misroutes no test — it costs a reader one extra lookup.
+That is the whole cost, and it is F-01's Low severity.
+
+No new test obligation is created by this round, and none is retired.
 
 ## Open Questions
 
