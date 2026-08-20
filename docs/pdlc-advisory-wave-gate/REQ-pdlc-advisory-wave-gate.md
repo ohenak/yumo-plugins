@@ -1,6 +1,6 @@
 ---
 feature: pdlc-advisory-wave-gate
-ready: false
+ready: true
 depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 ---
 
@@ -15,7 +15,15 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.11 | 2026-08-20 |
+| pdlc | draft | Claude | 1.12 | 2026-08-20 |
+
+*v1.12 changelog (cross-review round 1). SE F-01: `ready: true`, the feature having merged (PR #66,
+`bb4d36fb`), and QUEUE row 19 set `done` — the pair blocked rows 6 and 20 under the queue's
+not-done dependency pre-check. Relocation to `docs/completed/` is SE Q-02's, not taken here.
+TE F-01: AC-2.4 gains the `waveBudgetPerRun: 0` conjunct. TE F-03: O-4 extended to E-6's symbol
+conjunct. SE F-02 routed to the constraints file. Lows: AC-1.2's anchor reissued in symbol form,
+§1's drift sentence re-measured, fixture-design phrases dropped to PROPERTIES. No decision
+reopened.*
 
 *v1.11 changelog (DoD remediation, CODE_REVIEW v2 finding 1). §1's corroborating-evidence
 paragraph re-measured at the branch tip: `.claude/pdlc-wave-state.json` is **untracked** —

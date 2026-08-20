@@ -78,7 +78,7 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |  |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |  |
-| 19 | pending | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |  |
+| 19 | done | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |  |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |  |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
