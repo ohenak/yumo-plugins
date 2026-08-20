@@ -1214,28 +1214,25 @@ Recorded here in summary; DECISIONS owns the full form.
 | Corpus enumeration seam | `_git` with the pinned pathspec | `_listFiles` — non-recursive, basenames only, no gitignore knowledge; would be a *different* predicate wearing C-3's name |
 | Block placement in the prompt | appended after `opener` | inserted before `PACING_CONTRACT_CLAUSE` — reorders existing content relative to itself and forfeits the structural byte-identity of §A.2 property 3 |
 | Corpus caching | none of our own; rely on `rtReadFile`'s revalidating cache | a run-scoped memo — cheaper, but contradicts E-32 and would let AT-14 pass on a cache rather than on determinism |
-| `enabled` default | **Not decided here — see OQ.2 and ERR-4.** TSPEC implements `present && config.enabled && !sectionMalformed` provisionally, because AC-5.1a's "or the configuration section absent" is the only *testable* statement in the pair | The alternative reading — REQ §4.1's bare `true` default with no second gate, which G-1's "no configuration change required" implies — is not rejected on engineering grounds; it is a live product question this TSPEC has no authority to settle |
+| `enabled` default | **Settled upstream by REQ v0.9 (ERR-4 closed):** the injector is gated on `config.enabled` alone. An absent section reads as REQ §4.1's declared `true`, and a malformed section fails **open** with `NTC-MALFORMED`, so the feature ships **on** in a bare repository (G-1, AC-1.1, AC-5.1a, AC-5.1b) | The `present && config.enabled && !sectionMalformed` gate this TSPEC carried provisionally in v0.5 — rejected because REQ v0.9 states there is "no second gate key" and makes a malformed section fail open, not closed; the provisional gate would ship the feature off in exactly the repository AC-1.1 exercises |
 
 ### Still open, unresolved by design
 
-**OQ.2 — does the feature ship on, or off, in a repository with no `learningsInjection` section?**
-*Blocked on the REQ erratum ERR-4 raises; TSPEC cannot close it.* REQ carries two statements that
-cannot both hold. G-1 promises lessons reach every authoring dispatch "with **no configuration
-change required**", and AC-1.1 exercises the feature "with `learningsInjection.enabled` at its
-default", which REQ §4.1 declares to be `true` with no second gate — that trio ships the feature
-**on** in a bare repository. AC-5.1a states the disabled outcome for "`enabled` false, **or the
-configuration section absent**" — which ships it **off** in exactly that repository. This
-repository is that case: it holds no `.claude/pdlc.config.json` `learningsInjection` section, and
-9 corpus documents (P-5), so the two readings disagree about today's HEAD, not about a corner.
+**OQ.2 — does the feature ship on, or off, in a repository with no `learningsInjection` section?
+CLOSED by REQ v0.9.** REQ once carried two readings that could not both hold: G-1 ("no
+configuration change required") and AC-1.1 ("with `learningsInjection.enabled` at its default",
+REQ §4.1 declaring that default `true`) ship the feature **on** in a bare repository, while the
+older AC-5.1a wording made an absent section a disabled state. REQ v0.9 resolved it toward G-1:
+"an absent section is not a disabled state … there is no second gate key", with disablement an
+explicit act (`enabled: false`) and a malformed section failing open plus a notice (AC-5.1b).
 
-TSPEC implements the `present` gate provisionally so that *something* is testable, and records the
-consequence honestly: **on the shipping default, AC-1.1's "then" does not hold in this
-repository.** If REQ resolves toward G-1, three things change and nothing else does — §I.2's gate
-drops `present` (an absent section reads as enabled-with-defaults), the divergence table's last
-row loses its "feature still off until the operator writes a section" clause, and §I.4's "a
+**What that resolution changed here, for the record.** This TSPEC forward-declared exactly the
+three edits the resolution would force, and they have now been made: §I.3's gate drops `present`
+and `!sectionMalformed` (an absent section reads as enabled-with-defaults), the divergence table's
+last row loses its "feature still off until the operator writes a section" clause, and §I.4's "a
 disabled run executes no new code at all" narrows to explicitly-`false` runs. The `present` field
-itself survives either resolution, because AC-5.1a's report-key distinction (absent, not
-present-and-empty) needs it regardless. No suite in §T.5 changes shape; the bare-repository case
+itself survives, because AC-5.1a's report-key distinction (absent, not present-and-empty) needs it
+regardless. No suite in §T.5 changes shape; the bare-repository case
 in §T.6 changes its expected value from "empty block" to "non-empty block", which is why this is
 better settled before Phase P than during implementation.
 
