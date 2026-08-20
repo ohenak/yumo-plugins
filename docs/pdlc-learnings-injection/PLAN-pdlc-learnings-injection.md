@@ -335,7 +335,7 @@ Tests:       70 skipped, 3828 passed, 3898 total
 `the dry run names the workflow module it would load and the seams it overrides`,
 `` `pdlc hello` reports the canonical workflow module paths `` (both `pdlc/engine/__tests__/cli.test.js`,
 asserting that resolved module paths lie under this repository's `pdlc/workflows/`) and
-`AT-2.2: the plugin's three \`claude plugin install\` sites are asserted as a positive`. They are
+AT-2.2 (the plugin's three `claude plugin install` sites asserted as a positive). They are
 machine-state artefacts of the local engine store, not this feature's — but the arrangement's
 `testCommand` begins `(cd pdlc/engine && npm test) &&`, so **the wave gate halts on them before it
 ever reaches this feature's suites**. Triaging them is a **pre-flight item on LI-01**: either they
@@ -380,3 +380,40 @@ measured here, and are the whole set. Adding a third to make a batch pass is a h
 | H-7 | A test needs a seam double that `helpers/seams.js` does not provide | TSPEC §T.2 scopes the exception to `learningsPredicatePin.test.js` alone; a second ad-hoc seam object is a design question, not a test-authoring convenience |
 
 ## Open questions and upstream errata
+
+### Errata raised from this document's authoring
+
+Two defects in **FSPEC v0.10** are still live at HEAD and both bear directly on task rows here. They
+were first raised by TSPEC v0.6 (as ERR-3 and ERR-7) and are re-raised because FSPEC v0.10 — whose
+changelog records erratum rounds for BR-14, E-13 and the AC-6.2 traceability row — does not carry a
+correction for either, and a test author writing LI-11 from FSPEC rather than TSPEC would write a
+failing test against a correct implementation. This PLAN does not edit FSPEC and does not resolve
+either silently in a task row; both are routed.
+
+| Item | Effect on this PLAN if unresolved |
+|---|---|
+| **FSPEC BR-1** still states the rule "consumes the classification, it does not restate the membership", while TSPEC §A.2 adds the load-bearing `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct that Phase CR's `docType: null` optimizer round requires | LI-11's AT-02 has two contradictory expected sets. The task row is written to **TSPEC's** reading, and says so; a reviewer scoring it against BR-1 would reject a correct test |
+| **FSPEC BR-15**'s expected set includes "the corpus-root enumeration" on an instrument defined as "file-open calls under `docs/`", but the enumeration is a `git ls-files` call and contributes no member | LI-11's AT-33 set equality cannot hold as FSPEC states it. The row is written to TSPEC §T.6's reading — hand-transcribed read paths, enumeration excluded |
+
+TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5) are unchanged by this document and are not
+re-raised here: ERR-5's provenance was corrected in FSPEC's v0.7 erratum round (E-13 now reads
+"measured: 2 of 89 at HEAD, both in regime-ledger; none in yumo-plugins", which is consistent with
+this repository's nine bare-ISO `Date Completed` values), and ERR-1 and ERR-2 remain with FSPEC's
+author. **ERR-2 does affect a task row**, and LI-11 already carries its consequence: the erratum
+land-proof retry is a second block-carrying authoring dispatch inside one erratum round, so AT-02's
+fixture list includes the fourth run shape TSPEC §T.6 adds beyond FSPEC's three.
+
+### Questions this PLAN deliberately does not answer
+
+| # | Question | Disposition |
+|---|---|---|
+| P-Q-1 | Should `scripts/` live at the repository root, or under `pdlc/workflows/`? | TSPEC §T.3 pins the root path; the directory does not exist at HEAD and LI-05 creates it. A relocation is a TSPEC amendment, not a PLAN choice |
+| P-Q-2 | Should LI-20 and LI-21 be one task? | They are two because the attachment and the report are separately reviewable and the source lane is serial either way. Merging them costs a batch and buys nothing |
+| P-Q-3 | Does the region need its own `c8` invocation? | TSPEC leaves it to PLAN as a cheap option; LI-22 takes it only if it costs nothing, because the §T.7 inventory is the obligation and does not depend on tooling that does not exist |
+| P-Q-4 | What happens if the corpus grows past `RT_READ_CACHE_MAX_BYTES` during the feature's life? | Not a task: TSPEC §A.4 records that residency is not guaranteed, and T-O-3's live measurement is what would move REQ §4.1's thresholds |
+
+### Changelog
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 | 2026-08-20 | First draft from REQ v0.9 / FSPEC v0.10 / TSPEC v0.6 / DECISIONS. 22 tasks, 14 batches, serial source lane, T-O-2 bound structurally at batch 4 |
