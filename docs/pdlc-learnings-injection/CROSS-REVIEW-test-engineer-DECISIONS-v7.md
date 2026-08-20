@@ -33,6 +33,31 @@ entries, did not re-derive settled code-level claims, and opened no new decision
 
 ## Options Considered
 
+**(a) Block on the two unlanded v6 Mediums.** `F-01` (DEC-LI-08's "bound the addition" framing and
+`D-O-4`'s caps comparison, both written against pre-v0.13 byte accounting) and `F-02` (`D-O-3`'s
+cut-and-flag clause not covering the zero bound) are the only v6 findings this revision did not
+address. Both were filed Medium and both remain Medium: neither invalidates a decision, neither voids
+an obligation, and under a decision freeze neither qualifies as a defect *this* delta introduced.
+`F-02` is materially *less* dangerous than it was a round ago — TSPEC v0.9 §I.3 now spells the zero
+case out in the signature contract itself (`maxBytes <= 0` short-circuits **before** the cut and
+returns `{material: "", bounded: false, bytes: 0, sections: []}`, caller drops the document
+`RSN-NO-MATERIAL`, E-36/§D.5), and PROPERTIES authors read TSPEC. The stale paraphrase in `D-O-3`
+survives as a reader hazard, not as a false-green generator. Rejected as a blocking reading.
+
+**(b) Block on a citation the delta introduced.** `DEC-LI-03`'s new paragraph cites `(G-C)` — not a
+FSPEC or REQ identifier, which is what made me check it. `G-C` is defined **inside this document**,
+in the grounding-pin table at line 63, and I re-derived its measurement at HEAD rather than trusting
+it: `pdlc/workflows/orchestrate-dev.js:14695-14698` calls the shared `reviewLoop` with
+`doc: \`docs/${featureName}/\``, `phase: "CR"`, `docType: null`, and line 7306's
+`roundDocType = docType === undefined ? docTypeFromPath(doc) : docType` preserves `null` (explicit
+`null` is not `undefined`), which then reaches `dispatchAndVerify` via lines 7347/7541. The citation
+is internal and current, and the mechanism it names is live at HEAD. No finding.
+
+**(c) The delta is faithful — approve, two inherited Mediums recorded.** Every claim the six commits
+introduced re-derives correctly against upstream at HEAD, including the four TSPEC claims that had to
+survive a v0.7 → v0.9 move underneath them. Nothing the revision touched broke anything that worked
+in v0.2, and no decision's chosen shape moved. This is the reading I took.
+
 ## Decision
 
 ## Consequences
