@@ -65,7 +65,37 @@ direction.
 
 ## Decision
 
-*(pending)*
+**Confirmed. The delta lands cleanly and DECISIONS remains a faithful compression of upstream at
+HEAD.** Reading (c) above is the outcome; (a) and (b) are falsified on bytes, not waved through.
+
+Claim-by-claim, on the four assertions the new paragraph makes about upstream:
+
+| v1.9 claim | Upstream at HEAD | Holds? |
+|---|---|---|
+| REQ `sha256:817b6745…` and FSPEC `sha256:82f74a2d…` unchanged from v1.8's authoring state | Re-hashed at HEAD; both match, and both match this dispatch's stated hashes | Yes — verified, not assumed |
+| TSPEC moved `4a092e85…` → `1531143c…` *within* v1.10 | TSPEC at HEAD hashes to `1531143c…`; its status row still reads `1.10` and the added text sits inside the v1.10 changelog paragraph as `**Phase-P erratum (this dispatch):**` | Yes — including the "within v1.10" qualifier |
+| That added text "sizes `PROP-SWEEP-2(b)`'s residue in §1.3 and routes its partition, owners and figures to PLAN's Overview HEAD-drift note and A6-00's Edit 1" | TSPEC verbatim: "It now states `PROP-SWEEP-2(b)`'s measured residual — 28 tracked paths in three classes at PLAN's dated 2026-08-19 measurement, of which untracking the 14 `.bak` blobs closes 14 — and routes the partition, the owners and the figures to PLAN's Overview HEAD-drift note and A6-00's Edit 1, which own them" | Yes — the compression names the same two owners and drops the figures, which is the point |
+| DECISIONS "carries no hygiene note, no sweep figure and no disposition of the residue" | `grep` for `28`, `\b14\b`, `bak`, `backup` over DECISIONS returns one hit, `FSPEC E-28`, a requirement id and not a count. PLAN's A6-00 Edit 1 and Overview HEAD-drift note carry the 28 / three-class / 14-closable partition; SIZING carries the twelve | Yes — no double carriage anywhere |
+
+The absorption is therefore genuinely a recorded no-op, and the record says so in those words
+rather than implying an edit happened.
+
+**Nothing I previously approved is broken.** The four decision entries are untouched, so the
+product content this review has always been protecting is unmoved: the no-op-by-default guarantee
+(`ADVISORY_DEFAULTS.enabled` stays `false`, REQ C-2), the `waveBudgetPerRun: 0`-vs-`enabled: false`
+distinction (FSPEC E-33 / AT-01-4 vs AT-01-6), the wave-scoped snapshot ref (OQ-2), the E-6
+third-`commitPaths` commit shape (OQ-8). I re-read the `## What follows for the whole feature`
+bullets at HEAD: the only integer left in the document is column (1)'s **four** — three production
+constants plus `advisoryRecord.test.js`'s five-member seam literal — which is a design cardinality
+an implementer must not get wrong, not a tree measurement, and it is explicitly fenced off from the
+short-shelf-life totals in the same bullet.
+
+Round 10's F-01 survives the delta unchanged and is re-recorded below as inherited: TSPEC's bytes
+still moved under an unchanged `v1.10` label, and DECISIONS still cites that label. The delta
+mildly *improves* the situation rather than worsening it — the new paragraph names both byte
+states by hash (`4a092e85…` → `1531143c…`) in the same sentence as the version label, so a reader
+who lands on the v1.9 note gets the disambiguation the label alone cannot give. The fix still
+belongs to TSPEC's changelog discipline; no DECISIONS edit is owed.
 
 ## Consequences
 
