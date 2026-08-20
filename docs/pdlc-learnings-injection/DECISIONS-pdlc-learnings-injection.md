@@ -254,11 +254,26 @@ if the two argv literals diverge.
   same-shape test while disagreeing with consolidation about which documents exist.
 - **Walk the filesystem directly with `fs`** — rejected: it bypasses the seams, so AC-6.1's
   model-free suites could not fake it, and it inherits the `_listFiles` predicate problem.
+- **Widen the enumeration to include consolidation's project-level artefacts** (`docs/_constraints/`,
+  `docs/_decisions/`) — rejected, and recorded here because REQ G-6's second clause makes it the
+  natural next thought for an agent reading only the code. C-3 defines the corpus by reference to
+  consolidation's **pass-side** predicate, which is LEARNINGS-only; project-level constraints and
+  decisions reach authoring roles by a different route entirely — the role prompts already instruct
+  every author to read `docs/_constraints/DOMAIN-CONSTRAINTS.md` and `docs/_decisions/` before
+  writing. G-6's second clause is therefore already discharged, and adding those globs here would
+  double-deliver the same material at per-dispatch cost while breaking the pinning test's premise
+  that the two argv literals are the same predicate.
 
 **Constraints that forced the shape.** G-A again (no third vendored module); REQ C-3's
 tracked-or-untracked-but-not-ignored requirement, which only `git ls-files` decides correctly; and
-the seam contract that `_git` never throws on either channel, so the shell's failure handling is a
-check of `ok`, not a `catch`.
+the seam contract as corrected in DEC-LI-02 — `_git` returns `{ok, stdout, stderr}` without throwing
+on the Node channel (`defaultGit`), but **may reject on the runtime channel** (`rtGit` awaits
+`RT.agent` unguarded). So the shell's failure handling is a check of `ok` **and** a `catch` around
+the enumeration call, not a check of `ok` alone. One `try` around the twelve-line shell covers both
+seams; it costs nothing on the channel where the no-throw contract does hold, and it is the only
+thing standing between a transport rejection and a halted authoring dispatch, which REQ C-7/G-4 and
+FSPEC `BR-12` forbid unconditionally. A design whose fail-open guarantee holds on one channel only
+is not the guarantee this feature exists to give.
 
 **Reversibility.** Easy. If `MODULE_NAMES` ever grows to include `consolidate-learnings.js`, the
 restatement collapses into an import and the pinning test becomes redundant — a deletion, not a
