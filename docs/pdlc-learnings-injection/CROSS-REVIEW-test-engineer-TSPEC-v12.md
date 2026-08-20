@@ -80,7 +80,52 @@ rule is the basis for the Low anchor findings carried below. Nothing raised here
 
 ## Interfaces
 
-_pending_
+Two interface contracts carry the erratum's weight, and one of them is now short a rule.
+
+**`extractInjectableMaterial(text, maxBytes)` (§I.3) — contract holds, semantics of `maxBytes: 0`
+are derivable but unstated.** The JSDoc contract is *"BR-6's five priority sections, in priority
+order, bounded to `maxBytes` UTF-8 bytes of MATERIAL (§D.5); `bounded` is decided at the cut, not
+re-derived downstream"*, returning `{material, bounded, bytes, sections}`. At `maxBytes: 0` the
+character-safe cut of §D.5 yields `material: ""`, `bytes: 0`, `sections: []` — the return value E-36
+needs. So the interface *supports* the decision without a signature change; what no TSPEC sentence
+says is whether `bounded` is `true` or `false` in that case. It matters for a test author: BR-8's
+row carries the **bounded** flag, and under E-36 the document never reaches a BR-8 row at all
+(it is dropped), so the flag's value is unobservable there — but T-O-6's property, which PROPERTIES
+owes, asserts *"`bounded` is `true` exactly when material was cut"* over **any** non-negative
+`maxBytes`, and `maxBytes: 0` is now a distinguished member of that space. A generator that samples
+`0` will decide the question by accident unless TSPEC decides it first. Recorded as F-04 (Medium) —
+it is a gap the erratum widened rather than created, but `maxBytesPerDocument: 0` was a *possible*
+configuration before v0.13 and is a *specified* one now.
+
+**`selectLearnings({entries, feature, thresholds})` (§I.3) — wide enough, but its stated drop rule
+is the wrong one.** The function owns "the whole of BR-2/BR-4/BR-5/BR-6 as one pure function" and
+returns `{selected, rejected, totalBytes, orderKeys}`. Because it receives `thresholds`, the
+zero-bound drop is decidable inside it and `rejected[]` is already documented as **total over
+`entries`** — so E-36's "every one carries `RSN-NO-MATERIAL`" has a producible path today. The
+break is F-01: the only place TSPEC states *when* `RSN-NO-MATERIAL` fires says *"No BR-6 section
+present"*. A document that carries three sections under `maxBytesPerDocument: 0` fails that
+condition, so an implementer following TSPEC puts it in `selected` with `bytes: 0`, consuming one
+of `maxDocuments`' slots and emitting a BR-8 row — and AT-30's third case ("BR-8 rows present and
+**empty**") reds. Two documents disagreeing about which array the entry lands in is precisely the
+kind of divergence a delta confirmation exists to catch.
+
+**`looksLikeLearningsDocument(text)` (§I.3, §D.3) — unchanged and still correct, but no longer the
+whole of F-O-1.** Its contract (*"Bytes only, no model call (F-O-1)"*) satisfies both bounds FSPEC
+fixes. Upstream now names a **second** rule on the same terms, and there is no second exported
+function, no regex and no prose in TSPEC that answers it: given a heading line, is it one of BR-6's
+five named sections — matched as `## N. Title`, as the bare title, or as a prefix? FSPEC is
+explicit that it will not decide this ("which headings count as which section is F-O-1's, not text
+to be matched literally from here"), so the rule exists nowhere in the pipeline. That is F-02. Its
+test consequence is concrete: AT-11's oracle is a **set equality over `sections`**, the BR-6
+priority names actually taken, and AT-28's oracle is "no BR-6 section present ⇒
+`RSN-NO-MATERIAL`" — neither can be written without knowing what counts as a match, and a fixture
+author will silently pick one interpretation, pin it, and make the choice unfalsifiable.
+
+**Unchanged interface surface.** §I.4's shell (`gatherLearningsCorpus`, `renderLearningsBlock`,
+`buildLearningsInjector`) and §I.5's five defaulted-parameter extensions are untouched by this
+erratum: the disabled path still branches before entering the feature (AC-5.1a), and a
+zero-threshold run is an **enabled** run, so it takes the same path the other two zeros take. I
+re-confirmed that reading against BR-14 at HEAD.
 
 ## Data Model
 
