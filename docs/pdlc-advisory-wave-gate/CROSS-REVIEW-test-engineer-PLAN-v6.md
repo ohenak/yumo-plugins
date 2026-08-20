@@ -164,7 +164,33 @@ causes. Fix F-01 and this framing becomes checkable end to end.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: does bumping `documentOracles.test.js`'s T15 literal from 99 to 100 belong to this feature at all? The comment above it ties the literal to another feature's sweep ("only holds once T15's deletions … land"). If that sweep is in flight, the two features are now coupled through a single integer and the fix needs an owner named in one plan or the other — otherwise both sides will assume the other bumps it. |
+| Q-02 | For F-01: are the 14 tracked `.claude/workflows/.pdlc-backups/*.bak` files intended to stay tracked? TSPEC v1.10 recorded them as hygiene "not fixable in this document" and routed nothing. If they are untracked in Phase I, PROP-SWEEP-2(b) closes for free; if they stay, that oracle stays red for the life of the branch. |
+| Q-03 | For F-03: is the wave gate expected to run against a clean tree? If yes, say so in the batch-1 wording; if no, `consumerCleanup.test.js` AT-4.1 will fail intermittently at every wave boundary in this shared tree, not just wave 1's. |
+
 ## Positive Observations
+
+- The revert-vs-keep decision is *made*, not deferred, and made on measured grounds. The three
+  reasons are each independently checkable, and I checked each one: the pre-flight gate is green,
+  seven of eight surfaces already read six with `advisoryRecord.test.js`'s equality the single
+  residue, and the `19 + 5` failure split is exact to the test. That is unusually good evidence
+  discipline for an erratum round.
+- A6-00's restatement answers the routed question structurally rather than by assertion: because
+  the gate asserts existence and never shape, seam-cardinality drift provably cannot mask baseline
+  rot. The row also says "do not re-create the file", which is the instruction the merged-task
+  structure needed.
+- "Observe the red in-session" is correctly re-read as "confirm the failing set is exactly the
+  listed one — not produce it", with escalation for anything outside the set. That converts an
+  inherited red from a hazard into a checkable precondition, and it is a falsifiable oracle because
+  the document commits to both a count and named causes.
+- The stale-test-name note ("a red test whose name contradicts its assertion is the next reader's
+  trap") catches something a batch re-derivation alone would have missed. I confirmed the residue:
+  `advisoryDisabled.test.js`'s `PROP-DIS-05` still reads "reports five zero rows" over a
+  `toHaveLength(6)`, and `advisoryHarvest.test.js`'s T-08-6 still says "report still five seams".
+- The batch column survives re-derivation unchanged, and the DoD's engine leg now states which
+  command runs it and why the wave gate cannot see it — closing the v4 finding cleanly.
 
 ## Recommendation
 
