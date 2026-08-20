@@ -23,9 +23,13 @@ depends-on: []
 
 TSPEC §A.1's new region of `pdlc/workflows/orchestrate-dev.js` — twelve symbols (constants,
 config parser, pure selection core, IO shell, renderer, injector factory), one attachment in
-`dispatchAndVerify`, one conditionally-spread report key in `buildFinalReport` — plus the seven
-new jest suites TSPEC §T.5 assigns, one new fixture helper, one committed pre-feature prompt
-baseline and the script that captures it.
+`dispatchAndVerify`, one conditionally-spread report key in `buildFinalReport` — plus **fourteen new
+test files**: the seven jest suites TSPEC §T.5 assigns, `learningsSuiteMap` (the partition's
+closure), `learningsCaptureScript` and `learningsBaselineGuard` (the baseline's two halves),
+`learningsPredicatePin` (the cross-module agreement), `learningsPremises` (the pre-flight's owned
+artifact, TE F-05), `learningsArmInventory` (the §T.7 fail-open inventory made mechanical, TE
+F-07), and one fixture helper — together with one committed pre-feature prompt baseline and the
+script that captures it.
 
 **This PLAN cites; it does not restate.** Every task row names the TSPEC section that owns the
 thing being built. Where a row and the TSPEC disagree, the TSPEC wins and the row is the defect.
@@ -94,14 +98,17 @@ for the same component. Every green implementation task lists its red-test task 
 are repo-relative and subpackage-qualified; `__tests__/` and `helpers/` are always under
 `pdlc/workflows/`.
 
-**Batches 2–5 are RED-terminal.** Their gate is *not* "full suite green": it is **the new tests
-fail for the specified reason — the symbol under test does not exist yet, or the `.gitignore` rule
-is absent — and every pre-existing test is unchanged**. Batch 3 is *mixed*-terminal: LI-04 and LI-05
+**Batches 2, 3 and 5 are RED-terminal.** Their gate is *not* "full suite green": it is **the new
+tests fail for the specified reason — the symbol under test does not exist yet, or the `.gitignore`
+rule is absent — and every pre-existing test is unchanged**. Batch 3 is *mixed*: LI-04 and LI-05
 green their own two oracles in the same batch that LI-07…LI-09 land red, so its gate is stated
-per-suite. **Batch 6 is green-terminal** — `LI-T-SUITEMAP` asserts over six suite files that all
-exist at the end of batch 5 and is green on authoring (TE F-02). Batches 7–13 are **mixed** and
-carry a per-batch expected-red ledger; only batch 14 carries an unqualified full-suite-green gate.
-§Verification states every gate wording, the ledger, and the pre-existing-red exclusion.
+per-suite. **Batches 1, 4 and 6 are green-terminal**, each over a suite that is green the moment it
+is authored and has no red episode to stage: `learningsPremises` over HEAD's premises,
+`learningsBaselineGuard` over the capture it was written from, `learningsSuiteMap` over six suite
+files that all exist at the end of batch 5 (TE F-02, F-04, F-05). Batches 7–13 are **mixed** and
+carry a per-batch expected-red ledger, stated in test names wherever a suite is split across two
+green tasks; only batch 14 carries an unqualified full-suite-green gate. §Verification states every
+gate wording, the ledger, and the pre-existing-red exclusion.
 
 **Ordering obligation T-O-2 binds at batch 4.** The pre-feature baseline capture (LI-06) must
 complete **before the first production edit lands** (LI-15, batch 7), or the merge-base no longer
