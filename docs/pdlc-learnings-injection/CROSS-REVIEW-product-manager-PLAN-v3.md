@@ -44,4 +44,19 @@
 
 ## Recommendation
 
+**Needs revision**
+
+Both of my v2 findings are closed, and I found nothing in the v0.2→v0.3 delta that broke a section I had approved: §T.5's 35-member partition is unchanged, the manifest's arithmetic still reconciles (24 rows / 17 files / every one of 23 tasks owning a row), the batch ladder and the expected-red ledger both follow AT-15's four-clause split correctly, and the coverage baseline section is untouched.
+
+One new **High** finding blocks, and it sits inside the answer to my own question rather than in old material:
+
+1. **F-09 — re-key LI-01's P-2a set equality.** The two object-literal authoring dispatches both live in `erratumRound` (the `erratumAuthorPrompt` call and the land-proof retry), so "keyed by enclosing function and argument position" yields three keys for four sites and LI-01 reds at batch 1. Key on `(enclosing named function, prompt-source symbol)` — or any other injective structural key — so the four sites are four members and a fifth site still reds at batch 1. Nothing else in the row needs to move; the "three object literals plus one positional, grep returns 3 not 4" measurement is correct as written, and I re-verified it.
+
+**F-10** (P-A-3's "fourteen files" for a twelve-suite ledger universe) is Low and non-gating; fix it in the same pass.
+
+Two upstream FSPEC defects remain open and are re-raised as errata below rather than folded into this verdict — the PLAN handles both correctly by routing them.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
