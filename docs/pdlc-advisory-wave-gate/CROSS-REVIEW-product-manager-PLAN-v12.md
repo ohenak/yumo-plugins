@@ -37,6 +37,37 @@ sentence in PLAN that makes a claim *about* DECISIONS' contents — "DECISIONS n
 
 ## Batches
 
+PLAN's task table, batch composition and wave map are untouched by this cascade, and the upstream
+edit imposes no change on them. Re-verified mechanically at HEAD rather than asserted:
+
+| Check | Result at HEAD |
+|---|---|
+| `parsePlanTasks` over PLAN | **11 tasks** (`A6-00, A6-01, A6-04, A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21`) |
+| `validatePlanContract` | `{"ok": true}` |
+| `computeWaves` | **7 waves** |
+| PLAN bytes vs. round-11 reviewed commit `df90d1f8` | identical |
+
+Same four numbers as round 11, replayed through the shipped parsers.
+
+**The batches that lean on a DECISIONS entry still lean on unchanged bytes.** Four task rows cite a
+decision by id: A6-10 cites `DEC-A6-01` (dangling snapshot commit, never `git stash`) and
+`DEC-A6-03` (wave-scoped ref, no run discriminator); A6-21 cites `DEC-A6-02` (an E-6 promotion gets
+its own `commitPaths` call with the `chore({feature}): wave {N} promotion ({taskId})` message);
+A6-04/A6-06's engine-channel expectation rests on `DEC-A6-04` (`waveBudgetPerRun: 0` as a supported
+affordance validated by `nonNegativeInt`). I re-read all four headings and bodies at HEAD against
+the sentences the task rows compress. None moved in this delta, and none says anything the task row
+does not still say the same way. No task row, batch assignment, wave number, ownership cell or
+`files` list needs to move.
+
+**Sizing direction is unchanged, and the one figure PLAN restates from DECISIONS still agrees.**
+A6-05's "verification, not editing" budget is sized off the three columns. All three restatements in
+PLAN's Overview check out against the appendix at HEAD: column (1) **four** (`SIZING` §"Column (1)");
+column (2) **twelve**, of which ten oracles and two green inputs (§"Column (2)"); column (3)
+**twenty-five** (§"Column (3)"). DECISIONS at HEAD still carries column (1)'s four and nothing else
+numeric from the block — "The number an implementer must not get wrong is **four**" survives the
+delta verbatim. No scope creep entered PLAN from this edit, and no P0/P1 obligation was added,
+narrowed or withdrawn upstream by it.
+
 ## Dependencies
 
 ## Verification
