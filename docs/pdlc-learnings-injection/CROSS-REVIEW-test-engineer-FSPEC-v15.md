@@ -105,6 +105,60 @@ No other flow step, and no decision row other than D-12, is inside the diff.
 
 ## Business Rules
 
+**BR-6 — the byte-accounting basis (edited).** The rewrite is the substantive win of this round. "A
+document's **contributed bytes** are its **material** — the section headings and bodies taken from
+it, and nothing else" replaces the framing-inclusive definition, and the framing clause names every
+excluded artefact explicitly (identification line, per-document delimiters and source-path label,
+block preamble). Three testing consequences, all improvements:
+
+1. **An expected byte count is now computable from a fixture alone**, and the FSPEC says so. Under
+   the old basis it was not: the identification line's format and the delimiters are F-O-2's and
+   F-O-3's to fix in TSPEC, so any AT stating a literal expected count depended on strings this
+   document deliberately does not fix. AT-11 and AT-12 both demand exactly such a literal
+   ("committed with the fixture as a literal integer, recomputed by hand when the fixture changes,
+   never derived in the test"). Those two ATs were unsatisfiable-as-written at v0.12 and are
+   satisfiable now — the delta retroactively repaired an oracle I had approved.
+2. **The self-referential budget is gone.** The justification the FSPEC gives — "a document is never
+   abridged to pay for the annotation that says it was abridged" — is the real defect: the ABRIDGED
+   annotation is emitted *because* the document was bounded, so charging it to that document's own
+   budget makes the budget depend on its own outcome. That is a fixed-point, not a threshold, and it
+   is untestable by construction.
+3. **The FSPEC/TSPEC contradiction is resolved on the FSPEC's side, toward the upstream clause.**
+   TSPEC §D.5 (TSPEC:763-790) already said "`maxBytesPerDocument` bounds material only, and so does
+   `bytesInjected`", with framing charged to nothing and `totalBytesInjected` differing from rendered
+   block size by a framing constant. The FSPEC now agrees, and agrees with REQ AC-2.3/AC-2.4. The
+   downstream fixture guidance in TSPEC ("a fixture that wants to pin framing cost asserts on the
+   rendered block, not on `bytesInjected`") needs no change.
+
+**BR-6 — the zero bound (edited).** "Where the bound is **zero**, no material is admissible from any
+document: each yields nothing, is dropped before the total bound with `RSN-NO-MATERIAL` (BR-9) and
+consumes no slot, and the run is the enabled, empty-selection run BR-14 describes (E-36, AT-30)."
+This decides all three of the routed sub-questions at once — not `RSN-BYTES`, not a zero-byte
+contribution, not a refusal — and it decides them the way the rest of the rule already worked:
+FSPEC:475-478 already dropped a no-material document before the bounds "otherwise it would take a
+`maxDocuments` slot while injecting zero bytes, indistinguishable in BR-8's rows from real
+contribution". The zero-bound document is that same document arrived at by a different route, so it
+gets the same treatment. Consistency with the existing rule, not a new mechanism — which is what
+makes it cheap to test.
+
+The one seam the sentence leaves rough is its neighbour, not itself: the preceding paragraph still
+ends "If the **first** section alone exceeds the bound, it is taken up to the bound and cut. **Either
+way** the document's row carries the **bounded** flag (AC-2.3)". At bound zero the first section does
+exceed the bound, so the unqualified "either way" reaches the case the very next sentence decides
+differently. Prose order resolves it for a careful reader — the exception follows the rule — but D-9
+repeats the unqualified form in the decision table, where there is no following sentence to correct
+it (F-01).
+
+**BR-9 (edited).** `RSN-NO-MATERIAL`'s catalogue line now reads "Eligible, but yields no material —
+it carries none of BR-6's priority sections, or the per-document bound is zero and admits none". The
+reason id is now overloaded across two causes, which is the right call: BR-9's ids classify the
+*outcome* a report reader sees, and both causes produce the identical outcome (no slot, no bytes, no
+row in the selected set). Splitting them would create a second id no consumer could act on
+differently. The closed-set claim over the catalogue is unaffected — no id was added or removed.
+
+BR-1 through BR-5, BR-7, BR-8, BR-10 through BR-16 are outside the diff and byte-identical to what I
+approved at v14.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
