@@ -76,4 +76,30 @@ Findings tagged `Cross-Feature` (20 occurrences across the set), plus `Local`-ta
 
 ## 5. Open Items for Consolidation
 
+The handed open-promotion list was empty (no open promotions recorded in `docs/_decisions/.consolidation-log.md`), so **no `failure-mode-id:` line is copied onto any item below**. Each was checked against that empty list and matched nothing.
+
+1. **Cross-review completeness gate checks the wrong heading set.** Seven consecutive rounds in this feature; POSTMORTEM-T records it has survived three prior harvests without promotion. Dispatcher wiring, not authoring. This is the strongest promotion candidate in the set — it is a defect that has now demonstrably outlived the harvest mechanism intended to surface it. Target: skill/engine fix plus a `docs/_decisions/` entry recording why it recurred across harvests.
+
+2. **Approval anchors must be invalidated when the approved bytes move.** Two independent observations: a tier-1 anchor survived a rebase that reverted the approved bytes, and TSPEC's bytes changed under an unchanged `v1.10` label that DECISIONS cited five times as a grounding anchor. Target: `docs/_constraints/` — a version label, once cited as a grounding anchor, is immutable; a rebase touching an approved document invalidates its anchor.
+
+3. **Two-count rule (`if this sentence names two counts, re-run both`).** Nominated as a promotion candidate in POSTMORTEM-D at its fourth consecutive recurrence. Mechanically checkable at write time. Target: authoring-skill checklist (`se-author`, `pm-author`).
+
+4. **Stall detector: same section, N consecutive rounds, one High each.** Second phase in this feature to exhibit it; both times it ended in a review-cap halt. Target: engine — surface it to the orchestrator before the cap expires.
+
+5. **DECISIONS must not carry a measurement of the working tree.** Decisions are stable after approval; measurements are not, and a review loop cannot converge on one. Keep the re-derivation recipe, route the totals to the consuming artifact. Target: `docs/_constraints/` plus the `se-author` DECISIONS guidance.
+
+6. **A retirement sweep must leave an ignore rule behind, not just a deletion.** The `/.claude/workflows/` rule was dropped at retirement T22, so six machine-local artifacts were re-added by an unrelated commit and reached HEAD tracked. Target: `docs/_constraints/`.
+
+7. **Tree-walking oracles must filter through `git check-ignore`.** `coveredViolations` walks everything under `root` except `.git/` and `node_modules/`; the project CLAUDE.md already warns about this and it still cost a High. The AT-22 fix (with its non-vacuity control) is the pattern to codify. Target: `docs/_constraints/` + `te-author` guidance.
+
+8. **A deferral is unbound unless it names a QUEUE row id.** Prose naming "an erratum on an upstream doc" as successor is not a binding. Target: `docs/_constraints/`.
+
+9. **Human-facing disclosure prose about an enumerable constant should be oracle-derived from that constant.** The `pdlc/OPERATIONS.md` fix derives expected text from `ADVISORY_SEAMS` / `ADVISORY_DEFAULTS` / `ENVELOPE_DEFAULTS` so a seventh seam reds the runbook. Target: `docs/_constraints/`.
+
+10. **Commit titles must describe contents.** `e3b9d5a3` was titled as a cross-review docs commit and carried A6 implementation plus ~168k lines of generated output. Target: `docs/_constraints/` or a pre-commit guard.
+
+11. **Reviewer scope under-tagging.** 20 `Cross-Feature` against 44 `Process`, with several plainly repo-wide findings arriving tagged `Local` and re-routed by this harvest. Target: sharpen the `Scope` rubric in the three review skills. *(Recorded here per the under-tagging check, so consolidation sees the routing gap.)*
+
+12. **A batch of remediations touching a shared fact must be re-measured after the last commit in the batch.** DoD v1 finding 7's fix was falsified by the very next commit, which was finding 1's fix. Target: `dod-verify` / `se-implement` guidance.
+
 ## 6. Approval Record
