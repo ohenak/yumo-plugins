@@ -99,6 +99,45 @@ re-derive TSPEC citations.
 
 ## Consequences
 
+**For PROPERTIES, which is the next reader.** Nothing in this round blocks it. The gate it must
+write `AT-31`/`AT-32` against is now stated identically in TSPEC §I.3 and `DEC-LI-07`'s Decision, so
+the hazard `D-O-9` existed to prevent — a property authored against a superseded gate — is closed on
+the substance. Two items are worth landing before transcription anyway, both carried from v4: F-04
+(`DEC-LI-06`'s reversibility ground still credits `AC-5.2` with cache detection `BR-15`'s path-set
+form no longer performs, leaving `D-O-6`'s counts as the sole falsifier) and F-02 (row 4 still points
+at a run-level record TSPEC has demoted to a non-asserted mirror). A PROPERTIES author who follows
+row 4 writes a completeness assertion over the mirror: green on a single-dispatch fixture, silently
+wrong on `AT-18`'s divergent run. That is the one drift in this round with a path to a false green.
+
+**On the oracle arithmetic of the `null` scoping (F-06).** §D.1's domain tests now read
+`v === null || catalogue.includes(v)`, which is correct — `null` is `corpusOutcome`'s healthy value
+and an unscoped assertion would red every happy-path run — but it is a real loss of bite on exactly
+one axis: a `corpusOutcome` that is `null` where `RSN-UNLISTABLE` was required now satisfies the
+domain test. The compensating oracle exists and this document owns it: `D-O-6` requires the positive
+behavioural case ("an enumeration succeeding at dispatch 1 but failing at dispatch 5 records
+`RSN-UNLISTABLE` at 5"), which is a positive-value assertion, not a domain one. So the invariant is
+still falsifiable — but `D-O-6` is now its **only** falsifier, and nothing in DECISIONS says so.
+This is the same shape as v4's F-01: an upstream edit that improves an oracle can simultaneously
+retire the falsifying power a downstream document was implicitly leaning on.
+
+**For the harvest phase.** The reusable lesson here is a `Process` one about cascade coverage, and
+it is worth recording: *a document's own trailer can record an upstream sha without anyone ever
+having re-derived that upstream's citations.* v3 and v4 both carried `UPSTREAM-STATE: TSPEC …` while
+reviewing against FSPEC; the TSPEC citations went unchecked across two rounds, and `DEC-LI-07`'s
+present-tense claim about TSPEC's content had been false since v0.6 without any round being wrong to
+approve. Recording an upstream sha is a *statement of what was current*, not a *claim of what was
+checked*. The cheap fix in this role's cascade protocol: when the trigger document changes, re-derive
+its citations — and treat every present-tense claim about a **sibling document's current state**
+(`TSPEC still carries X`, `until TSPEC lands Y`) as a citation with an expiry date, checked on every
+cascade regardless of trigger. Those sentences age differently from claims about behaviour: behaviour
+claims stay true until the design changes, sibling-state claims become false the moment the sibling
+complies.
+
+**What this round did not do.** I did not re-read DECISIONS end to end, did not re-derive its
+code-level claims at HEAD, and did not revisit any settled decision. TSPEC was read at HEAD in the
+sections `ccc739d1..bfe58851` touched, plus every section DECISIONS cites by id or describes in the
+present tense.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
