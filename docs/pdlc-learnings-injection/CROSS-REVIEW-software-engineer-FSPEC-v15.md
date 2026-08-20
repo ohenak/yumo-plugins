@@ -33,6 +33,19 @@ inside one document, not an undecided outcome — BR-6 is the normative locus an
 
 ## Linked Requirements
 
+Trace rows checked for the delta only.
+
+| Row | State after the erratum | Verdict |
+|---|---|---|
+| `AC-2.3 → BR-6` | Unchanged; BR-6 still owns both byte bounds, now on a material-only basis | Accurate against REQ `:291-295` |
+| `AC-4.4 → BR-5, BR-14 → AT-30` (`:178`) | The `maxDocuments: 0` and `maxTotalBytes: 0` zeros trace through BR-5/BR-14; the third zero is decided in **BR-6**, which the row does not name | Incomplete — F-03 (Low) |
+| `E-36 → AT-30` (`:775`) | Present, and AT-30 now carries the third fixture | Resolved |
+| Coverage sentence (`:988`) | Now reads `E-01 … E-36, less retired E-05` | Resolved — the new row is inside the counted range |
+| `D-12 → AT-28` (`:993`) | D-12's question was reworded to "yields material"; the AT mapping is unchanged and AT-28 still exercises the no-priority-section branch, while AT-30 now exercises the zero-bound branch of the same decision | Serviceable; AT-30 is not listed against D-12, but D-12's outcome is reached by both — folded into F-01 rather than filed separately |
+
+The header `Cross-Reviews` row still reads `…-FSPEC-v{N}.md — every round present on this branch,
+not hand-enumerated`, so v15 does not stale it — the v14 fix holds.
+
 ## Behavioral Flow
 
 ## Business Rules
