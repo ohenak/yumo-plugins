@@ -66,15 +66,27 @@ The `RSN-SELF` carve-out and the `RSN-UNREADABLE`-belongs ("the failed attempt i
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+Untouched by the delta and unaffected by it. E-29 (five optimizer rounds → each round's authoring dispatch carries a block, AT-01/AT-02) and E-30 (erratum dispatch carries a block) both concern dispatches whose target *is* one of C-1's six types, so the added conjunct does not change their expected outcome. E-01's "every authoring dispatch composed exactly as today" under an empty corpus is likewise unaffected — it is an all-quantified claim over a set the conjunct only shrinks.
+
+I looked for an E-row covering the newly-named exclusion — an authoring-tagged dispatch with no C-1 document type — and there is none. I am **not** filing that as a finding: the exclusion is a rule-level fact that BR-1 states directly and AT-02's universe-wide set equality already exercises, and manufacturing an E-row for it would duplicate the rule rather than cover an edge. The gap that does matter is the byte-identity oracle, not the edge catalogue (F-01).
 
 ## Acceptance Tests
 
-_pending_
+**AT-02 (`:781-786`) — landed.** Retargeted from "the subset BR-1's classification names" to "the subset BR-1's **two-conjunct rule** names", still asserted as set equality over the whole dispatch universe ("every agent invocation the run makes … not only those already classified authoring"). The universe clause was already right and is what makes the corrected rule testable: a test that only enumerated authoring-classified dispatches could not observe the new exclusion at all. With this wording, a run in which the code-review optimizer carried a block fails AT-02. Item 1 is discharged on the test side too.
+
+**AT-33 (`:936-943`) — landed.** Transcribes the corrected BR-15 expected set verbatim in substance ("exactly one attempt per report-named document other than the `RSN-SELF` ones, the enumeration of candidate paths contributing no member"), and retains the non-empty-observed-set conjunct that keeps AT-34's absence claim non-vacuous. The AT and its rule now agree; before the delta, a faithful implementation would have failed AT-33 on a phantom enumeration member. Item 2 is discharged.
+
+**AT-03 (`:787-789`) and AT-29 (`:906-912`) — not touched, and now under-covering.** Both express AC-1.2's byte-identity half over "each non-authoring dispatch" / "every non-authoring dispatch prompt". Under the corrected BR-1 that quantifier no longer covers the authoring-tagged, non-C-1-target dispatch that REQ AC-1.2 names by hand. Consequence, concretely: an implementation that suppressed the block for the code-review optimizer (AT-02 green) but nonetheless perturbed that dispatch's prompt — an injected-but-empty region, a reordered manifest, a stray delimiter — would pass every AT in this document while violating AC-1.2 as written. The fix is a quantifier swap in three places (BR-11, AT-03, AT-29): "non-authoring" → "outside BR-1's rule", which is the phrase BR-1 itself now uses. AT-31's disabled-run claim already quantifies over "every composed dispatch" and needs no change.
+
+**AT-01, AT-04–AT-28, AT-30–AT-35** — unchanged and unaffected; re-confirmed by sampling against their rules, no divergence found.
+
+The traceability row at `:140` (`AC-1.2 | BR-1, BR-11 | AT-02, AT-03`) is itself accurate as a mapping; it is the mapped-to text that under-delivers, so no separate finding.
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | When the quantifier is repaired in BR-11 / AT-03 / AT-29, is "outside BR-1's rule" the phrase you want, or would you rather BR-1 name its complement explicitly once (e.g. "every other dispatch, including an authoring-tagged dispatch with no C-1 target") and have the three sites cite that? The second costs one more sentence in BR-1 and makes the partition impossible to re-split by a later edit to either half. |
 
 ## Delta-Confirmation Findings
 
