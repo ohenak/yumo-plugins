@@ -101,3 +101,8 @@ FINDING: Low | delta | local | AT-32 (Acceptance Tests, Group 5) | New positive 
 
 VERDICT: Approved
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:57b71e0c5687067aa34ec4c4afc0c2ce58ff3dce61b1813f21b42cca5f048fcf
+APPROVAL-HASH-NORMALIZED: sha256:57b71e0c5687067aa34ec4c4afc0c2ce58ff3dce61b1813f21b42cca5f048fcf
+REVIEWED-COMMIT: a85ced73e5ff5708359a9b82a91b7cb56a64e79a
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
