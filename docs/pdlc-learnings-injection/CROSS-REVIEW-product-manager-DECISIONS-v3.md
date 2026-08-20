@@ -119,6 +119,42 @@ the pipeline rather than overstating it.
 
 ## Consequences
 
+**For this round.** The confirmation is approving. FSPEC v0.8–v0.10 absorbed nothing that DECISIONS
+re-decides, and the one substantive upstream move — BR-9/BR-10 from run-level to per-dispatch —
+lands on the same side of the argument DEC-LI-06 and `D-O-6` already made. The three findings are
+citation defects, all fixable in a single authoring pass of a few sentences; none of them blocks
+PLAN or PROPERTIES from being authored today, because both are authored from FSPEC and TSPEC, which
+now agree with each other at HEAD.
+
+**For the next authoring pass of DECISIONS**, the edits I would make are exactly:
+
+1. Replace the AC-3.3 locus row in "Decisions deliberately NOT taken here" with the settled answer:
+   the locus is fixed by FSPEC `BR-10` at two loci — ordering key values per authoring dispatch,
+   §4.1 thresholds once per run — with one completeness test each, and any run-level mirror additive
+   and unasserted. Keep the row (it is still a question DECISIONS does not own), but state it as
+   *closed upstream* rather than *routed and open*. (F-01)
+2. Rewrite DEC-LI-07's divergence paragraph in the past tense: the `DEC-ERR-01` ask was landed by
+   TSPEC v0.6, `ERR-4` is closed, §I.3 gates on `config.enabled` alone. The decision itself is
+   unchanged; only the standing-notice framing is retired. `D-O-5` can stay as an IMPL-side
+   protection on its own merits. (F-02)
+3. Repin the header and the upstream version note: TSPEC v0.6, FSPEC v0.10 (REQ v0.9 is correct as
+   written). (F-03)
+
+**For the pipeline.** Two durable signals are worth naming beyond this feature, and both are the
+reason F-01 and F-02 exist at all rather than being invisible bookkeeping. First, a document whose
+value is *placing* questions — "not decided here, owned there" — carries a maintenance obligation
+that a document of decisions does not: when the named owner answers, the pointer becomes a false
+statement about the state of the pipeline, and nothing mechanically detects it. Second, DECISIONS is
+the one artifact in this pipeline that deliberately narrates the *state* of its siblings ("TSPEC
+still carries `ERR-4` open"), which is a genuinely useful thing to do and also the thing that
+guarantees staleness the moment the sibling moves. Both are `Process`-flavoured observations for
+harvest rather than findings against this author, who wrote each sentence accurately at the time.
+
+**On the confirmation itself.** The item list handed to me was the header erratum; the two findings
+that matter came from re-reading upstream at HEAD across the whole span since my recorded
+`UPSTREAM-STATE`, which is what DEC-ERR-03 asks for. Confirming on the named item alone would have
+returned a clean approval over two stale citations.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
