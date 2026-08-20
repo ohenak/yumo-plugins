@@ -86,6 +86,45 @@ NG-5 in the same breath.
 
 ## Dependencies
 
+No `Deps` cell, no batch-ladder edge, and no integration point is disturbed by this delta. The
+dependency structure this PLAN encodes is between **its own tasks** (LI-11 red before LI-20 green,
+LI-02 fixtures before LI-11, LI-15's constants before LI-20's predicate), and FSPEC's erratum
+touched none of the facts those edges rest on.
+
+One dependency **on an upstream document** does change status, and it is the reason this cascade
+round exists at all:
+
+| Edge | State when I approved v4 | State at HEAD |
+|---|---|---|
+| PLAN §Errata → FSPEC's author (BR-1 correction) | Open, routed, blocking nothing but leaving LI-11's AT-02 with two readings | **Discharged** by FSPEC v0.11/v0.12 |
+| PLAN §Errata → FSPEC's author (BR-15 correction) | Open, routed, LI-11's AT-33 unable to hold as FSPEC stated it | **Discharged** by FSPEC v0.11/v0.12 |
+
+PLAN does not know this. Its §Errata section still opens "Two defects in **FSPEC v0.10** are still
+live at HEAD" and justifies the re-raise with "FSPEC v0.10 … does not carry a correction for
+either". Both sentences were true when written and are false now. That is F-01 — a stale outbound
+dependency, and the kind that costs real time: an operator reading this PLAN at HEAD would open an
+erratum round on FSPEC for two items FSPEC already fixed, or a DoD reviewer would treat the feature
+as carrying live upstream defects it does not.
+
+The §Errata preamble also carries a claim that is now doubly stale — that the defects "were first
+raised by TSPEC v0.6 (as ERR-3 and ERR-7)". That provenance sentence is still accurate as history;
+what needs to change is the tense and the disposition, not the attribution. The fix is small and
+mechanical: retire both rows, record the resolving FSPEC version (v0.11, reinforced in v0.12), and
+keep one line of history so the harvest phase can still see that this PLAN's authoring is what
+surfaced them. I would rather see that than a silent deletion — the routing worked, and the record
+of it working is worth a sentence.
+
+**ERR-1, ERR-2 and ERR-5 are unaffected.** PLAN says ERR-5's provenance was corrected in FSPEC's
+v0.7 round and that ERR-1 and ERR-2 remain with FSPEC's author. I checked E-13's text at HEAD — it
+still reads "measured: 2 of 89 at HEAD, both in regime-ledger; none in yumo-plugins", unchanged by
+this delta, so PLAN's statement about it holds. ERR-2 (the land-proof retry as a second
+block-carrying authoring dispatch) is untouched upstream and remains correctly routed; its
+downstream consequence on LI-11's fixture list is still live and still correctly recorded — subject
+only to the counting correction in F-02.
+
+**Downstream documents** (§Upstream and downstream documents) name REQ, FSPEC, TSPEC and DECISIONS
+as inputs without version-pinning them, so no pinned hash goes stale here.
+
 ## Verification
 
 ## Delta-Confirmation Findings
