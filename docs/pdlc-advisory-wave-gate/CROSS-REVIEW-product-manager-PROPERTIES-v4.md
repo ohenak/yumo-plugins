@@ -51,7 +51,38 @@ AC→property map in §C-1 still resolves for every P0/P1 criterion, NFR-4 inclu
 
 ## Oracles
 
-*(pending)*
+The oracle side is where the cascade actually bites, so it was measured rather than reasoned about.
+
+**Measured at HEAD (`git rev-parse HEAD`, working tree on `feat-pdlc-advisory-wave-gate`):**
+
+- `pdlc/workflows/__tests__/advisoryWaveGate.test.js` — **exists** (1.8 K). PROPERTIES names it the
+  home of PROP-CTR-09, -11, -12, -13 and PROP-GATE-* and calls it absent.
+- `pdlc/engine/__tests__/advisory-config-example.test.js` — **exists** (2.5 K). PROPERTIES names it
+  PROP-CFG-03's home and calls it absent.
+- The four cardinality oracles read `toHaveLength(6)` at `advisoryDisabled.test.js:629`,
+  `advisoryQueueSeams.test.js:634`, `advisoryHarvest.test.js:578` and `:733` — six, not five, and
+  seven-ish lines below every pin PROPERTIES records.
+
+This does not invalidate a single property. PROP-SEAM-02 asserts that cardinality surfaces are
+coupled to `ADVISORY_SEAMS`, and that coupling is exactly what makes the suite red at HEAD — the
+property is being *demonstrated* by the drift, not contradicted by it. What is invalidated is
+PROPERTIES' account of the oracle *baseline*: a te- or se-author reading §"File existence, verified
+at HEAD" is told to author two files that are on disk, and reading derivation rule 1 is told to go
+retarget four `(5)` literals that already read `(6)`. Both statements were true when written and
+are false now; both are load-bearing for Phase I sequencing, which is why F-01 is High rather than
+a bookkeeping nit.
+
+The fix is small and does not reopen anything: restate the two grounding paragraphs the way TSPEC
+§1.3 and §5.1 restated theirs — describe HEAD, name the residue, and say that `new` and the
+transcription list describe the required end state rather than outstanding work. The disposition of
+`e3b9d5a3` (revert, or re-derive PLAN's A6 batches around it) is PLAN's and Phase I's call in both
+documents; PROPERTIES should not decide it, only stop asserting the pre-`e3b9d5a3` baseline as
+current.
+
+One oracle-adjacent citation is unchanged and still off the DEC-DOC-01 bar: PROP-CFG-03 and the
+Example-config fixture row cite `ci-arrangement.test.js:39` and `:799`–`:819` as raw `file:line`
+anchors where a symbol or a block title would hold. Inherited, Low, `Process`, non-gating — and now
+the last such pair in this feature's PROPERTIES, since TSPEC re-anchored its own.
 
 ## Fixtures
 
