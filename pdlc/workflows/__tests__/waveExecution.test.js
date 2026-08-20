@@ -68,6 +68,26 @@ const PLAN_WITH_MANIFEST = [
   "| T2 | `src/two.js` |",
 ].join("\n");
 
+/**
+ * Two IMPLEMENTATION waves. Waves are derived TOPOLOGICALLY from the dependency column, never
+ * read off the PLAN's own batch labels (`computeTopologicalBatches` in orchestrate-dev.js), so
+ * the second wave is created by making T2 depend on T1 — writing `2` in the Batch column alone
+ * changes nothing. PLAN_WITH_MANIFEST's two tasks are independent, i.e. one wave, which is why
+ * PROP-GATE-10's "one run carrying both a green and a red-gated wave" population had no fixture
+ * before (CODE_REVIEW v1 §2 row 33).
+ */
+const PLAN_TWO_WAVES = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| T1 | First task | 1 | - |",
+  "| T2 | Second task | 2 | T1 |",
+  "",
+  "| Task | Files |",
+  "|---|---|",
+  "| T1 | `src/one.js` |",
+  "| T2 | `src/two.js` |",
+].join("\n");
+
 /** The same task table with no manifest at all — the legacy/worktree shape. */
 const PLAN_NO_MANIFEST = [
   "| Task ID | Description | Batch | Dependencies |",
@@ -1089,12 +1109,149 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(result.haltAdvisory).toBeUndefined();
   });
 
-  it("AT-05-4: an un-skip halt on the SAME wave A6 just resolved carries that wave's advisory fields as haltAdvisory", async () => {
+  it("AT-05-3 / PROP-REST-09: an unresolved A6 wave halts on EXACTLY the pre-A6 reason string and writes its queue row `halted`", async () => {
+    // CODE_REVIEW v1 §2 row 23: the only A6-path assertions on this reason were `toContain`
+    // fragments, which a rewritten or A6-decorated message would still satisfy. The oracle the
+    // property actually names is EQUALITY against the reason the pre-A6 pipeline emits for the
+    // same gate failure, so the baseline is captured from a run on identical inputs in which
+    // the tier is off — NFR-2's byte-identical baseline — rather than transcribed as a literal
+    // that would drift with the message.
+    const redGate = async () => ({ ok: false, output: "Tests: 1 failed, 39 passed\n" });
+
+    // Baseline: the tier-disabled sentinel (disposition null) — A6 contributes nothing.
+    const baselineQueueRows = [];
+    const baselineA6 = makeA6Fake({ resolved: false, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
+    const baseline = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        runCommand: redGate,
+        extra: {
+          _runWaveGateSeam: baselineA6.fn,
+          _recordQueueRow: async (row) => {
+            baselineQueueRows.push(row);
+            return { queueRow: "recorded" };
+          },
+        },
+      })
+    );
+
+    // The A6 run: the seam fires, does not resolve, and escalates.
+    const a6QueueRows = [];
+    const a6 = makeA6Fake({
+      resolved: false,
+      disposition: { seam: "A6", outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts: 3, model: "m", fallback: false },
+      haltFields: { rootCause: "wave-internal-defect", diagnosis: "could not repair", repairApplied: true, repairPaths: ["src/one.js"] },
+      postWaveRan: false,
+    });
+    const withA6 = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        runCommand: redGate,
+        extra: {
+          _runWaveGateSeam: a6.fn,
+          _recordQueueRow: async (row) => {
+            a6QueueRows.push(row);
+            return { queueRow: "recorded" };
+          },
+        },
+      })
+    );
+
+    // Both halted, and A6 really did run on the second.
+    expect(baseline.outcome).toBe("halted");
+    expect(withA6.outcome).toBe("halted");
+    expect(baselineA6.calls.length).toBe(1);
+    expect(a6.calls.length).toBe(1);
+    expect(withA6.haltAdvisory).toBeDefined();
+    expect(baseline.haltAdvisory).toBeUndefined();
+
+    // Conjunct 1 — EQUALITY, not containment. An escalated A6 adds its findings to the report's
+    // advisory channel, never to the halt reason.
+    expect(withA6.haltReason).toBe(baseline.haltReason);
+
+    // Non-vacuity: the baseline reason really is the wave-gate literal, so an equality that
+    // held because both runs halted somewhere else entirely would not pass silently.
+    expect(baseline.haltReason).toContain("Error: Wave 1 test gate failed");
+
+    // Conjunct 2 — the queue row is written `halted`, exactly as the pre-A6 pipeline writes it.
+    expect(a6QueueRows.map((r) => r.status)).toEqual(["halted"]);
+    expect(a6QueueRows).toEqual(baselineQueueRows);
+    expect(withA6.queueRow).toBe("recorded");
+  });
+
+  it("AT-07-3 / PROP-GATE-10: on one run carrying a green wave AND a red-gated wave, the green wave pays nothing — zero A6 dispatches — while still reaching its post-gate commit, and only the red wave dispatches", async () => {
+    // CODE_REVIEW v1 §2 row 33: NFR-5's oracle is a run whose population contains BOTH kinds of
+    // wave. AT-07-3 as shipped was a single-wave run asserting `a6.calls.length === 1`, which
+    // cannot separate "the green wave paid nothing" from "there was no green wave"; AT-04-3 is
+    // an all-green run, the other half-population. This is the two-wave fixture neither had.
+    const a6 = makeA6Fake({
+      resolved: true,
+      disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
+      haltFields: { rootCause: "wave-internal-defect", diagnosis: "repaired", repairApplied: true, repairPaths: ["src/two.js"] },
+      postWaveRan: false,
+    });
+    const gitCalls = [];
+    const gateCalls = [];
+    const result = await main(
+      makeArgs({
+        plan: PLAN_TWO_WAVES,
+        config: CONFIG_WITH_TEST_COMMAND,
+        git: makeGit(gitCalls),
+        runCommand: async (cmd) => {
+          gateCalls.push(cmd);
+          // Wave 1's gate (call 1) is GREEN. Wave 2's gate (call 2) is RED — that is the wave
+          // A6 is dispatched on. Its internal re-gate is inside the faked seam. Call 3 is the
+          // V-wave's own gate, which stays green so the run reaches success.
+          return gateCalls.length === 2
+            ? { ok: false, output: "Tests: 1 failed, 39 passed\n" }
+            : { ok: true, output: "Tests: 40 passed\n" };
+        },
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+
+    // Conjunct 1 — the green wave's dispatch count is 0 and the red wave's is >= 1. Asserted
+    // as a per-wave tally, not a run total: a total of 1 is equally consistent with the green
+    // wave having been the one that dispatched.
+    const dispatchesByWave = new Map();
+    for (const call of a6.calls) {
+      dispatchesByWave.set(call.waveNum, (dispatchesByWave.get(call.waveNum) || 0) + 1);
+    }
+    expect(dispatchesByWave.get(1) || 0).toBe(0);
+    expect(dispatchesByWave.get(2) || 0).toBeGreaterThanOrEqual(1);
+
+    // Conjunct 2 — the green wave still reached its post-gate commit step. A wave that paid
+    // nothing but also never committed would satisfy conjunct 1 vacuously.
+    const commits = gitCalls.filter((a) => a[0] === "commit").map((a) => a[2]);
+    expect(commits).toContain("feat(test-feat): T1 — First task");
+    expect(commits).toContain("feat(test-feat): T2 — Second task");
+    const adds = gitCalls.filter((a) => a[0] === "add");
+    expect(adds).toEqual([
+      ["add", "--", "src/one.js"],
+      ["add", "--", "src/two.js"],
+    ]);
+
+    // No timing assertion — NFR-5's claim is structural (A6 is reachable only from a red gate),
+    // per PROPERTIES' own "not tested" row 2.
+  });
+
+  it("AT-05-4 / PROP-REST-04: an un-skip halt on the SAME wave A6 just resolved carries that wave's advisory fields as haltAdvisory, with the repair recorded as APPLIED", async () => {
+    // CODE_REVIEW v1 §2 row 22: this fixture used to set `repairApplied: false, repairPaths: []`,
+    // which is the one shape the property forbids here. PROP-REST-04's subject is a wave A6
+    // RESOLVED — resolution on this seam requires an applied repair that greened the re-gate —
+    // so the halt fields riding through to the later un-skip halt must describe that repair and
+    // name its paths. With the old fixture the assertion held for a run in which A6 had applied
+    // nothing, and so could not distinguish "the repair survived" from "there was no repair".
+    // The seam-level conjuncts (no restoration ran, the repair is still in the working tree) are
+    // pinned against a real repository in advisoryWaveGate.test.js's PROP-REST-04 block; what
+    // this test owns is the `main()`-level pass-through.
     const a6HaltFields = {
-      rootCause: "environmental",
-      diagnosis: "a transient failure, now resolved",
-      repairApplied: false,
-      repairPaths: [],
+      rootCause: "wave-internal-defect",
+      diagnosis: "a stale import, repaired",
+      repairApplied: true,
+      repairPaths: ["src/one.js"],
     };
     const a6 = makeA6Fake({
       resolved: true,
@@ -1114,9 +1271,21 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     );
 
     expect(result.outcome).toBe("halted");
-    expect(result.haltReason).toContain("Error: Wave 1 un-skip guard failed");
     expect(a6.calls.length).toBe(1);
     expect(result.haltAdvisory).toEqual(a6HaltFields);
+
+    // PROP-REST-04's last conjunct: `formatUnskipViolations`' message string is UNCHANGED by
+    // A6's presence. Asserted against the paired negative below — the same halt on a run where
+    // A6 never fired — so this is an equality against a captured baseline rather than a
+    // `toContain` fragment that a rewritten message would still satisfy.
+    const baseline = await main(
+      unskipArgs(testFileSkipping("T1 — the completed owner's block"), {
+        extra: { _runWaveGateSeam: makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false }).fn },
+      })
+    );
+    expect(baseline.haltAdvisory).toBeUndefined();
+    expect(result.haltReason).toBe(baseline.haltReason);
+    expect(result.haltReason).toContain("Error: Wave 1 un-skip guard failed");
   });
 
   it("AT-05-4 (paired negative): the very same un-skip halt with a green-from-the-start gate carries no haltAdvisory — A6 never fired", async () => {

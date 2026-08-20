@@ -503,10 +503,17 @@ describe("A6-10 / PROP-REST-06: captureTreeSnapshot writes the wave-scoped ref r
 // `checkWaveUnskips` would halt a later wave through `formatUnskipViolations` once this file's
 // manifest owners are all complete and the block names no live task id — the "attributable to
 // nobody" arm. `test.todo` carries no callback and is invisible to that scanner, which is why it
-// is the pending marker for a boundary that is genuinely upstream's to resolve (§2.5's erratum on
-// FSPEC BR-9 / AT-05-1, REQ AC-5.1), not this task's.
+// is the pending marker for a boundary that is genuinely upstream's to resolve, not this task's.
+//
+// CODE_REVIEW v1 §2 finding 8: the successor named here used to be an *erratum on an upstream doc*
+// — prose, which owns nothing and can never come due. OQ-7 is now bound to `docs/_queue/QUEUE.md`
+// **row 6** (`pdlc-engineering-loop`), on the same terms as this feature's six D-AWG-* deferrals, so
+// the deferral has a row that must decide it before this `todo` may be deleted. The *behaviour*
+// meanwhile is not undelivered: A6 ships `git clean -fd` and PROP-REST-01 above round-trips a
+// `.gitignore`d `generated/output.txt` through capture-and-restore, so the shipped boundary is
+// observed today. What row 6 owns is the DECISION to keep it or move to `-fdx`.
 test.todo(
-  "A6-10 / PROP-REST-03: a .gitignore'd file the wave added is still present after restore (git clean -fd, not -fdx) — expected: hashTree(repo.dir) still contains the ignored generated path with its wave-added content, unchanged by capture or restore; pending OQ-7's upstream erratum on the ignored-path boundary",
+  "A6-10 / PROP-REST-03: a .gitignore'd file the wave added is still present after restore (git clean -fd, not -fdx) — expected: hashTree(repo.dir) still contains the ignored generated path with its wave-added content, unchanged by capture or restore; pending OQ-7, owned by docs/_queue/QUEUE.md row 6 (pdlc-engineering-loop)",
 );
 
 // ─── A6-14 (former A6-13 red step + A6-14 green): buildA6SeamOps, TSPEC §3.3 ──────────────────
@@ -2310,6 +2317,203 @@ const E5_REPLY = makeA6ReplyText({
   evidence: ["the gate went red at the eslint step"],
 });
 
+// ─── A6-15 / PROP-REST-04 — the restoration-trigger partition (AC-5.3, AC-4.5, AT-05-4) ──
+//
+// CODE_REVIEW v1 §2 rows 19 and 22: AT-05-4 asserted only `haltAdvisory` deep-equality
+// against a fixture that set `repairApplied: false, repairPaths: []`, so the property's
+// central conjuncts — the repair survives, and NO restoration ran — had no failing path.
+// The claim "a green re-gate restores nothing" was unfalsifiable as tested.
+//
+// The runtime oracle is a call-count spy on the real `_git` transport. `restoreTreeSnapshot`
+// is reached only through the SeamOps `revert()` member, and its first act is `read-tree`
+// (PROP-REST-05 pins that all three of read-tree/clean/reset must succeed), so counting
+// `read-tree` invocations against a REAL temporary repository is a direct observation of
+// whether restoration occurred — not a fake of the seam, which would bypass the thing under
+// test. Each arm drives the real `runWaveGateSeam` over the real `runAdvisorySeam` and
+// `buildA6SeamOps`.
+describe("A6-15 / PROP-REST-04: restoration triggers are exactly {refusal, budget exhaustion, red re-gate} — a green re-gate restores nothing", () => {
+  /** Wraps a real repo's `_git` in a recording spy, so restoration is counted, not assumed. */
+  function spyGit(repo) {
+    const argvs = [];
+    const _git = async (argv) => {
+      argvs.push(argv);
+      return repo._git(argv);
+    };
+    return { _git, argvs, readTreeCalls: () => argvs.filter((argv) => argv[0] === "read-tree") };
+  }
+
+  test("GREEN re-gate: no restoration runs, the repair is still in the working tree, and haltFields carry repairApplied: true with the repair's paths", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const spy = spyGit(repo);
+      const args = makeA6RunArgs({
+        _git: spy._git,
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "A6's repair, applied mid-attempt\n" }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      // Precondition: this really is the resolved-on-a-green-re-gate arm.
+      expect(result.resolved).toBe(true);
+      expect(result.disposition.outcome).toBe("resolved");
+
+      // Conjunct 1 — NO restoration occurred. This is the assertion row 22 found missing.
+      expect(spy.readTreeCalls()).toEqual([]);
+
+      // Conjunct 2 — the repair is still present, with its post-repair content.
+      expect(existsSync(join(repo.dir, "a.js"))).toBe(true);
+      expect(readFileSync(join(repo.dir, "a.js"), "utf8")).toBe("A6's repair, applied mid-attempt\n");
+
+      // Conjunct 3 — §4.5's advisory fields describe an APPLIED repair naming its own path.
+      expect(result.haltFields.repairApplied).toBe(true);
+      expect(result.haltFields.repairPaths).toContain("a.js");
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("REFUSAL: restoration runs and the refused repair is gone", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const spy = spyGit(repo);
+      const args = makeA6RunArgs({
+        _git: spy._git,
+        // Writes outside the wave's owned set, so the envelope check refuses it.
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "unowned.js": "outside the envelope\n" }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.reason).toBe("out-of-envelope");
+      expect(spy.readTreeCalls().length).toBeGreaterThanOrEqual(1);
+      expect(existsSync(join(repo.dir, "unowned.js"))).toBe(false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("RED re-gate to budget exhaustion: restoration runs and the repair is gone", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const spy = spyGit(repo);
+      const args = makeA6RunArgs({
+        _git: spy._git,
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "a repair that never greens the gate\n" }),
+        // The re-gate stays red, so the one attempt this budget allows is consumed and the
+        // driver exhausts. `attemptBudget: 1` is deliberate: `makeRepairingAgent` writes its
+        // repair on EVERY dispatch but scripts only one reply, so a larger budget would have
+        // the second dispatch re-create `a.js` and then throw on the exhausted script —
+        // leaving a fixture artifact behind that no production path put there, and making the
+        // final-tree assertion below measure the double rather than the seam. The multi-attempt
+        // red-re-gate arm is covered by the partition test below, which asserts only that
+        // restoration ran.
+        _runCommand: makeA6RunCommand({ "npm test": { ok: false } })._runCommand,
+        advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget: 1 }).config,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(spy.readTreeCalls().length).toBeGreaterThanOrEqual(1);
+      // `a.js` is not in the fixture's initial commit, so a full restore removes it.
+      expect(existsSync(join(repo.dir, "a.js"))).toBe(false);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("the partition is exact: of the four terminal arms, the three unresolved ones restore and the resolved one does not", async () => {
+    // Set-equality over outcomes rather than four independent assertions, so an arm that
+    // silently changes side — a future "resolved" arm that starts reverting, or an escalation
+    // that stops — reds here even though its own test above still passes.
+    async function arm({ writes, gateOk, attemptBudget = 3 }) {
+      const repo = createA6TempRepo();
+      try {
+        const spy = spyGit(repo);
+        const args = makeA6RunArgs({
+          _git: spy._git,
+          _agent: makeRepairingAgent(repo, E5_REPLY, writes),
+          _runCommand: makeA6RunCommand({ "npm test": { ok: gateOk } })._runCommand,
+          advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget }).config,
+        });
+        const result = await runWaveGateSeam(args);
+        return { resolved: result.resolved, restored: spy.readTreeCalls().length > 0 };
+      } finally {
+        repo.cleanup();
+      }
+    }
+
+    const green = await arm({ writes: { "a.js": "repair\n" }, gateOk: true });
+    const refusal = await arm({ writes: { "unowned.js": "outside\n" }, gateOk: true });
+    const redRegate = await arm({ writes: { "a.js": "repair\n" }, gateOk: false });
+    const exhaustion = await arm({ writes: { "a.js": "repair\n" }, gateOk: false, attemptBudget: 1 });
+
+    expect({
+      green: { resolved: green.resolved, restored: green.restored },
+      refusal: { resolved: refusal.resolved, restored: refusal.restored },
+      redRegate: { resolved: redRegate.resolved, restored: redRegate.restored },
+      exhaustion: { resolved: exhaustion.resolved, restored: exhaustion.restored },
+    }).toEqual({
+      green: { resolved: true, restored: false },
+      refusal: { resolved: false, restored: true },
+      redRegate: { resolved: false, restored: true },
+      exhaustion: { resolved: false, restored: true },
+    });
+  });
+});
+
+// ─── A6-15 / PROP-REST-09 (tree conjunct) — the run ends on the RESTORED tree ──
+//
+// CODE_REVIEW v1 §2 row 23's third conjunct: "the tree the run ends on must be the restored
+// one, first-pass build outputs included". The halt-reason and queue-row conjuncts are pinned
+// at `main()` level in waveExecution.test.js; what needs a real repository is the tree itself —
+// specifically that a build output the WAVE produced before A6 was ever entered is inside the
+// snapshot, and so survives an unresolved A6's restore rather than being cleaned away with
+// A6's own leftovers.
+describe("A6-15 / PROP-REST-09: an unresolved A6 leaves the wave's own first-pass build outputs intact", () => {
+  test("a generated output the wave produced before dispatch survives the restore, while A6's own leftover does not", async () => {
+    const repo = createA6TempRepo();
+    try {
+      // The wave's first pass ran its post-wave build and left outputs behind — one tracked-
+      // and-modified, one untracked, one gitignored — all present BEFORE A6 is entered, so all
+      // three are part of the snapshot A6 captures.
+      writeFileSync(join(repo.dir, ".gitignore"), "generated/\n");
+      repo.git("add", ".gitignore");
+      repo.git("commit", "-m", "add gitignore");
+      writeFileSync(join(repo.dir, "tracked.txt"), "first-pass build rewrote this\n");
+      writeFileSync(join(repo.dir, "build-output.txt"), "first-pass build output, untracked\n");
+      mkdirSync(join(repo.dir, "generated"));
+      writeFileSync(join(repo.dir, "generated", "bundle.txt"), "first-pass generated bundle\n");
+
+      const before = hashTree(repo.dir);
+
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        // A6 writes outside the envelope, so it is refused and the tree is restored.
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "unowned.js": "A6's own leftover\n" }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+      expect(result.resolved).toBe(false);
+
+      // The wave's own first-pass outputs are all still there, byte-for-byte …
+      const after = hashTree(repo.dir);
+      for (const path of ["tracked.txt", "build-output.txt", "generated/bundle.txt"]) {
+        expect([path, after.get(path)]).toEqual([path, before.get(path)]);
+      }
+      // … and A6's leftover is not.
+      expect(existsSync(join(repo.dir, "unowned.js"))).toBe(false);
+      // The whole tree equals the pre-A6 tree — no extra file, no missing one.
+      expect(after).toEqual(before);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
 describe("A6-15: PROP-ENV-10 (i) / PROP-ENV-09 — outside-the-envelope paths, and no part surviving", () => {
   test.each([
     ["(i) wholly outside the computed set", { "unowned.js": "outside\n" }, ["unowned.js"]],
@@ -2598,5 +2802,422 @@ describe("A6-15: buildA6SeamOps.verifyGate — PROP-GATE-04: a throwing transpor
 
     await expect(seamOps.verifyGate()).rejects.toThrow("build transport died");
     expect(invocations).toEqual(["post-wave"]);
+  });
+});
+
+// ─── A6-15 / PROP-NFR-03 — the BR-1…BR-16 proposable/non-proposable partition ──────────
+//
+// CODE_REVIEW v1 §2 row 28 (high): individual refusals were tested, but the *partition* — the
+// thing that discharges BR-16's claim that no §4 boundary is prompt-only — was not. `grep -rn
+// "proposable"` over this suite returned nothing and AT-07-1 was cited in no test file.
+//
+// The partition below is transcribed from FSPEC v1.4 AT-07-1 verbatim ("**Proposable, asserted
+// here:** BR-2 …, BR-3 …, BR-5, BR-6, BR-7 …, BR-8. **Not proposable, by construction:** BR-1,
+// BR-4, BR-9…BR-16") and compared by SET-EQUALITY against BR-1…BR-16, so a rule added to §4
+// without being classified, or silently dropped from either half, fails here rather than passing
+// a containment check. AT-07-1's totality clause ("the partition over BR-1…BR-16 is total, so no
+// rule is left silently unlisted") is the assertion, not the prose.
+//
+// Each proposable rule then gets a real arm: a stub agent double returns a *violating* proposal —
+// no live model, no prompt — and the shipped `runWaveGateSeam` refuses it, reporting the shipped
+// refusal reason, with the working tree left as it stood. The non-proposable half needs no arm by
+// construction: each of those rules is decided by the script before any proposal is read (BR-1's
+// trigger, BR-4's envelope literal) or after the proposal is disposed of (BR-9…BR-15), so no
+// proposal can violate it; they are covered by their own PROP-* blocks above.
+//
+// ONE QUALIFICATION, stated rather than discovered (PROPERTIES PROP-NFR-03, and the "weak" note
+// in PROPERTIES §: AC-2.2's first-match class precedence — which class wins when a gate output
+// could be read as two — is prompt-only. The script reads exactly one `ROOT-CAUSE:` line and
+// checks membership (`parseA6RootCause`); it never ranks candidate classes, so there is no script
+// oracle for that precedence and this block asserts none.
+describe("A6-15 / PROP-NFR-03: every §4 boundary is script-enforced — the BR-1…BR-16 proposable partition (NFR-1, C-4, BR-16, AT-07-1)", () => {
+  // Transcribed from FSPEC AT-07-1. Do not derive either half from the other: the point of the
+  // literal is that it is written down once, from the spec, and compared.
+  const AGENT_PROPOSABLE = ["BR-2", "BR-3", "BR-5", "BR-6", "BR-7", "BR-8"];
+  const NOT_PROPOSABLE = [
+    "BR-1",
+    "BR-4",
+    "BR-9",
+    "BR-10",
+    "BR-11",
+    "BR-12",
+    "BR-13",
+    "BR-14",
+    "BR-15",
+    "BR-16",
+  ];
+  const ALL_BOUNDARY_RULES = Array.from({ length: 16 }, (_, i) => `BR-${i + 1}`);
+
+  test("the partition is total and disjoint: the two halves set-equal BR-1…BR-16 and share no member", () => {
+    const union = new Set([...AGENT_PROPOSABLE, ...NOT_PROPOSABLE]);
+    expect([...union].sort()).toEqual([...new Set(ALL_BOUNDARY_RULES)].sort());
+    // Disjointness — a rule may not be classified both ways, which a union check alone admits.
+    const intersection = AGENT_PROPOSABLE.filter((id) => NOT_PROPOSABLE.includes(id));
+    expect(intersection).toEqual([]);
+    // Totality is over the count too: 6 + 10 = 16, so neither half may absorb the other's members
+    // while keeping the union equal.
+    expect(AGENT_PROPOSABLE.length + NOT_PROPOSABLE.length).toBe(ALL_BOUNDARY_RULES.length);
+  });
+
+  /** Records every git argv the seam drives, so "A6 never commits" is observed, not assumed. */
+  function recordingGit(repo) {
+    const argvs = [];
+    const _git = async (argv) => {
+      argvs.push(argv);
+      return repo._git(argv);
+    };
+    return { _git, argvs };
+  }
+
+  test("BR-2 — a proposal whose class is outside the vocabulary reads `unclassified`: escalated, NO refusal reason, NO attempt consumed, tree unchanged", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const before = hashTree(repo.dir);
+      const agent = makeAgentDouble({
+        script: [
+          makeA6ReplyText({
+            rootCause: "the-agent-invented-this-class",
+            evidence: ["the gate went red at the eslint step"],
+          }),
+        ],
+      });
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: agent,
+        _runCommand: makeA6RunCommand()._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      // AT-07-1's BR-2 carve-out: the shipped catalogue holds no reason for an out-of-vocabulary
+      // class, so the escalation carries none — and no repair-and-re-gate cycle was attempted.
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe(null);
+      expect(result.disposition.attempts).toBe(0);
+      expect(hashTree(repo.dir)).toEqual(before);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("BR-3 — a proposal citing no gate output is refused `malformed-verdict` under a one-attempt budget, tree unchanged", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const before = hashTree(repo.dir);
+      const agent = makeAgentDouble({
+        // Below `A6_MIN_CITATION_CHARS`: a citation that proves nothing was read.
+        script: [makeA6ReplyText({ evidence: ["FAILED"] })],
+      });
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: agent,
+        _runCommand: makeA6RunCommand()._runCommand,
+        // AT-07-1 pins the budget to 1 so the reported reason is the malformed-verdict one rather
+        // than the budget one a longer fixture would terminate on.
+        advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget: 1 }).config,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("malformed-verdict");
+      expect(hashTree(repo.dir)).toEqual(before);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("BR-5 — exclusions win over E-5: a proposal reaching a test artifact is refused `revert-on-test-touch`, never X-d's reason, and no part of it survives", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const before = hashTree(repo.dir);
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        // The proposal edits an owned production file AND a test artifact. X-a is walked before
+        // X-d, so the reported reason is the test-touch one even though the second path is also
+        // outside the computed set — the precedence BR-5 names.
+        _agent: makeRepairingAgent(repo, E5_REPLY, {
+          "a.js": "an owned repair\n",
+          "__tests__/writer.test.js": "expect(true).toBe(true)\n",
+        }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("revert-on-test-touch");
+      expect(result.resolved).toBe(false);
+      expect(hashTree(repo.dir)).toEqual(before);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test.each([
+    ["(f) the PLAN, its task table and its ownership manifest", "docs/pdlc-advisory-wave-gate/PLAN-pdlc-advisory-wave-gate.md"],
+    ["(g) the implementation configuration", ".claude/pdlc.config.json"],
+  ])(
+    "BR-6 %s — refused even though the failing wave's manifest row claims to own it, tree unchanged",
+    async (_label, prohibitedPath) => {
+      const repo = createA6TempRepo();
+      try {
+        const before = hashTree(repo.dir);
+        const args = makeA6RunArgs({
+          _git: repo._git,
+          _agent: makeRepairingAgent(repo, E5_REPLY, { [prohibitedPath]: "A6 must never write this\n" }),
+          _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+          // The manifest is made to claim the prohibited path deliberately: `a6ProhibitedPaths`
+          // subtracts it from the declared scope regardless, which is the assertion.
+          waves: [
+            [{ id: "T1", files: ["a.js", prohibitedPath], description: "wave one" }],
+            [{ id: "T2", files: ["b.js"], description: "later" }],
+          ],
+        });
+
+        const result = await runWaveGateSeam(args);
+
+        expect(result.disposition.outcome).toBe("escalated");
+        expect(result.disposition.reason).toBe("out-of-envelope");
+        expect(result.resolved).toBe(false);
+        expect(hashTree(repo.dir)).toEqual(before);
+      } finally {
+        repo.cleanup();
+      }
+    }
+  );
+
+  test("BR-7 — a verdict asserting the wave is fixed does not make it green: the gate decides, the wave escalates, and the repair is restored", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const before = hashTree(repo.dir);
+      const { _runCommand, calls } = makeA6RunCommand({ "npm test": { ok: false, output: "still red" } });
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        // A confident, in-envelope, in-vocabulary proposal that changes only owned paths — the
+        // agent's own claim that the wave is repaired. Only the re-gate may confirm it.
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "the agent says this fixes it\n" }),
+        _runCommand,
+        advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget: 1 }).config,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(result.disposition.outcome).toBe("escalated");
+      // The re-gate actually ran — an absence-only assertion would pass if the seam simply
+      // trusted the verdict and skipped the gate.
+      expect(calls).toEqual(["npm test"]);
+      // Red re-gate is a restoration trigger (BR-9), so the asserted-fixed repair is gone.
+      expect(existsSync(join(repo.dir, "a.js"))).toBe(false);
+      expect(hashTree(repo.dir)).toEqual(before);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("BR-8 — A6 never commits: across a RESOLVING invocation the seam drives no commit, push or tag, whatever the proposal asks for", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const spy = recordingGit(repo);
+      const args = makeA6RunArgs({
+        _git: spy._git,
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "an owned repair the gate then blesses\n" }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      // The resolving path is the one that could plausibly commit — a refusal reaches no committer
+      // by construction, so asserting on it would be vacuous.
+      expect(result.resolved).toBe(true);
+      const committing = spy.argvs.filter((argv) => ["commit", "push", "tag"].includes(argv[0]));
+      expect(committing).toEqual([]);
+      // Non-vacuity: the seam did drive git, so the filter above ran over a non-empty transcript.
+      expect(spy.argvs.length).toBeGreaterThan(0);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
+// ─── A6-07 / PROP-NFR-04 — no A6 datum at module scope; the five helpers are pure ──────
+//
+// CODE_REVIEW v1 §2 row 29 (medium): PROP-NFR-04 was cited in no test. The helpers were
+// behaviourally covered (PROP-ENV-02 above), but nothing asserted the *scoping* half — and the
+// failure it guards is silent: a module-scope `waveBudget` leaks A6's per-run resolution count
+// across features in a `/pdlc:orchestrate-queue` run, so the second feature in the queue starts
+// with the first's budget already spent and every A6 invocation escalates `budget-exhausted`
+// for no reason the operator can see. No shipped test goes red on that.
+//
+// Two oracles, deliberately different in kind:
+//
+//   1. STATIC. This file is written with two-space indentation inside every function, so a
+//      declaration at column 0 IS a module-scope declaration. Asserting that none of the seven
+//      A6 data is declared at column 0 is decidable on the shipped source, and moving any one of
+//      them out of Phase I's scope turns this red — which a behavioural test alone would miss for
+//      `promotions` and `advisoryDispositions`, neither of which crosses `runWaveGateSeam`'s
+//      parameter list.
+//
+//   2. BEHAVIOURAL. Two independent invocations, each handed its OWN state objects, must not see
+//      each other's counts. This is the queue-run regression stated directly: a module-scope
+//      datum makes the second invocation read the first's number.
+describe("A6-07 / PROP-NFR-04: no A6 datum lives at module scope (NFR-1, DC-04, TSPEC §4.3)", () => {
+  const SOURCE = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
+
+  // TSPEC §4.3's scoping table, transcribed. The scope named is the scope asserted; none of these
+  // is module-scoped, which is the single claim this block exists to keep true.
+  test.each([
+    ["waveBudget", "run-scoped — created once before Phase I's wave loop"],
+    ["rungState", "run-scoped — the tier's rung memo, threaded in"],
+    ["promotions", "run-scoped — E-6 repairs a later wave's dispatch must read"],
+    ["advisoryDispositions", "run-scoped — this run's dispatch dispositions, in order"],
+    ["invocations", "wave-scoped — the wave's gate-command ledger"],
+    ["snapshot", "wave-scoped — the pre-A6 tree, captured once per wave"],
+    ["attempts", "invocation-scoped — one repair-and-re-gate cycle each"],
+  ])("`%s` is never declared at module scope (%s)", (name, _scope) => {
+    // Column 0 == module scope in this file. `export` included: an exported binding is module
+    // scope by definition, and would be the most direct form of the leak.
+    const moduleScopeDecl = new RegExp(String.raw`^(?:export\s+)?(?:const|let|var)\s+${name}\b`, "m");
+    expect(SOURCE).not.toMatch(moduleScopeDecl);
+  });
+
+  test("the static oracle is non-vacuous: the same regex DOES match a known module-scope declaration", () => {
+    // `A6_PROHIBITIONS` is module scope on purpose — a frozen catalogue, not a datum. If this
+    // stops matching, the regex above stopped meaning anything and the seven assertions are
+    // passing for the wrong reason.
+    expect(SOURCE).toMatch(/^(?:export\s+)?(?:const|let|var)\s+A6_PROHIBITIONS\b/m);
+  });
+
+  test("two invocations handed their own `waveBudget` do not share it — the queue-run leak, asserted directly", async () => {
+    const first = createA6TempRepo();
+    const second = createA6TempRepo();
+    try {
+      const budgetA = { resolved: 0 };
+      const budgetB = { resolved: 0 };
+      const runOne = (repo, waveBudget) =>
+        runWaveGateSeam(
+          makeA6RunArgs({
+            _git: repo._git,
+            _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "an owned repair\n" }),
+            _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+            waveBudget,
+            advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1 }).config,
+          })
+        );
+
+      const resultA = await runOne(first, budgetA);
+      const resultB = await runOne(second, budgetB);
+
+      // Both resolve. Under a module-scope budget the SECOND would escalate `budget-exhausted`
+      // against `waveBudgetPerRun: 1` — the exact silent failure the review names.
+      expect(resultA.resolved).toBe(true);
+      expect(resultB.resolved).toBe(true);
+      // Each run counted into its OWN object, from its own zero.
+      expect(budgetA).toEqual({ resolved: 1 });
+      expect(budgetB).toEqual({ resolved: 1 });
+    } finally {
+      first.cleanup();
+      second.cleanup();
+    }
+  });
+
+  test("`attempts` is invocation-scoped: two escalating invocations each report 1, never 1 then 2", async () => {
+    const first = createA6TempRepo();
+    const second = createA6TempRepo();
+    try {
+      const runOne = (repo) =>
+        runWaveGateSeam(
+          makeA6RunArgs({
+            _git: repo._git,
+            _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "a repair the gate rejects\n" }),
+            _runCommand: makeA6RunCommand({ "npm test": { ok: false, output: "still red" } })._runCommand,
+            advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 2, attemptBudget: 1 }).config,
+          })
+        );
+
+      const resultA = await runOne(first);
+      const resultB = await runOne(second);
+
+      expect(resultA.disposition.attempts).toBe(1);
+      expect(resultB.disposition.attempts).toBe(1);
+    } finally {
+      first.cleanup();
+      second.cleanup();
+    }
+  });
+
+  test("`invocations` is wave-scoped: the second wave's ledger carries only its own gate tokens", async () => {
+    const first = createA6TempRepo();
+    const second = createA6TempRepo();
+    try {
+      const ledgerA = [];
+      const ledgerB = [];
+      const runOne = (repo, invocations) =>
+        runWaveGateSeam(
+          makeA6RunArgs({
+            _git: repo._git,
+            _agent: makeRepairingAgent(repo, E5_REPLY, { "a.js": "an owned repair\n" }),
+            _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+            invocations,
+          })
+        );
+
+      await runOne(first, ledgerA);
+      await runOne(second, ledgerB);
+
+      expect(ledgerA.length).toBeGreaterThan(0); // non-vacuity: the ledger was written at all
+      expect(ledgerB).toEqual(ledgerA); // each wave re-ran the same sequence from empty
+    } finally {
+      first.cleanup();
+      second.cleanup();
+    }
+  });
+});
+
+// ─── A6-07 / PROP-NFR-04 (purity half) — the five helpers read no ambient state ──────────
+//
+// "Pure" is asserted two ways, because either alone is weak. The source oracle catches a helper
+// that reaches for `process`, a clock or a random source; the behavioural oracle catches one that
+// mutates its arguments or carries state between calls, which no source scan can see.
+describe("A6-07 / PROP-NFR-04: the five pure helpers read no `process`, no clock and no ambient state", () => {
+  const HELPERS = [
+    ["waveOwnedPaths", waveOwnedPaths, () => [[[{ id: "T1", files: ["a.js", "b.js"] }]], 0]],
+    ["laterOwnedPaths", laterOwnedPaths, () => [[[{ id: "T1", files: ["a.js"] }], [{ id: "T2", files: ["b.js"] }]], 0]],
+    ["ownedSetCovers", ownedSetCovers, () => [["src/"], "src/one.js"]],
+    ["parseA6RootCause", parseA6RootCause, () => ["SEAM: A6\nROOT-CAUSE: wave-internal-defect"]],
+    ["citesGateOutput", citesGateOutput, () => [["a gate output line long enough to cite"], "a gate output line long enough to cite here"]],
+  ];
+
+  test.each(HELPERS)("%s's own source names no ambient reader", (_name, fn) => {
+    const body = fn.toString();
+    for (const forbidden of [/\bprocess\b/, /\bDate\b/, /Math\.random/, /\brequire\(/, /\b_now\b/, /\bglobalThis\b/]) {
+      expect(body).not.toMatch(forbidden);
+    }
+  });
+
+  test.each(HELPERS)("%s is referentially transparent and mutates none of its arguments", (_name, fn, makeArgs) => {
+    const argsOne = makeArgs();
+    const argsTwo = makeArgs();
+    const first = fn(...argsOne);
+    // Same inputs, second call: a helper carrying state between calls (a memo, a counter) differs.
+    expect(fn(...argsTwo)).toEqual(first);
+    // And a third call on the SAME argument objects — an argument-mutating helper diverges here
+    // even when it is deterministic on fresh inputs.
+    expect(fn(...argsOne)).toEqual(first);
+    expect(argsOne).toEqual(makeArgs());
+  });
+
+  test.each(HELPERS)("%s is unaffected by the clock moving underneath it", (_name, fn, makeArgs) => {
+    const before = fn(...makeArgs());
+    const realNow = Date.now;
+    try {
+      // Any read of the clock from inside a helper now returns a wildly different value; a pure
+      // helper cannot notice.
+      Date.now = () => realNow() + 86_400_000;
+      expect(fn(...makeArgs())).toEqual(before);
+    } finally {
+      Date.now = realNow;
+    }
   });
 });
