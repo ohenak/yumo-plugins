@@ -65,3 +65,12 @@ Then two Mediums, both single-clause edits: give the whole-suite count condition
 Nothing here touches batching, ownership, dependency edges, the wave map, or the AT coverage table. F-05 is `Process`, not this document's to fix.
 
 ## Verdict
+
+FINDING: High | delta | local | Overview (HEAD-drift note) + Definition of Done | PROP-SWEEP-2(b) disposition mis-sized: residual measured at HEAD is 26 paths, not 14 — untracking the .bak blobs closes 14 of them, and six of the remainder are this feature's own TSPEC/PLAN/DECISIONS/PROPERTIES/cross-review documents, so the DoD promises a green this branch cannot reach
+FINDING: High | delta | local | A6-04 (Batches) + Overview + file-ownership manifest | A6-04 declares a "purpose-named new file" that exists at HEAD, landed by e3b9d5a3 with matching content; TSPEC section 5.1's Status column caveat (commit 176b26e8, ancestor of PLAN v1.5) already said so, and A6-00/A6-01 already carry the discharged-verification treatment A6-04 lacks
+FINDING: Medium | delta | local | Overview (HEAD-drift note) | Whole-suite figure stated unconditionally as 9 suites / 28 failed / 3846 passed; measured from a clean tree it is 8 / 27 / 3847 — consumerCleanup AT-4.1 is green unless a tracked file is dirty
+FINDING: Medium | inherited | nonlocal | Red-before-green table (A6-21 row) | Raw pin `:14364` survived the v1.5 sweep and is stale (HEAD throw at :14367), falsifying the changelog's "no file:line pin survives anywhere else" claim; the documented `\.js:` grep cannot see bare :NNNN pins
+FINDING: Low | inherited | nonlocal | Process | Completeness gate supplies PLAN headings to a cross-review invocation, fourth consecutive round
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 1}
