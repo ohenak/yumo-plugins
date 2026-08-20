@@ -2063,6 +2063,15 @@ describe("A6-15: PROP-ENV-08 — an E-6 proposal is permitted only when all thre
       expect(result.resolved).toBe(true);
       // AC-4.6 — the repair's paths and the later PLAN task that owns them, on the record.
       const record = files.files["docs/pdlc-advisory-wave-gate/ADVISORY-pdlc-advisory-wave-gate.md"];
+      // AC-6.1 — the wave and the root-cause class, asserted HERE rather than only on
+      // `renderAdvisoryEntry`'s own unit test (`advisoryRecord.test.js`, PROP-REC-01). The builder
+      // renders whatever disposition it is handed; what AC-6.1 obliges is that the PRODUCTION
+      // assembler populates them, which is `runWaveGateSeam`'s step-7 disposition
+      // (`orchestrate-dev.js`, the `wave: waveNum` / `rootCause: capturedRootCauseForRecord`
+      // pair). Dropping either line there leaves the builder's unit test green and only this
+      // assertion red — which is the whole point of driving the caller.
+      expect(record).toMatch(/\| Wave \| 1 \|/);
+      expect(record).toMatch(/\| Root cause \| plan-ordering-defect \|/);
       expect(record).toMatch(/\| Repair paths \| b\.js \|/);
       expect(record).toMatch(/\| Promotes \| renderPromotedThing \|/);
       expect(record).toMatch(/\| Promotes task \| T2 \|/);
