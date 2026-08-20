@@ -1149,11 +1149,20 @@ suite, and `learningsSelect.test.js` covers only the eligibility, ordering and c
 **AT-02 — the dispatch-universe set equality.** The expected set comes from the fixture's own phase
 script (which phases ran, how many optimizer rounds, whether an erratum fired), transcribed by hand
 into the test and compared by set equality against the dispatches whose prompt carries the block
-delimiter. Three run shapes are fixtured: a run with no DECISIONS phase (E-27), a Phase R with no
-creator (E-28), and one with five optimizer rounds (E-29). **A fourth is added that FSPEC's
-inventory does not carry:** the erratum round's land-proof retry fires a *second* authoring dispatch
-for the same document (`erratumRound()`'s land-proof-retry `wrappedDispatch` in
-`orchestrate-dev.js`) — see §Open Questions ERR-2.
+delimiter. **Upstream enumerates four run shapes, not three** (FSPEC AT-02 at v0.13): a run with no
+DECISIONS phase (E-27), a Phase R with no creator (E-28), one with five optimizer rounds (E-29),
+and **a run containing an authoring-classified dispatch whose target is none of C-1's six document
+types** — the code-review phase's optimizer round, which BR-1's second conjunct puts outside the
+rule (BR-11, AC-1.2). That fourth shape carries AT-02's stated mutation obligation: *reverting
+BR-1's second conjunct reds the test*. It is owned by `learningsDispatchSet.test.js`, the same
+suite as AT-02's other three (§T.5) — no other file may claim it, or the mutation check exists
+twice and is maintained in neither. Its oracle is the set equality itself: with the conjunct
+reverted, that dispatch joins the block-carrying set and the hand-transcribed expected set no
+longer matches.
+
+**A fifth shape is added that FSPEC's inventory does not carry:** the erratum round's land-proof
+retry fires a *second* authoring dispatch for the same document (`erratumRound()`'s
+land-proof-retry `wrappedDispatch` in `orchestrate-dev.js`) — see §Open Questions ERR-2.
 
 **`DIVERGENT-CORPUS` — the multi-dispatch fixture §A.5 needs.** Five authoring dispatches where the
 scripted `_git` reply gains one path after dispatch 2 and fails outright at dispatch 5. It asserts
@@ -1290,7 +1299,7 @@ a diluted file-level percentage never would have been:
 | `_readFile` throws ⇒ `RSN-UNREADABLE` | AT-26 (second case; P-8 makes both real) |
 | Empty enumeration ⇒ `RSN-EMPTY` | AT-24 |
 | `looksLikeLearningsDocument` false ⇒ `RSN-UNPARSEABLE` | AT-27 |
-| No BR-6 section present ⇒ `RSN-NO-MATERIAL` | AT-28 |
+| Document **yields no material** ⇒ `RSN-NO-MATERIAL`, dropped before the bounds, no slot consumed (BR-9/D-12's restated form — §D.5). Two disjuncts, one branch: no `BR6_SECTION_NAMES` heading present (E-33), or `maxBytesPerDocument: 0` (E-36) | AT-28 (structural disjunct); AT-30's third case (zero-bound disjunct, §I.2) |
 | Count bound cuts ⇒ `RSN-COUNT` | AT-08, AT-13, and the `COUNT-BINDING` fixture (§T.4) |
 | Byte bound cuts ⇒ `RSN-BYTES` | AT-07, and the `BYTES-BINDING` fixture (§T.4) |
 | Self path ⇒ `RSN-SELF` | AT-04 |
