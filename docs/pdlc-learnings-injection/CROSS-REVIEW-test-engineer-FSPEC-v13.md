@@ -110,12 +110,76 @@ part of the claim (F-02).
 BR-2 through BR-14 and BR-16 are outside the diff and unchanged from the bytes I approved at v12.
 ## Edge Cases and Error Scenarios
 
+Untouched by this delta — no E-row is inside the diff hunks. I checked the two E-rows the edited
+rules could have stranded:
+
+- **E-06 / `RSN-SELF`** — BR-15's expected set still carves out `RSN-SELF` documents as "decided
+  from the path before any read", and AT-04 still requires the per-document `RSN-SELF` row with no
+  corpus-level `RSN-EMPTY`. The erratum did not disturb the carve-out, and it remains the one place
+  a report-named document is legitimately absent from the read set.
+- **`RSN-UNREADABLE`** — still explicitly *inside* the expected set ("the failed attempt is the
+  read"). This is the conjunct that keeps the equality falsifiable in the failure direction: an
+  implementation that skips unreadable documents entirely would red. Preserved verbatim.
+
+No edge case gains or loses an owner from the BR-1 change either: the excluded-dispatch states are
+byte-identity claims (BR-11 / AT-03), and widening BR-1's exclusion by one more dispatch shape only
+widens the population AT-03 already covers.
+
 ## Acceptance Tests
+
+Both edited ATs track their rules, and neither loses falsifiability.
+
+**AT-02.** "the subset carrying a block **equals** the subset BR-1's two-conjunct rule names" now
+points at the corrected rule instead of "BR-1's classification", and the universe clause ("the whole
+dispatch universe, not only those already classified authoring") was already the right one — it is
+what makes the second conjunct observable at all, since a universe restricted to authoring-classified
+dispatches could never exhibit an over-injection.
+
+The gap is the fixture list, which the erratum left unchanged: "a run with no DECISIONS phase, a run
+whose Phase R has no creator, and a run with five optimizer rounds". Those three fixtures discriminate
+*the first* conjunct and the no-fixed-count property. None of them is named for the case the new
+second conjunct exists to decide — an authoring-tagged dispatch whose target is none of the six, i.e.
+the code-review phase's optimizer round. BR-1's prose names that instance three lines above; AT-02
+should name it as a fixture, so that reverting the `docType` conjunct is guaranteed to red rather
+than guaranteed-if-the-base-run-happens-to-include-Phase-CR (F-03). This is Low, not High, because the
+universe clause plus a realistic scripted run does contain the dispatch, and TSPEC §A.2 pins the case
+with a dedicated offered-vs-accepted `docType` set equality.
+
+**AT-33.** The expected set is transcribed consistently with BR-15's new bullet, including the
+"enumeration of candidate paths contributing no member" clause, and the three positive conjuncts I
+cared about at v12 survive: the observed set is asserted **non-empty** (the control that stops
+AT-34's absence claim being vacuous), the equality is against an enumerable expected set, and the
+write-side boundary claims are unchanged. AT-34 still names AT-33 as its same-instrument, same-test
+control. The one cosmetic casualty is line wrapping — FSPEC:941 now runs well past the document's
+column width mid-clause; worth a re-wrap on the next touch, not a finding.
+
+AT-01, AT-03 through AT-32, AT-34 and AT-35 are byte-identical to the bytes I approved at v12, and
+the §Branch coverage check paragraph still asserts every E-row names an AT.
 
 ## Open Questions
 
+No new question. My one carried `DEFERRED:` item is unchanged and still non-blocking: BR-9's notice
+catalogue leaves its emission locus unstated, routed to TSPEC. This delta neither addresses nor
+disturbs it.
+
+One heads-up for the TSPEC round rather than a finding on this document: TSPEC:1305-1307 describes
+the FSPEC's expected set as "every authoring-classified dispatch, including Phase CR's optimizer"
+and frames the `docType` conjunct as something "TSPEC therefore adds". With FSPEC v0.11 that
+description is stale — the two expected sets no longer differ, and the TSPEC's account of the
+divergence should be re-grounded on these bytes when it is next revised.
+
 ## Positive Observations
 
+- The BR-1 rewrite names the discriminating instance, not just the conjunct. A rule that says which
+  dispatch must appear in the fixture universe is a rule someone can write a red test from; a rule
+  that only states the predicate is not.
+- BR-15's removal is justified against the instrument's own definition rather than performed
+  silently. That is the form that survives the next reader, who would otherwise "fix" the missing
+  enumeration back in.
+- The erratum touched the two ATs that transcribe the corrected rules in the same edit. Rule-and-
+  oracle drift is the classic erratum failure mode, and it did not happen here.
+- Both corrections move the document *toward* enumerable equalities and away from prose predicates —
+  the direction that makes PLAN LI-11's transcription mechanical rather than interpretive.
 ## Recommendation
 
 ## Delta-Confirmation Findings
