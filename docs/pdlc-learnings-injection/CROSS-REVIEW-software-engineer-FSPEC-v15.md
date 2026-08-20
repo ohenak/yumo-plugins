@@ -188,6 +188,38 @@ No edge row was invalidated by the new basis, and no row now double-counts frami
 
 ## Acceptance Tests
 
+**AT-30** (`:944-948`) gains the third fixture: `maxDocuments: 0`, separately `maxTotalBytes: 0`,
+and separately `maxBytesPerDocument: 0`, all three asserting the enabled empty-selection run —
+BR-8 rows present and empty, not the absent key of a disabled run, no refusal — plus, for the
+third, "every corpus document carries `RSN-NO-MATERIAL` (E-36)". The extra conjunct is what makes
+the third case falsifiable rather than a restatement of the first two: without it, a build that
+selected five zero-byte bounded documents would still satisfy "empty rows"… no, it would not, but
+it *would* satisfy a weaker reading of "empty selection", and the reason-id assertion closes that.
+
+This is the AT the F-01 flow drift bites. Written against BR-6, AT-30's third case passes; written
+against §Behavioral Flow step 15, it fails — the implementer sees 84 `RSN-COUNT` rows and 5 bounded
+selected rows. The test author needs one normative locus to write the oracle from, and today the
+document offers two. That is why F-01 is worth a bounded follow-up round even at Medium.
+
+Other byte-count ATs re-checked under the new basis:
+
+- **AT-11** (`:855-859`) — expected byte count is "a **literal integer**, recomputed by hand when
+  the fixture changes, never derived in the test". Under the old basis that literal had to include
+  delimiter and identification-line bytes whose wording is F-O-2's, i.e. not fixed at FSPEC time;
+  under material-only accounting the literal is computable from the fixture's section bodies alone.
+  The erratum makes this AT *more* writable, and TSPEC `:790-796` reaches the same conclusion for
+  AT-12's oracle ("contributed bytes ≤ bound, **equal** only when …").
+- **AT-12** (`:865-866`) — "contributed bytes equal the bound, a fixture literal" — unaffected in
+  form, now unambiguous in referent.
+- **AT-13** (`:873`) — total-bound drop over bounded material — unaffected.
+- **AT-17/18** (BR-8 rows) — the per-dispatch total is the sum of row bytes; with framing excluded
+  from both sides, the identity the completeness test asserts is unchanged.
+
+The DC-05 coverage paragraph (`:988-993`) still resolves: `E-01 … E-36, less retired E-05`, every
+AT in the reverse trace, and D-12 exercised by AT-28. See the Linked Requirements table for the
+one thing I chose not to file separately (AT-30 is not listed against D-12 even though it now
+exercises that decision's no-material branch through a second cause).
+
 ## Open Questions
 
 ## Questions
