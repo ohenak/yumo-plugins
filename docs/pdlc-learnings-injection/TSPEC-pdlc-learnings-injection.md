@@ -582,10 +582,12 @@ export const LEARNINGS_NOTICES = Object.freeze(["NTC-MALFORMED", "NTC-KEYTYPE"])
 ```
 
 **Disjointness in kind** (BR-9) is enforced structurally, not by convention: a reject reason can
-only appear in a `rejected[].reason` field, a corpus outcome only in the run-level
-`corpusOutcome` field, and a notice only in `notices[].id`. The three fields have three different
-value domains, and one test per field asserts that every value it ever carries is a member of that
-field's catalogue.
+only appear in a `rejected[].reason` field, a corpus outcome only in a **corpus-outcome field** —
+`dispatches[i].corpusOutcome`, the oracle locus (REQ AC-3.2), and its run-level mirror
+`runMirror.corpusOutcome` — and a notice only in `notices[].id`. That is **four** field domains,
+not three (TE F-04), and one test per domain asserts that every value it ever carries is a member
+of that field's catalogue. The mirror's domain test is a membership test only: it constrains which
+*ids* may appear there, never which id does, so it does not turn the mirror into an oracle.
 
 ### D.2 The report record *(discharges F-O-3's serialisation half)*
 
