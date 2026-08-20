@@ -127,6 +127,90 @@ as inputs without version-pinning them, so no pinned hash goes stale here.
 
 ## Verification
 
+I re-measured PLAN's verification apparatus against FSPEC at HEAD, section by section, and found one
+narrowing that the delta created.
+
+**§The measured baseline, claim 4 (PLAN:493) — byte-identity is now scoped one class too narrowly.**
+PLAN's claim reads: "a disabled run, an empty corpus, an unlistable corpus and an admits-nothing
+configuration each compose prompts character-for-character equal to the committed pre-feature
+baseline (AC-4.1, AC-5.1a, AT-24); **every non-authoring dispatch likewise (AC-4.3)**." When I
+approved that, "non-authoring" was exactly FSPEC's own phrasing — AT-29 said "every non-authoring
+dispatch prompt is byte-identical to the recorded baseline". The delta rewrote both AT-03 and AT-29
+to say "every dispatch **outside BR-1's rule**", and AT-03 spells out why the change matters: the
+class now "includ[es] an authoring-classified dispatch with no C-1 target".
+
+So the universe FSPEC asks to be baseline-compared has grown, and PLAN's compression of it has not.
+The Phase CR optimizer round — authoring-classified, `docType: null` — is inside FSPEC's byte-identity
+class at HEAD and outside PLAN's sentence. This is a **product** gap, not a wording nit: baseline
+byte-identity is the promise that this feature is invisible where it is not wanted (REQ AC-4.3), and
+the optimizer round is the single most frequently composed dispatch in a real run. If it is not in
+the compared class, the feature's headline no-regression promise is unproven exactly where a
+regression would be most visible.
+
+It is Medium rather than High for one reason, which I verified rather than assumed: **the suite that
+must prove it is already commissioned by id.** LI-11 owns `LI-AT-03` and `LI-AT-29` by name, and a
+test author writing those two cases from FSPEC at HEAD writes the wider class, because the AT text
+they transcribe is the corrected text. PLAN's prose is a summary of the claim, not the oracle
+itself; the oracle is FSPEC's AT, which is now correct. The fix is to restate claim 4's last clause
+as "every dispatch outside BR-1's two-conjunct rule — including an authoring-classified dispatch
+with no C-1 target — likewise (AC-4.3, AT-03/AT-29)". F-03 below.
+
+**The expected-red ledger, the three gate wordings and the batch-6 green-terminal gate are
+unaffected.** They are keyed on suite names and red/green status, not on upstream wording. The
+twelve-suite ledger universe (P-A-3, corrected in the round I approved) is unchanged by an FSPEC
+edit, and the AT-coverage baseline is still 35 members — the delta rewrote AT texts and added a
+fixture shape but created no new AT id and retired none, which I confirmed by re-reading FSPEC's
+AT inventory at HEAD. §Traceability's `AT-01…AT-35 → suite → red task → green task` mapping
+therefore still closes over the same set.
+
+**Definition of Done is unaffected.** DoD 10 (PROPERTIES outside this PLAN's task rows) and DoD 13
+(LI-01's completion note) turn on this PLAN's own deliverables. Nothing in the delta touches them.
+
+**§Halt conditions H-5 improves.** Its instruction not to relax the composition-site set equality to
+containment now cites a rule FSPEC itself states, rather than one only TSPEC stated. No change
+needed; worth noting because it is the one place where the delta makes an existing PLAN sentence
+*stronger* without an edit.
+
+## Positive Observations
+
+- **PLAN's routing discipline is what produced this delta.** It refused to resolve BR-1 or BR-15
+  quietly inside a task row, wrote both up as upstream errata with the downstream consequence
+  attached to LI-11, and named the reading its rows were written to. Two FSPEC rounds later, FSPEC
+  says what PLAN said it should say. That is the routing contract working end to end, and it is the
+  behaviour I most want repeated on the next feature.
+- **Writing task rows to the stricter of two contradictory upstreams was the right call.** Had
+  LI-11's AT-02 been written to BR-1-as-it-was, this delta would have invalidated it and cost a
+  batch. Because it was written to TSPEC's reading with the divergence declared, the delta cost
+  nothing but three stale sentences.
+- **The composition-site probe turned out to be load-bearing in a way nobody planned.** It is what
+  makes FSPEC's newly named fourth AT-02 fixture shape already covered. A probe that asserts the
+  observed set *and* the accepted set separately absorbed an upstream rule change without an edit —
+  a good argument for the "equality never containment" discipline this PLAN insists on.
+
+## Recommendation
+
+**Approved with minor changes**
+
+PLAN v0.4 still holds as approved against FSPEC at HEAD. The delta moved FSPEC toward this PLAN
+rather than away from it: both defects PLAN routed are discharged, LI-11's two contested oracles now
+have direct FSPEC warrant, and LI-20's `dispatchKind && docType` predicate is now literally BR-1.
+No task row must be added, split, re-ordered, or re-scoped, and no batch gate moves.
+
+Three Medium corrections should be folded into PLAN's next pass, none blocking:
+
+1. **F-01** — retire §Errata's two rows and its "still live at HEAD" preamble; record FSPEC v0.11 as
+   the resolving version and keep one line of provenance for harvest.
+2. **F-02** — name FSPEC AT-02's fourth fixture shape (authoring-classified, non-C-1 target) in
+   LI-11's fixture list and §Traceability, and correct "beyond FSPEC's three" to four; the coverage
+   exists via the composition-site probe, the pointer does not.
+3. **F-03** — widen §The measured baseline claim 4's last clause from "every non-authoring dispatch"
+   to FSPEC's current "every dispatch outside BR-1's rule, including an authoring-classified
+   dispatch with no C-1 target".
+
+All three are `delta` in provenance — the FSPEC erratum created them — and all three sit in material
+this edit changed, so all three are `local` and route back to this document's ordinary revision
+loop rather than halting the phase.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
