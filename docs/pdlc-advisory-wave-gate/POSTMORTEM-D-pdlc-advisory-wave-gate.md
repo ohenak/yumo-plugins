@@ -13,7 +13,7 @@
 both-lens approving round on `DECISIONS-pdlc-advisory-wave-gate.md`.
 **Document at halt:** `DECISIONS-pdlc-advisory-wave-gate.md` v1.7 (`bbe65771`)
 
-RESOLVED: no
+RESOLVED: yes
 
 ---
 
