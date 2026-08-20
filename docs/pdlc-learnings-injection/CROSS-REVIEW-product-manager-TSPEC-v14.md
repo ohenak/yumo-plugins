@@ -104,6 +104,50 @@ erratum with a suggested fix rather than silently resolved here. Correct handlin
 
 ## Data Model
 
+**Every empirical claim in §D.3's new assembly rule re-measured at HEAD.** The rule leans on three
+repository facts. All three hold:
+
+| §D.3's claim | Command I ran | Result |
+|---|---|---|
+| No corpus document at HEAD carries `\r\n` | `git grep -Il $'\r' -- ':(glob)docs/*/LEARNINGS-*.md' ':(glob)docs/completed/*/LEARNINGS-*.md'` | no match (exit 1) — the command is quoted verbatim in §D.3 and reproduces |
+| `buildLearningsCorpus` assembles document text by joining lines with `"\n"` | read `pdlc/workflows/__tests__/helpers/learningsFixtures.js` | `buildLearningsDocument` at `learningsFixtures.js:92`, `return lines.join("\n")` at `:112`; `buildLearningsCorpus` at `:161` forwards `s.doc` to it at `:165` |
+| Sections are taken in priority order, which is **not** document order for any corpus document | enumerated `^## ` headings across all 9 corpus paths | every one of the 9 writes `## 1. Non-Convergences` before `## 2. Cross-Feature Patterns`, i.e. BR-6's top two inverted in document order, in all 9 — the "not document order for any corpus document" quantifier is literally true, not a rounding of "most" |
+
+The corpus enumeration itself is unchanged from v13: the `:(glob)` pathspec returns exactly 9 paths
+at HEAD, `docs/discarded/` excluded as the document states.
+
+**The Approval-Record marker §T.5 relies on is constructible with the fixture builder that exists.**
+§T.5 asserts *"`buildLearningsDocument`'s `sections`/`extraLines` inputs make this constructible"*.
+`learningsFixtures.js:86-90` documents `spec.sections` (rendered in array order via `renderSection`)
+and `spec.extraLines` (raw text appended verbatim); `renderSection` at `:64-72` takes
+`section.body` and emits `## {ordinal}. {name}{gloss}\n\n{body}\n`, so a distinctive marker string
+inside the `## 6. Approval Record` body is a one-line fixture change. The obligation is not
+hypothetical — it lands on a helper that is on disk today.
+
+**The normalisation rule is consistent with what that helper actually emits.** `renderSection`
+terminates each section with a trailing `\n` and `buildLearningsDocument` joins section blocks with
+`"\n"`, so each extent in a fixture document ends with a blank line. §D.3's step 1 (drop trailing
+empty/whitespace-only lines, no trailing newline) is exactly the normalisation that makes those
+builder-introduced blanks stop counting, and step 2's `"\n\n"` join re-supplies exactly one. The
+rule and the fixture builder agree; a hand-recomputed literal will match a conforming
+implementation.
+
+**Nothing in the type surface moved.** `BR6_SECTION_NAMES` is the same five names in BR-6's order
+with the gloss on priority 3 and no Approval Record entry; the zero-bound return is still
+`{material: "", bounded: false, bytes: 0, sections: []}` in §I.3, §D.5 and T-O-6 alike; `sections[]`
+is still `string[]` of canonical names. The delta **redefined** `sections[]`'s membership predicate
+(now "at least one byte of its normalised text survives in `material`") rather than retyping it,
+and I checked the redefinition against the two places that consume it: T-O-6's corpus conjunct
+(intersection of `BR6_SECTION_NAMES` with the document's level-2 headings) still holds at unbounded
+`maxBytes`, which is the only bound T-O-6's conjunct ranges over, and the zero-bound `sections: []`
+now falls out of the same rule instead of needing its own clause. Both consumers stay true.
+
+**One imprecision, inherited and non-gating — see F-01.** §D.5's "sum of normalised byte lengths
+plus 2 per join" is presented as the hand-computation for AT-11 **and AT-12**, but AT-12 is by
+construction the bounded case, where §D.5's own next paragraph fixes the expected count at the bound
+exactly. The sentence's "AT-11's and AT-12's expected counts are therefore hand-computable" clause
+predates this delta; the delta only sharpened what "sum" means. It is a Low, recorded below.
+
 ## Test Strategy
 
 ## Open Questions
