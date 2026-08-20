@@ -256,8 +256,64 @@ count-cut fixture).
 
 ## Positive Observations
 
+- **The accounting decision went the right way.** Material-only is the basis the implementation can
+  produce without circularity — TSPEC §D.5's own argument is that charging the `ABRIDGED` marker to
+  the budget would make the budget depend on its own outcome. The FSPEC now states that as
+  behaviour ("a document is never abridged to pay for the annotation that says it was abridged")
+  rather than importing the implementation's reason for it. Correct altitude.
+- **The zero decision reuses an existing observable instead of minting one.** `RSN-NO-MATERIAL`
+  widened to "yields no material" keeps BR-9's catalogue closed, leaves DC-01's completeness test
+  and F-O-3's registration list untouched, and gives the operator one reason per observable.
+- **D-12 was reworded, not just annotated.** Moving the decision from "carries a section" to
+  "yields material" is what makes the widened reason id coherent — the decision table and the
+  catalogue now ask and answer the same question.
+- **F-O-1 enumerates its alternatives.** "Whether the numbered form, the bare title or a prefix of
+  it is matched" turns an open delegation into a bounded choice with three named options, which is
+  the difference between an obligation the TSPEC can discharge and one it can only restate.
+- **The erratum note is honest about its upstream.** It states REQ v0.9 at HEAD, unchanged, no
+  upstream decision to absorb — and that checks out against the REQ's version cell and the dispatch
+  sha. It also scopes itself ("No other change"), which made this confirmation cheap to run.
+- **Three prior fixes held.** The `Cross-Reviews` header row is still de-staled, D-2's three
+  branches are intact, and BR-5's measured claim was already phrased over injectable material and
+  so survived the accounting change without edit.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The three routed items land, and they land against upstream that still says what this FSPEC says it
+says. No High finding: BR-6 decides all three questions unambiguously at the normative locus, and
+nothing I approved at v14 was broken.
+
+What should change before this document is handed to implementation — one bounded follow-up, both
+edits mechanical:
+
+1. **F-01 (Medium)** — §Behavioral Flow step 15: drop any eligible document that **yields no
+   material** (carries none of BR-6's priority sections, *or* a zero per-document bound admits
+   none), and qualify D-9's branch so D-12 is reached before a zero-byte take is flagged
+   `bounded`. Today step 15 + D-9 describe a `maxBytesPerDocument: 0` run that contradicts BR-6,
+   E-36 and AT-30.
+2. **F-02 (Low)** — BR-6: qualify "Either way the document's row carries the **bounded** flag" as
+   applying to a non-zero bound, so the general sentence does not cover the case the next paragraph
+   withdraws.
+3. **F-03 (Low)** — §Linked Requirements `:178`: AC-4.4's row traces to BR-5, BR-14; the third zero
+   is decided in BR-6, which the row should name.
+
+Q-01 and Q-02 are routing questions for the TSPEC round, not changes to this document.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | §Behavioral Flow step 15 and decision D-9 were not carried along with the zero-bound decision: step 15 drops only documents "carrying none of BR-6's priority sections", so under `maxBytesPerDocument: 0` documents survive to the count cut (84 `RSN-COUNT` rows) and step 16/D-9 flags the surviving five as selected-and-bounded with `bytes injected: 0` — contradicting BR-6's carve-out, E-36 and AT-30's "every corpus document carries `RSN-NO-MATERIAL`, consumes no slot" | §Behavioral Flow step 15 (`:255-258`), D-9 (`:294`) |
+| F-02 | Low | delta | local | BR-6's "If the **first** section alone exceeds the bound … **Either way** the document's row carries the **bounded** flag" is unconditional, and a zero bound is a bound the first section exceeds — so the general sentence covers the zero case before the next sentence withdraws it; precedence rests on reading order alone | BR-6, "How the per-document bound binds" (`:491-498`) |
+| F-03 | Low | delta | nonlocal | §Linked Requirements traces AC-4.4 to BR-5 and BR-14 only; after this erratum the third zero (`maxBytesPerDocument: 0`) is decided in BR-6, which the row does not name | §Linked Requirements, AC-4.4 row (`:178`) |
+
+FINDING: Medium | delta | nonlocal | §Behavioral Flow step 15 (:255-258) and D-9 (:294) | the zero-per-document-bound decision was not carried into the numbered flow or the decision table: step 15 drops only documents carrying none of BR-6's priority sections, so under `maxBytesPerDocument: 0` documents pass the no-material drop, take `maxDocuments` slots, leave the rest with `RSN-COUNT`, and D-9 flags the taken ones selected-and-bounded at 0 bytes — the opposite of BR-6's carve-out, E-36 and AT-30
+FINDING: Low | delta | local | BR-6 "How the per-document bound binds" (:491-498) | "Either way the document's row carries the bounded flag" is stated unconditionally and covers the zero bound before the following sentence withdraws it; qualify it to non-zero bounds
+FINDING: Low | delta | nonlocal | §Linked Requirements AC-4.4 row (:178) | AC-4.4 traces to BR-5 and BR-14 only, but the third zero is now decided in BR-6
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
