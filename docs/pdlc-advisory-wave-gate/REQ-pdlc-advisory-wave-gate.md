@@ -81,7 +81,7 @@ main's v1.3 after rebase (SE F-01). Decided: guard paths bind A6 unchanged (TE F
 diagnosis-only outcome escalates without a ninth refusal reason (SE F-04, AC-3.4); the re-gate
 re-runs the wave's gate sequence in shipped order (SE F-03, TE F-07, AC-4.4); E-6 repair's
 committed fate stated (SE F-02, AC-4.6, O-8). Shipped-behaviour evidence measured into
-`pdlc-wave-gate-baseline.md` v1.1 (M-WG-9…M-WG-12) rather than restated here; §8's
+`pdlc-wave-gate-baseline.md` v1.2 (M-WG-9…M-WG-12) rather than restated here; §8's
 resolved-question provenance relocated to the decision document.*
 
 *v1.3 changelog: v1.2's three open questions decided by delegated operator adjudication,
@@ -110,7 +110,7 @@ rationale, M-WG-6's re-entry claim and D-AWG-03's approval-skip ownership correc
 Phase I runs implementation as **waves**: topologically ordered, ownership-disjoint groups of tasks
 dispatched in parallel into one shared tree, told not to commit, with the orchestrator itself
 owning the gate. Measured facts about that gate live in
-`docs/_constraints/pdlc-wave-gate-baseline.md` v1.1 and are cited here by id.
+`docs/_constraints/pdlc-wave-gate-baseline.md` v1.2 and are cited here by id.
 
 Three conditions end a wave, in order: a dispatch-level failure (M-WG-1), a post-wave command
 failure (M-WG-2), and the script-owned test gate (M-WG-3). All three halt the run, and none of them
@@ -265,7 +265,7 @@ instruction is not a control (inherits `REQ-pdlc-advisory-tier` NFR-1).
 
 **C-5 — Size discipline.** This REQ is measured against `pdlc/hooks/scripts/check-req-size.sh`
 (700 lines / 61,440 bytes) at authoring time and at the start of every review round. Measured facts
-about shipped behaviour are held in `docs/_constraints/pdlc-wave-gate-baseline.md` v1.1 and cited
+about shipped behaviour are held in `docs/_constraints/pdlc-wave-gate-baseline.md` v1.2 and cited
 by `M-WG-*` id rather than restated, both to keep this document inside its budget and to keep it at
 requirements altitude.
 
