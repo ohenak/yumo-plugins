@@ -537,17 +537,27 @@ export function looksLikeLearningsDocument(text)
 export function parseHarvestDate(text)
 
 /** BR-6's five priority sections, in priority order, bounded to `maxBytes` UTF-8 bytes of MATERIAL
- *  (§D.5). `bounded` is decided at the cut, not re-derived downstream: `bytes` may be < `maxBytes`
+ *  (§D.5). Which headings count as which section is §D.3's second F-O-1 rule: level-2 exactly,
+ *  optional `N.` ordinal (discarded — priority comes from `BR6_SECTION_NAMES`'s index, never from
+ *  the number), optional trailing `(gloss)`, otherwise exact case-sensitive name match.
+ *  `bounded` is decided at the cut, not re-derived downstream: `bytes` may be < `maxBytes`
  *  on a bounded document, because the cut is character-safe.
+ *  `maxBytes <= 0` short-circuits BEFORE the cut and returns
+ *  `{material: "", bounded: false, bytes: 0, sections: []}` for every `text` — no cut occurs, so
+ *  `bounded` is false, and the caller drops the document `RSN-NO-MATERIAL` (E-36, §D.5).
  *  @returns {{material: string, bounded: boolean, bytes: number,
- *             sections: string[]}} — `sections` are the BR-6 priority names actually taken, and are
- *             AT-11's section-set-equality operand. */
+ *             sections: string[]}} — `sections` are the CANONICAL BR-6 priority names actually
+ *             taken (not the document's literal heading text), and are AT-11's
+ *             section-set-equality operand. */
 export function extractInjectableMaterial(text, maxBytes)
 
 /** BR-4's total order: `orderKey` descending (null last), then path byte-ascending. */
 export function orderCorpus(entries)
 
-/** The whole of BR-2/BR-4/BR-5/BR-6, as one pure function.
+/** The whole of BR-2/BR-4/BR-5/BR-6, as one pure function. A document whose extraction returns
+ *  `sections: []` is rejected `RSN-NO-MATERIAL` BEFORE the count and total bounds are applied and
+ *  consumes no slot — one branch covering both of BR-9's disjuncts, the structural one (E-33) and
+ *  the zero per-document bound (E-36, §D.5).
  *  @param {{entries: CorpusEntry[], feature: string, thresholds: object}} arg
  *  @returns {{selected: SelectedDoc[], rejected: RejectedDoc[], totalBytes: number,
  *             orderKeys: Array<{path: string, orderKey: string|null}>}} */
