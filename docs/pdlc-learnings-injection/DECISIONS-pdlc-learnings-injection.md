@@ -19,6 +19,29 @@ depends-on: []
 
 ## Scope, grounding pin, and how to read this document
 
+This document records the **"didn't do, and why"** for pdlc-learnings-injection. The "do" lives in
+`TSPEC-pdlc-learnings-injection.md`; nothing here restates a design that document already carries,
+and no behaviour rule (FSPEC `BR-1` … `BR-16`) is re-decided here. Each entry exists because a real
+alternative was weighed and rejected, and a future agent reading only the code would otherwise
+reconsider it confidently and at cost.
+
+**Grounding pin.** Every code claim below was read on `feat-pdlc-learnings-injection` at HEAD on
+2026-08-19, before any production edit for this feature had landed — so every citation describes the
+*pre-feature* codebase this design attaches to. Citations name **exported symbols and file paths**
+rather than line numbers, per `docs/_decisions/DECISIONS-review-severity-bars.md` `DEC-DOC-01`; a
+line number appears only where the position itself is the claim.
+
+**Upstream version note.** TSPEC v0.5 was authored against FSPEC v0.5 / REQ v0.7. Upstream has since
+moved: REQ v0.9 and FSPEC v0.7 settled the shipping-default question TSPEC recorded as open
+(`OQ.2`, `ERR-4`). This document is grounded on the **current** upstream, so `DEC-LI-07` decides
+what TSPEC still carries provisionally; the divergence is raised as a TSPEC erratum rather than
+resolved silently.
+
+**How to read an entry.** Each `DEC-LI-NN` carries Context, Decision, Alternatives considered (each
+with the reason it was rejected and, where the rejection turns on cost, the *measured* cost),
+Constraints that forced the shape, Reversibility, and Re-evaluation triggers. An entry's decision is
+binding on PLAN and IMPL; its alternatives are closed unless a re-evaluation trigger fires.
+
 ## Context
 
 ## Options Considered
