@@ -137,7 +137,31 @@ have false-red'd. The design holds under exactly the pressure this cascade appli
 
 ## Findings
 
-_(pending)_
+No High, no Medium. Two Lows, neither gating, neither an edit this PLAN must make to remain approved.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Cross-Feature | **Upstream's new paragraph says A-1's frozen glob list "exempts only `LEARNINGS-*` and `POSTMORTEM-*`"; the shipped list carries sixteen globs.** `A1_GLOBS` in `documentOracles.test.js` includes `docs/pdlc-plugin-retirement/**`, `docs/_decisions/**`, `docs/completed/**`, `docs/discarded/**`, `docs/PLAN-*.md`, `docs/design/**`, `docs/_queue/QUEUE.md` and more. The claim's *conclusion* is sound — this feature's docs and `CROSS-REVIEW-*` are genuinely unexempted — but the "only" makes a narrower statement than the artifact supports, and a reader sizing a future feature's residue off it would under-count what is already exempt. PLAN does not inherit the error: its own wording is a covers/does-not-cover statement that is accurate at HEAD. Fix belongs in TSPEC §1.3 (drop "only", or say "does not exempt `docs/{feature}/` specs or `CROSS-REVIEW-*`"). No PLAN edit required. | TSPEC §1.3; PLAN Overview HEAD-drift note, class-3 row |
+| F-02 | Low | Process | **The cross-review dispatcher again supplied PLAN's authoring headings (`## Overview` / `## Batches` / `## Dependencies` / `## Verification`) as the completeness gate for a *review* artifact.** Carried unchanged from rounds 5–10 as a Process finding; it recurs in this dispatch, so this file carries both the PLAN heading set and the cross-review schema. Harmless to the reader, but it is a standing mis-dispatch in the workflow's completeness gate, not a defect in any document under review. Routed to harvest, not actioned here. | Workflow completeness gate (not PLAN) |
+
+**Round-10 findings disposition.** Round 10 raised two Lows and deferred both by design. F-01 (the
+DoD bullet's inline `28 total / 14 closable` parenthetical duplicating the Overview's dated figure)
+is **still open and still non-blocking** — PLAN's bytes did not change, so nothing could have closed
+it. This cascade slightly *raises* its value: with TSPEC now deferring to PLAN as the single owner of
+those figures, the one-site rule matters more, and the deferred tidy-up is worth taking whenever PLAN
+is next edited. Round-10 F-02 is this round's F-02, unchanged. Neither was a condition of approval
+then and neither becomes one now.
+
+**Scope-tag reconciliation.** F-01 is tagged `Cross-Feature`, not `Local`: it restates a shared
+artifact (`A1_GLOBS`, owned by the coupled `pdlc-plugin-retirement` sweep), the mis-sizing is reusable
+harm regardless of which document carries it, and the same glob list has been cited across TSPEC, PLAN
+and both reviewers' files. Per the tag-selection discipline, a finding that references a sibling
+feature's frozen artifact and recurs at more than one phase is `Cross-Feature`. F-02 stays `Process`,
+matching its tag in rounds 5–10; I checked the prior files rather than re-deciding it.
+
+DEFERRED (unchanged from round 10): replace the DoD bullet's inline `28 total / 14 closable`
+parenthetical with a pointer to the Overview's HEAD-drift note, so exactly one site ever carries the
+number.
 
 ## Questions
 
