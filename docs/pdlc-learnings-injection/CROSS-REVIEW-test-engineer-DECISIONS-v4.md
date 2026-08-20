@@ -104,7 +104,82 @@ lands alongside whatever else this phase is carrying, and none blocks PROPERTIES
 
 ## Decision
 
+**DECISIONS still holds as approved against FSPEC v0.12.** Reading (c). Approved with minor changes,
+three Medium and two Low findings, none gating.
+
+Every claim DECISIONS makes that reaches into the sections this delta touched, re-derived against the
+HEAD bytes rather than against my memory of v0.10:
+
+| DECISIONS claim | FSPEC at HEAD | Verdict |
+|---|---|---|
+| `DEC-LI-03` decision: gate is `dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType)` | `BR-1` v0.12 states the same conjunction in prose, second conjunct "load-bearing, not defensive" | **Holds, newly backed** — v0.10's one-conjunct `BR-1` was narrower than this gate; v0.11 closed the gap toward DECISIONS |
+| `DEC-LI-03` alt. 2 rejected: classification alone admits Phase CR's `docType: null` optimizer, "which is exactly what REQ C-1 and NG-5 exclude" | `BR-1` names the same witness — "the code-review phase's optimizer round at HEAD" — and cites the same authorities, REQ AC-1.2 and NG-5 | Holds; upstream now names the case DECISIONS measured |
+| `G-C`: `dispatchKind` alone is wider than REQ C-1; `reviewLoop({docType: null, phase: "CR"})` | Unchanged in kind and now mirrored by `BR-1` and by `D-2`'s third branch | Holds |
+| `DEC-LI-03` alt. 3 rejected: gate on `docType` alone "violates `BR-1`'s exclusion list" | `BR-1`'s **Excluded** bullet survives the rewrite verbatim (review, implementation, DoD, remediation, harvest, ship, advisory seams) | Holds; cited list still exists |
+| `DEC-LI-03` re-evaluation trigger cites `A-2`'s stated default for a dispatch "authoring in spirit but not so classified" | `A-2` rewritten: now quantifies over a dispatch satisfying "**neither** conjunct … yet is authoring in spirit" | Holds on substance (`BR-1` still excludes), **drifted on quotation** → F-02 |
+| `D-O-8`: source-level guard pinning authoring-classified producers to the set reaching `dispatchAndVerify`, expected set hand-transcribed | Untouched by this delta; `BR-1`'s "read off the classification, not maintained here" is unchanged in force | Holds |
+| `DEC-LI-06` alt. 2 rejected: "REQ NG-4 and FSPEC `BR-15` state that the run creates no index, cache or state file anywhere" | That sentence of `BR-15` is untouched — "no index, cache or state file is created anywhere (NG-1, NG-4)" | Holds |
+| `DEC-LI-06` reversibility Hard, because "adding [a cache] later means revisiting `E-32` and `AC-5.2` upstream first"; `AC-5.2` listed as a forcing constraint | `BR-15` moved from attempt-counting to **set-of-paths** comparison; a repeat open "neither adds a member nor changes the verdict"; enumeration contributes no member | Substance of the decision holds, **`AC-5.2` half of the stated ground no longer bites** → F-01 |
+| `D-O-6`: positive call-count oracle, `_git` enumeration calls **equal** the injecting dispatches, `_readFile` likewise, "counts asserted over the **injected Node-channel seams**, not the platform read cache" | Independent of `BR-15` by construction — DECISIONS already scoped these counts to its own seams | **Holds, and is now the sole falsifier** of the no-cache decision |
+| `D-O-6` "`_git` enumeration calls equal the number of **injecting** dispatches" | Under two-conjunct `BR-1`, injecting ⊊ authoring-classified; `D-O-6` says *injecting*, not *authoring* | Holds — wording was already correct for the narrower set |
+| `DEC-LI-04`: corpus enumeration through `_git` with a restated pathspec, not `_listFiles` | `BR-15` at HEAD asserts the enumeration "opens no file under `docs/`, so this instrument does not see it" — consistent with a `git ls-files`-shaped enumeration | Holds; upstream and DECISIONS agree on the mechanism |
+| `DEC-LI-10`: `LEARNINGS_TARGET_DOCTYPES`' expected membership hand-transcribed from REQ C-1's six names | `BR-1` now restates those six names inline as the second conjunct | Holds, and the transcription target is now visible in FSPEC too |
+
+**The one thing a reader should take from this table.** `DEC-LI-06`'s no-cache decision is now
+defended by exactly one falsifiable instrument — `D-O-6`'s call-count oracle over the injected
+Node-channel seams — where at v0.10 it could point at two (`D-O-6`, plus `AC-5.2`/`BR-15`'s
+attempt-shaped footprint check). The decision is unchanged and correct; DECISIONS anticipated the
+seam question well enough that its own obligation survived the upstream move untouched. But the
+paragraph that tells the next reader *why reversal is Hard* now overstates its upstream half, and a
+PROPERTIES author who reads "revisiting `AC-5.2` upstream first" as a safety net will find the net
+has a hole in it. That is F-01, and it is a one-sentence fix in the erratum, not a reopened
+decision.
+
 ## Consequences
+
+**For this phase.** The confirmation is approving, so the cascade does not halt and DECISIONS does
+not re-enter its ordinary revision loop. Nothing here blocks PROPERTIES authoring. Five findings are
+recorded: two created by this delta (F-01, F-02), three carried unchanged from v3/v2 because
+DECISIONS' bytes have not moved since (F-03, F-04, F-05). All five land as one erratum edit to
+DECISIONS; none of them reopens a decision, and no `D-O` obligation changes shape.
+
+**For PROPERTIES, the next reader of this document.** Three transcription notes, in the order they
+will bite:
+
+- **The no-cache decision has exactly one falsifier now.** `D-O-6`'s call-count oracle over the
+  **injected Node-channel seams** (`_git` enumeration calls equal the injecting dispatches;
+  `_readFile` likewise) is the whole proof that `DEC-LI-06` was honoured. `BR-15`/`AC-5.2` used to
+  be a second, independent check — an attempt-shaped footprint set that a memo would visibly shrink.
+  At FSPEC v0.12 it is a **set of paths**, and a memo changes no member of it. Do not write the
+  no-cache property against `AC-5.2`; write it against `D-O-6`'s counts, and mutation-check it by
+  introducing a per-run memo and requiring RED. If that mutation stays green, the property is
+  vacuous and the decision is unguarded.
+- **Take `BR-1`'s rule from FSPEC v0.12, both conjuncts, and treat the second as load-bearing.**
+  A property that exercises only authoring-classified dispatches with a C-1 target document cannot
+  distinguish the shipped two-conjunct gate from the one-conjunct gate `DEC-LI-03` rejected. The
+  falsifying fixture is the one FSPEC now names: an authoring-classified dispatch with
+  `docType: null` (Phase CR's optimizer round), asserted to receive **no** injection — a positive
+  assertion on the served state, not merely "no error".
+- **Take `BR-10`'s loci from FSPEC, not from §Decisions deliberately NOT taken.** This is v3's F-01,
+  unlanded and therefore still live (F-03 below). Two completeness tests, one per locus: ordering key
+  values per authoring dispatch, thresholds once per run. An assertion written over the run-level
+  mirror is, in FSPEC's own words, an assertion over a non-oracle — green on a single-dispatch
+  fixture, silently wrong on AT-18's divergent run.
+
+**For the harvest phase.** F-01 is the reusable one and is worth a `Cross-Feature` note: *when an
+upstream erratum makes an oracle cheaper or more robust, it can simultaneously make it a weaker
+guard for a decision that leaned on its strictness.* `BR-15` moving from attempt-counts to a
+path-set is an unambiguous improvement to `AC-5.2` as a footprint oracle, and precisely because of
+that improvement it stopped being able to detect a cache. Nothing upstream is wrong; a downstream
+document's stated reversibility ground quietly emptied. A cascade confirmation that only asks "does
+upstream still say what this document quotes" would miss it — the sentence still parses, it just no
+longer bites. That is a check worth adding to this role's cascade protocol: for every decision whose
+reversibility is stated as Hard **because** an upstream oracle would break, re-derive whether the
+oracle at HEAD still breaks.
+
+**What this round did not do.** I did not re-read DECISIONS end to end, did not re-derive its code
+claims at HEAD, and did not revisit any settled decision. FSPEC was read at HEAD in the sections
+`9a4b7593..c1d7218e` touched, plus every section DECISIONS cites by id.
 
 ## Delta-Confirmation Findings
 
