@@ -44,6 +44,27 @@ binding on PLAN and IMPL; its alternatives are closed unless a re-evaluation tri
 
 ## Context
 
+`orchestrate-dev` composes every dispatch from a fixed set of parts and hands it to a role. LEARNINGS
+documents harvested from *earlier* features already exist in the repository (9 of them at HEAD under
+the corpus predicate) and are read by nothing at authoring time: a lesson paid for once is
+re-discovered by the next author. REQ asks that those documents reach every authoring dispatch
+in-run, bounded, deterministic, and fail-open (G-1 … G-5); FSPEC fixes the behaviour; TSPEC fixes the
+shape. What remains — and what this document records — is the set of engineering choices where a
+plausible cheaper or more obvious alternative existed and was rejected.
+
+Four properties of the pre-feature codebase constrain nearly every entry below:
+
+| # | Property | Evidence (HEAD, pre-feature) |
+|---|---|---|
+| G-A | The engine vendors **exactly two** workflow modules into consumer repositories | `MODULE_NAMES = ["orchestrate-dev.js", "orchestrate-queue.js"]`, `pdlc/engine/scripts/prepack.mjs` |
+| G-B | Four code sites carry `dispatchKind: "authoring"`, and all four funnel through **one** function that sees both the classification and the target document type at composition time | `dispatchAndVerify` (`pdlc/workflows/orchestrate-dev.js`); the three object-literal sites plus `reviewLoop`'s positional `"authoring"` argument to `runWrapped` |
+| G-C | `dispatchKind` alone is **wider** than REQ C-1: Phase CR calls the shared `reviewLoop` with `docType: null` over a directory target, and that `null` survives to `dispatchAndVerify` | Phase CR's `reviewLoop({doc: \`docs/${featureName}/\`, phase: "CR", docType: null, …})`, `orchestrate-dev.js` |
+| G-D | The repository already ships the two mechanisms this feature needs — a config reader with per-key fallback plus an invalid-key notice, and a `git ls-files` corpus predicate | `parseAdvisoryConfig` / `parseImplementationConfig` (`orchestrate-dev.js`); `LS_FILES_ARGV` consumed by `enumerateCorpus` (`pdlc/workflows/consolidate-learnings.js`) |
+
+G-A and G-D between them set the default posture of this document: **reuse the shipped mechanism, add
+no distribution surface.** Where an entry departs from that posture (DEC-LI-04's restatement rather
+than import), the departure is itself forced by G-A.
+
 ## Options Considered
 
 ## Decision
