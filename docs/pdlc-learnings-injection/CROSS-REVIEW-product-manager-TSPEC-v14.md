@@ -194,11 +194,59 @@ No test coverage was lost in the move: `sections[]` is still asserted, as a supp
 
 ## Open Questions
 
+None that block. Under the freeze I opened no new decisions, and the delta closed rather than opened
+questions. Three things I checked and found already answered in the text, recorded so the next
+reader does not re-check them:
+
+1. Whether §I.3's two-line assembly summary could drift from §D.3's normative rule — it is a
+   compression that ends in a pointer, and it agrees with §D.3 clause by clause today.
+2. Whether the `sections[]` redefinition breaks T-O-6's corpus conjunct — it does not; the conjunct
+   ranges over an unbounded extraction, where survival-in-`material` and match coincide.
+3. Whether ERR-8 changes any behaviour this TSPEC specifies — it does not; §D.5's rule was already
+   extract-then-bound, and the erratum documents the upstream prose gap rather than adopting it.
+
+**Pre-existing, untouched by this delta and out of scope here:** ERR-5 (FSPEC E-13's "measured:
+occurs at HEAD" parenthetical) and the `docs/discarded/` scoping rationale, both already recorded in
+§OQ. ERR-8 is likewise already recorded by the author against FSPEC, so I do not re-route it.
+
 ## Findings
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | §D.5's "AT-11's **and AT-12's** expected counts are therefore hand-computable … sum of each taken section's normalised byte length … plus 2 bytes per join" names AT-12, but AT-12's fixture is by construction the *bounded* case, where §D.5's own next paragraph fixes the expected count at the bound exactly ("AT-12's fixture is therefore ASCII, so the expected count is the bound exactly"). The sum formula gives the count of the material *before* the cut, which is not `bytesInjected` for AT-12. The clause naming AT-12 predates this delta — the delta only sharpened what "sum" means — so it is inherited, not introduced. Suggested fix, whenever this document is next unfrozen: qualify as "the unbounded material's length; where the cut applies, §D.5's bound governs and AT-12's literal is the bound". | FSPEC AC-2.3 / AT-11, AT-12 |
 
 ## Deferred Items
 
+DEFERRED: §D.5's byte-sum sentence names AT-12 alongside AT-11, though AT-12's literal is the bound, not the sum — qualify when the document is next unfrozen (F-01).
+DEFERRED: §D.3's `\r\n` paragraph proves absence at HEAD by a grep, but nothing mechanically prevents a future corpus document from introducing `\r\n`; a corpus premise test asserting the grep's emptiness would make the assumption self-defending rather than dated.
+
 ## Positive Observations
+
+- **The delta corrected an argument I had credited as sound at v13, and said so.** My v13 review
+  praised the prefix rejection as "forced by FSPEC's own measured example". It was not — neither
+  `Cross-Feature Findings` nor `Cross-Feature Patterns` is a prefix of the other, so E-33 never
+  reached the prefix candidate. §D.3 now splits the argument, rejects substring/fuzzy on E-33 and
+  the prefix rule on its own stated ground, while leaving the decision unchanged. A document that
+  fixes a reviewer's own mistaken endorsement rather than banking it is doing the job.
+- **AT-11 was moved onto the artifact the requirement is about.** The old wording made `sections[]`
+  the operand — the producer's report of its own intent. The new §T.5 asserts over the rendered
+  block, keeps `sections[]` as a supporting equality, and cites DC-14 for why the order matters.
+  This is the difference between a green test and a proof the dispatch receives the material.
+- **The three-conjunct table gives each half of AT-11 an oracle and an owner.** Two of AT-11's three
+  conjuncts previously belonged to no test. They now have oracles, a file, and named mutations that
+  red each — including the explicit note that the absence conjunct is not redundant with §D.3's
+  allow-list design argument, because "that argument is a design reason … it is not a test".
+- **The assembly rule makes a hand-recomputed literal a mechanical procedure.** Priority order is
+  not document order for any of the 9 corpus documents (I checked all 9), so "sum the sections" was
+  genuinely ambiguous about separators. Normalise / join with `"\n\n"` / cut once, plus "2 bytes
+  per join", turns AT-11's literal into arithmetic a fixture author can redo without judgement.
+- **Empirical claims still carry their provenance labels.** The `\r\n` absence is stated *with the
+  command that proves it*, which I re-ran and which reproduces; the un-glossed tolerance remains
+  labelled *not measured*. The measured/defensive discipline I credited at v13 survived a revision
+  that added a lot of new empirical prose — that is where it usually erodes.
+- **ERR-8 was filed, not folded.** The FSPEC Step 5 sequencing gap is real (items 15/16 verified at
+  HEAD), and the response was an erratum with a suggested fix plus a statement of the rule the
+  implementer follows — not a quiet redefinition of upstream inside a downstream document.
 
 ## Recommendation
 
