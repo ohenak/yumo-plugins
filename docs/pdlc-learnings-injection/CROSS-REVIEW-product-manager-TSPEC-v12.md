@@ -208,8 +208,42 @@ adopting whenever the header is next edited (which F-03 now forces), still not a
 
 ## Positive Observations
 
-_pending_
+- **TSPEC won the byte-accounting argument, and won it on the product's terms.** §D.5's
+  three-disjoint-pools model was written to remove a circularity (the `ABRIDGED` marker charged to
+  the budget whose outcome emits it). FSPEC v0.13 adopted that basis and grounded it where it
+  belongs — REQ AC-2.3's "the material taken" — rather than splitting the difference. A downstream
+  document that states its reasoning precisely enough to be *checked* is what makes an upstream
+  correction like this possible; had §D.5 merely asserted a different number, the round would more
+  likely have overwritten it.
+- **§I.2's non-negative-integer validation aged correctly.** Choosing `v >= 0` over `v > 0` on the
+  strength of AC-4.4 is what lets `maxBytesPerDocument: 0` be a decidable configuration at all.
+  E-36 landed *into* that choice instead of against it — the one place where this delta could have
+  invalidated a signature-level decision, and it did not.
+- **The compression policy is doing its job.** TSPEC's stated rule — behaviour is FSPEC's and is
+  referenced by rule id, never restated — is why a six-commit upstream erratum produces two
+  findings rather than twenty. Both findings are in the small number of places where TSPEC chose to
+  restate upstream content inline (§I.2's AT-30 parenthetical, §T.6's arm inventory) or was handed a
+  new obligation outright (F-O-1). That is the expected failure surface of the policy, and it is
+  narrow.
 
 ## Recommendation
 
-_pending_
+**Needs revision** — two High findings, both `delta` and `local`.
+
+Exactly what must change, all in one edit, header included:
+
+1. **F-01** — restate AT-30 in §I.2 with its third case (`maxBytesPerDocument: 0`), add the
+   `RSN-NO-MATERIAL`-for-every-document clause and E-36 to §T.5's `learningsConfig.test.js`
+   justification (noting the case needs a non-empty corpus fixture), and add the zero-bound entry
+   arm to §T.6's inventory alongside the existing "No BR-6 section present" row. Optionally state in
+   §I.3 that an empty-material document is emitted `RSN-NO-MATERIAL` before the count and total
+   bounds — "consumes no slot" — so the selector's rule-id reference to BR-6 covers the branch.
+2. **F-02** — discharge the second half of F-O-1: state the rule by which a heading counts as one
+   of BR-6's named sections (numbered `## N. Title` form, bare title, or a prefix of it), on the
+   same two bounds as §D.3's predicate (bytes only, no model call), and update §Open Questions'
+   entry-obligation table so the F-O-1 row names both rules and both locations.
+3. **F-03** — repin the header's Upstream row to FSPEC v0.13 and add a v0.8 erratum note recording
+   what this round absorbed. Replacing the hand-enumerated Cross-Reviews list while there is
+   welcome, not required.
+
+No other section of TSPEC needs to move, and nothing approved in v10/v11 is withdrawn.
