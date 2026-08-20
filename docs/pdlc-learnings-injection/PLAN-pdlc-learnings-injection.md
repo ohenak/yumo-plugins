@@ -420,15 +420,38 @@ empty (`AT-4.1`), so any uncommitted edit anywhere in the repository — includi
 PLAN — reds it. Every measurement in this section was taken on a committed tree, and a wave that
 measures on a dirty one will misread its own gate.
 
-### The two gate wordings
+### The three gate wordings, and the expected-red ledger
 
 | Batches | Gate |
 |---|---|
-| 2, 3 (LI-07…LI-09), 5, 6 — **RED-terminal** | The batch's new tests **fail for the specified reason** — the symbol under test is not defined yet, or `.gitignore` lacks the rule — **and** every pre-existing test's status is unchanged from the baseline above. A new test failing for a *different* reason (a typo, a missing import, a helper that throws) is a batch failure, not a red |
-| 1, 4, 7–14 | Full suite green under the arrangement's `testCommand`, with the documented pre-existing exclusions and no others. From batch 7 on, each batch also leaves `pdlc/workflows/dist/` regenerated and staged by the wave gate's `postWaveCommand` |
+| 2, 3 (LI-07…LI-09), 5 — **RED-terminal** | The batch's new tests **fail for the specified reason** — the symbol under test is not defined yet, or `.gitignore` lacks the rule — **and** every pre-existing test's status is unchanged from the baseline above. A new test failing for a *different* reason (a typo, a missing import, a helper that throws) is a batch failure, not a red. Batch 3 is mixed and is read per-suite: LI-04's and LI-05's two oracles are **green** in the same batch that LI-07…LI-09 land red |
+| 1, 4, 6 — **green-terminal** | The batch's new suite is **green on authoring**: `learningsPremises.test.js` over HEAD's premises (batch 1), `learningsBaselineGuard.test.js` over the capture it was written from (batch 4), `learningsSuiteMap.test.js` over six suite files that already exist (batch 6). None has a red episode, and none may be *given* one by inventing a symbol for it to miss |
+| 7–13 — **mixed, against the ledger below** | Every suite whose green task has landed is green; every suite still listed in that batch's ledger row is red **for its specified reason**; no other test's status moves from the measured baseline. A suite dropping out of the ledger early is as much a failure as one lingering — the ledger shrinks by exactly the rows the batch's task greens |
+| 14 | **Full suite green**, unqualified, under the arrangement's `testCommand`, with the documented pre-existing exclusions and no others |
 
-**No exemption list grows during this feature.** The two exclusions above are the arrangement's, are
-measured here, and are the whole set. Adding a third to make a batch pass is a halt condition.
+**The per-batch expected-red ledger** (PM F-04, TE F-01). Read as: *after* this batch's task lands,
+these and only these of the feature's own tests are still red. It shrinks monotonically to empty.
+
+| After batch | Task | Still expected red |
+|---|---|---|
+| 7 | LI-15 | `learningsSelect`, `learningsBlock`, `learningsCorpus`, `learningsRecord`, `learningsDispatchSet`, `learningsConfig`, `learningsArmInventory` (whole suites) |
+| 8 | LI-16 | `learningsSelect` → **`LI-AT-15` only** (its corpus-level `RSN-EMPTY` and no-record clauses); `learningsBlock`, `learningsCorpus`, `learningsRecord`, `learningsDispatchSet`, `learningsConfig`, `learningsArmInventory` |
+| 9 | LI-17 | `LI-AT-15`; `learningsCorpus`, `learningsRecord`, `learningsDispatchSet`, `learningsConfig`, `learningsArmInventory` |
+| 10 | LI-18 | `LI-AT-15`; `learningsRecord`, `learningsDispatchSet`, `learningsConfig`, `learningsArmInventory` |
+| 11 | LI-19 | `learningsRecord` → **`LI-AT-22`'s locus-2 assertion only** (`ruleInputs.thresholds`); `learningsDispatchSet`, `learningsConfig`, `learningsArmInventory`. `LI-AT-15` greens here |
+| 12 | LI-20 | `LI-AT-22` locus 2; `learningsDispatchSet` → **`LI-AT-23`, `LI-AT-24`, `LI-AT-31` only** (the report-shape rows); `learningsConfig`, `learningsArmInventory` |
+| 13 | LI-21 | **nothing** — the ledger is empty, and batch 14's unqualified gate is therefore a restatement rather than a new demand |
+
+Three properties of this ledger are load-bearing. It is stated in **test names**, not suite names,
+wherever a suite is split across two green tasks, because "`learningsRecord` is partly red" is not
+a gate a dispatcher can evaluate. It **shrinks by exactly** the rows the batch's own task claims to
+green, so a batch that greens something it did not claim is a signal to re-read the task, not a
+bonus. And it reaches **empty at batch 13**, one batch before the unqualified gate, so batch 14's
+refactor has a green suite to refactor against.
+
+**No exemption list grows during this feature.** The two exclusions in §The measured baseline are
+the arrangement's, are measured here, and are the whole set. Adding a third to make a batch pass is
+a halt condition — and with the ledger in place there is no batch for which that is even tempting.
 
 ### Definition of Done
 
