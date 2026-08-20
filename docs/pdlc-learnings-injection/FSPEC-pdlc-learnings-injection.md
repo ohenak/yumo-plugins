@@ -29,10 +29,6 @@ depends-on: []
 > to AT-31, AT-32; and AT-32 gains a positive-presence conjunct so its equality check is
 > no longer vacuously green.
 
-> **v0.9 (round 9).** Corpus-level outcomes, per-document reasons and ordering keys are
-> recorded **per authoring dispatch** (REQ AC-3.2/AC-3.3); thresholds stay run-level; BR-10
-> closes at two loci; mirrors are additive, not oracles (Q-01, Q-02).
->
 > **v0.8 erratum (re-grounded on REQ v0.9).** Upstream re-read at HEAD. The raised item —
 > the `present && config.enabled && !sectionMalformed` gate and the open shipping default
 > (`ERR-4`) — names TSPEC sections (`§I.2`, `§I.4`, `§OQ.2`); this FSPEC carries no such
@@ -40,6 +36,13 @@ depends-on: []
 > read an absent section as REQ §4.1's declared defaults with `enabled` at `true`, and there
 > is no second gate beyond that key (REQ v0.9 AC-5.1a). No behavioural change; the gate
 > correction is TSPEC's to land.
+>
+> **v0.9 (FSPEC v9 delta-confirmation findings).** Corpus-level outcomes, per-document reasons
+> and ordering key values are recorded **per authoring dispatch** (REQ AC-3.2/AC-3.3); §4.1
+> thresholds stay run-level; BR-10 closes at two loci with one completeness test each; run-level
+> mirrors are additive, not oracles (se-review Q-01, te-review Q-01/Q-02). AT-20/AT-21/AT-22 name
+> the locus and exercise AT-18's changing-corpus fixture. Header Cross-Reviews row and the AC-6.2
+> traceability row corrected. Locus corrections only; no new behaviour.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
@@ -143,7 +146,7 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | AC-5.2 | BR-15 | AT-33, AT-34 |
 | AC-5.3 | BR-16 | AT-35 |
 | AC-6.1 | §Acceptance Tests preamble | all ATs |
-| AC-6.2 | §Acceptance-test preamble | AT-31, AT-32 |
+| AC-6.2 | §Acceptance Tests preamble | AT-31, AT-32 |
 
 ### Binding constraints inherited
 
