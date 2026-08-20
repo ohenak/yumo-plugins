@@ -195,7 +195,36 @@ counterfactual that makes this round cheap.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §G.2.1 promised the `maxBytesPerDocument: 0` property "belongs in Group H beside `PROP-CONFIG-04`" once FSPEC decided. FSPEC has decided. Do you want it as a new `PROP-CONFIG-09`, or as a third clause inside `PROP-CONFIG-04` (which already enumerates the other two zeros and traces AT-30)? The second is fewer moving parts and keeps §C.1's AT-30 row a one-to-one map. |
+| Q-02 | E-36 asserts two things AT-30's other two arms do not: **every** corpus document carries `RSN-NO-MATERIAL`, and **no slot is consumed**. Should the property assert both conjuncts, or is the empty-selection shape plus a per-document reason row sufficient in your reading? I read E-36's "consumes no slot" as the load-bearing half — it is what distinguishes the zero-byte bound from a `RSN-BYTES` count cut. |
+| Q-03 | With §G.2.2 closed, does §G.3's "TSPEC's AT-11 byte count" erratum now become a **TSPEC-only** item rather than a joint FSPEC/TSPEC one? If so it should be re-worded to route to TSPEC alone, so a reader does not go looking for FSPEC framing arithmetic that no longer exists. |
+| Q-04 | Now that F-O-1 explicitly owns the section-heading recognition rule, is §G.3's fourth bullet still open in your view, or does it now reduce to "TSPEC has not yet discharged F-O-1's second half"? I read it as the latter — TSPEC is unchanged — but the routing target differs between the two readings. |
+
 ## Positive Observations
+
+- **Declining to guess paid off exactly as intended.** §G.2.1 refused to invent an answer for
+  `maxBytesPerDocument: 0` — "inventing the answer here would freeze a guess into the suite" — and
+  routed it upward instead. FSPEC then decided it, and the decision cost the suite one configuration
+  case rather than a retracted property. This is the routed-erratum mechanism working the way it is
+  supposed to, and it is worth preserving as a pattern.
+- **The byte-accounting divergence was declared, not hidden.** §G.2.2 stated plainly that PROPERTIES
+  was written to TSPEC's reading over FSPEC's, and said which artefacts would have to change if the
+  call went the other way. Because the divergence was named with its blast radius, this confirmation
+  took a diff and a re-read rather than a re-derivation of every byte literal in §F.
+- **Nothing in the delta reds a property.** No expected value, no set-equality transcription, no
+  hand-computed literal in §F, and no §C matrix row needs an arithmetic change. The AT partition is
+  still 35, `PROP-META-05`'s partition oracle still holds, and every REQ acceptance criterion still
+  carries at least one property.
+- **`PROP-BOUND-07`'s anti-vacuity argument reads better at HEAD than at v0.12.** Its insistence that
+  the framing cost be stated as its own literal *beside* the material counts, "so the test proves the
+  two numbers **differ**", is now a direct mechanisation of BR-6's "framing carries no byte charge" —
+  and M-5 is the mutation that reds it.
+- **`PROP-BOUND-08`'s real-corpus arm is unchanged and still load-bearing.** With F-O-1's second
+  rule still undischarged in TSPEC, the property that drives extraction over a real corpus document
+  remains the only thing standing between a wrong-spelling matcher and a suite that greens on
+  synthetic fixtures written to the same wrong spelling.
 
 ## Recommendation
 
