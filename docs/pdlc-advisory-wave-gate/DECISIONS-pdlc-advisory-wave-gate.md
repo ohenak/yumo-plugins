@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.10) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md`, `CROSS-REVIEW-product-manager-DECISIONS-v6.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v6.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.4 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.5 | 2026-08-19 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -416,10 +416,27 @@ that a first-class per-seam `enabled` map becomes the better surface.
   *both* literals plus the frozen defaults shape, so a partial edit reddens tests in files that never
   mention the changed constant, with a failure reason the record cannot predict. Sequencing all of
   this as **one task remains the right call** — that co-movement is the failure class A6 itself
-  exists to survive — but the size to hand PLAN is: three production constants, **one** test-side
-  literal a gate still demands (`advisoryRecord`'s `rows.map` equality), and **six** hand-copy
-  surfaces — the five envelope inputs and the comment that restates one of them — which no gate
-  demands but which a later editor will read. Not "roughly a dozen transcriptions" (v1.3's figure,
+  exists to survive — but the size to hand PLAN is three columns, not one number:
+  (1) **gate-demanded edits** — three production constants plus **one** test-side literal
+  (`advisoryRecord`'s `rows.map` equality inside `PROP-SUM-01`);
+  (2) **oracles that flip red→green with no edit at all** — `advisoryEnvelope.test.js`'s
+  `T-03-8` `ENVELOPE_DEFAULTS` set-equality and `advisoryConfig.test.js`'s `PROP-CFG-02`
+  deep-equal, on the split schedule the bullet above gives;
+  (3) **ungated hand-copy surfaces** — which no gate demands but which a later editor reads, and
+  which the prose-site rule ("a comment that restates a set-equality literal is a maintenance site
+  like any other") makes **seventeen, not six** (TE v6 F-02). v1.4 applied that rule to the
+  envelope half only, counting `advisoryDoubles`' hand-sync comment while leaving the seam half's
+  equivalents uncounted. Applied evenly it yields: five envelope inputs, one envelope comment, and
+  **eleven seam prose sites** — in `advisoryRecord.test.js`, `PROP-SUM-01`'s header comment
+  ("always emits five rows, one per `ADVISORY_SEAMS` member"), its `describe` title, its `test`
+  title ("all five seams") and the earlier "exactly five rows regardless of the injected newline"
+  comment; in `advisoryDisabled.test.js`, `T-10-5 / PROP-DIS-05`'s header comment, `describe` title
+  and `test` title (all "five zero rows"); in `advisoryHarvest.test.js`, `T-08-6`'s header comment,
+  `describe` title, `it` title ("carries five rows, four of them all-zero") and the "five rows
+  always, zero counts included" comment. (`advisoryDisabled.test.js`'s A-15 capture note uses "five
+  seams" in an unrelated sense — the seams of an earlier run, not `ADVISORY_SEAMS` — and is not
+  counted.) Column (3)'s tail is long and will stay long; the number an implementer must not get
+  wrong is column (1)'s four, and it is small. Not "roughly a dozen transcriptions" (v1.3's figure,
   inflated by five seam sites that had already migrated), and not "one task touching three
   constants" either. Sized as the latter, it invites exactly the partial edit the set-equality
   discipline exists to catch (PM F-02).
