@@ -38,6 +38,52 @@ on its next pass, and none of them requires a task row to be added, split, or re
 
 ## Batches
 
+Not one task row's *instruction* is falsified by this delta — the rows that touch BR-1 and BR-15
+were already written to TSPEC's stricter reading, which FSPEC has now adopted. I walked the three
+rows that carry the affected material.
+
+**LI-11 (batch 5, the RED dispatch-universe suite) — its two contested oracles are now doubly
+grounded, not newly wrong.**
+
+| LI-11 oracle | What FSPEC said when I approved | What FSPEC says at HEAD | Effect |
+|---|---|---|---|
+| `LI-AT-02` set equality over block-carrying dispatches, plus the TSPEC-local composition-site probe whose **accepted set equals `LEARNINGS_TARGET_DOCTYPES`** and whose observed set equals `LEARNINGS_TARGET_DOCTYPES ∪ {null, "LEARNINGS"}` | BR-1 forbade restating membership, so the `docType` conjunct had no upstream warrant and AT-02 had two contradictory expected sets | BR-1 **requires** the `docType ∈ C-1's six` conjunct | The row is now the faithful reading of both documents. The contradiction PLAN routed is gone |
+| `LI-AT-33`'s expected read set, **hand-transcribed** from the fixture's scripted `ls-files` stdout minus the self paths, enumeration excluded | BR-15 put "the corpus-root enumeration" in the expected set on a `docs/`-file-open instrument that cannot observe a `git ls-files` call | BR-15/AT-33 now say the expected set is exactly one attempt per report-named document, and that the enumeration's candidate paths contribute **no** member | The row was already written this way. It is now what FSPEC asks for verbatim |
+
+That is the substance of the confirmation: the delta moved FSPEC **toward** this PLAN, so the
+implementation LI-11 commissions is unchanged and is now defensible against either upstream. A test
+author working from FSPEC at HEAD and a test author working from TSPEC now write the same suite —
+which is exactly the failure mode PLAN's §Errata section existed to prevent.
+
+**But the fixture inventory FSPEC now carries is one shape wider than PLAN records.** FSPEC AT-02 at
+HEAD enumerates four run shapes and names the fourth by hand: "a run containing an
+authoring-classified dispatch whose target is none of the six C-1 document types — reverting BR-1's
+second conjunct reds the test". PLAN's §Errata paragraph on ERR-2 says the opposite in so many
+words: "AT-02's fixture list includes the fourth run shape TSPEC §T.6 adds **beyond FSPEC's three**".
+FSPEC no longer has three, and its fourth is a *different* shape from TSPEC's fourth (the erratum
+land-proof retry). Neither LI-11's row nor LI-02's fixture list names a run carrying an
+authoring-classified non-C-1 dispatch.
+
+I looked for whether the coverage is nonetheless present, because a naming gap and a coverage gap
+are different severities. It is present: LI-11's composition-site probe asserts the **accepted** set
+equals `LEARNINGS_TARGET_DOCTYPES` while the **observed** set equals that union `{null, "LEARNINGS"}`
+— which can only pass if a `docType: null` dispatch (Phase CR's optimizer round, reaching the
+composition site through `reviewLoop`'s `wrapped` closure per LI-20) is in the fixture universe and
+is **not** accepted. Reverting BR-1's second conjunct makes `null` accepted and reds that equality,
+which is precisely the mutation FSPEC AT-02 names. So the oracle exists and the mutation is caught;
+what is missing is the **mapping** — F-02 below asks for the shape to be named in LI-11's fixture
+list and in §Traceability, so a reader of FSPEC AT-02 can find its owner. Medium, not High: no test
+is missing, one pointer is.
+
+**LI-15 and LI-20 (batches 7 and 12) are untouched and remain correct.** LI-15 ships
+`LEARNINGS_TARGET_DOCTYPES` as a frozen catalogue; LI-20 wires
+`injectHere = dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType)`. That
+conjunction *is* FSPEC BR-1 at HEAD, expressed in code. When I approved v4 it was a TSPEC-only
+construct that BR-1 as written forbade; it now has direct FSPEC warrant. Halt condition H-5's
+instruction — "relaxing set equality to containment is the one repair that must not be made", with
+the product reason attached (REQ C-1, NG-5) — reads even better against HEAD, since FSPEC now names
+NG-5 in the same breath.
+
 ## Dependencies
 
 ## Verification
