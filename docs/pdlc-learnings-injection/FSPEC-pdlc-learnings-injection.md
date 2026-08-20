@@ -794,10 +794,12 @@ text into a disabled run is a test failure rather than a production discovery.
   inspected — the whole dispatch universe, not only those already classified authoring —
   *then* the subset carrying a block **equals** the subset BR-1's two-conjunct rule names,
   asserted as set equality over that universe, with fixtures covering a run with no
-  DECISIONS phase, a run whose Phase R has no creator, and a run with five optimizer rounds.
-- **AT-03** — *Given* the same fixtures and the same universe, *when* each non-authoring
-  dispatch's prompt is compared with the recorded pre-feature baseline, *then* it is
-  byte-identical.
+  DECISIONS phase, a run whose Phase R has no creator, a run with five optimizer rounds, and
+  a run containing an authoring-classified dispatch whose target is none of the six C-1
+  document types — so reverting BR-1's second conjunct reds this test.
+- **AT-03** — *Given* the same fixtures and the same universe, *when* the prompt of each
+  dispatch **outside BR-1's rule** — including the authoring-classified dispatch with no C-1
+  target — is compared with the recorded pre-feature baseline, *then* it is byte-identical.
 - **AT-04** — *Given* a fixture where `docs/{f}/LEARNINGS-{f}.md` exists, *when* an
   authoring dispatch for `{f}` is composed in any phase, *then* it contains no material from
   that document, the report carries a per-document `RSN-SELF` row for it, and **no**
@@ -919,7 +921,7 @@ text into a disabled run is a test failure rather than a production discovery.
   the injected block — one enabled, one disabled — *when* both complete, *then* parsed
   verdicts, structural completeness scores, round-window counters, approval anchors and
   erratum routes are equal member for member, asserted as set equality over those five, and
-  every non-authoring dispatch prompt is byte-identical to the recorded baseline.
+  every dispatch prompt outside BR-1's rule is byte-identical to the recorded baseline.
 - **AT-30** — *Given* thresholds configured to admit nothing — `maxDocuments: 0`, and separately
   `maxTotalBytes: 0` — *when* the pipeline runs, *then* it behaves as an enabled run with an empty
   selection: BR-8's rows present and empty, **not** the absent key of a disabled run, and no refusal
@@ -966,7 +968,8 @@ text into a disabled run is a test failure rather than a production discovery.
 Every row of §Edge Cases and Error Scenarios (E-01 … E-35, less retired E-05) names an AT, and
 every AT above appears in
 §Linked Requirements' reverse trace. Every branch of the D-1 … D-12 decision table is exercised: D-1
-by AT-30/31/32, D-2 by AT-02/03, D-3 by AT-25, D-4 by AT-24, D-5 by AT-04/16, D-6 by AT-26/27,
+by AT-30/31/32, D-2 — all three branches, the authoring-classified non-C-1 target included — by
+AT-02/03, D-3 by AT-25, D-4 by AT-24, D-5 by AT-04/16, D-6 by AT-26/27,
 D-7 by AT-09/10, D-8 by AT-07/08, D-9 by AT-11/12, D-10 by AT-13, D-11 by AT-18/21/30, D-12 by
 AT-28.
 
