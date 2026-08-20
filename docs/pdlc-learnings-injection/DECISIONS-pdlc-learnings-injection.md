@@ -133,6 +133,46 @@ mechanism that lets a consumer repository load workflow modules by name.
 
 ## DEC-LI-02: A pure selection core with one twelve-line IO shell, not an IO-carrying selector
 
+**Context.** The selection rule (eligibility, ordering, bounding, section choice, labelling) is
+FSPEC's `BR-3` … `BR-10`, and REQ asks for the whole of it to be verified without live model calls
+(AC-6.1) and for `selectLearnings` to be total (C-7). The obvious shape — one `injectLearnings()`
+that enumerates, reads and selects — makes every rule reachable only through the filesystem.
+
+**Decision.** Split at the IO boundary: `selectLearnings({entries, feature, thresholds})` and its
+helpers (`looksLikeLearningsDocument`, `parseHarvestDate`, `extractInjectableMaterial`,
+`orderCorpus`, `renderLearningsBlock`, `parseLearningsConfig`) are **pure and never throw**;
+`gatherLearningsCorpus({feature, _git, _readFile})` is the only impure member and does nothing but
+turn two seam calls into the array the pure functions consume.
+
+**Alternatives considered.**
+
+- **One IO-carrying selector** — rejected. Every FSPEC rule would then need a filesystem fixture to
+  exercise, and the totality property C-7 asks for (`selectLearnings` returns for *any* generated
+  input) becomes a property over a filesystem rather than over a function. The cost is paid three
+  times: in PROPERTIES' generators, in the unit suite's setup, and in every future debugging session.
+- **Inject a `Corpus` protocol object rather than raw `_git`/`_readFile` seams** — rejected as
+  redundant. `dispatchAndVerify` already receives `_readFile`, `_listFiles`, `_git` and `_log`
+  (`orchestrate-dev.js`), and both channels already implement them (`defaultGit` / `defaultReadFile`
+  in `orchestrate-dev.js`, `rtGit` / `rtReadFile` in `pdlc/workflows/runtime-adapter.js`). A new
+  protocol would add a second seam vocabulary for one caller, and every test double would have to
+  implement it in addition to the seams it already fakes.
+- **A class with injected collaborators** — rejected: the module is function-plus-injected-seams
+  throughout (`parseMergeConfig`, `parseAdvisoryConfig`, `decideMerge`), and one class in it would be
+  a second architecture in the same file.
+
+**Constraints that forced the shape.** REQ AC-6.1 (no live model calls in the verification of
+Groups 2–4) and C-7 (totality) are testability constraints stated upstream, not chosen here. Seam
+behaviour is fixed by the channels: `_git(argv)` returns `{ok, stdout, stderr}` and never throws on
+either channel, while `_readFile` returns `null` for an absent file and **may throw** on the runtime
+channel — so the shell, not the pure core, owns the `try`.
+
+**Reversibility.** Easy. The split is internal to one module; collapsing it later costs only the
+tests written against the pure names.
+
+**Re-evaluation triggers.** The pure core acquires a genuine need for IO (e.g. a rule that depends
+on file mtime rather than a document's own bytes) — which would itself be an FSPEC change, since
+`BR-3` fixes that the predicate consults only the document's bytes.
+
 ## DEC-LI-03: One attachment point (`dispatchAndVerify`), gated on two conjuncts, not four call sites
 
 ## DEC-LI-04: Corpus enumeration goes through `_git` with a restated pathspec, not `_listFiles` and not an import
