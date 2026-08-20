@@ -521,6 +521,14 @@ fixture list includes the fourth run shape TSPEC §T.6 adds beyond FSPEC's three
 | P-Q-3 | Does the region need its own `c8` invocation? | TSPEC leaves it to PLAN as a cheap option; LI-22 takes it only if it costs nothing, because the §T.7 inventory is the obligation and does not depend on tooling that does not exist |
 | P-Q-4 | What happens if the corpus grows past `RT_READ_CACHE_MAX_BYTES` during the feature's life? | Not a task: TSPEC §A.4 records that residency is not guaranteed, and T-O-3's live measurement is what would move REQ §4.1's thresholds |
 
+### Questions this PLAN does answer, because a task depends on the answer
+
+| # | Question | Answer |
+|---|---|---|
+| P-A-1 | If the baseline is legitimately re-captured mid-feature (H-4's "adds or replaces whole `{caseId}` directories while every retained digest is unchanged"), who re-transcribes the hand-copied digest literals, and when? (PM Q-01) | **The task that causes the re-capture owns it, in the same commit as the fixture.** The guard's literals and `fixtures/learnings-baseline/**` are one artifact in two files: a commit that moves one without the other leaves a guard that is green against nothing or red against everything. The re-capture is therefore an amendment to LI-06's row — a second owner row in the manifest for both files, in the batch that needs it — never an ad-hoc edit by whichever task noticed. The set-equality-over-`{caseId}` assertion is updated in that same commit, and the three-step mutation proof is **re-run**, because a re-transcription is exactly the operation whose slips the proof exists to catch. DoD 4's byte-identity promise survives only if the retained digests are unchanged; a re-capture that moves a retained digest is H-4, not an amendment |
+| P-A-2 | LI-01 says "promote any absent premise to blocking work"; H-1 says halt. Which, and who decides? (PM Q-03) | **Both, in order, and the bar is whether the premise is this feature's to move.** LI-01 halts the wave first — that is what a red `learningsPremises.test.js` does — and the operator then classifies. A premise that moved because the repository moved underneath us (a rebase renamed a seam, `MODULE_NAMES` grew) is blocking work this feature absorbs: fix the premise, re-green LI-01, continue. A premise that moved because a **product** question was answered differently — H-5's seventh authoring phase is the named case, and REQ C-1/NG-5 make it a product decision — is a halt to the operator and a REQ/FSPEC question, and no task row may absorb it. The distinction is not "how expensive is the fix": it is "does fixing it decide something REQ has not decided" |
+
+
 ### Changelog
 
 | Version | Date | Change |
