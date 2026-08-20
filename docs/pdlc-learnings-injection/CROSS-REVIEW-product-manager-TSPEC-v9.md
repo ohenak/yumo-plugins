@@ -105,6 +105,36 @@ the shape of thing a mechanical check should own instead of a reviewer's attenti
 
 ## Data Model
 
+**Field domains and report shape.** §D.1 defines four field domains (including the run-level
+mirror) and §D.2 states that an implementation omitting `runMirror` entirely still conforms. Both
+sentences are unchanged in the TSPEC, and both remain permitted by upstream: REQ v0.9 says the
+mirror is carried "if carried", and FSPEC v0.10 did not narrow that. The four-row config-state table
+(`TSPEC:464-469`) still matches FSPEC's E-21/E-22/E-23/E-34 → AT-32/AT-31/AT-32/AT-32 mapping
+one-for-one; I re-read those rows in the current FSPEC bytes rather than relying on the v8 quote.
+
+**Ordering keys.** §A.5's `orderKeys`, dispatch-1-through-dispatch-5 walk and the `RSN-UNLISTABLE`
+outcome (`TSPEC:325`) still transcribe FSPEC v0.10 BR-9/BR-10 exactly, including the per-dispatch
+locus that FSPEC v0.9 settled and v0.10 left alone. No key, no default, no bound moved.
+
+**No type or enum drift.** Diffing every enumerated value the TSPEC carries — the config states, the
+notice ids, the corpus outcomes, the report-shape predicate — against upstream at HEAD produces no
+divergence and no unmarked internal variant. The contract-fidelity check that governs a TSPEC review
+is clean.
+
+## Test Strategy
+
+Not re-reviewed in substance — a test-engineering lens owns depth here, and the FSPEC delta gave me
+no product reason to reopen it. Two product-relevant checks only:
+
+- **AT ownership still matches upstream.** §T.5's assignment of AT-17…AT-22 to
+  `learningsRecord.test.js` and of AT-31/AT-32 to `learningsConfig.test.js` still lines up with
+  FSPEC v0.10's mapping rows. AT-20 and AT-22 still carry their "two completeness tests, one per
+  locus" and "rides AT-18's changing-corpus run" halves, which §D.2's split BR-10 rows and §T.5's L3
+  assignment are written on (`TSPEC:943`).
+- **Every acceptance criterion still has a test that would prove it.** AC-1.1, AC-3.2, AC-3.3,
+  AC-5.1a, AC-5.1b, AC-5.1c each still resolve through a named AT. Nothing in the delta orphaned an
+  AC or left one provable only by inspection.
+
 ## Test Strategy
 
 ## Open Questions
