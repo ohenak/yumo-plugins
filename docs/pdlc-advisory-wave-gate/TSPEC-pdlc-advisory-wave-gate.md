@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.9 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.10 | 2026-08-19 |
 
 ## Changelog
 
