@@ -69,7 +69,34 @@ not a false statement about pipeline state.
 
 ## Decision
 
-_pending_
+**DECISIONS still holds as approved against FSPEC at HEAD.** No decision it takes is contradicted by
+FSPEC v0.11–v0.12; the one substantive upstream move (BR-1's second conjunct made explicit) lands on
+the same side of the argument DEC-LI-03 already made. One new citation defect from this delta, three
+inherited from v3, all non-gating.
+
+### Clause-by-clause re-verification against upstream at HEAD
+
+| DECISIONS claim | Upstream at HEAD | Holds? |
+|---|---|---|
+| DEC-LI-03 decision: gate is `dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType)` | FSPEC `BR-1` now states the identical two conjuncts, naming REQ C-1 | Yes — strengthened |
+| DEC-LI-03 rejection: *"gate on `dispatchKind` alone … admits Phase CR's optimizer — `se-author` remediating shipped code, with no target document at all — which is exactly what REQ C-1 and NG-5 exclude"* | BR-1 at HEAD: *"an authoring-classified dispatch whose target is none of those six document types (the code-review phase's optimizer round at HEAD) is outside the rule, which is what REQ AC-1.2 and NG-5 decide"* | Yes — upstream now says it in its own voice |
+| DEC-LI-03 rejection: *"gate on `docType` alone … admits every reviewer round and violates `BR-1`'s exclusion list"* | BR-1 retains its **Excluded** bullet (every review dispatch, implementation, DoD, harvest, ship, advisory seams) | Yes |
+| DEC-LI-03 funnelling guard: producer-set pinning test, four members at HEAD | Unchanged by delta; G-B/G-C evidence rows read pre-feature source, not FSPEC | Yes |
+| DEC-LI-03 trigger: *"a dispatch kind that is authoring in spirit but not so classified (FSPEC `A-2`'s stated default is that it is excluded)"* | `A-2` reworded: it now quantifies over a dispatch that *"satisfies **neither** conjunct in the pipeline's own terms yet is authoring in spirit"* | **Partly** — see F-04 |
+| §Scope: *"no behaviour rule (FSPEC `BR-1` … `BR-16`) is re-decided here"* | BR-1/BR-11 rewritten but the rule's extension is unchanged; DECISIONS decides attachment point, not membership | Yes |
+| DEC-LI-10: `LEARNINGS_TARGET_DOCTYPES` expected membership hand-transcribed from **REQ C-1's** six names | REQ byte-identical this round; BR-1 now names the same six | Yes |
+| DEC-LI-06 constraints: *"REQ NG-4 and FSPEC `BR-15` state that the run creates no index, cache or state file anywhere, and AC-5.2's filesystem-footprint oracle asserts it"* | `BR-15`'s **expected-set** definition changed (enumeration contributes no member; sets not counts) — the no-artefact clause DECISIONS cites is untouched | Yes |
+| DEC-LI-06 trigger: *"FSPEC relaxes E-32 to a run-scoped observation"* | E-32 untouched by delta | Yes |
+| DEC-LI-07: five-state table transcribed from FSPEC `BR-14` | `BR-14` untouched by delta | Yes |
+| DEC-LI-04 / DEC-LI-05 / DEC-LI-08 / DEC-LI-09: `BR-3`, `BR-7`, `BR-12` groundings | None touched by delta | Yes |
+| Non-decision row: AC-3.3 record locus *"open, routed to REQ via TSPEC `ERR-6`"*; *"TSPEC keeps the run-level record (last-write-wins)"* | Closed upstream since FSPEC v0.9 / TSPEC v0.6 | **No** — F-01 (inherited from v3) |
+| DEC-LI-07: *"TSPEC v0.5 still builds the injector on `present && config.enabled && !sectionMalformed` … still carries `OQ.2` and `ERR-4` open"* | TSPEC v0.6 records `ERR-4` **CLOSED**, gates on `config.enabled` alone | **No** — F-02 (inherited from v3) |
+| Header/upstream-note pins: `TSPEC v0.5`, `FSPEC v0.7`; DEC-LI-07's *"FSPEC v0.7 `BR-14`"* | TSPEC v0.6, FSPEC **v0.12** | **No** — F-03 (inherited from v3, drifted further) |
+
+F-01, F-02 and F-03 were raised at v3 against unchanged bytes and remain unaddressed; they are
+recorded here as `inherited` so this round routes back to the owning phase rather than halting. F-04
+is this round's own, and is Low: the exclusion default DEC-LI-03 leans on is still `A-2`'s default at
+HEAD, so the trigger fires on the same condition — only the sentence quoting it has aged.
 
 ## Consequences
 
