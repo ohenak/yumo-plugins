@@ -47,6 +47,48 @@ and the Medium is a delegated positive assertion that no task row names.
 
 ## Batches
 
+**Four task rows changed: LI-01, LI-07, LI-23, LI-14.** I checked each against the repository and
+against the upstream text it transcribes.
+
+| Row | Claim checked | Result |
+|---|---|---|
+| LI-01 | The premise suite drops the change-surface **absence** claims and keeps them as a one-time pre-flight (PM F-07) | ✅ — and this is the right call under my lens too: three of the four absences are falsified by this PLAN's own tasks at batches 1–4, so a standing assertion would red at batch 3 and halt every batch after it. Nothing is lost: `LI-T-IGNORE` conjunct (1) is the *positive* standing oracle over the same fact after LI-04 |
+| LI-01 | P-2a as a **set equality over the four call sites**, keyed by enclosing function and argument position, so a fifth site reds at batch 1 (PM Q-04) | ✅ — the keying is well-defined and exact at HEAD. Three object-literal `dispatchKind: "authoring"` properties (`:12861`, `:12955`, `:13657`) plus the positional argument at `:7663`; `mode: "authoring"` at `:6517`/`:6535` and the reads at `:6515`/`:8886` are correctly outside the keyed set |
+| LI-07 | AT-15 is **four** clauses, with (4) the positive half | ✅ — a literal transcription of `FSPEC:836-841`, and the row now states the falsifiability argument I made for it ("without it clause (1) is an absence-only oracle over path handling"). Naming `DISCARDED-NESTED` and `DISCARDED-DIRECT` "in that order" closes the fixture question the enumeration used to leave open |
+| LI-23 | Non-`null` scoping on the `corpusOutcome` equality | ✅ for the equality; ⚠️ for the delegation it rests on — see F-01 below |
+| LI-14 | Directory-wide closure, keyed on **registered test titles** | ✅ for the mechanism; ⚠️ for two consequences it does not finish propagating — see F-02 and F-03 |
+
+**The directory closure is stronger than the fix I asked for, and it is sound at batch 6.** I
+walked its arithmetic. The glob `__tests__/learnings*.test.js` matches twelve files by the end of
+batch 6 — `Premises` (b1), `CaptureScript`, `PredicatePin` (b2), `Select`, `Block`, `Corpus` (b3),
+`BaselineGuard` (b4), `Record`, `DispatchSet`, `Config`, `ArmInventory` (b5), `SuiteMap` (b6) — and
+does **not** match `helpers/learningsFixtures.js`, which is one directory down. Six of those twelve
+register `LI-AT-` titles; the other six register `LI-T-` titles only. The equality therefore closes
+at six and stays closed for the life of the wave, since no task after batch 6 authors a new test
+file (the manifest's remaining rows are all `orchestrate-dev.js`). The "no new `Deps` edge is
+needed" argument is also correct in the direction that matters: a file that does not yet exist can
+only fail to *contribute* a member, never add a spurious one, and the six that must be present are
+exactly LI-14's six declared dependencies.
+
+**The self-exclusion argument holds.** `learningsSuiteMap.test.js` matches its own glob and its
+hand-transcribed literal mentions all 35 `LI-AT-` ids, so a textual scan would put the suite in its
+own expected set and the equality would close at seven. Keying on *registered jest titles* — the
+suite registers only `LI-T-SUITEMAP` — is what keeps it out, and the row says so explicitly. That
+is the one detail an implementer would most plausibly get wrong, and it is stated.
+
+**What the closure newly makes load-bearing, and does not say.** With the set taken over the
+directory, the *naming* of every non-AT suite's tests is now a gate input: an `LI-AT-`-prefixed
+title in `learningsPremises.test.js` or `learningsBaselineGuard.test.js` reds `LI-T-SUITEMAP` at
+batch 6. Four of the six non-AT suites declare their test names in their rows — `LI-T-IGNORE` /
+`LI-T-WORKTREE` (LI-03), `LI-T-PIN-1` (LI-13), `LI-T-ARMS-1…3` (LI-23), `LI-T-SUITEMAP` (LI-14).
+LI-01's and LI-06's rows do not. Filed as F-02, Low.
+
+**No same-batch same-new-file collision was introduced, and TDD order is unchanged.** No task rows
+were added or removed this round (still 23), no `Test File` or manifest cell changed, and the two
+rewritten green attributions (LI-16 for AT-15's clauses 1 and 4, LI-19 for 2 and 3) both name a
+suite whose red predecessor — LI-07 — is already a declared dependency of both. Every
+implementation task still has a preceding red-test row referencing the same suite.
+
 ## Dependencies
 
 ## Verification
