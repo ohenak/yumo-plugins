@@ -82,7 +82,45 @@ the three surfaces BL-06 requires to move together.
 
 ## Positive Observations
 
+- **The round fixed a claim I did not file against.** My v5 findings were both about the envelope
+  half. The delta re-derived the seam half as well, found v1.2 had claimed six carrying sites where
+  HEAD has one, and named the commit that made the difference. That is a five-sixths error in a
+  sizing input, caught by a reviewer lens I was not applying and by an author re-measuring rather
+  than re-reading. The one-tense diagnosis — "the seam list reading as checked because its
+  neighbour had been" — is the generalisable part: partial re-derivation launders the unmeasured
+  half.
+- **The oracle/input distinction I asked for in v5 Q-01 landed as its own bullet, not as a clause.**
+  I suggested one clause "next time the file opens". The revision gave it a heading-weight bullet
+  that states the mechanism ("a stale copy silently re-scopes a fixture instead of reddening a
+  suite"), names the single failing oracle, and explicitly retracts the older framing with its cost
+  ("would budget five edits no gate asks for"). A record that names what its own previous revision
+  would have caused is cheaper to trust than one that quietly overwrites.
+- **The seven-count is now honest about its churn.** "The count is unchanged at seven since v1.2 but
+  its members are not — the production definition enters as the already-migrated `advisoryEnvelope`
+  assertion leaves." A stable total across a changed membership is the single most misleading shape
+  a re-derived enumeration can take, and the record calls it out rather than banking the coincidence.
+- **The `advisoryConfig` observation is correctly attributed as this record's own.** The bullet
+  checks §1.3's `ADVISORY_DEFAULTS` row, finds it records a different drift, and says so instead of
+  claiming upstream cover it does not have. `TSPEC:304` confirms it. Even with F-01's correction to
+  the observation's content, the sourcing discipline is right.
+
 ## Consequences
+
+- No High finding, old or new, so DECISIONS is not blocking on this lens and phase D can proceed.
+- Both Medium findings sit inside the same two bullets and resolve in two sentences: one citation
+  correction (`advisoryConfig.test.js:135`/`:143` makes both six-member literals oracles) and one
+  rule-scope decision on prose sites. Neither earns its own round; both should ride the next edit
+  that opens this file, and the envelope literal's own migration to six members during A6 will force
+  the paragraph open anyway.
+- One item for the implementer rather than for this record, unchanged from v5 and now better
+  supported: with F-01's correction, **two** oracles fail on envelope drift and **five** copies
+  cannot. Converting the five inputs to read from a single exported constant would collapse the
+  hand-copy tail the record keeps having to re-count. That is a PROPERTIES/TSPEC call, not a
+  DECISIONS one, and I am not filing it here.
+- One upstream item is routed as an erratum rather than folded into this verdict: TSPEC §1.3's
+  drift table (`TSPEC:303-305`) records `advisoryConfig.test.js`'s drift as `waveBudgetPerRun` only,
+  and does not record that the same file's envelope literal is six-member and asserted against
+  production by PROP-CFG-02. The DECISIONS bullet was right that §1.3 does not carry it; §1.3 should.
 
 ## Recommendation
 
