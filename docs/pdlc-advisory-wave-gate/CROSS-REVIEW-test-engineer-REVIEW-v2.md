@@ -47,6 +47,89 @@ the production call site, not against the commit message that claims it.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Process | `PROP-NFR-03` / `AT-07-1` — NFR-1's "every boundary is enforced by the workflow script, never only by prompt" — still has no test. No file under `__tests__/` contains a `BR-1…BR-16` partition, let alone the set-equality against a transcribed literal the property demands | PROPERTIES §11 PROP-NFR-03, AT-07-1, NFR-1 |
+| F-02 | Low | Local | `A6_PROHIBITION_PATHS`' key set is not pinned against `A6_PROHIBITIONS`: a letter with no mapping is silently skipped, and no test goes red | `orchestrate-dev.js:1988-2004` |
+| F-03 | Low | Local | E-6's conjunct 2 reads `laterTask.description`, a field no A6 test obtains from `computeWaves`; the field-name coupling is proven only on hand-built fixture tasks | `orchestrate-dev.js:3192`, `:11736` |
+| F-04 | Low | Process | v1 F-12 carried forward: the local branch and `origin/feat-pdlc-advisory-wave-gate` have diverged `1045 / 298` | Git workflow |
+
+### F-01 (Medium, Process) — the one property whose absence is a completeness gap, not a naming gap
+
+Of the 71 `PROP-*` ids in PROPERTIES, six do not occur anywhere under `pdlc/workflows/__tests__` or
+`pdlc/engine/__tests__` after this round's citation sweep (down from 34 in v1). Five are covered
+under an AT title and I could confirm each by reading the block:
+
+- `PROP-GATE-10` → `waveExecution.test.js:986` (all-green run: zero A6 calls, commits
+  byte-identical to the pre-A6 baseline) and `:1018` (`AT-07-3`: A6 fires once, the wave's own
+  per-task commits still land) — the two halves NFR-5 asks for.
+- `PROP-REST-04` → `waveExecution.test.js:1092` (`AT-05-4`) with its paired negative at `:1122`.
+- `PROP-REST-09` → the pre-A6 halt-literal assertions in the same block.
+- `PROP-SEAM-02` → the six-row set-equality assertions in `advisoryRecord.test.js` /
+  `advisoryDriver.test.js`.
+- `PROP-NFR-04` → the module-scope/purity block (`advisoryWaveGate.test.js`, A6-07).
+
+`PROP-NFR-03` is the exception, and it is a genuine gap rather than an unlabelled test. The
+property asks for something no shipped block does: *"BR-1…BR-16 must be partitioned into the
+agent-proposable set and the non-proposable set, the partition asserted by **set-equality** against
+a transcribed literal, each proposable rule exercised by a stub agent double returning a violating
+proposal and refused by the script."* `grep -n "BR-1[0-6]" __tests__/advisoryWaveGate.test.js`
+returns nothing; the file's nine `BR-` mentions are all prose comments naming a single rule
+(`:214` BR-3, `:625` BR-2, `:1093` BR-7, `:1227` BR-15, `:2429` BR-14).
+
+Why this is Medium and not High: after this round the individual boundaries this property
+generalises *are* each script-enforced and each falsified by its own arm — E-6's three conjuncts
+(PROP-ENV-08), the four prohibition letters (PROP-ENV-10's eleven arms), the four envelope clauses
+on an A6 fixture (PROP-ENV-04/05/09/12), the citation floor (PROP-CTR-05), the class vocabulary
+(PROP-CTR-02). What is missing is the *enumeration* over them: a set-equality that fails when a
+sixteenth rule joins FSPEC and nobody adds its arm. That is the "completeness by set-equality, not
+containment" bar, and it is the last enumerated contract on this feature that is checked only by
+containment.
+
+The `Process` tag is deliberate: v1's F-09 showed that an id present in PROPERTIES with no
+occurrence in any test is indistinguishable from a covered one without reading 4 000 tests, and
+this round proved the fix is cheap — cite the id in the block title. The durable lesson for the
+pipeline is the rule the sweep applied: *every* property id gets cited in the title of the block
+that carries it, and the ids left uncited are then, by construction, exactly the uncovered ones.
+One residual of the sweep is worth naming so the next feature avoids it: two features' ids collide
+on the `PROP-REC-*` prefix, and the suites resolved it by prefixing this feature's with `AWG`
+(`advisoryEscalationLog.test.js:597-599`, `advisoryRecord.test.js:589-591`). That convention works
+but is undocumented outside those comments.
+
+### F-02 (Low, Local) — the catalogue-walk claim is one degree weaker than its comment
+
+`a6ProhibitedPaths` walks `A6_PROHIBITIONS` and looks each letter up in `A6_PROHIBITION_PATHS`,
+falling back to `[]` when the key is absent or not a function
+(`orchestrate-dev.js:2001-2003`). The comment at `:1984-1986` states the load-bearing claim:
+*"dropping a letter from `A6_PROHIBITIONS` drops its subtraction, which is what makes the constant
+load-bearing."* That direction is genuinely tested — remove `f` or `g` and the six path arms at
+`advisoryWaveGate.test.js:2205-2226` go red. The other direction is not: **adding** a letter to
+`A6_PROHIBITIONS` with no entry in `A6_PROHIBITION_PATHS` silently subtracts nothing, and every
+test stays green, because `A6_PROHIBITIONS`' own set-equality test
+(`advisoryEnvelope.test.js:344-348`) asserts only the four-letter literal and never compares it to
+the map's keys. `a6ProhibitedPaths` is exported but referenced by no test at all
+(`grep -rn "a6ProhibitedPaths" __tests__` → no match).
+
+What would close it: one unit test asserting
+`expect(Object.keys(A6_PROHIBITION_PATHS)).toEqual([...A6_PROHIBITIONS])` (exporting the map, or
+asserting `a6ProhibitedPaths("f")`'s output set-equal to the transcribed two-path literal), so the
+letter catalogue and its subtraction table cannot drift apart in either direction.
+
+### F-03 (Low, Local) — conjunct 2's field name is proven only on fixture-built tasks
+
+E-6's second conjunct reads `String(laterTask.description || "").includes(promotion.symbol)`
+(`orchestrate-dev.js:3192`). I verified the field survives to production: `computeWaves` builds
+each wave task as `{ ...t, files }` (`orchestrate-dev.js:11736`), `t` carries `description` from
+the task table (the same field `:10398` interpolates into the implementer prompt), so a real run's
+`waves[j][k].description` is the PLAN row text the conjunct wants. But every E-6 test hand-builds
+`{ id, files, description }` (`advisoryWaveGate.test.js:2024-2029`), and the one production-path
+suite (`advisoryWaveGateMain.test.js`) drives only E-5 — its `WAVE_PLAN` has a single task and a
+single wave, so `isLastWave` is true and E-6 is narrowed away before any conjunct runs. A rename of
+`description` anywhere upstream would leave conjunct 2 permanently false — E-6 would silently never
+promote — with the whole suite green. Cheapest close: extend the `mainDev` fixture to a two-wave
+PLAN and drive one E-6 resolution through it, asserting the `| Promotes task |` row on the record
+the real `_appendFile` wrote.
+
 ## Questions
 
 ## Positive Observations
