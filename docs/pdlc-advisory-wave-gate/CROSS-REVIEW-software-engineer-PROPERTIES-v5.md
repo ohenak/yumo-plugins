@@ -132,8 +132,27 @@ another reason, can finish the sweep in one pass rather than one pin per round; 
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | Four raw `orchestrate-dev.js` line pins have drifted at HEAD: `ADVISORY_SEAM_PHASES` is at `:3112` not `:3108`, its `unknown` fallback at `:3342` not `:3338`, `:3428`/`:3459` no longer bound the escalation-notice path (`:1584`/`:3585`), and the refusal/exclusion catalogues are at `:2301`–`:2310` and `:2315` not `:2297`–`:2306` and `:2311`. DEC-DOC-01 class; re-anchor by symbol name in the next erratum rather than opening a round for it | PROP-REC-07; PROP-GATE ledger note; Fixtures, refusal/exclusion rows |
+
+FINDING: Low | inherited | nonlocal | PROP-REC-07 / PROP-GATE ledger note / Fixtures | residual raw `orchestrate-dev.js:NNNN` pins drifted ~4 lines at HEAD (`:3108`→`:3112`, `:3338`→`:3342`, `:3428`/`:3459` stale, `:2297`–`:2306`→`:2301`–`:2310`, `:2311`→`:2315`); DEC-DOC-01 re-anchor, non-gating
+
+## Recommendation
+
+**Approved with minor changes.** The delta resolves both round-4 High findings, the Medium and both
+Lows, and it does so by making PROPERTIES say what TSPEC v1.10 now says rather than by softening the
+properties: the `new` files are recorded as on disk with `new` meaning required end state, the four
+bare row-count sites are recorded as already six and red, PROP-SEAM-02 and PROP-CFG-03 are
+re-anchored per DEC-DOC-01, and the remedy question stays routed to PLAN. I verified every one of
+those existing-code claims on disk in a single pass; all check out.
+
+Nothing I previously approved broke — no property statement, category, level, oracle form or PLAN
+task home changed, and the requirement traces are intact. The only open item is one inherited
+DEC-DOC-01 citation-drift finding at Low, which is a sweep for the next erratum of opportunity, not
+a reason to hold Phase I.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
