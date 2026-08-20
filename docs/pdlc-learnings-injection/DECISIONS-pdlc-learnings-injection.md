@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** — `docs/pdlc-learnings-injection/TSPEC-pdlc-learnings-injection.md` (v0.5); REQ v0.9; FSPEC v0.7; `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| Upstream | REQ → FSPEC → TSPEC → **DECISIONS** — `docs/pdlc-learnings-injection/TSPEC-pdlc-learnings-injection.md` (v0.9); REQ v0.9; FSPEC v0.13; `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{role}-DECISIONS-v{N}.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 1 revision: corrects the `_git` never-throws seam contract against `rtGit` at HEAD (DEC-LI-02, DEC-LI-04), makes DEC-LI-09's recorded-sha guard falsifiable, gives DEC-LI-03's funnelling premise a source-level guard, records the TSPEC divergence as an emitted erratum with obligation `D-O-9`, and adds obligations `D-O-6`…`D-O-8` | Claude | 0.2 | 2026-08-19 |
+| pdlc | draft — round 5 revision: re-pins the header on TSPEC v0.9 / FSPEC v0.13 / REQ v0.9, records DEC-LI-07's TSPEC erratum as **landed** and `D-O-9` as discharged, restates the AC-3.3 non-decision on the per-dispatch oracle locus REQ v0.9 settled, re-grounds DEC-LI-06's Hard reversibility on E-32 and `D-O-6` rather than AC-5.2, re-quotes FSPEC A-2 in DEC-LI-03's re-evaluation trigger, and records `D-O-6`'s new role as the sole falsifier of a `null` corpus outcome | Claude | 0.3 | 2026-08-20 |
 
 ## Scope, grounding pin, and how to read this document
 
@@ -31,11 +31,13 @@ reconsider it confidently and at cost.
 rather than line numbers, per `docs/_decisions/DECISIONS-review-severity-bars.md` `DEC-DOC-01`; a
 line number appears only where the position itself is the claim.
 
-**Upstream version note.** TSPEC v0.5 was authored against FSPEC v0.5 / REQ v0.7. Upstream has since
-moved: REQ v0.9 and FSPEC v0.7 settled the shipping-default question TSPEC recorded as open
-(`OQ.2`, `ERR-4`). This document is grounded on the **current** upstream, so `DEC-LI-07` decides
-what TSPEC still carries provisionally; the divergence is raised as a TSPEC erratum rather than
-resolved silently.
+**Upstream version note.** This document is grounded on upstream **at HEAD**: TSPEC v0.9, FSPEC
+v0.13, REQ v0.9. The history matters only because `DEC-LI-07` reads as a divergence otherwise: TSPEC
+v0.5 was authored while REQ contradicted itself on the shipping default and carried a provisional
+second gate with `OQ.2` and `ERR-4` open; REQ v0.9 settled the question, this document was written on
+the settled answer, and TSPEC has since landed it (§I.3 gates on `config.enabled` alone, `OQ.2` and
+`ERR-4` CLOSED, `LEARNINGS_DEFAULTS.enabled === true`). **No live upstream gap remains** — TSPEC and
+this document now stand on the same REQ and FSPEC, and `DEC-LI-07` records a *closed* divergence.
 
 **How to read an entry.** Each `DEC-LI-NN` carries Context, Decision, Alternatives considered (each
 with the reason it was rejected and, where the rejection turns on cost, the *measured* cost),
