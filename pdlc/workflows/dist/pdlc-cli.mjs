@@ -3133,6 +3133,56 @@ function gateSequenceFor(implConfig) {
   return implConfig && implConfig.postWaveCommand ? ["post-wave", "test"] : ["test"];
 }
 
+// TSPEC §2.3/§2.4 (PLAN A6-21) — the wave loop's own gate sequence, extracted so the FIRST pass
+// and every A6 re-gate (`buildA6SeamOps.verifyGate`) share one implementation: a re-gate that
+// skipped a configured command would require a second code path, which is exactly what this
+// extraction refuses to grow. Pushes one token — `"post-wave"` or `"test"` — into the shared
+// `invocations` array immediately BEFORE each `runCommandFn` call, whether or not that call
+// passes (§2.4's ordered-sequence oracle). Never emits: the wave loop's own success/failure
+// messages are the caller's, exactly as before this extraction.
+async function runWaveGateSequence({ implConfig, scriptGate, runCommandFn, invocations }) {
+  let postWaveRan = false;
+  if (implConfig && implConfig.postWaveCommand && typeof runCommandFn === "function") {
+    invocations.push("post-wave");
+    const post = await runCommandFn(implConfig.postWaveCommand);
+    if (!post || post.ok !== true) {
+      return { failed: "post-wave", result: post, postWaveRan: false };
+    }
+    postWaveRan = true;
+  }
+  if (scriptGate) {
+    invocations.push("test");
+    const test = await runCommandFn(implConfig.testCommand);
+    if (!test || test.ok !== true) {
+      return { failed: "test", result: test, postWaveRan };
+    }
+    return { failed: null, result: test, postWaveRan };
+  }
+  return { failed: null, result: null, postWaveRan };
+}
+
+// TSPEC §3.6 (PLAN A6-21, DEC-A6-02) — an E-6 promotion's repair paths, grouped by the LATER
+// task whose owned files cover them. A6's own SeamOps only proves the repair's produced paths are
+// covered by SOME later-wave owner (§3.4's conjuncts, `ownedSetCovers`); this groups them by
+// WHICH one, so the wave loop can commit each group under its own task-scoped message (DEC-A6-02
+// rejects widening a task's own pathspec) and so `waveImplementPrompt` can tell that later task
+// what already landed in its own owned paths.
+function groupPromotedPaths(waves, waveIndex, repairPaths) {
+  const owned = new Set(waveOwnedPaths(waves, waveIndex));
+  const promoted = (repairPaths || []).filter((p) => !owned.has(p));
+  const byTask = new Map();
+  for (let j = waveIndex + 1; j < (waves ? waves.length : 0); j++) {
+    for (const task of waves[j]) {
+      const ownedByTask = new Set(task.files || []);
+      const paths = promoted.filter((p) => ownedByTask.has(p));
+      if (paths.length === 0) continue;
+      const existing = byTask.get(task.id);
+      byTask.set(task.id, existing ? [...existing, ...paths] : paths);
+    }
+  }
+  return [...byTask.entries()].map(([taskId, paths]) => ({ taskId, paths }));
+}
+
 /**
  * `runWaveGateSeam` — TSPEC §3.2, the A6 call site (PLAN A6-18). Fires only from the wave-mode
  * branch, only under `scriptGate`, only for an ordinary wave, only on a red FIRST-pass test gate —
@@ -10159,9 +10209,20 @@ function implementPrompt(task, featureName) {
  *      — a task does not complete while blocks titled with its id are still skipped
  *      — so the prompt must state the first half or the agent never writes them.
  */
-function waveImplementPrompt(task, featureName) {
+function waveImplementPrompt(task, featureName, promotions) {
   const owned = Array.isArray(task.files) ? task.files : [];
   const ownedList = owned.length > 0 ? owned.join(", ") : "(none listed)";
+  // TSPEC §3.6 (PLAN A6-21, DEC-A6-02, O-8) — an earlier wave's advisory gate repair (seam A6)
+  // may have already committed a fix into paths this task owns. `promotions` is populated only
+  // when that happened, so a run where A6 never fires (including every disabled-tier run) never
+  // grows this clause.
+  const promo = promotions && typeof promotions.get === "function" ? promotions.get(task.id) : null;
+  const promotionsClause =
+    promo && Array.isArray(promo.paths) && promo.paths.length > 0
+      ? `An earlier wave's advisory gate repair (seam A6) already committed a fix into paths you ` +
+        `own: ${promo.paths.join(", ")}. It is on this branch already — read it, build on it, and ` +
+        `do not revert it.\n`
+      : "";
   return (
     `Implement task ${task.id}: ${task.description}\n` +
     `Feature: ${featureName}\n` +
@@ -10192,6 +10253,7 @@ function waveImplementPrompt(task, featureName) {
     `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
     `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
+    promotionsClause +
     // The runtime kills any dispatch that makes no visible progress for 180
     // seconds (hardcoded, not configurable) — one A-24-sized task died on all
     // six retries composing a single large edit. The clause below is the wave
@@ -12647,6 +12709,9 @@ async function main({
   // (§2.3): a runtime that supplies neither runs the real driver against the
   // real config file, exactly as a repo with the tier configured would see.
   _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
+  // TSPEC §3.2 (PLAN A6-21) — the wave-gate A6 call site, injected the same way
+  // `_runAdvisorySeam` already is, so a test can substitute it.
+  _runWaveGateSeam: runWaveGateSeamFn = runWaveGateSeam,
   _readAdvisoryConfig: readAdvisoryConfigFn = readAdvisoryConfigSafely,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
   _checkCi: checkCiFn = checkPrCi,
@@ -14995,6 +15060,13 @@ async function main({
         }
       };
 
+      // TSPEC §3.2/§3.6 (PLAN A6-21) — run-scoped, created ONCE, before the wave loop, never
+      // per-wave: `waveBudget.resolved` accumulates across every wave's A6 resolutions in this
+      // run, and `promotions` accumulates every E-6 repair so a LATER wave's dispatch prompt can
+      // read what an EARLIER wave already committed into its owned paths.
+      const waveBudget = { resolved: 0 };
+      const promotions = new Map();
+
       for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
         const wave = waves[waveIndex];
         const waveNum = waveIndex + 1;
@@ -15015,7 +15087,7 @@ async function main({
         // is what replaces isolation, and it is the PLAN's claim, gated at Phase P.
         const waveResults = await parallelFn(
           wave.map((task) =>
-            agentFn("se-implement", waveImplementPrompt(task, featureName), {
+            agentFn("se-implement", waveImplementPrompt(task, featureName, promotions), {
               model: MODEL_IMPLEMENTATION,
             })
           )
@@ -15030,29 +15102,89 @@ async function main({
         // red every source-editing wave for its own unbuilt outputs. A build
         // that fails is still a red wave in its own right: the suite can pass
         // against sources whose generated artifacts no longer match them.
-        let postWaveRan = false;
-        if (implConfig.postWaveCommand && typeof runCommandFn === "function") {
-          const post = await runCommandFn(implConfig.postWaveCommand);
-          if (!post || post.ok !== true) {
-            throw haltError(
-              `Error: Wave ${waveNum} post-wave command failed — ` +
-                `\`${implConfig.postWaveCommand}\` did not pass. ` +
-                `Output tail:\n${outputTail(post && post.output)}`
-            );
-          }
-          postWaveRan = true;
+        //
+        // TSPEC §2.3/§2.4 (PLAN A6-21) — per-wave, never reused across waves: the ordered
+        // sequence a red gate's A6 re-gate is checked against (§3.2 step 6) is this wave's own.
+        const invocations = [];
+        const gateOutcome = await runWaveGateSequence({ implConfig, scriptGate, runCommandFn, invocations });
+        if (gateOutcome.failed === "post-wave") {
+          throw haltError(
+            `Error: Wave ${waveNum} post-wave command failed — ` +
+              `\`${implConfig.postWaveCommand}\` did not pass. ` +
+              `Output tail:\n${outputTail(gateOutcome.result && gateOutcome.result.output)}`
+          );
+        }
+        let postWaveRan = gateOutcome.postWaveRan;
+        if (postWaveRan) {
           emit(`Wave ${waveNum} post-wave: \`${implConfig.postWaveCommand}\` passed`);
         }
 
+        // §3.6's per-wave promotion(s), populated only when THIS wave's A6 resolves an E-6
+        // repair — committed below, past the same green gate the per-task loop commits past.
+        let waveResolvedPromotions = [];
+        // §4.5's advisory halt fields, carried onto the un-skip halt below ONLY when THIS
+        // wave's A6 resolved before the un-skip guard found a violation (AT-05-4).
+        let resolvedAdvisoryFields;
+
         if (scriptGate) {
-          const gate = await runCommandFn(implConfig.testCommand);
-          if (!gate || gate.ok !== true) {
-            throw haltError(
+          if (gateOutcome.failed === "test") {
+            const gateResult = gateOutcome.result;
+            const testGateMessage =
               `Error: Wave ${waveNum} test gate failed — \`${implConfig.testCommand}\` ` +
-                `did not pass. Output tail:\n${outputTail(gate && gate.output)}`
+              `did not pass. Output tail:\n${outputTail(gateResult && gateResult.output)}`;
+            // TSPEC §3.2 (PLAN A6-18/A6-21) — fires ONLY here: only wave-mode, only
+            // script-owned gate, only an ordinary wave (never the V-wave, a separate call
+            // site below, untouched), only a red FIRST-pass test gate (BR-1, AC-1.2/1.3).
+            const a6 = await runWaveGateSeamFn({
+              feature: featureName,
+              waveNum,
+              waves,
+              waveIndex,
+              tasks: wave,
+              implConfig,
+              scriptGate,
+              gateResult,
+              invocations,
+              advisoryTierOn,
+              advisoryConfig: advisoryConfigResult.config,
+              rungState: advisoryRungState,
+              waveBudget,
+              _agent: agentFn,
+              _git: waveGit,
+              _runCommand: runCommandFn,
+              _readFile: readFileFn,
+              _appendFile: appendFileFn,
+              _log: emit,
+              _now,
+              _sleep: waveSleep,
+              _notice: advisoryNotice,
+            });
+            if (a6.disposition) advisoryDispositions.push(a6.disposition);
+            if (!a6.resolved) {
+              // TSPEC §3.2 step 2 / §4.5 — `a6.disposition` is `null` on EXACTLY the
+              // tier-disabled return (no dispatch, no snapshot); every other unresolved
+              // return (capture-failure escalation, a diagnosed-but-unresolved attempt)
+              // carries one. Gating on it here, not on `a6.haltFields` itself (always a
+              // truthy object, even the inert disabled-tier sentinel), is what keeps a
+              // disabled-tier halt's report byte-identical to the pre-A6 baseline
+              // (T-10-3/T-10-4/PROP-DIS-04): no `haltAdvisory` key at all, not merely
+              // an empty/default one.
+              throw haltError(testGateMessage, a6.disposition ? { advisory: a6.haltFields } : undefined);
+            }
+            postWaveRan = postWaveRan || a6.postWaveRan;
+            resolvedAdvisoryFields = a6.haltFields;
+            waveResolvedPromotions = groupPromotedPaths(
+              waves,
+              waveIndex,
+              (a6.haltFields && a6.haltFields.repairPaths) || []
             );
+            emit(
+              `Wave ${waveNum} gate: \`${implConfig.testCommand}\` recovered — advisory seam A6 ` +
+                `resolved the failure and the re-gate passed`
+            );
+          } else {
+            emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
           }
-          emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
         } else {
           evaluateBatchGate(waveResults, waveIndex, wave);
         }
@@ -15070,7 +15202,10 @@ async function main({
           emit(`Notice: Wave ${waveNum} un-skip guard: ${notice}`);
         }
         if (unskip.violations.length > 0) {
-          throw haltError(formatUnskipViolations(waveNum, unskip.violations));
+          throw haltError(
+            formatUnskipViolations(waveNum, unskip.violations),
+            resolvedAdvisoryFields ? { advisory: resolvedAdvisoryFields } : undefined
+          );
         }
         if (unskip.scanned.length > 0) {
           emit(
@@ -15098,6 +15233,25 @@ async function main({
               emit,
               provenance,
             });
+          }
+
+          // TSPEC §3.6 (PLAN A6-21, DEC-A6-02, O-8) — one further `commitPaths` call per
+          // promoted task, past the SAME green gate the per-task loop above committed past,
+          // carrying the promotion's own `message`/`what` — never widening the owning task's
+          // own pathspec above (DEC-A6-02's rejected option A). `promotions` is updated HERE,
+          // at commit time, so `waveImplementPrompt` never tells a later task about a repair
+          // that is not yet on the branch.
+          for (const promo of waveResolvedPromotions) {
+            await commitPaths({
+              paths: promo.paths,
+              message: `chore(${featureName}): wave ${waveNum} advisory promotion (${promo.taskId})`,
+              what: `Wave ${waveNum} advisory promotion (task ${promo.taskId})`,
+              _git: waveGit,
+              _sleep: waveSleep,
+              emit,
+              provenance,
+            });
+            promotions.set(promo.taskId, { paths: promo.paths, symbol: promo.paths.join(", ") });
           }
 
           if (postWaveRan && implConfig.postWavePathspecs.length > 0) {
@@ -15687,6 +15841,12 @@ async function main({
       // do — a halt that reached at least one advisory-aware phase still reports the seams it
       // reached, un-distilled (H-4: the record itself is untouched by a halt before Phase H2).
       advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
+      // TSPEC §4.5 (PLAN A6-21) — `haltError`'s own `{ advisory: {...} }` detail field (set on an
+      // A6-diagnosed test-gate halt, or on a post-gate un-skip halt that names the wave A6 already
+      // resolved) rides the thrown `err` object, not the run-level `advisory` summary above. Named
+      // distinctly here so a halt that carries BOTH a run-level tier summary AND one wave's own
+      // A6 diagnostic never has the second overwrite the first.
+      haltAdvisory: err && err.advisory ? err.advisory : undefined,
     });
   }
 
@@ -15810,6 +15970,12 @@ function buildFinalReport({
   // `prUrl`/`ciStatus` above — a disabled run must never carry a defined `advisory` key at all
   // (T-10-3/T-10-4 assert `toBeUndefined()`, not merely falsy).
   advisory = undefined,
+  // TSPEC §4.5 (PLAN A6-21) — `haltError`'s `{ advisory: {rootCause, diagnosis, repairApplied,
+  // repairPaths} }` second argument, carried through onto the report ONLY on an A6-touched halt
+  // (a non-resolved wave, a capture-failure escalation, or a post-gate un-skip halt on a wave A6
+  // resolved). Distinct from `advisory` above (the run-level seam summary, `{rows, total, …}`) —
+  // this is the ONE halt's own diagnostic, never the run's.
+  haltAdvisory = undefined,
   // TSPEC §7.2 kind 1 — the run report's provenance field. Defaulted so every
   // existing caller and existing test is unchanged; unconditional on the
   // returned record (never conditionally spread), since `NO_PROVENANCE`
@@ -15848,6 +16014,10 @@ function buildFinalReport({
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
     ...(advisory ? { advisory } : {}),
+    // TSPEC §4.5 (PLAN A6-21) — present only when THIS halt carries its own A6 diagnostic
+    // (never on success, never on a halt A6 never touched); conditionally spread like
+    // `advisory` above so an untouched report's `haltAdvisory` key stays absent, not `undefined`.
+    ...(haltAdvisory ? { haltAdvisory } : {}),
   };
 }
 
