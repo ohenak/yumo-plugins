@@ -225,8 +225,19 @@ Not blocking, but worth folding into the next edit that touches this document:
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | local | `§Ground-truth` rows P-7 and P-8 keep raw line anchors that are stale at HEAD: `defaultGit` is cited `orchestrate-dev.js:11658-11676` but sits at `:11698` (`:11658` is `defaultWriteFile`), and `defaultReadFile` is cited `:11513-11519` but sits at `:11553` (`:11513` is a `log` helper). Both claims are true and recoverable from the symbol named in the cell; the pointers are not. Same table the delta de-anchored P-2a and P-10 in | §Ground-truth, rows P-7, P-8 |
+| F-02 | Low | inherited | local | `§A.2`'s "coincidence is an invariant" paragraph cites the six `converge()` phase sites as `orchestrate-dev.js:13766`, `:13774`, `:13807`, `:13874`, `:13893`, `:13996`; at HEAD they are `:13908`, `:13916`, `:13949`, `:14016`, `:14035`, `:14138` — a uniform +142 drift, the same drift that made P-2a stale. The `docType` literals identify the sites, so the claim stands | §A.2, "The coincidence is an invariant" |
+| F-03 | Low | inherited | nonlocal | `§A.3`'s "Why `_git` and not `_listFiles`" cites `defaultListFiles`, `orchestrate-dev.js:11586-11605`; the function is at `:11626` at HEAD. The non-recursive/basename-only claim it supports is true | §A.3, "Why `_git` and not `_listFiles`" |
+| F-04 | Low | inherited | nonlocal | `§A.5` cites the shape `notices` already has as `orchestrate-dev.js:12110`; `main()`'s sink is at `:12150`. The precedent claim holds | §A.5 Threading the record to the report |
+
+FINDING: Low | inherited | local | §Ground-truth rows P-7, P-8 | Stale raw line anchors at HEAD — `defaultGit` cited `:11658-11676` is at `:11698`, `defaultReadFile` cited `:11513-11519` is at `:11553`; claims true, pointers wrong, same table the delta de-anchored (DEC-DOC-01)
+FINDING: Low | inherited | local | §A.2 "The coincidence is an invariant" | The six `converge()` phase `docType` anchors (`:13766`, `:13774`, `:13807`, `:13874`, `:13893`, `:13996`) are stale by +142 at HEAD (`:13908`, `:13916`, `:13949`, `:14016`, `:14035`, `:14138`) — the same drift the erratum fixed for P-2a
+FINDING: Low | inherited | nonlocal | §A.3 "Why `_git` and not `_listFiles`" | `defaultListFiles` cited `orchestrate-dev.js:11586-11605` resolves at `:11626` at HEAD; claim unaffected, anchor should be a symbol citation per DEC-DOC-01
+FINDING: Low | inherited | nonlocal | §A.5 Threading the record to the report | The `main()` `notices` sink cited `orchestrate-dev.js:12110` is at `:12150` at HEAD; precedent claim unaffected
 
 ## Verdict
 
-_(pending)_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 4}
