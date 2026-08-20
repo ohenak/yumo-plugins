@@ -437,3 +437,8 @@ One upstream defect this PLAN correctly does not own is routed as an erratum: TS
 domain-membership wording (`TSPEC:589–592`) is false for the `corpusOutcome` domain as §D.2 defines
 it (`TSPEC:612`), which is the same `null` gap F-01 describes one level down. It is charged to the
 TSPEC, not to this verdict.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 4, "low": 2}
