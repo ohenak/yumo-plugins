@@ -49,3 +49,60 @@ revisions**, which is precisely the contradiction-with-upstream case the frozen 
 | ID | Question |
 |----|---------|
 | Q-01 | `TSPEC:1189`'s honesty sentence ("on the shipping default, AC-1.1's *then* does not hold in this repository") was the right disclosure when it was written and is now false. When F-01 lands, does the author want to keep a short historical note recording that the reading was provisional and REQ v0.9 settled it — or delete it outright? Either is fine by me; I flag it only because the sentence was cited approvingly in three prior cross-reviews and a silent deletion loses that thread. |
+
+## Positive Observations
+
+- **Nothing regressed, and nothing was quietly patched.** The document is byte-identical to the
+  state I approved at v5. Both High findings are drift *toward* this document from upstream
+  revisions that the author did not make and could not have anticipated at authoring time — the
+  TSPEC was correct against REQ v0.7/FSPEC v0.5 when written.
+- **The errata mechanism did its job.** `ERR-4` and `ERR-6` were raised by this document, routed
+  to REQ, and REQ v0.9 answered both. That is the loop working: the TSPEC refused to settle two
+  product questions on engineering authority, said so in writing, and named in advance exactly
+  which sections change under either resolution (`TSPEC:1189-1196`, `TSPEC:1253-1254`). The
+  remaining work is transcription of an answer that already exists, not a new decision — which is
+  why I can state the fix for both High findings section by section rather than asking for design.
+- **Both routed answers went the way the honest disclosure predicted.** `TSPEC:1189-1196` said "if
+  REQ resolves toward G-1, three things change" and enumerated them; REQ resolved toward G-1 and
+  the three things are exactly the edits F-01 asks for. The author's forward-declaration is what
+  makes this round mechanical.
+- **Downstream is already holding the line.** `DEC-LI-07`/`D-O-9` and SE's `SE-O-1` both refuse to
+  let IMPL or the AT authors read §I.3 as binding until this lands. The obligation was recorded
+  rather than worked around, and the DECISIONS document says plainly that "PROPERTIES and PLAN
+  read TSPEC, so this must land before `AT-31`/`AT-32` are authored against §I.3"
+  (`DECISIONS:664`). I agree with that sequencing, and it is the reason I am blocking rather than
+  deferring.
+
+DEFERRED: F-03's "five edit sites, four forwarding hops" wording and F-04's `main`-not-`mainDev`
+symbol name — fold into the same revision as F-01/F-02, or into PLAN task text at authoring time.
+
+## Recommendation
+
+**Needs revision**
+
+Two High findings. Neither is a defect the round introduced — there was no round; the TSPEC has
+not changed since `16f30820`. Both are the second blocking criterion: a load-bearing claim in this
+document is contradicted by an upstream document at HEAD.
+
+Exactly what to change, and nothing else:
+
+1. **§I.3 gate (F-01).** Build the injector on `config.enabled` alone. Drop `present` and
+   `!sectionMalformed`. Correct the divergence-table row (`:432`) and the malformed row (`:448`)
+   so an absent section reads as §4.1 defaults (enabled) and a malformed section yields an
+   **enabled** run plus `NTC-MALFORMED`. Close `OQ.2`, retire `ERR-4` as settled upstream, and
+   replace the "Not decided here" row at `:1179` with the decided reading.
+2. **Record locus (F-02).** Move `corpusOutcome` and `orderKeys` to per-dispatch loci; keep
+   thresholds once per run; state any run-level scalars as an additive, non-asserted mirror.
+   Split BR-10's closure into **two** set-equality tests, one per locus. Update the §D.2 comments
+   at `:577` and `:585`, rewrite `:343-354`, retire `ERR-6`, and re-point the `DIVERGENT-CORPUS`
+   assertion at the per-dispatch rows.
+
+F-03 and F-04 are non-gating and can ride along.
+
+I am not asking for anything beyond transcribing decisions REQ v0.9 and FSPEC v0.9 already took.
+No new product decision is opened by this review.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 2}
