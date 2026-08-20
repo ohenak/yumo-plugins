@@ -395,6 +395,45 @@ make a misspelt section detectable.
 
 ## DEC-LI-08: The injection is bounded by static caps only; there is no dynamic prompt budget
 
+**Context.** REQ C-8 has two halves: the block must not displace existing prompt content, and "when
+the bound cannot be honoured alongside them, less is injected". The first half is discharged
+structurally by DEC-LI-05. The second half names a mechanism.
+
+**Decision.** Bound the addition with REQ §4.1's static thresholds only — per-document bytes, total
+bytes, document count — applied unconditionally, whatever else the prompt carries. The design does
+**not** measure the rest of the prompt and shrink the injection when a dispatch is already large.
+
+**Alternatives considered.**
+
+- **A dynamic budget: measure `basePrompt + PACING_CONTRACT_CLAUSE + opener` and inject only what
+  remains under a ceiling** — rejected, and the reason is authority, not difficulty. Nothing in
+  `orchestrate-dev.js` knows a prompt ceiling to budget against; inventing one means deciding *which*
+  content yields under pressure, and degradation order is a product decision REQ has not made. A
+  number invented here would be load-bearing, undiscoverable and wrong in a way no test could catch.
+- **Cap the injection as a fraction of the composed prompt's size** — rejected for the same reason
+  plus a determinism cost: the selected set would then depend on the length of unrelated upstream
+  documents, so two dispatches over an identical corpus could select differently, weakening the
+  determinism claim (`AC-4.2`) for a bound nobody has justified.
+- **Refuse to compose when the prompt exceeds a threshold** — rejected: it converts an advisory
+  feature into a run-halting one, contradicting fail-open (G-4).
+
+**Constraints that forced the shape.** REQ §4.1 owns the threshold values (DC-18); REQ has not
+decided a displacement order; determinism (`AC-4.2`) forbids selection depending on unrelated
+prompt content.
+
+**Stated honestly.** C-8's second half is satisfied in the **weak** sense — the injection is bounded
+a priori — not the strong sense that it yields under pressure. If REQ O-1's live measurement shows
+realised prompts crowding the caps, or a correlation between injection size and degraded output,
+then either the caps move (a REQ §4.1 change, no code change) or REQ decides the displacement order
+and a dynamic budget arrives as a follow-on. Neither outcome requires this design to change shape,
+which is why the gap is recorded rather than pre-solved.
+
+**Reversibility.** Easy: a dynamic budget slots in at `renderLearningsBlock`'s caller without
+touching the selection rule, once REQ says what yields.
+
+**Re-evaluation triggers.** REQ O-1's measurement lands; REQ decides a degradation order; a channel
+introduces a hard prompt ceiling the module can read rather than invent.
+
 ## DEC-LI-09: The pre-feature baseline is a committed fixture pinned to a recorded sha, not a recomputed merge-base
 
 ## DEC-LI-10: Reason and notice ids are frozen literals, hand-transcribed in tests
