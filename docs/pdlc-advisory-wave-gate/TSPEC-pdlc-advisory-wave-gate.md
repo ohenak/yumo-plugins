@@ -26,7 +26,7 @@ commit carrying source edits and 4.7 MB of tracked `.pdlc-backups/*.bak` files, 
 anchor no longer reachable from HEAD — and are recorded here without a document edit, since neither
 is fixable in this document. The choice of
 remedy for the early-landed transcription — revert it, or re-derive PLAN's A6 batches around it —
-is PLAN's and Phase I's to make, not this document's, and is routed there as an erratum.
+is PLAN's and Phase I's to make, not this document's, and is routed there as an erratum. **Phase-P erratum (this dispatch):** §1.3's repository-hygiene note sized the residue `e3b9d5a3` left as the tracked `.pdlc-backups/*.bak` blobs alone, which under-states it and names no owner. It now states `PROP-SWEEP-2(b)`'s measured residual — 28 tracked paths in three classes at PLAN's dated 2026-08-19 measurement, of which untracking the 14 `.bak` blobs closes 14 — and routes the partition, the owners and the figures to PLAN's Overview HEAD-drift note and A6-00's Edit 1, which own them. Sizing and routing only; the disposition is not re-litigated here and no design claim moves.
 
 **v1.9 (erratum round, Phase PR).** *(Re-grounding claim corrected in v1.10 per PM F-01. The
 conclusion below stands; the byte-identity evidence originally offered for it did not.)* On the
@@ -314,6 +314,23 @@ written to detect exactly this kind of baseline drift) around what has already l
 and PLAN decision, not a TSPEC one. It is routed to PLAN as an erratum. This section's design claim
 is unaffected either way: these surfaces are transcribed literals, so declaring `A6` cannot be
 additive.
+
+**Sizing the hygiene residue, and where it is owned.** The `.bak` blobs named above are not the
+whole of what `e3b9d5a3` left behind, and naming them alone under-sizes the problem and routes it
+nowhere. The coupled retirement sweep's `PROP-SWEEP-2(b)` oracle
+(`pdlc/workflows/__tests__/documentOracles.test.js`, the case titled *"the unfiltered sweep minus
+A-1's frozen glob list is empty"*) reports a residual of **28 tracked paths** at PLAN's dated
+2026-08-19 measurement, in three classes: the 14 `.claude/workflows/.pdlc-backups/*.bak` blobs; four
+consumer-runtime artifacts (`.claude/workflows/.pdlc-drift-state.json`, `orchestrate-dev.bundle.js`,
+`orchestrate-queue.bundle.js`, `pdlc-cli.mjs`), all four branch-introduced by the same commit; and
+this feature's own tracked documents (`TSPEC`, `PLAN`, `DECISIONS`, `PROPERTIES` and its
+`CROSS-REVIEW-*` files), which enter the sweep because they quote L-2's grep terms while A-1's
+frozen glob list exempts only `LEARNINGS-*` and `POSTMORTEM-*`, and which therefore grow by one per
+*committed* cross-review file. Untracking the `.bak` class closes **14 of the 28**; the other 14 are
+not closable on this branch. TSPEC states the size only so that no reader of this paragraph mistakes
+the `.bak` blobs for the whole residue. The partition, the owners, the disposition of each class and
+the figures themselves are owned by **PLAN's Overview HEAD-drift note and A6-00's Edit 1**, which
+this document does not restate further and does not re-litigate.
 
 The required end state of each surface:
 
