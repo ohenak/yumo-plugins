@@ -794,10 +794,20 @@ title is then matched against `BR6_SECTION_NAMES` by this rule, in order:
    gloss of rule 3. This is forced by FSPEC's own measurement, not chosen for strictness: E-33's
    document — `regime-ledger`'s `LEARNINGS-postgres-audit-repository.md`, with
    `## Implementation Learnings`, `## Cross-Feature Findings` and `## Process Findings` — must
-   yield **nothing** and be dropped `RSN-NO-MATERIAL`. Under a prefix or fuzzy rule
-   `Cross-Feature Findings` would match `Cross-Feature Patterns` and `Process Findings` would match
-   `Process Learnings`, and FSPEC's one measured `RSN-NO-MATERIAL` document would become a
-   contributing one — E-33 and AT-28 would be unreachable by construction.
+   yield **nothing** and be dropped `RSN-NO-MATERIAL`. Under a substring, token-overlap or fuzzy
+   rule `Cross-Feature Findings` would match `Cross-Feature Patterns` and `Process Findings` would
+   match `Process Learnings` on the shared token, and FSPEC's one measured `RSN-NO-MATERIAL`
+   document would become a contributing one — E-33 and AT-28 would be unreachable by construction.
+   **The prefix candidate F-O-1 names is rejected on a different ground, stated separately because
+   the E-33 argument does not reach it** (TE v13 F-02): neither `Cross-Feature Findings` nor
+   `Cross-Feature Patterns` is a prefix of the other, so a strict prefix rule would in fact keep
+   E-33 reachable. It is rejected because it buys nothing and widens the matcher for free — the
+   only real shortened form anyone writes is the un-glossed `Rejected Proposals`, which rule 3
+   already admits by construction, while a prefix rule would additionally admit `## Process`,
+   `## Open Items` and `## Cross-Feature` as full sections, and a same-priority collision between
+   two prefixes of different canonical names would need a tiebreak this document does not want to
+   own. Exactness plus rule 3's single named tolerance is the smaller rule that satisfies E-33 and
+   the corpus both.
 3. **A trailing parenthetical gloss is optional**, and only that. `GLOSS_RE` is stripped from both
    sides of the comparison, so `## 3. Rejected Proposals` matches priority 3 exactly as
    `## 3. Rejected Proposals (with rationale)` does. The tolerance exists because BR-6's own name
@@ -813,6 +823,46 @@ The heading line itself is part of the material (BR-6: "the section headings and
 in the document's own literal form, ordinal included; the canonical name is used for
 `sections[]` and for priority, never rewritten into the injected text.
 
+**How the taken extents are assembled into `material` — byte-exact, because AT-11 and AT-12
+commit their expected counts as hand-recomputed literals** (TE v13 F-04). Extent alone does not fix
+a byte count: whether an extent keeps its last line's newline, whether the blank lines that separate
+it from the next heading are inside it, and what joins two extents that are *never* adjacent in the
+document (sections are taken in **priority** order, which rule 1 proves is not document order for
+any corpus document) each move the total by one to several bytes per section. Two conforming
+implementations must not differ, or a conforming implementation reds a literal fixture. The rule,
+in three steps:
+
+1. **Normalise each extent.** Split it into lines on `\n`; drop trailing lines that are empty or
+   whitespace-only; re-join the remainder with a single `\n`. A section's normalised text therefore
+   begins with its heading line and ends with the last non-blank byte of its body, with **no**
+   trailing newline. Blank lines *interior* to a section are preserved verbatim — only the trailing
+   run is dropped, so the count does not depend on how many blank lines the author left before the
+   next heading. A `\r\n`-terminated document has its `\r` preserved as an interior byte and
+   stripped only where the whole line is whitespace. This is safe on the real inputs: no corpus
+   document at HEAD carries `\r\n` (checked with
+   `git grep -Il $'\r' -- ':(glob)docs/*/LEARNINGS-*.md' ':(glob)docs/completed/*/LEARNINGS-*.md'`
+   — no match), and §T.2's `buildLearningsCorpus` assembles document text by joining lines with
+   `"\n"` (`pdlc/workflows/__tests__/helpers/learningsFixtures.js`, `buildLearningsDocument`'s
+   `lines.join("\n")`). No fixture may introduce `\r\n` without stating what it expects here.
+2. **Join in priority order** with exactly one blank line: `material` is the normalised texts of the
+   taken sections joined with `"\n\n"`. No separator is inserted before the first or after the
+   last, so `material` carries neither a leading nor a trailing newline and the renderer owns every
+   byte outside it (§OQ.1's opener/closer supply their own newlines).
+3. **Then, and only then, cut.** §D.5's character-safe cut applies to the assembled string, not to
+   each extent — so `bounded` and `bytes` are properties of one string and E-16's "first section
+   alone exceeds the bound" is the same rule, not a special case.
+
+`bytes` is therefore hand-computable as **the sum of each taken section's normalised byte length,
+plus 2 bytes per join** (`n` sections ⇒ `n − 1` joins), and a fixture author recomputing AT-11's
+literal has a mechanical procedure rather than a judgement call.
+
+**`sections[]` is defined over the assembled result, not over the match.** A canonical name is in
+`sections[]` iff at least one byte of its normalised text survives in `material` — so at a bound
+that cuts mid-way through the third section, `sections` is the first three, and a section cut away
+entirely is absent. This keeps `sections[]` derivable from `material` rather than being an
+independent report of intent (TE v13 F-01), and it is what makes the zero-bound return
+`sections: []` fall out of the same rule rather than needing its own clause.
+
 **Duplicates and absences.** If a name matches more than one heading, the **first** occurrence in
 document order is the section and later ones are ignored — a total rule, so no document text can
 make extraction non-deterministic. An absent name is skipped silently (E-19). `Approval Record`
@@ -826,7 +876,10 @@ in priority order — so AT-11's section-set equality and PROPERTIES' corpus-dri
 property compare canonical names against the intersection of `BR6_SECTION_NAMES` with the headings
 a real document carries, and a fixture builder and a matcher cannot drift into a shared wrong
 spelling. AT-28's oracle is the same rule read negatively: empty intersection ⇒ empty `sections[]`
-⇒ `RSN-NO-MATERIAL` (§D.5). At least one fixture must carry a non-canonical-but-matching form
+⇒ `RSN-NO-MATERIAL` (§D.5). Note what `sections[]` is **not**: it is not AT-11's oracle. AT-11
+asserts over the section names appearing in the rendered **block material** (§T.5); `sections[]` is
+a supporting assertion, and the two agree only because of the derivability rule just stated.
+At least one fixture must carry a non-canonical-but-matching form
 (bare title, or the un-glossed `Rejected Proposals`) so rules 1 and 3 are pinned by a test rather
 than assumed from the fixture builder's `## N. Title` shape.
 
