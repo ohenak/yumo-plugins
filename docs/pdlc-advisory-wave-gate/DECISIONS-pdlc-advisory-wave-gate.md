@@ -433,9 +433,31 @@ that a first-class per-seam `enabled` map becomes the better surface.
   exists to survive — but the size to hand PLAN is three columns, not one number:
   (1) **gate-demanded edits** — three production constants plus **one** test-side literal
   (`advisoryRecord`'s `rows.map` equality inside `PROP-SUM-01`);
-  (2) **oracles that flip red→green with no edit at all** — `advisoryEnvelope.test.js`'s
-  `T-03-8` `ENVELOPE_DEFAULTS` set-equality and `advisoryConfig.test.js`'s `PROP-CFG-02`
-  deep-equal, on the split schedule the bullet above gives;
+  (2) **oracles that flip red→green with no edit at all** — **ten**, not the two v1.5 named
+  (PM v7 F-01, TE v7 F-02). v1.5 enumerated the envelope half and carried the seam half over on
+  memory, which is the third round running that the same pair has been half-re-derived, so this
+  round counted by *running* the suites rather than reading them: `npm test -- __tests__/advisory`
+  at HEAD is 24 failed / 386 passed across 15 suites. Fourteen of those failures are members of
+  this column — assertions that already carry the post-A6 value and go green on production growth
+  alone — across ten sites. Envelope side (three sites, seven failures): `advisoryEnvelope.test.js`'s
+  `T-03-8` `ENVELOPE_DEFAULTS` set-equality; `advisoryConfig.test.js`'s `PROP-CFG-02` deep-equal
+  (five inputs, five failures); and `PROP-CFG-01`'s "`parseAdvisoryConfig(null)`'s config carries
+  `waveBudgetPerRun` defaulted to 1", whose key-set equality is red on the absent production key.
+  Seam side (seven sites, seven failures), all red against the five-member
+  `export const ADVISORY_SEAMS` in `orchestrate-dev.js`'s advisory constants block:
+  `advisoryEnvelope.test.js`'s `ADVISORY_SEAMS` six-member deep-equality; `advisoryDriver.test.js`'s
+  `PROP-GATE-06` key-set equality (its `GATE_EXCLUSIVITY_REGISTRY` already carries the `A6` row, so
+  the diff is one line, `+ "A6"`); `advisoryHarvest.test.js`'s `T-08-6` (six rows plus the
+  `seamNames` equality) **and** its `T-08-8` row count, which no review named and only the run
+  surfaced; `advisoryDisabled.test.js`'s `T-10-5 / PROP-DIS-05`; `advisoryQueueSeams.test.js`'s
+  `ADVISORY_SEAMS drives the row list (S-1)`; and `advisoryRecord.test.js`'s `PROP-SUM-02`
+  `test.each` identity case, whose `A6` entry finds no row. All ten clear at `A6-05`'s single wave
+  boundary per the bullet above — there is no point at which the suite is uniformly green mid-task,
+  and a member still red at that boundary is an incomplete green step, not a false alarm. **The
+  other ten failures are not this column:** `ADVISORY_ROOT_CAUSES`, `A6_PROHIBITIONS`, the seven
+  `nonNegativeInt` validator arms and `P-1` are red because production lacks a symbol A6 *creates*,
+  not a member it *grows*, so they size as new behaviour under column (1)'s task rather than as
+  drift;
   (3) **ungated hand-copy surfaces** — which no gate demands but which a later editor reads, and
   which the prose-site rule ("a comment that restates a set-equality literal is a maintenance site
   like any other") makes **seventeen, not six** (TE v6 F-02). v1.4 applied that rule to the
