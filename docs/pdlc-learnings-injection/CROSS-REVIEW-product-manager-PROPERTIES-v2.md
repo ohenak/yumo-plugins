@@ -51,6 +51,62 @@ now pointed at from §G.2.4 as well as §F.2. Q-02 remains open and is restated 
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | §C.2 declares a bidirectionality rule this revision introduced, then breaks it on three of its own rows: AC-1.4 lists PROP-BOUND-07, AC-6.1 lists PROP-META-05 and PROP-ORDER-05, and none of those three properties' trace lines carries the AC id it is credited under | AC-1.4, AC-6.1 |
+| F-02 | Low | Local | PROP-BOUND-08's operand is "the first path in UTF-8 byte order" of the live corpus, so the property's non-empty conjunct is hostage to whichever LEARNINGS document happens to sort first; the document does not say what the test does when that document legitimately carries no priority section | AC-2.3, BR-6 |
+
+### F-01 (Low) — the new bidirectionality rule is broken by three of its own rows
+
+§C.2's new preamble states the rule plainly: *"An AC may list a property only if that property's own
+trace line carries the AC id; a property whose trace names only `BR-`, `E-`, `C-` or `§` ids is
+covered by the BR/AT matrices, not padded into an AC row here."* I applied that rule mechanically to
+all 25 rows. Twenty-two pass. Three do not:
+
+| Row | Property credited | Its trace line | Gap |
+|---|---|---|---|
+| AC-1.4 | PROP-BOUND-07 | *"AC-2.3, AC-2.4, TSPEC §D.5"* | no AC-1.4 |
+| AC-6.1 | PROP-META-05 | *"TSPEC §T.5 closure, DoD 1"* | no AC-6.1 |
+| AC-6.1 | PROP-ORDER-05 | *"AC-2.5, AT-14"* | no AC-6.1 |
+
+The AC-6.1 rows are the ones worth acting on, and they are cheap. PROP-ORDER-05 **is** the discharge
+of AC-6.1's second clause — REQ AC-6.1 requires that *"determinism (AC-2.5) is asserted by comparing
+two compositions rather than by inspection"*, and PROP-ORDER-05 asserts two compositions in two
+separate process invocations produce byte-identical blocks. The property genuinely earns the row; its
+trace line simply never learned about it, which is the exact shape of the v1 F-02 defect one level
+down. Add `AC-6.1` to PROP-ORDER-05's trace and the row becomes rule-compliant on the spot.
+PROP-META-05's row is honestly labelled in prose ("supports both by keeping the suite set closed"),
+but under the rule as written a supporting property still needs the id in its trace — either add it
+or move the support claim into the row's prose without naming it in the property list. AC-1.4's
+PROP-BOUND-07 is the last of the v1 padding: AC-1.4 keeps PROP-BLOCK-01 and PROP-DISPATCH-05 either
+way, so striking the entry costs nothing, and adding `AC-1.4` to the trace is equally acceptable if
+the byte-accounting claim really is part of what AC-1.4 asks for.
+
+Filed Low rather than Medium because no AC is left uncovered and the rule that catches this is now
+written down in the document itself — a future reviewer can re-run the same check in one pass.
+
+### F-02 (Low) — PROP-BOUND-08's real-corpus operand has an unstated failure mode
+
+The real-corpus arm is the right answer to v1 F-01 and I want it kept. But its subject is chosen from
+live repository state: *"read from the live `LEARNINGS_CORPUS_ARGV` `git ls-files` output (first path
+in UTF-8 byte order, not a synthetic fixture)"*. Today that resolves to
+`docs/completed/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md`, which carries all five headings
+— I verified all 9 do, so the property is green for the right reason today.
+
+What the document does not say is what happens when the first-sorted document is one that
+legitimately carries no priority section — a freshly harvested LEARNINGS for a feature with no
+cross-feature patterns and no non-convergences is a real product outcome, and BR-6 has `RSN-NO-MATERIAL`
+precisely because such documents exist (PROP-BOUND-06 covers that path deliberately). In that state
+the "observed set **must** be non-empty" conjunct reds, and it reds for a reason that has nothing to
+do with the matcher this property exists to pin. A reader hitting that red is one commit away from
+"fixing" it by relaxing the non-empty conjunct — the change that would silently retire the whole arm.
+
+One sentence resolves it: state the selection rule as *the first path in byte order that carries at
+least one BR-6 heading*, with the assertion that at least one such path exists in the corpus as the
+enclosing positive control. That keeps the fixture-and-matcher-drift property exactly as strong —
+the matcher still faces a real document written by the real harvest skill — while making the red mean
+only what it should mean.
+
 ## Questions
 
 ## Positive Observations
