@@ -89,6 +89,23 @@ falsifier — follows from that text rather than restating it.
 
 ## Decision
 
+**All five v6 findings are resolved. No High finding, old or new. Approved with minor changes.**
+
+Prior-finding disposition, each verified against the delta and upstream at HEAD:
+
+| Prior | Was | Now | Verified against |
+|---|---|---|---|
+| F-01 (Medium) — AC-3.3 locus row described a settled question as open and routed to REQ via `ERR-6` | Open since v3 | **Resolved** (`483a9de0`). The row now reads "REQ, which **has now settled it** (v0.9); TSPEC `ERR-6` is CLOSED", and states the settled answer PROPERTIES must be written on: ordering key per authoring dispatch, thresholds once per run, two loci, two completeness tests | REQ AC-3.3 verbatim ("the **ordering key value per document** is recorded **per authoring dispatch** … the **§4.1 thresholds in force** are recorded **once per run** … two completeness tests assert set equality, one per locus"); FSPEC `BR-10`'s two-row locus table; TSPEC `ERR-6` CLOSED |
+| F-02 (Medium) — `DEC-LI-07` asserted a live divergence; `D-O-9` stood open | Open since v3 | **Resolved** (`5423f0b1`, `e29a296e`). The paragraph is retitled "was a recorded erratum, and it has landed", names all four edits, and the `D-O-9` row is struck through and marked discharged with the trace retained | TSPEC §I.2/§I.3, `OQ.2` CLOSED, `ERR-4` CLOSED, `LEARNINGS_DEFAULTS.enabled: true` |
+| F-03 (Low) — stale `TSPEC v0.5` / `FSPEC v0.7` pins, widened three rounds | Open since v3 | **Resolved** (`1eb66bdb`). Header row reads TSPEC v0.9 / REQ v0.9 / FSPEC v0.13; `DEC-LI-07`'s citation reads "FSPEC `BR-14` (v0.13 at HEAD)". Remaining `v0.5` mentions are all historical narration ("TSPEC v0.5 **was** authored…"), which is correct, not stale | Grep of every `TSPEC v0.\|FSPEC v0.\|REQ v0.` occurrence in the document against upstream version rows |
+| F-04 (Low) — `DEC-LI-03` paraphrased `A-2` as "authoring in spirit but not so classified", which `A-2` no longer says | Open since v3 | **Resolved** (`0e1a3edf`). The trigger now quotes `A-2` verbatim and restates `BR-1`'s two conjuncts as two exclusion shapes | FSPEC `A-2`, decision-table `D-2`, and `orchestrate-dev.js`'s Phase CR call for `G-C` |
+| F-05 (Low) — the upstream-version note was a dated claim in timeless voice | Open since v5 | **Resolved** (`1eb66bdb`). Rewritten to "grounded on upstream **at HEAD**: TSPEC v0.9, FSPEC v0.13, REQ v0.9 … **No live upstream gap remains**", with the history kept only as the reason `DEC-LI-07` reads as a divergence | Upstream hashes and version rows at HEAD |
+
+Nothing the delta introduced is false against REQ v0.9, FSPEC v0.13, TSPEC v0.9 or the repository
+at HEAD. The `BR-14` five-state table `DEC-LI-07` transcribes is byte-identical upstream, so the
+re-pin did not silently change what is being cited. One Low finding is new (F-01 below), and it is
+a precision nit on a landing-version attribution, not a false state.
+
 ## Consequences
 
 ## Findings
