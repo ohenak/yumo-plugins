@@ -31,6 +31,21 @@ red today on `E-5`/`E-6`.
 
 ## Verification performed (measured at HEAD)
 
+| Claim in the changed block | Measured at HEAD | Verdict |
+|---|---|---|
+| Seam literal `["A1" … "A5"]` survives at **exactly one** site: `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` in `PROP-SUM-01` (line 359–363) | `grep` finds one test-side five-member site, `advisoryRecord.test.js:496`, inside the `PROP-SUM-01` describe opened at `:491` | holds |
+| The five sites v1.2 listed beside it already read `["A1" … "A6"]` | `advisoryEnvelope.test.js:317`, `advisoryRecord.test.js:544` (`test.each`), `advisoryHarvest.test.js:580`, `consolidationProperties.test.js:250`, `helpers/advisoryDoubles.js:354` — set-equal, no sixth | holds |
+| TSPEC §1.3's per-seam-report-rows row singles that site out as "the one test-side literal not yet transcribed" | `TSPEC…md:304` reads exactly that | holds |
+| Envelope: production definition `ENVELOPE_DEFAULTS` in `orchestrate-dev.js` | `orchestrate-dev.js:1942`, four members | holds |
+| Envelope: **five** four-member test-side transcriptions — `advisoryDisabled`'s `disabledConfig()` fixture and its inline enabled-config object, `advisoryHarvest`'s config fixture, `ADVISORY_DEFAULTS_SHAPE` and the generator shuffle in `advisoryDoubles` | `advisoryDisabled.test.js:136` (`disabledConfig()` at `:131`), `:623` (inline `runScenario` config), `advisoryHarvest.test.js:203` (`makeDevReadFile`), `helpers/advisoryDoubles.js:325`, `:423` — set-equal, no sixth | holds |
+| Envelope: a **sixth site is prose**, the `advisoryDoubles` hand-sync comment | `helpers/advisoryDoubles.js:317` | holds |
+| **"None of those five transcriptions is an oracle" — each is an input** (line 375–377) | Read in context: `:136`/`:623`/`:203` are config text fed to the code under test; `:325` is a frozen double shape; `:423` is a generator's shuffle input. None appears on the expected side of an assertion | holds |
+| **"The only envelope oracle that fails on drift is `advisoryEnvelope.test.js`'s `[...ENVELOPE_DEFAULTS].sort()` equality"** (line 378–379) | `advisoryConfig.test.js:135` and `:143` also compare production output against a six-member envelope literal (`:51`) and fail on drift | **fails** (F-01) |
+| **"`advisoryConfig`'s six-member envelope is never compared to anything — `PROP-CFG-01` asserts that file's key set, its `waveBudgetPerRun` value, and key-set equality against `parseAdvisoryConfig(null)`, never the envelope's members"** (line 392–394) | `PROP-CFG-01 (A6-02)` (`:103`–`:119`) is described correctly, but `PROP-CFG-02` (`:127`–`:147`) deep-equals the whole literal, envelope included | **fails** (F-01) |
+| "Only the first of those two asserts against production and is therefore red today" (line 391–392) | `node --experimental-vm-modules node_modules/jest/bin/jest.js __tests__/advisoryConfig.test.js`: all five `PROP-CFG-02` cases red, diff reads `- "E-5", - "E-6"` — red *on the envelope members* | **fails** (F-01) |
+| TSPEC §1.3's `ADVISORY_DEFAULTS` row records a *different* drift and says nothing about that file's envelope member | `TSPEC…md:303` records only `waveBudgetPerRun: 1` vs an absent production key | holds (and see ERRATUM) |
+| "Three production constants" — `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS` | `orchestrate-dev.js:1951`, `:1942`; `ADVISORY_DEFAULTS` not yet exported (A-17), as the doc's own §3.1 pointer says | holds |
+
 ## Resolution of v5 findings
 
 ## Findings
