@@ -309,4 +309,47 @@ next push — 298 remote-only commits is not a fast-forward.
 
 ## Recommendation
 
+**Needs revision**
+
+Six High findings, and they split cleanly into two kinds.
+
+**Three are missing behaviour, not missing tests.** E-6's conjunct check (F-01), AC-3.3's (f)/(g)
+prohibitions (F-02), and the root-cause class on the record and the escalation log (F-03, F-04) are
+required by the REQ and specified by the TSPEC, and the shipped code does not perform them. No test
+can be written that would pass. These need code before they need coverage.
+
+**Three are oracles that cannot fail.** AC-1.5's widened notice has no test at all (F-05); the
+wave-loop's A6 wiring is proven only against a fake of the seam it is wiring (F-06); and the halt
+report's advisory fields are asserted equal to the object the fixture handed in. Each is the shape
+this review exists to catch — the code may well be right, but nothing on this branch would tell us
+if it were not.
+
+To reach approval:
+
+1. Implement E-6's three conjuncts and narrow `declaredScope` to the named later task on an E-6
+   proposal; add PROP-ENV-08's four tests with their paired positives (F-01).
+2. Give `A6_PROHIBITIONS` a production reader that subtracts the PLAN and implementation-config
+   paths from `declaredScope` regardless of manifest ownership; add PROP-ENV-10's eleven tests
+   (F-02).
+3. Carry `waveNum`, the root-cause class and — on a resolved E-6 — the promotion's paths and owning
+   task id onto the advisory record; add PROP-REC-01's set-equality test over the field set (F-03).
+4. Add a root-cause field to the escalation entry from both writers; add PROP-REC-03/-04/-06/-07,
+   including PROP-REC-06's counting oracle over `ESCALATIONS.md` (F-04).
+5. Add PROP-SEAM-07's four arms and PROP-SEAM-08, counting statements over the whole notice surface
+   — arm (iv), the zero-count discriminator, is the one that makes the other three falsifiable
+   (F-05).
+6. Add at least one enabled-tier `mainDev`-driven run with **no** `_runWaveGateSeam` injection,
+   asserting on the real seam's own outputs and carrying a dispatch call-count oracle (F-06).
+
+The Medium findings (F-07 through F-09) should land in the same revision — F-07's slow-gate
+companion in particular, since it is the only falsifier NFR-4 has. The Lows can ride along.
+
+The parts of this implementation that are good are very good: the real-repo hash-map restore oracle,
+the two `verifyGate` mutation fixtures, and the sequence-not-set ledger check are the standard the
+rest of the seam should be held to. The gap is not craft — it is that six requirements stopped at
+the prompt or at the fixture boundary.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 6, "medium": 3, "low": 3}
