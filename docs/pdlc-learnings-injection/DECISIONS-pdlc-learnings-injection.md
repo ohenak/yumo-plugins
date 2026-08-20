@@ -220,12 +220,28 @@ row, and an empty block.
 target document ∈ six types). `dispatchAndVerify` is the only function that sees both parts at
 composition time, which makes it the only place the two-conjunct gate can be written once.
 
+**The funnelling premise needs its own guard.** The argument against the four-call-site alternative —
+that a rule which cannot notice its own omission is not a rule — applies unchanged to this design's
+own premise that every authoring site funnels through `dispatchAndVerify`. `AC-1.2` cannot detect a
+violation, because it is a set equality computed over the run that happened, so a non-funnelling
+fifth site is invisible to it exactly as it would be to the rejected alternative. DEC-LI-04 already
+ships the right shape for this class of premise (a pinning test over a source-level literal), so the
+same instrument applies here: a **source-level test over `orchestrate-dev.js`** asserting that the
+set of authoring-classified dispatch producers is exactly the set that reaches `dispatchAndVerify`.
+At HEAD that set is four members — three `dispatchKind: "authoring"` object literals (the phase
+creator in `converge`, the erratum author, and the erratum land-proof retry) plus `runWrapped`'s
+positional `"authoring"` from `reviewLoop`'s optimizer round — and the expected set is
+**hand-transcribed**, per DEC-LI-10's rule, not derived from the source it checks. A fifth site then
+reds the guard on the commit that adds it, which is what turns the first re-evaluation trigger below
+from a hope into a mechanism.
+
 **Reversibility.** Easy. The gate is one expression and one frozen array; widening to review roles
 (REQ O-6) is an edit to the conjunction, not to the architecture.
 
-**Re-evaluation triggers.** A fifth authoring code site appears that does **not** funnel through
-`dispatchAndVerify`; REQ O-6 widens injection to review roles; the pipeline introduces a dispatch
-kind that is authoring in spirit but not so classified (FSPEC A-2's stated default is that it is
+**Re-evaluation triggers.** *Mechanically detected* — a fifth authoring code site appears that does
+**not** funnel through `dispatchAndVerify`: the source-level producer-set guard above reds on the
+commit that introduces it. *Review-time judgement* — REQ O-6 widens injection to review roles; the
+pipeline introduces a dispatch kind that is authoring in spirit but not so classified (FSPEC A-2's stated default is that it is
 excluded, and widening must be explicit).
 
 ## DEC-LI-04: Corpus enumeration goes through `_git` with a restated pathspec, not `_listFiles` and not an import
