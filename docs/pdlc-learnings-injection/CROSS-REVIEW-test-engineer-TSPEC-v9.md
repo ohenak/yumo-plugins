@@ -156,7 +156,33 @@ No new test obligation is created by this round, and none is retired.
 
 ## Open Questions
 
-_pending_
+| ID | Question | State |
+|----|---------|-------|
+| Q-01 | Does the `DIVERGENT-CORPUS` fixture's dispatch 5 produce BR-8 rows "present and empty" **and** `corpusDiverged: true` — i.e. do both the corpus-outcome branch and the divergence comparison run on a dispatch whose listing failed? | Carried from v7/v8, still unanswered in the bytes and still non-gating. §A.5 defines `corpusDiverged` over `{corpusOutcome, orderKeys}`, so it should hold; one explicit sentence saves the implementer the derivation. Untouched by this cascade. |
+| Q-02 | When the TSPEC is next opened for any reason, should its upstream version labels be pinned to hashes rather than version numbers? | New, raised by this round. This is the second consecutive cascade whose entire content was a version/header bump; a hash-pinned Upstream row would make these rounds mechanically no-ops. Process-flavoured, not a finding against this document. |
+
+**Deferred items, unchanged and still deferred:**
+
+- §T.2's BR-10 locus-1 row still folds two distinct set equalities into one cell — worth two rows
+  when PLAN transcribes it (carried from v7).
+- §D.1's "four field domains" and §T.2's "three catalogues" still sit one line apart with no
+  half-sentence explaining why the counts differ (carried from v7).
+- Convert the `orchestrate-dev.js` positional anchors to symbol citations at PLAN-transcription
+  time rather than re-pinning them here (carried from v8 F-04; the implementation has not moved
+  this window, so the anchors are exactly as stale as v8 recorded, no more).
+
+**Positive observations for this round:**
+
+- The erratum is honest about itself. Its own text flags that the *previous* revision's claim to
+  have corrected the Cross-Reviews row was inaccurate, and then actually corrects it. I verified
+  the correction against the filesystem: `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v10`
+  and `-v11` both exist on this branch, so `v{1…11}` is now the true enumeration.
+- The edit is perfectly bounded. Eight insertions, two deletions, every one of them above the
+  `Scope in one line` marker. A cascade confirmation is cheap exactly when upstream edits are
+  disciplined like this one, and this is the model case.
+- Nothing regressed. The v0.9 locus corrections — the per-dispatch oracle loci, the two-loci BR-10
+  split, the AC-3.3/BR-10/AT-22 traceability row — are all intact, and the TSPEC's compression of
+  them is still faithful.
 
 ## Delta-Confirmation Findings
 
