@@ -71,9 +71,50 @@ as *evidence that nothing relocates* rather than as guidance about where the new
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01 and F-02 both reduce to one distinction the enumeration does not currently draw: a literal that an **oracle** compares against production (one site, red today) versus a literal a later editor must **read and copy** (six sites, green forever). If the next edit to this file separates the two counts, does the "sequence the shared-double edits together" conclusion still need the seven? My reading is that it does — the coupling argument is about an editor finding a stale copy, which is exactly the six — so the conclusion survives the split and gets cheaper to defend. Worth one clause if the file opens again; not worth a round. |
+
 ## Positive Observations
 
+- **The engine-channel bullet stopped restating expiring state, and said why.** Two of my four v3
+  findings and one of my two v4 findings existed only because this record transcribed upstream
+  *coverage status* that upstream then changed. The delta's "This record deliberately stops
+  restating that status … whether the early-landed edits are reverted or PLAN's batches are
+  re-derived around them is PLAN's call" removes the recurring cost at its source rather than paying
+  it again. The v4 durable observation was that the cost was not one-off; this is the structural fix
+  for it, and it arrived without being filed as a finding.
+- **The ordering correction is falsifiable and I falsified it in the intended direction.** "Authored
+  and red" is a claim a reviewer can execute, and executing it reproduced the exact stated cause
+  (missing `advisory` section, assertion at line 29). Compare the v1.2 phrasing it replaces —
+  "requires no engine edit to stay green" — which was equally checkable and was wrong. The record
+  now states repo claims in a form that fails loudly when it goes stale rather than reading
+  plausibly forever.
+- **The resolution-vintage convention is worth more than the date it was written to explain.** A
+  finding is resolved against upstream *at the time of the edit*, and where that differs from the
+  version the finding cited, the resolving text names the version it landed on. Three of my last
+  five findings were pure cascade artefacts. This convention converts the next such cascade from a
+  finding into a sentence, and the engine-channel and O-8 passages already demonstrate it.
+- **Both repointed citations were mis-anchors, not style nits.** §5.5 does not contain the
+  argv-sequence oracle and §7 does not contain the AT-04-5 mapping row; a reader following either
+  would have landed on prohibitions and open questions respectively and concluded the oracle did not
+  exist. Repointing to §5.2 and §5.6 restores one-hop checkability, which is the only property that
+  makes a coverage claim in a decision record reviewable at all.
+
 ## Consequences
+
+- No High finding, old or new, so DECISIONS is not blocking on this lens. Both recorded findings are
+  narrow corrections to a sizing enumeration whose conclusion — sequence the shared-double edits
+  together — holds under either reading.
+- Neither F-01 nor F-02 earns its own round. Both live in the same bullet pair and both resolve in a
+  single clause; they should ride the next edit that opens this file, which the envelope literal's
+  own migration to six members during implementation will force anyway.
+- One thing PLAN and the implementing task should take from F-01 rather than from this record: the
+  only envelope oracle that fails on drift is `advisoryEnvelope.test.js:284`. If the intent is that
+  the five copies *cannot* silently drift, that is a test the feature does not have — a single
+  assertion that every transcribed envelope literal is set-equal to the exported constant would
+  convert six hand-copy surfaces into one oracle. That is a PROPERTIES/TSPEC call, not a DECISIONS
+  one, and I am not filing it here.
 
 ## Recommendation
 
