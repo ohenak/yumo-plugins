@@ -64,7 +64,31 @@ red today on `E-5`/`E-6`.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The input/oracle distinction this round introduces (line 375–384) is the most useful thing in the bullet — it separates "a gate demands this edit" from "a later editor must not misread this copy". Would you carry it into the closing size line as an explicit two-column hand-off, e.g. *gated edits: three production constants + `advisoryRecord.test.js:496`; ungated hand-copies: five envelope inputs + one comment; oracles that flip red→green with no edit: `advisoryEnvelope.test.js:284`, `advisoryConfig.test.js` `PROP-CFG-02`*? The third column is the one F-01 is about, and naming it as its own category would make the omission structurally hard to repeat. |
+| Q-02 | Carried from v5 Q-02, still not a finding: `pdlc/workflows/dist/pdlc-cli.mjs` carries the same literals but moves by regeneration under the wave gate's `postWaveCommand` (CLAUDE.md, DEC-08). A single clause saying so would stop a PLAN reader who sees `dist/` in the A6 diff from wondering whether it was a missed hand-edit. |
+| Q-03 | All four decisions (DEC-A6-01 dangling-commit capture, DEC-A6-02 separate `commitPaths` call, DEC-A6-03 wave-scoped ref, DEC-A6-04 `nonNegativeInt`) are unchanged for the third round. I re-checked each against TSPEC v1.10: no rejected option has become reachable, no chosen mechanism has lost its upstream basis. OQ-7 remains the single live upstream dependency. No question — recorded so the next reviewer need not re-derive it. |
+
 ## Positive Observations
+
+- **The blocking finding was closed by fixing the cause, not the sentence.** v5 F-01 asked for the
+  seam half to be re-derived; the round re-derived both halves, then said in-line *why* the two
+  tenses diverged ("v1.2 sized the seam half against a pre-`e3b9d5a3` repository, and v1.3
+  re-derived only the envelope half"). Naming the failure mode in the record is what stops it
+  recurring — which is why F-01 above is worth raising rather than waving through.
+- **The input/oracle split is a real product insight, not a bookkeeping fix.** "None of those five
+  transcriptions is an oracle … so when `ENVELOPE_DEFAULTS` grows to six members all five stay
+  green and no gate demands their edit" is the sentence that changes what PLAN does: it converts
+  five apparent edits into five read-and-check surfaces, and it says what goes wrong if they are
+  skipped ("a stale copy silently re-scopes a fixture instead of reddening a suite"). I verified
+  all five in context and the claim holds exactly.
+- **"An implementer sizing A6 off the older wording would budget five edits no gate asks for."**
+  The record now states the cost of its own previous revision in user terms. That is the standard
+  I want decision records held to, and it is rarer than it should be.
+- **The re-derived total replaced the old figure honestly.** Line 408 does not quietly drop
+  "roughly a dozen transcriptions"; it names it as v1.3's figure and says what inflated it. A
+  reader who remembers the old number learns why it changed instead of wondering which is right.
 
 ## Recommendation
 
