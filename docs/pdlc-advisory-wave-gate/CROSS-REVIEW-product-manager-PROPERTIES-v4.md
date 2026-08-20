@@ -86,7 +86,33 @@ the last such pair in this feature's PROPERTIES, since TSPEC re-anchored its own
 
 ## Fixtures
 
-*(pending)*
+The fixture inventory was re-read against the moved upstream text; it comes through the cascade
+intact.
+
+- **Config fixtures** (`waveBudgetPerRun` at `1`, `0`, `-1`, `1.5`, `"x"`, `null`, absent; plus
+  tier-off and tier-on-A6-off whole-config arms) still match TSPEC §4.4's key table and validator
+  after the affordance rewording. The tier-on-A6-off arm is the fixture that proves the
+  *behaviour* TSPEC now says is the affordance's only carrier — so the rewording strengthens this
+  fixture's justification rather than stranding it.
+- **Example-config fixture** — the tracked `.claude/pdlc.config.example.json` read by the
+  engine-channel test. TSPEC §5.1 still routes this assertion to the purpose-named new engine file
+  and still keeps `ci-arrangement.test.js` unowned by PLAN, which is what this fixture row assumes.
+  Its `:39` / `:799`–`:819` anchors are the DEC-DOC-01 residue noted above (F-03).
+- **Pre-A6 baseline** — the halt-reason string, queue row and created-file set captured from the
+  shipped pipeline. Worth one caution rather than a finding: "captured from the shipped pipeline on
+  the same inputs" is a *runtime* capture, so it is unaffected by `e3b9d5a3`'s test-side edits, but
+  the transcribed gate-failure literal should be re-verified against `orchestrate-dev.js` at
+  whichever commit Phase I opens on, since that file is the half that has **not** moved.
+- **Mutation, ownership-manifest, gate-output and citation-floor fixtures** trace to TSPEC §3.3,
+  §3.4, §5.2 and §5.5 — none of which this erratum round touched. No re-verification owed.
+- **Verbatim-string discipline** — the eight refusal reasons pinned byte-for-byte against
+  `orchestrate-dev.js:2297`–`:2306`. The production side of `orchestrate-dev.js` is confirmed
+  unmoved by TSPEC §1.3 ("the production side did not move"), so these remain valid; they are the
+  one place where a raw line pin is defensible-adjacent, though a symbol anchor would still be
+  cheaper to maintain when this section is next edited.
+
+No fixture named by PROPERTIES depends on the pre-`e3b9d5a3` test-side baseline, which is why the
+cascade damage is confined to the two grounding paragraphs and does not reach the fixture plan.
 
 ## Findings
 
