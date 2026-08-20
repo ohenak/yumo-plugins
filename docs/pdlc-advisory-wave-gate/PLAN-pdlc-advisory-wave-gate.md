@@ -27,8 +27,11 @@ halt on its pre-A6 literal with a diagnosis attached.
 
 **Where it lands.** One production file: `pdlc/workflows/orchestrate-dev.js` (TSPEC §1.2 — the
 workflow runtime loads one bundled artifact, so every advisory-tier symbol lives in one module).
-Eleven test-side files under `pdlc/workflows/__tests__`, ten of which already exist —
-`advisoryWaveGate.test.js` is the one new file (verified absent today); the manifest's twelfth path under that directory is the shared fixture `__tests__/helpers/advisoryDoubles.js`, not a `*.test.js` file. One second-channel pair
+Eleven test-side files under `pdlc/workflows/__tests__`, **all eleven of which exist at HEAD**:
+`advisoryWaveGate.test.js`, called "the one new file (verified absent today)" through v1.3, was
+authored early and landed in `e3b9d5a3`; it carries A6-00's pre-flight gate and is the one advisory
+suite **green** at HEAD. The manifest's twelfth path under that directory is the shared fixture
+`__tests__/helpers/advisoryDoubles.js`, not a `*.test.js` file. One second-channel pair
 (`.claude/pdlc.config.example.json`, `pdlc/engine/__tests__/advisory-config-example.test.js`, the
 second of which is new). No new module,
 no new transport, no new credential.
@@ -45,8 +48,12 @@ still holds: exactly one task per wave owns the production file.
 
 **Two facts about this feature that shape the batching.**
 
-1. **The feature is not purely additive** (TSPEC §1.3). Eight shipped surfaces transcribe the
-   five-member seam set today and go red the moment `ADVISORY_SEAMS` gains `A6` — verified:
+1. **The feature is not purely additive** (TSPEC §1.3). Eight shipped surfaces are coupled to the
+   seam set's cardinality. Through v1.3 this plan described them as transcribing **five** members
+   today and going red "the moment `ADVISORY_SEAMS` gains `A6`". That is no longer the state of the
+   repository: commit `e3b9d5a3` landed the test-side retargeting of these surfaces early, so they
+   already assert **six**, while the production constant still exports five — **the advisory suites
+   are red at HEAD, before Phase I writes a line.** The eight surfaces are still exactly these:
    `advisoryEnvelope.test.js`, `advisoryHarvest.test.js`, `consolidationProperties.test.js`,
    `advisoryRecord.test.js`, `__tests__/helpers/advisoryDoubles.js` (`SEAMS` literal at
    `advisoryDoubles.js:271`), `advisoryDriver.test.js`'s `GATE_EXCLUSIVITY_REGISTRY`
@@ -56,9 +63,10 @@ still holds: exactly one task per wave owns the production file.
    PROP-DIS-05's enabled-but-quiet case) and `advisoryQueueSeams.test.js`'s
    `expect(report.advisory.rows).toHaveLength(5)` (`:627`), the queue's share of the same
    `advisorySummaryRows` list that `ADVISORY_SEAMS` drives (`orchestrate-dev.js:2989`–`:2992`,
-   imported at `orchestrate-queue.js:41` and used at `:1319`). Batch 1 retargets all eight
-   **before** batch 2 touches the constant, so the red is the intended signal and never a
-   mystery red discovered mid-wave.
+   imported at `orchestrate-queue.js:41` and used at `:1319`). Wave 1 accounts for all eight
+   **before** its own green step touches the constant, so the red is the intended signal and never
+   a mystery red discovered mid-wave. At HEAD that accounting is mostly *verification* rather than
+   editing: seven of the eight already read six (see the HEAD-drift note below).
 
    Re-running that grep at HEAD returns **four** bare row-count sites, not two:
    `advisoryDisabled.test.js:622`, `advisoryQueueSeams.test.js:627`,
@@ -72,6 +80,41 @@ still holds: exactly one task per wave owns the production file.
    a row-count assertion is as coupled to `ADVISORY_SEAMS`'s cardinality as a seam-name list is,
    and greps for `"A5"` or `SEAMS` miss it. Batch 1's set is derived by grepping the suite for
    `advisory.rows` and `toHaveLength` as well as for seam members.
+
+   **HEAD drift, and the remedy this plan takes.** TSPEC §1.3 records that `e3b9d5a3` landed the
+   test-side A6 transcription ahead of Phase I, and TSPEC §6 explicitly routes the remedy to this
+   document: revert those edits and let Phase I redo them in plan order, or keep them and re-derive
+   the A6 batches around what already landed. **This plan keeps them and re-derives.** Three
+   measured reasons:
+
+   - **The baseline is intact, and the gate written to prove it says so.** A6-00's pre-flight gate
+     is itself part of what landed (`advisoryWaveGate.test.js`), and it is **green** at HEAD: every
+     export it names still resolves. The drift is confined to the seam-cardinality surfaces this
+     feature was always going to rewrite — it is not baseline rot, which is the condition A6-00
+     exists to catch.
+   - **What landed is what this plan already asked for, minus one line.** Measured at HEAD, seven of
+     the eight surfaces already assert six members, and no `toHaveLength(5)` remains anywhere in the
+     advisory suites. The single untranscribed residue is `advisoryRecord.test.js:496`'s
+     `expect(rows.map((r) => r.seam)).toEqual(["A1" … "A5"])`, whose sibling `test.each` at `:544`
+     *was* retargeted. Reverting would discard correct work in order to re-type it.
+   - **No re-batching is required, because the red closes exactly where the plan already closes it.**
+     Every failure at HEAD is a *production*-side absence, and every one is supplied by A6-05's green
+     step: `ADVISORY_SEAMS` + `A6`, `ENVELOPE_DEFAULTS` `E-5`/`E-6`, `ADVISORY_ROOT_CAUSES`,
+     `A6_PROHIBITIONS`, and `ADVISORY_DEFAULTS.waveBudgetPerRun`. Verified by running the suites:
+     19 failures across `advisoryEnvelope`, `advisoryConfig` and `advisoryRecord`, plus 5 more across
+     `advisoryDriver`, `advisoryHarvest`, `advisoryDisabled` and `advisoryQueueSeams` —
+     `advisoryDriver`'s PROP-GATE-06 included, which compares the test-side
+     `GATE_EXCLUSIVITY_REGISTRY`'s six keys against the five-member production constant and goes
+     green on the same edit. None of them needs a later wave's production arm, so the wave map and
+     `Batch` column are unchanged from v1.3.
+
+   Two consequences the implementer carries. First, **wave 1 is the only wave whose red is inherited
+   rather than authored**: A6-05's red steps open on an already-red suite, so "observe the red for
+   its named reason" means confirming the named failures are present and are the listed ones, not
+   producing them. Second, several retargeted tests still carry **stale names** describing the old
+   cardinality (`… report still five seams`, `… reports five zero rows`); the assertions are correct
+   at six and the names are cosmetic residue of `e3b9d5a3`. A6-05's red steps rename them in place —
+   a red test whose name contradicts its assertion is the next reader's trap.
 2. **Almost all production code lives in one file.** Batch-safety rule 2 (single writer per file per
    batch) therefore serialises the implementation tasks completely: `orchestrate-dev.js` is written
    by exactly one task per batch, and parallelism exists only among test-side tasks in the odd
