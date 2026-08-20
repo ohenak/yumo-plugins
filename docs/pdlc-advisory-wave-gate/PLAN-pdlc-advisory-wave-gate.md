@@ -185,9 +185,15 @@ still holds: exactly one task per wave owns the production file.
 
        **Provenance of class 2, corrected (TE v8 F-01).** Earlier revisions routed the four
        consumer-runtime artifacts to the coupled sweep on the ground that they "predate this branch".
-       They do not: `git ls-tree` at the merge-base `1efb9a3b` returns empty for each of the four, and
-       `git log --diff-filter=A` names `e3b9d5a3` — the same drift commit that landed the 14 `.bak`
-       blobs — as the adding commit for all four. Class 2 is therefore branch-introduced, exactly like
+       They do not. **The deciding measurement is `git ls-tree` at the merge-base `1efb9a3b`**, which
+       returns empty for each of the four: none of them exists in the tree this branch forked from,
+       so none predates the branch. `git log --diff-filter=A` corroborates — it names `e3b9d5a3`, the
+       same drift commit that landed the 14 `.bak` blobs — **but read it with a caveat** (PM v9 F-03):
+       for the two `.bundle.js` artifacts it prints *two* adding commits, the older `3991b4d5`
+       (2026-07-27) being an ancestor of the merge-base. Those two were added there, deleted in
+       `1fb6cbec` (2026-07-29), and re-added on this branch, so the log's earlier line is a
+       superseded add. A reader who runs that command and reads its last line would wrongly conclude
+       "pre-existing"; the `ls-tree`-at-merge-base leg is the one that decides. Class 2 is therefore branch-introduced, exactly like
        class 1. It is still **not closable by A6-00**, but for a different and narrower reason than
        provenance: every ignore rule that would cover these paths writes an L-2 grep term into tracked
        `.gitignore` (`.pdlc-drift-state.json` contains `pdlc-drift`; both bundles contain `.bundle.js`),
