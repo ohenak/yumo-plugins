@@ -120,6 +120,37 @@ document.
 
 ## Data Model
 
+**No type, enum, range or return-type drift.** Diffing every enumerated set TSPEC carries against
+upstream at HEAD produces no divergence and no unmarked internal variant:
+
+- **Config states** — four rows (§I.2, `TSPEC:464-469`) against FSPEC E-21/E-22/E-23/E-34 →
+  AT-32/AT-31/AT-32/AT-32. Unchanged bytes on both sides.
+- **Notice ids** — `NTC-MALFORMED`, `NTC-KEYTYPE`. Unchanged.
+- **Corpus outcomes and reason ids** — `RSN-SELF`, `RSN-UNREADABLE`, `RSN-UNLISTABLE` and the
+  per-document reason rows. The delta re-worded BR-15's *expected set* around them but changed no id
+  and no membership: `RSN-SELF` still excluded, `RSN-UNREADABLE` still a member because the failed
+  attempt is the read. TSPEC §D.6 and §T.5 match.
+- **`LEARNINGS_TARGET_DOCTYPES`** — the frozen six-element literal (`TSPEC:126-129`). This is the one
+  enumeration whose *upstream status* changed: at v0.10 it was TSPEC's own addition over BR-1; at
+  v0.12 the same six names are BR-1's second conjunct verbatim (REQ C-1's list). Set equality holds
+  in both directions, six for six.
+- **Report shape** — `present` predicate, `dispatches[]` rows, `orderKeys`, `corpusDiverged` (with
+  its `false`-never-`null` first-dispatch rule), optional `runMirror`. Untouched by the delta; still
+  permitted by REQ AC-3.2's "if carried".
+
+**One data-model-adjacent consequence of the delta is worth stating explicitly, because it is the
+thing the second conjunct buys the operator.** BR-1's `docType` conjunct is what makes the set in
+AC-1.2 a *set equality* rather than a containment: without it the set carrying material is a strict
+superset of what C-1 names, and `dispatches[]` acquires rows for a phase the product decided not to
+serve. TSPEC said this at approval (`TSPEC:152-155`: "without it AC-1.2's set equality fails against
+a strict superset"). Upstream now says it too. The report's row inventory and the product's scope
+boundary are, at HEAD, the same statement — which is what makes AC-1.2 mechanically checkable
+instead of documentary.
+
+**§A.5's ordering-key walk** (`orderKeys`, dispatch-1-through-dispatch-5, `RSN-UNLISTABLE` at
+dispatch 5) still matches FSPEC BR-9/BR-10 exactly. The delta left the per-dispatch locus alone. No
+key, no default, no bound moved.
+
 ## Test Strategy
 
 ## Open Questions
