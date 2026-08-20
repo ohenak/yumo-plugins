@@ -162,9 +162,17 @@ turn two seam calls into the array the pure functions consume.
 
 **Constraints that forced the shape.** REQ AC-6.1 (no live model calls in the verification of
 Groups 2–4) and C-7 (totality) are testability constraints stated upstream, not chosen here. Seam
-behaviour is fixed by the channels: `_git(argv)` returns `{ok, stdout, stderr}` and never throws on
-either channel, while `_readFile` returns `null` for an absent file and **may throw** on the runtime
-channel — so the shell, not the pure core, owns the `try`.
+behaviour is fixed by the channels, and the two channels do **not** agree, so the shell's guard is
+written to the weaker one. On the Node channel `defaultGit` (`orchestrate-dev.js`) wraps its
+`execFileSync` in `try` and converts a non-zero exit into `{ok: false, stdout, stderr}`, so it never
+throws. On the Claude Code channel `rtGit` (`pdlc/workflows/runtime-adapter.js`) awaits `RT.agent`
+with **no** `try` — unlike its siblings `rtReadChunk`, `rtReadProbe`, `rtHashFile` and `rtCliQuery`
+in the same file, all of which wrap the `await` — so a rejected host `agent()` call **rejects
+`rtGit`**. (Its docblock says "never throws"; the docblock describes `rtParseTransportReply`'s
+total behaviour on a reply that *arrives*, not the transport that delivers it.) `_readFile` likewise
+returns `null` for an absent file and **may throw** on the runtime channel. Therefore the shell, not
+the pure core, owns a `try` that covers **both** seam calls — enumeration as well as read — and a
+throw from either is converted to the same fail-open outcome the `{ok: false}` path produces.
 
 **Reversibility.** Easy. The split is internal to one module; collapsing it later costs only the
 tests written against the pure names.
