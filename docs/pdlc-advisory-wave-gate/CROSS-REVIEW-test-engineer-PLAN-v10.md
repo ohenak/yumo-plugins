@@ -63,3 +63,66 @@ dispatcher parses: `parsePlanTasks` returns **11 tasks**, `parsePlanOwnership` r
 `computeWaves` returns **7 waves** (`A6-00,A6-01,A6-04,A6-05 | A6-06,A6-08 | A6-10 |
 A6-12 | A6-14 | A6-18 | A6-21`), unchanged from round 9. The v1.8 table rejoin survived
 this round's prose edits.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | No findings this round. Both round-9 items closed on reproducible evidence; the changed bytes introduced no defect and contradict nothing in the repository at HEAD. One non-gating observation is recorded as a DEFERRED line below. | — |
+
+DEFERRED: the Overview's HEAD-drift note — now the sole owner of the residual figures — still prints `28` total / `10` class-3 documents "measured 2026-08-19", while the same-day re-measure gives `30` / `12`; the note's own "+1 per committed cross-review file" rule reconciles the gap, but a reader who trusts the date over the rule will still be surprised, so on the next touch of this document consider stating the class-3 count as `10 + one per cross-review file committed since` rather than as a dated integer.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | None. Nothing in the delta needs an author decision to be reviewable. |
+
+## Positive Observations
+
+- **The residual check now fails for the right reasons and passes for the right reasons.**
+  Round 9's shape could only be satisfied by freezing a set the pipeline is designed to
+  grow; the fix distinguishes the closed class from the open one and applies the strongest
+  oracle each can carry — set-equality where the enumeration is final, membership where it
+  is not. I confirmed both directions empirically rather than reading them: class 2 is
+  exactly four today, and class 3 already moved by two, so the round-9 shape would have
+  halted the ship boundary on this very branch within one round of being written.
+- **The class-2 enumeration survived a check the document did not claim.** I looked for a
+  fifth `.claude/workflows/` residual and found `.pdlc-sync-manifest.json` tracked in the
+  same directory — but it carries no L-2 term, so it correctly falls outside. The
+  enumeration is right for a reason narrower than "everything in that directory", and it
+  happens to be the right reason.
+- **The provenance note now names which measurement decides, not just which measurements
+  agree.** The v1.8 text stated two legs as if they concurred; they do not fully — one of
+  them prints a superseded add whose last line reads "pre-existing". Naming
+  `ls-tree`-at-merge-base as deciding and demoting the log to corroborating-with-a-caveat
+  is the difference between a claim a reader can re-derive and one they can re-derive
+  *wrongly*. Both legs reproduce exactly as documented, including the ancestor relation.
+- **De-duplicating the figures removed a stale-literal site rather than refreshing it.**
+  The DoD could have been updated to `30`; instead it stopped carrying a number at all and
+  points at the owner. That is the fix that stays correct next round — and this round
+  already proves the point, since `28` would have been wrong again by the time the DoD was
+  read.
+- **The frozen surface stayed frozen, and I checked mechanically rather than trusting the
+  changelog.** No task row, batch column, dependency edge or ownership cell moved, and the
+  shipped parser still yields 11 tasks, 11 manifest rows, a passing contract and the same
+  7 waves over the edited document.
+
+## Recommendation
+
+**Approved**
+
+Round 9's Medium and Low both closed, and closed in the stronger of the two available
+ways: the residual check was re-shaped to match its governing rule rather than patched,
+and the duplicated figures were removed rather than refreshed. Every factual claim in the
+changed bytes reproduces against HEAD — the four-member class-2 enumeration, the
+merge-base `ls-tree` result, the two-adding-commits caveat and its ancestor relation, and
+the untouched task table's parse. Nothing in the delta is a defect, and nothing in the
+document contradicts the repository. The one residual imprecision is a dated integer in
+inherited bytes that the document's own growth rule already reconciles; it is recorded as
+DEFERRED and does not gate.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
