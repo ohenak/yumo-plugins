@@ -428,9 +428,23 @@ DC-01's closed-catalogue rule for the two notices.
 **Reversibility.** Easy — one conjunct — but it is a **product** lever, not an engineering one:
 changing it means changing REQ §4.1's declared default, not the parser.
 
-**Re-evaluation triggers.** REQ changes the declared default; operators report unwanted injection in
-repositories that never opted in; a future feature introduces the top-level-key registry that would
-make a misspelt section detectable.
+**The divergence from TSPEC is a recorded erratum, not a silent departure.** TSPEC v0.5 still builds
+the injector on `present && config.enabled && !sectionMalformed` (§I.3) and still carries `OQ.2` and
+`ERR-4` open, because it was authored while REQ v0.7 contradicted itself. REQ v0.9 settled the
+question and this entry follows the settled decision, so TSPEC and DECISIONS now disagree in writing.
+That matters beyond bookkeeping: **PROPERTIES and PLAN authors read TSPEC, not this document**, so an
+`AT-31`/`AT-32` written against §I.3 would be red against the correct implementation. The divergence
+is therefore raised as **DEC-ERR-01 against TSPEC** (see the erratum item emitted with this
+revision), asking TSPEC to close `OQ.2`, retire `ERR-4` as settled upstream, drop the `present` and
+`sectionMalformed` conjuncts from §I.3, and align `LEARNINGS_DEFAULTS` with REQ §4.1's bare `true`.
+Until TSPEC lands that edit, `D-O-5` is the standing protection on the IMPL side and this paragraph
+is the standing notice on the authoring side; neither substitutes for the TSPEC edit itself.
+
+**Re-evaluation triggers.** *Mechanically detected* — REQ changes the declared default (the
+five-state configuration table is transcribed from FSPEC `BR-14`, so a `BR-14` change reds the
+transcription). *Review-time judgement* — operators report unwanted injection in repositories that
+never opted in; a future feature introduces the top-level-key registry that would make a misspelt
+section detectable.
 
 ## DEC-LI-08: The injection is bounded by static caps only; there is no dynamic prompt budget
 
@@ -456,8 +470,9 @@ bytes, document count — applied unconditionally, whatever else the prompt carr
 - **Refuse to compose when the prompt exceeds a threshold** — rejected: it converts an advisory
   feature into a run-halting one, contradicting fail-open (G-4).
 
-**Constraints that forced the shape.** REQ §4.1 owns the threshold values (DC-18); REQ has not
-decided a displacement order; determinism (`AC-4.2`) forbids selection depending on unrelated
+**Constraints that forced the shape.** REQ §4.1 owns the threshold values — a layer boundary
+(`DEC-LAYER-01`), not `DC-18`, which is an oracle-surface rule about glob-ranged guards and says
+nothing about who owns tunable numbers; REQ has not decided a displacement order; determinism (`AC-4.2`) forbids selection depending on unrelated
 prompt content.
 
 **Stated honestly.** C-8's second half is satisfied in the **weak** sense — the injection is bounded
