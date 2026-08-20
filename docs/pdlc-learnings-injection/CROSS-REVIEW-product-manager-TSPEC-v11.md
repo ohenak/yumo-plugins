@@ -159,7 +159,29 @@ lens owns the depth question; from the product lens, traceability is intact.
 
 ## Open Questions
 
-_(pending)_
+The delta rewrites §Open Questions substantially — two errata closed, one de-anchored. Each closure
+was checked against upstream at HEAD rather than taken on the note's word.
+
+| Erratum | State after delta | Verified |
+|---|---|---|
+| **ERR-3** (FSPEC BR-15) | CLOSED, "resolved by FSPEC v0.11" | **Correct.** BR-15 at HEAD states the enumeration "contributes **no** member" on exactly the ground TSPEC raised (it opens no file under `docs/`), and states the comparison as sets. AT-33 tracks it. Nothing in the TSPEC needed to change, as the entry says |
+| **ERR-7** (FSPEC BR-1) | CLOSED, "resolved by FSPEC v0.11 and v0.12" | **Correct.** BR-1's two-conjunct rule, the load-bearing second conjunct, the named Phase CR exclusion, AT-02's revert-reds fixture, and the BR-11/AT-03/AT-29/D-2 complement are all present at HEAD. The entry's history is accurate, including that the divergence was real when raised |
+| **ERR-2** (FSPEC E-30 / AT-02, land-proof retry) | Still OPEN, citation de-anchored | **Correctly still open.** The retry dispatch exists at HEAD inside `erratumRound()` with `dispatchKind: "authoring"`, and FSPEC E-30 still names "an erratum dispatch" in the singular with no AT-02 fixture for the second. The de-anchoring is well done: the citation now carries the enclosing symbol *and* the retry prompt's opening quote ("Your previous edit to this ${target} did not land the following expected token"), which is a stable identifier — I verified it matches the source verbatim |
+| **ERR-4** (REQ G-1 / AC-1.1 vs AC-5.1a) | CLOSED (pre-existing) | Unchanged by this delta; REQ v0.9 still carries the G-1 resolution |
+
+**Closing an erratum inside the TSPEC is the right locus here.** Each closure records what upstream
+changed and asserts that nothing in this document moves as a consequence — which is the claim I can
+check, and did. No closure quietly imported a product decision into the TSPEC.
+
+**Header re-grounding is accurate.** The Upstream row now reads FSPEC v0.12 / REQ v0.9; at HEAD
+FSPEC's version row is 0.12 (2026-08-20) and REQ's is 0.9 (2026-08-19). The v0.7 erratum note
+describes the delta truthfully, including "No behavioural change" — which the diff bears out.
+
+**One residual question, not a finding:** the Cross-Reviews row in the header still enumerates
+rounds only through v6 for both reviewers, while this is round v11. FSPEC solved the same problem by
+replacing the enumeration with "every round present on branch, not hand-enumerated". That is
+bookkeeping the TSPEC could adopt at its next natural edit; it makes no claim false, so I am not
+filing it.
 
 ## Positive Observations
 
