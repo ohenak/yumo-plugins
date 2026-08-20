@@ -166,6 +166,33 @@ computed with framing charged, it is now at odds with FSPEC as well. Re-word, do
 
 ## Fixtures
 
+Fixtures are the other place a cascade bites, because a fixture freezes an upstream number into the
+suite. §F's inventory survives this delta intact, with one addition owed.
+
+| Fixture | Leans on changed FSPEC text? | Verdict |
+|---|---|---|
+| `COUNT-BINDING` (3/5 split) | No — count bound only | Unaffected |
+| `BYTES-BINDING` (8 docs × 7,000 **injectable** bytes; literal 3 contribute / 5 `RSN-BYTES` / 0 `RSN-COUNT`) | Yes — BR-6 byte basis | **Unaffected.** Stated over injectable (material) bytes, which is now precisely FSPEC's basis. Had PROPERTIES followed the pre-round FSPEC and charged framing, this literal split would have had to be recomputed |
+| `MULTIBYTE-BOUND` (material straddling `maxBytesPerDocument` mid-codepoint) | Yes — per-document cut | Unaffected; the character-safe cut is orthogonal to the basis |
+| `NO-MATERIAL` (one document with all five BR-6 sections absent, Approval Record present) | Yes — BR-9's widened entry | Unaffected but now **partial**: it exercises the "carries no section" arm of `RSN-NO-MATERIAL` and not the "bound is zero admits none" arm (F-04) |
+| `GATE-GRAMMAR` (AT-29), corpus/self/unreadable fixtures | No | Unaffected |
+| §F.3 real-corpus measurement — 9 of 9 documents carry the five numbered headings, 0 of 9 carry a bare title | F-O-1 ownership | Measurement unaffected (corpus unchanged, re-measured at HEAD in v2); the surrounding attribution sentence is stale (F-03) |
+| §F.4 seam doubles (`fakeFs`, `fakeGit`, `_recordDocType`, `_readFile`) | No | Unaffected |
+
+**The one fixture owed.** Closing F-01 needs a `maxBytesPerDocument: 0` configuration case rather
+than a new corpus fixture: it reuses any existing multi-document corpus fixture and sets the third
+threshold to zero, then asserts the enabled empty-selection shape plus a `RSN-NO-MATERIAL` row for
+**every** corpus document with the contributing count at zero and no slot consumed. PROPERTIES
+already sized this itself — "costs one case in `learningsConfig.test.js`" — and §C.3 already maps
+that suite to LI-12 (red) / LI-21 (green), so **no PLAN task is added and PLAN needs no re-approval**
+to absorb it. That is why this cascade does not need to route back through the plan.
+
+**What the fixtures do not need.** Because the byte basis moved toward PROPERTIES rather than away
+from it, no hand-computed literal in §F changes, and PLAN LI-08's expected-red ledger row keeps its
+current arithmetic. A cascade that had gone the other way would have invalidated `PROP-BOUND-07`,
+`PROP-BLOCK-02`, the `BYTES-BINDING` literals and LI-08's row together — worth recording as the
+counterfactual that makes this round cheap.
+
 ## Questions
 
 ## Positive Observations
