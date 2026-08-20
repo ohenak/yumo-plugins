@@ -176,7 +176,41 @@ noise.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01: was the union-for-E-5 scope a deliberate design (an E-5 label is not trusted, only the paths are, and `groupPromotedPaths` is the real promotion detector) or an artefact of narrowing only the E-6 branch? If deliberate, TSPEC §3.4 should say so and the record's promotion rows should key off `groupPromotedPaths` rather than off `capturedPromotionHolds`, so the record and the branch agree. |
+| Q-02 | F-02/Q-03 carried from v1: does Phase CR ship with AC-5.1's ignored-path arm pending, or does it hold for OQ-7's erratum? Unchanged since v1; the decision is the orchestrator's, and I am not treating it as a defect of this implementation either way. |
+| Q-03 | F-03: is a `documentOracles.test.js` that is red for local-cache and doc-corpus reasons acceptable as the Phase CR exit state, or should the oracle's tree walk be narrowed to tracked files before this feature's PR? The answer belongs to whichever feature owns that oracle, not to this one. |
+
 ## Positive Observations
+
+- **The `annotate` hook is the right shape for the product problem.** v1's Q-02 asked whether AC-6.1
+  and AC-6.2's extra fields would widen the tier's renderers for everyone or arrive through an
+  A6-only channel. The answer shipped is the good one: an optional, pure, total SeamOps member
+  (`orchestrate-dev.js:3238`, driver at `:4039`), renderers that emit only the fields present, and
+  no `if (seam === "A6")` anywhere in the driver — so A6's criteria are served without A1–A5's
+  operator-visible bytes moving, and that invariance is asserted by set-equality rather than assumed.
+- **The prohibition catalogue became load-bearing instead of decorative.** `A6_PROHIBITIONS` now
+  drives a subtraction (`a6ProhibitedPaths`, `:2000`) applied at both scope-writing sites, and the
+  comment block at `:1966-1988` states, per letter, why two are path-shaped and two are structural.
+  Deleting a letter now changes a refusal, which is exactly what "dead config" was failing to be.
+- **The AC-1.5 arms count the right surface.** `inapplicabilityStatements`
+  (`advisoryWaveGateMain.test.js:182-187`) filters the whole emitted log with no authorship filter
+  and both carriers included, and every arm asserts an exact cardinality — including zero. A
+  cardinality claim finally has a falsifier on both sides.
+- **The capture-failure path was not left as the exception.** It is the one disposition A6 builds
+  outside the driver, and the delta gave it the same `wave`/`rootCause` annotations (`:3427-3429`)
+  plus the failing git verb (`:3443-3446`). That is a reviewer-invisible corner treated as an
+  operator-visible one, which is the standard AC-6.2 was asking for.
+- **The E-6 arms are attributable.** Each refusal arm varies exactly one conjunct's input on a
+  shared fixture, and the paired positive is the same fixture with all three holding — so a refusal
+  cannot be explained by fixture drift, and the positive's record assertions (`| Wave | 1 |`,
+  `| Root cause | plan-ordering-defect |`, `| Promotes task | T2 |`) are read off the file the
+  production assembler wrote.
+- **The ledger-ordering change was made for a stated reason and pinned.** Moving `invocations.push`
+  before the command (`:3257-3266`) aligns `verifyGate` with `runWaveGateSequence`, and the only
+  observation that can tell them apart — a throwing transport — has its own test
+  (`advisoryWaveGate.test.js:2523+`). AC-4.4's sequence oracle keeps meaning what it says.
 
 ## Recommendation
 
