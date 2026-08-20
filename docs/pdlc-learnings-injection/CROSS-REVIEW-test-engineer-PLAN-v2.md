@@ -96,7 +96,60 @@ and is now the one oracle with an explicit falsification proof instead.
 
 ## Dependencies
 
-_pending_
+**Batch-DAG re-derivation, redone from scratch over all 23 rows.** The task table gained a row and
+three edges, so I did not trust the v1 derivation — I recomputed `batch == max(dep batch) + 1` for
+every row from its declared `Deps`:
+
+| Task | Deps (batch) | Derived | Column | |
+|---|---|---|---|---|
+| LI-01 | — | 1 | 1 | ✅ |
+| LI-02, LI-03, LI-13 | LI-01 (1) | 2 | 2 | ✅ |
+| LI-04 | LI-03 (2) | 3 | 3 | ✅ |
+| LI-05 | LI-02 (2), LI-03 (2) | 3 | 3 | ✅ |
+| LI-07, LI-08, LI-09 | LI-02 (2) | 3 | 3 | ✅ |
+| LI-06 | LI-04 (3), LI-05 (3) | 4 | 4 | ✅ |
+| LI-10, LI-11, LI-12 | LI-02 (2), LI-06 (4) | 5 | 5 | ✅ |
+| **LI-23** | LI-02 (2), LI-06 (4) | 5 | 5 | ✅ |
+| LI-14 | LI-07…LI-12 (max 5) | 6 | 6 | ✅ |
+| LI-15 | LI-06 (4), LI-13 (2), LI-14 (6) | 7 | 7 | ✅ |
+| LI-16 | LI-15 (7), LI-07 (3) | 8 | 8 | ✅ |
+| LI-17 | LI-16 (8), LI-08 (3) | 9 | 9 | ✅ |
+| LI-18 | LI-17 (9), LI-09 (3) | 10 | 10 | ✅ |
+| **LI-19** | LI-18 (10), LI-10 (5), **LI-07 (3)** | 11 | 11 | ✅ |
+| LI-20 | LI-19 (11), LI-11 (5) | 12 | 12 | ✅ |
+| **LI-21** | LI-20 (12), LI-12 (5), **LI-23 (5)** | 13 | 13 | ✅ |
+| LI-22 | LI-21 (13) | 14 | 14 | ✅ |
+
+Twenty-three rows, ids unique, every dependency resolves to a declared row, graph acyclic, and
+every derived batch equals its column. The three added edges are all *slack* edges — none of them
+moves a batch — which is the right shape: they exist to make an obligation structural, not to
+reorder work.
+
+**The two new red-before-green edges are correctly directed.** `LI-19 → LI-07` exists because LI-19
+greens clauses that live in LI-07's suite; without it, a green would be attributed to a task that
+could run before the red exists. `LI-21 → LI-23` exists because LI-21 is the last task after which
+all twelve arms are reachable — I checked that against the twelve-arm table: the last arms to
+become reachable are AT-32's two notice arms, which the table itself attributes to `LI-12 / LI-21`.
+The edge is therefore not merely conservative, it is exact.
+
+**`LI-15 → LI-14` is correctly re-labelled as ordering, not red-before-green.** This was the second
+half of my F-02, and the edge-rationale table now says so in the row itself, with the reason (the
+suite map is the closure check and must be authored before the source lane starts moving names).
+
+**One edge rationale does not survive the new row it was extended to cover.** The row
+`LI-10, LI-11, LI-12, LI-23 → LI-06 | data | the L3 byte-identity claims (AT-23, AT-24, AT-31)
+compare against committed baseline prompts` had `LI-23` appended to its subject list without its
+justification being extended: LI-23 carries **no** FSPEC AT and makes no byte-identity claim — its
+three tests are `LI-T-ARMS-1…3` over reason-code sets. The edge is harmless (LI-23 sits in batch 5
+either way, alongside the suites whose fixtures it shares) but the stated reason is not its reason.
+Filed as F-06, Low. See F-06 for the wording that would make it true.
+
+**Batch-safety rule 2 still holds after the file-ownership rewrite.** The manifest is now one row
+per (file, owning task) — 24 rows over 17 distinct files, ten production rows over three files and
+fourteen test rows over fourteen files. I counted the rows and the distinct paths in both tables and
+both figures reconcile, which closes F-11. Every one of the 23 tasks owns at least one row (LI-01
+now does, which was F-05; LI-06 owns two, its guard and its guarded subtree). No two rows share a
+batch and a file.
 
 ## Verification
 
