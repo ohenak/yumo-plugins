@@ -182,6 +182,81 @@ re-key it is the *keyed set* that decides whether a fifth site is seen.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | LI-01's re-keyed P-2a assertion is a set equality **over keys**, and the key is not unique-by-construction: a fifth authoring dispatch that shares a pair with an existing site (a second inline-template retry inside `erratumRound` is the plausible one) collapses into an existing member and the set still equals four. H-1's trigger — "a fifth `dispatchKind: \"authoring\"` site exists" — is then not detected at batch 1. Add a cardinality conjunct: the number of authoring dispatch sites is **4**, alongside the keyed set equality | LI-01 (P-2a); H-1 |
+| F-02 | Low | Local | The named key's second component, "prompt-source symbol", is not readable at the dispatch expression for two of the four sites: `converge`'s slot is a conditional over the local `basePrompt`, bound from `creatorPrompt(…)` one line earlier (`orchestrate-dev.js:13656`, dispatch at `:13657`), and `reviewLoop` passes `optPrompt`, bound from `optimizerPrompt(…)` at `:7660` (dispatch at `:7663`). The row does not say whether the test resolves the binding or keys on the slot expression as written | LI-01 (P-2a) |
+| F-03 | Low | Local | §Test-name namespacing's enumeration of TSPEC-local names (`LI-T-PIN-1`, `LI-T-RETRY-1…3`, `LI-T-IGNORE`, `LI-T-WORKTREE`, `LI-T-SUITEMAP`) omits `LI-T-ARMS-1…3`, which LI-23's row names and DoD 3 relies on. The new universal rule three lines below makes the list illustrative, but it reads as a catalogue next to a set-equality gate | §Test-name namespacing |
+
+### F-01 (Medium) — the re-key made the equality injective, not count-preserving
+
+The re-key is right and the old key was wrong: `erratumAuthorPrompt`'s dispatch (`:12861`) and the
+land-proof retry (`:12955`) really do share `(erratumRound, argument position)`, and the row's
+supporting anatomy is exact (`missingAgainst` opens `:12919`, closes `:12928`; the retry sits in the
+`if (stillMissing.length > 0)` block at `:12931`). I verified the four new pairs are distinct at
+HEAD. Nothing about the fix is wrong.
+
+What the round changed without saying so is the *shape* of the oracle. A set equality over raw sites
+is count-preserving by construction — you cannot add a site without adding a member. A set equality
+over **keys** is not: two sites sharing a key contribute one member. The row's own history is the
+evidence that key collisions happen here — PM F-09 exists because two of the four sites already
+collide under the obvious key. So the failure mode is not hypothetical:
+
+> A future change adds a second bounded retry inside `erratumRound`, dispatching with another inline
+> template. Under `(enclosing named function, prompt-source symbol)` it keys as
+> `(erratumRound, inline template)` — the pair the land-proof retry already occupies. The observed
+> key set is still the four expected pairs. `learningsPremises.test.js` stays green. H-1's trigger
+> fires nowhere, and the fifth authoring site reaches LI-11's composition-site equality at batch 12
+> — eleven batches after the point this row exists to catch it at.
+
+The row anticipates the general risk ("Any injective structural key serves; what may not survive is
+a key two of the four sites share") but states it as a constraint on *choosing* the key today, not
+as an assertion the suite makes tomorrow. Injectivity measured once at batch 1 is a premise; H-1
+needs it to be an oracle, and the same row's whole argument for asserting P-2a at batch 1 rather
+than batch 12 is that a premise a human measured once is exactly what a standing test replaces.
+
+**What to change:** one clause in LI-01's row — *"and the site **count** is asserted equal to 4
+alongside the key set, so a fifth site that happens to share a key with an existing one reds here
+too; the key set equality names *which* site moved, the count is what guarantees the gate sees a
+fifth site at all"*. No new task, no new fixture, no batch change: the parse that enumerates the
+sites already produces the list the count is taken over. (Equivalently: assert the enumerated site
+list as a 4-element sequence, which is count-preserving and keyed in one assertion.)
+
+### F-02 (Low) — the named key needs a binding hop at half its sites
+
+The four pairs the row enumerates are written as if the prompt symbol were visible at the dispatch.
+At two sites it is not:
+
+| Site | What a parse of the dispatch expression sees | Where the named symbol lives |
+|---|---|---|
+| `:12861` | `basePrompt: erratumAuthorPrompt({…})` | at the slot ✅ |
+| `:12955` | `basePrompt:` a bare template literal | no symbol — the row calls it "the land-proof-retry inline template" |
+| `:13657` | `basePrompt: creatorPromptExtra ? …: basePrompt` | `const basePrompt = creatorPrompt(phaseId, …)` at `:13656` |
+| `:7663` | `runWrapped(optimizer, optPrompt, doc, "authoring", …)` | `const optPrompt = optimizerPrompt(…)` at `:7660` |
+
+Nothing here breaks: the four slot expressions as written (`erratumAuthorPrompt(…)` call, template
+literal, conditional over `basePrompt`, identifier `optPrompt`) are themselves four distinct values,
+so an implementer who keys on the slot expression head gets an injective key without resolving any
+binding. But that is a second, different key from the one the row names, and the row does not say
+which is intended — so the implementer either writes a local-binding resolver (a real parser, at
+batch 1, for a premise suite that is supposed to be cheap) or silently substitutes a key the PLAN
+did not sanction.
+
+**Fix:** one parenthetical — *"read the prompt source from the dispatch's prompt slot as written
+(call callee, template literal, or bound identifier); at `converge` and `reviewLoop` that identifier
+is `basePrompt` / `optPrompt`, whose binding names `creatorPrompt` / `optimizerPrompt` one line
+above — either reading is injective, and the suite need not resolve the binding"*.
+
+### F-03 (Low) — one enumeration did not pick up `LI-T-ARMS-1…3`
+
+§Test-name namespacing's list of TSPEC-local names predates LI-23 and was not extended when the arm
+inventory's three tests were named. The new universal paragraph makes the rule sound regardless, and
+`LI-T-SUITEMAP` enforces the partition mechanically, so nothing is unenforced — this is a
+readability finding, and I file it only because the surrounding material is now a gate input and an
+incomplete-looking enumeration next to a set-equality rule invites a reader to treat the list as the
+contract. **Fix:** add `LI-T-ARMS-1…3` to the list, or replace the list with "…and every other test
+this feature adds, per the rule below".
+
 ## Questions
 
 ## Positive Observations
