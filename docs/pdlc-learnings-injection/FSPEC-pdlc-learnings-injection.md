@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6,7,8,9,10,11}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` — every round present on this branch, not hand-enumerated |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.11 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.12 | 2026-08-20 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -57,6 +57,15 @@ depends-on: []
 > already decided. BR-15's expected read set drops the corpus enumeration, which opens no file
 > under `docs/` and so contributes no member to that instrument, and states its membership as an
 > enumerable equality. AT-02 and AT-33 track those two corrections. No other change.
+
+> **v0.12 erratum (Phase P items; re-grounded on REQ v0.9 at HEAD, unchanged — no upstream
+> decision to absorb).** BR-1's complement is carried through: BR-11, AT-03 and AT-29 now quantify
+> over dispatches **outside BR-1's rule** rather than over "non-authoring" ones, so the
+> authoring-classified dispatch with no C-1 target document is claimed by a rule and covered by a
+> test. D-2 asks BR-1's two-conjunct question and names that branch; AT-02 gains the fixture that
+> reds when the second conjunct is reverted. The Overview and A-2 no longer restate one conjunct
+> when deferring to BR-1. BR-15's expected set is stated as a set, not a count. The header
+> Cross-Reviews row stops hand-enumerating rounds. No behavioural change.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
