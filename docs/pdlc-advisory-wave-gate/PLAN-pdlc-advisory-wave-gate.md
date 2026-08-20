@@ -30,12 +30,19 @@ sequence, and either resolves the wave or restores the snapshot byte-identically
 halt on its pre-A6 literal with a diagnosis attached.
 
 **Where it lands.** One production file: `pdlc/workflows/orchestrate-dev.js` (TSPEC §1.2 — the
-workflow runtime loads one bundled artifact, so every advisory-tier symbol lives in one module).
-Eleven test-side files under `pdlc/workflows/__tests__`, **all eleven of which exist at HEAD**:
+workflow runtime loads one bundled artifact, so every advisory-tier symbol lives in one module),
+plus one repo-root file: `.gitignore`, which A6-00 edits so the untracked `.pdlc-backups/` directory
+— a live write target of the workflow sync path — cannot re-dirty the tree at a later wave boundary
+(PM v8 F-04). It is a tree-wide edit, not an advisory-tier one, which is why it is called out here
+rather than left to the manifest alone.
+**Twelve** test-side files under `pdlc/workflows/__tests__`, **all twelve of which exist at HEAD**
+(re-counted from the manifest this round — PM v8 F-02):
 `advisoryWaveGate.test.js`, called "the one new file (verified absent today)" through v1.3, was
 authored early and landed in `e3b9d5a3`; it carries A6-00's pre-flight gate and is the one advisory
-suite **green** at HEAD. The manifest's twelfth path under that directory is the shared fixture
-`__tests__/helpers/advisoryDoubles.js`, not a `*.test.js` file. One second-channel pair
+suite **green** at HEAD. The twelfth is `documentOracles.test.js`, which joined A6-00's owned set in
+v1.7 for the T15 count-literal bump — it is not an advisory suite, but this feature edits it, so it
+belongs in the count the manifest has to reconcile with. The manifest's **thirteenth** path under
+that directory is the shared fixture `__tests__/helpers/advisoryDoubles.js`, not a `*.test.js` file. One second-channel pair
 (`.claude/pdlc.config.example.json`, `pdlc/engine/__tests__/advisory-config-example.test.js`).
 **Both members of that pair exist at HEAD**: `git show --name-status e3b9d5a3` lists *two* added
 test files, `advisoryWaveGate.test.js` **and** `advisory-config-example.test.js`, so the drift
