@@ -166,6 +166,58 @@ absent closure test over `Object.keys(ruleInputs)`' own key set. Neither is touc
 
 ## Test Strategy
 
+The AT closure still balances: FSPEC v0.12 added no AT id and retired none, so TSPEC's
+2 + 9 + 3 + 3 + 6 + 12 = 35 partition still maps onto the upstream set, and the D-2 → AT-02/AT-03
+traceability row survives (widened in prose — "all three branches, the authoring-classified non-C-1
+target included" — but the same pair of ids). The `RETRY-ITERATION` case is still correctly
+declared outside the 35.
+
+**Where the round bites: AT-02's fixture list is now under-transcribed.** Upstream AT-02 at v0.12
+enumerates **four** run shapes:
+
+> …a run with no DECISIONS phase, a run whose Phase R has no creator, a run with five optimizer
+> rounds, **and a run containing an authoring-classified dispatch whose target is none of the six
+> C-1 document types — so reverting BR-1's second conjunct reds this test.**
+
+§T.6's AT-02 paragraph still says "Three run shapes are fixtured" and lists the first three, then
+adds TSPEC's own fourth (the erratum land-proof retry, ERR-2). The new upstream shape — the one
+carrying the mutation obligation — is not in that list. This is a Medium, not a High, for one
+reason: the suite as a whole is **not** blind to the mutation. §A.2's `learningsDispatchSet.test.js`
+samples `_recordDocType` on **both arms of `injectHere`** over a full scripted run that includes
+Phase CR's `docType: null` optimizer, and asserts set equality against the hand-transcribed
+literal; reverting the second conjunct reds it, and §A.1's "its prompt is byte-identical to the
+disabled run's" claim for the Phase CR round is exercised by the AT-03/AT-29 baseline comparison.
+So the falsifying test exists — it is simply owned by a different test file than the AT upstream
+now attaches it to. Left as-is, a PLAN author transcribing §T.6 writes AT-02 with three shapes and
+no mutation-sensitivity fixture, and the AT-02 row in the PLAN's traceability table will not honour
+its own AT text. Repair: add the fourth shape to §T.6's AT-02 paragraph and state which file owns
+the mutation check (F-01, Medium, `delta`, local).
+
+Re-checked and holding, round over round:
+
+- **Per-dispatch oracles survive.** §T.2's split — per-dispatch `orderKeys` set equality on
+  `dispatches[i]`, run-level set equality over `Object.keys(ruleInputs.thresholds)` — still matches
+  BR-10 word for word. Untouched by v0.11/v0.12.
+- **`DIVERGENT-CORPUS` still asserts on the per-dispatch locus only**, and BR-9/BR-10's mirror
+  wording is unmoved, so the "assert nothing about `runMirror`" instruction is still correct
+  against upstream.
+- **Positive-conjunct discipline holds.** AT-32's positive-presence conjunct, AT-30's "rows present
+  and empty, **not** the absent key of a disabled run", and the `DIVERGENT-CORPUS` exact-status +
+  named-reason assertions are all intact upstream and mirrored in TSPEC. No absence-only oracle was
+  introduced by this round; BR-15's own framing ("a positive membership claim, not an absence-only
+  one") is unchanged.
+- **Byte-identity quantifier.** AT-03/AT-29 now range over "every dispatch prompt outside BR-1's
+  rule". §T.3's baseline machinery is quantifier-agnostic — it records every dispatch prompt of
+  every fixture case at pre-feature HEAD — so the widened quantifier costs no new baseline capture;
+  the widening is in what the comparison loop iterates over, not in what was captured. Good news,
+  and worth stating explicitly so PLAN does not re-open §T.3 for it.
+- **Property-based coverage.** Unchanged: ordering/selection and `extractInjectableMaterial`
+  remain the parameterisable components, T-O-6 still routes the generator obligation to PROPERTIES,
+  and nothing upstream withdrew the input space those strategies range over.
+- **Mutation sensitivity.** Upstream has now written a mutation obligation into an AT text itself
+  ("reverting BR-1's second conjunct reds this test"). That is the standard this review has been
+  asking for, and the only gap is TSPEC's transcription of it (F-01).
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
