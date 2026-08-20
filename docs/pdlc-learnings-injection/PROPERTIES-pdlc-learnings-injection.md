@@ -603,6 +603,70 @@ uncovered new region would not move it. PROP-FAILOPEN-01 **is** the coverage obl
 
 ## Fixtures
 
+All fixtures live under `pdlc/workflows/__tests__/`. Corpus fixtures are **materialised into a
+per-test temporary directory** by `helpers/learningsFixtures.js` and removed in `afterEach`; none are
+committed as loose LEARNINGS documents inside `docs/`, because a committed `docs/**/LEARNINGS-*.md`
+would be enumerated by the real `LEARNINGS_CORPUS_ARGV` glob in every other test and would join the
+repository's own corpus.
+
+### F.1 Corpus case fixtures (`helpers/learningsFixtures.js`)
+
+| Case id | Shape | Defeats |
+|---|---|---|
+| `DISCARDED-NESTED` | `docs/discarded/some-feature/LEARNINGS-some-feature.md` | a glob that excludes discarded documents only at one nesting depth |
+| `DISCARDED-DIRECT` | `docs/discarded/LEARNINGS-x.md` — the **direct** child, the positive control paired with the row above | an exclusion written against the nested path shape alone |
+| `COMPLETED-MIXED` | two `docs/completed/{f}/LEARNINGS-{f}.md` plus two `docs/{f}/LEARNINGS-{f}.md` | a catalogue that enumerates only the live tree, or only the completed tree |
+| `COUNT-BINDING` | 8 documents × one 200-byte Cross-Feature Patterns section | the `RSN-COUNT` precedence problem of §O.7 — byte cuts binding first |
+| `BYTES-BINDING` | 2 documents, the second's material straddling `maxTotalBytes` | a whole-document drop where a per-document bound was specified, and back-fill |
+| `DIVERGENT-CORPUS` | 4 dispatches, dispatch 3 alone enumerating unlistable | `corpusOutcome` recorded run-wide instead of per dispatch; and the healthy `null` |
+| `RETRY-ITERATION` | one dispatch driven to a second `for(;;)` iteration | per-iteration re-selection (PROP-DISPATCH-04) |
+| `MALFORMED-CONFIG` | `learningsInjection` present but not an object | `NTC-MALFORMED` conflated with disablement |
+| `KEYTYPE-CONFIG` | `maxDocuments: "5"` beside two valid numbers | a wrong-typed key silently coerced or silently disabling |
+| `NO-MATERIAL` | one document with all five BR-6 sections **absent** and an Approval Record present | `RSN-NO-MATERIAL` implemented as "document empty" |
+| `GATE-GRAMMAR` (AT-29) | a LEARNINGS document whose material carries **line-initial** `FINDING:`, `ERRATUM:` and `VERDICT:` lines | PROP-ISOLATE-01 vacuity — contamination must be *possible* for non-contamination to mean anything |
+| `MULTIBYTE-BOUND` | material straddling `maxBytesPerDocument` mid-codepoint | a naive `slice` producing a replacement character |
+| `SUPPLEMENTARY-PATHS` | two paths equal in `orderKey`, differing above U+FFFF | JS code-unit comparison masquerading as byte order (M-7) |
+
+Every fixture's expected values are **hand-transcribed literals** in the test file, computed from the
+fixture's declared content, never re-derived at assertion time by calling the function under test.
+
+### F.2 Byte-identity baseline (`__tests__/fixtures/learnings-baseline/`)
+
+`{caseId}/{dispatchIndex}.txt` holds prompts captured from the **merge-base checkout** of
+`orchestrate-dev.js`, driven by branch-side harness code in a `git worktree` at
+`.baseline-worktree`. `MANIFEST.json` records, per file, the capture commit (the merge-base SHA), the
+case id, the dispatch index, the `docType`, and a SHA-256 of the file's bytes — hand-transcribed at
+capture time and re-verified by PROP-META-04, which reds if a retained digest changes.
+
+`.baseline-worktree` is **not** ignored by `.gitignore` (`git check-ignore -v .baseline-worktree` exits
+1). This is deliberate and is why PROP-META-03 exists: the worktree must be removed with
+`git worktree remove --force` inside a `finally`, so that a throw between materialise and remove leaves
+the path absent and `git status --porcelain` empty. An ignore entry would have hidden the leak instead
+of preventing it, and `document-oracles.mjs`'s `WALK_SKIP_DIRS` (`.git`, `node_modules` only) walks the
+whole tree, so a stray worktree would reach the document oracles in CI.
+
+### F.3 Fixture strings match normative sources verbatim
+
+Three families of literal are transcribed, not paraphrased:
+
+- **The C-4 block delimiters and preamble** — transcribed from FSPEC §C.4's normative text, asserted by
+  byte-equality (PROP-BLOCK-01), whitespace-normalised only where the spec itself wraps.
+- **The five BR-6 section headings** — `Cross-Feature Patterns`, `Non-Convergences`,
+  `Rejected Proposals`, `Process Learnings`, `Open Items` — transcribed from the harvest-learnings
+  skill's "LEARNINGS Format" section, the source the real corpus is written against. All 9 HEAD
+  corpus documents were checked to carry them in this spelling.
+- **The three frozen catalogues** — `LEARNINGS_REJECT_REASONS`, `LEARNINGS_CORPUS_OUTCOMES`,
+  `LEARNINGS_NOTICES` — transcribed member-for-member from TSPEC §D.2 into the arm-inventory test as
+  set-equality expectations (PROP-FAILOPEN-01, PROP-RECORD-03, PROP-CONFIG-07).
+
+### F.4 Seam doubles
+
+L2 properties drive `helpers/seams.js`'s `fakeFs` (`:245`) and `fakeGit` (`:413`), re-exported through
+`helpers/consolidationDoubles.js` (`:35`). Call logs on those doubles are the operands for every
+call-count oracle in §O.3 and for PROP-FOOTPRINT-01/02. The `_recordDocType` and `_readFile` probe
+seams are injected the same way `advisoryDisabled.test.js:70` injects `mainDev`; no property in this
+document reads a private module binding directly.
+
 ## Coverage Matrix
 
 ## Gaps, Obligations and Routed Errata
