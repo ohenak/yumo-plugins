@@ -90,6 +90,35 @@ exactly what the tag-selection discipline asks reviewers not to do.
 
 ## Decision
 
+**DECISIONS still holds as approved against FSPEC as it now stands.** No decision it takes is
+contradicted by FSPEC v0.13; the round's three substantive moves (material-only accounting,
+`maxBytesPerDocument: 0` as an empty-selection run, F-O-1 owning both heading rules) land on the
+same side of every argument DECISIONS already made. No new finding is raised by this delta. Five
+findings carry forward, all `inherited`, all citation- or framing-currency defects, none gating.
+
+**Clause-by-clause re-verification against FSPEC at HEAD.**
+
+| What DECISIONS says about FSPEC | FSPEC v0.13 at HEAD | Still holds? |
+|---|---|---|
+| `DEC-LI-08`: "Bound the addition with REQ §4.1's static thresholds only — per-document bytes, total bytes, document count — applied unconditionally" | §BR-6 keeps all three quantities and their unconditional application; only the *basis* they measure changed (material only) | Yes — the claim is over which quantities bound, not what they count |
+| `DEC-LI-08` non-decision row: threshold **values** (`maxBytesPerDocument`, `maxTotalBytes`, count) are REQ §4.1's, per `DEC-LAYER-01`; "DEC-LI-08 depends on their existence, not on their values" | Erratum decides the *behaviour at* the value zero (E-36), not the value; §4.1 remains the values' owner | Yes |
+| `DEC-LI-07` five-state table, row 5: "enabled, thresholds admitting nothing → enabled, empty selection → `BR-8` rows, present and empty" | E-36: `maxBytesPerDocument: 0` "is the enabled, empty-selection run BR-14 describes… BR-8 rows present and empty"; AT-30 now covers all three zeros | Yes — the delta instantiates the row rather than extending it |
+| `DEC-LI-07`: "FSPEC v0.7 `BR-14` carries the same five states" | `BR-14` byte-identical across the span; §Decision-table D-1 and AC-5.1a/b/c traces unchanged | Substance yes; the **version pin** is stale — F-03 |
+| `DEC-LI-05`: byte-identity holds by construction, `block = ""` on empty selection; "Emit a placeholder block when the selection is empty — rejected" | A zero per-document bound now produces an empty selection; the block is still `""`, so AC-4.1/AC-5.1a hold unchanged, and no placeholder is emitted for the zero case | Yes — reinforced |
+| `DEC-LI-05` constraint: "FSPEC `BR-7`, which fixes what the block must convey but not where it sits" | BR-7's own rule unchanged; the delta only removes the preamble's byte charge, which is an accounting statement, not a placement or content one | Yes |
+| `DEC-LI-01` re-evaluation trigger: "`BR-3` fixes that the predicate consults only the document's bytes" | `BR-3` byte-identical; F-O-1 restates the same bound over both heading rules ("each consults only the document's bytes") | Yes — widened coverage, same fact |
+| Non-decision row: "The ordering key, the section subset, and the eligibility rule → FSPEC `BR-4`, `BR-6`, `BR-3`. These are behaviour, and this document does not re-decide behaviour" | BR-6 is exactly where the accounting basis was re-decided — i.e. the placement was correct and the erratum landed in the owner DECISIONS named | Yes — the placement was vindicated |
+| `DEC-LI-06` constraints: FSPEC `E-32` (per-dispatch observation), REQ NG-4 and `BR-15` (no index/cache/state file), AC-5.2 | `E-32` and `BR-15` untouched; E-36 is an additive row above them | Yes |
+| `DEC-LI-06`: "the read cost, not the injected-byte cost, is the term flagged to REQ O-1's live measurement (TSPEC `T-O-3`): the injection is bounded, the read is not" | The delta *narrows* injected bytes (framing now free) while leaving read cost untouched, so the asymmetry the entry rests on widens | Yes — reinforced |
+| `DEC-LI-03`'s attachment-point argument and its `BR-1` exclusion-list citation | `BR-1` byte-identical; nothing in the span touches dispatch classification | Yes |
+| Header `Upstream` row and **Upstream version note**: "FSPEC v0.7" | FSPEC **v0.13** | **No** — F-03 (inherited, widened again) |
+| `DEC-LI-03` re-evaluation trigger's paraphrase of FSPEC `A-2` | `A-2` at HEAD names BR-1's conjuncts (changed in v0.12, before this round) | **No** — F-04 (inherited, from v4) |
+| "Decisions deliberately NOT taken here", AC-3.3 locus row, and `DEC-LI-07`'s divergence framing / `D-O-9` | TSPEC unchanged this round; both were already settled in TSPEC v0.6 | **No** — F-01, F-02 (inherited, from v3) |
+| **Upstream version note** premise: TSPEC "still carries provisionally", divergence unresolved | TSPEC v0.7's header re-grounded on FSPEC v0.12 / REQ v0.9 last round | **No** — F-05 (inherited, raised at v5) |
+
+F-01 through F-04 were raised at v3/v4 and F-05 at v5; DECISIONS' bytes have not moved since, so all
+five are recorded `inherited` — the round routes back to the owning phase rather than halting.
+
 ## Consequences
 
 ## Positive Observations
