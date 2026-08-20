@@ -188,4 +188,24 @@ table byte-identical to what `DEC-LI-07` transcribes; and Phase CR's `docType: n
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High finding. All five findings carried from v6 are resolved, each verified against the upstream
+text or the repository rather than against the commit message that claims to close it. The delta
+introduced no defect: every new or rewritten passage — the header pin, `DEC-LI-03`'s two exclusion
+shapes, `DEC-LI-06`'s memo-versus-cache-file distinction, `DEC-LI-07`'s landed-erratum paragraph,
+the AC-3.3 non-decision row, `DEC-LI-10`'s blind-spot paragraph and `D-O-6`'s extended row — checks
+out against REQ v0.9, FSPEC v0.13, TSPEC v0.9 or `pdlc/workflows/orchestrate-dev.js` at HEAD.
+
+Two Low findings are recorded and do not gate: F-01 (the `D-O-9` discharge attributes the landing to
+the version where it is observed) and F-02 (`G-C` cited without signalling that it is a local
+ground). Three deferred items are recorded in `## Consequences` per the freeze. No decision was
+opened, reopened or contradicted in this round.
+
+DECISIONS now stands alongside REQ, FSPEC and TSPEC at HEAD with no live upstream gap. PLAN and
+PROPERTIES may proceed on it.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
