@@ -435,24 +435,35 @@ one addition:
 | top-level not an object, or no `learningsInjection` key | defaults, `sectionMalformed:false` | `present:false` | BR-14: a misspelt section name is a stray top-level key and reads as absent — no unknown-key registry |
 | section present, not a plain object | `sectionMalformed:true` | `present:true, sectionMalformed:true` | BR-14 `NTC-MALFORMED` |
 | declared key wrong-typed | key defaults, name in `invalidKeys` | identical | BR-14 `NTC-KEYTYPE`; the run stays enabled |
-| — | `ADVISORY_DEFAULTS.enabled === false` | `LEARNINGS_DEFAULTS.enabled === true` | the sibling is opt-in per-key; here `enabled` defaults true **within a present section**, and an absent section is `present:false`, so the feature is still off until an operator writes the section — **which is FSPEC Step 0(2)'s resolution of a REQ-internal contradiction this TSPEC inherits rather than decides; see ERR-4** |
+| — | `ADVISORY_DEFAULTS.enabled === false` | `LEARNINGS_DEFAULTS.enabled === true` | the sibling is opt-in per key; `enabled` defaults to `true` **within the section**, and an absent section leaves `enabled` at that declared default, so the feature ships **on** in a bare repository (REQ §4.1 `learningsInjection.enabled | true | consumer config`; REQ v0.9 AC-5.1a "an absent section is not a disabled state … there is no second gate key"; G-1) |
 
-`present` is the new field, and it is the whole of AC-5.1a's "absent, not present-and-empty": the
-injector is built **only** when `present && config.enabled && !sectionMalformed`, and
-`buildFinalReport` receives `undefined` otherwise.
+**`present` is a report-shape field, not a gate (REQ v0.9 AC-5.1a).** The injector is built on
+`config.enabled` **alone**. There is no `present` conjunct and no `!sectionMalformed` conjunct:
+disablement is an explicit act (`enabled: false`), an absent section reads as §4.1's declared
+defaults and therefore as **enabled**, and a malformed section fails **open** — the run stays
+enabled on those same defaults and the report carries a catalogued notice naming the malformed
+section (REQ AC-5.1b; FSPEC BR-14, Step 0(2)). `present` survives only because AC-5.1a's report
+distinction — the `learningsInjection` key **absent**, not present-and-empty — still has to be
+expressible: `buildFinalReport` receives `undefined` when, and only when, `config.enabled` is
+`false`.
 
-**The `present:true, sectionMalformed:true` state, in full.** AC-5.1b requires that state to be
-*both* AC-5.1a's behaviour *and* a reported notice, and those two pull against each other if
-`notices` lives inside a key that is absent. Resolved by giving the sink two parts with different
-presence rules: `notices` is carried **outside** the `learningsInjection` key, on
-`buildFinalReport`'s existing run-level notice channel, and `learningsInjection` (rule inputs,
-corpus outcome, dispatch rows) is the conditionally-spread key. So:
+**The `present:true, sectionMalformed:true` state, in full.** AC-5.1b makes this state an
+**enabled** run: the declared defaults are in force, injection happens as on any default-configured
+run, and the report additionally carries `NTC-MALFORMED`. The notice therefore has to be reachable
+on a run whose `learningsInjection` key is present, and — on a run explicitly disabled by
+`enabled: false`, where AC-5.1a forbids the key entirely — it must not need that key as a home.
+Both are satisfied by the same placement, which is unchanged from earlier rounds: `notices` are
+carried **outside** `learningsInjection`, on `buildFinalReport`'s existing run-level notice channel
+(§I.2), because they are facts about reading the configuration, produced before the gate is
+evaluated; `learningsInjection` (rule inputs, corpus outcome, dispatch rows) is the
+conditionally-spread key, present iff the run is enabled. So:
 
 | Config state | `learningsInjection` key | `NTC-*` notice |
 |---|---|---|
-| absent section, or `enabled:false` | absent (AC-5.1a) | none |
-| present, not an object (`sectionMalformed`) | **absent** (behaviour is AC-5.1a's) | `NTC-MALFORMED` present (AC-5.1b) |
-| present, `enabled:true`, one key wrong-typed | present, run proceeds on defaults for that key | `NTC-KEYTYPE` present |
+| absent section, or section present with `enabled:true` | **present** — the run is enabled on §4.1's declared defaults (AC-1.1, AC-5.1a) | none |
+| `enabled:false`, explicitly | **absent** (AC-5.1a) | none |
+| present, not an object (`sectionMalformed`) | **present** — fail-open, enabled on §4.1's defaults (AC-5.1b) | `NTC-MALFORMED` present |
+| present, `enabled:true`, one declared key wrong-typed | present, the run proceeds on that key's default (AC-5.1c) | `NTC-KEYTYPE` present |
 
 The three rows are owned by three different ATs (TE F-04): row 1 is **AT-31**'s (`enabled:false`,
 and separately the absent section ⇒ no injection key, no notice); rows 2 and 3 are **AT-32**'s two

@@ -230,3 +230,11 @@ approval, land the BR-9/BR-10/Step 21/AT-20–AT-22 locus corrections plus the t
 Lows, and answer the three open questions; then re-dispatch Phase D. The halt itself is a formatting
 artifact — both confirmers agree the routed ERR-4 item landed correctly and that nothing previously
 approved moved.
+
+**Provenance**
+- Engine version: 0.2.0
+- Plugin version: 0.23.0
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
