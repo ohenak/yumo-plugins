@@ -555,6 +555,19 @@ retention or record conjunct, never as `!= X`:
 | PROP-CONFIG-05 | injector `=== null` | `enabled: false` | report carries **no** `learningsInjection` key *and* prompts byte-equal the baseline |
 | PROP-BOUND-06 | `rejected[]` reason `RSN-NO-MATERIAL` | reject catalogue | contributing count unchanged — the slot was **not** consumed, asserted as a count |
 
+| PROP-FOOTPRINT-04 | the scanned span contains **no** filesystem module reference | AC-5.2 / NG-4 | the span **contains** `LEARNINGS_TARGET_DOCTYPES` (right span, non-empty) *and* the same scanner reds on a planted `fs.writeFileSync` |
+| PROP-ISOLATE-02 | five named scored artefacts set-equal across the two arms | AC-5.3 / BR-16 | each of the five sets asserted **non-empty on both arms** *and* a SHA-256 digest equality over `git ls-files pdlc/skills/**` |
+| PROP-RECORD-09 | no enumerated suite references `runMirror` in an assertion | TSPEC §D.2 | the walk's enumerated file set is non-empty and set-equal to PROP-META-05's operand |
+| PROP-META-06 | no enumerated suite references a live transport symbol | AC-6.1 | every enumerated file shown to construct a **scripted double**, asserted as set equality over the same file set |
+
+**The three static-scan absences share one instrument and one positive control.**
+PROP-FOOTPRINT-04, PROP-RECORD-09 and PROP-META-06 are absences over *source text* rather than over a
+run, so their vacuity mode is not an unexercised branch — it is a scan that located nothing. Each
+therefore names the region or file set it scanned and asserts that operand non-empty and correct
+(the sentinel-anchored span for PROP-FOOTPRINT-04; the enumerated `learnings*.test.js` set, shared
+with PROP-META-05, for the other two), and PROP-FOOTPRINT-04 additionally carries a planted-token
+negative control proving the matcher fires. A scan that finds nothing **reds**; it never passes.
+
 **The healthy value is asserted too.** PROP-RECORD-04's `corpusOutcome === null` on `DIVERGENT-CORPUS`
 dispatches 1, 2 and 4 is the load-bearing half: `null` is the value the field carries on the
 overwhelming majority of runs, so without it an implementation recording `undefined`, `""` or omitting
@@ -572,7 +585,7 @@ question. The paired positives:
 
 | Preservation property | Its positive control |
 |---|---|
-| PROP-DISPATCH-03 (outside-set prompts byte-identical) | PROP-DISPATCH-01 asserts the **inside** set carries a block on the same run and the same instrument |
+| PROP-DISPATCH-03 (rejected-at-the-site prompts byte-identical) | PROP-DISPATCH-01 asserts the **accepted** set carries a block on the same run and the same instrument; the rejected population itself is enumerated by the `_recordDocType` probe, so it is asserted **non-empty** rather than assumed. Dispatch families that never reach the site are out of this property's scope — PROP-DISPATCH-08 asserts their absence from the call graph structurally |
 | PROP-DISPATCH-05 (manifest/upstream/pacing unchanged) | assert each of the three regions is **present** in the fixture prompt *and* present in the output, then assert its order index |
 | PROP-CONFIG-05 (disabled = baseline) | PROP-CONFIG-01 asserts the enabled comparison target **itself carries** the C-4-delimited block |
 | PROP-FOOTPRINT-02 (zero corpus reads) | PROP-FOOTPRINT-01's non-empty observed set on the **same instrument in the same test file** |
@@ -651,8 +664,14 @@ multi-word sentinel that would straddle a newline and silently match zero.
 
 `RSN-COUNT` is behind a precedence chain — self-exclusion, then read/parse outcomes, then
 `RSN-NO-MATERIAL`, then the count cut, then the byte cut — and under §4.1's declared thresholds the
-**byte** bound binds first on measured corpora (87 of 89 documents exceed `maxBytesPerDocument` alone),
-so a default-threshold fixture would satisfy PROP-BOUND-01 with `RSN-COUNT` unimplemented. The
+**byte** bound binds first on measured corpora, so a default-threshold fixture would satisfy
+PROP-BOUND-01 with `RSN-COUNT` unimplemented. The "87 of 89 documents exceed `maxBytesPerDocument`
+alone" figure is **inherited from FSPEC BR-5**, whose basis is a two-repository measurement (most of
+that corpus lives in `regime-ledger`) and is therefore not re-derivable here; a different re-derivation
+under strict BR-6 title matching is on record in the FSPEC v2 TE review. The argument does not rest on
+that number. The **locally checkable** form is the one this document relies on: all **9** documents in
+this repository's corpus run 19,340–50,695 bytes of source against a 6,000-byte `maxBytesPerDocument`,
+so the per-document bound binds for **9 of 9** here. The
 `COUNT-BINDING` fixture (§Fixtures) exists exactly to defeat the earlier branches: 8 documents × one
 200-byte section, `maxDocuments: 3`, total far under `maxTotalBytes`, so the **only** cut is the count
 cut and the expected split is exactly 3 contributing / 5 `RSN-COUNT`.
