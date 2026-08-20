@@ -158,15 +158,41 @@ still holds: exactly one task per wave owns the production file.
        sweep's own count was correct when written, and two documents each assuming the other bumps it
        is exactly how the red survives to Phase PUB. A6-00's `Test File` cell gains
        `pdlc/workflows/__tests__/documentOracles.test.js` so the manifest carries the edit.
-     - **PROP-SWEEP-2(b)'s 14 tracked `.bak` blobs.** The
-       `PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty` test went from `0`
-       to `14` residual paths when `e3b9d5a3` committed
-       `.claude/workflows/.pdlc-backups/*.bak`. TSPEC v1.10 recorded this as repository hygiene "not
-       fixable in this document" and routed it nowhere. **Disposition: untrack the 14 blobs in Phase I,
-       as A6-00's first act**, and PROP-SWEEP-2(b) closes for free; if they are instead left tracked,
-       the oracle stays red for the life of the branch and this plan cannot satisfy its own Definition
-       of Done (TE Q-02). The untracking is a `git rm --cached` of paths no task owns as source, so it
-       is recorded in A6-00's row rather than in the file-ownership manifest.
+     - **PROP-SWEEP-2(b)'s residual is 28 paths, not 14, and only 14 of them are this feature's to
+       close.** Earlier revisions said the oracle "went from `0` to `14` residual paths when
+       `e3b9d5a3` committed `.claude/workflows/.pdlc-backups/*.bak`" and dispositioned the whole red
+       as closing "for free" once those blobs are untracked. Re-measured this round by running the
+       test at HEAD, the residual is **28 paths** and partitions into three classes with three
+       different owners (PM v7 F-01, TE v7 F-01):
+
+       | Class | Count | Paths | Owner / disposition |
+       |---|---|---|---|
+       | Backup blobs `e3b9d5a3` committed | 14 | `.claude/workflows/.pdlc-backups/*.bak` | **This feature, A6-00** — untrack and ignore; closes 14 of 28 |
+       | Consumer-runtime artifacts | 4 | `.claude/workflows/.pdlc-drift-state.json`, `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`, `pdlc-cli.mjs` | **Coupled sweep** — tracked consumer runtime, predates this branch, out of scope |
+       | This feature's own artifacts | 10 and growing | `TSPEC-`, `PLAN-`, `DECISIONS-`, `PROPERTIES-pdlc-advisory-wave-gate.md` and the `CROSS-REVIEW-*` files that quote L-2's terms | **Coupled sweep's A-1 glob list** — out of scope here, see below |
+
+       The third class is not incidental and **cannot be closed on this branch**. `unfilteredSweep()`
+       greps every *git-tracked* file for L-2's seven terms, and `minusA1` subtracts a frozen glob
+       list that covers `docs/pdlc-plugin-retirement/**`, `**/LEARNINGS-*.md` and `**/POSTMORTEM-*.md`
+       but **not** `docs/{feature}/` specs and **not** `CROSS-REVIEW-*` — so this PLAN is in its own
+       residual by virtue of naming `pdlc/hooks/scripts/sync-workflows.sh` in its own Definition of
+       Done, and **every further cross-review round this pipeline writes adds another path**. No act
+       available to Phase I makes that set empty; only extending A-1's glob list does, and A-1 is the
+       coupled sweep's frozen artifact.
+
+       **Dispositions.** (1) **A6-00 closes the 14 blobs**: `git rm --cached` them *and* add
+       `.claude/workflows/.pdlc-backups/` to `.gitignore` in the same step, because the files stay on
+       disk, the path is not ignored today (`git check-ignore` returns nothing), and the directory is
+       a live write target of the workflow sync path — untracking alone converts 14 tracked blobs
+       into 14 `??` lines and permanently reds `consumerCleanup.test.js`'s AT-4.1, the very
+       clean-tree precondition this document imposes at every wave boundary (TE v7 F-01). With the
+       ignore rule the tree stays clean and future `.bak` writes do not re-dirty it. Because
+       `.gitignore` is now an *edited source file* and no other task owns it, A6-00's `Source File`
+       cell and the file-ownership manifest name it. (2) **The remaining 14 paths are an inherited,
+       out-of-scope red**, routed to the coupled sweep's owner exactly as `AT-22` already is: this
+       branch does **not** promise PROP-SWEEP-2(b) green, and the Definition of Done records it as
+       inherited rather than as a gating item this plan can satisfy. Promising a green the branch
+       cannot reach is how the residue gets discovered at PUB instead of at A6-00.
      - **`documentOracles.test.js`'s `AT-22 [red-until-L-06]: coveredViolations(LIVE_ROOT) is empty
        post-landing`.** Not this feature's and not `e3b9d5a3`'s: the test name carries its own
        red-until marker for the coupled sweep's L-06, and `coveredViolations` walks the entire tree
