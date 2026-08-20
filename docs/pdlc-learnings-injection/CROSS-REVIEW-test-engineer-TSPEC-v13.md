@@ -63,6 +63,43 @@ Approval-Record-absence conjunct the TSPEC carries nowhere. That is F-01 below, 
 
 ## Architecture
 
+**What the delta moved, structurally.** The erratum did one thing of architectural consequence
+beyond the two routed items: it moved the `RSN-NO-MATERIAL` drop from a *structural* test (the
+document carries none of `BR6_SECTION_NAMES`) to an *outcome* test (extraction returns
+`sections: []`), and put that drop **before** the count and total bounds. §D.5 states this
+explicitly — "one branch covering both of BR-9's disjuncts, the structural one (E-33) and the zero
+per-document bound (E-36) … there is no second branch and no zero-bound special case in the
+selector."
+
+I read that as the right compression, and it is what BR-9's catalogue entry at FSPEC:560 now says
+("Eligible, but yields no material — it carries none of BR-6's priority sections, **or** the
+per-document bound is zero and admits none") and what D-12 asks ("Does the document yield any
+material?"). It also collapses what would otherwise be two branches whose difference no fixture can
+observe. Worth recording for the implementer, since the two documents now sequence the work
+differently: FSPEC's **Step 5** procedure still drops on the structural condition at item 15 and
+performs extraction at item 16, *after* the count bound has been applied, so a reader implementing
+Step 5 literally would extract only the `maxDocuments` documents that survived the count cut and
+would never observe the zero-bound drop for the rest. TSPEC's rule requires extraction for every
+eligible document before the count bound binds. **The observable outcomes are identical** — at any
+non-zero bound "yields no material" and "carries no BR-6 heading" are the same predicate, and at a
+zero bound BR-6/E-36 explicitly demand the no-slot behaviour Step 5's ordering could not produce —
+so this is not a behavioural divergence and I am not gating on it. It is a sequencing gap in
+upstream's procedural prose that the PLAN author will trip over; F-03 records it at Low.
+
+**The obligation ledger is now self-consistent.** The §T.6 obligations table's F-O-1 row names both
+rules and both discharge sites (`LEARNINGS_HEADING_RE`; `BR6_SECTION_NAMES` + ordinal + gloss +
+exact), and §D.3's heading advertises "both halves". The failure mode v12 F-02 named — an
+obligation recorded as discharged by a section that discharges half of it — is closed on both
+sides, so a downstream reader auditing the table against the section cannot be misled.
+
+**Nothing previously approved is broken by the delta.** I re-read the sections the erratum touched
+against their pre-round bytes: §I.2's `parseLearningsConfig` divergence table (the `present` column
+collapses to "identical", and `sectionMalformed`'s "true only when the section **is** present"
+sentence preserves the AC-5.1a distinction the field was carrying), §D.5's byte-accounting pools
+(unchanged — the erratum only re-grounds them on BR-6's now-explicit basis), §T.5's suite/AT
+inventory (still 2+9+3+3+6+12 = 35, and I recounted it), and ERR-4/ERR-6's closure prose. No
+oracle that was falsifiable before this round is weaker after it.
+
 ## Interfaces
 
 ## Data Model
