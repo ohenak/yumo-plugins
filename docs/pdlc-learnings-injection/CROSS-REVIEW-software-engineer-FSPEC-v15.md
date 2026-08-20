@@ -317,3 +317,8 @@ FINDING: Low | delta | nonlocal | §Linked Requirements AC-4.4 row (:178) | AC-4
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 2}
+
+APPROVAL-HASH: sha256:ae75fa6291f1a060153f65b6b1bcc3959acd62b2c0872e7b319489c964a86a1d
+APPROVAL-HASH-NORMALIZED: sha256:ae75fa6291f1a060153f65b6b1bcc3959acd62b2c0872e7b319489c964a86a1d
+REVIEWED-COMMIT: cfb3d4d61cc4352a1ca1cfd89c8fb3850b92b614
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
