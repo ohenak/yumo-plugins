@@ -42,6 +42,30 @@ and both have drifted — the catalogue now spans `:2301`–`:2310`, and `:2311`
 
 ## Properties
 
+Scope here is the product lens only: does the property set still say what the approved requirements
+say, after the erratum and after upstream moved? I re-read the property statements the delta touched
+or leaned on, against upstream at the dispatched digests.
+
+| Property | What it now says | Upstream at HEAD | Faithful? |
+|---|---|---|---|
+| PROP-SEAM-02 | Every cardinality-coupled transcription surface must read six, "as one set", anchored by symbol or block title; at HEAD all read six **except** `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality, still `["A1" … "A5"]` | TSPEC §1.3's *State of these surfaces at HEAD* table: "its `rows.map((r) => r.seam)` equality **still reads `["A1" … "A5"]`** / the one test-side literal not yet transcribed" | **Yes, exactly.** I confirmed the residue independently — `advisoryRecord.test.js:496` reads the five-member list while `:505` already compares against `ADVISORY_SEAMS`. The property still states the required end state, and the new sentence is careful to say so ("the set-equality this property fixes is the end state, not the edit list"), which is the right product framing: the AC is about the shipped contract, not about who edits which line |
+| PROP-CFG-03 | Example config must carry the whole `advisory` section `{"enabled": false, "waveBudgetPerRun": 1}`; asserted in the purpose-named engine file, never in `ci-arrangement.test.js` | REQ §5 C-2 (`waveBudgetPerRun` default `1`), TSPEC §4.4 and §5.1's engine-channel row | **Yes.** The default `1` in the property matches REQ C-2 at v1.9; the disposition (second reader, `ci-arrangement.test.js` stays unowned) matches TSPEC §5.1 and PLAN's manifest. Only the citation form changed |
+| PROP-CTR-10 / NFR-4 | Unchanged this round | REQ v1.9 NFR-4 unchanged since v4 | Yes — v4 already confirmed this pair; nothing in the delta touches it |
+| PROP-CTR-13 / `waveBudgetPerRun: 0` | Unchanged this round | TSPEC §4.4 unchanged | Yes |
+| PROP-DIS-06 | Unchanged; `.enabled` count of three | TSPEC §1.3 end-state table: "**unchanged at three** — a constraint on A6, not an edit" | Yes |
+
+**Scope compliance.** The delta adds no behaviour, no new property, no new AC. The one genuinely new
+paragraph ("The `new` files are on disk at HEAD, and `new` means required end state") is *grounding*
+prose, and it explicitly declines to make the product decision that is not this document's to make:
+"Whether those early-landed edits are reverted or PLAN's A6 batches are re-derived around them is
+PLAN's and Phase I's call, not this document's." That is the correct boundary — a PROPERTIES doc
+that had picked a disposition here would have been a scope finding.
+
+**Acceptance-criteria traceability.** The AC→property map in §C-1 is byte-unchanged in the diff, so
+every P0/P1 criterion that resolved at v4 still resolves. I spot-checked the chain v4 flagged as
+load-bearing: AC-6.2 → PROP-REC-03/-04/-07 → A6-17 → `advisoryEscalationLog.test.js`, which TSPEC
+§5.1 still carries as an `edited` row. Intact.
+
 ## Oracles
 
 ## Fixtures
