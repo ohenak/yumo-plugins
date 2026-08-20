@@ -337,10 +337,18 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `notices[].id` — and no id **must** appear in another domain's position. The two corpus-outcome
   domains' membership tests read `v === null || catalogue.includes(v)`; the other two carry no `null`.
   *Contract · L1/L2 · AC-3.2, BR-9, AT-20, TSPEC §D.1 · red LI-10 · green LI-19.*
-- **PROP-RECORD-09** *(negative, about the test suite):* **No** test **must** assert on `runMirror`'s
-  value. It is additive by upstream decision, its value is deliberately unconstrained, and an
-  implementation omitting it entirely conforms — a test pinning it reds a conforming implementation.
-  *Contract · L1–L3 · AC-3.2, AC-3.3, BR-9, BR-10, TSPEC §D.2, §T.6 · red LI-10 · green LI-19.*
+- **PROP-RECORD-09** *(negative, about the test suite — instrumented as a static scan):* **No** test
+  **must** assert on `runMirror`'s value. It is additive by upstream decision, its value is
+  deliberately unconstrained, and an implementation omitting it entirely conforms — a test pinning it
+  reds a conforming implementation. **Instrument:** the same static directory walk PROP-META-05 and
+  PROP-META-06 use in `learningsSuiteMap.test.js` — enumerate `__tests__/learnings*.test.js` from disk,
+  parse each file's text, and assert **no** file contains a `runMirror` reference in an assertion
+  position. Its positive control is the walk's own non-empty file set, asserted set-equal to the
+  enumerated suites (PROP-META-05's operand), so a walk that finds no files reds rather than passing
+  over zero bytes. Its subject is the suite, not the production code, which is why it is green on
+  authoring at LI-14 and has no red predecessor.
+  *Contract · L1 (static) · AC-3.2, AC-3.3, BR-9, BR-10, TSPEC §D.2, §T.6 · red — (green on
+  authoring) · green LI-14.*
 - **PROP-RECORD-10:** An operator holding **only** the report **must** be able to reproduce a named
   dispatch's selection: the expected selection (paths, in order) is transcribed by hand and committed
   with the fixture, and the test **must** neither call the production selector nor reimplement it.
@@ -426,10 +434,14 @@ a defect in this document or in the PLAN, not a nice-to-have.
   fixture: the corpus carries **line-initial** `VERDICT:`, `ERRATUM:` and `REVISION-COMPLETE:` lines, and
   the scripted `_agent` echoes the final 200 bytes of the prompt it was handed into its response.
   *Security / Integration · L3 · AC-4.3, G-5, BR-11, AT-29 · red LI-11 · green LI-21.*
-- **PROP-ISOLATE-02:** On an enabled run, the completeness criteria, required headings, verdict grammar,
-  round windows and approval anchors scoring the documents produced **must** be exactly those in force
-  without the feature. No required section, no new heading, no new verdict token, no new approval
-  condition, and no SKILL.md text moves.
+- **PROP-ISOLATE-02:** Over the same two scripted runs PROP-ISOLATE-01 drives, the **five named**
+  scored artefacts — completeness criteria, required headings, verdict grammar tokens, round-window
+  bounds, approval anchors — **must** be **set-equal member for member** between the enabled and the
+  disabled arm, **and each of the five sets must be asserted non-empty on both arms**, so a run that
+  produced no documents, or an instrument that read an empty criteria set on both arms, reds instead of
+  passing. The SKILL.md conjunct is a **digest equality**: the SHA-256 of every file under
+  `pdlc/skills/**`, enumerated by `git ls-files` and asserted set-equal by path and equal by digest
+  across the two arms and against a hand-transcribed manifest — not a prose "no text moves" (BR-16).
   *Contract · L3 · AC-5.3, G-5, NG-3, BR-16, AT-35 · red LI-11 · green LI-20.*
 - **PROP-FOOTPRINT-01:** On an enabled run, the set of paths under `docs/` the run opens **must equal**
   BR-15's expected set — exactly one attempt per report-named document other than the `RSN-SELF` ones —
@@ -447,10 +459,22 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `docs/_decisions/`, no LEARNINGS document, no skill prompt, and no index, cache or state file is
   written anywhere.
   *Security · L3 · AC-5.2, NG-1, NG-4, BR-15, TSPEC §T.6 · red LI-11 · green LI-20/LI-21.*
-- **PROP-FOOTPRINT-04:** The source span between LI-15's two sentinel comments **must** contain no
-  reference to `fs.`, `writeFileSync`, `mkdirSync`, `appendFileSync` or `require("fs")`, asserted by a
-  static scan scoped to that span — the check that covers every run, not only the runs a fixture
-  exercises.
+- **PROP-FOOTPRINT-04:** The source span between LI-15's two sentinel comments **must** reference **no
+  filesystem module under any name** — not `fs.`, `node:fs`, `fs/promises`, a destructured
+  `{ writeFileSync }` bound at module top and called bare, an aliased `fsp.writeFile`, `require("fs")`,
+  nor `mkdirSync`/`appendFileSync` — stated as "no filesystem module reference is reachable from this
+  span", which does not silently narrow the way an enumerated token list does. Asserted by a static
+  scan scoped to that span: the check that covers every run, not only the runs a fixture exercises, and
+  the **only** oracle covering AC-5.2 / NG-4 on paths no fixture reaches. It carries **two conjuncts
+  that give the instrument an oracle**, because a pure absence over a span the scanner failed to locate
+  passes over zero bytes:
+  1. **Positive control — the span is non-empty and is the right span.** The extracted region **must**
+     contain the anchor `LEARNINGS_TARGET_DOCTYPES`, which LI-15 places inside the sentinels. A scan
+     that returns an empty or mislocated region (a reworded sentinel, a later refactor moving the
+     region, a regex anchored on a drifted string) **must** red, never pass.
+  2. **Negative control — the scanner reds on a planted token.** The same scanner run over a synthetic
+     span containing `fs.writeFileSync` **must** report a violation, proving the matcher and the
+     reference rule work rather than being asserted to.
   *Security · L3 (static) · AC-5.2, NG-4, TSPEC §T.6 · red LI-11 · green LI-15.*
 
 ### Group J — Properties of the test apparatus itself
