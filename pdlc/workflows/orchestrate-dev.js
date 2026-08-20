@@ -1963,6 +1963,12 @@ export const ADVISORY_ROOT_CAUSES = Object.freeze([
 // TSPEC §3.1 — A6's own prohibited-operation letters (§5.5's prohibition table, PROP-ENV-10).
 export const A6_PROHIBITIONS = Object.freeze(["f", "g", "h", "i"]);
 
+// TSPEC §3.3 — the citation floor `citesGateOutput` enforces (PROP-CTR-05, TE F-09). A citation
+// normalised to fewer than this many characters is refused as malformed even if it is a verbatim
+// substring of the gate output, because a short-enough string (`"FAILED"`, `"Error"`) is not
+// evidence the agent read anything.
+export const A6_MIN_CITATION_CHARS = 24;
+
 /**
  * Parse the repo's `advisory` config section out of the SAME `.claude/pdlc.config.json`
  * `parseMergeConfig`/`parseImplementationConfig` read. Pure and total: never throws, never
@@ -2316,6 +2322,53 @@ export function parseAdvisoryVerdict(raw, dispatchedSeam) {
  */
 export function budgetExceeded({ attempts, attemptBudget, elapsedMs, waitMs, seamBudgetMinutes }) {
   return attempts >= attemptBudget || elapsedMs - waitMs >= seamBudgetMinutes * 60_000;
+}
+
+/**
+ * TSPEC §3.3 — reads the last `ROOT-CAUSE:` line with the same last-wins `extract` discipline
+ * `parseAdvisoryVerdict` uses, trims it, and returns it iff it is a member of
+ * `ADVISORY_ROOT_CAUSES`. Absent, empty, out-of-set, or non-string ⇒ `"unclassified"`. Total on
+ * the receiving side, closed on the emitting side (C-3, DC-01, BR-2, PROP-CTR-01). Deliberately
+ * NOT a sixth malformedness rule inside `parseAdvisoryVerdict`: this classification's own
+ * `"unclassified"` outcome consumes no attempt, which differs from a malformed verdict's outcome.
+ *
+ * @param {string} raw
+ * @returns {string} a member of `ADVISORY_ROOT_CAUSES`
+ */
+export function parseA6RootCause(raw) {
+  if (typeof raw !== "string" || raw.trim() === "") return "unclassified";
+
+  const prefix = "ROOT-CAUSE:";
+  let value;
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(prefix)) {
+      value = trimmed.slice(prefix.length).trim();
+    }
+  }
+
+  return value !== undefined && ADVISORY_ROOT_CAUSES.includes(value) ? value : "unclassified";
+}
+
+/**
+ * TSPEC §3.3 — BR-3's decidable citation rule: true iff some member of `evidence`, with runs of
+ * whitespace collapsed and ends trimmed, is at least `A6_MIN_CITATION_CHARS` (24) long AND is a
+ * substring of the identically-normalised `gateOutput`. The floor exists because a citation short
+ * enough to be guessed (`"FAILED"`, `"Error"`) is not evidence the agent read anything. Pure.
+ *
+ * @param {string[]} evidence
+ * @param {string} gateOutput
+ * @returns {boolean}
+ */
+export function citesGateOutput(evidence, gateOutput) {
+  const normalize = (s) => (typeof s === "string" ? s.replace(/\s+/g, " ").trim() : "");
+  const normalizedOutput = normalize(gateOutput);
+  const list = Array.isArray(evidence) ? evidence : [];
+
+  return list.some((entry) => {
+    const normalizedEntry = normalize(entry);
+    return normalizedEntry.length >= A6_MIN_CITATION_CHARS && normalizedOutput.includes(normalizedEntry);
+  });
 }
 
 // ─── TSPEC §5 — envelope enforcement, refusal ladder (PLAN A-20) ───────────
@@ -11006,6 +11059,57 @@ export function computeWaves(tasks, ownership) {
   }
 
   return waves;
+}
+
+/**
+ * TSPEC §3.4 (O-4) — the E-5 owned-path set: the union of `task.files` over the wave's own
+ * tasks. `computeWaves` has already annotated every task with its `files` array (straight from
+ * `parsePlanOwnership`'s rows), so this is a read, not a re-derivation. Pure.
+ *
+ * @param {Array<Array<{files: string[]|null}>>} waves
+ * @param {number} waveIndex
+ * @returns {string[]}
+ */
+export function waveOwnedPaths(waves, waveIndex) {
+  const wave = (waves && waves[waveIndex]) || [];
+  const out = new Set();
+  for (const task of wave) {
+    for (const f of task.files || []) out.add(f);
+  }
+  return [...out];
+}
+
+/**
+ * TSPEC §3.4 (O-4) — the E-6 owned-path set: the union of `task.files` over every wave strictly
+ * later than `waveIndex`. Pure.
+ *
+ * @param {Array<Array<{files: string[]|null}>>} waves
+ * @param {number} waveIndex
+ * @returns {string[]}
+ */
+export function laterOwnedPaths(waves, waveIndex) {
+  const out = new Set();
+  for (let j = waveIndex + 1; j < (waves ? waves.length : 0); j++) {
+    for (const task of waves[j]) {
+      for (const f of task.files || []) out.add(f);
+    }
+  }
+  return [...out];
+}
+
+/**
+ * TSPEC §3.4 (O-4) — does an owned-path set cover `path`? Reuses `pathsCollide`, the same
+ * predicate `computeWaves` uses to keep a wave ownership-disjoint, so a run's envelope decision
+ * and its wave-packing decision cannot disagree about what a manifest row means. Inherits
+ * `pathsCollide`'s trailing-slash precondition: a row `a/b/` covers `a/b/c.js`; a row `a/b` does
+ * not (TSPEC §3.4, TE F-06). Pure.
+ *
+ * @param {string[]} ownedSet
+ * @param {string} path
+ * @returns {boolean}
+ */
+export function ownedSetCovers(ownedSet, path) {
+  return (ownedSet || []).some((owned) => pathsCollide(owned, path));
 }
 
 // ─── The un-skip guard: a wave may not go green on tests that never ran ──────
