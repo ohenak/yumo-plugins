@@ -36,6 +36,58 @@ what FSPEC says, or fail to say it the same way?
 
 ## Options Considered
 
+Three readings of this cascade looked live before I traced the text.
+
+**Reading A — the delta redefines what `maxBytesPerDocument` measures, so `DEC-LI-08`'s
+"bound the addition with REQ §4.1's static thresholds only" is now describing a different
+mechanism and needs re-grounding.** Superficially strong: `maxBytesPerDocument` is named by
+`DEC-LI-08` and by the non-decision row that places threshold *values* with REQ §4.1, and the
+erratum genuinely changed what bytes that threshold counts.
+
+**Rejected on the text.** `DEC-LI-08` is written one level above the accounting basis. Its
+decision is *which quantities bound the addition* — "per-document bytes, total bytes, document
+count — applied unconditionally" — and its rejected alternative is a **dynamic** budget that
+measures the rest of the prompt. Whether the per-document quantity counts framing or only
+material does not touch either half: a static bound stays static under both bases, and the
+dynamic-budget rejection turned on *authority* ("nothing in `orchestrate-dev.js` knows a prompt
+ceiling"), not on arithmetic. The non-decision row is narrower still — it places the threshold
+**values** with REQ §4.1 and says explicitly that "DEC-LI-08 depends on their existence, not on
+their values". The erratum decided neither a value nor a mechanism DECISIONS owns; it decided a
+*measurement basis*, which is FSPEC behaviour and which DECISIONS declines to re-decide by its
+own grounding pin ("no behaviour rule (FSPEC `BR-1` … `BR-16`) is re-decided here").
+
+**Reading B — `maxBytesPerDocument: 0` is a new empty-selection state, so `DEC-LI-07`'s
+five-state configuration table is now incomplete and `DEC-LI-05`'s empty-block reasoning has an
+untested new path.** Worth checking, because `DEC-LI-07`'s table is the one place DECISIONS
+transcribes an upstream table verbatim, and I have said in prior rounds that a `BR-14` change
+reds that transcription.
+
+**Rejected — the table is BR-14's, and BR-14 did not move.** `DEC-LI-07`'s fifth row reads
+"enabled, thresholds admitting nothing | enabled, empty selection | `BR-8` rows, present and
+empty". That row is quantified over *thresholds*, not over an enumerated list of which threshold
+is zero, so a third zero lands inside it as written. FSPEC agrees in terms: E-36 says the
+`maxBytesPerDocument: 0` run "is the enabled, empty-selection run BR-14 describes", and AT-30 now
+asserts all three zeros against the same expectation. Likewise `DEC-LI-05`: an empty selection
+composes `block = ""`, and byte-identity holds *by construction* under concatenation — the
+guarantee is structural, so a new way of reaching an empty selection adds no path to it. Both
+entries are **reinforced** by the delta, not strained by it.
+
+**Reading C — F-O-1's widening hands TSPEC a second heading rule, so DECISIONS' `DEC-LI-01`
+re-evaluation trigger ("a rule that depends on file mtime rather than a document's own bytes —
+which would itself be an FSPEC change, since `BR-3` fixes that the predicate consults only the
+document's bytes") is now stale.** **Rejected.** The trigger cites `BR-3`, and `BR-3` is
+byte-identical at HEAD. F-O-1's new sentence restates the same bound over *both* rules — "each
+consults only the document's bytes, and each is decidable without a model call" — so the fact the
+trigger leans on got wider coverage, not different content. The trigger fires on the same
+observable.
+
+I also weighed whether to re-tag F-03 (the stale version pins) as `delta`, since this round is
+precisely what widened the gap from FSPEC v0.12 to v0.13 against DECISIONS' pinned "FSPEC v0.7".
+**Rejected for tag stability**, on the same reasoning as v4 and v5: the defect sits in pre-round
+bytes that this edit did not touch, so `inherited` is the honest provenance; the widening is
+recorded in the finding text instead. Flipping a tag round-to-round on an unchanged defect is
+exactly what the tag-selection discipline asks reviewers not to do.
+
 ## Decision
 
 ## Consequences
