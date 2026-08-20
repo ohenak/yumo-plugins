@@ -667,10 +667,12 @@ computable so AT-33 can assert set equality:
 
 - **Observed set:** the file-open calls the run makes under `docs/`, over one observation
   window covering the whole run.
-- **Expected set:** the corpus-root enumeration, plus one open attempt for every corpus
-  document the report names — in BR-8's rows or BR-9's per-document reason rows — except
-  those carrying `RSN-SELF`, decided from the path before any read. `RSN-UNREADABLE`
-  documents belong to it: the failed attempt is the read.
+- **Expected set:** **exactly** one open attempt for every corpus document the report names
+  — in BR-8's rows or BR-9's per-document reason rows — except those carrying `RSN-SELF`,
+  decided from the path before any read. `RSN-UNREADABLE` documents belong to it: the failed
+  attempt is the read. Membership is therefore fully enumerable from the report alone, so a
+  test may transcribe it as an equality. The corpus enumeration that lists candidate paths
+  contributes **no** member: it opens no file under `docs/`, so this instrument does not see it.
 
 Nothing under `docs/_constraints/` or `docs/_decisions/` is written, no LEARNINGS document
 or skill prompt is written, and no index, cache or state file is created anywhere (NG-1,
