@@ -131,8 +131,36 @@ repair, not a fixture redesign.
 
 ## Delta-Confirmation Findings
 
-_TBD_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | Overview records `advisoryWaveGate.test.js` and `advisory-config-example.test.js` as "verified absent at HEAD"; both are on disk at HEAD, and TSPEC v1.10 §5.1's new Status-column caveat says so explicitly. PROPERTIES contradicts the upstream text it compresses. | Overview, "Where the tests live" (`:33`–`:39`) |
+| F-02 | High | delta | local | Derivation rule 1 asserts the four bare row-count sites are "verified at HEAD" asserting `toHaveLength(5)`; all four read `toHaveLength(6)` at HEAD, which is what TSPEC v1.10 §1.3's new "State of these surfaces at HEAD" table records. The rule's claim is sound; its HEAD grounding is inverted. | Overview, derivation rule 1 (`:51`–`:55`); PROP-SEAM-02 (`:73`) |
+| F-03 | Medium | delta | local | TSPEC v1.10 re-anchored §1.3's and §3.2's line pins to stable content per DEC-DOC-01 precisely because `e3b9d5a3` drifted them; PROP-SEAM-02 still carries the raw-line form and six of its pins are wrong at HEAD. | PROP-SEAM-02 (`:73`) |
+| F-04 | Low | inherited | nonlocal | PROP-CFG-03 and the example-config fixture pin `ci-arrangement.test.js:799`–`:819` for the `testCommand` regex pair; the pair is at `:798` and `:807`, and `:819` is unrelated comment text. | PROP-CFG-03 (`:165`), Fixtures (`:284`) |
+| F-05 | Low | inherited | nonlocal | Overview Scope still derives from "TSPEC v1.6 (§2–§5)"; TSPEC is v1.10. Carried from v3 F-01 and now two versions staler. | Overview, Scope (`:25`); version table (`:12`) |
+
+FINDING: High | delta | local | Overview "Where the tests live" | both files recorded "verified absent at HEAD" exist at HEAD, contradicting TSPEC v1.10 §5.1's Status-column caveat
+FINDING: High | delta | local | Overview derivation rule 1 / PROP-SEAM-02 | the four bare row-count sites are asserted "verified at HEAD" at `toHaveLength(5)`; all four read `6` at HEAD per TSPEC v1.10 §1.3's re-grounded table
+FINDING: Medium | delta | local | PROP-SEAM-02 | raw line pins retained where TSPEC v1.10 re-anchored §1.3 to stable content per DEC-DOC-01; six of the pins are wrong at HEAD
+FINDING: Low | inherited | nonlocal | PROP-CFG-03 / Fixtures | `ci-arrangement.test.js:799`–`:819` no longer spans the `testCommand` regex pair (now `:798`, `:807`)
+FINDING: Low | inherited | nonlocal | Overview Scope | derivation still cites TSPEC v1.6; TSPEC is v1.10
+
+**What must change.** F-01 and F-02 are current-state sentences, not properties: restate the two
+"verified …at HEAD" claims to describe HEAD as TSPEC §1.3 and §5.1 now describe it — the
+transcription largely landed early via `e3b9d5a3`, the production side did not, the suite is red at
+HEAD, and `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality is the one test-side literal
+still untranscribed. F-03 follows the same repair: re-anchor PROP-SEAM-02's pins to symbol or
+block-title anchors, as TSPEC just did, rather than re-numbering lines that will drift again. No
+property statement, level assignment, oracle form or PLAN home changes.
+
+## Recommendation
+
+**Needs revision** — two High findings. The v3 approval does not carry to TSPEC v1.10 as written.
+The gap is narrow and mechanical: PROPERTIES' properties are still right, but its HEAD grounding is
+now the opposite of its upstream's, and a Phase I author trusting either sentence would look for
+work already done and expect a green baseline that is red.
 
 ## Verdict
 
-_TBD_
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 2}
