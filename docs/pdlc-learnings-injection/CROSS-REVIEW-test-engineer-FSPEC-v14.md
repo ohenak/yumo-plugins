@@ -67,7 +67,67 @@ No citation in the delta points at a nonexistent authority, and the traceability
 
 ## Behavioral Flow
 
+**D-2 — my v13 F-01 is resolved, in the stronger of the two forms I offered.** The row now reads
+"Does BR-1's two-conjunct rule hold — authoring-classified **and** a target document among the six
+C-1 types?" with branches "both hold → block / not authoring-classified → no block /
+authoring-classified, target none of the six → no block". That is three named branches where there
+were two, and the third is precisely the discriminating case that had no name at v13. Because
+FSPEC:277-278 makes this table the DC-05 branch catalogue ("Every branch in this table has at least
+one acceptance test"), the table now *demands* a test for the case, instead of being satisfiable by
+an implementation that drops the `docType` conjunct.
+
+The demand is met, not merely declared: the branch-coverage paragraph (FSPEC:971-972) was updated in
+the same edit to "D-2 — all three branches, the authoring-classified non-C-1 target included — by
+AT-02/03", and both of those ATs were themselves widened to cover it (see §Acceptance Tests). Table,
+mapping and oracle moved together; this is the coverage triangle closing, which is what I wanted from
+the routed item.
+
+Step 0 item 5 (FSPEC:195-197) still delegates rather than restates ("If the dispatch is **not** one
+C-1 names as authoring, the flow stops here with no record (BR-1)"). It was elliptical at v13 and is
+elliptical now, but it defers to C-1, which is the two-conjunct rule, and D-2 three lines below now
+carries the full question — so a reader following the flow into the decision table gets the correct
+rule. Not a finding.
+
+Step 22 (FSPEC:265-267) still cites `BR-11, AC-4.3` for the gate-input claim. BR-11 changed under it
+this round; the citation still resolves and the sentence makes no conjunct claim of its own, so it
+survives the delta intact. The AC-4.3 wording lag is filed against the traceability row, not here.
+
+No other flow step, and none of the ordering, bounding or record loci, is inside the diff.
+
 ## Business Rules
+
+**BR-1 (untouched).** Byte-identical to the version I approved at v13; the erratum correctly left it
+alone and propagated its complement outward instead.
+
+**BR-11 (edited).** The rewrite is the substantive improvement of this round. "Every dispatch prompt
+**outside BR-1's rule** — whether it fails the authoring conjunct or the C-1 target-document
+conjunct — is byte-identical to the same dispatch composed with injection disabled" replaces "every
+non-authoring dispatch prompt". Under the old wording, the authoring-classified/non-C-1-target
+dispatch was in a testability hole: BR-1 excluded it from carrying a block, but no rule asserted its
+prompt was unchanged, so an implementation that injected into it violated no stated FSPEC rule and
+reddened no FSPEC-named test. The new quantifier closes that hole, and the *"whether it fails …
+or …"* clause is what makes the population enumerable for a test author rather than a predicate they
+must re-derive. The rule's falsifiable-form paragraph below (scripted fixtures, composed prompt
+bytes, not live-run verdicts) is unchanged and still correct under the wider population.
+
+**BR-15 (edited).** My v13 F-02 lands. The bullet now states the oracle explicitly: "Both sides are
+compared as **sets of paths**, not as counts, so a document opened more than once neither adds a
+member nor changes the verdict (REQ AC-5.2)." That is the faithful reading of AC-5.2's "the corpus
+paths touched are exactly the reads of the documents … name", it keeps the `RSN-SELF` carve-out and
+the `RSN-UNREADABLE` inclusion (the conjunct that keeps the equality falsifiable in the failure
+direction), and it retains the in-place justification for the enumeration contributing no member.
+
+What the edit did **not** do is carry the correction into AT-33, which transcribes this bullet.
+AT-33 (FSPEC:947-949) still spells the expected set as "exactly one attempt per report-named document
+other than the `RSN-SELF` ones" — the count phrasing BR-15 just disowned. Rule and oracle now
+disagree in a directly testable way: a production path that opens a selected document twice (a size
+probe then a read, or a re-read after ordering) is green under BR-15 and red under AT-33 as written,
+and PLAN LI-11 transcribes the AT, not the rule. One clause in AT-33 (F-01). This is the classic
+erratum failure mode — correcting a rule and leaving its transcription behind — and it is the one
+place this otherwise careful delta hit it.
+
+BR-2 through BR-10 and BR-12 through BR-14, and BR-16, are outside the diff and unchanged from the
+bytes I approved at v12/v13.
 
 ## Edge Cases and Error Scenarios
 
