@@ -60,8 +60,57 @@ unlabelled snapshot commit) is the right one. v2 F-03 (seventh transcription sit
 
 ## Positive Observations
 
+- **Both High findings were closed by pointing at a landed oracle, not by hedging the prose.** The
+  `0`-collapse bullet and the DEC-03 rejection paragraph now each end on a positive statement about
+  what fails if the regression returns — "a future 'simplification' collapsing `0` into
+  `enabled: false` now fails the suite rather than passing it"; "a fixed-name regression writes one
+  target twice and fails on both conjuncts". Those are falsifiability claims a reader can check
+  against `TSPEC:1427-1444` in one hop, and I did. The instruction-shaped sentence I flagged in v3
+  ("Until it lands, a future simplification … passes the suite") is gone, so nothing here can be
+  read as a standing work item by a PROPERTIES author.
+- **The `commit-tree` correction is the strongest edit in the delta.** v1.1 asserted a loud failure
+  that does not happen; the honest version is worse for the operator and the document says so —
+  a valid, unlabelled snapshot commit that defeats the point of capturing it. It also keeps the
+  original testing conclusion intact (an argv-sequence oracle over a double cannot catch the
+  omission, so the literal belongs in the task's argv, not its judgement). Correcting a mechanism
+  claim while preserving the coverage conclusion that rested on it is the harder of the two moves.
+- **The revision tracks upstream rather than my finding text.** My F-04 named
+  `ci-arrangement.test.js` because TSPEC v1.6 did; by the time the edit landed, v1.10 had re-homed
+  the expectation and given a scope-hygiene reason for it (a config-schema assertion parked in a
+  CI-arrangement file lets an unrelated example edit redden a delivery-blocking required check).
+  The bullet reproduces that reason instead of my stale anchor. That is the behaviour I want from
+  an author under cascade.
+- **"Two pieces" correctly became one, not zero.** FSPEC BR-8's permissive clause is still standing
+  at `FSPEC:196`, and the paragraph still says so. The easy error here was to declare the whole
+  supersession discharged once the O-8 row moved.
+
 ## Consequences
 
+- **Nothing blocks PLAN or PROPERTIES.** No decision line moved in this delta; the four decisions
+  are unchanged and now rest on upstream text that exists. F-01 touches a sizing enumeration in the
+  whole-feature section, not a decision, and its conclusion (sequence the shared-double edits
+  together) is unaffected by the misattribution.
+- **F-01 is worth folding into whatever edit next touches this file rather than a round of its own.**
+  Same for F-02. If nothing else opens this document, both can ride the next version bump; if the
+  envelope literal migrates to six members during implementation, the bullet needs revisiting anyway
+  and the correction lands for free.
+- **One durable observation for the harvest.** Both this round and the last were spent re-grounding
+  a record against upstream that moved underneath it — v1.5 → v1.6 → v1.10 across two review rounds,
+  with citations in this document going stale each time without any edit to it. The document's own
+  set-equality warning ("a partial edit reddens tests … with a failure reason the record cannot
+  predict") applies to itself, as v3 noted. What this round adds: the cost is not one-off. A record
+  that transcribes upstream *coverage status* re-expires on every upstream erratum, and two of the
+  four v3 findings existed only because DECISIONS chose to state what upstream did not yet have.
+  The cheaper shape is to cite the owning section and let it carry the status.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+Both v3 High findings are resolved, both Medium findings are resolved, the Low is resolved, and the
+two v2 findings Q-01 asked about are discharged in the same pass. No open High finding, old or new.
+The two findings recorded here are non-gating: one misattributed entry in a sizing enumeration whose
+conclusion holds regardless, and a date-column regression. Neither needs a round; both should ride
+the next edit that opens this file.
 
 ## Verdict
