@@ -262,6 +262,38 @@ reference to the consolidation enumeration.
 
 ## DEC-LI-05: The block is an appended suffix that is `""` when empty, not an insertion
 
+**Context.** REQ AC-4.1 and AC-5.1a demand byte-identity: a dispatch that carries nothing must be
+byte-identical to the same dispatch composed with injection disabled. `dispatchAndVerify` composes
+`prompt` as `` `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}` ``.
+
+**Decision.** Compose as `prompt + block`, where `block` is `""` whenever the selection is empty and
+`"\n\n" + rendered` otherwise. Byte-identity then holds **by construction**: concatenating the empty
+string is the identity operation, so there is no code path on which an empty selection can perturb a
+prompt.
+
+**Alternatives considered.**
+
+- **Insert the block before `PACING_CONTRACT_CLAUSE`, or between `basePrompt` and the pacing
+  contract** — rejected. It reorders existing content relative to itself, so byte-identity stops
+  being structural and becomes a property that must be *tested* on every disabled path — and tested
+  forever, since any future edit to the composition can break it. It also puts advisory context ahead
+  of the contract the role must obey, inverting the priority the prompt communicates.
+- **Have the injector return the whole prompt (a transform, not a suffix)** — rejected: it gives the
+  new code the ability to modify existing content, which is precisely the capability REQ C-8's
+  non-displacement half asks it not to have. Returning a suffix makes the guarantee a type-level
+  fact.
+- **Emit a placeholder block ("no prior learnings") when the selection is empty** — rejected: it
+  breaks AC-4.1/AC-5.1a outright, and it spends prompt bytes to tell an author nothing.
+
+**Constraints that forced the shape.** AC-4.1 and AC-5.1a; REQ C-8's non-displacement half; and
+FSPEC `BR-7`, which fixes what the block must convey but not where it sits.
+
+**Reversibility.** Easy — a one-line change in `dispatchAndVerify` — but any move that stops the
+block being a **suffix** forfeits the structural guarantee and must bring its own tests.
+
+**Re-evaluation triggers.** Evidence that role compliance degrades when advisory context is last in
+the prompt; a future prompt-composition refactor that stops building `prompt` by concatenation.
+
 ## DEC-LI-06: No feature-owned cache or run-scoped memo
 
 ## DEC-LI-07: An absent configuration section is an enabled run, and no configuration mistake disables the feature
