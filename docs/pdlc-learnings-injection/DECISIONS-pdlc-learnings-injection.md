@@ -85,6 +85,14 @@ reasoning, the constraints and the reversibility are in the entry.
 
 ## Decision
 
+In one sentence: **the feature is a pure selection rule plus a twelve-line IO shell, added to the one
+module the engine already vendors, attached at the one function that sees both the dispatch
+classification and the target document type, appended to the prompt as a suffix that is the empty
+string whenever nothing is selected, and disabled only by an explicit `enabled: false`.**
+
+Each `DEC-LI-NN` below is binding on PLAN and IMPL. Where a decision is provisional or blocked, the
+entry says so in its own Reversibility row rather than in prose elsewhere.
+
 ## DEC-LI-01: The feature ships inside `orchestrate-dev.js`, not as a new workflow module
 
 ## DEC-LI-02: A pure selection core with one twelve-line IO shell, not an IO-carrying selector
