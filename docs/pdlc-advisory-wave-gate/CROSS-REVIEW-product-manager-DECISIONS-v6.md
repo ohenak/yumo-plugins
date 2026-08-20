@@ -48,6 +48,13 @@ red today on `E-5`/`E-6`.
 
 ## Resolution of v5 findings
 
+| v5 ID | Severity | Status at HEAD | Evidence |
+|---|---|---|---|
+| F-01 — seam enumeration stale, five of six sites already migrated | High | **Resolved** (`ff07bc84`) | Lines 359–363 now say "survives at one site, not six" and name `advisoryRecord.test.js`'s `rows.map` equality; the five migrated sites are folded into the already-migrated bullet at lines 385–389. I re-grepped: set-equal to HEAD, no seventh site. Line 405–408 also re-states the old "roughly a dozen transcriptions" figure as re-derived and says why the old one was inflated — more than I asked for |
+| F-02 — "§1.3 records them as drift rows" over-attributed | Low | **Resolved** (`ff07bc84`) | Lines 394–398 now attribute the `ENVELOPE_DEFAULTS` row alone to §1.3 and mark the `advisoryConfig` observation as "this record's own and not §1.3's". Verified against `TSPEC…md:302`–`:304` |
+| F-03 — "seven, not six" holds over a differently-composed seven | Low | **Resolved** (`ff07bc84`) | Lines 372–374: "The count is unchanged at seven since v1.2 but its members are not — the production definition enters as the already-migrated `advisoryEnvelope` assertion leaves" |
+| v5 Q-01 — defer live counts to §1.3's tables | — | Answered by choosing the other option | The round kept site-by-site counts and re-derived them instead. That is a legitimate answer; F-01 below is the cost of it landing again |
+
 ## Findings
 
 ## Questions
