@@ -92,4 +92,32 @@ red today on `E-5`/`E-6`.
 
 ## Recommendation
 
+**Needs revision** — one High finding (F-01).
+
+All three v5 findings are resolved, including the blocking one, and the two literal enumerations
+are now set-equal to HEAD; I re-grepped both and found no missing or extra site. The four
+decisions remain a faithful compression of TSPEC v1.10 and were untouched this round. What blocks
+is confined to two sentences of the round's *new* material: the claim that
+`advisoryEnvelope.test.js` holds the only envelope oracle failing on drift, and the claim that
+`advisoryConfig.test.js`'s six-member envelope "is never compared to anything". `PROP-CFG-02`
+deep-equals that literal against production output at `advisoryConfig.test.js:135` and `:143`, and
+those five cases are red at HEAD on `E-5`/`E-6`.
+
+Exactly what to change:
+
+1. **F-01 (blocking)** — line 378–379: state that **two** envelope oracles fail on drift,
+   `advisoryEnvelope.test.js:284`'s `[...ENVELOPE_DEFAULTS].sort()` equality and
+   `advisoryConfig.test.js`'s `PROP-CFG-02` deep-equal (`:135`, `:143`), both already at the
+   six-member value. Lines 391–394: replace "Only the first of those two asserts against
+   production and is therefore red today … never the envelope's members" with the measured
+   position — both assert against production, both are red today, `advisoryConfig`'s via
+   `PROP-CFG-02`'s whole-object deep equality rather than a dedicated envelope assertion, and both
+   go green when `ENVELOPE_DEFAULTS` grows, with no edit to either. Keep the `PROP-CFG-01`
+   sentence — it is accurate — and keep the §1.3 attribution fix from v5 F-02 intact.
+2. **F-02 (non-blocking)** — harvest note only, no document edit required.
+
+Nothing else in the changed block needs to move. The preceding "none of those five is an oracle"
+bullet, the seam re-derivation, the seven already-migrated sites, and the closing size line all
+verified clean against HEAD.
+
 ## Verdict
