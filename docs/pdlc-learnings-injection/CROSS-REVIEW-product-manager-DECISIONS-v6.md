@@ -121,6 +121,56 @@ five are recorded `inherited` — the round routes back to the owning phase rath
 
 ## Consequences
 
+**For this round.** The confirmation approves. FSPEC v0.13 re-founded BR-6's byte accounting on
+material only, decided the third zero threshold, and gave BR-6's heading rule an owner in F-O-1 —
+and re-decided nothing DECISIONS owns. Five findings stand, all inherited citation- and
+framing-currency defects, none blocking: PLAN and PROPERTIES may proceed against DECISIONS as it
+stands alongside REQ/FSPEC/TSPEC at HEAD.
+
+**What the next edit to DECISIONS should carry** — unchanged from v5, items 1–5, with item 3's pin
+now widened by one more FSPEC minor:
+
+1. Restate the AC-3.3 locus row as **settled**, not open: it describes AC-3.3's record locus as an
+   open question routed to REQ via TSPEC `ERR-6`, but FSPEC `BR-10` settled the two loci and TSPEC
+   records `ERR-6` **CLOSED** from v0.6 onward. (F-01)
+2. Close `DEC-LI-07`'s divergence framing and mark obligation **`D-O-9` discharged**, naming the
+   landing version: `DEC-ERR-01`'s ask landed in **TSPEC v0.6** (`ERR-4` CLOSED, `OQ.2` closed, §I.3
+   gating on `config.enabled` alone, `LEARNINGS_DEFAULTS` aligned). (F-02)
+3. Repin: the header `Upstream` row, the **Upstream version note**, and `DEC-LI-07`'s "FSPEC v0.7
+   `BR-14`" all read **FSPEC v0.7** against **v0.13** at HEAD, and TSPEC **v0.5** against **v0.7**.
+   The cited `BR-14` text is unchanged, so this is a pin edit only. (F-03)
+4. Align `DEC-LI-03`'s re-evaluation trigger with `A-2` as reworded: the excluded-by-construction
+   default now covers a dispatch failing **either** conjunct, and an authoring-classified non-C-1
+   target is named against `BR-1` itself. One clause. (F-04)
+5. Rewrite or delete the **Upstream version note**'s premise. It exists to explain why DECISIONS and
+   TSPEC disagreed about upstream; TSPEC v0.7 is now pinned to the same REQ v0.9 the document is
+   grounded on, so the asymmetry it explains no longer exists. If kept, it should record *history*
+   ("TSPEC v0.5 lagged; re-grounded at v0.7") rather than assert a live gap. (F-05)
+
+**For the pipeline.** This is the **fourth** consecutive confirmation whose findings are stale
+sentences about sibling documents and whose count is flat-to-rising (2 → 4 → 5 → 5) purely because
+DECISIONS' bytes cannot move between confirmation rounds while its siblings keep moving. Three
+`Process` candidates, now demonstrated a fourth time:
+
+- **Version pins in a downstream document go stale silently.** `DEC-LI-03`'s and `DEC-LI-10`'s
+  *content* citations are re-checkable against a named id, but the header pins are not falsified by
+  anything — F-03 has now widened across three separate upstream rounds without a single test or gate
+  noticing.
+- **An erratum that discharges an obligation should close the obligation row in the document that
+  raised it.** `D-O-9` was satisfied by TSPEC v0.6 and has been carried as outstanding through three
+  confirmations since, because the discharge happened in the *target* document and nothing routes
+  back to the *raising* one.
+- **A "current upstream" framing sentence is a dated claim wearing a timeless voice.** F-05's
+  paragraph was true when written and false one round later, with no id, quote or number in it for a
+  re-reader to check against.
+
+**On the confirmation itself.** This round's routed item list is FSPEC's three v0.13 decisions —
+none names DECISIONS, and all three land in DECISIONS' favour. Confirming on the item list alone
+would have returned a clean approval over five stale sentences, all already outstanding. Re-reading
+the upstream text this document leans on, at HEAD, across the whole span since the recorded
+`UPSTREAM-STATE`, is what keeps them on the page — and is also what let me clear Readings A, B and C
+rather than file them.
+
 ## Positive Observations
 
 ## Recommendation
