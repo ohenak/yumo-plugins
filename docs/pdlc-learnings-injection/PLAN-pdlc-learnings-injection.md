@@ -433,9 +433,13 @@ adds a ~300-line region with twelve fail-open arms to that same file. That headr
 DoD 11 compares against, and H-8 is what happens if the region consumes it.
 
 **A dirty working tree adds a third failure, and it is not a flake.**
-`__tests__/consumerCleanup.test.js` asserts `git status --porcelain` over **tracked** files is
-empty (`AT-4.1`), so any uncommitted edit anywhere in the repository — including an edit to this
-PLAN — reds it. Every measurement in this section was taken on a committed tree, and a wave that
+`__tests__/consumerCleanup.test.js`'s `AT-4.1` runs `execFileSync("git", ["status", "--porcelain"])`
+at the **repository root** and asserts the output is exactly `""`. The call carries **no `-uno`**
+(TE F-04), so the default `-unormal` applies and untracked files appear as `??` entries: a new test
+file that has been **written but not committed** reds it exactly as an uncommitted edit to a tracked
+file does — and "fourteen new files, one of them written a moment ago" is the state an implementer
+is in for most of this feature. Any uncommitted edit anywhere in the repository — including an edit
+to this PLAN — reds it too. Every measurement in this section was taken on a committed tree, and a wave that
 measures on a dirty one will misread its own gate.
 
 ### The three gate wordings, and the expected-red ledger
@@ -443,7 +447,7 @@ measures on a dirty one will misread its own gate.
 | Batches | Gate |
 |---|---|
 | 2, 3 (LI-07…LI-09), 5 — **RED-terminal** | The batch's new tests **fail for the specified reason** — the symbol under test is not defined yet, or `.gitignore` lacks the rule — **and** every pre-existing test's status is unchanged from the baseline above. A new test failing for a *different* reason (a typo, a missing import, a helper that throws) is a batch failure, not a red. Batch 3 is mixed and is read per-suite: LI-04's and LI-05's two oracles are **green** in the same batch that LI-07…LI-09 land red |
-| 1, 4, 6 — **green-terminal** | The batch's new suite is **green on authoring**: `learningsPremises.test.js` over HEAD's premises (batch 1), `learningsBaselineGuard.test.js` over the capture it was written from (batch 4), `learningsSuiteMap.test.js` over six suite files that already exist (batch 6). None has a red episode, and none may be *given* one by inventing a symbol for it to miss |
+| 1, 4, 6 — **green-terminal** | The batch's new suite is **green on authoring**: `learningsPremises.test.js` over HEAD's premises (batch 1), `learningsBaselineGuard.test.js` over the capture it was written from (batch 4), `learningsSuiteMap.test.js` over six suite files that already exist (batch 6). None has a red episode, and none may be *given* one by inventing a symbol for it to miss — **and** every pre-existing test's status is unchanged from the measured baseline, the same conjunct the other three rows carry (TE F-02). Without it these batches would have no oracle for a regression they can cause, and batch 4 is the one that commits a whole new fixture subtree into a tree `coveredViolations` walks in full |
 | 7–13 — **mixed, against the ledger below** | Every suite whose green task has landed is green; every suite still listed in that batch's ledger row is red **for its specified reason**; no other test's status moves from the measured baseline. A suite dropping out of the ledger early is as much a failure as one lingering — the ledger shrinks by exactly the rows the batch's task greens |
 | 14 | **Full suite green**, unqualified, under the arrangement's `testCommand`, with the documented pre-existing exclusions and no others |
 
@@ -476,7 +480,7 @@ a halt condition — and with the ledger in place there is no batch for which th
 1. All 35 FSPEC acceptance tests implemented, each in exactly one suite, each named `LI-AT-{N}`, and `LI-T-SUITEMAP` green over the hand-transcribed partition.
 2. All TSPEC-local cases green: `LI-T-PIN-1`, the composition-site set equality on **both** operands, `LI-T-RETRY-1…3`, `LI-T-IGNORE`, `LI-T-WORKTREE`, the baseline digest guard, the porcelain write-delta and the static seam scan.
 3. Every fail-open arm of TSPEC §T.7 entered by its named test — twelve for twelve, **asserted by `learningsArmInventory.test.js` (LI-23) as set equality against the three frozen catalogues**, with LI-22's row-by-row walk as the human cross-check that the suite and §Traceability's table name the same arms.
-4. Byte-identity holds where promised — and this is a **deliberate strengthening** of REQ, not a restatement of it (PM Q-02): REQ demands baseline byte-identity only for AC-5.1a's disabled run, while AC-4.1/AC-4.2/AC-4.4 demand "composed exactly as today" and an enabled-with-empty-selection run. The claim below extends the baseline comparison to all four states because the same committed artifact answers all four at no extra cost. It is a claim about **composed prompts**, never about the report: an AC-4.4 admits-nothing run carries the `learningsInjection` key with empty rows and is still prompt-identical. a disabled run, an empty corpus, an unlistable corpus and an admits-nothing configuration each compose prompts **character-for-character** equal to the committed pre-feature baseline (AC-4.1, AC-5.1a, AT-24); every non-authoring dispatch likewise (AC-4.3).
+4. Byte-identity holds where promised — and this is a **deliberate strengthening** of REQ, not a restatement of it (PM Q-02): REQ demands baseline byte-identity only for AC-5.1a's disabled run, while AC-4.1/AC-4.2/AC-4.4 demand "composed exactly as today" and an enabled-with-empty-selection run. The claim below extends the baseline comparison to all four states because the same committed artifact answers all four at no extra cost. It is a claim about **composed prompts**, never about the report: an AC-4.4 admits-nothing run carries the `learningsInjection` key with empty rows and is still prompt-identical. The claim is: a disabled run, an empty corpus, an unlistable corpus and an admits-nothing configuration each compose prompts **character-for-character** equal to the committed pre-feature baseline (AC-4.1, AC-5.1a, AT-24); every non-authoring dispatch likewise (AC-4.3).
 5. Report shape: `learningsInjection` **absent** on an explicitly disabled run, **present with empty rows** on an enabled run that selected nothing; `NTC-*` notices on the run-level `notices` channel, never inside `learningsInjection`.
 6. `pdlc/workflows/dist/pdlc-cli.mjs` regenerated and staged in every wave that touched `orchestrate-dev.js`; `node pdlc/workflows/build-runtime.mjs --check` exits zero at the end of batch 14.
 7. No new file under `pdlc/workflows/` other than tests, helpers and fixtures — `prepack.mjs`'s `MODULE_NAMES` is unchanged, so a new production module would ship green and arrive absent.
