@@ -232,14 +232,14 @@ so no SKILL text moves.
 
 | Batch | Tasks | What the batch is for | Terminal state |
 |---|---|---|---|
-| 1 | LI-01 | premise pre-flight | green (assertions over HEAD) |
+| 1 | LI-01 | premise pre-flight | green **over an owned suite** — `learningsPremises.test.js` asserts every premise structurally, so batch 1 has a result a skipped task could not produce (TE F-05) |
 | 2 | LI-02, LI-03, LI-13 | fixture helper + the two suites that need no other suite | **red** |
 | 3 | LI-04, LI-05, LI-07, LI-08, LI-09 | ignore rule, capture script, the three L1/L2 red suites | mixed: LI-04/LI-05 green their own oracles, LI-07…LI-09 **red** |
 | 4 | LI-06 | **the T-O-2 gate moment** — capture, commit, guard | green (guard passes over the fresh capture) |
-| 5 | LI-10, LI-11, LI-12 | the three L3 red suites, which need the baseline | **red** |
-| 6 | LI-14 | closure over the six AT-bearing suites | **red** |
-| 7–13 | LI-15 … LI-21 | the serial source lane, one edit per batch | green, cumulative |
-| 14 | LI-22 | refactor, coverage inventory, close | green |
+| 5 | LI-10, LI-11, LI-12, LI-23 | the three L3 red suites, which need the baseline, plus the fail-open arm inventory | **red** |
+| 6 | LI-14 | closure over the six AT-bearing suites | **green** — `LI-T-SUITEMAP` reads six files that all exist at the end of batch 5 and has no symbol under test, so it is green on authoring (TE F-02) |
+| 7–13 | LI-15 … LI-21 | the serial source lane, one edit per batch | **mixed**, against §Verification's per-batch expected-red ledger: every suite whose green task has landed is green, every other new suite is still red for its specified reason, and no pre-existing test's status moves |
+| 14 | LI-22 | refactor, inventory cross-check, close | green — the only unqualified full-suite-green gate in the feature |
 
 ### Why each edge exists
 
@@ -249,11 +249,14 @@ so no SKILL text moves.
 | LI-04, LI-05 → LI-03 | red-before-green | both obligations of TSPEC §T.3 are things a rebase drops silently; each has a named oracle that must be red first |
 | LI-05 → LI-02 | data | the capture drives the **L3 fixture matrix**, which lives in the helper |
 | LI-06 → LI-04, LI-05 | ordering + tooling | the capture cannot run before the script exists, and must not run before `.baseline-worktree` is ignored, or an interrupted run dirties the tree the `coveredViolations` walk scans |
-| LI-10, LI-11, LI-12 → LI-06 | data | the L3 byte-identity claims (AT-23, AT-24, AT-31) compare against committed baseline prompts |
+| LI-10, LI-11, LI-12, LI-23 → LI-06 | data | the L3 byte-identity claims (AT-23, AT-24, AT-31) compare against committed baseline prompts |
 | LI-14 → LI-07 … LI-12 | closure | the suite map asserts over suite files that must exist to be read |
 | LI-15 → LI-06 | **T-O-2** | the first production edit may not precede the baseline capture; this single edge is what makes the obligation structural rather than remembered |
 | LI-16 → LI-15, LI-17 → LI-16, … LI-22 → LI-21 | single-writer serialisation | consecutive edits to `orchestrate-dev.js`; also a genuine build order — the selection core consumes LI-15's catalogues, the renderer consumes the selector's output, the shell feeds the selector, the injector composes all three, the attachment consumes the injector, the report consumes the sink |
 | LI-16 → LI-07, LI-17 → LI-08, LI-18 → LI-09, LI-19 → LI-10, LI-20 → LI-11, LI-21 → LI-12 | red-before-green | each green task names the red suite it satisfies |
+| LI-19 → LI-07 | red-before-green, second suite | LI-19 also greens `LI-AT-15`'s corpus-level clauses, which live in LI-07's suite; the edge is what keeps that green from being attributed to a task that runs before the red exists (PM F-03) |
+| LI-21 → LI-23 | red-before-green, second suite | LI-21 is the task after which all twelve fail-open arms are reachable, so it is the task that greens the arm inventory (TE F-07) |
+| LI-15 → LI-14 | ordering, **not** red-before-green | LI-15 greens nothing in `learningsSuiteMap.test.js` — that suite was green from authoring. The edge stands because the suite map is the closure check over the AT partition and must be authored before the source lane starts moving names around (TE F-02) |
 
 **The serialisation edges and the logical edges coincide here, and that is luck rather than
 design.** Where they had not coincided, the serialisation edge would still stand: batch-safety rule
