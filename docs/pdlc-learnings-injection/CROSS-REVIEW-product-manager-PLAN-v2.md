@@ -50,4 +50,19 @@ Scope of attention: the v0.1→v0.2 delta only (185 insertions, 67 deletions acr
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding is open, and it is new to v0.2 rather than inherited: **F-07** — LI-01's `learningsPremises.test.js` asserts the §Overview change-surface table's **absence** claims while promising to stay green, and LI-04, LI-05 and LI-06 are scheduled to falsify those very claims at batches 3 and 4. Under §Verification's batch gates and P-A-2's halt rule, the PLAN as written halts its own wave at batch 3.
+
+Exactly what must change:
+
+1. Scope `learningsPremises.test.js` to the existence-and-shape premises only — P-1, P-2a, P-3, P-4, P-7/P-8, P-10 — and remove "and the §Overview change-surface table's absence claims" from LI-01's assertion list, which also resolves the row's internal contradiction with its own "**Asserts existence and shape only**".
+2. Keep the absence checks as LI-01's **one-time pre-flight**, recorded in the completion note alongside the H-2 engine-failure triage that already lives there. They are a batch-1 measurement, not a standing invariant.
+3. If any absence claim is instead kept as a standing test, list it in the expected-red ledger for the batch that falsifies it and restate the ledger's "shrinks monotonically to empty" property accordingly — but this route costs the ledger its cleanest property, so route 2 is preferred.
+
+F-08 (DoD 4's broken sentence join) is Low and non-gating; fix it in the same pass. Everything else in the v0.1→v0.2 delta lands, and my four prior High findings are closed at the locus rather than argued away. Nothing in the revision broke a section I approved in v1: the §T.5 partition still sums to 35, the manifest arithmetic reconciles, and the coverage baseline reproduces exactly.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
