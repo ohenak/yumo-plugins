@@ -80,12 +80,26 @@ No open question here gates the confirmation; the decision freeze is respected a
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The routed item is discharged, but the row was re-enumerated rather than made a glob, so it is stale again as of this v12 round; prefer `…-FSPEC-v*.md` in the next non-frozen edit | header `Cross-Reviews` row (`:12`) |
+| F-02 | Low | inherited | nonlocal | BR-9's per-document prose omits the "exactly one" quantifier that AT-19's set-equality oracle asserts; wording only, oracle is the contract | `### BR-9` (`:509`) |
+| F-03 | Low | inherited | nonlocal | AT-22's subject/predicate slip — it names the rule-input record where it means the reproduced selection; the no-production-selector clause already pins intent | `## Acceptance Tests`, AT-22 |
+
+FINDING: Low | delta | local | header `Cross-Reviews` row (`:12`) | routed item is discharged and the row is accurate as of commit 9a4b7593, but re-enumerating rounds instead of using a glob re-arms the staleness failure mode — the row is already stale again now that v12 exists
+FINDING: Low | inherited | nonlocal | `### BR-9` (`:509`) | per-document prose omits the "exactly one" quantifier that AT-19's set-equality oracle actually asserts; prose-vs-oracle wording gap, not a behavioural gap
+FINDING: Low | inherited | nonlocal | `## Acceptance Tests`, AT-22 | subject/predicate slip: the text names the rule-input record where the reproduced selection is meant; intent is pinned by the no-production-selector clause
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+The delta resolves the routed item and breaks nothing previously approved. It is header-only (+8/−2, one hunk pair above `## Overview`), it corrects the `Cross-Reviews` row to the rounds that actually exist on this branch, and it records the v0.9 entry's inaccurate claim in the changelog rather than silently overwriting it. Upstream is byte-identical to the state I approved at v11 (REQ sha256:ff605dd…e84dd), and every header and sampled body citation re-verifies against REQ v0.9 at HEAD — §4.1's `enabled: true` default, AC-5.1a/b/c's configuration states, AC-2.3/2.4's bounds, AC-2.6's discarded-path rule, AC-3.2/3.3's per-dispatch locus. The document remains a faithful compression of its upstream.
+
+No High finding, so nothing gates. Three Low findings are recorded: one is this delta's choice to re-enumerate rather than glob the header row, which discharges the item but leaves the same defect able to recur; two are inherited wording items carried from v10/v11, untouched by this edit, and belong to the next non-frozen revision of this document.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
+
