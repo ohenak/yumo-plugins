@@ -204,8 +204,31 @@ FINDING: Low | inherited | nonlocal | TSPEC front matter Cross-Reviews row | the
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes.** TSPEC still holds as approved against FSPEC at
+`sha256:a4f775bd…` (v0.10). The cascading edit is header-only — a Cross-Reviews enumeration, a
+version bump and a self-describing changelog paragraph — and I verified that description against
+the bytes rather than trusting it. Every FSPEC passage this TSPEC compresses (BR-9/BR-10's loci,
+the per-authoring-dispatch clauses, the AC-3.3 → BR-10 → AT-22 traceability row, E-26, AT-32's
+positive conjunct) is verbatim-present at v0.10, so the TSPEC is still a faithful compression of
+its upstream.
+
+Zero High findings, so nothing gates. The one `delta` finding is Low and documentary: the TSPEC's
+upstream version labels now name a version that no longer exists, which costs a PLAN author one
+lookup and falsifies no claim. The four remaining findings are `inherited` — the same Medium
+wording repairs and Low bookkeeping items recorded in v7 and v8, none of which this edit touched
+or worsened.
+
+**What to change (all non-gating, none requiring the document reopened on its own account):** bump
+the Upstream row to FSPEC v0.10 and the body's "FSPEC v0.9" attributions with it, next time the
+TSPEC is opened; and, per Q-02, consider pinning the Upstream row by hash so a third
+version-bump cascade is a mechanical no-op.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 4}
+
+APPROVAL-HASH: sha256:eff5a19bffcc35383ae71b18a43ec71418411f885ebfd99f63865d6377ba72d3
+REVIEWED-COMMIT: 15d8f46e
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
+UPSTREAM-STATE: FSPEC sha256:a4f775bd64c167994ba62897ffe6c78efd82d017369bdf632c0f49b858dfa9a5
