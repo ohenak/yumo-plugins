@@ -81,7 +81,7 @@ main's v1.3 after rebase (SE F-01). Decided: guard paths bind A6 unchanged (TE F
 diagnosis-only outcome escalates without a ninth refusal reason (SE F-04, AC-3.4); the re-gate
 re-runs the wave's gate sequence in shipped order (SE F-03, TE F-07, AC-4.4); E-6 repair's
 committed fate stated (SE F-02, AC-4.6, O-8). Shipped-behaviour evidence measured into
-`pdlc-wave-gate-baseline.md` v1.2 (M-WG-9…M-WG-12) rather than restated here; §8's
+`pdlc-wave-gate-baseline.md` v1.1 (M-WG-9…M-WG-12) rather than restated here; §8's
 resolved-question provenance relocated to the decision document.*
 
 *v1.3 changelog: v1.2's three open questions decided by delegated operator adjudication,
