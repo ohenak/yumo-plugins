@@ -114,3 +114,9 @@ conclusion holds regardless, and a date-column regression. Neither needs a round
 the next edit that opens this file.
 
 ## Verdict
+
+FINDING: Medium | delta | local | "What follows for the whole feature", envelope-literal bullet | The re-enumerated six sites name `advisoryEnvelope`'s `ENVELOPE_DEFAULTS` set-equality as a four-member-literal site; `advisoryEnvelope.test.js:284` already asserts the six-member value against a still-four-member production default (`orchestrate-dev.js:1942`, drift row at `TSPEC:303`).
+FINDING: Low | delta | local | Metadata table | Version 1.2 is dated 2026-08-19, earlier than v1.1's 2026-08-20.
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
