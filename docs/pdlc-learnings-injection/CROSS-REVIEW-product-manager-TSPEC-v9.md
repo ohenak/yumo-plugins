@@ -208,4 +208,26 @@ note, and F-06's `orchestrate-dev.js` line anchors in one editorial pass during 
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | Header and in-body citations pin FSPEC at v0.9; FSPEC is v0.10 at HEAD, referents unchanged | §Header Upstream row / §A.5 / §I.3 / §T.5 / §ERR-4 |
+| F-02 | Low | inherited | nonlocal | TSPEC's own Cross-Reviews row stops at v6; v7/v8 exist on this branch | §Header Cross-Reviews row |
+| F-03 | Low | inherited | nonlocal | `OQ.2` and `ERR-4` say "§I.3's gate"; the gate is in §I.2 | §OQ.2 / §ERR-4 |
+| F-04 | Low | inherited | nonlocal | §A.5's closing sentence cites §T.2 for the per-dispatch loci; they are asserted in §T.6 | §A.5 |
+| F-05 | Low | inherited | nonlocal | `OQ.2`'s bare-repository note is stale against E-21 → AT-32 | §OQ.2 |
+| F-06 | Low | inherited | nonlocal | Raw `file:line` anchors into `orchestrate-dev.js` have drifted; all claims still true by symbol | §Premises P-1/P-2a/P-10 |
+
+FINDING: Low | delta | local | §Header Upstream row and FSPEC v0.9 citations | TSPEC:11 pins FSPEC (v0.9) and TSPEC:326/:469/:943/:1275/:1295 cite "FSPEC v0.9"; FSPEC is v0.10 at HEAD — every referent (BR-9, BR-10, E-21…E-34, AT-18/20/22) is byte-identical, so only the version label is stale
+FINDING: Low | inherited | nonlocal | §Header Cross-Reviews row | TSPEC:13 enumerates PM/TE TSPEC cross-reviews v1…v6 although v7 and v8 exist on this branch — the same bibliographic defect FSPEC corrected in itself this round, one document downstream
+FINDING: Low | inherited | nonlocal | §OQ.2 / §ERR-4 | OQ.2 (TSPEC:1237) and ERR-4 (TSPEC:1277) attribute the corrected gate to §I.3; it is at TSPEC:441-448 inside §I.2, and §I.3 (TSPEC:486) contains no gate
+FINDING: Low | inherited | nonlocal | §A.5 | §A.5's closing sentence (TSPEC:359-361) cites §T.2 for the per-dispatch loci; §T.2 (TSPEC:799) is the doubles table and the assertions live in §T.6's DIVERGENT-CORPUS (TSPEC:987-992)
+FINDING: Low | inherited | nonlocal | §OQ.2 | OQ.2's bare-repository note (TSPEC:1241-1244) is stale against FSPEC's E-21 → AT-32 mapping and §T.5's assignment of AT-32 to learningsConfig.test.js (TSPEC:952-958)
+FINDING: Low | inherited | nonlocal | §Premises P-1/P-2a/P-10 | Raw file:line anchors into orchestrate-dev.js have drifted as HEAD moved; every claim remains true by symbol, so this is DEC-DOC-01 Process-scope, not a behavioural defect
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 6}
+
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
+UPSTREAM-STATE: FSPEC sha256:a4f775bd64c167994ba62897ffe6c78efd82d017369bdf632c0f49b858dfa9a5
