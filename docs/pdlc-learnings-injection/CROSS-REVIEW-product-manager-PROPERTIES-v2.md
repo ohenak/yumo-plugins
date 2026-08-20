@@ -109,7 +109,43 @@ only what it should mean.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | (Carried from v1 Q-02, still open.) PROP-CORPUS-03 pins `docs/discarded/LEARNINGS-x.md` as **injected** while `docs/discarded/{p}/LEARNINGS-{p}.md` is excluded, because `LS_FILES_ARGV`'s globs happen to admit the direct child. The property is right to pin what the predicate does; the *product* question — should a discarded feature's learnings reach an author's prompt at all? — still has no home in FSPEC BR-2, and today's answer is discoverable only by reading a glob. Is that intentional faithfulness, or a decision nobody has taken yet? |
+| Q-02 | PROP-META-06 asserts every enumerated suite constructs its agent through "a `_agent` injection or `makeAgentDouble`-shaped helper". The expected side of that assertion is a *shape*, not a literal — what stops it from being satisfied by a future helper that is `makeAgentDouble`-shaped in name and live in behaviour? A named allow-list of double constructors, transcribed by hand and asserted set-equal, would be the same discipline §F.3 applies to the three catalogues. |
+| Q-03 | §C.3 now hangs three properties (PROP-META-05, PROP-META-06, PROP-RECORD-09) on LI-14's single directory walk, and §C.4's "no property has no owning task" row counts them as owned. PLAN's LI-14 row describes only `LI-T-SUITEMAP`. Routed as a PLAN erratum below — but is the intent that LI-14 grows two assertions inside the existing suite, or that they become two additional `LI-T-*` tests? The suite-map closure keys on `LI-AT-` titles only, so either shape is safe for the partition; the PLAN row should say which. |
+
 ## Positive Observations
+
+- **The F-01 fix went past the transcription to the mechanism.** Correcting five names would have
+  satisfied the letter of the finding. Adding PROP-BOUND-08 — a real corpus document, the section set
+  as an intersection rather than a fixed expectation, the heading lines asserted present, and the
+  explicit statement that *"a synthetic fixture structurally cannot falsify it"* — closes the failure
+  mode the wrong names were only a symptom of. This is the arm that stops the feature shipping green
+  and inert, and it costs no AT id.
+- **PROP-DISPATCH-08 converts four unfalsifiable conjuncts into one falsifiable invariant.** The v1
+  PROP-DISPATCH-03 asserted byte-identity for dispatch families whose path never reaches the
+  composition site — true by construction, therefore not an oracle. Scoping PROP-DISPATCH-03 to the
+  population the `_recordDocType` probe actually observes, and asserting the call-graph fact
+  separately as a two-member set equality, is the right split. The follow-on sentence is the valuable
+  half: *"if a later change routes implementation or DoD through `dispatchAndVerify`, this property
+  reds and someone must decide whether those dispatches inherit injection."* That is a product
+  decision being routed to a human by a test, which is what these properties are for.
+- **PROP-BOUND-07 now names the identity it refuses to write.** *"`bytesInjected ===
+  Buffer.byteLength(material)` where `material` is what the extractor returned is an identity no
+  implementation can fail"* — and the fix is not just "use literals" but *state the framing cost as
+  its own literal so the test proves the two numbers differ*. That is the no-implementation-echoes
+  discipline stated precisely enough for the next author to apply it without me.
+- **The premise table is now honestly labelled capture-time.** Naming the two rows this PLAN's own
+  tasks will falsify on schedule, and tying that to why PROP-META-01 forbids absence assertions, turns
+  a table that would have rotted into one whose rot is specified.
+- **The 87-of-89 figure is now sourced rather than asserted.** Marking it inherited from FSPEC BR-5's
+  two-repository measurement, noting a divergent re-derivation is on record, and then standing the
+  argument on the locally checkable 9-of-9 instead is the right move: I re-measured the local claim
+  and it holds on material bytes as well as source, which the document does not even need to claim.
+- **§O.1's new paragraph names the shared vacuity mode of the three static scans.** *"Their vacuity
+  mode is not an unexercised branch — it is a scan that located nothing"* is the sentence that keeps
+  PROP-FOOTPRINT-04's planted-token negative control from looking like belt-and-braces.
 
 ## Recommendation
 
