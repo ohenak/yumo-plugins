@@ -69,10 +69,42 @@ Upstream field still pins REQ v0.9 (FSPEC:11), which is the version at HEAD.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | No findings. No High finding is open: the delta is confined to a revision note and one dangling section anchor, it introduced no defect, and every claim it adds is true of the document and of REQ v0.9 at HEAD. | — |
+
+DEFERRED: The header's Cross-Reviews row (FSPEC:13) enumerates `v{1,2,3,4,5,6,7,8,9}` and is now one round stale — v10 exists on disk; it is a header bookkeeping field, not a load-bearing claim, and the same edit will be needed again next round.
+DEFERRED: BR-9's notice catalogue (`NTC-MALFORMED`, `NTC-KEYTYPE`) is still the one catalogue whose locus is unstated (per-dispatch vs once-per-run); upstream AC-3.2 is silent and the config read happens once per run, so TSPEC can pin it without an FSPEC change (carried from v10).
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| — | None. v10 closed Q-01 and Q-02 inside the document, and this delta opened nothing. |
 
 ## Positive Observations
 
+- **The anchor repair is a testability repair, not a typo fix.** `§Acceptance-test preamble` did not
+  resolve to any heading in this document; a TSPEC author following AC-6.2's rules column would have
+  had to guess where the disabled-run baseline condition lives. It now points at FSPEC:748 where the
+  recorded-baseline rule is actually written, so the AC → rule → test chain for AC-6.2 is walkable
+  end to end without inference.
+- **The note block is now chronological.** Four revision notes accumulate on this document; putting
+  v0.9 after v0.8 rather than before it means a reader reconstructing why a clause reads the way it
+  does gets the edits in the order they landed.
+- **The revision note carries no claim the document does not.** I checked each of its six assertions
+  against the clause it summarises; every one matched, and the "no new behaviour" claim matched the
+  diff. A note that overstates its own delta is the usual way a frozen round quietly reopens a
+  decision, and this one does not.
+
 ## Recommendation
 
+**Approved**
+
+I had no open findings entering this round, the delta is bookkeeping only, and it contradicts
+nothing at HEAD or in REQ v0.9. Both deferred items are recorded above and neither gates.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
