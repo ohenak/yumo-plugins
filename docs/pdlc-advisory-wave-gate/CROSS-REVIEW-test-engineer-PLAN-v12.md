@@ -50,6 +50,33 @@ upstream has just declared single-carrier. That is **F-03**, Low, and it touches
 
 ## Batches
 
+PLAN's bytes did not move, so the batch-DAG check is not re-run from scratch — the derivation I
+confirmed in v10 and re-confirmed in v11 stands unchanged. What I re-check is the only place this
+erratum could have reached a task row: the two sites where PLAN restates figures DECISIONS has now
+disclaimed, and the four `DEC-A6-0x` citations that sit inside task rows.
+
+| Site | What the erratum changed upstream | Holds at HEAD? |
+|---|---|---|
+| Overview → three-column paragraph (feeds A6-05's "verification, not editing" sizing) | DECISIONS drops its quoted `twelve`; SIZING declared sole carrier | Figures **still reproduce** the appendix (four / twelve = ten + two / twenty-five). Carrier duplication only (**F-03**) |
+| A6-10, A6-21 `DEC-A6-01`…`DEC-A6-03` citations | nothing — decision entries byte-frozen | **Yes**, verbatim |
+| A6-18 `PROP-DIS-06` three-`.enabled`-reads oracle | nothing — that pin lives in TSPEC, unmoved this round | **Yes** |
+| Overview → HEAD-drift note residual figures (`28`, class 3 `10`) | untouched by this erratum; still PLAN-owned | **No** — re-measured **35 / 14 / 4 / 17** today (**F-01**, inherited) |
+| Wave-1 *(specifics)* gate recap, `.gitignore` rule form | untouched | **No** — still spells the anchored literal A6-00's Edit 1 retires (**F-02**, inherited) |
+
+**Dispatcher contract re-run against the unmodified document.** I ran the shipped parser over PLAN
+at HEAD to confirm the dispatcher still sees what it saw at approval: `parsePlanTasks` → **11 tasks**
+(`A6-00, A6-01, A6-04, A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21`), `parsePlanOwnership`
+→ **11 manifest rows**, `computeWaves` → **7 waves**. Identical to v10 and v11. No batch column, wave
+map, dependency edge or ownership cell moved, and none could have — the erratum edited a different
+document's prose header.
+
+**TDD ordering and `[Fake first]`.** Unchanged and unreachable by this delta; the red-step /
+green-step structure inside A6-10, A6-18 and A6-21 is PLAN-internal and cites TSPEC, not DECISIONS.
+I re-read A6-10's red step against `DEC-A6-01`/`DEC-A6-03` at HEAD — the snapshot mechanism
+(`commit-tree` dangling commit, `refs/pdlc/a6-snapshot-{waveNum}`, no run discriminator) is stated
+identically in both documents, so the oracle A6-10 promises still has an upstream decision to be
+falsifiable against.
+
 ## Dependencies
 
 ## Verification
