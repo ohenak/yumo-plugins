@@ -258,3 +258,13 @@ instead of guessing, and then gets the answer it argued for, is the pipeline wor
 cost of that discipline is exactly this confirmation round, and it is a good trade.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 1}
+
+REVIEWED-COMMIT: f10dbd43e6eded4f6ecbb7f9b7ae8bc2b7a53e89
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
+UPSTREAM-STATE: FSPEC sha256:ae75fa6291f1a060153f65b6b1bcc3959acd62b2c0872e7b319489c964a86a1d
+UPSTREAM-STATE: TSPEC sha256:f629d29d23386297f5e3ec490530f7ed6b697ec63c56acf6711d7fee14a530d5
+UPSTREAM-STATE: DECISIONS sha256:85888c03f8ee43c2e50dd26bea040d3a1716180f17dd1f582dc86e0ac736d5b6
+UPSTREAM-STATE: PLAN sha256:20f574e24e8e390b6d495e3d1e4c56c1b1a2a54374e24b90c0f175f34ba4d508
