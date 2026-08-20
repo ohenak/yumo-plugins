@@ -125,6 +125,26 @@ measurement. Neither is sourced from DECISIONS, and neither moved.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **Column (1)'s four is still stated in three documents, and this delta narrowed the gap by one without closing it.** DECISIONS (`## Consequences`, "The number an implementer must not get wrong is **four**"), `SIZING` §"Column (1)", and PLAN's Overview HEAD-drift note ("column (1), the **four** gate-demanded edits") each carry it. All three agree at HEAD — re-checked this round — so this is not a live contradiction, and POSTMORTEM-D §6 step 1 explicitly directs DECISIONS to keep the number. The cheap fix stays the one I named in my DECISIONS v9 F-01: have PLAN's Overview cite the appendix for the count instead of restating it, so the tree has one measurer and two pointers. Not gating; not a faithfulness defect, since the restatement is accurate. | POSTMORTEM-D §6 step 1 |
+| F-02 | Low | Local | **DoD's inherited-residual bullet still inlines `28 total / 14 closable`** rather than pointing at the Overview's HEAD-drift note, which is the single declared owner of the residue figures. Carried unchanged from rounds 10 and 11 (PLAN bytes have not moved). Same shape as F-01 one level down: a dated measurement restated at a second site. Deferred tidy-up for whenever PLAN is next edited for a substantive reason. | PLAN Definition of Done |
+| F-03 | Low | Cross-Feature | **Upstream TSPEC §1.3 still says A-1's frozen glob list "exempts only `LEARNINGS-*` and `POSTMORTEM-*`"; the shipped `A1_GLOBS` carries sixteen globs.** Unresolved from round 11 and re-verified open (TSPEC byte-identical at `1531143c`). The claim's conclusion holds — this feature's docs and `CROSS-REVIEW-*` files are genuinely unexempted — but "only" under-states what is already exempt, and a reader sizing a future feature's residue off it would under-count. **PLAN is not in error**: its own covers/does-not-cover wording is accurate at HEAD. The fix belongs in TSPEC §1.3, not here. | TSPEC §1.3; PLAN Overview HEAD-drift note, class-3 row |
+| F-04 | Low | Process | **The cross-review dispatcher supplied PLAN's authoring headings (`## Overview` / `## Batches` / `## Dependencies` / `## Verification`) as the completeness gate for this *review* artifact.** Carried unchanged since round 5. Harmless to a reader, but it is a mis-dispatch in the workflow's completeness gate, not a defect in the document under review. Routed to harvest, not actioned here. | Workflow completeness gate (not PLAN) |
+
+**Round-11 findings disposition.** Round 11 raised two Lows, both non-PLAN or deferred. Its F-01
+(TSPEC's "only" overclaim) is unresolved upstream and re-filed here as F-03 with the same
+`Cross-Feature` tag — I checked the round-11 file before re-tagging rather than re-deciding, per the
+tag-selection discipline. Its F-02 (the DoD inline figure) is re-filed here as F-02, `Local`,
+unchanged. No round-11 finding was closed by this delta, and none is worsened by it. F-01 in this
+round is new to the PLAN series but not new signal: it is my own DECISIONS v9 F-01 surfacing on the
+PLAN side, tagged `Local` to match the tag it carries there.
+
+**Nothing rose above Low.** No High or Medium finding exists in this confirmation: no P0/P1
+obligation entered, moved or vanished upstream; nothing PLAN cites was withdrawn, narrowed or
+renumbered; every pointer resolves; and PLAN's compression of DECISIONS at `84deee10` is faithful
+sentence by sentence.
+
 ## Questions
 
 ## Positive Observations
