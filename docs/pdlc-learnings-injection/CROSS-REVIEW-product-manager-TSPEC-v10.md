@@ -153,6 +153,46 @@ key, no default, no bound moved.
 
 ## Test Strategy
 
+Not re-reviewed in substance — the test-engineering lens owns depth, and I do not re-litigate it.
+Two product-relevant checks only, both about whether an acceptance criterion still has an owning test
+after the delta.
+
+**1. AT ownership is intact.** AT-01/02/03/06/14/23/24/29/31/33/34/35 remain in
+`learningsDispatchSet.test.js`, AT-17…AT-22 in `learningsRecord.test.js`, AT-31/AT-32 in
+`learningsConfig.test.js` (§T.5, `TSPEC:943-944`). The delta orphaned no AC: AC-1.1, AC-1.2, AC-1.3,
+AC-3.2, AC-3.3, AC-5.1a/b/c and AC-5.2 each still have at least one AT, and each AT still has a named
+file and layer.
+
+**2. One new upstream fixture obligation is not yet in TSPEC's inventory (F-03).** FSPEC v0.12's
+AT-02 now enumerates four fixtures, not three: no-DECISIONS-phase, no-creator Phase R, five optimizer
+rounds, **and** "a run containing an authoring-classified dispatch whose target is none of the six
+C-1 document types — so reverting BR-1's second conjunct reds this test". AT-03 is correspondingly
+re-quantified to compare "the prompt of each dispatch **outside BR-1's rule** — including the
+authoring-classified dispatch with no C-1 target".
+
+TSPEC's §T.6 AT-02 paragraph (`TSPEC:978-985`) enumerates the first three, then adds a fourth of its
+own (the erratum land-proof retry, ERR-2). It does not name the Phase-CR-bearing fixture, and §T.6
+does not restate AT-03's new quantifier. This is a completeness gap against upstream at HEAD, not a
+design gap: TSPEC already carries a *different* and arguably stronger oracle for the same boundary —
+the `_recordDocType` probe seam sampled on both arms of `injectHere`, set-equal against the
+hand-transcribed literal after a full scripted run (`TSPEC:176-190`), explicitly described as "the
+only instrument that sees a `docType` the feature declined". So the mutation FSPEC's new fixture is
+designed to kill is already killed somewhere in this document's test plan.
+
+I record it Medium rather than High for exactly that reason: no acceptance criterion is left
+unprovable, and no P0/P1 requirement is dropped — what is missing is the enumerated fixture in the
+AT-02 row, which a PLAN task will be written from. The fix is one clause in §T.6 naming the
+Phase-CR-optimizer fixture as AT-02's fourth-and-fifth run shape and AT-03's added arm, with a
+pointer to §A.2's probe as the mutation oracle that already covers it. Left unwritten, the PLAN
+author reconciling §T.6 against FSPEC AT-02 will find a fixture list that is short by one and no
+statement of why.
+
+**Test-strategy claims the delta did *not* disturb:** AT-20 and AT-22 still run over AT-18's
+changing-corpus multi-dispatch fixture (`TSPEC:943`); `DIVERGENT-CORPUS` still asserts on the
+per-dispatch locus only and nothing about `runMirror`, which upstream still leaves unconstrained;
+AT-33/AT-34's paired footprint claim still uses one instrument for both halves (DC-03), and BR-15's
+re-wording makes AT-33's expected set easier to write, not different in kind.
+
 ## Open Questions
 
 ## Findings
