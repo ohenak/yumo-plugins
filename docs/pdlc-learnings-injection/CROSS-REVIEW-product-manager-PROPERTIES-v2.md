@@ -149,4 +149,34 @@ only what it should mean.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v1 High findings are resolved, and resolved at the mechanism rather than at the wording: BR-6's
+names are now FSPEC-verbatim with a re-measurement I confirmed 9 of 9, and PROP-BOUND-08 gives the
+recognition rule a real-corpus arm a synthetic fixture cannot false-green; AC-6.1's first clause is
+mechanised by PROP-META-06 and its second correctly attributed to PROP-ORDER-05, with the
+misattribution struck. All four Medium/Low findings are addressed, one of them (F-04) with a residue
+I refile at Low. Nothing in the delta broke what I approved at v1: all 25 REQ acceptance criteria
+still carry at least one property, all 69 properties still carry an owning task, the AT partition is
+still 35 with no property claiming an AT id it should not, and the pyramid now agrees with TSPEC §T.5
+where at v1 it did not.
+
+Worth taking in the next pass, neither gating:
+
+1. **F-01** — add `AC-6.1` to PROP-ORDER-05's trace line (it earns the row), and either add the id to
+   PROP-META-05's trace or drop it from the property list in that row; strike or justify AC-1.4's
+   PROP-BOUND-07 entry. Three one-line edits that make §C.2's own rule true of §C.2.
+2. **F-02** — restate PROP-BOUND-08's subject as the first corpus path in byte order **that carries at
+   least one BR-6 heading**, so its non-empty conjunct cannot red for a reason unrelated to the matcher.
+
+One upstream item is routed as an erratum in this dispatch's final message and is **not** counted
+against this document: PLAN's LI-14 row mandates only `LI-T-SUITEMAP`, while this revision hangs
+PROP-META-06 and PROP-RECORD-09 on that task's directory walk. The properties name the right owner;
+the PLAN row has to grow the two assertions or an implementer following the PLAN will not write them,
+and AC-6.1's only mechanised oracle would go missing. The four upstream defects routed at v1 remain
+open and are recorded in §G.3.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
