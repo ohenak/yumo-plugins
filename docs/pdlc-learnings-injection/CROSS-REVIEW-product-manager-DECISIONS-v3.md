@@ -37,6 +37,41 @@ closed them; (3) do the entries' binding decisions themselves survive.
 
 ## Options Considered
 
+Three readings of the cascade were live before I checked the text, and the evidence had to pick one.
+
+**Reading A — the delta is cosmetic, confirm and move on.** The dispatch describes the erratum as a
+header correction, and the last commit really is header-only. If the only thing that moved were the
+Cross-Reviews enumeration and a version label, the confirmation would be a formality: DECISIONS
+cites no cross-review filenames. **Rejected as the whole story.** My approval was recorded against
+FSPEC v0.7, not v0.9, so the span I own includes the v0.9 locus change. Confirming on the last
+commit alone would have approved DECISIONS against two FSPEC rounds I never read.
+
+**Reading B — the v0.9 locus change breaks a DECISIONS transcription, halt.** BR-9 and BR-10 changed
+where the record lives and how many completeness tests close it. If a DECISIONS entry had
+transcribed the run-level record as a binding constraint — the way DEC-LI-07 transcribes BR-14's
+five-state table — the transcription would now be wrong, and wrong in the direction that produces a
+red or, worse, an oracle asserted on a mirror FSPEC now says "nothing asserts on". **Rejected on the
+evidence.** I traced every DECISIONS mention of `BR-8`/`BR-9`/`BR-10`/`E-32`/`AC-3.2`/`AC-3.3`. The
+binding entries are all *per-dispatch* already and get stronger, not weaker, under v0.9: DEC-LI-06's
+no-cache argument rests on "selection is per-dispatch over the state that dispatch observed", and
+`D-O-6`'s call-count oracle is specified per injecting dispatch, including the case where
+enumeration succeeds at dispatch 1 and fails at dispatch 5. FSPEC v0.9 moved *toward* those, not
+away.
+
+**Reading C — the decisions hold, but the document'sstatements *about* upstream have gone stale.**
+This is what the text shows. The staleness is concentrated in two places that are not decisions:
+the "Decisions deliberately NOT taken here" row for AC-3.3's locus, which still describes the
+question as routed-and-open with TSPEC "keeping the run-level record", and DEC-LI-07's divergence
+paragraph, which still tells the reader that TSPEC v0.5 carries `OQ.2`/`ERR-4` open and disagrees
+with this document in writing. Both were true when written and are not true at HEAD. Neither
+changes what DECISIONS decides; both change what a downstream author is told to believe about
+upstream, which is the product risk worth naming.
+
+I also considered whether to raise the version pins (`FSPEC v0.7`, `TSPEC v0.5` in the header and
+the upstream version note) separately or fold them into Reading C's findings. Separately, at Low:
+the pin is a distinct defect from the prose, it is a one-token edit, and folding it in would hide it
+behind a Medium that a revising author might address narrowly.
+
 ## Decision
 
 ## Consequences
