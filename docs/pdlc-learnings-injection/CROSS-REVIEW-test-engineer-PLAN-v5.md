@@ -54,7 +54,30 @@ symbol. The three rows above absorb the change inside prose they already carry.
 
 ## Dependencies
 
-_pending_
+**The batch column cannot have moved, and I confirmed rather than assumed it.** An upstream FSPEC edit
+changes no `Deps` cell by itself; it can only move a batch if it forces a new task, a new file, or a new
+symbol. It forced none of the three:
+
+- **AT-02's fourth fixture is not a new fixture.** It is the `docType: null` optimizer-round dispatch
+  already present in LI-11's universe and already named in LI-20's plumbing row ("Phase CR's `null`
+  reaches the composition site through this path **and no other**"). No `LI-02` spec addition, so no
+  `LI-11 → LI-02` edge changes weight and no batch-2 authoring collision is created.
+- **The widened AT-03/AT-29 byte-identity claim reuses one instrument.** It is the same committed
+  pre-feature baseline LI-06 captures at batch 4 and guards there; widening *which dispatches* are
+  compared against it adds no capture, no manifest entry, and no new `{caseId}` — the baseline is
+  captured per dispatch index over whole runs, not per classification.
+- **BR-15's narrowed expected set removes a member, never adds one.** AT-33's oracle gets strictly
+  smaller (enumeration excluded), which cannot introduce a dependency; and PLAN already excluded it.
+
+**My v2/v3/v4 re-derivation therefore still stands unamended**: 23 unique ids, every dependency resolving
+to a declared row, the graph acyclic, and `batch == max(dep batch) + 1` for every row. I re-checked the
+three rows this confirmation touches (LI-02 batch 2 deps LI-01; LI-11 batch 5 deps LI-02, LI-06; LI-20
+batch 12 deps LI-19, LI-11) and each still satisfies the column arithmetic.
+
+**Downstream gates are undisturbed.** LI-14's batch-6 green-terminal suite-map closure keys on registered
+`LI-AT-` test titles, not on AT prose, so a reworded AT-02/AT-03/AT-29 leaves its 35-member partition
+literal exactly as transcribed. The expected-red ledger's batch-11/12 rows name `LI-AT-22`'s run-level
+half only; none of the four re-worded ATs is a ledger entry, so the ledger's arithmetic is unchanged.
 
 ## Verification
 
