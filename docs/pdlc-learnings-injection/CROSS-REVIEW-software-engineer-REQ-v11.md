@@ -48,7 +48,7 @@ compression of it.
 
 The item **did land — as a decision, not as the TSPEC edit it asks for.** `DEC-LI-07` ("An absent
 configuration section is an enabled run, and no configuration mistake disables the feature",
-`DECISIONS:…`) decides the gate is `config.enabled` alone, quotes REQ v0.9's settled text
+`DECISIONS:385`) decides the gate is `config.enabled` alone, quotes REQ v0.9's settled text
 correctly, and carries the five-state table matching FSPEC v0.7 `BR-14`. The residue is tracked in
 writing and owned:
 
@@ -68,6 +68,27 @@ Findings F-01 records that, non-gating on the REQ. The REQ itself was owed nothi
 received nothing.
 
 ## Constraints re-verified against HEAD
+
+Every upstream anchor the REQ leans on, re-opened at its current version this round. All hold; no
+citation points at text that has changed or moved.
+
+| REQ claim | Upstream, current version | Verdict |
+|---|---|---|
+| §1.2 claim 2: `enumerateCorpus` is total — returns an unlistable outcome rather than throwing | `pdlc/workflows/consolidate-learnings.js:1349-1355` — `if (!reply \|\| !reply.ok) return { unlistable: true, detail: … }` | **Holds**, byte-identical to v10. |
+| §1.2 claim 2: the pass around it then marks itself `failed` and stops | `consolidate-learnings.js:588-594` — `state.status = "failed"; return await finishPass(…)`, comment pinning "§10.3 row 1a … Never `no-op`" | **Holds.** |
+| §1.2: the engine vendors only `orchestrate-dev.js` and `orchestrate-queue.js`, so `consolidate-learnings.js` is unreachable to import | `pdlc/engine/scripts/prepack.mjs:20` — `const MODULE_NAMES = ["orchestrate-dev.js", "orchestrate-queue.js"];` | **Holds** — the cited line is still exactly the module list, and the list is still two entries. |
+| §1.2: DEC-CONS-05 ships *one predicate, two enumerations*, and claims nothing about readers agreeing on sets | `docs/completed/pdlc-consolidation-agent/DECISIONS-pdlc-consolidation-agent.md:54` and §7 at `:422` — "Two corpus enumerations pinned literally on each side; only the **predicate** is held equal by a differential test" | **Holds**, and the citation still sits only where the decision reaches. |
+| AC-5.1b: `parseImplementationConfig`'s malformed section yields defaults | `pdlc/workflows/orchestrate-dev.js:191-210` — `if (!isPlainObject(section)) return degraded(true)`, `degraded` returning `IMPLEMENTATION_DEFAULTS` | **Holds** on the defaults half. The notice half is still over-attributed — carried as F-03. |
+| AC-5.1b, AC-5.1b's `DC-01`; AC-5.2's `DC-09` | `docs/_constraints/DOMAIN-CONSTRAINTS.md` — both ids exist; the file is unchanged on this branch since `a2353445` | **Holds.** |
+| §4.1 `learningsInjection.enabled` default `true` (`REQ:223`) | Nothing upstream constrains it; it is the REQ's own declaration | **Sound** — and it is now the settled authority two downstream documents read. |
+
+Two cross-checks in the other direction, since a compression is only faithful if downstream reads
+it as written:
+
+- `DEC-LI-07` quotes REQ v0.9 accurately on both load-bearing clauses — "there is no second gate
+  beyond this key (G-1)" (`REQ:384`, verbatim) and the absent-section scoping (`REQ:381-383`).
+- FSPEC v0.7 `BR-14` and its decision row `D-1` (`FSPEC:235`) carry the same five states the REQ
+  declares: "absent, malformed and wrong-typed read as enabled on §4.1's defaults". No drift.
 
 ## Findings
 
