@@ -97,11 +97,29 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `injectHere` returned true **must equal** `LEARNINGS_TARGET_DOCTYPES` — both as equality, never
   containment, both operands hand-transcribed.
   *Contract · L3 · AC-1.2, NG-5, TSPEC §A.2 consequence (b) · red LI-11 · green LI-20.*
-- **PROP-DISPATCH-03:** Every dispatch **outside** BR-1's rule — reviews, implementation, DoD
-  verification and remediation, harvest, ship, advisory seams, **and** the authoring-classified Phase
-  CR optimizer whose `docType` is `null` — **must** compose a prompt byte-identical to the recorded
-  pre-feature baseline.
+- **PROP-DISPATCH-03:** Every dispatch that **reaches the composition site** and is **rejected** by
+  `injectHere` — reviews, harvest, and the authoring-classified Phase CR optimizer whose `docType` is
+  `null` — **must** compose a prompt byte-identical to the recorded pre-feature baseline. The operand
+  is the set of `dispatchAndVerify` episodes whose `(dispatchKind, docType)` pair fails `injectHere`,
+  observed on the `_recordDocType` probe of PROP-DISPATCH-07 — **not** an enumeration of pipeline
+  phases. Implementation, DoD verification and remediation, and ship dispatches are **excluded from
+  this property by construction** and are covered by PROP-DISPATCH-08 instead: the code composing the
+  block is not on their path, so asserting byte-identity for them is a tautology rather than an
+  oracle.
   *Contract · L3 · AC-1.2, AC-4.3, BR-11, AT-03 · red LI-11 · green LI-20.*
+- **PROP-DISPATCH-08** *(structural, replaces the tautological half of PROP-DISPATCH-03):* The
+  wave-mode `se-implement`/`se-author` dispatches, the DoD verify/remediate pair and the `ship-pr`
+  rebase/PR calls **must not** reach `dispatchAndVerify` at all: `dispatchAndVerify` **must** have
+  exactly **two** call sites — `reviewLoop`'s `wrapped` closure and `main()`'s `wrappedDispatch` —
+  asserted as a hand-transcribed set equality keyed by `(enclosing named function, call-site form)`
+  over a static parse of `orchestrate-dev.js`, and the four outside dispatch families **must** each be
+  shown to call `agentFn` directly. Measured at HEAD: the wave path calls
+  `agentFn("se-implement", waveImplementPrompt(task, featureName), …)` directly, and the module's own
+  `PHASE_DISPATCH` comment names the four families that "sit outside" the `converge()` primitive. This
+  converts four unfalsifiable byte-identity conjuncts into one invariant: if a later change routes
+  implementation or DoD through `dispatchAndVerify`, this property reds and someone must decide
+  whether those dispatches inherit injection.
+  *Contract · L3 (static) · AC-4.3, BR-11, NG-5 · red LI-11 · green LI-20.*
 - **PROP-DISPATCH-04:** The injector **must** be invoked exactly **once per authoring episode**, before
   `dispatchAndVerify`'s `for(;;)` loop — never once per loop iteration — even where the corpus moves
   between iterations.
