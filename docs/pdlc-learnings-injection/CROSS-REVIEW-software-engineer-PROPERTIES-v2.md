@@ -37,6 +37,23 @@ Every claim below was re-measured at HEAD on `feat-pdlc-learnings-injection`, no
 
 ## Prior Findings — Disposition
 
+| v1 | Severity | Disposition | Evidence |
+|---|---|---|---|
+| F-01 | High | **Resolved** | §F.1's `BYTES-BINDING` row is now "8 documents of 7,000 injectable bytes each" with §4.1's values spelled out and the expected split stated as a literal (3 contribute / 5 `RSN-BYTES` / 0 `RSN-COUNT`), matching PROP-BOUND-02 and TSPEC §T.4. The arithmetic checks. The row also now names what the two-document shape could not falsify — back-fill needs a document ranked below the byte cut — which is the clause PROP-BOUND-04 depends on |
+| F-02 | High | **Resolved** | PROP-FOOTPRINT-04 is restated as "no filesystem module reference is reachable from this span" rather than an enumerated token list, and carries both controls: positive (the region must contain `LEARNINGS_TARGET_DOCTYPES`, which PLAN LI-15 does place inside the sentinels) and negative (the same scanner must red on a planted `fs.writeFileSync`). It now has a row in §O.1, and §O.1 gained a paragraph naming the shared vacuity mode of the three static-scan absences. See F-03 below for one residual on the anchor's uniqueness |
+| F-03 | High | **Resolved** | PROP-DISPATCH-03's operand is now stated — the `dispatchAndVerify` episodes whose `(dispatchKind, docType)` pair fails `injectHere`, observed on the `_recordDocType` probe — and the four unreachable families are moved into the new structural PROP-DISPATCH-08, which asserts the two-call-site set equality and that the four families call `agentFn` directly. Both halves of that claim re-measured true at HEAD. §O.2's pairing row is updated to say the rejected population is asserted **non-empty** rather than assumed, which is the conjunct that stops the byte-identity half going vacuous |
+| F-04 | Medium | **Resolved** | Overview reads **69 properties**; §C.4 reads 69 with the three additions named; I counted 69 |
+| F-05 | Medium | **Resolved** | All five prose-named suites now carry their owning file and task in the property text (`learningsPremises.test.js` LI-01, `learningsCaptureScript.test.js` LI-03/04/05, `learningsBaselineGuard.test.js` LI-06, `learningsSuiteMap.test.js` LI-14, `learningsPredicatePin.test.js` LI-13). §C.4's "Two named test files" lead-in is replaced by an enumeration of all fourteen manifest rows, and PROP-CORPUS-01 now distinguishes its **home** (`learningsPredicatePin.test.js`, new) from its **subject** (`consolidationPredicate.test.js`, existing, never edited) in the property's own parenthetical |
+| F-06 | Medium | **Resolved** | `F-O-8` is gone; PROP-BOUND-01 cites `F-O-7` |
+| F-07 | Medium | **Resolved** | PROP-BOUND-07's two conjuncts are restated as hand-computed literals transcribed at fixture-authoring time, with the identity-echo failure mode and M-5 named explicitly, and the framing cost stated as its own literal so the test proves the two numbers differ. PROP-BOUND-03's generated-inequality distinction is preserved in §O.9 |
+| F-08 | Medium | **Resolved** | PROP-ISOLATE-02 now enumerates five named scored artefacts, asserts set equality member-for-member across the two arms **and** non-emptiness of each set on both arms, and replaces the prose SKILL.md clause with a SHA-256 digest equality over `git ls-files pdlc/skills/**` against a hand-transcribed manifest. It has a §O.1 row |
+| F-09 | Low | **Resolved** | §F.4 cites `fakeFs`, `fakeGit` and the `advisoryDisabled.test.js` import by symbol and by verbatim quotation; no raw `file:line` anchors remain in it. It also gained the `learningsPredicatePin.test.js` exception, which is a genuine clarification I did not ask for |
+| F-10 | Low | **Resolved** | §G.2 gap 4 now carries PROP-META-04's three-step human mutation proof, its LI-06 completion-note home, and its checkable standing counterpart |
+| F-11 | Low | **Resolved** | §O.7 marks `87 of 89` as inherited from FSPEC BR-5 with its two-repository basis named and the TE re-derivation acknowledged, and states the locally checkable form (9 of 9 here, 19,340–50,695 bytes against a 6,000-byte bound) as the one the argument rests on |
+| Q-01…Q-04 | — | **Answered** | Q-01 by §C.3's LI-16/LI-17 split rows; Q-03 by the Overview's new "capture-time measurement, not a standing invariant" paragraph naming both scheduled falsifications. Q-02 and Q-04 are not answered in the text and are not gating; Q-02 is re-asked below |
+
+All three v1 High findings are resolved, and none of the five Mediums is left open.
+
 ## Findings
 
 ## Questions
