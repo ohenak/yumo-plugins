@@ -120,16 +120,42 @@ belongs to TSPEC's changelog discipline; no DECISIONS edit is owed.
 
 ## Findings
 
-*(pending)*
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Process | **Carried from v10, unresolved and not this document's to resolve: TSPEC's bytes moved under an unchanged `v1.10` label, and DECISIONS cites that label as a grounding anchor.** `1f2a4fbf` appended the `**Phase-P erratum (this dispatch):**` sentence and a new §1.3 paragraph while leaving TSPEC's status row at `Version 1.10`. DECISIONS names "TSPEC v1.10" as its grounding at `## Context` ("TSPEC v1.10 settles the design"), at `DEC-A6-01`'s rejection paragraph ("Option A's rejection **is falsifiable at TSPEC v1.10**") and at the O-8 passage ("no longer resolves the obligation … at v1.10 it reads"). All three claims remain true of the bytes at HEAD — the sections they rest on (§5.2's `waveBudgetPerRun: 0` fixture, §4.5/§5.2's snapshot-ref oracle, §1.1's O-8 row) are outside the erratum's reach — so the label names two byte states without any claim going stale. The fix is a TSPEC version bump to v1.11, after which DECISIONS' labels are re-pointed in that round; no DECISIONS edit is owed to close this round. v1.9 partially mitigates it already by naming both hashes alongside the label. | POSTMORTEM-D §6; DEC-DOC-01 (anchor stability) |
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-01 | v1.9 adds a third dated re-grounding paragraph to DECISIONS' front matter (v1.8's relocation note, v1.9's absorption note, and the earlier dates/vintage note). Each is correct and each earned its place, but the front matter now runs longer than `DEC-A6-01` itself, and the growth rate is one paragraph per erratum round while the decision entries stay byte-frozen. Is a per-round re-grounding record better carried as a changelog-table row (as PLAN and SIZING do) than as a body paragraph, so the decisions stay the first thing a reader reaches? Editorial, and a harvest question about the DECISIONS artifact shape rather than about this feature. |
+| Q-02 | v1.9's absorption note asserts DECISIONS "carries no sweep figure" — true at HEAD, and I verified it by grep rather than by reading. Is that grep worth writing down beside the claim, the way SIZING and PLAN write down their re-derivation recipes? The claim is a negative over the whole document, which is precisely the class POSTMORTEM-D §6 step 1 says should ship a recipe rather than an assertion. Not blocking; the assertion is currently true. |
 
 ## Positive Observations
 
-*(pending)*
+- **The erratum was recorded as a no-op instead of being manufactured into an edit.** The routed
+  item genuinely did not touch this document, and v1.9 says so in those words — "the absorption is
+  a recorded no-op rather than an edit" — while still re-grounding on upstream before concluding
+  it. That is the honest shape, and it is rarer than the alternative.
+- **The last quoted integer is gone, and the pointer that replaced it resolves.** I followed
+  "the already-migrated-sites bullet" into `SIZING-…md` and landed on exactly one column with no
+  ambiguity. The relocation is now complete rather than nearly complete.
+- **The absorption note routes the other two round-9 findings to their real owners.** PM v9 F-01
+  is named as PLAN's, PM v9 F-02 as harvest's. Neither is silently absorbed into this document,
+  which is how a "nothing is owed here" claim earns trust.
+- **Both hashes are named beside the version label.** Whether or not it was written for that
+  reason, this is the mitigation my v10 F-01 asked for, arriving in the document that could
+  supply it without waiting on TSPEC.
+- **Decision entries still byte-frozen across eleven rounds.** `DEC-A6-01`…`DEC-A6-04` have not
+  moved since v1.5; every round since has edited only front matter and pointers. That is the
+  stability a decision record is supposed to have after approval.
 
 ## Recommendation
 
-*(pending)*
+**Approved with minor changes**
+
+The delta resolves what it was dispatched for — there was nothing left to land, and v1.9 records
+that correctly — without breaking anything previously approved. DECISIONS remains a faithful
+compression of REQ/FSPEC/TSPEC at HEAD, re-measured this round rather than inherited. The single
+Low finding (F-01) is inherited, owned by TSPEC's version-label hygiene, and gates nothing; both
+questions are editorial and routed elsewhere. No edit to this document is required.
