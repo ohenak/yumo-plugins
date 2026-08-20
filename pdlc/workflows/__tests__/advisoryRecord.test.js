@@ -485,15 +485,15 @@ describe("P-6 — renderAdvisoryEntry is total over the generated verdict × dis
 });
 
 // ---------------------------------------------------------------------------
-// PROP-SUM-01 — advisorySummaryRows(dispositions) is pure and always emits five rows, one per
+// PROP-SUM-01 — advisorySummaryRows(dispositions) is pure and always emits six rows, one per
 // ADVISORY_SEAMS member, zero counts included, driven off the exported constant (S-1).
 // ---------------------------------------------------------------------------
 
-describe("PROP-SUM-01 — advisorySummaryRows always emits five rows, zero counts included", () => {
-  test("an empty disposition list still produces all five seams with zero counts", () => {
+describe("PROP-SUM-01 — advisorySummaryRows always emits six rows, zero counts included", () => {
+  test("an empty disposition list still produces all six seams with zero counts", () => {
     const { rows, total } = devModule.advisorySummaryRows([]);
 
-    expect(rows.map((r) => r.seam)).toEqual(["A1", "A2", "A3", "A4", "A5"]);
+    expect(rows.map((r) => r.seam)).toEqual(["A1", "A2", "A3", "A4", "A5", "A6"]);
     for (const row of rows) {
       expect(row).toMatchObject({ invocations: 0, resolved: 0, escalated: 0, noAction: 0 });
     }

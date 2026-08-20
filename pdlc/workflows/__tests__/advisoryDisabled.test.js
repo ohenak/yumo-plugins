@@ -614,11 +614,11 @@ describe("A-33 — disabled-tier equivalence", () => {
 
   // =================================================================================================
   // T-10-5 / PROP-DIS-05 — tier enabled, no seam condition arising: the report carries an advisory
-  // summary with five zero rows, distinguishing enabled-but-quiet from disabled.
+  // summary with six zero rows, distinguishing enabled-but-quiet from disabled.
   // =================================================================================================
 
-  describe("T-10-5 / PROP-DIS-05 — enabled-but-quiet reports five zero rows (S-1)", () => {
-    test("with the tier enabled and no seam firing, buildFinalReport carries five zero rows, not `undefined`", async () => {
+  describe("T-10-5 / PROP-DIS-05 — enabled-but-quiet reports six zero rows (S-1)", () => {
+    test("with the tier enabled and no seam firing, buildFinalReport carries six zero rows, not `undefined`", async () => {
       const configText = JSON.stringify({
         advisory: { enabled: true, attemptBudget: 3, seamBudgetMinutes: 10, envelope: ["E-1", "E-2", "E-3", "E-4"] },
       });

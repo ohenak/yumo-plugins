@@ -539,8 +539,8 @@ describe("A-27 — post-PUB distil + report summary", () => {
     });
   });
 
-  // ─── T-08-6 — summary lists all five seams, zero counts included ───────────────────────────────
-  describe("T-08-6 — only seam A4's disposition fired; the report still lists all five seams", () => {
+  // ─── T-08-6 — summary lists all six seams, zero counts included ───────────────────────────────
+  describe("T-08-6 — only seam A4's disposition fired; the report still lists all six seams", () => {
     it("carries five rows, four of them all-zero", async () => {
       const _runAdvisorySeam = async ({ seam }) => ({
         seam,
