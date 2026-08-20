@@ -98,9 +98,48 @@ decision to make — it is a sound one, it just is not upstream's.
 
 ## Edge Cases and Error Scenarios
 
+The E-01 … E-35 table is untouched by this erratum, and the coverage paragraph at `:967-973`
+still asserts that every row names an AT. The discriminating branch D-2 gained needs no new
+E-row: it is a decision branch, not a corpus or configuration edge state, and DC-05's
+obligation is discharged through the D-table → AT mapping, which `:971` now states for all
+three branches. I checked that the erratum did not silently orphan an E-row by re-quantifying
+AT-03: E-29/E-30 (`:764-765`) name AT-01/AT-02, both of which still exist and both of which
+gained fixtures rather than losing them. No finding.
+
+Fail-open states re-checked against REQ at HEAD, since AT-24 asserts byte-identity for a
+state BR-12 (`:619`) calls "empty block": REQ AC-4.1:354-357 requires that on an empty corpus
+"every authoring dispatch is composed exactly as it is today", so "empty block" means no
+block region in the prompt, and AT-24's byte-identity claim is upstream-faithful. This was
+approved before and remains so.
+
 ## Acceptance Tests
 
+**AT-02 (`:790-799`).** The universe under inspection was already "the whole dispatch
+universe, not only those already classified authoring"; the erratum adds the missing fixture —
+"a run containing an authoring-classified dispatch whose target is none of the six C-1
+document types — so reverting BR-1's second conjunct reds this test". With that fixture the
+set-equality oracle can distinguish the one-conjunct rule from the two-conjunct rule, which
+it could not before. This is the mutation-sensitivity the Medium item was asking for.
+
+**AT-03 (`:800-802`).** Now compares "the prompt of each dispatch **outside BR-1's rule** —
+including the authoring-classified dispatch with no C-1 target". Matches BR-11's quantifier
+word for word in substance; the two no longer disagree about which set is being held
+byte-identical.
+
+**AT-29 (`:918-924`).** The trailing conjunct moved from "every non-authoring dispatch prompt"
+to "every dispatch prompt outside BR-1's rule". Consistent with BR-11 and AT-03; the
+five-way set equality it precedes is unchanged.
+
+**AT-33 (`:948-955`).** Reads on BR-15's expected set, which is now a path set. The AT text
+already said "that observed set **equals** BR-15's expected set", so the AT needed no edit and
+correctly did not receive one — the instrument changed underneath it, not the assertion.
+
 ## Open Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | REQ AC-4.3 (`:367`) and AC-6.1 (`:412`) still say "non-authoring dispatch prompts" / "non-authoring byte-identity", while AC-1.2 (`:256-261`) decides the wider outside set this FSPEC now uses. The FSPEC is faithful to the deciding criterion, so nothing is blocked here — but the REQ's own shorthand will re-seed the one-conjunct reading in any document authored from AC-4.3 rather than AC-1.2. Worth a REQ-side erratum in a later round, or a harvest note; not this document's defect. |
+| Q-02 | BR-15's duplicate-open tolerance (F-03) is a deliberate instrument choice. Does the TSPEC's filesystem observation harness in fact deduplicate by path, or does it record an ordered read log? If the latter, the TSPEC is the place the set projection has to be pinned, and BR-15's sentence is the requirement it will be pinned against. |
 
 ## Delta-Confirmation Findings
 
