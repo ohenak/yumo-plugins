@@ -132,6 +132,43 @@ the real `_appendFile` wrote.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01: is `PROP-NFR-03`'s BR partition deliberately deferred (a partition table that exists only in FSPEC has no home in a suite), or did it fall out of A6-15's task list? If deferred, PROPERTIES should say so where it states the property, since a reader today cannot tell the difference from the outside. |
+| Q-02 | F-03: was leaving the `mainDev` fixture single-wave a cost decision, or an oversight? A two-wave PLAN would also let the E-6 promotion commit (`waveExecution.test.js:1136`, AT-04-5) be observed on the real path rather than through the injected seam. |
+| Q-03 | The `AWG` prefix convention for colliding property ids (`advisoryEscalationLog.test.js:597`) is a good answer to a problem that will recur the next time two features share a `PROP-REC-*` prefix. Should it be promoted to `docs/_constraints/` at harvest rather than surviving only as a comment in two suites? |
+
+## Positive Observations
+
+- **Every one of the six v1 Highs was closed by changing the code, not by re-describing it.** The
+  E-6 conjuncts, the prohibition subtraction, the record and log annotations are all production
+  behaviour that did not exist a round ago, and each landed with the arm that falsifies it in the
+  same revision.
+- **The `annotate` hook is the right seam.** A seam that needs fields the tier's seven do not cover
+  supplies them through an optional, pure, total hook (`orchestrate-dev.js:3231-3247`,
+  `:4033-4040`), and the renderers emit only what is present — so A1–A5's record and escalation
+  bytes are unchanged, and there is still no `if (seam === "A6")` in the driver. The set-equality
+  test asserts *both* directions of that (`advisoryRecord.test.js:634`, `:690-694`).
+- **The production-path proofs are real production-path proofs.** `advisoryWaveGateMain.test.js`
+  injects no `_runWaveGateSeam`, counts A6 dispatches off the agent double, and asserts
+  `haltAdvisory` by `toEqual` against values the fixture never handed the loop — the DC-07 pattern
+  v1 flagged, inverted.
+- **Absence is never asserted alone.** The `(h)` prohibition arms prove "no `git commit`" on a run
+  that *resolved*, and pair it with the positive `commit-tree` presence
+  (`advisoryWaveGate.test.js:2247-2270`). PROP-REC-06's counting oracle carries an explicit `0`
+  conjunct for a class that never fired. PROP-SEAM-07's arm (iv) asserts `toEqual([])`, not "fewer".
+- **Two mutation checks are recorded in the tests themselves** — PROP-CTR-10's block states which
+  edit turns it red (`advisoryWaveGate.test.js:1402-1404`), and the E-6 positive names the two
+  assembler lines whose deletion only it would catch (`:2067-2076`). That is exactly the
+  "does the fix have a falsifying test?" discipline, written down where the next reader finds it.
+- **The class-capture reordering (`orchestrate-dev.js:3153-3164`) fixes a divergence v1 did not
+  find**: a malformed-verdict escalation used to record one class on the halt report and
+  `unclassified` on `ESCALATIONS.md`, which would have undercounted exactly the escalations AC-6.4
+  wants counted. The comment names the failure mode rather than just the change.
+- **The suite is green where it was green, and red only where it was already red.** 4041 passing,
+  the same two `documentOracles` residuals PLAN declares inherited, `dist/pdlc-cli.mjs` rebuilt and
+  drift-free.
+
 ## Positive Observations
 
 ## Recommendation
