@@ -291,4 +291,20 @@ hand-computed literal byte count is exactly what it makes ambiguous.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | inherited | local | AT-11's section-set equality is pointed at `extractInjectableMaterial`'s `sections[]` return, where FSPEC states it over the names appearing in the **block material**; the Approval-Record-absence and five-section-text-presence conjuncts are owned by no test | §I.3 `extractInjectableMaterial` contract; §T.5 "AT-11 and AT-12 belong to `learningsBlock.test.js`" |
+| F-02 | Low | delta | local | §D.3 rule 2 claims a **prefix** rule would match `Cross-Feature Findings` to `Cross-Feature Patterns`; neither is a prefix of the other, and F-O-1 names "a prefix of it" as a candidate rule. The decision is right; the argument overreaches | §D.3 rule 2 |
+| F-03 | Low | delta | local | §D.5 requires the `RSN-NO-MATERIAL` drop **before** the count and total bounds; FSPEC Step 5 items 15/16 still drop on the structural condition and extract after the count cut. Outcomes agree at every bound, so this is an upstream sequencing gap, not a divergence in behaviour | §D.5 "The zero bound yields nothing"; FSPEC Step 5 |
+| F-04 | Medium | delta | local | §D.3 defines each section's extent but not how taken extents are assembled into `material` (trailing newline, trailing blank lines, separator between non-adjacent sections taken in priority order), while §D.5 and AT-11/AT-12 commit expected byte counts as hand-computed literals | §D.3 "A section's extent"; §D.5 "Consequences, stated because tests depend on them" |
+
+FINDING: High | inherited | local | §I.3 `extractInjectableMaterial` contract; §T.5 AT-11 placement | AT-11's section-set equality is specified over the `sections[]` return field, but FSPEC asserts it over "the set of section names appearing in its block material" plus two further conjuncts (Approval Record's distinctive fixture text absent; all five injected sections' texts present) that no test in §T.5 owns — asserting the extractor's own report cannot falsify a renderer that takes a section and drops it from the emitted block, nor a matcher that leaks Approval Record; restate the oracle over the rendered block with `sections[]` as a supporting assertion
+FINDING: Medium | delta | local | §D.3 "A section's extent"; §D.5 hand-computable byte counts | the per-section extent is now defined but the assembly of taken extents into `material` is not — whether each extent keeps its last line's newline, whether trailing blank lines are inside it, and whether any separator joins two sections non-adjacent in the document (which they always are, since sections are taken in priority order and §D.3 proves that is not document order for any corpus document); AT-11 and AT-12 commit expected counts as hand-recomputed literal integers, so two conforming implementations differ and a conforming implementation can red the fixture
+FINDING: Low | delta | local | §D.3 rule 2 | the justification claims a prefix rule would match `Cross-Feature Findings` against `Cross-Feature Patterns` and so make E-33/AT-28 unreachable; neither string is a prefix of the other, and F-O-1 offers "a prefix of it" as one candidate rule, so only the fuzzy/substring half of the claim holds — the exact-match decision itself is correct and well-grounded in E-33
+FINDING: Low | delta | local | §D.5 "The zero bound yields nothing"; FSPEC Step 5 items 15/16 | §D.5 requires the yields-no-material drop before the count and total bounds while FSPEC's Step 5 still drops on the structural condition at item 15 and extracts at item 16 after the count cut; observable outcomes are identical at every bound, but a PLAN author implementing Step 5 literally would never observe the zero-bound drop for count-cut documents
+
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 2}
