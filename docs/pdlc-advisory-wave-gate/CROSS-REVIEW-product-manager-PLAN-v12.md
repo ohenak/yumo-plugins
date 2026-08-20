@@ -147,6 +147,29 @@ sentence by sentence.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from rounds 3–11, still non-blocking: this feature ships no operator-facing documentation for the `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}` example beyond the example file itself. That is an explicit upstream decision, correctly followed; this cascade does not disturb it. Worth one LEARNINGS line so a future operator-documentation pass picks it up. |
+| Q-02 | Carried from rounds 7–11: A6-00's untrack step is a non-file act (index-only removal of 14 `.bak` paths) while the wave commit arm iterates exactly `task.files`. Answered in prior rounds as safe — the `.gitignore` edit is in the ownership manifest and the removal is staged in the same step. No new evidence this round. Recorded for continuity, not re-opened. |
+| Q-03 | New, informational: DECISIONS v1.9 established the principle "a HEAD measurement should not sit in the document whose purpose is to hold none, even as a quotation." Applied consistently, that principle also argues for F-01 and F-02 here — PLAN restating figures the appendix owns. Is it worth promoting the principle to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at harvest, rather than re-deriving it per document? Not a requested change to PLAN. |
+
 ## Positive Observations
+
+- **The cascade cost PLAN nothing because a prior round moved the read path.** PLAN v1.6 pointed the
+  Overview at the `SIZING` appendix instead of DECISIONS. Two revisions later, DECISIONS deleted an
+  integer — and the delete could not reach PLAN, because PLAN had stopped reading it from there.
+  That is the consolidation paying off exactly as designed, observed under load rather than argued
+  in the abstract.
+- **The delta moves in the right direction for a downstream reader.** The failure mode to fear is an
+  upstream document quietly becoming the source of truth for a number a downstream document owns.
+  This edit does the opposite: it removes upstream's last copy of a downstream-owned figure and
+  names `SIZING` as the sole carrier. The tree has fewer places to drift than it did before.
+- **The decision entries stayed byte-frozen through a ninth revision.** `DEC-A6-01`…`DEC-A6-04` have
+  not moved while the surrounding front matter churned through relocation and erratum rounds. That
+  is what makes a cascade confirmation cheap: the four sentences PLAN's task rows compress are
+  provably the same four sentences.
+- **The machine-checkable surface is identical and was re-measured, not assumed.** 11 tasks,
+  `{"ok": true}`, 7 waves, replayed through the shipped parsers. A prose-only cascade that leaves the
+  parsed contract bit-identical lets the next reviewer trust this confirmation without redoing it.
 
 ## Recommendation
