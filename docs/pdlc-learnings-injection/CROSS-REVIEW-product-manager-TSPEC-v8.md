@@ -117,3 +117,6 @@ FINDING: Low | inherited | nonlocal | §OQ.2 | `OQ.2`'s bare-repository note (TS
 FINDING: Low | inherited | nonlocal | §Premises P-1/P-2a/P-10 | Raw file:line anchors into orchestrate-dev.js drifted as HEAD moved (main now :12022, wrapperSeams :12421, erratum author :12861, land-proof retry :12955, converge creator :13657, advisory spread :15309); every claim remains true by symbol, so this is DEC-DOC-01 Process-scope, not a behavioural defect
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 4}
