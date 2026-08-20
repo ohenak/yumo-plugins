@@ -107,6 +107,55 @@ inside `learningsBlock.test.js`'s own subject, so none of them needs a second fi
 
 ## Interfaces
 
+**`extractInjectableMaterial(text, maxBytes)` is now byte-exact from the document alone.** With the
+assembly rule in §D.3 I can compute the return value of any fixture by hand, which is the property
+a literal-integer oracle needs and did not have before this round. I walked the rule against the
+real fixture builder rather than reading it:
+
+- `buildLearningsDocument` emits `renderSection(section)` entries into a `lines` array joined with
+  `"\n"` (`pdlc/workflows/__tests__/helpers/learningsFixtures.js:92-113`), so a fixture section's
+  extent is a `\n`-delimited run and step 1's "split on `\n`" applies to the real text with no
+  encoding caveat.
+- Step 1's trailing-run rule interacts correctly with that builder: `renderSection` output is
+  pushed as one array element and elements are `\n`-joined, so blank separation between sections
+  varies with the section body's own trailing content — precisely the variability the normalisation
+  removes.
+- Step 2's `"\n\n"` join with no leading or trailing separator, plus "the renderer owns every byte
+  outside it", is consistent with §OQ.1's rendered form, where each document's material sits
+  between `<<< {path} … >>>` and `<<< end {path} >>>` lines that are themselves whole lines. I
+  checked §OQ.1 for a framing token that could collide with the material's own `##` headings —
+  there is none; the framing is `---`- and `<<<`-delimited only, so §T.5's "scan the rendered block
+  for lines matching `SECTION_HEADING_RE`" cannot pick up framing.
+- Step 3's "cut once over the assembled string" is the same cut §D.5 already specified as
+  character-safe, so `bounded`/`bytes` remain properties of one string and T-O-6's whole-character
+  prefix conjunct still means what it meant.
+
+**One imprecision the delta introduced in the interface comment.** §I.3's JSDoc states the
+arithmetic unconditionally — "`bytes` is the sum of the normalised section lengths plus 2 per join"
+— but that identity holds only on the **uncut** path; where the bound binds, `bytes` is the
+character-safe cut length and is ≤ the bound. §D.5's restatement of the same formula is correctly
+scoped to AT-11/AT-12's hand-computable counts, so this is the interface comment alone, and it is
+Low: an implementer reading `maxBytes <= 0` two lines above will not conclude the sum survives a
+cut. F-02 below.
+
+**The AT-11 block-scan oracle is under-scoped by one qualifier.** FSPEC's AT-11 asserts over "the
+set of section names appearing in **its** block material" — the third fixture's *own* material.
+§T.5's oracle says "Scan the rendered block returned by `renderLearningsBlock` … and assert the
+resulting list equals `BR6_SECTION_NAMES`". Those coincide only while that fixture's corpus holds
+exactly one selected document; add a second selected document to the fixture and an oracle written
+literally reds against a conforming renderer. The fix is one clause — scan between that document's
+`<<< {path} … >>>` and `<<< end {path} >>>` delimiters (§OQ.1 gives them, and §T.5 already relies
+on the block being renderer output) — and it also makes the oracle prove the *per-document*
+placement AT-11 is really about. F-03 below, Low, because AT-11's third clause reads as its own
+single-document fixture ("*And given* an unbounded document carrying all six conventional
+sections") and the intended reading is recoverable.
+
+**No interface contract regressed.** `parseLearningsConfig`'s `{config, sectionMalformed,
+invalidKeys}`, `renderLearningsBlock({selected})`'s `""`-when-empty rule (§A.2 property 3), the
+`orderCorpus` comparator and `selectLearnings`'s totality are untouched by this round; I diffed the
+file to confirm the delta is confined to the changelog, §I.3's JSDoc, §D.3, §D.5, §T.5 and the
+ERR-8 entry.
+
 ## Data Model
 
 ## Test Strategy

@@ -250,4 +250,25 @@ DEFERRED: §D.3's `\r\n` paragraph proves absence at HEAD by a grep, but nothing
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+No High finding is open — neither mine (v13 raised none) nor any raised here. The v0.9 delta
+introduced no defect: every production file and symbol it newly cites exists at HEAD
+(`pdlc/workflows/__tests__/helpers/learningsFixtures.js` with `buildLearningsDocument`:92,
+`lines.join("\n")`:112, `renderSection`:64, `spec.sections`/`spec.extraLines`:86-90;
+`pdlc/workflows/__tests__/learningsBlock.test.js`; `docs/_constraints/DOMAIN-CONSTRAINTS.md`
+DC-03:79 and DC-14:379), every empirical claim reproduces (the `\r` grep returns no match; all 9
+corpus documents invert BR-6's top two in document order; the `:(glob)` pathspec still returns 9),
+and every upstream quotation matches the byte at HEAD (FSPEC AT-11's "in its block material", Step 5
+items 15 and 16). Nothing I approved at v13 was weakened, narrowed or reinterpreted: BR-6's five
+names, the Approval Record's structural `never`, F-O-1's two bounds and the zero-bound return are
+unchanged. The one product-visible change moves AT-11's oracle onto the artifact FSPEC names, which
+is a fidelity gain.
+
+The single Low finding (F-01) is inherited, not introduced by this delta, and does not gate. Both
+deferred items are recorded above for the next unfrozen round.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
