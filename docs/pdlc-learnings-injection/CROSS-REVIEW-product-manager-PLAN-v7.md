@@ -201,6 +201,46 @@ recorded so the revision pass that lands F-01 and F-02 lands this too.
 
 ## Recommendation
 
+**Needs revision**
+
+PLAN v0.4 does **not** still hold as approved against FSPEC v0.13. Two of the erratum's three
+decisions are inert or favourable; the third — `maxBytesPerDocument: 0` decided, edge E-36 minted,
+AT-30 widened to three cases, `RSN-NO-MATERIAL` given a second cause — is a new behavioural branch
+that this PLAN commissions no test for and names in no task row. `maxBytesPerDocument` appears in
+PLAN only inside LI-21's `ruleInputs.thresholds` key list; the value `0` and the id `E-36` appear
+nowhere.
+
+What must change, bounded to two rows:
+
+1. **F-01 (High)** — widen LI-12's `LI-AT-30` gloss to FSPEC AT-30's three cases: `maxDocuments: 0`,
+   separately `maxTotalBytes: 0`, and separately `maxBytesPerDocument: 0`; and state the third
+   case's extra clause, that **every** corpus document carries `RSN-NO-MATERIAL` and consumes no
+   slot (E-36), the run staying enabled with BR-8 rows present and empty. State which task owns the
+   production half — on the current text that is LI-16 (`extractInjectableMaterial` yields nothing
+   at bound zero; `selectLearnings` drops the document with `RSN-NO-MATERIAL` before the total
+   bound) — so the branch has a named owner rather than an inferred one.
+2. **F-02 (Medium)** — restate §Traceability's decision-branch row as D-12 now reads: `no material
+   yielded ⇒ RSN-NO-MATERIAL`, with both causes (no BR-6 section; per-document bound zero admits
+   none) and both ATs (AT-28; AT-30/E-36).
+
+Fold in with the same pass, all inherited and non-gating:
+
+3. **F-03 (Medium, inherited)** — rewrite §Open questions and upstream errata: TSPEC v0.7 marks
+   ERR-3 and ERR-7 CLOSED by name and §A.2 now says its `docType` predicate implements BR-1 rather
+   than diverging from it. Retire the BR-1 row, keep one provenance line for harvest.
+4. **F-04 (Medium, inherited)** — widen §Verification's claim 4 from "every non-authoring dispatch"
+   to "every dispatch outside BR-1's rule, including an authoring-classified dispatch with no C-1
+   target", matching FSPEC AT-03/AT-29 and TSPEC §A.2.
+5. **F-05 (Low, inherited)** — update the four stale pins (upstream matter row, §Overview,
+   LI-01's edge rationale, changelog 0.1) to FSPEC v0.13 / TSPEC v0.7.
+
+A note for the orchestrator on routing: F-01 is tagged `delta`/`local` deliberately. The FSPEC edit
+created the mismatch, and it lands in the PLAN material that corresponds to the edited AT-30, D-12,
+BR-9 and E-36 — so it is one bounded follow-up edit to this document, not a halt. TSPEC has not
+absorbed E-36 either (§T.5 still gives `learningsConfig.test.js` two ATs; §D.7 still reads "No BR-6
+section present ⇒ `RSN-NO-MATERIAL`"), which is TSPEC's own cascade to answer, not this PLAN's
+licence to stay narrow.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
