@@ -172,3 +172,12 @@ Exactly what must change, and nothing else:
 
 Do not re-open the property set, the AC map, the fixture plan or the `e3b9d5a3` disposition. This
 is a grounding restatement of two paragraphs, mirroring one upstream has already made.
+
+FINDING: High | delta | local | "File existence, verified at HEAD" | claims `advisoryWaveGate.test.js` and `pdlc/engine/__tests__/advisory-config-example.test.js` are "both absent at HEAD"; both exist at HEAD and TSPEC §5.1's new Status-column caveat now says so explicitly — PROPERTIES asserts the negation of its upstream under a HEAD-verified heading
+FINDING: Medium | delta | local | Derivation rule 1 (cardinality surfaces) | the four sites named "verified at HEAD" as `toHaveLength(5)` at `:622`/`:627`/`:571`/`:726` all read `toHaveLength(6)` at `:629`/`:634`/`:578`/`:733`; TSPEC §1.3 already re-anchored and re-grounded the same four pins this round
+FINDING: Low | inherited | nonlocal | PROP-CFG-03 and the Example-config fixture row | raw `file:line` citations `ci-arrangement.test.js:39` and `:799`–`:819` where a symbol or block title would hold (DEC-DOC-01); non-gating, absorb with the F-01/F-02 edit
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
