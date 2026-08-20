@@ -305,4 +305,25 @@ DEFERRED: ERR-8 stands open against FSPEC Step 5 items 15/16; it is recorded wit
 
 ## Recommendation
 
+**Approved with minor changes** — no High findings; one Medium and three Low, none gating.
+
+All four v13 findings are closed, and closed with the measurement behind them: AT-11's three FSPEC
+conjuncts now have oracles, an owner and named mutations in `learningsBlock.test.js`; `sections[]`
+is both demoted to a supporting assertion and redefined so it cannot disagree with `material`; the
+assembly rule makes AT-11/AT-12's literal counts a mechanical sum; the prefix argument is repaired
+on its own ground; and the upstream sequencing gap is recorded as ERR-8 with the implementer's rule
+stated in §D.5. Every repository and upstream claim the delta adds — `learningsFixtures.js`'s
+`lines.join("\n")`, the empty `\r\n` grep over the corpus, `DC-03`/`DC-14`'s texts, FSPEC AT-11's
+wording and Step 5's item ordering — holds at HEAD.
+
+Nothing the delta touched broke a section previously approved. The single Medium is the one place
+the `sections[]` redefinition did not propagate (T-O-6's corpus conjunct, which now needs a no-cut
+qualifier or it reds against a conforming implementation); it is a one-clause fix, the property is
+not yet written, and it does not block. The three Lows are an unscoped identity in a JSDoc comment,
+an unscoped block scan in one oracle row, and a stale "ignore every delimiter" clause left standing
+next to its own correction.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
