@@ -30,6 +30,48 @@ run; see §Positive Observations for what checked out).
 
 ## Positive Observations
 
+- **Every measurement in this PLAN reproduces exactly.** I re-ran both suites at HEAD:
+  `cd pdlc/workflows && npm test` gives `Test Suites: 1 failed, 98 passed, 99 total` /
+  `Tests: 2 failed, 70 skipped, 3851 passed, 3923 total`, the two failures being
+  `documentOracles.test.js`'s `AT-22 [red-until-L-06]` and `PROP-SWEEP-2(b)` — digit-for-digit what
+  §Verification records; `cd pdlc/engine && npm test` gives `# pass 841 / # fail 3`, likewise exact.
+  A plan whose baseline a reviewer can reproduce is a plan whose gates mean something.
+- **The change-surface table is accurate line by line.** All eleven cited positions resolve at HEAD
+  (`MERGE_CONFIG_PATH:48`, `parseAdvisoryConfig:1964`, `reviewLoop:7266`, `dispatchAndVerify:8862`,
+  `main:12022`, `buildFinalReport:15240`, `LS_FILES_ARGV:1338`, `enumerateCorpus:1349`,
+  `fakeFs:245`, `fakeGit:413`, `consolidationDoubles.js:35`); no `learnings*.test.js` exists under
+  `pdlc/workflows/__tests__/`; the repository root has no `scripts/`; `git check-ignore -v
+  .baseline-worktree` exits non-zero; `.gitignore` is 599 B and already root-anchors
+  `/.claude/pdlc.config.json`, exactly the precedent LI-04 cites. The "new" declarations are honest.
+- **The AT-22/AT-23 name collision is real and the `LI-` namespacing rule is the right answer.**
+  `documentOracles.test.js` does carry `test("AT-22 [red-until-L-06]…")` and `test("AT-23: coveredViolations(fixture root)…")`
+  from a prior feature. Catching that before the first test file is written saves a debugging session
+  nobody would have budgeted.
+- **§T.5's partition is transcribed faithfully.** 2 + 9 + 3 + 3 + 6 + 12 = 35, suite by suite,
+  matching TSPEC §T.5 exactly, including the L3 re-classification of `learningsConfig.test.js` and
+  the AT-11/AT-12 move to `learningsBlock.test.js`. And `LI-T-SUITEMAP` makes the arithmetic a test
+  rather than a reader's promise — that is Team Principle 3 mechanised.
+- **The oracle discipline this review is asked to demand is already in the rows.** AT-33's expected
+  read set is "hand-transcribed from the fixture's scripted `ls-files` stdout minus the self paths —
+  never derived from `gatherLearningsCorpus`" (no implementation echo, DC-14); LI-06's baseline guard
+  and LI-11's composition-site check are stated as **set equality, never containment**, with the
+  reason spelled out ("containment lets a silently deleted baseline case pass"); AC-5.2's write half
+  is a porcelain **delta with no exemption list** paired with AT-33's positive read set, so the
+  absence claim has a positive companion on the same instrument.
+- **`runMirror` is correctly left unasserted.** LI-10 and LI-19 both say so and both cite REQ AC-3.2's
+  deliberately unconstrained value. A test pinning it would red a conforming implementation, and PLANs
+  usually discover that in review rather than before it.
+- **The two live FSPEC errata are routed rather than silently resolved.** BR-1's missing
+  `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct and BR-15's enumeration-in-the-expected-set both
+  still stand in FSPEC v0.10 — I checked both — and the PLAN writes the affected rows to TSPEC's
+  reading and says so instead of quietly picking one. That is the correct handling of an upstream
+  defect; I re-raise both as errata so they reach FSPEC's author.
+- **`dist/` having no owning task is argued, not assumed**, and the argument is checkable: the
+  arrangement's `testCommand`, `postWaveCommand: "node pdlc/workflows/build-runtime.mjs"` and
+  `postWavePathspecs` are all present in `.claude/pdlc.config.example.json` as described, including
+  the `'documentOracles'` ignore pattern that makes the measured baseline green under the gate.
+
+
 ## Recommendation
 
 ## Verdict
