@@ -300,22 +300,30 @@ that a first-class per-seam `enabled` map becomes the better surface.
 
 ### What follows from DEC-A6-04
 
-- `.claude/pdlc.config.example.json` gains the key, and `pdlc/engine`'s `ci-arrangement` test must
-  gain a **new** expectation over it. Nothing "moves": the tracked example carries exactly two
-  sections today, `dispatch` and `implementation`, with no `advisory` section at all, and
+- `.claude/pdlc.config.example.json` gains the key, and **`pdlc/engine` must gain a new expectation
+  over it, in a file of its own** (named below). Nothing "moves": the tracked example carries exactly
+  two sections today, `dispatch` and `implementation`, with no `advisory` section at all, and
   `pdlc/engine/__tests__/ci-arrangement.test.js` contains zero occurrences of `advisory` — it reads
-  the example file and asserts only on `implementation.testCommand`. Adding
-  `advisory.waveBudgetPerRun` to the example therefore breaks no engine expectation and, as things
-  stand, requires no engine edit to stay green. This is still a two-channel edit, but the second
-  channel's work is *authoring a new expectation*, which is a different size and a different risk
-  from relocating one. That work now has an owner: TSPEC §4.4 carries the claim, and §5.1's
-  file-ownership map assigns the expectation to a **new file**,
-  `pdlc/engine/__tests__/advisory-config-example.test.js` — deliberately *not* to
-  `ci-arrangement.test.js`, whose stated oracle is FSPEC §5.1's CI arrangement alone, and which a
-  config-schema assertion would let an unrelated example edit redden under the delivery-blocking
-  `Engine tests (ubuntu-latest)` check. No FSPEC acceptance test ranges over it and none is expected
-  to: upstream states the coverage as TSPEC-owned (§5.1), so this is a deliberate allocation, not an
-  open gap. The product reason to do the work rather than drop the claim:
+  the example file and asserts only on `implementation.testCommand`. Both facts are cited here as
+  **evidence that nothing relocates**, not as guidance about where the new expectation belongs:
+  `ci-arrangement.test.js` is explicitly *not* its home. TSPEC §5.1's file-ownership map assigns it
+  to a new file, `pdlc/engine/__tests__/advisory-config-example.test.js`, because
+  `ci-arrangement.test.js`'s stated oracle is FSPEC §5.1's CI arrangement alone, and a config-schema
+  assertion parked there would let an unrelated example edit redden the delivery-blocking
+  `Engine tests (ubuntu-latest)` check under a scope that names no such concern. This is still a
+  two-channel edit, and the second channel's work is *a new expectation* — a different size and a
+  different risk from relocating one.
+- **The order of the two channels at HEAD is the reverse of what v1.2 recorded** (PM v4 F-02).
+  v1.2 said adding the key "requires no engine edit to stay green" and that the second channel's
+  work was still ahead. At HEAD the expectation has already been authored and is **red**, precisely
+  because the example carries no `advisory` section yet — so the engine channel is the one waiting
+  on the config edit, not the other way round. This record deliberately stops restating that status:
+  TSPEC §5.1's status caveat and §1.3 are the carriers of repo state for this feature, and whether
+  the early-landed edits are reverted or PLAN's batches are re-derived around them is PLAN's call.
+  What is decided *here* is only that the key ships in the operator-facing example and that the
+  engine channel asserts over it in a file of its own. No FSPEC acceptance test ranges over it and
+  none is expected to: upstream states the coverage as TSPEC-owned (§5.1), so this is a deliberate
+  allocation, not an open gap. The product reason to do the work rather than drop the claim:
   `waveBudgetPerRun: 0` is a documented operator affordance (REQ C-2, FSPEC E-33), the example is the
   operator's first and possibly only encounter with the key on a tier that ships off by default, and
   an affordance nothing asserts into the example can ship working and undiscoverable (PM F-01,
