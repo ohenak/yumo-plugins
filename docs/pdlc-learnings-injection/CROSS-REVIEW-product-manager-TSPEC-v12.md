@@ -61,7 +61,38 @@ No finding in this section.
 
 ## Interfaces
 
-_pending_
+The delta changes no seam, no signature and no threshold key, so §I.1's module map and §I.5's
+changed-signature table are untouched. Two §I.2/§I.3 claims are in the delta's blast radius, and
+they part company:
+
+**§I.2's threshold validation still holds — and is now more load-bearing.** TSPEC states the three
+thresholds validate as **non-negative** integers (`Number.isInteger(v) && v >= 0`), not positive
+ones, "because AC-4.4 requires `0` to be a *valid* admits-nothing configuration". FSPEC v0.13's
+E-36 makes `maxBytesPerDocument: 0` a decided, exercised configuration rather than a merely
+tolerated one, which is exactly the reading §I.2 already took. Had TSPEC validated positives, the
+delta would have contradicted it outright. It does not.
+
+**§I.2's parenthetical restatement of AT-30 no longer matches upstream (F-01).** The sentence
+"**AT-30 owns none of them** — it is the admits-nothing-thresholds AT for AC-4.4 (`maxDocuments:
+0`, `maxTotalBytes: 0` ⇒ enabled run, BR-8 rows present and empty)" enumerates the AT's cases, and
+FSPEC AT-30 at HEAD now reads "`maxDocuments: 0`, separately `maxTotalBytes: 0`, **and separately
+`maxBytesPerDocument: 0`** … *and* in the `maxBytesPerDocument: 0` case every corpus document
+carries `RSN-NO-MATERIAL` (E-36)". TSPEC's compression is a strict narrowing of the AT it names,
+and the narrowing is silent — a reader building §T.5's `learningsConfig.test.js` from TSPEC would
+write two cases where the acceptance criterion now requires three. This is the contract-fidelity
+class, not a wording nit: the dropped case has a distinct observable outcome (per-document reject
+rows over the whole corpus) that neither of the two retained cases produces.
+
+**§I.3's `extractInjectableMaterial` contract survives the delta, and is the right home for the
+zero case.** The documented return `{material, bounded, bytes, sections}` with
+`bytes = Buffer.byteLength(material, "utf8") <= maxBytes` is already total over non-negative
+`maxBytes`, so `maxBytes: 0` yields empty material without a special case. What TSPEC does not say
+is what the *selector* does with that result — whether an empty-material document is emitted as
+`RSN-NO-MATERIAL` before the count and total bounds are applied ("consumes no slot", FSPEC BR-6/
+E-36). TSPEC's stated policy is that behaviour "is FSPEC's and is referenced by rule id, never
+restated", so the omission is defensible; but §I.3's `selectLearnings` doc comment names
+BR-2/BR-4/BR-5/BR-6 as its scope, and BR-6 is precisely the rule that moved. Folding the zero case
+into F-01's fix keeps the comment honest.
 
 ## Data Model
 
