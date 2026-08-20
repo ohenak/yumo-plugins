@@ -339,9 +339,14 @@ that a first-class per-seam `enabled` map becomes the better surface.
   the `ADVISORY_SEAMS` set-equality in `advisoryEnvelope`, a report-row assertion and a `test.each`
   table in `advisoryRecord`, a harvest-row assertion in `advisoryHarvest`, a generator pick in
   `consolidationProperties`, and a `SEAMS` constant inside the shared `advisoryDoubles` helper. The
-  four-member envelope literal `["E-1", "E-2", "E-3", "E-4"]` is transcribed at six more, including
-  `advisoryDoubles`' frozen `ADVISORY_DEFAULTS_SHAPE`, whose own comment records that it must be kept
-  in sync by hand because the real symbol does not exist yet at that task.
+  four-member envelope literal `["E-1", "E-2", "E-3", "E-4"]` is transcribed at six more code
+  sites — `advisoryEnvelope`'s `ENVELOPE_DEFAULTS` set-equality, two in `advisoryDisabled`, one in
+  `advisoryHarvest`, and two in `helpers/advisoryDoubles.js` (the frozen `ADVISORY_DEFAULTS_SHAPE`
+  and the property generator's shuffle) — **plus a seventh in prose**: the `advisoryDoubles` comment
+  that records why the frozen shape must be hand-synced restates the literal itself. A comment that
+  restates a set-equality literal is a maintenance site like any other — it is what a later editor
+  reads to decide whether the copy below is still right — so the envelope's hand-sync surface is
+  seven, not six (TE v2 F-03).
 - The shared double is the coupling the other two surfaces do not have: `advisoryDoubles.js` carries
   *both* literals plus the frozen defaults shape, so a partial edit reddens tests in files that never
   mention the changed constant, with a failure reason the record cannot predict. Sequencing all of
