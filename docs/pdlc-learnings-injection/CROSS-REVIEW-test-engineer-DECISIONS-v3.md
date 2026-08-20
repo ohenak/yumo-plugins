@@ -124,8 +124,23 @@ claims at HEAD that v2 verified, and did not revisit any settled decision. Secti
 
 ## Delta-Confirmation Findings
 
-_TBD_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | Row 4 of the non-decision registry presents AC-3.3's run-level vs per-dispatch locus as open and routed to REQ via TSPEC `ERR-6`, and states "TSPEC keeps the run-level record (last-write-wins)… which locus the completeness test asserts over is a contract decision". FSPEC v0.9 `BR-10` has since made that contract decision: ordering keys per authoring dispatch, thresholds once per run, **two** completeness tests (one per locus), and a run-level mirror that is "additive, not the oracle: nothing asserts on it" (AC-3.2). A PROPERTIES author following this row can still believe the run-level record is an assertable locus — a false-green shape that holds on a single-dispatch fixture and breaks silently on AT-18's divergent run | §Decisions deliberately NOT taken, row 4 |
+| F-02 | Low | delta | nonlocal | DEC-LI-07 cites "FSPEC **v0.7** `BR-14` carries the same five states". FSPEC is v0.10 at HEAD. BR-14's bytes are untouched by `fa229bde..HEAD`, so the substantive claim is true — but a version-pinned citation that names a version no longer on disk cannot be checked by the next reader without redoing this diff | DEC-LI-07 §Context |
+| F-03 | Low | delta | local | BR-10's single completeness test became **two**, one per locus. No `D-O` obligation names either. DEC-LI-10's hand-transcription rule (DC-14) is scoped to the three `RSN-*`/corpus-outcome/`NTC-*` catalogues, so the newly split BR-10 locus tests inherit no anti-vacuity obligation from this document — nothing here stops them being written as `X === X` against the emitted record | `D-O-1`…`D-O-9` obligations table; DEC-LI-10 |
+
+FINDING: Medium | delta | local | §Decisions deliberately NOT taken, row 4 | Row describes AC-3.3's record locus as an open question routed to REQ/TSPEC and endorses TSPEC's run-level record, but FSPEC v0.9 BR-10 at HEAD has settled it — per-dispatch ordering keys, run-level thresholds, two completeness tests, and a run-level mirror explicitly declared "additive, not the oracle: nothing asserts on it"; the stale row can send the PROPERTIES author to assert over the non-oracle locus
+FINDING: Low | delta | nonlocal | DEC-LI-07 §Context | Version-pinned citation "FSPEC v0.7 BR-14" now names a version that no longer exists (HEAD is v0.10); BR-14's five states are unchanged, so the claim is true but no longer checkable without re-deriving the diff
+FINDING: Low | delta | local | D-O obligations table / DEC-LI-10 | BR-10's completeness test split into two per-locus tests upstream; no D-O obligation owns either, and DEC-LI-10's DC-14 hand-transcription rule covers only the three id catalogues, leaving the new locus tests without an anti-vacuity obligation in this document
+
+## Recommendation
+
+**Approved with minor changes** — DECISIONS remains a faithful compression of FSPEC as it now stands.
+No decision was invalidated by the erratum; the three findings are citation-currency repairs. F-01 is
+worth landing before PROPERTIES authoring transcribes BR-10's oracles.
 
 ## Verdict
 
-_TBD_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
