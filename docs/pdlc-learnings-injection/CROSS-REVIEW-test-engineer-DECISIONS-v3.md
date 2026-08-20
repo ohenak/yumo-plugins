@@ -91,7 +91,36 @@ not an oracle (AC-3.2). Recorded here for traceability only."
 
 ## Consequences
 
-_TBD_
+**For this phase.** The confirmation is approving, so the cascade does not halt and DECISIONS does not
+re-enter its ordinary revision loop. All three findings are Medium/Low and can land as an erratum
+alongside whatever else the phase is carrying; none of them blocks PROPERTIES authoring from starting.
+
+**For PROPERTIES, which is the next reader of this document.** Two ordering notes, because PROPERTIES
+transcribes obligations rather than re-deriving them:
+
+- Take BR-10's loci from **FSPEC**, not from §Decisions deliberately NOT taken. Two completeness
+  tests, one per locus: ordering key values per authoring dispatch, thresholds once per run. Any
+  assertion written over a run-level mirror of the ordering keys is, by FSPEC's own words, an
+  assertion over a non-oracle — and it is exactly the assertion that goes green on a single-dispatch
+  fixture and stays green through the divergent run AT-18 constructs. Land F-01's row edit before that
+  transcription happens and the hazard never reaches a test file.
+- `D-O-6`'s per-dispatch call-count oracle is now doubly grounded: DEC-LI-06 rejects the memo on E-32,
+  and FSPEC AT-20/AT-22 independently require per-dispatch readback of corpus outcomes and ordering
+  keys. My v2 F-03 (unfiltered `_git` counters cannot hold a literal equality across a whole pipeline
+  run) is unchanged by this cascade and still worth the one-sentence scoping fix when `D-O-6` is next
+  touched — it is inherited, not raised again here, and it is not part of this round's gate.
+
+**For the harvest phase.** The mechanism behind F-01 is reusable and worth a `Cross-Feature` note when
+this feature harvests: *a "deliberately not decided / routed elsewhere" row is a citation into another
+document's open state, and it goes stale exactly like a quoted rule does.* Non-decision registries read
+as inert prose and are therefore the last thing a cascade confirmation checks, but they are what a
+downstream author consults when deciding whether a question is theirs to answer. The upstream-cascade
+protocol (DEC-ERR-03) already asks for this — the finding is evidence the ask is load-bearing, not a
+formality.
+
+**What this round did not do.** I did not re-read DECISIONS end to end, did not re-derive the code
+claims at HEAD that v2 verified, and did not revisit any settled decision. Sections of FSPEC outside
+`fa229bde..HEAD` were read only where DECISIONS cites them.
 
 ## Delta-Confirmation Findings
 
