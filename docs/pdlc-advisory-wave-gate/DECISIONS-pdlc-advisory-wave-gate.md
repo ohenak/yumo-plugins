@@ -2,21 +2,21 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.5) |
+| Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.10) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.1 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.2 | 2026-08-19 |
 
 ## Context
 
 A6 is the sixth advisory seam: it fires at exactly one place — Phase I's wave loop, at the moment
 the script-owned test gate goes red — snapshots the tree, attempts one bounded in-envelope repair,
 re-runs the wave's own gate sequence, and either keeps the repair or restores the snapshot
-byte-identical and halts with a diagnosis attached. TSPEC v1.5 settles the design; this document
+byte-identical and halts with a diagnosis attached. TSPEC v1.10 settles the design; this document
 records the four load-bearing choices inside it that had a live alternative, so that a later reader
 finds the rejected option and its reason here rather than reverse-engineering it from a test oracle.
 
