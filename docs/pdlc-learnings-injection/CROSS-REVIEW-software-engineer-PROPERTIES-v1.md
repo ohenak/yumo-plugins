@@ -153,6 +153,62 @@ Prose names are not traceable. PROP-CORPUS-01 is the case that will actually mis
 
 **Resolution:** add the owning suite file to each of PROP-META-01…05 and PROP-CORPUS-01 the way every other property carries its red/green tasks; fix the lead-in to "Ten of the twelve new suites, the fixture helper and the baseline fixture directory do not yet exist"; and add one sentence to PROP-CORPUS-01 distinguishing the pin's *subject* (`consolidationPredicate.test.js`, existing, never edited) from the pin's *home* (`learningsPredicatePin.test.js`, new).
 
+---
+
+### F-06 (Medium) — `F-O-8` does not exist
+
+PROP-BOUND-01's trace line cites `F-O-7/O-8`. FSPEC carries exactly `F-O-1 … F-O-7`; there is no `F-O-8`. Every other `F-O-*`, `E-*`, `C-*`, `NG-*`, `G-*`, `AC-*`, `BR-*`, `AT-*`, `DC-*` and `T-O-*` id in this document resolves to a real upstream id — this is the single exception, and it is the review checklist's named recurring failure (nonexistent-authority citations). Either drop `/O-8` or name the real id.
+
+---
+
+### F-07 (Medium) — PROP-BOUND-07's expected values are derived from the implementation
+
+PROP-BOUND-07 states two of its three conjuncts as expressions over the implementation's own outputs:
+
+> `bytesInjected` for a row **must** equal `Buffer.byteLength(material, "utf8")` for that document; `totalBytesInjected` **must** equal the sum of the rows' `bytesInjected`
+
+If `material` is the value the production extractor returned, the first conjunct is an identity the implementation cannot fail: whatever it produced, its byte length is its byte length. The second is pure self-consistency — an implementation that charged framing to *every* row and to the total satisfies it, which is precisely mutation M-5 the ledger claims this property reds. M-5's own wording gives the right test ("`bytesInjected` no longer equals the **hand-computed** material count"), but the property does not say so, and §F.1's closing sentence — "expected values are hand-transcribed literals … never re-derived at assertion time by calling the function under test" — is the rule this property reads as violating.
+
+**Resolution:** restate both conjuncts against the fixture, not the output. The fixture declares each document's sections and their byte sizes, so the per-row expected `bytesInjected` and the expected `totalBytesInjected` are both literals computable at fixture-authoring time and transcribed into the test. Keep the "framing charged to no bound and no row" conjunct as written — that one is already a spec claim — and state the framing cost as a separate literal so the test proves the two numbers differ, which is what makes M-5 red.
+
+The same wording risk sits in PROP-BOUND-03's `Buffer.byteLength(material) <= maxBytes` conjunct in §O.9. That one is a genuine generated-input invariant and is fine as an inequality; it is worth one clause saying so, to keep the distinction between "generated invariant over the output" and "expected value transcribed from the spec" legible.
+
+---
+
+### F-08 (Medium) — PROP-ISOLATE-02 is absence-shaped with no positive control
+
+PROP-ISOLATE-02 asserts, on an enabled run, that "**No** required section, no new heading, no new verdict token, no new approval condition, and no SKILL.md text moves." Five absences, and the only positive conjunct offered is that the criteria "**must** be exactly those in force without the feature".
+
+That last clause is the oracle, and it is the one that needs a stated operand. §O.1's table does not list PROP-ISOLATE-02; §O.2's positive-control pairing table does not either. Compare PROP-ISOLATE-01, which gets the treatment properly: set equality over five named gate inputs, value equality per member, **and** a fixture in which contamination is made possible. PROP-ISOLATE-02 gets neither the named enumeration nor the possibility conjunct.
+
+As written it is satisfiable by a run that produces no documents at all, or by an instrument that reads an empty criteria set on both arms.
+
+**Resolution:** give it the PROP-ISOLATE-01 shape — enumerate the five scored artefacts by name, assert **set equality** of the criteria/heading/verdict-token/approval-condition sets between the enabled and disabled arms *and* assert each set **non-empty**, and state the SKILL.md conjunct as a digest equality over `pdlc/skills/**` rather than as a prose "no text moves". A digest is a cheap positive: it names what was compared.
+
+---
+
+### F-09 (Low, Process) — raw `file:line` anchors as citations
+
+§F.4 cites `helpers/seams.js`'s `fakeFs` (`:245`) and `fakeGit` (`:413`), `helpers/consolidationDoubles.js` (`:35`), and `advisoryDisabled.test.js:70`. All four line numbers are correct today, which is the problem: they are raw positional anchors that a single inserted import invalidates, and none of them is runtime-measured evidence where position is itself the claim. Per DEC-DOC-01 (`docs/_decisions/DECISIONS-review-severity-bars.md`) that is a `Process`-scope, Low finding rather than a style nit.
+
+One is also slightly mis-described: `advisoryDisabled.test.js:70` is the line `import mainDev, * as dev from "../orchestrate-dev.js";` — an import, not an injection. PLAN LI-12's row says it accurately ("on `advisoryDisabled.test.js`'s pattern (`import mainDev, * as dev from "../orchestrate-dev.js"`)"). Cite the exported symbol names (`fakeFs`, `fakeGit`, the re-export line's symbol list) and drop the line numbers.
+
+---
+
+### F-10 (Low) — PROP-META-04's falsification proof is human-run, and §G.2 does not say so
+
+PROP-META-04's power rests on "LI-06's recorded three-step mutation proof: flip one byte, delete one whole `{caseId}` directory, add a spurious one — each step reds a **different** clause, and a step that does not red is a halt." PLAN LI-06 confirms this is performed by hand before the commit and recorded verbatim in a completion note. It is the right discipline for an oracle authored after its subject, and I would not ask for it to be mechanised.
+
+But §G.2's gap 4 ("Mutation testing is not mechanised") names only §O.8's ledger as the un-mechanised obligation. PROP-META-04's three-step proof belongs in the same paragraph: it is a one-time human procedure guarding the expected side of every byte-identity oracle in the feature, and a reader auditing residual risk should find it listed there rather than have to derive it from a property's parenthetical.
+
+---
+
+### F-11 (Low) — the `87 of 89` figure is not reproducible from this repository
+
+§O.7's precedence argument rests on "the **byte** bound binds first on measured corpora (87 of 89 documents exceed `maxBytesPerDocument` alone)". The conclusion is right — this repository's 9 corpus documents run 19,340–50,695 bytes against a 6,000-byte per-document bound, so the per-document bound binds for every one of them — but the specific figure comes from a two-repository measurement (80 of the 89 documents live in `regime-ledger`) that cannot be re-derived here, and the TE FSPEC-v2 review re-derived 91 / 76 under strict BR-6 title matching.
+
+Since the figure is inherited rather than load-bearing for any expected value in this document, state it as inherited from FSPEC BR-5 with its basis named, or state the local re-derivation (9 of 9 here) which is checkable and makes the same point. §O.7's argument does not need the precise number — it needs "the per-document bound binds first for essentially every real document", which the local measurement establishes.
+
 
 ## Questions
 
