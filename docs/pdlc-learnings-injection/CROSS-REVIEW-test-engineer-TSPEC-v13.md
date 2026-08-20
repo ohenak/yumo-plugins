@@ -237,6 +237,38 @@ owners in §T.5, and I re-checked that the 35-AT inventory is disjoint and compl
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For AT-11, is the intended operand the rendered block's material text (FSPEC's wording) with `sections[]` as a supporting assertion, or is the TSPEC deliberately narrowing AT-11 to the extractor return? If the latter, which test owns "the Approval Record's distinctive fixture text is absent while all five injected sections' texts are present"? |
+| Q-02 | Does a section's extent retain the trailing newline of its last line, and are the blank lines before the next `##` heading inside it? Is any separator inserted between two taken extents that are non-adjacent in the document? |
+| Q-03 | `GLOSS_RE` is stripped from **both** sides of the comparison, so `## Process Learnings (draft)` matches priority 4. Is that intended tolerance, or should the strip apply only where the canonical name itself carries a gloss (i.e. priority 3 alone)? Either answer is fine and deterministic; the fixture obligation differs. |
+| Q-04 | Should FSPEC Step 5's items 15/16 be reconciled with §D.5's "drop before the count and total bounds"? The outcomes agree, but the PLAN author reading Step 5 literally will extract after the count cut. |
+
+## Positive Observations
+
+- §D.3's ordinal rule is the strongest paragraph the erratum adds. Measuring all 9 corpus documents
+  and observing that their own numbering ranks Cross-Feature Patterns **second** while BR-6 ranks it
+  **first** turns a plausible implementation shortcut ("the number is the priority") into a named,
+  provably wrong one that "would invert the first two sections of every document in the corpus".
+  That is a bug caught at spec time.
+- Rule 2's justification is grounded in E-33's real document rather than in a preference for
+  strictness: a looser matcher makes FSPEC's one measured `RSN-NO-MATERIAL` document contributing
+  and makes E-33 and AT-28 unreachable by construction. Tying a matcher's strictness to the
+  reachability of a specific AT is the argument I want to see.
+- §D.3's honesty about which tolerances are measured and which are defensive — the gloss rule is
+  explicitly "not measured (9 of 9 corpus documents write the glossed form) … stated as a defensive
+  tolerance in the sense of §D.4's date-cell tolerance" — keeps a reader from mistaking a hedge for
+  an observation.
+- The duplicate rule ("first occurrence in document order wins, later ones ignored — a total rule,
+  so no document text can make extraction non-deterministic") pre-empts a property-test failure that
+  would otherwise surface only under a generator.
+- §I.2's insistence that AT-30's third case assert reject **rows** rather than an empty `selected`,
+  with the mutation that reds it named in the same breath, is the difference between a case that
+  documents E-36 and one that enforces it.
+- Dropping `present` on the stated ground that "a field whose removal reds nothing is not part of
+  the contract", while explicitly re-homing both distinctions it carried, is the right way to close
+  a dead-field finding — it does not merely delete, it shows what still owns the behaviour.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
