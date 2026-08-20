@@ -91,6 +91,27 @@ This is the anti-pattern DEC-ERR-01 names: an erratum dispatch must re-read its 
 
 ## 6. Recommendation
 
+**Author one PLAN revision (v1.5) that closes the round-6 findings, then re-run a single delta-confirmation round. Do not restart Phase T, do not re-open the TSPEC, and do not re-litigate the routed erratum.**
+
+Rationale: the erratum's own charter is discharged and both lenses said so. What remains is a bounded correction list — two Highs that are one defect in two rows, one citation-form sweep, and four small items — none of which reopens a design question. TSPEC v1.10 is approved and already states every fact the PLAN needs; this is a compression fix, not a specification fix.
+
+Ordered steps:
+
+1. **Close cluster A (PM F-01, F-02) with the upstream literal.** Restate A6-06 as committing `{"advisory": {"enabled": false, "waveBudgetPerRun": 1}}` — the shipped defaults, tier off — and delete the "so an operator can tell … `enabled: true`" reasoning. Rewrite A6-04's rationale to TSPEC v1.10's surviving justification, which A6-04 already contains: `enabled` travels in the same shipped unit as the budget, and an expectation naming only `waveBudgetPerRun` would stay green if a later edit dropped `enabled`. Keep the both-keys assertion; only its justification is wrong.
+2. **Close cluster B (PM F-03/F-04, TE F-02) by adopting TSPEC v1.10's anchors verbatim.** Replace all six `file:line` pins with the symbol / block-title / quoted-assertion anchors upstream already minted, and delete or explicitly tense-mark the Overview's pre-drift `toHaveLength(5)` passage so it cannot be read as HEAD state. Grep the PLAN for `.js:` afterwards; a surviving numeral in the DoD checklist is the highest-cost residue because an implementer ticks it.
+3. **Close cluster C (TE F-01, F-03) by scoping the claim and naming owners.** Restate the drift note's third bullet as scoped to the advisory suites. Then dispose of the two unowned reds explicitly: name an owner for the `documentOracles` T15 literal (this feature's plan or the coupled sweep's — TE Q-01 warns both sides will otherwise assume the other bumps it), and record a disposition for the 14 tracked `.bak` blobs (untrack in Phase I and PROP-SWEEP-2(b) closes free; keep them tracked and the oracle stays red for the life of the branch). Finally, state in the batch-1 gate wording whether the wave gate is expected to run against a clean tree; if yes, the hook-rewritten `.pdlc-drift-state.json` must be excluded or untracked, because AT-4.1 will otherwise redden **every** wave boundary, not just wave 1 (TE Q-03).
+4. **Sweep the three Lows along with the above** — PM F-05 (A6-04's `ci-arrangement.test.js` attribution; TSPEC §5.1 now homes that guard in `pdlc/engine/__tests__/advisory-config-example.test.js`), PM F-06 (`A6-03` / `A6-09` used in task-id positions when v1.3 demoted them to steps of A6-05 / A6-10), TE F-04 (`SEAMS` in the doubles module framed as five-member; it is six at HEAD), TE F-05 (A6-00's `pathsCollide` wording contradicts the landed file's own header comment, at the exact moment the row instructs the implementer to compare them).
+5. **Route PM F-07 out of the feature.** The cross-review completeness gate has checked the wrong heading set for three consecutive rounds. It is a dispatcher wiring defect and belongs in this feature's LEARNINGS for promotion, not in a PLAN revision.
+6. **Then flip `RESOLVED: no` → `RESOLVED: yes` in this file and re-invoke `orchestrate-dev`.** Expect a short round: every round-6 finding names its own fix, and both reviewers pre-committed to the shape they want. Note that `MAX_LIFETIME_ROUNDS 15` continues to apply.
+7. **If round 7 also returns non-approving on cluster A or C**, stop revising the PLAN and open a DECISIONS entry instead. Both clusters are really upstream dispositions the PLAN is being asked to carry — the example config's teaching scope, and the ownership of two out-of-feature reds — and a decision record with named alternatives is cheaper than a seventh compression attempt.
+
+Carry forward to LEARNINGS (Phase H):
+
+- An erratum round's re-grounding step is **not** discharged by re-reading the section that routed the item. Diff the upstream changelog across the whole interval and enumerate withdrawals and re-anchorings before touching the raised list; a changelog that announces re-grounding while performing it partially costs more than one that admits none.
+- When upstream re-anchors citations to stable content per DEC-DOC-01, every downstream document compressing those sites inherits the sweep. The PLAN was the last holder of drifted numerals and the only one where they land in an implementer's checklist.
+- A claim of the form "every failure at HEAD is closed by task X" must carry its scope in the sentence. Unscoped, it silently annexes every unowned red in the tree and turns an inherited-red escalation rule into a false alarm at every wave boundary.
+- Where a tracked file is rewritten by a session hook, a wave-boundary oracle asserting a clean tree cannot pass by construction. Decide tracked-ness before the plan depends on it.
+
 ---
 
 ## Appendix A — prior Phase T halt (review-cap, resolved)
