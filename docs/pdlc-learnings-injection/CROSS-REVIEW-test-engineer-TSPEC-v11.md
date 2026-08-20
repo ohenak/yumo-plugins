@@ -163,7 +163,44 @@ set, so a future sibling of `thresholds` lands unrecorded without reddening anyt
 
 ## Test Strategy
 
-_pending_
+**Nothing this round invalidates a test the TSPEC specifies.** The erratum's own note says "No
+behavioural change", and I confirm that: every oracle, fixture, level assignment and file/AT mapping
+in §T is byte-identical to what v10 approved, except §T.6's two de-anchored citations. The
+`learningsDispatchSet.test.js` / `learningsRecord.test.js` split, the L1/L2/L3 assignments, and the
+`DIVERGENT-CORPUS` per-dispatch oracle are unmoved.
+
+**AT-02's fixture list is still one shape short of upstream (F-01, carried from v10).** §T.6 reads:
+
+> Three run shapes are fixtured: a run with no DECISIONS phase (E-27), a Phase R with no creator
+> (E-28), and one with five optimizer rounds (E-29). **A fourth is added that FSPEC's inventory does
+> not carry:** the erratum round's land-proof retry …
+
+Upstream AT-02 at v0.12 enumerates four fixtures, and its fourth is a different one:
+
+> … with fixtures covering a run with no DECISIONS phase, a run whose Phase R has no creator, a run
+> with five optimizer rounds, **and a run containing an authoring-classified dispatch whose target is
+> none of the six C-1 document types — so reverting BR-1's second conjunct reds this test.**
+
+This is not a coverage hole today: §A.2 states the mutation obligation in this very round (TSPEC:174,
+"AT-02 gained the fixture that reds when the second conjunct is reverted") and the falsifying test
+exists in the suite — `learningsDispatchSet.test.js` samples `_recordDocType` on both arms of
+`injectHere`. But §T.6 is the section a PLAN author transcribes fixture lists from, and transcribed
+literally it produces four shapes with the *mutation* one missing and the erratum-retry one in its
+place. The repair is one sentence: make it four upstream shapes plus the erratum retry as a fifth,
+and name the file that owns the mutation check. Medium, non-gating.
+
+**Mutation-check inventory, re-read against upstream.** BR-1's second conjunct now has an explicit
+revert-and-expect-RED obligation upstream, and TSPEC carries it in §A.2. BR-15's set equality
+(AT-33) is stated upstream as sets of paths with the enumeration contributing no member — TSPEC's
+ERR-3 closure quotes that correctly, and §I.1/§A.3's "`git ls-files`, not an open under `docs/`"
+premise is exactly the ground on which upstream made the correction. No oracle in §T needs to change
+for either.
+
+**Falsifiability of the round's own repair.** The one new assertion shape introduced this round is
+§D.1's `v === null || catalogue.includes(v)`. Its falsifying case is a corpus-outcome field carrying
+a non-catalogue string, which the domain test still reds on; its positive-presence conjunct lives in
+`DIVERGENT-CORPUS`'s `=== "RSN-UNLISTABLE"`. So the repair does not create an absence-only or
+unfalsifiable oracle — the failure mode I look for in exactly this kind of edit.
 
 ## Open Questions
 
