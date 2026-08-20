@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 5; erratum v0.7 scopes AC-5.1a to an explicit `false` (an absent section ships enabled, AC-1.1) and moves AC-3.3's reproduction inputs to a per-dispatch locus | Claude | 0.7 | 2026-08-19 |
+| pdlc | draft — round 7; erratum v0.8 moves AC-3.2's not-selected rows and corpus-level outcomes to the same per-dispatch locus AC-3.3 uses, decides the malformed `learningsInjection` section fails open with a notice (AC-5.1b), and closes AC-1.2's outside-set over authoring-tagged dispatches with no C-1 document type | Claude | 0.8 | 2026-08-19 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -68,7 +68,7 @@ rather than trust it:
    LEARNINGS live at `docs/{feature}/LEARNINGS-{feature}.md`; completed features are archived under
    `docs/completed/{feature}/`. `pdlc-consolidation-agent` already ships an enumeration over exactly
    those two path shapes — tracked and untracked but not ignored, reaching one directory
-   level under `docs/` — with a fail-open outcome when the listing itself fails
+   level under `docs/` and one under `docs/completed/` — with a fail-open outcome when the listing itself fails
    (DECISIONS-pdlc-consolidation-agent § DEC-CONS-05). This feature reuses that shipped
    **pass-side** definition — the predicate `consolidate-learnings.js` declares (`LS_FILES_ARGV`) —
    by restating and pinning it, not importing it: the engine vendors only `orchestrate-dev.js` and
@@ -253,7 +253,8 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 - **AC-1.2** *Given* the same run, *when* every dispatch the pipeline made is inspected, *then* the
   set carrying injected material equals exactly the set C-1's rule names — no more, no fewer — and
   every dispatch outside it (reviews, implementation, DoD verification and remediation, harvest,
-  ship, advisory seams) is byte-identical to the same run with injection disabled — asserted under
+  ship, advisory seams, and any dispatch the pipeline tags authoring whose target is none of C-1's
+  six document types — the code-review phase's optimizer at HEAD) is byte-identical to the same run with injection disabled — asserted under
   AC-6.1's fixtures, not by comparing live runs (AC-4.3). The oracle is a set equality over the pipeline's own dispatch classification evaluated against the run that
   happened, so a run with no DECISIONS phase, or with five optimizer rounds, satisfies it as stated
   rather than vacuously.
@@ -311,18 +312,21 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   rows, not a missing field. The enumeration is closed over these per-dispatch row fields alone (a
   completeness test asserts set equality); AC-3.3's rule inputs are recorded separately, at the
   loci and under the closures AC-3.3 names.
-- **AC-3.2** *Given* the same report, *when* it is read, *then* it also names the corpus documents
-  **not** selected, each with a **per-document** reason drawn from a closed set of catalogued ids
+- **AC-3.2** *Given* the same report, *when* it is read, *then* it also names, **per authoring dispatch**, the corpus documents
+  **not** selected for that dispatch, each with a **per-document** reason drawn from a closed set of catalogued ids
   (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
   bound), `RSN-SELF` (the authored feature's own, C-2), `RSN-UNREADABLE`, `RSN-UNPARSEABLE` (read,
   not a LEARNINGS document), `RSN-NO-MATERIAL` (eligible, carrying none of the material the
   bounding rule takes). Truncation is **not** a member: a truncated file is either still a
   LEARNINGS document, so eligible, or `RSN-UNPARSEABLE`. States in which no document is
-  known are **corpus-level outcomes**, recorded once per run, drawn from their own closed set:
+  known are **corpus-level outcomes**, recorded **per authoring dispatch**, alongside AC-3.1's rows
+  for that dispatch (a run-level mirror, if carried, is additive and is not the oracle), drawn from
+  their own closed set:
   `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). The configuration notices form a
   **third** closed catalogue with two members: the malformed-section notice (AC-5.1b) and the
   wrong-typed-declared-key notice (AC-5.1c). Three set-equality tests, one per
-  catalogue; with a corpus-level outcome, AC-3.1's rows are present and empty.
+  catalogue; with a corpus-level outcome for a dispatch, that dispatch's AC-3.1 rows are present
+  and empty.
 - **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce **a given
   authoring dispatch's** selection by hand against the corpus as it stood at that dispatch, *then*
   every input the rule used is in the report and the reproduction matches (C-5). Reproducibility is
@@ -374,10 +378,13 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   act, and there is no second gate beyond this key (G-1).
 - **AC-5.1b** *Given* the `learningsInjection` section present but **not an object** — malformed
   as the repository's sibling config readers already read it — *when* the pipeline runs,
-  *then* behaviour is AC-5.1a's byte-identical inertness **and** the report carries a catalogued
-  notice naming it, so a malformed section is distinguishable from a deliberate disable (DC-01,
-  C-9). A **misspelt section name** reads as absent, and is therefore the default-enabled state
-  above, not an inert one — consistent with AC-5.1c; no unknown-key registry is required.
+  *then* the run stays **enabled** on §4.1's declared defaults **and** the report carries a
+  catalogued notice naming the malformed section, so it is distinguishable from a deliberate
+  disable (DC-01, C-9). Fail-open is the decided response: disablement is the explicit
+  `enabled: false` of AC-5.1a and no non-deliberate configuration mistake turns the feature off
+  (G-1, G-4, C-7) — the same response the sibling reader ships, which keeps running on its declared
+  defaults and reports. A **misspelt section name** reads as absent, and is therefore the same
+  default-enabled state — consistent with AC-5.1c; no unknown-key registry is required.
 - **AC-5.1c** *Given* the section well-shaped but a **declared §4.1 key wrong-typed**, *when* the
   pipeline runs, *then* the run stays **enabled** with that key at its default and the report
   carries a catalogued notice naming it — a mistyped threshold does not disable the feature.
