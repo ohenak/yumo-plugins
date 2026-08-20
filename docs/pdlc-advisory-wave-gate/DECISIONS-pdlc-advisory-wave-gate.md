@@ -425,11 +425,13 @@ that a first-class per-seam `enabled` map becomes the better surface.
   reader who follows the id into PROPERTIES lands on the wrong property; follow the file and the
   `T-01-1` deep-equality instead — PM v7 F-03. The collision is worth knowing at the bench too, since
   a red `PROP-CFG-02` names either property.) **These two oracles clear together, at one wave
-  boundary** (TE v7 F-01, correcting v1.5): PLAN v1.3's **Green step (A6-05 proper)** lands
+  boundary** (TE v7 F-01, correcting v1.5): PLAN's `A6-05` row — cited by task row rather than by
+  version, since the claim was measured at HEAD and PLAN's revision table has since moved past the
+  v1.3 this passage used to name (PM v8 F-03) — carries a **Green step (A6-05 proper)** that lands
   `export const ENVELOPE_DEFAULTS` + `E-5`, `E-6` and `export const ADVISORY_DEFAULTS` gaining
   `waveBudgetPerRun` in the *same* green step of the *same* task, so nothing splits them in time.
-  v1.5 said the opposite, and keyed it to `A-17` — a task id that does not exist in PLAN v1.3 (`0`
-  matches; it survives only in `helpers/advisoryDoubles.js`'s hand-sync comment, "authored by A-17,
+  v1.5 said the opposite, and keyed it to `A-17` — a task id that does not exist in PLAN at all
+  (`0` matches at HEAD; it survives only in `helpers/advisoryDoubles.js`'s hand-sync comment, "authored by A-17,
   a downstream task", which is where this record picked it up) — and to `A6-02` as if it landed
   production, when PLAN's v1.3 restructure row folded `A6-02` into `A6-05` as a **red test step**.
   The operative reassurance was therefore backwards and is withdrawn: at `A6-05`'s wave boundary a
@@ -465,11 +467,16 @@ that a first-class per-seam `enabled` map becomes the better surface.
   `PROP-GATE-06` key-set equality (its `GATE_EXCLUSIVITY_REGISTRY` already carries the `A6` row, so
   the diff is one line, `+ "A6"`); `advisoryHarvest.test.js`'s `T-08-6` (six rows plus the
   `seamNames` equality) **and** its `T-08-8` row count, which no review named and only the run
-  surfaced; `advisoryDisabled.test.js`'s `T-10-5 / PROP-DIS-05`; `advisoryQueueSeams.test.js`'s
-  `ADVISORY_SEAMS drives the row list (S-1)`; and `advisoryRecord.test.js`'s `PROP-SUM-02`
+  surfaced; `advisoryDisabled.test.js`'s `T-10-5 / PROP-DIS-05`; the `ADVISORY_SEAMS drives the row list (S-1)`
+  assertion inside `advisoryQueueSeams.test.js`'s **`S-5`** (the `S-1` is the trailing comment on the
+  assertion; `S-5` is the name the runner prints and the one to match a red run against — PM v8 F-04,
+  TE v8 Q-02); and `advisoryRecord.test.js`'s `PROP-SUM-02`
   `test.each` identity case, whose `A6` entry finds no row. All ten clear at `A6-05`'s single wave
   boundary per the bullet above — there is no point at which the suite is uniformly green mid-task,
-  and a member still red at that boundary is an incomplete green step, not a false alarm. **The
+  and a member still red at that boundary is an incomplete green step, not a false alarm. The
+  symmetric signal is worth stating because the wave gate cannot raise it: a member of this column
+  that goes **green before** `A6-05`'s green step means production moved outside the task that owns
+  it, which is drift to escalate rather than progress to bank (PM v8 Q-02). **The
   other ten failures are not this column:** `ADVISORY_ROOT_CAUSES`, `A6_PROHIBITIONS`, the seven
   `nonNegativeInt` validator arms and `P-1` are red because production lacks a symbol A6 *creates*,
   not a member it *grows*, so they size as new behaviour under column (1)'s task rather than as
