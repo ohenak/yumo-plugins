@@ -460,18 +460,46 @@ that a first-class per-seam `enabled` map becomes the better surface.
   drift;
   (3) **ungated hand-copy surfaces** — which no gate demands but which a later editor reads, and
   which the prose-site rule ("a comment that restates a set-equality literal is a maintenance site
-  like any other") makes **seventeen, not six** (TE v6 F-02). v1.4 applied that rule to the
-  envelope half only, counting `advisoryDoubles`' hand-sync comment while leaving the seam half's
-  equivalents uncounted. Applied evenly it yields: five envelope inputs, one envelope comment, and
-  **eleven seam prose sites** — in `advisoryRecord.test.js`, `PROP-SUM-01`'s header comment
-  ("always emits five rows, one per `ADVISORY_SEAMS` member"), its `describe` title, its `test`
-  title ("all five seams") and the earlier "exactly five rows regardless of the injected newline"
-  comment; in `advisoryDisabled.test.js`, `T-10-5 / PROP-DIS-05`'s header comment, `describe` title
-  and `test` title (all "five zero rows"); in `advisoryHarvest.test.js`, `T-08-6`'s header comment,
-  `describe` title, `it` title ("carries five rows, four of them all-zero") and the "five rows
-  always, zero counts included" comment. (`advisoryDisabled.test.js`'s A-15 capture note uses "five
-  seams" in an unrelated sense — the seams of an earlier run, not `ADVISORY_SEAMS` — and is not
-  counted.) Column (3)'s tail is long and will stay long; the number an implementer must not get
+  like any other") makes **twenty, not six** (TE v6 F-02, corrected for membership by PM v7 F-02 and
+  TE v7 F-03). v1.4 applied that rule to the envelope half only; v1.5 applied it to the seam half
+  but stopped at the three suites it had already been reading, and mis-included one site. Applied to
+  both halves and to the whole tree it yields **twelve seam prose sites** — in `advisoryRecord.test.js`,
+  `PROP-SUM-01`'s header comment ("always emits five rows, one per `ADVISORY_SEAMS` member"), its
+  `describe` title and its `test` title ("all five seams"); in `advisoryDisabled.test.js`,
+  `T-10-5 / PROP-DIS-05`'s header comment, `describe` title and `test` title (all "five zero rows");
+  in `advisoryHarvest.test.js`, `T-08-6`'s header comment, `describe` title, `it` title ("carries
+  five rows, four of them all-zero") and the "five rows always, zero counts included" comment; and in
+  `advisoryDriver.test.js`, the `T-03-6` comment above the registry ("the five per-seam
+  gate-exclusivity cases, one per `ADVISORY_SEAMS` member (PROP-GATE-01…05)") and the generated-cases
+  banner that repeats "(PROP-GATE-01…05)" while the registry banner four lines above it already reads
+  "PROP-GATE-01…06" — **eight** hand-copy sites on the envelope/defaults side: the five test-side
+  input transcriptions, `helpers/advisoryDoubles.js`'s hand-sync comment, `advisoryConfig.test.js`'s
+  "`ADVISORY_DEFAULTS`' own key set is exactly the five keys" title (already at the post-A6 count),
+  and — the sharpest of the twenty — `orchestrate-dev.js`'s `envelope: ENVELOPE_DEFAULTS, // the
+  four-member literal above`, a comment sitting on a line the green step itself changes, which
+  becomes actively false the moment `E-5`/`E-6` land.
+  Two corrections to v1.5's eleven, both of which change membership rather than the total's
+  direction: `advisoryRecord.test.js`'s "the table stays exactly five rows regardless of the injected
+  newline" is **not** a member — it counts the diagnosis table's five `| Field | Value |` rows (Seam,
+  Confidence, Envelope, Disposition, Model), does not move at A6, and its twin at the head of the
+  same file was already correctly uncounted (TE v7 F-03) — and `advisoryDriver.test.js`'s two sites
+  above were missing. The other excluded false positives, each read in context rather than grepped:
+  `advisoryDisabled.test.js`'s A-15 capture note ("five seams" = the seams of an earlier run),
+  `advisoryQueueSeams.test.js`'s "five canonical shapes" (double kinds),
+  `advisoryEnvelope.test.js`'s "five `ADVISORY_REFUSAL_REASONS` members" (a different vocabulary),
+  and `pipelineWiring.test.js`'s `_`-prefixed `NEW_SEAMS` (a different notion of seam).
+  **How to re-derive this number instead of trusting it** — the count is a measurement with a short
+  shelf life, and three rounds have now shipped a stale one: grep the advisory suites *and*
+  `orchestrate-dev.js` for both `five` and `01…05`-style range restatements, read each hit in
+  context, and keep only those whose referent is `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS` or
+  `ADVISORY_DEFAULTS`. The one-pattern grep is what missed `advisoryDriver.test.js`'s
+  "(PROP-GATE-01…05)", which contains no digit-free cardinality word at all.
+  **`dist/pdlc-cli.mjs` is in no column** (PM v6/v7 Q-02): it carries its own copies of
+  `ENVELOPE_DEFAULTS` and of the "four-member literal above" comment, but it is a generated artifact
+  that is never hand-edited — the wave gate's own `postWaveCommand` regenerates it and stages
+  `pdlc/workflows/dist/` (CLAUDE.md, DEC-08). An implementer who greps the constant repo-wide will
+  find it; the instruction is to leave it alone and let the gate rebuild it.
+  Column (3)'s tail is long and will stay long; the number an implementer must not get
   wrong is column (1)'s four, and it is small. Not "roughly a dozen transcriptions" (v1.3's figure,
   inflated by five seam sites that had already migrated), and not "one task touching three
   constants" either. Sized as the latter, it invites exactly the partial edit the set-equality
