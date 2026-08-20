@@ -67,6 +67,70 @@ relocation convention is established and this feature is the one that has not fo
 
 ## Questions
 
+### F-02 (Medium, Cross-Feature) — M-WG-8 is false at today's default branch
+
+C-5 and §9 BL-06 pin every shipped-behaviour fact to `docs/_constraints/pdlc-wave-gate-baseline.md`
+**v1.1**, whose header states `Verified at | §1–§2 at default-branch commit c8aa22a4` and whose
+re-verification rule reads: *"A later default-branch commit is a fresh check, not an inherited one."*
+`origin/main` is now `11420461`, so that rule has fired.
+
+At that commit, M-WG-8 — *"The advisory seam catalogue is closed at five and transcribed"* — is false:
+`ADVISORY_SEAMS` is a six-member frozen list (`pdlc/workflows/orchestrate-dev.js:1952`), and every
+transcribed set-equality now reads six, not five:
+
+- `pdlc/workflows/__tests__/advisoryEnvelope.test.js:317` → `toEqual(["A1","A2","A3","A4","A5","A6"])`
+- `pdlc/workflows/__tests__/advisoryHarvest.test.js:580`, `advisoryRecord.test.js:496` → same six
+- `advisoryEnvelope.test.js:284` → `ENVELOPE_DEFAULTS` `toEqual(["E-1",…,"E-6"])`
+
+AC-1.1 rests on M-WG-8 for its oracle (*"carries six rows where it carried five"*) and R-5 rests on it
+for the non-additivity risk. Neither is checkable as written against HEAD any more — the "five" side of
+both is gone.
+
+**Why Medium, not High:** the REQ's *requirement* is correct and demonstrably satisfied; what has gone
+stale is the pre-change baseline it cites, and the fact went stale precisely *because this feature
+shipped*. The fix belongs in the constraints file (a §4 recording the post-A6 catalogue at
+`11420461`, plus a version bump), not in this REQ's acceptance criteria. Recording it here so the
+next reader of AC-1.1 is not left grepping for a five-member list that no longer exists.
+
+### F-03 (Low, Process) — AC-1.2's raw line anchor does not resolve
+
+AC-1.2 carries the inline anchor `` `orchestrate-dev.js:12331-12343` `` for the claim that the post-wave
+command runs exactly once and its failure halts immediately. At HEAD, `sed -n '12331,12343p' pdlc/workflows/orchestrate-dev.js`
+returns `defaultReadFile` — the PLAN-DAG file reader — not the post-wave path. The behaviour claimed is
+still true; its site is now around `pdlc/workflows/orchestrate-dev.js:15340-15346`
+(`` `\`${implConfig.postWaveCommand}\` did not pass` `` and the `Wave ${waveNum} post-wave:` emit).
+
+Two rules converge on the same fix. `DECISIONS-review-severity-bars.md` DEC-DOC-01 puts raw `file:line`
+anchors in new feature documents at Low/`Process` unless the position itself is the claim, which it is
+not here. Separately, the REQ's own C-5 commits to holding shipped-behaviour facts as `M-WG-*` ids in
+the constraints file rather than restating them inline — so the altitude-correct fix is to relocate this
+claim as a measured fact (symbol-anchored, per BL-06's own reissue-in-symbol-form instruction), not to
+repair the line numbers. This is the exact bookkeeping cost DEC-DOC-01 was recorded to prevent, observed
+inside a document that otherwise honours the rule throughout.
+
+### F-04 (Low, Local) — §1's drift claim is not reproducible
+
+§1 states that the consumer runtime copy under `.claude/workflows/` is out of sync and that "the drift
+check exits non-zero, three rows stale one missing". The repository's drift check disagrees:
+`node pdlc/workflows/build-runtime.mjs --check` prints `in-sync  pdlc/workflows/dist/pdlc-cli.mjs` and
+exits `0`. A real divergence does exist — `cmp .claude/workflows/pdlc-cli.mjs pdlc/workflows/dist/pdlc-cli.mjs`
+differs, and `.claude/workflows/` additionally carries two `*.bundle.js` files with no source counterpart
+— but that directory is gitignored (`.gitignore:40`), so no other reviewer can reproduce the row counts.
+
+v1.11 already did the right thing for the sibling claim, re-measuring `.claude/pdlc-wave-state.json` as
+untracked and working-tree-only, which I confirm: `git check-ignore -v` → `.gitignore:41`, `git ls-files`
+returns nothing, and the local file reads
+`{"version":1,"feature":"pdlc-advisory-wave-gate",…,"lastGreenWave":7,…}`. The drift sentence deserves the
+same treatment: name it a working-tree observation and drop the unreproducible "three rows stale one
+missing" count, or cite the command that produces it.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Is `ready: false` deliberate — a permanent "never auto-pick, this is a completed feature" marker — or leftover draft state? If deliberate, the QUEUE row still needs `done` (F-01), and the convention deserves a line in `pdlc/OPERATIONS.md` so the next reviewer does not file F-01 again. |
+| Q-02 | Should this feature's docs move to `docs/completed/pdlc-advisory-wave-gate/` now that PR #66 is merged, matching `pdlc-advisory-tier` and `pdlc-consolidation-agent`? Every cross-document citation into this feature would need the same relocation, so this is a decision, not a cleanup. |
+| Q-03 | Who owns the post-ship refresh of `pdlc-wave-gate-baseline.md` (F-02)? Its change-control note says this REQ owns §1–§2 entire, which reads as an obligation on a feature that is already done. |
+
+
 ## Positive Observations
 
 ## Recommendation
