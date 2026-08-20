@@ -71,9 +71,12 @@ whole-run claim about the finished report, exactly as AT-30's other two zeros ar
 over `selectLearnings` could not falsify the report-key half of it. So the third case inherits a
 level assignment that is already justified; it needs a fixture, not a new suite.
 
-**Cross-feature check.** Nothing in the erratum touches DC-07 (builder-not-wired), DC-09 (coverage
-gate) or the DOMAIN-CONSTRAINTS entries this feature leans on; I re-read `docs/_constraints/` and
-`docs/_decisions/DECISIONS-review-severity-bars.md` for the DEC-DOC-01 anchor rule applied below.
+**Cross-feature check.** The erratum violates no standing constraint and contradicts no promoted
+decision: I re-read `docs/_constraints/DOMAIN-CONSTRAINTS.md` (note its own preamble: this repo's
+DC-07/DC-08/DC-09 are *not* the generic review-skill constraints of the same ids) and
+`docs/_decisions/DECISIONS-review-severity-bars.md` §DEC-DOC-01, whose cite-content-not-line-number
+rule is the basis for the Low anchor findings carried below. Nothing raised here is
+`Cross-Feature` — the defects are this document's restatements of its own upstream.
 
 ## Interfaces
 
