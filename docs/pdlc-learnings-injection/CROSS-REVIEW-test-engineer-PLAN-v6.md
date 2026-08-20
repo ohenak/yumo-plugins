@@ -147,6 +147,39 @@ authors is correct, the DoD's prose restatement of it is not, and the repair is 
 invalidated, no coverage obligation is lost, and no oracle became unfalsifiable. The findings below
 are all stale prose about upstream state, repairable in one touch of this document.
 
+## Recommendation
+
+**Approved with minor changes.**
+
+PLAN still holds as approved against TSPEC as it now stands. Every task row, oracle, fixture,
+dependency edge and batch number survives the v0.6 → v0.7 erratum intact, and on the two
+substantive points TSPEC moved **toward** PLAN: §D.1's non-`null` domain scoping is PLAN's own TE
+F-01 correction absorbed upstream, and P-2a's rewording is PLAN's TE F-12 phrasing absorbed
+upstream. No High finding, nothing gating, no reason to reopen the revision loop.
+
+Four Mediums, all of one kind: PLAN describes an upstream that no longer exists. Three are this
+round's (§Errata's two closed-erratum re-raisings, and the stale TSPEC/FSPEC version labels); one is
+inherited from v5 and still open (DoD 4's byte-identity paraphrase). All are prose edits, none
+blocks implementation, and none needs a new round — fold them into the next touch of this document.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §Errata re-raises ERR-3 and ERR-7 as live FSPEC defects; TSPEC v0.7 marks both CLOSED | §Errata raised from this document's authoring |
+| F-02 | Medium | delta | local | §Errata's first table row describes TSPEC §A.2 as adding a conjunct BR-1 forbids, and LI-11's AT-02 as having two contradictory expected sets; §A.2 now implements BR-1 directly and the contradiction is gone | §Errata, FSPEC BR-1 row |
+| F-03 | Medium | delta | nonlocal | Front matter and §Overview cite `TSPEC (v0.6)` and `FSPEC v0.10`; upstream is TSPEC v0.7 / FSPEC v0.12 | Front matter Upstream field; §Overview "This PLAN cites"; §Dependencies "everything → LI-01" reason |
+| F-04 | Medium | inherited | nonlocal | DoD 4 promises byte-identity for "every non-authoring dispatch", narrower than FSPEC AT-03/AT-29 and TSPEC §A.2's "outside BR-1's rule"; an authoring-classified `docType: null` round passes the gate while failing AT-03 | §Definition of Done, clause 4 |
+
+FINDING: Medium | delta | local | §Errata raised from this document's authoring | The section opens "Two defects in FSPEC v0.10 are still live at HEAD... first raised by TSPEC v0.6 (as ERR-3 and ERR-7) and are re-raised because FSPEC v0.10 ... does not carry a correction for either". TSPEC v0.7 at HEAD marks ERR-7 "CLOSED, resolved by FSPEC v0.11 and v0.12" and ERR-3 "CLOSED, resolved by FSPEC v0.11". Both defects are corrected upstream and neither is live. Restate the section as a discharged-erratum record (both closed, LI-11 unaffected) rather than a live routing, so a reader does not chase two corrections that have already landed. The adjacent sentence "TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5)" is still accurate at HEAD and needs no change.
+
+FINDING: Medium | delta | local | §Errata, FSPEC BR-1 row | The row reads "FSPEC BR-1 still states the rule 'consumes the classification, it does not restate the membership', while TSPEC §A.2 adds the load-bearing docType conjunct" with the effect "LI-11's AT-02 has two contradictory expected sets... a reviewer scoring it against BR-1 would reject a correct test". FSPEC v0.11 restated BR-1 as the two-conjunct rule and TSPEC v0.7 §A.2 now says "This is FSPEC BR-1 as it now stands, not a divergence from it", with §I.3's predicate implementing BR-1 directly. The row's premise, its effect and its reviewer hazard are all discharged; the BR-15 row below it is stale in the same way (TSPEC's ERR-3 closure states "AT-33 tracks the correction; nothing in this TSPEC changes"). Note in passing that this is the one place the edit *helps* an oracle: AT-02 now carries the revert-the-second-conjunct mutation proof that LI-11's two set equalities produce.
+
+FINDING: Medium | delta | nonlocal | Front matter Upstream field; §Overview "This PLAN cites"; §Dependencies "everything → LI-01" reason | Three version labels are behind their documents: the Upstream field cites `TSPEC-pdlc-learnings-injection.md (v0.6)` and `FSPEC-pdlc-learnings-injection.md (v0.10)`, §Overview says "Behaviour lives in REQ v0.9 / FSPEC v0.10 / TSPEC v0.6", and the batch-ladder reason for "everything → LI-01" says "a premise that has moved since TSPEC v0.6". Upstream at HEAD is TSPEC v0.7 and FSPEC v0.12. Since this PLAN's own contract is "where a row and the TSPEC disagree, the TSPEC wins", a stale version label on the winning document is the citation most worth keeping current. Bump all three; no other text in those sentences needs to change.
+
+FINDING: Medium | inherited | nonlocal | §Definition of Done, clause 4 | Clause 4 promises baseline byte-identity for "every non-authoring dispatch (AC-4.3)". This was faithful to FSPEC v0.10 and is now narrower than both upstreams: FSPEC v0.12's AT-03/AT-29 and TSPEC v0.7 §A.2 both say "outside BR-1's rule". An authoring-classified optimizer round with docType null (Phase CR) sits inside DoD 4's exemption and outside the promise the AT makes, so an implementation that injected into that round would pass the DoD gate while failing AT-03. Raised as v5 F-03 and still open on unchanged bytes; the TSPEC edit removes the last reading under which the paraphrase was defensible. Restate the final clause as "every dispatch outside BR-1's two-conjunct rule" to match the oracle LI-11 authors.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 4, "low": 0}

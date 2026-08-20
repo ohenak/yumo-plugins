@@ -104,7 +104,38 @@ reconcile my Scope tag with v5 rather than double-counting the same defect.
 
 ## Dependencies
 
-_pending_
+**No edge in the batch ladder changes.** The delta touched no obligation, no ordering constraint,
+and no integration point that PLAN's §Dependencies leans on. I checked the four edges whose
+justification quotes TSPEC.
+
+| Edge | Justification PLAN gives | TSPEC at HEAD | Verdict |
+|---|---|---|---|
+| everything → LI-01 | "a premise that has moved **since TSPEC v0.6** must become blocking work before any task builds on it" | The premise table is still §Measured premises P-1…P-12, same twelve claims, same substance; P-2a/P-2b/P-10 were restated as symbol citations with "No behavioural change" recorded in the v0.7 erratum note | Edge holds. The **version pin is stale** — see F-03 |
+| LI-04, LI-05 → LI-03 | "both obligations of **TSPEC §T.3**" | §T.3 untouched by this delta | Holds |
+| LI-15 → LI-06 | **T-O-2**, the first production edit may not precede the baseline capture | §Named obligations untouched | Holds |
+| LI-21 → LI-23 | LI-21 is the task after which all twelve §T.7 arms are reachable | §T.7's twelve-arm inventory untouched | Holds |
+
+**§Integration points is unaffected.** Its six rows name `readAdvisoryConfigSafely` /
+`MERGE_CONFIG_PATH`, `dispatchAndVerify`'s `basePrompt` + `PACING_CONTRACT_CLAUSE` + `opener`,
+`wrapperSeams`/`reviewLoop`/`wrapped` at "five hand-written hops", `buildFinalReport`'s conditional
+`advisory` spread and `notices = []` channel, `consolidate-learnings.js`'s
+`LS_FILES_ARGV`/`enumerateCorpus`, and `prepack.mjs`'s `MODULE_NAMES` — every one of them a symbol
+name, not a line anchor. The DEC-DOC-01 sweep that rewrote TSPEC's P-2a, P-2b, P-10, §T.6 and ERR-2
+citations therefore has no counterpart to fix here: **PLAN cites nothing positionally.** I grepped
+the whole document for `{file}:{line}` forms and found none.
+
+**§Upstream and downstream documents holds.** PROPERTIES still owes T-O-4, T-O-5 and T-O-6; TSPEC's
+§Named obligations still carries all three; `depends-on` is still empty and no queue row binds this
+feature.
+
+**The one §Dependencies defect is the version pin, and it recurs in four places.** PLAN's front
+matter reads "`TSPEC-pdlc-learnings-injection.md` (v0.6); `FSPEC-…` (v0.10)"; §Overview repeats
+"Behaviour lives in REQ v0.9 / FSPEC v0.10 / TSPEC v0.6"; the LI-01 edge says "since TSPEC v0.6";
+the changelog's 0.1 row says "First draft from REQ v0.9 / FSPEC v0.10 / TSPEC v0.6". TSPEC is v0.7
+and FSPEC is v0.12 at HEAD. This is Low, not Medium: no reading of a version number changes what a
+task builds, and unlike §Errata it makes no substantive claim about what upstream says. But it is
+the field a later reviewer uses to decide whether an approval is current, so it should not be left
+behind by the same pass that fixes F-01 and F-02.
 
 ## Verification
 
