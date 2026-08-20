@@ -155,6 +155,43 @@ that matter came from re-reading upstream at HEAD across the whole span since my
 `UPSTREAM-STATE`, which is what DEC-ERR-03 asks for. Confirming on the named item alone would have
 returned a clean approval over two stale citations.
 
+## Positive Observations
+
+- **The decision that had most to lose from this delta gained from it.** DEC-LI-06 rejected caching
+  because "selection is per-dispatch over the state that dispatch observed", and `D-O-6` demanded a
+  positive call-count oracle plus the enumeration-fails-at-dispatch-5 case. FSPEC v0.9 then moved
+  BR-9/BR-10's recording to exactly that locus and added AT-20/AT-22's changing-corpus conjuncts.
+  The entry was written against the constraint rather than against the wording, which is why the
+  wording moving cost it nothing.
+- **The document's habit of naming which sibling owns a question is what made this confirmation
+  cheap.** Every claim I had to re-check was already labelled with the rule that owns it
+  (`BR-14`, `BR-3`/`BR-4`/`BR-6`, `BR-12`, E-32), so verification was a diff against named rules
+  rather than a re-read. The same habit is what produced F-01 and F-02 — worth keeping, with the
+  pins refreshed each round.
+
+## Recommendation
+
+**Approved with minor changes**
+
+DECISIONS still holds as approved against FSPEC at HEAD. No High finding: no decision is
+contradicted by FSPEC v0.8–v0.10, no binding transcription (notably DEC-LI-07's `BR-14` table) has
+gone wrong, and the one substantive upstream move — BR-9/BR-10 to a per-dispatch locus — reinforces
+DEC-LI-06 and `D-O-6` rather than undermining them. Three citation defects are recorded: F-01 and
+F-02 describe upstream questions as open that upstream has closed, F-03 is a version pin. All three
+are single-passage edits and belong in the next authoring pass of this document; none blocks
+PLAN or PROPERTIES, which are authored from FSPEC and TSPEC and find those two documents consistent
+with each other at HEAD.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | "Decisions deliberately NOT taken here" still describes AC-3.3's record locus as open and routed to REQ via TSPEC `ERR-6`, and states "TSPEC keeps the run-level record (last-write-wins)". FSPEC v0.9 `BR-10` settled it: two loci (ordering keys per authoring dispatch, §4.1 thresholds once per run), two completeness tests, and any run-level mirror "additive, not the oracle" with nothing asserting on it; TSPEC v0.6 records `ERR-6` CLOSED and asserts on the per-dispatch locus only. The second clause would point a PROPERTIES author at the unasserted mirror. Restate the row as closed upstream, citing `BR-10`'s two loci. | `## Decisions deliberately NOT taken here`, AC-3.3 locus row |
+| F-02 | Medium | inherited | nonlocal | DEC-LI-07's divergence paragraph still asserts "TSPEC v0.5 still builds the injector on `present && config.enabled && !sectionMalformed` (§I.3) and still carries `OQ.2` and `ERR-4` open… TSPEC and DECISIONS now disagree in writing", and raises `DEC-ERR-01` asking for edits TSPEC v0.6 has since landed in full (`ERR-4` CLOSED, gate on `config.enabled` alone, the provisional gate listed as the rejected alternative). Rewrite in the past tense; the decision itself is unaffected. | `## DEC-LI-07`, "The divergence from TSPEC is a recorded erratum" |
+| F-03 | Low | delta | nonlocal | Upstream version pins are stale: the header Upstream row and the "Upstream version note" cite TSPEC v0.5 and FSPEC v0.7, and DEC-LI-07 cites "FSPEC v0.7 `BR-14`". At HEAD these are TSPEC v0.6 and FSPEC v0.10 (REQ v0.9 is correct). The cited `BR-14` text is unchanged, so this is a pin defect only, not a content defect. | Header `Upstream` row; `**Upstream version note**`; DEC-LI-07 |
+
+FINDING: Medium | delta | local | Decisions deliberately NOT taken here — AC-3.3 locus row | Describes AC-3.3's record locus as open and routed via TSPEC ERR-6, and says TSPEC keeps the run-level record (last-write-wins); FSPEC v0.9 BR-10 settled it at two loci with two completeness tests and a run-level mirror that is additive and unasserted, and TSPEC v0.6 closed ERR-6
+FINDING: Medium | inherited | nonlocal | DEC-LI-07 — "The divergence from TSPEC is a recorded erratum" | Asserts TSPEC still carries OQ.2/ERR-4 open and the present && config.enabled && !sectionMalformed gate, and raises DEC-ERR-01 for edits TSPEC v0.6 has already landed in full
+FINDING: Low | delta | nonlocal | Header Upstream row; Upstream version note; DEC-LI-07 | Upstream version pins stale — TSPEC v0.5 and FSPEC v0.7 cited where HEAD is TSPEC v0.6 and FSPEC v0.10; the cited BR-14 text itself is unchanged
 
 ## Verdict
