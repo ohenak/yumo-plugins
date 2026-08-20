@@ -180,4 +180,17 @@ this document and neither is filed as a finding.
 
 ## Recommendation
 
+**Approved**
+
+No High, Medium or Low finding is raised by this confirmation. DECISIONS' approval stands against
+TSPEC at `sha256:1531143c…`. My v9 Low (`DECISIONS:30`'s relocated integer) remains open and remains
+non-blocking; it is deliberately not re-filed here because it is not cascade-caused.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
+
+UPSTREAM-STATE: REQ sha256:817b67455ae1d90589c336c88d72914eb3105a49c50a3d54eaa9083fc918a7a8
+UPSTREAM-STATE: FSPEC sha256:82f74a2da52df5be64bf266d61341a0879df8bdafe69adf2f85f5ba9db961c3e
+UPSTREAM-STATE: TSPEC sha256:1531143c923857242241c61a35d43fc9677e152d6cca1162533778bb0c30c004
