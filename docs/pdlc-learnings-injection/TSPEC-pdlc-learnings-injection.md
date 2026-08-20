@@ -595,16 +595,21 @@ of that field's catalogue. The mirror's domain test is a membership test only: i
 
 ```js
 learningsInjection: {
-  // BR-10 — run-level, exactly two members, closed. Run-level scalars are
-  // LAST-WRITE-WINS across authoring dispatches (§A.5); each dispatch also keeps its own.
+  // BR-10 locus 2 — the thresholds in force, read ONCE PER RUN. Closed set:
+  // its completeness test asserts set equality over Object.keys(ruleInputs.thresholds).
   ruleInputs: {
+    thresholds: { maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
+  },
+  // ADDITIVE, NOT THE ORACLE (REQ AC-3.2, AC-3.3; FSPEC BR-9, BR-10). The run-level mirror of
+  // the LAST authoring dispatch's observation. Its value is deliberately unconstrained: no
+  // fixture asserts on it, and an implementation that omitted `runMirror` entirely conforms.
+  // It sits outside every closed set, so it disturbs no completeness test.
+  runMirror: {
+    corpusOutcome: null,          // | "RSN-UNLISTABLE" | "RSN-EMPTY"
     orderKeys: [ { path: "docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md",
                    orderKey: "2026-08-02" },
                  { path: "docs/x/LEARNINGS-x.md", orderKey: null } ],
-    thresholds: { maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
   },
-  // BR-9 — at most one, run-level; null when documents were known
-  corpusOutcome: null,            // | "RSN-UNLISTABLE" | "RSN-EMPTY"
   // BR-8/BR-9 — one entry per authoring dispatch, in dispatch order
   dispatches: [
     {
@@ -612,15 +617,18 @@ learningsInjection: {
       rows: [ { sourcePath: "…", position: 1, bytesInjected: 5871, bounded: true } ],
       totalBytesInjected: 5871,
       rejected: [ { sourcePath: "…", reason: "RSN-BYTES" } ],
-      // §A.5 — this dispatch's OWN observation, so a divergent-corpus run stays reconstructable
-      corpusOutcome: null,          // this dispatch's value, not the run's last
-      orderKeys: [ /* … as observed by THIS dispatch … */ ],
+      // BR-9 ORACLE LOCUS (REQ AC-3.2) — this dispatch's own corpus-level outcome,
+      // alongside this dispatch's BR-8 rows; null when documents were known
+      corpusOutcome: null,          // | "RSN-UNLISTABLE" | "RSN-EMPTY"
+      // BR-10 locus 1, ORACLE (REQ AC-3.3) — ordering key per corpus document,
+      // as observed by THIS dispatch; closed set, own completeness test
+      orderKeys: [ { path: "…", orderKey: "2026-08-02" } ],
       corpusDiverged: false,        // true iff differs from the preceding authoring dispatch
     },
   ],
   // NO `notices` key here — see §I.2: NTC-* notices are carried on buildFinalReport's
-  // run-level notice channel, OUTSIDE this conditionally-spread key, because AC-5.1b
-  // requires a malformed-section run to report a notice while `learningsInjection` is absent.
+  // run-level notice channel, OUTSIDE this conditionally-spread key, because they are facts
+  // about reading the configuration, produced before the enablement gate is evaluated.
 }
 ```
 
