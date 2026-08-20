@@ -1947,17 +1947,30 @@ const ADVISORY_CONFIG_PATH = MERGE_CONFIG_PATH; // ".claude/pdlc.config.json" (d
 
 // The permitted-action set — the whole envelope, shipped. A seam's own `permittedActions` is a
 // SUBSET of this (TSPEC §4.3, §8.3); this frozen literal is the operand T-03-8 transcribes for
-// its set-equality assertion. The members are FSPEC E-1…E-4 verbatim.
-const ENVELOPE_DEFAULTS = Object.freeze(["E-1", "E-2", "E-3", "E-4"]);
+// its set-equality assertion. The members are FSPEC E-1…E-6 verbatim (A6 adds E-5, E-6).
+const ENVELOPE_DEFAULTS = Object.freeze(["E-1", "E-2", "E-3", "E-4", "E-5", "E-6"]);
 
 const ADVISORY_DEFAULTS = Object.freeze({
   enabled: false,
   attemptBudget: 3,
   seamBudgetMinutes: 10,
-  envelope: ENVELOPE_DEFAULTS, // the four-member literal above
+  waveBudgetPerRun: 1,
+  envelope: ENVELOPE_DEFAULTS, // the six-member literal above
 });
 
-const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"]);
+const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5", "A6"]);
+
+// TSPEC §3.1 — the four-member root-cause classification catalogue `parseA6RootCause` validates
+// membership against (AC-6.4, PROP-CTR-01).
+const ADVISORY_ROOT_CAUSES = Object.freeze([
+  "plan-ordering-defect",
+  "wave-internal-defect",
+  "environmental",
+  "unclassified",
+]);
+
+// TSPEC §3.1 — A6's own prohibited-operation letters (§5.5's prohibition table, PROP-ENV-10).
+const A6_PROHIBITIONS = Object.freeze(["f", "g", "h", "i"]);
 
 /**
  * Parse the repo's `advisory` config section out of the SAME `.claude/pdlc.config.json`
@@ -2017,6 +2030,17 @@ function parseAdvisoryConfig(text) {
     return ADVISORY_DEFAULTS[key];
   };
 
+  // TSPEC §3.1/§3.2 — a sibling of `positiveInt` for `waveBudgetPerRun`: E-33 requires `0` to
+  // survive as a configured value rather than be reported invalid and defaulted, which
+  // `positiveInt`'s `v >= 1` floor would do.
+  const nonNegativeInt = (key) => {
+    if (!(key in section)) return ADVISORY_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 0) return v;
+    invalidKeys.push(key);
+    return ADVISORY_DEFAULTS[key];
+  };
+
   let envelope = ADVISORY_DEFAULTS.envelope;
   if ("envelope" in section) {
     const v = section.envelope;
@@ -2032,6 +2056,7 @@ function parseAdvisoryConfig(text) {
       enabled: boolField("enabled"),
       attemptBudget: positiveInt("attemptBudget"),
       seamBudgetMinutes: positiveNumber("seamBudgetMinutes"),
+      waveBudgetPerRun: nonNegativeInt("waveBudgetPerRun"),
       envelope,
     }),
     sectionMalformed: false,
@@ -3124,6 +3149,7 @@ const ADVISORY_SEAM_PHASES = Object.freeze({
   A3: Object.freeze({ id: "DOD", outcome: "halted" }),
   A4: Object.freeze({ id: "DOD", outcome: "halted" }),
   A5: Object.freeze({ id: "PUB", outcome: "halted" }),
+  A6: Object.freeze({ id: "I", outcome: "halted" }),
 });
 
 /**
