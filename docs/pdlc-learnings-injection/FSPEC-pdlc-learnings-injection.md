@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.10 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.11 | 2026-08-20 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -49,6 +49,14 @@ depends-on: []
 > `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v10/v11` exist on this branch — the v0.9
 > entry's claim that the row was corrected was inaccurate. The row now enumerates through v11.
 > Header correction only; no behavioural change.
+
+> **v0.11 erratum (Phase P items; re-grounded on REQ v0.9 at HEAD, unchanged).** BR-1 now states
+> REQ C-1's rule with **both** its conjuncts — authoring classification **and** a target document
+> among REQ, FSPEC, TSPEC, PLAN, DECISIONS, PROPERTIES — so an authoring-tagged dispatch with no
+> C-1 document type (the code-review phase's optimizer round) is outside the rule, as REQ AC-1.2
+> already decided. BR-15's expected read set drops the corpus enumeration, which opens no file
+> under `docs/` and so contributes no member to that instrument, and states its membership as an
+> enumerable equality. AT-02 and AT-33 track those two corrections. No other change.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
