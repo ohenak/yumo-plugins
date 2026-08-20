@@ -27,7 +27,11 @@ behaviour lives in REQ v0.9 / FSPEC / TSPEC v0.6 and is referenced by id (`AC-`,
 positive control that proves the instrument fires, and the mutation that must red it.
 
 **Subject, verified at HEAD on `feat-pdlc-learnings-injection` (2026-08-20).** Every premise the
-properties below stand on was re-measured against the repository, not read off a document:
+properties below stand on was re-measured against the repository, not read off a document. The table
+is a **capture-time measurement, not a standing invariant**: two of its rows are falsified on schedule
+by this PLAN's own tasks (LI-04 adds the `/.baseline-worktree/` ignore rule; LI-07…LI-14 create the
+`learnings*` test files), which is exactly why PROP-META-01 forbids the premises suite from asserting
+any absence claim of this table.
 
 | Premise | Measured |
 |---|---|
