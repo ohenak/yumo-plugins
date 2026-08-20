@@ -92,3 +92,52 @@ both are with the machinery:
    on the erratum channel — it routes to R2, which re-opens the owning phase's approval and lets the
    pipeline move forward. The reviewers reasoned about the outcome they wanted (a revision) and
    assumed the tags were annotation rather than parser input.
+
+## Best-Guess Root Cause
+
+The fail-closed rule fired exactly as specified. The defect is upstream of it, and it is a
+**recurrence** — the second instance of the identical failure mode on this branch, two phases apart.
+
+1. **Nothing was changed after the first occurrence.** `POSTMORTEM-T`'s systemic items 4–7 (engine
+   restatement retry, skill-level mutual exclusion of the two shapes, prompt clause fix, mechanical
+   guard) were all deferred to the harvest channel; only the substantive FSPEC edits landed. The
+   engine, both review skills and `findingGrammarClause()` are byte-identical to what produced the
+   Phase T halt. A repeat was the expected outcome, not a surprise.
+
+2. **This time the formatting slip inverted the gate's cheapest branch into its most expensive one.**
+   Both confirmers tagged their Highs `inherited`. Had those tags reached the parser,
+   `highDelta.length === 0` → **R2**: no POSTMORTEM, no halt; FSPEC's recorded approval is re-opened,
+   the owning phase runs again under its ordinary review budgets, and the pipeline moves forward
+   carrying the findings. Instead the fail-closed synthesis wrote `delta` over `inherited` on both
+   channels, producing two `High | delta | nonlocal` findings → `allLocal === false` → **R4** halt.
+   The distance between "phase continues" and "phase halts, postmortem, operator recovery" was four
+   lines of text.
+
+3. **The prompt's leniency sentence is false in exactly this case.** `findingGrammarClause()` says an
+   untagged finding "is read as {delta, nonlocal} — the strictest reading — so tagging can only ever
+   widen the outcome, never narrow it." For an `inherited` finding, tagging *narrows* the reading
+   from halting to non-halting; the sentence tells the reviewer the opposite. Both reviewers had
+   already done the expensive part — dating the drift to `c1180acb` / `386e4f0c` to establish
+   `inherited` — and then dropped that conclusion in the one place it was load-bearing, on advice
+   that told them it could not matter.
+
+4. **The findings table's schema collides with the grammar's schema.** The review template's table is
+   `| ID | Severity | Scope | Finding | Section ref |` — **one** scope column where the grammar has
+   **two** orthogonal axes (provenance, locality). se-review resolved the collision by writing
+   `Local` in the column and `` `inherited` `nonlocal` `` in the prose of the same row — an internal
+   contradiction visible in the artifact. te-review resolved it by writing `Local`/`Process` in the
+   column and the real tags in a paragraph below the table. Neither shape is parseable, and the table
+   actively invites the mistake.
+
+5. **The `FINDING:` block has no slot in the document skeleton.** Under the Authoring Pacing
+   Contract, a cross-review is written section by section from a skeleton of `##` headings. There is
+   no heading whose body is the grammar lines, so they are the one obligation with nowhere to live;
+   the conforming files (te-review FSPEC v7, v8) placed them ad-hoc near the verdict. An obligation
+   with no skeleton slot is an obligation that decays — which is what the conformance table in
+   **Iterations** shows happening, from 3–5 lines per round at REQ v5–v7 to zero on six consecutive
+   rounds.
+
+6. **The approving near-misses hid the decay.** Four rounds between the two halts (REQ v8, FSPEC v8
+   se, REQ v10, REQ v11 both channels) carried zero lines and passed, because the fail-closed rule
+   only inspects non-approving confirmations. The signal that the grammar had been abandoned was
+   present four times and observable only at the halt.
