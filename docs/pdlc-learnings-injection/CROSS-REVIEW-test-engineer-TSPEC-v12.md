@@ -114,8 +114,8 @@ whole of F-O-1.** Its contract (*"Bytes only, no model call (F-O-1)"*) satisfies
 fixes. Upstream now names a **second** rule on the same terms, and there is no second exported
 function, no regex and no prose in TSPEC that answers it: given a heading line, is it one of BR-6's
 five named sections — matched as `## N. Title`, as the bare title, or as a prefix? FSPEC is
-explicit that it will not decide this ("which headings count as which section is F-O-1's, not text
-to be matched literally from here"), so the rule exists nowhere in the pipeline. That is F-02. Its
+explicit that it will not decide this ("Which heading forms count as which section is F-O-1's,
+not text to be matched literally from here"), so the rule exists nowhere in the pipeline. That is F-02. Its
 test consequence is concrete: AT-11's oracle is a **set equality over `sections`**, the BR-6
 priority names actually taken, and AT-28's oracle is "no BR-6 section present ⇒
 `RSN-NO-MATERIAL`" — neither can be written without knowing what counts as a match, and a fixture
