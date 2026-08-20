@@ -240,11 +240,36 @@ finding below is repairable inside this TSPEC or at PLAN-transcription time.
 
 ## Positive Observations
 
-_pending_
+- **The `null`-scoping repair was made falsifiable on purpose.** The obvious way to close items 1
+  and 2 was to write "non-`null`" and move on. Instead §D.1 states the reason (`null` is the healthy
+  value, not an out-of-catalogue one), pins that `null` is deliberately not a catalogue member, keeps
+  the set-equality operand exactly `["RSN-UNLISTABLE", "RSN-EMPTY"]`, spells the predicate out as
+  `v === null || catalogue.includes(v)`, and notes the scoping is vacuous for the two domains that
+  never carry `null`. That is four separate guards against the repair degrading into a
+  can-only-pass oracle.
+- **The de-anchoring is genuinely better than corrected line numbers would have been.** P-2a now
+  cites by enclosing symbol *and* call shape, so a reader can locate all four sites with one grep and
+  the citation survives the next 140-line shift. Same for ERR-2, which now cites the retry by its
+  prompt opening — a string that is itself load-bearing.
+- **Both stale anchors were verified as stale, not assumed.** The v0.7 note says the previous line
+  anchors "having been stale at HEAD", and every replacement I re-checked resolves exactly.
+- **ERR-3 and ERR-7 were closed with their history intact.** Both entries keep the original defect
+  narration and then record what upstream did about it, with versions attributed. A future reader
+  learns why BR-1 has two conjuncts, not merely that it does.
+- **§A.2 now states the mutation obligation.** "AT-02 gained the fixture that reds when the second
+  conjunct is reverted" is exactly the sentence a load-bearing invariant deserves.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes.** All four routed items land and re-verify at HEAD; the TSPEC is
+still a faithful compression of REQ v0.9 and FSPEC v0.12 in every load-bearing respect — BR-1's
+two-conjunct rule, BR-15's set-of-paths expected set, the four authoring dispatch sites, the
+conditional-spread precedent, the catalogues, the loci and the closure counts all check out. Nothing
+the erratum touched broke anything v10 approved, and the `null` scoping strengthened rather than
+weakened the domain oracle. The residue is one transcription gap in §T.6's AT-02 fixture list
+(Medium, carried from v10), one unconsumed report field (Medium, carried from v10), and four
+documentary items — stale line anchors the round did not reach, and five stale "FSPEC v0.9" version
+strings. No High finding, so the confirmation does not halt the phase.
 
 ## Delta-Confirmation Findings
 
