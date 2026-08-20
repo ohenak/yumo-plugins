@@ -1334,6 +1334,111 @@ describe("A6-15: runWaveGateSeam — PROP-CTR-09: attemptBudget bounds the dispa
   });
 });
 
+// ── PROP-CTR-10 (NFR-4, AC-2.4) — the budget window measures dispatch→verdict, not gate time ──
+//
+// CR round 1, TE F-07: the implementation is right — the deadline is constructed fresh per
+// attempt and only after `dispatched`, and `verifyGate` runs after that race has settled, so a
+// gate command's run time is structurally outside the measured span. But nothing falsified it:
+// the only shipped budget test was a pre-existing A2 fixture with a never-resolving agent and no
+// gate-command conjunct at all, so an implementation that folded gate time into `elapsedMs` at
+// the VERIFY re-entry would have passed every test on the branch.
+//
+// PROP-CTR-10 asks for exactly the two runs below. The companion is the falsifier: its gate
+// command burns six times the WHOLE seam budget while every dispatch→verdict window stays at
+// zero, and it must still resolve. (Verified by mutation: replacing the VERIFY budget check's
+// `elapsedMs: 0` with a seam-start elapsed reading turns it red.)
+describe("A6-15: runWaveGateSeam — PROP-CTR-10: gate-command time is outside the seam budget", () => {
+  const SEAM_BUDGET_MINUTES = 10;
+
+  test("the companion — a gate command far slower than the entire seam budget still resolves on the green re-gate", async () => {
+    const repo = createA6TempRepo();
+    try {
+      // Written before the seam so `captureTreeSnapshot` folds it into the snapshot tree and it
+      // survives the `restoreTreeSnapshot` between attempts (the PROP-GATE-03 idiom below).
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
+
+      const clock = makeFakeClock();
+      let testCalls = 0;
+      const _runCommand = async (cmd) => {
+        if (cmd !== "npm test") return { ok: true };
+        testCalls += 1;
+        // The gate command is where the wall clock goes — a real `npm test` is the slowest thing
+        // in the attempt by orders of magnitude, which is exactly why NFR-4 excludes it. Six
+        // times the whole seam budget, spent here and nowhere else.
+        clock.advance(SEAM_BUDGET_MINUTES * 6 * 60_000);
+        return { ok: testCalls > 1 };
+      };
+
+      const agent = makeAgentDouble({
+        script: [
+          makeA6ReplyText({ proposedAction: "E-5", rootCause: "wave-internal-defect", evidence: ["the gate went red at the eslint step"] }),
+          makeA6ReplyText({ proposedAction: "E-5", rootCause: "wave-internal-defect", evidence: ["the gate went red at the eslint step"] }),
+        ],
+      });
+
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: agent,
+        _runCommand,
+        _now: clock._now,
+        _sleep: clock._sleep,
+        implConfig: { postWaveCommand: null, testCommand: "npm test" },
+        advisoryConfig: makeAdvisoryConfig({
+          enabled: true,
+          waveBudgetPerRun: 1,
+          attemptBudget: 2,
+          seamBudgetMinutes: SEAM_BUDGET_MINUTES,
+        }).config,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(true);
+      expect(result.disposition.outcome).toBe("resolved");
+      expect(result.disposition.reason).toBeNull();
+      // Both attempts really ran, and both gate commands really burned their time — without this
+      // the test would pass on a run that never reached the second, slow gate call.
+      expect(agent.calls.length).toBe(2);
+      expect(testCalls).toBe(2);
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("the paired positive — a DISPATCH that outlives the budget escalates budget-exhausted on this same A6 fixture", async () => {
+    const repo = createA6TempRepo();
+    try {
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair\n");
+      const { _runCommand } = makeA6RunCommand({ "npm test": { ok: true } });
+      // Never settles, so `Promise.race` can only be won by the attempt deadline — the window
+      // this budget measures is the dispatch, and this is what exceeding it looks like.
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: () => new Promise(() => {}),
+        _runCommand,
+        implConfig: { postWaveCommand: null, testCommand: "npm test" },
+        advisoryConfig: makeAdvisoryConfig({
+          enabled: true,
+          waveBudgetPerRun: 1,
+          attemptBudget: 3,
+          seamBudgetMinutes: SEAM_BUDGET_MINUTES,
+        }).config,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("budget-exhausted");
+      // The preemption consumes the in-flight attempt and terminates there — it does not spend
+      // the remaining two attempts the budget allowed.
+      expect(result.disposition.attempts).toBe(1);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
 describe("A6-15: runWaveGateSeam — PROP-CTR-11: only resolutions consume wave budget", () => {
   test("waveBudgetPerRun: 1 — attempted-and-escalated on waves 1 and 2 still dispatches on wave 3, leaving waveBudget.resolved at 0", async () => {
     const repo = createA6TempRepo();
