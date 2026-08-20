@@ -389,6 +389,37 @@ are reproduced in CI (in which case they are blocking work owned by someone, and
 behind them) or they are local-store artefacts (in which case LI-01 records the CI-green evidence
 and the implementation proceeds). Guessing which is worse than halting.
 
+**The coverage command was measured too, and it does not pass verbatim at HEAD (TE F-09).**
+`npm run test:coverage` in `pdlc/workflows` is two stages joined by `&&`; stage 1 is the whole jest
+run, so it inherits the two pre-existing `documentOracles` failures and **exits 1 before stage 2
+ever runs** — DoD 11 cannot be stated against the bare script. Under the arrangement's own
+exclusion, both stages pass and stage 2 yields the per-file numbers DoD 11 now names:
+
+```
+cd pdlc/workflows
+npx c8 npm test -- --runInBand --testPathIgnorePatterns \
+  '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'
+Test Suites: 98 passed, 98 total
+Tests:       70 skipped, 3828 passed, 3898 total          → stage 1 exit 0
+
+npx c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0
+File                  | % Stmts | % Branch | % Funcs | % Lines
+All files             |   96.84 |    88.21 |    92.2 |   96.84
+ build-runtime.mjs    |   98.12 |    88.23 |     100 |   98.12
+ orchestrate-dev.js   |   97.27 |    88.14 |   95.02 |   97.27
+ orchestrate-queue.js |   93.18 |    88.75 |   71.42 |   93.18   → stage 2 exit 0
+```
+
+**`orchestrate-dev.js` sits 3.14 points above the 85 % per-file branch floor**, and this feature
+adds a ~300-line region with twelve fail-open arms to that same file. That headroom is the number
+DoD 11 compares against, and H-8 is what happens if the region consumes it.
+
+**A dirty working tree adds a third failure, and it is not a flake.**
+`__tests__/consumerCleanup.test.js` asserts `git status --porcelain` over **tracked** files is
+empty (`AT-4.1`), so any uncommitted edit anywhere in the repository — including an edit to this
+PLAN — reds it. Every measurement in this section was taken on a committed tree, and a wave that
+measures on a dirty one will misread its own gate.
+
 ### The two gate wordings
 
 | Batches | Gate |
