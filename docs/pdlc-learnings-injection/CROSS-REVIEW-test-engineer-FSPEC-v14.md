@@ -188,9 +188,62 @@ mid-clause (FSPEC:693, FSPEC:949) — cosmetic, worth a re-wrap on the next touc
 
 ## Open Questions
 
+My one carried `DEFERRED:` item is unchanged and still non-blocking: BR-9's notice catalogue leaves
+its emission locus unstated, routed to TSPEC. This delta neither addresses nor disturbs it.
+
+The v13 heads-up for the TSPEC round is now sharper rather than resolved. TSPEC:1305-1307 describes
+this FSPEC's expected set as "every authoring-classified dispatch, including Phase CR's optimizer"
+and frames the `docType` conjunct as something "TSPEC therefore adds". After v0.11 that was stale for
+BR-1; after v0.12 it is stale for BR-11, AT-03 and AT-29 as well — the FSPEC and TSPEC expected sets
+now agree everywhere, and the TSPEC's account of a divergence describes bytes that no longer exist.
+That is the TSPEC's finding to carry, not this document's; flagging it here so the next TSPEC round
+re-grounds on these bytes.
+
+- **Q-01** — A-2 now says BR-1 excludes a future dispatch that "satisfies **neither** conjunct". The
+  exclusion set is dispatches failing **at least one** conjunct, which is the larger set and the one
+  containing the very case this erratum exists for. Was "neither" deliberate, or is it the artifact
+  of rewriting a one-conjunct sentence into two? (F-03.)
+
 ## Positive Observations
 
+- **The routed D-2 item was fixed at the level of the mechanism, not the sentence.** The table row,
+  the branch-coverage mapping and the two owning ATs all moved in the same erratum. A branch that is
+  named in a catalogue but has no mapped oracle is a coverage claim without coverage; this delta
+  closed all three sides.
+- **AT-02 states its own mutation contract.** "so reverting BR-1's second conjunct reds this test"
+  written into the AT is exactly the artefact that survives a future implementer's fixture pruning.
+  I would like to see more ATs in this document carry that clause.
+- **BR-11's widening closed a real testability hole, unprompted.** The routed items asked for prose
+  consistency; the author noticed that the authoring-classified/non-C-1-target dispatch was excluded
+  from carrying a block by BR-1 but claimed by no byte-identity rule, and fixed the gap rather than
+  the wording. That is the difference between an erratum that satisfies a checklist and one that
+  makes the next phase's tests possible.
+- **The header row was fixed by removing the re-staling mechanism**, not by re-enumerating through
+  v13. `v{N}` — every round present on this branch — cannot go stale next round.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+All three routed items land, and the two that carry testing weight land in the form that matters:
+D-2 asks the two-conjunct question with three named branches and the branch-coverage mapping and
+AT-02/AT-03 were moved to cover the new one, so the discriminating case now has a name, an owner and
+a stated mutation contract. The header row stops re-staling, and the Overview and A-2 no longer
+restate one conjunct while deferring to BR-1. The erratum also carried BR-1's complement into BR-11,
+AT-03 and AT-29, closing a hole where the authoring-classified/non-C-1-target dispatch was excluded
+from injection by BR-1 but claimed by no byte-identity rule. Nothing I approved at v12/v13 is broken:
+no ordering, bounding, config, record or edge-case text moved, no E-row lost an owner, and the REQ at
+HEAD hashes to the dispatch digest.
+
+Three non-gating findings, none High. **F-01 (Medium, delta)** is the one to land before
+implementation: BR-15 now states its oracle as sets of paths and not counts, but AT-33 — the
+transcription PLAN LI-11 reads — still says "exactly one attempt per report-named document", so rule
+and oracle disagree on a document opened twice. One clause. **F-02 (Medium, delta)** is a citation
+lag pointing upstream: BR-11/AT-03/AT-29 now quantify over "outside BR-1's rule" while the REQ
+clause the traceability row sends a reader to (AC-4.3, echoed at AC-6.1) still says "non-authoring
+dispatch prompts"; the FSPEC's reading is the correct one and follows AC-1.2, which AC-4.3 itself
+cites, so the fix belongs in the REQ's wording, not here. **F-03 (Low, delta)** is A-2's "satisfies
+neither conjunct" where the exclusion set is "fails at least one".
 
 ## Delta-Confirmation Findings
 
