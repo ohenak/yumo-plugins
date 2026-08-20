@@ -98,6 +98,61 @@ That last clause is exactly why it matters: it is the only oracle in the documen
 2. **The scan reds on a planted token** — run the same scanner over a synthetic span containing `fs.writeFileSync` and assert it reports a violation. This is the negative control that proves the token list and the matcher work.
 
 Add the alias forms to the token list, or state explicitly that the region is barred from importing `fs` under any name and assert *that* instead — a single "no filesystem module reference reachable from this span" check is stronger than an enumerated token list and does not silently narrow.
+---
+
+### F-03 (High) — PROP-DISPATCH-03's universe is mostly unreachable at the composition site
+
+PROP-DISPATCH-03 reads:
+
+> Every dispatch **outside** BR-1's rule — reviews, **implementation**, **DoD verification and remediation**, harvest, **ship**, **advisory seams**, and the authoring-classified Phase CR optimizer whose `docType` is `null` — **must** compose a prompt byte-identical to the recorded pre-feature baseline.
+
+Measured at HEAD, `dispatchAndVerify` has exactly **two** call sites — `reviewLoop`'s `wrapped` closure and `main()`'s `wrappedDispatch` — and `orchestrate-dev.js` states in its own words which dispatches sit outside that primitive:
+
+> `PHASE_DISPATCH` names every skill the `converge()` primitive reaches, but four dispatches sit outside it — the `ship-pr` rebase/PR calls, the **wave-mode `se-implement` and `se-author` calls**, the **DOD verify/remediate pair** and the harvest distil call.
+
+I confirmed the wave path: the V-wave dispatches `agentFn("se-implement", propertiesTestPrompt(featureName), …)` directly, never through `dispatchAndVerify`.
+
+So of the seven members this property enumerates, **four — implementation, DoD verify, DoD remediate, and ship — cannot differ between the enabled and disabled runs by construction**, because the code that composes the block is not on their path at all. Asserting byte-identity for them is a tautology, and the property does not say which instrument observes them. §F.2's baseline captures `{caseId}/{dispatchIndex}.txt` by driving `main()` — whether a wave-mode or DOD dispatch produces a numbered file in that capture is exactly the thing left unstated.
+
+This matters because §O.2 already identifies byte-identity as the family most prone to vacuity, and pairs PROP-DISPATCH-03 with PROP-DISPATCH-01 as its positive control. But PROP-DISPATCH-01's positive covers only the **authoring/target-doctype** set. Nothing in the document shows that a single implementation, DoD or ship dispatch was ever in the observed population, so the enumeration reads as coverage it does not have — and a reader auditing AC-4.3 / BR-11 against this property will believe those four are checked.
+
+**Resolution — cheap, and it strengthens the property:**
+
+1. State the operand: the outside-set population is the set of `dispatchAndVerify` episodes whose `(dispatchKind, docType)` pair fails `injectHere` — reviews, harvest, and the Phase CR `null` optimizer. Those are the members with a real byte-identity oracle, and they *are* falsifiable (a mutation dropping the `docType` conjunct reds Phase CR, which M-1 already claims).
+2. Move implementation / DoD / ship / advisory out of this property and into a **separate structural conjunct**: assert that the wave-mode, DOD and ship dispatch paths do not reach `dispatchAndVerify` — a call-graph or call-count assertion, hand-transcribed against the two known call sites, with the citation above. That converts a tautology into a real invariant: if a later change routes `se-implement` through `dispatchAndVerify`, the assertion reds and someone has to decide whether implementation dispatches inherit injection.
+3. Do not simply add them to a fixture's expected byte-identity set; that reintroduces the same tautology with more bytes.
+
+---
+
+### F-04 (Medium) — the Overview's property count is wrong
+
+The Overview opens "**47 properties** over the region PLAN §Batches builds". I counted the bullet-leading definitions across Groups A–J: **66** distinct `PROP-*` ids (DISPATCH 7, CORPUS 9, ORDER 6, BOUND 7, BLOCK 3, RECORD 11, FAILOPEN 4, CONFIG 8, ISOLATE 2, FOOTPRINT 4, META 5 = 66), matching §C.4's reconciliation row exactly. `47` is stale.
+
+The Overview is the paragraph a reviewer reads to decide whether the proof system is proportionate to the feature, and it is the only count in the document that is not backed by a table. Correct it to 66, or drop the number and let §C.4 carry it — one number in one place is what stops this recurring.
+
+---
+
+### F-05 (Medium) — four of PLAN's twelve suites are never named, and §C.4's paragraph miscounts itself
+
+PLAN's file-ownership manifest creates twelve `learnings*.test.js` suites. This document names eight of them. It never names:
+
+| Suite (PLAN) | The property that lives in it | How this document refers to it |
+|---|---|---|
+| `__tests__/learningsPremises.test.js` (LI-01) | PROP-META-01 | "the premises suite" |
+| `__tests__/learningsPredicatePin.test.js` (LI-13) | PROP-CORPUS-01 | not named; the *sibling's existing* `consolidationPredicate.test.js` is named instead |
+| `__tests__/learningsBaselineGuard.test.js` (LI-06) | PROP-META-04 | "the baseline guard" |
+| `__tests__/learningsSuiteMap.test.js` (LI-14) | PROP-META-05 | "the suite-map closure" |
+
+Prose names are not traceable. PROP-CORPUS-01 is the case that will actually mislead: it names `consolidationPredicate.test.js` as the holder of the third transcribed literal — which is correct and which I verified exists at HEAD, carrying the `:(glob)docs/*/LEARNINGS-*.md` literal — but a reader will reasonably take that to be the file the property is *implemented in*, and PLAN LI-13 is explicit that the new suite is `learningsPredicatePin.test.js` and that `consolidationPredicate.test.js` must **not** be edited ("editing it would collapse the three-way agreement into a two-way one"). That distinction is load-bearing and is invisible here.
+
+§C.4's closing paragraph compounds it. It opens:
+
+> **Two named test files** this document depends on **do not yet exist** — `learningsSelect.test.js`, `learningsBlock.test.js`, `learningsCorpus.test.js`, `learningsRecord.test.js`, `learningsDispatchSet.test.js`, `learningsConfig.test.js`, `learningsArmInventory.test.js`, `learningsCaptureScript.test.js`, `helpers/learningsFixtures.js` and `fixtures/learnings-baseline/` are all **planned new** files
+
+"Two" introduces a list of ten, and the list omits the four suites above. The paragraph then concludes "**no property in this document names a test file the PLAN does not create**" — which I verified is true, and which is worth keeping — but the evidence offered for it is an incomplete enumeration.
+
+**Resolution:** add the owning suite file to each of PROP-META-01…05 and PROP-CORPUS-01 the way every other property carries its red/green tasks; fix the lead-in to "Ten of the twelve new suites, the fixture helper and the baseline fixture directory do not yet exist"; and add one sentence to PROP-CORPUS-01 distinguishing the pin's *subject* (`consolidationPredicate.test.js`, existing, never edited) from the pin's *home* (`learningsPredicatePin.test.js`, new).
+
 
 ## Questions
 
