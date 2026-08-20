@@ -171,7 +171,47 @@ what surfaced F-05.
 
 ## Positive Observations
 
+- **The delta moved TSPEC toward DECISIONS' own citation discipline.** `P-2a`, `P-2b`, `P-10` and
+  `ERR-2` were re-cited by enclosing symbol and call shape per `DEC-DOC-01` — which is exactly what
+  DECISIONS' grounding pin already committed to ("citations name **exported symbols and file paths**
+  rather than line numbers … a line number appears only where the position itself is the claim").
+  `G-B` and `G-C` needed no edit for this round because they were written that way from the start.
+  That is the convention paying out: four upstream citations went stale and had to be rewritten,
+  and the downstream document that had already adopted the convention was unaffected.
+- **`DEC-LI-03` is now vindicated twice over.** At v4 FSPEC arrived at the two-conjunct rule
+  DECISIONS had reasoned to from REQ C-1 and from the codebase. This round TSPEC withdrew its own
+  divergence routing and declared §I.3's gate a direct implementation of `BR-1`. An entry argued
+  from the source and from REQ, rather than from a sentence in a sibling spec, has now survived two
+  upstream rewrites without a word needing to change.
+- **`DEC-LI-10`'s catalogue decision picked the right instrument.** §D.1's edit had to scope the
+  *domain-membership* tests to non-`null` values because `corpusOutcome`'s healthy value is `null`.
+  The **set-equality** test over `LEARNINGS_CORPUS_OUTCOMES` — the instrument `DEC-LI-10` actually
+  decided on, per `DC-01`/`DC-14` — is explicitly untouched. A decision expressed as "which test
+  shape defends the closed catalogue" absorbed a correction to a neighbouring test shape at zero
+  cost.
+- **Naming the sibling that owns each question is still what makes this document re-checkable.**
+  Every row of the verification table above was confirmable in one grep because DECISIONS cites
+  `BR-1`, `BR-14`, `BR-15`, `E-32`, `T-O-1`, `T-O-3`, `C-1` by id. That same habit is what makes
+  F-01/F-02/F-05 detectable rather than invisible — worth keeping, with the status claims refreshed.
+
 ## Recommendation
+
+**Approved with minor changes** — DECISIONS still holds as approved against TSPEC as it now stands.
+
+No High finding: no decision is contradicted by TSPEC v0.7, no binding transcription has gone wrong
+(`DEC-LI-07`'s `BR-14` five-state table and `DEC-LI-10`'s C-1 six-type set both still check out), the
+`injectHere` gate `DEC-LI-03` decided is byte-identical to TSPEC §I.3 at HEAD, and the round's one
+substantive move — `ERR-7` closed, §A.2 restated as BR-1-conformant — reinforces `DEC-LI-03` rather
+than undermining it.
+
+Five findings recorded, all single-passage edits for the next authoring pass on this document. Four
+are `inherited` and unaddressed across three rounds of unchanged bytes: F-01 and F-02 describe
+upstream questions as open that upstream closed at TSPEC v0.6 (F-02 additionally leaves a discharged
+obligation, `D-O-9`, standing as an open ask), F-03 is stale version pins now two TSPEC minors and
+five FSPEC minors behind, F-04 is a paraphrase of FSPEC `A-2` by its pre-erratum wording. F-05 is
+this round's own: the **Upstream version note**'s premise of a REQ/FSPEC-version gap between this
+document and TSPEC no longer exists, because TSPEC v0.7 re-grounded on the same upstream. None
+blocks PLAN or PROPERTIES.
 
 ## Delta-Confirmation Findings
 
