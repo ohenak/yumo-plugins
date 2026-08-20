@@ -56,3 +56,10 @@ The four remaining findings are all refinements of the new material rather than 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 2}
+
+APPROVAL-HASH: sha256:85888c03f8ee43c2e50dd26bea040d3a1716180f17dd1f582dc86e0ac736d5b6
+APPROVAL-HASH-NORMALIZED: sha256:85888c03f8ee43c2e50dd26bea040d3a1716180f17dd1f582dc86e0ac736d5b6
+REVIEWED-COMMIT: d140fbeee5ae114d1b305ec84c4ac9745c98f9b3
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
+UPSTREAM-STATE: FSPEC sha256:57b71e0c5687067aa34ec4c4afc0c2ce58ff3dce61b1813f21b42cca5f048fcf
+UPSTREAM-STATE: TSPEC sha256:72712bd87b4f5d762be9049cfe680fa0c378d83a0002690097a129e3efb79fdb
