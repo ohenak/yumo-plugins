@@ -10367,6 +10367,38 @@ function erratumConfirmPrompt({
 }
 
 /**
+ * POSTMORTEM-D item 4 (escalating POSTMORTEM-T item 4) — the one restatement
+ * retry a non-approving, zero-`FINDING:` confirmation earns before the gate
+ * fails it closed.
+ *
+ * This is deliberately NOT a re-review. The confirmer has already read the
+ * document, already reached a verdict, and already written its findings down in
+ * prose; the only thing missing is the four tags the gate reads. Asking for the
+ * whole confirmation again would re-open a decision that was made, and would
+ * make the retry as expensive as the halt it is avoiding. So the prompt forbids
+ * re-reading, forbids changing the verdict, and asks for one mechanical
+ * transcription of what is already on disk.
+ *
+ * Both halts on `pdlc-learnings-injection` were formatting slips of exactly this
+ * shape — findings written, tags omitted — each costing a POSTMORTEM and an
+ * operator recovery. One turn is the right price for that.
+ */
+function erratumRestatementPrompt({ feature, docType, docPath, reviewFile, round }) {
+  return (
+    `FINDING RESTATEMENT for ${docPath} (feature ${feature}).\n` +
+    `Your confirmation for this ${docType} — ${reviewFile} (round v${round}) — does not approve, ` +
+    `but carries no parseable FINDING: line, and the gate reads a non-approving confirmation with ` +
+    `zero lines as a halt.\n` +
+    `Do NOT re-review anything. Do NOT change your verdict, and do not raise anything new. Read ` +
+    `the findings you have ALREADY written in ${reviewFile} and restate them, one per line, in ` +
+    `the grammar below — one line per findings-table row.\n` +
+    findingGrammarClause() +
+    `Reply with those FINDING: lines followed by your unchanged VERDICT trailer, and nothing ` +
+    `else.\n`
+  );
+}
+
+/**
  * The `FINDING:` grammar, stated to the confirmer (PLAN §2.1) — the input the
  * gate reads via `parseConfirmationFindings`.
  *
@@ -10377,10 +10409,16 @@ function erratumConfirmPrompt({
  * owning phase's ordinary loop, or halts — a distinction no amount of re-reading
  * the prose recovers.
  *
- * Untagged findings are not an error the confirmer is punished for: they are
- * read as the worst case ({delta, nonlocal}), i.e. the pre-grammar halt. The
- * grammar only ever buys a softer outcome, so the clause states that plainly
- * rather than demanding compliance.
+ * The clause used to close with "tagging can only ever widen the outcome, never
+ * narrow it." That is false, and POSTMORTEM-D (item 7) is the receipt: read as
+ * {delta, nonlocal}, an untagged High is the HALTING reading, and writing
+ * `inherited` on it is what narrows the outcome to R2. Told the old sentence, a
+ * confirmer reasonably concludes the tags cannot matter — and two rounds on this
+ * branch halted for exactly that reason. The clause now names the consequence it
+ * used to hide: untagged is the strict reading, tagging `inherited` is the only
+ * thing that keeps an inherited High non-gating, and a non-approving
+ * confirmation with zero lines halts the phase (fail-closed, after the one
+ * restatement retry the dispatch layer spends on its behalf).
  */
 function findingGrammarClause() {
   return (
@@ -10391,8 +10429,10 @@ function findingGrammarClause() {
     `already in the pre-round bytes and this edit did not touch it.\n` +
     `- local = it sits inside the sections this edit changed; nonlocal = anywhere else.\n` +
     `- The section anchor and the text are free-form; pipes inside the text are fine.\n` +
-    `An untagged finding is read as {delta, nonlocal} — the strictest reading — so tagging ` +
-    `can only ever widen the outcome, never narrow it.\n`
+    `An untagged finding is read as {delta, nonlocal}, which for any High is the HALTING ` +
+    `reading. Tagging a genuinely inherited High \`inherited\` is what keeps it non-gating — it ` +
+    `routes the round back to the owning phase (R2) instead of halting. A non-approving ` +
+    `confirmation that carries ZERO FINDING: lines halts the phase, fail-closed.\n`
   );
 }
 
@@ -14149,6 +14189,108 @@ export default async function main({
         findings: parsed.findings,
         malformed: parsed.malformed,
       });
+    }
+
+    // ─── POSTMORTEM-D item 4 — one restatement retry before fail-closed ──────
+    //
+    // A non-approving confirmation carrying zero parseable lines is scored by
+    // `erratumGateDecision` as `{High, delta, nonlocal}` — a halt. Twice on
+    // `pdlc-learnings-injection` that halt was a pure formatting artifact: the
+    // confirmers HAD written their findings, and had even declared the tags in
+    // a table, but not as line-leading `FINDING:` lines. The cheapest possible
+    // fix (transcribe two rows as two lines) cost a POSTMORTEM and an operator
+    // recovery cycle, twice, two phases apart.
+    //
+    // So the dispatch layer spends one turn on the confirmer's behalf before
+    // the gate is allowed to fail it closed. The bounds are what keep this from
+    // becoming a second review budget:
+    //
+    //   - ONE re-dispatch per confirmer, per erratum round. A confirmer that
+    //     says nothing twice is silence, and silence still halts.
+    //   - It does NOT touch `MAX_ERRATUM_FOLLOWUP_ROUNDS`. A follow-up round is
+    //     a fresh EDIT to the document plus a fresh confirmation; a restatement
+    //     re-dispatch changes nothing on disk that the gate reads except the
+    //     confirmer's own cross-review file, and `attempt` is untouched by it.
+    //   - `erratumGateDecision` never learns this happened. The retry is a
+    //     dispatch-layer attempt to obtain the input the rule table already
+    //     expects; the rule table stays pure, and the R1–R4 fixtures keep
+    //     testing it without a pipeline.
+    //
+    // Findings are re-read on the same two channels as the first pass (response
+    // first, file as the durable fallback — DEC-ERR-02), because a reviewer told
+    // to restate may reasonably rewrite the file it is being asked about.
+    for (let i = 0; i < confirmations.length; i++) {
+      const confirmation = confirmations[i];
+      if (confirmation.approving === true) continue;
+      if (confirmation.findings.length > 0) continue;
+
+      const skill = reviewers[i];
+      const askNotice =
+        `Phase ${phaseId}: ${target} confirmation from ${skill} does not approve and carries no ` +
+        `parseable FINDING: line — re-dispatching ONCE for restatement only (no re-review). This ` +
+        `retry does not consume the erratum follow-up budget.`;
+      notices.push(askNotice);
+      emit(askNotice);
+
+      let retryResponse = null;
+      try {
+        retryResponse = await wrappedDispatch({
+          skill,
+          basePrompt: erratumRestatementPrompt({
+            feature: featureName,
+            docType: target,
+            docPath: upstreamPath,
+            reviewFile: confirmPaths[i],
+            round,
+          }),
+          targetPath: confirmPaths[i],
+          docType: target,
+          dispatchKind: "review",
+          phaseId: upstreamPhase,
+          sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
+        });
+      } catch {
+        // A retry that cannot be dispatched is exactly the state we were
+        // already in: the gate fails this confirmer closed below.
+        retryResponse = null;
+      }
+
+      let restated = parseConfirmationFindings(retryResponse);
+      if (restated.findings.length === 0) {
+        let fileText = null;
+        try {
+          fileText = await readFileFn(confirmPaths[i]);
+        } catch {
+          fileText = null;
+        }
+        const fromFile = parseConfirmationFindings(fileText ?? "");
+        if (fromFile.findings.length > 0) restated = fromFile;
+      }
+
+      if (restated.findings.length > 0) {
+        // The verdict is NOT re-read: the confirmer was asked to restate, not
+        // to reconsider, and a retry must never be able to flip a rejection
+        // into an approval.
+        confirmations[i] = {
+          ...confirmation,
+          findings: restated.findings,
+          malformed: restated.malformed,
+        };
+        const okNotice =
+          `Phase ${phaseId}: ${target} confirmation from ${skill} restated ` +
+          `${restated.findings.length} finding${restated.findings.length === 1 ? "" : "s"} in the ` +
+          `grammar — scored as tagged, not fail-closed:\n` +
+          `${formatConfirmationFindings(restated.findings.map((f) => ({ ...f, source: skill })))}`;
+        notices.push(okNotice);
+        emit(okNotice);
+      } else {
+        const failNotice =
+          `Phase ${phaseId}: ${target} confirmation from ${skill} still carries no parseable ` +
+          `FINDING: line after the restatement re-dispatch — failing closed as ` +
+          `High/delta/nonlocal.`;
+        notices.push(failNotice);
+        emit(failNotice);
+      }
     }
 
     const followUpAvailable = attempt < MAX_ERRATUM_FOLLOWUP_ROUNDS;

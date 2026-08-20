@@ -335,6 +335,14 @@ async function runPipeline(opts = {}) {
     // PLAN §2.2 / §5 RT-1*. `{ [round]: { text, verdict, high } }` — the bytes a
     // confirmer writes AND returns at that derived round index.
     confirmationByRound = {},
+    // POSTMORTEM-D item 4. `{ [skill]: { text, file } }` — what a confirmer
+    // answers on the ONE restatement re-dispatch it earns when its confirmation
+    // does not approve and carries no parseable `FINDING:` line. `text` is what
+    // it RETURNS, `file` (optional) what it rewrites its cross-review file to,
+    // so the two channels are scriptable independently exactly as they are for
+    // the confirmation itself. A skill with no entry answers with prose and no
+    // grammar — the silence the gate must still fail closed on.
+    restatementBySkill = {},
   } = opts;
 
   const seeded = {
@@ -389,6 +397,16 @@ async function runPipeline(opts = {}) {
         `Delta confirmed.\n${extra}VERDICT: ${confirmationVerdict}\n` +
         `{"high": ${confirmationVerdict === "Approved" ? 0 : 1}, "medium": 0, "low": 0}\n`
       );
+    }
+
+    // POSTMORTEM-D item 4 — the restatement retry. Checked BEFORE the reviewer
+    // branch below, which would otherwise answer it with a plain approval.
+    if (text.includes("FINDING RESTATEMENT for")) {
+      const scripted = restatementBySkill[skill];
+      const match = /(docs\/\S*CROSS-REVIEW-\S+\.md)/.exec(text);
+      if (!scripted) return "I have nothing further to add.\n";
+      if (scripted.file && match) fs.files[match[1]] = scripted.file;
+      return scripted.text ?? "";
     }
 
     if (skill === "se-review" || skill === "te-review" || skill === "pm-review") {
@@ -495,6 +513,8 @@ const erratumAuthorDispatches = (dispatches) =>
   dispatches.filter((d) => d.prompt.includes("ERRATUM ROUND for"));
 const confirmationDispatches = (dispatches) =>
   dispatches.filter((d) => d.prompt.includes("DELTA CONFIRMATION for"));
+const restatementDispatches = (dispatches) =>
+  dispatches.filter((d) => d.prompt.includes("FINDING RESTATEMENT for"));
 
 describe("converge(): erratum routing (§3.1 step 4)", () => {
   test("PROP-ERR-20: a TSPEC-phase erratum against the FSPEC reaches the FSPEC's author, in the FSPEC's own author session, carrying the item verbatim", async () => {
@@ -1338,6 +1358,160 @@ describe("the erratum gate on the historical halts (PLAN §5)", () => {
     expect(legacy.report.phases.find((p) => p.phase === "T").status).toBe(
       tagged.report.phases.find((p) => p.phase === "T").status
     );
+  });
+});
+
+// ─── RT-1g: the bounded restatement retry (POSTMORTEM-D items 4 and 7) ───────
+//
+// Both halts on `pdlc-learnings-injection` were the same formatting slip: a
+// non-approving confirmation whose findings were written out in prose and in a
+// table, but never as line-leading `FINDING:` lines. The gate read the silence
+// as `{High, delta, nonlocal}` and halted the phase — twice, two phases apart,
+// on findings both confirmers had already declared `inherited`. The dispatch
+// layer now spends ONE re-dispatch per confirmer, asking for a restatement and
+// nothing else, before the gate is allowed to read that silence.
+
+/** What a confirmer returns on the retry: its own findings, now tagged. */
+const RESTATED_INHERITED =
+  "FINDING: High | inherited | nonlocal | §8.3 | The domain note contradicts this section's " +
+  "own third bullet, and the round did not edit the section\n" +
+  "FINDING: Low | inherited | nonlocal | §7.3 | Two version stamps disagree in unchanged text\n";
+const RESTATED_DELTA_LOCAL =
+  'FINDING: High | delta | local | §3-02 | The owner cell in the expected rows table still ' +
+  'reads "owner **tuple**"\n';
+
+describe("RT-1g: bounded restatement retry before fail-closed (POSTMORTEM-D item 4)", () => {
+  test("RT-1g-a: a non-approving confirmation with zero FINDING: lines earns exactly one restatement re-dispatch, and inherited-High restatements land R2 instead of the halt", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-untagged.md") },
+      restatementBySkill: {
+        "se-review": { text: RESTATED_INHERITED },
+        "te-review": { text: RESTATED_INHERITED },
+      },
+    });
+
+    // One retry per non-approving confirmer, per erratum round. Never twice.
+    const retries = restatementDispatches(dispatches);
+    expect(retries.length).toBe(2);
+    expect(retries.map((d) => d.skill).sort()).toEqual(["se-review", "te-review"]);
+    // It asks for a transcription, not a review, and names the file to read.
+    const seRetry = retries.find((d) => d.skill === "se-review");
+    expect(seRetry.prompt).toContain("Do NOT re-review anything.");
+    expect(seRetry.prompt).toContain("Do NOT change your verdict");
+    expect(seRetry.prompt).toContain(`${DOCS}/CROSS-REVIEW-software-engineer-FSPEC-v2.md`);
+
+    // The halt RT-1c pins is gone: every restated High is `inherited`, so R2.
+    expect(report.outcome).toBe("success");
+    expect(report.postmortemPath).toBeNull();
+    const notice = report.notices.find((n) => n.includes("gate rule R2"));
+    expect(notice).toBeDefined();
+    expect(notice).toContain(INHERITED_HIGH_SECTION);
+    // Both ends of the retry are on the record.
+    expect(
+      report.notices.some((n) =>
+        n.includes("re-dispatching ONCE for restatement only (no re-review)")
+      )
+    ).toBe(true);
+    expect(
+      report.notices.some((n) =>
+        n.includes("restated 2 findings in the grammar — scored as tagged, not fail-closed")
+      )
+    ).toBe(true);
+    // R2 re-anchors nothing: the approvers still have not approved these bytes.
+    expect(fs.appends).toEqual([]);
+  });
+
+  test("RT-1g-b: a retry that still returns no grammar fails closed exactly as before — R4 halt, one retry spent, no follow-up bought", async () => {
+    const { report, dispatches, fs } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: needsRevision("confirmation-untagged.md") },
+    });
+
+    // The retry was spent — once per confirmer — and answered with prose.
+    expect(restatementDispatches(dispatches).length).toBe(2);
+    expect(
+      report.notices.some((n) =>
+        n.includes("still carries no parseable FINDING: line after the restatement re-dispatch")
+      )
+    ).toBe(true);
+
+    // …and the fail-closed halt is byte-identical to the pre-retry behaviour.
+    expect(report.outcome).toBe("halted");
+    expect(report.haltPhase).toBe("T");
+    expect(report.postmortemStatus).toBe("written");
+    expect(report.haltReason).toContain(
+      " se-review: FINDING: High | delta | nonlocal | (untagged confirmation) | non-approving " +
+        "confirmation carried no parseable FINDING: line — read as High/delta/nonlocal, fail-closed"
+    );
+    // Silence buys no edit: the author was dispatched once, for the erratum.
+    expect(erratumAuthorDispatches(dispatches).length).toBe(1);
+    expect(fs.appends).toEqual([]);
+  });
+
+  test("RT-1g-c: an approving confirmation is never retried, even carrying zero FINDING: lines", async () => {
+    const { report, dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: { 2: approved() },
+    });
+
+    expect(report.outcome).toBe("success");
+    // The positive half of the pair, on the same path: the confirmation DID
+    // happen and DID carry zero grammar lines. Only the retry is absent.
+    expect(confirmationDispatches(dispatches).length).toBe(2);
+    expect(parseConfirmationFindings(approved().text).findings).toEqual([]);
+    expect(restatementDispatches(dispatches)).toEqual([]);
+  });
+
+  test("RT-1g-d: the retry does not consume the follow-up budget — a restated High/delta/local still buys its R3 round", async () => {
+    const { report, dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+      confirmationByRound: {
+        2: needsRevision("confirmation-untagged.md"),
+        3: approved(),
+      },
+      restatementBySkill: {
+        "se-review": { text: RESTATED_DELTA_LOCAL },
+        "te-review": { text: RESTATED_DELTA_LOCAL },
+      },
+    });
+
+    // Two retries spent on round 2; the follow-up budget is untouched by them,
+    // so R3's bounded edit round is still available and is actually taken.
+    expect(restatementDispatches(dispatches).length).toBe(2);
+    expect(erratumAuthorDispatches(dispatches).length).toBe(2);
+    expect(
+      report.notices.some((n) => n.startsWith("Phase T: erratum follow-up round 1 for FSPEC"))
+    ).toBe(true);
+    // The follow-up carries the RESTATED finding, not the original routed item.
+    expect(erratumAuthorDispatches(dispatches)[1].prompt).toContain(
+      '- [High | delta | local] §3-02 — The owner cell in the expected rows table still ' +
+        'reads "owner **tuple**"'
+    );
+    expect(report.outcome).toBe("success");
+    expect(report.postmortemPath).toBeNull();
+  });
+
+  test("RT-1g-e: the finding-grammar clause names the halting reading instead of promising leniency (POSTMORTEM-D item 7)", async () => {
+    const { dispatches } = await runPipeline({
+      tspecReviewerErratum: `FSPEC: ${ERRATUM_ITEM}`,
+    });
+
+    const confirm = confirmationDispatches(dispatches)[0];
+    expect(confirm.prompt).toContain(
+      "An untagged finding is read as {delta, nonlocal}, which for any High is the HALTING reading."
+    );
+    expect(confirm.prompt).toContain(
+      "Tagging a genuinely inherited High `inherited` is what keeps it non-gating — it routes " +
+        "the round back to the owning phase (R2) instead of halting."
+    );
+    expect(confirm.prompt).toContain(
+      "A non-approving confirmation that carries ZERO FINDING: lines halts the phase, fail-closed."
+    );
+    // The sentence POSTMORTEM-D item 7 retired reaches no prompt at all.
+    for (const d of dispatches) {
+      expect(d.prompt).not.toContain("can only ever widen the outcome, never narrow it");
+    }
   });
 });
 
