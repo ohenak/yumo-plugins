@@ -8,14 +8,33 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → **TSPEC** — `docs/pdlc-learnings-injection/FSPEC-pdlc-learnings-injection.md` (v0.12); `REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| Upstream | REQ → FSPEC → **TSPEC** — `docs/pdlc-learnings-injection/FSPEC-pdlc-learnings-injection.md` (v0.13); `REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md`, `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md`, `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md`, `CROSS-REVIEW-product-manager-TSPEC-v6.md`, `CROSS-REVIEW-test-engineer-TSPEC-v6.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.7 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.8 | 2026-08-20 |
+
+> **v0.8 erratum (Phase PR items; re-grounded on FSPEC v0.13 / REQ v0.9 at HEAD).** Upstream moved:
+> **FSPEC v0.13** decides three things this TSPEC owes. (1) **BR-6's byte-accounting basis is
+> material only** — framing (identification line, per-document delimiters and source-path label,
+> block preamble) is charged to no threshold. That is what §D.5 already said, so the routed
+> "the two readings cannot both hold" item is **absorbed, not open**: the contradiction was
+> upstream's and upstream removed it. §D.5 now cites BR-6's basis rather than asserting it
+> unilaterally. (2) **`maxBytesPerDocument: 0` is decided** (E-36, AT-30's third case): no document
+> yields material, each is dropped with `RSN-NO-MATERIAL` **before** the bounds, consumes no
+> `maxDocuments` slot and is **not** `bounded`. Absorbed into §I.2 (AT-30 is three zeros), §I.3
+> (`extractInjectableMaterial`'s zero-bound branch), §D.5, §T.6's arm — which is now keyed on
+> *yields no material*, BR-9/D-12's restated form, not on *carries no section* — and T-O-6's
+> property domain. (3) **F-O-1 now owns two heading-recognition rules.** Raised items landed:
+> §D.3 gains the second rule — `BR6_SECTION_NAMES`, the optional-ordinal matcher and the section
+> extent — so `extractInjectableMaterial`'s section matcher is specified where the obligation is
+> recorded as discharged, and the obligations table says so. Also landed: §T.6 names AT-02's
+> fourth upstream fixture (an authoring-classified dispatch with no C-1 target) and its mutation
+> owner; the header's upstream pin moves to v0.13. No behavioural change beyond the zero-bound
+> decision absorbed from upstream.
 
 > **v0.7 erratum (Phase P items; re-grounded on FSPEC v0.12 / REQ v0.9 at HEAD).** Upstream moved:
 > FSPEC v0.11 restated **BR-1 with both conjuncts** (authoring classification **and** a C-1 target
