@@ -161,6 +161,40 @@ meaning, and a defeater that the delta either strengthened or made moot.
 
 ## Fixtures
 
+- **`NO-MATERIAL` (§F.1)** — "one document with all five BR-6 sections **absent** and an Approval
+  Record present", defeating "`RSN-NO-MATERIAL` implemented as *document empty*". Still correct for the
+  first disjunct; it cannot exercise the second. The zero-bound disjunct needs the *mirror* fixture — a
+  document that **carries** material, run at `maxBytesPerDocument: 0` — and that mirror is what proves
+  the implementation reaches `RSN-NO-MATERIAL` by "yields no material" rather than by "carries no
+  section." Note the shape: this is the same positive/negative pairing discipline §F.1 already applies
+  in `DISCARDED-NESTED` / `DISCARDED-DIRECT` and `COUNT-BINDING` / `BYTES-BINDING`, so the fixture table
+  has the precedent to follow rather than a new pattern to invent. Cheapest realisation is a threshold
+  override on an existing corpus fixture rather than a fourteenth case id — §G.2.1's own estimate, "one
+  case in `learningsConfig.test.js`", is right.
+- **`BYTES-BINDING` (§F.1)** — 8 documents of 7,000 injectable bytes under `maxDocuments: 5`,
+  `maxBytesPerDocument: 6000`, `maxTotalBytes: 20000`, expected 3 contribute / 5 `RSN-BYTES` /
+  0 `RSN-COUNT`. Re-derived against the new accounting basis: 7,000 > 6,000 so each document bounds to
+  6,000 of material; 6,000 × 3 = 18,000 ≤ 20,000 and a fourth would reach 24,000 > 20,000; so 3 / 5 / 0
+  holds, and it now holds *without* the correction term the old framing basis would have required
+  (identification line + delimiters + source-path label per document, against a 20,000-byte total). The
+  literal is unchanged and is now easier to defend from the fixture alone, which is what §F.1's closing
+  rule — "expected values are hand-transcribed literals … never re-derived at assertion time" —
+  demands. `COUNT-BINDING`'s 200-byte-section arithmetic is likewise unperturbed.
+- **§F.2's byte-identity baseline** — captured from the merge-base checkout and unaffected: the delta
+  changes no rendered-block wording, no delimiter and no preamble. PROP-META-04's retained digests stay
+  valid, and none of the routed items touches the capture procedure.
+- **§F.3's verbatim-string families** — re-checked all three against the new FSPEC bytes. The five BR-6
+  section names and `Approval Record` are byte-identical in the delta. The C-4 delimiters and preamble
+  are untouched. The three frozen catalogues are TSPEC-sourced and TSPEC did not move. One nuance worth
+  recording: `LEARNINGS_REJECT_REASONS`' membership is unchanged — the delta widened
+  `RSN-NO-MATERIAL`'s *meaning*, not the catalogue — so PROP-RECORD-03's six-member hand-transcribed
+  set equality still holds exactly as written. That is the good outcome; a widened meaning that had
+  arrived as a seventh id would have invalidated a transcribed literal.
+- **§F.3's F-O-1 paragraph** — its claim that "TSPEC's F-O-1 discharge covers only the document-shape
+  predicate" remains true (TSPEC did not move), but its framing of *why* the section matcher is
+  unowned has shifted under it: FSPEC now names an owner for it. See **F-05**; this is bookkeeping, and
+  the property it protects (PROP-BOUND-08) is unaffected.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
