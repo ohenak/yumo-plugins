@@ -305,4 +305,78 @@ inspection, which a diluted file-level percentage never would have been.
 
 ## Verification
 
+### The measured baseline
+
+Measured at HEAD on `feat-pdlc-learnings-injection` (a docs-only branch — no production code has
+moved yet), 2026-08-20:
+
+```
+cd pdlc/workflows && npm test
+Test Suites: 1 failed, 98 passed, 99 total
+Tests:       2 failed, 70 skipped, 3851 passed, 3923 total
+Time:        28.36 s
+```
+
+The two failures are both in `pdlc/workflows/__tests__/documentOracles.test.js`:
+`AT-22 [red-until-L-06]: coveredViolations(LIVE_ROOT) is empty post-landing` and
+`PROP-SWEEP-2(b)`. They are **pre-existing and expected on a feature branch**: `coveredViolations`
+walks the entire tree under `root`, so this feature's own in-flight `docs/**` artifacts are scanned
+as live documents. The consuming arrangement excludes that suite from the wave gate —
+`.claude/pdlc.config.example.json`'s `testCommand` carries `'documentOracles'` in
+`--testPathIgnorePatterns` — and under that exact invocation the suite is green:
+
+```
+Test Suites: 98 passed, 98 total
+Tests:       70 skipped, 3828 passed, 3898 total
+```
+
+**Three pre-existing failures also exist in `pdlc/engine`, and the gate runs that suite first.**
+`cd pdlc/engine && npm test` reports `pass 841 / fail 3`, the three being
+`the dry run names the workflow module it would load and the seams it overrides`,
+`` `pdlc hello` reports the canonical workflow module paths `` (both `pdlc/engine/__tests__/cli.test.js`,
+asserting that resolved module paths lie under this repository's `pdlc/workflows/`) and
+`AT-2.2: the plugin's three \`claude plugin install\` sites are asserted as a positive`. They are
+machine-state artefacts of the local engine store, not this feature's — but the arrangement's
+`testCommand` begins `(cd pdlc/engine && npm test) &&`, so **the wave gate halts on them before it
+ever reaches this feature's suites**. Triaging them is a **pre-flight item on LI-01**: either they
+are reproduced in CI (in which case they are blocking work owned by someone, and this feature waits
+behind them) or they are local-store artefacts (in which case LI-01 records the CI-green evidence
+and the implementation proceeds). Guessing which is worse than halting.
+
+### The two gate wordings
+
+| Batches | Gate |
+|---|---|
+| 2, 3 (LI-07…LI-09), 5, 6 — **RED-terminal** | The batch's new tests **fail for the specified reason** — the symbol under test is not defined yet, or `.gitignore` lacks the rule — **and** every pre-existing test's status is unchanged from the baseline above. A new test failing for a *different* reason (a typo, a missing import, a helper that throws) is a batch failure, not a red |
+| 1, 4, 7–14 | Full suite green under the arrangement's `testCommand`, with the documented pre-existing exclusions and no others. From batch 7 on, each batch also leaves `pdlc/workflows/dist/` regenerated and staged by the wave gate's `postWaveCommand` |
+
+**No exemption list grows during this feature.** The two exclusions above are the arrangement's, are
+measured here, and are the whole set. Adding a third to make a batch pass is a halt condition.
+
+### Definition of Done
+
+1. All 35 FSPEC acceptance tests implemented, each in exactly one suite, each named `LI-AT-{N}`, and `LI-T-SUITEMAP` green over the hand-transcribed partition.
+2. All TSPEC-local cases green: `LI-T-PIN-1`, the composition-site set equality on **both** operands, `LI-T-RETRY-1…3`, `LI-T-IGNORE`, `LI-T-WORKTREE`, the baseline digest guard, the porcelain write-delta and the static seam scan.
+3. Every fail-open arm of TSPEC §T.7 entered by its named test — twelve for twelve, walked explicitly in LI-22.
+4. Byte-identity holds where promised: a disabled run, an empty corpus, an unlistable corpus and an admits-nothing configuration each compose prompts **character-for-character** equal to the committed pre-feature baseline (AC-4.1, AC-5.1a, AT-24); every non-authoring dispatch likewise (AC-4.3).
+5. Report shape: `learningsInjection` **absent** on an explicitly disabled run, **present with empty rows** on an enabled run that selected nothing; `NTC-*` notices on the run-level `notices` channel, never inside `learningsInjection`.
+6. `pdlc/workflows/dist/pdlc-cli.mjs` regenerated and staged in every wave that touched `orchestrate-dev.js`; `node pdlc/workflows/build-runtime.mjs --check` exits zero at the end of batch 14.
+7. No new file under `pdlc/workflows/` other than tests, helpers and fixtures — `prepack.mjs`'s `MODULE_NAMES` is unchanged, so a new production module would ship green and arrive absent.
+8. The working tree after any pipeline run is unchanged: no index, cache or state file anywhere (NG-1, NG-4, AC-5.2), proven by the porcelain instrument in its own temp repository with no exemptions.
+9. `.baseline-worktree` ignored **and** removed in a `finally`; `git worktree list` clean.
+10. The three PROPERTIES obligations (T-O-4…T-O-6) are authored and green — outside this PLAN's task rows, inside the feature's Definition of Done.
+11. Coverage: `npm run test:coverage` in `pdlc/workflows` passes both stages, unchanged from baseline expectations. The per-file branch floor is **not** claimed as this region's oracle (§Traceability).
+
+### Halt conditions
+
+| # | Condition | Why guessing is worse than halting |
+|---|---|---|
+| H-1 | An LI-01 premise no longer holds — e.g. `MODULE_NAMES` has grown, or a fifth `dispatchKind: "authoring"` site exists | Every design decision downstream of it was made on the old measurement; proceeding builds on a premise nobody re-checked |
+| H-2 | The engine's three pre-existing failures reproduce in CI | The wave gate cannot pass, and forcing it means editing the gate, not the code |
+| H-3 | The capture in LI-06 cannot run because a production edit already landed | The baseline would record feature code as "pre-feature", quietly voiding every byte-identity claim in the feature |
+| H-4 | A byte-identity test reds after LI-20 or LI-21 | This is the feature having changed a prompt it promised not to change. **Re-capturing the baseline is never the repair** — TSPEC §T.3 makes the distinction mechanical: a legitimate re-capture adds or replaces whole `{caseId}` directories while every retained digest is unchanged |
+| H-5 | The composition-site set equality reds because a `docType` reached `dispatchAndVerify` that `LEARNINGS_TARGET_DOCTYPES ∪ {null, "LEARNINGS"}` does not contain | A seventh authoring phase exists; whether it should inherit injection is a **product** decision (REQ C-1, NG-5). Relaxing set equality to containment is the one repair that must not be made |
+| H-6 | Two tasks in one batch are found to write one file | Last-writer-wins is invisible to the green gate; the manifest is the audit and a violation halts the batch |
+| H-7 | A test needs a seam double that `helpers/seams.js` does not provide | TSPEC §T.2 scopes the exception to `learningsPredicatePin.test.js` alone; a second ad-hoc seam object is a design question, not a test-authoring convenience |
+
 ## Open questions and upstream errata
