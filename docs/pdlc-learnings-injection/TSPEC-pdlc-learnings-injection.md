@@ -361,7 +361,7 @@ corpus outcome and ordering keys, plus one run-level thresholds record.
 runs per dispatch over the state that dispatch observed (E-32, and AT-14 forbids an in-process
 memo), so two dispatches in one run may legitimately observe different corpora — different
 `orderKeys`, or dispatch 1 listable and dispatch 5 `RSN-UNLISTABLE`. REQ v0.9 AC-3.2/AC-3.3 and
-FSPEC v0.9 BR-9/BR-10 settle the loci; this table transcribes them, it does not decide them:
+FSPEC BR-9/BR-10 settle the loci (v0.9's text, verbatim-unchanged at v0.13); this table transcribes them, it does not decide them:
 
 | Field | Scope | Rule |
 |---|---|---|
@@ -509,7 +509,7 @@ conditionally-spread key, present iff the run is enabled. So:
 | present, not an object (`sectionMalformed`) | **present** — fail-open, enabled on §4.1's defaults (AC-5.1b) | `NTC-MALFORMED` present |
 | present, `enabled:true`, one declared key wrong-typed | present, the run proceeds on that key's default (AC-5.1c) | `NTC-KEYTYPE` present |
 
-The four rows are owned by two ATs (TE F-04), matching FSPEC v0.9's E-21…E-34 rows: row 1 (section
+The four rows are owned by two ATs (TE F-04), matching FSPEC's E-21…E-34 rows (v0.9's text, unchanged at v0.13): row 1 (section
 absent, and separately the file absent) is **AT-32**'s first case — an enabled composition on
 §4.1's declared defaults with **no** notice (E-21); row 2 is **AT-31**'s (`enabled:false`
 explicitly ⇒ baseline-identical composition, no injection key, no notice — E-22); rows 3 and 4 are
@@ -1114,7 +1114,7 @@ check completeness by counting (TE F-12):
 | `learningsSelect.test.js` | AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-15, AT-16, AT-28 | 9 | L1 |
 | `learningsBlock.test.js` | AT-05, AT-11, AT-12 | 3 | L1 |
 | `learningsCorpus.test.js` | AT-25, AT-26, AT-27 | 3 | L2 |
-| `learningsRecord.test.js` | AT-17, AT-18, AT-19, AT-20, AT-21, AT-22 | 6 | L1/L2 for AT-17/AT-18/AT-19/AT-21; **L3 for AT-20 and AT-22**, whose FSPEC v0.9 halves run over AT-18's changing-corpus multi-dispatch run and so drive the `DIVERGENT-CORPUS` fixture (TE F-05) |
+| `learningsRecord.test.js` | AT-17, AT-18, AT-19, AT-20, AT-21, AT-22 | 6 | L1/L2 for AT-17/AT-18/AT-19/AT-21; **L3 for AT-20 and AT-22**, whose FSPEC halves (v0.9's text, unchanged at v0.13) run over AT-18's changing-corpus multi-dispatch run and so drive the `DIVERGENT-CORPUS` fixture (TE F-05) |
 | `learningsDispatchSet.test.js` | AT-01, AT-02, AT-03, AT-06, AT-14, AT-23, AT-24, AT-29, AT-31, AT-33, AT-34, AT-35 | 12 | L3 |
 | `learningsPredicatePin.test.js` | T-PIN-1 (not an FSPEC AT — the F-O-4 cross-module pin) | — | L1 |
 
@@ -1463,7 +1463,7 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   shipping default twice, in opposite directions, and FSPEC Step 0(2) / BR-14 inherited one side.
   REQ v0.9 resolved it toward G-1: an absent `learningsInjection` section is **not** a disabled
   state, it reads as §4.1's declared `enabled: true`, "there is no second gate key", and a
-  malformed section fails **open** with a catalogued notice (AC-5.1a, AC-5.1b). FSPEC v0.9 records
+  malformed section fails **open** with a catalogued notice (AC-5.1a, AC-5.1b). FSPEC records
   the same and leaves the gate correction to this document ("No behavioural change; the gate
   correction is TSPEC's to land"). §I.3 and §D.2 are written on that answer; no question remains
   routed to REQ on this point.
@@ -1483,7 +1483,7 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   authoring dispatch alongside AC-3.1's rows, the §4.1 thresholds once per run, and **two**
   completeness tests assert set equality, one per locus. AC-3.2 settled corpus-level outcomes the
   same way, with a run-level mirror "additive, is not the oracle, and has a deliberately
-  unconstrained value that nothing asserts on"; FSPEC v0.9 BR-9/BR-10 carry both. §A.5, §D.1, §D.2,
+  unconstrained value that nothing asserts on"; FSPEC BR-9/BR-10 carry both. §A.5, §D.1, §D.2,
   the closure table and §T.6's `DIVERGENT-CORPUS` fixture are written on that answer.
 - **ERR-7 (FSPEC BR-1) — CLOSED, resolved by FSPEC v0.11 and v0.12.** BR-1 once stated that a
   dispatch carries a block "if and only if the pipeline classifies it as authoring at the moment it
