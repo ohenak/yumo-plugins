@@ -109,6 +109,11 @@ costlier than it was.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **A byte change under an unchanged version label is what makes cascade confirmations necessary in the first place.** TSPEC's bytes moved from `4a092e85…` to `1531143c…` while its version cell stayed at `1.10` — the erratum appended to the v1.10 changelog entry rather than opening v1.11. Nothing downstream is wrong for it: DECISIONS cites "TSPEC v1.10" and that label is still literally correct. But four DECISIONS prose sites and PLAN's whole v1.4/v1.5 re-grounding narrative say "re-grounded on TSPEC v1.10", and there are now two distinct TSPECs that answer to that name. The `UPSTREAM-STATE` sha anchors on cross-review files are what actually caught this (mine at v9 recorded `4a092e85…`), which is the mechanism working — the question is for the author: should an erratum that adds a paragraph to a section, rather than only fixing a sentence, take a version bump so the human-readable label carries the same signal the sha anchor does? Not a DECISIONS defect; routed as a Process observation, not filed as a finding. |
+| Q-02 | **The new §1.3 paragraph cites a live oracle by test title — who re-runs it?** It reports `PROP-SWEEP-2(b)` in `pdlc/workflows/__tests__/documentOracles.test.js` (case *"the unfiltered sweep minus A-1's frozen glob list is empty"*) as returning 28 residual paths "at PLAN's dated 2026-08-19 measurement", and names one of the three classes as *this feature's own tracked documents, which therefore grow by one per committed cross-review file*. This file is the 43rd such document and, by that paragraph's own mechanism, the residual is 29 the moment this review commits. The paragraph is honest about this — it dates the measurement and routes the figures to PLAN — and DECISIONS is untouched by it either way. The question is whether PLAN's A6-00 Edit 1, which states "closes 14 of the 28" as a bare figure, wants the same date-stamp, since the closable count (14) is stable while the total is not. PLAN-side, raised here only because this round is the first place both halves were read together. |
+
 ## Positive Observations
 
 ## Decision
