@@ -49,7 +49,50 @@ a gate row that is missing the conjunct its three sibling rows carry.
 
 ## Batches
 
-_pending_
+**What changed in the task table.** One new task (LI-23), seven rows rewritten (LI-01, LI-02,
+LI-03, LI-06, LI-07, LI-10, LI-14, LI-15, LI-19, LI-21, LI-22), and the row ids lost their bold
+markers so the manifest parser does not near-miss them. I checked each rewritten row against the
+repository and against the upstream text it transcribes.
+
+| Row | Claim checked | Result |
+|---|---|---|
+| LI-01 | `learningsPremises.test.js` is new; P-1, P-2a, P-3, P-4, P-10 hold at HEAD in the shape the row now states | ✅ — no `learnings*` file exists under `pdlc/workflows/__tests__/`; the four `"authoring"` sites are `:12861`, `:12955`, `:13657` (object literal) and `:7663` (positional), exactly as restated |
+| LI-02 | The three AC-2.6 corpora match the requirement they serve | ✅ — `DISCARDED-NESTED`, `DISCARDED-DIRECT` and `COMPLETED-MIXED` are a literal transcription of REQ AC-2.6's three limbs (`REQ:304–307`) and of FSPEC E-07/E-35/E-20 (`FSPEC:699`, `:700`, `:718`) |
+| LI-02 | "No jest globals in this helper" | ✅ — this is the right answer to my Q-04: LI-05's script imports the helper from a plain node process, and `jest.fn` would throw there |
+| LI-03 | Temp-repo instrument, real `git`, fixture/import seam for the throw, three ignore conjuncts | ✅ — resolves F-03 and F-06 together, and answers Q-03 for both probes |
+| LI-06 | Three-step mutation proof, each step targeting a different clause | ✅ — byte flip hits the digest literal, deletion hits set equality, spurious directory hits set equality from the other side; the row says all three are required and a non-red step halts |
+| LI-07 | AT-15's clause split | ⚠️ — see F-03 below: the row calls AT-15 "three clauses", but `FSPEC:836–841` has a fourth (E-35's directly-pathed document is a corpus member, is selected, and carries no exclusion reason) |
+| LI-10 | BR-10's two loci, locus 2 attributed to LI-21 | ✅ — matches TSPEC §D.2's split; the row explains why writing both and attributing both to LI-19 would halt batch 11 on a correct-but-early test |
+| LI-14 | Green on authoring, read by static parse | ✅ — resolves F-02 and answers Q-02 explicitly ("never by importing the suite"), which is what makes the assertion well-defined before any production symbol exists |
+| LI-23 | The three set equalities are *achievable* against the frozen catalogues | ⚠️ — the `rejected[].reason` and notice equalities close exactly; the `corpusOutcome` one does not. See F-01 |
+| LI-21 | The report-shape rows are named | ✅ — `LI-AT-23`, `LI-AT-24`, `LI-AT-31`, which answers Q-01 and is what makes the batch-12 ledger row evaluable |
+
+**LI-23's catalogue arithmetic, checked member by member.** This is the new task's load-bearing
+claim, so I re-derived it from TSPEC §D.1 (`TSPEC:581–585`) against the twelve-arm table:
+
+- `LEARNINGS_REJECT_REASONS` has six members — `RSN-COUNT`, `RSN-BYTES`, `RSN-SELF`,
+  `RSN-UNREADABLE`, `RSN-UNPARSEABLE`, `RSN-NO-MATERIAL`. The twelve arms enter exactly those six
+  (`RSN-UNREADABLE` twice, via `null` and via throw). **Set equality is satisfiable and tight** —
+  no member is unreachable from the inventory's own fixtures, and no arm contributes a value
+  outside the catalogue.
+- `LEARNINGS_NOTICES` has two members, both entered by AT-32 cases 2 and 3. **Tight.**
+- `LEARNINGS_CORPUS_OUTCOMES` has two members, both entered — but the observed *field* also carries
+  `null` on every healthy dispatch (`TSPEC:612`, `corpusOutcome: null`), and an inventory that
+  drives `RSN-COUNT`/`RSN-BYTES`/`RSN-SELF` **must** run healthy dispatches to reach them. The
+  observed set is therefore `{null, "RSN-UNLISTABLE", "RSN-EMPTY"}`. **Not satisfiable as
+  written** — F-01.
+
+**No same-batch same-new-file collision was introduced.** Batch 5 grows from three tasks to four
+(LI-10, LI-11, LI-12, LI-23) over four distinct new files; batch 1 is LI-01 alone over its own new
+file. LI-19 and LI-21 now name suites in their `Test File` column that they green but do not write
+(`learningsSelect`, `learningsRecord`, `learningsArmInventory`) — the document's own note that
+`Test File` means "the suite the task greens, not the suite it writes" keeps that from reading as a
+second writer, and the file-ownership manifest is the authority that agrees.
+
+**Every implementation task still has a preceding red-test row referencing the same suite.** The
+two new green attributions come with their edges: LI-19 → LI-07 for `LI-AT-15`'s corpus-level
+clauses, LI-21 → LI-23 for the arm inventory. LI-06 remains the one oracle with no red predecessor,
+and is now the one oracle with an explicit falsification proof instead.
 
 ## Dependencies
 
