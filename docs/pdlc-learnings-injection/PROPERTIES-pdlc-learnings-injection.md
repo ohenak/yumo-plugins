@@ -749,4 +749,70 @@ apparatus block) and each carrying **no** AT id by design, so §T.5's counts are
 | AC-6.2 | PROP-CONFIG-05, PROP-META-04 |
 
 
+### C.3 PLAN task table → properties (23 of 23 tasks accounted for)
+
+Read as: the task that **reds** a property writes its failing test; the task that **greens** it makes
+that test pass. `PROP-CORPUS-03` and `PROP-BOUND-01` are red LI-07 / green LI-16.
+
+| Task | Reds | Greens |
+|---|---|---|
+| LI-01 | — | PROP-META-01 (green on authoring — a static scan of the injector's call site) |
+| LI-02 | — | *fixture helper; no property of its own, but every corpus property's operand and F-O-7's owner* |
+| LI-03 | PROP-META-02, PROP-META-03 | — |
+| LI-04 | — | PROP-META-02 |
+| LI-05 | — | PROP-META-03 |
+| LI-06 | — | PROP-META-04 |
+| LI-07 | PROP-CORPUS-03/04/05/07, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 | — |
+| LI-08 | PROP-DISPATCH-06, PROP-BOUND-03/05/07, PROP-BLOCK-01/02/03 | — |
+| LI-09 | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 | — |
+| LI-10 | PROP-RECORD-01…10 | — |
+| LI-11 | PROP-DISPATCH-01/02/03/04/05/07, PROP-ORDER-05, PROP-RECORD-11, PROP-FAILOPEN-02/03, PROP-ISOLATE-01/02, PROP-FOOTPRINT-01/02/03/04 | — |
+| LI-12 | PROP-CONFIG-01…08 | — |
+| LI-13 | PROP-CORPUS-01 | — |
+| LI-14 | — | PROP-META-05 |
+| LI-15 | — | PROP-CORPUS-01, PROP-FOOTPRINT-04 |
+| LI-16 | — | PROP-CORPUS-03/04/05/07, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 |
+| LI-17 | — | PROP-DISPATCH-06, PROP-BOUND-03/05/07, PROP-BLOCK-01/02/03 |
+| LI-18 | — | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 |
+| LI-19 | — | PROP-RECORD-01…06, PROP-RECORD-08/09/10 |
+| LI-20 | — | PROP-DISPATCH-01…05, PROP-DISPATCH-07, PROP-ORDER-05, PROP-FAILOPEN-03, PROP-FOOTPRINT-01/03, PROP-ISOLATE-02 |
+| LI-21 | — | PROP-CONFIG-01…08, PROP-FAILOPEN-01/02, PROP-RECORD-03/04/07/11, PROP-FOOTPRINT-02/03, PROP-ISOLATE-01 |
+| LI-22 | — | *refactor-and-close; adds no assertion, owns no property by design* |
+| LI-23 | PROP-FAILOPEN-01, PROP-RECORD-03, PROP-RECORD-04 | — |
+
+**Split ownership is deliberate, not a bookkeeping slip.** Three properties are red by one task and
+green by two, and each split is named in the PLAN row that carries it:
+
+- **PROP-RECORD-03 / PROP-RECORD-04** — red by both LI-10 (per-dispatch rows, including the healthy
+  `null`) and LI-23 (the twelve-arm catalogue equality, scoped to non-`null`). The two halves are
+  complementary by TE F-01 and neither alone is sufficient.
+- **PROP-RECORD-07** — BR-10's **locus 2**, the run-level `ruleInputs.thresholds` key set, is red at
+  LI-10 but cannot go green until the report key exists at LI-21; it sits in the expected-red ledger
+  for batches 11–12. PROP-RECORD-06 (locus 1) greens earlier at LI-19.
+- **PROP-FAILOPEN-03 / PROP-FAILOPEN-04 / PROP-FOOTPRINT-03** — each spans two layers (L1/L2 and L3),
+  so each is red and green at two tasks; the L3 half of PROP-FOOTPRINT-03 stays red until LI-21
+  because the disabled-run arm needs the configuration reader.
+
+### C.4 Reconciliation
+
+| Count | Value | Source |
+|---|---|---|
+| Properties in this document | 64 | Groups A–J |
+| FSPEC acceptance tests | 35 | TSPEC §T.5's partition, asserted by PROP-META-05 |
+| ATs covered by ≥1 property | 35 | §C.1 |
+| PLAN tasks | 23 | LI-01…LI-23 |
+| Tasks owning ≥1 property | 21 | §C.3 (LI-02 and LI-22 own none, both by design) |
+| Properties with **no** owning task | 0 | §C.3 |
+| Fail-open arms | 12 | TSPEC §T.7, mechanised by PROP-FAILOPEN-01 |
+
+Two named test files this document depends on **do not yet exist** — `learningsSelect.test.js`,
+`learningsBlock.test.js`, `learningsCorpus.test.js`, `learningsRecord.test.js`,
+`learningsDispatchSet.test.js`, `learningsConfig.test.js`, `learningsArmInventory.test.js`,
+`learningsCaptureScript.test.js`, `helpers/learningsFixtures.js` and
+`fixtures/learnings-baseline/` are all **planned new** files (PLAN §Manifest rows; a
+`ls pdlc/workflows/__tests__ | grep learnings` on `HEAD` returns nothing). Every one is explicitly
+planned; **no property in this document names a test file the PLAN does not create.** Likewise
+`scripts/capture-learnings-baseline.mjs` is new — the repository has no root-level `scripts/`
+directory today, and LI-05's row says so.
+
 ## Gaps, Obligations and Routed Errata
