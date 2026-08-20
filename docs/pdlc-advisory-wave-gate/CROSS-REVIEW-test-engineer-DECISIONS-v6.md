@@ -124,4 +124,20 @@ the three surfaces BL-06 requires to move together.
 
 ## Recommendation
 
+**Approved with minor changes.** Both v5 findings are resolved, and the round went further than they
+asked: the seam half of the enumeration was re-derived for the first time and turned out to be wrong
+by five sites, with the causing commit named and checkable. Every claim in the delta that can be
+grounded in HEAD source was grounded, and all but one held. The exception, F-01, is an error I
+supplied in v5 and the author transcribed faithfully — `advisoryConfig.test.js`'s six-member envelope
+*is* compared against production, by PROP-CFG-02's deep equality at `:135`/`:143`, and is red today.
+F-02 asks the prose-site rule the record itself introduced to be applied to the seam half as well, or
+narrowed on purpose. Neither correction changes the sizing conclusion — one task, sequenced together
+— and neither is gating.
+
 ## Verdict
+
+FINDING: Medium | delta | local | "Seven sites already at the post-A6 value" bullet | "`advisoryConfig`'s six-member envelope is never compared to anything" is false at HEAD: PROP-CFG-02's `expect(config).toEqual(ADVISORY_DEFAULTS)` (`advisoryConfig.test.js:135`, `:143`) deep-equals parsed production config including `envelope`, so both six-member literals assert against production and both are red today, not only `advisoryEnvelope.test.js:284`
+FINDING: Medium | delta | local | "None of those five transcriptions is an oracle" / shared-double sizing bullets | The prose-site rule ("a comment that restates a set-equality literal is a maintenance site like any other") is counted for the envelope comment (`advisoryDoubles.js:317`) but not for the seam half's equivalents (`advisoryRecord.test.js:488-489`, `:492`, `:493`; `advisoryDisabled.test.js:617`, `:620`, `:621`; `advisoryHarvest.test.js:542-544`, `:571`), so the "six hand-copy surfaces" figure undercounts by roughly ten
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
