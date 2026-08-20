@@ -39,6 +39,49 @@ E-row, no locus reassignment, no traceability row retired.
 
 ## Architecture
 
+The architecture claim most exposed by this window is §A.2's attachment condition:
+
+```
+const injectHere = dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType);
+```
+
+Until v0.10, that conjunction was TSPEC going **beyond** its upstream: BR-1 said a dispatch carries
+a block "if and only if the pipeline classifies it as authoring", and added that the rule "consumes
+the classification, it does not restate the membership". TSPEC's §A.2 said so plainly ("FSPEC BR-1
+as written forbids this conjunct") and routed the divergence as ERR-7 rather than resolving it in
+code. That was the right call, and the erratum vindicated it.
+
+At HEAD, BR-1 reads: "**both** hold: the pipeline classifies it as authoring, **and** its target
+document is one of REQ, FSPEC, TSPEC, PLAN, DECISIONS or PROPERTIES (REQ C-1)", and names the
+second conjunct "load-bearing, not defensive — an authoring-classified dispatch whose target is
+none of those six document types (the code-review phase's optimizer round at HEAD) is outside the
+rule". That is §A.2's P-2b/P-2c premise, adopted verbatim in substance. Re-checked, row by row:
+
+| TSPEC architecture claim | Upstream at v0.12 | Status |
+|---|---|---|
+| P-2a — four `dispatchKind: "authoring"` code sites | BR-1 no longer enumerates call sites; "read off the classification, not maintained here" | unaffected; premise is measured at HEAD, not quoted |
+| P-2b/P-2c — classification is **wider** than C-1; Phase CR's `docType: null` optimizer | BR-1's second conjunct and its parenthetical name exactly this dispatch | now upstream-backed rather than TSPEC-only |
+| P-3 — single `dispatchAndVerify` funnel | Overview's "runs once per authoring dispatch, immediately before the dispatch is composed" | verbatim, untouched |
+| P-7/P-8/P-10 — read/list/git seams | BR-8's per-document unlistable/unreadable rows | untouched by this window |
+| P-11/P-12 — `parseAdvisoryConfig` sibling precedent | untouched | unaffected |
+
+Two consequences for this section:
+
+1. **ERR-7's premise is gone.** §A.2's paragraph "FSPEC BR-1 as written forbids this conjunct
+   ('consumes the classification, it does not restate the membership'), and AT-02's expected set
+   inherits the ambiguity, so the divergence is **routed as ERR-7**" now quotes a sentence upstream
+   no longer contains, and routes a question upstream has answered. The engineering content is
+   unchanged and correct; the routing note is stale. F-02 below (Low).
+2. **`LEARNINGS_TARGET_DOCTYPES` keeps its hand-transcribed status.** BR-1 still declines to
+   maintain a list of its own ("Both conjuncts read the pipeline's own existing values"), so DC-14's
+   hand-transcription of C-1's six names into `learningsDispatchSet.test.js` remains the right
+   oracle — importing the production constant would still be the vacuous form. Nothing to change.
+
+The implementation anchors §A.2 cites (`orchestrate-dev.js:14551-14556`, `:7306`, `:7342-7358`,
+`:8978`) have not moved in this window — `472e505c` is still the last commit to touch that file —
+so the v8 by-symbol re-verification of P-2a/P-3/P-11/P-12 stands. F-05 (positional anchors, DEC-DOC-01)
+carries forward unrepaired and unchanged in severity.
+
 ## Interfaces
 
 ## Data Model
