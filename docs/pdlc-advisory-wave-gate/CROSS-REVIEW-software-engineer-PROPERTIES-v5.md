@@ -97,7 +97,38 @@ PROP-SEAM-05's byte-for-byte baseline) read exactly as approved.
 
 ## Fixtures
 
-_(pending)_
+Two fixture rows changed, and one whole-document check applies here.
+
+**`SEAMS` literal row.** Was: "verified at HEAD as five at `helpers/advisoryDoubles.js:271`". Now:
+the `const SEAMS` declaration already carries the six-member form at HEAD, so the row records the
+required end state. On disk, `helpers/advisoryDoubles.js:354` reads
+`const SEAMS = ["A1", "A2", "A3", "A4", "A5", "A6"];` — the old claim was doubly wrong (wrong count,
+wrong line) and the new one is right and line-free. Matches TSPEC §1.3's "already carry six members
+and an A6 double".
+
+**Example-config fixture row.** Re-anchored off `ci-arrangement.test.js:39` / `:799`–`:819` onto
+`const configPath` and the `implementation.testCommand` test, and it now spells the two regexes
+inline so the pre-edit baseline is readable without chasing a line number. Both anchors verified on
+disk. The verbatim-string discipline paragraph below the table still governs, and the two regexes
+are byte-identical to the ones in PROP-CFG-03 — no duplication drift between the property and its
+fixture.
+
+**Residual raw line pins (the one thing this round did not sweep).** The erratum re-anchored the
+citations round 4 flagged, but the same DEC-DOC-01 class survives untouched elsewhere in the
+document, and several of those pins have drifted by ~4 lines at HEAD:
+
+| Citation | At HEAD |
+|---|---|
+| PROP-REC-07: `ADVISORY_SEAM_PHASES` "module-private at `orchestrate-dev.js:3108`" | declaration is at `:3112` (`:3108` is a comment line) |
+| PROP-REC-07: `unknown` fallback at `orchestrate-dev.js:3338` | the `ADVISORY_SEAM_PHASES[seam]` lookup is at `:3342` |
+| PROP-GATE ledger note: `orchestrate-dev.js:3428`, `:3459` | `:3428` is blank; the `ADVISORY ESCALATION:` notice is at `:1584`/`:3585` |
+| Fixtures/Overview: eight refusal reasons `orchestrate-dev.js:2297`–`:2306`; five exclusion ids `:2311` | catalogue is `:2301`–`:2310`; `ADVISORY_EXCLUSIONS` is `:2315` |
+
+`advisoryDodSeams.test.js:371` is the one raw pin still accurate (`mkdtempSync(join(tmpdir(), …))`).
+These are inherited — pre-round bytes this edit did not touch — and per DEC-DOC-01 they are Low,
+`Process`-flavoured findings, not gating. I record them so the next erratum, if one is opened for
+another reason, can finish the sweep in one pass rather than one pin per round; opening a round
+*solely* for them would cost more than it buys.
 
 ## Delta-Confirmation Findings
 
