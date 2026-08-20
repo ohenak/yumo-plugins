@@ -743,6 +743,29 @@ the **branch** working tree, against a **merge-base checkout of the subject modu
    `__tests__/fixtures/learnings-baseline/{caseId}/{dispatchIndex}.txt`, plus a `MANIFEST.json`
    recording the merge-base sha and a SHA-256 per file. The worktree is then removed.
 
+**`.baseline-worktree` must be ignored and removed in a `finally`, and it is neither today
+(PM Q-02).** Measured at HEAD: `git check-ignore -v .baseline-worktree` exits non-zero — no
+`.gitignore` rule covers it — so a capture interrupted between step 1 and step 3's removal leaves a
+full untracked checkout at the repository root. The §T.6 porcelain instrument no longer cares (it
+runs in its own temp repository, below), but two other things do, and one of them is a shipped
+gate: `coveredViolations` walks the **entire** tree under `root` skipping only `.git/` and
+`node_modules/` (`WALK_SKIP_DIRS = new Set([".git", "node_modules"])`,
+`pdlc/workflows/lib/document-oracles.mjs:69`), so an abandoned worktree — which contains a second
+copy of every `docs/**` artifact — would be scanned as if those copies were live documents. Two
+obligations follow, both owned by this TSPEC and both PLAN tasks:
+
+1. Add `/.baseline-worktree/` to `.gitignore`, anchored at the root the way
+   `/.claude/pdlc.config.json` is, so a nested fixture tree of the same name is untouched.
+2. `scripts/capture-learnings-baseline.mjs` removes the worktree in a `finally` block
+   (`git worktree remove --force .baseline-worktree`), so an exception between materialise and
+   remove still cleans up. Removal is `git worktree remove`, not `rm -rf`: the latter leaves a
+   stale administrative entry under `.git/worktrees/` that reds the next `git worktree add` at the
+   same path.
+
+Ignoring is the belt and removing is the braces — neither alone is sufficient, because an ignored
+leftover still feeds the oracle walk in (1) and an unignored one still dirties `git status` for
+whoever runs the capture.
+
 **When re-capture is legitimate, stated so the rule is enforceable rather than exhortatory.**
 Re-running the script is correct in exactly one case: the L3 fixture matrix itself changes (a case
 is added, or a scripted `_agent` response changes), so the baseline covers dispatches it did not
