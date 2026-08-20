@@ -52,6 +52,42 @@ all" report shape. This is the single most important thing in the document and i
 
 ## Positive Observations
 
+- **The document re-grounded itself on current upstream instead of inheriting TSPEC's stale reading.**
+  TSPEC v0.5 was authored against REQ v0.7 while REQ contradicted itself about the shipping default;
+  REQ v0.9 settled it, and DEC-LI-07 follows the settled product decision rather than the convenient
+  inherited one. Concretely it prevents the feature shipping **off** in this very repository — no
+  config section, 9 corpus documents — which is the exact case G-1 exists to serve. That is the
+  single highest-value paragraph in the document.
+- **DEC-LI-03's rejection of the single-conjunct gate is argued from behaviour, not taste, and the
+  behaviour is real.** I re-traced `docType: null` from Phase CR's call through `roundDocType` to
+  `dispatchAndVerify`; the "simpler" gate would inject into `se-author` remediating shipped code,
+  which NG-5 and C-1 exclude. "The single-conjunct gate is not simpler in effect; it is wrong" is
+  earned.
+- **DEC-LI-05 converts an acceptance criterion into a structural fact.** AC-4.1 / AC-5.1a byte-identity
+  holding by construction — appending `""` is identity — rather than by a test someone must keep
+  re-running is the kind of design choice that keeps costing nothing for years.
+- **Costs are stated where they hurt, not buried.** DEC-LI-06's "the read cost is unbounded where the
+  injection is bounded", DEC-LI-08's weak-sense C-8, DEC-LI-01's "PLAN is nearly serial" consequence,
+  and DEC-LI-09's "hard to reverse" all name the bill before someone else discovers it. The
+  Consequences section's split into *made cheap* / *made expensive* / *handed downstream* is a format
+  worth reusing.
+- **Every rejected alternative I spot-checked was rejected against something real** — the vendoring
+  list, the `defaultListFiles` predicate, the advisory reader's opposite default, the stale-worktree
+  behaviour of `rm -rf`. No alternative was dismissed on preference wearing a cost's clothes.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+No High finding. Nothing in the document narrows, reinterprets or silently drops a REQ acceptance
+criterion; where it departs from TSPEC it does so to *restore* a settled product decision, and it
+says so. The three Medium findings are all about **carrying** decisions to the people downstream who
+need them — an erratum that is promised but not recorded (F-01), an alternative left open for a
+future agent to re-litigate (F-02), and a fail-open assumption that holds on one channel and is
+unguarded on the other (F-03) — not about the decisions themselves, which I would ship as they
+stand. Address F-01 before PLAN authoring, since PLAN and PROPERTIES both read TSPEC.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 3}
