@@ -242,6 +242,49 @@ raised this at v14 as F-01; the v0.13 erratum did not route it. Re-filed here as
 
 ## Open Questions
 
+**F-O-1 (edited) — the routed delegation gap is closed.** The obligation now reads "Two
+heading-recognition rules, on the same terms: the predicate for 'presents as a LEARNINGS document'
+(BR-3), **and** the rule by which a heading counts as one of BR-6's named sections — whether the
+numbered form, the bare title or a prefix of it is matched. Both are bounded by two requirements this
+FSPEC fixes: each consults only the document's bytes, and each is decidable without a model call."
+
+This is the correct shape for a testability delegation, on three counts. It names the **decision**
+owed (numbered form / bare title / prefix), not merely the area, so the TSPEC round can be checked
+against a specific answer rather than an essay. It carries the **same two bounds** to both rules, so
+neither can be discharged with a model call or a filesystem read, which are the two mechanisms that
+would make the matcher non-deterministic and its tests flaky. And it sits in the obligations table,
+which is the artefact the TSPEC's "entry obligations discharged here" section transcribes — so the
+gap is now *tracked*, not merely mentioned. BR-6's own text (FSPEC:441-442) already said "which
+headings count as these sections is F-O-1's, not text matched literally here", so after this edit the
+delegation and the owner agree.
+
+**Heads-up for the next TSPEC round** (that document's finding to carry, not this one's): TSPEC §D.5
+discharges F-O-1's document-shape half via `LEARNINGS_HEADING_RE` and specifies
+`extractInjectableMaterial(text, maxBytes)` returning `{material, bytes, bounded}` with
+`bounded === true` exactly when material was cut; T-O-6 (TSPEC:1236) turns that into a property over
+**any** non-negative `maxBytes`. At `maxBytes: 0` that property yields empty material with
+`bounded: true`, whereas the FSPEC now says the document yields nothing, is dropped, and carries
+`RSN-NO-MATERIAL` with no row to flag. The extractor's return value and the selection outcome are not
+in conflict — the caller drops on empty material regardless of the `bounded` bit — but the TSPEC must
+say so, and T-O-6's generator now needs `maxBytes: 0` in range with the caller-side outcome pinned.
+Flagging it here so the next TSPEC round re-grounds on these bytes rather than discovering it in
+implementation.
+
+**Q-01** — Is the section-heading matcher intended to be the *same* regex as `LEARNINGS_HEADING_RE`
+with a different capture, or two independent matchers that merely share the two bounds? F-O-1's "on
+the same terms" reads as the latter; if the former is intended, saying so would let TSPEC discharge
+both halves with one pinned pattern and one mutation test.
+
+**Q-02** — At `maxBytesPerDocument: 0`, is the corpus-level record still silent (per-document
+`RSN-NO-MATERIAL` rows only), or does an all-documents-drop run also carry a corpus-level outcome?
+BR-9's corpus-level catalogue covers "no document is known"; here documents *are* known and all drop.
+E-36 and AT-30 assert BR-8's rows present and empty, which implies no corpus-level id, but the
+implication is inferred rather than stated. Not a finding at FSPEC altitude — the outcome is
+determined either way by BR-9's closed set — but worth one clause if it is cheap.
+
+My carried `DEFERRED:` item (BR-9's notice-emission locus, routed to TSPEC) is unchanged and still
+non-blocking. This delta neither addresses nor disturbs it.
+
 ## Positive Observations
 
 ## Recommendation
