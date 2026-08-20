@@ -38,7 +38,39 @@ this round.
 
 ## Options Considered
 
-_pending_
+**(a) The delta invalidates a decision — non-approving, a `delta/local` High.** The reading that
+could have earned this is `DEC-LI-08`: it is the entry that *is* about bounding, and the round
+redefined what the bounds bound. I checked it first, and the test I applied is whether any
+`D-O` obligation loses falsifying power or any decision's chosen shape becomes wrong. Neither
+happens. `DEC-LI-08`'s decision is **static caps only, no dynamic budget**, and its two rejections
+(measure-the-prompt, fraction-of-prompt) turn on authority and determinism, not on which bytes the
+caps count. Narrowing the counted set from framing-plus-material to material-only leaves both
+rejections standing verbatim and leaves the caps applied unconditionally. Similarly `DEC-LI-05`'s
+byte-identity-by-construction is untouched: an empty selection still concatenates `""`, and the
+v0.13 zero-bound case reaches that same empty-selection path (E-36 explicitly routes to BR-14's
+enabled empty-selection run), so `DEC-LI-05` gains a **new** empty-selection input rather than a
+counterexample. Reading (a) has no support in the bytes.
+
+**(b) Nothing to say — approve silently.** Wrong, and for a reason that is easy to under-weight
+because the decisions themselves are fine. `DEC-LI-08` states that "the injection is bounded a
+priori" and hands `D-O-4` downstream as the obligation that closes C-8's acknowledged gap: report
+"realised prompt sizes **against REQ §4.1's caps**". Under material-only accounting those two
+quantities are no longer the same quantity — a realised block is its material *plus* framing FSPEC
+now charges to no threshold, so a conforming run routinely renders a block larger than
+`maxTotalBytes`. An operator holding `D-O-4`'s report next to §4.1's caps, per the sentence this
+document wrote, reads an overrun that is not one, or is told to move a cap that was never binding on
+the thing that grew. The obligation is the closing condition for the one gap this document
+deliberately left open; leaving it phrased against a superseded accounting basis is precisely the
+citation-currency class DEC-ERR-03 asks a cascade round to catch.
+
+**(c) Faithful-but-drifted — approve, with tagged non-gating findings.** This is what the bytes
+support. No decision is invalidated; no `D-O` obligation is voided; the compression still holds
+everywhere it makes a behavioural claim. What drifted is (i) two sentences whose **quantity
+semantics** FSPEC changed underneath them (`DEC-LI-08`'s "bounded a priori" framing and `D-O-4`'s
+caps comparison), and (ii) one obligation, `D-O-3`, whose `extractInjectableMaterial` property is
+now stated over a bound domain that includes a value FSPEC has since given a **different** outcome
+than the property's own clause predicts. Both land in the next revision of DECISIONS; neither
+reopens a decision, and neither blocks the phase.
 
 ## Decision
 
