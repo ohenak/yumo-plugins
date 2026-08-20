@@ -90,12 +90,33 @@ The traceability row at `:140` (`AC-1.2 | BR-1, BR-11 | AT-02, AT-03`) is itself
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | BR-1's corrected two-conjunct rule is not propagated to its complement: BR-11, AT-03 and AT-29 still quantify byte-identity over "non-authoring" dispatches, which after this edit is strictly narrower than "outside BR-1's rule". REQ AC-1.2 names the difference (the code-review phase's optimizer, authoring-tagged with no C-1 target) and requires it byte-identical to the disabled run. Fix: swap the quantifier at those three sites to "outside BR-1's rule". | `## Business Rules` BR-11 (`:596`); `## Acceptance Tests` AT-03 (`:787`), AT-29 (`:911`) |
+| F-02 | Low | delta | local | Header `Cross-Reviews` row still stops at `v11` although `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v12.md` were on the branch (15d8f46e, 2026-08-19 23:54) before this round's header commit 1b4dc3de (2026-08-20 01:50). Same recurrence I recorded at v12: hand-enumeration re-stales on every round. | Header block, `Cross-Reviews` row (`:12`) |
+| F-03 | Low | delta | nonlocal | Single-conjunct echoes of the pre-correction BR-1 remain in prose that points at BR-1: decision row D-2 "Is this dispatch an authoring dispatch?" (`:265`), the flow summary "to the dispatches the pipeline already classifies as authoring" (`:70`), assumption A-2 (`:995`). No behavioural divergence — each defers to BR-1 — but each restates the half-rule the erratum just removed. | `## Behavioral Flow` D-2 (`:265`), `:70`; `## Open Questions` A-2 (`:995`) |
+
+FINDING: High | delta | local | `## Business Rules` BR-11 (`:596`) and `## Acceptance Tests` AT-03 (`:787`), AT-29 (`:911`) | the erratum corrected BR-1 to a two-conjunct rule but left the rule's complement written against the old single conjunct — BR-11/AT-03/AT-29 assert byte-identity only over "non-authoring" dispatches, so the authoring-tagged dispatch with no C-1 target that REQ AC-1.2 names by hand (the code-review phase's optimizer at HEAD) is now claimed by no rule and covered by no AT; swap the quantifier at those three sites to "outside BR-1's rule"
+FINDING: Low | delta | local | Header block, `Cross-Reviews` row (`:12`) | the row still enumerates up to `v11` though the v12 software-engineer and test-engineer FSPEC cross-reviews landed on the branch before this round's header commit; the hand-enumerated list re-stales every round, as recorded at v12
+FINDING: Low | delta | nonlocal | `## Behavioral Flow` D-2 (`:265`) and `:70`; assumption A-2 (`:995`) | prose that defers to BR-1 still restates only the authoring-classification conjunct, so read standalone it reproduces the rule the erratum removed; no behavioural divergence, wording only
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+The four routed items land, and land well: BR-1 now transcribes REQ C-1 with both conjuncts and names the second load-bearing, BR-15's expected set is instrument-consistent and enumerable, and AT-02/AT-33 track both corrections. Upstream is unmoved (REQ sha256:ff605dd…e84dd, identical to my v12 `UPSTREAM-STATE`), and every citation the delta adds re-verifies against REQ C-1, AC-1.2, NG-5 and AC-5.2 at HEAD — several verbatim-aligned, including AC-1.2's own parenthetical for the code-review optimizer. On items alone this would be an approval.
+
+It is not, because item landing is necessary and not sufficient. REQ AC-1.2 is a two-halved sentence — set equality for the block-carrying dispatches, byte-identity for everything outside the rule — and this delta corrected the first half while leaving the second half quantified over the pre-correction complement. The two halves no longer partition the same universe, and the dispatch AC-1.2 goes out of its way to name is exactly the one that falls in the gap: BR-11 makes no claim about it, AT-03 and AT-29 do not test it. That is a coverage hole this document did not have before the edit, which is why F-01 is `delta` rather than `inherited`, and it sits in the same rule and the same AT group the edit touched, which is why it is `local`.
+
+What must change, minimally — a three-site quantifier swap using the phrase BR-1 already introduced:
+
+1. BR-11 (`:596`): "every **non-authoring** dispatch prompt" → "every dispatch **outside BR-1's rule**".
+2. AT-03 (`:787`): "each non-authoring dispatch's prompt" → "each dispatch outside BR-1's rule", with the fixture note that the universe includes the code-review phase's optimizer round.
+3. AT-29 (`:911`): "every non-authoring dispatch prompt" → the same phrase.
+
+F-02 and F-03 are Low and non-gating; fold them into the same pass if it is cheap, or carry them to the next non-frozen revision.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
