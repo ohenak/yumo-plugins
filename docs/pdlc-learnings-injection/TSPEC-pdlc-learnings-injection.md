@@ -546,9 +546,11 @@ export function renderLearningsBlock({ selected })
 export function buildLearningsInjector({ config, sink, _git, _readFile, _log })
 ```
 
-`buildLearningsInjector` returns `null` when the feature is off — so `dispatchAndVerify`'s
-attachment is `typeof _injectLearnings === "function" ? await _injectLearnings(ctx) : ""`, and a
-disabled run executes **no new code at all** past that one type check. That is the strongest form
+`buildLearningsInjector` returns `null` when the feature is off — i.e. when `config.enabled` is
+explicitly `false`, the only disabling state REQ v0.9 AC-5.1a recognises — so `dispatchAndVerify`'s
+attachment is `typeof _injectLearnings === "function" ? await _injectLearnings(ctx) : ""`, and an
+**explicitly disabled** run executes **no new code at all** past that one type check. A bare
+repository and a malformed section are *not* disabled states: both take the enabled path. That is the strongest form
 of AC-5.1a available: the disabled path is not "the enabled path with an empty result", it is a
 branch that never enters the feature.
 
@@ -948,8 +950,10 @@ disjoint and equal to the 35-member literal — is what keeps this table honest 
 **`learningsConfig.test.js` is an L3 suite, not an L1 one (TE F-01).** Both of its ATs are stated
 *"when the pipeline runs"*: AT-30 requires an enabled run whose BR-8 rows are **present and empty**
 — a claim only a whole run can make, since the distinction from a disabled run is the presence of
-the `learningsInjection` key in the finished report — and AT-32 requires the composition to match
-AT-31's byte-for-byte *and* the report to carry `NTC-MALFORMED` on the run-level notice channel.
+the `learningsInjection` key in the finished report — and AT-32 requires the malformed-section
+run to stay **enabled** on §4.1's defaults *and* the report to carry `NTC-MALFORMED` on the
+run-level notice channel — a byte-comparison against AT-31's disabled composition would now be
+wrong, AT-31 being the explicitly-`enabled:false` run.
 An L1 unit test over `parseLearningsConfig` can falsify neither clause: it sees the parse result,
 never the report key set and never a composed prompt. The suite therefore drives `main()` over the
 full seam set with a scripted `_agent`, on the `advisoryDisabled.test.js` pattern (that file
@@ -1118,7 +1122,7 @@ a diluted file-level percentage never would have been:
 | Byte bound cuts ⇒ `RSN-BYTES` | AT-07, and the `BYTES-BINDING` fixture (§T.4) |
 | Self path ⇒ `RSN-SELF` | AT-04 |
 | Outer `try/catch` ⇒ `RSN-UNLISTABLE` (BR-12 last row) | A fault-injection case in `learningsCorpus.test.js` |
-| Section malformed ⇒ `NTC-MALFORMED`, injector not built | AT-32 |
+| Section malformed ⇒ `NTC-MALFORMED`, run stays enabled on §4.1's defaults (fail-open) | AT-32 |
 | Key wrong-typed ⇒ `NTC-KEYTYPE`, proceeds on defaults | AT-32 (second case) |
 
 Whether to additionally run a region-scoped `c8` invocation is left to PLAN as a cheap option; the
