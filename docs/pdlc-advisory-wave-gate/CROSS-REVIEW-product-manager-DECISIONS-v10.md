@@ -132,10 +132,45 @@ to DECISIONS' compression.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Process | **TSPEC's bytes changed under an unchanged version label, and DECISIONS cites that label five times.** `1f2a4fbf` appended a `**Phase-P erratum (this dispatch):**` sentence to the v1.10 changelog paragraph and a new paragraph to §1.3, but left the status table at `Version 1.10` and the changelog heading at `**v1.10 (erratum round, Phase PR).**`. DECISIONS cites "TSPEC v1.10" as its grounding label at `:40` ("TSPEC v1.10 settles the…"), `:105` ("Option A's rejection **is falsifiable at TSPEC v1.10**") and `:345` ("**The collapse is falsified upstream at TSPEC v1.10.**"). All three claims remain true of the bytes at HEAD — the sections they rest on (§5.2's `waveBudgetPerRun: 0` fixture, §4.5/§5.2's snapshot-ref oracle, §1.1's O-8 row) are outside this delta — so nothing is *wrong*; the label is simply no longer a unique name for a byte state, and a later reader reconciling "v1.10" against a hash cannot tell which v1.10 was meant. The fix is upstream and cheap: TSPEC bumps to v1.11 (or labels the erratum in its status table), after which DECISIONS' three citations can be re-pointed in whatever round next touches those lines. No DECISIONS edit is required to close this round. | POSTMORTEM-D §6; DEC-DOC-01 (adjacent — anchor stability) |
+
+FINDING: Low | delta | nonlocal | DECISIONS `:40`, `:105`, `:345` ("TSPEC v1.10" citations) | TSPEC's bytes moved under an unchanged `v1.10` label, so DECISIONS' three "TSPEC v1.10" citations name a label that now covers two byte states; the claims themselves still hold at HEAD, the fix is a TSPEC version bump, and no DECISIONS edit is owed
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | TSPEC §1.3 now routes the residue partition, owners and figures to *"PLAN's Overview HEAD-drift note and A6-00's Edit 1, which own them"*, while itself stating 28 / three classes / 14-closable inline "so that no reader of this paragraph mistakes the `.bak` blobs for the whole residue". That is a deliberate one-sentence restatement, and it is defensible — but it is the same shape (a measured figure carried in a document whose consumer is elsewhere) that took DECISIONS five rounds to converge before v1.8 relocated it. Should TSPEC's inline figures be reduced to the qualitative claim ("three classes, of which the `.bak` blobs are one") with the integers left solely to PLAN? Not a DECISIONS question and not blocking — routed to whoever confirms TSPEC. |
+| Q-02 | `SIZING-pdlc-advisory-wave-gate.md` is not in the PROP-SWEEP-2(b) residue at HEAD only because it happens to quote none of L-2's seven terms. If a later re-measurement round adds a `.bundle.js` or `pdlc-drift` reference to that appendix, the sweep residue grows and PLAN's dated figure moves for a reason unrelated to the feature. Worth a one-line note in SIZING's "Measurement vintage" section warning authors off L-2's terms? Editorial. |
 
 ## Positive Observations
 
+- **The relocation at v1.8 is what made this round cheap, and this is the round that proves it.** A
+  cascade confirmation against a document that still carried five rounds' worth of measured totals
+  would have meant diffing every integer against a freshly re-measured upstream. Because DECISIONS
+  now carries exactly one number — column (1)'s four — and reaches into §1.3 only for its *role*,
+  the entire exposed surface was four citations, and all four held.
+- **TSPEC's edit routes rather than accumulates, and it routes to the carrier DECISIONS already
+  names.** "PLAN's Overview HEAD-drift note" is the same owner DECISIONS `:373-375` points at. The
+  failure mode I checked for — an erratum quietly establishing a *second* home for measured figures,
+  leaving DECISIONS pointing at the stale one — did not happen.
+- **TSPEC's figure is honestly dated, and reproduces under its own stated growth rule.** I ran L-2's
+  seven-term sweep minus A-1's globs at HEAD and got 33, against TSPEC's 28. That is not a
+  discrepancy: TSPEC dates the number to PLAN's 2026-08-19 measurement and states in the same
+  sentence that the document class grows by one per committed cross-review file. Five have landed
+  since. A figure that predicts its own drift is the right way to carry a short-shelf-life count,
+  and it is exactly what POSTMORTEM-D §6 step 1's "publish the recipe, not the total" asked for.
+- **The class partition reproduces exactly.** 14 `.bak` blobs, four consumer-runtime artifacts, and
+  this feature's tracked documents — verified by running the sweep, not by reading the paragraph.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+DECISIONS holds as approved against TSPEC at HEAD. No edit to DECISIONS is required for this
+cascade. The one Low finding (F-01) is a version-label hygiene item owned by TSPEC; it gates
+nothing, and both questions are routed elsewhere.
 
 ## Verdict
