@@ -259,6 +259,51 @@ this feature adds, per the rule below".
 
 ## Questions
 
+My v3 Q-01 is answered by P-A-7, and answered as a bar rather than a preference: a red PROPERTIES
+suite's ledger rows are amended **in this document, before the batch they apply to**, under the
+generalised rule "a live table is amended by an edit to this PLAN, committed before the run it
+governs" — which now covers the manifest (P-A-5) and the ledger (P-A-7) with one sentence instead of
+two. That is the answer I hoped for and it is enforceable by the mechanism it names.
+
+| ID | Question |
+|----|---------|
+| Q-01 | P-A-6 says the PROPERTIES **suite** lands "at the first point the suite is green, which in practice is after LI-21 (batch 13)". Batch 14 is a refactor batch. If the PROPERTIES suite lands between batch 13 and batch 14, it is inside batch 14's unqualified full-suite green gate — which is the right place for it — but it is also new material inside the tree `coveredViolations` walks. Is landing it *after* batch 14 the safer default, or is being covered by batch 14's gate the point? One clause either way; not gating |
+
+## Positive Observations
+
+- **F-01 was resolved at the value, not at the concept.** The row could have said "the record suite
+  also covers healthy dispatches". It says `dispatches[i].corpusOutcome === null` on dispatches 1, 2
+  and 4, names the fixture that produces them, and states the mutant the clause kills. That is a
+  clause a test gets written from, and it closes the pairing LI-23's non-`null` scoping depends on
+  from both ends — LI-23 now points at LI-10 by name, so neither row can be read alone and
+  misunderstood.
+- **F-02 came back as a rule rather than as two row edits.** I offered "name the tests in LI-01 and
+  LI-06, or state the convention once". v0.4 chose the second and extended it: the rule is
+  universally quantified over "every other test this feature adds", it is labelled "a gate input,
+  not a style preference", and it names the detection latency (green-terminal batches 1 and 4, red
+  surfacing at batch 6 pointing at the wrong file). A seventh suite nobody has thought of is covered
+  by that sentence; two row edits would not have covered it.
+- **The PM F-09 re-key is a good catch and the PLAN's anatomy of it is exact.** I re-measured every
+  claim in it — both `erratumRound` dispatches, the `missingAgainst` arrow closing at `:12928`
+  before the retry at `:12955`, `converge` at `:13628`, `reviewLoop` at `:7266` — and each is true
+  of HEAD. The row also does the thing I most value: it states *why the obvious key fails*, so the
+  next person to touch this assertion cannot reintroduce the collision by accident.
+- **P-A-7 generalises rather than duplicates.** Two live tables, two ways they could be amended, one
+  rule: "a live table is amended by an edit to this PLAN, committed before the run it governs." That
+  is one sentence covering the manifest and the ledger, and it is the same principle P-A-5 stated
+  ("a contract the dispatcher cannot read enforces nothing") applied to a second table rather than
+  restated for it.
+- **DoD 13 preserves the only records this feature cannot assert.** The four absence claims are
+  falsified on schedule by this PLAN's own tasks — that is why they left the standing suite — so a
+  DoD clause is genuinely the strongest available mechanism, and the PLAN says so rather than
+  pretending a test could hold them. The positive standing oracle over the same ground still exists
+  where one can (`LI-T-IGNORE` conjunct (1)).
+- **Nothing regressed.** No task row added or removed, no `Deps`, `Batch`, `Test File` or manifest
+  cell changed, the batch DAG untouched, the expected-red ledger unchanged and still empty at batch
+  13, the coverage material and porcelain instrument untouched, and the three gate/ladder/§T.5
+  statements of the batch-6 justification now agree instead of two-of-three. I checked each rather
+  than assuming it.
+
 ## Positive Observations
 
 ## Recommendation
