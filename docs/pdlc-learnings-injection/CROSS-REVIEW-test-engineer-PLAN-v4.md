@@ -304,8 +304,44 @@ two. That is the answer I hoped for and it is enforceable by the mechanism it na
   statements of the batch-6 justification now agree instead of two-of-three. I checked each rather
   than assuming it.
 
-## Positive Observations
-
 ## Recommendation
 
+**Approved with minor changes**
+
+All four v3 findings are resolved, and no High finding is open from any round. I re-derived nothing
+that did not change and re-measured everything that did: LI-10's healthy-`null` clause against the
+`DIVERGENT-CORPUS` shape its own row declares, the four re-keyed P-2a sites and their enclosing
+functions at `orchestrate-dev.js:12861` / `:12955` / `:13657` / `:7663` inside `erratumRound`
+(`:12790`), `converge` (`:13628`) and `reviewLoop` (`:7266`), the `missingAgainst` arrow's extent
+(`:12919`–`:12928`) that the row's nesting argument rests on, the five non-call-site `"authoring"`
+occurrences the keying correctly excludes, the absence of any `learnings*` file under
+`pdlc/workflows/__tests__/` at HEAD, and the row tails of every changed task to confirm no
+`Batch`/`Deps`/`Test File` cell moved.
+
+One Medium and two Lows, none gating, and all three sit on the one substantive new mechanism this
+round introduced:
+
+1. **F-01** — add a cardinality conjunct to LI-01's P-2a assertion. The re-key made the key
+   injective at HEAD; it did not make the equality count-preserving, so a fifth authoring site that
+   shares a key with an existing one (a second inline-template retry inside `erratumRound`) leaves
+   the set at four and H-1's trigger undetected until batch 12. One clause; no new task, fixture or
+   batch.
+2. **F-02** — say which reading of "prompt-source symbol" the suite transcribes. At `converge` and
+   `reviewLoop` the named symbol is one local-binding hop from the dispatch expression; both
+   readings are injective, so this is a one-parenthetical clarification, not a mechanism change.
+3. **F-03** — add `LI-T-ARMS-1…3` to §Test-name namespacing's enumeration, or make the list
+   explicitly illustrative.
+
+One upstream defect remains open and is routed as an erratum rather than charged to this verdict:
+TSPEC §D.1's domain-membership wording — "one test per domain asserts that every value it ever
+carries is a member of that field's catalogue" (`TSPEC:592`) — is still false for the
+`corpusOutcome` domain as §D.2 defines it (`TSPEC:612`, healthy value `null`). I routed it in v2 and
+again in v3; the TSPEC's last commit touching the file is still `ccc739d1`. The PLAN has now worked
+around it correctly at its own altitude in **both** directions — LI-23 scopes the equality to
+non-`null`, LI-10 asserts the healthy `null` explicitly — while the TSPEC sentence they derive from
+still says the unqualified thing. It belongs to the TSPEC, not to this verdict.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
