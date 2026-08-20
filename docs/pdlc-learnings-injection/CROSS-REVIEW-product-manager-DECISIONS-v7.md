@@ -143,6 +143,26 @@ DEFERRED: The three `Process` candidates from v6 (unfalsifiable header pins, dis
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | `D-O-9`'s row records the erratum as "**DISCHARGED at TSPEC v0.9**" and `DEC-LI-07` says TSPEC "has since made all four edits: at HEAD (v0.9)…". Both are true as observations at HEAD, but v0.9 is not the version where the edits landed — `ERR-4`/`ERR-6` were retired and the `present` field dropped in earlier TSPEC revisions, and v0.9's own changelog is about FSPEC Step 5 sequencing (`ERR-8`). Non-gating: the discharge is real, and no downstream reader is misled about *whether* it landed. Fix is one clause — name the landing version, or say "landed at or before TSPEC v0.9". | REQ AC-5.1a (via `DEC-LI-07`); `D-O-9` |
+| F-02 | Low | Local | `DEC-LI-03`'s re-evaluation trigger cites `G-C` for the `docType: null` instantiation. `G-C` is a row in this document's own grounds table, and its evidence cell cites `orchestrate-dev.js` — which checks out at HEAD (Phase CR's `reviewLoop({doc: …, phase: "CR", docType: null, …})`). But a reader arriving at `DEC-LI-03` sees a bare id with no hint that it is local rather than an upstream FSPEC anchor, in a sentence whose other two citations (`BR-1`, `A-2`) are upstream. Non-gating; one word ("this document's `G-C`") removes the ambiguity. | REQ C-1 / FSPEC `BR-1` |
+
+**Verified, no finding:** the header pin against all three upstream version rows; `A-2`'s quotation
+verbatim; `BR-1`'s two conjuncts against FSPEC decision-table `D-2`; `BR-15`'s "sets of paths, not
+… counts" quotation; `E-32`'s "the state **it** observed" quotation; `BR-10`'s two-loci /
+two-completeness-tests structure against REQ AC-3.3's own wording; TSPEC §D.1's non-`null` scoping
+and its unchanged `["RSN-UNLISTABLE", "RSN-EMPTY"]` set-equality operand; TSPEC §D.2's
+`ADDITIVE, NOT THE ORACLE` mirror with a deliberately unconstrained value; `BR-14`'s five-state
+table byte-identical to what `DEC-LI-07` transcribes; and Phase CR's `docType: null` in
+`pdlc/workflows/orchestrate-dev.js`.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | `D-O-9` is retained struck-through "so the erratum's trace survives". Is that the convention this document wants for future discharged obligations, or is `D-O-9` a one-off because it was the round's headline? Either answer is fine; naming it saves the next author a judgement call. |
+
 ## Positive Observations
 
 ## Recommendation
