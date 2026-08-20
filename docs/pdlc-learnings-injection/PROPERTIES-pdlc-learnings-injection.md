@@ -905,19 +905,19 @@ that test pass. `PROP-CORPUS-03` and `PROP-BOUND-01` are red LI-07 / green LI-16
 | LI-05 | — | PROP-META-03 |
 | LI-06 | — | PROP-META-04 |
 | LI-07 | PROP-CORPUS-03/04/05/07/09, PROP-ORDER-06, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 | — |
-| LI-08 | PROP-DISPATCH-06, PROP-BOUND-03/05/07, PROP-BLOCK-01/02/03 | — |
+| LI-08 | PROP-DISPATCH-06, PROP-BOUND-03/05/07/08, PROP-BLOCK-01/02/03 | — |
 | LI-09 | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 | — |
-| LI-10 | PROP-RECORD-01…10 | — |
-| LI-11 | PROP-DISPATCH-01/02/03/04/05/07, PROP-ORDER-05, PROP-RECORD-11, PROP-FAILOPEN-02/03, PROP-ISOLATE-01/02, PROP-FOOTPRINT-01/02/03/04 | — |
+| LI-10 | PROP-RECORD-01…08, PROP-RECORD-10 | — |
+| LI-11 | PROP-DISPATCH-01/02/03/04/05/07/08, PROP-ORDER-05, PROP-RECORD-11, PROP-FAILOPEN-02/03, PROP-ISOLATE-01/02, PROP-FOOTPRINT-01/02/03/04 | — |
 | LI-12 | PROP-CONFIG-01…08 | — |
 | LI-13 | PROP-CORPUS-01 | — |
-| LI-14 | — | PROP-META-05 |
+| LI-14 | — | PROP-META-05, PROP-META-06, PROP-RECORD-09 (all three green on authoring — one static directory walk over `learnings*.test.js`, no production symbol under test) |
 | LI-15 | — | PROP-CORPUS-01, PROP-FOOTPRINT-04 |
 | LI-16 | — | PROP-CORPUS-03/04/05/07/09, PROP-ORDER-06, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 |
-| LI-17 | — | PROP-DISPATCH-06, PROP-BOUND-03/05/07, PROP-BLOCK-01/02/03 |
+| LI-17 | — | PROP-DISPATCH-06, PROP-BOUND-03/05/07/08, PROP-BLOCK-01/02/03 |
 | LI-18 | — | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 |
-| LI-19 | — | PROP-RECORD-01…06, PROP-RECORD-08/09/10 |
-| LI-20 | — | PROP-DISPATCH-01…05, PROP-DISPATCH-07, PROP-ORDER-05, PROP-FAILOPEN-03, PROP-FOOTPRINT-01/03, PROP-ISOLATE-02 |
+| LI-19 | — | PROP-RECORD-01…06, PROP-RECORD-08/10 |
+| LI-20 | — | PROP-DISPATCH-01…05, PROP-DISPATCH-07/08, PROP-ORDER-05, PROP-FAILOPEN-03, PROP-FOOTPRINT-01/03, PROP-ISOLATE-02 |
 | LI-21 | — | PROP-CONFIG-01…08, PROP-FAILOPEN-01/02, PROP-RECORD-03/04/07/11, PROP-FOOTPRINT-02/03, PROP-ISOLATE-01 |
 | LI-22 | — | *refactor-and-close; adds no assertion, owns no property by design* |
 | LI-23 | PROP-FAILOPEN-01, PROP-RECORD-03, PROP-RECORD-04 | — |
@@ -939,7 +939,7 @@ green by two, and each split is named in the PLAN row that carries it:
 
 | Count | Value | Source |
 |---|---|---|
-| Properties in this document | 66 | Groups A–J |
+| Properties in this document | 69 | Groups A–J (66 at v1, plus PROP-DISPATCH-08, PROP-BOUND-08, PROP-META-06) |
 | FSPEC acceptance tests | 35 | TSPEC §T.5's partition, asserted by PROP-META-05 |
 | ATs covered by ≥1 property | 35 | §C.1 |
 | PLAN tasks | 23 | LI-01…LI-23 |
@@ -947,13 +947,20 @@ green by two, and each split is named in the PLAN row that carries it:
 | Properties with **no** owning task | 0 | §C.3 |
 | Fail-open arms | 12 | TSPEC §T.7, mechanised by PROP-FAILOPEN-01 |
 
-Two named test files this document depends on **do not yet exist** — `learningsSelect.test.js`,
-`learningsBlock.test.js`, `learningsCorpus.test.js`, `learningsRecord.test.js`,
-`learningsDispatchSet.test.js`, `learningsConfig.test.js`, `learningsArmInventory.test.js`,
-`learningsCaptureScript.test.js`, `helpers/learningsFixtures.js` and
-`fixtures/learnings-baseline/` are all **planned new** files (PLAN §Manifest rows; a
-`ls pdlc/workflows/__tests__ | grep learnings` on `HEAD` returns nothing). Every one is explicitly
-planned; **no property in this document names a test file the PLAN does not create.** Likewise
+**All twelve** `learnings*.test.js` suites this document depends on **do not yet exist**, and neither
+do the fixture helper nor the baseline fixture directory — `learningsPremises.test.js` (LI-01),
+`learningsCaptureScript.test.js` (LI-03), `learningsPredicatePin.test.js` (LI-13),
+`learningsSelect.test.js` (LI-07), `learningsBlock.test.js` (LI-08), `learningsCorpus.test.js`
+(LI-09), `learningsBaselineGuard.test.js` (LI-06), `learningsRecord.test.js` (LI-10),
+`learningsDispatchSet.test.js` (LI-11), `learningsConfig.test.js` (LI-12),
+`learningsArmInventory.test.js` (LI-23), `learningsSuiteMap.test.js` (LI-14), plus
+`helpers/learningsFixtures.js` (LI-02) and `fixtures/learnings-baseline/` (LI-06) — **fourteen** rows
+over fourteen files, exactly PLAN §File-ownership manifest's fourteen new test rows (a
+`ls pdlc/workflows/__tests__ | grep -i learnings` on `HEAD` returns nothing). Every one is explicitly
+planned; **no property in this document names a test file the PLAN does not create.** The two
+**existing** files this document names are the pin's subject `consolidationPredicate.test.js` and the
+seam helpers `helpers/seams.js` / `helpers/consolidationDoubles.js`, none of which any task edits.
+Likewise
 `scripts/capture-learnings-baseline.mjs` is new — the repository has no root-level `scripts/`
 directory today, and LI-05's row says so.
 
