@@ -32,7 +32,58 @@ recount now contradicts. No High finding is open.
 
 ## Batches
 
-_pending_
+Only three task rows changed (LI-01, LI-10, LI-23) and one §Overview paragraph was added above the
+table. I read each against the requirement it serves and against the code it claims to measure.
+
+**LI-01 (batch 1) — the re-key is correct against HEAD, and it is the fix I asked for.** The four
+authoring dispatch sites in `pdlc/workflows/orchestrate-dev.js` at HEAD are:
+
+| Site | Enclosing named function | Prompt source | Shape |
+|---|---|---|---|
+| `orchestrate-dev.js:7663` | `reviewLoop` (declared `orchestrate-dev.js:7266`) | `optimizerPrompt` | positional `"authoring"`, argument 4 of `runWrapped` |
+| `orchestrate-dev.js:12861` | `erratumRound` (declared `orchestrate-dev.js:12790`) | `erratumAuthorPrompt` | object literal `dispatchKind: "authoring"` |
+| `orchestrate-dev.js:12955` | `erratumRound` | inline land-proof-retry template literal | object literal `dispatchKind: "authoring"` |
+| `orchestrate-dev.js:13657` | `converge` (declared `orchestrate-dev.js:13628`) | `creatorPrompt` | object literal `dispatchKind: "authoring"` |
+
+Under the new key the four sites yield four distinct pairs, so the transcribed expected set of four
+is the set an implementer observes at batch 1 and the suite is green by construction as the row
+claims. I checked the structural claim the row leans on: `const missingAgainst = async () => {…}`
+opens at `orchestrate-dev.js:12919` and closes before the retry dispatch at `:12955`, which sits
+directly in `erratumRound` under plain `if` blocks — so "enclosing named function" resolves to
+`erratumRound` for both erratum sites, exactly as the row states, and the prompt source is the only
+thing separating them. The row's escape hatch ("Any injective structural key serves; what may not
+survive is a key two of the four sites share") is the right level of prescription: it names the
+property that matters rather than over-pinning an implementation detail. The `LI-T-` grep caveat
+from TE F-12 ("a literal grep for `dispatchKind: \"authoring\"` returns 3, not 4") still reads
+correctly against HEAD — `grep -n 'dispatchKind: "authoring"'` returns `:12861`, `:12955`, `:13657`.
+
+**LI-10 (batch 5) — the healthy-`null` clause is a real oracle addition, not a restatement.** The
+row now asserts `dispatches[i].corpusOutcome === null` on `DIVERGENT-CORPUS` dispatches 1, 2 and 4,
+and gives the product reason: without it "an implementation recording `undefined`, `""` or omitting
+the key entirely on healthy dispatches is green everywhere, since `null` is the value the field
+carries on the overwhelming majority of runs". That is the positive half of the absence-only oracle
+LI-23's non-`null` scoping would otherwise leave dangling, and it is asserted on a fixture that
+already produces those dispatches — no fixture change, no new dependency. The expected value is a
+literal transcription of TSPEC §D.2's `corpusOutcome: null, // | "RSN-UNLISTABLE" | "RSN-EMPTY"`,
+not derived from the code under test.
+
+**LI-23 (batch 5) — the delegation now names its counterpart.** The row previously said the healthy
+`null` "is asserted by `learningsRecord.test.js`'s BR-9 per-dispatch rows"; it now says which
+dispatches of which fixture (`DIVERGENT-CORPUS`'s dispatches 1, 2 and 4) and that "LI-10's row
+carries that clause by name … rather than leaving the delegation to be inferred". The two rows are
+now mutually anchored, so deleting the clause in one leaves a dangling reference in the other rather
+than silently dropping the positive assertion. The rejected repair (`LEARNINGS_CORPUS_OUTCOMES ∪
+{null}`) is still named and still refused on the correct ground.
+
+**New §Overview paragraph (PLAN:93-99) — the `LI-T-*` naming rule as a gate input.** The paragraph
+states that only the six AT-bearing suites carry `LI-AT-` titles, that `LI-T-SUITEMAP` enforces it
+via set-equality-to-six over the `learnings*.test.js` directory, and that the rule covers the two
+rows which do not enumerate their test names (`learningsPremises.test.js` at LI-01,
+`learningsBaselineGuard.test.js` at LI-06). I checked the batch arithmetic this depends on: all
+twelve suites exist by the end of batch 5 (LI-12 and LI-23 are the last two, both batch 5), so the
+directory closure at batch 6 sees twelve files and six contributors, and a naming slip in a
+green-terminal batch-1 or batch-4 suite does surface at batch 6 as claimed. One stale count in the
+unchanged LI-14 row now disagrees with this paragraph — F-11 below, Low.
 
 ## Dependencies
 
