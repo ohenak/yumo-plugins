@@ -129,7 +129,44 @@ re-confirmed that reading against BR-14 at HEAD.
 
 ## Data Model
 
-_pending_
+**§D.5's byte accounting is now the aligned side, and I want to record that plainly.** The v0.13
+erratum's own note says the material-only basis "removes the contradiction with TSPEC's
+accounting" — i.e. FSPEC moved to TSPEC. Re-reading §D.5 against the new BR-6 paragraph, the two
+now say the same thing in the same terms:
+
+| Claim | FSPEC v0.13 (BR-6, "The byte-accounting basis") | TSPEC §D.5 |
+|---|---|---|
+| What is charged | "a document's **contributed bytes** are its **material** — the section headings and bodies taken from it, and nothing else" | Pool **Material**: "only the section headings and bodies taken from that document under BR-6" |
+| What is not charged | identification line, per-document delimiters and source-path label, block preamble — "count toward none of the three quantities" | Pools **Per-document framing** and **Block framing**: "Bounded by — Nothing" |
+| The three quantities | `maxBytesPerDocument` per document, `maxTotalBytes` over the sum, BR-8's *bytes injected* the same quantity | identical, plus `bytesInjected === bytes` and `totalBytesInjected === ` their sum |
+| Why it matters | "an expected byte count is computable from a fixture alone" | "expected counts are hand-computable from the fixture alone" |
+
+The consequence for testing is that **no oracle moves**: AT-11's section-set equality, AT-12's
+exact-byte oracle on the character-safe cut, and T-O-6's property over
+`extractInjectableMaterial` all keep the semantics they were written against, and the
+non-circularity argument §D.5 makes (the `ABRIDGED` marker is emitted *because* the document was
+bounded, so charging it to the document's own budget would make the budget depend on its own
+outcome) is now upstream-endorsed rather than merely TSPEC-local. This is the one place where the
+erratum makes this TSPEC *more* faithful than it was at v11. No finding.
+
+**§D.1's frozen catalogues survive unchanged — but one member's meaning widened.**
+`LEARNINGS_REJECT_REASONS` still has exactly the six ids upstream's per-document catalogue lists,
+so the set-equality test (DC-01, C-9) is unaffected: the erratum added no id. What changed is the
+**gloss** of one member. Upstream now reads `RSN-NO-MATERIAL` as *"Eligible, but yields no
+material — it carries none of BR-6's priority sections, **or** the per-document bound is zero and
+admits none"*, and D-12's question moved from "Does the document carry any priority section?" to
+"Does the document **yield any material**?". TSPEC's catalogue is a bare id list, so the frozen
+literal is fine; the disjunction is lost only where TSPEC restates the firing condition, which is
+§T.6 (F-01). A reviewer could read this as a documentation nit — it is not. The two disjuncts route
+a document to **different arrays** (`rejected[]` vs `selected[]`) with different slot accounting,
+and only one of the two is stated.
+
+**§D.2's report record and §I.2's threshold validation are untouched and remain correct.** §I.2
+already validates the three thresholds as **non-negative** integers (`Number.isInteger(v) && v >= 0`)
+precisely so that `0` is a valid admits-nothing configuration rather than an invalid key falling
+back to its default — that reading, written for AC-4.4's other two zeros, extends to
+`maxBytesPerDocument: 0` with no edit. E-36 therefore has a config path today; what it lacks is the
+selection semantics (F-01) and the fixture (F-03).
 
 ## Test Strategy
 
