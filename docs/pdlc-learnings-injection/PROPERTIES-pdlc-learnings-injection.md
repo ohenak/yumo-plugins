@@ -141,7 +141,9 @@ a defect in this document or in the PLAN, not a nice-to-have.
 
 ### Group B — Corpus enumeration, eligibility and read outcomes *(BR-2, BR-3, C-3, O-7)*
 
-- **PROP-CORPUS-01:** `LEARNINGS_CORPUS_ARGV`, the argv `consolidate-learnings.js`'s `enumerateCorpus`
+- **PROP-CORPUS-01** *(home: `__tests__/learningsPredicatePin.test.js`, new at LI-13; subject:
+  `consolidationPredicate.test.js`, existing and **never edited** — editing it would collapse the
+  three-way agreement into a two-way one):* `LEARNINGS_CORPUS_ARGV`, the argv `consolidate-learnings.js`'s `enumerateCorpus`
   actually hands `_git`, and `consolidationPredicate.test.js`'s own transcribed literal **must** be
   mutually equal — a three-way agreement, never two-way.
   *Contract · L4 · C-3, O-7, F-O-4, TSPEC §I.1 `LI-T-PIN-1` · red LI-13 · green LI-15.*
@@ -482,7 +484,7 @@ a defect in this document or in the PLAN, not a nice-to-have.
 These have owning tasks and oracles because each guards an oracle that would otherwise stop firing
 silently — the failure mode a coverage percentage cannot see.
 
-- **PROP-META-01:** The premises suite **must** assert each of P-1…P-10 **structurally, never
+- **PROP-META-01** *(`__tests__/learningsPremises.test.js`, LI-01):* The premises suite **must** assert each of P-1…P-10 **structurally, never
   positionally**, and **must never** assert an absence that this PLAN's own tasks are scheduled to
   falsify. The four authoring call sites **must** be asserted as **set equality** keyed by
   `(enclosing named function, prompt-source symbol)` — `(erratumRound, erratumAuthorPrompt)`,
@@ -491,7 +493,7 @@ silently — the failure mode a coverage percentage cannot see.
   `(enclosing function, argument position)`, which is not injective over these four. A **fifth**
   authoring site reds this suite at batch 1.
   *Observability · L1 (static) · TSPEC §A.2 property 1, H-1 · red — · green LI-01 (green on authoring).*
-- **PROP-META-02:** `.gitignore` **must** ignore `/.baseline-worktree/` **root-anchored**: three
+- **PROP-META-02** *(`__tests__/learningsCaptureScript.test.js`, LI-03/LI-04):* `.gitignore` **must** ignore `/.baseline-worktree/` **root-anchored**: three
   conjuncts — the root path **is** ignored, a nested
   `pdlc/workflows/__tests__/fixtures/x/.baseline-worktree` is **not**, and
   `pdlc/workflows/__tests__/fixtures/learnings-baseline/` is **not**. Conjuncts 2 and 3 are what give
@@ -499,25 +501,38 @@ silently — the failure mode a coverage percentage cannot see.
   alone while un-tracking fixture material this feature commits.
   *Contract · L1 (against a dedicated temp git repo with real `git`) · TSPEC §T.3 obligation 1 ·
   red LI-03 · green LI-04.*
-- **PROP-META-03:** A forced throw injected **between** materialise and remove — through the capture
+- **PROP-META-03** *(`__tests__/learningsCaptureScript.test.js`, LI-03/LI-05):* A forced throw injected **between** materialise and remove — through the capture
   script's fixture/import seam, `git` staying real — **must** leave the `.baseline-worktree` path
   **absent** *and* the temp repo's `git worktree list` showing **no entry** for it. The second conjunct
   is what distinguishes `git worktree remove` from `rm -rf` and **must not** be dropped or degraded to
   an argv assertion.
   *Error Handling · L1 (temp git repo) · TSPEC §T.3 obligation 2 · red LI-03 · green LI-05.*
-- **PROP-META-04:** The baseline guard **must** anchor on **hand-transcribed** SHA-256 literals — one per
+- **PROP-META-04** *(`__tests__/learningsBaselineGuard.test.js`, LI-06):* The baseline guard **must** anchor on **hand-transcribed** SHA-256 literals — one per
   `{caseId}`, copied by a human from the first capture — asserted against both the recomputed file
   digests **and** `MANIFEST.json`'s entries, with **set equality over the `{caseId}` keys**, never
   containment. Its falsification is LI-06's recorded three-step mutation proof: flip one byte, delete one
   whole `{caseId}` directory, add a spurious one — each step reds a **different** clause, and a step that
   does not red is a halt.
   *Data Integrity · L1 · AC-6.2, TSPEC §T.3, DC-14 · red — (authored green) · green LI-06.*
-- **PROP-META-05:** The suite-map closure **must** be taken over the **directory**, not over a hardcoded
+- **PROP-META-05** *(`__tests__/learningsSuiteMap.test.js`, LI-14):* The suite-map closure **must** be taken over the **directory**, not over a hardcoded
   six: enumerate `__tests__/learnings*.test.js` from disk by **static parse of the file text** (never by
   importing the suite), compute the set of files registering at least one `LI-AT-` jest test **title**,
   assert that set **equal** to the six AT-bearing suites, then assert the six declared AT lists pairwise
   **disjoint** and **set-equal** to the 35-member literal `AT-01 … AT-35`.
   *Contract · L1 (static) · TSPEC §T.5 closure, DoD 1 · red — (green on authoring) · green LI-14.*
+- **PROP-META-06** *(`__tests__/learningsSuiteMap.test.js`, LI-14):* **No suite of this feature reaches
+  a live agent.** Over the same static directory walk PROP-META-05 takes — enumerate
+  `__tests__/learnings*.test.js` from disk, parse each file's text, never import it — every enumerated
+  file **must** construct its agent through the scripted double (a `_agent` injection or
+  `makeAgentDouble`-shaped helper) and **no** enumerated file **must** reference a live transport
+  symbol. Asserted as **set equality** over the enumerated suite files — every file accounted for,
+  never containment — so a newly added suite that skips the double reds rather than being silently
+  missed, and the walk's non-empty file set is the positive control that the instrument fired. This is
+  the mechanised half of AC-6.1's "no live model calls" clause; its determinism clause is discharged by
+  PROP-ORDER-05's two-process comparison. No new PLAN task and no new file: the assertion rides LI-14's
+  existing directory walk in the suite it already owns.
+  *Security / Contract · L1 (static) · AC-6.1, TSPEC §T.5, DoD 1 · red — (green on authoring) ·
+  green LI-14.*
 
 ## Oracles
 
