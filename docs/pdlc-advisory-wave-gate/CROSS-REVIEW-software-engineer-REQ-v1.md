@@ -65,8 +65,6 @@ Upstream row points at `docs/completed/pdlc-advisory-tier/…`, a path that does
 relocation convention is established and this feature is the one that has not followed it.
 
 
-## Questions
-
 ### F-02 (Medium, Cross-Feature) — M-WG-8 is false at today's default branch
 
 C-5 and §9 BL-06 pin every shipped-behaviour fact to `docs/_constraints/pdlc-wave-gate-baseline.md`
@@ -123,6 +121,8 @@ returns nothing, and the local file reads
 `{"version":1,"feature":"pdlc-advisory-wave-gate",…,"lastGreenWave":7,…}`. The drift sentence deserves the
 same treatment: name it a working-tree observation and drop the unreproducible "three rows stale one
 missing" count, or cite the command that produces it.
+
+## Questions
 
 | ID | Question |
 |----|---------|
