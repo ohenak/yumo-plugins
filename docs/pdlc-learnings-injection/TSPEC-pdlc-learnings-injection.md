@@ -216,15 +216,15 @@ Three properties of this attachment carry the load:
    inside the loop makes the two instruments disagree about what one dispatch looks like. One call
    per episode, on both arms of `injectHere`.
 
-   **(d) The probe seam has to be plumbed through all four hand-written hops (TE F-01).** No hop
-   spreads caller-supplied keys, so adding the seam to `mainDev` alone yields a probe that observes
+   **(d) The probe seam has to be plumbed through all five hand-written hops (TE F-01).** No hop
+   spreads caller-supplied keys, so adding the seam to `main` alone yields a probe that observes
    the six `converge` doc types and never `null` — and the `∪ {null, "LEARNINGS"}` assertion then
    fails for a plumbing reason that reads as a product bug. The PLAN task names every site, and the
    seam defaults to a no-op at each so the shipped path is byte-unchanged (AC-4.3):
 
    | # | Edit site | Why it is not free |
    |---|---|---|
-   | 1 | `mainDev`'s destructured params | `_recordDocType: recordDocTypeFn = () => {}` alongside `_recordQueueRow`'s defaulted-recorder precedent |
+   | 1 | `main`'s destructured params (`orchestrate-dev.js`'s default export; the tests bind it as `mainDev`) | `_recordDocType: recordDocTypeFn = () => {}` alongside `_recordQueueRow`'s defaulted-recorder precedent |
    | 2 | the `wrapperSeams` object literal | an enumerated literal, not a spread; this hop alone carries Phase H's `"LEARNINGS"` into `wrappedDispatch`'s `...wrapperSeams` |
    | 3 | `reviewLoop`'s destructured params | `reviewLoop` receives `...wrapperSeams` but destructures a fixed list |
    | 4 | `reviewLoop`'s `wrapped` closure | it re-lists its seven seams **by hand** when calling `dispatchAndVerify`; Phase CR's `null` reaches the composition site through this path and no other |
@@ -953,7 +953,7 @@ AT-31's byte-for-byte *and* the report to carry `NTC-MALFORMED` on the run-level
 An L1 unit test over `parseLearningsConfig` can falsify neither clause: it sees the parse result,
 never the report key set and never a composed prompt. The suite therefore drives `main()` over the
 full seam set with a scripted `_agent`, on the `advisoryDisabled.test.js` pattern (that file
-imports `orchestrate-dev.js`'s default export as `mainDev` and calls it directly —
+imports `orchestrate-dev.js`'s default export — the function is named `main` — under the local alias `mainDev` and calls it directly —
 `import mainDev, * as dev from "../orchestrate-dev.js"`,
 `pdlc/workflows/__tests__/advisoryDisabled.test.js`)
 — the file keeps its config-focused name because its subject is the configuration states, but its
