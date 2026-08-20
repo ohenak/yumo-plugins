@@ -560,11 +560,17 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
       and **nothing else** — checked both directions, so a red this feature introduces (for example
       the T21 `.gitignore` case A6-00's Edit 1 must not break) fails the leg rather than hiding inside
       it. `PROP-SWEEP-2(b)` additionally carries a positive check on *its own* failure output: the
-      residual it prints set-equals the enumerated inherited paths of the Overview's HEAD-drift note —
-      class 2's four `.claude/workflows/` runtime artifacts plus class 3's `docs/pdlc-advisory-wave-gate/**`
-      documents and this feature's `CROSS-REVIEW-*` files, and **no** `.pdlc-backups/*.bak` blob. A
-      residual containing a fifteenth class member is a regression even though the test was already
-      red.
+      residual it prints is checked in **two shapes, one per class**, because only one of the two
+      classes is closed (PM v9 F-01, TE v9 F-01). Class 2 is a **closed enumeration**, checked by
+      set-equality: exactly the four `.claude/workflows/` runtime artifacts named in the HEAD-drift
+      note (`.pdlc-drift-state.json`, both `.bundle.js` artifacts, `pdlc-cli.mjs`), no more and no
+      fewer. Class 3 is checked as a **membership predicate**, never an enumeration: every remaining
+      residual path matches `docs/pdlc-advisory-wave-gate/**`. And in both directions, **no**
+      `.pdlc-backups/*.bak` blob appears — that is A6-00's closed set. Stated this way the check
+      still fails on a genuinely new residual (a tracked `.gitignore` carrying an L-2 term, a new
+      `.claude/workflows/` artifact) and no longer fails on the cross-review files this pipeline is
+      designed to keep producing: class 3 grows by one per committed cross-review file, so any
+      criterion that set-equals a snapshot of it mis-fires by construction at the ship boundary.
 - [ ] `documentOracles.test.js`'s T15 count test reads `100`, not `99`, **in its assertion, its
       title and its block comment together**. The title still says *"post-sweep
       pdlc/workflows/\_\_tests\_\_/\*.test.js count equals TSPEC §4.4's corrected literal of 99"* and the
@@ -586,9 +592,14 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
       `git check-ignore .claude/workflows/.pdlc-backups/` names the new rule (TE v8 F-02).
 - [ ] `documentOracles.test.js`'s *"PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list
       is empty"* is understood as **inherited and not closable here**, the same way `AT-22` is. The
-      item above closes 14 of its 28 residual paths; the other 14 — `.claude/workflows/.pdlc-drift-state.json`,
+      item above closes the 14 `.bak` blobs; the remaining residual — `.claude/workflows/.pdlc-drift-state.json`,
       the two `.bundle.js` artifacts, `pdlc-cli.mjs`, and this feature's own `TSPEC`/`PLAN`/`DECISIONS`/
-      `PROPERTIES`/`CROSS-REVIEW-*` documents — are outside any act available to Phase I. The four
+      `PROPERTIES`/`CROSS-REVIEW-*` documents — is outside any act available to Phase I. **The
+      figures live in one place:** the Overview's HEAD-drift note owns them (28 total / 14 closable
+      here, measured 2026-08-19 on a clean tree, class 3 growing by one per *committed* cross-review
+      file). Read the count there rather than from this bullet; a bare number restated here goes
+      stale within a review round or two, which is the trap the Overview was revised to avoid
+      (PM v9 F-02, TE v9 F-02). The four
       runtime artifacts are branch-introduced (`e3b9d5a3`, not pre-existing) but unreachable, because
       every ignore rule covering them writes an L-2 grep term into tracked `.gitignore` and mints a
       fresh residual path (TE v8 F-01/F-02); the documents are unreachable because A-1's frozen glob
