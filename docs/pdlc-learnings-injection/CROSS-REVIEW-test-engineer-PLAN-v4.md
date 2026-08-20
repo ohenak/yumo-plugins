@@ -86,6 +86,42 @@ already greens; LI-23's added clause is a cross-reference and asserts nothing ne
 
 ## Dependencies
 
+**The batch column did not move, and I confirmed that rather than assuming it.** No task row was
+added, removed, or had its `Deps` cell edited this round, and no edge-rationale row changed. My v2
+re-derivation over all 23 rows — 23 unique ids, every dependency resolving to a declared row, the
+graph acyclic, `batch == max(dep batch) + 1` for every row — therefore still stands, as does v3's
+re-check of the two places the previous round could have disturbed it.
+
+**None of this round's three row edits creates a new ordering obligation.** I checked each against
+the dependency it would need:
+
+- **LI-10's healthy-`null` clause** asserts over `DIVERGENT-CORPUS`, a fixture LI-02 already owns
+  and LI-10 already declares (`Deps: LI-02, LI-06`). It adds an assertion to an existing test over
+  an existing fixture in an existing suite — no new file, no new symbol, no new edge. It is red at
+  batch 5 for the same reason the rest of the suite is red (no symbol under test) and greens at
+  batch 11 with LI-19, unchanged.
+- **LI-23's back-pointer** is a cross-reference in prose. It asserts nothing and creates nothing;
+  `LI-23 → LI-06` remains the slack fixture-matrix edge v0.3 split out.
+- **LI-01's re-key** changes *how* one batch-1 assertion computes its observed set, not what the
+  suite reads. `learningsPremises.test.js` still parses `orchestrate-dev.js` at HEAD and still has
+  no dependency (`Deps: —`, batch 1). The re-key touches no other row's inputs.
+
+**The new naming rule is a constraint on later batches, and it introduces no edge either.** The
+`LI-T-*` rule makes the *absence* of `LI-AT-` titles in six suites a `LI-T-SUITEMAP` gate input at
+batch 6. Every one of those six files already exists by the end of batch 5 (`Premises` b1,
+`CaptureScript` and `PredicatePin` b2, `BaselineGuard` b4, `ArmInventory` b5) or is the suite map
+itself (b6), so the rule is satisfiable at the batch it is enforced in without any new `Deps` edge
+— the same argument v3 accepted for the directory closure, and it is unchanged by stating the rule
+in prose rather than leaving it implicit.
+
+**DoD 13 and P-A-6…P-A-8 are outside the DAG by construction, and correctly so.** DoD 13 is a
+completion-note obligation on LI-01, not a task; P-A-6/P-A-7 constrain *when a PROPERTIES commit may
+land*, and P-A-6 says so explicitly ("No task row in this PLAN owns either"). Neither adds a node,
+and neither can move a batch. P-A-6's scheduling claim is consistent with the ledger: a PROPERTIES
+suite is honestly red until LI-21 greens the last arm at batch 13, which is exactly the batch at
+which P-A-3's "commit once green" becomes satisfiable and the batch at which the expected-red
+ledger reaches empty. The two statements agree.
+
 ## Verification
 
 ## Findings
