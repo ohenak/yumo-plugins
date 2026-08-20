@@ -159,8 +159,8 @@ still holds: exactly one task per wave owns the production file.
        sweep's own count was correct when written, and two documents each assuming the other bumps it
        is exactly how the red survives to Phase PUB. A6-00's `Test File` cell gains
        `pdlc/workflows/__tests__/documentOracles.test.js` so the manifest carries the edit.
-     - **PROP-SWEEP-2(b)'s residual is 28 paths, not 14, and only 14 of them are this feature's to
-       close.** Earlier revisions said the oracle "went from `0` to `14` residual paths when
+     - **PROP-SWEEP-2(b)'s residual is 28 paths at the 2026-08-19 measurement, not 14, and only 14
+       of them are this feature's to close.** Earlier revisions said the oracle "went from `0` to `14` residual paths when
        `e3b9d5a3` committed `.claude/workflows/.pdlc-backups/*.bak`" and dispositioned the whole red
        as closing "for free" once those blobs are untracked. Re-measured this round by running the
        test at HEAD, the residual is **28 paths** and partitions into three classes with three
@@ -169,8 +169,30 @@ still holds: exactly one task per wave owns the production file.
        | Class | Count | Paths | Owner / disposition |
        |---|---|---|---|
        | Backup blobs `e3b9d5a3` committed | 14 | `.claude/workflows/.pdlc-backups/*.bak` | **This feature, A6-00** — untrack and ignore; closes 14 of 28 |
-       | Consumer-runtime artifacts | 4 | `.claude/workflows/.pdlc-drift-state.json`, `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`, `pdlc-cli.mjs` | **Coupled sweep** — tracked consumer runtime, predates this branch, out of scope |
-       | This feature's own artifacts | 10 and growing | `TSPEC-`, `PLAN-`, `DECISIONS-`, `PROPERTIES-pdlc-advisory-wave-gate.md` and the `CROSS-REVIEW-*` files that quote L-2's terms | **Coupled sweep's A-1 glob list** — out of scope here, see below |
+       | Consumer-runtime artifacts | 4 | `.claude/workflows/.pdlc-drift-state.json`, `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`, `pdlc-cli.mjs` | **Branch-introduced, still not closable here** — see the provenance note below |
+       | This feature's own artifacts | 10 at the 2026-08-19 measurement, +1 per committed cross-review file | `TSPEC-`, `PLAN-`, `DECISIONS-`, `PROPERTIES-pdlc-advisory-wave-gate.md` and the `CROSS-REVIEW-*` files that quote L-2's terms | **Coupled sweep's A-1 glob list** — out of scope here, see below |
+
+       **Provenance of class 2, corrected (TE v8 F-01).** Earlier revisions routed the four
+       consumer-runtime artifacts to the coupled sweep on the ground that they "predate this branch".
+       They do not: `git ls-tree` at the merge-base `1efb9a3b` returns empty for each of the four, and
+       `git log --diff-filter=A` names `e3b9d5a3` — the same drift commit that landed the 14 `.bak`
+       blobs — as the adding commit for all four. Class 2 is therefore branch-introduced, exactly like
+       class 1. It is still **not closable by A6-00**, but for a different and narrower reason than
+       provenance: every ignore rule that would cover these paths writes an L-2 grep term into tracked
+       `.gitignore` (`.pdlc-drift-state.json` contains `pdlc-drift`; both bundles contain `.bundle.js`),
+       which mints a fresh residual path at the same site it closes four — and deleting them from disk
+       is not durable either, since the `SessionStart` hook rewrites `.pdlc-drift-state.json` and
+       `runtime-adapter.js` reads `.claude/workflows/pdlc-cli.mjs` by on-disk path. So the split is
+       **14 closable here / 14 not**, with 4 of the 14 correctly described as branch-introduced-but-
+       unreachable rather than inherited, and the remedy for those four (extend A-1's glob list, or
+       amend T21 and ignore them) routed to the coupled sweep's owner with that reason attached.
+
+       **Both counts are measurements with a date, not invariants.** The 28 above was re-derived on
+       2026-08-19 at this round's HEAD on a clean tree. Class 3 grows by exactly one path per
+       *committed* cross-review file — the sweep reads `git ls-files`, so an uncommitted review is
+       invisible to it and a full round (PM + TE) adds two, not one. A reader who measures a different
+       total should check the class-3 count first and the 14/14 split second; only the split is a claim
+       about this plan.
 
        The third class is not incidental and **cannot be closed on this branch**. `unfilteredSweep()`
        greps every *git-tracked* file for L-2's seven terms, and `minusA1` subtracts a frozen glob
@@ -181,15 +203,18 @@ still holds: exactly one task per wave owns the production file.
        available to Phase I makes that set empty; only extending A-1's glob list does, and A-1 is the
        coupled sweep's frozen artifact.
 
-       **Dispositions.** (1) **A6-00 closes the 14 blobs**: `git rm --cached` them *and* add
-       `.claude/workflows/.pdlc-backups/` to `.gitignore` in the same step, because the files stay on
+       **Dispositions.** (1) **A6-00 closes the 14 blobs**: `git rm --cached` them *and* add the
+       bare rule `.pdlc-backups/` to `.gitignore` in the same step (that literal — an anchored
+       `.claude/workflows/…` spelling would red `documentOracles.test.js`'s currently-green T21
+       substring assertion; see A6-00's Edit 1), because the files stay on
        disk, the path is not ignored today (`git check-ignore` returns nothing), and the directory is
        a live write target of the workflow sync path — untracking alone converts 14 tracked blobs
        into 14 `??` lines and permanently reds `consumerCleanup.test.js`'s AT-4.1, the very
        clean-tree precondition this document imposes at every wave boundary (TE v7 F-01). With the
        ignore rule the tree stays clean and future `.bak` writes do not re-dirty it. Because
        `.gitignore` is now an *edited source file* and no other task owns it, A6-00's `Source File`
-       cell and the file-ownership manifest name it. (2) **The remaining 14 paths are an inherited,
+       cell and the file-ownership manifest name it. (2) **The remaining 14 paths — class 2's four
+       branch-introduced-but-unreachable artifacts and class 3's 10 growing documents — are an
        out-of-scope red**, routed to the coupled sweep's owner exactly as `AT-22` already is: this
        branch does **not** promise PROP-SWEEP-2(b) green, and the Definition of Done records it as
        inherited rather than as a gating item this plan can satisfy. Promising a green the branch
@@ -537,9 +562,12 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
       is empty"* is understood as **inherited and not closable here**, the same way `AT-22` is. The
       item above closes 14 of its 28 residual paths; the other 14 — `.claude/workflows/.pdlc-drift-state.json`,
       the two `.bundle.js` artifacts, `pdlc-cli.mjs`, and this feature's own `TSPEC`/`PLAN`/`DECISIONS`/
-      `PROPERTIES`/`CROSS-REVIEW-*` documents — are outside any act available to Phase I, because A-1's
-      frozen glob list covers neither `docs/{feature}/` specs nor `CROSS-REVIEW-*`, and every further
-      cross-review round adds one. **Route to the coupled sweep's owner** (extend A-1's glob list); do
+      `PROPERTIES`/`CROSS-REVIEW-*` documents — are outside any act available to Phase I. The four
+      runtime artifacts are branch-introduced (`e3b9d5a3`, not pre-existing) but unreachable, because
+      every ignore rule covering them writes an L-2 grep term into tracked `.gitignore` and mints a
+      fresh residual path (TE v8 F-01/F-02); the documents are unreachable because A-1's frozen glob
+      list covers neither `docs/{feature}/` specs nor `CROSS-REVIEW-*`, and every committed
+      cross-review file adds one more. **Route to the coupled sweep's owner** (extend A-1's glob list); do
       not treat the residual red as an A6 regression, and do not read the full-suite legs above as
       requiring it green (PM v7 F-01).
 - [ ] `documentOracles.test.js`'s `AT-22 [red-until-L-06]` is understood as **inherited, not owned**:
