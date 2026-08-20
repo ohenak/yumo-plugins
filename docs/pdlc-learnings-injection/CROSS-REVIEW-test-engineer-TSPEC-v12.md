@@ -324,4 +324,5 @@ along, since it is the fixture that would have caught F-01.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 2, "medium": 4, "low": 3}
