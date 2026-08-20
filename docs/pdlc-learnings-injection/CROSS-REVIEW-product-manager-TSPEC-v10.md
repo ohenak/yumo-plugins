@@ -281,4 +281,29 @@ adopt FSPEC v0.12's non-enumerated form). DEFERRED as a single editorial pass: F
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | ERR-7 and §A.2 property 1 quote BR-1's single-conjunct text and call the conjunct forbidden; FSPEC v0.12's BR-1 carries both conjuncts, so the conflict is resolved and should read CLOSED | §OQ ERR-7 / §A.2 property 1 |
+| F-02 | Medium | delta | local | ERR-3 says BR-15's expected set includes the corpus-root enumeration and that AT-33's set equality "cannot hold"; FSPEC v0.12 drops the enumeration and states a path-set equality | §OQ ERR-3 |
+| F-03 | Medium | delta | local | §T.6's AT-02 fixture inventory omits FSPEC v0.12's mandated authoring-classified non-C-1-target run shape, and AT-03's re-quantified arm; §A.2's `_recordDocType` probe already covers the mutation | §T.6 AT-02 |
+| F-04 | Low | delta | local | Upstream row and five in-body citations pin FSPEC v0.9; HEAD is v0.12, referents byte-identical | §Header Upstream row / §A.5 / §I.3 / §T.5 / §ERR-4 |
+| F-05 | Low | inherited | nonlocal | TSPEC's Cross-Reviews row stops at v6; v7/v8/v9 exist on the branch | §Header Cross-Reviews row |
+| F-06 | Low | inherited | nonlocal | OQ.2 and ERR-4 point at §I.3 for a gate that lives in §I.2 | §OQ.2 / §ERR-4 |
+| F-07 | Low | inherited | nonlocal | §A.5 points at §T.2 for per-dispatch loci asserted in §T.6's DIVERGENT-CORPUS | §A.5 |
+| F-08 | Low | inherited | nonlocal | OQ.2's bare-repository note carries a stale AT mapping for E-21 | §OQ.2 |
+| F-09 | Low | inherited | nonlocal | Raw `orchestrate-dev.js` file:line anchors in P-1/P-2a/P-2b/P-10 and §A.2, DEC-DOC-01 | §Premises / §A.2 |
+
+FINDING: Medium | delta | local | §OQ ERR-7 / §A.2 property 1 | ERR-7 (TSPEC:1297-1311) quotes BR-1 as "if and only if the pipeline classifies it as authoring" and "consumes the classification, it does not restate the membership", concludes BR-1 forbids the docType conjunct and that AT-02 has two contradictory readings; FSPEC v0.12's BR-1 states both conjuncts and calls the second load-bearing, so the conflict is resolved in TSPEC's favour and should be marked CLOSED like ERR-4/ERR-6, with §A.2's "routed as ERR-7" clause struck
+FINDING: Medium | delta | local | §OQ ERR-3 | ERR-3 (TSPEC:1266-1270) says BR-15's expected set includes the corpus-root enumeration and that AT-33's set equality "cannot hold"; FSPEC v0.12's BR-15 says the enumeration "contributes no member" and states an enumerable path-set equality, adopting TSPEC's reading — ERR-3 should read CLOSED
+FINDING: Medium | delta | local | §T.6 AT-02 | FSPEC v0.12 AT-02 requires a fourth fixture — an authoring-classified dispatch whose target is none of the six C-1 types, so reverting BR-1's second conjunct reds the test — and AT-03 now covers every dispatch outside BR-1's rule; TSPEC §T.6 (978-985) names neither, though §A.2's _recordDocType probe set equality already kills that mutation
+FINDING: Low | delta | local | §Header Upstream row / in-body FSPEC labels | TSPEC:11 pins FSPEC (v0.9) and TSPEC:326/:469/:943/:1275/:1295 cite "FSPEC v0.9"; HEAD is v0.12 — every referent (BR-9, BR-10, E-21…E-34, AT-18/20/22) is byte-identical, only the label is stale
+FINDING: Low | inherited | nonlocal | §Header Cross-Reviews row | TSPEC:13 enumerates PM/TE TSPEC cross-reviews v1…v6 while v7/v8/v9 exist on the branch; FSPEC v0.12 fixed the same defect by dropping the hand-enumeration
+FINDING: Low | inherited | nonlocal | §OQ.2 / §ERR-4 | OQ.2 (TSPEC:1237) and ERR-4 (TSPEC:1277) locate the corrected gate in §I.3; it is at TSPEC:441-448 inside §I.2, and §I.3 (TSPEC:486) carries no gate
+FINDING: Low | inherited | nonlocal | §A.5 | §A.5's closing sentence (TSPEC:359-361) sends the reader to §T.2 for the per-dispatch loci; §T.2 (TSPEC:799) is the layer table and the assertions live in §T.6's DIVERGENT-CORPUS (TSPEC:987-992)
+FINDING: Low | inherited | nonlocal | §OQ.2 | OQ.2's bare-repository note (TSPEC:1241-1244) carries a stale AT mapping: FSPEC maps E-21 to AT-32 and §T.5 assigns AT-32 to learningsConfig.test.js (TSPEC:952-958)
+FINDING: Low | inherited | nonlocal | §Premises P-1/P-2a/P-2b/P-10 and §A.2 | Raw file:line anchors into orchestrate-dev.js are not runtime-measured evidence, so DEC-DOC-01 makes them Process-scope Low; re-anchor on symbol names with line numbers as a hint
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 6}
