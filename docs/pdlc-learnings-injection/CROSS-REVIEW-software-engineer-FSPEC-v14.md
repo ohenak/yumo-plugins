@@ -54,7 +54,47 @@ Re-verified against REQ v0.9 at HEAD; only rows the erratum touched are listed.
 
 ## Behavioral Flow
 
+**D-2 (`:274`).** The row now reads as a three-branch decision: both conjuncts hold → block;
+not authoring-classified → no block; authoring-classified with a target outside the six →
+no block. Because `:286` makes this table the DC-05 branch catalogue, naming the third
+branch is what gives it a required AT, and `:971` now spends that obligation explicitly
+("D-2 — all three branches, the authoring-classified non-C-1 target included — by
+AT-02/03"). The te-review item is fully discharged: the branch has a name, a rule (BR-1),
+and two ATs.
+
+**Step 0, item 5 (`:204`).** Untouched by this erratum and still phrased "If the dispatch is
+**not** one C-1 names as authoring, the flow stops here with no record (BR-1)". It defers to
+C-1, which *is* the two-conjunct rule, so the behaviour is right; but "names as authoring"
+reads standalone as the single classification conjunct — the same residue the routed item
+removed at `:79`, `:274` and `:1009`, left in the one place the erratum did not sweep. Wording
+only, no behavioural divergence (F-02).
+
+The "runs **once per authoring dispatch**" cadence sentences at `:185` and `:82` are not the
+same defect: they describe when the flow is entered, and Step 0 item 5 is the gate that then
+stops it. No finding.
+
 ## Business Rules
+
+**BR-1 (`:291-313`).** Unchanged by this erratum and still the two-conjunct statement approved
+at v13, with AC-1.2's own "(the code-review phase's optimizer round at HEAD)" parenthetical
+preserved at `:298`. The erratum's other edits are all downstream consumers of it, and each now
+quotes it rather than paraphrasing one conjunct.
+
+**BR-11 (`:601-606`).** The rewrite is the substantive one: the byte-identity claim now
+quantifies over "every dispatch prompt **outside BR-1's rule** — whether it fails the
+authoring conjunct or the C-1 target-document conjunct". Both failure modes are named, so
+the claim is no longer readable as covering only the classification conjunct. This is the
+complement BR-1 needs to make its set equality total over the dispatch universe.
+
+**BR-15 (`:680-695`).** Two changes. The observed set drops "file-open calls" for "the paths
+under `docs/` the run opens" and the expected set drops "**exactly** one open attempt for
+every corpus document" for "the corpus documents the report names" — both moves from a
+count instrument to a path-set instrument, which is what makes the equality transcribable.
+`RSN-SELF` exclusion and the "corpus enumeration contributes **no** member" clause survive
+intact, so nothing v13 approved is disturbed. The added sentence attributing duplicate-open
+tolerance to REQ AC-5.2 overstates the citation (F-03): AC-5.2 constrains which *paths* are
+touched and is silent on how many times each is opened, so the tolerance is this document's
+decision to make — it is a sound one, it just is not upstream's.
 
 ## Edge Cases and Error Scenarios
 
