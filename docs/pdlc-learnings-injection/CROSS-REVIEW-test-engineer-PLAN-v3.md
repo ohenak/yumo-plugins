@@ -336,4 +336,41 @@ mechanism they name. One new question, not gating.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All six v2 findings are resolved, and no High finding is open from any round. I re-derived nothing
+that did not change and re-measured everything that did: the porcelain instrument at
+`consumerCleanup.test.js:149-153` (no `-uno`, as v0.3 now says), the four `"authoring"` call sites
+and the five non-call-site occurrences that the new set-equality keying correctly excludes, P-4's
+export/module-private split in `consolidate-learnings.js`, the twelve-file glob the directory
+closure reads at batch 6 and the six-member set it closes at, and the ledger's continued
+reconciliation after the AT-15 re-split.
+
+One Medium and three Lows, none gating, and all four are consequences of the v0.3 edits rather than
+pre-existing material:
+
+1. **F-01** — name the healthy-`null` assertion in LI-10's row. The non-`null` scoping is correct,
+   but the positive half of the pairing it delegates to the record suite is not stated in any row an
+   implementer transcribes from, and as written the feature could ship with no test asserting that a
+   healthy dispatch records `corpusOutcome === null`. One clause in LI-10; no new task, fixture or
+   batch.
+2. **F-02** — declare the non-AT suites' test names, or add one sentence to the naming convention.
+   The directory closure made `LI-T-` naming a gate input; LI-01 and LI-06 are the two rows that do
+   not state it.
+3. **F-03** — copy the batch ladder's directory-wide phrasing into §Verification's green-terminal
+   gate row, which still justifies batch 6 by "six suite files".
+4. **F-04** — P-A-3's ledger universe is twelve suites, not fourteen files; two of the fourteen
+   manifest rows register no jest test.
+
+One upstream defect remains open and is routed as an erratum rather than charged to this verdict:
+TSPEC §D.1's domain-membership wording — "one test per domain asserts that every value it ever
+carries is a member of that field's catalogue" (`TSPEC:592`) — is still false for the
+`corpusOutcome` domain as §D.2 defines it (`TSPEC:612`, healthy value `null`). I routed this in v2;
+the TSPEC has not been revised since (its last commit touching the file is `ccc739d1`), and the
+PLAN has now correctly worked around it at its own altitude while the TSPEC sentence it derives
+from still says the unqualified thing. It belongs to the TSPEC.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
