@@ -38,7 +38,36 @@ property lost a requirement trace, a PLAN task home or a level.
 
 ## Properties
 
-_(pending)_
+I re-read the two property rows the delta touched against TSPEC at `1531143c…`.
+
+**PROP-SEAM-02.** The rewritten cell states the invariant unchanged — every cardinality-coupled
+transcription surface reads six, as one set — and now anchors its members by symbol or block title:
+`advisoryDriver.test.js`'s module-scope `GATE_EXCLUSIVITY_REGISTRY` and the set-equality `it`;
+`advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality and its `test.each` seam list;
+`advisoryHarvest.test.js`'s `seamNames` equality; `consolidationProperties.test.js`'s `rng.pick([…])`
+seam list; `helpers/advisoryDoubles.js`'s `SEAMS` literal; and the four bare row-count sites by
+reference to derivation rule 1. That is the same member set TSPEC §1.3's *required end state* table
+enumerates, in the same anchoring style TSPEC adopted this round. The added HEAD sentence — every
+one already reads six *except* `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality, which
+still reads `["A1" … "A5"]` — is exactly what TSPEC §1.3's *State of these surfaces at HEAD* table
+says ("the one test-side literal not yet transcribed"), and it is true on disk:
+`advisoryRecord.test.js:496` reads `toEqual(["A1", "A2", "A3", "A4", "A5"])`, while `:505` already
+compares against `devModule.ADVISORY_SEAMS`. The distinction the cell draws — the property fixes
+the end state, not the edit list — is the right altitude for PROPERTIES and keeps the remedy
+question (revert `e3b9d5a3` vs. re-derive A6 batches) where TSPEC routed it, to PLAN.
+
+**PROP-CFG-03.** The assertion is untouched: the whole `advisory` section present, both keys, a
+non-negative integer `waveBudgetPerRun`, plus the `implementation.testCommand` blast-radius
+conjunct with both regexes verbatim. Only the *precedent* citation changed, from drifted line pins
+to `const configPath` and the test title — both of which exist at HEAD
+(`ci-arrangement.test.js:39` declares `const configPath`, and the test titled
+`ci arrangement — .claude/pdlc.config.example.json's implementation.testCommand` is at `:789`). The
+"never in `ci-arrangement.test.js`" batch-safety rule and the "`ci-arrangement.test.js` stays
+unowned by PLAN" clause survive unchanged, which is the part FSPEC §5.1's required-check oracle
+depends on.
+
+**No other property row moved.** PROP-SEAM-01/03/04/05, the REC/GATE/CTR/ENV/REST/NFR families and
+their PLAN task homes are byte-identical to the version I reviewed in v4.
 
 ## Oracles
 
