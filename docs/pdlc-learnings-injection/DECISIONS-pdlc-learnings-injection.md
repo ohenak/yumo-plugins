@@ -243,8 +243,16 @@ from a hope into a mechanism.
 **Re-evaluation triggers.** *Mechanically detected* — a fifth authoring code site appears that does
 **not** funnel through `dispatchAndVerify`: the source-level producer-set guard above reds on the
 commit that introduces it. *Review-time judgement* — REQ O-6 widens injection to review roles; the
-pipeline introduces a dispatch kind that is authoring in spirit but not so classified (FSPEC A-2's stated default is that it is
-excluded, and widening must be explicit).
+pipeline introduces a dispatch that BR-1's two conjuncts exclude. FSPEC `BR-1` at HEAD states the
+rule as *authoring-classified **and** a target document among REQ C-1's six types*, so there are two
+distinct exclusion shapes and only one of them is a classification question: a dispatch satisfying
+**neither** conjunct (FSPEC `A-2`: "If a future phase introduces a dispatch that satisfies neither
+conjunct in the pipeline's own terms yet is authoring in spirit, BR-1 excludes it by construction"),
+and an **authoring-classified dispatch whose target document type is none of the six**, which BR-1
+now names directly and which Phase CR's `docType: null` already instantiates (G-C). Both are excluded
+by construction and A-2 states that this is the correct default: widening is explicit, never
+implicit. The trigger is a judgement call in either shape, because no oracle can distinguish a
+deliberate exclusion from an oversight.
 
 ## DEC-LI-04: Corpus enumeration goes through `_git` with a restated pathspec, not `_listFiles` and not an import
 
