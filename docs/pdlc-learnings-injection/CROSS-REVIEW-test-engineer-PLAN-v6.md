@@ -59,6 +59,28 @@ one-line-edit class of repair v5 already asked for.
 
 ## Batches
 
+**No batch moves.** I re-derived nothing here because nothing in the TSPEC delta reaches the batch
+DAG's inputs: the edit touches front matter, four premise-evidence cells, §A.2's justification
+prose, §D.1's scoping sentence, §T.6's one citation, and three erratum entries. None of those is a
+task boundary, a file owner, a suite assignment, or a dependency edge, and the §T.5 partition, §T.3
+obligations, §T.7 arm inventory and §I.1/§I.3 symbol list that PLAN's 23 rows are cut from are
+byte-identical across `ccc739d1..HEAD`.
+
+The rows I checked individually, because they name a TSPEC section the edit touched:
+
+| Task | What it leans on | Still holds against TSPEC v0.7? |
+|---|---|---|
+| LI-01 (batch 1) | P-1, P-2a, P-3, P-4, P-7, P-8, P-10 as premises | **Yes.** P-2a's rewording matches LI-01's own phrasing; P-10's de-anchoring is satisfied by the row's structural assertion (`buildFinalReport` takes `notices = []` and spreads `advisory` conditionally), which never depended on `:15167` |
+| LI-11 (batch 5) | §A.2 consequence b, §T.6's fourth run shape, AT-02, AT-33 | **Yes.** §A.2's conclusion is unchanged — the `docType` conjunct is still load-bearing and the composition-site set equality is still `LEARNINGS_TARGET_DOCTYPES ∪ {null, "LEARNINGS"}` on the probe side. What changed is *why* the conjunct is right (it now implements BR-1 rather than diverging from it), which strengthens the row: the test author no longer has two readings to choose between |
+| LI-23 (batch 5) | §D.1's three frozen catalogues, §T.7's twelve arms | **Yes, and it is now the upstream's reading too.** §D.1's new non-`null` scoping is the row's existing scoping |
+| LI-10 (batch 5) | §D.2's record shape, the healthy `corpusOutcome === null` | **Yes.** §D.2 is untouched; §D.1 now cites it for the same reason LI-10 does |
+| LI-15 (batch 7) | §D.1's catalogues, §I.1/§I.3 | **Yes.** `LEARNINGS_CORPUS_OUTCOMES` stays exactly `["RSN-UNLISTABLE", "RSN-EMPTY"]`; §D.1's edit is explicit that its set-equality test is unchanged |
+| LI-20 (batch 12) | the attachment predicate `dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType)` | **Yes.** This is now a direct implementation of BR-1's two-conjunct rule, cited by §A.2 as such |
+
+**Nothing routes back to the batch ladder.** No red-test row loses its predecessor, no
+implementation row gains one, no same-batch same-new-file collision is introduced, and the twelve
+`learnings*.test.js` files LI-14's directory closure enumerates are unchanged.
+
 ## Dependencies
 
 ## Verification
