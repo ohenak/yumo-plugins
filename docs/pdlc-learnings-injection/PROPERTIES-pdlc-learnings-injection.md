@@ -153,6 +153,12 @@ a defect in this document or in the PLAN, not a nice-to-have.
   exception raised anywhere inside it — including from a seam — **must** resolve to
   `{unlistable: true}` and corpus-level `RSN-UNLISTABLE`.
   *Error Handling · L2 · C-7, BR-12 last row, TSPEC §T.7 · red LI-09 · green LI-18.*
+- **PROP-CORPUS-09** *(totality, generated — discharges TSPEC T-O-5):* For **any**
+  `{entries, feature, thresholds}` drawn from the fixture generators — including an empty corpus, an
+  all-self corpus, all-unreadable entries and zero-valued thresholds — `selectLearnings` **must** return
+  without throwing, and every input path **must** appear **exactly once** across `selected ∪ rejected`:
+  the two sets partition the input, never overlapping and never losing a path silently.
+  *Data Integrity · L1 (parameterised) · C-7, BR-12, TSPEC T-O-5, §D.6 · red LI-07 · green LI-16.*
 
 ### Group C — Ordering *(BR-4, AC-2.2, AC-2.5, C-5)*
 
@@ -176,6 +182,13 @@ a defect in this document or in the PLAN, not a nice-to-have.
 - **PROP-ORDER-05:** Two compositions of the same document type over an identical repository state, made
   in **two separate process invocations**, **must** produce byte-identical blocks including order.
   *Idempotency · L3 · AC-2.5, AT-14 · red LI-11 · green LI-20.*
+- **PROP-ORDER-06** *(generated — discharges TSPEC T-O-4):* For **any** permutation of a fixed
+  `(orderKey, path)` multiset including `null` keys and duplicate keys, `orderCorpus`'s output **must**
+  be a **permutation of its input** (same multiset, no loss, no duplication) and its comparator **must**
+  be a strict weak ordering — irreflexive, antisymmetric and transitive — so the result is invariant
+  under input permutation. This is the mechanical form of BR-4's "total order over the eligible set";
+  PROP-ORDER-01 pins the *direction* of that order by example, this one pins its *algebra*.
+  *Functional · L1 (parameterised) · AC-2.2, BR-4, TSPEC T-O-4, §D.4 · red LI-07 · green LI-16.*
 
 ### Group D — Bounds *(BR-5, BR-6, AC-2.1, AC-2.3, AC-2.4)*
 
@@ -587,11 +600,11 @@ Hypothesis-style generation has no natural home here: the input space is documen
 numeric magnitudes, and the load-bearing invariants are set equalities over closed catalogues rather
 than algebraic laws. Two exceptions are worth parameterising, and both are cheap:
 
-- **PROP-ORDER-01 totality** — generate permutations of a fixed 8-document `(orderKey, path)` multiset
+- **PROP-ORDER-01 / PROP-ORDER-06 totality** — generate permutations of a fixed 8-document `(orderKey, path)` multiset
   (including `null` keys and duplicate keys) and assert `orderCorpus` is a **total order**: irreflexive,
   antisymmetric, transitive, and invariant under input permutation. No unbounded generator, no products,
   no float magnitudes, so no `assume(math.isfinite(...))` hazard arises.
-- **PROP-BOUND-03 character-safety** — generate documents whose first priority section straddles the
+- **PROP-BOUND-03 character-safety (TSPEC T-O-6)** — generate documents whose first priority section straddles the
   bound with multi-byte codepoints and assert `Buffer.byteLength(material) <= maxBytes` **and** that
   `material` round-trips through UTF-8 decode without a replacement character. Boundary-adjacent draws
   are pinned by construction relative to the bound, not by an absolute offset.
@@ -713,7 +726,7 @@ document reads a private module binding directly.
 that §T.5 does not list.** The suite-level split (2 + 9 + 3 + 3 + 6 + 12 = 35) is itself asserted by
 PROP-META-05 against `LI-T-SUITEMAP`, so a drifting partition reds rather than being noticed by
 reading. Properties carrying no AT id — PROP-DISPATCH-02, PROP-DISPATCH-04, PROP-DISPATCH-07,
-PROP-CORPUS-01/02/07/08, PROP-ORDER-04, PROP-BOUND-07, PROP-BLOCK-03, PROP-RECORD-08/09,
+PROP-CORPUS-01/02/07/08/09, PROP-ORDER-04, PROP-BOUND-07, PROP-BLOCK-03, PROP-RECORD-08/09,
 PROP-CONFIG-06/08, PROP-FAILOPEN-01, PROP-FOOTPRINT-03/04, PROP-META-01…05 — are TSPEC-local or
 apparatus obligations, each named in a PLAN task row (LI-11, LI-12, LI-13, LI-23 and the LI-01…LI-06
 apparatus block) and each carrying **no** AT id by design, so §T.5's counts are unchanged.
@@ -762,7 +775,7 @@ that test pass. `PROP-CORPUS-03` and `PROP-BOUND-01` are red LI-07 / green LI-16
 | LI-04 | — | PROP-META-02 |
 | LI-05 | — | PROP-META-03 |
 | LI-06 | — | PROP-META-04 |
-| LI-07 | PROP-CORPUS-03/04/05/07, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 | — |
+| LI-07 | PROP-CORPUS-03/04/05/07/09, PROP-ORDER-06, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 | — |
 | LI-08 | PROP-DISPATCH-06, PROP-BOUND-03/05/07, PROP-BLOCK-01/02/03 | — |
 | LI-09 | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 | — |
 | LI-10 | PROP-RECORD-01…10 | — |
@@ -771,7 +784,7 @@ that test pass. `PROP-CORPUS-03` and `PROP-BOUND-01` are red LI-07 / green LI-16
 | LI-13 | PROP-CORPUS-01 | — |
 | LI-14 | — | PROP-META-05 |
 | LI-15 | — | PROP-CORPUS-01, PROP-FOOTPRINT-04 |
-| LI-16 | — | PROP-CORPUS-03/04/05/07, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 |
+| LI-16 | — | PROP-CORPUS-03/04/05/07/09, PROP-ORDER-06, PROP-ORDER-01/02/03/04, PROP-BOUND-01/02/04/06, PROP-FAILOPEN-04 |
 | LI-17 | — | PROP-DISPATCH-06, PROP-BOUND-03/05/07, PROP-BLOCK-01/02/03 |
 | LI-18 | — | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 |
 | LI-19 | — | PROP-RECORD-01…06, PROP-RECORD-08/09/10 |
@@ -797,7 +810,7 @@ green by two, and each split is named in the PLAN row that carries it:
 
 | Count | Value | Source |
 |---|---|---|
-| Properties in this document | 64 | Groups A–J |
+| Properties in this document | 66 | Groups A–J |
 | FSPEC acceptance tests | 35 | TSPEC §T.5's partition, asserted by PROP-META-05 |
 | ATs covered by ≥1 property | 35 | §C.1 |
 | PLAN tasks | 23 | LI-01…LI-23 |
@@ -816,3 +829,54 @@ planned; **no property in this document names a test file the PLAN does not crea
 directory today, and LI-05's row says so.
 
 ## Gaps, Obligations and Routed Errata
+
+### G.1 Carried TSPEC obligations, discharged here
+
+| Obligation | Discharged by |
+|---|---|
+| **T-O-4** — `orderCorpus` output is a permutation of its input and the comparator is a strict weak ordering | **PROP-ORDER-06**, parameterised per §O.9 |
+| **T-O-5** — `selectLearnings` is total: no throw, every input path exactly once across `selected ∪ rejected` | **PROP-CORPUS-09**, parameterised per §O.9 |
+| **T-O-6** — `extractInjectableMaterial`: `bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`, whole-character prefix, `bounded` true exactly when cut | **PROP-BOUND-03** (example arm, AT-11/AT-12) **plus** §O.9's generated arm, which is the half that makes the all-inputs claim of §D.5 checkable |
+
+All three land on tasks that already exist (LI-07 red / LI-16 green for T-O-4 and T-O-5; LI-08 red /
+LI-17 green for T-O-6's example arm, with the generated arm folded into the same suites). **No new
+PLAN task is required**, and no obligation is deferred to implementation.
+
+### G.2 Known gaps in this document
+
+1. **`maxBytesPerDocument: 0` is undecided upstream and therefore untested here.** AT-30 exercises
+   `maxDocuments: 0` and `maxTotalBytes: 0` only. §4.1 admits `0` as a valid non-negative threshold, so
+   the third zero is reachable by configuration, and REQ AC-4.4's "zero bytes" branch does not say
+   whether the outcome is `RSN-NO-MATERIAL`, `RSN-BYTES`, or a zero-byte contribution. **No property
+   asserts it**, deliberately: inventing the answer here would freeze a guess into the suite. Routed as
+   an erratum below; when FSPEC decides, the property belongs in Group H beside PROP-CONFIG-04 and
+   costs one case in `learningsConfig.test.js`.
+2. **Byte accounting of framing is specified two ways.** TSPEC §D.5 says material only, framing never
+   charged; FSPEC BR-6's worked example charges the identification line and delimiters. PROP-BOUND-07
+   and PROP-BLOCK-02 are written to **TSPEC's** reading, because PLAN LI-08's hand-computed AT-11/AT-12
+   counts are computed that way and the fixtures follow. If FSPEC's reading is the intended one, both
+   properties' expected counts change and LI-08's row changes with them. Routed as an erratum.
+3. **`runMirror` is deliberately unasserted** (PROP-RECORD-09). This is a gap by decision, not by
+   oversight: upstream leaves its value unconstrained, an implementation omitting it entirely conforms,
+   and a test pinning it would red a conforming implementation. If a later revision constrains it, this
+   negative property must be retired in the same change.
+4. **Mutation testing is not mechanised.** §O.8's ledger is a written obligation checked by a reviewer,
+   not by a tool. The `--per-file --branches 85` gate cannot see a ~300-line region inside a
+   15,311-line module (`orchestrate-dev.js` sits at 88.14 %), which is precisely why PROP-FAILOPEN-01
+   exists as the mechanical substitute for the coverage claim. The residual risk — a mutation in O.8's
+   list that no test catches — is not currently detected by CI.
+5. **Real-agent behaviour is out of scope.** Every property is asserted against scripted `_agent`
+   replies. Whether an author agent's *output quality* improves from an injected block is unfalsifiable
+   here, and REQ's non-goals say so; PROP-ISOLATE-01/02 assert only that the block cannot change gate
+   inputs or pipeline semantics.
+
+### G.3 Routed errata
+
+Emitted as line items in this dispatch's final message; **no upstream document was edited.**
+
+- FSPEC's BR-6 worked example versus TSPEC §D.5 on framing bytes (gap 2 above).
+- FSPEC's missing edge decision for `maxBytesPerDocument: 0` (gap 1 above).
+- TSPEC's AT-11 byte count, which inherits FSPEC's framing arithmetic and so cannot be right if §D.5 is.
+- TSPEC's suite assignment for AT-15, whose clauses 2–3 (corpus-level `RSN-EMPTY`, no discarded document
+  in any record) are asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite — the
+  mismatch PLAN LI-07/LI-19 already work around by carrying an expected-red ledger entry.
