@@ -271,7 +271,7 @@ including its own failure; no step raises to its caller (BR-12).
 | # | Decision | Branches | Rule |
 |---|---|---|---|
 | D-1 | Disabled by an explicit `enabled: false`? | disabled / enabled — absent, malformed and wrong-typed read as enabled on §4.1's defaults | BR-14 |
-| D-2 | Is this dispatch an authoring dispatch? | yes / no | BR-1 |
+| D-2 | Does BR-1's two-conjunct rule hold — authoring-classified **and** a target document among the six C-1 types? | both hold → block / not authoring-classified → no block / authoring-classified, target none of the six → no block | BR-1 |
 | D-3 | Did the corpus listing succeed? | ok / failed | BR-12 |
 | D-4 | Is the listing empty? | empty / non-empty | BR-12 |
 | D-5 | Is the candidate excluded by rule? | self / not excluded | BR-2 |
