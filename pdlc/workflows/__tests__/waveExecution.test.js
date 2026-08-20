@@ -907,6 +907,278 @@ describe("Phase I — the post-wave command and its build-output commit", () => 
   });
 });
 
+// ─── Phase I: the A6 advisory wave gate call site (TSPEC §2.3/§3.2, PLAN A6-21) ──
+//
+// `runWaveGateSeam` itself (PLAN A6-14/A6-18) is exercised elsewhere, in
+// isolation. Here the wave loop's own CALL SITE is under test: a fake injected
+// through `_runWaveGateSeam` stands in for the seam, so every assertion below is
+// about WHEN the loop calls it, what it does with a `resolved`/`unresolved`
+// reply, and how `haltError`'s `{ advisory }` detail reaches the report — never
+// about the seam's own diagnosis.
+describe("Phase I — the A6 advisory wave gate call site", () => {
+  const NO_HALT_FIELDS = {
+    rootCause: "unclassified",
+    diagnosis: "",
+    repairApplied: false,
+    repairPaths: [],
+  };
+
+  function makeA6Fake(behavior) {
+    const calls = [];
+    const fn = async (args) => {
+      calls.push(args);
+      return typeof behavior === "function" ? behavior(args, calls) : behavior;
+    };
+    return { calls, fn };
+  }
+
+  it("AT-01-2: a post-wave command failure halts before A6 is ever called", async () => {
+    const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
+    const CONFIG_WITH_POST_WAVE = JSON.stringify({
+      implementation: {
+        testCommand: "npm test",
+        postWaveCommand: "node build.mjs",
+        postWavePathspecs: ["dist/"],
+      },
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_POST_WAVE,
+        runCommand: async (cmd) =>
+          cmd === "node build.mjs" ? { ok: false, output: "SyntaxError" } : { ok: true, output: "Tests: 40 passed\n" },
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 post-wave command failed");
+    expect(a6.calls.length).toBe(0);
+  });
+
+  it("AT-01-3: the V-wave's own separate gate call site never calls A6 either", async () => {
+    const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
+    let n = 0;
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        runCommand: async () => {
+          n += 1;
+          // Call 1: the implementation wave's own gate (green). Call 2: the
+          // V-wave's gate, run through the SAME `runCommandFn` but a DIFFERENT
+          // call site — the one under test here.
+          return n === 1 ? { ok: true, output: "Tests: 40 passed\n" } : { ok: false, output: "FAIL src/prop.test.js\n" };
+        },
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("PROPERTIES test gate failed");
+    expect(a6.calls.length).toBe(0);
+  });
+
+  it("AT-04-3: an all-green run never calls A6, and its commits stay byte-identical to the pre-A6 baseline", async () => {
+    const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
+    const gitCalls = [];
+    const ran = [];
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git: makeGit(gitCalls),
+        runCommand: async (cmd) => {
+          ran.push(cmd);
+          return { ok: true, output: "Tests: 40 passed\n" };
+        },
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(ran).toEqual(["npm test", "npm test"]);
+    const adds = gitCalls.filter((a) => a[0] === "add");
+    expect(adds).toEqual([
+      ["add", "--", "src/one.js"],
+      ["add", "--", "src/two.js"],
+    ]);
+    const commits = gitCalls.filter((a) => a[0] === "commit");
+    expect(commits).toEqual([
+      ["commit", "-m", "feat(test-feat): T1 — First task"],
+      ["commit", "-m", "feat(test-feat): T2 — Second task"],
+    ]);
+    expect(result.haltAdvisory).toBeUndefined();
+    expect(a6.calls.length).toBe(0);
+  });
+
+  it("AT-07-3 / red-gate-resolved: A6 fires once, the wave's own per-task commits still land, and the halt report carries no haltAdvisory", async () => {
+    const a6 = makeA6Fake({
+      resolved: true,
+      disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
+      haltFields: { rootCause: "flaky-test", diagnosis: "a transient failure", repairApplied: false, repairPaths: [] },
+      postWaveRan: false,
+    });
+    const gitCalls = [];
+    let n = 0;
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git: makeGit(gitCalls),
+        runCommand: async () => {
+          n += 1;
+          // Only the FIRST gate call (wave 1) is red; A6's own re-gate is
+          // internal to the (faked) seam and never re-invokes `_runCommand`
+          // through this call site.
+          return n === 1 ? { ok: false, output: "Tests: 1 failed, 39 passed\n" } : { ok: true, output: "Tests: 40 passed\n" };
+        },
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(a6.calls.length).toBe(1);
+    const commits = gitCalls.filter((a) => a[0] === "commit");
+    expect(commits.length).toBeGreaterThanOrEqual(1);
+    // A resolved wave that reached the un-skip guard clean carries no per-halt
+    // advisory field at all — there was no halt.
+    expect(result.haltAdvisory).toBeUndefined();
+  });
+
+  it("an unresolved A6 attempt (disposition present) carries its haltFields as haltAdvisory on the test-gate halt itself", async () => {
+    const haltFields = {
+      rootCause: "unclassified",
+      diagnosis: "the reply did not classify the failure",
+      repairApplied: false,
+      repairPaths: [],
+    };
+    const a6 = makeA6Fake({
+      resolved: false,
+      disposition: { seam: "A6", outcome: "escalated", reason: "no-verdict", verdict: null, attempts: 3, model: "m", fallback: false },
+      haltFields,
+      postWaveRan: false,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        runCommand: async () => ({ ok: false, output: "Tests: 1 failed, 39 passed\n" }),
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 test gate failed");
+    expect(a6.calls.length).toBe(1);
+    expect(result.haltAdvisory).toEqual(haltFields);
+  });
+
+  it("the tier-disabled sentinel (disposition null) never leaks a haltAdvisory key onto the test-gate halt", async () => {
+    const a6 = makeA6Fake({ resolved: false, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        runCommand: async () => ({ ok: false, output: "Tests: 1 failed, 39 passed\n" }),
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 test gate failed");
+    expect(a6.calls.length).toBe(1);
+    expect(result.haltAdvisory).toBeUndefined();
+  });
+
+  it("AT-05-4: an un-skip halt on the SAME wave A6 just resolved carries that wave's advisory fields as haltAdvisory", async () => {
+    const a6HaltFields = {
+      rootCause: "flaky-test",
+      diagnosis: "a transient failure, now resolved",
+      repairApplied: false,
+      repairPaths: [],
+    };
+    const a6 = makeA6Fake({
+      resolved: true,
+      disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
+      haltFields: a6HaltFields,
+      postWaveRan: false,
+    });
+    let n = 0;
+    const result = await main(
+      unskipArgs(testFileSkipping("T1 — the completed owner's block"), {
+        runCommand: async () => {
+          n += 1;
+          return n === 1 ? { ok: false, output: "Tests: 1 failed, 39 passed\n" } : { ok: true, output: "Tests: 40 passed\n" };
+        },
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 un-skip guard failed");
+    expect(a6.calls.length).toBe(1);
+    expect(result.haltAdvisory).toEqual(a6HaltFields);
+  });
+
+  it("AT-05-4 (paired negative): the very same un-skip halt with a green-from-the-start gate carries no haltAdvisory — A6 never fired", async () => {
+    const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
+    const result = await main(
+      unskipArgs(testFileSkipping("T1 — the completed owner's block"), {
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 un-skip guard failed");
+    expect(a6.calls.length).toBe(0);
+    expect(result.haltAdvisory).toBeUndefined();
+  });
+
+  it("AT-04-5: an A6-resolved E-6 repair promotes a LATER wave's owned file into its own dedicated commit, on top of (never widening) the owning task's own pathspec", async () => {
+    const a6 = makeA6Fake({
+      resolved: true,
+      disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
+      haltFields: {
+        rootCause: "cross-file-drift",
+        diagnosis: "the fix landed in T2's own file",
+        repairApplied: true,
+        // `src/two.js` is T2's (wave 2) owned file — LATER than wave 1, where the
+        // gate failed. Not `src/one.test.js`, which wave 1 already owns.
+        repairPaths: ["src/two.js"],
+      },
+      postWaveRan: false,
+    });
+    const gitCalls = [];
+    let n = 0;
+    const result = await main(
+      unskipArgs(
+        [
+          'describe("the block that really runs", () => {',
+          '  it("asserts something", () => {});',
+          "});",
+          "",
+        ].join("\n"),
+        {
+          git: makeGit(gitCalls),
+          runCommand: async () => {
+            n += 1;
+            return n === 1
+              ? { ok: false, output: "Tests: 1 failed, 39 passed\n" }
+              : { ok: true, output: "Tests: 40 passed\n" };
+          },
+          extra: { _runWaveGateSeam: a6.fn },
+        }
+      )
+    );
+
+    expect(result.outcome).toBe("success");
+    const commits = gitCalls.filter((a) => a[0] === "commit").map((a) => a[2]);
+    // The owning task's own commit (T1, wave 1) is untouched; the promotion is
+    // its OWN commit, with DEC-A6-02's literal message, landing after T1's.
+    expect(commits).toContain("feat(test-feat): T1 — First task");
+    expect(commits).toContain("chore(test-feat): wave 1 advisory promotion (T2)");
+    // The promotion commit's pathspec is the repaired file alone — never folded
+    // into T1's own `add`.
+    expect(gitCalls).toContainEqual(["add", "--", "src/two.js"]);
+    const t1Add = gitCalls.find(
+      (a) => a[0] === "add" && a.includes("src/one.js") && a.includes("src/one.test.js")
+    );
+    expect(t1Add).toBeTruthy();
+    expect(t1Add).not.toContain("src/two.js");
+  });
+});
+
 // ─── Phase I: git failures ────────────────────────────────────────────────────
 
 describe("Phase I — index.lock retry and non-transient git failures", () => {
