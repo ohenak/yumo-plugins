@@ -573,9 +573,10 @@ requirements altitude.
   (queue row 6).
 - **O-3** — The Fable rung's alias literal remains `REQ-pdlc-advisory-tier` BL-01's obligation on
   TSPEC. A6 inherits the ladder and adds nothing to it (NFR-6).
-- **O-4** — How a wave's owned-path set is computed for E-5 and E-6, and how a proposal's changed
-  paths are compared against it, are TSPEC's. This REQ states the membership rule, not the
-  comparison.
+- **O-4** — How a wave's owned-path set is computed for E-5 and E-6, how a proposal's changed
+  paths are compared against it, and how the gate output is matched against a later PLAN row's
+  undertaking for E-6's first conjunct, are TSPEC's. This REQ states the membership rule, not the
+  comparison. Owner: this feature's TSPEC.
 - **O-5** — Whether the root-cause classification should be derived by the seam or supplied by the
   wave's own agents is TSPEC's; AC-2.2 constrains only the vocabulary and its totality.
 - **O-6** — Improving the PLAN's dependency derivation so that a task cannot be scheduled before the
