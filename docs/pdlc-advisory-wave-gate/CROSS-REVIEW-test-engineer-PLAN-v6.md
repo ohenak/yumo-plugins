@@ -194,4 +194,26 @@ causes. Fix F-01 and this framing becomes checkable end to end.
 
 ## Recommendation
 
+**Needs revision**
+
+The delta resolves both routed items — the batch column re-derives correctly and A6-00's gate is
+shown to still discriminate — and it breaks nothing previously approved. It does not, however,
+leave the document faithful to HEAD, because its new central claim was measured through a command
+that hides two of the reds the kept commit created (F-01). Fix F-01 by naming an owner for the
+`documentOracles` count literal and the tracked `.bak` blobs (or by re-opening the revert option
+with those costs on the table), restate the third bullet as scoped to the advisory suites, and
+re-anchor F-02's four pins to content the way TSPEC v1.10 already did. F-03/F-04/F-05 are small and
+can ride along.
+
+Delta-confirmation tags:
+
+FINDING: High | delta | local | §1.3 HEAD-drift note, third bullet | "every failure at HEAD … supplied by A6-05's green step" is false: `npm test` shows 28 failures across 9 suites; `documentOracles` T15 (99 vs 100) and PROP-SWEEP-2(b) (14 tracked `.bak`) are caused by `e3b9d5a3`, closed by no task, and run by both the DoD's `test:coverage` and CI
+FINDING: Medium | delta | local | Batch-1 gate wording | four row-count pins left at pre-drift lines `:622`/`:627`/`:571`/`:726` (HEAD: `:629`/`:634`/`:578`/`:733`) after TSPEC v1.10 re-anchored the same pins to content per DEC-DOC-01
+FINDING: Medium | inherited | nonlocal | Batch-1 gate wording, inherited-red paragraph | `consumerCleanup.test.js` AT-4.1 is in wave-gate scope and red on the hook-rewritten tracked `.pdlc-drift-state.json`; unowned failure that the "escalate anything outside the set" rule would escalate
+FINDING: Low | inherited | nonlocal | A6-01 row | doubles `SEAMS` retarget framed as pending and pinned at `:271`; already six-member at `:354`
+FINDING: Low | delta | local | A6-00 row | row's `pathsCollide` export wording contradicts the landed file's own header comment the row asks the implementer to compare against
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
