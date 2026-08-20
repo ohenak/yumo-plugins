@@ -37,6 +37,43 @@ stands?
 
 ## Options Considered
 
+Three readings of the cascade were available, and I measured rather than assumed which applies.
+
+**(a) The edit lands entirely in prose DECISIONS never cites — confirmation is a formality.**
+Rejected as an assumption: DECISIONS does cite §1.3 by name. Line 333 reads *"TSPEC §5.1's status
+caveat and §1.3 are the carriers of repo state for this feature, and whether the early-landed edits
+are reverted or PLAN's batches are re-derived around them is PLAN's call."* That sentence points
+straight into the edited section, so the edge had to be re-read at HEAD, not waved through.
+
+**(b) The edit re-homes repo-state ownership away from §1.3 to PLAN, falsifying DECISIONS' "§1.3 is
+a carrier" clause.** Checked and rejected on the bytes. The new paragraph says TSPEC "states the
+size only so that no reader of this paragraph mistakes the `.bak` blobs for the whole residue" —
+it *adds* repo-state to §1.3, and defers only the **partition, owners, disposition and figures** to
+PLAN. DECISIONS' clause claims §1.3 carries repo state and that the remedy choice is PLAN's. Both
+halves are now more true than at v9, not less: TSPEC's own changelog sentence still ends "is PLAN's
+and Phase I's to make, not this document's, and is routed there as an erratum."
+
+**(c) The edit introduces figures that collide with figures DECISIONS still carries.** Checked and
+rejected. The only number DECISIONS still states in its own bytes is column (1)'s **four**
+(three production constants plus `advisoryRecord.test.js`'s five-member seam literal). TSPEC's new
+figures — 28, three classes, 14 closable — are a different measurement (the retirement sweep's
+tracked-path residue) on a different surface. `grep -n "28\|\b14\b\|bak\|backup"` over DECISIONS
+returns exactly one hit, `FSPEC E-28`, which is a requirement id and not a count. There is no
+double-carriage of the new figures, which is precisely the POSTMORTEM-D §6 step 1 discipline v1.8
+adopted: DECISIONS restates none of the short-shelf-life totals.
+
+I also re-ran the underlying oracle rather than trusting TSPEC's stated number, since DECISIONS'
+credibility on this edge depends on the upstream figure being reproducible. Assembling L-2's seven
+terms against `git ls-files` and subtracting A-1's frozen glob list returns **33** paths at HEAD,
+not 28 — which *agrees* with TSPEC rather than contradicting it: TSPEC dates its figure to PLAN's
+2026-08-19 measurement and states in the same sentence that the document class "grow[s] by one per
+*committed* cross-review file". Five cross-review files have committed since. The three classes and
+the 14/14 split reproduce exactly: 14 `.bak` blobs, four consumer-runtime artifacts
+(`.pdlc-drift-state.json`, both `*.bundle.js`, `pdlc-cli.mjs`), and this feature's tracked documents.
+`SIZING-pdlc-advisory-wave-gate.md` — the appendix DECISIONS v1.8 created and now leans on — is
+**not** in the residue, because it quotes none of L-2's seven terms; TSPEC's enumeration of the
+document class is therefore complete at HEAD despite not naming it.
+
 ## Decision
 
 ## Consequences
