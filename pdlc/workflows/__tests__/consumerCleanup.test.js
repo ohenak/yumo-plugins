@@ -140,15 +140,23 @@ describe("T30: cleanup-consumer-workflows.sh contract", () => {
   });
 
   it("AT-4.1: full-set cleanup removes all nine expected entries and the emptied directory, tracked files unchanged, exit 0", () => {
+    // "Tracked files unchanged" is a before/after comparison, not an empty-status demand:
+    // the host tree is legitimately dirty mid-feature, and a host-tree-sensitive oracle
+    // reds on state the script never touched (LEARNINGS-pdlc-plugin-retirement).
+    const repoRoot = path.resolve(__dirname, "..", "..", "..");
+    const trackedBefore = execFileSync("git", ["status", "--porcelain"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
     const target = makeFullTarget(workdir);
     const result = runScript([workdir], workdir);
     expect(result.status).toBe(0);
     expect(existsSync(target)).toBe(false);
-    const tracked = execFileSync("git", ["status", "--porcelain"], {
-      cwd: path.resolve(__dirname, "..", "..", ".."),
+    const trackedAfter = execFileSync("git", ["status", "--porcelain"], {
+      cwd: repoRoot,
       encoding: "utf8",
     });
-    expect(tracked).toBe("");
+    expect(trackedAfter).toBe(trackedBefore);
   });
 
   it("AT-4.2: a second run over the already-cleaned tree is a no-op, exit 0, nothing changes", () => {

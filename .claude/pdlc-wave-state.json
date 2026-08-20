@@ -1,1 +1,7 @@
-{"version":1,"feature":"pdlc-plugin-retirement","planHash":"d20f09dc","lastGreenWave":22,"head":"0474aab3962d419edbbe6f776f04c0fe319d3637"}
+{
+  "version": 1,
+  "feature": "pdlc-advisory-wave-gate",
+  "planHash": "503cfe16",
+  "lastGreenWave": 7,
+  "head": "a998fae13d9c569c14d10d76da4d0801ee07566e"
+}
