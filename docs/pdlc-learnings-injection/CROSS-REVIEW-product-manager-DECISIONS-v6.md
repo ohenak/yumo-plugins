@@ -196,6 +196,21 @@ rather than file them.
 
 ## Recommendation
 
+**Approved with minor changes** — DECISIONS still holds as approved against FSPEC as it now stands.
+
+No High finding. No decision is contradicted by FSPEC v0.13; no binding transcription has gone wrong
+(`DEC-LI-07`'s `BR-14` five-state table and `DEC-LI-05`'s byte-identity construction both still check
+out against byte-identical upstream rules); and the round's three substantive moves — material-only
+accounting, `maxBytesPerDocument: 0` as BR-14's enabled empty-selection run, F-O-1 owning both
+heading rules — each reinforce an entry DECISIONS already carries rather than undermining one.
+
+Five findings are recorded, all `inherited`, all single-passage edits for the next pass on this
+document, none gating: F-01 and F-02 assert upstream questions are open that TSPEC closed at v0.6
+(F-02 additionally leaves a discharged obligation, `D-O-9`, standing as an open ask), F-03's stale
+version pins are now two TSPEC minors and **six** FSPEC minors behind HEAD, F-04 paraphrases FSPEC
+`A-2` in its pre-erratum wording, and F-05's upstream-version note asserts a TSPEC/DECISIONS
+grounding gap that TSPEC v0.7 closed. PLAN and PROPERTIES may proceed.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
