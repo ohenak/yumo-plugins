@@ -101,7 +101,39 @@ round. It is not.
 
 ## Verification
 
-_(pending)_
+Every claim in this confirmation was measured, not inferred. The commands and their results:
+
+| # | What I checked | How | Result |
+|---|---|---|---|
+| V-1 | The delta is exactly one commit | hashed every TSPEC blob in `git log -12` and matched the dispatch shas | `4a092e85` (round-10 approval) → `1531143c` (HEAD) is the single commit `1f2a4fbf`, +18/−1 |
+| V-2 | PLAN's own bytes are unchanged | `git diff b902f40b..HEAD -- PLAN` | empty |
+| V-3 | Other upstreams unchanged | dispatch shas vs. round 10's `UPSTREAM-STATE` trailer | REQ, FSPEC, DECISIONS identical |
+| V-4 | The routed pointers resolve | grepped PLAN for the two named owners | Overview HEAD-drift note present; A6-00's "Edit 1" present and spelled as TSPEC names it |
+| V-5 | The restated figures agree | clause-by-clause read of the new paragraph against PLAN's class table | 28 total, 14 `.bak`, 4 runtime artifacts, class 3 = this feature's docs, 14 closable, dated 2026-08-19, +1 per *committed* cross-review file — all six agree |
+| V-6 | The cited oracle exists and is titled as quoted | grep of `documentOracles.test.js` | `test("PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty — AC-1.2's required-empty gate", …)` at the shipped site |
+| V-7 | PLAN's structural contract still holds | replayed the shipped parsers at HEAD | 11 tasks, `validatePlanContract` `ok: true`, 7 waves, 0 ownership near-misses |
+| V-8 | A-1's glob list, as both documents describe it | read `A1_GLOBS` in the shipped oracle | **16 globs**, not two — the basis for F-01 below |
+
+**On V-8, the only disagreement I found.** TSPEC's new paragraph says class 3 enters the sweep
+because the documents quote L-2's grep terms "while A-1's frozen glob list exempts **only**
+`LEARNINGS-*` and `POSTMORTEM-*`". The shipped list carries sixteen globs, including
+`docs/pdlc-plugin-retirement/**`, `docs/_decisions/**`, `docs/completed/**`, `docs/PLAN-*.md` and
+five more. PLAN's own wording does not make this error: it says the list "covers
+`docs/pdlc-plugin-retirement/**`, `**/LEARNINGS-*.md` and `**/POSTMORTEM-*.md` **but not**
+`docs/{feature}/` specs and **not** `CROSS-REVIEW-*`" — a covers/does-not-cover statement whose
+operative half (this feature's docs and its cross-reviews are unexempted) is exactly right at HEAD.
+So the defect is upstream's overclaiming "only", not PLAN's compression of it, and PLAN's text is the
+one a reader should act on — which is what TSPEC's own routing sentence instructs. That is why F-01 is
+Low and not gating: it cannot mislead an implementer working from PLAN, and PLAN needs no edit to
+stay faithful.
+
+**Verification legs PLAN promises that this delta does not disturb.** The DoD's full-suite leg still
+names its two expected-failing test titles verbatim, and still splits the `PROP-SWEEP-2(b)` positive
+check by class (set-equality on class 2's four named runtime artifacts, *membership* on class 3's
+`docs/pdlc-advisory-wave-gate/**`). That class-split is what keeps the ship-boundary gate correct as
+class 3 grows — and it is now the thing TSPEC defers to. Re-measured at HEAD, class 3 has grown as
+predicted since the dated measurement, which the membership predicate absorbs and a set-equality would
+have false-red'd. The design holds under exactly the pressure this cascade applies to it.
 
 ## Findings
 
