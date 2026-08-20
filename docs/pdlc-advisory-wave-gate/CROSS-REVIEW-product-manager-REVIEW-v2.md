@@ -108,6 +108,72 @@ word.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | An `E-5`-**labelled** proposal is still scoped to the `E-5 ∪ E-6` union, so it may change a later wave's owned path without any of E-6's new conjuncts; the wave loop then commits and dispatches it as a promotion while the advisory record names no owning task — routed upstream as a TSPEC erratum, not scored against this implementation | AC-3.1, AC-4.6, AC-6.1 |
+| F-02 | Medium | Process | Carry-over of v1 F-08: AC-5.1's `.gitignore`d-path restoration arm still ships as `test.todo`, pending TSPEC §6 OQ-7 | AC-5.1 |
+| F-03 | Low | Process | `documentOracles.test.js` is red on this branch in this repository (2 failures) for reasons outside this feature; it is nonetheless the state a wave gate would observe | NFR-6 |
+
+### F-01 (Medium) — the E-5 label routes around E-6's conjuncts
+
+v1's F-01 asked for E-6's decidable rule to be script-checked and for E-6's half of the scope to
+narrow to the named task's owned set. Both landed. The narrowing is gated on the reply's declared
+action, though: `classifyReply` re-derives `declaredScope` only inside
+`if (verdict && verdict.proposedAction === "E-6")` (`orchestrate-dev.js:3186`). A reply that
+declares `E-5` keeps `gatherEvidence`'s seeding, which is the union over *every* later wave
+(`:3110-3114`).
+
+I probed the shipped `runWaveGateSeam` rather than reasoning about it: waves
+`[[T1 owns a.js], [T2 owns b.js]]`, wave 1 red, a well-formed reply declaring
+`PROPOSED-ACTION: E-5` with no `PROMOTES:` trailer, and the repair writing `b.js`. Result:
+`outcome: resolved`, `reason: null`, `repairPaths: ["b.js"]`. AC-3.1's E-5 rule reads *"every path
+the proposal would change is a member of the union of the owned-path sets the PLAN's ownership
+manifest assigns to **that wave's** tasks"* — `b.js` is not, and no conjunct of E-6 was checked
+either.
+
+The downstream consequences are mixed, which is why this is Medium and not High:
+
+- **Not lost, and not uncommitted.** `groupPromotedPaths` (`:3329-3343`) derives promotions from
+  `repairPaths` minus the failing wave's owned set, intersected with each later task's files — it
+  never reads the declared action. So the promotion commit (`:15471-15482`) and AC-4.6's dispatch
+  clause both still fire for the probe case. AC-4.6's committed-state and dispatch clauses hold.
+- **The record disagrees with the branch.** `annotate`'s promotion rows are gated on
+  `capturedPromotionHolds` (`:3247-3250`), which is false for an E-5 label. So `ADVISORY-{feature}.md`
+  names `| Repair paths | b.js |` with no `Promotes task` row, while git history carries a
+  `wave 1 advisory promotion (T2)` commit and T2's dispatch says the paths already carry a
+  promotion. An operator reconciling the record against the branch sees a promotion the record does
+  not attribute.
+
+I am not scoring this against the implementation. TSPEC §3.4 states the shipped rule as written —
+*"`declaredScope` starts as `E-5 ∪ E-6` (exact manifest entries)"* — and specifies the conjunct
+narrowing only for E-6, so the code is faithful to its spec; the gap is between that spec sentence
+and AC-3.1's E-5 rule, and the fix (narrow the scope to E-5 when the declared action is E-5, or
+state and justify the union with its record-attribution consequence) is a spec decision, not one to
+take silently in code. Routed as `ERRATUM: TSPEC`.
+
+### F-02 (Medium, Process) — AC-5.1's ignored-path arm is still pending
+
+`advisoryWaveGate.test.js:501` is unchanged in this delta: the `.gitignore`d-path restore round trip
+is still `test.todo`, blocked on TSPEC §6 OQ-7, and the suite still reports `1 todo`. The shipped
+restore runs `git clean -fd` (`orchestrate-dev.js:12408`), not `-fdx`, so an ignored file A6 wrote
+survives a restore that AC-5.1 describes as leaving the tree *"observably identical"*. This is the
+same routed upstream question v1 recorded as F-08; I record it again so a P0 reversibility criterion
+does not ship with an unresolved boundary that no artifact names. The `test.todo` marker itself is
+the honest form — it is visible to the todo count rather than hidden in a skip.
+
+### F-03 (Low, Process) — the full suite is not green on this branch
+
+`npm test` at HEAD reports 2 failures, both in `documentOracles.test.js`: `AT-22` sees 23
+`coveredViolations` entries (`.serena/cache/**`, `.tokensave/tokensave.db` — untracked local tool
+state the oracle's tree walk picks up, the failure mode `CLAUDE.md` already documents), and
+`PROP-SWEEP-2(b)` sees 25 sweep hits, most of them this feature's own PLAN/TSPEC/PROPERTIES and
+cross-review files quoting `.claude/workflows/...` paths. Neither is caused by this delta — the only
+change to that file here is a pre-sweep test-file count moved 100 → 101 for the new module
+(`__tests__/documentOracles.test.js`, `count).toBe(101)`), which passes. I record it Low/Process
+because it is the state Phase CR and any subsequent wave gate actually observe, and because a
+document-oracle suite that is red for corpus reasons cannot distinguish a real drift from this
+noise.
+
 ## Questions
 
 ## Positive Observations
