@@ -78,6 +78,11 @@ one clause in step 15 — drop any eligible document that **yields no material**
 priority sections, *or* a zero per-document bound admits none) — plus the matching qualifier on
 D-9's branch (`:294`), so that D-12 is reached before D-9 flags a zero-byte take as `bounded`.
 
+The drift is not academic: TSPEC `:778-781` already implements the step-15 reading —
+`extractInjectableMaterial` returns `{material, bounded, bytes}` with `bounded` decided at the cut,
+which for a zero bound gives a selected document with `bytes: 0, bounded: true`. Whichever way F-01
+is resolved, both documents need to say the same thing (Q-02).
+
 Nothing else in §Behavioral Flow was disturbed. Steps 16–17 remain consistent with the
 material-only basis: step 17's "Accumulate contributed bytes" now accumulates material only, which
 is what BR-6 and TSPEC §D.5 both say, and step 19's assembly of preamble/delimiters is now
@@ -247,7 +252,7 @@ count-cut fixture).
 | ID | Question |
 |----|---------|
 | Q-01 | F-O-1 now owns two rules; TSPEC §D.3 discharges one. Does the TSPEC re-open for the `extractInjectableMaterial` matcher (numbered form / bare title / prefix), and does the choice need pinning against the corpus BR-6 measured — where the conventional `## N. Title` form is what the harvest skill writes but at least one HEAD document deviates? Not a finding against this FSPEC; routing question only. |
-| Q-02 | TSPEC `:786` describes `totalBytesInjected` as "framing constant plus one opener/closer pair per selected document". If that is the *report scalar* rather than a realised-prompt-growth estimate, it contradicts BR-8's "sum of the rows' contributed bytes" under the newly agreed material-only basis. I read it as the latter and did not file it; worth one sentence of confirmation in the TSPEC round. |
+| Q-02 | Does the TSPEC round also need to revisit `extractInjectableMaterial(text, 0)`? TSPEC `:778-781` returns `{material, bounded, bytes}` with `bytes <= maxBytes`, and `bounded` is "decided at the cut" — which under a zero bound yields `bytes: 0, bounded: true` for a **selected** document, i.e. the same reading as §Behavioral Flow step 15 rather than BR-6's carve-out. Resolving F-01 in the FSPEC decides which way the TSPEC must go; flagging so the two do not converge in opposite directions. Not a finding against this FSPEC. |
 
 ## Positive Observations
 
