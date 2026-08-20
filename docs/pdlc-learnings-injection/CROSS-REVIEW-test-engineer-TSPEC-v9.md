@@ -35,7 +35,29 @@ work. One finding falls out — a version-label citation the erratum made stale 
 
 ## Architecture
 
-_pending_
+The TSPEC's architecture rows describe seams in `pdlc/workflows/orchestrate-dev.js`, not FSPEC
+prose, so a header-only upstream erratum cannot falsify them by construction. What it *could*
+falsify is the compression claim: that each architecture row still transcribes an upstream rule
+that says the same thing. Re-checked, by upstream anchor rather than by line number:
+
+| TSPEC row | Upstream sentence it compresses | State at FSPEC v0.10 |
+|---|---|---|
+| P-2a — four `dispatchKind: "authoring"` sites | "The block is assembled by a **selection step** that runs once per authoring dispatch" (FSPEC §Overview) | verbatim, untouched |
+| P-3 — single `dispatchAndVerify` funnel | "The flow runs **once per authoring dispatch**, at the point the dispatch's prompt is being composed" (FSPEC §Flow) | verbatim, untouched |
+| P-7 / P-8 / P-10 — read/list/git seams | BR-8's per-document rows and their unlistable/unreadable reasons | untouched |
+| P-11 / P-12 — `parseAdvisoryConfig` sibling precedent | the v0.6 erratum paragraph's `ADVISORY_DEFAULTS` contrast | still present, unedited; the v0.10 paragraph is additive and sits below it |
+
+The v0.10 paragraph is worth one explicit note, because it is the only new upstream prose in this
+window and a cascade confirmation must read it rather than assume it: it says "Upstream re-read at
+HEAD (REQ v0.9, unchanged); no upstream decision to absorb … Header correction only; no
+behavioural change." That is a self-describing no-op, and I verified the description against the
+bytes rather than trusting it — the diff really is confined to the two header lines plus the
+paragraph itself. There is no new decision for the TSPEC to absorb, and therefore no architecture
+row that has fallen out of date.
+
+The implementation anchors themselves have not moved since v8 (`472e505c` remains the last commit
+to touch `orchestrate-dev.js`), so my v8 by-symbol re-verification of P-2a, P-3, P-11/P-12 and the
+seam contracts stands unchanged; I did not re-run it, and nothing in this window invalidates it.
 
 ## Interfaces
 
