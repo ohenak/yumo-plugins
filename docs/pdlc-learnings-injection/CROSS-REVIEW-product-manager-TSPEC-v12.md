@@ -142,7 +142,40 @@ correction of what the id means and when it is emitted.
 
 ## Test Strategy
 
-_pending_
+Product lens only: does TSPEC's test mapping still preserve the acceptance criteria as upstream now
+states them? Two places drift, both consequences of the same delta and both folded into F-01.
+
+**§T.5's suite map and closure count survive; the AT-30 justification does not.** The map assigns
+`learningsConfig.test.js` → AT-30, AT-32, count 2, and the closure claim 2+9+3+3+6+12 = 35 is a
+count of **ATs**, not of cases, so E-36 adding a third case to AT-30 does not break the arithmetic
+and no AT is added or moved. Good. What does drift is the paragraph justifying the suite's L3
+layer: it characterises AT-30 as "requires an enabled run whose BR-8 rows are **present and
+empty** — a claim only a whole run can make". True of all three cases, but incomplete for the third:
+AT-30 at HEAD additionally requires that in the `maxBytesPerDocument: 0` case **every corpus
+document carries `RSN-NO-MATERIAL`**. That is an assertion over per-document reject rows, which
+needs a **non-empty corpus fixture** — the other two cases can pass over an empty or arbitrary
+corpus. A PLAN task derived from TSPEC as written would not know to supply one, and the test would
+be written against whatever corpus the seam happens to return.
+
+**§T.6's fail-open arm inventory now under-states `RSN-NO-MATERIAL`.** The row reads "No BR-6
+section present ⇒ `RSN-NO-MATERIAL` | AT-28". FSPEC BR-9's catalogue at HEAD reads "Eligible, but
+yields **no material** — it carries none of BR-6's priority sections, **or the per-document bound is
+zero and admits none** (BR-6)", and D-12's question is restated from "Does the document carry any
+priority section?" to "Does the document **yield any material**?". §T.6 is explicitly the coverage
+*obligation* inventory — "the inventory above is the obligation" — so an arm missing from it is an
+arm no test is obliged to enter. The second entry path into `RSN-NO-MATERIAL` (AT-30's third case,
+E-36) has no row.
+
+**What is unaffected, checked rather than assumed:** AT-11's and AT-12's expected byte counts rest
+on §D.5's material-only basis, which upstream has now adopted, so those oracles are *more* firmly
+grounded than when I approved them — they would have been the tests to break had v0.13 gone the
+other way. AT-28's arm (document carrying none of BR-6's five sections) is untouched. AT-31/AT-32's
+enabled/disabled distinction, AT-26's set-equality closure over the two-member notice catalogue,
+and the `COUNT-BINDING`/`BYTES-BINDING` fixtures are all outside the delta.
+
+No acceptance criterion loses coverage silently in a way TE's lens would catch and mine would not;
+the two drifts above are traceability defects — an AC whose full statement no longer maps to a
+named test obligation.
 
 ## Open Questions
 
