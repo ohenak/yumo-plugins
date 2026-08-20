@@ -92,6 +92,84 @@ also assert something LI-15 creates (e.g. that every `LI-AT-` name maps to a doc
 checkable. Option (a) is the smaller change and loses nothing: the suite map's value is regression
 pressure over the life of the region, not a red-then-green episode.
 
+### F-03 (High) — the worktree oracle cannot falsify the thing it exists to catch
+
+TSPEC §T.3 states the obligation-2 oracle as two conjuncts — the path is absent **and**
+`git worktree list` shows no entry — and, three paragraphs later, that "neither needs a real capture
+run… (2) drives the script with an injected failing seam". LI-03 transcribes the two conjuncts and
+inherits the ambiguity without resolving it, which is the PLAN's job: the row is what an implementer
+executes.
+
+If `_git` is a fixture double, then `git worktree list` is answered by the double, and the assertion
+reduces to "the script called `git worktree remove`" — an argv oracle. An `rm -rf` implementation
+fails that argv oracle, so the test is not vacuous; but the conjunct TSPEC calls "load-bearing" —
+the **administrative entry under `.git/worktrees/`** — is never observed, and an implementation that
+issues `git worktree remove` against the wrong path, or after the process has already been torn
+down, passes. Conversely, if `git` is real, the test performs `git worktree add` against the
+developer's live repository, which is a working-tree mutation the feature's own NG-1/AC-5.2
+discipline (DoD 8) refuses everywhere else.
+
+**What must change:** LI-03 states the instrument explicitly — a **dedicated temporary git
+repository created by the test and used as the script's `cwd`**, with a **real** `git`, the throw
+injected through the script's *fixture/import* seam (not `_git`), and the post-condition read from
+that temp repo's real `git worktree list`. That gives both conjuncts a real referent, keeps the
+developer's tree untouched, and costs one `git init` per test. If the PLAN instead intends the argv
+reading, say so and re-state the conjunct as an argv assertion — but then §T.3's `rm -rf`
+distinction is no longer proven and that must be recorded, not implied.
+
+### F-04 (High) — the baseline guard is authored green and never demonstrated to fail
+
+§Traceability's TSPEC-local table gives the baseline digest guard the red column value
+"— (authored green over the fresh capture)". Everything else in the feature has a named red first;
+this one oracle — the anchor for DoD item 4, halt condition H-4, and every byte-identity claim in
+the feature — is written after the artifact it guards, from that artifact, and is never observed
+failing. A guard that has only ever been green is not yet known to be a guard: a transcription slip,
+a digest computed over the wrong bytes, or an assertion accidentally scoped to an empty key set all
+look identical to success.
+
+The design around it is right — hand-transcribed literals per DC-14, checked against both the
+recomputed digests and `MANIFEST.json`, set equality over `{caseId}` keys rather than containment.
+The missing piece is a falsification step, and it is cheap.
+
+**What must change:** LI-06's row gains an explicit, gated mutation proof, performed before the
+commit and recorded in the task's completion note:
+
+1. Flip one byte in one committed baseline `.txt` → the digest assertion for that `{caseId}` reds;
+   restore.
+2. Delete one whole `{caseId}` directory → the **set-equality** assertion reds (this is the conjunct
+   containment would have let pass); restore.
+3. Add a spurious `{caseId}` directory not in the transcribed literals → set equality reds; remove.
+
+Each of the three targets a different clause, so all three are needed. Without them the guard's
+strength is asserted by the document rather than by the suite.
+
+### F-05 (High) — batch 1 passes without anyone doing LI-01
+
+LI-01 carries the whole premise pre-flight — P-1, P-2a, P-3, P-4, P-7/P-8, P-10 and the change-
+surface table — plus the triage of the three `pdlc/engine` failures that block the arrangement's
+`testCommand` before this feature's suites are reached. Its `Test File` and `Source File` columns
+are both `—`, and §Dependencies gives batch 1 the terminal state "green (assertions over HEAD)".
+
+There are no assertions over HEAD. Batch 1's gate, per §Verification, is "full suite green" — which
+is exactly the state of the tree before LI-01 runs (modulo the documented pre-existing failures). A
+wave that skipped LI-01 entirely would show the same gate result as one that performed it. Halt
+condition H-1 ("an LI-01 premise no longer holds") therefore has no detector, and H-2's CI-evidence
+decision has no artifact a later reviewer can find.
+
+Two of the premises do get pinned later by other rows — P-4 by `LI-T-PIN-1` at batch 2, part of P-2a
+by the composition-site set equality at batch 12 (H-5 relies on precisely this) — which shows the
+mechanism is available and affordable.
+
+**What must change:** give LI-01 an artifact and a falsifiable gate. Concretely: a new non-AT suite
+(e.g. `__tests__/learningsPremises.test.js`, owned by LI-01, batch 1, added to the file-ownership
+manifest) carrying one assertion per premise, each phrased structurally rather than positionally —
+the count of authoring dispatch sites, `MODULE_NAMES`' exact membership, `dispatchAndVerify`'s
+parameter names, `buildFinalReport`'s `notices` parameter, `enumerateCorpus`'s export. It is green
+at batch 1 by construction and, unlike a one-time human read, it stays green — or reds the moment a
+rebase moves a premise mid-wave, which is what H-1 is for. The engine-triage half of LI-01 is not a
+test; it needs a named written artifact (a line in the task's completion note citing the CI run) so
+the H-2 decision is auditable.
+
 ## Questions
 
 <!-- pending -->
