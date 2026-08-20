@@ -66,6 +66,30 @@ throughout. A6-08's later write to `advisoryWaveGate.test.js` is batch 2, serial
 
 ## Dependencies
 
+**Upstream fidelity (DEC-ERR-03 re-read).** TSPEC is at v1.10; the PLAN's v1.4 changelog names that
+version and the re-grounding it carries. The routing claim is faithful: TSPEC §1.3 does end its
+HEAD-drift table with "revert `e3b9d5a3`'s test-side edits and let Phase I redo them in PLAN order,
+or keep them and re-derive PLAN's A6 batches around what already landed … a PLAN decision, not a
+TSPEC one", and TSPEC v1.10's changelog repeats that the choice "is PLAN's and Phase I's to make".
+The PLAN now makes it explicitly. TSPEC's own residue table — production `ADVISORY_SEAMS` still
+five, `ENVELOPE_DEFAULTS` still four, `ADVISORY_DEFAULTS.waveBudgetPerRun` absent — matches what I
+measured, and matches A6-05's green step item for item.
+
+One upstream instruction did **not** come through. TSPEC v1.10's changelog records that "§1.3's
+four row-count pins and its PROP-DIS-06 pin are re-anchored to stable content per DEC-DOC-01 (they
+had drifted with `e3b9d5a3`)". The PLAN's batch-1 gate wording — a line this round rewrote — still
+carries the drifted numeric pins. That is F-02.
+
+Two upstream couplings I checked and found intact:
+
+- `ADVISORY_SEAM_PHASES` stays module-private per TSPEC §3.1, and its A6 row is proved
+  behaviourally through PROP-REC-07's escalation-entry oracle rather than a constant assertion.
+  TSPEC assigns that to PLAN A6-17; the v1.3 merge folds A6-17 into A6-18, and the AT map still
+  routes AT-06-3/-5/-6 to A6-18 in `advisoryEscalationLog.test.js`. No coverage lost in the merge.
+- A6-04's widening to assert **both** `enabled` and `waveBudgetPerRun` is consistent with TSPEC
+  §4.4/E-33 and with A6-06 shipping the pair; the DoD's engine leg now says in full which command
+  runs it and why the wave gate never does.
+
 ## Verification
 
 ## Findings
