@@ -17,13 +17,12 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 |---|---|---|---|---|
 | pdlc | draft | Claude | 1.12 | 2026-08-20 |
 
-*v1.12 changelog (cross-review round 1). SE F-01: `ready: true`, the feature having merged (PR #66,
-`bb4d36fb`), and QUEUE row 19 set `done` — the pair blocked rows 6 and 20 under the queue's
-not-done dependency pre-check. Relocation to `docs/completed/` is SE Q-02's, not taken here.
-TE F-01: AC-2.4 gains the `waveBudgetPerRun: 0` conjunct. TE F-03: O-4 extended to E-6's symbol
-conjunct. SE F-02 routed to the constraints file. Lows: AC-1.2's anchor reissued in symbol form,
-§1's drift sentence re-measured, fixture-design phrases dropped to PROPERTIES. No decision
-reopened.*
+*v1.12 changelog (cross-review round 1). SE F-01: `ready: true` (merged, PR #66 `bb4d36fb`) and
+QUEUE row 19 `done` — the pair blocked rows 6 and 20 on the queue's not-done dependency pre-check;
+relocation to `docs/completed/` is SE Q-02's, not taken here. TE F-01: AC-2.4 gains the
+`waveBudgetPerRun: 0` conjunct. TE F-03: O-4 extended to E-6's symbol conjunct. SE F-02 routed to
+the constraints file. Lows: AC-1.2's anchor in symbol form, §1's drift re-measured,
+fixture design to PROPERTIES.*
 
 *v1.11 changelog (DoD remediation, CODE_REVIEW v2 finding 1). §1's corroborating-evidence
 paragraph re-measured at the branch tip: `.claude/pdlc-wave-state.json` is **untracked** —
@@ -154,11 +153,9 @@ whose recorded head is an ancestor of the branch tip; it is a working-tree obser
 artifact — so the stronger claim v1.2
 made, that no record has ever survived here, no longer holds and is withdrawn.
 What the single surviving record does not show is a resume: it names a wave sequence that ran to
-completion, and every one of the four preconditions above still gates its use. Separately, and as a working-tree
-observation only: `node pdlc/workflows/build-runtime.mjs --check` reports the tracked artifact
-in-sync and exits `0`, while the consumer runtime copy under `.claude/workflows/` — gitignored, so
-not reproducible by another reviewer — differs from it, and such a copy is announced but silently
-executed.
+completion, and every one of the four preconditions above still gates its use. Separately, as a working-tree observation
+only: `build-runtime.mjs --check` reports the tracked artifact in-sync, exit `0`, while the
+gitignored consumer copy under `.claude/workflows/` differs from it — announced, silently executed.
 
 The consequence for this REQ is that the seam's economics argument stands as originally written:
 the expensive part of a wave-gate stop is still a from-scratch Phase I re-run in the common case,
@@ -361,10 +358,9 @@ requirements altitude.
   test can disagree about: two waves A6 attempted and escalated leave the budget untouched, so a
   third red wave still gets an attempt; one wave A6 resolved exhausts the shipped default of 1, so
   the next red wave escalates without a dispatch. `advisory.waveBudgetPerRun` admits any integer
-  ≥ 0, `0` being a configured operator mode rather than a misconfiguration: with the tier enabled
-  and the budget at `0`, every red wave escalates with no dispatch, and that run is distinguishable
-  from AC-1.4 inertness on the run report — the per-seam A6 row is present and reads zero, where
-  under `advisory.enabled: false` the report carries no advisory section at all. *(US-04.)*
+  ≥ 0; `0` is a configured operator mode, not a misconfiguration: with the tier enabled every red
+  wave then escalates with no dispatch, distinguishably from AC-1.4 inertness — the per-seam A6 row
+  is present and reads zero, where under `advisory.enabled: false` there is no advisory section. *(US-04.)*
 
 ### REQ-AWG-03 — The envelope (P0)
 
