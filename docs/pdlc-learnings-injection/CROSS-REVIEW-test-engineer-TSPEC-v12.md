@@ -170,7 +170,72 @@ selection semantics (F-01) and the fixture (F-03).
 
 ## Test Strategy
 
-_pending_
+**§T.5's suite map still balances, and AT-30's level assignment still holds.** The erratum added no
+AT: AT-30 grew a third case and a conjunct, so the 35-member `learningsSuiteMap` literal, the
+six-suite disjointness assertion and the arithmetic (2 + 9 + 3 + 3 + 6 + 12 = 35) are all
+unaffected. AT-30 stays in `learningsConfig.test.js` at **L3**, and §T.5's justification for that
+level — "AT-30 requires an enabled run with BR-8 rows **present and empty**, a claim only the whole
+run can make" — is *strengthened* by E-36, whose second conjunct ("every corpus document carries
+`RSN-NO-MATERIAL`") is a claim about the finished report's per-document reason rows. A unit test
+over `selectLearnings` would prove the reason rows and miss the report-key half; the L3 seam-driven
+run over the real `main()` proves both. No finding on level assignment.
+
+**F-03 — §I.2's AT-30 gloss is now a two-thirds transcription.** §I.2 says, in the passage that
+disowns the four config rows: *"**AT-30 owns none of them** — it is the admits-nothing-thresholds
+AT for AC-4.4 (`maxDocuments: 0`, `maxTotalBytes: 0` ⇒ enabled run, BR-8 rows present and empty)"*.
+Upstream AT-30 at HEAD enumerates **three** zeros — `maxDocuments: 0`, separately
+`maxTotalBytes: 0`, and separately `maxBytesPerDocument: 0` — and adds *"and in the
+`maxBytesPerDocument: 0` case every corpus document carries `RSN-NO-MATERIAL` (E-36)"*. A PLAN
+author deriving `learningsConfig.test.js`'s fixtures from TSPEC writes two cases and the third
+zero ships untested, with E-36 named by no test at all. This is the same defect class I recorded at
+v11 as F-01 (§T.6's AT-02 fixture list carrying three of four run shapes) — a fixture-enumeration
+transcription gap — and it earns the same Medium: the strategy is right, the enumeration is short.
+The repair is one clause in §I.2 plus, ideally, an explicit note that the third case's oracle is
+**three positive conjuncts** (BR-8 rows present and empty; the `learningsInjection` key present,
+not absent; every corpus path in the per-document reason rows with reason exactly
+`RSN-NO-MATERIAL`) — never an absence-only "no rows" assertion, which any accidental disabled run
+would also satisfy.
+
+**F-01's test consequence, stated as the test that would fail.** Write AT-30's third case today
+against TSPEC as written and the two documents disagree about the expected value, so the case
+cannot be authored without choosing which one to believe:
+
+- FSPEC v0.13 / E-36: `selected` is empty, `rejected` carries one `RSN-NO-MATERIAL` row per corpus
+  document, `bytesInjected` rows absent, no slot consumed.
+- TSPEC §T.6 as written: the drop fires only on "No BR-6 section present", so a section-carrying
+  document under a zero bound is **selected** with `bytes: 0` and takes a `maxDocuments` slot, and
+  BR-8's rows are present and **non-empty**.
+
+That is not a doc-hygiene finding; it is a specification contradiction reachable by a supported
+configuration, and it is why F-01 is High. The repair is to restate the drop over *yields no
+material* — which is also the more falsifiable condition, since it is a property of the extractor's
+return value rather than of the document's shape, and can be asserted directly on
+`extractInjectableMaterial`'s `{material: "", sections: []}`.
+
+**F-02's test consequence — an unowned rule makes two oracles unfalsifiable.** Without the
+heading-matching rule, AT-11 (set equality over `sections`) and AT-28 (no BR-6 section ⇒
+`RSN-NO-MATERIAL`) are both authored by guessing. Worse, the guess is invisible: a fixture written
+with `## 2. Cross-Feature Patterns` passes under numbered-form matching, bare-title matching and
+prefix matching alike, so the suite is green under all three readings and the choice is pinned
+nowhere. The mutation check that would expose it — change a fixture heading to the bare
+`## Cross-Feature Patterns` and expect a decided outcome — cannot even be written, because there is
+no specified outcome to expect. §D.3's existing shape is the model for the repair: one exported
+predicate, a regex, a "bytes only, no model call" contract, and a grounding sentence against
+`pdlc/skills/harvest-learnings/SKILL.md` §"LEARNINGS Document Format" (P-6 already measures the
+`## N. Title` form across all 9 corpus documents, so the ground truth is in hand). Note the rule
+must decide the **non**-conventional forms too, since P-6 measures only what the harvest skill
+writes today and E-33's section-less document is an eligible state, not an `RSN-UNPARSEABLE` one.
+
+**Carried findings, re-verified at HEAD.** The two Mediums and the anchor Lows from v11 are
+unresolved because TSPEC's bytes have not moved; I re-checked each rather than copying it forward.
+§T.6's AT-02 fixture list still carries three of upstream's four dispatch run shapes (F-05,
+inherited); `present` is still returned by `parseLearningsConfig` with no named consumer and no
+behavioural oracle (F-06, inherited); §A.2's six `converge()` `docType` line anchors and the four
+seam anchors in §Ground-truth P-7/P-8, §A.4 and §A.5 are still stale against HEAD (F-07, F-08,
+inherited, DEC-DOC-01); and the header's Upstream row, already one version behind at v11, is now
+two — it reads FSPEC **v0.12** where HEAD is **v0.13**, alongside the five passages still citing
+"FSPEC v0.9" (F-09, now `delta` for the version string itself). None of these falsify a cited
+proposition, and none gate.
 
 ## Open Questions
 
