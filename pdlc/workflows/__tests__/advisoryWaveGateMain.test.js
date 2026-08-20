@@ -193,6 +193,9 @@ const ENABLED_ADVISORY = {
   waveBudgetPerRun: 2,
 };
 
+const A6_DISPATCHES = (dispatched) =>
+  dispatched.filter((d) => d.skill === "se-review" && d.prompt.includes(A6_PROMPT_MARKER));
+
 // ═══ PROP-SEAM-07 / PROP-SEAM-08 — AC-1.5's cardinality, all four arms ═════════════════════════
 
 describe("PROP-SEAM-07 — exactly one inapplicability statement, on each arm that has one", () => {
@@ -207,6 +210,41 @@ describe("PROP-SEAM-07 — exactly one inapplicability statement, on each arm th
     expect(statements).toHaveLength(1);
     expect(statements[0]).toContain("no valid file-ownership manifest on this PLAN");
     expect(statements[0]).not.toContain("no script-owned test gate");
+  });
+
+  test("PROP-SEAM-10 — a run degrading to the legacy self-report gate reaches A6 zero times, and still states its one cause", async () => {
+    const { logs, dispatched } = await runPipeline({
+      configText: JSON.stringify({ implementation: { testCommand: "npm test" }, advisory: ENABLED_ADVISORY }),
+      planInPhaseI: NO_MANIFEST_PLAN,
+      // Red on every call: on the wave-mode path this is exactly the condition A6 exists for, so
+      // a zero dispatch count here is reachability, not quietness.
+      runCommand: async () => ({ ok: false, output: "FAIL src/one.test.js\nTests: 1 failed, 4 passed\n" }),
+    });
+
+    // The tier is ENABLED and the gate is RED — A6 is unreachable because the run degraded off
+    // the wave-mode branch, which is the structural claim AC-1.5 rests on.
+    expect(A6_DISPATCHES(dispatched)).toHaveLength(0);
+    expect(inapplicabilityStatements(logs)).toHaveLength(1);
+  });
+
+  test("PROP-SEAM-09 (AC-1.4, NFR-2) — the disabled tier's notice surface is identical to the enabled-but-never-fired run's", async () => {
+    const scenario = { planInPhaseI: NO_MANIFEST_PLAN };
+    const enabled = await runPipeline({
+      ...scenario,
+      configText: JSON.stringify({ implementation: { testCommand: "npm test" }, advisory: ENABLED_ADVISORY }),
+      runCommand: async () => ({ ok: true, output: "Tests: 5 passed\n" }),
+    });
+    const disabled = await runPipeline({
+      ...scenario,
+      configText: JSON.stringify({ implementation: { testCommand: "npm test" }, advisory: { ...ENABLED_ADVISORY, enabled: false } }),
+      runCommand: async () => ({ ok: true, output: "Tests: 5 passed\n" }),
+    });
+
+    // §2.6's config hoist is unconditional by design: whether the tier is on changes nothing
+    // about which prerequisites the run reports missing. Equality, not containment — a notice
+    // the disabled run gained or lost fails here.
+    expect(inapplicabilityStatements(disabled.logs)).toEqual(inapplicabilityStatements(enabled.logs));
+    expect(inapplicabilityStatements(enabled.logs)).toHaveLength(1);
   });
 
   test("(ii) BL-04 alone — wave mode, no test command: one statement, naming only the gate half", async () => {
@@ -266,9 +304,6 @@ describe("PROP-SEAM-08 — both prerequisites absent still yields ONE statement,
 // `runWaveGateSeam`, which builds the shipped `buildA6SeamOps` and dispatches through the shipped
 // `runAdvisorySeam`. The oracles are the run's own outputs — the report keys, the files the real
 // `_appendFile` created, and a dispatch-count over the agent double.
-
-const A6_DISPATCHES = (dispatched) =>
-  dispatched.filter((d) => d.skill === "se-review" && d.prompt.includes(A6_PROMPT_MARKER));
 
 describe("TE F-06 — an enabled tier reaches the real A6 seam from mainDev (resolution)", () => {
   test("a red first pass and a green re-gate: A6 is dispatched, the wave recovers, and the run succeeds with no haltAdvisory", async () => {

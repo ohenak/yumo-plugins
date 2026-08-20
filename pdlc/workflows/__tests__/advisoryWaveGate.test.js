@@ -1055,7 +1055,7 @@ describe("A6-18: runWaveGateSeam — snapshot capture failure (TSPEC §2.5, AT-0
   });
 });
 
-describe("A6-18: runWaveGateSeam — wave-budget exhaustion (TSPEC §3.2 step 3, §2.5 ordering)", () => {
+describe("A6-18 / PROP-CTR-12: runWaveGateSeam — wave-budget exhaustion (TSPEC §3.2 step 3, §2.5 ordering)", () => {
   test("an already-exhausted budget escalates with reason budget-exhausted, but the snapshot is still taken first", async () => {
     const repo = createA6TempRepo();
     try {
@@ -1224,6 +1224,61 @@ describe("A6-15: runWaveGateSeam — PROP-CTR-03: absent/out-of-set classificati
   });
 });
 
+// PROP-CTR-08 (AC-3.4, E-11/E-19, BR-15) — an `environmental` classification is IN vocabulary,
+// so it never takes PROP-CTR-03's `unclassified` route above. CR round 1, TE F-09: the block
+// above covers absent and out-of-set (both of which resolve to `unclassified`), leaving the one
+// in-set class that carries "nothing A6 can repair" with no arm of its own.
+describe("A6-15: runWaveGateSeam — PROP-CTR-08: an environmental classification escalates, repairs nothing, and names its class", () => {
+  test("high confidence, no proposal A6 may act on — escalated, repairApplied false, class on the halt fields", async () => {
+    const repo = createA6TempRepo();
+    try {
+      // The repair a run that DID act would have left behind. Nothing may apply it here.
+      writeFileSync(join(repo.dir, "a.js"), "a repair that must never be applied\n");
+      const before = hashTree(repo.dir);
+
+      const agent = makeAgentDouble({
+        script: [
+          makeA6ReplyText({
+            rootCause: "environmental",
+            // Outside A6's permitted actions: the failure is the environment's, so there is no
+            // envelope member to propose.
+            proposedAction: "none",
+            confidence: "high",
+            diagnosis: "the CI runner lost its network mid-suite",
+            evidence: ["the gate went red at the eslint step"],
+          }),
+        ],
+      });
+      const { _runCommand, calls } = makeA6RunCommand({ "npm test": { ok: true } });
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: agent,
+        _runCommand,
+        implConfig: { postWaveCommand: null, testCommand: "npm test" },
+        advisoryConfig: makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 1, attemptBudget: 2 }).config,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(result.disposition.outcome).toBe("escalated");
+      // No repair, and no re-gate: an environmental failure is not something A6 acts on, so the
+      // gate is never re-run on its behalf.
+      expect(result.haltFields.repairApplied).toBe(false);
+      expect(result.haltFields.repairPaths).toEqual([]);
+      expect(calls).toEqual([]);
+      // AC-6.3/AC-6.4 — the in-set class reaches the operator rather than being flattened to
+      // `unclassified` the way an out-of-vocabulary reply is.
+      expect(result.haltFields.rootCause).toBe("environmental");
+      expect(result.haltFields.diagnosis).toBe("the CI runner lost its network mid-suite");
+      // The tree is untouched, compared whole rather than by `git status` (PROP-REST-02's rule).
+      expect(hashTree(repo.dir)).toEqual(before);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
 describe("A6-15: runWaveGateSeam — PROP-CTR-04: a malformed verdict consumes exactly one attempt", () => {
   test("structurally malformed to parseAdvisoryVerdict (missing CONFIDENCE) — malformed-verdict, one attempt, under a one-attempt budget", async () => {
     const repo = createA6TempRepo();
@@ -1250,7 +1305,7 @@ describe("A6-15: runWaveGateSeam — PROP-CTR-04: a malformed verdict consumes e
     }
   });
 
-  test("malformed AND unclassifiable (citation too short, class absent) — the malformed-verdict tie-break (AT-02-3/E-09), one attempt", async () => {
+  test("PROP-CTR-06 — malformed AND unclassifiable (citation too short, class absent): the malformed-verdict tie-break (AT-02-3/E-09), one attempt", async () => {
     const repo = createA6TempRepo();
     try {
       const agent = makeAgentDouble({
