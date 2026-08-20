@@ -15,11 +15,17 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.10 | 2026-08-20 |
+| pdlc | draft | Claude | 1.11 | 2026-08-20 |
+
+*v1.11 changelog (DoD remediation, CODE_REVIEW v2 finding 1). §1's corroborating-evidence
+paragraph re-measured at the branch tip: `.claude/pdlc-wave-state.json` is **untracked** —
+working-tree only, ignored by `/.claude/pdlc-wave-state.json` — which v1.10 recorded as the
+opposite because the ignore rule landed after that re-measurement. No decision reopened.*
 
 *v1.10 changelog (DoD remediation, CODE_REVIEW v1 finding 7). §1's corroborating-evidence paragraph
-re-measured at the branch tip: `.claude/pdlc-wave-state.json` is tracked, not untracked, and the
-record it holds is this feature's own completed wave sequence. No decision reopened.*
+re-measured at the branch tip: the ledger file exists here and the record it holds is this feature's
+own completed wave sequence. (Its tracked/untracked status as stated in this entry was superseded by
+v1.11.) No decision reopened.*
 
 *v1.9 changelog (erratum round 5). Restoration, not decision. A rebase onto `origin/main` had
 reverted five previously approved round-3 sites while leaving every reference to them in place;
@@ -134,8 +140,10 @@ false. Four preconditions gate the ledger, and each of them fails routinely:
   fails corroboration.
 
 Corroborating evidence, **re-measured 2026-08-20** and corrected: the ledger file does now exist in
-this repo's tree — one tracked `.claude/pdlc-wave-state.json`, recording a green last wave for this
-feature's own run, whose recorded head is an ancestor of the branch tip — so the stronger claim v1.2
+this repo's tree — one untracked `.claude/pdlc-wave-state.json`, present in the working tree only and
+ignored by `/.claude/pdlc-wave-state.json`, recording a green last wave for this feature's own run,
+whose recorded head is an ancestor of the branch tip; it is a working-tree observation, not a shared
+artifact — so the stronger claim v1.2
 made, that no record has ever survived here, no longer holds and is withdrawn.
 What the single surviving record does not show is a resume: it names a wave sequence that ran to
 completion, and every one of the four preconditions above still gates its use. Separately, the consumer runtime copy
