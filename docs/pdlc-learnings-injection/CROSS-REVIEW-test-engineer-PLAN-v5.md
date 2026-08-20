@@ -135,8 +135,20 @@ FINDING: Medium | delta | nonlocal | §Definition of Done, clause 4 | DoD 4 prom
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes.**
+
+PLAN still holds as approved against FSPEC v0.12. Every oracle, fixture, task row, dependency edge and
+batch number survives the upstream erratum intact — FSPEC moved *toward* PLAN, adopting on both counts
+the readings PLAN had already routed as errata and written its task rows to. No High finding, nothing
+gating, and no reason to reopen the document's revision loop.
+
+Three Mediums, all of the same kind: PLAN now describes an upstream that no longer exists. Two are
+discharged-erratum rows that should be marked resolved (F-01, F-02); one is a DoD clause whose
+restatement of byte-identity is narrower than the AT it gates (F-03) — the oracle is right, the gate's
+paraphrase of it is stale. All three are one-line edits to prose, none blocks implementation, and none
+needs a new round: fold them into the next touch of this document.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 0}
