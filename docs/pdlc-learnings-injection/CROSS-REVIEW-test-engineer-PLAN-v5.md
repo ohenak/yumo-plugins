@@ -121,7 +121,17 @@ H-5's forbidden containment relaxation) are untouched by this edit and remain as
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §Errata's BR-1 row asserts a defect that FSPEC v0.11/v0.12 discharged | §Errata raised from this document's authoring |
+| F-02 | Medium | delta | local | §Errata's BR-15 row asserts a defect that FSPEC v0.11 discharged | §Errata raised from this document's authoring |
+| F-03 | Medium | delta | nonlocal | DoD 4 restates byte-identity as "non-authoring", narrower than AT-03/AT-29's "outside BR-1's rule" | §Definition of Done, clause 4 |
+
+FINDING: Medium | delta | local | §Errata raised from this document's authoring (BR-1 row) | PLAN routes as live an FSPEC defect that HEAD has fixed: the row says BR-1 "still states … consumes the classification, it does not restate the membership" and that LI-11's AT-02 therefore "has two contradictory expected sets", but FSPEC v0.12's BR-1 now carries both conjuncts (authoring-classified AND target among REQ C-1's six types), which is exactly the TSPEC §A.2 reading the task row was written to. Update the row to record the erratum as discharged against FSPEC v0.12 (and drop the "a reviewer scoring it against BR-1 would reject a correct test" consequence) so the next erratum round does not re-raise a settled contract.
+
+FINDING: Medium | delta | local | §Errata raised from this document's authoring (BR-15 row) | PLAN says BR-15's expected read set "includes the corpus-root enumeration … but the enumeration is a git ls-files call and contributes no member" and concludes "LI-11's AT-33 set equality cannot hold as FSPEC states it". FSPEC v0.11 adopted that objection verbatim — the expected set is now "exactly one attempt per report-named document except the RSN-SELF ones, the enumeration and candidate paths contributing no member". Mark the item discharged; AT-33's hand-transcribed oracle needs no change, only the claim about upstream does.
+
+FINDING: Medium | delta | nonlocal | §Definition of Done, clause 4 | DoD 4 promises baseline byte-identity for "every non-authoring dispatch (AC-4.3)", which was faithful to FSPEC v0.10's AT-03/AT-29 but is narrower than HEAD's, where both ATs say "every dispatch outside BR-1's rule — including an authoring-classified dispatch with no C-1 target". An authoring-classified optimizer round with docType null sits inside DoD 4's exemption and outside FSPEC's promise, so an implementation that injected into that round would pass the DoD gate while failing AT-03. Restate DoD 4's final clause as "every dispatch outside BR-1's two-conjunct rule" to match the oracle LI-11 will author.
 
 ## Recommendation
 
