@@ -165,6 +165,27 @@ table byte-identical to what `DEC-LI-07` transcribes; and Phase CR's `docType: n
 
 ## Positive Observations
 
+- **Every closure claim in this delta is checkable, and every one checked out.** The revision could
+  have written "TSPEC has landed the erratum" and left it there. Instead it names all four edits
+  individually — §I.3's gate, `OQ.2`, `ERR-4`, `LEARNINGS_DEFAULTS.enabled` — so confirming it was
+  four greps rather than a re-read of TSPEC. That is what makes a frozen round cheap.
+- **`DEC-LI-06`'s reversibility rewrite made the entry more falsifiable, not just more current.**
+  The old text said "revisiting E-32 and AC-5.2"; the new text explains *why* AC-5.2 would not have
+  to move (`BR-15` compares sets, and a memo removes no member), which converts a plausible-sounding
+  pairing into a claim with a test attached — AT-33 stays green, so the footprint oracle is not the
+  defence. Naming which oracle *cannot* catch the regression is more useful than naming one that can.
+- **The `D-O-9` row was struck through rather than deleted.** Deleting it would have left the next
+  reader unable to reconstruct why `DEC-LI-07` carries a whole paragraph about a divergence that no
+  longer exists. Keeping the row with its trace costs one line and preserves the audit path.
+- **The AC-3.3 non-decision row now tells PROPERTIES where *not* to assert.** It would have been
+  enough to record that REQ settled the locus. Naming the failure mode — a mirror-targeted assertion
+  is green on a single-dispatch fixture and wrong on AT-18's divergent run — puts the warning at the
+  point of use, which is where a test author will actually meet it.
+- **`DEC-LI-10`'s new paragraph is honest about a weakness rather than defensive about it.** "The
+  consequence this entry owes the reader: the scoped test can no longer falsify a `corpusOutcome`
+  that is `null` where a catalogued reason was required" is a decision document admitting its own
+  completeness test has a blind spot, and then naming who covers it. That is the right instinct.
+
 ## Recommendation
 
 ## Verdict
