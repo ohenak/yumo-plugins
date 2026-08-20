@@ -158,17 +158,23 @@ Three properties of this attachment carry the load:
    Attaching there is what keeps BR-1 from restating a call-site membership list that would drift
    the moment a fifth site appeared. But `dispatchKind` **alone is wider than REQ C-1** (P-2b,
    P-2c): `reviewLoop` is shared, and Phase CR calls it with `docType: null` over a directory
-   target (`orchestrate-dev.js:14551-14556`), so its optimizer round — `se-author` remediating the
+   target (`reviewLoop`'s Phase CR call site, which passes `doc: "docs/{feature}/"`, `phase: "CR"`,
+   `docType: null`), so its optimizer round — `se-author` remediating the
    shipped codebase — is authoring-classified while being exactly what C-1's "whose target document
    is REQ, FSPEC, TSPEC, PLAN, DECISIONS or PROPERTIES" and NG-5 exclude. The `docType` conjunct is
    therefore load-bearing, not defensive: without it AC-1.2's set equality fails against a strict
-   superset, AC-4.3's byte-identity for non-authoring dispatches fails on every full pipeline run,
-   and R-4's imported prior-feature decisions would reach code remediation. `docType` is still the
-   pipeline's own value, not a new taxonomy — the condition consumes two existing fields rather
-   than one, and both are already carried to the composition point. FSPEC BR-1 as written forbids
-   this conjunct ("consumes the classification, it does not restate the membership"), and AT-02's
-   expected set inherits the ambiguity, so the divergence is **routed as ERR-7**, not resolved
-   silently in code (TE F-06).
+   superset, AC-4.3's byte-identity for the dispatches **outside BR-1's rule** fails on every full
+   pipeline run, and R-4's imported prior-feature decisions would reach code remediation. `docType`
+   is still the pipeline's own value, not a new taxonomy — the condition consumes two existing
+   fields rather than one, and both are already carried to the composition point. This is FSPEC
+   BR-1 as it now stands, not a divergence from it: **FSPEC v0.11** restated BR-1 as the
+   two-conjunct rule ("both hold: the pipeline classifies it as authoring, **and** its target
+   document is one of REQ, FSPEC, TSPEC, PLAN, DECISIONS or PROPERTIES"), naming the second
+   conjunct load-bearing and Phase CR's optimizer round as the branch it excludes; **v0.12**
+   carried the complement through BR-11, AT-03, AT-29 and D-2, and AT-02 gained the fixture that
+   reds when the second conjunct is reverted. The former divergence routed here as ERR-7 is
+   therefore CLOSED, and §I.3's `docType ∈ LEARNINGS_TARGET_DOCTYPES` predicate implements BR-1
+   directly.
 
    **The coincidence is an invariant, and it is asserted, not assumed.** That
    `LEARNINGS_TARGET_DOCTYPES` currently equals the `docType` set `converge()` drives at HEAD —
