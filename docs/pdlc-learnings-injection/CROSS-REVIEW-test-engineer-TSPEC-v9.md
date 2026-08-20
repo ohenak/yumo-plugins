@@ -61,7 +61,36 @@ seam contracts stands unchanged; I did not re-run it, and nothing in this window
 
 ## Interfaces
 
-_pending_
+The interface contracts most exposed to an upstream cascade are the ones whose text quotes or
+paraphrases FSPEC, because those are the ones a re-worded upstream silently breaks. Each was
+re-read against FSPEC v0.10:
+
+- **§I.2 / §I.4 — the `config.enabled` gate.** The TSPEC states the injector is gated on
+  `config.enabled` alone, an absent section reading as REQ §4.1's declared `true`, a malformed
+  section failing **open** with `NTC-MALFORMED`. FSPEC's v0.8 erratum paragraph — which is the
+  passage that settles this, and which the v0.10 edit did not touch — still says "Step 0(2) and
+  BR-14 read an absent section as REQ §4.1's declared defaults with `enabled` at `true`, and there
+  is no second gate beyond that key (REQ v0.9 AC-5.1a)". Faithful compression, unchanged.
+- **§I.3 — `present` as report shape, not gate.** Same upstream sentence, same disposition. My v8
+  F-02 (no behavioural oracle beyond the shape assertion) survives as an *inherited* Medium; the
+  cascade neither fixed it nor worsened it.
+- **Seam signatures (`_readFile` / `_listFiles` injectables).** FSPEC constrains outcomes, not
+  seam design; nothing upstream moved to contradict the TSPEC's choices.
+- **Notice catalogue (`NTC-*`, `RSN-*`).** FSPEC's catalogue rows are untouched at v0.10; the
+  TSPEC's transcription of them still matches one-for-one.
+
+**The one thing the cascade did break is a citation label, not a contract.** TSPEC's front-matter
+Upstream row reads `FSPEC-pdlc-learnings-injection.md` **(v0.9)**, and six body passages cite
+"FSPEC v0.9" by version (`:325-326` BR-9/BR-10 loci, `:469` the E-21…E-34 rows, `:943` the AT-20 /
+AT-22 halves, `:1275`, `:1295`). Upstream is now v0.10. Every *proposition* those passages
+attribute to FSPEC v0.9 is still present verbatim at v0.10 — I checked BR-10's "The rule inputs sit
+at **two loci**" (`FSPEC:555`), the "recorded **per authoring dispatch**" clauses (`:511`, `:168`),
+the AC-3.3 → BR-10 → AT-22 traceability row (`:143`) and E-26 (`:730`) — so no claim is falsified
+and nothing is gating. But a reader resolving "FSPEC v0.9 BR-9/BR-10" against HEAD finds a document
+that calls itself v0.10, and the header row now names a version that no longer exists. That is
+F-01 below: Low, `delta` (this round's edit created the mismatch), `local` to the header the edit
+changed. Fix is a one-line bump when the TSPEC is next opened; it does not warrant reopening a
+frozen document on its own.
 
 ## Data Model
 
