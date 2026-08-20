@@ -330,8 +330,10 @@ FSPEC `BR-7`, which fixes what the block must convey but not where it sits.
 **Reversibility.** Easy — a one-line change in `dispatchAndVerify` — but any move that stops the
 block being a **suffix** forfeits the structural guarantee and must bring its own tests.
 
-**Re-evaluation triggers.** Evidence that role compliance degrades when advisory context is last in
-the prompt; a future prompt-composition refactor that stops building `prompt` by concatenation.
+**Re-evaluation triggers.** *Review-time judgement* — evidence that role compliance degrades when
+advisory context is last in the prompt. *Mechanically detected* — a future prompt-composition
+refactor that stops building `prompt` by concatenation, which reds AC-4.1/AC-5.1a's byte-identity
+oracle, since the empty-block identity holds by construction only under concatenation.
 
 ## DEC-LI-06: No feature-owned cache or run-scoped memo
 
@@ -372,9 +374,13 @@ measurement (TSPEC `T-O-3`): the injection is bounded, the read is not.
 **Reversibility.** Hard, not because the code is hard to add but because a cache changes observable
 behaviour that oracles depend on. Adding one later means revisiting E-32 and AC-5.2 upstream first.
 
-**Re-evaluation triggers.** REQ O-1's measurement shows read cost dominating a run; the corpus grows
-past the point where per-dispatch re-reading is affordable; FSPEC relaxes E-32 to a run-scoped
-observation.
+**Re-evaluation triggers.** *Mechanically detected* — FSPEC relaxes E-32 to a run-scoped observation
+(the per-dispatch call-count oracle of `D-O-6` reds). *Review-time judgement, with an observable
+prompt* — REQ O-1's measurement shows read cost dominating a run; the corpus grows past the point
+where per-dispatch re-reading is affordable, for which the cheap proxy is the corpus document count
+returned by `LEARNINGS_CORPUS_ARGV` (**9** at HEAD): treat a review of this entry as due when that
+count passes ~30, or when measured bytes read per authoring dispatch pass the 2 MiB
+`RT_READ_CACHE_MAX_BYTES` ceiling, beyond which the platform cache cannot hold the corpus at all.
 
 ## DEC-LI-07: An absent configuration section is an enabled run, and no configuration mistake disables the feature
 
@@ -592,8 +598,10 @@ tests), DC-14 (hand-transcribed expectations for closed sets).
 **Reversibility.** Easy per catalogue, but adding a member is deliberately a two-file edit — the
 constant and the transcribed expectation — which is the reviewable diff the decision is buying.
 
-**Re-evaluation triggers.** A catalogue grows past the size where hand transcription is maintainable
-(the notices catalogue has two members and the reasons catalogue is small, so this is not near); the
+**Re-evaluation triggers.** *Review-time judgement, with an observable prompt* — a catalogue grows
+past the size where hand transcription is maintainable; the cheap proxy is catalogue member count,
+and the threshold worth reviewing at is ~15 members in any one catalogue (the notices catalogue has
+two and the reasons catalogue is small, so this is not near). *Review-time judgement* — the
 repository adopts a generated-catalogue mechanism with its own falsifying anchor.
 
 ## Decisions deliberately NOT taken here
@@ -603,10 +611,10 @@ placed rather than left dangling:
 
 | Question | Owner, and why not here |
 |---|---|
-| The threshold *values* (`maxBytesPerDocument`, `maxTotalBytes`, document count) | REQ §4.1 (DC-18). Engineering owns the mechanism, product owns the numbers; DEC-LI-08 depends on their existence, not on their values. |
+| The threshold *values* (`maxBytesPerDocument`, `maxTotalBytes`, document count) | REQ §4.1, per the layer boundary `DEC-LAYER-01`. Engineering owns the mechanism, product owns the numbers; DEC-LI-08 depends on their existence, not on their values. |
 | The ordering key, the section subset, and the eligibility rule | FSPEC `BR-4`, `BR-6`, `BR-3`. These are behaviour, and this document does not re-decide behaviour. |
 | Widening injection to review roles | REQ O-6. DEC-LI-03's gate is an expression, so the widening is cheap — but it is a product decision about what a reviewer should see. |
-| Whether AC-3.3's reproduction record belongs at run level or per dispatch on a divergent run | REQ, via the erratum raised below. TSPEC keeps the run-level record (last-write-wins) and adds per-dispatch `{corpusOutcome, orderKeys, corpusDiverged}` so a divergent run stays reconstructable; which locus the completeness test asserts over is a contract decision, not an implementation one. |
+| Whether AC-3.3's reproduction record belongs at run level or per dispatch on a divergent run | REQ, via **TSPEC `ERR-6`**, which already routes this to REQ AC-3.3; it is not re-raised here. TSPEC keeps the run-level record (last-write-wins) and adds per-dispatch `{corpusOutcome, orderKeys, corpusDiverged}` so a divergent run stays reconstructable; which locus the completeness test asserts over is a contract decision, not an implementation one. |
 
 One further non-decision is worth naming because its absence is easy to mistake for an oversight:
 **there is no retry, backoff or degraded-mode ladder** for a failed enumeration or an unreadable
