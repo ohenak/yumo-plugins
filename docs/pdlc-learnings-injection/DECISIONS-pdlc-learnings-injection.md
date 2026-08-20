@@ -436,6 +436,61 @@ introduces a hard prompt ceiling the module can read rather than invent.
 
 ## DEC-LI-09: The pre-feature baseline is a committed fixture pinned to a recorded sha, not a recomputed merge-base
 
+**Context.** REQ AC-6.2 wants byte-identity asserted against a baseline captured at **pre-feature
+HEAD**, committed, and never regenerated to make a failing test pass. There is a circularity: the
+capture harness (the L3 fixture matrix, the scripted `_agent` cases) does not exist at the
+merge-base, so "check out the merge-base and run the capture" is not an executable instruction.
+
+**Decision.** Capture from the **branch** working tree against a **merge-base checkout of the
+subject module only** — a `git worktree` at the merge-base, from which the capture script imports
+`main`, driving it through fixtures that live on the branch. Write prompts plus a `MANIFEST.json`
+recording the resolved merge-base sha and a SHA-256 per file, and pin the guard test to
+**hand-transcribed digest literals**, asserted as **set equality** over case ids.
+
+**Alternatives considered.**
+
+- **Recompute the merge-base at test time** — rejected. The merge-base moves under rebase or a merge
+  from `main`, so a recomputed baseline can silently re-point at a commit that already contains
+  feature code — the byte-identity test then compares the feature against itself and passes
+  vacuously. Recording the resolved sha at capture time removes the moving part.
+- **Have the guard test compare the fixture directory against `MANIFEST.json` alone** — rejected: the
+  script writes both halves, so a re-capture rewrites them in step and the check passes exactly when
+  it should fail. It catches hand-edited fixtures and nothing else. The hand-transcribed literal is
+  the falsifying anchor outside the script's own output (DC-03, DC-14), and re-capture then reds the
+  guard until a human edits a constant in a reviewable diff.
+- **Assert containment rather than set equality over case ids** — rejected: containment lets a
+  *silently deleted* baseline case pass, and a deleted case is precisely how a byte-identity failure
+  would be made to disappear instead of surface.
+- **Check out the merge-base over the branch working tree** — rejected: it destroys the harness the
+  capture needs, which is the circularity this entry exists to dissolve.
+- **Remove the worktree with `rm -rf`** — rejected on measured behaviour: it satisfies "the path is
+  gone" while leaving a stale administrative entry under `.git/worktrees/` that reds the next
+  `git worktree add` at the same path. Removal is `git worktree remove --force`, in a `finally`.
+
+**Constraints that forced the shape.** Two are measured at HEAD and both are load-bearing:
+`git check-ignore -v .baseline-worktree` exits **non-zero** today — no rule covers it — so an
+interrupted capture leaves a full untracked checkout at the repository root; and `coveredViolations`
+walks the entire tree under `root`, skipping only `.git` and `node_modules`
+(`WALK_SKIP_DIRS = new Set([".git", "node_modules"])`, `pdlc/workflows/lib/document-oracles.mjs`),
+so that leftover — a second copy of every `docs/**` artifact — would be scanned as live documents by
+a shipped gate. Hence both a root-anchored `/.baseline-worktree/` ignore rule (anchored the way
+`/.claude/pdlc.config.json` is in `.gitignore`) **and** `finally`-block removal, each with its own
+oracle, because the capture's happy path passes without either.
+
+**Not an NG-4 violation.** NG-1/NG-4 and AC-5.2 forbid the *run* from creating an index, cache or
+state file. The baseline directory and `MANIFEST.json` are committed test fixtures written by a
+script a human invokes; `main()` never touches them, and the write-side instrument asserts the run's
+working-tree delta is empty.
+
+**Reversibility.** Hard. Once the baseline is committed and the digest literals are transcribed, the
+capture cannot be legitimately re-run except when the L3 fixture matrix itself changes — and that
+re-capture must add or replace whole case directories while leaving every retained file's digest
+unchanged.
+
+**Re-evaluation triggers.** The L3 fixture matrix gains or changes a case; the repository adopts a
+different byte-identity instrument; `document-oracles.mjs` gains a skip rule that makes the ignore
+obligation redundant (it would still not make the `finally` redundant).
+
 ## DEC-LI-10: Reason and notice ids are frozen literals, hand-transcribed in tests
 
 ## Decisions deliberately NOT taken here
