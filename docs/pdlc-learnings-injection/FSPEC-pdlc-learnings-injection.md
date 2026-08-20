@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6,7,8,9}.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.8 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.9 | 2026-08-19 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -29,6 +29,10 @@ depends-on: []
 > to AT-31, AT-32; and AT-32 gains a positive-presence conjunct so its equality check is
 > no longer vacuously green.
 
+> **v0.9 (round 9).** Corpus-level outcomes, per-document reasons and ordering keys are
+> recorded **per authoring dispatch** (REQ AC-3.2/AC-3.3); thresholds stay run-level; BR-10
+> closes at two loci; mirrors are additive, not oracles (Q-01, Q-02).
+>
 > **v0.8 erratum (re-grounded on REQ v0.9).** Upstream re-read at HEAD. The raised item —
 > the `present && config.enabled && !sectionMalformed` gate and the open shipping default
 > (`ERR-4`) — names TSPEC sections (`§I.2`, `§I.4`, `§OQ.2`); this FSPEC carries no such
@@ -139,7 +143,7 @@ acceptance criterion is covered by at least one rule and one acceptance test.
 | AC-5.2 | BR-15 | AT-33, AT-34 |
 | AC-5.3 | BR-16 | AT-35 |
 | AC-6.1 | §Acceptance Tests preamble | all ATs |
-| AC-6.2 | §Acceptance-test preamble, AT-31, AT-32 | AT-31, AT-32 |
+| AC-6.2 | §Acceptance-test preamble | AT-31, AT-32 |
 
 ### Binding constraints inherited
 
@@ -230,8 +234,8 @@ including its own failure; no step raises to its caller (BR-12).
 20. Add the block to the dispatch's prompt **without displacing anything** — the grounding manifest,
     the upstream documents and the pacing contract appear unchanged and in their existing relative
     order (BR-7, C-8).
-21. Emit the per-dispatch record (BR-8), the non-selection record (BR-9) and, once per run, the
-    rule-input record (BR-10).
+21. Emit, for this dispatch, the per-dispatch record (BR-8), the non-selection and corpus-level
+    records (BR-9) and the ordering key values (BR-10); thresholds once per run.
 22. Dispatch. From this point the pipeline behaves exactly as it does without this feature: the same
     completeness scoring, verdict parsing, round arithmetic, approval anchors and erratum routing,
     consuming nothing this flow produced (BR-11, AC-4.3).
@@ -491,12 +495,12 @@ The field enumeration is **closed**: a completeness test asserts set equality ov
 dispatch that injected nothing carries an **empty set of rows**, not a missing field — the difference
 between "nothing was selected" and "nothing was recorded" must be visible in the report.
 
-BR-10's rule-input record is separate, run-level, and closed on its own terms; the two are not merged.
+BR-10's rule-input record is separate and closed at its own two loci; the records are not merged.
 
 ### BR-9 — Non-selection reasons and notices: three closed catalogues *(AC-3.2, AC-4.1)*
 
-**Per-document catalogue.** Every corpus document that was known but did not contribute carries
-exactly one reason id from this closed set:
+**Per-document catalogue.** Recorded **per authoring dispatch**, alongside BR-8's rows: every corpus
+document known to that dispatch but not contributing to it carries one reason id from this set:
 
 | Id | Meaning |
 |---|---|
@@ -507,8 +511,8 @@ exactly one reason id from this closed set:
 | `RSN-UNPARSEABLE` | Read, but not a LEARNINGS document (BR-3) |
 | `RSN-NO-MATERIAL` | Eligible, but carries none of BR-6's priority sections (BR-6) |
 
-**Corpus-level catalogue.** States in which **no document is known** are recorded once per run, from
-their own closed set:
+**Corpus-level catalogue.** States in which **no document is known** are recorded **per authoring
+dispatch** too, from their own closed set:
 
 | Id | Meaning |
 |---|---|
@@ -528,8 +532,10 @@ Rules binding the three catalogues:
   members (DC-01, C-9). A new reason may not be emitted without being added to a catalogue and its
   test.
 - The catalogues are **disjoint in kind**: no id is used in another catalogue's position.
-- Where a corpus-level outcome is recorded, BR-8's per-dispatch rows are **present and empty** for
-  every authoring dispatch of the run.
+- Where a corpus-level outcome is recorded for a dispatch, BR-8's rows for **that dispatch** are
+  **present and empty**.
+- A run-level mirror of either catalogue, if carried, is **additive, not the oracle**: nothing
+  asserts on it (AC-3.2).
 - Where documents are known, every one of them appears either as a BR-8 row or as a per-document
   reason row. No corpus document is silently absent from the report.
 - Documents nested under `docs/discarded/{feature}/` are the sole exception, and by construction: they are not
@@ -537,20 +543,21 @@ Rules binding the three catalogues:
 
 ### BR-10 — Hand-reproducibility *(AC-3.3)*
 
-The run report carries a **run-level rule-input record** whose members are exactly:
+The rule inputs sit at **two loci**, reproducibility being claimed per dispatch, not per run (AC-3.3):
 
-| Member | Content |
-|---|---|
-| ordering key values | Per corpus document, the `Date Completed` value the ordering read, or an explicit marker that it was absent or unparseable |
-| thresholds in force | The three REQ §4.1 values actually used for the run, whether configured or defaulted |
+| Locus | Member | Content |
+|---|---|---|
+| Per authoring dispatch, alongside BR-8's rows | ordering key values | Per corpus document as that dispatch saw it, the `Date Completed` value the ordering read, or a marker that it was absent or unparseable |
+| Once per run | thresholds in force | The three REQ §4.1 values actually used, whether configured or defaulted |
 
-This enumeration is **closed**, with its own completeness test asserting set equality over the two
-members (DC-01), independently of BR-8's and BR-9's closures.
+Each locus's fields are a **closed** set: **two** completeness tests assert set equality, one per
+locus (DC-01), independently of BR-8's and BR-9's closures. A run-level mirror of these values, if
+carried, is additive, not the oracle.
 
 The behavioural claim this record exists to make good: **an operator holding only the run report can
-reproduce the selection by hand against the same repository state and get the same answer.** If a
-future rule change adds an input to the selection that is not in this record, the record is wrong,
-and AT-22 is the test that says so.
+reproduce a dispatch's selection by hand against the corpus as it stood at that dispatch.** If a
+future rule change adds a selection input recorded at neither locus, the record is wrong, and AT-22
+is the test that says so.
 
 ### BR-11 — Gate-input isolation *(AC-4.3, AC-1.2)*
 
@@ -839,17 +846,20 @@ text into a disabled run is a test failure rather than a production discovery.
 - **AT-19** — *Given* a report, *when* it is read, *then* every known-but-unselected document carries
   exactly one per-document reason id, and a **completeness test asserts set equality** over
   `RSN-COUNT`, `RSN-BYTES`, `RSN-SELF`, `RSN-UNREADABLE`, `RSN-UNPARSEABLE`, `RSN-NO-MATERIAL`.
-- **AT-20** — *Given* a report, *when* corpus-level outcomes are read, *then* a second **completeness
-  test asserts set equality** over `RSN-UNLISTABLE` and `RSN-EMPTY`, and no catalogue's ids appear
-  in another catalogue's position, across all three of BR-9's catalogues.
-- **AT-21** — *Given* a run in which a corpus-level outcome was recorded, *when* the report is read,
-  *then* BR-8's per-dispatch rows are present and empty for every authoring dispatch.
+- **AT-20** — *Given* a report, *when* a named dispatch's corpus-level outcome is read, *then* a
+  second **completeness test asserts set equality** over `RSN-UNLISTABLE` and `RSN-EMPTY`, and no
+  catalogue's ids appear in another catalogue's position, across all three of BR-9's catalogues.
+  *And given* AT-18's changing-corpus run — listing failing for the first dispatch, succeeding for
+  the second — *then* both outcomes are read back per dispatch; one run-level field fails.
+- **AT-21** — *Given* a dispatch for which a corpus-level outcome was recorded, *when* the report is
+  read, *then* BR-8's rows **for that dispatch** are present and empty.
 - **AT-22** — *Given* an operator holding only the report and the fixture corpus, *when* the
-  report's run-level rule-input record is read — the ordering key value per corpus document,
-  with an explicit marker where absent or unparseable, and the three thresholds in force —
-  *then* it equals an expected selection **transcribed literally by hand and committed in
-  the fixture** (paths, in order), and a completeness test asserts set equality over the
-  record's two members. The test neither calls the production selector nor reimplements it.
+  rule-input record of a named dispatch is read — that dispatch's ordering key value per corpus
+  document, with an explicit marker where absent or unparseable, plus the run's thresholds — *then* it equals an expected selection **transcribed literally by hand and committed in
+  the fixture** (paths, in order), and **two** completeness tests assert set equality, one per BR-10
+  locus. *And given* AT-18's changing-corpus run, *then* each dispatch reproduces from its own
+  ordering key values; one run-level set reproduces at most one of them and fails. The test neither
+  calls the production selector nor reimplements it.
 - **AT-23** — *Given* a run with injection active, *when* the author-emitted channels the
   run requires are enumerated, *then* that set **equals** the recorded pre-feature baseline
   set: no erratum round is opened on account of an injected document, no new channel appears,
