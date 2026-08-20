@@ -153,7 +153,81 @@ batch and a file.
 
 ## Verification
 
-_pending_
+**I re-ran the coverage measurement the revision added, and it reproduces to the digit.** On a
+committed tree at `94539626`:
+
+```
+cd pdlc/workflows
+npx c8 npm test -- --runInBand --testPathIgnorePatterns \
+  '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'
+Test Suites: 98 passed, 98 total
+Tests:       70 skipped, 3828 passed, 3898 total
+
+npx c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0
+All files             |   96.84 |    88.21 |    92.2 |   96.84
+ build-runtime.mjs    |   98.12 |    88.23 |     100 |   98.12
+ orchestrate-dev.js   |   97.27 |    88.14 |   95.02 |   97.27
+ orchestrate-queue.js |   93.18 |    88.75 |   71.42 |   93.18     → exit 0
+```
+
+Every number in §The measured baseline's new block is exact, including the 3.14-point headroom on
+`orchestrate-dev.js` that DoD 11 and H-8 are stated against. The claim that the bare
+`npm run test:coverage` cannot be the gate is also correct at the mechanism level:
+`pdlc/workflows/package.json`'s `test:coverage` is `c8 npm test -- --runInBand && c8 report
+--check-coverage --per-file --branches 85 …`, two stages joined by `&&`, and stage 1 has no
+`--testPathIgnorePatterns`, so it inherits `documentOracles` and exits 1 before stage 2 runs. F-09
+is fully closed, and closed with a measurement rather than an assertion.
+
+**The `c8.include` exemption in DoD 12 is accurate.** `pdlc/workflows/package.json`'s `c8.include`
+is exactly `["orchestrate-dev.js", "orchestrate-queue.js", "build-runtime.mjs"]` and the block is
+rooted at `pdlc/workflows/`, so a repository-root `scripts/*.mjs` genuinely cannot be added without
+re-rooting it. Naming the three oracles that stand in for a floor — `LI-T-IGNORE`'s three
+conjuncts, `LI-T-WORKTREE`'s two, and the baseline guard computed over the script's own output — is
+the right disposition for a human-invoked one-shot, and it is now stated rather than silent. F-08
+closed.
+
+**The expected-red ledger is evaluable batch by batch, which was the whole of F-01.** I walked it
+against the green claims in the task rows:
+
+| After | Task's green claim | Ledger row | Agree |
+|---|---|---|---|
+| 7 | `LI-T-PIN-1` only | seven whole suites still red | ✅ |
+| 8 | `learningsSelect` except AT-15's report clauses | `learningsSelect → LI-AT-15 only`, plus six suites | ✅ |
+| 9 | `learningsBlock` | `LI-AT-15`; five suites | ✅ |
+| 10 | `learningsCorpus` | `LI-AT-15`; four suites | ✅ |
+| 11 | `learningsRecord` per-dispatch rows + AT-15's clauses | `learningsRecord → LI-AT-22 locus 2 only`; three suites; "`LI-AT-15` greens here" | ✅ |
+| 12 | `learningsDispatchSet` except report-shape rows | `LI-AT-22` locus 2; `LI-AT-23`/`LI-AT-24`/`LI-AT-31`; two suites | ✅ |
+| 13 | config, arm inventory, AT-22 locus 2, remaining dispatch-set rows | **empty** | ✅ |
+
+It shrinks monotonically, it shrinks by exactly what each task claims, it reaches empty one batch
+before the unqualified gate, and it is stated in test names wherever a suite is split. A dispatcher
+can evaluate every one of these rows without reading prose. The stipulation that "a suite dropping
+out of the ledger early is as much a failure as one lingering" is what keeps it from being a
+containment check — it is the set-equality form of a gate, and it is the right form.
+
+**The green-terminal gate row is the one gate wording that lost a conjunct.** The RED-terminal row
+carries "*and* every pre-existing test's status is unchanged from the baseline above"; the
+batches 7–13 row carries "no other test's status moves from the measured baseline"; batch 14's row
+carries the arrangement's exclusions "and no others". The new green-terminal row (batches 1, 4, 6)
+carries only "the batch's new suite is green on authoring" and a prohibition on inventing a red for
+it. Nothing in it can fail on a regression those batches could cause — and batch 4 is the batch
+that commits an entire new fixture subtree into a tree that `coveredViolations` walks in full
+(`pdlc/workflows/lib/document-oracles.mjs`, skipping only `.git/` and `node_modules/`). Filed as
+F-02, Medium: the fix is one conjunct, copied from the row above it.
+
+**DoD 3 is now discharged by an oracle rather than by a reading**, which was F-07, and DoD 4's
+strengthening over REQ is now declared as a strengthening rather than smuggled in as a restatement.
+DoD 11/12 are measured. H-8 is a new halt row with a number in it. The Definition of Done as a whole
+is now falsifiable at every numbered item except item 10, which is explicitly outside this PLAN's
+task rows (PROPERTIES, Phase P) and correctly marked so.
+
+**One factual correction inside the new baseline prose.** The revision adds: "`consumerCleanup.test.js`
+asserts `git status --porcelain` over **tracked** files is empty (`AT-4.1`)". The test at
+`pdlc/workflows/__tests__/consumerCleanup.test.js:149` runs `git status --porcelain` at the
+repository root with no `-uno`, so its output includes untracked entries as `??` — I verified this
+by touching a file at the root and reading the porcelain output. The operative conclusion the PLAN
+draws is right and in fact understated; the mechanism as stated is not, and the difference matters
+for a feature that authors fourteen new files. Filed as F-04, Medium.
 
 ## Findings
 
