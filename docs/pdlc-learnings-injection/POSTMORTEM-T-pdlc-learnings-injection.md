@@ -83,3 +83,25 @@ The gate is fail-closed by design: a non-approving confirmation with no parseabl
 | Gate rule that fired | `erratumGateDecision` R4, fail-closed branch (`ERRATUM_FAIL_CLOSED_SECTION`) |
 | Governing decision | DEC-ERR-03 (`docs/_decisions/DECISIONS-review-severity-bars.md`) |
 | Prior near-miss | `CROSS-REVIEW-software-engineer-REQ-v8.md` — 0 `FINDING:` lines, approving, ungated |
+
+**Provenance**
+- Engine version: 0.2.0
+- Plugin version: 0.23.0
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
+
+## Resolution
+
+RESOLVED: yes
+
+Evidence: the two defects both confirmers agreed on are addressed on this branch by FSPEC
+v0.7, commit `fa229bde` — se-review F-01 (High: E-13 provenance restored to the measured
+two-repository scope, naming the two `regime-ledger` occurrence sites), se-review F-02 /
+te-review F-02 (Medium: AC-6.2 traceability row restored to `AT-31, AT-32`; AT-32 gains a
+positive-presence conjunct on its enabled-run comparison target, closing the vacuous-green
+path). The halt itself was the fail-closed grammar rule firing on se-review's table-cell
+findings (zero line-leading `FINDING:` lines), not substantive disagreement; the
+recommendation's engine/skill hardening items (4–7) are deferred to the harvest channel.
+Resolved by the operator session, 2026-08-19.
