@@ -177,6 +177,122 @@ a defect in this document or in the PLAN, not a nice-to-have.
   in **two separate process invocations**, **must** produce byte-identical blocks including order.
   *Idempotency · L3 · AC-2.5, AT-14 · red LI-11 · green LI-20.*
 
+### Group D — Bounds *(BR-5, BR-6, AC-2.1, AC-2.3, AC-2.4)*
+
+- **PROP-BOUND-01:** The number of documents contributing to any dispatch **must** be at most
+  `maxDocuments` for every corpus size `N`. Under the `COUNT-BINDING` fixture (8 documents, one
+  200-byte priority section each, `maxDocuments: 3`) exactly **3** documents **must** contribute and
+  exactly **5** **must** carry `RSN-COUNT`.
+  *Functional · L1 · AC-2.1, BR-5, E-09, E-10, AT-07, AT-08, F-O-7/O-8, TSPEC §T.4 · red LI-07 ·
+  green LI-16.*
+- **PROP-BOUND-02:** Under the mirror `BYTES-BINDING` fixture (8 documents of 7,000 injectable bytes
+  under §4.1's declared values) the contributing count **must** be strictly below `maxDocuments`, with
+  `RSN-BYTES` rows and **no** `RSN-COUNT` row — so each bound is asserted where it binds *and* asserted
+  not to bind where the other does.
+  *Functional · L1 · AC-2.1, BR-5, AT-07 · red LI-07 · green LI-16.*
+- **PROP-BOUND-03:** A document whose material exceeds `maxBytesPerDocument` **must** contribute material
+  of at most that bound, **must** carry `bounded: true` decided at the cut, and the cut **must** be
+  character-safe — the longest character prefix whose UTF-8 length is ≤ the bound, never splitting a
+  codepoint.
+  *Data Integrity · L1 · AC-2.3, BR-6, E-15, E-16, AT-11, AT-12, TSPEC §D.5 · red LI-08 · green LI-17.*
+- **PROP-BOUND-04:** Where the accumulated material would exceed `maxTotalBytes`, whole documents
+  **must** be dropped from the **low end** of BR-4's order with `RSN-BYTES`; no document is ever cut
+  mid-document to make the total fit; the selected set **must** be a **prefix** of the ordered eligible
+  set; and no count-cut document **must** be back-filled into a freed slot.
+  *Data Integrity · L1 · AC-2.4, BR-5 no-back-fill, BR-6, E-17, E-18, AT-13 · red LI-07 · green LI-16.*
+- **PROP-BOUND-05:** The material taken from an unbounded document **must** be exactly BR-6's five
+  priority sections that the document carries, **as an ordered sequence in priority order** (Cross-Feature
+  Patterns, Non-Convergences, Rejected Proposals, Process Learnings, Open Items for Consolidation), and
+  the Approval Record's text **must** be absent while all five present sections' texts **must** be
+  present — both conjuncts, so the oracle is not vacuous on a fixture that never carried the excluded
+  section.
+  *Data Integrity · L1 · AC-2.3, BR-6, E-19, AT-11 · red LI-08 · green LI-17.*
+- **PROP-BOUND-06:** A document carrying **none** of BR-6's five priority sections **must** carry
+  `RSN-NO-MATERIAL`, **must** consume no `maxDocuments` slot, **must not** be flagged bounded, and the
+  rest of the corpus **must** be used normally.
+  *Functional · L1 · BR-6, BR-9, E-33, AT-28 · red LI-07 · green LI-16.*
+- **PROP-BOUND-07:** All three §4.1 byte thresholds **must** range over one pool — **material only**.
+  `bytesInjected` for a row **must** equal `Buffer.byteLength(material, "utf8")` for that document;
+  `totalBytesInjected` **must** equal the sum of the rows' `bytesInjected`; and per-document framing
+  (opener, `ABRIDGED` annotation, closer) and block framing (header, preamble, trailer) **must** be
+  charged to **no** bound and to no row.
+  *Data Integrity · L1 · AC-2.3, AC-2.4, TSPEC §D.5 · red LI-08 · green LI-17.*
+
+### Group E — The rendered block *(BR-7, AC-1.4, F-O-2, TSPEC §OQ.1)*
+
+- **PROP-BLOCK-01:** The block's header and four-sentence advisory preamble **must** be byte-equal to
+  TSPEC §OQ.1's fixed wording, transcribed literally into the test — never keyword-matched — and that
+  wording **must** state BR-7's three things: prior-feature context, neither a requirement of `{f}` nor
+  an upstream document to be traced, and disregardable without leaving a gap.
+  *Contract · L1 · AC-1.4, C-4, BR-7, AT-05, F-O-2 · red LI-08 · green LI-17.*
+- **PROP-BLOCK-02:** Each contributing document **must** be delimited by
+  `<<< {path} — feature {p}, completed {d} >>>` and `<<< end {path} >>>`, carrying the
+  `(ABRIDGED: bounded at {n} bytes)` annotation **iff** that document's row carries `bounded: true` —
+  asserted in both directions, so neither a missing annotation on a bounded document nor a spurious one
+  on an unbounded document passes.
+  *Observability · L1 · AC-2.3, BR-6, BR-7, AT-05, AT-11 · red LI-08 · green LI-17.*
+- **PROP-BLOCK-03:** A non-empty block **must** be prefixed with `\n\n`, and the source path in every
+  delimiter **must** be the document's repository-relative path — the trace AC-3.4 and BR-13 give an
+  operator in place of an erratum channel.
+  *Observability · L1 · AC-3.4, BR-7, BR-13, TSPEC §OQ.1 · red LI-08 · green LI-17.*
+
+### Group F — The report record *(BR-8, BR-9, BR-10, AC-3.1, AC-3.2, AC-3.3, C-9)*
+
+- **PROP-RECORD-01:** The key set of each selected-document row **must equal** exactly
+  `{sourcePath, position, bytesInjected, bounded}` — set equality over `Object.keys(rows[i])`, never
+  containment; `phaseId`, `docType`, `mode`, `corpusOutcome`, `orderKeys` and `corpusDiverged` sit
+  outside it by construction.
+  *Contract · L1/L2 · AC-3.1, BR-8, AT-17, DC-01 · red LI-10 · green LI-19.*
+- **PROP-RECORD-02:** A dispatch that injected nothing **must** carry an **empty set of rows** and a
+  present `totalBytesInjected` of `0` — never a missing field. "Nothing was selected" and "nothing was
+  recorded" **must** be distinguishable in a serialised report.
+  *Observability · L1/L2 · AC-3.1, BR-8, AT-18, AT-21, AT-30 · red LI-10 · green LI-19.*
+- **PROP-RECORD-03:** `rejected[]` **must** be **total over the entries the dispatch knew**, including
+  entries the shell never opened: every known document **must** appear either as a BR-8 row or as
+  exactly one per-document reason row, `excluded` **must** be tested before `readOk` so a self document
+  is never mis-reported as `RSN-UNREADABLE`, and the set of reason ids the whole suite ever observes
+  **must equal** `LEARNINGS_REJECT_REASONS` — six members, hand-transcribed.
+  *Contract / Observability · L1/L2 · AC-3.2, BR-9, AT-19, C-9 · red LI-10, LI-23 · green LI-19, LI-21.*
+- **PROP-RECORD-04:** `dispatches[i].corpusOutcome` **must** be the per-dispatch oracle locus for
+  corpus-level outcomes; the set of **non-`null`** values ever observed **must equal**
+  `LEARNINGS_CORPUS_OUTCOMES` (`RSN-UNLISTABLE`, `RSN-EMPTY`), and the **healthy** value **must** be
+  asserted positively as `null` — not merely "not one of the two" — on `DIVERGENT-CORPUS` dispatches
+  **1, 2 and 4**, so an implementation recording `undefined`, `""` or omitting the key reds.
+  *Observability · L2/L3 · AC-3.2, BR-9, AT-20, TSPEC §D.1, §D.2 · red LI-10, LI-23 · green LI-19, LI-21.*
+- **PROP-RECORD-05:** Where a corpus-level outcome is recorded for a dispatch, **that dispatch's** BR-8
+  rows **must** be present and empty; a corpus-level outcome **must never** suppress the rows key.
+  *Observability · L2/L3 · AC-3.2, BR-9, AT-21 · red LI-10 · green LI-19.*
+- **PROP-RECORD-06:** `dispatches[i].orderKeys` **must** carry one entry per corpus document **as that
+  dispatch observed it**, with key set equality over `Object.keys(orderKeys[j])` = `{path, orderKey}`,
+  and `orderKey: null` **must** be a **present key carrying JSON `null`** — never an omitted key — so
+  "absent or unparseable" and "not recorded" stay distinguishable.
+  *Contract · L1/L2 · AC-3.3, BR-10 locus 1, AT-22 · red LI-10 · green LI-19.*
+- **PROP-RECORD-07:** `learningsInjection.ruleInputs.thresholds` **must** be built **once per run** from
+  the parsed configuration, and its key set **must equal** exactly
+  `{maxDocuments, maxBytesPerDocument, maxTotalBytes}` — BR-10's second locus, with its own completeness
+  test.
+  *Contract · L3 · AC-3.3, BR-10 locus 2, AT-22, E-26 · red LI-10 · green LI-21.*
+- **PROP-RECORD-08:** The three catalogues **must** be disjoint **in kind** across **four** field
+  domains — `rejected[].reason`, `dispatches[i].corpusOutcome`, `runMirror.corpusOutcome`,
+  `notices[].id` — and no id **must** appear in another domain's position. The two corpus-outcome
+  domains' membership tests read `v === null || catalogue.includes(v)`; the other two carry no `null`.
+  *Contract · L1/L2 · AC-3.2, BR-9, AT-20, TSPEC §D.1 · red LI-10 · green LI-19.*
+- **PROP-RECORD-09** *(negative, about the test suite):* **No** test **must** assert on `runMirror`'s
+  value. It is additive by upstream decision, its value is deliberately unconstrained, and an
+  implementation omitting it entirely conforms — a test pinning it reds a conforming implementation.
+  *Contract · L1–L3 · AC-3.2, AC-3.3, BR-9, BR-10, TSPEC §D.2, §T.6 · red LI-10 · green LI-19.*
+- **PROP-RECORD-10:** An operator holding **only** the report **must** be able to reproduce a named
+  dispatch's selection: the expected selection (paths, in order) is transcribed by hand and committed
+  with the fixture, and the test **must** neither call the production selector nor reimplement it.
+  `corpusDiverged` **must** be `true` on exactly `DIVERGENT-CORPUS` dispatches 3 and 5, and **`false`,
+  never `null`,** on the first dispatch of a run.
+  *Observability · L3 · AC-3.3, BR-10, E-32, AT-18, AT-22, TSPEC §A.5, §T.6 · red LI-10 · green LI-19.*
+- **PROP-RECORD-11** *(negative):* **No** erratum round **must** be opened against any upstream document
+  of `{f}` on account of an injected LEARNINGS document, and the set of author-emitted channels the run
+  requires **must equal** the recorded pre-feature baseline set — no new channel appears. The only trace
+  of an injected document is BR-8's rows naming source paths.
+  *Contract · L3 · AC-3.4, C-6, BR-13, AT-23 · red LI-11 · green LI-21.*
+
 ## Oracles
 
 ## Fixtures
