@@ -186,7 +186,21 @@ No new test obligation is created by this round, and none is retired.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | TSPEC front matter cites upstream as FSPEC "(v0.9)" and six body passages attribute propositions to "FSPEC v0.9"; HEAD is v0.10. Every cited proposition is verbatim-present at v0.10, so nothing is falsified — the label is stale, not the claim. Bump the Upstream row when the document is next opened. | TSPEC front matter Upstream row; body citations at §A.5, §I.3, §D.1, §T.4, §OQ |
+| F-02 | Medium | inherited | nonlocal | §D.1's fourth field domain (`runMirror.corpusOutcome`, "a membership test only") and §A.5's "no fixture in §T.6 may assert on the mirror" cannot both be followed literally. Upstream's "run-level mirrors are additive, not oracles" is unchanged at v0.10, so this is the same PLAN-time wording repair recorded in v7/v8. Guard the mirror-domain test on the mirror being carried, or drop the fourth domain. | §D.1 vs §A.5 |
+| F-03 | Medium | inherited | nonlocal | `present` is carried in the returned shape with no consumer and no behavioural oracle beyond the §T.5 shape assertion, while §I.3 states the gate is `config.enabled` alone. Either name a real consumer (the `NTC-MALFORMED`-vs-absent-section reporting split) or state that `present` survives as parser-diagnostic state, tested only for shape. | §I.3, §T.5 |
+| F-04 | Low | inherited | nonlocal | No closure test over `ruleInputs`' own key set; nothing reds if a future rule input lands as a sibling of `thresholds` rather than inside it. Upstream requires two per-locus completeness tests and gets them, so this is additive. | §T.2, §D.2 |
+| F-05 | Low | inherited | nonlocal | Positional `file:line` anchors into `orchestrate-dev.js` (§Architecture P-2a/P-7/P-8/P-10, §T.6, §Open Questions) do not point at the code they name after `472e505c`. All claims re-verified by symbol and hold; per DEC-DOC-01 a non-runtime-measured raw anchor is a Process/Low finding. Cite the symbol at PLAN-transcription time. | §Architecture P-2a/P-7/P-8/P-10; §T.6 |
+| F-06 | Low | inherited | nonlocal | TSPEC's own front-matter Cross-Reviews row stops at v6; the v7/v8 pairs exist on this branch and this v9 will not be listed either. Bookkeeping only — the round history the workflow reads is keyed by filename. Ironically the exact defect FSPEC's v0.10 erratum just repaired in itself. | TSPEC front matter, Cross-Reviews row |
+
+FINDING: Low | delta | local | TSPEC front matter Upstream row | cites FSPEC "(v0.9)" and six body passages cite "FSPEC v0.9"; upstream is now v0.10 — every cited proposition is verbatim-present at v0.10, so the label is stale but no claim is falsified
+FINDING: Medium | inherited | nonlocal | §D.1 vs §A.5 | the `runMirror.corpusOutcome` membership test and the "no §T.6 fixture may assert on the mirror" rule cannot both be followed literally; upstream wording is unchanged at v0.10, so this remains the v7/v8 PLAN-time wording repair
+FINDING: Medium | inherited | nonlocal | §I.3, §T.5 | `present` is carried in the returned shape with no consumer and no behavioural oracle beyond the shape assertion, while §I.3 states the gate is `config.enabled` alone
+FINDING: Low | inherited | nonlocal | §T.2, §D.2 | no closure test over `Object.keys(ruleInputs)` itself; a future rule input landing as a sibling of `thresholds` would red nothing
+FINDING: Low | inherited | nonlocal | §Architecture P-2a/P-7/P-8/P-10, §T.6 | raw `file:line` anchors into `orchestrate-dev.js` drifted under `472e505c`; all claims re-verified by symbol and hold, but per DEC-DOC-01 the anchors are a Process/Low finding
+FINDING: Low | inherited | nonlocal | TSPEC front matter Cross-Reviews row | the row stops at v6 although the v7/v8 cross-review pairs exist on this branch
 
 ## Recommendation
 
