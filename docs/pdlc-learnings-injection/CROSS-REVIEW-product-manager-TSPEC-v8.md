@@ -84,6 +84,36 @@ No High findings. Nothing in the FSPEC v0.9 follow-through delta falsifies a TSP
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Four Low findings, no High, no Medium. Three are inherited pointer nits carried from v7; the fourth
+is line-anchor drift caused by unrelated commits to `orchestrate-dev.js`, where every underlying
+claim remains true by content. Under the freeze, neither criterion for a blocking finding is met:
+the document was not revised, so nothing was broken (i), and no load-bearing claim is contradicted
+by the repository at HEAD or by FSPEC v0.9's follow-through delta (ii).
+
+Product lens satisfied, unchanged from v7: the feature ships **on** in a repository that says
+nothing (G-1, AC-1.1), disablement is an explicit act that removes the report key (AC-5.1a), a
+malformed section fails open with `NTC-MALFORMED` (AC-5.1b), a wrong-typed key fails open with
+`NTC-KEYTYPE` (AC-5.1c), and reproducibility is claimed per dispatch at the two loci AC-3.3 names,
+with one set-equality test each. No P0 or P1 requirement is omitted or narrowed, and nothing outside
+the REQ's scope has appeared.
+
+DEFERRED: re-anchor the `orchestrate-dev.js` citations on symbol names rather than line positions (F-04), next time this document is opened.
+DEFERRED: close F-01/F-02's §I.3-for-§I.2 and §T.2-for-§T.6 pointers and F-03's stale bare-repository note in a single editorial pass during PLAN authoring.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | `OQ.2` and `ERR-4` say "§I.3's gate"; the gate is in §I.2 | §OQ.2 / §ERR-4 |
+| F-02 | Low | inherited | nonlocal | §A.5's closing sentence cites §T.2 for the per-dispatch loci; they are asserted in §T.6 | §A.5 |
+| F-03 | Low | inherited | nonlocal | `OQ.2`'s bare-repository note is stale against E-21 → AT-32 | §OQ.2 |
+| F-04 | Low | inherited | nonlocal | Raw `file:line` anchors into `orchestrate-dev.js` drifted ~40–140 lines as HEAD moved; all claims still true by symbol | §Premises P-1/P-2a/P-10 |
+
+FINDING: Low | inherited | nonlocal | §OQ.2 / §ERR-4 | `OQ.2` (TSPEC:1237) and `ERR-4` (TSPEC:1277) attribute the corrected gate to §I.3; it is at TSPEC:441-448 inside §I.2, and §I.3 (TSPEC:486) contains no gate
+FINDING: Low | inherited | nonlocal | §A.5 | §A.5's closing sentence (TSPEC:359-361) cites §T.2 for the per-dispatch loci; §T.2 (TSPEC:799) is the doubles table and the assertions live in §T.6's DIVERGENT-CORPUS (TSPEC:987-992)
+FINDING: Low | inherited | nonlocal | §OQ.2 | `OQ.2`'s bare-repository note (TSPEC:1241-1244) is stale against FSPEC's E-21 → AT-32 mapping (FSPEC:719) and §T.5's assignment of AT-32 to learningsConfig.test.js (TSPEC:952-958)
+FINDING: Low | inherited | nonlocal | §Premises P-1/P-2a/P-10 | Raw file:line anchors into orchestrate-dev.js drifted as HEAD moved (main now :12022, wrapperSeams :12421, erratum author :12861, land-proof retry :12955, converge creator :13657, advisory spread :15309); every claim remains true by symbol, so this is DEC-DOC-01 Process-scope, not a behavioural defect
 
 ## Verdict
