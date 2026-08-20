@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.8); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{1,2,3,4,5,6}.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.7 | 2026-08-19 |
+| pdlc | Draft | Claude | 0.8 | 2026-08-19 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -28,6 +28,14 @@ depends-on: []
 > restored to its measured two-repository scope; the AC-6.2 traceability row is restored
 > to AT-31, AT-32; and AT-32 gains a positive-presence conjunct so its equality check is
 > no longer vacuously green.
+
+> **v0.8 erratum (re-grounded on REQ v0.9).** Upstream re-read at HEAD. The raised item —
+> the `present && config.enabled && !sectionMalformed` gate and the open shipping default
+> (`ERR-4`) — names TSPEC sections (`§I.2`, `§I.4`, `§OQ.2`); this FSPEC carries no such
+> numbering. Its subject is already settled here and stays as written: Step 0(2) and BR-14
+> read an absent section as REQ §4.1's declared defaults with `enabled` at `true`, and there
+> is no second gate beyond that key (REQ v0.9 AC-5.1a). No behavioural change; the gate
+> correction is TSPEC's to land.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
