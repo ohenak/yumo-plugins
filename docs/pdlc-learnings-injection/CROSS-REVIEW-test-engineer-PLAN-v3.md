@@ -91,6 +91,39 @@ implementation task still has a preceding red-test row referencing the same suit
 
 ## Dependencies
 
+**The batch column did not move, and I confirmed that rather than assuming it.** No task row was
+added, removed, or had its `Deps` cell edited this round; the only change under §Dependencies is
+the edge-rationale table, where one row was split into two. My v2 re-derivation over all 23 rows
+therefore still stands unchanged — 23 ids unique, every dependency resolving to a declared row,
+graph acyclic, `batch == max(dep batch) + 1` for every row.
+
+**The split edge rationale is now true of both subjects (F-06).** v0.2 read
+`LI-10, LI-11, LI-12, LI-23 → LI-06 | data | the L3 byte-identity claims (AT-23, AT-24, AT-31)`.
+v0.3 splits it:
+
+- `LI-10, LI-11, LI-12 → LI-06 | data | the L3 byte-identity claims (AT-23, AT-24, AT-31) compare
+  against committed baseline prompts` — true of all three subjects; AT-23/24/31 all live in
+  `learningsDispatchSet.test.js` (LI-11) and the record/config suites share the capture.
+- `LI-23 → LI-06 | data | **not** byte-identity — LI-23 carries no FSPEC AT and asserts nothing
+  about bytes; its reason is the L3 fixture matrix the twelve arms are driven through … The edge is
+  slack: LI-23 sits in batch 5 either way` — which is the correction I asked for, stated more
+  precisely than I stated it, and with the slackness declared so a future reader does not mistake
+  the edge for an ordering constraint that could be tightened.
+
+**LI-14's wider read introduces no new edge obligation, and the row's argument for that is sound.**
+This was the one place the F-05 fix could have quietly changed the DAG. It does not: the closure
+reads twelve files but *asserts* only that the AT-registering set equals six, and all six are
+already declared `Deps` of LI-14 (LI-07…LI-12). The four extra files read at batch 6 —
+`Premises` (b1), `CaptureScript`, `PredicatePin` (b2), `BaselineGuard` (b4) — are all in strictly
+earlier batches, so they exist whether or not an edge names them, and an absent file could only
+under-contribute. The batch column is correct at 6 with the existing six edges.
+
+**One consequence for later batches, checked and clean.** A directory-wide set equality that closes
+at batch 6 must keep closing through batch 14, or `LI-T-SUITEMAP` becomes a new red inside the
+mixed-gate ledger. It keeps closing: batches 7–14 are the eight `orchestrate-dev.js` edits (LI-15…
+LI-22) and the manifest gives none of them a test-file row, so no thirteenth `learnings*.test.js`
+file appears after batch 6. The ledger correctly never lists `learningsSuiteMap`.
+
 ## Verification
 
 ## Findings
