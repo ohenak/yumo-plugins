@@ -72,6 +72,48 @@ No previously approved material was weakened, narrowed, or reinterpreted by this
 
 ## Interfaces
 
+**Fidelity of the new rule to FSPEC F-O-1 — the delegation actually asked.**
+
+FSPEC F-O-1 at HEAD (line 1009) states the obligation as two rules "on the same terms", the second
+being *"the rule by which a heading counts as one of BR-6's named sections — whether the numbered
+form, the bare title or a prefix of it is matched"*, bounded by two constraints: each consults only
+the document's bytes, and each is decidable without a model call. BR-6 reinforces the delegation:
+*"Which heading forms count as which section is F-O-1's, not text to be matched literally from
+here."*
+
+Upstream therefore poses a three-way question and hands TSPEC the decision. §D.3 answers all three
+explicitly, which is what a discharge requires:
+
+| F-O-1's enumerated form | §D.3's decision | Grounding given |
+|---|---|---|
+| Numbered form (`## 2. Cross-Feature Patterns`) | **Matched.** Ordinal optional, stripped, and carries no meaning | Measured: 9/9 corpus documents write it |
+| Bare title (`## Cross-Feature Patterns`) | **Matched.** Same section as the numbered form | Defensive tolerance, declared not measured |
+| A *prefix* of the title | **Not matched.** Exact, case-sensitive comparison — no prefix, substring, or case folding | Forced by FSPEC E-33 |
+
+The prefix rejection is the one that could have been a divergence, so I checked it against the
+requirement rather than accepting the rationale. It holds, and the reasoning is upstream's own:
+E-33's document (`regime-ledger`'s `LEARNINGS-postgres-audit-repository.md`, carrying
+`## Cross-Feature Findings` and `## Process Findings`) is FSPEC's one measured `RSN-NO-MATERIAL`
+document. Under a prefix rule `Cross-Feature Findings` would match `Cross-Feature Patterns`, that
+document would contribute material, and E-33 together with AT-28 would be unreachable by
+construction. Choosing "no prefix match" is the only choice that keeps upstream's measured example
+reachable. §D.3 states exactly this argument. That is a decision traceable to a requirement, not an
+engineering preference.
+
+**Both F-O-1 bounds are preserved.** The matcher is three frozen strings and two regexes over the
+document's own bytes — no model call, no external state. §D.3 says so for rule 1; rule 2 inherits
+it visibly from its own construction.
+
+**Priority order — the product-critical detail.** BR-6's table ranks Cross-Feature Patterns 1 and
+Non-Convergences 2, with a stated product rationale (Cross-Feature Patterns is "where an author is
+already generalising beyond their own feature"). `BR6_SECTION_NAMES` transcribes BR-6's five names
+in BR-6's order, and §D.3 states that priority comes from the array index "and from nowhere else".
+It then names the trap directly: the corpus numbers these sections `1. Non-Convergences`,
+`2. Cross-Feature Patterns` — the *inverse* of BR-6's ranking for the top two — so reading priority
+off the heading ordinal "would invert the first two sections of every document in the corpus". I
+verified this against all 9 documents; the inversion is real in every one. Naming it is what
+protects BR-6's product intent from a plausible implementation shortcut.
+
 ## Data Model
 
 ## Test Strategy
