@@ -141,3 +141,92 @@ The fail-closed rule fired exactly as specified. The defect is upstream of it, a
    se, REQ v10, REQ v11 both channels) carried zero lines and passed, because the fail-closed rule
    only inspects non-approving confirmations. The signal that the grammar had been abandoned was
    present four times and observable only at the halt.
+
+## Recommendation
+
+**Immediate (unblocks this phase; no substantive rework of the erratum):**
+
+1. **Re-score the v9 round crediting the confirmers' own declared tags** — se-review F-01
+   `High | inherited | nonlocal`, te-review F-01/F-02 `High | inherited | nonlocal`, the three Lows
+   `inherited`. `highDelta` is then empty → **R2**. R2 is not an erratum failure: no POSTMORTEM is
+   owed, FSPEC is **not** re-anchored, and its recorded approval is **re-opened** so the FSPEC phase
+   runs again under ordinary review budgets carrying these findings. Phase D then re-dispatches on
+   the corrected FSPEC.
+2. **The re-opened FSPEC round carries exactly the findings both confirmers agree on** — all locus
+   corrections, no new behaviour, no settled decision reopened:
+   - **BR-9** — corpus-level outcomes and per-document reason rows recorded **per authoring
+     dispatch** (REQ v0.9 AC-3.2); if a run-level mirror is carried, state in upstream's own words
+     that it is additive, is not the oracle, and that nothing asserts on it.
+   - **BR-10** — split into two loci: ordering key value per document **per authoring dispatch**,
+     §4.1 thresholds **once per run**; **two** completeness tests, one per locus. Fix BR-8's closing
+     cross-reference and Step 21's "once per run".
+   - **AT-20 / AT-21 / AT-22** — name the locus in Given/Then; AT-21 scopes to the dispatch that
+     carried the outcome; AT-22 splits into two set-equality assertions and gains the falsifying case
+     (corpus changes between two dispatches, each reproducing its own selection), reusing AT-18's
+     existing fixture.
+   - **Header Cross-Reviews row** — extend the brace list through v9; **AC-6.2 traceability row** —
+     land v8's unlanded F-01 (`§Acceptance Tests preamble` alone in column 2).
+   - Answer se-review Q-01 / te-review Q-01, Q-02 in the text: whether the run-level singletons
+     survive as REQ's explicitly-additive mirror or go away. Leaving it unstated is what produced the
+     split; TSPEC's open question at `TSPEC:343-354` closes on the same edit.
+3. **Do not reopen the ERR-4 disposition.** Both confirmers verified it independently: the gate
+   correction is TSPEC's to land, and TSPEC's `§I.4` contrast ("an absent section is `present:false`,
+   so the feature is still off") is the text that must change, not FSPEC's.
+
+**Systemic — escalate `POSTMORTEM-T`'s items 4–7 out of the harvest channel and land them before the
+next erratum round.** Deferring them is what produced this halt; the recurrence is the evidence that
+harvest-channel deferral is the wrong disposition for a rule that halts phases. In priority order:
+
+4. **Engine — bounded restatement retry before fail-closed** (T item 4). On a non-approving
+   confirmation with zero parseable lines, issue one single-turn re-dispatch asking only for
+   restatement of the existing findings in the grammar; synthesize `{High, delta, nonlocal}` only if
+   the retry also returns nothing. This alone converts both halts into a one-turn cost.
+5. **Skill — give the grammar a skeleton slot** (strengthens T item 5). Require a literal
+   `## Delta-Confirmation Findings` heading immediately above `## Verdict` in every erratum-round
+   cross-review, whose body is one `FINDING:` line per findings-table row. Written into the skeleton,
+   it is emitted by the pacing contract like any other section rather than remembered at the end.
+   `CROSS-REVIEW-test-engineer-FSPEC-v8.md` is the conforming exemplar.
+6. **Skill — remove the schema collision.** On erratum rounds the findings table's `Scope` column
+   splits into `Provenance` (`delta`/`inherited`) and `Locality` (`local`/`nonlocal`), with the
+   allowed vocabulary stated. The `FINDING:` lines are then a mechanical transcription of the table,
+   and a mismatch between the two is self-evident to the author.
+7. **Prompt — fix the false leniency sentence** (T item 6, now demonstrably wrong, not merely
+   understated). `findingGrammarClause()` must say: an untagged finding is read as `{delta,
+   nonlocal}`, which is the **halting** reading for any High; tagging `inherited` is what keeps an
+   inherited High non-gating (R2), and a non-approving confirmation with zero lines halts the phase.
+8. **Mechanical guard on every round, not only non-approving ones** (widens T item 7). A PostToolUse
+   hook or dispatcher-side lint on written `CROSS-REVIEW-*` files during an erratum round warns when
+   the file contains zero line-leading `FINDING:` occurrences **regardless of verdict**, and when any
+   findings-table row's declared tags do not appear in a `FINDING:` line. Both halts and all four
+   near-misses on this branch are caught by that one check.
+
+## Traceability
+
+| Artifact | Reference |
+|---|---|
+| Erratum under confirmation | `a6b42bae` — FSPEC v0.7 → v0.8 |
+| Upstream at HEAD | REQ v0.9 (`a2353445`), sha256 `ff605dd3…e84dd`, anchored `dc7e230d` — matches both dispatch hashes |
+| Confirmations | `9af04875` (se-review v9), `1f140f13..9033fc63` (te-review v9) |
+| Gate rule that fired | `erratumGateDecision` R4 via the fail-closed branch (`ERRATUM_FAIL_CLOSED_SECTION`), `pdlc/workflows/orchestrate-dev.js` |
+| Rule that should have fired | R2 (inherited-only) — re-open upstream approval, no halt |
+| Parser | `parseConfirmationFindings` — line-leading `FINDING:`, first four `\|` delimiters |
+| Governing decision | DEC-ERR-03 (`docs/_decisions/DECISIONS-review-severity-bars.md`) |
+| Prior occurrence | `POSTMORTEM-T-pdlc-learnings-injection.md` — same failure mode, one channel, FSPEC v7 |
+| Prior near-misses | `CROSS-REVIEW-software-engineer-REQ-v8.md`, `…-FSPEC-v8.md`, `…-REQ-v10.md`, `…-REQ-v11.md`, `CROSS-REVIEW-test-engineer-REQ-v10.md`, `…-REQ-v11.md` — 0 `FINDING:` lines, approving, ungated |
+
+**Provenance**
+- Engine version: 0.2.0
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
+
+## Resolution
+
+RESOLVED: no
+
+Pending operator action on recommendation 1–2: re-score the v9 confirmation at R2, re-open the FSPEC
+approval, land the BR-9/BR-10/Step 21/AT-20–AT-22 locus corrections plus the two header/traceability
+Lows, and answer the three open questions; then re-dispatch Phase D. The halt itself is a formatting
+artifact — both confirmers agree the routed ERR-4 item landed correctly and that nothing previously
+approved moved.
