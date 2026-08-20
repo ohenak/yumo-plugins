@@ -74,4 +74,31 @@ run; see §Positive Observations for what checked out).
 
 ## Recommendation
 
+**Needs revision**
+
+Four High findings, and they share one root: the PLAN's per-task green attribution is correct
+wherever the report object is *not* involved and slips wherever it is. Concretely, what must change:
+
+1. **F-01** — LI-21's row names `learningsInjection.ruleInputs.thresholds`, built once per run from
+   the parsed config, as work it owns; AC-3.3's run-level locus stops being unscheduled.
+2. **F-02** — LI-10's row and the §Traceability green column split `learningsRecord.test.js` the way
+   `learningsDispatchSet.test.js` is already split: LI-19 for the per-dispatch locus, LI-21 for the
+   run-level thresholds locus.
+3. **F-03** — AT-15's report clause gets a green task that can satisfy it (or the L1 assignment goes
+   back to TSPEC), and LI-07's "eligibility/ordering/count rules only" scoping stops reading as an
+   instruction to drop it.
+4. **F-04** — §Verification's batch 7–13 gate is restated so a deliberately-red suite awaiting its
+   green task is not a batch failure; unconditional full-suite green stays at batch 14.
+
+F-05 (LI-02's fixture spec should name AC-2.6's three corpus path shapes) and F-06 (DEC-DOC-01 line
+anchors) are recorded, not gating.
+
+None of this is a disagreement with the plan's shape. The serial source lane, the structural T-O-2
+edge, the file-ownership manifest and the fail-open arm inventory are the right decomposition for
+this feature, and the measurements underneath them hold up under re-execution.
+
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 1, "low": 1}
