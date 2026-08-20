@@ -184,7 +184,15 @@ file, and the gate died at pytest collection (ImportError, zero tests run) — t
 `wave-internal-defect` instance, repairable under E-5 alone. REQ revised to v1.1 with the incident,
 two new operator questions (Q-4 per-task ownership-delivery check, Q-5 collection-error evidence
 signal) and a sixth deferral D-AWG-06 (mode-aware Phase I halt reporting), which binds to row 6 like
-the other five.
+the other five. **Update 2026-08-20 (DoD code review v1, finding 8):** the feature's TSPEC §6 **OQ-7**
+— whether A6's whole-tree restore is bounded by `git clean -fd` or `-fdx`, i.e. whether a
+`.gitignore`d file the wave itself added survives the restore — is bound to **row 6** on the same
+terms as D-AWG-01…06. It was previously carried only as an erratum raised on FSPEC BR-9 / AT-05-1 and
+REQ AC-5.1, which is prose and owns nothing; the corresponding `test.todo` in
+`pdlc/workflows/__tests__/advisoryWaveGate.test.js` (PROP-REST-03) now names this row as its
+successor. Row 6 already carries a `Depends-On` edge on `pdlc-advisory-wave-gate`, so nothing else in
+the table moves. Until row 6 decides it, A6 ships the `-fd` behaviour and PROP-REST-01's
+round trip observes it — the deferral is the *decision*, not the behaviour.
 
 **Rows 3-5 — the headless-engine family — added 2026-08-08 (draft REQs, operator review
 pending).** Motivated by the regime-ledger staleness incident (consumer ran 0.21.0 engine
