@@ -281,7 +281,7 @@ including its own failure; no step raises to its caller (BR-12).
 | D-9 | Does the per-document byte bound bind? | yes → bounded flag / no | BR-6 |
 | D-10 | Does the total byte bound bind? | yes → whole-document drop / no | BR-6 |
 | D-11 | Is the selected set empty? | yes → empty block, empty rows / no | BR-8 |
-| D-12 | Does the document carry any priority section? | yes / no → `RSN-NO-MATERIAL` | BR-6 |
+| D-12 | Does the document yield any material? | yes / no → `RSN-NO-MATERIAL` | BR-6 |
 
 Every branch in this table has at least one acceptance test (DC-05); the mapping is in §Acceptance
 Tests.
@@ -758,6 +758,7 @@ behavioural branch, its outcome, and the test that asserts it.
 | E-25 | `maxTotalBytes: 0` | Enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 | E-26 | One threshold configured, two defaulted | Configured value used for one, defaults for the others; all three appear in BR-10's record | AT-22 |
 | E-34 | A declared key wrong-typed | Enabled run, that key at its default, plus `NTC-KEYTYPE` naming it | AT-32 |
+| E-36 | `maxBytesPerDocument: 0` | No document yields material: every one carries `RSN-NO-MATERIAL` and consumes no slot; enabled run, empty selection, BR-8 rows present and empty | AT-30 |
 
 ### Run-shape edges
 
@@ -926,10 +927,11 @@ text into a disabled run is a test failure rather than a production discovery.
   verdicts, structural completeness scores, round-window counters, approval anchors and
   erratum routes are equal member for member, asserted as set equality over those five, and
   every dispatch prompt outside BR-1's rule is byte-identical to the recorded baseline.
-- **AT-30** — *Given* thresholds configured to admit nothing — `maxDocuments: 0`, and separately
-  `maxTotalBytes: 0` — *when* the pipeline runs, *then* it behaves as an enabled run with an empty
-  selection: BR-8's rows present and empty, **not** the absent key of a disabled run, and no refusal
-  to run.
+- **AT-30** — *Given* thresholds configured to admit nothing — `maxDocuments: 0`, separately
+  `maxTotalBytes: 0`, and separately `maxBytesPerDocument: 0` — *when* the pipeline runs, *then* it
+  behaves as an enabled run with an empty selection: BR-8's rows present and empty, **not** the
+  absent key of a disabled run, and no refusal to run; *and* in the `maxBytesPerDocument: 0` case
+  every corpus document carries `RSN-NO-MATERIAL` (E-36).
 
 ### Group 5 — inertness when disabled, and semantics preserved
 
@@ -969,7 +971,7 @@ text into a disabled run is a test failure rather than a production discovery.
 
 ### Branch coverage check
 
-Every row of §Edge Cases and Error Scenarios (E-01 … E-35, less retired E-05) names an AT, and
+Every row of §Edge Cases and Error Scenarios (E-01 … E-36, less retired E-05) names an AT, and
 every AT above appears in
 §Linked Requirements' reverse trace. Every branch of the D-1 … D-12 decision table is exercised: D-1
 by AT-30/31/32, D-2 — all three branches, the authoring-classified non-C-1 target included — by
