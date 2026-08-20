@@ -41,7 +41,39 @@ statement of BR-6's heading-matching rule (none).
 
 ## Architecture
 
-_pending_
+The architecture TSPEC specifies is untouched by this erratum and I re-checked only the two seams
+the changed upstream text reaches.
+
+**§A.1/§A.2 — where selection sits.** F-O-6's discharge is unaffected: the erratum changes what
+counts toward a bound and what a zero bound means, not where the step runs or how the block reaches
+the composer. The four authoring dispatch sites, BR-1's two conjuncts and the conditional-spread
+precedent I confirmed in v11 are all still verbatim-present upstream at `sha256:ae75fa62…`
+(re-grepped BR-1, BR-15, D-2 — the v0.12 erratum's text survived v0.13 unchanged, and the v0.13
+header note says "No other change").
+
+**The drop-before-bounds ordering is the architectural claim now under strain.** FSPEC BR-6 at HEAD
+orders the pipeline as: extract material → a document that yields nothing is **dropped before the
+bounds are applied** with `RSN-NO-MATERIAL` → the count and total bounds run over what remains.
+TSPEC's §I.3 delegates the whole of BR-2/BR-4/BR-5/BR-6 to one pure `selectLearnings`, which is the
+right shape and can express this ordering — the function sees `thresholds` and each entry's text,
+so `extractInjectableMaterial(text, 0)` returning empty material is decidable inside it. The
+architecture is not what breaks; the **stated firing condition** for the drop is (F-01). This is
+worth saying explicitly, because it bounds the repair: no seam moves, no signature changes, and
+`selectLearnings`'s contract in §I.3 is already wide enough. The fix is textual, in §T.6's decision
+map and wherever the drop condition is restated.
+
+**No new production-path exposure.** The zero-per-document case is reachable only through
+configuration, and §T.5 already routes AT-30 to `learningsConfig.test.js` as an **L3** seam-driven
+run over the real `main()` (`import mainDev, * as dev from "../orchestrate-dev.js"`, on the
+`advisoryDisabled.test.js` pattern). That is the correct level for the new third case too — the
+claim "BR-8 rows present and empty, and every corpus document carries `RSN-NO-MATERIAL`" is a
+whole-run claim about the finished report, exactly as AT-30's other two zeros are, and a unit test
+over `selectLearnings` could not falsify the report-key half of it. So the third case inherits a
+level assignment that is already justified; it needs a fixture, not a new suite.
+
+**Cross-feature check.** Nothing in the erratum touches DC-07 (builder-not-wired), DC-09 (coverage
+gate) or the DOMAIN-CONSTRAINTS entries this feature leans on; I re-read `docs/_constraints/` and
+`docs/_decisions/DECISIONS-review-severity-bars.md` for the DEC-DOC-01 anchor rule applied below.
 
 ## Interfaces
 
