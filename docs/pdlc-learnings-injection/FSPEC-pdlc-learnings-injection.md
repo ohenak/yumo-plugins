@@ -273,9 +273,13 @@ Tests.
 
 ### BR-1 — Exactly the authoring dispatches carry a block *(AC-1.1, AC-1.2)*
 
-A dispatch carries a block **if and only if** the pipeline classifies it as authoring at the moment
-it is composed. The classification is the pipeline's existing one, not a new list maintained by this
-feature: this rule consumes the classification, it does not restate the membership.
+A dispatch carries a block **if and only if**, at the moment it is composed, **both** hold: the
+pipeline classifies it as authoring, **and** its target document is one of REQ, FSPEC, TSPEC, PLAN,
+DECISIONS or PROPERTIES (REQ C-1). Both conjuncts read the pipeline's own existing values, not a new
+list maintained by this feature: the rule consumes them, it does not restate a call-site membership.
+The second conjunct is load-bearing, not defensive — an authoring-classified dispatch whose target is
+none of those six document types (the code-review phase's optimizer round at HEAD) is outside the
+rule, which is what REQ AC-1.2 and NG-5 decide.
 
 - **Included:** creator, optimizer-round and erratum dispatches for REQ, FSPEC, TSPEC, PLAN,
   DECISIONS and PROPERTIES — whichever of them a given run actually makes.
