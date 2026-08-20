@@ -195,3 +195,6 @@ FINDING: Medium | inherited | nonlocal | DEC-LI-07 — "The divergence from TSPE
 FINDING: Low | delta | nonlocal | Header Upstream row; Upstream version note; DEC-LI-07 | Upstream version pins stale — TSPEC v0.5 and FSPEC v0.7 cited where HEAD is TSPEC v0.6 and FSPEC v0.10; the cited BR-14 text itself is unchanged
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
