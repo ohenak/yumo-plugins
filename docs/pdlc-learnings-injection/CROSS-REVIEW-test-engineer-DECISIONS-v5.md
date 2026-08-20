@@ -73,6 +73,30 @@ correct and now agree with TSPEC — but all of it misdirects a reader who follo
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC v0.7.** Reading (c) — Approved with minor changes,
+four Medium and two Low findings, none gating, none reopening a decision.
+
+Every claim DECISIONS makes that reaches TSPEC, re-derived against HEAD rather than against the v0.6
+bytes v4 recorded:
+
+| DECISIONS claim | TSPEC at HEAD (v0.7) | Verdict |
+|---|---|---|
+| `DEC-LI-03`'s gate: `dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType)` | §A.2 keeps the conjunct, calls it "load-bearing, not defensive", and §I.3's predicate is unchanged | **Holds, newly backed** — the conjunct TSPEC v0.6 routed as ERR-7 is now stated as implementing `BR-1` |
+| `G-B`: four code sites carry the authoring classification, all funnelling through `dispatchAndVerify`; evidence given as "the three object-literal sites plus `reviewLoop`'s positional argument" | `P-2a` rewritten to exactly that decomposition — three object literals (`converge()`'s phase creator, `erratumRound()`'s author dispatch and its land-proof retry) plus `reviewLoop`'s positional `"authoring"` to `runWrapped` | **Holds; convergent** — the de-anchored `P-2a` now reads the way DECISIONS already wrote it |
+| `G-C`: Phase CR calls the shared `reviewLoop` with `docType: null` over a directory target, and the `null` survives to `dispatchAndVerify` | `P-2b` restates the same chain by symbol (`roundDocType` derivation, `wrapped` forwarding), line anchors dropped | **Holds** — same mechanism, same measured witness |
+| `DEC-LI-06`: no cache of our own; the refusal is defended by `D-O-6`'s call counts | Divergence table's "Corpus caching" row still rejects a run-scoped memo on E-32/AT-14 grounds; untouched by this delta | **Holds** (its *reversibility ground* is v4's F-01, still unlanded) |
+| `DEC-LI-07`: "TSPEC v0.5 **still** builds the injector on `present && config.enabled && !sectionMalformed` (§I.3) and **still carries** `OQ.2` and `ERR-4` open… raised as **DEC-ERR-01 against TSPEC**… **Until TSPEC lands that edit**, `D-O-5` is the standing protection" | §I.3 gates on `config.enabled` alone; `OQ.2` is "CLOSED by REQ v0.9" and records the three forced edits as made; `ERR-4` is "CLOSED, resolved by REQ v0.9"; `LEARNINGS_DEFAULTS.enabled === true` | Decision **holds and now agrees with TSPEC**; the surrounding paragraph **is false at HEAD** — F-01 |
+| `D-O-9`: "TSPEC closes `OQ.2`, retires `ERR-4`, drops the `present`/`sectionMalformed` conjuncts… must land before `AT-31`/`AT-32` are authored" | All four landed at or before v0.6 | **Discharged**, but still tabled as outstanding — F-01 |
+| §Decisions deliberately NOT taken, row 4: AC-3.3's locus is routed "via **TSPEC `ERR-6`**"; "TSPEC keeps the run-level record (last-write-wins)" | `ERR-6` is "CLOSED, resolved by REQ v0.9"; §D.2 makes the **per-dispatch** field the oracle locus and the run-level mirror "additive… not the oracle" | **Drifted on both halves** — F-02 (compounds v4's F-03 against FSPEC `BR-10`) |
+| `DEC-LI-10`: three closed catalogues, completeness tests assert **set equality** against hand-transcribed sets | §D.1 unchanged for completeness; its separate **domain-membership** tests are now scoped to non-`null` | **Holds** — completeness ≠ domain; `LEARNINGS_CORPUS_OUTCOMES`' set equality is explicitly unchanged. See F-06 for the oracle consequence |
+| Header preamble: citations name symbols, not lines, per `DEC-DOC-01` | TSPEC's de-anchoring commits adopt the same convention | **Holds; convergent** |
+| Header "Upstream version note": "TSPEC v0.5… REQ v0.9 and FSPEC v0.7 settled…" | TSPEC is v0.7, grounded on FSPEC **v0.12** | **Stale pin** — F-03 |
+
+The two findings this round adds (F-01, F-02) are both **inherited**: the TSPEC edits that made them
+stale landed before `eff5a19b`, the version v4 recorded. This delta neither created nor worsened
+them. It is what made them visible, because a TSPEC-triggered cascade is the round whose job is to
+re-derive TSPEC citations.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
