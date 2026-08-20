@@ -105,8 +105,42 @@ Both are locus corrections, not new behaviour, and neither requires re-opening a
 
 ## Positive Observations
 
-<!-- pending -->
+- **The erratum did the honest thing.** Faced with a routed item whose section ids do not exist in
+  this document, the note neither invented a change nor silently dropped the item: it names the
+  numbering as TSPEC's, re-states the settled behaviour with its upstream anchor (REQ v0.9 AC-5.1a),
+  and assigns the correction. That is exactly the disposition that keeps a delta round bounded.
+- **The re-affirmation is checkable, not assertive.** Step 0(2) and BR-14 really do say what the note
+  claims they say, and BR-14's five-state table is total over the configuration input space — absent,
+  absent-file, misspelt, malformed, wrong-typed, admits-nothing all resolve to a named composition
+  and a named record. No configuration state falls through.
+- **The fail-open default is defended, not assumed.** BR-14 explicitly notes that
+  `ADVISORY_DEFAULTS` leaves `enabled` at `false` and that this feature diverges deliberately, with
+  the reason (G-1: a repository already holding LEARNINGS needs no config change). A reviewer can
+  falsify that claim against the source in one grep — I did; it holds.
+- **AT-18 already carries the mid-run corpus-change fixture.** That is the hard case, and having it
+  present for BR-8's rows is why F-01/F-02 are cheap to close rather than structural.
+- **Catalogue discipline is genuinely closed.** Three disjoint catalogues, one completeness test each,
+  plus an explicit no-id-in-another-catalogue's-position rule (AT-20). The distinction between
+  `RSN-UNLISTABLE` and `RSN-EMPTY` is stated as load-bearing rather than incidental — "I could not
+  find out" never collapsing into "there is nothing" is the right positive-mechanism framing.
 
 ## Recommendation
 
-<!-- pending -->
+**Needs revision**
+
+Not on the routed item — that is resolved, and cleanly. The delta confirmation answer is: *the edit
+resolves the item and breaks nothing previously approved.* The revision is owed on the DEC-ERR-03
+channel: re-reading REQ at HEAD shows FSPEC's BR-9 and BR-10 still compress AC-3.2 and AC-3.3 at a
+run-level locus that upstream has explicitly split per authoring dispatch, with AC-3.3 stating in
+terms that one run-level record cannot describe two dispatches. AT-22 as written is green against a
+report that fails AC-3.3, which is a false-green, not a wording preference.
+
+Exact change required: correct the locus in BR-9 and BR-10 (per authoring dispatch for corpus-level
+outcomes, per-document reasons and ordering-key values; per run for thresholds), split BR-10's
+closure into two completeness tests, fix BR-8's closing cross-reference, and extend AT-20/AT-22 to
+name the locus and assert the two-dispatch differing-corpus case using AT-18's existing fixture.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
