@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.10) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md`, `CROSS-REVIEW-product-manager-DECISIONS-v6.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v6.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md`, `CROSS-REVIEW-product-manager-DECISIONS-v6.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v6.md`, `CROSS-REVIEW-product-manager-DECISIONS-v7.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v7.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.5 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.6 | 2026-08-19 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -387,7 +387,12 @@ that a first-class per-seam `enabled` map becomes the better surface.
   argument — it is the one the shared-double bullet below rests on — but it is a different claim
   from "still moves", which is how v1.3 framed the count. An implementer sizing A6 off the older
   wording would budget five edits no gate asks for.
-- **Seven sites across both literals are already at the post-A6 value and need no edit.** Seam:
+- **Seven sites across both literals are already at the post-A6 value and need no edit.** (This
+  seven and column (2)'s ten below count different populations and do not contradict each other:
+  this bullet counts *sites at the post-A6 value*, oracles and inputs alike, while column (2) counts
+  only the *oracles that are red at HEAD* — the inputs named here, the `consolidationProperties`
+  generator pick and the doubles' `SEAMS` constant, are green today because nothing compares them to
+  production.) Seam:
   the `ADVISORY_SEAMS` set-equality in `advisoryEnvelope.test.js`, the `test.each` table in
   `advisoryRecord.test.js`, the harvest-row assertion in `advisoryHarvest.test.js`, the generator
   pick in `consolidationProperties.test.js`, and the `SEAMS` constant in
@@ -472,7 +477,7 @@ that a first-class per-seam `enabled` map becomes the better surface.
   `advisoryDriver.test.js`, the `T-03-6` comment above the registry ("the five per-seam
   gate-exclusivity cases, one per `ADVISORY_SEAMS` member (PROP-GATE-01…05)") and the generated-cases
   banner that repeats "(PROP-GATE-01…05)" while the registry banner four lines above it already reads
-  "PROP-GATE-01…06" — **eight** hand-copy sites on the envelope/defaults side: the five test-side
+  "PROP-GATE-01…06". It yields a further **eight** hand-copy sites on the envelope/defaults side: the five test-side
   input transcriptions, `helpers/advisoryDoubles.js`'s hand-sync comment, `advisoryConfig.test.js`'s
   "`ADVISORY_DEFAULTS`' own key set is exactly the five keys" title (already at the post-A6 count),
   and — the sharpest of the twenty — `orchestrate-dev.js`'s `envelope: ENVELOPE_DEFAULTS, // the
