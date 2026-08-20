@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → **PLAN** — `TSPEC-pdlc-learnings-injection.md` (v0.6); `FSPEC-pdlc-learnings-injection.md` (v0.10); `REQ-pdlc-learnings-injection.md` (v0.9); `DECISIONS-pdlc-learnings-injection.md` |
+| Upstream | REQ → FSPEC → TSPEC → **PLAN** — `TSPEC-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13); `REQ-pdlc-learnings-injection.md` (v0.9); `DECISIONS-pdlc-learnings-injection.md` (v0.3) |
 | Downstream | PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-PLAN[-v{N}].md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.4 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.5 | 2026-08-20 |
 
 ## Overview
 
@@ -33,7 +33,7 @@ script that captures it.
 
 **This PLAN cites; it does not restate.** Every task row names the TSPEC section that owns the
 thing being built. Where a row and the TSPEC disagree, the TSPEC wins and the row is the defect.
-Behaviour lives in REQ v0.9 / FSPEC v0.10 / TSPEC v0.6 and is referenced by id (`AC-`, `BR-`,
+Behaviour lives in REQ v0.9 / FSPEC v0.13 / TSPEC v0.9 and is referenced by id (`AC-`, `BR-`,
 `AT-`, `§`), never copied. What a row states that no upstream document does is *process*: when the
 work happens, who owns which file, which test comes first, and what stops.
 
@@ -272,7 +272,7 @@ so no SKILL text moves.
 
 | Edge | Kind | Why it is not optional |
 |---|---|---|
-| everything → LI-01 | pre-flight | a premise that has moved since TSPEC v0.6 must become blocking work before any task builds on it |
+| everything → LI-01 | pre-flight | a premise that has moved since TSPEC v0.9 must become blocking work before any task builds on it |
 | LI-04, LI-05 → LI-03 | red-before-green | both obligations of TSPEC §T.3 are things a rebase drops silently; each has a named oracle that must be red first |
 | LI-05 → LI-02 | data | the capture drives the **L3 fixture matrix**, which lives in the helper |
 | LI-06 → LI-04, LI-05 | ordering + tooling | the capture cannot run before the script exists, and must not run before `.baseline-worktree` is ignored, or an interrupted run dirties the tree the `coveredViolations` walk scans |
@@ -567,3 +567,4 @@ fixture list includes the fourth run shape TSPEC §T.6 adds beyond FSPEC's three
 | 0.2 | 2026-08-20 | Round 1 cross-review (PM F-01…F-06, TE F-01…F-12, PM Q-01…Q-03, TE Q-01…Q-05). LI-01 gains an owned premise suite; LI-03 names its temp-repo instrument and its three ignore conjuncts; LI-06 gains the three-step mutation proof; LI-02 declares path shape and forbids jest globals; LI-14 becomes green-terminal and LI-15 stops claiming to green it; **new LI-23** makes the §T.7 fail-open inventory a suite; LI-21 owns `ruleInputs.thresholds`; AT-15 and AT-22 get split greens; batches 7–13 get a per-batch expected-red ledger; the coverage baseline is measured and DoD 11/12 restated against it; H-8 added; the file-ownership manifest is rewritten one row per (file, owner) so the dispatcher's contract check parses it, and its arithmetic restated |
 | 0.3 | 2026-08-20 | Round 2 cross-review (PM F-07, F-08; TE F-01…F-06; PM Q-04, Q-05; TE Q-01, Q-02). LI-01's premise suite drops the change-surface **absence** claims — this PLAN's own tasks falsify all four on schedule — and keeps them as a one-time pre-flight recorded in the completion note; P-2a becomes a set equality over the four authoring call sites, so a fifth site reds at batch 1 (PM Q-04). AT-15 is stated as **four** clauses with E-35's positive direct-path clause greened by LI-16. LI-23's `corpusOutcome` equality is scoped to **non-`null`** observations. The green-terminal gate gains the pre-existing-status conjunct its siblings carry. The porcelain instrument is restated as `-unormal`, untracked files included. `LI-T-SUITEMAP`'s closure is taken over the directory rather than a hardcoded six. LI-23's `→ LI-06` edge gets its own reason. DoD 4's sentence join repaired; P-A-3…P-A-5 added |
 | 0.4 | 2026-08-20 | Round 3 cross-review (PM F-09, F-10; TE F-01…F-04; PM Q-06, Q-07; TE Q-01). LI-01's P-2a set equality is re-keyed on **(enclosing named function, prompt-source symbol)**: the `erratumAuthorPrompt` dispatch and the land-proof retry are both `wrappedDispatch({…})` calls inside `erratumRound`, so the previous key (enclosing function + argument position) yielded three members for four sites and would have redded batch 1 (PM F-09). LI-10 names the healthy `corpusOutcome === null` assertion on `DIVERGENT-CORPUS` dispatches 1, 2 and 4 — the positive half LI-23's non-`null` scoping delegates — and LI-23 points back at it (TE F-01). The test-name namespacing section states the `LI-T-*` rule as a gate input of LI-14's directory closure, covering LI-01's and LI-06's unnamed tests (TE F-02). §Verification's batch-6 gate row and §T.5's green column adopt the batch ladder's directory-wide phrasing (TE F-03). P-A-3's ledger universe is the **twelve** `learnings*.test.js` suites, not fourteen manifest rows (PM F-10, TE F-04). P-A-6…P-A-8 added, with DoD 13 requiring LI-01's completion note and its two written records |
+| 0.5 | 2026-08-20 | Round 7 upstream-cascade confirmation (PM F-01…F-04; TE F-01…F-04), absorbing **FSPEC v0.12 → v0.13** and **TSPEC v0.7 → v0.9**. LI-12's `LI-AT-30` becomes **three** cases — `maxBytesPerDocument: 0` (E-36) added — with a three-conjunct positive oracle (key present with empty BR-8 rows; `rejected[]` set-equal to every non-self corpus path at reason `RSN-NO-MATERIAL`; **no** document carrying `RSN-COUNT`, the no-slot conjunct that falsifies a slot-consuming zero-byte cut), so a mutation of §D.5's `maxBytes <= 0` short-circuit can no longer survive the suite (PM F-01, TE F-01). The fail-open arm table's `RSN-NO-MATERIAL` row is broadened to TSPEC §T.7's two-disjuncts-one-branch form and routes the zero-bound disjunct to AT-30 case 3 / LI-12 / LI-21; the arm count is unchanged, and LI-23's set equality — taken over reason codes, not disjuncts — is untouched (PM F-02, TE F-02). F-O-1's **second** heading-recognition rule is mapped: the obligations row names both rules, LI-08's `LI-AT-11` gains non-canonical heading forms and a near-miss, and LI-02's spec surface gains the declared-heading-form knob (TE F-03). DoD 4's byte-identity scope is restated as dispatches **outside BR-1's rule** rather than "non-authoring", so Phase CR's authoring-classified non-C-1 optimizer round is inside the promise (PM F-04). ERR-3 and ERR-7 are recorded **CLOSED** (FSPEC v0.11/v0.12; TSPEC §A.2 implements BR-1 directly), and the four stale version pins now read FSPEC v0.13 / TSPEC v0.9 (PM F-03, PM F-05-low, TE F-04). No task moved batch, no `Deps` edge changed, no fixture was invalidated |
