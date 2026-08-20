@@ -861,7 +861,15 @@ on it:
 | **Per-document framing** | That document's `<<< path — feature {p}, completed {d} >>>` opener, its `ABRIDGED` annotation when present, and its `<<< end path >>>` closer | Nothing — framing is never cut |
 | **Block framing** | The `--- PRIOR-FEATURE LEARNINGS …` header, the four-sentence advisory preamble (§OQ.1), and the `--- END PRIOR-FEATURE LEARNINGS ---` trailer | Nothing — emitted once, only when `selected` is non-empty |
 
-**`maxBytesPerDocument` bounds material only, and so does `bytesInjected`.** This is the whole of
+**`maxBytesPerDocument` bounds material only, and so does `bytesInjected` — and this is now
+upstream's own rule, not a unilateral TSPEC reading.** FSPEC v0.13's BR-6 §"The byte-accounting
+basis" states that all three byte quantities measure the same bytes, that a document's contributed
+bytes are its material, and that framing — the identification line, the per-document delimiters and
+source-path label, and the block preamble — is charged to none of the three. The earlier FSPEC text
+charged framing to `maxBytesPerDocument` / `maxTotalBytes` / BR-8's *bytes injected*, which
+contradicted this section and forced PROPERTIES to pick a reading; that contradiction was upstream's
+and upstream removed it, in this direction. Nothing in this section changes as a result — it is
+cited rather than restated (BR-6, REQ AC-2.3 "the material taken"). This is the whole of
 what TE F-02 asked to be made non-circular: the `ABRIDGED: bounded to 6000 bytes` marker is
 emitted *because* a document was bounded, so if it were charged to that document's own budget the
 budget would depend on its own outcome. It is not charged. `extractInjectableMaterial(text,
@@ -879,8 +887,36 @@ expected counts are therefore hand-computable from the fixture alone: sum the se
 bodies BR-6 selects, ignore every delimiter. A fixture that wants to pin framing cost asserts on
 the rendered block length, not on `bytesInjected`.
 
+**The zero bound yields nothing; it does not yield an empty bounded document (E-36).** FSPEC
+v0.13 decides `maxBytesPerDocument: 0`: no material is admissible from any document, each yields
+nothing, each is dropped **before** the total bound with `RSN-NO-MATERIAL` (BR-9), each consumes no
+`maxDocuments` slot, and the run is BR-14's enabled, empty-selection run. So:
+
+- `extractInjectableMaterial(text, maxBytes)` tests the bound **before** the cut: `maxBytes <= 0`
+  returns `{material: "", bounded: false, bytes: 0, sections: []}` for every `text`, including one
+  carrying all five sections. `bounded` is `false` — TE F-04's question, decided here: `bounded`
+  records that a cut occurred, and at a zero bound nothing is taken, so nothing is cut. Reading the
+  unamended cut-and-flag rule ("if the first section alone exceeds the bound it is taken up to the
+  bound and cut, either way `bounded`") would give `{bytes: 0, bounded: true}` on a *selected*
+  document — the shape FSPEC v0.13 explicitly carves out.
+- `selectLearnings` drops a document whose extraction returns `sections: []` as `RSN-NO-MATERIAL`
+  **before** applying the count and total bounds, so the drop consumes no slot. The rule is keyed
+  on *yields no material*, which is BR-9's and D-12's restated form and covers both disjuncts with
+  one branch: the structural case (the document carries none of `BR6_SECTION_NAMES`, §D.3, E-33)
+  and the zero-bound case (E-36). There is no second branch and no zero-bound special case in the
+  selector.
+- Consequently at `maxBytesPerDocument: 0` every corpus document carries `RSN-NO-MATERIAL`,
+  `selected` is empty, `renderLearningsBlock` returns `""`, and `totalBytesInjected` is `0` with
+  BR-8's rows **present and empty** — the enabled-run shape, not the disabled one (AT-30's third
+  case).
+- `maxTotalBytes: 0` is a different state and keeps its own rule: material exists, but the first
+  document's contributed bytes carry the running total past the bound, so it and every
+  lower-ordered document are dropped **whole** with `RSN-BYTES` (BR-6 §"How the total bound
+  binds"). Zero on the per-document key is `RSN-NO-MATERIAL`; zero on the total key is `RSN-BYTES`.
+  The two zeros do not share a reason code.
+
 **Cutting is character-safe.** Where the first priority section alone exceeds
-`maxBytesPerDocument` (E-16), the material taken is the longest **character** prefix whose UTF-8
+`maxBytesPerDocument` (E-16, and the bound is non-zero), the material taken is the longest **character** prefix whose UTF-8
 length is ≤ the bound, so a cut never splits a multi-byte codepoint. The consequence, stated so
 AT-12's oracle is written correctly: contributed bytes are ≤ the bound, and **equal** to it only
 where the cut happens to land on a character boundary. AT-12's fixture is therefore ASCII, so the
