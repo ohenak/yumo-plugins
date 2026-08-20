@@ -83,7 +83,36 @@ PLAN is *more* precise than the new upstream sentence, not in conflict with it. 
 
 ## Dependencies
 
-_pending_
+**Upstream→PLAN dependency edges touched by this erratum: one.** TSPEC §1.3's hygiene paragraph now
+cites PLAN's Overview HEAD-drift note and A6-00's Edit 1 by name. Both citation targets exist, are
+uniquely identifiable, and carry the content TSPEC attributes to them — the citation is a heading- and
+task-id anchor, not a `file:line` anchor, so DEC-DOC-01 is satisfied on both sides.
+
+**Ordering unchanged.** The erratum routes *sizing and naming*, not work. It creates no new task, no
+new precondition on A6-00, and no new consumer of A6-00's output. A6-00 remains at batch 1 with zero
+dependencies, and the seven-wave map is untouched. I re-ran the shipped parser over the unmodified
+document to confirm the dispatcher still sees what it saw at approval: `parsePlanTasks` → **11 tasks**,
+`parsePlanOwnership` → **11 manifest rows**, `computeWaves` → **7 waves**. Identical to v10.
+
+**One inherited internal desync, surfaced by re-reading the routed target (F-02).** TSPEC now points
+implementers at A6-00's Edit 1 for the ignore rule's form. Edit 1 is unambiguous and well-argued: add
+the **bare** rule `.pdlc-backups/`, *"that exact literal, not an anchored path"*, because (i)
+`documentOracles.test.js`'s T21 case asserts `expect(gitignore).not.toEqual(expect.stringContaining(".claude/workflows/"))`
+and is green at HEAD, so an anchored spelling reddens a passing oracle, and (ii) an anchored spelling
+carrying an L-2 term would make `.gitignore` itself a new `PROP-SWEEP-2(b)` residual path. The Overview's
+Dispositions bullet and both DoD bullets repeat the bare form with the same justification — four sites
+agreeing. The fifth site does not: the wave-1 *(specifics)* gate paragraph still narrates *"the same
+step adds `.claude/workflows/.pdlc-backups/` to `.gitignore`"* — the anchored literal Edit 1 retires by
+name. This is inherited (it predates the erratum; the rule flipped to the bare form in v1.8 and this
+recap was not swept) and nonlocal to the changed sections, and it did not matter much while the
+paragraph was one narration among five. It matters more now that upstream forwards readers into this
+document for the rule's form: an implementer who copies the anchored literal reddens T21, a
+currently-green oracle, and the wave gate would report that red as drift rather than as a self-inflicted
+edit.
+
+**Nothing upstream was foreclosed.** No DECISIONS entry, REQ AC or FSPEC flow that PLAN depends on
+changed bytes this round, and the new TSPEC paragraph opens no testing approach that PLAN's PROPERTIES
+would now need and lack.
 
 ## Verification
 
