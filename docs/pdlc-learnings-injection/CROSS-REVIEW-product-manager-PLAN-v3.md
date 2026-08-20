@@ -28,7 +28,19 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-06 | P-A-3 binds a PROPERTIES suite to "committed green, or after batch 14". If Phase P's properties are authored **against** the region while batches 7–13 are mid-flight, the honest state of a property over an unimplemented arm is red — so is the operator expected to hold the PROPERTIES commit until batch 14, or to author the properties and land them in one commit after LI-21? Either is fine by me; the answer decides whether Phase P has a scheduling dependency on this PLAN's wave that nothing currently records. |
+| Q-07 | LI-01's completion note now carries two written records: the four absence measurements and the H-2 engine-failure triage. Neither is a test, and DoD does not mention them. Should DoD gain a clause that the note exists and carries both — otherwise the only mechanism that preserves the pre-flight measurement is a batch-1 habit, and the change-surface table's absence rows become unverifiable after batch 3 by construction. |
+
 ## Positive Observations
+
+- **F-07 was fixed at the concept, not at the sentence.** The revision could have deleted the offending clause from LI-01 and stopped. Instead §Overview now states the general rule — existence claims are standing premises, absence claims are one-time measurements — and then applies it to the table it governs. That is the version of the fix that survives the next author who adds a row to that table, and it is why I found no residue when I grepped the document for the old reading.
+- **AT-15's fourth clause is a genuine product recovery, not bookkeeping.** REQ AC-2.6 promises three things about `docs/discarded/`, and the v0.2 PLAN carried two. The v0.3 row names the missing one (`docs/discarded/LEARNINGS-x.md` is a corpus member, is selected, carries **no** exclusion reason), assigns it to LI-16 alongside clause 1, and states *why* it may not be dropped in the exact terms this review asks for: without it, clause 1 is an absence-only oracle that an implementation selecting nothing at all would satisfy. The two named fixtures are declared, in order. This is the strongest single edit in the delta.
+- **LI-23's non-`null` scoping refuses the wrong repair explicitly.** The easy fix — expect `LEARNINGS_CORPUS_OUTCOMES ∪ {null}` — is named and rejected in the row, on the ground that it would stop the expected value being a literal transcription of the frozen catalogue. That is the no-implementation-echo bar stated by an author who understands why it exists, and the row pays the cost of the scoping by naming where the healthy `null` *is* asserted instead.
+- **The porcelain paragraph now describes the instrument that exists.** `AT-4.1` carries no `-uno`, so an implementer with fourteen new files half-written reds it — and the paragraph says so in the implementer's own terms ("fourteen new files, one of them written a moment ago"). A gate whose failure mode is documented in the state its user will actually be in is worth more than a gate that is merely correct.
+- **The green-terminal row gained the conjunct its siblings had.** Batches 1, 4 and 6 now also require every pre-existing test's status to be unchanged from the measured baseline. Batch 4 is the one that commits a whole fixture subtree into a tree `coveredViolations` walks in full, so this is the batch where the missing conjunct would have cost the most.
+- **The two live FSPEC errata are still routed, not absorbed.** §Open questions continues to carry BR-1's missing `docType ∈ LEARNINGS_TARGET_DOCTYPES` conjunct and BR-15's expected-set membership as upstream defects with their downstream consequence attached to LI-11, rather than quietly resolving them inside the PLAN. I re-raise both below so they reach FSPEC's author.
 
 ## Recommendation
 
