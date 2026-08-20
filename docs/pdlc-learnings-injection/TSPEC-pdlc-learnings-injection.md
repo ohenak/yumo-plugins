@@ -510,8 +510,16 @@ explicitly ⇒ baseline-identical composition, no injection key, no notice — E
 **AT-32**'s remaining cases (malformed section ⇒ key **present**, run enabled on §4.1's defaults,
 plus `NTC-MALFORMED` — E-23; wrong-typed declared key ⇒ key present,
 defaults for that key, plus `NTC-KEYTYPE`). **AT-30 owns none of them** — it is the
-admits-nothing-thresholds AT for AC-4.4 (`maxDocuments: 0`, `maxTotalBytes: 0` ⇒ enabled run, BR-8
-rows present and empty). AT-32's closure is a **two**-notice set equality, over `NTC-MALFORMED` and
+admits-nothing-thresholds AT for AC-4.4, and upstream enumerates **three** zeros, not two:
+`maxDocuments: 0`, `maxTotalBytes: 0`, **and `maxBytesPerDocument: 0`** (FSPEC v0.13, E-36). All
+three are enabled runs with BR-8's rows present and empty; the third carries one further conjunct —
+**every** corpus document is rejected `RSN-NO-MATERIAL`, consuming no slot (§D.5) — and it is the
+only one of the three whose reject reasons are asserted. So `learningsConfig.test.js` derives
+**three** AT-30 fixtures, and the third's oracle is a set equality over the reject rows (every
+enumerated non-self path present with `RSN-NO-MATERIAL`, none `bounded`), not merely an empty
+`selected`: an implementation that selected the documents with `bytes: 0` would satisfy the weaker
+oracle and violate E-36's no-slot clause. Reverting §D.5's `maxBytes <= 0` short-circuit to the
+cut-and-flag path reds that fixture, which is the mutation this case exists to catch. AT-32's closure is a **two**-notice set equality, over `NTC-MALFORMED` and
 `NTC-KEYTYPE`, matching `LEARNINGS_NOTICES = Object.freeze(["NTC-MALFORMED", "NTC-KEYTYPE"])`
 exactly; a test written for a three-member set would red the frozen literal on day one. §D.2's
 record is amended accordingly (no `notices` key inside `learningsInjection`).
@@ -1096,7 +1104,7 @@ check completeness by counting (TE F-12):
 
 | Suite | ATs | Count | Layer |
 |---|---|---|---|
-| `learningsConfig.test.js` | AT-30, AT-32 | 2 | **L3** (seam-driven whole run) |
+| `learningsConfig.test.js` | AT-30 (three zero-threshold cases, §I.2), AT-32 | 2 | **L3** (seam-driven whole run) |
 | `learningsSelect.test.js` | AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-15, AT-16, AT-28 | 9 | L1 |
 | `learningsBlock.test.js` | AT-05, AT-11, AT-12 | 3 | L1 |
 | `learningsCorpus.test.js` | AT-25, AT-26, AT-27 | 3 | L2 |
@@ -1111,6 +1119,8 @@ disjoint and equal to the 35-member literal — is what keeps this table honest 
 
 **`learningsConfig.test.js` is an L3 suite, not an L1 one (TE F-01).** Both of its ATs are stated
 *"when the pipeline runs"*: AT-30 requires an enabled run whose BR-8 rows are **present and empty**
+(in each of its three zero-threshold cases, the `maxBytesPerDocument: 0` one additionally asserting
+every document's `RSN-NO-MATERIAL` row per E-36)
 — a claim only a whole run can make, since the distinction from a disabled run is the presence of
 the `learningsInjection` key in the finished report — and AT-32 requires the malformed-section
 run to stay **enabled** on §4.1's defaults *and* the report to carry `NTC-MALFORMED` on the
