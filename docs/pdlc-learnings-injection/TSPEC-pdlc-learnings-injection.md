@@ -829,6 +829,22 @@ Ignoring is the belt and removing is the braces — neither alone is sufficient,
 leftover still feeds the oracle walk in (1) and an unignored one still dirties `git status` for
 whoever runs the capture.
 
+**Both obligations carry an oracle, because the capture script's happy path passes without either
+(TE F-02, PM F-02).** A `.gitignore` line and a `finally` block are the two things a rebase drops
+silently, and the blast radius in (1) is repo-wide. Each obligation therefore gets a named
+assertion in the capture-script suite, and each PLAN task cites the AC it protects:
+
+| Obligation | Oracle | Shape |
+|---|---|---|
+| (1) root-anchored ignore rule | a guard assertion that `git check-ignore .baseline-worktree` **exits 0** at the repository root | the same measurement quoted above, inverted from a finding into an expectation — it exits non-zero at HEAD, so the assertion is red before the `.gitignore` edit and green after |
+| (2) `finally`-block removal | a capture-script test that forces a throw **between** materialise and remove (a scripted seam failure) and then asserts both conjuncts: the `.baseline-worktree` path is **absent**, *and* `git worktree list` shows **no entry** for it | the second conjunct is what distinguishes a real `git worktree remove` from an `rm -rf`; asserting only the path's absence would pass for the removal this section explicitly rejects |
+
+The second conjunct is the load-bearing half: `rm -rf` satisfies "path is gone" while leaving the
+stale `.git/worktrees/` administrative entry that reds the next `git worktree add`, which is the
+precise failure the `git worktree remove` choice exists to prevent. Both oracles are cheap and
+neither needs a real capture run — (1) is a shell probe against the working tree, and (2) drives
+the script with an injected failing seam.
+
 **When re-capture is legitimate, stated so the rule is enforceable rather than exhortatory.**
 Re-running the script is correct in exactly one case: the L3 fixture matrix itself changes (a case
 is added, or a scripted `_agent` response changes), so the baseline covers dispatches it did not
