@@ -7,6 +7,11 @@
 /.claude/pdlc.config.json
 .claude/.headroom_wrap_marker.json
 
+# Disposable baseline-diff worktree created by the learnings-capture script.
+# Anchored so a nested fixture directory of the same name (used by LI-T-IGNORE's
+# obligation-1 oracle) is untouched.
+/.baseline-worktree/
+
 # Node
 node_modules/
 

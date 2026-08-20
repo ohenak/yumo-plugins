@@ -99,7 +99,7 @@ describe("learningsCaptureScript", () => {
     repoRoot = makeSeededTempRepo().root;
   });
 
-  it.skip("LI-04: root-anchored .baseline-worktree ignore rule, three conjuncts", () => {
+  it("LI-04: root-anchored .baseline-worktree ignore rule, three conjuncts", () => {
     // Conjunct (1): `.baseline-worktree` at the repository root IS ignored.
     const rootWorktreePath = path.join(repoRoot, ".baseline-worktree");
     mkdirSync(rootWorktreePath, { recursive: true });
@@ -133,7 +133,7 @@ describe("learningsCaptureScript", () => {
     expect(checkIgnoreStatus(repoRoot, baselineFixtureRel)).toBe(1);
   });
 
-  it.skip("LI-05: a forced throw between materialise and remove still removes the worktree", async () => {
+  it("LI-05: a forced throw between materialise and remove still removes the worktree", async () => {
     expect(existsSync(CAPTURE_SCRIPT_PATH)).toBe(true);
     const { runCaptureScript } = await import(CAPTURE_SCRIPT_PATH);
 
