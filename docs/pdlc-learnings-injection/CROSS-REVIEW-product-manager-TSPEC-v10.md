@@ -49,6 +49,35 @@ this delta targeted.
 
 ## Architecture
 
+**What this TSPEC leans on upstream, re-read at the current version.** I did not re-read TSPEC from
+scratch; I re-read the FSPEC sections it compresses, at `sha256:fb18dbda…`, and checked TSPEC's
+transcription against those bytes rather than against my memory of v0.10.
+
+| TSPEC claim | Upstream locus at HEAD | Still says it |
+|---|---|---|
+| Injection attaches at `dispatchAndVerify`, gated on `dispatchKind === "authoring"` **and** `docType ∈ {REQ, FSPEC, TSPEC, PLAN, DECISIONS, PROPERTIES}` (§A.2, `TSPEC:131`, `:35-36`) | FSPEC BR-1 (v0.12, two conjuncts), REQ C-1, AC-1.2, NG-5 | **Yes — and newly so.** At v0.10 this was TSPEC's routed divergence; at v0.12 it is upstream's own rule, word for word in substance |
+| Phase CR's optimizer round (`docType: null` over a directory target) carries no block, contributes no `dispatches[]` row and no filesystem footprint, and its prompt is byte-identical to the disabled run's (§A.2, `TSPEC:134-137`) | FSPEC BR-1's "load-bearing, not defensive" paragraph; BR-11 and AT-03 as re-quantified over dispatches "outside BR-1's rule" | Yes — upstream now names exactly this dispatch |
+| The `docType` conjunct consumes two existing pipeline values rather than restating a call-site membership list (§A.2 property 1) | FSPEC BR-1 "Both conjuncts read the pipeline's own existing values, not a new list maintained by this feature"; FSPEC A-2 as rewritten | Yes — A-2's rewrite is TSPEC's argument, adopted upstream |
+| `RSN-SELF` is decided from the path before any read, so a self document is never opened, which is what BR-15's expected-set exclusion requires (§D.6, `TSPEC:777-781`) | FSPEC BR-15 at HEAD (expected set = report-named documents less `RSN-SELF`) | Yes |
+| The corpus enumeration is a `git ls-files` call, not an open under `docs/` (§I.1, §A.3) | FSPEC BR-15 at HEAD: "The corpus enumeration … contributes **no** member: it opens no file under `docs/`" | Yes — upstream adopted TSPEC's ERR-3 reading |
+| Ordering keys and corpus outcomes are recorded **per dispatch**, at the two loci AC-3.3 names (§A.5, §D.1, §D.2) | FSPEC BR-9/BR-10, AT-19…AT-22 | Yes — untouched by this delta |
+| Four config states owned by exactly two ATs, AT-31/AT-32 (§I.2, `TSPEC:464-469`) | FSPEC E-21…E-34 mapping rows | Yes — block byte-identical across the delta |
+
+**The one architectural consequence of the delta is subtractive, not additive.** Nothing in TSPEC's
+design has to change to match FSPEC v0.12; what has to change is TSPEC's *account of its own
+disagreement*. §A.2's property 1 still closes with "FSPEC BR-1 as written forbids this conjunct
+… so the divergence is **routed as ERR-7**, not resolved silently in code" (`TSPEC:155-158`), and
+ERR-7 itself (`TSPEC:1297-1311`) quotes BR-1's old single-conjunct sentence verbatim — "the pipeline
+classifies it as authoring at the moment it is composed", "consumes the classification, it does not
+restate the membership" — as the text TSPEC is in tension with. Upstream no longer contains either
+sentence in that form. Per DEC-ERR-03 that is a finding of this confirmation whether or not it was
+on the item list: TSPEC cites upstream text upstream no longer says (F-01).
+
+This is a good problem. The routed conflict was resolved in the direction TSPEC argued for, which is
+precisely the outcome the routing existed to obtain. What is left is to record the resolution the
+same way TSPEC already records ERR-4 and ERR-6 — "**CLOSED**, resolved by FSPEC v0.12" — so that a
+PLAN author or implementer reading the erratum log does not go looking for a live contradiction.
+
 ## Interfaces
 
 ## Data Model
