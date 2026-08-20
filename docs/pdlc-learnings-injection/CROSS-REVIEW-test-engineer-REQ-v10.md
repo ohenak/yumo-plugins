@@ -74,3 +74,74 @@ introduced and none contradicts the repository at HEAD.
 | 3 | F-03 Low — AC-5.1b's unattributed "the sibling reader" | **Yes** | AC-5.1b REQ:391-393 now names `orchestrate-dev.js`'s `parseImplementationConfig`. Verified: `parseImplementationConfig` (`pdlc/workflows/orchestrate-dev.js:191`) returns `IMPLEMENTATION_DEFAULTS` with `sectionMalformed: true` for a non-object section (`:209`), and the wave-mode caller emits the operator notice (`:14128-14134`) |
 
 No routed item is partly landed, and no previously approved section changed.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **(delta, local)** AC-5.1b attributes the notice to the reader, but the reader only returns a flag. REQ:392-393 says the malformed section "yields defaults plus an explicit operator notice" of `parseImplementationConfig`; at HEAD the function returns `{config: IMPLEMENTATION_DEFAULTS, sectionMalformed: true, invalidKeys: []}` (`orchestrate-dev.js:192-209`) and emits nothing — the notice is the caller's, at `:14130-14134`, and the function's own JSDoc says so ("The caller emits a notice naming each degraded key", `:300-301`). The second call site keeps only `.config` (`:11913`) and drops the flag, so at that site the same malformed section yields defaults with **no** notice. The precedent AC-5.1b leans on is real — defaults plus notice is what the shipped pipeline does in wave mode — so this does not disturb the decision; it is an attribution imprecision that a TSPEC author pinning "the reader reports" would encode as the wrong seam. **Fix (non-gating):** attribute the notice to the caller — "…yields defaults, on which its caller emits an explicit operator notice (`orchestrate-dev.js:14130-14134`)". | AC-5.1b (REQ:391-393) |
+| F-02 | Low | Local | **(delta, local)** AC-3.2's new mirror clause exempts a report field from every oracle. The run-level mirror is now "additive, is not the oracle, and has a **deliberately unconstrained value that nothing asserts on**" (REQ:326-327). The pre-delta text already made the mirror non-authoritative, so falsifiability of the per-dispatch oracle is unchanged and nothing regressed — but the added clause goes one step further and licenses an operator-visible field that no test may constrain. A mirror carrying a value that contradicts the per-dispatch record it mirrors would then be undetectable by the suite and still green, while an operator reading the report top-down sees the contradiction first. Recorded rather than raised: it is a decision the author took inside a frozen round, and the AC that carries the oracle (the per-dispatch corpus-level outcome, present with AC-3.1's rows empty) remains positively asserted. **Fix (non-gating, or defer to TSPEC):** either drop the clause and stay silent on the mirror, or bound it with one consistency assertion — if a mirror is carried, it agrees with the dispatch records it summarises. | AC-3.2 (REQ:326-327) |
+
+DEFERRED: AC-3.1's set-equality test is vacuous for a dispatch that selected nothing, now that the closure is scoped to each selected document's row — AC-3.2's "that dispatch's AC-3.1 rows are present and empty" is what actually holds that case, and TSPEC should route the empty-dispatch assertion there rather than to AC-3.1's completeness test.
+DEFERRED: §1.2 claim 2 now carries three code claims in one sentence (totality of `enumerateCorpus`, the pass's `failed` transition, this feature's divergence); TSPEC should pin the first two against `consolidate-learnings.js:1348-1355` and `:587-593` as a literal restatement pin, per C-3/O-7's existing pinning discipline, so a future sibling change surfaces as a red test rather than a stale premise.
+
+## Questions
+
+None. The delta answers everything v9 asked, and no new question arose in the changed passages.
+
+## Risks
+
+- **F-01's divergence is now stated but not yet owned by a test.** The REQ says this feature
+  fails open where the sibling fails its run. That is exactly the kind of deliberate divergence
+  a later reader "corrects" back to parity. It needs to reach PROPERTIES as a positive
+  assertion — dispatch proceeds, `RSN-UNLISTABLE` recorded, run not halted — not merely as
+  prose in §1.2.
+- **The `RSN-UNLISTABLE` path is the one corpus-level outcome with no natural fixture.** It
+  requires a failing `git ls-files` reply, so it will be reached through the injected git seam.
+  A suite that never exercises it leaves the feature's most-argued behaviour unproven while
+  every catalogue set-equality test still passes.
+- **Ten rounds of erratum edits on one document.** The changed passages are correct, but §1.2
+  claim 2 has now been rewritten in four separate rounds. TSPEC should treat it as pinned text
+  rather than paraphrasable background.
+
+## Obligations
+
+- Both Lows are single-clause edits and neither blocks. They can ride the next erratum touching
+  this document, or be absorbed at TSPEC time, at the author's discretion.
+- O-7's pinning obligation now covers more surface than when it was written: the restatement pin
+  should cover the pass-side failure transition, not only `LS_FILES_ARGV`.
+
+## Positive Observations
+
+- **F-01 is fixed in the strongest available form.** The erratum did not merely delete the false
+  clause; it replaced it with a checkable mechanism ("`enumerateCorpus` is total … the pass around
+  it then marks itself `failed`") and then named the divergence and sourced it to G-4 and C-7.
+  Both halves verify against HEAD without adjustment, and the misattributed DEC-CONS-05 citation
+  is gone from the sentence it did not support while the citation that *is* supported survives.
+- **AC-3.1's new closure sentence resolves the contention exactly.** It answers the question
+  erratum v0.8 opened — which fields belong to which closed set once three catalogues share one
+  dispatch record — by scoping the closure to the row rather than by adding a second carve-out.
+  Three loci, three completeness tests, no field unclaimed. The "write the test right now" check
+  passes on all three.
+- **The delta is minimal and legible.** Four hunks, one per routed item plus the version bump,
+  no collateral drift, changelog row naming all three fixes. Round-over-round diffs of this
+  shape are what make delta confirmation cheap and reliable.
+- **Verification held at HEAD across the whole premise section**, not just the edited clause:
+  the two `:(glob)` pathspecs still match the "one level under `docs/` and one under
+  `docs/completed/`" claim (`consolidate-learnings.js:1337-1346`), and the vendoring premise
+  behind C-3/G-6 still holds — `prepack.mjs`'s `MODULE_NAMES` is exactly
+  `["orchestrate-dev.js", "orchestrate-queue.js"]` (`pdlc/engine/scripts/prepack.mjs:20`).
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High findings remain. All three items routed by v9 landed, each verified against HEAD source
+rather than against the erratum's description of it, and no previously approved section was
+disturbed. The two Low findings are attribution and scope-of-assertion refinements that do not
+block, and the two `DEFERRED:` lines are TSPEC-time routing notes, not REQ defects.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
