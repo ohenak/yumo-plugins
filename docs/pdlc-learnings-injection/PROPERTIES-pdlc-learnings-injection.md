@@ -669,4 +669,84 @@ document reads a private module binding directly.
 
 ## Coverage Matrix
 
+### C.1 FSPEC acceptance tests → properties (35 of 35 covered)
+
+| AT | Subject | Properties |
+|---|---|---|
+| AT-01 | Injection on an authoring REQ dispatch | PROP-DISPATCH-01, PROP-META-05 |
+| AT-02 | Injection across all six target doctypes | PROP-DISPATCH-01 |
+| AT-03 | Review dispatch prompt unchanged | PROP-DISPATCH-03 |
+| AT-04 | Self document excluded | PROP-CORPUS-05, PROP-FAILOPEN-04 |
+| AT-05 | Rendered block form | PROP-BLOCK-01, PROP-BLOCK-02 |
+| AT-06 | Existing prompt regions preserved | PROP-DISPATCH-05 |
+| AT-07 | maxDocuments cut | PROP-BOUND-01, PROP-BOUND-02 |
+| AT-08 | RSN-COUNT on the excess | PROP-BOUND-01 |
+| AT-09 | Descending orderKey | PROP-ORDER-01 |
+| AT-10 | Null orderKey last; byte tiebreak | PROP-ORDER-02, PROP-ORDER-03 |
+| AT-11 | BR-6 section-set selection | PROP-BLOCK-02, PROP-BOUND-03, PROP-BOUND-05 |
+| AT-12 | Character-safe per-document cut | PROP-BOUND-03 |
+| AT-13 | maxTotalBytes drop, no back-fill | PROP-BOUND-04 |
+| AT-14 | Two-process byte identity | PROP-ORDER-05 |
+| AT-15 | docs/discarded/ nested + direct | PROP-CORPUS-03 |
+| AT-16 | docs/completed/ parity | PROP-CORPUS-04 |
+| AT-17 | BR-8 row field set | PROP-RECORD-01 |
+| AT-18 | Rows name source paths and byte counts | PROP-RECORD-02, PROP-RECORD-10 |
+| AT-19 | Reject reasons recorded | PROP-RECORD-03 |
+| AT-20 | Per-dispatch corpusOutcome | PROP-RECORD-04, PROP-RECORD-08 |
+| AT-21 | Unlistable dispatch records empty rows | PROP-RECORD-02, PROP-RECORD-05 |
+| AT-22 | BR-10 rule-input completeness (both loci) | PROP-RECORD-06, PROP-RECORD-07, PROP-RECORD-10 |
+| AT-23 | No erratum round opened | PROP-RECORD-11 |
+| AT-24 | Empty corpus ⇒ empty block | PROP-DISPATCH-06, PROP-FAILOPEN-03 |
+| AT-25 | !reply.ok ⇒ RSN-UNLISTABLE, run proceeds | PROP-FAILOPEN-02, PROP-FAILOPEN-03 |
+| AT-26 | Unreadable document ⇒ RSN-UNREADABLE | PROP-CORPUS-06, PROP-FAILOPEN-04 |
+| AT-27 | Unparseable document ⇒ RSN-UNPARSEABLE | PROP-CORPUS-06 |
+| AT-28 | No material ⇒ RSN-NO-MATERIAL | PROP-BOUND-06 |
+| AT-29 | Gate-input isolation under contamination | PROP-ISOLATE-01 |
+| AT-30 | Zero thresholds ⇒ enabled, rows present and empty | PROP-CONFIG-04, PROP-RECORD-02 |
+| AT-31 | enabled: false ⇒ baseline prompts | PROP-CONFIG-05 |
+| AT-32 | Config absent / malformed / wrong-typed | PROP-CONFIG-01, PROP-CONFIG-02, PROP-CONFIG-03, PROP-CONFIG-07 |
+| AT-33 | Read footprint set equality | PROP-FOOTPRINT-01 |
+| AT-34 | Zero reads when disabled | PROP-FOOTPRINT-02 |
+| AT-35 | Preserved pipeline semantics | PROP-ISOLATE-02, PROP-META-05 |
+
+**Every one of TSPEC §T.5's 35 ATs is claimed by at least one property, and no property claims an AT
+that §T.5 does not list.** The suite-level split (2 + 9 + 3 + 3 + 6 + 12 = 35) is itself asserted by
+PROP-META-05 against `LI-T-SUITEMAP`, so a drifting partition reds rather than being noticed by
+reading. Properties carrying no AT id — PROP-DISPATCH-02, PROP-DISPATCH-04, PROP-DISPATCH-07,
+PROP-CORPUS-01/02/07/08, PROP-ORDER-04, PROP-BOUND-07, PROP-BLOCK-03, PROP-RECORD-08/09,
+PROP-CONFIG-06/08, PROP-FAILOPEN-01, PROP-FOOTPRINT-03/04, PROP-META-01…05 — are TSPEC-local or
+apparatus obligations, each named in a PLAN task row (LI-11, LI-12, LI-13, LI-23 and the LI-01…LI-06
+apparatus block) and each carrying **no** AT id by design, so §T.5's counts are unchanged.
+
+### C.2 REQ acceptance criteria → properties
+
+| AC | Properties |
+|---|---|
+| AC-1.1 | PROP-DISPATCH-01 |
+| AC-1.2 | PROP-DISPATCH-01, PROP-DISPATCH-02, PROP-DISPATCH-03 |
+| AC-1.3 | PROP-CORPUS-05 |
+| AC-1.4 | PROP-BLOCK-01, PROP-BOUND-07, PROP-DISPATCH-05 |
+| AC-2.1 | PROP-BOUND-01, PROP-BOUND-02, PROP-ORDER-05 |
+| AC-2.2 | PROP-CORPUS-08, PROP-ORDER-01, PROP-ORDER-03 |
+| AC-2.3 | PROP-BLOCK-02, PROP-BOUND-03, PROP-BOUND-05, PROP-BOUND-07, PROP-ORDER-05 |
+| AC-2.4 | PROP-BOUND-04, PROP-BOUND-07, PROP-ORDER-05 |
+| AC-2.5 | PROP-CORPUS-08, PROP-ORDER-03, PROP-ORDER-05 |
+| AC-2.6 | PROP-CORPUS-03, PROP-CORPUS-04 |
+| AC-3.1 | PROP-BLOCK-03, PROP-RECORD-01, PROP-RECORD-02 |
+| AC-3.2 | PROP-BLOCK-03, PROP-RECORD-03, PROP-RECORD-04, PROP-RECORD-05, PROP-RECORD-08, PROP-RECORD-09 |
+| AC-3.3 | PROP-BLOCK-03, PROP-CONFIG-08, PROP-RECORD-06, PROP-RECORD-07, PROP-RECORD-09, PROP-RECORD-10 |
+| AC-3.4 | PROP-BLOCK-03, PROP-RECORD-11 |
+| AC-4.1 | PROP-DISPATCH-06, PROP-RECORD-11 |
+| AC-4.2 | PROP-CORPUS-06, PROP-FAILOPEN-02, PROP-RECORD-11 |
+| AC-4.3 | PROP-DISPATCH-03, PROP-DISPATCH-07, PROP-ISOLATE-01 |
+| AC-4.4 | PROP-CONFIG-04, PROP-DISPATCH-06, PROP-FAILOPEN-04 |
+| AC-5.1a | PROP-CONFIG-01, PROP-CONFIG-04, PROP-CONFIG-05, PROP-FAILOPEN-04 |
+| AC-5.1b | PROP-CONFIG-01, PROP-CONFIG-02, PROP-CONFIG-06, PROP-FAILOPEN-04 |
+| AC-5.1c | PROP-CONFIG-03, PROP-CONFIG-06, PROP-FAILOPEN-04 |
+| AC-5.2 | PROP-CORPUS-02, PROP-FOOTPRINT-01, PROP-FOOTPRINT-02, PROP-FOOTPRINT-03, PROP-FOOTPRINT-04 |
+| AC-5.3 | PROP-ISOLATE-02 |
+| AC-6.1 | PROP-META-05 (suite-map closure), PROP-META-01 (no live-run comparison), and every L1/L2 row above — AC-6.1 is a statement *about* the suite, discharged by the partition rather than by a behaviour |
+| AC-6.2 | PROP-CONFIG-05, PROP-META-04 |
+
+
 ## Gaps, Obligations and Routed Errata
