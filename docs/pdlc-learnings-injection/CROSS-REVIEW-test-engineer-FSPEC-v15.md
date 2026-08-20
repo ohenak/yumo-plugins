@@ -35,6 +35,42 @@ decision — and three are my v14 Mediums/Low, untouched by this erratum and the
 
 ## Linked Requirements
 
+Every citation the delta introduces resolves to live upstream text at HEAD, and in the two places
+that matter it now quotes the clause rather than paraphrasing it:
+
+- **REQ AC-2.3** (REQ:291-295) reads "the **material taken** from it does not exceed that threshold,
+  the total across selected documents does not exceed `learningsInjection.maxTotalBytes`, and that
+  document's report row carries the per-document bounded flag". The material-only basis is that
+  sentence, and BR-6's new parenthetical ("REQ AC-2.3, which bounds 'the material taken'") quotes it
+  verbatim. **REQ AC-2.4** (REQ:296-301) independently confirms the total is measured over material
+  too: "selected documents whose **combined material** would exceed `maxTotalBytes`". The pre-delta
+  wording — contributed bytes include the identification line, delimiters and source-path label — was
+  the reading upstream does *not* support; the erratum moved the FSPEC onto the clause. Faithful
+  compression, and the direction of the fix is the correct one.
+- **REQ AC-3.1** (REQ:310-318) requires per authoring dispatch "the bytes injected per document; per
+  document, whether its material was bounded (AC-2.3); and the total bytes injected". BR-8's *bytes
+  injected* is now defined as the same material-only quantity BR-6 bounds, and the per-dispatch total
+  as the sum of those rows — so one quantity is bounded, recorded and summed, which is what makes an
+  expected byte count computable from a fixture without rendering the block. This closes a real
+  test-authoring hazard: under the old basis a fixture's expected count depended on delimiter and
+  label bytes the FSPEC never fixed (F-O-2 defers the wording to TSPEC), so no AT could state a
+  literal without importing an unfixed string.
+- **REQ AC-4.4** (REQ:371-374) covers "thresholds in §4.1 configured to values that admit nothing
+  (zero documents **or zero bytes**), *when* the pipeline runs, *then* it behaves as an enabled run
+  whose selection is empty — AC-3.1's empty rows, not AC-5.1a's absent key". `maxBytesPerDocument: 0`
+  is a "zero bytes" threshold under §4.1's non-negative-integer rule (REQ:225), so E-36's outcome —
+  enabled run, empty selection, BR-8 rows present and empty — is AC-4.4's outcome, not an invention.
+  The FSPEC decides the one thing AC-4.4 leaves open (which per-document reason id the dropped
+  documents carry) and decides it consistently with BR-9. Faithful.
+- **REQ §4.1** (REQ:225-226) still declares `maxBytesPerDocument` 6,000 and `maxTotalBytes` 20,000 as
+  consumer config, with no lower bound above zero — which is exactly why the third zero was reachable
+  and needed deciding. The erratum's premise checks out against upstream; it is not a hypothetical.
+
+One traceability row did not travel with the decision: FSPEC:178 still reads
+`AC-4.4 | BR-5, BR-14 | AT-30`, while the `maxBytesPerDocument: 0` half of AC-4.4 is now decided in
+**BR-6** and reasoned in **BR-9**. The reverse trace is the map a test author uses to find the rule
+behind an AT; for this AC it now points at two of the three rules that own it (F-02).
+
 ## Behavioral Flow
 
 ## Business Rules
