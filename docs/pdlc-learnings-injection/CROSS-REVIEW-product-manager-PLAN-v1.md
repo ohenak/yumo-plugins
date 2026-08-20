@@ -21,6 +21,13 @@ run; see §Positive Observations for what checked out).
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | LI-06 is the only task that both authors a suite and commits a fixture tree, and its guard is "authored green over the fresh capture" (§Traceability's TSPEC-local table has an em-dash in the Red column). If the capture is re-run for a legitimate reason later in the feature — H-4's "adds or replaces whole `{caseId}` directories while every retained digest is unchanged" — which task owns re-transcribing the hand-copied digest literals, and does the set-equality-over-`{caseId}` assertion get updated in the same commit as the fixture? A PM reading DoD item 4 wants to know that the byte-identity promise survives that operation. |
+| Q-02 | DoD item 4 claims byte-identity against the committed pre-feature baseline for four states: disabled run, empty corpus, unlistable corpus, admits-nothing configuration. REQ only demands baseline byte-identity for AC-5.1a (disabled); AC-4.1, AC-4.2 and AC-4.4 demand "composed exactly as today" / enabled-with-empty-selection. Is the stronger four-state claim intended as a deliberate strengthening (in which case it is welcome and should say so), or as a restatement of REQ (in which case it over-reads AC-4.4, whose run carries the `learningsInjection` key)? |
+| Q-03 | LI-01's pre-flight is the only defence against a moved premise, and its row says "Promote any absent premise to blocking work before batch 2 runs". Who decides, and against what bar, whether a moved premise is *this feature's* blocking work versus a halt to the operator? H-1 says halt; LI-01 says promote. The two readings differ for exactly the case that matters (H-5's seventh authoring phase, which REQ C-1/NG-5 make a product decision). |
+
+
 ## Positive Observations
 
 ## Recommendation
