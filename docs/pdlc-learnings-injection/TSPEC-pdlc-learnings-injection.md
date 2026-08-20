@@ -936,7 +936,7 @@ check completeness by counting (TE F-12):
 | `learningsSelect.test.js` | AT-04, AT-07, AT-08, AT-09, AT-10, AT-13, AT-15, AT-16, AT-28 | 9 | L1 |
 | `learningsBlock.test.js` | AT-05, AT-11, AT-12 | 3 | L1 |
 | `learningsCorpus.test.js` | AT-25, AT-26, AT-27 | 3 | L2 |
-| `learningsRecord.test.js` | AT-17, AT-18, AT-19, AT-20, AT-21, AT-22 | 6 | L1/L2 |
+| `learningsRecord.test.js` | AT-17, AT-18, AT-19, AT-20, AT-21, AT-22 | 6 | L1/L2 for AT-17/AT-18/AT-19/AT-21; **L3 for AT-20 and AT-22**, whose FSPEC v0.9 halves run over AT-18's changing-corpus multi-dispatch run and so drive the `DIVERGENT-CORPUS` fixture (TE F-05) |
 | `learningsDispatchSet.test.js` | AT-01, AT-02, AT-03, AT-06, AT-14, AT-23, AT-24, AT-29, AT-31, AT-33, AT-34, AT-35 | 12 | L3 |
 | `learningsPredicatePin.test.js` | T-PIN-1 (not an FSPEC AT — the F-O-4 cross-module pin) | — | L1 |
 
@@ -979,9 +979,14 @@ inventory does not carry:** the erratum round's land-proof retry fires a *second
 for the same document (`orchestrate-dev.js:12915`) — see §Open Questions ERR-2.
 
 **`DIVERGENT-CORPUS` — the multi-dispatch fixture §A.5 needs.** Five authoring dispatches where the
-scripted `_git` reply gains one path after dispatch 2 and fails outright at dispatch 5. It pins the
-last-write-wins rule: run-level `corpusOutcome` and `ruleInputs` equal dispatch 5's observation,
-each `dispatches[i]` carries its own, and `corpusDiverged` is `true` on exactly dispatches 3 and 5.
+scripted `_git` reply gains one path after dispatch 2 and fails outright at dispatch 5. It asserts
+on the **per-dispatch oracle locus only** (REQ AC-3.2/AC-3.3): `dispatches[1..2].orderKeys` carry
+the original key set, `dispatches[3..4].orderKeys` the grown one, `dispatches[5].corpusOutcome ===
+"RSN-UNLISTABLE"` with that dispatch's BR-8 rows present and empty, and `corpusDiverged` is `true`
+on exactly dispatches 3 and 5. It asserts **nothing about `runMirror`** — upstream leaves the
+mirror's value deliberately unconstrained and permits an implementation not to carry it at all
+(REQ AC-3.2; FSPEC BR-9, BR-10), so an assertion pinning it would red against a conforming
+implementation.
 
 **`RETRY-ITERATION` — one selection per dispatch, not per loop iteration (TE F-02).** A TSPEC-owned
 L3 case (no FSPEC AT owns §A.2's property 2; not counted in the 35-AT closure above). The fixture
