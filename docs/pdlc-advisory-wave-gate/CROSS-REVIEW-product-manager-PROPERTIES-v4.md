@@ -116,11 +116,18 @@ cascade damage is confined to the two grounding paragraphs and does not reach th
 
 ## Findings
 
-*(pending)*
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | §"File existence, verified at HEAD" states that `pdlc/workflows/__tests__/advisoryWaveGate.test.js` and `pdlc/engine/__tests__/advisory-config-example.test.js` "are both absent at HEAD and both are explicitly planned as new by A6-00 and A6-04". Both files exist at HEAD (1.8 K and 2.5 K), and TSPEC §5.1's new *Status column caveat* now says so explicitly: `edited` and `new` "describe each file's required end state, not work outstanding … both are on disk, the latter red because `.claude/pdlc.config.example.json` carries no `advisory` section at HEAD". PROPERTIES now asserts the negation of its upstream, under a heading that claims HEAD verification. **Fix:** restate that paragraph the way TSPEC §5.1 restated its own — both files exist at HEAD, `new` denotes required end state, the disposition of the early-landed edits is PLAN's and Phase I's call (TSPEC §1.3) — and keep the closing invariant ("no property names a file that neither exists nor is planned"), which still holds | AC-6.1, AC-6.2, C-2 |
+| F-02 | Medium | Local | Derivation rule 1 names four cardinality sites "verified at HEAD" as `expect(rows).toHaveLength(5)` at `advisoryDisabled.test.js:622`, `advisoryQueueSeams.test.js:627`, `advisoryHarvest.test.js:571` and `:726`. At HEAD all four read `toHaveLength(6)`, at `:629`, `:634`, `:578` and `:733`. TSPEC §1.3 has already absorbed this — it re-anchored the same four pins to block titles per DEC-DOC-01 and records them as already transcribed. PROP-SEAM-02 itself is unaffected (the document says the *rule*, not the snapshot, is what the property carries), which is why this is Medium and not High. **Fix:** re-anchor to the block titles TSPEC §1.3 now uses, and state the sites as already-transcribed-and-red rather than as pending `(5)`→`(6)` edits | AC-1.1, AC-6.1 |
+| F-03 | Low | Process | PROP-CFG-03 and the Example-config fixture row cite `ci-arrangement.test.js:39` and `:799`–`:819` as raw `file:line` anchors; neither is runtime-measured evidence, so DEC-DOC-01 asks for the resolving symbol or the block title instead. Carried forward from v2/v3 unchanged; still non-gating, and best absorbed by whichever edit lands F-01 and F-02 rather than by a round of its own | AC-7.2 (`DECISIONS-review-severity-bars.md`, DEC-DOC-01) |
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-01 | TSPEC §1.3 and §5.1 both route the disposition of `e3b9d5a3` — revert the early-landed test edits, or re-derive PLAN's A6 batches around them — to PLAN and Phase I. Once PLAN decides, does PROPERTIES owe anything beyond the grounding restatement in F-01? My read is no: every property is stated over the required end state, so a revert and a re-derivation both leave the property set identical. Worth a one-line confirmation from the te-author rather than an assumption |
+| Q-02 | PROP-SEAM-02's snapshot of *four* cardinality sites is now the third document to carry a copy of that list (REQ-adjacent §1.3, TSPEC §1.3, here). Should the count live in exactly one place — TSPEC §1.3, which both other documents already defer to — with PROPERTIES citing the rule and the section rather than re-listing the sites? This is a durable-shape question for harvest, not a change request for this round |
 
 ## Positive Observations
 
