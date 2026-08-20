@@ -172,8 +172,19 @@ pre-erratum wording. None blocks PLAN or PROPERTIES.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | The "Decisions deliberately NOT taken here" table still describes AC-3.3's record locus as open and routed to REQ via TSPEC `ERR-6`, and states "TSPEC keeps the run-level record (last-write-wins)". FSPEC `BR-10` settled this at v0.9: two loci (ordering keys per authoring dispatch, §4.1 thresholds once per run), one completeness test each, run-level mirror additive and unasserted; TSPEC v0.6 records `ERR-6` CLOSED on the per-dispatch locus only. Raised at v3, unaddressed. Restate as settled, citing `BR-10`'s two loci. | `## Decisions deliberately NOT taken here`, AC-3.3 locus row |
+| F-02 | Medium | inherited | nonlocal | DEC-LI-07's "divergence from TSPEC is a recorded erratum" paragraph still asserts TSPEC v0.5 builds on `present && config.enabled && !sectionMalformed` and still carries `OQ.2`/`ERR-4` open, and raises `DEC-ERR-01` as an outstanding ask. Those edits landed in full in TSPEC v0.6 (`ERR-4` CLOSED, gate is `config.enabled` alone). Raised at v3, unaddressed. Rewrite in the past tense and mark `D-O-9` discharged. | `## DEC-LI-07`, "The divergence from TSPEC…"; obligation `D-O-9` |
+| F-03 | Low | inherited | nonlocal | Upstream version pins stale and drifting: header `Upstream` row and `**Upstream version note**` say TSPEC v0.5 / FSPEC v0.7; DEC-LI-07 cites "FSPEC v0.7 `BR-14`". HEAD is TSPEC v0.6 / FSPEC **v0.12** (REQ v0.9 correct). Cited `BR-14` text is unchanged, so this is a pin defect only. | Header `Upstream` row; `**Upstream version note**`; DEC-LI-07 |
+| F-04 | Low | delta | local | DEC-LI-03's review-time re-evaluation trigger paraphrases FSPEC `A-2` as covering "a dispatch kind that is authoring in spirit but not so classified", i.e. failing the authoring conjunct. FSPEC v0.12 reworded `A-2` to quantify over a dispatch that "satisfies **neither** conjunct … yet is authoring in spirit", and `BR-1` now names the authoring-classified non-C-1 target case itself. The exclusion default is unchanged, so the trigger still fires on the same condition, but the quoted wording no longer matches upstream. One clause. | `## DEC-LI-03`, "Re-evaluation triggers" |
+
+FINDING: Medium | inherited | nonlocal | Decisions deliberately NOT taken here — AC-3.3 locus row | Describes AC-3.3's record locus as open and routed to TSPEC ERR-6 and says TSPEC keeps the run-level record (last-write-wins); FSPEC BR-10 settled two loci with one completeness test each and TSPEC v0.6 closed ERR-6 on the per-dispatch locus. Raised at v3, bytes unchanged since.
+FINDING: Medium | inherited | nonlocal | DEC-LI-07 — "The divergence from TSPEC is a recorded erratum" | Asserts TSPEC still carries OQ.2/ERR-4 open on a present && config.enabled && !sectionMalformed gate and raises DEC-ERR-01 as outstanding; those edits landed in TSPEC v0.6 and D-O-9 is discharged. Raised at v3, bytes unchanged since.
+FINDING: Low | inherited | nonlocal | Header Upstream row; Upstream version note; DEC-LI-07 | Pins TSPEC v0.5 / FSPEC v0.7 while HEAD is TSPEC v0.6 / FSPEC v0.12; the cited BR-14 text itself is unchanged, so this is a pin defect only.
+FINDING: Low | delta | local | DEC-LI-03 — Re-evaluation triggers | Paraphrases FSPEC A-2 as "authoring in spirit but not so classified"; FSPEC v0.12 reworded A-2 to "satisfies neither conjunct", and BR-1 now names the authoring-classified non-C-1 target case directly. Default is unchanged; the quoted wording has aged.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
