@@ -84,6 +84,43 @@ findings stand exactly as measured, neither strengthened nor weakened by anythin
 
 ## Consequences
 
+**What the revision changed for the test author, concretely.** Three of the six edits change what a
+PROPERTIES or PLAN author will write, and all three change it toward a test that can fail:
+
+1. **`D-O-6` is now unshrinkable.** Before this round, an author trimming properties could read the
+   count conjunct and the behavioural conjunct as two views of one invariant and drop either. The
+   revision names the exact reason both must live: the count conjunct is the only thing a run-scoped
+   memo reds (`BR-15` cannot see one), and the behavioural conjunct is the only falsifier of a
+   `corpusOutcome` that is `null` where `RSN-UNLISTABLE` was required (TSPEC §D.1 scopes the
+   membership test to non-`null`). That is a genuine anti-vacuity guard on an obligation that would
+   otherwise have false-greened in two independent ways.
+2. **The AC-3.3 locus question no longer has two answers in circulation.** v6's F-04 was the one
+   carried finding that could have produced a *wrong* test rather than a misdirected reader: a
+   completeness assertion aimed at the run-level mirror is green on a single-dispatch fixture and
+   silently wrong on `AT-18`'s divergent run. The row now says so in those words, and adds the
+   positive instruction (assert per dispatch, one completeness test per locus). Set-equality over the
+   full enumeration at each locus is preserved, so a deleted field still reds.
+3. **`DEC-LI-03`'s trigger is now stated over the rule that actually gates injection.** The old
+   citation covered one exclusion shape of two; the `D-O-8` source-level producer-set guard is
+   written against `BR-1`, so a trigger stated over a narrower rule than the guard was a mismatch
+   waiting to be inherited by the guard's expected set.
+
+**What did not move, and what that costs.** `DEC-LI-08`'s "bound the addition" framing and `D-O-4`'s
+"realised prompt sizes against REQ §4.1's caps" still describe a quantity FSPEC v0.13 no longer
+defines that way: under material-only accounting the block's framing (identification line,
+per-document delimiters, source-path label, preamble) is charged to no threshold, so a conforming
+block can exceed `maxTotalBytes` without any threshold binding. The consequence is confined to
+`DEC-LI-08`'s own acknowledged C-8 gap and the report obligation that is supposed to close it: an
+operator reading `D-O-4`'s report and comparing one number to §4.1's caps sees an overrun that is not
+one. No test goes wrong; a closing condition stays imprecise. Both items are carried below and both
+belong to the *next* revision of this document, not to a frozen round.
+
+**Process note.** Two consecutive rounds now (v6, v7) have turned entirely on whether present-tense
+claims about a sibling document's state are still true. This round's six commits are the cure applied
+by hand; the durable version is a cascade-round grep over present-tense sibling claims, which would
+have surfaced F-03, F-04, F-05 and F-07 mechanically. Recorded rather than re-filed, and tagged
+`Process` below so harvest can route it.
+
 ## Findings
 
 ## Questions
