@@ -177,6 +177,28 @@ recorded so the revision pass that lands F-01 and F-02 lands this too.
 
 ## Positive Observations
 
+- **The byte-accounting decision went PLAN's way, and PLAN was already written for it.** LI-08's
+  "material only, ignoring every delimiter" and LI-17's "framing is never charged to any byte bound"
+  were the *contested* reading under FSPEC v0.12, which charged the identification line and the
+  delimiters. FSPEC v0.13 adopts material-only and grounds it in REQ AC-2.3's "the material taken",
+  with the product rationale stated outright — "a document is never abridged to pay for the
+  annotation that says it was abridged". That is the right call for the user, and two task rows and
+  a fixture's hand-computed arithmetic needed no edit to receive it. Second round running that this
+  PLAN's precision has propagated upward rather than been flattened.
+- **The 35-AT partition and the expected-red ledger both survived a behavioural addition.** FSPEC
+  added an edge and widened an existing AT rather than minting AT-36. Because PLAN's two most
+  brittle structures — the exactly-once partition with its stated arithmetic, and the per-batch
+  ledger keyed on test names — are keyed on AT ids and suite names, neither needed touching. That
+  is a design property of the PLAN worth keeping: a document whose gates key on stable ids absorbs
+  upstream growth cheaply.
+- **F-O-1 grew and its owner already covered the new surface.** The obligation went from one
+  heading-recognition rule to two; LI-16 already commissions both the BR-3 predicate and BR-6's
+  priority-order extraction, and LI-08's `LI-AT-11` section-set equality is already the oracle the
+  second rule needs. No mapping edit, no new task.
+- **The finding this round raises is bounded and locatable.** Two rows — LI-12's AT-30 gloss and
+  §Traceability's `RSN-NO-MATERIAL` branch — carry the entire gap. Nothing in the batch ladder, the
+  dependency graph, the file-ownership manifest or the DoD moves.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
