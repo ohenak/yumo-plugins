@@ -179,7 +179,32 @@ named test obligation.
 
 ## Open Questions
 
-_pending_
+**Erratum ledger, re-checked against FSPEC v0.13.** No entry changes state as a result of this
+round, and I verified each rather than carrying it forward:
+
+| TSPEC erratum | State in v0.7 | At FSPEC v0.13 |
+|---|---|---|
+| ERR-1 (FSPEC BR-14) | OPEN | Still open — BR-14's bullets are byte-unchanged in this delta; v0.13 *cites* BR-14 (E-36's run is "the enabled, empty-selection run BR-14 describes") without editing it |
+| ERR-2 (FSPEC §Edge Cases, run-shape edges — no row for the erratum land-proof retry dispatch) | OPEN | Still open, and now **more** conspicuous: v0.13 added E-36 to the run-shape edge inventory and renumbered the closure sentence to "E-01 … E-36", so the round touched that very table and still left the land-proof retry unrowed |
+| ERR-3 (BR-15), ERR-4 (REQ G-1), ERR-6 (AC-3.3), ERR-7 (BR-1) | CLOSED | Still closed; the closing text is unchanged at HEAD |
+| ERR-5 (FSPEC E-13's "measured: occurs at HEAD") | OPEN | Still open — E-13 untouched |
+
+ERR-2's non-closure is not a finding of *this* confirmation (it is a routed item against FSPEC, not
+a fidelity defect in TSPEC), but the ledger entry stays accurate, which is what I check.
+
+**The header's upstream pin is stale (F-03).** The header table's Upstream row pins FSPEC
+`(v0.12)`, and the v0.7 erratum note is titled "re-grounded on FSPEC v0.12 / REQ v0.9 at HEAD".
+FSPEC is v0.13 at HEAD. The REQ pin (v0.9) is still correct — REQ did not move in this round, and
+FSPEC's own v0.13 note says so explicitly ("re-grounded on REQ v0.9 at HEAD, unchanged — no
+upstream decision to absorb"). Low, because no claim in the body is false *because of* the pin;
+but the pin is the mechanism by which the next reader knows which upstream version the body was
+checked against, and it currently promises a version that no longer exists. It should be corrected
+in the same edit that lands F-01 and F-02, with a v0.8 erratum note recording what v0.13 moved.
+
+**One question I am not filing as a finding.** The Cross-Reviews row still enumerates rounds only
+through v6 while this is round v12 — the same bookkeeping drift I noted at v11. FSPEC solved it by
+replacing the enumeration with "every round present on branch, not hand-enumerated". Still worth
+adopting whenever the header is next edited (which F-03 now forces), still not a false claim.
 
 ## Positive Observations
 
