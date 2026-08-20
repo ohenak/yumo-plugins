@@ -218,7 +218,66 @@ re-wording makes AT-33's expected set easier to write, not different in kind.
 
 ## Positive Observations
 
+- **The routing worked, end to end, and this is the round that proves it.** TSPEC did not resolve
+  the BR-1 conflict silently in code. It implemented the two-conjunct gate, said plainly that FSPEC
+  as written forbade it, and routed the divergence upstream as ERR-7 rather than letting a
+  downstream document quietly overrule its own spec. Two rounds later, upstream adopted exactly that
+  rule — including TSPEC's own argument, nearly verbatim, in BR-1's "load-bearing, not defensive"
+  sentence and in A-2's rewrite. That is the pipeline's escalation path doing precisely what it
+  exists for, and it is worth naming because the cheaper move — patch the code, note nothing — would
+  have left AT-02 with two contradictory readings and a test that reds a correct implementation.
+- **ERR-3 was the same discipline on a smaller stake.** A one-line observation that a `git ls-files`
+  call is not a file open under `docs/`, and therefore that BR-15's expected set could never be
+  satisfied as written. Small, precise, provable, and now fixed upstream in the exact terms TSPEC
+  used. Findings like this are why "evidence over impressions" is worth the extra sentence.
+- **TSPEC did not acquire an opportunistic edit while frozen.** Three upstream cascades in a row now
+  (FSPEC v0.9→v0.10→v0.12) and the TSPEC bytes are still `sha256:eff5a19b…`, byte-identical to the
+  v7 approval hash. Approval means something because the document holds still, and confirmation
+  rounds stay cheap because there is nothing to re-read but the diff.
+- **Citing upstream by spec id keeps paying.** FSPEC moved +54/−26 lines across six commits,
+  rewrote BR-1, BR-11, BR-15, D-2, A-2, AT-02, AT-03, AT-29 and AT-33 — and I could scope this
+  confirmation in one pass because TSPEC references "BR-1", "BR-9/BR-10", "E-21…E-34", "AC-3.3", and
+  never a line number in FSPEC. `grep "FSPEC:[0-9]"` over the document still returns nothing. F-09's
+  `orchestrate-dev.js` anchors are the counter-example in the same file: the same document
+  demonstrates both sides of DEC-DOC-01.
+- **The findings this round are the residue of being right, not of being wrong.** Every Medium here
+  exists because upstream agreed with TSPEC and TSPEC has not yet noticed. That is a strictly better
+  class of defect than the one it replaced.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+TSPEC still holds as approved against FSPEC v0.12. The upstream edit was substantive rather than
+header-only — BR-1 gained its second conjunct, BR-11/AT-03/AT-29 were re-quantified over its
+complement, BR-15's expected set was restated as a path-set equality, D-2 and A-2 were rewritten —
+but every one of those changes moved upstream **toward** the design this TSPEC already carries. I
+re-read the upstream text this document leans on, at its current version, and the compression is
+still faithful: the two-conjunct gate (§A.2), the Phase-CR exclusion, the `RSN-SELF`-before-read
+rule (§D.6), the enumeration-contributes-no-member reading (§I.1/§A.3), the per-dispatch ordering
+loci (§A.5/§D.1/§D.2) and the four config states (§I.2) each match FSPEC at HEAD one-for-one. No
+enum, id, threshold, notice or report field diverged.
+
+Product lens satisfied, unchanged from v7 through v9 and now better supported upstream: the feature
+ships **on** in a bare repository (G-1, AC-1.1); explicit disablement removes the report key
+(AC-5.1a); malformed fails open with `NTC-MALFORMED` (AC-5.1b) and wrong-typed with `NTC-KEYTYPE`
+(AC-5.1c); the set carrying material equals exactly the set C-1's rule names, now as a set equality
+both documents state the same way (AC-1.2, NG-5); reproducibility is claimed per dispatch at the two
+loci AC-3.3 names. No P0 or P1 requirement is omitted, narrowed or reinterpreted, and no behaviour
+outside the REQ's scope has appeared.
+
+Three Medium findings, none gating, all bookkeeping that upstream overtook: ERR-7 and ERR-3 should be
+marked CLOSED against FSPEC v0.12 rather than reading as live conflicts (F-01, F-02), and §T.6's
+AT-02 fixture inventory should name the authoring-classified non-C-1-target run shape FSPEC now
+requires, cross-referencing §A.2's `_recordDocType` probe as the oracle that already kills that
+mutation (F-03).
+
+DEFERRED to the next author round on TSPEC, before PLAN authoring consumes §T.6: F-01/F-02 (close
+ERR-7 and ERR-3, strike §A.2's stale "BR-1 as written forbids" clause), F-03 (AT-02/AT-03 fixture
+arms), F-04 (bump five "FSPEC v0.9" labels and the Upstream row to v0.12), F-05 (Cross-Reviews row —
+adopt FSPEC v0.12's non-enumerated form). DEFERRED as a single editorial pass: F-06/F-07's
+§I.3-for-§I.2 and §T.2-for-§T.6 pointers, F-08's stale bare-repository note, F-09's raw
+`orchestrate-dev.js` line anchors.
 
 ## Delta-Confirmation Findings
 
