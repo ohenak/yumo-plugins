@@ -42,6 +42,33 @@ without ever touching behaviour.
 
 ## Architecture
 
+**What the TSPEC leans on upstream, and whether upstream still says it.** I re-read the FSPEC
+sections this TSPEC compresses, at `sha256:a4f775bd…`, and checked each against the TSPEC's
+transcription — not against the item list, and not against my memory of v0.9.
+
+| TSPEC claim | Upstream locus at HEAD | Still says it? |
+|---|---|---|
+| Feature ships **on**; an absent `learningsInjection` section is enabled-by-default, not disabled (§I.2 config table, `TSPEC:439`) | FSPEC BR-14 and the config-state table; REQ v0.9 §4.1, G-1, AC-1.1 | Yes — unchanged bytes |
+| Explicit `enabled: false` removes the report key; `present` is the report-shape predicate (`TSPEC:441-448`, `:552`) | FSPEC E-21 → AT-32; REQ AC-5.1a | Yes |
+| Malformed section fails open with `NTC-MALFORMED`; wrong-typed key fails open with `NTC-KEYTYPE` (§I.2) | FSPEC E-22 → AT-31, E-23/E-34 → AT-32; REQ AC-5.1b, AC-5.1c | Yes |
+| Four config states own exactly two ATs — AT-31 and AT-32 (`TSPEC:464-469`) | FSPEC E-21…E-34 mapping rows | Yes — the row block is byte-identical across the delta |
+| Ordering keys and corpus outcomes are **per dispatch**, at the two loci AC-3.3 names (§A.5, §D.1, §D.2) | FSPEC v0.9 BR-9/BR-10, AT-19…AT-22, AT-18's changing-corpus run | Yes |
+| Two completeness tests, one per locus; AT-22 rides AT-18's changing-corpus fixture (`TSPEC:943`) | FSPEC AT-20/AT-22 text | Yes |
+
+Every load-bearing compression survives. The one place the TSPEC now diverges from upstream-at-HEAD
+is bibliographic: its Upstream row (`TSPEC:11`) pins `FSPEC-pdlc-learnings-injection.md (v0.9)`, and
+the in-body citations at `TSPEC:326`, `:469`, `:943`, `:1275`, `:1295` read "FSPEC v0.9 BR-9/BR-10",
+"FSPEC v0.9's E-21…E-34", "FSPEC v0.9 AT-18's changing-corpus …". The referents are all still
+present and unchanged in FSPEC v0.10 — the version label is stale, the content pointer is not. That
+is a Low, and it is genuinely `delta`: this round's edit is what made those labels stale.
+
+I deliberately did **not** treat the version-label staleness as gating. A downstream document that
+cites upstream by spec id survives an upstream header bump by design; that survival is the property
+the citation discipline exists to buy, and it is the same property I praised at v8 when the +7/−4
+line shift in FSPEC v0.9 broke nothing. Demanding a TSPEC rewrite for every upstream patch-version
+bump would invert that: it would make the cheap edit expensive and punish the author for upstream's
+housekeeping.
+
 ## Interfaces
 
 ## Data Model
