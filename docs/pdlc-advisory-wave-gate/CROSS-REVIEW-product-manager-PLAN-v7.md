@@ -51,4 +51,17 @@ Tagging note: F-01 is `Cross-Feature`. It is another feature's oracle (the coupl
 
 ## Recommendation
 
+**Needs revision** — on two new Highs, not on the routed work, which is complete and good.
+
+Both Highs are the same shape: a number or a status this round asserted about HEAD, which does not survive re-measurement. That is not an argument against measuring — it is what measuring is for, and every one of the five sites I could re-measure from the previous round came back clean. It is an argument for measuring the *new* claims the same way before the next round closes.
+
+Change these two:
+
+1. **The `PROP-SWEEP-2(b)` disposition.** The residual at HEAD is **26 paths, not 14**: the 14 `.bak` blobs plus `.pdlc-drift-state.json`, two `.bundle.js` files, `pdlc-cli.mjs`, and six of this feature's own documents — TSPEC, PLAN, DECISIONS, PROPERTIES and two cross-review files — which enter the sweep because they name L-2 terms and A-1's glob list exempts only `LEARNINGS-*` and `POSTMORTEM-*`. State the measured partition, say which subset A6-00 closes, and route the rest as an inherited out-of-scope red with a named owner, the way `AT-22` already is. As written, the DoD promises a green this branch cannot reach and grows further from with every cross-review file the phase writes. (F-01, High, Cross-Feature)
+2. **A6-04's status.** `pdlc/engine/__tests__/advisory-config-example.test.js` exists at HEAD, landed by `e3b9d5a3` with content that already matches the expectation A6-04 describes; TSPEC section 5.1's Status column caveat said so in `176b26e8`, before PLAN v1.5 was written. Restate A6-04 as *discharged verification* on the A6-00/A6-01 pattern, and correct the Overview's "the second of which is new" and the drift note's "the one file the plan called new" to the two files that actually landed. (F-02, High, Local)
+
+Then two Mediums, both single-clause edits: give the whole-suite count conditionally (24 advisory + 3 `documentOracles`, +1 for AT-4.1 only when a tracked file is dirty; 27/8 measured clean this round) (F-03), and re-anchor A6-21's surviving raw pin `:14364` — stale, the throw is at `:14367` at HEAD — while correcting the changelog grep recipe that missed it (F-04).
+
+Nothing here touches batching, ownership, dependency edges, the wave map, or the AT coverage table. F-05 is `Process`, not this document's to fix.
+
 ## Verdict
