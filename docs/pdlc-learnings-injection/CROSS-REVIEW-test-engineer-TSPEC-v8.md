@@ -43,6 +43,34 @@ approved. The two v7 `DEFERRED:` items are likewise still open and still deferre
 
 ## Repository checks at HEAD
 
+Re-run against code, by symbol rather than by position, because `472e505c` shifted the file:
+
+- **P-2a's "four code sites carry `dispatchKind: \"authoring\"`" is still true.** At HEAD the
+  keyed sites are `orchestrate-dev.js:12861` (erratum author), `:12955` (erratum land-proof
+  retry), `:13657` (phase creator inside `converge`), plus the positional argument at `:7663`
+  (review-loop optimizer). Four sites, same four roles the TSPEC names; only the numbers moved.
+- **P-3's funnel holds:** `async function dispatchAndVerify({…})` at `:8862` — the one anchor in
+  that row that did *not* drift — and the authoring branch at `:8886`.
+- **P-11/P-12's sibling parser holds verbatim:** `if (!isPlainObject(parsed) || !("advisory" in
+  parsed)) return degraded(false)` at `:1980`, `ADVISORY_DEFAULTS` with `enabled: false` at
+  `:1944-1949`, `export function parseAdvisoryConfig` immediately below it, and
+  `parseImplementationConfig` at `:191` — the precedent REQ v0.9's fail-open resolution leans on.
+- **The read/list/git seam contracts hold by symbol:** `defaultReadFile` (`:11553`),
+  `defaultListFiles` (`:11626`), and the injectable `_readFile`/`_listFiles` defaults in
+  `reviewLoop`'s destructure (`:7286-7287`). The *anchors* printed in §Architecture rows P-7, P-8,
+  P-10 and in §T.6 (`:11513`, `:11658`, `:15167`, `:12110`, `:12915`) now point at unrelated lines
+  after the shift; the behaviours they assert are still present at the renamed positions.
+- **`advisoryDisabled.test.js:70` is still `import mainDev, * as dev from "../orchestrate-dev.js"`**
+  — §T.5's import-pattern claim survives the code move.
+- **FSPEC's two-loci contract is intact after `523e2df9`:** "The rule inputs sit at **two loci**"
+  (`FSPEC` BR-10 body) and "BR-10 closes at two loci with one completeness test each" (revision
+  history). §T.2's split — per-dispatch `orderKeys` set equality on `dispatches[i]`, run-level set
+  equality over `Object.keys(ruleInputs.thresholds)` — still transcribes upstream exactly.
+- **The bare-repository premise is still true:** `.claude/` carries only `pdlc.config.example.json`
+  and no consumer `learningsInjection` section, so AC-1.1's fixture premise stands.
+- **TSPEC front matter cites FSPEC v0.9 and REQ v0.9**, which are the versions at HEAD; the FSPEC
+  edit did not bump the version, so no citation went stale.
+
 ## Findings
 
 ## Questions
