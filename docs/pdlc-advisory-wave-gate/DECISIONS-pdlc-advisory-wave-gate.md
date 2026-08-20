@@ -387,18 +387,29 @@ that a first-class per-seam `enabled` map becomes the better surface.
   argument — it is the one the shared-double bullet below rests on — but it is a different claim
   from "still moves", which is how v1.3 framed the count. An implementer sizing A6 off the older
   wording would budget five edits no gate asks for.
-- **Seven sites across both literals are already at the post-A6 value and need no edit.** (This
-  seven and column (2)'s ten below count different populations and do not contradict each other:
-  this bullet counts *sites at the post-A6 value*, oracles and inputs alike, while column (2) counts
-  only the *oracles that are red at HEAD* — the inputs named here, the `consolidationProperties`
-  generator pick and the doubles' `SEAMS` constant, are green today because nothing compares them to
-  production.) Seam:
-  the `ADVISORY_SEAMS` set-equality in `advisoryEnvelope.test.js`, the `test.each` table in
-  `advisoryRecord.test.js`, the harvest-row assertion in `advisoryHarvest.test.js`, the generator
-  pick in `consolidationProperties.test.js`, and the `SEAMS` constant in
-  `helpers/advisoryDoubles.js`. Envelope: `advisoryEnvelope.test.js`'s `ENVELOPE_DEFAULTS`
-  set-equality (which v1.2 wrongly listed as a four-member site) and `advisoryConfig.test.js`'s
-  re-declared `ADVISORY_DEFAULTS` literal. **Both** of those two assert against production and both
+- **Twelve sites across both literals are already at the post-A6 value and need no edit**
+  (PM v8 F-01, correcting v1.6's "seven"). The seven was v1.2's reading carried forward, and v1.6
+  reconciled it against column (2)'s ten by asserting the ten were the *oracles among* the seven —
+  a subset relation the two integers refute. Re-derived here from the same
+  `npm test -- __tests__/advisory` run that produced column (2), the population is twelve, and the
+  true relation is the reverse of the one v1.6 stated: **column (2) *is* the oracle part of this
+  bullet** — its ten members are exactly the sites here that assert against production, which is why
+  they are red at HEAD — and the residue is **two inputs**, the `consolidationProperties.test.js`
+  generator pick (`rng.pick(["A1" … "A6"])`) and `helpers/advisoryDoubles.js`'s `SEAMS` constant,
+  green today because nothing compares them to production. Seam side (nine): `advisoryEnvelope.test.js`'s
+  `ADVISORY_SEAMS` six-member deep-equality, `advisoryRecord.test.js`'s `PROP-SUM-02` `test.each`
+  table, `advisoryHarvest.test.js`'s `T-08-6` harvest-row assertion **and** its `T-08-8` row count,
+  `advisoryDisabled.test.js`'s `T-10-5 / PROP-DIS-05`, `advisoryQueueSeams.test.js`'s `S-5`
+  row-list assertion, `advisoryDriver.test.js`'s `PROP-GATE-06` key-set equality, plus the two
+  green inputs above. Envelope side (three): `advisoryEnvelope.test.js`'s `ENVELOPE_DEFAULTS`
+  set-equality (which v1.2 wrongly listed as a four-member site) and the two readings of what v1.6
+  called `advisoryConfig.test.js`'s "re-declared `ADVISORY_DEFAULTS` literal" — its `PROP-CFG-02`
+  deep-equality and its `PROP-CFG-01` key-set equality. The five that v1.6's seven omitted —
+  `PROP-CFG-01`, `PROP-GATE-06`, `T-08-8`, `PROP-DIS-05` and `advisoryQueueSeams`'s row list — are
+  precisely the ones an implementer reading "seven sites … need no edit" would have budgeted an edit
+  for, against PLAN's own A6-05 red step ("At HEAD most of this step is **verification, not
+  editing**"). All four bare `toHaveLength(6)` sites read `6` at HEAD, checked individually.
+  **All three** envelope-side sites assert against production and all three
   are red today, measured at HEAD (PM v6 F-01, TE v6 F-01 — which retracts the second half of
   TE v5 F-02, the claim v1.4 transcribed). `advisoryConfig`'s is not a *dedicated* envelope
   assertion, which is what made it easy to miss: `PROP-CFG-01` does assert only that file's *key
@@ -428,7 +439,7 @@ that a first-class per-seam `enabled` map becomes the better surface.
   `ENVELOPE_DEFAULTS` row is the drift row for the first; §1.3's `ADVISORY_DEFAULTS` row records a
   *different* drift (`waveBudgetPerRun` already present against an absent production key) and says
   nothing about that file's envelope member, so the `advisoryConfig` envelope observation is this
-  record's own and not §1.3's (PM v5 F-02). A reader who goes to any of these seven expecting a
+  record's own and not §1.3's (PM v5 F-02). A reader who goes to any of these twelve expecting a
   literal to edit finds the target value already in place. §1.3 remains the carrier of which
   surfaces have drifted; this entry only sizes the task.
 - The shared double is the coupling the other two surfaces do not have: `advisoryDoubles.js` carries
