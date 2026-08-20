@@ -68,6 +68,53 @@ load-bearing: AC-6.2 → PROP-REC-03/-04/-07 → A6-17 → `advisoryEscalationLo
 
 ## Oracles
 
+The oracle side is where v4's High finding actually bit, so I measured rather than reasoned. All
+figures below were taken from the working tree on `feat-pdlc-advisory-wave-gate` at the commit under
+review.
+
+**File existence.**
+
+- `pdlc/workflows/__tests__/advisoryWaveGate.test.js` — exists, 1.8 K.
+- `pdlc/engine/__tests__/advisory-config-example.test.js` — exists, 2.5 K.
+
+Both paragraphs that previously called these "verified absent at HEAD" now say the opposite, which is
+what the tree says and what TSPEC §5.1 and PLAN v1.7 both say (PLAN: "A6-04 restated as *discharged by
+verification* — `advisory-config-example.test.js` already exists at HEAD, landed by `e3b9d5a3`"). Three
+documents now agree where two disagreed. v4's F-01 is closed.
+
+**Cardinality sites.** All four bare row-count assertions measured at HEAD:
+
+| Site | Reads |
+|---|---|
+| `advisoryDisabled.test.js:629` | `toHaveLength(6)` |
+| `advisoryQueueSeams.test.js:634` | `toHaveLength(6)` (with the `// ADVISORY_SEAMS (S-1)` trailing comment the document names) |
+| `advisoryHarvest.test.js:578` | `toHaveLength(6)` |
+| `advisoryHarvest.test.js:733` | `toHaveLength(6)` |
+
+Derivation rule 1 now records exactly this, anchors by block title, and adds the honest consequence —
+"the pending edit is the production constant, not these assertions". The rule itself is unchanged, so
+no property moved. v4's F-02 is closed.
+
+**Citation anchors re-verified.**
+
+- `ci-arrangement.test.js` — `const configPath` resolves the example config at `:39` (the symbol
+  anchor holds), and the test titled `ci arrangement — .claude/pdlc.config.example.json's
+  implementation.testCommand` exists at `:789`. Both anchors resolve; neither is a line pin.
+- `helpers/advisoryDoubles.js` — `const SEAMS` carries the six-member form. The old `:271` pin was
+  stale (the declaration sits at `:354`), so re-anchoring to the symbol both met DEC-DOC-01 and fixed
+  a false citation.
+- `advisoryDodSeams.test.js:371` (Real-repository fixture builder row) — still a raw line pin, but it
+  still resolves: `mkdtempSync(join(tmpdir(), "pdlc-a3-fixture-"))` is at `:371`. Untouched by this
+  round; not worth a finding of its own beyond the one below.
+
+**The one anchor that no longer resolves.** The verbatim-string-discipline paragraph pins the eight
+refusal reasons to `orchestrate-dev.js:2297`–`:2306` and the five exclusion ids to `:2311`. Measured:
+`ADVISORY_REFUSAL_REASONS` opens at `:2301`, its members run `:2302`–`:2309`, and `:2311` is a comment
+line introducing the exclusion set. The pins are both raw `file:line` (DEC-DOC-01, `Process`, Low) and
+now factually off. The *discipline* the paragraph states — transcribe, never paraphrase — is correct
+and unaffected; only its evidence pointer has drifted. Low, inherited, non-gating: absorb it whenever
+this section is next edited, exactly as the round-4 edit absorbed the `:271` and `:39`/`:799` pins.
+
 ## Fixtures
 
 ## Findings
