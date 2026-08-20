@@ -161,4 +161,31 @@ missing" count, or cite the command that produces it.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01) is open, which is mandatory Needs revision under the approval rules — and it
+clears the DEC-FRZ-01 blocking bar on a matured document as a factual contradiction with the repository
+at HEAD, not as a preference.
+
+Exactly what must change to clear the verdict:
+
+1. **F-01** — set `docs/_queue/QUEUE.md` row 19 (`pdlc-advisory-wave-gate`) to `done`, and resolve the
+   REQ's `ready: false` frontmatter against shipped reality. Until row 19 reads `done`,
+   `orchestrate-queue.js:881` blocks rows 6 and 20 from ever being picked, so this is a live pipeline
+   defect and not documentation hygiene.
+
+F-02, F-03 and F-04 are recorded, not gating. F-02's fix belongs in
+`docs/_constraints/pdlc-wave-gate-baseline.md` (new section for the post-A6 catalogue at `origin/main`
+`11420461`, plus a version bump), not in this REQ's acceptance criteria — do not amend AC-1.1 or R-5 to
+chase it. F-03 and F-04 are single-sentence edits inside §6 AC-1.2 and §1 respectively, and neither
+re-opens a decision.
+
+No upstream defect was found: `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` exists and
+every AC id this REQ inherits from it resolves. No `ERRATUM:` lines are emitted for this round.
+
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 2}
+
