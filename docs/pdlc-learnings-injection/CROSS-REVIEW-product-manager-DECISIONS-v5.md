@@ -113,6 +113,62 @@ statement about what any rule requires.
 
 ## Consequences
 
+**For this round.** The confirmation approves. TSPEC v0.7 closed two errata it had routed to FSPEC
+and de-anchored four citations; it re-decided nothing DECISIONS owns, and its §I.3 gate remains the
+expression `DEC-LI-03` chose. Five findings stand, all citation or framing defects, none blocking:
+PLAN and PROPERTIES read DECISIONS for rationale and read FSPEC/TSPEC for contract, and those two
+documents agree with each other at HEAD.
+
+**For the next authoring pass on DECISIONS**, the edits I would make — items 1–4 unchanged from v4,
+item 5 new:
+
+1. Replace the AC-3.3 locus row in *"Decisions deliberately NOT taken here"* with the settled
+   answer: FSPEC `BR-10` fixes two loci — ordering-key values per authoring dispatch, §4.1
+   thresholds once per run — one completeness test each, run-level mirror additive and unasserted.
+   Keep the row; change what it says. (F-01)
+2. Rewrite `DEC-LI-07`'s *"divergence from TSPEC"* paragraph in the past tense, and the
+   `DEC-LI-07` summary-table row that calls the `present` gate *"TSPEC's provisional reading"*:
+   `DEC-ERR-01` landed in TSPEC v0.6, `ERR-4` is CLOSED, the gate is `config.enabled` alone, and
+   `D-O-9` is **discharged** — it should be struck from the obligations table or marked closed with
+   the landing version, not left as an open ask against TSPEC. (F-02)
+3. Repin: header `Upstream` row and **Upstream version note** to TSPEC **v0.7** / FSPEC **v0.12**;
+   `DEC-LI-07`'s *"FSPEC v0.7 `BR-14`"* to v0.12 (the cited `BR-14` text is unchanged, so this is a
+   pin edit only). (F-03)
+4. Align `DEC-LI-03`'s re-evaluation trigger with `A-2` as reworded: the excluded-by-construction
+   default now covers a dispatch failing **either** conjunct, and the authoring-classified non-C-1
+   target is named by `BR-1` itself. One clause. (F-04)
+5. Rewrite the **Upstream version note** premise, or delete it. Its work was to explain why
+   DECISIONS and TSPEC disagreed; TSPEC v0.7 is now pinned to the same REQ v0.9 / FSPEC v0.12 this
+   document is grounded on, so there is no asymmetry left to explain. If the note is kept, it should
+   record the *history* ("TSPEC v0.5 lagged; re-grounded at v0.7") rather than assert a live gap.
+   (F-05)
+
+**For the pipeline.** Third consecutive confirmation where every finding against DECISIONS is a
+stale sentence about a sibling document and none is a wrong decision — and the count is now growing
+(2 → 4 → 5) purely because the bytes cannot move between confirmation rounds while siblings keep
+moving. That is a structural property worth harvesting, not a run of bad luck. Two `Process`
+candidates, restated from v4 because they have now been demonstrated a third time:
+
+- **An upstream-quote convention for DECISIONS**: cite the **spec id** and the claim, never the
+  version-pinned sentence or the sibling's *current status*. Note that every clause that survived
+  this delta cleanly (`DEC-LI-03`'s gate, `DEC-LI-10`'s C-1 transcription, `G-B`/`G-C`'s source
+  citations) was written that way, and every finding is a clause that was not.
+- **A cascade check that re-reads DECISIONS' explicit "still open / owned there" pointers** against
+  the named owner's current status. All of F-01, F-02 and F-05 are exactly that shape, and all three
+  went false silently.
+
+A third candidate is now visible: **an erratum that discharges an obligation should close the
+obligation row in the document that raised it.** `D-O-9` was satisfied by TSPEC v0.6 and has been
+carried as outstanding through two confirmations since, because the discharge happened in the
+*target* document and nothing routes back to the *raising* one.
+
+**On this confirmation itself.** The routed item list was TSPEC's ERR-3/ERR-7 closure and four
+`DEC-DOC-01` de-anchorings — none of which names DECISIONS, and all of which land in DECISIONS'
+favour. Confirming on the item list alone would have returned a clean approval over five stale
+sentences, four of them already outstanding. Re-reading the upstream text this document leans on, at
+HEAD, across the whole span since the recorded `UPSTREAM-STATE`, is what DEC-ERR-03 asks for and is
+what surfaced F-05.
+
 ## Positive Observations
 
 ## Recommendation
