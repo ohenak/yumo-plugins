@@ -15,7 +15,27 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.8 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.9 | 2026-08-20 |
+
+> **v0.9 (round 13 review items; upstream unchanged — FSPEC v0.13 `ae75fa62…`, REQ v0.9
+> `ff605dd3…`, both re-verified byte-for-byte at HEAD, so nothing was absorbed this round).**
+> pm-review approved with no findings; te-review's four are landed. (1) **F-01 (High, inherited):**
+> AT-11's section-set equality pointed at `extractInjectableMaterial`'s `sections[]` return, where
+> FSPEC states it over the names appearing in the **block material**, and two of AT-11's conjuncts —
+> the Approval Record's fixture text absent, all five injected sections' texts present — were owned
+> by no test. §T.5 now states all three conjuncts' oracles over the rendered block in
+> `learningsBlock.test.js` with the mutations that red each, and §I.3 demotes `sections[]` to a
+> supporting assertion. (2) **F-04 (Medium):** §D.3 fixes how taken extents are assembled into
+> `material` — normalise (drop trailing blank lines, no trailing newline), join in priority order
+> with `"\n\n"`, then cut once — so AT-11/AT-12's hand-recomputed literal counts are a mechanical
+> sum (§D.5) rather than a judgement two conforming implementations could split. `sections[]` is
+> redefined over the assembled result. (3) **F-02 (Low):** rule 2's E-33 argument holds for
+> substring/token-overlap/fuzzy matching but not for F-O-1's *prefix* candidate — neither
+> `Cross-Feature Findings` nor `Cross-Feature Patterns` is a prefix of the other. The exact-match
+> decision stands; the prefix rule is now rejected on its own stated ground. (4) **F-03 (Low):**
+> FSPEC Step 5's items 15/16 sequence extraction after the count cut while §D.5 requires the drop
+> before it; outcomes agree at every bound, so it is recorded as **ERR-8** against FSPEC and §D.5
+> states the rule the implementer follows. No behavioural change beyond F-01's oracle relocation.
 
 > **v0.8 erratum (Phase PR items; re-grounded on FSPEC v0.13 / REQ v0.9 at HEAD).** Upstream moved:
 > **FSPEC v0.13** decides three things this TSPEC owes. (1) **BR-6's byte-accounting basis is
@@ -1580,6 +1600,18 @@ Raised as errata rather than fixed here (the finding's document is not this one)
   same way, with a run-level mirror "additive, is not the oracle, and has a deliberately
   unconstrained value that nothing asserts on"; FSPEC BR-9/BR-10 carry both. §A.5, §D.1, §D.2,
   the closure table and §T.6's `DIVERGENT-CORPUS` fixture are written on that answer.
+- **ERR-8 (FSPEC Step 5, items 15–16).** The procedure drops on the *structural* condition —
+  "any eligible document carrying none of BR-6's priority sections" — at item 15, then takes the
+  first `maxDocuments` of the rest, and only extracts material at item 16, *after* the count cut.
+  BR-9 and D-12 state the same drop as *yields no material*, and E-36 requires a document at
+  `maxBytesPerDocument: 0` to be dropped `RSN-NO-MATERIAL` consuming no slot — which is an
+  extraction outcome, not a structural one. A reader implementing Step 5 literally would extract
+  only the count-surviving documents and could never observe the zero-bound drop for the rest. The
+  observable outcomes are identical at every bound (§D.5), so nothing downstream changes and this is
+  not a behavioural divergence; what needs correcting is the item ordering, so the PLAN author
+  reading the procedure sequentially does not implement the shape E-36 carves out. Suggested fix:
+  extract for every eligible document at item 15, drop on *yields no material*, then apply the
+  count bound.
 - **ERR-7 (FSPEC BR-1) — CLOSED, resolved by FSPEC v0.11 and v0.12.** BR-1 once stated that a
   dispatch carries a block "if and only if the pipeline classifies it as authoring at the moment it
   is composed", a classification **wider** than REQ C-1: `reviewLoop` is shared, and Phase CR calls
