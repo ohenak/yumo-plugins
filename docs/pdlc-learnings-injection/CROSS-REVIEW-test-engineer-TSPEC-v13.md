@@ -102,6 +102,46 @@ oracle that was falsifiable before this round is weaker after it.
 
 ## Interfaces
 
+**`extractInjectableMaterial(text, maxBytes)` is now writable from the document alone.** Before this
+round I could not have written the matcher; now I can, and I checked the specified regexes against
+the corpus rather than reading them:
+
+- `SECTION_HEADING_RE = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/` requires whitespace after the
+  two `#`, so `### Sub-heading` neither matches nor terminates a section — which is what §D.3's
+  "exactly two `#`" sentence claims, and it is consistent with the extent rule's `/^##[ \t]/`
+  boundary test. The two regexes agree on what a boundary is; a mismatch there would have been a
+  silent extent bug.
+- The optional `(?:\d+\.[ \t]*)?` group strips `1.` … `6.` from all 9 corpus documents' headings.
+- `GLOSS_RE = /[ \t]*\([^()]*\)$/` applied to both sides makes `## 3. Rejected Proposals` and
+  `## 3. Rejected Proposals (with rationale)` the same section, and leaves
+  `## 6. Phase PUB Retroactive Cross-Review (2026-06-24)` outside the five (it strips to a
+  non-member). I confirmed both against the real strings.
+- Rule 2's exactness is justified by E-33's real document rather than by taste, and the
+  justification is the right shape: a matcher loose enough to admit `Cross-Feature Findings` makes
+  FSPEC's one measured `RSN-NO-MATERIAL` document a contributing one and renders E-33 and AT-28
+  unreachable by construction. The specific claim that a **prefix** rule would do that is not true
+  as stated (neither `Cross-Feature Findings` nor `Cross-Feature Patterns` is a prefix of the
+  other, and F-O-1's own wording offers "a prefix of it" as one candidate rule) — F-02 below, Low,
+  because the decision is right and only the argument for it overreaches.
+- The zero-bound branch is stated on the interface itself: `maxBytes <= 0` returns
+  `{material: "", bounded: false, bytes: 0, sections: []}` for every text, short-circuiting before
+  the cut. That is a *unit-level* oracle for E-36, which previously existed only as an L3 run
+  assertion — a real testability gain, and T-O-6 now carries the matching property carve-out.
+
+**One interface question the delta sharpened without closing: how the taken sections are
+assembled.** §D.3 defines each section's **extent** (heading line through the line before the next
+`/^##[ \t]/` line, or EOF) and says the heading line is part of the material in the document's own
+literal form. It does not say how the taken extents are concatenated into `material`: whether each
+extent retains the trailing newline of its last line, whether trailing blank lines before the next
+heading are inside the extent, and whether any separator is inserted between two sections that are
+non-adjacent in the document (they must be, since sections are taken in **priority** order, which
+§D.3 itself proves is not document order for any corpus document). §D.5 asserts AT-11's and AT-12's
+expected counts are "hand-computable from the fixture alone: sum the section headings and bodies
+BR-6 selects, ignore every delimiter" — but two conforming implementations can differ here by one
+to several bytes per section, and AT-11/AT-12 commit their expected counts as **literal integers**
+recomputed by hand (FSPEC:AT-11, AT-12). A byte-exact literal oracle over an assembly rule that is
+not byte-exact is a fixture that reds for a conforming implementation. F-04 below, Medium.
+
 ## Data Model
 
 ## Test Strategy
