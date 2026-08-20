@@ -470,6 +470,25 @@ subject module only** — a `git worktree` at the merge-base, from which the cap
 recording the resolved merge-base sha and a SHA-256 per file, and pin the guard test to
 **hand-transcribed digest literals**, asserted as **set equality** over case ids.
 
+The recorded sha is itself an oracle surface, and the guard checks it rather than trusting the
+moment of capture. A sha recorded *after* a production edit landed is a commit that already contains
+feature code, and the byte-identity test then compares the feature against itself and passes
+vacuously — the same failure this entry rejects the recomputed merge-base for. Ordering the capture
+first (D-O-2) is necessary but not falsifiable on its own, so the guard additionally asserts, against
+the sha in `MANIFEST.json`:
+
+1. `git merge-base --is-ancestor <recorded-sha> HEAD` succeeds — the recorded commit is genuinely an
+   ancestor of the branch, not a detached or re-pointed one; and
+2. a **positive absence** check: the subject module at that sha carries none of this feature's
+   exported symbols — `git show <recorded-sha>:pdlc/workflows/orchestrate-dev.js` contains no
+   `selectLearnings`, `gatherLearningsCorpus` or `LEARNINGS_CORPUS_ARGV`. Absence of the symbols is
+   what makes the commit *pre-feature*; the sha's provenance is what the manifest claims, and this is
+   the check that the claim is true.
+
+Conjunct 2 is the load-bearing one: conjunct 1 alone passes for any ancestor, including one captured
+late. Together they make the vacuity detectable by the guard itself rather than by the discipline of
+whoever ran the capture.
+
 **Alternatives considered.**
 
 - **Recompute the merge-base at test time** — rejected. The merge-base moves under rebase or a merge
