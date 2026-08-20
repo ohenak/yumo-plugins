@@ -40,6 +40,57 @@ what it *asserts about other documents* hold at those documents' current bytes.
 
 ## Options Considered
 
+Three ways to discharge an empty-item-list confirmation were available:
+
+- **Rubber-stamp the empty list.** The dispatch itself forecloses this: items landing is necessary,
+  not sufficient, and an empty list means *more* of the burden sits on the DEC-ERR-03 check, not less.
+- **Re-run v10's full citation sweep.** Rejected as wasted work once the three upstream hashes were
+  confirmed identical to v10's recorded anchors — re-reading identical bytes cannot produce a
+  different answer, and the sweep's result is already on the record in v10.
+- **Verify the delta's own assertions against their sources, then check that the frozen surface stayed
+  frozen** (chosen). The v1.9 paragraph is unusual: it is almost entirely a set of *claims about other
+  documents* — about TSPEC's erratum, about what that erratum owed DECISIONS, about what PM v9's two
+  findings ask for. Those claims are exactly the class DEC-ERR-03 is about, and none of them is
+  self-verifying. Each was checked against the cited file at HEAD.
+
+Executing the chosen reading:
+
+**Claim 1 — the relocated integer is gone from the v1.8 paragraph.** Confirmed: `:30` now reads "the
+already-migrated-sites bullet is folded into column (2)". `SIZING-pdlc-advisory-wave-gate.md:83` is
+the sole live carrier of the figure ("**twelve**, of which **ten** are oracles red at HEAD and **two**
+are green inputs"), exactly as the delta claims. This is the repair TE v9 F-01 asked for, in the
+literal wording it proposed.
+
+**Claim 2 — the Cross-Reviews cell records the round-9 reviews.** Confirmed: both v9 filenames exist
+on disk and both are now named in the cell.
+
+**Claim 3 — REQ and FSPEC "are unchanged from the state v1.8 was authored against".** Confirmed by
+hash against v10's anchors and against the dispatch.
+
+**Claim 4 — TSPEC moved `4a092e85…` → `1531143c…` within v1.10, and its added text sizes
+`PROP-SWEEP-2(b)`'s residue in §1.3 and routes partition, owners and figures to PLAN's Overview
+HEAD-drift note and A6-00's Edit 1.** Confirmed — this is the same interval I sized in v10, and the
+one-sentence compression of it here matches what I read there hunk for hunk, including that the
+routing targets are PLAN's Overview note and A6-00 Edit 1 rather than anything DECISIONS owns.
+
+**Claim 5 — "Nothing in that erratum is owed here: DECISIONS carries no hygiene note, no sweep figure
+and no disposition of the residue."** This is the load-bearing claim of the absorption and the one a
+reader is most likely to take on trust, so I falsified it directly rather than reading it. `grep -n
+'PROP-SWEEP\|residue\|hygiene\|\.bak'` over DECISIONS returns exactly two hits, `:45` and `:47`,
+both inside the v1.9 paragraph making the claim itself. No sweep figure, no class partition, no `.bak`
+count and no disposition appears anywhere else in the document. The no-op absorption is real.
+
+**Claim 6 — PM v9 F-01 asks PLAN to cite the appendix rather than restate column (1)'s count, and
+PM v9 F-02 is a harvest item about the missing evidence-appendix artifact class.** Confirmed against
+`CROSS-REVIEW-product-manager-DECISIONS-v9.md:49` ("Cheapest fix … PLAN's Overview cite the appendix
+number instead of restating it") and `:50` (Low, Process, "the pipeline has no artifact class for
+'measurement appendix'"). Both are correctly characterised, and correctly excluded from this
+document's edit surface — neither is a DECISIONS change.
+
+**The frozen surface.** `git diff --stat` plus a hunk-by-hunk read confirms no line inside
+`## Decision` or `## Consequences` changed. Everything my v9 and v10 approvals rest on is
+byte-identical.
+
 ## Decision
 
 ## Consequences
