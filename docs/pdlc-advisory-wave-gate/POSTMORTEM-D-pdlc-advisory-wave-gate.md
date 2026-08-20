@@ -94,7 +94,97 @@ Three features of this trajectory matter more than the totals:
 
 ## 3. Reviewers
 
+| Role | Rounds | Round-8 verdict | Residual at halt (all addressed in v1.7, none confirmed) |
+|---|---|---|---|
+| product-manager | 1–8 | Needs revision | F-01 (High), F-02 (Medium), F-03/F-04 (Low), F-05 (Low, Process), Q-01, Q-02 |
+| test-engineer | 1–8 | Approved w/ minor | F-01 (Medium), F-02 (Low) |
+
+Both lenses stayed in lane for all eight rounds, and both spent their round-8 opening on disposition
+of the prior round rather than on new ground.
+
+- **PM** reviewed as a requirement-fidelity-and-implementer-cost lens. Its consistent question was
+  not "is this decision right" but "what will an implementer budget after reading this sentence" —
+  which is why every one of its Highs landed on a count rather than on a decision. Its round-8
+  method is worth recording verbatim as the standard: re-run the advisory suites at HEAD, attribute
+  all 24 failures to the document's two named populations, read every newly enumerated prose site
+  *in context*, and re-run the record's own published re-derivation recipe over the whole surface
+  that recipe names.
+- **TE** reviewed as an oracle-and-falsifiability lens: for each claim, is there a run that could
+  refute it, and does the claim survive that run. It routed one missing behaviour arm upstream in
+  round 1 (the `waveBudgetPerRun: 0` fixture, which landed in TSPEC §5.2 and is verified landed in
+  the document at HEAD), and by round 8 it was checking the record's arithmetic as arithmetic
+  (14 + 10 = 24) and its positional anchors as positions.
+
+Two reviewer behaviours held the phase together rather than stretching it:
+
+1. **Neither lens re-litigated settled material.** Explicit scope statements pin this in rounds 2,
+   3, 4, 5 and 8 ("unchanged sections already reviewed in v1 are not re-litigated"; "no
+   re-litigation of settled decisions"). The eight rounds are not eight reviews of one document;
+   they are one review of the decisions plus five reviews of one measurement block.
+2. **Both lenses retracted their own prior findings when HEAD refuted them.** TE v6 F-01 retracts
+   the second half of TE v5 F-02 — the claim v1.4 had faithfully transcribed. A reviewer who
+   corrects the author's transcription of the reviewer's own error is doing the expensive, correct
+   thing, and it is also a hidden cost driver: two of the five rounds in this window were spent
+   converging on a fact that a reviewer had earlier stated wrongly.
+
+One process finding belongs outside this feature: **PM F-05, now in its fourth consecutive round**
+(v4 F-03 → v5 F-01 → v6 F-01 → v7 F-01 → v8 F-01/F-02). PM states the generalisable rule better
+than a harvest note would: *when a round re-measures one population, it must re-measure every
+population its edit puts in the same sentence* — a reconciliation clause between two counts is a
+claim about both, and inherits the staleness of whichever one was not re-run.
+
 ## 4. Pattern of Disagreement
+
+**There is almost no author-versus-reviewer disagreement, and exactly one reviewer-versus-reviewer
+disagreement — on an integer.** Round 8 asked for column (3) to be raised, and the two lenses named
+different targets from the same recipe:
+
+| Lens | Round-8 claim about column (3) | Members named |
+|---|---|---|
+| TE v8 F-01 (Medium) | "twenty, should read **twenty-two**" | `advisoryDriver.test.js`'s two generated `it` titles (`:238`, `:280`) |
+| PM v8 F-02 (Medium) | "twenty, **at least twenty-five**" | the same two, **plus** three production-side prose sites in `orchestrate-dev.js` (`:2978`, `:13688`, `:15036`) |
+
+The disagreement is not a contradiction: PM's set is a strict superset, and the difference is
+scope-of-sweep — TE ran the recipe over the advisory *suites*, PM ran it over the suites **and**
+`orchestrate-dev.js`, which is the surface the recipe's own text names. v1.7 adopted the superset
+(seventeen seam sites + eight envelope sites = twenty-five) and cited both findings, which is the
+correct resolution of a superset/subset split. It is recorded here only because it is the sole point
+in eight rounds where the two lenses would have signed different numbers.
+
+The more consequential split is one of **judgement about the same defect**:
+
+| | PM v8 | TE v8 |
+|---|---|---|
+| The "seven versus ten" reconciliation | **F-01, High, blocking** — "ten cannot be a subset of seven" | listed under *"Everything else I verified clean at HEAD"* |
+| Verdict | Needs revision | Approved with minor changes |
+
+TE read the reconciliation clause as prose linking two independently-correct counts and checked the
+counts; PM read it as a claim about a set relation and checked the relation. PM is right on the
+merits — the parenthetical asserts a subset relation that ten-in-seven refutes, and the five sites
+the "seven" omitted are exactly the ones an implementer would wrongly budget an edit for — and v1.7
+resolves it PM's way, restating the true relation (column (2) *is* the oracle part of the bullet;
+the residue is two green inputs) and re-deriving the population to twelve. But the split is the
+reason the phase hit the cap rather than converging: **a single lens's single Medium-adjacent
+reading of one clause was the difference between "approved with minor" and a sixth round.**
+
+Three structural observations about where the disagreement lived:
+
+1. **All five window Highs are in the same ~40-line bullet block, and none is in a `## Decision`
+   section.** The part of the document that is a decision record converged in three rounds. The part
+   that is a repository measurement never converged, because its truth conditions change under a
+   moving tree — and the tree was moving for a reason this feature created (`e3b9d5a3` landed
+   test-side transcriptions ahead of Phase I, so the advisory suites are red at HEAD by design).
+2. **The block's failure mode is always the seam between two counts, never a count in isolation.**
+   v4/v5: envelope re-derived, seam stale. v6: oracle-versus-input taxonomy. v7: column (2)'s
+   cardinality. v8: the clause reconciling column (2) with the "already-migrated" bullet. PM's Q-01
+   names the remedy the findings imply — *a seam that keeps failing is worth removing rather than
+   re-welding*, i.e. fold the two counts into one enumeration read two ways.
+3. **The author never pushed back and never under-delivered.** Every round's response is a set of
+   small, individually-cited commits that both lenses verified as landing, several of which went
+   past what was asked (the `PROP-CFG` id-collision note, the `A-17` retraction with its inverted
+   operative advice, the `dist/` instruction, the published re-derivation recipe). There is no
+   disagreement to adjudicate here — which is precisely why the loop could not terminate itself: no
+   party was wrong, so no party's correction ended the round.
 
 ## 5. Best-Guess Root Cause
 
