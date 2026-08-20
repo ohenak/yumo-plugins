@@ -73,10 +73,48 @@ Re-run against code, by symbol rather than by position, because `472e505c` shift
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **Carried from v7 F-01, unresolved (document unmoved).** §D.1's fourth field domain (`runMirror.corpusOutcome`, "a membership test only") and §A.5's "no fixture in §T.6 may assert on it" cannot both be followed literally; a membership assertion is an assertion, and against an implementation that dropped the mirror it reads `undefined` and reds. Not blocking — the TSPEC carries the mirror, so the test is green against the design it governs — but PLAN reads two instructions and needs one. Resolution unchanged: guard the mirror domain test on the mirror being carried, or drop the fourth domain. | §D.1 `:588-594` vs §A.5 `:340-345` |
+| F-02 | Medium | Local | **Carried from v7 F-02, unresolved (document unmoved).** `present` is carried in the returned shape with no consumer and no behavioural oracle beyond the shape assertion at §T.5 `:966-968`, while §I.3 states the gate is `config.enabled` **alone**. Either name a real consumer (the `NTC-MALFORMED`-vs-absent-section reporting split) or say plainly that `present` survives as parser-diagnostic state, tested only for shape. | §I.3 `:441-448`, §T.5 `:966-968` |
+| F-03 | Low | Local | **Carried from v7 F-03.** No closure test over `ruleInputs`' own key set; nothing reds if a future rule input lands as a sibling of `thresholds` rather than inside it. Upstream requires two per-locus tests and gets them, so this is additive. | §T.2 `:645-652`, §D.2 `:598-612` |
+| F-04 | Low | Process | **Positional anchors into `orchestrate-dev.js` drifted under `472e505c` and will drift again.** §Architecture P-2a/P-7/P-8/P-10, §T.6 and §Open Questions cite raw `file:line` anchors (`:13515`, `:11513`, `:11658`, `:15167`, `:12110`, `:12915`, …) that no longer point at the code they name; I re-verified every one of those claims by symbol and all hold, so nothing load-bearing is false — but per `DECISIONS-review-severity-bars.md` DEC-DOC-01 a raw `file:line` anchor that is not runtime-measured evidence is a `Process`/Low finding, and this is precisely the failure mode it predicts. When PLAN transcribes these rows, cite the symbol (`dispatchAndVerify`, `defaultReadFile`, `ADVISORY_DEFAULTS`) and keep the line as a hint only. | §Architecture P-2a `:48`, P-7 `:55`, P-8 `:56`, P-10 `:58`; §T.6 `:985`, `:1001` |
+| F-05 | Low | Local | **Front-matter Cross-Reviews row stops at v6.** The header table lists `…-TSPEC-v1.md` through `…-TSPEC-v6.md`; the v7 pair (`CROSS-REVIEW-product-manager-TSPEC-v7.md`, `CROSS-REVIEW-test-engineer-TSPEC-v7.md`) exists on this branch and is not listed, and this v8 will not be either. Bookkeeping only — the round history the workflow reads is keyed by filename, not by this row. | Front matter, `:12` |
+
+DEFERRED: §T.2's BR-10 locus-1 row still folds two distinct set equalities into one cell — worth two rows when PLAN transcribes it (carried from v7).
+DEFERRED: §D.1's "four field domains" and §T.2's "three catalogues" still sit one line apart with no half-sentence explaining why the counts differ (carried from v7).
+DEFERRED: convert the `orchestrate-dev.js` positional anchors to symbol citations at PLAN-transcription time rather than re-pinning them here (F-04's non-frozen half).
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v7 and still unanswered in the bytes: does the `DIVERGENT-CORPUS` fixture's dispatch 5 produce BR-8 rows "present and empty" **and** `corpusDiverged: true` — i.e. do both the corpus-outcome branch and the divergence comparison run on a dispatch whose listing failed? §A.5's rule defines `corpusDiverged` over `{corpusOutcome, orderKeys}`, so it should hold; one explicit sentence would save the implementer the derivation. Non-gating. |
 
 ## Positive Observations
 
+- **The artifact held its ground through an upstream edit and a code move.** FSPEC re-ordered its
+  revision history and fixed an AC-6.2 heading string; `orchestrate-dev.js` gained ~145 lines. I
+  re-derived every claim whose ground shifted, by symbol, and the TSPEC's substantive assertions —
+  four authoring dispatch sites, the single `dispatchAndVerify` funnel, the `parseAdvisoryConfig`
+  precedent, the seam contracts, the two-loci BR-10 split — are all still true.
+- **The v7 corrections are stable, not re-litigated.** The per-dispatch oracle loci, the split
+  BR-10 completeness tests, and the `DIVERGENT-CORPUS` fixture's positive-conjunct shape are
+  unchanged; nothing drifted back toward a run-level oracle or a containment-shaped closure.
+- **The three open findings are all wording repairs.** None changes a fixture, a suite assignment,
+  or the 2+9+3+3+6+12 = 35 AT closure — which I re-added and which still balances.
+
 ## Recommendation
 
+**Approved with minor changes.** There is no delta on this document to fault: it is byte-identical
+to the v7-approved bytes. The freeze's two blockable categories are both empty — no revision
+introduced a defect, and no load-bearing claim is contradicted by the repository or by upstream at
+HEAD, including the claims whose ground moved under `523e2df9` (FSPEC bookkeeping) and `472e505c`
+(implementation), each re-verified above. F-01 and F-02 are the same non-gating wording repairs I
+recorded in v7; F-03/F-04/F-05 are Low. Zero High findings, so this document is converged from the
+testing lens and ready for PLAN.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 3}
