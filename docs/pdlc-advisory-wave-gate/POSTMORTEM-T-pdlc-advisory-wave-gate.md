@@ -18,6 +18,14 @@ RESOLVED: no
 
 ## 1. Phase
 
+Phase T authored and revised the TSPEC for the pdlc advisory wave gate; TSPEC converged at **v1.10** and was approved by both lenses in round 11 (`7f81a59d` PM approved-with-minor, `921128f1` TE approved). The halt did **not** occur on the TSPEC itself.
+
+TSPEC §1.3/§6 routed one decision downstream into the already-approved PLAN: commit `e3b9d5a3` had landed the test-side A6 seam-cardinality transcription ahead of Phase I, leaving the advisory suites red at HEAD, and TSPEC left "revert vs. keep-and-re-derive" to PLAN. That opened **erratum round 4** on `PLAN-pdlc-advisory-wave-gate.md`, taking it v1.3 → **v1.4** (`a189cf59` … `d912eea9`).
+
+Under the erratum protocol, a routed erratum closes only when its delta-confirmation round is approving from every lens that reviewed the host document. Round 6 was that confirmation round. Both lenses returned **Needs revision** (`8f16ec9f` PM, `dca04c99` TE), so the erratum did not close and Phase T halted with class `ERRATUM-PROTOCOL`.
+
+Scope note: the PLAN's routed items were all judged **discharged** by both reviewers. The non-approving verdicts rest on collateral defects the erratum edit either introduced or failed to absorb from the upstream that moved underneath it (REQ v1.8 → v1.9, TSPEC v1.6 → v1.10 while PLAN sat at v1.3).
+
 ## 2. Iterations
 
 ## 3. Reviewers
