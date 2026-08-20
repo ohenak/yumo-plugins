@@ -382,7 +382,17 @@ corpus. That is why the read cost, not the injected-byte cost, is the term flagg
 measurement (TSPEC `T-O-3`): the injection is bounded, the read is not.
 
 **Reversibility.** Hard, not because the code is hard to add but because a cache changes observable
-behaviour that oracles depend on. Adding one later means revisiting E-32 and AC-5.2 upstream first.
+behaviour that oracles depend on. The ground is **E-32 plus `D-O-6`'s call counts**, and precisely
+not AC-5.2: FSPEC `BR-15` compares the observed and expected footprints as **sets of paths**, "not as
+counts, so a document opened more than once neither adds a member nor changes the verdict", and a
+read memo removes repeat opens without removing a member — AT-33 stays green under an in-process
+memo, so the filesystem-footprint oracle cannot detect one. What a memo *does* break is FSPEC `E-32`
+("Each dispatch selects over the state **it** observed") and the per-dispatch call-count conjunct of
+`D-O-6`, which is exactly why that obligation carries a positive count assertion rather than only a
+behavioural case. Adding a cache later therefore means revisiting **E-32** upstream first, and
+retiring or restating `D-O-6`'s count conjunct — not amending AC-5.2, which would not have to move.
+(A cache *file* is a different matter: that one is caught by AC-5.2's no-new-artefact half, per the
+second rejected alternative above.)
 
 **Re-evaluation triggers.** *Mechanically detected* — FSPEC relaxes E-32 to a run-scoped observation
 (the per-dispatch call-count oracle of `D-O-6` reds). *Review-time judgement, with an observable
