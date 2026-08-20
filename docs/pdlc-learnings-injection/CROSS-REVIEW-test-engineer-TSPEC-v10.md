@@ -79,7 +79,7 @@ Two consequences for this section:
 
 The implementation anchors §A.2 cites (`orchestrate-dev.js:14551-14556`, `:7306`, `:7342-7358`,
 `:8978`) have not moved in this window — `472e505c` is still the last commit to touch that file —
-so the v8 by-symbol re-verification of P-2a/P-3/P-11/P-12 stands. F-05 (positional anchors, DEC-DOC-01)
+so the v8 by-symbol re-verification of P-2a/P-3/P-11/P-12 stands. F-07 (positional anchors, DEC-DOC-01)
 carries forward unrepaired and unchanged in severity.
 
 ## Interfaces
@@ -92,7 +92,7 @@ sentences are what break when upstream re-words. Re-read against FSPEC v0.12:
   compression is still one-for-one. ERR-4 remains correctly marked CLOSED.
 - **§I.3 — `present` is report shape, not a gate.** Upstream unmoved; the v8 finding (no
   behavioural oracle, only a shape assertion, with no named consumer) survives untouched as an
-  *inherited* Medium. This cascade neither fixed nor worsened it. F-03 below.
+  *inherited* Medium. This cascade neither fixed nor worsened it. F-05 below.
 - **Seam signatures (`_readFile` / `_listFiles` / `_git`, and the `_recordDocType` probe).** FSPEC
   constrains outcomes, not seam design; nothing in this window contradicts TSPEC's choices. The
   `_recordDocType` probe seam in particular becomes *more* clearly justified at v0.12: BR-1 now
@@ -151,7 +151,7 @@ That is exactly the repair TSPEC's ERR-3 asked for, and it lands the way TSPEC a
 
 1. **ERR-3 is now stale in its own quotation.** It still quotes the v0.10 definition verbatim and
    concludes "As written, AT-33's set equality cannot hold." Upstream no longer says it, and the
-   conclusion no longer applies. F-01 below (Low): close ERR-3 as resolved, citing v0.12, rather
+   conclusion no longer applies. F-03 below (Low): close ERR-3 as resolved, citing v0.12, rather
    than leaving a PLAN author to reconcile a contradiction that only exists in the older bytes.
 2. **The de-duplication clause is a load-bearing negative for §T.6, and TSPEC already covers it.**
    BR-15 now states positively that a document opened more than once does not change AT-33's
@@ -272,4 +272,38 @@ Carried, unchanged, still not gating:
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §T.6's AT-02 paragraph fixtures three run shapes; upstream AT-02 at v0.12 enumerates four, the new one being the authoring-classified dispatch with no C-1 target, carrying an explicit mutation obligation ("reverting BR-1's second conjunct reds this test"). The falsifying test does exist in the suite (§A.2's `learningsDispatchSet.test.js`, sampling `_recordDocType` on both arms of `injectHere`), so this is transcription drift, not a coverage hole — but a PLAN author transcribing §T.6 writes AT-02 without its mutation fixture. Add the fourth shape and name the file that owns the mutation check. | §T.6 "AT-02 — the dispatch-universe set equality" |
+| F-02 | Low | delta | nonlocal | §Open Questions ERR-7 and §A.2's routing clause quote BR-1's retired wording ("consumes the classification, it does not restate the membership") and state that BR-1 "as written forbids this conjunct" and "needs to state the two-conjunct rule". BR-1 at v0.12 states exactly that rule and names the second conjunct load-bearing. ERR-7 is resolved upstream; leaving it open tells a test author AT-02 has two contradictory readings when it now has one — TSPEC's. Close ERR-7 citing FSPEC v0.12; drop §A.2's "routed as ERR-7" clause. | §Open Questions ERR-7; §A.2 property 1 |
+| F-03 | Low | delta | nonlocal | §Open Questions ERR-3 quotes BR-15's v0.10 expected set ("the corpus-root enumeration, plus one open attempt for every corpus document the report names") and concludes "As written, AT-33's set equality cannot hold." Upstream replaced that definition: the expected set is the reported corpus documents compared as sets of paths, and the enumeration explicitly contributes no member. The defect ERR-3 reports is fixed; close it citing v0.12. | §Open Questions ERR-3 |
+| F-04 | Low | delta | local | §A.2 justifies the `docType` conjunct with "AC-4.3's byte-identity **for non-authoring dispatches** fails on every full pipeline run". BR-11/AT-03/AT-29 retired that quantifier this round in favour of "every dispatch prompt **outside BR-1's rule** — whether it fails the authoring conjunct or the C-1 target-document conjunct". The sentence stays true but names the narrower set, and it is the sentence a PLAN author transcribes into the byte-identity fixture's quantifier. | §A.2 property 1 |
+| F-05 | Medium | inherited | nonlocal | `present` is carried in the returned config shape with no named consumer and no behavioural oracle — §T.5 asserts only its shape, and §I.3 states the gate is `config.enabled` alone. Either name the real consumer (the `NTC-MALFORMED`-vs-absent-section reporting split) and give it a behavioural assertion, or state that `present` survives as parser-diagnostic state tested only for shape. Untouched by this window. | §I.3, §T.5 |
+| F-06 | Low | inherited | nonlocal | TSPEC's front-matter Upstream row cites FSPEC "(v0.9)" and five body passages say "FSPEC v0.9"; HEAD is v0.12. Every cited proposition is still present upstream verbatim, so nothing is falsified — but the header names a version that no longer exists, now two erratum rounds stale. Repair at the next TSPEC edit. | TSPEC front matter; §D.2, §I.3, §T.5, §Open Questions |
+| F-07 | Low | inherited | nonlocal | Positional `file:line` anchors into `orchestrate-dev.js` (§A.2 P-2a/P-2b, P-7/P-8/P-10, §T.6, §Open Questions) are raw anchors, not symbol citations; per DEC-DOC-01 a non-runtime-measured raw anchor is a Process/Low finding. The file has not moved since `472e505c`, so the claims still resolve. Convert to symbol citations at PLAN-transcription time. | §Architecture P-2a/P-7/P-8/P-10; §T.6 |
+| F-08 | Low | inherited | nonlocal | §D.1's fourth field domain is a membership test over `runMirror.corpusOutcome`, while §A.5 and §T.6 forbid asserting on the mirror; followed literally the two instructions conflict. Upstream's "the mirror is additive, is not the oracle" wording is unchanged, so this is a PLAN-time wording repair, not a cascade defect: guard the domain test to the per-dispatch locus, or drop the fourth domain. | §D.1, §A.5 |
+| F-09 | Low | inherited | nonlocal | No closure test over `Object.keys(ruleInputs)`' own key set; the two per-locus completeness tests upstream requires are satisfied without it, so nothing reds if a future sibling of `thresholds` lands unrecorded. Additive to BR-10's two tests, not a substitute. | §T.2, §D.2 |
+
+FINDING: Medium | delta | local | §T.6 AT-02 | §T.6 fixtures three AT-02 run shapes; upstream AT-02 at v0.12 enumerates four, the fourth being the authoring-classified dispatch with no C-1 target that carries the mutation obligation "reverting BR-1's second conjunct reds this test" — transcribe it and name the file owning the mutation check
+FINDING: Low | delta | nonlocal | §Open Questions ERR-7; §A.2 | ERR-7 quotes BR-1's retired wording and asks upstream for the two-conjunct rule BR-1 now states at v0.12; close ERR-7 and drop §A.2's "routed as ERR-7" clause
+FINDING: Low | delta | nonlocal | §Open Questions ERR-3 | ERR-3 quotes BR-15's v0.10 count-shaped expected set, which v0.12 replaced with a set-of-paths definition that explicitly excludes the enumeration; the reported defect is fixed, close ERR-3
+FINDING: Low | delta | local | §A.2 property 1 | §A.2 says byte-identity fails "for non-authoring dispatches"; BR-11/AT-03/AT-29 now quantify over dispatches "outside BR-1's rule", including the authoring-classified non-C-1 target
+FINDING: Medium | inherited | nonlocal | §I.3, §T.5 | `present` is carried in the returned shape with no named consumer and no behavioural oracle — §T.5 asserts shape only while §I.3 states the gate is `config.enabled` alone
+FINDING: Low | inherited | nonlocal | TSPEC front matter; §D.2, §I.3, §T.5 | TSPEC cites FSPEC "(v0.9)" in its Upstream row and five body passages; HEAD is v0.12, and the cited propositions are still verbatim-present
+FINDING: Low | inherited | nonlocal | §Architecture P-2a/P-7/P-8/P-10; §T.6 | raw `file:line` anchors into `orchestrate-dev.js` rather than symbol citations (DEC-DOC-01); anchors still resolve at `472e505c`
+FINDING: Low | inherited | nonlocal | §D.1, §A.5 | §D.1's fourth field domain asserts membership on `runMirror.corpusOutcome` while §A.5/§T.6 forbid asserting on the mirror — guard it to the per-dispatch locus or drop it
+FINDING: Low | inherited | nonlocal | §T.2, §D.2 | no closure test over `Object.keys(ruleInputs)`' own key set, so a future sibling of `thresholds` can land unrecorded without reddening anything
+
+## Recommendation
+
+**Approved with minor changes.** TSPEC is still a faithful compression of FSPEC at v0.12 in every
+load-bearing respect — the two-conjunct rule it carried ahead of upstream is now upstream's own,
+its loci, catalogues, closure count and oracle shapes are unmoved, and no assertion it specifies is
+falsified by the window. The residue is documentary and one transcription: two Open-Questions items
+now quoting sentences upstream has repaired, one retired quantifier, and AT-02's fixture list
+missing the shape upstream added. No High finding, so the cascade confirmation does not halt.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 7}
