@@ -50,6 +50,30 @@ Findings tagged `Cross-Feature` (20 occurrences across the set), plus `Local`-ta
 
 ## 4. Process Learnings
 
+44 findings carried `Scope: Process`. Four phases exceeded three iterations (REQ 8, FSPEC 7, TSPEC 12, DECISIONS 11, PLAN 12, PROPERTIES 6). The durable signal:
+
+**1. The dispatcher supplied the wrong completeness-gate heading set for seven consecutive rounds — the single highest-confidence process defect in this feature.** Cross-review invocations were checked against the PLAN's own top-level headings (`## Overview` / `## Batches` / `## Dependencies` / `## Verification`) instead of the role-defined cross-review headings (`## Findings` / `## Questions` / `## Positive Observations` / `## Recommendation` / `## Verdict`). PM PLAN F-07 flagged it at round 6 as "third consecutive round" and it recurs verbatim through round 12 ("seventh consecutive round"). POSTMORTEM-T §3 records that it "has now survived three harvests" — meaning prior harvests logged it and it was never promoted. This is a wiring defect in the dispatcher, not an authoring defect, and reviewers correctly refused to absorb it.
+
+**2. A tier-1 approval anchor survived a rebase that reverted the approved bytes.** Recorded as `Process`: "the approval record no longer describes the bytes at HEAD", and separately "a tier-1 approval anchor survived a rebase that reverted the approved bytes". An approval hash is only meaningful if something invalidates it when the document moves. Related and independently observed: **TSPEC's bytes changed under an unchanged `v1.10` version label, and DECISIONS cited that label five times as a grounding anchor** — flagged at v10 and carried unresolved to v11. A version label used as a grounding anchor must be immutable once cited.
+
+**3. Documents that measure a moving working tree cannot converge.** This is the root cause of both halts. DECISIONS carried a repository measurement (the sizing block) — decisions are stable after approval, measurements of a moving HEAD are not. Five rounds of correct-but-superseded integers is the measured cost. Route repository sizing to the artifact that *consumes* it (PLAN), and keep the **recipe** in the durable record, not the **total**.
+
+**4. When a round re-measures one population, it must re-measure every population its edit puts in the same sentence.** PM DECISIONS F-05, at its fourth consecutive recurrence, was explicitly nominated as a promotion candidate. The mechanically checkable form: *before committing an edit to any enumeration — if this sentence names two counts, re-run both.* This replaces vaguer "re-derive" guidance that an author could not check at write time.
+
+**5. A run beats a reading, and the escalation should happen in round 1.** `T-08-8` survived four rounds of careful reading by both lenses and fell to the first `npm test`. Where a claim is a count of test sites, the *authoring* dispatch should run the suite before the first review, not in response to the fourth finding. Four separate `Process` findings record the same shape ("third/fourth consecutive round in which this paragraph shipped a repository claim that grep or a test run falsifies").
+
+**6. Partial re-grounding is more dangerous than none.** The PLAN erratum's v1.4 changelog *announced* re-grounding on TSPEC v1.10 while performing only half of it, which suppressed the reviewer's prior that the rest of the document was stale. An erratum dispatch must diff the upstream changelog across the **whole interval** and enumerate withdrawals and re-anchorings before touching the raised list.
+
+**7. Landing test-side transcriptions ahead of the phase that plans them poisons every downstream count.** `e3b9d5a3` — titled "docs(cross-review): se REQ v7 — High findings" — carried A6 test-side implementation edits plus ~168k lines of `.pdlc-backups`/bundle output. The convenience was local; the cost landed on every artifact that had to describe HEAD until Phase I closed it, and on the retirement sweep gate. **A commit's title must describe its contents**; a docs-titled commit carrying implementation is invisible to every reviewer scanning history.
+
+**8. "Same section, N consecutive rounds, one High each" is a cheaper stall detector than the rounds it saves.** Rounds 4–8 of Phase D each closed one High and opened exactly one new one in the same paragraph — a *converging finding volume with a pinned single High* is the review cap's real trigger signal. POSTMORTEM-D notes this was the second phase in this feature to exhibit it.
+
+**9. Reviewers under-tagged, and the routing gap is itself a finding.** Several repo-wide defects arrived tagged `Local` (DoD findings 1 and 4 most clearly) and were re-routed to §2 here under the under-tagging check. Only 20 findings carried `Cross-Feature` against 44 `Process`, which understates the true cross-feature surface of a change touching a shipped example config, a retirement sweep baseline, and a runbook.
+
+**10. Remediation can regress inside its own remediation window.** DoD v1 finding 7 was fixed by `455644ec` and falsified by the **very next commit** `c5ce8d56`, which was itself the remediation for finding 1. Two fixes in one batch contradicted each other and it took a second DoD round to catch. Where a batch of remediations touches a shared fact, the fact must be re-measured after the **last** commit in the batch, not after each one.
+
+**11. What worked, and should be kept.** DoD v3 raised the evidence bar past prose-matches-tip to **mutation verification** — deleting `.gitignore:41` was shown to red the suite, proving the newly written sentence was falsifiable rather than decorative. The v2+ delta contract (unchanged code verified in v1 is not re-scanned) kept round 3 to a single documentation file. Both are cheap and should be standard.
+
 ## 5. Open Items for Consolidation
 
 ## 6. Approval Record
