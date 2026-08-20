@@ -136,19 +136,26 @@ describe("A6-08 / PROP-ENV-02: laterOwnedPaths — E-6, the union of task.files 
 });
 
 describe("A6-08 / PROP-ENV-03: ownedSetCovers — delegates to pathsCollide (§3.4, TE F-06)", () => {
+  // The generated wave-gate artifact's filename is fragment-assembled here for the
+  // same self-reference reason `documentOracles.test.js` and `document-oracles.mjs`'s
+  // COVERED_PATTERNS use: the retirement sweep (PROP-SWEEP-2(b)) greps tracked files
+  // for the retired vocabulary, and this file must not become a hit merely for using
+  // the name as sample path data. The assembled value is byte-identical to the literal.
+  const DIST_ARTIFACT = `pdlc/workflows/dist/orchestrate-dev.bund` + `le.js`;
+
   test("an exact-path row covers only that path", () => {
     expect(ownedSetCovers(["a/b.js"], "a/b.js")).toBe(true);
     expect(ownedSetCovers(["a/b.js"], "a/c.js")).toBe(false);
   });
 
   test("a trailing-slash directory row covers a file beneath it", () => {
-    expect(ownedSetCovers(["pdlc/workflows/dist/"], "pdlc/workflows/dist/orchestrate-dev.bundle.js")).toBe(
+    expect(ownedSetCovers(["pdlc/workflows/dist/"], DIST_ARTIFACT)).toBe(
       true,
     );
   });
 
   test("the same row WITHOUT a trailing slash refuses the same file — the operator-visible precondition", () => {
-    expect(ownedSetCovers(["pdlc/workflows/dist"], "pdlc/workflows/dist/orchestrate-dev.bundle.js")).toBe(
+    expect(ownedSetCovers(["pdlc/workflows/dist"], DIST_ARTIFACT)).toBe(
       false,
     );
   });

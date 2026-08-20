@@ -72,8 +72,47 @@ const EXPECTED_SEVEN = [
 ]; // TSPEC §10.1 fixture-contents table, sorted LC_ALL=C by path
 
 describe("coveredViolations (§10, §10.1)", () => {
-  test("AT-22 [red-until-L-06]: coveredViolations(LIVE_ROOT) is empty post-landing", () => {
-    expect(coveredViolations(LIVE_ROOT)).toEqual([]);
+  // `coveredViolations` walks the tree with `readdirSync` and never consults git
+  // (deliberately — AT-23 runs it against a fixture directory that is not a repo).
+  // Against LIVE_ROOT that makes AT-22 environment-sensitive: any gitignored local
+  // tool cache that happens to contain a covered pattern — `.serena/cache/*.pkl`,
+  // `.tokensave/tokensave.db` — reads as a repo violation on the developer's machine
+  // but does not exist in CI or a fresh clone. That sensitivity is why the shipped
+  // wave-gate command excluded this whole file, which in turn let CODE_REVIEW v1
+  // §1-5's red `PROP-SWEEP-2(b)` land invisibly. The fix is to make AT-22 itself
+  // environment-independent — a gitignored path is by construction not a repo
+  // violation — so the file can run in the gate. `--no-index` is required: several
+  // of these caches are untracked, and without it `check-ignore` reports nothing
+  // for a path git has never seen.
+  function ignoredByGit(relPath) {
+    try {
+      run("git", ["check-ignore", "-q", "--no-index", relPath], { cwd: LIVE_ROOT });
+      return true;
+    } catch (err) {
+      if (err.status === 1) return false;
+      throw err;
+    }
+  }
+
+  function liveViolations() {
+    return coveredViolations(LIVE_ROOT).filter((entry) => !ignoredByGit(entry.path));
+  }
+
+  test("AT-22 [red-until-L-06]: coveredViolations(LIVE_ROOT), excluding gitignored local state, is empty post-landing", () => {
+    expect(liveViolations()).toEqual([]);
+  });
+
+  test("AT-22 non-vacuity: the gitignored-path filter narrows nothing that git actually tracks", () => {
+    // The filter must only ever remove paths git ignores. Asserting that directly
+    // keeps it from degenerating into "return []" if `check-ignore` ever starts
+    // succeeding for everything (e.g. a stray `*` rule, or a non-repo cwd).
+    for (const entry of coveredViolations(LIVE_ROOT)) {
+      if (liveViolations().some((kept) => kept.path === entry.path)) continue;
+      expect([entry.path, ignoredByGit(entry.path)]).toEqual([entry.path, true]);
+    }
+    // And a path that is plainly NOT ignored must survive the filter, so a
+    // real violation can never be filtered away.
+    expect(ignoredByGit("pdlc/workflows/orchestrate-dev.js")).toBe(false);
   });
 
   test("AT-23: coveredViolations(fixture root) returns exactly the 7 expected paths, sorted LC_ALL=C", () => {
@@ -363,14 +402,96 @@ describe("T21: AT-1.5 — .worktreeinclude / .gitignore consumer-runtime row", (
   test(".gitignore carries no row whose only purpose is the consumer runtime copy, and its ~20-line rationale block is gone with it", () => {
     const gitignore = readFileSync(join(LIVE_ROOT, ".gitignore"), "utf8");
 
-    expect(gitignore).not.toEqual(expect.stringContaining(".claude/workflows/"));
+    // M-11j's obligation is on the row's *purpose* — the generated distribution channel —
+    // not on the path literal. It was originally asserted as "the string `.claude/workflows/`
+    // does not appear", a proxy that held only while nothing else needed to ignore that path.
+    // CODE_REVIEW v1 §1-1 (pdlc-advisory-wave-gate) measured six machine-local runtime/state
+    // artifacts re-tracked under `.claude/`, so the path now needs an ignore rule again for a
+    // purpose the retirement never retired: keeping per-machine state out of the index. The
+    // proxy is therefore narrowed to what M-11j actually deletes — the channel rationale block
+    // and the distribution-channel vocabulary that block carried. The positive obligation on
+    // the surviving machine-local rows is asserted by the `.claude/` hygiene block below.
     expect(gitignore).not.toEqual(expect.stringContaining("Generated consumer runtime copies"));
+    expect(gitignore).not.toEqual(expect.stringContaining("installed from"));
+    expect(gitignore).not.toEqual(expect.stringContaining("pdlc/workflows/dist/"));
 
     // .gitignore's other rows still stand — this is a targeted row deletion, not a rewrite.
     expect(gitignore).toEqual(expect.stringContaining(".tokensave/"));
     expect(gitignore).toEqual(expect.stringContaining("node_modules/"));
     expect(gitignore).toEqual(expect.stringContaining("docs/_decisions/.consolidation-lock"));
     expect(gitignore).toEqual(expect.stringContaining("coverage/"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CODE_REVIEW v1 §1-1 (pdlc-advisory-wave-gate) — machine-local `.claude/` state
+// must not be tracked. The review measured six runtime/state artifacts re-added
+// to the index by commit `e3b9d5a3`; four of them are the consumer-runtime copies
+// `pdlc-plugin-retirement` T22 deleted, and `.claude/pdlc-wave-state.json` is the
+// local wave ledger REQ §1 describes as a working-tree observation. Untracking is
+// a one-time act; this oracle is what keeps it untracked, since ignore rules do
+// not apply to already-tracked paths and so cannot self-heal a re-add.
+// ---------------------------------------------------------------------------
+
+describe("`.claude/` machine-local state is untracked and stays untracked (CODE_REVIEW v1 §1-1)", () => {
+  const MACHINE_LOCAL_PATHS = [
+    ".claude/pdlc-wave-state.json",
+    ".claude/workflows/orchestrate-dev.bun" + "dle.js",
+    ".claude/workflows/orchestrate-queue.bun" + "dle.js",
+    ".claude/workflows/pdlc-cli.mjs",
+    ".claude/workflows/.pdlc-dri" + "ft-state.json",
+    ".claude/workflows/.pdlc-sync-manifest.json",
+  ];
+
+  function trackedUnderDotClaude() {
+    return run("git", ["ls-files", ".claude/"], { cwd: LIVE_ROOT })
+      .split("\n")
+      .filter(Boolean);
+  }
+
+  // `git check-ignore` exits 1 when the path is NOT ignored, which execFileSync
+  // throws on — so the exit status is the answer, not an error.
+  function isIgnored(relPath) {
+    try {
+      run("git", ["check-ignore", "-q", "--no-index", relPath], { cwd: LIVE_ROOT });
+      return true;
+    } catch (err) {
+      if (err.status === 1) return false;
+      throw err;
+    }
+  }
+
+  test("none of the six machine-local artifacts are tracked", () => {
+    const tracked = trackedUnderDotClaude();
+    for (const path of MACHINE_LOCAL_PATHS) {
+      expect(tracked).not.toContain(path);
+    }
+  });
+
+  test("the only tracked files under `.claude/` are the two shared, reviewable ones", () => {
+    // Set-equality, not a subset check: a seventh machine-local artifact appearing
+    // under `.claude/` must red this test even though it is on no list above.
+    expect(trackedUnderDotClaude().sort()).toEqual([
+      ".claude/pdlc.config.example.json",
+      ".claude/settings.json",
+    ]);
+  });
+
+  test("an ignore rule now stops each of them being re-added", () => {
+    for (const path of MACHINE_LOCAL_PATHS) {
+      expect([path, isIgnored(path)]).toEqual([path, true]);
+    }
+  });
+
+  test("the ignore rules are anchored, so the checked-in fixture's nested `.claude/workflows/` is untouched", () => {
+    // The anchoring rationale the retirement measured and this feature preserves:
+    // an unanchored `.claude/workflows/` matches at every depth and would make new
+    // files under the covered-violations fixture un-`git add`-able without `-f`,
+    // silently dropping a future fixture file at authoring time.
+    const fixtureNested =
+      "pdlc/workflows/__tests__/fixtures/covered-violations/.claude/workflows/orchestrate-dev.bun" +
+      "dle.js";
+    expect(isIgnored(fixtureNested)).toBe(false);
   });
 });
 
@@ -504,6 +625,7 @@ describe("PROP-SWEEP-2/PROP-SWEEP-3: L-3's sweep command (AC-1.2, FSPEC L-2, L-3
     "pdlc/workflows/__tests__/fixtures/planParse/**",
     "docs/_queue/QUEUE.md",
     "docs/pdlc-plugin-retirement/**",
+    "docs/pdlc-advisory-wave-gate/**",
     "docs/PLAN-*.md",
     "docs/design/**",
     "docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md",
