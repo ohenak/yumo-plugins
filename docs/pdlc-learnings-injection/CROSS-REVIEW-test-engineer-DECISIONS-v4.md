@@ -50,6 +50,58 @@ in the move.** One item in each category is what this round records.
 
 ## Options Considered
 
+Three readings of the delta were live.
+
+**(a) The delta invalidates a decision — non-approving, `delta/local` High.** This is the reading a
+`BR-1` rewrite would normally earn: `BR-1` is the rule `DEC-LI-03` attaches to, and `DEC-LI-03` is
+the entry whose whole content is *where* and *on what condition* the injector fires. Had v0.11 moved
+`BR-1` the other way — pinning the block rule to the authoring classification **alone** — then
+`DEC-LI-03`'s gate would inject strictly less than the behaviour rule requires, `D-O-8`'s
+producer-set guard would be pinning the wrong set, and every AT that asserts set equality over "the
+subset carrying a block" would red against a correct implementation. That is the halting shape, and
+it is worth naming precisely because it is what I checked for first.
+
+It did not happen. `BR-1` at HEAD is `dispatchKind === "authoring" && docType ∈ C-1's six` stated in
+prose — the same conjunction, in the same order, with the same load-bearing status ("the second
+conjunct is load-bearing, not defensive"), and it names the same measured witness `DEC-LI-03` used
+to justify the narrowing (Phase CR's optimizer round at HEAD). `BR-1`'s **Excluded** list survives
+intact, so `DEC-LI-03`'s fourth alternative ("gate on `docType` alone … violates `BR-1`'s exclusion
+list") still cites a list that exists and still says what it is quoted as saying. Reading (a) has no
+support in the bytes.
+
+**(b) Nothing to say — approve silently.** Also wrong, for two reasons of different weight.
+
+The lighter one is citation currency. `DEC-LI-03`'s re-evaluation trigger cites FSPEC `A-2` by
+paraphrase — "*the pipeline introduces a dispatch kind that is authoring in spirit but not so
+classified (FSPEC `A-2`'s stated default is that it is excluded)*". `A-2` at v0.10 said exactly
+that. `A-2` at HEAD was rewritten and now quantifies over a dispatch that "satisfies **neither**
+conjunct in the pipeline's own terms yet is authoring in spirit". The default `DEC-LI-03` leans on
+still holds — `BR-1` requires both conjuncts, so failing either excludes — but it no longer holds
+*by the sentence DECISIONS attributes to `A-2`*: a dispatch that is authoring in spirit, not
+authoring-classified, yet carrying a C-1 target document satisfies one conjunct and is therefore
+outside `A-2`'s HEAD wording while still being excluded by `BR-1`. The trigger's mechanism is
+undamaged; its quoted authority narrowed underneath it.
+
+The heavier one is an oracle-power question, and it is the finding I would not want a PROPERTIES
+author to inherit silently. `DEC-LI-06` (no cache, no run-scoped memo) states its reversibility as
+**Hard** and grounds that hardness upstream: "*a cache changes observable behaviour that oracles
+depend on. Adding one later means revisiting `E-32` and `AC-5.2` upstream first*", with
+"`AC-5.2` (positive-membership filesystem oracle)" listed among the constraints that forced the
+shape. `BR-15` is `AC-5.2`'s instrument. At v0.10 its expected set was "*the corpus-root enumeration,
+plus **one open attempt for every** corpus document the report names*" — attempt-shaped, and
+therefore an instrument a memo could move. At HEAD both sides are "*compared as **sets of paths**,
+not as counts, so a document opened more than once neither adds a member nor changes the verdict*",
+and the enumeration "contributes **no** member". A per-dispatch read memo now leaves `BR-15`'s
+verdict bit-for-bit identical: same paths, fewer opens. `AC-5.2` has stopped being an instrument a
+cache must break.
+
+**(c) Faithful-but-drifted — approve with tagged non-gating findings.** This is what the bytes
+support. No decision is invalidated; no obligation in `D-O-1`…`D-O-9` becomes unfalsifiable; the
+compression still holds everywhere it makes a behavioural claim. What drifted is one quoted
+authority (`A-2`) and one stated reversibility ground (`AC-5.2`), plus the three items v3 already
+recorded and the author has not yet landed. All are `Medium`/`Low`, all route to the erratum that
+lands alongside whatever else this phase is carrying, and none blocks PROPERTIES authoring.
+
 ## Decision
 
 ## Consequences
