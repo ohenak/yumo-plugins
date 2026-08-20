@@ -541,3 +541,37 @@ document. Fail-open (G-4) plus a catalogued reason row is the whole error strate
 would make the per-dispatch observation (E-32) depend on timing, which is what determinism forbids.
 
 ## Consequences
+
+**What these decisions make cheap.**
+
+- Widening (REQ O-6), retuning (§4.1), and moving the block's position are each one-expression edits,
+  because DEC-LI-03 and DEC-LI-05 concentrated the variability at single points.
+- Every FSPEC rule is exercisable without a filesystem or a model (DEC-LI-02), so the unit and
+  property suites are fast and the totality property C-7 asks for is writable as stated.
+- Byte-identity (AC-4.1, AC-5.1a) holds by construction rather than by vigilance (DEC-LI-05).
+
+**What they make expensive, stated so nobody discovers it later.**
+
+- **PLAN is nearly serial.** Every production task in this feature writes `orchestrate-dev.js`
+  (DEC-LI-01), and the batch rule is single-writer-per-batch for both source and test files. PLAN
+  owes an explicit per-phase **file-ownership manifest** making that visible, not a prose note, and
+  should expect a long batch chain rather than wide waves (TSPEC `T-O-1`).
+- **The read cost is unbounded where the injection is bounded** (DEC-LI-06). REQ O-1's live
+  measurement must report bytes read per authoring dispatch and probe-vs-full-read counts on the
+  Claude Code channel, alongside realised prompt sizes (`T-O-3`); that term, not the injected bytes,
+  is the one most likely to move the thresholds.
+- **The baseline is a one-way artefact** (DEC-LI-09). Capture must land **before** the first
+  production edit, as an ordering obligation with a gate moment that binds — PLAN owes this as a
+  `P2-00`-style pre-flight, not a step someone remembers (`T-O-2`).
+- **Two `.gitignore`/cleanup obligations are repo-wide in blast radius** (DEC-LI-09), each with its
+  own named oracle, because the capture's happy path is green without either.
+
+**Obligations this document hands downstream.**
+
+| # | Obligation | Owner |
+|---|---|---|
+| D-O-1 | Per-phase file-ownership manifest and a serialised batch chain over `orchestrate-dev.js` | PLAN |
+| D-O-2 | Baseline capture ordered before the first production edit, as a binding gate | PLAN |
+| D-O-3 | Properties over `orderCorpus` (permutation + strict weak ordering), `selectLearnings` (totality; every path appears exactly once across `selected ∪ rejected`), and `extractInjectableMaterial` (byte bound, whole-character prefix, `bounded` exactly when cut) | PROPERTIES |
+| D-O-4 | Read-cost reporting alongside prompt-size reporting | REQ O-1 / operator |
+| D-O-5 | The `present` field is reported but never gated on (DEC-LI-07) — IMPL must not reintroduce it as a condition | IMPL |
