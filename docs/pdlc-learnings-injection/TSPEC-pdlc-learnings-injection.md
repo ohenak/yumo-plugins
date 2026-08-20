@@ -1212,6 +1212,26 @@ what BR-6 selected, AT-12 asserts the character-safe cut of §D.5 — so they si
 suite, and `learningsSelect.test.js` covers only the eligibility, ordering and count rules that
 `selectLearnings` decides.
 
+**AT-11's oracle reads the rendered block, not the extractor's report (TE v13 F-01).** FSPEC's
+AT-11 states its final clause over "the set of section names appearing **in its block material**",
+and it has three conjuncts, all of which `learningsBlock.test.js` owns in the one test:
+
+| Conjunct (FSPEC AT-11) | Oracle, stated so no implementer has to choose |
+|---|---|
+| The set of section names appearing in the block material **equals** BR-6's five injected names, in priority order | Scan the rendered block returned by `renderLearningsBlock` for lines matching §D.3's `SECTION_HEADING_RE`, map each through §D.3's matching rule to a canonical name, and assert the resulting list equals `BR6_SECTION_NAMES` — as an **ordered** list, since "in priority order" is part of the claim |
+| The Approval Record's distinctive fixture text is **absent** | The fixture's `## 6. Approval Record` section carries a marker string that occurs nowhere else in the corpus (`buildLearningsDocument`'s `sections`/`extraLines` inputs make this constructible); assert `block.includes(marker) === false`, paired per DC-03 with the positive below on the same instrument so an all-empty block cannot pass the absence half |
+| All five injected sections' **texts** are present | For each of the five, assert the block contains that section's body marker — not only its heading — so a matcher that took a heading and dropped its body reds |
+
+`sections[]` is asserted **in addition**, as a supporting equality, never instead: it is the
+producer's own report, and per DC-14 an oracle does not take its expected value from the code under
+test. The two agree only because §D.3 defines `sections[]` over the assembled material rather than
+over the match, which is what makes the supporting assertion worth writing at all. The mutations
+that must red this test: a renderer that emits a taken section's heading without its body; a matcher
+widened to substring, which admits `Approval Record`-adjacent headings; and a renderer that emits
+whole documents instead of selected material — the last two red on the absence conjunct alone,
+which is why it cannot be dropped as redundant with §D.3's allow-list argument. That argument is a
+design reason no exclusion branch is needed; it is not a test.
+
 ### T.6 The L3 claims that need care
 
 **AT-02 — the dispatch-universe set equality.** The expected set comes from the fixture's own phase
