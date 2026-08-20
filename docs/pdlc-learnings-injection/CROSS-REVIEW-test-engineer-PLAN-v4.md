@@ -45,6 +45,45 @@ rule at two of the four sites is stated.
 
 ## Batches
 
+**Three task rows changed: LI-01, LI-10, LI-23.** No row was added or removed (still 23), and no
+`Test File`, `Source File`, `Batch` or `Deps` cell moved — I diffed the row tails to confirm that
+rather than assuming it (`LI-10 … | 5 | LI-02, LI-06 | ⬚ |`, `LI-23 … | 5 | LI-02, LI-06 | ⬚ |`,
+`LI-01 … | 1 | — | ⬚ |`, all unchanged).
+
+| Row | Claim checked | Result |
+|---|---|---|
+| LI-10 | The healthy `corpusOutcome === null` clause on `DIVERGENT-CORPUS` dispatches 1, 2 and 4 | ✅ — and the fixture supports it exactly as the row says: the row's own description of `DIVERGENT-CORPUS` is "five authoring dispatches; the scripted `_git` reply gains a path after dispatch 2 and fails at dispatch 5", so dispatches 1, 2 and 4 are healthy and observable. No new fixture, no new task, no batch change — which is what I asked for |
+| LI-23 | The back-pointer to LI-10's clause | ✅ — "asserted by `learningsRecord.test.js`'s BR-9 per-dispatch rows over `DIVERGENT-CORPUS`'s **dispatches 1, 2 and 4** (LI-10 / LI-19), and LI-10's row carries that clause by name". The delegation is now legible from both ends, and the forbidden repair (`LEARNINGS_CORPUS_OUTCOMES ∪ {null}`) is still forbidden in the same sentence |
+| LI-01 | The re-keyed P-2a set equality, `(enclosing named function, prompt-source symbol)`, with the four sites enumerated | ✅ for injectivity at HEAD; ⚠️ for cardinality and for derivability at two of the four sites — F-01 and F-02 below |
+
+**The four enumerated key pairs are true of HEAD. I measured each.**
+
+| PLAN's pair | Site | Enclosing named function | Prompt slot at the site |
+|---|---|---|---|
+| `(erratumRound, erratumAuthorPrompt)` | `orchestrate-dev.js:12861` | `erratumRound` (`:12790`) | `basePrompt: erratumAuthorPrompt({…})` — the symbol is at the slot |
+| `(erratumRound, the land-proof-retry inline template)` | `:12955` | `erratumRound` (`:12790`) | `basePrompt:` a bare template literal (`ERRATUM ROUND … LAND-PROOF RETRY.`) — no symbol |
+| `(converge, creatorPrompt)` | `:13657` | `converge` (`:13628`) | `basePrompt: creatorPromptExtra ? \`${basePrompt}…\` : basePrompt` — `creatorPrompt` is bound one line earlier, `const basePrompt = creatorPrompt(phaseId, …)` at `:13656` |
+| `(reviewLoop, optimizerPrompt — positional argument 4 of runWrapped)` | `:7663` | `reviewLoop` (`:7266`) | `runWrapped(optimizer, optPrompt, doc, "authoring", …)` — `optimizerPrompt` is bound at `const optPrompt = optimizerPrompt(…)`, `:7660` |
+
+The key is injective over these four, so batch 1 is green on authoring as the row promises. The two
+rows in this table with a binding hop are why F-02 exists: at `converge` and `reviewLoop` the named
+"prompt-source symbol" is *not* readable from the dispatch expression — a static parse of the call
+site sees the identifiers `basePrompt` and `optPrompt`. Those are still distinct from each other and
+from the other two slots, so any parse an implementer writes stays injective; but the key the row
+names and the key the row's own mechanism can read are two different things, and the row does not
+say which one the test transcribes.
+
+**The exclusion side of the keying is unchanged and still exact.** The five non-call-site
+`"authoring"` occurrences — `:6511` (a doc comment), `:6515` and `:8886` (reads:
+`dispatchKind !== "authoring"`, `dispatchKind === "authoring"`), `:6517`/`:6535` (`mode:` literals)
+and `:8982` (a message string) — are all correctly outside the keyed set under either keying, and
+the row's "a literal grep for `dispatchKind: \"authoring\"` returns 3, not 4" is still true.
+
+**TDD order, `[Fake first]` and same-batch same-new-file are all unchanged.** No test file changed
+owner, no new file entered the manifest, and every implementation row still has a preceding red-test
+row naming the same suite. LI-10's added clause lands in a suite LI-10 already owns and LI-19
+already greens; LI-23's added clause is a cross-reference and asserts nothing new.
+
 ## Dependencies
 
 ## Verification
