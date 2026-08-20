@@ -271,6 +271,24 @@ owners in §T.5, and I re-checked that the 35-AT inventory is disjoint and compl
 
 ## Recommendation
 
+**Needs revision** — one High finding, tagged `inherited`.
+
+The two routed items are landed and landed well: §D.3 now specifies both of F-O-1's
+heading-recognition rules with the corpus measurement behind each, and the obligations table records
+the discharge honestly. Every v12 finding is closed. Nothing the delta touched broke anything I had
+previously approved.
+
+The High is not the erratum's doing and does not ask FSPEC to move. §I.3/§T.5 point AT-11's
+section-set equality at `extractInjectableMaterial`'s `sections[]` return, where FSPEC states that
+equality over the names appearing **in the block material**, plus two conjuncts the TSPEC carries
+nowhere (Approval Record's fixture text absent; all five injected sections' texts present). Making
+the canonical/literal split explicit this round is what made the substitution visible. What must
+change: restate AT-11's oracle in §I.3 and §T.5 over the rendered block material, keep `sections[]`
+as a supporting assertion, and name the test that owns the Approval-Record-absence and
+section-text-presence conjuncts. F-04 (the material assembly rule) should ride along, since AT-11's
+hand-computed literal byte count is exactly what it makes ambiguous.
+
+
 ## Delta-Confirmation Findings
 
 ## Verdict
