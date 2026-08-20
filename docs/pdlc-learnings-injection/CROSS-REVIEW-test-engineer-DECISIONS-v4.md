@@ -199,4 +199,21 @@ FINDING: Low | inherited | local | D-O obligations table / DEC-LI-10 | v3 F-03 r
 
 ## Recommendation
 
+**Approved with minor changes** — DECISIONS still holds as approved against FSPEC v0.12. The erratum
+moved `BR-1` **toward** this document (the two-conjunct rule `DEC-LI-03` already gated on is now the
+upstream rule), so no decision is invalidated, no `D-O` obligation loses falsifying power in a way
+that would halt, and the confirmation is approving.
+
+What should land in the erratum, none of it reopening a decision: F-01 (restate `DEC-LI-06`'s
+reversibility ground on `E-32` + `D-O-6`, and stop crediting `AC-5.2` with cache detection it no
+longer performs), F-02 (re-cite `BR-1`'s two-conjunct rule in `DEC-LI-03`'s trigger, keeping `A-2`
+as the widening-is-explicit default), and the three inherited items v3 recorded and this document's
+unchanged bytes still carry (F-03 row-4 staleness, F-04 version pins, F-05 unowned `BR-10` locus
+tests). F-01 and F-03 are the two worth landing **before** PROPERTIES transcribes oracles: one tells
+the author which instrument actually guards the no-cache decision, the other tells them which locus
+is assertable.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 2}
