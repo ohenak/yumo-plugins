@@ -31,7 +31,32 @@ vs per-dispatch locus. I re-read all three against FSPEC at HEAD rather than aga
 
 ## Options Considered
 
-_TBD_
+Three readings of the cascade were open to me, and they differ in what they do to the phase:
+
+**(a) The locus change reds DECISIONS — halt.** FSPEC v0.9 moved BR-9's corpus-level catalogue and
+BR-10's ordering keys to per-dispatch and forbade asserting on any run-level mirror. If DECISIONS had
+decided the record's locus, or had built an oracle obligation on a run-level assertion, the change
+would have invalidated a decision and this confirmation would be non-approving with a `delta/local`
+High. I checked every candidate and none of them assert at run level: `D-O-6` already names
+per-dispatch counts and `RSN-UNLISTABLE` **at dispatch 5**; DEC-LI-06 rejects the run-scoped memo
+*because* E-32 is per-dispatch; DEC-LI-10's three catalogue completeness tests are locus-agnostic and
+hand-transcribed either way. FSPEC v0.9 moved *toward* DECISIONS' premise, not away from it — the
+per-dispatch strengthening makes `D-O-6` more, not less, well-founded. Reading (a) is not supported.
+
+**(b) Nothing to say — approve silently.** Also wrong. The fourth row of §Decisions deliberately NOT
+taken describes AC-3.3's locus as an **open question routed elsewhere**, and asserts a standing shape
+("TSPEC keeps the run-level record (last-write-wins)… which locus the completeness test asserts over
+is a contract decision"). FSPEC v0.10 has since *made* that contract decision, at the layer DECISIONS
+said owned it. The row is now a description of a settled question presented as unsettled — stale, and
+stale in a direction that misroutes the PROPERTIES author who reads it next. A confirmation that
+emits zero findings here would hand that misroute forward under an approval.
+
+**(c) Faithful-but-stale — approve with tagged non-gating findings.** This is what the bytes support.
+No decision is invalidated; no obligation in `D-O-1`…`D-O-9` becomes unfalsifiable; the compression
+still holds everywhere it makes a behavioural claim. What has drifted is citation currency: one
+non-decision row that now understates upstream, one version-pinned FSPEC citation, and one newly
+split completeness-test locus that no `D-O` obligation owns. All three are recordable, none is
+gating, and each is a one-to-three-sentence edit that does not reopen a decision.
 
 ## Decision
 
