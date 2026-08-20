@@ -80,6 +80,44 @@ PLAN author or implementer reading the erratum log does not go looking for a liv
 
 ## Interfaces
 
+**Product-facing surfaces, re-checked against upstream at HEAD.** The surfaces this feature exposes
+to an operator are: the `learningsInjection` config section, the advisory block injected into an
+authoring dispatch, the run-report key, and the notice catalogue. The FSPEC delta touched exactly
+one of them — *which dispatches* receive the block — and moved it in TSPEC's direction.
+
+- **Which dispatches carry the block.** Upstream now: authoring-classified **and** C-1 target
+  document; every dispatch outside that rule byte-identical to the disabled-run baseline (BR-1,
+  BR-11, AT-03, AT-29). TSPEC: identical, via `injectHere` (§A.2). The user-visible boundary — a
+  code-review-phase optimizer round does **not** get prior-feature learnings pushed at it while it
+  is remediating shipped code — is now stated the same way on both sides of the seam. This was the
+  one place where a test written to FSPEC could have redded a correct implementation; that hazard is
+  gone.
+- **Config section.** Absent → enabled on §4.1 defaults (G-1, AC-1.1). Explicit `enabled: false` →
+  report key absent (AC-5.1a). Malformed section → fail open + `NTC-MALFORMED` (AC-5.1b).
+  Wrong-typed key → fail open + `NTC-KEYTYPE` (AC-5.1c). All four unchanged in FSPEC v0.12; TSPEC's
+  §I.2 table transcribes them unchanged.
+- **Advisory block.** Eligibility, ordering and bound are still BR-9/BR-10's; TSPEC still transcribes
+  rather than re-decides them (`TSPEC:326` says so explicitly, and that self-description remains
+  accurate).
+- **Run report.** `present`-shaped per dispatch, run-level mirror optional (§D.1/§D.2). Upstream
+  still permits an implementation that omits `runMirror` entirely; Q-01 carried, still not a finding.
+- **Notices.** `NTC-MALFORMED` / `NTC-KEYTYPE` ids unchanged in FSPEC's catalogue.
+
+**The read-footprint instrument (BR-15/AC-5.2) is now enumerable, and TSPEC already assumed it was.**
+Upstream's new wording — expected set is exactly one attempt per report-named document other than the
+`RSN-SELF` ones, compared as **sets of paths** not counts, enumeration contributing no member — is
+the instrument TSPEC's §D.6 and §T.5 were written against. TSPEC's ERR-3 exists solely to say the old
+wording made AT-33's set equality unsatisfiable. It is now satisfiable. ERR-3 should be marked
+**CLOSED** for the same reason ERR-7 should (F-02).
+
+**Bookkeeping the delta did not reach.** FSPEC's own header Cross-Reviews row was fixed by replacing
+the hand-enumeration with `v{N}` — "every round present on this branch, not hand-enumerated". TSPEC's
+equivalent row (`TSPEC:13`) still stops at v6 while v7…v9 exist on the branch, and its Upstream row
+(`TSPEC:11`) still pins FSPEC "(v0.9)". Both are inherited, non-behavioural and Low (F-04, F-05) —
+but FSPEC has now demonstrated the fix worth copying, which strengthens the `Process` signal I raised
+at v9: this row is derivable from the filesystem and should not be maintained by hand in any pdlc
+document.
+
 ## Data Model
 
 ## Test Strategy
