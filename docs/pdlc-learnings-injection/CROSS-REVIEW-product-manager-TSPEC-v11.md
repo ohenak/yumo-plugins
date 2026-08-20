@@ -126,7 +126,36 @@ correct against BR-9.
 
 ## Test Strategy
 
-_(pending)_
+Reviewed only for product fidelity — whether the delta's test statements still preserve the
+acceptance criteria they trace to. They do.
+
+- **AC-1.2 / AC-4.3 (BR-1, BR-11).** §A.2's byte-identity claim now reads "the dispatches **outside
+  BR-1's rule**" instead of "non-authoring dispatches". Against FSPEC AT-03 at HEAD — which
+  compares "the prompt of each dispatch **outside BR-1's rule** — including the authoring-classified
+  dispatch with no C-1 target" — the new phrasing is the faithful one and the old one was the
+  narrower, now-wrong one. This is a strengthening, not a loosening: the Phase CR optimizer round is
+  now inside the byte-identity obligation.
+- **AT-02's expected set.** With ERR-7 closed, the two contradictory readings the TSPEC previously
+  flagged collapse to one. FSPEC AT-02 asserts set equality over the whole dispatch universe against
+  "the subset BR-1's two-conjunct rule names", with the revert-reds fixture. §A.2's
+  `learningsDispatchSet.test.js` set-equality assertion over the `docType`s that actually reach the
+  injector is complementary, not contradictory — it guards NG-5's boundary against a seventh
+  authoring phase, which no upstream AT covers.
+- **AC-3.2 / AC-3.3 domain tests.** The non-`null` scoping keeps the happy path green without
+  weakening what the tests prove: `RSN-UNLISTABLE` and `RSN-EMPTY` remain the only admissible
+  non-`null` values, so a stray id still reds. No acceptance criterion loses coverage.
+- **AC-5.2 (BR-15 / AT-33).** ERR-3's closure is verified: FSPEC BR-15 at HEAD now states "The
+  corpus enumeration that lists candidate paths contributes **no** member: it opens no file under
+  `docs/`, so this instrument does not see it", and compares "both sides … as **sets of paths**, not
+  as counts". TSPEC's ERR-3 entry describes exactly that, and correctly notes nothing in the TSPEC
+  changes as a result.
+- **P-2a's count is oracle-relevant, and it survived de-anchoring.** "Four code sites" is the number
+  AT-02's fixture matrix and §A.5's multi-dispatch fixture are sized against. The symbol citations
+  still yield exactly four at HEAD, so the de-anchoring did not silently drop a site — the failure
+  mode a symbol-for-line swap could have introduced.
+
+No test-strategy claim in the delta narrows, broadens, or re-triggers an acceptance criterion. TE's
+lens owns the depth question; from the product lens, traceability is intact.
 
 ## Open Questions
 
