@@ -32,6 +32,23 @@ the "Properties with **no** owning task | 0" row still holds at 69; and the new 
 
 ## Disposition of v1 findings
 
+| v1 | Severity | Status | Evidence |
+|----|----------|--------|----------|
+| F-01 | High | **Resolved** | §F.3 now transcribes the five names from FSPEC BR-6's table verbatim, including `Rejected Proposals (with rationale)` and `Open Items for Consolidation`, states the numbered `## N. Title` form BR-6 calls out, and replaces the falsified sentence with the true measurement (9 of 9 for each of the five; 0 of 9 for the bare forms) — which I re-measured and confirm. PROP-BOUND-05's third name is corrected. The structural half is closed too: **PROP-BOUND-08** drives `extractInjectableMaterial` over a real corpus document read from the live `LEARNINGS_CORPUS_ARGV` output, asserts the returned section set equal to the intersection of BR-6's names with the headings that document carries, requires that set non-empty, and asserts the document's own heading lines present in the fixture text. That is exactly the arm a fixture-and-matcher pair drifting to a common wrong spelling cannot green. It is owned red LI-08 / green LI-17 and carries no AT id, so §T.5's 35-member partition and `LI-T-SUITEMAP`'s disjointness are untouched |
+| F-02 | High | **Resolved** | **PROP-META-06** now mechanises AC-6.1's first clause: over PROP-META-05's static directory walk, every enumerated `learnings*.test.js` file must be shown to construct a scripted double and none may reference a live transport symbol, asserted as set equality over the enumerated files with the walk's non-empty file set as positive control. §C.2's AC-6.1 row is rewritten clause by clause — clause 1 to PROP-META-06, clause 2 to PROP-ORDER-05's two-process comparison — and the misattributed "PROP-META-01 (no live-run comparison)" is gone. PROP-ORDER-05's text does assert what clause 2 requires (two compositions, two separate process invocations); only its trace line still omits the AC id (F-01 below, Low) |
+| F-03 | Medium | **Resolved** | §Overview reads **69 properties** and §C.4 reads 69 with its provenance ("66 at v1, plus PROP-DISPATCH-08, PROP-BOUND-08, PROP-META-06"). I counted 69 distinct bullets, no duplicates |
+| F-04 | Medium | **Mostly resolved** | All five padded rows are struck, the strike is declared in §C.2's preamble with the bidirectionality rule stated as a rule, and no AC lost its last property — I checked all 25. Three rows still violate the newly declared rule; refiled as F-01 below at Low, since the rule is now written down and the residue is trace-line bookkeeping, not a coverage hole |
+| F-05 | Medium | **Resolved** | PROP-RECORD-09 is now instrumented on the same static walk, with the enumerated file set asserted non-empty and set-equal to PROP-META-05's operand as its positive control, and re-homed to LI-14 green-on-authoring (§C.3 updated on both sides: LI-10/LI-19 no longer claim it). §O.1 gains rows for all three static-scan absences plus a paragraph naming their shared vacuity mode. §G.2.3 keeps the prose as commentary rather than as the only home |
+| F-06 | Low | **Resolved** | §C.4 now enumerates fourteen rows over fourteen files and says "fourteen", matching PLAN §File-ownership manifest's own arithmetic paragraph, and separately names the two existing files no task edits |
+| F-07 | Low | **Resolved** | The pyramid reads 16 / 3 / 16 = 35 with the suite-by-suite derivation and an explicit note that `learningsRecord.test.js` straddles. Matches TSPEC §T.5 |
+| F-08 | Low (Process) | **Resolved** | §F.4's four raw `file:line` anchors are gone, replaced by symbol names and, for the probe pattern, the verbatim import line. I found no new raw anchors anywhere in the delta — PROP-DISPATCH-08 states its HEAD measurement by symbol and by quoted comment text |
+
+Three of my four v1 questions are answered in the delta as well: Q-01's framing-byte conflict and
+Q-03's mutation-ledger ownership are both now stated as declared gaps in §G.2 (Q-03 explicitly names
+PROP-META-04's three-step proof as a one-time **human** procedure recorded in LI-06's completion
+note, which is the right place for a reader auditing residual risk), and Q-04's re-capture rule is
+now pointed at from §G.2.4 as well as §F.2. Q-02 remains open and is restated below.
+
 ## Findings
 
 ## Questions
