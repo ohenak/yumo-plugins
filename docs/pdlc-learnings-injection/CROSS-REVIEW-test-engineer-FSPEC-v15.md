@@ -287,7 +287,55 @@ non-blocking. This delta neither addresses nor disturbs it.
 
 ## Positive Observations
 
+- **The byte-accounting fix repaired two ATs I had already approved.** AT-11 and AT-12 demand a
+  literal expected byte count "never derived in the test", which under the old framing-inclusive
+  basis depended on the identification line and delimiters — strings this FSPEC explicitly defers to
+  TSPEC (F-O-2, F-O-3). Those oracles were unsatisfiable as written and I did not catch it; the
+  material-only basis makes them satisfiable. The erratum fixed a contradiction and a latent
+  test-authoring blocker with the same sentence.
+- **The zero decision reuses the existing mechanism instead of adding one.** A no-material document
+  was already dropped before the bounds so it could not consume a slot while injecting zero bytes;
+  the zero-bound document is that same document reached by another route, and it gets the same
+  treatment, the same reason id and the same run shape. Nothing new to test beyond one AT leg.
+- **AT-30's three zeros are separate legs with a discriminating conjunct on the new one.** A merged
+  fixture would have passed under an implementation honouring any one threshold; three "separately"
+  legs plus the per-leg `RSN-NO-MATERIAL` assertion means a dropped per-document zero check reds
+  exactly one leg. That is the difference between covering a case and being able to detect its loss.
+- **F-O-1 names the decision, not the topic.** "whether the numbered form, the bare title or a
+  prefix of it is matched" is checkable in the next round; "the section matcher is TSPEC's" would not
+  have been. Carrying the two bounds (bytes only, no model call) to both rules is what keeps the
+  delegated matcher deterministic and its tests non-flaky.
+- **The E-row range bookkeeping travelled with the new row.** "E-01 … E-36" was updated in the same
+  erratum, so the completeness claim stayed true. This is the line errata usually leave behind.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+All three routed items land, and the two carrying testing weight land in the strongest available
+form. The byte-accounting basis is now material-only, quoting REQ AC-2.3's "the material taken" and
+matching AC-2.4's "combined material" — it removes the TSPEC §D.5 contradiction on the FSPEC's side,
+eliminates a self-referential budget where the ABRIDGED annotation was charged to the budget whose
+outcome produced it, and makes AT-11's and AT-12's literal byte counts computable from a fixture for
+the first time. `maxBytesPerDocument: 0` is decided as `RSN-NO-MATERIAL` with no slot consumed and an
+enabled empty-selection run, recorded as E-36, and exercised as a separate AT-30 leg with a
+discriminating reason-id conjunct. F-O-1 now owns both heading-recognition rules and names the
+specific decision owed. Nothing I approved at v12/v13/v14 is broken: no eligibility, ordering,
+record, config-state or byte-identity text moved, no E-row lost an owner, the E-row range statement
+was updated, and the REQ at HEAD hashes to the dispatch digest.
+
+Five findings, none High. Two are this delta's own loose ends and both are one clause each:
+**F-01 (Medium, delta)** — D-9 still promises "yes → bounded flag" for a bound that binds, but at
+zero no bounded flag is emitted and D-12 answers the same fixture with `RSN-NO-MATERIAL`; the
+decision table is what PLAN transcribes for branch coverage, so qualify D-9's yes-branch. **F-02
+(Low, delta)** — the `AC-4.4` reverse-trace row still names only `BR-5, BR-14`, though the third zero
+is now decided in BR-6 and reasoned in BR-9.
+
+Three are my v14 findings, untouched by this erratum and re-filed as `inherited` so they route to the
+owning phase rather than gate this confirmation: **F-03 (Medium)** AT-33's count formulation versus
+BR-15's set-of-paths oracle; **F-04 (Medium)** REQ AC-4.3/AC-6.1's "non-authoring dispatch prompts"
+wording lagging BR-11's two-conjunct complement, which is the REQ's to fix; **F-05 (Low)** A-2's
+"satisfies neither conjunct" where the exclusion set is "fails at least one".
 
 ## Delta-Confirmation Findings
 
