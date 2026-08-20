@@ -63,6 +63,45 @@ approved at v13.
 
 ## Interfaces
 
+**F-O-1's bounds still hold after the rewrite.** FSPEC F-O-1 delegates the two heading-recognition
+rules to this TSPEC under two constraints: the rule consults only the document's own bytes, and it
+is decidable without a model call. The delta rewrote rule 2's *rationale* and added an assembly
+rule; neither introduces a lookup outside the document. §I.3's contract still reads
+`extractInjectableMaterial(text, maxBytes)` — text and an integer, nothing else — and
+`looksLikeLearningsDocument(text)` still carries *"Bytes only, no model call (F-O-1)"*. The
+delegation is discharged on the same terms I confirmed at v13.
+
+**The prefix-rejection correction is right, and it corrects *my* v13 reading too.** At v13 I
+credited the prefix rejection as forced by E-33: *"Under prefix rule `Cross-Feature Findings` would
+match `Cross-Feature Patterns`"*. That was wrong, and the delta says so plainly — neither string is
+a prefix of the other, so a strict prefix rule leaves E-33 reachable. §D.3 now splits the argument:
+substring/token-overlap/fuzzy matching is rejected **on E-33** (which does reach them, since the
+shared token `Cross-Feature` is what would match), and the prefix candidate is rejected on its own
+ground (it admits `## Process`, `## Open Items`, `## Cross-Feature` as full sections and creates a
+same-priority collision needing a tiebreak). I verified E-33's document at HEAD:
+`docs/completed/…` is not where it lives — it is `regime-ledger`'s corpus, cited from FSPEC, not
+this repository, so the claim I can check here is the *shape* of the argument, and the shape is now
+sound. **The decision did not change** (exact match, case-sensitive, with rule 3's single gloss
+tolerance); only its justification did. Under freeze that is exactly the permitted kind of edit: the
+outcome is stable, the reasoning is no longer false.
+
+**§I.3's JSDoc and §D.3 still state the rule once.** The failure mode I checked for at v13 — two
+loci each normatively stating the matcher, drifting apart — has not reappeared. §I.3 now carries a
+two-line *summary* of §D.3's assembly (normalise, join, cut once) and points at §D.3 for the rule;
+§T.5 points at §D.3 for `SECTION_HEADING_RE` rather than restating the regex. One normative
+statement, several pointers. The summary is a compression, not a second normative source, and it
+agrees with §D.3 on every clause I compared.
+
+**ERR-8 is correctly scoped as upstream, not folded into this document's design.** §D.5 now records
+that FSPEC Step 5 drops on the structural condition at item 15 (before the count cut) and extracts
+at item 16 (after it), while §D.5 requires extraction first. I read Step 5 at HEAD: item 15 is
+*"Drop any eligible document carrying none of BR-6's priority sections … then take the first
+`learningsInjection.maxDocuments` of the rest"*; item 16 is *"For each taken document, extract its
+injectable material per BR-6"*. The TSPEC's characterisation is accurate to the byte, its
+"outcomes agree at every bound" claim holds (at non-zero bounds the structural and material
+predicates coincide; at a zero bound BR-6/E-36 demand the no-slot behaviour), and it is filed as an
+erratum with a suggested fix rather than silently resolved here. Correct handling.
+
 ## Data Model
 
 ## Test Strategy
