@@ -73,3 +73,53 @@ DEFERRED: v3 F-01 (AT-32's byte-identity operand still unnamed) and v3 F-02 (`RE
 None. My v4 Q-01 is answered in (c) (`:210-217`) — once per episode, before the `for(;;)` loop,
 beside the injector, on both arms — and the answer names the reason the placement matters
 (`RETRY-ITERATION`'s call-log assertions are counting-shaped) rather than merely asserting it.
+
+## Positive Observations
+
+- **The revision found a member I missed and proved it rather than asserting it.** My v4 F-01 said
+  the plumbing was unstated; I did not notice that Phase H's harvest dispatch also carries a
+  `docType` the accepted set does not contain. `"LEARNINGS"` is real (`:14726-14732`) and reachable
+  (`PHASE_H_ENABLED = true`, `:24`), and had it been left out, the very first run of a correct
+  implementation would have gone red on a hand-transcribed literal. Catching that *before* the
+  fixture exists is worth more than catching it after.
+- **"Containment is never the fix" names the repair that would have destroyed the oracle.** The
+  paragraph at `:212-217` does something specs rarely do: it predicts how the test will be
+  weakened under time pressure (relax set equality to containment when the literal reds), states
+  why that weakening is precisely the drift the assertion exists to catch, and forecloses it in
+  advance. That is the difference between an oracle that survives its first red and one that gets
+  quietly downgraded.
+- **The five-site table gives each row a reason, not just an address.** "An enumerated literal, not
+  a spread" and "it re-lists its seven seams **by hand**" are the facts that make each hop
+  non-optional; a PLAN author can check each one in seconds and cannot skip one by assuming the
+  keys flow through. I verified all five independently and the characterisations are exact.
+- **Both `.baseline-worktree` oracles are falsifiable, and the second one's second conjunct is the
+  whole point.** Asserting `git worktree list` shows no entry *in addition to* the path being
+  absent is what distinguishes a real `git worktree remove` from the `rm -rf` the section rejects —
+  a positive mechanism conjunct alongside an absence assertion, which is exactly the shape an
+  absence-only oracle lacks. And obligation (1)'s assertion is red at HEAD today (`git check-ignore`
+  exits 1), so it is a genuine red-before-green, not a tautology written after the fact.
+- **The §T.5 citation is now checkable and correct.** `import mainDev, * as dev from
+  "../orchestrate-dev.js"` is verbatim, and it makes the pattern claim — the suite drives a whole
+  run, not a unit — verifiable by opening one file.
+
+## Recommendation
+
+**Approved with minor changes.** All four v4 findings are resolved, the round's answers are
+grounded in measured HEAD evidence rather than restated prose, and the exhaustiveness check on the
+composition-site expected set — the one claim whose incompleteness would have cost a debugging
+session — holds against the full operand space. Nothing in the delta broke anything that worked and
+no load-bearing claim contradicts the repository.
+
+F-01 and F-02 should both land as PLAN task text rather than TSPEC edits: F-01 is one clause
+extending the fixture's run scope to Phases CR and H, F-02 is a numeral.
+
+One erratum remains routed and unamended upstream: **FSPEC D-2/BR-1** (`FSPEC:236`) still classifies
+the decision as "Is this dispatch an authoring dispatch?" with no `docType` membership conjunct,
+while TSPEC's `injectHere` (`:130-131`) requires both. TSPEC already documents this as ERR-7; it is
+re-raised only because the FSPEC bytes are unchanged at HEAD, so AT-02's expected set inherits the
+ambiguity.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
