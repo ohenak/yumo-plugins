@@ -88,7 +88,32 @@ round was dispatched to fix, one paragraph below the row it fixed (F-02).
 
 ## Interfaces
 
-_pending_
+The erratum touched no interface. §I.3's gate is unchanged (`config.enabled` alone, with `docType ∈
+LEARNINGS_TARGET_DOCTYPES` as BR-1's second conjunct), and the round's only edit here is
+interpretive: §A.2 now says that predicate "implements BR-1 directly" rather than diverging from it.
+Against BR-1 at v0.12 that reading is correct, and it removes the one place where a test author
+could have read two expected sets out of the same document.
+
+**Seam citations, re-checked by symbol.** The seam contracts §I.1/§I.2 rest on all hold at HEAD, but
+three of their anchors have drifted with the file:
+
+| Row | TSPEC anchor | HEAD |
+|---|---|---|
+| P-7 `defaultGit` never throws, returns `{ok, stdout, stderr}` | `:11658-11676` | `export async function defaultGit` at `:11698` — contract as described |
+| P-8 `defaultReadFile` returns `null` for an absent file | `:11513-11519` | `export function defaultReadFile` at `:11553` — contract as described |
+| §A.4 `defaultListFiles` | `:11586-11605` | `export function defaultListFiles` at `:11626` — contract as described |
+| P-3 `dispatchAndVerify` receives every seam | `:8862-8878`, prompt composed at `:8978` | both resolve exactly; **no drift** |
+| P-11/P-12 `parseAdvisoryConfig` shape | `:1980-1983`, `:1985-2010` | `parseAdvisoryConfig` at `:1964`, `ADVISORY_DEFAULTS` at `:1944`; ranges resolve |
+
+So the seam propositions this TSPEC's fakes are designed against are all true at HEAD — the fake
+contracts (`_git` never throwing, `_readFile` returning `null` rather than throwing on absence) are
+still the right protocol shapes, and no test-double design in §T is invalidated. The three drifted
+rows are citation hygiene only (F-04).
+
+**`present` — still unconsumed.** Unchanged this round and unchanged upstream: the field rides in
+the returned config shape, §T.5 asserts its shape only, and §I.3 states the gate is `config.enabled`
+alone. A field with no named consumer and no behavioural oracle is a field whose regression nothing
+reds. Carried forward from v10 as F-06.
 
 ## Data Model
 
