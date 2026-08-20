@@ -83,6 +83,28 @@ implementation row gains one, no same-batch same-new-file collision is introduce
 
 ## Dependencies
 
+**No dependency edge is invalidated.** The edges PLAN declares are derived from single-writer
+serialisation on `pdlc/workflows/orchestrate-dev.js`, from red-before-green pairing, and from
+fixture ownership — three things the TSPEC delta does not touch. I spot-checked the three edges
+whose *stated reason* cites a TSPEC section:
+
+| Edge | Stated reason | Verdict |
+|---|---|---|
+| everything → LI-01 | "a premise that has moved since **TSPEC v0.6**" | The edge holds; the **version label in the reason is now stale** (TSPEC is v0.7). This is one of the version-citation staleness items below, not a broken edge — LI-01's job is unchanged, and the premises it pins are the same six |
+| LI-04, LI-05 → LI-03 | "both obligations of TSPEC §T.3" | Holds. §T.3 is byte-identical across the delta |
+| LI-16 → LI-15 … LI-22 → LI-21 | single-writer serialisation on one source file | Holds. Untouched by any document change |
+| LI-23 → LI-06 | baseline must exist before the arm inventory runs | Holds; §T.7's arm list is unchanged |
+
+**Upstream-state ledger for this round.** PLAN now sits under REQ v0.9 (`ff605dd3…`, unchanged),
+FSPEC v0.12 (`fb18dbda…`, unchanged since my v5 confirmation), TSPEC **v0.7** (`f629d29d…`, the
+document that moved) and DECISIONS (`85888c03…`, unchanged). Two of the four upstream version
+labels PLAN's front matter carries — FSPEC v0.10 and TSPEC v0.6 — are now behind their documents.
+The FSPEC half of that was already open from v5; the TSPEC half is this round's.
+
+**DECISIONS is not implicated.** The TSPEC edit closes two errata routed *to FSPEC*; it promotes no
+decision, retracts none, and changes no re-evaluation trigger. Nothing cascades from here to
+DECISIONS or from DECISIONS back into this PLAN.
+
 ## Verification
 
 ## Delta-Confirmation Findings
