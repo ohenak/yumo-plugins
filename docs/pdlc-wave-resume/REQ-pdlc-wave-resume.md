@@ -62,10 +62,12 @@ contract is correct and is not in question here.
 What the halt costs is the *re-entry*. A re-invocation of the pipeline re-enters Phase I
 at wave 1 and re-dispatches implementation agents over every wave whose work is already
 committed, each of which reads the plan, finds its task done, and reports a no-op.
-Observed on the pdlc-consolidation-agent run of 2026-08-09 (OF-1, §4): a 15-wave plan
-halted at wave 2 and again at wave 4, and each re-invocation paid seven no-op agent
-dispatches (waves 1–3) before reaching the point of interest. Multi-halt runs pay this
-replay tax once per halt, and it grows with the plan.
+Observed on the pdlc-consolidation-agent run of 2026-08-09 (OF-1, §4): a 16-wave plan
+halted at wave 2 and again at wave 4. The re-invocation after the wave-4 halt paid seven
+no-op agent dispatches (waves 1–3) before reaching the point of interest; the re-invocation
+after the wave-2 halt replayed wave 1 only, a single task. Multi-halt runs pay this replay
+tax once per halt, in the task count of every wave below the halted one, so it grows with
+the plan rather than costing a fixed amount per halt.
 
 A manual resume pointer now exists (`implementation.startWave`, an operator-set
 configuration value — BL-01, §5). It works, but it demands operator arithmetic with a
