@@ -268,4 +268,40 @@ DEFERRED: PROP-META-04's retained-digest invariant is the natural mechanical che
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+My v12 finding is carried forward and slightly widened (F-01: the PLAN pin, now three versions stale
+rather than one), and four new findings are recorded — two Medium completeness points on the delta's
+new §G.2/§G.3 material (F-03, F-05), one Medium quotation-freshness point (F-02) and one Low
+attribution point (F-04). **None is High, and none blocks.**
+
+Against the freeze's two blocking criteria:
+
+- **(i) a defect this revision introduced.** None. Every claim the delta adds was re-measured and
+  holds: the seven reversed absence claims against `learningsBlock.test.js` at HEAD, all eighteen
+  inventory anchors, the 26-passed/0-skipped run reproduced locally, the rebase premise itself
+  (retired anchors unreachable from HEAD, new anchors reachable), LI-22's commits, `.gitignore:13`,
+  the three `learningsConfig.test.js` line anchors, and PLAN's fourteen-row manifest under-count.
+- **(ii) a factual contradiction with the repository or an upstream document that makes a load-bearing
+  claim false.** None. F-01 and F-02 are the closest: PLAN moved to v1.1 beneath this document and
+  re-worded case C's *When* cell. But the widened case-C domain covers every amendment this document
+  routes, six of the seven verbatim PLAN quotations still match character-exactly, and every ruling
+  cited is still present at v1.1 — so the pin and the quotation are stale while the conclusions drawn
+  from them remain true.
+
+What must change is small and mechanical: re-pin PLAN to v1.1 (including line 1326's *"PLAN at HEAD
+(v0.8)"*), re-quote case C's *When* cell verbatim, add a clause to gap 5 noting that
+`helpers/learningsComposition.js` is on PROP-ORDER-05's execution path, extend gap 5 to name
+`2fc6fcd3` as a P-A-5 re-capture event on the fixture subtree and the guard suite, and split the
+fixture row's `Added by` cell. None of these opens a decision; all five can ride the next round that
+touches those lines for its own reason.
+
+Two upstream items are routed as errata rather than folded into this verdict: PLAN's case C still
+cites the pre-rebase anchors `92b7ea0c`, `d462ddd8` and `2cbacada`, none reachable from HEAD, and
+PLAN's §File-ownership manifest omits both the four remediation files and the second-owner rows P-A-5
+requires for `2fc6fcd3`'s re-capture.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 4, "low": 1}
