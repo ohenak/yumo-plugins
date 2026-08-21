@@ -272,7 +272,17 @@ expectation is exactly where an implementation echo is tempting.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | A6-18's row tells the implementer to widen `advisoryWaveGateMain.test.js`'s `expect(result.haltAdvisory).toEqual({…})` with **`snapshotRef: null`** "on the escalation path that fixture drives". That fixture drives an out-of-envelope *refusal*, not a capture failure, and its `_git` double returns `ok: true` for every verb `captureTreeSnapshot` issues (`advisoryWaveGateMain.test.js:109-138`: `add`, `rev-parse`, `write-tree`, `commit-tree` explicit, `update-ref` via the `ok: true` fallthrough). Per PLAN A6-10 and TSPEC §3.5 (`TSPEC:1207`) the capture returns `null` only on `ok !== true`, and TSPEC §3.2 step 4 (`TSPEC:916`) runs it at the call site before `runAdvisorySeam` is entered, unconditionally on an applying wave — so on this fixture `snapshotRef` is `refs/pdlc/a6-snapshot-1`, not `null`. Following the row reddens the file in batch 6, whose script-owned gate declares the whole suite green and has no expected-red channel — reintroducing the exact failure PM v2 F-01 raised the widening to prevent. **Fix:** state the fifth value as the wave-scoped ref the fixture produces, matched by the spec-side literal `"refs/pdlc/a6-snapshot-" + waveNum` (never a constant read back from the module under test), and add the clause that a non-`null` ref makes BR-14's overwrite notice due on this halt too — harmless here, since every notice oracle in the suite is a filtered count (`:210`, `:227`, `:247`, `:257`, `:285`), never a whole-array `toHaveLength`. | Batches → A6-18, the `(a) advisoryWaveGateMain.test.js` widening clause |
+| F-02 | Low | Local | The AT-06-4 DoD leg names both arms ("seam arm in `advisoryWaveGate.test.js` (A6-18) and the post-gate un-skip arm in `waveExecution.test.js` (A6-21)") and names AT-06-4b's absence arm for the seam side, but not the un-skip arm's **paired negative** — the un-skip halt on a wave where A6 did not fire, `advisory` argument omitted and no overwrite notice anywhere in `notices` — which A6-21's task row does carry. As written a verifier can tick the leg on a positive-only un-skip arm, and an implementation that pushed the notice unconditionally at the un-skip site would satisfy it. Add the negative companion to the leg, the way the seam side already names AT-06-4b. | Verification → DoD, the AT-06-4 leg |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | With `snapshotRef` non-`null` on `advisoryWaveGateMain.test.js`'s escalation fixture (F-01), that suite becomes the one place in this feature where BR-14's overwrite notice could be asserted through `mainDev` — the real report, the real seam, no injection — rather than only through the seam's `_notice` sink. AT-06-4's two allocated arms are sufficient as specified, so I am not requiring it; is there a reason not to take the free DC-07-grade proof while A6-18 is already editing that file? |
+| Q-02 | (Re-raised from v2 Q-01, still open upstream.) TSPEC §5.6's AT-02-1 row (`TSPEC-pdlc-advisory-wave-gate.md:1910`) still reads "`ADVISORY_ROOT_CAUSES` set-equal to the four-member literal", which contradicts FSPEC BR-2's ordered-sequence rule, TSPEC's own §3.5, and this PLAN's A6-05 row. The PLAN follows FSPEC and is right to; the stale row is upstream's and is routed as an erratum again below rather than folded into this verdict. |
 
 ## Positive Observations
 
