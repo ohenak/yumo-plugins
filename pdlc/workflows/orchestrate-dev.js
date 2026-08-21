@@ -10271,7 +10271,14 @@ async function dispatchAndVerify({
   // seam — called on BOTH arms, once per episode, never inside the loop (TE Q-01).
   const injectHere =
     dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType);
-  _recordDocType(docType);
+  // CR round 1, TE F-08: the probe carries the DECISION, not only the docType. Recording the
+  // docType alone left the composition-site set-equality test re-deriving `injectHere` from its
+  // own hand-transcribed literal, which is a tautology that never consults the production
+  // predicate — and that tautology is why F-02's mutant (dropping BR-1's second conjunct)
+  // survived the whole suite. `injectHere` and `dispatchKind` are passed as the 2nd/3rd
+  // arguments, so the existing one-argument default (`() => {}`) and every existing caller are
+  // unaffected.
+  _recordDocType(docType, injectHere, dispatchKind);
   const learningsBlock =
     injectHere && typeof _injectLearnings === "function"
       ? await _injectLearnings({ feature, docType, phaseId })

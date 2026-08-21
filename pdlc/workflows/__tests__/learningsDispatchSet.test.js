@@ -89,12 +89,35 @@ const SCENARIO_PLAN = [
  *   alternatives. Only the composition-site set equality needs the sixth phase, and it needs it
  *   because TSPEC §A.2 property 1(a) forbids passing that equality by omission.
  */
-function buildRecordingAgent(calls, { decisionsWarranted = false } = {}) {
+function buildRecordingAgent(calls, { decisionsWarranted = false, reviseOnceInPhases = [] } = {}) {
+  // CR round 1, TE F-02/F-08. `reviseOnceInPhases: ["R", "CR"]` makes ITERATION 1 of the named
+  // phases' review rounds answer "Needs revision", which is the only way to make the pipeline
+  // dispatch those phases' OPTIMIZERS. Two of them matter here:
+  //   - Phase CR's optimizer is the `dispatchKind: "authoring"`, `docType: null` dispatch AC-1.2
+  //     names by name — the case BR-1's second conjunct exists to exclude.
+  //   - Phase R's optimizer is the only authoring dispatch whose docType is `REQ`: `main()` is
+  //     handed an already-written `reqPath`, so with an all-approve script the REQ reaches the
+  //     composition site on REVIEW dispatches only.
+  // Under the default all-approve script neither dispatch happens, which is why BR-1's second
+  // conjunct had no falsifying test: the case it excludes was absent from every dispatch
+  // universe in the suite.
+  //
+  // The phase and iteration are both read off `reviewerPrompt`'s own opening line
+  // ("Review the document at {doc} for phase {phase} of feature {feature}. This is iteration
+  // {n}."), so no round counting is needed and a phase whose loop runs twice is unambiguous.
+  const revisePhases = new Set(reviseOnceInPhases);
+  const reviewOpening = new RegExp(
+    `for phase ([A-Z]+) of feature ${FEATURE}\\. This is iteration (\\d+)\\.`
+  );
   return async (skill, prompt) => {
     const text = String(prompt ?? "");
     calls.push({ skill, prompt: text });
     if (skill === "guard") return "{ ok: true }";
     if (skill === "pm-review" || skill === "se-review" || skill === "te-review") {
+      const m = reviewOpening.exec(text);
+      if (m && revisePhases.has(m[1]) && Number(m[2]) === 1) {
+        return 'Review complete.\nVERDICT: Needs revision\n{"high": 1, "medium": 0, "low": 0}\n';
+      }
       return 'Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
     }
     if (skill === "pm-author" || skill === "se-author" || skill === "te-author") {
@@ -169,7 +192,14 @@ function buildPipelineGit(onLearningsEnumerate) {
  * @returns {Promise<{result: object, calls: Array<{skill:string, prompt:string}>,
  *   created: string[], git: object}>}
  */
-async function runScenario({ corpus = null, gitEnumerateScript = null, configText = null, forcePhases = null } = {}) {
+async function runScenario({
+  corpus = null,
+  gitEnumerateScript = null,
+  configText = null,
+  forcePhases = null,
+  agentOpts = {},
+  _recordDocType = () => {},
+} = {}) {
   const dev = await import("../orchestrate-dev.js");
   const mainDev = dev.default;
 
@@ -221,7 +251,8 @@ async function runScenario({ corpus = null, gitEnumerateScript = null, configTex
   const result = await mainDev({
     reqPath: REQ_PATH,
     forcePhases,
-    _agent: buildRecordingAgent(calls),
+    _agent: buildRecordingAgent(calls, agentOpts),
+    _recordDocType,
     _parallel: (promises) => Promise.all(promises),
     _checkFile: () => ({ ok: true }),
     _readFile,
@@ -461,9 +492,16 @@ describe("learningsDispatchSet — the composition-site set equality (TSPEC §A.
 
     const observedDocTypes = [];
     const acceptedDocTypes = [];
-    const _recordDocType = (docType) => {
+    // CR round 1, TE F-08. The probe reads the composition site's OWN decision (`injectHere`,
+    // the 2nd argument) rather than re-applying the hand-transcribed literal to the docType.
+    // The previous shape asserted `literal ∩ observed === literal`, which is true by
+    // construction of the filter and never consulted the production predicate at all — the
+    // proximate reason F-02's mutant (`injectHere = dispatchKind === "authoring"`) survived.
+    // The literal stays hand-transcribed; what changed is that it is now the EXPECTED value of
+    // a set the production code computed, not the recipe the test used to compute the set.
+    const _recordDocType = (docType, injectHere) => {
       observedDocTypes.push(docType);
-      if (HAND_TRANSCRIBED_TARGET_DOCTYPES.includes(docType)) acceptedDocTypes.push(docType);
+      if (injectHere === true) acceptedDocTypes.push(docType);
     };
 
     const corpus = buildLearningsCorpus([
@@ -487,7 +525,17 @@ describe("learningsDispatchSet — the composition-site set equality (TSPEC §A.
       // `decisionsWarranted: true` is what makes Phase D run: with the default answer the
       // pipeline skips it for want of load-bearing alternatives and `DECISIONS` never reaches
       // the composition site, which would fail (a) below for a fixture reason.
-      _agent: buildRecordingAgent(calls, { decisionsWarranted: true }),
+      // `reviseOnceInPhases: ["R"]` is the second half of the same premise (CR round 1, TE F-08):
+      // `main()` is handed an already-written REQ, so with an all-approve script the REQ docType
+      // reaches the composition site on REVIEW dispatches only and `injectHere` is never true
+      // for it. Reddening Phase R's first round dispatches pm-author as R's optimizer — the run's
+      // only `docType: "REQ"` AUTHORING dispatch — which is what makes (b) below assert the FULL
+      // six-member literal against a set the production predicate computed, rather than against
+      // five members plus an unnoticed hole. The previous shape could not see the hole because it
+      // re-derived the accepted set from the literal itself. `"CR"` is here for the converse
+      // reason: it puts the `docType: null` AUTHORING dispatch in the universe, so (b) reds under
+      // the F-02 mutant too, not only the dedicated AC-1.2 test below.
+      _agent: buildRecordingAgent(calls, { decisionsWarranted: true, reviseOnceInPhases: ["R", "CR"] }),
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
       _readFile,
@@ -505,9 +553,79 @@ describe("learningsDispatchSet — the composition-site set equality (TSPEC §A.
     // (a) every authoring phase was exercised: the observed set equals the literal, never
     // merely contained in it.
     expect(new Set(observedDocTypes)).toEqual(new Set(HAND_TRANSCRIBED_COMPOSITION_SITE_SET));
-    // (b) the accepted set — docTypes for which `injectHere` returned true — is strictly
-    // narrower, equal to LEARNINGS_TARGET_DOCTYPES alone.
+    // (b) the accepted set — the docTypes for which the PRODUCTION `injectHere` returned true —
+    // is strictly narrower, equal to LEARNINGS_TARGET_DOCTYPES alone. Because `acceptedDocTypes`
+    // is now populated from the production decision, this equality is the falsifying oracle for
+    // BR-1's SECOND conjunct: under `injectHere = dispatchKind === "authoring"` the accepted set
+    // gains `null` (Phase CR's optimizer, the case AC-1.2 names by name) and `"LEARNINGS"`
+    // (Phase H's harvest is not authoring, but the CR optimizer alone suffices), and this line
+    // reds. (c) below is the same claim read off the served artifact rather than the seam.
     expect(new Set(acceptedDocTypes)).toEqual(new Set(HAND_TRANSCRIBED_TARGET_DOCTYPES));
+    // The control that makes (b) non-vacuous: the probe did fire with a REJECTED docType, so
+    // the two sets differ by observation, not by an empty accepted set.
+    expect(observedDocTypes.length).toBeGreaterThan(acceptedDocTypes.length);
+    expect(new Set(observedDocTypes).has(null)).toBe(true);
+  });
+});
+
+describe("learningsDispatchSet — AC-1.2: the docType: null AUTHORING dispatch (Phase CR's optimizer)", () => {
+  // CR round 1, TE F-02 (High). AC-1.2 names one case by name: "any dispatch the pipeline tags
+  // authoring whose target is none of C-1's six document types — the code-review phase's
+  // optimizer at HEAD". Before this test, mutating the composition site from
+  //
+  //     dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType)
+  // to
+  //     dispatchKind === "authoring"
+  //
+  // left the ENTIRE repository green, because no scenario in the suite ever dispatched that
+  // case: every reviewer approved on iteration 1, so Phase CR's optimizer was never reached.
+  // `reviseOnceInPhases: ["CR"]` reds the first CR round, which dispatches it.
+  //
+  // The oracle has two halves, both required. The seam half reads the production `injectHere`
+  // for that dispatch. The prompt half reads the served artifact — the composed prompt the
+  // optimizer actually receives — identified by `optimizerPrompt`'s own opening for a phase-CR,
+  // whole-directory target. Neither half is derivable from the other.
+  test("LI-20: AC-1.2 — Phase CR's optimizer is an authoring dispatch with docType null; injectHere is false for it and its composed prompt carries no block", async () => {
+    const corpus = buildLearningsCorpus([
+      {
+        path: "docs/completed/prior-a/LEARNINGS-prior-a.md",
+        doc: { feature: "prior-a", dateCompleted: "2026-01-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }] },
+      },
+    ]);
+
+    /** @type {Array<{docType: string|null, injectHere: boolean, dispatchKind: string}>} */
+    const decisions = [];
+    const { calls } = await runScenario({
+      corpus,
+      agentOpts: { reviseOnceInPhases: ["CR"] },
+      _recordDocType: (docType, injectHere, dispatchKind) => {
+        decisions.push({ docType, injectHere, dispatchKind });
+      },
+    });
+
+    // (1) The control: the case AC-1.2 names is IN this run's dispatch universe. Without this
+    // line the assertions below are vacuously true on a run that never reached Phase CR.
+    const nullAuthoring = decisions.filter(
+      (d) => d.dispatchKind === "authoring" && d.docType === null
+    );
+    expect(nullAuthoring.length).toBeGreaterThan(0);
+
+    // (2) The seam half: the production predicate refused every one of them. This is the line
+    // that reds under `injectHere = dispatchKind === "authoring"`.
+    expect(nullAuthoring.every((d) => d.injectHere === false)).toBe(true);
+
+    // (3) The served-artifact half: the CR optimizer's composed prompt carries no block.
+    const crOptimizerCalls = calls.filter((c) =>
+      c.prompt.startsWith(
+        `Address reviewer feedback on docs/${FEATURE}/ for phase CR of feature ${FEATURE}`
+      )
+    );
+    expect(crOptimizerCalls.length).toBeGreaterThan(0); // the control for (3)
+    expect(crOptimizerCalls.some((c) => carriesLearningsBlock(c.prompt))).toBe(false);
+
+    // (4) And the run DID inject somewhere, so (3) is not passing because the feature is inert
+    // on this scenario.
+    expect(calls.some((c) => carriesLearningsBlock(c.prompt))).toBe(true);
   });
 });
 
