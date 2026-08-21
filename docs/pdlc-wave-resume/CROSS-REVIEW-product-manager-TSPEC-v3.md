@@ -37,6 +37,23 @@ Nothing in the edited REQ text touches a design decision this TSPEC makes, and I
 
 ## Interfaces
 
+The surfaces this confirmation examines are the citation contracts between this TSPEC and REQ — the errata channel and the requirement-mapping table — since those are the only interfaces a pure-upstream edit can break.
+
+**The errata channel (§6.3).** This is where the cascade lands, and it is where both findings sit. §6.3's own framing is *"Raised, not fixed here; each is emitted as an `ERRATUM:` line in this dispatch's final message"* — so the section is a routing surface whose entries are read by a downstream mechanism and by the next human reading TSPEC. Two of its four entries no longer describe REQ at HEAD:
+
+| §6.3 item | Status against REQ at HEAD | Effect |
+|---|---|---|
+| 1 — FSPEC's version cell says REQ v1.5; *"the REQ at HEAD is **v1.6**"* | Substance **still true and stronger** (FSPEC's cell is now two versions stale); the parenthetical version label is **stale** — REQ at HEAD is v1.7 (`REQ:13`) | F-02 |
+| 2 — FSPEC OB-F1 misquotes REQ §10; *"REQ v1.6 §10 says the opposite"* | Substance **still true and verified verbatim** — REQ §10's sentence is byte-identical at HEAD (`REQ:558`) and FSPEC:429 still misstates it; only the version label is stale | F-02 |
+| 3 — FSPEC has no clause for what an explicit-pointer run writes | **Untouched** by this edit; still open against FSPEC | — |
+| 4 — REQ OB-1 rests on `.worktreeinclude` listing only `.claude/workflows/`, which is untracked | **Landed upstream.** REQ OB-1 now labels the include list consumer-local and untracked in its own words; the string `.worktreeinclude` is gone from REQ | F-01 |
+
+Item 4 is the DEC-ERR-03 case in its pure form: this TSPEC quotes a sentence its upstream no longer contains, and characterises upstream as carrying a defect upstream has fixed. That the fix is the one TSPEC asked for does not make the citation current — a reader arriving at §6.3 today, or a harvest pass reading the errata channel, is told to go raise something already raised and closed. The fix is small and mechanical: mark item 4 landed (with the REQ version that landed it) or strike it, and repoint §1.3's *"see §6 for the citation defect the REQ carries about it"* at REQ OB-1's current consumer-local framing, which now says what §1.3 wanted §6 to say.
+
+**The requirement-mapping table (§2.6).** Unaffected. Every id it maps — REQ-WVR-01 through REQ-WVR-10, and the business rules BR-04, BR-05, BR-10, BR-11, BR-12, BR-14, BR-16 — is untouched by the diff (the edit does not enter §4, §6, §7 or §8 of REQ). The ten criteria that carried a component when I approved still carry the same component against the same text. I re-read REQ-WVR-02's IG enumeration and REQ-WVR-08's wave-loop scoping specifically, because the previous erratum round (v1.6) moved both and this round's note mentions them in its recap of v1.6; both are byte-identical to the version my v2 approval was taken against, so nothing there re-opens.
+
+**C-3's no-new-capability boundary.** Unmoved. REQ C-3 is untouched; §3.4, DEC-WVR-08 and the AT-03/AT-11 `merge-base` call-count oracles still trace to it as written.
+
 ## Data Model
 
 ## Test Strategy
