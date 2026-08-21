@@ -121,6 +121,37 @@ reading:
 
 ## Risks
 
+Composition risks the new AC-5.1 text creates or leaves standing. None of these is a High; I record
+them because they are what the TSPEC has to honour, and because two of them are the reason F-01 is
+Medium rather than Low.
+
+- **The exclusion permits what AC-6.1 forbids, and only AC-6.1's specificity resolves it.** AC-6.1
+  makes the record append the *precondition* of an action ("an action taken with no record written is
+  a defect, and a failed record write refuses the action" — `REQ-pdlc-advisory-tier` AC-9.2), so on a
+  failed repair the entry may well exist *before* restoration begins. AC-5.1 now excludes that entry
+  from the tree comparison. Read alone, that permits a restoration which reverts the append and still
+  satisfies AC-5.1. It does not license it — AC-6.1 independently mandates the entry, and the
+  specific rule wins, exactly as AC-2.1 wins over AC-2.2's unclassifiable case. The composition is
+  resolvable, but only by a reader who holds both criteria at once. F-05 records the one sentence
+  that would close it.
+- **Two overlapping devices guard the same contradiction.** Pinning the observation point at
+  restoration-completion *already* excludes anything the run owes afterwards; naming the two carriers
+  as well is redundant. Redundancy is the right error to make here — the carriers are named, so a
+  TSPEC author who orders the record append *before* restoration is still covered — but a future
+  editor who deletes one device believing the other subsumes it would silently change the contract in
+  one ordering and not the other.
+- **The ignored-path boundary is asserted, not derived.** "operator files A6 never wrote and never
+  restores over" is a claim about A6's write set. Nothing at REQ altitude can pin it, and O-1 owns
+  the mechanism, so the risk is that a TSPEC-chosen mechanism with wider reach than
+  a `git`-tracked restore (anything in the `clean -x` family) would violate the boundary while
+  claiming compliance. The criterion is now the right shape to catch that in review; there is no
+  oracle at this altitude that catches it automatically.
+- **The failed-capture arm is a third disposition in a two-disposition criterion.** AC-5.1 previously
+  described one failure mode (restoration failed); it now describes two (capture failed, restoration
+  failed) with materially different observables. The per-seam row of AC-2.4 and the record entry of
+  AC-6.1 are both keyed to invocation and disposition, and neither has been told which value the new
+  arm carries. That is F-01.
+
 ## Obligations
 
 ## Questions
