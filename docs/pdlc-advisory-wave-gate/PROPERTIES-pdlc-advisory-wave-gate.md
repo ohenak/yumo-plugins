@@ -342,8 +342,10 @@ from Oracle G, and the snapshot ref pattern `refs/pdlc/a6-snapshot-{waveNum}`.
    `/\b(describe|test|it)\.skip\s*\(/`. OQ-7 is closed (answered *no*), so **no case in A6-09 ships
    with a pending marker of either kind**; PLAN A6-09 mints the red test with the expected values
    transcribed. What the fixture must carry instead: a tracked file the wave modified, a **non-ignored**
-   untracked file the wave added (asserted absent after restore), a `.gitignore`d file the wave added
-   (asserted still present, byte for byte), and a non-ignored generated output the re-run post-wave
+   untracked file the wave added (asserted **absent** after restore), a `.gitignore`d file the wave
+   added (asserted still **present**, and only present — BR-9 puts a mutated ignored path outside the
+   restoration map in both directions, so a byte-for-byte conjunct on it would assert more than the
+   rule it exists to enforce), and a non-ignored generated output the re-run post-wave
    command rewrites over an already-dirty path (PROP-REST-02's discriminator). Substituting an ignored
    path for that last one makes AT-05-2 vacuous, since BR-9 puts it outside the map.
 
