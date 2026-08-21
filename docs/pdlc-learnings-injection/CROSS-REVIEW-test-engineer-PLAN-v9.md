@@ -189,16 +189,6 @@ floor and the twelve-arm inventory are byte-identical to what I approved.
   no task moved batch, no edge moved, no oracle was reworded. Round 8's approval surface is intact and
   I could confirm that from the diff alone.
 
-## Delta-Confirmation Findings
-
-| ID | Severity | Provenance | Locality | Finding | Section anchor |
-|----|----------|-----------|----------|---------|----------------|
-| F-01 | Medium | inherited | local | The new paragraph's generic title ("Amendment commits on landed suites (P-A-7)") and its closing "carry **no** row of their own in either case" sentence read as a ruling over `learningsBlock.test.js` / `learningsSelect.test.js` generally, but its scope is the heading-form fixture knob alone. A second live P-A-7 case exists on those same landed files — PROPERTIES §C.4 at HEAD states PROP-BOUND-05/07/08's amendments land in the committed `learningsBlock.test.js` and the Group D amendments in the already-landed `learningsSelect.test.js`, classifies them as "a re-red on landed green code … exactly PLAN P-A-7's case", and routes the row-naming to this PLAN. Those rows are unnamed here, and the closing sentence invites a reader to conclude they are not owed. **Fix:** qualify the closing sentence to "across *this* follow-up commit", and add a case row (or a one-line pointer) for the PROPERTIES amendments once that erratum returns from Phase P | §The three gate wordings → Amendment commits on landed suites |
-| F-02 | Low | delta | local | Case A's window is "before batch 7", but its justification cites only the batches 7–8 whole-suite ledger rows and the batch-9 drop. A commit landing during batches 2–6 is inside the window; those batches carry no ledger and their gate rows speak of "the batch's new tests" and "every pre-existing test's status", neither of which covers an amended, already-landed feature suite. The outcome is unchanged (no row is owed) but the reader must derive the silence. **Fix:** one clause — "and in batches 2–6 no ledger exists to amend, since the ledger's universe begins at batch 7" | §The three gate wordings → Amendment commits on landed suites, Case A |
-
-FINDING: Medium | inherited | local | §The three gate wordings → Amendment commits on landed suites | The paragraph's generic title and its "carry no row of their own in either case" closing sentence read as covering `learningsBlock.test.js` / `learningsSelect.test.js` generally, while its scope is only the heading-form fixture knob; PROPERTIES §C.4 routes a second P-A-7 re-red on those same landed files (PROP-BOUND-05/07/08 and the Group D amendments) to this PLAN, and those rows are unnamed here
-FINDING: Low | delta | local | §The three gate wordings → Amendment commits on landed suites, Case A | Case A's window is "before batch 7" but its justification covers only batches 7–9; a commit landing in batches 2–6 is inside the window and those batches carry no ledger, so the "no row" outcome is correct but underived
-
 ## Recommendation
 
 **Approved with minor changes** (0 High, 1 Medium, 1 Low).
@@ -213,6 +203,16 @@ pins still match the four upstream files at the hashes this dispatch names.
 Neither finding gates the phase. F-01 is a scope-of-wording risk that becomes substantive only when
 the PROPERTIES erratum returns; F-02 is one clause of derivation. Fold both into whatever edit comes
 next.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | local | The new paragraph's generic title ("Amendment commits on landed suites (P-A-7)") and its closing "carry **no** row of their own in either case" sentence read as a ruling over `learningsBlock.test.js` / `learningsSelect.test.js` generally, but its scope is the heading-form fixture knob alone. A second live P-A-7 case exists on those same landed files — PROPERTIES §C.4 at HEAD states PROP-BOUND-05/07/08's amendments land in the committed `learningsBlock.test.js` and the Group D amendments in the already-landed `learningsSelect.test.js`, classifies them as "a re-red on landed green code … exactly PLAN P-A-7's case", and routes the row-naming to this PLAN. Those rows are unnamed here, and the closing sentence invites a reader to conclude they are not owed. **Fix:** qualify the closing sentence to "across *this* follow-up commit", and add a case row (or a one-line pointer) for the PROPERTIES amendments once that erratum returns from Phase P | §The three gate wordings → Amendment commits on landed suites |
+| F-02 | Low | delta | local | Case A's window is "before batch 7", but its justification cites only the batches 7–8 whole-suite ledger rows and the batch-9 drop. A commit landing during batches 2–6 is inside the window; those batches carry no ledger and their gate rows speak of "the batch's new tests" and "every pre-existing test's status", neither of which covers an amended, already-landed feature suite. The outcome is unchanged (no row is owed) but the reader must derive the silence. **Fix:** one clause — "and in batches 2–6 no ledger exists to amend, since the ledger's universe begins at batch 7" | §The three gate wordings → Amendment commits on landed suites, Case A |
+
+FINDING: Medium | inherited | local | §The three gate wordings → Amendment commits on landed suites | The paragraph's generic title and its "carry no row of their own in either case" closing sentence read as covering `learningsBlock.test.js` / `learningsSelect.test.js` generally, while its scope is only the heading-form fixture knob; PROPERTIES §C.4 routes a second P-A-7 re-red on those same landed files (PROP-BOUND-05/07/08 and the Group D amendments) to this PLAN, and those rows are unnamed here
+FINDING: Low | delta | local | §The three gate wordings → Amendment commits on landed suites, Case A | Case A's window is "before batch 7" but its justification covers only batches 7–9; a commit landing in batches 2–6 is inside the window and those batches carry no ledger, so the "no row" outcome is correct but underived
 
 ## Verdict
 
