@@ -190,9 +190,37 @@ already in the file.
 
 ## Open Questions
 
+§6 is untouched by this delta except for OQ-2's already-approved wording (line 1905), which I
+re-read for consistency with the new carrier: it now says the operator warning is "rendered from
+§4.5's `snapshotRef` and asserted by §5.6's AT-06-4 / AT-06-4b", which matches the carrier §4.5
+names, and it keeps only the **ref-naming** half open (whether the name should gain a run
+discriminator). Nothing in §6 forecloses a testing approach §5 needs, and no open question is
+answered twice with different answers.
+
+One assumption worth surfacing rather than leaving implicit, tied to F-02: the notice's condition is
+stated as "**every** A6-touched halt whose `snapshotRef` is non-`null`" (line 1387). That is a
+universally quantified obligation over halt paths, and the two arms in §5.6 only witness two of them
+(capture-succeeded escalation, capture-failed escalation). The post-gate un-skip halt on a wave A6
+*resolved* (§4.5 line 1388, line 1447) also carries a non-`null` `snapshotRef` and therefore also
+owes a notice, with no AT naming it. I am not filing this as a separate finding — AT-06-4's oracle
+generalises and the PLAN can cover it under the same task — but if the author is editing §5.6 for
+F-01 anyway, one clause on the un-skip arm would make the quantifier's coverage explicit rather than
+inferred.
+
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | §5.2's new **five-key set-equality** over the capture-failure halt fields (line 1575) contradicts **five shipped set-equality/`toEqual` oracles pinning four keys** in the files §5.1 assigns: `advisoryWaveGate.test.js:2714` (`Object.keys(result.haltFields).sort()` equal to the four-name list), `:1699` (Oracle G — the capture-failure fixture itself), `:2676`, `:3425`/`:3369-3375`, and `advisoryWaveGateMain.test.js:373` (the real-seam DC-07 halt oracle). `toEqual` fails on an extra `snapshotRef: null` exactly as on a missing one, so the red test as specified turns those red; §5.1 has **no row** for `advisoryWaveGateMain.test.js` and no cell naming these assertions as edits. The cheap way out under a red gate — leave `snapshotRef` off the capture-failure `fields` — deletes the only positive oracle for `snapshotRef: null` and false-greens both AT-06-4 arms. Fix: add the `advisoryWaveGateMain.test.js` row, name the four HEAD halt-field oracles in `advisoryWaveGate.test.js`'s "Carries" cell as widened-to-five by the same task that widens the production object, and say in §5.2 that the five-key equality **replaces** the four-key one | §5.2 (line 1575); §5.1 (lines 1481–1495); §4.5 (line 1388) |
+| F-02 | Medium | Local | §4.5 line 1419 says the notice is "pushed through the sink the tier already owns (`advisoryNotice`)" but never says **where** the push happens. Inside `runWaveGateSeam` (its `_notice` param, `orchestrate-dev.js:3383`) it breaks `advisoryEscalationLog.test.js:821`'s `expect(failed.notices).toHaveLength(2)` — a real-repo A6 escalation where `captureTreeSnapshot` (`:3403`) succeeds, so a third notice is due — with no §5.1 row owning that edit. At `main`'s halt handler instead, AT-06-4b's stated home (§5.2's capture-failure fixture, seam-level at HEAD: `advisoryWaveGate.test.js:1699`, `:3425`) has no halt report to read `notices` off. Fix: one sentence naming the push site, plus the consequent §5.1 note | §4.5 (line 1419); §5.2 (line 1581); §5.6 (line 1880) |
+| F-03 | Low | Local | Line 1427's "byte-identical to `TEST_GATE_MESSAGE`" cites a symbol that does not exist in `pdlc/workflows` (only this TSPEC line 531 and two cross-reviews match), and calls AT-05-3 an **equality** oracle where the shipped assertions are containment (`advisoryWaveGateMain.test.js:370`, `waveExecution.test.js:1091`). The argument is correct; the anchor is unresolvable. Fix: cite the literal or the HEAD assertion instead of the placeholder name | §4.5 (line 1427) |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Is `renderSnapshotOverwriteNotice` exported (like both named siblings) or module-local? Both arms observe it through the seam, so either works — but PLAN A6-15's red test needs the answer before it can decide whether a direct purity test of the helper (the shape `PROP-ESC-01` uses for `renderEscalationEntry`, `advisoryEscalationLog.test.js:177-181`) is available. |
+| Q-02 | Does the post-gate un-skip halt on an A6-resolved wave (§4.5 line 1447, non-`null` `snapshotRef`) owe a notice under line 1387's universal quantifier, and if so which AT witnesses it? |
 
 ## Positive Observations
 
