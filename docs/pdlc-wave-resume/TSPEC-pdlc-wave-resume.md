@@ -257,6 +257,147 @@ erratum against the FSPEC so the clause exists.
 
 ## 3. Interfaces
 
+Signatures are given in TypeScript notation for precision; the module itself is JavaScript with
+JSDoc, and the JSDoc blocks are the shipped convention this feature follows.
+
+### 3.1 Frozen catalogues (new)
+
+Three closed catalogues, each `Object.freeze`d and each **transcribed** into a test as a literal
+so a deletion or an addition reds an assertion rather than passing one (FSPEC OB-F5). Precedent
+and shape: `ADVISORY_SEAMS` and `ENVELOPE_DEFAULTS`, whose transcribed set-equality discipline is
+the baseline's `M-WG-8`/`M-WG-9`/`M-WG-13`/`M-WG-14`.
+
+```ts
+/** FSPEC BR-01 — the outcome catalogue, closed at three. */
+export const RESUME_OUTCOMES: readonly ["full-run", "resume", "skip-phase"];
+
+/** FSPEC BR-07 — the provenance vocabulary, closed at two. */
+export const RESUME_PROVENANCE: readonly ["operator-set", "automatic"];
+
+/**
+ * FSPEC BR-02 / AT-02 — the announced disregard reasons, keyed by code.
+ * Seven codes, because IG-1 has three distinguishable arms; IG-6 is silent and
+ * carries no code. Each value renders the reason clause that follows
+ * "the wave ledger ... was ignored — ".
+ */
+export const WAVE_IGNORE_REASONS: Readonly<Record<WaveIgnoreCode, (ctx: ReasonContext) => string>>;
+
+type WaveIgnoreCode =
+  | "unreadable-json"   // IG-1a — parseWaveLedger: "it is not readable JSON"
+  | "not-an-object"     // IG-1b — parseWaveLedger: "it is not a JSON object"
+  | "wrong-shape"       // IG-1c — parseWaveLedger: "its fields are not the shape this workflow writes"
+  | "feature-mismatch"  // IG-2
+  | "plan-changed"      // IG-3
+  | "head-unreachable"  // IG-5
+  | "over-count";       // IG-4
+```
+
+**Why codes and not strings.** Four of the seven reasons interpolate run-specific values (the
+recorded feature name, the recorded commit's short sha, the recorded and actual wave counts), so a
+set-equality assertion over rendered sentences would be an assertion over fixture data. The codes
+are the closed set; the renderers are the wording, governed by FSPEC's "content, not wording" note.
+The three `parseWaveLedger` arms keep their **exact shipped sentences** as their renderers, so no
+shipped assertion changes.
+
+### 3.2 The pure decision (new)
+
+```ts
+interface ReasonContext {
+  feature: string;        // the feature this run is for
+  recordedFeature?: string;
+  recordedHead?: string | null;
+  recordedWaves?: number;
+  waveCount: number;      // waves this plan derives
+}
+
+interface ClassifyInput {
+  parsed: ParsedWaveLedger;   // §4.2 — the output of parseWaveLedger, verbatim
+  feature: string;
+  planHash: string;
+  waveCount: number;          // waves.length, always >= 1
+  headOk: boolean;            // the already-resolved ancestry verdict (§2.2)
+}
+
+type WaveResumeDecision =
+  | { outcome: "full-run";   startWave: 1;               provenance: "automatic"; silent: true;  code: null }
+  | { outcome: "full-run";   startWave: 1;               provenance: "automatic"; silent: false; code: WaveIgnoreCode; reason: string }
+  | { outcome: "resume";     startWave: number;          provenance: "automatic"; lastGreenWave: number }
+  | { outcome: "skip-phase"; startWave: number;          provenance: "automatic" };
+
+/**
+ * Pure and total. Never throws, never reads, never emits. Given a parsed record
+ * and this run's context, returns exactly one decision.
+ */
+export function classifyWaveLedger(input: ClassifyInput): WaveResumeDecision;
+```
+
+**Totality is the contract.** For every `ClassifyInput`, `outcome` is a member of
+`RESUME_OUTCOMES` and `provenance` a member of `RESUME_PROVENANCE`. The `operator-set` provenance
+never originates here: an explicit pointer means the classifier is not called at all (V-6), and
+`main()` labels that path itself.
+
+**Evaluation order (normative, FSPEC §3.2/BR-03), first failure wins:**
+
+| Order | Guard | On failure |
+|---|---|---|
+| 1 | `parsed.state == null && parsed.reason == null` | `full-run`, `silent: true`, `code: null` — IG-6 |
+| 2 | `parsed.reason != null` | `full-run`, `code` ∈ {`unreadable-json`, `not-an-object`, `wrong-shape`} — IG-1 |
+| 3 | `parsed.state.feature === feature` | `full-run`, `code: "feature-mismatch"` — IG-2 |
+| 4 | `parsed.state.planHash === planHash` | `full-run`, `code: "plan-changed"` — IG-3 |
+| 5 | `headOk === true` | `full-run`, `code: "head-unreachable"` — IG-5 |
+| 6 | `parsed.state.lastGreenWave <= waveCount` | `full-run`, `code: "over-count"` — IG-4 |
+| 7 | `parsed.state.lastGreenWave === waveCount` | `skip-phase`, `startWave = waveCount + 1` |
+| — | otherwise | `resume`, `startWave = lastGreenWave + 1` |
+
+Guard 2's code is carried by `parseWaveLedger`, which is the only place that can distinguish the
+three arms; the classifier maps its `reason` string to the code through
+`WAVE_IGNORE_REASONS`' inverse. Equivalently — and this is the implementer's choice, not a
+behavioural one — `parseWaveLedger` may return the code alongside the reason, provided its shipped
+three-outcome signature and its exact reason sentences are preserved.
+
+### 3.3 Existing exports, ratified unchanged
+
+```ts
+export const WAVE_STATE_PATH: ".claude/pdlc-wave-state.json";
+export function computePlanHash(waves: Array<Array<{ id: string; files: string[] | null }>>): string;
+export function parseWaveLedger(text: string | null): ParsedWaveLedger;
+export function formatWaveLedger(
+  feature: string, planHash: string, lastGreenWave: number, head?: string | null
+): string;
+export const IMPLEMENTATION_DEFAULTS: Readonly<{
+  testCommand: null; postWaveCommand: null; postWavePathspecs: readonly []; startWave: 1;
+}>;
+export function parseImplementationConfig(text: string | null): {
+  config: ImplementationConfig; sectionMalformed: boolean; invalidKeys: string[];
+};
+export async function readMergeConfigSafely(readFileFn: ReadFile, path: string): Promise<string | null>;
+```
+
+No signature above changes. `formatWaveLedger`'s optional `head` stays optional on both write and
+read (V-4, V-7).
+
+### 3.4 Injected seams used (all pre-existing)
+
+| Seam | `main()` parameter | Use here | Failure posture |
+|---|---|---|---|
+| Read | `_readFile` | the record, via `readMergeConfigSafely` | throw → `null` → IG-6 silent full run |
+| Write | `_writeFile` | the record, via `writeWaveLedger` | throw → notice, run continues (FSPEC BR-15) |
+| Git | `_git`, resolved through `branchGuardTransport` | `merge-base --is-ancestor`, `rev-parse HEAD`, the wave commits | absent → no commits, no record (REQ-WVR-09); probe absent → `headOk = true` |
+| Command | `_runCommand` | the wave gate and the post-wave command | absent → self-report gate; **does not** affect the record's write guard |
+| Log | `emit` | every announcement of §2.4 | — |
+| Report | `recordPhase` | the single Phase I row | — |
+
+**No new seam is introduced.** That is REQ C-3 discharged structurally rather than by assertion:
+the diff adds no parameter to `main()` and no capability to the runtime adapter.
+
+### 3.5 Configuration surface
+
+Unchanged and closed at four keys (V-13): `testCommand`, `postWaveCommand`, `postWavePathspecs`,
+`startWave`. **No key is added** — in particular no `forceFullRun`, which REQ OQ-1 decided against;
+the sole hatch is deleting `WAVE_STATE_PATH`, and it is named in the outcome (b) and (c)
+announcements (V-12, FSPEC BR-06). `startWave` remains a resume-point *selector*: `1` is
+indistinguishable from unset (FSPEC AT-06) and a past-the-end value is a full run (AT-07).
+
 ## 4. Data Model
 
 ## 5. Test Strategy
