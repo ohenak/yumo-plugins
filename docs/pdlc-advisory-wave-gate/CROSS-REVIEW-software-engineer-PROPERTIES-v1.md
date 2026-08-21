@@ -115,12 +115,32 @@ it exists there with final expected values; only the attempt conjunct is wrong.
 
 ## Recommendation
 
-_(pending)_
+**Needs revision** — one High finding, and it is a one-clause fix.
+
+What must change: delete (or invert) PROP-ENV-13's conjunct "one attempt must be consumed". FSPEC
+§3.3's flow table gives a refusal "no attempt consumed", and the shipped driver terminates the
+`post-action-verification-failed` path with `attempts` unchanged. The strongest replacement is the
+positive form the rest of this document already uses — assert `attempts` is **unchanged** on the run
+(`attempts === 0` on a first-attempt fixture, as PROP-REST-08 does), which discriminates against an
+implementation that charges the wave for a refusal it never got to re-gate.
+
+Everything else in the delta is confirmed: the OQ-7 absorption is correctly directed and correctly
+transcribed, no previously approved property, category, level assignment, oracle or PLAN home was
+broken by it, and the two Low findings below are recorded rather than gating.
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | PROP-ENV-13's conjunct "one attempt must be consumed" contradicts FSPEC §3.3's flow table ("escalate with a refusal reason, no attempt consumed") and the shipped driver, which terminates the `post-action-verification-failed` path with `attempts` unchanged (`orchestrate-dev.js:4285`; increments live only at `:3994`/`:4174` malformed and `:4316` red re-gate). TSPEC §5.5's row and §3.3's `apply` row state no attempt consumption. As a transcribed expected value this mints a red test that a correct implementation fails. | §C Properties, PROP-ENV-13 |
+| F-02 | Low | inherited | nonlocal | Property rows name PLAN homes `A6-09` / `A6-15`, which PLAN v1.3 folded into tasks `A6-10` / `A6-18` as named steps ("references to former ids … denote those steps, not tasks"). Resolvable but not directly checkable against PLAN's task table; the two new rows follow the pre-existing convention. Suggest `A6-10 (former A6-09 step)` form on the next full pass. | §C/§E Properties, PLAN-task table |
+| F-03 | Low | delta | local | PROP-REST-03 and Fixtures hazard 2 assert the `.gitignore`d file is present "unchanged byte for byte". Upstream asserts presence only, and FSPEC BR-9 explicitly says "an ignored path the re-gate mutated is not a restoration defect". The stronger form is safe only because this fixture's ignored file is one nothing touches; scope the byte-for-byte conjunct to that fixture's untouched file, or drop it to presence, so it cannot be read as a general rule contradicting BR-9. | §E PROP-REST-03; §Fixtures hazard 2 |
+
+FINDING: High | delta | local | §C Properties, PROP-ENV-13 | "one attempt must be consumed" contradicts FSPEC §3.3 ("no attempt consumed" on refusal) and the shipped driver, which terminates post-action-verification-failed with `attempts` unchanged (orchestrate-dev.js:4285); replace with an unchanged-`attempts` assertion
+FINDING: Low | inherited | nonlocal | §C/§E Properties, PLAN-task table | PLAN homes cite former task ids A6-09/A6-15, which PLAN v1.3 folded into A6-10/A6-18 as named steps
+FINDING: Low | delta | local | §E PROP-REST-03; §Fixtures hazard 2 | the ignored file's "unchanged byte for byte" conjunct is stronger than BR-9, which says a mutated ignored path is not a restoration defect
 
 ## Verdict
 
-_(pending)_
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
