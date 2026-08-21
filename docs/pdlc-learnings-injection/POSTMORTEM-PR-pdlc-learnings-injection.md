@@ -260,4 +260,37 @@ is indicated.
 
 ## Traceability
 
+| Artifact | Reference |
+|---|---|
+| Erratum under confirmation | PLAN v1.1 → v1.2, `docs/pdlc-learnings-injection/PLAN-pdlc-learnings-injection.md` |
+| Commit the halting rows describe | `2fc6fcd3` — 45 changed files (4 added + 9 modified under `pdlc/workflows/__tests__/`, 18 added fixture prompts, 1 added `pdlc/engine/__tests__/learnings-config-example.test.js`, plus production and config surfaces) |
+| Tree the counts are taken at | `09c7c62f` — 18 tracked `learnings*` test-side files |
+| Routed items landed clean | (1) case C commit re-pins `e7fa8d87` / `be2456c8` / `a4998e13`; (2) case C restated as outcome, 26 passed / 26 total, 0 skips |
+| Routed items partly unlanded | (3) four of five new files rowed; (4) two of nine second writers rowed |
+| Sections requiring edit | §Overview → What is being built; §Overview change-surface table; §File-ownership manifest → Production and generated; §File-ownership manifest → Post-batch remediation; §Verification DoD 11; §P-A-7 case table, case A; §Changelog rows 0.5/0.6, 0.9, 1.2 item (3) |
+| Rules invoked by the confirmers | P-A-5 (one added row per file, committed before the run it governs); DoD 11 (stage-2 per-file branch floor); batch-safety rule 2 (single writer per batch — preserved) |
+| Governing decision | DEC-ERR-03 (`docs/_decisions/DECISIONS-review-severity-bars.md`) |
+| Citation convention | DEC-DOC-01 — every locus above is named by heading, rule id, or commit, not by line number |
+| Prior halts, same class, same branch | `POSTMORTEM-T-pdlc-learnings-injection.md` (FSPEC v7, zero-`FINDING:` channel failure); `POSTMORTEM-D-pdlc-learnings-injection.md` (FSPEC v0.8, inherited-only mis-scored as delta) |
+| Distinguishing feature vs the priors | both channels well-formed and correctly scored; the gate fired on a real document defect, not on a channel artefact |
+
+**Provenance**
+- Engine version: 0.2.2
+- Channel: engine
+- Branch head at authoring: `84acb04c`
+- Confirming channels this round: pm-review, te-review (se-review not dispatched)
+
 ## Resolution
+
+RESOLVED: no
+
+Awaiting operator disposition. The recommendation is a single v1.3 erratum edit to the PLAN
+(items 1–8 above) plus three systemic items (9–11) routed out of this feature. No upstream
+re-grounding is required: te finding 7 confirms the dispatched REQ v0.10 / FSPEC v0.14 /
+DECISIONS v0.5 carry the same substance as the pinned versions, so the header refresh is a pin
+update and not a cascade.
+
+Re-confirmation should re-dispatch both non-approving channels, and both should be asked to check
+the **absorbed** set as well as the raised set — specifically, that §Post-batch remediation's row
+count now reconciles against `git show --name-status 2fc6fcd3` and that §Overview, the manifest and
+DoD 11 agree on `pdlc/workflows/package.json`'s state at HEAD.
