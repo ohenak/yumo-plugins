@@ -129,7 +129,58 @@ Naming the ref in the rendered report is TSPEC's prerogative, not a divergence: 
 
 ## Verification
 
-<!-- pending -->
+This is where the round is incomplete, and where both of my remaining substantive findings sit.
+
+**The new contract has no oracle (F-01, High).** FSPEC v1.7 did not only add BR-14 — it extended the
+test surface with it. FSPEC `:474-478`: AT-06-4 now has **three** conjuncts, the third being "points
+the operator at a captured pre-A6 tree state, and states there that re-running this feature
+overwrites that capture", with "the oracle asserts co-location and the presence of the overwrite
+statement". FSPEC `:479-483` adds **AT-06-4b**, the no-capture companion (E-34's arm: class and
+diagnosis, no pointer, no warning). §5.6's AT-06-4 row still reads, in full: "halt report following
+an escalation carries the root-cause class (§4.5's halt fields)". There is no AT-06-4b row anywhere
+in §5.6, and no row in §5.1's file table attributes the new assertions to a test file.
+
+This is not a nit about a missing table row. §5.6 is this document's AT→test-file map, and the
+document's own established convention is that it follows upstream's AT set: when FSPEC v1.4 split
+AT-04-1 into conjunct-scoped runs, v1.10's changelog records "§5.6 gains AT-04-1a … AT-04-1b", and
+those rows are there. The convention was not applied this round. The product consequence is concrete:
+`snapshotRef` is now a designed operator-facing contract with two arms specified to the literal —
+and nothing in the feature's test set would go red if either arm were dropped in implementation. The
+round landed the mechanism half of the routed obligation and left the proof half unlanded. PLAN
+mints red-test tasks from §5.6; a row that does not exist mints no task.
+
+The fix is bounded and mechanical: restate §5.6's AT-06-4 row on FSPEC v1.7's three conjuncts, add
+an AT-06-4b row for the no-capture arm (`snapshotRef === null` ⇒ no pointer and no warning, which
+§4.5's capture-failure literal table already specifies), and check whether §5.1's
+`advisoryWaveGate.test.js` row needs the new assertions named. My v2 F-04 flagged the shape of this
+gap as Low when the obligation was still upstream-pending; now that the obligation has landed and
+the mechanism is designed, the unfalsifiability is the gap, and it is High.
+
+**One re-measured cell is wrong, in the direction that hides work (F-03, Medium).** §1.3's residue
+column was re-measured this round and every cell but one now reads "**none**". The exception is the
+"Per-seam report rows" row, which still asserts that `advisoryRecord.test.js`'s
+`rows.map((r) => r.seam)` equality "**still reads `["A1" … "A5"]`**" and calls it "the one test-side
+literal not yet transcribed — unchanged by the v1.12 re-measurement, which moved production surfaces
+only". At HEAD that literal reads `["A1", "A2", "A3", "A4", "A5", "A6"]`
+(`pdlc/workflows/__tests__/advisoryRecord.test.js:496`); a second site at `:505` compares against
+`[...devModule.ADVISORY_SEAMS]` and is drift-proof by construction. The row's own re-measurement
+disclaimer is what makes this a finding rather than staleness: the round states it checked this cell
+and left the old value.
+
+The consequence is the mirror of the two red-reason caveats this round correctly retracted. Those
+told a reader that work was outstanding when it was not; this one does the same, in the one table a
+PLAN author reads to decide whether §1.3's transcription batches still have residue. On the corrected
+measurement §1.3's residue column is empty across the board, which is a materially different input to
+"whether the early-landed edits are reverted or PLAN's batches are re-derived around them" — the very
+question §1.3 leaves to PLAN.
+
+**Everything else in §5.1 and §5.6 verified clean.** Both retracted red-reasons are correct: the
+config example carries `"advisory":{"enabled":false,"waveBudgetPerRun":1}` — matching §4.4's stated
+defaults — and `ADVISORY_SEAMS` is six members, so `advisoryQueueSeams.test.js`'s `toHaveLength(6)`
+has its production counterpart. The `ADVISORY_SEAM_PHASES` sixth row is `{ id: "I", outcome:
+"halted" }`, exactly as §1.3 now states. The gate-exclusivity row's revised residue — A6's behaviour
+exposed through the optional `seamOps.classifyReply` member rather than an `if (seam === "A6")`
+branch — is a more precise statement than the cell it replaces, not a weaker one.
 
 ## Obligations
 
