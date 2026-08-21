@@ -58,6 +58,60 @@ name rather than by line.
 
 ## Findings
 
+New findings only; round-2 findings are dispositioned above and not restated here. All three are
+delta-introduced and non-gating.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| H-01 | Low | Process | OQ-1's replacement citation prescribes `grep`ping `orchestrate-dev.js` for the banner string `"to force a full run"` and promises two hits. The default branch returns **one**: the complete-record skip banner is split across a template-literal line break (`to force a ` + `full run.`), so only the mid-plan resume banner matches. The claim (two hatches, both announced) is true; the recipe that was added so a reader could check it does not reproduce. | §9 OQ-1 |
+| H-02 | Medium | Local | §10's registration note still reads *"`ready: true` — BL-01..03 are all resolved, v1.3"*, but §5 now carries **four** rows and BL-04 (branch onto the current default-branch base) is unresolved right now — this branch is 1,637 commits behind. The readiness claim is an enumeration over a set that this revision extended, so it silently under-covers. | §10 registration line, §5 BL-04 |
+| H-03 | Low | Local | §1's headline says *"three shipped preconditions **discard** the record"*, but precondition 1 is not a discard — it is a record that is never written (halt before commit, or no transport). Preconditions 2 and 3 discard. The two shapes yield different acceptance tests (assert no file exists vs. assert a file exists and is announced-ignored), so the collective noun blurs a distinction the list itself keeps sharp. | §1 operational finding, headline sentence |
+
+### H-01 — the banner grep returns one hit, not two (Low, Process)
+
+OQ-1 now reads: *"announced in both banners (grep `orchestrate-dev.js` for the banner string 'to
+force a full run' — one under the complete-record skip, one under the mid-plan resume)."* Run it
+at `origin/main` and exactly one line matches, because the skip banner is built as
+`` `…Delete ${WAVE_STATE_PATH} to force a ` + `full run.` `` — the string the REQ names never
+occurs contiguously in that banner's source. A reader following the instruction finds half the
+evidence and has to decide whether the REQ is wrong or the code changed; that is precisely the
+cost G-04 was raised to remove.
+
+This is the right *kind* of citation — banner strings are stable where line numbers are not — so
+the fix is small: name a substring that survives the line break (`to force a`), or better, cite the
+two banners by their distinctive openings, `Skipping Phase I (wave ledger` and `Resuming at wave`,
+both of which are contiguous, unique, and already cited elsewhere in the document. The same care
+applies to any future banner citation: template literals in this file wrap at ~90 columns, so a
+quoted fragment longer than a few words is a coin flip.
+
+### H-02 — the readiness enumeration did not follow BL-04 into §5 (Medium, Local)
+
+BL-04 is a good addition and correctly scoped ("Checked at FSPEC authoring"). But §10 still
+certifies readiness over `BL-01..03`, and the frontmatter carries `ready: true`, which is what the
+queue's auto-pickup reads. Two readings are now possible and the document does not choose: either
+BL-04 does not gate pickup (in which case say so — it is discharged inside Phase F, not before it),
+or it does (in which case `ready: true` and the note are both overstated while the branch sits
+1,637 commits behind).
+
+By this REQ's own standards this is the containment-vs-set-equality problem one level up: an
+enumeration that names a subset of a table passes review while the table grows underneath it.
+The cheapest fix is to make the note enumerate the whole table and state each row's status —
+"BL-01..03 resolved; BL-04 open, discharged at FSPEC authoring and not a pickup gate" — so that
+adding BL-05 later forces the note to change too. Non-gating because the substance of BL-04 is
+stated correctly where it lives, in §5.
+
+### H-03 — "discard" over-generalises precondition 1 (Low, Local)
+
+Apply the write-the-test-right-now check to the headline. "Three preconditions discard the record"
+implies three fixtures of one shape: write a record, meet the condition, assert the next run
+announces an ignore and runs from wave 1. That shape is right for preconditions 2 and 3 and wrong
+for precondition 1, whose test is *"halt at wave 1, or run with no git transport, then assert no
+`.claude/pdlc-wave-state.json` exists"* — a no-write oracle, not an ignore oracle, and the one that
+REQ-WVR-09 is built on. The list body draws the distinction correctly; only the summarising sentence
+flattens it. Suggest: "one prevents the record from ever being written, and two discard what was
+written". This matters slightly more than a word choice because the FSPEC author sizes the gap from
+this sentence.
+
 ## Questions
 
 ## Positive Observations
