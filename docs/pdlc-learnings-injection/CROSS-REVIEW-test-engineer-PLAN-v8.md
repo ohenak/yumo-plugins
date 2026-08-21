@@ -109,6 +109,50 @@ out.
 
 ## Verification
 
+**The mutation that survived v7 no longer survives.** v7's High was grounded on a mutation check:
+make `extractInjectableMaterial` treat a zero bound as "take the first section anyway" and all twelve
+planned `learnings*.test.js` suites stayed green, because no fixture configured
+`maxBytesPerDocument: 0`. LI-12's third case now configures it, and each of the three conjuncts kills
+a different mutant — (i) kills "drop the report key when the selection is empty", (ii) kills "reject
+one document and stop", (iii) kills "cut to zero bytes, count it as a contribution, burn a slot".
+Conjunct (iii) is the one v7 argued was load-bearing, and it is present verbatim.
+
+**No absence-only oracle was introduced.** The row states the negative and the positive on the same
+instrument: not "selection is empty" (which "a disabled run, a refusal or a crashed injector would
+also satisfy" — the row's own words) but *key present + rows present and empty + every path rejected
+at a named reason*. Set equality, not containment, on the reject rows, so a deleted case reds. This
+is the DC-03 / set-equality shape asked of enumerated contracts.
+
+**No implementation echo.** The three-case enumeration and the reason codes are transcribed from
+FSPEC AT-30 / TSPEC §I.2, and LI-12's supporting `parseLearningsConfig` assertions still carry no AT
+id, so the §T.5 counts stay honest. LI-08's expected byte counts remain "hand-computed from the
+fixture over **material only**, ignoring every delimiter (§D.5)" — unchanged by this round and still
+the correct compression of FSPEC v0.13's material-only basis.
+
+**Fail-open arm coverage — F-02 resolved.** The `RSN-NO-MATERIAL` row now reads "document **yields no
+material** … Two disjuncts, one branch (TSPEC §T.7): no `BR6_SECTION_NAMES` heading present (E-33),
+**or** `maxBytesPerDocument: 0` admits none (E-36)", with entering ATs `AT-28 (structural); AT-30
+case 3 (zero-bound)` and entering tasks `LI-07 / LI-16 (structural); LI-12 / LI-21 (zero-bound)`.
+That mirrors TSPEC §T.7's row exactly. The arm count stays twelve and the prose explains why —
+thirteen entering *cases*, twelve *arms* — which matters because LI-23's inventory asserts set
+equality over **reason codes**, not disjuncts, so nothing about LI-23 had to change. I re-derived
+that: `LEARNINGS_REJECT_REASONS` gains no member from E-36, so LI-23's three set equalities are
+arithmetically unaffected, and a DoD walk of FSPEC → AT → task now lands on an owning row for the
+zero-bound branch where in v7 it landed nowhere.
+
+**F-O-1's second rule now has a red test, not just a mapping.** The obligations row names both rules
+and routes them to LI-16 (`looksLikeLearningsDocument` and `extractInjectableMaterial`), and — the
+part v7 asked for — LI-08's `LI-AT-11` pins the second rule by fixture variance rather than
+inheriting it from the builder's shape. Without that, the matcher rule would have been asserted only
+against `## N. Title` documents, which is precisely the shape the landed helper emits by default
+(`learningsFixtures.js:68`), so the test would have proved nothing about ordinals being optional.
+
+**DoD.** Clause 4's byte-identity scope now reads "every dispatch **outside BR-1's rule** … (AC-4.3)"
+with the explanation that Phase CR's authoring-classified, `docType: null` optimizer round is *inside*
+the promise. That is FSPEC's own scope at `FSPEC-…md:622` and closes v6's F-04, which I had carried as
+inherited in v7. Clauses 1–3 and 5–13 are untouched; the `--per-file --branches 85` floor and the
+TSPEC §T.7 inventory that actually enforces the new region are unchanged.
+
 ## Positive Observations
 
 ## Findings
