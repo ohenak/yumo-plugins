@@ -137,7 +137,56 @@ criteria — they are completeness gaps in ownership and in an errata list.
 
 ## Verification
 
+**How I verified this round** (delta protocol, not a re-read):
+
+1. `git diff 9f87235e..HEAD` on the PLAN — three hunks, 23/2 lines, as itemised in §Batches.
+2. Re-derived all four upstream sha256 digests on the working tree and compared them to the dispatch
+   values — all four match, so the upstream I am measuring against is the upstream this dispatch
+   named.
+3. Read TSPEC §D.3 (`BR6_SECTION_NAMES`, `SECTION_HEADING_RE`, `GLOSS_RE`, rules 1–3) and FSPEC
+   F-O-1 at HEAD, and traced each of the delta's four heading-form cases back to the upstream clause
+   that requires it.
+4. Read the expected-red ledger rows for batches 7, 8 and 9 and checked case A's and case B's claims
+   against them, including the ledger's three load-bearing properties (test-name statement, shrink
+   by exactly what the batch greens, empty at 13).
+5. Read the three gate wordings in full to test case A's "before batch 7" boundary — this is where
+   F-01 came from.
+6. Read the landed `learningsFixtures.js` section renderer to test the additivity premise.
+7. Re-checked each open v8 finding against HEAD's bytes rather than assuming, including confirming
+   ERR-8's live status in TSPEC.
+
+**What I did not re-review:** every section unchanged by this edit and already approved at v8 —
+§Overview, the task table other than LI-08's row, §Traceability, §File-ownership manifest, the
+measured baseline, and §Open questions. Per the delta protocol those are not re-litigated, and no
+finding below reaches into them except the three inherited ones I already owned.
+
+**Product-lens verdict on the delta itself.** The routed items are about gate mechanics, which sits
+closer to the engineering lens than mine; the product question underneath is whether the PLAN still
+guarantees that `LI-AT-11` — the acceptance test carrying FSPEC F-O-1's second rule, and therefore
+the requirement that a real corpus document written in a non-canonical heading form still
+contributes material — actually gets a proving red before it is greened. Before this delta, the
+follow-up commit could have landed on green code with no ledger row, which is exactly the shape in
+which an acceptance criterion quietly stops being proven. After it, both landing windows are named
+and the later one is explicitly gated. That closes the product exposure, not just the process one.
+
+**No new scope, no reinterpretation.** The delta adds no behaviour, changes no acceptance criterion's
+meaning, moves no AT between tasks, and invalidates no fixture — its own changelog row claims exactly
+that, and the diff bears the claim out.
+
 ## Positive Observations
+
+- The delta answers the routed item **in the live table's own idiom** rather than in prose beside it:
+  case B's row is stated in test names, for a batch range, with the "amendment before the run"
+  obligation restated at the point of use. A dispatcher can act on it without reading P-A-7.
+- Naming **both** landing windows, including the one where the answer is "no row", is better than
+  naming only the awkward one. Case A's "no row is added, and none may be dropped early" forecloses
+  the opposite error too.
+- The fixture-consumer paragraph states its **premise** (additivity) and its failure mode (a
+  non-additive future amendment enters the ledger by name first) instead of asserting a bare
+  conclusion. That premise is checkable, and I checked it — it holds against the landed helper.
+- The changelog row is unusually honest about the negative space: "no task moved batch, no `Deps`
+  edge changed, no AT partition or fixture was touched." That is the claim a reviewer most wants to
+  be able to verify in one diff, and it verified.
 
 ## Delta-Confirmation Findings
 
