@@ -27,6 +27,13 @@ not against another document:
 
 ## Prior-Finding Disposition
 
+| v2 ID | Severity | Status | Evidence |
+|---|---|---|---|
+| F-01 | High | **Resolved** | AC-2.4's fourth clause no longer asserts "reads zero". It now reads `resolved: 0` with one `escalated` invocation per red wave — which is exactly what the shipped path produces: the budget escape's disposition carries `seam: "A6"` (`orchestrate-dev.js:4041`), the wave loop pushes it (`:15388`), and `advisorySummaryRows` therefore scores the A6 row `{invocations: 1, resolved: 0, escalated: 1, noAction: 0}` (`:3690-3706`). A PROPERTIES author transcribing the AC literally now writes an oracle that goes GREEN on shipped behaviour, and the two positive conjuncts (`resolved: 0` **and** a nonzero `escalated`) are strictly stronger evidence that the tier ran than the "zero row" they replaced — the AC-1.4 contrast (`advisory.enabled: false` ⇒ no advisory section at all) survives verbatim |
+| F-02 | Low | **Resolved** | The zero-budget escalation's class is now named `unclassified`, with AC-2.2's default cited as the reason. Verified: no reply is classified on the pre-dispatch path, so `capturedRootCauseForRecord` stays `null` (`:3093`) and `annotate`'s `|| "unclassified"` fallback (`:3242`) rides the terminal disposition onto the record (`:3636`), `ESCALATIONS.md` (`:3770`) and the halt fields (`:3566`). AC-6.4's countability in this mode is now decidable from the REQ alone. One residual ambiguity about *which* artifact carries the class is F-01 below (Low, not a regression) |
+
+No prior finding regressed, and the revision disturbed no section outside the three hunks above.
+
 ## Findings
 
 ## Questions
