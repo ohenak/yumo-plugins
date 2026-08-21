@@ -157,6 +157,49 @@ lens to object to, and nothing that reopens a scope question.
 
 ## Data Model
 
+The delta does not edit §4. It does, however, make one claim *about* §4 in the changelog and one in
+§6's OQ-1 row, and both are load-bearing for a contract-fidelity question I am obliged to check:
+whether the engineering types still match the REQ/FSPEC definitions value-for-value.
+
+**The claim.** OQ-1 previously read: `waveBudgetPerRun: 0` is "accepted as configured, per E-33; the
+behaviour is coherent but **undocumented upstream**. See the FSPEC erratum on E-33." The delta closes
+it: E-33 at v1.6 "states `0` is 'honoured as written', the summary row present and reading
+`resolved: 0` with one `escalated` invocation per red wave classed `unclassified`, and pins the key as
+a **non-negative** integer distinct from the shipped positive-integer validator; AT-07-2b tests
+'`0` in yields `0` back'. §4.4's `nonNegativeInt` is the transcription."
+
+**Verified against FSPEC E-33 at HEAD.** Every conjunct is there, verbatim:
+
+| TSPEC claim | FSPEC E-33 / AT-07-2b at v1.6 | Match |
+|---|---|---|
+| `0` "honoured as written" | "An explicit `0` is **honoured as written**, not treated as misconfiguration" | yes |
+| summary row present, `resolved: 0` | "the sixth summary row is **present** and reads `resolved: 0`" | yes |
+| one `escalated` invocation per red wave | "carrying one `escalated` invocation per red wave" | yes |
+| classed `unclassified` | "each classed `unclassified` because no reply was ever classified (BR-2)" | yes |
+| key validates as **non-negative** integer, distinct from the shipped positive-integer validator | "The key therefore validates as a **non-negative** integer — a distinct variant from the shipped positive-integer validator, which rejects `0` and substitutes the default" | yes |
+| AT-07-2b tests "`0` in yields `0` back" | AT-07-2b: "Companion: `0` in yields `0` back, key absent from the invalid-key report" | yes |
+
+So the withdrawal of the "undocumented upstream" clause is correct: it *was* undocumented at FSPEC
+v1.4 and it *is* documented at v1.6. The clause is stale and dropping it is the right edit.
+
+**Contract-fidelity diff on the type itself.** §4.4's config row for `waveBudgetPerRun` reads
+`integer ≥ 0`, default `1`, validator `nonNegativeInt` (`Number.isInteger(v) && v >= 0`, §3-side at
+line 694). Against E-33's "non-negative integer … default `1` … rejects `0` and substitutes the
+default" for the *shipped* validator that this key deliberately does **not** reuse: the range, the
+default and the validator identity all match, and the divergence from the shipped validator is the
+one upstream explicitly mandates rather than an unmarked internal variant. No enum value, numeric
+range or return type in the delta diverges from its REQ/FSPEC definition. Nothing to flag.
+
+**One thing I checked and want to record as clean rather than silent.** §4.4's row also carries a
+product statement — that `0` is "the **intended operator configuration** … 'keep the tier on, keep A6
+off'", with the note that this pairing "has no documentation carrier in scope, PM F-01" and that the
+example config teaches only the shipped defaults. That is a scope boundary I set in an earlier round,
+and this delta does not disturb it: E-33 at v1.6 documents the *behaviour* of `0` but says nothing
+that would oblige an operator-facing doc, so no new documentation obligation arrives with the
+re-grounding. The earlier disposition stands unamended and correctly so.
+
+**No state or schema element is added, removed, widened or narrowed by this delta.**
+
 ## Test Strategy
 
 ## Open Questions
