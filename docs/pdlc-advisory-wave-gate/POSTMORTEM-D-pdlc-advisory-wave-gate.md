@@ -113,6 +113,38 @@ finding.
 
 ## 4. Pattern of Disagreement
 
+**There is no disagreement.** Not author-versus-reviewer, not reviewer-versus-reviewer. This is the
+cleanest convergence of the feature: two independent lenses read the same delta, verified the same
+seven items against the same tree, endorsed the same judgement call on the eighth, and then landed
+the **same** High on the **same two rows** (§5.6's AT-06-4, §5.1's `advisoryWaveGate.test.js`) with
+compatible remedies. PM framed it as a routed obligation half-landed and a downstream consequence
+(PLAN mints from §5.6); TE framed it as a contract with zero oracles and enumerated both surviving
+failure modes. They are one finding seen through two lenses, and the lenses agree on the fix.
+
+Three structural patterns are worth naming, because none of them is about the merits.
+
+**1. The disagreement is between two halves of one document, not between people.** §2.5 and §4.5 at
+v1.12 say the halt report hands the operator the remedy. §6 OQ-2 at v1.12 still says the cost is
+"the operator's, not the pipeline's" and records a future ref discriminator as the remedy. §4.5's
+Snapshot-ref row promises "never overwritten by a later wave" while §2.5 explains that the *next
+run* overwrites it. §1.3's residue table says one test literal is un-transcribed while its own last
+row says the count that literal feeds "yields six at HEAD". Every one of the four non-High findings
+is an **internal contradiction opened by an edit that moved one site and not its neighbours** —
+neither statement is wrong alone; read together the document contradicts itself.
+
+**2. The repeat sites are the ones the edit did not touch.** OQ-2 is on its second consecutive flag,
+§4.5's cross-reference on its third, OQ-7's pin unresolved since v1. These are not contested; they
+are simply outside whatever grep each round runs. A round that edits §2.5 and §4.5 for BR-14 and
+never opens §6 will re-earn the OQ-2 finding indefinitely.
+
+**3. The one measurement that was claimed and not made is the one whose value justified the table.**
+§1.3's residue table was re-measured this round and every cell but one now reads "**none**". The
+exception — "Per-seam report rows … still reads `["A1" … "A5"]` … unchanged by the v1.12
+re-measurement" — is the single cell that keeps the table non-empty, and it is the one that is
+false at HEAD. PM's point is precise and worth preserving: this is a finding rather than mere
+staleness **because the round states it checked the cell**. A stale value that reads as stale costs
+less than a stale value that reads as verified.
+
 ## 5. Best-Guess Root Cause
 
 ## 6. Recommendation
