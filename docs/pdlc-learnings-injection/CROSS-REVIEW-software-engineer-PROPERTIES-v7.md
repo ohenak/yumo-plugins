@@ -51,6 +51,38 @@ PLAN; direct read of `learningsBlock.test.js` and `learningsConfig.test.js` at H
 
 ## Properties
 
+No property's **claim** changed in this delta. Every edit is either a locator rewrite or prose about
+the state of PLAN and the repository, so what I checked is whether each touched property still reads
+true against HEAD.
+
+- **PROP-BOUND-03** (:235–252) — the property text is untouched; only its T-O-6 locator moved from
+  `TSPEC §T.5, T-O-6` to `TSPEC, Named obligations carried forward, T-O-6`. The new locator is the
+  **correct** one and the old one was wrong: T-O-6 is a row of the table under
+  `### Named obligations carried forward` (TSPEC:1502, row at TSPEC:1511), not of §T.5. The quoted
+  fragment "State the zero conjunct, keep `0` in the domain" is verbatim in that row. Good change.
+  Its cost sentence ("one added case in `learningsBlock.test.js` … under the **existing** LI-08 red /
+  LI-17 green tasks") is still altitude-correct, but see F-01: LI-08 *and* LI-17 have both landed at
+  HEAD (`5e522a52`, `2cbacada`), and `learningsBlock.test.js` at HEAD carries four tests with no
+  `maxBytes <= 0` case (the only `bounded: false` assertions are the unbounded arm at :89 and the
+  block-shape arm at :48), so the amendment lands on **green committed code**, not on a suite still
+  scheduled to red.
+- **PROP-CONFIG-09** — same locator rewrite in §O.5's L3 table (:710), same verdict: correct target,
+  correct quote. Its partition sentence against PROP-BOUND-03 is unchanged and still non-overlapping.
+- **PROP-BOUND-05/07/08** — no text change. §C.4 now counts them together with PROP-BOUND-03 as
+  "**four** properties, not three" landing in `learningsBlock.test.js`; that count is right (the
+  three Group-D amendments plus the zero case), and I confirmed none of the four is present in the
+  landed suite, so all four are genuinely still owed.
+- **Counts.** `grep -o 'PROP-[A-Z]*-[0-9]*' | sort -u | wc -l` → **70**, unchanged and still matching
+  §C.4's summary table and the header. §C.3's 23-task accounting is untouched; PLAN still carries
+  LI-01…LI-23 and v0.7 added no task.
+
+The one property-adjacent conclusion the delta *does* damage is §C.4's closing inference — that this
+document's four properties "enter no ledger row unless that commit is brought forward". That
+inference is drawn from P-A-6 correctly, but from a false premise about where the run is: at HEAD the
+suites those amendments target are landed **and greened**, which is exactly PLAN's case B, not the
+pre-batch-7 case the paragraph's framing assumes. The properties themselves survive; the scheduling
+claim about them does not. That is F-01, and it is the only High.
+
 ## Oracles
 
 ## Fixtures
