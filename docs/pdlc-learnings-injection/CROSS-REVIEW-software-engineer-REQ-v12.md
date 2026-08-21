@@ -58,7 +58,27 @@ Per the delta protocol I did not re-read the sections I approved in rounds 1–1
 
 ## Constraints
 
+- **Freeze.** Blocking is reserved for (i) a defect this delta introduced or (ii) a factual
+  contradiction with the repository at HEAD or an upstream document. Everything else is `DEFERRED:`.
+- **Altitude.** AC-2.4 is REQ-level; it may state the observable attribution outcome and must not
+  state the selection algorithm. The delta stays on the right side of that line — it names *which
+  cause id a dropped document is reported under*, an operator-visible outcome, and leaves the
+  windowing mechanics to FSPEC BR-5/BR-6 and the TSPEC.
+- **Shipped-code grounding.** The header asserts the clause is "what the shipped selection does".
+  That makes this a verifiable claim about existing code, so it is checked at HEAD, not assumed.
+
 ## Acceptance Criteria — delta verification
+
+| Claim in the delta | Verified against | Result |
+|---|---|---|
+| A document past the count window is reported `RSN-COUNT` whatever the window's byte outcome | `pdlc/workflows/orchestrate-dev.js:2467-2469` splits `ordered` into `window = ordered.slice(0, windowSize)` and `overflow = ordered.slice(windowSize)`; `:2520-2522` `for (const doc of overflow) rejected.push({ path: doc.path, reason: "RSN-COUNT" })` — unconditional, no byte-state guard | **Holds.** The overflow label is a function of position alone. |
+| "only documents this bound drops are reported under it" (`RSN-BYTES` confined to the window) | `orchestrate-dev.js:2475-2492` accumulates over `window` only, pushing non-fitting members to `windowRejected`; `:2494` `for (const doc of windowRejected) rejected.push({ path: doc.path, reason: "RSN-BYTES" })` | **Holds.** `RSN-BYTES` cannot escape the window; the two rejected sets are disjoint by construction. |
+| The clause describes shipped behaviour rather than requesting a change | `orchestrate-dev.js:2496-2519` — the CR-round-1 comment records that the earlier `propagateBytes` guard was **removed**, and `:2517-2519` closes with "Code and specification now agree; there is nothing left routed" | **Holds.** The code already lost the divergent branch; the REQ is catching up to it, which is the correct direction for an erratum raised by DoD. |
+| "what FSPEC v0.14's BR-6 now states" | `FSPEC-pdlc-learnings-injection.md:9-17` header row reads version `0.14`; `:519-525` "**The mixed case, stated.** … each dropped document carries the id of **the bound that removed it** … Documents past the window carry `RSN-COUNT` whatever the window's byte outcome … only documents the total bound dropped from inside the window carry `RSN-BYTES`" | **Holds**, and is a near-verbatim match of the REQ clause — no daylight between the two statements. |
+| "DoD round 1, CODE_REVIEW v1 F11" is the trigger | `CODE_REVIEW-pdlc-learnings-injection-v1.md:37` — F11, Medium, remedy "Apply the erratum to FSPEC BR-6 and REQ AC-2.4 on this branch" | **Holds.** The delta is exactly the REQ half of F11's named remedy. |
+| No contradiction with AC-3.2's catalogue | `REQ:325-326` defines `RSN-COUNT` as "below the count threshold's cut" and `RSN-BYTES` as "dropped by the total byte bound" | **Consistent.** The new clause narrows attribution to the cause each id already names; it does not redefine either id. |
+| No contradiction with AC-2.2 | `REQ:281-289` — AC-2.2 governs *which* documents survive the count bound and is silent on reason ids | **No conflict.** AC-2.4's reference to AC-2.2 is a pointer to the bound, not a claim about its text. |
+| The owning acceptance test agrees and does not echo the implementation | `pdlc/workflows/__tests__/learningsSelect.test.js:279` (`LI-16: LI-AT-13`); expectations are literal — `:336` `expect(result.selected.map(d => d.path)).toEqual(orderedPaths.slice(0, 4))`, with the overflow's `RSN-COUNT` and the window drop's `RSN-BYTES` transcribed, and `:294-301` records that the byte-count previously tuned to keep the failure off the window's last slot is gone | **Holds.** Expected values are spec transcriptions, not derived from `selectLearnings`; the reason map is asserted as a whole rather than by containment. |
 
 ## Findings
 
