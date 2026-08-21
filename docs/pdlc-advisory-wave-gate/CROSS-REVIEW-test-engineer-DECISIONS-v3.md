@@ -79,7 +79,94 @@ the record's description of upstream, never about which side of the option the d
 
 ## Decision
 
-_pending_
+**DECISIONS no longer holds as approved against REQ at HEAD.** One High, one Medium, one Low; the
+High is `delta` and `local` — it sits in DEC-A6-03, the entry that routed the very item this edit
+landed.
+
+### F-01 (High) — DEC-A6-03's "the routing has not landed" is false at HEAD, and it is the sentence a test author would rely on
+
+`DECISIONS:357-362` states, as a checked fact with its own grep evidence, that `a6-snapshot`, "copy
+the ref" and "overwrit" match nothing in REQ or FSPEC, and concludes that no requirement obliges the
+halt message to warn about the re-run overwrite. I re-ran that grep at HEAD:
+
+| Term | REQ at v1.15 (my v2 approval) | REQ at v1.16 (HEAD) | FSPEC v1.6 (HEAD) |
+|---|---|---|---|
+| `a6-snapshot` | 0 | 0 | 0 |
+| `copy the ref` | 0 | 0 | 0 |
+| `overwrit` | 0 | **2 — `:23` (changelog), `:535` (AC-6.3)** | 0 |
+
+REQ AC-6.3 now reads *"Where the halt report points the operator at a captured pre-A6 tree state, it
+also warns, in the same place, that re-running this feature overwrites that capture … (DEC-A6-03)"*
+— and cites this entry by id. So three of the entry's sentences are now wrong in the same breath:
+
+- "**The routing has not landed**" — it has, on the REQ half.
+- "at REQ v1.15 and FSPEC v1.6 … match nothing in **either** document" — half false; the version
+  pin is also two versions stale.
+- "This entry carries the gap until it lands" — combined with the Re-evaluation trigger *"or the
+  halt-message obligation the PM is routing to REQ lands, in which case the remedy stops being
+  record-only and this entry's known gap closes"* (`:370-371`), the trigger has **fired** and the
+  record does not say so.
+
+**Why this is High in my lens rather than a documentation nit.** The sentence is not decorative —
+it is a load-bearing negative claim about what is *required*, and the downstream readers of a
+DECISIONS entry are the PLAN and PROPERTIES authors. A PROPERTIES author reading DEC-A6-03 at HEAD
+is told, in the record's own voice, that "FSPEC E-28 and AT-05-5 still require only that the halt
+name the failed restoration" — i.e. **no property is owed for the warning**. At HEAD a property *is*
+owed: AC-6.3 carries an operator-visible, black-box-testable conjunct (the halt report contains, in
+the same place as the capture pointer, a warning that re-running overwrites it). A record that tells
+the test author an obligation does not exist is the exact mechanism by which an AC ships with zero
+oracles, and it is worse than silence — silence prompts a check, a checked-looking negative claim
+suppresses one.
+
+**Fix (record-only; no decision moves).** Rewrite the Known-gap paragraph to state the split as it
+now stands: REQ v1.16 AC-6.3 **has** landed the operator-facing obligation and cites this entry;
+FSPEC v1.6 and TSPEC v1.11 have **not** — `a6-snapshot`/`overwrit` still match zero lines in FSPEC,
+FSPEC E-28 (`:309`) and AT-05-5 (`:460`) still require only that the halt "name the failed
+restoration", and TSPEC's halt-field contract is still the four literals `{rootCause, diagnosis,
+repairApplied, repairPaths}` (`TSPEC:715`, `:1274`, `:1285-1290`) with no warning conjunct. Then
+update the Re-evaluation trigger to record that its REQ limb has fired and what remains
+(FSPEC/TSPEC/AT), so the entry stops advertising a closed routing as open.
+
+### F-02 (Medium) — the newly landed AC-6.3 conjunct has no oracle anywhere, and this entry is where that should be recorded
+
+This is the testing consequence of F-01 and the reason I did not fold it into it. Having established
+that REQ now obliges the warning, I traced it downstream at HEAD and found nothing to fail:
+
+- **FSPEC:** no behavior, no error row and no AT mentions the warning. E-28 (`:309`) and AT-05-5
+  (`:460`) stop at "the halt names the failed restoration".
+- **TSPEC:** §4.5's halt-field table is a **closed enumeration** of four fields at literal values
+  (`:1285-1290`), and §2.3/§5.6's oracles assert those four. A warning string is not among them, so
+  no assertion can range over it.
+- **Suite at HEAD:** the capture-failure and un-skip halt tests assert the four fields; none reads
+  the halt text for an overwrite warning.
+
+DEC-A6-03 is the entry whose Reversibility says the name is "computed in one function and printed in
+one halt field" — that sentence now understates the entry's obligation surface, because AC-6.3 adds
+a *second* thing that must be printed in that same place. **Fix:** in the same repair as F-01, say
+which conjunct is asserted and which is specified-not-asserted — exactly the split this document
+already applies well at DEC-A6-04's `waveBudgetPerRun: 0` (`:517-530`) — and name the shape the
+oracle wants: the halt report's ref-pointer and its overwrite warning asserted **together, on the
+same rendered field**, since "in the same place" is the falsifiable half of AC-6.3 (a warning
+emitted elsewhere, or a pointer emitted without it, must go RED). An `expect(report).toContain(ref)`
+alone cannot fail that.
+
+### F-03 (Low) — the re-grounding provenance line now cites a REQ hash two versions old
+
+`DECISIONS:42` records "Re-grounded on upstream at HEAD before editing: REQ (`sha256:817b6745…`) and
+FSPEC (`sha256:82f74a2d…`) are unchanged from the state v1.8 was authored against". As a historical
+statement about the v1.9 edit it is fine, but it is the only REQ hash in the document, and it is now
+two versions behind HEAD (`f97f4f66…`, v1.16) with no current pin anywhere — the `Upstream` cell
+(`:5`) pins TSPEC only. A reader checking whether this record is current against REQ has nothing to
+compare. **Fix:** add the current REQ/FSPEC hashes to the `Upstream` cell, or date-scope `:42`'s
+sentence so it reads as provenance for v1.9 rather than a current claim.
+
+### What I re-confirmed and am not re-litigating
+
+The other three REQ-dependent limbs are byte-identical upstream and hold unchanged: AC-5.1's
+ignored-path map in both directions (`:98`, `:195`, `:272`), AC-5.1's operator-files reading
+(`:441`), and C-2's `waveBudgetPerRun: 0` affordance (`:503`, `:535-537`). v2's F-08 (DEC-A6-02
+cardinality oracle) and F-09 (packed-set fixture count) remain open as accepted non-gating items;
+both are untouched by this cascade and I do not re-file them.
 
 ## Consequences
 
