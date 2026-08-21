@@ -98,7 +98,46 @@ outside its scope. The last of those is F-02.
 
 ## Dependencies
 
-_pending_
+**Upstream re-read at the versions this dispatch pins (DEC-ERR-03), not at the versions the PLAN
+names.** The dispatch pins REQ `32cb8b7d`, FSPEC `ef230199`, TSPEC `1ddfdbc3`, DECISIONS `87ec8ebc`;
+on disk those are REQ **v0.10**, FSPEC **v0.14**, TSPEC v0.9, DECISIONS **v0.5**. This PLAN's header
+still pins *"TSPEC (v0.9); FSPEC (v0.13); REQ (v0.9); DECISIONS (v0.3)"* — three of four stale. I
+carried this as Low at round 13 and it is still Low, because I re-checked the substance the PLAN
+actually leans on and none of it moved under the PLAN's feet:
+
+- **REQ v0.10's AC-2.4 erratum** makes report attribution *cause-defined*: a document cut by AC-2.2's
+  count bound is reported under that cause even when the total bound also binds. FSPEC v0.14 states
+  the same at BR-6 (lines 521–527: documents past the window carry `RSN-COUNT` whatever the window's
+  byte outcome). The PLAN's fail-open arm table maps *count bound ⇒ `RSN-COUNT`* to **AT-08, AT-13**
+  and `COUNT-BINDING`, owned LI-07 / LI-16 — AT-13 is exactly the AT FSPEC v0.14 routes AC-2.4
+  through, so the mapping is a faithful compression of the *new* text, not a survival of the old.
+  Nothing to fix beyond the pin.
+- **E-36 / AT-30's three zero-threshold cases** are unchanged at FSPEC v0.14 (AC-4.4 → BR-5, BR-14 →
+  AT-30; E-36 still exercised by AT-30 beside the other two). LI-12's three-case row and its
+  three-conjunct oracle — key present with empty BR-8 rows, `rejected[]` set-equal to every
+  enumerated non-self path at `RSN-NO-MATERIAL`, **no** document carrying `RSN-COUNT` — still
+  compresses it exactly, including the fixture precondition (corpus > `maxDocuments`) that keeps
+  conjunct (iii) non-vacuous.
+- **FSPEC F-O-1's two heading rules**, which case C's production-half argument rests on, are
+  unchanged, and I confirmed the shipped `canonicalSectionName` behaviour the cell describes.
+- **DECISIONS v0.5** re-pins itself on FSPEC v0.14 / REQ v0.10 and records that v0.14's window
+  restatement and AC-2.4's attribution clause leave the byte-accounting basis, `E-36` and `AT-30`
+  untouched — the same conclusion I reached independently above.
+
+So the stale header pins are a pin refresh (F-03), not a cascade: no citation in this PLAN says
+something upstream no longer says. The one place a version number is quoted **inside** prose —
+LI-12's *"FSPEC v0.13's AT-30"* and the `RSN-NO-MATERIAL` row's *"BR-9/D-12 as FSPEC v0.13 restates
+them"* — names a superseded revision for text that is substantively unchanged at v0.14, so it reads
+as a dated citation rather than a false one; folded into F-03.
+
+**P-A-6 → P-A-7 routing, and PROPERTIES §C.4.** Case C's cell now ends by naming PROPERTIES §C.4 as
+recording the same discharge, and PROPERTIES v0.8's header confirms it: it re-pins every commit
+anchor to `09c7c62f`, reverses its seven `learningsBlock.test.js` absence claims, and records P-A-7
+case C **discharged green** rather than pending. The two documents agree at HEAD, which is what
+round 13's F-03 routing needed. PROPERTIES' header also records the four unowned remediation files
+as its **§G.2 gap 5** and routes them to this PLAN — the routing landed, but only partially, which is
+F-01 again seen from the other end: PROPERTIES names four, the true set is five new files plus six
+un-recorded second writes.
 
 ## Verification
 
