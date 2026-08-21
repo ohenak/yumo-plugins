@@ -159,7 +159,60 @@ upstream decided them, not because they were dropped.
 
 ## Fixtures
 
+**§F.1–§F.4 are byte-identical across the delta, and the one fixture-adjacent sentence the revision
+adds is faithful to PLAN.** The fourteen-row inventory, the `fixtures/learnings-baseline/` four-path
+row (`4a6c1816`), `helpers/learningsFixtures.js` (`1920f281`), §F.2's byte-identity baseline, §F.3's
+verbatim-fixture-string rule and §F.4's seam doubles are all outside every hunk.
+
+- **The consumer-exemption sentence tracks PLAN's re-scoping exactly.** §C.4 now says
+  `helpers/learningsFixtures.js` and its other consumers carry no row "in **any of the three cases**
+  — a ruling PLAN v0.8 scopes to *"**this** heading-form follow-up commit, not a standing exemption
+  for those files"*, which this document has never claimed". I compared that against `PLAN-…md:495–496`:
+  "carry **no** row of their own in any of the three cases — a ruling scoped to **this** heading-form
+  follow-up commit, not a standing exemption for those files (TE v9 F-01)". Verbatim, and the
+  self-assessment is true — no earlier revision of §F.1 or §C.4 claimed a standing exemption.
+- **The additivity premise the ruling rests on is untouched.** PLAN still carries "The
+  declared-heading-form knob is **additive** to `buildLearningsCorpus`'s section spec — the landed
+  helper already renders an optional ordinal and an optional gloss, and existing callers that declare
+  neither keep byte-identical output" (`PLAN-…md:497–499`), which is the sentence §F.1 leans on. So
+  `learningsSelect.test.js`, `learningsCorpus.test.js` and every other consumer hold their status
+  across the follow-up commit, and no consumer suite gains a ledger row — unchanged in substance from
+  what I approved at v9.
+- **The non-additive escape hatch now names both branches.** PLAN's fixture paragraph routes a
+  future non-additive helper amendment to case B's rule "or, once batch 13 is behind us, under
+  **case C**, where the obligation is green-at-landing rather than a ledger row. That is the branch
+  the PROPERTIES amendments §C.4 routes here fall under" (`PLAN-…md:503–506`). PROPERTIES' §C.4 now
+  reads the same way. The two documents agree on which branch is live.
+- **§F.3's verbatim-fixture rule is unaffected.** Nothing in the delta pins a user-facing string,
+  moves a normative lexicon entry, or paraphrases a fixture body. The `## Cross-Feature Patterns`,
+  `## Rejected Proposals` and `## Process Findings` spellings §C.4 discusses are reproduced exactly
+  as the landed suite and PLAN's LI-08 row spell them, including the canonical glossed
+  `"Rejected Proposals (with rationale)"`.
+
+**Fixture-side conclusion: the cascade half that was clean at v10 is still clean at v11.** No fixture
+row, path, hash pin or consumer status moved, and the `21edb7c5` snapshot pin that protects the
+fourteen-row reconciliation from going stale is still in place and still resolves to a real commit.
+
+## Findings
+
+No blocking findings. My five v10 findings are resolved (F-01 High, F-02/F-03 Medium, F-04/F-05 Low),
+and the delta introduces no defect and no contradiction with the repository at HEAD or with PLAN v0.8.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | None | — |
+
+Under the freeze, two wording observations are recorded rather than filed:
+
+DEFERRED: §C.4's P-A-6 paragraph still says the PROPERTIES suite's own red "rows are amended into the ledger by name first, under the same P-A-7 rule" — inherited text that under case C would instead be an empty ledger plus a fix owed before batch 14; harmless because the sentence defers to P-A-7 generically, but a future revision could name the case.
+DEFERRED: §G.3's struck case-B bullets quote case B's span as "every batch from the landing batch through the batch that greens them" where PLAN reads "every batch from the one the commit lands in through the batch that greens them" — the carried v10 F-05 paraphrase, now inside strikethrough text preserved as a historical record of the item as raised.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v10, now bookkeeping rather than a gate question: do the four owed `learningsBlock.test.js` amendments and the Group D `learningsSelect.test.js` amendments land in the PROPERTIES suite's own commit (P-A-6's window, open since `92b7ea0c`) or in a separate commit? Case C makes the answer cost-free either way — no ledger row in both readings — so nothing blocks on it. |
+| Q-02 | If PROP-BOUND-03's zero case does red at landing, case C owes the fix "before batch 14 runs". Does that fix commit belong to LI-16's owner (the zero-bound production half) or to whoever lands the amendment? PLAN's call, no property text depends on it. |
 
 ## Positive Observations
 
