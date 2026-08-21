@@ -45,6 +45,47 @@ found the split had moved two hops further than either reviewer saw.
 
 ## Options Considered
 
+Three readings of the revision were open. The choice between them is the substance of this round.
+
+**Reading A — the three findings are addressed, so approve clean.** F-01's stale negative claim is
+gone and replaced with a three-level landing statement, each level verified accurate at HEAD; F-02's
+remedy bullet now names `AC-6.3` as its upstream and says the warning is a required element of the
+halt report; F-03's trigger is marked "**fired at REQ v1.16 and is spent**" and replaced with a
+narrower live one. On this reading the round closes with no findings.
+
+*Rejected.* The revision is larger than the three fixes — it adds a compression of `TSPEC v1.15
+§4.5` and a compression of `PROPERTIES`' current coverage, and both compressions are new
+upstream-dependent claims that did not exist when I approved at v2. New claims are in scope for a
+delta re-review even when the findings they replace are resolved. Two of them are imprecise against
+the documents they compress.
+
+**Reading B — the findings are resolved; the new compressions carry non-gating defects.** The three
+prior findings are closed on the evidence above, and nothing in the diff broke anything I had
+previously approved. What the diff introduces is two descriptions of the landed contract that
+disagree with `TSPEC §4.5` / `FSPEC BR-14` in ways a reader could act on: the Reversibility
+paragraph places the pointer and the warning on two different surfaces and calls that co-location,
+and the "still owed" note enumerates one of the two properties `PROPERTIES` maps to `AC-6.3`.
+Neither drops an acceptance criterion — the entry states `AC-6.3`'s obligation correctly twice
+elsewhere in the same section — so neither is High.
+
+*Accepted.* This is what the evidence supports, and it is narrow: three findings, all inside the
+`DEC-A6-03` hunks, none gating.
+
+**Reading C — the Reversibility misstatement is High, because it reinterprets an acceptance
+criterion.** `FSPEC BR-14` makes co-location the falsifiable observable ("a pointer in the halt
+report and the warning in a runbook does not satisfy it"), and a decision record that describes the
+satisfying arrangement as *field plus adjacent notice* describes an arrangement `TSPEC §4.5` does
+not accept.
+
+*Rejected, on the calibration my own persona rules demand.* Severity tracks user impact, and the
+impact here is bounded by the fact that the same entry, eleven lines below, states the oracle
+correctly and in stronger terms than FSPEC does: "the oracle asserts the ref pointer and the
+overwrite statement on the **same rendered report field**, and must go RED both when the warning is
+deleted and when it is emitted somewhere other than beside the pointer." A reader who reaches the
+normative half is not misled; a reader who stops at the Reversibility aside is. That is a real
+defect worth fixing, but it is an internal inconsistency in a rename-cost aside, not an AC narrowed
+in the record's operative text. Medium, and it does not gate.
+
 ## Decision
 
 ## Consequences
