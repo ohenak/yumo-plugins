@@ -114,8 +114,57 @@ this sentence.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does BL-04 gate queue pickup, or is it discharged inside Phase F? Both readings are consistent with the text; the answer decides whether `ready: true` is accurate today. (H-02) |
+| Q-02 | Not a REQ finding — a hand-off note for PROPERTIES. The shipped ladder tests ancestry **before** over-range, so an IG-4 fixture (over-range record) only reaches its branch if it also satisfies `headCorroborated`; a naive fixture that lets ancestry fail first would prove IG-5 while claiming to prove IG-4. That precedence-defeating obligation is TSPEC/PROPERTIES altitude and correctly absent here, but the split into IG-4/IG-5 is what makes it visible — worth carrying forward deliberately rather than rediscovering it in a red test. |
+
 ## Positive Observations
+
+- **G-01 was closed by re-verification, not by softening.** The revision could have deleted the
+  inconvenient sentence; instead it re-ran the check, corrected the guard to the one the code
+  actually uses, replaced the "never fired" claim with a dated observation of the live record, and
+  *kept* the downstream instruction on a stronger footing. The block is now shorter, three items
+  instead of four, and every item survives a grep.
+- **"A code path is never an oracle" is the single best sentence in the document.** It converts an
+  instruction that used to depend on a contingent fact about this repo into one that depends on a
+  general truth about testing — and it is exactly the rule that stops the FSPEC's ATs from
+  asserting the presence of `writeWaveLedger` instead of the occurrence of a resume.
+- **The IG-4/IG-5 split carries its own rationale.** Stating *why* the rows are separate, inside the
+  AC, means the set-equality obligation cannot be quietly weakened by a later editor tidying two
+  "related" rows back into one. Few REQs defend their enumerations against future edits.
+- **OB-2 became a procedure instead of a number.** "Bump to the next version above the one found,
+  never to a fixed number written here" is a fix that cannot go stale — the class of defect G-03
+  reported is now structurally unavailable, not just corrected once.
+- **REQ-WVR-08 now separates channel from status.** Naming the run-log message and the report row
+  as two distinct obligations, and explicitly saying the hatch is owed on only one of them, turns a
+  sentence that admitted two incompatible ATs into one that admits exactly one of each.
+- **The superseded REQ-WVR-05 block was labelled rather than deleted.** Keeping the rejected
+  position as dated history, marked non-operative, preserves the reasoning for whoever asks "why
+  doesn't it clear itself?" without leaving a live requirement in conflict with the shipped ledger.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings remain. Round-2's single blocker (G-01) is closed on the merits and re-verified
+against the default branch line by line; the four Medium/Low findings are all closed as well, two of
+them (G-02, G-03) in a form that prevents the defect from recurring rather than merely fixing this
+instance.
+
+Three non-gating items to fold into the next edit or carry into FSPEC authoring: make OQ-1's banner
+grep reproduce (H-01 — cite `Skipping Phase I (wave ledger` and `Resuming at wave`); extend §10's
+readiness enumeration to cover BL-04 and state whether it gates pickup (H-02, Q-01); and say
+"one prevents the write, two discard the record" in §1's headline (H-03). None of these changes a
+requirement, an acceptance criterion, or an oracle.
+
+The requirement set is now testable end to end: ten ACs, each with a black-box observable; a closed
+six-row ignore catalogue with a set-equality obligation attached and per-row rationale; two safety
+properties (REQ-WVR-09, REQ-WVR-10) with positive oracles; and an explicit instruction that the
+FSPEC's proof must be an observed resume. That is a document an FSPEC and a PROPERTIES suite can be
+written from without a clarifying question.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
