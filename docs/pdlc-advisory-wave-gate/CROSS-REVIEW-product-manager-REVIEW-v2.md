@@ -77,7 +77,40 @@ the ordered catalogue assertion, the AC-2.2 prompt oracle, and AT-06-4b's report
 
 ## Findings
 
-_pending_
+All five v1 findings are resolved and mutation-confirmed. Two new Low findings, both about the new
+constant this round introduced; neither is gating.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-06 | Low | Local | `ADVISORY_ROOT_CAUSE_MEANINGS` is `export`ed (`orchestrate-dev.js:1972`) although no call site outside the module reads it — its only consumer is the prompt builder two thousand lines below in the same file (`:3160`), and the oracle deliberately does **not** import it (`advisoryWaveGateMain.test.js:433-434`, "not read back off `ADVISORY_ROOT_CAUSE_MEANINGS`, which would make the assertion unfalsifiable"). TSPEC §3.1 states the project's own rule for exactly this case, for `ADVISORY_SEAM_PHASES`: *"Exporting it would be a widening this feature has no use for: no call site outside the module reads it, and the only reason to export would be to let a unit test import the constant — which is the oracle shape §5.6 and PROPERTIES both reject."* The fix is one keyword: drop `export`, keeping the `Object.freeze`. The behavioural oracle is unaffected, since it reads the dispatched prompt. | REQ-AWG-02 AC-2.2 |
+| F-07 | Low | Local | The new catalogue has no frozen-ness oracle, unlike all three of its siblings (`advisoryEnvelope.test.js:348-350` asserts `Object.isFrozen(devModule.ADVISORY_ROOT_CAUSES)`; `ADVISORY_REFUSAL_REASONS` and `ADVISORY_EXCLUSIONS` carry the same). `ADVISORY_ROOT_CAUSE_MEANINGS` is written `Object.freeze({...})` at `orchestrate-dev.js:1972`, but nothing fails if a later edit drops that call, and this object is what the operator-facing class definitions are rendered from. Its *key set* is already covered — a missing key renders `undefined` into the prompt and reds the four literal assertions at `advisoryWaveGateMain.test.js:433-437` — so this is the mutability half only. If F-06 is taken, the natural home is a one-line `Object.isFrozen` conjunct in the prompt describe block; if the export stays, the sibling shape in `advisoryEnvelope.test.js` applies unchanged. | REQ-AWG-02 AC-2.2 |
+
+### Why neither is more than Low
+
+Both concern the *shape of a new internal constant*, not whether any acceptance criterion reaches
+the operator. AC-2.2's product claim — that the class an operator later counts (AC-6.4) was asked
+for against a stated definition, in the stated order — is now proven on the real dispatched prompt
+by an oracle that transcribes the REQ's own Meaning column and asserts the four offsets are strictly
+increasing (`advisoryWaveGateMain.test.js:419-446`). That is the assertion F-04 asked for, and it is
+falsifiable in both the content and the ordering direction. F-06 and F-07 are hygiene on the
+constant behind it, worth folding into any later touch of this file rather than a round of their
+own.
+
+### Upstream drift (routed as errata, not counted here)
+
+Two facts about the shipped module are now true and unstated in TSPEC. Per the reviewer protocol I
+do not edit that document and do not fold these into this verdict; they are emitted as `ERRATUM:`
+lines for its author:
+
+- TSPEC §3.1's export block (`TSPEC:805-816`) enumerates the module's exported catalogues and does
+  not mention `ADVISORY_ROOT_CAUSE_MEANINGS`, which this round added and exported. Whichever way
+  F-06 goes, §3.1 should say so — the same section already documents `ADVISORY_SEAM_PHASES`'s
+  private-by-construction status precisely so the export list can be read as complete.
+- TSPEC §3.2's `runWaveGateSeam` signature (`TSPEC:855-869`) lists `_now` as an ordinary injected
+  dependency. It now carries a default (`orchestrate-dev.js:3404`), and that default is
+  load-bearing rather than cosmetic: `main` supplies no clock, and E-34's branch calls
+  `appendAdvisoryEntry` / `appendEscalationEntry` directly, so without it AC-6.2's escalation entry
+  and AC-6.1's record never reach disk on a real run.
 
 ## Questions
 
