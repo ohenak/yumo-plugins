@@ -46,6 +46,31 @@ one version staler).
 
 ## Behavioral Flow
 
+The delta touches exactly one step of §3's ten-step flow: **step 10 (Halt, unchanged)**. Step 10
+today reads: the pipeline halts with the same reason it emits today (M-WG-3), writes the same
+`halted` queue row (M-WG-7), and "the halt report additionally carries the diagnosis and its
+root-cause class". Under REQ v1.16 that enumeration is now **incomplete for the branch where a
+capture exists**: the report must additionally warn, in the same place, that the ordinary next action
+after a halt — re-running the feature — destroys the capture the report just pointed at.
+
+Two flow-level consequences a test author would hit:
+
+1. **No branch is written down.** AC-6.3 sentence 2 is conditional ("where the halt report points the
+   operator at a captured pre-A6 tree state"), which makes it a *decision branch* in the halt step —
+   and this lens requires every decision branch to be explicit so each can be a separate test. FSPEC
+   step 10 has one arm today. It needs two: capture-exists (diagnosis + class + overwrite warning) and
+   no-capture-exists / E-34 (diagnosis + class, nothing to warn about, because nothing was captured).
+   Without the second arm stated, a fixture author cannot tell whether the warning is unconditional
+   (and therefore a bug when E-34 fired) or conditional.
+2. **The co-location requirement is the testable part.** "In the same place" is what makes the clause
+   verifiable at all: the oracle is *one* artifact — the halt report — containing both the pointer and
+   the warning. A design that emits the warning to a different channel (the run report's notice
+   channel, say, as E-30 uses) would satisfy a loosely-worded FSPEC and violate REQ. Step 10 is where
+   that co-location has to be pinned, or the AT cannot falsify the split-channel implementation.
+
+Nothing else in §3 changes truth value under REQ v1.16. Steps 1–9, §3.1, §3.2 and the §3.3 table rows
+are untouched by the delta and are not re-reviewed.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
