@@ -56,6 +56,14 @@ Item 4 is the DEC-ERR-03 case in its pure form: this TSPEC quotes a sentence its
 
 ## Data Model
 
+The record's product-visible shape is specified by FSPEC, whose bytes are unchanged from the version my v2 approval pinned, so nothing in this leg of the cascade can have moved it. I re-checked the three places where REQ — not FSPEC — is the source of a shape or state claim, because those are the ones the edit could in principle have reached:
+
+- **Retention and the `{}` cleared shape.** REQ §9 OB-1's closing sentence — *"One decision remains genuinely left to TSPEC: the `{}` 'cleared' shape that `parseWaveLedger` reserves but nothing ever writes — wire it or drop it"* — sits in the same paragraph the edit touched, three lines below the changed sentence, and is **byte-identical** at HEAD. DEC-WVR-04's disposition (keep the tolerance, add no writer) still discharges exactly what REQ left open, and §6.2 OB-F3 still reports it discharged. Nothing to change.
+- **The record's location, and that it is never tracked content.** REQ-WVR-10 and REQ §9 OB-1's "location, encoding, matching procedure and write mechanics are left to TSPEC" framing are untouched. `WAVE_STATE_PATH` under a root-anchored `.gitignore` rule (V-14) and AT-14's assertion on the ignore rule itself still trace as written. Worth stating explicitly given this round's subject: the OB-1 edit narrowed a claim about *where consumer-local state does and does not travel* (worktrees), and the TSPEC's own consumer-local placement of the record is the thing that makes the worktree conclusion true. The edit is therefore consistent with the data model rather than in tension with it.
+- **Completion as a high-water property.** REQ-WVR-01/BR-08 untouched; `lastGreenWave` semantics on the `resume` decision unchanged, as is the §3.2 skip-line rendering I re-derived in v2.
+
+One consequence of the BL-04 edit is worth recording as a *non*-finding, because it is the kind of thing that looks like one: REQ §5's row now names an outcome ("unmet") in a table whose other three rows name outcomes too (BL-01/02/03 resolved at HEAD per §10). That makes §5 a state table rather than a checklist. This TSPEC never reads §5 as a checklist — §1.1 reads the requirement, §6.2 reads the state — so the reframing costs it nothing, and the state it now reads from two places agrees in both.
+
 ## Test Strategy
 
 ## Open Questions
