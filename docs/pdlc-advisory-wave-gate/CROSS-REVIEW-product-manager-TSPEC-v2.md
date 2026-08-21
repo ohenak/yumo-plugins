@@ -202,7 +202,59 @@ is not lost between the two.
 
 ## Open Questions
 
+### §6 OQ-2's disposition is now stale against upstream
+
+OQ-2's current disposition ends:
+
+> *"…a run id or capture timestamp in the ref name is recorded as the remedy if the overwrite ever
+> costs an investigation."*
+
+That is a *contingent* remedy — held in reserve, to be applied if the hazard ever proves costly. REQ
+v1.16 changed the modality: a bounded form of the remedy is now **required**, unconditionally, on
+every halt that names a capture. The remedies are not identical (REQ mandates a warning, not a
+run-scoped ref name), so OQ-2's substance is not wrong — but its framing tells the reader the whole
+matter is parked pending evidence, when upstream has already ruled that part of it is due now. A
+reader working from OQ-2 alone would conclude nothing is owed.
+
+The fix is small: OQ-2 should record that AC-6.3 at REQ v1.16 mandates the operator warning, and
+that the *ref-naming* remedy alone remains contingent. That keeps the settled decision settled while
+telling the truth about what upstream now requires. Medium, because it misdirects the reader about
+an obligation rather than dropping one — the drop is F-01.
+
+### Obligations for the revision
+
+| # | Owner | Obligation |
+|---|---|---|
+| O-A | FSPEC (upstream, in flight) | Land AC-6.3's second conjunct as an observable on E-28 and an acceptance-test conjunct on AT-05-5/AT-06-4. TSPEC's fix should follow this, not precede it |
+| O-B | TSPEC §2.5 / §4.5 | Name the carrier for the overwrite warning on the halt that names the ref, and transcribe its literal (REQ O-1 reserves the wording to TSPEC) |
+| O-C | TSPEC §4.5 | Re-derive the "AT-05-3's literal comparison and AC-6.3 both hold" claim against AC-6.3's two conjuncts, or restate it as covering the first only |
+| O-D | TSPEC §6 OQ-2 | Record that the operator warning is now mandated; keep the ref-naming remedy contingent |
+| O-E | TSPEC §5.6 | Add the oracle described under Test Strategy, once O-A/O-B fix the observable |
+
+### Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | AC-6.3's *Given* is "the pipeline halts after an A6 escalation," but the halt that names the ref in this TSPEC is E-28 (restoration failure). Does the author read E-28 as inside AC-6.3's *Given*? I believe yes — §2.5 has E-28 writing the record and escalation before halting — but the TSPEC should state it, because if E-28 sits outside, the new conjunct binds on nothing and the round closed on paper only. SE raised the mirror of this against REQ; the two answers must agree. |
+| Q-02 | DEC-A6-03 records a "documented operator remedy: copy the ref before re-running a halted feature." Is that remedy sentence part of the halt output, or only the bare overwrite warning? §2.5 already has the sentence; the choice is whether it moves or is duplicated. Product view: include it — a warning without the action to take is a worse halt than one with it — but the call belongs in FSPEC's observable (O-A). |
+
 ## Positive Observations
+
+- **The hazard analysis in §2.5 is better than its upstream.** REQ says re-running "overwrites that
+  capture"; §2.5 says which ref, on which wave, at which step, and what the cost is and is not
+  ("inspectability of the pre-repair tree, never content"). The author found this hazard themselves
+  and reasoned about it honestly rather than letting the wave-scoping fix look complete. The
+  revision is a placement change, not a rethink — nearly all the material it needs is already
+  written in this document.
+- **The cascade surface is genuinely small, and that is the document's doing.** Because the TSPEC
+  cites REQ by spec id and quotes verbatim rather than by `file:line`, I could re-verify ten
+  citations against a moved upstream mechanically and reach a confident "only AC-6.3 drifted."
+  That is DEC-DOC-01 paying off exactly as intended.
+- **§4.5's literal-value discipline is the reason the fix is cheap.** The capture-failure
+  `diagnosis` sentence being fixed and transcribable gives the revision a working pattern to copy
+  for the overwrite warning — no new mechanism, no new decision, one more transcribed literal.
+- **My v1 Low finding is genuinely minor and I am not escalating it.** It remains open (below) only
+  so it is not lost in the round change.
 
 ## Recommendation
 
