@@ -38,7 +38,7 @@ matches both banners (SE F-02, TE H-01); §10 enumerates all of §5 (TE H-02, Q-
 **Erratum, 2026-08-21 (v1.6) — Phase F erratum round.** §1's wave count and replay cost are
 match OF-1; REQ-WVR-02 notes IG labels name causes, not precedence; REQ-WVR-08's no-commit claim
 is scoped to the implementation wave loop (Phase PT's V-wave excluded); §10 records BL-04 open and
-unmet. Nothing else changed.
+unmet.
 
 **Note on this branch's base (SE F-01, F-02).** This feature branch is 1,637 commits behind the
 default branch and predates the merge of the mechanism §1 describes; the code claims in this REQ
@@ -68,11 +68,9 @@ What the halt costs is the *re-entry*. A re-invocation of the pipeline re-enters
 at wave 1 and re-dispatches implementation agents over every wave whose work is already
 committed, each of which reads the plan, finds its task done, and reports a no-op.
 Observed on the pdlc-consolidation-agent run of 2026-08-09 (OF-1, §4): a 16-wave plan
-halted at wave 2 and again at wave 4. The re-invocation after the wave-4 halt paid seven
-no-op agent dispatches (waves 1–3) before reaching the point of interest; the re-invocation
-after the wave-2 halt replayed wave 1 only, a single task. Multi-halt runs pay this replay
-tax once per halt, in the task count of every wave below the halted one, so it grows with
-the plan.
+halted at wave 2 and again at wave 4. Re-entry after the wave-4 halt paid seven no-op
+agent dispatches (waves 1–3); re-entry after the wave-2 halt replayed wave 1 only, a single
+task. Each halt costs the task count of every wave below it, so the tax grows with the plan.
 
 A manual resume pointer now exists (`implementation.startWave`, an operator-set
 configuration value — BL-01, §5). It works, but it demands operator arithmetic with a
