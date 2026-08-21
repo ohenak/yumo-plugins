@@ -127,7 +127,7 @@ wave agents' own uncommitted work intact — and control returns to step 3b's at
 
 **Step 9 — Terminal disposition.** Exactly one of: *resolved* (step 8a on a green re-gate); *escalated* (refusal, malformed verdict, budget exhaustion, or a red re-gate with no attempt left); *no-action* (tier disabled, or A6 inapplicable). The vocabulary is the tier's, not A6's, and its closed assertion belongs to the tier's own suite — the same division AT-06-1 makes for the record shape; A6 adds no disposition, and no AT here re-asserts the set. An advisory-record entry is appended for every disposition and an escalation-log entry for every escalated one (BR-13); a record-write failure refuses the action rather than proceeding unrecorded.
 
-**Step 10 — Halt, unchanged.** When A6 does not resolve the wave, the pipeline halts with the same reason it emits today (M-WG-3) and writes the same `halted` queue row (M-WG-7); the halt report additionally carries the diagnosis and its root-cause class. Escalation adds information, never control flow (BR-14).
+**Step 10 — Halt, unchanged.** When A6 does not resolve the wave, the pipeline halts with the same reason it emits today (M-WG-3) and writes the same `halted` queue row (M-WG-7); the halt report additionally carries the diagnosis and its root-cause class. It has two arms: where the report points the operator at a captured pre-A6 tree state, it also warns there that re-running this feature overwrites that capture; where no capture was taken (E-34), it carries the diagnosis and class and no such warning. Escalation adds information, never control flow (BR-14).
 
 ### 3.3 The flow in one table
 
