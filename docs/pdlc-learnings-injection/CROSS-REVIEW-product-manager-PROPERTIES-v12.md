@@ -57,6 +57,44 @@ below, non-gating, exactly as the equivalent pin lag was handled in v11.
 
 ## Properties
 
+**No property statement can have moved — the file is byte-identical — so the test is whether any
+property's *upstream footing* moved.** Two footings are in play for this erratum: the P-A-7 case
+that governs each property-owed amendment, and the additivity premise under the fixture helper.
+
+| PROPERTIES claim leaning on PLAN | PLAN at v0.9 | Holds? |
+|---|---|---|
+| §C.4: PLAN's P-A-7 table is a **three**-case table, case C live | Table still three rows; lead-in now says *"three cases … (A, B and C below)"* — agreement is now textual as well as substantive | Yes — improved |
+| Case A scoped *before batch 7* | Case A row unchanged, still *"before batch 7"* with the derived batches 2–6 window | Yes |
+| Case B scoped *"batch 9 through batch 12"* | Case B row byte-unchanged | Yes |
+| Case C: *"after batch 13, the case that is live at HEAD"* | Case C row byte-unchanged | Yes |
+| Case C's obligation: *"under case C they owe no ledger row, and they owe green"* | Character-exact at HEAD | Yes |
+| A landing red *"has found a real defect"*, fix owed **before batch 14**, survival into batch 14 a **gate failure** | Case C row states all three, unchanged | Yes |
+| Group D amendments to landed `learningsSelect.test.js` travel under case C | Case C's closing clause still names them | Yes |
+| `helpers/learningsFixtures.js` consumers carry no row *"in any of the three cases"*, scoped to *"**this** heading-form follow-up commit, not a standing exemption"* | Paragraph below the table, unchanged | Yes |
+| P-A-6 governs this document's own PROPERTIES suite, *"byte-unchanged at v0.8"* | P-A-6 untouched by the erratum; the v0.8 label is a pin, addressed in F-01 | Yes (substance) |
+
+**The four property-owed amendments are unaffected in kind and in count.** PROP-BOUND-03's
+`maxBytesPerDocument <= 0` case and PROP-BOUND-05/07/08's heading-form arms still land in
+`learningsBlock.test.js` under case C: empty ledger, green expected at landing, fix-before-batch-14
+if one reds. Nothing in the erratum adds, removes or re-routes an amendment, and nothing changes the
+set of properties the amendment scope covers — which is the question that matters for a product
+reading, since a silently widened or narrowed set would hand the implementer a different obligation
+than the one PLAN schedules.
+
+**Hunk 3 read for product consequence, not just for text.** The corrected note says the follow-up
+commit adds callers for **two** unexercised knobs (`ordinal`, `gloss`) and reuses one already
+exercised (`body`). PROPERTIES' §C.4 evidence never counted knobs — it counted *arms absent from the
+landed suite* (no un-glossed `## Rejected Proposals`, no `###`-as-body case, no `## Process Findings`
+near-miss, no `extractInjectableMaterial(text, 0)` call). Those four absence claims are facts about
+the landed test files, independent of how many `renderSection` parameters were previously exercised.
+I re-measured them at HEAD in v11 and the erratum touches no test file, so they stand.
+
+**One asymmetry worth stating plainly.** The erratum's `body`-already-exercised correction makes the
+`###`-as-body arm *less* novel than PLAN previously implied: the mechanism it needs (`body` text
+passed through `renderSection`, which hardcodes the two-`#` prefix) is already in daily use by both
+landed suites. That further supports case C's "expected green" ruling, which PROPERTIES already
+records. No finding — a confirmation of the reading this document took.
+
 ## Oracles
 
 ## Fixtures
