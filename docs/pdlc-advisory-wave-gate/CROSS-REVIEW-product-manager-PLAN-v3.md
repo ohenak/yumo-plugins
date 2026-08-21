@@ -92,4 +92,27 @@ Every claim below was re-measured at HEAD rather than taken from the changelog.
 
 ## Recommendation
 
+**Approved with minor changes** — no High finding, no Medium finding, one Low.
+
+Stated precisely, because a re-review's verdict is a claim about a delta:
+
+- **Every v2 finding is closed, and closed at the level asked or above.** The High (`F-01`) is closed
+  mechanically — the `comm` walk that produced it now returns empty. `F-02` and `F-03` are closed with
+  their reasons and owners named in the task rows, not only in the changelog. `F-04`'s label now
+  agrees with the bytes it pins.
+- **The revision broke nothing.** 11 tasks, 7 waves, every batch column, dependency edge and source
+  cell unchanged; the AT table is still set-equal to FSPEC's 48 in both directions; single-writer
+  holds with the new file added; A6-21 still depends on A6-18, so the helper the un-skip push calls
+  exists a batch before it is called.
+- **The one Low is about the form of a check, not about a wrong claim.** Rule 2's walk is true at
+  HEAD — I re-derived the (file, batch) pairs — but it is a containment enumeration that cannot fail
+  when the next file arrives. It is recorded for the next time that section is touched; it does not
+  gate this phase.
+
+Nothing must change for this document to proceed. `F-01` is a durable process signal, tagged for
+harvest rather than for the optimizer loop.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
