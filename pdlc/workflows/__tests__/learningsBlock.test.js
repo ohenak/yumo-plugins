@@ -100,6 +100,67 @@ describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {
     expect(result.material).not.toContain("APPROVAL_MARKER");
   });
 
+  test("LI-AT-11: heading-form variants — ordinal stripped, gloss optional, a ### sub-heading reads as body text, and a near-miss title is excluded (§D.3 F-O-1 rule 2, TE F-03 amendment)", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    // Beside the corpus's usual numbered form (Non-Convergences, `## 2. …`): an un-numbered
+    // heading (Cross-Feature Patterns, no ordinal), an un-glossed heading (Rejected Proposals,
+    // no trailing "(with rationale)"), a `###` sub-heading embedded in a section's body — which
+    // §D.3 rule requires stay body text because SECTION_HEADING_RE matches exactly two `#`s,
+    // never three — and a near-miss title (`## Process Findings`, §D.3's own E-33 example) that
+    // must NOT match `BR6_SECTION_NAMES`'s "Process Learnings" under rule 2's exact,
+    // case-sensitive, no-substring comparison. These knobs (`ordinal`, `gloss`, `body`) are
+    // LI-02's `renderSection` surface, not built ad hoc here (PLAN LI-08 Deps: LI-02).
+    const text = buildLearningsDocument({
+      feature: "at11-heading-forms",
+      sections: [
+        {
+          name: "Cross-Feature Patterns",
+          ordinal: null,
+          body: "CROSSFEATURE_MARKER body text.",
+        },
+        {
+          name: "Rejected Proposals",
+          gloss: null,
+          body: "REJECTED_MARKER body text.",
+        },
+        {
+          name: "Non-Convergences",
+          ordinal: 2,
+          body:
+            "### A sub-heading that is body text, not a section boundary.\n\n" +
+            "NONCONV_MARKER follows the sub-heading.",
+        },
+        {
+          // §D.3's own E-33 near-miss: shares a token with "Process Learnings" but is not a
+          // substring/prefix/token match under rule 2 — must be dropped entirely.
+          name: "Process Findings",
+          body: "PROCESSFINDINGS_MARKER must never be injected.",
+        },
+      ],
+    });
+
+    // Unbounded: large enough that maxBytes never binds, so nothing is cut (TSPEC §D.5).
+    const result = extractInjectableMaterial(text, 100000);
+
+    expect(result.bounded).toBe(false);
+    expect(result.sections).toEqual([
+      "Cross-Feature Patterns",
+      "Non-Convergences",
+      "Rejected Proposals (with rationale)",
+    ]);
+    expect(result.material).toContain("CROSSFEATURE_MARKER");
+    expect(result.material).toContain("NONCONV_MARKER");
+    expect(result.material).toContain("REJECTED_MARKER");
+    // The ### line survives verbatim, as body text within Non-Convergences's extent — proof it
+    // was never treated as a heading boundary.
+    expect(result.material).toContain(
+      "### A sub-heading that is body text, not a section boundary."
+    );
+    // The near-miss title's body is never taken — the section itself is unmatched and dropped.
+    expect(result.material).not.toContain("PROCESSFINDINGS_MARKER");
+  });
+
   test("LI-AT-12: character-safe cut — ASCII fixture, contributed bytes equal the bound exactly", async () => {
     const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
 
