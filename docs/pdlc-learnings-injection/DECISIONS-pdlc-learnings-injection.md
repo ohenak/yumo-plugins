@@ -29,10 +29,22 @@ reconsider it confidently and at cost.
 2026-08-19, before any production edit for this feature had landed — so every citation describes the
 *pre-feature* codebase this design attaches to. Citations name **exported symbols and file paths**
 rather than line numbers, per `docs/_decisions/DECISIONS-review-severity-bars.md` `DEC-DOC-01`; a
-line number appears only where the position itself is the claim.
+line number appears only where the position itself is the claim. **Two kinds of citation, kept
+distinct.** Citations that ground a *design choice* are the pre-feature reads pinned above.
+Citations added in later revision rounds that confirm the shipped implementation matches what an
+entry decided — `renderLearningsBlock`'s framing inventory and formula in `DEC-LI-08`,
+`extractInjectableMaterial`'s `maxBytes <= 0` early return and `selectLearnings`'s
+`sections.length === 0` branch in `D-O-3` — are read on **post-implementation HEAD** and are named
+as *shipped* in the text. They are confirmations, not grounds: no decision here rests on them.
 
 **Upstream version note.** This document is grounded on upstream **at HEAD**: TSPEC v0.9, FSPEC
-v0.13, REQ v0.9. The history matters only because `DEC-LI-07` reads as a divergence otherwise: TSPEC
+v0.14, REQ v0.10. Both moved since round 6 without touching anything decided here: FSPEC **v0.14**
+restates `BR-6`'s *total* bound over the window the count bound leaves and states the mixed
+count/byte attribution (a document past the window carries `RSN-COUNT` whatever the window's byte
+outcome), and REQ **v0.10** carries the matching AC-2.4 attribution clause. Neither touches the
+**byte-accounting basis** `DEC-LI-08` restates — FSPEC §"The byte-accounting basis" is still
+material-only, and `E-36` and `AT-30`, which `D-O-3`'s zero-bound conjunct cites, are unchanged. The
+history matters only because `DEC-LI-07` reads as a divergence otherwise: TSPEC
 v0.5 was authored while REQ contradicted itself on the shipping default and carried a provisional
 second gate with `OQ.2` and `ERR-4` open; REQ v0.9 settled the question, this document was written on
 the settled answer, and TSPEC has since landed it (§I.3 gates on `config.enabled` alone, `OQ.2` and
