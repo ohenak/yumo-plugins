@@ -48,6 +48,22 @@ Measured at HEAD, not recalled:
 
 ## Acceptance Criteria
 
+Item-by-item disposition of the routed list. "Landed" means I read the bytes at HEAD, not the
+changelog's claim about them.
+
+| Routed item | Raised by | Landed? | Evidence at HEAD |
+|---|---|---|---|
+| Low/delta/local — `Upstream` dropped the resolvable path | se-review (F-02), te-review (F-02) | Yes | Header row now reads `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) → **REQ**. Path resolves; the chain form is retained alongside it, so nothing v4 approved was lost. |
+| Low/delta/local — `Cross-Reviews` over-claimed harvest | se-review (F-03) | Yes | Row now scopes harvest to "rounds through harvest … in `LEARNINGS-…`" and names the on-branch files as post-harvest erratum rounds "in no LEARNINGS table". Cross-checked against LEARNINGS `:10`; accurate. |
+| **High**/delta/local — AC-5.1 carrier list omitted AC-6.2's `ESCALATIONS.md` append | te-review (F-01) | Yes | AC-5.1 now excludes "AC-6.1's record append, AC-6.2's escalation-log append, and AC-5.2's queue-row write (M-WG-7)". AC-6.2's Given ("any A6 escalation") is entailed by AC-5.1's Given (refusal, budget exhaustion, red re-gate), so the three carriers the run still owes are now the three the comparison excludes. The self-contradiction at run end is closed. |
+| Low/delta/local — AC-1.1 / R-5 left the post-change reading on unpinned "HEAD" | te-review (F-03) | Yes | AC-1.1: "the post-change reading, at `11420461`, carries A6 (baseline v1.2 §4, M-WG-13)". R-5: "M-WG-13/M-WG-14 are the post-change ones, measured at `11420461`". Both agree with the baseline's `Verified at` row verbatim. |
+| Low/inherited/nonlocal — C-5 soft-budget overage | se-review (F-04) | Not taken, correctly so | Recorded in the v1.15 changelog as inherited and nonlocal, dissolved by SE Q-02's relocation. I do not reopen it. This round's own bytes did change the numbers underneath it — filed fresh and narrowly as F-01. |
+| Low/inherited/nonlocal — baseline `Cited by` row vs §6/§7 | te-review (F-04) | Not taken, correctly so | The defect is in upstream's bytes, not this REQ's; owner is the baseline file. Still open upstream — recorded as F-02 so it is not lost. |
+
+Nothing outside the four targeted locations moved: `git diff c58fd61d..HEAD` is 15 insertions / 7
+deletions, all inside the header, AC-1.1, AC-5.1 and R-5. No decision was reopened; no AC's Given,
+Then, or trace list changed except AC-5.1's exclusion list and the two commit pins.
+
 ## Risks
 
 ## Obligations
