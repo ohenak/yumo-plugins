@@ -1280,16 +1280,34 @@ PLAN task is required**, and no obligation is deferred to implementation.
    parenthetical. Its standing counterpart — a legitimate re-capture leaves every **retained** digest
    unchanged (§F.2, §O.2) — is the rule a reviewer of a future re-capture PR applies, and it is
    checkable.
-5. **The fourteen-row file-ownership manifest no longer lists the feature's whole test surface (new
-   this round).** §C.4's re-measurement at `09c7c62f` finds **eighteen** `learnings*` files under
-   `pdlc/workflows/__tests__`, four of which no PLAN task owns:
+5. **The fourteen-row file-ownership manifest did not list the feature's whole test surface; PLAN
+   has since recorded the remainder.** §C.4's re-measurement at `09c7c62f` finds **seventeen**
+   `learnings*` files under `pdlc/workflows/__tests__` — the ladder's thirteen (twelve suites plus
+   `helpers/learningsFixtures.js`) plus `2fc6fcd3`'s four added test-side files — and an
+   **eighteenth** engine-side, `pdlc/engine/__tests__/learnings-config-example.test.js`, which the
+   manifest's directory scope never covered. "Eighteen" is therefore a count of **tracked
+   `learnings*` test-side files** across both directories, treating the `fixtures/learnings-baseline/`
+   subtree as a directory rather than as files: a raw `git ls-files pdlc/workflows/__tests__ | grep
+   learnings` returns **39 paths**, of which 22 are that subtree's fixture files. This is the same
+   convention and the same number PLAN §The arithmetic now states with its derivation (*"the tracked
+   `learnings*` test-side set is eighteen files"*). Four of the seventeen no PLAN **task row** owns:
    `helpers/learningsBaselineScenarios.js`, `helpers/learningsComposition.js`,
    `learningsDisclosure.test.js` and `learningsErratumBinding.test.js`, all added in `2fc6fcd3` and
    each opening with the `CODE_REVIEW-pdlc-learnings-injection-v1.md` finding it discharges (F1/F7/F12,
-   F8, F10, F11/F12 respectively). This is a gap in **PLAN**, not in this document — no property here
-   names any of the four, so §C.3's task→property accounting is unaffected and no oracle moves. It is
-   recorded here because a reader using PLAN's manifest as the feature's test inventory would now
-   under-count by four, and routed to PLAN in §G.3.
+   F8, F10, F11/F12 respectively). This was a gap in **PLAN**, not in this document — no property here
+   **names** any of the four, so §C.3's task→property accounting is unaffected and no oracle moves.
+   One clarification of scope: `helpers/learningsComposition.js` is unnamed but not unexercised — its
+   header describes it as *"the AC-2.5 / PROP-ORDER-05 composition, in one place so it can be driven
+   from TWO SEPARATE NODE PROCESSES (CODE_REVIEW v1 F8)"*
+   (`pdlc/workflows/__tests__/helpers/learningsComposition.js`, opening comment), and the task-owned
+   `learningsDispatchSet.test.js` imports `composeAuthoringPrompts` from it and also spawns it as
+   `COMPOSITION_CHILD_PATH`, so PROP-ORDER-05's two-process oracle **executes through** it. The
+   oracle does not move and is not weakened by the file's unowned status; the gap is one of manifest
+   completeness, not of oracle fidelity (PM v14 F-04). **PLAN has since closed it**: v1.2 items (3)
+   and (4) recorded the four files and P-A-5's second-owner rows, and v1.3 item (1) re-derived the
+   whole set from `git show --name-status 2fc6fcd3` into a **nineteen-row** §Post-batch remediation
+   subsection. The routed item in §G.3 is struck accordingly; this gap is retained as the record of
+   where it landed.
 6. **Real-agent behaviour is out of scope.** Every property is asserted against scripted `_agent`
    replies. Whether an author agent's *output quality* improves from an injected block is unfalsifiable
    here, and REQ's non-goals say so; PROP-ISOLATE-01/02 assert only that the block cannot change gate
