@@ -1118,59 +1118,56 @@ eighteen files: LI-04, whose artifact is the `/.baseline-worktree/` ignore rule 
 is present as the root-anchored `/.baseline-worktree/` at `.gitignore:13`), and LI-05, whose artifact
 is the capture script (below).
 
-**On the re-red of landed suites (SE Q-02), restated against `21edb7c5` (PM F-02, PM F-03).**
-PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments — **four** properties, not three —
-land in `learningsBlock.test.js`. That suite is not merely landed but **greened**: its red owner
-LI-08 landed at `5e522a52` and its green owner LI-17 at `2cbacada`, and LI-16 — the task PLAN v0.7
-names as the owner of TSPEC §D.5's zero-bound production half — landed at `d462ddd8`. So of PLAN's
-**three**-case table at v0.8, **case C is the live case** and cases A and B are both behind us: case A
-is scoped to a follow-up commit landing *before batch 7*; case B is scoped to *"after LI-17 has
-greened the suite, with a greening batch still ahead (batch 9 through batch 12)"*, and batch 13 is
-behind us. Case C — *"after batch 13, the case that is live at HEAD"* — names these four properties
-by name and rules the opposite obligation from case B's: **the ledger stays empty and the amendment is
-expected to land green.** PLAN states it in terms: *"under case C they owe no ledger row, and they owe
-green."* No named `learningsBlock` ledger row is owed, and an author who prepares one is preparing an
-amendment PLAN says must not exist. **None of the four is present in the landed
-suite**: at `21edb7c5` `learningsBlock.test.js` declares one `describe` naming three ATs
-(`describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)")`, `learningsBlock.test.js:38`),
-carries none of `LI-AT-11`'s variant heading-form arms — no un-glossed `## Rejected Proposals`
-(the builder renders the canonical glossed `"Rejected Proposals (with rationale)"`), no `###`-as-body
-case and no `## Process Findings` near-miss. The un-numbered `## Cross-Feature Patterns` spelling
-*does* appear — as LI-AT-05's material and as LI-AT-12's fixture text, with
-`expect(result.sections).toEqual(["Cross-Feature Patterns"])` proving the matcher accepts it — so
-what is owed there is the variant fixture as a whole, not that spelling (SE v8 F-02). Its only
-*binding* `maxBytes` literals are `40` (`const maxBytes = 40`, beside the "Hand-computed (never
-derived here)" comment) and `66` (`const maxBytes = 66`); the third call passes a deliberately
-non-binding `100000` under the comment "Unbounded: large enough that maxBytes never binds". There is
-no `extractInjectableMaterial(text, 0)` case. All four are
-therefore **property-owed cases with no red-owning task remaining ahead of them**: they land into
-green committed code, not into a scheduled red — which is precisely the situation case C was added to
-govern, and which is why the two gaps this document previously routed against case B's wording (no
-named row for PROP-BOUND-03's zero case; a span with no terminus) are **answered**, not open: case C
-rules the ledger empty and replaces the span with batch 14's unqualified gate.
+**On the re-red of landed suites (SE Q-02), re-measured at `09c7c62f` (PM F-02, PM F-03; PM v11
+F-01).** PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments — **four** properties, not
+three — land in `learningsBlock.test.js`. That suite is not merely landed but **greened**: its red
+owner LI-08 landed at `8eee671f` and its green owner LI-17 at `a4998e13`, and LI-16 — the task PLAN
+v0.7 names as the owner of TSPEC §D.5's zero-bound production half — landed at `be2456c8`. So of
+PLAN's **three**-case table at v0.8, **case C is the live case** and cases A and B are both behind
+us: case A is scoped to a follow-up commit landing *before batch 7*; case B is scoped to *"after
+LI-17 has greened the suite, with a greening batch still ahead (batch 9 through batch 12)"*, and
+batch 13 is behind us. Case C — *"after batch 13, the case that is live at HEAD"* — names these four
+properties by name and rules the opposite obligation from case B's: **the ledger stays empty and the
+amendment is expected to land green.** PLAN states it in terms: *"under case C they owe no ledger
+row, and they owe green."*
 
-**Which of the four is actually green at landing, and what covers the one that may not be.**
-PROP-BOUND-05/07/08's heading-form and byte-count arms assert behaviour that is **shipped**: PLAN's
-case C records that `canonicalSectionName` *"strips an optional ordinal via `SECTION_HEADING_RE`,
-strips an optional trailing gloss, compares case-sensitively against `BR6_SECTION_NAMES`, and returns
-null for a `###` line, which `^##[ \t]+` never matches"*, and this document's own §C.4 evidence agrees
-— the un-numbered `## Cross-Feature Patterns` spelling is already accepted at `21edb7c5` with
-`expect(result.sections).toEqual(["Cross-Feature Patterns"])`. The one arm **not** obviously green at
-landing is PROP-BOUND-03's `maxBytesPerDocument <= 0` case: at `21edb7c5` there is no
-`extractInjectableMaterial(text, 0)` call anywhere in the landed suite, so the zero-bound production
-half (LI-16, `d462ddd8`) has never been exercised through this seam and the first call may red. Case C
-covers that without a ledger row: a red that lands *"has found a real defect, not staged a TDD red"*,
-the fix commit is owed **before batch 14 runs**, and a red surviving into batch 14 is a **gate
-failure**, not a ledger entry.
+**Case C is now discharged, not pending — all four have landed, and landed green.** Earlier
+revisions of this paragraph asserted that **none of the four is present in the landed suite** and
+reasoned forward from that absence. Re-measured at `09c7c62f`, **every one of those absence claims
+is false**: the branch advanced past the commit those readings were taken at, and the amendments
+this section scheduled have arrived. The claim-by-claim reversal, each against the file at HEAD:
 
-**The same obligation reaches the Group D amendments.** PLAN's case C extends its ruling to *"any
-other amendment to a landed suite arriving from here on"* and names the Group D amendments to the
-landed `learningsSelect.test.js` (LI-07, `1544fdbd`) alongside the four `learningsBlock.test.js`
-cases. So the Group D amendments this document schedules travel under case C too: **no ledger row, and
-green at landing**, with the same fix-before-batch-14 rule if one reds. `helpers/learningsFixtures.js`
-and its other consumers carry no row of their own in **any of the three cases** — a ruling PLAN v0.8
-scopes to *"**this** heading-form follow-up commit, not a standing exemption for those files"*, which
-this document has never claimed.
+| Claim as it stood | State at `09c7c62f` |
+|---|---|
+| *"declares one `describe` naming three ATs"* | **two** `describe`s — `describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)")` (`learningsBlock.test.js:40`) and `describe("PROP-BOUND-03 generated arm: extractInjectableMaterial character-safety over every non-negative maxBytes (TSPEC T-O-6)")` (`:274`) |
+| *"carries none of `LI-AT-11`'s variant heading-form arms"* | present as one test, `test("LI-AT-11: heading-form variants — ordinal stripped, gloss optional, a ### sub-heading reads as body text, and a near-miss title is excluded (§D.3 F-O-1 rule 2, TE F-03 amendment)")` (`:105`) |
+| *"no un-glossed `## Rejected Proposals`"* | present — the un-glossed `name: "Rejected Proposals"` fixture arm (`:125`), asserted to normalise to the canonical glossed `"Rejected Proposals (with rationale)"` (`:152`) |
+| *"no `###`-as-body case"* | present — `"### A sub-heading that is body text, not a section boundary."` supplied as body (`:133`) and asserted to survive verbatim inside its section's extent (`:160`) |
+| *"no `## Process Findings` near-miss"* | present — `name: "Process Findings"` (`:139`), excluded from the taken section set |
+| *"its only binding `maxBytes` literals are `40` and `66`"* | a **third** binding literal, `const maxBytes = 60` (`:235`), in the two-section arm whose bound lands inside the *second* section's heading — proof the cut is over the assembled string, not per section |
+| *"there is no `extractInjectableMaterial(text, 0)` case"* | present — `extractInjectableMaterial(text, 0)` (`:337`) under `test("PROP-BOUND-03: maxBytes === 0 is pinned as a distinguished example case, not left to sampling frequency (TSPEC §I.3)")` (`:329`) |
+
+**And they are green.** `npm test -- __tests__/learningsBlock.test.js __tests__/learningsSelect.test.js`
+at `09c7c62f` reports **26 passed, 26 total**, and a `test.skip`/`describe.skip` count over both files
+returns **0**. Case C predicted exactly this — *"they owe no ledger row, and they owe green"* — so the
+prediction held: **no `learningsBlock` ledger row was owed and none exists, and no fix-before-batch-14
+obligation was triggered.** The one arm earlier revisions flagged as *not obviously green at landing*
+— PROP-BOUND-03's `maxBytesPerDocument <= 0` case, unexercised through the `extractInjectableMaterial`
+seam — landed green on its first exercise, which retires the hedge rather than deferring it. Case C's
+failure limb (a landing red *"has found a real defect, not staged a TDD red"*, fix owed before batch
+14, a survivor being a gate failure) is therefore **unexercised**, not waived.
+
+**The Group D amendments have landed green too.** PLAN's case C extends its ruling to *"any other
+amendment to a landed suite arriving from here on"* and names the Group D amendments to the landed
+`learningsSelect.test.js` (LI-07, `aadd01bc`) alongside the four `learningsBlock.test.js` cases. Both
+are present at `09c7c62f` and both are inside the green count above:
+`describe("PROP-ORDER-06: orderCorpus permutation invariance and strict-weak-ordering (TSPEC T-O-4)")`
+(`learningsSelect.test.js:647`) and
+`describe("PROP-CORPUS-09: selectLearnings totality (TSPEC T-O-5)")` (`:786`). So the Group D
+obligation is discharged on the same terms: **no ledger row, green at landing**, fix-before-batch-14
+untriggered. `helpers/learningsFixtures.js` and its other consumers carry no row of their own in
+**any of the three cases** — a ruling PLAN v0.8 scopes to *"**this** heading-form follow-up commit,
+not a standing exemption for those files"*, which this document has never claimed.
 
 **And the deferral this document previously leaned on is spent, not pending.** Earlier revisions
 concluded that this document's own four properties "travel under P-A-6's rule … so they enter no
