@@ -192,6 +192,35 @@ delta's fixture-side changes are attribution and counting prose only.
 
 ## Findings
 
+**No findings.**
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| — | — | — | *No High, Medium or Low finding is raised this round.* | — |
+
+All six of my v14 findings are closed, each verified against the repository rather than against the
+document's own account of itself:
+
+| v14 finding | State at HEAD | Evidence |
+|---|---|---|
+| **F-01 (High)** — re-pin asserted a fidelity the document lacked; P-A-6's retired amend-into-the-ledger route still offered | **Closed**, all three limbs | Line 1180 states case C's obligation; line 1192 re-dates P-A-6 to v1.1; line 11 scopes the pin claim to the rulings re-checked and names P-A-6 as one PLAN moved. PLAN's rule quoted verbatim (`PLAN:663`, 1 fixed-string hit); v1.1 changelog attribution present (`PLAN:682`) |
+| **F-02 (Medium)** — §G.3 still routed an item PLAN answered | **Closed** | Bullet struck into *Also answered*, citing PLAN v1.2 items (3)/(4) and v1.3 item (1); `PLAN:244`'s §Post-batch remediation carries **19** data rows, counted; the *Still open* list still carries its one item |
+| **F-03 (Medium)** — gap 5's "eighteen" not reproducible | **Closed**, plus the DEFERRED it implied | 17 / 39 / 22 / engine-side-file all re-derived from `git ls-files`; the inventory-row eighteen and the tracked-file eighteen are now distinguished in the text; PLAN's `§The arithmetic` quotation is verbatim (`PLAN:310`) |
+| **F-04 (Medium)** — `learningsComposition.js` on PROP-ORDER-05's path, undisclosed | **Closed** | New clause quotes the file header verbatim (`helpers/learningsComposition.js:2–3`) and the wiring holds: `learningsDispatchSet.test.js:42` imports, `:47` binds the child path, `:528` calls in-process, `:531` spawns the child |
+| **F-05 (Low)** — *"after batch 13"* residual | **Closed** | Now *"in batch 13 or later"*, matching `PLAN:561`'s case header |
+| **F-06 (Low)** — fixture row attributed two capture events to one commit | **Closed** | Row names both `744311f7` (subtree) and `2fc6fcd3` (the 18-file arm and the `MANIFEST.json` re-capture); confirmed against `git show --name-status` on both commits |
+
+**Nothing in the changed sections is broken, and nothing outside them moved.** Against the freeze's
+two blocking criteria: **(i)** no defect is introduced — the one edit with real breakage potential,
+the extended PLAN quotation at line 1131, is verbatim in PLAN (`PLAN:561`, 1 hit) rather than a
+paraphrase pulled inside quote marks; **(ii)** no claim in the changed sections contradicts the
+repository at HEAD or an upstream document — I re-derived all seven counting claims from `git
+ls-files` / `git show --name-status`, all five quotations by fixed-string grep against PLAN at v1.3,
+and the 26-passed / 0-skipped measurement by re-running the suites.
+
+**No upstream erratum this round.** Both items I routed at v13 landed in PLAN v1.2/v1.3, and the
+one this round would have raised — PLAN's manifest under-count — is the item PLAN already closed.
+
 ## Deferred
 
 ## Positive Observations
