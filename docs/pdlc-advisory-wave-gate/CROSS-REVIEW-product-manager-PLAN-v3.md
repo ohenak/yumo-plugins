@@ -46,6 +46,18 @@ Every claim below was re-measured at HEAD rather than taken from the changelog.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Process | **The single-writer walk grew a name but is still a containment check, not an enumeration over the owned set.** Batch-safety rule 2 (PLAN lines 405-414) says "Checked file by file", then enumerates only the files it believes have more than one writer, now including the sentence this round added (`advisoryWaveGateMain.test.js` and `advisoryEscalationLog.test.js` in batch 6 only). Six owned paths are never named there — `waveExecution.test.js`, `advisoryEnvelope.test.js`, `advisoryConfig.test.js`, `advisoryHarvest.test.js`, `consolidationProperties.test.js`, `documentOracles.test.js` — and neither is `helpers/advisoryDoubles.js` (rule 3 covers that one separately). I re-derived the (file, batch) pairs from the task table myself and the claim is **true at HEAD**, so this is not a correctness finding: it is that the walk's form cannot fail. This round is the second time in a row that a file entered the manifest and the walk had to be edited by hand to keep up (v1.11 the AT table, v1.12 this); the check that actually caught the v2 High was the mechanical `comm`, which the document has now promoted to a standing re-grounding step (v1.12 changelog). Fix, when this section is next touched: state rule 2 as a **set-equality over the manifest** — every owned path appears with its batch list, so an unenumerated file is a visible hole rather than a silent pass — the same discipline the AT table already carries. | `AC-6.3`, REQ-AWG-06 (batch safety is the mechanism that keeps A6-18's widening from reddening a sibling's suite) |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The v2 round's Q-01 was answered in the strongest available form: the `comm` walk was run *before* the raised items were touched, it produced the round's own High, and it is now recorded as a standing step of the re-grounding protocol rather than a one-off. Is the same promotion warranted for the sibling check this round's `F-01` describes — the (file, batch) pair derivation — given that both the AT table and the manifest have now each cost a hand-edit to a prose walk that a two-line script would maintain? |
+| Q-02 | Recorded for harvest, not as a finding, and now in its third consecutive round: this dispatch again supplied the **PLAN's** completeness headings (`Overview` / `Batches` / `Dependencies` / `Verification`) to a **cross-review** artifact, together with a skeleton-first pacing contract for a document type whose format is fixed by the reviewer SKILL. v1.9's changelog already records the dispatcher defect as routed to harvest (PM F-04 of that round); I mention it so the recurrence count is not lost, and I have written this file in the reviewer format regardless. |
+
+
 ## Questions
 
 ## Positive Observations
