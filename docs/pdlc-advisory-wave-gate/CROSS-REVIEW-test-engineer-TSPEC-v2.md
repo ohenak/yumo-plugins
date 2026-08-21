@@ -105,6 +105,37 @@ one, and it is the first thing the next TSPEC round should answer.
 
 ## Data Model
 
+**§4.5 "What A6 writes, and where" — the primary site of the finding.** The halt-fields row reads:
+
+> | Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}`, at the
+> literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a
+> capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved |
+
+Four fields, closed set, each with a transcribed literal value below. Measured against REQ v1.16's
+AC-6.3 this row is now **incomplete**: the AC requires a fifth operator-visible element on the halt
+report — the overwrite warning — and there is no field, no literal string, and no "and where" entry
+for it. The section cites AC-6.3 twice (this row, and "AC-6.3 asks that an A6-touched halt carry a
+diagnosis") and both citations are now partial readings of an AC that has grown a second clause.
+This is the specific sense in which the document is no longer a faithful compression of its
+upstream: it cites the AC and transcribes less than the AC says.
+
+**The Snapshot ref row, read at REQ v1.16.** Its "When" cell says the ref is "one ref per wave,
+**never overwritten by a later wave** (§2.5, PM F-03)". That claim is true as written and its
+scope-limiting words are doing real work — but a reader of §4.5 alone, which is the section an
+implementer transcribes from, sees a "never overwritten" promise with no adjacent note that the
+*next run* does overwrite it. §2.5 carries the correction; §4.5 does not cross-reference it here.
+Before the erratum that was a readability nit I did not raise. Now that the overwrite is the subject
+of an operator-facing REQ obligation, the row is the place an implementer would look for the
+warning's trigger condition and would not find it. Low, and it resolves with a clause.
+
+**Nothing else in §4 moves.** §4.1's verdict trailer, §4.2's root-cause vocabulary, §4.3's per-run
+state and §4.4's `nonNegativeInt` config are all untouched by the delta — I diffed the REQ hunk
+against each and there is no contact. The capture-failure halt's four literal values (§4.5's inner
+table) likewise stand: that path halts *before* a snapshot exists, so AC-6.3's `Where the halt report
+points the operator at a captured pre-A6 tree state` antecedent is false there and the warning is
+correctly absent. That the new obligation is conditional, and that the condition is already
+mechanically distinguishable in this document, is what keeps the fix small.
+
 ## Test Strategy
 
 ## Open Questions
