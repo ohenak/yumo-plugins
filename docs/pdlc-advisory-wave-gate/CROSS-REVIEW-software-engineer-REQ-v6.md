@@ -103,7 +103,40 @@ the clause to *any A6-touched halt* rather than to escalation halts.
 
 ## Risks
 
+- **R-1 — The gap closes on paper and not in the product.** DEC-A6-03's re-evaluation trigger says the
+  entry's known gap closes "if the halt-message obligation the PM is routing to REQ lands". A future
+  reader greps the REQ, finds the sentence, and marks the gap closed — while F-01's scoping mismatch
+  and F-03's absent downstream coverage mean no operator ever sees the warning. The mitigation is
+  cheap: close the gap on evidence of a *test*, not on evidence of a sentence.
+- **R-2 — Conditional obligations are silently vacuous.** "Where X, then also Y" imposes nothing when
+  no X exists. This REQ now carries one such clause and it is the only obligation on the halt-message
+  path. Worth a general note for the harvest: an AC whose condition is supplied entirely by a
+  downstream document needs the downstream document to be checked in the same round, or it is
+  unfalsifiable by construction.
+- **R-3 — Late erratum, frozen downstream.** This edit lands in Phase D against FSPEC v1.6, TSPEC and
+  PROPERTIES that are already written and approved. A new REQ conjunct with no FSPEC behaviour and no
+  property is a documented divergence between layers for as long as it stands; the risk is that it is
+  never propagated because the erratum round is scoped to this document.
+- **R-4 — Low: wording slightly stronger than upstream.** The REQ says re-running "overwrites that
+  capture"; DEC-A6-03 and TSPEC §2.5 are more precise — a re-run reaches the wave, captures again,
+  and overwrites *that wave's* ref, and the promise is run-scoped. For an operator warning the
+  stronger reading is the safe direction (it never under-warns), so I raise it as a risk, not a
+  finding.
+
 ## Obligations
+
+- **O-A (owner: se-author / this REQ, one bounded follow-up).** Widen AC-6.3's new clause so it binds
+  on any A6-touched halt that points the operator at a captured pre-A6 tree state, not only on halts
+  that follow an escalation (F-01). One clause; no decision reopened; still requirements altitude.
+- **O-B (owner: DECISIONS / Phase D).** Update DEC-A6-03's "Known gap in the remedy's reach"
+  paragraph, which still asserts the routing "has not landed" and pins that claim to REQ v1.15 — a
+  statement false at HEAD (F-02). Its re-evaluation-trigger clause is the natural place to record
+  what closing the gap now requires.
+- **O-C (owner: FSPEC, then PROPERTIES).** Give the new conjunct a behavioural home — E-28 and
+  AT-05-5 are the obvious sites — and a property, so it is verifiable rather than asserted (F-03).
+  Until then AC-6.3's second conjunct has no owning test.
+- **O-D (unchanged, restated).** O-1 continues to bind the capture's name, storage form and halt-field
+  shape to the TSPEC. The REQ must not acquire the ref name in a later revision of this clause.
 
 ## Delta-Confirmation Findings
 
