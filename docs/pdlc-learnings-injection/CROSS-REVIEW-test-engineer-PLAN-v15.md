@@ -134,6 +134,69 @@ defect surfaced in the changed sections; I raise no `ERRATUM:` this round.
 
 ## Verification
 
+Everything below is a measurement I ran on this tree, not a claim I read.
+
+**1. F-02 (round 14, High) — resolved in all three places, checked against the gate command.** My
+lens's standing rule is to verify the coverage **gate command**, never the prose (DC-09). The shipped
+block in `pdlc/workflows/package.json` reads `include` = four `**/`-anchored entries
+(`**/pdlc/workflows/orchestrate-dev.js`, `**/pdlc/workflows/orchestrate-queue.js`,
+`**/pdlc/workflows/build-runtime.mjs`, `**/scripts/capture-learnings-baseline.mjs`),
+`allow-external: true`, and `exclude` = the three globs `**/.tmp-capture-driver-*/**`,
+`**/.baseline-worktree/**`, `**/pdlc-capture-entrypoint-*/**`. The PLAN now states exactly that in
+each of the three places round 14 named:
+
+- §Overview change-surface row: `package.json` "exists; at `2fc6fcd3` the `c8` block reads
+  `allow-external: true`, an `include` of four `**/`-anchored entries … and a three-glob `exclude`",
+  owner cell **no LI task — modified post-ladder by `2fc6fcd3`**. True at HEAD.
+- §Production and generated bullet: "**modified by `2fc6fcd3`**", with the former exemption recorded
+  as "true when written and … false at HEAD" and the silent-drop mechanism named. That mechanism is
+  real, not narrative: `package.json`'s own `//c8` note records that adding the script's entry alone
+  "silently dropped orchestrate-dev.js, orchestrate-queue.js and build-runtime.mjs out of the report
+  and left the aggregate gate measuring a 200-line script (CODE_REVIEW v1 F4, second round)".
+- **DoD 11** now says the stage-2 per-file set is four modules, and the gate is
+  `c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0` —
+  which is verbatim the second stage of `test:coverage` in `package.json`. Its added qualifier that
+  §The measured baseline's table "is the pre-`2fc6fcd3` measurement it says it is, not the set the
+  gate measures at HEAD" is correct: that table (PLAN:500–506) carries exactly three rows
+  (`build-runtime.mjs`, `orchestrate-dev.js`, `orchestrate-queue.js`) and is dated 2026-08-20. A DoD
+  verifier now reads a four-module gate and a three-row historical measurement, correctly labelled.
+- **DoD 12** is restated as **retired at `2fc6fcd3`**, which is the honest form: it does not delete
+  the history, it records that no exemption remains for a verifier to check, and it demotes
+  `LI-T-IGNORE`/`LI-T-WORKTREE`/the baseline guard from "stand-ins for a missing floor" to
+  behavioural oracles. That is precisely the right move — those three were never falsifiable
+  substitutes for a coverage floor, and saying so is a strengthening.
+
+**2. DoD 12's closing oracle claim is true and is the falsifiable kind.** "`coverageInstrumentation.test.js`
+fails if any included module stops resolving" is not a declared-configuration assertion: the test
+`the shipped c8 config resolves BOTH in-package modules and the external script (F4)` spawns the
+real `c8` binary from the package root over the package's own shipped block (only temp/report
+directories redirected), against a driver importing `build-runtime.mjs --check` and the capture
+script, and requires both to appear in the report — with an explicit control so that "no rows"
+cannot be read as "the config is fine". That is a runtime resolution oracle over the production
+gate, exactly what my lens demands in place of a shape-only assertion, and the test file's own
+comment says why the shape assertions above it are insufficient.
+
+**3. The two gate inputs I own are byte-identical.** Task tables (files/`Batch`/`Deps`/`Status`) and
+the batches 7–13 expected-red ledger: diffed across `95098af5..6792fa5f`, **no change**. Batch 13
+still carries **nothing**, which is what case C asserts, and case C's cell is not in the diff.
+
+**4. The changelog repairs land as described.** Row 0.5 now precedes 0.6 (monotone). Row 0.9's
+lead-in credit reads `TE v11 F-01` — and that is the correct attribution: `CROSS-REVIEW-test-engineer-PLAN-v11.md:250`
+carries the finding verbatim ("the lead-in above the P-A-7 table still says … two cases"), while
+`CROSS-REVIEW-product-manager-PLAN-v10.md` contains no such item. Case A's derivation sentence now
+quotes "before batch 9", matching its own *When* cell — the mismatch that made the derivation read
+against its header is gone.
+
+**5. The one new Low.** The `2fc6fcd3` provenance ids are off in two rows.
+`pdlc/workflows/orchestrate-dev.js`'s row credits **F1** for both the `selectLearnings` parameter
+drop and the `_log` wiring; the code attributes the emitter to **F2** (`orchestrate-dev.js`'s own
+comment: "CODE_REVIEW v1 F2: the run's own emitter…") and the parameter drop to **F3**
+(`learningsSelect.test.js`'s added block: "CODE_REVIEW v1 F3: selectLearnings declares no unread
+`feature` parameter"). The subsection lead-in's finding list ("F1/F7/F12, F8, F9, F10, F11/F12, and
+F4's second round") names neither F2 nor F3. Nothing load-bearing moves: the file, the ladder owner,
+the batch and the single-writer argument are all unaffected, and no gate parses the "why" column.
+Low, `delta`/`local`.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
