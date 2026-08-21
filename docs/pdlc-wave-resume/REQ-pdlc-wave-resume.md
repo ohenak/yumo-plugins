@@ -10,7 +10,7 @@ depends-on: [pdlc-consolidation-agent, pdlc-advisory-wave-gate]
 |---|---|
 | Status | Draft |
 | Author | pm-author (operator-directed session, 2026-08-09) |
-| Version | 1.6 |
+| Version | 1.7 |
 | Upstream | **REQ** |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | (none yet) |
@@ -39,6 +39,13 @@ matches both banners (SE F-02, TE H-01); §10 enumerates all of §5 (TE H-02, Q-
 match OF-1; REQ-WVR-02 notes IG labels name causes, not precedence; REQ-WVR-08's no-commit claim
 is scoped to the implementation wave loop (Phase PT's V-wave excluded); §10 records BL-04 open and
 unmet.
+
+**Erratum, 2026-08-21 (v1.7) — Phase T erratum.** Two items, nothing else changed: §5's BL-04
+row now states the check's outcome as **unmet** rather than reading as discharged at FSPEC
+authoring, matching §10 (raised by pm-review and se-author against OB-F1); and OB-1's
+worktree conclusion, which stands, now labels its worktree include-list evidence as
+consumer-local and untracked on the default branch rather than a repo fact (raised by
+pm-review and se-author).
 
 **Note on this branch's base (SE F-01, F-02).** This feature branch is 1,637 commits behind the
 default branch and predates the merge of the mechanism §1 describes; the code claims in this REQ
