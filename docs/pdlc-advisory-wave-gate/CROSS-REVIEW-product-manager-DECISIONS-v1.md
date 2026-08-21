@@ -230,4 +230,38 @@ Each of these was checked against the tree, not taken on the document's word.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01), so the rule applies mandatorily. The scope of the revision is small and
+does not touch a single decision entry — `DEC-A6-01` … `DEC-A6-04` can stay byte-frozen.
+
+Exactly what must change:
+
+1. **F-01** — Rewrite Context's first constraint ("One module, one bundle"). Remove
+   `orchestrate-dev.bundle.js`, the inlining premise, and the `.claude/workflows/` maintainer-sync
+   delivery clause. Restate the constraint on the mechanism that is actually shipped: A6's symbols
+   live in `pdlc/workflows/orchestrate-dev.js`, which `pdlc/engine/scripts/prepack.mjs` vendors
+   verbatim into the published `@kaneho/pdlc-engine` package from a hardcoded two-name
+   `MODULE_NAMES` list, so a file added beside it is never vendored and "add a module" is not a
+   reachable alternative. Keep the conclusion; replace the ground. The constraint's title may want
+   to change with it — "one module, one bundle" no longer describes anything.
+
+Recommended in the same edit (not gating):
+
+2. **F-02** — In `DEC-A6-02`, make the promotion commit's cardinality explicit: one further
+   `commitPaths` call **per promoted task**. Same in the Consequences bullet's "the promotion
+   commit".
+3. **F-03** — Give Context's "No new transport" constraint a citation that states the closure it
+   relies on, or say plainly that no upstream clause closes the transport set and this is an
+   adopted engineering constraint.
+4. **F-04** — Advance or de-enumerate the `Cross-Reviews` provenance cell.
+
+Two upstream items are routed as errata rather than counted against this document: TSPEC carries the
+same retired-bundle citation that F-01 raises here, and TSPEC's O-8 row carries the same singular
+phrasing as F-02.
+
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
