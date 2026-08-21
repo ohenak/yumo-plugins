@@ -111,6 +111,58 @@ paths — the sixteen `pdlc/` sources and test files, `.gitignore`, and
 
 ## Dependencies
 
+**One subsection changed — batch-safety rule 2 — and the change is a completeness upgrade, not an
+ordering change.** Rule 2's file-by-file walk is now declared as a projection of the file-ownership
+manifest to `(file, batch)` pairs, with the previously unenumerated single-owner paths named
+explicitly (PLAN lines 405–425). The stated property is the right one for this class of defect: "a
+path added to the manifest without a clause is a visible hole, not a silent pass" — that is
+set-equality over the enumeration rather than containment, and it is exactly the discipline I ask
+of AT tables and row catalogues. A walk that samples cannot fail when the manifest grows; this one
+can.
+
+**I checked the claim by doing the projection myself rather than reading the list.** Projecting the
+manifest (PLAN lines 359–370) to distinct paths gives fifteen, and every one is now accounted for in
+rule 2:
+
+- multi-batch, enumerated in the original walk: `orchestrate-dev.js` (batches 1–7, once each),
+  `advisoryWaveGate.test.js` (1, 2, 3, 5, 6), `advisoryDriver.test.js` (1, 4),
+  `advisoryRecord.test.js` (1, 6), `advisoryDisabled.test.js` (1, 7);
+- batch-6-only: `advisoryWaveGateMain.test.js`, `advisoryEscalationLog.test.js`;
+- batch-1-only: `advisoryQueueSeams.test.js`;
+- newly named this round: `advisoryEnvelope.test.js`, `advisoryConfig.test.js`,
+  `advisoryHarvest.test.js`, `consolidationProperties.test.js` (A6-05, batch 1),
+  `documentOracles.test.js` and `.gitignore` (A6-00, batch 1),
+  `pdlc/engine/__tests__/advisory-config-example.test.js` (A6-04, batch 1),
+  `.claude/pdlc.config.example.json` (A6-06, batch 2), `waveExecution.test.js` (A6-21, batch 7),
+  `helpers/advisoryDoubles.js` (A6-01, batch 1, under rule 3).
+
+Fifteen listed, fifteen owned, empty difference in both directions. **No file has two writers in one
+batch**, in either the source or the test column — I re-derived that from the manifest's
+`(task, file)` pairs joined to the `Batch` column, not from the narration. The one sentence I would
+have flagged had it been missing is present: "That accounts for every path in the manifest."
+
+**The edges themselves are untouched.** `git diff 28dd256b..HEAD` shows no change to any task row's
+`Batch` or `Dependencies` cell, and the re-derivation in **Batches** above confirms the DAG
+independently. So the ordering story I approved at v1.11 and re-confirmed at v1.12 stands unchanged:
+A6-04 → A6-06 for the example-config edit, A6-00 + A6-05 → A6-08 for the helpers, and the linear
+A6-08 → A6-10 → A6-12 → A6-14 → A6-18 → A6-21 spine that keeps every wave boundary green under a
+script-owned gate with no expected-red channel.
+
+**The A6-18 → A6-21 edge still carries the weight my v3 pass put on it.** AT-06-4's two arms land in
+two batches — seam arm in 6, un-skip arm in 7 — and that is only sound because A6-21's production
+push at the un-skip halt site reads a `snapshotRef` field A6-18's green step introduces one batch
+earlier. The edge is declared (`A6-21 | … | 7 | A6-18`) and the file columns do not cross: A6-21's
+`waveExecution.test.js` is written by nobody in batch 6, and A6-18's four test files by nobody in
+batch 7. This round's correction to A6-18's *value* does not disturb that — if anything it
+strengthens it, since the un-skip arm's non-`null` ref and the main suite's non-`null` ref now tell
+the same story about when the capture succeeds.
+
+**No upstream dependency of this plan is open.** The subsection's wording is unchanged this round
+and the evidence behind it is unchanged: OQ-7 remains closed-answered-no, DEC-A6-01's scoped
+ignored-path arm remains explicitly not built. The one upstream defect I still see is TSPEC §5.6's
+stale AT-02-1 row (`TSPEC-pdlc-advisory-wave-gate.md:1910`), which no task row here reads; it is
+re-routed as an erratum below rather than folded into this verdict.
+
 ## Verification
 
 ## Findings
