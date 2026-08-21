@@ -297,3 +297,6 @@ FINDING: Medium | inherited | nonlocal | AT-18 | the discriminating-value senten
 FINDING: Low | inherited | nonlocal | AT-12 | the "exactly one agent dispatch" conjunct holds only for a fixture whose transport does not fail on the first call, and that condition is unstated (v2 F-03, still open)
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 3}
