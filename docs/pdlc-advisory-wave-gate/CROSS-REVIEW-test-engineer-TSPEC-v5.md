@@ -124,6 +124,70 @@ AT-05-3 an equality oracle where the shipped ones are containment. Low, filed as
 
 ## Test Strategy
 
+**What the delta got right.** AT-06-4 (line 1879) is now a writable test: it names the surface (the
+one `notices` element matching the ref pattern), the mechanics ("assert the overwrite predicate **on
+that same element**"), the falsifying condition ("a run in which the two halves land on two
+different notices reddens"), the two spec-side predicates verbatim, and the fixture. The anti-echo
+rule is stated in exactly the terms my v4 F-02 asked for and names the failure mode it prevents —
+`toContain(devModule.SOME_WARNING)` "cannot fail on wording and would neuter AT-06-4b". AT-06-4b
+(line 1880) now asserts its negatives **over the whole array** ("so a notice pushed elsewhere cannot
+hide") while keeping two positives on the same run, so it is a falsifying arm, not an absence-only
+oracle. Fixture homes are stated for both arms, which closes v4 F-03 and answers v4 Q-01 with the
+discriminating choice (two-red-wave, where wave-scoping is observable).
+
+**The new problem: the five-key set-equality contradicts shipped four-key set-equalities.**
+
+§5.2 line 1575 now requires the capture-failure fixture to transcribe `rootCause`, `diagnosis`,
+`repairApplied`, `repairPaths` **and `snapshotRef: null`** "as a **set-equality over the halt-field
+keys**, not a containment check". §5.1 line 1481 assigns that fixture to
+`advisoryWaveGate.test.js`. That file is on disk at HEAD (§5.1's own status caveat says so), and it
+already contains the opposite oracle:
+
+| HEAD assertion | What it pins |
+|---|---|
+| `advisoryWaveGate.test.js:2714` | `expect(Object.keys(result.haltFields).sort()).toEqual(["diagnosis","repairApplied","repairPaths","rootCause"])` — a **set-equality over exactly four keys**, on a real-repo run |
+| `advisoryWaveGate.test.js:1699` | `expect(result.haltFields).toEqual({rootCause:"unclassified", diagnosis:"snapshot capture failed (snapshot-unavailable); …", repairApplied:false, repairPaths:[]})` — **this is the capture-failure fixture itself**, Oracle G, pinned by `toEqual` to four keys |
+| `advisoryWaveGate.test.js:3425`, `:3462` | `expect(result.haltFields).toEqual(ORACLE_G_HALT_FIELDS)`, the same four-key literal declared at `:3369-3375` |
+| `advisoryWaveGate.test.js:2676` | `expect(result.haltFields).toEqual({rootCause:"plan-ordering-defect", …})` — four keys, escalation path |
+| `advisoryWaveGateMain.test.js:373` | `expect(result.haltAdvisory).toEqual({rootCause, diagnosis, repairApplied, repairPaths})` — four keys, on the **real seam reached from `mainDev`** (the DC-07 production-path test) |
+
+`toEqual` fails on an extra `snapshotRef: null` key exactly as it fails on a missing one — that is
+what makes it a set-equality, and it is why these are not incidental. So an implementer who writes
+§5.2's red test as specified lands five keys and turns five shipped assertions red, in files whose
+required edits the TSPEC does not name (§5.1 gives `advisoryWaveGateMain.test.js` **no row at all**,
+and gives `advisoryEscalationLog.test.js` a row covering only AT-06-3 / AT-06-5 / AT-06-6). The
+predictable resolution under a red wave gate is the wrong one: keep `snapshotRef` off the
+capture-failure `fields` object so the shipped oracles stay green — which deletes the single
+positive oracle for `snapshotRef: null` that AT-06-4b's negative arm rests on, and false-greens both
+arms. A contract change that is set-equality on both sides has to name its counterparties; this one
+does not. **High (F-01).**
+
+The fix is bounded and does not require re-opening the design: add to §5.1 a row for
+`pdlc/workflows/__tests__/advisoryWaveGateMain.test.js` (`edited` — the real-seam halt oracle at
+`:373` gains `snapshotRef`), extend `advisoryWaveGate.test.js`'s "Carries" cell to say the shipped
+four-key halt-field oracles at `:1699`, `:2676`, `:2714`, `:3369` are **widened to five in the same
+task that widens the production `fields` object**, and state in §5.2 that the five-key set-equality
+replaces the four-key one rather than joining it. Naming them is also what keeps the widening
+honest: `:2714` is the only place a *key set* is asserted, so it is the assertion that must move.
+
+**Push-site consequence (F-02).** As §Architecture sets out, the document does not say whether the
+notice is pushed inside `runWaveGateSeam` (through its `_notice` parameter, `:3383`) or at `main`'s
+halt handler. On the first reading `advisoryEscalationLog.test.js:821`'s
+`expect(failed.notices).toHaveLength(2)` — an exact count on an A6 escalation over a real repo where
+the capture succeeds (`orchestrate-dev.js:3403`) — becomes a third-notice failure that no §5.1 row
+owns. On the second reading, AT-06-4b's stated home is a seam-level fixture with no report to read.
+One sentence in §4.5 naming the push site, plus the consequent §5.1 note, resolves both. Medium: it
+does not by itself defeat an oracle, but it decides which shipped test the wave breaks.
+
+**Unchanged and still sound.** §5.6's set-equality claim over the AT set is unaffected by this round
+(no AT was added or removed; `grep -c '^| AT-'` over FSPEC §6 and §5.6 still agree at forty-eight /
+forty-seven-plus-AT-06-4b). §5.2's snapshot/restore hash-map oracle, the `commit-tree === 1`
+capture-uniqueness count, and AT-07-1's BR-partition set-equality are untouched and were approved in
+earlier rounds. No delta row introduces an implementation echo, an absence-only oracle, or a
+containment check where the enumeration demands equality — with the single exception that F-01 is
+the mirror image of: an equality check the document demands without reconciling the equality checks
+already in the file.
+
 ## Open Questions
 
 ## Findings
