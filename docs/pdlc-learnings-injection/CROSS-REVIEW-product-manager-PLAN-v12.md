@@ -133,6 +133,77 @@ neither depends on anything the v0.9 erratum touched.
 
 ## Verification
 
+### The routed item, checked at HEAD
+
+| Routed item | Disposition at v0.9 | Verified against |
+|---|---|---|
+| P-A-7's lead-in reads *"in the two cases that can arise"* above a three-row table | **Resolved.** The sentence now reads "named here, ahead of the run they govern, in the three cases that can arise (A, B and C below)". The numeral matches the table, and the added "(A, B and C below)" makes the enumeration explicit rather than leaving the reader to count rows | The table immediately beneath it carries exactly three rows, keyed A, B, C; the closing paragraph's "in **any of the three cases**" already said three at v0.8, so the document is now internally consistent on the count in both places |
+
+**The count is now consistent everywhere.** I grepped the whole PLAN for residual two-case phrasings
+— "two cases", "both cases", "either case" — and the only surviving hit is §Changelog's **0.6** row,
+which correctly records that the table *was* two cases when v0.6 created it. A changelog describing
+the document's past state in the past tense is not a stale numeral; it is the record working. The
+0.9 row's own account ("v0.8 grew to **three** rows") is likewise accurate.
+
+**The fix is a numeral, and it does not disturb the ruling underneath it.** This mattered to check:
+the lead-in is the sentence that establishes *why* the cases are named ahead of the run they govern
+(P-A-7 makes it a live-table edit), and a careless rewrite could have re-scoped that obligation. It
+did not — "named here, ahead of the run they govern" is byte-identical, and only the trailing clause
+changed. The gate contract the lead-in carries is the same contract I approved at v11.
+
+### What the delta did not break
+
+I re-checked the three properties of the expected-red ledger I have called load-bearing since v10,
+and the case-C ruling I approved at v11. All four survive, and none could have been touched:
+
+- **Stated in test names, not suite names, wherever a suite splits across two green tasks** —
+  untouched; the paragraph carrying it is byte-identical.
+- **Shrinks by exactly the rows the batch's own task greens** — untouched; the delta adds no ledger
+  row anywhere, in any case.
+- **Reaches empty at batch 13** — untouched; the batch-13 row still reads "**nothing** — the ledger
+  is empty".
+- **Case C's green-at-landing ruling** — untouched, and its four production clauses still hold at
+  HEAD (`SECTION_HEADING_RE`'s ordinal strip, `GLOSS_RE`'s trailing-gloss strip, case-sensitive
+  `BR6_SECTION_NAMES` comparison, `###` never matching `^##[ \t]+`). I re-derived these from TSPEC
+  §D.3 at HEAD this round rather than carrying the v11 verification forward on trust, because the
+  LI-08 row the erratum edited is the row that compresses §D.3.
+
+**One consequence worth stating plainly for the dispatcher.** The corrected `renderSection` claim
+does not change what the heading-form amendment must do or when it may land. It still travels under
+**case C**: no ledger row, green at landing, fix owed before batch 14 runs if it reds, gate failure if
+a red survives into batch 14. The correction changes only the count of dormant knobs the amendment
+wakes up — an accuracy fix inside the justification, not a change to the obligation.
+
+### Four seams carried forward, none reachable, none gating
+
+Three are my own v11 Lows, unrouted and therefore untouched by this edit; one is PM v10 F-03, also
+unfixed. I re-emit them as **inherited** so they stay visible without gating: they are recorded, not
+re-litigated, and each is one clause from closed.
+
+- **Batch 13 ahead of LI-21 (v11 F-01).** Case B is bounded at batch 12; case C opens "once LI-21
+  (`92b7ea0c`) has landed". A commit landing in batch 13 *before* LI-21's commit is named by neither.
+  Unreachable at HEAD — LI-21 has landed. TE v11 F-02 raised the same seam independently, so this is
+  a two-reviewer agreement, not a solo reading.
+- **Batches 7 and 8 (v11 F-02).** Case A's *When* says "before batch 7"; case B starts at batch 9.
+  A commit landing during batch 7 or 8 is in neither window's literal text, though case A's own
+  derivation covers it and yields "no row".
+- **Case B's punctuation splice (v11 F-03).** The parenthetical aside opens with an em dash and
+  closes with a comma, so the row's object clause reads as a splice in a sentence a dispatcher reads
+  for the gate contract.
+- **Changelog row inversion (PM v10 F-03).** §Changelog's 0.6 row still sits ahead of its 0.5 row;
+  the 0.7, 0.8 and 0.9 rows are all correctly appended in order, so the inversion is a single
+  two-row swap away from a monotone table.
+
+### One new inaccuracy the delta introduced
+
+The 0.9 changelog row credits the lead-in fix to "**(PM v10 erratum)**". PM v10 did not raise it —
+its three findings are the `renderSection` claim (F-01), case A's batches-4–6 window (F-02) and the
+changelog row inversion (F-03), and no PM cross-review in this feature contains the string "two cases
+that can arise". The item was raised by **TE v11 F-01**, and confirmed as still-open there. The same
+row's *other* attribution, "(TE v10 F-01, PM v10 F-01)" for the `renderSection` correction, is exactly
+right — both reviewers did raise that one, at those ids. So the row is one attribution wrong out of
+two, in the document's own provenance record. Low, and worth one word's fix (F-01 below).
+
 ## Positive Observations
 
 ## Recommendation
