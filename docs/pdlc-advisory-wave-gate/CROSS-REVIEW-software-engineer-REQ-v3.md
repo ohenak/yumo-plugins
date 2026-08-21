@@ -133,3 +133,7 @@ this round; no `ERRATUM:` lines emitted.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 3}
+
+APPROVAL-HASH: sha256:8963a0c02f0ca796285de7ed7cb472ef73d87398287e4d702e3112aeba256b49
+APPROVAL-HASH-NORMALIZED: sha256:8963a0c02f0ca796285de7ed7cb472ef73d87398287e4d702e3112aeba256b49
+REVIEWED-COMMIT: 53fe0b73ee53b01ee4716e426f7e85e3a9ee0441
