@@ -60,6 +60,41 @@ inventory are all unaffected, because the erratum added no task and moved none.
 
 ## Properties
 
+**No property statement is disturbed by this delta, and I re-checked the four that the changed
+upstream text names.** PLAN's case C enumerates *"PROP-BOUND-03's `maxBytesPerDocument <= 0` case,
+PROP-BOUND-05/07/08"* — the same four PROPERTIES §C.4 identifies as landing in
+`learningsBlock.test.js`. Upstream and downstream agree on **which** properties are in play; they
+disagree only on which case of P-A-7 governs the commit that carries them. So the property bodies,
+their domains, their AT mappings and their red/green traces all stand: nothing in the erratum touches
+what any property asserts.
+
+| PROPERTIES claim measured against PLAN at HEAD | Holds? |
+|---|---|
+| PROP-BOUND-03 stated *"over every non-negative `maxBytesPerDocument`, zero included"* (line 235) | Yes — PLAN case C uses the same spelling, `maxBytesPerDocument <= 0` |
+| The four are the properties that re-red `learningsBlock.test.js` | Yes — PLAN case C enumerates the identical set |
+| `learningsBlock.test.js` is greened: LI-08 red at `5e522a52`, LI-17 green at `2cbacada`, LI-16 at `d462ddd8` | Yes — PLAN v0.8 names `d462ddd8`, `2cbacada`, `92b7ea0c` as landed, same commits |
+| LI-21 landed at `92b7ea0c`, so P-A-6's window is open now | Yes — P-A-6 (PLAN line 594) is byte-unchanged and LI-21 is on the branch |
+| §C.4: *"case B is the live case and case A is unreachable"* | **No** — PLAN v0.8 scopes case B to batches 9–12 and makes **case C** the live one (F-01) |
+| §C.4 line 1142: *"P-A-7 **case B** governs the amendment commit against the landed implementation suite"* | **No** — same inversion, restated as a standing rule (F-01) |
+| 23-of-23 task accounting, 70/35/23/21/12 counts, fourteen-row inventory | Yes — the erratum added and moved no task; I diffed the task table and it is byte-identical |
+
+**The Group D reach is new upstream material this document has not yet absorbed, and it is worth
+naming even though it is not itself a defect here.** PLAN case C extends its ruling to *"the Group D
+amendments to the landed `learningsSelect.test.js`"*. PROPERTIES §C.4 reasons only about
+`learningsBlock.test.js`'s four properties; it says nothing false about Group D, but the revision that
+fixes F-01 will want to say whether the Group D amendments against `learningsSelect.test.js` travel
+under the same case-C obligation — PLAN now says they do, and a reader of PROPERTIES alone would not
+know. I record this as part of F-01's fix rather than as a separate finding, because the sentence that
+carries it is the same sentence.
+
+**The 21edb7c5 pin is still current, so every absence claim §C.4 measures still measures the same
+bytes.** `git diff --name-status 21edb7c5 HEAD` returns documentation paths only — this PROPERTIES
+file, PLAN, and the cross-review files of the intervening rounds. No test file and no fixture has
+landed since the pin, so §C.4's *"there is no `extractInjectableMaterial(text, 0)` case"* and its
+variant-heading absence claims are as true at HEAD as they were at v9. That matters for the fix: the
+**evidence** §C.4 and §G.3 give is unchanged and re-usable; only the P-A-7 case it hangs that evidence
+on has to change.
+
 ## Oracles
 
 ## Fixtures
