@@ -82,7 +82,45 @@ first is the cheaper one and preserves the round's reasons.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | v2's Q-01 and Q-02 remain open and remain non-gating: AC-4.4's truncated `[post-wave, test, post-wave]` sequence still leaves a re-gate post-wave failure's classification undecided in prose, and AC-1.5's zero-notice population still needs a fixture that defeats the earlier dispatch-halt branch (precedence-chain check) before "zero" is a real zero. Both are PROPERTIES-altitude if that is the deliberate routing — please confirm rather than answer here |
+| Q-02 | With `waveBudgetPerRun: 0`, the first red wave escalates and the run halts (`orchestrate-dev.js:15398`), so "one `escalated` invocation per red wave" can only ever be observed as exactly one per run. The clause is true either way; is the plural phrasing deliberate future-proofing for a resume-mode run that revisits waves, or should it read "one per run"? |
+
 ## Positive Observations
 
+- **The correction landed as a factual restatement, not a retreat.** v2's F-01 was the hardest kind
+  of finding to address well — the AC named the right requirement and asserted a false observable,
+  so the tempting fixes were to delete the clause or to soften it into unfalsifiability. v1.13 did
+  neither: it replaced one wrong value with two right ones (`resolved: 0` **and** a nonzero
+  `escalated` count), which is a *stronger* oracle than the sentence it replaced and preserves the
+  AC-1.4 contrast that motivated the clause. I re-traced all five hops (escape → terminate →
+  disposition `seam` → push → `advisorySummaryRows`) and the AC now matches shipped bytes at each.
+- **F-02's fix carries its own justification.** "each carrying `unclassified` as its class (no
+  reply having been classified — AC-2.2's default)" states the value *and* the mechanism that
+  produces it, so the PROPERTIES author transcribes a literal without needing to read the code —
+  which is exactly what the no-implementation-echo rule requires of a spec.
+- **The changelog corrected its own prior round's causal claim.** v1.12 attributed the rows 6/20
+  unblock to the `ready: true` flag; v1.13 reassigns it to QUEUE row 19's `done` status and demotes
+  `ready: true` to this row's own pickup gate. I verified both halves against
+  `orchestrate-queue.js:884` and `:295` — the correction is right, and a document that narrates its
+  own retractions is one whose unretracted measurements I can trust.
+- **C-5's transcription is exact.** Both bounds, hard and soft, match `check-req-size.sh` digit for
+  digit. F-02 is about the document's own measurement against them, not about the numbers.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The one High finding from v2 is resolved, verified end-to-end against shipped code rather than
+against the FSPEC or TSPEC, and the Low is resolved too. Nothing outside the three changed hunks
+was disturbed. Two new Low findings are recorded and neither gates: F-01 asks for three words
+naming the class's carrier so the clause cannot be mis-transcribed onto the summary row, and F-02
+asks C-5 to state where the document actually sits against the soft threshold it now names. Both
+can ride the next edit this REQ takes for any reason.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
 
