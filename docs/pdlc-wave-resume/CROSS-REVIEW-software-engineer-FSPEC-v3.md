@@ -52,6 +52,36 @@ naming the round, not a re-derivation. Filed as F-02 below.
 
 ## Behavioral Flow
 
+**§3.1 (the decision) — holds.** D-1..D-3 and the two terminal actions are stated in terms of
+outcomes (a)/(b)/(c), and REQ v1.6 still closes that catalogue at three in the same words. D-5's
+wording — "Phase I dispatches no wave, executes no wave gate, and produces no
+**implementation-wave** commit … Phase PT's V-wave is outside this scope" — is now *literally* the
+upstream sentence rather than a correction of it. Nothing to change.
+
+**§3.2 (consulting the record) — holds, and is now upstream-ratified.** The REQ edit adds:
+
+> The IG labels name **causes, not precedence**: this table's row order carries no claim about the
+> order in which a run tests for them, which is FSPEC's to state (§3.2 there evaluates ancestry
+> before over-count).
+
+§3.2's six-question table places question 5 (ancestry, IG-5) above question 6 (over-count, IG-4)
+and says so explicitly in the paragraph headed "The order above is deliberately not REQ-WVR-02's
+IG numbering". The two documents now agree on both the fact and on which document owns it. I
+re-verified the shipped chain is still the one both describe: `feature` → `planHash` →
+`headCorroborated` → `lastGreenWave > waves.length` in the resume-decision block of
+`pdlc/workflows/orchestrate-dev.js` on `origin/main` (ancestry before over-count), unchanged since
+my v2 verification. No finding.
+
+One thing worth stating plainly because it could be misread as a conflict and is not: the REQ says
+its row order "carries no claim" about evaluation order, while FSPEC §3.2 says "only this table's
+order is normative (BR-03)". Those are the same statement from the two ends — the REQ disclaims
+precedence, the FSPEC asserts it for its own table. There is no version of REQ v1.6 under which
+§3.2 must change.
+
+**§3.3–§3.5 — untouched upstream.** The operator-override precedence, the high-water completion
+property, and the queue-parity clause trace to REQ-WVR-04, -05, -06 and -07, none of which this
+round edited. I did not re-review them, per the delta protocol.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
