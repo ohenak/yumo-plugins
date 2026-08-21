@@ -208,6 +208,14 @@ here.
 the second half of F-03: it describes both errata as "raised", with no indication that both have
 since landed.
 
+## Recommendation
+
+**Approved with minor changes.** The FSPEC still holds as approved against REQ v1.6. Two of the
+four upstream edits moved the REQ toward this document; the other two cost it nothing, because it
+compressed OF-1's shape rather than its arithmetic and cited it by id. Three sentences describe a
+version of upstream that no longer exists and should be corrected in a single pass; none of them
+touches an observable, a rule, an edge case or an oracle.
+
 ## Delta-Confirmation Findings
 
 No High findings. Three `delta` findings are stale-provenance sentences created by the upstream
@@ -230,12 +238,7 @@ FINDING: Medium | inherited | nonlocal | EC-15a / BR-15 / AT-15 | the failed-wri
 FINDING: Medium | inherited | nonlocal | AT-18 | the discriminating-value sentence names the wrong counterfactual skip set: a per-run record skips waves 1–2, not "only wave 3" (v2 F-02, still open)
 FINDING: Low | inherited | nonlocal | AT-12 | the "exactly one agent dispatch" conjunct holds only for a fixture whose transport does not fail on the first call, and that condition is unstated (v2 F-03, still open)
 
-## Recommendation
-
-**Approved with minor changes.** The FSPEC still holds as approved against REQ v1.6. Two of the
-four upstream edits moved the REQ toward this document; the other two cost it nothing, because it
-compressed OF-1's shape rather than its arithmetic and cited it by id. Three sentences describe a
-version of upstream that no longer exists and should be corrected in a single pass; none of them
-touches an observable, a rule, an edge case or an oracle.
-
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 3}
