@@ -106,6 +106,41 @@ orchestrator's call, not mine; Q-01 records it.
 
 ## Oracles
 
+**No existing oracle is falsified by the REQ delta, and none of the nine needs restating.** I walked
+O-A…O-H against REQ v1.16 and every quantity they pin derives from clauses the erratum did not touch.
+Two are worth naming because they sit closest to the changed AC:
+
+- **O-C (preservation oracles).** Its two transcribed conjuncts — the map's *domain* (tracked plus
+  non-ignored untracked, ignored excluded on both sides) and its *observation point* (immediately
+  after restoration, before the AC-6.1 / AC-6.2 / AC-5.2 carriers) — are transcriptions of **AC-5.1**,
+  which reads at v1.16 exactly as it read at v1.15. I diffed the AC's text, not just its id: the
+  erratum's `@@` hunks are at the header block and AC-6.3 only. O-C stands as approved.
+- **Oracle G's capture-failure `diagnosis` literal** (`snapshot capture failed
+  (snapshot-unavailable); no repair proposed and none applied`) is TSPEC §4.5's, and TSPEC is
+  unchanged. AC-6.3's new conjunct does **not** reach into it: on the capture-failure path there is no
+  capture to point at, so no warning is owed. The literal stays a complete transcription, not a
+  now-partial one. This is the distinction that keeps F-01 a *missing property* rather than a
+  *falsified oracle*.
+
+**What the missing property needs, oracle-side, and what would make it vacuous.** Since F-01 asks for
+a new assertion, I state the oracle hazard here so the follow-up round does not have to rediscover it
+— the same service §Oracles performs for the other nine:
+
+- **The wrong unit is "the report object contains the substring `overwrite`".** A containment check
+  over the whole report passes when the warning is emitted on a channel the operator never sees at
+  halt, which is precisely what REQ's *"in the same place"* forbids. The unit is the **same
+  halt-report surface that carries the capture pointer** — the field PROP-REC-05 already pins for the
+  diagnosis and root-cause class.
+- **The positive half must be paired with the conditional negative.** A halt whose run took no
+  capture (PROP-REST-08's E-34 fixture, `captureTreeSnapshot` returning `null`) must assert the
+  warning is **absent** — otherwise an implementation that warns unconditionally, on halts where
+  there is nothing to preserve, passes. REQ's trigger is conditional; the oracle must discriminate
+  both arms or it does not test the criterion as written.
+- **Do not pin the remedy wording.** DECISIONS' *copy the ref before re-running a halted feature* is a
+  documented remedy, not a REQ obligation, and the ref name is TSPEC's (O-1). An oracle transcribing
+  either mints a red test against a spec-following implementation — the failure mode round v1.4 fixed
+  in PROP-ENV-13 and hazard 1 warns about in §Fixtures.
+
 ## Fixtures
 
 ## Questions
