@@ -248,3 +248,6 @@ No property retracts, no fixture changes, no PLAN task moves, and the 70-propert
 F-01 is an amendment to two paragraphs and one table row.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 2}
