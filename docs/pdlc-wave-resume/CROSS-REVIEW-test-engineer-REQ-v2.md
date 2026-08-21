@@ -194,8 +194,62 @@ unusually well constructed and needs no change.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Were the four preconditions in §1 true at some earlier default-branch commit, and has the ledger write since moved out of the `scriptGate` branch? If so, name that commit — the block would then be a valid dated observation that needs re-dating rather than deletion, and the movement itself is a fact the FSPEC wants. (G-01) |
+| Q-02 | Given the live record in this working copy shows the ledger firing for `pdlc-advisory-wave-gate` at `lastGreenWave: 7` with a `head` stamp, does the REQ still want the FSPEC's oracle framed as "an observed resume, not the presence of the code path"? I think yes, but on the argument that a code path is never an oracle — not on the tree claim. (G-01) |
+| Q-03 | Is REQ-WVR-08's "own phase row" meant as a second row or as a distinct status on the Phase I row? (G-05 — the AT differs entirely.) |
+
 ## Positive Observations
+
+- **The two blocking findings were closed on their merits, not narrowed away.** REQ-WVR-04's
+  boundary paragraph does not merely pick an answer to my question — it makes the manual pointer a
+  *resume-point selector only*, states the past-the-end case too, and routes force-a-full-run to
+  exactly one mechanism. Three previously-ambiguous cases are now three writable ATs, and all three
+  match the shipped ladder without the REQ having had to describe the ladder.
+- **REQ-WVR-09 is the shape a promoted risk should take.** It states the *Given* as an observable
+  situation (a run that verifies but does not commit), the *Then* as a positive outcome (starts at
+  that same wave and announces it as not previously completed), and defines the term that does the
+  work: "completion, for resume purposes, means *committed*, never merely *verified*". That
+  sentence is the invariant, and it is falsifiable in one fixture.
+- **REQ-WVR-02's closed catalogue changes what PROPERTIES can prove.** Asking for set-equality by
+  name, in the REQ, rather than leaving it to a test engineer to notice, is the durable move — G-02
+  is a granularity correction inside a mechanism I want kept.
+- **C-1 now rests on a rule rather than on nobody running `git add -A`.** The root-anchored
+  `.gitignore` entry, with a comment explaining the anchor, plus REQ-WVR-10 as its observable, is a
+  complete answer to round-1 F-07: the requirement, the mechanism, and the test that fails if the
+  mechanism goes away.
+- **§4's *Re-derive:* commands are the model the rest of the document should follow.** They are why
+  G-01 is a single localised finding rather than a challenge to the constraints section: the facts
+  that carry a re-derivation command all held when I ran them.
+- **The retention-with-invalidation decision names its own cost.** "A stale record is now permitted
+  to exist indefinitely, so every skip decision rests on those three checks being correct —
+  PROPERTIES should treat them as the feature's highest-value oracles" is a REQ telling the test
+  author where to spend. That is rare and correct.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding is open. G-01 is closable with a localised edit — re-verify §1's four
+preconditions against the default branch as of this revision, restate or delete precondition 1
+(the write is guarded by the git transport, not by `scriptGate`), and re-date or replace the
+"never once fired here" claim now that a written record exists in the tree. The derived instruction
+to the FSPEC is worth keeping; it just needs to rest on an argument rather than on that claim.
+
+The three Medium/Low findings are sentence-level and do not gate: split IG-4 into its two
+mechanisms so the set-equality check is falsifying for each (G-02); stop pinning the wave-gate
+baseline at v1.0 and have OB-2 name a re-check rather than a version number (G-03); replace the
+stale raw line anchors with symbol and banner-string citations per DEC-DOC-01 (G-04); and say
+which reading of "own phase row" REQ-WVR-08 intends (G-05).
+
+Nothing in this round contests the revision's direction. Every round-1 finding is closed, several
+of them better than I asked for — the requirement set now carries the two safety properties
+(REQ-WVR-09, REQ-WVR-10) that the risks section previously only described, and the resume-outcome
+and ignore-reason catalogues are both closed with set-equality obligations attached. What is left
+is one evidentiary block that has drifted out of date under the feature it documents.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
