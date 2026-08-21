@@ -142,10 +142,32 @@ strictly protective of this document's fixtures, and worth keeping.
 - Naming the non-additive-helper escape hatch in advance means the next amendment cannot silently
   move a consumer suite's status out from under PROP-CORPUS-* and PROP-SELECT-*.
 
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Is the heading-form follow-up commit expected on the scheduled path (case A, before batch 7)? If yes, F-03 collapses to a note; if the commit may land after LI-17, PLAN's case B wording is the one to widen |
+
+## Recommendation
+
+**Approved with minor changes** — PROPERTIES v0.3 still holds as approved against PLAN v0.6. No High
+finding: no property, oracle, fixture, AT id or red/green trace is disturbed by the erratum. The
+three items are documentation fidelity in §C.4 and the upstream pin, and can be taken in the next
+ordinary revision of this document.
+
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | Header table pins `PLAN-pdlc-learnings-injection.md` at **v0.5**; PLAN is v0.6 (`sha256:d028d972450c…`) at HEAD. Update the pin and the parenthetical to name what v0.6 added (P-A-7 amendment rows), so the next reviewer measures against the right upstream | Header table, `Upstream` row |
+| F-02 | Low | delta | local | §C.4 states *"PLAN's LI-08 v0.5 amendment note … does not name the ledger rows; that naming is the PLAN's to do and is routed as an erratum, not decided here."* PLAN v0.6 §The three gate wordings now names them under **Amendment commits on landed suites (P-A-7)**. Restate the routed item as **answered**, citing that paragraph, and keep the unchanged conclusion "No property of this document changes either way" | §C.4, "On the re-red of landed suites (SE Q-02)" |
+| F-03 | Medium | delta | local | PLAN v0.6's case B names the re-red rows as *"`LI-AT-11`'s heading-form cases only"*, while §C.4 scopes the landed-suite re-red to **PROP-BOUND-05/07/08** and PROP-BOUND-03 adds a further case to the same landed `learningsBlock.test.js`. Case A covers all four (whole-suite red after batches 7–8); case B, read literally, names none but the heading-form cases. Record in §C.4 which properties travel under which case, so an amendment landing at batch 9+ with PROP-BOUND-03/07's cases is not unledgered. No oracle, AT id or fixture changes either way | §C.4 / §O-facing note on PROP-BOUND-03/05/07/08 |
+
+FINDING: Low | delta | local | Header table `Upstream` row | PLAN pin still reads v0.5; PLAN is v0.6 (sha256:d028d972450c…) at HEAD
+FINDING: Low | delta | local | §C.4 "On the re-red of landed suites (SE Q-02)" | Says PLAN "does not name the ledger rows" and routes it as an erratum; PLAN v0.6 now names them under "Amendment commits on landed suites (P-A-7)", so the routed item should read as answered
+FINDING: Medium | delta | local | §C.4 landed-suite re-red scope | PLAN v0.6 case B names only LI-AT-11's heading-form cases, but §C.4 scopes the landed-suite re-red to PROP-BOUND-05/07/08 (and PROP-BOUND-03 adds a case to the same landed suite); state which properties travel under case A vs case B so a batch-9+ amendment carrying PROP-BOUND-03/07's cases is not unledgered
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
