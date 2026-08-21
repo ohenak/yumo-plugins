@@ -68,7 +68,18 @@ neither changes what the feature must do.
 
 ## Questions
 
-## Positive Observations
+| ID | Question |
+|----|---------|
+| Q-01 | Under outcome (c), is the V-wave's commit expected to exist at all? EC-20 asserts it does; the mechanism only asks the agent for one, and with PROPERTIES already green there is nothing to add. Answering inside EC-20 (rather than in a review reply) is what makes AT-12's fourth conjunct writable — see F-01. |
+| Q-02 | AT-15 arm 2 needs a write seam that fails on the Mth call but not the first. Is that within the fixture vocabulary te-author is expected to have, or does OB-F2's TSPEC contract need to name a write seam that can be made ordinal-selective? |
+| Q-03 | AT-08's conjunct 2 asserts set equality over the four `implementation.*` keys. That set is a TSPEC-altitude fact stated at FSPEC altitude — deliberate, since it is the only falsifiable form of BR-17. Should OB-F2 record that the TSPEC must not restate the set independently, so the two documents cannot drift into two literals? |
+
+- **F-01 was fixed at the right altitude, and the upstream half was routed rather than absorbed.** §2's Vocabulary entry defines *Phase I* once and every downstream clause (D-5, BR-11, EC-09, AT-12) now inherits it, so the scope question cannot be re-opened by reading any one of them alone. EC-20 states the V-wave's replay as its own criterion instead of burying it in a caveat, and the REQ-level defect went out as an erratum. That is exactly the split the pipeline asks for, and it is rarer than it should be.
+- **AT-12's replacement oracle is the strongest single change in this revision.** "Zero agent dispatches and zero gate invocations on the wave loop, measured on counting spies" is falsifiable in a way "produces no commit" never was: it distinguishes a wave loop that was skipped from one that ran and had nothing to add. The explicit note that the counts are literals from the spec and never derived from the mechanism is the implementation-echo rule stated by an author, unprompted.
+- **AT-03 now tests the one pair that discriminates.** The revision did not just add a fixture — it explains *why* the ancestry/over-count pair is the only pair whose result differs between the REQ's numbering and the shipped chain, and that a foreign-feature/changed-plan pair "passes either way and tests nothing". I verified the chain (`:15300`–`:15313`) and the reasoning is exactly right.
+- **AT-18 is a well-chosen new test, not padding.** The high-water property was implicit in v1 and would have been discovered in PROPERTIES or, worse, in production; the discriminating value stated ("a record counting only the waves the previous run itself executed would announce wave 3") names precisely the wrong implementation the test kills, and it is the wrong implementation a reader of §3.4 v1.0 could plausibly have built.
+- **EC-15a is the good kind of edge-case split.** Splitting "no write succeeded" from "some write succeeded" turned one untestable cost claim into two arms with different oracles, and the FSPEC labels the second a cost clause rather than a correctness one — an honest scoping that stops te-author over-investing in it.
+- **EC-21 documents a compatibility arm the code has and no document had.** The `!recordedHead ⇒ true` arm of `headCorroborated` is exactly the sort of silently-honoured path that produces an unexplained green two features later; naming its accepted cost and bounding it against EC-18 is better than either hiding it or "fixing" it out of scope.
 
 ## Recommendation
 
