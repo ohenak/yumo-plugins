@@ -128,3 +128,72 @@ never causes its wave to be treated as incomplete* — and add an explicit allow
 AC) for ancestry corroboration of a recorded commit, then update R-1 to cite it. Leaving the
 absolute wording in place sets up a contract-fidelity conflict the TSPEC cannot resolve without
 either regressing the control or contradicting the REQ.
+
+### F-05 — OF-1..3 duplicate measured facts that already exist as `M-WG-*` ids (Medium, Cross-Feature)
+
+BL-02 lists `docs/_constraints/pdlc-wave-gate-baseline.md` as a prerequisite "available for
+citation", and OB-2 owes its promotion. Both are already discharged: the file exists on `main`
+(`git ls-tree main docs/_constraints/`) and carries `M-WG-1 … M-WG-14`, including the three facts
+OF-1..3 restate in prose:
+
+| REQ fact | Existing measured fact on `main` |
+|---|---|
+| OF-1 (re-invocation re-enters wave 1, re-dispatches completed waves) | `M-WG-6` |
+| OF-2 (a completed task may produce no commit / nothing committed on a red gate) | `M-WG-4` |
+| OF-3 (the halted wave's own work is uncommitted at the halt) | `M-WG-4`, with `M-WG-12` on the commit loop's pathspec scoping |
+| §3 Non-Goal "absence of a POSTMORTEM on wave halts" | `M-WG-5` |
+| §3 Non-Goal "the halt's queue-row recording" | `M-WG-7` |
+
+Per the REQ altitude bar, a REQ carries shipped-behaviour facts as **cited `M-*` ids from the
+constraints file**, not as inline observations. **Required change:** after the rebase (F-01),
+replace OF-1..3 with citations to the existing `M-WG-*` ids, add any genuinely new observation to
+the baseline file rather than to the REQ, and close OB-2 as already satisfied. Two independent
+statements of the same measured fact will drift.
+
+### F-06 — the acceptance-criteria set is not set-equal to the resume outcome catalogue (Medium, Local)
+
+There are three operator-visible resume outcomes, and the REQ enumerates two. Missing: **all waves
+already recorded green ⇒ Phase I is skipped in full**, announced as its own message and recorded as
+its own phase row (`main:…orchestrate-dev.js:15318-15334`, `allWavesRecorded` at `:15327`; the
+`⏭` phase row at `:15615-15620`). No AC in §7 covers it: REQ-WVR-01 covers resuming *at a wave*,
+REQ-WVR-05 covers what is left behind, and neither states what a run does when the record says
+everything is done. That gap matters more than usual here, because this is the one outcome where
+the pipeline **runs no wave gate at all** in Phase I — so REQ-WVR-03's "the full test suite verifies
+the whole tree before any new commit lands" is vacuously true rather than actively satisfied, and
+the REQ never says so.
+
+**Required change:** add an AC for the all-green outcome, stating its announcement, its report row,
+and explicitly how REQ-WVR-03's verification guarantee is discharged when no wave executes. State
+the outcome catalogue as a closed set so a deleted case is detectable downstream, rather than
+leaving the enumeration open-ended.
+
+### F-07 — OQ-1 is open against a hatch that already ships and is already announced (Medium, Local)
+
+OQ-1 asks whether the REQ-WVR-04 escape hatch should be a config value, a record-removal action, or
+both. At HEAD-of-`main` it is a record-removal action, and it is announced in both resume messages:
+"Delete `.claude/pdlc-wave-state.json` to force a full run" (`:15331` and `:15341-15342`).
+The config alternative is provably not expressible today: the manual override is honoured only when
+`startWave > 1` (`const explicitPointer = startWave > 1`, `:15236`), so `startWave: 1` is
+indistinguishable from the default and cannot mean "ignore the ledger"; every value that *is*
+distinguishable skips waves.
+
+Leaving the form open invites the FSPEC to add a second knob whose semantics overlap the deletion
+hatch — precisely the interim/final divergence R-4 warns about. **Required change:** resolve OQ-1 to
+record deletion (with the announcement wording pinned as a requirement, and owned as an exact string
+by the lowest layer that pins it — TSPEC/PROPERTIES, not the REQ), or state the config knob's
+semantics precisely enough that it cannot collide with `startWave`.
+
+### F-08 — C-1 is already satisfied and should cite its evidence (Low, Local)
+
+C-1 requires the record to live in consumer-local untracked state. That is already true and
+anchored: `main:.gitignore:41` carries `/.claude/pdlc-wave-state.json` (root-anchored, alongside
+`/.claude/workflows/`, with the comment at `:24-32` explaining why the anchor matters for the
+checked-in fixture tree). Cite it so the FSPEC does not re-litigate the location.
+
+### F-09 — OF-1..3 carry no reproducible anchor (Low, Process)
+
+§4's preamble promises facts "each dated and reproducible from the cited run", but the entries cite
+only "the pdlc-consolidation-agent run of 2026-08-09" — no commit sha, run-report path, or
+POSTMORTEM id. A reviewer cannot re-derive them. The `M-WG-*` rows in the baseline file show the bar:
+each carries an executable re-verification command. Subsumed by F-05 if OF-1..3 are replaced by
+citations.
