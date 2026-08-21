@@ -4,10 +4,10 @@
 |---|---|
 | Status | Draft |
 | Author | pm-author |
-| Version | 1.0 |
+| Version | 1.1 |
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | (none yet) |
+| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC-v1.md, CROSS-REVIEW-test-engineer-FSPEC-v1.md |
 | LEARNINGS | docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md |
 
 ## 1. Overview
@@ -75,6 +75,19 @@ recorded here so the traceability chain has no gap.
 plan got. *Resume point* — the wave number Phase I begins executing at. *Provenance* —
 `operator-set` or `automatic`, the source of the resume point. *Completed wave* — a wave whose
 work is committed (FSPEC-WVR-05); never a wave that merely passed its gate.
+
+*Phase I*, throughout this document, means the **implementation wave loop** — the waves the PLAN
+declares. It does **not** include Phase PT's appended V-wave, which is a separate phase that
+dispatches, gates and commits on every invocation independently of any resume decision (EC-20).
+Every clause below that says "Phase I dispatches nothing / executes no gate / produces no commit"
+is therefore scoped to the implementation waves.
+
+*Announcement* — the observable a run emits to its **run log**; where a criterion additionally
+names the run report (REQ-WVR-01's "the run log and final report state the resume point and its
+provenance", REQ-WVR-08's Phase I row), the report is a second observable of the same fact and is
+named per clause rather than assumed. Provenance is announced content, not private vocabulary: a
+test may assert that an announcement conveys `operator-set` or `automatic`, on the run log for
+every outcome that announces and additionally on the report row where a clause names it.
 
 ## 3. Behavioral Flow
 
