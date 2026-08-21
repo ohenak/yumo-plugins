@@ -206,3 +206,29 @@ three commits it describes.
   sentence and its echo, and needs no decision to fix.
 
 ## Recommendation
+
+**Needs revision**
+
+One High finding, and it is the only thing that must change:
+
+1. **F-01** — In `DEC-LI-08`, replace "framing costs **694 bytes** for a one-document block and
+   **1,012 bytes** for a five-document block, so … roughly **21,012** bytes … That gap is a known
+   constant" with a statement of what the shipped renderer actually does: a fixed 479 bytes plus
+   `2×len(path) + len(feature) + len(orderKey) + 47` per document, plus ~34 per abridged document —
+   with this repository's corpus as the worked example (684 bytes at one document, 1,607 at five;
+   718 / 1,777 abridged), and the ceiling stated as a function of the corpus rather than as a
+   constant. Make the same substitution in `D-O-4`'s parenthetical, or reference `DEC-LI-08` from it
+   rather than restating the numbers.
+
+Nothing else in the delta requires a change. `D-O-3`'s zero-bound conjunct, `D-O-4`'s material/block
+split, the accounting-basis paragraph's qualitative content, the **Stated honestly** rewrite's
+structure and the v0.4 changelog row all check out against REQ v0.9, FSPEC v0.13, TSPEC v0.9 and
+`pdlc/workflows/orchestrate-dev.js` at HEAD. F-02 and F-03 are carried-forward Lows and do not gate;
+five deferred items are recorded in `## Consequences` per the freeze. No decision is opened,
+reopened or contradicted by this review — the fix is exposition, and `DEC-LI-08`'s decision (static
+caps only, no dynamic budget) stands exactly as approved at v7.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
