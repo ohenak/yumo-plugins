@@ -830,14 +830,35 @@ Three families of literal are transcribed, not paraphrased:
   `## 3. Rejected Proposals (with rationale)`, `## 4. Process Learnings`,
   `## 5. Open Items for Consolidation` — **9 of 9** for every one of the five, and **0 of 9** carry a
   bare `Rejected Proposals` or a bare `Open Items`. Fixtures are written to the numbered form, and
-  **which heading forms count as which section is F-O-1's, not this document's to decide.** FSPEC
-  v0.13 settled the ownership half: F-O-1 now reads "**Two** heading-recognition rules, on the same
-  terms: the predicate for 'presents as a LEARNINGS document' (BR-3), **and** the rule by which a
-  heading counts as one of BR-6's named sections", both owned by TSPEC. What remains open is
-  narrower and belongs to **TSPEC alone**: its §D.3 discharge covers only the document-shape
-  predicate (`LEARNINGS_HEADING_RE`), leaving `extractInjectableMaterial`'s section matcher
-  unspecified — so no upstream text yet says whether `## 3. Rejected Proposals (with rationale)` is
-  matched on the numbered form, the bare title or a prefix. Routed on those narrowed terms in §G.3. What this document can and does pin is the consequence: PROP-BOUND-08
+  **which heading forms count as which section is F-O-1's, not this document's to decide — and it is
+  now decided.** FSPEC v0.13 widened F-O-1 to own **both** heading-recognition rules, and TSPEC v0.8
+  discharged the second in §D.3, so the question earlier revisions routed as an erratum is closed.
+  The decided matcher, which fixtures and expected sets are now written to:
+
+  1. **The ordinal prefix is optional and carries no meaning** — `## 2. Cross-Feature Patterns` and
+     `## Cross-Feature Patterns` are the same section; the number is stripped and discarded. It is
+     **not** the priority: priority comes from `BR6_SECTION_NAMES`'s index alone. This is
+     load-bearing for fixtures, because the corpus's own numbering is *not* BR-6's priority order —
+     every document numbers `1. Non-Convergences`, `2. Cross-Feature Patterns`, while BR-6 ranks
+     Cross-Feature Patterns first. A fixture whose expected order was read off the ordinals would
+     invert the first two sections of every corpus document.
+  2. **Comparison is exact and case-sensitive** after trimming — no prefix, substring, token-overlap
+     or fuzzy match, no case folding. Forced by E-33, not chosen for strictness: the measured
+     `RSN-NO-MATERIAL` document carries `## Cross-Feature Findings` and `## Process Findings`, which
+     a substring or token rule would match to `Cross-Feature Patterns` and `Process Learnings`,
+     making E-33 and AT-28 unreachable by construction. The **prefix** candidate is rejected on its
+     own separate ground (neither name is a prefix of the other, so E-33 does not reach it): it
+     would admit `## Process`, `## Open Items` and `## Cross-Feature` as full sections and create
+     same-priority collisions needing a tiebreak.
+  3. **A trailing parenthetical gloss is optional**, and only that — `## 3. Rejected Proposals`
+     matches priority 3 exactly as `## 3. Rejected Proposals (with rationale)` does. Stated as a
+     defensive tolerance, **not** measured: 9 of 9 corpus documents write the glossed form.
+
+  Heading recognition is `SECTION_HEADING_RE` on **exactly two** `#` characters, so a `###`
+  sub-heading inside a section is body text, not a boundary. Fixtures remain written to the numbered
+  glossed form the corpus actually uses, and PROP-BOUND-08's real-corpus arm still drives extraction
+  over a real document — but it now checks a matcher upstream **specifies** rather than bounding
+  exposure to one upstream left open. What this document can and does pin is the consequence: PROP-BOUND-08
   drives extraction over a **real** corpus document, so a matcher and a synthetic fixture written to
   the same wrong spelling red instead of greening together.
 - **The three frozen catalogues** — `LEARNINGS_REJECT_REASONS`, `LEARNINGS_CORPUS_OUTCOMES`,
