@@ -273,4 +273,27 @@ since that is the change that will make §1's citations re-verifiable in the tre
 
 ## Delta-Confirmation Findings
 
+No High findings. All six are `inherited` — the FSPEC's bytes have not changed since my v2
+approval, so nothing this round's upstream edit did introduced a new defect in this document. Two
+inherited findings (F-01, F-02) were **widened** by this round and are restated at their current
+extent; widening an existing defect is not the same as introducing one, so their provenance stays
+`inherited` and they route back to the FSPEC's ordinary revision loop rather than gating this
+confirmation.
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | local | OB-F1 quotes REQ §10 as recording BL-04 "discharged at FSPEC authoring". No section of upstream says that any more: §10 has read "open and unmet" since v1.6, and this round made §5's row read "found **unmet** — this row is not discharged" too. Substance of the obligation is correct and now fully agreed by upstream; only the quotation is stale. Carried from v3 F-01, widened. | §7, OB-F1 |
+| F-02 | Low | inherited | local | §1 pins the derivation to "REQ-pdlc-wave-resume.md v1.5"; upstream is now v1.7, so the pin names a version two rounds behind and a downstream author cannot obtain it. Carried from v3 F-02, widened. | §1 Overview |
+| F-03 | Low | inherited | nonlocal | EC-20 and §7's Round-1 revision note describe both errata as open ("raised as an erratum against REQ-WVR-08"; "the REQ's discharge of BL-04 … raised as errata"). Both are adjudicated in the FSPEC's favour — V-wave scoping in v1.6, BL-04 completed in v1.7 — so the framing invites a reader to re-raise settled questions. Carried from v3 F-03. | EC-20; §7 Round 1 revision note |
+| F-04 | Medium | inherited | nonlocal | EC-15a fixes the partial-write behaviour but pins nothing about the failed-write notice's content, and the shipped notice asserts the opposite ("a later invocation will simply start from wave 1"). Carried from v2 F-01 / v3 F-04. | EC-15a, BR-15, AT-15 |
+| F-05 | Medium | inherited | nonlocal | AT-18's discriminating-value sentence mis-computes the counterfactual: a per-run record skips waves 1–2, not "only wave 3". The Then clause is right. Carried from v2 F-02 / v3 F-05. | AT-18 |
+| F-06 | Low | inherited | nonlocal | AT-12's "exactly one agent dispatch" conjunct is fixture-conditional — the V-wave dispatch is wrapped in a retry envelope — and the first-call-succeeds condition is unstated. Carried from v2 F-03 / v3 F-06. | AT-12 |
+
+FINDING: Medium | inherited | local | §7 OB-F1 | quotes REQ §10 as recording BL-04 "discharged at FSPEC authoring"; after this round neither §5 nor §10 says that — both record BL-04 unmet and not discharged — so the quoted upstream sentence exists nowhere; state instead that the erratum landed across v1.6 (§10) and v1.7 (§5) and upstream now agrees
+FINDING: Low | inherited | local | §1 Overview | derivation is pinned to "REQ-pdlc-wave-resume.md v1.5"; upstream is now v1.7 after two erratum rounds, so the pin names a version a downstream author cannot obtain
+FINDING: Low | inherited | nonlocal | EC-20 and §7 Round 1 revision note | both describe the V-wave scoping and BL-04 errata as open/raised; v1.6 and v1.7 adjudicated both in the FSPEC's favour, so the framing invites a reader to re-raise a settled question
+FINDING: Medium | inherited | nonlocal | EC-15a / BR-15 / AT-15 | the failed-write notice's content is unconstrained, so an implementation can land EC-15a's resume behaviour while keeping today's notice, which announces a false cost, and every AT still passes (v2 F-01, still open)
+FINDING: Medium | inherited | nonlocal | AT-18 | the discriminating-value sentence names the wrong counterfactual skip set: a per-run record skips waves 1–2, not "only wave 3" (v2 F-02, still open)
+FINDING: Low | inherited | nonlocal | AT-12 | the "exactly one agent dispatch" conjunct holds only for a fixture whose transport does not fail on the first call, and that condition is unstated (v2 F-03, still open)
+
 ## Verdict
