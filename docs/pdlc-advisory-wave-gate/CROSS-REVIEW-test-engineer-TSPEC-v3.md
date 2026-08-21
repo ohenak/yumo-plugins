@@ -29,6 +29,28 @@ the **design** half of this TSPEC and not in its **oracle** half, which is the f
 
 ## Architecture
 
+Nothing structural moved, and that is the right outcome for an erratum round: the delta is
+re-grounding plus one mechanism named where prose used to route.
+
+- **§1.2 (runtime channels).** The retired `dist/orchestrate-dev.bundle.js` premise is replaced by
+  the two real channels — the single generated `dist/pdlc-cli.mjs`, and `prepack.mjs`'s verbatim
+  vendoring of `MODULE_NAMES` into `@kaneho/pdlc-engine`. The load-bearing conclusion ("everything
+  lands in `orchestrate-dev.js`, nothing to hand-sync") survives the re-grounding intact and is now
+  true for a reason that exists at HEAD. PM F-01's premise is discharged.
+- **§1.1 O-8 / §3.6.** Restated on the shipped shape: a loop over `groupPromotedPaths`'s rows, one
+  `commitPaths` per promoted task. This is the reading the `{taskId}` slot forces, and it matches
+  `orchestrate-dev.js:15471`. §3.6's DECISIONS-routing paragraph was updated in the same pass
+  ("adds a call per promoted task … each surfacing in git history as its own commit"), so the
+  document does not now argue against its own restatement — a common erratum failure mode avoided.
+- **§2.5.** The stray `--` is gone from `git add -A`, so the mechanism block, its own prose, O-1,
+  OQ-5 and the shipped call agree. §2.5 additionally stops describing the overwrite warning as
+  operator lore and names the carrier.
+- **§1.3 / §5.1.** Both HEAD-state caveats are re-measured and now record `none` residue on the
+  five surfaces whose production halves landed, keeping the one genuinely outstanding row (the
+  `advisoryRecord.test.js` `rows.map` literal) visible rather than sweeping it up with the rest.
+  Keeping the rows with restated residue, instead of deleting them, is the right call for readers
+  of v1.2–v1.11 reviews.
+
 ## Interfaces
 
 ## Data Model
