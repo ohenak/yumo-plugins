@@ -171,10 +171,59 @@ byte-identical. Three fixture-adjacent facts in the new §C.4 text are checkable
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Process | §C.4 asserts a routing that §G.3 does not carry. The new re-red paragraph ends "Both are PLAN's call, not this document's, and both are routed as errata rather than decided here" — naming two gaps in case B's wording (PROP-BOUND-03's `maxBytes <= 0` case has no named row; case B's span ends at "the batch that greens them", which no remaining batch is). §G.3, the routed-errata register, is byte-identical in this delta and its "**Still open — one item, re-routed this round**" list carries only the AT-15 suite-assignment item. So the two new items reach no author from this document. This is the *same* defect PM v5 F-01 caught and §G.3 itself records as fixed ("§C.4 asserted this routing and this list did not carry it, so it reached no author from here"); the rewrite re-introduced it one paragraph over. It is non-gating because I am routing both items myself as `ERRATUM: PLAN` lines in this dispatch's final message, so the routing happens this round regardless. Fix in the next ordinary revision: add both as bullets under §G.3's "Still open" list | §C.4 re-red paragraph vs §G.3 |
+| F-02 | Low | Local | §C.4 overstates one absence: "carries no un-numbered `## Cross-Feature Patterns` … heading-form arm". The un-numbered form is exercised at `learningsBlock.test.js:42` (LI-AT-05 material) and `:110` / `:130` (LI-AT-12 fixture text), with `expect(result.sections).toEqual(["Cross-Feature Patterns"])` at `:118` / `:139` proving the matcher accepted it. The other three halves of the enumeration (un-glossed `## Rejected Proposals`, `###`-as-body, `## Process Findings` near-miss) are accurate. The supported conclusion is unaffected — all four properties are independently still owed (no `SECTION_HEADING_RE` read of the rendered block, no framing literal, no real-corpus arm, no zero-bound call). Fix: narrow the clause to the *variant fixture as a whole* rather than claiming the un-numbered spelling never appears | §C.4, "None of the four is present in the landed suite" |
+| F-03 | Low | Local | §C.4 says the suite's "only `maxBytes` literals are `40` (`:111`) and `66` (`:131`)". There is a third bound literal — `extractInjectableMaterial(text, 100000)` at `:87`, the deliberately non-binding unbounded arm. The load-bearing half ("no `extractInjectableMaterial(text, 0)` case") is true and verified. Fix: say "the only *binding* `maxBytes` literals", or name the unbounded arm alongside | §C.4, same paragraph |
+
+DEFERRED: §G.1's T-O-6 tail ("No new PLAN task is required") and §C.4's "no red-owning task remaining ahead of them" are both true but read at different altitudes; a cross-reference between them would stop a reader reconciling them by hand.
+DEFERRED: the Overview's premise table still carries the row "No test file of this feature exists yet — a case-insensitive `learnings` listing of `pdlc/workflows/__tests__/` is empty; the repository root has no `scripts/` directory", which is false at HEAD. The table is explicitly self-labelled "a capture-time measurement, not a standing invariant" whose falsification is scheduled by LI-04/LI-07…LI-14, and PROP-META-01 forbids asserting it — so it is not a defect. But §C.4 now models the better practice (pin the measurement to a named commit); propagating that pin to the Overview table would remove the last surface a reader can misread as live.
+DEFERRED: PLAN's `Status` column still reads ⬚ for LI-01…LI-21/LI-23 although the commits exist; PLAN v0.7 explains the column as dispatcher-owned, so it is not a PROPERTIES defect.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | With P-A-6's window now open (LI-21 landed at `92b7ea0c`) and the PROPERTIES suite not yet written, is the intent to author it and commit at green — in which case the four owed Group-D amendments to `learningsBlock.test.js` are a *separate* commit under P-A-7 case B — or to land both in one commit, which would put P-A-6 and P-A-7 case B on the same sha and needs the ledger row named first either way? |
+| Q-02 | Case B's named row covers "`LI-AT-11`'s heading-form cases only" and spans "through the batch that greens them". With batches 7–13 behind us, is the intended reading that the greening batch is LI-22 (the REFACTOR-and-close row, batch 14), or that the amendment commit must be self-greening? The answer decides whether §C.4's two routed items are one gap or two. |
 
 ## Positive Observations
 
+- Both of my v7 findings are resolved, and F-01 is resolved in the strongest available form: the
+  inventory is now a **snapshot pinned to `21edb7c5`** with a per-row `Added by` sha, which is exactly
+  what my Q-01 proposed. It cannot silently go false again — a reader compares one commit, not
+  fourteen files.
+- Every one of the fourteen `Added by` shas is exact. I checked all fourteen against
+  `git log --diff-filter=A -1 21edb7c5 -- <path>`; none is transposed, none names a neighbouring
+  commit of the same task.
+- The task-id accounting is precise and hard to get right: "LI-01…LI-21 and LI-23, LI-22 the only id
+  with no commit, and it owns none of the fourteen because its artifact is a green run and a human
+  cross-check" matches both `git log` and PLAN:162 verbatim.
+- The paragraph does not stop at correcting the table — it re-derives the *consequence*: case A
+  unreachable, case B live, P-A-6's window spent rather than pending, and the P-A-6/P-A-7 distinction
+  preserved. That is the reasoning I asked for in v7 Q-02, done without reopening a decision.
+- Restraint where it belongs: the two gaps it finds in case B's wording are explicitly left as
+  PLAN's call rather than decided here, with DEC-ERR-01's anti-pattern named. Only the bookkeeping
+  (F-01) is missing, not the judgement.
+- The header's PLAN characterisation is more precise than it needed to be — it separates what v0.6
+  added from what v0.7 changed, and both halves verify against PLAN:603 and PLAN:605.
+
 ## Recommendation
 
+**Approved with minor changes.**
+
+Both v7 findings are resolved, no property, oracle, level, fixture or count moved, and every
+load-bearing claim the delta introduced verifies against the repository at `21edb7c5` and at HEAD.
+The three findings are all non-blocking under the freeze: F-01 is a bookkeeping inconsistency whose
+practical effect I neutralise by emitting both items as `ERRATUM: PLAN` lines from this dispatch, and
+F-02/F-03 are overstatements in a supporting enumeration whose conclusion is independently true.
+
+For the next ordinary revision, in one edit: add the two case-B items to §G.3's "Still open" list,
+narrow the un-numbered-heading absence clause, and qualify the "only `maxBytes` literals" claim.
+Nothing else should move.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
