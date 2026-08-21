@@ -85,8 +85,51 @@ remaining headroom.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried unchanged from v1/v2 (not this round's business): now that PR #66 is merged and QUEUE row 19 reads `done`, does this feature's `docs/` tree relocate to `docs/completed/pdlc-advisory-wave-gate/` to match `pdlc-advisory-tier` and `pdlc-consolidation-agent`? The v1.12 changelog explicitly defers it. |
+| Q-02 | Carried from v2: should `pdlc/OPERATIONS.md` carry one line on what a merged feature's REQ does with `ready: true` — held, or flipped back to `false` as a "do not re-pick" marker? The queue's own guard against re-picking is the row status, not the flag. |
+
 ## Positive Observations
+
+- **AC-2.4's zero-budget oracle is now positive on both sides, and both sides are shipped.** The
+  round-2 text asserted only that the row "reads zero"; the revision names the two observable
+  counts (`resolved: 0` plus one `escalated` invocation) and the class the escalation carries, so
+  the negative claim "no dispatch" is paired with an artifact that proves it. Both are real at
+  HEAD: the row shape at `pdlc/workflows/orchestrate-dev.js:3697-3705`, the escape at `:3510-3512`,
+  the class default at `:3242`, the disabled-tier contrast at `:16070` / `:16110`. This is the
+  distinguishability AC-1.4 needs, expressed at requirements altitude — no seam signature, no
+  fixture design, no constant placement leaked in.
+- **The `unclassified` naming is the shipped vocabulary, not a coined synonym.** `unclassified` is
+  a member of the closed class set (`ADVISORY_ROOT_CAUSES`, `:1960`) and the documented fallback for
+  absent/out-of-set input (`parseA6RootCause`, `:2379`, `:2390`), which is exactly what AC-2.2 row 4
+  says. TE F-02's edit therefore names the class the operator will actually read off
+  `ADVISORY-{feature}.md`, and AC-2.2's set-equality sentence keeps a deleted or invented class red.
+- **C-5's correction is a measurement, not a restatement.** Both bounds match the script's four
+  constants exactly, including the "either bound" disjunction that decides when the soft arm fires.
+  A future author measuring this REQ now reads the same numbers the hook enforces.
+- **The v1.12 correction was made surgically.** One causal clause changed; the queue facts it
+  asserts are the ones the code implements, split correctly between the successor pre-check
+  (`orchestrate-queue.js:880-885`) and the pickup guard (`:1339-1341`). No settled decision was
+  reopened and the diff contains no restructuring — three commits, three hunks, nothing else.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High finding is open — neither carried nor new. My v1 High (the `ready: false` / `pending`-row
+pair contradicting merged HEAD) was resolved in the control plane at round 2 and remains resolved:
+`ready: true` in frontmatter, `docs/_queue/QUEUE.md:81` `done`, the pre-check at
+`orchestrate-queue.js:880-885` no longer matching. This round's two prior Lows are both resolved
+against source. The three new findings are Low and non-gating: F-01 and F-02 are single-clause
+edits to one sentence of AC-2.4 that sharpen where the class is read and how often the escalation
+can be witnessed; F-03 records a budget-headroom trend, not a violation. All three can land in the
+next revision or be carried — none changes what this REQ requires.
+
+Scanned only the changed hunks, per the delta protocol. No defect found in an upstream document
+this round; no `ERRATUM:` lines emitted.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
