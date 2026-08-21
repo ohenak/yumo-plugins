@@ -47,7 +47,54 @@ were not. Neither is a reason to unwind anything this edit did.
 
 ## Batches
 
-_pending_
+**No task row moved, and I measured that rather than accepted it.** The diff touches four hunks: the
+version cell, the new §Post-batch remediation subsection plus the arithmetic sentence, P-A-7's case
+C cell, and three changelog rows. Not one `|` cell inside either dispatcher-parsed task table is on
+either side of the diff, so every `LI-*` row keeps its `Batch`, `Deps`, file-ownership and `Status`
+cells byte-for-byte. The `[Fake first]` labelling on LI-02, LI-06 and LI-23 and the red-before-green
+pairing are unchanged. The batch-DAG derivation cannot have been perturbed by an edit that touched
+no dependency edge.
+
+**The expected-red ledger — my lens's primary gate input — is byte-identical.** Batches 7–13 are
+untouched: batch 7's seven whole-suite reds, batch 8's `learningsSelect` narrowed to `LI-AT-15`,
+batch 9's `learningsBlock` dropped entire, batch 11's `learningsRecord` narrowed to `LI-AT-22`'s
+locus-2 assertion, batch 12's `learningsDispatchSet` narrowed to `LI-AT-23`/`LI-AT-24`/`LI-AT-31`,
+and batch 13's **nothing**. Case C's re-pinning changes which commits the prose names, not which
+rows the ledger carries; the ledger stays empty at 13 and after, which is exactly what case C says.
+
+**The single-writer premise: the argument is valid, the enumeration it runs over is not.** The
+subsection's defence — `2fc6fcd3` is one serial commit landing after batch 13, no batch in flight,
+no concurrent agent holding either file, so no batch ever holds two writers — is the right argument,
+and it is *preserved rather than excepted*, as the text says. It also generalises: it holds for every
+file that commit touched, not only the two named. That is precisely why recording only two of them
+understates the amendment. `git show --name-status 2fc6fcd3` reports **thirteen** files under
+`pdlc/workflows/__tests__/` (excluding the regenerated baseline `.txt` fixtures), of which **six are
+ladder-owned suites given a second write** and recorded nowhere:
+
+| File | Ladder owner | Batch | Recorded in §Post-batch remediation? |
+|---|---|---|---|
+| `__tests__/learningsCaptureScript.test.js` | LI-03 | 2 | no |
+| `__tests__/learningsSelect.test.js` | LI-07 | 3 | no |
+| `__tests__/learningsCorpus.test.js` | LI-09 | 3 | no |
+| `__tests__/learningsDispatchSet.test.js` | LI-11 | 5 | no |
+| `__tests__/learningsConfig.test.js` | LI-12 | 5 | no |
+| `__tests__/learningsArmInventory.test.js` | LI-23 | 5 | no |
+| `__tests__/learningsBaselineGuard.test.js` | LI-06 | 4 | **yes** |
+| `__tests__/fixtures/learnings-baseline/**` | LI-06 | 4 | **yes** |
+
+`__tests__/coverageInstrumentation.test.js` was also modified; it is a pre-existing repo suite that
+no LI task owns, so it needs no manifest row, but it is a seventh test-side surface the count of
+"six" does not admit. A fifth **new** unowned test file exists as well —
+`pdlc/engine/__tests__/learnings-config-example.test.js`, added by the same commit — and it carries
+no row in any table. It is also the file that makes the changelog's "eighteen `learnings*` files
+tracked at `09c7c62f`" arithmetic come out: `pdlc/workflows/__tests__/` holds **seventeen**, and the
+eighteenth is this engine-side file the manifest does not mention. The count is right only by
+including a file the amendment omits. This is F-01.
+
+On the production side the same commit modified `orchestrate-dev.js` (LI-15…LI-22), `.gitignore`
+(LI-04), `scripts/capture-learnings-baseline.mjs` (LI-05) and `pdlc/workflows/package.json` — four
+more ladder-owned or explicitly-disclaimed surfaces the "six test-side surfaces" framing leaves
+outside its scope. The last of those is F-02.
 
 ## Dependencies
 
