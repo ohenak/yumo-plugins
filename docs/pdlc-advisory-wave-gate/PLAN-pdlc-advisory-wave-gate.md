@@ -532,7 +532,7 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 | AT-04-3 | A6-19 | A6-21 | waveExecution.test.js |
 | AT-04-4 | A6-15 | A6-18 | advisoryWaveGate.test.js |
 | AT-04-5 | A6-19 | A6-21 | waveExecution.test.js — the one AT whose companion is red against shipped behaviour |
-| AT-05-1 | A6-09, A6-15 | A6-10, A6-18 | advisoryWaveGate.test.js — real-repo hash-map oracle over tracked + non-ignored untracked paths, taken at BR-9's observation point; ignored-path case live (OQ-7 closed), restoring one fails |
+| AT-05-1 | A6-09, A6-15 | A6-10, A6-18 | advisoryWaveGate.test.js — real-repo hash-map oracle over tracked + non-ignored untracked paths, taken at BR-9's observation point; ignored-path case live (OQ-7 closed), and the conjunct that falsifies a restore-over-ignored-path implementation is **positive presence**, not the hash map (whose domain excludes ignored paths on both sides): a `.gitignore`d file the wave added is **still present** after restore — TSPEC §5.2 case 4, the assertion pinning `git clean -fd` over `-fdx` — paired with case 3's untracked-but-non-ignored file asserted **absent**; plus case 5's **ordering** conjunct, the record, escalation-log and queue-row writes each asserted to happen *after* the observation point |
 | AT-05-2 | A6-09 | A6-10 | advisoryWaveGate.test.js |
 | AT-05-3 | A6-15 | A6-18 | advisoryWaveGate.test.js |
 | AT-05-4 | A6-19 | A6-21 | waveExecution.test.js |
@@ -540,7 +540,7 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 | AT-06-1 | A6-16 | A6-18 | advisoryRecord.test.js |
 | AT-06-2 | A6-16 | A6-18 | advisoryRecord.test.js |
 | AT-06-3 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
-| AT-06-4 | A6-15 | A6-18 | advisoryWaveGate.test.js — §5.2's two-red-wave fixture; all three AC-6.3 conjuncts on one run, conjunct (3) by **co-location within one `notices` element**, both halves matched by spec-side literals (anti-echo) |
+| AT-06-4 | A6-15, A6-19 | A6-18, A6-21 | Two arms, two owners. **Seam arm (A6-18):** advisoryWaveGate.test.js — §5.2's two-red-wave fixture; all three AC-6.3 conjuncts on one run, conjunct (3) by **co-location within one `notices` element**, both halves matched by spec-side literals (anti-echo). **Un-skip arm (A6-21):** waveExecution.test.js — the post-gate un-skip halt on a wave A6 *resolved*, whose `snapshotRef` is non-`null`; the seam has already returned, so A6-21 owns that push and its assertion, same co-location and anti-echo oracle, under this witness id rather than a new one (TSPEC §4.5's un-skip row, §5.6) |
 | AT-06-4b | A6-15 | A6-18 | advisoryWaveGate.test.js — the E-34 capture-failure fixture (`snapshotRef: null`): diagnosis and class present, no ref pointer and no overwrite sentence anywhere in `notices` |
 | AT-06-5 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
 | AT-06-6 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
@@ -563,7 +563,14 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
       present — without it the root-cause order has no behavioural consequence in the suite.
 - [ ] AT-06-4's overwrite warning is asserted **co-located** with the ref pointer in one `notices` element,
       by spec-side literals rather than a constant imported from the module under test, and AT-06-4b asserts
-      its absence on the capture-failure run.
+      its absence on the capture-failure run. Both of AT-06-4's arms are present: the seam arm in
+      `advisoryWaveGate.test.js` (A6-18) and the post-gate un-skip arm in `waveExecution.test.js` (A6-21).
+- [ ] The two shipped exact-shape oracles the `snapshotRef` field disturbs were widened by the task that
+      widened the production `fields` object, not left to the gate to discover (PM v2 F-01, F-02):
+      `advisoryWaveGateMain.test.js`'s `expect(result.haltAdvisory).toEqual({…})` reads **five** keys, its
+      `haltReason` containment assertion untouched (AT-05-3), and `advisoryEscalationLog.test.js`'s
+      `expect(failed.notices).toHaveLength(…)` reads **3** — capture succeeds on that real-temp-repo run, so
+      the overwrite notice is the third.
 - [ ] Every transcribed surface of TSPEC §1.3 carries the six-member value by **set-equality**, never
       a loosened `toContain`: `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS`,
       `advisoryRecord.test.js`'s per-seam `test.each`, `advisoryDriver.test.js`'s
@@ -666,4 +673,11 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 - [ ] A6-10's former-A6-09 red step transcribes OQ-7's **landed** boundary: the hash-map oracle ranges
       over tracked and non-ignored untracked paths and is taken immediately after restoration completes,
       before the record, escalation and queue-row writes; the ignored-path case is asserted live (no
-      `test.todo`) and fails an implementation that restores an ignored path.
+      `test.todo`) and fails an implementation that restores an ignored path **by the two conjuncts that
+      can falsify one, named here rather than left to the outcome (TE v2 F-01)**: the hash map cannot —
+      its domain excludes ignored paths on both sides, so a restore that deleted one leaves the maps
+      equal — so the leg is ticked only if the case asserts (a) a `.gitignore`d file the wave added is
+      **still present** after restore (TSPEC §5.2 case 4, the assertion pinning `git clean -fd` over
+      `-fdx`), paired with case 3's untracked-but-non-ignored file asserted **absent**, and (b) case 5's
+      ordering conjunct — AC-6.1's record append, AC-6.2's escalation-log append and AC-5.2's queue-row
+      write (M-WG-7) each asserted to happen *afterwards*. A hash-map assertion alone does not tick it.
