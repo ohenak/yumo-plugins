@@ -84,6 +84,33 @@ round edited. I did not re-review them, per the delta protocol.
 
 ## Business Rules
 
+Only BR-11 sits under the erratum's shadow, and it lands on the right side of it.
+
+**BR-11 vs REQ-WVR-08 at v1.6.** The rule reads: "Under outcome (c) the implementation wave loop
+dispatches nothing, executes no wave gate, and produces no commit. REQ-WVR-03 is discharged
+because the wave loop lands nothing, not because a verification was skipped … The rule is scoped
+to the wave loop (§2 Vocabulary): Phase PT's V-wave is outside it and replays on every invocation
+(EC-20)." Upstream now says, in its own words, "no wave of the **implementation wave loop**
+executes, so that loop runs no gate and **lands no new commit** … The claim is scoped to that
+loop: Phase PT's appended verification wave, OF-1's 17th wave, is outside the resume record's
+scope and continues to dispatch, gate and commit on every invocation (FSPEC §2, EC-20)." Same
+scope, same discharge argument, same exclusion, and the REQ's violation clause ("an
+implementation that lands a wave-loop commit under this outcome violates REQ-WVR-03") matches
+BR-11's. This is the erratum I raised in v2 landing exactly as routed — the FSPEC needs no edit,
+because it was already the more precise of the two.
+
+**BR-02 (disregard catalogue closed at six).** REQ-WVR-02's edit added prose, not a cause. Six
+still means six, and IG-6's deliberate silence is still upstream's word. Holds.
+
+**BR-01, BR-03, BR-07, BR-08, BR-10, BR-12, BR-15 and the remainder.** Trace to REQ criteria this
+round did not touch; not re-reviewed.
+
+One second-order note, not a finding: because upstream now carries the wave-loop scoping itself,
+BR-11's parenthetical justification is no longer load-bearing as a *correction*. If the author
+touches BR-11 for any other reason, the citation may be simplified to "REQ-WVR-08 (v1.6)". I am
+not asking for that edit — the rule as written is correct and re-opening a converged rule for
+style is exactly what the erratum protocol exists to avoid.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
