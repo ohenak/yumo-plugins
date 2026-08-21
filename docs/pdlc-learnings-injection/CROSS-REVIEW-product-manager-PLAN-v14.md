@@ -229,8 +229,77 @@ DEFERRED: §The arithmetic is now scoped by a sentence appended to a long paragr
 
 ## Positive Observations
 
+- **The containment decision is right, and it is argued rather than asserted.** Putting the new rows
+  in a subsection that carries a *landing commit* instead of an `Owner` cell — because the
+  dispatcher parses `Owner` as a task id and a `2fc6fcd3` or `none` cell would parse as a stale row
+  — keeps a machine-read contract intact while still recording the truth for humans. It also cites
+  the precedent it follows (`dist/pdlc-cli.mjs`, already stated in prose for the same reason). That
+  is the correct shape for this problem and I would not want it changed while fixing F-01.
+- **The two dispatcher-parsed tables came through byte-unchanged**, and §The arithmetic was scoped
+  explicitly rather than quietly recounted. An erratum that adds rows to a manifest is exactly where
+  a count silently goes wrong; this one anticipated it.
+- **Case C now records an outcome instead of a prediction, and keeps the rule.** The cell states the
+  measurement (26/26, 0 skips at `09c7c62f`), names what is inside the count, and then says the
+  failure limb is **unexercised, not waived** — so the rule survives its own discharge and is still
+  there for the next amendment. I re-ran the suites; the numbers are exact.
+- **The commit re-pin was applied everywhere the triple appears**, including two historical
+  changelog rows, with a one-sentence justification for touching history that I agree with: those
+  rows assert what is landed at HEAD, so an unresolvable pin falsifies rather than dates them.
+- **The batch-safety argument is made rather than waved.** "Rule 2 is preserved, not excepted" is
+  backed by the serial-commit reasoning, and the ordering claim is true — `e7fa8d87` is an ancestor
+  of `2fc6fcd3`. The argument generalises to the seven files F-01 adds, which is why F-01 is a
+  widening job and not a rework.
+
 ## Recommendation
+
+**Needs revision**
+
+Three of the four routed items land cleanly and I verified each first-hand: the commit re-pins
+resolve, the 26/26 measurement reproduces exactly, and the four unowned remediation files are now
+recorded. Item 4 is the one that did not finish. `2fc6fcd3` made nine second writes to ladder-owned
+files, two of them to production code, and the new section records two of the nine while stating as
+fact that the commit "touched six test-side surfaces". P-A-5's contract is "one added row per file";
+the manifest still does not reconcile with the tree, and the file it leaves least protected is
+`orchestrate-dev.js`, the one the manifest guards with its strongest single-writer paragraph. That
+is F-01, High, `delta`, `local`.
+
+Reconciling this section with `2fc6fcd3` also surfaced F-02: §Production and generated declares
+`package.json` "not modified", and the same commit modified it — putting the capture script *inside*
+`c8.include`, the exact opposite of the exemption the paragraph justifies. Those bytes are pre-round
+and this edit did not touch them, so I tag it `inherited`: it routes back to the owning phase rather
+than halting this round, but it belongs to this reconciliation, same commit and same section.
+
+To close, three edits, all additive: (1) correct the scope sentence and add one second-writer row per
+ladder-owned file `2fc6fcd3` wrote, widening the serial-commit paragraph to cover them; (2) restate
+§Production and generated's `package.json` paragraph to match HEAD's `c8` block; (3) account for
+`pdlc/engine/__tests__/learnings-config-example.test.js`, by row or by a scoping clause. The three
+Lows are one word, one row swap and one quoted string, and belong in whatever pass next edits those
+blocks.
+
+Nothing I previously approved broke. No task moved batch, no `Deps` edge changed, no AT partition or
+fixture moved, the batches 7–13 ledger is byte-identical, both dispatcher-parsed tables are
+untouched, and upstream — REQ, FSPEC, TSPEC, DECISIONS — hashes byte-identical to the dispatch pins,
+so this PLAN is still a faithful compression of upstream at upstream's current version.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | `2fc6fcd3` made nine second writes to ladder-owned files, two of them production; the new section records two and calls the commit "six test-side surfaces" | §File-ownership manifest → Post-batch remediation (CODE_REVIEW v1) |
+| F-02 | High | inherited | local | `package.json` is declared "not modified" but `2fc6fcd3` modified it, putting the capture script inside `c8.include` — the opposite of the stated exemption | §File-ownership manifest → Production and generated |
+| F-03 | Medium | delta | local | The eighteenth `learnings*` file, `pdlc/engine/__tests__/learnings-config-example.test.js`, is added by the same commit and owned by no row | §File-ownership manifest → Post-batch remediation / §Changelog v1.2 item (3) |
+| F-04 | Low | inherited | nonlocal | §Changelog's 0.9 row credits the P-A-7 lead-in fix to "(PM v10 erratum)"; the raiser was TE v11 F-01 | §Changelog, row 0.9 |
+| F-05 | Low | inherited | nonlocal | §Changelog's 0.6 row precedes its 0.5 row | §Changelog, rows 0.5/0.6 |
+| F-06 | Low | inherited | nonlocal | Case A's derivation still quotes "before batch 7" against a *When* cell reading "before batch 9" | §P-A-7 case table, case A |
+
+FINDING: High | delta | local | §File-ownership manifest → Post-batch remediation (CODE_REVIEW v1) | the section states `2fc6fcd3` "touched six test-side surfaces", but `git show --name-status 2fc6fcd3` lists twenty files including nine second writes to ladder-owned files — production `orchestrate-dev.js` (15/6: `selectLearnings` loses `feature`, caller updated, `_log` emitter wired into `main()`), production `scripts/capture-learnings-baseline.mjs` (74/19), `.gitignore`, and `learningsSelect`/`learningsCaptureScript`/`learningsConfig`/`learningsDispatchSet`/`learningsArmInventory`/`learningsCorpus`; P-A-5 requires one added row per file and only two were added, so the routed item is partly unlanded
+FINDING: High | inherited | local | §File-ownership manifest → Production and generated | the paragraph declares `pdlc/workflows/package.json` is "**not** modified" and the capture script "deliberately left outside `c8.include`", but `2fc6fcd3` modified it — `allow-external: true`, all four include entries re-anchored as `**/` paths, `**/scripts/capture-learnings-baseline.mjs` added to the include set, plus a new `exclude` block — so the exemption and DoD 11's silence rest on a premise HEAD contradicts
+FINDING: Medium | delta | local | §File-ownership manifest → Post-batch remediation / §Changelog v1.2 item (3) | item (3) frames the fix as fourteen rows against eighteen tracked `learnings*` files, but the four new rows account for seventeen; the eighteenth, `pdlc/engine/__tests__/learnings-config-example.test.js`, is added by the same `2fc6fcd3` and is owned by no LI task and named in no manifest row
+FINDING: Low | inherited | nonlocal | §Changelog, row 0.9 | the row credits the P-A-7 lead-in fix to "(PM v10 erratum)" when the raiser was TE v11 F-01; the 1.1 row names the right raiser one row below without correcting this one
+FINDING: Low | inherited | nonlocal | §Changelog, rows 0.5/0.6 | the 0.6 row precedes the 0.5 row, leaving the version table non-monotone while 0.7 through 1.2 are correctly ordered
+FINDING: Low | inherited | nonlocal | §P-A-7 case table, case A | the outcome cell's derivation quotes "before batch 7" although the *When* cell has read "before batch 9 (which includes batches 7 and 8)" since v1.1
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 3}
