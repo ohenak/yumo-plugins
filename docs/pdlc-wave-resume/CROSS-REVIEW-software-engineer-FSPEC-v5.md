@@ -90,6 +90,45 @@ EC-10's story explicit. It is consistent, not contradictory.
 
 ## Upstream Re-Grounding (DEC-ERR-03)
 
+The items landing is necessary, not sufficient. I re-read the REQ at HEAD (v1.7) and asked
+whether this FSPEC is still a faithful compression of it. The REQ's own amendment log names
+exactly what moved in the two versions the FSPEC skipped over:
+
+| REQ version | What changed | Does the FSPEC still compress it faithfully? |
+|---|---|---|
+| v1.6 (Phase F erratum) | §1 wave count / replay cost matched to OF-1; REQ-WVR-02 notes IG labels name causes not precedence; **REQ-WVR-08's no-commit claim scoped to the implementation wave loop, Phase PT's V-wave excluded**; §10 records BL-04 open and unmet | yes — see below |
+| v1.7 (Phase T erratum) | §5's BL-04 row restated as unmet, matching §10; OB-1's worktree evidence relabelled consumer-local and untracked | yes — OB-F1 now matches; OB-1 is not compressed by this FSPEC |
+
+**The REQ-WVR-08 rescope was already honoured — this is the interesting result.** The one change
+that could have left the FSPEC stale is v1.6's scoping of the no-commit claim to the wave loop.
+The FSPEC does not merely survive it; it is where the rescope came from. BR-11 (`FSPEC:234`)
+already reads "Under outcome (c) the **implementation wave loop** dispatches nothing… The rule is
+scoped to the wave loop (§2 Vocabulary): Phase PT's V-wave is outside it and replays on every
+invocation (EC-20)." EC-20 (`FSPEC:272`) states the V-wave replays unconditionally and closes
+"raised as an erratum against REQ-WVR-08". §3 (`FSPEC:112`) carries the same scoping. The FSPEC
+routed the defect upstream rather than fixing it in place, the REQ accepted it in v1.6, and the
+two now agree. There is no divergence to file.
+
+I spot-checked the three ACs the new §3.4 clause is most likely to strain, since a recording rule
+that trusts an operator assertion is exactly where a completion guarantee would break:
+
+- **REQ-WVR-05** ("never able to skip unverified work") — not violated. The clause skips
+  *dispatch*, not verification: BR-10 has the first executed wave's gate verify the whole tree
+  before the run commits anything. WVR-05's own "honest cost" paragraph accepts an indefinitely
+  stale record on exactly this reasoning.
+- **REQ-WVR-06** ("completion evidence is never commit presence") — not violated. The clause
+  derives nothing from commit archaeology; it records what the run itself committed.
+- **REQ-WVR-09** ("verified but not committed is never recorded complete") — not violated, but
+  this is the closest call. WVR-09's *Given* is scoped to a wave whose "tasks completed and the
+  wave's gate passed, but the run committed nothing for it". The operator-pointer case is
+  different in kind: the skipped waves were never executed by this run at all, and the record
+  carries an assertion the operator made, not a verification this run performed. WVR-09 does not
+  reach it, and the FSPEC does not pretend otherwise — it discloses the gap and bounds it. The
+  residual is real and is the subject of my one finding below, at Low.
+
+Everything else this FSPEC cites upstream — REQ-WVR-01..04, -07, -10, OF-1/OF-2, BL-03, R-2/R-3/R-4,
+OQ-1 — is untouched by v1.6 and v1.7, so the compression I approved in v4 stands unchanged.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
