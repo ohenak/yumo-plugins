@@ -150,6 +150,43 @@ disagree.
 
 ## Oracles
 
+The matrices are where a partially-absorbed upstream shows up as a false claim, so I checked each
+changed row against the artifact it summarises rather than against its neighbours.
+
+| Oracle / matrix row | Claim it makes | Verified against | Holds? |
+|---|---|---|---|
+| §C.1 AT-30 row → `PROP-CONFIG-04`, `PROP-CONFIG-09`, `PROP-RECORD-02` | all **three** arms owned, the third with its every-document `RSN-NO-MATERIAL` conjunct | `TSPEC` §I.2 (*"AT-30 … upstream enumerates **three** zeros"*), `FSPEC` E-36 row | **Yes** — the row now matches the AT it claims; my v3 F-01 is closed |
+| §C.1 "35 of 35"; §C.4 `FSPEC acceptance tests 35` | partition unchanged | E-36 rides on AT-30; no AT id added | **Yes** — `PROP-META-05`'s partition oracle does not red |
+| §C.3 LI-12 / LI-21 → `PROP-CONFIG-01…09` | the new property needs no new task | `PLAN` v0.5 LI-12 (three AT-30 cases) and LI-21 (greens `learningsConfig.test.js`) | **Yes** — PLAN already carries the case; no re-approval owed |
+| §C.4 property count **70** | 66 at v1 + 4 | `grep -o "PROP-[A-Z]*-[0-9]*" \| sort -u \| wc -l` ⇒ **70** | **Yes**, mechanically |
+| §C.4 test-file inventory, "seven of fourteen landed" | re-measured at HEAD | `git ls-files pdlc/workflows/__tests__` ⇒ `helpers/learningsFixtures.js`, `learningsBlock`, `learningsCaptureScript`, `learningsCorpus`, `learningsPredicatePin`, `learningsPremises`, `learningsSelect` — **7** | **Yes** — see F-04 for one readability wrinkle in the task-id parenthetical |
+| §C.4 "PLAN records the same thing … *an amendment to landed suites*" | PLAN agrees | `PLAN` v0.5 LI-08: *"**Amendment note (v0.5):** LI-02 and LI-08 have already landed on this branch … the heading-form cases are an amendment to those landed files, taken by their **existing owners**"* | **Yes** — and PLAN keeps ownership fixed, so the single-writer manifest is unchanged |
+| §O.8 mutation M-5 | mutation away from FSPEC **and** TSPEC | `FSPEC` BR-6 material-only basis; `TSPEC` §D.5 | **Yes** — unchanged from my v3 reading, now cited on both sides |
+| §G.1 T-O-4 / T-O-5 rows | unchanged obligations | TSPEC | **Yes** |
+| **§G.1 T-O-6 row** | *"Both are stated over `maxBytes >= 1`"*, boundary *"routed to `PROP-CONFIG-09`"*, *"observables live at the workflow seam, **not at this unit**"*, obligation *"discharged … with no input of §D.5 unclaimed"* | `TSPEC` §I.3 and T-O-6 | **No — F-01.** §I.3 locates the zero-bound return **at this unit** (`{material: "", bounded: false, bytes: 0, sections: []}`), and T-O-6 instructs *"keep `0` in the domain"*. `maxBytes = 0` is an input of §D.5 that no property claims |
+| §O.9 T-O-6 generated arm, *"domain is `maxBytes >= 1`"* | mirrors PROP-BOUND-03's precondition | same | **No — F-01.** The mirror is faithful; both sides of it diverge from upstream |
+| §G.2 gaps 1 and 2, restated as *"resolved upstream … (not a gap)"* | the record of what closed and where it landed | FSPEC v0.13; my v3 F-01/F-02 | **Yes** — and retaining the episode rather than deleting it is the right call |
+| §G.3 *"**Still open:** nothing"* | every routed item answered, no divergence remains | the §G.1 row above | **No — F-02.** The sentence is true of the *routed* list and false as the completeness claim it reads as |
+| §G.3 ERR-8 non-duplication | *"re-raising it here would be the DEC-ERR-01 anti-pattern"* | `TSPEC` §D.5 and its ERR-8 record | **Yes** — TSPEC raises ERR-8 against FSPEC Step 5's 15/16 sequencing; PROPERTIES correctly declines to re-route it, and correctly notes outcomes agree at every bound so no property moves |
+
+**The two oracle-level statements that fail, stated as the implementer will meet them.** A test
+author reading §G.1 and §O.9 will write a `maxBytes` generator over `[1, ∞)` and will never write a
+unit assertion for the zero return. AT-30's L3 case still catches the mutation TSPEC names
+(*"Reverting §D.5's `maxBytes <= 0` short-circuit to the cut-and-flag path reds that fixture"*), so
+this is not an unguarded regression — which is why F-01 is about a **false discharge claim and an
+undeclared divergence**, not about a hole in the product's proof. But §G.1 is this document's
+contract that *"no obligation is deferred to implementation"*, and that contract is what a reviewer
+of the implementation will check against; leaving it overstated moves the cost downstream to
+someone with less context than the author has today.
+
+**What the fix is.** Three coordinated edits, all inside this document, none touching PLAN, TSPEC,
+FSPEC or REQ, and none adding a task, an AT id or a fixture: restore `0` to `PROP-BOUND-03`'s and
+§O.9's domain with the carve-out conjunct T-O-6 dictates (`{material: "", bounded: false, bytes: 0,
+sections: []}` for every text, no cut, so `bounded` is false); correct the rationale sentence, which
+currently attributes to a universal property a `bounded: true` demand upstream explicitly removed;
+and restate §G.1's T-O-6 row as discharged across a unit arm **and** a seam arm — which is what
+upstream asked for, and is strictly more coverage than the current text claims.
+
 ## Fixtures
 
 ## Findings
