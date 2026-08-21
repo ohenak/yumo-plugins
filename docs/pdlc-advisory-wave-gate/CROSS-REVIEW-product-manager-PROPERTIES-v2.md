@@ -131,6 +131,60 @@ orphaned by the delta.
 
 ## Fixtures
 
+**Hazard 2 now matches the oracle it describes.** The fixture note and PROP-REST-03 previously
+disagreed with BR-9 in the same way and have been corrected in the same way — the ignored file the
+wave added is *"asserted still **present**, and only present"*, with the reason given inline (BR-9
+puts a mutated ignored path outside the map in both directions, so a byte-for-byte conjunct would
+assert more than the rule it exists to enforce). Fixture note and property row now say the same
+thing, which is the point of the hazard note existing.
+
+The rest of hazard 2 is intact and still correct against upstream: the non-ignored untracked file
+asserted **absent** after restore, and the non-ignored generated output the re-run post-wave command
+rewrites over an already-dirty path as PROP-REST-02's discriminator, with the standing warning that
+substituting an ignored path for that last one makes AT-05-2 vacuous — which is exactly what FSPEC
+AT-05-2 says (*"whose generated output is `.gitignore`d tests nothing here, since BR-9 puts it
+outside the map"*). The three-file fixture therefore still exercises all three of BR-9's domain
+boundaries and no fixture element was made redundant by the narrowing.
+
+**No new fixture obligations.** PROP-ENV-13's re-home does not change what the fixture must contain
+— the ignored-path-only repair and its non-ignored positive control are the same pair as before —
+only which PLAN task mints the assertions over it. PROP-REST-08's E-34 trace adds no fixture: the
+`captureTreeSnapshot`-returns-`null` case was already fixtured. So the delta introduces no fixture
+the PLAN's file-ownership manifest does not already assign.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §G-3 item 3 leaves PLAN a two-way choice (name the end-to-end ignored-path-only case in A6-18's former-A6-15 step, or state that A6-14's red step carries it end to end). Product-side either is fine; is there a preference to record so the choice does not re-open in Phase I? |
+
+## Positive Observations
+
+- **Every one of the five routed items landed, and each landed with its source quoted rather than
+  asserted.** The `attempts` correction cites BR-15, FSPEC §3.3 step 5 and the shipped driver on the
+  row itself; PROP-REST-03 quotes BR-9's exact clause. A later reader can re-derive both without
+  re-opening the upstream, which is what makes an erratum durable.
+- **The round re-grounded before editing, and said so.** The v1.4 changelog names all five upstream
+  hashes and records that the re-grounding surfaced no missed decision — and the hashes match HEAD
+  byte for byte, so the claim is checkable and true.
+- **Two of the corrections removed false reds rather than adding assertions.** Both the `attempts`
+  literal and the byte-for-byte ignored-path conjunct would have failed implementations that
+  followed the spec. Catching that class before Phase I is worth more than any conjunct added.
+- **The un-minted conjuncts were routed, not narrowed away.** Trimming PROP-ENV-13 to what PLAN
+  happens to mint would have made the mismatch disappear at the cost of AC-3.4 coverage. Keeping
+  every conjunct and routing the levelling gap to its owner is the disposition that protects the
+  requirement.
+- **The changelog's "nothing else changed" claim is true as measured.** I diffed rather than trusted
+  it, and the 26/10 diff touches exactly the six sites it names.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves all five routed items and breaks nothing v1 approved. Both findings below are Low,
+both sit in prose this round added, and neither touches an expected value, a trace, a level or a
+PLAN home. Neither gates the round; both are one-line edits whenever this document is next open.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
