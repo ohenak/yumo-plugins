@@ -50,6 +50,60 @@ anything adjacent. It does, and it did not. No finding.
 
 ## Properties
 
+**No property text, no property status, and no coverage count moved.** `## Properties` (87–607) is
+outside every changed line range, and §C.3's accounting rows (`Tasks owning ≥1 property | 21`,
+`Properties with **no** owning task | 0`, `Fail-open arms | 12`) sit at 1008–1010, also outside it.
+So the property-side question is the same narrow one as at v14: does the restated P-A-6 make any
+status claim about a property false, or change what a property owes?
+
+**It does not, and it fixes the one live instruction that was wrong.** Lines 1180–1186 now read that
+the PROPERTIES suite *"may be committed as soon as it is green — or, if it lands red, its rows are
+handled under **P-A-7's governing case**, which at HEAD is **case C**: no ledger remains to amend
+into, the obligation is green-at-landing, and a red landing is a real defect owed a fix **before
+batch 14 runs**"*, and then quotes PLAN's rewritten rule verbatim. That is character-exact against
+`PLAN-pdlc-learnings-injection.md:663`, which reads *"the PROPERTIES **suite** lands in one commit
+once green, or else its rows are handled under **P-A-7's governing case** — which at HEAD is case C,
+where no ledger remains to amend into and the obligation is green-at-landing; the
+amend-into-the-ledger-by-name route is case B's, and case B closed at batch 12 (TE v11 F-03)"*
+(1 fixed-string hit). PLAN's v1.1 changelog row confirms the rewrite was deliberate and attributes it
+to TE F-03 (`PLAN:682`, 1 hit). **F-01 is closed on all three limbs** it named: the route (line
+1180), the *"byte-unchanged at v0.8"* currency claim (line 1192, now *"whose fallback route PLAN
+rewrote at **v1.1**, restated above"*), and the header's blanket sentence (line 11, now scoped).
+
+**The fix did not over-reach in the direction that would have cost something.** The restatement
+carries the *"a red landing is a real defect owed a fix before batch 14 runs"* limb through from
+PLAN's own case-C text rather than dropping the failure obligation while retiring the ledger route —
+which is the failure mode a "no ledger remains" edit invites. The document's standing distinction is
+preserved verbatim: *"the conclusion that **no property of this document changes either way** is
+unaffected; what changes is only when its cases may land and which case of the table governs them"*
+(line 1188), and the two-mechanism paragraph still separates P-A-7 case C (landed implementation
+suites) from P-A-6 (this document's own suite) at line 1190–1193.
+
+**The green measurement underneath the case-C statuses still reproduces at HEAD.** Re-run in
+`pdlc/workflows` with the package's `--experimental-vm-modules` runner (`npx jest` directly fails to
+parse the ESM suites, so the package script is required):
+
+```
+Test Suites: 2 passed, 2 total
+Tests:       26 passed, 26 total
+```
+
+`grep -c 'test\.skip\|describe\.skip'` is `0` on both `learningsBlock.test.js` and
+`learningsSelect.test.js`. Nothing in this delta disturbed the measurement its statuses rest on, and
+the *"**unexercised**, not waived"* failure limb is unchanged.
+
+**The extended case-C quotation at line 1131 is verbatim, not a paraphrase folded into quote marks.**
+The delta moves the closing quote from after *"they owe green"* to after *"— which PROPERTIES §C.4
+records as discharged"*. I checked this specifically, because extending a quotation to swallow a
+downstream clause is exactly how an implementation echo enters a document: PLAN at `:561` carries
+*"under case C they owe no ledger row, and they owe green — which PROPERTIES §C.4 records as
+discharged"* as one continuous sentence (1 fixed-string hit). The extension is PLAN's own text.
+
+**Nothing was added to or dropped from the property set.** `Properties with **no** owning task | 0`
+is byte-unchanged, and gap 5's new `helpers/learningsComposition.js` clause is careful to say the
+file is *"unnamed but not unexercised"* — it changes what the prose discloses, not what any property
+asserts.
+
 ## Oracles
 
 ## Fixtures
