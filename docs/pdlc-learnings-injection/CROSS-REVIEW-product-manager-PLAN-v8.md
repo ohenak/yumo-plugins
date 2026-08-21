@@ -211,7 +211,58 @@ describing it is wrong by one. Low, and the fix is the sentence, not the row.
 
 ## Positive Observations
 
+- **The fix went past the finding, in the direction that protects the user.** I asked for AT-30's
+  gloss to be widened to three cases. What landed is three cases *plus* a three-conjunct positive
+  oracle, with the reasoning written down: "not `selection is empty` (which a disabled run, a
+  refusal or a crashed injector would also satisfy)". That is an author reading the finding for its
+  intent rather than its letter — the intent being that an operator who sets
+  `maxBytesPerDocument: 0` gets a run that is *enabled and empty*, not one that quietly declines to
+  run.
+- **Conjunct (iii) is a mutation test written into a plan.** "No document carries `RSN-COUNT` … the
+  conjunct that falsifies an implementation taking a zero-byte first-section cut, counting it as a
+  contribution and burning slots." Naming the mutation the assertion exists to kill, in the task row
+  the test author reads, is the strongest form this document has available. Fix its vacuity
+  condition (F-02) and it is a model row.
+- **Four of five v7 findings closed in one pass, three of them inherited ones that had been open for
+  rounds.** F-04 (claim 4's baseline scope) had been open since v5; F-03 (the errata section) since
+  v6. Clearing the backlog in the same commit series as the delta fix is how a document converges
+  rather than accumulating.
+- **The errata rewrite is genuinely better than "delete the stale rows".** Each closed item keeps its
+  original statement, records which upstream version resolved it and states the effect on this PLAN
+  as "None", with the reason ("already written to TSPEC's reading and TSPEC's reading is now
+  FSPEC's"). That preserves the provenance harvest wants without leaving a live-looking conflict.
+- **The code that has landed meets the standards the PLAN set.** `LI-AT-11` asserts full-enumeration
+  equality on `sections`, pairs its single negative assertion with five positives on the same call,
+  and `LI-AT-12` commits hand-computed byte counts as literal integers with the arithmetic shown.
+  No implementation echoes, no absence-only oracle, no containment where set equality was promised.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The blocking finding of v7 is resolved: `maxBytesPerDocument: 0` is now commissioned as AT-30's third
+case with an oracle strong enough to kill the mutation it guards against, and the three inherited
+Mediums and the version pins are cleared. No High finding is open — every behaviour FSPEC v0.13
+guarantees now has a test named in a task row.
+
+Three Mediums and two Lows are recorded, all bounded to text this round wrote, none gating:
+
+1. **F-01 (Medium)** — add one clause to LI-16: `extractInjectableMaterial` tests the bound **before**
+   the cut, returning `{material: "", bounded: false, bytes: 0, sections: []}` at `maxBytes <= 0`
+   (so "`bounded` decided at the cut" is not the whole rule), and `selectLearnings` extracts for
+   every eligible document and drops on *yields no material* **before** the count and total bounds.
+   Then correct the arm table's zero-bound owner column to name LI-16 for the production half beside
+   LI-12 / LI-21 for the suite.
+2. **F-02 (Medium)** — state the third AT-30 case's fixture precondition: its eligible non-self
+   corpus must exceed the `maxDocuments` in force (REQ §4.1 default: 5), or `maxDocuments` must be
+   configured below the corpus size, so conjunct (iii) is not vacuously true.
+3. **F-03 (Medium)** — add **ERR-8** to "TSPEC's remaining open errata", noting that its consequence
+   is F-01's clause in LI-16 rather than a task-row change elsewhere.
+4. **F-04 (Low)** — move LI-08's amendment note to the end of the row so `LI-AT-12` rejoins the AT
+   enumeration, and narrow its factual claim: the landed helper already carries `ordinal` and `gloss`
+   knobs and free-form section names, so only the `###` sub-heading form is genuinely new.
+5. **F-05 (Low)** — the v0.5 changelog row says four pins were refreshed; three were, and the 0.1
+   row correctly keeps its historical pins. Fix the sentence, not the row.
 
 ## Delta-Confirmation Findings
 
