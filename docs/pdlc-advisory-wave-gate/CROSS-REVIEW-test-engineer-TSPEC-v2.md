@@ -138,6 +138,54 @@ mechanically distinguishable in this document, is what keeps the fix small.
 
 ## Test Strategy
 
+This is my lens, and it is where the finding earns its severity: **at REQ v1.16 there is an
+acceptance criterion no test in this TSPEC can fail.**
+
+**§5.6's AT home table.** I walked every row that could plausibly host the warning:
+
+| Row | Oracle as written | Can it see the warning? |
+|---|---|---|
+| AT-05-3 | halt reason string **equals** the pre-A6 literal, computed from the first pass's gate result | No — and it is actively hostile to a naïve fix: appending the warning to the reason string turns this equality oracle RED |
+| AT-05-4 | green re-gate then un-skip halt: record entry **and halt report** state the retained repair and name its paths, via §4.5's new `fields` argument | No — its conjuncts are the repair's paths, not the capture's fate |
+| AT-05-5 | restoration itself failing: `__isRevertFailure` rethrown, wave halts **naming the failed restoration**, no commit reached | No — "naming the failed restoration" is the E-28 conjunct; the ref name rides along in §2.5's prose but no conjunct asserts the overwrite warning |
+
+So the AC's new clause has **zero** oracles. An implementation that never emits the warning passes
+every test this TSPEC specifies — the definition of an unfalsifiable requirement, and exactly the
+"write the test right now" failure: I cannot write the test, because the document does not say which
+slot carries the string or what the string is.
+
+**What the revision must supply for the AT to be writable.** Three things, all cheap:
+
+1. **The slot.** A named `fields` member (e.g. `snapshotRef` plus a warning member) or a defined
+   addition to the E-28 restore-failure message. §4.5's "diagnosis travels in `fields`, never in the
+   reason string" rule points at `fields`, and `fields` is the choice that leaves AT-05-3's literal
+   equality oracle untouched.
+2. **The literal string.** §4.5's house style is transcribed literal values precisely so fixtures
+   can assert them rather than compare against whatever the implementation emits (its own words, PM
+   F-03 / TE F-18). The warning needs the same treatment — a fixed sentence, transcribed once.
+3. **The AT conjunct.** One added positive conjunct on the A6-touched halt fixture that already runs
+   in `advisoryWaveGate.test.js`: the halt report contains the ref name **and** the warning
+   sentence. Both conjuncts positive — a `!= undefined` or "mentions the ref somewhere" oracle would
+   be an absence-shaped proof of an operator-visible string and would false-green a truncated
+   message.
+
+**Falsifiability check on the proposed fix (Oracle-Falsifiability #5).** The new invariant needs its
+own falsifying test in the same revision: delete the warning member from the halt fields and the
+fixture must go RED. Stating the string as a literal is what makes that mutation check mechanical.
+
+**Negative half worth pinning too.** The obligation is conditional, so the revision should also pin
+the *absence* case that already exists: the capture-failure halt (§4.5's inner table) points at no
+capture, so its four literal fields stay four — §5.5's capture-failure fixture already asserts them
+by equality, and that equality assertion is the negative oracle for free, provided the revision does
+not widen the field set unconditionally. If the warning member is added to *every* A6-touched halt
+regardless of whether a snapshot exists, §5.5's transcribed fixture breaks and the AC is
+over-implemented. Naming that boundary in §4.5 is part of the fix.
+
+**Everything else in §5 re-reads clean.** §5.1's file map, §5.2's mechanical assertions (including
+the two-red-wave set-equality `{a6-snapshot-1, a6-snapshot-2}` case and the ignored-path round-trip
+whose ordering conjunct my v1 round praised), §5.3, §5.4's coverage floor and §5.5's prohibitions are
+untouched by the REQ delta. I re-derived nothing there because nothing upstream moved under them.
+
 ## Open Questions
 
 ## Positive Observations
