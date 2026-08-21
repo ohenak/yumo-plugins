@@ -291,7 +291,45 @@ the oracles I approved at v2 and v3 against bytes that have not moved.
 
 ## Recommendation
 
-_TBD_
+**Approved with minor changes.**
+
+TSPEC still holds as approved against FSPEC at `sha256:9a6be7b5…` and REQ at `sha256:17e83bfc…`.
+
+The cascade delta reaches four places in FSPEC — the version cell, §1's grounding version, §3.4's
+new operator-pointer recording clause, and OB-F1's characterisation of the REQ — and I traced each
+into every TSPEC passage that leans on it. On the one substantive point, FSPEC's new clause
+ratifies clause-for-clause the behaviour TSPEC had already ratified and routed the erratum for,
+including the negative half (no persisted provenance field) that TSPEC argued for in advance. No
+acceptance criterion is narrowed, reinterpreted, broadened or dropped; no scope moves in either
+direction; §2.6's requirement→component map, §3.1's three closed catalogues, §3.2's evaluation
+order and §4.1's record shape are all unreached; §5.4's eighteen AT oracles still stand against an
+AT table that is byte-identical upstream.
+
+**What I would fix, none of it gating:**
+
+1. **F-03 (Medium) is the one I would act on before PLAN authoring**, because it is the only
+   finding about the product rather than about bookkeeping: FSPEC now specifies that an
+   operator-pointed run records, and no oracle asserts it. The cheapest close is a write-side
+   conjunct on AT-05 — assert the record written by the operator-pointed run and that its
+   `lastGreenWave` is plan-absolute — plus the corresponding entry in §5.5's mutation list. Left
+   unclosed, "suppress the write when `explicitPointer` is true" is a plausible implementation
+   instinct that passes AT-05, AT-07, AT-15 and AT-18.
+2. **F-01 and F-02 (Medium) are one edit each in the errata channel.** §2.5's "One interaction the
+   FSPEC does not state" is now false — restate it as ratification of FSPEC §3.4 and cite the
+   clause. §6.3 item 3 should be marked landed in FSPEC v1.2; item 2 likewise, and §6.2 OB-F1's
+   "because the REQ's §10 and the FSPEC's OB-F1 characterise it inconsistently" clause should go,
+   since both now agree. **OB-F1's substance must survive that edit unchanged:** BL-04 is still
+   unmet, AT-14 is still red in this tree, and the wave carrying AT-14 must still not be dispatched
+   before the rebase. The reason for re-raising is spent; the precondition is not.
+3. **F-04 (Low)** is two version labels in §6.3 items 1–2.
+
+**Carried from v3 in bytes this round did not touch, and non-gating for the same reasons:** F-05
+(§6.3 item 4's retracted REQ quotation, v3 F-01), F-06 (the coverage floor placed on a per-run
+`postWaveCommand`, v2 F-01 / v3 F-02), F-07 (§5.2 H-1's over-strong rationale) and F-08 (the
+duplicated clause at line 469). Of these, F-06 remains the one worth closing during PLAN authoring
+rather than after it.
+
+Zero High findings, so this confirmation approves and the phase proceeds.
 
 ## Delta-Confirmation Findings
 
