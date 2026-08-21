@@ -430,14 +430,20 @@ remains is obligations owed downstream, each with a named owner.
 | OB-F2 | Ratify or revise the shipped interim contract — the record's location, encoding, matching procedure and write mechanics — rather than inventing a second one alongside it (REQ BL-03, R-4). This FSPEC deliberately states none of them. | TSPEC (se-author) | TSPEC names the contract and states whether it formalises or replaces the interim |
 | OB-F3 | Decide the fate of the content-free "cleared" record shape that the reader tolerates (EC-02) but nothing ever writes: wire it or drop it. The observable behaviour is identical either way, which is why it is not a requirement here. | TSPEC (se-author) | TSPEC states the decision |
 | OB-F4 | Promote REQ OF-1 and OF-2 into `docs/_constraints/pdlc-wave-gate-baseline.md` as `M-WVR-1..2` in the next unoccupied section, each with a re-derivation command, bumping the file to the next version above the one found — and record that `M-WG-6` was reviewed and left, not missed. Blocked on OB-F1: the file is not in this tree. | se-author, at TSPEC authoring | the baseline carries the new section and §4 of the REQ cites by `M-WVR-*` id |
-| OB-F5 | Assert set equality rather than containment for both closed catalogues — the six disregard causes (AT-02) and the three outcomes (AT-13) — so a deletion fails a test instead of passing one. Treat the feature-key, plan-layout and ancestry checks as the highest-value oracles, per REQ-WVR-05's honest cost. | PROPERTIES (te-author) | PROPERTIES carries both set-equality checks |
-| OB-F6 | Record one assertion that the resume record is in no wave's owned-path set, so no advisory remediation envelope can authorise touching it (EC-16, REQ OB-3). | PROPERTIES (te-author) | the assertion exists |
+| OB-F5 | Assert set equality rather than containment for three closed catalogues — the disregard causes as **announced reasons**, IG-1's arms included (AT-02), the three outcomes (AT-13), and the recognised `implementation.*` config keys (AT-08) — so a deletion or an addition fails a test instead of passing one. Treat the feature-key, plan-layout and ancestry checks as the highest-value oracles, per REQ-WVR-05's honest cost. | PROPERTIES (te-author) | PROPERTIES carries all three set-equality checks |
+| OB-F6 | Assert, over **this feature's PLAN**, that the resume record is in no wave's owned-path set, so no advisory remediation envelope of this run can authorise touching it (EC-16, REQ OB-3). The general form — that no PLAN may claim consumer-local state as owned — is not a per-feature assertion and is routed to Phase P's ownership-manifest gate. | PROPERTIES (te-author) for the per-feature arm; Phase P gate for the general one | the per-feature assertion exists and the general form is recorded as a Phase P question |
 
 **One recorded interaction, not a coordination requirement (REQ OB-3).** The advisory tier's
 wave budget is scoped per *run*. Automatic resume makes runs shorter and more numerous, so that
 budget effectively refreshes per re-invocation. It stays bounded in practice because clearing a
 halt still requires a human, but `pdlc-advisory-wave-gate`'s compounding-drift bound is weaker
 under resume than that feature assumed. Noted for its owner; nothing in this FSPEC changes.
+
+**Round 1 revision note.** This version addresses the v1 cross-reviews
+(`CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`); the
+findings themselves are not restated here. Two upstream defects were routed rather than fixed
+in place: REQ-WVR-08's "Phase I produces no new commit" (falsified by Phase PT's V-wave) and the
+REQ's discharge of BL-04, both raised as errata against the REQ.
 
 **Assumptions.** (A-1) The pipeline is invoked serially against a working copy — EC-19's
 concurrency case needs no guarantee. (A-2) An operator who sets a manual resume point intends it
