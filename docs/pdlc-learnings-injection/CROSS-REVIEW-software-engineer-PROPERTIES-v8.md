@@ -94,6 +94,49 @@ reach any property's status: all four remain owed on grounds I verified independ
 
 ## Oracles
 
+The delta touches no oracle text: §O.1–§O.9, §G.1's T-O-6 row and §O.8's mutation ledger are
+byte-identical to the version I approved in v7. What the delta *does* is make claims about the
+oracles the landed suite already carries, and those I re-checked.
+
+- **No oracle is weakened, retracted or made unfalsifiable.** The three discipline checks I run every
+  round still pass on the changed text:
+  - **No implementation echo.** The new §C.4 text introduces no expected value at all — every number
+    in it is a commit sha, a line number or a file count, none derived from the code under test.
+    §G.2.2's hand-computed 40/66 literals are untouched, and the landed suite still states them as
+    literals with "hand-computed (never derived here)" comments (`learningsBlock.test.js:108`,
+    `:126`).
+  - **No absence-only oracle.** §C.4's new "none of the four is present in the landed suite"
+    paragraph is an *inventory*, not an oracle, and it is stated positively — it names what the suite
+    *does* carry (one describe, three ATs, two `maxBytes` literals) beside what it lacks. The one
+    real absence-shaped oracle in the neighbourhood, PROP-BOUND-03's zero case, is unchanged and
+    still pairs its negative with the positive four-field return
+    `{material: "", bounded: false, bytes: 0, sections: []}` on the same path.
+  - **Set-equality, not containment.** Unchanged where it matters and confirmed in the landed code:
+    `expect(result.sections).toEqual([…])` (`:118`, `:139`) and, in `learningsConfig.test.js:258`'s
+    third LI-AT-30 case, `rejected[]` asserted **SET-EQUAL** to every enumerated non-self corpus path
+    with `expect(dispatch.rows).toEqual([])` as the paired positive — "never merely *at least one*",
+    as its own comment says. §C.4's one-line summary of that case ("the third asserting
+    `RSN-NO-MATERIAL` on every non-self path and no document carrying `RSN-COUNT`") is a faithful
+    précis of what `:258` actually asserts.
+- **The header's PLAN characterisation is accurate.** The new upstream row claims the P-A-7 two-case
+  table "was added at **v0.6** and is unchanged at v0.7, whose own changelog row instead names LI-16
+  the owner of TSPEC §D.5's zero-bound production half, gives LI-AT-30 conjunct (iii) its fixture
+  precondition, records ERR-8 and relocates LI-08's amendment note". PLAN's 0.6 row (PLAN:603)
+  carries the two-case table verbatim; PLAN's 0.7 row (PLAN:605) carries exactly those four items and
+  closes "No task moved batch, no `Deps` edge changed, no AT partition, fixture or manifest row was
+  touched". Both halves check out; the PLAN version cell is still `0.7` (PLAN:18), so the pin is
+  live.
+- **§G.1's T-O-6 tail is now inconsistent with §C.4 in one direction only.** §G.1 still says the
+  amendments "land on tasks that already exist (LI-07 red / LI-16 green … LI-08 red / LI-17 green)
+  … **No new PLAN task is required**", while §C.4 now says the same four cases have "**no red-owning
+  task remaining ahead of them**". Both are true — the first is a task claim, the second a schedule
+  claim — and §C.4's new wording makes the distinction explicit where v0.4's did not, so the delta
+  *reduces* the ambiguity I deferred last round rather than adding to it. I re-file it as DEFERRED,
+  not as a finding.
+- **Nothing in the delta re-opens a decided oracle.** §C.4's two observations about gaps in case B's
+  wording are correctly labelled as PLAN's call rather than decided here — the routing bookkeeping
+  around them is F-01, but the restraint itself is right and is DEC-ERR-01-compliant.
+
 ## Fixtures
 
 ## Findings
