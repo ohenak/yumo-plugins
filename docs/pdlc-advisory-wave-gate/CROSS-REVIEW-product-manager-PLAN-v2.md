@@ -67,11 +67,36 @@ Every claim below was re-derived at HEAD; a next round can re-run each command.
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-01 | `F-01`–`F-03` are all one omission with three faces: TSPEC v1.15 named the *shipped* oracles the new field disturbs, and this round absorbed v1.14 but stopped short of v1.15. Should the next PLAN revision re-walk TSPEC §5.1's file table as a set-equality against its own file-ownership manifest — the check that produced `F-01` in one `comm` — and record that walk as a standing step of the re-grounding protocol, rather than closing three findings one at a time? |
+| Q-02 | Not raised as a finding, and repeated from v1 only because it recurred: this dispatch again supplied the PLAN's completeness headings (`Overview` / `Batches` / `Dependencies` / `Verification`) for a **cross-review** artifact. The v1.9 changelog records this as a known dispatcher defect routed to harvest (PM F-04 of that round); I mention it so the harvest signal is not lost, and I have written this file in the reviewer format regardless. |
 
 ## Positive Observations
 
-*(pending)*
+- **Both v1 findings were fixed at the level they were raised, not below it.** `F-01` asked for
+  ordered-sequence equality on `ADVISORY_ROOT_CAUSES`; the revision gave that *and* generalised the
+  caption — naming all three ordered constants with the rule that makes each one's order
+  load-bearing (`BR-2`, `BR-15`, `BR-5`) and keeping set-equality where order genuinely is not
+  content. That is the version of the fix that survives the next constant someone adds.
+- **`F-02`'s fix is stated as a falsifiability argument, not a coverage box.** A6-08's step says the
+  `E-08b` arm "is what makes `ADVISORY_ROOT_CAUSES`' order load-bearing rather than decorative, and
+  without it A6-05's ordered-sequence oracle has no behavioural consequence anywhere in the suite".
+  That is the reason the arm matters to a product reader, and it is now in the document rather than
+  in a review file.
+- **The AT table is genuinely set-equal, not counted.** I extracted both id sets mechanically and
+  diffed them: 48 = 48 with no member on either side alone, `AT-06-4b` included. The DoD leg asks
+  for the same check in both directions, so a future deleted AT fails rather than passes.
+- **`A6-10`'s ignored-path case now discriminates the boundary instead of asserting around it.** The
+  row states outright that the hash map *cannot* falsify a restore-over-ignored-path implementation,
+  because the map's domain excludes ignored paths on both sides — then supplies the oracle that can
+  (the file is still present after restore, pinning `clean -fd` over `-fdx`), paired with the
+  untracked-but-non-ignored file asserted absent. A negative claim carrying its positive companion,
+  which is the standard I would have asked for.
+- **The `no upstream dependency is open` claim is now scoped to its evidence.** Rather than
+  re-asserting it, the section says what was true at the reviewed hash (DECISIONS did still route the
+  boundary as OQ-7-pending) and what changed since. That is the honest form of a claim a reviewer
+  challenged.
 
 ## Recommendation
 
