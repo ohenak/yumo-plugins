@@ -193,4 +193,25 @@ FINDING: Low | delta | local | DEC-A6-03 "Re-evaluation triggers" | The trigger 
 
 ## Recommendation
 
+**Needs revision** — one open High finding (F-01), per the mandatory rule.
+
+Exactly what must change, and nothing more:
+
+1. **F-01** — In DEC-A6-03's "Known gap in the remedy's reach (PM F-05)", replace "**The routing has
+   not landed** … match nothing in either document" with the state at HEAD: the obligation landed in
+   **REQ v1.16 AC-6.3**, which requires the halt report to warn, where it names a captured pre-A6
+   tree state, that re-running the feature overwrites it; the residual gap is FSPEC-only (v1.6 E-28
+   / AT-05-5 still require only that the halt name the failed restoration). Cite by spec id, not
+   line number (DEC-DOC-01).
+2. **F-02** — In "What follows from DEC-A6-03", rewrite the remedy bullet so the overwrite warning
+   is a required element of the halt report per AC-6.3, not documentation-only guidance.
+3. **F-03** — Mark the "halt-message obligation … lands" re-evaluation trigger as fired at REQ v1.16.
+
+Out of bounds for this revision: the naming decision, the DEC-03 option table, the "Constraints that
+forced the shape" paragraph, and every other DEC entry. Preserve the rationale sentences called out
+under Positive Observations — the fix is a tense-and-fact correction, not a deletion.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
