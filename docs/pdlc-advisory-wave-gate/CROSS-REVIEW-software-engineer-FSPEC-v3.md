@@ -74,7 +74,26 @@ its subject.
 
 ## Behavioral Flow
 
-_pending_
+Confirmation scope: does any hunk in the window change the **order** in which A6's observables
+become observable — which is what FSPEC §3 owns over REQ?
+
+No. The window touched no branch condition, no trigger, no disposition. Specifically:
+
+- **§3.1/§3.2 step sequence.** AC-1.2's single-trigger clause (script-owned gate non-zero, not
+  dispatch-level, not post-wave-command) is untouched in the diff. FSPEC §3.2's step ordering rests
+  on it and is unaffected.
+- **Step 3b's capture check.** FSPEC §3.2 step 3b tests reversibility before dispatching. REQ v1.14
+  added AC-5.1's failed-capture sentence — "Given the pre-A6 state cannot be captured at all, Then
+  no repair is proposed, none is applied, and the wave halts on its own gate (AC-5.2) — a different
+  outcome from a failed restoration." That is the same branch FSPEC already carries at step 3b and
+  in E-34, including E-34's "distinct from E-28" framing. Upstream did not add a step; it stated in
+  REQ the step FSPEC had already ordered. Faithful.
+- **Step 9's terminal disposition vocabulary** (`resolved` / `escalated` / `no-action`) is untouched
+  upstream. The §3.2 step-9 pointer my v2 F-06 closed still stands.
+- **Restoration's position in the sequence** is the one ordering claim the window strengthened, and
+  it strengthened it in FSPEC's direction: REQ now agrees that restoration completes *before* the
+  record and escalation writes, which is exactly the ordering FSPEC §3.2 and BR-9 encode. Nothing
+  downstream of the cut moved.
 
 ## Business Rules
 
