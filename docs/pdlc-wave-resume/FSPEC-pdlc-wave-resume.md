@@ -78,6 +78,88 @@ work is committed (FSPEC-WVR-05); never a wave that merely passed its gate.
 
 ## 3. Behavioral Flow
 
+### 3.1 The resume decision (FSPEC-WVR-01)
+
+The decision happens once per invocation, at the start of Phase I, after the plan's waves are
+derived and before the first wave is dispatched. It has one input the operator controls (the
+manual resume point) and one the pipeline maintains (the resume record), and it produces exactly
+two outputs: a **resume point** and a **provenance**.
+
+| Step | Question | Yes | No |
+|---|---|---|---|
+| D-1 | Is a manual resume point set to something other than the plan's first wave? | resume point is the operator's; provenance `operator-set`; the record is not consulted at all (§3.2 is skipped, and no disregard reason is announced) → D-6 | → D-2 |
+| D-2 | Is a resume record present and usable for this feature and this plan (§3.2)? | → D-3 | resume point is wave 1; provenance `automatic`; announcement per §3.2's IG row → D-6 |
+| D-3 | Does the record account for every wave of this plan? | **Outcome (c)**: Phase I is skipped in full → D-5 | → D-4 |
+| D-4 | **Outcome (b)**: resume point is the wave after the last completed one; provenance `automatic` → D-6 | | |
+| D-5 | Phase I dispatches nothing, executes no gate, and produces no commit; the run report's Phase I row carries a skip status naming the record as the reason | | |
+| D-6 | Phase I runs from the resume point; every wave below it is individually announced as skipped, naming which source skipped it | | |
+
+**Outcome (a)** is the D-2 "No" arm and the D-1 out-of-range arm (§3.3): a full run from wave 1.
+The catalogue of outcomes is **closed at three** — (a) full run, (b) resume mid-plan, (c) skip
+Phase I entirely — and every invocation resolves to exactly one and announces which (REQ-WVR-08).
+
+### 3.2 Consulting the record (FSPEC-WVR-02)
+
+Reached only from D-2, i.e. only when no explicit operator pointer is in force. The record is
+put to a fixed, ordered sequence of questions; the **first** one it fails decides the outcome and
+supplies the announced reason. Ordering is observable, so it is fixed (BR-03).
+
+| Order | Question | On failure |
+|---|---|---|
+| 1 | Is there a record at all, and does it carry content? | outcome (a), **silently** — IG-6 |
+| 2 | Is the content readable as a record this pipeline wrote? | outcome (a), announced — IG-1 |
+| 3 | Does it record the feature being run? | outcome (a), announced — IG-2 |
+| 4 | Does it describe this plan's current wave layout? | outcome (a), announced — IG-3 |
+| 5 | Is the commit it names still reachable from the current branch tip? | outcome (a), announced — IG-5 |
+| 6 | Does it claim no more completed waves than this plan has? | outcome (a), announced — IG-4 |
+
+A record passing all six proceeds to D-3. Question 5 is *falsification of the record*, not
+derivation of completion from commit history, and is expressly permitted by REQ-WVR-06's
+carve-out. Question 5 has no answer when the run has no way to ask the tree; an unanswerable
+probe is **not** a staleness finding (EC-06).
+
+### 3.3 The operator override path (FSPEC-WVR-04)
+
+A manual resume point is judged explicit **before** any range correction, so an out-of-range
+pointer is still an operator instruction: it suppresses the record, and the run then corrects the
+point to wave 1 and announces it — a full run, provenance `operator-set`. A pointer at the plan's
+first wave is **defined as not set** (REQ-WVR-04's boundary): the record is consulted and
+provenance is `automatic`. The manual point is therefore a resume-point *selector* only, and can
+never express "ignore the record".
+
+The single force-a-full-run hatch is **removal of the resume record** (REQ OQ-1's decision). It
+is named in the announcement of outcomes (b) and (c), so an operator reading either announcement
+learns how to undo it without consulting documentation. No configuration value expresses the
+intent, and none is added.
+
+### 3.4 During the run: what makes a wave completed (FSPEC-WVR-05, -06)
+
+A wave is recorded as completed only after its gate is green **and** its work has been committed
+by the run. Nothing about a wave's outcome is recorded before its commits land, so:
+
+- a run that halts at wave N records nothing for wave N, and the next invocation resumes at N;
+- a run that commits nothing — because no commit transport was available to it — records nothing
+  at all, however green its gates were (REQ-WVR-09);
+- a wave whose tasks legitimately produced no changes is still completed, because completion is
+  a statement about the wave having been committed *past*, not about commits existing
+  (REQ-WVR-06, grounded in REQ OF-2).
+
+Recording is **best-effort**: a record that cannot be written costs the *next* invocation its
+resume and nothing else, so failure to write is announced as a notice and never halts the run.
+
+The record is **retained** after Phase I completes (REQ-WVR-05). Retention is what makes a
+re-invocation after a later-phase halt (CR, DOD, PUB) cheap: outcome (c). The record never
+becomes tracked content, in any run of any length (REQ-WVR-10).
+
+### 3.5 The queue-delegated path (FSPEC-WVR-07)
+
+A queue-driven iteration delegates the whole pipeline to the same run logic in the same process
+and the same working directory (`pdlc/workflows/orchestrate-queue.js:45`). The behaviour above
+is therefore not restated for the queue; the parity clause is the observable: for the same
+feature, plan and record, a delegated run resolves the **same outcome, same resume point and
+same provenance** as a direct invocation, and reports them in the queue run's own report. No
+queue-specific configuration exists anywhere in this feature.
+
 ## 4. Business Rules
 
 ## 5. Edge Cases and Error Scenarios
