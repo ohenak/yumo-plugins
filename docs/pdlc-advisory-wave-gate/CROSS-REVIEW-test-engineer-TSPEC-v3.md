@@ -133,6 +133,47 @@ correct.
 
 ## Open Questions
 
+- **§6 OQ-2 is now stale relative to §2.5.** OQ-2's disposition still reads that the re-run overwrite
+  is an accepted cost "the operator's, not the pipeline's", with a run-scoped discriminator recorded
+  as the remedy — written when the warning lived nowhere. §2.5 at v1.12 says the opposite half:
+  upstream has decided the halt report itself hands the operator the remedy. Neither row is wrong on
+  its own; read together the design record still presents as open a question upstream closed. One
+  clause in OQ-2 acknowledging BR-14's landing closes it. Medium, non-gating, but it is the second
+  round this row has been flagged.
+- **§4.5's Snapshot-ref row** still promises "one ref per wave, never overwritten by a later wave"
+  with no adjacent pointer to §2.5's *next-run* overwrite correction. Harmless as written (the claim
+  is true of a later wave) but §4.5 is where an implementer reads the field contract, and the
+  overwrite condition the new `snapshotRef` rendering is *about* is not stated there.
+- **Q-01.** For AT-06-4's conjunct (3), is the intended oracle a verbatim sentence (transcribed in
+  §5.5 alongside the other halt literals) or a presence-of-statement check? The choice changes what
+  PLAN mints as the red test; FSPEC deliberately declines to fix the capture's name, but is silent
+  on the sentence.
+- **Q-02.** Does the overwrite sentence belong to the halt *report* rendering only, or does the
+  `haltError` `fields` object also need a rendered-string conjunct so `waveExecution.test.js`'s
+  un-skip path (AT-05-4's carrier, which now also carries `snapshotRef`) can assert it?
+
+## Positive Observations
+
+- The round re-grounded on upstream **before** answering the routed items, and correctly identified
+  that DEC-A6-03 had landed at FSPEC v1.7 — inverting a routed item rather than restating it. That
+  is exactly DEC-ERR-03's intent, and the changelog says so in one paragraph rather than arguing.
+- Every current-state claim in the delta is true at HEAD; I re-measured all seven and found no
+  drift. That is unusual and worth naming — three of the previous rounds' findings were stale
+  measurements.
+- The `snapshotRef` design converts an editorial obligation into a `string | null` discriminator with
+  both arms specified, including the `null`-suppresses-the-warning arm. That is the shape that makes
+  a falsifiable pair of tests possible; only the tests themselves are missing.
+- §3.6's routing paragraph was updated in the same pass as O-8, so the per-promoted-task restatement
+  does not leave a contradicting sentence behind.
+- Keeping §1.3's residue rows with restated residue, rather than deleting them, preserves
+  traceability for readers of earlier review rounds.
+
+## Recommendation
+
+**Needs revision** — one High finding: §4.5's new `snapshotRef` rendering contract, and FSPEC v1.7's
+AT-06-4 conjunct (3) plus AT-06-4b, have no oracle in §5. Add the two AT rows described in **Test
+Strategy**; nothing else in the delta needs to move.
+
 ## Positive Observations
 
 ## Recommendation
