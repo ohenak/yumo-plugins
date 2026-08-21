@@ -26,7 +26,28 @@ code claim in this REQ is therefore a claim about `origin/main`, and I verified 
 
 ## Goals
 
+This confirmation set out to establish three things, in this order:
+
+1. **Landing.** Each of the eight routed items is present in the delta, in the section that owns
+   it, and says what the item asked it to say.
+2. **Correctness of what landed.** The delta replaced two disputed *numbers* (wave count, replay
+   cost) and one disputed *claim* (BL-04's discharge). Numbers substituted for other numbers are
+   only an improvement if the new ones are right, so each was re-derived from primary sources
+   rather than read off OF-1 and checked for internal agreement.
+3. **Non-regression against upstream at HEAD (DEC-ERR-03).** The delta adds new load-bearing
+   citations — to `FSPEC §2`, `FSPEC §3.2` and `EC-20` — and asserts three fresh facts about the
+   default branch. Each was checked against the cited text and the cited code as they stand today.
+
 ## Non-Goals
+
+- Re-reviewing sections the erratum did not touch. §§2, 3, 6, 8 and the ACs other than REQ-WVR-02,
+  -03 and -08 were approved at v4 and are not re-litigated here.
+- Re-opening settled decisions. OQ-1's deletion-only hatch, REQ-WVR-05's retention-with-invalidation
+  restatement, and the closed IG-1..6 / three-outcome catalogues are ratified and out of scope.
+- Reviewing the FSPEC. FSPEC text is read here only as the upstream-at-HEAD referent for the REQ's
+  new citations; findings about the FSPEC itself belong to the FSPEC's own review rounds.
+- Product-lens and testing-lens judgements. Whether the replay-cost narrative is the right *story*
+  is pm-review's call; whether OF-1 is oracle-shaped is te-review's.
 
 ## Constraints
 
