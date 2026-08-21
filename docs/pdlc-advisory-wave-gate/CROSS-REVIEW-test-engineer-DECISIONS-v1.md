@@ -247,6 +247,73 @@ the ref's name at halt and nothing about the ordinary next action destroying it.
 
 ## Positive Observations
 
+- **DEC-A6-03's rejection is a genuinely tested commitment, and the entry shows its work.** `:149-159`
+  narrates the whole loop: the rejection was unfalsifiable at v1.1 because every fixture ran a single
+  A6 wave, the missing oracle was routed upstream, and it landed. It did —
+  `advisoryWaveGate.test.js:1624-1664` runs two red waves and asserts **set-equality** over the
+  observed `update-ref` targets plus one write each, so a fixed-name regression fails on both
+  conjuncts. Set-equality rather than containment is exactly the right instrument for an enumerated
+  contract, and this is the model the rest of the feature should copy.
+- **The `-m` paragraph is the best piece of testing writing in the document.** `:179-192` measured the
+  failure mode against real git rather than assuming it (`commit-tree </dev/null` exits `0` with an
+  empty message), then correctly concluded that the argv-level oracle cannot catch the omission
+  because a double answers a `-m`-less argv as happily as a correct one. I verified the negative
+  claim: no test anywhere asserts the snapshot message literal. A document that tells you which of
+  its own commitments is *unasserted* is doing the reviewer's job for them.
+- **DEC-A6-02's reversibility caveat cites the oracle that actually catches it.** `:238-246` corrects
+  an earlier attribution from FSPEC's AT-04-5 to TSPEC §5.6/§3.6, and states the principle — "'a test
+  will catch it' is a reversibility rating an operator acts on, and it is true only of the test that
+  actually catches it". `waveExecution.test.js:1347` carries the literal. This is the discipline F-04
+  and F-05 ask the neighbouring claims to meet.
+- **The capture-before-budget ordering is stated as deliberate, with its consequence.** `:283-291`
+  makes `waveBudgetPerRun: 0` suppress *agent calls, not git objects*, and says why: it leaves an
+  operator running with `0` a pre-repair snapshot to inspect. The shipped fixture asserts exactly that
+  (`commit-tree === 1` with zero `_agent` calls, `advisoryWaveGate.test.js:1615-1617`) — a
+  capture-unique verb rather than a raw call count, which is the right choice given `restoreTreeSnapshot`
+  drives the same transport.
+- **The verb-set bullet is written as a double-sizing argument, not a tree measurement.** `:304-317`
+  ties "five verbs" to the thing that actually breaks — a `_git` double that answers capture's verbs
+  and not restore's — and routes the present-tense count to `SIZING-…md`. That is the correct
+  division of labour between a decision record and a measurement appendix, and it is why the
+  restore-path false-green it names is now hard to reach.
+- **Both channels of DEC-A6-04's two-channel edit landed as specified.** The example carries the
+  section and `pdlc/engine/__tests__/advisory-config-example.test.js` exists as its own purpose-named
+  file, with an in-file header explaining why it is not hung off `ci-arrangement.test.js` — the
+  delivery-blocking-check argument the entry makes at `:371-377`, transcribed where an implementer
+  will meet it.
+
 ## Recommendation
 
+**Needs revision**
+
+Three High findings, each a one-to-five-site transcription repair, none touching a decision entry:
+
+1. **F-01 — `:318`.** Split the fail-closed claim: `restoreTreeSnapshot` throws
+   (`orchestrate-dev.js:12638-12662`); `captureTreeSnapshot` returns `null` and the call site writes
+   the capture-failure disposition (`:12558-12561`, `TSPEC:1430`). As written the sentence yields a
+   property that fails against correct code.
+2. **F-02 — `:5`, `:125`, `:199-201`, `:208-210`, `:331-333`.** Rebind the upstream cell to TSPEC
+   v1.11 (`sha256:3fa21acf…`) and restate the four OQ-7 hedges as the decided boundary: OQ-7 closed
+   *no* (`TSPEC:1755`), ignored paths outside the map in both directions (`REQ:503`, FSPEC BR-9 v1.6),
+   the scoped ignored-path arm not built (`TSPEC:504-509`). The re-evaluation trigger at `:208-210`
+   must stop naming a resolved event as pending.
+3. **F-03 — `:93-100`.** Re-ground "One module, one bundle" on the engine channel that actually ships
+   (`prepack.mjs:20`, `:38-47`), drop "a new file is not an option" as an impossibility claim, and
+   re-reject "add a module" on merit. Keep option B's rejection, but cite the enforcement that exists:
+   the source scan at `advisoryWaveGate.test.js:3194`.
+
+Then F-04 (`:203`, "exported and directly unit-tested" rather than "module-private"), F-05 (`:396-408`,
+attribute the present-and-zero conjunct to TSPEC §5.2 and name A6-15 as owing it), F-06 (one argv
+literal), F-07 (the `Cross-Reviews` convention). None of the five is gating.
+
+Re-review can be a delta against the changed sites only: no decision entry needs to move, and the
+`## Decision` section's four entries should stay byte-frozen through this revision.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 2, "low": 2}
+
+UPSTREAM-STATE: REQ sha256:c62cfc35ac9e49f60f70226036a3381c1d08518f33d5454fbef062ced0611bf7
+UPSTREAM-STATE: FSPEC sha256:91ef25574e678b3c5433467ff31f800bdcb17bcff54e5f1a59c2e6da28e5cb34
+UPSTREAM-STATE: TSPEC sha256:3fa21acf346e987c39d625133e5d56f4873b0cf2a205cad9460a6b4944eb7a00
