@@ -25,6 +25,43 @@ observation on the new ceiling sentence is recorded below.
 
 ## Options Considered
 
+Under freeze the only live question is whether to block. Three candidates, all rejected:
+
+**(a) Block on the framing formula.** Rejected — the formula is exact, not approximately right. I
+re-ran `renderLearningsBlock` (`pdlc/workflows/orchestrate-dev.js:2542-2561`) at HEAD with empty
+`material`, over the fixture the document names (`git ls-files | grep -E 'LEARNINGS-.*\.md$'`, first
+five, ten-character `orderKey`), and compared each rendered length in bytes against the document's
+formula `477 + Σ(49 + 2·len(path) + len(feature) + len(orderKey)) [+ n·(30 + len(String(bytes)))]`:
+
+| Fixture | Rendered (bytes) | Formula predicts |
+|---|---|---|
+| 1 document, not abridged | **684** | **684** |
+| 5 documents, not abridged | **1,607** | **1,607** |
+| 1 document, abridged | **718** | **718** |
+| 5 documents, abridged | **1,777** | **1,777** |
+
+Exact on all four, and the two constants the prose decomposes check out byte-for-byte:
+`LEARNINGS_BLOCK_HEADER` is 50 bytes and `LEARNINGS_BLOCK_TRAILER` is 35
+(`orchestrate-dev.js:2528-2529`). The per-document term matches the code's construction — the
+opener embeds `doc.path`, the regex-extracted feature, `doc.orderKey` and the conditional
+`(ABRIDGED: bounded at N bytes)` clause, and the closer embeds `doc.path` a second time
+(`orchestrate-dev.js:2545-2552`). This is the "state the shape, not two literals" fix v8 asked for,
+landed verbatim.
+
+**(b) Block on the grounding-pin scope (v8 F-02).** Rejected — resolved as asked. The new paragraph
+(§Scope) names the two post-implementation citations explicitly — `renderLearningsBlock`'s framing
+inventory in `DEC-LI-08`, and `extractInjectableMaterial`'s `maxBytes <= 0` early return plus
+`selectLearnings`'s `sections.length === 0` branch in `D-O-3` — and states that no decision rests on
+them. That is exactly the pre-feature/post-hoc distinction the over-broad pin was collapsing.
+
+**(c) Block on the upstream pin (v8 F-03).** Rejected — resolved and re-verified at HEAD. REQ is
+v0.10 and FSPEC is v0.14 (REQ:18, FSPEC:18); TSPEC is still v0.9 (TSPEC:18), which the header still
+says. Every substantive claim the new note makes holds: FSPEC's byte-accounting basis is still
+material-only (FSPEC:489-495), `E-36` still decides `maxBytesPerDocument: 0` ⇒ `RSN-NO-MATERIAL` and
+no slot (FSPEC:798), `AT-30` still carries all three zeros (FSPEC:967-968), and v0.14's erratum note
+is indeed a window restatement plus the `RSN-COUNT` attribution rule with "no behavioural change"
+(FSPEC:83-90).
+
 ## Decision
 
 ## Consequences
