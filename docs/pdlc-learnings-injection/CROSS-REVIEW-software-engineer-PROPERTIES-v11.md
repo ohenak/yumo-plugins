@@ -109,6 +109,54 @@ content, which is the conclusion §C.4 has held since v0.3 and still reaches.
 
 ## Oracles
 
+**No oracle is inside the delta, and the three discipline checks still hold on the changed text.**
+§O.1–§O.9, §G.1's obligation table and §O.8's mutation ledger are outside every hunk, and their four
+upstream sources (REQ, FSPEC, TSPEC, DECISIONS) are byte-identical to the v9/v10 pins, so the oracle
+surface is untouched. I applied the three checks to what the revision *added*, since that is where a
+new defect could enter:
+
+- **No implementation echo.** The new §C.4 paragraphs introduce no expected value. The one place
+  they touch expected values is a re-statement of the *landed* literals — `40` beside the
+  "Hand-computed (never derived here)" comment, `66`, and the non-binding `100000` — which remains a
+  transcription of what the suite contains, not a derivation from production code. The green-at-
+  landing premise is quoted as PLAN's claim about shipped behaviour and then corroborated against a
+  landed **test assertion** (`sections).toEqual(["Cross-Feature Patterns"])`), not against
+  `canonicalSectionName`'s source — which is the correct direction: a spec that read its expected
+  value out of the implementation would be the echo, and this does not.
+- **No absence-only oracle is created.** The delta's absences are absences in *PLAN's ledger*
+  ("the ledger stays empty"), not absence-shaped test assertions. The one absence-shaped oracle in
+  the neighbourhood, PROP-BOUND-03's zero case, keeps its positive conjunct — the
+  `{material: "", bounded: false, bytes: 0, sections: []}` return on the same path — outside the
+  hunk and unchanged. Better: the new paragraph strengthens the pairing by saying what happens if
+  that positive conjunct does **not** hold (a real defect, fix owed before batch 14), rather than
+  leaving the red unexplained.
+- **Set-equality, not containment.** §C.1's 35-of-35 and §C.3's 23-of-23 enumerations are outside the
+  delta and still reconcile against a PLAN task table the v0.8 erratum did not touch (PLAN's own
+  v0.8 changelog, `PLAN-…md:610`: "no task moved batch, no `Deps` edge changed, no AT partition,
+  fixture or manifest row was touched, and the batches 7–13 ledger is byte-identical" — I confirmed
+  the second half independently at v10 by locating every hunk of `f73046ad..be64a0c6`). §G.3's
+  routed-errata list is itself an enumeration, and the revision keeps it closed: three struck items
+  under *Also answered — by PLAN*, one live item, and an explicit sentence stating the live item is
+  "the **only** item this dispatch emits as a routed erratum line". A struck item cannot be lost
+  silently because the strike text carries the resolution.
+
+**F-02 (Medium) — resolved, and the one thing I warned must survive did survive.** §G.3's header now
+reads "**Still open — one item**", and the TSPEC AT-15 suite-assignment bullet is present **verbatim**
+— clauses 2–3 asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite, with the
+`learningsSelect.test.js` row / level `L1` citation and the LI-07/LI-19 workaround. TSPEC's pin is
+unchanged (`22dee8ce…`), so that item is genuinely still open and correctly still routed. This is the
+failure mode I named at v10 ("the last time a bullet was struck from that list the surrounding
+sentence went untrue"); it did not recur — the count, the bullet and the closing parenthetical all
+agree with each other.
+
+**The two struck bullets record the resolution rather than merely deleting the question.** Both
+carry what answered them (case C's *"under case C they owe no ledger row, and they owe green"*, and
+case B's re-scope to *"batch 9 through batch 12"* with batch 14's unqualified gate in place of the
+span), and both name the DEC-ERR-01 anti-pattern they are avoiding. The second also closes PM's
+carried Q-02 by citing PLAN's v0.8 changelog phrase *"answering PM Q-02"* — which is verbatim at
+`PLAN-…md:610`. That is the right disposal: the questions leave this document's open list because
+upstream decided them, not because they were dropped.
+
 ## Fixtures
 
 ## Questions
