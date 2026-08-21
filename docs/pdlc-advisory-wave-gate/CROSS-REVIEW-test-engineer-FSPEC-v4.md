@@ -168,7 +168,28 @@ Two oracle notes for whoever writes it:
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does the overwrite warning belong in the halt report **only**, or also in the advisory record entry BR-13 mandates? REQ AC-6.3 binds the halt report and says nothing about the record; I read that as deliberate (the record is read after the fact, the warning is actionable before the next run). Confirming it in BR-14's amendment stops a later reviewer re-raising it. |
+| Q-02 | Is the warning expected on **every** halt that names a capture, or only on halts following an A6 *escalation*? AC-6.3's opening clause is "given the pipeline halts after an A6 escalation", but E-22's post-gate-halt branch can also end a run with a capture in existence. Whichever answer, state it in BR-14 so the E-22 fixture knows what to assert. |
+| Q-03 | §7.1 O-1 currently owns "the point at which the pre-A6 tree state is captured" and its failure modes. Should O-1's "This FSPEC states" column gain the report-side obligation, so the TSPEC author sees the outcome the mechanism must make expressible (a capture with a printable identity)? Non-gating either way; F-01's edit is sufficient without it. |
+
 ## Positive Observations
+
+- **The upstream erratum is well-shaped and stays at requirements altitude.** AC-6.3's new sentence
+  states an operator-visible outcome and explicitly leaves the capture's name and storage form to O-1.
+  That is exactly the split that makes a black-box AT writable at FSPEC level and a literal-pinning
+  test writable at TSPEC level — no obligation moved, and the FSPEC edit it implies is one sentence
+  plus one AT.
+- **BR-14 already names AC-6.3 as an anchor**, so the gap is a missing clause inside an existing rule,
+  not a missing rule. There is no new rule number, no renumbering, and no knock-on to BR-9/BR-10.
+- **E-34 already exists and is precisely the negative arm** the new AT needs. The falsifying companion
+  fixture is available in the spec today; it only needs to be pointed at.
+- **The cascade caught a real, testable defect rather than a version-token nit.** Everything the two
+  prior erratum rounds added (AC-5.1's observation point, ignored-path exclusion, failed-capture
+  outcome, the `c8aa22a4`/`11420461` base pins) was already present in FSPEC v1.6. This round is the
+  first where the compression is genuinely behind its source — which is the case this confirmation
+  protocol exists for.
 
 ## Delta-Confirmation Findings
 
