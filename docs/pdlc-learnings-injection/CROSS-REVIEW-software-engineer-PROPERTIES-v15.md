@@ -54,6 +54,60 @@ from the hunk offsets rather than from the assertion.
 
 ## Properties
 
+**No property statement moved, and the hunk offsets prove it.** §Properties spans `:87`–`:607`; the
+lowest hunk in the delta after the header is `:1094`. Groups A–J, their seventy `PROP-` statements,
+their AT partitions, levels and owning tasks are byte-identical to the bytes I approved at v0.8, v0.9
+and now v1.0. §C.1's 35-of-35, §C.2 and §C.3's 23-of-23 are likewise outside every hunk. Nothing this
+round could have disturbed the property set, and nothing did — the fourth consecutive round in which
+the document's scope claim survives being diffed rather than read.
+
+**Every PLAN task the table lists still traces, because the trace did not move.** §C.3's reconciliation
+of PLAN's 23 task rows against properties is untouched, and PLAN's task ladder is unchanged in the
+relevant respect: `PLAN:310` still reconciles the tree, and PLAN's v1.2/v1.3 additions land in
+**§Post-batch remediation**, a subsection explicitly *"outside the batch ladder"* whose rows *"carry no
+`Owner` cell"* and are *"excluded from every count"* of §The arithmetic (`PLAN:244`, `PLAN:310`). So the
+upstream movement this delta absorbs cannot have moved a task→property row: PLAN added rows to a table
+the dispatcher does not parse, and §C.3 reconciles against the two tables it does.
+
+**The four properties §C.4 routes are named identically before and after.** PROP-BOUND-03's zero case
+and PROP-BOUND-05/07/08 appear unchanged in the delta; what moved is the *fallback route* a red
+PROPERTIES suite would take (P-A-6), not the ruling over those four (P-A-7 case C). The two mechanisms
+were already held distinct in this document since v0.3, and the delta restates that distinction rather
+than editing it.
+
+**The delta's load-bearing quotation is verbatim at HEAD.** The P-A-6 restatement at `:1181`–`:1187` is
+the substantive change of this round, and it is a quotation, so the no-implementation-echo discipline
+reduces to: is the string in PLAN? I ran `grep -cF` on the full quoted span, not a fragment:
+
+| Quotation the delta writes | `grep -cF` in PLAN at HEAD |
+|---|---|
+| *"or else its rows are handled under **P-A-7's governing case** — which at HEAD is case C, where no ledger remains to amend into and the obligation is green-at-landing; the amend-into-the-ledger-by-name route is case B's, and case B closed at batch 12"* | **1** (`PLAN:663`) |
+| *"under case C they owe no ledger row, and they owe green — which PROPERTIES §C.4 records as discharged"* | **1** (`PLAN:561`) |
+| *"the tracked `learnings*` test-side set is eighteen files"* | **1** (`PLAN:310`) |
+
+Three for three, including the one my v14 F-02 said returned **0**. The attribution *"PLAN rewrote that
+fallback at **v1.1** (TE v11 F-03)"* is also correct at the version and the credit: `PLAN:682` (the v1.1
+changelog row) reads *"P-A-6's PROPERTIES fallback stops offering case B's amend-into-the-ledger route
+unconditionally and instead routes to **P-A-7's governing case**, which at HEAD is C … (TE F-03)"*.
+
+**The counting claims are the risky part of this delta, and they are right to the file.** §G.2 gap 5 now
+carries a three-way derivation, and every number in it resolves against `git ls-files` at HEAD:
+
+| Claim at `:1284`–`:1300` | Measured at HEAD |
+|---|---|
+| *"seventeen `learnings*` files under `pdlc/workflows/__tests__`"* (subtree as a directory) | `git ls-files pdlc/workflows/__tests__ \| grep learnings \| grep -v fixtures/learnings-baseline/` → **17** |
+| *"the ladder's thirteen (twelve suites plus `helpers/learningsFixtures.js`)"* | 14 manifest rows minus the fixture-subtree row = 12 `.test.js` + `learningsFixtures.js` = **13** |
+| *"plus `2fc6fcd3`'s four added test-side files"* | `learningsBaselineScenarios.js`, `learningsComposition.js`, `learningsDisclosure.test.js`, `learningsErratumBinding.test.js` → **4**; 13 + 4 = 17 |
+| *"an **eighteenth** engine-side, `pdlc/engine/__tests__/learnings-config-example.test.js`"* | `git ls-files pdlc/engine/__tests__ \| grep learnings` → exactly that one path |
+| *"a raw `git ls-files … \| grep learnings` returns **39 paths**, of which 22 are that subtree's fixture files"* | **39** and **22**; 17 + 22 = 39 |
+| *"§C.4's inventory table also totals **eighteen** … the fourteen manifest rows plus `2fc6fcd3`'s four workflows-side files"* | inventory table `:1079`–`:1098` → **18** rows, 14 + 4 |
+
+That is the finding I filed at v13 and re-filed at v14 closed properly: not by changing the number, but
+by naming the two sets the number counts and showing they coincide *"by coincidence of arithmetic, not
+by naming the same entities"*. PLAN reaches eighteen by a different decomposition (`PLAN:310`: thirteen
+ladder + *"`2fc6fcd3`'s five added files"*, the fifth being the engine-side suite), and the two
+decompositions agree on the set — 13 + 5 = 17 + 1 = 18. Both are right; the document now says why.
+
 ## Oracles
 
 ## Fixtures
