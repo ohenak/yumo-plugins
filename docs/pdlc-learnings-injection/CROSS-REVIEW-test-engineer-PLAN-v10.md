@@ -264,9 +264,53 @@ final message so the orchestrator can route it to the implementation phase.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | LI-08's amendment note claims `renderSection` "accepts `ordinal`, `gloss` and a free-form `body`, **all three unexercised by any landed suite**". False for `body` at HEAD: `pdlc/workflows/__tests__/learningsBlock.test.js:77-82` passes `body:` on all six section specs and `pdlc/workflows/__tests__/learningsSelect.test.js:375` passes `{ name: "Not A BR-6 Section", body: "Nothing here BR-6 recognises." }`. The clause's conclusion is unaffected — the amendment still adds callers rather than knobs, and in fact adds fewer than claimed, since the `###`-as-body case reuses a knob that is not merely present but already exercised. **Fix:** "…`ordinal` and `gloss`, both unexercised by any landed suite, and a free-form `body` the landed suites already use" | §Batches → LI-08, amendment note (v0.7) |
+| F-02 | Medium | Local | *(carried from round 9, unaddressed — this revision was scoped to round 8.)* The "Amendment commits on landed suites (P-A-7)" paragraph's generic title and its "carry **no** row of their own in either case" closing sentence read as a ruling over `learningsBlock.test.js` / `learningsSelect.test.js` generally, while its scope is the heading-form fixture knob alone. PROPERTIES §C.4 routes a second live P-A-7 re-red on those same landed files (PROP-BOUND-05/07/08 and the Group D amendments) to this PLAN for row-naming; those rows are unnamed here. **Fix:** qualify the closing sentence to "across *this* follow-up commit", and add a case row once the PROPERTIES erratum returns | §The three gate wordings → Amendment commits on landed suites |
+| F-03 | Low | Local | *(carried from round 9, unaddressed.)* Case A's window is "before batch 7" but its justification cites only the batches 7–8 whole-suite ledger rows and the batch-9 drop. A commit landing in batches 2–6 is inside the window and those batches carry no ledger. The "no row" outcome is correct but the reader must derive the silence. **Fix:** one clause — "and in batches 2–6 no ledger exists to amend, since the ledger's universe begins at batch 7" | §The three gate wordings → Amendment commits on landed suites, Case A |
+
+**Deferred under decision freeze** (recorded, not decided, not gating):
+
+DEFERRED: Landed `selectLearnings` (`pdlc/workflows/orchestrate-dev.js:2367`) gates the `RSN-NO-MATERIAL` drop on `extraction.sections.length === 0 && hasAnySectionHeadingLine(entry.text)` — the second branch TSPEC §D.5:1017 forbids; a document with no `##` heading at all is E-33 (FSPEC:762) but at HEAD becomes eligible with zero material and burns a `maxDocuments` slot. This PLAN's LI-16 row states the rule correctly; the implementation diverges from it.
+
+DEFERRED: AT-28's landed oracle (`learningsSelect.test.js:375`) uses a document that *does* carry a `##` heading, so it is green against the divergence above; the missing case is a headingless document asserting `RSN-NO-MATERIAL` plus a positive assertion that a later-ordered document still occupies the unconsumed slot.
+
+DEFERRED: The `Status` column is behind on twelve rows (LI-14…LI-20 have landed at `960c229c`…`c261941e` but read ⬚, while LI-21 reads 🟢). v0.7 now explains the column is the dispatcher's, so this is bookkeeping lag rather than a document defect — worth a single dispatcher reconciliation pass before ship.
+
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | LI-12's new precondition says "≥ 6 documents **unless the case declares a smaller `maxDocuments`**". If the case does declare a smaller bound, the precondition becomes "more than that bound" — is the intent that the implementer picks one form, or that the ≥ 6 default form is the one `LI-AT-30`'s third case actually ships? A single sentence naming the shipped form would remove the choice. Non-blocking; the invariant is stated correctly either way. |
+
 ## Positive Observations
+
+- **The delta fixed a would-be vacuous oracle before it was written.** LI-12's conjunct (iii) is the
+  conjunct that kills the slot-burning mutant, and without a corpus larger than `maxDocuments` it
+  passes against that mutant for free. Naming the precondition in the task row — where the implementer
+  reads it — rather than trusting them to derive it is exactly the "a test that can only pass is not
+  yet a test" discipline, applied at PLAN altitude where it is cheapest.
+- **The two additions are load-bearing on each other, and both landed in the same revision.** LI-16's
+  ordering rule and LI-12's fixture precondition only discriminate TSPEC's ordering from FSPEC Step 5's
+  when both are in force. A revision that landed one would have shipped an oracle that cannot see the
+  defect it names.
+- **The `Status` contradiction was resolved by distinguishing two records, not by editing a column the
+  author does not own.** "File existence is a fact about HEAD, `Status` is a fact about the wave's
+  bookkeeping" is the right resolution of my round-8 F-01 — it removes the contradiction without the
+  PLAN's author writing the dispatcher's ledger.
+- **ERR-8 is recorded with its consequence computed, not just flagged.** The row does the work: it
+  states which rule the PLAN's rows encode, names the oracle that reds under the wrong ordering, and
+  concludes "no task moves" so a delta confirmation against a corrected FSPEC finds nothing owed. A
+  bare "FSPEC has an ordering bug" would have left that derivation to the next reviewer.
+- **The changelog corrected its own past arithmetic in place and annotated it.** "four" → "three" with
+  the reason (the 0.1 row is a historical record that correctly keeps its original pins) is a small
+  thing done honestly; silently editing a historical row, or leaving the overcount, would both have
+  been worse.
+- **The delta stayed inside its scope.** Seven hunks, two of them a version cell and a changelog row.
+  No task moved batch, no `Deps` edge changed, no AT partition or manifest row was touched — and I
+  confirmed that from the diff and from a full re-derivation of all twenty-two batch values, not from
+  the changelog's claim of it.
 
 ## Recommendation
 
