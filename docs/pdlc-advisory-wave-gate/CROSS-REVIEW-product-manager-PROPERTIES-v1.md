@@ -95,6 +95,39 @@ form is retired. DEC-ERR-01's anti-pattern is cleared, not relocated.
 
 ## Fixtures
 
+**Hazard 2 is now a fixture specification rather than a pending-marker warning, and it is the right one.**
+The rewritten hazard enumerates four file classes the real-repo restoration fixture must carry:
+
+| Class | Assertion after restore | Upstream source |
+|---|---|---|
+| Tracked file the wave modified | restored to pre-A6 content | REQ AC-5.1, FSPEC BR-9, TSPEC §5.2 case 1 |
+| **Non-ignored** untracked file the wave added | absent — "not merely reset" | TSPEC §5.2 case 3; FSPEC BR-9 ("a file the repair created that no pre-A6 entry covers is therefore absent afterwards, not merely reset") |
+| `.gitignore`d file the wave added | still present, byte for byte | TSPEC §5.2 case 4; FSPEC BR-9; REQ AC-5.1 |
+| Non-ignored generated output the re-run post-wave command rewrites over an already-dirty path | discriminates hash-map from `git status` | FSPEC AT-05-2 |
+
+The fourth row carries the substitution warning ("Substituting an ignored path for that last one makes AT-05-2
+vacuous, since BR-9 puts it outside the map"), which is the one way this fixture could silently stop testing
+anything. Naming it is worth more than the property statement it supports.
+
+**The `test.skip` guard reasoning is preserved, not discarded with the pending marker.** The hazard keeps
+`orchestrate-dev.js`'s skip-guard regex `/\b(describe|test|it)\.skip\s*\(/` on the record while stating that
+**no** case in A6-09 now ships with a pending marker of either kind. This matches PLAN's own handling: PLAN
+v1.10 replaced A6-10's former-A6-09 `test.todo` with a live both-sides assertion and explicitly kept the
+`.skip`-halt reasoning "since it still governs the file". The two documents agree.
+
+**PLAN homes.** The PLAN-home matrix rows the edit touched: A6-09 gains PROP-REST-10 (PLAN A6-10's former-
+A6-09 red step does mint the real-repo round trip at BR-9's observation point — verified in PLAN's task row),
+and A6-15 gains PROP-ENV-13. The first is correct. The second is not: PLAN mints the ignored-path-only
+refusal in **A6-14's former-A6-13 red step** (`apply` "returning `{ok:true}` iff `producedPaths()` is
+non-empty (an empty set is `{ok:false}` ⇒ `post-action-verification-failed`, which is also the disposition for
+a repair writing only `.gitignore`d paths — OQ-11)"), and A6-18's former-A6-15 red step — whose contents PLAN
+enumerates at length — contains no such case. See F-02.
+
+**Fixture-level consistency with PLAN is otherwise intact.** PLAN's AT-05-1 row reads "real-repo hash-map
+oracle over tracked + non-ignored untracked paths, taken at BR-9's observation point; ignored-path case live
+(OQ-7 closed), restoring one fails" — the same four-class fixture this document specifies, from the other
+side. No divergence.
+
 ## Positive Observations
 
 ## Delta-Confirmation Findings
