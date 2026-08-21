@@ -48,6 +48,73 @@ about what its oracles can and cannot falsify, not about builder-only coverage.
 
 ## Evidence
 
+**E-1 — full suite on a clean tree** (`cd pdlc/workflows && npm test`, `git status --porcelain`
+showing only `.claude/pdlc-wave-state.json`):
+
+```
+Test Suites: 3 failed, 108 passed, 111 total
+Tests:       3 failed, 70 skipped, 3956 passed, 4029 total
+  * consolidationBuild.test.js  > build-runtime.mjs --check is clean        <- F-05, this feature
+  * documentOracles.test.js     > AT-22 coveredViolations(LIVE_ROOT) empty  <- untracked-file scan
+  * consumerCleanup.test.js     > AT-4.1 tracked files unchanged            <- cross-suite/tree
+```
+
+Only the first is charged to this feature. `documentOracles` AT-22 walks the whole tree and trips
+on the parallel reviewers' untracked files (a known local-only red). `consumerCleanup` AT-4.1
+passes in isolation (23/23) and fails in the full run on a transient ` D pdlc/workflows/dist/pdlc-cli.mjs`
+plus another reviewer's staged file — an isolation defect of the pre-existing suite, worth noting
+but not this feature's regression. F-05 reproduces by hand and by rebuild:
+
+```
+$ node pdlc/workflows/build-runtime.mjs --check   # -> exit 1, "Bundles are out of date"
+$ node pdlc/workflows/build-runtime.mjs && git diff --stat pdlc/workflows/dist/
+ pdlc/workflows/dist/pdlc-cli.mjs | 4 +---     # the hunk is isLearningsSelfPath
+```
+
+**E-2 — F-04, executed against the shipped exports.** Corpus of two documents, `maxDocuments: 1`:
+one `# LEARNINGS` document with a `Date Completed` row and prose but no `##` heading at all, one
+ordinary document carrying `## 2. Cross-Feature Patterns`.
+
+```
+selected : [{ path: docs/a-nohdr/…, orderKey: 2026-05-09, bytes: 0, bounded: false, position: 0 }]
+rejected : [{ path: docs/b-normal/…, reason: "RSN-COUNT" }]
+block    : <<< docs/a-nohdr/LEARNINGS-a-nohdr.md — feature a-nohdr, completed 2026-05-09 >>>
+                                                    (empty line — no material)
+           <<< end docs/a-nohdr/LEARNINGS-a-nohdr.md >>>
+```
+
+The real contributor is dropped `RSN-COUNT` in favour of a document that injects zero bytes —
+the exact outcome FSPEC BR-6 gives as the rule's rationale.
+
+**E-3 — F-04 mutation.** Restoring the spec'd rule (deleting `&& hasAnySectionHeadingLine(entry.text)`
+at `orchestrate-dev.js:2368`) reds exactly three tests, all of them the fixtures described in F-04:
+
+```
+● learningsSelect › LI-16: LI-AT-04 — a self document is excluded …
+● learningsSelect › LI-16: LI-AT-09 — two documents sharing a Date Completed value tiebreak …
+● learningsSelect › LI-16: LI-AT-10 — no-row, trailing-text and unparseable dates all stay eligible …
+```
+
+**E-4 — F-06, executed.** `extractInjectableMaterial(twoSectionDoc, 150)` where each section is a
+100-byte body:
+
+```
+{ bytes: 150, bounded: true, sections: ["Cross-Feature Patterns", "Non-Convergences"] }
+material tail: "AAA…\n\n## 3. Non-Convergen"
+```
+
+FSPEC BR-6 ("the remaining sections are omitted") predicts `bytes: 127`, `sections: ["Cross-Feature
+Patterns"]`. TSPEC §D.3 step 3 predicts what shipped. No test distinguishes them.
+
+**E-5 — F-02 mutation, full suite.** With `injectHere = dispatchKind === "authoring";`:
+`Tests: 3 failed, 70 skipped, 3956 passed` — the same three reds as E-1, no new failure, and
+`__tests__/learnings*` alone is `106 passed, 106 total`.
+
+**E-6 — discarded mutant (recorded so it is not re-tried).** Adding `"LEARNINGS"` to
+`LEARNINGS_TARGET_DOCTYPES` also leaves all 106 learnings tests green, but Phase H dispatches with
+`dispatchKind: "harvest"` (`orchestrate-dev.js:15510`), so the mutant is behaviour-equivalent and
+is **not** a finding.
+
 ## Questions
 
 ## Positive Observations
