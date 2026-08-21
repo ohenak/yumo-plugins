@@ -40,6 +40,53 @@ not re-litigated.
 
 ## Delta Verification — v1's five High findings
 
+All five are **resolved**, each confirmed by a kill, not by reading the change.
+
+**F-01 (AC-4.3 had no live oracle) — RESOLVED.** `LI-AT-29`'s five `?? null` reads of keys
+`buildFinalReport` never emits are gone; the oracle now reads the gate inputs where they live —
+`report.phases`, `.artifactPaths`, `.notices`, `.outcome`, `.testSummary`, `.harvestStatus`
+(`learningsDispatchSet.test.js:483-524`) — with four non-vacuity controls beside it
+(`phases.length > 0`, a numeric `iterations`, an `Approved (N iterations)` detail, non-empty
+`artifactPaths`). `LI-AT-35` carried the identical defect and was repaired the same way
+(`:1155-1174`). AC-3.4's negative half no longer serialises an absent key: it now excludes the
+`learningsInjection` key by rest-spread and asserts the source path appears nowhere in the
+remaining report, paired with the positive half — the path IS in BR-8's rows (`:576-594`).
+E-4 confirms all three are falsifiable.
+
+**F-02 (BR-1's second conjunct had no falsifying test) — RESOLVED.** Restoring the mutant
+(`const injectHere = dispatchKind === "authoring";`, `orchestrate-dev.js:9463`) now reds two
+tests (E-1). The new `reviseOnceInPhases` script option (`learningsDispatchSet.test.js:118-158`)
+is what put the case AC-1.2 names — Phase CR's optimizer, `dispatchKind: "authoring"` with
+`docType: null` — into the dispatch universe at all; under the all-approve script it was absent,
+which is why the mutant survived in v1. The new AC-1.2 test asserts both halves separately: the
+production `injectHere` is false for every such dispatch (the seam), and the CR optimizer's
+composed prompt carries no block (the served artifact), plus two controls — the case occurred,
+and the run did inject elsewhere (`:895-931`).
+
+**F-03 (the committed baseline was never compared to a composed prompt) — RESOLVED.**
+`learningsBaselineGuard.test.js:167-354` reads the fixture bytes off disk
+(`baselineBytes(caseId, i)`) and compares them to prompts composed by branch code at HEAD, across
+all four non-injecting states of PLAN §DoD item 4 (DISABLED / EMPTY / UNLISTABLE /
+ADMITS-NOTHING) × two capture scenarios. Kill-tested (E-3): a one-character change to the
+reviewer prompt literal (`orchestrate-dev.js:9881`) reds four of these tests. The subject is
+branch code and the expected value is merge-base bytes on disk — an expected value that cannot
+be derived from the code under test, which is exactly what v1 asked for.
+
+**F-04 (`RSN-NO-MATERIAL` carried an unspec'd second conjunct) — RESOLVED.**
+`hasAnySectionHeadingLine` is deleted and the branch is the single predicate TSPEC §T.6 states
+(`orchestrate-dev.js:2360`). Re-introducing the conjunct reds a dedicated new test —
+`learningsSelect` › `LI-AT-28 (second disjunct shape) — a document with NO section heading line
+at all is dropped RSN-NO-MATERIAL on the same branch, consumes no slot, and never displaces a
+contributor` (E-2). The three ordering ATs whose corpora were heading-less
+(`LI-AT-04`/`09`/`10`) now build documents carrying a BR-6 priority section and each carries the
+control `selected.every((d) => d.bytes > 0)` (`learningsSelect.test.js:89-91`, `:217-219`,
+`:266-268`), so the orderings they assert now order documents that actually contribute a byte.
+
+**F-05 (the shipped runtime bundle had drifted; a committed test was red at HEAD) — RESOLVED.**
+`build-runtime.mjs --check` exits 0 and `consolidationBuild.test.js` is green in the full run.
+`edac08ed` is the rebuild commit and `pdlc/workflows/dist/pdlc-cli.mjs` carries the
+`isLearningsSelfPath` hunk, satisfying DEC-08's rebuild-and-stage rule.
+
 ## Delta Verification — v1's Medium and Low findings
 
 ## Findings
