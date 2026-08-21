@@ -188,6 +188,41 @@ DEFERRED: PLAN's `Status` column still reads ⬚ for LI-01…LI-21/LI-23 althoug
 
 ## Positive Observations
 
+- **All three of my v8 findings are resolved in one revision, each in the exact form proposed, and
+  nothing else moved.** Five surgical hunks, 32 insertions, no property, oracle, level, fixture,
+  count or trace disturbed. That is the shape a frozen-round revision should have.
+- **F-01's fix went further than bookkeeping.** §G.3 does not merely list the two items — it states
+  each gap, its evidence at `21edb7c5`, and closes each with "Whether … is PLAN's call; this document
+  routes the gap and decides nothing." The document routes without deciding, which is precisely
+  DEC-ERR-01's discipline, and the AT-15 bullet's new parenthetical prevents a reader from
+  mistaking a re-routed item for a new one.
+- **F-02's fix converted an absence claim into a positive one.** Rather than deleting the
+  overstatement, the revision states what the suite *does* carry on that path and re-scopes the
+  obligation to "the variant fixture as a whole". That is a strictly stronger sentence than the one
+  it replaces — it now says something falsifiable about the landed code, and it happens to be true.
+- **The citation reworks are a real DEC-DOC-01 improvement, not cosmetic.** Line anchors were traded
+  for `const maxBytes = 40`, verbatim `test(…)` titles and the `.gitignore` rule's own text —
+  citations that survive a reflow of the cited file. The one surviving anchor sits beside the
+  verbatim `describe(…)` string, the exempt form.
+- **The LI-AT-30 title transcription is byte-exact**, including `⇒`, comma placement and the
+  `(E-36)` tail, checked against `learningsConfig.test.js:258`. Transcribing a 100-character test
+  title without drift is the kind of thing that usually drifts.
+- **The P-A-6 quote hunk corrected the document toward PLAN, not away from it**: "the first point it
+  is green" → "the first point the suite is green", which is PLAN's exact wording. That hunk was not
+  asked for by any finding.
+
 ## Recommendation
 
+**Approved with minor changes.**
+
+All three v8 findings are resolved; the delta is five hunks and breaks nothing; every load-bearing
+claim it introduces re-verifies against the repository at HEAD and at `21edb7c5`. The single finding
+is Low and non-gating: a paraphrase inside quotation marks in §G.3 whose substance is correct.
+
+For the next ordinary revision, in one edit: make §G.3's case-B quote verbatim (or drop its quotation
+marks). Nothing else should move.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
