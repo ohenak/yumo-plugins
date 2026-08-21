@@ -210,6 +210,40 @@ which the pre-A6 tree state is captured") is the obligation AC-5.1's new text ex
 REQ still closes with "The mechanism of restoration is TSPEC's to choose (O-1)". Altitude holds on
 both sides: upstream added observables, not mechanics.
 
+## Positive Observations
+
+- **The window moved upstream toward this FSPEC, not away from it.** Both substantive hunks —
+  AC-5.1's observation point and ignored-path domain, AC-1.1/R-5's commit-pinned measurement base —
+  adopt text FSPEC v1.6 had already landed in response to my v1 findings. A cascade that closes the
+  gap between two documents is the outcome you want from an erratum sweep and the rarer one.
+- **AC-5.1's new failed-capture sentence is REQ meeting FSPEC's E-34 exactly**, including the
+  "different outcome from a failed restoration" distinction E-34 draws against E-28. Neither
+  document had to reach into the other's altitude to agree: REQ still hands the mechanism to O-1.
+- **Retiring "HEAD already carries A6" for a commit pin is the right correction and generalises.**
+  A HEAD-relative claim in a shipped REQ silently changes meaning every time the branch moves; the
+  pin at `11420461` does not. FSPEC §2 reached the same conclusion first, and the two now agree on
+  both bases. This is durable process signal, not a local nit.
+- **FSPEC's temporal cut aged better than an enumeration would have.** BR-9 excludes carriers by
+  saying *when* the map is taken rather than *which* files to skip. That is why REQ adding a third
+  carrier (AC-6.2's escalation log) required no FSPEC edit at all: the cut already covered it. Worth
+  preserving as the pattern when a future carrier is added.
+
+## Recommendation
+
+**Approved with minor changes**
+
+FSPEC v1.6 still holds as approved against REQ v1.15. The compression is faithful on every surface
+the two erratum rounds touched: BR-9's oracle admits exactly what AC-5.1's excluded-carrier list
+admits, E-34 is AC-5.1's failed-capture branch, E-23 carries the queue-row ordering, and §2's
+measurement bases are the commits AC-1.1 and R-5 now pin. No AC was retired, renumbered or reworded
+against a clause FSPEC cites; no branch condition or literal moved; no obligation changed altitude.
+
+The four findings are two Mediums and two Lows, none of them a correctness defect in this document:
+F-01's fix lands in REQ, and F-02/F-03/F-04 are lineage and phrasing hygiene that a single editing
+pass over FSPEC §1 and §2 closes. Per the approval rules, Medium and Low only → Approved with minor
+changes. No High finding, old or new, is open against this document, so nothing here gates the
+phase.
+
 ## Delta-Confirmation Findings
 
 Locality convention for a cascade round: the edit is upstream, so I read "the sections this edit
@@ -236,10 +270,7 @@ FINDING: Medium | delta | local | §1 line 52 | FSPEC pins its upstream at "REQ-
 FINDING: Low | delta | local | §2 "Where 'before' is measured" | FSPEC still uses the HEAD-relative form "this branch's HEAD no longer carries" that REQ v1.15 retired from AC-1.1 in favour of a commit pin; the adjacent commit pins keep the claim verifiable, so this is phrasing hygiene, not a correctness defect
 FINDING: Low | delta | local | §1 header Cross-Reviews row | FSPEC's Cross-Reviews row reads only "(active)" while REQ's now scopes harvested rounds to LEARNINGS and names branch CROSS-REVIEW files as post-harvest errata; adopting the same sentence would tell a FSPEC-only reader why v2 and v3 are in no LEARNINGS table
 
-## Recommendation
-
-_pending_
-
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
