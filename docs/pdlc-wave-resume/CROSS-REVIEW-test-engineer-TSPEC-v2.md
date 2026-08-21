@@ -169,8 +169,63 @@ reader without implying the field is now independently pinned.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-14 conjunct (iii) runs `git check-ignore -v` as a real subprocess from a repo-state test. Does `waveResumeRepoState.test.js` shell out, and is that acceptable in a suite that otherwise injects `_git`? If the answer is "read `.gitignore` and re-implement the match", say so — re-implementing git's pattern semantics in the oracle is an implementation echo of a different kind, and conjunct (ii) may be enough on its own. |
+| Q-02 | §5.8 puts `npm run test:coverage` on the **last** implementation wave's `postWaveCommand`. `postWaveCommand` is a single per-wave value in `.claude/pdlc.config.json` (`IMPLEMENTATION_DEFAULTS`, `orchestrate-dev.js:169-174`), not a per-wave one — so "the last wave's" is not expressible in config as it stands. Is the intent that the run's configured `postWaveCommand` becomes the coverage command for the whole feature (paying `c8` on every wave), or is this a PLAN-level manual step after the last wave? RT-7's backstop suggests the latter is acceptable; the document should pick one. |
+| Q-03 | AT-06 asserts whole-array equality of two runs' logs. Both runs also emit the wave-plan announcement, the per-wave dispatch lines and the gate lines — are any of those run-scoped in a way that differs between two invocations in the same process (timestamps, counters)? If any log line carries a varying token, the equality must be stated over a filtered projection, and the projection is part of the oracle. |
+
 ## Positive Observations
+
+- **The revision found a breakage I missed and reported it rather than absorbing it.** v1 F-01 named
+  two whole-string assertions; §2.4's table names three, and the third — the `phaseDetail` equality
+  at `waveExecution.test.js:2117`, broken by D-3 rather than by D-2 — is the one I did not find. A
+  round that answers a finding by widening it is the round that makes the net trustworthy.
+- **DEC-WVR-08 records the rejected alternative in terms of what it would have made unfalsifiable**,
+  not in terms of cost: "the shipped ancestry test asserts `toContainEqual` — containment — so the
+  extra call would have been unfalsifiable." That is the right reason to state, and §5.5 item 4
+  turns it into a mutation with a named killer. The choice of matcher is now documented as
+  load-bearing rather than stylistic, which is exactly the class of decision that gets silently
+  relaxed inside an implementation wave.
+- **The laziness sketch is correct, including the parts that are easy to get wrong.** The
+  `outcome === "full-run"` conjunct is not decoration — without it, `resume` and `skip-phase` read
+  `code` as `null`, `null` is in the set, and the probe would be skipped on the two outcomes that
+  most need it. §2.2 says this explicitly, and separately establishes that the `parsed.state.head`
+  dereference is safe on every reachable path. I traced both against `orchestrate-dev.js:15296-15346`
+  and both hold.
+- **§5.4's seven-row code-reachability table answers Q-04 with fixtures rather than with
+  reassurance**, and the `over-count` row carries the subtlety that makes it correct — `head` omitted,
+  so guard 5 passes without a transport call and guard 6 is the first failure — plus the sentence
+  saying why the alternative fixture belongs to AT-03 instead. That is the difference between a
+  coverage map and a test plan.
+- **PM F-06 is answered with evidence and the answer is right.** `describe("computePlanHash — the
+  ledger's plan fingerprint")` is at `waveExecution.test.js:2717`, and §5.3 correctly resolves the
+  consequence — extend in place, never duplicate — while naming the one arm the shipped block
+  genuinely lacks (hashing the same PLAN *text* twice through `parsePlanTasks`/`computeWaves`, rather
+  than the same wave array twice). Refusing a change and explaining why is harder than making one.
+- **§5.2 cites the behaviour and drops the constraint id.** Rather than keep citing `DC-08` for the
+  cite-and-reuse rule, the revision checks what this repo's `DC-08` actually says, finds it is
+  something else, and states the practice without an id. Nonexistent-authority citations have shipped
+  in this pipeline before; catching one at review time is worth more than the sentence it cost.
+- **AT-16's "what this does not prove, stated plainly" paragraph.** Naming the residual gap and
+  locating the behavioural half elsewhere is strictly more useful than an oracle that overstates.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All four v1 High findings are resolved, verified against `origin/main` rather than against the
+document's prose. No High finding is open. The two Medium findings — the missing set-equality oracle
+on `ANCESTRY_INDEPENDENT_CODES` (F-01) and AT-16's two prose arms (F-02) — are worth folding in
+before Phase P, since both are one-paragraph edits and F-01 in particular closes the last
+unfalsifiable seam in an otherwise well-oracled lazy-probe design. The three Low findings are
+editorial.
+
+This document is now unusually well-grounded for a TSPEC: every claim about shipped behaviour is
+verifiable by name, the round's own assertion changes are enumerated by enclosing test with
+replacements, and two decisions and one risk were added rather than silently absorbed.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 3}
