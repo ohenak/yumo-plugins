@@ -113,6 +113,50 @@ HEAD, and only those two are now false. That is the finding below.
 
 ## Oracles
 
+**No oracle is inside the cascade, and the three discipline checks I apply to every round still pass
+on the text the delta reaches.** §O.1–§O.9, §G.1's obligation table and §O.8's mutation ledger are all
+downstream of PLAN material the erratum did not touch, and the four non-PLAN upstreams (REQ, FSPEC,
+TSPEC, DECISIONS) are byte-identical to their v11 pins, so the oracle surface has no second input that
+moved.
+
+- **No implementation echo introduced.** The erratum adds no expected value anywhere. The one place it
+  discusses test-visible values — LI-08's note on which `renderSection` arguments landed suites pass —
+  names *call sites*, not assertions, and PROPERTIES carries no corresponding expectation. §C.4's own
+  literals (`40` beside "Hand-computed (never derived here)", `66`, the deliberately non-binding
+  `100000`) are re-statements of what `learningsBlock.test.js` already ships at `21edb7c5`, and are
+  outside the delta.
+- **No absence-only oracle created.** The delta's only absence-shaped statement is about *PLAN's*
+  ledger ("owe no ledger row"), not about a test assertion. PROPERTIES' one absence-adjacent oracle in
+  this neighbourhood, PROP-BOUND-03's zero case, keeps its positive conjunct — the
+  `{material: "", bounded: false, bytes: 0, sections: []}` return — and is untouched.
+- **Set-equality, not containment.** §C.1's 35-of-35 and §C.3's 23-of-23 enumerations are closed sets
+  reconciled against PLAN's task table; since no task row's ATs, file, batch or `Deps` moved, both
+  reconciliations still close. §G.3's routed-errata list is itself an enumeration, and the erratum
+  neither adds nor removes an item from it.
+
+**The `LI-AT-11` obligation §C.4 tracks is unchanged in substance and better-grounded in fact.** PLAN's
+LI-08 row still owes the same four fixture shapes — the un-numbered `## Cross-Feature Patterns`, the
+un-glossed `## Rejected Proposals`, the `###`-as-body line and the `## Process Findings` near-miss —
+and still declares them in LI-02's spec surface with LI-08's existing `Deps` edge carrying it. What
+changed is only the *arithmetic of the reuse argument*: two knobs added as callers plus one reused,
+rather than three added. PROPERTIES' §C.4 accounting of what the landed suite carries versus what is
+owed (`:1119`–`:1125`) is expressed in terms of **fixture shapes present or absent at `21edb7c5`**,
+not in terms of builder parameters, so it is invariant under this correction. I re-measured the two
+facts it rests on: at `21edb7c5` `learningsBlock.test.js` carries
+`expect(result.sections).toEqual(["Cross-Feature Patterns"])` and has no `extractInjectableMaterial(text, 0)`
+call. Both still hold.
+
+**§G.3's one open item is unaffected.** The TSPEC AT-15 suite-assignment mismatch (clauses 2–3
+asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite) is a TSPEC-side item;
+TSPEC is byte-identical this round, so the item is neither resolved nor widened by the erratum, and it
+remains correctly routed. No new erratum line is owed from here on its account.
+
+**The DEC-ERR-01 discipline holds.** Neither correction reopens a question PROPERTIES had routed
+upward. Both P-A-7 case-B items PROPERTIES raised at v0.6 stay struck under *Also answered — by PLAN*,
+and their strike text stays accurate: case C still rules the ledger empty, case B is still re-scoped
+to batches 9–12, and batch 14's unqualified gate still replaces the terminus-less span. Re-emitting
+either would be the anti-pattern.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
