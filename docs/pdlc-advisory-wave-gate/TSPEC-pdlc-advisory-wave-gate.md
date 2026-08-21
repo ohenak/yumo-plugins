@@ -299,7 +299,9 @@ unavailable on this path, and §2.5 / §3.2 step 4 name `appendAdvisoryEntry`,
 TE F-14: §3.2 step 6 states the rule AC-4.1's conjunct (iii) needs — a resolution requires the
 `invocations` ledger to have grown by the wave's own gate sequence, not just a `resolved` outcome
 — which turns §5.5's dropped-re-gate fixture into a real red test.
-PM F-03 / TE F-18: §4.5 gives the capture-failure halt's four fields literal, transcribable values.
+PM F-03 / TE F-18: §4.5 gives the capture-failure halt's four fields literal, transcribable values
+(the set became **five** at v1.12 when `snapshotRef` joined it; the count is corrected wherever it
+is asserted, at v1.14 — PM F-02, TE F-01).
 TE F-15, F-16, F-17, F-19, F-20: set-equality oracles for AT-06-1 and AT-07-1, AT-05-1 marked
 upstream-pending with §5.2's case 4, `(h)`'s dispatch-options premise asserted, §5.1's file set
 declared set-equal to §1.3's rather than counted.
@@ -1535,8 +1537,16 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
 
 - **The capture-failure disposition, with the writers named.** `captureTreeSnapshot` failing
   yields, on one run: an advisory record entry, an escalation entry, `attempts === 0`, an unchanged
-  wave budget, a halt on AT-05-3's literal with §4.5's four fields attached at their literal values,
-  and no `_agent` call. Six positive assertions on one fixture, not an absence check — that is the
+  wave budget, a halt on AT-05-3's literal with §4.5's **five** fields attached at their literal
+  values — `rootCause`, `diagnosis`, `repairApplied`, `repairPaths` **and `snapshotRef: null`** —
+  transcribed as a **set-equality over the halt-field keys**, not a containment check, so an
+  implementation that omits `snapshotRef` from the capture-failure `fields` object reddens here
+  rather than passing on the four keys it did emit (TE F-01; the same discipline §5.6 applies to
+  AT-06-1's entry-field set). This is the one positive oracle for the `null` value AT-06-4b's
+  negative arm rests on, and **this fixture is where AT-06-4b itself lives** (TE F-03): the same
+  run additionally asserts that no `notices` element matches either half of §5.6's spec-side
+  predicates (`/overwrit/i`, `refs/pdlc/a6-snapshot-`), so this inventory covers the negative
+  co-location arm as well. And no `_agent` call. Six positive assertions on one fixture, not an absence check — that is the
   whole point of PM F-02 against the earlier design's outcome of "nothing observable happened". Two
   further assertions come from this round: the record entry's Disposition cell reads a bare
   `escalated` with **no** refusal reason (PM F-01, and a companion assertion pins
@@ -1603,7 +1613,11 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
   whose gates both go red therefore asserts the set of `update-ref` targets observed on the `_git`
   double is set-equal to `{refs/pdlc/a6-snapshot-1, refs/pdlc/a6-snapshot-2}` — two distinct
   targets, each written once. A fixed-name regression writes one target twice and fails on both
-  conjuncts.
+  conjuncts. **This run also hosts AT-06-4's co-location arm (TE F-03, TE Q-01):** the second
+  wave's halt report is the one whose `notices` must carry the ref pointer and the overwrite
+  statement in the *same* element, matched by §5.6's spec-side predicates — the assertion is
+  added to this fixture's inventory rather than to a new run, because the wave-scoped ref name
+  is only discriminating where more than one wave number exists.
 
 - **The gate sequence is read from configuration, never hard-coded at length two.** A run configured
   with a `testCommand` and **no** `postWaveCommand` (§2.4's third row) asserts the ledger reads
