@@ -168,6 +168,146 @@ separately as an erratum. The finding filed here is against this document's own 
 quantified rule and an exact count that contradict each other, and a risk register that treats the
 contradiction as unforeseeable.
 
+### F-03 (Medium) — the "~81 lines" chain does not measure the chain the sentence names
+
+Both the Context table and DEC-WVR-02's Context size the extraction target as "~81 lines", and the
+Context table gives the boundary precisely: "the chain from `if (ledger.reason) {` through the final
+`else` that sets `startWave = recorded.lastGreenWave + 1`". Measured between exactly those anchors
+at `origin/main`: `if (ledger.reason) {` opens the chain, `startWave = recorded.lastGreenWave + 1`
+sits in the final `else`, and that `else` closes **48 lines** later. 81 is the span of the enclosing
+`if (!explicitPointer) {` block — which also contains the `readMergeConfigSafely` read, the
+`parseWaveLedger` call, the `ignore` helper and the `headCorroborated` closure, none of which
+DEC-WVR-02 extracts (the decision explicitly leaves the probe and the `emit` calls in `main()`).
+
+This is Medium rather than High because it does not change the decision: 48 interleaved lines with an
+`await` in the middle is still well past the threshold where AT-02 and AT-13 need a pure classifier,
+and O-2's rejection stands. But it is a counted claim that fails re-derivation from the anchor the
+document itself supplies, and it inflates the extraction's apparent size by ~1.7× — the same factor
+as F-01, which suggests a shared measurement habit worth correcting once.
+
+**Required change.** Either state 48 with the `if (ledger.reason) {` … final-`else` boundary as
+written, or state 81 with the boundary that actually produces it (`if (!explicitPointer) {` through
+its close) and note that the extracted subset is the smaller inner chain. The distinction is
+load-bearing for DEC-WVR-02's regression-net claim: what must stay green and unchanged is scoped to
+what the task actually moves.
+
+### F-04 (Medium) — "the largest tracked file in the repo" is falsified by its own command
+
+The Context table's first row claims `orchestrate-dev.js` is the largest tracked file, citing
+`git ls-tree -r -l origin/main` sorted by size, and adds "the runner-up is a document at 314,472
+bytes". Running exactly that command:
+
+```
+738924  pdlc/workflows/dist/pdlc-cli.mjs
+734711  pdlc/workflows/orchestrate-dev.js
+314472  docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md
+```
+
+`orchestrate-dev.js` is second, not first, and the document at 314,472 bytes is third, not the
+runner-up. The true claim — *the largest hand-authored source file in the repo, second only to a
+generated artifact built from it* — is both accurate and more pointed, since `dist/pdlc-cli.mjs` is
+downstream of the very module the feature edits.
+
+The testing consequence is small but real, and it lands in the third bullet of the Risks section:
+"Editing the source module leaves `pdlc/workflows/dist/` stale, which the suite itself reds. Any wave
+whose tasks touch the module must name the dist path in `implementation.postWavePathspecs`." That
+mitigation is correct, and the measurement that would have motivated it — the largest tracked file
+*is* a `dist/` artifact — is the one the table gets wrong. Stating the fact correctly strengthens the
+rebase-churn risk rather than weakening it.
+
+**Required change.** Restate the row as "the largest hand-authored source file in the repo (734,711
+bytes / 16,336 lines), exceeded only by the generated `pdlc/workflows/dist/pdlc-cli.mjs` at 738,924
+bytes", and drop or correct the runner-up clause.
+
+### F-05 (Medium) — DEC-WVR-04's write-side consequence is an absence-only oracle
+
+DEC-WVR-04's premise re-derives cleanly: `parseWaveLedger` maps `""` and `"{}"` to
+`{state: null, reason: null}`, and the sole write site passes `formatWaveLedger(...)`, which always
+emits `version`, `feature`, `planHash`, `lastGreenWave`. The decision to keep the tolerance and add
+no writer is well argued and correctly rejects both O-6 arms.
+
+The prescribed oracle is the problem. The Consequences row reads: "A test, not a code change: the
+`{}` and `""` inputs are asserted to reach the silent no-record outcome, **and the absence of any
+`{}` writer is asserted over the write site**." The first half is a positive, falsifiable assertion,
+and TSPEC's `parseWaveLedger` three-arm set assertion already discharges it well. The second half is
+absence-only: *no write equals `{}`*. A run that writes nothing at all satisfies it. A run whose
+write site never executes satisfies it. A regression that removes the write site entirely satisfies
+it. The assertion cannot fail for the reason it was written.
+
+Per the project's oracle rules, every negative assertion needs a positive conjunct on the same path —
+what *does* happen instead. Here the positive conjunct is already available and costs nothing:
+
+**Required change.** Restate the consequence as a positive assertion over the write site's actual
+output, with the negative as a derived conjunct rather than the whole oracle — e.g. *every ledger
+write observed on a run that commits at least one wave parses to an object whose key set is exactly
+`{version, feature, planHash, lastGreenWave}` (plus `head` when a transport is injected), and no
+observed write is `{}` or `""`*. Set equality over the key set, not containment, so a future writer
+that emits a cleared shape or drops a field reds the assertion. That version fails when the write
+site is removed; the one as written does not.
+
+### F-06 (Medium) — the lazy probe's only non-obvious path has no named oracle
+
+DEC-WVR-08 is the best-argued decision in the document, and its rejection of O-4 re-derives exactly:
+ancestry is the third arm, so feature-mismatch and plan-changed issue zero `merge-base` calls today,
+and the shipped ancestry assertion uses `toContainEqual`, so an eager extra call would indeed have
+been unfalsifiable. The Consequences row correctly upgrades those to equalities: "zero `merge-base`
+calls on the feature-mismatch and plan-hash-mismatch fixtures, exactly one on the ancestry fixture."
+
+Those three fixtures cover the paths where the answer is obvious. The path where it is not is
+**over-count with an unreachable head**, and no oracle is named for it. Work it through the scheme
+DEC-WVR-08 prescribes: classify optimistically with `headOk: true`; a record whose `lastGreenWave`
+exceeds `waveCount` yields `full-run` with code `over-count`; `over-count` is **not** in
+`ANCESTRY_INDEPENDENT_CODES`, so the probe fires and the record re-classifies with `headOk: false`,
+producing `head-unreachable`. That is correct, and it is correct *because* the shipped guard order
+places ancestry above over-count — the very ordering the document's closing section lists as not to
+be re-litigated. But the correctness is entirely non-obvious from the code, and it is the one arm no
+shipped fixture exercises: `it("a ledger recording more waves than the plan has is ignored, not
+honoured")` asserts by containment (`m.includes("was ignored") && m.includes("only 3")`) on a record
+whose head is reachable.
+
+The consequence is a silent-regression channel. A future reader optimising the lazy scheme would
+naturally add `over-count` to `ANCESTRY_INDEPENDENT_CODES` — it is a full-run code like the others,
+and doing so saves a subprocess. That change flips the announced reason for an over-count record with
+an unreachable head from `head-unreachable` to `over-count`. Both codes remain in the seven, so
+AT-02's set-equality assertion stays green; the two call-count equalities named here stay green; and
+the containment-based over-count test stays green. Nothing reds.
+
+DEC-WVR-08's re-evaluation trigger does not catch it either: it names "the ancestry verdict becomes
+needed by a guard **above** the plan-hash guard", i.e. movement upward. The regression above is
+movement downward — ancestry ceasing to be needed by the guard below it.
+
+**Required change.** Add a third call-count equality to DEC-WVR-08's Consequences row: an over-count
+record with an **unreachable** head issues exactly one `merge-base` call and announces
+`head-unreachable`, not `over-count` — a single fixture that pins both the laziness and the guard
+order in one assertion. Extend the re-evaluation trigger to be bidirectional: *the ancestry verdict
+becomes needed by a guard above the plan-hash guard, or ceases to be needed by a guard below it*.
+
+### F-07 (Low, Process) — two re-evaluation triggers are not observable
+
+A re-evaluation trigger earns its place when a test, a monitor or a mechanical check could detect the
+condition. Five of the eight here meet that bar, and three are exemplary: DEC-WVR-07's "the queue's
+delegation payload grows a second key" is detected directly by AT-16's key-set equality assertion;
+DEC-WVR-06's "a reason is added that cannot be rendered from `ReasonContext`" reds the seven-code set
+equality; DEC-WVR-01's "the dialect gains module imports" is checked by the runtime bundle's
+structural constraints. Two are not:
+
+- **DEC-WVR-02:** "the announcements themselves need to become pure values (e.g. a structured run
+  log)" — a design aspiration. No observation of the running system would raise it.
+- **DEC-WVR-05:** "waves ever execute out of plan order, or partially" — closer, but nothing named
+  would detect it. The condition is observable in principle: the serial loop
+  `for (let waveIndex = 0; waveIndex < waves.length; waveIndex++)` with its single `startWave`
+  cut-off is what makes a completed-wave set necessarily a prefix, and an assertion that the executed
+  wave numbers form a contiguous ascending run from `startWave` would red the day that stops holding.
+
+Filed `Process` rather than `Local`: the observable-trigger bar is a property of how this project
+writes DECISIONS documents, not of this feature, and the three good examples above are the pattern
+worth promoting during harvest.
+
+**Suggested change.** Give DEC-WVR-05 the observable form (the contiguous-prefix assertion over
+executed wave numbers). For DEC-WVR-02, either name an observable proxy or mark the trigger
+explicitly as a design aspiration so a future reader does not wait for a signal that will never
+arrive.
+
 ## Questions
 
 ## Positive Observations
