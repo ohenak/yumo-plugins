@@ -9,13 +9,15 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.4 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.5 | 2026-08-20 |
 
 **v1.1 (round 1).** All v1 High/Medium addressed: E-04/AT-01-5 counting oracle; AT-04-3 over writer identity; §3.2 step 3b; BR-11 window; seven ATs added, four restated as oracles.
 
 **v1.2 (round 2).** BR-11, E-25 and AT-02-7 restate the seam-budget window as dispatch→verdict (superseded by v1.4); E-33 and AT-07-2b pin a non-negative validator so `0` survives; AT-07-1's BR-1…BR-16 partition made total. REQ NFR-4's rationale raised as an erratum.
 
 **v1.3 (round 3).** AT-07-1's BR-2 arm carries BR-2's own outcome (`unclassified`, no refusal reason, no attempt consumed), its BR-3 arm pins `attemptBudget` `1`; AT-02-7's companion gains a positive disposition and a one-window *Given*; E-30/AT-06-6 name the report's notice channel as the failed-log-write carrier. REQ errata re-emitted.
+
+**v1.5 (closing pass).** Upstream re-grounded: REQ v1.6 → v1.13 and `pdlc-wave-gate-baseline.md` v1.1 → v1.2 in §1, §2 and A-2; E-33 absorbs AC-2.4's zero-mode conjuncts. REQ lineage-header items raised as errata.
 
 **v1.4 (round 5).** AT-04-1 split to AC-4.1's three conjuncts, a run each (AT-04-1a green re-gate, AT-04-1b suppressed re-gate); "not assertable" rationale deleted (SE F-01, TE F-02). Seam budget per **attempt**, worst case `attemptBudget` × the value, carve-out dropped (SE F-02/F-03, TE F-01). AT-01-5, A-1, A-4 realigned (SE F-04…F-06, TE F-03/F-04). REQ errata landed in v1.7/v1.8.
 
@@ -29,7 +31,7 @@ halting exactly as it halts today, with a diagnosis attached.
 
 **What this adds over the REQ.** The REQ states the outcomes an operator can observe; this FSPEC states the *order* in which they become observable: the decision points inside one invocation, which condition wins when two apply, what each terminal disposition leaves on disk, and the tests that decide whether the behaviour shipped.
 
-**What it deliberately does not state.** No seam signature, no injected-dependency name, no algorithm for computing an owned-path set, no restoration mechanism, no field layout of any shipped record — all the TSPEC's, routed there by REQ (O-1, O-3, O-4, O-5, O-8). Shipped behaviour is cited, never restated: `M-WG-*` ids from `docs/_constraints/pdlc-wave-gate-baseline.md` v1.1, tier behaviour by section id from `docs/_constraints/pdlc-advisory-corpus-baseline.md` (§1–§4).
+**What it deliberately does not state.** No seam signature, no injected-dependency name, no algorithm for computing an owned-path set, no restoration mechanism, no field layout of any shipped record — all the TSPEC's, routed there by REQ (O-1, O-3, O-4, O-5, O-8). Shipped behaviour is cited, never restated: `M-WG-*` ids from `docs/_constraints/pdlc-wave-gate-baseline.md` v1.2, tier behaviour by section id from `docs/_constraints/pdlc-advisory-corpus-baseline.md` (§1–§4).
 
 **Reading order.** §3 the lifecycle end to end; §4 the rules deciding its branches; §5 absent, malformed and contradictory inputs; §6 the acceptance tests. For the boundary alone, read BR-4 through BR-9.
 
@@ -45,7 +47,7 @@ rung.
 
 ## 2. Linked Requirements
 
-Every clause below traces to `REQ-pdlc-advisory-wave-gate` v1.6. The FSPEC unit is the behavioural
+Every clause below traces to `REQ-pdlc-advisory-wave-gate` v1.13. The FSPEC unit is the behavioural
 group, one per REQ requirement id, so a reader holding either document can move between them without
 a concordance.
 
@@ -503,7 +505,7 @@ finds it already routed rather than raising it as a finding.
 ### 7.3 Assumptions this FSPEC makes explicit
 
 - **A-1.** BL-06's three enumerations — the transcribed set-equality surfaces this feature reds, a re-measurement of the BL-03 no-manifest notice E-04's cardinality rests on, and that notice's mutual exclusivity with BL-04's, which E-04 consumes as fact — are assumed complete before implementation planning. AT-07-2 is the observable; skipping the enumeration surfaces later as unexplained red suites.
-- **A-2.** The line references in `pdlc-wave-gate-baseline.md` §1–§2 have drifted since they were measured; the symbol- and grep-anchored recipes in §3 still resolve. This FSPEC cites by `M-WG-*` id at the baseline's stated `Version` (1.1), never by line, so drift below a cited id invalidates the baseline row — that file's change-control problem — not a clause here.
+- **A-2.** The line references in `pdlc-wave-gate-baseline.md` §1–§2 have drifted since they were measured; the symbol- and grep-anchored recipes in §3 still resolve. This FSPEC cites by `M-WG-*` id at the baseline's stated `Version` (1.2), never by line, so drift below a cited id invalidates the baseline row — that file's change-control problem — not a clause here.
 - **A-3.** R-1 is accepted, not solved: a repair inside the wave's own production files can be the
   wrong repair and still turn the suite green. The exclusion of test files (BR-5) removes the worst
   version of it and Phase DOD's Final Codebase Review still runs over the result, but a residual risk
