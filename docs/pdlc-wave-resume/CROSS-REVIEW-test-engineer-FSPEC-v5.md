@@ -62,6 +62,56 @@ matter; see F-02.
 
 ## Behavioral Flow
 
+Item-by-item, against the diff.
+
+**Item 1 — the stale version cell (§1 and header).** Landed. Both the header table's `Version`
+row (now `1.2`, the FSPEC's own version) and §1's derivation sentence (now `v1.7`) were edited.
+The distinction matters and the edit gets it right: the header cell is *this* document's version,
+the §1 sentence is the *upstream's*, and only the latter was the stale citation. §1's body already
+described v1.6-and-later behaviour, so no substantive rewrite was needed — the brief said as much,
+and the diff confirms nothing but the numeral moved. **Resolved.**
+
+**Item 2 — OB-F1's misreading of REQ §10 (§7).** Landed. The old row asserted that the REQ's §10
+"records BL-04 as 'discharged at FSPEC authoring'"; the new row asserts the REQ "now records BL-04
+as open and unmet in §5 and §10 (v1.7)". I verified both cited sections rather than trusting the
+row: REQ §5's BL-04 row and REQ §10 both now say unmet/not-discharged, and they agree with each
+other. The obligation's *substance* is untouched — OB-F1 still says the prerequisite is unmet, still
+names the same owner and the same discharge condition — so the edit corrects the FSPEC's reading of
+upstream without weakening the obligation it carries. That is the right shape for an erratum.
+**Resolved.**
+
+**Item 3 — the unspecified operator-pointer write (§3.4).** Landed, and correctly reasoned. The
+gap was real: `§3.3`/BR-04 state that when an explicit pointer is in force the record is *not
+consulted*, and every prior §3.4 sentence spoke about the record from the automatic path's point of
+view — so the document said nothing about what such a run **writes**, while the shipped write site
+sits outside the `!explicitPointer` guard. The new paragraph closes exactly that:
+
+- it states the rule positively — recording follows *what the run committed*, not *how the start
+  point was chosen*;
+- it names the consequence honestly rather than hiding it — "a later automatic invocation can
+  resume above waves whose completion only the operator asserted";
+- it bounds the consequence with the two things that actually bound it: **BR-10** (the first
+  executed wave's gate verifies the whole tree before this run commits anything, so no unverified
+  work is skipped past) and **BR-07** (the run that made the assertion announced provenance
+  `operator-set`, so the assertion is attributable);
+- it closes the design question it raises — "No record content distinguishes the two provenances"
+  — which pre-empts a TSPEC inventing a provenance field the REQ never asked for. This matches the
+  brief's own framing that announcement-only provenance is sufficient.
+
+I checked the safety claim rather than accepting it: BR-10 does say the first executed wave's gate
+runs over the whole tree before any commit of that run lands, and REQ-WVR-08 grounds it. So the
+"resume above operator-asserted waves" path cannot land a commit over unverified work; the worst
+case is wasted work being skipped, which is the operator's own instruction. The clause is
+consistent with the safety envelope, not an erosion of it. **Resolved** — with one testability
+consequence recorded under *Acceptance Tests* (F-01).
+
+**Item 4 — the erratum note (§7).** The new "Erratum, v1.2 (Phase T)" paragraph records all three
+items and sits above the pre-existing "Round 1 revision note", preserving the append-only,
+newest-first revision history the document already used. The older note's sentence that two
+upstream defects were "routed rather than fixed in place" remains accurate as history — it
+describes what that round did — and the new note above it records that the REQ-side erratum has
+since landed, so a reader cannot come away believing the routing is still outstanding. No finding.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
