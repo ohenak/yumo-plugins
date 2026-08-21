@@ -191,10 +191,60 @@ is not true. See **F-01**.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | PROP-BOUND-03's new `> 0` precondition and §O.9's `maxBytes >= 1` generator domain take the route TSPEC v0.9 §T.5's T-O-6 row explicitly rejects ("one written with `0` excluded loses the edge to AT-30's L3 case with no unit-level oracle. State the zero conjunct, keep `0` in the domain"). The stated rationale is also false at this altitude: TSPEC:578–581 pins `maxBytes <= 0` ⇒ `{material: "", bounded: **false**, bytes: 0, sections: []}`, so a universal property demands no `bounded: true` row and no slot — the slot/reason decision is the caller's. No property in the document asserts that return (`bounded: false` appears nowhere), so §G.1's "no input of §D.5 unclaimed" is untrue. Fix: state the zero conjunct in PROP-BOUND-03 and restore `0` to §O.9's domain; keep PROP-CONFIG-09 as the run-level arm and rewrite §G.1's T-O-6 row as a real partition | Group D PROP-BOUND-03; §O.9; §G.1 T-O-6 row |
+| F-02 | Medium | Local | §O.5's L3-placement table still reads "**Five** claims are placed at L3" and lists `PROP-CONFIG-04/05` without PROP-CONFIG-09, while §O.9's new text cites §O.5 as the authority for placing the zero bound at L3. Add the row (and state its reason honestly: the run-level conjuncts need a finished report; the unit-level return does not) | §O.5; §O.9 |
+| F-03 | Low | Local | PROP-BOUND-05's new oracle says "assert the resulting list equals `BR6_SECTION_NAMES` as an **ordered** list", i.e. the full five-name catalogue, while the property head says "the five priority sections **that the document carries**". True on AT-11's all-five fixture (TSPEC:1254 states it the same way for that AT), over-general as written. Say the expected list is the priority-ordered intersection, hand-transcribed for the fixture at hand | Group D PROP-BOUND-05 |
+| F-04 | Low | Local | §C.4's "Seven of the fourteen have landed (LI-01…LI-04, LI-07, LI-08, LI-09, LI-13 are committed)" enumerates eight tasks against seven rows; LI-04 owns none of the fourteen files (it is the `/.baseline-worktree/` ignore rule, PLAN:144, landed at `.gitignore:13`). Either drop LI-04 from the list or say it owns no row | §C.4 |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | With `0` restored to §O.9's generator domain, does the generated arm draw `maxBytes = 0` as a distinguished case, or does the zero conjunct ride as a guarded branch inside the same property body? TSPEC asks for the conjunct, not for the sampling frequency; saying which keeps LI-08's red episode reproducible. |
+| Q-02 | §C.4 now records that PROP-BOUND-05/07/08's amendments land in already-committed suites. Is the expected-red ledger amended for those (a re-red on landed green code), or are they folded into LI-16/LI-17's green tasks? PLAN P-A-7 says a live table is amended by an edit to the PLAN before the run it governs — this looks like exactly that case. |
 
 ## Positive Observations
 
+- The zero-bound gap closed the way the document predicted it would in v0.1: Group H, beside
+  PROP-CONFIG-04, one case in `learningsConfig.test.js`, no new PLAN task, no new AT id. Declining to
+  guess the answer cost one confirmation round and retracted nothing — the §G.2.1 entry now records the
+  *episode* rather than deleting it, which is the right instinct and the kind of durable signal harvest
+  should keep.
+- PROP-CONFIG-09 is written the way an L3 property should be: four positive conjuncts, the three
+  plausible wrong answers named, and an explicit argument for why the fixture must carry material so the
+  oracle cannot green through a sibling property's disjunct.
+- Absorbing TSPEC §D.3's assembly rule into PROP-BOUND-07 turns AT-11's expected byte count from a
+  judgement two conforming implementations could split into a mechanical sum. That is a real reduction
+  in the chance of a fixture redding correct code, and it was done by transcription rather than
+  paraphrase.
+- The `sections[]` demotion (PROP-BOUND-05/08 reading the rendered block, `sections[]` asserted only as a
+  supporting equality, DC-14 cited by id) removes the last implementation echo in Group D.
+- §C.4's re-measured inventory corrects a claim that had silently gone stale as implementation began,
+  and states the consequence — some amendments now land on committed code — instead of burying it.
+
 ## Recommendation
+
+**Needs revision**
+
+One High finding, and it is narrow: the document's response to my v3 F-01 chose the domain-exclusion
+route at the moment TSPEC v0.9 landed the opposite instruction, so the fix and the upstream decision
+crossed in flight. Nothing else in the 207-line delta is contested — PROP-CONFIG-09, the two-disjunct
+PROP-BOUND-06, the `ZERO-BOUND` fixture, the §D.3 absorption, the `sections[]` demotion and the
+re-measured inventory are all correct and all verified against the repository.
+
+What must change, smallest first:
+
+1. **F-01.** Restore `0` to §O.9's T-O-6 generator domain and replace PROP-BOUND-03's `> 0` precondition
+   with the stated zero conjunct from TSPEC:578–581 — at `maxBytes <= 0`, `material === ""`,
+   `bounded === false`, `bytes === 0`, `sections` empty, for every text. Then rewrite §G.1's T-O-6 row
+   so the pair genuinely partitions §D.5's inputs: the unit property owns the return shape, PROP-CONFIG-09
+   owns the reason id and the unconsumed slot.
+2. **F-02.** Add PROP-CONFIG-09 to §O.5's table and update "Five claims".
+3. **F-03, F-04.** One clause each.
+
+No property retracts, no fixture changes, no PLAN task moves, and the 70-property count is unaffected —
+F-01 is an amendment to two paragraphs and one table row.
 
 ## Verdict
