@@ -591,3 +591,75 @@ Three mutations this suite is specifically designed to kill, because each would 
   per-feature test; routed to Phase P's ownership-manifest gate (FSPEC OB-F6).
 
 ## 6. Open Questions
+
+No question in this TSPEC is open against the operator. What follows is: the decisions this
+document takes (with the alternatives weighed and rejected), the upstream obligations it
+discharges or routes, the errata it raises, and the residual risks.
+
+### 6.1 Decisions taken here
+
+Each is a real alternative that was weighed and rejected; they are the content of
+`DECISIONS-pdlc-wave-resume.md`.
+
+| # | Decision | Rejected alternative, and why |
+|---|---|---|
+| DEC-WVR-01 | **Formalise the shipped interim mechanism in place** — remove the INTERIM commentary, keep every constant, field name, evaluation order and write site. | *Rewrite behind a new abstraction* (a `WaveResumeStore` protocol, a versioned record format). Rejected: REQ BL-03 forbids duplicating alongside, R-4 names divergence as the risk, and a rewrite would re-litigate decisions the REQ closed (retention, deletion-only hatch, FNV-1a) at the cost of every shipped test. |
+| DEC-WVR-02 | **Extract the decision chain into one pure total classifier** (`classifyWaveLedger`), leaving the ancestry probe, the announcements and the report row in `main()`. | (a) *Leave it inline*: rejected — AT-02 and AT-13 then have no honest oracle, since a test would enumerate what the chain emits rather than what the spec says. (b) *Extract the whole decision including the probe*, injecting a new ancestry seam: rejected — it adds a `main()` parameter and a runtime capability for a probe that already fails open, contradicting REQ C-3's "no new capabilities" and §3.4's structural discharge of it. |
+| DEC-WVR-03 | **Announce provenance as an explicit `operator-set` / `automatic` token**, appended to the existing banner text. | *Ratify source-naming* (`implementation.startWave` vs `wave ledger …`) as conveying provenance. Rejected: it makes every provenance oracle an inference from a source string, so a banner that named the wrong source would still pass; and FSPEC §2 makes provenance announced *content*. The additive suffix keeps every shipped string assertion green. |
+| DEC-WVR-04 | **Keep the `{}` read tolerance; write nothing.** (FSPEC OB-F3 discharged.) | (a) *Wire a writer* that clears the record after Phase I: rejected — REQ-WVR-05 decided **retention with invalidation**, and a clearing write is precisely the self-clearing position that decision rejected. (b) *Drop the tolerance* and let `{}` fall to IG-1: rejected — it converts a silent fresh-run case into an announced anomaly, contradicting FSPEC BR-02, and an operator who empties the file by hand would get a scary notice for using the sanctioned hatch's near-miss. |
+| DEC-WVR-05 | **Ratify the plan-absolute high-water integer** as the record's only progress field. | *A set of completed waves*, or *per-task state*. Rejected in §4.4: a set can only be a prefix given serial topological execution, and modelling it invites a reader that honours a non-prefix set and skips a wave whose predecessor never ran. |
+| DEC-WVR-06 | **Reason codes, not rendered sentences, are the closed catalogue.** | *Set equality over rendered strings*: rejected — four of the seven interpolate run-specific values, so the assertion would be over fixture data rather than over the catalogue. |
+
+### 6.2 Upstream obligations
+
+| # | Obligation | Disposition |
+|---|---|---|
+| OB-F1 | REQ BL-04 unmet: this tree is 1,637 commits behind and carries neither the mechanism nor the wave-gate baseline. | **Not dischargeable by this document.** Owned by the orchestrator/operator as branch management. Every claim here is verified against `origin/main` by name so it re-verifies after the rebase. AT-14 is RED until it lands. Re-raised as an erratum below, because the REQ's §10 and the FSPEC's OB-F1 characterise it inconsistently. |
+| OB-F2 | Ratify or revise the shipped contract, never duplicate. | **Discharged** — §1.2, §2, §3, DEC-WVR-01. |
+| OB-F3 | Decide the fate of the `{}` cleared shape. | **Discharged** — DEC-WVR-04: keep the tolerance, add no writer. |
+| OB-F4 / REQ OB-2 | Promote REQ OF-1 and OF-2 into `docs/_constraints/pdlc-wave-gate-baseline.md` as `M-WVR-1..2`. | **Deferred to implementation, blocked on OB-F1** — the file is not in this tree. Recipe, re-derived from the file at `origin/main`: it is at `Version | 1.2 · 2026-08-20` with sections through `## 4` and ids through `M-WG-14`, so promotion appends a **new `## 5`**, ids `M-WVR-1` (the replay cost: 7 no-op dispatches over waves 1–3 of a 16-wave plan) and `M-WVR-2` (a completed task may legitimately produce no commit; stray agent commits observed), each with a Measured-by command, and bumps `Version` to **1.3** — to the next version above whatever is found at promotion time, not to a fixed number. The new section must state the version it was checked against and record that `M-WG-6` was **reviewed and left**, not missed. A PLAN task owns this file; it is not a code change. |
+| OB-F5 | Set equality, not containment, for the three closed catalogues. | **Discharged into the design** — §3.1 makes each catalogue a frozen export; §5.4 AT-02/AT-08/AT-13 make each a transcribed set-equality assertion. PROPERTIES owns the wording. |
+| OB-F6 | Assert over **this feature's PLAN** that the record is in no wave's owned-path set. | **Routed** — §5.3's repo-state file and §5.4 AT-17. The general form stays a Phase P gate question. |
+
+### 6.3 Errata raised upstream
+
+Raised, not fixed here; each is emitted as an `ERRATUM:` line in this dispatch's final message.
+
+1. **FSPEC** states it derives from REQ v1.5; the REQ at HEAD is **v1.6**, whose erratum round
+   rescoped REQ-WVR-08's no-commit claim to the implementation wave loop — a change FSPEC §2 and
+   BR-11 already reflect, so the version cell is stale rather than the content.
+2. **FSPEC** OB-F1 says the REQ's §10 records BL-04 as "discharged at FSPEC authoring". REQ v1.6
+   §10 says the opposite — "**open and unmet** — not discharged at FSPEC authoring".
+3. **FSPEC** has no clause stating what a run **writes** when an explicit operator pointer is in
+   force. The shipped write site is outside the `!explicitPointer` guard, so an operator-pointer
+   run records `lastGreenWave` for waves the operator, not the pipeline, asserted the predecessors
+   of (§2.5). Bounded by BR-10, but unspecified; this TSPEC ratifies the shipped behaviour and
+   needs the clause to trace to.
+4. **REQ** OB-1's worktree conclusion rests on `.worktreeinclude` listing only `.claude/workflows/`,
+   but that file is **not tracked on the default branch** (`git ls-tree -r origin/main` finds no
+   `.worktreeinclude`). The conclusion still holds — an untracked include list is, if anything,
+   less likely to carry the record — but the evidence cited is consumer-local, not a repo fact.
+
+### 6.4 Risks
+
+| # | Risk | Mitigation |
+|---|---|---|
+| RT-1 | **Rebase churn.** Landing on a base 1,637 commits ahead may surface conflicts in `orchestrate-dev.js`, the single largest file in the repo, and the file this feature edits. | The edit surface is small and localised (one comment block, one extracted function, three announcement suffixes, one report detail). The rebase happens *before* implementation (OB-F1), not during it. |
+| RT-2 | **Extraction changes behaviour silently.** A pure-function extraction can reorder guards without any existing test noticing. | The shipped ledger `describe` block is kept green unchanged as the regression net, and §3.2's order table is asserted directly by AT-03's ancestry-and-over-count pair. Extraction lands as its own task, before any announcement change. |
+| RT-3 | **The provenance suffix breaks a string assertion elsewhere.** | Suffixes are appended, never interpolated mid-sentence; shipped assertions use `startsWith` / `toContain` on the existing prefixes. The `⏭` row keeps its current text as a prefix. |
+| RT-4 | **AT-14 cannot pass in this tree**, so a wave could be tempted to weaken it to "no churn observed". | Named here and in §5.4 as a branch-state consequence: the assertion is on the ignore rule itself, and the correct response to a red is the rebase, not a weaker oracle. |
+| RT-5 | **Generated artifacts go stale.** Editing `orchestrate-dev.js` leaves `pdlc/workflows/dist/` stale, which the suite itself reds. | `implementation.postWavePathspecs` must name the dist path so each wave's build outputs are committed; the post-wave command runs before the gate (`M-WG-2`). This is a PLAN obligation, recorded here. |
+| RT-6 | **Advisory budget interaction.** Auto-resume makes runs shorter and more numerous, so `advisory.waveBudgetPerRun` effectively refreshes per re-invocation. | Recorded, not coordinated (FSPEC §7, REQ OB-3). Bounded in practice because clearing a halt still requires a human. Nothing in this TSPEC changes it. |
+
+### 6.5 Assumptions
+
+- **A-1.** The pipeline is invoked serially against one working copy (FSPEC A-1). Nothing here
+  guards concurrent invocations.
+- **A-2.** `computeWaves` is deterministic for a given PLAN, so `computePlanHash` is a stable
+  "same plan?" answer across invocations. This is a property of the shipped parser, asserted by
+  the existing `computePlanHash` unit block; if it ever became order-unstable, IG-3 would fire on
+  every re-invocation and the feature would degrade to a full run — fail-open, as designed.
+- **A-3.** An operator who sets `implementation.startWave` intends it for the invocation in which
+  it is set (FSPEC A-2); staleness there is mitigated by announcement, not by expiry.
+
+Both A-1 and A-3 are vetoable by the operator; no P0 criterion depends on either.
