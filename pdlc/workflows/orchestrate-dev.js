@@ -1960,6 +1960,20 @@ export const ADVISORY_ROOT_CAUSES = Object.freeze([
   "unclassified",
 ]);
 
+// AC-2.2's Meaning column, keyed by class — the catalogue above states WHICH classes exist; this
+// states what each one MEANS, which is what the A6 dispatch prompt has to say for the class an
+// operator later counts (AC-6.4) to have been asked for against a definition. Transcribed from
+// REQ AC-2.2's table; the ORDER stays the catalogue's, never this object's (CR round 1, PM F-04).
+export const ADVISORY_ROOT_CAUSE_MEANINGS = Object.freeze({
+  "plan-ordering-defect":
+    "the failure names a symbol, file or artifact the PLAN itself schedules for a LATER task than the one that consumed it",
+  "wave-internal-defect":
+    "the failure is attributable to work this wave produced, inside paths this wave owns",
+  environmental:
+    "the failure reproduces independently of this wave's diff — a pre-existing red, a missing tool, a transport failure",
+  unclassified: "none of the above is decidable from the gate output",
+});
+
 // TSPEC §3.1 — A6's own prohibited-operation letters (§5.5's prohibition table, PROP-ENV-10).
 export const A6_PROHIBITIONS = Object.freeze(["f", "g", "h", "i"]);
 
@@ -3141,7 +3155,11 @@ export function buildA6SeamOps({
         `Wave ${waveNum} of ${feature}'s gate went red. Diagnose the failure from the captured`,
         `output below, citing the exact region that shows it (at least ${A6_MIN_CITATION_CHARS}`,
         `normalised characters, verbatim from the output).`,
-        `Classify with a trailer line ROOT-CAUSE: one of ${ADVISORY_ROOT_CAUSES.join(", ")}.`,
+        `Classify with a trailer line ROOT-CAUSE: exactly one of the classes below. They are`,
+        `ordered, and the FIRST matching class wins, so a failure matching two still has one class.`,
+        ...ADVISORY_ROOT_CAUSES.map(
+          (cls, i) => `  ${i + 1}. ${cls} — ${ADVISORY_ROOT_CAUSE_MEANINGS[cls]}`
+        ),
         `If the failure is a plan-ordering-defect fixable by a later PLAN task, also state`,
         `PROMOTES: {symbol} and PROMOTES-TASK: {taskId}.`,
         `Captured gate output:`,
@@ -3355,8 +3373,13 @@ export function groupPromotedPaths(waves, waveIndex, repairPaths) {
  *
  * @param {object} args - see TSPEC §3.2 for the full shape
  * @returns {Promise<{resolved: boolean, disposition: object|null,
- *   haltFields: {rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[]},
+ *   haltFields: {rootCause: string, diagnosis: string, repairApplied: boolean,
+ *     repairPaths: string[], snapshotRef: string|null},
  *   postWaveRan: boolean}>}
+ *
+ * `haltFields.snapshotRef` is the wave's captured pre-repair tree ref
+ * (`refs/pdlc/a6-snapshot-{waveNum}`), or `null` on the two returns that have no capture to point
+ * at: the disabled-tier sentinel and E-34's capture failure (BR-14, TSPEC §4.5).
  */
 export async function runWaveGateSeam({
   feature,
@@ -3378,12 +3401,26 @@ export async function runWaveGateSeam({
   _readFile,
   _appendFile,
   _log,
-  _now,
+  // Defaulted, exactly as `runAdvisorySeam` defaults its own `_now` — `main`'s `_now` parameter
+  // carries NO default, so in production this arrives `undefined`. The dispatch path survived
+  // that (it hands `_now` to `runAdvisorySeam`, whose default rebinds it), but the
+  // capture-failure branch below calls `appendAdvisoryEntry` / `appendEscalationEntry` directly,
+  // and both call `_now()` unguarded: E-34's durable trace was being replaced by two
+  // "record write failed" notices on every real run. Found by AT-06-4b's report-surface arm
+  // (CR round 1, TE F-02) — the seam's own unit tests all inject a clock, so no unit-level
+  // oracle could see it.
+  _now = () => Date.now(),
   _sleep,
   _notice,
 }) {
   const notice = typeof _notice === "function" ? _notice : () => {};
-  const noHaltFields = { rootCause: "unclassified", diagnosis: "", repairApplied: false, repairPaths: [] };
+  const noHaltFields = {
+    rootCause: "unclassified",
+    diagnosis: "",
+    repairApplied: false,
+    repairPaths: [],
+    snapshotRef: null,
+  };
 
   // TSPEC §3.2 step 2 — the tier gate, duplicated deliberately: `runAdvisorySeam` also returns
   // early on a disabled config, but AC-1.4's inertness claim covers the SNAPSHOT too, which is
@@ -3473,6 +3510,8 @@ export async function runWaveGateSeam({
           "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied",
         repairApplied: false,
         repairPaths: [],
+        // E-34 — there is no capture to point at (PROP-REST-08, PROP-REC-09's positive half).
+        snapshotRef: null,
       },
       postWaveRan: false,
     };
@@ -3559,6 +3598,19 @@ export async function runWaveGateSeam({
 
   const postWaveRan = invocations.slice(ledgerAtDispatch).includes("post-wave");
 
+  // TSPEC §3.2 step 4 already proved this branch never reaches here without a captured snapshot
+  // (`!snapshot` returned above) — the ref is always present, resolved or not.
+  const snapshotRef = `refs/pdlc/a6-snapshot-${waveNum}`;
+
+  // BR-14 / AC-6.3 (TSPEC §4.5, §5.6) — the co-located overwrite notice, pushed from the seam's
+  // OWN unresolved-return sites: the caller's `throw haltError(…)` for an ordinary escalated wave
+  // fires immediately on this return, with no chance for the wave loop to push anything itself
+  // (that is only true for the LATER post-gate un-skip halt, which is A6-21's site). Never pushed
+  // on a resolution — there is nothing to warn about re-running yet.
+  if (!resolved) {
+    notice(renderSnapshotOverwriteNotice(snapshotRef));
+  }
+
   return {
     resolved,
     disposition: terminal,
@@ -3570,6 +3622,7 @@ export async function runWaveGateSeam({
           : "no verdict was produced",
       repairApplied: resolved,
       repairPaths: resolved ? capturedRepairPaths : [],
+      snapshotRef,
     },
     postWaveRan,
   };
@@ -3796,6 +3849,25 @@ export async function appendEscalationEntry({ disposition, ctx, _appendFile, _no
   const now = _now();
   const entry = renderEscalationEntry(disposition, ctx, { now });
   await _appendFile(ESCALATIONS_PATH, entry);
+}
+
+/**
+ * `renderSnapshotOverwriteNotice(snapshotRef)` — pure, a sibling of `renderAdvisoryEntry` and
+ * `renderEscalationEntry` (TSPEC §4.5, BR-14, PLAN A6-18/A6-21). Renders the ONE string a
+ * halt-report `notices` entry carries: the ref pointer and the overwrite statement, co-located
+ * and adjacent inside the same string — never split across two independent notices, which is
+ * the observable BR-14's oracle needs. Called only from a non-`null` `snapshotRef`; the caller
+ * (the seam's own unresolved-return sites, and the un-skip halt site) owns the `null` check and
+ * pushes nothing when there is no ref to point at (FSPEC E-34).
+ *
+ * @param {string} snapshotRef
+ * @returns {string}
+ */
+export function renderSnapshotOverwriteNotice(snapshotRef) {
+  return (
+    `A6 captured a pre-repair tree snapshot at ${snapshotRef} before this halt. ` +
+    "Re-running this feature overwrites that capture — copy the ref first if you intend to inspect it."
+  );
 }
 
 /**
@@ -15352,6 +15424,10 @@ export default async function main({
         // §4.5's advisory halt fields, carried onto the un-skip halt below ONLY when THIS
         // wave's A6 resolved before the un-skip guard found a violation (AT-05-4).
         let resolvedAdvisoryFields;
+        // TSPEC §4.5's un-skip row / BR-14 (PLAN A6-21) — THIS wave's captured snapshot ref,
+        // carried past the seam's own return so the un-skip halt below can push the co-located
+        // overwrite notice. `undefined` unless the seam supplies one (only when it captured).
+        let resolvedSnapshotRef;
 
         if (scriptGate) {
           if (gateOutcome.failed === "test") {
@@ -15400,6 +15476,7 @@ export default async function main({
             }
             postWaveRan = postWaveRan || a6.postWaveRan;
             resolvedAdvisoryFields = a6.haltFields;
+            resolvedSnapshotRef = (a6.haltFields && a6.haltFields.snapshotRef) || null;
             waveResolvedPromotions = groupPromotedPaths(
               waves,
               waveIndex,
@@ -15429,6 +15506,15 @@ export default async function main({
           emit(`Notice: Wave ${waveNum} un-skip guard: ${notice}`);
         }
         if (unskip.violations.length > 0) {
+          // TSPEC §4.5's un-skip row / BR-14 (PLAN A6-21, AT-06-4's second arm) — the seam has
+          // already returned by the time this halt fires, so this is the one overwrite-notice
+          // push that cannot happen inside `runWaveGateSeam` itself: pushed here, through the
+          // same `advisoryNotice` sink, only when THIS wave's A6 resolved with a captured
+          // snapshot (`resolvedSnapshotRef` non-null). Omitted (no push) when A6 never fired on
+          // this wave, which keeps every shipped un-skip fixture byte-identical.
+          if (resolvedSnapshotRef) {
+            advisoryNotice(renderSnapshotOverwriteNotice(resolvedSnapshotRef));
+          }
           throw haltError(
             formatUnskipViolations(waveNum, unskip.violations),
             resolvedAdvisoryFields ? { advisory: resolvedAdvisoryFields } : undefined

@@ -1,0 +1,210 @@
+# Cross-Review: software-engineer — PROPERTIES (upstream-cascade confirmation)
+
+**Reviewer:** software-engineer
+**Document reviewed:** docs/pdlc-advisory-wave-gate/PROPERTIES-pdlc-advisory-wave-gate.md
+**Date:** 2026-08-20
+**Iteration:** 3 (upstream-cascade confirmation, round v3)
+
+## Overview
+
+**Scope of this round.** An upstream-cascade confirmation. PROPERTIES' own bytes have not moved
+since my v2 approval (`REVIEWED-COMMIT: 32a459ef`). What moved is **REQ**: `0cef7148..30d8bf7b`
+took it v1.15 → v1.16 (`sha256:c62cfc35…` → `sha256:f97f4f66…`, +12/−2 lines), landing DEC-A6-03's
+operator-facing halt-message obligation into **AC-6.3**. DECISIONS also moved since my v2 anchor
+(`sha256:84deee10…` → `sha256:ef59893d…`, `3143290a` reconciling the v1.10 note with v1.11's
+re-grounding); FSPEC (`91ef2557`), TSPEC (`3fa21acf`) and PLAN (`f7de7fc…`) are byte-identical to
+the versions I approved against.
+
+**The one question, answered:** **no** — PROPERTIES no longer holds as approved. It is still a
+faithful compression of everything REQ said at v1.15, and I re-litigate none of it. But AC-6.3 at
+HEAD carries a **second, independently falsifiable conjunct** that did not exist when I approved:
+
+> Where the halt report points the operator at a captured pre-A6 tree state, it also warns, in the
+> same place, that re-running this feature overwrites that capture (DEC-A6-03).
+
+That conjunct has **no property home anywhere in this document**, and — because FSPEC, TSPEC and
+PLAN did not cascade — no home downstream either. §G-4 still closes with "None. Every REQ acceptance
+criterion and NFR yielded at least one falsifiable property (matrix C-1)", which was true at v1.15
+and is now true only at AC granularity, not at conjunct granularity. That is F-01, High.
+
+A second, narrower consequence follows from where the warning could physically go: both candidate
+carriers are already pinned by properties I approved (F-02, Medium). And the document's own grounding
+pins name REQ v1.15 (F-03, Low).
+
+**What I did not do.** I did not re-read the 40 property rows, the oracle catalogue or the fixture
+table from scratch, and I raise nothing about them beyond what the REQ delta touches. My v2 findings
+(F-01/F-02 PLAN task-id drift, F-03 PROP-ENV-13's routed run-level conjuncts) are unchanged by this
+edit and are not re-filed here — they remain open, non-gating, in the v2 record.
+
+## Properties
+
+### The delta, read at REQ HEAD
+
+REQ v1.16 adds to AC-6.3 (REQ §"AC-6.3", the `*(US-02.)*` bullet):
+
+> Where the halt report points the operator at a captured pre-A6 tree state, it also warns, in the
+> same place, that re-running this feature overwrites that capture — so an operator who intends to
+> inspect it preserves it first, rather than losing it to the ordinary next action after a halt
+> (DEC-A6-03).
+
+This is a genuine new observable, not a restatement. DECISIONS DEC-A6-03 §"Known gap in the remedy's
+reach (PM F-05)" is explicit that it was **not** landed before this round: "at REQ v1.15 and FSPEC
+v1.6, `a6-snapshot`, 'copy the ref' and 'overwrit' match nothing in either document, so FSPEC E-28
+and AT-05-5 still require only that the halt name the failed restoration". The REQ erratum closes
+that gap on the REQ side only.
+
+### Coverage of the new conjunct in this document — none
+
+Matrix C-1's row is unchanged: `| AC-6.3 | PROP-REC-05, PROP-REST-08 |`. Neither reaches the
+conjunct:
+
+- **PROP-REC-05** (§F) asserts the halt report carries *the diagnosis and the root-cause class* in
+  its `advisory` fields. That is AC-6.3's first half. It says nothing about the capture, the ref, or
+  the re-run consequence, and its Traces cell (`AC-6.3, AT-06-4, BR-14, TSPEC §4.5`) points only at
+  material that predates the erratum — AT-06-4 at FSPEC HEAD is "halt report following an escalation
+  carries the root-cause class" (TSPEC §5.6 row), which is the same first half.
+- **PROP-REST-08** (§E) is the `captureTreeSnapshot === null` path — E-34's observable, where *no
+  capture exists*. AC-6.3's new conjunct is antecedent-guarded on "where the halt report points the
+  operator at a captured pre-A6 tree state", so on PROP-REST-08's fixture the conjunct is vacuous by
+  construction. It cannot be this obligation's home even in principle.
+
+No other property in §§A–H mentions the ref name, the capture's operator-facing description, or a
+re-run warning; `grep -n "overwrit|re-running|preserve"` over PROPERTIES matches nothing outside the
+changelog. So the obligation ships with zero falsifiable coverage in the document whose stated job is
+to leave every AC with at least one falsifiable property. **F-01, High.**
+
+Downstream cannot absorb it either, and I checked rather than assumed: FSPEC at `91ef2557` and TSPEC
+at `3fa21acf` are the bytes I approved against, and PLAN at `f7de7fc…` mints no task for it — the
+same `overwrit`/`a6-snapshot` grep over FSPEC returns nothing operator-facing, and TSPEC's only
+matches (§2.5 lines 522–541, §6 OQ-2) are the *design record* of the cost, explicitly noted there as
+what wave-scoping "does **not** buy". Nothing between this document and the implementation will mint
+a test for AC-6.3's second half.
+
+### Nothing I approved is contradicted outright — but two carriers are pinned
+
+I looked for the opposite failure mode too: a property I approved that the new AC now falsifies.
+There is none, and that is worth stating so a later reader does not re-derive it. There is, however,
+a real slot problem, which is why F-02 is filed rather than waved through:
+
+- If the warning is carried on the **halt reason string**, it falsifies **PROP-REST-09**, which
+  asserts that on a wave A6 did not resolve "the halt reason string must **equal** the reason the
+  pre-A6 pipeline emits for the same gate failure" (Traces `AC-5.2, AT-05-3, BR-14, E-23, M-WG-3`).
+  Equality, not containment. AC-6.3's antecedent — a halt pointing at a captured tree state — is
+  exactly PROP-REST-09's case, so the two are in direct tension on that carrier.
+- If it is carried in the **`advisory` halt fields**, TSPEC §4.5's object is the four-member
+  `{rootCause, diagnosis, repairApplied, repairPaths}` (TSPEC §"Call shape" row, line 1308), and
+  TSPEC §6 OQ-13 has already decided that `diagnosis` "stays the fixed, transcribable sentence" —
+  "a variable tail would make that oracle untestable". So the warning cannot ride `diagnosis`, and a
+  fifth field is a TSPEC edit, not a PROPERTIES one.
+
+Neither carrier is available without an upstream decision. That is a Medium finding against this
+document only in the sense that it constrains how F-01 can be resolved — the decision itself is
+FSPEC/TSPEC's, and I say so in the finding rather than pretending PROPERTIES can fix it alone.
+
+## Oracles
+
+The document's oracle catalogue (§"Oracles", O-A…O-H) is unchanged by this delta and I re-read only
+the two entries the new AC-6.3 conjunct would land in.
+
+**No oracle exists for the new conjunct.** The halt-report oracles in §Oracles pin three literals —
+the pre-A6 gate-failure literal (`Error: Wave {N} test gate failed — \`{testCommand}\` did not pass.
+Output tail:\n{tail}`, Fixtures §"Pre-A6 baseline"), the capture-failure `diagnosis` sentence
+(`snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied`), and
+§4.5's four advisory fields. An operator-facing warning string is a fourth literal with no owner. Per
+this document's own convention — exact user-facing strings are owned by the lowest layer that pins
+them — the warning's text would be TSPEC's or this document's to pin, and neither does.
+
+**The oracle shape F-01's fix needs, stated so the next round does not have to derive it.** The
+conjunct is antecedent-guarded ("*where* the halt report points the operator at a captured pre-A6
+tree state"), so its oracle needs a fixture on which a capture **succeeded** and the wave then
+halted — the applied-repair/red-re-gate run (PROP-GATE-05's case) or the refusal-after-capture run,
+not PROP-REST-08's `captureTreeSnapshot === null` run, where the antecedent is false and any
+assertion passes vacuously. A property written on the E-34 fixture would be a green test that proves
+nothing, which is the specific mistake worth naming in advance.
+
+**Containment, not equality, is the right form for it** — and that observation is what makes F-02
+resolvable without reopening PROP-REST-09. If the upstream slot decision puts the warning in a new
+advisory field, the oracle is a literal equality on that field and PROP-REST-09's reason-string
+equality survives untouched. If it puts the warning in the reason string, PROP-REST-09's `must
+equal the reason the pre-A6 pipeline emits` has to become a containment assertion on that path, and
+that is a change to a property I approved — it cannot be made silently in an erratum.
+
+One thing the existing catalogue does get right and I am not asking to change: Oracle H's honesty
+about prompt-only territory. The re-run warning is **not** prompt-only — it is a fixed string emitted
+by the workflow script at a known call site, so NFR-1's "every boundary enforced by the script, never
+only by prompt" applies to it and PROP-NFR-03's partition reasoning is the precedent to follow.
+
+## Fixtures
+
+The Fixtures table and its two hazards are untouched by this delta, and I re-read only what the new
+conjunct would need.
+
+**No fixture change is required to cover AC-6.3's second half.** The fixture already exists: the
+applied-repair / red-re-gate run on `advisoryWaveGate.test.js` (PLAN A6-18's former-A6-15 step)
+reaches the capture step, writes `refs/pdlc/a6-snapshot-{waveNum}` on the `_git` double, restores,
+and halts. That is precisely the state in which the new AC's antecedent is true. So F-01's fix is one
+property row plus one assertion on an existing run — not a new harness, not a real-repo fixture, and
+not a cost worth trading the obligation away for. I say that explicitly because the cheapest wrong
+resolution here is to declare the conjunct a §G-1 deliberate non-property on grounds of test cost,
+and the cost argument would not survive contact with this fixture.
+
+**Fixtures hazard 2 stays correct.** It scopes the ignored-path conjunct to presence-only after BR-9;
+the REQ delta touches AC-6.3, not AC-5.1/BR-9, so nothing in the hazard's premise moved. My v2 read
+of it stands.
+
+**The `_git` double is sufficient.** The warning is emitted from the halt path on data the wave
+already holds (`waveNum`, hence the ref name — TSPEC §"`captureTreeSnapshot` writes its ref as
+`refs/pdlc/a6-snapshot-{waveNum}`"). No new transport, clock or ambient read is involved, so
+PROP-NFR-04's "no A6 datum at module scope" discipline is unaffected and the assertion is a plain
+string check on the halt report the existing Integration level already captures.
+
+**Pre-A6 baseline fixture — the one place to be careful.** That fixture pins the halt reason string
+captured from the shipped pipeline (`M-WG-3`) and is shared by PROP-SEAM-03, -04, -05, PROP-REST-09
+and PROP-GATE-05. If the upstream slot decision routes the warning into the reason string, this
+fixture's literal changes shape for the A6 path and five properties read it. That is the blast radius
+F-02 is really about, and it is the reason the slot decision belongs upstream rather than being
+settled by whoever writes the property row.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | REQ v1.16's AC-6.3 gained a second falsifiable conjunct — where the halt report points at a captured pre-A6 tree state it must also warn, in the same place, that re-running the feature overwrites that capture (DEC-A6-03). Matrix C-1's `AC-6.3 → PROP-REC-05, PROP-REST-08` row covers neither half of it: PROP-REC-05 asserts only diagnosis + root-cause class, and PROP-REST-08's fixture is the `captureTreeSnapshot === null` path where the new conjunct's antecedent is false and any assertion passes vacuously. No other property, oracle or fixture in §§A–H mentions the ref, the capture's operator-facing description or the re-run cost. FSPEC (`91ef2557`), TSPEC (`3fa21acf`) and PLAN (`f7de7fc…`) did not cascade, so nothing between this document and the implementation mints a test for it, and §G-4's "None. Every REQ acceptance criterion and NFR yielded at least one falsifiable property" no longer holds at conjunct granularity. Fix: one property row on the existing applied-repair/red-re-gate fixture, once the slot decision in F-02 is made, plus a C-1 row update and a G-4 restatement. | §C-1 matrix row AC-6.3; §F PROP-REC-05; §E PROP-REST-08; §G-4 |
+| F-02 | Medium | delta | local | Both physical carriers for AC-6.3's new warning are already pinned by properties approved in v1/v2, so the conjunct cannot be homed without an upstream slot decision. Halt reason string: PROP-REST-09 asserts it must **equal** the pre-A6 pipeline's literal on exactly this case (a wave A6 did not resolve), and the shared Pre-A6 baseline fixture feeding it is read by five properties. Advisory fields: TSPEC §4.5's object is the four-member `{rootCause, diagnosis, repairApplied, repairPaths}` and TSPEC §6 OQ-13 has already decided `diagnosis` stays a fixed transcribable sentence, so the warning cannot ride it and a fifth field is a TSPEC edit. Fix: FSPEC/TSPEC name the slot (new advisory field is the lower-blast-radius option — it leaves PROP-REST-09's equality intact); this document then pins the literal. Filed Medium, not High, because it constrains F-01's resolution rather than falsifying anything currently asserted. | §E PROP-REST-09; §Fixtures "Pre-A6 baseline"; TSPEC §4.5 / §6 OQ-13 |
+| F-03 | Low | delta | nonlocal | The document's grounding pins are stale against HEAD. Changelog v1.3/v1.4 and §Overview scope cite REQ `sha256:c62cfc35…` (v1.15) and DECISIONS `sha256:84deee10…`; at HEAD REQ is v1.16 (`sha256:f97f4f66…`) and DECISIONS is `sha256:ef59893d…` (`3143290a`, reconciling the v1.10 note with v1.11's re-grounding — no A6 decision reopened, verified). Not gating and no property text depends on it, but the next round's re-grounding claim should name the versions it actually read, per this document's own DEC-ERR-03 practice. | §Changelog v1.3/v1.4; §Overview scope |
+
+FINDING: High | delta | local | §C-1 matrix row AC-6.3; §F PROP-REC-05; §E PROP-REST-08; §G-4 | REQ v1.16 added a second conjunct to AC-6.3 (halt report must warn that re-running overwrites the captured pre-A6 tree state, DEC-A6-03) and this document has no property, oracle or fixture asserting it; PROP-REC-05 covers only diagnosis + root-cause, PROP-REST-08's antecedent is false on its own fixture, FSPEC/TSPEC/PLAN did not cascade, and §G-4's blanket coverage claim is now false at conjunct granularity
+FINDING: Medium | delta | local | §E PROP-REST-09; §Fixtures "Pre-A6 baseline"; TSPEC §4.5 / §6 OQ-13 | both carriers for the new warning are pinned by approved properties — PROP-REST-09 requires halt-reason-string equality with the pre-A6 literal on exactly this case, and TSPEC §4.5's four-field object plus OQ-13's fixed `diagnosis` sentence rule out the advisory-field route without a TSPEC edit — so the slot decision must land upstream before the property row can be written
+FINDING: Low | delta | nonlocal | §Changelog v1.3/v1.4; §Overview scope | grounding pins cite REQ sha256:c62cfc35 (v1.15) and DECISIONS sha256:84deee10; HEAD is REQ v1.16 sha256:f97f4f66 and DECISIONS sha256:ef59893d
+
+## Recommendation
+
+**Needs revision.**
+
+The v2 approval was taken against REQ v1.15 and does not carry forward: AC-6.3 at HEAD states an
+operator-facing obligation that this document leaves entirely unasserted, and no downstream document
+picks it up. One High finding is mandatory Needs revision under the approval rules, and I am not
+softening it — the whole point of the DEC-A6-03 routing, recorded in DECISIONS since round 5, was
+that an operator learns the ref's *name* at halt and nothing about the ordinary next action
+destroying it. Approving here would land the REQ sentence and lose the behaviour.
+
+What must change, in order:
+
+1. **Upstream slot decision (F-02, FSPEC/TSPEC).** Name where the warning is carried. A new advisory
+   halt field is the lower-blast-radius option: it leaves PROP-REST-09's reason-string equality and
+   the shared Pre-A6 baseline fixture untouched. The reason-string route requires PROP-REST-09 to be
+   relaxed to containment on the A6 path, which is a change to an approved property and must be made
+   explicitly, not incidentally.
+2. **One property row here (F-01).** Homed on the existing applied-repair / red-re-gate run
+   (`advisoryWaveGate.test.js`, PLAN A6-18's former-A6-15 step) — a fixture where the capture
+   succeeded, never PROP-REST-08's `null`-capture run. Update matrix C-1's AC-6.3 row and restate
+   §G-4 so its coverage claim is true again.
+3. **Re-ground the pins (F-03).** Cite REQ v1.16 / `f97f4f66` and DECISIONS `ef59893d`.
+
+Everything else I approved in v1 and v2 stands. No settled decision is reopened by this round, and my
+three v2 Low findings remain open and non-gating in the v2 record rather than being re-filed here.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}

@@ -813,16 +813,18 @@ describe("A6-17 / AWG PROP-REC-04 — a failed escalation-log write is surfaced,
     expect(failed.result.disposition.outcome).toBe("escalated");
     expect(failed.log).toBeUndefined();
 
-    // Both notices are present: the operator is told the seam escalated EVEN THOUGH the log could
-    // not be reached, and is told separately that the log write itself failed.
-    // Order is not asserted: no upstream document fixes the two notices' relative order, and
-    // pinning the shipped one would be a property inventing a choice (PLAN P-9). Count and content
-    // ARE asserted — exactly two notices, one of each kind.
-    expect(failed.notices).toHaveLength(2);
+    // All three notices are present: the operator is told the seam escalated EVEN THOUGH the log
+    // could not be reached, is told separately that the log write itself failed, and is told
+    // (BR-14/PROP-REC-11) that a pre-repair snapshot was captured before this halt.
+    // Order is not asserted: no upstream document fixes the notices' relative order, and pinning
+    // the shipped one would be a property inventing a choice (PLAN P-9). Count and content ARE
+    // asserted — exactly three notices, one of each kind.
+    expect(failed.notices).toHaveLength(3);
     expect(failed.notices).toEqual(
       expect.arrayContaining([
         expect.stringContaining("ADVISORY ESCALATION: seam A6"),
         expect.stringContaining("ADVISORY escalation log write failed for seam A6"),
+        expect.stringMatching(/overwrit/i),
       ])
     );
   });
@@ -857,6 +859,8 @@ function countEscalations(log, { feature, rootCause }) {
     .length;
 }
 
+// E-31 (FSPEC §5): `plan-ordering-defect` is countable per feature from the durable escalation log
+// alone, without run logs (AC-6.4). Resolution counts are not durable — REQ O-2 owns that.
 describe("A6-17 / AWG PROP-REC-06 — the class is countable per feature from the log alone", () => {
   test("four runs across two features and two classes yield the right per-feature count", async () => {
     const files = makeFileDouble();

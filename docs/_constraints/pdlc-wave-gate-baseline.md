@@ -4,8 +4,8 @@
 |---|---|
 | Kind | **Project-level shared reference.** Read-only measured input; **not** a pipeline artifact, not reviewed, not queue-eligible. |
 | Cited by | `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (§1, §4, §5, §8) |
-| Version | 1.1 · 2026-08-18 |
-| Verified at | §1–§2 at default-branch commit `c8aa22a4`; §3 at `1efb9a3b` |
+| Version | 1.2 · 2026-08-20 |
+| Verified at | §1–§2 at default-branch commit `c8aa22a4`; §3 at `1efb9a3b`; §4 at `11420461` |
 
 **Why this file exists.** `REQ-pdlc-advisory-wave-gate` states requirements over behaviour that
 already ships. Under the pm-author altitude rule a REQ may not carry file/line-cited internals, and
@@ -63,3 +63,16 @@ rather than positional for that reason.
 | M-WG-10 | **The self-modification guard paths are inside every advisory seam's exclusion set, not only Phase MERGE's.** Exclusion `X-e` evaluates the shipped guard-path defaults — `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` — through the same matcher Phase MERGE uses, and the seam context supplies those defaults unconditionally rather than from merge configuration. A proposal touching a guard path is refused `out-of-envelope`. | `grep -n "ADVISORY_EXCLUSIONS = \|guardPaths: effectiveGuardPaths" pdlc/workflows/orchestrate-dev.js`; `MERGE_GUARD_DEFAULTS` for the path list |
 | M-WG-11 | **An escalation with no refusal reason is already representable.** The escalation-log entry renders its refusal-reason field as `n/a` when the disposition carries none, so a seam that diagnoses without proposing an action needs no ninth refusal reason to be logged. | `grep -n "Refusal reason" pdlc/workflows/orchestrate-dev.js` |
 | M-WG-12 | **The wave commit loop commits only paths owned by tasks in that wave.** It iterates the wave's own tasks and commits each task's manifest-owned paths pathspec-scoped, then — only if the post-wave command ran — the configured post-wave pathspecs. A changed path owned by a task in a *later* wave is committed by nothing in this wave and survives as an uncommitted working-tree change. | `grep -n "for (const task of wave)" pdlc/workflows/orchestrate-dev.js`, and the `commitPaths` calls that follow it |
+
+## 4. The catalogue after `pdlc-advisory-wave-gate` shipped (measured 2026-08-20)
+
+Measured at `origin/main` `11420461`. `pdlc-advisory-wave-gate` merged as PR #66 (`bb4d36fb`), which
+makes M-WG-8's five-member reading a **pre-change** fact: true at `c8aa22a4`, false at this base.
+M-WG-8 is left as measured rather than rewritten, because the criteria that cite it (the REQ's AC-1.1
+and R-5) argue from the pre-change state; M-WG-13 is the post-change reading a reader at today's
+default branch needs. Recipes are symbol-based.
+
+| # | Fact | Measured by |
+|---|---|---|
+| M-WG-13 | **The advisory seam catalogue is now closed at six, and every transcribed set-equality reads six.** `ADVISORY_SEAMS` is a frozen six-member list `A1…A6`, and the transcribing assertions moved with it, which is the test-visible, non-additive change M-WG-8 predicted a sixth member would be. | `grep -n "ADVISORY_SEAMS = " pdlc/workflows/orchestrate-dev.js`; `grep -rn 'toEqual(\["A1"' pdlc/workflows/__tests__/` → `advisoryEnvelope.test.js`, `advisoryHarvest.test.js`, `advisoryRecord.test.js`, each six members |
+| M-WG-14 | **The default envelope is now closed at six members.** `ENVELOPE_DEFAULTS` is a frozen `E-1…E-6`, and its set-equality transcription reads the same six. | `grep -n "ENVELOPE_DEFAULTS = " pdlc/workflows/orchestrate-dev.js`; `grep -rn 'toEqual(\["E-1"' pdlc/workflows/__tests__/` → `advisoryEnvelope.test.js` |

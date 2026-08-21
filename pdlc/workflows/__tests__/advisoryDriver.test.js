@@ -21,7 +21,7 @@
 // P-1…P-4 (PROP-PROH-01…04), which need only the generic driver behind a seam-shaped fake
 // `SeamOps` — TSPEC §17's tier-wide invariants (the terminal catch mapping an unclassified throw
 // to `escalated`, never `resolved` — `escalatesOnUnclassified`), and the **single** gate-exclusivity
-// set-equality driver (PROP-GATE-06): one case asserting the union of this file's registered
+// set-equality driver (PROP-SEAM-02): one case asserting the union of this file's registered
 // per-seam gate-case names equals `ADVISORY_SEAMS` as a set. That case is deliberately written over
 // an **in-file registry of names** (`GATE_EXCLUSIVITY_REGISTRY`, module scope, below) — never over
 // case *results* — and un-skipped at batch 9, before any of the three per-seam blocks exist
@@ -590,6 +590,8 @@ describe("A-22 — driver lifecycle", () => {
     });
   });
 
+  // E-29 (FSPEC §5): the advisory record cannot be written — the driver surfaces the failure
+  // rather than aborting or healing it (BR-13).
   describe("PROP-LIFE-07 / T-08-2 — a step-7 record-write failure", () => {
     it("reverts the action and escalates record-write-failed; the action does not survive", async () => {
       const config = makeAdvisoryConfig({ enabled: true }).config;
@@ -865,7 +867,7 @@ describe("A-22 — driver lifecycle", () => {
     });
   });
 
-  describe("PROP-GATE-06 — the gate-exclusivity registry's key set equals ADVISORY_SEAMS", () => {
+  describe("PROP-SEAM-02 — the gate-exclusivity registry's key set is one of the six-member transcription surfaces", () => {
     it("registered gate-exclusivity case names cover exactly ADVISORY_SEAMS, as a set (a sixth seam fails this until it has a row)", () => {
       const registered = new Set(Object.keys(GATE_EXCLUSIVITY_REGISTRY));
       const declared = new Set(dev.ADVISORY_SEAMS);

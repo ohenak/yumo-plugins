@@ -2,16 +2,168 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.4) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.7, `sha256:d602c440…`, over `REQ-pdlc-advisory-wave-gate.md` v1.16, `sha256:f97f4f66…`) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active), `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md`, `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (active) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.10 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.15 | 2026-08-20 |
 
 ## Changelog
+
+**v1.15 (round 5 — the notice's counterparties named).** One High, one Medium and two Lows, all
+local to §4.5, §5.1, §5.2 and §5.6; no design change, and nothing previously approved is reopened.
+
+- **TE F-01 (High) — the five-key halt-field equality now names the four-key equalities it
+  replaces.** v1.14 required §5.2's capture-failure fixture to transcribe the five halt fields as a
+  set-equality, without noticing that the file §5.1 assigns already pins the *four*-key shape by
+  `toEqual` in four places (Oracle G's own literal, the two `ORACLE_G_HALT_FIELDS` comparisons, the
+  escalation-path literal, and the one `Object.keys(result.haltFields).sort()` key-set assertion),
+  and that the real-seam halt oracle in `advisoryWaveGateMain.test.js` does the same for
+  `haltAdvisory`. `toEqual` fails on an extra `snapshotRef: null` exactly as on a missing one, so
+  those are counterparties, not bystanders. §5.1 gains a row for `advisoryWaveGateMain.test.js` and
+  names each shipped oracle as **widened to five by the same task that widens the production
+  `fields` object**; §5.2 states that the five-key equality **replaces** the four-key one, and names
+  the trap it closes (dropping `snapshotRef` to stay green deletes the only positive oracle for the
+  `null` value and false-greens both AT-06-4 arms). `waveExecution.test.js` needs no widening: its
+  two `haltAdvisory` assertions compare against the fields its A6 fake was handed.
+- **TE F-02 (Medium) — the push site is named.** The notice is pushed **inside `runWaveGateSeam`**,
+  through its own `_notice` parameter, on every unresolved return whose `snapshotRef` is non-`null`
+  — the returns the wave loop turns into a halt. That is where `snapshotRef` is known and where both
+  of §5.6's arms observe it (both fixtures are seam-level runs that already wire `_notice`); the
+  call site passes `_notice: advisoryNotice`, so the push lands in the same `notices` array the
+  halt-path `buildFinalReport` spreads. The one exact-count oracle this moves —
+  `advisoryEscalationLog.test.js`'s `expect(failed.notices).toHaveLength(2)`, a real-repo A6
+  escalation where the capture succeeds — becomes three, and §5.1's row for that file owns it.
+- **PM F-01 / TE F-03 (Low) — `TEST_GATE_MESSAGE` is not a symbol.** §4.5's survival paragraph now
+  names the per-wave `testGateMessage` template literal built at the call site, marks the upper-case
+  name as §2.3 pseudocode shorthand, and states AT-05-3's oracle in the form the suite ships it —
+  containment against that literal, not equality. The behavioural claim is unchanged.
+- **PM F-02 (Low) — the stale "six positive assertions" numeral is dropped**, since this round's
+  key-set equality and AT-06-4b's arm both landed on that same fixture; the claim it was making
+  (positive assertions, not an absence check) is kept.
+- **PM Q-02 / TE Q-02 answered — the un-skip arm is in scope.** §4.5's un-skip table gains an
+  overwrite-notice row: that halt's `snapshotRef` is non-`null`, so the universal quantifier covers
+  it; the seam has already returned by then, so this one push is emitted at the un-skip halt site
+  from the same helper through the same `advisoryNotice` sink. §5.6's AT-06-4 records that its
+  predicates are that arm's oracle too and that PLAN covers it under the same task — no new AT id,
+  so the AT set-equality is unchanged at forty-eight.
+- **TE Q-01 answered — `renderSnapshotOverwriteNotice` is exported**, like both siblings, so a
+  direct purity test in `PROP-ESC-01`'s shape is available to PLAN as well as the seam-level
+  observation.
+
+**v1.14 (round 4 — BR-14's carrier named, halt-field count reconciled).** One High and two Medium
+findings, all local to §4.5, §5.2 and §5.6; nothing previously approved is reopened.
+
+- **PM F-01 (High) — the rendering carrier is now named.** v1.13 stated conjunct (3)'s oracle as
+  "co-location within one rendered report string" while no such string existed at HEAD: `haltError`
+  assigns its `fields` onto the error object, the halt handler forwards them as `haltAdvisory`, and
+  `buildFinalReport` returns a plain object — there is no report-to-text renderer in
+  `pdlc/workflows`, so neither `haltReason` (pinned to equality by AT-05-3) nor `haltAdvisory`
+  (structured data) could carry the pair. §4.5 now names the surface: a **halt-report `notices`
+  entry produced by `renderSnapshotOverwriteNotice(snapshotRef)`**, a pure sibling of
+  `renderEscalationEntry` / `renderAdvisoryEntry` in `orchestrate-dev.js` (no new module, no new
+  file, §1.2), pushed through the tier's existing `advisoryNotice` sink, whose `notices` array the
+  halt-path `buildFinalReport` call already spreads. §4.5 adds two contrast rows (why not the halt
+  message, why not `haltAdvisory`) and one paragraph stating explicitly that **AT-05-3's message
+  equality survives**: the warning rides a sibling field of `haltReason`, never the message. §5.6's
+  AT-06-4 restates conjunct (3) over that surface — one `notices` element must contain both halves —
+  and §4.5's artifact table gains the notice as its own row.
+- **TE F-02 (Medium) — the predicate is pinned spec-side.** AT-06-4 names the matching predicate
+  without inventing a sentence (FSPEC still owns the wording, TE Q-01's answer stands): a
+  case-insensitive `/overwrit/` stem and `refs/pdlc/a6-snapshot-{waveNum}`, both **written in the
+  test**, never `toContain(<constant imported from the module under test>)` — an implementation echo
+  cannot fail on wording and would neuter AT-06-4b.
+- **PM F-02 / TE F-01 (Medium) — "four fields" corrected to five.** §4.5's halt-field set has had
+  five members since v1.12 (`snapshotRef` joined it); §2.5's changelog line, §4.5's bullet and,
+  load-bearingly, §5.2's fixture transcription still said four. §5.2 now transcribes all five at
+  their literal values as a **set-equality over the halt-field keys**, so an implementation that
+  omits `snapshotRef` reddens rather than passing on the four keys it emitted — the positive oracle
+  for `snapshotRef: null` that AT-06-4b's negative arm rests on.
+- **TE F-03 (Low) / TE Q-01 — fixture homes stated.** AT-06-4 lands on §5.2's **two-red-wave** run
+  (the one that already observes `refs/pdlc/a6-snapshot-1` / `-2`, so the wave-scoped name is
+  discriminating) and AT-06-4b on the existing capture-failure fixture; §5.2's mechanical-assertion
+  inventories name both arms rather than leaving a reader to infer them from §5.6.
+
+**v1.13 (erratum round, Phase D — completion pass).** Completes v1.12's absorption of upstream's
+BR-14 / `snapshotRef` decision, which landed in this document's design half and stopped there
+(`POSTMORTEM-D-pdlc-advisory-wave-gate.md`, halt class `ERRATUM-PROTOCOL`, PM F-01 / TE F-01 High).
+The mechanism landed at v1.12 in §2.5 and §4.5; **this round lands the oracles** in §5.1 and §5.6 and
+closes the residue the partial traversal left. **TE Q-01, answered before §5 was touched: conjunct
+(3)'s oracle is presence-of-statement plus co-location, not a verbatim sentence pin** — FSPEC AT-06-4
+pins co-location as the observable and declines to fix the capture's name, so a verbatim sentence
+invented at TSPEC altitude would be a new decision rather than an absorption, and no overwrite
+sentence is transcribed into §5.5's halt literals. §5.6's AT-06-4 row is extended from conjunct (2)
+alone to all three conjuncts — diagnosis, root-cause class, and the overwrite statement — with the
+oracle stated as **co-location within one rendered report string**: the ref pointer and the overwrite
+sentence found in the same `haltError` report text, not merely both present somewhere in the run,
+because two independent `toContain` assertions cannot falsify a split. A companion **AT-06-4b** row is
+added on the existing E-34 capture-failure fixture in `advisoryWaveGate.test.js` (`snapshotRef: null`):
+diagnosis and class present, **no** ref pointer and **no** overwrite sentence — the negative arm that
+makes conjunct (3) falsifiable rather than an always-present string. No new file and no new double;
+§5.1's `advisoryWaveGate.test.js` row names both ATs. Residue closed in the same write: §6 OQ-2
+records that BR-14 has landed and the halt report now carries the operator warning, leaving the
+run-discriminator remedy scoped to the ref-naming half only (PM F-04, TE F-02); §4.5's Snapshot-ref
+row points at §2.5's next-run-overwrite correction, so the implementer reading the field contract
+finds the warning's trigger (TE F-03). Verification integrity: the `Upstream` lineage cell is
+corrected to FSPEC v1.7 over REQ v1.16 at the hashes v1.12's changelog already cites (PM F-02); §1.3's
+"Per-seam report rows" cell is re-measured against the tree — `advisoryRecord.test.js:496` reads
+`expect(rows.map((r) => r.seam)).toEqual(["A1", "A2", "A3", "A4", "A5", "A6"])` at HEAD — and its
+residue flipped to **none**, which empties the residue table and reconciles it with its own "Bare
+row-count assertions" row (PM F-03); OQ-7's pin names AC-6.2's v1.15 entry alongside AC-5.1's v1.14
+(PM F-05). No design decision reopened, no routed erratum re-litigated.
+
+**v1.12 (erratum round, Phase D).** Re-grounded on upstream HEAD first (DEC-ERR-03): REQ
+(`sha256:f97f4f66…`) and FSPEC (`sha256:d602c440…`) have both moved since v1.11's anchors. **Absorbed,
+not re-raised:** the halt-report obligation DEC-A6-03 routed to the PM **has landed upstream** — FSPEC
+BR-14 and Step 10 at HEAD require that where the halt report points the operator at a captured pre-A6
+tree state, *the same report, in the same place*, states that re-running this feature overwrites that
+capture (co-location is the observable; a pointer here and the warning in a runbook does not satisfy
+it), and FSPEC E-34 fixes the other arm: no capture, no warning. REQ carries the same clause. The
+te-review erratum that reported this obligation as unlanded is therefore inverted by HEAD — the
+question is settled, and restating it as routed would be DEC-ERR-01's anti-pattern. §2.5 and §4.5 stop
+describing the warning as an operator-runbook remedy this feature does not carry and state the
+mechanism: a fifth halt field, `snapshotRef`, present exactly when a capture succeeded, and the halt
+report's overwrite sentence rendered from it. Six further current-state repairs, no design change:
+the retired `pdlc/workflows/dist/orchestrate-dev.bundle.js` premise is replaced by the shipped
+artifact set in §1.2 and §3.4's envelope example (`build-runtime.mjs` emits only `pdlc-cli.mjs`;
+`pdlc/engine/scripts/prepack.mjs` vendors `MODULE_NAMES` = `orchestrate-dev.js`, `orchestrate-queue.js`
+verbatim into `@kaneho/pdlc-engine`); §1.1's O-8 row and §3.6's prose are restated on the shipped shape,
+**one `commitPaths` call per promoted task** looping `groupPromotedPaths`'s rows, which is the only
+reading under which the `message` template's single `{taskId}` slot is coherent; §2.5's mechanism block
+drops the stray `--` from `git add -A --`, matching its own prose, O-1, OQ-5 and the shipped
+`["add", "-A"]`; and §1.3 / §5.1's HEAD-state caveats are re-measured — `ADVISORY_SEAMS` and
+`ADVISORY_SEAM_PHASES` both carry six members at HEAD, and `.claude/pdlc.config.example.json` now
+carries `advisory` with `enabled` and `waveBudgetPerRun`, so both stated red-reasons are falsified.
+§1.3's residue column and its hygiene-residue sizing are re-measured on the same pass (the production
+halves have landed; nothing under `.claude/workflows/` is tracked at HEAD), the dated 2026-08-19
+figure kept as the dated measurement it is labelled as and its ownership unchanged.
+No design decision reopened.
+
+**v1.11 (erratum round, Phase F — closing pass).** Re-grounded on upstream HEAD first, and the
+re-grounding is most of what this round is. REQ moved v1.9 → **v1.15** (`sha256:c62cfc35…`) and
+FSPEC moved v1.4 → **v1.6** (`sha256:91ef2557…`) since v1.10; the Upstream row names both. Absorbed
+(DEC-ERR-03), not raised: **OQ-7 is closed upstream, in this TSPEC's favour.** FSPEC BR-9 at v1.6 and
+REQ AC-5.1 at v1.14/v1.15 now state the restoration oracle's **domain** — the path-to-content-hash map
+ranges over tracked and **non-ignored** untracked files, ignored paths excluded on both sides — and its
+**observation point** — immediately after restoration completes and before the record carriers the run
+still owes (AC-6.1's record append, AC-6.2's escalation-log append, AC-5.2's queue-row write, M-WG-7).
+That is the boundary §2.5's mechanism already implements, so no mechanism moves; what changes is that
+this document stops describing it as a TSPEC narrowing pending upstream, which after the decision would
+be DEC-ERR-01's anti-pattern — routing a settled question. Every flag raised against that erratum is
+retired and restated on the decided form: §2.5's `clean -fd` bullet, §3.3's `apply` row, §5.2's
+round-trip case 4, §5.5's ignored-path-only row, §5.6's AT-05-1 row, and §6 OQ-7 / OQ-9 / OQ-11. §5.2
+additionally gains the observation-point assertion the decided form requires, which nothing here
+asserted before. OQ-1's disposition drops its "undocumented upstream" clause for the same reason: FSPEC
+E-33 at HEAD documents the honoured `0` and the non-negative validator, and AT-07-2b tests it.
+**The raised item, absorbed:** Phase F's erratum against this document's lineage header — `Downstream`
+naming a downstream *feature* (`pdlc-engineering-loop`) rather than the artifacts fed — does not hold
+against this document. This `Downstream` row reads `DECISIONS, PLAN, PROPERTIES, IMPL`, artifacts all;
+the REQ row the finding describes already reads `FSPEC, TSPEC, PLAN, PROPERTIES (all in this
+directory)` at REQ v1.15. No edit is owed; it is recorded here so the finding is not re-raised. No
+design decision reopened.
 
 **v1.10 (erratum round, Phase PR).** Two current-state repairs, no design change: the v1.9
 re-grounding paragraph below is corrected (PM F-01) and §1.3 / §5.1 are re-grounded on the branch
@@ -221,7 +373,9 @@ unavailable on this path, and §2.5 / §3.2 step 4 name `appendAdvisoryEntry`,
 TE F-14: §3.2 step 6 states the rule AC-4.1's conjunct (iii) needs — a resolution requires the
 `invocations` ledger to have grown by the wave's own gate sequence, not just a `resolved` outcome
 — which turns §5.5's dropped-re-gate fixture into a real red test.
-PM F-03 / TE F-18: §4.5 gives the capture-failure halt's four fields literal, transcribable values.
+PM F-03 / TE F-18: §4.5 gives the capture-failure halt's four fields literal, transcribable values
+(the set became **five** at v1.12 when `snapshotRef` joined it; the count is corrected wherever it
+is asserted, at v1.14 — PM F-02, TE F-01).
 TE F-15, F-16, F-17, F-19, F-20: set-equality oracles for AT-06-1 and AT-07-1, AT-05-1 marked
 upstream-pending with §5.2's case 4, `(h)`'s dispatch-options premise asserted, §5.1's file set
 declared set-equal to §1.3's rather than counted.
@@ -259,13 +413,17 @@ The FSPEC routed five obligations here (§7.1 there). Each is answered in one na
 | O-3 | Reuse of the tier's exported model rung | §2.2 | `runAdvisorySeam` already resolves the rung through `resolveAdvisoryRung`; A6 adds no rung code at all, so NFR-6 is discharged by not writing anything |
 | O-4 | How the owned-path set is computed and compared | §3.4, §4.3 | Computed from the same `parsePlanOwnership` rows `computeWaves` already annotates onto each task; compared by the tier's shipped `classifyEnvelope` X-d clause over a live `declaredScope` array, the `buildA4SeamOps` idiom |
 | O-5 | Whether the root cause is derived by the seam or supplied by the wave's agents | §3.3 | Supplied by the **A6 agent**, on its own `ROOT-CAUSE:` trailer line, read by a total parser; the wave's own agents are gone by gate time. Q-4's ownership-delivery check is *evidence*, never the verdict |
-| O-8 | How an E-6 repair reaches committed state, and how the later task is told | §2.5, §3.6 | **One further `commitPaths` call** after the per-task loop, inside the same `if (waveGit)` block, carrying the promotion's paths under its own `message` and `what` (§3.6); the owning task's own commit keeps its own pathspec, unwidened. Widening the existing per-task call is the rejected option A of `DECISIONS-pdlc-advisory-wave-gate.md`'s DEC-A6-02. `waveImplementPrompt` gains a promotions clause read by that task's dispatch |
+| O-8 | How an E-6 repair reaches committed state, and how the later task is told | §2.5, §3.6 | **One `commitPaths` call per promoted task** — a loop over `groupPromotedPaths`'s rows, after the per-task loop and inside the same `if (waveGit)` block, each call carrying that promotion's own paths under its own `message` and `what` (§3.6). Per-task, not one aggregate call: the `message` template's single `{taskId}` slot is only coherent under that reading, and it is the shipped shape; the owning task's own commit keeps its own pathspec, unwidened. Widening the existing per-task call is the rejected option A of `DECISIONS-pdlc-advisory-wave-gate.md`'s DEC-A6-02. `waveImplementPrompt` gains a promotions clause read by that task's dispatch |
 
 ### 1.2 Where the code goes
 
 Everything lands in `pdlc/workflows/orchestrate-dev.js`. That is not a preference: the workflow
-runtime loads one bundled artifact per script (`pdlc/workflows/dist/orchestrate-dev.bundle.js`,
-built by `build-runtime.mjs`), and every advisory-tier symbol — `ADVISORY_SEAMS`,
+runtime loads a single generated artifact — `build-runtime.mjs` emits exactly
+`pdlc/workflows/dist/pdlc-cli.mjs`, and the per-script `*.bundle.js` artifacts are retired — while the
+published engine channel is fed by `pdlc/engine/scripts/prepack.mjs`, which vendors its `MODULE_NAMES`
+set (`orchestrate-dev.js`, `orchestrate-queue.js`) **verbatim** from `pdlc/workflows/` into
+`@kaneho/pdlc-engine` at pack time. Both channels therefore carry whatever this file says and nothing
+else has to be kept in sync by hand. Every advisory-tier symbol — `ADVISORY_SEAMS`,
 `classifyEnvelope`, `runAdvisorySeam`, `appendAdvisoryEntry`, `appendEscalationEntry` — already
 lives in that one module. A6 is placed as three adjacent regions:
 
@@ -288,24 +446,28 @@ literal* in a test rather than a computed value.
 **State of these surfaces at HEAD (re-grounded, PM F-02 / TE F-01).** The table below was written
 as future work and is no longer that. Commit `e3b9d5a3` — titled `docs(cross-review): …` but
 carrying test-side edits and a sweep of tracked `.claude/workflows/.pdlc-backups/*.bak` and bundle
-artifacts alongside them — landed almost all of the transcription ahead of Phase I. The production
-side did not move: `orchestrate-dev.js` still declares
-`export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"])` and
-`ADVISORY_SEAM_PHASES` still carries five rows. The two halves therefore disagree at HEAD and the
-workflows suite is **red before Phase I opens** — e.g. `advisoryQueueSeams.test.js`'s row-count
-assertion now reads `toHaveLength(6)` against a five-row report. The `Change` column below reads as
+artifacts alongside them — landed almost all of the transcription ahead of Phase I. **Re-measured at
+this erratum's HEAD (v1.12): the production side has since moved too.** `orchestrate-dev.js` now
+declares `export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5", "A6"])` and
+`ADVISORY_SEAM_PHASES` carries six rows, `A6` among them (`{ id: "I", outcome: "halted" }`). The two
+halves therefore **agree** on the seam-list surface at HEAD, and the earlier claim that the workflows
+suite is red before Phase I opens *because* of this disagreement — `advisoryQueueSeams.test.js`'s
+`toHaveLength(6)` counted against a five-row report — is falsified: that assertion's production
+counterpart is present. The `Change` column below reads as
 "required end state", not "edit still to make"; the `At HEAD` column records which half of each
-surface has already moved:
+surface has already moved. **Re-measured at v1.12 (erratum): the `Residue` column below no longer
+holds as written — the production halves have since landed.** The rows are kept, with their residue
+restated on the measurement, because reviews of v1.2–v1.11 read them as outstanding work:
 
 | Surface | At HEAD | Residue |
 |---|---|---|
-| `ADVISORY_SEAMS` assertion | `advisoryEnvelope.test.js` already asserts the six-member list | production constant still five members |
-| `ENVELOPE_DEFAULTS` assertion | `advisoryEnvelope.test.js` already asserts `{E-1 … E-6}` | production default still four members |
-| `ADVISORY_DEFAULTS` re-declared literal | `advisoryConfig.test.js` already carries `waveBudgetPerRun: 1` | production default key absent |
-| Per-seam report rows | `advisoryRecord.test.js`'s `test.each` list already carries `A6`; its `rows.map((r) => r.seam)` equality **still reads `["A1" … "A5"]`** | the one test-side literal not yet transcribed |
-| Gate-exclusivity registry | `advisoryDriver.test.js` already carries an `A6` block | production registry has no `A6` |
-| Harvest / property seam lists | `advisoryHarvest.test.js`, `consolidationProperties.test.js` and `helpers/advisoryDoubles.js` already carry six members and an A6 double | production seam list still five |
-| Bare row-count assertions | all four sites already read `toHaveLength(6)` | production report still yields five rows |
+| `ADVISORY_SEAMS` assertion | `advisoryEnvelope.test.js` already asserts the six-member list | **none** — the production constant reads `["A1","A2","A3","A4","A5","A6"]` at HEAD, and `ADVISORY_SEAM_PHASES` carries a sixth row `A6: { id: "I", outcome: "halted" }` |
+| `ENVELOPE_DEFAULTS` assertion | `advisoryEnvelope.test.js` already asserts `{E-1 … E-6}` | **none** — the production default reads `["E-1" … "E-6"]` at HEAD |
+| `ADVISORY_DEFAULTS` re-declared literal | `advisoryConfig.test.js` already carries `waveBudgetPerRun: 1` | **none** — the production default carries `waveBudgetPerRun: 1` at HEAD |
+| Per-seam report rows | `advisoryRecord.test.js`'s `test.each` list already carries `A6`, and its `rows.map((r) => r.seam)` equality already reads the six-member literal | **none** — re-measured at v1.13 against the tree rather than inferred: `advisoryRecord.test.js:496` reads `expect(rows.map((r) => r.seam)).toEqual(["A1", "A2", "A3", "A4", "A5", "A6"])`, and `:505` compares the same projection against `[...devModule.ADVISORY_SEAMS]`. The v1.12 cell asserted `["A1" … "A5"]` as *checked and unchanged* while that round's scope covered production constants only (PM F-03) |
+| Gate-exclusivity registry | `advisoryDriver.test.js` already carries an `A6` block | **none** — `ADVISORY_SEAM_PHASES` carries `A6` at HEAD, and the driver exposes A6's behaviour through the optional `seamOps.classifyReply` member rather than an `if (seam === "A6")` branch, which is what the registry asserts |
+| Harvest / property seam lists | `advisoryHarvest.test.js`, `consolidationProperties.test.js` and `helpers/advisoryDoubles.js` already carry six members and an A6 double | **none** — these derive from `ADVISORY_SEAMS`, six at HEAD |
+| Bare row-count assertions | all four sites already read `toHaveLength(6)` | **none** — the queue report's rows are built by `advisorySummaryRows` over `ADVISORY_SEAMS`, one row per member, so it yields six at HEAD |
 | `.enabled` occurrence count | unchanged at three, as required | none |
 
 Whether the remedy is to revert `e3b9d5a3`'s test-side edits and let Phase I make them in PLAN
@@ -327,7 +489,11 @@ this feature's own tracked documents (`TSPEC`, `PLAN`, `DECISIONS`, `PROPERTIES`
 `CROSS-REVIEW-*` files), which enter the sweep because they quote L-2's grep terms while A-1's
 frozen glob list exempts only `LEARNINGS-*` and `POSTMORTEM-*`, and which therefore grow by one per
 *committed* cross-review file. Untracking the `.bak` class closes **14 of the 28**; the other 14 are
-not closable on this branch. TSPEC states the size only so that no reader of this paragraph mistakes
+not closable on this branch. **Re-measured at v1.12: the first two classes have since been
+untracked** — `git ls-files` matches nothing under `.claude/workflows/` at HEAD, so neither the 14
+`.bak` blobs nor the four consumer-runtime artifacts are tracked any longer, and the 2026-08-19
+figure of 28 stands only as the dated measurement it is labelled as. The remaining class is this
+feature's own tracked documents. TSPEC states the size only so that no reader of this paragraph mistakes
 the `.bak` blobs for the whole residue. The partition, the owners, the disposition of each class and
 the figures themselves are owned by **PLAN's Overview HEAD-drift note and A6-00's Edit 1**, which
 this document does not restate further and does not re-litigate.
@@ -451,7 +617,7 @@ The mechanism is a **dangling snapshot commit**, built without touching the work
 
 ```
 capture:   git rev-parse HEAD                        → head
-           git add -A --                              (stages tracked + untracked; ignores .gitignore)
+           git add -A                                 (stages tracked + untracked; ignores .gitignore)
            git write-tree                             → tree
            git commit-tree {tree} -p {head} -m "…"    → snap
            git update-ref refs/pdlc/a6-snapshot-{waveNum} {snap}
@@ -469,20 +635,30 @@ Four decisions inside that:
   (`Do NOT git commit`) means the index equals HEAD on entry, which is what makes the reset exact;
   a wave that staged anything anyway loses only its *staging*, never its content, and §6 OQ-5
   records that as an accepted deviation.
-- **`clean -fd`, not `clean -fdx` — and the boundary is upstream's, not this document's.**
+- **`clean -fd`, not `clean -fdx` — and the boundary is upstream's, now decided.**
   `git add -A` skips `.gitignore`d paths, so capture never records them; a restore that ran
   `-fdx` would delete files the snapshot never held — `node_modules/`, `.claude/workflows/` —
   which is a worse defect than the one it fixes. Capture and restore share one ignore semantics
-  because they must. But FSPEC BR-9 and AT-05-1 state the oracle over "tracked **and untracked**
-  files alike, generated outputs included" with no ignored-path carve-out, and REQ AC-5.1 states
-  it with none either. A wave whose post-wave command writes a generated output into an ignored
-  path is therefore inside the oracle as written and outside this mechanism. **This TSPEC does
-  not narrow AC-5.1 by design choice.** The carve-out is raised as an erratum on FSPEC BR-9 and
-  AT-05-1 (and REQ AC-5.1); this section transcribes whatever boundary comes back approved. If
-  upstream ratifies the carve-out, this bullet stands as written and §5.2 pins it. If upstream
-  instead holds ignored generated outputs inside the oracle, the mechanism grows a *scoped*
-  ignored-path capture — the post-wave pathspecs only, never the whole ignored tree — and this
-  bullet is rewritten to that. Until the erratum resolves, §6 OQ-7 carries the open boundary.
+  because they must. Upstream has since decided the oracle this mechanism is measured against, and
+  it is this one: FSPEC BR-9 at v1.6 states the map's **domain** as tracked files and **non-ignored**
+  untracked files, with ignored paths outside the map *in both directions* — "an ignored path the
+  re-gate mutated is not a restoration defect" — and REQ AC-5.1 at v1.14 excludes ignored paths for
+  the stated reason that they "are operator files A6 never wrote and never restores over". A wave
+  whose post-wave command writes a generated output into an ignored path is therefore outside the
+  oracle as well as outside this mechanism, and the two agree. **This is no longer a TSPEC narrowing
+  of AC-5.1; it is the transcription of the decided boundary**, and §5.2's case 4 pins it as a
+  positive assertion rather than an upstream-pending one. The scoped ignored-path capture the earlier
+  draft held in reserve — post-wave pathspecs only — is not built: the decision that would have
+  required it did not come back.
+- **The observation point is pinned, and the mechanism honours it.** BR-9 and AC-5.1 take the map
+  **immediately after restoration completes and before** the record carriers the run still owes —
+  AC-6.1's advisory-record append, AC-6.2's escalation-log append, and AC-5.2's queue-row write
+  (M-WG-7). Those three writes are files inside the tree, so a map taken after them differs from the
+  pre-A6 map by exactly the bytes BR-13 mandates, and an implementation that observed there would
+  fail a correct restore. The `restore:` sequence above is therefore complete at `git reset --mixed
+  {head}`: the driver's record and escalation writes (§3.2 step 7) follow it and are outside the
+  comparison, never interleaved with it. §5.2's round-trip case asserts the ordering, not only the
+  content.
 - **One snapshot per wave, not per attempt.** BR-9 pins the restore target as "the wave's
   post-dispatch, pre-commit tree" — the state before A6 *first* acted. Every red re-gate on that
   wave restores to the same tree, so attempt 2 starts where attempt 1 started (§3.2 step 6).
@@ -500,12 +676,21 @@ Four decisions inside that:
   The name is derived from the wave number alone, so a *re-run* of a halted feature — the ordinary
   next step after a halt — reaches wave 1, captures, and overwrites `refs/pdlc/a6-snapshot-1`, the
   very ref the operator was told to keep. The loss F-03 named is narrowed, not eliminated: its
-  trigger moves from "a later wave" to "the next run". The cost is bounded and it is the operator's,
+  trigger moves from "a later wave" to "the next run". **Upstream has since decided who tells the
+  operator this, and where (absorbed at v1.12).** FSPEC BR-14 and Step 10 at HEAD require the halt
+  report itself to carry the warning: where the report points at a captured pre-A6 tree state, the
+  *same report, in the same place*, states that re-running this feature overwrites that capture, so an
+  operator who intends to inspect it preserves it first — co-location is the observable, and a pointer
+  here with the warning in a runbook does not satisfy it. FSPEC E-34 fixes the complementary arm: a
+  halt where no capture was taken points at nothing and carries **no** overwrite warning. This
+  document therefore no longer routes the question or leaves the remedy to operator lore; §4.5 names
+  the mechanism — a `snapshotRef` halt field, present exactly when the capture succeeded, from which
+  the report renders both the ref name and the overwrite sentence. The cost is bounded and it is the operator's,
   not the pipeline's: a retained repair is gate-verified and committed in its own wave commit, so
   what an overwritten ref costs is *inspectability of the pre-repair tree*, never content. In the
   other direction the refs accumulate — one dangling commit per wave per run, in a namespace no
-  other tool prunes. An operator who wants a snapshot to survive the next run should copy the ref
-  before re-running; a run-scoped discriminator in the name is recorded as the remedy if that ever
+  other tool prunes. The remedy the halt report hands the operator is to copy the ref before
+  re-running; a run-scoped discriminator in the name is recorded as the remedy if that ever
   proves too sharp an edge (§6 OQ-2, PM F-02).
 
 **Failure is fail-closed, and failing still writes the record.** Any capture or restore git
@@ -679,7 +864,7 @@ async function runWaveGateSeam({
 }) : Promise<{
   resolved: boolean,
   disposition: AdvisoryDisposition,
-  haltFields: { rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[] },
+  haltFields: { rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[], snapshotRef: string | null },
   postWaveRan: boolean,
 }>
 ```
@@ -860,7 +1045,7 @@ export function buildA6SeamOps({
 | `prompt` | States the four-class vocabulary, the two envelope members, the decidable rules, the `ROOT-CAUSE:`/`PROMOTES:`/`PROMOTES-TASK:` trailer lines, and the citation rule verbatim. Instructional only for everything the script also checks — but see the precedence note below, which is the one rule the prompt carries alone |
 | `conditionHolds` | `async () => true` — an async arrow, not the literal `true`: the driver calls `await seamOps.conditionHolds()` and a literal would throw. `buildA3SeamOps` is the shipped precedent. It returns true unconditionally because the condition *is* the red gate, observed by the script one step earlier; re-running the suite to re-confirm it would double the wave's slowest cost. A `false` here would yield `no-action`, which is not a disposition this seam has |
 | `classifyReply` | §3.7's optional hook: BR-3's citation rule (⇒ malformed, one attempt) then BR-2's vocabulary read (⇒ escalate, no attempt) |
-| `apply` | Dispatches the repair edit, then returns `{ok:true}` **iff `producedPaths()` is non-empty** — that is the observation, stated so it cannot be read as an unspecified notion of "tree changed". `apply` calls the same `producedPaths` the driver calls at step 5, so the two can never disagree. An empty set is `{ok:false}` ⇒ `post-action-verification-failed`. **A repair writing only `.gitignore`d paths therefore reads as no change and is refused here**, which is the right disposition while §2.5's boundary sits with upstream: the seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone. If the erratum widens BR-9's oracle to ignored generated outputs, the widened capture arrives with a widened `producedPaths` and this row is unchanged; if it does not, the refusal is the documented outcome rather than a silent survival past step 5's CHECK. §5.5 gives it a test **It also records the step-6 anchor**: its first statement, before it dispatches anything, is `ledgerAnchor.value = invocations.length` — a write *into the caller's carrier*, never an assignment to a variable of its own and never a property set on the returned SeamOps object, since neither would be readable at step 6 (§3.2, TE F-29). The driver runs `apply` once per attempt and strictly before that attempt's `verifyGate` (`orchestrate-dev.js:3521`, `:3544`), so the anchor always names the ledger position from which the gate covering *this* repair must run (§3.2 step 6) |
+| `apply` | Dispatches the repair edit, then returns `{ok:true}` **iff `producedPaths()` is non-empty** — that is the observation, stated so it cannot be read as an unspecified notion of "tree changed". `apply` calls the same `producedPaths` the driver calls at step 5, so the two can never disagree. An empty set is `{ok:false}` ⇒ `post-action-verification-failed`. **A repair writing only `.gitignore`d paths therefore reads as no change and is refused here**, which is the right disposition under §2.5's now-decided boundary: the seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone. BR-9 at FSPEC v1.6 puts ignored paths outside the restoration map in both directions, so the refusal is the documented outcome rather than a silent survival past step 5's CHECK, and the widened-oracle branch this row previously held in reserve is closed — no widened `producedPaths` is coming. §5.5 gives it a test **It also records the step-6 anchor**: its first statement, before it dispatches anything, is `ledgerAnchor.value = invocations.length` — a write *into the caller's carrier*, never an assignment to a variable of its own and never a property set on the returned SeamOps object, since neither would be readable at step 6 (§3.2, TE F-29). The driver runs `apply` once per attempt and strictly before that attempt's `verifyGate` (`orchestrate-dev.js:3521`, `:3544`), so the anchor always names the ledger position from which the gate covering *this* repair must run (§3.2 step 6) |
 | `producedPaths` | `git diff --name-only` **unioned with** `git ls-files --others --exclude-standard`. The untracked half is not optional: a promotion that creates a new file would otherwise be invisible to the step-5 CHECK, and E-6's whole purpose is creating things |
 | `revert` | `restoreTreeSnapshot(snapshot)` (§3.5). Whole tree, every trigger |
 | `verifyGate` | Re-runs `runWaveGateSequence` — post-wave then test, appending to `invocations`. Returns `{passed:true}` on a green sequence; on red, `{passed:false, consumesAttempt:true}` so the driver restores, consumes one attempt and re-enters its loop, exhausting to `budget-exhausted` (BR-7, BR-9, E-20, E-24, AT-02-9). The append is also what the call site's step-6 ledger check reads, and the check is **growth since the last `apply`, not a suffix**: a `verifyGate` that returns `{passed:true}` without appending leaves an empty slice above `ledgerAnchor.value` and cannot produce a resolution — at attempt 1, where the slice would otherwise be the pre-A6 pass's own pair, and equally at attempt 2, where attempt 2's `apply` has moved the anchor past attempt 1's genuine sequence. A red re-gate followed by a green one still resolves normally: the second `apply` re-anchors after the driver's revert, and the tokens appended after it are one clean `[post-wave, test]` (§3.2 step 6, AC-4.1 (iii), §5.5's two mutation fixtures) |
@@ -959,8 +1144,8 @@ rule is written on the trailing slash: `a/b/` collides with `a/b/c.js`, `a/b` do
 docblock says so and the implementation is three `startsWith` lines that do exactly that. So the
 claim that a manifest row naming a directory covers the files beneath it is true **only of a row
 written with a trailing slash**. A manifest row spelled `pdlc/workflows/dist` refuses a produced
-file `pdlc/workflows/dist/orchestrate-dev.bundle.js` as `out-of-envelope`, and refuses it
-silently — the operator sees a refusal reason, not a spelling diagnosis.
+file `pdlc/workflows/dist/pdlc-cli.mjs` — the one artifact `build-runtime.mjs` emits at HEAD — as
+`out-of-envelope`, and refuses it silently — the operator sees a refusal reason, not a spelling diagnosis.
 
 This is inherited behaviour, not new: `computeWaves` packs waves with the same predicate, so the
 slash-less row is already narrower than its author meant everywhere else in Phase I too. A6 does
@@ -1042,9 +1227,11 @@ M-WG-12 is the gap: the wave commit loop commits only paths owned by tasks *in t
 E-6 promotion by construction lands in a later task's paths. Left alone, a resolved wave would
 strand its own repair as an uncommitted working-tree change.
 
-After the per-task loop, inside the same `if (waveGit)` block and past the same green gate, one
-further `commitPaths` call runs with the **full argument set the shipped writer requires** — it
-is not a two-argument call:
+After the per-task loop, inside the same `if (waveGit)` block and past the same green gate, the
+wave loop iterates `groupPromotedPaths`'s rows and runs **one `commitPaths` call per promoted
+task** — not one aggregate call for the wave: each promotion is a distinct later task's paths, and
+the `message` template below carries a single `{taskId}` slot, which is coherent only per task. Each
+call passes the **full argument set the shipped writer requires** — it is not a two-argument call:
 
 | Argument | Value |
 |---|---|
@@ -1072,8 +1259,8 @@ tree either way. §6 OQ-6 records the asymmetry rather than leaving it to be dis
 
 **This interpretation is routed to DECISIONS, not settled in this paragraph (PM F-06).** FSPEC
 BR-8's licence — "that scope may widen under O-8's E-6 resolution" — reads naturally as *widening
-the existing per-task commit's pathspec*, and this design instead *adds a call* with its own
-`what` label, which surfaces in git history as a third commit. The product reviewer has ruled the
+the existing per-task commit's pathspec*, and this design instead *adds a call per promoted task* with its own
+`what` label, each surfacing in git history as its own commit beside the wave's per-task ones. The product reviewer has ruled the
 added call acceptable, and the engineering argument for it stands: widening a per-task commit's
 pathspec would make one task's commit carry another task's paths, breaking the pathspec-scoping
 discipline M-WG-4 rests on, and AT-04-3's oracle is over writer *identities*, which either shape
@@ -1238,13 +1425,14 @@ TSPEC-owned (§5.1), and without it no test in the feature's set would fail on a
 | Advisory record entry | `docs/{feature}/ADVISORY-{feature}.md` | The tier's `renderAdvisoryEntry` table, plus the root-cause class and, on a resolution, the repair's paths | Every terminal disposition, including the no-dispatch escalation |
 | Escalation log entry | `docs/_queue/ESCALATIONS.md` | The tier's `renderEscalationEntry`, root-cause class in the decision sentence | Every `escalated` disposition |
 | Report notice | run report `notices` | The tier's `ADVISORY ESCALATION: seam A6 …`; and, separately, a failed escalation-log write | Every escalation (E-30, AT-06-6) |
-| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}`, at the literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
-| Snapshot ref | `refs/pdlc/a6-snapshot-{waveNum}` | A dangling commit | Every A6 invocation that reached the snapshot step; one ref per wave, never overwritten by a later wave (§2.5, PM F-03), asserted on §5.2's two-red-wave run — a single-wave fixture cannot see it |
+| Snapshot-overwrite notice | halt report `notices` | `renderSnapshotOverwriteNotice(snapshotRef)` — one string carrying the ref pointer and the overwrite statement adjacent (BR-14; the row below fixes the contract) | Every A6-touched halt whose `snapshotRef` is non-`null`; never on `null` (E-34) |
+| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths, snapshotRef}`, at the literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
+| Snapshot ref | `refs/pdlc/a6-snapshot-{waveNum}` | A dangling commit | Every A6 invocation that reached the snapshot step; one ref per wave, never overwritten by a later wave (§2.5, PM F-03), asserted on §5.2's two-red-wave run — a single-wave fixture cannot see it. **The promise is wave-scoped, not run-scoped:** §2.5's next-run-overwrite correction records that the name carries no run discriminator, so re-running a halted feature reaches wave 1 and overwrites `refs/pdlc/a6-snapshot-1`. That is the condition the `snapshotRef` row below makes the halt report warn about, and §2.5 is where its trigger is stated (TE F-03) |
 
 Two consequences worth stating rather than discovering:
 
-- **The capture-failure halt's four fields have literal values, not derived ones (PM F-03, TE
-  F-18).** On that path no agent was dispatched, so there is no diagnosis to carry and no repair
+- **The capture-failure halt's five fields have literal values, not derived ones (PM F-03, TE
+  F-18; count corrected from four at v1.14 — `snapshotRef` joined the set at v1.12).** On that path no agent was dispatched, so there is no diagnosis to carry and no repair
   to name, and the row above would otherwise read as an omission rather than a decision. The
   values are fixed and transcribable, which is what lets §5.5's fixture assert them rather than
   compare against whatever the implementation happens to produce:
@@ -1255,9 +1443,41 @@ Two consequences worth stating rather than discovering:
   | `diagnosis` | the fixed sentence `snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied` — the one place this diagnostic is required to appear verbatim, and the string §5.5 transcribes |
   | `repairApplied` | `false` |
   | `repairPaths` | `[]` — the empty array, not `undefined`: the field is present so the halt report's shape is the same on every A6-touched halt |
+  | `snapshotRef` | `null` — this *is* the capture-failure path, so there is no ref to point at, and `null` is what suppresses the overwrite warning (FSPEC E-34's arm) |
 
   AC-6.3 asks that an A6-touched halt carry a diagnosis; here the honest diagnosis is that none
   could be obtained, and the fixed sentence says exactly that rather than leaving the field null.
+
+- **`snapshotRef` is the carrier for FSPEC BR-14's co-located overwrite warning (absorbed at
+  v1.12).** BR-14 binds the halt *report*: where it points the operator at a captured pre-A6 tree
+  state, the same report, in the same place, must state that re-running this feature overwrites that
+  capture. The field makes that mechanical rather than editorial:
+
+  | Aspect | Contract |
+  |---|---|
+  | Value when the capture succeeded | the ref name `refs/pdlc/a6-snapshot-{waveNum}` for **this** wave — the wave that is halting, not an earlier resolved one (§2.5) |
+  | Value when no capture was taken | `null` — E-34's arm and the capture-failure halt above; the report then points at nothing |
+  | What the report renders, and **on which named surface** (PM F-01, v1.14) | from a non-`null` value, both halves together and adjacent **inside one string**: the ref name, and the sentence that re-running this feature overwrites that capture, so an operator who intends to inspect it copies the ref first. The carrier is a **halt-report `notices` entry rendered by a named pure helper, `renderSnapshotOverwriteNotice(snapshotRef)`** — a sibling of the tier's existing renderers (`export function renderEscalationEntry`, `export function renderAdvisoryEntry`, both in `pdlc/workflows/orchestrate-dev.js`), so no new module and no new file (§1.2). It is **exported, like both siblings** (TE Q-01, v1.15), so PLAN's red test may assert its purity directly in the shape `PROP-ESC-01` already uses for `renderEscalationEntry` — same input, same string, no side effect — in addition to observing it through the seam. It is pushed through the sink the tier already owns — `const advisoryNotice = (line) => notices.push(line)`, declared in the pipeline entry `export default async function main` as "the one notice sink every advisory seam this run dispatches writes through" — and that same `notices` array is spread onto the **halt** report, not only the success one (the halt-path `buildFinalReport({ … notices, … })` call). From `null`, no notice is rendered and none is pushed — no dangling pointer and no warning about a capture that does not exist |
+| **Where the push happens** (TE F-02, v1.15) | **inside `runWaveGateSeam`, through its own `_notice` parameter** — `const notice = typeof _notice === "function" ? _notice : () => {}` at the seam's head — on every unresolved return whose `snapshotRef` is non-`null`, i.e. exactly the returns the wave loop turns into a halt (`if (!a6.resolved) throw haltError(testGateMessage, …)`). Not at `main`'s halt handler: the seam is where `snapshotRef` is known, and both of §5.6's arms observe the seam directly (§5.2's capture-failure fixture and the two-red-wave fixture are seam-level runs that already wire `_notice`, e.g. `_notice: (m) => notices.push(m)` in `advisoryWaveGate.test.js`'s Oracle-G runs), so a `main`-level push would leave them with no array to read. The call site passes `_notice: advisoryNotice`, so the seam's push lands in the same `notices` array the halt-path `buildFinalReport` spreads — the report obligation is met without the seam knowing about the report. **Consequence, named rather than discovered:** `advisoryEscalationLog.test.js`'s `expect(failed.notices).toHaveLength(2)` is an *exact* count on a `runA6Escalation` run over a real temp repo where the capture succeeds, so it becomes three; §5.1's row for that file names the widening |
+  | Why a rendered notice and not the halt message | the halt message is pinned by AT-05-3 to the pre-A6 literal (§2.3, §5.6 — containment against that literal in the shipped oracles, see the paragraph below), so nothing may be appended to it; `notices` is a sibling field of `haltReason` on the same report object, which is the "same report, same place" BR-14 asks for without touching the message |
+  | Why not the structured `haltAdvisory` field | `haltError(message, fields)` `Object.assign`s the fields onto the error, and the halt handler forwards them as `haltAdvisory: err && err.advisory ? err.advisory : undefined`, spread into `buildFinalReport`'s returned **plain object**. There is no report-to-text renderer anywhere in `pdlc/workflows` — the shipped assertions read that field as data (`expect(result.haltAdvisory).toEqual(haltFields)` in `waveExecution.test.js`, `toEqual` over an object literal in `advisoryWaveGateMain.test.js`) — and "adjacent" has no meaning over an object. Co-location is observable only over a rendered string, which is why the notice, not the field, is conjunct (3)'s surface |
+  | Why a field and not a prose string in `diagnosis` | the two are asserted separately: AC-6.3's diagnosis conjunct compares `diagnosis`, while BR-14's oracle asserts co-location and the presence of the overwrite statement, never the ref's name (FSPEC §5.x). Folding the warning into `diagnosis` would couple them and break the literal comparison |
+
+  **AT-05-3's message equality survives this carrier (PM F-01).** `haltError` builds the `Error`
+  from `message` alone and assigns `fields` onto the object; the halt handler then sets
+  `haltReason = err.message`. The warning rides `notices`, never the message, so the halt reason
+  string stays byte-identical to the wave's own gate literal — `testGateMessage`, the per-wave
+  template `Error: Wave ${waveNum} test gate failed — …` built at the call site, *not* a module
+  constant: `TEST_GATE_MESSAGE` appears in §2.3's pseudocode as a stand-in name only, and no such
+  symbol exists in `pdlc/workflows` (PM F-01, TE F-03, v1.15). AT-05-3's oracle is therefore
+  untouched by BR-14's landing, in the form the suite actually ships it — containment against that
+  literal (`expect(result.haltReason).toContain("Wave 1 test gate failed")` in
+  `advisoryWaveGateMain.test.js`, `.toContain("Error: Wave 1 test gate failed")` in
+  `waveExecution.test.js`) — because the two oracles observe two different fields of one report.
+
+  This is the one place the run-scoped promise §2.5 describes becomes operator-visible at the moment
+  it matters. The advisory record entry BR-13 mandates is read after the fact and carries **no**
+  such warning — BR-14 binds the report only.
 
 - **The post-gate un-skip halt is a designed carrier, not an inherited one (TE F-01).** BR-10's
   three restoration triggers are exhaustive, so a wave A6 *resolved* whose un-skip guard then
@@ -1272,9 +1492,10 @@ Two consequences worth stating rather than discovering:
   |---|---|
   | Call shape | the un-skip `haltError` gains a **second argument**, `{ advisory: waveAdvisoryFields }`, exactly as the test-gate halt in §2.3 does |
   | Value when A6 did not fire on this wave | `undefined` — the argument is omitted and the halt is byte-identical to today's, which keeps every shipped un-skip fixture green and keeps the disabled tier's byte-identity claim (§5.2) true |
-  | Value when A6 resolved this wave | `{rootCause, diagnosis, repairApplied: true, repairPaths}` — the same object §4.5's row names, read from the wave's A6 outcome |
+  | Value when A6 resolved this wave | `{rootCause, diagnosis, repairApplied: true, repairPaths, snapshotRef}` — the same object §4.5's row names, read from the wave's A6 outcome |
   | Restoration | none. The un-skip halt is not one of BR-10's triggers, and §5.2 asserts the *absence* of restoration on this path alongside the positive assertion that the repair is still present |
   | Message string | unchanged — `formatUnskipViolations`'s output is not rewritten. The diagnosis travels in `fields`, never in the reason string, which is what lets AT-05-3's literal comparison and AC-6.3 both hold |
+  | Overwrite notice | **owed here too** (PM Q-02, TE Q-02, v1.15). The row above quantifies over *every* A6-touched halt whose `snapshotRef` is non-`null`, and this halt's `snapshotRef` is non-`null` — BR-14's operator story ("you are about to lose the capture you might want to inspect") reads identically on a resolved wave whose un-skip guard then halts. The seam has already returned by then, so this is the one push that cannot happen inside it: it is emitted at the un-skip halt site from the same `renderSnapshotOverwriteNotice(snapshotRef)` helper through the same `advisoryNotice` sink, which is in scope there. No new AT id: AT-06-4's predicates are the oracle on this arm too, and PLAN covers the third arm under AT-06-4's task rather than minting a witness (§5.6) |
 
   The record entry is written at termination, before this halt is known, which is why it states
   "repair applied and remains in the working tree" and names the paths at resolution time rather
@@ -1296,8 +1517,8 @@ Two consequences worth stating rather than discovering:
 This table is PLAN's file-ownership manifest for the test half of the work, and it is a
 **superset of §1.3's test-side edit list**, not a set-equal twin of it: every test-side file §1.3
 names appears here, and this table additionally carries the behavioural homes §1.3 has no reason to
-mention (`advisoryWaveGate.test.js`, `waveExecution.test.js`, `advisoryEscalationLog.test.js`, and
-the two engine-channel files below). Containment in that one direction is the invariant a downstream
+mention (`advisoryWaveGate.test.js`, `advisoryWaveGateMain.test.js`, `waveExecution.test.js`,
+`advisoryEscalationLog.test.js`, and the two engine-channel files below). Containment in that one direction is the invariant a downstream
 author can check; the earlier draft claimed equality in both directions, which was false in both —
 §1.3 named `advisoryQueueSeams.test.js` with no row here (now added), and this table has always
 named behavioural files §1.3 does not (TE F-01, TE F-02, TE F-19). The earlier parenthetical
@@ -1306,15 +1527,16 @@ count belongs to whichever list is authoritative for it, and for the transcripti
 
 | File | Status | Carries |
 |---|---|---|
-| `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | new | A6's parsers, envelope classification, invocation ordering, snapshot/restore, wave budget, the prohibition tests of §5.5, the capture-failure disposition, the post-gate un-skip halt fields |
+| `pdlc/workflows/__tests__/advisoryWaveGate.test.js` | new | A6's parsers, envelope classification, invocation ordering, snapshot/restore, wave budget, the prohibition tests of §5.5, the capture-failure disposition, the post-gate un-skip halt fields, **and both arms of BR-14's co-located overwrite warning — `AT-06-4` (capture succeeded) and `AT-06-4b` (E-34, `snapshotRef: null`), §5.6**. **Four shipped halt-field oracles in this file are set-equalities over the pre-A6 *four*-key shape and are widened to five by the same task that widens the production `fields` object (TE F-01, v1.15)**: the `Object.keys(result.haltFields).sort()` list, which is the only place a key *set* is asserted and therefore the assertion that must move; Oracle G's own `expect(result.haltFields).toEqual({rootCause: "unclassified", …})` — §5.2's capture-failure fixture itself; the two `toEqual(ORACLE_G_HALT_FIELDS)` uses and the `ORACLE_G_HALT_FIELDS` literal they read; and the escalation-path `toEqual({rootCause: "plan-ordering-defect", …})`. `toEqual` fails on an extra `snapshotRef: null` exactly as on a missing one, so these are counterparties to §5.2's five-key equality, not bystanders — widening them is the *same* red-to-green step, never a follow-up |
 | `pdlc/workflows/__tests__/advisoryEnvelope.test.js` | edited | The two transcribed set-equality surfaces (§1.3) |
 | `pdlc/workflows/__tests__/advisoryConfig.test.js` | edited | The re-declared `ADVISORY_DEFAULTS`, plus `waveBudgetPerRun`'s non-negative validator (AT-07-2b) |
 | `pdlc/workflows/__tests__/advisoryDriver.test.js` | edited | PROP-GATE-06's `GATE_EXCLUSIVITY_REGISTRY`-keys-equal-`ADVISORY_SEAMS` assertion, plus `classifyReply`'s three arms (§3.7) |
-| `pdlc/workflows/__tests__/advisoryQueueSeams.test.js` | edited | The queue-report row-count surface (§1.3): `expect(report.advisory.rows).toHaveLength(6)`. Transcription only — PLAN A6-05 owns it. **Already applied at HEAD** and red there, since the production `ADVISORY_SEAMS` it counts against is still five members (§1.3) |
+| `pdlc/workflows/__tests__/advisoryQueueSeams.test.js` | edited | The queue-report row-count surface (§1.3): `expect(report.advisory.rows).toHaveLength(6)`. Transcription only — PLAN A6-05 owns it. **Already applied at HEAD**, and **no longer red there**: re-measured at v1.12, the production `ADVISORY_SEAMS` it counts against is `["A1","A2","A3","A4","A5","A6"]` — six members — so the assertion's counterpart is present (§1.3) |
 | `pdlc/workflows/__tests__/advisoryDisabled.test.js` | edited | The disabled-tier byte-identity cases, extended per §5.2 |
 | `pdlc/workflows/__tests__/waveExecution.test.js` | edited | Wave-loop call-site behaviour: A6 reachable only from the red script-gate arm, the un-skip halt's new optional `fields`, the promotion commit |
+| `pdlc/workflows/__tests__/advisoryWaveGateMain.test.js` | edited | The real-seam halt oracle reached from `mainDev` (the DC-07 production-path test): `expect(result.haltAdvisory).toEqual({rootCause, diagnosis, repairApplied, repairPaths})` is a four-key set-equality over the *same* object §4.5's row widens, so it gains `snapshotRef` in the same task (TE F-01, v1.15). Its `haltReason` containment assertion is deliberately **not** touched — that is AT-05-3's surviving oracle (§4.5). `waveExecution.test.js`'s two `haltAdvisory` assertions need no widening by contrast: they compare against the fields the A6 *fake* was handed, so they follow the shape the fixture supplies |
 | `pdlc/workflows/__tests__/advisoryRecord.test.js` | edited | The per-seam `rows.map((r) => r.seam)` `test.each` list gains A6 (§1.3); **and** AC-6.1/AC-6.2's record assertions for A6 — an entry per invocation, the failed-record-write refusal (AT-06-1, AT-06-2) |
-| `pdlc/workflows/__tests__/advisoryEscalationLog.test.js` | edited | AC-6.2/AC-6.4's log assertions for A6: the escalation entry's decision sentence carries the root-cause class, and a failed log write never undoes the escalation (AT-06-3, AT-06-5, AT-06-6) |
+| `pdlc/workflows/__tests__/advisoryEscalationLog.test.js` | edited | AC-6.2/AC-6.4's log assertions for A6: the escalation entry's decision sentence carries the root-cause class, and a failed log write never undoes the escalation (AT-06-3, AT-06-5, AT-06-6). **Plus one widening owed by §4.5's push site (TE F-02, v1.15):** this file's `expect(failed.notices).toHaveLength(2)` is an *exact* count on a `runA6Escalation` run over a real temp repo, where `captureTreeSnapshot` succeeds before dispatch and `snapshotRef` is therefore non-`null` — so a third notice, the overwrite warning, is due and the count becomes three. Owned by the same task that adds the push; the two shipped `arrayContaining` content assertions are unaffected |
 | `pdlc/workflows/__tests__/advisoryHarvest.test.js` | edited | The harvest seam list, six members (§1.3) |
 | `pdlc/workflows/__tests__/consolidationProperties.test.js` | edited | The property-side seam list, six members (§1.3) |
 | `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` | edited | The `SEAMS` literal and the A6 double |
@@ -1322,8 +1544,11 @@ count belongs to whichever list is authoritative for it, and for the transcripti
 **Status column caveat (PM F-02, TE F-01).** `edited` and `new` describe each file's required end
 state, not work outstanding. Per §1.3's re-grounding, most of the transcription and both `new`
 files already exist at HEAD; `advisoryWaveGate.test.js` (headed for PLAN A6-00) and
-`pdlc/engine/__tests__/advisory-config-example.test.js` are both on disk, the latter red because
-`.claude/pdlc.config.example.json` carries no `advisory` section at HEAD. Whether the early-landed
+`pdlc/engine/__tests__/advisory-config-example.test.js` are both on disk. The reason earlier
+revisions gave for the latter being red — that `.claude/pdlc.config.example.json` carries no
+`advisory` section at HEAD — is falsified at v1.12: the example now carries `advisory` with both
+`enabled` and `waveBudgetPerRun` (the shipped defaults `false` / `1`, §4.4), which is exactly what
+that test asserts over. Whether the early-landed
 edits are reverted or PLAN's batches are re-derived around them is PLAN's call (§1.3).
 
 The `edited` rows on the transcribed surfaces of §1.3 go red on the first constant edit. That is
@@ -1377,21 +1602,49 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
   `mkdtempSync` + `execFileSync("git", …)` with a `_git` adapter over it, the shape
   `advisoryDodSeams.test.js` already ships for the A3 fixtures — and asserts:
   1. the content-hash map taken immediately before A6 acted equals the map after restore, over
-     tracked and untracked files alike, generated outputs included;
+     tracked files and **non-ignored** untracked files, generated outputs included — BR-9's decided
+     domain (FSPEC v1.6), with ignored paths excluded from both sides of the comparison;
   2. a `git status`-level comparison is explicitly **not** the oracle, and a companion case pins
      why: a re-run post-wave command that rewrites an already-dirty path passes a status
      comparison and fails the hash-map one (AT-05-2's own stated reason);
   3. an untracked file the wave added is absent after restore;
   4. a `.gitignore`d file the wave added is still present after restore — the assertion that pins
-     `git clean -fd` over `-fdx`. **This case is written to the boundary that comes back from
-     §2.5's erratum**, not to this document's preference; until the erratum resolves it is written
-     as described here and flagged in the suite as upstream-pending.
+     `git clean -fd` over `-fdx`. **This is now a plain positive assertion, no longer upstream-pending**:
+     FSPEC BR-9 at v1.6 and REQ AC-5.1 at v1.14 both put ignored paths outside the map in both
+     directions, which is the boundary this case asserts;
+  5. the map is taken **immediately after restoration completes and before** the advisory-record
+     append, the escalation-log append and the queue-row write (AC-6.1, AC-6.2, AC-5.2/M-WG-7) — the
+     observation point AC-5.1 pins. The case asserts the *ordering*, not only the content: it observes
+     the map at that point and separately asserts the three carriers are written afterwards, so an
+     implementation that interleaved them fails here rather than passing on a map that happens to
+     match.
 
 - **The capture-failure disposition, with the writers named.** `captureTreeSnapshot` failing
   yields, on one run: an advisory record entry, an escalation entry, `attempts === 0`, an unchanged
-  wave budget, a halt on AT-05-3's literal with §4.5's four fields attached at their literal values,
-  and no `_agent` call. Six positive assertions on one fixture, not an absence check — that is the
-  whole point of PM F-02 against the earlier design's outcome of "nothing observable happened". Two
+  wave budget, a halt on AT-05-3's literal with §4.5's **five** fields attached at their literal
+  values — `rootCause`, `diagnosis`, `repairApplied`, `repairPaths` **and `snapshotRef: null`** —
+  transcribed as a **set-equality over the halt-field keys**, not a containment check, so an
+  implementation that omits `snapshotRef` from the capture-failure `fields` object reddens here
+  rather than passing on the four keys it did emit (TE F-01; the same discipline §5.6 applies to
+  AT-06-1's entry-field set). **The five-key equality *replaces* the shipped four-key one, it does
+  not join it (TE F-01, v1.15).** This fixture is Oracle G, and Oracle G is already pinned at four
+  keys by `toEqual` in the file §5.1 assigns — `expect(result.haltFields).toEqual({rootCause:
+  "unclassified", …})`, plus the `ORACLE_G_HALT_FIELDS` literal two further cases compare against,
+  plus the `Object.keys(result.haltFields).sort()` key-set assertion and the escalation-path
+  `toEqual`. `toEqual` fails on an extra `snapshotRef: null` exactly as on a missing one, so these
+  are the same assertion at two widths: the red test written here *is* the edit to those, landed by
+  the one task that widens the production `fields` object (§5.1 names each). Reading them as
+  additive is the trap, because the cheap way green under a red wave gate would be to leave
+  `snapshotRef` off the capture-failure `fields` — which deletes the only positive oracle for the
+  `null` value and false-greens both AT-06-4 arms. This is the one positive oracle for the `null` value AT-06-4b's
+  negative arm rests on, and **this fixture is where AT-06-4b itself lives** (TE F-03): the same
+  run additionally asserts that no `notices` element matches either half of §5.6's spec-side
+  predicates (`/overwrit/i`, `refs/pdlc/a6-snapshot-`), so this inventory covers the negative
+  co-location arm as well. And no `_agent` call. Every item in this inventory is a positive assertion on one fixture, not an
+  absence check — that is the whole point of PM F-02 against the earlier design's outcome of
+  "nothing observable happened" (the numeral this sentence used to carry went stale the round the
+  key-set equality and AT-06-4b's arm joined the same fixture; the claim, not the count, is what
+  matters — PM F-02, v1.15). Two
   further assertions come from this round: the record entry's Disposition cell reads a bare
   `escalated` with **no** refusal reason (PM F-01, and a companion assertion pins
   `ADVISORY_REFUSAL_REASONS` at its eight members on the same run), and `captureTreeSnapshot` is
@@ -1457,7 +1710,11 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
   whose gates both go red therefore asserts the set of `update-ref` targets observed on the `_git`
   double is set-equal to `{refs/pdlc/a6-snapshot-1, refs/pdlc/a6-snapshot-2}` — two distinct
   targets, each written once. A fixed-name regression writes one target twice and fails on both
-  conjuncts.
+  conjuncts. **This run also hosts AT-06-4's co-location arm (TE F-03, TE Q-01):** the second
+  wave's halt report is the one whose `notices` must carry the ref pointer and the overwrite
+  statement in the *same* element, matched by §5.6's spec-side predicates — the assertion is
+  added to this fixture's inventory rather than to a new run, because the wave-scoped ref name
+  is only discriminating where more than one wave number exists.
 
 - **The gate sequence is read from configuration, never hard-coded at length two.** A run configured
   with a `testCommand` and **no** `postWaveCommand` (§2.4's third row) asserts the ledger reads
@@ -1623,7 +1880,7 @@ not that nothing committed. AC-4.3 (prohibited operations) is the `(f)`…`(i)` 
 | Owned-path row spellings | §3.4's trailing-slash precondition (TE F-06) | manifest row `pdlc/workflows/dist/` covers `…/dist/x.js`; row `pdlc/workflows/dist` refuses the same path as `out-of-envelope`. Both asserted, so the precondition is visible rather than latent |
 | Citation floor boundary | §3.3's `A6_MIN_CITATION_CHARS = 24` (TE F-09) | a 23-normalised-character citation is malformed and consumes one attempt; a 24-character one is accepted. Both sides on one fixture — a floor asserted only from above passes an implementation with no floor |
 | Both-prerequisites-absent notice | §2.6's single-statement shape (TE F-08) | a run with no ownership manifest **and** no `testCommand` emits exactly **one** inapplicability statement naming both causes, not two. The only configuration where the hoist could regress AT-01-5 |
-| Ignored-path-only repair | §3.3's `apply` observation (TE F-07) | a repair writing only a `.gitignore`d path yields `producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an escalation entry, and a tree carried no further. Flagged upstream-pending with §2.5's erratum |
+| Ignored-path-only repair | §3.3's `apply` observation (TE F-07) | a repair writing only a `.gitignore`d path yields `producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an escalation entry, and a tree carried no further. No longer upstream-pending: BR-9 at FSPEC v1.6 puts ignored paths outside the restoration map in both directions, so this is the decided disposition and the row's expected values are final |
 
 
 ### 5.6 Every FSPEC acceptance test has a home
@@ -1634,8 +1891,8 @@ and AT-07-1 among them, the E-6 promotion mechanism and the single largest test 
 spec — had no named test anywhere in the first draft. The table below is total over FSPEC §6: one
 row per AT, its test home, and the oracle in one line. The PLAN discharges this table by **set-equality over AT ids** — every AT in FSPEC §6 has a named home
 task in PLAN, and PLAN claims no AT this table does not — **not** by carrying one red-test row per AT.
-With forty-seven ATs, a row-per-AT rule would demand forty-seven red-test tasks and collide head-on
-with the batch-safety rules that actually govern PLAN's shape: rule 2's single-writer-per-batch
+With forty-eight ATs at FSPEC v1.7 (forty-seven before AT-06-4b), a row-per-AT rule would demand
+forty-eight red-test tasks and collide head-on with the batch-safety rules that actually govern PLAN's shape: rule 2's single-writer-per-batch
 constraint forces ATs sharing a test file into one owning task (A6-15 alone covers nineteen in
 `advisoryWaveGate.test.js`), and rule 1's derived `Batch` column cannot absorb that many tasks
 without shifting every downstream batch. So the obligation this table creates is coverage, not
@@ -1650,7 +1907,7 @@ table is where the set-equality is checked (se-author erratum).
 | AT-01-4 | `advisoryDisabled.test.js` | `advisory.enabled: false`: no dispatch, no rung resolution, no snapshot ref, created-file set equals baseline, report `advisory` key **absent** |
 | AT-01-5 | `advisoryWaveGate.test.js` | one inapplicability statement over the whole notice surface on the both-absent fixture (§5.5's third added test) |
 | AT-01-6 | `advisoryDisabled.test.js` | tier enabled, no wave red: `advisory` key **present**, six rows, A6 counter `0` — paired with AT-01-4 |
-| AT-02-1 | `advisoryEnvelope.test.js` | `ADVISORY_ROOT_CAUSES` set-equal to the four-member literal |
+| AT-02-1 | `advisoryEnvelope.test.js` | `ADVISORY_ROOT_CAUSES` ordered-sequence equality against the four-member literal (as AT-03-7 and AT-03-8 do — a reordering fails, per BR-2's first-match rule); the two-class arm (E-08b) is behavioural and lives in `advisoryWaveGate.test.js` |
 | AT-02-2 | `advisoryWaveGate.test.js` | absent class and out-of-set class both ⇒ `unclassified`, escalate, `attempts` unchanged (§3.3's `parseA6RootCause`) |
 | AT-02-3 | `advisoryWaveGate.test.js` | verdict both malformed and unclassifiable ⇒ malformed-verdict escalation, exactly one attempt consumed (E-09's tie-break, §3.7) |
 | AT-02-4 | `advisoryWaveGate.test.js` | diagnosis citing no gate output ⇒ malformed, one attempt (`citesGateOutput` false) |
@@ -1674,7 +1931,7 @@ table is where the set-equality is checked (se-author erratum).
 | AT-04-3 | `waveExecution.test.js` | committing writer identities equal the pre-A6 baseline, both still past a green gate; scope widening is AT-04-5's, not this one's |
 | AT-04-4 | `advisoryWaveGate.test.js` | budget-exhausting red re-gate: refusal reason recorded, escalation entry written, pre-A6 behaviour taken — the AC-4.5 pairing, asserted positively |
 | AT-04-5 | `waveExecution.test.js` | **§3.6's promotion commit** — the repair is in the branch's committed state with no residual working-tree change, identified by the `message` literal and its pathspec; advisory record names the paths; later task's prompt carries the promotions clause. Companion: later-task paths outside every post-wave pathspec, which fails before the fix and passes after |
-| AT-05-1 | `advisoryWaveGate.test.js` | refusal, budget exhaustion and red re-gate each restore to the post-dispatch, pre-commit tree — the content-hash-map oracle of §5.2, on the real-repo fixture. **Upstream-pending on the same erratum as §5.2's case 4 and §6 OQ-7** (TE F-16): whether the map ranges over `.gitignore`d generated outputs is FSPEC BR-9's to say, so PLAN mints the red-test task with the expected value marked pending rather than this document choosing one |
+| AT-05-1 | `advisoryWaveGate.test.js` | refusal, budget exhaustion and red re-gate each restore to the post-dispatch, pre-commit tree — the content-hash-map oracle of §5.2, on the real-repo fixture. **No longer upstream-pending** (TE F-16 closed): FSPEC BR-9 / AT-05-1 at v1.6 fix the map's domain as tracked plus **non-ignored** untracked files and its observation point as immediately-after-restoration-before-the-record-writes, so PLAN mints the red-test task with those expected values transcribed rather than marked pending |
 | AT-05-2 | `advisoryWaveGate.test.js` | post-wave command writing generated outputs: whole-tree restore asserted, a repair-paths-only restore fails the same oracle |
 | AT-05-3 | `advisoryWaveGate.test.js` | halt reason string equals the pre-A6 literal, computed from the **first** pass's gate result (§2.3) |
 | AT-05-4 | `waveExecution.test.js` | green re-gate then un-skip halt: no restoration, repair still present, and **both** the record entry and the halt report state it and name the paths — the halt-report half is §4.5's new `fields` argument |
@@ -1682,7 +1939,8 @@ table is where the set-equality is checked (se-author erratum).
 | AT-06-1 | `advisoryRecord.test.js` | an entry per invocation naming wave, root-cause class, envelope determination, action, citation — the entry's **field set asserted by set-equality against a transcribed literal**, not containment (TE F-15: a dropped field passes a containment check), with value assertions on top and the class assertion A6's own |
 | AT-06-2 | `advisoryRecord.test.js` | failed record write ⇒ action refused, tier's record-write-failure reason carried |
 | AT-06-3 | `advisoryEscalationLog.test.js` | escalation entry carries the class alongside the tier's fields, and one sentence stating what the operator must decide |
-| AT-06-4 | `advisoryWaveGate.test.js` | halt report following an escalation carries the root-cause class (§4.5's halt fields) |
+| AT-06-4 | `advisoryWaveGate.test.js` | halt report following an escalation that captured a pre-A6 tree state carries **all three** of FSPEC v1.7's conjuncts on one run: (1) the diagnosis, (2) the root-cause class, and (3) the overwrite statement rendered from a non-`null` `snapshotRef` (§4.5's halt fields). Conjunct (3)'s oracle is **co-location within one string on one named surface**: the single halt-report `notices` entry produced by `renderSnapshotOverwriteNotice` (§4.5) must contain *both* the ref pointer and the overwrite statement — not merely both present somewhere in the run, since two independent `toContain` assertions over separate strings cannot falsify a split. Mechanically: pick the one `notices` element matching the ref pattern and assert the overwrite predicate **on that same element**; a run in which the two halves land on two different notices reddens. **Predicate anti-echo rule (TE F-02):** both halves are matched by **spec-side literals written in the test**, never by a constant imported from the module under test — `expect(notice).toMatch(/overwrit/i)` and `expect(notice).toContain("refs/pdlc/a6-snapshot-" + waveNum)` — because `toContain(devModule.SOME_WARNING)` is an implementation echo that cannot fail on wording and would neuter AT-06-4b. Presence of the statement, never a verbatim sentence pin (TE Q-01: FSPEC pins co-location as the observable, so no sentence is transcribed into §5.5) and never the capture's name (O-1); the case-insensitive `/overwrit/` stem is the weakest predicate that still discriminates a warning from its absence. Fixture (TE Q-01, v1.14): §5.2's **two-red-wave** run, the one that already observes `refs/pdlc/a6-snapshot-1` / `-2` on the `_git` double — so the wave-scoped ref name is asserted against a wave number the fixture actually distinguishes. **Quantifier coverage (PM Q-02, TE Q-02, v1.15):** §4.5's condition is universal over A6-touched halts with a non-`null` `snapshotRef`, and that includes the third arm — the post-gate un-skip halt on a wave A6 *resolved*, whose push site §4.5 names separately. These predicates are that arm's oracle too; PLAN covers it under this AT's task rather than minting a witness id, so §5.6's set-equality over the AT set is unchanged |
+| AT-06-4b | `advisoryWaveGate.test.js` | the **negative arm**, on §5.2's existing E-34 capture-failure fixture (`snapshotRef: null`, §4.5's five literal field values, transcribed set-equally per §5.2): the halt report carries the diagnosis and the root-cause class, points at **no** ref, and carries **no** overwrite sentence anywhere in it — i.e. `notices` contains no element matching either half of AT-06-4's spec-side predicates (`/overwrit/i`, `refs/pdlc/a6-snapshot-`), asserted over the whole array so a notice pushed elsewhere cannot hide. This is what makes AT-06-4's conjunct (3) falsifiable rather than a string that is always present — an implementation emitting the warning unconditionally passes AT-06-4 and fails here. No new file and no new double: `advisoryWaveGate.test.js` already owns the capture-failure disposition |
 | AT-06-5 | `advisoryEscalationLog.test.js` | several runs escalating `plan-ordering-defect` are countable from `ESCALATIONS.md` — the durability argument of §4.5 |
 | AT-06-6 | `advisoryEscalationLog.test.js` | failed escalation-log write: disposition still `escalated`, halt unchanged, failure surfaced on the run report's notice channel, never upgraded to `resolved` |
 | AT-07-1 | `advisoryWaveGate.test.js` | **the BR-1…BR-16 partition**, driven by a stub agent double (no live model, no prompt), one case per proposable rule: BR-2 under its own outcome (`unclassified`, no reason, no attempt), BR-3 with `attemptBudget` `1`, BR-5, BR-6, BR-7, BR-8. The oracle is a **set-equality**, and the literal compared is named so it cannot drift (TE F-20): `BR-1…BR-16` minus the proposable set must equal the transcribed non-proposable set. A rule that silently becomes proposable therefore reddens the test, where a per-rule containment check would leave the partition green |
@@ -1706,24 +1964,25 @@ after, which is what makes it a test of the fix rather than a description of it.
 
 | # | Question | Blocking? | Current disposition |
 |---|---|---|---|
-| OQ-1 | Should `waveBudgetPerRun: 0` be rejected at parse time rather than accepted as a configured value that escalates every wave pre-dispatch? | no | Accepted as configured, per E-33; the behaviour is coherent but undocumented upstream. See the FSPEC erratum on E-33. |
-| OQ-2 | Should a run that halts with an applied-and-retained repair leave its snapshot ref in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. Round 4 makes the name wave-scoped (`refs/pdlc/a6-snapshot-{waveNum}`, §2.5) so that this promise survives a multi-wave run: under the earlier single fixed name, a later wave's capture — including a no-dispatch over-budget one — rewrote the ref and destroyed the record of an earlier, resolved wave's pre-repair tree (PM F-03). Round 5 records what wave-scoping still does **not** buy (PM F-02): the name carries no run discriminator, so re-running a halted feature overwrites wave 1's ref, and nothing prunes the refs that survive — one dangling commit per wave per run. Both costs are the operator's and neither touches content, so the disposition stands; a run id or capture timestamp in the ref name is the recorded remedy if the overwrite ever costs an investigation. |
+| OQ-1 | Should `waveBudgetPerRun: 0` be rejected at parse time rather than accepted as a configured value that escalates every wave pre-dispatch? | no | **Closed.** Accepted as configured, and upstream now documents it: FSPEC E-33 at v1.6 states `0` is "honoured as written", the summary row present and reading `resolved: 0` with one `escalated` invocation per red wave classed `unclassified`, and pins the key as a **non-negative** integer distinct from the shipped positive-integer validator; AT-07-2b tests "`0` in yields `0` back". §4.4's `nonNegativeInt` is the transcription. The "undocumented upstream" clause this row used to carry is stale and is withdrawn. |
+| OQ-2 | Should a run that halts with an applied-and-retained repair leave its snapshot ref in place for operator recovery, or delete it? | no | Left in place. It is a dangling ref costing one commit object, and it is the only mechanical record of the pre-repair tree once the wave has halted. Round 4 makes the name wave-scoped (`refs/pdlc/a6-snapshot-{waveNum}`, §2.5) so that this promise survives a multi-wave run: under the earlier single fixed name, a later wave's capture — including a no-dispatch over-budget one — rewrote the ref and destroyed the record of an earlier, resolved wave's pre-repair tree (PM F-03). Round 5 records what wave-scoping still does **not** buy (PM F-02): the name carries no run discriminator, so re-running a halted feature overwrites wave 1's ref, and nothing prunes the refs that survive — one dangling commit per wave per run. Both costs are the operator's and neither touches content, so the disposition stands; a run id or capture timestamp in the ref name is the recorded remedy if the overwrite ever costs an investigation. **Half of that is no longer contingent (absorbed at v1.12, oracled at v1.13):** FSPEC BR-14 / REQ AC-6.3 have landed, so the halt report itself now carries the operator warning wherever it points at a capture — the notification is unconditionally due, rendered from §4.5's `snapshotRef` and asserted by §5.6's AT-06-4 / AT-06-4b. What remains open here is the **ref-naming** half only: whether the name should gain a run discriminator so the overwrite cannot happen at all, rather than being warned about (PM F-04, TE F-02). |
 | OQ-3 | Should `plan-ordering-defect` recurrence feed back into Phase P's PLAN lint, so a repeatedly-promoted dependency becomes a PLAN-time error? | no | Out of scope; recorded because `ESCALATIONS.md` is the durable corpus that would make it possible (AC-6.4, REQ O-2). |
 | OQ-4 | Should E-6 promotions be visible to the *queue* driver, so a halted feature's re-run starts from the corrected ordering? | no | No. Promotions are per-run state by §4.3, and a re-run re-derives batches from the PLAN, which the erratum protocol — not A6 — is responsible for correcting. |
 | OQ-5 | The staged-index deviation: capture is `git add -A` + `git reset --mixed`, so a wave that staged something before A6 ran gets its content restored but not its *staging*. | no | Accepted. The wave contract is `Do NOT git commit`, so the index equals HEAD on entry and the reset is exact in the ordinary case; in the extraordinary one the loss is staging, never content, which sits inside FSPEC BR-9's content-level oracle. Recorded here because §2.5 asserts it as recorded (PM F-07). |
 | OQ-6 | The cross-run promotion asymmetry: the later task's prompt clause lives in Phase I scope, so it reaches the later task in the same run only; the promotion *commit* survives across runs, the clause does not. | no | Accepted. A later task's agent finds the promotion in the tree either way; the clause is a shortcut, not the mechanism. Recorded here because §3.6 asserts it as recorded (PM F-07). |
-| OQ-7 | Does BR-9's restoration oracle range over `.gitignore`d paths? FSPEC BR-9 / AT-05-1 and REQ AC-5.1 say "tracked and untracked alike, generated outputs included" with no carve-out; §2.5's mechanism excludes ignored paths on both the capture and the restore side. | **yes, upstream** | Open, and **not decided here** — raised as an erratum on FSPEC BR-9 and AT-05-1, and on REQ AC-5.1. This TSPEC transcribes whichever boundary comes back. It does not block PLAN authoring: §5.2's round-trip case and §5.5's ignored-path-only repair test are the two places the answer lands, and both are already allocated. |
+| OQ-7 | Does BR-9's restoration oracle range over `.gitignore`d paths? | no | **Closed upstream, answered *no*.** The erratum this row raised has landed: FSPEC BR-9 / AT-05-1 at v1.6 fix the map's **domain** as tracked files plus **non-ignored** untracked files — ignored paths outside the map in both directions, an ignored path the re-gate mutated explicitly not a restoration defect — and REQ AC-5.1 at v1.14 excludes them as "operator files A6 never wrote and never restores over". The same decision pins the **observation point**: immediately after restoration completes, before AC-6.1's record append, AC-6.2's escalation-log append and AC-5.2's queue-row write. The pin spans two REQ revisions, not one (PM F-05): AC-5.1 fixed the observation point and the first and third carriers at **v1.14**, and AC-6.2's escalation-log append entered its excluded-carrier list at **v1.15**. §2.5's mechanism already implemented exactly this, so nothing in the design moved; the transcription landed in §2.5, §3.3, §5.2 (cases 4 and 5), §5.5 and §5.6, and no upstream-pending flag remains in this document. |
 | OQ-8 | E-6's commit shape: BR-8's licence reads as *widening an existing per-task commit's pathspec*; §3.6 instead adds a third `commitPaths` call with its own message and label. | no | **Resolved, and routed to DECISIONS** (PM F-06). The added call is the choice: widening a per-task commit would make one task's commit carry another task's paths, breaking the pathspec-scoping discipline M-WG-4 rests on, while AT-04-3's writer-identity oracle is satisfied by either shape. The product reviewer has ruled the added call acceptable. It gets a `DECISIONS-pdlc-advisory-wave-gate.md` entry with a re-evaluation trigger — *a reviewer or operator objecting to a third commit per resolved wave in git history* — rather than living as a design paragraph a later reader must reverse-engineer from AT-04-3. |
-| OQ-9 | Should PLAN authoring wait for the BR-9 erratum (OQ-7) to land, given two test cases — §5.2's ignored-path round-trip and §5.6's AT-05-1 — cannot be written until it does? | no | No. Both are marked upstream-pending in this document, so PLAN mints their red-test tasks with the expected value named as pending and transcribes it when the erratum returns; no other task depends on the answer, and Phase T does not hold on it (PM Q-01) |
+| OQ-9 | Should PLAN authoring wait for the BR-9 erratum (OQ-7) to land, given two test cases — §5.2's ignored-path round-trip and §5.6's AT-05-1 — cannot be written until it does? | no | **Moot, and it never bound.** The answer was no, and OQ-7 has since landed: both cases now carry transcribed expected values (§5.2 case 4, §5.6's AT-05-1), so PLAN mints their red-test tasks with no pending marker at all. Kept as a row rather than deleted because the pending markers it authorised existed in v1.2 through v1.10 and a reader of those revisions needs the trail (PM Q-01) |
 | OQ-10 | Should the `pathsCollide` trailing-slash precondition (§3.4) be promoted to `docs/_constraints/DOMAIN-CONSTRAINTS.md` — "directory rows in a PLAN file-ownership manifest are written with a trailing slash" — so Phase P's lint can enforce it for every feature rather than this TSPEC's readers only? | no | Recommended, out of scope here: the trap is shipped, feature-independent, and belongs to the constraint corpus, not to A6's design. This feature's own PLAN carries the slash on every directory row as a Phase P authoring requirement (§3.4), and the general rule is recorded here so Phase H can promote it to the constraint corpus, where a Phase P lint could then enforce it for every feature (PM Q-02) |
-| OQ-11 | Does §3.3's `apply` refusal of an ignored-path-only repair (`post-action-verification-failed`) stand on its own merits, independent of how OQ-7 resolves? | no | Yes. The seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone; if the erratum widens BR-9's oracle, the widened capture arrives with a widened `producedPaths` and the row is unchanged in either direction (PM Q-03) |
+| OQ-11 | Does §3.3's `apply` refusal of an ignored-path-only repair (`post-action-verification-failed`) stand on its own merits, independent of how OQ-7 resolves? | no | **Closed, and the independence was never tested.** Yes on its own merits — the seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone — and OQ-7 resolved in the direction that leaves the row untouched: BR-9 excludes ignored paths, so no widened `producedPaths` arrives and the refusal is the decided disposition rather than a disposition awaiting one (PM Q-03) |
 | OQ-12 | Is there any run shape in which A6 escalates but Phase I does **not** go on to halt, making `ADVISORY_SEAM_PHASES.A6`'s fixed `outcome: "halted"` a false record? (PM Q-02) | no | No, and the question is closed here rather than deferred. A6 is only ever entered on an already-red wave test gate (§3.2 step 1), and every non-`resolved` terminal — tier gate, wave budget, capture failure, malformed verdict, out-of-envelope refusal, budget exhaustion, post-action-verification failure — returns `{resolved: false}`, on which the call site rethrows the wave's own halt. The only escape from the halt is a genuine `resolved`, which by definition writes no escalation. The constant is therefore true by construction, not by convention |
 | OQ-13 | Should the capture-failure diagnostic carry the underlying git failure (which verb, what `stderr`) rather than only the fixed sentence §4.5 pins? (TE Q-01) | no | Split by slot. §4.5's `diagnosis` field stays the fixed, transcribable sentence — §5.5 compares it literally and a variable tail would make that oracle untestable. The underlying failure belongs in the escalation entry's free-text `decision` slot, which is caller-supplied (§2.5) and carries no equality oracle; PLAN should have the call site interpolate the failing verb there. A failed **record** write on this path is separately not `record-write-failed`: that reason names a resolution withdrawn because it could not be recorded, and here nothing was proposed or applied (§2.5) |
 | OQ-14 | Does anything assert that the *failing git verb* named in §6 OQ-13's free-text `decision` slot actually reaches `ESCALATIONS.md`, given §4.5's `diagnosis` is fixed and §5.2's fixtures assert the record entry? | no | Yes, as of this round: the capture-failure fixture (§5.2) adds one **containment** assertion on the escalation entry — the entry's text contains the failing verb (`write-tree`, `commit-tree`, `update-ref`, …) as observed on the `_git` double. Containment, not equality, so the fixed-sentence equality oracle on `diagnosis` is untouched and the free-text slot stays free (PM Q-02). |
 | OQ-15 | Should the capture-failure fixture transcribe the record entry's Disposition cell as well as its `Model` cell, so both six-member renderings are pinned on one run? | no | It already pins the Disposition cell as a bare `escalated` with no refusal reason (§5.2, PM F-01 of round 2), and this round adds the `Model` cell literal `n/a`. Both cells are asserted on the same run, which is what TE Q-02 asked for; no further change. |
 
-None of these blocks PLAN authoring; OQ-7 blocks only the two test cases that transcribe its
-answer, and both are allocated. **Two entries warrant a DECISIONS document for this feature:**
+None of these blocks PLAN authoring, and as of v1.11 none is waiting on upstream either: OQ-7 —
+the one row that ever held a test case open — is closed, and the two cases that transcribed its
+answer now carry it. **Two entries warrant a DECISIONS document for this feature:**
 OQ-8's commit shape, and §2.5's choice of a dangling snapshot commit over `git stash` — the
 latter had a real alternative (stash) rejected for a stated reason (it mutates the working tree
 at capture time, which is exactly the state being protected), and a re-evaluation trigger (git

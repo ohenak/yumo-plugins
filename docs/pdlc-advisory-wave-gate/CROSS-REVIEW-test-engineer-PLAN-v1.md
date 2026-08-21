@@ -1,0 +1,147 @@
+# Cross-Review: test-engineer — PLAN (delta confirmation)
+
+**Reviewer:** test-engineer
+**Document reviewed:** docs/pdlc-advisory-wave-gate/PLAN-pdlc-advisory-wave-gate.md (v1.10)
+**Date:** 2026-08-20
+**Iteration:** 1 (delta confirmation — erratum round 10, Phase F)
+
+## Scope of this round
+
+This is a delta confirmation, not a re-review. I previously approved this PLAN; erratum round 10
+(Phase F) landed a targeted edit and the dispatch reports every routed item ABSORBED against upstream
+HEAD — nothing on the item list remained to confirm. Per DEC-ERR-03 the question I answer is therefore
+the wider one: with REQ at `sha256:c62cfc35…` (v1.15), FSPEC at `sha256:91ef2557…` (v1.6), TSPEC at
+`sha256:3fa21acf…` (v1.11) and DECISIONS at `sha256:84deee10…`, is this PLAN still a faithful
+compression of what those documents now say? All four dispatch hashes were re-computed on the branch
+and match; the branch is `feat-pdlc-advisory-wave-gate`.
+
+The edit is confined to the OQ-7 closure surface, so my reading is: (a) the four retired
+upstream-pending routings, (b) the two upstream boundaries the edit transcribes (BR-9's **domain** and
+its **observation point**), and (c) the graph the edit claims it did not move.
+
+## What the delta changed
+
+`git diff b83ecd03~1..HEAD` over the PLAN is 36 insertions / 14 deletions across five surfaces, all of
+them OQ-7's:
+
+| Surface | Before | After |
+|---|---|---|
+| Overview block | *Not in scope here* — OQ-7 upstream-pending on FSPEC BR-9 / REQ AC-5.1 | *Decided upstream, transcribed here* — domain and observation point stated as two bullets |
+| A6-10 red step (former A6-09) | ignored-path round trip minted with a `test.todo` pending marker | fully asserted live case, no pending marker; `.skip`-halt reasoning retained |
+| *Upstream dependency that is still open* | OQ-7 pending, does not block any task | *…that was open, and is now closed*, closing with **no upstream dependency of this plan is open** |
+| AT-05-1 traceability row | "ignored-path case pending on OQ-7" | domain + observation point named; "ignored-path case live (OQ-7 closed), restoring one fails" |
+| DoD leg | disjunction: landed-and-transcribed **or** still-marked-pending | single leg on the landed boundary, no pending arm |
+
+No task row, `Batch`, `Deps`, test-file or source-file cell was touched — confirmed by the diff (the
+only table row that changed is A6-10's description cell) and independently re-derived below. Retiring
+the `test.todo` marker while keeping the `scanSkipTokens` / `checkWaveUnskips` reasoning is the right
+call: the reasoning still governs the file even though the marker it justified is gone.
+
+## Upstream re-grounding (DEC-ERR-03)
+
+I read the upstream text at the dispatched hashes rather than trusting the changelog's account of it.
+
+**REQ AC-5.1 (v1.15) — verified, quoted correctly.** AC-5.1 pins the observation point as "the moment
+restoration completes" and excludes exactly the three carriers the PLAN names: AC-6.1's record append,
+AC-6.2's escalation-log append, AC-5.2's queue-row write (M-WG-7). It also excludes "paths ignored by
+`.gitignore`, which are operator files A6 never wrote and never restores over" — the PLAN quotes that
+clause verbatim in its Overview bullet. Faithful.
+
+**FSPEC BR-9 / AT-05-1 / AT-05-2 (v1.6) — verified.** BR-9 fixes the domain as "tracked files and
+**non-ignored** untracked files, generated outputs included" with ignored paths "outside the map in
+both directions", and pins the observation point before the BR-13 record and escalation writes.
+AT-05-1 carries the sentence the PLAN's strongest new claim rests on, verbatim: "Ignored paths are
+excluded on both sides — **an implementation that restores one fails this test rather than passing
+it** — and a file the repair created is asserted **absent**, not merely reset." So the PLAN's
+"restoring one *fails* AT-05-1" is upstream's own words, not an invention of this edit.
+
+**TSPEC (v1.11) — verified.** §2.5's `clean -fd` bullet and observation-point bullet now read as
+transcription of a decided boundary, and §6's OQ-7 row reads **Closed upstream, answered *no***, with
+OQ-9 marked moot and OQ-11 unaffected. The PLAN's "no mechanism moved" claim matches §2.5. Three
+surviving "OQ-7 stays open upstream" strings in the TSPEC are inside its **v1.4 / v1.6 historical
+changelog rows**, not its live body — correctly not treated as live by this PLAN.
+
+**DECISIONS — not re-grounded upstream, and the PLAN's absolute claim slightly overreaches.** At the
+dispatched hash, DEC-A6-01's option-D row and its "What follows from DEC-A6-01" section still route the
+ignored-path boundary as "upstream's open question (TSPEC §6 OQ-7)" and still describe a *scoped
+ignored-path capture arm* as contingent on how the erratum returns. Nothing in the PLAN's task graph
+reads that arm — the closure landed in the direction that leaves DEC-A6-01 untouched — so this is
+upstream staleness rather than a plan defect, but it sits under the PLAN's new sentence "**no upstream
+dependency of this plan is open**". Recorded as F-04 below, Low.
+
+**Lineage claim — verified, not edited.** The PLAN's `Downstream` row reads `PROPERTIES`, `IMPL`;
+`pdlc-engineering-loop` appears nowhere in the file; and the REQ row the Phase F item described already
+reads `FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory)` at v1.15. The changelog's "verified, not
+edited" disposition is correct.
+
+## Mechanical re-derivation
+
+The changelog claims the edit moved no task, batch, wave, dependency edge or file-ownership cell, and
+cites a re-run of `parsePlanTasks` → `computeWaves` returning 11 tasks and 7 waves. I re-ran it rather
+than trusting the claim, importing the shipped `pdlc/workflows/orchestrate-dev.js` at HEAD:
+
+```
+tasks 11
+A6-00 batch 1 exp 1 OK   deps []
+A6-01 batch 1 exp 1 OK   deps []
+A6-04 batch 1 exp 1 OK   deps []
+A6-05 batch 1 exp 1 OK   deps []
+A6-06 batch 2 exp 2 OK   deps ["A6-04"]
+A6-08 batch 2 exp 2 OK   deps ["A6-00","A6-05"]
+A6-10 batch 3 exp 3 OK   deps ["A6-08"]
+A6-12 batch 4 exp 4 OK   deps ["A6-10"]
+A6-14 batch 5 exp 5 OK   deps ["A6-12"]
+A6-18 batch 6 exp 6 OK   deps ["A6-14"]
+A6-21 batch 7 exp 7 OK   deps ["A6-18"]
+waves 7  A6-00+A6-01+A6-04+A6-05 | A6-06+A6-08 | A6-10 | A6-12 | A6-14 | A6-18 | A6-21
+```
+
+Every `Batch` cell equals `max(dep batch) + 1`, ids are unique, every dependency resolves, the graph is
+acyclic, batch 1 is four tasks (under `computeTopologicalBatches`' five-task cap), and each batch
+collapses to exactly one wave. No same-batch task pair creates or appends the same new file: batch 1's
+four tasks own `advisoryWaveGate.test.js` + a verify-only probe (A6-00), `helpers/advisoryDoubles.js`
+(A6-01), `pdlc/engine/__tests__/advisory-config-example.test.js` (A6-04) and `advisoryEnvelope.test.js`
+(A6-05); batch 2's two tasks split across `.claude/pdlc.config.example.json` (A6-06) and
+`advisoryWaveGate.test.js` (A6-08). The claim holds and the dispatcher contract is intact.
+
+TDD order is likewise unchanged: A6-10's row still carries its red steps ahead of its green step inside
+the one task, with the wave-gate rationale for the in-task RED→GREEN restructure intact, and A6-01
+retains its `[Fake first]` label in batch 1 ahead of every production task.
+
+## Positive Observations
+
+- The round re-grounded on upstream HEAD **before** touching the raised item, and the absorbed
+  closure is the larger half of the edit — exactly DEC-ERR-03's intent rather than item-list servicing.
+- Retiring all four upstream-pending routings in one pass, including the DoD leg's disjunction, leaves
+  no surface where a future reader could re-open a settled question (DEC-ERR-01's anti-pattern).
+- Dropping `test.todo` while keeping the `scanSkipTokens` / `checkWaveUnskips` prohibition reasoning is
+  the right split: the marker was contingent, the `.skip` halt reasoning still governs the file.
+- The graph-invariance claim was stated in falsifiable form (11 tasks, 7 waves, re-run over the edited
+  table) and reproduces exactly.
+- The AT-05-1 traceability row was updated in lockstep with the task row — the usual failure mode here
+  is a row updated in one place and left stale in the other.
+
+## Recommendation
+
+**Approved with minor changes.** The delta resolves the routed surface, transcribes both halves of the
+landed boundary, and breaks nothing I previously approved. The findings below are refinements to
+A6-10's red-step text so the implementer cannot write a case that only passes; none is gating.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | A6-10's ignored-path case claims falsifiability the oracle it names cannot deliver: the only stated oracle is the hash map, whose domain excludes ignored paths **on both sides**, so a restore-over-ignored-path implementation leaves both maps equal and passes. TSPEC §5.2 case 4 carries the conjunct that actually fails it — "a `.gitignore`d file the wave added is **still present** after restore … the assertion that pins `git clean -fd` over `-fdx`" — and the compression drops it. Add that positive-presence conjunct to the row. | Batches → A6-10 red step (former A6-09) |
+| F-02 | Low | delta | local | The observation-point sentence transcribes *where* the map is taken but not TSPEC §5.2 case 5's second half: the case must "assert the *ordering*, not only the content", separately asserting the three carriers are written **afterwards**. Without that conjunct an implementation that interleaved record/escalation/queue writes with the comparison can still pass on a map that happens to match. | Batches → A6-10 red step (former A6-09) |
+| F-03 | Low | inherited | local | The row's first clause still reads "over tracked and untracked files alike, generated outputs included", without BR-9 v1.6's **non-ignored** qualifier; the row's own later sentence and the AT-05-1 traceability row both state the qualified domain, so the row now disagrees with itself. Qualify the first clause. | Batches → A6-10 red step (former A6-09) |
+| F-04 | Low | delta | local | "**No upstream dependency of this plan is open**" is true of REQ/FSPEC/TSPEC but overreaches DECISIONS at the dispatched hash (`sha256:84deee10…`), which still routes the ignored-path boundary as "upstream's open question (TSPEC §6 OQ-7)" in DEC-A6-01's option-D row and in "What follows from DEC-A6-01", with a contingent scoped-capture arm. No task reads that arm, so nothing is blocked — note DECISIONS as not yet re-grounded rather than asserting closure across all four upstream documents. | Dependencies → *Upstream dependency that was open, and is now closed* |
+
+FINDING: Medium | delta | local | Batches → A6-10 red step (former A6-09) | the ignored-path case is claimed to fail an implementation that restores an ignored path, but the only oracle the row names is the hash map, whose domain excludes ignored paths on both sides and therefore cannot falsify that implementation; transcribe TSPEC §5.2 case 4's positive-presence conjunct (the ignored file is still present after restore, pinning `clean -fd` over `-fdx`)
+FINDING: Low | delta | local | Batches → A6-10 red step (former A6-09) | the observation-point transcription omits TSPEC §5.2 case 5's ordering conjunct — the case must separately assert the record, escalation and queue-row writes happen after the map is taken, or an interleaving implementation passes
+FINDING: Low | inherited | local | Batches → A6-10 red step (former A6-09) | the row's first clause states the map domain as "tracked and untracked files alike" without BR-9 v1.6's non-ignored qualifier, disagreeing with the row's own later sentence and with the AT-05-1 traceability row
+FINDING: Low | delta | local | Dependencies → Upstream dependency that was open, and is now closed | "no upstream dependency of this plan is open" overreaches DECISIONS at the dispatched hash, which still routes the ignored-path boundary as OQ-7-pending in DEC-A6-01; no task reads it, so the claim should be scoped rather than absolute
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}

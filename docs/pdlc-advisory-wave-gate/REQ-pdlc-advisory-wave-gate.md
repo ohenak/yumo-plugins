@@ -1,6 +1,6 @@
 ---
 feature: pdlc-advisory-wave-gate
-ready: false
+ready: true
 depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 ---
 
@@ -8,14 +8,47 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) |
-| Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | — |
+| Upstream | `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) → **REQ** |
+| Downstream | FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory) |
+| Cross-Reviews | rounds through harvest are in `LEARNINGS-pdlc-advisory-wave-gate.md`; the `CROSS-REVIEW-*` files on the branch are post-harvest erratum rounds, in no LEARNINGS table |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.11 | 2026-08-20 |
+| pdlc | approved (shipped) | Claude | 1.16 | 2026-08-20 |
+
+*v1.16 changelog (erratum round, Phase D). Lands the one item this round raised, by SE, PM and TE
+alike: DEC-A6-03's operator-facing halt-message obligation, routed since round 5 and previously
+unlanded. AC-6.3 now requires the halt report that points at a captured pre-A6 tree state to warn, in
+the same place, that re-running the feature overwrites that capture. Stated as the operator-visible
+outcome only — the capture's name and storage form stay TSPEC's (O-1). Nothing else changed; no
+decision reopened.*
+
+*v1.15 changelog (erratum round, Phase F). `Upstream` restores the resolvable path (SE F-02,
+TE F-02); `Cross-Reviews` scopes harvest to the rounds LEARNINGS enumerates (SE F-03). AC-5.1's
+excluded-carrier list adds AC-6.2's escalation-log append (TE F-01, High). AC-1.1 and R-5 pin the
+post-change reading at `11420461` (TE F-03). Not taken, inherited and nonlocal: C-5's soft-budget
+overage (SE F-04), which SE Q-02's relocation dissolves, and the baseline's `Cited by` row (TE
+F-04), upstream's. No decision reopened.*
+
+*v1.14 changelog (erratum round, Phase F). Lineage header restated (chain, artifacts fed, harvested
+cross-reviews); Status `approved (shipped)` — PR #66 (`bb4d36fb`), row 19 `done`, relocation still
+SE Q-02's. AC-1.1/R-5 name `c8aa22a4` as their pre-A6 base. AC-5.1 pins its observation point,
+excludes record carriers and ignored paths, and states the failed-capture outcome.*
+
+*v1.13 changelog (cross-review round 2). TE F-01 (High): AC-2.4's zero-budget conjunct restated on
+the shipped summary — one `escalated` invocation per red wave, `resolved: 0` — the budget escape's
+disposition carrying `seam: "A6"` onto the row. TE F-02: that escalation's class named
+`unclassified`. SE F-01: C-5 names the hook's soft threshold too. SE F-02: v1.12's causal clause
+corrected below. SE Q-01/Q-02 and TE Q-01/Q-02 remain open, none gating.*
+
+*v1.12 changelog (cross-review round 1). SE F-01: QUEUE row 19 `done`, which is what blocked rows 6
+and 20 on the queue's not-done dependency pre-check; `ready: true` (merged, PR #66 `bb4d36fb`)
+unblocks only this row's own pickup;
+relocation to `docs/completed/` is SE Q-02's, not taken here. TE F-01: AC-2.4 gains the
+`waveBudgetPerRun: 0` conjunct. TE F-03: O-4 extended to E-6's symbol conjunct. SE F-02 routed to
+the constraints file. Lows: AC-1.2's anchor in symbol form, §1's drift re-measured,
+fixture design to PROPERTIES.*
 
 *v1.11 changelog (DoD remediation, CODE_REVIEW v2 finding 1). §1's corroborating-evidence
 paragraph re-measured at the branch tip: `.claude/pdlc-wave-state.json` is **untracked** —
@@ -103,7 +136,7 @@ rationale, M-WG-6's re-entry claim and D-AWG-03's approval-skip ownership correc
 Phase I runs implementation as **waves**: topologically ordered, ownership-disjoint groups of tasks
 dispatched in parallel into one shared tree, told not to commit, with the orchestrator itself
 owning the gate. Measured facts about that gate live in
-`docs/_constraints/pdlc-wave-gate-baseline.md` v1.1 and are cited here by id.
+`docs/_constraints/pdlc-wave-gate-baseline.md` v1.2 and are cited here by id.
 
 Three conditions end a wave, in order: a dispatch-level failure (M-WG-1), a post-wave command
 failure (M-WG-2), and the script-owned test gate (M-WG-3). All three halt the run, and none of them
@@ -146,10 +179,9 @@ whose recorded head is an ancestor of the branch tip; it is a working-tree obser
 artifact — so the stronger claim v1.2
 made, that no record has ever survived here, no longer holds and is withdrawn.
 What the single surviving record does not show is a resume: it names a wave sequence that ran to
-completion, and every one of the four preconditions above still gates its use. Separately, the consumer runtime copy
-under `.claude/workflows/` is still out of sync with the built artifacts — the drift check exits
-non-zero with three rows stale and one missing — and a stale copy is announced but silently
-executed.
+completion, and every one of the four preconditions above still gates its use. Separately, as a working-tree observation
+only: `build-runtime.mjs --check` reports the tracked artifact in-sync, exit `0`, while the
+gitignored consumer copy under `.claude/workflows/` differs from it — announced, silently executed.
 
 The consequence for this REQ is that the seam's economics argument stands as originally written:
 the expensive part of a wave-gate stop is still a from-scratch Phase I re-run in the common case,
@@ -258,8 +290,8 @@ classification is malformed input with a defined fallback, not undefined behavio
 instruction is not a control (inherits `REQ-pdlc-advisory-tier` NFR-1).
 
 **C-5 — Size discipline.** This REQ is measured against `pdlc/hooks/scripts/check-req-size.sh`
-(700 lines / 61,440 bytes) at authoring time and at the start of every review round. Measured facts
-about shipped behaviour are held in `docs/_constraints/pdlc-wave-gate-baseline.md` v1.1 and cited
+(700 lines / 61,440 bytes hard, 630 lines / 55,296 bytes soft) at authoring time and at the start of every review round. Measured facts
+about shipped behaviour are held in `docs/_constraints/pdlc-wave-gate-baseline.md` v1.2 and cited
 by `M-WG-*` id rather than restated, both to keep this document inside its budget and to keep it at
 requirements altitude.
 
@@ -270,13 +302,15 @@ requirements altitude.
 - **AC-1.1** — Given the advisory tier's seam catalogue, Then it carries a sixth member, `A6`, and
   every surface driven by that catalogue — the per-seam report rows in particular — carries six rows
   where it carried five. The catalogue is closed and transcribed in tests (M-WG-8), so this is a
-  deliberate, test-visible change; a run in which the sixth row is absent is a defect.
-  *(Traces: US-01, US-05.)*
+  deliberate, test-visible change; a run in which the sixth row is absent is a defect. The
+  five-member "before" this argues from is the reading at base commit `c8aa22a4`; the post-change
+  reading, at `11420461`, carries A6 (baseline v1.2 §4, M-WG-13). *(Traces: US-01, US-05.)*
 - **AC-1.2** — Given a Phase I wave, Then A6 fires on **exactly one** condition: the script-owned
   test gate returning non-zero (M-WG-3). It does **not** fire on a dispatch-level failure (M-WG-1) —
   there is no completed work to repair — nor on a post-wave command failure (M-WG-2). **Correction,
   2026-08-13:** the post-wave command runs exactly once and its failure halts immediately
-  (`orchestrate-dev.js:12331-12343`); the single run is the detection, not an attempted rebuild, so
+  (the wave gate sequence's `failed: "post-wave"` early return, and the wave loop's `haltError` on
+  it); the single run is the detection, not an attempted rebuild, so
   the earlier "already attempted" framing overstated what the script does. Both continue to halt
   exactly as today; what M-WG-2's exclusion means in practice — that a build-breaking source defect
   is permanently outside A6's reach — is Q-2's decision, recorded as O-7. *(US-03.)*
@@ -350,7 +384,12 @@ requirements altitude.
   **repair→re-gate** cycle. Only resolutions consume the wave budget, which fixes the two oracles a
   test can disagree about: two waves A6 attempted and escalated leave the budget untouched, so a
   third red wave still gets an attempt; one wave A6 resolved exhausts the shipped default of 1, so
-  the next red wave escalates without a dispatch. *(US-04.)*
+  the next red wave escalates without a dispatch. `advisory.waveBudgetPerRun` admits any integer
+  ≥ 0; `0` is a configured operator mode, not a misconfiguration: with the tier enabled every red
+  wave then escalates with no dispatch, distinguishably from AC-1.4 inertness — the per-seam A6 row
+  is present and reads `resolved: 0` with one `escalated` invocation per red wave, each carrying
+  `unclassified` as its class (no reply having been classified — AC-2.2's default), where under
+  `advisory.enabled: false` there is no advisory section. *(US-04.)*
 
 ### REQ-AWG-03 — The envelope (P0)
 
@@ -397,7 +436,8 @@ requirements altitude.
   *(US-03.)*
 - **AC-3.5** — Given a proposal or a produced change that violates AC-3.1, AC-3.2 or AC-3.3, Then no
   part of it survives the seam, the wave escalates, and the run is not reported as having resolved
-  that wave. Each excluded operation enumerated in AC-3.2 and AC-3.3 is asserted by its own test.
+  that wave. Every excluded operation enumerated in AC-3.2 and AC-3.3 carries that outcome; the
+  test decomposition is PROPERTIES'.
   *(US-03, US-04.)*
 
 ### REQ-AWG-04 — What A6 may never do (P0)
@@ -407,13 +447,12 @@ requirements altitude.
   a repair** when an in-envelope, high-confidence proposal is written to the tree, and A6
   **resolves** the wave only in the outcome the rest of this document gives that word — an applied
   repair whose re-gate came back green (AC-4.6, AC-5.3). The observable is three positive
-  conjuncts, each on a run of its own, so three fixtures: (i) applies, re-gate green ⇒ the wave is
+  conjuncts, each on a run of its own: (i) applies, re-gate green ⇒ the wave is
   resolved, proceeds, and that green invocation is in the run's gate-invocation sequence (AC-4.4);
   (ii) applies, re-gate red ⇒ the wave halts, the tree is restored (AC-5.1), and the halt is the
   wave's own gate halt (AC-5.2); (iii) applies and **no** gate invocation follows ⇒ the wave halts.
   Conjunct (iii) carries the prohibition — it fails exactly where a verdict stood in for a gate
-  result — and is unreachable on an ordinary run, so its fixture mutates the shipped control flow
-  to drop the re-gate and asserts the halt survives.
+  result — and is unreachable on an ordinary run; how a fixture reaches it is PROPERTIES'.
 - **AC-4.2** — Given any A6 invocation, Then it never commits. M-WG-4 names two committing writers,
   not one: the pathspec-scoped per-task commit of each task's owned paths, and, where a post-wave
   command ran and post-wave pathspecs are configured, the build-output commit scoped to those
@@ -464,8 +503,14 @@ requirements altitude.
 - **AC-5.1** — Given a refusal, a budget exhaustion, or a red re-gate, Then the working tree is
   observably identical to its state immediately before A6 acted — which is the wave's
   **post-dispatch, pre-commit** tree, with the wave agents' own uncommitted work intact. A6 never
-  destroys the wave's work in the course of failing to repair it. The mechanism of restoration is
-  TSPEC's to choose (O-1). *(US-04.)*
+  destroys the wave's work in the course of failing to repair it. The observation point is the
+  moment restoration completes: the record carriers the run still owes afterwards — AC-6.1's record
+  append, AC-6.2's escalation-log append, and AC-5.2's queue-row write (M-WG-7) — are excluded from
+  the comparison. So are paths
+  ignored by `.gitignore`, which are operator files A6 never wrote and never restores over.
+  Given the pre-A6 state cannot be captured at all, Then no repair is proposed, none is applied, and
+  the wave halts on its own gate (AC-5.2) — a different outcome from a failed restoration. The
+  mechanism of restoration is TSPEC's to choose (O-1). *(US-04.)*
 - **AC-5.2** — Given A6 does not resolve the wave, Then the pipeline's existing behaviour proceeds
   unchanged: the same halt, carrying the same reason it emits today (M-WG-3), and the same queue-row
   write to `halted` (M-WG-7). Escalation adds information; it never changes control flow. *(US-04.)*
@@ -485,7 +530,10 @@ requirements altitude.
   top what the operator must decide. *(US-02.)*
 - **AC-6.3** — Given the pipeline halts after an A6 escalation, Then the halt report carries the
   diagnosis and the root-cause class, so US-02's "my turn starts from a diagnosis" is satisfied on
-  the halt path and not only in a file the operator must go and find. *(US-02.)*
+  the halt path and not only in a file the operator must go and find. Where the halt report points
+  the operator at a captured pre-A6 tree state, it also warns, in the same place, that re-running
+  this feature overwrites that capture — so an operator who intends to inspect it preserves it
+  first, rather than losing it to the ordinary next action after a halt (DEC-A6-03). *(US-02.)*
 - **AC-6.4** — Given a `plan-ordering-defect` classification, Then it is countable per feature from
   the durable escalation log without reading run logs, so a recurring wave-ordering defect becomes a
   visible signal rather than a repeated surprise. **Honest limit:** the per-feature advisory record
@@ -547,7 +595,8 @@ requirements altitude.
   transcribed `ADVISORY_SEAMS` set-equalities by design (M-WG-8), and so do the two envelope members
   and the new config key on their own transcribed sets (M-WG-9). That is the intended signal, but it
   means this feature cannot be delivered as a purely additive change and every transcribed surface —
-  including the disabled-tier fixtures — must be re-checked (BL-06).
+  including the disabled-tier fixtures — must be re-checked (BL-06). The pre-change readings are
+  measured at `c8aa22a4`; M-WG-13/M-WG-14 are the post-change ones, measured at `11420461`.
 
 ## 8. Obligations
 
@@ -559,9 +608,10 @@ requirements altitude.
   (queue row 6).
 - **O-3** — The Fable rung's alias literal remains `REQ-pdlc-advisory-tier` BL-01's obligation on
   TSPEC. A6 inherits the ladder and adds nothing to it (NFR-6).
-- **O-4** — How a wave's owned-path set is computed for E-5 and E-6, and how a proposal's changed
-  paths are compared against it, are TSPEC's. This REQ states the membership rule, not the
-  comparison.
+- **O-4** — How a wave's owned-path set is computed for E-5 and E-6, how a proposal's changed
+  paths are compared against it, and how the gate output is matched against a later PLAN row's
+  undertaking for E-6's first conjunct, are TSPEC's. This REQ states the membership rule, not the
+  comparison. Owner: this feature's TSPEC.
 - **O-5** — Whether the root-cause classification should be derived by the seam or supplied by the
   wave's own agents is TSPEC's; AC-2.2 constrains only the vocabulary and its totality.
 - **O-6** — Improving the PLAN's dependency derivation so that a task cannot be scheduled before the

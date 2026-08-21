@@ -87,7 +87,7 @@ function makePipelineAgent({ a6, dispatched = [] }) {
   };
 }
 
-function makeHarness({ configText, plan, planInPhaseI }) {
+function makeHarness({ configText, plan, planInPhaseI, gitFailVerb }) {
   const created = new Set();
   // Phase P rejects a PLAN with no ownership manifest outright, so the ONLY route to the legacy
   // (worktree exception) path is a PLAN that carried a manifest when Phase P read it and none when
@@ -109,6 +109,13 @@ function makeHarness({ configText, plan, planInPhaseI }) {
   const _git = async (argv) => {
     const args = Array.isArray(argv) ? argv : [];
     gitCalls.push(args);
+    // E-34's only lever: one named git verb answers `ok: false` and every other verb behaves
+    // exactly as the default harness does, so the arm differs from the escalation arm above in
+    // the capture alone. `write-tree` has exactly one call site in the module
+    // (`captureTreeSnapshot`), so failing it fails the capture and nothing else.
+    if (gitFailVerb && args[0] === gitFailVerb) {
+      return { ok: false, stdout: "", stderr: `fatal: ${gitFailVerb} refused` };
+    }
     if (args[0] === "add") {
       for (const a of args.slice(1)) if (a !== "--") created.add(a);
       return { ok: true, stdout: "", stderr: "" };
@@ -152,8 +159,8 @@ function makeHarness({ configText, plan, planInPhaseI }) {
   return { created, gitCalls, enterPhaseI, _writeFile, _appendFile, _git, _readFile, _hashFile: async () => "a".repeat(64) };
 }
 
-async function runPipeline({ configText, plan = WAVE_PLAN, planInPhaseI, runCommand, a6 } = {}) {
-  const harness = makeHarness({ configText, plan, planInPhaseI });
+async function runPipeline({ configText, plan = WAVE_PLAN, planInPhaseI, runCommand, a6, gitFailVerb } = {}) {
+  const harness = makeHarness({ configText, plan, planInPhaseI, gitFailVerb });
   const logs = [];
   const dispatched = [];
   const result = await mainDev({
@@ -370,16 +377,132 @@ describe("TE F-06 — an enabled tier reaches the real A6 seam from mainDev (esc
 
     // AC-6.3 — the class and the diagnosis are on the REPORT, produced by the real seam from the
     // real reply. Neither value was handed to the loop by this test (DC-07 / TE F-06).
+    // The fifth key, `snapshotRef` (PROP-REC-11): this fixture drives an out-of-envelope REFUSAL
+    // on wave 1, not a capture failure, and the harness `_git` double answers `ok: true` to every
+    // capture verb, so the ref reads — spec-side composed, never echoed off the module under
+    // test (PROP-REC-08's anti-echo rule).
     expect(result.haltAdvisory).toEqual({
       rootCause: "plan-ordering-defect",
       diagnosis: "wave 1 needs a symbol a later task owns",
       repairApplied: false,
       repairPaths: [],
+      snapshotRef: "refs/pdlc/a6-snapshot-1",
     });
     const a6Row = result.advisory.rows.find((r) => r.seam === "A6");
     expect(a6Row).toMatchObject({ invocations: 1, resolved: 0, escalated: 1 });
     // Both durable artifacts were reached through the real transports.
     expect([...harness.created]).toContain(`docs/${FEATURE}/ADVISORY-${FEATURE}.md`);
     expect([...harness.created]).toContain("docs/_queue/ESCALATIONS.md");
+
+    // AT-06-4 conjunct (3) / BR-14 / AC-6.3, on the REPORT — the artifact the AC names ("an
+    // operator reading a halt report"), reached from the REAL seam. Every other arm of this
+    // clause observes a test-owned sink handed straight to `runWaveGateSeam`, or the report with
+    // a FAKE seam injected; neither traverses the one line that joins them,
+    // `_notice: advisoryNotice` at the wave-loop A6 call site. Severing that argument leaves the
+    // whole suite green without this assertion (DC-07's builder-not-wired shape; CR round 1,
+    // PM F-01 / TE F-01).
+    //
+    // Co-location is the observable, so the oracle selects the SINGLE notices element carrying
+    // the ref and asserts the overwrite phrase on THAT SAME element — splitting the two halves
+    // across two notices must fail. Both halves are spec-side literals: the ref composed from
+    // this fixture's own wave number (never read back off `result.haltAdvisory`), and the phrase
+    // `overwrites that capture`, which excludes the negated sentence a bare `/overwrit/i` would
+    // admit (TE F-03) while keeping the capture's name out of the predicate — that half is O-1's.
+    const overwriteNotice = result.notices.find((n) => n.includes("refs/pdlc/a6-snapshot-1"));
+    expect(overwriteNotice).toBeTruthy();
+    expect(overwriteNotice).toMatch(/overwrites that capture/i);
+  });
+});
+
+// ═══ AC-2.2 — the classification is REQUESTED against its definitions ═════════════════════════
+//
+// AC-6.4 rests the feature's durable signal on the class being right, and the receiving side
+// (`parseA6RootCause`) is total over the catalogue — but the EMITTING side was handed four bare
+// labels with neither the Meaning column nor the first-match rule, so the class an operator later
+// counts was produced against no stated definition (CR round 1, PM F-04). The oracle reads the
+// prompt the REAL driver dispatched, not the builder's return value.
+
+describe("AC-2.2 — the A6 dispatch prompt states each class's meaning and the first-match rule", () => {
+  test("the real dispatched prompt carries all four classes in catalogue order, each with its meaning, and the ordering rule", async () => {
+    const { dispatched } = await runPipeline({
+      configText: JSON.stringify({ implementation: { testCommand: "npm test" }, advisory: ENABLED_ADVISORY }),
+      runCommand: async () => ({ ok: false, output: "FAIL src/one.test.js\nTests: 1 failed, 4 passed\n" }),
+      a6: () => "no advisory reply",
+    });
+
+    const prompt = A6_DISPATCHES(dispatched)[0].prompt;
+    // The first-match rule itself, transcribed from AC-2.2's own sentence.
+    expect(prompt).toMatch(/FIRST matching class wins/);
+    expect(prompt).toMatch(/still has one class/);
+    // Each class with a distinguishing fragment of its AC-2.2 Meaning, spec-side literals — not
+    // read back off `ADVISORY_ROOT_CAUSE_MEANINGS`, which would make the assertion unfalsifiable.
+    expect(prompt).toContain("plan-ordering-defect — the failure names a symbol, file or artifact the PLAN itself schedules for a LATER task");
+    expect(prompt).toContain("wave-internal-defect — the failure is attributable to work this wave produced, inside paths this wave owns");
+    expect(prompt).toContain("environmental — the failure reproduces independently of this wave's diff");
+    expect(prompt).toContain("unclassified — none of the above is decidable from the gate output");
+    // AC-2.2's order is what the first-match rule ranges over, so it must survive into the
+    // prompt: the four offsets are strictly increasing in the catalogue's stated order.
+    const offsets = ["plan-ordering-defect —", "wave-internal-defect —", "environmental —", "unclassified —"].map((m) =>
+      prompt.indexOf(m)
+    );
+    expect(offsets.every((o) => o >= 0)).toBe(true);
+    expect([...offsets].sort((a, b) => a - b)).toEqual(offsets);
+  });
+});
+
+// ═══ AT-06-4b — E-34's negative companion, on the REPORT, from the real seam ══════════════════
+//
+// The seam-level arm of AT-06-4b (PROP-REC-09) proves the suppression over a locally collected
+// notices array. While the positive arm above was absent, that oracle could not discriminate "the
+// implementation suppressed the warning" from "no warning ever reaches a report on any path"
+// (CR round 1, TE F-02). Pairing the two on the same production surface is what makes the
+// suppression a claim about E-34 rather than about the sink.
+
+describe("AT-06-4b — a capture failure halts with the diagnosis and class on the report and NO overwrite warning", () => {
+  test("git write-tree fails: the run halts, haltAdvisory carries snapshotRef null, and no notices element mentions a capture or overwriting one", async () => {
+    const { result, dispatched, harness } = await runPipeline({
+      configText: JSON.stringify({ implementation: { testCommand: "npm test" }, advisory: ENABLED_ADVISORY }),
+      runCommand: async () => ({ ok: false, output: "FAIL src/one.test.js\nTests: 1 failed, 4 passed\n" }),
+      // The capture verb, and only it. Everything else in this fixture matches the escalation
+      // case above, so the difference in the report is attributable to the capture alone.
+      gitFailVerb: "write-tree",
+      // Never consulted: E-34 escalates BEFORE the dispatch, which the zero-dispatch conjunct
+      // below asserts rather than assumes.
+      a6: () => "no advisory reply",
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Wave 1 test gate failed");
+    // E-34 escalates without dispatching — no agent was asked anything, so the class below is
+    // the default, not a reply's.
+    expect(A6_DISPATCHES(dispatched)).toHaveLength(0);
+
+    // AC-6.3's positive half still holds on a capture failure: the report carries a diagnosis and
+    // a root-cause class. Transcribed spec-side, never echoed off the module under test.
+    expect(result.haltAdvisory).toEqual({
+      rootCause: "unclassified",
+      diagnosis: "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied",
+      repairApplied: false,
+      repairPaths: [],
+      snapshotRef: null,
+    });
+
+    // AC-6.3's conditional half: there is no capture to point at, so BOTH the pointer and the
+    // warning are absent — asserted over the WHOLE notices array (an element-selecting oracle
+    // would pass vacuously here), and against both predicates, the broad stem included, so a
+    // warning phrased any other way still fails.
+    expect(result.notices.some((n) => n.includes("refs/pdlc/a6-snapshot-"))).toBe(false);
+    expect(result.notices.some((n) => /overwrit/i.test(n))).toBe(false);
+    // Positive conjunct, so this is not an absence-only oracle: the escalation really happened
+    // and reached its durable carriers through the real transports.
+    const a6Row = result.advisory.rows.find((r) => r.seam === "A6");
+    expect(a6Row).toMatchObject({ invocations: 1, resolved: 0, escalated: 1 });
+    // The durable trace of the capture-failure escalation, through the real transports. This
+    // conjunct is what caught the seam's undefaulted `_now`: `main` passes an `undefined` clock,
+    // and both direct `append*` calls on this branch threw, so E-34's record and escalation entry
+    // were silently replaced by two "write failed" notices in production.
+    expect([...harness.created]).toContain(`docs/${FEATURE}/ADVISORY-${FEATURE}.md`);
+    expect([...harness.created]).toContain("docs/_queue/ESCALATIONS.md");
+    expect(result.notices.some((n) => /write failed for seam A6/.test(n))).toBe(false);
   });
 });

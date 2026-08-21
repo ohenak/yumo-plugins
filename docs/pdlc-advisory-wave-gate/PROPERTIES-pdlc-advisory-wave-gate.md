@@ -4,7 +4,7 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES**` |
 | Downstream | `IMPL` and its tests |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`…`-v4.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md`…`-v4.md` (active while Phase PT runs) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`…`-v3.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md`…`-v3.md` (active while Phase PT runs) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Version | Date | Change |
@@ -12,6 +12,9 @@
 | 1.0 | 2026-08-19 | First authored against REQ v1.8, FSPEC v1.4, TSPEC v1.6, DECISIONS (DEC-A6-01…DEC-A6-04) and PLAN v1.2. |
 | 1.1 | 2026-08-19 | Round 1 cross-review findings addressed: PROP-REC-07 re-homed to `advisoryEscalationLog.test.js` with an observable escalation-entry oracle (SE F-01); PROP-GATE-02 restated as ledger-segment assertions ahead of TSPEC's structure (SE F-04); PROP-CFG-03 cites the `ci-arrangement.test.js` precedent and pins the `testCommand` blast radius (SE F-03); §G-2 names CI's `Engine tests` job as A6-04's executor (SE F-02); E-13 recorded as a non-property and E-17/E-18 traced on PROP-ENV-10 (SE F-05); PROP-SEAM-02's remaining member-literal anchors pinned (PM F-01). |
 | 1.2 | 2026-08-20 | **Round-4 upstream-cascade erratum, re-grounded on TSPEC v1.10 (`sha256:1531143c…`) and DECISIONS (`sha256:84deee10…`) at HEAD.** Overview's "Where the tests live", the file-existence paragraph and Fixtures no longer claim `advisoryWaveGate.test.js` / `advisory-config-example.test.js` are absent at HEAD — both are on disk, landed early by `e3b9d5a3`, and `new` denotes required end state per TSPEC §5.1's Status column caveat (PM F-01, SE F-01). Derivation rule 1 now records the four bare row-count sites as already reading `toHaveLength(6)` and red at HEAD, anchored by block title as TSPEC §1.3 re-anchored them (PM F-02, SE F-02). PROP-SEAM-02's raw line pins re-anchored to symbols and block titles per DEC-DOC-01, naming `advisoryRecord.test.js`'s `rows.map((r) => r.seam)` equality as the one untranscribed test-side literal (SE F-03). PROP-CFG-03, the Example-config fixture and the `SEAMS` fixture row re-anchored off `ci-arrangement.test.js:39` / `:799`–`:819` and `advisoryDoubles.js:271` (PM F-03, SE F-04). Scope now cites TSPEC v1.10 (SE F-05). Re-grounding note: Phase P's routed item on §1.3's repository-hygiene note (`PROP-SWEEP-2(b)`'s residual sized as the `.bak` blobs alone and routed nowhere) is **absorbed at HEAD** — TSPEC v1.10 §1.3 now states the 28-path three-class residual, that untracking the `.bak` class closes 14, and routes the partition, owners and figures to PLAN's Overview HEAD-drift note and A6-00's Edit 1; §1.3 is TSPEC's section and no PROPERTIES text asserts the superseded sizing. No property statement, category, level assignment, oracle form or PLAN home changed in this round. |
+| 1.3 | 2026-08-20 | **Erratum round (Phase F) — re-grounded on upstream HEAD first, and the re-grounding is most of this round.** REQ moved v1.8 → **v1.15** (`sha256:c62cfc35…`), FSPEC v1.4 → **v1.6** (`sha256:91ef2557…`) and TSPEC v1.10 → **v1.11** (`sha256:3fa21acf…`) since this document was last grounded; DECISIONS (`sha256:84deee10…`) and PLAN (`sha256:f7de7fcb…`) re-read at the same HEAD. **Absorbed (DEC-ERR-03), ahead of the raised item: OQ-7 is closed upstream, answered *no*.** FSPEC `BR-9`/`AT-05-1`/`AT-05-2` at v1.6 and REQ `AC-5.1` at v1.14/v1.15 fix the restoration oracle's **domain** — the path-to-content-hash map ranges over tracked files and **non-ignored** untracked files, generated outputs included, ignored paths excluded **on both sides**, so an implementation that restores an ignored path *fails* AT-05-1 — and its **observation point** — immediately after restoration completes and **before** AC-6.1's record append, AC-6.2's escalation-log append and AC-5.2's queue-row write (M-WG-7). This document had been routing that settled question as upstream-pending in five live places, which is DEC-ERR-01's anti-pattern; all five are retired and restated on the decided form: PROP-REST-01 (domain and observation point now conjuncts), PROP-REST-03 (a plain positive assertion, no `test.todo`, TSPEC §5.2 case 4), a new PROP-REST-10 carrying §5.2 case 5's ordering assertion, and a new PROP-ENV-13 giving TSPEC §5.5's ignored-path-only-repair row its first PROPERTIES home (OQ-11, closed on the same decision; the case had a TSPEC-assigned test and no property), Oracle O-C, the §"Falsifiability check" close, Fixtures hazard 2, and §G-2's known-soft bullet. Scope now cites REQ v1.15, FSPEC v1.6 and TSPEC v1.11. **Raised item: absorbed, no edit owed.** Phase F reported a lineage-header `Downstream` row naming the downstream *feature* `pdlc-engineering-loop` rather than the artifacts fed. That defect is not in this document: this `Downstream` row reads `IMPL` and its tests — correct for a PROPERTIES, which feeds no further specification — and the one `pdlc-engineering-loop` mention in this file is §G-1's owner attribution for REQ O-2, not a lineage row. The row the finding describes is the **REQ's**, and at HEAD it already reads `FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory)` (REQ v1.15). Verified, not edited, and recorded so it is not re-raised. No property category, level assignment or PLAN home changed in this round. |
+| 1.4 | 2026-08-20 | **Erratum round (Phase F), continuation of round 1 — re-grounded on upstream HEAD first.** REQ (`sha256:c62cfc35…`), FSPEC (`sha256:91ef2557…`), TSPEC (`sha256:3fa21acf…`), DECISIONS (`sha256:84deee10…`) and PLAN (`sha256:f7de7fcb…`) all re-read at the versions this dispatch names; the re-grounding surfaced no upstream decision this round's items miss, and all five raised items are still open at HEAD. **PROP-ENV-13's `attempts` conjunct corrected (SE F-01 High, PM F-01).** "One attempt must be consumed" was neither transcribed nor derivable: `post-action-verification-failed` is a refusal reason (FSPEC BR-15), FSPEC §3.3's flow table step 5 reads "escalate with a refusal reason, **no attempt consumed**", TSPEC §3.3's `apply` row and §5.5's ignored-path-only row are silent on attempts, and the shipped driver's step-4 `ACT` arm terminates with `attempts` passed through unincremented. The conjunct now asserts `attempts` **unchanged**, with the three sources cited on the row. **PROP-ENV-13 re-homed (PM F-02, SE F-02).** Home and the C-3 PLAN-home matrix move from A6-15 to A6-14's former-A6-13 red step, the one place PLAN names this case; the property is levelled `Unit + Integration` and the run-level conjuncts A6-18's former-A6-15 step does not enumerate are routed to se-author as **G-3 item 3** rather than silently dropped. **E-34 traced (PM F-03).** PROP-REST-08 is E-34's observable — capture cannot be taken, so nothing is proposed, nothing applied — and its Traces cell now says so, closing the `E-01…E-34` Scope widening. **PROP-REST-03 and Fixtures hazard 2 scoped to presence (SE F-03).** The ignored file's "unchanged byte for byte" conjunct asserted more than BR-9, which states "an ignored path the re-gate mutated is not a restoration defect"; both sites now assert presence only, and say why. No other property statement, category, level assignment, oracle form or PLAN home changed in this round. |
+| 1.5 | 2026-08-21 | **Upstream-cascade round (round 3) — re-grounded on upstream HEAD first, and the re-grounding changed what this round owes.** The two reviews were written against REQ v1.16 with FSPEC at `91ef2557…` and TSPEC at `3fa21acf…`; at HEAD the cascade they asked for has **already landed upstream**, so this round *absorbs* it rather than routing it. Re-read and re-hashed locally: REQ **v1.16** (`sha256:f97f4f66…`), FSPEC **v1.7** (`sha256:d602c440…`), TSPEC **v1.15** (`sha256:1f6ea486…`), DECISIONS **v1.12** (`sha256:dc7a8d65…`), PLAN **v1.13** (`sha256:c843cb4f…`). **Absorbed, ahead of the raised items — SE F-02's slot decision is closed.** FSPEC v1.7 gives `AT-06-4` its third conjunct and adds `AT-06-4b`; TSPEC v1.12–v1.15 land the mechanism (a **fifth** halt field `snapshotRef`, non-`null` exactly when the capture succeeded, rendered by the exported pure helper `renderSnapshotOverwriteNotice(snapshotRef)` and pushed through the tier's existing `advisoryNotice` sink onto the halt report's `notices`), the oracle (**co-location inside one `notices` element**, both halves matched by **spec-side literals**), and the third arm (the post-gate un-skip halt); PLAN v1.11–v1.13 give it owners (A6-18 seam-side, A6-21 un-skip-side). The carrier is `notices`, **not** the halt reason string, so **PROP-REST-09's equality survives untouched** and the shared Pre-A6 baseline fixture is unaffected — the blast radius SE F-02 sized is zero. **PM F-01 / SE F-01 (High) addressed:** four properties added — `PROP-REC-08` (AT-06-4's seam arm, co-location on §5.2's two-red-wave run), `PROP-REC-09` (AT-06-4b's negative arm on the existing E-34 capture-failure fixture), `PROP-REC-10` (the un-skip arm with its no-A6-fired negative companion) and `PROP-REC-11` (the five-key halt-field shape and the three shipped exact-shape oracles the fifth key disturbs, as transcription surfaces under derivation rule 1). `PROP-REST-08`'s "§4.5's four fields" is corrected to **five** (`snapshotRef: null` — the one positive oracle AT-06-4b's negative arm rests on); C-1's AC-6.3 row, C-2 (now **forty-eight** ATs, `AT-06-4b` included), C-3 and §G-4's coverage claim are restated. New Oracle **O-J** pins the co-location unit and the anti-echo rule. **PM F-02 / SE F-03 (Low) addressed:** §Scope and the grounding pins now name the versions actually read. No existing property statement, category, level assignment or oracle form changed other than the two corrections named here. |
 
 ---
 
@@ -22,17 +25,23 @@ at exactly one place — a Phase I implementation wave whose script-owned test g
 — attempts one bounded, reversible repair inside a declared envelope, re-runs the wave's whole gate
 sequence, and otherwise leaves the pipeline's control flow exactly as it ships today.
 
-**Scope.** Properties derive from REQ v1.8 (AC-1.1…AC-6.4, NFR-1…NFR-6), FSPEC v1.4 (BR-1…BR-16,
-E-01…E-33, AT-01-1…AT-07-5), TSPEC v1.10 (§2–§5) and DECISIONS (DEC-A6-01…DEC-A6-04). Every property
+**Scope.** Properties derive from REQ v1.16 (AC-1.1…AC-6.4, NFR-1…NFR-6), FSPEC v1.7 (BR-1…BR-16,
+E-01…E-34, AT-01-1…AT-07-5 plus AT-06-4b), TSPEC v1.15 (§2–§5) and DECISIONS v1.12
+(DEC-A6-01…DEC-A6-04); PLAN v1.13 owns the test homes. Those five versions were re-hashed on disk at
+HEAD rather than taken from a dispatch (`f97f4f66…`, `d602c440…`, `1f6ea486…`, `dc7a8d65…`,
+`c843cb4f…`). Every property
 names the requirement or spec section it derives from and the PLAN task that owns its test file. No
 property ranges over the wave gate itself, wave partitioning, or the commit discipline: those are
 correct today (M-WG-3, M-WG-4) and REQ §4 puts them out of scope.
 
 **Where the tests live.** One suite, `pdlc/workflows/__tests__/advisoryWaveGate.test.js`, carries
-the seam's own behaviour; ten existing suites under `pdlc/workflows/__tests__` are edited (all ten
-verified present at HEAD, including `advisoryEscalationLog.test.js` and `waveExecution.test.js`);
-one engine-channel file, `pdlc/engine/__tests__/advisory-config-example.test.js`, carries the
-example-config expectation. Test homes below are PLAN-owned: no property names a file the PLAN's
+the seam's own behaviour; **eleven** existing suites under `pdlc/workflows/__tests__` are edited (all
+eleven verified present at HEAD, including `advisoryEscalationLog.test.js`, `waveExecution.test.js`
+and — since PLAN v1.12 — `advisoryWaveGateMain.test.js`, the DC-07 production-path suite whose
+four-key `expect(result.haltAdvisory).toEqual({…})` at `advisoryWaveGateMain.test.js`'s
+`a persistently red gate: A6 escalates, the run halts, and haltAdvisory carries the REAL seam's class and diagnosis`
+test is a counterparty to §4.5's fifth halt field, PROP-REC-11); one engine-channel file,
+`pdlc/engine/__tests__/advisory-config-example.test.js`, carries the example-config expectation. Test homes below are PLAN-owned: no property names a file the PLAN's
 file-ownership manifest does not assign to a task.
 
 **The `new` files are on disk at HEAD, and `new` means required end state.** Earlier versions of
@@ -105,7 +114,7 @@ that owns that file for the batch in which the property lands.
 
 | ID | Property | Category | Level | Traces | Home |
 |---|---|---|---|---|---|
-| PROP-CTR-01 | `ADVISORY_ROOT_CAUSES` must set-equal `["plan-ordering-defect","wave-internal-defect","environmental","unclassified"]` | Contract | Unit | AC-2.2, AT-02-1, BR-2 | `advisoryEnvelope.test.js` (A6-02) |
+| PROP-CTR-01 | `ADVISORY_ROOT_CAUSES` must deep-equal the **ordered** sequence `["plan-ordering-defect","wave-internal-defect","environmental","unclassified"]` — ordered-sequence equality, never set equality: a reordering silently changes which class wins a two-class failure (E-08b), so the sorted set check is kept only as a companion that distinguishes a renamed member from a reordered one. E-08b's two-class arm itself is behavioural: a gate output matching classes 1 and 2 must class `plan-ordering-defect` and resolve through E-6's envelope, not E-5's | Contract | Unit + Integration | AC-2.2, AT-02-1, BR-2, E-08b | `advisoryEnvelope.test.js` (A6-02), `advisoryWaveGate.test.js` (A6-08) |
 | PROP-CTR-02 | `parseA6RootCause` must be total: absent, empty, wrong-cased, duplicated, out-of-set and non-string inputs must all return `"unclassified"` and none may throw; only an exact member of `ADVISORY_ROOT_CAUSES` may return a non-`unclassified` class; a duplicated `ROOT-CAUSE:` line must resolve last-wins | Data integrity | Unit | AC-2.2, C-3, DC-01, BR-2, TSPEC §3.3, §5.2 | `advisoryWaveGate.test.js` (A6-07) |
 | PROP-CTR-03 | Given a verdict whose classification is absent, and one whose classification is outside the set, both must escalate and the attempt count must be **unchanged** in both | Error handling | Integration | AC-2.2, AT-02-2, E-08 | `advisoryWaveGate.test.js` (A6-15) |
 | PROP-CTR-04 | Given a malformed verdict, exactly one attempt must be consumed; given a verdict both malformed **and** unclassifiable, the outcome must be the malformed-verdict escalation with exactly one attempt consumed | Error handling | Integration | AC-2.1, AT-02-3, E-07, E-09, TSPEC §3.7 | `advisoryWaveGate.test.js` (A6-13, A6-15) |
@@ -134,6 +143,7 @@ that owns that file for the batch in which the property lands.
 | PROP-ENV-10 | `A6_PROHIBITIONS` must set-equal `["f","g","h","i"]`, and each prohibited operation must be refused by its own test — PLAN prose edit, PLAN task-table edit, ownership-manifest edit, `testCommand` change, post-wave-command change, post-wave-pathspec change, commit, push, tag, wholly-outside path, partly-outside path — each carrying a paired positive assertion on the same run | Security | Unit + Integration | AC-3.3, AC-3.5, AC-4.3, AC-4.5, AT-03-5, BR-6, BR-8, E-17, E-18 | `advisoryEnvelope.test.js` (A6-02), `advisoryWaveGate.test.js` (A6-15) |
 | PROP-ENV-11 | `permittedActions` must be `["E-5","E-6"]`, narrowed per invocation to `["E-5"]` when the failing wave is the last one — there being no later task whose promotion E-6 could complete | Functional | Integration | AC-3.1, TSPEC §3.3 | `advisoryWaveGate.test.js` (A6-13) |
 | PROP-ENV-12 | A `PROPOSED-ACTION:` carrying any value other than a member of `permittedActions` must be refused by the shipped `classifyEnvelope` X-c clause, with no A6-specific code path | Contract | Integration | AC-3.1, TSPEC §3.3, §4.1 | `advisoryWaveGate.test.js` (A6-15) |
+| PROP-ENV-13 | Given a repair that writes **only** `.gitignore`d paths, on one run: `producedPaths()` must return `[]`, `apply` must return `{ok:false}`, the refusal reason must be the exact literal `post-action-verification-failed`, an escalation entry must be written, `attempts` must be **unchanged** across the refusal, and the tree must be carried no further — no re-gate invocation may be appended to the ledger after the anchor. The positive control on the same fixture: an otherwise identical repair writing one **non-ignored** in-envelope path returns a non-empty `producedPaths()` and `{ok:true}`, so the refusal is pinned to the ignored-ness and not to the fixture being broken. The unchanged-`attempts` conjunct is transcribed, not inferred: `post-action-verification-failed` is a **refusal** reason (FSPEC BR-15), and FSPEC §3.3's flow table, step 5, reads "escalate with a refusal reason, **no attempt consumed**"; the shipped driver agrees — `runAdvisorySeam`'s step-4 `ACT` arm terminates `{outcome:"escalated", reason: refuse({"post-action-verification-failed": true}), verdict, attempts, appliedSuccessfully:false}` with `attempts` passed through unincremented, the increments living only on the malformed-verdict and red-re-gate arms. Earlier revisions of this row transcribed "one attempt must be consumed", which would have minted a red test a spec-following implementation fails | Error handling | Unit + Integration | AC-3.4, BR-9, BR-15, FSPEC §3.3 (flow table, step 5), TSPEC §3.3 (`apply` row), §5.5 (*Ignored-path-only repair*), §6 OQ-11 | `advisoryWaveGate.test.js` (A6-14, former-A6-13 red step) |
 
 ### D. The gate, the resolution rule, and commits (`PROP-GATE-*`)
 
@@ -155,15 +165,16 @@ that owns that file for the batch in which the property lands.
 
 | ID | Property | Category | Level | Traces | Home |
 |---|---|---|---|---|---|
-| PROP-REST-01 | On a refusal, on budget exhaustion, and on a red re-gate — three separate runs — the path-to-content-hash map over the working tree, tracked and untracked files alike and generated outputs included, must equal the map taken immediately before A6 acted: the wave's post-dispatch, pre-commit tree, with the wave agents' own uncommitted work intact | Data integrity | Integration (real repo) | AC-5.1, AT-05-1, BR-9, TSPEC §5.2 | `advisoryWaveGate.test.js` (A6-09) |
+| PROP-REST-01 | On a refusal, on budget exhaustion, and on a red re-gate — three separate runs — the path-to-content-hash map over the working tree must equal the map taken immediately before A6 acted: the wave's post-dispatch, pre-commit tree, with the wave agents' own uncommitted work intact. The map's **domain** is BR-9's decided one — tracked files and **non-ignored** untracked files, generated outputs included, `.gitignore`d paths excluded from **both** sides of the comparison — and its **observation point** is immediately after restoration completes and before the record carriers the run still owes | Data integrity | Integration (real repo) | AC-5.1, AT-05-1, BR-9, TSPEC §5.2 (cases 1, 5), §2.5 | `advisoryWaveGate.test.js` (A6-09) |
 | PROP-REST-02 | A `git status`-level comparison must **not** satisfy the oracle: a companion run whose re-run post-wave command rewrites an already-dirty path must pass the status comparison and fail the hash-map comparison, demonstrating whole-tree rather than per-path restoration | Data integrity | Integration (real repo) | AC-4.4, AT-05-2, BR-9 | `advisoryWaveGate.test.js` (A6-09) |
-| PROP-REST-03 | An untracked file the wave added must be absent after restore; a `.gitignore`d file the wave added must still be present after restore — the assertion that pins `git clean -fd` over `-fdx`. **Upstream-pending:** the boundary is OQ-7's, raised as an erratum on FSPEC BR-9 / AT-05-1 and REQ AC-5.1; until it resolves this case ships as `test.todo` (never `test.skip`, which `orchestrate-dev.js`'s own skip guard would flag) and transcribes whichever boundary the erratum returns | Data integrity | Integration (real repo) | AC-5.1, BR-9, TSPEC §5.2, §6 OQ-7, OQ-9 | `advisoryWaveGate.test.js` (A6-09) |
+| PROP-REST-03 | A **non-ignored** untracked file the wave added must be absent after restore — not merely reset — and a `.gitignore`d file the wave added must still be **present** after restore: the assertion that pins `git clean -fd` over `-fdx`. **Presence is the whole assertion — not content.** BR-9 states that "an ignored path the re-gate mutated is not a restoration defect", so no property may assert an ignored path is unchanged byte for byte; an earlier revision of this row did, which is stronger than BR-9 and would fail an implementation whose re-run post-wave command wrote into an ignored cache. Both halves are plain positive assertions with transcribed expected values; neither is upstream-pending and neither ships as `test.todo`. OQ-7 is **closed upstream, answered *no***: FSPEC BR-9 / AT-05-1 at v1.6 put ignored paths outside the map in both directions — "an ignored path the re-gate mutated is not a restoration defect" — and REQ AC-5.1 at v1.14 excludes them as "operator files A6 never wrote and never restores over". An implementation that deleted or restored over the ignored file therefore **fails** this property rather than passing it | Data integrity | Integration (real repo) | AC-5.1, BR-9, AT-05-1, TSPEC §5.2 (cases 3, 4), §2.5, §6 OQ-7 | `advisoryWaveGate.test.js` (A6-09) |
 | PROP-REST-04 | The restoration triggers must be exactly the set `{refusal, budget exhaustion, red re-gate}`; a post-gate un-skip halt following a **green** re-gate must perform no restoration, and on that same run the repair must still be present in the working tree and the halt report must carry §4.5's advisory fields (`haltError`'s second argument `{advisory: waveAdvisoryFields}` with `repairApplied: true` and the repair's paths), while `formatUnskipViolations`' message string is unchanged | Functional | Integration | AC-5.3, AT-05-4, BR-10, E-22, TSPEC §4.5 | `waveExecution.test.js` (A6-19) |
 | PROP-REST-05 | Given a restoration that itself fails, `restoreTreeSnapshot` must throw, the throw must be tagged `__isRevertFailure` and rethrown by the driver's terminal catch, the wave must halt naming the failed restoration, and **no commit of any kind** may be reached | Error handling | Integration | AC-5.1, AT-05-5, E-28, TSPEC §3.5 | `advisoryWaveGate.test.js` (A6-09) |
 | PROP-REST-06 | `captureTreeSnapshot` must run exactly once per wave — at the call site, before `runAdvisorySeam` is entered — never once per attempt: across a two-attempt run the `_git` double must record `commit-tree` exactly once. The counted quantity must be that capture-unique argv verb, never the raw `_git` call count, since `restoreTreeSnapshot` drives the same transport | Idempotency | Integration | AC-5.1, TSPEC §3.2 step 4, §5.2 | `advisoryWaveGate.test.js` (A6-09, A6-15) |
 | PROP-REST-07 | On a run in which two waves' gates both go red, the set of `update-ref` targets observed on the `_git` double must set-equal `{refs/pdlc/a6-snapshot-1, refs/pdlc/a6-snapshot-2}` — two distinct targets, each written once; a fixed-name implementation writes one target twice and must fail both conjuncts | Idempotency | Integration | DEC-A6-03, TSPEC §2.5, §5.2, OQ-2 | `advisoryWaveGate.test.js` (A6-15) |
-| PROP-REST-08 | Given `captureTreeSnapshot` returning `null`, on one run: an advisory record entry is written whose Disposition cell reads a bare `escalated` with **no** refusal reason and whose `Model` cell reads the literal `n/a`; an escalation entry is written whose text **contains** the failing git verb observed on the `_git` double; `attempts === 0`; the wave budget is unchanged; no `_agent` call occurs; and the wave halts on its own gate literal with §4.5's four fields at their literal values — `rootCause: "unclassified"`, the fixed `diagnosis` sentence, `repairApplied: false`, `repairPaths: []` | Error handling | Integration | AC-3.4, AC-6.1, AC-6.3, TSPEC §2.5, §4.5, §5.2 | `advisoryWaveGate.test.js` (A6-15) |
+| PROP-REST-08 | Given `captureTreeSnapshot` returning `null`, on one run: an advisory record entry is written whose Disposition cell reads a bare `escalated` with **no** refusal reason and whose `Model` cell reads the literal `n/a`; an escalation entry is written whose text **contains** the failing git verb observed on the `_git` double; `attempts === 0`; the wave budget is unchanged; no `_agent` call occurs; and the wave halts on its own gate literal with §4.5's **five** fields, transcribed **set-equally** at their literal values — `rootCause: "unclassified"`, the fixed `diagnosis` sentence, `repairApplied: false`, `repairPaths: []` and `snapshotRef: null`. The fifth key joined the object at TSPEC v1.12 and is not cosmetic: `toEqual` fails on an extra `snapshotRef: null` exactly as on a missing one, and this is the **only positive oracle** for the `null` value that PROP-REC-09's negative arm rests on — dropping it to stay green deletes the discrimination AT-06-4b exists to provide (TSPEC §5.2, §4.5). This is **E-34**'s observable — the pre-A6 tree state cannot be captured at all, so no repair is proposed, none is applied and the wave halts on its own red gate — and E-34's only property home | Error handling | Integration | AC-3.4, AC-6.1, AC-6.3, E-34, AT-06-4b, TSPEC §2.5, §4.5, §5.2, §5.6 | `advisoryWaveGate.test.js` (A6-15, i.e. A6-18's former-A6-15 red step) |
 | PROP-REST-09 | Given a wave A6 did not resolve, the halt reason string must equal the reason the pre-A6 pipeline emits for the same gate failure and the queue row must be written `halted` exactly as today; the tree the run ends on must be the restored one, first-pass build outputs included | Contract | Integration | AC-5.2, AT-05-3, BR-14, E-23, M-WG-3, M-WG-7 | `advisoryWaveGate.test.js` (A6-15), `waveExecution.test.js` (A6-19) |
+| PROP-REST-10 | On the same real-repo restoration run, the content-hash map must be observed **before** the three record carriers are written, and the run must then write all three: the advisory-record append (AC-6.1), the escalation-log append (AC-6.2) and the `halted` queue-row write (AC-5.2, M-WG-7). The oracle asserts the *ordering*, not only the content — the map is taken at that point, and each carrier's write is separately asserted to follow it — so an implementation that interleaved a carrier write with restoration fails here rather than passing on a map that happens to match. `restoreTreeSnapshot`'s sequence is therefore complete at `git reset --mixed {head}` | Data integrity | Integration (real repo) | AC-5.1, AT-05-1, AT-06-1, BR-9, BR-13, TSPEC §5.2 (case 5), §2.5 | `advisoryWaveGate.test.js` (A6-09) |
 
 ### F. Record, escalation, report (`PROP-REC-*`)
 
@@ -173,9 +184,13 @@ that owns that file for the batch in which the property lands.
 | PROP-REC-02 | Given a record write that fails, the action must be refused rather than taken unrecorded, and the outcome must carry the tier's `record-write-failed` reason | Error handling | Integration | AC-6.1, AT-06-2, E-29, BR-13 | `advisoryRecord.test.js` (A6-16) |
 | PROP-REC-03 | Every A6 escalation must append an escalation-log entry to `docs/_queue/ESCALATIONS.md` carrying the root-cause class alongside the tier's required fields and one sentence stating what the operator must decide | Observability | Integration | AC-6.2, AT-06-3, BR-13 | `advisoryEscalationLog.test.js` (A6-17) |
 | PROP-REC-04 | Given an escalation whose log write fails, the disposition must still be `escalated`, the halt reason must be unchanged from PROP-REST-09's literal, the write failure must be surfaced on the run report's notice channel, and the disposition must never be upgraded to `resolved` | Error handling | Integration | AC-6.2, AT-06-6, E-30 | `advisoryEscalationLog.test.js` (A6-17) |
-| PROP-REC-05 | Given a halt following an A6 escalation, the halt report must carry the diagnosis and the root-cause class in its `advisory` fields — not only the advisory record file | Observability | Integration | AC-6.3, AT-06-4, BR-14, TSPEC §4.5 | `advisoryWaveGate.test.js` (A6-15) |
+| PROP-REC-05 | Given a halt following an A6 escalation, the halt report must carry the diagnosis and the root-cause class in its `advisory` fields — not only the advisory record file. This is AC-6.3's **first** sentence and the whole of it; the criterion's second sentence — the co-located overwrite warning REQ v1.16 added — is PROP-REC-08/-09/-10's, and the field shape it rides is PROP-REC-11's | Observability | Integration | AC-6.3, AT-06-4, BR-14, TSPEC §4.5 | `advisoryWaveGate.test.js` (A6-15) |
 | PROP-REC-06 | Given several runs in which A6 escalated `plan-ordering-defect`, the per-feature count must be derivable from `ESCALATIONS.md` alone, with no run logs. Paired negative, specified rather than a gap: resolution counts must **not** be derivable after Phase PUB, the advisory record being distilled and deleted | Observability | Integration | AC-6.4, AT-06-5, E-31, REQ O-2 | `advisoryEscalationLog.test.js` (A6-17) |
 | PROP-REC-07 | Given an A6 escalation, the escalation-log entry's *Pipeline state* field must read phase `I` with outcome `halted`, and the A3–A5 entries written by the same shipped path on the same suite must keep their own values (`DOD`/`halted`, `PUB`/`halted`) — the field is derived per seam, never passed per call site. The oracle is the **written entry**, not the constant: `ADVISORY_SEAM_PHASES` is module-private at `orchestrate-dev.js:3108` and TSPEC §3.1 does not export it, but an unregistered seam falls back to the literal `unknown` at `orchestrate-dev.js:3338`, so a missing `A6` row is observable as `unknown`/`unknown` in the entry. The `unknown` arm is the negative control, asserted on a fixture whose seam is absent from the table | Contract | Integration | AC-6.2, TSPEC §3.1, §6 OQ-12 | `advisoryEscalationLog.test.js` (A6-17) |
+| PROP-REC-08 | Given a halt following an A6 escalation **on a wave whose capture succeeded** (`snapshotRef` non-`null`), the halt report must carry all three of AC-6.3's conjuncts on one run: the diagnosis, the root-cause class, and — **co-located inside a single `notices` element** — a pointer to the captured pre-A6 tree state together with the statement that re-running this feature overwrites that capture. The oracle is co-location within one string, not presence in the run: pick the one `notices` element matching the ref pattern and assert the overwrite predicate **on that same element**, so a run splitting the two halves across two notices reddens. **Anti-echo:** both halves are matched by spec-side literals written in the test — `expect(notice).toMatch(/overwrit/i)` and `expect(notice).toContain("refs/pdlc/a6-snapshot-" + waveNum)` — never by a constant imported from the module under test, which cannot fail on wording and would neuter PROP-REC-09. Presence of the statement, never a verbatim sentence pin and never the capture's name (REQ O-1). Fixture: §5.2's **two-red-wave** run, the one PROP-REST-07 already drives, so the wave-scoped ref is asserted against a wave number the fixture actually distinguishes | Observability | Integration | AC-6.3, AT-06-4, BR-14, DEC-A6-03, TSPEC §4.5, §5.6 | `advisoryWaveGate.test.js` (A6-18's former-A6-15 red step) |
+| PROP-REC-09 | Given a halt following an A6 escalation **in which no pre-A6 tree state could be captured** (E-34, `snapshotRef: null`), the halt report must carry the diagnosis and the root-cause class, must point at **no** ref, and must carry **no** overwrite sentence: no element of `notices` may match either of PROP-REC-08's spec-side predicates, asserted over the **whole array** so a notice pushed elsewhere cannot hide. This is what makes PROP-REC-08's third conjunct falsifiable rather than a string always present — an implementation warning unconditionally passes PROP-REC-08 and fails here. Its positive half is PROP-REST-08's five-field set-equality on the same run, `snapshotRef: null` included; the absence conjunct never stands alone | Observability | Integration | AC-6.3, AT-06-4b, BR-14, E-34, DEC-A6-03, TSPEC §4.5, §5.6 | `advisoryWaveGate.test.js` (A6-18's former-A6-15 red step) |
+| PROP-REC-10 | Given a wave A6 **resolved** whose post-gate un-skip guard then halts, the halt report must carry the same co-located overwrite notice: TSPEC §4.5's condition quantifies over *every* A6-touched halt whose `snapshotRef` is non-`null`, and this halt's is. The seam has already returned by then, so this is the one push emitted at the un-skip halt site rather than inside `runWaveGateSeam`, through the same `renderSnapshotOverwriteNotice(snapshotRef)` helper and the same `advisoryNotice` sink. Same oracle and same anti-echo rule as PROP-REC-08. **Paired negative on the same suite:** on an un-skip halt where A6 did **not** fire on the wave, the halt is positively pinned by outcome, halt reason and `a6.calls.length === 0`, the `advisory` argument is omitted, and no overwrite notice appears anywhere in `notices` — so a positive-only arm cannot satisfy this property | Observability | Integration | AC-5.3, AC-6.3, AT-05-4, AT-06-4, BR-14, TSPEC §4.5 (un-skip row), §5.6 | `waveExecution.test.js` (A6-21's former-A6-19 red step) |
+| PROP-REC-11 | §4.5's halt-fields object must be the **five**-key `{rootCause, diagnosis, repairApplied, repairPaths, snapshotRef}`, compared by set-equality and never by containment, with `snapshotRef` non-`null` exactly when the capture succeeded and `null` exactly on E-34. Because `toEqual` fails on an extra key as on a missing one, the shipped exact-shape oracles over the pre-A6 **four**-key shape are transcription surfaces under derivation rule 1 and are widened by the same task that widens the production object, never as a follow-up: `advisoryWaveGate.test.js`'s `Object.keys(result.haltFields).sort()` list (verified at HEAD to read the four-key array), its `ORACLE_G_HALT_FIELDS` literal and the two `toEqual(ORACLE_G_HALT_FIELDS)` uses, its escalation-path `toEqual({rootCause: "plan-ordering-defect", …})`, and `advisoryWaveGateMain.test.js`'s four-key `expect(result.haltAdvisory).toEqual({…})` — whose fifth value is the **ref**, not `null`, because that fixture drives an out-of-envelope refusal on wave 1 while its `_git` double answers `ok: true` to every capture verb, so it reads `refs/pdlc/a6-snapshot-1`, written spec-side as `"refs/pdlc/a6-snapshot-" + waveNum` under PROP-REC-08's anti-echo rule. That suite's `haltReason` **containment** assertion is deliberately untouched — it is AT-05-3's surviving oracle. One further exact count moves for the same reason: `advisoryEscalationLog.test.js`'s `expect(failed.notices).toHaveLength(2)`, an exact count on a real-temp-repo `runA6Escalation` run whose capture succeeds, becomes `3` once the overwrite notice is due | Contract | Unit + Integration | AC-6.3, AT-06-4, AT-06-4b, BR-14, TSPEC §4.5, §5.1, §5.2 | `advisoryWaveGate.test.js`, `advisoryWaveGateMain.test.js`, `advisoryEscalationLog.test.js` (all A6-18) |
 
 ### G. Configuration (`PROP-CFG-*`)
 
@@ -197,7 +212,7 @@ that owns that file for the batch in which the property lands.
 
 ## Oracles
 
-Nine oracles in this set are easy to write in a shape that cannot fail. Each is pinned here with the
+Ten oracles in this set are easy to write in a shape that cannot fail. Each is pinned here with the
 exact quantity to compare, and with the wrong shape named so that Phase I transcribes neither.
 
 **O-A. The ledger is compared as a sequence, and resolution is anchored (PROP-GATE-01, -02, -03, -04).**
@@ -221,7 +236,7 @@ anchor at all fails on the recorded value rather than passing an absence check. 
 differently broken: attempt 2's `apply` re-anchors past attempt 1's genuine red sequence, so both
 drops leave an empty slice.
 
-**O-C. Preservation oracles carry positive-presence conjuncts (PROP-REST-01, -02, -03).** The
+**O-C. Preservation oracles carry positive-presence conjuncts (PROP-REST-01, -02, -03, -10).** The
 restoration oracle is a path-to-content-hash map over a **real** temporary repository
 (`mkdtempSync` + `execFileSync("git", …)`, the shape `advisoryDodSeams.test.js:371` already ships),
 not an injected `_git` double, which could only echo the fixture. The fixture must contain content
@@ -229,6 +244,19 @@ the wave actually changed and content the post-wave command actually rewrote, or
 vacuous. The paired negative control is explicit: a `git status`-level comparison passes a per-path
 restore whenever the re-run post-wave command rewrote an already-dirty path, which is the case the
 rule exists to fail.
+
+Two conjuncts of that oracle are **decided upstream and transcribed here**, not left to the fixture
+author (OQ-7, closed *no*). *Domain:* the map ranges over tracked files and **non-ignored** untracked
+files, generated outputs included, with `.gitignore`d paths excluded from both sides — so the fixture
+must carry a `.gitignore`d file the wave added and assert it **present** afterwards (PROP-REST-03),
+which is a positive-presence conjunct rather than the absence check the pending form invited, and an
+implementation that ran `clean -fdx` fails it. A fixture whose only generated output is `.gitignore`d
+tests nothing at all here (AT-05-2), so PROP-REST-02's rewritten path must be a non-ignored one.
+*Observation point:* the map is taken immediately after restoration completes and **before** the
+advisory-record append, the escalation-log append and the queue-row write; because all three carriers
+are files inside the tree, a map observed after them differs from the pre-A6 map by exactly the bytes
+BR-13 mandates, so a correct restore would read as red. PROP-REST-10 asserts that ordering positively
+— map first, then each of the three writes — rather than trusting the comparison to notice.
 
 **O-D. Behavioural counts, never raw call counts (PROP-REST-06, -07, PROP-CTR-09, -11, -12, -13).**
 `restoreTreeSnapshot` drives the same `_git` transport as `captureTreeSnapshot`, so a raw call count
@@ -274,13 +302,48 @@ radius is bounded by the class-to-envelope binding, which *is* enforced — a fa
 well as for seam members — is what the property carries, not the snapshot of four sites, so a site
 added later is still in scope.
 
+**O-J. The overwrite warning's unit is co-location inside one string, and its predicates are
+spec-side (PROP-REC-08, -09, -10, -11).** Three wrong units are ruled out by name. *(1) Containment
+over the whole report* — `JSON.stringify(report).includes("overwrit")` — passes when the warning is
+emitted on a channel the operator never sees at halt, which is exactly what BR-14's *"in the same
+place"* forbids. *(2) Two independent `toContain` assertions over separate strings* cannot falsify a
+split: an implementation pushing the ref pointer as one notice and the overwrite sentence as another
+satisfies both and defeats the criterion. The oracle therefore selects the **single `notices`
+element** matching the ref pattern and asserts the overwrite predicate **on that same element**.
+*(3) A constant imported from the module under test* — `toContain(devModule.SOME_WARNING)` — is an
+implementation echo that cannot fail on wording, and it would neuter PROP-REC-09: an
+unconditionally-emitted warning would still match. Both halves are matched by literals written in the
+test: the case-insensitive `/overwrit/` stem, the weakest predicate that still discriminates a
+warning from its absence, and `"refs/pdlc/a6-snapshot-" + waveNum`. **Presence of the statement,
+never a verbatim sentence.** FSPEC AT-06-4 pins co-location as the observable and REQ O-1 keeps the
+capture's name and storage form TSPEC's, so no warning sentence is transcribed anywhere in this
+document — pinning one would mint a red test against a spec-following implementation, the failure
+mode round v1.4 corrected in PROP-ENV-13's `attempts` conjunct. **The negative arm is what makes the
+positive falsifiable,** and it is not absence-only: PROP-REC-09 asserts the absence over the *whole*
+`notices` array on the E-34 fixture, paired on the same run with PROP-REST-08's five-key
+set-equality including `snapshotRef: null` — the positive oracle for the `null` value. **The carrier
+is `notices`, not the halt reason string,** which is why PROP-REST-09's byte-equality with the pre-A6
+literal (M-WG-3) and the shared Pre-A6 baseline fixture are untouched by this obligation; the
+warning rides `notices`, which the halt-path `buildFinalReport({… notices …})` call already spreads
+onto the halt report at `orchestrate-dev.js`'s halt-path report construction. The helper
+`renderSnapshotOverwriteNotice(snapshotRef)` is exported like its two siblings
+(`export function renderAdvisoryEntry`, `export function renderEscalationEntry` in
+`pdlc/workflows/orchestrate-dev.js`), so its purity may additionally be asserted directly in the
+shape `PROP-ESC-01` uses; that is an available unit assertion, not a substitute — the seam-level
+observation is what proves the notice reaches the report.
+
 **Falsifiability check applied to every property above.** Each was checked against the five failure
 modes the te-author checklist names: preservation oracles have positive-presence conjuncts (O-C);
 absence-shaped conjuncts sit at the whole-run seam (O-B); identical-envelope behaviours are counted
-behaviourally (O-D); shared reason literals get named positive dispositions (E); and every
-prohibition property carries its AC-4.5 positive on the same run. Three properties are deliberately
+behaviourally (O-D); shared reason literals get named positive dispositions (E); every prohibition
+property carries its AC-4.5 positive on the same run; and the one antecedent-guarded property added
+this round is oracled on both arms rather than one (O-J) — a guarded conjunct asserted only on the
+fixture where its antecedent is false passes vacuously, which is why PROP-REC-08 lives on the
+two-red-wave run and never on E-34's. Three properties are deliberately
 *weak* and say so: PROP-REC-06's negative half (resolution counts not derivable), PROP-NFR-03's
-prompt-only qualification, and PROP-REST-03's upstream-pending boundary.
+prompt-only qualification. PROP-REST-03 was a third until this revision: its boundary was
+upstream-pending on OQ-7, which is now closed, so it is a fully transcribed positive assertion and no
+longer weak.
 
 
 ## Fixtures
@@ -293,7 +356,7 @@ unless the row says otherwise.
 | Fixture | Shape | Used by | Source of truth |
 |---|---|---|---|
 | `SEAMS` literal | Six members, `["A1","A2","A3","A4","A5","A6"]`; `helpers/advisoryDoubles.js`'s `const SEAMS` declaration already carries the six-member form at HEAD (TSPEC §1.3), so this fixture row records the required end state, not an edit outstanding | PROP-SEAM-01, -02 | TSPEC §3.1 |
-| Recording `_git` double | Records argv per call; the counted quantities are **verbs** (`commit-tree`, `update-ref`, `read-tree`, `clean`, `reset`) and the `update-ref` target set, never the raw call count | PROP-REST-06, -07, -08, PROP-CTR-12, PROP-ENV-10 `(h)` | TSPEC §5.2 |
+| Recording `_git` double | Records argv per call; the counted quantities are **verbs** (`commit-tree`, `update-ref`, `read-tree`, `clean`, `reset`) and the `update-ref` target set, never the raw call count | PROP-REST-06, -07, -08, PROP-REC-08, PROP-CTR-12, PROP-ENV-10 `(h)` | TSPEC §5.2 |
 | Real-repository fixture builder | `mkdtempSync` + `execFileSync("git", …)` with a `_git` adapter over it — the shape `advisoryDodSeams.test.js:371` already ships for the A3 fixtures | PROP-REST-01, -02, -03, -05 | TSPEC §5.2 |
 | A6 agent double | Emits the tier's six verdict lines plus `ROOT-CAUSE:`, `PROMOTES:` and `PROMOTES-TASK:` trailers; parameterised over class, proposed action, confidence and evidence | PROP-CTR-*, PROP-ENV-*, PROP-NFR-03 | TSPEC §4.1 |
 | `_runCommand` double | Drives red-then-green re-gates by outcome, **not** by stubbing `verifyGate`: the real `verifyGate` runs `runWaveGateSequence`, which is what appends the ledger tokens | PROP-GATE-01, -03, -06 | TSPEC §5.2 |
@@ -303,6 +366,9 @@ unless the row says otherwise.
 | Citation-floor pair | One citation of 23 normalised characters and one of 24, on the same run | PROP-CTR-05 | TSPEC §3.3 (`A6_MIN_CITATION_CHARS = 24`) |
 | Config fixtures | `waveBudgetPerRun` at `1`, `0`, `-1`, `1.5`, `"x"`, `null`, and absent; plus tier-off (`enabled: false`) and tier-on-A6-off (`enabled: true, waveBudgetPerRun: 0`) whole-config arms | PROP-CFG-01, -02, PROP-CTR-13, PROP-SEAM-05 | TSPEC §3.1, §4.4 |
 | Example-config fixture | The tracked `.claude/pdlc.config.example.json` itself, read by the engine-channel test — the same file `ci-arrangement.test.js`'s module-scope `const configPath` already resolves, so the fixture is a second reader of a live file, not a new one; the `testCommand` regex pair inside that file's `ci arrangement — .claude/pdlc.config.example.json's implementation.testCommand` test (`/cd pdlc\/workflows\s*&&\s*npm test/` and `/cd pdlc\/engine\s*&&\s*npm test/`) is the pre-edit baseline the advisory-key addition must leave standing | PROP-CFG-03 | TSPEC §4.4; `ci-arrangement.test.js`, `const configPath` and the `implementation.testCommand` test |
+| Two-red-wave run | Two waves whose gates both go red, already built for PROP-REST-07's `update-ref` target set; it is the **only** fixture that distinguishes a wave number, which is why PROP-REC-08's ref-pointer half is asserted on it rather than on a single-wave run where `-1` would pass a hard-coded implementation | PROP-REST-07, PROP-REC-08 | TSPEC §5.2, §5.6 |
+| Capture-failure run (E-34) | `captureTreeSnapshot` returning `null`, driven by a `_git` double failing on `write-tree`; already built for PROP-REST-08. It is PROP-REC-09's negative arm at **no new cost** — the antecedent of the overwrite obligation is false here by construction, so the assertion is that no `notices` element matches either predicate, paired with the five-key set-equality carrying `snapshotRef: null` | PROP-REST-08, PROP-REC-09, PROP-REC-11 | TSPEC §5.2, §4.5, §5.6 |
+| Un-skip halt pair | A wave A6 **resolved** whose post-gate un-skip guard then halts (`snapshotRef` non-`null`), and its companion in which A6 never fired (`a6.calls.length === 0`, `advisory` argument omitted); the first is already built for PROP-REST-04 | PROP-REST-04, PROP-REC-10 | TSPEC §4.5 (un-skip row) |
 | Pre-A6 baseline | The halt reason string, queue row and created-file set captured from the shipped pipeline on the same inputs; the gate-failure literal is `orchestrate-dev.js`'s existing `Error: Wave {N} test gate failed — \`{testCommand}\` did not pass. Output tail:\n{tail}` | PROP-SEAM-03, -04, -05, PROP-REST-09, PROP-GATE-05 | `orchestrate-dev.js` wave loop, M-WG-3 |
 
 **Verbatim-string discipline.** Every fixture string that also appears in a normative document is
@@ -312,14 +378,41 @@ refusal reasons from TSPEC §3.1 (the latter verified byte-for-byte against
 (`orchestrate-dev.js:2311`), the capture-failure `diagnosis` sentence and promotion commit message
 from Oracle G, and the snapshot ref pattern `refs/pdlc/a6-snapshot-{waveNum}`.
 
-**Two fixture-level hazards, stated so they are not rediscovered.**
+**And one string is deliberately *not* on that list.** The overwrite warning's sentence has no
+normative wording: FSPEC AT-06-4 states co-location and presence as the observable, and REQ O-1
+leaves the capture's name and storage form to TSPEC, so no document this one derives from owns a
+sentence to transcribe. Adding a fixture row pinning that phrasing — or the ref name as a warning
+literal — would manufacture a literal the spec does not own and mint a red test against a
+spec-following implementation. What *is* transcribed is the predicate pair O-J names, written
+spec-side in the test: `/overwrit/i` and `"refs/pdlc/a6-snapshot-" + waveNum`.
+
+**Three fixture-level hazards, stated so they are not rediscovered.**
 
 1. *Do not transcribe the two-attempt positive companion in the mutation fixtures' vocabulary.*
    Injecting a `verifyGate` double that returns `{passed:false}` then `{passed:true}` appends no
    tokens, leaves the ledger at the pre-A6 pass's `["post-wave","test"]`, and makes the six-token
    literal a red test against a correct implementation (TSPEC §5.2).
-2. *Do not use `test.skip` for the upstream-pending case.* `orchestrate-dev.js`'s skip guard matches
-   `/\b(describe|test|it)\.skip\s*\(/`; PROP-REST-03's pending case uses `test.todo` (PLAN A6-09).
+2. *The real-repo restoration fixture needs one file of each class, and no pending marker.* Earlier
+   revisions of this document held PROP-REST-03's ignored-path half as `test.todo` while OQ-7 was
+   open — never `test.skip`, since `orchestrate-dev.js`'s skip guard matches
+   `/\b(describe|test|it)\.skip\s*\(/`. OQ-7 is closed (answered *no*), so **no case in A6-09 ships
+   with a pending marker of either kind**; PLAN A6-09 mints the red test with the expected values
+   transcribed. What the fixture must carry instead: a tracked file the wave modified, a **non-ignored**
+   untracked file the wave added (asserted **absent** after restore), a `.gitignore`d file the wave
+   added (asserted still **present**, and only present — BR-9 puts a mutated ignored path outside the
+   restoration map in both directions, so a byte-for-byte conjunct on it would assert more than the
+   rule it exists to enforce), and a non-ignored generated output the re-run post-wave
+   command rewrites over an already-dirty path (PROP-REST-02's discriminator). Substituting an ignored
+   path for that last one makes AT-05-2 vacuous, since BR-9 puts it outside the map.
+
+3. *Do not size PROP-REC-08's fixture as new work, and do not let the `snapshotRef` key redden a
+   suite silently.* Every fixture the three overwrite-notice properties need already exists — the
+   two-red-wave run, the E-34 capture-failure run and the un-skip halt pair — so the cost is
+   assertions, not infrastructure, and a "too expensive to test" argument for the conjunct would not
+   survive contact with them. The real hazard is the other direction: the fifth halt field disturbs
+   three shipped exact-shape oracles (PROP-REC-11), and each of them fails on an *extra* key exactly
+   as on a missing one. They are widened by the task that adds the field, in the same red-to-green
+   step, because the batch gate they sit behind has no expected-red channel.
 
 
 ## Coverage Matrix
@@ -342,7 +435,7 @@ Every criterion has at least one property; every property traces at least one cr
 | AC-3.1 | PROP-ENV-01, PROP-ENV-02, PROP-ENV-08, PROP-ENV-11, PROP-ENV-12 |
 | AC-3.2 | PROP-ENV-04, PROP-ENV-05, PROP-ENV-06 |
 | AC-3.3 | PROP-ENV-10 |
-| AC-3.4 | PROP-ENV-07, PROP-CTR-08, PROP-REST-08 |
+| AC-3.4 | PROP-ENV-07, PROP-ENV-13, PROP-CTR-08, PROP-REST-08 |
 | AC-3.5 | PROP-ENV-09, PROP-ENV-10 |
 | AC-4.1 | PROP-GATE-02, PROP-GATE-03, PROP-GATE-04, PROP-GATE-05 |
 | AC-4.2 | PROP-GATE-07 |
@@ -350,12 +443,12 @@ Every criterion has at least one property; every property traces at least one cr
 | AC-4.4 | PROP-GATE-01, PROP-GATE-06, PROP-REST-01, PROP-REST-02 |
 | AC-4.5 | PROP-ENV-10, PROP-GATE-05, PROP-REST-04 (every prohibition property carries its paired positive) |
 | AC-4.6 | PROP-GATE-08, PROP-GATE-09 |
-| AC-5.1 | PROP-REST-01, PROP-REST-03, PROP-REST-05, PROP-REST-06 |
-| AC-5.2 | PROP-REST-09, PROP-SEAM-03, PROP-SEAM-04 |
-| AC-5.3 | PROP-REST-04, PROP-GATE-03 |
-| AC-6.1 | PROP-REC-01, PROP-REC-02, PROP-REST-08 |
-| AC-6.2 | PROP-REC-03, PROP-REC-04, PROP-REC-07 |
-| AC-6.3 | PROP-REC-05, PROP-REST-08 |
+| AC-5.1 | PROP-REST-01, PROP-REST-03, PROP-REST-05, PROP-REST-06, PROP-REST-10 (observation point) |
+| AC-5.2 | PROP-REST-09, PROP-REST-10 (queue-row write follows the observation), PROP-SEAM-03, PROP-SEAM-04 |
+| AC-5.3 | PROP-REST-04, PROP-GATE-03, PROP-REC-10 |
+| AC-6.1 | PROP-REC-01, PROP-REC-02, PROP-REST-08, PROP-REST-10 (record append follows the observation) |
+| AC-6.2 | PROP-REC-03, PROP-REC-04, PROP-REC-07, PROP-REST-10 (escalation append follows the observation) |
+| AC-6.3 | **First sentence** (diagnosis + root-cause class): PROP-REC-05. **Second sentence** (co-located overwrite warning, REQ v1.16): PROP-REC-08 (capture succeeded), PROP-REC-09 (E-34 negative arm), PROP-REC-10 (un-skip arm). **Field shape it rides:** PROP-REC-11, PROP-REST-08 |
 | AC-6.4 | PROP-REC-06 |
 | NFR-1 | PROP-NFR-03, PROP-NFR-04 |
 | NFR-2 | PROP-SEAM-05, PROP-SEAM-06, PROP-SEAM-09 |
@@ -366,8 +459,8 @@ Every criterion has at least one property; every property traces at least one cr
 
 ### C-2. FSPEC acceptance tests → properties
 
-Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no id appears that FSPEC
-§6 does not carry.
+Set-equality over AT ids: all **forty-eight** ATs in FSPEC §6 at v1.7 appear below, and no id appears
+that FSPEC §6 does not carry. The forty-eighth is `AT-06-4b`, added at v1.7 as AT-06-4's negative arm.
 
 | AT | Property | AT | Property |
 |---|---|---|---|
@@ -378,15 +471,15 @@ Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no 
 | AT-01-5 | PROP-SEAM-07 | AT-04-3 | PROP-GATE-07 |
 | AT-01-6 | PROP-SEAM-06 | AT-04-4 | PROP-GATE-05 |
 | AT-02-1 | PROP-CTR-01 | AT-04-5 | PROP-GATE-08 |
-| AT-02-2 | PROP-CTR-02, PROP-CTR-03 | AT-05-1 | PROP-REST-01 |
+| AT-02-2 | PROP-CTR-02, PROP-CTR-03 | AT-05-1 | PROP-REST-01, PROP-REST-03, PROP-REST-10 |
 | AT-02-3 | PROP-CTR-04 | AT-05-2 | PROP-REST-02 |
 | AT-02-4 | PROP-CTR-06 | AT-05-3 | PROP-REST-09 |
-| AT-02-5 | PROP-CTR-07 | AT-05-4 | PROP-REST-04 |
+| AT-02-5 | PROP-CTR-07 | AT-05-4 | PROP-REST-04, PROP-REC-10 |
 | AT-02-6 | PROP-CTR-11 | AT-05-5 | PROP-REST-05 |
-| AT-02-7 | PROP-CTR-10 | AT-06-1 | PROP-REC-01 |
+| AT-02-7 | PROP-CTR-10 | AT-06-1 | PROP-REC-01, PROP-REST-10 |
 | AT-02-8 | PROP-CTR-08 | AT-06-2 | PROP-REC-02 |
 | AT-02-9 | PROP-CTR-09 | AT-06-3 | PROP-REC-03 |
-| AT-03-1 | PROP-ENV-01 | AT-06-4 | PROP-REC-05 |
+| AT-03-1 | PROP-ENV-01 | AT-06-4 | PROP-REC-05, PROP-REC-08, PROP-REC-10 |
 | AT-03-2 | PROP-ENV-04 | AT-06-5 | PROP-REC-06 |
 | AT-03-3 | PROP-ENV-05 | AT-06-6 | PROP-REC-04 |
 | AT-03-4 | PROP-ENV-08 | AT-07-1 | PROP-NFR-03 |
@@ -394,13 +487,19 @@ Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no 
 | AT-03-6 | PROP-ENV-09 | AT-07-2b | PROP-CFG-01, PROP-CFG-02 |
 | AT-03-7 | PROP-ENV-07 | AT-07-3 | PROP-GATE-10 |
 | AT-03-8 | PROP-ENV-06 | AT-07-4 | PROP-NFR-01 |
+| | | AT-06-4b | PROP-REC-09, PROP-REST-08 |
 | | | AT-07-5 | PROP-NFR-02 |
 
 ### C-3. PLAN tasks → properties
 
-Every RED task in PLAN v1.2 carries at least one property, and every property names a PLAN-owned test
-file. The seven GREEN tasks (A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21) carry no
-properties of their own by construction: each turns the preceding RED batch's properties green.
+Every RED task in PLAN v1.13 carries at least one property, and every property names a PLAN-owned test
+file. Task ids below are PLAN's pre-restructure ones (A6-15, A6-16, A6-17, A6-19, A6-20); at v1.13
+those are red *steps inside* A6-18 and A6-21, which is why the new rows name both forms. Re-titling
+the whole matrix on the restructured ids is SE's v2 F-01/F-02, still open and non-gating. The seven GREEN tasks (A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21) carry no
+properties of their own by construction: each turns the preceding RED batch's properties green — with
+one contract PROP-REC-11 makes explicit: A6-18's green step both adds `snapshotRef` and widens the
+three shipped exact-shape oracles it disturbs, because that widening is the same red-to-green step
+and not a follow-up.
 
 | Task | Test file | Properties |
 |---|---|---|
@@ -410,13 +509,13 @@ properties of their own by construction: each turns the preceding RED batch's pr
 | A6-03 | six collateral suites | PROP-SEAM-02 |
 | A6-04 | `pdlc/engine/__tests__/advisory-config-example.test.js` (new) | PROP-CFG-03 |
 | A6-07 | `advisoryWaveGate.test.js` | PROP-CTR-02, PROP-CTR-05 (unit half), PROP-ENV-02, PROP-ENV-03 (unit half), PROP-NFR-04 |
-| A6-09 | `advisoryWaveGate.test.js` | PROP-REST-01, PROP-REST-02, PROP-REST-03, PROP-REST-05, PROP-REST-06 |
+| A6-09 | `advisoryWaveGate.test.js` | PROP-REST-01, PROP-REST-02, PROP-REST-03, PROP-REST-05, PROP-REST-06, PROP-REST-10 |
 | A6-11 | `advisoryDriver.test.js` | PROP-CTR-10, PROP-GATE-11, PROP-NFR-01, PROP-NFR-02 |
-| A6-13 | `advisoryWaveGate.test.js` | PROP-CTR-04 (seam-op half), PROP-CTR-07, PROP-ENV-08 (seam-op half), PROP-ENV-11, PROP-GATE-02 (seam-op half) |
-| A6-15 | `advisoryWaveGate.test.js` | PROP-SEAM-07, PROP-SEAM-08, PROP-CTR-03, PROP-CTR-04, PROP-CTR-05, PROP-CTR-06, PROP-CTR-08, PROP-CTR-09, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13, PROP-ENV-03, PROP-ENV-04, PROP-ENV-05, PROP-ENV-08, PROP-ENV-09, PROP-ENV-10, PROP-ENV-12, PROP-GATE-01…-06, PROP-REST-07, PROP-REST-08, PROP-REST-09, PROP-REC-05, PROP-NFR-03 |
+| A6-13 | `advisoryWaveGate.test.js` | PROP-CTR-04 (seam-op half), PROP-CTR-07, PROP-ENV-08 (seam-op half), PROP-ENV-11, PROP-ENV-13, PROP-GATE-02 (seam-op half) |
+| A6-15 | `advisoryWaveGate.test.js` | PROP-SEAM-07, PROP-SEAM-08, PROP-CTR-03, PROP-CTR-04, PROP-CTR-05, PROP-CTR-06, PROP-CTR-08, PROP-CTR-09, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13, PROP-ENV-03, PROP-ENV-04, PROP-ENV-05, PROP-ENV-08, PROP-ENV-09, PROP-ENV-10, PROP-ENV-12, PROP-GATE-01…-06, PROP-REST-07, PROP-REST-08, PROP-REST-09, PROP-REC-05, PROP-REC-08, PROP-REC-09, PROP-REC-11 (its `advisoryWaveGate.test.js` and `advisoryWaveGateMain.test.js` surfaces), PROP-NFR-03 |
 | A6-16 | `advisoryRecord.test.js` | PROP-REC-01, PROP-REC-02 |
-| A6-17 | `advisoryEscalationLog.test.js` | PROP-REC-03, PROP-REC-04, PROP-REC-06, PROP-REC-07 |
-| A6-19 | `waveExecution.test.js` | PROP-SEAM-03, PROP-SEAM-04, PROP-SEAM-10, PROP-GATE-07, PROP-GATE-08, PROP-GATE-09, PROP-GATE-10, PROP-REST-04, PROP-REST-09 |
+| A6-17 | `advisoryEscalationLog.test.js` | PROP-REC-03, PROP-REC-04, PROP-REC-06, PROP-REC-07; PROP-REC-11's `expect(failed.notices).toHaveLength(2)` → `3` widening is **A6-18's**, not this step's, since it is owed by the field the green step adds |
+| A6-19 (A6-21's former-A6-19 red step) | `waveExecution.test.js` | PROP-SEAM-03, PROP-SEAM-04, PROP-SEAM-10, PROP-GATE-07, PROP-GATE-08, PROP-GATE-09, PROP-GATE-10, PROP-REST-04, PROP-REST-09, PROP-REC-10 |
 | A6-20 | `advisoryDisabled.test.js` | PROP-SEAM-05, PROP-SEAM-06, PROP-SEAM-09 |
 
 **File existence, verified at HEAD.** The ten edited suites all exist
@@ -452,20 +551,54 @@ These are stated so that a later reader can tell a decision from an omission.
 ### G-2. Known-soft properties
 
 - **PROP-CFG-03 is invisible to the wave gate that runs this feature.** Its home is the engine-channel file `pdlc/engine/__tests__/advisory-config-example.test.js` (A6-04), while this repo's `.claude/pdlc.config.json` sets `implementation.testCommand` to a `cd pdlc/workflows && npm test …` command only. So neither A6-04's RED nor its GREEN is observable in a Phase I wave gate or in the V-wave: both are asserted by CI's `Engine tests (ubuntu-latest)` job, which runs `npm ci && npm test` in `pdlc/engine` (PLAN §"Engine channel" row). A batch reported green by the wave gate therefore carries no evidence about PROP-CFG-03 either way; read the CI job, not the wave. The same holds for A6-06's edit to the example config.
-- **PROP-REST-03** is upstream-pending on OQ-7 and ships as `test.todo` until the erratum on FSPEC
-  BR-9 / AT-05-1 and REQ AC-5.1 returns a boundary. This is TSPEC §6 OQ-9's decision, not a gap this
-  document introduces.
+- **PROP-REST-03 is no longer soft — OQ-7 closed, answered *no*.** Earlier revisions listed it here
+  as upstream-pending, shipping as `test.todo` until an erratum on FSPEC BR-9 / AT-05-1 and REQ
+  AC-5.1 returned a boundary. That erratum has landed: FSPEC v1.6's BR-9 / AT-05-1 / AT-05-2 and REQ
+  v1.14/v1.15's AC-5.1 exclude ignored paths from the map in both directions and pin the observation
+  point, and TSPEC §5.2 case 4 carries the transcribed expected values. PROP-REST-03 is therefore a
+  plain positive assertion with no pending marker, and TSPEC §6 OQ-9 — "should PLAN authoring wait?"
+  — is recorded there as moot. Two consequences worth stating so they are not re-derived: an
+  implementation running `git clean -fdx` **fails** PROP-REST-03 rather than passing it, and
+  §3.3's ignored-path-only repair refusal (`producedPaths() === []` ⇒ `{ok:false}` ⇒
+  `post-action-verification-failed`) is the decided disposition, not one awaiting OQ-7 (TSPEC §6
+  OQ-11). That case had a TSPEC-assigned test (§5.5) and no property in this document; absorbing the
+  decision closes the gap, and **PROP-ENV-13** is its home.
 - **PROP-REC-06**'s negative half ("resolution counts are not derivable") is an absence assertion by
   construction. It is paired with the positive half on the same log fixture, which is the strongest
   available shape.
 - **PROP-NFR-03**'s partition is only as good as its transcribed literal. The set-equality is what
   makes a rule silently becoming proposable a red test; a per-rule containment check would not.
+- **PROP-REC-08's conjunct (3) is antecedent-guarded, and that is its whole softness.** REQ AC-6.3's
+  second sentence begins *"where the halt report points the operator at a captured pre-A6 tree
+  state"*, so on any run without a capture the conjunct is vacuously true. It is therefore never
+  asserted alone: PROP-REC-09 asserts its absence on the E-34 run over the whole `notices` array,
+  which is what turns "the warning is present" from a string that could be always present into a
+  discriminating oracle. A single-arm resolution — the warning asserted only where a capture
+  succeeded — would be satisfied by an implementation that warns on every halt, including halts where
+  there is nothing to preserve. Both arms, or neither.
+- **No property pins the warning's wording, and that is deliberate rather than a gap.** FSPEC AT-06-4
+  makes co-location and presence the observable and REQ O-1 keeps the capture's name and storage form
+  TSPEC's, so there is no normative sentence to transcribe (O-J, §Fixtures). The cost is stated: an
+  implementation could emit a technically-matching but unhelpfully phrased notice and pass. The
+  alternative — minting a literal no upstream document owns — buys a red test against a
+  spec-following implementation, which is the worse trade.
 
 ### G-3. Findings routed upstream (errata)
 
-Two defects in upstream documents are named here rather than absorbed into this document's
-properties. In both cases this document follows the TSPEC/PLAN reading, which is also what the
-shipped code does, and the FSPEC text is the one that needs the versioned edit.
+**Nothing new is routed this round, and one previously-open cascade is closed by absorption.** The
+v3 reviews asked whether AC-6.3's second sentence should be routed as an erratum because FSPEC, TSPEC
+and PLAN had not cascaded (PM Q-01, SE F-02). At HEAD they have: FSPEC v1.7 carries AT-06-4's third
+conjunct and AT-06-4b, TSPEC v1.15 names the carrier (`snapshotRef`, `renderSnapshotOverwriteNotice`,
+the `advisoryNotice` sink), and PLAN v1.13 gives both arms owners (A6-18, A6-21). The slot question
+SE F-02 said had to be settled upstream **is settled upstream**, and settled the low-blast-radius
+way — the notice rides `notices`, not the halt reason string, so PROP-REST-09's equality with the
+pre-A6 literal stands unedited. Re-raising either would be DEC-ERR-01's anti-pattern. The three items
+below are the ones still open from earlier rounds.
+
+Three defects in upstream documents are named here rather than absorbed into this document's
+properties. In the first two this document follows the TSPEC/PLAN reading, which is also what the
+shipped code does, and the FSPEC text is the one that needs the versioned edit; the third is a PLAN
+levelling gap routed to se-author.
 
 1. **FSPEC AT-01-4 forbids the oracle every other document requires.** It reads "The test asserts the
    key is **absent**, not undefined." REQ NFR-2 requires the opposite reading — "the key is
@@ -480,10 +613,27 @@ shipped code does, and the FSPEC text is the one that needs the versioned edit.
    containment (TE F-15: a dropped field passes a containment check)", and PLAN A6-16 transcribes
    the set-equality form. A containment oracle cannot fail on a dropped field, which is the defect
    TSPEC's correction exists to catch. PROP-REC-01 follows TSPEC/PLAN.
+3. **PLAN mints the ignored-path-only refusal only at seam-op level — routed to se-author.**
+   PROP-ENV-13's home is now PLAN A6-14's former-A6-13 red step, the one place PLAN names this case
+   ("an empty set is `{ok:false}` ⇒ `post-action-verification-failed`, which is also the disposition
+   for a repair writing only `.gitignore`d paths — OQ-11"). That step is a `buildA6SeamOps` member
+   contract, so it mints the `producedPaths() === []` / `{ok:false}` conjuncts directly; the
+   property's run-level conjuncts — the escalation entry written, and no re-gate token appended to
+   the ledger after the anchor — need a `runWaveGateSeam` run, and A6-18's former-A6-15 red step
+   enumerates its cases in full without naming this one. Two acceptable resolutions, both PLAN's
+   call: name the end-to-end ignored-path-only case in A6-18's former-A6-15 step, or state that
+   A6-14's red step carries it end to end in the same file. Until PLAN decides, the property is
+   levelled `Unit + Integration` against its single stated home and no conjunct is dropped, so a
+   reader following it finds a test for its seam-op half rather than none at all.
 
 ### G-4. Requirements-side gaps found while deriving
 
-None. Every REQ acceptance criterion and NFR yielded at least one falsifiable property (matrix C-1),
-and every FSPEC acceptance test has a home (matrix C-2). The two conflicts above are wording defects
-in an already-decided area, not missing requirements.
+None **at conjunct granularity, which is the bar this section now states explicitly.** Every REQ
+acceptance criterion and NFR yields at least one falsifiable property (matrix C-1), and every FSPEC
+acceptance test at v1.7 — forty-eight, `AT-06-4b` included — has a home (matrix C-2). The claim was
+previously true only at *AC* granularity: REQ v1.16 added a second, independently falsifiable
+conjunct to AC-6.3 and the row still read `PROP-REC-05, PROP-REST-08`, neither of which reached it.
+That is closed by PROP-REC-08/-09/-10, and C-1's AC-6.3 row is now split by sentence so the same gap
+cannot re-open invisibly. The conflicts in §G-3 are wording defects in an already-decided area, not
+missing requirements.
 

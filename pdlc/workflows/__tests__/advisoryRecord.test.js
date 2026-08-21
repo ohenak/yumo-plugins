@@ -314,6 +314,7 @@ describe("PROP-REC-04 — an entry is written for every terminal disposition, in
 // (`orchestrate-dev.js:6805`) and `appendAdvisoryEntry` (TSPEC:1112-1121) actually own.
 // ---------------------------------------------------------------------------
 
+// E-29 (FSPEC §5): the advisory record cannot be written — the failure is surfaced, never healed (BR-13).
 describe("T-08-2 / PROP-REC-05 / PROP-REC-06 — appendAdvisoryEntry throws on write failure", () => {
   test("a scripted append failure propagates as a throw, not a swallowed rejection", async () => {
     const path = "docs/some-feature/ADVISORY-some-feature.md";
@@ -500,6 +501,7 @@ describe("PROP-SUM-01 — advisorySummaryRows always emits six rows, zero counts
     expect(total).toMatchObject({ invocations: 0, resolved: 0, escalated: 0, noAction: 0 });
   });
 
+  // PROP-SEAM-02 — this row-list transcription surface, set-equal to ADVISORY_SEAMS.
   test("is driven off the exported ADVISORY_SEAMS constant, not a locally-duplicated list", () => {
     const { rows } = devModule.advisorySummaryRows([]);
     expect(rows.map((r) => r.seam)).toEqual([...devModule.ADVISORY_SEAMS]);

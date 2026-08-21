@@ -1,17 +1,17 @@
-# POSTMORTEM — Phase D (review cap) — pdlc-advisory-wave-gate
+# POSTMORTEM — Phase D (erratum protocol) — pdlc-advisory-wave-gate
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` |
+| Upstream | `REQ → FSPEC → **TSPEC** → DECISIONS` |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v1…v8.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (delta confirmation, erratum round v1.11 → v1.12) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
-**Date:** 2026-08-19
-**Halt class:** `REVIEW-CAP` (`MAX_REVIEW_ROUNDS = 5`, per-invocation)
-**Halt text:** Phase D exhausted this invocation's five-round review window (rounds 4–8) without a
-both-lens approving round on `DECISIONS-pdlc-advisory-wave-gate.md`.
-**Document at halt:** `DECISIONS-pdlc-advisory-wave-gate.md` v1.7 (`bbe65771`)
+**Date:** 2026-08-20
+**Halt class:** `ERRATUM-PROTOCOL`
+**Halt text:** Phase D halted — the delta confirmation of the TSPEC erratum round did not pass;
+non-approving lenses: `[pm-review, te-review]`.
+**Document at halt:** `TSPEC-pdlc-advisory-wave-gate.md` v1.12 (`0f2a9710`, content `sha256:4de9cd6b…`)
 
 RESOLVED: yes
 
@@ -19,299 +19,282 @@ RESOLVED: yes
 
 ## 1. Phase
 
-Phase D authored and revised `DECISIONS-pdlc-advisory-wave-gate.md`, the record of the four
-load-bearing choices inside TSPEC v1.10's A6 design: how the pre-repair tree is captured
-(`DEC-A6-01`, dangling snapshot commit, never stashed), how an E-6 promotion reaches git history
-(`DEC-A6-02`, its own `commitPaths` call), what the snapshot ref is named (`DEC-A6-03`, wave-scoped,
-no run discriminator), and whether `waveBudgetPerRun: 0` is a configuration error (`DEC-A6-04`, a
-supported affordance validated by a new `nonNegativeInt`).
+**Phase D (design), erratum channel, on the TSPEC.** This was not a review round and not a
+re-authoring: it was the delta confirmation of a targeted erratum round that took
+`TSPEC-pdlc-advisory-wave-gate.md` from v1.11 (`efeb798e`) to v1.12 (`0f2a9710`, nine commits). The
+round was opened with a routed list of seven mechanical items — the retired
+`pdlc/workflows/dist/orchestrate-dev.bundle.js` runtime premise in §1.2 and §3.4, §1.1's O-8
+`commitPaths` shape, §1.2's `.claude/workflows/` sync premise, §2.5's stray `git add -A --`, two
+falsified red-reason caveats in §5.1, and an eighth item reporting DEC-A6-03's snapshot-ref
+halt-message obligation as still unlanded upstream.
 
-**The four decisions are not what halted.** They were approved on substance early and stayed
-byte-identical from round 5 onward; both lenses stopped re-litigating them and said so in scope
-notes ("the four decisions … are byte-identical to the round I approved on substance and are not
-re-litigated", PM v8). Every round from 4 to 8 turned on one sub-section of the `Consequences`
-half — the DEC-A6-04 "sizing" bullet block that enumerates how many places in the tree carry the
-pre-A6 five-member seam literal and the four-member envelope literal, split into three columns:
-(1) gate-demanded edits, (2) oracles that flip red→green with no edit, (3) ungated hand-copy and
-prose surfaces.
+**What the round did with that list.** It re-grounded on upstream at HEAD before touching the items
+(DEC-ERR-03) and found the eighth item **inverted**: the obligation had landed in REQ v1.16 (AC-6.3's
+second conjunct) and FSPEC v1.7 (BR-14, §3 Step 10, E-34, AT-06-4 conjunct (3) and its companion
+AT-06-4b). Rather than re-route a settled question — DEC-ERR-01's anti-pattern — the round absorbed
+it: §2.5 and §4.5 stopped describing the overwrite warning as an operator-runbook remedy this feature
+does not carry, and named a mechanism instead (a fifth halt field, `snapshotRef`, non-`null` exactly
+when a capture succeeded, from which the halt report renders the ref name and the co-located
+overwrite sentence; `null` renders neither).
 
-That block is a **measurement of the repository**, not a decision. It exists to stop PLAN sizing A6
-as "one task touching three constants". Its numbers are only true against a HEAD that the feature's
-own early-landed test-side commit (`e3b9d5a3`) had already moved, and every round both re-measured
-one column and left another stale — so every round closed a High and opened a new one in the same
-paragraph.
+**What halted it.** Both lenses confirmed all seven mechanical items landed, verified against the
+shipped tree rather than against the item list, and confirmed the absorption was the right call. Both
+then refused the round for the same reason: the absorption landed in the document's **design** half
+(§2.5, §4.5) and never reached its **oracle** half (§5). `git diff efeb798e..HEAD` shows no edit
+below §5.1's status caveat except the two re-measured red-reason sentences. §5.6's AT-06-4 row still
+reads "carries the root-cause class" — conjunct (2) alone — and FSPEC v1.7's AT-06-4b has no row at
+all.
 
-Phase D's window this invocation opened at round 4 (rounds 1–3 ran on 2026-08-18; round 2 earned an
-approval anchor at `8ac724c0`, and round 3 re-opened the document as an upstream-cascade
-confirmation against TSPEC v1.6). Rounds 4–8 all ran inside 42 minutes on 2026-08-19
-(20:49 → 21:31). Round 8 returned PM **Needs revision** / TE **Approved with minor changes**; the
-author addressed every round-8 finding in v1.7 (`17bf0e92`, `9e81ad0d`, `31d9105b`, `bbe65771`),
-but the per-invocation budget was spent before round 9 could confirm it. The document at halt is
-therefore **fully responsive to the last review round and unconfirmed**, which is a materially
-different position from the Phase T halt recorded in `POSTMORTEM-T-pdlc-advisory-wave-gate.md`.
+The halt is therefore not a disagreement about the design. It is an **incomplete traversal**: a
+routed obligation whose mechanism half landed and whose proof half did not, in a document whose §5.6
+is the table PLAN mints red-test tasks from.
 
-## 2. Iterations (5 — limit reached)
+## 2. Iterations
 
-Eight rounds exist on disk; five of them (4–8) are this invocation's window and are what the cap
-counted. `MAX_REVIEW_ROUNDS = 5` is per-invocation; `MAX_LIFETIME_ROUNDS = 15` is not yet reached,
-so re-invocation is permitted and is the recommendation in §6.
+**One delta-confirmation round, non-approving from both lenses.** The erratum channel is
+single-round by construction: an erratum round is authored, one confirmation round reads the delta,
+and a non-approving confirmation halts rather than looping. There was no second attempt to absorb.
 
-| Round | Doc rev | PM verdict | PM findings | TE verdict | TE findings | Window |
-|---|---|---|---|---|---|---|
-| 1 | v1.0 | Approved w/ minor | 7 (0H / 3M / 4L) | Needs revision | 7 (3H / 3M / 1L) | prior |
-| 2 | v1.1 | Approved w/ minor | 2 (0H / 1M / 1L) | Approved w/ minor | 3 (0H / 2M / 1L) | prior (anchored `8ac724c0`) |
-| 3 | v1.1 (bytes unchanged) | Approved w/ minor | 5 (0H / 4M / 1L) | Needs revision | 5 (2H / 2M / 1L) | prior (upstream cascade) |
-| 4 | v1.2 | **Needs revision** | 7 (1H / 2M / 4L) | Approved w/ minor | 2 (0H / 1M / 1L) | **1 of 5** |
-| 5 | v1.3 | **Needs revision** | 3 (1H / 0M / 2L) | Approved w/ minor | 2 (0H / 1M / 1L) | **2 of 5** |
-| 6 | v1.4 | **Needs revision** | 2 (1H / 0M / 1L) | Approved w/ minor | 2 (0H / 2M / 0L) | **3 of 5** |
-| 7 | v1.5 | **Needs revision** | 5 (1H / 2M / 2L) | **Needs revision** | 3 (1H / 2M / 0L) | **4 of 5** |
-| 8 | v1.6 | **Needs revision** | 5 (1H / 1M / 3L) | Approved w/ minor | 2 (0H / 1M / 1L) | **5 of 5 — cap** |
+| Round | Doc rev | PM verdict | PM findings | TE verdict | TE findings |
+|---|---|---|---|---|---|
+| Delta confirmation (iteration 3) | v1.12 (`0f2a9710`) | Needs revision | 1 High, 2 Medium (delta); 2 Low (inherited) | Needs revision | 1 High, 1 Medium (delta); 1 Low (inherited) |
 
-Three features of this trajectory matter more than the totals:
+**The delta itself passed on the raised list.** Both reviewers built a routed-item verification table
+and measured every claim against the tree, not the prose:
 
-- **The finding volume converged; the verdict did not.** Total findings per round fall
-  14 → 5 → 10 → 9 → 5 → 4 → 8 → 7, and the High count is pinned at exactly **one per round from
-  round 4 to round 8** — always PM's, always `F-01`, always in the same bullet block. A stream of
-  single Highs of shrinking scope is the signature the lifetime cap was written for (`DEC-ROUNDS-02`);
-  the per-invocation cap caught it first.
-- **Every round's High was a genuine, verified defect — and a new one.** Not one of the five was a
-  re-raise. PM v4 F-01: the DEC-A6-04 bullet still assigned the engine expectation to
-  `ci-arrangement.test.js` and contradicted itself four sentences later. PM v5 F-01: the seam
-  enumeration was not re-derived and five of its six sites had already migrated. PM v6 F-01: the
-  round's two new "oracle" claims were false at HEAD (`advisoryConfig`'s `PROP-CFG-02` deep-equal
-  *is* an envelope oracle and *is* red). PM v7 F-01: column (2) was presented as a closed set of two
-  and was ten. PM v8 F-01: the new parenthetical reconciling "seven sites" with column (2)'s ten
-  asserted a subset relation the integers refute. Each was resolved in the next revision, verified
-  resolved by the reviewer who raised it, and replaced.
-- **The reviewers' verification got stronger as the rounds went on, which is why the loop did not
-  self-terminate.** Round 7's repair moved from *reading* the suites to *running* them, and both
-  lenses independently reproduced the same figure at HEAD — `npm test -- __tests__/advisory`,
-  24 failed / 386 passed / 410 total across 15 suites — and each partitioned all 24 failures against
-  the document's two populations with none left over and none double-counted. That is the strongest
-  evidence any round in this phase produced, and it is also what surfaced
-  `advisoryHarvest.test.js`'s `T-08-8`, a member four rounds of reading had missed. Better
-  measurement kept finding real residue, so the document kept being right-shaped and non-approving.
+| Routed item | Independently measured at HEAD by both lenses | Verdict |
+|---|---|---|
+| Retired bundle premise (§1.2, §3.4) | `build-runtime.mjs`'s `bundles` array holds one entry, `pdlc-cli.mjs`; `prepack.mjs`'s `MODULE_NAMES` = `["orchestrate-dev.js", "orchestrate-queue.js"]`, copied verbatim | landed |
+| O-8 `commitPaths` shape | `for (const promo of waveResolvedPromotions)` over `groupPromotedPaths`'s rows | landed, per promoted task |
+| `.claude/workflows/` sync premise | `git ls-files .claude/workflows/` returns zero rows | landed |
+| §2.5 `git add -A --` | shipped call is `["add", "-A"]` | landed |
+| `advisory-config-example.test.js` red-reason | example config carries `{"enabled": false, "waveBudgetPerRun": 1}` | landed; stated reason correctly retracted as falsified |
+| `advisoryQueueSeams.test.js` red-reason | `ADVISORY_SEAMS` is `Object.freeze(["A1"…"A6"])`; `ADVISORY_SEAM_PHASES` carries six rows | landed |
+| DEC-A6-03 obligation "unlanded" | FSPEC v1.7 BR-14 / Step 10 / E-34 / AT-06-4 + AT-06-4b; REQ v1.16 AC-6.3 | **inverted by HEAD; correctly absorbed, not re-routed** |
+
+**Erratum-round history on this document.** v1.12 is the **seventh consecutive erratum round** on the
+TSPEC (v1.6 Phase D, v1.7 Phase P, v1.8 and v1.9 and v1.10 Phase PR, v1.11 Phase F, v1.12 Phase D).
+Six closed; this one did not. The findings that closed it are not new material in the ordinary sense —
+two of the four delta findings name sites that a prior round already flagged (`§6 OQ-2` is on its
+**second** consecutive flag by TE; §4.5's Snapshot-ref cross-reference on its **third**).
 
 ## 3. Reviewers
 
-| Role | Rounds | Round-8 verdict | Residual at halt (all addressed in v1.7, none confirmed) |
-|---|---|---|---|
-| product-manager | 1–8 | Needs revision | F-01 (High), F-02 (Medium), F-03/F-04 (Low), F-05 (Low, Process), Q-01, Q-02 |
-| test-engineer | 1–8 | Approved w/ minor | F-01 (Medium), F-02 (Low) |
+**pm-review (product-manager lens)** — 5 findings: 1 High + 2 Medium delta, 2 Low inherited.
 
-Both lenses stayed in lane for all eight rounds, and both spent their round-8 opening on disposition
-of the prior round rather than on new ground.
+| # | Sev | Class | Locality | Site | Substance |
+|---|---|---|---|---|---|
+| PM F-01 | High | delta | local | §5.6 AT-06-4 row; §5.1 file table | `snapshotRef` landed as a designed two-arm operator-facing contract in §4.5, but §5.6's AT-06-4 row still asserts only the root-cause class and there is no AT-06-4b row; FSPEC v1.7's third conjunct (co-location) and E-34's no-capture arm have no oracle. The routed obligation's mechanism half landed and its proof half did not — and PLAN mints red-test tasks from §5.6 |
+| PM F-02 | Medium | delta | local | Lineage header, `Upstream` row | The row still pins FSPEC v1.6 over REQ v1.15 while this round's changelog re-grounds on REQ v1.16 / FSPEC v1.7 and cites their hashes; the header advertises superseded upstream against the body's actual grounding |
+| PM F-03 | Medium | delta | local | §1.3 residue table, "Per-seam report rows" | The re-measured cell asserts `rows.map((r) => r.seam)` "still reads `["A1" … "A5"]`" and is "unchanged by the v1.12 re-measurement"; at HEAD it reads `["A1" … "A6"]`. The round claims to have checked this cell and left the stale value, inflating the residue PLAN reads |
+| PM F-04 | Low | inherited | nonlocal | §6 OQ-2 | Frames the overwrite question as wholly contingent when BR-14/AC-6.3 now make the operator warning unconditionally due; correct only for the ref-naming remedy, and §2.5 points here for that half |
+| PM F-05 | Low | inherited | nonlocal | §6 OQ-7 | Pin reads "REQ AC-5.1 at v1.14" for the three-carrier observation point where AC-6.2's escalation-log append entered at v1.15; substance HEAD-correct, unresolved since v1 |
 
-- **PM** reviewed as a requirement-fidelity-and-implementer-cost lens. Its consistent question was
-  not "is this decision right" but "what will an implementer budget after reading this sentence" —
-  which is why every one of its Highs landed on a count rather than on a decision. Its round-8
-  method is worth recording verbatim as the standard: re-run the advisory suites at HEAD, attribute
-  all 24 failures to the document's two named populations, read every newly enumerated prose site
-  *in context*, and re-run the record's own published re-derivation recipe over the whole surface
-  that recipe names.
-- **TE** reviewed as an oracle-and-falsifiability lens: for each claim, is there a run that could
-  refute it, and does the claim survive that run. It routed one missing behaviour arm upstream in
-  round 1 (the `waveBudgetPerRun: 0` fixture, which landed in TSPEC §5.2 and is verified landed in
-  the document at HEAD), and by round 8 it was checking the record's arithmetic as arithmetic
-  (14 + 10 = 24) and its positional anchors as positions.
+**te-review (test-engineer lens)** — 3 findings: 1 High + 1 Medium delta, 1 Low inherited.
 
-Two reviewer behaviours held the phase together rather than stretching it:
+| # | Sev | Class | Locality | Site | Substance |
+|---|---|---|---|---|---|
+| TE F-01 | High | delta | nonlocal | §5.6 AT-06-4 row; §5.1's `advisoryWaveGate.test.js` row | Same defect as PM F-01, stated as an oracle-coverage argument: the new rendering contract has **zero** oracles, so both failure modes pass — an implementation that plumbs `snapshotRef` and never renders the sentence is green, and so is one that emits it unconditionally, including on the E-34 halt where FSPEC requires its absence. Without AT-06-4b, conjunct (3) degenerates into an always-present string. Resolution named concretely: extend AT-06-4 to all three conjuncts with a **co-location-within-one-rendered-report** oracle, and add an AT-06-4b row on the existing E-34 capture-failure fixture in `advisoryWaveGate.test.js` |
+| TE F-02 | Medium | delta | nonlocal | §6 OQ-2 | OQ-2 still disposes the re-run overwrite as an accepted cost "the operator's, not the pipeline's" with a run-scoped ref discriminator as the recorded remedy, while §2.5 at v1.12 records upstream's decision that the halt report itself warns the operator. The design record presents as open an accepted-cost question BR-14 closed; one clause acknowledging the landing fixes it. Second round flagged |
+| TE F-03 | Low | inherited | local | §4.5 Snapshot ref row | The row's "one ref per wave, never overwritten by a later wave" is true as written but carries no cross-reference to §2.5's correction that the *next run* overwrites the ref — which is the condition the new `snapshotRef` rendering warns about. §4.5 is where an implementer reads the field contract, and the warning's trigger is not there |
 
-1. **Neither lens re-litigated settled material.** Explicit scope statements pin this in rounds 2,
-   3, 4, 5 and 8 ("unchanged sections already reviewed in v1 are not re-litigated"; "no
-   re-litigation of settled decisions"). The eight rounds are not eight reviews of one document;
-   they are one review of the decisions plus five reviews of one measurement block.
-2. **Both lenses retracted their own prior findings when HEAD refuted them.** TE v6 F-01 retracts
-   the second half of TE v5 F-02 — the claim v1.4 had faithfully transcribed. A reviewer who
-   corrects the author's transcription of the reviewer's own error is doing the expensive, correct
-   thing, and it is also a hidden cost driver: two of the five rounds in this window were spent
-   converging on a fact that a reviewer had earlier stated wrongly.
+**TE Q-01, open and worth answering before the repair:** is conjunct (3)'s intended oracle a
+verbatim sentence transcribed into §5.5 alongside the other halt literals, or a
+presence-of-statement check? The choice determines what PLAN mints as the red test. FSPEC
+deliberately declines to fix the capture's *name* but is silent on the *sentence*.
 
-One process finding belongs outside this feature: **PM F-05, now in its fourth consecutive round**
-(v4 F-03 → v5 F-01 → v6 F-01 → v7 F-01 → v8 F-01/F-02). PM states the generalisable rule better
-than a harvest note would: *when a round re-measures one population, it must re-measure every
-population its edit puts in the same sentence* — a reconciliation clause between two counts is a
-claim about both, and inherits the staleness of whichever one was not re-run.
+**Reviewer quality.** Both lenses re-measured every current-state claim against the shipped tree
+rather than reading it, both independently discovered the eighth item was inverted by HEAD and
+endorsed the absorption, and both named the same High with a concrete, implementable resolution. TE
+overstated one detail — "grep for `overwrit` across §5.1–§5.6 returns nothing" is very nearly true:
+there is exactly one hit, §5.2's "never overwritten by a later wave", which is the *cross-wave*
+invariant and not the *cross-run* warning under discussion. The overstatement does not change the
+finding.
 
 ## 4. Pattern of Disagreement
 
-**There is almost no author-versus-reviewer disagreement, and exactly one reviewer-versus-reviewer
-disagreement — on an integer.** Round 8 asked for column (3) to be raised, and the two lenses named
-different targets from the same recipe:
+**There is no disagreement.** Not author-versus-reviewer, not reviewer-versus-reviewer. This is the
+cleanest convergence of the feature: two independent lenses read the same delta, verified the same
+seven items against the same tree, endorsed the same judgement call on the eighth, and then landed
+the **same** High on the **same two rows** (§5.6's AT-06-4, §5.1's `advisoryWaveGate.test.js`) with
+compatible remedies. PM framed it as a routed obligation half-landed and a downstream consequence
+(PLAN mints from §5.6); TE framed it as a contract with zero oracles and enumerated both surviving
+failure modes. They are one finding seen through two lenses, and the lenses agree on the fix.
 
-| Lens | Round-8 claim about column (3) | Members named |
-|---|---|---|
-| TE v8 F-01 (Medium) | "twenty, should read **twenty-two**" | `advisoryDriver.test.js`'s two generated `it` titles (`:238`, `:280`) |
-| PM v8 F-02 (Medium) | "twenty, **at least twenty-five**" | the same two, **plus** three production-side prose sites in `orchestrate-dev.js` (`:2978`, `:13688`, `:15036`) |
+Three structural patterns are worth naming, because none of them is about the merits.
 
-The disagreement is not a contradiction: PM's set is a strict superset, and the difference is
-scope-of-sweep — TE ran the recipe over the advisory *suites*, PM ran it over the suites **and**
-`orchestrate-dev.js`, which is the surface the recipe's own text names. v1.7 adopted the superset
-(seventeen seam sites + eight envelope sites = twenty-five) and cited both findings, which is the
-correct resolution of a superset/subset split. It is recorded here only because it is the sole point
-in eight rounds where the two lenses would have signed different numbers.
+**1. The disagreement is between two halves of one document, not between people.** §2.5 and §4.5 at
+v1.12 say the halt report hands the operator the remedy. §6 OQ-2 at v1.12 still says the cost is
+"the operator's, not the pipeline's" and records a future ref discriminator as the remedy. §4.5's
+Snapshot-ref row promises "never overwritten by a later wave" while §2.5 explains that the *next
+run* overwrites it. §1.3's residue table says one test literal is un-transcribed while its own last
+row says the count that literal feeds "yields six at HEAD". Every one of the four non-High findings
+is an **internal contradiction opened by an edit that moved one site and not its neighbours** —
+neither statement is wrong alone; read together the document contradicts itself.
 
-The more consequential split is one of **judgement about the same defect**:
+**2. The repeat sites are the ones the edit did not touch.** OQ-2 is on its second consecutive flag,
+§4.5's cross-reference on its third, OQ-7's pin unresolved since v1. These are not contested; they
+are simply outside whatever grep each round runs. A round that edits §2.5 and §4.5 for BR-14 and
+never opens §6 will re-earn the OQ-2 finding indefinitely.
 
-| | PM v8 | TE v8 |
-|---|---|---|
-| The "seven versus ten" reconciliation | **F-01, High, blocking** — "ten cannot be a subset of seven" | listed under *"Everything else I verified clean at HEAD"* |
-| Verdict | Needs revision | Approved with minor changes |
-
-TE read the reconciliation clause as prose linking two independently-correct counts and checked the
-counts; PM read it as a claim about a set relation and checked the relation. PM is right on the
-merits — the parenthetical asserts a subset relation that ten-in-seven refutes, and the five sites
-the "seven" omitted are exactly the ones an implementer would wrongly budget an edit for — and v1.7
-resolves it PM's way, restating the true relation (column (2) *is* the oracle part of the bullet;
-the residue is two green inputs) and re-deriving the population to twelve. But the split is the
-reason the phase hit the cap rather than converging: **a single lens's single Medium-adjacent
-reading of one clause was the difference between "approved with minor" and a sixth round.**
-
-Three structural observations about where the disagreement lived:
-
-1. **All five window Highs are in the same ~40-line bullet block, and none is in a `## Decision`
-   section.** The part of the document that is a decision record converged in three rounds. The part
-   that is a repository measurement never converged, because its truth conditions change under a
-   moving tree — and the tree was moving for a reason this feature created (`e3b9d5a3` landed
-   test-side transcriptions ahead of Phase I, so the advisory suites are red at HEAD by design).
-2. **The block's failure mode is always the seam between two counts, never a count in isolation.**
-   v4/v5: envelope re-derived, seam stale. v6: oracle-versus-input taxonomy. v7: column (2)'s
-   cardinality. v8: the clause reconciling column (2) with the "already-migrated" bullet. PM's Q-01
-   names the remedy the findings imply — *a seam that keeps failing is worth removing rather than
-   re-welding*, i.e. fold the two counts into one enumeration read two ways.
-3. **The author never pushed back and never under-delivered.** Every round's response is a set of
-   small, individually-cited commits that both lenses verified as landing, several of which went
-   past what was asked (the `PROP-CFG` id-collision note, the `A-17` retraction with its inverted
-   operative advice, the `dist/` instruction, the published re-derivation recipe). There is no
-   disagreement to adjudicate here — which is precisely why the loop could not terminate itself: no
-   party was wrong, so no party's correction ended the round.
+**3. The one measurement that was claimed and not made is the one whose value justified the table.**
+§1.3's residue table was re-measured this round and every cell but one now reads "**none**". The
+exception — "Per-seam report rows … still reads `["A1" … "A5"]` … unchanged by the v1.12
+re-measurement" — is the single cell that keeps the table non-empty, and it is the one that is
+false at HEAD. PM's point is precise and worth preserving: this is a finding rather than mere
+staleness **because the round states it checked the cell**. A stale value that reads as stale costs
+less than a stale value that reads as verified.
 
 ## 5. Best-Guess Root Cause
 
-**Proximate cause: a DECISIONS document took on a repository measurement as a first-class section,
-and a measurement of a moving tree cannot converge inside a review loop that re-measures it one
-column at a time.**
+**Proximate cause: the erratum protocol's absorption step has a landing checklist for the
+*mechanism* and none for the *proof*.** DEC-ERR-01 and DEC-ERR-03 tell an author to re-ground on
+upstream first, enumerate what upstream *decided* (not only what it renamed), and absorb those
+decisions rather than re-route them. The round did exactly that, and both reviewers said so. But
+"absorb the decision" was executed as "state the mechanism where the prose used to route the
+question" — §2.5 and §4.5 — and upstream's decision was not only a mechanism. FSPEC v1.7's
+changelog names four landing sites in one sentence: BR-14, Step 10, E-34, **and AT-06-4 plus its
+companion AT-06-4b**. Two of the four are acceptance tests. The absorption traversed the two design
+sites and stopped.
 
-The `Consequences` sizing block answers a real and well-motivated question — how big is A6's
-transcription surface, so PLAN does not size it as "one task, three constants". Both lenses agree the
-question is worth answering and the answer has repeatedly improved. But the block's content is
-**24 test failures, twelve already-migrated sites, twenty-five hand-copy surfaces, and a set of
-excluded false positives**, all of which are facts about HEAD rather than facts about a decision.
-Three properties of that content make it structurally incompatible with a five-round cap:
+The failure is structural, not attentional. In this TSPEC, §5.6 exists precisely to guarantee that
+"every FSPEC acceptance test has a home" — it is a **completeness map against upstream's AT set**.
+Any upstream round that mints a new AT therefore obligates a §5.6 row by construction, and any
+upstream round that widens an existing AT's conjuncts obligates an edit to that AT's row. Nothing in
+the erratum workflow derives that obligation from the changelog; it depends on the author
+remembering that §5.6 is downstream of FSPEC's AT list. A cheap mechanical check exists and was not
+run: diff the upstream AT ids across the re-grounding interval, and assert each one has a §5.6 row.
 
-- **Its truth conditions move.** `e3b9d5a3` landed test-side transcriptions ahead of Phase I, so the
-  advisory suites are red at HEAD by design and the counts change with each such commit.
-- **It has no oracle.** A decision can be checked against its alternatives; an enumeration can only
-  be checked by re-running the enumeration, and each reviewer re-runs it slightly better than the
-  last. Rounds 7 and 8 escalated from grep to running the suites to running the recipe over
-  production code — three different sweeps, three different totals, each correct for its surface.
-- **It is explicitly de-weighted by the document itself** ("the number an implementer must not get
-  wrong is column (1)'s four, and it is small") while nonetheless carrying every High in the window.
-  The block that the record says matters least is the block that consumed five rounds.
+**Contributing cause: the round's edit unit was a section, and its correctness unit was a claim that
+spans sections.** Each of the seven mechanical items is section-local — fix a path in §1.2, a call
+shape in §1.1, a stray `--` in §2.5 — and the round dispatched them that way, successfully. The
+eighth item was not section-local: BR-14's landing implicates §2.5 (the mechanism), §4.5 (the field
+contract), §5.1 and §5.6 (the oracles), §5.5 (the halt literals) and §6 OQ-2 (the disposition that
+called the question open). Applied with the same section-local reflex, it landed in the first two and
+opened contradictions with the last two. TE F-02 and TE F-03 are not independent findings — they are
+the **residue of the same partial traversal** that produced the High.
 
-**Contributing cause: the repair pattern was "fix the challenged half", and a reconciliation clause
-makes that impossible.** PM's F-05 names this exactly, and the mechanism is worth stating: when a
-round re-derives column (2) and then writes a sentence relating column (2) to a *neighbouring*
-count, the new sentence is a claim about both counts — so it inherits the staleness of the one that
-was not re-run, and it converts a stale number into a stale *relation*, which is a strictly worse
-defect because it reads as reconciled. v1.6 is the clearest instance: it re-derived column (2)
-beautifully by running the suite, and the very act of reconciling it against the carried-forward
-"seven" produced round 8's blocking High. Four consecutive rounds show the same shape.
+**Contributing cause: a re-measurement pass that re-measures the population and not the sentence.**
+§1.3's residue table was refreshed from the production constants (`ADVISORY_SEAMS`,
+`ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS`) — the changelog says as much, "which moved production
+surfaces only" — and that scoping was carried into the *cell text* as an assertion about a **test**
+literal, which the pass by its own scope never opened. The cell was not skipped; it was
+**annotated as verified while being excluded from verification**. This is the fourth appearance in
+this feature of the same shape: a reconciliation clause between two counts, where re-measuring one
+side and narrating both makes the stale side read as reconciled.
 
-**Contributing cause: reviewer verification improved faster than the document could absorb it.**
-This is not a criticism of either lens — it is the honest cost account. Rounds 1–6 were reviewed by
-reading; round 7 introduced running the suites; round 8 introduced running the document's own
-published recipe over the whole surface it names. Each escalation found true residue that the
-previous method could not have found (`T-08-8` is the crisp example: four rounds of reading missed
-it; one run found it). A loop where the measurement instrument sharpens every round will keep
-producing findings for as long as the loop runs, independent of author quality.
+**Contributing cause: the lineage header is not part of any section's edit unit.** PM F-02 —
+`Upstream` still pinned at FSPEC v1.6 / REQ v1.15 while the changelog cites v1.7 / v1.16 hashes —
+is a one-cell fix that no section-scoped edit owns. The document's own convention (stated in v1.11's
+changelog) is that the row tracks the re-grounding, so the round broke a convention it had itself
+recorded, in the one place a downstream reader looks to decide whether the document is current.
 
-**Contributing cause (smaller): one reviewer error was faithfully transcribed and had to be
-unwound.** TE v5 F-02's second half was wrong, v1.4 transcribed it, and TE v6 F-01 retracted it. Two
-of the five window rounds were partly spent on that cycle. This is the healthy version of the
-failure — the lens that erred caught it — but it costs a round.
-
-**Not the cause:**
-
-- *Not the decisions.* `DEC-A6-01…04` were approved on substance and byte-frozen from round 5. No
-  round-4-to-8 High touches a decision, an alternative, a reversibility rating or a re-evaluation
-  trigger.
-- *Not author non-responsiveness.* Every round produced cited commits; every reviewer verified them
-  as landing; several exceeded the ask. v1.7 addresses **all** round-8 findings, PM F-01 through
-  F-04 and TE F-01 through F-02, plus PM Q-02's early-green drift signal.
-- *Not reviewer disagreement.* One superset/subset integer split (§4), resolved by taking the
-  superset. No lens contradicted the other on substance in eight rounds.
-- *Not severity inflation.* Every window High is a verified, falsifiable defect; this postmortem
-  re-checked the round-8 pair independently (`grep -c "A-17"` on PLAN is `0`; the four bare
-  `toHaveLength(6)` sites read `6`; seventeen + eight = twenty-five as v1.7 states).
-- *Not the cap being mis-set.* Five rounds is the right budget for a decision record. The document
-  simply contains a section that is not a decision record.
+**Not the cause.** The design is not in question: `snapshotRef` as a fifth halt field, non-`null`
+exactly on capture success, is endorsed by both lenses as the right mechanism and no approved
+decision was reopened. The absorption judgement is not in question: both lenses independently
+confirmed the obligation had landed upstream and that re-routing it would have been the
+anti-pattern. Reviewer strictness is not in question: the High is a real hole through which two
+opposite defective implementations both pass green. And the erratum channel itself is working —
+seven of eight items landed and were verified against the tree in one round.
 
 ## 6. Recommendation
 
-**Re-invoke Phase D for one confirmation round. Do not re-author, do not re-open the decisions, and
-before that round, move the sizing block out of DECISIONS.**
+**Author one bounded TSPEC revision (v1.13) that completes the absorption into §5 and closes the
+four residue findings, then re-run a single delta confirmation. Do not restart Phase D, do not
+re-open the design, do not re-litigate the routed erratum, and do not re-raise anything upstream has
+decided.**
 
-The halt is a budget expiry, not a defect: v1.7 already answers every round-8 finding from both
-lenses. `MAX_LIFETIME_ROUNDS = 15` leaves seven rounds of headroom, and the expected cost of
-confirmation is one round. But re-invoking with the sizing block still in place re-opens the same
-seam that produced five consecutive Highs, so the ordered steps are:
+Rationale: the erratum's charter is discharged and both lenses said so on the record. What remains is
+one defect (the absorption stopped at §4.5) plus its residue in three sites and one header cell.
+Nothing here is a design question, so a decision record is not the instrument; this is a completion
+pass with a mechanically checkable exit condition.
 
-1. **Relocate the sizing block to PLAN (or to a `SIZING-` appendix PLAN cites), leaving DECISIONS
-   with a pointer and column (1)'s four.** This is the highest-value step and it is the one PM Q-01
-   and the document's own "the number an implementer must not get wrong is column (1)'s four" both
-   argue for. The block's consumer is PLAN's batch sizing; its content is a measurement of HEAD with
-   a short shelf life; and DECISIONS is the one artifact in the set that is supposed to be stable
-   after approval. Keep the published re-derivation recipe with it — the recipe is the durable
-   artifact, the totals are not. If relocation is judged out of scope at this stage, apply step 2
-   instead and accept that the block will need re-measuring at Phase I.
-2. **If the block stays, collapse the failing seam rather than re-welding it (PM Q-01).** Fold the
-   "twelve already-migrated sites" bullet into column (2) as one enumeration read two ways — twelve
-   sites at the post-A6 value, of which the ten oracles are red today and the two inputs are green —
-   and delete the reconciliation clause entirely. A reconciliation clause between two counts is the
-   defect generator identified in §5; removing it removes the class.
-3. **Adopt the one-sentence rule as a standing authoring check.** Before committing an edit to any
-   enumeration: *if this sentence names two counts, re-run both.* This is PM F-05's rule and it is
-   mechanically checkable by the author at write time, which the "re-derive" guidance it replaces
-   was not.
-4. **Run round 9 as a pure delta confirmation with scope stated in the dispatch.** Both lenses have
-   pre-committed to what they want: PM's F-01 wants twelve and the true relation (landed,
-   `17bf0e92`), F-02 wants twenty-five (landed, `31d9105b`), F-03 wants PLAN cited by task row
-   (landed, `9e81ad0d`), F-04 wants `S-5` beside the `advisoryQueueSeams` quote (landed); TE's F-01
-   wants the two `advisoryDriver` `it` titles (landed inside the twenty-five) and F-02 wants the
-   "four lines above it" offset dropped (landed — dropped, not corrected, per `DEC-DOC-01`). Scope
-   the round to those six items plus the step-1/step-2 relocation, and state that
-   `DEC-A6-01…04` are byte-frozen and out of scope.
-5. **Then flip `RESOLVED: no` → `RESOLVED: yes` in this file and re-invoke `orchestrate-dev`.**
-6. **If round 9 returns a sixth consecutive single-High on the sizing block, do not author a tenth
-   revision.** Delete the block from DECISIONS by fiat, record that deletion as a fifth decision
-   entry (`DEC-A6-05`: sizing evidence lives with the plan that consumes it, not with the record
-   that motivates it), and move to Phase P. Five rounds of correct-but-superseded integers is the
-   measured cost of keeping it; that is now evidence, not speculation.
+Ordered steps:
+
+1. **Answer TE Q-01 first, in one line, before editing §5.** Decide whether conjunct (3)'s oracle
+   asserts a **verbatim sentence** (which then must be transcribed into §5.5 alongside the other halt
+   literals) or the **presence of a statement**. Everything below depends on the answer, and PLAN
+   mints a different red test under each. Recommended: presence-of-statement plus co-location, since
+   FSPEC pins co-location as the observable and declines to fix the capture's name — a verbatim pin
+   invented at TSPEC altitude would be a new decision, not an absorption.
+2. **Close the High (PM F-01 / TE F-01) in §5.6 and §5.1.** Extend AT-06-4 to all three conjuncts —
+   diagnosis, root-cause class, and the overwrite statement — and state the oracle as **co-location
+   within one rendered report string**: the ref pointer and the overwrite sentence found in the same
+   `haltError` report text, not merely both present somewhere in the run, because two independent
+   `toContain` assertions cannot falsify a split. Then add an **AT-06-4b** row on the existing E-34
+   capture-failure fixture in `advisoryWaveGate.test.js` (`snapshotRef: null`): diagnosis and class
+   present, **no** ref pointer, **no** overwrite sentence. That negative is what makes conjunct (3)
+   falsifiable rather than an always-present string. No new file and no new double is needed —
+   `advisoryWaveGate.test.js` already owns §5.5's capture-failure disposition fixture. Update §5.1's
+   `advisoryWaveGate.test.js` row to name both ATs.
+3. **Close the residue in the same write, because it is the same defect.** §6 OQ-2 gains one clause
+   recording that BR-14 has landed and the halt report now carries the warning, leaving the
+   run-discriminator remedy scoped to the *ref-naming* half only (PM F-04, TE F-02 — second flag).
+   §4.5's Snapshot-ref row gains a pointer to §2.5's next-run overwrite correction, so the
+   implementer reading the field contract finds the warning's trigger there (TE F-03 — third flag).
+4. **Fix the two verification-integrity findings.** Correct the `Upstream` lineage cell to FSPEC v1.7
+   over REQ v1.16 with the hashes the changelog already cites (PM F-02). Re-measure §1.3's "Per-seam
+   report rows" cell against the tree — `rows.map((r) => r.seam)` reads `["A1" … "A6"]` at HEAD — and
+   flip its residue to **none**, which empties the residue table and reconciles it with its own
+   "Bare row-count assertions" row (PM F-03). Correct OQ-7's pin to name AC-6.2's v1.15 entry
+   alongside AC-5.1's v1.14 (PM F-05).
+5. **Before committing, run the check this round lacked:** diff FSPEC's AT ids across
+   v1.6 → v1.7 and assert every id has a §5.6 row, then `grep -i overwrit` across §5.1–§5.6 and
+   confirm the new contract's two arms are both present. Both are one command; either would have
+   caught the High before dispatch.
+6. **Then flip `RESOLVED: no` → `RESOLVED: yes` in this file and re-invoke `orchestrate-dev`.**
+   Expect a short confirmation: every finding names its own fix and both reviewers pre-committed to
+   the shape they want. `MAX_LIFETIME_ROUNDS 15` continues to apply.
+7. **If the confirmation returns non-approving on step 2 again**, stop revising §5 and escalate the
+   oracle-shape question to FSPEC as an erratum, rather than attempting a third TSPEC-altitude
+   formulation of an assertion upstream has not fixed.
 
 Carry forward to LEARNINGS (Phase H):
 
-- **A DECISIONS document should not carry a measurement of the working tree.** Decisions are stable
-  after approval; measurements of a moving HEAD are not, and a review loop cannot converge on one.
-  Route repository sizing to the artifact that consumes it (PLAN) and keep the *recipe* rather than
-  the *total* in the durable record.
-- **When a round re-measures one population, it must re-measure every population its edit puts in
-  the same sentence** (PM F-05, fourth consecutive recurrence — a promotion candidate). A
-  reconciliation clause between two counts is a claim about both, and a stale relation reads as
-  reconciled, which is worse than a stale number that reads as stale.
-- **A seam between two counts that fails in three or more consecutive rounds should be removed, not
-  re-welded** (PM Q-01). Fold the counts into one enumeration read two ways.
-- **A converging finding volume with a pinned single High per round is the cap's real trigger
-  signal.** Rounds 4–8 each closed one High and opened exactly one new one in the same paragraph.
-  Detecting "same section, N consecutive rounds, one High each" is cheaper than the rounds it would
-  save, and this is now the second phase in this feature to exhibit it.
-- **A run beats a reading, and the escalation should happen in round 1.** `T-08-8` survived four
-  rounds of careful reading by both lenses and fell to the first `npm test`. Where a claim is a
-  count of test sites, the authoring dispatch should run the suite before the first review, not in
-  response to the fourth finding.
-- **Landing test-side transcriptions ahead of the phase that plans them (`e3b9d5a3`) makes every
-  downstream count a measurement of a red tree.** The convenience is local; the cost lands on every
-  artifact that has to describe HEAD until Phase I closes it.
+- **Absorbing an upstream decision means traversing every layer that decision touches, not the
+  section that used to route it.** Where the upstream changelog names acceptance tests among its
+  landing sites, the absorption is not complete until the downstream AT map carries them. Derive the
+  obligation from the changelog's id list, do not rely on recalling which section is downstream of
+  what.
+- **A §5.6-style "every upstream AT has a home" map is a mechanical invariant and should be checked
+  mechanically.** Diffing upstream AT ids across the re-grounding interval and asserting a row per
+  id is cheaper than the round it would have saved — and this is now the second phase in this
+  feature where a one-command check would have pre-empted a halt.
+- **A new two-arm contract must ship with its negative arm's oracle in the same write.** A contract
+  whose only oracle asserts presence cannot distinguish "always rendered" from "correctly
+  rendered"; the companion negative is not a nicety, it is what makes the positive falsifiable.
+- **Never annotate a cell as re-measured when the pass's own scope excluded it.** A stale value
+  labelled "unchanged by this round's re-measurement" is more expensive than an unlabelled stale
+  value, because the label suppresses the next reader's check — and here it inflated the residue that
+  PLAN sizes from. Fourth recurrence of this shape in this feature; a promotion candidate.
+- **The lineage header is nobody's section and needs an explicit owner in the erratum checklist.**
+  A re-grounded body under a header advertising superseded upstream is the one drift a downstream
+  reader cannot detect by reading the body.
+- **A finding flagged in two or three consecutive rounds at a site the current edit does not open is
+  a signal about the edit's scope, not about the site.** When the same row is re-raised, widen the
+  round's grep rather than re-triaging the row.
+
+## Appendix A — prior Phase D halt (review-cap, resolved)
+
+This file previously recorded an earlier, unrelated Phase D halt: the **DECISIONS review-cap halt**
+of 2026-08-19, where `DECISIONS-pdlc-advisory-wave-gate.md` v1.7 (`bbe65771`) exhausted the
+five-round review window (rounds 4–8) without a both-lens approving round. The four decisions
+themselves were approved on substance early; what did not converge was the repository-sizing section
+the document had taken on — each round closed one count and opened another in the same paragraph.
+That halt was resolved, and DECISIONS went on to converge at **v1.11**.
+
+Its full text is preserved in git at
+`e3a3e947:docs/pdlc-advisory-wave-gate/POSTMORTEM-D-pdlc-advisory-wave-gate.md` (retrieve with
+`git show`). Its carry-forward learnings remain live and are unaffected by the present halt — in
+particular: route repository sizing to the artifact that consumes it and keep the recipe rather than
+the total; a round that re-measures one population must re-measure every population its edit puts in
+the same sentence; a seam between two counts that fails in three or more consecutive rounds should be
+removed rather than re-welded; and a run beats a reading, so a claim that is a count of test sites
+should be measured by executing the suite before the first review. The second of those recurs in the
+present halt as PM F-03, which is why §6 flags it as a promotion candidate.
+
+The current halt is a different class (`ERRATUM-PROTOCOL`, on the TSPEC's delta-confirmation round)
+and is tracked by the `RESOLVED:` marker at the top of this file.
 
 ---
 
@@ -319,6 +302,14 @@ Carry forward to LEARNINGS (Phase H):
 
 - Engine version: 0.2.0
 - Plugin version: 0.23.0
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
+
+**Provenance**
+- Engine version: 0.2.2
+- Plugin version: 0.23.2
 - Plugin compat: ^0.23.0
 - Channel: engine
 - Mode: latest (pin: n/a)
