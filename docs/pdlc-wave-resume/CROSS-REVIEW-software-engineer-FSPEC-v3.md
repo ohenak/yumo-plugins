@@ -113,6 +113,34 @@ style is exactly what the erratum protocol exists to avoid.
 
 ## Edge Cases and Error Scenarios
 
+Two rows cite the edited upstream material.
+
+**EC-12 — the wave-1 halt (cites REQ §1, OF-1).** REQ §1 was rewritten in this round: the plan is
+now 16 waves, and the replay tax is decomposed per halt. EC-12 says "Nothing is recorded … the
+next invocation is EC-01: a silent full run. The re-entry is correct but pays no replay tax, since
+nothing below wave 1 exists to replay." The new upstream sentence — "Each halt costs the task
+count of every wave below it" — makes EC-12's claim a *consequence* rather than an assertion
+alongside it: below wave 1 there are no waves, so the cost is zero. The citation still resolves and
+still supports the row. **No finding**; this is the case where a restated upstream strengthens a
+downstream row without touching it.
+
+I checked for the trap this class of edit usually sets — a downstream document that transcribed
+the superseded numbers. It did not: `grep -n "15-wave\|16-wave\|seven\|no-op"` over the FSPEC
+returns nothing outside §2/BR-11's "dispatches nothing" phrasing. The FSPEC compressed OF-1 to its
+shape, not its arithmetic, which is why the count change costs it nothing.
+
+**EC-20 — the V-wave replays.** The behaviour, the oracle-relevant detail and the scoping all
+match REQ v1.6 (see Business Rules above). One sentence in the row does not: "Whether the V-wave
+should be recordable is not this FSPEC's to decide — it is an upstream question, **raised as an
+erratum against REQ-WVR-08**." That erratum has now been adjudicated: REQ v1.6 decided it, by
+scoping REQ-WVR-08 to the wave loop and placing the V-wave outside the resume record's scope
+altogether. The row describes an open question that is closed. A TSPEC author reading EC-20 today
+would go looking upstream for a pending decision and find a settled one — and might reasonably
+conclude the FSPEC predates the settlement and cannot be trusted on this point, which is the
+opposite of the truth. Filed with the §7 twin as F-03.
+
+**EC-01..EC-19, EC-21 and the remainder.** Trace to untouched criteria; not re-reviewed.
+
 ## Acceptance Tests
 
 ## Open Questions
