@@ -212,7 +212,7 @@ that owns that file for the batch in which the property lands.
 
 ## Oracles
 
-Nine oracles in this set are easy to write in a shape that cannot fail. Each is pinned here with the
+Ten oracles in this set are easy to write in a shape that cannot fail. Each is pinned here with the
 exact quantity to compare, and with the wrong shape named so that Phase I transcribes neither.
 
 **O-A. The ledger is compared as a sequence, and resolution is anchored (PROP-GATE-01, -02, -03, -04).**
@@ -302,11 +302,44 @@ radius is bounded by the class-to-envelope binding, which *is* enforced — a fa
 well as for seam members — is what the property carries, not the snapshot of four sites, so a site
 added later is still in scope.
 
+**O-J. The overwrite warning's unit is co-location inside one string, and its predicates are
+spec-side (PROP-REC-08, -09, -10, -11).** Three wrong units are ruled out by name. *(1) Containment
+over the whole report* — `JSON.stringify(report).includes("overwrit")` — passes when the warning is
+emitted on a channel the operator never sees at halt, which is exactly what BR-14's *"in the same
+place"* forbids. *(2) Two independent `toContain` assertions over separate strings* cannot falsify a
+split: an implementation pushing the ref pointer as one notice and the overwrite sentence as another
+satisfies both and defeats the criterion. The oracle therefore selects the **single `notices`
+element** matching the ref pattern and asserts the overwrite predicate **on that same element**.
+*(3) A constant imported from the module under test* — `toContain(devModule.SOME_WARNING)` — is an
+implementation echo that cannot fail on wording, and it would neuter PROP-REC-09: an
+unconditionally-emitted warning would still match. Both halves are matched by literals written in the
+test: the case-insensitive `/overwrit/` stem, the weakest predicate that still discriminates a
+warning from its absence, and `"refs/pdlc/a6-snapshot-" + waveNum`. **Presence of the statement,
+never a verbatim sentence.** FSPEC AT-06-4 pins co-location as the observable and REQ O-1 keeps the
+capture's name and storage form TSPEC's, so no warning sentence is transcribed anywhere in this
+document — pinning one would mint a red test against a spec-following implementation, the failure
+mode round v1.4 corrected in PROP-ENV-13's `attempts` conjunct. **The negative arm is what makes the
+positive falsifiable,** and it is not absence-only: PROP-REC-09 asserts the absence over the *whole*
+`notices` array on the E-34 fixture, paired on the same run with PROP-REST-08's five-key
+set-equality including `snapshotRef: null` — the positive oracle for the `null` value. **The carrier
+is `notices`, not the halt reason string,** which is why PROP-REST-09's byte-equality with the pre-A6
+literal (M-WG-3) and the shared Pre-A6 baseline fixture are untouched by this obligation; the
+warning rides `notices`, which the halt-path `buildFinalReport({… notices …})` call already spreads
+onto the halt report at `orchestrate-dev.js`'s halt-path report construction. The helper
+`renderSnapshotOverwriteNotice(snapshotRef)` is exported like its two siblings
+(`export function renderAdvisoryEntry`, `export function renderEscalationEntry` in
+`pdlc/workflows/orchestrate-dev.js`), so its purity may additionally be asserted directly in the
+shape `PROP-ESC-01` uses; that is an available unit assertion, not a substitute — the seam-level
+observation is what proves the notice reaches the report.
+
 **Falsifiability check applied to every property above.** Each was checked against the five failure
 modes the te-author checklist names: preservation oracles have positive-presence conjuncts (O-C);
 absence-shaped conjuncts sit at the whole-run seam (O-B); identical-envelope behaviours are counted
-behaviourally (O-D); shared reason literals get named positive dispositions (E); and every
-prohibition property carries its AC-4.5 positive on the same run. Three properties are deliberately
+behaviourally (O-D); shared reason literals get named positive dispositions (E); every prohibition
+property carries its AC-4.5 positive on the same run; and the one antecedent-guarded property added
+this round is oracled on both arms rather than one (O-J) — a guarded conjunct asserted only on the
+fixture where its antecedent is false passes vacuously, which is why PROP-REC-08 lives on the
+two-red-wave run and never on E-34's. Three properties are deliberately
 *weak* and say so: PROP-REC-06's negative half (resolution counts not derivable), PROP-NFR-03's
 prompt-only qualification. PROP-REST-03 was a third until this revision: its boundary was
 upstream-pending on OQ-7, which is now closed, so it is a fully transcribed positive assertion and no
