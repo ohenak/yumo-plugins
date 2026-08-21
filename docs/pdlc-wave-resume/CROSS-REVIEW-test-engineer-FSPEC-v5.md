@@ -168,6 +168,47 @@ The edit touched no EC row, so this is a semantic check, not a diff check.
 
 ## Acceptance Tests
 
+This is the one place the delta leaves work, and it is my lens's finding rather than an item from
+the list (DEC-ERR-03 applies in the other direction too: the items landing is necessary, not
+sufficient).
+
+**F-01 — the new §3.4 clause has no falsifying oracle.** The paragraph is normative and
+cross-invocation: *an operator-pointed run still records completed waves, in high-water form, so a
+later automatic invocation resumes above them.* I applied the "write the test right now" check and
+then the mutation check:
+
+- **Which existing AT fails if the behaviour is absent?** None. I walked AT-01..AT-18:
+  - AT-05/06/07 are the operator-pointer tests, and all three assert only on the **resume point,
+    provenance, and disregard announcement of the pointed run itself**. None reads the record the
+    pointed run leaves behind.
+  - AT-18 is the only high-water/accumulation test, and its *Given* says explicitly "no
+    resume-related configuration set" — i.e. it is scoped to the automatic path by construction,
+    which is correct for what it discriminates (BR-08) but means it cannot cover this.
+  - AT-01, AT-09, AT-10, AT-15 all concern what a wave's own completion means, not the pointer.
+- **The mutation.** Move the record write inside the `!explicitPointer` guard — the exact
+  implementation error this clause exists to forbid, and the shipped code's guard boundary is what
+  made the clause necessary in the first place. Every AT in §6 still passes GREEN. A clause whose
+  negation passes the whole acceptance suite is not yet specified in a way downstream can build on.
+- **The test that would close it, at black-box altitude** (no seam, no spy — a two-invocation
+  observable): *Given* a multi-wave plan and an explicit operator pointer at wave 3, a run that
+  commits waves 3–4 and halts at wave 5; *When* the pipeline is re-invoked **with the pointer
+  cleared**; *Then* the announced resume point is wave 5 with provenance `automatic`, and waves
+  1–4 are announced as skipped — including waves 1–2, whose completion only the operator asserted.
+  *Discriminating value:* an implementation that suppressed the write under an explicit pointer
+  announces a full run from wave 1 instead, failing this and only this test.
+
+Severity **Medium**, not High: the behaviour is *stated* and stated testably — the gap is coverage,
+not testability, the FSPEC's AT table has never claimed to be exhaustive over §3, and PROPERTIES
+(te-author) can derive the oracle from §3.4's prose as written. Provenance **delta** (this round's
+edit introduced the clause), locality **local** (§3.4 is a section this edit changed). It is
+recorded, not gating, and is properly discharged either by an AT-19 in a later FSPEC round or by
+PROPERTIES carrying it directly — the latter is sufficient and is where I would put it.
+
+**Everything else in §6 is untouched and still holds.** I re-checked the three set-equality ATs
+(AT-02 disregard causes, AT-08 config keys, AT-13 outcome catalogue) against the REQ at v1.7: the
+catalogues are unchanged upstream, so the set-equality oracles I approved at v4 remain correctly
+sized. AT-12's outcome-(c) oracle still matches REQ-WVR-08's rescoped no-commit claim.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
