@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` — grounded on REQ v1.16 (`sha256:f97f4f66…`), FSPEC v1.7 (`sha256:d602c440…`), TSPEC v1.13 (`sha256:1f6ea486…`), DECISIONS (`sha256:dc7a8d65…`) |
+| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` — grounded on REQ v1.16 (`sha256:f97f4f66…`), FSPEC v1.7 (`sha256:d602c440…`), TSPEC v1.15 (`sha256:1f6ea486…`), DECISIONS (`sha256:dc7a8d65…`) |
 | Downstream | `PROPERTIES`, `IMPL` |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-PLAN-v1.md`, `CROSS-REVIEW-test-engineer-PLAN-v1.md` (active; harvested into `LEARNINGS-pdlc-advisory-wave-gate.md` after Phase H) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
@@ -42,13 +42,18 @@ plus one repo-root file: `.gitignore`, which A6-00 edits so the untracked `.pdlc
 — a live write target of the workflow sync path — cannot re-dirty the tree at a later wave boundary
 (PM v8 F-04). It is a tree-wide edit, not an advisory-tier one, which is why it is called out here
 rather than left to the manifest alone.
-**Twelve** test-side files under `pdlc/workflows/__tests__`, **all twelve of which exist at HEAD**
-(re-counted from the manifest this round — PM v8 F-02):
+**Thirteen** test-side files under `pdlc/workflows/__tests__`, **all thirteen of which exist at HEAD**
+(re-counted from the manifest this round — PM v8 F-02, and re-counted again at v1.12 when
+`advisoryWaveGateMain.test.js` entered A6-18's owned set, PM v2 F-01):
 `advisoryWaveGate.test.js`, called "the one new file (verified absent today)" through v1.3, was
 authored early and landed in `e3b9d5a3`; it carries A6-00's pre-flight gate and is the one advisory
 suite **green** at HEAD. The twelfth is `documentOracles.test.js`, which joined A6-00's owned set in
 v1.7 for the T15 count-literal bump — it is not an advisory suite, but this feature edits it, so it
-belongs in the count the manifest has to reconcile with. The manifest's **thirteenth** path under
+belongs in the count the manifest has to reconcile with. The thirteenth is
+`advisoryWaveGateMain.test.js`, the DC-07 production-path suite that reaches the real seam from
+`mainDev` — TSPEC §5.1 gives it an `edited` row because its four-key `expect(result.haltAdvisory).toEqual({…})`
+is a set-equality over the *same* halt-fields object A6-18 widens to five, so it reddens in A6-18's
+batch unless A6-18 owns it. The manifest's **fourteenth** path under
 that directory is the shared fixture `__tests__/helpers/advisoryDoubles.js`, not a `*.test.js` file. One second-channel pair
 (`.claude/pdlc.config.example.json`, `pdlc/engine/__tests__/advisory-config-example.test.js`).
 **Both members of that pair exist at HEAD**: `git show --name-status e3b9d5a3` lists *two* added
