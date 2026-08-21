@@ -245,4 +245,22 @@ writes an oracle over AC-5.1's failure arms.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | The failed-capture arm states control flow but no operator-visible observable: whether it is an A6 invocation for AC-6.1's mandatory record append, and what AC-2.4's per-seam A6 row reads, are both unstated — so the arm is indistinguishable from "A6 never fired" and no oracle can be written over it | §6 AC-5.1 |
+| F-02 | Low | delta | local | The `Upstream` row's rewrite to chain form dropped the resolvable path `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md`; all three sibling REQs in `docs/completed/` carry the path form, so the reader now has a chain but no way to reach its first link | Lineage header, `Upstream` |
+| F-03 | Low | delta | local | `Cross-Reviews` reads "harvested into `LEARNINGS-...`", true of the 116 rounds LEARNINGS §Harvested enumerates but false of the ten `CROSS-REVIEW-*` files on the branch now (this file makes eleven), which are post-harvest erratum rounds and appear in no LEARNINGS table | Lineage header, `Cross-Reviews` |
+| F-04 | Low | inherited | nonlocal | The document is 668 lines against C-5's own 630-line soft budget (54,045 bytes, inside the soft byte bound and both hard bounds); the delta added 12 lines to an overage v3 already recorded, and SE Q-02's relocation is what dissolves it | §5 C-5 / whole document |
+| F-05 | Low | delta | local | Excluding AC-6.1's record append from the tree comparison, read alone, permits a restoration that reverts the append — AC-6.1's independent mandate is what forbids it, but the composition is left for the reader to assemble from two criteria | §6 AC-5.1 |
+
+FINDING: Medium | delta | local | §6 AC-5.1 | Failed-capture arm gives control flow ("no repair proposed, none applied, wave halts on its own gate") but no operator-visible observable: silent on whether it counts as an A6 invocation for AC-6.1's mandatory record append and on what AC-2.4's per-seam A6 row reads, so the arm cannot be distinguished by an operator from A6 never firing, and AC-2.4's row oracle cannot be written against it
+FINDING: Low | delta | local | Lineage header, `Upstream` | Chain-form rewrite dropped the resolvable path `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md`; sibling REQs in `docs/completed/` all carry the path form, so the reader gets an ordered chain with no way to reach its first link
+FINDING: Low | delta | local | Lineage header, `Cross-Reviews` | "harvested into LEARNINGS-pdlc-advisory-wave-gate.md" is true of the 116 rounds LEARNINGS enumerates but false of the ten CROSS-REVIEW-* files presently on the branch, which are post-harvest erratum rounds carried in no LEARNINGS table
+FINDING: Low | inherited | nonlocal | §5 C-5 | Document is 668 lines against C-5's own 630-line soft budget; pre-existing overage recorded at v3, widened by 12 lines this round, dissolved by SE Q-02's relocation
+FINDING: Low | delta | local | §6 AC-5.1 | Excluding AC-6.1's record append from the tree comparison, read in isolation, permits a restoration that reverts it; only AC-6.1's independent mandate forbids this, and the REQ leaves that composition for the reader to assemble
+
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 4}
