@@ -15,7 +15,14 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved (shipped) | Claude | 1.15 | 2026-08-20 |
+| pdlc | approved (shipped) | Claude | 1.16 | 2026-08-20 |
+
+*v1.16 changelog (erratum round, Phase D). Lands the one item this round raised, by SE, PM and TE
+alike: DEC-A6-03's operator-facing halt-message obligation, routed since round 5 and previously
+unlanded. AC-6.3 now requires the halt report that points at a captured pre-A6 tree state to warn, in
+the same place, that re-running the feature overwrites that capture. Stated as the operator-visible
+outcome only — the capture's name and storage form stay TSPEC's (O-1). Nothing else changed; no
+decision reopened.*
 
 *v1.15 changelog (erratum round, Phase F). `Upstream` restores the resolvable path (SE F-02,
 TE F-02); `Cross-Reviews` scopes harvest to the rounds LEARNINGS enumerates (SE F-03). AC-5.1's
@@ -523,7 +530,10 @@ requirements altitude.
   top what the operator must decide. *(US-02.)*
 - **AC-6.3** — Given the pipeline halts after an A6 escalation, Then the halt report carries the
   diagnosis and the root-cause class, so US-02's "my turn starts from a diagnosis" is satisfied on
-  the halt path and not only in a file the operator must go and find. *(US-02.)*
+  the halt path and not only in a file the operator must go and find. Where the halt report points
+  the operator at a captured pre-A6 tree state, it also warns, in the same place, that re-running
+  this feature overwrites that capture — so an operator who intends to inspect it preserves it
+  first, rather than losing it to the ordinary next action after a halt (DEC-A6-03). *(US-02.)*
 - **AC-6.4** — Given a `plan-ordering-defect` classification, Then it is countable per feature from
   the durable escalation log without reading run logs, so a recurring wave-ordering defect becomes a
   visible signal rather than a repeated surprise. **Honest limit:** the per-feature advisory record
