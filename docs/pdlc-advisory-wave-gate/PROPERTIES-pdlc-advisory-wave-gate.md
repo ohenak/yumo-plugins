@@ -223,7 +223,7 @@ anchor at all fails on the recorded value rather than passing an absence check. 
 differently broken: attempt 2's `apply` re-anchors past attempt 1's genuine red sequence, so both
 drops leave an empty slice.
 
-**O-C. Preservation oracles carry positive-presence conjuncts (PROP-REST-01, -02, -03).** The
+**O-C. Preservation oracles carry positive-presence conjuncts (PROP-REST-01, -02, -03, -08).** The
 restoration oracle is a path-to-content-hash map over a **real** temporary repository
 (`mkdtempSync` + `execFileSync("git", …)`, the shape `advisoryDodSeams.test.js:371` already ships),
 not an injected `_git` double, which could only echo the fixture. The fixture must contain content
@@ -231,6 +231,19 @@ the wave actually changed and content the post-wave command actually rewrote, or
 vacuous. The paired negative control is explicit: a `git status`-level comparison passes a per-path
 restore whenever the re-run post-wave command rewrote an already-dirty path, which is the case the
 rule exists to fail.
+
+Two conjuncts of that oracle are **decided upstream and transcribed here**, not left to the fixture
+author (OQ-7, closed *no*). *Domain:* the map ranges over tracked files and **non-ignored** untracked
+files, generated outputs included, with `.gitignore`d paths excluded from both sides — so the fixture
+must carry a `.gitignore`d file the wave added and assert it **present** afterwards (PROP-REST-03),
+which is a positive-presence conjunct rather than the absence check the pending form invited, and an
+implementation that ran `clean -fdx` fails it. A fixture whose only generated output is `.gitignore`d
+tests nothing at all here (AT-05-2), so PROP-REST-02's rewritten path must be a non-ignored one.
+*Observation point:* the map is taken immediately after restoration completes and **before** the
+advisory-record append, the escalation-log append and the queue-row write; because all three carriers
+are files inside the tree, a map observed after them differs from the pre-A6 map by exactly the bytes
+BR-13 mandates, so a correct restore would read as red. PROP-REST-08 asserts that ordering positively
+— map first, then each of the three writes — rather than trusting the comparison to notice.
 
 **O-D. Behavioural counts, never raw call counts (PROP-REST-06, -07, PROP-CTR-09, -11, -12, -13).**
 `restoreTreeSnapshot` drives the same `_git` transport as `captureTreeSnapshot`, so a raw call count
@@ -282,7 +295,9 @@ absence-shaped conjuncts sit at the whole-run seam (O-B); identical-envelope beh
 behaviourally (O-D); shared reason literals get named positive dispositions (E); and every
 prohibition property carries its AC-4.5 positive on the same run. Three properties are deliberately
 *weak* and say so: PROP-REC-06's negative half (resolution counts not derivable), PROP-NFR-03's
-prompt-only qualification, and PROP-REST-03's upstream-pending boundary.
+prompt-only qualification. PROP-REST-03 was a third until this revision: its boundary was
+upstream-pending on OQ-7, which is now closed, so it is a fully transcribed positive assertion and no
+longer weak.
 
 
 ## Fixtures
