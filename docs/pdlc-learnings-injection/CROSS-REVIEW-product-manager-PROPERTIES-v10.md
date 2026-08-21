@@ -97,6 +97,40 @@ on has to change.
 
 ## Oracles
 
+**No oracle statement is affected.** §O.1–§O.10 do not cite P-A-7 at all — they are stated against
+TSPEC §D.3/§D.5, FSPEC's F-O-1 rules and the AT partition, none of which moved this round. The
+erratum changes *when a commit carrying an oracle may land and what the ledger owes*, not what any
+oracle asserts. I re-read §O.1–§O.10 against the three upstream hashes in the dispatch and found no
+citation that upstream no longer makes.
+
+**The one oracle-adjacent claim the delta touches is the production-half claim, and PLAN v0.8 now
+asserts it more strongly than PROPERTIES does — in PROPERTIES' favour.** Case C states that the
+production half F-O-1's second rule needs is already shipped: *"`canonicalSectionName` strips an
+optional ordinal via `SECTION_HEADING_RE`, strips an optional trailing gloss, compares
+case-sensitively against `BR6_SECTION_NAMES`, and returns null for a `###` line, which `^##[ \t]+`
+never matches"*. PROPERTIES §C.4's narrowed absence claim — the un-numbered `## Cross-Feature
+Patterns` spelling **is** exercised with `expect(result.sections).toEqual(["Cross-Feature Patterns"])`
+proving acceptance, while the variant fixture as a whole is what is owed — is consistent with that,
+and is in fact the evidence PLAN's case C leans on. Nothing to correct here; the two documents now
+say compatible things about the same code.
+
+**But the *consequence* PROPERTIES draws from its own oracle evidence is what the delta invalidates.**
+§C.4's chain runs: the four cases are absent from the landed suite → they will re-red committed green
+code → therefore case B applies and a named ledger row is owed. The first two links still hold at
+HEAD (I re-measured the pin above). The third no longer does: PLAN v0.8's answer to exactly this
+situation is *"no ledger row, and they owe green"*. The oracle evidence survives the erratum intact;
+only its conclusion has to be re-derived under case C. That is why F-01 is a rewrite of two passages,
+not a re-verification of the section.
+
+**PM Q-02 is answered upstream, and the answer bears on the oracles' expected colour.** I carried Q-02
+through v7, v8 and v9: is the heading-form amendment expected to land **green** (production already
+implements F-O-1's second rule) or **red**? PLAN v0.8's changelog names case C as *"answering PM
+Q-02"* and rules **green**. This is the more consequential half of the cascade for a test-oracle
+reader: an amendment expected green is not a staged TDD red, so a red that does land *"has found a
+real defect, not staged a TDD red"*. PROPERTIES §G.3's second bullet currently offers *"LI-22's
+REFACTOR-and-close batch or a self-greening amendment commit"* as the two candidate readings and
+declines to choose; PLAN has chosen the second. The bullet should record that, not re-ask it (F-02).
+
 ## Fixtures
 
 ## Questions
