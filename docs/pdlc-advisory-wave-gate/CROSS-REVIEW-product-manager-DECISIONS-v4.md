@@ -145,6 +145,37 @@ and the exact fix for each are in `## Findings`.
 
 ## Consequences
 
+**For this round.** No open High → the document is approved with minor changes and the phase can
+proceed. The three findings are recorded, not gating; all are `Local` and all sit inside the
+`DEC-A6-03` hunks this revision touched. None reopens a decision, an option table or another entry.
+
+**For the downstream chain.** The state the record now describes is real and I confirmed it
+independently: the overwrite obligation is specified at three levels (`REQ v1.16 AC-6.3`, `FSPEC
+v1.7 BR-14`/`AT-06-4`/`AT-06-4b`, `TSPEC v1.15 §4.5`) and asserted at none — `overwrit` has zero
+matches in `PROPERTIES`, and `renderSnapshotOverwriteNotice` has no definition and no caller under
+`pdlc/`. That is the correct state for Phase D and the record names it as an open obligation rather
+than an absence, which is what a test author needs. The one thing the record should sharpen before
+Phase T reads it is F-02: `AT-06-4b`'s negative arm needs a property home, and `PROP-REST-08` is it.
+Under the pipeline's own oracle standards, `AT-06-4`'s presence check without `AT-06-4b`'s
+absence-arm is an absence-only oracle's mirror image — a warning emitted unconditionally passes
+every containment assertion in `AT-06-4` and only reddens on the `null` arm.
+
+**On the `PROP-REST-08` staleness I found while checking F-02.** `PROP-REST-08` still asserts "§4.5's
+**four** fields at their literal values — `rootCause`, `diagnosis`, `repairApplied`, `repairPaths`",
+while `TSPEC v1.15 §4.5` now names five including `snapshotRef`, and `TSPEC §5.5` already records
+that the `null`-arm expectation must carry `snapshotRef: null`. `PROPERTIES` is **downstream** of
+this document, so it is neither an erratum for me to route nor a defect of the document under review;
+I record it here because whoever revises `DEC-A6-03` per F-02 will be pointing at that property and
+should point at it accurately. I raise no ERRATUM lines this round: every upstream claim the revision
+makes (`REQ`, `FSPEC`, `TSPEC`) verified true at HEAD.
+
+**Cross-feature signal.** None promoted. The `On v1.12` note's durable lesson — *"a sentence of the
+form 'X matches nothing upstream' is a dated observation, not a decision, and must carry the upstream
+version it was checked against and be re-checked on every cascade"* — is well stated and belongs in
+harvest, but it is already covered by the erratum/cascade protocol and needs no new standing
+constraint. The header-cell change that follows from it (pin **all** upstream hashes, not the nearest
+one) is the more actionable half, and it is now embodied in the document rather than only asserted.
+
 ## Findings
 
 | ID | Severity | Scope | Finding | Requirement ref |
