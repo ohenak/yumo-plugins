@@ -209,6 +209,23 @@ correctly still reads "First draft from REQ v0.9 / FSPEC v0.10 / TSPEC v0.6", be
 history and rewriting it would be a falsification. The disposition is right and the sentence
 describing it is wrong by one. Low, and the fix is the sentence, not the row.
 
+## Findings
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | The zero-bound **production** half has no named owner. TSPEC §D.5 puts it in `extractInjectableMaterial` (bound tested before the cut; `{material: "", bounded: false, bytes: 0, sections: []}` at `maxBytes <= 0`) and `selectLearnings` (drop on *yields no material* before the count and total bounds, no slot consumed) — both LI-16's seams, batch 8. LI-16's row still glosses the extractor as "`bounded` decided at the cut", which §D.5 contradicts for exactly this case, and the arm table routes the zero-bound disjunct to LI-12 / LI-21, whose enumerated edits are `main()` and `buildFinalReport` only. Add the clause to LI-16 and name it in the owner column | AC-4.4, FSPEC E-36 / AT-30 |
+| F-02 | Medium | Local | `LI-AT-30` conjunct (iii) — "**no** document carries `RSN-COUNT`" — is vacuous unless the third case's eligible non-self corpus exceeds the `maxDocuments` in force (REQ §4.1 default: **5 documents per dispatch**). Below that threshold a count-bound-before-extraction implementation also produces no `RSN-COUNT` row, so the conjunct passes against the mutation it exists to catch. State the fixture precondition in the row | AC-4.4, AC-2.1 |
+| F-03 | Medium | Local | The rewritten errata section claims "TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5)" — an incomplete set. TSPEC v0.9 carries **ERR-8** open against FSPEC Step 5 items 15–16 (structural drop, then count cut, then extract), and it is the one erratum addressed to the PLAN author: "so the PLAN author reading the procedure sequentially does not implement the shape E-36 carves out". Still live in FSPEC at HEAD. Add it, with its consequence pointing at F-01's LI-16 clause | AC-4.4, FSPEC BR-9 / D-12 |
+| F-04 | Low | Local | LI-08's v0.5 amendment note is spliced mid-enumeration, orphaning `LI-AT-12` after "the single-writer manifest is unchanged, `LI-AT-12` (…)"; and its claim that the landed files "use the bare-title form only" holds for the fixtures but not the helper — `renderSection` already takes `ordinal` and `gloss` and `name` is free-form, so only the `###` sub-heading form is genuinely new. Move the note to the row's end and narrow the claim | AC-2.4 (BR-6 sections) |
+| F-05 | Low | Local | The v0.5 changelog row states "the four stale version pins now read FSPEC v0.13 / TSPEC v0.9". Three were refreshed; the changelog's own 0.1 row correctly retains its historical pins. Fix the sentence, not the row | — |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does the third `LI-AT-30` case drive the **real** repository corpus (9 documents at HEAD, per TSPEC §I.1) or a synthetic `buildLearningsCorpus` fixture? Conjunct (ii)'s "every enumerated non-self corpus path" reads either way, and the answer decides whether F-02's precondition is automatically satisfied (9 > 5) or has to be declared. |
+| Q-02 | With ERR-8 unresolved in FSPEC, is the implementer's rule stated anywhere a task row reaches? TSPEC §D.5 states it ("extract for every eligible document, then apply the count and total bounds"), but no PLAN row repeats or cites that sentence, and the row that would is LI-16's. |
+
 ## Positive Observations
 
 - **The fix went past the finding, in the direction that protects the user.** I asked for AT-30's
@@ -266,4 +283,22 @@ Three Mediums and two Lows are recorded, all bounded to text this round wrote, n
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | Zero-bound production half unowned: TSPEC §D.5 places it in `extractInjectableMaterial` and `selectLearnings` (LI-16, batch 8), LI-16's row still says "`bounded` decided at the cut", and the arm table routes the disjunct to LI-12 / LI-21, whose stated edits are `main()` / `buildFinalReport` only. v7 F-01's second clause, unresolved; downgraded from High because LI-12's third case now proves the behaviour and it cannot ship silently | §Batches LI-16 row; §Traceability fail-open arm table |
+| F-02 | Medium | delta | local | `LI-AT-30` conjunct (iii) "no document carries `RSN-COUNT`" is vacuous unless the fixture's eligible non-self corpus exceeds `maxDocuments` (REQ §4.1 default 5); state the precondition | §Batches, LI-12 row |
+| F-03 | Medium | delta | local | The rewritten errata section's "remaining open errata (ERR-1, ERR-2, ERR-5)" omits TSPEC v0.9's live **ERR-8** against FSPEC Step 5 items 15–16, the one erratum written to the PLAN author and the upstream statement of F-01 | §Open questions and upstream errata |
+| F-04 | Low | delta | local | LI-08's amendment note is spliced mid-enumeration (orphaning `LI-AT-12`) and over-claims: the landed helper already carries `ordinal`, `gloss` and free-form names; only the `###` sub-heading form is new | §Batches, LI-08 row |
+| F-05 | Low | delta | nonlocal | The v0.5 changelog says four version pins were refreshed; three were, and the 0.1 row correctly keeps its historical pins | §Changelog, 0.5 row |
+
+FINDING: Medium | delta | local | §Batches LI-16 row; §Traceability fail-open arm table | The zero-bound production half has no named owner: TSPEC §D.5 puts it in `extractInjectableMaterial` and `selectLearnings` (LI-16, batch 8), LI-16 still glosses the extractor as "`bounded` decided at the cut", and the arm table routes the zero-bound disjunct to LI-12 / LI-21, whose enumerated edits reach neither function.
+FINDING: Medium | delta | local | §Batches, LI-12 row | `LI-AT-30`'s conjunct (iii) — no document carries `RSN-COUNT` — is vacuously true unless the third case's eligible non-self corpus exceeds the `maxDocuments` in force (REQ §4.1 default 5), so the row must state the fixture precondition.
+FINDING: Medium | delta | local | §Open questions and upstream errata | The rewritten section enumerates TSPEC's remaining open errata as ERR-1, ERR-2, ERR-5 and omits ERR-8, which is live at HEAD against FSPEC Step 5 items 15–16 and is addressed to the PLAN author.
+FINDING: Low | delta | local | §Batches, LI-08 row | The v0.5 amendment note is spliced into the middle of the AT enumeration, orphaning `LI-AT-12`, and claims the landed files use the bare-title form only when the helper already supports `ordinal`, `gloss` and free-form names.
+FINDING: Low | delta | nonlocal | §Changelog, 0.5 row | The changelog claims four stale version pins were refreshed; three were, the 0.1 row correctly retaining its historical pins.
+
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 2}
