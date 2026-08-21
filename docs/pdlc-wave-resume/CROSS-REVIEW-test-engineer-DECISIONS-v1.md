@@ -94,6 +94,80 @@ choice matters, since `it` statements give 23), and correct the parenthetical de
 `implementation.startWave` block. If a different, defensible counting rule yields a different number,
 state the rule and the command; what must not survive is a figure no command reproduces.
 
+### F-02 (High) — "each announcing outcome" and "exactly three" are not both satisfiable
+
+DEC-WVR-03 states the rule universally — append ` (provenance: …)` to **each announcing outcome** —
+and the Consequences table states the count exactly: "**Exactly three** shipped whole-string
+assertions change, in the **same task** as the announcement change, each to the new whole string
+transcribed as a literal." O-5 names the three. All three exist and are correctly identified:
+
+| # | Assertion named in O-5 | Confirmed at `origin/main` |
+|---|---|---|
+| 1 | past-the-end notice in `it("a pointer past the last wave runs every wave, and says so")` | ✅ `expect(logs).toContain(` + full sentence — element equality on an array |
+| 2 | the four-member `it.each` ignored-record notice | ✅ `expect(logs).toContain(` + full sentence, all four members |
+| 3 | `phaseDetail(result, "I")` equality in `it("skips the waves before the pointer entirely — no dispatch, no gate, no commit")` | ✅ `expect(phaseDetail(result,"I")).toBe("All 3 waves complete (wave mode, script-owned gate)")` |
+
+O-5's claim that the placement rule leaves substring matchers green also re-derives: the cited
+`expect(row.detail).toContain("recorded green (wave ledger)")` in `it("a matching record whose waves
+are all green skips Phase I whole, and the row says so")` is unaffected, as are the four
+`startsWith` matchers and the two `some(… startsWith("Resuming at wave")) === false` negatives. That
+part of the analysis is careful and correct.
+
+**The gap is a fourth announcement, not a fourth matcher style.** The shipped operator-pointer path
+emits *two* rejection notices, not one. Alongside the past-the-end notice there is:
+
+```
+Notice: implementation.startWave in ${CONFIG_PATH} is not a valid value — using the default.
+```
+
+asserted by whole-string element equality in
+`it("an invalid pointer degrades to wave 1 and is named in the run's notices")` — the same
+`expect(logs).toContain(` + full sentence shape as assertions #1 and #2. Structurally it is
+indistinguishable from #1: an operator pointer is rejected, `startWave` degrades to 1, the run
+announces why, and the run is a full run reached by an operator pointer.
+
+FSPEC BR-07 is explicit that this class announces provenance: "…**and so does a full run reached by
+an operator pointer** or by an announced disregard cause." Under DEC-WVR-03's own rule — "each
+announcing outcome" — that sentence takes ` (provenance: operator-set)`, and the count is four.
+
+**Why this is High.** It is not a miscount; it is an unclosed enumeration on a decision whose entire
+value is that the enumeration is closed:
+
+1. **The set-equality mandate is defeated by an unclassified member.** FSPEC OB-F5 and AT-13 demand
+   set equality over the outcomes and their announcements, "so a deletion or an addition fails a test
+   instead of passing one". An announcement that is neither in the catalogue nor explicitly excluded
+   from it is a member the set-equality oracle cannot see — it will pass whether or not the
+   invalid-pointer notice carries a token, which is exactly the containment behaviour OB-F5 rejects.
+2. **The named mitigation is aimed at the wrong risk.** The Risks section accepts "A fourth
+   whole-string assertion is discovered mid-wave", mitigated by running the full suite as the task's
+   gate. But a suite run only reds if the fourth assertion *changes*; if the implementer instead
+   leaves the invalid-pointer notice untouched, the suite stays green and BR-07 is silently
+   under-implemented. The accepted risk is the benign half; the silent half has no mitigation.
+3. **It forces the one edit DEC-WVR-03 forbids.** An implementer who discovers the fourth assertion
+   mid-wave, holding a decision that says "exactly three", has the strongest possible incentive to
+   relax that matcher to a `startsWith` rather than contradict the DECISIONS record — the precise
+   move DEC-WVR-03 rules out as "a strictly larger change than this feature owes".
+
+**Required change.** Decide the invalid-pointer notice explicitly, either way, and make the decision
+mechanical rather than implicit:
+
+- If it **does** carry `operator-set` (which is what BR-07's wording indicates): the count becomes
+  four, the fourth assertion is named in O-5 alongside the other three, and its replacement string is
+  specified with the same literal-transcription discipline.
+- If it **does not**: DEC-WVR-03 must say so and give the criterion that separates it from the
+  past-the-end notice — e.g. *provenance attaches to announcements that report a resolved start
+  point, not to config-validation notices* — so the exclusion is a rule a test can check, not an
+  omission.
+
+Either way, add a consequence that the announcement catalogue is asserted by **set equality over the
+announcements that carry a provenance token**, with the excluded notices enumerated as literals.
+That is what makes a future fifth announcement red an assertion instead of slipping through.
+
+The catalogue itself lives in TSPEC §2.4, upstream of this document; that omission is raised
+separately as an erratum. The finding filed here is against this document's own text: a universally
+quantified rule and an exact count that contradict each other, and a risk register that treats the
+contradiction as unforeseeable.
+
 ## Questions
 
 ## Positive Observations
