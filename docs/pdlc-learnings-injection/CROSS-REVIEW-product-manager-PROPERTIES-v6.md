@@ -47,7 +47,32 @@ three items below are Medium or Low, none gates, and none touches an oracle.
 
 ## Properties
 
-_pending_
+**Nothing in the property catalogue moves.** The erratum added no task, moved no task between
+batches, changed no `Deps` edge, added no AT id and invalidated no fixture, so the three things every
+property in this document leans on PLAN for — its **owning red task**, its **owning green task**, and
+its place in §C.3's task accounting — are all unchanged.
+
+Checked directly against PLAN v0.6 rather than assumed:
+
+| PROPERTIES claim about PLAN | Status at PLAN v0.6 |
+|---|---|
+| The 70 properties trace to red/green pairs LI-07/LI-16, LI-08/LI-17, LI-10/LI-19, LI-12/LI-21, LI-14, LI-23 | Holds — every one of those rows is byte-unchanged except LI-08, whose only edit is the appended pointer to the new paragraph |
+| §C.3 "23 of 23 tasks accounted for"; LI-02 and LI-22 own no property by design | Holds — the task table still has 23 rows, LI-02 is still the fixture helper with no property of its own |
+| §C.4's fourteen-file ownership table mirrors PLAN §File-ownership manifest | Holds — the manifest is untouched; the erratum explicitly states ownership does not move and the single-writer manifest is unchanged |
+| PROP-RECORD-06/07's batch-11/13 split rides PLAN's LI-19 / LI-21 split of BR-10's two loci, with `LI-AT-22`'s run-level half in the expected-red ledger for batches 11–12 | Holds — LI-10's row carries that split verbatim, and the erratum did not touch it |
+| PROP-CONFIG-09 matches LI-12's three-case `LI-AT-30` (including the `maxBytesPerDocument: 0` arm) | Holds — LI-12's row is byte-unchanged |
+| PROP-BOUND-05/08's §D.3 heading-recognition oracle is red by LI-08 / green by LI-17 | Holds, and is now *better* supported: LI-08's row still declares the non-canonical heading forms and the `## Process Findings` near-miss, and the new paragraph says how their re-red is ledgered |
+
+One PLAN-facing sentence in PROPERTIES is now **stale in the direction of understating upstream**:
+§C.4's *"PLAN's LI-08 v0.5 amendment note assigns the follow-up commit to the existing owners but
+does not name the ledger rows; that naming is the PLAN's to do and is routed as an erratum, not
+decided here."* At HEAD, PLAN **does** name them. The routed item is answered, so the sentence should
+read as closed rather than open (F-02). The neighbouring claim it exists to protect — *"No property
+of this document changes either way"* — is confirmed by PLAN v0.6, not contradicted by it: both of
+the paragraph's cases add or drop **zero** rows that any property here names.
+
+The upstream pin in the header table still reads `PLAN-…md` **(v0.5)** (F-01). No property depends on
+the pin, but the pin is what the next reviewer measures the document against.
 
 ## Oracles
 
