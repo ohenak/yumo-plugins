@@ -286,8 +286,9 @@ run, announced as such. *Source: US-02.*
 completed all its waves. **When:** any later run reads it. **Then:** the record may survive the
 completed phase, but it can never cause a run to skip work it has not verified — it is usable only
 while it validates against the feature key, the PLAN hash, and commit ancestry from the current
-HEAD, and a record failing any of those checks is treated exactly as an absent record: full run,
-announced reason (C-2). Staleness is therefore a property the reader proves, not a property the
+HEAD, and a record failing any of those checks is treated exactly as an absent record — a full
+run — with the reason announced (REQ-WVR-02, IG-1..4; an absent record itself is IG-5 and is
+silent). Staleness is therefore a property the reader proves, not a property the
 writer promises. *Source: US-01.*
 
 **Decided 2026-08-13 — retention with invalidation.** The shipped interim ledger conflicts with this requirement
