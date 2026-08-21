@@ -740,9 +740,54 @@ Three mutations this suite is specifically designed to kill, because each would 
 - **Concurrency** (FSPEC EC-19): the pipeline is serial by construction and the record is
   consumer-local. No guarantee is offered, so none is asserted.
 - **`version` handling**: nothing reads it (§4.1), so there is no behaviour to test. A test
-  asserting the literal `1` in written bytes is covered by `formatWaveLedger`'s unit test.
+  asserting the literal `1` in written bytes is covered by `formatWaveLedger`'s unit test. This
+  exempts the *field*, not the **branch**: `formatWaveLedger` chooses between the two record shapes
+  on whether `head` is non-blank, and that branch is covered by the `head` / no-`head` unit cases
+  (§5.3) and by §5.7's round-trip law — worth stating, because §5.8's floor is a *branch* floor
+  (TE F-07).
 - **The general claim that no PLAN may ever own consumer-local state**: unfalsifiable as a
   per-feature test; routed to Phase P's ownership-manifest gate (FSPEC OB-F6).
+
+### 5.7 Generative properties (new suite)
+
+Four of this feature's five subjects are pure and parameterisable — a parser, a serialiser, a hash
+over structured input, and a total classifier — and the example-based coverage of §5.3 pins named
+instances rather than the laws they instance (TE F-06). `fast-check@^4.9.0` is already a
+devDependency of `pdlc/workflows`, and the precedent for the split is
+`__tests__/advisoryHelperProperties.test.js`, which was itself a CODE_REVIEW remediation and states
+in its own preamble why it is kept **separate** from the behavioural suites: the table-driven cases
+remain the readable documentation of intent, the property suite pins the laws over inputs nobody
+chose. The same split applies here, in `waveResumeProperties.test.js`.
+
+| Law | Statement | What it kills that no example does |
+|---|---|---|
+| P-1 **Round trip** | For all `(feature, planHash, lastGreenWave, head)` with `feature` and `planHash` non-empty strings and `lastGreenWave` an integer ≥ 1: `parseWaveLedger(formatWaveLedger(feature, planHash, lastGreenWave, head)).state` deep-equals `{feature, planHash, lastGreenWave, head: head ?? null}`, and `.reason` is `null`. | Normalisation drift between writer and reader — a writer that omits a blank `head` and a reader that expects it, on a value pair nobody hand-picked. |
+| P-2 **Totality of the reader** | For arbitrary strings, including arbitrary JSON values and non-string inputs: `parseWaveLedger` never throws and returns exactly one of the three §4.2 shapes. | The mechanical form of V-2, which today is a doc-comment claim carried by three hand-picked inputs. |
+| P-3 **Totality of the classifier** | For arbitrary `ClassifyInput`: `outcome ∈ RESUME_OUTCOMES` and `provenance ∈ RESUME_PROVENANCE`, and `code` is `null` or a member of `Object.keys(WAVE_IGNORE_REASONS)`. | §2.2's "the classifier is total" as an assertion rather than as prose — the only thing that makes FSPEC BR-01's closure mechanically checkable, which §2.2 claims it is. |
+| P-4 **Hash discrimination** | For generated pairs of wave layouts differing in wave order, task ids, task-to-wave assignment, or owned paths: `computePlanHash` differs across the generated corpus. | §4.3's four sensitivity examples as a law. **Caveat stated in the suite:** FNV-1a over 32 bits is not injective, so the property is "differs over this bounded generated corpus", not "is injective" — a collision found by the generator is a finding about the corpus, not a failed law, and the suite says so. |
+
+Convention, copied from the shipped property suite rather than invented: `fc.assert(fc.property(…))`
+at fast-check's default run count, with no pinned seed, and one `describe` per subject naming the law
+in the test title (`TOTALITY:`, `ROUND-TRIP:`) so a failure names the law it falsified.
+
+### 5.8 The coverage floor this feature is measured against
+
+`orchestrate-dev.js` carries a **per-file 85% branch floor enforced at merge** (TE F-07). It is not
+enforced by the wave gate: `pdlc/workflows/package.json` defines
+`test:coverage` as `c8 npm test -- --runInBand && c8 report --check-coverage --per-file --branches
+85 …` with `include: ["orchestrate-dev.js", "orchestrate-queue.js", "build-runtime.mjs"]`, and
+`.github/workflows/pr-tests.yml` runs `npm run test:coverage` in the `Unit tests` job — whereas
+`.claude/pdlc.config.example.json`'s `implementation.testCommand` is plain jest, no `c8`.
+
+This feature adds branches to exactly that module: eight classifier arms (§3.2), seven renderer
+closures (§3.1), the lazy-probe short-circuit (§2.2), and the announcement and report branches of
+§2.4. Uncovered, every one of them is green through Phase I and red at Phase PUB — after Phase DOD
+has run, which is the most expensive place to discover it.
+
+**The floor for this feature is `npm run test:coverage` from `pdlc/workflows`, `--per-file
+--branches 85`** — not "the module is already in the include list". It is named as an obligation of
+the **last implementation wave's `postWaveCommand`** (TE Q-05: yes), so the floor is a wave-level
+gate rather than a PUB-level surprise. That is a PLAN obligation, recorded here and carried as RT-7.
 
 ## 6. Open Questions
 
