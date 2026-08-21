@@ -35,6 +35,61 @@ pins were re-read from the documents themselves, not from this PLAN's header.
 
 ## Batches
 
+**No task row moved, and I checked mechanically rather than by eye.** I extracted the `Owner`,
+`Batch` and `Deps` columns of every `| LI-NN |` row from both revisions and diffed them: identical.
+The only edit inside a task row is LI-12's prose pin (`FSPEC v0.13's AT-30` → `v0.14's`, twice), and
+the per-batch expected-red ledger for batches 7–13 is byte-identical between the two revisions. The
+1.3 changelog row's claim — "no task moved batch, no `Deps` edge changed, no AT partition, fixture
+or ledger row was touched" — is true against the diff.
+
+### F-01 (High, v14) is resolved: the subsection now reconciles with the commit
+
+My v14 High was that §Post-batch remediation described `2fc6fcd3` as "six test-side surfaces" and
+recorded two of nine second writes, while P-A-5 requires "one added row per file". The rewritten
+subsection states its own provenance — "derived from `git show --name-status 2fc6fcd3`, not from any
+prior description of the commit" — and I re-ran that command. Its accounting reconciles exactly:
+
+| The subsection's claim | Measured at `2fc6fcd3` |
+|---|---|
+| lists **45 paths** | 45 |
+| 18 added fixture prompts under `PIPELINE-NON-AUTHORING-PROMPTS/` | `0.txt`…`17.txt`, 18 added |
+| **five added test-side files** | `helpers/learningsBaselineScenarios.js`, `helpers/learningsComposition.js`, `learningsDisclosure.test.js`, `learningsErratumBinding.test.js`, `pdlc/engine/__tests__/learnings-config-example.test.js` |
+| nine modified files under `pdlc/workflows/__tests__/` | `coverageInstrumentation`, `fixtures/learnings-baseline/MANIFEST.json`, `learningsArmInventory`, `learningsBaselineGuard`, `learningsCaptureScript`, `learningsConfig`, `learningsCorpus`, `learningsDispatchSet`, `learningsSelect` — nine |
+| one modified pre-existing engine suite | `pdlc/engine/__tests__/docs-uniqueness.test.js` |
+| four modified production/configuration files | `orchestrate-dev.js`, `scripts/capture-learnings-baseline.mjs`, `pdlc/workflows/package.json`, `pdlc/workflows/.gitignore` |
+| the regenerated `dist/pdlc-cli.mjs` | modified |
+| seven pipeline/document files | `REQ`, `FSPEC`, `TSPEC`, `CLAUDE.md`, `pdlc/OPERATIONS.md`, `pdlc/README.md`, `.claude/pdlc.config.example.json` |
+
+18 + 5 + 9 + 1 + 4 + 1 + 7 = **45**. The partition is exhaustive and disjoint, which is the property
+that makes "one added row per file" checkable rather than assertable.
+
+**Every second-writer row's owner and batch is correct against the manifest table above it.** I
+checked each against the file-ownership manifest's own rows: `learningsCaptureScript.test.js` →
+LI-03 / batch 2 (manifest line 231), `learningsSelect.test.js` → LI-07 / 3 (line 233),
+`learningsCorpus.test.js` → LI-09 / 3 (line 235), `learningsDispatchSet.test.js` → LI-11 / 5
+(line 239), `learningsConfig.test.js` → LI-12 / 5 (line 240), `learningsArmInventory.test.js` →
+LI-23 / 5 (line 241), `scripts/capture-learnings-baseline.mjs` → LI-05 / 3 (line 199). Not one is
+mis-attributed.
+
+**The three production-side row bodies are exact.** `git show --numstat 2fc6fcd3` gives
+`orchestrate-dev.js` 15/6, `scripts/capture-learnings-baseline.mjs` 74/19,
+`pdlc/workflows/package.json` 13/6 and `pdlc/workflows/.gitignore` 1/0 — matching the rows' "15
+insertions, 6 deletions", "74 insertions, 19 deletions" and "one ignore line" verbatim. The
+`.gitignore` row's disambiguation is true: the commit touches `pdlc/workflows/.gitignore` (adding
+`/.tmp-capture-driver-*/`) and does **not** touch the root `.gitignore` LI-04 owns. And the
+`selectLearnings` signature claim is true at HEAD — `pdlc/workflows/orchestrate-dev.js:2426` reads
+`export function selectLearnings({ entries, thresholds })`, with no `feature` parameter.
+
+### F-03 (Medium, v14) is resolved, and the count now reconciles from two directions
+
+The eighteenth file has its own row: `pdlc/engine/__tests__/learnings-config-example.test.js`,
+"new — no LI owner", cause F9. I counted the tree at the measurement anchor: `git ls-tree -r
+09c7c62f` yields **fourteen** `pdlc/workflows/__tests__/learnings*.test.js` suites, **three**
+helpers (`learningsFixtures.js`, `learningsBaselineScenarios.js`, `learningsComposition.js`) and the
+one engine-side file — eighteen. §Overview's new sentence states exactly that decomposition, and
+§The arithmetic reaches the same eighteen by the other route (ladder's thirteen + `2fc6fcd3`'s five
+added). Both are true, and they agree.
+
 ## Dependencies
 
 ## Verification
