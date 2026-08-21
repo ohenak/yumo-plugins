@@ -42,11 +42,47 @@ was the substance of v4 F-01 and it is discharged.
 
 ## Behavioral Flow
 
-_pending_
+**§3.2 step 10 — correct and non-controlling.** The rewrite keeps the step's load-bearing claim
+("Halt, unchanged": same reason M-WG-3, same `halted` queue row M-WG-7) and adds the two arms as a
+report-content distinction only. Nothing in the new sentence introduces a branch in control flow, so
+the step's title stays honest and BR-14's "escalation adds information, never control flow" is not
+weakened. The arms are stated as *report contents*, which is the right seam: the pipeline halts
+identically either way.
+
+I checked that step 10's new text does not create a second normative home for the obligation that
+could drift from BR-14. It does not — step 10 names the arms and defers the clause's content to
+BR-14 by citation, which is the same discipline E-30 was rewritten to adopt.
 
 ## Business Rules
 
-_pending_
+**BR-14 is the right owner and the clause is well-drafted.** Measured against REQ AC-6.3 at HEAD:
+
+| AC-6.3 clause (REQ v1.16) | BR-14 v1.7 |
+|---|---|
+| halt report carries diagnosis + root-cause class | present, unchanged |
+| "Where the halt report points the operator at a captured pre-A6 tree state" | conditional antecedent preserved verbatim in substance |
+| "it also warns, in the same place" | **"the same report, in the same place"**, with co-location named as *the* observable |
+| "that re-running this feature overwrites that capture" | verbatim in substance |
+| rationale: operator preserves it first | present |
+| capture name/storage stay O-1's | present, and extended to lifetime |
+
+Three drafting choices are worth naming as good ones. First, *"Co-location is the observable — a
+pointer in the halt report and the warning in a runbook does not satisfy it"* converts the AC's "in
+the same place" into something an oracle can fail on, which is exactly the compression an FSPEC owes
+a REQ. Second, the negative scope statement (the clause binds the halt report only; BR-13's advisory
+record carries no such warning) forecloses the over-broad reading that would have made E-30 and BR-13
+carriers too. Third, adding *lifetime* to the O-1 deferral is a small extension beyond REQ's "name
+and storage form" but a correct one — how long the capture lives is mechanism, and pinning it here
+would have been an altitude violation.
+
+**One citation-hygiene note.** BR-14 cites `(DEC-A6-03)`. That decision record at HEAD still reads
+*"**The routing has not landed** (PM Q-02, TE): at REQ v1.15 and FSPEC v1.6, `a6-snapshot`, 'copy the
+ref' and 'overwrit' match nothing in either document"* and *"This entry carries the gap until it
+lands"* — a statement that is now false, and false specifically because of this edit. DEC-A6-03's own
+re-evaluation triggers anticipate this ("or the halt-message obligation the PM is routing to REQ
+lands, in which case … this entry's known gap closes"). The FSPEC is not wrong to cite it; the
+DECISIONS record needs a one-paragraph erratum closing the gap. Filed as F-03 (Low) — the fix lands
+in DECISIONS, not here.
 
 ## Edge Cases and Error Scenarios
 
