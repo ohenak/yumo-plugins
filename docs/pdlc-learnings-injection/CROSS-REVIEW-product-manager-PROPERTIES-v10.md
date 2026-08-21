@@ -133,6 +133,31 @@ declines to choose; PLAN has chosen the second. The bullet should record that, n
 
 ## Fixtures
 
+**No fixture claim is invalidated by this delta, and one is reinforced.** §F.1–§F.4 are untouched by
+definition (PROPERTIES' bytes did not move), and I checked each fixture dependency against PLAN at
+`281c60c0` rather than against my v9 notes:
+
+| Fixture dependency | PLAN's statement at v0.8 | Effect on PROPERTIES |
+|---|---|---|
+| `helpers/learningsFixtures.js` and its consumers | *"carry **no** row of their own in **any of the three cases**"* — previously "in either case" | Compatible: PROPERTIES makes no ledger claim about the helper's consumers |
+| The additivity premise for the declared-heading-form knob | Unchanged verbatim: the landed helper already renders optional ordinal and gloss, existing callers keep byte-identical output | §C.4's fixture-debt scoping (*"the variant fixture as a whole"*) still rests on a premise upstream still states |
+| The non-additive escape hatch | Now reads *"under case B's rule first … **or**, once batch 13 is behind us, under **case C**, where the obligation is green-at-landing rather than a ledger row"* | This is new upstream text PROPERTIES has not absorbed; it is the same sentence F-01 asks to be re-derived |
+| `fixtures/learnings-baseline/` (LI-06, `4a6c1816`), `scripts/capture-learnings-baseline.mjs` (LI-05, `ced75955`), `.gitignore` `/.baseline-worktree/` (LI-04, `ae2af1da`) | Untouched by the erratum | Unchanged; still tracked and still cited by rule text / test title rather than by bare anchor |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | Untouched | Unchanged; §C.4's binding/non-binding `maxBytes` qualification still verifies |
+
+**The scoping fix upstream is one PROPERTIES benefits from and should say so.** PLAN v0.8 narrows the
+"no row of their own" ruling to *"**this** heading-form follow-up commit, not a standing exemption for
+those files (TE v9 F-01)"*. PROPERTIES never claimed a standing exemption, so nothing here is
+falsified — but §C.4's fixture-debt paragraph reads more safely under the narrowed rule than under the
+old one, and the revision that fixes F-01 can cite the narrowed form directly.
+
+**No new fixture, corpus or generator entered the upstream this round.** The erratum touched PLAN's
+version cell, P-A-7's case table, the closing scope sentence and the changelog — nothing in the task
+table, the AT partition, the manifest rows or the fixture list. I verified that by diffing
+`f73046ad..be64a0c6` over the whole document: 5 changed hunks, all of them in those four places. So
+every fixture row PROPERTIES declares still points at a fixture PLAN still creates, under a task PLAN
+still owns, in the batch PLAN still schedules it in.
+
 ## Questions
 
 ## Positive Observations
