@@ -36,6 +36,22 @@ approved, and is the document still a faithful compression of its upstream at HE
 
 ## Constraints
 
+Upstream re-read at HEAD (`origin/main` = `11420461`), with what I verified:
+
+| Upstream | Checked | Result |
+|---|---|---|
+| `pdlc-wave-gate-baseline.md` **v1.2** | Version row, `Verified at` row, §4 preamble | Matches the REQ's citation. §4 states verbatim that PR #66 (`bb4d36fb`) "makes M-WG-8's five-member reading a **pre-change** fact: true at `c8aa22a4`, false at this base", and that M-WG-8 is deliberately left as measured because AC-1.1 and R-5 argue from the pre-change state. The delta's `c8aa22a4` naming is exactly what upstream says. |
+| M-WG-13 / M-WG-14 | Re-ran both recipes at HEAD | `ADVISORY_SEAMS` = frozen `["A1".."A6"]` (`orchestrate-dev.js:1952`); `ENVELOPE_DEFAULTS` = frozen `["E-1".."E-6"]` (`:1942`). Both readings hold. |
+| `pdlc-advisory-corpus-baseline.md` §1, §4 | Record/escalation carriers | `docs/_queue/ESCALATIONS.md` is the one durable, append-only per-seam record — a tracked working-tree file. Feeds F-01 below. |
+| `REQ-pdlc-advisory-tier` (v1.4) AC-1.6, AC-2.2, AC-3.4, AC-3.6, AC-9.2 | Each cited id read at its current bytes | All five exist and still say what this REQ compresses them to. AC-9.2 still carries both halves the REQ restates (action-without-record is a defect; a failed record write refuses the action). No drift. |
+| Referenced commits | `git cat-file` | `c8aa22a4` and `bb4d36fb` both resolve; `bb4d36fb` is the PR #66 merge. |
+
+Constraint carried into the findings: an erratum may not introduce a new internal contradiction in
+the section it edits. AC-5.1 is a black-box tree-equality criterion, so its exclusion list must be
+exhaustive over the carriers the run writes on AC-5.1's **own** trigger path — otherwise the criterion
+cannot be satisfied by a correct implementation and the acceptance test written from it is
+unpassable-by-construction rather than merely imprecise.
+
 ## Acceptance Criteria
 
 ## Risks
