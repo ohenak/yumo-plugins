@@ -144,6 +144,48 @@ redefinition v14 approved are the same design decision seen from two sides; they
 
 ## Test Strategy
 
+**The disposition is only sound if an oracle reds when an implementer follows FSPEC's literal item
+order.** That is the test-engineering question behind "no PLAN change is owed", and it is the one I
+re-measured. It holds:
+
+`LI-AT-30`'s third case (`maxBytesPerDocument: 0`, LI-12, L3 workflow level) asserts **three positive
+conjuncts**, not `selection is empty`:
+
+1. the `learningsInjection` key is **present**, with BR-8's rows present and empty — the enabled-run
+   shape, which a disabled run, a refusal or a crashed injector would not produce;
+2. `rejected[]` is **set-equal** to every enumerated non-self corpus path, each at reason exactly
+   `RSN-NO-MATERIAL`, none `bounded` — set equality, never "at least one";
+3. **no** document carries `RSN-COUNT`.
+
+Conjunct (3) is the ERR-8 oracle. An implementer who follows Step 5 literally — structural drop,
+then count cut, then extract — leaves the count-cut remainder carrying `RSN-COUNT`, and (3) reds. It
+is also the conjunct that kills the slot-burning mutant that takes a zero-byte first-section cut and
+counts it as a contribution. And it carries its own **fixture precondition**, stated in the PLAN
+because the conjunct is vacuous without it: the corpus must hold more eligible non-self documents
+than the `maxDocuments` in force (≥ 6 at REQ §4.1's default of 5), below which no document could
+carry `RSN-COUNT` under *any* implementation and (3) passes for free. A vacuity guard written into
+the fixture obligation, at the same altitude as the conjunct it protects, is the right shape — this
+is a falsifiable oracle, not a shaped-to-pass one.
+
+The oracle sits at **L3, workflow level**, which is the correct level: the ordering under test is a
+property of the selection pipeline's composition (extract → drop → bound), not of any one function,
+so a unit test on `extractInjectableMaterial` structurally could not falsify it. The production
+half — `maxBytes <= 0` short-circuit and the no-slot drop — is owned by a single named task (LI-16),
+so the red has exactly one green counterpart, and reverting either function is a mutation the suite
+catches.
+
+**Nothing in the (empty) delta touched the suite partition or the AT inventory.** §T.5's per-file AT
+counts, `LI-T-SUITEMAP`'s disjointness, the `Batch` column and every `Deps` edge are as approved.
+`learningsBlock.test.js` still owns AT-05/AT-11/AT-12 with the three-row AT-11 oracle table and its
+three named mutations; `learningsConfig.test.js` still owns AT-30 and AT-32 at L3.
+
+**Two v14 residual test-strategy observations remain open and remain non-gating**: no test pins
+§D.3's join rule *directly* (a violation reds AT-11's literal byte count as an off-by-N integer
+mismatch rather than a named failure — a one-line junction assertion would fix the diagnosis), and
+PROPERTIES' `PROP-BOUND-07` hand-computed-literal rule still omits the `+2 bytes per join` term,
+which under §D.3 step 2 under-counts by `2·(n−1)`. The second is PROPERTIES' to fix, not this
+document's, and I carry it as a deferred observation rather than a finding against the TSPEC.
+
 ## Open Questions
 
 ## Recommendation
