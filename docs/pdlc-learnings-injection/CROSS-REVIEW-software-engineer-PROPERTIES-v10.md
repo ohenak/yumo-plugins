@@ -184,7 +184,73 @@ sentence, not a re-argument — which is the shape I would want a cascade fix to
 
 ## Delta-Confirmation Findings
 
-TBD
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | §C.4 states "case B is the live case and case A is unreachable" under "PLAN's two-case follow-up table". PLAN v0.8 bounds case B to batches 9–12 and rules of HEAD "Case B's span therefore has no terminus here and does not apply"; **case C** governs, names PROP-BOUND-03/05/07/08 and the Group D `learningsSelect.test.js` amendments by id, and binds them: "they owe no ledger row, and **they owe green**", with a red owed a fix "before batch 14 runs" and a red surviving into batch 14 a gate failure. The document carries neither the case name nor the obligation | §C.4, "PLAN's two-case follow-up table" paragraph |
+| F-02 | Medium | delta | local | §G.3's "**Still open — three items**" carries the two P-A-7 case-B items that PLAN v0.8's changelog records itself as answering ("Case B is re-scoped to batches 9–12 … new case C governs … the PROPERTIES re-reds §C.4 routes here … are routed to case C (TE v9 F-01)"). Leaving them listed as open re-routes a question upstream has decided — the DEC-ERR-01 anti-pattern this same section invokes twice | §G.3, "Still open — three items" |
+| F-03 | Medium | delta | local | The header's upstream row pins PLAN "(v0.7 — … the *Amendment commits on landed suites (P-A-7)* two-case table was added at **v0.6** and is unchanged at v0.7 …)". PLAN at HEAD is v0.8 (`sha256:281c60c0…`) with a three-case table, so the pin is stale and the parenthetical asserts a structure upstream no longer has | Header, Upstream row (line 11) |
+| F-04 | Low | delta | local | §C.4 quotes case B's retired span ("the landing batch through the batch that greens them") and derives its two routed gaps from it. PLAN now annotates that span "well-formed only while a greening batch remains ahead". In the same rewrite, PROP-BOUND-03's zero case deserves an explicit word: §C.4's own measurement is that no `extractInjectableMaterial(text, 0)` call is landed and PLAN v0.7 named LI-16 the owner of the zero-bound production half, so unlike the heading-form arms it is not obviously green-at-landing — case C's fix-before-batch-14 rule covers it, but the document should say so rather than leave it inferred | §C.4, quoted case-B span |
+| F-05 | Low | inherited | nonlocal | My v9 F-01, unaddressed and now overtaken: §G.3's second case-B bullet quotes PLAN as "every batch from the landing batch through the batch that greens them" where PLAN v0.7 read "every batch from the one the commit lands in through …". F-02 strikes that bullet, which resolves this incidentally — recorded so the ledger closes it rather than losing it | §G.3, second case-B bullet |
+
+FINDING: High | delta | local | §C.4, "PLAN's two-case follow-up table" paragraph | §C.4 attributes the four owed Group-B/D amendments to P-A-7 case B and calls it "the live case"; PLAN v0.8 bounds case B to batches 9–12, states it "does not apply" at HEAD, and puts these properties under case C by name, which owes no ledger row but owes green at landing — an obligation the document does not carry, and whose absence would have an author stage a red that batch 14's unqualified gate fails
+FINDING: Medium | delta | local | §G.3, "Still open — three items" | Both P-A-7 case-B items are answered by PLAN v0.8's case C, which its changelog names as the resolution; keeping them under "Still open" re-routes a decided question, and the header count must drop to one while the TSPEC AT-15 bullet survives verbatim
+FINDING: Medium | delta | local | Header, Upstream row (line 11) | The upstream row pins PLAN v0.7 and asserts the P-A-7 table is two-case and unchanged; PLAN at HEAD is v0.8 with a three-case table, so both the pin and the structural claim are stale
+FINDING: Low | delta | local | §C.4, quoted case-B span | §C.4 quotes case B's retired span wording and derives its routed gaps from it; the rewrite should also say explicitly that PROP-BOUND-03's zero case is the one arm not obviously green at landing, and that case C's fix-before-batch-14 rule is what covers it
+FINDING: Low | inherited | nonlocal | §G.3, second case-B bullet | Carried v9 F-01: a paraphrase of PLAN's case-B span presented inside quotation marks; F-02's strike of that bullet resolves it
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Case C rules that the PROPERTIES-driven amendments "owe green". PROP-BOUND-03's zero case is the one that may not be — no `extractInjectableMaterial(text, 0)` call is landed and LI-16 owns the zero-bound production half. If it lands red, case C says that is a real defect owed a fix before batch 14. Does the PROPERTIES suite's own commit (P-A-6, "the first point the suite is green, which in practice is after LI-21") therefore have to carry that production fix in the same commit, or does the fix precede it? This is PLAN's call and blocks no property text, but the rewrite of §C.4 reads better if it can state the answer. |
+| Q-02 | Unchanged and still PLAN's: with P-A-6's window open and case C now governing the amendment, do the four owed Group-D amendments to `learningsBlock.test.js` land in the PROPERTIES suite's own commit or a separate one? Case C makes the answer cheaper — either way no ledger row is owed — so this is now bookkeeping rather than a gate question. |
+
+## Positive Observations
+
+- **The erratum answered the two items I routed, in the form I asked for.** Both of my v8/v9 case-B
+  routings — the unnamed row for PROP-BOUND-03's zero case and the span with no terminus — are
+  answered by one construct rather than patched twice, and PLAN's changelog names them explicitly.
+  The gap is only that PROPERTIES has not yet absorbed the answer.
+- **Case C names the downstream properties by id.** PLAN could have stated a general rule and left
+  the mapping to be re-derived; instead it writes "PROP-BOUND-03's `maxBytesPerDocument <= 0` case,
+  PROP-BOUND-05/07/08, and the Group D amendments to the landed `learningsSelect.test.js`". That
+  makes this confirmation mechanical and makes the §C.4 rewrite a substitution rather than an
+  argument.
+- **The premise case C rests on is checkable, and it checks out.** `SECTION_HEADING_RE`'s `^##[ \t]+`
+  anchor cannot match `###`, and `canonicalSectionName` compares case-sensitively before and after
+  gloss-stripping (`orchestrate-dev.js:2242–2255`). PLAN asserted shipped behaviour and the behaviour
+  is shipped.
+- **The blast radius is genuinely small.** No property, level, owning task, oracle, fixture, count or
+  trace is disturbed — three passages in two sections plus a version pin. §C.1/§C.2/§C.3 reconcile
+  unchanged against a task table the edit did not touch.
+- **Case A's window is now derived rather than asserted**, and the fixture-consumer ruling is scoped
+  to this commit rather than reading as a standing exemption. Neither was forced by my findings; both
+  make the section harder to misread.
+
+## Recommendation
+
+**Needs revision.**
+
+PROPERTIES' own bytes are still sound — every property, oracle, level, fixture and trace I approved
+at v9 stands, and four of the five upstream pins are unmoved. But it is no longer a faithful
+compression of PLAN: it names a case that upstream has bounded away from HEAD, it omits the
+green-at-landing obligation upstream now places on four of its own properties by id, it lists two
+items as open that upstream has answered, and its version pin asserts a table shape that no longer
+exists.
+
+Exactly what must change, in one revision, touching nothing else:
+
+1. **§C.4** — replace "under PLAN's two-case follow-up table … case B is the live case and case A is
+   unreachable" with case C: three cases; case B bounded to batches 9–12; case C live at HEAD; the
+   four (plus Group D) owe **no ledger row** and **owe green**; a red is a real defect owed a fix
+   before batch 14 runs. Fix the "P-A-7 case B governs the amendment / P-A-6 governs this suite"
+   sentence to read case C on the left. Keep §C.4's existing conclusion — no property changes either
+   way — which case C independently confirms.
+2. **§G.3** — strike both P-A-7 case-B bullets into the "Answered by PLAN" group with case C named as
+   where they landed, and change the header from "Still open — three items" to one item. The TSPEC
+   AT-15 bullet is untouched by this edit and must survive verbatim.
+3. **Header, line 11** — repin PLAN to v0.8 and restate the parenthetical: three-case table, case C
+   added at v0.8 and governing the post-batch-13 amendments this document routes.
 
 ## Verdict
 
