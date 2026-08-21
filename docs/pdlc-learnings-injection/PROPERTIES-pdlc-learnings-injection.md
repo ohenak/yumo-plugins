@@ -1107,11 +1107,14 @@ PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments — **four** prop
 land in `learningsBlock.test.js`. That suite is not merely landed but **greened**: its red owner
 LI-08 landed at `5e522a52` and its green owner LI-17 at `2cbacada`, and LI-16 — the task PLAN v0.7
 names as the owner of TSPEC §D.5's zero-bound production half — landed at `d462ddd8`. So of PLAN's
-two-case table, **case B is the live case and case A is unreachable**: case A is scoped to a
-follow-up commit landing *before batch 7*, and batch 9 is behind us. Any commit carrying these four
-cases re-reds committed green code, which is exactly what case B governs — the ledger gains the named
-row `learningsBlock` → `LI-AT-11`'s heading-form cases, stated in test names, for every batch from
-the landing batch through the batch that greens them. **None of the four is present in the landed
+**three**-case table at v0.8, **case C is the live case** and cases A and B are both behind us: case A
+is scoped to a follow-up commit landing *before batch 7*; case B is scoped to *"after LI-17 has
+greened the suite, with a greening batch still ahead (batch 9 through batch 12)"*, and batch 13 is
+behind us. Case C — *"after batch 13, the case that is live at HEAD"* — names these four properties
+by name and rules the opposite obligation from case B's: **the ledger stays empty and the amendment is
+expected to land green.** PLAN states it in terms: *"under case C they owe no ledger row, and they owe
+green."* No named `learningsBlock` ledger row is owed, and an author who prepares one is preparing an
+amendment PLAN says must not exist. **None of the four is present in the landed
 suite**: at `21edb7c5` `learningsBlock.test.js` declares one `describe` naming three ATs
 (`describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)")`, `learningsBlock.test.js:38`),
 carries none of `LI-AT-11`'s variant heading-form arms — no un-glossed `## Rejected Proposals`
@@ -1125,10 +1128,33 @@ derived here)" comment) and `66` (`const maxBytes = 66`); the third call passes 
 non-binding `100000` under the comment "Unbounded: large enough that maxBytes never binds". There is
 no `extractInjectableMaterial(text, 0)` case. All four are
 therefore **property-owed cases with no red-owning task remaining ahead of them**: they land into
-green committed code, not into a scheduled red, and two gaps in case B's wording follow from that —
-its named row covers `LI-AT-11`'s heading-form cases only, so PROP-BOUND-03's `maxBytes <= 0` case
-has no named row, and its span ends at "the batch that greens them", which no remaining batch is.
-Both are PLAN's call, not this document's, and both are routed as errata rather than decided here.
+green committed code, not into a scheduled red — which is precisely the situation case C was added to
+govern, and which is why the two gaps this document previously routed against case B's wording (no
+named row for PROP-BOUND-03's zero case; a span with no terminus) are **answered**, not open: case C
+rules the ledger empty and replaces the span with batch 14's unqualified gate.
+
+**Which of the four is actually green at landing, and what covers the one that may not be.**
+PROP-BOUND-05/07/08's heading-form and byte-count arms assert behaviour that is **shipped**: PLAN's
+case C records that `canonicalSectionName` *"strips an optional ordinal via `SECTION_HEADING_RE`,
+strips an optional trailing gloss, compares case-sensitively against `BR6_SECTION_NAMES`, and returns
+null for a `###` line, which `^##[ \t]+` never matches"*, and this document's own §C.4 evidence agrees
+— the un-numbered `## Cross-Feature Patterns` spelling is already accepted at `21edb7c5` with
+`expect(result.sections).toEqual(["Cross-Feature Patterns"])`. The one arm **not** obviously green at
+landing is PROP-BOUND-03's `maxBytesPerDocument <= 0` case: at `21edb7c5` there is no
+`extractInjectableMaterial(text, 0)` call anywhere in the landed suite, so the zero-bound production
+half (LI-16, `d462ddd8`) has never been exercised through this seam and the first call may red. Case C
+covers that without a ledger row: a red that lands *"has found a real defect, not staged a TDD red"*,
+the fix commit is owed **before batch 14 runs**, and a red surviving into batch 14 is a **gate
+failure**, not a ledger entry.
+
+**The same obligation reaches the Group D amendments.** PLAN's case C extends its ruling to *"any
+other amendment to a landed suite arriving from here on"* and names the Group D amendments to the
+landed `learningsSelect.test.js` (LI-07, `1544fdbd`) alongside the four `learningsBlock.test.js`
+cases. So the Group D amendments this document schedules travel under case C too: **no ledger row, and
+green at landing**, with the same fix-before-batch-14 rule if one reds. `helpers/learningsFixtures.js`
+and its other consumers carry no row of their own in **any of the three cases** — a ruling PLAN v0.8
+scopes to *"**this** heading-form follow-up commit, not a standing exemption for those files"*, which
+this document has never claimed.
 
 **And the deferral this document previously leaned on is spent, not pending.** Earlier revisions
 concluded that this document's own four properties "travel under P-A-6's rule … so they enter no
@@ -1139,8 +1165,9 @@ rather than ahead, and the suite may be committed as soon as it is green — or,
 rows are amended into the ledger by name first, under the same P-A-7 rule. The conclusion that **no
 property of this document changes either way** is unaffected; what changes is only when its cases may
 land and which case of the table governs them. The two mechanisms stay distinct, as this document has
-held since v0.3: **P-A-7 case B** governs the amendment commit against the landed *implementation*
-suite `learningsBlock.test.js`, while **P-A-6** governs this document's own PROPERTIES suite — the
+held since v0.3: **P-A-7 case C** governs the amendment commits against the landed *implementation*
+suites `learningsBlock.test.js` and `learningsSelect.test.js` — empty ledger, green at landing — while
+**P-A-6** (byte-unchanged at v0.8) governs this document's own PROPERTIES suite — the
 restatement above moves neither rule, only the point in the run each is read from.
 
 **No property in this document names a test
