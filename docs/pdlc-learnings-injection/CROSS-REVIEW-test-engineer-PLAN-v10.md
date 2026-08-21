@@ -47,6 +47,73 @@ the orchestrator can route it, rather than folded into this verdict.
 
 ## Batches
 
+Four task rows changed. Each is a clause, none is a row move.
+
+**LI-16 (GREEN the pure selection core, batch 8) — named the owner of §D.5's zero-bound half.** The
+row gains two claims. First, `extractInjectableMaterial` owns the short-circuit: "`maxBytes <= 0` is
+tested _before_ the cut and returns `{material: "", bounded: false, bytes: 0, sections: []}` for every
+`text`, including one carrying all five sections; `bounded` is `false` because nothing was taken, so
+nothing was cut". That is a near-verbatim transcription of TSPEC §D.5's first bullet
+(`TSPEC-…md:1005-1012`) — same return literal, same `bounded` reasoning, same "including one carrying
+all five sections" edge. Second, `selectLearnings` owns the drop: "one branch keyed on *yields no
+material*, covering both of §T.7's disjuncts — the structural one (E-33) and the zero-bound one
+(E-36) — with **no** zero-bound special case in the selector". That is TSPEC §D.5's second bullet
+(`:1013-1017`), which reads "The rule is keyed on *yields no material* … covers both disjuncts with
+one branch … There is no second branch and no zero-bound special case in the selector." The
+compression is faithful, clause for clause.
+
+The row's supporting negative claim — "no other task's enumerated edits reach it: LI-12 is a test task
+and LI-21 edits only `main()` and `buildFinalReport`" — checks out on the page: LI-12's `Source` cell
+is `—` (`:152`), and LI-21's row enumerates `main()` and `buildFinalReport` only (`:161`). So the PM's
+round-8 finding was real, and naming LI-16 is the right repair: LI-16 is the only task whose enumerated
+edits reach either function.
+
+**LI-12 (RED configuration suite, batch 5) — conjunct (iii) gains its fixture precondition.** This is
+the best change in the delta from my lens, because it converts a mutation-killing conjunct that could
+have been vacuous into one that cannot be. `LI-AT-30`'s third conjunct is "**no** document carries
+`RSN-COUNT`", the conjunct that falsifies a slot-burning implementation. The new paragraph states the
+precondition it needs: "the third case's corpus must hold **more eligible non-self documents than the
+`maxDocuments` in force** — REQ §4.1's default is `5`, so ≥ 6 documents unless the case declares a
+smaller `maxDocuments`." I verified the constant rather than the sentence: `REQ-…md:224` reads
+`| learningsInjection.maxDocuments | 5 documents per dispatch |`. ≥ 6 is the correct threshold at that
+default. Below it, the count cut never binds and (iii) passes against the mutant it exists to kill —
+exactly the "a test that can only pass is not yet a test" failure, caught before it was written. The
+precondition is expressed through LI-02's existing spec surface, so it costs no new fixture shape and
+does not touch the manifest.
+
+**LI-02 (`[Fake first]` fixture helper, batch 2) — the `###` variant is pinned as body text.** The
+spec surface now reads "a `###` sub-heading **emitted as body text through the helper's existing
+`body` knob, not as a heading-level knob** — `renderSection` hardcodes the two-`#` prefix and grows no
+`level` parameter". Verified on disk: `learningsFixtures.js:68` is
+``const heading = `## ${ordinalPrefix}${section.name}${glossSuffix}`;`` — a literal two-`#` prefix,
+and the function signature `renderSection(section)` (`:64`) carries no level parameter. This closes the
+open half of my round-8 F-02, and closes it the way I asked: by naming which knob produces the variant
+rather than leaving an implementer to invent one.
+
+**LI-08 (RED block/material suite, batch 3) — the amendment note is reconciled and re-ordered.** Two
+repairs. The note moved to the **end** of the AT enumeration — at v0.6 it sat between `LI-AT-11` and
+`LI-AT-12`, orphaning `LI-AT-12` mid-list; `LI-AT-12`'s clause now sits with its siblings and the note
+follows all of them. And the `Status`-cell contradiction I filed as round-8 F-01 is resolved by
+distinguishing the two records rather than by editing either: the note names the landing commits
+(`1920f281` for LI-02, `5e522a52` for LI-08 — both verified present in `git log`) and states that
+`Status` is the dispatcher's ledger, so "file existence is a fact about HEAD, `Status` is a fact about
+the wave's bookkeeping". That is the right resolution shape — it does not have the PLAN's author write
+a column he does not own.
+
+**One clause in that note is false at HEAD.** "The knobs themselves already exist — `renderSection`
+accepts `ordinal`, `gloss` and a free-form `body`, all three unexercised by any landed suite". The
+first two hold: `grep -rn "ordinal\|gloss" pdlc/workflows/__tests__/` returns hits only inside
+`learningsFixtures.js` itself (`:57-59`, `:65-68`), never a caller. `body` does not:
+`learningsBlock.test.js:77-82` passes `body:` on all six of its section specs, and
+`learningsSelect.test.js:375` passes `{ name: "Not A BR-6 Section", body: "Nothing here BR-6
+recognises." }`. The clause's *conclusion* survives — the amendment does add callers rather than knobs,
+and it now adds even fewer than the sentence claims, since `body` is not merely present but already
+exercised — so this is F-01, Medium, non-gating.
+
+**Nothing else in the task table moved.** `git diff` touches no other row. `[Fake first]` ordering,
+red-before-green pairing for every implementation task, the single-writer file manifest and the
+same-batch same-new-file guard are byte-identical to the v0.6 bytes I approved at round 9.
+
 ## Dependencies
 
 ## Verification
