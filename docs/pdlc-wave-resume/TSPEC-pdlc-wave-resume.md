@@ -63,6 +63,8 @@ Every claim below about shipped behaviour is therefore verified against **`origi
 | V-15 | The queue path delegates the whole pipeline in-process | `orchestrate-queue.js` imports `orchestrate-dev`'s default export as `realMain` and returns the delegated report as `pipelineReport` |
 | V-16 | Behaviour is exercised today by integration tests through `main()` | the `describe("Phase I — the INTERIM wave ledger resumes a halted run unattended")` block in `pdlc/workflows/__tests__/waveExecution.test.js` |
 | V-17 | Phase PT's V-wave dispatches one agent and, under a script-owned gate, invokes the gate once, unconditionally after the wave loop | `phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)")`, its single `withDispatchRetry(() => agentFn("se-implement", propertiesTestPrompt(...)))`, and the `if (scriptGate) { const vGate = await runCommandFn(implConfig.testCommand); … }` arm |
+| V-18 | The operator resume banner is emitted from its own `if (startWave > 1)` block, **after** the past-the-end clamp and **before** the `if (!explicitPointer)` block — so it is a separate announcement from the record's resume banner, and a clamped pointer produces the notice but not the banner | the `emit` whose first line is `Resuming at wave ${startWave} of ${waves.length} (implementation.startWave).` and whose last sentence is `Clear implementation.startWave before the next fresh run.` (added at round 1, TE F-05) |
+| V-19 | A record rejected for feature mismatch or plan-hash mismatch issues **zero** `merge-base` subprocess calls: the ancestry probe is the third arm of the `else if` chain, below `recorded.feature !== featureName` and `recorded.planHash !== planHash` | the ordering of the `else if` chain inside `if (!explicitPointer)`, with `await headCorroborated(recorded.head)` appearing only in the third arm (added at round 1, TE F-02) |
 
 ### 1.2 The delta this feature implements
 
@@ -128,7 +130,8 @@ The built artifacts under `pdlc/workflows/dist/` are **generated**. Every change
 source module; `node pdlc/workflows/build-runtime.mjs` regenerates the artifacts, and
 `pdlc/hooks/scripts/sync-workflows.sh` copies them into the untracked consumer tree. A wave whose
 tasks edit the source module owns the regenerated artifacts through `implementation.postWavePathspecs`,
-which is why the post-wave command runs before the gate (`M-WG-2`).
+which is why the post-wave command runs before the gate (`pdlc-wave-gate-baseline.md` `M-WG-2`, at
+`Version | 1.2 · 2026-08-20`).
 
 ### 2.2 The decision, extracted as a pure classifier
 
@@ -146,6 +149,29 @@ chain happens to emit, which is reading the expectation back out of the mechanis
 - **What does not move:** the `await`ed `git merge-base --is-ancestor` probe, the `emit` calls, and
   the report row. The classifier receives ancestry as an already-resolved boolean (`headOk`) and
   returns a *description* of the outcome; `main()` performs the IO and the announcing.
+
+**The probe stays lazy, and that is a contract, not an incident (TE F-02, PM F-05).** Shipped, the
+probe is the *third* arm of the `else if` chain, so a record naming another feature or written
+against another plan is rejected with **zero** `merge-base` subprocess calls. A classifier taking a
+resolved boolean would, naively called, resolve it for every well-formed record — one new git
+subprocess on paths that had none, which is precisely the "no new IO" claim of §3.4 quietly
+becoming false. The call site therefore resolves ancestry **only when the decision turns on it**:
+
+```
+d := classifyWaveLedger(parsed, {…, headOk: true})      # optimistic, pure, no IO
+if d.code ∈ ANCESTRY_INDEPENDENT_CODES:                 # IG-6, IG-1a/b/c, IG-2, IG-3
+    use d                                               # zero probes, exactly as shipped
+else if not await headCorroborated(parsed.state.head):  # at most ONE probe, ever
+    d := classifyWaveLedger(parsed, {…, headOk: false}) # → IG-5, since guard 5 precedes guard 6
+```
+
+`ANCESTRY_INDEPENDENT_CODES` is `{null, "unreadable-json", "not-an-object", "wrong-shape",
+"feature-mismatch", "plan-changed"}` — exactly the outcomes guards 1–4 of §3.2 decide, i.e. the
+guards that sit above the ancestry guard. The second classifier call is pure, so it costs no IO;
+the record's `head` being absent still costs no subprocess, because `headCorroborated` returns
+`true` before reaching the transport (V-7). The resulting call counts are the shipped ones and are
+asserted as such: **zero** `merge-base` invocations on a feature-mismatch and on a plan-hash-mismatch
+fixture, **exactly one** on the ancestry fixture (§5.4 AT-03, AT-11).
 
 This keeps every seam where it is (no new injection point) while making the decision a value a
 unit test can assert over. `parseWaveLedger` keeps its current job — turning bytes into
@@ -170,11 +196,17 @@ if startWave > waves.length:                            # out of range → full 
     emit(pointer-past-end notice, provenance=operator-set)
     startWave := 1
 
+if startWave > 1:                                       # the OPERATOR resume banner, shipped
+    emit("Resuming at wave N of M (implementation.startWave). … Clear implementation.startWave
+          before the next fresh run." + provenance=operator-set)
+
 if not explicitPointer:                                 # V-6: the record is consulted only here
     raw    := readMergeConfigSafely(_readFile, WAVE_STATE_PATH)
     parsed := parseWaveLedger(raw)                      # → {state, reason}
-    headOk := parsed.state ? await headCorroborated(parsed.state.head) : true
-    d      := classifyWaveLedger(parsed, {feature, planHash, waveCount: waves.length, headOk})
+    d      := classifyWaveLedger(parsed, {feature, planHash, waveCount: waves.length, headOk: true})
+    if d.code not in ANCESTRY_INDEPENDENT_CODES:        # §2.2 — at most one probe, and only here
+        if not await headCorroborated(parsed.state.head):
+            d := classifyWaveLedger(parsed, {…, headOk: false})
     apply d:                                            # §3.2 return shape
         outcome "full-run"   → startWave stays 1; emit d.reason unless d.silent
         outcome "resume"     → startWave := d.startWave; ledgerResume := true; emit resume banner
@@ -185,6 +217,13 @@ for waveIndex in 0 .. waves.length-1:
     if waveNum < startWave: emit per-wave skip line (naming the source); continue
     dispatch → post-wave command → gate → (only if green) commit → write record
 ```
+
+The operator resume banner is emitted **between the clamp and the `!explicitPointer` guard**, exactly
+where the shipped chain emits it (V-18): its condition is the post-clamp `startWave > 1`, so a
+past-the-end pointer that clamped back to 1 produces the past-the-end notice and *no* resume banner.
+It is the announcement that carries `provenance: operator-set` for outcome (b) — §2.4 row (b),
+operator pointer — and §5.4 AT-05 names it as the announcement the token must be found on, so the
+token cannot be satisfied by appearing on some other line.
 
 `headCorroborated` stays exactly as shipped, including both fail-open returns (V-7): a record with
 no `head` and a run with no transport both answer `true`, because an unanswerable probe is not a
