@@ -162,10 +162,46 @@ exist that does not.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | The specified-vs-asserted note says "`PROPERTIES` covers AC-6.3 through `PROP-REC-05`", naming one property where `PROPERTIES:387` traces AC-6.3 to **two** — `PROP-REC-05` *and* `PROP-REST-08` (E-34's arm, `PROPERTIES:168`). The conclusion is unaffected (I re-ran the grep: `overwrit` matches 0 lines in PROPERTIES, and neither property asserts the conjunct), but the enumeration is a containment claim where the traceability row is a set. A reader spot-checking one id cannot confirm the coverage claim is complete, which is the same defect class this entry was just repaired for. **Fix:** name both ids and state what each does assert — `PROP-REC-05` diagnosis + class, `PROP-REST-08` the `snapshotRef: null` arm — so the "no property asserts it" claim is checkable by set-equality against `PROPERTIES:387`. | `DEC-A6-03` → *What is still owed, and to whom*, `:399-401` |
+| F-02 | Low | Local | The revised **Reversibility** line says the name "is *printed* in two places … the halt field that names the ref, and, **adjacent to it**, the overwrite notice `renderSnapshotOverwriteNotice(snapshotRef)` renders — co-located by contract", then concludes "a rename moves one computation and **one** rendered string". Two frictions: (a) "two places / one rendered string" is internally inconsistent within one sentence; (b) more consequentially for a test author, it locates co-location **between the halt field and the notice**, whereas the contract downstream pins it **within one string** — `TSPEC:1460` ("both halves together and adjacent **inside one string**") and `TSPEC:1942` ("pick the one `notices` element matching the ref pattern and assert the overwrite predicate **on that same element**"). The entry's own later paragraph (`:405-408`, "same rendered report field") is right, so this is a local inconsistency rather than a wrong contract — but the Reversibility line is the earlier of the two, and an oracle written to field↔notice adjacency would not falsify the split the contract exists to catch. **Fix:** restate as "one computed name, rendered into one `notices` string that carries the pointer and the overwrite statement together". | `DEC-A6-03` → *Reversibility*, `:372-375` |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The replacement Re-evaluation trigger fires "if the conjunct is still unasserted by any property or test **when Phase I closes**". At HEAD it is already unasserted and PROPERTIES is in-round — is the intent that the trigger is a Phase-I-close backstop only, or that the PROPERTIES author should treat it as live now? I have read it as the latter in `## Consequences`; if that is wrong, the entry may want one clause distinguishing "owed and in flight" from "owed and dropped", since only the second is a decision-reopening condition. |
+| Q-02 | `TSPEC:1539` records a *shipped* exact-count oracle that the routing invalidates — `expect(failed.notices).toHaveLength(2)` in `advisoryEscalationLog.test.js` becomes three once the notice is pushed. That is TSPEC/PLAN's to own and I raise no finding, but does DEC-A6-03 want a one-line consequence noting that the remedy's landing has a blast radius in *shipped* oracles, not only in new ones? It is the kind of cost a decision record usually prices. |
 
 ## Positive Observations
 
+- The repair re-grounded on upstream **at the time of the edit** rather than resolving the finding
+  as filed, and thereby caught two limbs (FSPEC v1.7, TSPEC v1.15) neither reviewer had seen. I
+  verified both version rows and both hashes. This is the correct instinct for exactly the defect
+  class being repaired, and it is the difference between fixing a stale sentence and shipping a
+  fresh one.
+- The `Upstream` cell now pins three recomputable hashes and says *why* three — a decision record's
+  upstream-dependent claims can be falsified by an edit to any of them. All three match `shasum`
+  output at HEAD. F-03 is not merely closed; the closure is mechanically checkable in future rounds.
+- The specified-vs-asserted note transcribes a **falsifiable** oracle with two named RED conditions
+  and an explicitly named non-oracle (`toContain(ref)` alone). Decision records rarely state what
+  the test must fail on; this one does, and it agrees with `TSPEC:1942`'s independent statement.
+- The fired trigger is retired **and replaced**, rather than deleted. An entry that had spent its
+  only trigger would go quiet; this one now points at the next real risk (specified at three levels,
+  checked at none) in a form a grep can decide.
+- The durable lesson is written into the document body, not only into a cross-review that will be
+  harvested and deleted. That is the right home for it.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+All three v3 findings — F-01 (High), F-02 (Medium), F-03 (Low) — are resolved, verified against the
+repository at HEAD rather than against the document's citations. No decision moved:
+`DEC-A6-01`…`DEC-A6-04` and `## Options Considered` are untouched. The changed regions introduce no
+High finding. The two new findings are Low: an incomplete enumeration of AC-6.3's property coverage
+(`:399-401`) and an internally inconsistent co-location phrasing in Reversibility (`:372-375`),
+both correctable in a single pass and neither gating.
 
 ## Verdict
