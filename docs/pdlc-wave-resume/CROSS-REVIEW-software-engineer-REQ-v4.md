@@ -132,3 +132,29 @@ consequences:
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three of my v3 findings are resolved, each verified against `main:pdlc/workflows/orchestrate-dev.js`
+rather than against the document's account of it. My v3 High (F-01) was a false positive: the
+`scriptGate` block closes at `:15494` via its `else` at `:15492`, so the ledger write at `:15600`
+is guarded by the git transport alone, exactly as v1.4 claimed and v1.5 now makes re-derivable. No
+open High finding remains anywhere in the document.
+
+The three Low findings are recorded, not gating, and none needs to be addressed before FSPEC
+authoring:
+
+1. **F-01 (Local)** — §10: say "resolved at HEAD of the default branch"; this document's own
+   branch-base note is what makes the bare word ambiguous.
+2. **F-02 (Process)** — for harvest, not for the author: nesting claims about this file get settled
+   by brace-depth accumulation or a parser, never by inspecting two `if` lines; the
+   unique-comment-string citation form is the mitigation to keep.
+3. **F-03 (Local)** — re-wrap the one long line left in §9 OQ-1.
+
+Downstream note, not a finding: BL-04 (this branch is 1,637 commits behind the default branch)
+remains open and is discharged at FSPEC authoring per §5. Until it is, FSPEC authoring in this tree
+cannot read the mechanism it is formalizing.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
