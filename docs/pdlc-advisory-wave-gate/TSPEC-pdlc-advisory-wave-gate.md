@@ -1401,7 +1401,7 @@ count belongs to whichever list is authoritative for it, and for the transcripti
 | `pdlc/workflows/__tests__/advisoryEnvelope.test.js` | edited | The two transcribed set-equality surfaces (§1.3) |
 | `pdlc/workflows/__tests__/advisoryConfig.test.js` | edited | The re-declared `ADVISORY_DEFAULTS`, plus `waveBudgetPerRun`'s non-negative validator (AT-07-2b) |
 | `pdlc/workflows/__tests__/advisoryDriver.test.js` | edited | PROP-GATE-06's `GATE_EXCLUSIVITY_REGISTRY`-keys-equal-`ADVISORY_SEAMS` assertion, plus `classifyReply`'s three arms (§3.7) |
-| `pdlc/workflows/__tests__/advisoryQueueSeams.test.js` | edited | The queue-report row-count surface (§1.3): `expect(report.advisory.rows).toHaveLength(6)`. Transcription only — PLAN A6-05 owns it. **Already applied at HEAD** and red there, since the production `ADVISORY_SEAMS` it counts against is still five members (§1.3) |
+| `pdlc/workflows/__tests__/advisoryQueueSeams.test.js` | edited | The queue-report row-count surface (§1.3): `expect(report.advisory.rows).toHaveLength(6)`. Transcription only — PLAN A6-05 owns it. **Already applied at HEAD**, and **no longer red there**: re-measured at v1.12, the production `ADVISORY_SEAMS` it counts against is `["A1","A2","A3","A4","A5","A6"]` — six members — so the assertion's counterpart is present (§1.3) |
 | `pdlc/workflows/__tests__/advisoryDisabled.test.js` | edited | The disabled-tier byte-identity cases, extended per §5.2 |
 | `pdlc/workflows/__tests__/waveExecution.test.js` | edited | Wave-loop call-site behaviour: A6 reachable only from the red script-gate arm, the un-skip halt's new optional `fields`, the promotion commit |
 | `pdlc/workflows/__tests__/advisoryRecord.test.js` | edited | The per-seam `rows.map((r) => r.seam)` `test.each` list gains A6 (§1.3); **and** AC-6.1/AC-6.2's record assertions for A6 — an entry per invocation, the failed-record-write refusal (AT-06-1, AT-06-2) |
@@ -1413,8 +1413,11 @@ count belongs to whichever list is authoritative for it, and for the transcripti
 **Status column caveat (PM F-02, TE F-01).** `edited` and `new` describe each file's required end
 state, not work outstanding. Per §1.3's re-grounding, most of the transcription and both `new`
 files already exist at HEAD; `advisoryWaveGate.test.js` (headed for PLAN A6-00) and
-`pdlc/engine/__tests__/advisory-config-example.test.js` are both on disk, the latter red because
-`.claude/pdlc.config.example.json` carries no `advisory` section at HEAD. Whether the early-landed
+`pdlc/engine/__tests__/advisory-config-example.test.js` are both on disk. The reason earlier
+revisions gave for the latter being red — that `.claude/pdlc.config.example.json` carries no
+`advisory` section at HEAD — is falsified at v1.12: the example now carries `advisory` with both
+`enabled` and `waveBudgetPerRun` (the shipped defaults `false` / `1`, §4.4), which is exactly what
+that test asserts over. Whether the early-landed
 edits are reverted or PLAN's batches are re-derived around them is PLAN's call (§1.3).
 
 The `edited` rows on the transcribed surfaces of §1.3 go red on the first constant edit. That is
