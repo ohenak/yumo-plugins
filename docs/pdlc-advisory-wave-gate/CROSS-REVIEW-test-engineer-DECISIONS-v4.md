@@ -205,3 +205,6 @@ High finding. The two new findings are Low: an incomplete enumeration of AC-6.3'
 both correctable in a single pass and neither gating.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
