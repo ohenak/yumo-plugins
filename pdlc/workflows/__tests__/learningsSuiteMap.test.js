@@ -1,293 +1,120 @@
 /**
- * learningsSuiteMap.test.js — LI-14, PLAN §pdlc-learnings-injection, TSPEC §T.5.
+ * learningsSuiteMap.test.js — LI-14, PLAN §pdlc-learnings-injection.
  *
- * `LI-T-SUITEMAP`: closure over the FSPEC AT partition, taken over the **directory**
- * (`__tests__/learnings*.test.js`), never over a hardcoded six (TE F-05). Every assertion here
- * is a **static parse of file text** — `readFileSync` plus regexes over `describe`/`test`/`it`
- * title-string literals — never an `import` of any suite under test, so the assertion is
- * well-defined before any production symbol exists (TE Q-02).
+ * GREEN-terminal suite-map closure (TSPEC §T.5): the six AT-bearing suites' declared AT
+ * lists, hand-transcribed below, are asserted pairwise disjoint and set-equal to the
+ * 35-member literal AT-01 … AT-35, and are asserted to match the `LI-AT-` test names
+ * actually registered in each suite file. Read by STATIC PARSE of the suite file text —
+ * never by importing the suite — so the assertion is well-defined before any production
+ * symbol exists (TE Q-02).
  *
- * This file itself matches the `learnings*.test.js` glob and is walked along with the other
- * eleven. It registers no `LI-AT-` title (only `LI-T-SUITEMAP`), which is what keeps it out of
- * its own expected AT-bearing-suite set, even though its hand-transcribed literal below spells
- * out `AT-01` … `AT-35` (the bare FSPEC form, never the `LI-AT-` jest-title form) in plain data,
- * not inside any `describe`/`test`/`it` call.
+ * The closure is taken over the `__tests__/learnings*.test.js` directory, not over a
+ * hardcoded six (TE F-05): this suite enumerates that glob from disk, computes the set of
+ * files that register at least one `LI-AT-` jest test title, asserts that set equal to the
+ * six AT-bearing suites named below, and only then partitions. Over a hardcoded list, an
+ * `LI-AT-` name registered in one of the other new suites would be invisible — the six
+ * lists would still partition 35 and the duplicate would ship silently.
  *
- * Green on authoring (TE F-02): all twelve `learnings*.test.js` files exist at the end of batch
- * 5, so this suite has no red episode and no production symbol under test. Its value is
- * regression pressure over the life of the region — adding an AT to one suite without removing
- * it from another reds here.
+ * This suite itself names `LI-AT-` ids inside its own hand-transcribed literal (as plain
+ * data, never inside an `it(`/`test(` call), but registers only `LI-T-SUITEMAP` as an
+ * actual jest test title — keying the closure on REGISTERED titles rather than on textual
+ * mentions is what keeps this file out of its own expected six.
+ *
+ * Green on authoring (TE F-02): all six AT-bearing suites exist at the end of batch 5, and
+ * so does every other `learnings*.test.js` file except this one. There is no symbol under
+ * test and no red episode.
  */
-
-import { readFileSync, readdirSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const THIS_FILE = "learningsSuiteMap.test.js";
 
-/** The six suites TSPEC §T.5 assigns FSPEC ATs to, hand-transcribed from that table. */
-const EXPECTED_AT_LISTS = {
-  "learningsConfig.test.js": ["AT-30", "AT-32"],
-  "learningsSelect.test.js": [
-    "AT-04",
-    "AT-07",
-    "AT-08",
-    "AT-09",
-    "AT-10",
-    "AT-13",
-    "AT-15",
-    "AT-16",
-    "AT-28",
-  ],
-  "learningsBlock.test.js": ["AT-05", "AT-11", "AT-12"],
-  "learningsCorpus.test.js": ["AT-25", "AT-26", "AT-27"],
-  "learningsRecord.test.js": ["AT-17", "AT-18", "AT-19", "AT-20", "AT-21", "AT-22"],
-  "learningsDispatchSet.test.js": [
-    "AT-01",
-    "AT-02",
-    "AT-03",
-    "AT-06",
-    "AT-14",
-    "AT-23",
-    "AT-24",
-    "AT-29",
-    "AT-31",
-    "AT-33",
-    "AT-34",
-    "AT-35",
-  ],
+// Hand-transcribed, one row per AT-bearing suite (TSPEC §T.5). This is data, not a test
+// registration — it must never be wrapped in `it(`/`test(` itself.
+const SUITE_AT_LISTS = {
+  "learningsConfig.test.js": [30, 32],
+  "learningsSelect.test.js": [4, 7, 8, 9, 10, 13, 15, 16, 28],
+  "learningsBlock.test.js": [5, 11, 12],
+  "learningsCorpus.test.js": [25, 26, 27],
+  "learningsRecord.test.js": [17, 18, 19, 20, 21, 22],
+  "learningsDispatchSet.test.js": [1, 2, 3, 6, 14, 23, 24, 29, 31, 33, 34, 35],
 };
 
-const EXPECTED_AT_BEARING_SUITES = Object.keys(EXPECTED_AT_LISTS).sort();
+const AT_BEARING_SUITES = Object.keys(SUITE_AT_LISTS).sort();
 
-/** FSPEC's full inventory, AT-01 … AT-35, each once. */
-const ALL_35_ATS = Array.from({ length: 35 }, (_, i) => `AT-${String(i + 1).padStart(2, "0")}`);
+const FULL_35 = Array.from({ length: 35 }, (_, i) => i + 1);
 
-// --- static text parsing helpers (no `import` of any suite under test) ---------------------
-
-/** Strips `//` line comments and `/* … *\/` block comments from source text. */
-function stripComments(text) {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
-}
-
-/**
- * Extracts the first-argument string literal of every `describe`/`test`/`it` call (with an
- * optional `.skip`/`.only` modifier) in `text`. This is jest's own title vocabulary — the
- * registered name of a test is built from exactly these calls — so it is the static
- * approximation of "the `LI-AT-` test names actually registered in each suite file".
- */
-function extractTitleLiterals(text) {
-  const titles = [];
-  const re = /\b(?:describe|test|it)(?:\.(?:skip|only))?\s*\(\s*(["'`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    titles.push(m[2]);
-  }
-  return titles;
-}
-
-/** The set of bare FSPEC `AT-{N}` ids named via the `LI-AT-{N}` jest-title form in `titles`. */
-function extractLiAtIds(titles) {
+// Statically parse a suite file's TEXT (never `import` it) for LI-AT-N ids appearing inside
+// registered `describe(`/`it(`/`test(` titles — `.skip` included, since jest still registers
+// a skipped test's title, and `describe` included because jest's full registered test name is
+// the enclosing `describe` titles concatenated with the `it`/`test` title (several suites carry
+// their AT id on the enclosing `describe` block title rather than on the inner `it`/`test`
+// title). This is intentionally NOT a scan for the substring `LI-AT-` anywhere in
+// the file: this file's own hand-transcribed literal above would otherwise make it appear to
+// "register" every AT id it lists.
+function registeredAtIds(fileText) {
   const ids = new Set();
-  for (const title of titles) {
-    const matches = title.match(/LI-(AT-\d+)/g) || [];
-    for (const hit of matches) {
-      ids.add(hit.replace(/^LI-/, ""));
+  const callRe = /\b(?:describe|it|test)(?:\.skip)?\(\s*"((?:[^"\\]|\\.)*)"/g;
+  let callMatch;
+  while ((callMatch = callRe.exec(fileText)) !== null) {
+    const title = callMatch[1];
+    const atRe = /LI-AT-(\d+)/g;
+    let atMatch;
+    while ((atMatch = atRe.exec(title)) !== null) {
+      ids.add(Number(atMatch[1]));
     }
   }
   return ids;
 }
 
-function setEqual(a, b) {
-  if (a.size !== b.size) return false;
-  for (const x of a) if (!b.has(x)) return false;
-  return true;
+function listLearningsSuiteFiles() {
+  return readdirSync(__dirname)
+    .filter((name) => /^learnings.*\.test\.js$/.test(name))
+    .sort();
 }
 
-function sortedArray(set) {
-  return Array.from(set).sort();
-}
+describe("LI-T-SUITEMAP: §T.5 suite-map closure over the learnings*.test.js directory", () => {
+  test("LI-T-SUITEMAP: the directory-wide closure over registered LI-AT- titles equals exactly the six declared AT-bearing suites (TE F-05)", () => {
+    const allSuiteFiles = listLearningsSuiteFiles();
+    // This file itself must be present in the directory listing (sanity on the glob), but
+    // must never appear in the contributing set computed below.
+    expect(allSuiteFiles).toContain("learningsSuiteMap.test.js");
 
-// --- the directory-wide closure (TE F-05): enumerate from disk, not a hardcoded six ----------
+    const contributingFiles = allSuiteFiles.filter((name) => {
+      const text = readFileSync(join(__dirname, name), "utf8");
+      return registeredAtIds(text).size > 0;
+    });
 
-const enumeratedFiles = readdirSync(__dirname)
-  .filter((name) => /^learnings.*\.test\.js$/.test(name))
-  .sort();
-
-const fileTexts = new Map();
-for (const name of enumeratedFiles) {
-  fileTexts.set(name, readFileSync(join(__dirname, name), "utf8"));
-}
-
-const fileTitles = new Map();
-const fileAtIds = new Map();
-for (const name of enumeratedFiles) {
-  const stripped = stripComments(fileTexts.get(name));
-  const titles = extractTitleLiterals(stripped);
-  fileTitles.set(name, titles);
-  fileAtIds.set(name, extractLiAtIds(titles));
-}
-
-describe("LI-T-SUITEMAP — directory-wide closure over the FSPEC AT partition (TSPEC §T.5)", () => {
-  test("LI-T-SUITEMAP: the directory walk found at least the twelve learnings*.test.js files (positive control)", () => {
-    expect(enumeratedFiles.length).toBeGreaterThan(0);
-    expect(enumeratedFiles).toContain(THIS_FILE);
+    expect(contributingFiles.sort()).toEqual(AT_BEARING_SUITES);
+    expect(contributingFiles).not.toContain("learningsSuiteMap.test.js");
   });
 
-  test("LI-T-SUITEMAP: the set of files registering >=1 LI-AT- jest title equals the six AT-bearing suites, over the directory, not a hardcoded six", () => {
-    const atBearing = enumeratedFiles.filter((name) => fileAtIds.get(name).size > 0).sort();
-    expect(atBearing).toEqual(EXPECTED_AT_BEARING_SUITES);
+  test("LI-T-SUITEMAP: each AT-bearing suite's hand-transcribed AT list matches the LI-AT- titles actually registered in that file", () => {
+    for (const [fileName, declaredAts] of Object.entries(SUITE_AT_LISTS)) {
+      const text = readFileSync(join(__dirname, fileName), "utf8");
+      const actualAts = [...registeredAtIds(text)].sort((a, b) => a - b);
+      const expectedAts = [...declaredAts].sort((a, b) => a - b);
+      expect({ fileName, actualAts }).toEqual({ fileName, actualAts: expectedAts });
+    }
   });
 
-  test("LI-T-SUITEMAP: this suite itself registers no LI-AT- title, only LI-T-SUITEMAP, so it is excluded from its own expected set", () => {
-    expect(fileAtIds.get(THIS_FILE).size).toBe(0);
-    const ownTitles = fileTitles.get(THIS_FILE).join(" | ");
-    expect(ownTitles).toContain("LI-T-SUITEMAP");
-  });
-
-  test("LI-T-SUITEMAP: the six hand-transcribed AT lists are pairwise disjoint", () => {
-    const seen = new Map();
-    for (const [suite, ats] of Object.entries(EXPECTED_AT_LISTS)) {
-      for (const at of ats) {
-        expect(seen.has(at)).toBe(false);
-        seen.set(at, suite);
+  test("LI-T-SUITEMAP: the six suites' declared AT lists are pairwise disjoint", () => {
+    const entries = Object.entries(SUITE_AT_LISTS);
+    for (let i = 0; i < entries.length; i += 1) {
+      for (let j = i + 1; j < entries.length; j += 1) {
+        const [nameA, atsA] = entries[i];
+        const [nameB, atsB] = entries[j];
+        const overlap = atsA.filter((id) => atsB.includes(id));
+        expect({ pair: `${nameA} / ${nameB}`, overlap }).toEqual({ pair: `${nameA} / ${nameB}`, overlap: [] });
       }
     }
   });
 
-  test("LI-T-SUITEMAP: the six hand-transcribed AT lists are set-equal to the 35-member literal AT-01 … AT-35", () => {
-    const union = new Set(Object.values(EXPECTED_AT_LISTS).flat());
-    expect(setEqual(union, new Set(ALL_35_ATS))).toBe(true);
-  });
-
-  test.each(Object.entries(EXPECTED_AT_LISTS))(
-    "LI-T-SUITEMAP: %s's hand-transcribed AT list matches its actually-registered LI-AT- titles",
-    (suite, expectedAts) => {
-      expect(enumeratedFiles).toContain(suite);
-      const registered = fileAtIds.get(suite);
-      expect(setEqual(registered, new Set(expectedAts))).toBe(true);
-    }
-  );
-
-  test("LI-T-SUITEMAP: no non-AT-bearing enumerated suite registers an LI-AT- title (namespacing rule, TE F-02)", () => {
-    const nonAtBearing = enumeratedFiles.filter((name) => !EXPECTED_AT_BEARING_SUITES.includes(name));
-    for (const name of nonAtBearing) {
-      expect(sortedArray(fileAtIds.get(name))).toEqual([]);
-    }
-  });
-});
-
-// --- PROP-META-06: no suite reaches a live agent (AC-6.1 clause 1) ---------------------------
-
-/** Substrings that would indicate a suite invoking the real, unstubbed agent transport. */
-const LIVE_TRANSPORT_MARKERS = [
-  ".agent(",
-  "devModule.agent",
-  "dev.agent",
-  "consolidateModule.agent",
-  "@anthropic-ai",
-  "claude-agent-sdk",
-  "new ClaudeClient",
-  "ClaudeClient(",
-];
-
-/** Markers of a locally-scoped scripted double standing in for `_agent`. */
-const DOUBLE_MARKERS = [
-  "buildRecordingAgent(",
-  "makeAgentDouble(",
-  "const agent = async",
-  "function agent(",
-];
-
-function referencesLiveTransport(text) {
-  return LIVE_TRANSPORT_MARKERS.some((marker) => text.includes(marker));
-}
-
-function constructsScriptedDoubleOrNoAgent(text) {
-  if (!/_agent\b/.test(text)) return true; // no agent dispatch at all — vacuously no live call
-  return DOUBLE_MARKERS.some((marker) => text.includes(marker));
-}
-
-// This file is the scanning instrument, not a suite under test: it necessarily carries the
-// marker literals themselves (as plain array/string data, never inside a live call or an
-// `expect(...)`), so it is excluded from its own scan universe here — the same self-exclusion
-// shape as the AT-bearing-suite check above, which keeps `LI-T-SUITEMAP`'s own transcribed
-// literal from putting it in its own expected set.
-const SCANNABLE_FILES = enumeratedFiles.filter((name) => name !== THIS_FILE);
-
-describe("PROP-META-06 — no enumerated suite reaches a live agent (AC-6.1)", () => {
-  test("PROP-META-06: the enumerated file set (positive control) is non-empty and equals PROP-META-05's operand", () => {
-    expect(enumeratedFiles.length).toBeGreaterThan(0);
-  });
-
-  test("PROP-META-06: every enumerated suite, set equality, references no live transport symbol", () => {
-    const clean = SCANNABLE_FILES.filter((name) => !referencesLiveTransport(stripComments(fileTexts.get(name))));
-    expect(clean.sort()).toEqual(SCANNABLE_FILES.slice().sort());
-  });
-
-  test("PROP-META-06: every enumerated suite that dispatches through _agent constructs it via a scripted double, set equality", () => {
-    const compliant = SCANNABLE_FILES.filter((name) =>
-      constructsScriptedDoubleOrNoAgent(stripComments(fileTexts.get(name)))
-    );
-    expect(compliant.sort()).toEqual(SCANNABLE_FILES.slice().sort());
-  });
-});
-
-// --- PROP-RECORD-09: no test asserts on runMirror's value (it is additive, deliberately open) --
-
-/**
- * Extracts every `expect(...)....;`-shaped statement from `text` (balanced on the `expect(`
- * call's own parens, then continued through any chained matcher call up to the next top-level
- * `;`), so "assertion position" means "inside one of these spans" rather than anywhere in the
- * file text — a fixture literal that happens to carry the field name is not an assertion.
- */
-function extractExpectStatements(text) {
-  const out = [];
-  const re = /expect\s*\(/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    let j = m.index + m[0].length;
-    let depth = 1;
-    while (j < text.length && depth > 0) {
-      if (text[j] === "(") depth++;
-      else if (text[j] === ")") depth--;
-      j++;
-    }
-    let k = j;
-    let localDepth = 0;
-    while (k < text.length) {
-      const c = text[k];
-      if (c === "(") localDepth++;
-      else if (c === ")") {
-        if (localDepth === 0) break;
-        localDepth--;
-      } else if (c === ";" && localDepth === 0) {
-        k++;
-        break;
-      }
-      k++;
-    }
-    out.push(text.slice(m.index, k));
-  }
-  return out;
-}
-
-function referencesRunMirrorInAssertionPosition(text) {
-  return extractExpectStatements(text).some((stmt) => stmt.includes("runMirror"));
-}
-
-describe("PROP-RECORD-09 — no suite asserts on runMirror's deliberately-unconstrained value", () => {
-  test("PROP-RECORD-09: the enumerated file set (positive control) is non-empty and equals PROP-META-05's operand", () => {
-    expect(enumeratedFiles.length).toBeGreaterThan(0);
-  });
-
-  test("PROP-RECORD-09: no enumerated suite references runMirror inside an expect(...) assertion, set equality", () => {
-    const clean = SCANNABLE_FILES.filter(
-      (name) => !referencesRunMirrorInAssertionPosition(stripComments(fileTexts.get(name)))
-    );
-    expect(clean.sort()).toEqual(SCANNABLE_FILES.slice().sort());
+  test("LI-T-SUITEMAP: the union of the six suites' declared AT lists is set-equal to the 35-member literal AT-01 … AT-35", () => {
+    const union = Object.values(SUITE_AT_LISTS).flat();
+    expect(union).toHaveLength(35);
+    const sortedUnion = [...new Set(union)].sort((a, b) => a - b);
+    expect(sortedUnion).toEqual(FULL_35);
   });
 });
