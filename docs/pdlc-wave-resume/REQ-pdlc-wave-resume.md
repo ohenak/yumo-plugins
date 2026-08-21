@@ -128,9 +128,12 @@ a record that is never written cannot fail to be cleared.
 - **G-3 — operator override wins.** An explicitly set manual resume point always takes
   precedence over the automatic determination, and every resume announces its provenance
   (automatic vs. operator-set) so a run's starting point is never a mystery.
-- **G-4 — self-clearing lifecycle.** A completed Phase I leaves no resume state behind
-  for a later fresh run to inherit; a changed plan or a different feature invalidates a
-  leftover record rather than being warped by it.
+- **G-4 — self-invalidating lifecycle.** A leftover resume record never warps a later run: a
+  changed plan, a different feature, or a branch re-cut since the record was written invalidates
+  it, and an invalid record is treated exactly as an absent one. Staleness is a property the
+  reader proves, not one the writer promises — the record may survive a completed Phase I
+  (REQ-WVR-05, decided v1.2: retention with invalidation), and it earns that survival by making a
+  post-Phase-I re-invocation cheap.
 - **G-5 — unattended parity.** The queue-driven, unattended invocation path benefits
   identically to a direct invocation, with no per-run configuration.
 
@@ -379,14 +382,19 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 
 ## 8. Risks
 
-- **R-1 — stale record after history rewrite.** An operator rebase/reset can invalidate
-  what the record believes is committed. Mitigated structurally by REQ-WVR-03 (nothing
-  commits before full-tree verification) and REQ-WVR-02 (changed plan invalidates the
-  record); residual worst case is a gate halt, as today.
+- **R-1 — stale record after history rewrite.** An operator rebase/reset — or Phase DOD's own
+  rebase onto the default branch — can invalidate what the record believes is committed. The
+  first-line mitigation is ancestry corroboration: a record naming a commit no longer reachable
+  from the current branch tip is ignored with an announced reason (REQ-WVR-02, IG-4), which this
+  REQ **requires** rather than merely permits. Behind it stand REQ-WVR-03 (nothing commits before
+  full-tree verification) and IG-3 (a changed plan invalidates the record). Residual worst case is
+  a full run or a gate halt, as today — the risk is therefore Low, not the load-bearing one it
+  read as before.
 - **R-2 — resume-skip strands uncommitted work.** If a wave were recorded complete while
   its work is uncommitted, a resumed run would skip work that exists nowhere but the
-  tree. REQ-WVR-01/OF-3's "resume at the earliest uncommitted wave" is the requirement
-  that forbids this; the FSPEC must carry an explicit acceptance test for it.
+  tree. **REQ-WVR-09** is the requirement that forbids it — completion means committed, never
+  merely verified — and REQ-WVR-01/OF-3's "resume at the earliest uncommitted wave" is its
+  companion. The acceptance test traces to REQ-WVR-09 rather than being deferred to the FSPEC.
 - **R-3 — provenance confusion.** Two resume sources (manual, automatic) can leave an
   operator unsure why a run started where it did. Mitigated by REQ-WVR-01/-04's
   mandatory provenance announcements.
@@ -446,7 +454,10 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   stray agent commits were also observed). Two corrections to carry into that promotion:
   **BL-02's stated gate is stricter than reality** — the baseline file is already
   committed on main and citable now, so OB-2 can execute at FSPEC-authoring time
-  regardless of queue row 19; and **M-WG-6 is now false at HEAD** (it says a
+  regardless of queue row 19. **Partly discharged, v1.3:** §4's duplicated facts now cite
+  `M-WG-4`, `M-WG-6` and `M-WG-12` directly instead of restating them, so what this obligation
+  still owes the baseline is only the two genuinely new observations (the replay cost and OF-2).
+  And **M-WG-6 is now false at HEAD** (it says a
   re-invocation re-enters at wave 1, which the shipped ledger contradicts), which the
   promoted section and a fresh check of M-WG-6 must record. One ownership wrinkle: after
   promotion, §4 should cite by `M-WVR-*` id, which is a pm-author edit even though OB-2's
@@ -506,10 +517,10 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 
 | User story | Requirements |
 |---|---|
-| US-01 | REQ-WVR-01, REQ-WVR-02, REQ-WVR-05 |
+| US-01 | REQ-WVR-01, REQ-WVR-02, REQ-WVR-05, REQ-WVR-08, REQ-WVR-10 |
 | US-02 | REQ-WVR-02, REQ-WVR-04 |
-| US-03 | REQ-WVR-03, REQ-WVR-06 |
+| US-03 | REQ-WVR-03, REQ-WVR-06, REQ-WVR-09, REQ-WVR-10 |
 | US-04 | REQ-WVR-07 |
 
-Registered in `docs/_queue/QUEUE.md` as Order 20 (`ready: false` until prerequisites
-BL-01..03 resolve); project matrix row in `docs/requirements/traceability-matrix.md`.
+Registered in `docs/_queue/QUEUE.md` as Order 20 (`ready: true` — BL-01..03 are all resolved,
+v1.3); project matrix row in `docs/requirements/traceability-matrix.md`.
