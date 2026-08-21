@@ -102,6 +102,39 @@ failing for the reason that batch's wording specifies. Recorded as F-01, Low.
 
 ## Dependencies
 
+No dependency edge moved. LI-08's `Deps` on LI-02 is unchanged, which matters here because the
+heading-form variants are declared in LI-02's spec surface rather than built ad hoc in LI-08 — the
+edge that carries that relationship is the one the v0.5 round put in place, and the erratum leaves it
+alone. The single-writer file-ownership manifest is likewise unchanged, which is the delta's own
+claim ("ownership does not move") and is true: no file appears against a new task.
+
+**Upstream dependency direction is preserved.** The PLAN depends on FSPEC F-O-1 and TSPEC §D.3 for
+this material and on nothing else new. Both are at the versions the PLAN pins, and neither has
+changed since the v0.5 absorption — the FSPEC v0.13 / TSPEC v0.9 pins are still live-correct, so the
+delta introduces no new upstream debt.
+
+**Cross-document consistency of the new paragraph.** The fixture-consumer claim reaches outside
+LI-08 into LI-02's helper and into `learningsSelect.test.js` and `learningsCorpus.test.js`, both of
+which carry their own ledger rows. The delta asserts those rows do not move and grounds the assertion
+in additivity rather than assuming it — verified against the landed helper, as recorded in §Overview.
+This is the right shape for a cross-task claim: it names the suites it is speaking for, states the
+premise that makes the claim true, and says what happens when the premise fails.
+
+**Open dependencies from v8 that this round did not touch.** Three Medium findings from
+`CROSS-REVIEW-product-manager-PLAN-v8.md` remain open in the pre-round bytes; the erratum's routing
+scope was the P-A-7 item only, so their staying open is expected, not a regression:
+
+| v8 finding | Status at HEAD | Tagged here as |
+|---|---|---|
+| F-01 — the zero-bound **production** half (TSPEC §D.5's `maxBytes <= 0` short-circuit) has no named owner task | still unowned | F-04, Medium, inherited |
+| F-02 — `LI-AT-30` conjunct (iii) "no document carries `RSN-COUNT`" is vacuous unless the fixture's eligible non-self corpus exceeds `maxDocuments` (REQ §4.1 default 5) | precondition still unstated | F-03, Medium, inherited |
+| F-03 — the errata section's "remaining open errata (ERR-1, ERR-2, ERR-5)" omits **ERR-8** | ERR-8 is still open in TSPEC v0.9 (§ERR-8, FSPEC Step 5 items 15–16); the PLAN's list still omits it | F-02, Medium, inherited |
+
+I re-confirmed ERR-8's live status directly in TSPEC at HEAD rather than carrying it forward on
+trust. Tagging these `inherited` is deliberate: they route back to the PLAN's ordinary revision loop,
+they do not halt this phase, and none of them is a product-fidelity defect against REQ acceptance
+criteria — they are completeness gaps in ownership and in an errata list.
+
 ## Verification
 
 ## Positive Observations
