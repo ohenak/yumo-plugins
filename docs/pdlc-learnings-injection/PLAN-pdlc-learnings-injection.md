@@ -493,14 +493,17 @@ named here, ahead of the run they govern, in the two cases that can arise:
 | C — **after batch 13, the case that is live at HEAD** | batch 14, or any commit landing once LI-21 (`92b7ea0c`) has landed | **None — and the amendment is expected to land green.** LI-16 (`d462ddd8`), LI-17 (`2cbacada`) and LI-21 (`92b7ea0c`) are all landed, so no batch remains that greens anything: batch 14 is LI-22's REFACTOR-and-close, which adds no assertions and carries the **unqualified** full-suite-green gate. Case B's span therefore has no terminus here and does not apply. The terminating condition in its place is the gate itself: **the ledger stays empty and the amendment must be green at the commit that lands it.** That is not a hope — the production half F-O-1's second rule needs is already at HEAD (`canonicalSectionName` strips an optional ordinal via `SECTION_HEADING_RE`, strips an optional trailing gloss, compares case-sensitively against `BR6_SECTION_NAMES`, and returns null for a `###` line, which `^##[ \t]+` never matches), so the heading-form cases assert behaviour that is shipped and the near-miss `## Process Findings` is already unmatched. If such an amendment nonetheless lands **red**, it has found a real defect, not staged a TDD red: there is no later batch to name in a ledger row, so the fix commit is owed **before batch 14 runs**, and a red surviving into batch 14 is a gate failure. The same rule governs any other amendment to a landed suite arriving from here on — including the PROPERTIES-driven re-reds §C.4 of PROPERTIES routes to this PLAN (PROP-BOUND-03's `maxBytesPerDocument <= 0` case, PROP-BOUND-05/07/08, and the Group D amendments to the landed `learningsSelect.test.js`): under case C they owe no ledger row, and they owe green |
 
 `__tests__/helpers/learningsFixtures.js` and its other consumers carry **no** row of their own in
-either case. The declared-heading-form knob is **additive** to `buildLearningsCorpus`'s section
+any of the three cases — a ruling scoped to **this** heading-form follow-up commit, not a standing exemption for
+those files (TE v9 F-01). The declared-heading-form knob is **additive** to `buildLearningsCorpus`'s section
 spec — the landed helper already renders an optional ordinal and an optional gloss, and existing
 callers that declare neither keep byte-identical output — so `learningsSelect.test.js`,
 `learningsCorpus.test.js` and every other fixture consumer hold their status across the follow-up
 commit and stay red or green for exactly the reasons their existing rows give. That additivity is
 the premise on which the empty row-set rests: if a future amendment to the helper is **not**
 additive, the consumer suites it moves enter the ledger by name under case B's rule first, and the
-commit that moves them waits on that edit.
+commit that moves them waits on that edit — or, once batch 13 is behind us, under **case C**, where the
+obligation is green-at-landing rather than a ledger row. That is the branch the PROPERTIES amendments
+§C.4 routes here fall under.
 
 **No exemption list grows during this feature.** The two exclusions in §The measured baseline are
 the arrangement's, are measured here, and are the whole set. Adding a third to make a batch pass is
