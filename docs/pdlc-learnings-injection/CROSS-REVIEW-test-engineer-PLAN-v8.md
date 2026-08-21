@@ -184,3 +184,25 @@ TSPEC §T.7 inventory that actually enforces the new region are unchanged.
 
 
 ## Recommendation
+
+**Approved with minor changes** (0 High, 0 Medium, 2 Low).
+
+v7's High (F-01) is resolved with the exact three-conjunct oracle it specified, and the mutation it
+was grounded on no longer survives the planned suite. v7's three Mediums (F-02 arm table, F-03 F-O-1's
+second rule, F-04 version pins) are all resolved and verified against the cited upstream files, not
+against the changelog. Nothing in the changed sections broke an oracle, moved a batch, invalidated a
+fixture or disturbed the single-writer manifest — I re-derived the batch arithmetic for every touched
+row rather than assuming it.
+
+The two Low findings are bookkeeping inside the new amendment note and need not gate the phase; fold
+them into the next edit if one happens:
+
+1. Reconcile the amendment note with the `Status` column — either flip LI-02 / LI-08 to the landed
+   marker, or word the note as "these files exist at HEAD from an earlier dispatch of these rows".
+2. Say in one clause how the `###` sub-heading variant is produced — a `level` knob on `renderSection`
+   or a `body`-embedded line. Either is fine; leaving it open lets two implementers fork the helper.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
