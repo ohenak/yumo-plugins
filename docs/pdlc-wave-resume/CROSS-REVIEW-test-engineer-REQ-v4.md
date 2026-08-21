@@ -84,8 +84,60 @@ completeness, which is why this does not gate.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Round-3's Q-01 (does BL-04 gate queue pickup?) is **answered** in §10 and needs no reply. Carried forward instead as a hand-off note, not a REQ finding: round-3's Q-02 precedence obligation still stands for TSPEC/PROPERTIES — the shipped ladder tests ancestry (`headCorroborated`) *before* over-range (`lastGreenWave > waves.length`), so an IG-4 fixture must satisfy `headCorroborated` to reach the over-range branch at all. A naive over-range fixture with an unreachable commit proves IG-5 while claiming to prove IG-4. This is the precedence-chain false-green check, and it is correctly absent at REQ altitude. |
+
+
 ## Positive Observations
+
+- **The banner fix records the failure mode, not just the corrected string.** The v3 finding
+  could have been closed by swapping in a citation that happened to work. Instead OQ-1 now
+  states which substring returns which count and *why* the longer one under-returns
+  (template-literal line wrapping). The next author citing a banner in this codebase inherits the
+  rule rather than rediscovering it — the same shape as the OB-2 recipe fix in round 2.
+- **The guard claim is now re-derivable from a quoted comment plus a brace relationship.** "The
+  write's branch is a sibling of the gate-mode branch, which closed at its own `else`" is
+  checkable in under a minute at any future HEAD and survives every line-number shift. It also
+  pre-empts the specific misreading it names, so a future reader who re-derives the guard as the
+  gate mode's is contradicted by the document rather than merely unsupported by it.
+- **§10 enumerates by id, so the enumeration cannot silently under-cover again.** Naming BL-01,
+  BL-02, BL-03 and BL-04 individually, with per-row status and the pickup-gate conclusion, is
+  set-equality over §5's table rather than containment. This is the fix that makes the *class* of
+  defect unavailable, not just the instance.
+- **"Two shapes, two oracles" is the sentence the FSPEC author needed.** Precondition 1 is a
+  no-write oracle (assert the file does not exist after a transportless halt); preconditions 2–3
+  are announced-ignore oracles (assert the exact notice on the resume path). Naming the count of
+  oracle shapes in the preamble means the ATs cannot be fused into one by an author sizing the
+  gap from the summary sentence alone.
+- **The round stayed inside its own scope.** Three findings, three targeted edits, 20 insertions
+  — no unrelated rewrites, no re-litigation of settled sections, and no growth of the file toward
+  its size budget. That is what a converging round looks like.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three round-3 findings are resolved on the merits, each verified against the default branch
+rather than accepted from the revision's own description: the banner grep now reproduces exactly
+the counts it claims, the write's guard is re-derivable from a verbatim comment and a brace
+relationship that survives line-number drift, and §10's readiness enumeration is set-equal to
+§5's table with Q-01 answered inside the document. No High finding is open, old or new. The one
+new item (F-01) is a Low completeness nit in a dated preamble whose substance is stated
+correctly elsewhere in the same section; fold it into the next edit if one happens, and do not
+open a round for it.
+
+The REQ is ready for FSPEC authoring. Its ACs are stated as black-box outcomes at the right
+altitude, IG-1..6 carries a six-row set-equality obligation with per-row rationale defending it
+against future re-fusion, REQ-WVR-09 and REQ-WVR-10 carry positive oracles rather than
+absence-only ones, and the document says explicitly that presence of `writeWaveLedger` is not an
+oracle — an observed resume is. An FSPEC and a PROPERTIES suite can be written from this
+document without a clarifying question.
+
+Carry into FSPEC authoring: the ladder's branch precedence (Q-01 above) — an IG-4 fixture must
+defeat the earlier ancestry branch to reach the over-range branch it means to prove.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
