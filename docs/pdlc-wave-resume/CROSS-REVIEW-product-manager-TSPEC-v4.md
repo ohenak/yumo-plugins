@@ -45,7 +45,53 @@ says. All are Medium or Low. None is a design-fidelity defect, and none is gatin
 
 ## Architecture
 
-_TBD_
+**The substantive leg: FSPEC §3.4's new clause, against TSPEC §2.5.**
+
+This is the hunk that could have broken the approval, so I read both sides in full rather than
+diffing summaries. FSPEC now says, in §3.4 immediately below the high-water paragraph:
+
+> **An operator-pointed run records exactly as any other run does.** Recording follows what the
+> run committed, not how its start point was chosen: when an explicit operator pointer is in
+> force (§3.3) the run still records completed waves as it goes, in the same high-water form
+> counted from the plan's first wave. So a later automatic invocation can resume above waves
+> whose completion only the operator asserted. That is bounded by BR-10 — the first executed
+> wave's gate verifies the whole tree — and the assertion is attributable, because the run that
+> made it announced provenance `operator-set` (BR-07). No record content distinguishes the two
+> provenances.
+
+TSPEC §2.5 ratified this behaviour before FSPEC specified it:
+
+> The write site is outside the `!explicitPointer` guard, so a run started at wave N by an
+> operator pointer records `lastGreenWave = N` for a wave the *operator*, not the pipeline,
+> asserted the predecessors of. The damage is bounded exactly as FSPEC BR-10 bounds it — the
+> first executed wave's gate verifies the whole tree … Ratified as-is.
+
+These agree clause for clause, and I checked each conjunct rather than the gist:
+
+| FSPEC §3.4 conjunct | TSPEC position | Agrees? |
+|---|---|---|
+| Records "exactly as any other run does" | §2.5 item 1: the write is guarded by the **transport**, not by how `startWave` was chosen; the write site is outside `!explicitPointer` | Yes |
+| "in the same high-water form counted from the plan's first wave" | §2.5 item 5: each write carries `lastGreenWave = waveNum`, the **plan-absolute** wave number | Yes |
+| "a later automatic invocation can resume above waves whose completion only the operator asserted" | §2.5's ratification sentence states this consequence in the same terms | Yes |
+| "bounded by BR-10 — the first executed wave's gate verifies the whole tree" | §2.5 cites BR-10 with the identical bound; §4.4 reasons from it again | Yes, verbatim bound |
+| "attributable, because the run … announced provenance `operator-set` (BR-07)" | §2.4/§3.3: provenance is announced content in every announcing outcome; `RESUME_PROVENANCE` closed at two | Yes |
+| "**No record content distinguishes the two provenances.**" | §2.5's closing paragraph: "the record carries no provenance of its own … the record's shape stays exactly the four-or-five fields of §4.1" | Yes — and this is the strongest agreement of the five |
+
+That last row is the one worth naming. TSPEC did not merely happen to be compatible with the new
+clause; it had pre-emptively argued, under PM Q-02, that the erratum it was raising must not be
+read as asking for a persisted `provenance` field, on the grounds that a reader treating
+operator-asserted completion differently from pipeline-observed completion is a distinction the
+BR-10 safety argument deliberately does not need. FSPEC's new clause closes with precisely that
+sentence. The erratum channel returned the clause TSPEC asked for, in the shape TSPEC asked for
+it, and the design needs no change.
+
+**One architectural consequence for the reader, not a change.** Because FSPEC now specifies this,
+the behaviour has moved from "ratified downstream, unspecified upstream" to "specified upstream
+and ratified downstream". Nothing in TSPEC's mechanism moves. What does become false is TSPEC's
+*statement about* that status, in two places (§2.5's hand-off sentence and §6.3 item 3) — F-01
+below. Per DEC-ERR-01 that is scored on what it costs downstream, and here it costs nothing on
+the losing side: both documents ratify the same behaviour, so no PLAN or PROPERTIES task can be
+authored against a decision that lost. It is a stale hand-off statement, not a design defect.
 
 ## Interfaces
 
