@@ -206,12 +206,49 @@ for batches 7–13, `[Fake first]` labelling, DoD clauses 1–14: all byte-ident
 
 ## Recommendation
 
-_pending_
+**Needs revision.**
+
+The delta does what it was routed to do: all four items landed, and the two structural judgements it
+makes — the landing-commit column instead of an `Owner` cell, and scoping §The arithmetic to the two
+dispatcher-parsed tables — are the right calls. Nothing I previously approved is broken by it, and
+the fix for both High findings is additive.
+
+What must change:
+
+1. **F-01 (delta, local).** In §Post-batch remediation, replace "touched six test-side surfaces" with
+   the measured set, and add the rows the amendment's own P-A-5 rationale requires: six second-owner
+   rows for the ladder-owned suites `2fc6fcd3` rewrote (`learningsCaptureScript` LI-03,
+   `learningsSelect` LI-07, `learningsCorpus` LI-09, `learningsDispatchSet` LI-11, `learningsConfig`
+   LI-12, `learningsArmInventory` LI-23) and one new-file row for
+   `pdlc/engine/__tests__/learnings-config-example.test.js`. The single-writer argument already in
+   the subsection covers all of them unchanged — it is the enumeration, not the reasoning, that is
+   short. Note `coverageInstrumentation.test.js` as a touched pre-existing suite owned by no LI task
+   if the count is to reconcile.
+2. **F-02 (inherited, nonlocal).** Correct the two `package.json` claims against HEAD and restate
+   DoD 11 over the shipped `c8` block: four included modules, `allow-external: true`, the three
+   `exclude` globs, and the capture script now **inside** the per-file branch floor rather than
+   exempt from it. If the exemption is genuinely gone, DoD 11's "two named oracles stand in for a
+   coverage floor" needs to go with it.
+
+F-03 and F-04 are Low and non-gating: refresh the header pins to REQ v0.10 / FSPEC v0.14 /
+DECISIONS v0.5 (substance re-verified unaffected — see §Dependencies), and reconcile §Overview's
+"fourteen new test files" with the eighteen that exist at HEAD.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | §Post-batch remediation states `2fc6fcd3` "touched six test-side surfaces"; it touched 13 files under `pdlc/workflows/__tests__/` plus one new engine-side test file. Six ladder-owned suites (LI-03, LI-07, LI-09, LI-11, LI-12, LI-23) received a second write and get no P-A-5 second-owner row, and `pdlc/engine/__tests__/learnings-config-example.test.js` is a fifth unowned new test file with no row — the file that makes the "eighteen tracked" count come out | §File-ownership manifest → Post-batch remediation (CODE_REVIEW v1) |
+| F-02 | High | inherited | nonlocal | `pdlc/workflows/package.json` is described as "**not** modified" with `c8.include` "exactly `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs`" and the capture script "deliberately left outside" it. `2fc6fcd3` rewrote that block: four `**/`-anchored includes incl. `scripts/capture-learnings-baseline.mjs`, `allow-external: true`, three `exclude` globs. DoD 11's exemption and its three-module stage-2 table no longer describe the gate command that ships | §Overview change-surface table; §File-ownership manifest → Production and generated; §Verification DoD 11 |
+| F-03 | Low | inherited | nonlocal | Header pins REQ v0.9 / FSPEC v0.13 / DECISIONS v0.3 against the dispatched REQ v0.10 / FSPEC v0.14 / DECISIONS v0.5; LI-12 and the `RSN-NO-MATERIAL` arm row also quote "FSPEC v0.13" in prose. Substance re-verified unaffected (AC-2.4 attribution → AT-13, E-36/AT-30's three cases, F-O-1's heading rules) — pin refresh only | Header · Upstream; LI-12; §Fail-open arms |
+| F-04 | Low | inherited | nonlocal | §Overview still describes the feature as "**fourteen new test files**"; eighteen `learnings*` test-side files are tracked at `09c7c62f`. §The arithmetic was scoped to the two parsed tables by this edit; §Overview was not | §Overview → What is being built |
+
+FINDING: High | delta | local | §File-ownership manifest → Post-batch remediation (CODE_REVIEW v1) | the subsection records six of `2fc6fcd3`'s surfaces and states that count as complete: the commit touched 13 files under `pdlc/workflows/__tests__/` (4 added, 9 modified) plus a new `pdlc/engine/__tests__/learnings-config-example.test.js`, so six ladder-owned suites (LI-03 `learningsCaptureScript`, LI-07 `learningsSelect`, LI-09 `learningsCorpus`, LI-11 `learningsDispatchSet`, LI-12 `learningsConfig`, LI-23 `learningsArmInventory`) took a second write with no P-A-5 second-owner row, and the fifth unowned new file — the one that makes the "eighteen tracked at `09c7c62f`" arithmetic reconcile — appears in no table; the subsection's single-writer argument already covers every one of them, so only the enumeration is short
+FINDING: High | inherited | nonlocal | §Overview change-surface table; §File-ownership manifest → Production and generated; §Verification DoD 11 | the PLAN says `pdlc/workflows/package.json` is "**not** modified" and that `c8.include` is exactly the three workflow modules with `scripts/capture-learnings-baseline.mjs` deliberately exempt, but `2fc6fcd3` rewrote that block to four `**/`-anchored includes (the capture script among them), `allow-external: true` and three `exclude` globs — so the script is now inside the per-file branch floor it is documented as exempt from, DoD 11's stage-2 table names three modules where the gate measures four, and a DoD verifier would check an exemption that no longer exists (DC-09: verify the gate command, not the prose)
+FINDING: Low | inherited | nonlocal | Header · Upstream; LI-12; §Fail-open arms | the header pins REQ v0.9 / FSPEC v0.13 / DECISIONS v0.3 while this dispatch carries REQ v0.10 / FSPEC v0.14 / DECISIONS v0.5, and LI-12 plus the `RSN-NO-MATERIAL` arm row quote "FSPEC v0.13" in prose; I re-read the upstream text this PLAN leans on at the dispatched versions and the substance is unchanged (AC-2.4's cause-defined attribution still routes through AT-13, which the arm table already maps; E-36/AT-30's three zero-threshold cases and F-O-1's two heading rules are unmoved), so this is a pin refresh rather than a cascade
+FINDING: Low | inherited | nonlocal | §Overview → What is being built | §Overview still counts the feature's test surface as "fourteen new test files" while eighteen `learnings*` test-side files are tracked at `09c7c62f`; this edit scoped §The arithmetic to the two dispatcher-parsed tables but left the §Overview count unqualified
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 2}
