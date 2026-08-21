@@ -234,9 +234,50 @@ byte-identical to `28dd256b`; I did not re-litigate them.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | The corrected `snapshotRef` clause tells the implementer to write the value "spec-side as `"refs/pdlc/a6-snapshot-" + waveNum`", but `advisoryWaveGateMain.test.js` has no `waveNum` binding — `grep -n waveNum` over the file returns nothing, and the wave number appears only inside the `haltReason` string literal at `advisoryWaveGateMain.test.js:368`. The phrasing is transplanted verbatim from AT-06-4's seam arm, where it is correct (§5.2's two-red-wave fixture genuinely distinguishes waves 1 and 2 on the `_git` double). The *value* cannot be got wrong — the row also states `refs/pdlc/a6-snapshot-1` — but the clause reads as if transcribing an existing binding, so an implementer must silently invent one. **Fix:** write it as `"refs/pdlc/a6-snapshot-" + 1`, or say "composed test-side from a wave-number local the test introduces". The same literal appears in the DoD widening leg, so one edit closes both sites. | Batches → A6-18, the `(a) advisoryWaveGateMain.test.js` widening clause; Verification → DoD, the widening leg |
+
+**No High and no Medium findings.** Both of my v3 findings are resolved, and the changed surface
+introduced no new blocking issue.
+
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | (Re-raised from v3 Q-01, still not taken — and I am still not requiring it.) With `snapshotRef` now correctly non-`null` on `advisoryWaveGateMain.test.js`'s escalation fixture, that suite is the one place in this feature where BR-14's overwrite notice could be asserted through `mainDev` — the real report, the real seam, no injection — rather than only through the seam's `_notice` sink. AT-06-4's two allocated arms are sufficient as specified and A6-18 is already editing that file; is the reason for declining the free DC-07-grade proof scope discipline, or was it simply not revisited this round? Recording the answer in the row would stop a future reviewer re-raising it a third time. |
+| Q-02 | (Re-raised from v3 Q-02, still open upstream.) TSPEC §5.6's AT-02-1 row (`TSPEC-pdlc-advisory-wave-gate.md:1910`) still reads "`ADVISORY_ROOT_CAUSES` set-equal to the four-member literal", which contradicts FSPEC BR-2's ordered-sequence rule, TSPEC's own §3.5, and this PLAN's A6-05 row. The PLAN follows FSPEC and is right to; no task row here reads the stale row. Routed as an erratum again below rather than folded into this verdict. |
+
 ## Positive Observations
+
+- **The round fixed the value, not the wording around it.** My v3 High was a single wrong literal
+  inside an otherwise-correct clause, and the temptation in that position is to hedge — "`null` or
+  the ref, depending on the fixture". The row instead states the concrete value, the wave number,
+  the oracle that pins the wave number (`:368`), and the exact fallthrough line of the git double
+  that makes the capture succeed (`:137`). Every link in that chain re-verified against the file on
+  the first read, which is what a well-grounded row buys a reviewer.
+- **The consequence clause is the part I did not have to ask for.** Correcting the value creates a
+  second obligation — a non-`null` ref makes BR-14's overwrite notice due on that halt — and the
+  round carried it forward *and* discharged the collateral question in place, by naming that every
+  notice oracle in the suite is a filtered count. I swept the whole file rather than the named
+  sites: `:210`, `:227`, `:246`, `:247`, `:257`, `:273`, `:285`, `:297` all filter through the
+  helper at `:182`, and the only unfiltered `toHaveLength` calls count dispatches (`:226`, `:335`).
+  The claim survives a stronger check than the one it makes.
+- **Rule 2 became a set-equality without being asked to become one twice.** PM v3 F-01 asked for the
+  unenumerated paths; the round supplied them *and* restated the walk as a projection of the
+  manifest with the falsifying sentence attached ("a path added to the manifest without a clause is
+  a visible hole, not a silent pass"). I re-did the projection: fifteen distinct manifest paths,
+  fifteen enumerated, empty difference both ways. That is the same upgrade — containment to
+  set-equality — this document already applies to its AT table and to `A6_PROHIBITIONS`, now applied
+  to the batch-safety walk.
+- **The un-skip negative closed the last asymmetry between the two AT-06-4 arms.** Both arms now
+  carry a paired negative, and the un-skip negative is quantified over a run whose live behaviour is
+  positively pinned (outcome, `haltReason`, `a6.calls.length === 0`) — never absence alone.
+- **The invariance claim reproduces exactly.** 11 tasks, 7 waves, every `planBatch` equal to
+  `max(dep batch) + 1`, ids unique, acyclic, `validatePlanContract(tasks, ownership)` returning
+  `{"ok": true}` from the shipped parser at HEAD; the AT set still 48-vs-48 with an empty diff
+  against FSPEC §6; all fifteen manifest paths present on disk; `Batch`, `Dependencies` and the
+  ownership manifest byte-identical to the previously reviewed commit.
 
 ## Recommendation
 
