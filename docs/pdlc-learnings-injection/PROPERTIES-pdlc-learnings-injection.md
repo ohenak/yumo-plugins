@@ -1061,28 +1061,33 @@ green by two, and each split is named in the PLAN row that carries it:
 | Properties with **no** owning task | 0 | §C.3 |
 | Fail-open arms | 12 | TSPEC §T.7, mechanised by PROP-FAILOPEN-01 |
 
-**Test-file inventory, re-measured at HEAD (implementation has begun).** This document depends on
-twelve `learnings*.test.js` suites plus the fixture helper and the baseline fixture directory —
-**fourteen** rows over fourteen files, exactly PLAN §File-ownership manifest's fourteen new test
-rows. Earlier revisions of this section recorded that none of them existed yet; that is **no longer
-true**, and the count is restated against `git ls-files pdlc/workflows/__tests__` at HEAD:
+**Test-file inventory — a measurement, pinned to a commit (SE F-02, SE Q-01).** This document
+depends on twelve `learnings*.test.js` suites plus the fixture helper and the baseline fixture
+directory — **fourteen** rows over fourteen files, exactly PLAN §File-ownership manifest's fourteen
+new test rows. This table is a **snapshot, not a live claim**: it is the output of
+`git ls-files pdlc/workflows/__tests__` run at commit **`21edb7c5`** on
+`feat-pdlc-learnings-injection`, and each row carries the commit that added the file, so a reader can
+tell a stale reading from a current one without re-running anything. Earlier revisions recorded that
+none of these files existed, then that seven of them did; **both readings are now superseded** —
+at `21edb7c5` the command returns **fourteen of fourteen**, and the rows below are restated against
+that output rather than carried forward (PM F-01, SE F-01):
 
-| File | Owning task | At HEAD |
-|---|---|---|
-| `helpers/learningsFixtures.js` | LI-02 | **exists** (landed) |
-| `learningsPremises.test.js` | LI-01 | **exists** (landed) |
-| `learningsCaptureScript.test.js` | LI-03 | **exists** (landed) |
-| `learningsPredicatePin.test.js` | LI-13 | **exists** (landed) |
-| `learningsSelect.test.js` | LI-07 | **exists** (landed) |
-| `learningsBlock.test.js` | LI-08 | **exists** (landed) |
-| `learningsCorpus.test.js` | LI-09 | **exists** (landed) |
-| `learningsBaselineGuard.test.js` | LI-06 | not yet created |
-| `learningsRecord.test.js` | LI-10 | not yet created |
-| `learningsDispatchSet.test.js` | LI-11 | not yet created |
-| `learningsConfig.test.js` | LI-12 | not yet created |
-| `learningsArmInventory.test.js` | LI-23 | not yet created |
-| `learningsSuiteMap.test.js` | LI-14 | not yet created |
-| `fixtures/learnings-baseline/` | LI-06 | not yet created |
+| File | Owning task | At `21edb7c5` | Added by |
+|---|---|---|---|
+| `helpers/learningsFixtures.js` | LI-02 | **exists** (landed) | `1920f281` |
+| `learningsPremises.test.js` | LI-01 | **exists** (landed) | `cdeb1509` |
+| `learningsCaptureScript.test.js` | LI-03 | **exists** (landed) | `688a5651` |
+| `learningsPredicatePin.test.js` | LI-13 | **exists** (landed) | `07af8f52` |
+| `learningsSelect.test.js` | LI-07 | **exists** (landed) | `1544fdbd` |
+| `learningsBlock.test.js` | LI-08 | **exists** (landed) | `5e522a52` |
+| `learningsCorpus.test.js` | LI-09 | **exists** (landed) | `b79b7859` |
+| `learningsBaselineGuard.test.js` | LI-06 | **exists** (landed) | `4a6c1816` |
+| `learningsRecord.test.js` | LI-10 | **exists** (landed) | `2fe07964` |
+| `learningsDispatchSet.test.js` | LI-11 | **exists** (landed) | `c3e723e5` |
+| `learningsConfig.test.js` | LI-12 | **exists** (landed) | `eb32d7d2` |
+| `learningsArmInventory.test.js` | LI-23 | **exists** (landed) | `100e3d9c` |
+| `learningsSuiteMap.test.js` | LI-14 | **exists** (landed) | `960c229c` |
+| `fixtures/learnings-baseline/` | LI-06 | **exists** (landed) — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` | `4a6c1816` |
 
 Seven of the fourteen files have landed. The tasks committed so far are LI-01…LI-05, LI-07, LI-08,
 LI-09 and LI-13 — nine ids against seven rows, because **two** of them own none of the fourteen:
