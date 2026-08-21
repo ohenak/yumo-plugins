@@ -193,6 +193,18 @@ Two oracle notes for whoever writes it:
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | REQ v1.16's AC-6.3 gained a second obligation — where the halt report points at a captured pre-A6 tree state, the same report warns that re-running the feature overwrites it (DEC-A6-03). FSPEC compresses none of it: BR-14 stops at "diagnosis and its root-cause class", §3 step 10 lists two report contents, and AT-06-4's *Then* asserts only those two, so an implementation shipping the pointer without the warning is green at FSPEC level while violating REQ. Fix: one clause on BR-14 (pointer and warning co-located in one artifact; capture's name stays O-1's), the conditional arm named on E-34, and AT-06-4 extended to three positive conjuncts with the E-34 no-capture negative companion. | §4 BR-14 / §3 step 10 / §6.6 AT-06-4 |
+| F-02 | Medium | delta | local | E-30 re-lists BR-14's halt-report contents as "the diagnosis and root-cause class". Once BR-14 carries the overwrite warning, this row silently narrows AC-6.3 on the escalation-log-write-failure path, and AT-06-6 is written from it. Fix in the same edit: refer to "BR-14's halt-report contents" instead of re-enumerating. | §5.5 E-30 (and AT-06-6) |
+| F-03 | Low | inherited | nonlocal | §2's preamble still pins upstream as `REQ-pdlc-advisory-wave-gate` v1.13; REQ is now v1.16. Individual traces still resolve — a stale version token, not a broken citation. Carried from v3 F-01, now one version staler. | §2 Linked Requirements, preamble |
+| F-04 | Low | inherited | nonlocal | BR-9 excludes "the record and escalation writes … both carriers"; AC-5.1 names three excluded carriers (AC-6.1's record append, AC-6.2's escalation-log append, AC-5.2's M-WG-7 queue-row write). E-23 covers the third, so this is an enumerative gap at the rule site AT-05-1 cites, not a coverage hole. Carried from v3 F-02. | §4 BR-9, observation point |
+
+FINDING: High | delta | local | §4 BR-14 / §3 step 10 / §6.6 AT-06-4 | REQ v1.16 AC-6.3 now requires the halt report to warn, in the same place it names a captured pre-A6 tree state, that re-running the feature overwrites that capture (DEC-A6-03); FSPEC states no such rule, no edge-case arm, and no AT, so AT-06-4 green-lights an implementation that omits the warning — bounded fix: one BR-14 clause, the E-34 negative arm, and a three-conjunct AT-06-4 with its no-capture companion
+FINDING: Medium | delta | local | §5.5 E-30 | E-30 re-enumerates the halt report as carrying "BR-14's diagnosis and root-cause class", which narrows the amended AC-6.3 obligation on the degraded-carrier path and is the text AT-06-6 is written from; refer to BR-14's contents rather than re-listing them
+FINDING: Low | inherited | nonlocal | §2 Linked Requirements, preamble | FSPEC pins upstream REQ v1.13 while REQ is now v1.16; traces still resolve, version token stale
+FINDING: Low | inherited | nonlocal | §4 BR-9, observation point | BR-9 names two excluded record carriers ("both") where AC-5.1 names three (record append, escalation-log append, M-WG-7 queue-row write); E-23 covers the third, so the gap is enumerative rather than a coverage hole
+
 ## Recommendation
 
 ## Verdict
