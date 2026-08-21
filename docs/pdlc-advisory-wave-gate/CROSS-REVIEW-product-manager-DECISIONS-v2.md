@@ -70,6 +70,58 @@ retained. That is the right call for a decision record: the round's actual reaso
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Cross-Feature | The revision introduced `git add -A --` in three places; the shipped capture runs `["add", "-A"]` with no `--`, and TSPEC's own prose, its O-1 row and PLAN A6-10 all say `git add -A` | REQ AC-5.1; FSPEC BR-9; TSPEC O-1, §2.5 |
+| F-02 | Low | Local | "Add a module" is now rejected on merit, but the merit rejection lives only in `## Context`; no row in `## Options Considered` records it, so the option tables still do not show the option was weighed | REQ O-1 (scope envelope) |
+
+### F-01 (Medium, Cross-Feature) — the delta added a `--` the implementation does not run
+
+Three sites changed from `git add -A` to `git add -A --` in this revision: DEC-01's chosen option D
+row (line 195, both the mechanism cell and the ignored-path clause) and DEC-A6-01's
+"Constraints that forced the shape" paragraph (line 268), alongside the argv list at line 244.
+
+The shipped capture does not carry the separator:
+`pdlc/workflows/orchestrate-dev.js:12580` is `const add = await gitWithLockRetry(["add", "-A"], {`,
+and the function's own docstring (`:12549`) writes the verb as `git add -A`. Every other document
+that states this argv agrees with the code: TSPEC's O-1 obligation row (line 281), TSPEC §2.5's two
+prose bullets (lines 490 and 496), TSPEC §6 OQ-5 (line 1753), and PLAN A6-10's green-step spec
+(`add -A`). The one place `--` appears upstream is the ASCII mechanism block at TSPEC line 477 — so
+the document transcribed faithfully from a block that is itself out of step with its own prose and
+with the code, and then propagated the odd variant three times.
+
+Why this is worth a finding rather than a nit: this is the *decision record for the capture
+mechanism*, and the same round repaired two neighbouring transcription defects on exactly this
+ground — TE F-01's fail-closed sentence ("transcribed as written the sentence yields a property that
+fails against correct code") and TE F-06's `-m "…"` elision note. An argv transcription in this
+document is downstream-transcribable by exactly the same route: an argv-sequence oracle written from
+this row asserts a separator the production path never emits. The document's stake in DEC-A6-01 is
+that the mechanism is stated "against shipped code, not intuition"; `--` is neither.
+
+Resolution: restore `git add -A` at all three sites (the argv the code runs and the argv the rest of
+the artifact set states), and route the TSPEC block/prose divergence upstream — I am emitting it as
+a TSPEC erratum, not folding it into this document's verdict.
+
+Scope is `Cross-Feature` rather than `Local` under the tag-selection discipline: the same divergence
+sits in two phases' documents (TSPEC §2.5's block and this record), and the transferable lesson —
+an argv quoted in a decision record is checked against the shipped call site, not against another
+document's rendering of it — outlives this feature.
+
+### F-02 (Low, Local) — the merit rejection of "add a module" is not tabled
+
+Context now says "add a module" is "rejected **on merit** wherever it would apply below", with a
+real argument (co-location with `buildA4SeamOps` / `buildA5SeamOps`, the three-list edit, a second
+vendoring surface). But no row in `## Options Considered` carries it: DEC-01's table runs A–D, none
+of them "a new module", and the other three tables likewise. A reader auditing option completeness
+from the tables — the way a reader normally reads this section — still sees the option absent, and
+has to reach back into Context to learn it was weighed rather than overlooked.
+
+This is Low because the ground is now stated and checkable, which was the substance of v1's F-01;
+what is missing is only its placement. Either a one-line row in DEC-01's table ("**E. Put A6's
+mechanism in a new module** — rejected: three-list vendoring edit, no reuse gained; see Context")
+or an explicit sentence under `## Options Considered` saying the class is rejected once in Context
+for all four entries would close it.
+
 ## Questions
 
 ## Positive Observations
