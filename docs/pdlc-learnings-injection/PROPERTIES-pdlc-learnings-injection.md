@@ -696,13 +696,14 @@ sides; containment is never the fix.**
 
 ### O.5 Derived and absence-shaped conjuncts sit at the whole-pipeline seam
 
-Five claims are placed at L3 because no injectable unit can falsify them, and this placement is a
+Six claims are placed at L3 because no injectable unit can falsify them, and this placement is a
 deliberate cost:
 
 | Claim | Why not L1/L2 |
 |---|---|
 | PROP-DISPATCH-01/02/03 | the dispatch **universe** is a property of the run, not of a function |
 | PROP-CONFIG-04/05 | "rows present and empty" versus "key absent" is a distinction only a finished report carries; an L1 unit over `parseLearningsConfig` sees the parse result and never the report key set |
+| PROP-CONFIG-09 | only the **run-level** half of the zero bound is L3: the `RSN-NO-MATERIAL` reason id and the unconsumed `maxDocuments` slot are decisions of the caller that only a finished report records. The unit-level half is **not** L3 and is not placed here — `extractInjectableMaterial(text, 0)`'s four-field return is directly falsifiable at L1 and is owned by PROP-BOUND-03 (TSPEC §I.3, §T.5 T-O-6) |
 | PROP-RECORD-07/10 | the once-per-run threshold record and per-dispatch reproducibility span the whole run |
 | PROP-FOOTPRINT-01…04 | AC-5.2's window is "the whole run"; a seam log cannot see a direct `fs.writeFileSync` |
 | PROP-ISOLATE-01 | gate inputs are produced by the convergence machinery, not by this feature's units |
