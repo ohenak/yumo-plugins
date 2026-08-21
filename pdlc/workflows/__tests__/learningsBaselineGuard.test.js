@@ -163,3 +163,192 @@ describe("learningsBaselineGuard — pre-feature prompt-composition baseline (TS
     expect(result).toBeDefined();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// CR round 1, PM F-03 / TE F-03 (High): the baseline is USED, not merely guarded.
+//
+// Everything above this line re-hashes the fixture against hand-transcribed digests of ITSELF.
+// That proves the fixture has not drifted; it proves nothing about the code. AC-5.1a requires
+// every composed dispatch on a non-injecting run to be byte-identical to "AC-6.2's recorded
+// baseline — THAT COMMITTED PRE-FEATURE FIXTURE, NOT A SECOND BRANCH OF THIS RUN", and PLAN
+// §DoD item 4 widens it to four states. Before this block no test read a fixture file and
+// compared it to a composed prompt at all, so the three tests titled "byte-identical to the
+// recorded pre-feature baseline" in `learningsDispatchSet.test.js` all compared an enabled run
+// to a disabled run of the same branch — the comparison AC-5.1a explicitly excludes. A
+// regression that changed base-prompt composition on BOTH arms passed every one of them.
+//
+// The subject here is branch code at HEAD; the expected value is merge-base bytes on disk. The
+// two scenarios reproduce the capture provenance recorded at the top of this file exactly:
+//   - PHASE-R-REVIEW-PROMPTS  — `reviewLoop` driven directly, Phase R / docType REQ, reviewers
+//     se-review + te-review, both approving immediately.
+//   - PHASE-F-AUTHORING-PROMPT — `main()` from a REQ path, Phase R approving immediately so
+//     Phase F's pm-author creator dispatch is reached; the run halts cleanly afterwards because
+//     the FSPEC is never written back into the fake filesystem.
+// Both come from `branchGuard.test.js`'s already-proven harness pattern, which is what the
+// capture itself was driven through.
+//
+// The four non-injecting states of PLAN §DoD item 4 are each driven SEPARATELY against the same
+// expected bytes, because they reach "no block" through four different code paths:
+//   (1) DISABLED         — `config.learningsInjection.enabled === false`; `buildLearningsInjector`
+//                          returns null, so the composition site never calls it (§I.4/AC-5.1a).
+//   (2) EMPTY            — enumeration succeeds and returns nothing; `corpusOutcome: RSN-EMPTY`.
+//   (3) UNLISTABLE       — enumeration FAILS; `corpusOutcome: RSN-UNLISTABLE` (BR-12, fail-open).
+//   (4) ADMITS-NOTHING   — a real corpus document is enumerated and read, and every one of them
+//                          is rejected `RSN-NO-MATERIAL`, so the selection is empty.
+// (4) is the one that would catch injected text leaking into a non-injecting run through a path
+// the other three never take — it is the only arm where the injector actually opens a file and
+// renders. AC-6.2's named regression is undetectable without it.
+
+import mainDev, { reviewLoop as reviewLoopDev } from "../orchestrate-dev.js";
+import { fakeFs, fakeGit, fakeListFiles } from "./helpers/seams.js";
+
+/** `LEARNINGS_CORPUS_ARGV`'s recognisable prefix, restated (never imported) as every other
+ *  suite in this feature restates it. */
+const isLearningsEnumerateCall = (argv) =>
+  Array.isArray(argv) && argv[0] === "ls-files" && argv.includes(":(glob)docs/*/LEARNINGS-*.md");
+
+const REV_PARSE = "rev-parse --abbrev-ref HEAD";
+const silent = () => {};
+
+/**
+ * The scripted all-approve `_agent` double both scenarios below dispatch through — a locally
+ * scoped double, never the live transport (AC-6.1, and `learningsSuiteMap.test.js`'s
+ * PROP-META-06 scans for exactly this construction shape).
+ *
+ * @param {(skill: string, prompt: string) => void} record - called once per dispatch.
+ */
+function makeBaselineAgent(record) {
+  const agent = async (skill, prompt) => {
+    record(skill, String(prompt ?? ""));
+    return 'Done.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
+  };
+  return agent;
+}
+
+/** The fixture bytes, read from disk — the expected value, never recomputed from the code. */
+const baselineBytes = (caseId, dispatchIndex) =>
+  readFileSync(path.join(FIXTURE_DIR, caseId, `${dispatchIndex}.txt`), "utf8");
+
+/**
+ * One non-injecting state, expressed as the two seam behaviours that distinguish it: the
+ * `.claude/pdlc.config.json` text, and the reply to the LEARNINGS enumeration call.
+ * `corpusFiles` are additional readable paths (arm 4's real corpus document).
+ */
+const NON_INJECTING_STATES = [
+  {
+    name: "DISABLED — learningsInjection.enabled is false",
+    configText: JSON.stringify({ learningsInjection: { enabled: false } }),
+    enumerateReply: () => ({ ok: true, stdout: "" }),
+    corpusFiles: {},
+  },
+  {
+    name: "EMPTY — enumeration succeeds and returns no corpus document (RSN-EMPTY)",
+    configText: null,
+    enumerateReply: () => ({ ok: true, stdout: "" }),
+    corpusFiles: {},
+  },
+  {
+    name: "UNLISTABLE — enumeration fails (RSN-UNLISTABLE, fail-open)",
+    configText: null,
+    enumerateReply: () => ({ ok: false, stdout: "", stderr: "fatal: not a git repository" }),
+    corpusFiles: {},
+  },
+  {
+    name: "ADMITS-NOTHING — a real corpus document is read and rejected RSN-NO-MATERIAL",
+    configText: null,
+    enumerateReply: () => ({
+      ok: true,
+      stdout: "docs/completed/li06-prior/LEARNINGS-li06-prior.md\n",
+    }),
+    corpusFiles: {
+      // A well-formed LEARNINGS document carrying none of BR-6's five priority sections, so the
+      // selection is empty even though the injector enumerated, opened and parsed it.
+      "docs/completed/li06-prior/LEARNINGS-li06-prior.md":
+        "# LEARNINGS — li06-prior\n\n| Field | Value |\n|---|---|\n| Date Completed | 2026-01-01 |\n\n## Not A BR-6 Section\n\nNothing BR-6 recognises.\n",
+    },
+  },
+];
+
+describe("learningsBaselineGuard — the committed baseline as an ORACLE (AC-5.1a, AC-6.2; PLAN §DoD item 4)", () => {
+  for (const state of NON_INJECTING_STATES) {
+    describe(state.name, () => {
+      it("PHASE-R-REVIEW-PROMPTS: both Phase R reviewer prompts are byte-identical to the committed pre-feature fixture", async () => {
+        const FEATURE = "li06-phase-r-review";
+        const prompts = [];
+        const git = fakeGit((argv) => {
+          if (isLearningsEnumerateCall(argv)) return state.enumerateReply();
+          return argv.join(" ") === REV_PARSE
+            ? { ok: true, stdout: `feat-${FEATURE}\n` }
+            : { ok: true };
+        });
+
+        await reviewLoopDev({
+          doc: `docs/${FEATURE}/REQ-${FEATURE}.md`,
+          phase: "R",
+          docType: "REQ",
+          reviewers: ["se-review", "te-review"],
+          optimizer: "pm-author",
+          feature: FEATURE,
+          _agent: makeBaselineAgent((skill, prompt) => prompts.push(prompt)),
+          _parallel: (promises) => Promise.all(promises),
+          _checkFile: () => ({ ok: true }),
+          _listFiles: fakeListFiles([]),
+          _readFile: (p) => state.corpusFiles[String(p)] ?? null,
+          _log: silent,
+          _git: git,
+        });
+
+        // The control: the run composed the dispatches the fixture records, so the equalities
+        // below are not passing on an empty list.
+        expect(prompts).toHaveLength(2);
+        expect(prompts[0]).toBe(baselineBytes("PHASE-R-REVIEW-PROMPTS", 0));
+        expect(prompts[1]).toBe(baselineBytes("PHASE-R-REVIEW-PROMPTS", 1));
+      });
+
+      it("PHASE-F-AUTHORING-PROMPT: Phase F's creator prompt is byte-identical to the committed pre-feature fixture", async () => {
+        const FEATURE = "li06-phase-f-authoring";
+        const REQ_PATH = `docs/${FEATURE}/REQ-${FEATURE}.md`;
+        const fs = fakeFs({ [REQ_PATH]: "# REQ\n\nBody.\n", ...state.corpusFiles });
+        const git = fakeGit((argv) => {
+          if (isLearningsEnumerateCall(argv)) return state.enumerateReply();
+          return argv.join(" ") === REV_PARSE
+            ? { ok: true, stdout: `feat-${FEATURE}\n` }
+            : { ok: true };
+        });
+        const authoring = [];
+        const injections = fs.injections();
+        const baseReadFile = injections._readFile;
+
+        await mainDev({
+          ...injections,
+          reqPath: REQ_PATH,
+          _agent: makeBaselineAgent((skill, prompt) => {
+            if (skill === "pm-author" || skill === "se-author") authoring.push(prompt);
+          }),
+          _parallel: (promises) => Promise.all(promises),
+          _pipeline: async (label, fn) => fn(),
+          _phase: silent,
+          _log: silent,
+          _listFiles: fakeListFiles([]),
+          _git: git,
+          // The config is read off this same seam, once per run (§I.2) — the one channel that
+          // turns the injector off. Everything else falls through to the fake filesystem.
+          _readFile: async (p) =>
+            String(p).endsWith("pdlc.config.json") ? state.configText : baseReadFile(p),
+        });
+
+        expect(authoring).toHaveLength(1); // the control
+        expect(authoring[0]).toBe(baselineBytes("PHASE-F-AUTHORING-PROMPT", 0));
+      });
+    });
+  }
+
+  // The control for the whole block: the instrument CAN tell the two apart. A comparison that
+  // passes because both sides are empty, or because the fixture reader silently returned "",
+  // is the defect this block exists to remove — so prove the assertion is capable of failing.
+  it("the fixture bytes are non-trivial and an altered prompt would not compare equal (the instrument fires)", () => {
+    const f = baselineBytes("PHASE-F-AUTHORING-PROMPT", 0);
+    expect(f.length).toBeGreaterThan(1000);
+    expect(f).not.toBe(`${f}\n\n--- PRIOR-FEATURE LEARNINGS (advisory context) ---`);
+  });
+});
