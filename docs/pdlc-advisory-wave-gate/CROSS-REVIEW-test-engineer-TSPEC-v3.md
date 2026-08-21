@@ -91,6 +91,46 @@ is that the model arrived without the two oracles that make it falsifiable — s
 
 ## Test Strategy
 
+**This is where the round does not close.** The erratum absorbed BR-14 into §2.5 and §4.5 and did
+not touch §5 at all — `git diff efeb798e..HEAD` shows no edit below §5.1's status caveat except the
+two re-measured red-reason sentences. Measured against FSPEC at HEAD, §5.6's AT map is now behind
+its upstream:
+
+| Upstream at HEAD (FSPEC v1.7) | TSPEC §5.6 at v1.12 (line 1795) |
+|---|---|
+| **AT-06-4** — *Then* (1) the report carries the diagnosis, (2) it carries the root-cause class, **and (3) where it points at a captured pre-A6 tree state, the same report states there that re-running this feature overwrites that capture**; the oracle asserts co-location and the presence of the overwrite statement, never the capture's name | "halt report following an escalation carries the root-cause class (§4.5's halt fields)" — conjunct (2) only |
+| **AT-06-4b** — no capture taken (E-34): diagnosis + class, points at no capture, **carries no overwrite warning** — "the companion that makes AT-06-4's conjunct (3) falsifiable rather than a string always present" | **absent** — no row, and no AT anywhere in §5 mentions the warning (grep for `overwrit` across §5.1–§5.6 returns nothing) |
+
+The consequence is the specific failure this lens exists to catch. §4.5 now specifies a rendering
+contract — non-`null` `snapshotRef` renders ref name *and* overwrite sentence, adjacent; `null`
+renders neither — and no test in the feature's set asserts either arm. An implementation that plumbs
+`snapshotRef` into `haltFields` and never renders the sentence is green under every AT this TSPEC
+maps. So is one that emits the sentence unconditionally, including on the E-34 halt where FSPEC
+requires its absence: without AT-06-4b, conjunct (3) degenerates into an always-present string, which
+is the unfalsifiable-oracle shape FSPEC itself names in AT-06-4b's own text.
+
+What resolves it, concretely, in §5.6 and the `advisoryWaveGate.test.js` row of §5.1:
+
+1. Extend the AT-06-4 row to all three conjuncts, and state the oracle as **co-location within one
+   rendered report string** — e.g. the overwrite sentence and the ref pointer are both found in the
+   same `haltError` report text, not merely both present somewhere in the run — since co-location is
+   the observable BR-14 pins and a two-independent-`toContain` oracle cannot falsify a split.
+2. Add an **AT-06-4b** row on an E-34 fixture (capture fails, `snapshotRef: null`): diagnosis and
+   class present, **no** ref pointer, **no** overwrite sentence — the negative that makes (3) able
+   to fail. Both belong on `advisoryWaveGate.test.js`, which already owns §5.5's capture-failure
+   disposition fixture, so no new file and no new double is needed.
+3. §5.5 transcribes the verbatim halt strings; the overwrite sentence should join that list, or the
+   AT should say explicitly that it asserts the *presence of a statement* rather than a literal, so
+   the implementer does not have to guess which oracle shape is intended.
+
+Everything else in §5 that the delta touches re-reads clean. The two re-measured red-reason caveats
+are now accurate: `advisory-config-example.test.js` asserts `advisory.enabled` boolean and a
+non-negative integer `advisory.waveBudgetPerRun`, and the example carries `{"enabled": false,
+"waveBudgetPerRun": 1}`, so the stated red-reason was indeed falsified; `advisoryQueueSeams.test.js`'s
+`toHaveLength(6)` counts against a six-member `ADVISORY_SEAMS` at HEAD. §5.2's two-red-wave fixture
+still carries the only oracle that can see the one-ref-per-wave invariant, unchanged and still
+correct.
+
 ## Open Questions
 
 ## Positive Observations
