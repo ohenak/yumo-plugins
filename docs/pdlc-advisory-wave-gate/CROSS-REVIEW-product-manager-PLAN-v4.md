@@ -34,10 +34,61 @@ Both halves are correct at HEAD.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | A6-18's corrected paragraph claims the fixture's `_git` double "answers `ok: true` to **every verb** `captureTreeSnapshot` issues", then enumerates `add`, `rev-parse`, `write-tree`, `commit-tree` explicitly plus `update-ref` through the fallthrough — but the capture issues a **sixth** verb, `reset --mixed <head>` (`pdlc/workflows/orchestrate-dev.js:12606-12613`), whose non-`ok` return is its own `fail("reset")` arm. It also reaches the double's terminal `return { ok: true, stdout: "" }` (`advisoryWaveGateMain.test.js:138`), so the conclusion is unaffected — but the sentence is presented as an exhaustive walk and is not set-equal to the verb list in the function it walks. Same discipline the document applies elsewhere: name the whole enumeration so a later reader can re-run the check mechanically. Fix when the row is next touched: add `reset` beside `update-ref` as the second fallthrough verb (and note that both `add` and `reset` go through `gitWithLockRetry`, which does not change the answer here). | AC-6.3, REQ-AWG-06 |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | My v3 `F-01` was closed by naming the manifest projection in prose. That now makes **two** enumerations in this document maintained by hand against a mechanical source (the AT set against FSPEC §6, and rule 2's `(file, batch)` pairs against the manifest) plus a third the round just added (a capture-verb list against `captureTreeSnapshot`). Each has now cost at least one hand-edit to keep true. Is it worth carrying the two-line projection script into the DoD as a verification command rather than re-deriving it by reading, given the document already ships a `Commands` section? Recorded for harvest either way; it does not gate. |
+| Q-02 | Fourth consecutive round with the same dispatch note: the completeness gate again supplied **PLAN's** headings (`Overview` / `Batches` / `Dependencies` / `Verification`) for a **cross-review** artifact, together with the skeleton-first pacing contract. I have written the reviewer format regardless, as in v1–v3. Routed to process learnings, not a finding against this document. |
 
 ## Positive Observations
 
+- **The correction was made where an implementer reads, not only where a reviewer reads.** The wrong value
+  appeared in one place; it could have been fixed in one place. Instead the corrected value, its derivation
+  (which `_git` verbs succeed, why the capture therefore returns a ref, which wave the fixture halts on) and
+  the anti-echo instruction for writing it all landed in A6-18's row, and the **same** value landed in the DoD
+  widening leg — so the verifier and the implementer read one contract rather than two that agree by luck.
+- **The consequence of the correction was carried, not left implicit.** A non-`null` `snapshotRef` makes
+  BR-14's overwrite notice due on that halt report too. The revision says so, and then pays for the claim by
+  naming the four notice oracles in that suite (`PROP-SEAM-07`'s arms, `-08`, `-09`, `-10`) and observing that
+  every one is a *filtered* count. I re-measured: the file contains zero occurrences of the token `notices`,
+  so nothing in it can see the extra element. The claim is complete, not representative.
+- **The un-skip DoD leg now has a negative that a positive-only arm cannot fake.** The leg names the paired
+  negative in the falsifiable form: a halt on a wave where A6 did not fire, positively pinned by `outcome`,
+  `haltReason` and `a6.calls.length === 0`, with the `advisory` argument omitted and no overwrite notice
+  anywhere in `notices`. That is precisely the shipped conditional at `orchestrate-dev.js:15399`, so the leg is
+  tickable only against real production behaviour — no absence-only oracle.
+- **Rule 2 changed shape, not just wording.** The previously unenumerated single-owner paths are now named and
+  the section closes with "That accounts for every path in the manifest." I re-derived the projection myself:
+  15 distinct paths, 15 clause memberships, no leftovers in either direction. A path added to the manifest
+  without a clause is now a visible hole.
+- **The revision broke nothing.** The DAG, batch column, gates, manifest cells, the 48-AT set-equality claim
+  and AT-06-4/AT-06-4b's two-arm/two-owner rows are byte-identical to the version I approved in v3.
+
 ## Recommendation
 
+**Approved with minor changes** — no High finding, no Medium finding, one Low.
+
+Stated precisely, as a delta verdict:
+
+- **My one v3 finding is closed at the level asked.** Rule 2's walk is now a set-equality over the manifest,
+  the enumeration is complete in both directions at HEAD, and the discipline is stated so the next path added
+  to the manifest cannot pass silently.
+- **The round's own High (TE v3 F-01) is closed against code, not against prose.** I re-derived the capture
+  outcome from the double and from `captureTreeSnapshot`'s six guarded verbs: the capture succeeds, the fixture
+  halts on wave 1, and `refs/pdlc/a6-snapshot-1` is what TSPEC §4.5 prescribes for that case. The prescribed
+  value is right, and the anti-echo instruction keeps it a spec-side literal.
+- **The one Low is about the completeness of an enumeration, not about a wrong conclusion.** `reset` is missing
+  from a verb list introduced as exhaustive; it behaves identically, so nothing downstream changes. Recorded
+  for the next time that row is touched; it does not gate the phase.
+
+Nothing must change for this document to proceed to PROPERTIES and implementation.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
