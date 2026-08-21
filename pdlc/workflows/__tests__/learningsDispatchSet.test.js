@@ -89,7 +89,21 @@ const SCENARIO_PLAN = [
  *   alternatives. Only the composition-site set equality needs the sixth phase, and it needs it
  *   because TSPEC §A.2 property 1(a) forbids passing that equality by omission.
  */
-function buildRecordingAgent(calls, { decisionsWarranted = false, reviseOnceInPhases = [] } = {}) {
+function buildRecordingAgent(
+  calls,
+  { decisionsWarranted = false, reviseOnceInPhases = [], erratumOnAuthoringOf = null } = {}
+) {
+  // CR round 1, PM F-08. `erratumOnAuthoringOf: "FSPEC"` makes the FSPEC authoring dispatch's
+  // response carry one `ERRATUM: REQ: …` line, which is how a real author routes a defect it
+  // found in an upstream document. `converge` collects the creator's errata (§3.1 step 2's last
+  // clause), so the phase then runs a real erratum round: an authoring dispatch whose docType is
+  // `REQ` and whose prompt is the erratum-author prompt, not this phase's own. That is AC-1.1's
+  // third dispatch shape ("erratum"), and under the all-approve script no scenario in this suite
+  // reached it — the arm existed in the pipeline with no runtime oracle over its composed prompt.
+  //
+  // The item is deliberately anchored (`§1`) and carries a backticked expected token, and names
+  // no AT-/INV-/META- id and not the word "oracle", so `oracleContractShortfall` admits it and it
+  // is routed rather than noted as malformed.
   // CR round 1, TE F-02/F-08. `reviseOnceInPhases: ["R", "CR"]` makes ITERATION 1 of the named
   // phases' review rounds answer "Needs revision", which is the only way to make the pipeline
   // dispatch those phases' OPTIMIZERS. Two of them matter here:
@@ -121,6 +135,19 @@ function buildRecordingAgent(calls, { decisionsWarranted = false, reviseOnceInPh
       return 'Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
     }
     if (skill === "pm-author" || skill === "se-author" || skill === "te-author") {
+      if (
+        erratumOnAuthoringOf &&
+        text.includes(`${erratumOnAuthoringOf}-${FEATURE}.md`) &&
+        !text.includes("ERRATUM ROUND") &&
+        !text.includes("DECISIONS_WARRANTED") &&
+        !text.includes("Return a JSON object")
+      ) {
+        return (
+          "Created/updated document successfully.\n" +
+          "ERRATUM: REQ: §1 — the threshold is stated twice with different values; the " +
+          "authoritative one is `maxDocuments: 5`.\n"
+        );
+      }
       if (text.includes("DECISIONS_WARRANTED")) {
         return `Finalized TSPEC.\nDECISIONS_WARRANTED: ${decisionsWarranted}`;
       }
@@ -331,6 +358,41 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
     expect(carryingBlock).toEqual(expectedAuthoring);
   });
 
+  test("LI-20: CR round 1 (PM F-08) — AC-1.1's third dispatch shape: an ERRATUM-ROUND authoring dispatch's composed prompt carries the block", async () => {
+    // AC-1.1 names three authoring shapes — "creator, optimizer round, erratum". The first two
+    // are covered above (LI-AT-01/02) and by the composition-site set equality. The erratum arm
+    // was reachable in the pipeline (`erratumRound`'s two `dispatchKind: "authoring"` sites,
+    // pinned STATICALLY by `learningsPremises.test.js`) but no scenario in this suite ever
+    // entered it, so nothing observed an erratum-round prompt at RUNTIME. This drives one.
+    const corpus = buildLearningsCorpus([
+      {
+        path: "docs/completed/prior-feature/LEARNINGS-prior-feature.md",
+        doc: {
+          feature: "prior-feature",
+          dateCompleted: "2026-01-01",
+          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }],
+        },
+      },
+    ]);
+    const { calls } = await runScenario({
+      corpus,
+      agentOpts: { erratumOnAuthoringOf: "FSPEC" },
+    });
+
+    // The erratum round's own dispatches, identified by the erratum-author prompt's opening
+    // literal and its target — the REQ, an upstream document of the phase that raised the item,
+    // and one of C-1's six types, so BR-1's two conjuncts both hold.
+    const erratumCalls = calls.filter(
+      (c) => /ERRATUM ROUND for/.test(c.prompt) && c.prompt.includes(REQ_PATH)
+    );
+    expect(erratumCalls.length).toBeGreaterThan(0);
+    // Every one of them carries the block, identified by source path — not merely one of them.
+    for (const c of erratumCalls) {
+      expect(AUTHORING_SKILLS.has(c.skill)).toBe(true);
+      expect(carriesLearningsBlock(c.prompt)).toBe(true);
+      expect(c.prompt).toContain("docs/completed/prior-feature/LEARNINGS-prior-feature.md");
+    }
+  });
   test("LI-20: LI-AT-03 — every dispatch outside BR-1's rule is byte-identical to the recorded pre-feature baseline", async () => {
     const corpus = buildLearningsCorpus([
       {
