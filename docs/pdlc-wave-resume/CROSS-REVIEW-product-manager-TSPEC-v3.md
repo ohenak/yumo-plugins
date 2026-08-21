@@ -20,6 +20,21 @@
 
 ## Architecture
 
+Nothing in the edited REQ text touches a design decision this TSPEC makes, and I checked that claim against the TSPEC passages that lean on the two edited REQ locations rather than asserting it.
+
+**BL-04's outcome (REQ §5, §10).** Three TSPEC passages depend on it:
+
+- §1.1 *"REQ BL-04 requires the resume mechanism and `docs/_constraints/pdlc-wave-gate-baseline.md` to be readable in the authoring tree. They are **not**."* — still a faithful compression. REQ §5 BL-04's requirement half is untouched (`git rebase`/merge, both artifacts readable in the authoring tree); only the outcome clause was added, and it now agrees with §1.1's "they are not". After the edit this sentence is *more* faithful than when I approved it, not less.
+- §6.2 OB-F1 *"REQ BL-04 unmet: this tree is 1,637 commits behind…"* — unchanged in force. Its disposition ("not dischargeable by this document", owned by orchestrator/operator, AT-14 is a PLAN sequencing precondition) is a statement about branch management, and the REQ edit says nothing about who owns the rebase. REQ §10 still confirms BL-04 is **not** a pickup gate (`REQ:563-564`, "`ready: true` is accurate today"), which is what keeps OB-F1 a precondition on the *wave carrying AT-14* rather than on the run.
+- §6.2 OB-F1's trailing sentence — *"Re-raised as an erratum below, because the REQ's §10 and the FSPEC's OB-F1 characterise it inconsistently"* — still holds and is worth being explicit about, because it is the one place a reader might expect the cascade to have closed something and it has not. The inconsistency named there is **REQ §10 vs FSPEC OB-F1**, not REQ §5 vs REQ §10. FSPEC OB-F1 still reads *"Raised as an erratum against the REQ, whose §10 records BL-04 as 'discharged at FSPEC authoring'"* (`FSPEC:429`) — a statement REQ §10 has never made in any version I have seen, and does not make at HEAD. The REQ-side edit made that FSPEC sentence *more* wrong, since §5 now says "unmet" too. TSPEC §6.3 item 2 is the correct routing for it and remains open against FSPEC. No action falls on this TSPEC.
+
+**OB-1's worktree evidence (REQ §9).** Two TSPEC passages:
+
+- §1.3 *"Worktrees fail open. A Claude-created worktree does not carry `.claude/pdlc-wave-state.json`, so the record is absent there and the run is a silent full one (FSPEC EC-17). This is a consequence of consumer-local state, not of any rule this TSPEC adds"* — this survives the edit intact, and notably it never rested on `.worktreeinclude` in the first place. It cites FSPEC EC-17 for the behaviour and grounds the *reason* in consumer-local state, which is exactly the framing REQ OB-1 has now adopted. This is the round's best evidence that the design leans on the conclusion, not on the retracted evidence.
+- §1.3's tail — *"see §6 for the citation defect the REQ carries about it"* — is the sentence the edit falsified. REQ carries no such defect at HEAD. See F-01.
+
+**Scope.** No scope movement in either direction. The REQ edit adds no requirement, removes none, and changes no P0/P1 priority; the erratum note itself says "Two items, nothing else changed", and the diff bears that out. TSPEC still implements exactly the ten REQ criteria §2.6 maps, with no behaviour the REQ does not ask for.
+
 ## Interfaces
 
 ## Data Model
