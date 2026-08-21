@@ -17,7 +17,7 @@ saying so, which left the history reading as though it ran backwards. The correc
 this is the note it was owed. Related convention, adopted here so the next reader does not
 re-derive it: a finding is resolved against **upstream at the time of the edit**, not against the
 upstream version the finding cited. Where the two differ, the resolving text says which version it
-landed on — as the engine-channel and O-8 passages below do for TSPEC v1.10 against findings
+landed on — as the engine-channel and O-8 passages below do for TSPEC v1.11 against findings
 written at v1.5/v1.6.
 **On v1.8, and the sizing block that used to live here (POSTMORTEM-D §6 steps 1–2, PM v8 Q-01).**
 Through v1.7 the `## Consequences` section carried a three-column sizing block — how many surfaces
@@ -57,7 +57,9 @@ then falsified: (1) Context cited the bundle as `pdlc/workflows/dist/orchestrate
 `build-runtime.mjs` writes `pdlc-cli.mjs` into `pdlc/workflows/dist/` and its own comment says the
 `.claude/workflows/` consumer copy "is produced by the maintainer sync step, not this script", so
 the path is corrected and the load-bearing half — one module, inlined from
-`pdlc/workflows/orchestrate-dev.js` — restated. (2) The `DEC-A6-01` verb bullet said the five verbs
+`pdlc/workflows/orchestrate-dev.js` — restated. *(Superseded at v1.11: that repair kept the retired
+bundle and the inlining premise and invented a sync channel; see the v1.11 note's item 1 for the
+ground that replaced it. Retained here as the record of what the round actually did.)* (2) The `DEC-A6-01` verb bullet said the five verbs
 appear "zero times in `orchestrate-dev.js` today"; `captureTreeSnapshot` and `restoreTreeSnapshot`
 now exist and drive all five, so the bullet is restated as a claim about A6's mechanism —
 five verbs new to the workflow, `add`/`reset`/`rev-parse` reused — with the present-tense count
