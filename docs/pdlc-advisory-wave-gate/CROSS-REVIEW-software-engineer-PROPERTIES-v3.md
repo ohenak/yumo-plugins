@@ -136,7 +136,34 @@ only by prompt" applies to it and PROP-NFR-03's partition reasoning is the prece
 
 ## Fixtures
 
-*(pending)*
+The Fixtures table and its two hazards are untouched by this delta, and I re-read only what the new
+conjunct would need.
+
+**No fixture change is required to cover AC-6.3's second half.** The fixture already exists: the
+applied-repair / red-re-gate run on `advisoryWaveGate.test.js` (PLAN A6-18's former-A6-15 step)
+reaches the capture step, writes `refs/pdlc/a6-snapshot-{waveNum}` on the `_git` double, restores,
+and halts. That is precisely the state in which the new AC's antecedent is true. So F-01's fix is one
+property row plus one assertion on an existing run — not a new harness, not a real-repo fixture, and
+not a cost worth trading the obligation away for. I say that explicitly because the cheapest wrong
+resolution here is to declare the conjunct a §G-1 deliberate non-property on grounds of test cost,
+and the cost argument would not survive contact with this fixture.
+
+**Fixtures hazard 2 stays correct.** It scopes the ignored-path conjunct to presence-only after BR-9;
+the REQ delta touches AC-6.3, not AC-5.1/BR-9, so nothing in the hazard's premise moved. My v2 read
+of it stands.
+
+**The `_git` double is sufficient.** The warning is emitted from the halt path on data the wave
+already holds (`waveNum`, hence the ref name — TSPEC §"`captureTreeSnapshot` writes its ref as
+`refs/pdlc/a6-snapshot-{waveNum}`"). No new transport, clock or ambient read is involved, so
+PROP-NFR-04's "no A6 datum at module scope" discipline is unaffected and the assertion is a plain
+string check on the halt report the existing Integration level already captures.
+
+**Pre-A6 baseline fixture — the one place to be careful.** That fixture pins the halt reason string
+captured from the shipped pipeline (`M-WG-3`) and is shared by PROP-SEAM-03, -04, -05, PROP-REST-09
+and PROP-GATE-05. If the upstream slot decision routes the warning into the reason string, this
+fixture's literal changes shape for the A6 path and five properties read it. That is the blast radius
+F-02 is really about, and it is the reason the slot decision belongs upstream rather than being
+settled by whoever writes the property row.
 
 ## Delta-Confirmation Findings
 
