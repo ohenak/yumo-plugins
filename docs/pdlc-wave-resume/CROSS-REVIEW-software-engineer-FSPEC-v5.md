@@ -129,8 +129,50 @@ that trusts an operator assertion is exactly where a completion guarantee would 
 Everything else this FSPEC cites upstream — REQ-WVR-01..04, -07, -10, OF-1/OF-2, BL-03, R-2/R-3/R-4,
 OQ-1 — is untouched by v1.6 and v1.7, so the compression I approved in v4 stands unchanged.
 
-## Delta-Confirmation Findings
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does OB-F1 still have an owner who will act on it? The obligation is now correctly stated as open and unmet in both the REQ and this FSPEC, which means the authoring tree remains 1,637 commits behind with the resume mechanism unreadable in it. The erratum fixed the *description* of the blocker; it does not appear to have moved the blocker. This is not a finding against the delta — the edit did what it was asked — but TSPEC authoring inherits it, and R-4's "new code alongside" outcome gets more likely the longer it stands. |
+
+## Positive Observations
+
+- The erratum corrected OB-F1's false claim about the REQ **without** dropping OB-F1's substance.
+  The tempting cheap edit — delete the obligation along with the misreading — would have lost a
+  live blocker; the edit kept it and fixed only the sentence that was wrong.
+- §3.4's new clause is written at FSPEC altitude throughout. It states what a run records and
+  what an operator can observe, cites BR-07/BR-10 for its bounds, and explicitly declines to
+  specify a record field — leaving the schema question to the TSPEC where it belongs.
+- The v1.2 erratum note in §7 names all three changes in two lines, so the next reviewer can
+  scope their read without diffing. That is cheap to write and repeatedly useful.
+- The FSPEC had already scoped REQ-WVR-08's no-commit claim to the wave loop and routed the
+  defect upstream as an erratum; the REQ's v1.6 rescope adopted it. The round-trip worked as
+  designed, which is worth recording because it is the case where errata are doing their job.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three routed items landed, each verified against the cited upstream text rather than against
+the dispatch's description of it. The FSPEC remains a faithful compression of REQ v1.7, including
+the REQ-WVR-08 rescope it originated. Two Low findings are recorded and non-gating: F-01 routes a
+test-coverage gap to PROPERTIES, F-02 is a process signal about erratum-dispatch generation. No
+change to this document is required before it proceeds.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The new §3.4 clause introduces an observable no acceptance test pins: an operator-pointed run that records, followed by an automatic run resuming above the operator-asserted waves. AT-18 is the nearest test and explicitly excludes this case — its *Given* says "no resume-related configuration set", i.e. the automatic path only. The clause is correct and bounded; it is simply unwitnessed. Route to PROPERTIES (te-author) as a composite case rather than adding an AT here. | §3.4, AT-18 |
+| F-02 | Low | inherited | nonlocal | Dispatch/document metadata mismatch, recorded for process not for the author: this round's dispatch named the upstream REQ as **v1.6** while the sha256 it pinned resolves to a file carrying `Version 1.7`. The FSPEC edit correctly followed the bytes. A dispatch that names a stale upstream version can induce a correct document to be "corrected" backwards; the erratum item list should be generated from the pinned hash. | dispatch item list |
+
+FINDING: Low | delta | local | §3.4 / AT-18 | The new operator-pointed recording clause states an observable — a later automatic run resuming above operator-asserted waves — that no AT covers; AT-18's Given excludes it by requiring no resume-related configuration set. Non-gating: route to PROPERTIES as a composite case.
+FINDING: Low | inherited | nonlocal | dispatch item list | The dispatch named upstream REQ v1.6 while the sha256 it pinned carries Version 1.7; the FSPEC correctly followed the bytes. Process signal on erratum-dispatch generation, not a defect in this document.
+
+Neither finding is High. Nothing in the delta contradicts the upstream at HEAD, and nothing I
+approved in v4 was broken or silently weakened by these three commits.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
