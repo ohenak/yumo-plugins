@@ -151,6 +151,83 @@ replacing the enumeration with a count plus the harvest commit — resolves it.
 
 ## Positive Observations
 
+Each of these was checked against the tree, not taken on the document's word.
+
+- **Every decision-entry claim about shipped code that I sampled is accurate.** `positiveInt`'s
+  floor is `Number.isInteger(v) && v >= 1` and `nonNegativeInt` is its `v >= 0` sibling used by
+  `waveBudgetPerRun` alone (`pdlc/workflows/orchestrate-dev.js`, `parseAdvisoryConfig`);
+  `ADVISORY_DEFAULTS.enabled` is `false` and `waveBudgetPerRun` defaults to `1`; `commitPaths` does
+  require both `message` and `what` (it destructures `paths, message, what, _git, _sleep, emit,
+  provenance`), so the entry is right that a new call has to be fully specified; the build-outputs
+  precedent is verbatim (`chore(${featureName}): wave ${waveNum} build outputs` / `Wave ${waveNum}
+  build outputs`, guarded by `postWaveRan && implConfig.postWavePathspecs.length > 0`); the wave
+  contract line is verbatim (`Do NOT run git add or git commit — the orchestrator verifies your work
+  and commits it.`); `git stash` has **zero** call sites in the module; `reset --hard` has exactly
+  one, on the seam-revert path inside `revert()`; capture drives `add` and `reset` through
+  `gitWithLockRetry` and the rest through `_git`, exactly as DEC-A6-01 describes; restore is
+  `read-tree --reset -u` → `clean -fd` → `reset --mixed`, with `-x` omitted as the entry says.
+  For a 432-line document at v1.10 this is a high hit rate, and F-01 is conspicuous against it
+  precisely because the rest holds.
+
+- **The `-m` argument on `commit-tree` is the strongest passage in the document.** It corrects a
+  prior round's wrong account (a block) with the measured one (silence — `defaultGit` runs
+  `execFileSync` with `stdio: "pipe"` and no `input`, so the child sees empty stdin, exits `0`, and
+  writes an unlabelled commit), states *why no test catches it* (§5.2's oracle is argv-sequence over
+  a double, and a double answers a `-m`-less argv as happily as a correct one), and then draws the
+  right conclusion — the guard belongs in the implementing task's argv. That is a finding-shaped
+  correction carried in the record rather than bounced through another round, which is the right
+  call and is explicitly justified as such.
+
+- **Rejections are falsifiable, and the document says when they became so.** DEC-A6-03 does not
+  merely assert that option A's fixed name is worse; it records that at v1.1 the rejection was
+  *unfalsifiable* (every fixture ran a single A6 wave and saw a single `update-ref`, so a
+  fixed-name regression passed all of them), that the missing oracle was routed upstream as TE F-05,
+  and that it landed — TSPEC §5.2 now carries a two-red-wave run whose observed `update-ref` targets
+  are set-equal to `{refs/pdlc/a6-snapshot-1, refs/pdlc/a6-snapshot-2}`. That is exactly the
+  set-equality-over-the-full-enumeration standard rather than containment: a fixed-name regression
+  writes one target twice and fails both conjuncts. DEC-A6-04 does the same for the `0`-vs-disabled
+  collapse, and its fixture is a paired oracle rather than an absence-only one — the `_agent` double
+  records **zero** calls (negative) *and* the snapshot is still taken and the summary key is
+  **present with the sixth row at zero** (positive on the same path), which is what separates it
+  from `advisory.enabled: false`, where the key is absent entirely. I verified both fixtures are in
+  TSPEC v1.10.
+
+- **Every claim I could check about the two-channel config work is right, including the negative
+  ones.** `.claude/pdlc.config.example.json` carries the `advisory` section;
+  `pdlc/engine/__tests__/ci-arrangement.test.js` mentions `advisory` exactly once, in a comment, and
+  asserts over `implementation.testCommand`; and the file the entry names as the proper home,
+  `pdlc/engine/__tests__/advisory-config-example.test.js`, exists. The reason given for keeping the
+  schema assertion out of `ci-arrangement.test.js` — that an unrelated example edit would otherwise
+  redden the delivery-blocking `Engine tests (ubuntu-latest)` check "under a scope that names no such
+  concern" — is a real product-facing argument about CI signal quality, not an engineering
+  preference, and it belongs here.
+
+- **The document knows what it is not for, and acts on it.** The v1.8→v1.10 arc is a sustained
+  campaign to evict HEAD measurements from a record whose truth conditions should not move with the
+  tree: the sizing block relocated whole to `SIZING-…md`, the `DEC-A6-01` verb bullet restated as a
+  claim about A6's *mechanism* with the present-tense count routed out, the `DEC-A6-04` "nothing
+  moves" bullet re-anchored to the pre-A6 baseline, and the channel-*order* claim replaced by the
+  principle that survives any tree state (the engine expectation and the example edit are one
+  red/green pair, so neither channel is free). Each of those is the right instinct, and the
+  reversibility ratings stay honest through it — DEC-A6-02's "easy, with one caveat" correctly
+  identifies that the caveat rests on **TSPEC's** oracle, not FSPEC's, because "a test will catch
+  it" is only true of the test that actually catches it. F-01 is the one bullet the campaign
+  reached for and missed.
+
+- **All four entries carry re-evaluation triggers a PM can recognize and act on** — an operator
+  investigation lost to a re-run overwrite; operators reporting a third commit per wave as `git log`
+  noise; operators using `0` as a de-facto kill switch often enough to warrant a first-class
+  per-seam `enabled` map. These are product conditions with observable triggers, not engineering
+  hypotheticals, and each names the remedy it would license (and, in DEC-A6-02's case, the remedy it
+  would *not*: "a squash at commit time, never a widened task pathspec").
+
+- **Scope discipline is correct at the one place it was tested.** DEC-A6-03 identifies an
+  operator-facing halt-message obligation, states plainly that "putting that sentence on the halt
+  message is a product decision about an operator-facing obligation and therefore belongs in
+  REQ/FSPEC, not here", and carries the gap in the meantime rather than deciding it. That is the
+  right boundary, drawn without prompting. (Q-02 asks only where the routing went.)
+
+
 ## Recommendation
 
 ## Verdict
