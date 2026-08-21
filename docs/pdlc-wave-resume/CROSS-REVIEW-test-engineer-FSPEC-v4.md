@@ -234,7 +234,46 @@ consumer.
 
 ## Open Questions
 
-_pending_
+Per DEC-ERR-03 my scope is this FSPEC measured against its upstream at HEAD, not the item list, so
+§7's obligations are checked as *citations into REQ* — and this is where all three of this round's
+findings land.
+
+**F-01 — §1's provenance pin is now two versions stale.** §1 states the FSPEC *"derives entirely from
+`REQ-pdlc-wave-resume.md` **v1.5** and adds no requirement of its own."* REQ at HEAD is **v1.7**.
+This was Low at v3 (v1.5 vs v1.6) and remains Low; the substance of the sentence — that the FSPEC
+adds no requirement of its own — is still true and was re-checked against the criterion table. It is
+the pin that is wrong, and it is now wrong by two erratum rounds, which is precisely the drift a
+version pin exists to make visible. A two-character fix. **Low, inherited** — it was already false in
+the pre-round bytes; this round widened the gap without creating it.
+
+**F-02 — OB-F1's closing clause quotes REQ text that now exists in no section of REQ.** OB-F1 reads:
+*"Raised as an erratum against the REQ, **whose §10 records BL-04 as 'discharged at FSPEC
+authoring'**."* At v3 that quoted phrase had already been withdrawn from §10. This round's E-2
+withdraws it from the second and last place REQ carried it — §5's BL-04 row now reads *"Checked at
+FSPEC authoring and found **unmet** — this row is not discharged (§10)"*. The quoted phrase is now
+absent from REQ entirely. The erratum **succeeded**: the FSPEC asked upstream to stop recording BL-04
+as discharged, and upstream has now stopped in both places. What is stale is the FSPEC's narration of
+the request, in the present tense, as though the request were still outstanding. A reader who follows
+the citation finds the opposite of what OB-F1 says REQ says. The fix is one clause: record that the
+erratum landed, and keep OB-F1 open on its actual substance — the **branch base**, not REQ's wording.
+**Low, inherited** — same reasoning as F-01: false before this round, made more so by it.
+
+**F-03 — §7's round-1 revision note points at two withdrawn strings.** The note records two upstream
+defects routed and "fixed in place": REQ-WVR-08's *"Phase I produces no new commit"* and *"REQ's
+discharge of BL-04"*. Both strings are gone from REQ at HEAD — the first replaced in the prior round
+("lands no new commit", scoped to the implementation wave loop), the second withdrawn from §10 then,
+and from §5 now. As a statement about what round 1 did it was true when written; as a **citation** a
+downstream reader can follow, it points at text that no longer exists in either place. Restating it
+in the tense of a landed change resolves it. **Low, inherited.**
+
+**Unaffected obligations.** OB-F2 (TSPEC ratifies or revises the shipped interim contract) traces
+REQ BL-03 and OB-1's *TSPEC-ownership* conclusion, which E-3 explicitly leaves standing — it relabels
+OB-1's worktree evidence, not its allocation of contracts to the TSPEC. OB-F3 (the `{}` "cleared"
+shape: wire it or drop it) is named verbatim in OB-1 at HEAD and is untouched. OB-F5's three
+set-equality catalogues keep their cardinality (§Acceptance Tests). OB-F6's per-feature / Phase P
+split is untouched. **OB-F4 remains blocked on OB-F1** — the baseline file is still not in this tree.
+
+**Assumptions A-1 and A-2** rest on REQ §3 and §3.3 respectively; neither was edited.
 
 ## Delta-Confirmation Findings
 
