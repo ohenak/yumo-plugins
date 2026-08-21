@@ -124,6 +124,24 @@ No new edge case is created by the delta, and no §5 row is falsified by it.
 
 ## Acceptance Tests
 
+The testability question: does any AT become unwritable, or silently false-green, under REQ v1.15?
+
+| AT | Leans on | Under REQ v1.15 |
+|---|---|---|
+| AT-05-1 | AC-5.1 whole-tree identity, BR-9 map | Still writable. The oracle domain (tracked + non-ignored untracked, content-hash map) and the observation point are unchanged by the delta. The *When*/oracle-moment ambiguity I filed as v2 F-03 (Medium) is still open — it is inherited, not created here, and remains non-gating. |
+| AT-05-2 | BR-9's per-path-restore failure case | Untouched; the delta does not weaken the case this AT exists to fail. |
+| AT-06-1 | BR-13 record shape, read after the carriers land | Consistent: REQ now says explicitly that those carriers are outside AT-05-1's comparison, which is precisely the AT-05-1/AT-06-1 division FSPEC already drew. The delta *removes* a latent conflict between the two ATs rather than creating one. |
+| AT-01-1, AT-07-2, AT-04-5 (first companion) | §2's "before" base | Still writable, and now double-pinned: FSPEC and REQ name the same `c8aa22a4` before-base and the same `11420461` post-change reading. A stale-base false-green is now blocked from both documents. |
+| AT-02-x, AT-03-x, AT-04-1/-1a/-1b | AC-2.x, AC-3.x, AC-4.x | Untouched by the delta; not re-reviewed. |
+
+**Falsifiability spot-check on the delta's own new REQ sentence.** REQ's failed-capture clause is
+an absence-shaped claim ("no repair is proposed, none is applied"). FSPEC E-34 gives it a positive
+conjunct — "A6 escalates without dispatching a repair … the escalation names the capture as the
+cause" — so a test can assert an exact escalation with a named cause rather than merely the
+absence of a dispatch. No absence-only oracle is introduced by this cascade.
+
+No AT is falsified, and none becomes unwritable. No High.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
