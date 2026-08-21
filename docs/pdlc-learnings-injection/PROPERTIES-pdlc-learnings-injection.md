@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.2 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.3 | 2026-08-20 |
 
 ## Overview
 
@@ -1087,7 +1087,13 @@ true**, and the count is restated against `git ls-files pdlc/workflows/__tests__
 Seven of the fourteen files have landed. The tasks committed so far are LI-01…LI-04, LI-07, LI-08,
 LI-09 and LI-13 — eight ids against seven rows, because LI-04 owns none of the fourteen: its artifact
 is the `/.baseline-worktree/` ignore rule (PLAN's LI-04 row, landed at `.gitignore:13`). The
-remaining seven are explicitly planned and unstarted. **No property in this document names a test
+remaining seven are explicitly planned and unstarted. **On the re-red of landed suites (SE Q-02):**
+PROP-BOUND-05/07/08's amendments land in `learningsBlock.test.js`, which is committed, so they are a
+re-red on landed green code rather than a fold into LI-16/LI-17's green tasks — which is exactly
+PLAN P-A-7's case ("a live table is amended by an edit to this PLAN, committed before the run it
+governs"). PLAN's LI-08 v0.5 amendment note assigns the follow-up commit to the existing owners but
+does not name the ledger rows; that naming is the PLAN's to do and is routed as an erratum, not
+decided here. No property of this document changes either way. **No property in this document names a test
 file the PLAN does not create**, and none names one that exists but is owned by no task. The
 properties this revision adds or amends land in files on both sides of that line — PROP-CONFIG-09 in
 the not-yet-created `learningsConfig.test.js` (LI-12), and the Group D amendments in the **already
