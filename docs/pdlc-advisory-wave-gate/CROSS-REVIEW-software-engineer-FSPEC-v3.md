@@ -164,7 +164,35 @@ No §5 row cites an AC that the window retired, renumbered, or reworded against 
 
 ## Acceptance Tests
 
-_pending_
+The ATs whose *Given*/*Then* rest on changed upstream text, and whether each still has a live oracle.
+
+- **AT-05-1** (three restoration triggers, tree observably identical). Its *Then* transcribes BR-9's
+  domain and observation point — "taken immediately after restoration completes, before the record
+  and escalation writes". Against AC-5.1 v1.15 this is still the correct oracle, now with upstream
+  agreeing on the cut. The ignored-path exclusion it asserts on both sides matches AC-5.1's
+  predicate. **Still falsifiable, still faithful.** (My v2 F-03 — that AT-05-1's *When* says "each
+  terminates" while its *Then* pins the restoration-completion instant — remains open and inherited;
+  the window makes it slightly more visible, since REQ now also pins the instant, but the two-word
+  fix is unchanged and Low.)
+- **AT-05-2** (per-path restore must fail). Rests on BR-9's content-level oracle and the ignored-output
+  fixture carve-out. Untouched upstream. Live.
+- **AT-05-5** (restoration itself fails → halt, no commit reached). Its upstream is AC-5.1/E-28, whose
+  text did not change. Live.
+- **AT-01-1 / AT-07-2 / AT-04-5's first companion** — the three pre-A6 comparand tests. These are the
+  ones the AC-1.1/R-5 hunk bears on. AT-07-2 cites `R-5` directly, and R-5 now carries the base pins
+  `c8aa22a4` (pre-change) and `11420461` (post-change). FSPEC §2 already declared the same two bases
+  and already declared that "a green result for one of those three at any later base is a vacuum,
+  not a pass". Upstream and FSPEC now name identical commits, so the transcribed-comparand
+  discipline §6's preamble states is intact on both sides. **Strengthened, not broken.**
+- **AT-06-1 / AT-06-6** (record and escalation-log writes). AC-6.1/AC-6.2's own text is untouched;
+  only AC-5.1's *reference* to them changed. AT-06-6's contrast — a failed record write refuses the
+  action, a failed escalation-log write does not undo the escalation — is unaffected. Live.
+- **AT-07-1**'s BR-1…BR-16 partition still lists BR-9 under "not proposable, by construction". The
+  window gave BR-9's upstream more text but did not make any part of it agent-proposable: every
+  clause added is script-decided before or after a proposal is read. Partition still total, still
+  disjoint. Live.
+
+No AT in §6 lost its oracle, and none gained a vacuous one, as a result of this window.
 
 ## Open Questions
 
