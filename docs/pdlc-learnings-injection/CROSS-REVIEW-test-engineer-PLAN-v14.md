@@ -141,7 +141,68 @@ un-recorded second writes.
 
 ## Verification
 
-_pending_
+Everything below is a measurement I ran, not a claim I read.
+
+**1. Commit reachability (item 1).** `git merge-base --is-ancestor <sha> HEAD` for each pin:
+`e7fa8d87` LI-21 **reachable**, `be2456c8` LI-16 **reachable**, `a4998e13` LI-17 **reachable**;
+`92b7ea0c`, `d462ddd8`, `2cbacada` **resolve to nothing on this branch**. The re-pin is correct and
+the pre-rebase triple is genuinely unresolvable, so removing it was owed, not cosmetic.
+
+**2. Case C's green (item 4).** In `pdlc/workflows`,
+`npm test -- __tests__/learningsBlock.test.js __tests__/learningsSelect.test.js` →
+`Test Suites: 2 passed, 2 total` / `Tests: 26 passed, 26 total`, no skipped count emitted. The
+cell's "26 passed, 26 total … `test.skip`/`describe.skip` count of 0" reproduces exactly. (Note for
+anyone re-measuring: a bare `npx jest` fails both suites on `Cannot use import statement outside a
+module` — the ESM flag lives in the package's `test` script, so the cell's `npm test -- …` form is
+the one that measures anything. That is the PLAN's own form, correctly stated.)
+
+**3. `2fc6fcd3`'s surfaces (items 2 and 3).** `git show --name-status 2fc6fcd3`: **13** files under
+`pdlc/workflows/__tests__/` beyond the regenerated baseline `.txt` fixtures — 4 added, 9 modified —
+plus `pdlc/engine/__tests__/learnings-config-example.test.js` added, plus production-side
+`orchestrate-dev.js`, `.gitignore`, `package.json`, `scripts/capture-learnings-baseline.mjs` and
+`dist/pdlc-cli.mjs`. The four new unowned files the amendment names are exactly right and the two
+second-owner rows are correctly attributed to LI-06 at batch 4. "Six test-side surfaces" is not.
+`git ls-tree -r --name-only 09c7c62f` confirms **seventeen** `learnings*` files under
+`pdlc/workflows/__tests__/`, eighteen only if the engine-side file is counted. F-01.
+
+**4. The coverage gate, re-run against the doc (F-02).** This is the check my lens owes on every
+coverage claim: verify the **gate command**, never the prose. `pdlc/workflows/package.json` at HEAD
+carries
+
+```json
+"include": ["**/pdlc/workflows/orchestrate-dev.js", "**/pdlc/workflows/orchestrate-queue.js",
+            "**/pdlc/workflows/build-runtime.mjs", "**/scripts/capture-learnings-baseline.mjs"],
+"allow-external": true,
+"exclude": ["**/.tmp-capture-driver-*/**", "**/.baseline-worktree/**", "**/pdlc-capture-entrypoint-*/**"]
+```
+
+`git show 2fc6fcd3 -- pdlc/workflows/package.json` shows that block being written by the very commit
+this erratum exists to record. The PLAN still says, in two places:
+
+- §Overview change-surface table: *"`pdlc/workflows/package.json` | exists; `c8.include` is exactly
+  `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs` | **no task** — the capture
+  script's coverage disposition is an explicit exemption"*;
+- §File-ownership manifest: *"`pdlc/workflows/package.json` — **not** modified: …deliberately left
+  outside `c8.include`… The exemption, its justification and the two named oracles that stand in for
+  a coverage floor are recorded in §Verification DoD 11"*.
+
+Both limbs are false at HEAD. The file **was** modified, the include set is four `**/`-anchored
+entries rather than three bare basenames, `allow-external: true` is now in force (which the shipped
+`//c8` note itself records as having silently dropped the other three modules out of the report when
+it was first added — a real false-green this branch already hit), and the capture script is now
+**inside** the per-file floor the PLAN says it is exempt from. DoD 11's stage-2 table names three
+modules; the shipped gate measures four. A DoD verifier reading this PLAN would check an exemption
+that no longer exists and would not check the floor that now applies to LI-05's script.
+
+This is `inherited` — the stale text predates this round's bytes and the erratum did not touch it —
+and `nonlocal`, since it sits in §Overview / §Production and generated rather than in the new
+subsection. It is High because it is a coverage-floor claim contradicted by the gate command, which
+is the specific failure mode DC-09 exists to catch; it routes back to the owning phase rather than
+halting this one.
+
+**5. What did not move.** Batch ladder, `Deps` edges, AT partition, fixture list, expected-red ledger
+for batches 7–13, `[Fake first]` labelling, DoD clauses 1–14: all byte-identical across
+`aa5f0378..HEAD`. The changelog's v1.2 row claims exactly that and the claim holds against the diff.
 
 ## Recommendation
 
