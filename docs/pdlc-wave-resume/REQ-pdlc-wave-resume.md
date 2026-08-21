@@ -77,8 +77,8 @@ into an attention tax on exactly the unattended-operation path the pipeline exis
 serve.
 
 **Correction, 2026-08-13.** The sharp edge above is overstated in one direction: an
-out-of-plan-range `startWave` is already clamped to 1 with an announced notice
-(`orchestrate-dev.js:12171-12177`), so that failure mode is mitigated at HEAD. An
+out-of-plan-range `startWave` is already clamped to 1 with an announced notice (the clamp sits
+immediately below `explicitPointer` in `orchestrate-dev.js`), so that failure mode is mitigated at HEAD. An
 in-range stale pointer still silently skips waves, so the claim is accurate in spirit
 but not, as originally written, without qualification.
 
@@ -97,29 +97,31 @@ mechanism, not necessarily new wiring.
 **already merged to main** (it landed with `pdlc-consolidation-agent`), not sitting at
 HEAD of a feature branch. BL-01 and BL-03 (§5) are correspondingly already resolved.
 
-**Operational finding, 2026-08-13 — the interim ledger is merged but is not, in practice,
-resuming anything.** Operator observation is that a re-invocation still re-enters at wave 1, and
-the tree corroborates it: **no `.claude/pdlc-wave-state.json` exists anywhere in this repo,
-including its worktrees**, despite wave-mode Phase I runs since the ledger merged on 2026-08-10
-(`87d9c6ad`). Four shipped preconditions explain it, and each fails routinely — this list is the
-concrete gap this feature closes, and it belongs in FSPEC as such:
+**Operational finding, 2026-08-13, re-verified 2026-08-21 — the interim ledger fires, but
+narrowly, and several routine conditions discard what it writes.** The 2026-08-13 observation was
+that no `.claude/pdlc-wave-state.json` existed anywhere in this repo. That is **no longer true**:
+as of 2026-08-21 this working copy carries an untracked record for `pdlc-advisory-wave-gate` with
+seven waves recorded green and a `head` stamp, so the mechanism has fired and recently. What
+survives re-verification against the default branch is the narrowness, not the never — three
+shipped preconditions discard the record under conditions this pipeline meets routinely, and that
+is the concrete gap this feature closes, so it belongs in FSPEC as such:
 
-1. The write sits inside the `if (scriptGate)` branch (`orchestrate-dev.js:12345`-`:12429`), and
-   `scriptGate` requires both `implementation.testCommand` and a `_runCommand` seam (`:12128`), so
-   a self-report-gate run records nothing, ever.
-2. The write happens only after a wave goes green **and** its work is committed, so a run that
+1. The write happens only after a wave goes green **and** its work is committed, so a run that
    halts at wave N records nothing for wave N — and one that halts at wave 1 records nothing at
-   all, which is precisely the halt this feature is meant to resume from (OF-1).
-3. The record is ignored when the PLAN's wave layout changes (`planHash`), so any PLAN edit
+   all, which is precisely the halt this feature is meant to resume from (OF-1). The write is
+   guarded by the **git transport**, not by the gate mode: a run with no transport verifies but
+   commits nothing and therefore records nothing, which is REQ-WVR-09's premise. A self-report-gate
+   run *with* a transport records normally.
+2. The record is ignored when the PLAN's wave layout changes (`planHash`), so any PLAN edit
    between invocations — routine when remediating a halt — sends the next run back to wave 1.
-4. The record is ignored when the recorded commit is not an ancestor of HEAD, and Phase DOD step 0
+3. The record is ignored when the recorded commit is not an ancestor of HEAD, and Phase DOD step 0
    rebases `feat-{feature}` onto the default branch, rewriting exactly those commits.
 
-Two consequences for this REQ. **REQ-WVR-01's contract is not satisfied by the interim** — BL-03's
-"formalize and replace, never duplicate" rule still applies, but what is being formalized is a
-mechanism that has never once fired here, so the FSPEC's oracle must be an observed resume, not
-the presence of the code path. And **the REQ-WVR-05 conflict below is less acute than it appears**:
-a record that is never written cannot fail to be cleared.
+One consequence for this REQ. **REQ-WVR-01's contract is not satisfied by the interim** — BL-03's
+"formalize and replace, never duplicate" rule still applies, and the FSPEC's oracle must be an
+**observed resume, not the presence of the code path**, because a code path is never an oracle:
+the three preconditions above are exactly the distance between "the write exists" and "a resume
+happened".
 
 ## 2. Goals
 
