@@ -205,7 +205,21 @@ design objections.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-08 | Medium | Local | **DEC-A6-02's newly load-bearing cardinality has no falsifying test, and the entry's reversibility caveat reads as though it has one.** The delta promotes "one `commitPaths` call **per promoted task** … the cardinality is load-bearing, not a detail" (`:296-307`), which is true of the code (`groupPromotedPaths` groups by owning task id into a multi-row `Map`, `orchestrate-dev.js:3329-3342`; the loop issues one call per row, `:15471-15482`). But the Reversibility paragraph still says "the commit *message* is asserted, so a later reshaping is a test-visible change, not a silent one" (`:322-323`), and at HEAD the only oracle is a **single-promotion** fixture using **containment** — `expect(commits).toContain("chore(test-feat): wave 1 advisory promotion (T2)")` (`waveExecution.test.js:1347`); TSPEC §5.6's AT-04-5 row is singular too (`TSPEC:1716`). A regression to one widened commit naming the first promoted task passes untouched — precisely the per-task attribution option A is rejected to protect. **Fix:** split the caveat exactly as F-05's repair split its claim — the *message literal* of a single promotion is asserted; the *per-task cardinality* is specified and not yet asserted, and wants a two-promotion fixture with **set-equality** over the observed `advisory promotion (…)` messages rather than `toContain` | `DEC-A6-02` `:296-307` and `:320-330` |
+| F-09 | Low | Local | **Context's three-list cost omits the packed-set fixture, so the countable cost is undercounted by one.** `:147-150` names `MODULE_NAMES` (`prepack.mjs:20`), `WORKFLOW_MEMBERS` (`publish-preflight.mjs:220-224`) and `WORKFLOW_MODULE_NAMES` (`fixture-machine.mjs:426`) as the three hardcoded lists a new module must be added to. A fourth enumeration would redden on the same edit: `pdlc/engine/__tests__/_tspec-packed-set.mjs:51` lists `vendor/workflows/orchestrate-queue.js` among the expected packed members. Since the F-03 repair's whole point is that this is a *countable cost* rather than an impossibility, the count should be complete. (`lib/run.mjs:70-73`'s `MODULE_FILE_NAMES` is correctly **not** in the list — it enumerates entrypoint kinds, and `rootResolves` (`:77-79`) only requires those two to be present, so a vendored helper module does not touch it.) **Fix:** "three production lists plus the packed-set fixture" | `## Context` `:147-150` |
+
+Prior-round findings, all verified resolved against the tree: F-01 (`:412-427`), F-02 (`:5`, `:195`,
+`:271-275`, `:286-292`, `:439-444`), F-03 (`:138-163`, `:193`), F-04 (`:279-285`), F-05 (`:517-530`),
+F-06 (`:174`, `:195`, `:249-252`), F-07 (`:7`).
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | (Carried from v1 Q-02, unchanged, and now clearly *not* this document's defect.) `TSPEC:477`'s capture block specifies `git add -A --`; the shipped call is `["add", "-A"]` (`orchestrate-dev.js:12579`). v1.11 correctly aligned all three of its own sites (`:174`, `:195`, `:265`) on TSPEC's literal, so the record is faithful — but the divergence from shipped argv is still live, and no oracle ranges over the trailing `--` (§5.2's argv assertions match on `argv[0]`). Is the `--` a load-bearing pathspec terminator the implementation is one token short of, or documentation intent TSPEC can relax? Either answer is upstream's; I ask it here only so the next round does not re-derive it. |
+| Q-02 | The v1.11 note says the three v1.10 misses "share a signature worth carrying forward: claims about **failure modes, visibility and impossibility**, none of them falsifiable by the grep-shaped check that confirms a count" (`:116-119`). I agree, and F-08 is arguably a fourth instance of the same family (a *cardinality* claim whose check is containment). Is that signature intended to reach `LEARNINGS-pdlc-advisory-wave-gate.md` as a durable review-checklist line, or does it stay local to this record's preamble? I would file it as durable — it is the only recurring defect class this document has produced. |
 
 ## Positive Observations
 
