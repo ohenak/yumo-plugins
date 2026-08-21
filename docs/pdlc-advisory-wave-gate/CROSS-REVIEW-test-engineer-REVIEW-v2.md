@@ -240,3 +240,31 @@ in `docs/_constraints/DOMAIN-CONSTRAINTS.md` beside DC-07.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No open High findings. v1's F-01 — the only blocker — is resolved, and resolved by the evidence
+that matters rather than by the presence of an assertion: the mutation that was silently green
+across 4229 tests in v1 is RED now (M1). F-02 is resolved on the same production surface and
+caught a real shipped defect on the way. F-03 is partially resolved and its residue is recorded
+below as F-04.
+
+The two open findings are non-gating and neither touches shipped behaviour's correctness:
+
+- **F-04 (Low)** — the overwrite predicate still admits the inverted sentence. The shipped string
+  is right; the oracle guarding it is one clause short. Anchor on `copy the ref first` (or the
+  full `overwrites that capture — copy the ref first`) at all four sites, including the two
+  seam-level arms at `advisoryWaveGate.test.js:1836`/`:1855` that were not narrowed this round,
+  and re-run M5 to confirm RED.
+- **F-05 (Medium, Cross-Feature)** — `mainDev`'s undefaulted `_now` (`orchestrate-dev.js:13020`)
+  makes the injected-clock contract a per-call-site decision with no oracle. The one-line fix is
+  to default it on `mainDev`; the durable part is the constraint, which belongs in
+  `docs/_constraints/DOMAIN-CONSTRAINTS.md` beside DC-07 and should be picked up at harvest.
+
+Both can land in the optimizer loop or be deferred; neither blocks the phase. I found no defect in
+the production delta itself — the frozen meanings map, the seam `_now` default, and the JSDoc are
+all correct as written, and the four load-bearing oracles I tried to break (M1–M4) each went RED.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
