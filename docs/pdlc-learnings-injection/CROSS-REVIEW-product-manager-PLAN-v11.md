@@ -168,11 +168,42 @@ these in a clause each.
 
 ## Positive Observations
 
-_(pending)_
+- **The answer is a ruling, not a re-wording.** The easy fix was to soften case B's span until it no
+  longer named a batch. Instead case C names what replaces the span — batch 14's unqualified gate —
+  and states the obligation that follows from it: green at landing, a fix owed before batch 14 runs
+  if it is not, a gate failure if the red survives. That is a contract a dispatcher can evaluate,
+  which is the same standard the ledger itself is held to.
+- **It discharges its own burden.** A "you owe green" ruling is a promise about shipped behaviour, and
+  the row proves it in-line — `canonicalSectionName`, `SECTION_HEADING_RE`, `BR6_SECTION_NAMES`, the
+  gloss strip, the `###` non-match. I checked every clause at HEAD and every one holds. "That is not
+  a hope" is the right sentence to have written, and it is true.
+- **It answers a question I asked rather than deferring it.** My v10 Q-02 asked whether the amendment
+  is now expected to land green. The delta answers it in the document, in the place a reader will look,
+  with the evidence attached — not in a changelog aside.
+- **It generalises exactly as far as it should.** "The same rule governs any other amendment to a
+  landed suite arriving from here on" turns a one-off fix into a standing rule for the tail of this
+  feature, and then immediately names the concrete population it applies to (the PROPERTIES §C.4
+  re-reds). A rule with its instances named is a rule that will actually be followed.
+- **Case A's window is now derived.** The v9 finding asked why "before batch 7" was the boundary; the
+  answer now covers batches 2–6, notes they carry no ledger at all, and names their *different* red
+  reason (`extractInjectableMaterial` is not defined yet, versus defined-but-incomplete at 7–8) before
+  showing the outcome is the same either way. That is the right way to close a "why this boundary"
+  finding — same conclusion, now with the reasoning that makes it checkable.
+- **The scoping fix on the closing paragraph is precise.** "A ruling scoped to **this** heading-form
+  follow-up commit, not a standing exemption for those files" is exactly the distinction that was
+  missing, and the paragraph then routes the non-additive future case to case B *or* case C depending
+  on where batch 13 sits. Both branches are named; neither is left to inference.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+The six routed raises are resolved in substance, verified at HEAD rather than taken from the
+changelog's account of itself. Nothing I approved at v10 moved: no task changed batch, no `Deps` edge
+changed, no ledger row, AT partition, fixture or manifest row was touched, and the three load-bearing
+properties of the ledger survive the new case-B bound. The three findings below are Low and none is
+gating — two are unreachable boundary seams, one is a punctuation slip in a gate-bearing sentence.
+They are worth a single cleanup pass whenever this block is next edited; they do not warrant a round.
 
 ## Delta-Confirmation Findings
 
