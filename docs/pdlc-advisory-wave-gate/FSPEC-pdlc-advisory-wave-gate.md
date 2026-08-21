@@ -472,8 +472,15 @@ against itself and passes unconditionally.
   entry is written. *Then* it carries the root-cause class alongside the tier's required fields and
   one sentence stating what the operator must decide. *(BR-13, AC-6.2.)*
 - **AT-06-4** — *Who:* an operator reading a halt report. *Given* a halt following an A6 escalation.
-  *When* the report is produced. *Then* it carries the diagnosis and its root-cause class. *(BR-14,
-  AC-6.3.)*
+  *When* the report is produced. *Then* (1) it carries the diagnosis, (2) it carries the root-cause
+  class, and (3) where it points the operator at a captured pre-A6 tree state, the same report states
+  there that re-running this feature overwrites that capture. The oracle asserts co-location and the
+  presence of the overwrite statement, never the capture's name — that is O-1's. *(BR-14, AC-6.3.)*
+- **AT-06-4b** — *Who:* an operator reading a halt report. *Given* a halt following an A6 escalation
+  in which no pre-A6 tree state could be captured (E-34). *When* the report is produced. *Then* it
+  carries the diagnosis and the root-cause class, points at no capture, and carries no overwrite
+  warning — the companion that makes AT-06-4's conjunct (3) falsifiable rather than a string always
+  present. *(E-34, BR-14, AC-6.3.)*
 - **AT-06-5** — *Who:* an operator counting recurrences. *Given* several runs in which A6 escalated
   `plan-ordering-defect`. *When* the escalation log alone is read, with no run logs. *Then* the count
   is derivable per feature. The companion negative is specified, not a gap: resolution counts are
