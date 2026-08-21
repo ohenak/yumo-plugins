@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.5 | 2026-08-21 |
+| pdlc | Draft | Claude | 0.6 | 2026-08-21 |
 
 ## Overview
 
@@ -1094,7 +1094,7 @@ tracked at `21edb7c5`. The task ids with commits on this branch are **LI-01…LI
 **LI-22 is the only id with no commit**, and it owns none of the fourteen — its row is the
 🔵 REFACTOR-and-close task, whose artifact is a full-suite green run and the human cross-check of
 LI-23's arm inventory, not a file (PLAN, LI-22 row). Two further committed ids also own none of the
-fourteen: LI-04, whose artifact is the `/.baseline-worktree/` ignore rule (`.gitignore:13`, landed
+fourteen: LI-04, whose artifact is the `/.baseline-worktree/` ignore rule (the `.gitignore` rule `/.baseline-worktree/`, landed
 `ae2af1da`), and LI-05, whose artifact is the capture script (below). Earlier revisions of this
 paragraph said seven had landed and "the remaining seven are explicitly planned and unstarted"; that
 was true when written and is not now — `learningsBaselineGuard.test.js` and
@@ -1114,9 +1114,16 @@ row `learningsBlock` → `LI-AT-11`'s heading-form cases, stated in test names, 
 the landing batch through the batch that greens them. **None of the four is present in the landed
 suite**: at `21edb7c5` `learningsBlock.test.js` declares one `describe` naming three ATs
 (`describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)")`, `learningsBlock.test.js:38`),
-carries no un-numbered `## Cross-Feature Patterns` / un-glossed `## Rejected Proposals` heading-form
-arm, no `###`-as-body case and no `## Process Findings` near-miss, and its only `maxBytes` literals
-are `40` (`:111`) and `66` (`:131`) — no `extractInjectableMaterial(text, 0)` case. All four are
+carries none of `LI-AT-11`'s variant heading-form arms — no un-glossed `## Rejected Proposals`
+(the builder renders the canonical glossed `"Rejected Proposals (with rationale)"`), no `###`-as-body
+case and no `## Process Findings` near-miss. The un-numbered `## Cross-Feature Patterns` spelling
+*does* appear — as LI-AT-05's material and as LI-AT-12's fixture text, with
+`expect(result.sections).toEqual(["Cross-Feature Patterns"])` proving the matcher accepts it — so
+what is owed there is the variant fixture as a whole, not that spelling (SE v8 F-02). Its only
+*binding* `maxBytes` literals are `40` (`const maxBytes = 40`, beside the "Hand-computed (never
+derived here)" comment) and `66` (`const maxBytes = 66`); the third call passes a deliberately
+non-binding `100000` under the comment "Unbounded: large enough that maxBytes never binds". There is
+no `extractInjectableMaterial(text, 0)` case. All four are
 therefore **property-owed cases with no red-owning task remaining ahead of them**: they land into
 green committed code, not into a scheduled red, and two gaps in case B's wording follow from that —
 its named row covers `LI-AT-11`'s heading-form cases only, so PROP-BOUND-03's `maxBytes <= 0` case
@@ -1126,7 +1133,7 @@ Both are PLAN's call, not this document's, and both are routed as errata rather 
 **And the deferral this document previously leaned on is spent, not pending.** Earlier revisions
 concluded that this document's own four properties "travel under P-A-6's rule … so they enter no
 ledger row unless that commit is brought forward." P-A-6 holds the PROPERTIES **suite**'s commit to
-"the first point it is green, which in practice is after LI-21 (batch 13)" (PLAN, P-A-6). LI-21
+"the first point the suite is green, which in practice is after LI-21 (batch 13)" (PLAN, P-A-6). LI-21
 landed at `92b7ea0c`, so that point has **arrived**: the window P-A-6 deferred into is open now
 rather than ahead, and the suite may be committed as soon as it is green — or, if it lands red, its
 rows are amended into the ledger by name first, under the same P-A-7 rule. The conclusion that **no
@@ -1140,8 +1147,10 @@ restatement above moves neither rule, only the point in the run each is read fro
 file the PLAN does not create**, and none names one that exists but is owned by no task. The
 properties this revision adds or amends now all land in **landed** files — PROP-CONFIG-09 in
 `learningsConfig.test.js` (LI-12), which landed at `eb32d7d2` and already carries LI-AT-30's three
-cases (`learningsConfig.test.js:226`, `:242`, `:258`, the third asserting `RSN-NO-MATERIAL` on every
-non-self path and no document carrying `RSN-COUNT`), and the Group D amendments in
+cases (the `test("LI-AT-30: maxDocuments: 0 …")`, `test("LI-AT-30: maxTotalBytes: 0 …")` and
+`test("LI-AT-30: maxBytesPerDocument: 0 ⇒ every non-self corpus path RSN-NO-MATERIAL, none
+RSN-COUNT, no slot consumed (E-36)")` titles in `learningsConfig.test.js`, the third asserting
+`RSN-NO-MATERIAL` on every non-self path and no document carrying `RSN-COUNT`), and the Group D amendments in
 `learningsSelect.test.js` (LI-07, `1544fdbd`) and `learningsBlock.test.js` (LI-08, `5e522a52`). Every
 one of them is therefore an amendment applied to committed code rather than a suite written fresh;
 none is a file the PLAN has yet to create. PLAN records the
