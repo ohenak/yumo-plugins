@@ -179,4 +179,25 @@ DEFERRED: the three T-O-6 locator rewrites are correct and should be propagated 
 
 ## Recommendation
 
+**Needs revision.**
+
+My three v6 findings are resolved, and nothing in the delta weakens a property, an oracle or a
+fixture. The block is a single High finding that qualifies under the freeze as category (ii) — a
+factual contradiction with the repository at HEAD that makes a load-bearing claim false — and it sits
+inside the paragraph this delta edited:
+
+1. **F-01** — §C.4's "re-measured at HEAD" inventory says seven of fourteen files have landed and the
+   remaining seven are unstarted. All fourteen are tracked at HEAD, and were already tracked at the
+   commit carrying this edit. Re-run the measurement: restate the table's At-HEAD column, drop
+   "not-yet-created" for `learningsConfig.test.js` (LI-12, landed `eb32d7d2`), and re-derive the
+   ledger-row consequence for this document's four properties from PLAN P-A-7 **case B** — the suite
+   they amend is landed and greened by LI-17 (`2cbacada`), not still scheduled to red.
+
+That is the whole of what must change. Everything else in the delta is correct and should stand: the
+PLAN pin, the three T-O-6 locators, the P-A-6/P-A-7 attribution, the capture-script sentence, and the
+new struck item in §G.3. No property text, oracle, level, fixture or count needs to move.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
