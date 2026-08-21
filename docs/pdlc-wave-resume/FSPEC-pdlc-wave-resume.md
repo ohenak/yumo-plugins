@@ -354,25 +354,46 @@ the announced next wave, not the absence of a change.
 invoked. *Then:* outcome (a), announced with that reason (EC-06). *And:* with the probe
 unavailable, the record is not disregarded on ancestry grounds (EC-07).
 
-**AT-12 — all waves recorded: Phase I skipped in full (REQ-WVR-08).**
-*Given:* a valid record for this feature and unchanged plan accounting for every wave. *When:*
-invoked. *Then:* no wave is dispatched, no gate executes, Phase I produces **no commit**, the
-skip is announced with its reason and the hatch, and the report's Phase I row carries a skip
-status distinct from an executed Phase I's — one row, not two.
+**AT-12 — all waves recorded: the implementation wave loop is skipped in full (REQ-WVR-08).**
+*Who:* pipeline operator. *Given:* a valid record for this feature and unchanged plan accounting
+for every wave. *When:* invoked. *Then:* the skip is announced with its reason and the hatch, and
+the report's Phase I row carries a skip status distinct from an executed Phase I's — one row, not
+two. *Oracle:* **call counts**, not absence — with a counting spy on the agent seam and one on the
+command seam, the implementation wave loop performs **zero** agent dispatches and **zero** gate
+invocations, and produces no implementation-wave commit. *Fourth conjunct — the V-wave:* Phase PT
+still dispatches exactly **one** agent and, under a script-owned gate, invokes the gate command
+exactly **once**, and its commit is the run's only Phase-I-adjacent commit (EC-20). Every count is
+a literal from this spec, never a value derived from the mechanism under test; an absence-shaped
+"no commit" oracle alone cannot distinguish a skipped V-wave from one that ran with nothing to
+add.
 
 **AT-13 — the outcome catalogue is closed at three (BR-01).**
-*Oracle form:* set equality over {(a) full run, (b) resume mid-plan, (c) skip Phase I} across a
-fixture suite covering all three; a deleted outcome fails a test.
+*Who:* pipeline maintainer. *Given:* three fixtures, one per outcome — (a) no record present
+(EC-01), (b) a valid record naming fewer completed waves than the plan has (AT-01's fixture), and
+(c) a valid record accounting for every wave (AT-12's fixture) — over the same feature and plan.
+*When:* the pipeline is invoked for each. *Then:* each resolves exactly one outcome, each
+announces which, and the set of outcomes observed across the three equals {(a) full run, (b)
+resume mid-plan, (c) skip the wave loop}. *Oracle form:* **set equality**, so a deleted outcome
+fails a test rather than passing one; containment does not discharge BR-01.
 
 **AT-14 — the record never becomes tracked content (REQ-WVR-10).**
 *Given:* any run of any length that writes the record. *When:* the run's commits are inspected.
 *Then:* no commit contains the record, and the record is not a tracked file. *And:* its exclusion
 is anchored by an ignore rule, asserted against the rule itself rather than against the absence
-of churn in one run.
+of churn in one run. *Branch precondition:* the rule exists on the default branch and **not** in
+this authoring tree, so this test is RED here until OB-F1 is discharged. That is a branch-state
+consequence, not a defect of the rule: te-author must not weaken the arm to observed quiet to make
+it pass before the rebase.
 
-**AT-15 — a failed write is a notice, never a halt (BR-15).**
-*Given:* a run in which the record cannot be written. *Then:* a notice is announced, the run
-continues to its normal outcome, and a subsequent invocation resolves outcome (a).
+**AT-15 — a failed write is a notice, never a halt; the cost is bounded (BR-15).**
+*Arm 1 — no write succeeds.* *Given:* a run in which **no** write of the record succeeds. *Then:*
+a notice is announced per failure, the run continues to its normal outcome, and a subsequent
+invocation resolves outcome (a) from wave 1 (EC-15).
+*Arm 2 — some write succeeds.* *Given:* a run whose wave-1 write succeeds and whose write at a
+later wave M fails. *Then:* the run still continues to its normal outcome, and a subsequent
+invocation resolves outcome **(b)** at the wave after the last successfully recorded one,
+re-executing the waves whose writes were lost (EC-15a). *Discriminating value:* arm 2 fails an
+implementation that discards the whole record on any write failure, while arm 1 alone does not.
 
 **AT-16 — queue parity (REQ-WVR-07).**
 *Given:* the same feature, plan and record. *When:* run once directly and once through a
@@ -384,8 +405,19 @@ two fails this test while AT-01..05 all still pass.
 **AT-17 — advisory remediation composes without coordination (EC-16).**
 *Given:* a halted wave on which the advisory wave-gate seam acts. *Then:* on resolution the wave
 commits and is recorded; on failure the identical halt stands and the record still names the
-wave below. *And:* the record is in no wave's owned-path set, so no remediation envelope can
-authorise touching it.
+wave below. *And:* **this feature's PLAN** claims the record in no wave's owned-path set — a
+finite check over that PLAN's ownership manifest, asserted by name. The general claim (no PLAN may
+ever claim consumer-local state) is not asserted here: it is unfalsifiable as a per-feature test
+and is routed to Phase P as a gate question (OB-F6).
+
+**AT-18 — completion accumulates across invocations (BR-08, §3.4).**
+*Who:* pipeline operator. *Given:* a multi-wave plan halted at wave 2, re-invoked and halted again
+at wave 4, with the same feature, an unchanged plan, and no resume-related configuration set.
+*When:* the pipeline is re-invoked a third time. *Then:* the announced resume point is **wave 4**
+with provenance `automatic`, and waves 1–3 are **each** announced as skipped. *Discriminating
+value:* a record that counted only the waves the previous run itself executed would announce a
+resume point of wave 3 and skip only wave 3 — failing this test while AT-01..AT-17 all still pass,
+because each of those covers at most one halt and one resume.
 
 ## 7. Open Questions
 
