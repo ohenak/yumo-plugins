@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.5 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.6 | 2026-08-20 |
 
 **v1.1 (round 1).** All v1 High/Medium addressed: E-04/AT-01-5 counting oracle; AT-04-3 over writer identity; §3.2 step 3b; BR-11 window; seven ATs added, four restated as oracles.
 
@@ -18,6 +18,8 @@
 **v1.3 (round 3).** AT-07-1's BR-2 arm carries BR-2's own outcome (`unclassified`, no refusal reason, no attempt consumed), its BR-3 arm pins `attemptBudget` `1`; AT-02-7's companion gains a positive disposition and a one-window *Given*; E-30/AT-06-6 name the report's notice channel as the failed-log-write carrier. REQ errata re-emitted.
 
 **v1.5 (closing pass).** Upstream re-grounded: REQ v1.6 → v1.13 and `pdlc-wave-gate-baseline.md` v1.1 → v1.2 in §1, §2 and A-2; E-33 absorbs AC-2.4's zero-mode conjuncts. REQ lineage-header items raised as errata.
+
+**v1.6 (round 1 on FSPEC).** BR-2/AT-02-1 carry AC-2.2's first-matching-class rule with an ordered oracle and a two-class arm (E-08b); BR-9/AT-05-1/AT-05-2 pin the map's domain (non-ignored) and observation point; BR-5 and BR-15 transcribe the shipped exclusion and refusal orders; BR-12's signal is durable; §6 states the pre-A6 comparands are transcribed literals; E-34, E-23's halt writes, §2's before-base, AT-07-1's BR-4, AT-04-1/-02-9/-03-2/-03-7 clarified.
 
 **v1.4 (round 5).** AT-04-1 split to AC-4.1's three conjuncts, a run each (AT-04-1a green re-gate, AT-04-1b suppressed re-gate); "not assertable" rationale deleted (SE F-01, TE F-02). Seam budget per **attempt**, worst case `attemptBudget` × the value, carve-out dropped (SE F-02/F-03, TE F-01). AT-01-5, A-1, A-4 realigned (SE F-04…F-06, TE F-03/F-04). REQ errata landed in v1.7/v1.8.
 
@@ -69,6 +71,12 @@ not a gap. BL-06's enumeration — the transcribed set-equality surfaces that th
 input to planning, and this FSPEC states only the observable consequence: the surfaces named in
 M-WG-9 are expected to change, and a run in which they did not is a defect (AT-01-1, AT-07-2).
 
+**Where "before" is measured.** AT-01-1, AT-07-2 and AT-04-5's first companion define themselves
+against the pre-A6 state, which this branch's HEAD no longer carries: A6 merged at `bb4d36fb`, and
+`pdlc-wave-gate-baseline.md` §4 records the post-change readings (M-WG-13, M-WG-14, at `11420461`).
+The base those before-readings are measured at is `c8aa22a4`, where M-WG-8's five-member catalogue
+still holds. A green result for one of those three at any later base is a vacuum, not a pass.
+
 **Where a requirement is deliberately not specified here.** REQ O-1, O-3, O-4, O-5 and O-8 are obligations on the TSPEC: this FSPEC states the outcome each must produce and nothing about how. §7.1 carries them forward so the TSPEC author inherits them from one place.
 
 ## 3. Behavioral Flow
@@ -115,7 +123,7 @@ Nothing is committed at this step or any other: A6 never commits (BR-8).
 state it stood in immediately before A6 acted — the wave's post-dispatch, pre-commit tree, with the
 wave agents' own uncommitted work intact — and control returns to step 3b's attempt check (BR-9).
 
-**Step 9 — Terminal disposition.** Exactly one of: *resolved* (step 8a on a green re-gate); *escalated* (refusal, malformed verdict, budget exhaustion, or a red re-gate with no attempt left); *no-action* (tier disabled, or A6 inapplicable). An advisory-record entry is appended for every disposition and an escalation-log entry for every escalated one (BR-13); a record-write failure refuses the action rather than proceeding unrecorded.
+**Step 9 — Terminal disposition.** Exactly one of: *resolved* (step 8a on a green re-gate); *escalated* (refusal, malformed verdict, budget exhaustion, or a red re-gate with no attempt left); *no-action* (tier disabled, or A6 inapplicable). The vocabulary is the tier's, not A6's, and its closed assertion belongs to the tier's own suite — the same division AT-06-1 makes for the record shape; A6 adds no disposition, and no AT here re-asserts the set. An advisory-record entry is appended for every disposition and an escalation-log entry for every escalated one (BR-13); a record-write failure refuses the action rather than proceeding unrecorded.
 
 **Step 10 — Halt, unchanged.** When A6 does not resolve the wave, the pipeline halts with the same reason it emits today (M-WG-3) and writes the same `halted` queue row (M-WG-7); the halt report additionally carries the diagnosis and its root-cause class. Escalation adds information, never control flow (BR-14).
 
