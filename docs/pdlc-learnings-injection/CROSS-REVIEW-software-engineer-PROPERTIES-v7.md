@@ -117,6 +117,32 @@ No oracle is retracted, weakened or made unfalsifiable by this revision.
 
 ## Fixtures
 
+No fixture named by this document changed, and the delta names none. Two fixture-adjacent facts in
+the delta are checkable against HEAD, and one of them is wrong.
+
+- **`scripts/capture-learnings-baseline.mjs` — verified true.** The rewritten sentence says the
+  script "has since **landed by LI-05** … (`ced75955`, 'LI-05 — GREEN the capture script')" and that
+  "`git ls-files scripts/` returns exactly that one path". Both check out: `ced75955` exists on this
+  branch with that subject line, and `git ls-files scripts/` at HEAD returns the single path
+  `scripts/capture-learnings-baseline.mjs`. This is the delta's best edit — it replaces an
+  absence claim that had gone false with a measured presence claim, and cites the commit.
+- **`fixtures/learnings-baseline/` — the table still says "not yet created", and it exists.**
+  `git ls-files` at HEAD returns `pdlc/workflows/__tests__/fixtures/learnings-baseline/MANIFEST.json`
+  plus `PHASE-F-AUTHORING-PROMPT/0.txt` and `PHASE-R-REVIEW-PROMPTS/{0,1}.txt`, landed by LI-06
+  (`4a6c1816`). Same for `helpers/learningsFixtures.js`'s six sibling suites. The revision fixed the
+  capture-script sentence and left the table beside it stale — the inconsistency is *within* the
+  paragraph the delta edited, which is why F-01 is delta-scoped rather than merely inherited.
+- **No expected byte count moves.** §G.2.2's framing-accounting resolution is untouched, and the
+  hand-computed 40/66-byte fixtures it governs are the ones the landed suite already asserts
+  (`learningsBlock.test.js:111`, `:131`). No literal in this document was re-derived from code.
+- **No new fixture is owed by this revision.** The four amendments to `learningsBlock.test.js` are
+  still cases over the existing `buildLearningsCorpus` builder, and PLAN v0.7's additivity premise for
+  the declared-heading-form knob is unchanged from v0.6, where I verified it against
+  `helpers/learningsFixtures.js` directly.
+- **`BYTES-BINDING` (3/5/0), `ZERO-BOUND`, `DIVERGENT-CORPUS`, `DISCARDED-NESTED`/`DISCARDED-DIRECT`,
+  `COUNT-BINDING`** — none is mentioned in the delta and none derives an expected value from PLAN's
+  ledger. Unaffected.
+
 ## Findings
 
 ## Questions
