@@ -42,7 +42,50 @@ hunks are not re-litigated except where the upstream re-read reaches them.
 
 ## Constraints
 
+- **Size (C-5).** The REQ is now **686 lines / 55,627 bytes** — inside C-5's 700-line / 61,440-byte
+  hard gate, over its 630-line / 55,296-byte soft budget, and +10 lines on v1.15's 676. The overage
+  pre-dates this round; this edit widened it by 10 (F-03).
+- **Citation-at-version.** `pdlc-wave-gate-baseline.md` is cited at v1.2 and reads v1.2 at HEAD;
+  `pdlc-advisory-corpus-baseline.md` is cited at v1.0 and reads v1.0 at HEAD. Neither file has changed
+  since my v5 read (`git log -- docs/_constraints/` still tops out at `64654032`), so v5's
+  upstream-fidelity conclusions carry forward unchanged, including its two open Lows (F-04, F-05).
+- **Altitude (O-1).** The new AC-6.3 clause names no ref, no namespace, no storage form — it says
+  "a captured pre-A6 tree state" and "re-running this feature overwrites that capture". That is the
+  correct REQ altitude: the operator-visible outcome, with the capture's name and mechanism left to
+  the TSPEC as O-1 binds. No seam design, fixture design, or assertion placement leaked in.
+
 ## Acceptance Criteria
+
+Item-by-item verification of this round's routed item (all four list entries are the same item,
+raised by three reviewers).
+
+| Routed item | Landed? | Evidence |
+|---|---|---|
+| DEC-A6-03's halt-message obligation: the halt names the capture but never warns the ordinary next action destroys it (te-review ×2, se-author, pm-review) | **Yes** | §6 AC-6.3 now reads: "Where the halt report points the operator at a captured pre-A6 tree state, it also warns, in the same place, that re-running this feature overwrites that capture — so an operator who intends to inspect it preserves it first, rather than losing it to the ordinary next action after a halt (DEC-A6-03)." The warning is pinned to *the same place* as the pointer, which is exactly the property the routed item said was missing (a remedy that lives only in TSPEC §2.5 and the DECISIONS record is a remedy the operator never reads at halt time). |
+| Bookkeeping | **Yes** | Header row bumped `1.15` → `1.16`; a v1.16 changelog paragraph names the item, all three raisers, the AC it landed in, and the O-1 boundary it deliberately did not cross. "Nothing else changed; no decision reopened" is accurate against the diff — the two hunks are the header and AC-6.3, nothing else. |
+
+**Non-regression checks against what I approved at v5.**
+
+- AC-6.3's pre-existing obligation (halt report carries the diagnosis and the root-cause class,
+  US-02) is intact and unmodified; the new sentence is additive and separately falsifiable.
+- AC-5.1's excluded-carrier enumeration — the v5 High — is byte-identical; the new clause adds no
+  fourth run-owed write and does not touch the tree-identity oracle.
+- AC-3.2/AC-3.3's separate closed exclusion set is untouched. No ripple.
+- The `*(US-02.)*` trace is preserved, so the added obligation stays traceable to a user scenario.
+
+**Testability of the landed clause.** A black-box acceptance test is writable from it: drive a wave
+to an A6 escalation whose halt report points at a captured pre-A6 tree state; assert the report body
+that names the capture also contains a re-run-overwrites warning; assert both are in the same report
+section. One caveat on the antecedent is filed as F-01.
+
+**Upstream-fidelity re-read (DEC-ERR-03).** Both constraint baselines are unchanged at HEAD, so v5's
+two open compression Lows persist verbatim (F-04, F-05) and no new upstream drift appeared. The one
+new fidelity problem is *internal* to this feature and created by this round: AC-6.3 now cites
+DEC-A6-03, and DEC-A6-03 at HEAD (`DECISIONS-…:353-362`) still asserts, in its **Known gap in the
+remedy's reach** paragraph, that "**The routing has not landed** (PM Q-02, TE): at REQ v1.15 and
+FSPEC v1.6, `a6-snapshot`, 'copy the ref' and 'overwrit' match nothing in either document". As of
+v1.16 that is half-false for the REQ. The citing document and the cited record now disagree about
+whether the cited obligation exists (F-02).
 
 ## Risks
 
