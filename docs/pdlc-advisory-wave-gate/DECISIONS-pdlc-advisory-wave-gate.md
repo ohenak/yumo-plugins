@@ -2,14 +2,14 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.10) |
+| Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.11, `sha256:3fa21acf…`) |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-DECISIONS-v1.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v1.md`, `CROSS-REVIEW-product-manager-DECISIONS-v2.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v2.md`, `CROSS-REVIEW-product-manager-DECISIONS-v3.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v3.md`, `CROSS-REVIEW-product-manager-DECISIONS-v4.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v4.md`, `CROSS-REVIEW-product-manager-DECISIONS-v5.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v5.md`, `CROSS-REVIEW-product-manager-DECISIONS-v6.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v6.md`, `CROSS-REVIEW-product-manager-DECISIONS-v7.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v7.md`, `CROSS-REVIEW-product-manager-DECISIONS-v8.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v8.md`, `CROSS-REVIEW-product-manager-DECISIONS-v9.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v9.md` |
+| Cross-Reviews | Rounds 1–11 per reviewer (`CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v1…v11.md`) were **harvested and deleted** at commit `9cf48051` ("docs(learnings): delete harvested cross-reviews and DoD code reviews") — read them there or in `LEARNINGS-pdlc-advisory-wave-gate.md`. Round numbering then restarted: the current round is `CROSS-REVIEW-product-manager-DECISIONS-v1.md` and `CROSS-REVIEW-test-engineer-DECISIONS-v1.md` (post-harvest round 1). Convention adopted here (PM F-04, TE F-07): this cell indexes rounds *responded to*, and harvested rounds are named as harvested rather than enumerated as live files. |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.10 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.11 | 2026-08-20 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -72,6 +72,49 @@ so neither channel is free. Verified unchanged and left standing: `stash` still 
 `false`; the build-outputs commit precedent (`chore({feature}): wave {N} build outputs` /
 `Wave {N} build outputs`) and the wave contract's `Do NOT run git add or git commit` clause are both
 verbatim in the shipped module.
+
+**On v1.11 (round 1 after harvest; PM F-01/F-02/F-03/F-04, TE F-01…F-07).** Seven repairs, no
+decision *outcome* moved: every alternative rejected below stays rejected, on the same side. What
+changed is the **ground** under three claims a downstream reader would have transcribed into an
+oracle or read as foreclosing an option, and the answers to four staleness items.
+
+1. **Context's first constraint was reasoning from a retired channel** (PM F-01, TE F-03).
+   `orchestrate-dev.bundle.js`, the inlining premise and the `.claude/workflows/` maintainer-sync
+   delivery step no longer exist: `build-runtime.mjs`'s own header records the per-module runtime
+   bundles as "retired along with the Claude Code workflow runtime" and says the builder "now emits
+   a single artifact: `pdlc-cli.mjs`"; `git ls-files pdlc/workflows/dist/` returns that one path;
+   and the consumer copy is now *swept* by `pdlc/hooks/scripts/cleanup-consumer-workflows.sh`, not
+   synced. The constraint is re-grounded on the channel that ships — `pdlc/engine/scripts/prepack.mjs`
+   vendoring the modules verbatim — and, importantly, **"add a module" stops being an impossibility
+   claim**: it is a three-list edit, so it is re-rejected on merit instead.
+2. **The fail-closed sentence was false for capture** (TE F-01). It said "any capture or restore call
+   returning `ok !== true` throws"; `captureTreeSnapshot` returns `null` through its `fail(verb)`
+   helper and never throws, which its own docstring states, and only `restoreTreeSnapshot` throws.
+   Transcribed as written the sentence yields a property that fails against correct code. The two
+   halves are now stated separately, with fail-closed named as a property of the *pair*.
+3. **Four sites still hedged on OQ-7 as open** (TE F-02). It is closed, answered *no*, at TSPEC
+   v1.11 — ignored paths are outside BR-9's map in both directions (FSPEC BR-9 v1.6, REQ AC-5.1) and
+   TSPEC states the scoped ignored-path arm "is **not** built: the decision that would have required
+   it did not come back". The hedges are restated as transcriptions of the decided boundary and the
+   re-evaluation trigger that named the resolved event as pending is dropped.
+
+The other four: the promotion commit's cardinality is one `commitPaths` call **per promoted task**,
+not one (PM F-02); Context's "no new transport" constraint now cites the clause that actually closes
+the set rather than NFR-3, which is about credentials and network surface (PM F-03);
+`captureTreeSnapshot`/`restoreTreeSnapshot` are `export`ed and directly unit-tested rather than
+module-private, so DEC-A6-01's reversibility is test-visible (TE F-04); and DEC-A6-04's
+"now fails the suite" is attributed to TSPEC §5.2, with A6-15's fixture named as still owing the
+present-and-zero conjunct (TE F-05). Two argv/citation nits (TE F-06) and the provenance cell
+(PM F-04, TE F-07) are taken in the same pass. `DEC-A6-01`…`DEC-A6-04`'s *decisions* are unchanged;
+three of the four entries take a sentence-level repair inside their supporting prose, which the
+findings require and which the "byte-frozen" note of v1.10 was never meant to forbid.
+
+Answer to the standing question about v1.10's sweep (TE Q-01): it was scoped to the claims the v1.10
+preamble enumerates — `stash`, `reset --hard`, `ADVISORY_DEFAULTS.enabled`, the commit precedents —
+all of which still hold. It was not exhaustive, and this note says so rather than leaving the
+unswept claims reading as verified. The three misses share a signature worth carrying forward: they
+are claims about **failure modes, visibility and impossibility**, none of them falsifiable by the
+grep-shaped check that confirms a count.
 
 ## Context
 
