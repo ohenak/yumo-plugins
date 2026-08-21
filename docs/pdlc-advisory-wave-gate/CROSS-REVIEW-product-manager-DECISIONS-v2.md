@@ -180,4 +180,29 @@ Everything below I checked against the tree, not against the document's word.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+v1's blocking finding is resolved, and resolved better than asked: the constraint that pruned the
+option space for all four entries is now grounded on the channel that actually ships
+(`prepack.mjs`'s `MODULE_NAMES`, plus the two sibling lists), and the class of options it used to
+foreclose by impossibility is re-rejected on merit. The three non-blocking findings are resolved
+too, and nothing in the delta broke a section I approved at v1 — all four decision *outcomes* are
+unchanged, and the repairs land inside supporting prose.
+
+No High findings. Recommended in the next editing pass, neither gating:
+
+1. **F-01** — restore `git add -A` (no `--`) at the three sites the delta changed: DEC-01's option D
+   row (mechanism cell and ignored-path clause), the argv list in DEC-A6-01's decision paragraph,
+   and the `clean -fd` / ignore-semantics sentence. The shipped call is `["add", "-A"]`.
+2. **F-02** — table the "new module" option in DEC-01's `## Options Considered`, or state once under
+   that heading that the class is rejected in Context for all four entries.
+
+Two items are routed upstream as errata rather than folded into this verdict: TSPEC §2.5's mechanism
+block disagreeing with its own prose, its O-1 row and the shipped argv on `add -A --`; and the
+operator-facing halt-message obligation DEC-A6-03 carries, which is still absent from REQ and FSPEC
+at v1.15 / v1.6 and which this record re-emits rather than leaving implied.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
