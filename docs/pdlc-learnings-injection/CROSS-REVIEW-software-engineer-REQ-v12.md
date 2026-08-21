@@ -111,9 +111,47 @@ DEFERRED: F-01 above (fourth round as a Low) could be closed with a five-word ed
 
 ## Risks
 
+- **R-1 — the three-document edit lands partially.** REQ, FSPEC and TSPEC are all dirty in the
+  working tree and are consistent *as a set*. If only one is committed, the branch briefly carries
+  the divergence F11 was raised to remove. Low likelihood (one erratum, one author), cheap to
+  detect (`git status`), and no code depends on the split.
+- **R-2 — the attribution rule is only as durable as its test.** `LI-AT-13` is now the sole guard on
+  "overflow is `RSN-COUNT` whatever the window's byte outcome". The removed `propagateBytes` guard
+  was a real implementation that survived once; a re-introduction would be caught, but only by that
+  test and its companion. Mitigated in place: the test asserts the reason map by equality, not
+  containment, so a re-labelled overflow document fails it.
+- **R-3 — residual `AC-5.1b` imprecision (F-01), fourth round.** It has not misled an implementer:
+  the shipped reader/caller split (`orchestrate-dev.js:191-210`, `:14130-14135`) matches the AC's
+  decision. The risk is only that a Low carried this long stops being read.
+
 ## Obligations
 
+| ID | Obligation | Owner |
+|----|---|---|
+| SE-O-1 *(v11)* | TSPEC erratum: close `OQ.2`, drop the `present`/`sectionMalformed` conjuncts | **Discharged** — `TSPEC:506`, `:1524`. |
+| SE-O-2 *(v11)* | Bump FSPEC's upstream pointer to the current REQ | **Discharged** — `FSPEC:9` reads v0.10. |
+| SE-O-3 *(v11)* | Fold `AC-5.1b`'s attribution fix into a later REQ edit (F-01 here) | REQ / se-author — **still open, optional**. Not owed by this round; the freeze forbids opening a decision for it. |
+| SE-O-4 *(new)* | Commit the REQ/FSPEC/TSPEC erratum trio together, or confirm the split is intended (Q-01, R-1) | orchestrator / se-author. |
+
 ## Positive Observations
+
+- **The erratum moves the document toward the code, not the code toward the document.** F11 named a
+  spec/code disagreement in which the code was already correct — the unspec'd `propagateBytes`
+  guard had been removed in CR round 1. The REQ delta transcribes the surviving behaviour. That is
+  the cheap direction, and it is the one taken.
+- **The clause is stated as an outcome, not a mechanism.** It says which cause id a dropped document
+  is reported under; it does not mention windows, slices, or accumulation order. The windowing
+  vocabulary stays in FSPEC BR-5/BR-6 where I review it. A REQ erratum written under DoD pressure is
+  exactly where altitude usually slips, and it did not slip here.
+- **"The reason ids of AC-3.2 name causes, not coincidences" is the load-bearing sentence.** It
+  states the invariant in a form a test can be written against and a future author can apply to a
+  reason id that does not exist yet, rather than enumerating the one mixed case F11 happened to
+  find.
+- **Every citation in the delta resolves.** FSPEC v0.14, BR-6's "mixed case, stated" paragraph, and
+  CODE_REVIEW v1 F11 all exist and say what the header claims they say — checked one by one, not
+  assumed from the erratum note.
+- **Two v11 findings closed without being re-raised.** The TSPEC gate divergence I carried as a
+  Medium for two rounds, and the stale FSPEC pointer, are both gone at HEAD.
 
 ## Recommendation
 
