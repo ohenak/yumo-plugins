@@ -37,7 +37,26 @@ clause for clause, including the `###`-is-body-text consequence.
 
 ## Batches
 
-_(pending)_
+**No task row moved, and the delta could not have moved one.** The edit does not touch §Batches at
+all — the three hunks land in the header table, §Verification's P-A-7 block, and §Changelog. I
+extracted the `Batch`, `Deps`, owner and file columns for all 23 rows at `1f0dbe37` and at HEAD and
+compared: identical. Everything I approved about the ladder at v10 stands untouched.
+
+**The one §Batches fact case C now depends on, checked.** Case C's ruling rests on the claim that
+*batch 14 is LI-22's REFACTOR-and-close, which adds no assertions*. LI-22's row says exactly that in
+its own words — "region tidy-up with no behaviour change. **No new assertions, no new files**" —
+so case C is not asserting something about the ladder that the ladder does not say. That matters
+more than it looks: it is the whole reason no greening batch remains, and therefore the reason the
+ruling has to be *green-at-landing* rather than a ledger span. The premise and the conclusion are
+consistent, and both are checkable from this document.
+
+**LI-08's amendment note still points at the right place.** The note (task row LI-08) routes the
+reader to §The three gate wordings under **Amendment commits on landed suites** for the expected-red
+rows the follow-up commit owes. That pointer is unchanged and still resolves — the block it names is
+the block this round edited, and it now carries three cases instead of two, so the pointer's target
+got strictly more complete without the pointer needing to move. Nothing in LI-08's row asserts a
+two-case table, so the delta introduced no stale count there. I checked the same for LI-02 and LI-16:
+neither names a case letter, so neither went stale.
 
 ## Dependencies
 
