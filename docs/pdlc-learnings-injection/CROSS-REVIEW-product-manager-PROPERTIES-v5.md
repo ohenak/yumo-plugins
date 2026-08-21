@@ -143,6 +143,31 @@ five body-marker presences, `PROP-BOUND-06`'s two driven disjuncts — are uncha
 
 ## Oracles
 
+The matrices are where a partially-absorbed upstream showed up as a false claim at v4, so I checked
+each changed row against the artifact it summarises rather than against its neighbours.
+
+| Oracle / matrix row | Claim it makes | Verified against | Holds? |
+|---|---|---|---|
+| **§G.1 T-O-6 row** *(rewritten)* | both arms stated over *"every non-negative `maxBytes`, `0` included"*; the partition is *"by **observable, not by input**"* — PROP-BOUND-03 owns the unit's whole return domain, PROP-CONFIG-09 owns *"the run-level consequences that no unit can produce"*; *"No input of §D.5 is unclaimed, and no observable is claimed twice"* | `TSPEC-…md:1511` (T-O-6), `:579-581` (§I.3) | **Yes.** This is the v4 F-01 fix and it is the strictly stronger claim I asked for: the row now asserts coverage of the zero return *and* the reason id *and* the slot, where v0.2 asserted the boundary was not this unit's at all. "No observable is claimed twice" is a real disjointness claim, and it holds — the unit arm asserts four return fields, the seam arm asserts a reason id and a slot count |
+| **§O.9 T-O-6 generated arm** *(rewritten)* | domain is *"every non-negative `maxBytes`, `0` included, stated explicitly rather than left to the draw"*, quoting T-O-6 | same | **Yes.** The domain matches upstream verbatim. The added argument is the one that was missing at v0.2: *"The zero bound is **not** absence-shaped at this unit and so does not meet §O.5's L3 test: it is a four-field positive return value … which the unit both can and must falsify"* |
+| **§O.9 shape answer (SE Q-01)** | the zero conjunct rides as *"a **guarded branch inside the same property body**"* **and** `0` is *"additionally **pinned as a distinguished example case** in the same suite rather than left to sampling frequency, so LI-08's red is reproducible on any seed"* | my v4 Q-01, which asked exactly this and said it should be stated rather than left to the implementer | **Yes — and it takes both branches of my question rather than choosing.** Generated coverage keeps the boundary in the domain by construction; the pinned example makes the red seed-independent. A generator that draws `0` with probability ~0 would otherwise have satisfied the letter of T-O-6 and proved nothing |
+| **§O.5 L3 table** *(new row)* | *"**Six** claims are placed at L3"*; PROP-CONFIG-09 added with the note that *"only the **run-level** half of the zero bound is L3 … The unit-level half is **not** L3 and is not placed here"* | the table itself | **Yes.** Six prose, six rows (`awk '/### O.5 /,/### O.6 /' | grep -c '^| PROP'` ⇒ **6**). The row is doing real work: it forestalls exactly the misreading that produced v4's F-01, by recording *why* one half of a boundary sits at the seam and the other does not |
+| **§C.4 file/task split** *(rewritten)* | seven files, eight task ids, LI-04's artifact is `/.baseline-worktree/` | `git ls-files pdlc/workflows/__tests__` ⇒ 7 `learnings*` entries; `.gitignore:13` | **Yes — v4 F-04 closed.** The two subjects are now separated in the sentence rather than reconciled by the reader |
+| **§C.4 SE Q-02 answer** *(new)* | PROP-BOUND-05/07/08's amendments land in a **committed** suite, so they are *"a re-red on landed green code rather than a fold into LI-16/LI-17's green tasks — which is exactly PLAN P-A-7's case"* | `PLAN-…md:558` (P-A-7: *"a live table is amended by an edit to this PLAN, committed before the run it governs"*); `learningsBlock.test.js` tracked at HEAD | **Yes on the substance** — the classification is correct and P-A-7 is the right rule. **See F-01 below** for the routing half of the same sentence |
+| **§G.3 "Still open — one item"** *(rewritten)* | the AT-15 suite-assignment mismatch is still open and re-routed; the v0.2 "Still open: nothing" is retracted with its cause named | `TSPEC-…md:1209` (`learningsSelect.test.js` row: `AT-04 … AT-15 … AT-28`, count 9, layer **L1**); `FSPEC-…md:882-887` (AT-15 clauses 2–3 are report-level); `PROPERTIES-…md:162` (PROP-CORPUS-03 traced *"L1 (clauses 1, 4) + L2/L3 (clauses 2, 3)"*); `PLAN-…md:146` (LI-07 splits the green, `LI-AT-15` *"stays red until LI-19"*) | **Yes — v4 F-02 closed, and the underlying mismatch is real.** Four documents agree the AT is split across levels and only TSPEC's suite table says otherwise. Routed as an ERRATUM in my final message |
+| §G.2 gap 1 *(amended)* | records that the `>= 1` exclusion *"is retracted"*, naming it as an episode: *"an earlier revision of this document briefly excluded `0` from both, which TSPEC v0.9 §T.5 had already rejected in terms"* | my v4 F-01 | **Yes.** Recording the retraction in place, rather than silently restoring the domain, is what makes §G.2 worth reading — and it is the honest version of the same instinct that made §G.2's earlier episodes valuable |
+| §G.3 ERR-8 non-duplication; §G.1 T-O-4 / T-O-5 rows; §C.1 35-of-35 partition; §C.3 task map | unchanged | not in the delta | **Unaffected.** The AT partition is intact, the property total is unchanged at 70, and no PLAN task row moves |
+
+**The one oracle-level statement that does not reconcile.** §C.4 says the PLAN's ledger-row naming
+*"is routed as an erratum, not decided here"* — but §G.3, whose first line is *"Emitted as line items
+in this dispatch's final message"*, carries exactly one still-open item and it is the AT-15 one.
+`awk '/### G.3 Routed errata/,0' | grep -n "ledger\|LI-08\|PLAN"` returns only the AT-15 bullet's
+own lines. So the document asserts a routing that its own routing section does not carry. The
+substance is right and the erratum is worth routing — which is why I emit it myself in my final
+message rather than leaving it to the sentence — but a claim of routing with no route is the kind of
+record-keeping gap that survives into implementation as "someone must have handled it". That is F-01
+below, Medium.
+
 ## Fixtures
 
 ## Findings
