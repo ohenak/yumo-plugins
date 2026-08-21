@@ -1173,7 +1173,7 @@ not a standing exemption for those files"*, which this document has never claime
 concluded that this document's own four properties "travel under P-A-6's rule … so they enter no
 ledger row unless that commit is brought forward." P-A-6 holds the PROPERTIES **suite**'s commit to
 "the first point the suite is green, which in practice is after LI-21 (batch 13)" (PLAN, P-A-6). LI-21
-landed at `92b7ea0c`, so that point has **arrived**: the window P-A-6 deferred into is open now
+landed at `e7fa8d87`, so that point has **arrived**: the window P-A-6 deferred into is open now
 rather than ahead, and the suite may be committed as soon as it is green — or, if it lands red, its
 rows are amended into the ledger by name first, under the same P-A-7 rule. The conclusion that **no
 property of this document changes either way** is unaffected; what changes is only when its cases may
@@ -1184,14 +1184,18 @@ suites `learningsBlock.test.js` and `learningsSelect.test.js` — empty ledger, 
 restatement above moves neither rule, only the point in the run each is read from.
 
 **No property in this document names a test
-file the PLAN does not create**, and none names one that exists but is owned by no task. The
+file the PLAN does not create**, and none names one that exists but is owned by no task — including
+the four unowned CODE_REVIEW v1 remediation files the inventory above adds, none of which any
+property names. The
 properties this revision adds or amends now all land in **landed** files — PROP-CONFIG-09 in
-`learningsConfig.test.js` (LI-12), which landed at `eb32d7d2` and already carries LI-AT-30's three
-cases (the `test("LI-AT-30: maxDocuments: 0 …")`, `test("LI-AT-30: maxTotalBytes: 0 …")` and
+`learningsConfig.test.js` (LI-12), which landed at `d9b51a9a` and already carries LI-AT-30's three
+cases (`learningsConfig.test.js:248`, `:264`, `:280`, all three inside
+`describe("LI-AT-30 — admits-nothing threshold configurations (TSPEC §I.2, FSPEC v0.13 E-36)")` at
+`:247`) (the `test("LI-AT-30: maxDocuments: 0 …")`, `test("LI-AT-30: maxTotalBytes: 0 …")` and
 `test("LI-AT-30: maxBytesPerDocument: 0 ⇒ every non-self corpus path RSN-NO-MATERIAL, none
 RSN-COUNT, no slot consumed (E-36)")` titles in `learningsConfig.test.js`, the third asserting
 `RSN-NO-MATERIAL` on every non-self path and no document carrying `RSN-COUNT`), and the Group D amendments in
-`learningsSelect.test.js` (LI-07, `1544fdbd`) and `learningsBlock.test.js` (LI-08, `5e522a52`). Every
+`learningsSelect.test.js` (LI-07, `aadd01bc`) and `learningsBlock.test.js` (LI-08, `8eee671f`). Every
 one of them is therefore an amendment applied to committed code rather than a suite written fresh;
 none is a file the PLAN has yet to create. PLAN records the
 same thing in its own note that LI-02/LI-08's heading-form cases are "an amendment to landed
@@ -1200,7 +1204,7 @@ suites". The two
 seam helpers `helpers/seams.js` / `helpers/consolidationDoubles.js`, none of which any task edits.
 Likewise
 `scripts/capture-learnings-baseline.mjs` was new to this feature and has since **landed by LI-05**
-at `scripts/capture-learnings-baseline.mjs` (`ced75955`, "LI-05 — GREEN the capture script"): it is
+at `scripts/capture-learnings-baseline.mjs` (`0fa099a3`, "LI-05 — GREEN the capture script"): it is
 tracked at HEAD (`git ls-files scripts/` returns exactly that one path), so the root-level `scripts/`
 directory this feature created now exists. Earlier revisions of this sentence recorded the absence,
 which was true when written and is not now.
