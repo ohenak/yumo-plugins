@@ -240,7 +240,42 @@ at HEAD.
 
 ## Obligations
 
-_pending_
+Two stale characterisations of upstream live in §7, both created by this erratum landing. Neither
+changes a behaviour or an oracle; both are DEC-ERR-03 findings because they are statements about
+what the REQ says, and the REQ no longer says them.
+
+**F-02 — OB-F1's closing clause is now false.** OB-F1 reads: *"Raised as an erratum against the
+REQ, **whose §10 records BL-04 as 'discharged at FSPEC authoring'**."* E-5 rewrote exactly that
+sentence: §10 at HEAD says BL-04 is *"**open and unmet** — not discharged at FSPEC authoring"*, and
+spells out the reason the FSPEC gave (tree 1,637 commits behind; neither the mechanism nor
+`docs/_constraints/pdlc-wave-gate-baseline.md` present). The quoted phrase exists nowhere in the
+REQ at HEAD. This is the erratum **succeeding** — the FSPEC asked for it and got it — but the
+obligation row still describes the pre-erratum world, and a reader who checks the citation finds
+the opposite of what OB-F1 claims. The fix is one clause: record the erratum as landed, and keep
+OB-F1 open on its actual substance, which is the *branch base*, not the REQ's wording. Low.
+
+**Important: OB-F1 itself does not close.** E-5 changed what the REQ *records*; it did not rebase
+the branch. The tree is still 1,637 commits behind, the mechanism and the baseline file are still
+absent, every shipped-behaviour claim in §1 is still verified against `origin/main`, and the
+positional citations are still not re-verifiable here. OB-F1's discharge condition ("the branch is
+rebased and the mechanism is readable in the tree") is unmet, and **OB-F4 stays blocked on it**.
+The one thing that changed is that the REQ now agrees the prerequisite is unmet instead of
+claiming it was discharged — which removes the contradiction between the two documents but adds no
+capability. AT-14's branch precondition (the `.gitignore` rule is absent in this tree, so the test
+is RED until the rebase) is likewise unaffected and must not be weakened to "observed quiet".
+
+**F-03 — §7's round-1 revision note quotes a deleted sentence.** It reads: *"Two upstream defects
+were routed rather than fixed in place: REQ-WVR-08's '**Phase I produces no new commit**' (falsified
+by Phase PT's V-wave) and the REQ's discharge of BL-04."* Both halves are now historical: the first
+quotes a string E-4 deleted (REQ-WVR-08 at HEAD says "lands no new commit", scoped to the
+implementation wave loop), and the second describes a discharge E-5 withdrew. As a *revision-note*
+statement of what round 1 did, it was true when written; as a citation a downstream reader will
+follow, it points at text that is gone. Restate both in the past tense with the landing recorded.
+Low.
+
+**OB-F2, OB-F3, OB-F5, OB-F6 — unaffected.** None cites the edited material. OB-F5's three
+set-equality catalogues keep their cardinality (see §Linked Requirements), so the PROPERTIES
+obligation it creates is unchanged in scope.
 
 ## Delta-Confirmation Findings
 
