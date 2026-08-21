@@ -168,4 +168,27 @@ choose (O-1)". The altitude split is intact in both directions — REQ gained pr
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | §2's preamble pins traceability to `REQ-pdlc-advisory-wave-gate` v1.13; upstream is now v1.15 (`approved (shipped)`). The clauses still trace correctly — the version token is what is stale. Bump to v1.15 in §2 (and note the header's Status change if FSPEC mirrors it). | §2 Linked Requirements, preamble |
+| F-02 | Low | delta | local | BR-9 excludes "the record and escalation writes … **both** carriers"; AC-5.1 v1.15 excludes **three** — AC-6.1's record append, AC-6.2's escalation-log append, AC-5.2's queue-row write (M-WG-7). E-23 names the queue row, and the observation point precedes it structurally, so no oracle is wrong; the rule site AT-05-1 reads from just under-counts. Add the queue row to BR-9's clause (or cross-reference E-23) and drop "both". | §4 BR-9, "Observation point" |
+
+FINDING: Low | delta | local | §2 Linked Requirements preamble | FSPEC pins its upstream at REQ v1.13; REQ is now v1.15 (approved/shipped) — the version token is stale, the traces themselves still resolve
+FINDING: Low | delta | local | §4 BR-9 observation point | BR-9 names two excluded record carriers ("both"), AC-5.1 v1.15 names three (record append, escalation-log append, M-WG-7 queue-row write); E-23 covers the third, so the gap is enumerative, not a coverage hole
+
+## Recommendation
+
+**Approved with minor changes.** FSPEC v1.6 still holds as approved against REQ v1.15. Every
+substantive clause the erratum rounds added upstream — AC-5.1's observation point, its ignored-path
+exclusion in both directions, its failed-capture outcome, and AC-1.1/R-5's `c8aa22a4` /
+`11420461` base pins — was already present in FSPEC v1.6, at equal or finer testability. No AT is
+falsified, none becomes unwritable, and no oracle loses falsifiability. The two Low findings are
+citation-fidelity gaps at the seam the erratum moved: one stale version token, one under-counted
+enumeration whose missing member is stated one section away. Neither gates; both are one clause
+each and are worth folding into the next touch of this document so the next cascade has nothing
+to catch. My v2 Mediums (F-01…F-03) and Low (F-04) remain open, inherited, and non-gating.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
