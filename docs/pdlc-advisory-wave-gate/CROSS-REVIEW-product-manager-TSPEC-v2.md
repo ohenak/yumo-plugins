@@ -128,6 +128,49 @@ independent of it.
 
 ## Data Model
 
+### §4.5's halt-field set is closed, and closed against the new conjunct
+
+§4.5's "Halt fields" row specifies `haltError`'s `fields` as `{rootCause, diagnosis, repairApplied,
+repairPaths}` — "at the literal values named below." Four fields, enumerated, with transcribed
+values for the capture-failure path. None of them is a ref name and none is a warning. The set is
+presented as exhaustive, and §4.5's capture-failure table reinforces that by fixing every one of the
+four to a literal.
+
+That closure is a deliberate and good property — it is what lets §5.5's fixture assert values rather
+than compare against whatever the implementation emits. But it means the warning cannot arrive by
+extension without an explicit decision to extend, and the document currently records no such
+decision. AC-6.3's new conjunct therefore has no home in the data model.
+
+### One claim in §4.5 has become an overclaim against REQ at HEAD
+
+The un-skip halt row states:
+
+> *"Message string — unchanged. `formatUnskipViolations`'s output is not rewritten. The diagnosis
+> travels in `fields`, never in the reason string, which is what lets AT-05-3's literal comparison
+> and AC-6.3 both hold."*
+
+Read against REQ v1.15 that was true. Read against REQ v1.16 it is not: AC-6.3 now has two conjuncts
+and this argument discharges only the first. Worse, the rule it establishes — nothing operator-facing
+may enter the reason string — is the rule that forecloses the most natural carrier for the second
+conjunct. The claim needs re-derivation, not deletion: the same reasoning may well still hold if the
+warning travels in `fields` alongside the ref, but the document must show that rather than assert a
+conclusion reached against superseded upstream.
+
+Similarly §4.5's Snapshot-ref row says the ref is "never overwritten by a later wave (§2.5, PM
+F-03)". That remains literally true and I am not flagging it as wrong — but a reader who stops at
+§4.5 and never reaches §2.5's re-run paragraph takes away the opposite of what AC-6.3 now wants an
+operator to know. Whatever wording lands, these two rows should not read as reassurance in one place
+and a hazard in another.
+
+### What has *not* drifted
+
+I re-read the rest of the TSPEC's REQ citation surface against REQ v1.16, since the cascade rule is
+"anything it cites that upstream no longer says." REQ's edit touched exactly two hunks — the version
+row plus a new changelog paragraph, and AC-6.3's body. No other AC, business rule, edge case,
+constraint or obligation moved. I re-verified the TSPEC's citations of AC-5.1, AC-5.2, AC-6.1,
+AC-6.2, AC-6.4, AC-3.4, AC-4.1, O-1, O-2 and O-4 against HEAD: all still say what this TSPEC says
+they say, in the same way. The cascade surface is AC-6.3 alone.
+
 ## Test Strategy
 
 ## Open Questions
