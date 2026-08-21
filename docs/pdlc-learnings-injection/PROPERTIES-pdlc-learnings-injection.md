@@ -19,7 +19,7 @@ depends-on: []
 
 ## Overview
 
-**What this document is.** The falsifiable proof system for pdlc-learnings-injection: **69 properties**
+**What this document is.** The falsifiable proof system for pdlc-learnings-injection: **70 properties**
 over the region PLAN §Batches builds, each traced to a REQ acceptance criterion, an FSPEC business
 rule or acceptance test, and the PLAN task that reds and greens it. It restates no behaviour —
 behaviour lives in REQ v0.9 / FSPEC / TSPEC v0.6 and is referenced by id (`AC-`, `BR-`, `E-`, `AT-`,
@@ -891,7 +891,7 @@ module and the two doubles are different shapes (PLAN LI-13).
 | AT-27 | Unparseable document ⇒ RSN-UNPARSEABLE | PROP-CORPUS-06 |
 | AT-28 | No material ⇒ RSN-NO-MATERIAL | PROP-BOUND-06 |
 | AT-29 | Gate-input isolation under contamination | PROP-ISOLATE-01 |
-| AT-30 | Zero thresholds ⇒ enabled, rows present and empty | PROP-CONFIG-04, PROP-RECORD-02 |
+| AT-30 | Zero thresholds ⇒ enabled, rows present and empty (all **three** arms: `maxDocuments: 0` and `maxTotalBytes: 0` by PROP-CONFIG-04; `maxBytesPerDocument: 0` and its every-document `RSN-NO-MATERIAL` conjunct, E-36, by PROP-CONFIG-09) | PROP-CONFIG-04, PROP-CONFIG-09, PROP-RECORD-02 |
 | AT-31 | enabled: false ⇒ baseline prompts | PROP-CONFIG-05 |
 | AT-32 | Config absent / malformed / wrong-typed | PROP-CONFIG-01, PROP-CONFIG-02, PROP-CONFIG-03, PROP-CONFIG-07 |
 | AT-33 | Read footprint set equality | PROP-FOOTPRINT-01 |
@@ -964,7 +964,7 @@ that test pass. `PROP-CORPUS-03` and `PROP-BOUND-01` are red LI-07 / green LI-16
 | LI-09 | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 | — |
 | LI-10 | PROP-RECORD-01…08, PROP-RECORD-10 | — |
 | LI-11 | PROP-DISPATCH-01/02/03/04/05/07/08, PROP-ORDER-05, PROP-RECORD-11, PROP-FAILOPEN-02/03, PROP-ISOLATE-01/02, PROP-FOOTPRINT-01/02/03/04 | — |
-| LI-12 | PROP-CONFIG-01…08 | — |
+| LI-12 | PROP-CONFIG-01…09 | — |
 | LI-13 | PROP-CORPUS-01 | — |
 | LI-14 | — | PROP-META-05, PROP-META-06, PROP-RECORD-09 (all three green on authoring — one static directory walk over `learnings*.test.js`, no production symbol under test) |
 | LI-15 | — | PROP-CORPUS-01, PROP-FOOTPRINT-04 |
@@ -973,7 +973,7 @@ that test pass. `PROP-CORPUS-03` and `PROP-BOUND-01` are red LI-07 / green LI-16
 | LI-18 | — | PROP-CORPUS-02/06/08, PROP-FAILOPEN-03/04 |
 | LI-19 | — | PROP-RECORD-01…06, PROP-RECORD-08/10 |
 | LI-20 | — | PROP-DISPATCH-01…05, PROP-DISPATCH-07/08, PROP-ORDER-05, PROP-FAILOPEN-03, PROP-FOOTPRINT-01/03, PROP-ISOLATE-02 |
-| LI-21 | — | PROP-CONFIG-01…08, PROP-FAILOPEN-01/02, PROP-RECORD-03/04/07/11, PROP-FOOTPRINT-02/03, PROP-ISOLATE-01 |
+| LI-21 | — | PROP-CONFIG-01…09, PROP-FAILOPEN-01/02, PROP-RECORD-03/04/07/11, PROP-FOOTPRINT-02/03, PROP-ISOLATE-01 |
 | LI-22 | — | *refactor-and-close; adds no assertion, owns no property by design* |
 | LI-23 | PROP-FAILOPEN-01, PROP-RECORD-03, PROP-RECORD-04 | — |
 
@@ -994,7 +994,7 @@ green by two, and each split is named in the PLAN row that carries it:
 
 | Count | Value | Source |
 |---|---|---|
-| Properties in this document | 69 | Groups A–J (66 at v1, plus PROP-DISPATCH-08, PROP-BOUND-08, PROP-META-06) |
+| Properties in this document | 70 | Groups A–J (66 at v1, plus PROP-DISPATCH-08, PROP-BOUND-08, PROP-META-06, PROP-CONFIG-09) |
 | FSPEC acceptance tests | 35 | TSPEC §T.5's partition, asserted by PROP-META-05 |
 | ATs covered by ≥1 property | 35 | §C.1 |
 | PLAN tasks | 23 | LI-01…LI-23 |
