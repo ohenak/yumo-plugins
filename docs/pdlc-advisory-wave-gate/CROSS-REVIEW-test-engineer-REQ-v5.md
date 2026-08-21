@@ -73,13 +73,58 @@ locates deletion of `ADVISORY-{feature}.md` at **Phase H2's distil**, while AC-6
 
 ## Risks
 
+- **Exclusion-list drift.** AC-5.1's excluded-carrier set is now a three-member closed list keyed to
+  AC-6.1, AC-6.2 and AC-5.2. If a later revision adds a fourth run-owed write (a report artifact, a
+  marker file), this list silently goes stale again and the tree-identity oracle re-acquires the same
+  contradiction TE F-01 named. The TSPEC's restoration-comparison test should derive its ignore-set
+  from the record-carrier ACs rather than transcribe three paths — flagging here so PROPERTIES
+  authoring picks it up; no finding, the REQ is correct as written.
+- **Two-commit before/after.** With `c8aa22a4` and `11420461` both pinned, an AC-1.1 test is now
+  writable as a two-point measurement. The risk is only that a third default-branch move makes both
+  readings historical; upstream's own re-verification note already governs that.
+- No new risk introduced by the header rewrites.
+
 ## Obligations
+
+- **O (upstream, not this REQ's):** `pdlc-wave-gate-baseline.md`'s `Cited by` row and
+  `pdlc-advisory-corpus-baseline.md`'s `Cited by` row both understate this REQ's citation surface
+  (F-03, F-04). Both are one-line edits in files this REQ does not own; they belong to whichever
+  round next touches those constraints files.
+- **O (this REQ):** AC-6.4/O-2's "Phase PUB" wording should be reconciled with corpus-baseline §1's
+  "Phase H2's distil" (F-02) in the next round that opens §6/§8 — it is a phase-name imprecision in a
+  non-normative honest-limit aside, not a behavioural claim, so it does not justify opening the
+  document on its own.
+- SE Q-02's relocation remains the recorded dissolution path for C-5's overage (F-01).
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AC-6.4 and O-2 place the advisory record's deletion "after Phase PUB"; corpus-baseline §1 places it at Phase H2's distil. Is PUB-relative wording deliberate (the record is gone by the time an operator could read it post-publish), or an inherited slip that should read H2? Either answer is fine; the document should say the one it means. |
+| Q-02 | AC-5.1's excluded-carrier list is now enumerated by AC id. Is TSPEC expected to derive the restoration-comparison ignore-set from those ACs, or to transcribe the three paths? The former is drift-proof; the latter is a set-equality surface of exactly the kind M-WG-9 catalogues. |
+
 ## Positive Observations
 
+- The High item landed exactly as scoped: one clause, in the one place the exclusion set is
+  enumerated, with no ripple into AC-3.2/AC-3.3's separate closed exclusion set. AC-5.1's
+  "observably identical" criterion is now falsifiable — a test can restore, then diff the tree
+  ignoring three named carriers plus `.gitignore`d paths, and that diff is expected empty.
+- Pinning `11420461` alongside `c8aa22a4` turns AC-1.1 and R-5 from a claim about "HEAD" into a
+  two-commit measurement, and both pins match upstream's `Verified at` row rather than being
+  independently asserted.
+- The `Cross-Reviews` row is now the more honest statement, and it is the sort of provenance line a
+  future harvest can trust — it says which rounds are in LEARNINGS and which are not.
+- The v1.15 changelog names the raiser and disposition of every routed item including the two not
+  taken, which is what made this confirmation a diff read rather than a re-derivation.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+The delta resolves all four items routed to it — including TE F-01, the only High — and breaks
+nothing approved at v4. The four findings below are Low and inherited: two are edits to upstream
+constraints files this REQ does not own, one is a phase-name imprecision in a non-normative aside,
+and one is the recorded C-5 soft-budget overage with a named dissolution path. None gates.
 
 ## Delta-Confirmation Findings
 
