@@ -161,7 +161,48 @@ reading I gave in v3, and the revision did not disturb it.
 
 ## Fixtures
 
-_pending_
+**Every fixture the four new properties need already existed, exactly as I sized it in v3, and the
+document says so rather than re-deriving it.** Three rows were added, and all three are *records of
+reuse*, not new infrastructure:
+
+- **Two-red-wave run** — reused from PROP-REST-07, with the product reason attached: it is the only
+  fixture that **distinguishes a wave number**, so the ref-pointer half is asserted against a number
+  the fixture can actually tell apart. On a single-wave run a hard-coded `-1` would pass. That is a
+  falsifiability argument, not a convenience one.
+- **Capture-failure run (E-34)** — reused from PROP-REST-08, at explicitly "no new cost", carrying
+  PROP-REC-09's absence assertion plus the five-key set-equality. My v3 observation that E-34's
+  property home would make the conditional arm free is now the document's own stated economics.
+- **Un-skip halt pair** — the resolved-then-halted wave (already built for PROP-REST-04) and its
+  A6-never-fired companion. The companion is the negative control PROP-REC-10 needs.
+
+**The recording `_git` double row was extended to name PROP-REC-08**, which is correct: the
+`update-ref` target is where the ref the notice points at becomes observable.
+
+**The instruction I gave in v3 not to mint a literal was followed, and followed with its reasoning.**
+A new paragraph — *"And one string is deliberately not on that list"* — states that the overwrite
+sentence has **no normative wording** (FSPEC AT-06-4 makes co-location and presence the observable;
+REQ O-1 keeps the capture's name and storage form TSPEC's), so pinning a phrasing would manufacture a
+literal no upstream document owns and mint a red test against a spec-following implementation. What
+*is* transcribed is the predicate pair. This is the PROP-ENV-13 failure mode from round v1.4 named by
+name and avoided. §G-2 records the cost honestly in the same breath — an implementation could emit a
+technically-matching but unhelpfully phrased notice and pass — rather than pretending the trade is
+free. From the product lens that is the right call: the alternative buys a false red against a
+conforming implementation, and REQ deliberately specifies an outcome rather than a sentence.
+
+**Hazard 3 is the one addition I did not ask for and would have.** "Do not size PROP-REC-08's fixture
+as new work, and do not let the `snapshotRef` key redden a suite silently" states that the fifth
+field disturbs three shipped exact-shape oracles, each of which fails on an *extra* key as on a
+missing one, and that they are widened **by the task that adds the field, in the same red-to-green
+step, because the batch gate they sit behind has no expected-red channel**. That last clause is the
+operational reason PLAN v1.3 restructured red tasks into green successors in the first place; wiring
+the widening to the same step is what keeps the wave boundary green. C-3's A6-17 row carries the
+matching note that the `toHaveLength(2)` → `3` widening is **A6-18's**, not A6-17's. I verified the
+assertion is where the document says it is (`advisoryEscalationLog.test.js:821`).
+
+**C-2 re-verified mechanically, not by count.** The document claims set-equality over **forty-eight**
+AT ids at FSPEC v1.7. I extracted the AT ids from C-2 and from FSPEC and diffed the two sets: 48 vs
+48, `diff` empty in both directions. `AT-06-4b` is present in both. The claim is true as stated, and
+it is the kind of claim a deleted case would break — which is the point of asserting it that way.
 
 ## Findings
 
