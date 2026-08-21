@@ -9,7 +9,9 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.6 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.7 | 2026-08-20 |
+
+**v1.7 (erratum round, Phase D).** Lands the one item this round raised by SE and TE alike: DEC-A6-03's operator-facing halt-message obligation, routed since round 5 and previously unlanded. REQ v1.16's second AC-6.3 conjunct is now compressed at FSPEC altitude — BR-14 carries the co-location clause, §3 step 10 and E-34 name its two arms, E-30 defers to BR-14's contents rather than re-enumerating them, and AT-06-4 gains the third conjunct plus its no-capture companion AT-06-4b. The capture's name, storage form and lifetime stay O-1's. Nothing else changed; no decision reopened.
 
 **v1.1 (round 1).** All v1 High/Medium addressed: E-04/AT-01-5 counting oracle; AT-04-3 over writer identity; §3.2 step 3b; BR-11 window; seven ATs added, four restated as oracles.
 
