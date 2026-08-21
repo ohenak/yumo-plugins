@@ -69,6 +69,71 @@ that judgement; it is with the surface the oracle is stated over.
 
 ## New findings in changed sections
 
+### The co-location oracle names a carrier this design does not have (F-01, High)
+
+The new AT-06-4 row (`:1823`) states conjunct (3)'s oracle as:
+
+> **co-location within one rendered report string** — the ref pointer and the overwrite sentence
+> found in the *same* `haltError` report text, not merely both present somewhere in the run
+
+There is no such string — not in this TSPEC's own carrier design, and not at HEAD.
+
+**What the design says the carriers are.** §2.3 pins the halt call shape verbatim (`:496`):
+`if (!a6.resolved) throw haltError(TEST_GATE_MESSAGE, { advisory: a6.haltFields });` — the message
+is the pre-A6 template literal, and §2.3 `:503-507` makes the separation load-bearing: "The
+diagnosis travels as `haltError`'s second argument (`fields`…), **never inside the reason string** —
+that is how AC-6.3 and AT-05-3 hold at once." §4.5 `:1405` repeats it for the un-skip halt
+("Message string | unchanged … never in the reason string"). §5.6 `:1817` pins AT-05-3's oracle as
+"halt reason string **equals** the pre-A6 literal" — an equality, not a containment, so anything
+appended to the message reddens it. And the v1.13 changelog itself confirms "no overwrite sentence
+is transcribed into §5.5's halt literals" (`:24-25`).
+
+**What HEAD has.** `haltError(message, fields)` `Object.assign`s the fields onto the Error
+(`pdlc/workflows/orchestrate-dev.js:4539-4546`). The pipeline then sets
+`haltReason = err.message` (`:15966`) and carries the fields as **structured data**:
+`haltAdvisory: err && err.advisory ? err.advisory : undefined` (`:16076`), spread onto the report
+object by `buildFinalReport` (`:16169`, `:16248`). `buildFinalReport` returns a plain object; there
+is no report-to-text renderer anywhere in `pdlc/workflows` (`grep` for `render*Report` /
+`format*Report` over `orchestrate-dev.js` and `orchestrate-queue.js` returns nothing), and the
+shipped assertions treat it as data — `expect(result.haltAdvisory).toEqual(haltFields)`
+(`pdlc/workflows/__tests__/waveExecution.test.js:1094`).
+
+**So neither reading closes.** If "the rendered report text" means `haltReason`, the ref pointer and
+the sentence would have to live in the message — which AT-05-3's equality oracle forbids and §2.3
+and §4.5 both explicitly rule out. If it means `haltAdvisory`, there is no text at all: `snapshotRef`
+is pinned to the bare ref name `refs/pdlc/a6-snapshot-{waveNum}` (`:1382`), "adjacent" has no meaning
+over a JS object, and AT-06-4 forbids asserting on the ref's name anyway. §4.5's "What the report
+renders" row (`:1383`) states the obligation — "both halves together and adjacent" — but names no
+function, no field and no file that does the rendering, and §1.2's "no new module, no new file, no
+new transport" (`:360-362`) forecloses inventing one silently.
+
+This is the same class of defect my v3 F-01 raised, one level in: that round the mechanism had no
+oracle; this round the oracle has no mechanism to bind to. An implementer reading §4.5 and §5.6
+today cannot tell where to emit the sentence, and PLAN cannot mint a red test that would fail for
+the right reason — a test author would have to pick a carrier, and either choice contradicts a
+different section of this document.
+
+The fix is bounded and entirely TSPEC-local; it does not touch upstream, because FSPEC correctly
+states the product observable ("the same report, in the same place", `FSPEC:476-478`) and leaves the
+mechanism here. §4.5 needs one more row naming the carrier — which report field or notice string
+holds the rendered pair, produced by which named function — and AT-06-4's conjunct-(3) oracle needs
+restating over that named surface, with one sentence on how AT-05-3's message equality survives it.
+
+### `§4.5's four fields` is stale in three places the delta now leans on (F-02, Medium)
+
+§4.5's capture-failure table enumerates **five** fields — `rootCause`, `diagnosis`,
+`repairApplied`, `repairPaths`, `snapshotRef` (`:1363-1369`) — but three prose sites still say
+four: `:302` ("§4.5 gives the capture-failure halt's four fields literal, transcribable values"),
+`:1357` (the bullet heading immediately above the five-row table), and `:1530` (§5.2's fixture: "a
+halt on AT-05-3's literal with §4.5's **four** fields attached at their literal values").
+
+Inherited from v1.12 — but the delta makes `:1530` load-bearing: the new AT-06-4b row (`:1824`)
+cites "§5.2's existing E-34 capture-failure fixture (`snapshotRef: null`, §4.5's literal field
+values)" as the whole basis for the negative arm. A fixture whose own section says it attaches four
+fields is the wrong fixture for asserting the fifth field's `null` value, and if that fixture's
+oracle is a set-equality over the field set — which §5.6 `:1806` requires elsewhere for exactly this
+reason — the two sections contradict each other outright. One edit fixes all three counts.
+
 ## Findings
 
 ## Questions
