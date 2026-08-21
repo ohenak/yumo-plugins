@@ -73,6 +73,34 @@ anything I previously approved?** Concretely:
 
 ## Acceptance Criteria
 
+What I checked, and the result:
+
+| # | Check | Result |
+|---|-------|--------|
+| C-1 | The routed sentence is present in the REQ (`overwrit` / "re-running … overwrites" matches) | **Pass** — AC-6.3, appended clause |
+| C-2 | It is an operator-visible outcome, not a contract (no ref name, no field name, no mechanism) | **Pass** — "a captured pre-A6 tree state"; `a6-snapshot` matches zero REQ lines |
+| C-3 | It is traced to a user scenario | **Pass** — `*(US-02.)*`, and US-02 at `:223` is the halt-turn scenario the obligation serves |
+| C-4 | It cites its authority in a parseable form (DEC-DOC-01) | **Pass** — `(DEC-A6-03)`, a spec id, not a `file:line` anchor |
+| C-5 | The changelog records the edit, its provenance and its bound | **Pass** — v1.16 block, names SE/PM/TE, states "no decision reopened" |
+| C-6 | Version row incremented and consistent with the changelog | **Pass** — `1.16`, row `:18`, block `:20` |
+| C-7 | Nothing else in the file changed | **Pass** — `git show 30d8bf7b` is two hunks, both accounted for |
+| C-8 | The clause's *Given* clause reaches the halt DEC-A6-03 describes | **Fail** — see F-01 |
+| C-9 | Upstream DEC-A6-03 at HEAD is consistent with the REQ now carrying the obligation | **Fail** — see F-02 |
+| C-10 | The new conjunct has a downstream behavioural home and a property | **Fail** — see F-03 |
+| C-11 | No previously approved AC weakened or contradicted | **Pass** — AC-5.2's "escalation adds information, never changes control flow" is untouched, and adding a sentence to a halt report is information, not control flow |
+
+C-8 is the one that matters most and is worth stating plainly. AC-6.3's *Given* is "the pipeline
+halts after an A6 escalation", and the new clause fires only "where the halt report points the
+operator at a captured pre-A6 tree state". At HEAD the only halt that points at the capture is
+**E-28's** — restoration itself failed — and TSPEC §3.5 (`:1065-1066`) says that path's throw is
+tagged `__isRevertFailure` and rethrown by the driver's terminal catch *"rather than mapping it to an
+escalation"*. TSPEC §4.5's halt-fields row likewise enumerates the A6-touched halts it covers — a
+non-resolved wave, a capture-failure escalation, a post-gate un-skip halt — and the restore-failure
+rethrow is not among them, nor does any halt field carry the ref name. So on the literal reading, the
+obligation's condition is never satisfied on the one path DEC-A6-03 is about, and the gap the round
+was opened to close can survive the edit. The fix is small and stays at requirements altitude: scope
+the clause to *any A6-touched halt* rather than to escalation halts.
+
 ## Risks
 
 ## Obligations
