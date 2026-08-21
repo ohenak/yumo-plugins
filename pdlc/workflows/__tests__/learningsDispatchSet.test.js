@@ -413,15 +413,48 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     const enabledRun = await runScenario({ corpus: contamination });
     const disabledRun = await runScenario({ corpus: contamination, configText: JSON.stringify({ learningsInjection: { enabled: false } }) });
 
-    // Set equality over the five named observables, read off the report both runs produce.
+    // CR round 1, PM F-02 / TE F-01 (High). This comparison previously read
+    // `report.verdicts`, `.completenessScores`, `.roundWindows`, `.approvalAnchors` and
+    // `.erratumRoutes` — FIVE KEYS `buildFinalReport` DOES NOT EMIT. Every `?? null` resolved to
+    // `null` on both arms and the assertion was `{5 nulls} === {5 nulls}`: AC-4.3, the AC that
+    // says no injection-derived value reaches a gate input, had no live oracle at all.
+    //
+    // The five gate inputs are read here where they ACTUALLY live (PM's Q-01 second branch:
+    // rewrite the oracle, do not grow the production report to fit it):
+    //   verdicts + round windows -> `report.phases[]`, whose rows carry each phase's `status`,
+    //       `detail` ("Approved (N iterations)") and `iterations` count. A verdict parsed
+    //       differently, or a round window opened at a different index, changes a row.
+    //   approval anchors        -> `report.artifactPaths`, which is exactly where `reviewLoop`'s
+    //       `anchoredPaths` are surfaced (`orchestrate-dev.js`, `reviewLoop`'s "Call site A"
+    //       comment and both `main()` push sites).
+    //   erratum routes          -> `report.notices` (erratum routing and every ignored-erratum
+    //       diagnostic land there) plus the erratum-dispatch prompt set asserted below.
+    //   completeness            -> `report.outcome` / `testSummary` / `harvestStatus`, the
+    //       gate-derived terminal values a completeness failure moves.
     const observe = (r) => ({
-      verdicts: r.result.report.verdicts ?? null,
-      completeness: r.result.report.completenessScores ?? null,
-      roundWindows: r.result.report.roundWindows ?? null,
-      approvalAnchors: r.result.report.approvalAnchors ?? null,
-      erratumRoutes: r.result.report.erratumRoutes ?? null,
+      phases: r.result.report.phases,
+      artifactPaths: r.result.report.artifactPaths,
+      notices: r.result.report.notices,
+      outcome: r.result.report.outcome,
+      testSummary: r.result.report.testSummary,
+      harvestStatus: r.result.report.harvestStatus,
     });
-    expect(observe(enabledRun)).toEqual(observe(disabledRun));
+    const enabledObserved = observe(enabledRun);
+    expect(enabledObserved).toEqual(observe(disabledRun));
+
+    // The controls, without which the equality above is the old defect in a new spelling: every
+    // observable must actually carry a value, and the round-window/verdict observable must
+    // actually carry the per-phase iteration arithmetic. `{undefined} === {undefined}` is not an
+    // oracle. (PM's standing recommendation: a "the instrument fires" assertion beside every
+    // negative claim.)
+    expect(Array.isArray(enabledObserved.phases)).toBe(true);
+    expect(enabledObserved.phases.length).toBeGreaterThan(0);
+    expect(enabledObserved.phases.some((p) => typeof p.iterations === "number")).toBe(true);
+    expect(enabledObserved.phases.some((p) => /Approved \(\d+ iterations?\)/.test(String(p.detail ?? "")))).toBe(true);
+    expect(Array.isArray(enabledObserved.artifactPaths)).toBe(true);
+    expect(enabledObserved.artifactPaths.length).toBeGreaterThan(0);
+    expect(Array.isArray(enabledObserved.notices)).toBe(true);
+    expect(typeof enabledObserved.outcome).toBe("string");
 
     // Every dispatch prompt outside BR-1's rule is byte-identical to the recorded baseline —
     // here approximated as byte-identical between the two runs at the same call index, since
@@ -466,11 +499,30 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
 
     const channelSkills = (r) => new Set(r.calls.map((c) => c.skill));
     expect(channelSkills(enabledRun)).toEqual(channelSkills(disabledRun));
-    // No erratum route was opened solely because of an injected document: the only trace of an
-    // injected document anywhere in the report is BR-8's rows naming source paths.
-    expect(JSON.stringify(enabledRun.result.report.erratumRoutes ?? [])).not.toContain(
-      "docs/completed/prior-a/LEARNINGS-prior-a.md"
-    );
+
+    // CR round 1, PM F-04 (Medium). The negative clause below previously read
+    // `report.erratumRoutes` — an absent key — so its subject was the literal string `"[]"` and
+    // it could never fail. It is now paired, on the same run, with the POSITIVE half AC-3.4
+    // itself names: "the report's AC-3.1 rows name the source document — the trace an operator
+    // follows". Both halves range over `report.learningsInjection`, which exists.
+    const SOURCE_PATH = "docs/completed/prior-a/LEARNINGS-prior-a.md";
+    const injection = enabledRun.result.report.learningsInjection;
+    expect(injection).toBeTruthy();
+
+    // Positive: the source document IS named, in BR-8's rows, on at least one dispatch — the
+    // control that proves the instrument can see an injected path at all.
+    const rowPaths = injection.dispatches.flatMap((d) => d.rows.map((row) => row.sourcePath));
+    expect(rowPaths).toContain(SOURCE_PATH);
+
+    // Negative: and NOWHERE else in the report. The subject is the whole serialised report minus
+    // the `learningsInjection` key — i.e. every gate-facing field an operator or a downstream
+    // consumer reads — so a source path leaking into an erratum route, a notice, a phase detail
+    // or an artifact path reds this, whichever channel it takes. `erratumRoutes` was one guess at
+    // that channel; this asserts over all of them without having to guess.
+    const { learningsInjection: _injectionKey, ...reportWithoutInjection } = enabledRun.result.report;
+    expect(JSON.stringify(reportWithoutInjection)).not.toContain(SOURCE_PATH);
+    // The control for the negative: the instrument is looking at a non-trivial subject.
+    expect(JSON.stringify(reportWithoutInjection).length).toBeGreaterThan(100);
   });
 });
 
@@ -890,14 +942,26 @@ describe("learningsDispatchSet — LI-AT-35: gate semantics are preserved exactl
     const enabledRun = await runScenario({ corpus });
     const disabledRun = await runScenario({ corpus, configText: JSON.stringify({ learningsInjection: { enabled: false } }) });
 
+    // CR round 1. LI-AT-35 carried the SAME defect PM F-02 / TE F-01 filed against LI-AT-29 —
+    // five absent report keys compared `null` to `null`. It is repaired the same way: the gate
+    // semantics AT-35 names are read where they live. Completeness and required headings are
+    // observable only through their EFFECT on the loop (a completeness failure re-dispatches the
+    // author, which moves the phase row's `iterations`); verdict grammar likewise (an unparsed
+    // verdict never converges the phase). `phases` is therefore the joint observable for all
+    // three, and `artifactPaths` is the approval-anchor observable.
     const observe = (r) => ({
-      completenessScores: r.result.report.completenessScores ?? null,
-      requiredHeadings: r.result.report.requiredHeadings ?? null,
-      verdictGrammar: r.result.report.verdictGrammar ?? null,
-      roundWindows: r.result.report.roundWindows ?? null,
-      approvalAnchors: r.result.report.approvalAnchors ?? null,
+      phases: r.result.report.phases,
+      artifactPaths: r.result.report.artifactPaths,
+      notices: r.result.report.notices,
+      outcome: r.result.report.outcome,
     });
-    expect(observe(enabledRun)).toEqual(observe(disabledRun));
+    const observed = observe(enabledRun);
+    expect(observed).toEqual(observe(disabledRun));
+    // The controls: each observable carries a value, and the phase rows carry the round-window
+    // arithmetic that a verdict-grammar or completeness regression would move.
+    expect(observed.phases.length).toBeGreaterThan(0);
+    expect(observed.phases.some((p) => typeof p.iterations === "number")).toBe(true);
+    expect(observed.artifactPaths.length).toBeGreaterThan(0);
   });
 });
 
