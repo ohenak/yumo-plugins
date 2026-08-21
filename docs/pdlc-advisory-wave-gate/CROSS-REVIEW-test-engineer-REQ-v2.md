@@ -112,8 +112,55 @@ having been classified (AC-2.2's default)".
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | v1's Q-02 and Q-03 are unanswered in v1.12 and remain open. They were not gating then and are not now, but AC-4.4's truncated `[post-wave, test, post-wave]` sequence still leaves the re-gate's post-wave failure unclassified-or-classified undecided in prose, and AC-1.5's zero-notice population still has an earlier dispatch-halt branch that a fixture must defeat for the zero to be a real zero. Are both deliberately left to PROPERTIES? |
+| Q-02 | AC-2.4 says the `0` mode is "distinguishable from AC-1.4 inertness" *on the run report*. The `haltAdvisory` field is the other carrier — at `0` the halt fields ride the wave's own halt (`rootCause`, `diagnosis`, `repairApplied: false`, `repairPaths: []`), where under `advisory.enabled: false` the halt carries no `advisory` key at all. Should AC-2.4 name that second observable too, or is the summary row alone the intended contract? |
+
 ## Positive Observations
+
+- **The revision fixed all four v1 findings without touching anything else.** 28 insertions and 17
+  deletions, every one traceable to a named finding in the v1.12 changelog, and no unchanged section
+  disturbed. A delta re-review is cheap when the delta is this disciplined.
+- **§1's drift paragraph got weaker and truer.** v1.11 claimed `--check` exits non-zero with three
+  rows stale and one missing; v1.12 re-measures and reports the tracked artifact in-sync at exit `0`
+  with only the gitignored consumer copy differing. I ran the check and the `cmp` myself and v1.12 is
+  right on both. This is the second time this document has narrated its own retraction of a stronger
+  claim (§1's ledger evidence was the first), and it is the habit that makes the rest of the measured
+  baseline trustworthy.
+- **AC-3.5 was strengthened, not just de-scoped.** I asked for "asserted by its own test" to be
+  dropped as a PROPERTIES concern; the replacement — "Every excluded operation enumerated in AC-3.2
+  and AC-3.3 carries that outcome" — binds *every* enumerated member to the positive outcome rather
+  than to a test file. That is a set-equality-shaped obligation over the enumeration, at the right
+  altitude, and it is a stronger requirement than the sentence it replaced.
+- **AC-4.1's three positive conjuncts survived the altitude edit intact.** Only the fixture count and
+  the mutation recipe were removed; conjunct (iii) still carries the prohibition with its positive
+  outcome ("applies and **no** gate invocation follows ⇒ the wave halts"), so the repair of the
+  original absence-only oracle is fully preserved.
+- **O-4 now names an owner explicitly.** "Owner: this feature's TSPEC." is more than the minimum the
+  finding asked for — it makes the routing mechanical rather than inferable from context.
+- **The zero-budget AC is the right requirement, one clause short of correct.** F-01 is a factual
+  correction to a conjunct, not an objection to the criterion: the range, the no-dispatch behaviour
+  and the contrast with `advisory.enabled: false` all verify at HEAD, and the mode that traced to no
+  AC in v1 now traces to one.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding. Three of v1's four findings are fully resolved and the fourth landed the AC I asked
+for — but AC-2.4's new conjunct asserts an observable the shipped code contradicts: at
+`waveBudgetPerRun: 0` the per-seam A6 row reads one invocation and one escalation per red wave, not
+zero, because the budget escape terminates through the driver and its disposition carries `seam:
+"A6"` onto the summary. Because that clause is the AC's oracle, a PROPERTIES test transcribed from it
+goes RED against correct behaviour.
+
+What must change: restate AC-2.4's fourth clause to name the row's actual contents (`resolved: 0`
+with one `escalated` invocation per red wave), keeping the `advisory.enabled: false` contrast as
+written. F-02 (Low) suggests naming `unclassified` as the mode's root-cause class in the same edit.
+Nothing else in the delta requires work.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
