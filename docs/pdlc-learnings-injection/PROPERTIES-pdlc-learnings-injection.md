@@ -264,8 +264,12 @@ a defect in this document or in the PLAN, not a nice-to-have.
   present — both conjuncts, so the oracle is not vacuous on a fixture that never carried the excluded
   section. **The oracle reads the rendered block, not the extractor's own report** (TSPEC v0.9):
   scan `renderLearningsBlock`'s output for `SECTION_HEADING_RE` lines, map each through §D.3's
-  matching rule to a canonical name, and assert the resulting list equals `BR6_SECTION_NAMES` as an
-  **ordered** list — "in priority order" is part of the claim, not a presentation detail. The
+  matching rule to a canonical name, and assert the resulting list equals — as an **ordered** list —
+  the **priority-ordered intersection** of `BR6_SECTION_NAMES` with the headings the fixture document
+  actually carries, hand-transcribed for the fixture at hand rather than derived at runtime. On AT-11's
+  fixture, which carries all five, that intersection *is* the full `BR6_SECTION_NAMES` catalogue
+  (TSPEC states it that way for AT-11); on any narrower fixture it is the proper sub-list. "In priority
+  order" is part of the claim, not a presentation detail. The
   Approval Record conjunct is asserted on a marker string occurring nowhere else in the corpus, and
   the five presence conjuncts on each section's **body** marker rather than its heading, so a
   renderer that emits a taken section's heading without its body reds. `sections[]` is asserted
@@ -1080,7 +1084,9 @@ true**, and the count is restated against `git ls-files pdlc/workflows/__tests__
 | `learningsSuiteMap.test.js` | LI-14 | not yet created |
 | `fixtures/learnings-baseline/` | LI-06 | not yet created |
 
-Seven of the fourteen have landed (LI-01…LI-04, LI-07, LI-08, LI-09, LI-13 are committed); the
+Seven of the fourteen files have landed. The tasks committed so far are LI-01…LI-04, LI-07, LI-08,
+LI-09 and LI-13 — eight ids against seven rows, because LI-04 owns none of the fourteen: its artifact
+is the `/.baseline-worktree/` ignore rule (PLAN's LI-04 row, landed at `.gitignore:13`). The
 remaining seven are explicitly planned and unstarted. **No property in this document names a test
 file the PLAN does not create**, and none names one that exists but is owned by no task. The
 properties this revision adds or amends land in files on both sides of that line — PROP-CONFIG-09 in
