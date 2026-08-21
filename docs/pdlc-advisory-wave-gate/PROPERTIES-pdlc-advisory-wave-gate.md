@@ -445,10 +445,10 @@ Every criterion has at least one property; every property traces at least one cr
 | AC-4.6 | PROP-GATE-08, PROP-GATE-09 |
 | AC-5.1 | PROP-REST-01, PROP-REST-03, PROP-REST-05, PROP-REST-06, PROP-REST-10 (observation point) |
 | AC-5.2 | PROP-REST-09, PROP-REST-10 (queue-row write follows the observation), PROP-SEAM-03, PROP-SEAM-04 |
-| AC-5.3 | PROP-REST-04, PROP-GATE-03 |
+| AC-5.3 | PROP-REST-04, PROP-GATE-03, PROP-REC-10 |
 | AC-6.1 | PROP-REC-01, PROP-REC-02, PROP-REST-08, PROP-REST-10 (record append follows the observation) |
 | AC-6.2 | PROP-REC-03, PROP-REC-04, PROP-REC-07, PROP-REST-10 (escalation append follows the observation) |
-| AC-6.3 | PROP-REC-05, PROP-REST-08 |
+| AC-6.3 | **First sentence** (diagnosis + root-cause class): PROP-REC-05. **Second sentence** (co-located overwrite warning, REQ v1.16): PROP-REC-08 (capture succeeded), PROP-REC-09 (E-34 negative arm), PROP-REC-10 (un-skip arm). **Field shape it rides:** PROP-REC-11, PROP-REST-08 |
 | AC-6.4 | PROP-REC-06 |
 | NFR-1 | PROP-NFR-03, PROP-NFR-04 |
 | NFR-2 | PROP-SEAM-05, PROP-SEAM-06, PROP-SEAM-09 |
@@ -459,8 +459,8 @@ Every criterion has at least one property; every property traces at least one cr
 
 ### C-2. FSPEC acceptance tests → properties
 
-Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no id appears that FSPEC
-§6 does not carry.
+Set-equality over AT ids: all **forty-eight** ATs in FSPEC §6 at v1.7 appear below, and no id appears
+that FSPEC §6 does not carry. The forty-eighth is `AT-06-4b`, added at v1.7 as AT-06-4's negative arm.
 
 | AT | Property | AT | Property |
 |---|---|---|---|
@@ -474,12 +474,12 @@ Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no 
 | AT-02-2 | PROP-CTR-02, PROP-CTR-03 | AT-05-1 | PROP-REST-01, PROP-REST-03, PROP-REST-10 |
 | AT-02-3 | PROP-CTR-04 | AT-05-2 | PROP-REST-02 |
 | AT-02-4 | PROP-CTR-06 | AT-05-3 | PROP-REST-09 |
-| AT-02-5 | PROP-CTR-07 | AT-05-4 | PROP-REST-04 |
+| AT-02-5 | PROP-CTR-07 | AT-05-4 | PROP-REST-04, PROP-REC-10 |
 | AT-02-6 | PROP-CTR-11 | AT-05-5 | PROP-REST-05 |
 | AT-02-7 | PROP-CTR-10 | AT-06-1 | PROP-REC-01, PROP-REST-10 |
 | AT-02-8 | PROP-CTR-08 | AT-06-2 | PROP-REC-02 |
 | AT-02-9 | PROP-CTR-09 | AT-06-3 | PROP-REC-03 |
-| AT-03-1 | PROP-ENV-01 | AT-06-4 | PROP-REC-05 |
+| AT-03-1 | PROP-ENV-01 | AT-06-4 | PROP-REC-05, PROP-REC-08, PROP-REC-10 |
 | AT-03-2 | PROP-ENV-04 | AT-06-5 | PROP-REC-06 |
 | AT-03-3 | PROP-ENV-05 | AT-06-6 | PROP-REC-04 |
 | AT-03-4 | PROP-ENV-08 | AT-07-1 | PROP-NFR-03 |
@@ -487,13 +487,19 @@ Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no 
 | AT-03-6 | PROP-ENV-09 | AT-07-2b | PROP-CFG-01, PROP-CFG-02 |
 | AT-03-7 | PROP-ENV-07 | AT-07-3 | PROP-GATE-10 |
 | AT-03-8 | PROP-ENV-06 | AT-07-4 | PROP-NFR-01 |
+| | | AT-06-4b | PROP-REC-09, PROP-REST-08 |
 | | | AT-07-5 | PROP-NFR-02 |
 
 ### C-3. PLAN tasks → properties
 
-Every RED task in PLAN v1.2 carries at least one property, and every property names a PLAN-owned test
-file. The seven GREEN tasks (A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21) carry no
-properties of their own by construction: each turns the preceding RED batch's properties green.
+Every RED task in PLAN v1.13 carries at least one property, and every property names a PLAN-owned test
+file. Task ids below are PLAN's pre-restructure ones (A6-15, A6-16, A6-17, A6-19, A6-20); at v1.13
+those are red *steps inside* A6-18 and A6-21, which is why the new rows name both forms. Re-titling
+the whole matrix on the restructured ids is SE's v2 F-01/F-02, still open and non-gating. The seven GREEN tasks (A6-05, A6-06, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21) carry no
+properties of their own by construction: each turns the preceding RED batch's properties green — with
+one contract PROP-REC-11 makes explicit: A6-18's green step both adds `snapshotRef` and widens the
+three shipped exact-shape oracles it disturbs, because that widening is the same red-to-green step
+and not a follow-up.
 
 | Task | Test file | Properties |
 |---|---|---|
@@ -506,10 +512,10 @@ properties of their own by construction: each turns the preceding RED batch's pr
 | A6-09 | `advisoryWaveGate.test.js` | PROP-REST-01, PROP-REST-02, PROP-REST-03, PROP-REST-05, PROP-REST-06, PROP-REST-10 |
 | A6-11 | `advisoryDriver.test.js` | PROP-CTR-10, PROP-GATE-11, PROP-NFR-01, PROP-NFR-02 |
 | A6-13 | `advisoryWaveGate.test.js` | PROP-CTR-04 (seam-op half), PROP-CTR-07, PROP-ENV-08 (seam-op half), PROP-ENV-11, PROP-ENV-13, PROP-GATE-02 (seam-op half) |
-| A6-15 | `advisoryWaveGate.test.js` | PROP-SEAM-07, PROP-SEAM-08, PROP-CTR-03, PROP-CTR-04, PROP-CTR-05, PROP-CTR-06, PROP-CTR-08, PROP-CTR-09, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13, PROP-ENV-03, PROP-ENV-04, PROP-ENV-05, PROP-ENV-08, PROP-ENV-09, PROP-ENV-10, PROP-ENV-12, PROP-GATE-01…-06, PROP-REST-07, PROP-REST-08, PROP-REST-09, PROP-REC-05, PROP-NFR-03 |
+| A6-15 | `advisoryWaveGate.test.js` | PROP-SEAM-07, PROP-SEAM-08, PROP-CTR-03, PROP-CTR-04, PROP-CTR-05, PROP-CTR-06, PROP-CTR-08, PROP-CTR-09, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13, PROP-ENV-03, PROP-ENV-04, PROP-ENV-05, PROP-ENV-08, PROP-ENV-09, PROP-ENV-10, PROP-ENV-12, PROP-GATE-01…-06, PROP-REST-07, PROP-REST-08, PROP-REST-09, PROP-REC-05, PROP-REC-08, PROP-REC-09, PROP-REC-11 (its `advisoryWaveGate.test.js` and `advisoryWaveGateMain.test.js` surfaces), PROP-NFR-03 |
 | A6-16 | `advisoryRecord.test.js` | PROP-REC-01, PROP-REC-02 |
-| A6-17 | `advisoryEscalationLog.test.js` | PROP-REC-03, PROP-REC-04, PROP-REC-06, PROP-REC-07 |
-| A6-19 | `waveExecution.test.js` | PROP-SEAM-03, PROP-SEAM-04, PROP-SEAM-10, PROP-GATE-07, PROP-GATE-08, PROP-GATE-09, PROP-GATE-10, PROP-REST-04, PROP-REST-09 |
+| A6-17 | `advisoryEscalationLog.test.js` | PROP-REC-03, PROP-REC-04, PROP-REC-06, PROP-REC-07; PROP-REC-11's `expect(failed.notices).toHaveLength(2)` → `3` widening is **A6-18's**, not this step's, since it is owed by the field the green step adds |
+| A6-19 (A6-21's former-A6-19 red step) | `waveExecution.test.js` | PROP-SEAM-03, PROP-SEAM-04, PROP-SEAM-10, PROP-GATE-07, PROP-GATE-08, PROP-GATE-09, PROP-GATE-10, PROP-REST-04, PROP-REST-09, PROP-REC-10 |
 | A6-20 | `advisoryDisabled.test.js` | PROP-SEAM-05, PROP-SEAM-06, PROP-SEAM-09 |
 
 **File existence, verified at HEAD.** The ten edited suites all exist
