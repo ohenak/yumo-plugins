@@ -493,11 +493,22 @@ AC-2.3's "the material taken". The shipped renderer agrees — `renderLearningsB
 `LEARNINGS_BLOCK_TRAILER` around `doc.material`, and only `material` was ever measured into
 `bytes`. This entry's decision is unaffected — *which* quantities bound is what it decides, and a
 static bound stays static under either accounting basis — but the wording below is stated over
-material, because the caps are not a bound on the block's size. Measured on the shipped renderer at
-HEAD: framing costs **694 bytes** for a one-document block and **1,012 bytes** for a
-five-document block, so at REQ §4.1's defaults a fully-conforming block occupies up to roughly
-**21,012** bytes against a `maxTotalBytes` of 20,000. That gap is a known constant, not a leak, and
-it is why `D-O-4` reports the two quantities separately.
+material, because the caps are not a bound on the block's size. Framing is **not a constant**: as
+TSPEC §D.5 already says, it is a block term plus one opener/closer pair per selected document, and
+each pair embeds that document's path twice, its feature name and its `orderKey`. Read off the
+shipped `renderLearningsBlock` at HEAD, framing is a **block constant of 477 bytes** (the `\n\n`
+prefix, the 50-byte header, the preamble, the separators and the 35-byte trailer) plus, per selected
+document, `49 + 2·len(path) + len(feature) + len(orderKey)` bytes, plus a further
+`30 + len(String(bytes))` when the document is `bounded` and carries the
+` (ABRIDGED: bounded at N bytes)` clause. Evaluated over a named fixture — this repository's own
+corpus at HEAD, the first five of `git ls-files | grep -E 'LEARNINGS-.*\.md$'`, with a ten-character
+`orderKey` — that is **684 bytes** at one document and **1,607** at five (718 / 1,777 when every
+selected document is abridged, which at §4.1's 6,000-byte per-document default is the common case).
+So at REQ §4.1's defaults a fully-conforming block over *this* corpus occupies up to roughly
+**21,600 bytes** against a `maxTotalBytes` of 20,000. The overshoot is a known, bounded growth term
+rather than a leak, but it is a **function of the corpus**, not a fixed number: any reader can
+re-evaluate the formula against their own paths. That is why `D-O-4` reports the two quantities
+separately rather than pinning either to a literal.
 
 **Alternatives considered.**
 
