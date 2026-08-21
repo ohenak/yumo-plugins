@@ -70,10 +70,6 @@ place in the document where the halt-field *values* are asserted as a transcribe
 count means the one positive oracle for `snapshotRef: null` is not actually specified anywhere.
 Filed as F-01 below with the exact remedy.
 
-## Interfaces
-
-## Data Model
-
 ## Test Strategy
 
 **This is where v3's High finding is discharged, and it is discharged well.**
@@ -125,14 +121,70 @@ production module. One clause on the AT-06-4 row closes it.
 
 ## Open Questions
 
+§6's two touched rows both read clean against the tree.
+
+- **OQ-2** now separates the closed half from the open one: BR-14/AC-6.3 have landed and the halt
+  report carries the operator warning (asserted by §5.6's AT-06-4 / AT-06-4b), leaving only the
+  ref-naming question — should the name gain a run discriminator so the overwrite cannot happen —
+  open. That is precisely the correction v3 F-02 asked for, and the disposition no longer presents a
+  decided obligation as an accepted cost.
+- **OQ-7** gains the two-revision pin (AC-5.1 at REQ v1.14, AC-6.2's escalation-log append at
+  v1.15). Verified against REQ's own changelog lines 29 and 34 — the claim is accurate, and the
+  correction matters for a reader reconstructing which revision authorised which excluded carrier.
+
+No open question in §6 forecloses a testing approach §5 needs, and no row contradicts a §2–§4
+mechanism after this pass.
+
 ## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | §4.5's halt-field set is five members (line 1353, `snapshotRef` added at v1.12), but three sites still say **four** — lines 302, 1357, and load-bearingly §5.2 line 1530, the only place halt-field *values* are transcribed. Consequence: `snapshotRef: null` (§4.5 line 1369) has no positive oracle anywhere; an implementation omitting the key entirely passes §5.2's four-key transcription and passes AT-06-4b, whose negatives are about the rendered report, not the field. Fix: say five at all three sites, and state §5.2's transcription as a set-equality over the halt-field keys | §5.2 (line 1530); §4.5 (lines 1353, 1357); §2.5 (line 302) |
+| F-02 | Medium | Local | AT-06-4's conjunct (3) names the observable (co-location) but no matching predicate, and correctly declines a verbatim pin. The cheapest implementation of "presence of the statement" is `toContain(<constant imported from the module under test>)` — an implementation echo that cannot fail on wording and neuters AT-06-4b. Pin the predicate without deciding the wording: a spec-side case-insensitive `/overwrit/` match plus the `refs/pdlc/a6-snapshot-{waveNum}` substring in the **same** `haltError` string, literal written in the test, never imported or derived from production | §5.6 AT-06-4 (line 1823) |
+| F-03 | Low | Local | §5.6's AT map and §5.1's file table both name the two new arms, but §5.2 — the "what is asserted mechanically" inventory, and the section the AT-06-4b row itself cites as the fixture's home — was not extended with them. A reader auditing §5.2's fixture list sees six positive assertions plus this round's two, none of them the co-location arms. One bullet clause in §5.2's capture-failure fixture (and its two-red-wave sibling) restores the inventory's completeness | §5.2 (line 1528); §5.6 (lines 1823–1824) |
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does the AT-06-4 fixture reuse §5.2's two-red-wave run (which already observes `refs/pdlc/a6-snapshot-1` / `-2` on the `_git` double) or the single-wave escalation fixture? Either works for co-location, but naming it in §5.2 would let PLAN mint the red test without a fixture choice being made at implementation time. |
+
 ## Positive Observations
+
+- Every current-state claim in this delta is true at HEAD, and the two most falsifiable ones are
+  byte-exact: the upstream hashes reproduce under `shasum -a 256`, and `advisoryRecord.test.js:496`
+  reads the literal the §1.3 cell quotes, at the cited line. Three rounds ago this document's
+  weakest surface was stale measurement; it is now its strongest.
+- AT-06-4b is a textbook falsifying arm: negatives paired with positives on the same rendered
+  string, placed on an existing fixture, with the mutation it catches stated in the row itself.
+- The completion pass resisted the erratum failure mode of arguing with its own prior round — v1.12's
+  mechanism text is left intact and the oracles are added around it, and §5.6's set-equality over AT
+  ids still holds after the insertion (48 = 48, measured).
+- TE Q-01 is answered *before* §5 was touched, and answered at the right altitude: co-location is
+  the observable, so no sentence is invented at TSPEC altitude and none is transcribed into §5.5.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The v3 High is fully resolved and nothing in the delta broke a previously-approved section. F-01 and
+F-02 are Medium and non-gating, but both are cheap and both make the difference between an oracle
+that can fail and one that cannot — worth folding into the next authoring pass, or into PLAN's
+red-test rows for A6-15 if the TSPEC is otherwise frozen.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | Stale "four fields" for §4.5's five-member halt-field set; `snapshotRef: null` has no positive oracle | §5.2 (line 1530), §4.5 (line 1357), §2.5 (line 302) |
+| F-02 | Medium | delta | local | AT-06-4 conjunct (3) has no matching predicate; the obvious implementation is an imported-constant echo | §5.6 AT-06-4 (line 1823) |
+| F-03 | Low | delta | nonlocal | §5.2's mechanical-assertion inventory not extended with the two new arms it hosts | §5.2 (line 1528) |
+
+FINDING: Medium | inherited | nonlocal | §5.2 (line 1530), §4.5 (line 1357), §2.5 (line 302) | §4.5's halt-field set has been five members since v1.12 but three sites still enumerate four, including §5.2's transcription of the capture-failure halt's literal field values — the only place halt-field values are asserted — so `snapshotRef: null` has no positive oracle and an implementation omitting the key passes both §5.2 and AT-06-4b; say five and make §5.2's transcription a set-equality over the halt-field keys
+FINDING: Medium | delta | local | §5.6 AT-06-4 (line 1823) | conjunct (3) pins co-location as the observable but no matching predicate, and the cheapest implementation is `toContain(<production constant>)`, an implementation echo that cannot fail on wording and neuters AT-06-4b; pin a spec-side case-insensitive `/overwrit/` plus the `refs/pdlc/a6-snapshot-{waveNum}` substring in the same `haltError` string, literal written in the test and never imported from production
+FINDING: Low | delta | nonlocal | §5.2 (line 1528) | AT-06-4b cites §5.2's capture-failure fixture as its home, but §5.2's own inventory of what that fixture asserts was not extended with the co-location arms, leaving the mechanical-assertion list incomplete for a reader auditing it
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
