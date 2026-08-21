@@ -92,6 +92,55 @@ byte-identical to the version I approved these rows in.
 
 ## Oracles
 
+**No oracle statement changed.** §O.1–§O.10 are byte-identical. All movement is in §C.4's account of
+which oracles are *owed* to landed suites — the account I over-endorsed at v8 and which this delta
+corrects — and in §G.3's routing of the two consequences.
+
+**The narrowed absence claim is right in every conjunct, re-measured at HEAD.** v0.6 replaces the flat
+"carries none of these four" with a case-by-case statement. Each part verifies against
+`pdlc/workflows/__tests__/learningsBlock.test.js`:
+
+| Claim in v0.6 §C.4 | Verified at HEAD |
+|---|---|
+| no un-glossed `## Rejected Proposals` arm; *"the builder renders the canonical glossed"* form | the only occurrence is the section spec `{ name: "Rejected Proposals (with rationale)", body: "REJECTED_MARKER body text." }` (line 81) — the canonical glossed name, not the un-glossed heading form |
+| no `###`-as-body case | grep for `###` over the suite returns nothing |
+| no `## Process Findings` near-miss | absent |
+| the un-numbered `## Cross-Feature Patterns` spelling **does** appear, as LI-AT-05's material | `const material = "## Cross-Feature Patterns\n\nSample AT-05 material text.\n"` (line 42), inside `test("LI-AT-05: the preamble is byte-equal to TSPEC §OQ.1's literal wording…")` |
+| …and as LI-AT-12's fixture text | `"## Cross-Feature Patterns\n\n" + "a".repeat(100)` (line 110) and the multi-byte fixture (line 130), both inside `test("LI-AT-12: character-safe cut…")` |
+| `expect(result.sections).toEqual(["Cross-Feature Patterns"])` proves the matcher accepts it | present at lines 118 and 139, on both LI-AT-12 cases — and it is `toEqual` over the whole array, i.e. set equality over the section enumeration, not containment |
+| *"what is owed there is the variant fixture as a whole, not that spelling"* | follows: the spelling is exercised, the **variant-heading fixture** (ordinal/gloss/`###`/near-miss knobs together) is not |
+
+**This is the correction I needed, not a cosmetic softening.** My v8 review recorded the un-numbered
+spelling as absent and cited *"fixture bodies at `:42`, `:110`, `:130`"* as if bodies were not
+exercise. They are: line 118's `toEqual` is an assertion **on** that spelling. Had the claim stayed as
+written, a future reader could have concluded F-O-1's second rule had no landed coverage at all, and
+the owed amendment would have been scoped wider than it is. v0.6 fixes the direction of the error — it
+narrows what is owed, and it narrows it to something checkable.
+
+**The binding/non-binding `maxBytes` distinction is likewise exact.** v0.6 no longer says *"its only
+`maxBytes` literals are 40 and 66"*; it says its only ***binding*** literals are, and qualifies the
+third call as *"a deliberately non-binding `100000`"*. The file bears this out: `const maxBytes = 40`
+(line 111) sits directly under the comment *"Hand-computed (never derived here): the character-safe cut
+of an all-ASCII text lands on exactly the byte bound"* (line 108), `const maxBytes = 66` is at line 131,
+and the third call `extractInjectableMaterial(text, 100000)` (line 87) sits under
+*"Unbounded: large enough that maxBytes never binds, so nothing is cut (TSPEC §D.5)"* (line 86). Both
+comments are quoted in the document verbatim, which is what makes the qualification checkable rather
+than asserted — and which retires v8's F-03 anchor class rather than moving it.
+
+**No implementation echoes in the cases the delta reasons about.** Both LI-AT-12 expectations remain
+literal transcriptions: `expect(result.material).toBe("## Cross-Feature Patterns\n\naaaaaaaaaaaaa")`
+with `expect(result.bytes).toBe(40)` (lines 115–116), and the multi-byte case's
+`"## Cross-Feature Patterns\n\n" + "b".repeat(38)` (line 135). No expected value is imported from or
+recomputed by the unit under test, and the `toBeLessThanOrEqual(maxBytes)` bound check (line 137) is
+paired with the positive `toBe` on the same path — not an absence-only oracle.
+
+**F-03 of v8 is resolved by quotation, not by deletion.** The three `LI-AT-30` cases are now cited by
+their `test(` titles, and all three match the file character-for-character, including the third's full
+title: `test("LI-AT-30: maxBytesPerDocument: 0 ⇒ every non-self corpus path RSN-NO-MATERIAL, none
+RSN-COUNT, no slot consumed (E-36)")` at `learningsConfig.test.js` line 258, with the sibling titles at
+226 and 242. `.gitignore`'s rule is cited as `/.baseline-worktree/`, which is its literal line-13 text.
+Under `DEC-DOC-01` these are now symbol/quote citations, not bare positional anchors.
+
 ## Fixtures
 
 ## Findings
