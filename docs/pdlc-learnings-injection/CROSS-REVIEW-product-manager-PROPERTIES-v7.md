@@ -112,7 +112,24 @@ remains.
 
 ## Fixtures
 
-_pending_
+**No fixture claim is invalidated by the delta, and one is repaired by it.**
+
+| Fixture dependency in PROPERTIES | State at HEAD `a12b20f9` | Effect of this delta |
+|---|---|---|
+| `helpers/learningsFixtures.js` (LI-02) | tracked (`1920f281`) | unchanged; §C.4's row already read *exists (landed)* |
+| §F.1's named corpora (`NO-MATERIAL`, `ZERO-BOUND`, `DIVERGENT-CORPUS`, the five-section AT-11 fixture) | declared through that helper | untouched by the delta; PLAN v0.7's changelog re-asserts *"no AT partition, fixture or manifest row was touched"* |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | `learningsBlock.test.js:106–139` still carries the 25 + 2 + n arithmetic in comments and literal expected strings | unchanged — and correctly still **transcribed**, not computed from the unit under test |
+| PROP-BOUND-08's real-corpus arm (first `git ls-files` path) | reads the live corpus | unaffected |
+| `scripts/capture-learnings-baseline.mjs` | **tracked** — `git ls-files scripts/` returns exactly that one path, landed at `ced75955` ("LI-05 — GREEN the capture script") | **repaired by this delta**: lines 1114–1118 replace the old *"the repository has no root-level `scripts/` directory today"* with the landed state and say plainly that the earlier sentence was true when written. This is exactly the right correction, correctly evidenced |
+| `fixtures/learnings-baseline/` (LI-06) | **tracked** — `MANIFEST.json` plus `PHASE-F-AUTHORING-PROMPT/0.txt` and two `PHASE-R-REVIEW-PROMPTS/*.txt`, landed at `4a6c1816` | **not** repaired: §C.4 line 1085 still reads *not yet created*. Same defect class as the `scripts/` sentence the delta did fix — this is the fourteenth row of F-01 |
+
+The asymmetry is the finding in miniature: the author re-measured one path and wrote an exemplary
+correction for it, then left the table that the same method governs at its previous reading. The
+baseline fixture directory is the clearest case, because it is the only non-`.test.js` row in the
+inventory and it landed with its own guard suite (`learningsBaselineGuard.test.js`, 11 passing per
+`4a6c1816`'s message).
+
+No property's fixture bytes move under any of this, and no generator or corpus declaration changes.
 
 ## Findings
 
