@@ -264,4 +264,35 @@ DEFERRED: §G.3's *Also answered* heading now reads "by PLAN v0.6/v0.7/v0.8 and,
 
 ## Recommendation
 
+**Approved.**
+
+Zero High, zero Medium, zero Low. All six of my v14 findings — the High (F-01) and the five
+non-gating ones — are closed and verified against the repository at HEAD, not against the document's
+own account of the fix.
+
+Against the freeze's two blocking criteria:
+
+- **(i) a defect this revision introduced.** **No.** Every claim the delta adds was re-derived from
+  the tree or fixed-string grepped against PLAN at v1.3: the seven counting claims (17 / 13 / 4 / 1
+  engine-side / 39 / 22 / 18 inventory rows), the five quotations (`PLAN:663`, `:561`, `:310`,
+  `:682`, `:684`), the nineteen-row count of PLAN's §Post-batch remediation subsection, and both
+  commits' name-status for the fixture-row attribution. The one edit that could plausibly have
+  broken something — the extended quotation at line 1131 — is verbatim in PLAN.
+- **(ii) a factual contradiction with the repository or an upstream document.** **No.** The
+  contradiction that blocked at v14 is the one this delta removed: line 1180 now states P-A-6's rule
+  as `PLAN:663` states it, and the header no longer generalises over rulings it did not check.
+
+Everything else re-measured clean: `## Properties`, `## Oracles`, `## Fixtures` and §C.1/§C.2/§C.3
+are byte-untouched, §C.3's accounting rows (`21` / `0` / `12`) are unchanged, and the 26-passed /
+26-total, 0-skipped run over `learningsBlock.test.js` and `learningsSelect.test.js` reproduces at
+HEAD via the package's `--experimental-vm-modules` runner.
+
+Six DEFERRED items are recorded above. None is a defect, none blocks, and none reopens a settled
+decision — they are readability and future-sweep suggestions for whichever round next touches those
+lines. No upstream erratum is emitted: the two items I routed at v13 landed in PLAN v1.2/v1.3, and
+the manifest under-count this document routed is the one PLAN closed at v1.2/v1.3.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
