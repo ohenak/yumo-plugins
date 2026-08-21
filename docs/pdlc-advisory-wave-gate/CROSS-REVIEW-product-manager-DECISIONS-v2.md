@@ -132,6 +132,52 @@ for all four entries would close it.
 
 ## Positive Observations
 
+Everything below I checked against the tree, not against the document's word.
+
+- **The v1.11 note leads with what did *not* move, and it is true.** "No decision *outcome* moved:
+  every alternative rejected below stays rejected, on the same side" — I diffed all four option
+  tables; the only chosen-row edit is DEC-02's option C gaining *per promoted task*, which is a
+  cardinality repair inside the chosen option, not a re-decision. For a PM auditing a seven-repair
+  round on a shipped feature, that sentence is the one that makes the rest readable.
+- **The impossibility→merit correction is the right instinct, generalised.** The note names the
+  signature of all three substantive misses — "claims about **failure modes, visibility and
+  impossibility**, none of them falsifiable by the grep-shaped check that confirms a count" — and
+  says v1.10's sweep was not exhaustive rather than leaving unswept claims reading as verified.
+  That is durable process signal, and it is stated in the artifact where the next reader will hit it.
+- **The fail-closed split is exactly the repair a downstream transcriber needed.** Verified in code:
+  `captureTreeSnapshot` (`orchestrate-dev.js:12566`) routes every failed verb through
+  `fail(verb)` (`:12572`) returning `null` and never throws — its docstring says so at `:12558`
+  ("Returns `null` on any `ok !== true` — never throws") — while `restoreTreeSnapshot` (`:12635`)
+  throws on each of `read-tree --reset -u`, `clean -fd`, `reset --mixed`, with the docstring
+  contrasting the two deliberately. The bullet's conclusion — fail-closed is a property of the
+  *pair*, "both halves end the wave; neither leaves a repair half-applied" — is the sentence a
+  PROPERTIES author can transcribe without writing an oracle that fails correct code.
+- **Reversibility ratings got *more* honest, not more flattering.** DEC-A6-01's rating moved from
+  "module-private" to "exported and directly unit-tested", i.e. from cheap-to-reverse to
+  reddens-tests-an-operator-sees. Verified: both are `export async function` (`:12566`, `:12635`).
+  Restating a rating in the direction that raises the cost of reversal is a good sign about the
+  record's incentives.
+- **The OQ-7 closure is transcribed as a decision, not as a hedge.** The four hedged sites now read
+  as the settled boundary, and the re-evaluation trigger is restated as a *reversal* of BR-9's
+  ignored-path exclusion rather than a pending OQ. That matches PLAN A6-10, which already specifies
+  the ignored-path round trip as "a **fully asserted live case** … no pending marker is used", with
+  a paired positive/negative oracle (an ignored path mutated between snapshots leaves both hash maps
+  equal *and* an implementation that restores it fails). Mechanism, oracle and record agree.
+- **Option B's correction volunteers a falsification of the document's own prior claim.** The row
+  now says the runtime-cannot-use-`fs` premise "is false at HEAD" — verified,
+  `orchestrate-dev.js:20` is `import * as fs from "fs";` — and replaces it with the narrower thing
+  actually enforced: `advisoryWaveGate.test.js:3183`'s A6-07 / PROP-NFR-04 source scan, whose
+  forbidden set is verbatim `/\bprocess\b/, /\bDate\b/, /Math\.random/, /\brequire\(/, /\b_now\b/,
+  /\bglobalThis\b/` (`:3196`) over the five named helpers. The row keeps its rejection and loses a
+  false ground — the same move as F-01's, applied without being asked.
+- **The example-config bullet answers a discoverability question with a product argument.** Verified:
+  `.claude/pdlc.config.example.json` carries `"waveBudgetPerRun": 1` and
+  `pdlc/engine/__tests__/advisory-config-example.test.js:54` requires only `>= 0` with the message
+  "0 is a legal configured value, E-33". The bullet's reasoning — an example config's job is to show
+  a working default, and shipping `0` would teach operators to disable a tier that is already off by
+  default — is a product judgement stated as one, with the residual gap handed to REQ/FSPEC rather
+  than absorbed here. That is the scope discipline this document has been good at throughout.
+
 ## Recommendation
 
 ## Verdict
