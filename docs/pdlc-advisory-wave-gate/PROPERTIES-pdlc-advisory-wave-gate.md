@@ -500,9 +500,10 @@ These are stated so that a later reader can tell a decision from an omission.
 
 ### G-3. Findings routed upstream (errata)
 
-Two defects in upstream documents are named here rather than absorbed into this document's
-properties. In both cases this document follows the TSPEC/PLAN reading, which is also what the
-shipped code does, and the FSPEC text is the one that needs the versioned edit.
+Three defects in upstream documents are named here rather than absorbed into this document's
+properties. In the first two this document follows the TSPEC/PLAN reading, which is also what the
+shipped code does, and the FSPEC text is the one that needs the versioned edit; the third is a PLAN
+levelling gap routed to se-author.
 
 1. **FSPEC AT-01-4 forbids the oracle every other document requires.** It reads "The test asserts the
    key is **absent**, not undefined." REQ NFR-2 requires the opposite reading — "the key is
@@ -517,6 +518,18 @@ shipped code does, and the FSPEC text is the one that needs the versioned edit.
    containment (TE F-15: a dropped field passes a containment check)", and PLAN A6-16 transcribes
    the set-equality form. A containment oracle cannot fail on a dropped field, which is the defect
    TSPEC's correction exists to catch. PROP-REC-01 follows TSPEC/PLAN.
+3. **PLAN mints the ignored-path-only refusal only at seam-op level — routed to se-author.**
+   PROP-ENV-13's home is now PLAN A6-14's former-A6-13 red step, the one place PLAN names this case
+   ("an empty set is `{ok:false}` ⇒ `post-action-verification-failed`, which is also the disposition
+   for a repair writing only `.gitignore`d paths — OQ-11"). That step is a `buildA6SeamOps` member
+   contract, so it mints the `producedPaths() === []` / `{ok:false}` conjuncts directly; the
+   property's run-level conjuncts — the escalation entry written, and no re-gate token appended to
+   the ledger after the anchor — need a `runWaveGateSeam` run, and A6-18's former-A6-15 red step
+   enumerates its cases in full without naming this one. Two acceptable resolutions, both PLAN's
+   call: name the end-to-end ignored-path-only case in A6-18's former-A6-15 step, or state that
+   A6-14's red step carries it end to end in the same file. Until PLAN decides, the property is
+   levelled `Unit + Integration` against its single stated home and no conjunct is dropped, so a
+   reader following it finds a test for its seam-op half rather than none at all.
 
 ### G-4. Requirements-side gaps found while deriving
 
