@@ -113,10 +113,16 @@ T-O-4)")`) and `:786` (`describe("PROP-CORPUS-09: selectLearnings totality (TSPE
 present and both inside the 26-green count. Verified character-exact at both anchors.
 
 **Nothing was added to the property set, and nothing was dropped.** §C.3's *"Properties with **no**
-owning task | 0"* row is byte-unchanged, and the four newly-inventoried files are explicitly declared
-property-free — a claim I checked by grepping the four for `PROP-`: none is named by any property of
-this document. The obligation the implementer receives is therefore unchanged in kind and in count,
-which is the question a product reading of this delta has to answer.
+owning task | 0"* row is byte-unchanged, and the four newly-inventoried files are declared
+property-free. That claim is true in the direction it is stated — I grepped this document for all four
+filenames and the thirteen hits are all inside §C.4/§G.2/§G.3's new prose, never inside a property
+statement — but it is not the whole picture in the other direction:
+`helpers/learningsComposition.js:2` describes itself as *"the AC-2.5 / PROP-ORDER-05 composition"* and
+is imported by the task-owned `learningsDispatchSet.test.js:42`, so one of the four sits on
+PROP-ORDER-05's oracle path even though no property names it. The oracle itself has not moved (§O text
+at line 751 is byte-unchanged and still satisfied), so this is a completeness point about the new
+characterisation, recorded as F-03 below. The obligation the implementer receives is unchanged in kind
+and in count, which is the question a product reading of this delta has to answer.
 
 ## Oracles
 
