@@ -88,6 +88,61 @@ in the record's operative text. Medium, and it does not gate.
 
 ## Decision
 
+**All three of my v3 findings are resolved, and the revision broke nothing I had previously
+approved. Verdict: Approved with minor changes** — two Medium, one Low, none gating.
+
+### Prior findings — resolution, verified against upstream
+
+**F-01 (High) — RESOLVED.** The passage "**The routing has not landed** … `overwrit` match nothing
+in either document" is deleted. Its replacement, "**The gap in the remedy's reach, and how it
+closed**", states the landing at three levels and each statement checks out at HEAD: `REQ v1.16
+AC-6.3` (the warning "in the same place", citing `DEC-A6-03`); `FSPEC v1.7 BR-14` (co-location as
+the observable, `AT-06-4` conjunct (3), `AT-06-4b` as the negative arm, `E-34` requiring no warning);
+`TSPEC v1.15 §4.5` (the notice row and its non-`null` / `null` quantifier). The revision goes
+further than my finding asked: I described the residual gap as "FSPEC-only", and the author's
+re-grounding found FSPEC had moved to v1.7 and TSPEC to v1.15 since my snapshot, so the gap is not
+FSPEC's at all — it is a properties-and-tests gap. That is the right correction, made against
+upstream rather than against my review, and it is exactly the convention the dates note commits to.
+
+**F-02 (Medium) — RESOLVED.** The Consequences bullet now leads with "no longer documentation the
+operator has to already know about", names **`REQ v1.16 AC-6.3`** as making the warning a required
+element of the halt report, cites `FSPEC v1.7 BR-14` / `AT-06-4` conjunct (3) and `TSPEC v1.15 §4.5`,
+and states the product consequence I asked for: preserving the capture is an action the operator can
+take *at halt time from the halt report alone*. It also carries the open obligation forward rather
+than closing the loop silently.
+
+**F-03 (Low) — RESOLVED.** The trigger is now written as spent — "**fired at REQ v1.16 and is
+spent** (PM v3 F-03)" — with the replacement trigger stated narrowly: revisit if the conjunct is
+still unasserted by any property or test when Phase I closes. A spent trigger and a live trigger are
+now distinguishable, which was the whole of the finding.
+
+### What I asked to be preserved, and was
+
+The two rationale sentences I flagged under Positive Observations at v3 both survive: "an uncited
+in-flight routing is indistinguishable from a dropped one" is retained (re-purposed as the reason
+the close was possible), and "What an overwrite costs is inspectability of a pre-repair tree, never
+content" is untouched in the Consequences block. Nothing was deleted along with the stale claim.
+
+### What the revision adds beyond the fixes
+
+Three additions are new since my v2 approval and are therefore in scope: the header `Upstream` cell
+now pins all three upstream hashes (verified correct — this is a genuine improvement, since pinning
+TSPEC alone is what let the REQ cascade go unnoticed); the v1.9 note's hashes are date-scoped rather
+than reading as current pins; and an `On v1.12` changelog paragraph records the round and the durable
+lesson. I checked the changelog's factual claims — FSPEC v1.6 → v1.7, TSPEC v1.11 → v1.15, both now
+carrying the obligation — and both are true at HEAD. No decision moved; no option table reopened; I
+diffed `DEC-A6-01`, `DEC-A6-02`, `DEC-A6-04` and `## Options Considered` and they are byte-identical
+to the state I approved.
+
+### What is still imprecise
+
+Three findings, all inside the `DEC-A6-03` hunks, none touching the decision itself: the
+Reversibility aside describes co-location as holding *between* the halt field and the notice (F-01,
+Medium); the "still owed" note names one of the two properties `PROPERTIES` maps to `AC-6.3`,
+leaving the negative arm invisible (F-02, Medium); and the four-literal-set sentence attributes the
+halt-field widening to the notice rather than to the fifth field `snapshotRef` (F-03, Low). Details
+and the exact fix for each are in `## Findings`.
+
 ## Consequences
 
 ## Findings
