@@ -98,7 +98,37 @@ consequences:
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Now that the guard is settled as the git transport only, does FSPEC owe an explicit statement that a **self-report-gate run with a transport** both commits and records — or is it enough that §1 item 1 says so? I lean explicit: it is the arm most likely to be dropped by an implementer who reads "script-owned gate" as a precondition of the ledger, and it is cheap to pin as one AC-level behaviour rather than a paragraph in Problem/Context. |
+| Q-02 | (Carried from v3 Q-02, still unanswered and still non-gating.) REQ-WVR-02's IG table lists IG-4 (over-range) before IG-5 (ancestry), but the shipped ladder tests ancestry first (`main:…/orchestrate-dev.js:15307`) and over-range second (`:15315`), so a record that is both non-ancestral *and* over-range announces the ancestry reason. The REQ makes no ordering claim, so nothing is wrong — but PROPERTIES will need to know whether the catalogue order is normative or presentational. Worth one sentence in FSPEC. |
+
 ## Positive Observations
+
+- **The revision corrected the reviewer, with evidence, instead of complying.** Faced with a High
+  from me, the author re-derived the control flow, found my brace arithmetic wrong, kept the true
+  claim, and added the anchor that makes the misreading unrepeatable — naming it inline ("where
+  this guard has been misread as the gate mode's (SE F-01)"). That is the correct response to a
+  wrong review, and it is a harder one to write than a compliant edit. I re-checked it mechanically
+  before writing this: `scriptGate` closes at `:15494` via its `else` at `:15492`; `if (waveGit)`
+  at `:15531` is a sibling; the write at `:15600` sits under the transport guard alone.
+- **The new citation form is the strongest in the document.** A unique comment string
+  (`grep -c` = 1) plus a structural relationship ("a sibling of the gate-mode branch, which closed
+  at its own `else`") survives both line drift *and* re-review by someone with a different mental
+  model of the file. It is strictly better than the `file:line` anchors this REQ has been retiring
+  since v1.3, and better than a symbol name where the symbol is not the thing being located.
+- **F-02's fix chose the recipe that reproduces the claim, not the recipe that reads well.**
+  Greppinng `to force a` (two hits) and then explaining why `to force a full run` gives one is more
+  words than the original, and it is the version that survives someone actually running it. The
+  line-break explanation is correct down to the concatenation (`:15331` ends `…to force ` and
+  `:15332` opens `full run.`).
+- **The never-written / discarded split is now stated as a testability property, not a taxonomy.**
+  "two shapes, two oracles" tells the FSPEC author *why* the split has to survive into the spec —
+  the writer-side precondition and the reader-side invalidations need different oracles — which is
+  more than the wording change I asked for.
+- **Still no contract material leaked downward, five revisions in.** The ten ACs name no seam
+  signature, no file schema, no algorithm; the new mechanical detail landed in §1's problem
+  statement and §9's obligations, where TSPEC will find it, and not in an AC.
 
 ## Recommendation
 
