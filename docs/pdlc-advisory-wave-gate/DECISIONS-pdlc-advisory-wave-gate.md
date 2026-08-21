@@ -2,14 +2,14 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**` (`docs/pdlc-advisory-wave-gate/TSPEC-pdlc-advisory-wave-gate.md` v1.11, `sha256:3fa21acf…`) |
+| Upstream | `REQ → FSPEC → TSPEC → **DECISIONS**`, pinned at HEAD on 2026-08-20 (TE v3 F-03): REQ v1.16 (`sha256:f97f4f66…`), FSPEC v1.7 (`sha256:d602c440…`), TSPEC v1.15 (`sha256:1f6ea486…`). The cell pins all three, not TSPEC alone, because a decision record's upstream-dependent claims can be falsified by an edit to any of them — as v1.12's repair below records. |
 | Downstream | `PLAN`, `PROPERTIES`, `IMPL` |
 | Cross-Reviews | Rounds 1–11 per reviewer (`CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v1…v11.md`) were **harvested and deleted** at commit `9cf48051` ("docs(learnings): delete harvested cross-reviews and DoD code reviews") — read them there or in `LEARNINGS-pdlc-advisory-wave-gate.md`. Round numbering then restarted: the current round is `CROSS-REVIEW-product-manager-DECISIONS-v1.md` and `CROSS-REVIEW-test-engineer-DECISIONS-v1.md` (post-harvest round 1). Convention adopted here (PM F-04, TE F-07): this cell indexes rounds *responded to*, and harvested rounds are named as harvested rather than enumerated as live files. |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.11 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.12 | 2026-08-20 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -39,8 +39,10 @@ whose stated purpose is to hold none, and readable as a current claim by anyone 
 as a quotation. The integer is dropped; the bullet is named by subject instead, which loses nothing —
 no reader needs the old bullet's cardinality to understand the move. `SIZING-pdlc-advisory-wave-gate.md`
 remains the sole carrier of that number. (2) The Cross-Reviews cell records the round-9 reviews.
-Re-grounded on upstream at HEAD before editing: REQ (`sha256:817b6745…`) and FSPEC
-(`sha256:82f74a2d…`) are unchanged from the state v1.8 was authored against; TSPEC moved
+Re-grounded on upstream **as it stood at the v1.9 edit** — these hashes are that
+round's dated observation, not a current pin; the header's `Upstream` cell carries the current one:
+REQ (`sha256:817b6745…`) and FSPEC
+(`sha256:82f74a2d…`) were unchanged from the state v1.8 was authored against; TSPEC moved
 (`sha256:4a092e85…` → `sha256:1531143c…`) within v1.10, whose added text sizes
 `PROP-SWEEP-2(b)`'s residue in §1.3 and routes its partition, owners and figures to PLAN's
 Overview HEAD-drift note and A6-00's Edit 1. Nothing in that erratum is owed here: DECISIONS carries
@@ -117,6 +119,24 @@ all of which still hold. It was not exhaustive, and this note says so rather tha
 unswept claims reading as verified. The three misses share a signature worth carrying forward: they
 are claims about **failure modes, visibility and impossibility**, none of them falsifiable by the
 grep-shaped check that confirms a count.
+
+**On v1.12 (upstream-cascade round 3, PM F-01/F-02/F-03, TE F-01/F-02/F-03).** No decision moves;
+`DEC-A6-01`…`DEC-A6-04`'s `Decision`, `Constraints` and option tables are untouched, and no entry in
+`## Options Considered` is reopened. One class of defect is repaired: `DEC-A6-03` carried a
+**negative factual claim about upstream** — "the routing has not landed", pinned at REQ v1.15 and
+FSPEC v1.6 — and the cascade that triggered this round falsified it. Both reviewers caught the REQ
+half. Re-grounding on upstream at HEAD before editing (this record's own convention, stated in the
+dates note above: a finding is resolved against upstream *at the time of the edit*) shows the split
+has moved further than either review saw: FSPEC has since gone v1.6 → v1.7 and TSPEC v1.11 → v1.15,
+and both now carry the obligation too. The repair therefore states HEAD, not the review's snapshot of
+it. Related: the header `Upstream` cell now pins all three upstream hashes, and the v1.9 note's REQ
+and FSPEC hashes are date-scoped as that round's observation rather than reading as current pins.
+The durable lesson is the one TE names for harvest and it is recorded here so it survives the
+reviews' deletion: **a sentence of the form "X matches nothing upstream" is a dated observation, not
+a decision, and must carry the upstream version it was checked against and be re-checked on every
+cascade.** Where such a claim is load-bearing, prefer stating the specified-vs-asserted split — which
+level specifies the obligation and which level asserts it — over a bare "nothing anywhere", because
+the split degrades gracefully as routing lands one hop at a time.
 
 ## Context
 
