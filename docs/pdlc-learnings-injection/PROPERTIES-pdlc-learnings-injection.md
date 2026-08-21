@@ -254,8 +254,16 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `Process Learnings`, `Open Items for Consolidation` — FSPEC BR-6's names verbatim), and
   the Approval Record's text **must** be absent while all five present sections' texts **must** be
   present — both conjuncts, so the oracle is not vacuous on a fixture that never carried the excluded
-  section.
-  *Data Integrity · L1 · AC-2.3, BR-6, E-19, AT-11 · red LI-08 · green LI-17.*
+  section. **The oracle reads the rendered block, not the extractor's own report** (TSPEC v0.9):
+  scan `renderLearningsBlock`'s output for `SECTION_HEADING_RE` lines, map each through §D.3's
+  matching rule to a canonical name, and assert the resulting list equals `BR6_SECTION_NAMES` as an
+  **ordered** list — "in priority order" is part of the claim, not a presentation detail. The
+  Approval Record conjunct is asserted on a marker string occurring nowhere else in the corpus, and
+  the five presence conjuncts on each section's **body** marker rather than its heading, so a
+  renderer that emits a taken section's heading without its body reds. `sections[]` is asserted
+  **in addition**, as a supporting equality, **never instead**: it is the producer's own report, and
+  per DC-14 an oracle does not take its expected value from the code under test.
+  *Data Integrity · L1 · AC-2.3, BR-6, E-19, AT-11, TSPEC §D.3, §T.5 · red LI-08 · green LI-17.*
 - **PROP-BOUND-06:** A document that **yields no material** — BR-9's stated meaning, in both its
   disjuncts: it "carries none of BR-6's priority sections, **or** the per-document bound is zero and
   admits none" — **must** carry `RSN-NO-MATERIAL`, **must** consume no `maxDocuments` slot, **must
@@ -281,12 +289,23 @@ a defect in this document or in the PLAN, not a nice-to-have.
   *byte-accounting basis* paragraph makes contributed bytes "its **material** — the section headings
   and bodies taken from it, and nothing else", with framing counting "toward none of the three
   quantities" — so this property is a compression of both, and M-5 is a mutation away from both.
-  *Data Integrity · L1 · AC-2.3, AC-2.4, BR-6, TSPEC §D.5 · red LI-08 · green LI-17.*
+  **The hand-computed literal is now a mechanical sum, not a judgement call** (TSPEC v0.9 §D.3):
+  each taken extent is normalised (trailing blank/whitespace-only lines dropped, no trailing
+  newline, interior blank lines preserved verbatim), the normalised texts are joined **in priority
+  order** with exactly `"\n\n"`, and the character-safe cut applies **once, to the assembled
+  string** — never per extent. So `bytes` **must** equal the sum of each taken section's normalised
+  byte length **plus 2 bytes per join** (`n` sections ⇒ `n − 1` joins), with neither a leading nor a
+  trailing newline inside `material`. A fixture author recomputing the literal follows that
+  procedure; two conforming implementations cannot differ on it, which is what keeps a literal
+  fixture from redding a correct implementation.
+  *Data Integrity · L1 · AC-2.3, AC-2.4, BR-6, TSPEC §D.3, §D.5 · red LI-08 · green LI-17.*
 - **PROP-BOUND-08** *(real-corpus arm — the recognition rule):* Driven over a **real** corpus document
   read from the live `LEARNINGS_CORPUS_ARGV` `git ls-files` output (first path in UTF-8 byte order, not
-  a synthetic fixture), `extractInjectableMaterial` **must** return a section set **equal** to the
-  intersection of BR-6's five names with the `## N. Title` headings that document actually carries, and
-  **must** exclude its `## 6. Approval Record`. The observed set **must** be non-empty, and the
+  a synthetic fixture), the canonical section set recovered from the **rendered block** — per
+  PROP-BOUND-05's oracle, with `extractInjectableMaterial`'s `sections[]` asserted only as the
+  supporting equality TSPEC §T.5 demotes it to — **must** equal the intersection of BR-6's five names
+  with the headings that document actually carries under §D.3's matching rule, and **must** exclude
+  its `## 6. Approval Record`. The observed set **must** be non-empty, and the
   document's own heading lines **must** be asserted present in the fixture text — the positive-presence
   conjunct that stops the property greening over a document whose headings the matcher never saw.
   Measured at HEAD: all 9 corpus documents carry `## 1. Non-Convergences`, `## 2. Cross-Feature
