@@ -142,6 +142,46 @@ touch; not re-reviewed, per the delta protocol.
 
 ## Edge Cases and Error Scenarios
 
+One row cites the material this round edited, and it is the row the round could plausibly have
+broken.
+
+**EC-17 — Phase I inside a worktree (cites REQ OB-3, D-DIST-07). Holds; no finding.** The row
+reads: "Phase I runs inside a worktree that does not carry consumer-local state" ⇒ "No record is
+visible: outcome (a), silent, as EC-01. Consistent with the standing worktree deferral; the run is
+correct, merely not cheap." Three properties make it survive the relabelling intact:
+
+1. **Its antecedent is a condition, not a claim.** The row does not assert *that* a Claude-created
+   worktree lacks the record — it specifies behaviour *given* a worktree that does not carry
+   consumer-local state. Upstream's demoted evidence bears on how often that antecedent is true in
+   a given consumer's tree, not on what the run must do when it is.
+2. **It cites the deferral, not the mechanism.** `D-DIST-07` and `REQ OB-3` are both id citations
+   to standing decisions, and neither moved. The FSPEC nowhere names `.worktreeinclude`, an
+   include list, or `.claude/workflows/` — verified by grep, which returns no hit in the file.
+3. **Upstream preserved the conclusion explicitly.** The v1.7 changelog says OB-1's "worktree
+   conclusion, which stands", and OB-1's own sentence still ends at "fails open to a full run —
+   consistent with the D-DIST-07 deferral". EC-17 compresses that conclusion, so it is compressing
+   text that upstream deliberately left in place.
+
+This is the well-behaved case of the class DEC-ERR-03 asks about: upstream weakened a *premise*
+while keeping the conclusion, and the downstream document had only ever leaned on the conclusion.
+
+**EC-16 (advisory remediation on a halted wave; cites REQ OB-3).** Untouched upstream. I re-read
+it only far enough to confirm its citation target did not move, which it did not.
+
+**EC-20 — the V-wave replays.** The behaviour, the oracle detail and the wave-loop scoping all
+match REQ v1.7 unchanged from v1.6. Its one stale sentence — "Whether the V-wave should be
+recordable … is an upstream question, **raised as an erratum against REQ-WVR-08**" — describes a
+question that v1.6 settled, and v1.7 does not disturb the settlement. Carried unchanged as the
+first half of F-03; not widened by this round.
+
+**EC-12 (wave-1 halt, cites REQ §1/OF-1).** OF-1 is byte-identical at v1.7. The v3 analysis stands:
+the row compressed OF-1's shape, not its arithmetic, so neither the v1.6 restatement nor this
+round's silence costs it anything.
+
+**EC-01..EC-11, EC-13..EC-15a, EC-18, EC-19, EC-21.** Trace to untouched criteria; not
+re-reviewed. My open non-gating finding against EC-15a's unconstrained failed-write notice
+(v2 F-01, v3 F-04) is unaffected by this round and is carried below as F-04, `inherited`.
+
 ## Acceptance Tests
 
 ## Open Questions
