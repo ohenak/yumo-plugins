@@ -229,3 +229,9 @@ replacements, and two decisions and one risk were added rather than silently abs
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 3}
+
+APPROVAL-HASH: sha256:3cd713c04963ac70131c7e7d93bdaa46e5ba702cb4684593f39a1207e0a53b94
+APPROVAL-HASH-NORMALIZED: sha256:62cdb46cdd10a01fcd9f305d5473d478efffe8c2a09514574b7002288c0eca20
+REVIEWED-COMMIT: 0c70e9004391c33833bda3d088125a2f8b4df80a
+UPSTREAM-STATE: REQ sha256:ad68cd05baaa634d55b4ddcdf44aaa6e7146142b6efb1ff3cbffb620c4072518
+UPSTREAM-STATE: FSPEC sha256:1c05f51159f8b6406621844448825f222e194b266ee3958681c6084e6647232d
