@@ -147,6 +147,49 @@ and the id is convenience.
 
 ## Fixtures
 
+**§F.1–§F.3 (809–917) are byte-untouched.** The delta's two fixture-adjacent edits are both in §C.4's
+inventory and §G.2's gap 5, and both are counting/attribution claims. I re-derived every number from
+the tree at HEAD rather than reading them.
+
+| Claim the delta now makes | Command | Result | Holds? |
+|---|---|---|---|
+| *"**seventeen** `learnings*` files under `pdlc/workflows/__tests__`"* | `git ls-files pdlc/workflows/__tests__ \| grep -E '(^\|/)learnings' \| grep -v fixtures/` | **17** | Yes |
+| *"the ladder's thirteen (twelve suites plus `helpers/learningsFixtures.js`)"* | same listing minus `2fc6fcd3`'s adds | 12 suites + 1 helper = **13** | Yes |
+| *"plus `2fc6fcd3`'s four added test-side files"* | `git show --name-status 2fc6fcd3 \| grep ^A` | `helpers/learningsBaselineScenarios.js`, `helpers/learningsComposition.js`, `learningsDisclosure.test.js`, `learningsErratumBinding.test.js` = **4** (13+4=17) | Yes |
+| *"an **eighteenth** engine-side, `pdlc/engine/__tests__/learnings-config-example.test.js`"* | `git ls-files pdlc/engine/__tests__ \| grep learnings` | exactly that one file, added `A` at `2fc6fcd3` | Yes |
+| *"a raw `git ls-files pdlc/workflows/__tests__ \| grep learnings` returns **39 paths**, of which **22** are that subtree's fixture files"* | both commands | **39** and **22** (39−22=17) | Yes |
+| *"the same convention and the same number PLAN §The arithmetic now states"* | fixed-string grep | `PLAN:310` — *"the tracked `learnings*` test-side set is eighteen files"*, 1 hit | Yes |
+| *"§C.4's inventory table also totals **eighteen**, but counts a different set"* | count `^\| \`` rows in the table | **18** rows | Yes |
+
+**v14 F-03 is closed, and closed in the stronger direction.** I asked only that the prose stop
+claiming eighteen files where the tree holds seventeen. The delta does that and then reconciles the
+two eighteens against each other and against PLAN's — *"the two eighteens agree by coincidence of
+arithmetic, not by naming the same entities"* — which is exactly the ambiguity I had filed as a
+DEFERRED at v14. The decompositions are consistent across documents rather than merely both landing
+on 18: PLAN's *"the ladder's thirteen … plus `2fc6fcd3`'s five added files"* counts the engine-side
+file among the five; PROPERTIES' 17 + 1 splits the same set by directory. Same eighteen entities,
+two groupings, and both documents now say which grouping they mean.
+
+**v14 F-06 is closed.** §C.4's `fixtures/learnings-baseline/` row now reads `744311f7` *"(subtree
+added; the `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files and the `MANIFEST.json` re-capture
+arrived later, at `2fc6fcd3` — two landing events, recorded as PLAN §Post-batch remediation's P-A-5
+second-owner rows)"*. Against the tree: `744311f7` adds `MANIFEST.json`,
+`PHASE-F-AUTHORING-PROMPT/0.txt` and `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` and **no**
+`PIPELINE-NON-AUTHORING-PROMPTS/` path; `2fc6fcd3` adds all 18 `PIPELINE-NON-AUTHORING-PROMPTS/*.txt`
+and carries `MANIFEST.json` as `M`. Both landing events, correctly attributed, and PLAN's
+corresponding second-owner row exists (`PLAN:244` subsection, the
+`fixtures/learnings-baseline/ (incl. MANIFEST.json; +18 PIPELINE-NON-AUTHORING-PROMPTS/*.txt)` row).
+
+**The fixture-side facts I measured at v13/v14 still hold at HEAD**, and the delta touches none of
+them: §C.4's fixture enumeration matches `git ls-files`; `.baseline-worktree` is still non-ignored
+(`git check-ignore -v` exits 1 against `.gitignore:13`'s `/.baseline-worktree/`); PROP-BOUND-07's
+hand-computed byte literals are still transcribed beside the AT-11 fixture at
+`learningsBlock.test.js:174/:194/:235`, none derived from the code under test; §F.1's corpus
+fixtures still read from an unchanged `helpers/learningsFixtures.js`.
+
+**Nothing falsifies PROP-META-04.** No digest, manifest row or fixture path moved this round — the
+delta's fixture-side changes are attribution and counting prose only.
+
 ## Findings
 
 ## Deferred
