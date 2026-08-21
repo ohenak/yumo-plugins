@@ -126,6 +126,53 @@ and in count, which is the question a product reading of this delta has to answe
 
 ## Oracles
 
+**No oracle row, AT mapping, level or red/green owner changed in this delta.** §O.1–§O.10 are outside
+every changed line range. What the delta touches is the *evidence* an oracle's status rests on, and in
+two places the anchor cited alongside an oracle:
+
+| Oracle-side dependency | Delta effect | Verified at HEAD |
+|---|---|---|
+| PROP-BOUND-03/05/07/08 → red LI-08 / green LI-17 | Anchors re-pinned `5e522a52`→`8eee671f`, `2cbacada`→`a4998e13`; owners unchanged | Both new anchors are the true `--diff-filter=A` / commit-subject anchors and are ancestors of HEAD |
+| LI-16 owner of TSPEC §D.5's zero-bound production half | `d462ddd8` → `be2456c8` | `be2456c8` is *"LI-16 — **GREEN the pure selection core** (TSPEC §I.3, §D.3–§D.6)"* |
+| PROP-CONFIG-09 ↔ LI-12's three-case `LI-AT-30` | Anchor re-pinned `eb32d7d2`→`d9b51a9a`; **three new line anchors added** (`:248`, `:264`, `:280` inside the `describe` at `:247`) | All four lines are character-exact, and all three `test(` titles match the quoted text |
+| PROP-ORDER-06 / PROP-CORPUS-09 Group D arms | Recorded present and green | `learningsSelect.test.js:647` and `:786`, both inside the 26-green run |
+| P-A-6's PROPERTIES-suite window (LI-21) | `92b7ea0c` → `e7fa8d87` | `e7fa8d87` is *"LI-21 — **GREEN the run wiring and the report key**"* |
+| LI-05's capture script | `ced75955` → `0fa099a3` | `0fa099a3` is *"LI-05 — GREEN the capture script"*; `git ls-files scripts/` still returns exactly `scripts/capture-learnings-baseline.mjs` |
+| LI-04's ignore rule | `ae2af1da` → `5b4c6663` | `5b4c6663` is *"LI-04 — GREEN the ignore rule"*; `.gitignore:13` is `/.baseline-worktree/` |
+
+**The new line anchors are the right kind of citation.** DEC-DOC-01 makes a bare `file:line` a Process
+finding when the line number *is* the claim. Every anchor this delta adds carries the verbatim
+`describe(`/`test(` title beside it, so the line number is a convenience and the title is the claim —
+a reader who finds the title moved knows what to look for. No DEC-DOC-01 finding arises from this
+delta.
+
+**The three-case reading survived PLAN's move to v1.1 in substance, not in quotation.** PLAN's case C
+*When* cell now reads *"batch 13 or later, the case that is live at HEAD"*
+(`PLAN-pdlc-learnings-injection.md:493`); this document quotes it as *"after batch 13, the case that is
+live at HEAD"* at line 11, line 1129 and (paraphrased) lines 1329 and 1335. A fixed-string grep for the
+quoted form returns **zero** matches in PLAN at HEAD. PLAN v1.1's changelog explains the rewording: the
+domain was restated by batch number so *"no batch falls between case B's upper bound (12) and this
+case"*. That widens case C to include batch 13, and every amendment this document routes landed **after**
+batch 13 — so the case that governs, and the obligation it imposes, are identical under either wording.
+The quotation is stale; the conclusion is not. F-02, Medium, non-gating.
+
+**The other case-C quotations still match character-exactly at PLAN v1.1.** I re-ran fixed-string greps
+for each: *"under case C they owe no ledger row, and they owe green"* (1 hit), *"batch 9 through batch
+12"* (1), *"**this** heading-form follow-up commit, not a standing exemption"* (1), *"has found a real
+defect, not staged a TDD red"* (1), *"any other amendment to a landed suite arriving from here on"* (1),
+*"the first point the suite is green, which in practice is after LI-21"* (1). Only the *When* cell moved.
+
+**PLAN itself still cites the pre-rebase anchors this delta retired.** `PLAN:493` names `92b7ea0c`,
+`d462ddd8` and `2cbacada`; none is reachable from HEAD. That is a defect in PLAN, not here — PROPERTIES
+is now the more accurate of the two documents on this point — and I route it as an ERRATUM rather than
+folding it into this verdict.
+
+**Both new sections route rather than decide, which is the correct oracle-side behaviour.** §G.2 gap 5
+and §G.3's newly-routed item state a measured fact about PLAN's manifest and hand the decision to PLAN
+(*"PLAN's to decide whether the four take task rows, a remediation row, or an explicit out-of-manifest
+note"*). Under a decision freeze that is exactly right: the document records what it measured and opens
+no decision of its own.
+
 ## Fixtures
 
 ## Findings
