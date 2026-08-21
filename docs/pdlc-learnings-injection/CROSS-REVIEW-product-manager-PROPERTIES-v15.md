@@ -223,7 +223,44 @@ one this round would have raised — PLAN's manifest under-count — is the item
 
 ## Deferred
 
+Observations that are improvements, not defects. Under DECISION FREEZE none of these blocks, and
+none reopens a decision:
+
+DEFERRED: The header's v1.0 paragraph now scopes its pin claim correctly, but still states the scope in prose; a two-column table of "ruling cited → version re-checked at → moved?" would make the next re-pin's sweep auditable at a glance instead of by reading.
+DEFERRED: v14's sweep-mechanism DEFERRED still stands and is now cheap to adopt — grep the pinned document for every `P-A-n` / `DoD n` id this document cites and diff each across the version range being crossed, rather than sweeping only the quotations a reviewer named.
+DEFERRED: §Overview's HEAD measurement pin is `09c7c62f` while HEAD is `9e9a79e5`; correct as a snapshot label, but "measured at `09c7c62f`, document at v1.0" would spare the next reader the reconciliation.
+DEFERRED: Gap 5 is now three paragraphs doing four jobs (count derivation, convention reconciliation with PLAN, the composition-helper scope clarification, and the record of where PLAN closed it); splitting it into a "count" and a "disposition" bullet would keep it readable as it accretes.
+DEFERRED: The header says "no coverage row moves at v1.0" while line 1091 — a row in §C.4, which sits under `## Coverage Matrix` — did move; the document's usage of "coverage row" plainly means §C.1/§C.2/§C.3's AT/property rows, which are byte-untouched, but naming that scope once would remove the apparent tension.
+DEFERRED: §G.3's *Also answered* heading now reads "by PLAN v0.6/v0.7/v0.8 and, for the last item, v1.2/v1.3, all of which moved after the round whose reviews raised them" — accurate but load-bearing on ordering; a per-bullet version attribution would survive the next insertion into that list.
+
 ## Positive Observations
+
+- **Every one of my six findings is closed, and closed by mechanism rather than by wording.** F-01
+  did not merely delete the offending clause: it restated the live obligation *including the failure
+  limb* (*"a red landing is a real defect owed a fix **before batch 14 runs**"*), which is the part a
+  minimal fix would have dropped while retiring the ledger route. That is the difference between
+  removing a wrong instruction and supplying the right one.
+- **The riskiest edit in the delta is the one that verifies most exactly.** Extending a quotation's
+  closing quote mark past *"they owe green"* to swallow *"— which PROPERTIES §C.4 records as
+  discharged"* is precisely how a document's own conclusion gets laundered into an upstream citation.
+  I grepped it expecting a finding; PLAN carries the whole sentence (`PLAN:561`). Fetching the extra
+  clause from PLAN rather than writing it was the right call.
+- **F-03's fix went past the finding into the DEFERRED behind it.** I asked for seventeen instead of
+  eighteen. The delta re-derived the count, showed the 39/22 raw decomposition so the number is
+  reproducible from a command rather than trusted, distinguished the inventory-row eighteen from the
+  tracked-file eighteen, and reconciled both against PLAN's — retiring the ambiguity I had only
+  flagged as worth retiring someday.
+- **F-04's clause is bounded as tightly as the fact warrants.** *"Unnamed but not unexercised"*, with
+  the header quoted and both call sites implied, then: *"the oracle does not move and is not weakened
+  by the file's unowned status; the gap is one of manifest completeness, not of oracle fidelity"*.
+  A completeness gap recorded as a completeness gap, with no inflation into a fidelity claim.
+- **The strike convention paid off a second time.** §G.3's routed item is struck with its answer
+  attached — PLAN v1.2 items (3)/(4), v1.3 item (1), nineteen rows, and *which of the three options
+  PLAN chose*. I verified that last claim in one command against `PLAN:244`. Deleting the bullet
+  would have cost that audit trail; striking it preserved it.
+- **The blast radius stayed honest under a five-commit round.** 56 insertions, 29 deletions, and
+  `## Properties`, `## Oracles`, `## Fixtures` and §C.1/§C.2/§C.3 byte-untouched — six findings
+  landed without a single property, oracle, fixture, AT mapping or coverage row moving.
 
 ## Recommendation
 
