@@ -626,6 +626,7 @@ describe("A-33 — disabled-tier equivalence", () => {
 
       expect(result.outcome).toBe("success");
       expect(result.advisory).toBeDefined();
+      // PROP-SEAM-02 — one of the bare row-count transcription surfaces.
       expect(result.advisory.rows).toHaveLength(6);
       for (const row of result.advisory.rows) {
         expect(row.invocations).toBe(0);

@@ -351,6 +351,7 @@ export function makeAdvisoryConfig(overrides = {}) {
 export function makeAdvisoryGenerators(seed) {
   const rng = seeded(seed);
 
+  // PROP-SEAM-02 — this literal is one of the coupled transcription surfaces.
   const SEAMS = ["A1", "A2", "A3", "A4", "A5", "A6"];
   const CONFIDENCE = ["high", "low"];
   const REFUSAL_REASONS = [

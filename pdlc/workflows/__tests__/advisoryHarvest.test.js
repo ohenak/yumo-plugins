@@ -575,6 +575,7 @@ describe("A-27 — post-PUB distil + report summary", () => {
 
       expect(result.outcome).toBe("success");
       expect(result.advisory).toBeTruthy();
+      // PROP-SEAM-02 — one of the bare row-count transcription surfaces.
       expect(result.advisory.rows).toHaveLength(6);
       const seamNames = result.advisory.rows.map((r) => r.seam).sort();
       expect(seamNames).toEqual(["A1", "A2", "A3", "A4", "A5", "A6"]);

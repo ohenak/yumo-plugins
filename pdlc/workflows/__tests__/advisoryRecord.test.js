@@ -500,6 +500,7 @@ describe("PROP-SUM-01 — advisorySummaryRows always emits six rows, zero counts
     expect(total).toMatchObject({ invocations: 0, resolved: 0, escalated: 0, noAction: 0 });
   });
 
+  // PROP-SEAM-02 — this row-list transcription surface, set-equal to ADVISORY_SEAMS.
   test("is driven off the exported ADVISORY_SEAMS constant, not a locally-duplicated list", () => {
     const { rows } = devModule.advisorySummaryRows([]);
     expect(rows.map((r) => r.seam)).toEqual([...devModule.ADVISORY_SEAMS]);

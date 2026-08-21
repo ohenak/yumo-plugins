@@ -1067,7 +1067,13 @@ describe("A6-18: runWaveGateSeam — the tier gate (AC-1.4, PROP-DIS-06)", () =>
     expect(result).toEqual({
       resolved: false,
       disposition: null,
-      haltFields: { rootCause: "unclassified", diagnosis: "", repairApplied: false, repairPaths: [] },
+      haltFields: {
+        rootCause: "unclassified",
+        diagnosis: "",
+        repairApplied: false,
+        repairPaths: [],
+        snapshotRef: null,
+      },
       postWaveRan: false,
     });
     expect(gitCalls).toEqual([]);
@@ -1264,6 +1270,84 @@ describe("A6-18: runWaveGateSeam — step-6 resolution (TSPEC §3.2 step 6, BR-7
 // `runAdvisorySeam` directly over the real `buildA6SeamOps`) the A6-18 section above already
 // wires up — no new doubles, no new fixture shapes, per PROP-INFRA-01's single-canonical-source
 // rule.
+
+describe("A6-14 / PROP-ENV-13: a repair confined to .gitignore'd paths fails apply() and refuses post-action-verification-failed (TSPEC §3.3 apply row, §5.5, OQ-11)", () => {
+  test("the repair writes only a.js, which is .gitignore'd: producedPaths() is empty, apply() is {ok:false}, the refusal is post-action-verification-failed, attempts stay 0, an escalation entry is written, and no re-gate invocation is appended", async () => {
+    const repo = createA6TempRepo();
+    try {
+      writeFileSync(join(repo.dir, ".gitignore"), "a.js\n");
+      repo.git("add", ".gitignore");
+      repo.git("commit", "-m", "add gitignore");
+
+      const agent = makeAgentDouble({
+        script: [
+          makeA6ReplyText({
+            proposedAction: "E-5",
+            rootCause: "wave-internal-defect",
+            evidence: ["the gate went red at the eslint step"],
+          }),
+        ],
+      });
+      const notices = [];
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: agent,
+        _runCommand: makeA6RunCommand()._runCommand,
+        _notice: (msg) => notices.push(msg),
+      });
+
+      // Neither `git diff` (tracked changes) nor `git ls-files --others --exclude-standard`
+      // (non-ignored untracked files) observes an ignored path, so `producedPaths()` is empty.
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair, but the path is ignored\n");
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(false);
+      expect(result.disposition.outcome).toBe("escalated");
+      expect(result.disposition.reason).toBe("post-action-verification-failed");
+      expect(result.disposition.attempts).toBe(0);
+      // No re-gate invocation follows the failed ACT step — the ledger anchor is set but never
+      // grown past it, and no post-wave/test token is ever appended (BR-9, TSPEC §3.3).
+      expect(args.invocations).toEqual([]);
+      expect(notices.some((n) => n.startsWith("ADVISORY ESCALATION: seam A6 for pdlc-advisory-wave-gate"))).toBe(
+        true
+      );
+    } finally {
+      repo.cleanup();
+    }
+  });
+
+  test("positive control: an otherwise identical repair on a non-ignored owned path is accepted — producedPaths() non-empty, apply() {ok:true}, the wave resolves", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const agent = makeAgentDouble({
+        script: [
+          makeA6ReplyText({
+            proposedAction: "E-5",
+            rootCause: "wave-internal-defect",
+            evidence: ["the gate went red at the eslint step"],
+          }),
+        ],
+      });
+      const { _runCommand } = makeA6RunCommand({ "npm test": { ok: true } });
+      const args = makeA6RunArgs({
+        _git: repo._git,
+        _agent: agent,
+        _runCommand,
+      });
+
+      // Same file, same wave-owned path, but never .gitignore'd — so it IS observed.
+      writeFileSync(join(repo.dir, "a.js"), "A6's repair, not ignored\n");
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.resolved).toBe(true);
+      expect(result.disposition.outcome).toBe("resolved");
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
 
 describe("A6-15: runWaveGateSeam — PROP-CTR-03: absent/out-of-set classification escalates with attempts unchanged", () => {
   test.each([
@@ -1720,10 +1804,63 @@ describe("A6-15: runWaveGateSeam — PROP-REST-07: each red wave writes its OWN 
       repo.cleanup();
     }
   });
+
+  test("PROP-REC-08: each red wave's own halt carries a CO-LOCATED overwrite notice pointing at that wave's own snapshot ref", async () => {
+    // Same two-red-wave fixture PROP-REST-07 drives, so the wave-scoped ref is asserted against a
+    // wave number the fixture actually distinguishes (property text). The oracle is co-location
+    // within ONE `notices` element, not mere presence in the run: pick the element matching the
+    // ref pattern and assert the overwrite predicate on that SAME element. Both halves are
+    // spec-side literals written here, never a constant imported from the module under test
+    // (anti-echo — this is what makes PROP-REC-09's absence arm falsifiable).
+    const repo = createA6TempRepo();
+    try {
+      const advisoryConfig = makeAdvisoryConfig({ enabled: true, waveBudgetPerRun: 0 }).config;
+
+      const notices1 = [];
+      const result1 = await runWaveGateSeam(
+        makeA6RunArgs({
+          _git: repo._git,
+          _agent: makeAgentDouble({ script: [] }),
+          _runCommand: makeA6RunCommand()._runCommand,
+          waveNum: 1,
+          waveIndex: 0,
+          advisoryConfig,
+          waveBudget: { resolved: 0 },
+          _notice: (m) => notices1.push(m),
+        })
+      );
+      expect(result1.disposition.reason).toBe("budget-exhausted");
+      expect(result1.haltFields.snapshotRef).toBe("refs/pdlc/a6-snapshot-1");
+      const notice1 = notices1.find((n) => n.includes("refs/pdlc/a6-snapshot-1"));
+      expect(notice1).toBeTruthy();
+      expect(notice1).toMatch(/overwrit/i);
+
+      const notices2 = [];
+      const result2 = await runWaveGateSeam(
+        makeA6RunArgs({
+          _git: repo._git,
+          _agent: makeAgentDouble({ script: [] }),
+          _runCommand: makeA6RunCommand()._runCommand,
+          waveNum: 2,
+          waveIndex: 1,
+          advisoryConfig,
+          waveBudget: { resolved: 0 },
+          _notice: (m) => notices2.push(m),
+        })
+      );
+      expect(result2.disposition.reason).toBe("budget-exhausted");
+      expect(result2.haltFields.snapshotRef).toBe("refs/pdlc/a6-snapshot-2");
+      const notice2 = notices2.find((n) => n.includes("refs/pdlc/a6-snapshot-2"));
+      expect(notice2).toBeTruthy();
+      expect(notice2).toMatch(/overwrit/i);
+    } finally {
+      repo.cleanup();
+    }
+  });
 });
 
-describe("A6-15: runWaveGateSeam — PROP-REST-08: capture-failure's record content, attempts, budget, and halt fields (Oracle G)", () => {
-  test("captureTreeSnapshot returning null — record entry (bare escalated, Model n/a), attempts 0, unchanged budget, no dispatch, exact halt fields", async () => {
+describe("A6-15: runWaveGateSeam — PROP-REST-08 / PROP-REC-09: capture-failure's record content, attempts, budget, and halt fields (Oracle G)", () => {
+  test("captureTreeSnapshot returning null — record entry (bare escalated, Model n/a), attempts 0, unchanged budget, no dispatch, exact halt fields, and no overwrite notice anywhere", async () => {
     const repo = createA6TempRepo();
     try {
       const _git = async (argv) =>
@@ -1733,6 +1870,7 @@ describe("A6-15: runWaveGateSeam — PROP-REST-08: capture-failure's record cont
       const agent = makeAgentDouble({ script: [] });
       const files = makeFileDouble();
       const clock = makeFakeClock();
+      const notices = [];
       const args = makeA6RunArgs({
         _git,
         _agent: agent,
@@ -1740,6 +1878,7 @@ describe("A6-15: runWaveGateSeam — PROP-REST-08: capture-failure's record cont
         _appendFile: files._appendFile,
         _readFile: files._readFile,
         _now: clock._now,
+        _notice: (m) => notices.push(m),
         waveBudget: { resolved: 0 },
       });
 
@@ -1749,13 +1888,16 @@ describe("A6-15: runWaveGateSeam — PROP-REST-08: capture-failure's record cont
       expect(args.waveBudget.resolved).toBe(0);
       expect(agent.calls).toEqual([]);
 
-      // Oracle G's fixed diagnosis sentence, transcribed verbatim from TSPEC §4.5.
+      // Oracle G's fixed diagnosis sentence, transcribed verbatim from TSPEC §4.5. The fifth key,
+      // `snapshotRef`, joined at TSPEC v1.12 and reads `null` exactly on E-34 (PROP-REST-08,
+      // PROP-REC-09's positive half): the capture failed, so there is no ref to point at.
       expect(result.haltFields).toEqual({
         rootCause: "unclassified",
         diagnosis:
           "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied",
         repairApplied: false,
         repairPaths: [],
+        snapshotRef: null,
       });
 
       const recordEntry = files.files["docs/pdlc-advisory-wave-gate/ADVISORY-pdlc-advisory-wave-gate.md"];
@@ -1776,6 +1918,13 @@ describe("A6-15: runWaveGateSeam — PROP-REST-08: capture-failure's record cont
       expect(decideLine).toContain("git write-tree failed");
       expect(escalationEntry).toContain("| Refusal reason | n/a |");
       expect(escalationEntry).toContain("| Root cause | unclassified |");
+
+      // PROP-REC-09 — E-34's `snapshotRef: null` above means there is no capture to point at, so
+      // no element of `notices` may match either of PROP-REC-08's spec-side overwrite predicates,
+      // asserted over the WHOLE array so a notice pushed elsewhere cannot hide it. Spec-side
+      // literals, never a constant imported from the module under test (anti-echo).
+      expect(notices.some((n) => /overwrit/i.test(n))).toBe(false);
+      expect(notices.some((n) => n.includes("refs/pdlc/a6-snapshot-"))).toBe(false);
     } finally {
       repo.cleanup();
     }
@@ -2785,11 +2934,15 @@ describe("A6-15: runWaveGateSeam — PROP-REC-05: the halt fields carry the clas
 
       expect(result.resolved).toBe(false);
       expect(result.disposition.outcome).toBe("escalated");
+      // `snapshotRef` is non-`null`: this fixture's capture succeeds (no failure injected), so the
+      // fifth key reads the ref this wave's snapshot wrote (PROP-REC-11), spec-side composed
+      // rather than echoed off the module under test (PROP-REC-08's anti-echo rule).
       expect(result.haltFields).toEqual({
         rootCause: "plan-ordering-defect",
         diagnosis: "wave 1 needs a symbol T3 owns",
         repairApplied: false,
         repairPaths: [],
+        snapshotRef: "refs/pdlc/a6-snapshot-1",
       });
       // The point of the property: the two operator-facing facts are readable off the halt payload
       // ALONE, with the record file discarded.
@@ -2828,6 +2981,7 @@ describe("A6-15: runWaveGateSeam — PROP-REC-05: the halt fields carry the clas
         "repairApplied",
         "repairPaths",
         "rootCause",
+        "snapshotRef",
       ]);
       expect(result.haltFields.rootCause).toBe("unclassified");
     } finally {
@@ -3484,6 +3638,7 @@ describe("CR v1 §1-2 / the capture-failure disposition's write-failure arms (:3
       "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied",
     repairApplied: false,
     repairPaths: [],
+    snapshotRef: null,
   };
 
   /** A capture that fails on `write-tree`, which is what drives the disposition path at all. */
@@ -3756,7 +3911,7 @@ describe("CR v1 §1-2 / gitWithLockRetry (:12544): the retry loop's classificati
   });
 });
 
-// ─── A6-10 / PROP-REST-07: the round-trip's observation-point ORDERING (TSPEC §5.2 case 5) ──
+// ─── A6-09 / PROP-REST-10: the round-trip's observation-point ORDERING (TSPEC §5.2 case 5) ──
 //
 // BR-9 / AC-5.1 pin the map's observation point at "immediately after restoration completes,
 // before the record carriers the run still owes" — AC-6.1's advisory-record append and AC-6.2's
@@ -3766,14 +3921,20 @@ describe("CR v1 §1-2 / gitWithLockRetry (:12544): the retry loop's classificati
 // the real `runWaveGateSeam` over a real temporary repo to a REFUSAL disposition (one of BR-10's
 // restoration triggers), and merges the git transport's own call log with the `_appendFile`
 // call log into one shared, order-preserving timeline so the two can be compared directly.
-describe("A6-10 / PROP-REST-07: restoreTreeSnapshot's completion strictly precedes the record append and the escalation-log append", () => {
-  test("every _appendFile call observed on a REFUSAL run lands after restoreTreeSnapshot's terminal `reset --mixed`", async () => {
+describe("A6-09 / PROP-REST-10: restoreTreeSnapshot's completion strictly precedes the hash-map observation and the record/escalation-log appends", () => {
+  test("the content-hash map read after the run matches the map taken at restoreTreeSnapshot's terminal `reset --mixed`, and every _appendFile call lands strictly after that same point", async () => {
     const repo = createA6TempRepo();
     try {
       const events = [];
       const _git = async (argv) => {
         const result = await repo._git(argv);
         events.push({ kind: "git", verb: argv[0] });
+        // BR-9's observation point: the content-hash map is captured right at restoration's
+        // terminal `reset --mixed`, so its ordinal position in the shared timeline can be
+        // compared directly against every later `_appendFile` call below.
+        if (argv[0] === "reset") {
+          events.push({ kind: "hash", map: hashTree(repo.dir) });
+        }
         return result;
       };
       const files = makeFileDouble();
@@ -3799,13 +3960,20 @@ describe("A6-10 / PROP-REST-07: restoreTreeSnapshot's completion strictly preced
 
       // `reset` is issued by exactly two callers on this transport: `captureTreeSnapshot`'s
       // own closing reset, and `restoreTreeSnapshot`'s terminal `reset --mixed`. Restoration
-      // always runs strictly after capture on this path, so the LAST `reset` observed is
-      // restoration's completion — the exact point BR-9 pins the map's observation to.
+      // always runs strictly after capture on this path, so the LAST `reset`/`hash` pair
+      // observed is restoration's completion — the exact point BR-9 pins the map's
+      // observation to.
       const resetIndices = events
         .map((e, i) => (e.kind === "git" && e.verb === "reset" ? i : -1))
         .filter((i) => i >= 0);
       expect(resetIndices.length).toBeGreaterThanOrEqual(2);
       const restoreCompleteIndex = resetIndices[resetIndices.length - 1];
+      const mapAtRestore = events[restoreCompleteIndex + 1];
+      expect(mapAtRestore.kind).toBe("hash");
+
+      // The map taken at that exact point is the one a caller reading the tree AFTER the run
+      // would see: restoration leaves nothing further mutating the tree on this path.
+      expect(hashTree(repo.dir)).toEqual(mapAtRestore.map);
 
       // Both record carriers this call site owns — the advisory-record append and the
       // escalation-log append — are observed AFTER that point, never interleaved with it.
