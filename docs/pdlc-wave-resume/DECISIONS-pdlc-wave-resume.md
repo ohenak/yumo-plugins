@@ -357,3 +357,49 @@ assertion could falsify it.
 guard; the probe becomes free (e.g. HEAD ancestry already resolved earlier in the run).
 
 ## Consequences
+
+### What these decisions commit the implementation to
+
+| Decision | Consequence the PLAN and the implementation inherit |
+|---|---|
+| DEC-WVR-01 | One comment-block replacement in `orchestrate-dev.js`; no behavioural diff in that task. The replacement states the surface correctly (three pure functions, one read site, one write site), since the shipped INTERIM comment miscounts it. |
+| DEC-WVR-02 | The extraction lands as **its own task, before any announcement change**, with the shipped ledger `describe` block kept green **entirely unchanged by that task** — it is the extraction's regression net. |
+| DEC-WVR-03 | Exactly three shipped whole-string assertions change, in the **same task** as the announcement change, each to the new whole string transcribed as a literal. No matcher is relaxed to a `startsWith` or an `includes`; doing so would retire the exact-wording oracle, a strictly larger change than this feature owes. |
+| DEC-WVR-04 | A test, not a code change: the `{}` and `""` inputs are asserted to reach the silent no-record outcome, and the absence of any `{}` writer is asserted over the write site. |
+| DEC-WVR-05 | The record's format is frozen at `version: 1`; no PLAN task may add a field. |
+| DEC-WVR-06 | Three frozen catalogues, each transcribed into a test as a literal so an addition or a deletion reds an assertion. |
+| DEC-WVR-07 | AT-16 carries its own residual-gap sentence; a reviewer who reads it as full parity has misread it, and the sentence is what prevents that. |
+| DEC-WVR-08 | Two call-count oracles asserted as **equalities**: zero `merge-base` calls on the feature-mismatch and plan-hash-mismatch fixtures, exactly one on the ancestry fixture. |
+
+### What is deliberately left open, and where it goes
+
+Per DC-08, each unresolved item names a successor surface rather than an intent:
+
+| Item | Successor surface |
+|---|---|
+| The branch is 1,637 commits behind and carries neither the mechanism nor `docs/_constraints/pdlc-wave-gate-baseline.md` (TSPEC OB-F1). | Orchestrator/operator branch management, **before** implementation. It is a PLAN sequencing precondition: the wave carrying the ignore-rule assertion (AT-14) must not be dispatched before the rebase, because in wave mode a red gate halts that wave and every wave after it. |
+| Promotion of REQ OF-1/OF-2 into the wave-gate baseline as `M-WVR-1..2` (TSPEC OB-F4). | A dedicated PLAN task owning that file — a document change, not a code change — appending a **new** section at the next unoccupied number and bumping the file's `Version` to the next above whatever is found at promotion time. |
+| Advisory budget interaction: shorter, more numerous runs refresh `advisory.waveBudgetPerRun` per invocation (TSPEC RT-6). | Recorded, not coordinated. Nothing in these decisions changes it, and clearing a halt still requires a human. |
+
+### Risks these decisions accept
+
+- **A fourth whole-string assertion is discovered mid-wave.** Mitigated by running the full
+  `pdlc/workflows` suite as the announcement task's own gate before the wave's, and by the rule that
+  any further changed assertion is added to TSPEC §2.4's table in the same commit — never absorbed
+  by relaxing a matcher.
+- **Rebase churn in the largest tracked file in the repo** (`orchestrate-dev.js`, 734,711 bytes).
+  Mitigated by the small, localised edit surface these decisions produce — one comment block, one
+  extracted function, three announcement suffixes, one report detail — and by rebasing *before*
+  implementation rather than during it.
+- **Generated artifacts go stale.** Editing the source module leaves `pdlc/workflows/dist/` stale,
+  which the suite itself reds. Any wave whose tasks touch the module must name the dist path in
+  `implementation.postWavePathspecs`; the post-wave command runs before the gate.
+
+### What a future reader should not re-litigate
+
+The path constant, the record's field names and `version: 1`, the FNV-1a fingerprint, the
+evaluation order of the disregard causes (ancestry **above** over-count), the laziness of the
+ancestry probe, the transport-guarded write site, the fail-open posture of every read, and the
+retention of a complete record. Each was closed upstream or here, with the alternative recorded
+above. Re-opening one without a trigger from its **Re-evaluation triggers** row is re-litigation,
+not review.
