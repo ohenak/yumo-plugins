@@ -45,6 +45,59 @@ own header (*"any commit landing once LI-21 has landed"*) is unambiguous about t
 
 ## Batches
 
+**No task row changed, so the batch table is out of scope by measurement rather than by assertion.**
+The diff touches §The three gate wordings' P-A-7 paragraph and the changelog only. Every one of the
+twenty-two task rows, the `[Fake first]` ordering, the red-before-green pairing and the file-ownership
+manifest are byte-identical to the v0.7 bytes I approved at round 10. What changed is a **gate-input
+rule** about what the expected-red ledger contains when an amendment lands — which is squarely my
+lens, because the ledger is the oracle the batch gate reads.
+
+**The rule the delta replaces, and why the replacement is the right shape.** At v0.7 the table had two
+cases: A (commit lands before batch 7 → no rows, the suite is already listed red whole) and B (commit
+lands after LI-17 greened the suite → rows for *"every batch from the one the commit lands in through
+the batch that greens them"*). Case B's span is a **half-open interval that needs a right endpoint**,
+and the endpoint it named is a batch that greens the re-redded cases. With LI-17 landed at batch 9 and
+LI-21 at batch 13, no such batch remains: batch 14 is LI-22's REFACTOR-and-close, which the PLAN's own
+batch-ladder row describes as adding no assertions and carrying the *unqualified* full-suite-green
+gate. So case B could not be evaluated at HEAD — the ledger rows it demands have no defined extent.
+That is a genuine gate-input defect, and all six raises were right about it.
+
+The delta does **not** try to fix this by stretching case B (which would have produced a span ending
+at a batch that greens nothing — a rule that reads as satisfiable but cannot be checked). It bounds
+case B to the window where its own wording is well-formed (**batch 9 through batch 12** — the last
+landing batch that still has a greening batch ahead of it at batch 13) and adds **case C** for the
+post-batch-13 window that is live at HEAD. Case C replaces the ledger obligation with a different
+obligation of the same falsifiable kind: *the ledger stays empty and the amendment must be green at
+the commit that lands it.* That is checkable — batch 14's gate is unqualified full-suite green, so a
+red amendment fails it, with no ledger row available to excuse the red. The rule has an oracle again.
+
+**Case C's green claim is a mechanism citation, and I verified the mechanism rather than the sentence.**
+PM Q-02 asked whether the heading-form amendment is now expected to land green. Case C answers "yes"
+and grounds it in the production half F-O-1's second rule needs being already shipped. I read
+`pdlc/workflows/orchestrate-dev.js` at HEAD (`canonicalSectionName`, `SECTION_HEADING_RE`,
+`GLOSS_RE`, `BR6_SECTION_NAMES`, the TSPEC §D.3 block) and checked all four of `LI-AT-11`'s named
+heading-form cases against it:
+
+| Case B/C names | Shipped behaviour at HEAD | Green? |
+|---|---|---|
+| un-numbered `## Cross-Feature Patterns` | `BR6_SECTION_NAMES.includes(title)` hits directly; the ordinal is optional in `SECTION_HEADING_RE`'s `(?:\d+\.[ \t]*)?` group, so both the numbered and un-numbered spellings canonicalise | ✓ |
+| un-glossed `## Rejected Proposals` | `GLOSS_RE` is stripped from **both** sides — `strippedTitle === name.replace(GLOSS_RE, "")` — so the bare title matches the catalogue's `"Rejected Proposals (with rationale)"` | ✓ |
+| `###` sub-heading reading as body text | `SECTION_HEADING_RE` is anchored `^##[ \t]+`; a `###` line's third `#` is neither space nor tab, so the regex never matches and the line stays inside the enclosing extent | ✓ |
+| `## Process Findings` near-miss that must **not** match | not in `BR6_SECTION_NAMES`; gloss-stripping is a no-op on it and it equals none of the five stripped names, so `canonicalSectionName` returns `null` | ✓ |
+
+Case C's parenthetical is accurate on every clause, including the case-sensitivity one (the comparison
+is `===` against frozen literals, never a `toLowerCase()`). The one wording I would tighten is
+"returns null for a `###` line" — `canonicalSectionName` is never *called* on a `###` line, because
+`findSectionExtents` only calls it on a `SECTION_HEADING_RE` match; the clause that follows
+("which `^##[ \t]+` never matches") supplies the correct mechanism, so the sentence self-corrects and
+I am not filing it.
+
+**And the "if it lands red" arm is the part that makes this a test rule rather than an optimism.**
+Case C does not merely predict green. It states what a red *means* — "it has found a real defect, not
+staged a TDD red" — and what is owed: a fix commit before batch 14 runs, with a red surviving into
+batch 14 being a gate failure. That is exactly the distinction the ledger exists to draw, preserved
+under a case where the ledger is empty. From my lens this is the strongest sentence in the delta.
+
 ## Dependencies
 
 ## Verification
