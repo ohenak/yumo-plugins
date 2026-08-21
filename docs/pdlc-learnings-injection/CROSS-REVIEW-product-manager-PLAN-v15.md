@@ -216,6 +216,12 @@ DEFERRED: DoD 12 is retired in place but keeps its clause number in the DoD's ru
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | My v14 Q-01 stands unanswered and is now more visible, not less: `2fc6fcd3`'s subject line is `docs(cross-review): TE DECISIONS v8 context`, and the subsection it anchors now shows the commit carrying 45 paths, four production/configuration files and five new test files. The PLAN's rows carry the provenance correctly, so nothing is lost — but the subject line still understates the commit by an order of magnitude, and every future reader who resolves it will do the double-take I did twice. Is the intent to leave the mixed commit as-is with the manifest carrying the truth? One clause saying so would close it. Not gating |
+| Q-02 | Also carried from v14: DoD 14 names four consciously-carried POSTMORTEM-D remediations, and the `orchestrate-dev.js` row now records a production write from `2fc6fcd3` (the `_log` emitter wired into `main()` for CODE_REVIEW v1 F2, and `selectLearnings` dropping `feature`). Is that write inside the injection region and therefore covered by DoD clauses 1–13, or is it a fifth consciously-carried item? The two lists still do not intersect, and this is the one commit where the distinction bites. Not gating |
+| Q-03 | New, arising from DoD 11's four-module stage-2 set: the ≥ 85 % per-file branch floor now applies to `scripts/capture-learnings-baseline.mjs` as well, but the measured headroom in §The measured baseline is stated only for `orchestrate-dev.js` (88.14 %, 3.14 points). Is the capture script's own per-file branch number known at HEAD, and does it clear 85 % with room? DoD 11 is now a claim about four modules whose measured evidence covers three. Not gating in a frozen round — the measurement is the gate's to make, not this document's — but a reader planning against DoD 11 would want the fourth number |
+
 ## Positive Observations
 
 ## Recommendation
