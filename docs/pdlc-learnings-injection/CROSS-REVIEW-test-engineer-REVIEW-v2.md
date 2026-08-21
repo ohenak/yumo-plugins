@@ -224,6 +224,8 @@ exit 0.
 | Q-01 | F-01: is a per-arm control on ADMITS-NOTHING best written as a read-log assertion (the corpus path was opened on that arm only) or as a sink assertion (`corpusOutcome === null`, one `RSN-NO-MATERIAL` row)? The second also pins *why* the arm injects nothing, which is what makes it a different code path from EMPTY. |
 | Q-02 | v1's Q-01 is answered — the gate inputs are read where they live and the production report was not grown to fit the oracle. v1's Q-02 is answered — the fixture is wired to a comparison across four states. v1's Q-03 is answered by deletion. Only v1's Q-04 remains open, and it is upstream: with `propagateBytes` gone, does FSPEC/REQ agree that a document cut by the count bound carries `RSN-COUNT` regardless of the window's byte outcome? The implementation and its tests now both assume so, and the two `ERRATUM` lines below ask upstream to say it. |
 
+## Positive Observations
+
 - **Every High repair was verified by its own falsifier, not by its own assertion.** Each of the
   four code-level repairs reds when the defect is restored (E-1..E-4). That is the standard this
   lens asks for and it was met without prompting — the AC-1.2 test's own comment even states the
@@ -250,8 +252,6 @@ exit 0.
   with "the path IS in BR-8's rows"; BR-15's two prefix clauses are paired with "the disabled arm
   does open `docs/_decisions/`"; the CR optimizer's "carries no block" is paired with "this run
   did inject somewhere". The absence-only oracles v1 flagged are gone.
-
-## Positive Observations
 
 ## Recommendation
 
