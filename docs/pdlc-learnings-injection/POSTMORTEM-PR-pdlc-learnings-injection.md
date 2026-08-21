@@ -282,15 +282,53 @@ is indicated.
 
 ## Resolution
 
-RESOLVED: no
+RESOLVED: yes
 
-Awaiting operator disposition. The recommendation is a single v1.3 erratum edit to the PLAN
-(items 1–8 above) plus three systemic items (9–11) routed out of this feature. No upstream
-re-grounding is required: te finding 7 confirms the dispatched REQ v0.10 / FSPEC v0.14 /
-DECISIONS v0.5 carry the same substance as the pinned versions, so the header refresh is a pin
-update and not a cascade.
+Resolved 2026-08-21 by the operator-directed v1.3 erratum edit to
+`PLAN-pdlc-learnings-injection.md`, item by item against the Recommendation:
+
+- **Item 1** (re-derive §Post-batch remediation from the commit): the subsection's lead-in now
+  states `git show --name-status 2fc6fcd3`'s 45-path breakdown and the table carries **nineteen
+  rows** — the five added files including `pdlc/engine/__tests__/learnings-config-example.test.js`,
+  P-A-5 second-owner rows for the six ladder-owned suites (LI-03/LI-07/LI-09/LI-11/LI-12/LI-23),
+  for `orchestrate-dev.js` (LI-15…LI-22) and for `scripts/capture-learnings-baseline.mjs` (LI-05),
+  plus rows for `pdlc/workflows/package.json`, `pdlc/workflows/.gitignore`,
+  `coverageInstrumentation.test.js` and `docs-uniqueness.test.js`. It also records that LI-04's
+  root `.gitignore` is **not** in the commit (the touched file is `pdlc/workflows/.gitignore`).
+  The single-writer argument is generalised over all rows, substance unchanged.
+- **Item 2** (`package.json` premise): corrected in the three named places — §Overview
+  change-surface row, §File-ownership manifest → Production and generated, §Verification DoD
+  11/12. The DoD 12 exemption is recorded as retired at `2fc6fcd3`; DoD 11 names the four-module
+  stage-2 set and dates §The measured baseline's three-row table as pre-`2fc6fcd3`.
+- **Item 3**: §Overview's "fourteen new test files" is qualified as the ladder's count, with the
+  eighteen-tracked-at-`09c7c62f` tree count stated beside it.
+- **Item 4**: the engine test file is rowed and named as the eighteenth file in the arithmetic,
+  which now reconciles (13 ladder files + 5 added = 18).
+- **Items 5–7** (changelog and case table): row 0.9's credit corrected to TE v11 F-01; rows
+  0.5/0.6 restored to monotone order; case A's derivation now quotes "before batch 9".
+- **Item 8**: header and prose pins refreshed to REQ v0.10 / FSPEC v0.14 / DECISIONS v0.5
+  (header, §Overview, LI-12, the `RSN-NO-MATERIAL` arm row, the F-O-1 obligations row) —
+  confirm-and-refresh only, per te finding 7.
+- **Item 9** routed: `DEC-ORACLE-05` (candidate) appended to
+  `docs/_decisions/DECISIONS-test-oracle-mechanics.md`.
+- **Item 10** routed: `DEC-SEV-04` appended to
+  `docs/_decisions/DECISIONS-review-severity-bars.md`.
+- **Item 11** routed: stays stated in this POSTMORTEM's Recommendation, which
+  `harvest-learnings` reads when it writes `LEARNINGS-pdlc-learnings-injection.md`.
+
+No upstream re-grounding was required: te finding 7 confirms the dispatched REQ v0.10 /
+FSPEC v0.14 / DECISIONS v0.5 carry the same substance as the pinned versions, so the header
+refresh is a pin update and not a cascade.
 
 Re-confirmation should re-dispatch both non-approving channels, and both should be asked to check
 the **absorbed** set as well as the raised set — specifically, that §Post-batch remediation's row
 count now reconciles against `git show --name-status 2fc6fcd3` and that §Overview, the manifest and
 DoD 11 agree on `pdlc/workflows/package.json`'s state at HEAD.
+
+**Provenance**
+- Engine version: 0.2.2
+- Plugin version: 0.23.2
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows

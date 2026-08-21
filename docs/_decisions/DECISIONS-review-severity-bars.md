@@ -378,3 +378,26 @@ complete. This does.
 **Testability.** Prompt-level, not mechanical, today: the sweep is a stated completion condition in
 the author-side dispatch. The mechanical form — a reverse-grep lint over the corrected claim — is
 proposed in `CONSOLIDATION-PROPOSAL-2026-08-19-1.md`.
+
+---
+
+## DEC-SEV-04: A spec claiming a file is unmodified must name the commit or range over which that holds
+
+**Context.** Recorded per `POSTMORTEM-PR-pdlc-learnings-injection.md` (PLAN erratum delta
+confirmation, 2026-08-21) Recommendation item 10. The PLAN declared `pdlc/workflows/package.json`
+"**not** modified", with a coverage exemption resting on that premise. The DoD remediation commit
+`2fc6fcd3` later rewrote the file's `c8` block; the prose survived, and both confirming channels
+raised it as a High: a DoD verifier reading the PLAN would check an exemption that no longer
+existed. An absence assertion in prose has no falsifier — no gate reads it, and a verifier checking
+it looks at the exemption text rather than at the file. This is the absence-based-oracle rule (the
+TE falsifiability checklist) applied to spec prose.
+
+**Decision.** A spec-layer claim that a file is **unmodified** (or that a change set **excludes** a
+file) must name the commit or commit range over which the claim holds — e.g. "unmodified as of
+`<sha>`" — so the claim dates itself and a reader can check it with one `git` command. An undated
+absence claim about the tree is a review finding at authoring time; a dated one that has been
+overtaken is a stale pin, repaired by re-dating or deleting, not a High.
+
+**Related.** [DEC-ERR-04](#dec-err-04-an-erratum-is-complete-only-when-the-reverse-grep-finds-no-surviving-statement-of-the-corrected-claim)
+(the sweep that finds the surviving statement); `DEC-ORACLE-05`
+(DECISIONS-test-oracle-mechanics.md) — the manifest-side counterpart from the same postmortem.
