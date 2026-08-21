@@ -330,8 +330,52 @@ archaeology is likewise limited to deriving completion from task commits. *Sourc
 
 **Who:** queue operator. **Given:** a queue-driven iteration whose feature halted at a
 wave gate in a previous iteration. **When:** the queue re-attempts the feature after the
-halt is cleared. **Then:** the delegated run resumes exactly as a direct invocation
-would under REQ-WVR-01..05, with no queue-specific configuration. *Source: US-04.*
+halt is cleared. **Then:** the delegated run announces **the same resume point and the same
+provenance** in the queue run's own report as a direct invocation of the same feature would, with
+no queue-specific configuration present anywhere. The queue-specific observable is the one that
+can fail while REQ-WVR-01..05 all pass: the record must resolve against the same working
+directory on both paths, so a resume point that differs between a direct and a delegated run of
+the same feature and plan fails this AC. *Source: US-04.*
+
+
+### REQ-WVR-08 — all waves recorded complete: Phase I is skipped in full (P1, Phase 1)
+
+**Who:** pipeline operator. **Given:** a valid record for this feature and this unchanged plan
+recording **every** wave of the plan complete — the state a run reaches when Phase I finished and
+a later phase (CR, DOD, PUB) halted. **When:** the pipeline is re-invoked. **Then:** Phase I is
+skipped in full; the skip is announced as its own message, naming the reason and the
+force-a-full-run hatch (OQ-1, §9); and it is recorded as its **own** phase row, visibly distinct
+from a Phase I that executed. **How REQ-WVR-03 is discharged here:** no wave executes, so no gate
+runs and **Phase I produces no new commit** — the guarantee "no new commit lands before the full
+suite has verified the whole tree" is satisfied because this phase lands none, not because a
+verification was skipped. The tree's most recent whole-tree verification is the one performed by
+the last wave of the run that wrote the record; any later phase that wants to commit runs its own
+gates. An implementation that commits anything in Phase I under this outcome violates REQ-WVR-03.
+
+**The resume-outcome catalogue is closed at three** — (a) full run from wave 1, (b) resume at a
+wave in the middle, (c) skip Phase I entirely — and every invocation resolves to exactly one of
+them and announces which. PROPERTIES owes a set-equality check over the three, so a deleted
+outcome fails a test. *Source: US-01.*
+
+### REQ-WVR-09 — a wave that was verified but not committed is never recorded complete (P0, Phase 1)
+
+**Who:** pipeline maintainer. **Given:** a Phase I run in which a wave's tasks completed and the
+wave's gate passed, but the run committed nothing for it (for example, a run with no git
+transport, which verifies but does not commit). **When:** the pipeline is re-invoked for the same
+feature and unchanged plan. **Then:** implementation starts at **that same wave**, not after it,
+and announces it as not previously completed. Completion, for resume purposes, means *committed*,
+never merely *verified*: work that exists nowhere but the working tree is never skipped. This is
+the property R-2 (§8) names as the only unrecoverable failure mode of this feature, stated as a
+requirement so an acceptance test has something to trace to. *Source: US-03.*
+
+### REQ-WVR-10 — the resume record never becomes tracked content (P1, Phase 1)
+
+**Who:** pipeline maintainer. **Given:** any run of any length, halted or complete, that writes
+the resume record. **When:** the run's commits are inspected afterwards. **Then:** no commit
+produced by the run contains the resume record, and the record never appears as a tracked file in
+the repository — its exclusion is anchored by an ignore rule (C-1), not by nobody happening to
+stage it. This is the observable C-1 previously lacked: it fails if per-wave bookkeeping ever
+produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 
 ## 8. Risks
 
