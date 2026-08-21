@@ -2493,9 +2493,29 @@ export function selectLearnings({ entries, feature, thresholds }) {
 
   for (const doc of windowRejected) rejected.push({ path: doc.path, reason: "RSN-BYTES" });
 
-  const propagateBytes = firstByteFailIndex !== -1 && firstByteFailIndex < window.length - 1;
+  // CR round 1, PM F-06 / TE F-07 (Medium). This used to read
+  //   const propagateBytes = firstByteFailIndex !== -1 && firstByteFailIndex < window.length - 1;
+  // and label the overflow `RSN-BYTES` when it held. That guard appears in no upstream document
+  // (grepped over REQ, FSPEC, TSPEC, PLAN, PROPERTIES), and its effect was a split an operator
+  // could not predict: with `maxDocuments: 5`, a total-byte failure at window index 2 labelled
+  // documents 6+ `RSN-BYTES` while the same failure at window index 4 labelled them `RSN-COUNT`,
+  // though in both cases those documents were cut by the count bound.
+  //
+  // The rule now follows the one upstream actually states. BR-5: the count bound "is applied
+  // first, over BR-4's order", and "documents cut here carry `RSN-COUNT`"; AT-08: "every
+  // unselected one carries `RSN-COUNT`". The total bound then accumulates over what the count
+  // bound left — the window — so BR-6's "that document and every lower-ordered one is dropped
+  // whole, with `RSN-BYTES`" ranges over the window, and `windowRejected` above is exactly that
+  // set. A document past the window was removed by the count cut before the total bound was
+  // consulted at all, so `RSN-COUNT` is its cause under AC-3.2's cause-defined ids, whatever the
+  // window's byte outcome turns out to be.
+  //
+  // The mixed case is still not stated in so many words upstream; it is routed as
+  // `ERRATUM: FSPEC` and `ERRATUM: REQ`. If upstream lands the other reading, the change is this
+  // one line and `LI-AT-13`'s expectations, which no longer encode a byte-count tuned to keep
+  // the failure off the window's last slot.
   for (const doc of overflow) {
-    rejected.push({ path: doc.path, reason: propagateBytes ? "RSN-BYTES" : "RSN-COUNT" });
+    rejected.push({ path: doc.path, reason: "RSN-COUNT" });
   }
 
   return { selected, rejected, totalBytes, orderKeys };

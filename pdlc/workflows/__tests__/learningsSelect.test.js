@@ -121,9 +121,28 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
 
+    // CR round 1, PM F-06 / TE F-07 (Medium). The `RSN-COUNT` row count here used to be asserted
+    // as ZERO, which held only because the implementation's unspec'd `propagateBytes` guard
+    // relabelled the three out-of-window documents `RSN-BYTES`. `BYTES-BINDING` is 8 documents
+    // against `maxDocuments: 5` (TSPEC §T.4), so the count bound cuts three of them before the
+    // total bound is consulted at all — "the count bound does not bind" was never true of this
+    // fixture, and only the relabelling hid it. Under BR-5's stated rule ("the count bound is
+    // applied first ... documents cut here carry `RSN-COUNT`") those three carry `RSN-COUNT`.
+    // TSPEC §T.4's "each asserted *not* to bind where the other does" is routed upstream as
+    // `ERRATUM: TSPEC`; what AT-07 itself asks for — "the contributing count is strictly below
+    // `maxDocuments` with `RSN-BYTES` rows" — is asserted exactly, below.
     expect(result.selected.length).toBeLessThan(LEARNINGS_CORPUS_DEFAULT_THRESHOLDS.maxDocuments);
-    expect(result.rejected.filter((r) => r.reason === "RSN-BYTES").length).toBeGreaterThan(0);
-    expect(result.rejected.filter((r) => r.reason === "RSN-COUNT")).toHaveLength(0);
+    // The byte bound is what pushed the contributing count below `maxDocuments`: the shortfall
+    // is accounted for, document for document, by `RSN-BYTES` rows and by nothing else.
+    const byteRows = result.rejected.filter((r) => r.reason === "RSN-BYTES");
+    expect(byteRows.length).toBe(
+      LEARNINGS_CORPUS_DEFAULT_THRESHOLDS.maxDocuments - result.selected.length
+    );
+    expect(byteRows.length).toBeGreaterThan(0);
+    // And the count bound accounts for the rest — the documents that never entered the window.
+    expect(result.rejected.filter((r) => r.reason === "RSN-COUNT")).toHaveLength(
+      8 - LEARNINGS_CORPUS_DEFAULT_THRESHOLDS.maxDocuments
+    );
     expect(result.selected).toHaveLength(8 - result.rejected.length);
   });
 
@@ -272,10 +291,17 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     // headings and bodies taken from that document under BR-6" — so the extracted
     // material is `## Cross-Feature Patterns` (25 bytes) + the blank line separating
     // heading from body (2 bytes) + `bodyBytes`. 4973 is therefore what lands each
-    // document's material on exactly 5000 bytes and keeps the arithmetic above true:
-    // at 5000 the material would be 5027, only 3 documents would fit, and the byte
-    // failure would move off the window's last slot and propagate RSN-BYTES onto the
-    // overflow the expectations below record as RSN-COUNT.
+    // document's material on exactly 5000 bytes, which is what makes the arithmetic
+    // above a round 4*5000 = 20000 boundary case rather than an approximate one.
+    //
+    // CR round 1, TE F-07 (Medium). This comment used to carry a second, disqualifying
+    // reason for 4973: that at 5000 "the byte failure would move off the window's last
+    // slot and propagate RSN-BYTES onto the overflow the expectations below record as
+    // RSN-COUNT" — an expected value chosen to fit the implementation's unspec'd
+    // `propagateBytes` guard. That guard is gone (BR-5: the count bound is applied first
+    // and its cut documents carry `RSN-COUNT`), so where the byte failure lands inside the
+    // window no longer changes any overflow document's reason id. The companion test below
+    // pins exactly that, at both slots.
     const dates = [
       "2026-04-08",
       "2026-04-07",
@@ -349,6 +375,88 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(soloResult.rejected).toEqual([
       { path: "docs/at13-solo/LEARNINGS-at13-solo.md", reason: "RSN-BYTES" },
     ]);
+  });
+
+  test("LI-16: CR round 1 (TE F-07) — an overflow document's reason id does not depend on where inside the window the total-byte bound first fails", async () => {
+    const { selectLearnings } = await import("../orchestrate-dev.js");
+
+    // The rule upstream states is cause-based (BR-5: the count bound "is applied first",
+    // "documents cut here carry `RSN-COUNT`"; AC-3.2 defines the ids by cause). So for a
+    // document the count bound removed before the total bound was consulted at all, the
+    // recorded reason must be `RSN-COUNT` no matter what the window's byte outcome is.
+    //
+    // The shipped implementation used to relabel those documents `RSN-BYTES` whenever the
+    // first byte failure landed anywhere but the window's LAST slot — a split no upstream
+    // document states, and one an operator could not predict. This test is the falsifier:
+    // it holds the corpus and `maxDocuments` fixed and moves the byte failure between the
+    // window's last slot and its middle, asserting the out-of-window documents' reason ids
+    // are invariant. Restoring the `firstByteFailIndex < window.length - 1` guard reds the
+    // second case.
+    const dates = [
+      "2026-04-08",
+      "2026-04-07",
+      "2026-04-06",
+      "2026-04-05",
+      "2026-04-04",
+      "2026-04-03",
+      "2026-04-02",
+      "2026-04-01",
+    ];
+    const orderedPaths = dates.map((_, i) => `docs/f07-${i + 1}/LEARNINGS-f07-${i + 1}.md`);
+    const corpus = buildLearningsCorpus(
+      dates.map((dateCompleted, i) => ({
+        path: orderedPaths[i],
+        doc: {
+          feature: `f07-${i + 1}`,
+          dateCompleted,
+          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 4973 }],
+        },
+      }))
+    );
+    const entries = entriesFromCorpus(corpus);
+    const reasonsFor = (maxTotalBytes) => {
+      const result = selectLearnings({
+        entries,
+        feature: "f07-dispatcher",
+        thresholds: { maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes },
+      });
+      return {
+        selected: result.selected.map((d) => d.path),
+        reasons: Object.fromEntries(result.rejected.map((r) => [r.path, r.reason])),
+      };
+    };
+
+    // Each document's material is exactly 5000 bytes (25-byte heading + 2-byte separator +
+    // 4973-byte body), so maxTotalBytes selects how many of the window's five slots fit.
+    // Case A: 20000 -> 4 fit, the first byte failure is at window index 4, the LAST slot.
+    const lastSlot = reasonsFor(20000);
+    expect(lastSlot.selected).toEqual(orderedPaths.slice(0, 4));
+    expect(lastSlot.reasons).toEqual({
+      [orderedPaths[4]]: "RSN-BYTES",
+      [orderedPaths[5]]: "RSN-COUNT",
+      [orderedPaths[6]]: "RSN-COUNT",
+      [orderedPaths[7]]: "RSN-COUNT",
+    });
+
+    // Case B: 10000 -> 2 fit, the first byte failure is at window index 2, well inside the
+    // window. The three documents the count bound never admitted keep `RSN-COUNT`; only the
+    // window's own casualties change.
+    const midWindow = reasonsFor(10000);
+    expect(midWindow.selected).toEqual(orderedPaths.slice(0, 2));
+    expect(midWindow.reasons).toEqual({
+      [orderedPaths[2]]: "RSN-BYTES",
+      [orderedPaths[3]]: "RSN-BYTES",
+      [orderedPaths[4]]: "RSN-BYTES",
+      [orderedPaths[5]]: "RSN-COUNT",
+      [orderedPaths[6]]: "RSN-COUNT",
+      [orderedPaths[7]]: "RSN-COUNT",
+    });
+
+    // Stated as the invariant itself: the out-of-window documents' reason ids are identical
+    // across the two runs.
+    for (const path of orderedPaths.slice(5)) {
+      expect(midWindow.reasons[path]).toBe(lastSlot.reasons[path]);
+    }
   });
 
   test("LI-16: LI-AT-16 — docs/{p}/ and docs/completed/{p}/ are eligible on identical terms; location affects rank only through the path tiebreak", async () => {
