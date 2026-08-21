@@ -141,6 +141,44 @@ clause.
 
 ## Consequences
 
+**For this round.** One open High → the confirmation is non-approving and this document returns to
+its ordinary revision loop for a bounded edit. All three findings are tagged `delta` and `local`:
+they were introduced by this round's upstream edit (the pre-round bytes were accurate when I
+approved them at v1.15) and they sit inside the one subsection the edit bears on. None is
+`inherited`, so none routes back to an earlier phase; none is `nonlocal`, so the edit's blast radius
+is not widened.
+
+**For the downstream chain.** The obligation is now stated in REQ but not specified in FSPEC. That
+asymmetry is real and is the residual gap DECISIONS should now carry — it is not mine to close here,
+but whoever revises DEC-A6-03 should describe it accurately rather than restating the old
+"nothing anywhere" claim. If FSPEC lands E-28/AT-05-5 coverage in a later round, DEC-A6-03's gap
+annotation closes entirely and the entry becomes a plain decision record.
+
+**Positive observations (genuinely — these should survive the revision).**
+
+- DEC-A6-03 is the reason this cascade was catchable at all. The entry did what a decision record
+  should do with an in-flight routing: it named the gap, named who was routing it, said where the
+  obligation belonged, and refused to leave the routing implied — *"an uncited in-flight routing is
+  indistinguishable from a dropped one."* That sentence is why the item was still visible at round 5
+  and why REQ v1.16 could land it. Keep the practice; only the tense needs fixing.
+- The entry's honesty about the remedy's reach ("documented in TSPEC §2.5 and in this record —
+  neither of which an operator reads at halt time") is exactly the product-lens reasoning that
+  produced AC-6.3. It should be preserved as the *rationale* for AC-6.3 rather than deleted along
+  with the stale claim.
+- The decision's separation of concerns held under upstream change: because DEC-A6-03 kept the ref
+  *name* in TSPEC's altitude and pushed the *operator-facing obligation* up to REQ, a REQ erratum
+  could land the obligation without disturbing the naming decision at all. That is the boundary
+  working as designed.
+- `### What follows from DEC-A6-03`'s framing of the cost — "What an overwrite costs is
+  inspectability of a pre-repair tree, never content" — remains accurate under REQ v1.16 and is the
+  sentence that keeps the severity of the overwrite honest. Do not soften it while editing the
+  bullet above it.
+
+**Cross-feature signal.** None promoted from this round. The mechanism that caught this — a decision
+record pinning a negative claim about upstream to specific upstream versions — is worth noting as a
+practice that makes cascades detectable, but it is already covered by the erratum/cascade protocol
+and needs no new constraint.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
