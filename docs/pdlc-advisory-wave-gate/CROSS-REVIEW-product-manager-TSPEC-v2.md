@@ -173,6 +173,33 @@ they say, in the same way. The cascade surface is AC-6.3 alone.
 
 ## Test Strategy
 
+Product lens only here: I am asking whether an acceptance criterion has an oracle that would notice
+if the product failed to deliver it — not whether the test design is technically sound, which is the
+test engineer's call.
+
+The two oracles that touch AC-6.3's territory both stop short of the new conjunct:
+
+| Oracle | § | Asserts | Would it fail if the warning were absent? |
+|---|---|---|---|
+| AT-05-5 | §5.6 | restoration failure rethrown, wave halts "naming the failed restoration", no commit reached | **No** — names the *failure*, not the ref, and nothing about re-run |
+| AT-06-4 | §5.6 | halt report following an escalation carries the root-cause class (§4.5's halt fields) | **No** — root-cause class only |
+
+So AC-6.3's second conjunct is currently unfalsifiable: the product could ship with an operator
+losing their snapshot on every re-run and every green test would stay green. That is the shape the
+team principle "everything traces to requirements" exists to catch — and it is the cheapest possible
+place to catch it, because the conjunct is a string in a message that a fixture can transcribe.
+
+**The missing test, stated concretely** (for whoever revises): a case where a wave halts on the path
+that names `refs/pdlc/a6-snapshot-{waveNum}`, asserting that the same halt output also states that
+re-running the feature overwrites that ref. One assertion, one fixture, in the same file as AT-05-5.
+Its expected value should be transcribed as a literal, exactly as §4.5's capture-failure `diagnosis`
+sentence is — that is the pattern this TSPEC already established and it works well here.
+
+I am filing this at Low rather than folding it into the High. The absent oracle is a consequence of
+the absent design, not an independent defect; once the carrier lands, the oracle is a natural and
+obvious follow-on, and the test engineer's own round will have its say on shape. Recording it so it
+is not lost between the two.
+
 ## Open Questions
 
 ## Positive Observations
