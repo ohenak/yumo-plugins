@@ -160,9 +160,34 @@ survives without it.
 
 ## Open Questions
 
+Both of v5's questions are answered in the document, and neither answer forecloses a testing approach
+§5 needs. Q-01's answer (the helper is exported) *adds* a testing option rather than removing one.
+Q-02's answer (the un-skip arm is in scope, covered by AT-06-4's predicates under the same PLAN task)
+closes the quantifier gap I flagged as an implicit assumption last round.
+
+One residual assumption, stated here rather than filed: the two push sites are disjoint — the seam
+pushes only on unresolved returns, the un-skip site only after a resolved one — so a wave can emit
+the overwrite notice at most once. The document does not say this, and it is what makes
+`advisoryEscalationLog.test.js:821`'s widening exactly 2→3. It is true at HEAD by construction
+(`orchestrate-dev.js:15398` vs `:15433`), so I am not filing it; a one-clause note would make the
+count arithmetic self-evident to whoever writes that edit.
+
+Nothing in §6 changed this round, and nothing in the delta contradicts a promoted decision or a
+standing constraint (DC-07's production-path rule is *strengthened* by §5.1's new
+`advisoryWaveGateMain.test.js` row, which is precisely the real-seam test DC-07 asks for).
+
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | §4.5's push-site row says both of §5.6's arms "already wire `_notice`", citing `_notice: (m) => notices.push(m)`. That collector form exists (`advisoryWaveGate.test.js:3412`, `:3452`, `:3494`) but in a different describe than either named host: AT-06-4b's host is the Oracle-G capture-failure block at `:1671-1705` and AT-06-4's is the two-red-wave PROP-REST-07 run at `:1623-1668`, and **both take `makeA6RunArgs`' default `_notice: () => {}` (`:996`)**. Because the seam swallows a missing sink into a no-op (`orchestrate-dev.js:3385`), an implementer who declares a `notices` array but forgets the override gets a vacuous green on AT-06-4b's whole-array negative. Fix: one clause requiring a collector override on both host fixtures, and stating that AT-06-4b's negative is only meaningful over an array the run actually wrote to | §4.5 ("Where the push happens"); §5.6 (AT-06-4b) |
+| F-02 | Low | Local | §5.1's `advisoryWaveGate.test.js` cell opens "**Four** shipped halt-field oracles in this file are set-equalities…" and then enumerates **five** assertion sites — `:2714`, `:1699`, `:3425`, `:3462`, `:2676` — plus the `ORACLE_G_HALT_FIELDS` literal at `:3369`. The enumeration is complete and correct; only the numeral is wrong (it counts *kinds*, not sites). Fix: drop the numeral, as §5.2 did with "six positive assertions" this round, or say "five assertion sites in four shapes" | §5.1 (`advisoryWaveGate.test.js` row) |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Should the un-skip halt site's push be guarded against the case where `resolvedAdvisoryFields` is present but its `snapshotRef` is `undefined` rather than `null` — i.e. a halt whose advisory fields came from a fake or an older shape (`waveExecution.test.js:1251-1256` supplies exactly such an object)? §4.5's condition is stated as "non-`null`", and `undefined !== null`, so a literal reading pushes a notice rendered from `undefined`. A truthiness guard rather than a `!== null` guard is almost certainly intended; naming it in §4.5 would keep the two shipped un-skip fixtures (`waveExecution.test.js:1240`, `:1291`) green without a fixture edit |
 
 ## Positive Observations
 
