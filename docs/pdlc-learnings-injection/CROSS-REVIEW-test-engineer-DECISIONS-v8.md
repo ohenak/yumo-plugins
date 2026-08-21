@@ -34,3 +34,38 @@ on the shipped renderer. That is the whole of this round.
 
 Upstream moved underneath this document since v7 (FSPEC v0.13 → **v0.14**, REQ v0.9 → **v0.10**).
 I re-derived both deltas; neither invalidates anything this document asserts. Details below.
+
+## Options Considered
+
+**(a) Approve — the delta lands both carried Mediums and the decision itself is untouched.**
+Tempting, and correct about the decision: *which* quantities bound is what `DEC-LI-08` decides,
+and that is unchanged. Rejected because the delta did not only restate the accounting basis —
+it added a measurement, presented as fact about HEAD ("Measured on the shipped renderer at
+HEAD"), and the measurement is wrong in a way a downstream test author can transcribe. This is
+squarely a defect the revision introduced (freeze criterion (i)) and a contradiction with the
+repository at HEAD (criterion (ii)).
+
+**(b) File the measurement as Medium — "numbers are illustrative, the obligation stands."**
+Rejected on the transcription hazard. Team rule: *expected values are literal transcriptions from
+the spec, never derived from the code under test*. A PROPERTIES or DoD author writing `D-O-4`'s
+report assertions has exactly two literals to transcribe from a governing document — 694 and
+1,012 — and both are presented as measured constants. Transcribing them produces an oracle that
+is either red against the real corpus or, worse, green against a synthetic fixture chosen to make
+them true. The derived headroom figure ("roughly **21,012** bytes against a `maxTotalBytes` of
+20,000") is the number an operator would read as the size of the acknowledged C-8 gap, and it
+understates that gap on the actual corpus by ~600 bytes. That is load-bearing.
+
+**(c) Block on the stale header pin (FSPEC v0.13 / REQ v0.9 vs v0.14 / REQ v0.10 at HEAD).**
+Rejected. I re-derived both upstream deltas rather than trusting the version numbers. FSPEC v0.14
+restates BR-6's *total* bound over the window the count bound leaves and states the mixed
+count/byte attribution (FSPEC:83-90); REQ v0.10 carries the matching AC-2.4 attribution clause.
+Neither touches the byte-accounting **basis** (still material-only, FSPEC:489, landed in v0.13),
+`E-36`/`AT-30`, or anything `D-O-3`/`D-O-4`/`DEC-LI-08` assert. The pin is stale, not false in
+substance — Medium, non-gating, and the kind of staleness this document has now absorbed twice.
+
+**(d) Block on the grounding pin's scope.** The pin says every code claim below was read
+*before any production edit for this feature had landed* (§Scope). The delta's new claims are
+explicitly read on **post-implementation** HEAD ("the shipped renderer", "shipped
+`extractInjectableMaterial`'s `maxBytes <= 0` early return"). The claims are true; the pin that
+governs them is now over-broad. Recorded as Medium — it misdescribes provenance, it does not make
+a design claim false.
