@@ -1323,11 +1323,13 @@ items this list still carried as open. They are struck rather than re-routed:
   that PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments cause; P-A-7 requires the naming
   to be an edit to the PLAN, committed before the batch it governs~~ — **answered.** §C.4 asserted this
   routing and this list did not carry it, so it reached no author from here (PM v5 F-01); it is recorded
-  now in the form it actually resolved. PLAN at HEAD (**v0.8**) carries *Amendment commits on landed
-  suites (P-A-7)* with a **three**-case table — case A (before batch 7) adds no row because
-  `learningsBlock` is already a whole-suite red there, case B (batches 9–12) adds the named row for
-  every batch from the landing batch through the greening one, and case C (after batch 13, the case
-  live at HEAD) adds none and requires green at landing. Re-routing it would be DEC-ERR-01's anti-pattern of raising a
+  now in the form it actually resolved. PLAN at HEAD (**v1.3**) carries *Amendment commits on landed
+  suites (P-A-7)* with a **three**-case table — case A (*"before batch 9 (which includes batches 7 and
+  8)"*) adds no row because `learningsBlock` is already a whole-suite red there, case B (*"batch 9
+  through batch 12"*) adds the named row for every batch from the landing batch through the greening
+  one, and case C (*"batch 13 or later, the case that is live at HEAD"*) adds none and requires green
+  at landing — a limb PLAN v1.2 turned from expectation into record: *"the ledger stays empty and the
+  amendment must be green at the commit that lands it — and it was."* Re-routing it would be DEC-ERR-01's anti-pattern of raising a
   question the upstream has decided. Absorbed into §C.4.
 - ~~PLAN's P-A-7 **case B** names one ledger row for the re-red of the landed `learningsBlock.test.js`
   — `LI-AT-11`'s heading-form cases — but PROP-BOUND-03's `maxBytesPerDocument <= 0` case re-reds the
