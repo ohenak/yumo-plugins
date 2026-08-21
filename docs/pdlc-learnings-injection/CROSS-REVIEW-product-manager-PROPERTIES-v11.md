@@ -144,7 +144,7 @@ against the pin:
 | §C.4 absence claim | State at HEAD | Holds? |
 |---|---|---|
 | No `extractInjectableMaterial(text, 0)` / non-positive-bound call anywhere in the landed suite | Bounds at HEAD are `100000`, `40`, `66`, `60`, `100000` (`learningsBlock.test.js:87,113,133,174,194`) — none zero or negative | Yes |
-| No un-glossed `## Rejected Proposals` arm, no `###`-as-body arm, no `## Process Findings` near-miss arm | `grep` over the suite at HEAD finds none of the three headings anywhere in the file | Yes |
+| No un-glossed `## Rejected Proposals` arm, no `###`-as-body arm, no `## Process Findings` near-miss arm | None present at HEAD: no `##`-prefixed `Rejected Proposals`, `Process Findings` or `###` line anywhere in the suite. The only near occurrence is the **canonical glossed** section name `"Rejected Proposals (with rationale)"` passed to the fixture builder at `learningsBlock.test.js:81`, which is the already-covered canonical form, not the un-glossed variant arm | Yes |
 | The un-numbered `## Cross-Feature Patterns` spelling **is** exercised and accepted | `learningsBlock.test.js:118`, `:139`; the numbered `## 2. …` form at `:189`, `:197` | Yes |
 | Contributed-byte literals are hand-computed from the fixture, never derived from the function | The suite says so in comments and asserts literals (`toBe(40)`, `toBe(65)`, `toBe(60)`, `toBe(96)`) with the arithmetic written out | Yes |
 
