@@ -184,7 +184,72 @@ branch — is a more precise statement than the cell it replaces, not a weaker o
 
 ## Obligations
 
-<!-- pending -->
+**Routing is correct in both directions on the absorbed item.** Nothing that landed upstream is
+restated here as still routed, and nothing settled is reopened. That was the trap this round could
+have fallen into and did not: the te-review erratum reporting DEC-A6-03 as unlanded is inverted by
+HEAD, and the changelog says so in terms rather than quietly complying.
+
+**§6 OQ-2's disposition is now half-stale (F-04, Low, inherited).** The row reads: "a run id or
+capture timestamp in the ref name is the recorded remedy if the overwrite ever costs an
+investigation." That contingent framing is correct for the *ref-naming remedy* and remains the right
+disposition. What the row does not record is that the other half — telling the operator, in the halt
+report, that the overwrite is coming — is no longer contingent at all: BR-14 and AC-6.3 make it
+unconditionally due, and §2.5 and §4.5 now deliver it. §2.5 correctly points here for the contingent
+half, so a reader who follows the pointer lands on a row that reads as though the whole question were
+parked pending evidence. This is my v2 F-03 addressed in the design sections but not in the register
+that indexes it. The row's bytes were untouched this round, so it is inherited and non-gating; fold
+it into whichever touch lands F-01.
+
+**§6 OQ-7's version pin, carried forward unresolved (F-05, Low, inherited).** OQ-7 attributes the
+three-carrier observation point to "REQ AC-5.1 at v1.14", where AC-6.2's escalation-log append
+entered the carrier list at REQ v1.15. The changelog's account of the same closure was corrected this
+round to "v1.14/v1.15"; the OQ row itself was not. Substance is HEAD-correct, only the pin is stale.
+Raised at v1 (F-01 there), restated at v2 (F-05 there), non-gating both times and non-gating now.
+
+**Nothing new is routed by this confirmation.** F-01 through F-05 are all owed by this document; none
+of them belongs upstream, and none of them needs a REQ or FSPEC touch to close. That matters for the
+routing decision: this is a bounded follow-up on the TSPEC, not a phase halt and not a trip back to
+Phase P.
+
+## Positive Observations
+
+- **The re-grounding was done first and the item list second.** The changelog opens on upstream
+  hashes, not on the routed list, and the one item where HEAD contradicted the routing request is
+  called out as inverted rather than complied with. That is DEC-ERR-03 applied as intended, and it is
+  the reason this round could absorb DEC-A6-03 instead of re-routing a settled question.
+- **`snapshotRef` is a genuinely good compression of BR-14.** Upstream states an operator-visible
+  co-location requirement; the natural sloppy response is a sentence in §2.5 telling the implementer
+  to "mention the ref in the halt message". Instead the round found the seam upstream deliberately
+  left open (the name is O-1's) and turned an editorial obligation into a typed field with two
+  specified arms. The "Why a field and not a prose string in `diagnosis`" row shows the reasoning
+  rather than asserting the conclusion.
+- **Six current-state repairs, zero design drift.** Every one of the non-DEC-A6-03 items is a
+  measurement correction, and each is written as a correction — "is falsified at v1.12", "re-measured
+  at this erratum's HEAD" — with the superseded claim left visible and dated. A reader of v1.11's
+  review can still follow why the old text said what it said. That is the right way to retract.
+- **The retractions run in the honest direction.** Two of them delete reasons this document had for
+  claiming work was outstanding. It would have been easier to leave them; retracting a caveat that
+  made your own document look more thorough is the harder edit.
+
+## Recommendation
+
+**Needs revision**
+
+Bounded, and confined to this document — three edits, no upstream touch, no design change:
+
+1. **F-01 (High).** Restate §5.6's AT-06-4 row on FSPEC v1.7's three conjuncts, and add an AT-06-4b
+   row for E-34's no-capture arm (`snapshotRef === null` ⇒ no pointer, no overwrite warning). Check
+   whether §5.1's `advisoryWaveGate.test.js` row should name the new assertions.
+2. **F-02 (Medium).** Update the lineage row to FSPEC v1.7 over REQ v1.16, matching the hashes the
+   changelog already cites.
+3. **F-03 (Medium).** Re-measure §1.3's "Per-seam report rows" residue cell against
+   `advisoryRecord.test.js:496`, which reads `["A1" … "A6"]` at HEAD, and re-state the row's
+   "unchanged by the v1.12 re-measurement" clause accordingly.
+
+F-04 and F-05 are Low and inherited; fold them into whichever touch lands the above.
+
+Everything this confirmation checked outside those three points is landed, HEAD-faithful, and
+consistent with what earlier rounds approved. Nothing previously approved is broken by the delta.
 
 ## Delta-Confirmation Findings
 
