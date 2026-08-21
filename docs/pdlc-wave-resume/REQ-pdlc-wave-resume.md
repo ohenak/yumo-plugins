@@ -221,7 +221,7 @@ resolution form below still reading as a pending PR merge; it is citable now.
 | BL-01 | Manual resume override (`implementation.startWave` config value, default 1, owner: repo operator via `.claude/pdlc.config.json`) exists at HEAD | `pdlc-consolidation-agent` PR merged | Must exist at HEAD before FSPEC authoring — REQ-WVR-04 specifies precedence over it |
 | BL-02 | Wave-gate baseline measured-facts file (`docs/_constraints/pdlc-wave-gate-baseline.md`) available for citation | `pdlc-advisory-wave-gate` PR merged | Must exist at HEAD before FSPEC authoring — OF-1..3 promote into it (OB-2) |
 | BL-03 | Interim auto-resume mechanism (marked INTERIM, 2026-08-09) present at HEAD | `pdlc-consolidation-agent` PR merged | Checked at FSPEC authoring: deliverable formalizes or replaces it, never duplicates alongside it |
-| BL-04 | This feature branch is on the current default-branch base (SE G-01) | `git rebase`/merge of `origin/main` into `feat-pdlc-wave-resume` | Checked at FSPEC authoring: the resume mechanism and `docs/_constraints/pdlc-wave-gate-baseline.md` must both be readable in the authoring tree, or R-4's "new code alongside" outcome is unavoidable |
+| BL-04 | This feature branch is on the current default-branch base (SE G-01) | `git rebase`/merge of `origin/main` into `feat-pdlc-wave-resume` | Checked at FSPEC authoring and found **unmet** — this row is not discharged (§10): the resume mechanism and `docs/_constraints/pdlc-wave-gate-baseline.md` must both be readable in the authoring tree, or R-4's "new code alongside" outcome is unavoidable |
 
 ## 6. User Stories
 
