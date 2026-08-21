@@ -1290,7 +1290,11 @@ PLAN task is required**, and no obligation is deferred to implementation.
    subtree as a directory rather than as files: a raw `git ls-files pdlc/workflows/__tests__ | grep
    learnings` returns **39 paths**, of which 22 are that subtree's fixture files. This is the same
    convention and the same number PLAN §The arithmetic now states with its derivation (*"the tracked
-   `learnings*` test-side set is eighteen files"*). Four of the seventeen no PLAN **task row** owns:
+   `learnings*` test-side set is eighteen files"*). §C.4's inventory table also totals **eighteen**,
+   but counts a different set — its rows are the fourteen manifest rows plus `2fc6fcd3`'s four
+   workflows-side files, with `fixtures/learnings-baseline/` occupying one row and the engine-side
+   file outside its directory scope; the two eighteens agree by coincidence of arithmetic, not by
+   naming the same entities. Four of the seventeen no PLAN **task row** owns:
    `helpers/learningsBaselineScenarios.js`, `helpers/learningsComposition.js`,
    `learningsDisclosure.test.js` and `learningsErratumBinding.test.js`, all added in `2fc6fcd3` and
    each opening with the `CODE_REVIEW-pdlc-learnings-injection-v1.md` finding it discharges (F1/F7/F12,
