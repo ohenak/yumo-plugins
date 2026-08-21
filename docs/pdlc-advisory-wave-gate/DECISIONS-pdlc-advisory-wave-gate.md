@@ -66,8 +66,11 @@ and PM F-03) and the admission of `waveBudgetPerRun: 0` as a legal configured va
 
 Constraints that shaped all four, none of them this feature's to change:
 
-- **One module, one bundle.** The workflow runtime loads a single built artifact
-  (`pdlc/workflows/dist/orchestrate-dev.bundle.js`); every advisory-tier symbol A6 reuses —
+- **One module, one bundle.** The workflow runtime loads a single built artifact per workflow —
+  `orchestrate-dev.bundle.js`, produced by inlining `pdlc/workflows/orchestrate-dev.js`
+  (`build-runtime.mjs` reads that one file as `devSource`) and delivered to a consumer's
+  `.claude/workflows/` by the maintainer sync step, not to `pdlc/workflows/dist/`, which carries
+  the `pdlc-cli.mjs` query CLI only. Every advisory-tier symbol A6 reuses —
   `runAdvisorySeam`, `classifyEnvelope`, `appendAdvisoryEntry`, `appendEscalationEntry` — lives in
   `pdlc/workflows/orchestrate-dev.js`. A new file is not an option, so "add a module" never appears
   as an alternative below.
