@@ -109,8 +109,9 @@ because `D-O-4`'s obligation is *the* closing condition for the acknowledged C-8
 
 **What must change (smallest edit that resolves it).** Keep the decision, the accounting basis,
 and both obligations exactly as they are. Replace the two bare numbers with the shape the cost
-actually has, stated over a named fixture — e.g. "framing is a **block constant of 528 bytes**
-plus a per-document term of `51 + 2·len(path) + len(feature) + len(orderKey)` bytes; on this
+actually has, stated over a named fixture — e.g. "framing is a **block constant of 477 bytes**
+plus, per selected document, `49 + 2·len(path) + len(feature) + len(orderKey)` bytes (plus the
+`ABRIDGED` annotation when present); on this
 repository's corpus at HEAD that is 684 bytes at one document and 1,607 at five, so a
 fully-conforming block at REQ §4.1's defaults occupies up to roughly 21,600 bytes against a
 `maxTotalBytes` of 20,000" — and make `D-O-4`'s parenthetical cite the same fixture. Any
