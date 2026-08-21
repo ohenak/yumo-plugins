@@ -147,6 +147,56 @@ less than a stale value that reads as verified.
 
 ## 5. Best-Guess Root Cause
 
+**Proximate cause: the erratum protocol's absorption step has a landing checklist for the
+*mechanism* and none for the *proof*.** DEC-ERR-01 and DEC-ERR-03 tell an author to re-ground on
+upstream first, enumerate what upstream *decided* (not only what it renamed), and absorb those
+decisions rather than re-route them. The round did exactly that, and both reviewers said so. But
+"absorb the decision" was executed as "state the mechanism where the prose used to route the
+question" — §2.5 and §4.5 — and upstream's decision was not only a mechanism. FSPEC v1.7's
+changelog names four landing sites in one sentence: BR-14, Step 10, E-34, **and AT-06-4 plus its
+companion AT-06-4b**. Two of the four are acceptance tests. The absorption traversed the two design
+sites and stopped.
+
+The failure is structural, not attentional. In this TSPEC, §5.6 exists precisely to guarantee that
+"every FSPEC acceptance test has a home" — it is a **completeness map against upstream's AT set**.
+Any upstream round that mints a new AT therefore obligates a §5.6 row by construction, and any
+upstream round that widens an existing AT's conjuncts obligates an edit to that AT's row. Nothing in
+the erratum workflow derives that obligation from the changelog; it depends on the author
+remembering that §5.6 is downstream of FSPEC's AT list. A cheap mechanical check exists and was not
+run: diff the upstream AT ids across the re-grounding interval, and assert each one has a §5.6 row.
+
+**Contributing cause: the round's edit unit was a section, and its correctness unit was a claim that
+spans sections.** Each of the seven mechanical items is section-local — fix a path in §1.2, a call
+shape in §1.1, a stray `--` in §2.5 — and the round dispatched them that way, successfully. The
+eighth item was not section-local: BR-14's landing implicates §2.5 (the mechanism), §4.5 (the field
+contract), §5.1 and §5.6 (the oracles), §5.5 (the halt literals) and §6 OQ-2 (the disposition that
+called the question open). Applied with the same section-local reflex, it landed in the first two and
+opened contradictions with the last two. TE F-02 and TE F-03 are not independent findings — they are
+the **residue of the same partial traversal** that produced the High.
+
+**Contributing cause: a re-measurement pass that re-measures the population and not the sentence.**
+§1.3's residue table was refreshed from the production constants (`ADVISORY_SEAMS`,
+`ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS`) — the changelog says as much, "which moved production
+surfaces only" — and that scoping was carried into the *cell text* as an assertion about a **test**
+literal, which the pass by its own scope never opened. The cell was not skipped; it was
+**annotated as verified while being excluded from verification**. This is the fourth appearance in
+this feature of the same shape: a reconciliation clause between two counts, where re-measuring one
+side and narrating both makes the stale side read as reconciled.
+
+**Contributing cause: the lineage header is not part of any section's edit unit.** PM F-02 —
+`Upstream` still pinned at FSPEC v1.6 / REQ v1.15 while the changelog cites v1.7 / v1.16 hashes —
+is a one-cell fix that no section-scoped edit owns. The document's own convention (stated in v1.11's
+changelog) is that the row tracks the re-grounding, so the round broke a convention it had itself
+recorded, in the one place a downstream reader looks to decide whether the document is current.
+
+**Not the cause.** The design is not in question: `snapshotRef` as a fifth halt field, non-`null`
+exactly on capture success, is endorsed by both lenses as the right mechanism and no approved
+decision was reopened. The absorption judgement is not in question: both lenses independently
+confirmed the obligation had landed upstream and that re-routing it would have been the
+anti-pattern. Reviewer strictness is not in question: the High is a real hole through which two
+opposite defective implementations both pass green. And the erratum channel itself is working —
+seven of eight items landed and were verified against the tree in one round.
+
 ## 6. Recommendation
 
 ## Appendix A — prior Phase D halt (review-cap, resolved)
