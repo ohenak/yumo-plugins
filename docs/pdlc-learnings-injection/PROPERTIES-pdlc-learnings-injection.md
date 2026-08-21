@@ -8,7 +8,7 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.6); `PLAN-pdlc-learnings-injection.md` (v0.4); `DECISIONS-pdlc-learnings-injection.md` |
+| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.9 — §D.3's section matcher and extent-assembly rule absorbed here); `PLAN-pdlc-learnings-injection.md` (v0.5 — LI-12's three-case AT-30 matches PROP-CONFIG-09); `DECISIONS-pdlc-learnings-injection.md` |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/learnings*.test.js`) |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,software-engineer}-PROPERTIES[-v{N}].md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
@@ -22,7 +22,7 @@ depends-on: []
 **What this document is.** The falsifiable proof system for pdlc-learnings-injection: **70 properties**
 over the region PLAN §Batches builds, each traced to a REQ acceptance criterion, an FSPEC business
 rule or acceptance test, and the PLAN task that reds and greens it. It restates no behaviour —
-behaviour lives in REQ v0.9 / FSPEC / TSPEC v0.6 and is referenced by id (`AC-`, `BR-`, `E-`, `AT-`,
+behaviour lives in REQ v0.9 / FSPEC v0.13 / TSPEC v0.9 and is referenced by id (`AC-`, `BR-`, `E-`, `AT-`,
 `§`). What this document adds is the **oracle**: for each property, the instrument, the operand, the
 positive control that proves the instrument fires, and the mutation that must red it.
 
