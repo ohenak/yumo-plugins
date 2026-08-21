@@ -45,4 +45,17 @@
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
+
+Three High findings gate this round. The feature's product promise — a prior feature's lessons reaching the next author, bounded, deterministic, fail-open — is delivered and is proven against the real `main()`, and I want to say plainly that the hard part is done well. What is not yet done is the *guarding* of the promise's negative half: two of the three ACs that exist to catch a regression leaking injection into places it must not reach are currently unable to fail.
+
+Exactly what must change before I can approve:
+
+1. **F-01 — rebuild and stage `pdlc/workflows/dist/`.** Run `node pdlc/workflows/build-runtime.mjs`, stage `pdlc/workflows/dist/pdlc-cli.mjs`, commit. `consolidationBuild.test.js` `T32` must be green on the branch as committed. This is one command.
+2. **F-02 — give AC-4.3 a real oracle.** `LI-AT-29`'s five observables are absent report keys and the comparison is `null === null` on both arms. Replace them with gate inputs that exist — the `phases[]` iteration counts, the parsed verdict records, the approval-anchor writes — or observe them through a recording seam. The acceptance bar is a mutation: break the injection boundary deliberately and watch `LI-AT-29` red.
+3. **F-03 — wire the recorded baseline to an assertion.** The fixture, the capture script and the drift guard all ship; nothing compares a composed prompt to them. Read `fixtures/learnings-baseline/{caseId}/{i}.txt` and assert byte-equality against the disabled run's corresponding prompts (and, per PLAN §DoD item 4, the empty-corpus, unlistable and admits-nothing runs). Until this lands, AC-5.1a's "that committed pre-feature fixture, **not a second branch of this run**" is unmet by construction, and the three test titles claiming baseline comparison should be reworded to say what they actually compare.
+
+The seven Medium findings (F-04…F-10) are recorded and should be addressed, but they do not gate this round on their own. F-06 additionally needs the two upstream errata resolved before the implementation can be made to match a single stated rule; F-10 is a scope decision for the operator rather than a code change, and I would be content with a REQ amendment naming the POSTMORTEM-D remediations as in-scope.
+
+Two observations on the review process itself, offered rather than filed. First: F-02, F-04 and F-05's tautological clauses are the same defect three times — an oracle written over a field that does not exist, or over a set filtered so the predicate cannot fail. A cheap standing check would be a "the instrument fires" control assertion beside every negative claim; `LI-AT-33/34` already does this deliberately (`:706`), and it is the reason that test is trustworthy where the others are not. Second: this feature's own LEARNINGS will be the material a later feature is injected with. F-02 and F-03 are exactly the kind of lesson worth harvesting into it.
+
