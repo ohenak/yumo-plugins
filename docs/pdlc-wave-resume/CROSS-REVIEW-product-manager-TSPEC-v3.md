@@ -75,6 +75,17 @@ The remainder of the test strategy is unreached by this edit. The eighteen FSPEC
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §6.3's four items are a mix of *raised against FSPEC* (1, 2, 3) and *raised against REQ* (4), and item 4 has now landed while 1–3 have not. When TSPEC is next edited, should §6.3 gain a disposition column (`open` / `landed in REQ v1.7` / `routed to FSPEC`), so that a later reader — or a harvest pass reading this section as the errata channel it declares itself to be — can tell at a glance which entries are still live? I have no view on the format; I raise it because this round proves the section goes stale silently, and it is the only section of this document that can. |
+| Q-02 | Carried forward, unanswered because TSPEC's bytes have not changed: §6.2 OB-F4's *"7 no-op dispatches over waves 1–3 of a 16-wave plan"* is a measurement from a run not re-derivable in this tree. Should the promotion task re-measure it after the rebase, or transcribe it as a dated historical observation? Either is fine; the baseline file's Measured-by column makes the difference visible, so the PLAN task should say which. (v2 Q-02.) |
+
+## Assumptions and risks carried
+
+- **A-1 (unchanged).** FSPEC's bytes are identical to those my v2 approval pinned (`sha256:1c05f51…` in both my v2 `UPSTREAM-STATE` line and this dispatch), so this confirmation reasons about one moving upstream, not two. If that hash had differed I would have had to re-read the FSPEC leg as well.
+- **R-1 (new, non-gating).** The FSPEC↔REQ inconsistency TSPEC §6.3 item 2 routes is now **wider**, not narrower: FSPEC OB-F1 attributes to REQ §10 a "discharged at FSPEC authoring" reading that neither §10 nor, since this edit, §5 supports. This TSPEC handles it correctly — it raises rather than absorbs — so nothing falls on this document. It is recorded here so the phase that owns FSPEC does not read "REQ erratum landed" as "the inconsistency is closed". It is not; only the REQ half was ever in question, and the REQ half was already right.
+- **R-2 (carried).** The v2 finding that the 85% branch floor is wired to `postWaveCommand`, a per-run key whose failure halts wave 1, is still open in this document's §5.8 and RT-7 (F-04 below). It was non-gating at v2 and remains so, but it is the one open item I would most want closed in the same pass as PLAN authoring, since se-author will otherwise write a PLAN obligation the shipped config surface cannot express.
+
 ## Positive Observations
 
 ## Recommendation
