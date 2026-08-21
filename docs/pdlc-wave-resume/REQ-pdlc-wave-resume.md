@@ -502,9 +502,10 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   action, or both? Product requirement is only that one exists and is announced;
   form is the TSPEC's choice unless the operator states a preference at FSPEC review.
   **Decided 2026-08-13 — deletion only.** What exists at HEAD: exactly one hatch, the
-  record-removal action, announced in both banners (grep `orchestrate-dev.js` for the
-  banner string "to force a full run" — one under the complete-record skip, one under the
-  mid-plan resume). No config value can force a full run today — `implementation.startWave`
+  record-removal action, announced in both banners (grep `orchestrate-dev.js` for `to force a`
+  — two hits, one under the complete-record skip, one under the mid-plan resume; the longer
+  string "to force a full run" matches only the second, because the skip banner wraps it across a
+  template-literal break). No config value can force a full run today — `implementation.startWave`
   defaults to 1, which *defers to* the ledger, and the parser clamps invalid values back
   to 1, so there is no sentinel meaning "ignore ledger, start at wave 1" and
   `startWave: 1` is indistinguishable from the default; any `startWave > 1` bypasses the
