@@ -234,8 +234,63 @@ DEFERRED: §G.3's *"Also answered — by PLAN v0.6/v0.7/v0.8"* heading will keep
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **Closed, and recorded closed in the document.** My Q-02, carried from v7 through v10 — is the heading-form amendment expected green or red? — is answered by PLAN v0.8 case C (*"answering PM Q-02"*, `PLAN-pdlc-learnings-injection.md:610`): **green**, with a landing red reclassified as a real defect owed a fix before batch 14. §G.3 now records that closure instead of re-emitting it. I carry nothing forward |
+| Q-02 | No open question. The one item §G.3 still routes upward — TSPEC's AT-15 suite assignment — is TSPEC's to answer, is already worked around by PLAN LI-07/LI-19's ledger entry, and needs no duplicate from this review |
+
 ## Positive Observations
+
+- **The revision fixed exactly the three passages I named and nothing else.** In a frozen round that
+  is the whole game: 67 insertions and 32 deletions, four hunks, all inside the header cell, §C.4's
+  governing-case passage and §G.3's lists. No property, oracle, fixture, AT id, severity, group
+  membership or red/green trace moved — I diffed for each rather than taking the changelog's word for
+  it. A revision that resists the temptation to improve adjacent prose is what makes a frozen round
+  cheap to confirm.
+- **The re-derivation quotes PLAN rather than paraphrasing it.** *"under case C they owe no ledger
+  row, and they owe green"*, *"after batch 13, the case that is live at HEAD"*, *"batch 9 through
+  batch 12"* and *"in any of the three cases"* are all character-exact against PLAN's case table. My
+  v9 F-01 was a paraphrase drift finding against this same passage; the author has evidently absorbed
+  the lesson, and the result is that the next upstream move will produce a clean textual mismatch
+  instead of a silent semantic one.
+- **The Group D extension was folded into the F-01 fix rather than deferred.** I flagged at v10 that
+  PLAN's case C reaches the `learningsSelect.test.js` amendments and that a reader of PROPERTIES alone
+  would not know. The revision added a paragraph saying so, naming LI-07's landed suite. That closes
+  the gap between what PLAN obliges and what an implementer reading only this document would do —
+  which is the entire point of a cross-review from the product lens.
+- **§G.3's strike-through form preserves the audit trail instead of erasing it.** Both answered items
+  are struck, not deleted, each with the answering revision and the *shape* of the answer recorded
+  (*"the gap is dissolved rather than filled — there is no row to widen, because there is no row"*).
+  A future reader can reconstruct why the document once routed those items without re-deriving the
+  history, and the DEC-ERR-01 anti-pattern of re-asking a decided question is avoided without losing
+  the fact that it was once open.
+- **The evidence survived two upstream shocks and a rebase.** §C.4's measurements — the absent
+  zero-bound call, the accepted un-numbered heading spelling, the binding/non-binding `maxBytes` split
+  — were gathered under a two-case rule, re-used under a three-case rule, and still verify against a
+  suite that has since gained a whole new `LI-AT-12` case on a rewritten branch. Evidence that
+  outlives the rule it was gathered under, the document version it was written for, and the commit
+  graph it was pinned to was measured well.
 
 ## Recommendation
 
+**Approved with minor changes.** My blocking finding is closed: §C.4 no longer prescribes a ledger
+amendment PLAN says must not exist, and it now states case C's obligation — empty ledger, green at
+landing, a landing red owed a fix before batch 14 and a gate failure if it survives — in PLAN's own
+words, extended to the Group D `learningsSelect.test.js` amendments PLAN's case C also names. F-02 and
+F-03 are closed too. I checked the delta for breakage in both freeze senses and found none: no
+property, oracle, fixture, AT mapping or trace moved; every claim the delta newly asserts verifies
+against the repository at HEAD (`learningsBlock.test.js:87,113,133,174,194` for the zero-bound absence,
+`:118`/`:139` for the accepted un-numbered spelling, `orchestrate-dev.js:2313` and `:2319-2326` for the
+shipped heading rules, `orchestrate-dev.js:2370-2371` for the zero-bound short-circuit); and every
+quotation from PLAN is character-exact.
+
+The single new finding is Low and non-gating: the document's commit anchors are all pre-rebase hashes
+that no longer resolve on the branch. The substance behind each still holds at HEAD, PLAN carries the
+same stale anchors, and re-pinning is best done once across the document set rather than here. Four
+further observations are recorded as DEFERRED lines rather than folded into the verdict, per the
+freeze.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
