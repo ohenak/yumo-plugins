@@ -164,8 +164,45 @@ compression choice paying off two rounds later.
 still names a fixture PLAN creates under a task PLAN still owns, and no PLAN task changed batch,
 suite, production target or dependency in this erratum.
 
+## Positive Observations
+
+- **The erratum closed a gap in upstream's favour, not against this document.** PLAN's *"two cases"*
+  lead-in was the last place upstream disagreed with PROPERTIES' three-case reading. §C.4 had been
+  right and PLAN's prose wrong; v0.9 makes them agree textually. A cascade that *reduces* the
+  citation surface at risk is worth naming.
+- **PROPERTIES compressed the conclusion, not the arithmetic.** It records *"the variant fixture as a
+  whole"* and case C's obligation, never PLAN's "four new knobs" accounting. That is why hunk 3 —
+  which corrected precisely that accounting — reaches nothing here. Compressing what upstream *rules*
+  rather than how upstream *counts* is the property that made this confirmation cheap.
+- **Verbatim quotation kept the check mechanical.** Five fixed-string greps against PLAN at HEAD
+  settled the fidelity question in one pass. Paraphrase would have required re-reading both documents
+  and would have failed silently rather than loudly on a future upstream move.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+PROPERTIES still holds as approved against PLAN v0.9. Neither changed passage undercuts a claim this
+document makes: hunk 2 aligns PLAN's lead-in with the three-case reading PROPERTIES already took, and
+hunk 3 corrects an accounting claim PROPERTIES never restated, in a direction that strengthens the
+additivity premise it does rely on. Every verbatim citation into PLAN still matches character-exactly
+at HEAD; every case-A/B/C row PROPERTIES quotes is byte-unchanged; no property, oracle, fixture row,
+AT mapping or red/green trace is affected.
+
+The single finding is Low and non-gating: the header pins PLAN at **v0.8** and §C.4's exemption
+attribution reads *"PLAN v0.8"*, while PLAN is now v0.9. Substance behind both references is intact,
+so this is pin freshness. Suggested handling — re-pin to v0.9 whenever the next round touches the
+header cell for its own reason, rather than opening a revision loop for a version label.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | Header line 11 pins PLAN at **v0.8** (and §C.4 line 1155 attributes the fixture-consumer exemption ruling to *"PLAN v0.8"*), but PLAN at HEAD is **v0.9** (`sha256:eaddd392…`). Every claim behind those references is unchanged — the case A/B/C rows and the exemption paragraph are byte-identical across the erratum — so this is pin freshness, not fidelity. Re-pin to v0.9 on the next round that touches the header for its own reason | Header table, `Upstream` cell (line 11); §C.4 closing paragraph (line 1155) |
+
+FINDING: Low | delta | local | Header `Upstream` cell (line 11) and §C.4 line 1155 | PLAN is pinned as v0.8; PLAN at HEAD is v0.9 (`sha256:eaddd392…`) — the underlying case A/B/C rows and exemption paragraph are byte-unchanged, so the pin is stale but no claim is false
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
