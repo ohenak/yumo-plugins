@@ -252,7 +252,42 @@ the oracles I approved at v2 and v3 against bytes that have not moved.
 
 ## Positive Observations
 
-_TBD_
+- **The erratum came back in the exact shape TSPEC asked for it, including the part TSPEC asked
+  it *not* to be.** §2.5 did two things when it routed this defect: it named the missing clause,
+  and — under PM Q-02 — it argued pre-emptively that the clause must be an *announcement* clause
+  and not a persisted `provenance` field, because a reader that treated operator-asserted
+  completion differently from pipeline-observed completion would need a distinction the BR-10
+  safety argument deliberately does not need. FSPEC §3.4 now ends "No record content distinguishes
+  the two provenances." That is not a coincidence of compatible wording; it is the downstream
+  document having anticipated the wrong way for its own erratum to be answered and closing it in
+  advance. It is why this cascade cost nothing on substance, and it is the practice worth keeping.
+
+- **Ratifying-then-routing was the right call, and this round proves it.** §2.5 could have quietly
+  implemented the operator-pointer write behaviour and said nothing, or refused to ratify until
+  upstream spoke. It did neither: it ratified the shipped behaviour, stated the bound (BR-10), gave
+  the reason a change would be worse ("losing resume for the very recovery path the feature
+  serves"), and raised the erratum so the clause would exist. Two rounds later the clause exists
+  and says what §2.5 said. The design never had to move — only a sentence about the design did.
+
+- **BL-04 now agrees in all three documents, and TSPEC was on the correct side from v1.0.** At v3
+  I recorded that REQ §5/§10 had moved onto TSPEC's reading. This round FSPEC's OB-F1 moves onto it
+  too. §1.1 and §6.2 have said "unmet, not dischargeable here, and a PLAN sequencing precondition
+  for the AT-14 wave" since the first version, through two rounds in which the upstream documents
+  disagreed with each other about it. A document that holds an evidenced position while its
+  upstream sorts itself out is exactly what makes a cascade check cheap.
+
+- **The high-water paragraph absorbed a new neighbour without moving.** FSPEC's edit inserted a
+  paragraph directly beneath §3.4's "Completion is a high-water property of the plan, not of the
+  run" — the paragraph TSPEC §2.5 item 5 and §4.1 both lean on hardest. It is byte-identical at
+  HEAD, and the new neighbour restates its rule ("in the same high-water form counted from the
+  plan's first wave") rather than qualifying it. An erratum that extends a rule to a new case
+  without weakening the rule is the cheap kind, and it is worth naming that this one was written
+  that way deliberately.
+
+- **The findings this round are all in one section, which is itself a good sign.** Three of four
+  new findings sit in the errata channel (§6.2/§6.3) and are stale-status statements, not design
+  claims. Nothing in §2, §3, §4 or §5.4 had to be re-argued. A document whose only cascade damage
+  is confined to the section that exists to record cascades is a well-factored one.
 
 ## Recommendation
 
