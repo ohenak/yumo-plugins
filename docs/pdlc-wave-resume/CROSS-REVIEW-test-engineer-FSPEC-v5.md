@@ -114,6 +114,27 @@ since landed, so a reader cannot come away believing the routing is still outsta
 
 ## Business Rules
 
+The delta adds normative content to §3.4 but adds no BR row. I checked the new paragraph against
+every rule it could contradict, since a §3.4 clause that fought a BR would be a High:
+
+| Rule | Interaction with the new §3.4 paragraph | Verdict |
+|---|---|---|
+| BR-04 — "the record is not consulted when [an explicit pointer] is in force" | The new clause governs the **write**, not the read. Consulting and recording are separate operations and the paragraph says so explicitly ("Recording follows what the run committed, not how its start point was chosen"). No contradiction — but see F-01: this is precisely the distinction a reader can lose, which is why it wants an oracle. | Consistent |
+| BR-07 — provenance announcement | Cited by the new clause as the attributability mechanism; BR-07 already requires `operator-set` on an operator-pointed start, so the clause leans on a rule that exists rather than inventing one. | Consistent |
+| BR-08 — completion means committed; high-water; monotonic while the record is honoured | The new clause is a strict specialisation of BR-08 ("in the same high-water form counted from the plan's first wave"). It does not carve out an exception; it denies that one exists. | Consistent |
+| BR-10 — skipping skips dispatch only | Cited as the safety bound, correctly (verified against REQ-WVR-08's discharge paragraph). | Consistent |
+| BR-12 — no record state may make the pipeline refuse to run | Untouched; the clause adds no refusal path. | Consistent |
+| BR-14 — the record never becomes tracked content | Untouched; the clause adds a write, not a staged file. | Consistent |
+| BR-15 — best-effort, per-wave writes | The paragraph sits immediately above the best-effort paragraph and inherits it — an operator-pointed run's writes are best-effort like any other. Reading order carries this correctly. | Consistent |
+
+**One observation, not a finding.** BR-08 could have absorbed the new clause as a clause of its own
+("…and independently of how the run's start point was chosen"), which would have given the rule an
+id and pulled it into the BR-traced test surface for free. Leaving it as prose in §3.4 is a
+legitimate authoring choice — the erratum contract asks for a *targeted* edit, and editing BR-08
+would widen the blast radius of an erratum round. I am not asking for it here. It is, however, why
+the missing oracle (F-01) is worth recording rather than waving through: prose that no rule id and
+no AT reaches is prose that PROPERTIES can silently fail to pick up.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
