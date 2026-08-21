@@ -170,6 +170,168 @@ that fact, (ii) enumerates the queue-side fixtures it needs by name, and (iii) c
 falsification arm: a deliberately mutated resume point on one path must red the test. If real
 delegation proves infeasible, say so and replace AT-16's oracle with one that is honest about what
 it proves — but do not leave the seam unnamed.
+### F-05 (Medium) — §2.3's normative flow drops an announcement it says it matches
+
+"Ordering below is normative and matches the shipped chain." Between the past-the-end clamp and the
+`if (!explicitPointer)` block, shipped code emits the operator-pointer resume banner
+(`orchestrate-dev.js:15243-15254`: `if (startWave > 1) { emit("Resuming at wave N of M
+(implementation.startWave). …") }`). §2.3's pseudocode has no such line; §2.4's table row (b) does
+carry it. An implementer reading §2.3 as normative would place the operator provenance suffix on
+the wrong emit, or lose the banner entirely — and AT-05's oracle ("resume at 2, `provenance:
+operator-set`") does not say which announcement carries the token, so it would pass either way.
+
+**To resolve.** Add the missing `if startWave > 1: emit(operator resume banner, provenance=operator-set)`
+line to §2.3 between the clamp and the `!explicitPointer` guard, and give AT-05 a conjunct naming
+the announcement that must carry `operator-set` (the banner starting `Resuming at wave 2 of 3
+(implementation.startWave)`, cf. the shipped `startsWith` filter at `waveExecution.test.js:2113`).
+
+### F-06 (Medium) — three parameterisable pure functions, no property strategy
+
+`parseWaveLedger` is a parser, `formatWaveLedger` a serialiser, `computePlanHash` a hash over
+structured input, and `classifyWaveLedger` will be a total classifier. That is four of the five
+component kinds this project names as property-based-testing candidates by default. §5.3 lists only
+example coverage: "the three arms and their exact sentences", "two shapes", "sensitivities".
+
+This is not a general exhortation — the precedent is in this exact module and was itself a
+CODE_REVIEW remediation. `fast-check@^4.9.0` is a declared devDependency
+(`pdlc/workflows/package.json`), and `__tests__/advisoryHelperProperties.test.js` opens with
+"`fast-check` appeared nowhere in the repo, so no generative input space was explored … This suite
+is that falsifier", deliberately kept separate from the behavioural suites. The same split applies
+here.
+
+Four laws worth naming, each falsifiable and none an implementation echo:
+
+1. **Round trip.** For all valid `(feature, planHash, lastGreenWave, head)` with `feature`/`planHash`
+   non-empty and `lastGreenWave` an integer >= 1: `parseWaveLedger(formatWaveLedger(…)).state`
+   deep-equals `{feature, planHash, lastGreenWave, head: head ?? null}` and `.reason` is `null`.
+   Kills a normalisation drift between writer and reader that no hand-picked example covers.
+2. **Totality of the reader.** For arbitrary strings (including arbitrary JSON values), 
+   `parseWaveLedger` never throws and always returns exactly one of the three §4.2 shapes — the
+   mechanical form of V-2, which today is a doc-comment claim.
+3. **Totality of the classifier.** For arbitrary `ClassifyInput`, `outcome ∈ RESUME_OUTCOMES` and
+   `provenance ∈ RESUME_PROVENANCE` — §2.2's "the classifier is total" turned into an assertion
+   instead of prose, which is the only way BR-01's closure is "mechanically checkable" as §2.2
+   claims.
+4. **Hash discrimination.** For generated pairs of wave layouts differing in wave order, task ids,
+   task-to-wave assignment, or owned paths, `computePlanHash` differs — the §4.3 sensitivity list
+   as a law rather than four examples. (State the collision caveat: FNV-1a over a bounded generated
+   space, so the property is "differs", asserted over the generated corpus, not "injective".)
+
+**To resolve.** Add a `## 5.x` row calling for a property suite in a file of its own
+(`waveResumeProperties.test.js`), naming these laws and the seed/run-count convention the shipped
+property suite already sets, or exempt each with a written justification per the TSPEC-exemption
+rule.
+
+### F-07 (Medium) — the branch-coverage floor is a PUB gate, not the wave gate
+
+`pdlc/workflows/package.json` defines `test:coverage` as `c8 npm test -- --runInBand && c8 report
+--check-coverage --per-file --branches 85 …` with `include: ["orchestrate-dev.js",
+"orchestrate-queue.js", "build-runtime.mjs"]`, and `.github/workflows/pr-tests.yml:85` runs
+`npm run test:coverage` in the `Unit tests` job. So `orchestrate-dev.js` carries a **per-file 85%
+branch floor enforced at merge**.
+
+The wave gate does not run it. `.claude/pdlc.config.example.json` sets `implementation.testCommand`
+to `(cd pdlc/engine && npm test) && cd pdlc/workflows && npm test …` — plain jest, no `c8`. This
+feature adds to that per-file-gated module: eight classifier arms (§3.2's table), seven renderer
+closures (§3.1), and the announcement/report branches of §2.4. Every uncovered branch among them is
+green in Phase I and red at Phase PUB, after Phase DOD has already run — the most expensive place
+to find it.
+
+**To resolve.** Say which command constitutes the floor for this feature (`npm run test:coverage`
+from `pdlc/workflows`, `--per-file --branches 85`, not "the module is already in the include list"),
+and either name it as an obligation of the last implementation wave's `postWaveCommand` or record
+in §6.4 as a risk that the floor is verified only at PUB, with the mitigation being the per-arm
+unit coverage §5.3 already plans. Note in passing that §5.6's "there is no behaviour to test" for
+`version` is correct but does not exempt the *branch* in `formatWaveLedger` that chooses between
+the two record shapes — that branch is already covered by the `head`/no-`head` cases, worth stating.
+
+### F-08 (Medium) — §5.2 understates the machinery two ATs need
+
+"New doubles are limited to fixtures, not machinery" is not true of two rows in §5.4:
+
+- **AT-04** asserts "the gate command is invoked before the first commit call in every case,
+  asserted on the interleaving of the `_runCommand` and `_git` spies". `makeLedgerArgs`
+  (`waveExecution.test.js:2204-2232`) gives `runCommand` and `git` as two independent doubles with
+  two independent call logs; nothing records their relative order. Interleaving needs a shared
+  ordered event sink both spies append to. That is machinery.
+- **AT-15 arm 2** needs "wave-1 write succeeds, wave-M write throws". `makeLedgerArgs`'s
+  `_writeFile` is a fixed capture (`:2228-2230`) with no failure scripting; the shipped
+  throwing-write test at `:2686` bypasses `makeLedgerArgs` entirely and hand-rolls `makeArgs` with
+  its own `extra`. Arm 2 needs an `_writeFile` that succeeds then throws on the Nth call to the
+  ledger path.
+
+Both are small, and both are exactly the kind of harness change that gets improvised inside an
+implementation wave and then quietly weakened when it is awkward. Name them in §5.2 as the two
+harness extensions this feature owns, so they are reviewed as design rather than discovered as
+diff. (`makeLedgerArgs` is shared by the whole ledger `describe`, so extending it is also a
+same-file authoring-order constraint the PLAN needs to see.)
+
+### F-09 (Medium) — D-3's `⏭` half has no oracle
+
+§1.2's D-3 and §2.4's report table specify a provenance token on **both** report rows. §5.4's
+coverage map discharges only the `✅` row: AT-01 ends "the report's Phase I row states the resume
+point (D-3)". AT-12's oracle for the skip case reads "the `⏭` row; the banner naming reason and
+hatch" — the row's *status*, not its detail's provenance. Deleting `; provenance: automatic` from
+the skip row fails nothing in the map.
+
+**To resolve.** Add the conjunct to AT-12 explicitly: the `⏭` row's detail conveys both the record
+as the source and `provenance: automatic`, as a transcribed literal. Note this interacts with F-01
+— whatever string §2.4 settles on is the string AT-12 must transcribe.
+
+### F-10 (Medium) — a planned-RED test is a planned wave-gate halt
+
+§5.4 AT-14: "**RED in this tree until OB-F1's rebase** — it must not be weakened to 'no churn
+observed'." I agree with the second half entirely, and I verified the premise: this tree's
+`.gitignore` carries `/.claude/workflows/` (`:29`) and no `/.claude/pdlc-wave-state.json` line,
+while `origin/main`'s carries it at `:41`.
+
+The problem is mechanical, not editorial. In wave mode the script-owned gate runs the whole suite
+after every wave (`orchestrate-dev.js:15408`), and a red gate halts the wave. A committed RED test
+therefore halts Phase I at the first wave after it lands and every wave thereafter — the feature
+cannot complete. RT-4 addresses the temptation to weaken the oracle but not the halt.
+
+**To resolve.** Make the ordering a stated precondition rather than a narrative one: state in §5.4
+and §6.2 that the wave containing AT-14 must not be dispatched until OB-F1's rebase has landed, and
+that the correct pre-rebase state is the test *not yet authored* (or authored and quarantined by a
+mechanism the repo already sanctions), never a weakened assertion. Also give AT-14 its positive
+conjunct so it is falsifiable in both directions: the rule exists **and** is root-anchored (a
+leading `/`), **and** `git check-ignore -v .claude/pdlc-wave-state.json` resolves to that line
+rather than to some broader pattern — the anchoring rationale in `.gitignore:24-32` is what makes
+the distinction load-bearing.
+
+### F-11 (Low) — `ReasonContext` is orphaned
+
+§3.2 declares `ReasonContext` with `recordedFeature`, `recordedHead`, `recordedWaves`, but
+`ClassifyInput` does not carry one and no signature consumes one; the renderers in §3.1 are typed
+`(ctx: ReasonContext) => string`, so something must construct it and the document does not say
+what. `recordedWaves` is also the same value the over-count sentence calls `lastGreenWave`
+(`orchestrate-dev.js:15316-15319`). Name the constructor (presumably the classifier, from `parsed.state`
+plus its inputs) and align the field name, so the unit test for each renderer has a stated input.
+
+### F-12 (Low) — the `resume` decision carries a field nothing reads
+
+`{ outcome: "resume"; startWave; provenance; lastGreenWave }` — §2.3's apply step reads only
+`d.startWave`. A field no caller reads cannot be falsified by any test in §5.4. Either drop it, or
+state its consumer (the per-wave skip line's `waves 1–N already green` text is the plausible one,
+`waveExecution.test.js:2293`) so a test can pin it.
+
+### F-13 (Low) — restate the no-echo rule where the echo is tempting
+
+§5.1's "no implementation echoes" rule is stated well. AT-02's "one integration run per code
+asserting its announced sentence" is where it will be violated, because calling
+`WAVE_IGNORE_REASONS[code](ctx)` to build the expected string is the path of least resistance and
+reads as reasonable. Add the sentence: expected announcement text is transcribed from §2.4/§3.1
+into the test as a literal, never obtained from the catalogue under test.
+
+### F-14 (Low) — the announcement and report tables have containment-only oracles
+
+§2.4's two tables are enumerated contracts (six announcement rows, three report rows) in the same
+sense §3.1's catalogues are, and only the catalogues get set equality. A deleted announcement row
+— say the ignored-record notice losing its suffix — fails only if some AT happens to name it.
+Consider a single table-driven assertion over the six announcing outcomes: each fixture resolves
+its outcome, and the set of announcement-carrying outcomes observed equals the set §2.4 enumerates,
+with the IG-6 row asserting silence positively (no log line matching `wave ledger`, paired with the
+positive conjunct that all waves dispatched).
 
 ## Questions
 
