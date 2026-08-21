@@ -14,7 +14,7 @@ recorded, so the approval was taken against a REQ version that no longer exists.
 answered here: **is FSPEC v1.6 still a faithful compression of REQ as it now stands?**
 
 **Method.** Re-read `CROSS-REVIEW-test-engineer-FSPEC-v3.md` (the previous cascade round, taken
-against REQ v1.15); ran `git show 30b…30d8bf7b -- …/REQ-pdlc-advisory-wave-gate.md` for the full
+against REQ v1.15); ran `git show 30d8bf7b -- …/REQ-pdlc-advisory-wave-gate.md` for the full
 upstream delta; then re-read, at their current version, the REQ clauses this FSPEC leans on — the
 whole of REQ-AWG-06, and AC-6.3 in particular — against the FSPEC sites that compress them (§3 step
 10, BR-14, §5.5 E-30, AT-06-4, §7.1 O-1). Nothing settled in v1/v2/v3 is re-litigated.
@@ -27,6 +27,22 @@ below, High, tagged `delta`/`local` — the gap sits exactly in the section AC-6
 AT-06-4), so it is a bounded FSPEC edit, not a reopened decision.
 
 ## Linked Requirements
+
+Citation fidelity, REQ → FSPEC, at REQ v1.16:
+
+| REQ clause the FSPEC leans on | REQ v1.16 text | FSPEC compression site | Still faithful? |
+|---|---|---|---|
+| AC-6.3 sentence 1 (diagnosis + root-cause class on the halt path) | Unchanged by this erratum | §3 step 10, BR-14, AT-06-4 | Yes — verbatim in substance |
+| **AC-6.3 sentence 2 (new)** — where the halt report points the operator at a captured pre-A6 tree state, it warns *in the same place* that re-running this feature overwrites that capture (DEC-A6-03) | Added by v1.16 | **None** — `grep -n "overwrit\|snapshot"` over FSPEC returns no hit; BR-14 stops at "diagnosis and its root-cause class" | **No — F-01** |
+| AC-6.1 / AC-6.2 (record and escalation-log appends) | Unchanged | BR-13, AT-06-1, AT-06-3 | Yes |
+| AC-6.4 + its honest limit | Unchanged | E-31, AT-06-5 | Yes |
+| AC-5.1 / AC-5.2 / R-5 / AC-1.1 | Unchanged since v1.15 | BR-9, BR-10, E-23, E-34, §2 | Yes — as confirmed in v3 |
+| O-1 (capture point and mechanism stay TSPEC's) | Unchanged; v1.16 changelog re-affirms it | §7.1 O-1 | Yes — and the new AC-6.3 clause respects it (outcome only, no ref name) |
+
+**§2 version token.** FSPEC §2's preamble still pins `REQ-pdlc-advisory-wave-gate` **v1.13**; upstream
+is now **v1.16**, two erratum rounds further on. Every individual trace still resolves, so this is a
+stale token and not a broken citation — F-03, Low, `inherited`/`nonlocal` (v3's F-01, still open, now
+one version staler).
 
 ## Behavioral Flow
 
