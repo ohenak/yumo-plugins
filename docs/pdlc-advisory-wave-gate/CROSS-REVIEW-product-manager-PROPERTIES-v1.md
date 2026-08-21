@@ -59,6 +59,40 @@ supports. No property lost a trace.
 
 ## Oracles
 
+**O-C's two new paragraphs are the load-bearing part of this delta, and they are sound.** The edit adds
+PROP-REST-10 to O-C's title list and appends two paragraphs transcribing the decided conjuncts:
+
+- *Domain.* "the fixture must carry a `.gitignore`d file the wave added and assert it **present** afterwards
+  … an implementation that ran `clean -fdx` fails it." This is BR-9's decided boundary, and O-C states it as
+  a **positive-presence** conjunct rather than the absence check the pending form invited — which is the right
+  product reading: the operator's `.env` and `node_modules/` surviving is the user-visible promise, not an
+  abstract exclusion rule.
+- *Observation point.* "because all three carriers are files inside the tree, a map observed after them
+  differs from the pre-A6 map by exactly the bytes BR-13 mandates, so a correct restore would read as red."
+  This reasoning is FSPEC BR-9's own ("both carriers are files inside the tree, so an observation taken after
+  them differs by exactly the bytes BR-13 mandates"), extended to the third carrier the REQ names. Correct.
+
+**The falsifiability discipline survives the edit.** O-C's pre-existing rule — the fixture must contain
+content the restore could plausibly get wrong, or the equality is vacuous — is untouched, and the new
+paragraph tightens it in the right direction by ruling out a degenerate fixture: "A fixture whose only
+generated output is `.gitignore`d tests nothing at all here (AT-05-2), so PROP-REST-02's rewritten path must
+be a non-ignored one." That is FSPEC AT-05-2's own stated caveat ("whose generated output is `.gitignore`d
+tests nothing here, since BR-9 puts it outside the map"), correctly propagated. This is the kind of
+consequence a re-grounding usually drops; it did not.
+
+**The weak-property close is now honest.** The falsifiability check previously listed three deliberately weak
+properties; PROP-REST-03 is removed from that list with the reason stated inline ("its boundary was
+upstream-pending on OQ-7, which is now closed"). PROP-REC-06 and PROP-NFR-03 remain, correctly — neither was
+touched by OQ-7. §G-2's known-soft bullet is rewritten to match, and it goes further than it needed to by
+recording the two consequences so they are not re-derived (`clean -fdx` fails PROP-REST-03; the ignored-path-
+only refusal is decided, not awaiting OQ-7). TSPEC §6 OQ-9's status is quoted accurately — the TSPEC records
+it as "Moot, and it never bound."
+
+**Residue check.** No `test.todo`, `upstream-pending` or open-OQ-7 marker survives anywhere in the document
+in a live (non-changelog) position. Grep confirms the only remaining mentions are the v1.3 changelog row and
+the retrospective clauses in PROP-REST-03, O-C, Fixtures hazard 2 and §G-2 that explicitly say the pending
+form is retired. DEC-ERR-01's anti-pattern is cleared, not relocated.
+
 ## Fixtures
 
 ## Positive Observations
