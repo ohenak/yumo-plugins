@@ -297,6 +297,30 @@ function hashTree(repoDir) {
   return map;
 }
 
+// `hashTree` above walks the raw filesystem and is domain-BLIND — it has no notion of
+// `.gitignore`, so it is the wrong oracle for a case that turns on the ignore boundary. BR-9's
+// decided domain (FSPEC v1.6, REQ AC-5.1) is tracked files UNION non-ignored untracked files,
+// with ignored paths excluded on BOTH sides — `git ls-files` plus
+// `git ls-files --others --exclude-standard` is exactly that set, read from the real repo itself
+// rather than re-implementing gitignore matching in the test.
+function hashDomain(repoDir) {
+  const tracked = execFileSync("git", ["ls-files"], { cwd: repoDir, encoding: "utf8" })
+    .split("\n")
+    .filter(Boolean);
+  const untrackedNonIgnored = execFileSync(
+    "git",
+    ["ls-files", "--others", "--exclude-standard"],
+    { cwd: repoDir, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter(Boolean);
+  const map = new Map();
+  for (const rel of new Set([...tracked, ...untrackedNonIgnored])) {
+    map.set(rel, createHash("sha256").update(readFileSync(join(repoDir, rel))).digest("hex"));
+  }
+  return map;
+}
+
 function createA6TempRepo() {
   const dir = mkdtempSync(join(tmpdir(), "pdlc-a6-fixture-"));
   const git = (...args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" });
@@ -497,24 +521,54 @@ describe("A6-10 / PROP-REST-06: captureTreeSnapshot writes the wave-scoped ref r
   });
 });
 
-// The `.gitignore`d-path round trip's expected value is named here, but the case is marked
-// upstream-pending on OQ-7 using `test.todo` — never a dotted skip call on `describe`/`it`/`test`.
-// `scanSkipTokens` (`orchestrate-dev.js`) matches exactly `/\b(describe|test|it)\.skip\s*\(/`, and
-// `checkWaveUnskips` would halt a later wave through `formatUnskipViolations` once this file's
-// manifest owners are all complete and the block names no live task id — the "attributable to
-// nobody" arm. `test.todo` carries no callback and is invisible to that scanner, which is why it
-// is the pending marker for a boundary that is genuinely upstream's to resolve, not this task's.
-//
-// CODE_REVIEW v1 §2 finding 8: the successor named here used to be an *erratum on an upstream doc*
-// — prose, which owns nothing and can never come due. OQ-7 is now bound to `docs/_queue/QUEUE.md`
-// **row 6** (`pdlc-engineering-loop`), on the same terms as this feature's six D-AWG-* deferrals, so
-// the deferral has a row that must decide it before this `todo` may be deleted. The *behaviour*
-// meanwhile is not undelivered: A6 ships `git clean -fd` and PROP-REST-01 above round-trips a
-// `.gitignore`d `generated/output.txt` through capture-and-restore, so the shipped boundary is
-// observed today. What row 6 owns is the DECISION to keep it or move to `-fdx`.
-test.todo(
-  "A6-10 / PROP-REST-03: a .gitignore'd file the wave added is still present after restore (git clean -fd, not -fdx) — expected: hashTree(repo.dir) still contains the ignored generated path with its wave-added content, unchanged by capture or restore; pending OQ-7, owned by docs/_queue/QUEUE.md row 6 (pdlc-engineering-loop)",
-);
+// OQ-7 (`.gitignore`d paths inside BR-9's restoration oracle) is CLOSED, in the TSPEC's favour
+// (FSPEC BR-9 v1.6, REQ AC-5.1 v1.14): the map's domain excludes ignored paths on both sides, so
+// this is now a plain, fully-asserted live case — no `test.todo`, no pending marker.
+describe("A6-10 / PROP-REST-03: the .gitignore'd-path boundary is excluded from the hash map on both sides (TSPEC §5.2 case 4, AT-05-1, BR-9, AC-5.1)", () => {
+  test("an ignored path mutated or created between the two snapshots leaves both domain hash maps equal, and the ignored file's content survives restore untouched (git clean -fd, not -fdx)", async () => {
+    const repo = createA6TempRepo();
+    try {
+      writeFileSync(join(repo.dir, ".gitignore"), "generated/\n");
+      repo.git("add", ".gitignore");
+      repo.git("commit", "-m", "add gitignore");
+      mkdirSync(join(repo.dir, "generated"));
+      writeFileSync(join(repo.dir, "generated", "output.txt"), "wave-added v1\n");
+
+      const snapshot = await captureTreeSnapshot({
+        feature: "pdlc-advisory-wave-gate",
+        waveNum: 1,
+        _git: repo._git,
+        _sleep: async () => {},
+        emit: () => {},
+      });
+      expect(snapshot).not.toBeNull();
+
+      const domainBefore = hashDomain(repo.dir);
+
+      // An ignored path mutated, and another ignored path created, strictly between the
+      // snapshot and the restore — the window BR-9's oracle has to be blind to.
+      writeFileSync(join(repo.dir, "generated", "output.txt"), "wave-added v2 — mutated post-snapshot\n");
+      writeFileSync(join(repo.dir, "generated", "new-output.txt"), "created post-snapshot\n");
+
+      await restoreTreeSnapshot(snapshot, { _git: repo._git, _sleep: async () => {}, emit: () => {} });
+
+      // The domain-correct map is unaffected by either ignored-path change — this is the
+      // negative half (the map alone cannot see an implementation that wrongly restored the
+      // ignored path, since its domain excludes it on both sides).
+      const domainAfter = hashDomain(repo.dir);
+      expect(domainAfter).toEqual(domainBefore);
+
+      // The positive-presence conjunct that falsifies a `-fdx`-shaped implementation: `clean -fd`
+      // never touches ignored paths, so both the mutation and the creation survive restore intact.
+      expect(readFileSync(join(repo.dir, "generated", "output.txt"), "utf8")).toBe(
+        "wave-added v2 — mutated post-snapshot\n",
+      );
+      expect(existsSync(join(repo.dir, "generated", "new-output.txt"))).toBe(true);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
 
 // ─── A6-14 (former A6-13 red step + A6-14 green): buildA6SeamOps, TSPEC §3.3 ──────────────────
 //
@@ -3699,5 +3753,71 @@ describe("CR v1 §1-2 / gitWithLockRetry (:12544): the retry loop's classificati
     expect(result.ok).toBe(false);
     expect(git.calls.length).toBe(GIT_LOCK_RETRIES + 1);
     expect(sleeps).toBe(GIT_LOCK_RETRIES);
+  });
+});
+
+// ─── A6-10 / PROP-REST-07: the round-trip's observation-point ORDERING (TSPEC §5.2 case 5) ──
+//
+// BR-9 / AC-5.1 pin the map's observation point at "immediately after restoration completes,
+// before the record carriers the run still owes" — AC-6.1's advisory-record append and AC-6.2's
+// escalation-log append (the queue-row write, AC-5.2/M-WG-7, lands at a different call site
+// outside `runWaveGateSeam` and is that call site's own oracle to own). This case asserts the
+// ORDERING itself, not only that the content happens to match afterwards (TE v1 F-02): it drives
+// the real `runWaveGateSeam` over a real temporary repo to a REFUSAL disposition (one of BR-10's
+// restoration triggers), and merges the git transport's own call log with the `_appendFile`
+// call log into one shared, order-preserving timeline so the two can be compared directly.
+describe("A6-10 / PROP-REST-07: restoreTreeSnapshot's completion strictly precedes the record append and the escalation-log append", () => {
+  test("every _appendFile call observed on a REFUSAL run lands after restoreTreeSnapshot's terminal `reset --mixed`", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const events = [];
+      const _git = async (argv) => {
+        const result = await repo._git(argv);
+        events.push({ kind: "git", verb: argv[0] });
+        return result;
+      };
+      const files = makeFileDouble();
+      const _appendFile = async (path, contents) => {
+        const result = await files._appendFile(path, contents);
+        events.push({ kind: "appendFile", path });
+        return result;
+      };
+
+      const args = makeA6RunArgs({
+        _git,
+        _appendFile,
+        // Writes outside the wave's owned set, so the envelope check refuses it and
+        // `restoreTreeSnapshot` runs — one of BR-10's three restoration triggers.
+        _agent: makeRepairingAgent(repo, E5_REPLY, { "unowned.js": "outside the envelope\n" }),
+        _runCommand: makeA6RunCommand({ "npm test": { ok: true } })._runCommand,
+      });
+
+      const result = await runWaveGateSeam(args);
+
+      // Precondition: this really is the refusal/restoration arm PROP-REST-04 names.
+      expect(result.disposition.reason).toBe("out-of-envelope");
+
+      // `reset` is issued by exactly two callers on this transport: `captureTreeSnapshot`'s
+      // own closing reset, and `restoreTreeSnapshot`'s terminal `reset --mixed`. Restoration
+      // always runs strictly after capture on this path, so the LAST `reset` observed is
+      // restoration's completion — the exact point BR-9 pins the map's observation to.
+      const resetIndices = events
+        .map((e, i) => (e.kind === "git" && e.verb === "reset" ? i : -1))
+        .filter((i) => i >= 0);
+      expect(resetIndices.length).toBeGreaterThanOrEqual(2);
+      const restoreCompleteIndex = resetIndices[resetIndices.length - 1];
+
+      // Both record carriers this call site owns — the advisory-record append and the
+      // escalation-log append — are observed AFTER that point, never interleaved with it.
+      const appendIndices = events
+        .map((e, i) => (e.kind === "appendFile" ? i : -1))
+        .filter((i) => i >= 0);
+      expect(appendIndices.length).toBeGreaterThan(0);
+      for (const idx of appendIndices) {
+        expect(idx).toBeGreaterThan(restoreCompleteIndex);
+      }
+    } finally {
+      repo.cleanup();
+    }
   });
 });
