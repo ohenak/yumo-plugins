@@ -222,4 +222,17 @@ the `21edb7c5` pin and the fourteen-row inventory stay as they are.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | §C.4 rules that **case B** of P-A-7 is live and governs the amendment commit carrying PROP-BOUND-03's zero case and PROP-BOUND-05/07/08 (line 1110: *"of PLAN's two-case table, case B is the live case and case A is unreachable"*; line 1142: *"P-A-7 case B governs the amendment commit against the landed implementation suite `learningsBlock.test.js`"*). PLAN at `281c60c0` scopes case B to *"batch 9 through batch 12"* and routes exactly these four properties to new **case C**, whose obligation is the opposite: *"under case C they owe no ledger row, and they owe green."* PROPERTIES therefore prescribes a named ledger row that PLAN says must not exist. **Fix:** restate both passages under case C — empty ledger, green at landing, a landing red owed a fix before batch 14 — and extend the statement to the Group D `learningsSelect.test.js` amendments PLAN's case C also names | §C.4, *On the re-red of landed suites* (lines 1110, 1142) |
+| F-02 | Medium | delta | local | §G.3's *"Still open — three items"* list carries both P-A-7 case-B gaps (no named row for PROP-BOUND-03's zero case; the span with no terminus) and re-emits them as `ERRATUM: PLAN` lines. PLAN v0.8 answers both — case C rules the ledger empty, and replaces the span with batch 14's unqualified gate — and its changelog states it is *"answering PM Q-02"*. Re-routing answered items is the DEC-ERR-01 anti-pattern §G.3's own prose names. **Fix:** move both bullets to the *"Also answered — by PLAN"* list in the form they resolved, record Q-02 closed, and reduce the header to *"Still open — one item"* (AT-15) | §G.3, *Still open — three items* (lines 1278–1290) |
+| F-03 | Low | delta | nonlocal | The header `Upstream` cell (line 11) pins PLAN at *"v0.7"* and states the P-A-7 *"two-case table was added at v0.6 and is unchanged at v0.7"*. At HEAD PLAN is **v0.8** and the table has **three** cases. Both halves of the sentence are now false. **Fix:** pin v0.8 and describe the table as three-case, noting case C as the live one | Header metadata table, `Upstream` cell (line 11) |
+
+FINDING: High | delta | local | §C.4 lines 1110 and 1142 | §C.4 rules P-A-7 case B live and governing the amendment commit for PROP-BOUND-03's zero case and PROP-BOUND-05/07/08; PLAN at `281c60c0` bounds case B to batches 9–12 and routes those same four properties to new case C, which owes no ledger row and owes green — PROPERTIES prescribes a ledger amendment PLAN says must not exist
+FINDING: Medium | delta | local | §G.3 "Still open — three items" | Both P-A-7 case-B gaps are still listed open and re-emitted as ERRATUM lines, but PLAN v0.8 case C answers both (empty ledger; batch 14's unqualified gate in place of the span) and states it answers PM Q-02 — re-routing decided items is DEC-ERR-01's anti-pattern
+FINDING: Low | delta | nonlocal | Header `Upstream` cell, line 11 | The cell pins PLAN at v0.7 and calls the P-A-7 table two-case and unchanged at v0.7; PLAN is v0.8 at HEAD and the table has three cases
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
