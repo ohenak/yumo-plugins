@@ -125,6 +125,18 @@ No High finding arises against any criterion.
 
 ## Obligations
 
+Nothing this round blocks; two items carried forward, neither gating:
+
+| ID | Owner | Obligation |
+|----|-------|-----------|
+| OB-C6-1 | pm-author (next time this REQ is edited for any reason) | Repair the v1.6 changelog sentence "§1's wave count and replay cost are match OF-1" — a leftover from the v1.6 byte-bound trim. No behavioural content is wrong; the sentence is simply ungrammatical. Do **not** open an edit round solely for this. |
+| OB-C6-2 | se-author, at TSPEC ratification | TSPEC §(near line 879) should adopt the REQ's v1.7 phrasing for the worktree include list — consumer-local evidence, not a repo fact — so the two documents state the fact identically. Already partly present in the TSPEC's own wording. |
+
+Prior obligations unchanged and still owned as recorded: OB-1 (TSPEC ratifies or revises the
+shipped ledger contract; the `{}` "cleared" shape is the one genuinely open decision) and OB-2
+(promote OF-1..3 into `docs/_constraints/pdlc-wave-gate-baseline.md` as a new section, per that
+file's own control rule).
+
 ## Questions
 
 ## Positive Observations
