@@ -64,6 +64,29 @@ Concretely, this round set out to:
 
 ## Constraints
 
+Constraints this confirmation was measured under, and what each one implied:
+
+- **The baseline is cited at its `Version`.** `pdlc-wave-gate-baseline.md` states that "a consumer
+  cites this file **at its `Version`**; a content change unaccompanied by a version bump is itself a
+  defect." The REQ's v1.14 changelog and AC-1.1 both cite **baseline v1.2 §4**, and the file's header
+  reads `Version | 1.2 · 2026-08-20`. Version-pinned citation holds.
+- **The baseline's re-verification rule.** "Every fact below was read at `c8aa22a4`. A later
+  default-branch commit is a fresh check, not an inherited one." §4's facts are stamped
+  `Measured at origin/main 11420461`. I checked that the rule has *not* fired again this round:
+  `git rev-parse --short origin/main` → `11420461` (`Merge pull request #67`), the same base §4 names.
+  So M-WG-13 / M-WG-14 are still readings at the current default branch, not stale ones.
+- **DC-02 / the pm-author altitude rule.** A REQ may not carry file/line-cited internals; shipped
+  behaviour enters as measured-fact ids from the constraints file. The erratum adds two commit
+  SHAs and two `M-WG-*` ids — no file:line anchors, no signatures, no mechanics. AC-5.1's new
+  sentences stay on observables and explicitly re-route mechanism to O-1 ("The mechanism of
+  restoration is TSPEC's to choose"). The altitude bar is respected; I file no altitude finding.
+- **DEC-DOC-01.** No raw `file:line` anchor was introduced into the document by this delta. The two
+  new anchors are commit SHAs used as *measurement bases*, which is exactly the runtime-measured
+  evidence carve-out — position is the claim under test.
+- **C-5's own size budget.** The document's own constraint names 700 lines / 61,440 bytes hard and
+  630 lines / 55,296 bytes soft. Post-delta the file measures **668 lines / 54,045 bytes** — over the
+  soft line bound, under both hard bounds and under the soft byte bound. See F-04.
+
 ## Acceptance Criteria
 
 ## Risks
