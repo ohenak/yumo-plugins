@@ -160,9 +160,65 @@ still owns, in the batch PLAN still schedules it in.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **Closed, answered upstream.** My Q-02 carried through v7–v9 — is the heading-form amendment expected green or red? — is answered by PLAN v0.8 case C: **green**, because the production half is shipped, with a landing red reclassified as a real defect owed a fix before batch 14. I record it closed here and it should be recorded closed in §G.3 rather than re-emitted |
+| Q-02 | For the revision: does §C.4 want to keep the case-A-unreachable observation at all? Under the three-case table, case A and case B are *both* behind us and case C is live, so the cleanest restatement may be one sentence — "batches 9–12 are behind us, so **case C** governs" — rather than a case-by-case elimination that will go stale again if P-A-7 grows a fourth case. Your call; either form resolves F-01 |
+
 ## Positive Observations
 
+- **PLAN's erratum answers this document's routed gaps in the form this document routed them.** §G.3's
+  two bullets closed *"this document routes the gap and decides nothing"* and named the candidate
+  readings without choosing. PLAN chose, and chose one of the named readings — the self-greening
+  amendment — and cited PROPERTIES §C.4 by name while doing it. That is the routing mechanism working
+  end to end: a downstream document surfaced a gap without prejudging it, the owning phase decided,
+  and the decision names the material it came from. The cascade this confirmation now has to absorb is
+  the *cost* of that success, not a failure of it.
+- **The evidence in §C.4 survived the upstream change intact.** Everything §C.4 measured at `21edb7c5`
+  — the absent zero-bound call, the narrowed variant-heading absence, the binding/non-binding
+  `maxBytes` split — is still true at HEAD and is exactly the evidence PLAN's case C leans on for its
+  green ruling. A document whose evidence outlives a change in the rule it was gathered under was
+  measured well. Only the conclusion needs re-deriving, which is a two-passage edit, not a re-review.
+- **The pinned-snapshot method kept this confirmation cheap.** Establishing that no test file or
+  fixture moved since `21edb7c5`, and therefore that every absence claim in §C.4 still measures the
+  same bytes, took one `git diff --name-status` returning ten documentation paths. The method the
+  author generalised at v0.5 has now paid off in three consecutive rounds, including this one, where
+  it let me spend the round on the one thing that actually changed.
+- **P-A-6 and P-A-7 stayed distinct through the erratum.** §C.4 has held since v0.3 that P-A-6 governs
+  this document's own PROPERTIES suite while P-A-7 governs amendments to the landed implementation
+  suite. PLAN v0.8 changed only the second and left P-A-6 byte-identical, so the distinction survives
+  and only one half of the sentence needs re-pointing. That is a direct dividend of having kept the
+  two mechanisms separate in prose rather than merging them into one rule.
+
 ## Recommendation
+
+**Needs revision.** PROPERTIES' bytes are unchanged and its properties, oracles and fixtures are all
+undisturbed, but it is no longer a faithful compression of PLAN at `281c60c0`. §C.4 twice rules that
+**case B** governs the amendment commit carrying PROP-BOUND-03's zero case and PROP-BOUND-05/07/08,
+and that case A is the only unreachable one; PLAN v0.8 scopes case B to batches 9–12 — all behind us —
+and routes exactly those four properties to new **case C**, whose obligation is the opposite one: no
+ledger row is owed, and the amendment is expected to land **green**. An implementer reading PROPERTIES
+alone would prepare a ledger amendment that PLAN says must not exist. That is the High finding, and it
+is delta-introduced and local to the passages this erratum's subject-matter governs.
+
+Two smaller items ride with it: §G.3 still lists both P-A-7 case-B gaps as *"still open"* and
+re-emits them as `ERRATUM: PLAN` lines when PLAN has answered both — DEC-ERR-01's anti-pattern, fixed
+by moving them to the *"Also answered"* list in the form they resolved (Medium); and the header
+`Upstream` cell still pins PLAN at v0.7 and describes the P-A-7 table as *"two-case … unchanged at
+v0.7"*, which is now false in both the pin and the shape (Low).
+
+**Exactly what must change:**
+
+1. §C.4 line 1110 and line 1142: replace the case-B ruling with case C, stating the obligation PLAN
+   states — empty ledger, green at landing, a red owed a fix before batch 14 — and extend it to the
+   Group D `learningsSelect.test.js` amendments that PLAN's case C also names.
+2. §G.3: strike the two case-B bullets from *"Still open"*, record them in *"Also answered"* with
+   PLAN v0.8 as the answering revision, and mark my carried Q-02 closed rather than re-emitted. The
+   AT-15 item stays open and the list header becomes *"one item"*.
+3. Header line 11: pin PLAN at **v0.8** and describe the P-A-7 table as three-case.
+
+No property, oracle, fixture, AT id, severity, group membership or red/green trace needs to move, and
+the `21edb7c5` pin and the fourteen-row inventory stay as they are.
 
 ## Delta-Confirmation Findings
 
