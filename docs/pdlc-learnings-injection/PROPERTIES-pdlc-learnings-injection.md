@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.9 — §D.3's section matcher and extent-assembly rule absorbed here); `PLAN-pdlc-learnings-injection.md` (v0.5 — LI-12's three-case AT-30 matches PROP-CONFIG-09); `DECISIONS-pdlc-learnings-injection.md` |
+| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.9 — §D.3's section matcher and extent-assembly rule absorbed here); `PLAN-pdlc-learnings-injection.md` (v0.7 — LI-12's three-case AT-30 still matches PROP-CONFIG-09; v0.6/v0.7 added the *Amendment commits on landed suites (P-A-7)* two-case table, absorbed in §C.4 and §G.3); `DECISIONS-pdlc-learnings-injection.md` |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/learnings*.test.js`) |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,software-engineer}-PROPERTIES[-v{N}].md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.3 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.4 | 2026-08-21 |
 
 ## Overview
 
