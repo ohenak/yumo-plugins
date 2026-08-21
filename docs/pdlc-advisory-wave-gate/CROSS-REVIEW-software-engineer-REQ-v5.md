@@ -128,3 +128,6 @@ ids resolve; the baseline is at the cited v1.2 and its `Verified at` row backs b
 document remains a faithful compression of its upstream. All three findings are Low; none gates.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
