@@ -162,6 +162,32 @@ queue-specific configuration exists anywhere in this feature.
 
 ## 4. Business Rules
 
+| # | Rule | Traces to |
+|---|---|---|
+| BR-01 | Every invocation of Phase I resolves to exactly one of the three outcomes (a) full run, (b) resume mid-plan, (c) skip Phase I, and announces which. The set is closed: adding or removing an outcome is a deliberate change to this rule. | REQ-WVR-08 |
+| BR-02 | The disregard catalogue is closed at six causes (IG-1..6), five announced and one — the absent or empty record — deliberately silent, because an absent record is the normal fresh-run case and not an anomaly. | REQ-WVR-02 |
+| BR-03 | Disregard causes are evaluated in the fixed order of §3.2 and the **first** failure supplies the announced reason. A record failing two causes announces the earlier one. Ordering is observable and therefore specified, not incidental. | REQ-WVR-02 |
+| BR-04 | An explicit operator resume point outranks the record unconditionally, and the record is not consulted when one is in force — so no disregard reason is announced on that path. | REQ-WVR-04 |
+| BR-05 | A manual resume point equal to the plan's first wave is not an explicit setting; a manual point past the plan's last wave is an explicit setting that resolves to a full run. Neither can mean "ignore the record". | REQ-WVR-04 |
+| BR-06 | Exactly one force-a-full-run mechanism exists — removal of the record — and it is named in the announcement of outcomes (b) and (c). No configuration value expresses it. | REQ OQ-1 |
+| BR-07 | Every resume announces provenance, `operator-set` or `automatic`. A run's starting point is never unattributed. | REQ-WVR-01, -04, R-3 |
+| BR-08 | Completion means committed. A wave is never recorded completed on the strength of a green gate alone, and a run that commits nothing records nothing. | REQ-WVR-09 |
+| BR-09 | Completion is never inferred from the presence, absence, or message of a task's commit. Testing whether the *specific commit the record names* remains reachable from the branch tip is falsification of the record and is permitted. | REQ-WVR-06 |
+| BR-10 | Skipping a wave skips its **dispatch only**. The first executed wave's gate verifies the whole tree before this run commits anything, so skipped waves' work is verified before any new commit lands. | REQ-WVR-03 |
+| BR-11 | Under outcome (c) Phase I executes no gate and produces no commit. REQ-WVR-03 is discharged because the phase lands nothing, not because a verification was skipped; an implementation that commits anything in Phase I under outcome (c) violates it. | REQ-WVR-08 |
+| BR-12 | No state of the record may make the pipeline refuse to run. Unreadable, foreign, out-of-range and unwritable records all degrade to announced normal behaviour. | REQ C-2 |
+| BR-13 | The record is retained after Phase I completes; staleness is a property the reader proves at read time, never one the writer promises at write time. | REQ-WVR-05 |
+| BR-14 | The record never becomes tracked content and never appears in any commit the run produces; its exclusion is anchored by an ignore rule rather than by nobody staging it. | REQ-WVR-10, C-1 |
+| BR-15 | Writing the record is best-effort: a failed write is announced as a notice and the run continues. | REQ C-2, C-3 |
+| BR-16 | A delegated (queue) run and a direct run of the same feature, plan and record resolve the same outcome, resume point and provenance. | REQ-WVR-07 |
+| BR-17 | The feature adds no new host capability and no new configuration surface. | REQ C-3, OQ-1 |
+
+**Announcement content, not wording.** BR-01/02/06/07 constrain what an announcement must
+*convey* — the outcome, the reason, the provenance, and (for outcomes b and c) the hatch — not
+the sentence that conveys it. Exact strings are the implementation's, and the shipped banners
+already satisfy these rules; PROPERTIES should assert on content, and any string-identity
+assertion is a test-design choice for te-author, not a requirement of this spec.
+
 ## 5. Edge Cases and Error Scenarios
 
 ## 6. Acceptance Tests
