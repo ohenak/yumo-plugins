@@ -495,7 +495,9 @@ structurally by DEC-LI-05. The second half names a mechanism.
 bytes, document count — applied unconditionally, whatever else the prompt carries. The design does
 **not** measure the rest of the prompt and shrink the injection when a dispatch is already large.
 
-**What the caps bound (FSPEC v0.13).** The three quantities bound a document's **material** — the
+**What the caps bound (decided at FSPEC v0.13; unchanged at v0.14, whose restatement moves the
+*total* bound's window, not the accounting basis).** The three quantities bound a document's
+**material** — the
 priority-section headings and bodies taken — and nothing else. FSPEC `BR-6` §"The byte-accounting
 basis" charges **framing** to no threshold: the identification line, the per-document delimiters and
 source-path label, and the block preamble (`BR-7`) count toward none of the three, grounded on REQ
