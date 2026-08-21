@@ -114,11 +114,45 @@ lines for its author:
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | The prompt now states each class's *meaning* and the first-match rule, but not what each class *authorises* — TSPEC §4.2's binding table (`plan-ordering-defect` → E-6, `wave-internal-defect` → E-5, the other two diagnosis-only). The refusal path is total on the receiving side either way, so this is not a finding; but is withholding the consequence deliberate — so the agent classifies on evidence rather than on the action it would prefer to be allowed? If so, that is worth one sentence in TSPEC §4.2, because the next reader of `buildA6SeamOps` will otherwise be tempted to "complete" the prompt. |
+| Q-02 | The `_now` default fixes E-34's durable trace on real runs. Was that path ever exercised in a real pipeline run before this round — i.e. is there a shipped feature whose `ESCALATIONS.md` is missing an A6 capture-failure entry it should have? If the tier has only ever run with an injected clock, the answer is no and nothing needs backfilling; if not, the harvest phase may want to know. |
+| Q-03 | v1's Q-03 stands, unanswered and still not blocking: the suite reports 70 skipped tests run-wide (`102 suites, 4162 passed, 70 skipped`). None belong to this feature — it ships no `.skip` — but is that standing figure tracked anywhere an operator would see it drift? |
 
 ## Positive Observations
 
-_pending_
+- **F-01's fix landed in the exact shape DC-07 asks for, and the round proved it rather than
+  asserting it.** The new oracle selects the single `result.notices` element carrying the ref and
+  asserts the overwrite phrase on *that same element* (`advisoryWaveGateMain.test.js:429-431`), so
+  splitting the two halves across two notices fails. I re-ran the mutation myself: replacing
+  `_notice: advisoryNotice` at `orchestrate-dev.js:15463` with `() => {}` turns the case RED and
+  nothing else in the file. The commit message states the same mutation was run before the fix
+  shipped — that is the standard of evidence I want to see on a wiring finding.
+- **The round found a shipped production defect by fixing a test-shape finding, and fixed the
+  defect rather than the symptom.** TE F-02's report-surface companion for E-34 surfaced that
+  `main` passes no clock and both `append*` calls on the capture-failure branch invoke `_now()`
+  unguarded, so AC-6.1's record and AC-6.2's escalation entry were being replaced by two "write
+  failed" notices on every real run. The fix defaults the clock at the seam (`orchestrate-dev.js:3404`),
+  matching `runAdvisorySeam`, and the comment at the parameter names the failure it prevents and why
+  no unit test could see it. That is a genuine product save: AC-6.4's countability rests on entries
+  that were not being written.
+- **The predicate tightening respects the asymmetry between presence and absence oracles.** The
+  positive arms moved from `/overwrit/i` to `/overwrites that capture/i` — the inverted sentence
+  "never overwrites that capture" no longer passes — while the negative arms deliberately keep the
+  broad stem (`waveExecution.test.js:1364-1370`, `advisoryWaveGateMain.test.js:487`), so a warning
+  phrased any other way still fails an absence claim. Getting that direction backwards is the common
+  error; this round got it right in both places and said why in the comment.
+- **AC-2.2's Meaning column is transcribed, not paraphrased, and the ordering claim is falsifiable
+  in the right direction.** All four meanings match `REQ:360-363` verbatim; the prompt oracle asserts
+  the classes' offsets are strictly increasing rather than merely present; and the catalogue's own
+  ordered deep-equal now sits *beside* the sorted set check, so a rename and a reorder fail
+  distinctly (mutation-confirmed).
+- **Every new negative assertion is paired.** AT-06-4b asserts no ref and no overwrite notice
+  anywhere in `result.notices`, and then asserts what *does* happen on that same path — one A6
+  invocation escalated (`advisory.rows`), both durable artifacts created through the real transports,
+  the five-key `haltAdvisory` set-equal to a spec-side literal, and zero dispatches. No absence-only
+  oracle was added this round.
 
 ## Recommendation
 
