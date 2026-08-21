@@ -1,0 +1,30 @@
+# Cross-Review: software-engineer — REQ (delta confirmation)
+
+**Reviewer:** software-engineer
+**Document reviewed:** `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (v1.14)
+**Date:** 2026-08-20
+**Iteration:** 4 (delta confirmation, erratum round)
+
+## Problem / Context
+
+## Goals
+
+## Non-Goals
+
+## Constraints
+
+## Acceptance Criteria
+
+## Risks
+
+## Obligations
+
+## Questions
+
+## Positive Observations
+
+## Recommendation
+
+## Delta-Confirmation Findings
+
+## Verdict
