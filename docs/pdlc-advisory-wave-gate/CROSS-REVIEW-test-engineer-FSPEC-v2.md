@@ -27,6 +27,86 @@ I approved at v1.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | §3.2 step 9 delegates the disposition vocabulary's closed assertion to "the tier's own suite", but no such set-equality exists there — a deleted disposition fails nothing | §3.2 step 9 |
+| F-02 | Medium | Local | §6's new transcribed-literal paragraph names M-WG-3 as the source of the pre-A6 halt-reason literal; M-WG-3 carries no string, so the only reachable source is the code under test | §6 preamble, AT-01-3, AT-04-1, AT-05-3 |
+| F-03 | Medium | Local | AT-05-1's *When* is "each terminates" while its oracle is measured mid-run, before the record writes; no obligation carries the mid-run observation seam to the TSPEC | AT-05-1, §7.1 O-1 |
+| F-04 | Low | Local | E-08b's fixture defeats only one earlier branch of BR-2's chain; the arm that would false-green is the #2-only case, and no AT pins it | E-08b, AT-02-1 |
+
+### F-01 (Medium, Local) — the disposition set-equality has no owner
+
+Step 9 gained: "The vocabulary is the tier's, not A6's, and its closed assertion belongs to the
+tier's own suite — the same division AT-06-1 makes for the record shape; A6 adds no disposition, and
+no AT here re-asserts the set." The division is the right instinct — A6 genuinely adds no
+disposition — but the suite it delegates to does not perform the assertion. The tier's coverage of
+the vocabulary is `test.each(["resolved", "escalated", "no-action"])`
+(`pdlc/workflows/__tests__/advisoryRecord.test.js:292`), which is per-value iteration, and
+`expect(["escalated", "no-action"]).toContain(...)`
+(`pdlc/workflows/__tests__/advisoryDriver.test.js:278`), which is containment. Neither is
+set-equality, and there is no frozen `ADVISORY_DISPOSITIONS` constant to range over — the values
+appear only as a JSDoc union (`orchestrate-dev.js:2243`) and as string literals at the return sites
+(`:3965`, `:4251`). Delete a disposition and the tier suite goes green on the two that remain.
+
+This is the same completeness bar §6 holds itself to everywhere else — the enumerated contract needs
+one set-equality so a deleted case fails. Not gating, because the FSPEC is right that the gap is the
+tier's rather than A6's. *Resolution:* either drop the claim that the closed assertion already
+exists (state instead that no suite owns it and route it as an obligation in §7.1), or add one
+sentence to §7.1 making the closed disposition assertion a TSPEC obligation on this feature's suite.
+This is the same shape as v1's Q-03 on AT-06-1, which the delta did not address.
+
+### F-02 (Medium, Local) — the pre-A6 halt-reason "literal" is not transcribed anywhere reachable
+
+§6's new paragraph is the right rule stated in the right place: "a comparand re-derived from the code
+under test compares the pipeline against itself and passes unconditionally." Its sourcing does not
+hold up for one of the three comparands. M-WG-7 does supply a literal — the queue row value `halted`
+(`pdlc-wave-gate-baseline.md:46`). M-WG-3 does not: it is a prose claim that the gate "halts the run
+with the command line and a tail of the output" (`:34`), whose evidence column is a `sed` line
+citation, not a string. A fixture author following the paragraph to M-WG-3 finds no halt-reason
+string and has exactly one remaining source: the shipped template `` `Error: Wave ${waveNum} test
+gate failed — \`${implConfig.testCommand}\` did not pass. Output tail:\n...` ``
+(`orchestrate-dev.js:15360-15361`) — the module the test asserts over. That is the implementation
+echo the paragraph exists to forbid, reached by following the paragraph.
+
+The created-file set for AT-01-3/AT-01-4 has the same problem in weaker form; the halt reason is the
+sharp one because it is a formatted template, not a bare token. *Resolution:* transcribe the
+halt-reason template into §6 (or into BR-14 beside the queue-row literal), with `{waveNum}` and
+`{testCommand}` marked as the fixture's substitutions, so the comparand exists spec-side once. One
+sentence, and the rule the paragraph states becomes followable.
+
+Separately, and not a finding against this FSPEC: M-WG-3's `sed -n '10249,10259p;10321,10332p'`
+citation no longer lands on the gate at this branch's HEAD — those lines are now re-mint prompt
+text. The line drift is in the constraint doc, not here.
+
+### F-03 (Medium, Local) — AT-05-1 measures at termination but the oracle is defined mid-run
+
+BR-9's observation point resolves v1 F-01, and AT-05-1 correctly inherits it. The residue is that
+AT-05-1's *When* is still "each terminates", while its *Then* compares a map "taken immediately after
+restoration completes and before the record and escalation writes". Those are different moments, and
+by E-23's own admission the tree at termination differs from the tree at the observation point by
+the record entry, the escalation entry and the rewritten `halted` queue row. A test author with only
+this AT has two incompatible readings: instrument a mid-run capture, or compare at termination with
+the three carriers excluded. Both are writable; they are not the same test, and the FSPEC picks
+neither.
+
+§7.1 O-1 routes "the point at which the pre-A6 tree state is captured" to the TSPEC, but that is the
+*pre*-A6 capture; nothing routes the *post*-restoration observation seam AT-05-1 now needs.
+*Resolution:* either restate AT-05-1's *When* as "when restoration completes" and add the
+observation seam to O-1, or keep the termination framing and name the three carriers excluded from
+the comparison at that point. Not gating — the oracle is now unambiguous about domain and about what
+is compared, which was the blocking half.
+
+### F-04 (Low, Local) — E-08b's arm does not defeat every earlier branch
+
+AT-02-1's second arm pins the #1-and-#2 case to `plan-ordering-defect`, which makes the order
+load-bearing exactly as the *Then* claims. The precedence chain has a second direction the pair does
+not cover: an implementation that hard-codes `plan-ordering-defect` for any multi-match, or one that
+simply always prefers #1, passes this arm. The falsifying companion is the #2-only fixture — a
+failure inside the wave's own owned paths naming no later-scheduled symbol — asserted to class
+`wave-internal-defect`, which also pins the E-5-not-E-6 envelope branch E-08b's row mentions but no
+AT asserts. Low, because AT-03-x already exercises E-5-scoped proposals; adding the arm to AT-02-1
+is one clause.
+
 ## Questions
 
 ## Positive Observations
