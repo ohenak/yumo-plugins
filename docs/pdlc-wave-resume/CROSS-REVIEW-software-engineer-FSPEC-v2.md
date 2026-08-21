@@ -89,8 +89,44 @@ succeeds on first call; the dispatch-retry envelope is out of this criterion's s
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-02 now scopes set equality to the **announced reasons** and routes the enumeration of IG-1's arms to the TSPEC (OB-F2). At HEAD that enumeration is three (`"it is not readable JSON"`, `"it is not a JSON object"`, `"its fields are not the shape this workflow writes"` — `parseWaveLedger`, `orchestrate-dev.js:12277`, `:12280`, `:12294`), and the empty/`{}` cases fall to IG-6's silence (`:12268-12271`). Is the TSPEC expected to *ratify* those three verbatim, or is it free to re-cut them? The answer changes whether te-author can write the AT-02 fixture before the TSPEC lands or must wait for it. |
+| Q-02 | EC-15a's cost bound is stated as "the number of consecutive failed writes at the end of the run". That is right because each write carries an absolute wave number and overwrites (`:15600-15603`), so an interior failure costs nothing once a later write lands. Is that overwrite-with-absolute-index property something the TSPEC must ratify explicitly (OB-F2), or is EC-15a's bound intended to hold for any record encoding? An append-structured record would not give the same bound. |
+| Q-03 | Carried forward from v1 Q-01, unanswered and still not a finding: D-1's "set to something other than the plan's first wave" reads two-sided, but the parser accepts `startWave` only when `Number.isInteger(v) && v >= 1` and otherwise falls back to 1 with an invalid-key notice (`:236-242`), so no sub-1 value is observable. Should D-1 say "greater than", or is the two-sided reading deliberately left for the TSPEC's parse layer to close? |
+
 ## Positive Observations
+
+- **Every one of my eight v1 findings was addressed on its merits, not by hedging the text.** F-01 and F-02 both landed as *behavioural* clauses plus a new or split acceptance test with a stated discriminating value, which is the harder and correct fix; neither was resolved by softening the claim.
+- **The high-water clause in §3.4 is now the clearest statement of this feature's central invariant.** "Completion is a high-water property of the plan, not of the run" plus the worked two-halt example is exactly the sentence whose absence made AT-01..AT-17 unable to tell the two designs apart, and AT-18's discriminating-value paragraph (F-02 above notwithstanding) makes the test's purpose legible to whoever maintains it later.
+- **§3.2's ordering ratification is the model for how to handle a shipped order that diverges from an upstream document's numbering.** It states the divergence, names which one is normative, gives the reason (REQ BL-03, R-4), and instructs downstream not to "correct" it — and AT-03 then tests exactly the pair where the two disagree. This is a pattern worth reusing.
+- **AT-08's set equality is grounded, not aspirational.** The four-key literal matches `parseImplementationConfig` exactly (`orchestrate-dev.js:191-252`), and the AT says in so many words that the literal is transcribed from the spec and never read back out of the parser — the implementation-echo trap named and closed in the AT itself.
+- **The V-wave scoping is the right shape for an upstream defect.** §2's Vocabulary entry, BR-11's scoping, EC-20 and AT-12's fourth conjunct together turn "outcome (c) produces no commit" from a false claim into a true, scoped one — and the underlying REQ-WVR-08 defect is routed as an erratum rather than papered over locally. AT-12's call-count oracle (zero dispatches, zero gate invocations, one V-wave dispatch) also replaces an absence-only oracle with a counting one, which is the fix that generalises.
+- **AT-14's branch-state honesty.** Rather than weakening the ignore-rule arm to make it green in an authoring tree that lacks `.gitignore:41`, the AT records that it is RED here until OB-F1 is discharged and instructs te-author not to weaken it. That instruction is worth more than the test.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v1 High findings are resolved, verified against the mechanism rather than against the
+document: completion is now stated as a monotonic high-water property with a two-halt acceptance
+test (F-01), and the failed-write case is split into all-fail and partial arms with the correct
+cost bound (F-02). All four Mediums and both Lows are also resolved, and I re-verified each of the
+new grounding claims — the four `implementation.*` keys, the `headCorroborated` no-commit arm, the
+per-wave absolute-index write, the `realMain` delegation, and the V-wave's unconditional replay —
+against `origin/main`. Nothing in the revision broke a section I approved in v1.
+
+Three non-gating findings remain, each a sentence: pin the failed-write notice's content so it
+cannot contradict EC-15a (F-01), correct AT-18's counterfactual skip set (F-02), and state AT-12's
+first-call-succeeds fixture condition (F-03). None of them changes a behaviour, an outcome, or an
+oracle's *Then* clause.
+
+No erratum is raised this round. The two upstream defects I would have raised — REQ-WVR-08's
+"Phase I produces no new commit" against Phase PT's V-wave, and the REQ's discharge of BL-04 — are
+already routed by the author's round-1 revision note, and I found no new upstream defect in the
+changed sections.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
