@@ -183,3 +183,10 @@ observations are recorded for a future round; none reopens a frozen decision.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:87ec8ebca294ebbdd45eb0fdebe939740fc968c8b91dcaf964dbc87ca299b193
+APPROVAL-HASH-NORMALIZED: sha256:87ec8ebca294ebbdd45eb0fdebe939740fc968c8b91dcaf964dbc87ca299b193
+REVIEWED-COMMIT: 9baf60b5c6344eb59c66b5b83523420358ce121b
+UPSTREAM-STATE: REQ sha256:32cb8b7d4f4072d18772c7efeeb846460083dfea1959cd1159ac625a057fafeb
+UPSTREAM-STATE: FSPEC sha256:ef2301995af6ab2b0d722339a15d07da1eeec8ce28b501a92155064d660b5e56
+UPSTREAM-STATE: TSPEC sha256:1ddfdbc340d9078efc98930df625cc4f8f0dd6d3d9b24070fdee08af8ff44a95
