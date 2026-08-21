@@ -55,6 +55,66 @@ measurement (`9` documents under §I.1's glob, 5-of-5 numbered priority headings
 
 ## Properties
 
+Only the properties the delta touched are assessed here.
+
+### Resolved — my v3 findings, verified against the new bytes
+
+- **PROP-CONFIG-09** (new, Group H, PROPERTIES:471–487) discharges v3 F-02 properly. It asserts four
+  **positive** conjuncts — enabled run with BR-8 rows present and empty, *every* corpus document
+  carrying the exact id `RSN-NO-MATERIAL`, contributing count `0`, no slot consumed, nothing flagged
+  `bounded` — and it names the three plausible wrong answers it discriminates (`RSN-BYTES` rows, a
+  zero-byte `bounded: true` row occupying a slot, AC-5.1a's absent key). That is not an absence-only
+  oracle, and the "fixture **must** carry material" clause is what stops it greening through
+  PROP-BOUND-06's first disjunct. It matches PLAN LI-12's third `LI-AT-30` case conjunct-for-conjunct,
+  including PLAN's conjunct (iii) "no document carries `RSN-COUNT`" (PLAN:152), and adds no PLAN task
+  and no AT id — verified: `learningsConfig.test.js` is LI-12's file in PLAN's manifest (PLAN:231).
+- **PROP-BOUND-06** (PROPERTIES:267–278) now states BR-9's meaning in both disjuncts and requires both
+  to be **driven**, one fixture each. The pairing argument is the right one: an implementation testing
+  "carries no section" greens on `NO-MATERIAL` and reds on `ZERO-BOUND`, so the reason id's *meaning*
+  is falsifiable rather than one of its routes. FSPEC:775 (E-36) and TSPEC:1423 ("two disjuncts, one
+  branch") both agree, and the citation line now carries D-12, E-36 and AT-30.
+- **PROP-CONFIG-04** (PROPERTIES:449–452) is amended to hand AT-30's third zero to PROP-CONFIG-09
+  explicitly, so §C.1's AT-30 row partitions rather than overlaps. Coverage claim and property text now
+  agree.
+- **PROP-BOUND-05 / PROP-BOUND-08** absorb TSPEC §T.5's demotion of `sections[]`. This is a real
+  strengthening and it is correctly reasoned: TSPEC's own JSDoc calls `sections` "a SUPPORTING
+  assertion, NOT AT-11's operand … an oracle reading the producer's own report of what it intended,
+  which is DC-14's shape" (TSPEC:812–816), and DC-14 exists at `docs/_constraints/DOMAIN-CONSTRAINTS.md:379`
+  as cited. Reading the rendered block and mapping headings through §D.3 removes the last implementation
+  echo in Group D.
+- **PROP-BOUND-07** (PROPERTIES:279–300) now cites BR-6 beside TSPEC §D.5 and carries the mechanical
+  byte formula. I re-derived it against TSPEC:883–885 and TSPEC:996: sum of each taken section's
+  normalised byte length plus 2 bytes per join, `n` sections ⇒ `n − 1` joins, no leading or trailing
+  newline in `material`. Byte-identical to upstream. This is the single most valuable line in the
+  delta — it converts a hand-computed literal from a judgement call into a reproducible procedure, which
+  is exactly what keeps a literal fixture from redding a conforming implementation.
+
+### Broken by the fix — PROP-BOUND-03's precondition is now wider than upstream allows
+
+**PROP-BOUND-03** (PROPERTIES:235–245) acquires *(stated where `maxBytesPerDocument > 0`)* and argues
+the precondition is load-bearing because "a property stated over all bounds would demand a zero-byte
+contribution flagged `bounded: true` occupying a `maxDocuments` slot, which no conforming implementation
+can also satisfy."
+
+That justification is false at the unit under test, and upstream says so in terms. TSPEC's contract for
+`extractInjectableMaterial` (TSPEC:578–581) is:
+
+> "`maxBytes <= 0` short-circuits BEFORE the cut and returns `{material: "", bounded: false, bytes: 0,
+> sections: []}` for every `text` — no cut occurs, so `bounded` is false, and the caller drops the
+> document `RSN-NO-MATERIAL` (E-36, §D.5)."
+
+So at `maxBytes = 0` the function returns `bounded: **false**`, not `true`; the slot decision and the
+`RSN-NO-MATERIAL` row are the **caller's**, not this function's. There is no contradiction to escape at
+this altitude — only a conjunct to state. TSPEC §T.5's T-O-6 row then makes the instruction explicit
+("State the zero conjunct, keep `0` in the domain") and names the excluded-domain route as the one that
+"loses the edge to AT-30's L3 case with **no unit-level oracle**".
+
+The consequence is a coverage hole, not just a mis-worded rationale: `grep -n "bounded: false"` over
+PROPERTIES returns **nothing**, and no property in the document asserts the zero return shape. §G.1's
+new T-O-6 row nevertheless claims "the obligation is discharged across the pair with **no input of §D.5
+unclaimed**" (PROPERTIES:1091) — with `maxBytes = 0` excluded from both arms of the pair, that sentence
+is not true. See **F-01**.
+
 ## Oracles
 
 ## Fixtures
