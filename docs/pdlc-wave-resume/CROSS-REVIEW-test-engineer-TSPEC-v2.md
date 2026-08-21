@@ -65,6 +65,108 @@ omits `head` so guard 5 passes without a transport call; Q-05 by §5.8 ("yes").
 
 ## Findings
 
+New findings only, raised against the changed sections. No High findings; nothing here blocks.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | `ANCESTRY_INDEPENDENT_CODES` is a new closed catalogue and the only one of the four with no set-equality oracle. An *addition* to the set is not killed by any AT in §5.4. | §3.2, §5.3, §5.4 AT-03 |
+| F-02 | Medium | Local | AT-16's arms (i) and (iii) are stated as claims rather than as assertions: (i) has no runnable oracle, and (iii)'s queue half is the sentence "the queue adds nothing that could change it". Only (ii) is a test. | §5.4 AT-16 |
+| F-03 | Low | Local | `ANCESTRY_INDEPENDENT_CODES` is sketched as a tuple *type* annotation, not an `Object.freeze`d value like its three sibling catalogues. | §3.2 |
+| F-04 | Low | Local | §3.2 carries a duplicated phrase — "Keeping the field on the decision on the decision is what lets…". | §3.2 |
+| F-05 | Low | Local | F-12's residue: `d.lastGreenWave` is identically `d.startWave - 1` on the `resume` outcome, so AT-01's skip-line oracle cannot distinguish rendering from the field from re-deriving at the call site. Recorded, not a demand. | §3.2, §5.4 AT-01 |
+
+### F-01 (Medium) — the fourth catalogue has no set-equality oracle
+
+§2.2 introduces `ANCESTRY_INDEPENDENT_CODES` as a frozen six-member enumeration whose membership
+decides whether a `git merge-base` subprocess runs. It is an enumerated contract in exactly the
+sense §3.1's three catalogues are, and §5.1's own completeness rule ("a deletion or an addition reds
+an assertion rather than passing one") applies to it. But §5.3's *Unit — catalogues* row still lists
+only four subjects — `RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS` keys,
+`IMPLEMENTATION_DEFAULTS` keys — and this one is absent.
+
+A *deletion* is caught: removing `"feature-mismatch"` makes AT-03's `toEqual([])` on the
+feature-mismatch fixture see one probe, and it reds. An *addition* is not. Add `"over-count"` to the
+set and:
+
+- AT-03's unit arm asserts over `classifyWaveLedger` with `headOk` already supplied as an input, so
+  it is structurally blind to when — or whether — the call site resolved it.
+- AT-03's integration arm probes only the feature-mismatch, plan-hash-mismatch and ancestry
+  fixtures, none of which is over-count.
+- AT-02's `over-count` fixture deliberately **omits `head`** (§5.4's reachability table, and the row
+  is right to do so), so `headCorroborated` returns `true` before reaching the transport
+  (`orchestrate-dev.js:15281-15283`) and the call count is zero either way.
+- AT-11's fixtures are unreachable-`head`, no-transport and no-`head`; none is over-count.
+
+So the mutation "treat `over-count` as ancestry-independent" passes the whole suite, and it is not
+inert: a record that is *both* over-count and written against a reset branch would then announce the
+over-count reason instead of `head-unreachable`, inverting the guard-5-above-guard-6 ordering that
+§3.2 calls out as the one place this design diverges from the REQ's IG numbering — the very pair
+AT-03's unit arm exists to pin.
+
+**To resolve.** Two small additions. (i) Add `ANCESTRY_INDEPENDENT_CODES` to §5.3's *Unit —
+catalogues* row, with the six members transcribed from §2.2 as literals and asserted by set
+equality. (ii) Give AT-03 one more integration fixture: a record that is over-count **and** carries
+a `head` the `_git` double answers non-ancestor for, asserting the `merge-base` call list
+`toEqual([["merge-base","--is-ancestor",HEAD_SHA,"HEAD"]])` — exactly one — paired with the positive
+conjunct that the announced reason is the ancestry sentence, not the over-count sentence. That is
+the integration twin of the unit pair AT-03 already has, and it is what makes the short-circuit
+condition itself falsifiable rather than only the catalogue it reads.
+
+### F-02 (Medium) — two of AT-16's three arms are claims, not assertions
+
+The row's honesty about scope is the right move and closes v1 F-04. But of the three arms, only (ii)
+is a test a wave can write:
+
+- **(i)** "the queue's `_runPipeline` is left at its default and that fact is asserted — an
+  unconfigured queue call reaches `orchestrate-dev`'s exported default, checked by asserting the
+  module's delegation is not overridden anywhere on the default path." There is no oracle here: "not
+  overridden anywhere on the default path" names no observable. An implementer will either write
+  something vacuous (asserting a source-text grep) or quietly drop the arm.
+- **(iii)** "both paths request exactly `WAVE_STATE_PATH` — the direct run's `_readFile` call list,
+  filtered to the ledger path, is compared for string equality against the constant, **and the queue
+  adds nothing that could change it**." The asserted half is entirely on the direct path; the queue
+  half is the trailing clause, which is a claim about the code, not an observation of it. As written
+  (iii) proves nothing the direct-path ATs do not already prove.
+
+This matters because (ii) alone is a narrower contract than the row's summary sentence implies, and
+a reviewer at Phase I will compare the implementation against the summary, not against the arms.
+
+**To resolve.** Either give (i) a real observable — e.g. call `orchestrate-queue`'s `main` with no
+`_runPipeline` and with a `reqPath` whose REQ file the injected `_readFile` refuses, then assert the
+failure surfaces from the *real* pipeline (a `orchestrate-dev`-originated message), which is
+positive evidence that the default was reached — or delete (i) and let (ii) carry the arm, saying so.
+For (iii), either state the assertion that makes the queue half observable, or move the sentence out
+of the oracle list into the row's "what this does not prove" paragraph, where it belongs. Prefer
+two honest arms over three where one is prose.
+
+### F-03 (Low) — declare the fourth catalogue the way the other three are declared
+
+§3.1's three catalogues are `Object.freeze`d values, and §3.1 says so as the reason they are
+transcribable. §3.2 sketches `export const ANCESTRY_INDEPENDENT_CODES: readonly [null,
+"unreadable-json", …];` — a tuple *type* annotation with no initialiser, which is not a value a test
+can take `Object.keys` or a `Set` over. Make it `Object.freeze([...])` (or a frozen `Set`) in the
+sketch, so §5.3's new set-equality assertion from F-01 has something to assert against and the
+declaration matches its three siblings.
+
+### F-04 (Low) — duplicated phrase
+
+§3.2, the `lastGreenWave` paragraph: "Keeping the field on the decision on the decision is what lets
+that line be rendered from the decision rather than re-derived from `startWave - 1` at the call
+site." Drop the repetition.
+
+### F-05 (Low) — the named consumer does not make the field falsifiable
+
+v1 F-12 asked for a reader, and §3.2 gives one: the per-wave skip line. Verified — the shipped line
+is `wave ledger: waves 1–${startWave - 1} already green` (`orchestrate-dev.js:15377`), pinned by a
+whole-string `toContain` (`waveExecution.test.js:2293`). The residue is that on the `resume`
+outcome, `lastGreenWave` and `startWave - 1` are the same number by construction (§3.2's final row:
+`resume, startWave = lastGreenWave + 1`), so AT-01's skip-line oracle passes identically whether the
+renderer reads `d.lastGreenWave` or re-derives `d.startWave - 1`. The field therefore has a reader
+but still no *discriminating* test. I do not think it is worth buying one — the two values are
+provably equal, so the distinction is stylistic — but the TSPEC should not claim more than it has.
+Suggest softening "A field with no reader would be unfalsifiable; this one has one" to name the
+reader without implying the field is now independently pinned.
+
 ## Questions
 
 ## Positive Observations
