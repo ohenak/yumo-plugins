@@ -1271,7 +1271,17 @@ PLAN task is required**, and no obligation is deferred to implementation.
    parenthetical. Its standing counterpart — a legitimate re-capture leaves every **retained** digest
    unchanged (§F.2, §O.2) — is the rule a reviewer of a future re-capture PR applies, and it is
    checkable.
-5. **Real-agent behaviour is out of scope.** Every property is asserted against scripted `_agent`
+5. **The fourteen-row file-ownership manifest no longer lists the feature's whole test surface (new
+   this round).** §C.4's re-measurement at `09c7c62f` finds **eighteen** `learnings*` files under
+   `pdlc/workflows/__tests__`, four of which no PLAN task owns:
+   `helpers/learningsBaselineScenarios.js`, `helpers/learningsComposition.js`,
+   `learningsDisclosure.test.js` and `learningsErratumBinding.test.js`, all added in `2fc6fcd3` and
+   each opening with the `CODE_REVIEW-pdlc-learnings-injection-v1.md` finding it discharges (F1/F7/F12,
+   F8, F10, F11/F12 respectively). This is a gap in **PLAN**, not in this document — no property here
+   names any of the four, so §C.3's task→property accounting is unaffected and no oracle moves. It is
+   recorded here because a reader using PLAN's manifest as the feature's test inventory would now
+   under-count by four, and routed to PLAN in §G.3.
+6. **Real-agent behaviour is out of scope.** Every property is asserted against scripted `_agent`
    replies. Whether an author agent's *output quality* improves from an injected block is unfalsifiable
    here, and REQ's non-goals say so; PROP-ISOLATE-01/02 assert only that the block cannot change gate
    inputs or pipeline semantics.
