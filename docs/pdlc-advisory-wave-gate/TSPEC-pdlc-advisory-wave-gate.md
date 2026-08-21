@@ -9,9 +9,42 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.13 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.14 | 2026-08-20 |
 
 ## Changelog
+
+**v1.14 (round 4 — BR-14's carrier named, halt-field count reconciled).** One High and two Medium
+findings, all local to §4.5, §5.2 and §5.6; nothing previously approved is reopened.
+
+- **PM F-01 (High) — the rendering carrier is now named.** v1.13 stated conjunct (3)'s oracle as
+  "co-location within one rendered report string" while no such string existed at HEAD: `haltError`
+  assigns its `fields` onto the error object, the halt handler forwards them as `haltAdvisory`, and
+  `buildFinalReport` returns a plain object — there is no report-to-text renderer in
+  `pdlc/workflows`, so neither `haltReason` (pinned to equality by AT-05-3) nor `haltAdvisory`
+  (structured data) could carry the pair. §4.5 now names the surface: a **halt-report `notices`
+  entry produced by `renderSnapshotOverwriteNotice(snapshotRef)`**, a pure sibling of
+  `renderEscalationEntry` / `renderAdvisoryEntry` in `orchestrate-dev.js` (no new module, no new
+  file, §1.2), pushed through the tier's existing `advisoryNotice` sink, whose `notices` array the
+  halt-path `buildFinalReport` call already spreads. §4.5 adds two contrast rows (why not the halt
+  message, why not `haltAdvisory`) and one paragraph stating explicitly that **AT-05-3's message
+  equality survives**: the warning rides a sibling field of `haltReason`, never the message. §5.6's
+  AT-06-4 restates conjunct (3) over that surface — one `notices` element must contain both halves —
+  and §4.5's artifact table gains the notice as its own row.
+- **TE F-02 (Medium) — the predicate is pinned spec-side.** AT-06-4 names the matching predicate
+  without inventing a sentence (FSPEC still owns the wording, TE Q-01's answer stands): a
+  case-insensitive `/overwrit/` stem and `refs/pdlc/a6-snapshot-{waveNum}`, both **written in the
+  test**, never `toContain(<constant imported from the module under test>)` — an implementation echo
+  cannot fail on wording and would neuter AT-06-4b.
+- **PM F-02 / TE F-01 (Medium) — "four fields" corrected to five.** §4.5's halt-field set has had
+  five members since v1.12 (`snapshotRef` joined it); §2.5's changelog line, §4.5's bullet and,
+  load-bearingly, §5.2's fixture transcription still said four. §5.2 now transcribes all five at
+  their literal values as a **set-equality over the halt-field keys**, so an implementation that
+  omits `snapshotRef` reddens rather than passing on the four keys it emitted — the positive oracle
+  for `snapshotRef: null` that AT-06-4b's negative arm rests on.
+- **TE F-03 (Low) / TE Q-01 — fixture homes stated.** AT-06-4 lands on §5.2's **two-red-wave** run
+  (the one that already observes `refs/pdlc/a6-snapshot-1` / `-2`, so the wave-scoped name is
+  discriminating) and AT-06-4b on the existing capture-failure fixture; §5.2's mechanical-assertion
+  inventories name both arms rather than leaving a reader to infer them from §5.6.
 
 **v1.13 (erratum round, Phase D — completion pass).** Completes v1.12's absorption of upstream's
 BR-14 / `snapshotRef` decision, which landed in this document's design half and stopped there
