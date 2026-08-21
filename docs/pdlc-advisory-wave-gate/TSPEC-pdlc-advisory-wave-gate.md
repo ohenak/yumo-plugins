@@ -9,9 +9,50 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.14 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.15 | 2026-08-20 |
 
 ## Changelog
+
+**v1.15 (round 5 — the notice's counterparties named).** One High, one Medium and two Lows, all
+local to §4.5, §5.1, §5.2 and §5.6; no design change, and nothing previously approved is reopened.
+
+- **TE F-01 (High) — the five-key halt-field equality now names the four-key equalities it
+  replaces.** v1.14 required §5.2's capture-failure fixture to transcribe the five halt fields as a
+  set-equality, without noticing that the file §5.1 assigns already pins the *four*-key shape by
+  `toEqual` in four places (Oracle G's own literal, the two `ORACLE_G_HALT_FIELDS` comparisons, the
+  escalation-path literal, and the one `Object.keys(result.haltFields).sort()` key-set assertion),
+  and that the real-seam halt oracle in `advisoryWaveGateMain.test.js` does the same for
+  `haltAdvisory`. `toEqual` fails on an extra `snapshotRef: null` exactly as on a missing one, so
+  those are counterparties, not bystanders. §5.1 gains a row for `advisoryWaveGateMain.test.js` and
+  names each shipped oracle as **widened to five by the same task that widens the production
+  `fields` object**; §5.2 states that the five-key equality **replaces** the four-key one, and names
+  the trap it closes (dropping `snapshotRef` to stay green deletes the only positive oracle for the
+  `null` value and false-greens both AT-06-4 arms). `waveExecution.test.js` needs no widening: its
+  two `haltAdvisory` assertions compare against the fields its A6 fake was handed.
+- **TE F-02 (Medium) — the push site is named.** The notice is pushed **inside `runWaveGateSeam`**,
+  through its own `_notice` parameter, on every unresolved return whose `snapshotRef` is non-`null`
+  — the returns the wave loop turns into a halt. That is where `snapshotRef` is known and where both
+  of §5.6's arms observe it (both fixtures are seam-level runs that already wire `_notice`); the
+  call site passes `_notice: advisoryNotice`, so the push lands in the same `notices` array the
+  halt-path `buildFinalReport` spreads. The one exact-count oracle this moves —
+  `advisoryEscalationLog.test.js`'s `expect(failed.notices).toHaveLength(2)`, a real-repo A6
+  escalation where the capture succeeds — becomes three, and §5.1's row for that file owns it.
+- **PM F-01 / TE F-03 (Low) — `TEST_GATE_MESSAGE` is not a symbol.** §4.5's survival paragraph now
+  names the per-wave `testGateMessage` template literal built at the call site, marks the upper-case
+  name as §2.3 pseudocode shorthand, and states AT-05-3's oracle in the form the suite ships it —
+  containment against that literal, not equality. The behavioural claim is unchanged.
+- **PM F-02 (Low) — the stale "six positive assertions" numeral is dropped**, since this round's
+  key-set equality and AT-06-4b's arm both landed on that same fixture; the claim it was making
+  (positive assertions, not an absence check) is kept.
+- **PM Q-02 / TE Q-02 answered — the un-skip arm is in scope.** §4.5's un-skip table gains an
+  overwrite-notice row: that halt's `snapshotRef` is non-`null`, so the universal quantifier covers
+  it; the seam has already returned by then, so this one push is emitted at the un-skip halt site
+  from the same helper through the same `advisoryNotice` sink. §5.6's AT-06-4 records that its
+  predicates are that arm's oracle too and that PLAN covers it under the same task — no new AT id,
+  so the AT set-equality is unchanged at forty-eight.
+- **TE Q-01 answered — `renderSnapshotOverwriteNotice` is exported**, like both siblings, so a
+  direct purity test in `PROP-ESC-01`'s shape is available to PLAN as well as the seam-level
+  observation.
 
 **v1.14 (round 4 — BR-14's carrier named, halt-field count reconciled).** One High and two Medium
 findings, all local to §4.5, §5.2 and §5.6; nothing previously approved is reopened.
@@ -1416,9 +1457,9 @@ Two consequences worth stating rather than discovering:
   |---|---|
   | Value when the capture succeeded | the ref name `refs/pdlc/a6-snapshot-{waveNum}` for **this** wave — the wave that is halting, not an earlier resolved one (§2.5) |
   | Value when no capture was taken | `null` — E-34's arm and the capture-failure halt above; the report then points at nothing |
-  | What the report renders, and **on which named surface** (PM F-01, v1.14) | from a non-`null` value, both halves together and adjacent **inside one string**: the ref name, and the sentence that re-running this feature overwrites that capture, so an operator who intends to inspect it copies the ref first. The carrier is a **halt-report `notices` entry rendered by a named pure helper, `renderSnapshotOverwriteNotice(snapshotRef)`** — a sibling of the tier's existing renderers (`export function renderEscalationEntry`, `export function renderAdvisoryEntry`, both in `pdlc/workflows/orchestrate-dev.js`), so no new module and no new file (§1.2). It is pushed through the sink the tier already owns — `const advisoryNotice = (line) => notices.push(line)`, declared in the pipeline entry `export default async function main` as "the one notice sink every advisory seam this run dispatches writes through" — and that same `notices` array is spread onto the **halt** report, not only the success one (the halt-path `buildFinalReport({ … notices, … })` call). From `null`, no notice is rendered and none is pushed — no dangling pointer and no warning about a capture that does not exist |
+  | What the report renders, and **on which named surface** (PM F-01, v1.14) | from a non-`null` value, both halves together and adjacent **inside one string**: the ref name, and the sentence that re-running this feature overwrites that capture, so an operator who intends to inspect it copies the ref first. The carrier is a **halt-report `notices` entry rendered by a named pure helper, `renderSnapshotOverwriteNotice(snapshotRef)`** — a sibling of the tier's existing renderers (`export function renderEscalationEntry`, `export function renderAdvisoryEntry`, both in `pdlc/workflows/orchestrate-dev.js`), so no new module and no new file (§1.2). It is **exported, like both siblings** (TE Q-01, v1.15), so PLAN's red test may assert its purity directly in the shape `PROP-ESC-01` already uses for `renderEscalationEntry` — same input, same string, no side effect — in addition to observing it through the seam. It is pushed through the sink the tier already owns — `const advisoryNotice = (line) => notices.push(line)`, declared in the pipeline entry `export default async function main` as "the one notice sink every advisory seam this run dispatches writes through" — and that same `notices` array is spread onto the **halt** report, not only the success one (the halt-path `buildFinalReport({ … notices, … })` call). From `null`, no notice is rendered and none is pushed — no dangling pointer and no warning about a capture that does not exist |
 | **Where the push happens** (TE F-02, v1.15) | **inside `runWaveGateSeam`, through its own `_notice` parameter** — `const notice = typeof _notice === "function" ? _notice : () => {}` at the seam's head — on every unresolved return whose `snapshotRef` is non-`null`, i.e. exactly the returns the wave loop turns into a halt (`if (!a6.resolved) throw haltError(testGateMessage, …)`). Not at `main`'s halt handler: the seam is where `snapshotRef` is known, and both of §5.6's arms observe the seam directly (§5.2's capture-failure fixture and the two-red-wave fixture are seam-level runs that already wire `_notice`, e.g. `_notice: (m) => notices.push(m)` in `advisoryWaveGate.test.js`'s Oracle-G runs), so a `main`-level push would leave them with no array to read. The call site passes `_notice: advisoryNotice`, so the seam's push lands in the same `notices` array the halt-path `buildFinalReport` spreads — the report obligation is met without the seam knowing about the report. **Consequence, named rather than discovered:** `advisoryEscalationLog.test.js`'s `expect(failed.notices).toHaveLength(2)` is an *exact* count on a `runA6Escalation` run over a real temp repo where the capture succeeds, so it becomes three; §5.1's row for that file names the widening |
-  | Why a rendered notice and not the halt message | the halt message is pinned by AT-05-3 to equal the pre-A6 literal (§2.3, §5.6), so nothing may be appended to it; `notices` is a sibling field of `haltReason` on the same report object, which is the "same report, same place" BR-14 asks for without touching the message |
+  | Why a rendered notice and not the halt message | the halt message is pinned by AT-05-3 to the pre-A6 literal (§2.3, §5.6 — containment against that literal in the shipped oracles, see the paragraph below), so nothing may be appended to it; `notices` is a sibling field of `haltReason` on the same report object, which is the "same report, same place" BR-14 asks for without touching the message |
   | Why not the structured `haltAdvisory` field | `haltError(message, fields)` `Object.assign`s the fields onto the error, and the halt handler forwards them as `haltAdvisory: err && err.advisory ? err.advisory : undefined`, spread into `buildFinalReport`'s returned **plain object**. There is no report-to-text renderer anywhere in `pdlc/workflows` — the shipped assertions read that field as data (`expect(result.haltAdvisory).toEqual(haltFields)` in `waveExecution.test.js`, `toEqual` over an object literal in `advisoryWaveGateMain.test.js`) — and "adjacent" has no meaning over an object. Co-location is observable only over a rendered string, which is why the notice, not the field, is conjunct (3)'s surface |
   | Why a field and not a prose string in `diagnosis` | the two are asserted separately: AC-6.3's diagnosis conjunct compares `diagnosis`, while BR-14's oracle asserts co-location and the presence of the overwrite statement, never the ref's name (FSPEC §5.x). Folding the warning into `diagnosis` would couple them and break the literal comparison |
 
