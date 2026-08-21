@@ -150,6 +150,33 @@ approved in my v4 on verified grounds; I did not re-litigate them.
 
 ## Fixtures
 
+- **No fixture changed this round, and none needed to.** PROP-BOUND-03's zero case is a *threshold*
+  change over a fixture that already exists — the same lever §F.1's `ZERO-BOUND` row uses — and the
+  document says so ("no new fixture"). I confirmed the lever is real in the landed helper:
+  `pdlc/workflows/__tests__/helpers/learningsFixtures.js:180` and `:189` already build per-case
+  threshold objects (`maxBytesPerDocument: 6000`) beside their corpora, so setting the bound to `0` is a
+  literal edit in an existing builder. `ZERO-BOUND` (§F.1) and the widened `NO-MATERIAL` row are
+  unchanged from the bytes I approved in v4.
+- **§F.2's byte-identity baseline and §F.3's F-O-1 matcher paragraph** are untouched by the delta. §F.3's
+  three transcribed matcher rules were verified against `TSPEC:810–882` in my v4 and remain byte-faithful.
+- **Test-file inventory (§C.4) re-checked at HEAD.** `git ls-files pdlc/workflows/__tests__` confirms the
+  seven landed rows — `helpers/learningsFixtures.js`, `learningsPremises.test.js`,
+  `learningsCaptureScript.test.js`, `learningsPredicatePin.test.js`, `learningsSelect.test.js`,
+  `learningsBlock.test.js`, `learningsCorpus.test.js` — and the seven absent ones
+  (`learningsConfig`, `learningsRecord`, `learningsDispatchSet`, `learningsArmInventory`,
+  `learningsFootprint`, `learningsSuiteMap`, `fixtures/learnings-baseline/`). The "seven of the
+  fourteen files have landed" arithmetic is correct, and the three named pre-existing files
+  (`consolidationPredicate.test.js`, `helpers/seams.js`, `helpers/consolidationDoubles.js`) are all
+  tracked. **The one stale claim is the `scripts/` sentence** — see F-01.
+- **Q-02 answer (§C.4) is substantively right.** PROP-BOUND-05/07/08's amendments do land in a committed
+  suite, so they are a re-red on landed green code, and PLAN P-A-7 (`PLAN:558`) is the governing rule as
+  quoted ("a live table is amended by an edit to this PLAN, committed before the run it governs").
+  Deferring the ledger-row naming to the PLAN rather than deciding it here is the correct routing —
+  PROPERTIES cannot amend PLAN's live table, and PLAN:147's v0.5 amendment note indeed names the owners
+  but not the ledger rows. I re-emit that as a PLAN erratum. One omission in the same paragraph:
+  PROP-BOUND-03's new zero case *also* lands in the committed `learningsBlock.test.js` under LI-08/LI-17
+  and belongs in the same enumeration (F-02, Low).
+
 ## Findings
 
 ## Questions
