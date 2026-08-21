@@ -1585,12 +1585,25 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
   transcribed as a **set-equality over the halt-field keys**, not a containment check, so an
   implementation that omits `snapshotRef` from the capture-failure `fields` object reddens here
   rather than passing on the four keys it did emit (TE F-01; the same discipline §5.6 applies to
-  AT-06-1's entry-field set). This is the one positive oracle for the `null` value AT-06-4b's
+  AT-06-1's entry-field set). **The five-key equality *replaces* the shipped four-key one, it does
+  not join it (TE F-01, v1.15).** This fixture is Oracle G, and Oracle G is already pinned at four
+  keys by `toEqual` in the file §5.1 assigns — `expect(result.haltFields).toEqual({rootCause:
+  "unclassified", …})`, plus the `ORACLE_G_HALT_FIELDS` literal two further cases compare against,
+  plus the `Object.keys(result.haltFields).sort()` key-set assertion and the escalation-path
+  `toEqual`. `toEqual` fails on an extra `snapshotRef: null` exactly as on a missing one, so these
+  are the same assertion at two widths: the red test written here *is* the edit to those, landed by
+  the one task that widens the production `fields` object (§5.1 names each). Reading them as
+  additive is the trap, because the cheap way green under a red wave gate would be to leave
+  `snapshotRef` off the capture-failure `fields` — which deletes the only positive oracle for the
+  `null` value and false-greens both AT-06-4 arms. This is the one positive oracle for the `null` value AT-06-4b's
   negative arm rests on, and **this fixture is where AT-06-4b itself lives** (TE F-03): the same
   run additionally asserts that no `notices` element matches either half of §5.6's spec-side
   predicates (`/overwrit/i`, `refs/pdlc/a6-snapshot-`), so this inventory covers the negative
-  co-location arm as well. And no `_agent` call. Six positive assertions on one fixture, not an absence check — that is the
-  whole point of PM F-02 against the earlier design's outcome of "nothing observable happened". Two
+  co-location arm as well. And no `_agent` call. Every item in this inventory is a positive assertion on one fixture, not an
+  absence check — that is the whole point of PM F-02 against the earlier design's outcome of
+  "nothing observable happened" (the numeral this sentence used to carry went stale the round the
+  key-set equality and AT-06-4b's arm joined the same fixture; the claim, not the count, is what
+  matters — PM F-02, v1.15). Two
   further assertions come from this round: the record entry's Disposition cell reads a bare
   `escalated` with **no** refusal reason (PM F-01, and a companion assertion pins
   `ADVISORY_REFUSAL_REASONS` at its eight members on the same run), and `captureTreeSnapshot` is
