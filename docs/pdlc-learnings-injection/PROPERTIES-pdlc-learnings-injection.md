@@ -247,7 +247,7 @@ a defect in this document or in the PLAN, not a nice-to-have.
   half is owned by **PROP-CONFIG-09**. The two properties **partition** §D.5's inputs rather than
   duplicating each other: this one owns the unit's return shape at a zero bound, PROP-CONFIG-09 owns the
   reason id and the unconsumed slot. §O.9's generated T-O-6 arm keeps `0` in its domain for the same
-  reason (TSPEC §T.5, T-O-6: "State the zero conjunct, keep `0` in the domain"). The zero case costs one
+  reason (TSPEC, Named obligations carried forward, T-O-6: "State the zero conjunct, keep `0` in the domain"). The zero case costs one
   added case in `pdlc/workflows/__tests__/learningsBlock.test.js` (landed, 7.6 K) under the **existing**
   LI-08 red / LI-17 green tasks — no new fixture, no new PLAN task, no new AT id, no new property id.
   *Data Integrity · L1 · AC-2.3, AC-4.4, BR-6, E-15, E-16, E-36, AT-11, AT-12, TSPEC §D.5, §I.3 · red LI-08 · green LI-17.*
@@ -707,7 +707,7 @@ deliberate cost:
 |---|---|
 | PROP-DISPATCH-01/02/03 | the dispatch **universe** is a property of the run, not of a function |
 | PROP-CONFIG-04/05 | "rows present and empty" versus "key absent" is a distinction only a finished report carries; an L1 unit over `parseLearningsConfig` sees the parse result and never the report key set |
-| PROP-CONFIG-09 | only the **run-level** half of the zero bound is L3: the `RSN-NO-MATERIAL` reason id and the unconsumed `maxDocuments` slot are decisions of the caller that only a finished report records. The unit-level half is **not** L3 and is not placed here — `extractInjectableMaterial(text, 0)`'s four-field return is directly falsifiable at L1 and is owned by PROP-BOUND-03 (TSPEC §I.3, §T.5 T-O-6) |
+| PROP-CONFIG-09 | only the **run-level** half of the zero bound is L3: the `RSN-NO-MATERIAL` reason id and the unconsumed `maxDocuments` slot are decisions of the caller that only a finished report records. The unit-level half is **not** L3 and is not placed here — `extractInjectableMaterial(text, 0)`'s four-field return is directly falsifiable at L1 and is owned by PROP-BOUND-03 (TSPEC §I.3; TSPEC, Named obligations carried forward, T-O-6) |
 | PROP-RECORD-07/10 | the once-per-run threshold record and per-dispatch reproducibility span the whole run |
 | PROP-FOOTPRINT-01…04 | AC-5.2's window is "the whole run"; a seam log cannot see a direct `fs.writeFileSync` |
 | PROP-ISOLATE-01 | gate inputs are produced by the convergence machinery, not by this feature's units |
@@ -786,7 +786,7 @@ than algebraic laws. Two exceptions are worth parameterising, and both are cheap
   `material` round-trips through UTF-8 decode without a replacement character. Boundary-adjacent draws
   are pinned by construction relative to the bound, not by an absolute offset. **The generator's
   domain is every non-negative `maxBytes`, `0` included, stated explicitly rather than left to the
-  draw** (TSPEC §T.5, T-O-6: "The bound domain includes `0`, and the property must state its carve-out
+  draw** (TSPEC, Named obligations carried forward, T-O-6: "The bound domain includes `0`, and the property must state its carve-out
   … State the zero conjunct, keep `0` in the domain"). The zero bound is **not** absence-shaped at this
   unit and so does not meet §O.5's L3 test: it is a four-field positive return value that
   `extractInjectableMaterial(text, 0)` produces directly (`material === ""`, `bounded === false`,
@@ -1115,7 +1115,7 @@ directory today, and LI-05's row says so.
 |---|---|
 | **T-O-4** — `orderCorpus` output is a permutation of its input and the comparator is a strict weak ordering | **PROP-ORDER-06**, parameterised per §O.9 |
 | **T-O-5** — `selectLearnings` is total: no throw, every input path exactly once across `selected ∪ rejected` | **PROP-CORPUS-09**, parameterised per §O.9 |
-| **T-O-6** — `extractInjectableMaterial`: `bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`, whole-character prefix, `bounded` true exactly when cut | **PROP-BOUND-03** (example arm, AT-11/AT-12) **plus** §O.9's generated arm, which is the half that makes the all-inputs claim of §D.5 checkable. Both are stated over **every non-negative `maxBytes`, `0` included**, per TSPEC §T.5's T-O-6 instruction ("State the zero conjunct, keep `0` in the domain"). The partition is by **observable, not by input**: PROP-BOUND-03 owns the whole domain of the unit's return value — the cut-and-flag conjuncts at `maxBytes > 0` and the four-field zero return `{material: "", bounded: false, bytes: 0, sections: []}` at `maxBytes <= 0` (TSPEC §I.3) — while **PROP-CONFIG-09** owns the run-level consequences that no unit can produce: the `RSN-NO-MATERIAL` reason id and the unconsumed `maxDocuments` slot (FSPEC E-36). No input of §D.5 is unclaimed, and no observable is claimed twice |
+| **T-O-6** — `extractInjectableMaterial`: `bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`, whole-character prefix, `bounded` true exactly when cut | **PROP-BOUND-03** (example arm, AT-11/AT-12) **plus** §O.9's generated arm, which is the half that makes the all-inputs claim of §D.5 checkable. Both are stated over **every non-negative `maxBytes`, `0` included**, per TSPEC's T-O-6 instruction (TSPEC, Named obligations carried forward) ("State the zero conjunct, keep `0` in the domain"). The partition is by **observable, not by input**: PROP-BOUND-03 owns the whole domain of the unit's return value — the cut-and-flag conjuncts at `maxBytes > 0` and the four-field zero return `{material: "", bounded: false, bytes: 0, sections: []}` at `maxBytes <= 0` (TSPEC §I.3) — while **PROP-CONFIG-09** owns the run-level consequences that no unit can produce: the `RSN-NO-MATERIAL` reason id and the unconsumed `maxDocuments` slot (FSPEC E-36). No input of §D.5 is unclaimed, and no observable is claimed twice |
 
 All three land on tasks that already exist (LI-07 red / LI-16 green for T-O-4 and T-O-5; LI-08 red /
 LI-17 green for T-O-6's example arm, with the generated arm folded into the same suites). **No new
