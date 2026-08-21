@@ -158,6 +158,54 @@ consistent with the FSPEC I hashed, and is a further reason that production writ
 
 ## Verification
 
+### The four routed items, one at a time
+
+| Routed item | Disposition | Verified against |
+|---|---|---|
+| **(1)** Case C cites `92b7ea0c`, `d462ddd8`, `2cbacada` — pre-rebase and unreachable | **Resolved.** Re-pinned to `e7fa8d87`, `be2456c8`, `a4998e13` in case C and in the v0.8 and v1.1 changelog rows | `git merge-base --is-ancestor` on all six hashes: the three old ones unreachable from HEAD, the three new ones reachable and resolving to LI-21 / LI-16 / LI-17 by subject line |
+| **(2)** P-A-7's case C states a forward-looking expectation for something already discharged | **Resolved, and the claim is true.** The cell now records the outcome: 26 passed / 26 total, 0 skips at `09c7c62f`, all four `LI-AT-11` heading-form cases and both Group D amendments inside that count, failure limb "unexercised, not waived" | I ran it: `npm test -- __tests__/learningsBlock.test.js __tests__/learningsSelect.test.js` from `pdlc/workflows` reports **2 suites passed, 26 passed, 26 total**. `PROP-ORDER-06` and `PROP-CORPUS-09` are present in `learningsSelect.test.js` as PROPERTIES §C.4 describes |
+| **(3)** Four `2fc6fcd3` remediation files owned by no LI task and in no manifest row | **Resolved for the four named; a fifth remains.** All four now carry rows with a landing commit and a CODE_REVIEW v1 cause | Each of the four resolves to `2fc6fcd3` under `git log --diff-filter=A`. But the same commit also adds `pdlc/engine/__tests__/learnings-config-example.test.js`, still unowned — F-03 |
+| **(4)** Second-owner rows P-A-5 requires for `2fc6fcd3`'s re-capture | **Partially resolved.** Two second-writer rows recorded (`fixtures/learnings-baseline/**`, `learningsBaselineGuard.test.js`); seven more ladder-owned files written by the same commit carry none, one of them production | Full `--name-status` enumeration of `2fc6fcd3` in §Batches — F-01 |
+
+Item (2) is the cleanest of the four. Recording a discharged obligation as an outcome rather than an
+expectation is exactly the tense correction TE asked for, the rule underneath is unchanged, and the
+distinction the cell draws — the failure limb is **unexercised, not waived** — is the one that keeps
+the rule available if a later amendment does land red. I re-ran the measurement rather than trusting
+it, and the numbers are exact.
+
+### What the delta did not break
+
+- **The batches 7–13 expected-red ledger is byte-identical.** The diff contains no ledger line.
+- **Case C's ruling is unchanged; only its tense moved.** The green-at-landing obligation, the
+  fix-before-batch-14 rule and the gate-failure clause are all still stated verbatim after the new
+  outcome sentence. The rule survives its own discharge, which is what stops the next amendment
+  falling through.
+- **The two dispatcher-parsed tables are byte-unchanged**, so nothing the dispatcher reads changed.
+- **§The arithmetic is now explicitly scoped.** The appended sentence restricts the 24-rows /
+  17-files count to the two parsed tables and excludes the six new rows by construction. I checked
+  the arithmetic still reconciles under that scoping: it does.
+- **No AT partition, fixture or `Deps` edge moved**, as the 1.2 row claims. True against the diff.
+
+### Batch-safety rule 2: the argument is sound but the premise is now narrower than stated
+
+The new "single-writer premise survives" paragraph argues that `2fc6fcd3` is one serial commit
+landing after batch 13 with no batch in flight, so no batch ever holds two writers, and LI-06 remains
+the ladder owner. **That reasoning is correct**, and I verified the ordering claim
+(`e7fa8d87` is an ancestor of `2fc6fcd3`, and `2fc6fcd3` postdates batch 13 by a day). It is the
+right argument. My finding is not with the argument but with its domain: the paragraph reasons about
+"both files" — LI-06's two — while the commit wrote nine ladder-owned files. The identical serial
+argument covers all nine, so the fix is to widen the rows and the paragraph together, not to rework
+the reasoning.
+
+### My three open v13 Lows, re-checked
+
+All three are still present at HEAD, all three untouched by this delta, all three still non-gating:
+the 0.9 changelog row still credits the P-A-7 lead-in fix to "(PM v10 erratum)" when the raiser was
+TE v11 F-01 (line 642); §Changelog's 0.6 row still precedes its 0.5 row (lines 638–639) while 0.7
+through 1.2 are correctly appended; and case A's derivation still quotes its own superseded text,
+"a commit landing in batches 2–6 is also \"before batch 7\"", against a *When* cell that has read
+"before batch 9" since v1.1 (line 521). Re-filed as F-04, F-05, F-06, all `inherited`.
+
 ## Findings
 
 ## Questions
