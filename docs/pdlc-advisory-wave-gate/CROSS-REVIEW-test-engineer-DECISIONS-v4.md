@@ -124,6 +124,42 @@ neither changes a decision or an oracle. They are in `## Findings`.
 
 ## Consequences
 
+**For the PROPERTIES author (the trigger this entry now points at).** DEC-A6-03's replacement
+trigger is live *today*, not at Phase I close: at HEAD the AC-6.3 overwrite conjunct is specified
+at three levels and asserted at none. Concretely, `PROPERTIES:387` traces AC-6.3 to `PROP-REC-05`
+and `PROP-REST-08`; `PROP-REC-05` (`:180`) asserts only diagnosis + root-cause class, `PROP-REST-08`
+(`:168`) is E-34's arm, and `grep -ci overwrit PROPERTIES` returns 0. The property owed is the
+co-location one, in the shape `TSPEC:1942` pins: pick the one `notices` element matching
+`refs/pdlc/a6-snapshot-{waveNum}` and assert `/overwrit/i` **on that same element**, plus
+`PROP-REST-08`'s negative arm asserting neither predicate matches any notice when `snapshotRef` is
+`null`. Two independent `toContain`s over separate strings cannot falsify a split and must not be
+accepted as the oracle.
+
+**One downstream observation, recorded not filed** (it is a defect of PROPERTIES, which is
+*downstream* of this document, so it is neither an erratum nor a finding here): `PROP-REST-08`
+(`PROPERTIES:168`) pins "§4.5's **four** fields" and transcribes four literals, while TSPEC v1.15
+§4.5 is a **five**-key shape — `TSPEC:1530` states the four shipped four-key set-equalities "are
+widened to five by the same task that widens the production `fields` object", and `TSPEC:1446` adds
+`snapshotRef`. A `toEqual` set-equality fails on an extra key exactly as on a missing one, so
+`PROP-REST-08` as written would go RED against the specified shape. This is the PROPERTIES round's
+to fix, and it is the healthy consequence of the widening DEC-A6-03's routing caused — but the
+DECISIONS entry is not wrong about it, because it never claims PROPERTIES is current.
+
+**For harvest.** The durable lesson from v3 is now recorded inside the document itself
+(`:132-138`), so it survives the cross-reviews' deletion: *a sentence of the form "X matches nothing
+upstream" is a dated observation, not a decision, and must carry the upstream version it was checked
+against and be re-checked on every cascade.* The author added a second clause worth keeping — where
+such a claim is load-bearing, prefer the **specified-vs-asserted split** over a bare "nothing
+anywhere", because the split degrades gracefully as routing lands one hop at a time. That is exactly
+what saved this round: the split form was still true after two more upstream limbs landed, where the
+bare form was false after one.
+
+**For the DoD sweep.** `renderSnapshotOverwriteNotice` does not exist in `pdlc/workflows/` at HEAD
+(`grep -rn renderSnapshotOverwriteNotice pdlc/` → no match), and neither
+`advisoryWaveGate.test.js` nor `advisoryEscalationLog.test.js` inspects halt text for an overwrite
+warning. The document says so, correctly. Nothing in this feature's implementation is claimed to
+exist that does not.
+
 ## Findings
 
 ## Questions
