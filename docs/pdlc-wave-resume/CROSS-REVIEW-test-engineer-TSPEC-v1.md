@@ -335,8 +335,75 @@ positive conjunct that all waves dispatched).
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §2.2 says the classifier receives ancestry "as an already-resolved boolean". Was the eager-probe consequence (F-02) intended and simply unstated, or is a lazy resolution acceptable? The answer decides whether §1.2 gains a row or §2.3 gains a thunk. |
+| Q-02 | AT-16 (F-04): is driving `orchestrate-queue`'s real `main()` — drift gate, `QUEUE.md`, Phase-0 triage — actually reachable in a unit-test harness, or is the honest scope of the parity assertion "`realMain` is the default of `_runPipeline`, asserted structurally, plus a direct-run resume assertion"? Either is defensible; the document should choose. |
+| Q-03 | §5.3 puts unit and repo-state work in three new files to avoid same-file races. Does the PLAN's batch derivation already guarantee that the task extending `waveExecution.test.js` is alone in its wave? §5.3 asserts it ("one task, in one wave, owning that file alone") but that is a PLAN obligation this document cannot enforce — is it recorded as one? |
+| Q-04 | §5.4 AT-02 promises "one integration run per code" for seven codes. `not-an-object` is reachable (`JSON.parse('"x"')` -> string -> `isPlainObject` false, `orchestrate-dev.js:12281`) and so is `over-count` (with `head` absent, so ancestry passes first). Is each of the seven confirmed reachable through `main()` with `makeLedgerArgs`, or does any need a fixture the harness cannot express? |
+| Q-05 | F-07: should the last implementation wave's `postWaveCommand` run `npm run test:coverage`, making the 85% per-file branch floor a wave-level gate rather than a PUB-level surprise? |
+
 ## Positive Observations
+
+- **§1.1 is the strongest grounding section I have reviewed in this pipeline.** Seventeen numbered
+  claims, each with a runnable `git show origin/main:<path> | grep -n <symbol>` verification keyed
+  to a symbol rather than a line number, written specifically so it survives the rebase that OB-F1
+  owes. I re-ran all seventeen and all seventeen hold. This is what "verified by name, not by
+  anchor" (DEC-DOC-01) looks like when done properly, and it made this review's verification
+  mechanical rather than archaeological.
+- **§1.2's delta table is the right shape for a ratification feature.** Ten rows, each naming the
+  clause that fails and the change owed, followed by an explicit "what is not changed" list. The
+  scope is legible without reading the rest of the document — which is exactly what makes findings
+  like F-09 (a scope row with no oracle) checkable at all.
+- **§5.1 states the oracle rule before the tests, not after.** "The oracle is an observed resume,
+  never the presence of a code path", with both corollaries spelled out and the absence-only case
+  named concretely ("'no commit was produced' cannot distinguish a skipped wave from one that ran
+  with nothing to add"). AT-12's call-count-plus-positive-conjunct design follows directly from it,
+  including the fourth conjunct on Phase PT's exactly-one dispatch — which I verified is genuinely
+  reachable, since the `allWavesRecorded` break (`orchestrate-dev.js:15372`) still falls through to
+  the V-wave (`:15655`).
+- **§5.5's mutation-resistance notes are the discipline this project asks for and rarely gets in a
+  TSPEC.** Three named mutations, each with the test that kills it and — more valuable — the tests
+  that *do not*. "Recording a run-relative wave number … killed only by AT-18; every single-halt
+  test passes under it" is precisely the reasoning that makes AT-18 worth its cost.
+- **§5.6 is an explicit negative-space section.** Naming what is not tested and why (concurrency,
+  `version`, the general PLAN-ownership claim) is what keeps a later reviewer from reading a gap as
+  an oversight, and each of the three reasons is sound.
+- **§4.4 justifies the data model by what a richer model would invite**, not by what it costs — "a
+  set could only ever be a prefix; storing one would invite a reader that honours a non-prefix set
+  and skips a wave whose predecessor never ran". That is a testability argument, and it is correct.
+- **§6.1's decision table gives each decision a real rejected alternative.** DEC-WVR-06 in
+  particular ("four of the seven interpolate run-specific values, so the assertion would be over
+  fixture data") is the correct resolution of a set-equality-over-strings trap I have seen shipped
+  the wrong way.
 
 ## Recommendation
 
+**Needs revision**
+
+Four High findings, each with a concrete path forward:
+
+1. **F-01** — respecify the provenance suffix so it is genuinely appended (outside the existing
+   punctuation), or enumerate by `file:line` the three shipped assertions that change and their
+   replacements. Rewrite §2.4's neutrality claim and RT-3's mitigation to match.
+2. **F-02** — decide lazily-probe or ratify-the-eager-probe, and in either case add the
+   `merge-base` call-count oracle (zero on the mismatch fixtures, exactly one on the ancestry
+   fixture) so the extraction's behaviour-preservation is asserted rather than asserted-about.
+3. **F-03** — restate AT-06's comparison as differing only in the presence of the `startWave` key,
+   and add the positive conjunct that the record was honoured on both runs.
+4. **F-04** — state that AT-16 leaves `_runPipeline` at its default, enumerate the queue-side
+   fixtures, and give it a falsification arm — or replace its oracle with an honest one.
+
+The six Medium findings (F-05 the missing normative emit, F-06 the property strategy, F-07 the
+coverage gate, F-08 the two harness extensions, F-09 the unoracled `⏭` row, F-10 AT-14's halt
+hazard) are worth addressing in the same round; F-06, F-07 and F-10 in particular will otherwise
+surface during Phase I or Phase PUB, where they are far more expensive.
+
+This is strong, careful work. The document's grounding, its delta framing, and its mutation
+analysis are all above the bar; the revision needed is narrow and mostly a matter of making three
+stated-as-safe claims either true or explicit.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 6, "low": 4}
