@@ -253,6 +253,46 @@ DEFERRED: DoD 12 is retired in place but keeps its clause number in the DoD's ru
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All six of my v14 findings are resolved, and I verified each against the repository rather than
+against the changelog's account of it. The two Highs are closed on their merits, not by wording:
+§Post-batch remediation is now derived from `git show --name-status 2fc6fcd3` and its 45-path
+partition reconciles exactly (18 fixture prompts + 5 added files + 9 modified `__tests__` files + 1
+engine suite + 4 production/configuration files + `dist/` + 7 pipeline documents), with all seven
+ladder attributions correct against the manifest's own rows and all four diffstats correct against
+`--numstat`; and the `package.json` premise is corrected in all three places it appeared, with text
+that reproduces the shipped `c8` block — `allow-external: true`, four `**/`-anchored includes with
+the capture script among them, a three-glob `exclude` — including the reason every entry had to be
+re-anchored. The Medium is closed with its own row for the eighteenth file, and the tree count now
+reconciles from two independent directions that agree. The three Lows — changelog credit, changelog
+order, case A's stale quote — are all fixed.
+
+Nothing I previously approved broke. The `Owner`, `Batch` and `Deps` columns of all 23 task rows are
+byte-identical to the revision I reviewed at v14 (I diffed the extracted columns, not the prose), the
+batches 7–13 expected-red ledger is byte-identical, no AT partition or fixture moved, both
+dispatcher-parsed tables still parse, §The arithmetic still reconciles under its widened scoping
+sentence, and the four upstream pins the header now carries — REQ v0.10, FSPEC v0.14, TSPEC v0.9,
+DECISIONS v0.5 — match those documents' own version rows, with DECISIONS v0.5 stating in its own
+words that the substance this PLAN cites is untouched beneath the new numbers.
+
+Two new Lows, both introduced by this delta, both one clause to fix and neither gating: the
+single-writer paragraph's enumeration counts `package.json` among ladder-owned second writes when its
+own row calls it a first write to an owner-less file, and `docs-uniqueness.test.js`'s cause cell
+understates a README line-anchor re-pin this feature itself displaced. Three DEFERRED observations
+are recorded above and are out of scope for a frozen round.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The single-writer paragraph enumerates `package.json` among ladder-owned second writes, while its own row two lines above calls it a first write to an owner-less file | §File-ownership manifest → Post-batch remediation, closing paragraph |
+| F-02 | Low | delta | local | `docs-uniqueness.test.js`'s cause cell reads "accounts for the branch's document set"; the change is a re-pin of two README line anchors (98/104 → 132/138) displaced by this feature's own README section | §File-ownership manifest → Post-batch remediation, `docs-uniqueness.test.js` row |
+
+FINDING: Low | delta | local | §File-ownership manifest → Post-batch remediation, closing paragraph | the single-writer paragraph says the second-writer rows name "LI-06's fixtures and guard, six ladder-owned suites, and the three production surfaces of LI-15…LI-22, LI-05 and the `c8` configuration", but `pdlc/workflows/package.json`'s own row reads "first write — previously owner-less and unmodified"; the row is right and the summary overreaches by one entry, though the serial-commit argument covers a first write trivially and is unaffected
+FINDING: Low | delta | local | §File-ownership manifest → Post-batch remediation, `docs-uniqueness.test.js` row | the cause cell reads "accounts for the branch's document set", but `git show 2fc6fcd3 -- pdlc/engine/__tests__/docs-uniqueness.test.js` (7/2) re-pins two `locate("pdlc/README.md", …, "claude plugin install")` anchors from 98/104 to 132/138 because this feature added a 24-line README section above them, with an in-file comment recording that the pin is a positive-locus assertion and is re-pinned rather than relaxed
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
