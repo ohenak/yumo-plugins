@@ -154,6 +154,65 @@ properties §C.4 names are the four case C names, and the file it names them lan
 
 ## Verification
 
+**The six routed raises, item by item.** All six name the same defect from three lenses, so I checked
+the single repair against each raise's own wording rather than collapsing them:
+
+| Raised by | The item | Landed? |
+|---|---|---|
+| pm-review | case B's table terminates at "the batch that greens them"; case B needs a post-terminal-batch reading, or a statement that the amendment is expected to land green | ✓ both — case C supplies the post-terminal reading **and** states the amendment is expected to land green, with a mechanism |
+| te-author | state the terminating condition for an amendment landing after batch 13, and whether the heading-form amendment is now expected to land green (PM Q-02) | ✓ terminating condition is batch 14's unqualified gate ("green at the commit that lands it"); Q-02 answered "yes", grounded in shipped `canonicalSectionName` |
+| pm-review | LI-16/LI-17/LI-21 have all landed; the span has no terminus at HEAD | ✓ case B re-bounded to 9–12 where a terminus exists; C governs HEAD |
+| se-review | batches 7–13 are behind us and LI-22 adds no assertions — no terminating batch | ✓ named exactly: "batch 14 is LI-22's REFACTOR-and-close, which adds no assertions" |
+| te-author | with LI-17 and LI-21 landed no remaining batch greens them | ✓ same repair |
+| pm-review | case B's row scoped to a span with no terminus for an amendment landing now | ✓ same repair |
+
+Necessary and, on my reading, sufficient: the repair does not merely acknowledge the missing terminus,
+it supplies a **different, checkable obligation** in its place, which is what a gate-input rule needs.
+
+**The TE v9 F-01 scoping repair rides along and is correct.** The closing paragraph's "no row of their
+own" ruling now reads "in any of the three cases — a ruling scoped to **this** heading-form follow-up
+commit, not a standing exemption for those files", and the additivity premise now branches: a
+non-additive future amendment enters the ledger under case B's rule "or, once batch 13 is behind us,
+under **case C**, where the obligation is green-at-landing rather than a ledger row." That is the
+right repair to the finding I filed at round 9 — it closes the "standing exemption" reading without
+weakening the additivity argument, and it routes the non-additive future case into the same partition
+the delta just built rather than leaving it dangling.
+
+**The exemption-list guard is intact.** "No exemption list grows during this feature. The two
+exclusions in §The measured baseline are the arrangement's … Adding a third to make a batch pass is a
+halt condition" is byte-identical in the delta. That matters here: case C rules the ledger stays
+**empty**, and an empty ledger plus a growable exemption list would be a false-green pair. It is not
+growable, so the unqualified batch-14 gate is still the real oracle.
+
+**One lead-in the delta did not update.** The paragraph introducing the table still reads "its
+expected-red rows are named here, ahead of the run they govern, in the **two** cases that can arise",
+immediately above a three-row table. Purely a stale numeral — the table itself is the contract and it
+is complete — but it is a factual miscount introduced by this delta, so I file it **Low, delta,
+local**. One-word fix: "two" → "three".
+
+**Re-carried from round 10, not re-litigated.** Two prior findings against v0.7 remain open and remain
+non-gating; the delta was scoped elsewhere and did not touch either. F-01 (Medium): LI-08's amendment
+note says `renderSection` accepts `ordinal`, `gloss` and a free-form `body`, "all three unexercised by
+any landed suite" — `body` is exercised (`learningsBlock.test.js:77-82`, `learningsSelect.test.js:375`),
+though the clause's conclusion survives. F-02 (Low): round-9's scope note on P-A-7's generic title. I
+re-record them here for the ledger rather than re-filing them as this round's findings, since a delta
+confirmation's findings table is about the delta.
+
+**And the implementation defect I deferred at round 10 is still live at HEAD — and case C now handles
+it correctly, which is worth stating.** `selectLearnings` (`pdlc/workflows/orchestrate-dev.js`) still
+gates the `RSN-NO-MATERIAL` drop on `extraction.sections.length === 0 && hasAnySectionHeadingLine(
+entry.text)` — the second branch condition TSPEC §D.5 explicitly forbids ("one branch … no second
+branch and no zero-bound special case in the selector"). A PROPERTIES amendment faithful to §D.5 could
+therefore land **red** at HEAD. Under v0.7's case B that red had nowhere to go. Under case C it does:
+"it has found a real defect, not staged a TDD red … the fix commit is owed before batch 14 runs." So
+the delta does not just close a wording gap — it gives the one known live divergence a defined
+landing. The defect itself is against an already-landed task and out of scope for this document; I
+carry it forward as a `DEFERRED:` line rather than folding it into this verdict.
+
+DEFERRED: `selectLearnings`'s `RSN-NO-MATERIAL` drop carries a second branch condition
+(`&& hasAnySectionHeadingLine(entry.text)`) that TSPEC §D.5 forbids — an implementation defect against
+landed LI-16, still present at HEAD, first reported in CROSS-REVIEW-test-engineer-PLAN-v10.md.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
