@@ -138,6 +138,34 @@ No new edge case is created by the delta, and no existing §5 row is made false 
 
 ## Acceptance Tests
 
+The testability question for a cascade round: does any AT become unwritable or silently false-green
+under REQ v1.16, and does every REQ clause still land on at least one AT?
+
+| AT | Leans on | Under REQ v1.16 |
+|---|---|---|
+| **AT-06-4** | BR-14, AC-6.3 | **Under-specified.** *Then* reads "the report carries the diagnosis and the root-cause class" — full stop. AC-6.3 now has two obligations and this AT asserts one. A run that omits the overwrite warning is GREEN here. This is the concrete false-green the delta opens. |
+| AT-06-1 / -06-2 / -06-3 / -06-5 / -06-6 | AC-6.1, AC-6.2, AC-6.4, E-29, E-30 | Unaffected in oracle content; AT-06-6 inherits E-30's narrowed enumeration (F-02) as a spec-side ambiguity, not a broken assertion. |
+| AT-05-1 / -05-2 / -05-3 / -05-4 | AC-5.1, BR-9, BR-10 | Unchanged; confirmed in v3 against REQ v1.15, untouched by v1.16. |
+| AT-01-x, AT-02-x, AT-03-x, AT-04-x, AT-07-x | AC-1.x … AC-4.x, NFR-1 | Untouched by the delta; not re-reviewed. |
+
+**The AT the delta requires, stated so it can be written today.** *Who:* an operator reading a halt
+report. *Given* a halt following an A6 escalation in which a pre-A6 tree state **was** captured.
+*When* the halt report is produced. *Then* three positive conjuncts on that one report: (1) it carries
+the diagnosis and root-cause class; (2) it names the captured pre-A6 tree state; (3) **the same
+report** states that re-running this feature overwrites that capture. Plus the negative companion, on
+the E-34 fixture (capture failed): the report carries diagnosis and class and names no capture and no
+overwrite warning — which is what makes conjunct (3) falsifiable rather than a string that could be
+printed unconditionally.
+
+Two oracle notes for whoever writes it:
+
+- **Assert on the artifact, not the channel.** The oracle must read the halt report itself. Asserting
+  "the warning was emitted somewhere in run output" would pass a split-channel implementation and
+  defeat AC-6.3's "in the same place".
+- **Do not pin the capture's name in the FSPEC-level AT.** The ref name is O-1/TSPEC's (DEC-A6-03 owns
+  `refs/pdlc/a6-snapshot-{waveNum}`). The FSPEC-level oracle asserts co-location and the presence of
+  the overwrite statement; the TSPEC-level test may pin the literal.
+
 ## Open Questions
 
 ## Positive Observations
