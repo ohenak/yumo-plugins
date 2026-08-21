@@ -277,7 +277,15 @@ split is untouched. **OB-F4 remains blocked on OB-F1** — the baseline file is 
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | §1 pins the upstream as "REQ-pdlc-wave-resume.md **v1.5**"; REQ at HEAD is v1.7. The provenance pin names a version the document no longer derives from — now stale by two erratum rounds. The sentence's substance (adds no requirement of its own) was re-checked and holds. | FSPEC §1, "derives entirely from … v1.5" |
+| F-02 | Low | inherited | local | OB-F1 states REQ's "§10 records BL-04 as 'discharged at FSPEC authoring'". §10 said the opposite already at v3, and this round's E-2 withdraws the phrase from §5's BL-04 row too, so it exists nowhere in REQ. The erratum landed the FSPEC's own ask; the FSPEC's narration of it was not updated. OB-F1's substance (branch base unmet) remains open and correct. | FSPEC §7, OB-F1 |
+| F-03 | Low | inherited | local | §7's round-1 revision note cites two REQ strings as open routed defects — REQ-WVR-08's "Phase I produces no new commit" and "REQ's discharge of BL-04". Both are withdrawn upstream (the second now in §5 as well as §10); the citations point at text REQ no longer carries. Restate in the tense of a landed change. | FSPEC §7, round-1 revision note |
+
+FINDING: Low | inherited | nonlocal | FSPEC §1 upstream version pin | §1 says the FSPEC "derives entirely from `REQ-pdlc-wave-resume.md` v1.5"; REQ at HEAD is v1.7, so the provenance pin names a version that no longer exists — stale by two erratum rounds, false before this round and widened by it
+FINDING: Low | inherited | local | FSPEC §7 OB-F1 closing clause | OB-F1 quotes REQ §10 as recording BL-04 "discharged at FSPEC authoring"; §10 already said the opposite at v3 and this round's E-2 removes the phrase from §5's BL-04 row as well, so it is absent from REQ entirely — the erratum landed the FSPEC's ask and the narration was not updated
+FINDING: Low | inherited | local | FSPEC §7 round-1 revision note | the note cites REQ-WVR-08's deleted string "Phase I produces no new commit" and "REQ's discharge of BL-04" as open routed defects; both are withdrawn upstream, the latter now in §5 as well as §10, so both citations point at text REQ no longer carries
 
 ## Verdict
 
