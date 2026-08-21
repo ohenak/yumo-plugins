@@ -110,6 +110,44 @@ approved in my v4 on verified grounds; I did not re-litigate them.
 
 ## Oracles
 
+- **§O.9's T-O-6 paragraph (PROPERTIES:785–801) is the finding's fix, and it goes further than the fix
+  needed to.** Beyond restoring `0` to the domain and quoting TSPEC §T.5, it answers my v4 Q-01
+  explicitly: the zero conjunct "rides as a **guarded branch inside the same property body**" *and* `0`
+  is "additionally **pinned as a distinguished example case** in the same suite rather than left to
+  sampling frequency, so LI-08's red is reproducible on any seed". That is the right engineering answer
+  — a generator that samples `0` with probability ~1/N gives a flaky red; the pinned case makes LI-08's
+  red deterministic while the generated arm still carries the all-inputs claim. The paragraph also keeps
+  the failure mode TSPEC warned about visible ("Running the generator with `0` unguarded, against the
+  un-amended cut-and-flag rule … would red a conforming implementation"), which is the sentence that
+  stops a future reader from "simplifying" the guard away.
+- **§O.5's new row is stated at the right altitude.** My v4 warned that a lazily-copied reason column
+  would be wrong for PROP-CONFIG-09; the row instead splits the claim — run-level half L3 (reason id,
+  unconsumed slot, only a finished report records them), unit-level half explicitly *not* placed here
+  and pointed at PROP-BOUND-03. The header count moved 5 → 6 with it, so the table remains a closed
+  enumeration of deliberate L3 cost rather than a list that grew silently.
+- **§O.7's precedence order and §O.8's M-5 ledger** — untouched by the delta, unchanged in effect. The
+  zero-bound defeater PROP-CONFIG-09 carries ("the fixture must carry material") still does its job:
+  with PROP-BOUND-03 now also asserting the unit-level zero return, the two are complementary defeaters,
+  not duplicates.
+- **§O.1–§O.4, §O.6** — untouched, not re-reviewed. My standing Medium from v2/v3 on the shared static
+  walk's operand (§O.1 versus §C.4's hand-transcribed literal) remains open as previously recorded and is
+  not re-raised here.
+- **§G.1's T-O-6 row** now reads "The partition is by **observable, not by input**" and closes with "No
+  input of §D.5 is unclaimed, and no observable is claimed twice." Unlike v0.2's version of that
+  sentence, this one is true — I checked it by enumerating the two properties' observables (see
+  §Properties above) rather than by accepting the claim.
+- **§G.2.1's episode entry** is amended honestly: it records that an earlier revision "briefly excluded
+  `0` from both, which TSPEC v0.9 §T.5 had already rejected in terms; that exclusion is retracted".
+  Recording the retraction rather than rewriting history is the behaviour that makes this ledger worth
+  keeping at harvest time.
+- **§G.3 is re-opened correctly.** v0.2 wrote "**Still open:** nothing" above a bullet that was still
+  open — the AT-15 suite-assignment mismatch. v0.3 re-labels it "**Still open — one item, re-routed this
+  round**" and cites the TSPEC row. I verified the mismatch is real at HEAD: `TSPEC:1209` lists AT-15 in
+  `learningsSelect.test.js` at level **L1**, while PROPERTIES:162 asserts AT-15's clauses 2–3 at L2/L3
+  (and PLAN:146 works around it with an expected-red ledger entry for batches 8–10). That is an upstream
+  TSPEC defect, not a defect of this document; I route it as an erratum rather than folding it into the
+  verdict.
+
 ## Fixtures
 
 ## Findings
