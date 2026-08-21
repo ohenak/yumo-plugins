@@ -110,6 +110,52 @@ row, which is the same defect the routed item named. Filed as F-03, Medium.
 
 ## Dependencies
 
+**No `Deps` edge changed.** The diff contains no line inside §Dependencies and no `Deps` cell. This
+delta scheduled nothing.
+
+**Item 1 — the commit re-pins — is fully resolved, and I resolved every pin myself.** The three
+pre-rebase hashes I raised at v12 are gone from the document; `git log` confirms `92b7ea0c`,
+`d462ddd8` and `2cbacada` are all unreachable from HEAD, and the three replacements resolve to the
+right tasks on the branch:
+
+| Pin | Resolves to | Reachable from HEAD |
+|---|---|---|
+| LI-21 `e7fa8d87` | `feat(pdlc-learnings-injection): LI-21 — GREEN the run wiring and the report key` | yes |
+| LI-16 `be2456c8` | `feat(pdlc-learnings-injection): LI-16 — GREEN pure core (TSPEC §I.3, §D.3–§D.6)` | yes |
+| LI-17 `a4998e13` | `feat(pdlc-learnings-injection): LI-17 — GREEN renderer, renderLearningsBlock({selected})` | yes |
+
+The re-pin is applied consistently: case C's *When* and outcome cells, the v0.8 changelog row and
+the v1.1 changelog row all carry the new triple, so no reader lands on a hash they cannot resolve.
+Re-pinning the historical changelog rows rather than leaving them "correct as of the day" is the
+right call and the 1.2 row explains why in one sentence — those rows assert what is landed *at
+HEAD*, so an unresolvable pin falsifies the claim rather than dating it. These are the same commits
+under post-rebase identity; no historical claim changed. Item 1: closed.
+
+**PROPERTIES agrees from its end.** §C.4 of PROPERTIES pins the same three commits (`e7fa8d87`,
+`be2456c8`, `a4998e13`) and the same measurement anchor `09c7c62f`, so the two documents now name
+one set of commits between them. That was the asymmetry my v12 raise was about, and it is closed.
+
+**One PROPERTIES-side lag, recorded rather than raised.** §C.4's closing paragraph still offers case
+B's route — "or, if it lands red, its rows are amended into the ledger by name first, under the same
+P-A-7 rule" — which is the wording this PLAN's P-A-6 cell corrected at v1.1 by routing to "P-A-7's
+governing case" instead. At HEAD that governing case is C, where no ledger remains to amend into.
+The PLAN's side is right; the lag is downstream's field to advance, and recording it here keeps the
+finding with its owner rather than charging this document for it.
+
+**No upstream drift.** DEC-ERR-03 asks whether this PLAN is still a faithful compression of upstream
+at upstream's current version. I re-hashed all four: REQ, FSPEC, TSPEC and DECISIONS match the
+dispatch pins byte for byte, so nothing the changed regions cite has moved. The one upstream-facing
+claim the new bytes make is case C's production paragraph (an optional ordinal stripped via
+`SECTION_HEADING_RE`, an optional trailing gloss stripped, case-sensitive comparison against
+`BR6_SECTION_NAMES`, `###` never matching `^##[ \t]+`), carried byte-identical from the bytes I
+approved at v13. I re-derived it from shipped source at HEAD: `SECTION_HEADING_RE` is
+`/^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/` at `orchestrate-dev.js`, `canonicalSectionName` tests
+`BR6_SECTION_NAMES.includes(title)` before its gloss loop, and no `###` line can match a
+`^##[ \t]+` anchor. All four clauses hold. Note in passing that `2fc6fcd3` also rewrote the
+`RSN-COUNT` comment in the same file from "routed as `ERRATUM: FSPEC`" to "stated upstream as of
+FSPEC v0.14's BR-6 … there is nothing left routed" — code and specification agree at HEAD, which is
+consistent with the FSPEC I hashed, and is a further reason that production write deserved a row.
+
 ## Verification
 
 ## Findings
