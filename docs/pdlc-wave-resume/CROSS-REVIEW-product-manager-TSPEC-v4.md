@@ -176,7 +176,50 @@ TSPEC gave. That is the erratum doing what errata are for.
 
 ## Test Strategy
 
-_TBD_
+Product lens only: has any acceptance criterion's oracle changed meaning now that FSPEC reads as
+it does? For the eighteen ATs, **no** — the edit adds no AT, retires none, and rewords none. I
+re-read FSPEC §5's AT table at HEAD and diffed it against the version my v2 approval pinned: it is
+byte-identical. TSPEC §5.4's AT-by-AT oracle table is therefore still complete and still
+set-equal to the upstream catalogue it discharges. That half of my approval stands unexamined and
+I say so plainly rather than implying I re-derived it.
+
+**But the edit specifies a behaviour and gives it no oracle, and TSPEC's §5 inherits that gap.**
+This is the one finding of this round that is not pure bookkeeping. FSPEC §3.4 now states, as
+specified behaviour, that an operator-pointed run records completed waves in plan-absolute
+high-water form. I traced that claim to a test and could not land on one:
+
+- **AT-05** (operator override wins) asserts the resume point and the provenance token on the
+  operator banner, and asserts the record was never *consulted*. It says nothing about what the
+  run *writes*.
+- **AT-07** (pointer past the end) asserts the notice, the dispatch count and no consultation.
+  Again, nothing about the write.
+- **AT-15 / AT-15a** (best-effort write, partial-failure arm) and **AT-18** (completion
+  accumulates across invocations) are the write-side oracles, and both are automatic-provenance
+  runs. AT-18 in particular is the plan-absolute discriminator — but its three runs are all
+  record-driven, so a mutation that suppressed the write *only* under `explicitPointer` would
+  leave AT-05, AT-07, AT-15 and AT-18 all green.
+
+That mutation is exactly the behaviour FSPEC's new sentence forbids, and it is a plausible one:
+"an operator-pointed run should not write, because the pipeline did not verify the predecessors"
+is a reasonable-sounding implementation instinct, and it is the position §2.5 explicitly rejected
+on the grounds that it "would make an operator-pointer run unable to record anything, losing
+resume for the very recovery path the feature serves". Before this round that argument was
+TSPEC's own ratification with no upstream clause to trace to, so an untested claim was
+defensible. Now it is specified upstream and still untested. F-03 below asks for the one oracle
+that closes it — an operator-pointed run's written record, asserted for `lastGreenWave` as a
+plan-absolute number — most cheaply as a conjunct on AT-05 rather than a new AT.
+
+**§5.5's mutation list is the other place this shows.** Item 3, "recording a run-relative wave
+number", is killed only by AT-18. Adding the write assertion to AT-05 would also give the mutation
+"suppress the write when `explicitPointer` is true" a killer, which nothing in §5.5 currently
+names. I raise this as part of F-03 rather than separately; it is the same missing assertion seen
+from the mutation side.
+
+**Unreached by the edit, and not re-derived here:** the three set-equality suites (§5.4
+AT-02/AT-08/AT-13), AT-03/AT-11's `merge-base` call-count equality that discharges REQ C-3,
+AT-16's delegation-shape oracle and DEC-WVR-07's rejected alternatives, AT-14's ignore-rule
+assertion and its PLAN sequencing precondition, and the generative suite of §5.7. All still carry
+the oracles I approved at v2 and v3 against bytes that have not moved.
 
 ## Open Questions
 
