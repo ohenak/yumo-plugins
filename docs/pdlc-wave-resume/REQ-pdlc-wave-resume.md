@@ -10,7 +10,7 @@ depends-on: [pdlc-consolidation-agent, pdlc-advisory-wave-gate]
 |---|---|
 | Status | Draft |
 | Author | pm-author (operator-directed session, 2026-08-09) |
-| Version | 1.5 |
+| Version | 1.6 |
 | Upstream | **REQ** |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | (none yet) |
@@ -34,6 +34,11 @@ move to symbol and banner-string names (SE G-02, TE G-04); REQ-WVR-08 names its 
 **Amendment, 2026-08-21 (v1.5) — round-3 cross-review.** §1 separates never-written from
 discarded and cites the write's guard re-derivably (SE F-01, F-03; TE H-03); OQ-1's banner recipe
 matches both banners (SE F-02, TE H-01); §10 enumerates all of §5 (TE H-02, Q-01).
+
+**Erratum, 2026-08-21 (v1.6) — Phase F erratum round.** §1's wave count and replay cost are
+restated to match OF-1; REQ-WVR-02 notes that IG labels name causes, not precedence; REQ-WVR-08's
+no-commit claim is scoped to the implementation wave loop, with Phase PT's V-wave excluded; §10
+records BL-04 as open and unmet rather than discharged. Nothing else changed.
 
 **Note on this branch's base (SE F-01, F-02).** This feature branch is 1,637 commits behind the
 default branch and predates the merge of the mechanism §1 describes; the code claims in this REQ
@@ -543,5 +548,8 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 
 Registered in `docs/_queue/QUEUE.md` as Order 20; project matrix row in
 `docs/requirements/traceability-matrix.md`. Readiness over the whole §5 table (TE H-02): BL-01,
-BL-02, BL-03 resolved at HEAD; BL-04 open, discharged at FSPEC authoring and
-**not** a pickup gate — so `ready: true` is accurate today.
+BL-02, BL-03 resolved at HEAD; BL-04 is **open and unmet** — it was not
+discharged at FSPEC authoring, and the authoring tree still carries neither the resume mechanism
+nor `docs/_constraints/pdlc-wave-gate-baseline.md`, being 1,637 commits behind the default
+branch. It is owed before implementation and is **not** a pickup gate — so `ready: true` is
+accurate today.
