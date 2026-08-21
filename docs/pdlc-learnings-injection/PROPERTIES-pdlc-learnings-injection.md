@@ -1123,13 +1123,16 @@ F-01).** PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments — **fo
 three — land in `learningsBlock.test.js`. That suite is not merely landed but **greened**: its red
 owner LI-08 landed at `8eee671f` and its green owner LI-17 at `a4998e13`, and LI-16 — the task PLAN
 v0.7 names as the owner of TSPEC §D.5's zero-bound production half — landed at `be2456c8`. So of
-PLAN's **three**-case table at v0.8, **case C is the live case** and cases A and B are both behind
-us: case A is scoped to a follow-up commit landing *before batch 7*; case B is scoped to *"after
+PLAN's **three**-case table (added at v0.8, re-pinned here to PLAN **v1.3** at HEAD — PM v12 F-01, SE
+v12 F-01), **case C is the live case** and cases A and B are both behind
+us: case A is scoped to a follow-up commit landing *"before batch 9 (which includes batches 7 and
+8)"*; case B is scoped to *"after
 LI-17 has greened the suite, with a greening batch still ahead (batch 9 through batch 12)"*, and
-batch 13 is behind us. Case C — *"after batch 13, the case that is live at HEAD"* — names these four
+batch 13 is behind us. Case C — *"batch 13 or later, the case that is live at HEAD"* — names these four
 properties by name and rules the opposite obligation from case B's: **the ledger stays empty and the
-amendment is expected to land green.** PLAN states it in terms: *"under case C they owe no ledger
-row, and they owe green."*
+amendment had to be green at the commit that landed it.** PLAN states it in terms: *"under case C they owe no ledger
+row, and they owe green."* PLAN v1.2 turned that limb from expectation into record — *"this row
+records an outcome, not a pending expectation"* — which is the reading the next paragraph already took.
 
 **Case C is now discharged, not pending — all four have landed, and landed green.** Earlier
 revisions of this paragraph asserted that **none of the four is present in the landed suite** and
