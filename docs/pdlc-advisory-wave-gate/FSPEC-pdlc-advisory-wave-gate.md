@@ -317,6 +317,14 @@ Who/Given/When/Then. Each test names the FSPEC clause it falsifies. A test that 
 behaviour existing is not listed; where the only honest oracle is a set-equality or a sequence
 equality, it is stated as such rather than as an absence.
 
+**Pre-A6 comparands are transcribed literals.** Four oracles below compare against "the pre-A6
+baseline" or "the reason the pre-A6 pipeline emits" — AT-01-3, AT-01-4, AT-04-1, AT-05-3. No pre-A6
+pipeline remains to run: A6 merged at `bb4d36fb` and the default-branch catalogue now reads six
+(`pdlc-wave-gate-baseline.md` §4). The expected halt-reason string, the `halted` queue-row value and
+the created-file set are therefore **literals transcribed into the fixture once**, from M-WG-3 and
+M-WG-7 at baseline v1.2; a comparand re-derived from the code under test compares the pipeline
+against itself and passes unconditionally.
+
 ### 6.1 FSPEC-AWG-01 — Seam, trigger, inertness
 
 - **AT-01-1** — *Who:* the workflows suite. *Given* the advisory seam catalogue and every surface
@@ -340,9 +348,12 @@ equality, it is stated as such rather than as an absence.
 ### 6.2 FSPEC-AWG-02 — Invocation contract
 
 - **AT-02-1** — *Who:* the workflows suite. *Given* the four-member classification vocabulary. *When*
-  compared by set-equality against its transcribed literal. *Then* it is exactly
-  `plan-ordering-defect`, `wave-internal-defect`, `environmental`, `unclassified`. A deleted or
-  invented class fails. *(BR-2, AC-2.2.)*
+  compared by **ordered-sequence** equality against its transcribed literal. *Then* it is exactly
+  `plan-ordering-defect`, `wave-internal-defect`, `environmental`, `unclassified`, in that order. A
+  deleted or invented class fails, and so does a reordering — which set equality would pass.
+  *Given instead* a gate output matching both class 1 and class 2. *When* it is classified. *Then*
+  the class reported is `plan-ordering-defect` and exactly one class is carried; the arm is what
+  makes the ordering load-bearing rather than decorative. *(BR-2, E-08b, AC-2.2.)*
 - **AT-02-2** — *Who:* the workflows suite. *Given* a verdict whose classification is absent, and a
   second whose classification is outside the set. *When* each is received. *Then* both read as
   `unclassified`, both escalate, and the attempt count is unchanged in both. *(E-08, BR-2.)*
@@ -370,7 +381,7 @@ equality, it is stated as such rather than as an absence.
   reason string alone. The window is BR-11's: one dispatch, dispatch→verdict; the
   companion's slow gate command sits between dispatches, outside every measured window. *(E-25, NFR-4, BR-11.)*
 - **AT-02-8** — *Who:* the workflows suite. *Given* a verdict classified `environmental`, and a second classified `unclassified`, each carrying no repair proposal. *When* each is received. *Then* in both the terminal disposition is `escalated`, no repair is applied and no restoration is performed, the outcome carries **no** refusal reason, and the escalation-log entry carries the root-cause class. The assertion on the absent reason is paired with the positive assertions beside it, so a run that never reached the seam cannot satisfy it. *(E-11, E-19, BR-2, BR-15.)*
-- **AT-02-9** — *Who:* the workflows suite. *Given* `advisory.attemptBudget` at `1` and a wave whose re-gate stays red. *When* the wave terminates. *Then* exactly **one** A6 dispatch occurred on that wave and the disposition is `escalated` with `budget-exhausted`. *Given instead* `advisory.attemptBudget` at `2` under the same red re-gate. *Then* exactly **two** dispatches occurred. Counted, never bounded: a "no more than" oracle passes an implementation that dispatches none. *(E-24, BR-11, §3.2 step 3b.)*
+- **AT-02-9** — *Who:* the workflows suite. *Given* `advisory.attemptBudget` at `1`, `advisory.seamBudgetMinutes` pinned high enough that no window can exhaust it, and a wave whose re-gate stays red. *When* the wave terminates. *Then* exactly **one** A6 dispatch occurred on that wave and the disposition is `escalated` with `budget-exhausted`. *Given instead* `advisory.attemptBudget` at `2` under the same red re-gate. *Then* exactly **two** dispatches occurred. Counted, never bounded: a "no more than" oracle passes an implementation that dispatches none. *(E-24, BR-11, §3.2 step 3b.)*
 
 ### 6.3 FSPEC-AWG-03 — Envelope
 
@@ -378,7 +389,7 @@ equality, it is stated as such rather than as an absence.
   set-equality over member ids. *Then* it is exactly `E-1`…`E-6`. One set-equality, not prose joining
   two sets. *(BR-4, AC-3.1.)*
 - **AT-03-2** — *Who:* the workflows suite. *Given* a proposal confined to the failing wave's own
-  owned paths, where one of those paths is a test file. *When* the envelope is classified. *Then* it is refused, and the reason reported is the test-artifact exclusion's — the reason the ordered catalogue yields when that clause matches first — not the declared-scope exclusion's and not a permit under E-5. Asserting the reason is what makes the precedence claim falsifiable. *(E-14, BR-5.)*
+  owned paths, where one of those paths is a test file. *When* the envelope is classified. *Then* it is refused, and the reason reported is `revert-on-test-touch`, the literal BR-15 transcribes for `X-a`, which precedes `X-d` in BR-5's order — not the declared-scope exclusion's `out-of-envelope` and not a permit under E-5. Asserting the reason is what makes the precedence claim falsifiable. *(E-14, BR-5.)*
 - **AT-03-3** — *Who:* the workflows suite. *Given* a wave owning a self-modification guard path and
   a proposal confined to it. *When* the envelope is classified. *Then* the refusal reason is
   `out-of-envelope`. *(E-15, BR-5.)*
@@ -391,13 +402,15 @@ equality, it is stated as such rather than as an absence.
   envelope. *When* it is evaluated. *Then* no part of it is present in the tree afterwards and the run
   does not report the wave resolved. *(E-16, AC-3.5.)*
 - **AT-03-7** — *Who:* the workflows suite. *Given* the refusal-reason catalogue. *When* compared by
-  set-equality. *Then* it still has exactly eight members in the shipped order; A6 added none. Ordered-sequence equality, never set equality. *(BR-15, AC-3.4.)*
-- **AT-03-8** — *Who:* the workflows suite. *Given* the shipped exclusion catalogue. *When* compared against its transcribed literal. *Then* the comparison is **ordered-sequence** equality over clause ids and the sequence is unchanged by A6. The order decides which reason a matching proposal reports, so a reordering must fail this test where a set assertion would pass it. *(BR-5, AC-3.2.)*
+  **ordered-sequence** equality against the eight-member literal BR-15 transcribes. *Then* it still
+  has exactly those eight members in that order; A6 added none. Ordered-sequence equality, never set
+  equality. *(BR-15, AC-3.4.)*
+- **AT-03-8** — *Who:* the workflows suite. *Given* the shipped exclusion catalogue. *When* compared against the five-clause literal BR-5 transcribes. *Then* the comparison is **ordered-sequence** equality over clause ids and the sequence is unchanged by A6. The order decides which reason a matching proposal reports, so a reordering must fail this test where a set assertion would pass it. *(BR-5, AC-3.2.)*
 
 ### 6.4 FSPEC-AWG-04 — What A6 may never do
 
 - **AT-04-1** — *Who:* the workflows suite. *Given* any A6 verdict, including one asserting the wave
-  is fixed with the highest confidence. *When* the gate command still returns non-zero on re-gate. *Then* three positive assertions on that one run: disposition equals `escalated`; the halt reason equals the reason the pre-A6 pipeline emits for the same gate failure (AT-05-3's literal), so the halt is the wave's own; resolved-wave count `0`. AC-4.1's conjunct (ii); restoration is AT-05-1's. Each conjunct gets its own run — none exhibits two. *(BR-7, AC-4.1, AC-5.2.)*
+  is fixed with the highest confidence. *When* the gate command still returns non-zero on re-gate. *Then* three positive assertions on that one run: disposition equals `escalated`; the halt reason equals the reason the pre-A6 pipeline emits for the same gate failure (AT-05-3's literal), so the halt is the wave's own; resolved-wave count `0`. AC-4.1's conjunct (ii); restoration is AT-05-1's. The three assertions share this one run; it is AC-4.1's *conjuncts* that are split one per run across AT-04-1/-1a/-1b, so no run exhibits two conjuncts. *(BR-7, AC-4.1, AC-5.2.)*
 - **AT-04-1a** — *Who:* the workflows suite. *Given* an applied in-envelope repair. *When* the gate
   re-runs green. *Then* the wave is reported resolved, proceeds, and that green invocation
   appears in AT-04-2's sequence. Conjunct (i). *(BR-7, AC-4.1, AC-4.4.)*
@@ -421,16 +434,17 @@ equality, it is stated as such rather than as an absence.
 - **AT-04-5** — *Who:* an operator inspecting the branch. *Given* a wave A6 resolved under E-6. *When*
   the wave's commit step completes. *Then* the repair is in the branch's committed state and no
   uncommitted working-tree change from the repair remains; the advisory record names the repair's
-  paths and the later PLAN task that owns them; and that later task's dispatch is told the promotion already exists. Companion case, chosen to be red against today's behaviour: the same scenario with the later task's paths **outside** every configured post-wave pathspec, so the shipped commit loop — which commits only paths owned by tasks *in* the wave (M-WG-12) — leaves the repair uncommitted. It must fail before the fix and pass after; a fixture whose later-task paths sit inside a post-wave pathspec asserts nothing new. *(BR-12, AC-4.6, M-WG-12.)*
+  paths and the later PLAN task that owns them; and that later task's dispatch is told the promotion already exists. Companion case, chosen to be red against today's behaviour: the same scenario with the later task's paths **outside** every configured post-wave pathspec, so the shipped commit loop — which commits only paths owned by tasks *in* the wave (M-WG-12) — leaves the repair uncommitted. It must fail before the fix and pass after (against the base M-WG-8 was measured at, §2); a fixture whose later-task paths sit inside a post-wave pathspec asserts nothing new. Second companion, for the durability half: after the E-6 resolution a later wave halts and the run is re-invoked, re-entering Phase I at wave 1 and re-dispatching every wave (M-WG-6). *Then* the later task's fresh dispatch is still told the promotion exists — read from the branch's committed state and the advisory record, both durable — so an in-run-only signal fails this arm. *(BR-12, AC-4.6, M-WG-12, M-WG-6.)*
 
 ### 6.5 FSPEC-AWG-05 — Reversibility and the unchanged halt
 
 - **AT-05-1** — *Who:* the workflows suite. *Given* a refusal, a budget exhaustion, and a red re-gate
-  in three separate runs. *When* each terminates. *Then* in each the working tree is observably identical to the wave's post-dispatch, pre-commit tree, with the wave agents' own uncommitted work intact. "Observably identical" is BR-9's content-level oracle: the path-to-content-hash map over tracked and untracked files, generated outputs included, equals the map taken before A6 acted. A `git status` comparison does not discriminate here and must not be the oracle. *(BR-9, AC-5.1.)*
+  in three separate runs. *When* each terminates. *Then* in each the working tree is observably identical to the wave's post-dispatch, pre-commit tree, with the wave agents' own uncommitted work intact. "Observably identical" is BR-9's content-level oracle, with BR-9's domain and observation point: the path-to-content-hash map over tracked and **non-ignored** untracked files, generated outputs included, taken immediately after restoration completes and before the record and escalation writes, equals the map taken before A6 acted. Ignored paths are excluded on both sides — an implementation that restores one fails this test rather than passing it — and a file the repair created is asserted **absent**, not merely reset. A `git status` comparison does not discriminate here and must not be the oracle. *(BR-9, AC-5.1.)*
 - **AT-05-2** — *Who:* the workflows suite. *Given* a red re-gate on a run with a configured post-wave
   command that writes generated outputs. *When* the tree is restored. *Then* those generated outputs
   match the pre-A6 tree too, demonstrating whole-tree rather than per-path restoration — a case a
-  repair-paths-only restore fails. *(BR-9, AC-4.4.)*
+  repair-paths-only restore fails. The outputs the case ranges over are non-ignored ones; a fixture
+  whose generated output is `.gitignore`d tests nothing here, since BR-9 puts it outside the map. *(BR-9, AC-4.4.)*
 - **AT-05-3** — *Who:* an operator. *Given* a wave A6 did not resolve. *When* the run halts. *Then*
   the halt reason equals the reason the pre-A6 pipeline emits for the same gate failure, and the queue
   row is written `halted` exactly as today. *(BR-14, AC-5.2, M-WG-3, M-WG-7.)*
@@ -458,7 +472,7 @@ equality, it is stated as such rather than as an absence.
 
 ### 6.7 FSPEC-AWG-07 — Non-functional
 
-- **AT-07-1** — *Who:* the workflows suite. *Given* each **agent-proposable** boundary in §4 — E-5's scope rule, E-6's two halves, and the rules the partition below names proposable. *When* a stub agent double returns a violating proposal — no live model, no prompt, the form AT-03-5 already uses. *Then* the proposal is refused by the workflow script, the shipped refusal reason is reported, and the working tree is unchanged — **except the BR-2 arm**, which carries BR-2's own outcome instead: an out-of-set class reads `unclassified`, authorises nothing, and the wave escalates with **no** refusal reason and **no** attempt consumed, the tree still unchanged (the shipped catalogue holds no reason for an out-of-vocabulary class; AT-02-8 pins the same path). The BR-3 arm pins `advisory.attemptBudget` to `1`, so the reported reason is the malformed-verdict one rather than the budget one a longer fixture would terminate on. The partition over BR-1…BR-16 is total, so no rule is left silently unlisted; BR-16's claim that every §4 boundary is script-enforced is discharged, not sampled. **Proposable, asserted here:** BR-2 (a class outside the vocabulary, under its own *Then* above), BR-3 (a diagnosis citing no gate output), BR-5, BR-6, BR-7 (a verdict asserting the wave is fixed, AT-04-1's case re-run through the stub double), BR-8. **Not proposable, by construction:** BR-1, BR-4, BR-9…BR-16, each decided by the script before or after any proposal is read, so no proposal can violate it. *(BR-16, NFR-1, BR-2, BR-3, AT-02-8.)*
+- **AT-07-1** — *Who:* the workflows suite. *Given* each **agent-proposable** boundary in §4 — E-5's scope rule, E-6's two halves, and the rules the partition below names proposable. *When* a stub agent double returns a violating proposal — no live model, no prompt, the form AT-03-5 already uses. *Then* the proposal is refused by the workflow script, the shipped refusal reason is reported, and the working tree is unchanged — **except the BR-2 arm**, which carries BR-2's own outcome instead: an out-of-set class reads `unclassified`, authorises nothing, and the wave escalates with **no** refusal reason and **no** attempt consumed, the tree still unchanged (the shipped catalogue holds no reason for an out-of-vocabulary class; AT-02-8 pins the same path). The BR-3 arm pins `advisory.attemptBudget` to `1`, so the reported reason is the malformed-verdict one rather than the budget one a longer fixture would terminate on. The partition over BR-1…BR-16 is total, so no rule is left silently unlisted; BR-16's claim that every §4 boundary is script-enforced is discharged, not sampled. **Proposable, asserted here:** BR-2 (a class outside the vocabulary, under its own *Then* above), BR-3 (a diagnosis citing no gate output), BR-4 (E-5's scope rule and E-6's two halves, the arms the *Given* names first), BR-5, BR-6, BR-7 (a verdict asserting the wave is fixed, AT-04-1's case re-run through the stub double), BR-8. **Not proposable, by construction:** BR-1, BR-9…BR-16, each decided by the script before or after any proposal is read, so no proposal can violate it. *(BR-16, NFR-1, BR-2, BR-3, AT-02-8.)*
 - **AT-07-2** — *Who:* the workflows suite. *Given* the transcribed set-equality surfaces M-WG-9
   names — the seam catalogue, the envelope defaults, the advisory config key set, the two
   catalogue-driven surfaces, and the disabled-tier fixtures. *When* the suite runs. *Then* each has
