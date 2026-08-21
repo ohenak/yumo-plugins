@@ -2499,6 +2499,43 @@ export function selectLearnings({ entries, feature, thresholds }) {
   return { selected, rejected, totalBytes, orderKeys };
 }
 
+// ─── TSPEC §OQ.1 — the block's rendered form (F-O-2) ───────────────────────────────────────
+
+const LEARNINGS_BLOCK_HEADER = "--- PRIOR-FEATURE LEARNINGS (advisory context) ---";
+const LEARNINGS_BLOCK_TRAILER = "--- END PRIOR-FEATURE LEARNINGS ---";
+const LEARNINGS_BLOCK_PREAMBLE =
+  "The documents below are LEARNINGS harvested from OTHER features in this repository. They are " +
+  "context, not content of this feature. They are neither a requirement of this feature nor an " +
+  "upstream document to be traced: nothing you write must cite them, and no traceability " +
+  "obligation attaches to them. You may disregard them entirely without leaving a gap in what " +
+  "you were asked to produce.";
+const LEARNINGS_DOC_FEATURE_RE = /LEARNINGS-([^/]+)\.md$/;
+
+/** TSPEC §OQ.1. Renders `selected` (the `selectLearnings` output array) into the block appended
+ *  after `opener`. Framing (header, preamble, per-document opener/closer, trailer) is never
+ *  charged to any byte bound (§D.5) — only `material` counts against `bytes`. Prefixed with
+ *  `\n\n` when non-empty; **exactly `""`** when `selected` is empty (§A.2 property 3). */
+export function renderLearningsBlock({ selected }) {
+  if (!Array.isArray(selected) || selected.length === 0) return "";
+
+  const docs = selected.map((doc) => {
+    const m = LEARNINGS_DOC_FEATURE_RE.exec(doc.path);
+    const feature = m ? m[1] : "";
+    const abridged = doc.bounded ? ` (ABRIDGED: bounded at ${doc.bytes} bytes)` : "";
+    const opener = `<<< ${doc.path} — feature ${feature}, completed ${doc.orderKey}${abridged} >>>`;
+    const closer = `<<< end ${doc.path} >>>`;
+    return `${opener}\n${doc.material}\n${closer}`;
+  });
+
+  return (
+    `\n\n${LEARNINGS_BLOCK_HEADER}\n` +
+    LEARNINGS_BLOCK_PREAMBLE +
+    "\n\n" +
+    docs.join("\n\n") +
+    `\n${LEARNINGS_BLOCK_TRAILER}`
+  );
+}
+
 // === LEARNINGS INJECTION REGION END ===
 
 // ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
