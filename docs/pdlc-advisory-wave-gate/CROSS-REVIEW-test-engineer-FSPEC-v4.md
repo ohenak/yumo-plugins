@@ -207,4 +207,27 @@ FINDING: Low | inherited | nonlocal | §4 BR-9, observation point | BR-9 names t
 
 ## Recommendation
 
+**Needs revision.** FSPEC v1.6 no longer holds as approved against REQ v1.16. One High finding, and
+it is the finding this confirmation exists to catch: the erratum landed a new operator-visible
+obligation in AC-6.3 and FSPEC compresses no part of it — no rule, no branch, no assertion. The
+concrete failure mode is a false green: a halt report that names the captured pre-A6 tree state and
+never warns the operator that the ordinary next action destroys it passes every FSPEC rule and
+AT-06-4 as written.
+
+The revision is bounded and reopens nothing:
+
+1. **BR-14** — add the one-sentence obligation (pointer and warning co-located in one artifact;
+   capture's name and storage form remain O-1's).
+2. **§3 step 10** — state the two arms so the branch is testable: capture-exists (diagnosis + class +
+   overwrite warning) and no-capture / E-34 (diagnosis + class, no warning).
+3. **E-34** — name the negative arm explicitly; **E-30** — stop re-enumerating BR-14's contents (F-02).
+4. **AT-06-4** — three positive conjuncts, plus the E-34 no-capture negative companion that makes the
+   third conjunct falsifiable.
+
+The two Low findings (F-03, F-04) are inherited, non-gating, and can ride along in the same edit or
+wait for the next authoring round. v2's open Mediums and Low remain inherited and non-gating.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 2}
