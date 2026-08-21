@@ -117,8 +117,58 @@ is **not** a finding.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01: were `report.verdicts` / `.completenessScores` / `.roundWindows` / `.approvalAnchors` / `.erratumRoutes` ever intended to exist on `buildFinalReport`'s record, or should `LI-AT-29` read the gate inputs where they actually live (the phase rows, the round counters inside `converge`, the anchors appended to the cross-review files)? The fix differs: add the fields, or rewrite the oracle. |
+| Q-02 | F-03: the capture script and the committed baseline exist and are guarded — what stopped the last hop, wiring `fixtures/learnings-baseline/{caseId}/{i}.txt` into `LI-AT-03`/`LI-AT-31` as the expected bytes? If the recorded captures are not comparable to `runScenario`'s composed prompts (different scenario, different feature name), say so in TSPEC §T.3 and re-scope AC-6.2, because as it stands the fixture is inert ballast. |
+| Q-03 | F-04: is the `hasAnySectionHeadingLine` conjunct deliberate? If a heading-less LEARNINGS document is meant to stay eligible, that is a change to FSPEC BR-6 and TSPEC §T.6 and needs its own AT; if not, the three fixtures in `LI-AT-04`/`09`/`10` need `sections:` entries so the ordering ATs order documents that actually contribute. |
+| Q-04 | F-07: which document owns the reason id for a document that is simultaneously outside the count window and behind a binding total-byte bound? Until that is written down, `LI-AT-07`'s "RSN-COUNT: 0" and `LI-AT-13`'s "RSN-COUNT ×3" are two readings of the same situation with no arbiter. |
+
 ## Positive Observations
 
+- The production path is genuinely driven. `learningsDispatchSet.test.js` invokes the real
+  `mainDev` default export with scripted seams and reads its observables off `mainDev(...).report`
+  — no builder-only proof anywhere in the feature, which is the failure mode this phase usually
+  finds.
+- `LI-AT-33/34`'s read-set oracle and AC-5.2's write half are both *positive* set equalities (the
+  file-open set under `docs/` equals a hand-transcribed set; a `git status --porcelain` delta in a
+  dedicated temp repository with no exemption list), not the absence-only shape this checklist
+  usually has to reject.
+- The three catalogues are frozen literals with one set-equality test each, and
+  `learningsArmInventory.test.js` proves the ids are not merely *named* but *fired* by twelve live
+  arms — `LEARNINGS_REJECT_REASONS`, `LEARNINGS_CORPUS_OUTCOMES`, `LEARNINGS_NOTICES`.
+- `learningsSuiteMap.test.js` is the strongest meta-oracle in the repository: the AT partition is
+  derived by walking the directory, is checked pairwise-disjoint *and* set-equal to the 35-member
+  literal, and PROP-META-06 proves no enumerated suite can reach a live model. AC-6.1's "no live
+  model calls" is properly closed.
+- `learningsBaselineGuard.test.js` re-hashes every fixture file against a hand-transcribed digest
+  and checks the recorded `mergeBaseSha` is an ancestor of HEAD. The instrument is right; F-03 is
+  only that nothing consumes it.
+- Expected values are, with the exceptions in F-07, hand-transcribed with the arithmetic shown
+  (`LI-AT-12`'s 40/65-byte counts, `LI-AT-13`'s 4×5000) rather than derived from the code under
+  test, and the fixtures re-transcribe `BR6_SECTION_NAMES` instead of importing it.
+- Fail-open is covered at the right seam: `gatherLearningsCorpus`'s outer `try/catch` is exercised
+  for both a graceful `!reply.ok` and an ungraceful thrown fault, and per-document degradation is
+  proved for both the `null`-returning and the throwing `_readFile` channel (P-8).
+
 ## Recommendation
+
+**Needs revision**
+
+Five High findings gate this phase. Concretely, to clear them:
+
+1. **F-01** — make `LI-AT-29` read observables that exist. Until then AC-4.3 is unproven.
+2. **F-02** — assert that the `docType: null` authoring dispatch (Phase CR's optimizer, the case
+   AC-1.2 names) carries no block; the assertion must red under
+   `injectHere = dispatchKind === "authoring"`.
+3. **F-03** — compare at least one composed prompt against the committed
+   `fixtures/learnings-baseline/` bytes, or re-scope AC-6.2 upstream (Q-02).
+4. **F-04** — reconcile `orchestrate-dev.js:2368` with TSPEC §D.3/§T.6, and give
+   `LI-AT-04`/`09`/`10` fixtures that carry material.
+5. **F-05** — `node pdlc/workflows/build-runtime.mjs`, commit `dist/pdlc-cli.mjs`, confirm
+   `--check` is clean.
+
+The Medium findings (F-06, F-07, F-08) and F-09 are recorded, not gating, but F-08 is the cheapest
+of the set and removes F-02's root cause.
 
 ## Verdict
