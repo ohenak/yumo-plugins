@@ -220,7 +220,7 @@ wave, REQ §5) has NFR-4's worst case of `attemptBudget` × that value. Gate-com
 falls outside the window structurally, no subtraction being performed: the gate runs between
 attempts, never inside a dispatch→verdict window, so a slow suite cannot exhaust the seam budget and
 a slow diagnosis is what it catches (E-25, AT-02-7); and more
-than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave budget — escalated waves leave it untouched (AT-02-6's two cases). An attempt is one repair-and-re-gate cycle.
+than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only resolutions consume wave budget — escalated waves leave it untouched (AT-02-6's cases). An attempt is one repair-and-re-gate cycle.
 
 **BR-12 — An E-6 resolution does not leave the repair uncommitted (AC-4.6).** When A6 resolves a wave
 under E-6, once the wave's commit step completes the repair is part of the branch's committed state.
@@ -295,7 +295,7 @@ E-02 and E-06 are **inherited-behaviour rows**: beyond A6's absence, which AT-01
 | E-26 | A6 already resolved `advisory.waveBudgetPerRun` waves this run, and a further wave goes red | Escalate with no dispatch at all (BR-11). |
 | E-27 | A6 attempted and escalated on two earlier waves, and a third wave goes red | The third wave still gets its attempt: only resolutions consume wave budget (BR-11). |
 | E-28 | Restoration itself fails | The wave halts. A6 must never leave a tree it can neither repair nor restore, and the mechanism and its failure handling are the TSPEC's (REQ O-1, carried in §7). |
-| E-33 | `advisory.waveBudgetPerRun` is absent, malformed, or zero | Absent or malformed falls back to the shipped default `1`, per key independently like the other advisory keys, the key named in the tier's existing invalid-key report; a malformed value never disables the seam or the tier. An explicit `0` is **honoured as written**, not treated as misconfiguration: the tier stays enabled, every red wave escalates with no dispatch, the sixth summary row reads zero. The key therefore validates as a **non-negative** integer — a distinct variant from the shipped positive-integer validator, which rejects `0` and substitutes the default; reusing it would turn an operator's `0` into `1` (E-32, BR-11, REQ C-2, AT-07-2b). |
+| E-33 | `advisory.waveBudgetPerRun` is absent, malformed, or zero | Absent or malformed falls back to the shipped default `1`, per key independently like the other advisory keys, the key named in the tier's existing invalid-key report; a malformed value never disables the seam or the tier. An explicit `0` is **honoured as written**, not treated as misconfiguration: the tier stays enabled and every red wave escalates with no dispatch, observably distinct from E-01's inertness — the sixth summary row is **present** and reads `resolved: 0`, carrying one `escalated` invocation per red wave, each classed `unclassified` because no reply was ever classified (BR-2), where a disabled tier carries no advisory summary at all (AC-2.4, E-01). The key therefore validates as a **non-negative** integer — a distinct variant from the shipped positive-integer validator, which rejects `0` and substitutes the default; reusing it would turn an operator's `0` into `1` (E-32, BR-11, REQ C-2, AT-07-2b). |
 
 ### 5.5 Record, escalation, and reporting
 
@@ -353,7 +353,10 @@ equality, it is stated as such rather than as an absence.
   in which A6 attempted and escalated on waves 1 and 2. *When* wave 3's gate goes red. *Then* wave 3
   is dispatched. *Given instead* a run in which A6 **resolved** wave 1. *When* wave 2's gate goes red.
   *Then* wave 2 escalates with no dispatch. Two oracles that a "counts every invocation" reading would
-  make disagree. *(E-26, E-27, BR-11.)*
+  make disagree. *Given instead* `advisory.waveBudgetPerRun` at `0` with the tier enabled, and two red
+  waves. *Then* neither is dispatched, the A6 summary row is present reading `resolved: 0` with **two**
+  `escalated` invocations each classed `unclassified`, and the run is distinguishable from AT-01-4's
+  disabled tier, which carries no summary key at all. *(E-26, E-27, E-33, BR-11, AC-2.4.)*
 - **AT-02-7** — *Who:* the workflows suite. *Given* one A6 dispatch whose dispatch→verdict elapsed
   time exceeds `advisory.seamBudgetMinutes`. *When* the wave terminates. *Then* it escalates with
   `budget-exhausted`; and a companion case with a slow gate command whose every dispatch→verdict
