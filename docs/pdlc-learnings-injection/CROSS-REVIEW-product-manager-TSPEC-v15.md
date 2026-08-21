@@ -196,6 +196,45 @@ No test-strategy change is owed by this confirmation, and none was made.
 
 ## Open Questions
 
+**Positive observations (what to keep).**
+
+- **The erratum was filed, not folded — and stayed filed.** ERR-8 sits in §Open Questions marked
+  OPEN with FSPEC's author, with a concrete suggested fix ("extract for every eligible document at
+  item 15, drop on *yields no material*, then apply the count bound"), while §D.5 states the rule
+  the implementer follows meanwhile. A downstream document that quietly redefined its upstream would
+  have been cheaper and would have lost the signal; this one keeps the defect visible where the
+  owner can act on it.
+- **The severity call is right.** ERR-8 is a *sequencing gap in procedural prose*, not a behavioural
+  divergence: at every non-zero bound the two predicates coincide, and at the zero bound BR-6/BR-9/
+  D-12/E-36 already demand the TSPEC's reading. Calling it a divergence would have forced an
+  upstream round for no behavioural change; calling it nothing would have let a literal Step 5
+  implementation ship. The TSPEC calls it what it is and pins the discriminating oracle.
+- **The rule is stated where each reader meets it** — prose (§D.5), the callee's JSDoc (§I.3), the
+  arm table (§T.7), the property obligation (T-O-6), and the PLAN's task rows. A rule stated once in
+  prose is a rule an implementer skips.
+
+**Open items carried forward (not gating).**
+
+- **F-01 (Low, inherited, unresolved and unchanged since v14).** §D.5 still reads "AT-11's **and
+  AT-12's** expected counts are therefore hand-computable … sum of each taken section's normalised
+  byte length … plus 2 bytes per join", but AT-12's fixture is by construction the *bounded* case,
+  where §D.5's own next paragraph fixes the expected count at the bound exactly. The sum formula
+  gives the material's length **before** the cut, which is not AT-12's `bytesInjected`. This
+  predates the erratum and this round changed no bytes, so it is inherited. Suggested fix whenever
+  the document is next unfrozen: qualify as "the unbounded material's length; where the cut applies
+  the bound governs and AT-12's literal is the bound". Tagged Low because a fixture author following
+  §D.5 to the letter reads the correcting sentence two paragraphs later.
+- **DEFERRED (process, for the owning phase, not this round):** ERR-8 remains open against FSPEC.
+  When FSPEC's author lands the item reorder, §D.5's ERR-8 paragraph and §Open Questions' register
+  row both need retiring to CLOSED, and PLAN §Open questions' row with them. Nothing is owed until
+  upstream moves.
+
+**Question for the orchestrator (not a finding).**
+
+| ID | Question |
+|----|---------|
+| Q-01 | This dispatch confirms an erratum whose bytes were already present in the commit I approved at v14 (`739fea34`; TSPEC sha256 unchanged, both upstream hashes unchanged). Confirming a byte-empty delta is safe but not free. If the round was dispatched because ERR-8 was *routed* rather than because new bytes landed, the routing predicate may be reading an open erratum register row as an unlanded item — worth checking before the next erratum round. |
+
 ## Delta-Confirmation Findings
 
 ## Verdict
