@@ -201,8 +201,9 @@ falsifiable by the grep-shaped check that confirms a count — and this one is t
 here the falsifying edit was *solicited by the document itself*. Worth a durable checklist line in
 `LEARNINGS-pdlc-advisory-wave-gate.md`: **any "the routing has not landed" / "X matches nothing in
 upstream" sentence must carry the upstream version it was checked against and be re-checked on every
-upstream cascade — it is a dated observation, not a decision.** Tagged `Process` at F-01 for that
-reason; the same rule would have caught this before dispatch.
+upstream cascade — it is a dated observation, not a decision.** (Recorded here as a harvest item,
+not as a Scope tag: this round's table carries Provenance/Locality, not the ordinary-round legend.)
+The same rule would have caught this before dispatch.
 
 **No decision entry moved, and none needed to.** DEC-A6-01…DEC-A6-04 stand exactly where v1.11
 leaves them. REQ v1.16 ratifies DEC-A6-03's remedy at the operator surface; it does not contest the
@@ -210,7 +211,15 @@ ref's wave-scoped shape. The finding is that the record has not noticed it won.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | DEC-A6-03's "**The routing has not landed** … at REQ v1.15 and FSPEC v1.6, `a6-snapshot`, "copy the ref" and "overwrit" match nothing in either document" is false at HEAD: REQ v1.16 AC-6.3 lands the operator-facing warning obligation and cites DEC-A6-03 by id (`overwrit` now matches REQ `:23` and `:535`). The Re-evaluation trigger "or the halt-message obligation the PM is routing to REQ lands … this entry's known gap closes" has fired unrecorded. In my lens this is High rather than cosmetic: the paragraph tells a PROPERTIES author, in the record's voice, that no requirement obliges the warning and therefore no property is owed — a checked-looking negative claim suppresses the check that would find the new AC. **Fix:** state the split — REQ landed, FSPEC v1.6 (E-28 `:309`, AT-05-5 `:460`) and TSPEC v1.11 (§4.5's four-field halt contract) have not — and mark the trigger's REQ limb fired. No decision moves. | `DEC-A6-03` → *Known gap in the remedy's reach* `:357-362` and *Re-evaluation triggers* `:370-371` |
+| F-02 | Medium | delta | local | REQ AC-6.3's newly landed conjunct has **no oracle at any level**: FSPEC carries no behavior/AT for it, TSPEC §4.5's halt fields are a closed enumeration of four literals (`:715`, `:1274`, `:1285-1290`) with no warning member, and no test at HEAD reads the halt text for it. DEC-A6-03's Reversibility ("computed in one function and printed in one halt field") now understates the obligation surface — AC-6.3 adds a second thing printed in that same place. **Fix:** apply the specified-vs-asserted split this document already models at DEC-A6-04 `:517-530`, and name the oracle shape: pointer **and** warning asserted together on one rendered field, RED when the warning is deleted and RED when it is emitted away from the pointer — "in the same place" is AC-6.3's falsifiable half, and `toContain(ref)` alone cannot fail either regression. | `DEC-A6-03` → *Reversibility* `:355` and the Known-gap paragraph |
+| F-03 | Low | delta | nonlocal | `:42`'s "Re-grounded on upstream at HEAD before editing: REQ (`sha256:817b6745…`)" is the document's only REQ hash and is now two versions behind HEAD (`f97f4f66…`, v1.16); the `Upstream` cell `:5` pins TSPEC only, so a reader has nothing to compare this record against for REQ currency. **Fix:** pin current REQ/FSPEC hashes in the `Upstream` cell, or date-scope `:42` as v1.9 provenance rather than a current claim. | Header table `:5` and preamble `:42` |
+
+FINDING: High | delta | local | DEC-A6-03 "Known gap in the remedy's reach" :357-362 and Re-evaluation triggers :370-371 | The entry asserts "The routing has not landed … `a6-snapshot`, "copy the ref" and "overwrit" match nothing in either document" at REQ v1.15/FSPEC v1.6; at HEAD REQ v1.16 AC-6.3 lands the halt-message overwrite warning and cites DEC-A6-03 by id, so the negative claim is false on its REQ half, the version pin is stale, and the fired Re-evaluation trigger is unrecorded — a PROPERTIES author is told no property is owed for an AC that now exists
+FINDING: Medium | delta | local | DEC-A6-03 Reversibility :355 / Known-gap paragraph | REQ AC-6.3's new "warns in the same place that re-running overwrites the capture" conjunct has no oracle at any level (no FSPEC AT, not in TSPEC §4.5's closed four-field halt contract, no test at HEAD); the entry should mark it specified-not-asserted and name the co-location oracle it wants, since a pointer-only containment check cannot falsify either the missing warning or a misplaced one
+FINDING: Low | delta | nonlocal | Header `Upstream` cell :5 and preamble :42 | The document's only REQ hash (`sha256:817b6745…`, :42) is two versions behind HEAD (v1.16, `f97f4f66…`) and the `Upstream` cell pins TSPEC alone, leaving no current REQ pin to check this record's currency against
 
 ## Recommendation
 
