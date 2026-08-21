@@ -99,6 +99,32 @@ No oracle is retracted, weakened or made unfalsifiable by the delta.
 
 ## Fixtures
 
+The erratum's only fixture-adjacent claim is PLAN:496–503: `__tests__/helpers/learningsFixtures.js`
+and its consumers carry **no** expected-red row, because the declared-heading-form knob is *additive*
+over the landed helper — "the landed helper already renders an optional ordinal and an optional
+gloss, and existing callers that declare neither keep byte-identical output". I checked that premise
+rather than taking it: `pdlc/workflows/__tests__/helpers/learningsFixtures.js` is tracked at HEAD, and
+its section rendering takes the title through an optional ordinal/gloss composition, so a caller that
+declares neither produces the same bytes it does today. The premise is sound, and PLAN correctly
+states the fallback for the day it stops being sound (non-additive amendment ⇒ moved consumers enter
+the ledger by name first). That is the right engineering answer — it makes the empty row-set
+conditional on a checkable property rather than on optimism.
+
+Consequences for PROPERTIES' fixture surface, all null:
+
+- **No fixture PROPERTIES names is invalidated.** `BYTES-BINDING`'s 3/5/0 literal, `ZERO-BOUND`,
+  `DIVERGENT-CORPUS`, `DISCARDED-NESTED`/`DISCARDED-DIRECT`, `COUNT-BINDING` — none is mentioned in the
+  delta, and none derives an expected value from PLAN's ledger.
+- **No hand-computed expected byte count moves.** §G.2.2 already resolved the framing-accounting
+  question to "no change" against FSPEC v0.13; the erratum does not reopen it, and PLAN:590 says so
+  explicitly ("no AT partition or fixture was touched"), which I verified by diff rather than by
+  trusting the changelog.
+- **The fourteen-row file-ownership manifest is unchanged**, so §C.4's "fourteen rows over fourteen
+  files" arithmetic and its seven-landed/seven-planned split still hold. (The stale item in that
+  paragraph is the routing sentence, not the arithmetic — F-01.)
+- **No new fixture is owed by this confirmation.** Every amendment the erratum contemplates is a case
+  added to an existing suite over an existing corpus builder.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
