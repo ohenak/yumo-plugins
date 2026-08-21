@@ -907,9 +907,29 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
     const mainDev = dev.default;
     const calls = [];
     let harvestCutoff = null;
+    // CR round 1, PM F-05: AC-5.2's WRITE half needs an instrument of its own. `_writeFile` and
+    // `_appendFile` are the only two channels this module has for putting bytes on disk — the
+    // static seam-discipline scan in the next describe closes the direct-`fs` route — so
+    // recording their paths records every write the run makes, on both arms.
+    const writes = [];
+    const recordWrite = (path) => {
+      writes.push(String(path));
+      return { ok: true };
+    };
     const _git = buildPipelineGit(() => ({ ok: true, stdout: corpus.lsFilesStdout }));
+    // A seam-level read log for BOTH arms. `fakeFs`'s own `reads` array cannot serve the
+    // arm-difference below, because the disabled arm's reader answers `.claude/pdlc.config.json`
+    // itself and never reaches `fakeFs` for it: the config open would then appear in the enabled
+    // arm's log only and pollute the difference with a path both arms in fact open. Logging at
+    // the seam records every open on both arms, symmetrically.
+    const enabledReadLog = [];
+    let enabledLogCutoff = null;
+    const disabledReadLog = [];
+    let disabledLogCutoff = null;
+
     const _readFile = (path) => {
       const p = String(path);
+      enabledReadLog.push(p);
       if (p.includes("/PLAN-")) return SCENARIO_PLAN;
       return fs.readFile ? fs.readFile(p) : corpus.contents[p] ?? null;
     };
@@ -918,14 +938,17 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
       reqPath: REQ_PATH,
       forcePhases: null,
       _recordDocType: (docType) => {
-        if (docType === "LEARNINGS" && harvestCutoff === null) harvestCutoff = fs.reads.length;
+        if (docType === "LEARNINGS" && harvestCutoff === null) {
+          harvestCutoff = fs.reads.length;
+          enabledLogCutoff = enabledReadLog.length;
+        }
       },
       _agent: buildRecordingAgent(calls),
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
       _readFile,
-      _writeFile: async () => ({ ok: true }),
-      _appendFile: async () => ({ ok: true }),
+      _writeFile: async (path) => recordWrite(path),
+      _appendFile: async (path) => recordWrite(path),
       _git,
       _hashFile: async () => "a".repeat(64),
       _phase: () => {},
@@ -941,16 +964,20 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
     const observedSet = new Set(readsUnderDocs);
     expect(observedSet).toEqual(new Set(EXPECTED_READ_SET));
     expect(observedSet.size).toBeGreaterThan(0); // the control: the instrument fires
-    expect([...observedSet].some((p) => p.startsWith("docs/_constraints/"))).toBe(false);
-    expect([...observedSet].some((p) => p.startsWith("docs/_decisions/"))).toBe(false);
     expect(enabledResult.report).toBeTruthy();
 
     // ── AT-34: the disabled run, on the SAME instrument, in the SAME test ──────────────────
     const fsDisabled = fakeFs(corpus.contents);
     const disabledCalls = [];
     let disabledHarvestCutoff = null;
+    const disabledWrites = [];
+    const recordDisabledWrite = (path) => {
+      disabledWrites.push(String(path));
+      return { ok: true };
+    };
     const _readFileDisabled = (path) => {
       const p = String(path);
+      disabledReadLog.push(p);
       // The learnings section explicitly disabled — through the one channel that disables it,
       // the same `.claude/pdlc.config.json` text `runScenario` serves (§I.2/AC-5.1a). Nothing
       // else turns the injector off: the config is read once per run off this very seam.
@@ -966,14 +993,15 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
       _recordDocType: (docType) => {
         if (docType === "LEARNINGS" && disabledHarvestCutoff === null) {
           disabledHarvestCutoff = fsDisabled.reads.length;
+          disabledLogCutoff = disabledReadLog.length;
         }
       },
       _agent: buildRecordingAgent(disabledCalls),
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
       _readFile: _readFileDisabled,
-      _writeFile: async () => ({ ok: true }),
-      _appendFile: async () => ({ ok: true }),
+      _writeFile: async (path) => recordDisabledWrite(path),
+      _appendFile: async (path) => recordDisabledWrite(path),
       _git: buildPipelineGit(() => ({ ok: true, stdout: corpus.lsFilesStdout })),
       _hashFile: async () => "a".repeat(64),
       _phase: () => {},
@@ -994,6 +1022,60 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
       list.filter((c) => !AUTHORING_SKILLS.has(c.skill)).map((c) => c.prompt);
     expect(nonAuthoring(disabledCalls)).toEqual(nonAuthoring(calls));
     expect(disabledResult.outcome).toBeTruthy();
+
+    // ── CR round 1, PM F-05 ───────────────────────────────────────────────────────────────
+    // BR-15's two prefix clauses used to be asserted over `observedSet`, which is built by
+    // `.filter(isCorpusPath)` — a predicate that admits only `priorA`/`priorB`. Nothing under
+    // `docs/_constraints/` or `docs/_decisions/` could ever be a member, so both clauses were
+    // true by construction of the filter rather than by behaviour of the code, and neither
+    // could red under any mutation. They cannot simply be lifted onto the unfiltered read log
+    // either: the pipeline legitimately opens `docs/_decisions/.consolidation-log.md` before
+    // the harvest cutoff, and that read is Phase H's, not the injector's.
+    //
+    // The instrument that separates the two is the DIFFERENCE between the arms. Both arms run
+    // the same pipeline over the same fixture; the only variable is the config's `enabled`
+    // flag. So a path the enabled arm opens and the disabled arm does not is injector-
+    // attributable by construction of the experiment, not by a hand-written filter — and BR-15
+    // is a statement about exactly those paths.
+    const readPaths = (log, cutoff) => new Set(log.slice(0, cutoff ?? undefined));
+    const enabledReadPaths = readPaths(enabledReadLog, enabledLogCutoff);
+    const disabledReadPaths = readPaths(disabledReadLog, disabledLogCutoff);
+    const injectorAttributableReads = [...enabledReadPaths].filter((pth) => !disabledReadPaths.has(pth));
+
+    // The whole of what enabling the feature causes this run to open is the corpus document —
+    // set equality, so an extra open of ANY kind reds, whatever directory it lands in.
+    expect(new Set(injectorAttributableReads)).toEqual(new Set(EXPECTED_READ_SET));
+    // The control: the difference instrument fires. Without this, the two clauses below would
+    // hold vacuously again if the arms ever stopped differing.
+    expect(injectorAttributableReads.length).toBeGreaterThan(0);
+    // BR-15's two named directories, now over a set they COULD appear in — the disabled arm's
+    // consolidation-log read cancels out of the difference, an injector read of the same tree
+    // would not.
+    expect(injectorAttributableReads.some((pth) => pth.startsWith("docs/_constraints/"))).toBe(false);
+    expect(injectorAttributableReads.some((pth) => pth.startsWith("docs/_decisions/"))).toBe(false);
+    // And the sanity check that makes the cancellation above meaningful rather than accidental:
+    // the disabled arm really does open the tree the difference is subtracting away.
+    expect([...disabledReadPaths].some((pth) => pth.startsWith("docs/_decisions/"))).toBe(true);
+
+    // ── AC-5.2's WRITE half, on the same two arms (PM F-05) ───────────────────────────────
+    // BR-15: "Nothing under `docs/_constraints/` or `docs/_decisions/` is written, no LEARNINGS
+    // document or skill prompt is written, and no index, cache or state file is created
+    // anywhere." The `_writeFile`/`_appendFile` log is the observational boundary R-5 names.
+    //
+    // The primary claim is the DIFFERENCE again, with no exemption list: enabling the injector
+    // adds no write of any kind, anywhere. A single extra write — an index, a cache, a memo
+    // file, a rewritten skill prompt — reds this, without the test having to enumerate the
+    // forms such a file might take.
+    expect(new Set(writes)).toEqual(new Set(disabledWrites));
+    // The control: the write instrument fires, so the equality above is between two non-empty
+    // observations rather than between two empty ones.
+    expect(writes.length).toBeGreaterThan(0);
+    // BR-15's named forms, asserted over the UNFILTERED write log of the enabled arm — every
+    // path either channel was handed, with nothing filtered out beforehand.
+    expect(writes.some((pth) => pth.startsWith("docs/_constraints/"))).toBe(false);
+    expect(writes.some((pth) => pth.startsWith("docs/_decisions/"))).toBe(false);
+    expect(writes.some((pth) => /LEARNINGS-[^/]*\.md$/.test(pth))).toBe(false);
+    expect(writes.some((pth) => /SKILL[^/]*\.md$/.test(pth))).toBe(false);
   });
 });
 
