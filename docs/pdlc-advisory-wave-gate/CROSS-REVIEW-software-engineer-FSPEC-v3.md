@@ -97,7 +97,43 @@ No. The window touched no branch condition, no trigger, no disposition. Specific
 
 ## Business Rules
 
-_pending_
+BR-9 is the only rule the window touches, and it is the rule I want to be most careful about,
+because it is the one whose upstream grew the most text.
+
+**BR-9 vs AC-5.1 as it now stands — clause by clause.**
+
+| AC-5.1 clause (v1.15) | BR-9 / neighbour | Verdict |
+|---|---|---|
+| Tree observably identical to the pre-A6 state | BR-9 opening, plus the content-level (not `git status`) oracle | Faithful, and FSPEC is stricter — the hash-map oracle is FSPEC's addition at the right altitude |
+| "the wave's **post-dispatch, pre-commit** tree, with the wave agents' own uncommitted work intact" | BR-9, verbatim in substance | Faithful |
+| Observation point = the moment restoration completes | BR-9 "**Observation point**" | Faithful |
+| Excluded: AC-6.1 record, AC-6.2 escalation log, AC-5.2 queue row | BR-9's temporal cut + E-23 | Faithful (see §Linked Requirements) |
+| Excluded: paths ignored by `.gitignore` | BR-9 "**Domain**" | Set matches; rationale diverges — **F-01** |
+| Failed capture → no proposal, no application, halt on own gate | E-34 | Faithful |
+| Mechanism is TSPEC's (O-1) | FSPEC §7.1 O-1, "Only the observable" | Faithful — no altitude drift either way |
+
+**F-01, stated here because it is a rules-level divergence.** REQ v1.15's new sentence reads: "So
+are paths ignored by `.gitignore`, **which are operator files A6 never wrote and never restores
+over**." The normative predicate is "ignored by `.gitignore`" — unambiguous, and it matches BR-9's
+domain exactly. The trailing rationale, though, characterises the whole ignored set as *operator*
+files. FSPEC BR-9's domain deliberately names a member that is not an operator file: "the run's own
+untracked wave ledger", `.claude/pdlc-wave-state.json`, which I confirmed is `.gitignore`d and which
+the *run* writes, not the operator. A TSPEC or fixture author reading REQ's rationale rather than
+its predicate could conclude the ledger sits **inside** the map — contradicting BR-9 and AT-05-1's
+oracle, and turning a legitimate ledger mutation into a spurious restoration defect.
+
+FSPEC is the correct document here; the over-narrow clause is REQ's. I file it against this
+confirmation because DEC-ERR-03 makes "upstream no longer says it the same way" my finding whether
+or not it is FSPEC's to fix — but the one-clause repair belongs upstream (widen the rationale to
+"files outside restoration's reach — operator files and the run's own ignored artifacts alike"),
+not in FSPEC. Medium, not High: the predicate governs, so no shipped oracle is presently wrong.
+
+**Every other BR is untouched upstream.** BR-2's vocabulary and first-match rule, BR-5's ordered
+exclusion catalogue, BR-11's three budgets, BR-13's record/escalation duty, BR-15's eight refusal
+reasons — none of their upstream ACs (AC-2.2, AC-3.2, AC-2.4, AC-6.1/6.2, AC-3.4) appears in the
+diff. The literals I character-checked against `orchestrate-dev.js` in v2 are therefore still the
+literals both documents point at; I re-confirmed `ADVISORY_SEAMS`'s six frozen members at
+`orchestrate-dev.js:1952` and did not re-walk the rest, since no upstream text moved under them.
 
 ## Edge Cases and Error Scenarios
 
