@@ -79,6 +79,43 @@ about HEAD; `Status` is the dispatcher's bookkeeping). Both commits exist: `1920
 
 ## Dependencies
 
+**No dependency edge moved.** All 23 `Deps` cells are byte-identical to `6a2d3007`. LI-16's
+`LI-15, LI-07` and LI-12's `LI-02, LI-06` are unchanged, which matters for the round's main fix:
+naming LI-16 the zero-bound production owner adds no ordering obligation, because LI-16 already sat
+at batch 8 behind LI-15's constants and LI-07's red suite. The fix is an ownership *statement*, not
+a re-plan — which is the right shape for a frozen round.
+
+**The re-split arm-table cell is edge-consistent.** §Traceability's `RSN-NO-MATERIAL` row now reads
+`LI-12 (red) / **LI-16** (production green) / LI-21 (config plumbing only)` (PLAN:358). Checked
+against the ladder: LI-12 is batch 5, LI-16 is batch 8, LI-21 is batch 13, so red precedes green
+precedes plumbing — the cell reads left-to-right in run order, and the red-before-green edge it
+implies (`LI-16 → LI-07`) is already in §Dependencies. Nothing new is owed.
+
+**The arm arithmetic survived the re-split.** This was the thing most at risk of breaking, so I
+checked it directly: twelve arms, thirteen entering cases, LI-23's set equality taken over **reason
+codes** rather than disjuncts (PLAN:366). Adding a third task to one cell changes the entering-task
+column, not the reason-code domain, so LI-23's oracle is untouched — the document says so and the
+arithmetic bears it out.
+
+**Upstream dependency direction preserved.** The PLAN still depends on FSPEC F-O-1 and TSPEC §D.3/
+§D.5 and on nothing new. Its live pins read FSPEC v0.13 / TSPEC v0.9 / REQ v0.9, all correct at HEAD
+per the digest table in §Overview.
+
+**ERR-8 is recorded without being re-decided.** The new §Open questions entry (PLAN:556-562) is the
+delicate one in a frozen round, because recording an open upstream erratum invites re-deciding it.
+It does not: it states TSPEC decided the question, states that LI-16's and LI-12's rows already
+encode TSPEC's rule, and concludes **no task moves** — so a delta confirmation against a corrected
+FSPEC finds no PLAN change owed. I verified the premise rather than trusting it: `FSPEC:255` drops
+structurally at item 15 and `FSPEC:259` extracts at item 16, after the count cut, exactly the
+ordering ERR-8 describes; `TSPEC:1603` still carries ERR-8 as open. The claim "OPEN at HEAD" is
+true today, which is the only sense in which a PLAN can make it.
+
+**Inherited items still open, unchanged by this round.** My v9 F-01 (case A of the amendment-commit
+table keys on "before batch 7", leaving the batches 4–6 window unaddressed) was Low and non-gating
+and was not routed this round; it remains open at PLAN:491 and is re-filed below as F-02. The
+changelog's 0.6 row still sits ahead of its 0.5 row (PLAN:603 before PLAN:604) — pre-existing at
+`6a2d3007`, not introduced here; F-03.
+
 ## Verification
 
 ## Findings
