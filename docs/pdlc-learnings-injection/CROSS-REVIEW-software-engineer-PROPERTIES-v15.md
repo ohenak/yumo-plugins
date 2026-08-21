@@ -293,8 +293,40 @@ DEFERRED: the document has now converged with PLAN at v1.3 on every quotation an
   DEC-ERR-01 for why it will not re-route. That is the full cycle working as designed, and it is the
   first round in this phase where I can say so.
 
-## Positive Observations
-
 ## Recommendation
 
+**Approved with minor changes**
+
+This revision closes **every** finding I filed at v14 — the case-B fallback at `:1181` replaced by
+P-A-7's governing case with PLAN v1.1's wording quoted verbatim (`grep -cF` → 1 at `PLAN:663`), the
+`byte-unchanged at v0.8` parenthetical restated, §G.3's routed manifest item struck as answered by PLAN
+v1.2/v1.3, the header's completeness claim narrowed to the rulings actually re-checked with P-A-6 named
+as the exception, `:1131`'s quotation extended to a form that greps, the struck bullet's *"after batch
+13"* re-cut to *"batch 13 or later"*, and §G.2 gap 5's eighteen re-derived from the tree. All four
+retired phrases return **zero hits** document-wide.
+
+I verified the numbers rather than the prose: 17 non-fixture `learnings*` paths under
+`pdlc/workflows/__tests__` and one engine-side, 39 raw paths of which 22 are fixture files, an
+18-row §C.4 inventory, an 18-file `PIPELINE-NON-AUTHORING-PROMPTS/` arm added at `2fc6fcd3` over a
+subtree created at `744311f7`, and **19** rows in PLAN's §Post-batch remediation subsection. Every
+count in the delta holds. No hunk lands in §Properties (`:87`–`:607`), §Oracles (`:608`–`:808`) or
+§Fixtures (`:809`–`:917`), so no property, oracle, fixture or AT mapping moved — checked from the
+eleven hunk offsets, not from the assertion.
+
+Three findings, none blocking. **F-01 (Medium)** — the delta struck §G.3's routed item and left
+§C.4 `:1110`'s present-tense *"§G.3 routes to PLAN"* behind, so the document states the item's status
+both ways. It is a defect this revision introduced, which is the freeze's blocking category, and I
+record it without gating: it is a prose cross-reference, both authoritative statements of the status
+now say the resolved thing, and nothing downstream turns on it. **F-02/F-03 (Low)** — the header's
+"coverage row" wording against the one §C.4 inventory cell that moved, and the exact-but-off-by-one
+"four of the seventeen" against the engine-side fifth unowned file.
+
+Under the decision freeze I opened no new decision and escalated no unchanged substance. Four
+improvement observations are recorded as `DEFERRED:` lines rather than folded into the verdict. No
+upstream defect was found — every claim this document makes about PLAN resolves at `PLAN:244`,
+`:271`–`:293`, `:310`, `:561`, `:663` and `:680`–`:684` at HEAD — so I emit no `ERRATUM:` line.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
