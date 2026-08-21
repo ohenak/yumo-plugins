@@ -82,6 +82,105 @@ The verification constraints that shaped this round, and how each was satisfied:
 
 ## Acceptance — routed items, one by one
 
+Six distinct obligations (eight routed items, two duplicated across reviewers). All six landed.
+
+| # | Routed item | Status | Evidence |
+|---|-------------|--------|----------|
+| 1 | §10 records BL-04 as "discharged at FSPEC authoring" while it is objectively unmet (se-review, pm-author) | **Resolved** | §10 now reads "BL-04 is **open and unmet** — not discharged at FSPEC authoring", and states the reason: the tree is 1,637 commits behind and carries neither the mechanism nor the baseline file. All three sub-claims re-derived below. |
+| 2 | §1's "15-wave plan" contradicts OF-1's 16 (se-review, pm-author) | **Resolved** | §1 now says "a 16-wave plan". OF-1 says "**16** waves (17 counting Phase PT's appended V-wave)". The figures agree, and the corrected one is the one the recipe produces. |
+| 3 | §1's "each re-invocation paid seven no-op dispatches" contradicts OF-1's non-uniform cost (se-review) | **Resolved** | §1 now attributes the seven dispatches to the wave-4 halt specifically, states that the wave-2 halt "replayed wave 1 only, a single task", and generalises correctly: "Each halt costs the task count of every wave below it". |
+| 4 | REQ-WVR-08's "Phase I produces no new commit" is falsified by Phase PT's V-wave (te-review ×2, pm-author) | **Resolved** | The clause is now scoped to the **implementation wave loop**, and the V-wave's replay is stated positively rather than left as an unstated exception. |
+| 5 | REQ-WVR-02's IG ordering reads as precedence (pm-author) | **Resolved** | REQ-WVR-02 now says the IG labels "name **causes, not precedence**", disclaims any ordering claim for the table, and delegates evaluation order to FSPEC §3.2. |
+| 6 | The v1.6 amendment note must record the round | **Resolved** | Header carries an "Erratum, 2026-08-21 (v1.6) — Phase F erratum" note enumerating all four edits; version bumped 1.5 → 1.6. |
+
+### Item 1 — BL-04, re-derived
+
+Three sub-claims, three commands, all three confirm the *unmet* reading:
+
+- `git rev-list --count origin/main ^HEAD` → `1637`. Matches the stated figure exactly.
+- `git show HEAD:pdlc/workflows/orchestrate-dev.js | grep -c WAVE_STATE_PATH` → `0`; the same grep
+  at `origin/main` → `10`. The resume mechanism is genuinely absent from the authoring tree.
+- `ls docs/_constraints/` in this tree lists `DOMAIN-CONSTRAINTS.md`,
+  `pdlc-advisory-corpus-baseline.md`, `pdlc-consolidation-vocabularies.md`, `pdlc-rcv-baseline.md`,
+  `pdlc-rcv-catalogue.md`, `pdlc-rcv-split.md` — no `pdlc-wave-gate-baseline.md`. At `origin/main`
+  the file exists and carries the `M-WG-4`, `M-WG-6` and `M-WG-12` ids OF-1..3 cite (one hit each).
+
+So §5's preamble ("BL-02's file already exists on main … citable now") and §10's new sentence
+("the authoring tree … carries neither") are both true and are not in tension: they speak about
+different trees, and each says which. The correction is honest in the direction that costs the
+author something — it converts a discharged prerequisite into an open one — which is the right
+direction for a prerequisite whose whole function is to gate implementation.
+
+### Items 2 and 3 — OF-1's numbers, re-derived from the recipe
+
+OF-1's recipe is runnable in this tree, and I ran it rather than reading it. Loading
+`parsePlanTasks`, `parsePlanOwnership` and `computeWaves` from `origin/main`'s
+`orchestrate-dev.js` (all three are `export function`s) and applying them to
+`docs/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md`:
+
+```
+tasks 34   waves 16
+W1 [ 'T00' ]
+W2 [ 'T01', 'T02', 'T03', 'T04', 'T05' ]
+W3 [ 'T06' ]
+```
+
+Every figure in the corrected text follows mechanically: **16** waves (not 15); waves 1–3 hold
+`1 + 5 + 1 = ` **7** tasks, so a wave-4 re-entry pays seven no-op dispatches; wave 1 holds the
+single task `T00`, so a wave-2 re-entry replays one. The claim "the cost is the task count of every
+wave below the halted one" is the general form of exactly this arithmetic. This is the strongest
+kind of correction available to a REQ: the document ships the recipe, the recipe runs, and the
+recipe's output is what the prose now says. A reviewer who doubts the number does not have to
+argue about it.
+
+I note the recipe is also the reason this erratum was catchable at all. The v1.5 text disagreed
+with itself by one wave and by a factor in the replay cost; the disagreement was findable because
+one of the two figures carried a way to check it.
+
+### Item 4 — REQ-WVR-08's V-wave scoping, checked against the shipped code
+
+The new clause makes three assertions about Phase PT's V-wave: it dispatches, it gates, and it
+commits, on every invocation, independent of the resume decision. All three hold at `origin/main`:
+
+- **Unguarded by the resume decision.** `allWavesRecorded` appears at `:15262` (declaration),
+  `:15327` (set), `:15372` (`break`) and `:15615` (the Phase I skip report row). The V-wave's
+  `phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)")` at `:15656` sits *after* that block and
+  under no such guard — it is reached whenever the run reaches Phase PT.
+- **It gates.** `const vGate = await runCommandFn(implConfig.testCommand)` under `if (scriptGate)`,
+  with a self-report fallback (`evaluateSingleAgentGate(vResult, "PT")`) when no script gate is
+  available. Either way a gate runs.
+- **It commits.** The block's own comment states the prompt "carries the branch pin and instructs a
+  commit only once the full suite is green", and the halt message says "The V-wave's work is
+  already committed on feat-{feature}, so this is recoverable" — the code's own error text is the
+  proof that a commit precedes the gate here.
+
+The REQ's wording is accurate on all three and, importantly, does not overclaim: it says the
+V-wave "is outside the resume record's scope", which matches the mechanism (no wave-loop write
+records it) rather than merely asserting an exception. The internal arithmetic is also consistent
+— REQ-WVR-08 calls it "OF-1's 17th wave" and OF-1 says "17 counting Phase PT's appended V-wave".
+
+From the testing lens this is the item that mattered most, and it is the one I raised. The v1.5
+clause was an **unfalsifiable-by-construction** acceptance criterion: a test written from "Phase I
+produces no new commit" would have failed on every real run, because the V-wave commits on every
+real run. The corrected clause is testable as written — the oracle is a wave-loop-scoped commit
+count of zero, with the V-wave's commit counted separately and expected to be exactly one. FSPEC
+§2 and AT-12 already carry that four-conjunct shape, so the downstream is ready to receive it.
+
+### Item 5 — REQ-WVR-02's IG labels
+
+The new sentence disclaims precedence and points at FSPEC §3.2 for the normative order. FSPEC §3.2
+confirms it in the strongest available terms: its table evaluates ancestry (Q5, IG-5) *before*
+over-count (Q6, IG-4), BR-03 fixes the order as observable, and the FSPEC carries an explicit
+paragraph — "**The order above is deliberately not REQ-WVR-02's IG numbering** … a downstream
+reader must not 'correct' it to the REQ's numbering." The REQ and FSPEC now say the same thing from
+their two sides, which is what closes this class of defect: previously each document was correct
+alone and the pair was ambiguous.
+
+This also protects a PROPERTIES obligation the REQ already carries. REQ-WVR-02 owes a
+**set-equality** check over IG-1..6; had the labels kept an implicit precedence reading, a test
+author could reasonably have written an ordering assertion against the REQ's numbering and pinned
+the wrong order. The disclaimer removes that trap before it reaches a test file.
+
 ## Risks
 
 ## Open Questions
