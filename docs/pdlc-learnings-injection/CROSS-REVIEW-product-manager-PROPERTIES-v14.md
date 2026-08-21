@@ -159,6 +159,45 @@ the one that is false. That is part of F-01.
 
 ## Fixtures
 
+**§F.1–§F.3 are byte-untouched and the delta makes no fixture claim at all**, so the fixture question
+is only whether the re-pin falsifies anything fixture-side. It does not, and the fixture-side facts I
+measured at v13 still hold at HEAD:
+
+| Fixture-side claim | Measured at HEAD | Holds? |
+|---|---|---|
+| §C.4's fixture row enumerates `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` and an 18-file `PIPELINE-NON-AUTHORING-PROMPTS/` arm | `git ls-files` returns exactly those; the arm is `0.txt`…`17.txt` | Yes |
+| §F.2's `.baseline-worktree` non-ignore | `git check-ignore -v .baseline-worktree` exits **1**; `.gitignore:13` is `/.baseline-worktree/` | Yes |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | `learningsBlock.test.js:174/:194/:235` still carry `const maxBytes = 40 / 66 / 60`, all beside the fixture, none derived from the code under test | Yes |
+| §F.1's corpus fixtures against `helpers/learningsFixtures.js` | Helper unchanged this round | Yes |
+
+**The inventory arithmetic is off by one against the tree, and the delta's re-pin did not touch it.**
+§G.2 gap 5 (line 1278) states that the re-measurement *"finds **eighteen** `learnings*` files under
+`pdlc/workflows/__tests__`"*. At HEAD that directory holds **seventeen** `learnings*`-named files
+(`git ls-files pdlc/workflows/__tests__ | grep -E '(^|/)learnings' | grep -v fixtures/` → 3 helpers +
+14 test files). §C.4's table does have eighteen rows, but its eighteenth is
+`fixtures/learnings-baseline/` — a **directory**, whose name is not `learnings*` relative to
+`__tests__` and which itself contains 22 files. So the table's row count and the prose's file count
+are two different eighteens, and the prose's is not reproducible by the command §C.4 says it ran.
+
+This matters because PLAN v1.3 now carries its own "eighteen" for the same feature and means
+something else again: *"the eighteenth tracked `learnings*` test-side file"* is
+`pdlc/engine/__tests__/learnings-config-example.test.js` — a file outside this document's stated
+`pdlc/workflows/__tests__` scope, which is why excluding it here is scope-consistent rather than
+wrong. Two documents carrying the number eighteen for two different sets is a readability hazard,
+not a fidelity defect: no property, oracle or fixture row depends on the count, and the routed
+conclusion (PLAN's fourteen-row manifest under-counted the test surface) was true and is now
+discharged. **Medium, inherited, non-gating — F-03.**
+
+**My v13 F-04 is unaddressed and unchanged.** §C.4's `fixtures/learnings-baseline/` row still reads
+`Added by 744311f7` while its own cell enumerates the `PIPELINE-NON-AUTHORING-PROMPTS/` arm, which
+arrived in **`2fc6fcd3`**. Against the table's stated convention (*"each row carries the commit that
+added the file"*), a reader auditing the arm at `744311f7` finds nothing. Low, carried as F-06.
+
+**Nothing falsifies PROP-META-04.** The delta touches no digest, no manifest row and no fixture path;
+`2fc6fcd3`'s re-capture is a *new* case-id arm plus a re-transcription, which §F.2 and §O.2 already
+contemplate, and PLAN v1.2 item (4) has since recorded the P-A-5 second-owner rows my v13 F-05 asked
+for — so that finding is answered upstream and is not re-raised here.
+
 ## Findings
 
 ## Deferred
