@@ -66,7 +66,31 @@ Then, or trace list changed except AC-5.1's exclusion list and the two commit pi
 
 ## Risks
 
+- **The changelog stack is now the document's growth term.** Every erratum round adds ~8 lines and
+  ~450 bytes of changelog and changes nothing else. At 676 lines / 54,803 bytes, the next round
+  crosses the 55,296-byte soft threshold and the third crosses the 700-line hard ceiling — the hook
+  would then block the write, on prose about edits rather than on requirements. This is a cost
+  curve, not a defect in what the round said (F-01).
+- **Upstream is quiet, so the DEC-ERR-03 exposure is currently low but unmonitored.** The tier REQ
+  has not moved since 2026-08-03 and the baseline is at the version this REQ cites. The pins added
+  this round (`11420461`) are correct precisely because upstream still says so; if the baseline is
+  re-verified at a newer base, AC-1.1 and R-5 become the two sites that go stale first. The
+  baseline's own "Re-verification" paragraph already states the rule, so no new obligation is needed.
+- **The `Cross-Reviews` row's accuracy is time-dependent.** It is true of the twelve files on the
+  branch today; a second harvest would falsify it silently. Low, and cheaper to fix at that harvest
+  than to hedge now.
+
 ## Obligations
+
+- **O-A (this REQ, before the next erratum round).** If another erratum round is dispatched against
+  this document, collapse or drop superseded changelog blocks in the same edit, or land SE Q-02's
+  relocation first. Do not add a fifth changelog block to a 676-line file without reclaiming lines.
+- **O-B (baseline file, not this REQ).** `docs/_constraints/pdlc-wave-gate-baseline.md`'s `Cited by`
+  row should read `(§1, §4, §5, §6, §7, §8)` with a version bump, since §6 AC-1.1 and §7 R-5 cite
+  `M-WG-13`/`M-WG-14` from §4. Owner is the baseline's change control, not this document's author.
+- No new obligation on the mechanism side. O-1 still owns the restoration mechanism; AC-5.1's
+  exclusion list is a statement of what the comparison observes, not of how the tree is captured,
+  so the High's fix stayed at requirements altitude.
 
 ## Delta-Confirmation Findings
 
