@@ -51,6 +51,30 @@ This confirmation set out to establish three things, in this order:
 
 ## Constraints
 
+Verification performed for this round, with the command and the observed result, so a later reader
+can re-run rather than believe. Every code claim is measured against `origin/main`, never against
+this branch's tree.
+
+| # | Claim under check | Command | Result |
+|---|---|---|---|
+| V-1 | Branch is 1,637 commits behind default | `git rev-list --count origin/main ^HEAD` | `1637` — exact, §1-note / §10 / BL-04 all agree |
+| V-2 | Mechanism absent from authoring tree | `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js` | `0` at HEAD; present on `origin/main` |
+| V-3 | Baseline file absent from authoring tree | `ls docs/_constraints/` vs `git ls-tree origin/main docs/_constraints/` | absent at HEAD, present on `origin/main` |
+| V-4 | OF-1's plan geometry | `parsePlanTasks` + `parsePlanOwnership` + `computeWaves` from `origin/main`'s workflow, run over `docs/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md` | **34 tasks, 16 waves**, `W1=[T00]`, `W2=[T01..T05]`, `W3=[T06]`, waves 1–3 = **7 tasks** |
+| V-5 | V-wave is unguarded by `allWavesRecorded` | read `origin/main` `orchestrate-dev.js` around the `allWavesRecorded` if/else and the `Phase PT` dispatch | the `if (allWavesRecorded) { … } else { … }` block closes **before** `phaseFn("Phase PT: …")`; the V-wave is outside it and runs on every invocation |
+| V-6 | V-wave gates and commits | same region | dispatch via `agentFn("se-implement", propertiesTestPrompt(…))`, then `runCommandFn(implConfig.testCommand)`; the surrounding comment states the V-wave "still commits its OWN work" and that the gate runs "AFTERWARDS as verification rather than as permission" |
+| V-7 | `FSPEC §3.2` ratifies ancestry-before-over-count | read FSPEC §3.2 | its ordered table places the reachability question (IG-5) at position 5 and the over-count question (IG-4) at position 6, and states in terms that "the IG labels name causes, not precedence" |
+| V-8 | `FSPEC §2` / `EC-20` scope the no-commit claim | read FSPEC §2 Vocabulary, EC-20, BR-11 | §2 scopes every "produces no commit" clause to implementation waves; EC-20 records the V-wave replaying on every invocation and refers the recordability question upstream to REQ-WVR-08 |
+| V-9 | Baseline file's version and occupancy, as OB-2 asserts | `git show origin/main:docs/_constraints/pdlc-wave-gate-baseline.md` | `Version | 1.2 · 2026-08-20`, sections `## 1.`–`## 4.`, ids through `M-WG-14`; `M-WG-4`, `M-WG-6`, `M-WG-12` all present as cited in §4 |
+
+**On V-4.** This is the one that mattered most, because the erratum swapped one contested number
+for another. I did not take OF-1's word for the new figures: I ran the default branch's own
+`computeWaves` over the actual PLAN and got the geometry independently. The 16 and the 7 are both
+right, and — importantly — the 7 is not an arbitrary constant but exactly `|W1|+|W2|+|W3|` =
+1 + 5 + 1. §1's "seven no-op agent dispatches (waves 1–3)" and "wave-2 re-entry replayed wave 1
+only, a single task" are both derivable from that geometry. This closes the two §1 items properly
+rather than by assertion.
+
 ## Acceptance Criteria
 
 ## Risks
