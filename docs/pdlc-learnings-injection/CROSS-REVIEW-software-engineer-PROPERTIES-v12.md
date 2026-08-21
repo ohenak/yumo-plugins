@@ -201,6 +201,51 @@ commit; the cascade's fixture half is clean.
 
 ## Delta-Confirmation Findings
 
+## Positive Observations
+
+- **The erratum retired a discrepancy PROPERTIES had been absorbing.** PLAN's "two cases" lead-in
+  contradicted PLAN's own three-row table since v0.8; PROPERTIES had already read the table and
+  described it as three-case. The correction makes the two documents agree at the wording level, not
+  just structurally — a cascade that reduces downstream risk instead of adding it.
+- **The `body` correction was made the hard way.** v0.9 does not just delete the false claim; it names
+  the counter-evidence (six section specs in `learningsBlock.test.js`, the non-BR-6 section in
+  `learningsSelect.test.js`) so the claim is checkable rather than asserted. I checked it —
+  `git grep -c "body:"` returns 6 and 1 — and the restated conclusion is strictly stronger than the
+  original: two knobs gain callers, one is reused, so the reuse argument improves.
+- **The blast radius was bounded and the changelog says so checkably.** v0.9's row claims no task moved
+  batch, no `Deps` edge changed, no AT partition/fixture/manifest row was touched and the batches 7–13
+  ledger is byte-identical. The three-hunk diff confirms every clause; a changelog whose scope claims
+  can be diffed is what made this confirmation cheap.
+- **PROPERTIES' quotation discipline paid off again.** Because §C.4 quotes PLAN verbatim rather than
+  paraphrasing, I could answer "does upstream still say this?" with seven `grep -cF` calls instead of a
+  re-reading. Every one resolved.
+
 ## Recommendation
 
+**Approved with minor changes.**
+
+PROPERTIES still holds as approved against PLAN v0.9. Both corrections move PLAN toward what
+PROPERTIES already said: PROPERTIES has described P-A-7 as a three-case table since v0.10, and it
+never carried the retracted `body`-unexercised claim. All seven PLAN quotations §C.4 and §G.3 depend
+on resolve verbatim at HEAD; P-A-6 is still byte-unchanged; the case A/B/C rows, LI-08's ATs, file,
+batch and `Deps`, and the batches 7–13 ledger are untouched, so §C.1's 35-of-35, §C.3's 23-of-23 and
+all seventy `PROP-` statements still reconcile.
+
+The one thing to fix at the next ordinary touch of this document — not now, and not gating — is the
+HEAD-facing PLAN version pin: the header upstream row and §G.3's *"PLAN at HEAD (**v0.8**)"* should
+read **v0.9**. The historical attributions in the struck §G.3 bullets (*"answered by PLAN v0.8's new
+case C"*) are provenance and are correct as written; do not rewrite those.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | PROPERTIES' HEAD-facing PLAN version pins read `v0.8`; PLAN at HEAD is `v0.9` after this erratum. Two sites are assertions about HEAD and are now false: the header upstream row (`:11`, `` `PLAN-…md` (**v0.8** …) ``) and §G.3's *"PLAN at HEAD (**v0.8**)"* (`:1299`). Every substantive claim attached to those pins survives v0.9 unchanged — the table is still three-case, case B's batch 9–12 re-scope and case C's ruling are byte-identical, and P-A-6 is still byte-unchanged — so no property, oracle, fixture or trace moves. Fix: bump both to v0.9 at the next ordinary revision. Leave the struck §G.3 bullets' *"answered by PLAN v0.8"* attributions alone; those are provenance, not HEAD claims, and are correct. | Header upstream row (`:11`); §G.3 *Also answered — by PLAN* (`:1299`) |
+
+FINDING: Low | delta | local | Header upstream row (:11) and §G.3 "PLAN at HEAD (**v0.8**)" (:1299) | Stale HEAD-facing PLAN version pin: PROPERTIES pins PLAN v0.8, PLAN at HEAD is v0.9 after this erratum. Substance is unaffected (three-case table, case B batches 9-12, case C ruling and P-A-6 all byte-identical); bump both pins to v0.9 at the next ordinary revision, and leave the struck §G.3 bullets' historical "answered by PLAN v0.8's new case C" attributions unchanged.
+
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
