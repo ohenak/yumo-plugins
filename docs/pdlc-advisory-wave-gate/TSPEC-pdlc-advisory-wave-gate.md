@@ -35,6 +35,9 @@ drops the stray `--` from `git add -A --`, matching its own prose, O-1, OQ-5 and
 `["add", "-A"]`; and §1.3 / §5.1's HEAD-state caveats are re-measured — `ADVISORY_SEAMS` and
 `ADVISORY_SEAM_PHASES` both carry six members at HEAD, and `.claude/pdlc.config.example.json` now
 carries `advisory` with `enabled` and `waveBudgetPerRun`, so both stated red-reasons are falsified.
+§1.3's residue column and its hygiene-residue sizing are re-measured on the same pass (the production
+halves have landed; nothing under `.claude/workflows/` is tracked at HEAD), the dated 2026-08-19
+figure kept as the dated measurement it is labelled as and its ownership unchanged.
 No design decision reopened.
 
 **v1.11 (erratum round, Phase F — closing pass).** Re-grounded on upstream HEAD first, and the
