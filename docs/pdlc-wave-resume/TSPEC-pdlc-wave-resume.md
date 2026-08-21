@@ -159,15 +159,19 @@ becoming false. The call site therefore resolves ancestry **only when the decisi
 
 ```
 d := classifyWaveLedger(parsed, {…, headOk: true})      # optimistic, pure, no IO
-if d.code ∈ ANCESTRY_INDEPENDENT_CODES:                 # IG-6, IG-1a/b/c, IG-2, IG-3
-    use d                                               # zero probes, exactly as shipped
+if d.outcome == "full-run" and d.code ∈ ANCESTRY_INDEPENDENT_CODES:
+    use d                                   # IG-6, IG-1a/b/c, IG-2, IG-3 — zero probes, as shipped
 else if not await headCorroborated(parsed.state.head):  # at most ONE probe, ever
     d := classifyWaveLedger(parsed, {…, headOk: false}) # → IG-5, since guard 5 precedes guard 6
 ```
 
 `ANCESTRY_INDEPENDENT_CODES` is `{null, "unreadable-json", "not-an-object", "wrong-shape",
 "feature-mismatch", "plan-changed"}` — exactly the outcomes guards 1–4 of §3.2 decide, i.e. the
-guards that sit above the ancestry guard. The second classifier call is pure, so it costs no IO;
+guards that sit above the ancestry guard. The `outcome === "full-run"` conjunct is load-bearing and
+not decoration: `resume` and `skip-phase` decisions carry no `code`, so testing the code alone would
+read as `null` and skip the probe on exactly the two outcomes that most need it. It is also what
+makes the `parsed.state.head` dereference on the next line safe — every code in the set except the
+mismatch pair is reached with `parsed.state === null`. The second classifier call is pure, so it costs no IO;
 the record's `head` being absent still costs no subprocess, because `headCorroborated` returns
 `true` before reaching the transport (V-7). The resulting call counts are the shipped ones and are
 asserted as such: **zero** `merge-base` invocations on a feature-mismatch and on a plan-hash-mismatch
@@ -204,8 +208,8 @@ if not explicitPointer:                                 # V-6: the record is con
     raw    := readMergeConfigSafely(_readFile, WAVE_STATE_PATH)
     parsed := parseWaveLedger(raw)                      # → {state, reason}
     d      := classifyWaveLedger(parsed, {feature, planHash, waveCount: waves.length, headOk: true})
-    if d.code not in ANCESTRY_INDEPENDENT_CODES:        # §2.2 — at most one probe, and only here
-        if not await headCorroborated(parsed.state.head):
+    if not (d.outcome == "full-run" and d.code in ANCESTRY_INDEPENDENT_CODES):
+        if not await headCorroborated(parsed.state.head):   # §2.2 — at most one probe, only here
             d := classifyWaveLedger(parsed, {…, headOk: false})
     apply d:                                            # §3.2 return shape
         outcome "full-run"   → startWave stays 1; emit d.reason unless d.silent
@@ -433,7 +437,11 @@ type WaveResumeDecision =
   | { outcome: "resume";     startWave: number;          provenance: "automatic"; lastGreenWave: number }
   | { outcome: "skip-phase"; startWave: number;          provenance: "automatic" };
 
-/** §2.2 — the codes guards 1–4 decide, i.e. those the ancestry verdict cannot affect. */
+/**
+ * §2.2 — the codes guards 1–4 decide, i.e. those the ancestry verdict cannot affect.
+ * Read only in conjunction with `outcome === "full-run"`: `resume` and `skip-phase`
+ * decisions carry no `code`, and both DO turn on ancestry.
+ */
 export const ANCESTRY_INDEPENDENT_CODES: readonly [
   null, "unreadable-json", "not-an-object", "wrong-shape", "feature-mismatch", "plan-changed"
 ];
@@ -795,7 +803,7 @@ chose. The same split applies here, in `waveResumeProperties.test.js`.
 |---|---|---|
 | P-1 **Round trip** | For all `(feature, planHash, lastGreenWave, head)` with `feature` and `planHash` non-empty strings and `lastGreenWave` an integer ≥ 1: `parseWaveLedger(formatWaveLedger(feature, planHash, lastGreenWave, head)).state` deep-equals `{feature, planHash, lastGreenWave, head: head ?? null}`, and `.reason` is `null`. | Normalisation drift between writer and reader — a writer that omits a blank `head` and a reader that expects it, on a value pair nobody hand-picked. |
 | P-2 **Totality of the reader** | For arbitrary strings, including arbitrary JSON values and non-string inputs: `parseWaveLedger` never throws and returns exactly one of the three §4.2 shapes. | The mechanical form of V-2, which today is a doc-comment claim carried by three hand-picked inputs. |
-| P-3 **Totality of the classifier** | For arbitrary `ClassifyInput`: `outcome ∈ RESUME_OUTCOMES` and `provenance ∈ RESUME_PROVENANCE`, and `code` is `null` or a member of `Object.keys(WAVE_IGNORE_REASONS)`. | §2.2's "the classifier is total" as an assertion rather than as prose — the only thing that makes FSPEC BR-01's closure mechanically checkable, which §2.2 claims it is. |
+| P-3 **Totality of the classifier** | For arbitrary `ClassifyInput`: `outcome ∈ RESUME_OUTCOMES` and `provenance ∈ RESUME_PROVENANCE`, and `code`, where present, is `null` or a member of `Object.keys(WAVE_IGNORE_REASONS)`. | §2.2's "the classifier is total" as an assertion rather than as prose — the only thing that makes FSPEC BR-01's closure mechanically checkable, which §2.2 claims it is. |
 | P-4 **Hash discrimination** | For generated pairs of wave layouts differing in wave order, task ids, task-to-wave assignment, or owned paths: `computePlanHash` differs across the generated corpus. | §4.3's four sensitivity examples as a law. **Caveat stated in the suite:** FNV-1a over 32 bits is not injective, so the property is "differs over this bounded generated corpus", not "is injective" — a collision found by the generator is a finding about the corpus, not a failed law, and the suite says so. |
 
 Convention, copied from the shipped property suite rather than invented: `fc.assert(fc.property(…))`
