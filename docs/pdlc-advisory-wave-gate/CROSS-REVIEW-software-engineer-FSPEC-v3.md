@@ -137,7 +137,30 @@ literals both documents point at; I re-confirmed `ADVISORY_SEAMS`'s six frozen m
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+Two §5 rows sit under the hunks in this window. Both survive.
+
+- **E-34 (pre-A6 capture fails).** REQ v1.14 added the failed-capture outcome to AC-5.1 *after*
+  FSPEC v1.6 shipped E-34. The two agree on all three observables: no repair proposed, none applied,
+  wave halts on its own red gate. E-34 adds the two things FSPEC is entitled to add — "the wave
+  agents' uncommitted work untouched because nothing ever wrote to the tree", and "the escalation
+  names the capture as the cause" — and routes the capture mechanism's failure modes to the TSPEC
+  (REQ O-1). Upstream's new sentence and E-34 are the same branch, and REQ's "a different outcome
+  from a failed restoration" is E-34's "Distinct from E-28" from the other side. Faithful.
+  (My v2 F-02 — that E-34's positive observables carry no AT — is unresolved but **inherited**: it
+  was open at approval, this window did not touch it, and it is Medium, not gating. I do not
+  re-litigate it here beyond noting it survives.)
+- **E-23 (run ends on the wave's own gate halt).** Its clause "'Restored' is BR-9's observation
+  point, not the last byte written: the halt path still appends the record and escalation entries
+  BR-13 requires and still rewrites and commits the `halted` queue row (M-WG-7)" is what makes
+  FSPEC's temporal cut cover AC-5.2's queue-row carrier without enumerating it in BR-9. REQ v1.15
+  enumerating that carrier upstream makes E-23 *more* necessary, not redundant. Faithful.
+- **E-30 (escalation log cannot be written).** REQ v1.15 now names AC-6.2's escalation-log append in
+  AC-5.1's excluded carriers. E-30's rule — a failed escalation-log write never upgrades the
+  escalation, never changes the halt — is about a *different* failure axis and is untouched by the
+  exclusion. No interaction: a carrier excluded from the restoration map can still fail its own
+  write. Both statements hold simultaneously. No finding.
+
+No §5 row cites an AC that the window retired, renumbered, or reworded against it.
 
 ## Acceptance Tests
 
