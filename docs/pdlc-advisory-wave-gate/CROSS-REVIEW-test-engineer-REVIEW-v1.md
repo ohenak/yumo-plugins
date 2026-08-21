@@ -145,12 +145,73 @@ already-RED result. Not gating.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | `resolvedSnapshotRef` guards the un-skip push (`orchestrate-dev.js:15484`), but `resolved === true` appears to imply a successful capture — E-34 escalates rather than resolving, so `resolved && snapshotRef === null` looks unreachable. Is the guard defensive-only? If so it is correct as written and needs no test; if a reachable path exists (a future disabled-tier or budget arm returning `resolved: true` without capture), it needs the third fixture. Confirming the reachability answer in TSPEC §4.5 would close it either way. |
+| Q-02 | AT-06-4's un-skip negative arm discriminates on "A6 never fired" (`waveExecution.test.js:1347`, `a6.calls.length === 0`). Given Q-01, is that the intended discriminator, or was "A6 fired but captured nothing" meant to be the companion? The former is what ships and is consistent with the reachability reading above. |
 
 ## Positive Observations
 
-_pending_
+- **The oracles that exist are genuinely falsifiable.** Four independent source
+  mutations (M1–M4) each produced a RED test. In particular M4 — dropping the ref
+  from the rendered string while keeping the overwrite sentence — is killed, which
+  means BR-14's *co-location* clause is actually enforced rather than approximated by
+  a presence-anywhere check. The oracle picks the single `notices` element matching
+  the ref and asserts the overwrite predicate on **that same element**. This is the
+  right shape and it is worth keeping as the pattern for the F-01 fix.
+- **`test.todo` retired into a real, mutation-proven case.** PROP-REST-03 was a
+  pending marker; it now ships as a live case whose new `hashDomain` helper reads
+  BR-9's domain out of the repo itself (`git ls-files` ∪
+  `git ls-files --others --exclude-standard`) instead of re-implementing gitignore
+  matching in the test. Mutation M2 (`git clean -fd` → `-fdx`) goes RED, so the
+  boundary the todo deferred is now genuinely observed — and the case carries a
+  positive-presence conjunct (the ignored file's content survives restore) alongside
+  the map-equality half, exactly as the falsifiability bar requires.
+- **Anti-echo discipline is consistent.** Every expected value in the new tests is a
+  literal written spec-side — `"refs/pdlc/a6-snapshot-1"`, the verbatim Oracle G
+  diagnosis sentence, the two-class root-cause literal. Nothing is imported from or
+  derived off the module under test, so the expectations can fail.
+- **Set-equality, not containment, on the enumerated contract.** The `haltFields`
+  key set is asserted by sorted `Object.keys` over all five keys
+  (`advisoryWaveGate.test.js`, PROP-REC-05 arm), and the halt-fields payloads are
+  asserted with `toEqual`, not `toMatchObject`. A silently dropped `snapshotRef`
+  fails rather than passes.
+- **PROP-REST-10 asserts ordering, not coincidence.** The new case merges the git
+  transport's call log and the `_appendFile` log into one order-preserving timeline
+  and compares ordinals, rather than checking that content happens to match at the
+  end. That is the correct answer to BR-9's "observation point" clause.
+- **The negative arms carry positive conjuncts.** PROP-REC-09's no-notice assertion
+  is paired with a full five-key `toEqual` on `haltFields` plus record and
+  escalation-log content; the un-skip negative is paired with `outcome === "halted"`,
+  `haltAdvisory === undefined` and `a6.calls.length === 0`. No absence-only oracles
+  were found in this diff.
+- **The coverage gate is honest.** `test:coverage` is two-stage, and stage 2 re-reports
+  `--per-file --branches 85`, so a small module cannot hide under
+  `orchestrate-dev.js`'s 15k-line aggregate. It passes: branch 88.45% on
+  `orchestrate-dev.js`, above the 85 floor, with the full suite green
+  (102 suites, 4159 passed).
+- **Generated runtime is in sync.** `build-runtime.mjs --check` reports
+  `in-sync  pdlc/workflows/dist/pdlc-cli.mjs`, and the 57-line `dist/` delta matches
+  the 57-line source delta — the rebuild-and-stage obligation was honoured.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+One High finding (F-01). The production delta itself is correct — I found no defect in
+the shipped behaviour, and the wiring at `orchestrate-dev.js:15432` and `:15484` is
+right. What is missing is the oracle that would keep it right: AC-6.3 / AT-06-4 is an
+explicitly operator-facing claim about a **halt report**, and no test reads a report
+produced by the real seam. The mutation evidence is unambiguous — the sink can be
+severed with the suite green.
+
+The fix is small and the host test already exists (`advisoryWaveGateMain.test.js:365-388`
+already drives the real seam to an unresolved halt and already asserts `snapshotRef`).
+Add the three-line `result.notices` assertion there, add F-02's E-34 companion beside
+it, and re-run the `_notice: advisoryNotice` mutation to confirm it goes RED. F-03 is
+a one-token strengthening and is not gating.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
