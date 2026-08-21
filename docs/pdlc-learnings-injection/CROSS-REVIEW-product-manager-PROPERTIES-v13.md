@@ -54,6 +54,70 @@ still correct, so this is quotation freshness, not fidelity — F-01 and F-02 be
 
 ## Properties
 
+**No property text changed, so the test is whether each property's *status* claim is now measured
+truthfully.** §C.4's reversal table is the delta's load-bearing content. I re-ran all seven rows
+against `pdlc/workflows/__tests__/learningsBlock.test.js` at HEAD:
+
+| Reversal the delta asserts | Measured at HEAD | Holds? |
+|---|---|---|
+| **two** `describe`s, at `:40` and `:274` | `grep -n 'describe('` returns exactly two, at lines **40** and **274**, with the quoted titles character-exact | Yes |
+| `LI-AT-11` heading-form arm present at `:105` | Line 105 is that `test(` with the quoted title verbatim | Yes |
+| un-glossed `name: "Rejected Proposals"` at `:125`, normalising to the glossed form at `:152` | `:125` is `name: "Rejected Proposals",`; `:152` is `"Rejected Proposals (with rationale)",` | Yes |
+| `###`-as-body at `:133`, surviving verbatim at `:160` | `:133` is the `"### A sub-heading that is body text, not a section boundary.\n\n" +` body line; `:160` is the same string asserted | Yes |
+| `## Process Findings` near-miss at `:139` | `:139` is `name: "Process Findings",` | Yes |
+| a **third** binding literal `const maxBytes = 60` at `:235` | `grep -n 'const maxBytes'` returns **three**: `40` (`:174`), `66` (`:194`), `60` (`:235`) | Yes |
+| `extractInjectableMaterial(text, 0)` at `:337`, under the `test(` at `:329` | `:337` is that call; `:329` is that `test(` with the title verbatim | Yes |
+
+**Seven for seven, with no rounding.** Each new claim is a positive assertion about a line that
+exists, replacing a negative assertion about a line that did not — which is the right direction of
+travel for this document, and the direction that is hardest to fake, because each one is falsifiable
+by a single `sed -n`. The old readings were true when taken and are false now; the delta says exactly
+that, and names the reason (the branch advanced past the reviewed commit), rather than quietly
+restating.
+
+**The green claim reproduces.** The delta asserts `npm test -- __tests__/learningsBlock.test.js
+__tests__/learningsSelect.test.js` reports **26 passed, 26 total** at `09c7c62f`, with a
+`test.skip`/`describe.skip` count of **0** over both files. I ran it in
+`pdlc/workflows` (the suite needs the package's `--experimental-vm-modules` runner; a bare `npx jest`
+fails on the ESM import, which is a runner detail, not a red):
+
+```
+Test Suites: 2 passed, 2 total
+Tests:       26 passed, 26 total
+```
+
+and `grep -c 'test\.skip\|describe\.skip'` returns `0` on each file. The skip count matters more than
+the pass count here — 26 green with skipped arms would be the vacuous-green failure mode this
+pipeline has been bitten by before, and the delta forecloses it by counting skips on the same line as
+the passes rather than leaving the reader to infer it.
+
+**The four property-owed amendments are discharged, and the document says so without overclaiming.**
+PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's heading-form arms have all landed, all green.
+What I looked for and did not find was inflation: the delta could have read "all four green" as
+"case C is validated". It does not. It records case C's **failure limb** — a landing red is a real
+defect, fix owed before batch 14, a survivor is a gate failure — as *"**unexercised**, not waived"*.
+That is the honest reading: the rule was never triggered, so it was never tested, and nothing about
+this round licenses relaxing it. From a product lens that distinction is the whole value of the
+paragraph, because a future amendment still travels under the untested limb.
+
+**PROP-BOUND-03's hedge is retired, not deferred.** The prior revision flagged the
+`maxBytesPerDocument <= 0` arm as the one *"not obviously green at landing"* — the zero-bound
+production half (LI-16, now `be2456c8`) had never been exercised through the
+`extractInjectableMaterial` seam. It now is (`:337`), and it passed on first exercise. The document
+records that as retiring the hedge. Correct, and correctly scoped: it is a statement about this arm,
+not a general claim that first exercises are safe.
+
+**The Group D amendments are discharged on the same terms.** `learningsSelect.test.js:647`
+(`describe("PROP-ORDER-06: orderCorpus permutation invariance and strict-weak-ordering (TSPEC
+T-O-4)")`) and `:786` (`describe("PROP-CORPUS-09: selectLearnings totality (TSPEC T-O-5)")`) are both
+present and both inside the 26-green count. Verified character-exact at both anchors.
+
+**Nothing was added to the property set, and nothing was dropped.** §C.3's *"Properties with **no**
+owning task | 0"* row is byte-unchanged, and the four newly-inventoried files are explicitly declared
+property-free — a claim I checked by grepping the four for `PROP-`: none is named by any property of
+this document. The obligation the implementer receives is therefore unchanged in kind and in count,
+which is the question a product reading of this delta has to answer.
+
 ## Oracles
 
 ## Fixtures
