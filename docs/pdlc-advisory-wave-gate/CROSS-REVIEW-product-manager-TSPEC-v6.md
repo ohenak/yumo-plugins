@@ -104,7 +104,17 @@ current content keeps the document honest between now and Phase P.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | §4.5's un-skip overwrite-notice row (`:1498`) names the helper and the sink but not where `snapshotRef` is read at that site: the seam has returned, and the surviving carrier is `resolvedAdvisoryFields` (`orchestrate-dev.js:15402`), forwarded to the un-skip halt at `:15434`. Fix: one clause naming `resolvedAdvisoryFields.snapshotRef` as the value the un-skip push renders from. | BR-14, AC-6.3 (REQ v1.16), AT-06-4 |
+| F-02 | Low | Local | §5.6 (`:1942`) and §4.5 (`:1498`) state in the present tense that "PLAN covers it under this AT's task". PLAN at HEAD carries no mention of the overwrite notice, `renderSnapshotOverwriteNotice`, or `AT-06-4b`; `PLAN:527` maps `AT-06-4` alone and A6-18's coverage list (`PLAN:331`) stops at `AT-05-3, AT-06-4, AT-07-1`. Fix: state it as the obligation on PLAN that it is, not as PLAN's current content. | BR-14, AT-06-4 / AT-06-4b |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v5 and still open at Phase P, not against this document: PLAN needs a home for `AT-06-4b`, for the notice push in `runWaveGateSeam`, for the separate un-skip push site, and for the three shipped-oracle widenings §5.1 now names (`advisoryWaveGate.test.js`'s four, `advisoryWaveGateMain.test.js`'s one, `advisoryEscalationLog.test.js`'s count). §5.1's row text is precise enough to transcribe directly — this is a routing note, not a gap in the TSPEC. |
+| Q-02 | `PLAN:331`'s A6-18 still says "Capture failure: **six** positive assertions on one run" — the very numeral §5.2 dropped this round for going stale. Worth sweeping when PLAN absorbs v1.15 so the two documents do not disagree about a count neither of them needs. |
 
 ## Positive Observations
 
