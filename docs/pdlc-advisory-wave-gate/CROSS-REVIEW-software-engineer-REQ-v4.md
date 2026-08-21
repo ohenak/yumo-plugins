@@ -186,6 +186,35 @@ Medium rather than Low.
 
 ## Positive Observations
 
+- **The erratum is genuinely targeted.** 21 insertions, 9 deletions, three regions, zero collateral
+  edits. I diffed the whole file, not just the named sections: nothing outside the header block,
+  AC-1.1, AC-5.1 and R-5 moved a byte. That is what makes a delta confirmation cheap, and it is not
+  the norm — an erratum that touches only what it was routed to touch lets the reviewer spend the
+  round on upstream fidelity instead of on scope policing.
+- **`c8aa22a4` is the *right* base, not merely *a* base.** The obvious cheap fix would have been to
+  name any pre-A6 commit. The one chosen is exactly the base `pdlc-wave-gate-baseline.md:70` already
+  names for M-WG-8's five-member reading, so AC-1.1, R-5, the FSPEC's §2 before-base paragraph and
+  the baseline now all argue from one commit. Three documents agreeing on a measurement base is worth
+  more than any of them being individually right.
+- **AC-1.1 keeps M-WG-8 rather than swapping in M-WG-13.** The temptation on an erratum like this is
+  to "update" the citation to the current fact, which would have destroyed the criterion's meaning —
+  AC-1.1 is *about* the transition. Naming M-WG-8 as the before, M-WG-13 as the after, and the commit
+  each is read at, is the reading that survives the next default-branch move. This also honours the
+  disposition SE v2 F-02 recorded ("AC-1.1 and R-5 correctly left citing M-WG-8 as the pre-change
+  fact") rather than quietly reversing it.
+- **AC-5.1's failed-capture arm is written as a product outcome, not a mechanism.** "no repair is
+  proposed, none is applied, and the wave halts on its own gate (AC-5.2)" states three observables
+  and defers the rest to O-1. A weaker author would have specified where the snapshot lives. The arm
+  also names its own contrast — "a different outcome from a failed restoration" — which is the
+  sentence that stops a TSPEC author collapsing the two paths into one error branch.
+- **The ignored-path boundary was the destructive reading, and it is now closed.** Read literally,
+  the pre-erratum AC-5.1 required a restore that would have had to reach operator files A6 never
+  touched. Catching that at REQ altitude, before a TSPEC author picked a `clean`-family mechanism to
+  satisfy it, is the cheapest possible place to have caught it.
+- **The Status flip does not pre-empt SE Q-02.** `approved (shipped)` landed *and* the changelog says
+  "relocation still SE Q-02's" in the same sentence. Disposing one field without silently absorbing
+  the adjacent open question is exactly right.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
