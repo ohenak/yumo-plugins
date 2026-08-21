@@ -143,6 +143,27 @@ beside the verbatim text it points at, and `:111`/`:131` are the measured eviden
 
 ## Fixtures
 
+**No fixture claim changed except the one my F-01 asked for, and it is now correct.**
+
+| Fixture dependency | State at `7ac7fe8b` | Effect of this delta |
+|---|---|---|
+| `helpers/learningsFixtures.js` (LI-02) | tracked, added `1920f281` | row unchanged; now also carries its adding commit |
+| `fixtures/learnings-baseline/` (LI-06) | tracked — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/0.txt`, `PHASE-R-REVIEW-PROMPTS/1.txt`, added `4a6c1816` | **repaired**: was *not yet created*, now *exists (landed)* with the four member paths spelled out. This was the fourteenth row of my v7 F-01 and the one I called the clearest case; the fix enumerates the directory's contents rather than asserting existence, which is strictly better than what I asked for |
+| §F.1's named corpora (`NO-MATERIAL`, `ZERO-BOUND`, `DIVERGENT-CORPUS`, the five-section AT-11 fixture) | declared through the helper | untouched — §F.1 is byte-unchanged |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | `learningsBlock.test.js:106–139` still carries the 25 + 2 + n arithmetic in comments and the literal expected strings | unchanged, and still transcribed rather than computed from the unit under test |
+| PROP-BOUND-08's real-corpus arm | reads the live corpus | unaffected |
+| `scripts/capture-learnings-baseline.mjs` (LI-05) | tracked — `git ls-files scripts/` returns exactly that one path, landed `ced75955` ("LI-05 — GREEN the capture script") | unchanged from v0.4; the closing paragraph's account still verifies exactly |
+
+**The asymmetry I flagged at v7 is gone.** The `scripts/` correction was the model I asked the author
+to apply to the fourteen-row table; v0.5 applies it and goes further, generalising the pattern into a
+stated method — *"a snapshot, not a live claim … each row carries the commit that added the file, so
+a reader can tell a stale reading from a current one without re-running anything."* That sentence is
+the durable form of the fix: it makes the next staleness visible instead of silent, which is why I
+would rather see it than a one-off re-measurement.
+
+**No generator, corpus declaration or fixture byte moves under any of this.** §F.1–§F.4 are unchanged
+and no property's fixture dependency is re-pointed.
+
 ## Findings
 
 ## Questions
