@@ -277,12 +277,15 @@ that a first-class per-seam `enabled` map becomes the better surface.
 
 ### What follows from DEC-A6-01
 
-- **Five new git verbs enter this workflow**, not two. `write-tree`, `commit-tree`, `update-ref`,
-  `read-tree` and `clean` each appear **zero** times in `orchestrate-dev.js` today; `git clean` in
-  particular is never invoked, the only `"clean"` strings in the module being `parseRebaseStatus`'s
-  rebase-status vocabulary, which is not a git verb at all. The verbs A6 reuses rather than
-  introduces are `add`, `reset` (shipped once, as `reset --hard` on the seam-revert path) and
-  `rev-parse`. The count matters because it sizes the double: every `_git` double A6 touches has to
+- **Five git verbs are new to this workflow**, not two. A6's mechanism introduces `write-tree`,
+  `commit-tree`, `update-ref`, `read-tree` and `clean` — none of which the pre-A6 module invoked;
+  `git clean` in particular had no call site at all, the module's only `"clean"` strings being
+  `parseRebaseStatus`'s rebase-status vocabulary, which is not a git verb. The verbs A6 reuses
+  rather than introduces are `add`, `reset` (invoked once before A6, as `reset --hard` on the
+  seam-revert path) and `rev-parse`. The claim is about A6's mechanism, not about a tree state:
+  which of the five are present at any given HEAD moves with implementation and is
+  `SIZING-pdlc-advisory-wave-gate.md`'s to measure, not this record's. The count matters because it
+  sizes the double: every `_git` double A6 touches has to
   answer all five, and the restore path is the half most easily left unanswered — which is why
   TSPEC §5.2's fixtures assert on the observed argv sequence rather than on outcomes alone, and why
   §5.5 counts a capture-*unique* verb (`commit-tree === 1`) rather than raw `_git` calls, since
