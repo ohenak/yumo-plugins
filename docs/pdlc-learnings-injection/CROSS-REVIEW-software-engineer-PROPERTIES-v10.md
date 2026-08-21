@@ -58,7 +58,56 @@ I re-verified no code claim this round: no code claim in the document is downstr
 
 ## Properties
 
-TBD
+**No property statement is invalidated.** I re-read the ten groups' claim text against the PLAN
+delta: nothing in the edit touches a level, an owning task, an AT partition, a bound, an enum, a
+scale or a return type, and PLAN's own changelog says so explicitly ("no task moved batch, no `Deps`
+edge changed, no AT partition, fixture or manifest row was touched, and the batches 7–13 ledger is
+byte-identical"). I confirmed the second half independently: the diff's five hunks are the version
+cell, the case A/B/C rows, the fixture-consumer paragraph and one changelog row — the batch ledger
+tables are outside every hunk. So §C.1 (35/35), §C.2 and §C.3 (23/23 tasks) still reconcile against
+the same PLAN task table, and the document's 70 `PROP-` ids still each have an owning task.
+
+**What is invalidated is §C.4's account of *when and under what rule* four of them may land.**
+Four properties — PROP-BOUND-03 (the `maxBytesPerDocument <= 0` case), PROP-BOUND-05, PROP-BOUND-07
+and PROP-BOUND-08 — are, by §C.4's own measurement at `21edb7c5`, amendments to the **landed**
+`learningsBlock.test.js`, and the Group D properties amend the landed `learningsSelect.test.js`.
+That measurement is unchanged and still true. What changed is the rule that governs the commit
+carrying them:
+
+- **§C.4 says case B governs.** Verbatim: "under PLAN's two-case follow-up table … case B is the
+  live case and case A is unreachable", and it derives the two gaps it routes from case B's wording
+  ("the named row covers `LI-AT-11`'s heading-form cases only … its span ends at 'the batch that
+  greens them', which no remaining batch is").
+- **PLAN v0.8 says case B does not apply.** Case B's trigger is now bounded to "batch 9 through
+  batch 12", and case C states of the post-batch-13 world: "Case B's span therefore has no terminus
+  here and does not apply." HEAD is post-batch-13 — LI-21 is landed at `92b7ea0c`, which §C.4 itself
+  measured and which case C names.
+- **PLAN v0.8 places a new obligation on exactly these four properties, and the document does not
+  carry it.** Case C names them by id and rules: "under case C they owe no ledger row, and **they owe
+  green**." It goes further — "If such an amendment nonetheless lands **red**, it has found a real
+  defect, not staged a TDD red: there is no later batch to name in a ledger row, so the fix commit is
+  owed **before batch 14 runs**, and a red surviving into batch 14 is a gate failure."
+
+That is a live, actionable scheduling instruction with a gate consequence, and PROPERTIES now states
+its opposite premise. An author writing the PROPERTIES suite from this document would read §C.4 and
+wait for PLAN to name ledger rows that PLAN has now ruled will never be written, or stage a red that
+batch 14's unqualified gate fails. That is **F-01**, and it is the reason this confirmation does not
+approve. The fix is a §C.4 rewrite of one paragraph — not a property change: re-attribute the four
+to **case C**, state the green-at-landing obligation and the before-batch-14 fix rule, and keep the
+conclusion §C.4 already reaches ("no property in this document changes either way"), which case C
+independently confirms.
+
+**Case C's green-at-landing premise is technically sound, and I checked it rather than inheriting
+it.** PLAN grounds it on `canonicalSectionName` already shipping F-O-1's second rule. I re-measured
+the same production surface I measured at v8/v9: `SECTION_HEADING_RE`'s `^##[ \t]+` anchor cannot
+match a `###` line, `BR6_SECTION_NAMES` is compared case-sensitively, and the optional ordinal and
+trailing gloss are stripped. So PROP-BOUND-05's and PROP-BOUND-07's heading-form arms should indeed
+land green. **PROP-BOUND-03's zero case is the one I would not assume green** — §C.4's own
+measurement is that no `extractInjectableMaterial(text, 0)` call exists in the landed suite, and
+PLAN v0.7 named LI-16 the owner of TSPEC §D.5's zero-bound production half. Case C's rule handles
+that cleanly (a red there is a real defect owed a fix before batch 14, not a ledger row), but the
+document should say so rather than leave a reader to infer it — that is **F-04**, Low, and it is a
+completeness point inside the same paragraph F-01 already reopens.
 
 ## Oracles
 
