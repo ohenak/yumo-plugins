@@ -427,7 +427,10 @@ a defect in this document or in the PLAN, not a nice-to-have.
 - **PROP-CONFIG-04:** The three thresholds **must** validate as **non-negative** integers
   (`Number.isInteger(v) && v >= 0`): `0` is a **valid** admits-nothing value, a negative or non-integer
   value is `NTC-KEYTYPE`. `maxDocuments: 0` and `maxTotalBytes: 0` **must** each yield an **enabled** run
-  with BR-8's rows present and empty — never AC-5.1a's absent key, never a refusal to run.
+  with BR-8's rows present and empty — never AC-5.1a's absent key, never a refusal to run. AT-30's
+  **third** zero, `maxBytesPerDocument: 0`, reaches the same run-level shape by a different route and
+  carries an extra per-document conjunct; it is asserted by **PROP-CONFIG-09**, so the two properties
+  partition the AT rather than overlapping on it.
   *Error Handling · L3 · AC-4.4, BR-14, E-24, E-25, AT-30 · red LI-12 · green LI-21.*
 - **PROP-CONFIG-05:** `enabled: false`, **explicitly**, **must** be the only disabling state:
   `buildLearningsInjector` **must** return `null` on `config.enabled === false` **alone** — no `present`
@@ -446,6 +449,23 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `readLearningsConfigSafely`, which **must never** throw, and `LEARNINGS_CONFIG_PATH` **must** be
   `MERGE_CONFIG_PATH` — no second config file, no per-phase override, no per-feature allow-list (NG-7).
   *Contract · L3 · §4.1, NG-7, AC-3.3, TSPEC §I.2 · red LI-12 · green LI-21.*
+- **PROP-CONFIG-09** *(the zero per-document bound — AT-30's third arm):* Over a corpus fixture whose
+  documents **do** carry BR-6 priority sections, run at `maxBytesPerDocument: 0` with the other two
+  thresholds at §4.1's declared non-zero values, the run **must** be **enabled** with BR-8's rows
+  **present and empty**, and **every** corpus document **must** carry `RSN-NO-MATERIAL` — the exact
+  reason id, not merely "not selected" — with the contributing count at **0**, **no** `maxDocuments`
+  slot consumed, and **no** document flagged `bounded`. Four positive conjuncts, because the
+  distinguishing observable is the reason id and the unconsumed slot, not the empty selection: an
+  empty selection is what `maxDocuments: 0` and `maxTotalBytes: 0` produce too, so PROP-RECORD-02's
+  generic empty-selection oracle cannot tell the three apart. The fixture **must** carry material
+  (that is the `ZERO-BOUND` fixture's whole point) — a fixture of section-less documents would green
+  through PROP-BOUND-06's first disjunct even if the zero bound were unimplemented, which is exactly
+  the precedence-defeating requirement of §O.7. The oracle discriminates the three plausible wrong
+  answers FSPEC's edge table rules out: `RSN-BYTES` rows, a zero-byte contribution flagged
+  `bounded: true` occupying a slot, and AC-5.1a's absent report key. Lands as one case in
+  `learningsConfig.test.js` beside PROP-CONFIG-04, adding **no** PLAN task and **no** AT id.
+  *Error Handling / Data Integrity · L3 · AC-4.4, BR-6, BR-9, BR-14, D-12, E-36, AT-30 ·
+  red LI-12 · green LI-21.*
 
 ### Group I — Gate-input isolation, footprint and preserved semantics *(BR-11, BR-15, BR-16)*
 
