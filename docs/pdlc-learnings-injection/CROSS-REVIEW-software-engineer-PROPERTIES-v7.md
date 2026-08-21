@@ -145,9 +145,37 @@ the delta are checkable against HEAD, and one of them is wrong.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | §C.4's re-measurement is false at HEAD, and this delta re-asserted it. The paragraph declares "Test-file inventory, re-measured at HEAD (implementation has begun)" and concludes "Seven of the fourteen files have landed … The remaining seven are explicitly planned and unstarted". At HEAD **all fourteen** manifest paths are tracked (`git ls-files pdlc/workflows/__tests__` returns all twelve `learnings*.test.js` suites, `helpers/learningsFixtures.js`, and `fixtures/learnings-baseline/`), and the same was already true at `a12b20f9`, the commit carrying this edit (`git ls-tree -r a12b20f9`). The branch carries `feat(pdlc-learnings-injection): LI-01` … `LI-21` and `LI-23` (`4a6c1816` LI-06, `2fe07964` LI-10, `c3e723e5` LI-11, `eb32d7d2` LI-12, `960c229c` LI-14, `2cbacada` LI-17, `100e3d9c` LI-23, …). Three dependent statements inherit the falsity: (a) the table's seven `not yet created` cells; (b) "PROP-CONFIG-09 in the not-yet-created `learningsConfig.test.js` (LI-12)" — that file exists at HEAD and already carries LI-AT-30's three cases (`learningsConfig.test.js:226,242,258`); (c) the P-A-6 conclusion that this document's four properties "enter no ledger row unless that commit is brought forward" — LI-08 and LI-17 are both committed, so `learningsBlock.test.js` is landed **and greened**, which is PLAN P-A-7's **case B** ("a commit landing at batch 9 or later adds the named row"), not the pre-batch-7 case the paragraph's framing assumes. Fix: re-run the measurement, restate the table's At-HEAD column, replace "not-yet-created `learningsConfig.test.js`" with its landed state, and re-derive the ledger-row consequence from case B | §C.4 Landed files and re-red of landed suites |
+| F-02 | Low | Process | The delta's own good practice is unevenly applied: the capture-script sentence was rewritten to a measured, commit-cited presence claim while the table two paragraphs above it kept its stale cells. A measurement paragraph that carries a "re-measured at HEAD" banner should be re-run wholesale, not sentence-by-sentence, or the banner itself becomes the misleading part | §C.4, "re-measured at HEAD" banner |
+
+DEFERRED: §G.1's T-O-6 tail ("All three land on tasks that already exist … No new PLAN task is required") is true as a task claim but reads as a scheduling claim; a clause noting those tasks are committed would remove the ambiguity — no decision is reopened by it.
+DEFERRED: PLAN's `Status` column for LI-01…LI-23 still reads ⬚ at HEAD although the commits exist; PLAN v0.7 explains this as dispatcher-owned, so it is not a PROPERTIES defect, but a reader cross-checking §C.4 against PLAN will find two stale surfaces rather than one.
+DEFERRED: the three T-O-6 locator rewrites are correct and should be propagated to any remaining `TSPEC §T.5, T-O-6` phrasing elsewhere in the feature's documents, which I did not sweep in a frozen round.
+
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Given that LI-01…LI-21 and LI-23 are all committed at HEAD, is §C.4's inventory intended to be a live measurement at all, or a snapshot pinned to a stated commit? A snapshot pinned to an explicit sha would stop going false every wave and would keep the P-A-6/P-A-7 reasoning anchored to a checkable point in time. |
+| Q-02 | With `learningsBlock.test.js` landed and greened, do the four owed amendments (PROP-BOUND-03's zero case, PROP-BOUND-05/07/08) now require named expected-red rows under P-A-7 case B before they may be committed — and is that naming owed by PLAN before Phase P's suite lands? |
+
 ## Positive Observations
+
+- All three of my v6 findings are addressed at their stated location, with the PLAN pin refreshed to
+  the version that is actually at HEAD and the erratum recorded as closed rather than re-routed.
+- The three T-O-6 locator rewrites fix a citation that was pointing at the wrong TSPEC section
+  (§T.5 rather than `### Named obligations carried forward`, TSPEC:1502/1511), and they preserve the
+  verbatim quote. That is a correctness improvement, not just a style change.
+- §C.4's P-A-6 / P-A-7 split is now stated precisely: case B is scoped to `LI-AT-11`'s heading-form
+  cases, this document's properties travel under P-A-6, and both citations check out against
+  PLAN:590 and PLAN:484–503. The *mechanism* reasoning is right; only its premise about where the
+  run stands is stale.
+- The capture-script sentence is the model for how the rest of §C.4 should read: measured, cited to a
+  commit, and explicit that the earlier absence claim "was true when written and is not now".
+- The counts (70 properties, 23 tasks accounted for, 14 manifest rows) all still reconcile
+  mechanically at HEAD.
 
 ## Recommendation
 
