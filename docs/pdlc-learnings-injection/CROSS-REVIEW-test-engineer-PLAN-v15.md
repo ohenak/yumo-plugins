@@ -95,6 +95,43 @@ right generalisation: the reasoning was never per-file.
 
 ## Dependencies
 
+**F-03 (round 14, Low) — resolved.** The header now pins `TSPEC (v0.9); FSPEC (v0.14); REQ (v0.10);
+DECISIONS (v0.5)` (PLAN:11), matching the versions this dispatch carries, and §Overview's citation
+sentence reads `REQ v0.10 / FSPEC v0.14 / TSPEC v0.9` (PLAN:40). The three in-prose quotations moved
+with it: LI-12's `FSPEC v0.14's AT-30` and `BR-9/D-12 as restated in FSPEC v0.14` (PLAN:156), the
+`RSN-NO-MATERIAL` arm row (PLAN:426) and its paragraph (PLAN:434), and the F-O-1 obligations row
+(PLAN:440). A grep for `v0.13` now returns **only changelog rows**, where a superseded pin is the
+historical record and is correct — the 0.1 row's `REQ v0.9 / FSPEC v0.10 / TSPEC v0.6` is the same
+case. No substantive citation moved: this was a pin refresh, exactly as round 14 recorded, and I
+re-verified at round 14 that AC-2.4's cause-defined attribution still routes through AT-13, that
+E-36/AT-30's three zero-threshold cases are unmoved, and that F-O-1's two heading rules are
+unchanged. Nothing in this delta disturbs those conclusions.
+
+**F-04 (round 14, Low) — resolved, and the arithmetic now reconciles in both directions.** §Overview
+reads "fourteen new test files **scheduled by the batch ladder**" and adds the tree count beside it:
+eighteen at `09c7c62f`, "fourteen `learnings*.test.js` suites and three helpers under
+`pdlc/workflows/__tests__/`, plus `pdlc/engine/__tests__/learnings-config-example.test.js`". Measured
+with `git ls-tree -r --name-only 09c7c62f`: seventeen matching paths under
+`pdlc/workflows/__tests__/` — fourteen `learnings*.test.js` and three `helpers/learnings*.js`
+(`learningsBaselineScenarios.js`, `learningsComposition.js`, `learningsFixtures.js`) — plus the one
+engine-side file. **18, exactly as stated.** §The arithmetic's new closing sentence reconciles the
+same number from the other side: "the ladder's thirteen (twelve suites plus
+`helpers/learningsFixtures.js`; the fourteenth test row is the fixture subtree, a directory), plus
+`2fc6fcd3`'s five added files" — and 14 suites minus the two `2fc6fcd3` added (`learningsDisclosure`,
+`learningsErratumBinding`) is indeed twelve. Both decompositions land on 18 and agree with the tree.
+
+**§The arithmetic's scoping survived the row growth.** The sentence still scopes the twenty-four-row
+count to "the **two dispatcher-parsed tables only**" and now says §Post-batch remediation's
+**nineteen** rows are excluded by construction — the number I counted. The dispatcher's manifest
+check therefore still sees exactly what it saw at v1.1, which is the property that made the
+landing-commit column the right call in the first place.
+
+**Upstream agreement is unbroken.** PROPERTIES §C.4's record of P-A-7 case C discharged green is
+unchanged by this delta — case C's cell is not in the diff — and the four unowned remediation files
+PROPERTIES routed here as its §G.2 gap 5 are now a superset in this PLAN (five new files, thirteen
+second writes), so the routing is over-satisfied rather than partially satisfied. No new upstream
+defect surfaced in the changed sections; I raise no `ERRATUM:` this round.
+
 ## Verification
 
 ## Recommendation
