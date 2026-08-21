@@ -137,6 +137,36 @@ landed suite — so the three discipline checks I run every round I ran against 
 
 ## Fixtures
 
+§F.1–§F.4 are byte-identical; the delta names no new fixture and moves no expected byte count. Three
+fixture-adjacent claims changed form (not substance), and all three re-verify.
+
+- **The fourteen-row inventory is untouched.** Every `exists (landed)` cell and every `Added by` sha
+  is unchanged from the v0.5 table I checked exhaustively last round, including
+  `fixtures/learnings-baseline/`'s four-path enumeration (`MANIFEST.json`,
+  `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt`, `4a6c1816`) and
+  `helpers/learningsFixtures.js` (`1920f281`). The snapshot pin to `21edb7c5` survives the rewrite,
+  so the inventory still cannot go silently stale.
+- **LI-04's artifact citation.** Reworded from the `.gitignore:13` anchor to the rule's own text.
+  Still exactly true at HEAD: `.gitignore` line 13 is `/.baseline-worktree/`, and it is the file's
+  only occurrence of that string.
+- **The heading-form fixture obligation is now stated at the right granularity.** The revised clause
+  says what is owed is "the variant fixture as a whole", which is the correct fixture-level framing:
+  the landed suite's fixtures are ad-hoc string literals (`:42`, `:110`, `:130`) exercising one
+  spelling, while LI-AT-11's variant arm needs the declared-heading-form knob on
+  `helpers/learningsFixtures.js`. The additivity premise for that knob is unchanged (PLAN, LI-02 row:
+  `renderSection` already accepts `ordinal`, `gloss` and `body`), so no fixture obligation moved and
+  no consumer suite gains a ledger row.
+- **The glossed-name attribution is one degree off.** §C.4 says "the builder renders the canonical
+  glossed `"Rejected Proposals (with rationale)"`". At `learningsBlock.test.js:81` that string is a
+  literal in the section list the test hands the builder — the test pins it, the builder echoes it.
+  The claim the sentence is making (no un-glossed variant is exercised) is true either way, so this
+  is a wording nit inside a frozen round, recorded as DEFERRED, not a finding.
+- **No expected value moved.** The `BYTES-BINDING` (3/5/0), `ZERO-BOUND`, `DIVERGENT-CORPUS`,
+  `DISCARDED-NESTED`/`DISCARDED-DIRECT` and `COUNT-BINDING` fixtures are outside the delta, and
+  nothing in the delta derives an expected value from the code under test or from PLAN's ledger.
+- **`scripts/capture-learnings-baseline.mjs`** — the sentence survived the rewrite unchanged and
+  still measures true; `ced75955` remains "LI-05 — GREEN the capture script".
+
 ## Findings
 
 ## Questions
