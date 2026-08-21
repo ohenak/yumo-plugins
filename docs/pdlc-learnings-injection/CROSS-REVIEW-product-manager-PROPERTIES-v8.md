@@ -98,6 +98,49 @@ suite) from P-A-6 (this document's own suite).
 
 ## Oracles
 
+**No oracle statement changed in this delta.** §O.1–§O.10 are byte-identical; the only oracle-adjacent
+movement is §C.4's new account of which oracles are *owed* to a landed suite. That account I checked
+against the file.
+
+**F-03 of v7 is resolved, and its evidence holds at HEAD.** §C.4 now records that the four owed cases
+are absent from `learningsBlock.test.js` and that both green owners have landed, so they are
+*"property-owed cases with no red-owning task remaining ahead of them"*. Every element of that claim
+verifies:
+
+| Claim in §C.4 | Verified at HEAD |
+|---|---|
+| one `describe` naming three ATs | `describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)"` — `learningsBlock.test.js` line 38, quoted verbatim in the document |
+| no un-numbered `## Cross-Feature Patterns` / un-glossed `## Rejected Proposals` heading-form arm | the only occurrences are fixture *bodies* (`:42`, `:110`, `:130`) and the canonical glossed name `"Rejected Proposals (with rationale)"` in the builder (`:81`); no arm exercises the non-canonical form |
+| no `###`-as-body case | no `###` literal in the suite |
+| no `## Process Findings` near-miss | absent |
+| only `maxBytes` literals are `40` and `66` | `const maxBytes = 40` (line 111), `const maxBytes = 66` (line 131); the third call site passes `100000` (line 87) as an explicitly unbounded value, not a bound — so "only `maxBytes` literals" reads correctly for the bound cases |
+| no `extractInjectableMaterial(text, 0)` case | absent |
+
+**The expectations in the landed suite remain literal transcriptions, not implementation echoes** —
+which is what makes §C.4's "amendment into green code" framing safe rather than alarming. The AT-12
+case states its arithmetic in a comment and asserts the expected string as a literal
+(`expect(result.material).toBe("## Cross-Feature Patterns\n\n" + "b".repeat(38))`, with the comment
+*"hand-computed, never derived here"*), and AT-11's byte-bound case does the same at 40 bytes. No
+expected value is imported from or recomputed by the unit under test.
+
+**The new PROP-CONFIG-09 sentence is accurate and its pairing survives.** §C.4 now says
+`learningsConfig.test.js` *"already carries LI-AT-30's three cases"* and names the third as asserting
+`RSN-NO-MATERIAL` on every non-self path and no document carrying `RSN-COUNT`. At HEAD the three
+`test("LI-AT-30…` cases are at lines 226, 242 and 258; the third asserts set-equality over the
+enumerated non-self corpus paths with `expect(row.reason).toBe("RSN-NO-MATERIAL")` per row (line 279)
+and pairs the negative conjunct
+`expect(dispatch.rejected.some((r) => r.reason === "RSN-COUNT")).toBe(false)` (line 285) with that
+positive set-equality on the same path. That is the pairing rule satisfied — the negative is not an
+absence-only oracle, and the enumeration is checked by set equality rather than containment, so a
+deleted case fails.
+
+**One anchor-style nit, non-gating.** The new prose cites `learningsConfig.test.js:226`, `:242`,
+`:258` and `.gitignore:13` as raw `file:line` anchors without a quoted string or symbol beside them.
+Under `DECISIONS-review-severity-bars.md` `DEC-DOC-01` that is a Low, `Process`-scoped item (F-03
+below). The `learningsBlock.test.js:38`, `:111` and `:131` anchors are *not* in that class — each sits
+beside the verbatim text it points at, and `:111`/`:131` are the measured evidence for a
+"these are the only literals" claim, where position is the claim under test.
+
 ## Fixtures
 
 ## Findings
