@@ -331,6 +331,21 @@ describe("ADVISORY_ROOT_CAUSES equals {plan-ordering-defect, wave-internal-defec
     );
   });
 
+  test("deep-equals REQ AC-2.2's ORDERED literal (PLAN §DoD leg 3)", () => {
+    // AC-2.2's set is "closed, ordered, the first matching class winning", and the order is
+    // observable twice over: it decides which class wins a two-class failure (and therefore
+    // whether the repair routes through E-6 or E-5), and it is rendered verbatim into the A6
+    // dispatch prompt. The sorted set check above stays — a RENAMED member must keep failing
+    // distinctly from a REORDERED one — and this conjunct, transcribed from AC-2.2's table in
+    // its stated row order, is what a reversal of the catalogue fails (CR round 1, PM F-02).
+    expect(devModule.ADVISORY_ROOT_CAUSES).toEqual([
+      "plan-ordering-defect",
+      "wave-internal-defect",
+      "environmental",
+      "unclassified",
+    ]);
+  });
+
   test("is frozen", () => {
     expect(Object.isFrozen(devModule.ADVISORY_ROOT_CAUSES)).toBe(true);
   });

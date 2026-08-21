@@ -1960,6 +1960,20 @@ export const ADVISORY_ROOT_CAUSES = Object.freeze([
   "unclassified",
 ]);
 
+// AC-2.2's Meaning column, keyed by class — the catalogue above states WHICH classes exist; this
+// states what each one MEANS, which is what the A6 dispatch prompt has to say for the class an
+// operator later counts (AC-6.4) to have been asked for against a definition. Transcribed from
+// REQ AC-2.2's table; the ORDER stays the catalogue's, never this object's (CR round 1, PM F-04).
+export const ADVISORY_ROOT_CAUSE_MEANINGS = Object.freeze({
+  "plan-ordering-defect":
+    "the failure names a symbol, file or artifact the PLAN itself schedules for a LATER task than the one that consumed it",
+  "wave-internal-defect":
+    "the failure is attributable to work this wave produced, inside paths this wave owns",
+  environmental:
+    "the failure reproduces independently of this wave's diff — a pre-existing red, a missing tool, a transport failure",
+  unclassified: "none of the above is decidable from the gate output",
+});
+
 // TSPEC §3.1 — A6's own prohibited-operation letters (§5.5's prohibition table, PROP-ENV-10).
 export const A6_PROHIBITIONS = Object.freeze(["f", "g", "h", "i"]);
 
@@ -3141,7 +3155,11 @@ export function buildA6SeamOps({
         `Wave ${waveNum} of ${feature}'s gate went red. Diagnose the failure from the captured`,
         `output below, citing the exact region that shows it (at least ${A6_MIN_CITATION_CHARS}`,
         `normalised characters, verbatim from the output).`,
-        `Classify with a trailer line ROOT-CAUSE: one of ${ADVISORY_ROOT_CAUSES.join(", ")}.`,
+        `Classify with a trailer line ROOT-CAUSE: exactly one of the classes below. They are`,
+        `ordered, and the FIRST matching class wins, so a failure matching two still has one class.`,
+        ...ADVISORY_ROOT_CAUSES.map(
+          (cls, i) => `  ${i + 1}. ${cls} — ${ADVISORY_ROOT_CAUSE_MEANINGS[cls]}`
+        ),
         `If the failure is a plan-ordering-defect fixable by a later PLAN task, also state`,
         `PROMOTES: {symbol} and PROMOTES-TASK: {taskId}.`,
         `Captured gate output:`,
@@ -3355,8 +3373,13 @@ export function groupPromotedPaths(waves, waveIndex, repairPaths) {
  *
  * @param {object} args - see TSPEC §3.2 for the full shape
  * @returns {Promise<{resolved: boolean, disposition: object|null,
- *   haltFields: {rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[]},
+ *   haltFields: {rootCause: string, diagnosis: string, repairApplied: boolean,
+ *     repairPaths: string[], snapshotRef: string|null},
  *   postWaveRan: boolean}>}
+ *
+ * `haltFields.snapshotRef` is the wave's captured pre-repair tree ref
+ * (`refs/pdlc/a6-snapshot-{waveNum}`), or `null` on the two returns that have no capture to point
+ * at: the disabled-tier sentinel and E-34's capture failure (BR-14, TSPEC §4.5).
  */
 export async function runWaveGateSeam({
   feature,
@@ -3378,7 +3401,15 @@ export async function runWaveGateSeam({
   _readFile,
   _appendFile,
   _log,
-  _now,
+  // Defaulted, exactly as `runAdvisorySeam` defaults its own `_now` — `main`'s `_now` parameter
+  // carries NO default, so in production this arrives `undefined`. The dispatch path survived
+  // that (it hands `_now` to `runAdvisorySeam`, whose default rebinds it), but the
+  // capture-failure branch below calls `appendAdvisoryEntry` / `appendEscalationEntry` directly,
+  // and both call `_now()` unguarded: E-34's durable trace was being replaced by two
+  // "record write failed" notices on every real run. Found by AT-06-4b's report-surface arm
+  // (CR round 1, TE F-02) — the seam's own unit tests all inject a clock, so no unit-level
+  // oracle could see it.
+  _now = () => Date.now(),
   _sleep,
   _notice,
 }) {

@@ -944,11 +944,17 @@ describe("Phase I — the post-wave command and its build-output commit", () => 
 // reply, and how `haltError`'s `{ advisory }` detail reaches the report — never
 // about the seam's own diagnosis.
 describe("Phase I — the A6 advisory wave gate call site", () => {
+  // The five-key disabled-tier sentinel `runWaveGateSeam` itself returns
+  // (`orchestrate-dev.js`, `noHaltFields`) — transcribed, not imported. A call-site double must
+  // stand in for a shape production can actually produce: a four-key stand-in would let a future
+  // non-null-disposition case assert a four-key `haltAdvisory` against a five-key reality
+  // (DC-03's canonical-double rule; CR round 1, PM F-03).
   const NO_HALT_FIELDS = {
     rootCause: "unclassified",
     diagnosis: "",
     repairApplied: false,
     repairPaths: [],
+    snapshotRef: null,
   };
 
   function makeA6Fake(behavior) {
@@ -1339,7 +1345,11 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(result.haltReason).toContain("Error: Wave 1 un-skip guard failed");
     const overwriteNotice = result.notices.find((notice) => notice.includes(snapshotRef));
     expect(overwriteNotice).toBeTruthy();
-    expect(overwriteNotice).toMatch(/overwrit/i);
+    // The spec-side PHRASE, not the bare stem `/overwrit/i`: a notice reading "re-running never
+    // overwrites that capture" — the inverted meaning — satisfies the stem while contradicting
+    // BR-14 (CR round 1, TE F-03). The capture's NAME stays out of the predicate; that half is
+    // matched by the `includes(snapshotRef)` selection above, which is O-1's.
+    expect(overwriteNotice).toMatch(/overwrites that capture/i);
   });
 
   it("AT-06-4's un-skip arm / PROP-REC-10 (paired negative): the same un-skip halt with A6 never firing on the wave carries no overwrite notice anywhere in notices", async () => {
