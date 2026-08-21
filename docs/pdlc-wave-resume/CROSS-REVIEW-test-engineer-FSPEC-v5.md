@@ -245,4 +245,15 @@ best discharged in PROPERTIES rather than by another FSPEC round.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | The new "An operator-pointed run records exactly as any other run does" clause has no falsifying oracle: AT-05/06/07 assert only on the pointed run's own resume point and provenance, and AT-18's *Given* excludes the pointer path ("no resume-related configuration set"). Moving the record write inside the `!explicitPointer` guard leaves the entire §6 suite GREEN. Close it with a two-invocation acceptance test (pointer run commits waves 3–4 and halts; re-invoke with the pointer cleared; expect resume at wave 5, provenance `automatic`, waves 1–4 skipped) — in PROPERTIES is sufficient. | §3.4, "An operator-pointed run records…" |
+| F-02 | Low | inherited | nonlocal | EC-17 attributes the worktree / `D-DIST-07` deferral to REQ **OB-3**; at HEAD that reasoning (the include list is consumer-local and untracked, so a worktree has no ledger and fails open to a full run) belongs to REQ **OB-1**, while OB-3 is the advisory wave-gate ordering obligation that EC-16 cites correctly. The row's substance is right; only its pointer is wrong. | §5, EC-17 |
+
+FINDING: Medium | delta | local | §3.4 operator-pointed recording clause | New normative clause has no falsifying oracle — AT-05/06/07 cover only the pointed run's own resume point and provenance, AT-18's Given excludes the pointer path, so moving the record write inside the `!explicitPointer` guard leaves every AT GREEN; needs a two-invocation test (PROPERTIES is sufficient)
+FINDING: Low | inherited | nonlocal | §5, EC-17 | Cites REQ OB-3 for the worktree/D-DIST-07 deferral; that material is REQ OB-1's at HEAD, OB-3 being the advisory wave-gate ordering obligation
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
