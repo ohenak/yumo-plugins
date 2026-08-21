@@ -212,6 +212,34 @@ than dropping it, because a shared imprecision is the kind that hardens into a f
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The re-pin's completeness claim is false at two sites the re-pin did not visit.** The header's new v0.9 paragraph asserts *"every ruling this document cites is still present at v1.3, so the finding was pin freshness, not fidelity"*, and enumerates exactly **two** consequences taken with the pin (case C's name, §G.3's case-A window). There are two more. **(a)** `:1181` still offers case B's retired fallback — *"if it lands red, its rows are amended into the ledger by name first, under the same P-A-7 rule"* — where PLAN `:663` (P-A-6) reads *"the amend-into-the-ledger-by-name route is case B's, and case B closed at batch 12"* and routes instead to *"P-A-7's governing case — which at HEAD is case C … the obligation is green-at-landing"*. This is my v13 F-01(c), unresolved; the re-pin sharpens it, because the sentence is now stale against a pin the document claims to hold. `:1185`'s *"P-A-6 (byte-unchanged at v0.8)"* compounds it — true as v0.8 provenance, but P-A-6 changed at v1.1 (`PLAN:682`). **(b)** §G.3's *"Newly routed this round"* item (`:1357`) still asserts PLAN's manifest *"is now incomplete"* by four files; PLAN v1.2 recorded all four in a new §Post-batch remediation subsection (`PLAN:244`, `PLAN:683` item 3) and `PLAN:310` reconciles the tree at eighteen — `grep -c` for the four names in PLAN returns **6**, up from 0. The item is answered and should be struck. **Non-blocking under the freeze**: no property, oracle, fixture, AT mapping or coverage row turns on either site; §C.4's case-C paragraphs state the correct obligation twice above `:1181` (and this delta *strengthened* the first from expectation to record); and (b)'s worst cost is one redundant round-trip to PLAN for work PLAN has already done. Fix at the next ordinary touch: delete `:1181`'s case-B clause in favour of P-A-7's governing case, drop or date `:1185`'s parenthetical, strike §G.3's routed item with a pointer to `PLAN:244`, and narrow the header's claim to the rulings it actually re-checked. | Header `:11`; §C.4 `:1181`, `:1185`; §G.3 `:1357`–`:1367` |
+| F-02 | Low | Local | **A quotation carries a terminal period PLAN does not have.** `:1131` quotes PLAN as *"under case C they owe no ledger row, and they owe green."*; PLAN `:561` reads *"…and they owe green — which PROPERTIES §C.4 records as discharged…"*. The words are verbatim; the sentence-ending period inside the quotation marks is the document's. `grep -cF` on the quoted form including the period returns **0**, which costs a verifier one failed check before they find the match. Inherited context, not delta text. Fix: close the quotation before the period, or extend it through the em-dash clause. | §C.4 `:1131` |
+| F-03 | Low | Local | **A struck bullet paraphrases case C one batch narrower than PLAN.** `:1340` reads *"an amendment landing **after** batch 13 owes no ledger row at all"*; PLAN v1.3's case C is *"batch 13 **or later**"*, which includes batch 13. Provenance about PLAN v0.8, inside a struck bullet, and the same bullet's live half at `:1332` carries the correct quoted form — so it costs nothing operationally (batch 13's pre-LI-21 slot is unreachable at HEAD, `PLAN:561`). Inherited. Fix: say "in batch 13 or later". | §G.3 `:1340` |
+| F-04 | Low | Local | **"Eighteen files" is still an inventory-row count, not a file count** (carried from v13 F-02, unresolved). §G.2 gap 5 says the re-measurement *"finds eighteen `learnings*` files"*; `git ls-files pdlc/workflows/__tests__ \| grep learnings` returns **39 paths** (14 suites, 3 helpers, 22 fixture files). Eighteen is the count of §C.4 inventory rows, which treat `fixtures/learnings-baseline/` as one row. PLAN `:310` now uses the same convention but spells out the derivation, so the two documents agree on the number and on what it counts. Fix: say "eighteen tracked entities" and borrow PLAN's derivation clause. | §G.2 gap 5 |
+
+**Prior-round findings.** My v13 carried no High, one Medium (F-01, the stale PLAN pin, in three limbs)
+and one Low (F-02, the file-count convention). **F-01 limbs (a) and (b) are resolved** — case C is
+re-quoted and case A's window is corrected, both verbatim against PLAN at HEAD. **Limb (c) is not
+resolved** and is re-filed above as F-01(a) together with a second site of the same kind that the
+re-pin left behind. **v13 F-02 is not resolved** and is re-filed at Low as F-04.
+
+**Freeze accounting.** No finding meets the blocking bar. F-02, F-03 and F-04 are wording and
+convention, all inherited from bytes I approved at v0.8 or earlier. F-01 is a factual contradiction with
+an upstream document — the one category that *can* block — but the claims it falsifies are not
+load-bearing: no property, oracle, fixture, AT mapping or coverage row depends on which fallback a
+hypothetical red PROPERTIES suite would take, or on whether a routed erratum has been answered, and
+this document's operative conclusion (case C governs, ledger empty, green at landing, discharged) is
+exactly the conclusion PLAN v1.3 reaffirms in the same words. It is the *same substance* I recorded as
+non-blocking at v13; the freeze forbids escalating unchanged substance, and I have not. Recorded, not
+gated.
+
+DEFERRED: the header's v0.9 paragraph enumerates the two consequences the re-pin took; a third bullet naming the sites it deliberately did *not* re-quote (the `PLAN v0.8` provenance attributions at `:1172`, `:1379`) would make the "provenance, not pins" rule auditable rather than asserted.
+DEFERRED: §G.3 has no mechanism for noticing that a routed item was answered upstream; a one-line "re-checked against PLAN at {version}" stamp per open item would have caught F-01(b) at authoring time.
+DEFERRED: the six PLAN quotations this delta rests on could carry their `grep -cF` provenance inline, the way §C.4's reversal table carries `sed -n {N}p` anchors — the technique already exists in this document and is not applied to its own upstream quotations.
+DEFERRED: this is the fourth consecutive round in which the PLAN pin was the only finding; PLAN has moved five versions in one day, so a pin-by-content-hash (as the `UPSTREAM-STATE` anchors already do) would decouple the two documents' round cadence.
+
 ## Questions
 
 ## Positive Observations
