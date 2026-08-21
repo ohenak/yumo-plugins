@@ -109,6 +109,34 @@ No interface finding.
 
 ## Data Model
 
+The delta is the closest any round has come to touching this feature's data model, and it lands on
+the safe side of the line. Stating why, explicitly, is the point of this section.
+
+**What the clause could have changed and did not.** "An operator-pointed run records exactly as any
+other run does" is a statement about the record's *content* under a new condition. It resolves in
+the direction TSPEC already modelled, and it closes the door TSPEC identified as dangerous:
+
+| Model element (TSPEC §4.1) | Could the clause move it? | FSPEC v1.2 | Verdict |
+|---|---|---|---|
+| `lastGreenWave` semantics — plan-absolute, high-water | Yes: a pointer run could have been specified to record run-relative, or not at all | "in the same high-water form counted from the plan's first wave" | **Unchanged.** TSPEC §2.5 item 5 already says plan-absolute unconditionally. |
+| Record shape (the four-or-five fields) | Yes: a `provenance` field would have been the obvious way to make operator assertions distinguishable | "No record content distinguishes the two provenances" | **Unchanged, and explicitly closed.** §4.4's "deliberately not modelled" reasoning survives intact. |
+| `head` stamping | No — the clause says nothing about corroboration | untouched | **Unchanged.** V-7's `head: null` tolerance stands. |
+| The `{}` cleared shape (DEC-WVR-04) | No | untouched | **Unchanged.** |
+| Retention (§3.4's later paragraphs) | No — those paragraphs are byte-unmoved | untouched | **Unchanged.** |
+
+**The one modelled consequence that is now upstream-visible.** FSPEC v1.2 states, as an accepted
+outcome, that "a later automatic invocation can resume above waves whose completion only the
+operator asserted". TSPEC models exactly this state and reaches the same safety conclusion by the
+same mechanism (BR-10: the first executed wave's gate verifies the whole tree). The *state space*
+is identical before and after the delta — the record cannot express the difference, by design in
+both documents. What changed is that the state is now sanctioned rather than merely tolerated.
+
+That distinction is a data-model non-event and a **test-strategy event**, which is where I take it
+up: a sanctioned behaviour is one an implementation may not quietly drop, and nothing currently
+reds if it does. See F-01.
+
+No data-model finding.
+
 ## Test Strategy
 
 ## Open Questions
