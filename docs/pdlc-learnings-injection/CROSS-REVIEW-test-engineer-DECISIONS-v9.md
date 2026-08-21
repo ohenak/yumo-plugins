@@ -92,6 +92,37 @@ the obligations table's other rows were approved before and are not re-litigated
 
 ## Consequences
 
+**What changes for the test author.** `D-O-4` is now discharged by a *derived* assertion rather than
+a transcribed one. Concretely, the PROPERTIES/report obligation is now writable as: build the
+fixture, evaluate `477 + Σ(49 + 2·len(path) + len(feature) + len(orderKey))` over exactly that
+fixture's selected documents (plus `30 + len(String(bytes))` per abridged document), and assert the
+reported realised **block** bytes equals it, while the reported realised **material** bytes equals
+the sum of BR-8's *bytes injected*. That oracle is falsifiable in the way that matters: change any
+framing string in `renderLearningsBlock` and it goes RED, because the expected side is computed from
+the document's stated formula and the actual side from the renderer. Note for whoever writes it —
+this is one place where "no implementation echoes" needs care: the expected value must transcribe
+**this document's** formula, not call `renderLearningsBlock` or import the framing constants from
+`orchestrate-dev.js`, or the test proves only that the renderer equals itself.
+
+**The ceiling sentence is now honest about its own kind.** "up to roughly 21,600 bytes … but it is a
+**function of the corpus**, not a fixed number: any reader can re-evaluate the formula against their
+own paths" is the right claim shape for the acknowledged C-8 gap. The gap keeps a closing condition
+(the two commensurable quantities `D-O-4` reports) without pinning it to a number that stops being
+true when the corpus grows. One arithmetic wrinkle inside that sentence is recorded as F-01 below —
+Low, non-gating, no transcription hazard, because `D-O-4` now forbids transcribing it.
+
+**What the delta did not disturb.** The accounting basis, the `D-O-3` zero-bound conjunct, the
+`D-O-4` material/block split and every other obligation row are byte-identical to the v8 text I
+approved; the diff touches the header row, the §Scope citation paragraph, the upstream version note,
+`DEC-LI-08`'s framing paragraph and `D-O-4`'s parenthetical, and nothing else.
+
+**The version-cascade process cost recurred a fourth time, and was paid mechanically this round.**
+v8's F-04 predicted it: this round again turned partly on confirming that two upstream bumps left
+this document's claims true. The revision made that cheap by writing the delta's *substance* into the
+upstream version note (which anchors it survives: FSPEC:489, FSPEC:798, FSPEC:967-968), so the check
+was a three-anchor diff rather than a re-read of two documents. That is the shape the process
+learning should preserve — I am re-filing it for harvest rather than re-opening it as a finding.
+
 ## Findings
 
 ## Questions
