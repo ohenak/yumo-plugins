@@ -483,6 +483,22 @@ structurally by DEC-LI-05. The second half names a mechanism.
 bytes, document count — applied unconditionally, whatever else the prompt carries. The design does
 **not** measure the rest of the prompt and shrink the injection when a dispatch is already large.
 
+**What the caps bound (FSPEC v0.13).** The three quantities bound a document's **material** — the
+priority-section headings and bodies taken — and nothing else. FSPEC `BR-6` §"The byte-accounting
+basis" charges **framing** to no threshold: the identification line, the per-document delimiters and
+source-path label, and the block preamble (`BR-7`) count toward none of the three, grounded on REQ
+AC-2.3's "the material taken". The shipped renderer agrees — `renderLearningsBlock`
+(`pdlc/workflows/orchestrate-dev.js`) concatenates `LEARNINGS_BLOCK_HEADER`,
+`LEARNINGS_BLOCK_PREAMBLE`, the per-document `<<< … >>>` / `<<< end … >>>` pair and
+`LEARNINGS_BLOCK_TRAILER` around `doc.material`, and only `material` was ever measured into
+`bytes`. This entry's decision is unaffected — *which* quantities bound is what it decides, and a
+static bound stays static under either accounting basis — but the wording below is stated over
+material, because the caps are not a bound on the block's size. Measured on the shipped renderer at
+HEAD: framing costs **694 bytes** for a one-document block and **1,012 bytes** for a
+five-document block, so at REQ §4.1's defaults a fully-conforming block occupies up to roughly
+**21,012** bytes against a `maxTotalBytes` of 20,000. That gap is a known constant, not a leak, and
+it is why `D-O-4` reports the two quantities separately.
+
 **Alternatives considered.**
 
 - **A dynamic budget: measure `basePrompt + PACING_CONTRACT_CLAUSE + opener` and inject only what
@@ -502,9 +518,11 @@ bytes, document count — applied unconditionally, whatever else the prompt carr
 nothing about who owns tunable numbers; REQ has not decided a displacement order; determinism (`AC-4.2`) forbids selection depending on unrelated
 prompt content.
 
-**Stated honestly.** C-8's second half is satisfied in the **weak** sense — the injection is bounded
-a priori — not the strong sense that it yields under pressure. If REQ O-1's live measurement shows
-realised prompts crowding the caps, or a correlation between injection size and degraded output,
+**Stated honestly.** C-8's second half is satisfied in the **weak** sense — the injected **material**
+is bounded a priori, and the block's framing adds a bounded constant on top (above) — not the strong
+sense that it yields under pressure. If REQ O-1's live measurement shows
+realised **material** crowding the caps — or realised **block** bytes, framing included, crowding a
+prompt — or a correlation between injection size and degraded output,
 then either the caps move (a REQ §4.1 change, no code change) or REQ decides the displacement order
 and a dynamic budget arrives as a follow-on. Neither outcome requires this design to change shape,
 which is why the gap is recorded rather than pre-solved.
