@@ -64,6 +64,32 @@ is indeed a window restatement plus the `RSN-COUNT` attribution rule with "no be
 
 ## Decision
 
+**Approved with minor changes.** No open High finding, old or new. The one delta-introduced High
+from v8 (F-01) is closed by a fix that is verifiable rather than assertable, and the two Mediums are
+closed as well.
+
+**Why the fix is the right kind of fix, in testing terms.** v8's objection was not that two numbers
+were off by a little — it was that `D-O-4` handed a downstream PROPERTIES/report author two literals
+presented as measured constants, which is precisely the shape our expectation rule forbids: an
+expected value must be a literal transcription from the spec, and a spec literal that is only
+reproducible on an unnamed fixture is a trap, because the transcribing test goes green only against a
+fixture chosen to make it true. The revision removes the trap at its source. `D-O-4` now says the
+quantity "is derived per corpus from that formula, so a report assertion pins the formula's
+evaluation over the fixture under test, never a number copied from here". That is the correct oracle
+design for a corpus-dependent quantity: the test parameterises over its own fixture and evaluates the
+stated formula, so a renderer change that alters framing goes RED, while a fixture change does not.
+The two surviving literals — 477 and the per-document coefficient 49 — are properties of the shipped
+renderer's fixed strings, not of any corpus, and both reproduce exactly.
+
+**The two prior residues are gone, not papered over.** `694` / `1,012` / `21,012` no longer appear
+anywhere as live claims — the only surviving occurrence is inside the round-7 changelog row, where
+they are named as the values being *replaced* and are explicitly labelled as having come from two
+different fixtures (DECISIONS:18). That is the correct place for a retracted number.
+
+**Freeze discipline.** I re-derived the framing numbers and the upstream anchors and looked at
+nothing else. The unchanged decision entries, the accounting basis, `D-O-3`'s zero-bound conjunct and
+the obligations table's other rows were approved before and are not re-litigated here.
+
 ## Consequences
 
 ## Findings
