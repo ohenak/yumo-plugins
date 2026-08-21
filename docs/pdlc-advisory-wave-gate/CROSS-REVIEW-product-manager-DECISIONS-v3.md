@@ -42,6 +42,41 @@ not re-open DEC-A6-01, DEC-A6-02, DEC-A6-04, or any settled option table.
 
 ## Options Considered
 
+Three readings of "does DECISIONS still hold against REQ v1.16" were available. I state them because
+the choice between them is the whole content of this round.
+
+**Reading A — the item landed, so the cascade is satisfied.** REQ v1.16 lands exactly the item this
+document routed; the decision it records (`refs/pdlc/a6-snapshot-{waveNum}`, wave-scoped, no run
+discriminator) is untouched by the REQ edit; no option in the DEC-03 table is reopened. On this
+reading the confirmation approves unchanged.
+
+*Rejected.* The dispatch is explicit that the item landing is necessary, not sufficient, and
+DEC-ERR-03 makes anything DECISIONS cites that upstream no longer says a finding of this round.
+DEC-A6-03 does not merely *route* the obligation — it asserts, in the present tense and pinned to a
+version, that the routing **has not landed**. That assertion is upstream-dependent text, and the
+upstream it depends on has changed underneath it.
+
+**Reading B — the decision holds, but the record's gap annotation is now false and load-bearing.**
+The choice recorded in DEC-A6-03 survives REQ v1.16 intact: REQ still says nothing about the ref's
+*name* or storage form (the changelog explicitly leaves those to TSPEC, O-1), so nothing constrains
+the naming decision differently than before. What does not survive is the "Known gap in the remedy's
+reach" subsection and the two sentences downstream of it that depend on the gap being open.
+
+*Accepted.* This is the reading the evidence supports, and it is narrow: the findings below touch
+one subsection, one Consequences bullet, and one re-evaluation trigger clause. Nothing else in the
+document is in scope and nothing else is challenged.
+
+**Reading C — the whole decision must be re-derived because an operator-facing obligation is now a
+requirement.** AC-6.3 now imposes a product obligation on the halt path; one could argue that
+changes the constraint set that "forced the shape" of DEC-A6-03 and that the option table must be
+re-run.
+
+*Rejected.* The record's own "Constraints that forced the shape" already says "The halt message must
+print the ref name, so the name has to be derivable from what the halting wave knows." AC-6.3 adds a
+*warning sentence beside* that name; it does not change what the name must be derivable from, and it
+does not make any rejected option (fixed name, run-discriminated name) newly viable or newly
+required. Re-litigating the option table would be exactly the re-opening this round forbids.
+
 ## Decision
 
 ## Consequences
