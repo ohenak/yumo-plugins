@@ -51,6 +51,51 @@ next reviewer who repeats my arithmetic gets stopped by the document.
 
 ## Findings
 
+No High findings. Three Low findings, all in sections this revision changed; none gates approval.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §10's new readiness sentence says BL-01..BL-03 are "resolved at HEAD" without saying *whose* HEAD. §5's own correction is careful here ("already exist at HEAD of main"); §10 drops `of main`, in a document whose branch-base note exists precisely because this branch's HEAD carries none of it. | §10 Traceability, readiness sentence |
+| F-02 | Low | Process | The shipped shape that produced my v3 false positive — a long `if (scriptGate) { … } else { … }` gate block whose close is 100 lines above a sibling `if (waveGit) {` — is a durable reviewer hazard, not a one-off. Nesting claims about this file should be settled by a structural check (brace-depth accumulation that counts the `else` close, or an AST/`node --check` slice), never by eyeballing two `if` lines and their indentation. | §1 item 1 / reviewer process |
+| F-03 | Low | Local | The OQ-1 edit left one ~140-column unwrapped line ("`run" matches only the second, the skip banner wrapping it across a line break). No config value can force a full run today — …`"), where the rest of the file wraps near 95. Cosmetic, but it makes the next `git diff` of that bullet a whole-paragraph diff. | §9 OQ-1 |
+
+### F-01 — "at HEAD" is ambiguous in the one document that cannot afford it (Low, Local)
+
+§10 now reads: "Readiness over the whole §5 table (TE H-02): BL-01, BL-02, BL-03 resolved at HEAD;
+BL-04 open, discharged at FSPEC authoring and **not** a pickup gate — so `ready: true` is accurate
+today." The substance is right and I verified each half:
+
+- BL-01/BL-03 resolved on the default branch — `implementation.startWave` and the INTERIM ledger
+  are both live there (`main:pdlc/workflows/orchestrate-dev.js`, `explicitPointer` and
+  `writeWaveLedger`); §5's correction says so explicitly.
+- BL-02 resolved — `main:docs/_constraints/pdlc-wave-gate-baseline.md` exists at `Version | 1.2 ·
+  2026-08-20`.
+- BL-04 open and non-gating — `git rev-list --count HEAD..main` = `1637`; §5's Gating logic cell
+  says "Checked at FSPEC authoring", not "before pickup", so it does not contradict `ready: true`.
+- `ready: true` and the queue row agree — REQ frontmatter line 3, and `docs/_queue/QUEUE.md:45`
+  carries `| 20 | pending | pdlc-wave-resume | … |`, matching "Order 20".
+
+The nit is only the bare word "HEAD". This REQ's whole branch-base note (§ header) turns on the
+distinction between the default branch's HEAD and this branch's HEAD, where BL-01/BL-03 are *not*
+resolved. Writing "resolved at HEAD of the default branch" costs four words and removes the one
+reading a `ready: true` reviewer could take wrongly.
+
+### F-02 — settle nesting claims structurally, not by inspection (Low, Process)
+
+Recorded for harvest rather than for the author: the artifact needs no change. In v3 I filed a High
+against a true statement because I read `:15432` and `:15531` as nested on the strength of two `if`
+lines and their apparent indentation, and did not account for the `else` at `:15492` that closes the
+outer block at `:15494`. The REQ's author caught it and re-derived the shape correctly. Two durable
+consequences:
+
+- Any future claim about *this* file's control flow (it has 16,336 lines and deeply nested
+  wave-loop bodies) should be backed by an accumulation over `{`/`}` from the opening line to the
+  claimed child, or by a parser — the check I ran this round, which takes one command.
+- The document-side mitigation the author chose is the right pattern to keep: cite the branch by a
+  **unique comment string** (`Only now — verified — does anything get committed`, one hit) rather
+  than by a line number or a nesting assertion, so the reader re-derives the shape instead of
+  trusting either of us.
+
 ## Questions
 
 ## Positive Observations
