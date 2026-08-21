@@ -175,17 +175,35 @@ by the run. Nothing about a wave's outcome is recorded before its commits land, 
   a statement about the wave having been committed *past*, not about commits existing
   (REQ-WVR-06, grounded in REQ OF-2).
 
+**Completion is a high-water property of the plan, not of the run.** The record states how far
+*this plan* has been carried, counted from the plan's first wave, whichever invocation carried it
+there. A wave this run skipped as previously completed remains completed in the record this run
+writes, so a plan halted at wave 2, resumed, and halted again at wave 4 leaves a record naming
+wave 3 — not a record that begins at the resumed run's own first executed wave (AT-18). Completion
+therefore never regresses across invocations while the record is honoured at all; the only way it
+returns to the plan's first wave is a disregard cause of §3.2.
+
 Recording is **best-effort**: a record that cannot be written costs the *next* invocation its
 resume and nothing else, so failure to write is announced as a notice and never halts the run.
+Recording is also **per wave**, so a failed write costs only the waves recorded after the last
+successful one: if some write in the run succeeded, the next invocation resumes from the last
+successfully recorded wave and re-executes the rest; only a run in which *no* write succeeded
+leaves the next invocation a full run (EC-15, AT-15).
 
 The record is **retained** after Phase I completes (REQ-WVR-05). Retention is what makes a
-re-invocation after a later-phase halt (CR, DOD, PUB) cheap: outcome (c). The record never
-becomes tracked content, in any run of any length (REQ-WVR-10).
+re-invocation cheap — outcome (c) — for a later-phase halt that leaves the branch's history
+intact: a CR halt, a DOD halt whose step-0 rebase changed nothing, a PUB CI-red re-poll. A
+re-invocation whose history *was* rewritten (a DOD step-0 rebase that replays commits, a re-cut
+branch) is not the cheap case: the recorded commit is no longer reachable, question 5 disregards
+the record, and the run is a full one with an announced reason (EC-06). Both are correct; only the
+first is cheap, and §5's table carries one row for each. The record never becomes tracked content,
+in any run of any length (REQ-WVR-10).
 
 ### 3.5 The queue-delegated path (FSPEC-WVR-07)
 
 A queue-driven iteration delegates the whole pipeline to the same run logic in the same process
-and the same working directory (`pdlc/workflows/orchestrate-queue.js:45`). The behaviour above
+and the same working directory (`orchestrate-queue` imports `orchestrate-dev`'s `main` as
+`realMain` and delegates the whole pipeline to it — §1). The behaviour above
 is therefore not restated for the queue; the parity clause is the observable: for the same
 feature, plan and record, a delegated run resolves the **same outcome, same resume point and
 same provenance** as a direct invocation, and reports them in the queue run's own report. No
