@@ -336,11 +336,14 @@ that a first-class per-seam `enabled` map becomes the better surface.
 ### What follows from DEC-A6-04
 
 - `.claude/pdlc.config.example.json` gains the key, and **`pdlc/engine` must gain a new expectation
-  over it, in a file of its own** (named below). Nothing "moves": the tracked example carries exactly
-  two sections today, `dispatch` and `implementation`, with no `advisory` section at all, and
-  `pdlc/engine/__tests__/ci-arrangement.test.js` contains zero occurrences of `advisory` — it reads
-  the example file and asserts only on `implementation.testCommand`. Both facts are cited here as
-  **evidence that nothing relocates**, not as guidance about where the new expectation belongs:
+  over it, in a file of its own** (named below). Nothing "moves": pre-A6 the tracked example carried
+  `dispatch` and `implementation` and no `advisory` section, and
+  `pdlc/engine/__tests__/ci-arrangement.test.js` held no `advisory` expectation — it reads the
+  example file and asserts on `implementation.testCommand`, whose oracle is FSPEC §5.1's CI
+  arrangement. There was therefore no existing expectation over the key anywhere to relocate, and
+  that is the whole of what this bullet claims; the current contents of either file are a tree
+  measurement, `SIZING-pdlc-advisory-wave-gate.md`'s to carry. The point is not guidance about where
+  the new expectation belongs:
   `ci-arrangement.test.js` is explicitly *not* its home. TSPEC §5.1's file-ownership map assigns it
   to a new file, `pdlc/engine/__tests__/advisory-config-example.test.js`, because
   `ci-arrangement.test.js`'s stated oracle is FSPEC §5.1's CI arrangement alone, and a config-schema
@@ -348,11 +351,12 @@ that a first-class per-seam `enabled` map becomes the better surface.
   `Engine tests (ubuntu-latest)` check under a scope that names no such concern. This is still a
   two-channel edit, and the second channel's work is *a new expectation* — a different size and a
   different risk from relocating one.
-- **The order of the two channels at HEAD is the reverse of what v1.2 recorded** (PM v4 F-02).
-  v1.2 said adding the key "requires no engine edit to stay green" and that the second channel's
-  work was still ahead. At HEAD the expectation has already been authored and is **red**, precisely
-  because the example carries no `advisory` section yet — so the engine channel is the one waiting
-  on the config edit, not the other way round. This record deliberately stops restating that status:
+- **The two channels are not ordered the way v1.2 recorded** (PM v4 F-02). v1.2 said adding the key
+  "requires no engine edit to stay green" and that the second channel's work was still ahead. That
+  is wrong in principle, not merely out of date: the engine expectation and the example edit are one
+  red/green pair, so whichever lands first waits on the other, and neither channel is free. Which of
+  the two is outstanding at any given moment is a tree measurement and this record deliberately
+  stops restating it:
   TSPEC §5.1's status caveat and §1.3 are the carriers of repo state for this feature, and whether
   the early-landed edits are reverted or PLAN's batches are re-derived around them is PLAN's call.
   What is decided *here* is only that the key ships in the operator-facing example and that the
