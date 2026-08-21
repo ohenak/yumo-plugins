@@ -2134,6 +2134,143 @@ export async function readAdvisoryConfigSafely(readFileFn, path) {
   }
 }
 
+// === LEARNINGS INJECTION REGION START ===
+//
+// pdlc-learnings-injection TSPEC §D.1, §I.1, §I.2. Frame authored by PLAN LI-15; the region
+// grows in place (LI-16 … LI-21 insert before the END sentinel below) and stays self-contained —
+// LI-11's static scan asserts no `fs.`, `writeFileSync`, `mkdirSync`, `appendFileSync` or
+// `require("fs")` appears anywhere between the two sentinel comments (seam discipline: all I/O
+// here is via injected seams, never a direct filesystem call).
+
+export const LEARNINGS_CONFIG_PATH = MERGE_CONFIG_PATH; // ".claude/pdlc.config.json"
+
+export const LEARNINGS_DEFAULTS = Object.freeze({
+  enabled: true,
+  maxDocuments: 5,
+  maxBytesPerDocument: 6000,
+  maxTotalBytes: 20000,
+});
+
+// TSPEC §D.1 — the three catalogues, as frozen literals. Each is the operand of its own
+// set-equality test; disjointness in kind is enforced structurally by the field each id may
+// appear in (rejected[].reason / dispatches[i].corpusOutcome / notices[].id), not by convention.
+export const LEARNINGS_REJECT_REASONS = Object.freeze([
+  "RSN-COUNT",
+  "RSN-BYTES",
+  "RSN-SELF",
+  "RSN-UNREADABLE",
+  "RSN-UNPARSEABLE",
+  "RSN-NO-MATERIAL",
+]);
+export const LEARNINGS_CORPUS_OUTCOMES = Object.freeze(["RSN-UNLISTABLE", "RSN-EMPTY"]);
+export const LEARNINGS_NOTICES = Object.freeze(["NTC-MALFORMED", "NTC-KEYTYPE"]);
+
+// TSPEC §A.2 — the authoring doc types the injection block may attach to.
+export const LEARNINGS_TARGET_DOCTYPES = Object.freeze([
+  "REQ",
+  "FSPEC",
+  "TSPEC",
+  "PLAN",
+  "DECISIONS",
+  "PROPERTIES",
+]);
+
+// TSPEC §I.1 — the literal argv `consolidate-learnings.js`'s `enumerateCorpus` hands `_git`
+// (module-private `LS_FILES_ARGV` there), restated here because the engine vendors only
+// orchestrate-dev.js (prepack.mjs:20). T-PIN-1 asserts this equals that observed argv.
+export const LEARNINGS_CORPUS_ARGV = Object.freeze([
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "--",
+  ":(glob)docs/*/LEARNINGS-*.md",
+  ":(glob)docs/completed/*/LEARNINGS-*.md",
+]);
+
+/**
+ * Parse the repo's `learningsInjection` config section out of the SAME
+ * `.claude/pdlc.config.json` `parseAdvisoryConfig` reads. Pure and total: never throws, never
+ * reads anything, and every key falls back INDEPENDENTLY. Modelled on `parseAdvisoryConfig`
+ * (dev:1964) with one deliberate divergence (TSPEC §I.2): `enabled` defaults to `true`, not
+ * `false` — the feature ships on in a bare repository — and the threshold fields validate as
+ * NON-NEGATIVE integers, so `0` is a valid admits-nothing value (AC-4.4), not an invalid one.
+ * There is no `present` field (TE F-06): no rule branches on it and no oracle reads it.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+export function parseLearningsConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: LEARNINGS_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObject(parsed) || !("learningsInjection" in parsed)) return degraded(false);
+
+  const section = parsed.learningsInjection;
+  if (!isPlainObject(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return LEARNINGS_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return LEARNINGS_DEFAULTS[key];
+  };
+
+  const nonNegativeInt = (key) => {
+    if (!(key in section)) return LEARNINGS_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 0) return v;
+    invalidKeys.push(key);
+    return LEARNINGS_DEFAULTS[key];
+  };
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+      maxDocuments: nonNegativeInt("maxDocuments"),
+      maxBytesPerDocument: nonNegativeInt("maxBytesPerDocument"),
+      maxTotalBytes: nonNegativeInt("maxTotalBytes"),
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
+/**
+ * Read the learnings-injection config file, never throwing. Byte-for-byte the shape of
+ * `readAdvisoryConfigSafely` (dev:2044), for the same reason: the injected read is agent-mediated
+ * in production and returns `null` for a missing file rather than throwing. Read once per run and
+ * the result threaded, never re-read.
+ *
+ * @param {function} readFileFn - async (path) => string|null (or throws)
+ * @param {string} path - LEARNINGS_CONFIG_PATH
+ * @returns {Promise<string|null>}
+ */
+export async function readLearningsConfigSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
+}
+
+// === LEARNINGS INJECTION REGION END ===
+
 // ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
 //
 // `MODEL_ERROR_RE` classifies a dispatch rejection as a model/alias resolution failure (M-1)
