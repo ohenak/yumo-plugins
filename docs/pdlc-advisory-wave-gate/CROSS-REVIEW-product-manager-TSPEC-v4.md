@@ -136,7 +136,17 @@ reason — the two sections contradict each other outright. One edit fixes all t
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | §5.6's new AT-06-4 row states conjunct (3)'s oracle as "co-location within one rendered report string … the same `haltError` report text", but no such string exists in this design or at HEAD. §2.3 (`:496`, `:503-507`) pins the halt message to `TEST_GATE_MESSAGE` and puts everything else in `fields`, "never inside the reason string"; §5.6 `:1817` makes AT-05-3 a message **equality**; §4.5 `:1405` repeats the separation. At HEAD `haltReason = err.message` (`orchestrate-dev.js:15966`) and `haltAdvisory` is structured data (`:16076`, `:16248` via `buildFinalReport`), with no report-to-text renderer in `pdlc/workflows`. §4.5 `:1383` states "the report renders both halves together and adjacent" but names no function, field or file, and §1.2 `:360-362` forbids a new module/file. Fix: name the rendering carrier in §4.5 (which field or notice, produced by which named function), restate AT-06-4's conjunct-(3) oracle over it, and say in one sentence how AT-05-3's message equality survives. | AC-6.3 (REQ v1.16), BR-14 / AT-06-4 (FSPEC v1.7 `:474-478`) |
+| F-02 | Medium | Local | "§4.5's **four** fields" survives at `:302`, `:1357` and `:1530` while §4.5's table enumerates five (`:1363-1369`, `snapshotRef` added at v1.12). The delta makes `:1530` load-bearing: the new AT-06-4b row (`:1824`) rests the whole negative arm on §5.2's capture-failure fixture "at §4.5's literal field values", and that fixture's own section says four. Fix: four → five at all three sites. | AC-6.3, FSPEC E-34 / AT-06-4b (`FSPEC:479-483`) |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | AT-06-4b is homed in `advisoryWaveGate.test.js` by §5.1 and §5.6, but PLAN at HEAD has no home for it — `PLAN:527` lists AT-06-4 alone, and the former-A6-15 step's `Covers` list (`PLAN:331`) enumerates nineteen ids ending at AT-06-4/AT-07-1. §5.6's own discharge rule is **set-equality over AT ids**, so PLAN is now one id short of set-equal. This is PLAN's obligation, not TSPEC's, and I raise it as a question rather than a finding — but the round that lands F-01's carrier is the natural moment to flag it downstream so Phase P is not the one to discover it. |
+| Q-02 | Does the run-level `advisory` summary (`orchestrate-dev.js:16070`, `advisorySummaryRows`) or the halt-only `haltAdvisory` own the rendered pair once F-01's carrier is named? Both ride the same report object, and §4.5 `:1387-1389` is explicit that the advisory **record** carries no such warning — worth one sentence so an implementer does not put it on the summary channel, where a run that halted without A6 touching it would still be a candidate carrier. |
 
 ## Positive Observations
 
