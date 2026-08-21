@@ -76,6 +76,33 @@ convention rather than a machine-side requirement.
 
 ## Interfaces
 
+**§3.5 `captureTreeSnapshot` / `restoreTreeSnapshot` (O-1) — unaffected.** The signatures, the
+`refs/pdlc/a6-snapshot-{waveNum}` write, the `null`-on-`ok !== true` contract and the
+`__isRevertFailure` tagging all sit below the level the erratum touches. REQ v1.16 states its new
+requirement as an operator-visible outcome on the halt report and explicitly disclaims the storage
+form, so nothing in §3.5 needs to move to satisfy it. I re-read this section only to confirm the
+warning has no natural home here — it does not; the halt is raised at the call site and in the
+driver's terminal catch, not inside the git helpers.
+
+**§3.2 step 4 and the terminal halt path — where the sentence has to be produced.** The two halt
+sites that can print the ref are (i) the restore-failure rethrow that reaches the Phase I halt
+(§2.5, E-28, AT-05-5) and (ii) the A6-touched wave halt carrying §4.5's `fields`. The TSPEC is
+precise about both call shapes — `throw haltError(formatUnskipViolations(...), { advisory: … })` for
+the un-skip case, the driver's terminal catch rethrow for E-28 — which is what makes the gap
+*implementable in a bounded edit* rather than a design reopening: one of these two sites already
+prints the ref, and the addendum is a second sentence beside it.
+
+**The message/field split is the constraint the fix has to respect.** §4.5's last row on the un-skip
+halt pins it: "Message string | unchanged — `formatUnskipViolations`'s output is not rewritten. The
+diagnosis travels in `fields`, never in the reason string, which is what lets AT-05-3's literal
+comparison and AC-6.3 both hold." AT-05-3 asserts the halt reason string equals the **pre-A6
+literal**, byte for byte. AC-6.3's new warning is operator-facing text, so a naïve fix that appends
+it to the reason string reds AT-05-3 and breaks the byte-identity claim §2.3 and §5.2 both rest on.
+The revision therefore has to say *which* slot carries the warning — a `fields` member, or the
+E-28 restore-failure message which AT-05-5 asserts by naming rather than by literal equality — and
+that choice determines which oracle can see it. This is a real interface question, not a wording
+one, and it is the first thing the next TSPEC round should answer.
+
 ## Data Model
 
 ## Test Strategy
