@@ -131,6 +131,39 @@ it is why that section needs no edit even though the document's version pin does
 
 ## Fixtures
 
+**This is where the erratum comes closest to PROPERTIES, so I measured it rather than reasoning about
+it.** Hunk 3 is a claim about `helpers/learningsFixtures.js`'s exercised surface, and PROPERTIES §F.1
+declares its corpus fixtures against that helper. I verified PLAN v0.9's corrected claim at HEAD:
+
+| PLAN v0.9 claim | Measured at HEAD | Holds? |
+|---|---|---|
+| `learningsBlock.test.js` passes `body:` on all six of its section specs | `grep -c "body:"` → **6** | Yes |
+| `learningsSelect.test.js` passes `body:` on the non-BR-6 section | `grep -c "body:"` → **1** | Yes |
+| `ordinal` and `gloss` are unexercised knobs that already exist in the landed helper | `learningsFixtures.js:57-68` declares and renders both (`ordinalPrefix`, `glossSuffix`); no landed suite passes either | Yes |
+
+So the correction PLAN made is true, and the claim it replaced was false. That matters to this
+confirmation in one direction only: PROPERTIES never carried the false claim, so it inherits no
+defect from it.
+
+| PROPERTIES fixture-side claim | State at PLAN v0.9 / HEAD | Holds? |
+|---|---|---|
+| §F.1 corpus fixtures declared against `helpers/learningsFixtures.js` | Helper unchanged this round; no fixture row moved | Yes |
+| Additivity premise: existing callers declaring neither ordinal nor gloss keep byte-identical output | PLAN's paragraph below the case table, untouched; helper's renderer confirms (`ordinalPrefix`/`glossSuffix` both empty-string when unset) | Yes — and strengthened, since `body` is now known to be already in use rather than newly driven |
+| `helpers/learningsFixtures.js` and its consumers carry no ledger row in any of the three cases | Ruling unchanged, still scoped to this follow-up commit only | Yes |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | No fixture bytes moved; literals stand | Yes |
+| AT-11 fixture, `GATE-GRAMMAR` corpus, `fixtures/learnings-baseline/`, `scripts/capture-learnings-baseline.mjs`, `.gitignore` entry | None touched by the erratum | Yes |
+
+**The fixture-debt scoping survived again.** §C.4's ruling is that what the amendment owes is *the
+variant fixture as a whole* rather than four separate knobs. v0.9 refines the arithmetic behind that
+sentence (two knobs plus one already-exercised, not three unexercised) without changing the sentence's
+conclusion, and PROPERTIES states the conclusion, not the arithmetic. Had PROPERTIES compressed the
+"four new knobs" framing into its own text, this erratum would have rotted it; it did not, which is a
+compression choice paying off two rounds later.
+
+**Fourteen-row fixture inventory and the 23-of-23 task accounting are untouched.** Every property
+still names a fixture PLAN creates under a task PLAN still owns, and no PLAN task changed batch,
+suite, production target or dependency in this erratum.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
