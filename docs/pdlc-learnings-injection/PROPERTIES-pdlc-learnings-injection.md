@@ -1061,46 +1061,62 @@ green by two, and each split is named in the PLAN row that carries it:
 | Properties with **no** owning task | 0 | §C.3 |
 | Fail-open arms | 12 | TSPEC §T.7, mechanised by PROP-FAILOPEN-01 |
 
-**Test-file inventory — a measurement, pinned to a commit (SE F-02, SE Q-01).** This document
-depends on twelve `learnings*.test.js` suites plus the fixture helper and the baseline fixture
-directory — **fourteen** rows over fourteen files, exactly PLAN §File-ownership manifest's fourteen
-new test rows. This table is a **snapshot, not a live claim**: it is the output of
-`git ls-files pdlc/workflows/__tests__` run at commit **`21edb7c5`** on
+**Test-file inventory — a measurement, re-pinned to a commit that resolves (SE F-02, SE Q-01; PM
+v11 F-01).** This document depends on the `learnings*` suites under `pdlc/workflows/__tests__` plus
+the fixture helpers and the baseline fixture directory. This table is a **snapshot, not a live
+claim**: it is the output of `git ls-files pdlc/workflows/__tests__` run at commit **`09c7c62f`** on
 `feat-pdlc-learnings-injection`, and each row carries the commit that added the file, so a reader can
-tell a stale reading from a current one without re-running anything. Earlier revisions recorded that
-none of these files existed, then that seven of them did; **both readings are now superseded** —
-at `21edb7c5` the command returns **fourteen of fourteen**, and the rows below are restated against
-that output rather than carried forward (PM F-01, SE F-01):
+tell a stale reading from a current one without re-running anything.
 
-| File | Owning task | At `21edb7c5` | Added by |
+Every commit anchor in every earlier revision of this section was **pre-rebase** and no longer
+resolves on the branch — the condition PM v11 F-01 named. Re-pinning was deferred there on the
+reasoning that no load-bearing claim was false; re-measuring at HEAD shows that reasoning has since
+expired, because the branch advanced past the reviewed commit and **the absence claims this section
+made are now false** (below). Every anchor in the table is therefore re-derived by
+`git log --diff-filter=A -1` at HEAD rather than carried forward, and the two counts move with it:
+the manifest's **fourteen** rows are joined by **four** files that no PLAN task owns.
+
+| File | Owning task | At `09c7c62f` | Added by |
 |---|---|---|---|
-| `helpers/learningsFixtures.js` | LI-02 | **exists** (landed) | `1920f281` |
-| `learningsPremises.test.js` | LI-01 | **exists** (landed) | `cdeb1509` |
-| `learningsCaptureScript.test.js` | LI-03 | **exists** (landed) | `688a5651` |
-| `learningsPredicatePin.test.js` | LI-13 | **exists** (landed) | `07af8f52` |
-| `learningsSelect.test.js` | LI-07 | **exists** (landed) | `1544fdbd` |
-| `learningsBlock.test.js` | LI-08 | **exists** (landed) | `5e522a52` |
-| `learningsCorpus.test.js` | LI-09 | **exists** (landed) | `b79b7859` |
-| `learningsBaselineGuard.test.js` | LI-06 | **exists** (landed) | `4a6c1816` |
-| `learningsRecord.test.js` | LI-10 | **exists** (landed) | `2fe07964` |
-| `learningsDispatchSet.test.js` | LI-11 | **exists** (landed) | `c3e723e5` |
-| `learningsConfig.test.js` | LI-12 | **exists** (landed) | `eb32d7d2` |
-| `learningsArmInventory.test.js` | LI-23 | **exists** (landed) | `100e3d9c` |
-| `learningsSuiteMap.test.js` | LI-14 | **exists** (landed) | `960c229c` |
-| `fixtures/learnings-baseline/` | LI-06 | **exists** (landed) — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` | `4a6c1816` |
+| `helpers/learningsFixtures.js` | LI-02 | **exists** (landed) | `b9074d1e` |
+| `learningsPremises.test.js` | LI-01 | **exists** (landed) | `2f71b899` |
+| `learningsCaptureScript.test.js` | LI-03 | **exists** (landed) | `b6cbf930` |
+| `learningsPredicatePin.test.js` | LI-13 | **exists** (landed) | `2139fea8` |
+| `learningsSelect.test.js` | LI-07 | **exists** (landed) | `aadd01bc` |
+| `learningsBlock.test.js` | LI-08 | **exists** (landed) | `8eee671f` |
+| `learningsCorpus.test.js` | LI-09 | **exists** (landed) | `92cd9345` |
+| `learningsBaselineGuard.test.js` | LI-06 | **exists** (landed) | `744311f7` |
+| `learningsRecord.test.js` | LI-10 | **exists** (landed) | `2f0927f3` |
+| `learningsDispatchSet.test.js` | LI-11 | **exists** (landed) | `bb686ca3` |
+| `learningsConfig.test.js` | LI-12 | **exists** (landed) | `d9b51a9a` |
+| `learningsArmInventory.test.js` | LI-23 | **exists** (landed) | `ad58b052` |
+| `learningsSuiteMap.test.js` | LI-14 | **exists** (landed) | `6467afa6` |
+| `fixtures/learnings-baseline/` | LI-06 | **exists** (landed) — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt`, and a `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files | `744311f7` |
+| `helpers/learningsBaselineScenarios.js` | *none* — CODE_REVIEW v1 F1/F7/F12 | **exists** (landed) | `2fc6fcd3` |
+| `helpers/learningsComposition.js` | *none* — CODE_REVIEW v1 F8 | **exists** (landed) | `2fc6fcd3` |
+| `learningsDisclosure.test.js` | *none* — CODE_REVIEW v1 F10 | **exists** (landed) | `2fc6fcd3` |
+| `learningsErratumBinding.test.js` | *none* — CODE_REVIEW v1 F11/F12 | **exists** (landed) | `2fc6fcd3` |
 
-**Fourteen of fourteen, and which task ids stand behind them.** Every one of the fourteen rows is
-tracked at `21edb7c5`. The task ids with commits on this branch are **LI-01…LI-21 and LI-23**;
-**LI-22 is the only id with no commit**, and it owns none of the fourteen — its row is the
-🔵 REFACTOR-and-close task, whose artifact is a full-suite green run and the human cross-check of
-LI-23's arm inventory, not a file (PLAN, LI-22 row). Two further committed ids also own none of the
-fourteen: LI-04, whose artifact is the `/.baseline-worktree/` ignore rule (the `.gitignore` rule `/.baseline-worktree/`, landed
-`ae2af1da`), and LI-05, whose artifact is the capture script (below). Earlier revisions of this
-paragraph said seven had landed and "the remaining seven are explicitly planned and unstarted"; that
-was true when written and is not now — `learningsBaselineGuard.test.js` and
-`fixtures/learnings-baseline/` landed at `4a6c1816`, `learningsRecord.test.js` at `2fe07964`,
-`learningsDispatchSet.test.js` at `c3e723e5`, `learningsConfig.test.js` at `eb32d7d2`,
-`learningsArmInventory.test.js` at `100e3d9c` and `learningsSuiteMap.test.js` at `960c229c`.
+**Eighteen files, fourteen of them task-owned.** The first fourteen rows are exactly PLAN
+§File-ownership manifest's fourteen new test rows, all tracked at `09c7c62f`. The last four are
+**post-implementation remediation artifacts** that no PLAN task owns and no property of this document
+names: each opens with a header naming the `CODE_REVIEW-pdlc-learnings-injection-v1.md` finding it
+discharges (`learningsDisclosure.test.js` — *"CODE_REVIEW v1 F10"*; `learningsErratumBinding.test.js`
+— *"CODE_REVIEW v1 F11 and F12"*; `helpers/learningsComposition.js` — *"CODE_REVIEW v1 F8"*;
+`helpers/learningsBaselineScenarios.js` — *"CODE_REVIEW v1 F1/F7/F12"*). They arrived on the branch
+in `2fc6fcd3`, a docs-titled commit, which is why no task id stands behind them. This does **not**
+falsify §C.3's accounting — no property of this document lands in any of the four — but it does mean
+the fourteen-row manifest is no longer a complete listing of the feature's test surface, which §G.2
+now records as a gap and §G.3 routes to PLAN.
+
+**Every task id now has a commit.** Earlier revisions of this paragraph said **LI-22 is the only id
+with no commit**; that was true when written and is not now — LI-22, the 🔵 REFACTOR-and-close task
+whose artifact is a full-suite green run and the human cross-check of LI-23's arm inventory rather
+than a file, has landed (`7a97f357`, and an earlier `6e45e788`). The task ids with commits on this
+branch are therefore **LI-01…LI-23, with no exceptions**. Two committed ids still own none of the
+eighteen files: LI-04, whose artifact is the `/.baseline-worktree/` ignore rule (`5b4c6663`; the rule
+is present as the root-anchored `/.baseline-worktree/` at `.gitignore:13`), and LI-05, whose artifact
+is the capture script (below).
 
 **On the re-red of landed suites (SE Q-02), restated against `21edb7c5` (PM F-02, PM F-03).**
 PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments — **four** properties, not three —
