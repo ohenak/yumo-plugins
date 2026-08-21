@@ -176,6 +176,40 @@ it, and its worst cost is one redundant round-trip to PLAN for something PLAN ha
 
 ## Fixtures
 
+**§F.1–§F.4 are byte-identical.** No hunk lands in the fixture region, so the fourteen-row corpus
+fixture table, §F.2's byte-identity baseline rules, §F.3's verbatim-fixture-string rule and §F.4's seam
+doubles are untouched. §C.4's inventory table — including the `fixtures/learnings-baseline/` row and
+its `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files, which I set-equality-checked at v13 — is also
+outside the delta. Nothing this round could have moved a fixture, and nothing did.
+
+**§F.3's verbatim-string rule is again what made the round checkable.** The rule that a quoted string
+in this document must be the normative string, not a paraphrase, is why six `grep -cF` calls settled
+the whole delta. The one place the delta *chose* to paraphrase rather than quote is `:1340`, inside a
+struck bullet — *"an amendment landing **after** batch 13"* — where PLAN v1.3's case C reads *"batch 13
+or later"*, which **includes** batch 13. Narrower by one batch, in a struck bullet attributed to PLAN
+v0.8 as provenance, and the same bullet's live half (`:1332`) carries the correct quoted form ten lines
+above. Low (F-03), inherited, and it costs nothing operationally because batch 13's pre-LI-21 slot is
+unreachable at HEAD (`PLAN:561`).
+
+**The fixture-adjacent gap this document reported is now closed upstream, which is the good news
+inside F-01.** At v0.8 this document found four `learnings*` files no `LI-*` task owned and routed them
+to PLAN rather than absorbing them into its own fixture accounting — a call I endorsed at v13 as the
+harder and more correct of the two options. PLAN acted on it: `PLAN:244` now carries a §Post-batch
+remediation subsection whose rows carry a **landing commit** instead of an `Owner` cell (because *"the
+dispatcher parses `Owner` as a task id and no LI task owns these files"*, `PLAN:683`), and it also
+picked up the P-A-5 second-owner rows for `fixtures/learnings-baseline/**` and
+`learningsBaselineGuard.test.js`. The routing worked exactly as designed. The only defect is that this
+document has not yet noticed the reply. That is a strictly better failure mode than the alternative,
+and it is why F-01 reads as pin-lag rather than as a fidelity problem.
+
+**The count-convention imprecision from v13 F-02 is unchanged and now has an upstream counterpart.**
+§G.2 gap 5 still says the re-measurement *"finds **eighteen** `learnings*` files under
+`pdlc/workflows/__tests__`"* where `git ls-files … | grep learnings` returns 39 paths and eighteen is
+the inventory-row count. PLAN `:310` now uses the same convention and spells out its derivation
+(*"the ladder's thirteen … plus `2fc6fcd3`'s five added files"*), so the two documents at least agree
+on the number and on what it counts. Still Low, still inherited, now shared — I carry it as F-04 rather
+than dropping it, because a shared imprecision is the kind that hardens into a fact.
+
 ## Findings
 
 ## Questions
