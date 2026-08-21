@@ -130,6 +130,45 @@ predecessor that was wrong by ~600–800 in the unsafe direction. It is recorded
 
 ## Consequences
 
+**PLAN and PROPERTIES are unblocked on this document.** The v8 trap is gone in the right way. A
+test author reading `D-O-4` is now told explicitly that "neither quantity has a transcribable
+expected constant" and that "a report assertion pins the formula's evaluation over the fixture
+under test, never a number copied from here". That is precisely the anti-echo discipline this
+pipeline demands, stated at the obligation rather than left to the author: the expected value is a
+literal transcription of a spec-stated *formula* evaluated on the fixture, not a value derived from
+the code under test, and not a number that no fixture can honour. The one residual hazard is the
+inverse of v8's: 684 / 1,607 / 718 / 1,777 are reproducible today over `git ls-files`, but they
+drift the moment this repository harvests a new LEARNINGS file whose path sorts into the first
+five. Any test that transcribes them would be pinned to repository state, not to the spec. The
+document does not invite that — it labels them an evaluation over a named fixture — but PROPERTIES
+should build its fixture explicitly rather than reach for `git ls-files` at test time.
+
+**The operator-facing consequence — the C-8 gap's size — is now stated honestly and re-derivably.**
+`DEC-LI-08` exists to say how far the static caps fall short of bounding what the author actually
+receives. It now gives the reader a formula they can evaluate against their own corpus plus one
+worked example, instead of a constant that was both wrong and unfalsifiable-looking. REQ O-1's
+measurement obligation closes on a quantity that is now defined well enough to measure.
+
+**Note for the orchestrator, not a finding against this document.** The parallel reviewer working
+this same phase committed with a repository-wide stage and swept my in-progress cross-review
+skeleton into its own commit (`89476ef4`, which carries both reviewers' v9 files). No content was
+lost and no branch discipline was violated, but reviewers running in a shared tree should stage by
+pathspec. That is a process observation about the fan-out, not about the artifact under review.
+
+**Deferred items** — recorded, not opened, per the freeze:
+
+DEFERRED: `DEC-LI-08`'s "roughly **21,600 bytes**" ceiling is the unabridged evaluation; the same paragraph's abridged figure (1,777) gives 21,777, so the stated ceiling is ~180 bytes below the abridged worst case it acknowledges is the common one.
+
+DEFERRED: `D-O-9`'s "DISCHARGED at TSPEC v0.9" still attributes the discharge to the version it was observed at, not the version the four edits landed at (carried from v7 F-01, v8 F-02).
+
+DEFERRED: `DEC-LI-03`'s re-evaluation trigger cites `G-C` without signalling that `G-C` is this document's own ground rather than an FSPEC or REQ id (carried from v7 F-02, v8 F-03).
+
+DEFERRED: The worked example is keyed to live repository state (`git ls-files | grep -E 'LEARNINGS-.*\.md$'`), so its four figures go stale when the corpus grows; a future pass may prefer a frozen path list to a command.
+
+DEFERRED: The header changelog cell now carries three rounds of prose in one table cell; a future pass may want the revision history as its own section rather than a cell that grows monotonically.
+
+DEFERRED: The three `Process` candidates filed at v6 (unfalsifiable header pins, discharge-without-routing, dated claims in timeless voice) plus v8's fourth (measured constants no document gate re-derives) remain unaddressed and belong to harvest — with the round-7 counter-example worth recording alongside them: naming the fixture and stating the shape is what made this round's numbers re-derivable in one command.
+
 ## Findings
 
 ## Questions
