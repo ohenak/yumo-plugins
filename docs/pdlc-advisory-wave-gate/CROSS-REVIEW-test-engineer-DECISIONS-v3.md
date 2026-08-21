@@ -209,6 +209,30 @@ The same rule would have caught this before dispatch.
 leaves them. REQ v1.16 ratifies DEC-A6-03's remedy at the operator surface; it does not contest the
 ref's wave-scoped shape. The finding is that the record has not noticed it won.
 
+## Recommendation
+
+**Needs revision**
+
+One open High (F-01) → Needs revision, mandatory. The verdict is on the record's *description of its
+upstream*, not on any decision: DEC-A6-01…DEC-A6-04 stand where v1.11 leaves them, and no option is
+reopened. The blocking repair is confined to two paragraphs of DEC-A6-03:
+
+1. **F-01 (High) — `:357-362` and `:370-371`.** Replace "The routing has not landed … match nothing
+   in either document" with the split at HEAD: REQ v1.16 AC-6.3 **has** landed the operator-facing
+   warning and cites this entry; FSPEC v1.6 (E-28 `:309`, AT-05-5 `:460`) and TSPEC v1.11 (§4.5's
+   four-field halt contract) have not. Mark the Re-evaluation trigger's REQ limb **fired**, naming
+   what remains.
+2. **F-02 (Medium) — same edit.** Add the specified-vs-asserted split for AC-6.3's new conjunct and
+   the co-location oracle it wants (pointer and warning on one rendered field, RED on removal and
+   RED on relocation).
+3. **F-03 (Low) — `:5` / `:42`.** Pin current REQ/FSPEC hashes, or date-scope `:42` as v1.9
+   provenance.
+
+F-01 is tagged `delta`/`local`: the staleness was created by this round's REQ edit and sits in the
+entry that routed it, so the correct disposition is one bounded follow-up round on DECISIONS, not a
+halt and not a return to the ordinary revision loop. v2's F-08 and F-09 remain open, non-gating and
+unchanged by this cascade.
+
 ## Delta-Confirmation Findings
 
 | ID | Severity | Provenance | Locality | Finding | Section anchor |
@@ -221,10 +245,7 @@ FINDING: High | delta | local | DEC-A6-03 "Known gap in the remedy's reach" :357
 FINDING: Medium | delta | local | DEC-A6-03 Reversibility :355 / Known-gap paragraph | REQ AC-6.3's new "warns in the same place that re-running overwrites the capture" conjunct has no oracle at any level (no FSPEC AT, not in TSPEC §4.5's closed four-field halt contract, no test at HEAD); the entry should mark it specified-not-asserted and name the co-location oracle it wants, since a pointer-only containment check cannot falsify either the missing warning or a misplaced one
 FINDING: Low | delta | nonlocal | Header `Upstream` cell :5 and preamble :42 | The document's only REQ hash (`sha256:817b6745…`, :42) is two versions behind HEAD (v1.16, `f97f4f66…`) and the `Upstream` cell pins TSPEC alone, leaving no current REQ pin to check this record's currency against
 
-## Recommendation
-
-_pending_
-
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
