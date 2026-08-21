@@ -169,7 +169,22 @@ fixture-adjacent claims changed form (not substance), and all three re-verify.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §G.3's second new bullet quotes PLAN's P-A-7 case-B span as "every batch from the landing batch through the batch that greens them". PLAN's row reads "every batch from the one the commit lands in through the batch that greens them" — the quotation marks promise a verbatim transcription and deliver a paraphrase. The substance is unaffected (both name the same span) and the gap the bullet routes is real and correctly stated, so nothing downstream is misled; but a quoted string that is not the source's bytes is the failure mode DEC-DOC-01 exists to prevent. Fix in the next ordinary revision: either drop the quotation marks, or transcribe PLAN's clause exactly. §C.4's own use of the same phrase is unquoted paraphrase and needs no change, and §C.4's shorter quote "the batch that greens them" is already an exact substring | §G.3, "Still open — three items", second bullet |
+
+DEFERRED: §C.4 attributes the glossed `"Rejected Proposals (with rationale)"` to "the builder"; at `learningsBlock.test.js:81` the string is a literal in the section list the test hands the builder, so the test pins it and the builder echoes it — the absence claim it supports is true either way.
+DEFERRED: §G.3's two new bullets close with "are emitted as `ERRATUM: PLAN` lines from this dispatch", a reference to a reviewer dispatch rather than to a document state; a reader opening the file cold has no way to check it. Naming the round (SE v8) instead would make it self-checking.
+DEFERRED: §G.1's T-O-6 tail ("No new PLAN task is required") and §C.4's "no red-owning task remaining ahead of them" are both true at different altitudes; a cross-reference between them would stop a reader reconciling them by hand. Carried unchanged from v8.
+DEFERRED: the Overview's premise table still carries the capture-time row asserting no `learnings*` test file and no `scripts/` directory exists, which is false at HEAD. It is explicitly self-labelled a capture-time measurement whose falsification is scheduled by LI-04/LI-07…LI-14, and PROP-META-01 forbids asserting it, so it is not a defect — but §C.4 now models the better practice (pin to a named commit) and propagating that pin would close the last misreadable surface. Carried unchanged from v8.
+DEFERRED: PLAN's `Status` column still reads ⬚ for LI-01…LI-21/LI-23 although the commits exist; PLAN v0.7 explains the column as dispatcher-owned, so it is not a PROPERTIES defect. Carried unchanged from v8.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §G.3 now routes both P-A-7 case-B gaps, and my v8 dispatch emitted them as `ERRATUM: PLAN` lines. I am deliberately **not** re-emitting them this round — re-routing an item already routed and still open is DEC-ERR-01's anti-pattern, and this document itself invokes that rule two paragraphs later. If the orchestrator's routing is per-dispatch rather than per-item, say so and I will re-emit both verbatim next round. |
+| Q-02 | Unchanged from v8 and still open upstream: with P-A-6's window open (LI-21 at `92b7ea0c`) and the PROPERTIES suite not yet written, do the four owed Group-D amendments to `learningsBlock.test.js` land as a separate commit under P-A-7 case B, or in the same commit as the PROPERTIES suite — which would put P-A-6 and case B on one sha and needs the ledger row named first either way? This is PLAN's call and does not block this document. |
 
 ## Positive Observations
 
