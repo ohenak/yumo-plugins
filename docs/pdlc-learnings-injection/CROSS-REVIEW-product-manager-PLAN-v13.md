@@ -117,6 +117,66 @@ it here rather than raising it keeps the finding with its owner.
 
 ## Verification
 
+### My v12 findings, checked one at a time at HEAD
+
+| v12 finding | Disposition | Verified against |
+|---|---|---|
+| **F-02 (Low, inherited)** — a commit landing in batch 13 *ahead of* LI-21 is governed by neither case B (bounded at 12) nor case C (opened "once LI-21 has landed") | **Resolved.** Case C's header now reads "**batch 13 or later**, the case that is live at HEAD", and its *When* reads "any commit landing in batch 13 or after, including batch 14 — LI-21 (`92b7ea0c`) has landed, so batch 13's pre-LI-21 slot is closed and cannot recur; the domain is stated by batch number rather than by LI-21's commit so that no batch falls between case B's upper bound (12) and this case" | The fix is the one I asked for — the domain is restated by batch number, so it no longer depends on a commit's landing state. It also says *why*, which is what stops the seam reopening |
+| **F-03 (Low, inherited)** — batches 7 and 8 fall in neither case A's "before batch 7" nor case B's "batch 9 through 12" | **Resolved.** Case A's *When* now reads "**before batch 9 (which includes batches 7 and 8)**", and the outcome cell gains a closing clause stating that those two batches are exactly the ones whose ledger already lists `learningsBlock` as a whole-suite red, so the derivation decides them and yields no row | The two headers now tile the batch line with no gap: A = before 9, B = 9–12, C = 13 or later. I checked the three *When* cells against each other at HEAD; every batch number from 1 upward is claimed by exactly one case |
+| **F-04 (Low, inherited)** — case B's parenthetical opens with an em dash and closes with a comma, so the row's object clause reads as a splice | **Resolved.** The aside now reads "— a span that is well-formed only while a greening batch remains ahead, which is why case C exists — the named row `learningsBlock` → …". The dash closes before the object | The gate contract in that cell is otherwise byte-identical; only the closing punctuation mark changed |
+| **F-01 (Low, delta)** — the 0.9 changelog row credits the lead-in fix to "(PM v10 erratum)" when the raiser was TE v11 F-01 | **Open.** Line 612 still reads "(PM v10 erratum)". The 1.1 row does note that "TE F-01 (the P-A-7 lead-in's stale 'two') was already applied at v0.9 and needed no write", which records the right raiser one row down but does not correct the row that carries the wrong one | Re-filed below as F-01, Low, unchanged |
+| **F-05 (Low, inherited)** — §Changelog's 0.6 row precedes its 0.5 row | **Open.** Lines 608–609 still read 0.6 then 0.5; 0.7, 0.8, 0.9, 1.0 and 1.1 are all correctly appended in order | Re-filed below as F-02, Low, unchanged |
+
+Three of three routed items landed, and each landed as a *domain* restatement rather than a
+re-ruling — no case's outcome column changed except case B's single punctuation mark. That is the
+correct shape for a frozen round.
+
+### What the delta did not break
+
+I re-checked the four properties I have called load-bearing since v10–v11, since the case table is
+exactly where a careless edit would disturb them. All four survive:
+
+- **The batches 7–13 expected-red ledger is byte-identical.** The diff contains no ledger line. Its
+  three invariants — stated in test names not suite names where a suite splits across two green
+  tasks, shrinks by exactly the rows the batch's own task greens, and reaches empty at batch 13 —
+  are all carried on untouched bytes.
+- **Case C's green-at-landing ruling is intact, and its production clauses still hold at HEAD.** The
+  outcome column is byte-identical: no ledger row, green at landing, fix owed before batch 14 runs,
+  gate failure if a red survives into batch 14. Its four production claims (an optional ordinal
+  stripped via `SECTION_HEADING_RE`, an optional trailing gloss stripped, case-sensitive comparison
+  against `BR6_SECTION_NAMES`, `###` never matching `^##[ \t]+`) are the ones I re-derived from
+  TSPEC §D.3 and from shipped source at v12; the delta touched none of them.
+- **No AT partition, fixture row or manifest row moved.** The 1.0 and 1.1 changelog rows both claim
+  this, and both claims are true against the diff, clause for clause.
+- **The single-writer file-ownership manifest is unchanged**, so DoD 14's four remediations — which
+  are *not* owned by any `LI-*` row — do not create an unowned writer inside the manifest's domain.
+  DoD 14 states this directly ("No task row was added for them"), and the manifest agrees by being
+  untouched.
+
+### The 1.0 row's repository claims, checked rather than believed
+
+The 1.0 changelog row makes one claim about the repository that is not a claim about this document:
+"**DoD 6's `dist/` clause was found violated at HEAD and repaired in code**… `build-runtime.mjs
+--check` printed `STALE pdlc/workflows/dist/pdlc-cli.mjs`… the rebuild is committed and
+`consolidationBuild.test.js`'s `T32` is green on the branch as committed." I ran the check myself:
+`node pdlc/workflows/build-runtime.mjs --check` prints `in-sync  pdlc/workflows/dist/pdlc-cli.mjs`
+and exits zero at HEAD, so the repair is real and the drift is closed. `T32` exists as claimed —
+`pdlc/workflows/__tests__/consolidationBuild.test.js:174`, `describe("T32 — the consolidation bundle
+(T-02, TSPEC §8.2, §8.3)")`, with the header comment at line 11 mapping it to TSPEC §8.2/§8.3/T-02.
+A changelog row asserting a green gate that the tree does not actually satisfy would be a factual
+contradiction with HEAD and would block; this one holds.
+
+### One new inaccuracy the delta introduced
+
+Case A's *When* cell moved to "before batch 9", but its outcome cell's derivation still quotes the
+old text: "a commit landing in batches 2–6 is also **\"before batch 7\"**" (line 491). The
+derivation is quoting a cell that no longer says that. The reasoning underneath is unaffected —
+batches 2–6 carry no ledger at all, so the outcome is "no row" either way, and the new closing clause
+covers 7 and 8 explicitly — so this is a stale self-quote, not a wrong ruling. It is exactly the
+class of residue the case-A edit was likely to leave, which is why I looked for it. Low; filed as
+F-03. Fix: change the quoted string to "before batch 9", or drop the quotation marks and write
+"batches 2–6 are also inside case A's window".
+
 ## Findings
 
 ## Positive Observations
