@@ -169,6 +169,48 @@ count of unowned files across the whole eighteen would be off by one. Low (F-03)
 
 ## Fixtures
 
+**§F.1–§F.4 are byte-identical.** §Fixtures spans `:809`–`:917`; no hunk lands there. The fourteen-row
+corpus fixture table, §F.2's byte-identity baseline rules, §F.3's verbatim-fixture-string rule and
+§F.4's seam doubles are untouched, so no fixture, no generator and no test double moved this round.
+
+**The one fixture-adjacent edit is in §C.4's inventory table, and it is a provenance correction that
+checks out.** `:1094` widens the `fixtures/learnings-baseline/` row's *Added by* cell from a bare
+`744311f7` to *"`744311f7` (subtree added; the `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files and the
+`MANIFEST.json` re-capture arrived later, at `2fc6fcd3` — two landing events, recorded as PLAN
+§Post-batch remediation's P-A-5 second-owner rows)"*. Each limb measured:
+
+| Limb | Measured at HEAD |
+|---|---|
+| `744311f7` added the subtree | `git show --name-status 744311f7 -- …/fixtures/learnings-baseline` → **4 `A` paths**: `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` — exactly the four the row's descriptive cell lists |
+| the `PIPELINE-NON-AUTHORING-PROMPTS/` arm is 18 files | `git ls-files …/PIPELINE-NON-AUTHORING-PROMPTS` → **18** |
+| that arm arrived at `2fc6fcd3` | `git show --name-status 2fc6fcd3 -- …/PIPELINE-NON-AUTHORING-PROMPTS` → **18 `A` paths** |
+| `MANIFEST.json` was **re-captured**, not added, at `2fc6fcd3` | that commit lists it `M`, not `A` |
+| recorded as P-A-5 second-owner rows in PLAN | `PLAN:277` rows the subtree *"(incl. `MANIFEST.json`; +18 `PIPELINE-NON-AUTHORING-PROMPTS/*.txt`)"* and `PLAN:278` rows `learningsBaselineGuard.test.js` as **second writer** after LI-06 — two rows, plural as claimed |
+
+This is the sharpest edit in the delta and the one I would have been least likely to ask for. The
+inventory's *Added by* column had been carrying a single anchor for a row that is a **directory with two
+landing events**, which is exactly the shape that makes a `git log --diff-filter=A -1` anchor silently
+wrong for a subtree — the command reports the first add and says nothing about later arrivals. Naming
+both events, and tying the second to the P-A-5 row that records it upstream, converts the row from an
+anchor into an accounting.
+
+**§F.3's verbatim-string rule is again what made the round checkable**, and this time the delta had no
+paraphrase left to catch: the two phrases I flagged at v14 as narrower or over-punctuated (`:1131`'s
+period, `:1340`'s *"after batch 13"*) are both re-cut to the normative string, and a sweep for all four
+retired phrases — `manifest that is now incomplete`, `amended into the ledger by name`, `byte-unchanged
+at v0.8`, `after batch 13` — returns **zero hits** across the whole document. That is the check I would
+otherwise carry forward as "probably fixed in the visited paragraph, unknown elsewhere"; here it is
+closed globally.
+
+**Nothing in §C.4's fixture accounting turns on the header's coverage-row claim, but the claim is now
+imprecise.** The header still asserts *"No property, oracle, fixture, AT mapping or coverage row moves at
+v1.0 either"*, and §C.4's inventory table sits inside §Coverage Matrix (`:918`–`:1220`). No **mapping**
+row moved — no property→AT, AT→test, or task→property cell changed, and I verified that from the hunk
+offsets — but one inventory row's cell did. The convention this document has used since v0.8 clearly
+means mapping rows, and the delta's own §G.2 text names the inventory change explicitly, so the claim is
+loose rather than false. Low (F-02), and the fix is four words: *"no property, oracle, fixture, AT
+mapping or coverage **mapping** row"*.
+
 ## Findings
 
 ## Questions
