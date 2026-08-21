@@ -164,6 +164,17 @@ file's own control rule).
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves all four routed items (two distinct defects) without breaking anything I
+approved at v1.6, and the document remains a faithful compression of its upstream at HEAD under
+DEC-ERR-03. Two Low findings are recorded below; neither gates. No High finding, no Medium
+finding, so this confirmation approves and no follow-up erratum round is owed.
+
+Nothing must change before this REQ moves forward. The two Low items are carried as OB-C6-1 and
+OB-C6-2 to be picked up by whatever edit or ratification touches the relevant text next — opening
+a round for either one alone would cost more than it returns.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
