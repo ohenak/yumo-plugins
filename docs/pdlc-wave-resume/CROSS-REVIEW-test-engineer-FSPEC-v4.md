@@ -54,7 +54,42 @@ second place as well, which changes their evidence, not their severity.
 
 ## Linked Requirements
 
-_pending_
+The FSPEC's §2 traceability maps every FSPEC clause to REQ-WVR-01..08. This erratum touched **no
+criterion at all** — not a body, not an id, not a priority, not a phase. E-2 and E-3 landed in §5
+(Blockers) and §11 (Obligations); E-1 in the header and revision log. So the traceability table
+resolves exactly as it did at approval time: every clause cites a criterion that exists at HEAD, and
+no criterion at HEAD is left uncovered.
+
+| REQ id at HEAD | Touched by this erratum? | What the FSPEC leans on | Still faithful? |
+|---|---|---|---|
+| REQ-WVR-01 | no | FSPEC-WVR-01 (§3.1, D-1..D-3) | yes |
+| REQ-WVR-02 | no (E-3 of the *previous* round; unchanged here) | §3.2 questions, BR-03, AT-02 | yes |
+| REQ-WVR-03 | no | BR-11, EC-09, EC-20, AT-12 | yes |
+| REQ-WVR-04 | no | §3.3, EC-10 | yes |
+| REQ-WVR-05 | no | announcements, OB-F5 | yes |
+| REQ-WVR-06 | no | §3.2 question 5 carve-out, EC-14 | yes |
+| REQ-WVR-07 | no | BR-16, AT-16 | yes |
+| REQ-WVR-08 | no (scoped in the previous round; untouched here) | BR-11, EC-09, EC-20, AT-12 | yes |
+| REQ-WVR-09 | no | EC-13 | yes |
+
+**Non-criterion upstream anchors, re-checked individually.** DEC-ERR-03 scope is not the item list,
+so I re-read every place the FSPEC cites REQ material *outside* the criteria, since that is where
+this round's bytes actually landed:
+
+| FSPEC site | Cites | REQ at HEAD | Verdict |
+|---|---|---|---|
+| §1, line 17 | "derives entirely from `REQ-pdlc-wave-resume.md` **v1.5**" | Version **1.7** | **stale** — F-01 |
+| §1, "one prerequisite that is not met" | REQ BL-04, and states it is **not met** | §5 BL-04 now says "found **unmet** — this row is not discharged (§10)" | **agrees, newly verbatim** |
+| §1, "TSPEC owns implementation contracts (REQ OB-1)" | OB-1 | OB-1's TSPEC-ownership conclusion untouched by E-3 | holds |
+| EC-16, EC-17, EC-19, OB-F6 | REQ OB-3, D-DIST-07, REQ §3 | untouched | hold |
+| OB-F1 closing clause | REQ "§10 records BL-04 as 'discharged at FSPEC authoring'" | §10 says the opposite; §5 now says the opposite too | **stale** — F-02 |
+| §7 round-1 revision note | "REQ's discharge of BL-04" as an open routed defect | withdrawn in §10 (prior round) and in §5 (this round) | **stale** — F-03 |
+
+**Re-derived, not assumed: the uncovered-AC check.** The three closed catalogues OB-F5 pins as
+set-equality targets — disregard causes IG-1..6 (AT-02), the three outcomes (AT-13), the recognised
+`implementation.*` config keys (AT-08) — are all defined inside REQ criteria this round did not
+touch. I re-counted each at HEAD: still six, still three, still the same key set. A cardinality
+change in any of the three would have been a High finding here; there is none.
 
 ## Behavioral Flow
 
