@@ -1344,7 +1344,7 @@ items this list still carried as open. They are struck rather than re-routed:
   trailing gloss and the section extent, and records F-O-1's second rule as discharged where the
   obligation sits. Absorbed into §F.3 and PROP-BOUND-05/08.
 
-**Also answered — by PLAN v0.6/v0.7/v0.8, which moved after this round's reviews were dispatched:**
+**Also answered — by PLAN v0.6/v0.7/v0.8 and, for the last item, v1.2/v1.3, all of which moved after the round whose reviews raised them:**
 
 - ~~PLAN's expected-red ledger does not name rows for the re-red of the landed `learningsBlock.test.js`
   that PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments cause; P-A-7 requires the naming
@@ -1361,7 +1361,7 @@ items this list still carried as open. They are struck rather than re-routed:
 - ~~PLAN's P-A-7 **case B** names one ledger row for the re-red of the landed `learningsBlock.test.js`
   — `LI-AT-11`'s heading-form cases — but PROP-BOUND-03's `maxBytesPerDocument <= 0` case re-reds the
   same landed suite and is covered by no named row~~ — **answered** by PLAN **v0.8**'s new **case C**,
-  which rules that an amendment landing after batch 13 owes **no ledger row at all**, naming
+  which rules that an amendment landing in batch 13 or later owes **no ledger row at all**, naming
   PROP-BOUND-03's `maxBytesPerDocument <= 0` case explicitly: *"under case C they owe no ledger row,
   and they owe green."* The gap is dissolved rather than filled — there is no row to widen, because
   there is no row. Absorbed into §C.4.
@@ -1375,20 +1375,19 @@ items this list still carried as open. They are struck rather than re-routed:
   commit**, and its v0.8 changelog records the ruling as *"answering PM Q-02"*. That closes PM's
   carried Q-02 (green, not red) as well; re-emitting either item now would be DEC-ERR-01's
   anti-pattern. Absorbed into §C.4.
-
-**Newly routed this round — one item:**
-
-- **PLAN's §File-ownership manifest lists fourteen new test files; eighteen `learnings*` files are
-  tracked at `09c7c62f`.** The four it does not list —
-  `pdlc/workflows/__tests__/helpers/learningsBaselineScenarios.js`,
-  `pdlc/workflows/__tests__/helpers/learningsComposition.js`,
-  `pdlc/workflows/__tests__/learningsDisclosure.test.js` and
-  `pdlc/workflows/__tests__/learningsErratumBinding.test.js` — arrived in `2fc6fcd3` as
-  `CODE_REVIEW-pdlc-learnings-injection-v1.md` remediation (F1/F7/F12, F8, F10, F11/F12) and are owned
-  by no LI task. No property of this document names any of the four and no oracle moves, so this is
-  routed rather than absorbed: it is PLAN's manifest that is now incomplete, and PLAN's to decide
-  whether the four take task rows, a remediation row, or an explicit out-of-manifest note. Recorded as
-  §G.2 gap 5.
+- ~~PLAN's §File-ownership manifest lists fourteen new test files while eighteen `learnings*`
+  test-side files are tracked at `09c7c62f`; the four it does not list —
+  `helpers/learningsBaselineScenarios.js`, `helpers/learningsComposition.js`,
+  `learningsDisclosure.test.js` and `learningsErratumBinding.test.js`, all arrived in `2fc6fcd3` as
+  `CODE_REVIEW-pdlc-learnings-injection-v1.md` remediation (F1/F7/F12, F8, F10, F11/F12) — are owned
+  by no LI task~~ — **answered**, and answered before this round: PLAN **v1.2** item (3) records all
+  four and item (4) adds P-A-5's second-owner rows for `2fc6fcd3`'s re-capture of
+  `fixtures/learnings-baseline/**` and `learningsBaselineGuard.test.js`; PLAN **v1.3** item (1)
+  re-derives the whole set from `git show --name-status 2fc6fcd3` into a **nineteen-row**
+  §Post-batch remediation subsection whose rows carry a landing commit rather than an `Owner` cell,
+  and §The arithmetic reconciles the tree at eighteen. PLAN chose the third of the three options this
+  item left open — a remediation subsection outside the ladder, not task rows. Re-routing it would be
+  DEC-ERR-01's anti-pattern. Recorded as §G.2 gap 5.
 
 **Still open — one item:**
 
