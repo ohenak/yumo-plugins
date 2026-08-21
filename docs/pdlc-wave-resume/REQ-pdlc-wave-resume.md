@@ -36,9 +36,9 @@ discarded and cites the write's guard re-derivably (SE F-01, F-03; TE H-03); OQ-
 matches both banners (SE F-02, TE H-01); §10 enumerates all of §5 (TE H-02, Q-01).
 
 **Erratum, 2026-08-21 (v1.6) — Phase F erratum round.** §1's wave count and replay cost are
-restated to match OF-1; REQ-WVR-02 notes that IG labels name causes, not precedence; REQ-WVR-08's
-no-commit claim is scoped to the implementation wave loop, with Phase PT's V-wave excluded; §10
-records BL-04 as open and unmet rather than discharged. Nothing else changed.
+match OF-1; REQ-WVR-02 notes IG labels name causes, not precedence; REQ-WVR-08's no-commit claim
+is scoped to the implementation wave loop (Phase PT's V-wave excluded); §10 records BL-04 open and
+unmet. Nothing else changed.
 
 **Note on this branch's base (SE F-01, F-02).** This feature branch is 1,637 commits behind the
 default branch and predates the merge of the mechanism §1 describes; the code claims in this REQ
@@ -72,7 +72,7 @@ halted at wave 2 and again at wave 4. The re-invocation after the wave-4 halt pa
 no-op agent dispatches (waves 1–3) before reaching the point of interest; the re-invocation
 after the wave-2 halt replayed wave 1 only, a single task. Multi-halt runs pay this replay
 tax once per halt, in the task count of every wave below the halted one, so it grows with
-the plan rather than costing a fixed amount per halt.
+the plan.
 
 A manual resume pointer now exists (`implementation.startWave`, an operator-set
 configuration value — BL-01, §5). It works, but it demands operator arithmetic with a
@@ -373,8 +373,8 @@ message only, not on the report row). **How REQ-WVR-03 is discharged here:** no 
 guarantee "no new commit lands before the full suite has verified the whole tree" is satisfied
 because the skipped loop lands none, not because a verification was skipped. The claim is scoped
 to that loop: Phase PT's appended verification wave, which OF-1 counts as the 17th wave, is
-outside the resume record's scope and continues to dispatch, gate and commit on every invocation,
-including this one (FSPEC §2, EC-20). The tree's most recent whole-tree verification is the one performed by
+outside the resume record's scope and continues to dispatch, gate and commit on every
+invocation (FSPEC §2, EC-20). The tree's most recent whole-tree verification is the one performed by
 the last wave of the run that wrote the record; any later phase that wants to commit runs its own
 gates. An implementation that lands a wave-loop commit under this outcome violates REQ-WVR-03.
 
@@ -548,8 +548,8 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 
 Registered in `docs/_queue/QUEUE.md` as Order 20; project matrix row in
 `docs/requirements/traceability-matrix.md`. Readiness over the whole §5 table (TE H-02): BL-01,
-BL-02, BL-03 resolved at HEAD; BL-04 is **open and unmet** — it was not
-discharged at FSPEC authoring, and the authoring tree still carries neither the resume mechanism
-nor `docs/_constraints/pdlc-wave-gate-baseline.md`, being 1,637 commits behind the default
-branch. It is owed before implementation and is **not** a pickup gate — so `ready: true` is
+BL-02, BL-03 resolved at HEAD; BL-04 is **open and unmet** — not discharged at FSPEC
+authoring: the authoring tree, 1,637 commits behind the default branch, carries neither the
+resume mechanism nor `docs/_constraints/pdlc-wave-gate-baseline.md`. It is owed before
+implementation and is **not** a pickup gate — so `ready: true` is
 accurate today.
