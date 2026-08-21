@@ -404,14 +404,24 @@ production state, shared fixtures). What each task's red steps prove before its 
 1. **Batch column derived, not narrated.** `batch == max(batch of deps) + 1`, sources in batch 1,
    sub-batches capped at five (`computeTopologicalBatches` in `orchestrate-dev.js`, whose
    `// Split into sub-batches of at most 5` loop steps `ready` by 5).
-2. **Single writer per file per batch.** Checked file by file: `orchestrate-dev.js` appears in
+2. **Single writer per file per batch — enumerated by set-equality over the manifest, not by sample
+   (PM v3 F-01).** The enumeration below is derived by projecting the file-ownership manifest to
+   `(file, batch)` pairs, so **every** path the manifest owns appears in exactly one clause here; a
+   path added to the manifest without a clause is a visible hole, not a silent pass — the same
+   discipline the AT table already carries. Checked file by file: `orchestrate-dev.js` appears in
    batches 1 through 7, once each (A6-05, A6-08, A6-10, A6-12, A6-14, A6-18, A6-21).
    `advisoryWaveGate.test.js` appears in batches 1 (A6-00), 2 (A6-08), 3 (A6-10), 5 (A6-14) and
    6 (A6-18), once each. `advisoryDriver.test.js` in batches 1 (A6-05) and 4 (A6-12).
    `advisoryRecord.test.js` in batches 1 (A6-05) and 6 (A6-18). `advisoryWaveGateMain.test.js` and
    `advisoryEscalationLog.test.js` in batch 6 only (A6-18). `advisoryDisabled.test.js` in
    batches 1 (A6-05's row-count retarget step) and 7 (A6-21's byte-identity step).
-   `advisoryQueueSeams.test.js` in batch 1 only. No file has two writers in one batch, in either
+   `advisoryQueueSeams.test.js` in batch 1 only. The manifest's remaining owned paths each have a
+   single owning task, so they are single-writer trivially: `advisoryEnvelope.test.js`,
+   `advisoryConfig.test.js`, `advisoryHarvest.test.js`, `consolidationProperties.test.js` (A6-05),
+   `documentOracles.test.js` and `.gitignore` (A6-00), `pdlc/engine/__tests__/advisory-config-example.test.js`
+   (A6-04) — all batch 1 — `.claude/pdlc.config.example.json` (A6-06, batch 2),
+   `waveExecution.test.js` (A6-21, batch 7), and `helpers/advisoryDoubles.js` (A6-01, batch 1) under
+   rule 3 below. That accounts for every path in the manifest. No file has two writers in one batch, in either
    the source or the test column.
 3. **Shared prerequisites are singly owned.** `helpers/advisoryDoubles.js` — the one file
    every later suite reads — is owned by exactly one batch-1 task, A6-01, and by nothing else. The
