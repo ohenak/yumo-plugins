@@ -232,10 +232,16 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `RSN-BYTES` rows and **no** `RSN-COUNT` row — so each bound is asserted where it binds *and* asserted
   not to bind where the other does.
   *Functional · L1 · AC-2.1, BR-5, AT-07 · red LI-07 · green LI-16.*
-- **PROP-BOUND-03:** A document whose material exceeds `maxBytesPerDocument` **must** contribute material
-  of at most that bound, **must** carry `bounded: true` decided at the cut, and the cut **must** be
-  character-safe — the longest character prefix whose UTF-8 length is ≤ the bound, never splitting a
-  codepoint.
+- **PROP-BOUND-03** *(stated where `maxBytesPerDocument > 0`)*: A document whose material exceeds
+  `maxBytesPerDocument` **must** contribute material of at most that bound, **must** carry
+  `bounded: true` decided at the cut, and the cut **must** be character-safe — the longest character
+  prefix whose UTF-8 length is ≤ the bound, never splitting a codepoint. **The `> 0` precondition is
+  load-bearing, not decoration.** FSPEC BR-6's *Where the bound is zero* clause prescribes the opposite
+  outcome at the boundary — a document there "yields nothing, is dropped before the total bound with
+  `RSN-NO-MATERIAL` (BR-9) and consumes no slot" (E-36) — so a property stated over all bounds would
+  demand a zero-byte contribution flagged `bounded: true` occupying a `maxDocuments` slot, which no
+  conforming implementation can also satisfy. The boundary is owned by **PROP-CONFIG-09**, and
+  §O.9's generated T-O-6 arm excludes `maxBytes = 0` from its domain for the same reason.
   *Data Integrity · L1 · AC-2.3, BR-6, E-15, E-16, AT-11, AT-12, TSPEC §D.5 · red LI-08 · green LI-17.*
 - **PROP-BOUND-04:** Where the accumulated material would exceed `maxTotalBytes`, whole documents
   **must** be dropped from the **low end** of BR-4's order with `RSN-BYTES`; no document is ever cut
@@ -250,10 +256,17 @@ a defect in this document or in the PLAN, not a nice-to-have.
   present — both conjuncts, so the oracle is not vacuous on a fixture that never carried the excluded
   section.
   *Data Integrity · L1 · AC-2.3, BR-6, E-19, AT-11 · red LI-08 · green LI-17.*
-- **PROP-BOUND-06:** A document carrying **none** of BR-6's five priority sections **must** carry
-  `RSN-NO-MATERIAL`, **must** consume no `maxDocuments` slot, **must not** be flagged bounded, and the
-  rest of the corpus **must** be used normally.
-  *Functional · L1 · BR-6, BR-9, E-33, AT-28 · red LI-07 · green LI-16.*
+- **PROP-BOUND-06:** A document that **yields no material** — BR-9's stated meaning, in both its
+  disjuncts: it "carries none of BR-6's priority sections, **or** the per-document bound is zero and
+  admits none" — **must** carry `RSN-NO-MATERIAL`, **must** consume no `maxDocuments` slot, **must
+  not** be flagged bounded, and the rest of the corpus **must** be used normally. Both disjuncts
+  **must** be driven, by the paired fixtures §F.1 names: `NO-MATERIAL` (all five sections absent,
+  Approval Record present) drives the carries-no-section arm, and `ZERO-BOUND` (a document that
+  **carries** material, run at `maxBytesPerDocument: 0`) drives the zero-bound arm. The pairing is
+  what makes the reason id's *meaning* falsifiable rather than one of its routes: an implementation
+  reaching `RSN-NO-MATERIAL` by testing "document carries no section" greens on `NO-MATERIAL` and
+  reds on `ZERO-BOUND`, and the run-level shape of the second arm is PROP-CONFIG-09's.
+  *Functional · L1 · BR-6, BR-9, D-12, E-33, E-36, AT-28, AT-30 · red LI-07 · green LI-16.*
 - **PROP-BOUND-07:** All three §4.1 byte thresholds **must** range over one pool — **material only**.
   `bytesInjected` for a row **must** equal the **hand-computed literal** byte count of that document's
   declared sections in the fixture, transcribed at fixture-authoring time; `totalBytesInjected`
@@ -264,8 +277,11 @@ a defect in this document or in the PLAN, not a nice-to-have.
   returned is an identity no implementation can fail, and an implementation charging framing to every
   row **and** to the total satisfies it, which is exactly mutation M-5. The framing cost of the fixture
   is stated as its own literal beside the material counts, so the test proves the two numbers **differ**
-  — that difference is what M-5 reds.
-  *Data Integrity · L1 · AC-2.3, AC-2.4, TSPEC §D.5 · red LI-08 · green LI-17.*
+  — that difference is what M-5 reds. FSPEC BR-6 and TSPEC §D.5 now **agree** on this basis — BR-6's
+  *byte-accounting basis* paragraph makes contributed bytes "its **material** — the section headings
+  and bodies taken from it, and nothing else", with framing counting "toward none of the three
+  quantities" — so this property is a compression of both, and M-5 is a mutation away from both.
+  *Data Integrity · L1 · AC-2.3, AC-2.4, BR-6, TSPEC §D.5 · red LI-08 · green LI-17.*
 - **PROP-BOUND-08** *(real-corpus arm — the recognition rule):* Driven over a **real** corpus document
   read from the live `LEARNINGS_CORPUS_ARGV` `git ls-files` output (first path in UTF-8 byte order, not
   a synthetic fixture), `extractInjectableMaterial` **must** return a section set **equal** to the
