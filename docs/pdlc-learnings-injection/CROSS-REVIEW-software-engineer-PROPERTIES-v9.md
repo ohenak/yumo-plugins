@@ -55,6 +55,43 @@ row and P-A-7 case-B row; `git log -1` on `2cbacada`, `d462ddd8`, `92b7ea0c`.
 
 ## Properties
 
+No property text changed in this delta. Groups A–J, their claims, levels, owning tasks and mutation
+rows are byte-identical to v0.5. What the delta touches is §C.4's account of *what the landed suite
+already contains* — which is the evidence that four Group-B/D properties are still owed — plus §G.3's
+routing of the two gaps that account exposes. So what I re-checked is whether the narrowed
+enumeration still supports "all four owed", and it does, on grounds I re-measured rather than
+inherited.
+
+- **PROP-BOUND-03 (zero bound) — still owed.** No `extractInjectableMaterial(text, 0)` call exists in
+  `learningsBlock.test.js`; the three calls pass `100000` (`:87`), `maxBytes = 40` (`:111`, used at
+  `:113`) and `maxBytes = 66` (`:131`, used at `:133`). The delta's new "only *binding* literals"
+  phrasing does not weaken this — the load-bearing half is the absence of the zero call, and it is
+  unchanged and true.
+- **PROP-BOUND-05 (section list from the rendered block) — still owed.** The landed suite recovers
+  sections only from the producer's own report: `expect(result.sections).toEqual(BR6_SECTION_NAMES)`
+  (`:90`) and `toEqual(["Cross-Feature Patterns"])` (`:118`, `:139`). `SECTION_HEADING_RE` occurs
+  nowhere in the file. The delta's concession that the un-numbered spelling *does* appear does not
+  touch this — appearing as fixture input is not the same as being re-derived from output, and the
+  revised sentence says exactly that ("what is owed there is the variant fixture as a whole").
+- **PROP-BOUND-07 (framing vs material literal) — still owed.** No framing byte literal is asserted;
+  framing is mentioned only in comments (`:10`, `:56`).
+- **PROP-BOUND-08 (real-corpus arm) — still owed.** Neither `LEARNINGS_CORPUS_ARGV` nor `git ls-files`
+  occurs in the file.
+- **The suite's shape is quoted correctly.** `learningsBlock.test.js:38` is verbatim
+  `describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {` — one `describe`,
+  three AT ids — and the file's four `test(` titles (`:39`, `:67`, `:103`, `:121`) confirm the
+  AT-05/AT-11/AT-12 partition §C.4 describes. The `:42` and `:110`/`:130` occurrences the delta now
+  concedes fall inside the AT-05 test and the two AT-12 tests respectively, exactly as the new
+  sentence attributes them.
+- **The scheduling premise is unchanged and still true.** `2cbacada` is LI-17 (GREEN the renderer),
+  `d462ddd8` is LI-16 (GREEN the pure selection core), `92b7ea0c` is LI-21 — all three confirmed by
+  `git log -1`. Case A remains unreachable, case B live, P-A-6's window spent. The P-A-6 quote hunk
+  is a *fidelity improvement*: PLAN's row reads verbatim "commit at the first point the suite is
+  green, which in practice is after LI-21 (batch 13)", and the delta corrects the document's earlier
+  "the first point it is green" to match it exactly.
+- **Counts unmoved.** 70 distinct `PROP-` ids, matching the header and §C.4's summary table; §C.1
+  (35/35) and §C.2/§C.3 (23/23 tasks) are outside the delta and still reconcile.
+
 ## Oracles
 
 ## Fixtures
