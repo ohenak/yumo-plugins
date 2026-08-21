@@ -202,6 +202,66 @@ re-grounding. The earlier disposition stands unamended and correctly so.
 
 ## Test Strategy
 
+Three test-side sections change, and one gains genuinely new material. My lens here is not test
+construction — that is TE's — but whether the acceptance criteria are still *reflected*, and whether
+anything that used to be provable is now assumed.
+
+**§5.2, case 4: pending → positive assertion.** Was: "a `.gitignore`d file the wave added is still
+present after restore … **This case is written to the boundary that comes back from §2.5's
+erratum** … until the erratum resolves it is written as described here and flagged in the suite as
+upstream-pending." Now: "**This is now a plain positive assertion, no longer upstream-pending**",
+grounded on BR-9 v1.6 and AC-5.1. Checked: this is not merely licensed by upstream, it is *required*
+by it. BR-9 at HEAD says "A6 never deletes or rewrites one" of the ignored paths — a positive
+behavioural statement, not just an exclusion from the map — and FSPEC AT-05-1 at v1.6 says "an
+implementation that restores one fails this test rather than passing it." So an assertion that the
+ignored file the wave added is *still present* after restore is exactly what the criterion now
+demands. The flag removal is earned, not asserted.
+
+**§5.2, case 5: new, and it closes a real hole.** The delta adds a fifth assertion — the map is taken
+"immediately after restoration completes and before the advisory-record append, the escalation-log
+append and the queue-row write (AC-6.1, AC-6.2, AC-5.2/M-WG-7)", and the case "asserts the *ordering*,
+not only the content: it observes the map at that point and separately asserts the three carriers are
+written afterwards, so an implementation that interleaved them fails here rather than passing on a map
+that happens to match."
+
+This is the part of the round I most want to credit. AC-5.1's observation point is a criterion with
+teeth — it is what stops a correct restore being scored as a failure because BR-13's mandatory record
+bytes landed first. Before this edit, **nothing in this document asserted it**; the changelog says so
+plainly ("§5.2 additionally gains the observation-point assertion the decided form requires, which
+nothing here asserted before"). Upstream added a criterion; the TSPEC noticed that its test strategy
+did not cover it and added the coverage in the same round. That is the behaviour the traceability
+principle exists to produce, and it is the opposite of the erratum failure mode where a document
+absorbs a new upstream clause into prose and leaves the suite where it was. Asserting *ordering*
+rather than content alone is also the right choice: a content-only assertion false-greens an
+implementation that observed at the wrong moment but happened to match.
+
+**§5.5's ignored-path-only row.** The "Flagged upstream-pending with §2.5's erratum" tail is replaced
+by "No longer upstream-pending: BR-9 at FSPEC v1.6 puts ignored paths outside the restoration map in
+both directions, so this is the decided disposition and the row's expected values are final." The
+row's expected values — `producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an
+escalation entry, a tree carried no further — are unchanged. Correct: nothing in the decision moves
+them, and "final" is now a true word.
+
+**§5.6's AT-05-1 row.** Was: expected value "marked pending rather than this document choosing one"
+(TE F-16). Now: "**No longer upstream-pending** (TE F-16 closed): FSPEC BR-9 / AT-05-1 at v1.6 fix the
+map's domain as tracked plus **non-ignored** untracked files and its observation point as
+immediately-after-restoration-before-the-record-writes, so PLAN mints the red-test task with those
+expected values transcribed rather than marked pending." I read FSPEC AT-05-1 at v1.6 in full; it
+states both boundaries in those terms, including "Ignored paths are excluded on both sides" and "a
+file the repair created is asserted **absent**, not merely reset". The transcription is faithful, and
+the downstream consequence the row draws — PLAN no longer mints a pending marker — follows.
+
+**Downstream effect on PLAN, which is a product-relevant consequence.** Two test cases that were
+going to reach implementation carrying "expected value: pending" now carry transcribed expected
+values. That removes a class of latent risk I care about: a red-test task whose expected value is
+unresolved at implementation time is a task whose acceptance criterion is decided by whoever writes
+the assertion. Both are now decided upstream, where they belong.
+
+**Coverage check across the delta.** Every acceptance criterion the re-grounding touches — AC-5.1
+(domain, observation point), AC-4.4, AC-6.1, AC-6.2, AC-5.2/M-WG-7, and E-33's `0` behaviour — has a
+named test home after this edit: §5.2 cases 1–5, §5.5's row, §5.6's AT-05-1, and AT-07-2b for the
+config key. I found no criterion that the delta cites but leaves without a carrier.
+
 ## Open Questions
 
 ## Positive Observations
