@@ -97,6 +97,40 @@ cases. No other row references the amendment note's knob count.
 
 ## Dependencies
 
+**No `Deps` edge changed, and none could have.** The delta is four lines, none of them in a `Deps`
+cell. I extracted the `Deps` column for all 23 task rows at `be64a0c6` (the commit I confirmed at
+v11) and at HEAD: identical. The dependency graph is a statement about scheduled work, and this
+erratum scheduled nothing.
+
+**The one cross-document dependency worth re-checking, and it moved in the right direction.** At v11
+I raised — as a question rather than a finding, because it sat upstream of nothing — that PROPERTIES
+§C.4 still read "case B is the live case and case A is unreachable", a reading the PLAN's new case C
+superseded. That is now closed from the other end: PROPERTIES moved to v0.7 in this same window and
+§C.4 now reads "**case C is the live case** and cases A and B are both behind us", cites case C's
+ruling verbatim, marks both of its previously-routed P-A-7 items struck rather than open, and reduces
+its "Still open" list from three items to one. So the two documents agree at HEAD about which case
+governs, and the agreement was reached by PROPERTIES absorbing the PLAN's ruling rather than by the
+PLAN bending to PROPERTIES. That is the correct direction of travel for a PLAN-to-PROPERTIES
+dependency, and it means the case-C ruling I approved at v11 is now load-bearing in two documents
+with consistent wording in both.
+
+**One version-number lag, and it is not this document's to fix.** PROPERTIES v0.7's Upstream cell
+pins `PLAN-pdlc-learnings-injection.md` at **v0.8**; the PLAN is v0.9 as of this erratum. The lag is
+harmless in substance — v0.9 changed no text PROPERTIES cites, and the case A/B/C table PROPERTIES
+quotes is byte-identical — so PROPERTIES' quotations all still resolve. I note it here so the record
+shows I checked it rather than assumed it, and I do not raise it as a finding against this PLAN: a
+downstream document's Upstream pin is that document's field to advance, and re-emitting it here would
+be raising against the wrong owner.
+
+**The PROPERTIES-driven re-reds still land where case C puts them.** §C.4 continues to route
+PROP-BOUND-03's `maxBytesPerDocument <= 0` case, PROP-BOUND-05/07/08 and the Group D amendments to
+this PLAN, and now states explicitly that they travel under case C — no ledger row, green at landing,
+fix owed before batch 14 if one reds. It also does the honest thing the PLAN's ruling invited: it
+names the one arm that may *not* be green at landing (PROP-BOUND-03's zero case, since no
+`extractInjectableMaterial(text, 0)` call exists in the landed suite) and shows case C covers that
+outcome without a row. The PLAN's ruling and PROPERTIES' application of it are consistent, and
+neither depends on anything the v0.9 erratum touched.
+
 ## Verification
 
 ## Positive Observations
