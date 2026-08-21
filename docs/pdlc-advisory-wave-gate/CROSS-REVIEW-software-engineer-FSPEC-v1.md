@@ -124,12 +124,60 @@ shape), say so in step 9 in one clause; the shipped typedef is indeed the tier's
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | BR-11 makes the seam budget per **attempt** and puts gate run time structurally outside the window, so an A6 invocation on a wave with a 20-minute suite and `attemptBudget: 3` can hold the pipeline for an hour with no budget exceeded. NFR-4 explicitly declines an invocation-level cap. Is that the intended operator experience, or should §7.2 record the absence of a wall-clock cap as a named deferral so the next operator finds it already routed? |
+| Q-02 | BR-9 restores the whole tree on a red re-gate, including the wave agents' own uncommitted work — which the re-run post-wave command may have rebuilt from. After restoration the tree carries *first-pass* build outputs (E-23). Is a stale-artifact state distinguishable to the operator, or does the halt report need to say the outputs are first-pass? |
+| Q-03 | E-16 says no part of a partly-out-of-envelope proposal survives the seam. Is the envelope classified **before** anything is written to the tree (so nothing to undo), or is it applied and then reverted through BR-9's restore? The observable differs only on a restore failure (E-28/AT-05-5), which is why it is worth one sentence. |
+| Q-04 | AT-07-5 asserts A6's tool grants, transport and environment equal a shipped seam's "member for member". A6 is the only seam that writes to the working tree and then re-runs a shell gate — does equality against a shipped seam hold once the repair-application capability is included, or is the assertion scoped to the *dispatch* options only? |
 
 ## Positive Observations
 
-_(pending)_
+- **The upstream re-grounding in v1.5 is real, not nominal.** Every REQ id this FSPEC cites resolves
+  in REQ v1.13, and the §2 trace table's AC ranges (AC-1.1…1.5, 2.1…2.4, 3.1…3.5, 4.1…4.6, 5.1…5.3,
+  6.1…6.4) are exactly the REQ's own — no invented authority, and no AC left untraced. I checked all
+  33 ids; each appears at least once in the body, not only in the trace table.
+- **A-2's drift claim is accurate and was worth making.** `pdlc-wave-gate-baseline.md` §1–§2's line
+  anchors have indeed drifted — M-WG-7's `:10805` for `status: "halted"` now resolves to `:16023`,
+  and M-WG-2's `sed -n '10301,10319p'` now lands on unrelated prose — while §3's symbol- and
+  grep-anchored recipes (M-WG-10, M-WG-12) still resolve. Citing by `M-WG-*` id at a stated
+  `Version` rather than by line is what kept this document correct across that drift.
+- **E-33 is the strongest clause in the document.** It distinguishes "`0` honoured as written" from
+  "tier disabled" by a *named, observable* difference (summary row present reading `resolved: 0`
+  versus no advisory key at all), and derives from it that the key needs a non-negative validator
+  distinct from the shipped positive-integer one. That reasoning is exactly right: `positiveInt`'s
+  `v >= 1` floor would push an operator's `0` back to the default `1`
+  (`pdlc/workflows/orchestrate-dev.js:2054-2060`), and a sibling `nonNegativeInt` is the honest fix.
+- **The oracle units are argued, not asserted.** BR-7's sequence-not-set argument ("set equality
+  collapses duplicates and would admit a resolution declared on a single invocation"), BR-9's
+  content-hash-not-`git status` argument, AT-02-9's counted-not-bounded argument, and AT-07-3's
+  two-counts-on-one-run argument each name the specific defect the weaker oracle would admit. That
+  is what makes them reviewable at all — and it is why F-01 and F-03 stand out as the two places the
+  same discipline was not applied.
+- **AT-02-8, AT-04-4 and AT-06-6 pair every negative with a positive on the same path**, which is
+  the discipline AC-4.5 asks for and the one most often skipped.
+- **E-22/AT-05-4 name the post-gate check concretely** rather than gesturing at "a later check": the
+  un-skip guard does run after the gate and before the commits
+  (`pdlc/workflows/orchestrate-dev.js:15419-15432`), so the scenario is constructible as written.
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
+
+Two High findings gate this round, and both are narrow:
+
+1. **F-01** — restore AC-2.2's first-matching-class rule to BR-2, add the two-class §5.2 row, and
+   give AT-02-1 an ordered-sequence oracle plus a two-way-match arm.
+2. **F-02** — qualify BR-9/AT-05-1's "untracked" as **non-ignored** untracked, and state that
+   ignored paths are outside restoration's reach.
+
+The Mediums (F-03 AT-03-7's self-contradiction, F-04 the transcribed-literal comparand, F-05 BR-12's
+signal across a re-invocation) are each a sentence or two and are worth folding into the same
+revision. F-06 is a one-clause pointer. Nothing here challenges the document's structure, its
+altitude, or its trace to the REQ — §3's lifecycle, §4's rule set and §6's oracle discipline are
+sound, and the revision should be a targeted edit rather than a rewrite.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 1}
