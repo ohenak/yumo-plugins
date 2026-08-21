@@ -190,4 +190,33 @@ operative.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All four of my v1 High findings are resolved, and I verified each resolution against the shipped
+code on the default branch rather than against the document's own account of it. The requirement
+set now matches the mechanism that ships: retention with invalidation (WVR-05), commit-presence
+narrowed with an ancestry carve-out (WVR-06), the all-green skip as its own outcome with an
+explicit REQ-WVR-03 discharge (WVR-08), and a closed five-member ignore catalogue that is set-equal
+to the shipped branch ladder (WVR-02). Nothing in the revision broke a section I approved in v1.
+
+The four findings above are all non-gating and can be addressed in the FSPEC round or as a small
+follow-up edit to this REQ:
+
+1. **G-01** — give the branch-base step a gate (a §5 prerequisite row), so FSPEC is not authored in
+   a tree where the mechanism and the cited baseline are both absent. This is the one I would fix
+   first, not because the document is wrong but because the next phase is where it bites.
+2. **G-02** — re-anchor the inline code citations by symbol name or `M-*` id rather than by line
+   number, and soften the v1.3 note's verification claim to match what was actually re-checked.
+3. **G-03** — cite the wave-gate baseline at `1.2` and restate OB-2's promotion recipe against the
+   sections that now exist.
+4. **G-04** — mark the superseded WVR-05 position as history so it cannot be read as operative.
+
+I have raised no `ERRATUM` lines: this REQ is the upstream-most artifact of its feature, and the
+only external document it depends on — `docs/_constraints/pdlc-wave-gate-baseline.md` — is a
+constraints file rather than a pipeline document type, with its known defect (`M-WG-6` is false
+since the ledger merged) already recorded inside this REQ's OB-2 for promotion time.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 1}
