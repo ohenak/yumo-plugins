@@ -121,6 +121,61 @@ against upstream in the delta.
 
 ## Test Strategy
 
+This is where the round earns its verdict, so I took it case by case.
+
+**§5.2 case 4 — the ignored-path round-trip.** Previously: "written to the boundary that comes back
+from §2.5's erratum … until the erratum resolves it is written as described here and flagged in the
+suite as upstream-pending." Now: "a plain positive assertion, no longer upstream-pending", with both
+upstream authorities cited. A suite-level `upstream-pending` flag is a test that cannot fail for the
+reason it exists, so retiring it converts a placeholder into a real oracle. The assertion itself —
+a `.gitignore`d file the wave added is **still present** after restore — is positive-presence, not
+absence-only, and it is precisely the assertion that discriminates `clean -fd` from `-fdx`. Good.
+
+**§5.2 case 1 — the domain restatement.** The map now ranges over "tracked files and **non-ignored**
+untracked files, generated outputs included … with ignored paths excluded from both sides of the
+comparison". Matches BR-9's Domain clause word for word on the operative terms.
+
+**§5.2 case 5 — new, and the only genuinely new coverage.** The case asserts the observation point:
+the map is taken immediately after restoration completes and before the three record carriers. Two
+things make this a real test rather than a description of one.
+
+First, it asserts the **ordering, not only the content** — the document says so explicitly, and
+gives the falsification: "an implementation that interleaved them fails here rather than passing on
+a map that happens to match." That is the right instinct. A content-only oracle on this property is
+unfalsifiable in the common case, because a correct-content map taken at the wrong moment usually
+still matches; only the ordering conjunct distinguishes them.
+
+Second, it names the three carriers concretely (AC-6.1's record append, AC-6.2's escalation-log
+append, AC-5.2/M-WG-7's queue-row write), so the fixture author knows exactly which three writes to
+assert fall afterwards. I could write this test from the text as it stands, which is the bar.
+
+**§5.5's ignored-path-only row.** The `upstream-pending` flag is retired and the row's expected
+values are declared final. The oracle is a four-conjunct positive one — `producedPaths() === []`,
+`{ok:false}`, `post-action-verification-failed`, an escalation entry, plus a tree carried no further.
+That is a named-reason-code oracle, not an absence-only one; it satisfies the exact-status +
+named-reason + retention triad.
+
+**§5.6's AT-05-1 row.** The row now instructs PLAN to mint the red-test task "with those expected
+values transcribed rather than marked pending", and names both fixed values (domain, observation
+point). This is the row that unblocks Phase P for this AT, and it is the one I would have raised a
+High against had it stayed pending while OQ-7 read closed — a document that declares its blocking
+question resolved while its test allocation still says "pending" is internally inconsistent. It does
+not; the two agree.
+
+**AT-05-2's companion case** is untouched and still pins why a `git status`-level comparison is not
+the oracle. I confirmed BR-9 at HEAD still carries that reasoning ("A status-level comparison passes
+a per-path restore whenever the re-run post-wave command rewrote already-dirty paths"), so the
+TSPEC's stated reason still traces upstream.
+
+**Residual-flag sweep.** The changelog claims "no upstream-pending flag remains in this document",
+which is a mechanically checkable claim, so I checked it. Grepping for `upstream-pending`,
+`until the erratum`, `awaiting upstream`, `comes back approved` and `marked pending` returns six
+hits. Four are the rewritten live statements above (each now reading "no longer upstream-pending").
+Two — plus three further "OQ-7 remains open upstream" sentences — sit inside `## Changelog` entries
+for v1.10, v1.5 and v1.4. I checked their enclosing heading rather than assuming: all are under
+`## Changelog`, describing what was true at those versions. A changelog is a historical record and
+correctly preserves superseded state. No live section retains a pending flag. The claim holds.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
