@@ -111,7 +111,36 @@ document's.
 
 ## Fixtures
 
-_pending_
+**No fixture is invalidated.** PLAN v0.6's changelog asserts it (*"no AT partition or fixture was
+touched"*) and the diff bears it out: the only fixture-adjacent sentence the erratum adds is the
+statement that `__tests__/helpers/learningsFixtures.js`'s declared-heading-form knob is **additive**
+over `buildLearningsCorpus`'s landed section spec — the helper already renders an optional ordinal
+and an optional gloss, and callers declaring neither keep byte-identical output.
+
+That additivity claim is *load-bearing for this document*, so I checked it against the properties
+that would notice if it were false:
+
+| PROPERTIES fixture dependency | Effect of the erratum |
+|---|---|
+| §F.1's named corpus fixtures (`NO-MATERIAL`, `ZERO-BOUND`, `DIVERGENT-CORPUS`, the five-section AT-11 fixture) | Unchanged; all are declared through the same helper, none declares an ordinal or gloss, so their bytes hold |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | Unchanged — byte-identical fixture output is exactly what additivity promises, so the literals do not need recomputing |
+| PROP-BOUND-08's **real-corpus** arm (first `git ls-files` path, 9 documents at HEAD, all five canonical headings) | Unaffected — it reads the live corpus, not the helper |
+| PROP-ISOLATE-01's deliberate gate-token strengthening | Unaffected |
+| §C.4's "seven of fourteen files have landed" measurement | Still true at `fdcdefec`; the follow-up commit the erratum describes has not landed yet |
+
+The erratum also names the failure mode that would break these rows — a *non-additive* future helper
+amendment — and pre-commits PLAN to ledgering the moved consumer suites by name first. That is
+strictly protective of this document's fixtures, and worth keeping.
+
+**Positive observations.**
+
+- The erratum resolves an item this document itself routed upward, in the direction §C.4 asked for,
+  and does so without touching a single row this document traces to. That is a clean cascade.
+- Case A's argument — *no row is added because the suite is already ledgered red as a whole* — is the
+  right shape of answer: it derives the empty row-set from the existing ledger instead of asserting
+  it.
+- Naming the non-additive-helper escape hatch in advance means the next amendment cannot silently
+  move a consumer suite's status out from under PROP-CORPUS-* and PROP-SELECT-*.
 
 ## Delta-Confirmation Findings
 
