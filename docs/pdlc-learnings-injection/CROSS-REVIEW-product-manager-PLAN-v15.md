@@ -224,6 +224,33 @@ DEFERRED: DoD 12 is retired in place but keeps its clause number in the DoD's ru
 
 ## Positive Observations
 
+- **The subsection states its own provenance, and the provenance holds.** "This subsection is derived
+  from `git show --name-status 2fc6fcd3`, not from any prior description of the commit" is the
+  sentence that fixed F-01, and it fixed it structurally rather than by patching the count: it
+  replaces a summary with a partition. I re-ran the command and the partition is exhaustive
+  (18 + 5 + 9 + 1 + 4 + 1 + 7 = 45) and disjoint. A reader can now falsify the section in one
+  command, which is exactly what a manifest amendment should offer.
+- **Every owner and batch in the nineteen rows is right.** I checked all seven ladder attributions
+  against the manifest's own rows (LI-03/2, LI-07/3, LI-09/3, LI-11/5, LI-12/5, LI-23/5, LI-05/3)
+  and all four diffstats against `--numstat`. Not one is off. Widening a table from six rows to
+  nineteen without introducing a single mis-attribution is the part of this delta that took the most
+  care and shows the least.
+- **The `package.json` correction was taken to all three places the premise appeared**, not just the
+  one I raised — change-surface row, §Production and generated bullet, DoD 11/12 — and the new text
+  reproduces the shipped `c8` block including the non-obvious part (why `allow-external` forced every
+  entry to become `**/`-anchored). It reads like it was written from the file, because it was.
+- **DoD 12 is retired with its history rather than deleted.** "This clause once exempted … `2fc6fcd3`
+  re-rooted exactly that … no exemption exists for a verifier to check" leaves the next reader able
+  to tell a discharged obligation from a dropped one, and keeps the three named oracles in force in
+  their new role. That distinction is the whole value of a DoD.
+- **The negative claims were stated as well as the positive ones.** The subsection says what
+  `2fc6fcd3` did *not* touch — LI-04's root `.gitignore`, and `dist/pdlc-cli.mjs` which keeps no row
+  because it is regenerated — which is the half of a manifest amendment that usually goes unwritten
+  and is exactly where a reader's wrong inference would otherwise form.
+- **The changelog credit was corrected by recording the correction**, not by overwriting it: "(TE v11
+  F-01; this row originally credited a PM v10 erratum — corrected in v1.3, PM v13)". A four-round
+  Low finally closed, and closed in the form that makes the round history auditable.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
