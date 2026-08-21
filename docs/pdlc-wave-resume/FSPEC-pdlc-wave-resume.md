@@ -102,10 +102,16 @@ two outputs: a **resume point** and a **provenance**.
 |---|---|---|---|
 | D-1 | Is a manual resume point set to something other than the plan's first wave? | resume point is the operator's; provenance `operator-set`; the record is not consulted at all (§3.2 is skipped, and no disregard reason is announced) → D-6 | → D-2 |
 | D-2 | Is a resume record present and usable for this feature and this plan (§3.2)? | → D-3 | resume point is wave 1; provenance `automatic`; announcement per §3.2's IG row → D-6 |
-| D-3 | Does the record account for every wave of this plan? | **Outcome (c)**: Phase I is skipped in full → D-5 | → D-4 |
-| D-4 | **Outcome (b)**: resume point is the wave after the last completed one; provenance `automatic` → D-6 | | |
-| D-5 | Phase I dispatches nothing, executes no gate, and produces no commit; the run report's Phase I row carries a skip status naming the record as the reason | | |
-| D-6 | Phase I runs from the resume point; every wave below it is individually announced as skipped, naming which source skipped it | | |
+| D-3 | Does the record account for every wave of this plan? | **Outcome (c)** → D-5 | **Outcome (b)**: resume point is the wave after the last completed one; provenance `automatic` → D-6 |
+
+The two terminal actions the table routes to are not questions and are stated here rather than as
+rows of it:
+
+- **D-5 (outcome (c)).** Phase I dispatches no wave, executes no wave gate, and produces no
+  implementation-wave commit; the run report's Phase I row carries a skip status naming the record
+  as the reason. Phase PT's V-wave is outside this scope (§2 Vocabulary, EC-20).
+- **D-6.** Phase I runs from the resume point; every wave below it is individually announced as
+  skipped, naming which source skipped it.
 
 **Outcome (a)** is the D-2 "No" arm and the D-1 out-of-range arm (§3.3): a full run from wave 1.
 The catalogue of outcomes is **closed at three** — (a) full run, (b) resume mid-plan, (c) skip
@@ -128,8 +134,20 @@ supplies the announced reason. Ordering is observable, so it is fixed (BR-03).
 
 A record passing all six proceeds to D-3. Question 5 is *falsification of the record*, not
 derivation of completion from commit history, and is expressly permitted by REQ-WVR-06's
-carve-out. Question 5 has no answer when the run has no way to ask the tree; an unanswerable
-probe is **not** a staleness finding (EC-06).
+carve-out. Question 5 has **three** answers, not two: reachable (pass); unreachable (IG-5); and
+**no commit named at all**, which passes — a record carrying no commit is honoured on the
+remaining questions alone, because a record that predates the corroboration is a compatibility
+case and not evidence of staleness (`headCorroborated`, `pdlc/workflows/orchestrate-dev.js`, whose
+absent-commit arm is commented "pre-`head` record: honoured as before"). The accepted cost is
+stated: such a record survives a history rewrite that question 5 exists to catch, and is bounded
+by BR-10 exactly as EC-18 is. Question 5 also has no answer when the run has no way to ask the
+tree; an unanswerable probe is **not** a staleness finding (EC-06, EC-07).
+
+**The order above is deliberately not REQ-WVR-02's IG numbering.** The REQ enumerates IG-4
+(over-count) before IG-5 (ancestry); the evaluation order here places ancestry *before* over-count,
+ratifying the shipped chain rather than the document's numbering (REQ BL-03, R-4). The IG labels
+name causes, not precedence; only this table's order is normative (BR-03), and a downstream reader
+must not "correct" it to the REQ's numbering.
 
 ### 3.3 The operator override path (FSPEC-WVR-04)
 
