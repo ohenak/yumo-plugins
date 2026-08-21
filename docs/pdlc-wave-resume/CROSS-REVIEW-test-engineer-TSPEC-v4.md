@@ -71,6 +71,42 @@ in TSPEC's own terms.
 
 ## Interfaces
 
+The delta names no symbol, path, config key, encoding, or string literal, and I confirmed that
+positively rather than by absence — the diff is 14 added and 3 removed lines, and I read every one.
+
+TSPEC's interface surface is §3: the three frozen catalogues (`WAVE_IGNORE_REASONS`,
+`RESUME_OUTCOMES`, `RESUME_PROVENANCE`, plus `ANCESTRY_INDEPENDENT_CODES`), the pure classifier
+extracted from `orchestrate-dev.js`, `parseWaveLedger` / `computePlanHash` / `formatWaveLedger`
+ratified unchanged, `WAVE_STATE_PATH`, the injected seams (`_readFile`, `_git`, `_runCommand`), and
+the `implementation.*` configuration surface including `startWave`. Three checks, because the
+confirmation bar is fidelity and not item-landing:
+
+1. **`RESUME_PROVENANCE` is now load-bearing upstream, and its contract is unchanged.** FSPEC §3.4
+   newly leans on the `operator-set` announcement as the *attribution* for an operator-asserted
+   completion — "the assertion is attributable, because the run that made it announced provenance
+   `operator-set` (BR-07)". That is a new **use** of an existing announcement, not a new interface:
+   the token, the two-member catalogue, and the banner it rides on (§2.3/V-18, asserted by AT-05's
+   named-announcement conjunct) are all untouched. Worth stating precisely, because it raises the
+   stakes on AT-05's discipline: the provenance token is now the only artefact distinguishing an
+   operator-asserted record from a pipeline-observed one, so AT-05's rule that the token must be
+   found **on the operator banner specifically**, not anywhere in the log, is doing more work at
+   v1.2 than it was at v1.1. It is unchanged and still sufficient.
+
+2. **`startWave` remains a pointer, not persisted state.** The new clause could have been read as
+   asking the record to carry the pointer's influence. It says the opposite — "No record content
+   distinguishes the two provenances" — which ratifies §3.5's configuration surface and §4.1's
+   record shape exactly as TSPEC states them. AT-08's set-equality over
+   `Object.keys(IMPLEMENTATION_DEFAULTS)` against the four transcribed keys is unaffected, and
+   remains the closure oracle that would red if a fifth key were smuggled in.
+
+3. **`WAVE_STATE_PATH` and the write seam.** The write site's guard structure — inside
+   `if (waveGit)`, outside `!explicitPointer` — is the interface fact the new clause depends on.
+   FSPEC does not name the guard (correctly: that is TSPEC altitude); it states the observable
+   consequence. TSPEC §2.5 names the guard and V-6 pins the `!explicitPointer` block as wrapping
+   only the read/decide chain. The two documents meet at the right altitude with no contradiction.
+
+No interface finding.
+
 ## Data Model
 
 ## Test Strategy
