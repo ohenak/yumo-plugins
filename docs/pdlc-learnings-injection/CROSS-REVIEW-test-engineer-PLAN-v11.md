@@ -100,6 +100,58 @@ under a case where the ledger is empty. From my lens this is the strongest sente
 
 ## Dependencies
 
+**The batch DAG is untouched, and I re-derived it anyway.** The dispatcher reads the `Batch` column,
+and a case-table edit is exactly the kind of change that *looks* like it cannot move a batch. It did
+not: `git diff` shows no `Deps` cell and no `Batch` cell in the delta. The derivation I published at
+round 10 (`batch == max(dep batch) + 1` for all twenty-two ids, unique ids, every dependency
+resolving, no cycle, fourteen batches) therefore still holds line for line, and I am not restating the
+table.
+
+**What the delta *does* touch is a dependency of a different kind — the case partition over batches,**
+which is a total function only if every landing batch falls in exactly one case. That is worth
+deriving mechanically, because the delta re-scoped one case's domain and added another:
+
+| Landing batch | Case whose header claims it | Covered? |
+|---|---|---|
+| 1–6 | A — "before batch 7" | ✓ |
+| 7, 8 | none by header | body of A covers the outcome; header does not |
+| 9–12 | B — "batch 9 through batch 12" | ✓ |
+| 13 | none by header (B ends at 12, C is "after batch 13") | gap |
+| 14+ | C — "after batch 13 … any commit landing once LI-21 (`92b7ea0c`) has landed" | ✓ |
+
+Two seams, both **vacuous at HEAD** and neither reachable by any future commit: batches 7, 8 and 13
+are all behind us (LI-15 `?`, LI-16 `d462ddd8`, LI-17 `2cbacada` … LI-21 `92b7ea0c` have landed), so
+no commit can land in them. Case A's body already reasons explicitly about batches 7 and 8 ("the
+ledger already lists it as a **whole suite** red after batches 7 and 8"), so the 7/8 seam is a header
+that under-claims what the body decides, not a missing rule. The batch-13 seam is a true partition
+gap introduced by re-scoping B's upper bound from "or later" to "through batch 12" — but case C's
+*second* header clause ("any commit landing once LI-21 has landed") closes it in practice, since
+LI-21 **is** batch 13's task: a commit landing in batch 13 lands once LI-21 has landed. I file this
+as **Low, delta, local** — it costs a reader one inference and cannot mislead an implementer at HEAD.
+
+**One cross-reference the delta supersedes without updating.** §Open questions' **P-A-6** row still
+reads: the PROPERTIES *suite* "lands in one commit once green, **or else its red rows are amended into
+the ledger by name first (P-A-7)**". That fallback branch was well-formed while case B was live. Under
+case C it is not: there is no ledger left to amend into (the PLAN's own ledger "reaches empty at batch
+13"), and case C rules that such an amendment owes **green**, not a row. PROPERTIES §C.4 reads this
+seam correctly and keeps P-A-6 and P-A-7 distinct, and P-A-6 cites P-A-7 by name so a reader following
+the citation lands on case C and gets the right answer — which is why this is **Low, delta, nonlocal**
+rather than a contradiction that could mislead. The one-clause repair is to have P-A-6's fallback read
+"or else its rows are handled under P-A-7's governing case" instead of naming the ledger amendment as
+the only alternative.
+
+**The PROPERTIES routing added by the delta is correct at the seam.** Case C now names the
+PROPERTIES-driven re-reds that §C.4 routes to this PLAN — PROP-BOUND-03's `maxBytesPerDocument <= 0`
+case, PROP-BOUND-05/07/08, and the Group D amendments to the landed `learningsSelect.test.js` — and
+rules that they owe no ledger row and owe green. I checked that against PROPERTIES §C.4 at HEAD rather
+than accepting the citation: §C.4 routes **exactly two** gaps to this PLAN as errata, in these words —
+case B's named row "covers `LI-AT-11`'s heading-form cases only, so PROP-BOUND-03's `maxBytes <= 0`
+case has no named row", and "its span ends at 'the batch that greens them', which no remaining batch
+is". The delta lands **both**: case C dissolves the first (no row is owed by anything under case C, so
+a row that does not cover PROP-BOUND-03 is no longer a gap) and answers the second. The four
+properties §C.4 names are the four case C names, and the file it names them landing in
+(`learningsBlock.test.js`, plus `learningsSelect.test.js` for Group D) matches. Faithful compression.
+
 ## Verification
 
 ## Delta-Confirmation Findings
