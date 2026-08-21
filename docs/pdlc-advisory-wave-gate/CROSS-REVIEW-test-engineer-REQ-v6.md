@@ -147,8 +147,25 @@ whether the cited obligation exists (F-02).
 
 The delta resolves the routed item and breaks nothing I approved at v5. No High findings: one Medium
 (AC-6.3's conditional antecedent, which routes a fixture obligation to PROPERTIES rather than leaving
-a hole) and five Lows, four of them inherited and unchanged since v5.
+a hole) and four Lows, three of them inherited and unchanged since v5.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | AC-6.3's new warning is conditional on the halt report pointing at a captured pre-A6 tree state, but neither the REQ nor FSPEC E-28/AT-05-5 requires that pointer to exist — only the TSPEC does. An AT written from the REQ alone cannot force the antecedent true, so an implementation that drops the pointer satisfies AC-6.3 vacuously. Either make the antecedent a REQ obligation, or have PROPERTIES pin a fixture where the halt names the capture and assert the warning positively (exact string, same report section), never absence-only. | §6 AC-6.3 |
+| F-02 | Low | delta | nonlocal | DEC-A6-03's "Known gap in the remedy's reach" still states "**The routing has not landed** … at REQ v1.15 and FSPEC v1.6", so AC-6.3 now cites a record that denies the obligation it is cited for. Update the paragraph (or its re-evaluation trigger) to record the REQ half as landed at v1.16, leaving only the FSPEC half open. | DECISIONS DEC-A6-03 |
+| F-03 | Low | inherited | nonlocal | The REQ is 686 lines / 55,627 bytes against C-5's 630-line / 55,296-byte soft budget (676 at v1.15; +10 this round). Inside the 700-line hard gate with 14 lines of headroom. Dissolution path recorded (SE Q-02's relocation). | §5 C-5 |
+| F-04 | Low | inherited | nonlocal | AC-6.4's honest limit and O-2 place the per-feature advisory record's deletion "after Phase PUB"; the cited upstream, `docs/_constraints/pdlc-advisory-corpus-baseline.md` §1 at HEAD, places it after Phase H2's distil. The conclusion is unaffected; the phase name is not what upstream says. | §6 AC-6.4, §8 O-2 |
+| F-05 | Low | inherited | nonlocal | Both upstream baselines understate their consumers: `pdlc-wave-gate-baseline.md` v1.2's `Cited by` row records REQ §1/§4/§5/§8 only, though §6 (AC-1.1) and §7 (R-5) cite `M-WG-*` ids; `pdlc-advisory-corpus-baseline.md` v1.0's row names only `REQ-pdlc-consolidation-agent`, though this REQ cites it at C-1, AC-6.4, NFR-6 and O-2. Upstream's fix, not this REQ's. | Lineage / upstream `Cited by` |
+
+FINDING: Medium | delta | local | §6 AC-6.3 | The new re-run-overwrite warning is keyed to an antecedent ("where the halt report points the operator at a captured pre-A6 tree state") that no REQ or FSPEC obligation makes true — only the TSPEC does — so an AT written from the REQ alone cannot force it and an implementation that drops the pointer passes vacuously; make the antecedent a REQ obligation or pin the fixture in PROPERTIES and assert the warning positively.
+FINDING: Low | delta | nonlocal | DECISIONS DEC-A6-03 | The known-gap paragraph still says "The routing has not landed … at REQ v1.15 and FSPEC v1.6", so AC-6.3 cites a record that denies the obligation it is cited for; record the REQ half as landed at v1.16 and leave only the FSPEC half open.
+FINDING: Low | inherited | nonlocal | §5 C-5 | REQ is 686 lines / 55,627 bytes against C-5's 630-line soft budget (676 at v1.15, +10 this round); inside the 700-line hard gate, dissolution path recorded (SE Q-02's relocation).
+FINDING: Low | inherited | nonlocal | §6 AC-6.4, §8 O-2 | The advisory record is described as "deleted after Phase PUB" while the cited corpus baseline §1 at HEAD places deletion after Phase H2's distil.
+FINDING: Low | inherited | nonlocal | Lineage / upstream `Cited by` | Both baselines' `Cited by` rows understate this REQ's citing sections (wave-gate baseline omits §6/§7; corpus baseline omits this REQ entirely) — upstream's fix, not this document's.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 4}
