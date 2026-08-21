@@ -115,7 +115,31 @@ module under test. `npm test -- __tests__/learningsSelect.test.js` is green at H
 
 ## Acceptance Criteria
 
+What this delta round had to establish, and whether it did:
+
+| # | Criterion | Met? |
+|---|---|---|
+| CC-1 | The routed erratum landed in the REQ as a real delta | Yes — AC-2.4 tail, header bumped to 0.10 |
+| CC-2 | The clause is true of the shipped selection at HEAD | Yes — `orchestrate-dev.js:2495`, `:2518-2521` |
+| CC-3 | The cited co-authority exists at the cited version | Yes — FSPEC v0.14 `:18`, BR-6 "The mixed case, stated" `:519-528` |
+| CC-4 | The clause introduces no new or renamed reason id | Yes — AC-3.2's three catalogues unchanged (REQ:325-334) |
+| CC-5 | The new invariant has its own falsifying test in this revision | Yes — `learningsSelect.test.js:374`, with the mutation named; `LI-AT-13` asserts by set equality |
+| CC-6 | Nothing approved through v11 regressed | Yes — hunks are additive; no other AC's text moved |
+| CC-7 | Prior open findings dispositioned, not dropped | Yes — v11's two Lows carried forward below, both still open |
+
 ## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **(inherited from v11 F-01, unchanged by this delta.)** AC-5.1b attributes the operator notice to the reader: "the same response `orchestrate-dev.js`'s `parseImplementationConfig` ships, whose malformed section yields defaults plus an explicit operator notice" (REQ:394). At HEAD that function returns `{config: IMPLEMENTATION_DEFAULTS, sectionMalformed: true, invalidKeys: []}` and emits nothing; the notice is the caller's, and the second call site keeps only `.config`, so at that site a malformed section yields defaults with **no** notice. The precedent the AC leans on is real — defaults plus notice is what the wave-mode pipeline does — so the decision is undisturbed; the imprecision would lead a TSPEC author pinning "the reader reports" to the wrong seam. **Fix (non-gating):** "…yields defaults, on which its caller emits an explicit operator notice". | AC-5.1b (REQ:394) |
+| F-02 | Low | Local | **(inherited from v11 F-02, unchanged by this delta.)** AC-3.2's mirror clause exempts an operator-visible field from every oracle: the run-level mirror "is additive, is not the oracle, and has a deliberately unconstrained value that nothing asserts on" (REQ:328-330). The per-dispatch oracle stays positively asserted, so falsifiability of the primary record is unchanged; but a mirror whose value contradicts the dispatch records it summarises would be undetectable by the suite and still green, while an operator reading the report top-down meets the contradiction first. **Fix (non-gating, or absorb at TSPEC):** drop the clause, or bound it with one consistency assertion — if a mirror is carried, it agrees with the dispatch records it summarises. | AC-3.2 (REQ:328-330) |
+
+Neither finding is a defect this delta introduced, and neither is High; under the freeze neither
+blocks. Both are single-clause edits that can ride any future erratum touching this document.
+
+DEFERRED: AC-2.4's clause is now cause-defined in prose but the REQ never says, in one place, that the two ids **partition** the dropped set — a reader could still imagine a document reported under both. The code makes it a partition by construction (`overflow` and `windowRejected` are disjoint by `slice`), and `LI-AT-13`'s set-equality map enforces one id per path, so nothing is at risk; a half-sentence ("each dropped document carries exactly one id") would make the partition readable from the REQ alone.
+DEFERRED: The falsifier at `learningsSelect.test.js:374` proves invariance at two window positions (last slot, middle). A property-based version over (window index of first byte failure) × (corpus size) would close the whole parameterised space rather than two witnesses; this is a PROPERTIES/TSPEC-time refinement, not a REQ matter.
+DEFERRED: v11's two DEFERRED lines stand — (a) AC-3.1's set-equality test is vacuous for a dispatch that selected nothing, so the empty-dispatch assertion belongs to AC-3.2's "rows present and empty"; (b) §1.2 claim 2's code claims should reach TSPEC as a literal restatement pin against `consolidate-learnings.js:1348-1355` and `:587-593`.
 
 ## Questions
 
