@@ -363,12 +363,15 @@ skipped in full; the skip is announced as its own run-log message, naming the re
 force-a-full-run hatch (OQ-1, §9); and the run report's **Phase I row** carries a skip status and
 a reason naming the record, distinct from the status an executed Phase I carries (TE G-05 — this
 is one row with a distinguishing status, not a second row; the hatch is owed on the run-log
-message only, not on the report row). **How REQ-WVR-03 is discharged here:** no wave executes, so no gate
-runs and **Phase I produces no new commit** — the guarantee "no new commit lands before the full
-suite has verified the whole tree" is satisfied because this phase lands none, not because a
-verification was skipped. The tree's most recent whole-tree verification is the one performed by
+message only, not on the report row). **How REQ-WVR-03 is discharged here:** no wave of the
+**implementation wave loop** executes, so that loop runs no gate and **lands no new commit** — the
+guarantee "no new commit lands before the full suite has verified the whole tree" is satisfied
+because the skipped loop lands none, not because a verification was skipped. The claim is scoped
+to that loop: Phase PT's appended verification wave, which OF-1 counts as the 17th wave, is
+outside the resume record's scope and continues to dispatch, gate and commit on every invocation,
+including this one (FSPEC §2, EC-20). The tree's most recent whole-tree verification is the one performed by
 the last wave of the run that wrote the record; any later phase that wants to commit runs its own
-gates. An implementation that commits anything in Phase I under this outcome violates REQ-WVR-03.
+gates. An implementation that lands a wave-loop commit under this outcome violates REQ-WVR-03.
 
 **The resume-outcome catalogue is closed at three** — (a) full run from wave 1, (b) resume at a
 wave in the middle, (c) skip Phase I entirely — and every invocation resolves to exactly one of
