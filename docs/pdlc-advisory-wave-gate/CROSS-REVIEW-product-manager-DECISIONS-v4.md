@@ -147,6 +147,47 @@ and the exact fix for each are in `## Findings`.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | `DEC-A6-03` Reversibility places co-location *between two surfaces* — "the halt field that names the ref, and, adjacent to it, the overwrite notice … co-located by contract". `TSPEC v1.15 §4.5` puts the ref pointer and the overwrite sentence **inside one `notices` string**; `snapshotRef` in `haltError.fields` is a separate channel and is not what satisfies `BR-14`. The same entry states the oracle correctly eleven lines below, so the record contradicts itself on the falsifiable half of the AC. | AC-6.3, FSPEC BR-14, TSPEC §4.5 |
+| F-02 | Medium | Local | The "What is still owed" note says "`PROPERTIES` covers AC-6.3 through `PROP-REC-05`". `PROPERTIES` at HEAD maps `AC-6.3` to **two** properties — `PROP-REC-05` *and* `PROP-REST-08`, the `E-34` no-capture arm. `PROP-REST-08` is where `FSPEC AT-06-4b`'s "no warning, because no capture" conjunct will have to live, and it is equally unasserted today. Naming one of two leaves the negative arm invisible to the test author the note is written for. | AC-6.3, FSPEC AT-06-4b, E-34 |
+| F-03 | Low | Local | "the halt-field contract is no longer the closed four-literal set `{rootCause, diagnosis, repairApplied, repairPaths}`: **it adds a snapshot-overwrite notice** … into the report's `notices`" conflates two channels. What widened the halt-**field** set is a fifth field, `snapshotRef` (`TSPEC §4.5`, and the typed `haltFields` shape); the notice is an addition to a different surface. As written, a reader can conclude the notice is a halt field. | AC-6.3, TSPEC §4.5 |
+
+**F-01 — evidence and fix.** The record reads: *"It is printed in two places as of the routing above
+(TE v3 F-02): the halt field that names the ref, and, adjacent to it, the overwrite notice
+`renderSnapshotOverwriteNotice(snapshotRef)` renders — co-located by contract."* `TSPEC v1.15 §4.5`
+says the notice is "**one string carrying the ref pointer and the overwrite statement adjacent**",
+rendered "from a non-`null` value, both halves together and adjacent **inside one string**: the ref
+name, and the sentence that re-running this feature overwrites that capture". `FSPEC v1.7 BR-14`
+makes co-location the observable, and `AT-06-4`'s oracle is explicit that it is "**co-location within
+one string on one named surface**", failing a run "in which the two halves land on two different
+notices". So the pairing the record calls co-located is at best a different pairing from the one
+`BR-14` requires, and at worst reads as licence for the arrangement `AT-06-4` is written to redden.
+*Fix:* state that the ref name and the overwrite sentence are co-located **within the single
+`notices` string**, and that `haltError.fields.snapshotRef` is the separate field the notice is
+rendered from. The rename-cost point survives untouched — one computation
+(`pdlc/workflows/orchestrate-dev.js:12603`) and one rendered string — which is all the paragraph
+actually needs to say.
+
+**F-02 — evidence and fix.** `PROPERTIES` §Traceability maps `AC-6.3 | PROP-REC-05, PROP-REST-08`,
+and `PROP-REST-08`'s Traces cell lists `AC-6.3, E-34`. `PROP-REST-08` is `E-34`'s only property home
+and asserts the no-capture halt's field values; it says nothing about the *absence* of an overwrite
+warning, which is precisely the paired positive-and-negative oracle `AT-06-4b` exists to supply. The
+record's own standard here is right — "the falsifiable half is co-location, not presence" — and it
+should extend to the negative arm: a warning that is always emitted passes a presence check, and only
+`PROP-REST-08`'s arm can falsify that. *Fix:* name both properties and say what each still owes —
+`PROP-REC-05` the co-location conjunct, `PROP-REST-08` the paired "and no overwrite notice on the
+`null` arm" conjunct.
+
+**F-03 — evidence and fix.** `TSPEC §4.5`'s Halt-fields row reads
+`{rootCause, diagnosis, repairApplied, repairPaths, snapshotRef}`, and the typed shape carries
+`snapshotRef: string | null`. *Fix:* one clause — the field set gained `snapshotRef`, and *separately*
+the halt report's `notices` gained the rendered overwrite notice.
+
+**Citation convention (DEC-DOC-01).** Clean. Every citation the revision adds is by spec id, version
+or section (`AC-6.3`, `BR-14`, `AT-06-4`, `AT-06-4b`, `E-34`, `§4.5`) — no raw `file:line` anchors
+were introduced. The v3 instruction on this was followed.
+
 ## Questions
 
 ## Positive Observations
