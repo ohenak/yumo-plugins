@@ -32,6 +32,82 @@ oracle, and a repair grounded on a second wrong reading would be worse than the 
 
 ## Options Considered
 
+Two readings of "re-review the DECISIONS delta" were available.
+
+- **Check that each prior finding's text changed, and stop.** Rejected. All three of my Highs were
+  *false-ground* findings, not wording findings — the document said something a reader would
+  transcribe, and the tree said otherwise. A repair to such a finding is only resolved if the *new*
+  ground holds. Diff-shaped verification would pass a repair that swapped one unchecked premise for
+  another, which is precisely the failure v1.10 shipped (`:52` claimed "all claims re-grounded
+  against the working tree" while three claims were false).
+- **Re-verify every code claim the delta introduces, against the module, the suite and the build
+  and packaging scripts** (chosen). Each repair is treated as a fresh claim under my lens: does it
+  hold at HEAD, and does the sentence, transcribed as written, yield a test that can fail?
+
+Executing that, claim by claim, in the order the delta lands them.
+
+**F-01 repair — the fail-closed split (`:412-427`).** Resolved, and the new text is correct on both
+halves. `captureTreeSnapshot` routes every failed verb through `const fail = (verb) => {…; return
+null;}`, optionally writing `failure.verb` on a caller-owned carrier
+(`pdlc/workflows/orchestrate-dev.js:12572-12576`), and returns `fail(verb)` on all six verbs
+(`:12578-12613`); the docstring states "Returns `null` on any `ok !== true` — never throws"
+(`:12558`). `restoreTreeSnapshot` throws on each of its three verbs — `read-tree --reset -u`,
+`clean -fd`, `reset --mixed` — with the failing argv and git's stderr in the message
+(`:12641-12662`), and its docstring names the `__isRevertFailure` rethrow (`:12628-12631`). The
+delta's sentence "Both halves end the wave; neither leaves a repair half-applied. That conjunction
+is the property" is transcribable: it yields a rejection assertion on the restore path and a
+`null`-return-plus-disposition assertion on the capture path, which is what the shipped suite
+already proves. The reason clause for why capture cannot throw its way to a disposition — the
+driver is never entered, so `__preDispatch` is unavailable — matches the docstring at `:12559-12561`.
+
+**F-02 repair — OQ-7 settled at five sites (`:5`, `:195`, `:271-275`, `:286-292`, `:439-444`).**
+Resolved. The `Upstream` cell now reads TSPEC v1.11 with `sha256:3fa21acf…`, which is the hash on
+disk. Every OQ-7 site is now a transcription of the decided boundary rather than a hedge:
+`TSPEC:1755` reads "**Closed upstream, answered *no***" and records that the transcription landed
+in §2.5, §3.3, §5.2, §5.5 and §5.6 with "no upstream-pending flag remains"; `REQ:503` carries the
+quoted exclusion verbatim — ignored paths "are operator files A6 never wrote and never restores
+over". The re-evaluation trigger at `:286-292` is now a *reversal* trigger (BR-9's exclusion is
+reopened) rather than a pending-event trigger, and it explicitly names the scoped arm as **not
+built** — which is the observable form the trigger needed. The remaining `v1.10` mentions in the
+document (`:44`, `:52`, `:112`, `:114`, `:151`, `:193`, `:283`, `:413`) are all historical narrative
+about what a prior revision said; none of them is a live upstream binding.
+
+**F-03 repair — the vendoring constraint (`:138-163`, option-B row `:193`).** Resolved, and the new
+ground holds on every limb I could check. `MODULE_NAMES = ["orchestrate-dev.js",
+"orchestrate-queue.js"]` with `copyFileSync` into `pdlc/engine/vendor/workflows/` and a
+`VENDOR-MANIFEST.json` (`pdlc/engine/scripts/prepack.mjs:20`, `:39-47`); `WORKFLOW_MEMBERS`
+(`publish-preflight.mjs:220-224`); `WORKFLOW_MODULE_NAMES` (`fixture-machine.mjs:426`, iterated
+`:449`); `pdlc/OPERATIONS.md:97` states the vendoring and the never-loads-`.claude/workflows/` half
+in the row the document paraphrases. The retired-channel evidence is equally solid:
+`build-runtime.mjs:5-12` records the per-module runtime bundles as "retired along with the Claude
+Code workflow runtime" and "now emits a single artifact: `pdlc-cli.mjs`", and
+`pdlc/hooks/scripts/cleanup-consumer-workflows.sh:4-5` describes itself as removing "the retired
+plugin-channel consumer copy … left behind by the now-deleted plugin-channel sync step". The
+rejection is now **on merit** (co-location with the advisory-tier symbols, three-list cost) rather
+than on impossibility, which is exactly the repair I asked for and no more. Option B's enforcement
+ground likewise: `orchestrate-dev.js:20` carries `import * as fs from "fs"`, so the old "cannot use
+`fs`" clause is correctly retired, and the surviving enforcement is the source scan at
+`advisoryWaveGate.test.js:3183-3194`, whose forbidden set is exactly
+`/\bprocess\b/, /\bDate\b/, /Math\.random/, /\brequire\(/, /\b_now\b/, /\bglobalThis\b/` —
+the six tokens the document lists, in the same order.
+
+**F-04 repair (`:279-285`).** Resolved: both functions are `export async function`
+(`orchestrate-dev.js:12566`, `:12635`) and `advisoryWaveGate.test.js:280` destructures
+`{ captureTreeSnapshot, restoreTreeSnapshot }` off the module.
+
+**F-05 repair (`:517-530`).** Resolved in the form I asked for: the claim is now "**specified**, not
+yet asserted", attributes the requirement to TSPEC §5.2, names A6-15 as owing the present-and-zero
+conjunct, and — the part that matters — explicitly refuses to close the obligation ("recorded here
+rather than closed, because a closed obligation is what stops the next reader looking"). The
+underlying fixture gap is unchanged at HEAD (`advisoryWaveGate.test.js:1591-1619`), which is
+implementation's to close, not this record's.
+
+**F-06 / F-07 repairs (`:195`, `:174`, `:249-252`, `:7`).** Resolved. The two argv literals now
+agree (`git add -A --` at both sites), the `-m` paragraph now says "with TSPEC §2.5's own elision"
+and prints the shipped literal `A6 snapshot: wave {waveNum} pre-repair tree ({feature})`
+(matching `orchestrate-dev.js:12596-12599`), and the `Cross-Reviews` cell now names the harvested
+rounds as harvested and the current round as post-harvest round 1.
+
 ## Decision
 
 ## Consequences
