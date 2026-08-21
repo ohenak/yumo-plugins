@@ -491,4 +491,103 @@ re-checks types. `head` is normalised at parse time to `string | null`, which is
 
 ## 5. Test Strategy
 
+### 5.1 The oracle rule this feature lives under
+
+REQ §1 is explicit: **the oracle is an observed resume, never the presence of a code path.** A test
+that asserts `classifyWaveLedger` exists, or that greps the module for `WAVE_STATE_PATH`, proves
+nothing the three shipped preconditions did not already defeat. Every acceptance test below asserts
+one of: a dispatched or undispatched wave (counted), an announced sentence, a report row, or the
+bytes written to the record.
+
+Two corollaries, both from the reviewer-oracle clauses this project applies:
+
+- **No implementation echoes.** Every expected value — the seven reason codes, the three outcomes,
+  the four config keys, the wave counts — is a **literal transcribed from this TSPEC or the FSPEC**
+  into the test, never a value read back out of the module under test. That is what makes AT-02,
+  AT-08 and AT-13 able to fail on a deletion.
+- **No absence-only oracles.** "No commit was produced" cannot distinguish a skipped wave from one
+  that ran with nothing to add. Wherever the FSPEC asks for a skip, the assertion is a **call count
+  on a spy** (zero agent dispatches, zero gate invocations) paired with a positive conjunct (the
+  V-wave's exactly-one dispatch and exactly-one gate call), per FSPEC AT-12.
+
+### 5.2 Test doubles — reuse, do not reinvent
+
+The shipped suite already ships the harness this feature needs, and it is reused rather than
+re-built (DC-08's cite-and-reuse rule):
+
+| Double | Where it ships | What it gives this feature |
+|---|---|---|
+| `makeLedgerArgs({ledger, config, writes, record, logs, git, runCommand})` | `pdlc/workflows/__tests__/waveExecution.test.js`, immediately above the ledger `describe` | Both halves of the record seam under test control: `_readFile` scripted per path (`WAVE_STATE_PATH`, `CONFIG_PATH`, `PLAN-*`), `_writeFile` captured into `writes`. Nothing touches the real filesystem. |
+| `ledgerWrites(writes)` | same file | The record writes, in order, as text — the oracle for §2.5's per-wave, high-water contract. |
+| `PLAN_THREE_WAVES`, `CONFIG_WITH_TEST_COMMAND` | same file | A three-wave plan and a script-gate config, so wave counts in assertions are literals. |
+| `makeArgs` + `record`/`logs` capture | same file | The run report's phase rows and the run log. |
+| A counting `_agent` spy and a counting `_runCommand` spy | the pattern used by the shipped "a complete ledger skips every wave without a single implementation dispatch" test | FSPEC AT-12's call-count oracle. |
+
+**New doubles are limited to fixtures**, not machinery: additional record byte-strings (malformed
+JSON, a JSON array, a well-shaped record naming another feature, one with a stale `planHash`, one
+with an unreachable `head`, one with `lastGreenWave` over the count, one with no `head`), and a
+`_git` double whose `merge-base --is-ancestor` reply is scripted per test.
+
+### 5.3 Test categories
+
+| Level | Subject | File |
+|---|---|---|
+| Unit — pure | `classifyWaveLedger` over every guard of §3.2's table; `parseWaveLedger`'s three arms and their exact sentences; `formatWaveLedger`'s two shapes; `computePlanHash`'s sensitivities | `pdlc/workflows/__tests__/waveResume.test.js` (new) |
+| Unit — catalogues | transcribed set-equality over `RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS` keys, and `IMPLEMENTATION_DEFAULTS` keys | same file |
+| Integration — through `main()` | every FSPEC AT that names an announcement, a report row, a dispatch count, or a written record | `pdlc/workflows/__tests__/waveExecution.test.js` (existing ledger block, extended) |
+| Integration — queue parity | direct run vs `orchestrate-queue` delegation over the same feature, plan and record | `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` (new) |
+| Repo-state | the root-anchored `.gitignore` rule; this feature's PLAN ownership manifest | `pdlc/workflows/__tests__/waveResumeRepoState.test.js` (new) |
+
+Splitting the new unit and repo-state work into **new files** is deliberate: `waveExecution.test.js`
+is a large, heavily-shared file, and Phase I's single-writer-per-batch rule makes a new file the
+cheap way to let unit work and integration work land in different waves without a shared-file
+race. The extensions to `waveExecution.test.js` are one task, in one wave, owning that file alone.
+
+### 5.4 Acceptance-test coverage map
+
+Every FSPEC AT, with the oracle form that discharges it. `PROPERTIES` owns the final wording; this
+map is the contract that no AT is left without a home.
+
+| FSPEC AT | Level | Oracle |
+|---|---|---|
+| AT-01 automatic resume at the failed wave | integration | Run 1 halts at wave N; run 2 emits `Wave k/M: skipped (wave ledger: …)` for k<N, dispatches wave N, announces the resume banner with `provenance: automatic`, and the report's Phase I row states the resume point (D-3). |
+| AT-02 disregard catalogue complete and closed | unit + integration | **Set equality** over `Object.keys(WAVE_IGNORE_REASONS)` against the seven codes transcribed from §3.1; plus one integration run per code asserting outcome (a) and its announced sentence, and one asserting IG-6 emits nothing matching `wave ledger`. |
+| AT-03 ordering of disregard causes | unit | A record failing **both** ancestry and over-count classifies `head-unreachable`, not `over-count` — the one pair where §3.2's order diverges from the REQ's IG numbering. |
+| AT-04 verification independence | integration | Over the enumerated fixture set (resume at wave 2, at the last wave, `head` = tip, `head` = earlier ancestor): the gate command is invoked before the first commit call in every case, asserted on the interleaving of the `_runCommand` and `_git` spies. |
+| AT-05 operator override wins | integration | With both a valid record and `startWave: 2`: resume at 2, `provenance: operator-set`, and **no** log line matching `wave ledger … was ignored` — the record was never consulted. |
+| AT-06 pointer at default is not a setting | integration | `startWave: 1` with a valid record → identical logs and report row to the same run with no `implementation` section at all. |
+| AT-07 pointer past the end | integration | `startWave: 99` on a 3-wave plan → the past-the-end notice with `provenance: operator-set`, all three waves dispatched, no wave skipped, no ledger consultation. |
+| AT-08 the hatch is named, and is the only one | integration + unit | (i) the outcome (b) and (c) banners each contain `to force a full run`; (ii) the same fixture with the record removed resolves outcome (a) — the hatch works; (iii) **set equality** of `Object.keys(IMPLEMENTATION_DEFAULTS)` against the four keys transcribed from §3.5. |
+| AT-09 verified-but-uncommitted is never completed | integration | A run with green gates and **no** `_git` transport writes nothing (`ledgerWrites(writes)` is empty); the next run starts at that same wave. *Companion:* the same run **with** a transport, under each gate mode in turn, writes normally — proving the guard is the transport, not the gate. |
+| AT-10 a no-change wave is still completed | integration | A wave whose tasks own no changed paths still records; the next run announces the **next** wave. *Positive conjunct:* adding or removing an unrelated commit leaves the announced resume point identical. |
+| AT-11 ancestry is falsification, not archaeology | integration | Unreachable `head` → outcome (a) with the ancestry reason; probe unavailable (no transport / throwing transport) → record honoured. |
+| AT-12 complete record skips the wave loop in full | integration | Counting spies: **zero** agent dispatches and **zero** gate invocations in the wave loop; the `⏭` row; the banner naming reason and hatch. *Fourth conjunct:* Phase PT dispatches exactly **one** agent and invokes the gate exactly **once**, and its commit is the only Phase-I-adjacent commit. |
+| AT-13 outcome catalogue closed at three | unit + integration | **Set equality** over `RESUME_OUTCOMES` against the three transcribed literals, plus three integration fixtures each resolving one outcome and announcing it. |
+| AT-14 the record never becomes tracked content | repo-state | The `.gitignore` rule `/.claude/pdlc-wave-state.json` exists and is root-anchored; no `implementation.postWavePathspecs` value and no PLAN-owned path names it. **RED in this tree until OB-F1's rebase** — it must not be weakened to "no churn observed". |
+| AT-15 failed writes are notices, bounded | integration | *Arm 1:* every write throws → a notice per failure, run completes, next run is outcome (a). *Arm 2:* wave-1 write succeeds, wave-M write throws → run completes, next run resolves **(b)** at the wave after the last successful write. Arm 2 is the discriminator against an implementation that discards the record on any failure. |
+| AT-16 queue parity | integration | The same feature, plan and record run directly and through `orchestrate-queue`'s delegation to `realMain`: same outcome, same resume point, same provenance, and the queue report's `pipelineReport` carries the same Phase I row. *Discriminating arm:* the record resolves against the same working directory on both paths. |
+| AT-17 advisory remediation composes | integration + repo-state | Green-after-remediation → wave commits and records; failed remediation → identical halt, record still names the wave below. *And:* this feature's PLAN ownership manifest names `WAVE_STATE_PATH` in no wave's owned set (finite check, asserted by name). |
+| AT-18 completion accumulates across invocations | integration | Halt at 2 → resume → halt at 4 → third run announces **wave 4** and skips 1–3 individually. Discriminates against a record that counts only the waves the previous run itself executed. |
+
+### 5.5 Mutation-resistance notes
+
+Three mutations this suite is specifically designed to kill, because each would otherwise pass:
+
+1. **Deleting the ancestry guard.** Killed by AT-02's set equality (the `head-unreachable` code
+   disappears) *and* AT-11. This is exactly why the FSPEC keeps IG-4 and IG-5 as separate rows.
+2. **Moving the record write outside the transport branch** (recording on a green gate rather than
+   on a commit). Killed by AT-09's empty-`ledgerWrites` assertion; not killed by any test that only
+   checks the resume point, since a no-transport run's next invocation would then *look* correct.
+3. **Recording a run-relative wave number.** Killed only by AT-18; every single-halt test passes
+   under it.
+
+### 5.6 What is not tested, and why
+
+- **Concurrency** (FSPEC EC-19): the pipeline is serial by construction and the record is
+  consumer-local. No guarantee is offered, so none is asserted.
+- **`version` handling**: nothing reads it (§4.1), so there is no behaviour to test. A test
+  asserting the literal `1` in written bytes is covered by `formatWaveLedger`'s unit test.
+- **The general claim that no PLAN may ever own consumer-local state**: unfalsifiable as a
+  per-feature test; routed to Phase P's ownership-manifest gate (FSPEC OB-F6).
+
 ## 6. Open Questions
