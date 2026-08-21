@@ -504,7 +504,7 @@ The mechanism is a **dangling snapshot commit**, built without touching the work
 
 ```
 capture:   git rev-parse HEAD                        → head
-           git add -A --                              (stages tracked + untracked; ignores .gitignore)
+           git add -A                                 (stages tracked + untracked; ignores .gitignore)
            git write-tree                             → tree
            git commit-tree {tree} -p {head} -m "…"    → snap
            git update-ref refs/pdlc/a6-snapshot-{waveNum} {snap}
@@ -563,12 +563,21 @@ Four decisions inside that:
   The name is derived from the wave number alone, so a *re-run* of a halted feature — the ordinary
   next step after a halt — reaches wave 1, captures, and overwrites `refs/pdlc/a6-snapshot-1`, the
   very ref the operator was told to keep. The loss F-03 named is narrowed, not eliminated: its
-  trigger moves from "a later wave" to "the next run". The cost is bounded and it is the operator's,
+  trigger moves from "a later wave" to "the next run". **Upstream has since decided who tells the
+  operator this, and where (absorbed at v1.12).** FSPEC BR-14 and Step 10 at HEAD require the halt
+  report itself to carry the warning: where the report points at a captured pre-A6 tree state, the
+  *same report, in the same place*, states that re-running this feature overwrites that capture, so an
+  operator who intends to inspect it preserves it first — co-location is the observable, and a pointer
+  here with the warning in a runbook does not satisfy it. FSPEC E-34 fixes the complementary arm: a
+  halt where no capture was taken points at nothing and carries **no** overwrite warning. This
+  document therefore no longer routes the question or leaves the remedy to operator lore; §4.5 names
+  the mechanism — a `snapshotRef` halt field, present exactly when the capture succeeded, from which
+  the report renders both the ref name and the overwrite sentence. The cost is bounded and it is the operator's,
   not the pipeline's: a retained repair is gate-verified and committed in its own wave commit, so
   what an overwritten ref costs is *inspectability of the pre-repair tree*, never content. In the
   other direction the refs accumulate — one dangling commit per wave per run, in a namespace no
-  other tool prunes. An operator who wants a snapshot to survive the next run should copy the ref
-  before re-running; a run-scoped discriminator in the name is recorded as the remedy if that ever
+  other tool prunes. The remedy the halt report hands the operator is to copy the ref before
+  re-running; a run-scoped discriminator in the name is recorded as the remedy if that ever
   proves too sharp an edge (§6 OQ-2, PM F-02).
 
 **Failure is fail-closed, and failing still writes the record.** Any capture or restore git
