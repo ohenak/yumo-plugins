@@ -38,7 +38,7 @@ import {
 } from "./helpers/learningsFixtures.js";
 
 describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §T.7)", () => {
-  test.skip("LI-18: LI-AT-25 — !reply.ok from _git yields {unlistable: true}, corpus-level RSN-UNLISTABLE", async () => {
+  test("LI-18: LI-AT-25 — !reply.ok from _git yields {unlistable: true}, corpus-level RSN-UNLISTABLE", async () => {
     const { gatherLearningsCorpus } = await import("../orchestrate-dev.js");
 
     const git = fakeGit({ ok: false, stderr: "fatal: not a git repository" });
@@ -55,7 +55,7 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
     expect(fs.reads).toEqual([]);
   });
 
-  test.skip("LI-18: LI-AT-26 case 1 — _readFile returns null ⇒ that document alone is RSN-UNREADABLE, the rest used normally", async () => {
+  test("LI-18: LI-AT-26 case 1 — _readFile returns null ⇒ that document alone is RSN-UNREADABLE, the rest used normally", async () => {
     const { gatherLearningsCorpus, selectLearnings } = await import("../orchestrate-dev.js");
 
     const readable = buildLearningsCorpus([
@@ -96,7 +96,7 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
     expect(rejected.some((r) => r.path === readable.paths[0])).toBe(false);
   });
 
-  test.skip("LI-18: LI-AT-26 case 2 — _readFile throws ⇒ that document alone is RSN-UNREADABLE, the rest used normally (P-8)", async () => {
+  test("LI-18: LI-AT-26 case 2 — _readFile throws ⇒ that document alone is RSN-UNREADABLE, the rest used normally (P-8)", async () => {
     const { gatherLearningsCorpus, selectLearnings } = await import("../orchestrate-dev.js");
 
     const readable = buildLearningsCorpus([
@@ -142,7 +142,7 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
     expect(rejected.some((r) => r.path === readable.paths[0])).toBe(false);
   });
 
-  test.skip("LI-18: LI-AT-27 — a readable document that does not parse as LEARNINGS ⇒ RSN-UNPARSEABLE, the rest used normally", async () => {
+  test("LI-18: LI-AT-27 — a readable document that does not parse as LEARNINGS ⇒ RSN-UNPARSEABLE, the rest used normally", async () => {
     const { gatherLearningsCorpus, selectLearnings } = await import("../orchestrate-dev.js");
 
     const notLearningsPath = "docs/not-learnings/LEARNINGS-not-learnings.md";
@@ -183,7 +183,7 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
     );
   });
 
-  test.skip("LI-18: fault-injection case (BR-12's last row) — a fault that is NOT a graceful !reply.ok still enters the outer try/catch, yielding {unlistable: true}", async () => {
+  test("LI-18: fault-injection case (BR-12's last row) — a fault that is NOT a graceful !reply.ok still enters the outer try/catch, yielding {unlistable: true}", async () => {
     const { gatherLearningsCorpus } = await import("../orchestrate-dev.js");
 
     // Unlike LI-AT-25 (a graceful `{ok: false}` reply), this scripts `_git` itself to

@@ -35,7 +35,7 @@ const OQ1_PREAMBLE =
   "obligation attaches to them. You may disregard them entirely without leaving a gap in what " +
   "you were asked to produce.";
 
-describe.skip("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {
+describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {
   test("LI-AT-05: the preamble is byte-equal to TSPEC §OQ.1's literal wording, not keyword-matched", async () => {
     const { renderLearningsBlock } = await import(DEV_MODULE_PATH);
 

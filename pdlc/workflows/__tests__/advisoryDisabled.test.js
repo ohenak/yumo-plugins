@@ -706,8 +706,17 @@ describe("A-33 — disabled-tier equivalence", () => {
   // =================================================================================================
 
   describe("PROP-DIS-06 — exactly three `.enabled` reads outside parseAdvisoryConfig", () => {
-    /** Slices `parseAdvisoryConfig`'s own declaration out of `source` before counting (TSPEC §11.1). */
+    /** Slices `parseAdvisoryConfig`'s own declaration out of `source` before counting (TSPEC §11.1).
+     *  Also slices the sentinel-bounded learnings-injection region (pdlc-learnings-injection,
+     *  PLAN LI-15): that feature's config is a different resolved config whose spec-mandated
+     *  `.enabled` reads (its TSPEC §I.4) live entirely inside the region, so excluding it keeps
+     *  this pin counting the ADVISORY config's reads alone. */
     function sourceExcludingParser(source) {
+      const regionStart = source.indexOf("// === LEARNINGS INJECTION REGION START ===");
+      const regionEnd = source.indexOf("// === LEARNINGS INJECTION REGION END ===");
+      if (regionStart !== -1 && regionEnd > regionStart) {
+        source = source.slice(0, regionStart) + source.slice(regionEnd);
+      }
       const start = source.indexOf("function parseAdvisoryConfig");
       if (start === -1) return source;
       // Brace-match from the first `{` after the declaration to its close.

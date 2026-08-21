@@ -61,7 +61,7 @@ function entriesFromCorpus(corpus, opts = {}) {
 }
 
 describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN LI-07)", () => {
-  test.skip("LI-16: LI-AT-04 — a self document is excluded, carries RSN-SELF, and no corpus-level empty is recorded", async () => {
+  test("LI-16: LI-AT-04 — a self document is excluded, carries RSN-SELF, and no corpus-level empty is recorded", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     const feature = "self-check";
@@ -88,7 +88,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     ]);
   });
 
-  test.skip("LI-16: LI-AT-07 — count-binding regime: exactly 3 contribute, exactly 5 carry RSN-COUNT, no RSN-BYTES", async () => {
+  test("LI-16: LI-AT-07 — count-binding regime: exactly 3 contribute, exactly 5 carry RSN-COUNT, no RSN-BYTES", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     const corpus = buildCountBindingCorpus();
@@ -106,7 +106,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(result.rejected).toHaveLength(5);
   });
 
-  test.skip("LI-16: LI-AT-07 — bytes-binding regime: the byte bound cuts first, contributing count strictly below maxDocuments, RSN-BYTES only", async () => {
+  test("LI-16: LI-AT-07 — bytes-binding regime: the byte bound cuts first, contributing count strictly below maxDocuments, RSN-BYTES only", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     const corpus = buildBytesBindingCorpus();
@@ -124,7 +124,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(result.selected).toHaveLength(8 - result.rejected.length);
   });
 
-  test.skip("LI-16: LI-AT-08 — an eligible set larger than maxDocuments selects the highest-ordered under BR-4, every unselected carries RSN-COUNT", async () => {
+  test("LI-16: LI-AT-08 — an eligible set larger than maxDocuments selects the highest-ordered under BR-4, every unselected carries RSN-COUNT", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     // 5 documents, distinct dates, small bodies so the byte bound never binds.
@@ -163,7 +163,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(result.rejected).toHaveLength(2);
   });
 
-  test.skip("LI-16: LI-AT-09 — two documents sharing a Date Completed value tiebreak by path byte order, identically across two runs", async () => {
+  test("LI-16: LI-AT-09 — two documents sharing a Date Completed value tiebreak by path byte order, identically across two runs", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     const corpus = buildLearningsCorpus([
@@ -194,7 +194,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(second.selected.map((d) => d.path)).toEqual(expectedOrder);
   });
 
-  test.skip("LI-16: LI-AT-10 — no-row, trailing-text and unparseable dates all stay eligible; the trailing-text date reads correctly; the order is a pure function of (key, path)", async () => {
+  test("LI-16: LI-AT-10 — no-row, trailing-text and unparseable dates all stay eligible; the trailing-text date reads correctly; the order is a pure function of (key, path)", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     // at10-norow: no Date Completed row at all (null cell -> unparseable/absent).
@@ -246,13 +246,22 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(second.selected.map((d) => d.path)).toEqual(result.selected.map((d) => d.path));
   });
 
-  test.skip("LI-16: LI-AT-13 — the total bound drops whole documents from the low end of the count-taken set, no mid-document cut, no back-fill, selected is a prefix", async () => {
+  test("LI-16: LI-AT-13 — the total bound drops whole documents from the low end of the count-taken set, no mid-document cut, no back-fill, selected is a prefix", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     // 8 eligible documents, maxDocuments 5, each document's material bounded to 5000 bytes
     // (well under the 6000 maxBytesPerDocument, so no document is itself cut) but sized so
     // maxTotalBytes admits only 4 of the top 5: 4*5000=20000 fits exactly, 5*5000=25000 does
     // not.
+    //
+    // `bodyBytes` sizes the section BODY, but §D.5's material pool is "the section
+    // headings and bodies taken from that document under BR-6" — so the extracted
+    // material is `## Cross-Feature Patterns` (25 bytes) + the blank line separating
+    // heading from body (2 bytes) + `bodyBytes`. 4973 is therefore what lands each
+    // document's material on exactly 5000 bytes and keeps the arithmetic above true:
+    // at 5000 the material would be 5027, only 3 documents would fit, and the byte
+    // failure would move off the window's last slot and propagate RSN-BYTES onto the
+    // overflow the expectations below record as RSN-COUNT.
     const dates = [
       "2026-04-08",
       "2026-04-07",
@@ -269,7 +278,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
         doc: {
           feature: `at13-${i + 1}`,
           dateCompleted,
-          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 5000 }],
+          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 4973 }],
         },
       }))
     );
@@ -328,7 +337,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     ]);
   });
 
-  test.skip("LI-16: LI-AT-16 — docs/{p}/ and docs/completed/{p}/ are eligible on identical terms; location affects rank only through the path tiebreak", async () => {
+  test("LI-16: LI-AT-16 — docs/{p}/ and docs/completed/{p}/ are eligible on identical terms; location affects rank only through the path tiebreak", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     const corpus = buildCompletedMixedCorpus();
@@ -353,7 +362,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     ]);
   });
 
-  test.skip("LI-16: LI-AT-28 — a document carrying none of BR-6's priority sections is dropped RSN-NO-MATERIAL, consumes no maxDocuments slot, and is not bounded; the rest of the corpus is used normally", async () => {
+  test("LI-16: LI-AT-28 — a document carrying none of BR-6's priority sections is dropped RSN-NO-MATERIAL, consumes no maxDocuments slot, and is not bounded; the rest of the corpus is used normally", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 
     const corpus = buildLearningsCorpus([
@@ -401,7 +410,7 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
   // injector (batch 11) — so the whole test stays red, and therefore skipped, until then. LI-02's
   // `DISCARDED-NESTED` and `DISCARDED-DIRECT` corpora are the two fixtures this test needs, in
   // that order.
-  test.skip("LI-19: LI-AT-15 — nested docs/discarded/{feature}/ is wholly excluded (RSN-EMPTY, no record); direct docs/discarded/LEARNINGS-x.md is a plain corpus member", async () => {
+  test("LI-19: LI-AT-15 — nested docs/discarded/{feature}/ is wholly excluded (RSN-EMPTY, no record); direct docs/discarded/LEARNINGS-x.md is a plain corpus member", async () => {
     const { selectLearnings, gatherLearningsCorpus, buildLearningsInjector } = await import(
       "../orchestrate-dev.js"
     );

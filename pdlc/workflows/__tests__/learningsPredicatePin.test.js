@@ -42,7 +42,7 @@ const LS_FILES_ARGV = [
 ];
 
 describe("LI-T-PIN-1 — cross-module predicate pin (TSPEC §I.1, §T.5)", () => {
-  test.skip("LI-15: enumerateCorpus's observed argv, LEARNINGS_CORPUS_ARGV, and consolidationPredicate.test.js's literal are mutually equal", async () => {
+  test("LI-15: enumerateCorpus's observed argv, LEARNINGS_CORPUS_ARGV, and consolidationPredicate.test.js's literal are mutually equal", async () => {
     const { LEARNINGS_CORPUS_ARGV } = await import("../orchestrate-dev.js");
 
     const git = fakeGit({ "ls-files": { ok: true, stdout: "" } });

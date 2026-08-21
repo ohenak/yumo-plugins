@@ -82,8 +82,14 @@ const SCENARIO_PLAN = [
  *
  * @param {Array<{skill: string, prompt: string}>} calls - mutated in place, one entry per call,
  *   in dispatch order.
+ * @param {{decisionsWarranted?: boolean}} [opts] - `decisionsWarranted: true` makes the TSPEC
+ *   finalisation answer `DECISIONS_WARRANTED: true`, so Phase D runs and a `DECISIONS` authoring
+ *   dispatch reaches the composition site. Defaults to `false` — the answer every other scenario
+ *   in this file was recorded against, where Phase D is skipped for want of load-bearing
+ *   alternatives. Only the composition-site set equality needs the sixth phase, and it needs it
+ *   because TSPEC §A.2 property 1(a) forbids passing that equality by omission.
  */
-function buildRecordingAgent(calls) {
+function buildRecordingAgent(calls, { decisionsWarranted = false } = {}) {
   return async (skill, prompt) => {
     const text = String(prompt ?? "");
     calls.push({ skill, prompt: text });
@@ -92,7 +98,9 @@ function buildRecordingAgent(calls) {
       return 'Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
     }
     if (skill === "pm-author" || skill === "se-author" || skill === "te-author") {
-      if (text.includes("DECISIONS_WARRANTED")) return "Finalized TSPEC.\nDECISIONS_WARRANTED: false";
+      if (text.includes("DECISIONS_WARRANTED")) {
+        return `Finalized TSPEC.\nDECISIONS_WARRANTED: ${decisionsWarranted}`;
+      }
       if (text.includes("Return a JSON object")) {
         return JSON.stringify({
           tasks: [{ id: "TASK-01", description: "First task", dependencies: [], planBatch: 1 }],
@@ -110,6 +118,41 @@ function buildRecordingAgent(calls) {
     }
     return "Success.";
   };
+}
+
+/**
+ * The non-LEARNINGS half of `runScenario`'s `_git` script, in one place so the two doubles that
+ * call `mainDev` directly — the composition-site set equality and `drivePlanRetryDispatch` —
+ * answer the branch guard exactly as `runScenario` does.
+ *
+ * This is not decoration. `orchestrate-dev.js`'s branch guard re-observes an ok-but-empty
+ * `rev-parse --abbrev-ref HEAD` and then halts the run ("3 observations, all empty — transport
+ * fault suspected"), so a double that answers `{ok: true, stdout: ""}` to everything composes no
+ * dispatch at all: the instrument under test then reads an empty pipeline rather than the
+ * property it was written for. Every whole-pipeline suite in this repository scripts this reply.
+ *
+ * @param {(args: string[]) => object} onLearningsEnumerate - the reply for a LEARNINGS
+ *   enumeration call, so each caller keeps its own corpus script.
+ */
+function buildPipelineGit(onLearningsEnumerate) {
+  let currentBranch = `feat-${FEATURE}`;
+  return fakeGit((argv) => {
+    const args = Array.isArray(argv) ? argv : [];
+    if (isLearningsEnumerateCall(args)) return onLearningsEnumerate(args);
+    if (args[0] === "add") return { ok: true, stdout: "", stderr: "" };
+    if (args[0] === "checkout") {
+      currentBranch = args[args.length - 1];
+      return { ok: true, stdout: "", stderr: "" };
+    }
+    if (args[0] === "rev-parse" && args.includes("--abbrev-ref")) {
+      return { ok: true, stdout: `${currentBranch}\n`, stderr: "" };
+    }
+    if (args[0] === "rev-parse") {
+      return { ok: true, stdout: "abc1234abc1234abc1234abc1234abc1234abcd", stderr: "" };
+    }
+    if (args[0] === "diff") return { ok: true, stdout: "staged\n", stderr: "" };
+    return { ok: true, stdout: "", stderr: "" };
+  });
 }
 
 /**
@@ -203,7 +246,7 @@ function carriesLearningsBlock(promptText) {
 const AUTHORING_SKILLS = new Set(["pm-author", "se-author", "te-author"]);
 
 describe("learningsDispatchSet — Group 1: the material reaches the authoring roles (FSPEC AT-01/02/03/06)", () => {
-  test.skip("LI-20: LI-AT-01 — an authoring dispatch's prompt contains material from at least one prior-feature document, delimited and identified by source path", async () => {
+  test("LI-20: LI-AT-01 — an authoring dispatch's prompt contains material from at least one prior-feature document, delimited and identified by source path", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-feature/LEARNINGS-prior-feature.md",
@@ -225,7 +268,7 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
     }
   });
 
-  test.skip("LI-20: LI-AT-02 — set equality over the whole dispatch universe: the subset carrying a block equals BR-1's two-conjunct rule's subset", async () => {
+  test("LI-20: LI-AT-02 — set equality over the whole dispatch universe: the subset carrying a block equals BR-1's two-conjunct rule's subset", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-feature/LEARNINGS-prior-feature.md",
@@ -252,7 +295,7 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
     expect(carryingBlock).toEqual(expectedAuthoring);
   });
 
-  test.skip("LI-20: LI-AT-03 — every dispatch outside BR-1's rule is byte-identical to the recorded pre-feature baseline", async () => {
+  test("LI-20: LI-AT-03 — every dispatch outside BR-1's rule is byte-identical to the recorded pre-feature baseline", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-feature/LEARNINGS-prior-feature.md",
@@ -272,7 +315,7 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
     }
   });
 
-  test.skip("LI-20: LI-AT-06 — the grounding manifest, upstream documents and pacing contract are present, unchanged, and in order; the block is purely additive", async () => {
+  test("LI-20: LI-AT-06 — the grounding manifest, upstream documents and pacing contract are present, unchanged, and in order; the block is purely additive", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-feature/LEARNINGS-prior-feature.md",
@@ -298,7 +341,7 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
 });
 
 describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertness (FSPEC AT-14/23/24/29/31)", () => {
-  test.skip("LI-20: LI-AT-14 — two whole-process runs over an identical fixture repository state compose byte-identical blocks, including order", async () => {
+  test("LI-20: LI-AT-14 — two whole-process runs over an identical fixture repository state compose byte-identical blocks, including order", async () => {
     // "Two whole-process runs, not two loop iterations" (TE F-02): this test invokes
     // `runScenario` twice, each a fresh call into a dynamically re-imported module namespace —
     // never one run whose loop retries once — so an in-process memo (E-32, forbidden by AC-3.2)
@@ -322,7 +365,7 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     expect(authoring1.map((c) => c.prompt)).toEqual(authoring2.map((c) => c.prompt));
   });
 
-  test.skip("LI-21: LI-AT-24 — no prior LEARNINGS at all: every authoring dispatch is byte-identical to baseline, and the report records corpus-level RSN-EMPTY", async () => {
+  test("LI-21: LI-AT-24 — no prior LEARNINGS at all: every authoring dispatch is byte-identical to baseline, and the report records corpus-level RSN-EMPTY", async () => {
     const emptyCorpus = buildLearningsCorpus([]);
     const enabledRun = await runScenario({ corpus: emptyCorpus });
     const disabledRun = await runScenario({ corpus: emptyCorpus, configText: JSON.stringify({ learningsInjection: { enabled: false } }) });
@@ -334,7 +377,7 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     expect(dispatches.every((d) => d.corpusOutcome === "RSN-EMPTY")).toBe(true);
   });
 
-  test.skip("LI-20: LI-AT-29 — enabled vs. disabled: verdicts, completeness scores, round-window counters, approval anchors and erratum routes are equal member for member", async () => {
+  test("LI-20: LI-AT-29 — enabled vs. disabled: verdicts, completeness scores, round-window counters, approval anchors and erratum routes are equal member for member", async () => {
     const contamination = buildAt29ContaminationCorpus();
     const enabledRun = await runScenario({ corpus: contamination });
     const disabledRun = await runScenario({ corpus: contamination, configText: JSON.stringify({ learningsInjection: { enabled: false } }) });
@@ -359,7 +402,7 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     }
   });
 
-  test.skip("LI-21: LI-AT-31 — `learningsInjection.enabled` explicitly false: every composed dispatch is byte-identical to baseline and no injection key is carried (absent, not present-and-empty)", async () => {
+  test("LI-21: LI-AT-31 — `learningsInjection.enabled` explicitly false: every composed dispatch is byte-identical to baseline and no injection key is carried (absent, not present-and-empty)", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-a/LEARNINGS-prior-a.md",
@@ -380,7 +423,7 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     expect(Object.prototype.hasOwnProperty.call(disabledRun.result.report, "learningsInjection")).toBe(false);
   });
 
-  test.skip("LI-21: LI-AT-23 — the author-emitted channels a run requires equal the recorded pre-feature baseline set: no erratum opens on account of an injected document, no new channel appears", async () => {
+  test("LI-21: LI-AT-23 — the author-emitted channels a run requires equal the recorded pre-feature baseline set: no erratum opens on account of an injected document, no new channel appears", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-a/LEARNINGS-prior-a.md",
@@ -412,7 +455,7 @@ describe("learningsDispatchSet — the composition-site set equality (TSPEC §A.
     ...HAND_TRANSCRIBED_TARGET_DOCTYPES, null, "LEARNINGS",
   ]);
 
-  test.skip("LI-20: the docType set observed at the composition site equals LEARNINGS_TARGET_DOCTYPES ∪ {null, \"LEARNINGS\"}, and the accepted set equals LEARNINGS_TARGET_DOCTYPES — both set equality, never containment", async () => {
+  test("LI-20: the docType set observed at the composition site equals LEARNINGS_TARGET_DOCTYPES ∪ {null, \"LEARNINGS\"}, and the accepted set equals LEARNINGS_TARGET_DOCTYPES — both set equality, never containment", async () => {
     const dev = await import("../orchestrate-dev.js");
     const mainDev = dev.default;
 
@@ -430,9 +473,7 @@ describe("learningsDispatchSet — the composition-site set equality (TSPEC §A.
       },
     ]);
     const calls = [];
-    const _git = fakeGit((argv) =>
-      isLearningsEnumerateCall(argv) ? { ok: true, stdout: corpus.lsFilesStdout } : { ok: true, stdout: "" }
-    );
+    const _git = buildPipelineGit(() => ({ ok: true, stdout: corpus.lsFilesStdout }));
     const _readFile = (path) => {
       const p = String(path);
       if (p.includes("/PLAN-")) return SCENARIO_PLAN;
@@ -443,7 +484,10 @@ describe("learningsDispatchSet — the composition-site set equality (TSPEC §A.
     await mainDev({
       reqPath: REQ_PATH,
       forcePhases: null,
-      _agent: buildRecordingAgent(calls),
+      // `decisionsWarranted: true` is what makes Phase D run: with the default answer the
+      // pipeline skips it for want of load-bearing alternatives and `DECISIONS` never reaches
+      // the composition site, which would fail (a) below for a fixture reason.
+      _agent: buildRecordingAgent(calls, { decisionsWarranted: true }),
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
       _readFile,
@@ -473,6 +517,27 @@ describe("learningsDispatchSet — LI-T-RETRY-1…3: once per episode, not once 
   // the scripted `_git` reply changes between iterations (iteration 2 gains one path). A single
   // authoring dispatch spanning two loop iterations must still record exactly one `dispatches[]`
   // row and make exactly one LEARNINGS_CORPUS_ARGV `_git` call — never one per iteration.
+  //
+  // Scoping, because the driver runs the WHOLE pipeline: `forcePhases` overrides phase gates, it
+  // does not restrict the run to one phase, so four authoring episodes compose here (FSPEC, TSPEC,
+  // PLAN, PROPERTIES — the REQ is the run's input, not an authored target, and Phase D is skipped
+  // by the recording agent's default `DECISIONS_WARRANTED: false`). The per-episode claim is
+  // therefore asserted against the PLAN episode specifically: `timeline` interleaves the
+  // `_recordDocType` probe (once per episode, immediately before `injectHere` is evaluated) with
+  // the enumeration calls, so each `_git` call is attributable to the episode whose marker
+  // precedes it, and `PLAN_TARGET_PATH` picks the PLAN dispatch's own iteration prompts out of
+  // the run's author calls.
+  const PLAN_TARGET_PATH = `docs/${FEATURE}/PLAN-${FEATURE}.md`;
+
+  /** Enumerate calls recorded between `docType`'s episode marker and the next episode marker. */
+  function enumeratesInEpisode(timeline, docType) {
+    const start = timeline.findIndex((e) => e.kind === "episode" && e.docType === docType);
+    if (start === -1) return -1;
+    const rest = timeline.slice(start + 1);
+    const end = rest.findIndex((e) => e.kind === "episode");
+    return (end === -1 ? rest : rest.slice(0, end)).filter((e) => e.kind === "enumerate").length;
+  }
+
   async function drivePlanRetryDispatch() {
     const retryFixture = buildRetryIterationCorpus();
     const dev = await import("../orchestrate-dev.js");
@@ -495,19 +560,20 @@ describe("learningsDispatchSet — LI-T-RETRY-1…3: once per episode, not once 
       if (Object.prototype.hasOwnProperty.call(retryFixture.contents, p)) return retryFixture.contents[p];
       return null;
     };
-    const _git = fakeGit((argv) => {
-      if (isLearningsEnumerateCall(argv)) {
-        const script = retryFixture.gitScript;
-        const idx = Math.min(_git.__learningsCallCount || 0, script.length - 1);
-        _git.__learningsCallCount = (_git.__learningsCallCount || 0) + 1;
-        return script[idx];
-      }
-      return { ok: true, stdout: "" };
+    const timeline = [];
+    let learningsCallIndex = 0;
+    const _git = buildPipelineGit(() => {
+      const script = retryFixture.gitScript;
+      const idx = Math.min(learningsCallIndex, script.length - 1);
+      learningsCallIndex += 1;
+      timeline.push({ kind: "enumerate" });
+      return script[idx];
     });
 
     const result = await mainDev({
       reqPath: REQ_PATH,
-      forcePhases: { P: true },
+      forcePhases: "P",
+      _recordDocType: (docType) => timeline.push({ kind: "episode", docType }),
       _agent: buildRecordingAgent(calls),
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
@@ -521,24 +587,39 @@ describe("learningsDispatchSet — LI-T-RETRY-1…3: once per episode, not once 
       _mergeWorktree: async () => ({ ok: true }),
       _checkCi: async () => "passed",
     });
-    return { result, calls, git: _git };
+    return { result, calls, git: _git, timeline };
   }
 
-  test.skip("LI-20: LI-T-RETRY-1 — the PLAN dispatch that spans two loop iterations records exactly one dispatches[] row", async () => {
+  test("LI-20: LI-T-RETRY-1 — the PLAN dispatch that spans two loop iterations records exactly one dispatches[] row", async () => {
     const { result } = await drivePlanRetryDispatch();
     const planRows = result.report.learningsInjection.dispatches.filter((d) => d.docType === "PLAN");
     expect(planRows.length).toBe(1);
   });
 
-  test.skip("LI-20: LI-T-RETRY-2 — that same dispatch makes exactly one LEARNINGS_CORPUS_ARGV _git call, observed on the double's call log", async () => {
-    const { git } = await drivePlanRetryDispatch();
+  test("LI-20: LI-T-RETRY-2 — that same dispatch makes exactly one LEARNINGS_CORPUS_ARGV _git call, observed on the double's call log", async () => {
+    const { git, timeline } = await drivePlanRetryDispatch();
+    // The claim: ONE enumeration for the PLAN episode, which composed two prompts. Two would be
+    // the per-iteration bug this property exists to catch.
+    expect(enumeratesInEpisode(timeline, "PLAN")).toBe(1);
+    // Supporting clause on the raw call log: one enumeration per authoring episode over the whole
+    // run — four here (FSPEC, TSPEC, PLAN, PROPERTIES; Phase R composes no REQ authoring dispatch
+    // because the REQ is the run's input, and Phase D is skipped by the recording agent's default
+    // `DECISIONS_WARRANTED: false`), never five.
     const enumerateCalls = git.calls.filter(isLearningsEnumerateCall);
-    expect(enumerateCalls.length).toBe(1);
+    expect(enumerateCalls.length).toBe(4);
   });
 
-  test.skip("LI-20: LI-T-RETRY-3 — iteration 2's prompt differs from iteration 1's only inside opener; the block's bytes are the same, appended after the (possibly different) opener", async () => {
+  test("LI-20: LI-T-RETRY-3 — iteration 2's prompt differs from iteration 1's only inside opener; the block's bytes are the same, appended after the (possibly different) opener", async () => {
     const { calls } = await drivePlanRetryDispatch();
-    const planCalls = calls.filter((c) => c.skill === "pm-author" || c.skill === "se-author" || c.skill === "te-author");
+    // The PLAN episode's OWN iteration prompts: an author call naming the PLAN target. Taking
+    // `calls[0..1]` instead would take the run's first two author calls, which are the REQ and
+    // FSPEC dispatches — two different episodes over two different corpus observations, not the
+    // two iterations of one.
+    const planCalls = calls.filter(
+      (c) =>
+        (c.skill === "pm-author" || c.skill === "se-author" || c.skill === "te-author") &&
+        c.prompt.includes(PLAN_TARGET_PATH)
+    );
     expect(planCalls.length).toBeGreaterThanOrEqual(2);
     const [iter1, iter2] = planCalls;
     const blockOf = (p) => {
@@ -556,7 +637,7 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
   // (FSPEC AT-34), so both live in one test rather than two: AT-33's non-empty observed set is
   // the control that proves the instrument fires when there is something to see, which is what
   // gives AT-34's "no corpus path touched at all" its force.
-  test.skip("LI-20: LI-AT-33/LI-AT-34 — the enabled run's file-open set under docs/ equals BR-15's expected set (hand-transcribed from the fixture's scripted ls-files stdout minus the self paths); the disabled run, on the same instrument, touches no corpus path at all", async () => {
+  test("LI-20: LI-AT-33/LI-AT-34 — the enabled run's file-open set under docs/ equals BR-15's expected set (hand-transcribed from the fixture's scripted ls-files stdout minus the self paths); the disabled run, on the same instrument, touches no corpus path at all", async () => {
     const priorA = "docs/completed/prior-a/LEARNINGS-prior-a.md";
     const priorB = `docs/${FEATURE}/LEARNINGS-${FEATURE}.md`; // this run's own self document
     const corpus = buildLearningsCorpus([
@@ -567,13 +648,30 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
     // derived from `gatherLearningsCorpus` (PLAN LI-11).
     const EXPECTED_READ_SET = Object.freeze([priorA]);
 
+    // Two scopings the instrument needs, because `fakeFs` records EVERY `_readFile` the whole
+    // pipeline makes, not only the injector's opens.
+    //
+    // By path: the observed set ranges over the corpus paths (`priorA`, `priorB`), exactly as
+    // AT-34's half below already does. A `docs/`-wide set would also carry the run's own REQ,
+    // FSPEC, TSPEC, PROPERTIES, CROSS-REVIEW and POSTMORTEM reads — pipeline reads BR-15 says
+    // nothing about. The two `docs/_constraints/` and `docs/_decisions/` clauses stay asserted
+    // over this same injector-attributable set: it is the injector that BR-15 forbids from
+    // opening them, and the pipeline's own Phase H consolidation-log read is not the injector's.
+    //
+    // By time: the window closes at Phase H's harvest dispatch, marked by the `_recordDocType`
+    // probe firing with `"LEARNINGS"`. After that point the pipeline reads this run's newly
+    // harvested `docs/{feature}/LEARNINGS-{feature}.md` to verify the harvest — a pipeline read
+    // of the run's own document, not a corpus open, and the very path RSN-SELF excluded from the
+    // corpus. Without the window the self path would appear on both arms and neither AT-33's
+    // expected set nor AT-34's empty set could ever hold.
+    const isCorpusPath = (p) => p === priorA || p === priorB;
+
     const fs = fakeFs(corpus.contents);
     const dev = await import("../orchestrate-dev.js");
     const mainDev = dev.default;
     const calls = [];
-    const _git = fakeGit((argv) =>
-      isLearningsEnumerateCall(argv) ? { ok: true, stdout: corpus.lsFilesStdout } : { ok: true, stdout: "" }
-    );
+    let harvestCutoff = null;
+    const _git = buildPipelineGit(() => ({ ok: true, stdout: corpus.lsFilesStdout }));
     const _readFile = (path) => {
       const p = String(path);
       if (p.includes("/PLAN-")) return SCENARIO_PLAN;
@@ -583,6 +681,9 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
     const enabledResult = await mainDev({
       reqPath: REQ_PATH,
       forcePhases: null,
+      _recordDocType: (docType) => {
+        if (docType === "LEARNINGS" && harvestCutoff === null) harvestCutoff = fs.reads.length;
+      },
       _agent: buildRecordingAgent(calls),
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
@@ -598,8 +699,9 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
     });
 
     const readsUnderDocs = (fs.reads ?? [])
-      .map((r) => r.path)
-      .filter((p) => String(p).startsWith("docs/"));
+      .slice(0, harvestCutoff ?? undefined)
+      .map((r) => String(r.path))
+      .filter((p) => p.startsWith("docs/") && isCorpusPath(p));
     const observedSet = new Set(readsUnderDocs);
     expect(observedSet).toEqual(new Set(EXPECTED_READ_SET));
     expect(observedSet.size).toBeGreaterThan(0); // the control: the instrument fires
@@ -610,43 +712,57 @@ describe("learningsDispatchSet — AC-5.2's read half: AT-33 and AT-34 share one
     // ── AT-34: the disabled run, on the SAME instrument, in the SAME test ──────────────────
     const fsDisabled = fakeFs(corpus.contents);
     const disabledCalls = [];
+    let disabledHarvestCutoff = null;
     const _readFileDisabled = (path) => {
       const p = String(path);
+      // The learnings section explicitly disabled — through the one channel that disables it,
+      // the same `.claude/pdlc.config.json` text `runScenario` serves (§I.2/AC-5.1a). Nothing
+      // else turns the injector off: the config is read once per run off this very seam.
+      if (p.endsWith("pdlc.config.json")) {
+        return JSON.stringify({ learningsInjection: { enabled: false } });
+      }
       if (p.includes("/PLAN-")) return SCENARIO_PLAN;
       return fsDisabled.readFile ? fsDisabled.readFile(p) : corpus.contents[p] ?? null;
     };
     const disabledResult = await mainDev({
       reqPath: REQ_PATH,
       forcePhases: null,
+      _recordDocType: (docType) => {
+        if (docType === "LEARNINGS" && disabledHarvestCutoff === null) {
+          disabledHarvestCutoff = fsDisabled.reads.length;
+        }
+      },
       _agent: buildRecordingAgent(disabledCalls),
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
       _readFile: _readFileDisabled,
       _writeFile: async () => ({ ok: true }),
       _appendFile: async () => ({ ok: true }),
-      _git: fakeGit((argv) =>
-        isLearningsEnumerateCall(argv) ? { ok: true, stdout: corpus.lsFilesStdout } : { ok: true, stdout: "" }
-      ),
+      _git: buildPipelineGit(() => ({ ok: true, stdout: corpus.lsFilesStdout })),
       _hashFile: async () => "a".repeat(64),
       _phase: () => {},
       _pipeline: async (label, fn) => fn(),
       _mergeWorktree: async () => ({ ok: true }),
       _checkCi: async () => "passed",
-      // The learnings section explicitly disabled.
-      _readAdvisoryConfig: undefined,
     });
 
     const disabledReadsUnderDocsCorpus = (fsDisabled.reads ?? [])
-      .map((r) => r.path)
-      .filter((p) => p === priorA || p === priorB);
+      .slice(0, disabledHarvestCutoff ?? undefined)
+      .map((r) => String(r.path))
+      .filter(isCorpusPath);
     expect(disabledReadsUnderDocsCorpus).toEqual([]);
-    expect(disabledCalls.map((c) => c.prompt)).toEqual(calls.map((c) => c.prompt));
+    // The dispatches OUTSIDE BR-1's rule are byte-identical across the two arms (AT-03's claim).
+    // The authoring dispatches are deliberately NOT: carrying the block is what AT-01/02/06
+    // assert, so comparing the whole prompt list would assert the feature does nothing.
+    const nonAuthoring = (list) =>
+      list.filter((c) => !AUTHORING_SKILLS.has(c.skill)).map((c) => c.prompt);
+    expect(nonAuthoring(disabledCalls)).toEqual(nonAuthoring(calls));
     expect(disabledResult.outcome).toBeTruthy();
   });
 });
 
 describe("learningsDispatchSet — LI-AT-35: gate semantics are preserved exactly as without the feature", () => {
-  test.skip("LI-20: LI-AT-35 — completeness criteria, required headings, verdict grammar, round windows and approval anchors are exactly those in force without the feature", async () => {
+  test("LI-20: LI-AT-35 — completeness criteria, required headings, verdict grammar, round windows and approval anchors are exactly those in force without the feature", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-a/LEARNINGS-prior-a.md",
@@ -668,7 +784,7 @@ describe("learningsDispatchSet — LI-AT-35: gate semantics are preserved exactl
 });
 
 describe("learningsDispatchSet — AC-5.2's write half, and the static seam-discipline scan (no FSPEC AT id)", () => {
-  test.skip("LI-20: AC-5.2 write half — a git status --porcelain set-equality delta around the run, in a dedicated temp git repository that is the run's cwd, with no exemption list", async () => {
+  test("LI-20: AC-5.2 write half — a git status --porcelain set-equality delta around the run, in a dedicated temp git repository that is the run's cwd, with no exemption list", async () => {
     const tmpRepo = mkdtempSync(join(tmpdir(), "li11-ac52-"));
     try {
       execFileSync("git", ["init", "-q"], { cwd: tmpRepo });
@@ -728,7 +844,7 @@ describe("learningsDispatchSet — AC-5.2's write half, and the static seam-disc
     }
   });
 
-  test.skip("LI-20: static seam-discipline scan — the region between LI-15's sentinel comments contains no fs., writeFileSync, mkdirSync, appendFileSync or require(\"fs\")", () => {
+  test("LI-20: static seam-discipline scan — the region between LI-15's sentinel comments contains no fs., writeFileSync, mkdirSync, appendFileSync or require(\"fs\")", () => {
     const source = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
     const startMarker = "// === LEARNINGS INJECTION REGION START ===";
     const endMarker = "// === LEARNINGS INJECTION REGION END ===";
