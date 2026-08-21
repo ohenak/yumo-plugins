@@ -154,6 +154,34 @@ Medium rather than Low.
 
 ## Obligations
 
+- **O-1 is unchanged and still correct.** AC-5.1's added sentences deliberately stop short of the
+  mechanism ("The mechanism of restoration is TSPEC's to choose (O-1)"), and O-1's own text already
+  reads "The restoration mechanism behind AC-5.1, **and the point at which the pre-A6 tree state is
+  captured**, are TSPEC's to specify. This REQ states only the observable outcome." The erratum's
+  failed-capture arm is therefore the *observable* half of an obligation O-1 already owns the
+  mechanism half of — the two are complementary, not overlapping, and O-1 needs no edit.
+- **No new obligation is required by this delta.** The one gap I found (F-01) is a missing observable
+  at this altitude, not a mechanism to be deferred; it belongs in AC-5.1's sentence, not in a new
+  O-row. Creating an obligation for it would move a requirement into the TSPEC's discretion, which is
+  the wrong direction.
+- **SE Q-02 stays open and is now load-bearing.** With `Status` flipped to `approved (shipped)`, the
+  document asserts a completed state while sitting outside `docs/completed/`. That is a coherent
+  intermediate state and the changelog says so explicitly, but it is the last thing standing between
+  this file and the relocation Q-02 describes. F-03 and F-04 both dissolve the moment Q-02 is taken.
+- **O-2's scope is untouched by this delta.** I re-checked that the new AC-5.1 text does not create a
+  durable-counting expectation that would collide with O-2's "resolution counts do not survive the
+  run" limit (AC-6.4). It does not: the failed-capture arm produces a halt, and halts are already
+  durably countable via the escalation log.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried from v3, still open, still non-gating)* — unchanged by this delta. |
+| Q-02 | *(carried from v3, still open)* — relocation of this feature's artifacts to `docs/completed/`. This round raises its priority: see the Obligations note above and F-03/F-04. |
+| Q-03 | On the failed-capture arm (F-01): is a capture failure an *A6 invocation* for AC-6.1's purposes? If yes, the record entry is already mandated and the answer is one cross-reference; if no, the arm is invisible to the record and AC-2.4's per-seam row shows a zero that an operator cannot distinguish from "A6 never fired". I do not think this REQ should decide the mechanism, only which of the two observables the operator gets. |
+| Q-04 | Was dropping the resolvable upstream path from the lineage header (F-02) deliberate — i.e. is the chain form now the house style for REQ `Upstream` rows, superseding the path form the three sibling REQs in `docs/completed/` use? If so this is a Process signal for harvest rather than a document nit. |
+
 ## Questions
 
 ## Positive Observations
