@@ -43,6 +43,34 @@ PLAN dependency.
 
 ## Properties
 
+No property changes status. The erratum touched no behavioural text, so no property's *claim* can
+have drifted; what I checked is whether any property's **owning-task or cost sentence** still reads
+true against PLAN v0.6.
+
+- **PROP-BOUND-03** (PROPERTIES:235–252) — holds. Its cost sentence ("one added case in
+  `pdlc/workflows/__tests__/learningsBlock.test.js` (landed, 7.6 K) under the **existing** LI-08 red /
+  LI-17 green tasks — no new fixture, no new PLAN task, no new AT id, no new property id") is still
+  exact: PLAN:147 still assigns `learningsBlock.test.js` to LI-08 with `learningsBlock` red at
+  batches 7–8 and green at LI-17/batch 9, and the erratum added ownership language only, never moved
+  it. The zero-bound conjuncts trace to TSPEC §I.3/§D.5, untouched at `22dee8ce…`.
+- **PROP-BOUND-05** (PROPERTIES:264–275) — holds, and is now *better* supported than when I approved
+  it. Its priority-ordered-intersection oracle is the same claim PLAN's LI-08 row now pins with the
+  non-canonical heading forms (un-numbered `## Cross-Feature Patterns`, un-glossed
+  `## Rejected Proposals`, the `###` sub-heading that must read as body text, the `## Process
+  Findings` near-miss). PROPERTIES states the observable; PLAN states which test carries it and when
+  it reds — the altitude split is intact and the two texts agree.
+- **PROP-BOUND-06, PROP-BOUND-07, PROP-BOUND-08, PROP-CONFIG-09** — untouched by the delta; their
+  upstream anchors (FSPEC E-36/BR-6/BR-9 at `ae75fa62…`, TSPEC §D.5 at `22dee8ce…`) are byte-identical
+  to the versions I approved against. Not re-litigated.
+- **Counts unchanged.** `grep -o 'PROP-[A-Z]*-[0-9]*' | sort -u | wc -l` → **70**, matching §C.4:1056
+  and the header at :22. §C.3's "23 of 23 tasks accounted for" still holds: PLAN still carries
+  LI-01…LI-23 and the erratum added no task.
+
+The one place a property-adjacent sentence *is* now wrong is §C.4's account of what PLAN has and has
+not decided — see F-01 and F-03. Neither changes a property's text, oracle, level, fixture or owning
+task; both are stale descriptions of upstream that a reader would use to conclude an item is still
+open when it is not.
+
 ## Oracles
 
 ## Fixtures
