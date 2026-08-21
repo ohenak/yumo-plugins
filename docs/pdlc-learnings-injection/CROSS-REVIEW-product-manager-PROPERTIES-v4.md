@@ -236,7 +236,41 @@ F-04, Low.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | T-O-6 asks for the zero conjunct **in the generated arm** ("keep `0` in the domain"), which means a generator that draws `maxBytes` from `[0, ∞)` and branches its expectation at the boundary. Do you want it that way, or as `maxBytes >= 1` generated **plus** a separate example case at `0`? Upstream's wording points at the first; the second is easier to read and equally falsifying. Either closes F-01, but the choice should be stated in §O.9 rather than left to the implementer, because it decides whether the boundary is covered by construction or by one case someone can delete. |
+| Q-02 | With the zero return specified at the unit (`sections: []`), is `PROP-CONFIG-09`'s no-slot conjunct now provable *twice* — once at the seam and once as "the selector drops on `sections: []`, and there is no zero-bound special case in the selector" (TSPEC §D.5)? If so, is the second worth an explicit conjunct in `PROP-BOUND-06`, since it is the one that would catch a selector that grew a zero-bound branch instead of keying on *yields no material*? |
+| Q-03 | §G.3 now carries struck-through items as a record of where each landed. That reads well, but it makes the section's length grow monotonically as the feature converges. Is the intent to keep the struck list through harvest (as provenance for LEARNINGS), or to collapse it to a single "all routed items answered at FSPEC v0.13 / TSPEC v0.9" line once the phase closes? I would keep it — the episode in §G.2 gap 1 is the most transferable thing in this document — but it should be a decision, not drift. |
+
 ## Positive Observations
+
+- **All four of my v3 findings are closed, and none was closed by weakening the claim.** F-01 got a
+  new property with four positive conjuncts rather than a hedge; F-04 got a paired fixture rather
+  than a widened sentence. That is the harder and better way to close a finding, and it is worth
+  saying explicitly.
+- **`PROP-CONFIG-09` is the best-argued property added to this document.** It states *why* four
+  conjuncts and not one — *"an empty selection is what `maxDocuments: 0` and `maxTotalBytes: 0`
+  produce too, so `PROP-RECORD-02`'s generic empty-selection oracle cannot tell the three apart"* —
+  and *why* its fixture must carry material, which is the precedence-defeating requirement most
+  zero-value tests get wrong. A reader can reconstruct the reasoning without the author present.
+- **§G.2 kept the episodes instead of deleting them.** *"The entry is retained rather than deleted
+  because the *episode* is the point: declining to guess cost one confirmation round and no retracted
+  property, where a guessed answer would have frozen a wrong expected value into the suite."* That is
+  the durable, transferable lesson of this whole phase, and preserving it in place — where the next
+  reader of the gap will meet it — is better than routing it to LEARNINGS alone.
+- **The document discovered its own reviewers' stale `UPSTREAM-STATE` and said so.** Rather than
+  quietly re-routing two errata TSPEC had already answered, §G.3 names the hash mismatch, strikes the
+  items, and cites the DEC-ERR-01 anti-pattern for the one item (ERR-8) that TSPEC has already routed.
+  Declining to re-raise a question already routed is a discipline that saves whole rounds. The irony
+  of F-01 is that this same rigour was applied to the errata and not to the findings.
+- **`PROP-BOUND-07`'s absorption of §D.3's assembly rule retires a class of defect, not one defect.**
+  Turning "hand-computed literal" into "sum of normalised section lengths plus 2 bytes per join" means
+  a fixture author and an implementer cannot diverge on the arithmetic — the failure mode where a
+  literal fixture reds a correct implementation is now unreachable by construction.
+- **`PROP-BOUND-05`'s move to the rendered block, with `sections[]` demoted to a supporting equality
+  and DC-14 cited by name, is exactly the right instinct.** *"An oracle reading the producer's own
+  report of what it intended"* is the trap; naming the constraint that forbids it, in the property
+  itself, is how the next author avoids re-deriving the argument.
 
 ## Recommendation
 
