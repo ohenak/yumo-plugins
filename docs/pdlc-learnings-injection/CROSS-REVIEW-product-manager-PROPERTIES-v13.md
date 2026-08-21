@@ -233,7 +233,38 @@ contradicts the repository at HEAD.
 
 ## Deferred
 
+Observations that are improvements, not defects. Under DECISION FREEZE none of these blocks, and none
+is a decision to reopen:
+
+DEFERRED: The §C.4 reversal table is the clearest artifact in this document — consider making it the standing form for any future re-measurement, rather than editing claims in place.
+DEFERRED: The inventory table would survive the next rebase better if the `Added by` column carried commit *subjects* alongside SHAs, since subjects are rebase-stable and SHAs are not.
+DEFERRED: §C.4 now states the green run's numbers (`26 passed`) but not the command's working directory; `pdlc/workflows`'s package script is required (a bare `npx jest` fails on the ESM import), which a future reader reproducing the claim will hit.
+DEFERRED: The four unowned files could carry a one-line pointer back to §G.2 gap 5, so a reader arriving from the code side finds the routing rather than re-deriving it.
+DEFERRED: PROP-META-04's retained-digest invariant is the natural mechanical check for the P-A-5 second-writer event in F-05; whether it should be extended to *added* case-id arms is a decision for a future round, not this one.
+
 ## Positive Observations
+
+- **It reversed its own claims rather than quietly restating them.** Seven absence claims are named as
+  *"now false"*, with the reason (the branch advanced past the commit they were taken at) and a
+  claim-by-claim table putting the old wording beside the measured state. That is the honest form of a
+  correction, and it is the form that lets a reviewer check it in one pass — I checked all seven with
+  `sed -n` and `grep -n`, and all seven matched.
+- **It counted skips on the same line as the passes.** *"26 passed, 26 total"* plus a
+  `test.skip`/`describe.skip` count of **0** forecloses the vacuous-green failure mode this pipeline has
+  been bitten by before. A green count alone would have been unfalsifiable in the direction that
+  matters; this one reproduces exactly on re-run.
+- **It refused to over-read its own good news.** Case C's failure limb is recorded as *"**unexercised**,
+  not waived"*, and PROP-BOUND-03's hedge is retired for that arm only. Four green amendments could
+  easily have been written up as "case C validated"; they were not, and the next author who lands an
+  amendment still meets the untested rule intact.
+- **It routed the PLAN gap instead of absorbing it.** §G.3 states the measured fact and hands PLAN the
+  decision (*"PLAN's to decide whether the four take task rows, a remediation row, or an explicit
+  out-of-manifest note"*). Under a decision freeze, discovering a gap and *not* deciding it is exactly
+  the right move, and it is why this round has no High.
+- **Its re-pinning was verifiable end to end.** Every one of the eighteen inventory anchors is the true
+  `--diff-filter=A` commit for its file, and every retired anchor is provably unreachable from HEAD.
+  A re-pin is the easiest edit to fake and one of the harder ones to check; this one checked out on
+  every row.
 
 ## Recommendation
 
