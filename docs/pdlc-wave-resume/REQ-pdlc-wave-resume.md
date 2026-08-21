@@ -503,7 +503,7 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   **Decided 2026-08-13 — deletion only.** What exists at HEAD: exactly one hatch, the
   record-removal action, announced in both banners (grep `orchestrate-dev.js` for `to force a`
   — two hits, one under the complete-record skip, one under the mid-plan resume; "to force a full
-  run" matches only the second, the skip banner wrapping it across a template-literal break). No config value can force a full run today — `implementation.startWave`
+  run" matches only the second, the skip banner wrapping it across a line break). No config value can force a full run today — `implementation.startWave`
   defaults to 1, which *defers to* the ledger, and the parser clamps invalid values back
   to 1, so there is no sentinel meaning "ignore ledger, start at wave 1" and
   `startWave: 1` is indistinguishable from the default; any `startWave > 1` bypasses the
@@ -536,5 +536,5 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 
 Registered in `docs/_queue/QUEUE.md` as Order 20; project matrix row in
 `docs/requirements/traceability-matrix.md`. Readiness over the whole §5 table (TE H-02): BL-01,
-BL-02, BL-03 resolved at HEAD of the default branch; BL-04 open, discharged at FSPEC authoring and
+BL-02, BL-03 resolved at HEAD; BL-04 open, discharged at FSPEC authoring and
 **not** a pickup gate — so `ready: true` is accurate today.
