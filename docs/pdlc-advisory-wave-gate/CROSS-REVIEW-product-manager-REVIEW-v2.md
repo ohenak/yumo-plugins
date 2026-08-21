@@ -50,7 +50,30 @@ strongest available evidence that the round's fixes are the right shape.
 
 ## Prior Findings — Disposition
 
-_pending_
+Full suite at `e30f90bc`: **102 suites, 4162 passed, 70 skipped, 0 failed** (up 3 from v1's 4159 —
+the ordered catalogue assertion, the AC-2.2 prompt oracle, and AT-06-4b's report arm).
+
+| v1 ID | Severity | Status | Evidence |
+|-------|----------|--------|----------|
+| F-01 | High | **Resolved** | `advisoryWaveGateMain.test.js:429-431` now reads the served artifact: `result.notices.find((n) => n.includes("refs/pdlc/a6-snapshot-1"))`, then asserts `/overwrites that capture/i` on **that same element**. Driven by `mainDev` through the real seam (`runPipeline`, `:162-176`), so it traverses `_notice: advisoryNotice` at `orchestrate-dev.js:15463`. Mutation-confirmed RED when that argument is severed. |
+| F-02 | High | **Resolved** | `advisoryEnvelope.test.js:334-346` adds the ordered deep-equal beside the retained sorted set check, transcribed from REQ AC-2.2's table order (`REQ:360-363`). Mutation-confirmed: reversing the catalogue reds this case only. |
+| F-03 | Medium | **Resolved** | `waveExecution.test.js:947-958` widens `NO_HALT_FIELDS` to the five-key production sentinel including `snapshotRef: null`, matching `orchestrate-dev.js:3408-3414`, with the DC-03 rationale stated in place. |
+| F-04 | Medium | **Resolved** | The dispatch prompt now renders AC-2.2's Meaning column and the first-match rule from a frozen `ADVISORY_ROOT_CAUSE_MEANINGS` (`orchestrate-dev.js:1968-1977`), walked in catalogue order (`:3158-3163`), with an oracle over the **real dispatched prompt** (`advisoryWaveGateMain.test.js:419-446`) that asserts the four meanings as spec-side literals and that their offsets are strictly increasing. |
+| F-05 | Low | **Resolved** | `snapshotRef` documented on the seam's `@returns` with both null-returning cases named (`orchestrate-dev.js:3376-3382`). |
+
+**Did the revision break anything?** No. Three checks:
+
+- The new production code paths are both wired and executed: `ADVISORY_ROOT_CAUSE_MEANINGS` has a
+  production consumer at `orchestrate-dev.js:3160` (not dead config), and the `_now` default sits on
+  the seam every production A6 call goes through. Neither is test-only.
+- The `_now` default is strictly widening — callers that pass a clock are unaffected (every seam
+  unit test still injects one and all 4162 tests pass), and callers that passed `undefined` (i.e.
+  `main`) move from *throwing inside `appendAdvisoryEntry`* to *recording*. No AC is narrowed.
+- The tightened `/overwrites that capture/i` predicate at `waveExecution.test.js:1348-1352`
+  strengthens the positive arm — the inverted sentence "never overwrites that capture" no longer
+  satisfies it — while the paired negative arm keeps the broader `/overwrit/i` stem
+  (`waveExecution.test.js:1364-1370`), which is the correct asymmetry: a broad stem is right where
+  absence is asserted and wrong where presence is.
 
 ## Findings
 
