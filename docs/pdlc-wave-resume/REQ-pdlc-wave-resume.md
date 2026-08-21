@@ -152,26 +152,39 @@ a record that is never written cannot fail to be cleared.
 
 ## 4. Constraints
 
-Observed facts, each dated and reproducible from the cited run. On merge of the
-`pdlc-advisory-wave-gate` REQ these should be promoted into
-`docs/_constraints/pdlc-wave-gate-baseline.md` and cited from there by id (Obligation
-OB-2, §9).
+Observed facts. Facts already measured in the wave-gate baseline
+(`docs/_constraints/pdlc-wave-gate-baseline.md`, present at HEAD of the default branch) are
+**cited by `M-*` id and not restated** here; the two genuinely new observations carry the command
+that re-derives them, so a reviewer can check rather than believe them (OB-2, §9, still owns
+promoting those two into the baseline as a new section).
 
-- **OF-1 (2026-08-09, pdlc-consolidation-agent run).** A 15-wave plan halted at wave 2
-  and again at wave 4; each re-invocation re-entered wave 1 and re-dispatched seven
-  implementation agents (waves 1–3) that individually concluded no-op. Replay cost
-  recurs per halt and scales with plan depth.
-- **OF-2 (2026-08-09, same run, wave 1).** A completed task may legitimately produce
-  **no commit**: wave 1's only task finished with "nothing staged — no changes to
-  commit". Commit presence is therefore not usable as completion evidence, in either
-  direction (stray agent-authored commits were also observed in the same run).
-- **OF-3 (2026-08-09, same run, wave 4).** A halted wave's own work is uncommitted at
-  the halt — the gate refuses to commit red work. The correct resume point is therefore
-  the earliest wave whose work is not yet committed, i.e. the failed wave itself, never
-  the one after it.
-- **C-1 — consumer-local state.** Whatever record supports automatic resume lives in
-  consumer-local, untracked state (the drift-state record's precedent): per-wave
-  bookkeeping must not generate tracked-file commit churn on the feature branch.
+- **OF-1 (2026-08-09, pdlc-consolidation-agent run; re-derived 2026-08-21).** Re-entry after a
+  wave halt re-dispatches waves whose commits already landed — that mechanism fact is `M-WG-6`,
+  which the shipped ledger has since partly superseded (OB-2). The **replay cost** is this REQ's
+  new observation: the run's plan derives **16** waves (17 counting Phase PT's appended V-wave),
+  and waves 1–3 hold **7** tasks, so re-entry after the wave-4 halt paid seven no-op dispatches.
+  Re-entry after the *wave-2* halt replayed wave 1 only — a single task, `T00` — so the cost is
+  not uniform per halt: it is the task count of every wave below the halted one, and it grows
+  with plan depth. *Re-derive:* run `parsePlanTasks` + `parsePlanOwnership` + `computeWaves` from
+  `pdlc/workflows/orchestrate-dev.js` over
+  `docs/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md` → 34 tasks, 16 waves,
+  W1 = `[T00]`, W2 = `[T01..T05]`, W3 = `[T06]`.
+- **OF-2 (2026-08-09, same run, wave 1).** A completed task may legitimately produce **no
+  commit**: wave 1's only task finished with "nothing staged — no changes to commit", and stray
+  agent-authored commits were observed in the same run. Commit presence is therefore not usable
+  as completion evidence in either direction. *Re-derive:* the wave-1 task list above (one task)
+  against that run's log; the nothing-to-commit path is reachable at HEAD for any wave whose
+  owned paths are unchanged.
+- **OF-3 (2026-08-09, same run, wave 4).** A halted wave's own work is uncommitted at the halt —
+  `M-WG-4`, with `M-WG-12` on the commit loop's pathspec scoping. The consequence this REQ draws
+  from it: the correct resume point is the earliest wave whose work is not yet committed, i.e.
+  the failed wave itself, never the one after it.
+- **C-1 — consumer-local state.** The record supporting automatic resume lives in consumer-local,
+  untracked state, and at HEAD of the default branch that is already anchored rather than
+  incidental: `.gitignore` carries a root-anchored ignore rule for the resume record alongside
+  the one for `/.claude/workflows/`, with a comment explaining why the anchor matters for the
+  checked-in fixture tree. Per-wave bookkeeping must not generate tracked-file commit churn on
+  the feature branch; REQ-WVR-10 (§7) is the observable that fails if it does.
 - **C-2 — fail open, never halt.** An unreadable, foreign, or out-of-range resume record
   degrades to a full run with an announced reason. No state of the record may make the
   pipeline refuse to run.
