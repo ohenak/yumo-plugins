@@ -115,7 +115,59 @@ finding.
 
 ## Test Strategy
 
+This is my lens, so it gets the closest reading: **does any TSPEC test, oracle, or sequencing
+precondition change meaning under REQ v1.7?**
+
+**AT-14 and the rebase precondition — unchanged, and better grounded.** TSPEC §5.4 AT-14 and
+§6.2 OB-F1 carry the round's most consequential test claim: AT-14 is red in this tree, in wave
+mode a red gate halts the wave and every wave after it, so *the wave carrying AT-14 must not be
+dispatched before the rebase* — a PLAN sequencing precondition, not a caveat. That claim rests on
+BL-04 being unmet. Before this round, TSPEC asserted "unmet" against a REQ §5 row that read
+neutrally and a REQ §10 that read "open and unmet"; the erratum removed the ambiguity in the
+direction TSPEC had already chosen. **A load-bearing sequencing precondition just got a firmer
+upstream anchor.** Nothing to revise; this is the delta doing its job.
+
+**Falsifiability of AT-14's three conjuncts — unaffected.** Line-equality on
+`/.claude/pdlc-wave-state.json`, the explicit root-anchoring assertion, and the
+`git check-ignore -v` resolution oracle all read this repo's tracked `.gitignore`. The erratum's
+subject is an *untracked, consumer-local* include list. No conjunct's input moved, and the
+prohibition TSPEC records — no weakening to "no churn observed", no `some(line => line.includes(…))`
+that an unanchored rule would also satisfy — still stands on its own rationale.
+
+**Set-equality oracles — unaffected.** OB-F5's discharge (AT-02 / AT-08 / AT-13 as transcribed
+set-equality assertions over the three frozen catalogues, including `ANCESTRY_INDEPENDENT_CODES`)
+depends on REQ's IG catalogue being closed. The delta does not touch REQ-WVR-02's IG rows — that
+was the *previous* erratum round (v1.6, "IG labels name causes, not precedence"), which I already
+reviewed at v2. My v2 F-01 (missing set-equality oracle on `ANCESTRY_INDEPENDENT_CODES`, Medium,
+routed to Phase P) is untouched by this delta and stays where it was routed; I am not re-raising
+it here, and it is not `inherited`-tagged below because it is not open against this document — it
+was accepted as a Phase P obligation at v2.
+
+**Call-count and ancestry oracles — unaffected.** AT-03 / AT-11's `merge-base` call-count oracles
+(equality, not containment) and RT-2's extraction-regression argument read shipped behaviour at
+`origin/main 345ae358`. The delta changes no claim about shipped behaviour.
+
+**Worktree fail-open — no new test owed.** One could ask whether the erratum's sharper "consumer
+fact, not a repo fact" framing creates a new testable obligation. It does not, and the reason is
+the right one rather than a convenient one: the state under test (record absent → full run) is
+what FSPEC EC-17 already specifies and what TSPEC §3.2 already covers; the erratum changed *why
+the record is absent*, and "why an untracked consumer-local file is absent" is not a property this
+repo's suite can or should assert. TSPEC §1.2 correctly routes this to §6.3 as a documentation
+matter rather than inventing an untestable oracle for it. That restraint was right at v2 and is
+still right at v1.7.
+
+**Coverage and gate strategy — untouched.** §5.8's `npm run test:coverage` as the last wave's
+`postWaveCommand` (RT-7, the 85% per-file branch floor) and RT-5's `implementation.postWavePathspecs`
+obligation for `pdlc/workflows/dist/` are both unmentioned by the delta.
+
+No test-strategy finding.
+
 ## Open Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §6.3's errata ledger is written as a live list ("Raised, not fixed here; each is emitted as an `ERRATUM:` line in this dispatch's final message"), but items 2 and 4 have now been actioned upstream by this very round. Should the section carry a per-item disposition column (`open` / `landed in REQ v1.7`) so a later reader — or Phase DOD — can tell which errata are still outstanding without diffing REQ? This is the mechanism behind F-01/F-02 and would prevent the same lag recurring on the next erratum round. Non-blocking; a Phase P or authoring-time nicety. |
+| Q-02 | §6.3 item 2 (FSPEC OB-F1 says BL-04 is "discharged at FSPEC authoring") is now the **only** document in the set still asserting BL-04 discharged: REQ §5 and §10 both say unmet, and TSPEC says unmet. Does that FSPEC erratum still have a route to landing, given FSPEC is byte-unmoved and its approvals are recorded? Flagging for the orchestrator's routing, not as a finding against TSPEC — TSPEC states the discrepancy correctly and is not the document that owes the fix. |
 
 ## Delta-Confirmation Findings
 
