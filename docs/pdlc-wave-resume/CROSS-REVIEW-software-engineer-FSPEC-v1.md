@@ -174,12 +174,60 @@ or give the table a `Step | Condition | Then` shape. Purely presentational; the 
 
 ## Questions
 
-(pending)
+| ID | Question |
+|----|---------|
+| Q-01 | §3.1's D-1 asks whether the manual point is "set to something other than the plan's first wave", which reads as covering values *below* wave 1 as well. At HEAD they never reach the decision: the config parser accepts `startWave` only when `Number.isInteger(v) && v >= 1` and otherwise falls back to the default with an invalid-key notice (`orchestrate-dev.js:236-242`). Is that intentionally left to the TSPEC as parse-layer behaviour, or should D-1 say "greater than the plan's first wave" so the two-sided reading does not survive into PROPERTIES? No finding filed — the observable is unreachable today — but the wording invites a test that cannot be written. |
+| Q-02 | AT-16 (queue parity) asks for "run once directly and once through a queue-delegated iteration". Given that the queue delegates in-process to the same `main` (`orchestrate-queue.js:45`), is the intended oracle a real two-path fixture, or the weaker structural one (the record path resolves against the same working directory on both)? The "discriminating arm" sentence hints at the former; te-author will need to know which, since the former is a substantially heavier fixture. |
+| Q-03 | EC-16 / AT-17 assert the record "is in no wave's owned-path set". That is a claim about every PLAN this pipeline will ever run, not about one artifact. Should it be discharged as a *Phase P* check (ownership manifests may not claim `.claude/`), which is mechanical, rather than as a per-feature PROPERTIES assertion (OB-F6), which can only sample? Raised as a question because the REQ (OB-3) states it the same way, so it is not this FSPEC's invention. |
+| Q-04 | BR-17 says the feature "adds no new host capability and no new configuration surface". Is that intended to bind the TSPEC — i.e. does a TSPEC that introduces a config key violate this FSPEC — or is it a description of the shipped interim? F-05's set-equality assertion only bites under the first reading. |
 
 ## Positive Observations
 
-(pending)
+- **The grounding discipline is the best I have reviewed in this pipeline.** §1 does not merely
+  cite; it names the tree the citations are valid in, states the prerequisite that is unmet, and
+  tells downstream artifacts to carry the symbol names rather than the line numbers. Every one of
+  the eight anchors verified. Authoring against `origin/main` from a tree 1,637 commits behind it
+  is a trap, and the FSPEC walked into it with its eyes open instead of quietly guessing.
+- **The altitude discipline holds throughout.** Location, encoding, field names, matching
+  procedure and write mechanics are named as *not specified here* and routed to OB-F2 — and the
+  document then keeps that promise, including in §3.2 where it would have been easy to slip into
+  describing the `else if` chain instead of the questions it answers.
+- **§3.2's ordering is the shipped order.** Verified against `orchestrate-dev.js:15297-15317`.
+  Ratifying rather than reinventing is exactly BL-03 / R-4's requirement, and F-04 asks only that
+  the ratification be made explicit — not that it be changed.
+- **REQ-WVR-09's guard is read correctly.** The FSPEC identifies the write's guard as the git
+  transport rather than the gate mode, and AT-09's "companion arm" turns that into a
+  discriminating test. That distinction is subtle enough that the REQ itself records having got it
+  wrong once (SE F-01, v1.5); the FSPEC got it right and grounded it at the right branch.
+- **AT-14 anchors exclusion to the ignore rule, not to observed quiet.** "asserted against the
+  rule itself rather than against the absence of churn in one run" is the difference between a
+  test that catches a regression and one that happens to pass. `.gitignore:41` confirms the rule
+  exists to assert against.
+- **EC-08's rationale for keeping IG-4 and IG-5 separate** — "fusing them would let one be deleted
+  without the catalogue changing" — is exactly the right instinct, and it is the reason F-04 is a
+  Medium about test *selection* rather than a High about the catalogue.
+- **The obligations table names owners and discharge conditions**, including one (OB-F1) that
+  indicts the FSPEC's own authoring conditions. That is the finding a reviewer most often has to
+  raise; here it was already on the table.
 
 ## Recommendation
 
-(pending)
+**Needs revision**
+
+Two High findings, both narrow and both fixable without restructuring the document:
+
+1. **F-01** — add one clause stating that completion accumulates across invocations (a wave
+   skipped as previously completed stays completed in the record this run writes), and one AT for
+   the two-halt sequence, whose oracle fails a per-run record while every existing AT passes.
+2. **F-02** — split EC-15 / AT-15 into all-writes-fail and some-write-succeeds arms; the current
+   unconditional "the next invocation starts from wave 1" is false for the partial case and would
+   fail a correct implementation.
+
+The four Mediums (F-03 unstated third answer at §3.2 Q5; F-04 AT-03's non-discriminating fixture;
+F-05 AT-08's absence-only oracle; F-06 BR-07's overreach) are each a sentence or a fixture change.
+The two Lows are cosmetic.
+
+Nothing in this document duplicates the shipped mechanism or invents a parallel contract, so R-4
+is not triggered; the revision is additive. One erratum is raised against the REQ separately —
+BL-04 is recorded as discharged there while remaining objectively unmet, which is what OB-F1
+already says, plus two internal inconsistencies in the REQ's own §1/OF-1 replay-cost figures.
