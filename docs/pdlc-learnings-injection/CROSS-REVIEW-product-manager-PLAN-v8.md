@@ -152,6 +152,63 @@ fixable in two clauses, not a product-fidelity failure.
 
 ## Verification
 
+**v7 F-02 — the decision-branch row — is closed, and matches TSPEC verbatim in structure.** The row
+now reads "document **yields no material** ⇒ `RSN-NO-MATERIAL`, dropped before the bounds, no slot
+consumed … **Two disjuncts, one branch**: no `BR6_SECTION_NAMES` heading present (E-33), **or**
+`maxBytesPerDocument: 0` admits none (E-36) | AT-28 (structural disjunct); AT-30 case 3 (zero-bound
+disjunct)". TSPEC §T.7's own row states the same two disjuncts, the same one branch and the same two
+ATs. FSPEC's DC-05 closure ("every branch of the D-1 … D-12 decision table is exercised") is now
+answered by PLAN with both causes named and both ATs cross-referenced. The owner columns are the
+issue, not the branch statement — see F-01.
+
+**The arm arithmetic survived the widening, and PLAN explains why in one sentence.** "Twelve arms,
+twelve entering tasks — **thirteen** entering cases, because the `RSN-NO-MATERIAL` arm is entered by
+two disjuncts and TSPEC §T.7 keeps them as one row, one branch." That is the right distinction:
+LI-23's set equality is taken over reason **codes**, and E-36 widened what a code means without
+minting one. `LEARNINGS_CORPUS_OUTCOMES`, `LEARNINGS_REJECT_REASONS` and `LEARNINGS_NOTICES` are
+unchanged in TSPEC, so LI-23's oracle, its `Deps` edge and P-A-4's "no thirteenth fixture shape is
+scheduled" all stand.
+
+**v7 F-04 — claim 4's baseline scope — is closed correctly.** DoD 4 now reads "every dispatch
+**outside BR-1's rule** likewise (AC-4.3) — the scope FSPEC AT-03/AT-29 and TSPEC §A.2 state, which
+is wider than 'non-authoring'", and spells out the case: BR-1 carries a block only when the dispatch
+is authoring-classified **and** its target is one of C-1's six, so Phase CR's optimizer round —
+authoring-classified, `docType: null`, no C-1 target — is inside the promise. FSPEC AT-29 at HEAD
+says "every dispatch prompt outside BR-1's rule is byte-identical to the recorded baseline". The
+compression no longer promises less than upstream. This one had been open since v5; good to see it
+land in the same pass.
+
+**v7 F-03 — the errata section — is closed, but the rewrite drops a live erratum (F-03 this
+round).** ERR-7 and ERR-3 are now recorded CLOSED, each with the FSPEC version that resolved it and
+a "no effect on this PLAN" column, which is exactly right and is confirmed upstream: TSPEC's erratum
+register marks ERR-7 "CLOSED, resolved by FSPEC v0.11 and v0.12". The section then makes a set
+claim — "TSPEC's remaining open errata (**ERR-1, ERR-2, ERR-5**) are unchanged by this document and
+are not re-raised here" — and that set is incomplete. TSPEC v0.9 carries **ERR-8** open, against
+FSPEC's Step 5 items 15–16, and it is the one erratum in the register written *to this document's
+author*: "what needs correcting is the item ordering, so the PLAN author reading the procedure
+sequentially does not implement the shape E-36 carves out." I confirmed the defect is still live in
+FSPEC at HEAD: item 15 drops on the structural condition, item 16 extracts, and the count cut sits
+between them.
+
+That omission is not cosmetic in this round of all rounds. ERR-8 *is* F-01's problem stated from the
+upstream side, and a PLAN that enumerated it would have had nowhere to put it except LI-16's row —
+which is the clause F-01 asks for. One added line in the open-errata list, and one in LI-16, close
+both. I route ERR-8 upward as an ERRATUM as well, since FSPEC has not absorbed it across three
+erratum rounds.
+
+**The 35-AT partition, `LI-T-SUITEMAP` and the expected-red ledger are untouched, as claimed.**
+LI-12's row states the reason itself: "Adding a case to an existing AT leaves §T.5's per-file AT
+counts at 2 for this suite, so `LI-T-SUITEMAP`'s partition, the `Batch` column and every `Deps` edge
+are untouched." FSPEC v0.13 added an edge (E-36) and widened an AT; it minted no AT, so
+§Traceability's "All 35 … each appearing exactly once" and its arithmetic still hold, and DoD 1 is
+unaffected.
+
+**One trivial over-claim in the changelog (F-05).** The v0.5 row says "the four stale version pins
+now read FSPEC v0.13 / TSPEC v0.9". Three were updated; the fourth — the changelog's own 0.1 row —
+correctly still reads "First draft from REQ v0.9 / FSPEC v0.10 / TSPEC v0.6", because that is
+history and rewriting it would be a falsification. The disposition is right and the sentence
+describing it is wrong by one. Low, and the fix is the sentence, not the row.
+
 ## Positive Observations
 
 ## Recommendation
