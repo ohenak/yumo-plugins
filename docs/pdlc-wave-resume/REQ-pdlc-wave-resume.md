@@ -303,19 +303,15 @@ run — with the reason announced (REQ-WVR-02, IG-1..5; an absent record itself 
 silent). Staleness is therefore a property the reader proves, not a property the
 writer promises. *Source: US-01.*
 
-**Decided 2026-08-13 — retention with invalidation.** The shipped interim ledger conflicts with this requirement
-as written and is not being changed here. WVR-05 requires self-*clearing*: after Phase I
-completes, no resume state survives. The shipped ledger deliberately **persists** after
-Phase I completes (`orchestrate-dev.js:12429` ff.; complete-record skip at
-`:12252-12267`; test at `waveExecution.test.js:1694`) precisely so a later halt in
-CR/DOD/PUB re-invokes without re-dispatching any wave, and nothing in the codebase ever
-clears it — its staleness story is self-*invalidating* (feature/planHash/head match), not
-self-clearing. Because BL-03's gating logic (§5) is "formalize and replace, never
-duplicate," this REQ as written forces either a regression (make the shipped ledger
-clear itself) or a rewrite of this requirement. The operator has two options: reword
-WVR-05 to retention-with-invalidation, matching shipped behaviour; or keep WVR-05 as
-written and demand true clearing, changing shipped behaviour. The first is chosen
-below; WVR-05 above is already restated accordingly.
+**Superseded — decision history, 2026-08-13 (SE G-04).** The position considered and *rejected*
+on that date was that WVR-05 should require self-*clearing*: after Phase I completed, no resume
+state would survive. It was rejected because the shipped ledger deliberately **persists** past
+Phase I (the retention comment above `allWavesRecorded`'s `⏭` `recordPhase` call in
+`orchestrate-dev.js`, with the complete-record skip banner "Skipping Phase I (wave ledger") so
+that a later halt in CR/DOD/PUB re-invokes without re-dispatching any wave, and nothing in the
+codebase ever cleared it — its staleness story was self-*invalidating*, not self-clearing. Under
+BL-03's "formalize and replace, never duplicate" rule that position would have forced a
+regression. Nothing in this block is operative; WVR-05 above is the requirement.
 
 **Decision: retention with invalidation; the requirement moves, not the code.** WVR-05 is restated
 above. The shipped ledger's persistence past Phase I is deliberate and load-bearing — a halt in CR,
@@ -359,9 +355,11 @@ the same feature and plan fails this AC. *Source: US-04.*
 **Who:** pipeline operator. **Given:** a valid record for this feature and this unchanged plan
 recording **every** wave of the plan complete — the state a run reaches when Phase I finished and
 a later phase (CR, DOD, PUB) halted. **When:** the pipeline is re-invoked. **Then:** Phase I is
-skipped in full; the skip is announced as its own message, naming the reason and the
-force-a-full-run hatch (OQ-1, §9); and it is recorded as its **own** phase row, visibly distinct
-from a Phase I that executed. **How REQ-WVR-03 is discharged here:** no wave executes, so no gate
+skipped in full; the skip is announced as its own run-log message, naming the reason and the
+force-a-full-run hatch (OQ-1, §9); and the run report's **Phase I row** carries a skip status and
+a reason naming the record, distinct from the status an executed Phase I carries (TE G-05 — this
+is one row with a distinguishing status, not a second row; the hatch is owed on the run-log
+message only, not on the report row). **How REQ-WVR-03 is discharged here:** no wave executes, so no gate
 runs and **Phase I produces no new commit** — the guarantee "no new commit lands before the full
 suite has verified the whole tree" is satisfied because this phase lands none, not because a
 verification was skipped. The tree's most recent whole-tree verification is the one performed by
