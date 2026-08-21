@@ -45,6 +45,72 @@ I have left them there.
 
 ## Architecture
 
+§2.5 is where the delta does its real work, and it is the section I read hardest, because it is the
+one that used to contain a self-declared narrowing of an acceptance criterion.
+
+**The old posture, and why it was right at the time.** Before this round, §2.5 said, in effect: *the
+mechanism runs `clean -fd`, not `-fdx`, so ignored paths are outside it; but FSPEC BR-9 and REQ AC-5.1
+state the oracle with no ignored-path carve-out, so the mechanism is narrower than the criterion, and
+this TSPEC will not narrow AC-5.1 by design choice — the carve-out is raised as an erratum and this
+section transcribes whatever comes back.* That was exactly the right handling of an
+engineering-vs-requirement gap: name it, refuse to resolve it in the engineering layer, route it up.
+
+**The new posture, verified against HEAD.** Upstream came back, and it came back agreeing. I read
+both sources:
+
+- **FSPEC BR-9 at v1.6** now states two boundaries "rather than left to the fixture author."
+  **Domain:** "`.gitignore`d paths are outside restoration's reach — A6 never deletes or rewrites
+  one, so `node_modules/`, tool caches, `.env` and the run's own untracked wave ledger are outside the
+  map in both directions, and an ignored path the re-gate mutated is not a restoration defect." The
+  map itself is "over tracked files and **non-ignored** untracked files".
+- **REQ AC-5.1 at v1.15** excludes "paths ignored by `.gitignore`, which are operator files A6 never
+  wrote and never restores over."
+
+§2.5's rewritten bullet quotes both of these clauses verbatim and in context. Its claim — "**This is
+no longer a TSPEC narrowing of AC-5.1; it is the transcription of the decided boundary**" — is true:
+the mechanism did not move, the criterion moved to meet it, and the document now says so. This is the
+correct resolution of the gap I would have wanted, arrived at through the routing path rather than
+around it.
+
+**The retired fallback is retired explicitly.** The old bullet held a conditional design in reserve:
+if upstream had instead held ignored generated outputs *inside* the oracle, the mechanism would grow a
+scoped ignored-path capture over the post-wave pathspecs only. The new bullet closes it in one
+sentence — "is not built: the decision that would have required it did not come back." I want to name
+this as a positive: an author under erratum pressure could have quietly deleted the reserved branch
+and left a reader of v1.10 wondering where it went. Recording its death is the more useful act.
+
+**The new observation-point bullet is new material, and it is grounded.** The edit adds a second
+bullet pinning *when* the map is taken. Checked against both sources:
+
+- **BR-9 at v1.6:** "the map is taken immediately after restoration completes and **before** the
+  record and escalation writes BR-13 requires; both carriers are files inside the tree, so an
+  observation taken after them differs by exactly the bytes BR-13 mandates (AT-05-1, AT-06-1)."
+- **REQ AC-5.1 at v1.15:** "The observation point is the moment restoration completes: the record
+  carriers the run still owes afterwards — AC-6.1's record append, AC-6.2's escalation-log append, and
+  AC-5.2's queue-row write (M-WG-7) — are excluded from the comparison."
+
+The TSPEC bullet names all three carriers, in AC-5.1's own terms, and draws the design consequence
+that follows from them: the `restore:` sequence is complete at `git reset --mixed {head}`, and the
+driver's record/escalation writes at §3.2 step 7 fall *after* it, "outside the comparison, never
+interleaved with it." That is a faithful reading, and it is also the reading FSPEC E-23 independently
+requires — "'Restored' is BR-9's observation point, not the last byte written: the halt path still
+appends the record and escalation entries BR-13 requires." The TSPEC, BR-9, AC-5.1 and E-23 all agree.
+
+**One carrier-list nuance, and it is the source of my only finding.** AC-6.2's escalation-log append
+entered AC-5.1's excluded-carrier list only at **REQ v1.15** (v1.15 changelog: "AC-5.1's
+excluded-carrier list adds AC-6.2's escalation-log append (TE F-01, High)"); the ignored-path
+exclusion and the observation point landed one revision earlier, at v1.14 (commit `c58fd61d`). §2.5's
+bullet pins the ignored-path clause to "REQ AC-5.1 at v1.14" — accurate, that clause is v1.14's — and
+its observation-point bullet correctly carries the full **v1.15** three-carrier list without a version
+pin. So §2.5 itself is consistent. §6's OQ-7 row is where the two get conflated; see **Open
+Questions** and F-01. It is a citation-precision nit, not a fidelity break: the substance transcribed
+is HEAD's.
+
+**Scope compliance.** No product decision is being made in this section. The one place the document
+could have made one — choosing the ignored-path boundary itself — is precisely the place it declined
+to, twice: it refused in v1.10 by routing the erratum, and in v1.11 it takes the answer from upstream
+rather than from its own convenience, even though its own convenience happened to win.
+
 ## Interfaces
 
 ## Data Model
