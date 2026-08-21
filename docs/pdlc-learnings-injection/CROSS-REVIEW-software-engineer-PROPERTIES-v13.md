@@ -330,7 +330,6 @@ Under the decision freeze I have opened no new decision. Four observations that 
 document but are not defects are recorded as `DEFERRED:` lines above rather than folded into the
 verdict.
 
-## Recommendation
 
 ## Verdict
 
