@@ -226,7 +226,42 @@ reading order refers to §6 generically, not by cardinality).
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | AT-06-4's *Given* (F-01): will the TSPEC pin the capture-exists fixture itself, or should the FSPEC land the one-clause *Given* fix so the partition is complete at spec altitude? My preference is the FSPEC, since AT-06-4b already pins its arm and the asymmetry is what invites the vacuous instantiation. |
+| Q-02 | On the E-30 path the escalation log is unwritable, so the halt report is the operator's only carrier — is that the strongest case for co-location, and does it deserve a sentence in the TSPEC's halt-message design even though E-30 covers it by reference here? |
+| Q-03 | DECISIONS `:468` records "copy the ref before re-running a halted feature" as the documented remedy, and BR-14 deliberately excludes the remedy from the report's observable. Confirming the intent: the halt report warns *that* the capture will be overwritten and need not tell the operator *how* to preserve it — correct? |
+
+## Positive Observations
+
+- **The routed item landed as four coordinated edits, not one.** BR-14 (rule), §3 step 10 (flow),
+  E-34 (negative arm), AT-06-4 + AT-06-4b (oracles) — the obligation is expressed once normatively
+  and once testably at each altitude it needs to exist at. Erratum edits that touch only the AT, or
+  only the rule, are the common failure mode; this one did neither.
+- **"Co-location is the observable" is the sentence that makes this testable at all.** Without it,
+  "warns in the same place" degrades into a cross-artifact search, and any implementation with a
+  runbook entry could argue compliance. Naming co-location as *the* observable gives the oracle a
+  single-artifact byte assertion.
+- **AT-06-4b exists because the author reasoned about falsifiability, not because it was demanded.**
+  Its own text names the failure mode it prevents ("rather than a string always present"), which is
+  the reasoning this lens wants to see written down rather than inferred.
+- **O-1's boundary held under pressure.** The routing items quoted the ref name (`a6-snapshot`) and
+  TSPEC `:534`; the edit resisted importing either and compressed the operator-visible outcome only.
+  That is the discipline that kept this a bounded FSPEC edit rather than a decision reopening.
+- **E-30's repair generalised rather than patched.** Replacing an enumeration with a reference to
+  BR-14's contents means the next amendment to the halt report propagates automatically instead of
+  leaving a third stale copy behind.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The erratum resolves both routed items — TE's and PM's are the same item, and it landed at BR-14,
+§3 step 10, E-34, E-30, AT-06-4 and AT-06-4b. Upstream faithfulness against REQ v1.16 at the
+dispatched sha holds at every site the delta touches. No High finding; nothing previously approved
+regressed. F-01 (Medium) is a one-clause *Given* fix to AT-06-4 that can ride the next authoring
+round or be landed here; F-02, F-03 (Low) are inherited and non-gating; F-04 (Low) is a one-cell
+summary-table refresh the edit left behind.
 
 ## Delta-Confirmation Findings
 
