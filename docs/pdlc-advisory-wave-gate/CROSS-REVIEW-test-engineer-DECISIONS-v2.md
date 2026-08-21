@@ -165,6 +165,44 @@ into this verdict.
 
 ## Consequences
 
+**For the PROPERTIES author, at v1.11.** The document is now safe to transcribe, which it was not at
+v1.10. The four oracle-bearing claims each yield a test that can fail:
+
+- Fail-closed is a **pair** (`:412-427`): `assert.rejects` on all three restore verbs; `null` return
+  plus a call-site-written capture-failure disposition on the capture path. The shipped suite already
+  carries both shapes, so a property written from this text lands on existing ground.
+- DEC-A6-02's message literal (`:296-300`) is transcribable as an exact string; its **cardinality**
+  is transcribable as a set-equality over promotion-commit messages and is the one conjunct with no
+  test at HEAD (F-08).
+- DEC-A6-03's two-ref set-equality is unchanged and still asserted (`advisoryWaveGate.test.js:1624`,
+  `:1662-1664`).
+- DEC-A6-04's `waveBudgetPerRun: 0` present-and-zero conjunct is now correctly marked *specified,
+  not asserted* (`:517-530`), so a PROPERTIES author knows it is work to do rather than work done.
+
+**For the implementation phase (not findings against this document).** Two fixture gaps are now named
+in the record and both are real at HEAD: A6-15's missing present-and-zero conjunct
+(`advisoryWaveGate.test.js:1591-1619` drives `runWaveGateSeam` directly and never reaches the
+report's advisory summary key), and the absent two-promotion fixture behind DEC-A6-02's cardinality
+(`waveExecution.test.js:1340-1352`). Both are containment-versus-set-equality failures of the same
+family: an enumerated contract — six advisory rows, N promotion commits — proved by `toContain`
+cannot fail when a case is dropped. Whoever closes them should close them with set-equality over the
+full enumeration, matching the instrument DEC-A6-03 already models at `advisoryWaveGate.test.js:1662`.
+
+**For harvest.** The durable item from this round is the *method*, not a constraint: v1.10 asserted
+"all claims re-grounded against the working tree" while three claims were false, and v1.11's preamble
+now answers exactly that (`:114-119`) — the sweep was scoped, not exhaustive, and the three misses
+share a signature: claims about **failure modes, visibility and impossibility**, none of them
+falsifiable by the grep-shaped check that confirms a count. That signature is worth carrying into the
+review checklist as a class, since it is the class this document got wrong twice. The retired-channel
+half of F-03 remains the cross-feature item I flagged at v1: any sibling artifact still reasoning from
+"one module, one bundle, synced to `.claude/workflows/`" is reasoning from a premise
+`build-runtime.mjs:5-12` and `cleanup-consumer-workflows.sh:4-5` falsified.
+
+**No decision entry moved, and none needed to.** All four rejections stand on the same side they
+stood on at v1.10; what changed is the ground under three claims and the staleness of four
+citations. That is the correct outcome for a decision record under review — the findings were never
+design objections.
+
 ## Findings
 
 ## Questions
