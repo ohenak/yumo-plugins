@@ -128,4 +128,19 @@ and one is the recorded C-5 soft-budget overage with a named dissolution path. N
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | Document is 676 lines against C-5's own 630-line soft budget; overage pre-dates this round and was widened by 8 lines by the v1.15 changelog paragraph. Under the 700-line hard gate. Dissolution path recorded (SE Q-02's relocation) | §5 C-5 |
+| F-02 | Low | inherited | nonlocal | AC-6.4 and O-2 say the per-feature advisory record is "deleted after Phase PUB"; the cited upstream, `pdlc-advisory-corpus-baseline.md` §1 at HEAD, places the deletion at Phase H2's distil. The honest-limit conclusion is unaffected, but the compression names a different phase than upstream does | §6 AC-6.4, §8 O-2 |
+| F-03 | Low | inherited | nonlocal | `pdlc-wave-gate-baseline.md` v1.2's `Cited by` row records this REQ as citing from §1, §4, §5, §8 only, while §6 (AC-1.1) and §7 (R-5) cite `M-WG-*` ids too. Upstream's row to fix, not this REQ's text | Lineage / upstream `Cited by` |
+| F-04 | Low | inherited | nonlocal | `pdlc-advisory-corpus-baseline.md` v1.0's `Cited by` row names only `REQ-pdlc-consolidation-agent`, though this REQ cites its §1, §3 and §4 from C-1, AC-6.4, NFR-6 and O-2. Same class as F-03, second upstream file | Lineage / upstream `Cited by` |
+
+FINDING: Low | inherited | nonlocal | §5 C-5 | REQ is 676 lines against C-5's own 630-line soft budget (668 at v1.14, +8 from the v1.15 changelog); under the 700-line hard gate, dissolution path recorded as SE Q-02's relocation
+FINDING: Low | inherited | nonlocal | §6 AC-6.4 and §8 O-2 | "deleted after Phase PUB" diverges from the cited upstream, corpus-baseline §1, which places the advisory record's deletion at Phase H2's distil
+FINDING: Low | inherited | nonlocal | Lineage / pdlc-wave-gate-baseline `Cited by` | Upstream's `Cited by` row lists §1, §4, §5, §8 while this REQ also cites M-WG ids from §6 and §7; upstream row is understated
+FINDING: Low | inherited | nonlocal | Lineage / pdlc-advisory-corpus-baseline `Cited by` | Upstream's `Cited by` row omits this REQ entirely although C-1, AC-6.4, NFR-6 and O-2 cite its §1, §3 and §4
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 4}
