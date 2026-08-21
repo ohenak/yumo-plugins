@@ -1266,14 +1266,27 @@ items this list still carried as open. They are struck rather than re-routed:
   landing batch through the greening one. Re-routing it would be DEC-ERR-01's anti-pattern of raising a
   question the upstream has decided. Absorbed into §C.4.
 
-**Still open — one item, re-routed this round:**
+**Still open — three items:**
 
+- PLAN's P-A-7 **case B** names one ledger row for the re-red of the landed `learningsBlock.test.js`
+  — `LI-AT-11`'s heading-form cases — but PROP-BOUND-03's `maxBytesPerDocument <= 0` case re-reds the
+  same landed suite and is covered by no named row. At `21edb7c5` that suite carries no
+  `extractInjectableMaterial(text, 0)` call at all (§C.4), so the case lands into green committed
+  code with nothing in the ledger standing for it. Whether case B's row is widened or a new row is
+  added is PLAN's call; this document routes the gap and decides nothing.
+- PLAN's P-A-7 **case B** scopes its named row to "every batch from the landing batch through the
+  batch that greens them", and with LI-17 (`2cbacada`) and LI-21 (`92b7ea0c`) landed no remaining
+  batch greens them — the span as worded has no terminus for an amendment commit landing now.
+  Whether the intended reading is LI-22's REFACTOR-and-close batch or a self-greening amendment
+  commit is PLAN's call; this document routes the gap and decides nothing.
 - TSPEC's suite assignment for AT-15, whose clauses 2–3 (corpus-level `RSN-EMPTY`, no discarded document
   in any record) are asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite
   (TSPEC §T.5's suite table, `learningsSelect.test.js` row, level `L1`, at HEAD) — the mismatch PLAN
   LI-07/LI-19 already work around by carrying an expected-red ledger entry. The v0.2 revision struck the
   two items TSPEC v0.9 answered and wrote "**Still open:** nothing" above this bullet, which left it
   orphaned and the sentence untrue; it is re-labelled here and re-emitted as a routed erratum line.
+  (This is the item re-routed in the v0.2 round; the two P-A-7 case-B items above are new to this
+  revision and are emitted as `ERRATUM: PLAN` lines from this dispatch.)
 
 Every **other** item this document routed upward has been answered, and the absorptions are recorded
 above and in §G.2. One upstream item is *already routed by TSPEC and needs no duplicate from here*:
