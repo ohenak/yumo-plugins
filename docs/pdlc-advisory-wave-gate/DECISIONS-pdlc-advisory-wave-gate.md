@@ -198,7 +198,7 @@ unbuildable. The rejection reason is stated against shipped code, not intuition.
 |---|---|---|
 | **A. Widen the owning per-task `commitPaths` call's `paths`** | The reading FSPEC BR-8's licence ("that scope may widen under O-8's E-6 resolution") most literally suggests | One task's commit would carry another task's owned paths. The wave loop's per-task commit is pathspec-scoped precisely so that a commit names one task's files — `commitPaths({paths: task.files, message: waveCommitMessage(featureName, task), what: "Wave N task T", …})`. Widening it breaks the property M-WG-4 rests on, and does so invisibly in git history |
 | **B. Leave the repair uncommitted for the later task's agent to commit** | No new call at all | The wave loop is the only writer past the green gate, and wave agents are told `Do NOT git commit`. A resolved wave would strand its own repair as an uncommitted change, and a later run would never see it |
-| **C (chosen). One further `commitPaths` call after the per-task loop, inside the same `if (waveGit)` block and past the same green gate** | Full argument set, own `message` and `what` label | — |
+| **C (chosen). One further `commitPaths` call *per promoted task* after the per-task loop, inside the same `if (waveGit)` block and past the same green gate** | Full argument set, own `message` and `what` label, one commit per owning task id | — |
 
 Option C is not a new shape in this loop. The wave already makes a **second** kind of commit past
 the same gate — the build-outputs call, whose `message` is the template `chore({feature}): wave {N}
@@ -293,16 +293,22 @@ OQ-7 because OQ-7 is closed and the scoped arm is explicitly **not built** — T
 ### DEC-A6-02: An E-6 promotion is committed by its own `commitPaths` call, not by widening a task's
 
 **Decision.** A resolved wave whose repair landed in a later task's owned paths makes one additional
-`commitPaths` call after the per-task loop, inside the same `if (waveGit)` block and past the same
-green gate, with `paths` = the promotion's produced paths, `message` = `chore({feature}): wave {N}
+`commitPaths` call **per promoted task** after the per-task loop, inside the same `if (waveGit)`
+block and past the same green gate, with `paths` = that promotion's produced paths, `message` = `chore({feature}): wave {N}
 advisory promotion ({taskId})`, `what` = `Wave N advisory promotion (task T)`, and the wave loop's
-own `_git`, `_sleep`, `emit` and `provenance`. FSPEC BR-8's licence to "widen scope" is therefore
-read as *licence to commit the promotion*, not as licence to enlarge another task's pathspec.
+own `_git`, `_sleep`, `emit` and `provenance`. The cardinality is load-bearing, not a detail
+(PM F-02): the wave loop iterates `waveResolvedPromotions` — the return of `groupPromotedPaths`,
+which groups produced paths **by owning task id** and can therefore hold more than one row — and
+issues one call per iteration; the `message` template carries a single `{taskId}` slot, which is
+only coherent under the per-task reading. A single widened commit naming one of two promoted tasks
+would quietly lose exactly the per-task attribution option A is rejected to protect. FSPEC BR-8's
+licence to "widen scope" is therefore read as *licence to commit each promotion*, not as licence to
+enlarge another task's pathspec.
 
 **Upstream now states this shape, and cites this entry for the rejection.** v1.1 of this record
 superseded two pieces of upstream text that described option A; one of the two has since been
 corrected. TSPEC §1.1's obligation table, row O-8, no longer resolves the obligation by widening an
-existing pathspec: at v1.10 it reads "**One further `commitPaths` call** after the per-task loop,
+existing pathspec: at v1.11 it reads "**One further `commitPaths` call** after the per-task loop,
 inside the same `if (waveGit)` block, carrying the promotion's paths under its own `message` and
 `what` (§3.6); the owning task's own commit keeps its own pathspec, unwidened", and names "the
 rejected option A of `DECISIONS-pdlc-advisory-wave-gate.md`'s DEC-A6-02" explicitly. The row and
@@ -349,7 +355,12 @@ the halt to name the failed restoration and TSPEC requires it to name the ref, s
 learns the object's *name* but gets no indication that the ordinary next step after a halt —
 re-running the feature, which §2.5 itself describes — destroys it. Putting that sentence on the halt
 message is a product decision about an operator-facing obligation and therefore belongs in
-REQ/FSPEC, not here; the PM is routing it. This entry carries the gap in the meantime.
+REQ/FSPEC, not here; the PM is routing it. **The routing has not landed** (PM Q-02, TE): at REQ v1.15
+and FSPEC v1.6, `a6-snapshot`, "copy the ref" and "overwrit" match nothing in either document, so
+FSPEC E-28 and AT-05-5 still require only that the halt name the failed restoration, and an operator
+still learns the ref's name at halt and nothing about the ordinary next action destroying it. It is
+re-emitted as a REQ erratum this round rather than left implied — an uncited in-flight routing is
+indistinguishable from a dropped one. This entry carries the gap until it lands.
 
 **Re-evaluation triggers:** an operator investigation is ever lost to the re-run overwrite; a run id
 or capture timestamp becomes available in Phase I scope; or the accumulated refs (one per wave per
