@@ -30,6 +30,32 @@ overstates, and one Low numeral. Neither blocks.
 
 ## Architecture
 
+The delta moves one architectural decision from open to closed: **where the overwrite notice is
+pushed**. §4.5 answers "inside `runWaveGateSeam`, through its own `_notice` parameter, on every
+unresolved return whose `snapshotRef` is non-`null`", and the reasoning it gives — that the seam is
+where `snapshotRef` is known and where §5.6's arms observe — matches the code. `runWaveGateSeam`'s
+signature already carries `_notice` (`orchestrate-dev.js:3382`) and normalises it to a no-op at the
+head (`:3385`), so the push needs no new parameter, no new plumbing hop, and no report knowledge
+inside the seam. The wave loop's `if (!a6.resolved) throw haltError(testGateMessage, …)` (`:15398`)
+is exactly the set of returns the row quantifies over, and the sink the call site hands in
+(`_notice: advisoryNotice`, `:15386`) is the same array the halt-path `buildFinalReport` spreads.
+
+The **un-skip arm** is the one push that genuinely cannot live in the seam, and §4.5's new row says
+so for the right reason: that halt fires after the seam has returned *resolved* (`:15402` records
+`resolvedAdvisoryFields = a6.haltFields`; the throw is at `:15433`). I checked the scoping claim the
+row depends on — `advisoryNotice` is declared at `:14635` and the un-skip throw at `:15433` sit in
+the same enclosing function (no function declaration intervenes), so the helper and the sink are
+both in scope at that site. The two push sites are also **disjoint by construction**, which the
+document does not state but which matters for double-emission: the seam pushes only on *unresolved*
+returns, the un-skip site only after a *resolved* one, so no single wave can emit the notice twice.
+That disjointness is what keeps `advisoryEscalationLog.test.js:821`'s widening 2→3 rather than 2→4.
+
+Nothing else moves. No new module, no new file, no new test double; the `renderSnapshotOverwriteNotice`
+helper still does not exist at HEAD (`grep -rn renderSnapshotOverwriteNotice pdlc/` matches only the
+TSPEC), which is correct — it is what PLAN mints — while both named siblings do and are exported
+(`export function renderAdvisoryEntry`, `orchestrate-dev.js:3605`; `export function
+renderEscalationEntry`, `:3743`), so §1.2's "no new module" claim survives.
+
 ## Interfaces
 
 ## Data Model
