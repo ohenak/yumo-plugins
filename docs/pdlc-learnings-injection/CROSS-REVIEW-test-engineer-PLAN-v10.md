@@ -314,4 +314,31 @@ DEFERRED: The `Status` column is behind on twelve rows (LI-14…LI-20 have lande
 
 ## Recommendation
 
+**Approved with minor changes** (0 High, 2 Medium, 1 Low).
+
+Nothing I approved at v0.6 broke. All twenty-two batch values re-derive from their declared `Deps`;
+no edge moved; no AT partition, fixture or single-writer manifest row was touched; the four upstream
+pins still match the four upstream files at the hashes this dispatch names, byte for byte.
+
+The revision's five substantive additions are each correct against upstream, and the two that matter
+most from my lens strengthen the test strategy rather than merely restating it. LI-12's fixture
+precondition converts conjunct (iii) from an oracle that would have passed against the slot-burning
+mutant it exists to kill into one that cannot — caught at PLAN altitude, before a line of it was
+written. LI-16's zero-bound ownership gives that conjunct a production owner whose enumerated edits
+actually reach the two functions, which the previous `LI-12 / LI-21` pair did not. The two are
+load-bearing on each other and both landed together.
+
+One clause is factually wrong at HEAD (F-01: `body` is exercised by two landed suites, not
+unexercised), but its conclusion survives untouched and nothing downstream reads it — Medium, one
+sentence to fix. F-02 and F-03 are my round-9 findings, carried unaddressed because this revision was
+scoped to round 8; both are non-gating and both are one clause each.
+
+The implementation divergence in §Verification is the item I most want read: this PLAN states TSPEC's
+rule correctly and the landed `selectLearnings` does not follow it, with the landed AT-28 oracle blind
+to the difference. It is not a defect of this document, it does not gate this phase, and it is routed
+as a `DEFERRED:` line and in my final message rather than folded into this verdict.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
