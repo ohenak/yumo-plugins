@@ -35,6 +35,41 @@ current-state claim this round makes holds:
 
 ## Architecture
 
+No architectural surface moved this round. The diff adds no seam, no module, no double, and no test
+file: AT-06-4b is placed on `advisoryWaveGate.test.js`'s **existing** E-34 capture-failure fixture
+(§5.2 line 1528, "The capture-failure disposition, with the writers named"), which already drives
+`captureTreeSnapshot` to failure and already owns the halt-field assertions. That placement is the
+right one from a test-architecture standpoint — the negative arm shares the positive arm's fixture
+family, so the two arms cannot drift onto differently-configured runs, and no new same-batch
+same-new-file authoring hazard is introduced for PLAN (both ATs land inside a file A6-15 already
+owns as single writer).
+
+## Interfaces
+
+No interface changed. §4.2's `runWaveGateSeam` return type, including the `haltFields.snapshotRef:
+string | null` member added at v1.12, is untouched by this diff; my v3 assessment of it (closed
+union, total discriminator, `null` rather than `undefined` matching the `repairPaths: []`
+convention) stands unrevised.
+
+## Data Model
+
+The halt-fields contract at §4.5 is unchanged in shape — the five-member set
+`{rootCause, diagnosis, repairApplied, repairPaths, snapshotRef}` (line 1353) with `snapshotRef`'s
+two literal arms (line 1369: `null` on the capture-failure path; line 1382: `null` "when no capture
+was taken"). What this round adds around it is a cross-reference, not a model change: the
+Snapshot-ref row now distinguishes the wave-scoped promise ("one ref per wave, never overwritten by
+a later wave") from the run-scoped gap (§2.5's next-run overwrite), and names the latter as the
+condition `snapshotRef`'s rendering warns about. That closes v3 F-03 exactly as filed.
+
+One residue the completion pass did not sweep, and it is a data-model/oracle seam rather than
+prose: three sites still describe §4.5's field set as **four** fields — line 302 ("§4.5 gives the
+capture-failure halt's four fields literal, transcribable values"), line 1357 ("The capture-failure
+halt's **four fields** have literal values"), and, load-bearingly, §5.2 line 1530 ("a halt on
+AT-05-3's literal with §4.5's **four fields** attached at their literal values"). §5.2 is the only
+place in the document where the halt-field *values* are asserted as a transcribed set, so the stale
+count means the one positive oracle for `snapshotRef: null` is not actually specified anywhere.
+Filed as F-01 below with the exact remedy.
+
 ## Interfaces
 
 ## Data Model
