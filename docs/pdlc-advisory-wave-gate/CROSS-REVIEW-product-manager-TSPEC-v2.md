@@ -258,6 +258,39 @@ an obligation rather than dropping one — the drop is F-01.
 
 ## Recommendation
 
+**Needs revision.**
+
+TSPEC does not still hold as approved against REQ as it now stands. REQ v1.16 added an operator-facing
+conjunct to AC-6.3, that conjunct's condition is live on this TSPEC's own E-28 halt path, and no
+section of the TSPEC compresses it — no carrier, no literal, no oracle. One High finding, tagged
+`delta` and `local`: this round's upstream edit introduced it, and it sits in the material the edit
+touches. It routes, correctly, to a bounded revision of this document rather than a halt of the phase.
+
+Exactly what must change is enumerated as O-A through O-E above. O-A is upstream and in flight
+(SE's FSPEC v4 round raised the matching High), so this document's revision should follow the FSPEC
+round rather than race it — the TSPEC author should not have to invent a product observable that
+belongs one level up.
+
+Nothing settled is reopened. The wave-scoped ref name, the accepted overwrite cost, and the
+capture-failure disposition all stand as approved.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | REQ v1.16's new AC-6.3 conjunct — where the halt report points the operator at a captured pre-A6 tree state it must warn, in the same place, that re-running overwrites that capture (DEC-A6-03) — is compressed nowhere in TSPEC. The condition is live, not vacuous: §2.5 states "E-28's halt names the ref for the halting wave". §2.5 has the hazard and the remedy ("copy the ref before re-running") but delivers both as design prose to an engineering reader, never as a contract on the halt report's content. No carrier exists: §2.3/§4.5 pin the test-gate reason string to the pre-A6 literal, §4.5 pins the un-skip message "unchanged", and §4.5's `fields` set is closed at four. Fix: name the carrier on the halt that names the ref and transcribe its literal (REQ O-1 reserves the wording to TSPEC), after FSPEC lands the observable | §2.5, §4.5 halt-fields row |
+| F-02 | Medium | delta | local | §4.5's un-skip row concludes "which is what lets AT-05-3's literal comparison and AC-6.3 both hold". Against REQ v1.16 that discharges only AC-6.3's first conjunct, and the rule it establishes — nothing operator-facing in the reason string — forecloses the most natural carrier for the second. Re-derive the claim against both conjuncts, or restate it as covering the diagnosis conjunct only | §4.5, un-skip halt row |
+| F-03 | Medium | delta | nonlocal | §6 OQ-2's disposition records a run id or capture timestamp in the ref name as "the remedy if the overwrite ever costs an investigation" — a contingent remedy. REQ v1.16 made a bounded form of the remedy (the operator warning) unconditionally due. OQ-2's substance is not wrong, but its framing tells a reader the whole matter is parked pending evidence. Record that the warning is now mandated by AC-6.3; keep the ref-naming remedy contingent | §6, OQ-2 disposition |
+| F-04 | Low | delta | nonlocal | AT-05-5 asserts the halt "names the failed restoration" and AT-06-4 asserts the root-cause class; neither would fail if the overwrite warning were absent, so AC-6.3's second conjunct is currently unfalsifiable. Add one assertion on the ref-naming halt path, expected value transcribed as a literal per §4.5's capture-failure `diagnosis` pattern, once F-01's carrier lands | §5.6, AT-05-5 / AT-06-4 |
+| F-05 | Low | inherited | nonlocal | Carried forward unresolved from my v1 review (F-01 there), non-gating then and now: §6 OQ-7's disposition pins the full three-carrier observation point to "REQ AC-5.1 at v1.14", but AC-6.2's escalation-log append entered that carrier list at v1.15 (`f3fbbc7b`). Substance is HEAD-correct; only the version pin is stale. Fold into whichever touch of this document lands F-01 | §6, OQ-7 disposition |
+
+FINDING: High | delta | local | §2.5 and §4.5 halt-fields row | REQ v1.16's new AC-6.3 conjunct (the halt report that points at a captured pre-A6 tree state must warn in the same place that re-running overwrites it, DEC-A6-03) is compressed nowhere in TSPEC; the condition is live because §2.5 has E-28's halt name the ref, but the hazard and remedy appear only as design prose and no halt carrier exists — the test-gate reason string is pinned to the pre-A6 literal, the un-skip message is pinned "unchanged", and §4.5's fields set is closed at four
+FINDING: Medium | delta | local | §4.5 un-skip halt row | the claim "which is what lets AT-05-3's literal comparison and AC-6.3 both hold" discharges only AC-6.3's first conjunct against REQ v1.16, and the no-operator-text-in-the-reason-string rule it establishes forecloses the natural carrier for the second
+FINDING: Medium | delta | nonlocal | §6 OQ-2 disposition | records the overwrite remedy as contingent ("if the overwrite ever costs an investigation") when REQ v1.16 has made a bounded form of it unconditionally due; framing tells the reader the matter is parked when part of it is now owed
+FINDING: Low | delta | nonlocal | §5.6 AT-05-5 / AT-06-4 | no oracle would fail if the overwrite warning were absent, leaving AC-6.3's second conjunct unfalsifiable
+FINDING: Low | inherited | nonlocal | §6 OQ-7 disposition | version pin reads "REQ AC-5.1 at v1.14" while attributing the three-carrier observation point, but AC-6.2's escalation-log append entered that list at v1.15; substance HEAD-correct, pin stale — unresolved from v1, non-gating
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
