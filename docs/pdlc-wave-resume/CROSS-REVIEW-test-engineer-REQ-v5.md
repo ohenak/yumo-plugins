@@ -60,6 +60,26 @@ Out of scope for this round, deliberately:
 
 ## Constraints
 
+The verification constraints that shaped this round, and how each was satisfied:
+
+- **The authoring tree is not HEAD.** This branch is 1,637 commits behind the default branch
+  (`git rev-list --count origin/main ^HEAD` → `1637`, re-run this round), and the resume mechanism
+  does not exist in it: `git show HEAD:pdlc/workflows/orchestrate-dev.js | grep -c WAVE_STATE_PATH`
+  → `0`, against `10` in the same file at `origin/main`. Every code claim in this REQ therefore had
+  to be checked against `origin/main`, which is exactly what the REQ's own header note instructs.
+  I extracted `git show origin/main:pdlc/workflows/orchestrate-dev.js` to a scratch path and read
+  the mechanism there.
+- **Measurement claims are re-derived, not trusted.** OF-1 ships a re-derivation recipe; a recipe
+  that is not run is decoration. I ran it (below). This is the same discipline the REQ asks of its
+  own readers, and the reason the recipe belongs in the document.
+- **DEC-DOC-01.** A raw `file:line` anchor in a spec document is a Low `Process` finding unless the
+  position itself is the measured claim. `grep -n "\.js:[0-9]\|\.md:[0-9]"` over the whole REQ
+  returns nothing — the delta introduced no new anchors, and the v3 fix has not regressed. The
+  erratum brief cites `orchestrate-dev.js:15656` and `:15672`; the REQ correctly did **not** copy
+  those anchors into itself, naming symbols and FSPEC ids instead.
+- **REQ size budget.** 553 lines / 40,967 bytes, inside the 700-line / 60 KB budget the
+  `check-req-size` hook enforces. The delta grew the file by roughly 1 KB.
+
 ## Acceptance — routed items, one by one
 
 ## Risks
