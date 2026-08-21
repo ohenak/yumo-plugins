@@ -73,6 +73,58 @@ either freeze criterion; I record it as F-01 (Low, Process) and as a DEFERRED it
 
 ## Properties
 
+**No property statement moved, and I verified that mechanically rather than by reading.** The delta's
+67 insertions land in exactly four places — header line 11 and the version cell, §C.4's governing-case
+passage (lines ~1107–1155), §C.4's standing P-A-6/P-A-7 restatement (~line 1165), and §G.3's
+open/answered lists (~lines 1290–1332). `git diff 7e7d96aa HEAD` over the document shows no hunk
+inside Groups A–E, the AT-mapping tables, the severity column, the red/green trace column or the
+oracle sections. So every property body, domain, AT mapping and red/green trace I approved at v9
+stands untouched at v11.
+
+**The four properties the delta reasons about are still the four PLAN's case C names, and the
+correspondence is exact.** PLAN case C enumerates *"PROP-BOUND-03's `maxBytesPerDocument <= 0` case,
+PROP-BOUND-05/07/08, and the Group D amendments to the landed `learningsSelect.test.js`"*; §C.4's
+revised passage names the same set and adds no fifth. That matters for a product reading because it is
+the set-equality question, not a containment one: if the revision had quietly widened or narrowed the
+set while re-deriving the obligation, an implementer would inherit a different amendment scope than
+PLAN schedules. It did not.
+
+| PROPERTIES claim in the changed passages | Upstream / repository at HEAD | Holds? |
+|---|---|---|
+| Case A is scoped to a follow-up commit landing *before batch 7* | PLAN case A row: *"before batch 7"* | Yes |
+| Case B is scoped to *"batch 9 through batch 12"* and batch 13 is behind us | PLAN case B row, verbatim; LI-21 (batch 13) landed as `12a18628` | Yes |
+| Case C is *"after batch 13, the case that is live at HEAD"* | PLAN case C row, verbatim | Yes |
+| Case C's obligation: *"under case C they owe no ledger row, and they owe green"* | PLAN case C row, closing sentence, character-exact | Yes |
+| A landing red *"has found a real defect, not staged a TDD red"*, fix owed **before batch 14**, survival into batch 14 a **gate failure** | PLAN case C row states all three | Yes |
+| The Group D amendments to `learningsSelect.test.js` travel under case C too | PLAN case C's closing clause names them | Yes |
+| `helpers/learningsFixtures.js` and its consumers carry no row *"in **any of the three cases**"*, a ruling scoped to *"**this** heading-form follow-up commit, not a standing exemption"* | PLAN's paragraph below the table says exactly that | Yes |
+
+**PROP-BOUND-03's statement itself is unchanged and still carries its expected value as a literal
+transcription, not an echo.** Line 235's carve-out conjunct requires
+`{material: "", bounded: false, bytes: 0, sections: []}` for every `text`, attributed to *"TSPEC §I.3's
+`extractInjectableMaterial` JSDoc contract, '`maxBytes <= 0` short-circuits BEFORE the cut'; TSPEC §D.5
+states the same return"*. That is a spec transcription with a named source, and it is a **positive**
+assertion on the same path as the negative one (no cut occurs, therefore `bounded` is false) — the
+pairing my brief demands of every absence claim. Production at `orchestrate-dev.js:2370-2371` returns
+that exact object for `maxBytes <= 0`, so the property is falsifiable and the spec and the code agree;
+the property did not derive its expected value from the code.
+
+**One place where the delta's new prose is more cautious than the repository warrants — worth naming,
+not blocking.** The new paragraph says PROP-BOUND-03's zero case is *"the one arm **not** obviously
+green at landing"* because *"the zero-bound production half … has never been exercised through this
+seam and the first call may red."* The un-exercised half is true (no zero-bound call exists in the
+landed suite, verified above). The *"may red"* hedge is safe but pessimistic: the short-circuit is
+shipped at `orchestrate-dev.js:2370-2371` and returns precisely the four-field object PROP-BOUND-03
+transcribes, so on the code as it stands the first call should land **green** like the other three. A
+hedge that over-predicts red costs nothing under case C — case C's rule is the same either way, and a
+green landing satisfies it — so this is an observation, not a defect. DEFERRED.
+
+**The set-equality discipline in the properties the delta touches is intact.** PROP-BOUND-05's
+section-set arms and PROP-BOUND-03's `sections: []` return are both stated as `toEqual` set equalities
+over the full enumeration rather than containment checks, and the landed suite's own precedent at
+`learningsBlock.test.js:118`, `:139` and `:189` does the same (`expect(result.sections).toEqual([...])`,
+including the two-name case). A deleted case would red. Nothing in the delta relaxes that.
+
 ## Oracles
 
 ## Fixtures
