@@ -85,4 +85,35 @@ neither changes what the feature must do.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v1 High findings are resolved, and resolved with stronger oracles than they replaced: AT-12
+now measures outcome (c) as zero dispatches and zero gate invocations on two counting spies
+instead of an absence-shaped "no commit", and AT-08 asserts set equality over a four-key literal I
+verified against `parseImplementationConfig` instead of the absence of an unnamed key from an open
+universe. Nothing in the delta weakened a section I approved in v1: I re-checked every new claim
+about shipped behaviour against `origin/main`, and eight of nine hold exactly as written.
+
+The one that does not is F-01 — EC-20's "the V-wave commits on every invocation" — and it is
+Medium, not High, because the two seam counts AT-12 actually leans on are both script-owned and
+both correct; only the commit sub-clause depends on agent behaviour the script never verifies.
+Fixing it is a one-clause edit and does not change what the feature must do.
+
+For the next revision, in priority order: **F-01** (restate EC-20 and AT-12's fourth conjunct over
+the script-owned dispatch and gate only; demote the commit to agent-dependent), **F-02** (name the
+"first dispatch does not fault" precondition, since `withDispatchRetry` can legitimately make the
+count 2), then the three Lows. None of these blocks the TSPEC or PROPERTIES from starting; F-01
+and F-02 are cheapest to fix now, before AT-12's counts are transcribed into PROPERTIES as
+literals.
+
+One defect belongs to the REQ, not to this document, and is not counted in the verdict below:
+REQ-WVR-08 still reads "no wave executes, so no gate runs and **Phase I produces no new commit**"
+with no V-wave scoping (`docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md`, REQ-WVR-08, "How
+REQ-WVR-03 is discharged here"). The FSPEC's §7 round-1 note records that the erratum was raised;
+the REQ text at HEAD does not yet carry the fix, so it is re-emitted in this review's final
+message.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 3}
