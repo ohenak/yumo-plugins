@@ -206,7 +206,46 @@ two, in the document's own provenance record. Low, and worth one word's fix (F-0
 
 ## Positive Observations
 
+- **The unlisted correction is the one that earns this round.** The routed item was a numeral. The
+  `renderSection` clause was a false statement of fact about shipped code, sitting inside the
+  justification for who owns an amendment commit — the kind of clause a reader takes on trust because
+  it reads like an incidental aside. Fixing it in the same commit, unprompted by the dispatch's item
+  list, is the erratum doing more than it was asked to.
+- **The replacement clause is checkable, and I checked it.** "Passes `body:` on all six of its
+  section specs" and "passes it on the non-BR-6 section" are counts and locations, not impressions —
+  six is exactly six, and the non-BR-6 section is exactly the one. A correction that swaps one vague
+  claim for another is not a correction; this one swapped a false claim for a verifiable one.
+- **It re-derives the conclusion instead of dropping it.** The note explains *why* the corrected
+  facts still support "adds callers, not knobs" — two unexercised knobs plus one already in service
+  is less new surface, not more. The changelog says "unchanged and strengthened", and that is the
+  accurate word for it.
+- **It reconciled two reviewers' evidence rather than picking one.** TE and PM raised the same defect
+  with different citations; the erratum adopted the stronger evidence (landed suites, not the fixture
+  builder's internals) and credited both. That is the tag-selection discipline working at the author's
+  end.
+- **The lead-in fix adds the enumeration, not just the numeral.** "(A, B and C below)" costs four
+  words and makes the sentence self-checking against its table the next time a case is added — which
+  is precisely the failure mode that produced this erratum.
+- **The changelog is honest about its own blast radius, and the honesty is verifiable.** Every one of
+  its six "nothing else changed" clauses is true against the diff. A changelog whose self-description
+  survives a line-by-line check is what makes a delta confirmation cheap to run.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The routed lead-in item is resolved, and the unlisted `renderSection` correction is resolved with
+better evidence than either reviewer supplied. Upstream is byte-identical to the version I confirmed
+at v11 — all four digests reproduce — and I re-derived LI-08's compression of TSPEC §D.3 at HEAD
+rather than carrying it forward on trust; it remains faithful. Nothing I approved moved: no task
+changed batch, no `Deps` edge changed, no ledger row, AT partition, fixture or manifest row was
+touched, the case A/B/C table's cells are byte-identical, and case C's green-at-landing ruling still
+holds against shipped code.
+
+Five Lows, none gating. Four are inherited seams carried forward from v10/v11 that this edit did not
+touch and was not asked to; one is a single wrong attribution the new changelog row introduced. All
+five are one clause or one word each, and they belong in whatever pass next edits these blocks — not
+in a round of their own.
 
 ## Delta-Confirmation Findings
 
