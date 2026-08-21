@@ -118,6 +118,53 @@ changelog's 0.6 row still sits ahead of its 0.5 row (PLAN:603 before PLAN:604) �
 
 ## Verification
 
+**How this round was verified** (delta protocol — I did not re-read the document):
+
+1. `git diff 6a2d3007..HEAD` on the PLAN — 24/10 lines in four sections, itemised in §Overview.
+2. Extracted the `Batch`, `Deps`, owner and file columns for all 23 task rows at both revisions and
+   compared them: identical. This is what licenses "nothing I approved moved" as a checked claim
+   rather than a restatement of the changelog.
+3. Re-derived the four upstream sha256 digests at HEAD; all four match the values I recorded at v9.
+4. **Grounded every new empirical claim in code, not in documents:**
+   - `maxBytes <= 0` short-circuit — `orchestrate-dev.js:2306-2307`. Exists, matches LI-16's stated
+     contract.
+   - no-slot `RSN-NO-MATERIAL` drop before the bounds — `orchestrate-dev.js:2367-2372`. Keyed on the
+     extraction yielding no sections, with no threshold test in the selector, as LI-16 claims.
+   - `renderSection` knobs — `learningsFixtures.js:64-68`. `ordinal` and `gloss` accepted; two `#`
+     hardcoded; no `level` parameter. LI-02's TE F-02 answer is correct.
+   - "no landed suite passes `ordinal` or `gloss`" — grepped every suite under `__tests__/`: true.
+   - "…and `body`" — **false**, `learningsFixtures.js:402` passes it. F-01.
+   - `maxDocuments` default `5` — `REQ:224`. LI-12's "≥ 6" is the right bound.
+   - ERR-8's premise and status — `FSPEC:255`/`FSPEC:259`, `TSPEC:1603`.
+   - The two commits LI-08's note names — `1920f281` (LI-02) and `5e522a52` (LI-08) both resolve.
+5. Confirmed every file named in a changed task row exists or is declared new:
+   `__tests__/learningsSelect.test.js`, `__tests__/learningsConfig.test.js`,
+   `__tests__/learningsBlock.test.js`, `__tests__/helpers/learningsFixtures.js` and
+   `pdlc/workflows/orchestrate-dev.js` all exist at HEAD.
+
+**Not re-reviewed** (approved at v9, unchanged, per the delta protocol): §Overview, §File-ownership
+manifest, §Dependencies' edge tables, §Verification's batch ladder and measured baseline, and the
+task rows other than LI-02, LI-08, LI-12 and LI-16.
+
+**Oracle quality of the round's one new oracle clause.** LI-AT-30's conjunct (iii) now has the
+precondition that makes it falsifiable. Checked against the three standards this review is held to:
+the expected value is a literal transcription from REQ §4.1 (`5`) rather than derived from the code
+under test; the conjunct is not absence-only — (iii)'s "no document carries `RSN-COUNT`" is paired
+on the same path with (i)'s positive "the key is present with empty BR-8 rows" and (ii)'s
+**set-equal** `rejected[]` over the full enumerated corpus, so a deleted case fails rather than
+passes. That is exactly the shape a completeness contract needs.
+
+**Product-lens verdict on the delta.** The round's substance is ownership and falsifiability, both
+of which are product concerns in the end. Before v0.7, the behaviour a user sees at
+`maxBytesPerDocument: 0` — an enabled run that reports empty rows rather than silently burning
+document slots — was owed by no task in the plan and asserted by a conjunct that could not fail.
+Either gap alone would let the wave ship green with that promise unproven. Both are closed, and
+closed without moving a single batch, which is what a frozen round should look like.
+
+**No scope creep, no reinterpretation.** The delta adds no behaviour, changes no acceptance
+criterion's meaning, moves no AT between tasks and invalidates no fixture. Its changelog row claims
+exactly that, and the four-column diff bears the claim out.
+
 ## Findings
 
 ## Questions
