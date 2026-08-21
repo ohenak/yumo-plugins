@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.9 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.10 | 2026-08-20 |
 
 **On dates and on resolution vintage (PM v4 F-07, TE v4 F-02 / Q-01).** Revisions 1.0 and 1.1
 carried `2026-08-20`, a date that had not happened; 1.2 corrected it to `2026-08-19` without
@@ -48,6 +48,30 @@ no hygiene note, no sweep figure and no disposition of the residue, and no desig
 absorption is a recorded no-op rather than an edit. The round's two remaining findings are likewise
 not DECISIONS edits — PM v9 F-01 asks PLAN to cite the appendix rather than restate column (1)'s
 count, and PM v9 F-02 is a harvest item about the pipeline's missing evidence-appendix artifact class.
+
+**On v1.10 (closing pass, all claims re-grounded against the working tree).** No decision entry's
+`Decision`, `Constraints`, `Reversibility` or `Re-evaluation triggers` text changed; `DEC-A6-01`…
+`DEC-A6-04` remain byte-frozen. Four repairs, three of them the same defect the v1.8 note names —
+a HEAD measurement left standing in the one document whose purpose is to hold none, which the tree
+then falsified: (1) Context cited the bundle as `pdlc/workflows/dist/orchestrate-dev.bundle.js`;
+`build-runtime.mjs` writes `pdlc-cli.mjs` into `pdlc/workflows/dist/` and its own comment says the
+`.claude/workflows/` consumer copy "is produced by the maintainer sync step, not this script", so
+the path is corrected and the load-bearing half — one module, inlined from
+`pdlc/workflows/orchestrate-dev.js` — restated. (2) The `DEC-A6-01` verb bullet said the five verbs
+appear "zero times in `orchestrate-dev.js` today"; `captureTreeSnapshot` and `restoreTreeSnapshot`
+now exist and drive all five, so the bullet is restated as a claim about A6's mechanism —
+five verbs new to the workflow, `add`/`reset`/`rev-parse` reused — with the present-tense count
+routed to `SIZING-pdlc-advisory-wave-gate.md`. (3) The `DEC-A6-04` "nothing moves" bullet cited two
+counts, both since falsified: the example now carries an `advisory` section and
+`ci-arrangement.test.js` mentions `advisory` once, in a comment. The claim it supported — there was
+no prior expectation over the key to relocate — is true of the pre-A6 baseline and is restated as
+such. (4) The companion bullet asserted a channel *order* at HEAD; it is restated as the principle
+that survives any tree state — the engine expectation and the example edit are one red/green pair,
+so neither channel is free. Verified unchanged and left standing: `stash` still has no call site;
+`reset --hard` still has exactly one, on the seam-revert path; `ADVISORY_DEFAULTS.enabled` is still
+`false`; the build-outputs commit precedent (`chore({feature}): wave {N} build outputs` /
+`Wave {N} build outputs`) and the wave contract's `Do NOT run git add or git commit` clause are both
+verbatim in the shipped module.
 
 ## Context
 
