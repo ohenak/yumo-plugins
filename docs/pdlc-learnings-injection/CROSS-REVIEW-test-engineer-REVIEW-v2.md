@@ -38,6 +38,19 @@ Four instruments:
 Scope discipline: only the changed sections were read for new issues. Sections v1 approved were
 not re-litigated.
 
+**Closing pass (anchors re-verified at HEAD `558d0d96`).** Every `file:line` anchor in this review
+was re-resolved against the working tree in a final pass; the `orchestrate-dev.js` anchors were
+written against a pre-`e010c2b2` numbering and have been corrected in place. The verified anchors
+are: the BR-1 decision `const injectHere =` at `orchestrate-dev.js:10293`, its composition-site
+probe `_recordDocType(docType, injectHere, dispatchKind)` at `:10302`, the post-`selection`
+injection call at `:10340-10349`, the reviewer prompt literal `This is iteration ${iteration}.`
+at `:10711`, the single-predicate `RSN-NO-MATERIAL` branch at `:2458`, the unconditional
+`RSN-COUNT` push at `:2519`, and the unguarded `doc.orderKey` interpolation at `:2548`. No claim,
+severity, or count changed in this pass — only the anchors that carry them. `hasAnySectionHeadingLine`
+is absent from the tree except as the historical note at `:2451`, and the deleted `propagateBytes`
+guard survives only as the commented-out line at `:2498`, both consistent with F-04 and F-07 being
+resolved by deletion rather than by re-shaping.
+
 ## Delta Verification — v1's five High findings
 
 All five are **resolved**, each confirmed by a kill, not by reading the change.
@@ -54,7 +67,7 @@ remaining report, paired with the positive half — the path IS in BR-8's rows (
 E-4 confirms all three are falsifiable.
 
 **F-02 (BR-1's second conjunct had no falsifying test) — RESOLVED.** Restoring the mutant
-(`const injectHere = dispatchKind === "authoring";`, `orchestrate-dev.js:9463`) now reds two
+(`const injectHere = dispatchKind === "authoring";`, `orchestrate-dev.js:10293`) now reds two
 tests (E-1). The new `reviseOnceInPhases` script option (`learningsDispatchSet.test.js:118-158`)
 is what put the case AC-1.2 names — Phase CR's optimizer, `dispatchKind: "authoring"` with
 `docType: null` — into the dispatch universe at all; under the all-approve script it was absent,
@@ -68,19 +81,19 @@ and the run did inject elsewhere (`:895-931`).
 (`baselineBytes(caseId, i)`) and compares them to prompts composed by branch code at HEAD, across
 all four non-injecting states of PLAN §DoD item 4 (DISABLED / EMPTY / UNLISTABLE /
 ADMITS-NOTHING) × two capture scenarios. Kill-tested (E-3): a one-character change to the
-reviewer prompt literal (`orchestrate-dev.js:9881`) reds four of these tests. The subject is
+reviewer prompt literal (`orchestrate-dev.js:10711`) reds four of these tests. The subject is
 branch code and the expected value is merge-base bytes on disk — an expected value that cannot
 be derived from the code under test, which is exactly what v1 asked for.
 
 **F-04 (`RSN-NO-MATERIAL` carried an unspec'd second conjunct) — RESOLVED.**
 `hasAnySectionHeadingLine` is deleted and the branch is the single predicate TSPEC §T.6 states
-(`orchestrate-dev.js:2360`). Re-introducing the conjunct reds a dedicated new test —
+(`orchestrate-dev.js:2458`). Re-introducing the conjunct reds a dedicated new test —
 `learningsSelect` › `LI-AT-28 (second disjunct shape) — a document with NO section heading line
 at all is dropped RSN-NO-MATERIAL on the same branch, consumes no slot, and never displaces a
 contributor` (E-2). The three ordering ATs whose corpora were heading-less
 (`LI-AT-04`/`09`/`10`) now build documents carrying a BR-6 priority section and each carries the
-control `selected.every((d) => d.bytes > 0)` (`learningsSelect.test.js:89-91`, `:217-219`,
-`:266-268`), so the orderings they assert now order documents that actually contribute a byte.
+control `selected.every((d) => d.bytes > 0)` (`learningsSelect.test.js:94`, `:222`,
+`:271`), so the orderings they assert now order documents that actually contribute a byte.
 
 **F-05 (the shipped runtime bundle had drifted; a committed test was red at HEAD) — RESOLVED.**
 `build-runtime.mjs --check` exits 0 and `consolidationBuild.test.js` is green in the full run.
@@ -100,7 +113,7 @@ and re-emitted as `ERRATUM: FSPEC`.
 
 **F-07 (an implementation-invented reason-id rule, and an expected value tuned to it) — RESOLVED.**
 The `propagateBytes` guard is deleted; overflow documents are unconditionally `RSN-COUNT`
-(`orchestrate-dev.js:2432-2434`), which is what BR-5 and AC-3.2's cause-defined ids actually say.
+(`orchestrate-dev.js:2519`), which is what BR-5 and AC-3.2's cause-defined ids actually say.
 `LI-AT-13`'s comment no longer justifies `4973` by keeping the byte failure off the window's last
 slot (`learningsSelect.test.js:291-305`), and a new companion test holds the corpus fixed while
 moving the first byte failure between window index 4 and index 2, asserting the full
@@ -111,7 +124,7 @@ been hiding (`:124-146`).
 
 **F-08 (the composition-site set-equality test's clause (b) was a tautology) — RESOLVED.** The
 probe now carries the production decision — `_recordDocType(docType, injectHere, dispatchKind)`
-(`orchestrate-dev.js:9472`) — and `acceptedDocTypes` is populated from `injectHere === true`
+(`orchestrate-dev.js:10302`) — and `acceptedDocTypes` is populated from `injectHere === true`
 rather than from the test's own re-application of the hand-transcribed literal
 (`learningsDispatchSet.test.js:675-684`). The literal survives as the *expected* value of a set
 the production code computed. Two controls were added
@@ -121,7 +134,7 @@ the repair that makes F-02's mutant die at this seam as well as at the dedicated
 one-argument `() => {}` and every pre-existing caller is unaffected (full suite green).
 
 **F-09 (a null ordering key renders the literal `null` in the prompt) — STILL OPEN, still Low.**
-`orchestrate-dev.js:2462` interpolates `doc.orderKey` unguarded, so a document with material but
+`orchestrate-dev.js:2548` interpolates `doc.orderKey` unguarded, so a document with material but
 no parseable `Date Completed` renders `completed null` into an author's prompt. Unchanged in this
 delta and carried forward below as F-01. TSPEC §OQ.1 does not state the rendering for that case;
 re-emitted as `ERRATUM: TSPEC`.
@@ -131,7 +144,7 @@ re-emitted as `ERRATUM: TSPEC`.
 The delta also lands three PM-round repairs that touch code this lens covers; none regresses
 anything v1 approved.
 
-- **Injection moved after `selection`** (`orchestrate-dev.js:9506-9519`) so the dispatch record's
+- **Injection moved after `selection`** (`orchestrate-dev.js:10340-10349`) so the dispatch record's
   `mode` is this episode's actual mode. Verified: `mode` is consumed only by the record
   (`buildLearningsInjector`'s `record` object), never by `renderLearningsBlock`, so no composed
   prompt byte moves — which is why the F-03 baseline oracles above still hold on all four states.
@@ -152,8 +165,8 @@ anything v1 approved.
 
 | ID | Severity | Scope | Finding | Section ref |
 |----|----------|-------|---------|------------|
-| F-01 | Medium | Local | **The baseline oracle's ADMITS-NOTHING arm cannot tell itself apart from EMPTY.** The block's own commentary says arm (4) "is the only arm where the injector actually opens a file and renders" and that "AC-6.2's named regression is undetectable without it" (`learningsBaselineGuard.test.js:196-206`), but nothing in that arm asserts the corpus document was enumerated, opened, or rejected. Verified (E-5): replacing arm (4)'s `stdout` with `""` — degrading it to a second EMPTY arm — leaves all 20 tests green. The premise the arm's value rests on is unasserted, so a change to `LEARNINGS_CORPUS_ARGV`, to the glob, or to `isLearningsEnumerateCall` silently deletes the arm's coverage while the file stays green. Fix: give arm (4) a per-arm control — record the `_readFile` paths and assert `docs/completed/li06-prior/LEARNINGS-li06-prior.md` was opened on that arm and on no other, or thread a sink and assert `corpusOutcome === null` with one `RSN-NO-MATERIAL` rejection row. | AC-5.1a, AC-6.2; `learningsBaselineGuard.test.js:255-268` |
-| F-02 | Low | Local | **A null ordering key still renders the literal `null` into an author's prompt.** Carried unchanged from v1's F-09: `renderLearningsBlock` interpolates `doc.orderKey` unguarded (`orchestrate-dev.js:2462`), so a document with BR-6 material but no parseable `Date Completed` — the exact shape `LI-AT-10` establishes as eligible — produces `<<< … — feature X, completed null >>>`. Not a correctness defect of the selection rules and not gating; it is operator-visible text with no oracle over it because TSPEC §OQ.1 does not state the rendering for that case (re-emitted as `ERRATUM: TSPEC`). Once §OQ.1 states it, one assertion in `learningsBlock.test.js` closes it. | AC-1.4; `orchestrate-dev.js:2462` |
+| F-01 | Medium | Local | **The baseline oracle's ADMITS-NOTHING arm cannot tell itself apart from EMPTY.** The block's own commentary says arm (4) "is the only arm where the injector actually opens a file and renders" and that "AC-6.2's named regression is undetectable without it" (`learningsBaselineGuard.test.js:196-200`), but nothing in that arm asserts the corpus document was enumerated, opened, or rejected. Verified (E-5): replacing arm (4)'s `stdout` with `""` — degrading it to a second EMPTY arm — leaves all 20 tests green. The premise the arm's value rests on is unasserted, so a change to `LEARNINGS_CORPUS_ARGV`, to the glob, or to `isLearningsEnumerateCall` silently deletes the arm's coverage while the file stays green. Fix: give arm (4) a per-arm control — record the `_readFile` paths and assert `docs/completed/li06-prior/LEARNINGS-li06-prior.md` was opened on that arm and on no other, or thread a sink and assert `corpusOutcome === null` with one `RSN-NO-MATERIAL` rejection row. | AC-5.1a, AC-6.2; `learningsBaselineGuard.test.js:255-268` |
+| F-02 | Low | Local | **A null ordering key still renders the literal `null` into an author's prompt.** Carried unchanged from v1's F-09: `renderLearningsBlock` interpolates `doc.orderKey` unguarded (`orchestrate-dev.js:2548`), so a document with BR-6 material but no parseable `Date Completed` — the exact shape `LI-AT-10` establishes as eligible — produces `<<< … — feature X, completed null >>>`. Not a correctness defect of the selection rules and not gating; it is operator-visible text with no oracle over it because TSPEC §OQ.1 does not state the rendering for that case (re-emitted as `ERRATUM: TSPEC`). Once §OQ.1 states it, one assertion in `learningsBlock.test.js` closes it. | AC-1.4; `orchestrate-dev.js:2548` |
 
 **Scope note.** Both findings are `Local`: F-01 is a control missing from one test block in this
 feature, and F-02 waits on an upstream sentence about this feature's own rendered form. Neither
@@ -164,7 +177,7 @@ sections introduced none.
 
 ## Evidence
 
-**E-1 — F-02's mutant now dies.** With `orchestrate-dev.js:9463-9464` replaced by
+**E-1 — F-02's mutant now dies.** With `orchestrate-dev.js:10293-10295` replaced by
 `const injectHere = dispatchKind === "authoring";`:
 
 ```
@@ -178,7 +191,7 @@ Tests: 2 failed, 18 passed, 20 total
 In v1 the same mutant left the whole repository green. File restored; `git diff --stat` empty.
 
 **E-2 — F-04's conjunct cannot be reinstated.** Restoring a second conjunct on
-`orchestrate-dev.js:2360` (`&& /^##\s/m.test(entry.text)`) reds exactly the test written for it:
+`orchestrate-dev.js:2458` (`&& /^##\s/m.test(entry.text)`) reds exactly the test written for it:
 
 ```
 ● learningsSelect … › LI-16: LI-AT-28 (second disjunct shape) — a document with NO section
@@ -188,7 +201,7 @@ Tests: 1 failed, 120 passed, 121 total
 ```
 
 **E-3 — F-03's baseline is a live oracle.** Changing one byte of the base reviewer prompt
-literal (`orchestrate-dev.js:9881`, `This is iteration ${iteration}.` → `..`) reds the
+literal (`orchestrate-dev.js:10711`, `This is iteration ${iteration}.` → `..`) reds the
 `PHASE-R-REVIEW-PROMPTS` comparison on all four non-injecting states:
 `Tests: 4 failed, 16 passed, 20 total`. In v1 no test read a fixture file at all.
 
