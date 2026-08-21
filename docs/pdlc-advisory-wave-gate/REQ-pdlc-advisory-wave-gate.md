@@ -8,14 +8,21 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) |
-| Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | — |
+| Upstream | `pdlc-advisory-tier` REQ (the five-seam tier this extends) → **REQ** |
+| Downstream | FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory) |
+| Cross-Reviews | harvested into `LEARNINGS-pdlc-advisory-wave-gate.md` |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.13 | 2026-08-20 |
+| pdlc | approved (shipped) | Claude | 1.14 | 2026-08-20 |
+
+*v1.14 changelog (erratum round, Phase F). Header lineage restated as the ordered chain, the
+artifacts this REQ feeds, and the harvested cross-reviews; Status is `approved (shipped)` — merged
+as PR #66 (`bb4d36fb`), queue row 19 `done`, relocation to `docs/completed/` still SE Q-02's.
+AC-1.1 and R-5 name `c8aa22a4` as the base their pre-A6 readings are measured at. AC-5.1 pins its
+observation point, bounds it to tracked paths, and states the failed-capture outcome. No decision
+reopened.*
 
 *v1.13 changelog (cross-review round 2). TE F-01 (High): AC-2.4's zero-budget conjunct restated on
 the shipped summary — one `escalated` invocation per red wave, `resolved: 0` — the budget escape's
