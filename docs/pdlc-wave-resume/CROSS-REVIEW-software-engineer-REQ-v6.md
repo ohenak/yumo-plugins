@@ -51,6 +51,20 @@ bytes I approved at v1.6.
 
 ## Non-Goals
 
+Deliberately outside this round:
+
+- **Re-review of unchanged sections.** §§1–4, 6–8, and the whole requirement/invariant surface were
+  approved at v1.6 and are untouched by this delta. I did not re-litigate them, and no finding
+  below contests a settled decision.
+- **The TSPEC's own `.worktreeinclude` citation.** `TSPEC-pdlc-wave-resume.md:879–881` still names
+  the file directly — but that is the downstream document that *raised* the observation, it
+  already records the untracked status itself, and TSPEC is not the artifact under confirmation
+  here. Not a finding against this REQ.
+- **Product framing, user-story shape, test-level choices.** Not the engineering lens.
+- **Whether BL-04 should be discharged.** Whether the branch gets rebased is a Phase-level
+  operator decision; my scope is only whether the REQ *states* BL-04's status truthfully and
+  self-consistently. It now does.
+
 ## Constraints
 
 ## Acceptance Criteria
