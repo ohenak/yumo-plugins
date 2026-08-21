@@ -141,15 +141,59 @@ with-capture arm is exercised by a test and not only by AT-06-4's conditional.
 
 ## Open Questions
 
-_pending_
+§7's obligation table is unchanged and still correct. O-1's row already reads *"The restoration
+mechanism behind BR-9, and the point at which the pre-A6 tree state is captured. Its failure modes
+are E-28 (restoration fails) and E-34 (capture fails)"* with the routed scope *"Only the observable"*
+— so BR-14's new deferral of name, storage form and lifetime lands in an obligation that already
+exists and already names both failure modes. No new obligation is owed by this edit, and none was
+invented, which is the correct outcome for an erratum round.
+
+Nothing in the delta reopens a settled decision. The changelog's claim "Nothing else changed; no
+decision reopened" is accurate against the diff I read.
+
+One item for the phase owner, not for this document: DEC-A6-03 needs its known-gap paragraph closed
+(F-03). Its own re-evaluation trigger names this exact event, so the close is mechanical.
 
 ## Positive Observations
 
-_pending_
+- The edit is **minimal and surgical**: +16/-7 across five commits, each commit one coherent move.
+  Nothing was rewritten that did not need to move, and every touched location is a location the routed
+  item actually requires.
+- **The altitude discipline held under pressure.** The obvious wrong answer here was to write
+  `refs/pdlc/a6-snapshot-{waveNum}` into the FSPEC — the ref name is right there in DEC-A6-03 and in
+  TSPEC §2.5, and it would have made the AT trivially concrete. The author declined and routed name,
+  storage and lifetime to O-1 instead. That is the harder and correct call.
+- **E-30's deferral (`"BR-14's halt-report contents in full"`)** removes a duplicate enumeration at
+  exactly the moment it would have gone stale. Small change, real durability win.
+- **AT-06-4b exists at all.** Adding the falsifying companion in the same round as the positive
+  conjunct — unprompted by any reviewer item — is the difference between a testable spec and a spec
+  that reads as testable.
+- Both routed items (TE's and PM's) are discharged by a single coherent clause rather than two
+  parallel additions, and the changelog names the provenance honestly ("routed since round 5 and
+  previously unlanded").
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes.**
+
+The delta resolves both routed items and does not break anything I previously approved. v4 F-01
+(High) is discharged: AC-6.3's preservation-warning conjunct is now represented in §3, §4, §5 and §6,
+and §2's coverage claim for AC-6.1…AC-6.4 has become true. Re-measured against REQ v1.16 at the
+dispatched hash, the FSPEC remains a faithful compression of the upstream text it now leans on.
+
+Three non-gating findings remain, none of which should hold this phase:
+
+- **F-01 (Medium, inherited)** — §2 still pins upstream as REQ v1.13 while the v1.7 changelog cites
+  v1.16. Correct the pin in the next edit that touches this file.
+- **F-02 (Medium, delta)** — E-28 did not receive the reciprocal with-capture clause that E-34
+  received, leaving BR-14's conditional antecedent unestablished at FSPEC altitude. One clause on
+  E-28, symmetric with E-34's.
+- **F-03 (Low, delta)** — DEC-A6-03 still asserts the routing has not landed; it has. Close the
+  known-gap paragraph per the record's own re-evaluation trigger.
+
+All three fit in a single follow-up edit alongside each other. None requires a new decision, none
+changes an observable, and none blocks TSPEC or implementation from proceeding against this FSPEC as
+written.
 
 ## Delta-Confirmation Findings
 
