@@ -110,6 +110,63 @@ decompositions agree on the set — 13 + 5 = 17 + 1 = 18. Both are right; the do
 
 ## Oracles
 
+**No oracle section moved.** §Oracles spans `:608`–`:808`; no hunk lands between `:18` and `:1094`.
+§O.1–§O.9 and §G.1's obligation table are byte-identical. What the delta carries is quotation and
+counting, so I applied the three test-discipline checks to those.
+
+**No implementation echoes.** Every expected value the delta writes is a literal transcription from
+PLAN or from a measurement command, never derived from the artifact it describes. The three `grep -cF`
+results above are the proof for the quotations. For the counts, the delta does the stronger thing: it
+publishes the command whose output it claims (*"a raw `git ls-files pdlc/workflows/__tests__ | grep
+learnings` returns 39 paths"*), so the number is falsifiable by re-running rather than by re-reading.
+I re-ran it; it returns 39.
+
+**A negative was replaced by a positive on the same path — the exact shape the discipline asks for.**
+The `:1181` edit's before-state was an absence-flavoured fallback (*"if it lands red, its rows are
+amended into the ledger by name first"*), a route that no longer exists upstream. The after-state names
+what **does** happen instead, on the same path and in three positive limbs: *"no ledger remains to amend
+into, the obligation is green-at-landing, and a red landing is a real defect owed a fix **before batch
+14 runs**"*. That last limb is the terminating condition PLAN v0.8 substituted for case B's ledger span
+(`PLAN:684`-chain, case C), so the positive counterpart is upstream-anchored rather than invented here.
+
+**The absence claim in §G.2 gap 5 also gained its positive counterpart.** The old text asserted only
+what PLAN lacked (*"a reader using PLAN's manifest as the feature's test inventory would now under-count
+by four"*). The new text pairs it with what exists: PLAN v1.2 items (3)/(4) and v1.3 item (1), the
+**nineteen-row** §Post-batch remediation subsection, and the option PLAN chose among the three the item
+left open. I counted the rows: `PLAN:271`–`:291` is a table of **19** data rows under a header and rule
+line, exactly as claimed, and `PLAN:310` states the subsection is excluded from the ladder arithmetic.
+
+**And the unowned-file claim gained an execution-path positive, which is the best thing in this delta.**
+The old text said only that no property *names* `helpers/learningsComposition.js`. The new text keeps
+that and adds what the file *does*: its header reads *"the AC-2.5 / PROP-ORDER-05 composition, in one
+place so it can be driven from TWO SEPARATE NODE PROCESSES (CODE_REVIEW v1 F8)"*
+(`pdlc/workflows/__tests__/helpers/learningsComposition.js:1`–`:3`, verbatim modulo the line wrap), and
+the task-owned `learningsDispatchSet.test.js` both imports from it
+(`learningsDispatchSet.test.js:42`, `import { composeAuthoringPrompts } from
+"./helpers/learningsComposition.js"`) and spawns it as a child process
+(`:47` `const COMPOSITION_CHILD_PATH = join(__dirname, "helpers", "learningsComposition.js")`, used at
+`:531` `spawnSync(process.execPath, [COMPOSITION_CHILD_PATH], …)` beside the in-process call at `:528`).
+The helper's own line `:46` names the role — *"The CLI entry point of the composition helper —
+PROP-ORDER-05's SECOND process invocation"*. So the document's new sentence — *"PROP-ORDER-05's
+two-process oracle **executes through** it"* — is true at the call site, not merely plausible. That
+converts "unowned" from a coverage worry into a manifest-completeness fact, which is the correct
+diagnosis and now the recorded one.
+
+**Set-equality on the enumerations the delta touches.** Three enumerations are inside the delta and all
+three are closed sets rather than containment claims:
+
+- **The seventeen/eighteen file set.** Checked by difference, not by sampling: 17 non-fixture paths from
+  `git ls-files`, 13 + 4 by provenance, both sides equal. A deleted file would break the equality on one
+  side and not the other.
+- **PLAN's nineteen remediation rows.** Counted, not quoted: 19 rows found, 19 claimed.
+- **The four unowned files.** Named individually with their CODE_REVIEW v1 findings (F1/F7/F12, F8, F10,
+  F11/F12), and each name resolves to a tracked path.
+
+One scoping imprecision inside the last of these: *"Four of the seventeen no PLAN **task row** owns"* is
+true as stated, but the engine-side eighteenth file is **also** owned by no task row — `PLAN:276` rows it
+as *"new — no LI owner"*. Scoped to the seventeen the sentence is exact; a reader taking "four" as the
+count of unowned files across the whole eighteen would be off by one. Low (F-03).
+
 ## Fixtures
 
 ## Findings
