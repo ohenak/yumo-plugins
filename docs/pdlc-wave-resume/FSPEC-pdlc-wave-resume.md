@@ -218,4 +218,100 @@ without an announcement.
 
 ## 6. Acceptance Tests
 
+Each test is stated so a test engineer can derive a failing test without asking a question. The
+**oracle is always an observed resume** — an announced outcome, a dispatched or undispatched
+wave, a report row — never the presence of a code path (REQ §1).
+
+**AT-01 — automatic resume at the failed wave (REQ-WVR-01).**
+*Who:* pipeline operator. *Given:* a Phase I run of a multi-wave plan halted at wave N>1, the
+cause since addressed, the same feature and an unchanged plan, and no resume-related
+configuration set. *When:* the pipeline is re-invoked. *Then:* waves 1..N-1 are each announced as
+skipped and dispatch nothing; wave N is dispatched; the run announces its resume point as wave N
+with provenance `automatic`; the final report states the same.
+
+**AT-02 — the disregard catalogue is complete and closed (REQ-WVR-02).**
+*Who:* pipeline maintainer. *Given:* one record per row of §3.2. *When:* the pipeline is
+invoked for each. *Then:* each produces outcome (a); IG-1..5 each announce their own distinct
+reason and IG-6 announces nothing. *Oracle form:* **set equality** over {IG-1..IG-6} — a deleted
+cause must fail a test rather than pass one — not containment.
+
+**AT-03 — ordering of disregard causes (BR-03).**
+*Given:* a record failing two causes at once (e.g. a foreign feature *and* a changed plan).
+*When:* invoked. *Then:* the earlier cause of §3.2's order is the announced reason.
+
+**AT-04 — verification independence (REQ-WVR-03).**
+*Given:* any record content, including bytes chosen adversarially, that produces outcome (b).
+*When:* the resumed run reaches its first executed wave. *Then:* the full suite runs over the
+whole tree before any new commit lands, with the same gate outcome semantics as an unresumed
+run. *Negative arm:* no record content produces a commit that precedes a whole-tree verification.
+
+**AT-05 — operator override wins, with provenance (REQ-WVR-04).**
+*Given:* both a valid record and a manual resume point beyond the plan's first wave. *When:*
+invoked. *Then:* the manual point is the resume point, provenance is `operator-set`, and no
+disregard reason is announced — the record was not consulted.
+
+**AT-06 — the pointer at its default is not a setting (REQ-WVR-04 boundary).**
+*Given:* a valid record and a manual resume point equal to the plan's first wave. *When:*
+invoked. *Then:* the record is honoured and provenance is `automatic` — byte-identical in
+outcome to having set nothing.
+
+**AT-07 — the pointer past the end is a full run, not a skip (BR-05).**
+*Given:* a valid record and a manual point past the last wave. *When:* invoked. *Then:* outcome
+(a) from wave 1, announced, provenance `operator-set`; no wave is skipped.
+
+**AT-08 — the hatch is named where it is needed (BR-06).**
+*Given:* runs resolving outcome (b) and outcome (c). *Then:* each run's announcement of that
+outcome names the record-removal hatch. *And:* no configuration value anywhere in the pipeline
+forces a full run — asserted as the absence of such a key from the config surface.
+
+**AT-09 — verified-but-uncommitted is never completed (REQ-WVR-09).**
+*Given:* a run whose waves' gates pass but which commits nothing, because no commit transport is
+available. *When:* the pipeline is re-invoked for the same feature and unchanged plan. *Then:*
+implementation starts at that same wave, announcing it as not previously completed. *Companion
+arm:* the same run with a transport, under either gate mode, records normally — so the guard is
+shown to be the transport, not the gate mode.
+
+**AT-10 — a no-change wave is still completed (REQ-WVR-06).**
+*Given:* a plan whose wave K contains only tasks that produce no changes, run to a halt at a
+later wave. *When:* re-invoked. *Then:* the resume point announced is past K. *Negative arm:*
+completion does not change when a stray unrelated commit is added or removed from history.
+
+**AT-11 — ancestry corroboration is falsification, not archaeology (REQ-WVR-06 carve-out).**
+*Given:* a valid record whose named commit is no longer reachable from the branch tip. *When:*
+invoked. *Then:* outcome (a), announced with that reason (EC-06). *And:* with the probe
+unavailable, the record is not disregarded on ancestry grounds (EC-07).
+
+**AT-12 — all waves recorded: Phase I skipped in full (REQ-WVR-08).**
+*Given:* a valid record for this feature and unchanged plan accounting for every wave. *When:*
+invoked. *Then:* no wave is dispatched, no gate executes, Phase I produces **no commit**, the
+skip is announced with its reason and the hatch, and the report's Phase I row carries a skip
+status distinct from an executed Phase I's — one row, not two.
+
+**AT-13 — the outcome catalogue is closed at three (BR-01).**
+*Oracle form:* set equality over {(a) full run, (b) resume mid-plan, (c) skip Phase I} across a
+fixture suite covering all three; a deleted outcome fails a test.
+
+**AT-14 — the record never becomes tracked content (REQ-WVR-10).**
+*Given:* any run of any length that writes the record. *When:* the run's commits are inspected.
+*Then:* no commit contains the record, and the record is not a tracked file. *And:* its exclusion
+is anchored by an ignore rule, asserted against the rule itself rather than against the absence
+of churn in one run.
+
+**AT-15 — a failed write is a notice, never a halt (BR-15).**
+*Given:* a run in which the record cannot be written. *Then:* a notice is announced, the run
+continues to its normal outcome, and a subsequent invocation resolves outcome (a).
+
+**AT-16 — queue parity (REQ-WVR-07).**
+*Given:* the same feature, plan and record. *When:* run once directly and once through a
+queue-delegated iteration. *Then:* both resolve the same outcome, the same resume point and the
+same provenance, and the queue run's own report states them. *Discriminating arm:* the record
+resolves against the same working directory on both paths — a resume point differing between the
+two fails this test while AT-01..05 all still pass.
+
+**AT-17 — advisory remediation composes without coordination (EC-16).**
+*Given:* a halted wave on which the advisory wave-gate seam acts. *Then:* on resolution the wave
+commits and is recorded; on failure the identical halt stands and the record still names the
+wave below. *And:* the record is in no wave's owned-path set, so no remediation envelope can
+authorise touching it.
+
 ## 7. Open Questions
