@@ -52,7 +52,38 @@ to land — see §Edge Cases.
 
 ## Linked Requirements
 
-_pending_
+The FSPEC's §2 traceability table maps seven FSPEC clauses onto REQ-WVR-01..08. The erratum
+touched the **body** of two criteria (REQ-WVR-02, REQ-WVR-08) and no criterion's id, priority,
+phase or existence. The traceability table therefore still resolves: every id it cites is present
+at HEAD, and no criterion at HEAD is left uncovered.
+
+| REQ id at HEAD | Touched by erratum? | FSPEC clause that leans on it | Still faithful? |
+|---|---|---|---|
+| REQ-WVR-01 | no | FSPEC-WVR-01 (§3.1, D-1..D-3) | yes (unchanged bytes both sides) |
+| REQ-WVR-02 | **yes (E-3)** | FSPEC-WVR-02 (§3.2 question table, BR-03, AT-02) | **yes — strengthened**, see §Behavioral Flow |
+| REQ-WVR-03 | no directly; its *discharge* prose moved with E-4 | BR-11, EC-09, EC-20, AT-12 | yes, see §Business Rules |
+| REQ-WVR-04 | no | §3.3 operator override, EC-10 | yes |
+| REQ-WVR-05 | no | FSPEC-WVR-02 announcements, OB-F5 | yes |
+| REQ-WVR-06 | no | §3.2 question 5 carve-out | yes |
+| REQ-WVR-07 | no | BR-16, AT-16 | yes |
+| REQ-WVR-08 | **yes (E-4)** | FSPEC-WVR-01 outcome (c), BR-11, EC-09, EC-20, AT-12 | **yes — strengthened**, see §Business Rules |
+
+**One traceability-adjacent defect, and it is a version pin, not a mapping error.** §1 states the
+FSPEC *"derives entirely from `REQ-pdlc-wave-resume.md` **v1.5** and adds no requirement of its
+own."* The REQ at HEAD is v1.6. The sentence is a provenance claim about a document version that
+this FSPEC no longer derives from — the exact class of stale citation DEC-ERR-03 puts in scope for
+this round. It is Low, not Medium: nothing downstream keys off the version literal, no clause
+content is wrong, and the fix is a two-character edit. But it should be made in the same touch as
+F-02/F-03 rather than left for the TSPEC author to trip over while diffing the two documents.
+Filed as **F-01**.
+
+**Non-finding, recorded so the next reader does not re-derive it.** The erratum added no new
+acceptance criterion, so there is no uncovered-AC gap to open here. I re-checked the closed
+catalogues the FSPEC pins set equality over (OB-F5): the six disregard causes IG-1..6 are still
+six at HEAD, the resume-outcome catalogue is still *"closed at three"*, and the recognised
+`implementation.*` key set is untouched by the erratum. AT-02, AT-08 and AT-13's set-equality
+targets therefore keep the same cardinality they were written against — a cardinality change in
+any of those three would have been a High here, and there is none.
 
 ## Behavioral Flow
 
