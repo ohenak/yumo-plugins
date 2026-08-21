@@ -137,7 +137,42 @@ recording-behaviour clause could in principle have moved a contract:
 
 ## Data Model
 
-_TBD_
+The record's product-visible shape is specified in TSPEC §4.1 and deliberately left unspecified by
+FSPEC (REQ OB-1). This round's edit is the first FSPEC change that talks about *what gets
+recorded*, so it is the one that could have reached the data model. It does not — but the check is
+worth writing out, because "records exactly as any other run does" is a sentence a careless reader
+could take as asking for a new field.
+
+- **No new field is asked for, and TSPEC says so pre-emptively.** FSPEC's closing sentence is "No
+  record content distinguishes the two provenances." TSPEC §4.1's shape — `version`, `feature`,
+  `planHash`, `lastGreenWave`, plus optional `head` — carries no provenance member, and §2.5's
+  final paragraph argues explicitly that the erratum's clause is an *announcement* clause, not a
+  record field. The clause as landed is announcement-only. Shape unchanged, and now upstream says
+  the same thing rather than saying nothing.
+- **`lastGreenWave`'s semantics are re-stated upstream, not changed.** FSPEC now says an
+  operator-pointed run records "in the same high-water form counted from the plan's first wave".
+  That is TSPEC §2.5 item 5's plan-absolute rule and §4.1's field definition, unchanged. The
+  high-water property FSPEC BR-08 requires and AT-18 discriminates on is untouched — I re-read
+  FSPEC §3.4's preceding paragraph, which the edit did not modify, and it is byte-identical to the
+  version I approved against.
+- **`head`'s role is untouched.** FSPEC's new clause leans on BR-10 (the gate verifies the tree),
+  not on commit corroboration. §4.1's `head` row — optional, absent means honoured on the other
+  fields alone (EC-21), present-and-unreachable means IG-5 — and §4.4's "`head` exists only to
+  *falsify* the record" reasoning both stand. Nothing in the edit gives `head` a second job.
+- **The `{}` cleared shape (DEC-WVR-04) is not reopened.** FSPEC OB-F3's row is byte-identical at
+  HEAD; the edit did not touch §7's obligation table except for OB-F1's trailing clause. DEC-WVR-04
+  still discharges exactly what FSPEC leaves open, and §6.2 reports it discharged.
+- **The four recognised `implementation.*` config keys (V-13) are unchanged.** The new clause
+  mentions the operator pointer by reference to §3.3 and adds no configuration surface. `startWave`
+  remains a resume-point *selector*, `1` indistinguishable from unset (AT-06), past-the-end a full
+  run (AT-07) — §5.6/V-12 unchanged, and AT-08's set-equality over the key set still holds.
+
+One thing genuinely improved for the data model's reader, worth recording because it is the
+product outcome of the erratum: the persisted record's *silence* about provenance is now a
+specified property rather than an accident of where the write site sits. Before this round, an
+implementer reading §2.5 could have concluded the absence of a provenance field was an unratified
+implementation detail and "helpfully" added one. FSPEC now forecloses that, on the same reasoning
+TSPEC gave. That is the erratum doing what errata are for.
 
 ## Test Strategy
 
