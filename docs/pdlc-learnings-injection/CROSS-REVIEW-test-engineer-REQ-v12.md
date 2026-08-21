@@ -179,6 +179,39 @@ DEFERRED: v11's two DEFERRED lines stand — (a) AC-3.1's set-equality test is v
 
 ## Positive Observations
 
+- **The erratum states a rule, not a special case.** "The reason ids of AC-3.2 name causes, not
+  coincidences" is one sentence that decides every mixed case, including ones nobody has written
+  a fixture for yet. It is the kind of clause a reviewer can diff a code branch against
+  mechanically — which is exactly how I verified it in three greps.
+- **The fix arrived with its own falsifier.** The new invariant has a test whose comment names
+  the mutation that reds it (`learningsSelect.test.js:374`), and the pre-existing `LI-AT-13` was
+  cleaned of an expected value that had been tuned to the implementation's unspec'd guard
+  (`:296-302`). An implementation echo was removed in the same revision that removed the
+  behaviour it echoed — that is the discipline working.
+- **Set equality, not containment.** `LI-AT-13` asserts the full rejection map with `toEqual`
+  plus a length check, so a dropped or relabelled case reds. The catalogue closure AC-3.2 demands
+  is enforced, not asserted.
+- **The chain closed end to end.** A DoD reviewer found code disagreeing with its spec, routed
+  it as an erratum to two documents, both were edited at the same altitude each owns — the REQ
+  states the cause rule, FSPEC states its mechanics — and the code lost the branch neither had
+  ever authorised. No document closed a question it did not own.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. Erratum v0.10's AC-2.4 clause is true of the shipped selection at HEAD
+(`orchestrate-dev.js:2495`, `:2518-2521`), the co-authority it cites exists at the version it
+cites (FSPEC v0.14, BR-6 `:519-528`), it introduces no new reason id and leaves AC-3.2's three
+closed catalogues untouched, and it arrives with a falsifying test that reds if the retired
+`propagateBytes` reading is restored. The two hunks are additive; nothing approved through v11
+regressed. The two carried Low findings are inherited wording refinements that do not block.
+
+The outstanding work is downstream and outside this verdict: confirm TSPEC §I.3 carries the same
+mixed-case statement, and finish F11's remedy by deleting the now-historical routing comment at
+`orchestrate-dev.js:2497-2516`.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
