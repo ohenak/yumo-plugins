@@ -161,10 +161,52 @@ row; but the DoD verifier reads this leg, and could tick it from a hash-map asse
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | The DoD leg for A6-10 states the ignored-path *outcome* ("fails an implementation that restores an ignored path") without naming the conjunct that delivers it — TSPEC §5.2 case 4's positive-presence assertion (`.gitignore`d file **still present** after restore, pinning `clean -fd` over `-fdx`), paired with case 3's absent untracked file — nor case 5's ordering assertion. The task row (line 329) now names both; the leg a DoD verifier reads does not, so the leg can be ticked from a hash-map assertion that structurally cannot falsify the implementation it claims to reject. Restate the leg on the two conjuncts, the way the sibling AT-06-4 and ordered-vocabulary legs name theirs. Same wording gap in the AT-05-1 traceability row (line 529), which reads "ignored-path case live (OQ-7 closed), restoring one fails". | Verification → DoD, A6-10 leg |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | TSPEC §5.6's AT-02-1 row still reads "`ADVISORY_ROOT_CAUSES` set-equal to the four-member literal", which contradicts FSPEC v1.7 BR-2/AT-02-1 ("ordered-sequence equality over class ids, never set equality"), TSPEC's own §3.5 ("`ADVISORY_ROOT_CAUSES` is ordered and closed, and the order is the first-match rule") and this PLAN's A6-05 row. The PLAN follows FSPEC and is right to; the stale row is upstream's, and I have routed it as an erratum rather than folding it into this verdict. Confirming: is there any reading on which §5.6's row is deliberate rather than residue from before the ordered oracle landed? |
 
 ## Positive Observations
 
+- **Every one of my four v1 findings is closed on upstream's own words, not on paraphrase.** I spot
+  checked each transcription against TSPEC §5.2's five round-trip cases, FSPEC BR-2/BR-5/BR-9/BR-15
+  and TSPEC §3.1's frozen literal; all match. Nothing was closed by softening the claim.
+- **F-04 was closed by measurement and the overreach was recorded rather than erased.** The
+  Dependencies subsection says plainly that the earlier claim outran its evidence at the reviewed
+  hash, then re-states it on the four hashes it actually checked. That is the honest form, and it
+  leaves the trail a later reader needs.
+- **The round's strongest test-side move is A6-08's E-08b arm.** An ordered-sequence oracle with no
+  behavioural consequence is a coverage ornament; the two-class arm — classed `plan-ordering-defect`,
+  carrying **exactly one** class — is what makes a reordering change an observable outcome. Naming it
+  in the row *and* in the DoD leg means it cannot quietly drop out.
+- **The AT-06-4 / AT-06-4b pair is built as a falsifiable pair, not two independent assertions.**
+  Co-location within one `notices` element (rather than two `toContain`s that a split would pass),
+  spec-side literals rather than an imported constant, and a negative arm that carries its own
+  positives — an implementation emitting the warning unconditionally passes the first and reddens on
+  the second. This is exactly the anti-echo and absence-only discipline this lens asks for, written
+  into the plan before a line of test code exists.
+- **The graph-invariance claim is stated in falsifiable form and reproduces.** "11 tasks, 7 waves,
+  no cell moved" re-derived from the shipped parser at HEAD, and the column-wise diff against
+  `1972402c` is byte-identical. A claim I can re-run is worth more than a claim I must trust.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings, old or new. All four v1 findings (one Medium, three Low) are resolved, verified
+against upstream text and repository state rather than against the changelog's account of them. The
+new material — ordered-sequence vocabularies, E-08b's two-class arm, BR-14's co-located overwrite
+warning and its negative arm — strengthens the plan's oracles and introduces no testability
+regression. The single remaining Low (F-01) is a DoD-leg wording gap that does not block: fold it
+into the next edit of the Verification section, or carry it into implementation review where the
+leg's oracle will be checked against the test file anyway.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
