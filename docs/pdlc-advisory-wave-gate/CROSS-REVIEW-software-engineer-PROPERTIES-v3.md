@@ -103,7 +103,36 @@ FSPEC/TSPEC's, and I say so in the finding rather than pretending PROPERTIES can
 
 ## Oracles
 
-*(pending)*
+The document's oracle catalogue (§"Oracles", O-A…O-H) is unchanged by this delta and I re-read only
+the two entries the new AC-6.3 conjunct would land in.
+
+**No oracle exists for the new conjunct.** The halt-report oracles in §Oracles pin three literals —
+the pre-A6 gate-failure literal (`Error: Wave {N} test gate failed — \`{testCommand}\` did not pass.
+Output tail:\n{tail}`, Fixtures §"Pre-A6 baseline"), the capture-failure `diagnosis` sentence
+(`snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied`), and
+§4.5's four advisory fields. An operator-facing warning string is a fourth literal with no owner. Per
+this document's own convention — exact user-facing strings are owned by the lowest layer that pins
+them — the warning's text would be TSPEC's or this document's to pin, and neither does.
+
+**The oracle shape F-01's fix needs, stated so the next round does not have to derive it.** The
+conjunct is antecedent-guarded ("*where* the halt report points the operator at a captured pre-A6
+tree state"), so its oracle needs a fixture on which a capture **succeeded** and the wave then
+halted — the applied-repair/red-re-gate run (PROP-GATE-05's case) or the refusal-after-capture run,
+not PROP-REST-08's `captureTreeSnapshot === null` run, where the antecedent is false and any
+assertion passes vacuously. A property written on the E-34 fixture would be a green test that proves
+nothing, which is the specific mistake worth naming in advance.
+
+**Containment, not equality, is the right form for it** — and that observation is what makes F-02
+resolvable without reopening PROP-REST-09. If the upstream slot decision puts the warning in a new
+advisory field, the oracle is a literal equality on that field and PROP-REST-09's reason-string
+equality survives untouched. If it puts the warning in the reason string, PROP-REST-09's `must
+equal the reason the pre-A6 pipeline emits` has to become a containment assertion on that path, and
+that is a change to a property I approved — it cannot be made silently in an erratum.
+
+One thing the existing catalogue does get right and I am not asking to change: Oracle H's honesty
+about prompt-only territory. The re-run warning is **not** prompt-only — it is a fixed string emitted
+by the workflow script at a known call site, so NFR-1's "every boundary enforced by the script, never
+only by prompt" applies to it and PROP-NFR-03's partition reasoning is the precedent to follow.
 
 ## Fixtures
 
