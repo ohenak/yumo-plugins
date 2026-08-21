@@ -116,3 +116,42 @@ repository's corpus at HEAD that is 684 bytes at one document and 1,607 at five,
 fully-conforming block at REQ §4.1's defaults occupies up to roughly 21,600 bytes against a
 `maxTotalBytes` of 20,000" — and make `D-O-4`'s parenthetical cite the same fixture. Any
 arithmetic that is internally consistent and reproducible from a named fixture clears this.
+
+## Consequences
+
+**What the delta got right, and what it changes for a test author.** Two things improved, both
+toward tests that can fail:
+
+1. **`D-O-3` now has a bound domain.** v7's F-02 was that the obligation's
+   `extractInjectableMaterial` clause ("byte bound, whole-character prefix, `bounded` exactly at
+   the cut") quantified over a domain that silently excluded zero, while FSPEC v0.13 had decided
+   zero the other way. The new conjunct states it: `maxBytesPerDocument: 0` yields no material,
+   sets no `bounded` flag, drops the document with `RSN-NO-MATERIAL`, and consumes no slot —
+   which is what the shipped code does on both arms (`maxBytes <= 0` early return; the
+   `sections.length === 0` branch). A property author now knows the bound domain includes 0 and
+   that 0 is **not** a cut-and-flag case, so the generator will not be written over `maxBytes >= 1`
+   and quietly leave `AT-30`'s arm to example coverage alone.
+2. **`D-O-4` now names two quantities instead of one.** The pre-delta obligation asked for
+   "realised prompt sizes measured against REQ §4.1's caps", which under material-only accounting
+   compares incommensurable quantities: every conforming block would read as over-cap by framing.
+   The split — material bytes (commensurable with the caps, equal to BR-8's *bytes injected*,
+   FSPEC:560/563) and block bytes (the growth term a future displacement decision acts on) — is
+   the right shape, and it is what makes the C-8 gap closable rather than perpetually "over".
+
+**What the High costs.** Only the numbers, but they sit in the one place a downstream author will
+reach for literals. `D-O-4` is a PROPERTIES/report obligation; the two figures it repeats are
+presented as measured constants of the shipped renderer, and an expected value transcribed from a
+governing document is precisely what our expectation rule says to trust. Nothing else in the delta
+depends on them: strike or restate the arithmetic and the accounting paragraph, the split
+obligation and the zero-bound conjunct all stand unchanged.
+
+**Upstream motion, re-derived rather than assumed.** Since v7 the document's upstream advanced —
+FSPEC v0.13 → v0.14 (BR-6's total bound restated over the count-bound *window*; mixed count/byte
+attribution to `RSN-COUNT`; FSPEC:83-90) and REQ v0.9 → v0.10 (matching AC-2.4 attribution
+clause). I checked each against what this document asserts: the byte-accounting basis is untouched
+(FSPEC:489 still material-only), `E-36` still decides `maxBytesPerDocument: 0` as no-material /
+no-slot (FSPEC:798), `AT-30` still carries all three zeros (FSPEC:967-971). So the header's
+"grounded on upstream **at HEAD**: TSPEC v0.9, FSPEC v0.13, REQ v0.9" is stale as a version pin
+while remaining true in substance — Medium, and a third consecutive round in which a version
+cascade underneath this document had to be re-derived by hand. I keep the `Process` finding from
+v7 open for that reason.
