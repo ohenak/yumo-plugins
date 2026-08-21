@@ -197,6 +197,56 @@ DEFERRED: §G.3's three-item list now mixes one item routed in an earlier round 
 
 ## Positive Observations
 
+- **The High finding is resolved in exactly the three lines I specified, and not one more.** §G.3's
+  header goes from *"one item, re-routed this round"* to *"three items"*, two bullets are added, and
+  §C.4's asserted-routing sentence is left untouched — because it becomes true once the list carries
+  what it claims. A revision that had also rewritten §C.4 would have re-opened a section I had already
+  verified; this one changed the thing that was wrong and nothing adjacent to it.
+- **The bullets route without deciding.** Each names the gap, gives the evidence at the pin, names the
+  candidate readings — *"whether case B's row is widened or a new row is added"*, *"whether the
+  intended reading is LI-22's REFACTOR-and-close batch or a self-greening amendment commit"* — and
+  closes *"this document routes the gap and decides nothing."* That is the correct posture for a
+  downstream document raising an upstream gap, and it is what keeps DEC-ERR-01's anti-pattern at bay
+  without under-specifying the erratum.
+- **The delta corrects a claim I endorsed, in the direction that makes it checkable.** SE v8 F-02
+  caught what my v8 Oracles section let through: the un-numbered `## Cross-Feature Patterns` spelling
+  is not absent from the landed suite, it is asserted on at lines 118 and 139. v0.6 does not soften the
+  claim into vagueness — it names precisely what *is* exercised (the spelling, via `toEqual` set
+  equality on the section array), precisely what is *not* (the variant fixture as a whole), and cites
+  the assertion verbatim. The owed amendment is now scoped to something a reader can confirm in one
+  grep, and it is smaller than the version I approved.
+- **The binding/non-binding qualification is the right kind of precision.** Saying *"its only binding
+  `maxBytes` literals"* and quoting the code's own *"Unbounded: large enough that maxBytes never
+  binds"* comment turns a claim I had to reason about at v8 (is `100000` a third literal or not?) into
+  one the file answers directly. The distinction is load-bearing for the zero-bound gap the bullets
+  route — a reader who miscounts the literals miscounts what PROP-BOUND-03 owes.
+- **F-03's fix retires the anchor class rather than relocating it.** The three `LI-AT-30` titles are
+  quoted in full — including the third's `⇒ every non-self corpus path RSN-NO-MATERIAL, none
+  RSN-COUNT, no slot consumed (E-36)`, which is a mouthful and was quoted exactly — and `.gitignore` is
+  cited by rule text. Both survive a line-number shift, which is the whole point of `DEC-DOC-01`.
+- **The pin makes verification cheap.** Confirming that every absence claim measured at `21edb7c5` is
+  still true at HEAD took one `git diff --name-status`, which returned three documentation paths. At v7
+  the same confidence cost fourteen `git log --diff-filter=A` runs. The method the author generalised
+  at v0.5 is now visibly earning its keep across rounds, not just in the round that introduced it.
+
 ## Recommendation
 
+**Approved with minor changes.** All three of my v8 findings are resolved — the High one precisely as
+specified, both Low ones by substitution rather than deletion — and the revision broke nothing. No
+property, oracle, fixture, AT id, severity, group membership or red/green trace moved; §C.4's count
+table and fourteen-row inventory are byte-unchanged; the `21edb7c5` pin is still current at HEAD. The
+delta additionally absorbs SE v8 F-02, correcting an over-strong absence claim that I had endorsed at
+v8, and it corrects it in the direction that narrows what is owed and makes it checkable.
+
+The two Low findings are wording-level and non-gating: a paraphrase inside quotation marks in §G.3's
+second bullet (F-01), and the unlinked `maxBytesPerDocument` / `maxBytes` spellings of one case across
+§C.4 and §G.3 (F-02). Both can ride along in any later edit or be left; neither affects an oracle, a
+trace or a routed erratum's substance.
+
+I re-emit the two P-A-7 case-B gaps and my carried Q-02 as ERRATUM lines to PLAN, so that the upstream
+answer proceeds from this dispatch as §G.3's bullets say it does.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
