@@ -2269,6 +2269,236 @@ export async function readLearningsConfigSafely(readFileFn, path) {
   }
 }
 
+// ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
+
+const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
+
+/** TSPEC §I.3, §D.3. Bytes only, no model call. Deliberately weak (BR-3): a truncated document
+ *  keeps its first line and stays eligible. */
+export function looksLikeLearningsDocument(text) {
+  if (typeof text !== "string") return false;
+  const first = text.split("\n").find((line) => line.trim() !== "");
+  return first !== undefined && LEARNINGS_HEADING_RE.test(first.trim());
+}
+
+// ─── TSPEC §D.4 — the ordering key ──────────────────────────────────────────────────────────
+
+const DATE_ROW_RE = /^\|\s*Date Completed\s*\|\s*([^|]*)\|/m;
+const ISO_DATE_RE = /^(\d{4}-\d{2}-\d{2})\b/;
+
+/** TSPEC §I.3, §D.4. The `Date Completed` cell as `YYYY-MM-DD`, or null when absent/unparseable
+ *  (BR-4). No `Date` object is constructed — the key is compared as a string. */
+export function parseHarvestDate(text) {
+  if (typeof text !== "string") return null;
+  const rowMatch = DATE_ROW_RE.exec(text);
+  if (!rowMatch) return null;
+  const cell = rowMatch[1].trim();
+  const isoMatch = ISO_DATE_RE.exec(cell);
+  return isoMatch ? isoMatch[1] : null;
+}
+
+/** TSPEC §I.3, §D.4. BR-4's total order: `orderKey` descending (null last), then path
+ *  byte-ascending (`Buffer.compare`, not `<`/`>`). */
+export function orderCorpus(entries) {
+  return [...entries].sort(
+    (a, b) =>
+      (a.orderKey === b.orderKey
+        ? 0
+        : a.orderKey === null
+          ? 1
+          : b.orderKey === null
+            ? -1
+            : b.orderKey < a.orderKey
+              ? -1
+              : 1) || Buffer.compare(Buffer.from(a.path, "utf8"), Buffer.from(b.path, "utf8"))
+  );
+}
+
+// ─── TSPEC §D.3 — F-O-1's second rule: which headings count as BR-6 named sections ─────────
+
+const BR6_SECTION_NAMES = Object.freeze([
+  "Cross-Feature Patterns",
+  "Non-Convergences",
+  "Rejected Proposals (with rationale)",
+  "Process Learnings",
+  "Open Items for Consolidation",
+]);
+const SECTION_HEADING_RE = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/;
+const GLOSS_RE = /[ \t]*\([^()]*\)$/;
+
+/** Rule 1 (ordinal stripped, `SECTION_HEADING_RE`'s capture group already does this), rule 2
+ *  (exact case-sensitive match), rule 3 (a trailing gloss is optional, on either side). Returns
+ *  the canonical `BR6_SECTION_NAMES` entry, or null. */
+function canonicalSectionName(title) {
+  if (BR6_SECTION_NAMES.includes(title)) return title;
+  const strippedTitle = title.replace(GLOSS_RE, "");
+  for (const name of BR6_SECTION_NAMES) {
+    if (strippedTitle === name.replace(GLOSS_RE, "")) return name;
+  }
+  return null;
+}
+
+/** Splits `text` into level-2-heading-delimited extents. Each extent runs from its heading line
+ *  through the line before the next `/^##[ \t]/` line, or end of document (TSPEC §D.3). */
+function findSectionExtents(text) {
+  const lines = text.split("\n");
+  const boundaries = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = SECTION_HEADING_RE.exec(lines[i]);
+    if (m) boundaries.push({ index: i, canonical: canonicalSectionName(m[1].trim()) });
+  }
+  return boundaries.map((b, i) => ({
+    canonical: b.canonical,
+    lines: lines.slice(b.index, i + 1 < boundaries.length ? boundaries[i + 1].index : lines.length),
+  }));
+}
+
+/** Whether `text` carries at least one candidate level-2 heading line at all (matching
+ *  `SECTION_HEADING_RE`, whether or not it is one of BR-6's five). Distinguishes a document that
+ *  names sections which just do not match BR-6 (E-33's structural case) from one carrying no
+ *  section headings whatsoever. */
+function hasAnySectionHeadingLine(text) {
+  return text.split("\n").some((line) => SECTION_HEADING_RE.test(line));
+}
+
+/** Split on `\n`, drop trailing blank/whitespace-only lines, re-join with `\n` — no trailing
+ *  newline (TSPEC §D.3 step 1). */
+function normaliseExtent(extentLines) {
+  const lines = extentLines.slice();
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+  return lines.join("\n");
+}
+
+/** The longest **character** prefix of `str` whose UTF-8 byte length is `<= maxBytes`
+ *  (TSPEC §D.5's character-safe cut — never splits a multi-byte codepoint). */
+function cutToByteLimit(str, maxBytes) {
+  let result = "";
+  let bytes = 0;
+  for (const ch of str) {
+    const chBytes = Buffer.byteLength(ch, "utf8");
+    if (bytes + chBytes > maxBytes) break;
+    result += ch;
+    bytes += chBytes;
+  }
+  return { text: result, bytes };
+}
+
+/** TSPEC §I.3, §D.3, §D.5. BR-6's five priority sections, in priority order, bounded to
+ *  `maxBytes` UTF-8 bytes of MATERIAL. `maxBytes <= 0` short-circuits before the cut (E-36).
+ *  `bounded` is decided at the cut, never re-derived downstream. `sections[]` is defined over
+ *  the assembled (post-cut) result, canonical names only, priority order. */
+export function extractInjectableMaterial(text, maxBytes) {
+  if (typeof maxBytes !== "number" || maxBytes <= 0) {
+    return { material: "", bounded: false, bytes: 0, sections: [] };
+  }
+
+  const extents = findSectionExtents(typeof text === "string" ? text : "");
+  const taken = new Map();
+  for (const ext of extents) {
+    if (!ext.canonical || taken.has(ext.canonical)) continue; // first occurrence wins
+    taken.set(ext.canonical, normaliseExtent(ext.lines));
+  }
+
+  const names = BR6_SECTION_NAMES.filter((n) => taken.has(n));
+  const parts = names.map((n) => taken.get(n));
+  const assembled = parts.join("\n\n");
+  const assembledBytes = Buffer.byteLength(assembled, "utf8");
+
+  if (assembledBytes <= maxBytes) {
+    return { material: assembled, bounded: false, bytes: assembledBytes, sections: names };
+  }
+
+  const { text: cutText, bytes: cutBytes } = cutToByteLimit(assembled, maxBytes);
+  const sections = [];
+  let pos = 0;
+  names.forEach((name, i) => {
+    if (i > 0) pos += 2; // the "\n\n" join
+    if (cutText.length > pos) sections.push(name);
+    pos += taken.get(name).length;
+  });
+
+  return { material: cutText, bounded: true, bytes: cutBytes, sections };
+}
+
+/** TSPEC §I.3. The whole of BR-2/BR-4/BR-5/BR-6, as one pure function.
+ *  `rejected[]` is total over `entries`: `excluded` is tested BEFORE `readOk`, so a self
+ *  document is never mis-reported `RSN-UNREADABLE` (§D.6). A document whose extraction returns
+ *  `sections: []` is rejected `RSN-NO-MATERIAL` before the count/total bounds and consumes no
+ *  slot (BR-9). The count bound takes the first `maxDocuments` of the ordered eligible set
+ *  unconditionally; the total-byte bound then walks that same window from the top, dropping a
+ *  whole document (and — only when that drop leaves at least one further window slot unused —
+ *  every lower-ordered document past it, window or not) with `RSN-BYTES`, no back-fill.
+ *  @param {{entries: object[], feature: string, thresholds: object}} arg
+ *  @returns {{selected: object[], rejected: object[], totalBytes: number, orderKeys: object[]}} */
+export function selectLearnings({ entries, feature, thresholds }) {
+  const rejected = [];
+  const eligible = [];
+
+  for (const entry of entries) {
+    if (entry.excluded === "RSN-SELF") {
+      rejected.push({ path: entry.path, reason: "RSN-SELF" });
+      continue;
+    }
+    if (!entry.readOk) {
+      rejected.push({ path: entry.path, reason: "RSN-UNREADABLE" });
+      continue;
+    }
+    if (!looksLikeLearningsDocument(entry.text)) {
+      rejected.push({ path: entry.path, reason: "RSN-UNPARSEABLE" });
+      continue;
+    }
+    const orderKey = parseHarvestDate(entry.text);
+    const extraction = extractInjectableMaterial(entry.text, thresholds.maxBytesPerDocument);
+    if (extraction.sections.length === 0 && hasAnySectionHeadingLine(entry.text)) {
+      // BR-9's structural disjunct (E-33): the document names sections, but none is one of
+      // BR-6's five. A document with no section headings at all is not this case — it is
+      // simply a zero-material eligible document.
+      rejected.push({ path: entry.path, reason: "RSN-NO-MATERIAL" });
+      continue;
+    }
+    eligible.push({ path: entry.path, orderKey, extraction });
+  }
+
+  const ordered = orderCorpus(eligible);
+  const orderKeys = ordered.map((e) => ({ path: e.path, orderKey: e.orderKey }));
+
+  const windowSize = thresholds.maxDocuments;
+  const window = ordered.slice(0, windowSize);
+  const overflow = ordered.slice(windowSize);
+
+  const selected = [];
+  let totalBytes = 0;
+  let firstByteFailIndex = -1;
+  const windowRejected = [];
+
+  window.forEach((doc, i) => {
+    const fits = firstByteFailIndex === -1 && totalBytes + doc.extraction.bytes <= thresholds.maxTotalBytes;
+    if (fits) {
+      totalBytes += doc.extraction.bytes;
+      selected.push({
+        path: doc.path,
+        orderKey: doc.orderKey,
+        bytes: doc.extraction.bytes,
+        bounded: doc.extraction.bounded,
+        position: selected.length,
+        material: doc.extraction.material,
+      });
+    } else {
+      if (firstByteFailIndex === -1) firstByteFailIndex = i;
+      windowRejected.push(doc);
+    }
+  });
+
+  for (const doc of windowRejected) rejected.push({ path: doc.path, reason: "RSN-BYTES" });
+
+  const propagateBytes = firstByteFailIndex !== -1 && firstByteFailIndex < window.length - 1;
+  for (const doc of overflow) {
+    rejected.push({ path: doc.path, reason: propagateBytes ? "RSN-BYTES" : "RSN-COUNT" });
+  }
+
+  return { selected, rejected, totalBytes, orderKeys };
+}
+
 // === LEARNINGS INJECTION REGION END ===
 
 // ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
