@@ -108,6 +108,40 @@ zero-bound drop from a cut-to-zero, and it survives untouched.
 
 ## Data Model
 
+**Unchanged this round:** `LEARNINGS_NOTICES`, `LEARNINGS_CORPUS_OUTCOMES`,
+`LEARNINGS_REJECT_REASONS`, BR-8's row key set, `parseHarvestDate`'s `null` fallback, and §D.3's
+assembly rule and `\r\n` fixture obligation are all outside the (empty) diff and outside the routed
+item. I re-measured only the two claims the routed item leans on and the one open Medium that sits
+in this lens.
+
+**The two reason codes ERR-8 separates are still separated, and still keyed correctly.** §D.5 keeps
+the distinction that makes the disposition load-bearing rather than cosmetic: `maxBytesPerDocument: 0`
+⇒ every document `RSN-NO-MATERIAL`, no slot consumed, not `bounded`; `maxTotalBytes: 0` ⇒ material
+exists but the first document's bytes carry the running total past the bound, so it and every
+lower-ordered document drop whole with `RSN-BYTES`. *"The two zeros do not share a reason code."*
+That sentence is what a reader implementing FSPEC Step 5 literally would get wrong, and it is what
+LI-12's third `LI-AT-30` case reds on.
+
+**v14's one Medium is still open and still sits in the data model** (inherited, non-gating): **T-O-6's
+corpus-driven conjunct still lacks its no-cut qualifier.** §D.3 redefines `sections[]` as
+bound-dependent ("every section whose normalised text survives in `material`"), but §T.6's T-O-6
+states the corpus conjunct as `sections` equals the intersection of `BR6_SECTION_NAMES` with the
+document's level-2 headings, over a domain it declares as *any* document text and *any* non-negative
+`maxBytes` — `0` included. Read literally over that domain, the conjunct reds a **conforming**
+implementation whenever the bound cuts, which is the exact failure mode T-O-6's first half exists to
+prevent. The fix remains one clause: scope the corpus conjunct to a bound large enough that no cut
+occurs (or `maxBytes = Infinity`), where "survives in `material`" and "matched in the document"
+coincide. It stays non-gating because the property is not yet written and PROPERTIES' own
+`PROP-BOUND-05` is already scoped to an unbounded document — but it is recoverable only until it
+ships, so it should not be lost to an empty-delta round.
+
+**One data-model consequence of the routed item is worth naming as already-correct.** Because §D.3
+makes `sections[]` derivable from `material` rather than an independent report, the zero-bound
+short-circuit's `sections: []` now *falls out of* the general rule instead of needing its own clause
+— which is precisely why §T.7 can key one branch on *yields no material* and cover both the
+structural (E-33) and zero-bound (E-36) disjuncts. The ordering ERR-8 corrects and the field
+redefinition v14 approved are the same design decision seen from two sides; they remain consistent.
+
 ## Test Strategy
 
 ## Open Questions
