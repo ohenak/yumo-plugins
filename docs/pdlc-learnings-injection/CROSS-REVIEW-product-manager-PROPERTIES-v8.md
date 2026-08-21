@@ -48,6 +48,54 @@ trace changed in this delta; §C.4's count table (70 / 35 / 23 / 21 / 12) is byt
 
 ## Properties
 
+**No property moves, and none is disturbed.** The diff touches the `Upstream` header cell, the
+version cell (0.4 → 0.5) and §C.4. No property id, no `red LI-xx` / `green LI-yy` trace, no AT id, no
+severity and no group membership changed. §C.4's reconciliation table — 70 properties, 35 ATs, 23
+tasks, 21 owning tasks, 0 properties with no owning task, 12 fail-open arms (lines 1054–1062) — is
+byte-unchanged, as is §C.3's 23-of-23 task accounting.
+
+**The inventory now agrees with the repository, row for row.** I re-ran the document's own stated
+method and independently derived each adding commit rather than reading them from the table:
+
+| §C.4 row | Owning task | Tracked at `21edb7c5` | `git log --diff-filter=A` | Table says | Match |
+|---|---|---|---|---|---|
+| `helpers/learningsFixtures.js` | LI-02 | yes | `1920f281` | `1920f281` | ✓ |
+| `learningsPremises.test.js` | LI-01 | yes | `cdeb1509` | `cdeb1509` | ✓ |
+| `learningsCaptureScript.test.js` | LI-03 | yes | `688a5651` | `688a5651` | ✓ |
+| `learningsPredicatePin.test.js` | LI-13 | yes | `07af8f52` | `07af8f52` | ✓ |
+| `learningsSelect.test.js` | LI-07 | yes | `1544fdbd` | `1544fdbd` | ✓ |
+| `learningsBlock.test.js` | LI-08 | yes | `5e522a52` | `5e522a52` | ✓ |
+| `learningsCorpus.test.js` | LI-09 | yes | `b79b7859` | `b79b7859` | ✓ |
+| `learningsBaselineGuard.test.js` | LI-06 | yes | `4a6c1816` | `4a6c1816` | ✓ |
+| `learningsRecord.test.js` | LI-10 | yes | `2fe07964` | `2fe07964` | ✓ |
+| `learningsDispatchSet.test.js` | LI-11 | yes | `c3e723e5` | `c3e723e5` | ✓ |
+| `learningsConfig.test.js` | LI-12 | yes | `eb32d7d2` | `eb32d7d2` | ✓ |
+| `learningsArmInventory.test.js` | LI-23 | yes | `100e3d9c` | `100e3d9c` | ✓ |
+| `learningsSuiteMap.test.js` | LI-14 | yes | `960c229c` | `960c229c` | ✓ |
+| `fixtures/learnings-baseline/` | LI-06 | yes (`MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt`) | `4a6c1816` | `4a6c1816` | ✓ |
+
+Fourteen of fourteen, exactly as stated (**F-01 of v7 resolved**). The snapshot pin is honest too:
+`git diff --name-status 21edb7c5 HEAD` returns only this PROPERTIES document, so no test file has
+landed since the pin and the table is current as well as pinned.
+
+**The task-id accounting is right in both directions.** `git log main..HEAD` yields commits for
+**LI-01…LI-21 and LI-23**, and LI-22 alone has none — precisely what line 1096 claims. LI-22 owning
+none of the fourteen is confirmed in PLAN's own LI-22 row (a 🔵 REFACTOR-and-close task whose
+artifact is a full-suite green run plus the human cross-check of LI-23's arm inventory, not a file).
+LI-04's `.gitignore:13` `/.baseline-worktree/` rule is present and landed at `ae2af1da`, matching the
+new parenthetical.
+
+**The ledger restatement is now true at HEAD (F-02 of v7 resolved).** LI-08 `5e522a52`, LI-17
+`2cbacada`, LI-16 `d462ddd8` and LI-21 `92b7ea0c` are all on the branch. PLAN's case A is scoped
+*"before batch 7"* (PLAN line 491) and case B to *"batch 9 or later"* (line 492), so "case B is the
+live case and case A is unreachable" follows from the repository, not from assertion. P-A-6's text at
+PLAN line 590 does say the PROPERTIES suite commits *"at the first point the suite is green, which in
+practice is after LI-21 (batch 13)"* — so "spent, not pending" is the correct reading now that
+`92b7ea0c` has landed. The paragraph also keeps the conclusion that mattered — *no property of this
+document changes either way* — and my v7 DEFERRED item asking that the two sentences be reconciled
+into one claim is closed by the new closing paragraph separating P-A-7 case B (the implementation
+suite) from P-A-6 (this document's own suite).
+
 ## Oracles
 
 ## Fixtures
