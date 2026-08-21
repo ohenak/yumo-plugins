@@ -82,7 +82,32 @@ Per the delta protocol I did not re-read the sections I approved in rounds 1–1
 
 ## Findings
 
+### Disposition of v11 findings
+
+| v11 ID | Was | Now |
+|---|---|---|
+| F-01 (Medium, Cross-Feature) — TSPEC still gated the injector on `present && config.enabled && !sectionMalformed`, `OQ.2` open | **Resolved.** `TSPEC:506` now reads the gate is on `config.enabled` "**alone**. There is no `!sectionMalformed` conjunct either"; `TSPEC:1524` records `OQ.2` closed with the provisional gate named as the rejected alternative. Shipped code agrees: `orchestrate-dev.js:2637` `if (config && config.enabled === false) return null;` — one key, no second conjunct. `SE-O-1` is discharged. |
+| F-02 (Low, Local) — FSPEC's upstream pointer named REQ v0.8 | **Resolved.** `FSPEC:9` now reads `REQ … (v0.10)`, matching this delta's version. `SE-O-2` is discharged. |
+| F-03 (Low, Local) — `AC-5.1b` attributes the operator notice to `parseImplementationConfig`, which emits only a flag | **Open, unchanged, still non-gating.** Re-verified at HEAD: `orchestrate-dev.js:191-210` returns `{ config: IMPLEMENTATION_DEFAULTS, sectionMalformed: true, invalidKeys: [] }` and emits nothing; the notice is a caller's. This delta did not touch `AC-5.1b`. Carried below as F-01 of this round. |
+
+### This round
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | *(inherited, unchanged — v11 F-03, v10 F-01; fourth round carried.)* `AC-5.1b` still attributes the malformed-section operator notice to `parseImplementationConfig` itself ("the same response `orchestrate-dev.js`'s `parseImplementationConfig` ships"). At HEAD the parser ships the `sectionMalformed` flag only (`orchestrate-dev.js:191-210`); the notice is emitted by a caller on the wave-mode path (`orchestrate-dev.js:14130-14135`), and a second call site drops the flag (`:11913`). The AC's decision — malformed fails open on §4.1's defaults, with a notice — is unaffected and implementable as written. **Fix (still not owed):** "the reader-plus-caller path around `parseImplementationConfig`". | `AC-5.1b` |
+
+No High findings. No Medium findings. The delta introduced nothing.
+
+DEFERRED: AC-2.4's new clause is now the longest sentence in Group 2; a future non-frozen edit could split "attributed to the bound that actually removed it" into its own bullet for readability without changing meaning.
+DEFERRED: `REQ:480` still notes that `RSN-COUNT` has "no exercise under default thresholds" and owes the TSPEC a named case; `LI-AT-13` now exercises `RSN-COUNT` under explicit non-default thresholds, so that note could be re-pointed at the test on a later REQ touch.
+DEFERRED: F-01 above (fourth round as a Low) could be closed with a five-word edit on any later REQ touch; there is no obligation to open one for it alone.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The delta is uncommitted in the working tree alongside modified `FSPEC` and `TSPEC`. Is the intent to land all three in one erratum commit? They are mutually consistent as they stand — REQ v0.10, FSPEC v0.14 BR-6, TSPEC `OQ.2` closed — so committing them together is the state I verified; landing the REQ alone would be equally sound, since the FSPEC half of F11 is already in the same tree. Either way, nothing here blocks. |
+| Q-02 | My v11 anchor `REVIEWED-COMMIT: 4db24c50` is no longer reachable from `HEAD`. I re-anchored on the REQ's last committed change (`caeb5f54`) and confirmed its REQ bytes are the v0.9 text I approved, so the delta window is exact. Should the round history record the re-anchor, the next reviewer will hit the same unreachable-anchor step. |
 
 ## Risks
 
