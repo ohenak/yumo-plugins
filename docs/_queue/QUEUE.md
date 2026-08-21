@@ -71,18 +71,30 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md` path; row 23's
 > prose note below still names the old REQ/TSPEC paths for historical context.
 
+> **Rows 5 (`pdlc-plugin-retirement`), 19 (`pdlc-advisory-wave-gate`) and 23
+> (`pdlc-engine-v0.2.0-release`) were removed from this table on 2026-08-21.** All three merged or
+> shipped — row 5 as `6b12b6e8` (#65, 2026-08-18), row 19 as `bb4d36fb` (#66, 2026-08-20) with a
+> follow-up landing as `d24f2d7e` (#68, 2026-08-21), and row 23 as engine v0.2.0's release, already
+> `done` since 2026-08-16 (see the row-23 notes below) — and the per-feature docs moved to
+> `docs/completed/pdlc-plugin-retirement/` and `docs/completed/pdlc-advisory-wave-gate/`,
+> LEARNINGS included. Row 23 had no folder of its own — its `REQ Path` already pointed at
+> `docs/completed/pdlc-engine-distribution/`, per the 2026-08-16 note above — so no document moved
+> for it. `Order` values stay allocated and are never reused; 5, 19 and 23 are retired. The rows
+> that still name these features in `Depends-On` (6, 20, 24, 25) resolve them through Phase-0
+> readiness triage — a dependency absent from the table is checked against the base branch, exactly
+> as rows 6/7/15/16 already do for `pdlc-workflow-distribution`. Prose below that says "row 5", "row
+> 19" or "row 23" is historical record and keeps its meaning: the feature name, not the row, is the
+> identity.
+
 
 | Order | Status | Feature | REQ Path | Depends-On | Engine |
 |-------|--------|---------|----------|------------| --- |
-| 5 | done | pdlc-plugin-retirement | docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md | pdlc-headless-engine, pdlc-engine-distribution | pdlc engine 0.2.0 / plugin 0.23.0 |
 | 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |  |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |  |
-| 19 | done | pdlc-advisory-wave-gate | docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md | pdlc-advisory-tier, pdlc-consolidation-agent |  |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
 | 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |  |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
-| 23 | done | pdlc-engine-v0.2.0-release | docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.md | pdlc-engine-distribution |  |
 | 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
 | 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |
 
@@ -91,8 +103,8 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 CODE_REVIEW-pdlc-plugin-retirement-v1.md §3 finding 6(b) found that AC-3.1 (transcript
 half), AC-3.2, AC-3.4, AC-3.5, AC-3.6, AC-4.4, AC-5.3, and the two P0 criteria AC-5.1 and
 AC-5.2 were bound only to prose in two ledger documents
-(`docs/pdlc-plugin-retirement/POSTSWEEP-RUN-*.md`,
-`docs/pdlc-plugin-retirement/OPERATOR-OBSERVATIONS-*.md`) — not to a queue row or successor
+(`docs/completed/pdlc-plugin-retirement/POSTSWEEP-RUN-*.md`,
+`docs/completed/pdlc-plugin-retirement/OPERATOR-OBSERVATIONS-*.md`) — not to a queue row or successor
 REQ, so a runbook step or bare prose mention was not a successor per the same criterion's own
 rule. This row and its (not yet authored) REQ own the operator-acceptance run that discharges
 AC-5.1, AC-5.2, and AC-4.4, and the AT-3.1/AT-3.2/AT-3.4/AT-3.5/AT-3.6/AT-5.3 live-dispatch

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only measured input; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (§1, §4, §5, §8) |
+| Cited by | `docs/completed/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (§1, §4, §5, §8) |
 | Version | 1.2 · 2026-08-20 |
 | Verified at | §1–§2 at default-branch commit `c8aa22a4`; §3 at `1efb9a3b`; §4 at `11420461` |
 
