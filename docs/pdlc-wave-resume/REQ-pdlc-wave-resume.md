@@ -208,14 +208,15 @@ promoting those two into the baseline as a new section).
 **Correction, 2026-08-13.** BL-01 and BL-03 are already resolved: `pdlc-consolidation-agent`
 is merged to main, so the manual resume override and the interim auto-resume mechanism both
 already exist at HEAD of main. BL-02's file also already exists on main
-(`docs/_constraints/pdlc-wave-gate-baseline.md`, v1.0, 2026-08-09) despite its resolution
-form below still reading as a pending PR merge; it is citable now.
+(`docs/_constraints/pdlc-wave-gate-baseline.md`, at `Version | 1.2 · 2026-08-20`) despite its
+resolution form below still reading as a pending PR merge; it is citable now.
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
 | BL-01 | Manual resume override (`implementation.startWave` config value, default 1, owner: repo operator via `.claude/pdlc.config.json`) exists at HEAD | `pdlc-consolidation-agent` PR merged | Must exist at HEAD before FSPEC authoring — REQ-WVR-04 specifies precedence over it |
 | BL-02 | Wave-gate baseline measured-facts file (`docs/_constraints/pdlc-wave-gate-baseline.md`) available for citation | `pdlc-advisory-wave-gate` PR merged | Must exist at HEAD before FSPEC authoring — OF-1..3 promote into it (OB-2) |
 | BL-03 | Interim auto-resume mechanism (marked INTERIM, 2026-08-09) present at HEAD | `pdlc-consolidation-agent` PR merged | Checked at FSPEC authoring: deliverable formalizes or replaces it, never duplicates alongside it |
+| BL-04 | This feature branch is on the current default-branch base (SE G-01) | `git rebase`/merge of `origin/main` into `feat-pdlc-wave-resume` | Checked at FSPEC authoring: the resume mechanism and `docs/_constraints/pdlc-wave-gate-baseline.md` must both be readable in the authoring tree, or R-4's "new code alongside" outcome is unavoidable |
 
 ## 6. User Stories
 
