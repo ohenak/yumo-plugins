@@ -39,7 +39,44 @@ the property catalogue, the oracles or the fixtures moves.
 
 ## Properties
 
-_pending_
+**No property in the catalogue moves, and none is disturbed by this delta.** The diff touches the
+header row, three citation locators, §C.4's HEAD accounting and §G.3's answered-item list. No
+property id, no `red LI-xx` / `green LI-yy` trace, no AT id, no severity and no group membership
+changed. §C.3's 23-of-23 task accounting and §C.4's count table (70 properties, 35 ATs, 23 tasks, 21
+owning tasks, 12 fail-open arms — lines 1054–1062) are byte-unchanged, and PLAN v0.7's own changelog
+confirms the upstream half of that: *"No task moved batch, no `Deps` edge changed, no AT partition,
+fixture or manifest row was touched"* (PLAN line 8 of the changelog).
+
+**Where the document now contradicts HEAD.** §C.4's fourteen-row inventory (lines 1070–1085) marks
+seven rows *not yet created*. Every one of them is tracked at `a12b20f9`:
+
+| §C.4 row | §C.4 says | At HEAD (`git ls-tree HEAD`) | Landed by |
+|---|---|---|---|
+| `learningsBaselineGuard.test.js` | not yet created | tracked | `4a6c1816` (LI-06) |
+| `learningsRecord.test.js` | not yet created | tracked | `2fe07964` (LI-10 RED), last touched `92b7ea0c` |
+| `learningsDispatchSet.test.js` | not yet created | tracked | `c3e723e5` (LI-11) |
+| `learningsConfig.test.js` | not yet created | tracked | `eb32d7d2` (LI-12 RED) |
+| `learningsArmInventory.test.js` | not yet created | tracked | `100e3d9c` (LI-23) |
+| `learningsSuiteMap.test.js` | not yet created | tracked | `960c229c` (LI-14) |
+| `fixtures/learnings-baseline/` | not yet created | tracked (`MANIFEST.json` + three `.txt`) | `4a6c1816` (LI-06) |
+
+So *"Seven of the fourteen files have landed … The remaining seven are explicitly planned and
+unstarted"* (lines 1087–1091) is false at HEAD: **fourteen of fourteen** have landed (F-01). The
+same paragraph's later clause *"PROP-CONFIG-09 in the not-yet-created `learningsConfig.test.js`
+(LI-12)"* (lines 1105–1106) is false for the same reason.
+
+**The consequence is not cosmetic, because §C.4's ledger conclusion is derived from it.** Lines
+1100–1103 conclude that this document's four landed-suite properties *"travel under P-A-6's rule,
+which holds the PROPERTIES suite's commit to the first point it is green (in practice after LI-21,
+batch 13), so they enter no ledger row unless that commit is brought forward."* At HEAD, LI-16
+(`d462ddd8`), LI-17 (`2cbacada`) and LI-21 (`92b7ea0c`) have all landed — 22 of the 23 tasks have
+commits on this branch, LI-22 being the only id absent. Batch 13 is behind us, not ahead: PLAN
+P-A-7's **case A** (*"before batch 7"*, PLAN line 489) is unreachable, and P-A-6's "commit at the
+first point it is green" deferral is spent rather than pending (F-02). The document's own routing
+conclusion has to be restated against the world at HEAD before a reader can act on it.
+
+None of this changes a property. It changes what §C.4 tells the next reader about where those
+properties' cases must land and what the PLAN owes for them.
 
 ## Oracles
 
