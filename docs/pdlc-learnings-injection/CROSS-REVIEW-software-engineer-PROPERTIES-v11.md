@@ -216,6 +216,51 @@ DEFERRED: §G.3's struck case-B bullets quote case B's span as "every batch from
 
 ## Positive Observations
 
+- **The High finding was resolved by re-derivation, not by search-and-replace.** I asked for case C
+  to be substituted for case B; the revision instead re-argues the paragraph from case C's premises
+  and adds the two things a substitution would have missed — which of the four arms is actually green
+  at landing, and what covers the one that may not be. That is the difference between a document that
+  quotes upstream and one that has absorbed it.
+- **Every quotation it added is verbatim.** I diffed all six against PLAN at HEAD (`:492`, `:493`,
+  `:495–496`, `:610`) and each matches character-for-character, including the awkward ones. A
+  document that quotes accurately when the quotations are long is one whose unquoted claims are worth
+  more trust.
+- **The one claim I could have let pass on authority, it made checkable.** "**P-A-6** (byte-unchanged
+  at v0.8)" is a measurable assertion about a diff, and it measures true: zero `P-A-6` lines in
+  `git diff f73046ad..HEAD` on PLAN. It would have been easier and weaker to write "P-A-6 still
+  governs".
+- **§G.3's arithmetic is self-consistent this time.** Header count, struck bullets, surviving bullet
+  and the closing parenthetical all agree — and the parenthetical states the invariant explicitly
+  ("the **only** item this dispatch emits as a routed erratum line"), which is what makes the next
+  strike safe. The v0.2 orphaned-bullet episode the section itself records did not repeat.
+- **The Group D extension was not forced by any finding.** My v10 F-01 named the four `learningsBlock`
+  cases; the revision noticed that case C's "any other amendment to a landed suite arriving from here
+  on" reaches the Group D `learningsSelect.test.js` amendments too, and carried the obligation there
+  as well. Volunteered scope that closes a gap rather than opening one.
+- **Five rounds of pins, all still measured.** `21edb7c5`, `1544fdbd`, `d462ddd8`, `2cbacada`,
+  `92b7ea0c`, `5e522a52`, `eb32d7d2` all resolve to real commits, and the assertions attributed to
+  `learningsBlock.test.js` at `21edb7c5` are there at the lines claimed.
+
 ## Recommendation
 
+**Approved.**
+
+The delta does exactly what my v10 said must change, in the three places it said to change them, and
+touches nothing else. §C.4 now governs the four owed `learningsBlock.test.js` cases and the Group D
+`learningsSelect.test.js` amendments under P-A-7 **case C** — empty ledger, green at landing, fix
+owed before batch 14 if one reds — and distinguishes the three arms that assert shipped behaviour
+from PROP-BOUND-03's zero case, which it names as the one that may red and covers by case C's fix
+rule rather than by an imagined ledger row. §G.3 carries **one** open item, the TSPEC AT-15
+suite-assignment mismatch, verbatim and correctly still routed. The header pins PLAN **v0.8** and
+states the three-case structure.
+
+No property, level, owning task, AT partition, bound, oracle, fixture row or trace moved: §C.1
+(35/35), §C.2, §C.3 (23/23) and the seventy `PROP-` statements are outside every hunk and still
+reconcile against a PLAN task table the v0.8 erratum did not touch. All five upstream pins are
+verified at HEAD, and the four non-PLAN ones are byte-identical to what my v9 approval recorded, so
+no second cascade is open. This document is once again a faithful compression of its upstreams.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
