@@ -188,7 +188,39 @@ document's, and I carry it as a deferred observation rather than a finding again
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | ERR-8 is still **open with FSPEC's author** at HEAD (Step 5 items 15–17 read exactly as ERR-8 describes). Since the outcomes agree at every bound and both the TSPEC and the PLAN encode the corrected rule, is the intended endgame (a) an FSPEC erratum reordering items 15–16 before Phase I closes, or (b) shipping with ERR-8 recorded as a known prose defect? Either is defensible; only (b) needs the ERR-8 entry to survive into the harvest so a later reader of Step 5 finds the correction. |
+| Q-02 | T-O-6's corpus conjunct (v14 F-01, still open): should the no-cut qualifier be written as `maxBytes = Infinity` in the property's domain, or should the conjunct be restated over the *document's matched headings* rather than over `sections[]`? The second is closer to the matcher property T-O-6 is trying to prove; either closes the red-on-conforming-implementation hole. |
+| Q-03 | Does the `+2 bytes per join` term need to reach PROPERTIES' `PROP-BOUND-07`, or is §D.5's formula the single source a fixture author actually consults when hand-computing AT-11's literal? Carried from v14 Q-02, still unanswered, still not blocking. |
+
+*(All three are recorded for the author's convenience. None gates this confirmation.)*
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+The delta resolves the routed item and breaks nothing previously approved — for the strongest
+possible reason: the delta is empty, and the routed item was a disposition already fully landed in
+the bytes I approved at `739fea34`. I verified this by digest rather than by reading:
+`shasum` over the TSPEC at HEAD reproduces v14's `APPROVAL-HASH` exactly, and
+`git diff 739fea34..HEAD` on the file is empty. I then re-measured all three of the disposition's
+factual claims independently (§D.5 states the implementer's rule; §Open questions records ERR-8 with
+its fix; the PLAN's LI-16/LI-12 rows encode the corrected order and say so explicitly), and confirmed
+the upstream FSPEC passage ERR-8 reports still reads as described — so ERR-8 is an accurate, still-
+open report rather than a stale one.
+
+**DEC-ERR-03 check: no drift surface this round.** The dispatch's REQ (`ff605dd3…`) and FSPEC
+(`ae75fa62…`) digests are byte-for-byte the ones recorded in v14's `UPSTREAM-STATE` trailer and
+reproduce at HEAD. Nothing this TSPEC cites has moved since I last measured it against upstream, so
+there is nothing upstream "no longer says the same way".
+
+**No High findings, so nothing halts and nothing routes back as gating.** The four findings below are
+all **inherited** — they are v14's open Medium and Lows, unchanged because the bytes are unchanged.
+I re-file them rather than reporting a clean round so that an empty-delta confirmation does not
+launder them into silence: the one Medium (T-O-6's missing no-cut qualifier) reds a conforming
+implementation if the property ships as written, and it is recoverable only until the property is
+written. None of the four blocks the erratum from closing.
 
 ## Delta-Confirmation Findings
 
