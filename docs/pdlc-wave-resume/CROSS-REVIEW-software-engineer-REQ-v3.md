@@ -113,7 +113,40 @@ them without lengthening the paragraph.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Once F-01's gate-mode precondition is restored, does it stay in FSPEC scope as a *behaviour to change* or only as a *condition to state*? "Formalize and replace, never duplicate" (BL-03) leaves both readings open: a resume mechanism that records nothing under a self-report gate may be acceptable (that mode commits nothing either, so there is nothing to resume past), in which case the FSPEC should say so explicitly rather than leave the reader to infer it from the absence of an AC. |
+| Q-02 | REQ-WVR-02's table lists IG-4 (over-range) before IG-5 (ancestry); the shipped ladder tests ancestry first (`:15307`) and over-range second (`:15315`). A record that is both non-ancestral and over-range therefore announces the ancestry reason, not the over-range one. The AC does not claim an order — should PROPERTIES pin the shipped precedence for the overlapping case, or is the announced reason free to be either? Left unstated, a test author will guess, and either guess pins something the REQ did not decide. |
+| Q-03 | §1 now cites this working copy's own untracked record (`pdlc-advisory-wave-gate`, `lastGreenWave: 7`, `head` stamped) as evidence the mechanism fires — I verified it, it is exactly as described and untracked. Is that observation owed to the wave-gate baseline as an `M-WVR-*` fact under OB-2 (it is the first positive evidence of a write in this repo), or does it stay a REQ-local observation? It is the kind of fact that will be re-measured by whoever reads this next. |
+
 ## Positive Observations
+
+- **The correction to §1 was made on evidence, and it corrects the right thing.** The 2026-08-13
+  finding ("no `.claude/pdlc-wave-state.json` exists anywhere in this repo") had become false, and
+  the revision does not paper over it: it names the surviving record, its feature, its seven green
+  waves and its `head` stamp, and re-frames the finding from "never fires" to "fires narrowly". I
+  checked the file — `feature: "pdlc-advisory-wave-gate"`, `lastGreenWave: 7`,
+  `head: 8b13bd41…`, untracked (`git ls-files --error-unmatch` fails on it). Retiring your own
+  headline observation when the tree stops supporting it is the harder half of re-verification.
+- **The IG-4/IG-5 split makes the catalogue set-equal to the shipped ladder, arm for arm.** I
+  re-walked `:15296-15346`: `ledger.reason` (IG-1), feature mismatch (IG-2), `planHash` mismatch
+  (IG-3), `lastGreenWave > waves.length` (IG-4), `!headCorroborated` (IG-5), and the
+  `{state: null, reason: null}` fall-through covering absent/empty/`{}` (IG-6, silent). Six causes,
+  five announced, one silent — and the AC's new sentence names *why* the split matters ("fusing
+  them would let the ancestry guard be deleted without the enumeration changing"), which is a
+  set-equality argument stated in prose, not just an instruction to write one.
+- **REQ-WVR-08's surface split is now precisely what ships.** "One row with a distinguishing
+  status, not a second row" matches `:15614-15630` exactly: a single `recordPhase("I",
+  "Implementation", …)` call in either arm, `⏭` with "Skipped — all N waves previously committed
+  and recorded green (wave ledger)" against `✅` with "All N waves complete (wave mode, …)". The
+  hatch really is on the run-log emit only (`:15329-15334`), never on the row — the AC now says so,
+  so PROPERTIES will not go looking for it in the report.
+- **OB-2's recipe is now version-robust rather than version-correct.** Telling the promoter to bump
+  to "the next version above the one found — never to a fixed number written here" is a better
+  answer than the one I asked for, and it will not rot the way "bump to 1.3" would have.
+- **Still no contract material leaked downward.** Ten ACs across four revisions and not one names a
+  seam signature, a file format, or an algorithm; everything mechanical remains in OB-1 where the
+  TSPEC will find it.
 
 ## Recommendation
 
