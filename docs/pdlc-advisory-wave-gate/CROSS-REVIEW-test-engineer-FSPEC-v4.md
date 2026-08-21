@@ -108,6 +108,34 @@ this edit and remains open — F-04 below, Low, `inherited`/`nonlocal`.
 
 ## Edge Cases and Error Scenarios
 
+Three §5 rows sit in the delta's blast radius. None is falsified; one is left with an unnamed
+companion branch.
+
+**E-34 (the pre-A6 tree state cannot be captured at all).** This is the row that makes AC-6.3's new
+clause *conditional* rather than universal: when capture fails, no repair is proposed, none is
+applied, and there is no capture for the halt report to point at — so there is nothing to warn about
+either. E-34 remains true under REQ v1.16, and it is the natural home for the negative arm: the halt
+report in the E-34 branch carries the diagnosis and class and **no** overwrite warning, because it
+names no capture. Stating that explicitly is what stops an implementer from emitting an unconditional
+warning that lies (warning about a capture that was never taken). Folded into F-01; not a separate
+finding.
+
+**E-30 (the escalation log cannot be written).** E-30 already reasons carefully about *which carrier*
+survives a write failure — "the halt report goes on carrying BR-14's diagnosis and root-cause class".
+Once BR-14 grows the warning obligation, this sentence becomes an enumeration that needs to grow with
+it, or E-30 silently narrows AC-6.3 on the degraded path. Cheap fix in the same edit: have E-30 refer
+to "BR-14's halt-report contents" rather than re-listing two of three items. Recorded as F-02, Medium,
+`delta`/`local` — a live desync between two spec sites that a test author reading E-30 alone would
+implement to.
+
+**E-22 (green re-gate, later post-gate check halts the wave anyway).** Untouched. This branch halts
+with the wave's work uncommitted and no restoration trigger fired; whether a capture exists to warn
+about here is a question the amended BR-14's conditional phrasing answers automatically ("where the
+halt report names a captured pre-A6 tree state"), which is one more reason to state the obligation
+conditionally rather than bolting it onto step 10's escalation arm only.
+
+No new edge case is created by the delta, and no existing §5 row is made false by it.
+
 ## Acceptance Tests
 
 ## Open Questions
