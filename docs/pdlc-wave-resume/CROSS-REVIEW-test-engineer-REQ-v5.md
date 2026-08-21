@@ -226,6 +226,49 @@ working-copy state*, the class of claim most likely to rot between rounds. It ha
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Which deadline governs BL-04 — "before FSPEC authoring" (header note, §5) or "before implementation" (§10, as amended)? One sentence in the header note, aligned to §10, closes it; I have no stake in which of the two wins, only that the document names one. |
+| Q-02 | Now that BL-04 is recorded open and unmet, does the rebase land before Phase T, or does TSPEC authoring proceed against the same 1,637-commits-behind tree? Not a REQ defect and not gating this round — but the PROPERTIES author will need the mechanism readable in the tree to write tests against it, so the answer has a testing consequence, and OB-2's promotion of OF-1..3 into the wave-gate baseline needs that file present too. |
+
+## Positive Observations
+
+- **The corrections run in the costly direction.** Item 1 turns a discharged prerequisite back into
+  an open one, and item 4 admits an exception that makes a clean-sounding guarantee messier. Neither
+  edit made the document look better; both made it truer. That is the behaviour that makes an
+  erratum mechanism worth having.
+- **Every corrected number is re-derivable, and I re-derived every one.** 1,637 commits; zero
+  `WAVE_STATE_PATH` hits here against ten on main; 34 tasks; 16 waves; `W1 = [T00]`; seven tasks in
+  waves 1–3. Six commands, six matches, no discrepancies. A REQ that ships its own falsification
+  recipe is a REQ a reviewer can be brief about.
+- **Item 4's fix is the difference between an untestable AC and a testable one.** "Phase I produces
+  no new commit" could not have been asserted truthfully by any test on any real run. "The
+  implementation wave loop lands no new commit, and Phase PT's V-wave dispatches, gates and commits
+  exactly once" can be — and FSPEC AT-12 already carries that shape with its four conjuncts and a
+  positive call-count, rather than an absence-only "no commit" oracle that could not distinguish a
+  skipped V-wave from one that ran with nothing to commit. The FSPEC saw that trap and named it.
+- **Item 5 removes a trap before it reached a test file.** Disclaiming precedence in the IG labels
+  protects REQ-WVR-02's set-equality obligation from being written as an ordering assertion against
+  the wrong order. The REQ and FSPEC now state the same fact from both sides, each pointing at the
+  other's ownership.
+- **The V-wave scoping did not degrade into vagueness.** The easy fix was to delete the no-commit
+  clause. Instead the clause was narrowed and the excluded case was stated positively, with its
+  wave number reconciled against OF-1. Narrowing a claim and naming what fell outside it is harder
+  than deleting it and strictly more useful downstream.
+- **Citation hygiene held under pressure.** The erratum brief handed the author two raw `file:line`
+  anchors. Neither appears in the REQ; the document names symbols and FSPEC ids instead, and the
+  whole-file `grep` for `.js:N` / `.md:N` is still empty at v1.6.
+
+## Recommendation
+
+**Approved with minor changes.**
+
+All six routed obligations landed, every measurement claim in the delta reproduces against HEAD,
+the upstream this document leans on still says what the document says it says, and nothing I
+approved at v1.5 regressed. The two findings below are non-gating: F-01 is a leftover deadline
+inconsistency at two sibling sites the erratum did not visit, F-02 a citation-direction nit. Both
+are one-sentence edits and neither blocks Phase F from converging.
+
 ## Positive Observations
 
 ## Recommendation
