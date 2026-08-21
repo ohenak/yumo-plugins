@@ -481,6 +481,26 @@ green, so a batch that greens something it did not claim is a signal to re-read 
 bonus. And it reaches **empty at batch 13**, one batch before the unqualified gate, so batch 14's
 refactor has a green suite to refactor against.
 
+**Amendment commits on landed suites (P-A-7).** LI-02's and LI-08's files are already committed on
+this branch, so the v0.5 heading-form amendment arrives as a follow-up commit against landed code
+rather than as a fresh red suite. P-A-7 makes that a live-table edit, so its expected-red rows are
+named here, ahead of the run they govern, in the two cases that can arise:
+
+| Case | When the follow-up commit lands | Expected-red rows it adds |
+|---|---|---|
+| A — **the scheduled case** | before batch 7 | **None.** `LI-AT-11`'s heading-form cases are inside `learningsBlock.test.js`, which the ledger already lists as a **whole suite** red after batches 7 and 8, red for the specified reason that `extractInjectableMaterial` does not implement F-O-1's second rule yet. They green with the rest of the suite when LI-17 lands at batch 9, and the ledger's row for batch 9 — which drops `learningsBlock` entire — is already correct for them. No row is added, and none may be dropped early |
+| B — **after LI-17 has greened the suite** (batch 9 or later) | the commit re-reds committed green code | The ledger gains, for **every batch from the one the commit lands in through the batch that greens them**, the named row `learningsBlock` → **`LI-AT-11`'s heading-form cases only** (the un-numbered `## Cross-Feature Patterns`, the un-glossed `## Rejected Proposals`, the `###` sub-heading that must read as body text, and the `## Process Findings` near-miss that must not match). Stated in test names, not the suite name, exactly as the split-suite rows are. The amendment is an edit to **this** PLAN, committed **before** that batch runs; a re-red landing without it is a gate failure, not a red |
+
+`__tests__/helpers/learningsFixtures.js` and its other consumers carry **no** row of their own in
+either case. The declared-heading-form knob is **additive** to `buildLearningsCorpus`'s section
+spec — the landed helper already renders an optional ordinal and an optional gloss, and existing
+callers that declare neither keep byte-identical output — so `learningsSelect.test.js`,
+`learningsCorpus.test.js` and every other fixture consumer hold their status across the follow-up
+commit and stay red or green for exactly the reasons their existing rows give. That additivity is
+the premise on which the empty row-set rests: if a future amendment to the helper is **not**
+additive, the consumer suites it moves enter the ledger by name under case B's rule first, and the
+commit that moves them waits on that edit.
+
 **No exemption list grows during this feature.** The two exclusions in §The measured baseline are
 the arrangement's, are measured here, and are the whole set. Adding a third to make a batch pass is
 a halt condition — and with the ledger in place there is no batch for which that is even tempting.
