@@ -35,7 +35,25 @@ value that will mint a red test — that is the one blocking item (F-01).
 
 ## Properties
 
-_(pending)_
+Each changed or new property row re-measured against the upstream text it now leans on.
+
+| Row | Upstream measured | Result |
+|---|---|---|
+| PROP-REST-01 (restated) | FSPEC BR-9 v1.6 (*Domain* / *Observation point* clauses); REQ AC-5.1; TSPEC §5.2 cases 1, 5; §2.5 | **Faithful.** "tracked files and non-ignored untracked files, generated outputs included, `.gitignore`d paths excluded from both sides" is BR-9's domain clause verbatim in substance; "immediately after restoration completes and before the record carriers the run still owes" is AC-5.1's observation point. Citations (`§5.2 (cases 1, 5)`, `§2.5`) resolve. |
+| PROP-REST-03 (restated) | FSPEC BR-9 / AT-05-1 / AT-05-2 v1.6; REQ AC-5.1 v1.15; TSPEC §5.2 cases 3, 4; §6 OQ-7 | **Faithful on direction.** OQ-7 *is* closed and answered *no* (TSPEC §6 OQ-7, "Closed upstream, answered *no*"), the REQ quote "operator files A6 never wrote and never restores over" is verbatim at REQ AC-5.1, and dropping `test.todo` is right. One over-assertion: see F-03. |
+| PROP-REST-10 (new) | TSPEC §5.2 case 5; REQ AC-5.1; FSPEC E-23, BR-13; §2.5 | **Faithful.** Case 5 asserts the ordering, not only content, in the same words. The closing claim "`restoreTreeSnapshot`'s sequence is therefore complete at `git reset --mixed {head}`" is TSPEC §2.5's own sentence (line 515) and matches the `read-tree --reset -u` → `clean -fd` → `reset --mixed` sequence at §2.5 and PLAN A6-10's green step. AT-06-1 co-trace is legitimate — BR-9's observation-point clause cites AT-05-1 and AT-06-1 together. |
+| PROP-ENV-13 (new) | TSPEC §3.3 `apply` row; §5.5 *Ignored-path-only repair*; §6 OQ-11; FSPEC BR-15, §3.3 flow table | **One conjunct diverges — F-01.** `producedPaths() === []`, `{ok:false}`, the literal `post-action-verification-failed`, an escalation entry, and a tree carried no further are all in TSPEC §5.5's row and §3.3's `apply` row, and the positive control is a good addition. But **"one attempt must be consumed" is not upstream and is contradicted by it**: FSPEC §3.3's flow table gives refusals "no attempt consumed", and the shipped driver terminates this path with `attempts` unchanged (`orchestrate-dev.js:4285`, `terminate({… attempts, appliedSuccessfully:false})`, with `attempts` incremented only in the malformed arm `:3994`/`:4174` and the red-re-gate arm `:4316`). PROP-REST-08 in this same document uses `attempts === 0` as the observable for a comparable pre-resolution escalation, so the document's own vocabulary makes the conjunct falsifiable — and false. |
+
+**Traceability of the two new rows.** The coverage matrix adds PROP-ENV-13 under AC-3.4 and
+PROP-REST-10 under AC-5.1/-5.2/-6.1/-6.2 with parenthesised roles; the AT table adds PROP-REST-03 /
+-10 to AT-05-1 and PROP-REST-10 to AT-06-1; the PLAN-task table adds PROP-ENV-13 to A6-15 and
+PROP-REST-10 to A6-09. All consistent. PROP-ENV-13 claims no AT, correctly — TSPEC §5.5 exists
+precisely because no AT covers it, so AT set-equality is undisturbed.
+
+**PLAN-home ids.** The rows name PLAN homes `A6-09` and `A6-15`. PLAN v1.3 folded both into A6-10
+and A6-18 as named steps and states that references to former ids "denote those steps, not tasks" —
+resolvable, but a reader diffing PROPERTIES against PLAN's task table finds no such tasks. Recorded
+as F-02 (Low, inherited: the convention predates this round; the two new rows follow it).
 
 ## Oracles
 
