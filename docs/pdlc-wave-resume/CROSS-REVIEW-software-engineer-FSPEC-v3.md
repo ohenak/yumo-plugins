@@ -30,6 +30,26 @@ upstream currently says, which is precisely the class DEC-ERR-03 makes a finding
 
 ## Linked Requirements
 
+§2's traceability table maps FSPEC-WVR-01..07 onto REQ-WVR-01..08. I re-read every cited REQ
+criterion at v1.6 and each still says what the mapping row claims:
+
+- **FSPEC-WVR-01 → REQ-WVR-01, REQ-WVR-08.** REQ-WVR-08's edit narrows *what is skipped* (the
+  implementation wave loop, not "Phase I" whole), and narrows the discharge sentence to "lands no
+  wave-loop commit". The FSPEC clause it feeds — the three-outcome decision with outcome (c) as
+  "skip the implementation wave loop" — is unchanged by that narrowing because §2 already defines
+  *Phase I* in this document to mean the wave loop. The trace holds.
+- **FSPEC-WVR-02 → REQ-WVR-02, REQ-WVR-05.** REQ-WVR-02's added sentence removes a precedence
+  reading the FSPEC never relied on and adds no cause; the catalogue is still closed at IG-1..6,
+  which is what BR-02 and AT-02 compress.
+- **FSPEC-WVR-03..07 → REQ-WVR-03, -04, -05, -06, -07.** Untouched by this round.
+
+One residue: §1's opening sentence pins the derivation to "`REQ-pdlc-wave-resume.md` **v1.5**".
+That is the document this FSPEC was compressed from, and it no longer exists — the header table
+of the REQ now reads `| Version | 1.6 |`. A downstream TSPEC author who follows the pin either
+reads a version they cannot obtain or, worse, assumes the FSPEC has not been checked against the
+erratum round when in fact (per this confirmation) it has. The fix is one token plus a clause
+naming the round, not a re-derivation. Filed as F-02 below.
+
 ## Behavioral Flow
 
 ## Business Rules
