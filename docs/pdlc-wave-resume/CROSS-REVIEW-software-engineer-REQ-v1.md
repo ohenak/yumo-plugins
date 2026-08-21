@@ -65,135 +65,63 @@ re-evaluate `ready:` in the frontmatter against the merged prerequisites.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | REQ-WVR-07 (queue parity) — is any new behaviour actually required? The queue delegates to `orchestrate-dev` in-process and forwards no implementation config, so the ledger applies to a queue iteration by construction. If parity is already free, say so and make REQ-WVR-07 a verification obligation (a property test) rather than a Phase-2 requirement, so PLAN does not budget work for it. |
+| Q-02 | REQ-WVR-01 requires "each skipped wave is announced as skipped". Shipped announcement is a single summary line naming the range (`Waves 1–N were committed…`), not one line per wave. Is per-wave announcement a genuine requirement, or is the range summary sufficient? As written this is a gratuitous divergence from shipped behaviour. |
+| Q-03 | G-2 says the worst outcome of a bad record is "a full run or a gate halt". With retention (F-03) there is a third: an all-green record whose plan hash still matches causes Phase I to be skipped in full and *no* gate to run in that phase. Is that inside G-2's envelope, and what is the intended worst case? |
+| Q-04 | R-1 (history rewrite) is currently mitigated only by "nothing commits before full-tree verification". Given the shipped ancestry corroboration (F-04), should R-1 be downgraded and re-attributed, or does the REQ intend to require corroboration rather than merely permit it? |
+| Q-05 | OB-3 defers the composition with `pdlc-advisory-wave-gate` until "that REQ's FSPEC exists". That feature is merged and archived at `main:docs/completed/pdlc-advisory-wave-gate/`. Can OB-3 be closed against the shipped seam catalogue instead of carried open? |
 
 ## Positive Observations
 
-_(pending)_
+- The Altitude Rule is respected throughout §7: every AC states an observable outcome
+  (resume point, announcement, provenance, verification ordering) and OB-1 explicitly assigns
+  the record's location, format, and matching rules to the TSPEC. There is no seam signature,
+  no file format, and no algorithm in this REQ — that is the right shape, and it is rare.
+- G-2 / REQ-WVR-03 identify the correct load-bearing invariant: the resume record is an
+  optimisation, never a trust anchor, and verification is what makes a wrong record survivable.
+  The shipped safety comment (`main:…orchestrate-dev.js:15244-15248`) states the same property
+  independently, which is a good sign the REQ is grounded in how the mechanism actually works.
+- OF-2's insight — that a legitimately completed task may produce no commit, so commit presence
+  is unusable as completion evidence in *either* direction — is a genuinely non-obvious
+  observation, correctly derived, and it is the reason the shipped design uses a ledger rather
+  than commit archaeology. §3 rejecting commit-history archaeology outright (rather than
+  deferring it) is the right call.
+- The Non-Goals are unusually well chosen: not remediating the failure, not touching the halt
+  contract, and not skipping verification are exactly the three scope creeps this feature invites.
+- R-2 (resume-skip strands uncommitted work) names the one failure mode that would be genuinely
+  unrecoverable and demands an explicit acceptance test for it. That is the right instinct;
+  the FSPEC should keep it and pair it with a positive assertion (which wave *does* run first).
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
 
-### F-03 — REQ-WVR-05 contradicts the shipped retention decision (High, Local)
+Four High findings. In order of what must happen first:
 
-REQ-WVR-05 requires that after a Phase I that completes all waves, "no resume state survives for a
-later fresh run of any feature to inherit; a subsequent invocation behaves as if no halted run ever
-existed." G-4 restates it as "self-clearing lifecycle".
+1. **F-01 — rebase before anything else.** This branch is 1637 commits behind `main`, and `main`
+   already carries v1.2 of this exact document with dated amendments that resolve F-02, F-03 and
+   F-07. Continuing on the v1.0 text produces a document that contradicts settled ground. Rebase
+   onto `main` and continue as an amendment round on v1.2, or state in writing why v1.2's
+   amendments are being reverted.
+2. **F-02 — re-ground the HEAD claims.** `implementation.startWave` and the interim ledger do not
+   exist in this tree at all (`grep -c startWave …/orchestrate-dev.js` → 0) and are merged to
+   `main`, not pending on a feature branch. §1 ¶4–5, BL-01, BL-03 and the frontmatter's `ready:`
+   flag all need restating against `main`.
+3. **F-03 — restate REQ-WVR-05 as retention with invalidation.** "No resume state survives" would
+   delete the record the shipped design uses to skip a completed Phase I on a downstream halt.
+4. **F-04 — narrow REQ-WVR-06 to commit-presence-as-completion-evidence.** The absolute wording
+   forbids the shipped ancestry corroboration, which is the actual mitigation for R-1.
 
-Shipped behaviour is the opposite, and deliberately so. `main:pdlc/workflows/orchestrate-dev.js:15607`
-opens the post-wave block with the comment *"Every implementation wave is green and committed. The
-record is KEPT"* — because the last per-wave write already records `lastGreenWave === waves.length`,
-and the read path at `:15318-15334` uses exactly that shape to **skip Phase I entirely** on a later
-invocation that halted downstream (CR, DOD, PUB). That is a load-bearing outcome, not an oversight:
-it is what turns a DOD-phase halt into a minutes-long re-entry instead of a re-dispatch of every wave
-over an already-finished tree. Invalidation is carried by `planHash` (a PLAN change re-derives the
-hash and the ledger is ignored, `:15302-15306`) and by `feature` (`:15294-15298`), not by deletion.
+Then the Mediums: add the missing all-green AC and close the outcome catalogue (F-06), replace
+OF-1..3 with the existing `M-WG-*` citations (F-05), and resolve OQ-1 (F-07).
 
-As written, REQ-WVR-05 is an instruction to delete that record and lose that behaviour, and no
-Non-Goal or Risk acknowledges the trade. This is the single most likely place for the FSPEC to
-implement a regression while believing it is satisfying the REQ.
+I have raised no `ERRATUM` lines: this REQ is the upstream-most artifact of this feature, and the
+v1.2 document on `main` is the same document rather than an upstream of it, so every finding above
+belongs to the artifact under review.
 
-**Required change:** restate REQ-WVR-05 as **retention with invalidation** — a leftover record must
-never *warp* a later run (wrong feature, changed plan, non-ancestor head ⇒ ignored with an announced
-reason), which is the property G-4's second clause already asks for — and drop the "no state
-survives" clause, or record explicitly that the phase-skip behaviour is being withdrawn and why.
-`main`'s v1.2 amendment already resolves it this way ("REQ-WVR-05 is restated as **retention with
-invalidation**"), which is further evidence this branch is reverting settled ground (F-01).
+## Verdict
 
-### F-04 — REQ-WVR-06 over-generalises OF-2 and forbids a shipped safety control (High, Local)
-
-REQ-WVR-06's Then clause: "the determination does not consult commit presence or commit messages".
-
-OF-2's actual observation supports the narrow claim — *a completed task may produce no commit, so
-the presence of a task commit is not usable as completion evidence*. The AC generalises that to *any*
-git observation, and the shipped mechanism makes a different, sound git observation that the AC as
-written forbids:
-
-- the ledger record carries an optional `head` field — the commit that carried the recorded wave's
-  work (`main:…orchestrate-dev.js:12296-12304` on read, `:12325-12333` on write);
-- the read path corroborates it by asking the tree whether that sha is an **ancestor of HEAD**
-  (`headCorroborated`, `:15280`, applied at `:15307`), and ignores the ledger with an announced
-  reason when it is not — "branch was reset or re-cut since it was written, so the work it records
-  is not in this tree".
-
-That is not commit-presence-as-completion-evidence; it is falsification of a record the pipeline
-otherwise has no way to distrust, and it is precisely the mitigation R-1 (§8) claims for
-"stale record after history rewrite" — R-1 currently attributes that mitigation only to
-REQ-WVR-03/-02, which is a weaker story than what already ships.
-
-**Required change:** narrow REQ-WVR-06 to what OF-2 supports — *completion is never inferred from
-the presence, absence, or message of a task's commit; a task that completes with nothing staged
-never causes its wave to be treated as incomplete* — and add an explicit allowance (or a separate
-AC) for ancestry corroboration of a recorded commit, then update R-1 to cite it. Leaving the
-absolute wording in place sets up a contract-fidelity conflict the TSPEC cannot resolve without
-either regressing the control or contradicting the REQ.
-
-### F-05 — OF-1..3 duplicate measured facts that already exist as `M-WG-*` ids (Medium, Cross-Feature)
-
-BL-02 lists `docs/_constraints/pdlc-wave-gate-baseline.md` as a prerequisite "available for
-citation", and OB-2 owes its promotion. Both are already discharged: the file exists on `main`
-(`git ls-tree main docs/_constraints/`) and carries `M-WG-1 … M-WG-14`, including the three facts
-OF-1..3 restate in prose:
-
-| REQ fact | Existing measured fact on `main` |
-|---|---|
-| OF-1 (re-invocation re-enters wave 1, re-dispatches completed waves) | `M-WG-6` |
-| OF-2 (a completed task may produce no commit / nothing committed on a red gate) | `M-WG-4` |
-| OF-3 (the halted wave's own work is uncommitted at the halt) | `M-WG-4`, with `M-WG-12` on the commit loop's pathspec scoping |
-| §3 Non-Goal "absence of a POSTMORTEM on wave halts" | `M-WG-5` |
-| §3 Non-Goal "the halt's queue-row recording" | `M-WG-7` |
-
-Per the REQ altitude bar, a REQ carries shipped-behaviour facts as **cited `M-*` ids from the
-constraints file**, not as inline observations. **Required change:** after the rebase (F-01),
-replace OF-1..3 with citations to the existing `M-WG-*` ids, add any genuinely new observation to
-the baseline file rather than to the REQ, and close OB-2 as already satisfied. Two independent
-statements of the same measured fact will drift.
-
-### F-06 — the acceptance-criteria set is not set-equal to the resume outcome catalogue (Medium, Local)
-
-There are three operator-visible resume outcomes, and the REQ enumerates two. Missing: **all waves
-already recorded green ⇒ Phase I is skipped in full**, announced as its own message and recorded as
-its own phase row (`main:…orchestrate-dev.js:15318-15334`, `allWavesRecorded` at `:15327`; the
-`⏭` phase row at `:15615-15620`). No AC in §7 covers it: REQ-WVR-01 covers resuming *at a wave*,
-REQ-WVR-05 covers what is left behind, and neither states what a run does when the record says
-everything is done. That gap matters more than usual here, because this is the one outcome where
-the pipeline **runs no wave gate at all** in Phase I — so REQ-WVR-03's "the full test suite verifies
-the whole tree before any new commit lands" is vacuously true rather than actively satisfied, and
-the REQ never says so.
-
-**Required change:** add an AC for the all-green outcome, stating its announcement, its report row,
-and explicitly how REQ-WVR-03's verification guarantee is discharged when no wave executes. State
-the outcome catalogue as a closed set so a deleted case is detectable downstream, rather than
-leaving the enumeration open-ended.
-
-### F-07 — OQ-1 is open against a hatch that already ships and is already announced (Medium, Local)
-
-OQ-1 asks whether the REQ-WVR-04 escape hatch should be a config value, a record-removal action, or
-both. At HEAD-of-`main` it is a record-removal action, and it is announced in both resume messages:
-"Delete `.claude/pdlc-wave-state.json` to force a full run" (`:15331` and `:15341-15342`).
-The config alternative is provably not expressible today: the manual override is honoured only when
-`startWave > 1` (`const explicitPointer = startWave > 1`, `:15236`), so `startWave: 1` is
-indistinguishable from the default and cannot mean "ignore the ledger"; every value that *is*
-distinguishable skips waves.
-
-Leaving the form open invites the FSPEC to add a second knob whose semantics overlap the deletion
-hatch — precisely the interim/final divergence R-4 warns about. **Required change:** resolve OQ-1 to
-record deletion (with the announcement wording pinned as a requirement, and owned as an exact string
-by the lowest layer that pins it — TSPEC/PROPERTIES, not the REQ), or state the config knob's
-semantics precisely enough that it cannot collide with `startWave`.
-
-### F-08 — C-1 is already satisfied and should cite its evidence (Low, Local)
-
-C-1 requires the record to live in consumer-local untracked state. That is already true and
-anchored: `main:.gitignore:41` carries `/.claude/pdlc-wave-state.json` (root-anchored, alongside
-`/.claude/workflows/`, with the comment at `:24-32` explaining why the anchor matters for the
-checked-in fixture tree). Cite it so the FSPEC does not re-litigate the location.
-
-### F-09 — OF-1..3 carry no reproducible anchor (Low, Process)
-
-§4's preamble promises facts "each dated and reproducible from the cited run", but the entries cite
-only "the pdlc-consolidation-agent run of 2026-08-09" — no commit sha, run-report path, or
-POSTMORTEM id. A reviewer cannot re-derive them. The `M-WG-*` rows in the baseline file show the bar:
-each carries an executable re-verification command. Subsumed by F-05 if OF-1..3 are replaced by
-citations.
+VERDICT: Needs revision
+{"high": 4, "medium": 3, "low": 2}
