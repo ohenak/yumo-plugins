@@ -190,4 +190,36 @@ that, and the diff bears the claim out.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | Case A is keyed on "before batch 7", but batches 4–6 run in that window under the green-terminal and RED-terminal wordings, neither of which has a clause for new red cases spliced into a suite that landed red at batch 2/3; and case A's stated red reason is the batch-7/8 one. Add a clause reading the cases under the landing batch's own wording | §The three gate wordings — Amendment commits on landed suites, case A |
+| F-02 | Medium | inherited | nonlocal | The errata section's "TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5)" still omits **ERR-8**, which is open in TSPEC v0.9 against FSPEC Step 5 items 15–16 (v8 F-03, unaddressed) | §Errata routed upstream |
+| F-03 | Medium | inherited | nonlocal | `LI-AT-30` conjunct (iii) — "no document carries `RSN-COUNT`" — is still vacuous unless the third case's eligible non-self corpus exceeds the `maxDocuments` in force (REQ §4.1 default 5); state the fixture precondition (v8 F-02, unaddressed) | LI-12 task row |
+| F-04 | Medium | inherited | nonlocal | The zero-bound **production** half of TSPEC §D.5's `maxBytes <= 0` short-circuit still has no named owner task; LI-16's row does not claim it (v8 F-01, partly closed on the test side only) | LI-16 task row |
+| F-05 | Low | inherited | local | LI-08's amendment note remains spliced mid-enumeration, orphaning `LI-AT-12` after "…the single-writer manifest is unchanged, and the expected-red rows … (v0.6 erratum), `LI-AT-12` (…)". This round lengthened the splice; close the enumeration before the note (v8 F-04) | LI-08 task row |
+| F-06 | Low | inherited | nonlocal | The v0.5 changelog row still says "the four stale version pins now read FSPEC v0.13 / TSPEC v0.9"; three were refreshed, and the 0.1 row correctly keeps its historical pins. Say three (v8 F-05) | §Changelog, 0.5 row |
+
+FINDING: Low | delta | local | §The three gate wordings — Amendment commits on landed suites, case A | Case A keys on "before batch 7" but batches 4–6 fall in that window under the green-terminal and RED-terminal wordings, which have no clause for new red cases added to an already-red landed suite, and its stated red reason is the batch-7/8 reason rather than the pre-batch-7 one (symbol not defined yet)
+FINDING: Medium | inherited | nonlocal | §Errata routed upstream | "TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5)" omits ERR-8, still open in TSPEC v0.9 against FSPEC Step 5 items 15–16
+FINDING: Medium | inherited | nonlocal | LI-12 task row | LI-AT-30 conjunct (iii) "no document carries RSN-COUNT" is vacuous unless the third case's eligible non-self corpus exceeds maxDocuments (REQ §4.1 default 5); the fixture precondition is unstated
+FINDING: Medium | inherited | nonlocal | LI-16 task row | The zero-bound production half of TSPEC §D.5's maxBytes <= 0 short-circuit has no named owner task
+FINDING: Low | inherited | local | LI-08 task row | The amendment note is spliced mid-enumeration and orphans LI-AT-12; this round lengthened the splice without closing the enumeration first
+FINDING: Low | inherited | nonlocal | §Changelog, 0.5 row | "the four stale version pins" overcounts; three were refreshed and the 0.1 row correctly keeps its historical pins
+
+## Recommendation
+
+**Approved with minor changes.**
+
+The three routed items are resolved. The expected-red rows the heading-form follow-up owes are now
+named in the live table, ahead of the run they govern, in both landing windows — which is precisely
+what P-A-7 requires and what all three reviewers asked for. Nothing I approved at v8 is broken: no
+batch, `Deps` edge, owner, AT partition or fixture moved, and the PLAN remains a faithful compression
+of REQ v0.9 / FSPEC v0.13 / TSPEC v0.9 / DECISIONS v0.3 as those documents read at HEAD, whose digests
+I re-derived and matched.
+
+No High finding, so this confirmation approves. F-01 is a one-clause precision fix to the paragraph
+this round added. F-02 through F-06 are inherited from v8, were outside this erratum's routing scope,
+and are tagged `inherited` so they route back to the PLAN's ordinary revision loop rather than
+halting the phase — none is a product-fidelity defect against a REQ acceptance criterion.
+
 ## Verdict
