@@ -512,8 +512,14 @@ that a first-class per-seam `enabled` map becomes the better surface.
   recoverable *until the next run of that feature*. What an overwrite costs is inspectability of a
   pre-repair tree, never content — a retained repair is gate-verified and committed in its own wave
   commit.
-- The documented operator remedy, until DEC-A6-03 is revisited: copy the ref before re-running a
-  halted feature.
+- The operator remedy — copy the ref before re-running a halted feature — is no longer documentation
+  the operator has to already know about. **REQ v1.16 AC-6.3 makes the warning a required element of
+  the halt report itself** (FSPEC v1.7 BR-14, AT-06-4 conjunct (3); TSPEC v1.15 §4.5's
+  `renderSnapshotOverwriteNotice` notice), co-located with the pointer at the captured tree state, so
+  preserving the capture is an action the operator can take *at halt time* from the halt report
+  alone. The record and TSPEC §2.5 remain the place the remedy is explained; they are no longer the
+  only place it is reachable. Still owed downstream: no property or test asserts the conjunct yet —
+  see DEC-A6-03's specified-vs-asserted note.
 - Refs accumulate — one dangling commit object per wave per run — and nothing in this feature deletes
   them (TSPEC §6 OQ-2).
 
