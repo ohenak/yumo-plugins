@@ -227,3 +227,64 @@ exercises this incidentally today; say so, rather than citing a block that is no
   *at its `Version`*. §6.2's OB-F4 row does (`Version | 1.2 · 2026-08-20`); the inline citations in
   §1.3 (`M-WG-5`), §2.1 and RT-5 (`M-WG-2`), and §3.1 (`M-WG-8`/`9`/`13`/`14`) do not. All four
   facts check out at 1.2 today — this is about the citations staying checkable after the file moves.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | REQ-WVR-01 asks the run log **and final report** to state the resume point and its provenance. §2.4's report table covers the two rows a run that *finishes* Phase I produces (`✅`, `⏭`). A resumed run that halts again — AT-18's middle run — produces neither, since both `recordPhase("I", …)` calls sit after the wave loop. Is the halt path's report deliberately out of scope (the run log still carries the banner), or is a resume-point statement owed on the halted report too? Either answer is fine; the document currently leaves it to inference. |
+| Q-02 | §2.5's operator-pointer interaction is ratified as-is and routed upstream as an erratum — correctly, in my reading. One product consequence worth stating in the FSPEC clause you are asking for: after an operator-pointer run at wave N, the record claims waves 1..N complete on the operator's assertion rather than on any run having committed them, which is a different provenance of "completed" from BR-08's. It stays safe (the first executed wave's gate verifies the whole tree, so a missing predecessor reds rather than ships), but should the record carry that provenance, or is announcement-only sufficient? |
+| Q-03 | DEC-WVR-06 replaces FSPEC AT-02's stated oracle form ("set equality over the **announced reasons**") with set equality over reason **codes**, plus a per-code integration assertion on the rendered sentence. I read that as at least as strong — the codes enumerate IG-1's three arms, which is the property AT-02 was protecting — but it is a substitution of an FSPEC-specified oracle form. Confirm with te-review that PROPERTIES is expected to transcribe codes, not sentences, so the two documents do not diverge at authoring time. |
+
+## Positive Observations
+
+- **The ratify-don't-reinvent posture is executed, not just declared.** §1.2's delta table names ten
+  gaps and §1.2's closing paragraph freezes the path constant, field names, fingerprint, evaluation
+  order, write site and retention. That is REQ BL-03 and R-4 discharged the way the REQ asked —
+  R-4's "new code alongside" outcome is structurally unavailable to an implementer following this
+  document.
+- **§1.1's verification table is the right response to an unmet BL-04.** Seventeen claims, each
+  citing an exported symbol, a comment string or a config key rather than a line number, each
+  re-runnable from this tree with `git show origin/main:<path> | grep -n <symbol>`. I re-ran all
+  seventeen and all seventeen hold. This is what makes a review of a branch 1,637 commits behind
+  possible at all, and it is the pattern I would want repeated whenever an authoring tree lags.
+- **§5.1 states the oracle rule the REQ demanded and then applies it.** "The oracle is an observed
+  resume, never the presence of a code path" is REQ §1's own sentence, and §5.4's map honours it:
+  every row is a dispatch count, an announced sentence, a report row or written bytes. AT-12's
+  fourth conjunct (Phase PT dispatches exactly one agent and gates exactly once) is exactly the
+  positive pairing a "zero dispatches" claim needs — please keep it.
+- **§5.5's three named mutations are the most valuable half of the test strategy.** Each names the
+  test that kills it and, more usefully, the tests that do *not* — "recording a run-relative wave
+  number … killed only by AT-18; every single-halt test passes under it" is precisely the
+  discrimination FSPEC AT-18 was written to buy.
+- **§4.4 ("what is deliberately not modelled") reasons from product consequence, not preference.**
+  Rejecting a per-wave set because "storing one would invite a reader that honours a non-prefix set
+  and skips a wave whose predecessor never ran" ties a data-model decision straight to R-2's
+  unrecoverable failure mode. Same for rejecting timestamps against G-4's reader-proves-staleness.
+- **The erratum discipline is right.** Four upstream defects (§6.3) are raised rather than silently
+  patched, including the one against the REQ that the TSPEC itself depends on. I independently
+  confirmed all four (see the trailer of this review); raising rather than editing is the correct
+  handling and it kept this document honest about §2.5's unspecified interaction.
+- **No scope creep.** Every behavioural addition traces upstream: the provenance token to FSPEC
+  BR-07's own vocabulary, the report-row detail to REQ-WVR-01's "and final report", the frozen
+  catalogues to OB-F5, the classifier extraction to the impossibility of an honest AT-02/AT-13
+  oracle. Nothing here is a product decision taken in an engineering artifact, and §3.5 explicitly
+  declines to add the config key REQ OQ-1 rejected.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No P0 or P1 requirement is omitted, narrowed or reinterpreted; all ten REQ criteria and all
+eighteen FSPEC acceptance tests carry a home, and the document takes no product decision that
+belongs upstream. The six Medium findings are all about oracle quality and grounding accuracy —
+three tests that cannot pass or cannot discriminate as written (F-01, F-02, F-03), one closure that
+is not closed over its full enumeration (F-04), one unstated behavioural delta (F-05), and one
+citation to a test block that does not exist (F-06). None blocks the phase; each should be closed
+before PROPERTIES authoring, since te-author will otherwise transcribe the unworkable oracles
+verbatim.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 6, "low": 3}
