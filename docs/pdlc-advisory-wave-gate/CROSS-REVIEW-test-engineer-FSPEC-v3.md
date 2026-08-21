@@ -30,6 +30,21 @@ two Low citation-fidelity gaps remain, neither gating.
 
 ## Linked Requirements
 
+The upstream delta `53fe0b73…0cef7148` touches five REQ sites. Disposition of each against FSPEC:
+
+| REQ site (v1.15) | What changed | FSPEC site that compresses it | Still faithful? |
+|---|---|---|---|
+| Lineage header | `Upstream` restored to a resolvable path; `Downstream` now names FSPEC/TSPEC/PLAN/PROPERTIES; `Cross-Reviews` scoped to harvested rounds | FSPEC header rows 5–7 | Yes — FSPEC's own header names REQ as its upstream and does not restate REQ's `Cross-Reviews` scope, so nothing here is compressed downstream |
+| Status/version row | `draft` 1.13 → `approved (shipped)` 1.15 | §2 preamble, "traces to `REQ-…` v1.13" | **Stale pin** — F-01 below |
+| AC-1.1 | Adds the base pin: five-member "before" is at `c8aa22a4`; post-change reading at `11420461` (baseline v1.2 §4, M-WG-13) | §2 "Where 'before' is measured" (lines 74–78) | Yes — FSPEC already carries both anchors verbatim, and adds the "green at any later base is a vacuum, not a pass" rule REQ does not state |
+| AC-5.1 | Pins the observation point (restoration completes); excludes three record carriers — AC-6.1 record append, **AC-6.2 escalation-log append**, AC-5.2 queue-row write (M-WG-7); excludes `.gitignore`d paths in both directions; states the failed-capture outcome | BR-9 (observation point + domain), E-23 (halt's own writes), E-34 (capture failure), §7.1 O-1 | Substantively yes; BR-9's excluded-carrier enumeration names two of REQ's three — F-02 below |
+| R-5 | Pre-change readings measured at `c8aa22a4`; M-WG-13/M-WG-14 post-change at `11420461` | §2, same paragraph | Yes — identical anchors, same direction |
+
+**Direction of the cascade matters here.** AC-5.1's erratum was raised by *my own* v1 finding on
+REQ and lands upstream what FSPEC BR-9 had already specified independently. This is the benign
+cascade shape: upstream converged onto the downstream compression, so the compression did not
+drift. The one asymmetry left is enumerative, not semantic (F-02).
+
 ## Behavioral Flow
 
 ## Business Rules
