@@ -102,7 +102,42 @@ this lens approved in v1/v2.
 
 ## Business Rules
 
-_pending_
+**BR-14 carries the obligation, and carries it testably.** The added clause does four things a test
+author needs, and I checked each against REQ v1.16 `:531-536`:
+
+1. **States the conditional as a rule, not a suggestion** — "where that report points the operator at
+   a captured pre-A6 tree state, the **same report, in the same place**, states that re-running this
+   feature overwrites that capture". The antecedent is observable (does the report point at a
+   capture?) and the consequent is observable (is the warning in that same report?).
+2. **Names the observable explicitly** — "Co-location is the observable — a pointer in the halt report
+   and the warning in a runbook does not satisfy it." This is the single most valuable sentence in
+   the delta from a testing standpoint: it forecloses the false-green where an implementer satisfies
+   the letter by documenting the remedy elsewhere, which is exactly the gap DECISIONS `:468` records
+   as "the documented operator remedy". The oracle it implies is a two-conjunct assertion over one
+   artifact's bytes, not a cross-artifact search.
+3. **Bounds the rule's reach** — "The clause binds the halt report only; the advisory record entry
+   BR-13 mandates is read after the fact and carries no such warning". This is a negative boundary a
+   test can hold: an implementation that sprays the warning into the advisory record has not
+   satisfied BR-14, and BR-13's AT-06-1 is protected from acquiring a phantom conjunct.
+4. **Excludes the remedy from the observable** — "the remedy an operator then chooses is not part of
+   the report's observable". Correct call: DEC-A6-03's "copy the ref" remedy is DECISIONS' and the
+   TSPEC's wording problem, not an FSPEC acceptance conjunct, and pinning it here would have
+   over-specified the halt string.
+
+**O-1 respected at the rule site.** "What the capture is called, how it is stored and how long it
+lives are O-1's" — the FSPEC states the outcome and defers the mechanism, which is what kept v4's
+finding a bounded FSPEC edit rather than a decision reopening. No `a6-snapshot`, no ref shape, no
+lifetime claim appears anywhere in the delta (`grep -n "a6-snapshot\|refs/pdlc" FSPEC` → no hits).
+
+**BR-9 unchanged and still under-enumerated.** BR-9's observation-point clause still excludes "the
+record and escalation writes … both carriers" where AC-5.1 v1.16 names three (AC-6.1's record
+append, AC-6.2's escalation-log append, AC-5.2's M-WG-7 queue-row write). E-23 covers the third and
+the observation point structurally precedes it, so no oracle asserts the wrong thing and AT-05-1 is
+not at risk — the gap is enumerative at the rule site the test reads from. F-03, Low,
+`inherited`/`nonlocal`, carried from v3 F-02 and v4 F-04, untouched by this delta.
+
+**BR-13, BR-15 and the rest of §4 are byte-identical.** Confirmed by diff; BR-15's transcribed
+eight-member refusal set — the literal AT-03-7's oracle depends on — is untouched.
 
 ## Edge Cases and Error Scenarios
 
