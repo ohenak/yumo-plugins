@@ -1031,8 +1031,8 @@ rule is written on the trailing slash: `a/b/` collides with `a/b/c.js`, `a/b` do
 docblock says so and the implementation is three `startsWith` lines that do exactly that. So the
 claim that a manifest row naming a directory covers the files beneath it is true **only of a row
 written with a trailing slash**. A manifest row spelled `pdlc/workflows/dist` refuses a produced
-file `pdlc/workflows/dist/orchestrate-dev.bundle.js` as `out-of-envelope`, and refuses it
-silently — the operator sees a refusal reason, not a spelling diagnosis.
+file `pdlc/workflows/dist/pdlc-cli.mjs` — the one artifact `build-runtime.mjs` emits at HEAD — as
+`out-of-envelope`, and refuses it silently — the operator sees a refusal reason, not a spelling diagnosis.
 
 This is inherited behaviour, not new: `computeWaves` packs waves with the same predicate, so the
 slash-less row is already narrower than its author meant everywhere else in Phase I too. A6 does
@@ -1114,9 +1114,11 @@ M-WG-12 is the gap: the wave commit loop commits only paths owned by tasks *in t
 E-6 promotion by construction lands in a later task's paths. Left alone, a resolved wave would
 strand its own repair as an uncommitted working-tree change.
 
-After the per-task loop, inside the same `if (waveGit)` block and past the same green gate, one
-further `commitPaths` call runs with the **full argument set the shipped writer requires** — it
-is not a two-argument call:
+After the per-task loop, inside the same `if (waveGit)` block and past the same green gate, the
+wave loop iterates `groupPromotedPaths`'s rows and runs **one `commitPaths` call per promoted
+task** — not one aggregate call for the wave: each promotion is a distinct later task's paths, and
+the `message` template below carries a single `{taskId}` slot, which is coherent only per task. Each
+call passes the **full argument set the shipped writer requires** — it is not a two-argument call:
 
 | Argument | Value |
 |---|---|
@@ -1144,8 +1146,8 @@ tree either way. §6 OQ-6 records the asymmetry rather than leaving it to be dis
 
 **This interpretation is routed to DECISIONS, not settled in this paragraph (PM F-06).** FSPEC
 BR-8's licence — "that scope may widen under O-8's E-6 resolution" — reads naturally as *widening
-the existing per-task commit's pathspec*, and this design instead *adds a call* with its own
-`what` label, which surfaces in git history as a third commit. The product reviewer has ruled the
+the existing per-task commit's pathspec*, and this design instead *adds a call per promoted task* with its own
+`what` label, each surfacing in git history as its own commit beside the wave's per-task ones. The product reviewer has ruled the
 added call acceptable, and the engineering argument for it stands: widening a per-task commit's
 pathspec would make one task's commit carry another task's paths, breaking the pathspec-scoping
 discipline M-WG-4 rests on, and AT-04-3's oracle is over writer *identities*, which either shape
