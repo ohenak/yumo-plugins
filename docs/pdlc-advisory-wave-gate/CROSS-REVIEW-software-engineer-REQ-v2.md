@@ -70,3 +70,49 @@ marked ready: true (still a draft).`).
 **Change:** one clause — *"QUEUE row 19 `done`, which is what blocked rows 6 and 20 on the queue's
 not-done dependency pre-check; `ready: true` unblocks only this row's own pickup"*. Local because
 it is a provenance sentence in this document's changelog, not a reusable constraint.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v1 Q-02, unchanged and still not this round's business: now that PR #66 is merged and row 19 reads `done`, does this feature's `docs/` directory relocate to `docs/completed/pdlc-advisory-wave-gate/` to match `pdlc-advisory-tier` and `pdlc-consolidation-agent`? The v1.12 changelog explicitly defers it; the answer only needs recording once, because every cross-document citation into this feature moves with it. |
+| Q-02 | Does `pdlc/OPERATIONS.md` want one line stating that a merged feature's REQ keeps `ready: true` (rather than being flipped back to `false` as a "do not re-pick" marker)? The queue's own guard against re-picking a shipped feature is the `done` row, not the flag — recording that would stop a future reviewer re-deriving F-01 of v1 in the opposite direction. |
+
+## Positive Observations
+
+- **AC-2.4's new zero-budget conjunct is verified shipped, and it is a positive-outcome pairing
+  rather than an absence-only oracle.** `waveBudgetPerRun` validates through `nonNegativeInt`
+  (`pdlc/workflows/orchestrate-dev.js:2096`, with the sibling-of-`positiveInt` rationale at
+  `:2070` naming E-33), so `0` survives as configured — pinned at
+  `pdlc/workflows/__tests__/advisoryConfig.test.js:195-199` (`reads back 0`, and
+  `expect(invalidKeys).not.toContain("waveBudgetPerRun")`). The escalation follows from
+  `:3510` (`if (waveBudget.resolved >= advisoryConfig.waveBudgetPerRun)`), which fires at
+  `0 >= 0` on the first red wave. The distinguishing observable the AC claims is real in both
+  directions: the per-seam row is present with zero counts under an enabled tier
+  (`advisorySummaryRows` is driven off `ADVISORY_SEAMS`, `:3688`; PROP-SUM-01 at
+  `advisoryRecord.test.js:492-500` asserts all six rows with `invocations: 0`), while under
+  `advisory.enabled: false` the section is `undefined` outright (`:16070`, `:16110` —
+  `advisoryTierOn ? advisorySummaryRows(…) : undefined`). A negative claim ("no dispatch") paired
+  with the positive artifact that proves it, at REQ altitude.
+- **The AC-3.5 / AC-4.1 altitude relocations lost no rigour downstream.** Both hunks delete
+  test-decomposition prescriptions ("asserted by its own test", "its fixture mutates the shipped
+  control flow") and route them to PROPERTIES — the Altitude Rule's correct direction. Verified
+  the receiving document already carries them at full strength: PROP-ENV-10 asserts
+  `A6_PROHIBITIONS` **set-equal** `["f","g","h","i"]` (constant at
+  `pdlc/workflows/orchestrate-dev.js:1964`) plus a per-operation refusal for each enumerated
+  prohibition, so a deleted case reds; PROP-GATE-04 keeps conjunct (iii)'s two mutation fixtures
+  and pairs each with a positive ledger anchor (`ledgerAnchor.value === 2` / `=== 4`) rather than
+  asserting only that the gate did not run. Nothing was dropped in transit.
+- **F-02's routing was executed as a measurement, not a restatement.** The constraints file's new
+  §4 keeps M-WG-8 as the pre-change fact it was and adds M-WG-13 / M-WG-14 as the post-change
+  reading, with a stated reason for not rewriting M-WG-8 (AC-1.1 and R-5 argue from the pre-change
+  state). Its recipes are symbol-based and I re-ran both to a match. The verified-at header was
+  bumped per axis (`§4 at 11420461`) rather than globally — the change-control discipline v1's
+  Q-03 asked about, answered by construction.
+- **`756bafa5` is the right instinct.** The v1.4 changelog's baseline citation was reverted from
+  v1.2 back to v1.1 — a historical changelog entry records the version that was current *then*,
+  and updating it would have falsified the record to make a pointer look consistent. The live
+  pointers in §1 and C-5 moved to v1.2; the archival ones did not.
+- **Every prior finding was addressed at its own altitude and none by amending an approved
+  criterion.** AC-1.1 and R-5 are byte-identical to v1.11, exactly as v1's F-02 asked. No settled
+  decision was re-opened, and the diff contains no restructuring.
