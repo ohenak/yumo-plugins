@@ -485,7 +485,8 @@ discharged by the enumerated cases in the task table, not by the percentage.
 
 ### AT coverage — one row per FSPEC acceptance test
 
-Forty-seven ATs in FSPEC §6, forty-seven rows here. This table is set-equal to FSPEC's AT set, not a
+**Forty-eight** ATs in FSPEC §6 at v1.7, forty-eight rows here — the forty-eighth is `AT-06-4b`, the
+negative arm FSPEC v1.7 added alongside BR-14's overwrite warning. This table is set-equal to FSPEC's AT set, not a
 containment check: an AT with no row has no home, and a row naming no AT is a defect in this table.
 
 Since v1.3 the `Red-test task` column names the **step** (former task id) whose in-session red
@@ -500,7 +501,7 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 | AT-01-4 | A6-20 | A6-21 | advisoryDisabled.test.js |
 | AT-01-5 | A6-15 | A6-18 | advisoryWaveGate.test.js — four arms: BL-03-absent alone, BL-04-absent alone, both-absent (one statement, not two), and the zero-count run where A6 applies |
 | AT-01-6 | A6-20 | A6-21 | advisoryDisabled.test.js |
-| AT-02-1 | A6-02 | A6-05 | advisoryEnvelope.test.js |
+| AT-02-1 | A6-02, A6-07 | A6-05, A6-08 | advisoryEnvelope.test.js — the vocabulary compared by **ordered-sequence** equality against its transcribed literal (`BR-2`'s first-matching-class rule, so a reordering fails where set equality would pass); plus advisoryWaveGate.test.js — `E-08b`'s two-class arm in A6-08's `parseA6RootCause` step, a failure matching class 1 and class 2 classed `plan-ordering-defect` and carrying exactly one class |
 | AT-02-2 | A6-07, A6-15 | A6-08, A6-18 | advisoryWaveGate.test.js — parser unit half in A6-07, escalation/attempts half in A6-15 |
 | AT-02-3 | A6-13 | A6-14 | advisoryWaveGate.test.js |
 | AT-02-4 | A6-07, A6-15 | A6-08, A6-18 | advisoryWaveGate.test.js — `citesGateOutput` unit half in A6-07 |
@@ -532,7 +533,8 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 | AT-06-1 | A6-16 | A6-18 | advisoryRecord.test.js |
 | AT-06-2 | A6-16 | A6-18 | advisoryRecord.test.js |
 | AT-06-3 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
-| AT-06-4 | A6-15 | A6-18 | advisoryWaveGate.test.js |
+| AT-06-4 | A6-15 | A6-18 | advisoryWaveGate.test.js — §5.2's two-red-wave fixture; all three AC-6.3 conjuncts on one run, conjunct (3) by **co-location within one `notices` element**, both halves matched by spec-side literals (anti-echo) |
+| AT-06-4b | A6-15 | A6-18 | advisoryWaveGate.test.js — the E-34 capture-failure fixture (`snapshotRef: null`): diagnosis and class present, no ref pointer and no overwrite sentence anywhere in `notices` |
 | AT-06-5 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
 | AT-06-6 | A6-17 | A6-18 | advisoryEscalationLog.test.js |
 | AT-07-1 | A6-15 | A6-18 | advisoryWaveGate.test.js — BR-1…BR-16 partition |
@@ -547,8 +549,14 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 - [ ] All eleven tasks at ✅, with **every** wave's gate green under
       `implementation.testCommand` and `build-runtime.mjs` clean — no wave ends red; each merged
       task's red steps were observed red in-session, per its commit trail or session record.
-- [ ] Every one of the forty-seven ATs above has a passing test in the named home; the AT set in this
-      table is set-equal to FSPEC §6's, checked both directions.
+- [ ] Every one of the **forty-eight** ATs above has a passing test in the named home; the AT set in this
+      table is set-equal to FSPEC §6's at v1.7 (`AT-06-4b` included), checked both directions.
+- [ ] `ADVISORY_ROOT_CAUSES`, `ADVISORY_REFUSAL_REASONS` and `ADVISORY_EXCLUSIONS` are each asserted by
+      **ordered-sequence** equality, never set equality or `toContain`, and `E-08b`'s two-class arm is
+      present — without it the root-cause order has no behavioural consequence in the suite.
+- [ ] AT-06-4's overwrite warning is asserted **co-located** with the ref pointer in one `notices` element,
+      by spec-side literals rather than a constant imported from the module under test, and AT-06-4b asserts
+      its absence on the capture-failure run.
 - [ ] Every transcribed surface of TSPEC §1.3 carries the six-member value by **set-equality**, never
       a loosened `toContain`: `ADVISORY_SEAMS`, `ENVELOPE_DEFAULTS`, `ADVISORY_DEFAULTS`,
       `advisoryRecord.test.js`'s per-seam `test.each`, `advisoryDriver.test.js`'s
