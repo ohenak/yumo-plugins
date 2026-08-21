@@ -133,3 +133,97 @@ because the queue delegates in-process with no queue-specific configuration (§2
 `{reqPath}` and no seam overrides, and that both paths request exactly `WAVE_STATE_PATH` from the
 read seam, with the recorded path strings compared for equality — or add seam forwarding to §1.2's
 delta table as in-scope work, so the discriminating arm becomes writable rather than asserted.
+
+### F-04 (Medium, Local) — IG-6 is outside the closed set, and its only integration arm is absence-only
+
+REQ-WVR-02 is explicit about the shape of its proof: *"PROPERTIES owes a **set-equality** check over
+IG-1..6 rather than a containment check, so a deleted cause fails a test instead of passing one."*
+The catalogue §3.1 freezes is `WAVE_IGNORE_REASONS`, seven codes covering IG-1a/b/c, IG-2, IG-3,
+IG-4, IG-5 — IG-6 "is silent and carries no code". So the set-equality assertion of AT-02 ranges
+over a set from which IG-6 is structurally absent, and deleting IG-6's behaviour (a silent absent
+record starting to announce, or `{}` falling through to IG-1) cannot red it.
+
+The compensating arm is *"one asserting IG-6 emits nothing matching `wave ledger`"* — an
+absence-only oracle, and the document's own §5.1 rules it out: *"Wherever the FSPEC asks for a
+skip, the assertion is a call count on a spy paired with a positive conjunct."* No positive
+conjunct is stated for the IG-6 arm.
+
+Partial cover exists — §5.3's unit row asserts `parseWaveLedger`'s three arms, which pins
+absent/empty/`{}` to `{state: null, reason: null}` positively — but the document never says that
+this is where IG-6's closure lives, so the six-cause closure REQ-WVR-02 demands is discharged
+nowhere in particular.
+
+*What to change:* (i) pair the IG-6 integration arm with its positive conjunct on the same path —
+all M waves dispatched, from wave 1, outcome (a) resolved — so the assertion says what *does*
+happen; and (ii) state in §5.4 that IG-6's membership in the closed six is carried by the
+`parseWaveLedger` three-arm unit assertion, with the three no-record inputs transcribed as
+literals, so the six-cause enumeration has a named home.
+
+### F-05 (Medium, Local) — the extracted classifier resolves ancestry eagerly; the shipped chain does not
+
+§1.2 closes with a list of what is *"explicitly not changed"*, including "the evaluation order of
+the disregard causes", and the delta table above it is declared to be "the feature's scope". §2.3's
+normative control flow then reads:
+
+```
+headOk := parsed.state ? await headCorroborated(parsed.state.head) : true
+d      := classifyWaveLedger(parsed, {…, headOk})
+```
+
+The probe is resolved for **every** well-formed record, before the feature and plan-hash guards run.
+The shipped chain resolves it lazily — `if (recorded.feature !== featureName) … else if
+(recorded.planHash !== planHash) … else if (!(await headCorroborated(recorded.head)))` — so a record
+naming a foreign feature, or a record written against a different plan, never causes a
+`git merge-base --is-ancestor` call at all. Under §2.3 both now do.
+
+The *outcome* order is preserved (§3.2's guard table is faithful, and the announced reason is
+unchanged), so this is not a correctness defect. It is a behavioural delta — one extra git
+subprocess invocation per rejected record, on records the shipped code rejects without asking git —
+that is absent from §1.2's scope table, and RT-2's regression net will not catch it: the shipped
+ancestry tests assert `expect(calls).toContainEqual([...])`, i.e. containment, which an extra call
+cannot fail.
+
+*What to change:* either keep the probe lazy (pass a thunk, or resolve ancestry after the cheap
+guards and re-enter the classifier), or add a row to §1.2 stating the change and its cost, and give
+AT-11 an arm asserting the git call list for a feature-mismatch record — otherwise "no new
+capability, no new IO" (§3.4, REQ C-3) is narrower than the design in fact is.
+
+### F-06 (Medium, Local) — A-2 cites a unit block that does not exist
+
+§6.5 A-2: *"This is a property of the shipped parser, asserted by the existing `computePlanHash`
+unit block."* There is no such block. Scanning every file under
+`pdlc/workflows/__tests__/` on `origin/main` for `computePlanHash`, `parseWaveLedger` and
+`formatWaveLedger` returns **zero** matches — which is also what makes D-5 correct that these
+functions are reachable only through `main()`. The two statements cannot both be true, and D-5 is
+the accurate one.
+
+This matters beyond bookkeeping: A-2 is the assumption that `computePlanHash` answers "same plan?"
+stably across invocations, and the failure mode it names — "IG-3 would fire on every re-invocation
+and the feature would degrade to a full run" — is the silent, total loss of G-1's zero-action
+resume. Marking it as already-asserted retires an assumption that nothing has falsified (DC-03).
+
+*What to change:* restate A-2 as resting on the **new** unit coverage §5.3 introduces, and add the
+determinism arm explicitly — the same PLAN text parsed and hashed twice yields the same 8 hex
+digits — alongside the sensitivity arms §5.3 already names. (AT-01's two-run integration fixture
+exercises this incidentally today; say so, rather than citing a block that is not there.)
+
+### F-07 / F-08 / F-09 (Low)
+
+- **F-07 (Process).** §5.2 attributes a "cite-and-reuse rule" to DC-08. This repo's DC-08 is
+  *"An unresolved item needs a named successor surface, not prose intent"*, and no constraint in
+  `docs/_constraints/DOMAIN-CONSTRAINTS.md` carries the phrase "cite-and-reuse". The file's own
+  preamble names this trap: skill prompts citing `DC-07 / DC-08 / DC-09` point into a *different
+  consuming repo's* constraint file. Tagged `Process`, not `Local`, because it is the recurring
+  numbering collision the constraints file already tracks — cite the behaviour without the id, or
+  cite the consuming repo explicitly. The engineering practice itself (reuse
+  `readMergeConfigSafely` and the shipped harness rather than adding a second reader) is right and
+  is called out below as a positive.
+- **F-08 (Local).** §2.6 maps the ten REQ criteria to components, which is the load-bearing half.
+  BR-04, BR-05, BR-12, BR-14 and BR-16 are each covered in substance (§3.5, §2.3, the fail-open
+  posture of §3.4, §2.6's REQ-WVR-10 row, §2.6's REQ-WVR-07 row) but carry no id-level citation
+  anywhere in the document, so a reader checking FSPEC §4 coverage has to reconstruct it. One
+  BR→component column, or five ids added to §2.6's rows, closes it.
+- **F-09 (Process).** `pdlc-wave-gate-baseline.md`'s control rule is that a consumer cites the file
+  *at its `Version`*. §6.2's OB-F4 row does (`Version | 1.2 · 2026-08-20`); the inline citations in
+  §1.3 (`M-WG-5`), §2.1 and RT-5 (`M-WG-2`), and §3.1 (`M-WG-8`/`9`/`13`/`14`) do not. All four
+  facts check out at 1.2 today — this is about the citations staying checkable after the file moves.
