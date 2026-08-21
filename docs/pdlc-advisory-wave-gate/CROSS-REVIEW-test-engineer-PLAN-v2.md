@@ -101,7 +101,63 @@ does not either own or declare pre-existing, and no row promises a file that is 
 
 ## Dependencies
 
+*F-04 (Low — the no-open-dependency claim overreached its evidence) is resolved, and resolved the
+right way: by measurement rather than by softening.* The subsection now reads "**No upstream
+dependency of this plan is open — checked across all four upstream documents at HEAD, not three**",
+and it *records the overreach* instead of erasing it: "The v1.10 round asserted this while DECISIONS
+still sat at `sha256:84deee10…`, where DEC-A6-01's option-D row … were still routing the ignored-path
+boundary as 'upstream's open question (TSPEC §6 OQ-7)' … so the claim overreached its evidence when
+it was made (TE v1 F-04)."
+
+I re-grounded the new claim against DECISIONS at HEAD rather than accepting the account. The option-D
+row now reads "OQ-7 is **closed, answered no** at TSPEC v1.11; FSPEC BR-9 v1.6 and REQ AC-5.1 put
+ignored paths outside the map in both directions, so mechanism and oracle agree by decision rather
+than by coincidence", and the consequences section states the scoped ignored-path arm "is explicitly
+**not built**", with a *reversal* of BR-9's exclusion as the only re-evaluation trigger that would
+grow it. The PLAN's summary of both is faithful, and its closing sentence — "No task in this plan
+reads that arm, and none needs to" — is true against the task table: no task row mentions a scoped
+capture arm.
+
+The dependency edges themselves are untouched this round (see the column-wise diff in **Batches**),
+so the ordering story I approved at v1.10 stands: A6-04 → A6-06 for the example-config edit, A6-00 +
+A6-05 → A6-08 for the helpers, and the linear A6-08 → A6-10 → A6-12 → A6-14 → A6-18 → A6-21 spine
+that keeps every wave boundary green under a script-owned gate with no expected-red channel.
+
 ## Verification
+
+**The AT table's set-equality claim is now true at forty-eight, and I checked it mechanically rather
+than by count.** The caption changed from "Forty-seven ATs in FSPEC §6, forty-seven rows here" to
+"**Forty-eight** ATs in FSPEC §6 at v1.7, forty-eight rows here — the forty-eighth is `AT-06-4b`".
+Extracting the AT ids from the PLAN's traceability table and from FSPEC and diffing the two sorted
+sets gives **48 vs 48 with an empty diff** — set-equal in both directions, so a deleted case fails
+and an invented one fails too. This is the completeness-by-set-equality shape, not containment.
+
+Three traceability rows gained oracle detail, all verified against TSPEC §5.6:
+
+- **AT-02-1** now names both halves and both owning steps ("A6-02, A6-07" red → "A6-05, A6-08"
+  green), with the vocabulary's ordered-sequence oracle in `advisoryEnvelope.test.js` and E-08b's
+  two-class arm in `advisoryWaveGate.test.js`. Correct: the ordering oracle and the arm that makes it
+  load-bearing now have named, distinct homes.
+- **AT-06-4** names the two-red-wave fixture, all three AC-6.3 conjuncts on one run, co-location
+  within one `notices` element and the anti-echo rule — a compressed but accurate transcription of
+  TSPEC §5.6's AT-06-4 row.
+- **AT-06-4b** names the E-34 capture-failure fixture (`snapshotRef: null`) and its positive/negative
+  split. TSPEC §5.6 puts AT-06-4b on that same fixture ("this fixture is where AT-06-4b itself
+  lives"), so the home assignment agrees with the spec.
+
+**Three DoD legs changed and all three are falsifiable as written**: the forty-eight-AT set-equality
+leg ("checked both directions"); a new leg requiring `ADVISORY_ROOT_CAUSES`, `ADVISORY_REFUSAL_REASONS`
+and `ADVISORY_EXCLUSIONS` to be asserted by ordered-sequence equality, "never set equality or
+`toContain`", **and** E-08b's arm to be present, with the reason stated ("without it the root-cause
+order has no behavioural consequence in the suite"); and a new leg pinning AT-06-4's co-location plus
+spec-side literals plus AT-06-4b's absence arm. Each names a condition a verifier can fail on.
+
+One gap remains, and it is the one place this round's improvement did not reach the DoD (F-01 below):
+the A6-10 leg still reads "the ignored-path case is asserted live (no `test.todo`) and fails an
+implementation that restores an ignored path" — the *outcome*, without naming the conjunct that
+delivers it. That was the exact confusion my v1 F-01 flagged in the task row, and the row was fixed
+while the leg was not. Low, because the task row is now unambiguous and the implementer reads that
+row; but the DoD verifier reads this leg, and could tick it from a hash-map assertion alone.
 
 ## Findings
 
