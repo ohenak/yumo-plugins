@@ -457,8 +457,10 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   gate to coordinate with, and TSPEC should state this rather than assume it; the queue
   row lifecycle is orthogonal (a human resets `halted → pending`, the ledger governs
   where the re-run starts), so REQ-WVR-07 queue parity is free and TSPEC owes only a
-  test; and a Claude-created worktree has no ledger, because `.worktreeinclude` lists
-  only `.claude/workflows/`, so it fails open to a full run — consistent with the
+  test; and a Claude-created worktree has no ledger, because the worktree include list
+  that carries `.claude/workflows/` into a worktree is consumer-local — untracked on the
+  default branch, so a consumer fact and not a repo fact — leaving the ledger's
+  consumer-local path absent there, so it fails open to a full run — consistent with the
   D-DIST-07 deferral, but TSPEC should say so explicitly rather than inherit it silently.
   One decision remains genuinely left to TSPEC: the `{}` "cleared" shape that `parseWaveLedger`
   reserves but nothing ever writes — wire it or drop it. (Retention-vs-clearing was
