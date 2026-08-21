@@ -98,8 +98,49 @@ erratum was correct not to pre-empt it.
 
 ## Positive Observations
 
+- The failed-capture clause (routed item 4) is the strongest thing in this delta. It states three
+  positive conjuncts — no repair proposed, none applied, wave halts on its own gate — rather than the
+  absence-shaped "nothing bad happens" a lesser edit would have written, and it names AC-5.2 as the
+  halt owner so the test has a status to assert rather than a status to rule out. That is a
+  falsifiable acceptance test at black-box altitude, written without reaching into TSPEC mechanism.
+- The `.gitignore` boundary is scoped by *provenance* ("operator files A6 never wrote"), not merely
+  by path class. That reasoning generalises: it is the same rule any future restore-shaped seam will
+  need, and it is stated in one sentence a reader can apply.
+- `c8aa22a4` is not just named but named consistently in both places that argue from the pre-change
+  catalogue, and both agree with what the upstream baseline §4 says about M-WG-8 being deliberately
+  left as a pre-change measurement. The erratum resisted the tempting wrong fix — rewriting AC-1.1 to
+  the six-member reading — which would have broken the argument the criterion is making.
+- The v1.14 changelog paragraph accurately describes its own diff and explicitly says what it did
+  **not** dispose (relocation, still SE Q-02's). An erratum that states its own boundary is one a
+  later reader can trust.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | AC-5.1's carrier exclusion list is not exhaustive over its own trigger path: it excludes AC-6.1's record append and AC-5.2's queue-row write, but a refusal / budget exhaustion / red re-gate is exactly what AC-6.2 requires an escalation-log append for, and `docs/_queue/ESCALATIONS.md` is a tracked working-tree file (corpus baseline §1). Read literally, the "observably identical" tree is still contradicted at run end on every path AC-5.1 governs. Fix: add AC-6.2's escalation-log append — and AC-6.3's report carrier if it is a file (Q-02) — to the same exclusion clause. | §6, REQ-AWG-05, AC-5.1 |
+| F-02 | Low | delta | local | The `Upstream` row gained the ordered chain but lost the resolvable path: `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` is now named only as `` `pdlc-advisory-tier` REQ ``, and that file lives under `docs/completed/`, not beside this REQ. A reader cannot follow the chain without a search. Fix: keep both — `` `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` → **REQ** ``. | Lineage header, `Upstream` row |
+| F-03 | Low | delta | local | The "before" reading is pinned to `c8aa22a4` but the "after" is not: AC-1.1 asserts "HEAD already carries A6" and R-5 says "M-WG-13/M-WG-14 are the post-change ones", while upstream measures §4 at `origin/main` `11420461` and its re-verification rule makes an unpinned HEAD claim decay silently. I re-measured and both readings hold today. Fix: name `11420461` alongside the §4 citation, symmetrically with the `c8aa22a4` naming. | §6 AC-1.1; §7 R-5 |
+| F-04 | Low | inherited | nonlocal | Traceability asymmetry with upstream: `pdlc-wave-gate-baseline.md`'s `Cited by` row records this REQ as citing it from "§1, §4, §5, §8", but the REQ cites `M-WG-*` ids from §6 (AC-1.1, AC-1.2, AC-4.2, AC-5.1, AC-5.2) and §7 (R-5) as well. The stale row is upstream's to fix, but it means a change-control sweep over the baseline would not consult this REQ's acceptance criteria. Pre-existing at v1.13; the delta neither caused nor worsened it. | Cross-doc: baseline `Cited by` row vs REQ §6/§7 |
+
+FINDING: High | delta | local | §6 REQ-AWG-05 AC-5.1 | the record-carrier exclusion list omits AC-6.2's `ESCALATIONS.md` append, which the same refusal/budget/red-re-gate Given requires, so the "observably identical" tree criterion is still self-contradictory at run end
+FINDING: Low | delta | local | Lineage header `Upstream` row | the ordered chain landed but the resolvable path to `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` was dropped
+FINDING: Low | delta | local | §6 AC-1.1 and §7 R-5 | the pre-change base is pinned to `c8aa22a4` but the post-change reading is left on an unpinned "HEAD" rather than upstream's `11420461`
+FINDING: Low | inherited | nonlocal | baseline `Cited by` row vs REQ §6/§7 | upstream records this REQ as citing the baseline from §1/§4/§5/§8 only, while §6 and §7 cite `M-WG-*` ids too
 
 ## Recommendation
 
+**Needs revision** — one High finding (F-01), local to the section this erratum edited.
+
+Seven of the eight routed items landed cleanly and nothing I approved at v1.13 was broken. The eighth
+— AC-5.1's observation point — landed the hard half (the observation point, the ignored-path
+boundary, the failed-capture outcome) and left the mechanical half incomplete: the carrier list omits
+the one carrier that AC-5.1's own Given guarantees will be written. This is a one-clause fix inside
+the already-edited paragraph, which is why F-01 is tagged `delta, local` rather than left to route
+back through the ordinary revision loop. F-02 and F-03 are worth folding into the same touch since
+they sit in the same two edited regions; F-04 is upstream's and gates nothing.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 3}
