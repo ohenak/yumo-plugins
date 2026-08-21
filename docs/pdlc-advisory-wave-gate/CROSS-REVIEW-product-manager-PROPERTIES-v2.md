@@ -92,6 +92,43 @@ a Home cell pointing at it. F-02 below; the fix is one spelling, not a re-home.
 
 ## Oracles
 
+### PROP-REST-03 — presence, not bytes (SE F-03)
+
+The narrowing is right, and it is right for a product reason worth stating: BR-9 at FSPEC v1.6 puts
+`.gitignore`d paths outside the restoration map **in both directions**, and says in terms that *"an
+ignored path the re-gate mutated is not a restoration defect"*. An oracle asserting the ignored file
+is unchanged byte for byte would therefore fail an implementation that did exactly what the rule
+permits — a re-run post-wave command writing into an ignored cache. That is a false red against
+correct behaviour, which is the same defect class as v1's `attempts` finding, and it is now gone.
+
+What survives is still enough to do the job the property exists for. TSPEC §5.2's case 4 states the
+observable as *"a `.gitignore`d file the wave added is still present after restore — the assertion
+that pins `git clean -fd` over `-fdx`"*, and presence alone discriminates `-fd` from `-fdx`: the
+`-fdx` implementation deletes the file and fails. The non-ignored half is untouched and still
+asserts **absent, not merely reset**, which is FSPEC AT-05-1's word. So the edit removed a conjunct
+that over-asserted and kept the one that falsifies.
+
+The row also keeps its OQ-7 closure paragraph and its "an implementation that deleted or restored
+over the ignored file therefore **fails** this property" close, both of which I checked against
+FSPEC BR-9 / AT-05-1 and REQ AC-5.1 in round 1 and neither of which this edit disturbed.
+
+### PROP-REST-08 — the E-34 trace (v1 F-03)
+
+Closed, and closed as a trace rather than a new property, which is what round 1 asked for. FSPEC
+E-34 reads: *"The pre-A6 tree state cannot be captured at all … the safe branch: no repair is
+proposed and none is applied. A6 escalates without dispatching a repair, the wave halts on its own
+red gate exactly as today … The escalation names the capture as the cause."* Every clause of that
+has an assertion on this row: no `_agent` call (nothing dispatched), `attempts === 0` and budget
+unchanged (nothing attempted), the halt on the wave's own gate literal with `repairApplied: false`
+and `repairPaths: []` (nothing applied, and the report says so), and an escalation entry whose text
+contains the failing git verb (the capture named as the cause). `E-34` is now in the Traces cell,
+so §Scope's `E-01…E-34` claim is discharged by a property rather than by assertion.
+
+I re-checked the two coverage matrices for collateral damage: C-1 is keyed by AC and C-2 by AT
+id, so neither ranges over E-ids and neither needed an edit for this. `AC-3.4`, `AC-6.1` and
+`AC-6.3` still list PROP-REST-08, and PROP-ENV-13 is still under `AC-3.4`. No matrix row was
+orphaned by the delta.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
