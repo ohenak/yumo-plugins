@@ -57,6 +57,58 @@ current. Details below.
 
 ## Properties
 
+**No property text, no property status, and no coverage count moved.** `## Properties` is outside
+every changed line range, and §C.3's accounting rows (`Tasks owning ≥1 property | 21`,
+`Properties with **no** owning task | 0`, `Fail-open arms | 12`, lines 1060–1062) are byte-unchanged.
+So the property-side question is narrow: does the re-pin make any *status* claim about a property
+false?
+
+**For the four case-C properties, no — the re-quote strengthens the claim rather than weakening it.**
+§C.4's case-C paragraph (line 1126) previously read *"the amendment is expected to land green"*.
+The delta restates it as *"the amendment had to be green at the commit that landed it"* and cites
+PLAN v1.2's own tense change — *"this row records an outcome, not a pending expectation"* — which is
+present at PLAN at HEAD (1 fixed-string hit). That is the correct direction: PROP-BOUND-03's zero
+case and PROP-BOUND-05/07/08's heading-form arms **have** landed and **are** green, so a pending
+expectation was the wrong tense and a record is the right one. The failure limb is still recorded as
+*"**unexercised**, not waived"* (line 1160–1161), unchanged — the delta did not use PLAN's tense
+change as licence to relax the rule.
+
+**The green measurement underneath those statuses still reproduces.** I re-ran it in
+`pdlc/workflows` (the package's `--experimental-vm-modules` runner is required):
+
+```
+Test Suites: 2 passed, 2 total
+Tests:       26 passed, 26 total
+```
+
+and `grep -c 'test\.skip\|describe\.skip'` returns `0` on both `learningsBlock.test.js` and
+`learningsSelect.test.js`. The Group D arms the paragraph names are still at their cited anchors —
+`learningsSelect.test.js:647` (`describe("PROP-ORDER-06: …")`) and `:786`
+(`describe("PROP-CORPUS-09: …")`). Nothing in this delta disturbed the measurement it rests on.
+
+**But this document's *own* PROPERTIES suite is now told to follow a route PLAN retired.** Lines
+1178–1186 say the suite *"may be committed as soon as it is green — or, if it lands red, its rows are
+amended into the ledger by name first, under the same P-A-7 rule"*, and then that **P-A-6**
+*"(byte-unchanged at v0.8)"* governs it, distinct from case C. PLAN's P-A-6 at HEAD
+(`PLAN-pdlc-learnings-injection.md:663`) says the opposite, in terms:
+
+> the PROPERTIES **suite** lands in one commit once green, or else its rows are handled under
+> **P-A-7's governing case** — which at HEAD is case C, where no ledger remains to amend into and the
+> obligation is green-at-landing; **the amend-into-the-ledger-by-name route is case B's, and case B
+> closed at batch 12** (TE v11 F-03).
+
+PLAN's v1.1 changelog row records the change deliberately: *"P-A-6's PROPERTIES fallback stops
+offering case B's amend-into-the-ledger route unconditionally and instead routes to **P-A-7's
+governing case**, which at HEAD is C"*. So P-A-6 is **not** byte-unchanged at HEAD, and the route
+this document offers does not exist. Before this delta the document was pinned at v0.8, where that
+reading was accurate as-of-pin; the delta re-pinned to v1.3 and asserted *"every ruling this document
+cites is still present at v1.3"*, which converts a dated-but-true passage into a current-and-false
+one. That is F-01 — **High**, and it is delta-attributable under both freeze limbs.
+
+**Nothing was added to or dropped from the property set.** §C.3's `Properties with **no** owning task
+| 0` row is byte-unchanged, and I re-confirmed that the four unowned files §C.4 inventories are named
+in no property statement — the filename hits in this document are all in §C.4/§G.2/§G.3 prose.
+
 ## Oracles
 
 ## Fixtures
