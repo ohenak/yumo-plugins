@@ -118,7 +118,31 @@ still list PROP-REST-08, and AT-05-1's row still lists PROP-REST-03. No trace wa
 
 ## Fixtures
 
-<!-- pending -->
+**Hazard 2 (A6-09's restoration fixture) — resolved, and resolved consistently with PROP-REST-03.**
+The fixture inventory now reads: a tracked file the wave modified, a non-ignored untracked file
+asserted **absent** after restore, a `.gitignore`d file asserted still **present** "and only present
+— BR-9 puts a mutated ignored path outside the restoration map in both directions, so a byte-for-byte
+conjunct on it would assert more than the rule it exists to enforce", and a non-ignored generated
+output the re-run post-wave command rewrites (PROP-REST-02's discriminator).
+
+Three checks on that:
+
+1. **Property and fixture now say the same thing.** Before the delta the fixture said "byte for byte"
+   and so did the property; both moved together, so there is no new property/fixture split. Verified
+   by diff, not by reading one side.
+2. **The AT-05-2 vacuity guard survives.** The sentence "Substituting an ignored path for that last
+   one makes AT-05-2 vacuous, since BR-9 puts it outside the map" is untouched and still correct —
+   it is about the *generated output*, not the ignored file, and the delta did not touch that clause.
+3. **No pending marker was reintroduced.** The `test.todo` / `.skip` prohibition on A6-09 above the
+   hazard is unchanged, and the presence-only rewrite is still a plain positive assertion — a
+   narrowed assertion, not a softened one.
+
+**Fixture-level regression sweep.** PROP-ENV-13's fixture obligation (a repair writing only ignored
+paths, plus the same-run positive control writing one non-ignored in-envelope path) is unchanged by
+the re-home — it is a `buildA6SeamOps` fixture either way, and A6-14's red step is a
+`advisoryWaveGate.test.js` task, the same file the old home named. So the re-home moves a row in the
+matrix without inventing a new fixture or orphaning an existing one. Nothing in §Fixtures references
+A6-15 for this case, so no fixture text went stale.
 
 ## Positive Observations
 
