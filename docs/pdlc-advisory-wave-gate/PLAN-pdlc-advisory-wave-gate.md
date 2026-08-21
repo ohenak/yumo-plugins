@@ -437,13 +437,20 @@ finding rather than as drift.
 | `commitPaths` and `gitWithLockRetry` | shipped | A6-10, A6-21 |
 | Gate-exclusivity registry, the reason A6 gets a hook and not a seam-name branch | `pdlc/workflows/__tests__/advisoryDriver.test.js`'s `GATE_EXCLUSIVITY_REGISTRY` const, and the *"PROP-GATE-06 — the gate-exclusivity registry's key set equals ADVISORY_SEAMS"* describe that set-compares it against `dev.ADVISORY_SEAMS` | A6-05 (former A6-03 step), A6-12 (former A6-11 step) |
 
-### Upstream dependency that is still open
+### Upstream dependency that was open, and is now closed
 
-OQ-7 — whether BR-9's restoration oracle ranges over `.gitignore`d paths — is pending as an erratum
-on FSPEC `BR-9` / `AT-05-1` and REQ `AC-5.1`. It does not block any task: A6-10's former-A6-09 red step mints the
-ignored-path round trip with its expected value named and marked pending, and transcribes the
-boundary the erratum returns. Nothing else in this plan reads that answer, because A6-13's
-`apply` refusal for an ignored-path-only repair stands on its own merits either way (OQ-11).
+OQ-7 — whether BR-9's restoration oracle ranges over `.gitignore`d paths — is **answered: it does
+not.** The erratum landed upstream (REQ `AC-5.1` v1.15, FSPEC `BR-9` / `AT-05-1` / `AT-05-2` v1.6,
+restated in TSPEC v1.11's changelog as closed "in this TSPEC's favour"). The map ranges over tracked
+and non-ignored untracked files, ignored paths excluded on both sides, observed immediately after
+restoration completes and before the run's record, escalation and queue-row writes.
+
+No task gains or loses a dependency edge: A6-10's former-A6-09 red step now transcribes that boundary
+as a live assertion rather than holding a pending case open, which is a change to the step's text and
+not to the graph. Nothing else in this plan reads the answer, because A6-13's `apply` refusal for an
+ignored-path-only repair stands on its own merits either way (OQ-11) — unchanged by the closure.
+
+**No upstream dependency of this plan is open.**
 
 ## Verification
 
