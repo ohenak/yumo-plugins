@@ -200,7 +200,7 @@ No AT in §6 lost its oracle, and none gained a vacuous one, as a result of this
 |---|---|
 | Q-01 | REQ is now `approved (shipped)` at v1.15 while FSPEC is still `Draft` v1.6 pinned to REQ v1.13. Is the intent that FSPEC's Status follows REQ's on the same erratum sweep, or does FSPEC stay `Draft` until PUB? F-02 asks only for the version pin to be re-grounded; the Status field is a separate call I am not making for you. |
 | Q-02 | REQ's `Cross-Reviews` row now distinguishes harvested rounds from post-harvest erratum rounds. Should the sibling artifacts (FSPEC, TSPEC, PLAN, PROPERTIES) adopt the same sentence in this sweep, so a reader of any one of them knows why `CROSS-REVIEW-software-engineer-FSPEC-v2.md` and this v3 appear in no LEARNINGS table? If yes, this is one line per artifact and worth doing once rather than per-document as each is confirmed. |
-| Q-03 | AC-5.1's ignored-path rationale (F-01) is REQ's clause to widen. Does the workflow route a confirmation-round finding whose fix lands upstream back to REQ's ordinary revision loop, or does it wait for the next REQ erratum sweep? I have tagged it `inherited`/`nonlocal` so it routes rather than halts, but the routing target is the orchestrator's call, not mine. |
+| Q-03 | AC-5.1's ignored-path rationale (F-01) is REQ's clause to widen. Does the workflow route a confirmation-round finding whose fix lands upstream back to REQ's ordinary revision loop, or does it wait for the next REQ erratum sweep? I have tagged it `delta`/`local` at Medium so it routes rather than halts, but the routing target is the orchestrator's call, not mine. |
 
 ## Obligations carried forward, unchanged
 
@@ -212,7 +212,29 @@ both sides: upstream added observables, not mechanics.
 
 ## Delta-Confirmation Findings
 
-_pending_
+Locality convention for a cascade round: the edit is upstream, so I read "the sections this edit
+changed" as the FSPEC surfaces that compress the changed REQ regions — the lineage header, AC-1.1/R-5's
+measurement base, and AC-5.1's restoration contract. All four findings sit on those surfaces, so all
+four are `local`. All four were introduced by this window, so all four are `delta`. No High.
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | REQ AC-5.1's new ignored-path rationale ("which are operator files A6 never wrote") is narrower than the set its own predicate defines, and narrower than FSPEC BR-9's domain, which deliberately includes the run's own `.gitignore`d wave ledger. Fix lands upstream, not in FSPEC. | §4 BR-9 "Domain" / REQ AC-5.1 |
+| F-02 | Medium | delta | local | FSPEC §1 pins its upstream as "`REQ-pdlc-advisory-wave-gate` v1.13"; REQ is now v1.15, two erratum rounds on, and both rounds touched text FSPEC compresses (AC-5.1, AC-1.1, R-5). The pin no longer names the version this document is a compression of. | §1, line 52 |
+| F-03 | Low | delta | local | FSPEC §2 still reads "the pre-A6 state, which this branch's HEAD no longer carries" — the HEAD-relative form REQ v1.15 deliberately retired in AC-1.1 in favour of the commit-pinned "the post-change reading, at `11420461`". FSPEC pins the commits in the next clause, so the claim is verifiable; the phrasing is the drift-prone one upstream just removed. | §2 "Where 'before' is measured" |
+| F-04 | Low | delta | local | FSPEC §1's `Cross-Reviews` row reads only "(active)" while REQ's now states where harvested rounds live and that branch `CROSS-REVIEW-*` files are post-harvest errata in no LEARNINGS table. A reader of FSPEC alone cannot tell why v2 and this v3 appear in no LEARNINGS table. | §1 header, `Cross-Reviews` row |
+
+**Carried from v2, not re-filed here.** My v2 closed `Approved with minor changes` with three open
+items — F-01 (BR-2's first-match rule needs a classifier to be falsifiable, §7.1 O-5 still neutral),
+F-02 (E-34's three positive observables carry no AT), F-03 (AT-05-1's *When*/*Then* name two
+observation points). All three are still open, all three are `inherited` and untouched by this
+window, and none is High. They remain in v2's ledger where they were accepted; I do not re-file them
+as this round's findings, and nothing in the window made any of them worse.
+
+FINDING: Medium | delta | local | §4 BR-9 "Domain" / REQ AC-5.1 | REQ AC-5.1's new ignored-path rationale calls the ignored set "operator files A6 never wrote", but FSPEC BR-9's domain includes the run's own `.gitignore`d wave ledger `.claude/pdlc-wave-state.json`, which the run writes and the operator does not; the normative predicate still matches, so no shipped oracle is wrong, but the rationale should be widened upstream to cover the run's own ignored artifacts
+FINDING: Medium | delta | local | §1 line 52 | FSPEC pins its upstream at "REQ-pdlc-advisory-wave-gate v1.13" while REQ is now v1.15; both intervening erratum rounds edited text this FSPEC compresses (AC-5.1, AC-1.1, R-5), so the pin should be re-grounded to v1.15
+FINDING: Low | delta | local | §2 "Where 'before' is measured" | FSPEC still uses the HEAD-relative form "this branch's HEAD no longer carries" that REQ v1.15 retired from AC-1.1 in favour of a commit pin; the adjacent commit pins keep the claim verifiable, so this is phrasing hygiene, not a correctness defect
+FINDING: Low | delta | local | §1 header Cross-Reviews row | FSPEC's Cross-Reviews row reads only "(active)" while REQ's now scopes harvested rounds to LEARNINGS and names branch CROSS-REVIEW files as post-harvest errata; adopting the same sentence would tell a FSPEC-only reader why v2 and v3 are in no LEARNINGS table
 
 ## Recommendation
 
