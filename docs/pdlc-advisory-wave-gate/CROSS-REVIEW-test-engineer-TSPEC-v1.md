@@ -68,6 +68,55 @@ citing BR-9 only for "immediately-after-restoration-before-the-record-writes".
 
 ## Interfaces
 
+**§3.3's `apply` row.** The edit narrows one clause and closes one branch. The refusal of an
+ignored-path-only repair — `producedPaths() === []` ⇒ `{ok:false}` ⇒ `post-action-verification-failed`
+— is unchanged in behaviour; what changes is that it is now "the right disposition under §2.5's
+now-decided boundary" rather than "the right disposition while §2.5's boundary sits with upstream",
+and the conditional tail ("if the erratum widens BR-9's oracle, the widened capture arrives with a
+widened `producedPaths` and this row is unchanged") is replaced by the statement that no widened
+`producedPaths` is coming.
+
+From the testing lens this is a strict improvement in falsifiability. The old row specified a seam
+whose expected `producedPaths` domain depended on an undecided upstream question, which means the
+seam's test could be written but its *fixture* could not be finalised. The row now names a single
+domain, so §5.5's ignored-path-only row has final expected values.
+
+The rest of the row is untouched and I re-read it to confirm the erratum did not disturb what I
+previously approved. The step-6 anchor contract survives intact: `ledgerAnchor.value =
+invocations.length` as `apply`'s first statement, written **into the caller's carrier** rather than
+a local or a property on the returned SeamOps object, with the stated reason (neither would be
+readable at step 6). The `orchestrate-dev.js:3521` / `:3544` ordering citations are unchanged. Those
+two anchors are raw `file:line` citations, but they are runtime-position claims about call ordering
+— the position is the claim — so DEC-DOC-01's carve-out applies and they are not findings.
+
+`producedPaths`, `revert` and `verifyGate` rows are byte-identical in the delta. I re-read
+`verifyGate`'s ledger-growth contract specifically, because §3.3's `apply` change moves the anchor
+semantics' neighbourhood: the "growth since the last `apply`, not a suffix" rule and its two-attempt
+justification are unaffected by the ignored-path decision, and the two mutation fixtures §5.5 owes
+it are still allocated.
+
+**§4.4's `nonNegativeInt` and the OQ-1 closure.** The delta withdraws OQ-1's "the behaviour is
+coherent but undocumented upstream" clause. I checked whether upstream now documents it, since the
+withdrawal is only correct if it does.
+
+FSPEC E-33 at HEAD carries every conjunct the revised OQ-1 row claims for it, verbatim: an explicit
+`0` is "**honoured as written**", not treated as misconfiguration; the sixth summary row is
+"**present** and reads `resolved: 0`"; it carries "one `escalated` invocation per red wave, each
+classed `unclassified` because no reply was ever classified (BR-2)"; and the key "validates as a
+**non-negative** integer — a distinct variant from the shipped positive-integer validator, which
+rejects `0` and substitutes the default". AT-07-2b at HEAD carries the companion the row cites:
+"`0` in yields `0` back, key absent from the invalid-key report".
+
+So the withdrawal is earned, and the `nonNegativeInt` type in §4.4 (`Number.isInteger(v) && v >= 0`)
+is a faithful transcription of a documented upstream validator rather than a TSPEC invention. The
+distinction matters for the test task: a validator the TSPEC invented would need its own
+justification in PROPERTIES, whereas a transcribed one is tested by transcribing AT-07-2b.
+
+§4.4's config table row for `waveBudgetPerRun` (`integer ≥ 0`, default `1`, validator
+`nonNegativeInt`) is consistent with E-33 on every field — value domain, default, and the reason `0`
+is a legal configured value rather than a misconfiguration. No enum, range or return-type divergence
+against upstream in the delta.
+
 ## Data Model
 
 ## Test Strategy
