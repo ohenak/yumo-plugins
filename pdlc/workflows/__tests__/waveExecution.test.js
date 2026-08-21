@@ -1302,6 +1302,60 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(result.haltAdvisory).toBeUndefined();
   });
 
+  it("AT-06-4's un-skip arm (PLAN A6-21): an un-skip halt on the SAME wave A6 just resolved with a captured snapshot carries the co-located overwrite notice", async () => {
+    // TSPEC §4.5's un-skip row / BR-14 — the seam has already returned by the time this halt
+    // fires, so this push happens at the un-skip halt site itself, through the same
+    // `advisoryNotice` sink `runWaveGateSeam` uses. Same oracle shape as A6-18's seam-level
+    // arm: pick the single `notices` element matching the ref pattern and assert the overwrite
+    // predicate ON THAT SAME element — both halves matched by spec-side literals written here,
+    // never by a constant imported from the module under test (anti-echo).
+    const waveNum = 1;
+    const snapshotRef = `refs/pdlc/a6-snapshot-${waveNum}`;
+    const a6 = makeA6Fake({
+      resolved: true,
+      disposition: { seam: "A6", outcome: "resolved", reason: null, verdict: null, attempts: 1, model: "m", fallback: false },
+      haltFields: {
+        rootCause: "wave-internal-defect",
+        diagnosis: "a stale import, repaired",
+        repairApplied: true,
+        repairPaths: ["src/one.js"],
+      },
+      snapshotRef,
+      postWaveRan: false,
+    });
+    let n = 0;
+    const result = await main(
+      unskipArgs(testFileSkipping("T1 — the completed owner's block"), {
+        runCommand: async () => {
+          n += 1;
+          return n === 1 ? { ok: false, output: "Tests: 1 failed, 39 passed\n" } : { ok: true, output: "Tests: 40 passed\n" };
+        },
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(a6.calls.length).toBe(1);
+    expect(result.haltReason).toContain("Error: Wave 1 un-skip guard failed");
+    const overwriteNotice = result.notices.find((notice) => notice.includes(snapshotRef));
+    expect(overwriteNotice).toBeTruthy();
+    expect(overwriteNotice).toMatch(/overwrit/i);
+  });
+
+  it("AT-06-4's un-skip arm (paired negative): the same un-skip halt with A6 never firing on the wave carries no overwrite notice anywhere in notices", async () => {
+    const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
+    const result = await main(
+      unskipArgs(testFileSkipping("T1 — the completed owner's block"), {
+        extra: { _runWaveGateSeam: a6.fn },
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(a6.calls.length).toBe(0);
+    expect(result.haltAdvisory).toBeUndefined();
+    expect(result.notices.some((notice) => /overwrit/i.test(notice))).toBe(false);
+  });
+
   it("AT-04-5 / PROP-GATE-08: an A6-resolved E-6 repair promotes a LATER wave's owned file into its own dedicated commit, on top of (never widening) the owning task's own pathspec", async () => {
     const a6 = makeA6Fake({
       resolved: true,
