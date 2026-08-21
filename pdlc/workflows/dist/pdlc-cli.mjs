@@ -2143,6 +2143,553 @@ async function readAdvisoryConfigSafely(readFileFn, path) {
   }
 }
 
+// === LEARNINGS INJECTION REGION START ===
+//
+// pdlc-learnings-injection TSPEC §D.1, §I.1, §I.2. Frame authored by PLAN LI-15; the region
+// grows in place (LI-16 … LI-21 insert before the END sentinel below) and stays self-contained —
+// LI-11's static scan asserts no direct filesystem-module access appears anywhere between
+// the two sentinel comments — no `fs` namespace member access, no synchronous file-write
+// helper, no direct `require` of that built-in module (seam discipline: all I/O here is via
+// injected seams, never a direct filesystem call).
+
+const LEARNINGS_CONFIG_PATH = MERGE_CONFIG_PATH; // ".claude/pdlc.config.json"
+
+const LEARNINGS_DEFAULTS = Object.freeze({
+  enabled: true,
+  maxDocuments: 5,
+  maxBytesPerDocument: 6000,
+  maxTotalBytes: 20000,
+});
+
+// TSPEC §D.1 — the three catalogues, as frozen literals. Each is the operand of its own
+// set-equality test; disjointness in kind is enforced structurally by the field each id may
+// appear in (rejected[].reason / dispatches[i].corpusOutcome / notices[].id), not by convention.
+const LEARNINGS_REJECT_REASONS = Object.freeze([
+  "RSN-COUNT",
+  "RSN-BYTES",
+  "RSN-SELF",
+  "RSN-UNREADABLE",
+  "RSN-UNPARSEABLE",
+  "RSN-NO-MATERIAL",
+]);
+const LEARNINGS_CORPUS_OUTCOMES = Object.freeze(["RSN-UNLISTABLE", "RSN-EMPTY"]);
+const LEARNINGS_NOTICES = Object.freeze(["NTC-MALFORMED", "NTC-KEYTYPE"]);
+
+// TSPEC §A.2 — the authoring doc types the injection block may attach to.
+const LEARNINGS_TARGET_DOCTYPES = Object.freeze([
+  "REQ",
+  "FSPEC",
+  "TSPEC",
+  "PLAN",
+  "DECISIONS",
+  "PROPERTIES",
+]);
+
+// TSPEC §I.1 — the literal argv `consolidate-learnings.js`'s `enumerateCorpus` hands `_git`
+// (module-private `LS_FILES_ARGV` there), restated here because the engine vendors only
+// orchestrate-dev.js (prepack.mjs:20). T-PIN-1 asserts this equals that observed argv.
+const LEARNINGS_CORPUS_ARGV = Object.freeze([
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "--",
+  ":(glob)docs/*/LEARNINGS-*.md",
+  ":(glob)docs/completed/*/LEARNINGS-*.md",
+]);
+
+/**
+ * Parse the repo's `learningsInjection` config section out of the SAME
+ * `.claude/pdlc.config.json` `parseAdvisoryConfig` reads. Pure and total: never throws, never
+ * reads anything, and every key falls back INDEPENDENTLY. Modelled on `parseAdvisoryConfig`
+ * (dev:1964) with one deliberate divergence (TSPEC §I.2): `enabled` defaults to `true`, not
+ * `false` — the feature ships on in a bare repository — and the threshold fields validate as
+ * NON-NEGATIVE integers, so `0` is a valid admits-nothing value (AC-4.4), not an invalid one.
+ * There is no `present` field (TE F-06): no rule branches on it and no oracle reads it.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+function parseLearningsConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: LEARNINGS_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObject(parsed) || !("learningsInjection" in parsed)) return degraded(false);
+
+  const section = parsed.learningsInjection;
+  if (!isPlainObject(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return LEARNINGS_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return LEARNINGS_DEFAULTS[key];
+  };
+
+  const nonNegativeInt = (key) => {
+    if (!(key in section)) return LEARNINGS_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 0) return v;
+    invalidKeys.push(key);
+    return LEARNINGS_DEFAULTS[key];
+  };
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+      maxDocuments: nonNegativeInt("maxDocuments"),
+      maxBytesPerDocument: nonNegativeInt("maxBytesPerDocument"),
+      maxTotalBytes: nonNegativeInt("maxTotalBytes"),
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
+/**
+ * Read the learnings-injection config file, never throwing. Byte-for-byte the shape of
+ * `readAdvisoryConfigSafely` (dev:2044), for the same reason: the injected read is agent-mediated
+ * in production and returns `null` for a missing file rather than throwing. Read once per run and
+ * the result threaded, never re-read.
+ *
+ * @param {function} readFileFn - async (path) => string|null (or throws)
+ * @param {string} path - LEARNINGS_CONFIG_PATH
+ * @returns {Promise<string|null>}
+ */
+async function readLearningsConfigSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
+}
+
+// ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
+
+const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
+
+/** TSPEC §I.3, §D.3. Bytes only, no model call. Deliberately weak (BR-3): a truncated document
+ *  keeps its first line and stays eligible. */
+function looksLikeLearningsDocument(text) {
+  if (typeof text !== "string") return false;
+  const first = text.split("\n").find((line) => line.trim() !== "");
+  return first !== undefined && LEARNINGS_HEADING_RE.test(first.trim());
+}
+
+// ─── TSPEC §D.4 — the ordering key ──────────────────────────────────────────────────────────
+
+const DATE_ROW_RE = /^\|\s*Date Completed\s*\|\s*([^|]*)\|/m;
+const ISO_DATE_RE = /^(\d{4}-\d{2}-\d{2})\b/;
+
+/** TSPEC §I.3, §D.4. The `Date Completed` cell as `YYYY-MM-DD`, or null when absent/unparseable
+ *  (BR-4). No `Date` object is constructed — the key is compared as a string. */
+function parseHarvestDate(text) {
+  if (typeof text !== "string") return null;
+  const rowMatch = DATE_ROW_RE.exec(text);
+  if (!rowMatch) return null;
+  const cell = rowMatch[1].trim();
+  const isoMatch = ISO_DATE_RE.exec(cell);
+  return isoMatch ? isoMatch[1] : null;
+}
+
+/** TSPEC §I.3, §D.4. BR-4's total order: `orderKey` descending (null last), then path
+ *  byte-ascending (`Buffer.compare`, not `<`/`>`). */
+function orderCorpus(entries) {
+  return [...entries].sort(
+    (a, b) =>
+      (a.orderKey === b.orderKey
+        ? 0
+        : a.orderKey === null
+          ? 1
+          : b.orderKey === null
+            ? -1
+            : b.orderKey < a.orderKey
+              ? -1
+              : 1) || Buffer.compare(Buffer.from(a.path, "utf8"), Buffer.from(b.path, "utf8"))
+  );
+}
+
+// ─── TSPEC §D.3 — F-O-1's second rule: which headings count as BR-6 named sections ─────────
+
+const BR6_SECTION_NAMES = Object.freeze([
+  "Cross-Feature Patterns",
+  "Non-Convergences",
+  "Rejected Proposals (with rationale)",
+  "Process Learnings",
+  "Open Items for Consolidation",
+]);
+const SECTION_HEADING_RE = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/;
+const GLOSS_RE = /[ \t]*\([^()]*\)$/;
+
+/** Rule 1 (ordinal stripped, `SECTION_HEADING_RE`'s capture group already does this), rule 2
+ *  (exact case-sensitive match), rule 3 (a trailing gloss is optional, on either side). Returns
+ *  the canonical `BR6_SECTION_NAMES` entry, or null. */
+function canonicalSectionName(title) {
+  if (BR6_SECTION_NAMES.includes(title)) return title;
+  const strippedTitle = title.replace(GLOSS_RE, "");
+  for (const name of BR6_SECTION_NAMES) {
+    if (strippedTitle === name.replace(GLOSS_RE, "")) return name;
+  }
+  return null;
+}
+
+/** Splits `text` into level-2-heading-delimited extents. Each extent runs from its heading line
+ *  through the line before the next `/^##[ \t]/` line, or end of document (TSPEC §D.3). */
+function findSectionExtents(text) {
+  const lines = text.split("\n");
+  const boundaries = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = SECTION_HEADING_RE.exec(lines[i]);
+    if (m) boundaries.push({ index: i, canonical: canonicalSectionName(m[1].trim()) });
+  }
+  return boundaries.map((b, i) => ({
+    canonical: b.canonical,
+    lines: lines.slice(b.index, i + 1 < boundaries.length ? boundaries[i + 1].index : lines.length),
+  }));
+}
+
+/** Whether `text` carries at least one candidate level-2 heading line at all (matching
+ *  `SECTION_HEADING_RE`, whether or not it is one of BR-6's five). Distinguishes a document that
+ *  names sections which just do not match BR-6 (E-33's structural case) from one carrying no
+ *  section headings whatsoever. */
+function hasAnySectionHeadingLine(text) {
+  return text.split("\n").some((line) => SECTION_HEADING_RE.test(line));
+}
+
+/** Split on `\n`, drop trailing blank/whitespace-only lines, re-join with `\n` — no trailing
+ *  newline (TSPEC §D.3 step 1). */
+function normaliseExtent(extentLines) {
+  const lines = extentLines.slice();
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+  return lines.join("\n");
+}
+
+/** The longest **character** prefix of `str` whose UTF-8 byte length is `<= maxBytes`
+ *  (TSPEC §D.5's character-safe cut — never splits a multi-byte codepoint). */
+function cutToByteLimit(str, maxBytes) {
+  let result = "";
+  let bytes = 0;
+  for (const ch of str) {
+    const chBytes = Buffer.byteLength(ch, "utf8");
+    if (bytes + chBytes > maxBytes) break;
+    result += ch;
+    bytes += chBytes;
+  }
+  return { text: result, bytes };
+}
+
+/** TSPEC §I.3, §D.3, §D.5. BR-6's five priority sections, in priority order, bounded to
+ *  `maxBytes` UTF-8 bytes of MATERIAL. `maxBytes <= 0` short-circuits before the cut (E-36).
+ *  `bounded` is decided at the cut, never re-derived downstream. `sections[]` is defined over
+ *  the assembled (post-cut) result, canonical names only, priority order. */
+function extractInjectableMaterial(text, maxBytes) {
+  if (typeof maxBytes !== "number" || maxBytes <= 0) {
+    return { material: "", bounded: false, bytes: 0, sections: [] };
+  }
+
+  const extents = findSectionExtents(typeof text === "string" ? text : "");
+  const taken = new Map();
+  for (const ext of extents) {
+    if (!ext.canonical || taken.has(ext.canonical)) continue; // first occurrence wins
+    taken.set(ext.canonical, normaliseExtent(ext.lines));
+  }
+
+  const names = BR6_SECTION_NAMES.filter((n) => taken.has(n));
+  const parts = names.map((n) => taken.get(n));
+  const assembled = parts.join("\n\n");
+  const assembledBytes = Buffer.byteLength(assembled, "utf8");
+
+  if (assembledBytes <= maxBytes) {
+    return { material: assembled, bounded: false, bytes: assembledBytes, sections: names };
+  }
+
+  const { text: cutText, bytes: cutBytes } = cutToByteLimit(assembled, maxBytes);
+  const sections = [];
+  let pos = 0;
+  names.forEach((name, i) => {
+    if (i > 0) pos += 2; // the "\n\n" join
+    if (cutText.length > pos) sections.push(name);
+    pos += taken.get(name).length;
+  });
+
+  return { material: cutText, bounded: true, bytes: cutBytes, sections };
+}
+
+/** TSPEC §I.3. The whole of BR-2/BR-4/BR-5/BR-6, as one pure function.
+ *  `rejected[]` is total over `entries`: `excluded` is tested BEFORE `readOk`, so a self
+ *  document is never mis-reported `RSN-UNREADABLE` (§D.6). A document whose extraction returns
+ *  `sections: []` is rejected `RSN-NO-MATERIAL` before the count/total bounds and consumes no
+ *  slot (BR-9). The count bound takes the first `maxDocuments` of the ordered eligible set
+ *  unconditionally; the total-byte bound then walks that same window from the top, dropping a
+ *  whole document (and — only when that drop leaves at least one further window slot unused —
+ *  every lower-ordered document past it, window or not) with `RSN-BYTES`, no back-fill.
+ *  @param {{entries: object[], feature: string, thresholds: object}} arg
+ *  @returns {{selected: object[], rejected: object[], totalBytes: number, orderKeys: object[]}} */
+function selectLearnings({ entries, feature, thresholds }) {
+  const rejected = [];
+  const eligible = [];
+
+  for (const entry of entries) {
+    if (entry.excluded === "RSN-SELF") {
+      rejected.push({ path: entry.path, reason: "RSN-SELF" });
+      continue;
+    }
+    if (!entry.readOk) {
+      rejected.push({ path: entry.path, reason: "RSN-UNREADABLE" });
+      continue;
+    }
+    if (!looksLikeLearningsDocument(entry.text)) {
+      rejected.push({ path: entry.path, reason: "RSN-UNPARSEABLE" });
+      continue;
+    }
+    const orderKey = parseHarvestDate(entry.text);
+    const extraction = extractInjectableMaterial(entry.text, thresholds.maxBytesPerDocument);
+    if (extraction.sections.length === 0 && hasAnySectionHeadingLine(entry.text)) {
+      // BR-9's structural disjunct (E-33): the document names sections, but none is one of
+      // BR-6's five. A document with no section headings at all is not this case — it is
+      // simply a zero-material eligible document.
+      rejected.push({ path: entry.path, reason: "RSN-NO-MATERIAL" });
+      continue;
+    }
+    eligible.push({ path: entry.path, orderKey, extraction });
+  }
+
+  const ordered = orderCorpus(eligible);
+  const orderKeys = ordered.map((e) => ({ path: e.path, orderKey: e.orderKey }));
+
+  const windowSize = thresholds.maxDocuments;
+  const window = ordered.slice(0, windowSize);
+  const overflow = ordered.slice(windowSize);
+
+  const selected = [];
+  let totalBytes = 0;
+  let firstByteFailIndex = -1;
+  const windowRejected = [];
+
+  window.forEach((doc, i) => {
+    const fits = firstByteFailIndex === -1 && totalBytes + doc.extraction.bytes <= thresholds.maxTotalBytes;
+    if (fits) {
+      totalBytes += doc.extraction.bytes;
+      selected.push({
+        path: doc.path,
+        orderKey: doc.orderKey,
+        bytes: doc.extraction.bytes,
+        bounded: doc.extraction.bounded,
+        position: selected.length,
+        material: doc.extraction.material,
+      });
+    } else {
+      if (firstByteFailIndex === -1) firstByteFailIndex = i;
+      windowRejected.push(doc);
+    }
+  });
+
+  for (const doc of windowRejected) rejected.push({ path: doc.path, reason: "RSN-BYTES" });
+
+  const propagateBytes = firstByteFailIndex !== -1 && firstByteFailIndex < window.length - 1;
+  for (const doc of overflow) {
+    rejected.push({ path: doc.path, reason: propagateBytes ? "RSN-BYTES" : "RSN-COUNT" });
+  }
+
+  return { selected, rejected, totalBytes, orderKeys };
+}
+
+// ─── TSPEC §OQ.1 — the block's rendered form (F-O-2) ───────────────────────────────────────
+
+const LEARNINGS_BLOCK_HEADER = "--- PRIOR-FEATURE LEARNINGS (advisory context) ---";
+const LEARNINGS_BLOCK_TRAILER = "--- END PRIOR-FEATURE LEARNINGS ---";
+const LEARNINGS_BLOCK_PREAMBLE =
+  "The documents below are LEARNINGS harvested from OTHER features in this repository. They are " +
+  "context, not content of this feature. They are neither a requirement of this feature nor an " +
+  "upstream document to be traced: nothing you write must cite them, and no traceability " +
+  "obligation attaches to them. You may disregard them entirely without leaving a gap in what " +
+  "you were asked to produce.";
+const LEARNINGS_DOC_FEATURE_RE = /LEARNINGS-([^/]+)\.md$/;
+
+/** TSPEC §OQ.1. Renders `selected` (the `selectLearnings` output array) into the block appended
+ *  after `opener`. Framing (header, preamble, per-document opener/closer, trailer) is never
+ *  charged to any byte bound (§D.5) — only `material` counts against `bytes`. Prefixed with
+ *  `\n\n` when non-empty; **exactly `""`** when `selected` is empty (§A.2 property 3). */
+function renderLearningsBlock({ selected }) {
+  if (!Array.isArray(selected) || selected.length === 0) return "";
+
+  const docs = selected.map((doc) => {
+    const m = LEARNINGS_DOC_FEATURE_RE.exec(doc.path);
+    const feature = m ? m[1] : "";
+    const abridged = doc.bounded ? ` (ABRIDGED: bounded at ${doc.bytes} bytes)` : "";
+    const opener = `<<< ${doc.path} — feature ${feature}, completed ${doc.orderKey}${abridged} >>>`;
+    const closer = `<<< end ${doc.path} >>>`;
+    return `${opener}\n${doc.material}\n${closer}`;
+  });
+
+  return (
+    `\n\n${LEARNINGS_BLOCK_HEADER}\n` +
+    LEARNINGS_BLOCK_PREAMBLE +
+    "\n\n" +
+    docs.join("\n\n") +
+    `\n${LEARNINGS_BLOCK_TRAILER}`
+  );
+}
+
+// ─── TSPEC §I.4, §D.6 — the IO shell (LI-18) ────────────────────────────────────────────────
+
+/** TSPEC §D.6: `RSN-SELF` is decided from the path alone, by feature DIRECTORY (not filename),
+ *  matching either `docs/{feature}/…` or `docs/completed/{feature}/…` so a re-run of a harvested
+ *  feature is excluded whichever location its LEARNINGS doc sits in (E-31). */
+function isLearningsSelfPath(path, feature) {
+  return (
+    path.startsWith(`docs/${feature}/`) || path.startsWith(`docs/completed/${feature}/`)
+  );
+}
+
+/** TSPEC §I.4. The whole shell is one outer `try/catch` returning `{unlistable: true}` — the
+ *  fail-open outcome for both a graceful `!reply.ok` enumeration reply AND an ungraceful thrown
+ *  fault from `_git` itself (BR-12's last row): nothing in this feature throws past
+ *  `dispatchAndVerify`. Self paths (§D.6) are carried into `entries` with `text: null,
+ *  readOk: false, excluded: "RSN-SELF"` and are NEVER opened. Every other path gets exactly one
+ *  `_readFile` call inside its OWN `try/catch` (P-8: the runtime `rtReadFile` throws where the
+ *  test double `defaultReadFile` returns `null` — both degrade the same document alone to
+ *  `readOk: false`, never the whole corpus).
+ *  @param {{feature: string, _git: Function, _readFile: Function}} args
+ *  @returns {Promise<{unlistable: true} | {unlistable: false, entries: object[]}>} never throws */
+async function gatherLearningsCorpus({ feature, _git, _readFile }) {
+  try {
+    const reply = await _git(LEARNINGS_CORPUS_ARGV);
+    if (!reply || !reply.ok) return { unlistable: true };
+
+    const paths = String(reply.stdout || "")
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    const entries = [];
+    for (const path of paths) {
+      if (isLearningsSelfPath(path, feature)) {
+        entries.push({ path, text: null, readOk: false, excluded: "RSN-SELF" });
+        continue;
+      }
+
+      let text = null;
+      let readOk = true;
+      try {
+        text = await _readFile(path);
+        if (text === null || text === undefined) readOk = false;
+      } catch {
+        readOk = false;
+      }
+      entries.push({ path, text: readOk ? text : null, readOk, excluded: null });
+    }
+
+    return { unlistable: false, entries };
+  } catch {
+    return { unlistable: true };
+  }
+}
+
+/** TSPEC §I.4/§D.2/§A.5 (LI-19). Resolves the three §4.1 thresholds either from `config.thresholds`
+ *  (the nested shape) or from flat top-level keys on `config` — both shapes are in live use across
+ *  this feature's callers/fixtures. */
+function resolveLearningsThresholds(config) {
+  if (config && typeof config.thresholds === "object" && config.thresholds !== null) {
+    return config.thresholds;
+  }
+  return {
+    maxDocuments: config?.maxDocuments,
+    maxBytesPerDocument: config?.maxBytesPerDocument,
+    maxTotalBytes: config?.maxTotalBytes,
+  };
+}
+
+/** TSPEC §I.4: `null` iff `config.enabled === false` (AC-5.1a) — no `present` conjunct, no
+ *  `!sectionMalformed` conjunct (§I.2). Otherwise returns an async closure that, on each call,
+ *  re-gathers the corpus fresh (AT-14: no in-process memo), selects, renders, and pushes one
+ *  `dispatches[]` record (TSPEC §D.2) onto `sink`. `sink` may be the `learningsInjection`-shaped
+ *  object (`{ruleInputs, runMirror, dispatches}}`, mutated in place) or a plain array, in which
+ *  case each record is pushed onto it directly. */
+function buildLearningsInjector({ config, sink, _git, _readFile, _log }) {
+  if (config && config.enabled === false) return null;
+
+  const thresholds = resolveLearningsThresholds(config);
+  let previousObservation = null;
+  let thresholdsRecorded = false;
+
+  return async function injectLearnings({ feature, docType, phaseId, mode } = {}) {
+    const gathered = await gatherLearningsCorpus({ feature, _git, _readFile });
+
+    let selection = { selected: [], rejected: [], totalBytes: 0, orderKeys: [] };
+    let corpusOutcome = null;
+    if (gathered.unlistable) {
+      corpusOutcome = "RSN-UNLISTABLE";
+    } else if (gathered.entries.length === 0) {
+      corpusOutcome = "RSN-EMPTY";
+    } else {
+      selection = selectLearnings({ entries: gathered.entries, feature, thresholds });
+    }
+
+    const rows = selection.selected.map((doc) => ({
+      sourcePath: doc.path,
+      position: doc.position,
+      bytesInjected: doc.bytes,
+      bounded: doc.bounded,
+    }));
+    const rejected = selection.rejected.map((r) => ({ sourcePath: r.path, reason: r.reason }));
+    const orderKeys = selection.orderKeys;
+
+    const observation = { corpusOutcome, orderKeys };
+    const corpusDiverged =
+      previousObservation === null
+        ? false
+        : JSON.stringify(previousObservation) !== JSON.stringify(observation);
+    previousObservation = observation;
+
+    const record = {
+      phaseId,
+      docType,
+      mode,
+      rows,
+      totalBytesInjected: selection.totalBytes,
+      rejected,
+      corpusOutcome,
+      orderKeys,
+      corpusDiverged,
+    };
+
+    if (Array.isArray(sink)) {
+      sink.push(record);
+    } else if (sink && typeof sink === "object") {
+      if (!Array.isArray(sink.dispatches)) sink.dispatches = [];
+      sink.dispatches.push(record);
+      if (!thresholdsRecorded) {
+        sink.ruleInputs = sink.ruleInputs || {};
+        sink.ruleInputs.thresholds = thresholds;
+        thresholdsRecorded = true;
+      }
+      sink.runMirror = { corpusOutcome, orderKeys };
+    }
+
+    if (typeof _log === "function") _log({ feature, docType, phaseId, corpusOutcome });
+
+    return renderLearningsBlock({ selected: selection.selected });
+  };
+}
+
+// === LEARNINGS INJECTION REGION END ===
+
 // ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
 //
 // `MODEL_ERROR_RE` classifies a dispatch rejection as a model/alias resolution failure (M-1)
@@ -8137,6 +8684,11 @@ async function reviewLoop({
   _log,
   _git,
   provenance = NO_PROVENANCE,
+  // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 3. Forwarded to
+  // `dispatchAndVerify` by `wrapped`, below — Phase CR's `docType: null` reaches the
+  // composition site through this path and no other.
+  _injectLearnings = null,
+  _recordDocType = () => {},
 }) {
   // The doc type the round record is keyed by. Derived from `doc` when the caller
   // does not name it, so Phase CR's directory target degrades to "no doc type"
@@ -8193,6 +8745,8 @@ async function reviewLoop({
       _probeReviewState,
       _log: emit,
       _git,
+      _injectLearnings,
+      _recordDocType,
     });
 
   // An episode that exhausts an authoring budget RETURNS through the loop rather
@@ -9713,9 +10267,25 @@ async function dispatchAndVerify({
   _probeReviewState,
   _log,
   _git,
+  // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 5. Defaulted to `null`/a
+  // no-op so an uninjected run is byte-unchanged (AC-4.3).
+  _injectLearnings = null,
+  _recordDocType = () => {},
 }) {
   const emit = typeof _log === "function" ? _log : () => {};
   const artifactClass = artifactClassOf(targetPath);
+
+  // pdlc-learnings-injection TSPEC §A.2 properties 1(c)/2. Computed ONCE per episode,
+  // before the `for(;;)` loop: BR-1's two-conjunct rule (dispatchKind === "authoring" AND
+  // docType ∈ LEARNINGS_TARGET_DOCTYPES). `_recordDocType` is the composition-site probe
+  // seam — called on BOTH arms, once per episode, never inside the loop (TE Q-01).
+  const injectHere =
+    dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType);
+  _recordDocType(docType);
+  const learningsBlock =
+    injectHere && typeof _injectLearnings === "function"
+      ? await _injectLearnings({ feature, docType, phaseId })
+      : "";
 
   // §5.6.1: mode is computed ONCE per episode, at the episode's entry, over state
   // this episode itself observed.
@@ -9813,7 +10383,10 @@ async function dispatchAndVerify({
         opener = `${opener}\n\n${planLintFeedForwardClause(planLint.diagnostics)}`;
       }
     }
-    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
+    // The learnings block is a suffix, appended AFTER the per-iteration-mutated
+    // `opener` — pdlc-learnings-injection TSPEC §A.2 property 2/3 — so a retry
+    // iteration carries the same block bytes appended to a possibly different opener.
+    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}${learningsBlock}`;
 
     let faulted = false;
     try {
@@ -13093,6 +13666,13 @@ async function main({
   // supplies nothing gets `NO_PROVENANCE`, whose empty `line`/`block` make
   // kind 1's report field readable-but-empty and skip kind 2's append (P-5).
   _provenance: provenance = NO_PROVENANCE,
+  // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 1: `_recordDocType`,
+  // alongside `_recordQueueRow`'s defaulted-recorder precedent.
+  _recordDocType: recordDocTypeFn = () => {},
+  // TSPEC §I.5: the injector FACTORY seam, defaulting to the real builder — a
+  // caller that supplies nothing gets the real, config-driven injector wired onto
+  // `wrapperSeams._injectLearnings` below.
+  _learningsInjector: learningsInjectorFactory = buildLearningsInjector,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -13439,6 +14019,56 @@ async function main({
   const forcedDetail = (detail, forced) =>
     forced ? `${detail} — forced (recorded approval overridden)` : detail;
 
+  // pdlc-learnings-injection TSPEC §A.2/§I.4/§I.5 (LI-20/LI-21). Config read ONCE per run,
+  // from the same `.claude/pdlc.config.json` the advisory config reader uses.
+  // `learningsInjectionField` below is threaded to every `buildFinalReport` call site so
+  // `report.learningsInjection.dispatches` is readable off any run this injector actually
+  // attached to. Absent (never `undefined`-spread) when the injector itself is `null`
+  // (config-disabled, AC-5.1a).
+  const learningsConfigText = await readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH);
+  const learningsConfigParsed = parseLearningsConfig(learningsConfigText);
+  // TSPEC §I.2's two run-level read notices, pushed onto the SAME run-level `notices`
+  // channel every other §4.7 notice rides (never onto `learningsInjection` itself) —
+  // LI-AT-32's cases 2 and 3 (LI-21).
+  if (learningsConfigParsed.sectionMalformed) {
+    notices.push({
+      id: "NTC-MALFORMED",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s learningsInjection section is malformed; ` +
+        `the run proceeds enabled, on TSPEC §4.1 defaults.`,
+    });
+  }
+  if (learningsConfigParsed.invalidKeys.length > 0) {
+    notices.push({
+      id: "NTC-KEYTYPE",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s learningsInjection section has wrong-typed key(s) ` +
+        `(${learningsConfigParsed.invalidKeys.join(", ")}); each falls back to its default.`,
+    });
+  }
+  const learningsSink = { dispatches: [] };
+  const learningsInjectorFn = learningsInjectorFactory({
+    config: learningsConfigParsed.config,
+    sink: learningsSink,
+    _git: gitFn,
+    _readFile: readFileFn,
+  });
+  if (learningsInjectorFn) {
+    // BR-10 locus 2 (TSPEC §D.2): the three REQ §4.1 thresholds actually in force, built
+    // ONCE per run from the parsed config — independent of whether any dispatch ever calls
+    // the injector, so an enabled run with zero dispatches still carries a complete
+    // `ruleInputs.thresholds` (LI-AT-22 locus 2, LI-21). `runMirror` is carried alongside,
+    // additive, populated by the injector itself on each call (asserted by nothing).
+    learningsSink.ruleInputs = {
+      thresholds: {
+        maxDocuments: learningsConfigParsed.config.maxDocuments,
+        maxBytesPerDocument: learningsConfigParsed.config.maxBytesPerDocument,
+        maxTotalBytes: learningsConfigParsed.config.maxTotalBytes,
+      },
+    };
+  }
+  const learningsInjectionField = learningsInjectorFn ? learningsSink : undefined;
+
   /** The seams every wrapped dispatch and every reviewLoop entry shares. */
   const wrapperSeams = {
     _agent: agentFn,
@@ -13453,6 +14083,11 @@ async function main({
     _log: emit,
     _git: gitFn,
     provenance,
+    // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 2. An enumerated
+    // literal, not a spread — this hop alone carries Phase H's docType: "LEARNINGS"
+    // into `wrappedDispatch`'s `...wrapperSeams`.
+    _injectLearnings: learningsInjectorFn,
+    _recordDocType: recordDocTypeFn,
   };
 
   /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
@@ -14755,6 +15390,7 @@ async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -14771,6 +15407,7 @@ async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -14795,6 +15432,7 @@ async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
   const forcedPhases = forceParse.phases;
@@ -14818,6 +15456,7 @@ async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -16311,6 +16950,7 @@ async function main({
       // distinctly here so a halt that carries BOTH a run-level tier summary AND one wave's own
       // A6 diagnostic never has the second overwrite the first.
       haltAdvisory: err && err.advisory ? err.advisory : undefined,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -16345,6 +16985,7 @@ async function main({
     // invocations (this run's `advisoryDispositions` stayed empty) — only a disabled tier
     // leaves the field itself absent (see `buildFinalReport`'s own conditional spread).
     advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
+    learningsInjection: learningsInjectionField,
   });
 }
 
@@ -16446,11 +17087,16 @@ function buildFinalReport({
   // returned record (never conditionally spread), since `NO_PROVENANCE`
   // itself is the readable "no provenance supplied" value kind 1 reports.
   provenance = NO_PROVENANCE,
+  // pdlc-learnings-injection TSPEC §I.4/§I.5 (LI-20). `learningsInjectionField`
+  // from `main()` — conditionally spread like `advisory`/`prUrl`/`ciStatus`: a
+  // config-disabled run must never carry a defined `learningsInjection` key
+  // (LI-21's AT-31), so `undefined` here means "omit the key", not "empty".
+  learningsInjection = undefined,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
   );
-  return {
+  const report = {
     feature,
     outcome,
     phases,
@@ -16483,7 +17129,14 @@ function buildFinalReport({
     // (never on success, never on a halt A6 never touched); conditionally spread like
     // `advisory` above so an untouched report's `haltAdvisory` key stays absent, not `undefined`.
     ...(haltAdvisory ? { haltAdvisory } : {}),
+    ...(learningsInjection ? { learningsInjection } : {}),
   };
+  // `report` also rides on its own return, non-circularly (a shallow snapshot of the
+  // same fields taken before this key is added) — pdlc-learnings-injection's
+  // `learningsDispatchSet.test.js` reads its observables off `mainDev(...).report`
+  // alongside the module's established flat top-level fields; every existing flat
+  // consumer (`result.outcome`, `result.notices`, …) is unaffected.
+  return { ...report, report };
 }
 
 return { isComplete, approvalHashOf, approvalHashOfNormalized, sha256Hex, approvalAnchorPreCount, artifactClassOf, firstUnwrittenSection, refreshReviewState, checkPostmortem, defaultReadFile, defaultListFiles };

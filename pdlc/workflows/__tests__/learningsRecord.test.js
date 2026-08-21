@@ -52,7 +52,7 @@ function makeConfig(overrides = {}) {
   };
 }
 
-describe.skip("LI-19: LI-AT-17 — BR-8 per-dispatch row field set equality", () => {
+describe("LI-19: LI-AT-17 — BR-8 per-dispatch row field set equality", () => {
   test("each row carries exactly sourcePath, position, bytesInjected, bounded, plus a sibling per-dispatch totalBytesInjected", async () => {
     const { buildLearningsInjector } = await import(DEV_MODULE_PATH);
 
@@ -92,7 +92,7 @@ describe.skip("LI-19: LI-AT-17 — BR-8 per-dispatch row field set equality", ()
   });
 });
 
-describe.skip("LI-19: LI-AT-18 — empty rows is a present empty array, and total bytes tracks the rows actually recorded", () => {
+describe("LI-19: LI-AT-18 — empty rows is a present empty array, and total bytes tracks the rows actually recorded", () => {
   test("a dispatch that selects nothing carries rows: [] and totalBytesInjected: 0, never a missing field", async () => {
     const { buildLearningsInjector } = await import(DEV_MODULE_PATH);
 
@@ -142,7 +142,7 @@ describe.skip("LI-19: LI-AT-18 — empty rows is a present empty array, and tota
   });
 });
 
-describe.skip("LI-19: LI-AT-19 — the per-document reason catalogue is closed, and exactly one reason id per unselected document", () => {
+describe("LI-19: LI-AT-19 — the per-document reason catalogue is closed, and exactly one reason id per unselected document", () => {
   test("LEARNINGS_REJECT_REASONS equals the hand-transcribed six-member catalogue, set equality not containment", async () => {
     const dev = await import(DEV_MODULE_PATH);
 
@@ -159,7 +159,8 @@ describe.skip("LI-19: LI-AT-19 — the per-document reason catalogue is closed, 
   });
 
   test("an unselected document carries exactly one reason id, drawn from the closed catalogue", async () => {
-    const { buildLearningsInjector } = await import(DEV_MODULE_PATH);
+    const dev = await import(DEV_MODULE_PATH);
+    const { buildLearningsInjector } = dev;
 
     // Every document in BYTES-BINDING is dropped whole by the total byte bound (TSPEC T.4).
     const corpus = buildBytesBindingCorpus();
@@ -186,7 +187,7 @@ describe.skip("LI-19: LI-AT-19 — the per-document reason catalogue is closed, 
   });
 });
 
-describe.skip("LI-19: LI-AT-20 / LI-AT-21 — per-dispatch corpus-level outcome, read back per dispatch over DIVERGENT-CORPUS", () => {
+describe("LI-19: LI-AT-20 / LI-AT-21 — per-dispatch corpus-level outcome, read back per dispatch over DIVERGENT-CORPUS", () => {
   test("LEARNINGS_CORPUS_OUTCOMES equals the hand-transcribed two-member catalogue, and the three BR-9 catalogues are disjoint in kind", async () => {
     const dev = await import(DEV_MODULE_PATH);
 
@@ -237,7 +238,7 @@ describe.skip("LI-19: LI-AT-20 / LI-AT-21 — per-dispatch corpus-level outcome,
   });
 });
 
-describe.skip("LI-19: LI-AT-22 locus 1 — per-dispatch orderKeys, hand-transcribed against DIVERGENT-CORPUS, plus corpusDiverged", () => {
+describe("LI-19: LI-AT-22 locus 1 — per-dispatch orderKeys, hand-transcribed against DIVERGENT-CORPUS, plus corpusDiverged", () => {
   test("each dispatch reproduces its own orderKeys from the corpus it observed, and corpusDiverged is true on exactly dispatches 3 and 5", async () => {
     const { buildLearningsInjector } = await import(DEV_MODULE_PATH);
 
@@ -256,15 +257,18 @@ describe.skip("LI-19: LI-AT-22 locus 1 — per-dispatch orderKeys, hand-transcri
     }
 
     // Hand-transcribed literal (DC-14), paths in order — never read back out of the
-    // fixture or the module under test. The original two-document corpus.
+    // fixture or the module under test. The original two-document corpus, BR-4 descending
+    // (TSPEC §I.3 "orderKey descending (null last)"; TSPEC :597, :931): the later
+    // `orderKey` sorts first.
     const ORIGINAL_ORDER_KEYS = [
-      { path: "docs/divergent-a/LEARNINGS-divergent-a.md", orderKey: "2026-04-01" },
       { path: "docs/divergent-b/LEARNINGS-divergent-b.md", orderKey: "2026-04-02" },
+      { path: "docs/divergent-a/LEARNINGS-divergent-a.md", orderKey: "2026-04-01" },
     ];
-    // The grown, three-document corpus (dispatches 3 and 4).
+    // The grown, three-document corpus (dispatches 3 and 4): `divergent-c` is the latest
+    // orderKey, so it sorts to the front under the same descending order.
     const GROWN_ORDER_KEYS = [
-      ...ORIGINAL_ORDER_KEYS,
       { path: "docs/divergent-c/LEARNINGS-divergent-c.md", orderKey: "2026-04-03" },
+      ...ORIGINAL_ORDER_KEYS,
     ];
 
     expect(sink.dispatches[0].orderKeys).toEqual(ORIGINAL_ORDER_KEYS);
@@ -290,7 +294,7 @@ describe.skip("LI-19: LI-AT-22 locus 1 — per-dispatch orderKeys, hand-transcri
   });
 });
 
-describe.skip("LI-21: LI-AT-22 locus 2 — run-level thresholds completeness, once per run", () => {
+describe("LI-21: LI-AT-22 locus 2 — run-level thresholds completeness, once per run", () => {
   test("ruleInputs.thresholds carries exactly maxDocuments, maxBytesPerDocument and maxTotalBytes, read once for the whole run", async () => {
     const { buildLearningsInjector } = await import(DEV_MODULE_PATH);
 

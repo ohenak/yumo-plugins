@@ -76,7 +76,7 @@ function corpusOutcomeFor(gathered) {
   return null;
 }
 
-describe.skip("LI-21: learningsArmInventory — twelve fail-open arms set-equal to the frozen catalogues (TSPEC §T.7, §D.1)", () => {
+describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to the frozen catalogues (TSPEC §T.7, §D.1)", () => {
   let observedCorpusOutcomes;
   let observedRejectReasons;
   let observedNotices;
@@ -201,7 +201,15 @@ describe.skip("LI-21: learningsArmInventory — twelve fail-open arms set-equal 
       const corpus = buildLearningsCorpus([
         {
           path: "docs/arm-no-material/LEARNINGS-arm-no-material.md",
-          doc: { feature: "arm-no-material", dateCompleted: "2026-01-01", sections: [] },
+          doc: {
+            feature: "arm-no-material",
+            dateCompleted: "2026-01-01",
+            sections: [],
+            // A heading IS present — just none of BR-6's five names — so this fixture
+            // exercises the structural disjunct rather than the "no headings at all"
+            // (simply zero-material eligible) case selectLearnings distinguishes.
+            extraLines: "## Not A BR-6 Heading\n\nSome prose that is not a priority section.\n",
+          },
         },
       ]);
       const entries = entriesFromCorpus(corpus, { feature: "arm-no-material" });

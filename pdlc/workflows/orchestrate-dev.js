@@ -14010,16 +14010,33 @@ export default async function main({
   const forcedDetail = (detail, forced) =>
     forced ? `${detail} — forced (recorded approval overridden)` : detail;
 
-  // pdlc-learnings-injection TSPEC §A.2/§I.4/§I.5. Config read ONCE per run, from the
-  // same `.claude/pdlc.config.json` the advisory config reader uses. The malformed-config
-  // notice half of the report-facing surface is a later task's job (LI-21); this task's
-  // job is the attachment, which needs a real injector AND a place on the report for the
-  // sink it fills — `learningsInjectionField` below, threaded to every `buildFinalReport`
-  // call site so `report.learningsInjection.dispatches` is readable off any run this
-  // injector actually attached to. Absent (never `undefined`-spread) when the injector
-  // itself is `null` (config-disabled, AC-5.1a) — the empty-but-present shape stays LI-21's.
+  // pdlc-learnings-injection TSPEC §A.2/§I.4/§I.5 (LI-20/LI-21). Config read ONCE per run,
+  // from the same `.claude/pdlc.config.json` the advisory config reader uses.
+  // `learningsInjectionField` below is threaded to every `buildFinalReport` call site so
+  // `report.learningsInjection.dispatches` is readable off any run this injector actually
+  // attached to. Absent (never `undefined`-spread) when the injector itself is `null`
+  // (config-disabled, AC-5.1a).
   const learningsConfigText = await readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH);
   const learningsConfigParsed = parseLearningsConfig(learningsConfigText);
+  // TSPEC §I.2's two run-level read notices, pushed onto the SAME run-level `notices`
+  // channel every other §4.7 notice rides (never onto `learningsInjection` itself) —
+  // LI-AT-32's cases 2 and 3 (LI-21).
+  if (learningsConfigParsed.sectionMalformed) {
+    notices.push({
+      id: "NTC-MALFORMED",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s learningsInjection section is malformed; ` +
+        `the run proceeds enabled, on TSPEC §4.1 defaults.`,
+    });
+  }
+  if (learningsConfigParsed.invalidKeys.length > 0) {
+    notices.push({
+      id: "NTC-KEYTYPE",
+      detail:
+        `${LEARNINGS_CONFIG_PATH}'s learningsInjection section has wrong-typed key(s) ` +
+        `(${learningsConfigParsed.invalidKeys.join(", ")}); each falls back to its default.`,
+    });
+  }
   const learningsSink = { dispatches: [] };
   const learningsInjectorFn = learningsInjectorFactory({
     config: learningsConfigParsed.config,
@@ -14027,6 +14044,20 @@ export default async function main({
     _git: gitFn,
     _readFile: readFileFn,
   });
+  if (learningsInjectorFn) {
+    // BR-10 locus 2 (TSPEC §D.2): the three REQ §4.1 thresholds actually in force, built
+    // ONCE per run from the parsed config — independent of whether any dispatch ever calls
+    // the injector, so an enabled run with zero dispatches still carries a complete
+    // `ruleInputs.thresholds` (LI-AT-22 locus 2, LI-21). `runMirror` is carried alongside,
+    // additive, populated by the injector itself on each call (asserted by nothing).
+    learningsSink.ruleInputs = {
+      thresholds: {
+        maxDocuments: learningsConfigParsed.config.maxDocuments,
+        maxBytesPerDocument: learningsConfigParsed.config.maxBytesPerDocument,
+        maxTotalBytes: learningsConfigParsed.config.maxTotalBytes,
+      },
+    };
+  }
   const learningsInjectionField = learningsInjectorFn ? learningsSink : undefined;
 
   /** The seams every wrapped dispatch and every reviewLoop entry shares. */

@@ -147,12 +147,13 @@ function thresholdsConfig(thresholds) {
  * the config's `enabled` gate is open — giving `result.learningsInjection` at least one
  * `dispatches[]` row to assert over.
  *
- * @param {{configText: string|null, lsFilesStdout?: string}} opts `configText === null` means
- *   the config file does not exist at `LEARNINGS_CONFIG_PATH` at all (the file-absent half of
- *   LI-AT-32's first case).
+ * @param {{configText: string|null, lsFilesStdout?: string, corpusContents?: Record<string,string>}} opts
+ *   `configText === null` means the config file does not exist at `LEARNINGS_CONFIG_PATH` at all
+ *   (the file-absent half of LI-AT-32's first case). `corpusContents` is the `{path: text}` map
+ *   the scripted `ls-files` reply's paths resolve to when read — LI-AT-30's `ZERO_CORPUS.contents`.
  */
-function runLearningsPipeline({ configText, lsFilesStdout = "" }) {
-  const files = { [REQ]: completeDoc("REQ") };
+function runLearningsPipeline({ configText, lsFilesStdout = "", corpusContents = {} }) {
+  const files = { [REQ]: completeDoc("REQ"), ...corpusContents };
   if (configText !== null) files[LEARNINGS_CONFIG_PATH] = configText;
 
   const fs = fakeFs(files);
@@ -220,12 +221,13 @@ function runLearningsPipeline({ configText, lsFilesStdout = "" }) {
 // LI-21 — un-skip this block once `parseLearningsConfig`, `LEARNINGS_DEFAULTS`,
 // `LEARNINGS_NOTICES` and the `learningsInjection` report key exist (batch 13).
 // ═══════════════════════════════════════════════════════════════════════════════════════════
-describe.skip("LI-21: learnings configuration — LI-AT-30, LI-AT-32", () => {
+describe("LI-21: learnings configuration — LI-AT-30, LI-AT-32", () => {
   describe("LI-AT-30 — admits-nothing threshold configurations (TSPEC §I.2, FSPEC v0.13 E-36)", () => {
     test("LI-AT-30: maxDocuments: 0 ⇒ enabled run, BR-8 rows present and empty", async () => {
       const result = await runLearningsPipeline({
         configText: thresholdsConfig({ ...LEARNINGS_CORPUS_DEFAULT_THRESHOLDS, maxDocuments: 0 }),
         lsFilesStdout: ZERO_CORPUS.lsFilesStdout,
+        corpusContents: ZERO_CORPUS.contents,
       });
 
       expect(result.learningsInjection).toBeDefined();
@@ -241,6 +243,7 @@ describe.skip("LI-21: learnings configuration — LI-AT-30, LI-AT-32", () => {
       const result = await runLearningsPipeline({
         configText: thresholdsConfig({ ...LEARNINGS_CORPUS_DEFAULT_THRESHOLDS, maxTotalBytes: 0 }),
         lsFilesStdout: ZERO_CORPUS.lsFilesStdout,
+        corpusContents: ZERO_CORPUS.contents,
       });
 
       expect(result.learningsInjection).toBeDefined();
@@ -256,6 +259,7 @@ describe.skip("LI-21: learnings configuration — LI-AT-30, LI-AT-32", () => {
       const result = await runLearningsPipeline({
         configText: thresholdsConfig({ ...LEARNINGS_CORPUS_DEFAULT_THRESHOLDS, maxBytesPerDocument: 0 }),
         lsFilesStdout: ZERO_CORPUS.lsFilesStdout,
+        corpusContents: ZERO_CORPUS.contents,
       });
 
       expect(result.learningsInjection).toBeDefined();
