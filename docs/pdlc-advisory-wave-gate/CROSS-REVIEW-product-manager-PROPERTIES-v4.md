@@ -280,3 +280,8 @@ Nothing else. I re-checked the sections this round changed and re-opened none of
 
 
 
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
