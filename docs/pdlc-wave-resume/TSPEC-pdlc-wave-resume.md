@@ -338,18 +338,22 @@ erratum against the FSPEC so the clause exists.
 
 ### 2.6 Requirement → component map
 
-| Requirement | Component |
-|---|---|
-| REQ-WVR-01 | `classifyWaveLedger` `resume` outcome; resume banner; `✅` report detail (§2.4) |
-| REQ-WVR-02 | `parseWaveLedger` reasons + `WAVE_IGNORE_REASONS` codes (§3.1); classifier's rejection arms |
-| REQ-WVR-03 | unchanged wave loop: gate before commit; skipping skips dispatch only |
-| REQ-WVR-04 | `explicitPointer`, evaluated above the clamp; `RESUME_PROVENANCE` |
-| REQ-WVR-05 | retention — no clearing write; reader-side invalidation in the classifier |
-| REQ-WVR-06 | classifier reads only the record; `headCorroborated` is falsification, not archaeology |
-| REQ-WVR-07 | no queue-specific code: `orchestrate-queue` delegates to `realMain` (V-15) |
-| REQ-WVR-08 | `skip-phase` outcome, `allWavesRecorded` break, `⏭` row |
-| REQ-WVR-09 | write site nested in the `if (waveGit)` transport branch (V-8) |
-| REQ-WVR-10 | `WAVE_STATE_PATH` under the root-anchored `.gitignore` rule (V-14); no pathspec names it |
+| Requirement | FSPEC business rules | Component |
+|---|---|---|
+| REQ-WVR-01 | BR-07 (provenance is announced), BR-08 (completion is a high-water property) | `classifyWaveLedger` `resume` outcome; resume banner; `✅` report detail (§2.4) |
+| REQ-WVR-02 | BR-02, BR-03, **BR-12** (no state of the record may make the pipeline refuse to run — the fail-open posture of §3.4) | `parseWaveLedger` reasons + `WAVE_IGNORE_REASONS` codes (§3.1); classifier's rejection arms |
+| REQ-WVR-03 | BR-10 (skipping skips dispatch only), BR-11 | unchanged wave loop: gate before commit; skipping skips dispatch only |
+| REQ-WVR-04 | **BR-04** (an explicit pointer outranks the record and suppresses consultation), **BR-05** (`1` is not a setting, past-the-end is), BR-06 (§3.5) | `explicitPointer`, evaluated above the clamp (V-5); the operator resume banner (V-18); `RESUME_PROVENANCE` |
+| REQ-WVR-05 | BR-13 (retention; staleness is proved at read time) | retention — no clearing write; reader-side invalidation in the classifier |
+| REQ-WVR-06 | BR-09 (falsification, not archaeology) | classifier reads only the record; `headCorroborated` is falsification, not archaeology |
+| REQ-WVR-07 | **BR-16** (delegated and direct runs resolve the same outcome, resume point and provenance) | no queue-specific code: `orchestrate-queue` delegates to `realMain` (V-15); §5.4 AT-16 |
+| REQ-WVR-08 | BR-11 (the wave loop lands nothing under outcome (c)) | `skip-phase` outcome, `allWavesRecorded` break, `⏭` row |
+| REQ-WVR-09 | BR-08, BR-15 (best-effort, per-wave writes) | write site nested in the `if (waveGit)` transport branch (V-8) |
+| REQ-WVR-10 | **BR-14** (never tracked content, anchored by an ignore rule), BR-17 | `WAVE_STATE_PATH` under the root-anchored `.gitignore` rule (V-14); no pathspec names it |
+
+The five business rules PM F-08 found covered in substance but uncited are bolded above; each now
+names the component that carries it, so FSPEC §4 coverage is checkable by reading one column rather
+than by reconstruction.
 
 ## 3. Interfaces
 
