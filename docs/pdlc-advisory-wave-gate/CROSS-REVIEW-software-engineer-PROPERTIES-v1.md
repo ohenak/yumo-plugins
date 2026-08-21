@@ -87,7 +87,31 @@ and worthwhile discriminator against an implementation that charges the wave for
 
 ## Fixtures
 
-_(pending)_
+**Hazard 2, rewritten (the four-class restore fixture).** The rewrite replaces a pending-marker
+instruction with a fixture composition, which is the stronger artifact. Measured against TSPEC §5.2
+cases 1–5 and PLAN A6-10's former-A6-09 red step:
+
+| Fixture class named | Upstream anchor | Result |
+|---|---|---|
+| tracked file the wave modified | §5.2 case 1 | matches |
+| non-ignored untracked file the wave added, asserted **absent** after restore | §5.2 case 3; BR-9 ("absent afterwards, not merely reset") | matches |
+| `.gitignore`d file the wave added, asserted still **present** | §5.2 case 4; §2.5's `clean -fd` bullet | matches direction; the added "byte for byte" is stronger than upstream — F-03 |
+| non-ignored generated output the re-run post-wave command rewrites over an already-dirty path | §5.2 case 2; FSPEC AT-05-2 | matches, and the "substituting an ignored path makes AT-05-2 vacuous" note is AT-05-2's own reason |
+
+**Pending-marker discipline.** "no case in A6-09 ships with a pending marker of either kind" agrees
+with PLAN A6-10's red step ("No `test.todo`, and (as always here) never `test.skip`") and with TSPEC
+§6 OQ-9's *moot* disposition. Keeping the `orchestrate-dev.js` skip-guard regex
+(`/\b(describe|test|it)\.skip\s*\(/`) in the hazard after the `test.todo` case disappeared is
+correct, not residue: the guard still governs the file, which is exactly how PLAN A6-10 phrases it.
+
+**Real-repo shape.** Unchanged and still right: `mkdtempSync` + `execFileSync("git", …)` with a
+`_git` adapter, the shape `advisoryDodSeams.test.js` already ships (TSPEC §5.2, TE F-04). No
+injected-double substitution has crept into the new rows — PROP-REST-10 stays Integration (real
+repo), PROP-ENV-13 is Integration on the seam-op fixture, which is the correct level for an `apply`
+observation.
+
+**No fixture is owed by F-01.** The ignored-path-only fixture PROP-ENV-13 needs is TSPEC §5.5's, and
+it exists there with final expected values; only the attempt conjunct is wrong.
 
 ## Recommendation
 
