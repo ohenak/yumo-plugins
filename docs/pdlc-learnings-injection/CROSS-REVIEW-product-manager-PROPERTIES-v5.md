@@ -218,8 +218,6 @@ at v4 — is unchanged, and remains the strongest passage in §F.
 | Q-02 | With `PROP-BOUND-05`'s oracle now stated as an intersection, the expected list is per-fixture and hand-transcribed. That is right for AT-11 (all five) and for a narrower fixture. What happens when a **fixture gains a section** — say the corpus document behind `PROP-BOUND-08` acquires `## Process Learnings` in a later harvest? The transcribed expectation goes stale silently in the passing direction only if the implementation also misses it; otherwise it reds loudly, which is the good failure. I think this is fine, but §F.2's re-capture rule is the place a reader would look for the answer and it does not currently mention section-set expectations. Worth one sentence there? |
 | Q-03 | §C.4's SE Q-02 answer classifies the PROP-BOUND-05/07/08 amendments as a re-red of landed green code under P-A-7. Does that mean the PROPERTIES suite's own commit timing changes — i.e. is the amendment expected to land **with** the ledger edit in the same commit, or does P-A-7's *"committed before the run it governs"* mean the PLAN edit strictly precedes it? The distinction decides whether one dispatcher run sees a red row with no ledger entry, which is the halt P-A-3 exists to prevent. Worth pinning in §C.4 once F-01's erratum comes back answered. |
 
-## Questions
-
 ## Positive Observations
 
 - **The High was closed against upstream's own words, not paraphrased into compliance.** The v0.3
