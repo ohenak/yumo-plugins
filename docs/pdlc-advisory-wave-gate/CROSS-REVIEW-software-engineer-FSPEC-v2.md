@@ -164,3 +164,8 @@ two-word fix to a *When* clause.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 1}
+
+APPROVAL-HASH: sha256:91ef25574e678b3c5433467ff31f800bdcb17bcff54e5f1a59c2e6da28e5cb34
+APPROVAL-HASH-NORMALIZED: sha256:91ef25574e678b3c5433467ff31f800bdcb17bcff54e5f1a59c2e6da28e5cb34
+REVIEWED-COMMIT: 9f80247ab40e3db8bc0d1d5fbdc8acc42fad98e1
+UPSTREAM-STATE: REQ sha256:8963a0c02f0ca796285de7ed7cb472ef73d87398287e4d702e3112aeba256b49
