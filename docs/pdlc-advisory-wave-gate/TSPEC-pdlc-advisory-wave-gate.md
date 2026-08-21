@@ -382,7 +382,11 @@ this feature's own tracked documents (`TSPEC`, `PLAN`, `DECISIONS`, `PROPERTIES`
 `CROSS-REVIEW-*` files), which enter the sweep because they quote L-2's grep terms while A-1's
 frozen glob list exempts only `LEARNINGS-*` and `POSTMORTEM-*`, and which therefore grow by one per
 *committed* cross-review file. Untracking the `.bak` class closes **14 of the 28**; the other 14 are
-not closable on this branch. TSPEC states the size only so that no reader of this paragraph mistakes
+not closable on this branch. **Re-measured at v1.12: the first two classes have since been
+untracked** — `git ls-files` matches nothing under `.claude/workflows/` at HEAD, so neither the 14
+`.bak` blobs nor the four consumer-runtime artifacts are tracked any longer, and the 2026-08-19
+figure of 28 stands only as the dated measurement it is labelled as. The remaining class is this
+feature's own tracked documents. TSPEC states the size only so that no reader of this paragraph mistakes
 the `.bak` blobs for the whole residue. The partition, the owners, the disposition of each class and
 the figures themselves are owned by **PLAN's Overview HEAD-drift note and A6-00's Edit 1**, which
 this document does not restate further and does not re-litigate.
