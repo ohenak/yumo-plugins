@@ -9,9 +9,33 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.11 | 2026-08-20 |
+| pdlc | Draft | Claude | 1.12 | 2026-08-20 |
 
 ## Changelog
+
+**v1.12 (erratum round, Phase D).** Re-grounded on upstream HEAD first (DEC-ERR-03): REQ
+(`sha256:f97f4f66…`) and FSPEC (`sha256:d602c440…`) have both moved since v1.11's anchors. **Absorbed,
+not re-raised:** the halt-report obligation DEC-A6-03 routed to the PM **has landed upstream** — FSPEC
+BR-14 and Step 10 at HEAD require that where the halt report points the operator at a captured pre-A6
+tree state, *the same report, in the same place*, states that re-running this feature overwrites that
+capture (co-location is the observable; a pointer here and the warning in a runbook does not satisfy
+it), and FSPEC E-34 fixes the other arm: no capture, no warning. REQ carries the same clause. The
+te-review erratum that reported this obligation as unlanded is therefore inverted by HEAD — the
+question is settled, and restating it as routed would be DEC-ERR-01's anti-pattern. §2.5 and §4.5 stop
+describing the warning as an operator-runbook remedy this feature does not carry and state the
+mechanism: a fifth halt field, `snapshotRef`, present exactly when a capture succeeded, and the halt
+report's overwrite sentence rendered from it. Six further current-state repairs, no design change:
+the retired `pdlc/workflows/dist/orchestrate-dev.bundle.js` premise is replaced by the shipped
+artifact set in §1.2 and §3.4's envelope example (`build-runtime.mjs` emits only `pdlc-cli.mjs`;
+`pdlc/engine/scripts/prepack.mjs` vendors `MODULE_NAMES` = `orchestrate-dev.js`, `orchestrate-queue.js`
+verbatim into `@kaneho/pdlc-engine`); §1.1's O-8 row and §3.6's prose are restated on the shipped shape,
+**one `commitPaths` call per promoted task** looping `groupPromotedPaths`'s rows, which is the only
+reading under which the `message` template's single `{taskId}` slot is coherent; §2.5's mechanism block
+drops the stray `--` from `git add -A --`, matching its own prose, O-1, OQ-5 and the shipped
+`["add", "-A"]`; and §1.3 / §5.1's HEAD-state caveats are re-measured — `ADVISORY_SEAMS` and
+`ADVISORY_SEAM_PHASES` both carry six members at HEAD, and `.claude/pdlc.config.example.json` now
+carries `advisory` with `enabled` and `waveBudgetPerRun`, so both stated red-reasons are falsified.
+No design decision reopened.
 
 **v1.11 (erratum round, Phase F — closing pass).** Re-grounded on upstream HEAD first, and the
 re-grounding is most of what this round is. REQ moved v1.9 → **v1.15** (`sha256:c62cfc35…`) and
