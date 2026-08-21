@@ -107,11 +107,11 @@ shapes, two oracles. That is the concrete gap this feature closes, so it belongs
    all, which is precisely the halt this feature is meant to resume from (OF-1). The write is
    guarded by the **git transport**, not by the gate mode: a run with no transport verifies but
    commits nothing and therefore records nothing, which is REQ-WVR-09's premise. A self-report-gate
-   run *with* a transport records normally. Re-derivable at the default branch, where the guard has
-   been read as the gate mode's (SE F-01, v3): the write's branch is the one opening with the
-   comment "Only now — verified — does anything get committed", and it is a **sibling** of the
-   gate-mode branch, which has already closed at its own `else` (the self-report arm,
-   `evaluateBatchGate`) — so the commits and the record are reached in either gate mode.
+   run *with* a transport records normally. Re-derivable at the default branch, where this guard
+   has been misread as the gate mode's (SE F-01): the write's branch is the one opening with the
+   comment "Only now — verified — does anything get committed", a **sibling** of the gate-mode
+   branch, which closed at its own `else` (the self-report arm) — so commits and record are
+   reached in either gate mode.
 2. The record is ignored when the PLAN's wave layout changes (`planHash`), so any PLAN edit
    between invocations — routine when remediating a halt — sends the next run back to wave 1.
 3. The record is ignored when the recorded commit is not an ancestor of HEAD, and Phase DOD step 0
@@ -502,9 +502,8 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   form is the TSPEC's choice unless the operator states a preference at FSPEC review.
   **Decided 2026-08-13 — deletion only.** What exists at HEAD: exactly one hatch, the
   record-removal action, announced in both banners (grep `orchestrate-dev.js` for `to force a`
-  — two hits, one under the complete-record skip, one under the mid-plan resume; the longer
-  string "to force a full run" matches only the second, because the skip banner wraps it across a
-  template-literal break). No config value can force a full run today — `implementation.startWave`
+  — two hits, one under the complete-record skip, one under the mid-plan resume; "to force a full
+  run" matches only the second, the skip banner wrapping it across a template-literal break). No config value can force a full run today — `implementation.startWave`
   defaults to 1, which *defers to* the ledger, and the parser clamps invalid values back
   to 1, so there is no sentinel meaning "ignore ledger, start at wave 1" and
   `startWave: 1` is indistinguishable from the default; any `startWave > 1` bypasses the
