@@ -199,6 +199,81 @@ seven of eight items landed and were verified against the tree in one round.
 
 ## 6. Recommendation
 
+**Author one bounded TSPEC revision (v1.13) that completes the absorption into §5 and closes the
+four residue findings, then re-run a single delta confirmation. Do not restart Phase D, do not
+re-open the design, do not re-litigate the routed erratum, and do not re-raise anything upstream has
+decided.**
+
+Rationale: the erratum's charter is discharged and both lenses said so on the record. What remains is
+one defect (the absorption stopped at §4.5) plus its residue in three sites and one header cell.
+Nothing here is a design question, so a decision record is not the instrument; this is a completion
+pass with a mechanically checkable exit condition.
+
+Ordered steps:
+
+1. **Answer TE Q-01 first, in one line, before editing §5.** Decide whether conjunct (3)'s oracle
+   asserts a **verbatim sentence** (which then must be transcribed into §5.5 alongside the other halt
+   literals) or the **presence of a statement**. Everything below depends on the answer, and PLAN
+   mints a different red test under each. Recommended: presence-of-statement plus co-location, since
+   FSPEC pins co-location as the observable and declines to fix the capture's name — a verbatim pin
+   invented at TSPEC altitude would be a new decision, not an absorption.
+2. **Close the High (PM F-01 / TE F-01) in §5.6 and §5.1.** Extend AT-06-4 to all three conjuncts —
+   diagnosis, root-cause class, and the overwrite statement — and state the oracle as **co-location
+   within one rendered report string**: the ref pointer and the overwrite sentence found in the same
+   `haltError` report text, not merely both present somewhere in the run, because two independent
+   `toContain` assertions cannot falsify a split. Then add an **AT-06-4b** row on the existing E-34
+   capture-failure fixture in `advisoryWaveGate.test.js` (`snapshotRef: null`): diagnosis and class
+   present, **no** ref pointer, **no** overwrite sentence. That negative is what makes conjunct (3)
+   falsifiable rather than an always-present string. No new file and no new double is needed —
+   `advisoryWaveGate.test.js` already owns §5.5's capture-failure disposition fixture. Update §5.1's
+   `advisoryWaveGate.test.js` row to name both ATs.
+3. **Close the residue in the same write, because it is the same defect.** §6 OQ-2 gains one clause
+   recording that BR-14 has landed and the halt report now carries the warning, leaving the
+   run-discriminator remedy scoped to the *ref-naming* half only (PM F-04, TE F-02 — second flag).
+   §4.5's Snapshot-ref row gains a pointer to §2.5's next-run overwrite correction, so the
+   implementer reading the field contract finds the warning's trigger there (TE F-03 — third flag).
+4. **Fix the two verification-integrity findings.** Correct the `Upstream` lineage cell to FSPEC v1.7
+   over REQ v1.16 with the hashes the changelog already cites (PM F-02). Re-measure §1.3's "Per-seam
+   report rows" cell against the tree — `rows.map((r) => r.seam)` reads `["A1" … "A6"]` at HEAD — and
+   flip its residue to **none**, which empties the residue table and reconciles it with its own
+   "Bare row-count assertions" row (PM F-03). Correct OQ-7's pin to name AC-6.2's v1.15 entry
+   alongside AC-5.1's v1.14 (PM F-05).
+5. **Before committing, run the check this round lacked:** diff FSPEC's AT ids across
+   v1.6 → v1.7 and assert every id has a §5.6 row, then `grep -i overwrit` across §5.1–§5.6 and
+   confirm the new contract's two arms are both present. Both are one command; either would have
+   caught the High before dispatch.
+6. **Then flip `RESOLVED: no` → `RESOLVED: yes` in this file and re-invoke `orchestrate-dev`.**
+   Expect a short confirmation: every finding names its own fix and both reviewers pre-committed to
+   the shape they want. `MAX_LIFETIME_ROUNDS 15` continues to apply.
+7. **If the confirmation returns non-approving on step 2 again**, stop revising §5 and escalate the
+   oracle-shape question to FSPEC as an erratum, rather than attempting a third TSPEC-altitude
+   formulation of an assertion upstream has not fixed.
+
+Carry forward to LEARNINGS (Phase H):
+
+- **Absorbing an upstream decision means traversing every layer that decision touches, not the
+  section that used to route it.** Where the upstream changelog names acceptance tests among its
+  landing sites, the absorption is not complete until the downstream AT map carries them. Derive the
+  obligation from the changelog's id list, do not rely on recalling which section is downstream of
+  what.
+- **A §5.6-style "every upstream AT has a home" map is a mechanical invariant and should be checked
+  mechanically.** Diffing upstream AT ids across the re-grounding interval and asserting a row per
+  id is cheaper than the round it would have saved — and this is now the second phase in this
+  feature where a one-command check would have pre-empted a halt.
+- **A new two-arm contract must ship with its negative arm's oracle in the same write.** A contract
+  whose only oracle asserts presence cannot distinguish "always rendered" from "correctly
+  rendered"; the companion negative is not a nicety, it is what makes the positive falsifiable.
+- **Never annotate a cell as re-measured when the pass's own scope excluded it.** A stale value
+  labelled "unchanged by this round's re-measurement" is more expensive than an unlabelled stale
+  value, because the label suppresses the next reader's check — and here it inflated the residue that
+  PLAN sizes from. Fourth recurrence of this shape in this feature; a promotion candidate.
+- **The lineage header is nobody's section and needs an explicit owner in the erratum checklist.**
+  A re-grounded body under a header advertising superseded upstream is the one drift a downstream
+  reader cannot detect by reading the body.
+- **A finding flagged in two or three consecutive rounds at a site the current edit does not open is
+  a signal about the edit's scope, not about the site.** When the same row is re-raised, widen the
+  round's grep rather than re-triaging the row.
+
 ## Appendix A — prior Phase D halt (review-cap, resolved)
 
 ---
