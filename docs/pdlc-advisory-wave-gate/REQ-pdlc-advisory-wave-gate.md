@@ -17,12 +17,10 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 |---|---|---|---|---|
 | pdlc | approved (shipped) | Claude | 1.14 | 2026-08-20 |
 
-*v1.14 changelog (erratum round, Phase F). Header lineage restated as the ordered chain, the
-artifacts this REQ feeds, and the harvested cross-reviews; Status is `approved (shipped)` — merged
-as PR #66 (`bb4d36fb`), queue row 19 `done`, relocation to `docs/completed/` still SE Q-02's.
-AC-1.1 and R-5 name `c8aa22a4` as the base their pre-A6 readings are measured at. AC-5.1 pins its
-observation point, bounds it to tracked paths, and states the failed-capture outcome. No decision
-reopened.*
+*v1.14 changelog (erratum round, Phase F). Lineage header restated (chain, artifacts fed, harvested
+cross-reviews); Status `approved (shipped)` — PR #66 (`bb4d36fb`), row 19 `done`, relocation still
+SE Q-02's. AC-1.1/R-5 name `c8aa22a4` as their pre-A6 base. AC-5.1 pins its observation point,
+excludes record carriers and ignored paths, and states the failed-capture outcome.*
 
 *v1.13 changelog (cross-review round 2). TE F-01 (High): AC-2.4's zero-budget conjunct restated on
 the shipped summary — one `escalated` invocation per red wave, `resolved: 0` — the budget escape's
@@ -491,8 +489,13 @@ requirements altitude.
 - **AC-5.1** — Given a refusal, a budget exhaustion, or a red re-gate, Then the working tree is
   observably identical to its state immediately before A6 acted — which is the wave's
   **post-dispatch, pre-commit** tree, with the wave agents' own uncommitted work intact. A6 never
-  destroys the wave's work in the course of failing to repair it. The mechanism of restoration is
-  TSPEC's to choose (O-1). *(US-04.)*
+  destroys the wave's work in the course of failing to repair it. The observation point is the
+  moment restoration completes: the record carriers the run still owes afterwards — AC-6.1's record
+  append and AC-5.2's queue-row write (M-WG-7) — are excluded from the comparison. So are paths
+  ignored by `.gitignore`, which are operator files A6 never wrote and never restores over.
+  Given the pre-A6 state cannot be captured at all, Then no repair is proposed, none is applied, and
+  the wave halts on its own gate (AC-5.2) — a different outcome from a failed restoration. The
+  mechanism of restoration is TSPEC's to choose (O-1). *(US-04.)*
 - **AC-5.2** — Given A6 does not resolve the wave, Then the pipeline's existing behaviour proceeds
   unchanged: the same halt, carrying the same reason it emits today (M-WG-3), and the same queue-row
   write to `halted` (M-WG-7). Escalation adds information; it never changes control flow. *(US-04.)*
