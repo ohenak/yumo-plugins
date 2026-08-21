@@ -269,10 +269,17 @@ approved at v1.5 regressed. The two findings below are non-gating: F-01 is a lef
 inconsistency at two sibling sites the erratum did not visit, F-02 a citation-direction nit. Both
 are one-sentence edits and neither blocks Phase F from converging.
 
-## Positive Observations
-
-## Recommendation
-
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | BL-04 now carries two incompatible deadlines: the v1.3 header amendment note says a default-branch base is "owed before FSPEC authoring" and §5's BL-04 row opens "Checked at FSPEC authoring", while the amended §10 says it "is owed before implementation". FSPEC authoring is done and BL-04 is unmet, so the header note reads as a missed deadline and §10 as a pending one. Align the header note (and, optionally, §5's cell) to §10's "before implementation", or state plainly that the FSPEC-authoring deadline passed unmet. | Header amendment note (v1.3) and §5 BL-04 row, vs §10 |
+| F-02 | Low | delta | local | REQ-WVR-08 and REQ-WVR-02 now cite the FSPEC ("FSPEC §2, EC-20"; "§3.2 there evaluates ancestry before over-count") as support, but the header declares Upstream: REQ / Downstream: FSPEC — an upstream document leaning on its own downstream for authority, and coupling the REQ to FSPEC section numbers that a renumber would silently invalidate. Delegating *ownership* of evaluation order to FSPEC is correct; prefer citing the shipped mechanism by symbol for the factual claims, with the FSPEC ids as see-also. | REQ-WVR-08, REQ-WVR-02 |
+
+FINDING: Medium | delta | nonlocal | Header amendment note (v1.3) and §5 BL-04 row, vs §10 | BL-04 now has two incompatible deadlines — "owed before FSPEC authoring" (header note, §5) vs "owed before implementation" (§10, as amended); FSPEC authoring is complete and BL-04 is unmet, so one site reads as a missed deadline and the other as a pending one. Align the header note to §10, or say the FSPEC-authoring deadline passed unmet.
+FINDING: Low | delta | local | REQ-WVR-08, REQ-WVR-02 | The REQ (declared Upstream) now cites its own Downstream FSPEC (§2, EC-20, §3.2) as support for its claims, inverting the dependency direction and coupling the REQ to FSPEC section numbers; cite the shipped mechanism by symbol for the factual claims and keep the FSPEC ids as see-also.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
