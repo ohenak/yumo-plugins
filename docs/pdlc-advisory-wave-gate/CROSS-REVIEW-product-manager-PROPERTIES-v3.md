@@ -46,6 +46,64 @@ and PROP-REC-01…-07 transcribes is unchanged byte for byte. On (1) it is not; 
 
 ## Properties
 
+### AC-6.3's new conjunct has no property (F-01)
+
+C-1's row for AC-6.3 reads `PROP-REC-05, PROP-REST-08`. Measured against REQ v1.16, neither reaches
+the new clause:
+
+- **PROP-REC-05** asserts *"the halt report must carry the diagnosis and the root-cause class in its
+  `advisory` fields — not only the advisory record file"*. That is AC-6.3's **first** sentence,
+  exactly, and it remains correct. It says nothing about a captured pre-A6 tree state and nothing
+  about re-running.
+- **PROP-REST-08** is the capture-**failure** observable: `captureTreeSnapshot` returns `null`, so no
+  capture exists. It is the one case in which AC-6.3's new conjunct is vacuous by construction — the
+  halt report cannot point the operator at a capture that was never taken. It cannot discharge the
+  conjunct; it is its negative space.
+- **PROP-REST-07** is the closest neighbour and still not it: it asserts the *ref-naming* consequence
+  of DEC-A6-03 (two red waves write `{refs/pdlc/a6-snapshot-1, refs/pdlc/a6-snapshot-2}`, two
+  distinct targets). It pins what the implementation writes to git, never what the operator is told.
+
+So the AC-6.3 row is now under-covered: half the criterion is asserted, half is not asserted
+anywhere. A conforming implementation can emit a halt report that names `refs/pdlc/a6-snapshot-1`,
+say nothing about the next run destroying it, and pass every property in this document. That is
+precisely the operator loss REQ v1.16 was written to prevent (US-02: *my turn starts from a
+diagnosis*), and it is a **P1** requirement — REQ-AWG-06 is P1 — so I file it High rather than
+recording it as a nit. The gap is in this document's coverage, not in any property's correctness: no
+existing statement became false, one statement is missing.
+
+### What the missing property has to assert, and what it must not
+
+Written from the product lens only — the mechanism is TSPEC's (REQ O-1), and the changelog for v1.16
+is explicit that *"the capture's name and storage form remain TSPEC's"*:
+
+- **Trigger condition, faithfully:** *where the halt report points the operator at a captured pre-A6
+  tree state*. Conditional, not unconditional — a halt with no capture (PROP-REST-08's E-34) owes no
+  warning, and a property that asserted the warning on every halt would over-assert REQ and mint a
+  red test against a spec-following implementation. That is the same failure mode this document's own
+  v1.4 round corrected in PROP-ENV-13's `attempts` conjunct; the fix should not re-introduce it.
+- **Co-location, faithfully:** *in the same place*. REQ does not merely require the warning to exist
+  somewhere; it requires it where the operator is already looking. An assertion satisfied by a
+  sentence in the advisory record file, or in a `notes` channel the halt path does not print, is a
+  narrowing of the criterion. The oracle should assert the warning travels on the same halt-report
+  surface that carries the capture pointer — the surface PROP-REC-05 already pins.
+- **Content, minimally:** that re-running this feature overwrites that capture. Not the remedy
+  wording (DECISIONS' *copy the ref before re-running* is a documented remedy, not a REQ obligation),
+  not the ref name, not a timestamp.
+
+### One upstream consequence the fix cannot absorb (Q-01)
+
+I checked whether the property could trace an existing FSPEC acceptance test. It cannot: **FSPEC is
+unchanged at `91ef2557…`**, and its two relevant statements stop where REQ v1.15 stopped —
+**BR-14** reads *"The halt report carries the diagnosis and its root-cause class"*, and **AT-06-4**'s
+*Then* clause is *"it carries the diagnosis and its root-cause class"*, with no capture-pointer or
+overwrite clause in either. TSPEC §4.5's halt fields likewise carry `rootCause`/`diagnosis`/
+`repairApplied`/`repairPaths` and no operator-warning field. So REQ v1.16's obligation is currently
+unlanded in **every** downstream artifact, PROPERTIES included. This document can still carry a
+property traced to `AC-6.3, DEC-A6-03` alone and route the FSPEC/TSPEC gap as a §G-3 erratum item —
+that is exactly what §G-3 exists for, and what round v1.4 did for PROP-ENV-13's run-level conjuncts
+rather than narrowing them away. Whether the cascade should instead be resolved FSPEC-first is the
+orchestrator's call, not mine; Q-01 records it.
+
 ## Oracles
 
 ## Fixtures
