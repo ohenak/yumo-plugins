@@ -126,7 +126,41 @@ clamp behaviour are upstream-unchanged; per the delta protocol I did not re-read
 
 ## Business Rules
 
-_pending_
+E-4 is the hunk with real content, and BR-11 is the rule that carries it.
+
+**REQ-WVR-08 at HEAD:** *"no wave of the **implementation wave loop** executes, so that loop runs
+no gate and **lands no new commit**… The claim is scoped to that loop: Phase PT's appended
+verification wave, OF-1's 17th wave, is outside the resume record's scope and continues to
+dispatch, gate and commit on every invocation (FSPEC §2, EC-20)… An implementation that lands a
+wave-loop commit under this outcome violates REQ-WVR-03."*
+
+**FSPEC BR-11:** *"Under outcome (c) the implementation wave loop dispatches nothing, executes no
+wave gate, and produces no commit… The rule is scoped to the wave loop (§2 Vocabulary): Phase PT's
+V-wave is outside it and replays on every invocation (EC-20)."*
+
+Same scope, same violation condition, same excluded phase. The erratum landed precisely the
+correction the FSPEC's §7 round-1 note said it had routed, and the resulting REQ sentence is now a
+faithful upstream of BR-11 rather than the contradiction it was at approval time. **BR-11 is
+confirmed.**
+
+**Two consequences worth recording for the te-author.**
+
+1. The v2 disposition of my v1 F-01 rested on the FSPEC having scoped the claim *while the REQ had
+   not*, with the mismatch parked as an erratum. That asymmetry is now gone, which means the
+   PROPERTIES author no longer needs a note explaining why the two documents differ. Nothing to
+   change in the FSPEC; recorded so the difference is not "restored" by a later editor.
+2. E-4 pins the V-wave as **OF-1's 17th wave**. The FSPEC never numbers it, and does not need to —
+   but the number is only consistent with E-2's restatement of OF-1 as a **16-wave** plan. I
+   checked the FSPEC for any surviving 15-wave arithmetic and there is none: the FSPEC quantifies
+   replay cost nowhere except EC-12 and EC-15a, both of which are stated relationally ("nothing
+   below wave 1 exists to replay"; "the number of consecutive failed writes at the end of the
+   run"). Relational statements survive the recount unchanged. Had the FSPEC transcribed the old
+   "15-wave / seven no-op dispatches per halt" literal, that would have been a `delta` finding
+   here; it did not, and that is a point in the authoring's favour.
+
+**BR-03, BR-10, BR-15, BR-16, BR-17 are untouched upstream** and are not re-litigated. BR-15's
+per-wave recording claim was verified against the shipped write site in v2 and no hunk of this
+erratum touches C-2/C-3, its upstream.
 
 ## Edge Cases and Error Scenarios
 
