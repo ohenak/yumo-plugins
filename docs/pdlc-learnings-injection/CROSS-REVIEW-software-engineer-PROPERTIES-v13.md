@@ -244,6 +244,34 @@ introduced. Low, below.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **PLAN version pin is stale at v0.8; PLAN reached v1.1 on this branch before this revision was written** (`aa5f0378` precedes `022e1c46`). Three concrete consequences. (a) The verbatim quotation *"after batch 13, the case that is live at HEAD"* (header `:11`, §C.4 `:1129`) returns `grep -cF` **0** against PLAN at HEAD, which now reads *"batch 13 or later, the case that is live at HEAD"*. (b) §C.4 `:1127`'s *"case A is scoped to a follow-up commit landing before batch 7"* is false: PLAN v1.1's case A *When* cell reads **"before batch 9 (which includes batches 7 and 8)"**. (c) §C.4 `:1178` still offers case B's fallback — *"its rows are amended into the ledger by name first"* — which PLAN v1.1's P-A-6 deliberately retired (*"the amend-into-the-ledger-by-name route is case B's, and case B closed at batch 12"*, TE v11 F-03); an implementer following it would prepare a ledger row PLAN says must not exist. **Non-gating and non-blocking under the freeze**: case C's substantive ruling is byte-identical across v0.8 → v1.1, every load-bearing PLAN quotation §C.4 rests on still resolves verbatim (`"batch 9 through batch 12"`, `"after LI-17 has greened the suite…"`, `"any other amendment to a landed suite arriving from here on"`, `"the first point the suite is green"`, `"has found a real defect, not staged a TDD red"` — all `grep -cF` 1), no property, oracle, fixture or AT mapping moves, and §C.4's own case-C paragraphs already state the correct green-at-landing obligation twice, twenty lines above `:1178`. Fix at the next ordinary touch: re-pin the header to **v1.1**, restate (a) with PLAN's current words, correct (b) to "before batch 9", and delete `:1178`'s case-B fallback clause in favour of P-A-7's governing case. | Header `:11`; §C.4 `:1127`, `:1129`, `:1178` |
+| F-02 | Low | Local | **"Eighteen files" is an inventory-row count, not a file count.** §G.2 gap 5 says the re-measurement *"finds eighteen `learnings*` files under `pdlc/workflows/__tests__`"*; `git ls-files pdlc/workflows/__tests__ \| grep learnings` returns **39 paths** (14 suites, 3 helpers, 22 fixture files). Eighteen is the count of rows in §C.4's table, which treats `fixtures/learnings-baseline/` as one row — the useful number, and the one the surrounding prose reasons with. Inherited, not introduced: v0.7 used the same convention (*"fourteen rows over fourteen files"*). Fix: say "eighteen inventory rows" or "eighteen tracked entities". | §G.2 gap 5; §C.4 inventory table |
+
+**Prior-round findings.** My v12 carried no High and no Medium. Its single Low — the stale PLAN version
+pin — is **not resolved** and has widened from `v0.8 → v0.9` to `v0.8 → v1.1` with substantive
+consequences, so it is re-filed at Medium as F-01 rather than carried at Low.
+
+**Freeze accounting.** Neither finding meets the blocking bar. F-02 is a wording imprecision, inherited.
+F-01 is a factual contradiction with an upstream document — the one category that *can* block — but the
+claims it falsifies are not load-bearing: no property, oracle, fixture, AT mapping or coverage row
+depends on which batch number bounds case A, on the exact wording of case C's domain, or on the retired
+case-B fallback, and this document's own operative conclusion (case C governs, ledger empty, green at
+landing) is the conclusion PLAN v1.1 reaffirms. It is recorded, not gated.
+
+DEFERRED: §C.4's inventory table could carry the `git ls-files` invocation and its raw output count beside the row count, so a reader can reconcile 18 rows against 39 paths without re-running it.
+DEFERRED: the seven-row reversal table is the clearest artifact this document has produced; a short note naming it as the pattern for future re-pins would make the technique reusable at harvest.
+DEFERRED: §G.2 gap 5 and §G.3's newly routed item restate the same four files and the same four CODE_REVIEW finding ids; one could reference the other rather than duplicate the enumeration.
+DEFERRED: consider recording, beside the 26-of-26 green measurement, the jest invocation's exact form (`npm test --`, not bare `npx jest`, which fails on this repo's ESM config) so a future verifier reproduces it first try.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | PLAN v1.1's P-A-6 now routes a red PROPERTIES suite through *"P-A-7's governing case"* rather than naming a route directly. When this document re-pins to v1.1, does §C.4 `:1178` want to quote that indirection verbatim, or state the resolved answer at HEAD (case C, green at landing, no ledger)? The second reads better but goes stale the next time P-A-7 gains a case — which has now happened twice. |
+| Q-02 | The four unowned remediation files are routed to PLAN. If PLAN answers with *"explicit out-of-manifest note"* rather than task rows, does §C.4's inventory keep all 18 rows, or drop back to 14 with a pointer to PLAN's note? I read the 18-row form as the better one — the inventory's value is that it is the output of a command — but the choice is PLAN's answer to make legible. |
+
 ## Questions
 
 ## Positive Observations
