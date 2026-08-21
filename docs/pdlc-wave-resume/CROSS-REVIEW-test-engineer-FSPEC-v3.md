@@ -203,7 +203,40 @@ ownership arm traces to REQ OB-3, which no hunk touched.
 
 ## Acceptance Tests
 
-_pending_
+The cascade question for §6 is narrow: does any AT's **oracle** or **discriminating value** depend
+on REQ bytes the erratum rewrote? Three ATs touch the edited material.
+
+| AT | Depends on | Effect of the erratum | Status |
+|---|---|---|---|
+| AT-02 | REQ-WVR-02's closed six-cause catalogue | E-3 added a precedence disclaimer; the catalogue is still IG-1..6 and still closed by the same sentence | **unchanged** — the set-equality target keeps its cardinality |
+| AT-03 | The ancestry-before-over-count order | E-3 ratifies it upstream and defers to §3.2 | **strengthened** — the fixture pair (over-count *and* unreachable ⇒ announce IG-5) is now backed by both documents |
+| AT-12 | REQ-WVR-08's outcome-(c) discharge | E-4 scopes the no-commit claim to the wave loop, matching AT-12's call-count oracle | **confirmed**, with the v2 caveats still open |
+
+**AT-12 in detail, because it is the one the erratum re-touches.** Its first three conjuncts —
+zero agent dispatches on the wave loop, zero wave-gate invocations, no implementation-wave commit —
+are exactly what REQ-WVR-08 now claims, and all three are script-owned and falsifiable. Its
+*fourth* conjunct, the V-wave one, carries the two Mediums I raised in v2 and neither is resolved
+by this erratum:
+
+- the commit half is agent-dependent, not script-owned (v2 F-01; now mirrored upstream — F-04 here);
+- the "dispatches exactly **one** agent" literal is measured through `withDispatchRetry`, which
+  re-dispatches once on a transport fault and would make the count 2 with no behaviour change in
+  this feature (v2 F-02). E-4's *"continues to dispatch… on every invocation"* neither introduces
+  nor repairs that; the precondition still needs naming so te-author pins a non-faulting agent seam.
+
+Both remain Medium and non-gating; I do not re-file v2 F-02 here, since the erratum did not touch
+its material and it is already on the record for the FSPEC's own revision loop. F-04 *is* re-filed
+because the erratum changed where its fix must land.
+
+**AT-18 — re-checked and clean.** Its discriminating value rests on completion being a
+**plan-absolute high-water mark** (a recorded wave number counted from the plan's first wave, not
+from the run's), verified in v2 against the plan-absolute `waveNum` at the write site. E-2's
+15→16 recount is a fact about OF-1's observed plan, not about the counting convention, so AT-18's
+fixture ("resume point of wave 4, not wave 3") is untouched. This was the AT most at risk from a
+wave-count edit and it survives it.
+
+**No AT gained or lost an upstream anchor.** Every `REQ-WVR-*` and `REQ §N` citation in §6 resolves
+at HEAD.
 
 ## Obligations
 
