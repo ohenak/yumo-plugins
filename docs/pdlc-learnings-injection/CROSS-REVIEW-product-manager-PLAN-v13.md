@@ -179,7 +179,46 @@ F-03. Fix: change the quoted string to "before batch 9", or drop the quotation m
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | §Changelog's 0.9 row (line 612) still credits the P-A-7 lead-in fix to "(PM v10 erratum)". PM v10 raised no such item — its findings were the `renderSection` claim (F-01), case A's window (F-02) and the changelog row inversion (F-03) — and no PM cross-review in this feature contains the string "two cases that can arise". The raiser was **TE v11 F-01**, which the *1.1* row now names correctly one row below without correcting the row that carries the error. The same 0.9 row's other attribution, "(TE v10 F-01, PM v10 F-01)", is right. Fix: replace "(PM v10 erratum)" with "(TE v11 F-01)". Carried from PM v12 F-01, unchanged | Process record; no REQ clause |
+| F-02 | Low | Local | §Changelog's 0.6 row (line 608) still precedes its 0.5 row (line 609), leaving the version table non-monotone; 0.7 through 1.1 are all correctly appended in order. Fix: swap the two rows. Carried from PM v10 F-03 / PM v12 F-05, unfixed across three rounds | Process record; no REQ clause |
+| F-03 | Low | Local | **Introduced by this delta.** Case A's *When* cell now reads "before batch 9 (which includes batches 7 and 8)", but its outcome cell's derivation still quotes the superseded text — "a commit landing in batches 2–6 is also \"before batch 7\"" (line 491). The derivation quotes a cell that no longer says that. The ruling is unaffected: batches 2–6 carry no ledger, so the outcome is "no row" either way, and the new closing clause claims 7 and 8 explicitly. Fix: quote "before batch 9", or drop the quotation and write "batches 2–6 are also inside case A's window" | P-A-7 gate contract; no REQ clause |
+
+DEFERRED: §Changelog's 1.0 and 1.1 rows each run to a single paragraph-length cell; a two-column split (what changed / what provably did not) would make the "nothing else changed" clauses checkable at a glance rather than by reading to the end of the cell.
+DEFERRED: DoD 14 names the four remediations in prose (a)–(d) with their owning tests inline; a four-row table (remediation / production seam / owning suite / named arm) would let a DoD verifier walk it mechanically.
+DEFERRED: P-A-6 now routes through "P-A-7's governing case" by indirection, which is stale-proof; the same indirection would suit the two other places that name case C by letter.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | DoD 14 says REQ G-5 "is narrowed by (a), not satisfied by it", and that the authoritative REQ amendment is routed as an erratum. When that amendment lands, does DoD 14 stay as a disclosure of the branch's carried remediations, or does its G-5 paragraph retire into the REQ? A one-clause note on its intended lifetime would tell the harvest phase whether this is durable content or round-scoped. Not gating, and not a decision this frozen round should take |
+
 ## Positive Observations
+
+- **All three routed items landed as domain restatements, not re-rulings.** The case A/B/C table's
+  outcome columns are byte-identical apart from case B's single punctuation mark. In a frozen round
+  that distinction is the whole game, and the author held it precisely.
+- **Case C's domain is now stated by batch number rather than by a commit's landing state.** That is
+  the stronger version of the fix I asked for: "batch 13 or later" cannot go stale, where "once LI-21
+  has landed" was true only relative to a moment. Both edits also record *why* the wording changed,
+  so the seam does not reopen the next time someone edits the cell.
+- **The headers now tile the batch line with no gap.** A = before 9, B = 9–12, C = 13 or later. I
+  walked the batch numbers against the three *When* cells; every batch is claimed by exactly one
+  case. Two seams that had been carried since v11 closed with one edit each.
+- **P-A-6 stopped offering a route that no longer exists.** The old cell pointed a Phase P author at
+  case B's amend-into-the-ledger fallback, which closed at batch 12. Fixing it by indirection —
+  "P-A-7's governing case" — means the cell stays true as the governing case moves.
+- **DoD 14 discloses a scope narrowing instead of quietly absorbing it.** It states that REQ G-5
+  holds for the injection region and not for the branch, says a PLAN cannot authorise that, routes
+  the amendment to REQ's author, and forbids citing the remediations as precedent for deciding
+  product scope in engineering artifacts. That is the correct handling of an out-of-scope change, and
+  it is the reason this delta does not carry a scope-creep finding.
+- **Every repository claim in the new bytes survives a first-hand check.** Four remediations, four
+  named test locations, one hook registration with the right matcher, one dist-freshness gate — I
+  verified each against HEAD rather than against the changelog, and all held, including the `--check`
+  run that now prints `in-sync`.
 
 ## Recommendation
 
