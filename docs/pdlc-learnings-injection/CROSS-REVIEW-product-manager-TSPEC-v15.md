@@ -268,3 +268,9 @@ FINDING: Low | inherited | local | TSPEC §D.5 byte-accounting paragraph | the h
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:22dee8ce1c9ba928f0796b77702321a1f6e873b729107114d0fd9fe07d562131
+APPROVAL-HASH-NORMALIZED: sha256:4907c0693d7ac86f214dadff9fd6521f1bde43be9a4d974ce21a00cea8399a35
+REVIEWED-COMMIT: 0214c54fc68fb2b194ecd5c6bdb3b4802d4bf6eb
+UPSTREAM-STATE: REQ sha256:ff605dd373ded6dce3ee18212ecd44c0ad38dd1e669fe6100ba29f6dd92e84dd
+UPSTREAM-STATE: FSPEC sha256:ae75fa6291f1a060153f65b6b1bcc3959acd62b2c0872e7b319489c964a86a1d
