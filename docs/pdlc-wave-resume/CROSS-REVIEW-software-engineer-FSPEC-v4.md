@@ -82,6 +82,35 @@ is wrong. Restated as F-02 below.
 
 ## Behavioral Flow
 
+§3 is untouched upstream in every respect, and I did not re-review it, per the delta protocol.
+Stating the reasoning rather than the conclusion, since "no change" is a claim this round has to
+earn:
+
+- **§3.1 (the decision), §3.2 (consulting the record), §3.3 (operator override), §3.4 (high-water
+  completion), §3.5 (queue parity)** trace to REQ-WVR-01..08 and §3's scope statement. None of
+  those criteria appears in the diff. The three-outcome catalogue, D-1..D-5, the six disregard
+  questions and their evaluation order — ancestry before over-count — are measured against
+  upstream text that did not move this round.
+- The **evaluation-order settlement** I recorded in v3 is unaffected: REQ-WVR-02's "IG labels name
+  causes, not precedence … which is FSPEC's to state (§3.2 there evaluates ancestry before
+  over-count)" landed in v1.6 and is byte-identical at v1.7. §3.2's paragraph "The order above is
+  deliberately not REQ-WVR-02's IG numbering" remains upstream-ratified.
+- I did **not** re-verify the shipped chain (`feature` → `planHash` → `headCorroborated` →
+  `lastGreenWave > waves.length` in the resume-decision block of
+  `pdlc/workflows/orchestrate-dev.js` on `origin/main`) a third time. It was verified at v2 and
+  re-verified at v3 against the same HEAD, and no upstream sentence describing it moved. Re-running
+  a codebase verification that no edit could have invalidated is the re-litigation the erratum
+  protocol exists to avoid.
+
+**One flow-adjacent check the §9 edit did make necessary.** OB-1's relabelled clause reasons about
+what a Claude-created worktree does *at runtime* — "leaving the ledger's consumer-local path absent
+there, so it fails open to a full run". That is a behavioural sentence in an upstream obligation,
+and if this FSPEC's flow contradicted it, that would be a finding of this round regardless of the
+item list. It does not: §3.1's outcome (a) is exactly "no record visible ⇒ start at wave 1,
+silently", EC-01 is its silent-full-run row, and EC-17 routes the worktree case to precisely that
+pair. Upstream's "fails open to a full run" and the FSPEC's outcome (a) are the same behaviour
+under two names, and the FSPEC's is the normative one. No finding.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
