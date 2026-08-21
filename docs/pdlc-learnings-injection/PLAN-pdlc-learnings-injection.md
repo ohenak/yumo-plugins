@@ -548,7 +548,20 @@ were already written to TSPEC's reading and TSPEC's reading is now FSPEC's:
 | **ERR-7 (FSPEC BR-1)** — BR-1 once made the block follow the pipeline's authoring *classification* alone, a set wider than REQ C-1, so `LI-AT-02` had two contradictory expected sets | **CLOSED.** FSPEC v0.11 restated BR-1 as the **two-conjunct** rule — authoring-classified **and** a target document among C-1's six — naming Phase CR's `docType: null` optimizer round as the excluded branch; v0.12 carried the complement through BR-11, AT-03, AT-29 and D-2. TSPEC §A.2's `docType ∈ LEARNINGS_TARGET_DOCTYPES` predicate **implements BR-1 directly** and adds no conjunct BR-1 lacks | None. LI-11's `LI-AT-02` row already carries the two-conjunct reading and is now scoring-consistent with FSPEC as well as TSPEC |
 | **ERR-3 (FSPEC BR-15)** — the expected read set once included "the corpus-root enumeration" on an instrument defined as file-open calls under `docs/`, which a `git ls-files` call cannot join | **CLOSED.** FSPEC v0.11 dropped the enumeration from the expected read set on exactly that ground; v0.12 states the membership as a **set** rather than a count | None. LI-11's `LI-AT-33` row already excludes the enumeration and hand-transcribes the read set (TSPEC §T.6) |
 
-TSPEC's remaining open errata (ERR-1, ERR-2, ERR-5) are unchanged by this document and are not
+**ERR-8 (FSPEC Step 5, items 15–16) is open at HEAD and is addressed to this document's author**, so
+it is recorded here rather than counted among the errata that pass this PLAN by (PM F-03). TSPEC §D.5
+raises it: FSPEC's Step 5 drops on the *structural* condition at item 15, takes the first
+`maxDocuments` of the rest, and extracts material only at item 16 — **after** the count cut — while
+BR-9/D-12 state the drop as *yields no material* and E-36 requires a document at
+`maxBytesPerDocument: 0` to be dropped `RSN-NO-MATERIAL` consuming no slot, which is an extraction
+outcome and not a structural one. A reader implementing Step 5 literally would extract only the
+count-surviving documents and could never observe the zero-bound drop for the rest.
+
+| Item | Status at HEAD | Effect on this PLAN |
+|---|---|---|
+| **ERR-8 (FSPEC Step 5, items 15–16)** — the procedure's item order drops structurally *before* the count cut and extracts *after* it, a sequencing that cannot produce E-36's no-slot zero-bound drop | **OPEN**, with FSPEC's author. Not a behavioural divergence: the observable outcomes agree at every bound (TSPEC §D.5), so the fix is item ordering, not semantics. TSPEC's suggested fix — extract for every eligible document at item 15, drop on *yields no material*, then apply the count bound | **Already absorbed; no task moves.** LI-16's row is written on TSPEC's rule, not Step 5's order: `extractInjectableMaterial` runs for every eligible document and `selectLearnings` drops `sections: []` as `RSN-NO-MATERIAL` before the count and total bounds. LI-12's third `LI-AT-30` case is the oracle that reds if an implementer follows Step 5's literal order instead. This PLAN does **not** re-decide the question — TSPEC decided it — it records which rule its rows encode, so a delta-confirmation against a corrected FSPEC finds no PLAN change owed |
+
+TSPEC's other open errata (ERR-1, ERR-2, ERR-5) are unchanged by this document and are not
 re-raised here: ERR-5's provenance was corrected in FSPEC's v0.7 erratum round (E-13 now reads
 "measured: 2 of 89 at HEAD, both in regime-ledger; none in yumo-plugins", which is consistent with
 this repository's nine bare-ISO `Date Completed` values), and ERR-1 and ERR-2 remain with FSPEC's
