@@ -117,6 +117,40 @@ is not true. See **F-01**.
 
 ## Oracles
 
+- **§O.9's T-O-6 generator (PROPERTIES:774–783) is where F-01 lands concretely.** The new paragraph
+  states the domain as `maxBytes >= 1` "explicitly rather than left to the draw" — which is good
+  practice in general and the wrong bound here. It then argues the exclusion is "the split §O.5
+  prescribes — an absence-shaped conjunct belongs at the pipeline seam, not at an injectable unit that
+  structurally cannot falsify it." The zero-bound obligation is **not** absence-shaped at the unit: it is
+  a four-field positive return value (`material: ""`, `bounded: false`, `bytes: 0`, `sections: []`) that
+  `extractInjectableMaterial(text, 0)` produces directly, so the unit both can and, per TSPEC §T.5, must
+  falsify it. The seam property PROP-CONFIG-09 owns a *different* observable (the reason id and the
+  unconsumed slot), and owning it does not discharge the unit one. The fix keeps both: restore `0` to
+  the generator's domain with the zero conjunct stated (`maxBytes <= 0 ⇒ material === "" && bounded ===
+  false && bytes === 0 && sections.length === 0`), keep PROP-CONFIG-09 unchanged, and rewrite §G.1's
+  T-O-6 row as a genuine partition rather than a claimed one.
+- **§O.5's L3-placement table was not extended (PROPERTIES:691–700).** §O.9's new text appeals to §O.5
+  to justify placing the zero bound at L3, but §O.5 still opens "**Five** claims are placed at L3
+  because no injectable unit can falsify them" and its table still lists `PROP-CONFIG-04/05` without
+  PROP-CONFIG-09. Whatever happens to F-01, PROP-CONFIG-09 is an L3 property and belongs in that
+  enumeration — the table is the document's closed record of deliberate L3 cost, and a property that
+  cites it but is missing from it weakens exactly the discipline the table exists to enforce
+  (**F-02**). Note the row's stated reason would need care: the current `PROP-CONFIG-04/05` reason
+  ("rows present and empty versus key absent is a distinction only a finished report carries") is true of
+  PROP-CONFIG-09's run-level conjuncts, but under F-01's fix it is *not* true of the unit-level return —
+  which is the honest version of the split.
+- **§O.7's new-blocking-causes rule — now satisfied.** My v3 said `maxBytesPerDocument: 0` was a
+  newly-decided blocking cause needing its own defeater rather than an inherited one. PROP-CONFIG-09's
+  "the fixture must carry material … a fixture of section-less documents would green through
+  PROP-BOUND-06's first disjunct even if the zero bound were unimplemented" is that defeater, stated in
+  §O.7's own vocabulary. Precedence order (`RSN-NO-MATERIAL` before the count cut before the byte cut)
+  is unchanged and still matches BR-6's zero paragraph and TSPEC:1423.
+- **§O.8's M-5 — unchanged and now unambiguous**, as v3 recorded: with BR-6 material-only, charging
+  framing violates both specs. No edit needed and none made.
+- **§O.1–§O.4, §O.6** — untouched by the delta, not re-reviewed. My v3/v2 open Medium on the shared
+  static walk's operand (§O.1 vs §C.4's hand-transcribed literal) remains open as recorded and is not
+  re-litigated here.
+
 ## Fixtures
 
 ## Findings
