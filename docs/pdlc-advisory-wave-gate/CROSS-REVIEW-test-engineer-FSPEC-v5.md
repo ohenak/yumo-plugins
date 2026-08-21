@@ -66,7 +66,39 @@ round staler and internally inconsistent with the changelog).
 
 ## Behavioral Flow
 
-_pending_
+**§3.2 step 10 — the branch is now written down.** v4's flow-level objection was that AC-6.3
+sentence 2 is conditional and therefore a *decision branch in the halt step* that FSPEC did not
+name, leaving a test author with no partition to write against. The delta names both arms in one
+sentence:
+
+> It has two arms: where the report points the operator at a captured pre-A6 tree state, it also
+> warns there that re-running this feature overwrites that capture; where no capture was taken
+> (E-34), it carries the diagnosis and class and no such warning.
+
+That is a two-cell partition with a named discriminator (capture taken / not taken), each cell
+mapped to an acceptance test (AT-06-4 / AT-06-4b) and each cell mapped to an edge-case row (the
+implicit capture-exists path / E-34). A test author can now write both tests without a clarifying
+question — the "write the test right now" check passes at FSPEC altitude.
+
+**Control flow untouched.** The added clause is report *content*, not a step, a gate, or a
+disposition. Step 10 still halts with M-WG-3 and still writes the `halted` queue row via M-WG-7;
+BR-14's headline ("Escalation adds information and never changes control flow") is preserved and
+still cited at the end of the step. AC-5.2's "escalation adds information; it never changes control
+flow" is therefore still compressed faithfully — I checked this specifically, because a
+report-content obligation attached to a halt is the shape that most easily leaks into control flow,
+and it did not.
+
+**§3.3 summary table under-summarises the amended step.** The one-table view's row 10 still reads
+`halt exactly as today, diagnosis attached` — a single-branch summary of what §3.2 now describes as
+two arms. §3.2's prose is authoritative and every other row in that table is summary-grade, so no
+oracle reads the wrong thing from it; but a reader who works from the table alone (the table is
+offered in §1's reading order as the flow-at-a-glance) will not see the branch that AT-06-4b exists
+to cover. One-cell fix: `diagnosis + class attached; overwrite warning where a capture exists`.
+F-04, Low, `delta`/`local` — the edit changed step 10's prose and left its own summary row behind.
+
+**No other step touched.** `git diff` confirms steps 1–9, 3b, 4b, 8a/8b and the tie-break paragraph
+are byte-identical; nothing in the delta reaches the dispatch, envelope, restoration or budget paths
+this lens approved in v1/v2.
 
 ## Business Rules
 
