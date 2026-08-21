@@ -89,6 +89,36 @@ Constraints this confirmation was measured under, and what each one implied:
 
 ## Acceptance Criteria
 
+What this confirmation had to satisfy before it could approve — the routed items, each
+re-measured rather than read off the changelog.
+
+| # | Routed item (raiser) | Landed? | Evidence re-measured this round |
+|---|---|---|---|
+| 1 | AC-1.1 / R-5 argue from the pre-A6 catalogue; name `c8aa22a4` (te-review) | **Yes** | AC-1.1 now reads "The five-member 'before' this argues from is the reading at base commit `c8aa22a4`; HEAD already carries A6 (baseline v1.2 §4, M-WG-13)." R-5 gains "The pre-change readings are measured at `c8aa22a4`; M-WG-13/M-WG-14 are the post-change ones." Both verified against `pdlc-wave-gate-baseline.md:70`, which names `c8aa22a4` as exactly the base at which M-WG-8's five-member reading is true and this base false. `git show c8aa22a4` resolves. |
+| 2 | AC-5.1's "observably identical" contradicted by AC-6.1's append and M-WG-7's queue write (te-review) | **Yes** | AC-5.1 now pins "The observation point is the moment restoration completes" and excludes "AC-6.1's record append and AC-5.2's queue-row write (M-WG-7)". Both carriers verified: AC-6.1 does mandate an append on any invocation; AC-5.2 does carry the `halted` queue-row write and cites M-WG-7, whose baseline row reads "The halt is recorded in the queue... rewrites the feature's queue row to `halted`". Pinning *and* excluding is belt-and-braces, which is the right call here — see Positive Observations. |
+| 3 | Ignored-path boundary on AC-5.1 (pm-author) | **Yes** | "So are paths ignored by `.gitignore`, which are operator files A6 never wrote and never restores over." This closes the destructive reading (a tree-wide restore that also cleans ignored paths) without naming a mechanism, so it stays inside the altitude rule. |
+| 4 | No observable for a failed **capture** of the pre-A6 state (pm-author) | **Partially** | The control-flow half landed: "Given the pre-A6 state cannot be captured at all, Then no repair is proposed, none is applied, and the wave halts on its own gate (AC-5.2) — a different outcome from a failed restoration." The **operator-visible** half did not. See F-01. |
+| 5 | `Downstream` row names a feature, not the artifacts fed (pm-author) | **Yes** | Row now reads "FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory)". All four verified present in `docs/pdlc-advisory-wave-gate/`. |
+| 6 | `Upstream` row carries a path, not the ordered chain (pm-author) | **Yes, with a regression** | Row now reads "`pdlc-advisory-tier` REQ (the five-seam tier this extends) → **REQ**" — ordered, terminal, this doc bold, matching the chain form every sibling non-REQ artifact uses. But the resolvable path was dropped in the process. See F-02. |
+| 7 | `Cross-Reviews` row reads `—` (pm-author) | **Yes, but now inaccurate** | Row now reads "harvested into `LEARNINGS-pdlc-advisory-wave-gate.md`", which is the routed text verbatim and true of the 116 harvested rounds. It is not true of the rounds now on the branch. See F-03. |
+| 8 | `Status` is `draft` although row 19 is `done` and PR #66 merged (pm-author) | **Yes** | Header reads `| pdlc | approved (shipped) | Claude | 1.14 | 2026-08-20 |`. Verified: `docs/_queue/QUEUE.md:81` is `| 19 | done | pdlc-advisory-wave-gate | ... |`; the baseline names PR #66 (`bb4d36fb`) as the merge. The changelog correctly records that relocation to `docs/completed/` remains SE Q-02's and is not taken here, so the Status flip does not silently pre-empt an open question. |
+
+**Upstream fidelity re-check (DEC-ERR-03), beyond the item list.** Every id this REQ borrows from
+its named upstream was resolved against the upstream file at its current version, not against my v3
+reading:
+
+- `REQ-pdlc-advisory-tier` **AC-1.6, AC-2.2, AC-3.4, AC-3.6, AC-9.2, BL-01, NFR-1** — all eight
+  citation sites resolve to a defined criterion in
+  `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md`. No nonexistent-authority citation.
+- The Upstream row's characterisation "**the five-seam tier this extends**" is faithful to upstream
+  *as a document*: it still enumerates "the five seams A1–A5" and its per-seam report criterion still
+  reads "listed for **all five seams A1–A5**". The five/six tension is a shipped-code fact, not an
+  upstream-text drift, and AC-1.1's new sentence is precisely what keeps the two readings apart.
+- "HEAD already carries A6" measured directly, not inferred:
+  `grep -n "ADVISORY_SEAMS = " pdlc/workflows/orchestrate-dev.js` →
+  `:1952  export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5", "A6"]);`.
+  Six members at the tree this review runs on, consistent with M-WG-13.
+
 ## Risks
 
 ## Obligations
