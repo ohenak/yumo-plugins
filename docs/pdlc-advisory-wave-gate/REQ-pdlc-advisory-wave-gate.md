@@ -15,10 +15,17 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.12 | 2026-08-20 |
+| pdlc | draft | Claude | 1.13 | 2026-08-20 |
 
-*v1.12 changelog (cross-review round 1). SE F-01: `ready: true` (merged, PR #66 `bb4d36fb`) and
-QUEUE row 19 `done` — the pair blocked rows 6 and 20 on the queue's not-done dependency pre-check;
+*v1.13 changelog (cross-review round 2). TE F-01 (High): AC-2.4's zero-budget conjunct restated on
+the shipped summary — one `escalated` invocation per red wave, `resolved: 0` — the budget escape's
+disposition carrying `seam: "A6"` onto the row. TE F-02: that escalation's class named
+`unclassified`. SE F-01: C-5 names the hook's soft threshold too. SE F-02: v1.12's causal clause
+corrected below. SE Q-01/Q-02 and TE Q-01/Q-02 remain open, none gating.*
+
+*v1.12 changelog (cross-review round 1). SE F-01: QUEUE row 19 `done`, which is what blocked rows 6
+and 20 on the queue's not-done dependency pre-check; `ready: true` (merged, PR #66 `bb4d36fb`)
+unblocks only this row's own pickup;
 relocation to `docs/completed/` is SE Q-02's, not taken here. TE F-01: AC-2.4 gains the
 `waveBudgetPerRun: 0` conjunct. TE F-03: O-4 extended to E-6's symbol conjunct. SE F-02 routed to
 the constraints file. Lows: AC-1.2's anchor in symbol form, §1's drift re-measured,
