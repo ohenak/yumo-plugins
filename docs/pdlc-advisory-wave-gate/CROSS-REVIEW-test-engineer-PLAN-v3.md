@@ -176,6 +176,41 @@ that follows. Comparing TSPEC §5.1's file table against the PLAN's ownership ma
 
 ## Dependencies
 
+**One line changed here and it is a bookkeeping consequence of the manifest edit, not an ordering
+change.** Batch-safety rule 2 ("single writer per file per batch") gained
+`advisoryWaveGateMain.test.js` alongside `advisoryEscalationLog.test.js` as "batch 6 only (A6-18)"
+(PLAN line 411). I re-derived the whole rule-2 enumeration from the manifest rather than reading it:
+`orchestrate-dev.js` in batches 1–7 once each; `advisoryWaveGate.test.js` in batches 1, 2, 3, 5, 6
+once each; `advisoryDriver.test.js` in 1 and 4; `advisoryRecord.test.js` in 1 and 6;
+`advisoryWaveGateMain.test.js` and `advisoryEscalationLog.test.js` in 6 only;
+`advisoryDisabled.test.js` in 1 and 7; `advisoryQueueSeams.test.js` in 1 only. No file has two
+writers in one batch, in either column. The narrated list and the manifest now agree, which is the
+property that matters — an unlisted second writer is invisible to the dispatcher.
+
+**The edges themselves are untouched.** Column-wise, only description and file cells moved this
+round; the `Batch` and `Dependencies` columns are byte-identical to `b3d877a1`, and the re-derivation
+in **Batches** above confirms the DAG. So the ordering story I approved at v1.11 stands unchanged:
+A6-04 → A6-06 for the example-config edit, A6-00 + A6-05 → A6-08 for the helpers, and the linear
+A6-08 → A6-10 → A6-12 → A6-14 → A6-18 → A6-21 spine that keeps every wave boundary green under a
+script-owned gate with no expected-red channel.
+
+**The A6-18 → A6-21 edge is what makes this round's split safe, and it is already there.** AT-06-4's
+two arms now land in two batches: the seam arm in batch 6 and the un-skip arm in batch 7. That is
+only sound because the production push A6-21 adds at the un-skip halt site reads a `snapshotRef`
+field that A6-18's green step introduces one batch earlier — an edge the table already declares
+(`A6-21 | … | 7 | A6-18`). Had the split been made within one batch, two tasks would have been
+editing the same halt-fields object concurrently; as declared, it serializes correctly. I checked
+this against the file column too: A6-21's test file (`waveExecution.test.js`) is written by nobody
+in batch 6, and A6-18's three test files are written by nobody in batch 7.
+
+**No upstream dependency of this plan is open.** The subsection's v1.11 wording — measured across
+all four upstream documents, with the earlier overreach recorded rather than erased — is unchanged
+this round, and the evidence behind it is unchanged too: TSPEC's bytes have not moved since
+`b3d877a1` (empty diff), so OQ-7 remains closed-answered-no and DEC-A6-01's scoped ignored-path arm
+remains explicitly not built. The one upstream defect I still see is the stale AT-02-1 row in TSPEC
+§5.6, which I routed as an erratum at v2 and am re-routing below — it is not a dependency this plan
+waits on, and no task row reads it.
+
 ## Verification
 
 ## Findings
