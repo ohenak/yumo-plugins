@@ -451,7 +451,15 @@ as a live assertion rather than holding a pending case open, which is a change t
 not to the graph. Nothing else in this plan reads the answer, because A6-13's `apply` refusal for an
 ignored-path-only repair stands on its own merits either way (OQ-11) — unchanged by the closure.
 
-**No upstream dependency of this plan is open.**
+**No upstream dependency of this plan is open — checked across all four upstream documents at HEAD, not
+three.** The v1.10 round asserted this while DECISIONS still sat at `sha256:84deee10…`, where DEC-A6-01's
+option-D row and its *What follows from DEC-A6-01* section were still routing the ignored-path boundary as
+"upstream's open question (TSPEC §6 OQ-7)" with a contingent scoped ignored-path capture arm — so the claim
+overreached its evidence when it was made (TE v1 F-04). DECISIONS has since been re-grounded and now reads
+at `sha256:dc7a8d65…`: the option-D row records OQ-7 as **closed, answered no** at TSPEC v1.11, and the
+consequences section states that "the scoped ignored-path arm this record held in reserve is explicitly
+**not built**", with only a *reversal* of BR-9's exclusion listed as the re-evaluation trigger that would
+grow it. No task in this plan reads that arm, and none needs to.
 
 ## Verification
 
