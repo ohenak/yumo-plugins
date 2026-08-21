@@ -306,8 +306,20 @@ describe("PROP-BOUND-03 generated arm: extractInjectableMaterial character-safet
           expect(result.material).not.toContain("�");
           expect(Buffer.from(result.material, "utf8").toString("utf8")).toBe(result.material);
           // `bounded` is true exactly when a cut actually occurred.
-          const wholeBytes = Buffer.byteLength("## Cross-Feature Patterns\n\n" + body, "utf8");
+          // The whole normalised section, hand-stated rather than imported. §D.3 normalisation
+          // drops a section extent's TRAILING BLANK LINES before assembly, so the draw
+          // `bodyChars === []` does not normalise to "heading + blank line + empty body": every
+          // line after the heading is blank and all of them are dropped, leaving the heading
+          // alone. Deriving `wholeBytes` from the raw fixture text instead overstated it by the
+          // two join bytes on exactly that draw, which is why this arm failed on any seed that
+          // sampled the empty array against a bound of 25 or 26.
+          const normalised =
+            body === "" ? "## Cross-Feature Patterns" : "## Cross-Feature Patterns\n\n" + body;
+          const wholeBytes = Buffer.byteLength(normalised, "utf8");
           expect(result.bounded).toBe(wholeBytes > maxBytes);
+          // Non-vacuity control: when no cut occurred the material IS the whole normalised
+          // section, so `bounded === false` cannot be reached by returning less than everything.
+          if (!result.bounded) expect(result.material).toBe(normalised);
         }
       ),
       { numRuns: 300 }
