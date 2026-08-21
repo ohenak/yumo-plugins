@@ -89,6 +89,43 @@ it, and no downstream author (PLAN, PROPERTIES, implementation) would mint work 
 
 ## Interfaces
 
+### There is no seam in this TSPEC that could carry the warning
+
+I traced every surface that could deliver an operator-visible sentence at a halt, to check whether
+the obligation lands somewhere already and I simply missed it. It does not.
+
+| Surface | §  | Carries the ref? | Could carry the warning as specified? |
+|---|---|---|---|
+| `haltError(TEST_GATE_MESSAGE, { advisory })` | §2.3, §4.5 | no | **No** — §2.3 pins the reason string to the pre-A6 literal template, byte-compared by AT-05-3 |
+| `haltError`'s `fields` object | §4.5 | no | **No** — closed four-field set, see Data Model below |
+| `formatUnskipViolations` message | §4.5 | no | **No** — §4.5 states "Message string unchanged" as a contract |
+| E-28 restore-failure halt | §2.5, §3.5 | **yes** | Unspecified — TSPEC says the halt "names the ref" but never transcribes the message |
+| Report `notices` | §4.5 | no | Not evaluated as a carrier anywhere in the document |
+| `restoreTreeSnapshot` / `captureTreeSnapshot` | §3.5 | writes the ref | Not a reporting surface |
+
+The E-28 row is where the confirmation turns. §2.5 asserts, as a design property, that E-28's halt
+names the ref — but no section of the TSPEC gives that message's content, template, or oracle the
+way §2.3 and §4.5 do for the test-gate and un-skip halts. So the one halt that satisfies AC-6.3's
+antecedent is the one halt whose message this document leaves unspecified. Before v1.16 that was
+tolerable; the message content had no requirement bearing on it. At v1.16 it is the exact place a
+requirement now bears, and the specification is silent.
+
+**What would resolve this, at TSPEC altitude.** Give the E-28 halt the same treatment §4.5 already
+gives the capture-failure halt: name its message, or name the field that carries the ref, and
+attach the overwrite warning to it as a transcribable literal. REQ explicitly reserves the capture's
+name and storage form to TSPEC (O-1), so TSPEC is the right owner of the sentence's exact wording —
+what it may not do is leave the sentence unwritten.
+
+### Blocking dependency: FSPEC is silent too
+
+FSPEC has not changed and does not carry this obligation either — E-28 (`FSPEC:309`, quoted by id
+not anchor) says only that "the wave halts," and AT-05-5 asserts only that the halt "names the
+failed restoration." SE's FSPEC v4 cascade review raised its own High on exactly this. So the
+correct sequencing is FSPEC first (the observable and its acceptance test), then TSPEC (the message
+and the ref's form). I am flagging this so the TSPEC author is not asked to invent a product
+observable that belongs one level up — the fix here is downstream of the FSPEC round, not
+independent of it.
+
 ## Data Model
 
 ## Test Strategy
