@@ -245,7 +245,9 @@ refs/pdlc/a6-snapshot-{waveNum}`, then `git reset --mixed {head}` to put the ind
 injected `_git(argv)` transport, with `add` and `reset` going through `gitWithLockRetry`.
 
 The `-m "…"` on `commit-tree` is **not optional and not cosmetic**, and it is transcribed here
-verbatim from TSPEC §2.5's block for that reason — but the failure mode is silence, not a block, and
+with TSPEC §2.5's own elision for that reason (TE F-06: what the block writes, and what this
+sentence therefore reproduces, is the ellipsis; the literal the implementation carries is
+`A6 snapshot: wave {waveNum} pre-repair tree ({feature})`) — but the failure mode is silence, not a block, and
 v1.1's account of it was wrong (TE v2 F-01, carried here rather than across another round). A
 `commit-tree` invoked without `-m` reads its message from stdin; the shipped transport `defaultGit`
 runs `execFileSync("git", args, { stdio: "pipe", encoding: "utf8" })` with no `input`, so the child
@@ -261,21 +263,32 @@ argv, not in its judgement.
 
 **Constraints that forced the shape.** BR-9's oracle is content-level over tracked *and* untracked
 files, so path-scoped restoration is out. The wave's uncommitted work is the protected asset, so a
-capture that mutates the tree is out. `clean -fd` deliberately omits `-x`, because `git add -A`
+capture that mutates the tree is out. `clean -fd` deliberately omits `-x`, because `git add -A --`
 never records ignored paths and a restore that deleted what capture never held would be a worse
 defect than the one it fixes — capture and restore share one ignore semantics because they must.
-Whether BR-9's oracle ranges over ignored paths at all is an upstream question already raised as an
-erratum (TSPEC §6 OQ-7) and is **not** decided here; this decision fixes the *symmetry*, not the
-boundary.
+The boundary itself is **inherited, and now settled**: OQ-7 asked whether BR-9's oracle ranges over
+ignored paths and closed *no* at TSPEC v1.11, with FSPEC BR-9 v1.6 and REQ AC-5.1 fixing the map's
+domain as tracked files plus non-ignored untracked ones — ignored paths outside it in both
+directions. This decision still fixes only the *symmetry*; what changed upstream is that the
+symmetry and the oracle now agree by decision rather than by luck (TE F-02).
 
-**Reversibility:** easy. The mechanism is two module-private functions (`captureTreeSnapshot`,
-`restoreTreeSnapshot`) behind a call site that runs only under `advisory.enabled: true`.
+**Reversibility:** easy, and **test-visible rather than silent**. The mechanism is two *exported*,
+directly unit-tested functions (`export async function captureTreeSnapshot` / `restoreTreeSnapshot`)
+behind a call site that runs only under `advisory.enabled: true`. The caveat matters for the same
+reason DEC-A6-02's does: `advisoryWaveGate.test.js` destructures both by name off the module and
+drives them directly — A6-10's round-trip over a real temporary git repo and the restore-path throw
+cases — so reshaping either one reddens tests an operator will see, rather than changing quietly
+under the seam (TE F-04). Through v1.10 this rating said "module-private", which understated what a
+reversal costs.
 
 **Re-evaluation triggers:** git gains a genuinely non-mutating stash-capture; the wave contract
 changes to permit agent commits or staged work (which would invalidate the `reset --mixed` exactness
-argument, TSPEC §6 OQ-5); or the OQ-7 erratum returns holding ignored generated outputs inside the
-oracle, in which case capture grows a *scoped* ignored-path arm over the post-wave pathspecs only —
-never the whole ignored tree.
+argument, TSPEC §6 OQ-5); or **BR-9's ignored-path exclusion is reopened and reversed** — that is,
+a future erratum brings ignored generated outputs *inside* AC-5.1's map, which OQ-7 has already
+declined to do. Only then does capture grow a *scoped* ignored-path arm over the post-wave
+pathspecs only, never the whole ignored tree. Stated as a live reversal rather than as a pending
+OQ-7 because OQ-7 is closed and the scoped arm is explicitly **not built** — TSPEC records that
+"the decision that would have required it did not come back" (TE F-02).
 
 ### DEC-A6-02: An E-6 promotion is committed by its own `commitPaths` call, not by widening a task's
 
