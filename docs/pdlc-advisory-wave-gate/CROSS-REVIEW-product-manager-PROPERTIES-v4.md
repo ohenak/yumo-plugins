@@ -206,16 +206,77 @@ it is the kind of claim a deleted case would break — which is the point of ass
 
 ## Findings
 
-_pending_
+Both v3 findings are **resolved**. Two new Low findings, neither gating; both are count/enumeration
+drift left behind by this round's own edit, not coverage gaps.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **Suite count drifted within the document.** §"Where the tests live" now says **eleven** existing suites are edited (`PROPERTIES-…md:38`), correctly adding `advisoryWaveGateMain.test.js` as PROP-REC-11's DC-07 production-path surface. But §Coverage Matrix's *"File existence, verified at HEAD"* paragraph (`PROPERTIES-…md:521`) still says *"The **ten** edited suites all exist"* and enumerates ten, omitting `advisoryWaveGateMain`. Nothing is unverified in fact — I confirmed the file is on disk at `pdlc/workflows/__tests__/advisoryWaveGateMain.test.js`, with the four-key `haltAdvisory` assertion at `:373` — so this costs no coverage. It costs the reader who checks the round's newest surface against the document's own verification list and does not find it. Fix: bump the count to eleven and add `advisoryWaveGateMain` to the enumeration, in the same edit. | AC-6.3 |
+| F-02 | Low | Local | **Lineage-header cross-review range trails by one.** The header row now reads `…-PROPERTIES-v1.md`…`-v3.md` for both reviewers (`PROPERTIES-…md:7`), edited **down** from `-v4.md` in this round. It was correct when written — v3 was then the newest — and is stale again the moment this file lands. A range that must be re-edited every round is churn the document does not need. Fix (optional, and a genuine choice): either bump to `-v4.md`, or drop the numeric range and write `CROSS-REVIEW-{product-manager,software-engineer,test-engineer}-PROPERTIES-v*.md (active while Phase PT runs)`, which is true at every round and needs no future edit. | — |
+
+**F-01 (v3, High) — resolved.** REQ v1.16's AC-6.3 second conjunct now has three properties
+(PROP-REC-08 positive / -09 E-34 negative / -10 un-skip) plus PROP-REC-11 for the field shape it
+rides; C-1's AC-6.3 row is split by sentence; PROP-REC-05 declares its own boundary; Oracle O-J pins
+co-location as the unit and rules out the three vacuous shapes; §G-4 restates the coverage claim at
+**conjunct** granularity and names the class of defect that let the gap open. Verified against code,
+not only against prose — see §Properties.
+
+**F-02 (v3, Low) — resolved.** §Scope cites REQ **v1.16**, FSPEC v1.7, TSPEC v1.15, DECISIONS v1.12
+and PLAN v1.13, and states that all five hashes were **re-computed on disk at HEAD rather than taken
+from the dispatch**. I re-hashed independently: REQ `f97f4f66…`, FSPEC `d602c440…`, TSPEC
+`1f6ea486…`, DECISIONS `dc7a8d65…`, PLAN `c843cb4f…` — all five match the document's pins.
+
+**Nothing was broken by the revision.** The two statements most exposed — PROP-REST-09's byte-equality
+with the pre-A6 halt literal and the Pre-A6 baseline fixture — are byte-identical in the diff, because
+the notice rides `notices` rather than the halt reason string. No property statement, category, level
+assignment, oracle form or PLAN home changed outside the two corrections the changelog names.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | C-3's preamble is honest that its task ids are PLAN's **pre-restructure** ones (A6-15/-16/-17/-19/-20), which at PLAN v1.13 are red *steps inside* A6-18 and A6-21, and it routes the full re-titling to SE's open v2 F-01/F-02 as non-gating. I agree it is non-gating and raise no finding. The question is for the orchestrator, not this author: does that re-titling get a bounded round before Phase I transcribes from this matrix, or does Phase I read the dual-form rows as they stand? The rows are unambiguous today only because the parenthetical carries both forms. |
 
 ## Positive Observations
 
-_pending_
+- **The fix went one level deeper than the finding.** I asked for one property and a matrix row. What
+  landed is three properties covering three arms (including the un-skip arm I had not identified),
+  a fourth for the field shape the arms ride, an oracle that names the three vacuous shapes, a fixture
+  hazard for the shipped oracles the new key reddens, and a §G-4 that restates the coverage bar at
+  conjunct granularity so the same class of gap cannot re-open invisibly. Naming the defect class, not
+  just patching the instance, is what makes a review round compound.
+- **Every claim about shipped code checked out at the line.** Six separate assertions about existing
+  test surfaces — the four-key `Object.keys` list, `ORACLE_G_HALT_FIELDS` and its two uses, the
+  escalation-path `toEqual`, `advisoryWaveGateMain`'s four-key `haltAdvisory`, the `toHaveLength(2)`,
+  the two exported sibling renderers — are true at HEAD. The `_git`-double claim in particular
+  (`advisoryWaveGateMain.test.js:123` answering `ok: true` to `write-tree`/`commit-tree`, so that
+  fixture's fifth value is the **ref**, not `null`) is the kind of detail that, gotten wrong, hands
+  Phase I a red test to transcribe. It is right.
+- **The trade the round declined to make is written down.** §G-2 states plainly that no property pins
+  the warning's wording, that an unhelpfully-phrased-but-conforming notice would therefore pass, and
+  why that is still the better trade than minting a literal no upstream document owns. A softness
+  stated with its cost is a decision; the same softness unstated is a gap.
+- **Absorption over re-routing.** The v3 round left an open question about whether the cascade should
+  be resolved FSPEC-first. It had been, upstream, before this round ran — and §G-3 records that as
+  *closed by absorption*, with the three upstream landings cited, instead of re-raising an erratum
+  that would have bounced. That is DEC-ERR-03 working as designed.
+- **C-2's set-equality is a real check, not a stated one.** I reproduced it mechanically: 48 ids in
+  C-2, 48 in FSPEC §6, empty diff both directions. A claim written so that a deleted case breaks it,
+  and that survives being tested.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes** — both v3 findings resolved, two Low findings recorded, none gating.
+
+For the author, in one pass whenever convenient (no round needs to be spent on these alone):
+
+1. Reconcile the suite count: §Coverage Matrix's *"File existence, verified at HEAD"* paragraph reads
+   ten and enumerates ten; §"Where the tests live" reads eleven. Add `advisoryWaveGateMain` and bump
+   the count (F-01).
+2. Either bump the lineage header's cross-review range to `-v4.md` or replace it with a `v*` glob so
+   it stops trailing every round (F-02).
+
+Nothing else. I re-checked the sections this round changed and re-opened none of the settled ones.
+
+
+
