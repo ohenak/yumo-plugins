@@ -114,7 +114,50 @@ and would neuter PROP-REC-09. No expected value in this round derives from the c
 
 ## Oracles
 
-_pending_
+**Oracle O-J is the oracle my v3 §Oracles note asked for, and it rules out all three wrong units by
+name.** I had written that hazard down precisely so the follow-up round would not have to rediscover
+it; the revision does not merely satisfy it, it states the reasoning in the document where Phase I
+will read it:
+
+- *Containment over the whole report* (`JSON.stringify(report).includes("overwrit")`) is named and
+  rejected, with the product reason attached — it passes when the warning rides a channel the
+  operator never sees at halt, which is what BR-14's *"in the same place"* forbids. That was my
+  first hazard, verbatim in substance.
+- *Two independent `toContain` assertions over separate strings* is named and rejected: it cannot
+  falsify a split across two notices. The oracle instead **selects the single `notices` element
+  matching the ref pattern and asserts the overwrite predicate on that same element**. This is the
+  unit that makes co-location testable rather than assumed.
+- *A constant imported from the module under test* is named and rejected as an implementation echo.
+
+**The negative arm is oracled, not asserted.** O-J closes by stating that PROP-REC-09's absence
+assertion runs over the *whole* `notices` array and is paired with PROP-REST-08's five-key
+set-equality including `snapshotRef: null` — the positive oracle for the `null` value. My v3 note
+said an unpaired absence conjunct would let an unconditional warner pass; that pairing is now the
+document's stated design, and the falsifiability close adds a fifth failure mode for it ("a
+guarded conjunct asserted only on the fixture where its antecedent is false passes vacuously, which
+is why PROP-REC-08 lives on the two-red-wave run and never on E-34's").
+
+**Nothing I approved is disturbed, and the reason is checkable.** O-J states the carrier is
+`notices`, **not** the halt reason string, so PROP-REST-09's byte-equality with the pre-A6 literal
+(M-WG-3) and the shared Pre-A6 baseline fixture stand unedited. I confirmed both are byte-identical
+in the diff. The blast radius I would have had to re-review is genuinely zero, and it is zero because
+the upstream decision chose the low-radius carrier — not because this document waved it away.
+
+**PROP-REST-08's correction is a strengthening, not a loosening.** Its "§4.5's four fields" became
+"**five** fields, transcribed **set-equally**", with the reason stated in place: `toEqual` fails on an
+extra key exactly as on a missing one, so quietly keeping four to stay green would delete the only
+positive oracle for `snapshotRef: null` that AT-06-4b's negative arm rests on. That is exactly the
+"completeness by set-equality, not containment" bar, and the document argues it from the consequence
+rather than from the rule.
+
+**Oracle count reconciled.** The §Oracles preamble moved from "Nine oracles" to "**Ten**" in the same
+edit that added O-J. The one count in this document that a reader checks against the list is
+consistent — which is what makes the one count that is *not* (§Findings F-01) worth naming.
+
+**Oracle G is untouched and correctly so.** Its capture-failure `diagnosis` literal is TSPEC's, and
+on the E-34 path there is no capture to point at, so AC-6.3's new conjunct does not reach into it. I
+verified the shipped literal still matches at `advisoryWaveGate.test.js:3369`. This is the same
+reading I gave in v3, and the revision did not disturb it.
 
 ## Fixtures
 
