@@ -2591,6 +2591,93 @@ export async function gatherLearningsCorpus({ feature, _git, _readFile }) {
   }
 }
 
+/** TSPEC §I.4/§D.2/§A.5 (LI-19). Resolves the three §4.1 thresholds either from `config.thresholds`
+ *  (the nested shape) or from flat top-level keys on `config` — both shapes are in live use across
+ *  this feature's callers/fixtures. */
+function resolveLearningsThresholds(config) {
+  if (config && typeof config.thresholds === "object" && config.thresholds !== null) {
+    return config.thresholds;
+  }
+  return {
+    maxDocuments: config?.maxDocuments,
+    maxBytesPerDocument: config?.maxBytesPerDocument,
+    maxTotalBytes: config?.maxTotalBytes,
+  };
+}
+
+/** TSPEC §I.4: `null` iff `config.enabled === false` (AC-5.1a) — no `present` conjunct, no
+ *  `!sectionMalformed` conjunct (§I.2). Otherwise returns an async closure that, on each call,
+ *  re-gathers the corpus fresh (AT-14: no in-process memo), selects, renders, and pushes one
+ *  `dispatches[]` record (TSPEC §D.2) onto `sink`. `sink` may be the `learningsInjection`-shaped
+ *  object (`{ruleInputs, runMirror, dispatches}}`, mutated in place) or a plain array, in which
+ *  case each record is pushed onto it directly. */
+export function buildLearningsInjector({ config, sink, _git, _readFile, _log }) {
+  if (config && config.enabled === false) return null;
+
+  const thresholds = resolveLearningsThresholds(config);
+  let previousObservation = null;
+  let thresholdsRecorded = false;
+
+  return async function injectLearnings({ feature, docType, phaseId, mode } = {}) {
+    const gathered = await gatherLearningsCorpus({ feature, _git, _readFile });
+
+    let selection = { selected: [], rejected: [], totalBytes: 0, orderKeys: [] };
+    let corpusOutcome = null;
+    if (gathered.unlistable) {
+      corpusOutcome = "RSN-UNLISTABLE";
+    } else if (gathered.entries.length === 0) {
+      corpusOutcome = "RSN-EMPTY";
+    } else {
+      selection = selectLearnings({ entries: gathered.entries, feature, thresholds });
+    }
+
+    const rows = selection.selected.map((doc) => ({
+      sourcePath: doc.path,
+      position: doc.position,
+      bytesInjected: doc.bytes,
+      bounded: doc.bounded,
+    }));
+    const rejected = selection.rejected.map((r) => ({ sourcePath: r.path, reason: r.reason }));
+    const orderKeys = selection.orderKeys;
+
+    const observation = { corpusOutcome, orderKeys };
+    const corpusDiverged =
+      previousObservation === null
+        ? false
+        : JSON.stringify(previousObservation) !== JSON.stringify(observation);
+    previousObservation = observation;
+
+    const record = {
+      phaseId,
+      docType,
+      mode,
+      rows,
+      totalBytesInjected: selection.totalBytes,
+      rejected,
+      corpusOutcome,
+      orderKeys,
+      corpusDiverged,
+    };
+
+    if (Array.isArray(sink)) {
+      sink.push(record);
+    } else if (sink && typeof sink === "object") {
+      if (!Array.isArray(sink.dispatches)) sink.dispatches = [];
+      sink.dispatches.push(record);
+      if (!thresholdsRecorded) {
+        sink.ruleInputs = sink.ruleInputs || {};
+        sink.ruleInputs.thresholds = thresholds;
+        thresholdsRecorded = true;
+      }
+      sink.runMirror = { corpusOutcome, orderKeys };
+    }
+
+    if (typeof _log === "function") _log({ feature, docType, phaseId, corpusOutcome });
+
+    return renderLearningsBlock({ selected: selection.selected });
+  };
+}
+
 // === LEARNINGS INJECTION REGION END ===
 
 // ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
