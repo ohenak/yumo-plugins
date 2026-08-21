@@ -100,4 +100,30 @@ Every claim below was re-derived at HEAD; a next round can re-run each command.
 
 ## Recommendation
 
-*(pending)*
+**Needs revision** — one High finding, and it is a new one, not a survivor.
+
+To be explicit about what this verdict does and does not say:
+
+- **The delta is confirmed.** Both v1 findings are closed at the level they were raised, the AT set
+  is mechanically set-equal at 48, and nothing previously approved moved — no task, batch, wave,
+  dependency edge or file-ownership cell changed except by addition of text to four task rows.
+- **The document as a whole is one upstream version behind its own pin.** TSPEC v1.15 named the
+  shipped oracles that A6-18's new `snapshotRef` field disturbs; one of them lives in a file this
+  plan does not own, which is `F-01`.
+
+What must change, in full:
+
+1. `advisoryWaveGateMain.test.js` enters A6-18's `Source File` cell and the file-ownership manifest,
+   with the four-key → five-key widening named in A6-18's red step (`F-01`, the only gating item).
+2. A6-18's red step names `advisoryEscalationLog.test.js:821`'s `toHaveLength(2)` → `3` (`F-02`).
+3. Some task explicitly owns the un-skip halt site's overwrite-notice push and its assertion
+   (`F-03`).
+4. The lineage header's TSPEC label becomes `v1.15`, matching the hash already pinned (`F-04`).
+
+No erratum is owed upstream: TSPEC, FSPEC and REQ at HEAD are self-consistent and say what this plan
+needs them to say. The gap is on this side of the boundary.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
