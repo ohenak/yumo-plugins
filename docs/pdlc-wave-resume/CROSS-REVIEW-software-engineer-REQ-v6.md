@@ -189,3 +189,7 @@ FINDING: Low | delta | local | §9 OB-1, worktree/ledger reconciliation clause |
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:17e83bfcd332f8f8f0482e2ebee7bbe78a3f434193dd3f9c3589723e39e8c79f
+APPROVAL-HASH-NORMALIZED: sha256:17e83bfcd332f8f8f0482e2ebee7bbe78a3f434193dd3f9c3589723e39e8c79f
+REVIEWED-COMMIT: 5753de27ab4c681e3f7ebd145f072be95b450656
