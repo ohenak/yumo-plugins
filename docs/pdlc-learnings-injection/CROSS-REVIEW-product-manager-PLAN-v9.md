@@ -58,6 +58,48 @@ later amendment is not additive.
 
 ## Batches
 
+The erratum touches no task row's batch, `Deps`, owner, file list or point estimate. I diffed
+`9f87235e..HEAD` on the PLAN: 23 insertions, 2 deletions, in exactly three places — the header
+version cell (0.5 → 0.6), one sentence spliced into LI-08's row, and a new paragraph plus table in
+§The three gate wordings, with a changelog row recording it. The batch ladder is untouched, so
+nothing I approved about sequencing at v8 can have moved.
+
+**What the routed item asked for, and what landed.** All three reviewers raised the same defect:
+v0.5's amendment note assigned the heading-form follow-up to the landed suites' existing owners but
+named no expected-red rows, and P-A-7 (`§Open questions`, P-A-7's answer) makes "a live table is
+amended by an edit to this PLAN, committed before the run it governs" a hard rule. The delta now
+names those rows for both cases:
+
+| Case | Delta's answer | Checked against the ledger |
+|---|---|---|
+| A — follow-up lands before batch 7 | **no row added** | Correct. The ledger's `after batch 7` row lists `learningsBlock` as a **whole suite** red, and `after batch 8` repeats it; the `after batch 9` row (LI-17) drops `learningsBlock` entire. New cases inside a suite already ledgered whole cannot add a row, and they green with the suite at LI-17 |
+| B — follow-up lands at batch 9 or later | ledger gains `learningsBlock` → **`LI-AT-11`'s heading-form cases only**, for every batch from the landing batch through the greening batch, stated in **test names** | Correct, and correctly formed: the ledger's own third load-bearing property is that split rows are stated in test names, not suite names, and case B obeys it rather than inventing a second convention |
+
+Case B also restates the P-A-7 rule at the point of use — "the amendment is an edit to **this** PLAN,
+committed **before** that batch runs; a re-red landing without it is a gate failure, not a red." That
+is the sentence the three routed items were asking for, and it is stated as an obligation on the
+committer rather than as a description.
+
+**The one gap I found in the new paragraph** is a boundary the delta does not cover. Case A is
+keyed on "before batch 7", but batches 4, 5 and 6 all run before batch 7 and are governed by the
+*other* two gate wordings, not by the ledger:
+
+- batches 4 and 6 are **green-terminal**, whose conjunct is "every pre-existing test's status is
+  unchanged from the measured baseline". Heading-form cases added to `learningsBlock` during that
+  window are neither the batch's new suite nor pre-existing at baseline, so no clause of that gate
+  names them;
+- batch 5 is **RED-terminal**, whose bar is "the batch's new tests fail for the specified reason" —
+  again a clause about *the batch's* new tests, not about new cases spliced into a suite that landed
+  red two batches earlier.
+
+Case A's stated reason for the red ("`extractInjectableMaterial` does not implement F-O-1's second
+rule yet") is also the batch-7/8 reason; before batch 7 the honest reason is that the symbol does not
+exist at all. Nothing here is wrong, and no gate is made unsafe — the suite is red before and after,
+so no dispatcher reading suite status is misled. It is a precision gap in a paragraph whose whole
+purpose is precision, and one clause fixes it: say that if the follow-up lands during batches 4–6 the
+cases are read under that batch's own wording as part of the already-red `learningsBlock` suite,
+failing for the reason that batch's wording specifies. Recorded as F-01, Low.
+
 ## Dependencies
 
 ## Verification
