@@ -234,17 +234,19 @@ staleness finding (FSPEC EC-07, EC-21).
 FSPEC BR-07 makes provenance **announced content**, and FSPEC §2 lets a test assert that an
 announcement *conveys* `operator-set` or `automatic`. The shipped banners convey the source but
 never those words, so this TSPEC introduces a frozen two-member vocabulary (`RESUME_PROVENANCE`,
-§3.1) and composes it into each announcement as a parenthesised suffix, leaving the existing
-sentence — and therefore every assertion in the shipped test block — intact:
+§3.1) and appends it to each announcement as a trailing parenthesised clause. The
+suffix is appended **after the sentence's terminal punctuation and outside every existing
+parenthesis** — never interpolated inside one — so that every shipped assertion matching on a
+*prefix* or on an interior *substring* is untouched:
 
-| Outcome | Announcement (existing text, unchanged) | Suffix added |
+| Outcome | Announcement (existing text, unchanged) | Appended, after the final `.` |
 |---|---|---|
-| (a) full run, operator pointer past the end | `Notice: implementation.startWave=N … is past the last wave …` | `(provenance: operator-set)` |
-| (a) full run, disregarded record | `Notice: the wave ledger … was ignored — {reason}. Running every wave from 1.` | `(provenance: automatic)` |
+| (a) full run, operator pointer past the end | `Notice: implementation.startWave=N in {cfg} is past the last wave of this plan (M) — running every wave from 1.` | ` (provenance: operator-set)` |
+| (a) full run, disregarded record | `Notice: the wave ledger {path} was ignored — {reason}. Running every wave from 1.` | ` (provenance: automatic)` |
 | (a) full run, no record (IG-6) | *(nothing)* | *(nothing — silence is the specification, FSPEC BR-02)* |
-| (b) resume mid-plan, operator pointer | `Resuming at wave N of M (implementation.startWave). …` | `(provenance: operator-set)` |
-| (b) resume mid-plan, record | `Resuming at wave N of M (wave ledger …). … Delete … to force a full run.` | `(provenance: automatic)` |
-| (c) skip Phase I | `Skipping Phase I (wave ledger …): all M waves … Delete … to force a full run.` | `(provenance: automatic)` |
+| (b) resume mid-plan, operator pointer | `Resuming at wave N of M (implementation.startWave). … Clear implementation.startWave before the next fresh run.` | ` (provenance: operator-set)` |
+| (b) resume mid-plan, record | `Resuming at wave N of M (wave ledger {path}). … Delete {path} to force a full run.` | ` (provenance: automatic)` |
+| (c) skip Phase I | `Skipping Phase I (wave ledger {path}): all M waves … Delete {path} to force a full run.` | ` (provenance: automatic)` |
 
 The suffix is **content, not wording**: FSPEC's "announcement content, not wording" note governs,
 and PROPERTIES asserts that the announcement conveys the token, not that the sentence is
@@ -256,11 +258,55 @@ distinguishing status, not a second row"):
 | Case | Status | Detail |
 |---|---|---|
 | Executed from wave 1, no resume | `✅` | `All M waves complete (wave mode, {gate})` — unchanged |
-| Executed from wave N > 1 | `✅` | `Waves N–M complete, waves 1–(N-1) skipped as previously completed (provenance: {p}; wave mode, {gate})` |
-| Skipped in full | `⏭` | `Skipped — all M waves previously committed and recorded green (wave ledger; provenance: automatic)` |
+| Executed from wave N > 1 | `✅` | `Waves N–M complete, waves 1–(N-1) skipped as previously completed (wave mode, {gate}) (provenance: {p})` |
+| Skipped in full | `⏭` | `Skipped — all M waves previously committed and recorded green (wave ledger) (provenance: automatic)` |
 
-The `⏭` row's existing text is preserved as a prefix so the shipped assertion on
-`recorded green (wave ledger)` keeps passing; the change is additive.
+The `⏭` row keeps its shipped text **whole** — the token goes outside the parenthesis, not inside it
+— so `expect(row.detail).toContain("recorded green (wave ledger)")` (the complete-record test, `it("a
+matching record whose waves are all green skips Phase I whole, and the row says so")`,
+`waveExecution.test.js:2682` on `origin/main`) still passes unchanged. The `✅` row is the same shape:
+the shipped `All M waves complete (wave mode, {gate})` string is used verbatim for a run that starts
+at wave 1, and the resume variant is a different sentence rather than a decoration of it.
+
+#### The three shipped assertions that do change (D-11, TE F-01, PM F-01)
+
+An appended clause is invisible to a prefix or substring matcher but **not** to whole-string
+equality, and three shipped assertions are whole-string equality. They change; there is no wording
+that avoids it, so they are named here and their replacements specified, rather than improvised
+inside an implementation wave against the very regression net RT-2 relies on. Line numbers are
+against `origin/main` at `345ae358` and are given only as a locator — each row names the enclosing
+test, which is the stable citation (DEC-DOC-01).
+
+| # | Enclosing test (`pdlc/workflows/__tests__/waveExecution.test.js`) | Shipped assertion | Replacement |
+|---|---|---|---|
+| 1 | `it("a pointer past the last wave runs every wave, and says so")`, `:2137-2141` | `expect(logs).toContain(` + the past-the-end notice string — `toContain` on an **array** is element equality | The same assertion, its expected string extended with the literal ` (provenance: operator-set)` transcribed from the table above. Still element equality. |
+| 2 | `it.each([…])("%s is ignored with a notice, and every wave runs")`, `:2652-2657`, all four members | `expect(logs).toContain(` + the ignored-record notice string | The same assertion, its expected string extended with the literal ` (provenance: automatic)`. Still element equality, still all four members. |
+| 3 | `it("skips the waves before the pointer entirely — no dispatch, no gate, no commit")`, `:2117-2118` | `expect(phaseDetail(result, "I")).toBe("All 3 waves complete (wave mode, script-owned gate)")` — this run resumes at wave 2, so **D-3** changes its detail | `expect(phaseDetail(result, "I")).toBe("Waves 2–3 complete, waves 1–1 skipped as previously completed (wave mode, script-owned gate) (provenance: operator-set)")` — whole-string equality, the new string transcribed as a literal. |
+
+Three constraints on those edits, stated so a reviewer can check them mechanically:
+
+- **No matcher is relaxed.** Replacing `toContain(exactString)` with `some(m => m.startsWith(…))`
+  is forbidden: it would retire the exact-wording oracle that pins these notices today, which is a
+  strictly larger change than the one this feature owes.
+- **No other assertion in the ledger `describe` changes.** In particular the four prefix matchers —
+  `startsWith("Resuming at wave 2 of 3")` (`:2113`), `startsWith("Resuming at wave 2 of 3 (wave
+  ledger")` (`:2294`), `startsWith("Resuming at wave 3 of 3 (implementation.startWave)")` (`:2618`),
+  and the two `some(m => m.startsWith("Resuming at wave")) === false` negatives (`:2163`, `:2658`) —
+  are unaffected by an appended clause, and RT-2's regression net is otherwise intact.
+- **The diff is one task.** The three edits land in the same task as the announcement change that
+  forces them, never as a later "fix the suite" task, so the round's change to the net is reviewable
+  as one thing.
+
+#### What the report carries on a **halted** run (PM Q-01)
+
+Both `recordPhase("I", …)` calls sit after the wave loop, so a run that halts mid-Phase-I produces
+neither row — as shipped, and unchanged here. This is deliberate and in scope as stated:
+REQ-WVR-01's "run log and final report" is discharged on the run log for a halted run (the resume
+banner is emitted at Phase I entry, before any wave is dispatched) and on both surfaces for a run
+that completes Phase I. FSPEC AT-18's middle run is exactly this case and asserts on the log. No
+resume-point row is added to the halt path: doing so would be a report-shape change the FSPEC does
+not ask for, and a wave halt already names the failing wave in the halt message it throws
+(`Error: Wave N test gate failed — …`), which is what the run surfaces in place of a Phase I row.
 
 ### 2.5 What the run writes, and when
 
@@ -696,7 +742,7 @@ Raised, not fixed here; each is emitted as an `ERRATUM:` line in this dispatch's
 |---|---|---|
 | RT-1 | **Rebase churn.** Landing on a base 1,637 commits ahead may surface conflicts in `orchestrate-dev.js`, the single largest file in the repo, and the file this feature edits. | The edit surface is small and localised (one comment block, one extracted function, three announcement suffixes, one report detail). The rebase happens *before* implementation (OB-F1), not during it. |
 | RT-2 | **Extraction changes behaviour silently.** A pure-function extraction can reorder guards without any existing test noticing. | The shipped ledger `describe` block is kept green unchanged as the regression net, and §3.2's order table is asserted directly by AT-03's ancestry-and-over-count pair. Extraction lands as its own task, before any announcement change. |
-| RT-3 | **The provenance suffix breaks a string assertion elsewhere.** | Suffixes are appended, never interpolated mid-sentence; shipped assertions use `startsWith` / `toContain` on the existing prefixes. The `⏭` row keeps its current text as a prefix. |
+| RT-3 | **The provenance suffix breaks a string assertion elsewhere.** | Partly realised, and handled by enumeration rather than by claim (TE F-01). The suffix is appended after the sentence's terminal punctuation and outside every existing parenthesis, which leaves every prefix and interior-substring matcher green — including the `⏭` row's `toContain("recorded green (wave ledger)")`. Three shipped assertions are whole-string equality and do change; §2.4 names each by enclosing test with its replacement, all three land in the same task as the announcement change, and no matcher is relaxed. A *fourth* breakage is the residual risk: mitigated by running the full `pdlc/workflows` suite as that task's own gate before the wave's, and by the rule that any further assertion found to change is added to §2.4's table in the same commit. |
 | RT-4 | **AT-14 cannot pass in this tree**, so a wave could be tempted to weaken it to "no churn observed". | Named here and in §5.4 as a branch-state consequence: the assertion is on the ignore rule itself, and the correct response to a red is the rebase, not a weaker oracle. |
 | RT-5 | **Generated artifacts go stale.** Editing `orchestrate-dev.js` leaves `pdlc/workflows/dist/` stale, which the suite itself reds. | `implementation.postWavePathspecs` must name the dist path so each wave's build outputs are committed; the post-wave command runs before the gate (`M-WG-2`). This is a PLAN obligation, recorded here. |
 | RT-6 | **Advisory budget interaction.** Auto-resume makes runs shorter and more numerous, so `advisory.waveBudgetPerRun` effectively refreshes per re-invocation. | Recorded, not coordinated (FSPEC §7, REQ OB-3). Bounded in practice because clearing a halt still requires a human. Nothing in this TSPEC changes it. |
