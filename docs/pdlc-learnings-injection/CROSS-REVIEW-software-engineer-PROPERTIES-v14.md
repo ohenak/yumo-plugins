@@ -123,6 +123,57 @@ un-updated echo of case B.
 
 ## Oracles
 
+**No oracle section moved.** §O.1–§O.9 and §G.1's obligation table are byte-identical; no hunk lands
+between `:600` and `:820`. What this delta carries is *quotation*, and quotation in this document is
+load-bearing evidence, so I applied the three test-discipline checks to it.
+
+**No implementation echoes.** Every expected value in the delta is a literal transcription from PLAN,
+not a value derived from anything downstream. The six `grep -cF` results in §Properties above are the
+proof: each quoted string was checked against PLAN's bytes independently, not inferred from what §C.4
+concluded. The delta could have paraphrased case A's new window as "before batch 9" and left it there;
+instead it quotes *"before batch 9 (which includes batches 7 and 8)"* including the derivation clause,
+which is the form that can be falsified with a fixed-string grep. That is the right call and it is what
+made this round cheap to verify.
+
+**No absence-only oracles, and one negative got its positive counterpart strengthened.** The delta's
+substantive change beyond re-quoting is the case-C limb: *"the amendment is expected to land green"*
+became *"the amendment had to be green at the commit that landed it"*, with PLAN v1.2's *"this row
+records an outcome, not a pending expectation"* attached. That converts a forward-looking expectation
+into a recorded positive outcome on the same path — the direction the discipline asks for. The
+accompanying negative (*"no ledger row was owed and none exists"*) already carried its positive
+counterpart in §C.4's next paragraph (the 26-of-26 green with a 0 skip count), and that paragraph is
+untouched. `git merge-base --is-ancestor 09c7c62f HEAD` confirms the commit that measurement is pinned
+to is still reachable, so the evidence behind the positive half has not become unresolvable.
+
+**The failure limb is still recorded as unexercised, not waived.** `:1170` still reads *"no ledger row,
+green at landing, fix-before-batch-14 untriggered"*, and PLAN `:561` independently records *"case C's
+failure limb below is **unexercised, not waived**, and PROPERTIES §C.4 records the same discharge."*
+The two documents now agree in the same words on the same distinction. The delta did not take the
+comfortable option of calling the obligation discharged in the abstract; it named which limb fired and
+which did not.
+
+**Set-equality on the enumerations the delta touches.** Two enumerations are inside the delta and both
+are closed sets, not containment claims:
+
+- **The three-case table.** §C.4 and §G.3 each now name all three cases with all three windows quoted
+  (`before batch 9…` / `batch 9 through batch 12` / `batch 13 or later…`). PLAN `:559`, `:560`, `:561`
+  are exactly three rows. A deleted case would leave a hole in the batch line, and the windows tile it
+  with no gap — which is precisely what PLAN v1.1 was written to achieve (`PLAN:682`).
+- **The version chain.** Five versions asserted, five changelog rows found, no sixth. Checked above.
+
+**One enumeration outside the delta went stale while the delta re-pinned the section around it.**
+§G.3's *"Newly routed this round"* item (`:1357`–`:1367`) still asserts *"PLAN's §File-ownership
+manifest lists fourteen new test files; eighteen `learnings*` files are tracked at `09c7c62f`… it is
+PLAN's manifest that is now incomplete."* That is **false at PLAN v1.3**: `PLAN:683` (v1.2 changelog,
+item 3) records all four by name — *"`helpers/learningsBaselineScenarios.js`,
+`helpers/learningsComposition.js`, `learningsDisclosure.test.js`, `learningsErratumBinding.test.js` …
+are now recorded"* — in a new **§Post-batch remediation** subsection at `PLAN:244`, and `PLAN:310`
+reconciles the tree at eighteen. `grep -c` for the four names in PLAN returns **6**, where at v0.8 it
+returned 0. The item is answered upstream and should be struck, not left open; the delta re-pinned the
+struck bullet ten lines above it to v1.3 and did not visit it. Same finding family as the `:1181`
+staleness, folded into F-01. Non-blocking: it is a routing-list entry, no property or oracle depends on
+it, and its worst cost is one redundant round-trip to PLAN for something PLAN has already done.
+
 ## Fixtures
 
 ## Findings
