@@ -375,11 +375,11 @@ Every criterion has at least one property; every property traces at least one cr
 | AC-4.4 | PROP-GATE-01, PROP-GATE-06, PROP-REST-01, PROP-REST-02 |
 | AC-4.5 | PROP-ENV-10, PROP-GATE-05, PROP-REST-04 (every prohibition property carries its paired positive) |
 | AC-4.6 | PROP-GATE-08, PROP-GATE-09 |
-| AC-5.1 | PROP-REST-01, PROP-REST-03, PROP-REST-05, PROP-REST-06 |
-| AC-5.2 | PROP-REST-09, PROP-SEAM-03, PROP-SEAM-04 |
+| AC-5.1 | PROP-REST-01, PROP-REST-03, PROP-REST-05, PROP-REST-06, PROP-REST-10 (observation point) |
+| AC-5.2 | PROP-REST-09, PROP-REST-10 (queue-row write follows the observation), PROP-SEAM-03, PROP-SEAM-04 |
 | AC-5.3 | PROP-REST-04, PROP-GATE-03 |
-| AC-6.1 | PROP-REC-01, PROP-REC-02, PROP-REST-08 |
-| AC-6.2 | PROP-REC-03, PROP-REC-04, PROP-REC-07 |
+| AC-6.1 | PROP-REC-01, PROP-REC-02, PROP-REST-08, PROP-REST-10 (record append follows the observation) |
+| AC-6.2 | PROP-REC-03, PROP-REC-04, PROP-REC-07, PROP-REST-10 (escalation append follows the observation) |
 | AC-6.3 | PROP-REC-05, PROP-REST-08 |
 | AC-6.4 | PROP-REC-06 |
 | NFR-1 | PROP-NFR-03, PROP-NFR-04 |
@@ -403,12 +403,12 @@ Set-equality over AT ids: all forty-seven ATs in FSPEC §6 appear below, and no 
 | AT-01-5 | PROP-SEAM-07 | AT-04-3 | PROP-GATE-07 |
 | AT-01-6 | PROP-SEAM-06 | AT-04-4 | PROP-GATE-05 |
 | AT-02-1 | PROP-CTR-01 | AT-04-5 | PROP-GATE-08 |
-| AT-02-2 | PROP-CTR-02, PROP-CTR-03 | AT-05-1 | PROP-REST-01 |
+| AT-02-2 | PROP-CTR-02, PROP-CTR-03 | AT-05-1 | PROP-REST-01, PROP-REST-03, PROP-REST-10 |
 | AT-02-3 | PROP-CTR-04 | AT-05-2 | PROP-REST-02 |
 | AT-02-4 | PROP-CTR-06 | AT-05-3 | PROP-REST-09 |
 | AT-02-5 | PROP-CTR-07 | AT-05-4 | PROP-REST-04 |
 | AT-02-6 | PROP-CTR-11 | AT-05-5 | PROP-REST-05 |
-| AT-02-7 | PROP-CTR-10 | AT-06-1 | PROP-REC-01 |
+| AT-02-7 | PROP-CTR-10 | AT-06-1 | PROP-REC-01, PROP-REST-10 |
 | AT-02-8 | PROP-CTR-08 | AT-06-2 | PROP-REC-02 |
 | AT-02-9 | PROP-CTR-09 | AT-06-3 | PROP-REC-03 |
 | AT-03-1 | PROP-ENV-01 | AT-06-4 | PROP-REC-05 |
@@ -435,7 +435,7 @@ properties of their own by construction: each turns the preceding RED batch's pr
 | A6-03 | six collateral suites | PROP-SEAM-02 |
 | A6-04 | `pdlc/engine/__tests__/advisory-config-example.test.js` (new) | PROP-CFG-03 |
 | A6-07 | `advisoryWaveGate.test.js` | PROP-CTR-02, PROP-CTR-05 (unit half), PROP-ENV-02, PROP-ENV-03 (unit half), PROP-NFR-04 |
-| A6-09 | `advisoryWaveGate.test.js` | PROP-REST-01, PROP-REST-02, PROP-REST-03, PROP-REST-05, PROP-REST-06 |
+| A6-09 | `advisoryWaveGate.test.js` | PROP-REST-01, PROP-REST-02, PROP-REST-03, PROP-REST-05, PROP-REST-06, PROP-REST-10 |
 | A6-11 | `advisoryDriver.test.js` | PROP-CTR-10, PROP-GATE-11, PROP-NFR-01, PROP-NFR-02 |
 | A6-13 | `advisoryWaveGate.test.js` | PROP-CTR-04 (seam-op half), PROP-CTR-07, PROP-ENV-08 (seam-op half), PROP-ENV-11, PROP-GATE-02 (seam-op half) |
 | A6-15 | `advisoryWaveGate.test.js` | PROP-SEAM-07, PROP-SEAM-08, PROP-CTR-03, PROP-CTR-04, PROP-CTR-05, PROP-CTR-06, PROP-CTR-08, PROP-CTR-09, PROP-CTR-11, PROP-CTR-12, PROP-CTR-13, PROP-ENV-03, PROP-ENV-04, PROP-ENV-05, PROP-ENV-08, PROP-ENV-09, PROP-ENV-10, PROP-ENV-12, PROP-GATE-01…-06, PROP-REST-07, PROP-REST-08, PROP-REST-09, PROP-REC-05, PROP-NFR-03 |
