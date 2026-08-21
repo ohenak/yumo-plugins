@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft |
 | Author | pm-author |
-| Version | 1.1 |
+| Version | 1.2 |
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC-v1.md, CROSS-REVIEW-test-engineer-FSPEC-v1.md |
@@ -14,7 +14,7 @@
 
 This FSPEC specifies the **observable behaviour** of automatic Phase I wave resume: what an
 operator sees, and what a run does, when the pipeline is re-invoked after a Phase I wave-gate
-halt. It derives entirely from `REQ-pdlc-wave-resume.md` v1.5 and adds no requirement of its own.
+halt. It derives entirely from `REQ-pdlc-wave-resume.md` v1.7 and adds no requirement of its own.
 
 **What is specified here.** The decision an invocation makes about where Phase I starts, the
 three outcomes it can reach, the announcement each outcome owes the operator, and the conditions
