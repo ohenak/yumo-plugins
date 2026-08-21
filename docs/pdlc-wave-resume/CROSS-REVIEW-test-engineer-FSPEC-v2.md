@@ -53,6 +53,19 @@ literal I could verify against the parser, which is stronger than what it replac
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | EC-20 says the V-wave "dispatches, gates and **commits** on every invocation" and AT-12's fourth conjunct asserts "its commit is the run's only Phase-I-adjacent commit". The dispatch and the gate are script-owned and mechanically true; the **commit is not**. The script commits nothing for the V-wave — the commit is an instruction inside the dispatch prompt ("All tests must pass before committing. Commit and push.", `propertiesTestPrompt`, `origin/main:pdlc/workflows/orchestrate-dev.js:10565`) and is never verified afterwards. Under outcome (c) with the PROPERTIES suite already written and green, the agent may correctly add nothing, so a test asserting "the V-wave produces a commit" is flaky by construction. Restate the conjunct over the two script-owned seams only, and demote the commit to "may commit, agent-dependent". | EC-20, AT-12 |
+| F-02 | Medium | Local | AT-12's V-wave count "dispatches exactly **one** agent" is measured through `withDispatchRetry` (`:8068-8077`), which re-dispatches once on a transport fault and would make the count 2 without any behaviour change in this feature. The literal 1 is only correct under the precondition "the first dispatch does not fault". Name that precondition in AT-12, so te-author pins a non-faulting agent seam rather than writing a count that a retry can turn red for an unrelated reason. | AT-12 |
+| F-03 | Low | Local | AT-02 is now correctly targeted at the **announced reasons** rather than the six IG labels, but the enumeration those reasons come from is deferred to the TSPEC (OB-F2), so the AT is not executable at this altitude and PROPERTIES cannot write the set-equality check until the TSPEC lands. That is legitimate routing, not a defect — but the dependency is currently implicit. State it: AT-02's oracle is blocked on OB-F2, and OB-F5 should say the same, so a te-author reaching PROPERTIES before the TSPEC names the arms does not silently fall back to containment over the five announced-cause rows §3.2 already carries. | AT-02, OB-F2, OB-F5 |
+| F-04 | Low | Local | *Who/Given/When/Then* is still uneven across §6. AT-08, AT-12, AT-13 and AT-18 gained a *Who* in this revision; AT-03, AT-04, AT-09, AT-10, AT-11, AT-14, AT-15, AT-16 and AT-17 still omit it, against §6's own stated format. Carried over from v1 F-11 (partially addressed). | §6 |
+| F-05 | Low | Local | AT-15's arm 2 requires a fixture in which the wave-1 write succeeds and the write at a later wave M fails — i.e. a write seam that fails **selectively by call ordinal**, not a uniformly read-only location. The discriminating value claimed ("fails an implementation that discards the whole record on any write failure") depends entirely on that fixture shape, and nothing in AT-15 or EC-15a says so. One clause naming the ordinal-selective write seam makes the arm writable without a round-trip. | AT-15, EC-15a |
+
+**No High findings.** Both v1 Highs are resolved by stronger oracles, and the delta introduced no
+new claim that a test could only pass. F-01 and F-02 are precision defects in an oracle that is
+otherwise correct — the two seam counts AT-12 leans on are both real and both verifiable — and
+neither changes what the feature must do.
+
 ## Questions
 
 ## Positive Observations
