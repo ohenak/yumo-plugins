@@ -155,8 +155,65 @@ for against a stated definition.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | `haltAdvisory.snapshotRef` now rides the report as a bare pointer with no warning beside it (`orchestrate-dev.js:16303` spreads it; nothing renders it). BR-14's co-location clause is satisfied by the `notices` entry, and TSPEC §4.5 answers the design question directly (*"Why a field and not a prose string in `diagnosis`"*), so I am not filing this — but is the field intended to stay machine-only, or will an operator-facing renderer eventually print `haltAdvisory` and need the warning carried alongside it there too? |
+| Q-02 | A wave A6 **resolves** leaves `refs/pdlc/a6-snapshot-{waveNum}` live and deliberately emits no warning (`orchestrate-dev.js:3577-3581`, *"Never pushed on a resolution — there is nothing to warn about re-running yet"*). If that run later halts for a reason other than the un-skip guard — a wave commit failure, or a halt in a subsequent phase — the capture is live, the report points at nothing, and the next re-run overwrites it silently. AC-6.3 conditions the warning on the report *pointing* at a capture, so the shipped behaviour is compliant as written. Is that the intended product read, or is the resolved-then-halted-elsewhere case worth an explicit line in the REQ's honest-limits language? |
+| Q-03 | 70 tests are reported skipped by the full suite (`102 suites, 4159 passed, 70 skipped`). I confirmed none of them are A6's — this feature ships no `.skip` and its one former `test.todo` was converted to a live case this round — but is the standing 70 tracked anywhere an operator would see it? |
+
 ## Positive Observations
+
+- **The un-skip arm is exactly the proof shape F-01 asks for elsewhere.** `waveExecution.test.js:1305-1343`
+  drives the production `main`, halts on the un-skip guard, and reads the co-location oracle off
+  `result.notices` — the served artifact, not a builder's sink — with its paired negative
+  immediately below (`:1345-1357`) asserting `a6.calls.length === 0`, the halt outcome, `haltAdvisory`
+  undefined **and** no `/overwrit/i` element. That negative is what stops an unconditional push from
+  passing, and PLAN's DoD leg names precisely that hazard.
+- **The anti-echo discipline held everywhere I checked.** Every new expectation transcribes its
+  value spec-side: `"refs/pdlc/a6-snapshot-" + waveNum` composed in the test rather than read back
+  from the module (`advisoryWaveGateMain.test.js:382`, `waveExecution.test.js:1313`), `/overwrit/i`
+  as the weakest discriminating stem rather than `toContain(devModule.SOME_WARNING)`, and Oracle G's
+  diagnosis sentence transcribed verbatim (`advisoryWaveGate.test.js:1891-1897`). Given DC-14's
+  origin — a garbled catalogue that left a ~2 930-test suite green — this is the discipline that
+  matters most, and it is visibly applied.
+- **The `.gitignore` boundary case was upgraded honestly rather than ticked.** The former
+  `test.todo` marker is gone and the case is live (`advisoryWaveGate.test.js:524-575`), and it does
+  not rest on the hash map alone: `hashDomain` is introduced with a written rationale for why the
+  filesystem-blind `hashTree` is the wrong oracle here, and the case adds the two positive-presence
+  conjuncts (`output.txt` content unchanged, `new-output.txt` still present) that actually falsify a
+  `-fdx`-shaped implementation. That is DC-14's absence-only rule applied without being asked twice.
+- **PROP-REST-10 asserts the ordering, not merely the outcome.** `advisoryWaveGate.test.js:3915-3990`
+  merges the git transport's call log and the `_appendFile` log into one order-preserving timeline
+  and asserts every append lands strictly after restoration's terminal `reset --mixed` — the exact
+  observation point AC-5.1 pins, proven rather than reasoned about.
+- **The delivery hygiene the plugin's own rules turn on is intact.** `build-runtime.mjs --check`
+  reports `in-sync pdlc/workflows/dist/pdlc-cli.mjs` and the regenerated `dist/pdlc-cli.mjs` is
+  committed in the same window as the source change; the full suite is green at 4 159 passing.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both narrow and both with a named one-file fix:
+
+1. **F-01** — add the report-surface co-location assertion to `advisoryWaveGateMain.test.js`'s
+   real-seam escalation case, so BR-14's primary arm is observed on `result.notices` and not only on
+   a test-owned sink. Until it exists, deleting `_notice: advisoryNotice` at `orchestrate-dev.js:15432`
+   leaves the suite green and AC-6.3 unmet.
+2. **F-02** — add the ordered-sequence assertion for `ADVISORY_ROOT_CAUSES` beside the existing
+   sorted set check (`advisoryEnvelope.test.js:327-333`), in the shape `ADVISORY_EXCLUSIONS` already
+   uses, so P0 AC-2.2's first-match ordering has an oracle and PLAN's DoD leg 3 becomes tickable.
+
+F-03 (widen `NO_HALT_FIELDS` to the five-key shape) and F-05 (the JSDoc `@returns`) are one-line
+edits worth folding into the same pass. F-04 is recorded for the product decision it names and is
+not a blocker for this round.
+
+Everything else I checked in this window is faithful to the requirements: BR-14's three arms are
+each pushed from the correct site, E-34's `null` correctly suppresses both the pointer and the
+warning, the five-key halt-field widening reached every set-equality surface TSPEC §5.1 enumerated,
+and no scope beyond the approved documents appears in the diff.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 1}
