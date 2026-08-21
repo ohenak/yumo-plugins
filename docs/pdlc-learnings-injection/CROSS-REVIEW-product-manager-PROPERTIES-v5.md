@@ -170,6 +170,38 @@ below, Medium.
 
 ## Fixtures
 
+**No fixture changed in this delta, and none needed to.** §F.1's inventory, the `ZERO-BOUND` /
+`NO-MATERIAL` pairing added at v0.2, the `3/5/0` literals in `COUNT-BINDING` / `BYTES-BINDING`, the
+`MULTIBYTE-BOUND` draw, and §F.4's seam doubles are byte-identical to the state I approved at v4
+(`git diff 0fb3380e..HEAD` touches no line inside §F).
+
+That is the correct outcome and worth stating rather than passing over, because the v4 High could
+easily have been closed the expensive way. Restoring `0` to the domain of a *generated* property is
+the kind of edit that invites a new fixture — a zero-bound corpus, a new `{caseId}`, a new baseline
+digest to hand-transcribe. It did not, for the reason my v4 predicted and the revision confirms in
+the property itself: the zero-bound conjunct is asserted over *"every `text`, including one carrying
+all five priority sections"*, and a document carrying all five is already in the suite. The document
+draws the consequence explicitly — *"no new fixture, no new PLAN task, no new AT id, no new property
+id"* — and every clause of that sentence checks out against repository state (`learningsBlock.test.js`
+tracked at 7744 bytes; PLAN's LI-08/LI-17 rows unamended; the AT inventory still 35; the unique
+property count still 70).
+
+One consequence for the fixture that *does* carry the run-level half. `ZERO-BOUND` remains
+`PROP-CONFIG-09`'s positive control and its role is unchanged, but §G.1's rewritten row now makes the
+division of labour explicit in a way the fixture inventory benefits from: `ZERO-BOUND` proves the
+*reason id and the unconsumed slot*, and it is no longer also carrying the boundary's only proof.
+Before this delta, if `ZERO-BOUND` had ever been dropped or narrowed, the zero bound would have had
+no oracle at any level. Now it has two, at two altitudes, on fixtures that fail independently — which
+is the property a reviewer of a future fixture edit actually needs.
+
+The `PROP-BOUND-05` oracle change also touches fixtures indirectly and safely: *"hand-transcribed for
+the fixture at hand rather than derived at runtime"* keeps the expected value a literal, so no
+fixture gains a runtime-derived expectation, and the narrower-fixture case now has a stated expected
+value where v0.2 would have demanded the full catalogue from a document that never carried it.
+
+§F.3's heading-recognition transcription — the three numbered clauses I verified against TSPEC §D.3
+at v4 — is unchanged, and remains the strongest passage in §F.
+
 ## Findings
 
 ## Questions
