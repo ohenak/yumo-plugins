@@ -79,6 +79,66 @@ required. Re-litigating the option table would be exactly the re-opening this ro
 
 ## Decision
 
+**DECISIONS does not still hold as approved against REQ v1.16.** The decision itself does; three
+pieces of upstream-dependent prose around it do not. Verdict: **Needs revision**, on one High
+finding, one Medium, one Low — all delta, all local to DEC-A6-03 and its Consequences block.
+
+### What still holds (not re-litigated)
+
+- **The decision proper.** `refs/pdlc/a6-snapshot-{waveNum}`, wave-scoped, no run discriminator,
+  never pushed, never pruned by this feature. REQ v1.16 constrains the halt report's *content*, not
+  the capture's name or storage form — the v1.16 changelog says so explicitly ("the capture's name
+  and storage form stay TSPEC's (O-1)"). Traceability to US-02 is unchanged and intact.
+- **"Constraints that forced the shape"**, "Reversibility", and the DEC-03 option table (§Options
+  Considered, lines 211–230). Untouched by the REQ delta.
+- **DEC-A6-01, DEC-A6-02, DEC-A6-04** and their Consequences blocks. The REQ delta does not reach
+  them; I did not re-read them and raise nothing against them.
+- **The FSPEC half of the record's claim.** DEC-A6-03 says that at FSPEC v1.6 `a6-snapshot`, "copy
+  the ref" and "overwrit" match nothing, and that "FSPEC E-28 and AT-05-5 still require only that
+  the halt name the failed restoration". I re-checked FSPEC at HEAD
+  (sha256:91ef2557…, v1.6): all three strings still match nothing. That half is still true at HEAD.
+
+### What no longer holds
+
+**F-01 (High).** DEC-A6-03's "Known gap in the remedy's reach (PM F-05)" states: *"**The routing has
+not landed** (PM Q-02, TE): at REQ v1.15 and FSPEC v1.6, `a6-snapshot`, "copy the ref" and
+"overwrit" match nothing in either document"*, and closes *"This entry carries the gap until it
+lands."* At HEAD the routing **has** landed in REQ: REQ v1.16 AC-6.3 requires the halt report, where
+it points at a captured pre-A6 tree state, to warn "in the same place, that re-running this feature
+overwrites that capture", citing DEC-A6-03 by name; `overwrit` now matches at REQ line 535 (and line
+23 in the changelog). The record's negative-match citation is false at HEAD for one of the two
+documents it names, and the headline claim "the routing has not landed" is false for the document
+that was the routing's primary target — the record itself says the obligation "belongs in REQ/FSPEC".
+
+This is not a stale-timestamp nit. The sentence is load-bearing in the product direction: it tells
+every downstream reader (PLAN, implementation, DoD) that no requirement obliges the halt report to
+carry the overwrite warning, and that the remedy is record-only. A reader who trusts it will not
+build AC-6.3's warning and will not test for it. That is a P0-path acceptance criterion made
+invisible by a document that is supposed to compress upstream faithfully — High, and it gates.
+
+**F-02 (Medium).** `### What follows from DEC-A6-03` (Consequences) still reads: *"The documented
+operator remedy, until DEC-A6-03 is revisited: copy the ref before re-running a halted feature."*
+Under REQ v1.16 the remedy is no longer merely "documented" — the halt report itself must now tell
+the operator that re-running overwrites the capture, which is what makes preserving it an action the
+operator can take at halt time rather than one they must already know about. The bullet understates
+the operator-facing surface AC-6.3 now requires and should name AC-6.3 as its upstream.
+
+**F-03 (Low).** DEC-A6-03's re-evaluation triggers list, as a future condition, *"or the
+halt-message obligation the PM is routing to REQ lands, in which case the remedy stops being
+record-only and this entry's known gap closes."* That trigger has fired. Leaving a fired trigger
+phrased in the future tense means the next reader has no way to tell a live trigger from a spent
+one.
+
+### What the revision must do (and must not do)
+
+Rewrite the three passages above to describe upstream as it now stands: the routing landed in REQ
+v1.16 AC-6.3; the gap it left is now the *FSPEC* half only (FSPEC v1.6 E-28 / AT-05-5 still require
+only that the halt name the failed restoration, so the obligation is stated in REQ but not yet
+specified downstream); and the re-evaluation trigger is spent for REQ. Cite AC-6.3 by spec id, not
+by line number (DEC-DOC-01). Do **not** reopen the naming decision, the option table, or any other
+DEC entry — the fix is confined to the gap annotation, one Consequences bullet, and one trigger
+clause.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
