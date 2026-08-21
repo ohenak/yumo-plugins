@@ -77,6 +77,30 @@ rather than by assertion.
 
 ## Acceptance Criteria
 
+The bar for this round: every routed item landed, in the owning section, saying what it was asked
+to say — *necessary but not sufficient* — and nothing v4 approved has regressed.
+
+| Item (as routed) | Landed where | Disposition |
+|---|---|---|
+| §10 records BL-04 as "discharged at FSPEC authoring" but it is unmet (se-review) | §10, commit `d1dfbd20` | **Resolved.** §10 now reads "BL-04 is **open and unmet** — not discharged at FSPEC authoring", and names all three grounds: 1,637 commits behind, no resume mechanism, no baseline file in the authoring tree. All three re-verified (V-1, V-2, V-3). The "not a pickup gate → `ready: true` is accurate" conclusion is retained and remains sound: BL-04 gates FSPEC authoring, not queue pickup. |
+| §1 says 15 waves, OF-1 says 16 (se-review, pm-author) | §1, commit `aea4d92e` | **Resolved.** §1 now reads "a 16-wave plan"; OF-1 unchanged at 16 (17 with the V-wave). Independently re-derived as 16 (V-4). The two figures now agree *and* are both correct — the erratum did not simply align §1 to a wrong OF-1. |
+| §1's "each re-invocation paid seven no-op dispatches" contradicts OF-1's non-uniform cost (se-review) | §1, commit `aea4d92e` | **Resolved.** §1 now attributes the seven dispatches specifically to the wave-4 re-entry, records the wave-2 re-entry as "wave 1 only, a single task", and replaces the false uniformity with the correct rule: "Each halt costs the task count of every wave below it, so the tax grows with the plan." That rule is exactly what V-4's geometry produces. |
+| REQ-WVR-08's "no gate runs and Phase I produces no new commit" is falsified by the V-wave (te-review ×2, pm-author) | §7 REQ-WVR-08, commit `2c2efb74` | **Resolved.** The clause is now scoped to the **implementation wave loop** ("no wave of the **implementation wave loop** executes, so that loop runs no gate and **lands no new commit**"), and the V-wave is named explicitly as outside the resume record's scope, continuing "to dispatch, gate and commit on every invocation (FSPEC §2, EC-20)". The closing sentence is re-scoped in step ("lands a wave-loop commit"). Verified against the shipped chain (V-5, V-6) and against the cited FSPEC text (V-8). This also answers the upstream question EC-20 explicitly referred back here — the V-wave is out of scope for the record — so the FSPEC's open referral is discharged, not left dangling. |
+| REQ-WVR-02's IG-4/IG-5 order vs the normative evaluation order (pm-author) | §7 REQ-WVR-02, commit `e029fc59` | **Resolved.** The table is left intact (correct — the enumeration is a closed set, and renumbering it would break the set-equality obligation and every downstream `IG-n` citation) and a note is added: "The IG labels name **causes, not precedence**", deferring order to FSPEC §3.2. FSPEC §3.2 does ratify ancestry before over-count and uses the same "causes, not precedence" formulation (V-7), so the two documents now say one thing in one voice. |
+
+**Non-regression against v4.** The delta is additive and local: it touches the version cell, adds
+one erratum banner, and rewrites four passages. No AC was renumbered, no enumeration lost or
+gained a member (IG-1..6 and the three-outcome catalogue are byte-identical), no `Source:` line
+changed, and §10's traceability matrix rows are untouched. The set-equality obligations the
+PROPERTIES document inherits are therefore unchanged, which is what I care about most from this
+lens — a silently resized enumeration is the failure mode that would have cost a phase.
+
+**Citation hygiene (DEC-DOC-01).** The delta's new citations are `FSPEC §2`, `FSPEC §3.2`,
+`EC-20`, `OF-1` and `BL-04` — section ids and spec ids, not raw `file:line` anchors. Code is
+referenced by symbol (`WAVE_STATE_PATH`, `allWavesRecorded`) as the v1.4 grep-stability
+convention requires. No new positional anchors were introduced, which is the right call on a
+branch whose tree does not contain the file being anchored into. Nothing to file.
+
 ## Risks
 
 ## Obligations
