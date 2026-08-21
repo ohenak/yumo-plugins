@@ -171,3 +171,39 @@ DEFERRED: `DEC-LI-08`'s "That gap is a known constant, not a leak" would read mo
 DEFERRED: `D-O-4`'s two quantities are named but not given report field names; the field-naming question belongs to the report contract, not this document.
 DEFERRED: `D-O-3`'s zero-bound conjunct now carries a code citation inside an obligation row; the row is long enough that a reader may miss the `AT-30` anchor at its end.
 DEFERRED: `DEC-LI-08`'s §"Stated honestly" now distinguishes material-crowding from block-crowding, which arguably makes the C-8 gap a two-trigger re-evaluation rather than one; the trigger list still names one.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does `D-O-4`'s realised-**block**-bytes quantity want a falsifying test at all, or is it purely an operator report field? If a property is expected to pin it, that property is the one place where framing's constant-plus-per-document shape must be transcribed correctly — which is why F-01's arithmetic matters beyond prose. |
+| Q-02 | (Carried from v7, still open.) `D-O-6` is now the sole falsifier of a wrongly-`null` `corpusOutcome`. Should PROPERTIES additionally carry a *mutation* check on it — revert the `RSN-UNLISTABLE` record on the failing dispatch and expect RED — given that no other obligation would see the regression? |
+
+## Positive Observations
+
+- The accounting paragraph fixes the real problem behind v7's F-01, which was never the wording:
+  the caps and the reported quantity had different referents, so the C-8 gap could never be
+  reported as closed. Splitting `D-O-4` into commensurable and growth-term quantities is the
+  correct structural fix, and it is stated in the vocabulary FSPEC already uses (*bytes injected*,
+  FSPEC:560).
+- `D-O-3`'s zero-bound conjunct is exactly the anti-vacuity the obligation needed. It names the
+  bound domain, states the outcome on both arms, and cites the code that implements each arm — so
+  a property author cannot write the generator over `maxBytes >= 1` and believe the obligation is
+  discharged.
+- Every non-numeric claim the delta added checks out byte-for-byte against HEAD: the renderer's
+  concatenation order, the `maxBytes <= 0` short-circuit's exact return literal, the
+  `sections.length === 0` branch, and all five upstream anchors.
+- The delta is small, surgical, and touched nothing it did not need to. Nothing that was approved
+  in v7 regressed.
+
+## Recommendation
+
+**Needs revision** — one High (F-01), delta-introduced and falsified by re-measurement on the
+shipped renderer. The fix is arithmetic in two places; the decision, the accounting basis, and
+both restated obligations are correct and should not change. F-02 and F-03 are Medium and
+recorded; F-04 is routed to harvest.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
