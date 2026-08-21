@@ -1907,7 +1907,7 @@ table is where the set-equality is checked (se-author erratum).
 | AT-01-4 | `advisoryDisabled.test.js` | `advisory.enabled: false`: no dispatch, no rung resolution, no snapshot ref, created-file set equals baseline, report `advisory` key **absent** |
 | AT-01-5 | `advisoryWaveGate.test.js` | one inapplicability statement over the whole notice surface on the both-absent fixture (§5.5's third added test) |
 | AT-01-6 | `advisoryDisabled.test.js` | tier enabled, no wave red: `advisory` key **present**, six rows, A6 counter `0` — paired with AT-01-4 |
-| AT-02-1 | `advisoryEnvelope.test.js` | `ADVISORY_ROOT_CAUSES` set-equal to the four-member literal |
+| AT-02-1 | `advisoryEnvelope.test.js` | `ADVISORY_ROOT_CAUSES` ordered-sequence equality against the four-member literal (as AT-03-7 and AT-03-8 do — a reordering fails, per BR-2's first-match rule); the two-class arm (E-08b) is behavioural and lives in `advisoryWaveGate.test.js` |
 | AT-02-2 | `advisoryWaveGate.test.js` | absent class and out-of-set class both ⇒ `unclassified`, escalate, `attempts` unchanged (§3.3's `parseA6RootCause`) |
 | AT-02-3 | `advisoryWaveGate.test.js` | verdict both malformed and unclassifiable ⇒ malformed-verdict escalation, exactly one attempt consumed (E-09's tie-break, §3.7) |
 | AT-02-4 | `advisoryWaveGate.test.js` | diagnosis citing no gate output ⇒ malformed, one attempt (`citesGateOutput` false) |
