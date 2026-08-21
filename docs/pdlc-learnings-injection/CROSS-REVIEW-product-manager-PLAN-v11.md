@@ -60,7 +60,35 @@ neither names a case letter, so neither went stale.
 
 ## Dependencies
 
-_(pending)_
+**No `Deps` edge changed**, and none needed to: case C creates no new task and no new ordering — it
+rules on commits that arrive *outside* the ladder, which is precisely why the answer had to be a gate
+obligation rather than a batch. That is the right shape for this document to take, and it keeps the
+dependency graph a statement about scheduled work only.
+
+**The one dependency the delta does create is on PROPERTIES, and it is discharged correctly.** Case C
+absorbs the re-reds §C.4 of PROPERTIES routes here — PROP-BOUND-03's `maxBytesPerDocument <= 0` case,
+PROP-BOUND-05/07/08, and the Group D amendments to the landed `learningsSelect.test.js` — and rules
+that they owe no ledger row and owe green. I checked the routing against PROPERTIES at HEAD:
+
+- §C.4 does route exactly those four properties, and states they "land into green committed code,
+  not into a scheduled red". So *they owe green* is a faithful compression of what upstream says,
+  not an assumption the PLAN made on upstream's behalf.
+- §C.4 places PROP-BOUND-03/05/07/08 in `learningsBlock.test.js` and the Group D amendments in both
+  `learningsSelect.test.js` (LI-07, `1544fdbd`) **and** `learningsBlock.test.js` (LI-08, `5e522a52`).
+  The PLAN names `learningsSelect.test.js` for the Group D clause only — which is not a mis-citation,
+  because the `learningsBlock` half is already covered by the three property ids named ahead of it in
+  the same list. The set the PLAN rules over is the same set §C.4 routes.
+- This also closes the *first* of PROPERTIES' two still-open P-A-7 items — PROP-BOUND-03's zero case
+  having no named row — even though only the second (the missing terminus) was on this round's item
+  list. Under case C the answer to "which row covers it" is "none, and it owes green", which is a
+  ruling, not a silence. PROPERTIES will want a follow-up edit to record that both of its routed items
+  are now answered; that is PROPERTIES' round to run, not a defect in this document.
+
+**One stale reading now sits upstream, not here.** PROPERTIES §C.4 currently states "case B is the
+live case and case A is unreachable". At HEAD that is superseded: case C is the live case. The
+supersession is legitimate — §C.4 explicitly says the disposition is "PLAN's call; this document
+routes the gap and decides nothing" — so the PLAN deciding differently is the mechanism working. I
+raise it as a question below rather than a finding against this PLAN.
 
 ## Verification
 
