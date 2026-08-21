@@ -150,6 +150,73 @@ anything v1 approved.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The baseline oracle's ADMITS-NOTHING arm cannot tell itself apart from EMPTY.** The block's own commentary says arm (4) "is the only arm where the injector actually opens a file and renders" and that "AC-6.2's named regression is undetectable without it" (`learningsBaselineGuard.test.js:196-206`), but nothing in that arm asserts the corpus document was enumerated, opened, or rejected. Verified (E-5): replacing arm (4)'s `stdout` with `""` — degrading it to a second EMPTY arm — leaves all 20 tests green. The premise the arm's value rests on is unasserted, so a change to `LEARNINGS_CORPUS_ARGV`, to the glob, or to `isLearningsEnumerateCall` silently deletes the arm's coverage while the file stays green. Fix: give arm (4) a per-arm control — record the `_readFile` paths and assert `docs/completed/li06-prior/LEARNINGS-li06-prior.md` was opened on that arm and on no other, or thread a sink and assert `corpusOutcome === null` with one `RSN-NO-MATERIAL` rejection row. | AC-5.1a, AC-6.2; `learningsBaselineGuard.test.js:255-268` |
+| F-02 | Low | Local | **A null ordering key still renders the literal `null` into an author's prompt.** Carried unchanged from v1's F-09: `renderLearningsBlock` interpolates `doc.orderKey` unguarded (`orchestrate-dev.js:2462`), so a document with BR-6 material but no parseable `Date Completed` — the exact shape `LI-AT-10` establishes as eligible — produces `<<< … — feature X, completed null >>>`. Not a correctness defect of the selection rules and not gating; it is operator-visible text with no oracle over it because TSPEC §OQ.1 does not state the rendering for that case (re-emitted as `ERRATUM: TSPEC`). Once §OQ.1 states it, one assertion in `learningsBlock.test.js` closes it. | AC-1.4; `orchestrate-dev.js:2462` |
+
+**Scope note.** Both findings are `Local`: F-01 is a control missing from one test block in this
+feature, and F-02 waits on an upstream sentence about this feature's own rendered form. Neither
+restates a DOMAIN-CONSTRAINT nor recurs across phases.
+
+**No High findings are open.** v1's five are each killed by mutation (E-1..E-4), and the changed
+sections introduced none.
+
+## Evidence
+
+**E-1 — F-02's mutant now dies.** With `orchestrate-dev.js:9463-9464` replaced by
+`const injectHere = dispatchKind === "authoring";`:
+
+```
+✕ LI-20: the docType set observed at the composition site equals … and the accepted set equals
+  LEARNINGS_TARGET_DOCTYPES — both set equality, never containment
+✕ LI-20: AC-1.2 — Phase CR's optimizer is an authoring dispatch with docType null; injectHere is
+  false for it and its composed prompt carries no block
+Tests: 2 failed, 18 passed, 20 total
+```
+
+In v1 the same mutant left the whole repository green. File restored; `git diff --stat` empty.
+
+**E-2 — F-04's conjunct cannot be reinstated.** Restoring a second conjunct on
+`orchestrate-dev.js:2360` (`&& /^##\s/m.test(entry.text)`) reds exactly the test written for it:
+
+```
+● learningsSelect … › LI-16: LI-AT-28 (second disjunct shape) — a document with NO section
+  heading line at all is dropped RSN-NO-MATERIAL on the same branch, consumes no slot, and never
+  displaces a contributor
+Tests: 1 failed, 120 passed, 121 total
+```
+
+**E-3 — F-03's baseline is a live oracle.** Changing one byte of the base reviewer prompt
+literal (`orchestrate-dev.js:9881`, `This is iteration ${iteration}.` → `..`) reds the
+`PHASE-R-REVIEW-PROMPTS` comparison on all four non-injecting states:
+`Tests: 4 failed, 16 passed, 20 total`. In v1 no test read a fixture file at all.
+
+**E-4 — the inertness ACs detect a leak.** Leaking an injected `sourcePath` into
+`report.notices` at `buildFinalReport`'s assembly reds three tests at once:
+
+```
+✕ LI-20: LI-AT-29 — enabled vs. disabled: verdicts, completeness scores, round-window counters,
+  approval anchors and erratum routes are equal member for member
+✕ LI-21: LI-AT-23 — the author-emitted channels a run requires equal the recorded pre-feature
+  baseline set …
+✕ LI-20: LI-AT-35 — completeness criteria, required headings, verdict grammar, round windows and
+  approval anchors are exactly those in force without the feature
+Tests: 3 failed, 17 passed, 20 total
+```
+
+All three were unfalsifiable in v1 (five absent report keys, `null === null`).
+
+**E-5 — F-01's gap.** Replacing the ADMITS-NOTHING arm's enumeration `stdout` with `""`
+(`learningsBaselineGuard.test.js:260`) leaves `Tests: 20 passed, 20 total`.
+
+**E-6 — suite state.** `npm test` in `pdlc/workflows`: `Tests: 1 failed, 70 skipped, 3978 passed,
+4049 total`. The single red is `documentOracles.test.js:76` › AT-22, whose received rows are all
+`.claude/worktrees/agent-*/docs/completed/**` paths — untracked parallel-reviewer worktrees the
+`coveredViolations` walk does not skip. Not feature-attributable; identical in kind to v1's E-1.
+`node pdlc/workflows/build-runtime.mjs --check` → `in-sync  pdlc/workflows/dist/pdlc-cli.mjs`,
+exit 0.
+
 ## Questions
 
 ## Positive Observations
