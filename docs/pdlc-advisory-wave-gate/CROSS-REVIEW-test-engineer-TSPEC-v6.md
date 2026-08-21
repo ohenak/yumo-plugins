@@ -58,7 +58,40 @@ renderEscalationEntry`, `:3743`), so §1.2's "no new module" claim survives.
 
 ## Interfaces
 
+Two interface facts were pinned this round; both check out.
+
+- **`renderSnapshotOverwriteNotice` is exported** (§4.5, answering v5 Q-01). This is the answer that
+  buys the most test leverage: it makes a direct purity assertion available in the shape
+  `PROP-ESC-01` already uses on `renderEscalationEntry` (`advisoryEscalationLog.test.js:177-181`),
+  *in addition to* the seam-level observation, so PLAN's red test does not have to choose. The
+  sibling claim is accurate — both cited renderers are `export function` declarations
+  (`orchestrate-dev.js:3605`, `:3743`).
+- **`runWaveGateSeam`'s `_notice` contract.** §4.5 quotes the head guard verbatim and it is verbatim
+  correct (`orchestrate-dev.js:3385`). One consequence the document leans on without stating: because
+  the guard swallows a missing `_notice` into a no-op, a fixture that forgets to wire a collector
+  produces an empty array rather than a throw — which is exactly the hazard behind F-01 below. The
+  seam's return shape is unchanged by this round (`noHaltFields` at `:3386` is still the four-key
+  sentinel; widening it is the task §5.1 and §5.2 now name).
+
+No interface is contested, and none of the delta's text refines an implementation contract that
+belongs downstream of the TSPEC.
+
 ## Data Model
+
+The five-key halt-field set is unchanged from v1.14 and remains internally consistent; this round
+only reconciled it with the **oracles** that pin the old four-key shape, which is a test-strategy
+change, not a data-model one. The one genuinely new data-model statement is §4.5's un-skip row
+asserting that the un-skip halt's `snapshotRef` is non-`null` — consistent with the same table's
+"Value when A6 resolved this wave" row and with `orchestrate-dev.js:15402`, where the resolved
+wave's `a6.haltFields` is what rides through to `:15434`'s `{ advisory: resolvedAdvisoryFields }`.
+
+The AT-05-3 paragraph's correction is a data-model improvement too: the halt reason is now described
+as the per-wave `testGateMessage` template (`Error: Wave ${waveNum} test gate failed — …`,
+`orchestrate-dev.js:15359-15361`) rather than a module constant that does not exist, and the oracle
+is restated as containment, matching what the suite ships (`advisoryWaveGateMain.test.js:368`,
+`waveExecution.test.js:1091`). The behavioural claim — the warning rides `notices`, never the
+message — is unchanged and still correct: `haltError` builds the `Error` from `message` alone and
+`Object.assign`s the rest, and the handler sets `haltReason = err.message`.
 
 ## Test Strategy
 
