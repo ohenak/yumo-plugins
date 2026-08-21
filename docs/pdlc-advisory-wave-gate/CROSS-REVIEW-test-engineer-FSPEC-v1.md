@@ -153,6 +153,57 @@ removes the ambiguity for free.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | BR-9 says the restore is of the whole tree. Does "whole tree" range over files the repair *created* that no snapshot entry covers? The shipped restore is `git read-tree --reset -u <tree>` (`orchestrate-dev.js:12635-12640`), which rewrites tracked entries but does not remove a file that was never added after the snapshot. If AT-05-1's content-hash map is meant to catch that residue — and it should — say so in BR-9, because it is the second case a naive restore fails after the per-path case AT-05-2 already covers. |
+| Q-02 | E-16 says "No part of it survives the seam" for a partly-out-of-envelope proposal, and AT-03-6 asserts "no part of it is present in the tree afterwards". Is that a restoration (BR-9's refusal trigger) or a never-applied proposal? The two produce the same tree but different advisory-record bytes ("refused" vs "reverted"), and AT-03-6 asserts neither. |
+| Q-03 | AT-06-1 deliberately uses containment because the tier owns the record's closed shape. Which test owns the closed assertion over the fields **A6 adds** — the wave number, the root-cause class, and the promotion fields BR-12 requires? Without one, a dropped promotion field passes both this AT and the tier's. |
+
 ## Positive Observations
 
+- The oracle-unit discipline in §6 is unusually strong and mostly right where it matters: AT-04-2
+  insists on sequence equality with the reason stated ("set equality collapses duplicates and would
+  admit a resolution declared on a single invocation"), AT-02-9 counts dispatches rather than
+  bounding them, and AT-07-3 puts two counts on one run to separate "nothing ran" from "the path was
+  never reached". These are the assertions a reviewer usually has to ask for.
+- Every negative assertion I checked is paired with a positive on the same path. AT-02-8 pairs "no
+  refusal reason" with the terminal disposition, the absence of a repair, and the escalation entry's
+  class; AT-01-4's key-**absent** assertion is paired against AT-01-6's key-**present**-all-zero
+  assertion, which is what makes present-and-undefined fail on both sides.
+- The set-equality demands that *do* carry a spec-side literal are exemplary: AT-02-1's four root
+  causes match `ADVISORY_ROOT_CAUSES` (`orchestrate-dev.js:1956-1961`), AT-03-1's `E-1`…`E-6` match
+  `ENVELOPE_DEFAULTS` (`:1942`), and AT-07-2b's config key set plus the `waveBudgetPerRun` default
+  match `ADVISORY_DEFAULTS` (`:1944-1950`).
+- E-33's zero-mode reasoning is the sharpest clause in the document, and it is grounded: the
+  non-negative validator it demands exists as a deliberate sibling of the shipped positive-integer
+  one (`nonNegativeInt`, `orchestrate-dev.js:2070`, `:2096`), and the escape it specifies is the
+  `waveBudget.resolved >= waveBudgetPerRun` check at `orchestrate-dev.js:3510`.
+- Every repo-grounded claim I spot-checked in §5 holds. E-04's mutual-exclusivity claim is real —
+  the no-manifest carrier emits one combined statement naming both absent prerequisites
+  (`orchestrate-dev.js:14999-15015`) and the script-gate carrier sits on the other arm (`:15121`).
+  E-22/AT-05-4's post-gate halt is the un-skip guard, which does run after the gate and before the
+  commits (`checkWaveUnskips`, `orchestrate-dev.js:15423-15440`). E-30's carrier is the notice
+  channel the driver already downgrades a failed escalation-log write onto (`:4104-4110`), and its
+  asymmetry with the record write that *does* revert (`:4051-4056`) is exactly as E-30 states.
+- §7.2's deferral table with named owners, and §7.3's honest A-3 and A-4, do real work: they stop a
+  reviewer re-raising a bounded risk as a finding, and A-3 does not pretend R-1 is solved.
+
 ## Recommendation
+
+**Needs revision**
+
+Two High findings gate this round, and both are narrow. F-02 is a transcription the FSPEC can supply
+in two table rows under BR-5 and BR-15. F-01 needs one sentence in BR-9 pinning when the content-hash
+map is taken and what its domain excludes, plus an E-23 that admits the queue-row write — without it,
+AT-05-1 and AT-06-1 cannot both hold, and the resolution will be made silently in the test rather
+than in the spec. The three Medium findings are each a localized addition: an anchor commit for the
+red-before oracles (F-03), one edge-case row for a failed snapshot capture (F-04), and one rule id
+moved across AT-07-1's partition (F-05).
+
+Everything else in §6 is in good shape, and the oracle discipline in this document is above the bar
+for its phase.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 3}
