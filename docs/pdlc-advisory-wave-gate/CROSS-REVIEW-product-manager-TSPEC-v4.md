@@ -150,6 +150,49 @@ reason — the two sections contradict each other outright. One edit fixes all t
 
 ## Positive Observations
 
+- **Every prior finding was closed by measurement, not by assertion.** The §1.3 cell does not say
+  "re-measured"; it transcribes `advisoryRecord.test.js:496`'s literal and names `:505`'s
+  drift-proof companion, so the next reader can re-check it in one command. Same for the lineage
+  row, which now carries the hashes the v1.12 changelog had already cited. This is the difference
+  between closing a finding and reporting it closed, and the round did the former five times out
+  of five.
+- **The v1.13 cell explains why v1.12 got it wrong, and leaves the wrong claim visible.** "The
+  v1.12 cell asserted `["A1" … "A5"]` as *checked and unchanged* while that round's scope covered
+  production constants only (PM F-03)" — a reader of the v3 review can still follow the trail. A
+  silent overwrite would have been cheaper and worse.
+- **TE Q-01 was answered before §5 was touched, and answered at the right altitude.** Refusing to
+  mint a verbatim overwrite sentence at TSPEC altitude — because FSPEC deliberately reserves the
+  capture's name to O-1 — is the correct product boundary. The instinct to pin a literal for
+  testability is strong and would have quietly invented a product observable; the round resisted
+  it and said why.
+- **AT-06-4b is a real negative arm, not a mirror of the positive one.** The row names what makes
+  it falsifiable in the row itself: "an implementation emitting the warning unconditionally passes
+  AT-06-4 and fails here." That is the paired-positive discipline applied without being asked, and
+  it lands on the existing E-34 fixture rather than minting a new file or double.
+- **The AT set stayed set-equal through the addition.** 48 ids in §5.6, 48 in FSPEC §6, `diff`
+  empty — adding a row is where enumerations usually drift, and the arithmetic sentence
+  (forty-seven → forty-eight) was updated in the same edit rather than left to rot.
+
 ## Recommendation
 
+**Needs revision** — on one High, in one section, with a bounded fix and no upstream touch.
+
+What must change:
+
+1. **F-01 (High).** Name the carrier that renders the ref pointer and the overwrite sentence into
+   one operator-visible string — a report field or notice, produced by a named function — in §4.5,
+   and restate §5.6's AT-06-4 conjunct-(3) oracle over that named surface. Include one sentence
+   reconciling it with AT-05-3's message-string equality (§5.6 `:1817`), which is what currently
+   forecloses the obvious carrier.
+2. **F-02 (Medium).** "§4.5's four fields" → five at `:302`, `:1357` and `:1530`.
+
+Q-01 is PLAN's to absorb (AT-06-4b needs a home task for §5.6's set-equality rule to hold) and Q-02
+is one clarifying sentence, best folded into whichever edit lands F-01.
+
+Everything else in this delta landed, is HEAD-faithful, and is consistent with what earlier rounds
+approved. Nothing previously approved was broken.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
