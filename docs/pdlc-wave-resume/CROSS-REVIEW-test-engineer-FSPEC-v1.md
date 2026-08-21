@@ -100,6 +100,44 @@ config parser.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does "Phase I" in D-5/BR-11/EC-09/AT-12 include Phase PT's V-wave? Answer it inside §2's Vocabulary, not in a review reply — F-01's whole cost is that the answer is not in the document. |
+| Q-02 | What observable carries an announcement: the run log line, the run report row, or both? AT-01 and AT-12 name both explicitly; every other AT says only "announced". Which is the contract? |
+| Q-03 | Are `operator-set` and `automatic` values a test may assert on, or are they this FSPEC's private vocabulary for a source that the announcement conveys some other way? BR-07's footnote says content-not-wording, which leaves the provenance oracle undefined. |
+| Q-04 | Is AT-02's set-equality over the six FSPEC causes or over the announced reasons? They are not the same set (F-04), and OB-F5 hands te-author the check without saying which. |
+| Q-05 | After a Phase DOD step-0 rebase that rewrites the branch, is outcome (c) still reachable? If not, which re-invocation is §3.4's cheap case actually about (F-07)? |
+| Q-06 | AT-16's discriminating arm says "a resume point differing between the two fails this test while AT-01..05 all still pass". What fixture makes the two paths differ? Without one, the discriminating arm is a claim about the test, not a test. |
+
+## Positive Observations
+
+- **The grounding table in §1 is exemplary and it is honest.** Eight anchors, every one of which
+  resolves exactly as cited on `origin/main`, plus an explicit statement that the positional half
+  is not re-verifiable in this tree and the symbol half is the durable one. Reviewing this FSPEC
+  cost a fraction of what it would have cost without that table.
+- **OB-F1 raises the unmet prerequisite instead of hiding it.** An FSPEC that says "REQ BL-04 is
+  not met and here is the commit count" is worth more than one that quietly authors around it.
+- **§3.2's ordering is specified because it is observable (BR-03), and it matches the shipped
+  evaluation order exactly.** AT-03 then tests the ordering with a fixture that fails two causes
+  at once — that is the right oracle for a first-failure-wins rule, and it is one of the few ATs
+  here that is writable verbatim.
+- **EC-08's justification for keeping the count guard separate from the ancestry guard** — "fusing
+  them would let one be deleted without the catalogue changing" — is exactly the deletion-detection
+  reasoning a set-equality oracle exists to enforce. It is rare to see a spec author reason about
+  its own tests' mutation sensitivity.
+- **EC-13 and EC-14 are the two rows that matter most and both are correct against the shipped
+  code.** Verified-but-uncommitted records nothing (the write sits inside `if (waveGit)`), and a
+  no-change wave *is* completed (a task with no owned paths `continue`s and the ledger still
+  writes). EC-14's stated oracle — the announced next wave — is the right falsifier for a
+  regression to commit archaeology.
+- **The §5 table's closing invariant** ("no scenario in this table halts the pipeline") is a
+  property over the whole enumeration rather than a per-row promise, and it is the correct
+  strongest reading of REQ C-2.
+- **§7 discharges obligations to named owners with named completion conditions** rather than
+  leaving them as open questions. OB-F5 and OB-F6 in particular hand te-author real work with a
+  testable definition of done.
+
+
 ## Positive Observations
 
 ## Recommendation
