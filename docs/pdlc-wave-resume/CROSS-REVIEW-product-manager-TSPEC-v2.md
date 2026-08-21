@@ -26,6 +26,47 @@ My two v1 questions were both answered in the document rather than in a reply: Q
 
 ## Findings
 
+Three findings, all new, none blocking. Scanning was scoped to the changed sections (§1 header/revision history, §1.1 V-18/V-19, §1.2, §2.2, §2.3, §2.4, §2.5, §2.6, §3.1-§3.2, §5.1-§5.8, §6.1, §6.2, §6.4, §6.5).
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | §5.8 / RT-7 place the 85% branch floor on "the last implementation wave's `postWaveCommand`", a per-wave command the shipped config surface cannot express; set globally, it halts wave 1 | REQ OB-2 / §5.8, new this round |
+| F-02 | Low | Local | §5.2's H-1 justification overstates what the shipped harness cannot express: `_git` and `_runCommand` doubles are caller-supplied, so their interleaving is observable today | FSPEC AT-04 |
+| F-03 | Low | Local | §3.2 duplicated clause — "Keeping the field on the decision on the decision" (line 469) | — |
+
+### F-01 (Medium, Local) — the coverage floor is placed on a hook that is not per-wave
+
+§5.8 closes with: *"It is named as an obligation of the **last implementation wave's `postWaveCommand`** (TE Q-05: yes), so the floor is a wave-level gate rather than a PUB-level surprise."* RT-7 repeats it as the mitigation.
+
+There is no per-wave `postWaveCommand`. `IMPLEMENTATION_DEFAULTS` carries one `postWaveCommand: null` for the whole run (`pdlc/workflows/orchestrate-dev.js:169-174`), parsed once from the `implementation` section (`:248`), and the wave loop runs that single command after **every** wave (`runWaveGateSequence`, `:3322-3324`; the per-wave call site and its success notice at `:15408-15419`). Nothing in the config surface — the four keys §3.5 itself enumerates — indexes it by wave.
+
+The consequence is not cosmetic, and it is the failure mode this document already knows how to name. A post-wave command that does not pass halts the wave:
+
+```js
+if (gateOutcome.failed === "post-wave") {
+  throw haltError(`Error: Wave ${waveNum} post-wave command failed — …`);
+}
+```
+(`orchestrate-dev.js:15409-15414`)
+
+So configuring `npm run test:coverage` as `postWaveCommand` means every wave — starting with wave 1, long before this feature's branches exist, let alone are covered — runs a `--per-file --branches 85` check and halts Phase I when it fails. That is exactly the "in wave mode a red gate halts the wave and every wave after it" reasoning §6.2 uses to make AT-14 a PLAN sequencing precondition; it applies here with equal force and is not drawn.
+
+The product consequence is a self-inflicted halt of the phase this feature exists to make recoverable — an operator's first experience of the shipped feature would be a wave-1 halt on a coverage floor unrelated to the wave's work. The document's own backstop clause in RT-7 (per-arm unit coverage plus the §5.7 laws, floor degrades to a PUB-time finding) is sound and needs no change.
+
+*What to change (any one of these closes it):* (i) make the floor a **PLAN task in the last wave** — a task whose own gate/verification runs `npm run test:coverage`, which is expressible today and is genuinely last-wave-scoped; or (ii) state it as a **Phase DOD / `CODE_REVIEW` criterion**, which is where a merge-gate floor naturally sits and which still precedes PUB; or (iii) keep `postWaveCommand` but say plainly that it applies to **every** wave and accept the cost, in which case §5.8 must also say why an early wave will not red — which I do not think it can. Whichever is chosen, §5.8 and RT-7 must say the same thing, and the `file:line` for the per-run (not per-wave) key belongs in the sentence.
+
+### F-02 (Low, Local) — H-1's "the shipped harness cannot express it" is stronger than the code supports
+
+§5.2 H-1 says: *"`makeLedgerArgs` gives `runCommand` and `git` two **independent** call logs; nothing records their interleaving."* `makeLedgerArgs` does not supply either double — it takes `git` from the caller and defaults `runCommand` to an inline green stub (`waveExecution.test.js:2204-2232`), and `makeGit(calls)` pushes into a caller-supplied array (`:2180-2195`). A test that wants ordering can pass a `_git` and a `runCommand` that both append tagged entries to one array it owns, with no harness change at all.
+
+H-2 is a different matter and is correctly argued: `makeLedgerArgs`'s `_writeFile` is a fixed capture with no failure scripting (`:2228-2230`), and the shipped throwing-write test does bypass it with a hand-rolled `makeArgs`/`extra` (`:2686-2700`). That one is a real extension.
+
+This is Low because the design outcome is defensible either way — an `events` option shared by the whole ledger `describe` is arguably better than each test rolling its own — and because it changes no AT's oracle. It is filed because §5.2's justification is the reason the PLAN will be asked to schedule H-1 as owned work on a shared file, and that reason should be true. *What to change:* restate H-1's rationale as a reuse/consistency choice ("one ordered sink for the whole block, rather than per-test ad-hoc pairs") rather than as an expressiveness limit, or drop H-1 and let AT-04's test own its doubles.
+
+### F-03 (Low, Local) — duplicated clause in §3.2
+
+Line 469: *"Keeping the field on the decision on the decision is what lets that line be rendered from the decision…"*. Delete the repetition. The paragraph's substance is correct and verified: the skip line's shipped text is `Wave 1/3: skipped (wave ledger: waves 1–1 already green)` (rendered at `orchestrate-dev.js:15373-15379`, pinned whole-string at `waveExecution.test.js:2293`), so `lastGreenWave` on the `resume` decision does have the named reader the section claims.
+
 ## Questions
 
 ## Positive Observations
