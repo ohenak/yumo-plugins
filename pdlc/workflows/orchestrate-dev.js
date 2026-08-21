@@ -3383,7 +3383,13 @@ export async function runWaveGateSeam({
   _notice,
 }) {
   const notice = typeof _notice === "function" ? _notice : () => {};
-  const noHaltFields = { rootCause: "unclassified", diagnosis: "", repairApplied: false, repairPaths: [] };
+  const noHaltFields = {
+    rootCause: "unclassified",
+    diagnosis: "",
+    repairApplied: false,
+    repairPaths: [],
+    snapshotRef: null,
+  };
 
   // TSPEC §3.2 step 2 — the tier gate, duplicated deliberately: `runAdvisorySeam` also returns
   // early on a disabled config, but AC-1.4's inertness claim covers the SNAPSHOT too, which is
@@ -3473,6 +3479,8 @@ export async function runWaveGateSeam({
           "snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied",
         repairApplied: false,
         repairPaths: [],
+        // E-34 — there is no capture to point at (PROP-REST-08, PROP-REC-09's positive half).
+        snapshotRef: null,
       },
       postWaveRan: false,
     };
@@ -3559,6 +3567,19 @@ export async function runWaveGateSeam({
 
   const postWaveRan = invocations.slice(ledgerAtDispatch).includes("post-wave");
 
+  // TSPEC §3.2 step 4 already proved this branch never reaches here without a captured snapshot
+  // (`!snapshot` returned above) — the ref is always present, resolved or not.
+  const snapshotRef = `refs/pdlc/a6-snapshot-${waveNum}`;
+
+  // BR-14 / AC-6.3 (TSPEC §4.5, §5.6) — the co-located overwrite notice, pushed from the seam's
+  // OWN unresolved-return sites: the caller's `throw haltError(…)` for an ordinary escalated wave
+  // fires immediately on this return, with no chance for the wave loop to push anything itself
+  // (that is only true for the LATER post-gate un-skip halt, which is A6-21's site). Never pushed
+  // on a resolution — there is nothing to warn about re-running yet.
+  if (!resolved) {
+    notice(renderSnapshotOverwriteNotice(snapshotRef));
+  }
+
   return {
     resolved,
     disposition: terminal,
@@ -3570,6 +3591,7 @@ export async function runWaveGateSeam({
           : "no verdict was produced",
       repairApplied: resolved,
       repairPaths: resolved ? capturedRepairPaths : [],
+      snapshotRef,
     },
     postWaveRan,
   };
@@ -15423,7 +15445,7 @@ export default async function main({
             }
             postWaveRan = postWaveRan || a6.postWaveRan;
             resolvedAdvisoryFields = a6.haltFields;
-            resolvedSnapshotRef = a6.snapshotRef || null;
+            resolvedSnapshotRef = (a6.haltFields && a6.haltFields.snapshotRef) || null;
             waveResolvedPromotions = groupPromotedPaths(
               waves,
               waveIndex,

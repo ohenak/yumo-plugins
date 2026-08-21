@@ -1302,7 +1302,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(result.haltAdvisory).toBeUndefined();
   });
 
-  it("AT-06-4's un-skip arm (PLAN A6-21): an un-skip halt on the SAME wave A6 just resolved with a captured snapshot carries the co-located overwrite notice", async () => {
+  it("AT-06-4's un-skip arm / PROP-REC-10 (PLAN A6-21): an un-skip halt on the SAME wave A6 just resolved with a captured snapshot carries the co-located overwrite notice", async () => {
     // TSPEC §4.5's un-skip row / BR-14 — the seam has already returned by the time this halt
     // fires, so this push happens at the un-skip halt site itself, through the same
     // `advisoryNotice` sink `runWaveGateSeam` uses. Same oracle shape as A6-18's seam-level
@@ -1319,8 +1319,8 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
         diagnosis: "a stale import, repaired",
         repairApplied: true,
         repairPaths: ["src/one.js"],
+        snapshotRef,
       },
-      snapshotRef,
       postWaveRan: false,
     });
     let n = 0;
@@ -1342,7 +1342,7 @@ describe("Phase I — the A6 advisory wave gate call site", () => {
     expect(overwriteNotice).toMatch(/overwrit/i);
   });
 
-  it("AT-06-4's un-skip arm (paired negative): the same un-skip halt with A6 never firing on the wave carries no overwrite notice anywhere in notices", async () => {
+  it("AT-06-4's un-skip arm / PROP-REC-10 (paired negative): the same un-skip halt with A6 never firing on the wave carries no overwrite notice anywhere in notices", async () => {
     const a6 = makeA6Fake({ resolved: true, disposition: null, haltFields: NO_HALT_FIELDS, postWaveRan: false });
     const result = await main(
       unskipArgs(testFileSkipping("T1 — the completed owner's block"), {

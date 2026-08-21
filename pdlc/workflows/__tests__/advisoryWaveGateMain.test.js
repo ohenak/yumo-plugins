@@ -370,11 +370,16 @@ describe("TE F-06 — an enabled tier reaches the real A6 seam from mainDev (esc
 
     // AC-6.3 — the class and the diagnosis are on the REPORT, produced by the real seam from the
     // real reply. Neither value was handed to the loop by this test (DC-07 / TE F-06).
+    // The fifth key, `snapshotRef` (PROP-REC-11): this fixture drives an out-of-envelope REFUSAL
+    // on wave 1, not a capture failure, and the harness `_git` double answers `ok: true` to every
+    // capture verb, so the ref reads — spec-side composed, never echoed off the module under
+    // test (PROP-REC-08's anti-echo rule).
     expect(result.haltAdvisory).toEqual({
       rootCause: "plan-ordering-defect",
       diagnosis: "wave 1 needs a symbol a later task owns",
       repairApplied: false,
       repairPaths: [],
+      snapshotRef: "refs/pdlc/a6-snapshot-1",
     });
     const a6Row = result.advisory.rows.find((r) => r.seam === "A6");
     expect(a6Row).toMatchObject({ invocations: 1, resolved: 0, escalated: 1 });
