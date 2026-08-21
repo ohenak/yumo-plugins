@@ -179,10 +179,27 @@ approved in my v4 on verified grounds; I did not re-litigate them.
 
 ## Findings
 
-## Questions
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | §C.4's landed-tasks paragraph is stale at HEAD in two adjacent claims, both inside the paragraph this round rewrote. (a) "The tasks committed so far are LI-01…LI-04, LI-07, LI-08, LI-09 and LI-13" omits **LI-05**, which landed at `ced75955` ("LI-05 — GREEN the capture script"). (b) The closing sentence "`scripts/capture-learnings-baseline.mjs` is new — the repository has no root-level `scripts/` directory today" is now false: `git ls-files scripts/` returns `scripts/capture-learnings-baseline.mjs`. Neither affects a property, an AT id or any of the fourteen manifest rows — but §C.4 is the document's measured-fact section, and a measured fact that has silently gone stale is the exact failure §C.4 was re-measured to fix one round ago. Fix: add LI-05 to the committed list and restate the `scripts/` sentence as "landed by LI-05 at `scripts/capture-learnings-baseline.mjs` (`ced75955`)" | §C.4 |
+| F-02 | Low | Local | §C.4's Q-02 answer enumerates "PROP-BOUND-05/07/08's amendments land in `learningsBlock.test.js`, which is committed" but omits **PROP-BOUND-03**, whose new zero case this round places in the same committed suite under the same LI-08 red / LI-17 green tasks (PROPERTIES:249–251). Same re-red consequence, same P-A-7 case; add the id to the list so the ledger erratum routed to the PLAN names all four | §C.4 |
 
 ## Positive Observations
 
-## Recommendation
+- The response to my v4 F-01 is the one I hoped for and did not assume: not a re-worded precondition but
+  a genuine restatement over the whole domain, with the carve-out expressed as four positive asserted
+  values transcribed from `TSPEC:579–581`. The document also went back and corrected the *argument* it
+  had made for the wrong route, in §G.2.1, instead of quietly deleting it.
+- Answering Q-01 in the document rather than in a review thread — guarded branch **plus** pinned example
+  case — is the kind of decision that would otherwise be re-derived (differently) by whoever writes
+  LI-08's amendment. It costs two sentences and removes a seed-dependent flake.
+- §O.5's new row refuses the easy copy-paste and states the split honestly: run-level half L3, unit-level
+  half explicitly not L3 and owned elsewhere. A table of deliberate costs stays useful only if its rows
+  are true; this one is.
+- PROP-BOUND-05's intersection oracle preserves set-equality while removing a universal that was true
+  only of one fixture — and it keeps the expected value hand-transcribed rather than derived at runtime,
+  which is the distinction that separates an oracle from an echo.
+- §G.3 re-opening the AT-15 item rather than leaving "Still open: nothing" above an open bullet is a
+  small act of bookkeeping honesty that costs a round now and saves a false-clean handoff later.
 
 ## Verdict
