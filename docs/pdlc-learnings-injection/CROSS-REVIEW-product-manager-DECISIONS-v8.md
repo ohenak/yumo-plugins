@@ -125,6 +125,42 @@ Delta passages verified clean, with no finding:
 
 ## Consequences
 
+**PLAN and PROPERTIES are blocked on this document only through `D-O-4`'s parenthetical.** The
+obligation itself — report material bytes and block bytes as two quantities — is correct and
+downstream-usable today; a property or acceptance test written against it would not go wrong. What
+would go wrong is a test that transcribed "694 / 1,012" as an expected literal, since neither is
+reproducible from a realistic fixture and the five-document figure is not reproducible from any
+fixture this repository's corpus can supply. That is precisely the implementation-echo trap in
+reverse: a spec literal that no fixture can honour forces the test author either to derive the
+expectation from the renderer (an echo) or to invent a fixture that exists nowhere. Fixing the
+sentence removes the trap before PROPERTIES reaches it.
+
+**The operator-facing consequence is the C-8 gap's size.** `DEC-LI-08` exists to state honestly how
+far the caps fall short of bounding what the author actually receives. Understating the
+five-document overshoot by ~600–800 bytes understates exactly the number REQ O-1's measurement is
+supposed to close on. The honest replacement is cheaper than the wrong constant: framing is
+`479 + Σ(2×len(path) + len(feature) + len(orderKey) + 47)` bytes, plus ~34 per abridged document —
+a formula the reader can evaluate against their own corpus, with this repository's corpus as the
+worked example (684 at one document, 1,607 at five; 718 / 1,777 abridged).
+
+**The round-6 pattern is worth naming.** All three of round 5's and round 6's revisions improved
+grounding by adding *measured* evidence, and this is the first one whose measurement was not
+reproducible. Numbers stated as measurements are the one class of claim in this document that no
+upstream re-read can falsify — only re-running the code catches them. That is a durable process
+signal for harvest, not a finding here.
+
+**Deferred items** — recorded, not opened, per the freeze:
+
+DEFERRED: `D-O-9`'s "DISCHARGED at TSPEC v0.9" still attributes the discharge to the version it was observed at, not the version the four edits landed at (carried from v7 F-01).
+
+DEFERRED: `DEC-LI-03`'s re-evaluation trigger cites `G-C` without signalling that `G-C` is this document's own ground rather than an FSPEC id (carried from v7 F-02).
+
+DEFERRED: The header pin (REQ v0.9 / FSPEC v0.13 / TSPEC v0.9) matches HEAD today but goes stale the moment the working tree's REQ v0.10 / FSPEC v0.14 errata commit; a re-pin will be due in the next round regardless of this review's outcome.
+
+DEFERRED: `DEC-LI-08` now carries both a qualitative accounting-basis paragraph and a quantitative measurement; a future pass may want the measurement to live in `D-O-4` alone, where the reporting obligation that consumes it lives.
+
+DEFERRED: The three `Process` candidates filed at v6 (unfalsifiable header pins, discharge-without-routing, dated claims in timeless voice) remain unaddressed and now have a fourth sibling — measured constants no document gate re-derives; all belong to harvest.
+
 ## Findings
 
 ## Questions
