@@ -135,7 +135,43 @@ a deleted case fails.
 
 ## Fixtures
 
-_(pending)_
+**Cost: three new rows, zero new infrastructure — as I sized it in v3.** All three fixtures the
+overwrite-notice properties need already existed for other properties:
+
+| New row | Reused from | My check |
+|---|---|---|
+| Two-red-wave run | PROP-REST-07's `update-ref` target set | Correctly identified as the **only** fixture distinguishing a wave number, which is why the ref-pointer half must be asserted there and not on a single-wave run |
+| Capture-failure run (E-34) | PROP-REST-08 | Correctly described as PROP-REC-09's negative arm "at no new cost" — the antecedent is false by construction |
+| Un-skip halt pair | PROP-REST-04 | Both members named: the resolved-then-un-skip-halt run and the no-A6-fired companion |
+
+So the "too expensive to test" escape I warned against in v3 is now closed off explicitly, in the
+document's own words, on the fixtures that refute it. The `Recording _git double` row gained
+`PROP-REC-08` — right, since the ref target set is what the property reads.
+
+**Hazard 3 is the right hazard, and it points the correct direction.** It states the real risk is not
+fixture cost but the `snapshotRef` key reddening three shipped suites silently, and it binds the
+widening to the same red-to-green step as the field, "because the batch gate they sit behind has no
+expected-red channel." That is a genuine property of this repo's wave gate, not a stylistic
+preference, and stating it in Fixtures is where an implementer will actually hit it.
+
+**The deliberately-unpinned string is handled by the document's own convention.** The added paragraph
+says the overwrite sentence is *not* on the verbatim-string list, with the reason (no upstream
+document owns the wording) and the counterfactual cost (a manufactured literal minting a red test).
+What *is* transcribed is the predicate pair. This is consistent with the rule that exact user-facing
+strings are owned by the lowest layer that pins them: no layer pins this one, so none duplicates it.
+
+**Hazards 1 and 2 are untouched by the delta, and I did not re-litigate them.** My v2 read of hazard
+2 (ignored-path conjunct scoped to presence-only) stands; nothing in this delta moved its premise.
+
+**Pre-A6 baseline is byte-unchanged.** This is the fixture F-02 was about. The diff shows the row
+intact, and the carrier decision landing on `notices` is exactly what leaves it alone.
+
+**Test-file existence, re-verified rather than accepted.** `advisoryWaveGateMain.test.js`,
+`waveExecution.test.js`, `advisoryEscalationLog.test.js` and `advisoryWaveGate.test.js` are all on
+disk under `pdlc/workflows/__tests__/`. PLAN ownership also holds: `advisoryWaveGateMain.test.js` is
+in A6-18's file-ownership row (`PLAN…md:369`) and `waveExecution.test.js` is in A6-21's (`:370`), so
+PROP-REC-10's home in C-3's `A6-19 (A6-21's former-A6-19 red step)` row names a PLAN-owned file. No
+property names a file the PLAN's manifest does not assign.
 
 ## Findings
 
