@@ -73,7 +73,28 @@ byte-identical, so the halt contract and the record contract I approved at v1.13
 
 ## Risks
 
+- **A partially-exhaustive exclusion list is worse than none.** Because AC-5.1 now enumerates
+  carriers explicitly with an em-dash list, a reader takes the list as closed. An implementer writing
+  the acceptance test will diff the tree against the snapshot, see the `ESCALATIONS.md` append that
+  AC-6.2 *requires* on the same path, and either (a) file a defect against a correct implementation,
+  or (b) quietly widen the oracle to "no source files changed" — an absence-shaped oracle that no
+  longer proves the wave's uncommitted work survived. Both outcomes lose the property AC-5.1 exists
+  to protect. F-01 is one clause away from closed.
+- **"HEAD already carries A6" is a moving reference in a document that otherwise pins its bases.**
+  The baseline's own re-verification rule ("A later default-branch commit is a fresh check, not an
+  inherited one") means an unpinned "HEAD" claim silently decays. Today it is true — I re-measured —
+  so this is Low, not a correctness defect (F-03).
+
 ## Obligations
+
+| ID | Question |
+|----|---------|
+| Q-01 | Does A6's escalation-log append (AC-6.2) happen strictly **after** restoration completes on every one of AC-5.1's three Givens (refusal, budget exhaustion, red re-gate)? If any of them can append before restoration, the exclusion clause needs an ordering statement as well as a carrier list. Answering this inside AC-5.1 is what makes F-01's fix complete rather than partial. |
+| Q-02 | Is AC-6.3's halt-report carrier a working-tree file on this path, or run-transient output? If it is a file, it belongs in the same exclusion list; if it is transient, saying so in one clause pre-empts the next reader asking. |
+
+Carried forward unchanged and still non-gating: SE Q-01/Q-02 and my own TE Q-01/Q-02 from v1.13.
+SE Q-02 (relocation to `docs/completed/`) remains the right owner for the directory move; the
+erratum was correct not to pre-empt it.
 
 ## Positive Observations
 
