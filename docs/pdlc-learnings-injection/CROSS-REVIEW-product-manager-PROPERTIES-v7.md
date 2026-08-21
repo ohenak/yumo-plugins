@@ -148,16 +148,42 @@ DEFERRED: §G.3's newly struck P-A-7 item is written as prose about "PLAN v0.6/v
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | LI-22 is the only task id with no commit on this branch at `a12b20f9`. When §C.4 is re-measured for F-01, should the inventory say so explicitly — "fourteen of fourteen files landed; LI-22 outstanding" — or does LI-22's artifact sit outside the fourteen rows the way LI-04's and LI-05's do? |
+| Q-02 | Now that LI-16/LI-17 are green, is the heading-form amendment expected to land **green** (production already implements F-O-1's second rule) or **red**? The answer decides whether the PLAN erratum I route below needs a new ledger case at all, and it is PLAN's call, not this document's |
 
 ## Positive Observations
 
-_pending_
+- **All three of my v6 findings are resolved, and cleanly.** The pin reads PLAN v0.7 (F-01); §C.4
+  restates the routed ledger-naming item as *answered at HEAD* and cites the two-case table verbatim
+  rather than paraphrasing it (F-02); the landed-suite scope is corrected from three properties to
+  **four**, naming PROP-BOUND-03 alongside PROP-BOUND-05/07/08, which is exactly the gap F-03 asked
+  to close.
+- **§G.3 now carries the item it previously only asserted in §C.4.** The new struck entry says
+  plainly *"§C.4 asserted this routing and this list did not carry it, so it reached no author from
+  here (PM v5 F-01); it is recorded now in the form it actually resolved"* — a document recording its
+  own routing failure rather than quietly fixing it. That is the behaviour that makes the erratum
+  list trustworthy.
+- **The `scripts/` correction is the model for what F-01 needs.** It names the command, the commit,
+  the path, and says the earlier sentence was true when written. Applying that same paragraph shape
+  to the fourteen-row table would close F-01 outright.
+- **Three bad locators repaired without being asked.** `TSPEC §T.5, T-O-6` → *TSPEC, Named
+  obligations carried forward* is correct: T-O-6 is at TSPEC line 1511, §T.5 is the AT→suite mapping
+  at line 1200. Citing by section title rather than by number also survives TSPEC renumbering.
 
 ## Recommendation
 
-_pending_
+**Needs revision** — on two High findings, both inside §C.4's HEAD accounting and both in the
+freeze's category (ii): the inventory table contradicts the very `git ls-files` measurement the
+section says it is restating (F-01), and the ledger-routing conclusion derived from it is written
+against a batch-13-in-the-future world that HEAD has already passed (F-02). Neither touches a
+property, an oracle, a fixture, an AT id or a red/green trace, so the revision is confined: re-run
+the command, set the fourteen rows, and restate lines 1087–1103 against `a12b20f9`. F-03 and F-04
+can ride along in the same edit. Everything else in v0.4 — including all three of my v6 items — is
+resolved and should be kept as written.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
