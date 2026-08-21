@@ -170,19 +170,20 @@ for against a stated definition.
   undefined **and** no `/overwrit/i` element. That negative is what stops an unconditional push from
   passing, and PLAN's DoD leg names precisely that hazard.
 - **The anti-echo discipline held everywhere I checked.** Every new expectation transcribes its
-  value spec-side: `"refs/pdlc/a6-snapshot-" + waveNum` composed in the test rather than read back
-  from the module (`advisoryWaveGateMain.test.js:382`, `waveExecution.test.js:1313`), `/overwrit/i`
+  value spec-side rather than reading it back from the module under test — the ref transcribed as a
+  literal at `advisoryWaveGateMain.test.js:382` and composed from the fixture's own wave number at
+  `waveExecution.test.js:1313`, `/overwrit/i`
   as the weakest discriminating stem rather than `toContain(devModule.SOME_WARNING)`, and Oracle G's
   diagnosis sentence transcribed verbatim (`advisoryWaveGate.test.js:1891-1897`). Given DC-14's
   origin — a garbled catalogue that left a ~2 930-test suite green — this is the discipline that
   matters most, and it is visibly applied.
 - **The `.gitignore` boundary case was upgraded honestly rather than ticked.** The former
-  `test.todo` marker is gone and the case is live (`advisoryWaveGate.test.js:524-575`), and it does
+  `test.todo` marker is gone and the case is live (`advisoryWaveGate.test.js:527-572`), and it does
   not rest on the hash map alone: `hashDomain` is introduced with a written rationale for why the
   filesystem-blind `hashTree` is the wrong oracle here, and the case adds the two positive-presence
   conjuncts (`output.txt` content unchanged, `new-output.txt` still present) that actually falsify a
   `-fdx`-shaped implementation. That is DC-14's absence-only rule applied without being asked twice.
-- **PROP-REST-10 asserts the ordering, not merely the outcome.** `advisoryWaveGate.test.js:3915-3990`
+- **PROP-REST-10 asserts the ordering, not merely the outcome.** `advisoryWaveGate.test.js:3924-3990`
   merges the git transport's call log and the `_appendFile` log into one order-preserving timeline
   and asserts every append lands strictly after restoration's terminal `reset --mixed` — the exact
   observation point AC-5.1 pins, proven rather than reasoned about.
