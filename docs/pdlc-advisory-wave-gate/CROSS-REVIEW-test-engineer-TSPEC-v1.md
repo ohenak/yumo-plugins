@@ -178,6 +178,73 @@ correctly preserves superseded state. No live section retains a pending flag. Th
 
 ## Open Questions
 
+**OQ-7 — closed, and the closure is verified, not accepted.** The row now reads "Closed upstream,
+answered *no*", citing BR-9/AT-05-1 at FSPEC v1.6 and AC-5.1 at REQ v1.14. Every quoted fragment
+checks out against HEAD, including the distinctive "an ignored path the re-gate mutated is not a
+restoration defect" and "operator files A6 never wrote and never restores over". The row's
+`Blocking` cell correctly flips from **yes, upstream** to **no**, and it enumerates where the
+transcription landed (§2.5, §3.3, §5.2 cases 4 and 5, §5.5, §5.6) — an enumeration I used as the
+checklist for the sweep above, and every named site does carry it.
+
+**OQ-9 — kept rather than deleted, correctly.** The row is now moot, and the disposition says so
+while explaining why it survives as a row: the pending markers it authorised existed in v1.2 through
+v1.10, and a reader of those revisions needs the trail. Deleting a question that governed shipped
+intermediate states would make those states unreadable. Keeping it is the right call.
+
+**OQ-11 — closed with its independence claim intact.** The row still answers "yes on its own
+merits" and now adds that OQ-7 resolved in the direction that leaves §3.3 untouched. Worth noting
+the row is honest about what this means — "the independence was never tested" — rather than claiming
+the resolution confirmed independence. It did not; it made the question moot. That distinction is
+recorded accurately.
+
+**OQ-1 — withdrawal earned.** Covered under Data Model; E-33 and AT-07-2b at HEAD carry every
+conjunct.
+
+**The closing paragraph.** Rewritten to "as of v1.11 none is waiting on upstream either". Given the
+sweep above, this is true of every live section.
+
+**The absorbed lineage-header item.** The changelog records Phase F's erratum against the
+`Downstream` row — that it names a downstream *feature* rather than the artifacts fed — as not
+holding against this document, since this row reads `DECISIONS, PLAN, PROPERTIES, IMPL` (artifacts
+all). I verified the second half of that claim too, since it asserts something about a *different*
+file: REQ v1.15's `Downstream` row reads exactly "FSPEC, TSPEC, PLAN, PROPERTIES (all in this
+directory)". Both halves hold; no edit was owed, and recording it prevents a re-raise.
+
+## Questions
+
+None. Every claim this round makes about upstream was checkable against upstream at HEAD, and I
+checked all of them rather than asking.
+
+## Positive Observations
+
+- **The round re-grounded before it edited.** The `Upstream` row now names both REQ v1.15 and FSPEC
+  v1.6 with digests, and the changelog leads with the re-grounding rather than the item list. That
+  ordering is what let this round notice OQ-7 had been decided in its favour — a round that edited
+  first and re-grounded second would have retired the flags without the authority to do so.
+- **Absorbed rather than raised, with the reasoning shown.** DEC-ERR-01's anti-pattern is routing a
+  settled question, and the changelog names it explicitly as the reason the erratum flags are retired
+  instead of re-emitted. Correct application.
+- **The new §5.2 case 5 asserts ordering, not just content.** This is the falsifiability instinct the
+  oracle checks ask for, applied without being asked. The document even states the failure mode the
+  ordering conjunct catches.
+- **Pending markers were retired everywhere at once.** All six sites the OQ-7 row enumerates were
+  actually updated. A partial retirement — OQ row closed, test rows still pending — is the common
+  failure shape here, and it did not happen.
+- **The abandoned design branch is named as abandoned.** §2.5 says the scoped ignored-path capture is
+  not built and why, rather than deleting the sentence.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves the (empty) routed item list vacuously, and — the question that actually governs
+— leaves this TSPEC a faithful compression of REQ v1.15 and FSPEC v1.6. Every upstream fragment it
+newly quotes is verbatim at HEAD. Nothing I previously approved is broken; the mechanism is
+unchanged and the untouched seam contracts re-read clean. The single Low is an attribution
+imprecision in one new sentence, not a specification defect: it excludes a superset of what BR-9
+requires, which is the stricter reading and independently required by AC-5.1, so no test is
+mis-specified. Fix it in passing at the next edit to this section; it does not gate.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
