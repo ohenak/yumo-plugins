@@ -175,6 +175,39 @@ unaffected by the upstream move and are carried below unchanged, tagged `inherit
 
 ## Open Questions
 
+§7's obligations are where the BL-04 half of the round lands.
+
+**OB-F1 — substance right, quotation stale.** The obligation says BL-04 is **not met**, that the
+authoring tree is 1,637 commits behind the default branch and carries neither the mechanism nor
+`docs/_constraints/pdlc-wave-gate-baseline.md`, that §1's claims are therefore verified against
+`origin/main`, and that the branch must be rebased before TSPEC authoring. Every word of that is
+still true and is now *agreed by upstream*: REQ v1.6 §10 reads "BL-04 is **open and unmet** — not
+discharged at FSPEC authoring: the authoring tree, 1,637 commits behind the default branch,
+carries neither the resume mechanism nor `docs/_constraints/pdlc-wave-gate-baseline.md`. It is
+owed before implementation…". The two documents now say the same thing, including the same
+commit-count measurement.
+
+What is stale is OB-F1's closing clause: "Raised as an erratum against the REQ, whose §10 records
+BL-04 as **\"discharged at FSPEC authoring\"**." Upstream §10 no longer records that — it records
+the negation of it, in those exact words. A quoted upstream sentence that upstream no longer
+contains is the failure mode DEC-ERR-03 asks this round to catch, and it is worse than a dangling
+pointer: a reader who takes the quotation at face value believes the REQ still asserts BL-04 is
+discharged, and may re-raise the erratum that has already been adjudicated. Fix is one clause —
+state that the erratum was raised and landed in REQ v1.6, which records BL-04 open and unmet.
+Filed as F-01. I am deliberately *not* asking for OB-F1's substance or its discharge condition
+("the branch is rebased and the mechanism is readable in the tree") to change; both are correct.
+
+**OB-F4** is blocked on OB-F1 and cites REQ OF-1/OF-2 for promotion into the baseline as
+`M-WVR-1..2`. OF-1's restatement in this round changes the *content* to be promoted (16 waves, the
+per-halt decomposition), not the obligation. Because OB-F4 names OF-1 by id rather than
+transcribing its numbers, it needs no edit — and the se-author discharging it at TSPEC time will
+naturally read v1.6. No finding, and worth recording as the reason id-citation beat transcription
+here.
+
+**OB-F2, OB-F3, OB-F5, OB-F6** trace to untouched material. The §7 "Round 1 revision note" carries
+the second half of F-03: it describes both errata as "raised", with no indication that both have
+since landed.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
