@@ -51,6 +51,47 @@ for the task-id universe; `git log -S'/.baseline-worktree/' -- .gitignore` and `
 
 ## Properties
 
+No property's **claim** text changed in this delta — Groups A–J are byte-identical. What changed is
+§C.4's account of *where in the run* four of them stand, so what I checked is whether each of those
+four is still genuinely owed at HEAD and whether the new scheduling story is true.
+
+- **Still owed, all four, verified against the landed suite.** `learningsBlock.test.js` at HEAD is
+  147 lines / 7,739 bytes (PROP-BOUND-03's "landed, 7.6 K" is right) and carries a single
+  `describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)")` at `:38` — exactly as
+  §C.4 now quotes. Checking each owed case rather than trusting the paragraph:
+  - **PROP-BOUND-03's zero case** — no `extractInjectableMaterial(text, 0)` call exists; the three
+    calls are at `:87` (bound `100000`), `:113` (bound `40`) and `:133` (bound `66`). Owed. ✔
+  - **PROP-BOUND-05** — the property requires the section list be recovered from
+    `renderLearningsBlock`'s **output** via `SECTION_HEADING_RE` with `sections[]` demoted to a
+    supporting equality. The landed suite asserts `expect(result.sections).toEqual([…])` (`:118`,
+    `:139`) — the producer's own report only; `SECTION_HEADING_RE` appears nowhere in the file. Owed. ✔
+  - **PROP-BOUND-07** — the property's teeth are the *framing* literal stated beside the material
+    literal so the two are proved to differ (mutation M-5). The file mentions framing only in a
+    comment (`:10`, `:56`); no framing byte literal is asserted. Owed. ✔
+  - **PROP-BOUND-08** — the real-corpus arm needs a live `LEARNINGS_CORPUS_ARGV` / `git ls-files`
+    read. Neither symbol occurs in the file. Owed. ✔
+- **The scheduling story is true.** LI-08 landed at `5e522a52`, LI-16 at `d462ddd8`, LI-17 at
+  `2cbacada`, LI-21 at `92b7ea0c` — all four subjects confirmed by `git log -1`. So the suite is
+  landed *and greened*, case A ("before batch 7") is unreachable and case B is live, exactly as §C.4
+  now says. P-A-6's window is likewise correctly described as **spent**: PLAN:590 reads "commit at
+  the first point the suite is green, which in practice is after LI-21 (batch 13)", and LI-21 is
+  behind us. The two mechanisms are still kept distinct (P-A-7 case B governs the amendment against
+  the landed implementation suite, P-A-6 governs this document's own suite), which was the v6 F-03
+  distinction — it survives the rewrite intact.
+- **Task-id universe.** "`LI-01…LI-21 and LI-23`, `LI-22` the only id with no commit" is exact:
+  `git log --format=%s | grep -oE 'LI-[0-9]+' | sort -u` returns precisely that set. LI-22's row is
+  the 🔵 REFACTOR-and-close task whose artifact is a full-suite green run plus the human cross-check
+  of LI-23's arm inventory and which creates no file (PLAN:162) — the document's characterisation is
+  verbatim-faithful. LI-04's `.gitignore` claim also holds: `git log -S'/.baseline-worktree/' --
+  .gitignore` names `ae2af1da` as the adding commit and `.gitignore:13` is `/.baseline-worktree/`
+  today.
+- **Counts unmoved.** `grep -o 'PROP-[A-Z]*-[0-9]*' | sort -u | wc -l` → **70**, matching the header
+  and §C.4's summary table; §C.1 (35/35), §C.2 and §C.3 (23/23 tasks) are untouched by the delta and
+  still reconcile.
+
+One supporting sentence of the new text overstates the absence it claims — see F-02 — but it does not
+reach any property's status: all four remain owed on grounds I verified independently above.
+
 ## Oracles
 
 ## Fixtures
