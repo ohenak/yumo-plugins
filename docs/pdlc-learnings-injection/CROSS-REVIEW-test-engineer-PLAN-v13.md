@@ -98,6 +98,56 @@ unchanged, so no new file enters the single-writer contract, and no batch acquir
 
 ## Dependencies
 
+**No `Deps` edge changed.** The dependency graph is byte-identical to v0.9: same edges, same
+acyclicity, same unique ids, every dependency resolving to a declared task. Nothing in this delta
+could have moved it, and the diff confirms nothing did.
+
+**Upstream moved — and I checked whether it moved under this document.** This is the one thing this
+round had to establish that last round did not, because at round 12 the four upstream hashes were
+byte-identical to the dispatch pins and this round they are not. Re-hashed at HEAD:
+
+| Document | Hash at round 12 | Hash now | Version cell now | PLAN's header pin |
+|---|---|---|---|---|
+| REQ | `ff605dd3…` | `32cb8b7d…` | **0.10** | v0.9 |
+| FSPEC | `ae75fa62…` | `ef230199…` | **0.14** | v0.13 |
+| TSPEC | `22dee8ce…` | `1ddfdbc3…` | 0.9 (unchanged) | v0.9 ✅ |
+| DECISIONS | `56617f5a…` | `87ec8ebc…` | **0.5** | v0.3 |
+
+**What actually changed upstream, and whether it contradicts anything here.** The REQ delta is
+seven lines: AC-2.4 gains an attribution clause making the report's exclusion reason
+**cause-defined** — a document the count bound (AC-2.2) already cut is reported under that cause
+even when the total bound also failed, "and only documents this bound drops are reported under it".
+FSPEC v0.14 carries the matching `BR-6` restatement and names `AT-13` as the test that exercises
+it. TSPEC's delta is **one line** — its upstream pin, refreshed to REQ v0.10 / FSPEC v0.14, with
+its own version cell still 0.9, so this PLAN's "TSPEC v0.9" pin is still exactly right. DECISIONS
+v0.5 rewrites `DEC-LI-08`'s framing literals and states in terms that "Both moved since round 6
+without touching anything decided here".
+
+I traced the one behavioural change into this PLAN's own tables. The fail-open arm inventory rows
+read `count bound ⇒ RSN-COUNT | AT-08, AT-13, COUNT-BINDING | LI-07 / LI-16` and `byte bound ⇒
+RSN-BYTES | AT-07, BYTES-BINDING | LI-07 / LI-16`. Those rows are **cause-keyed already** — each
+names the bound that removes the document and the reason id it carries — so FSPEC v0.14's
+clarification confirms them rather than contradicting them, and the AT it names (`AT-13`) is
+already assigned here to the `RSN-COUNT` arm and owned by LI-07 (red) / LI-16 (green). LI-07's task
+cell likewise already names the `COUNT-BINDING` case as "exactly 3 documents contribute and exactly
+5 carry `RSN-COUNT`", which is the cause-defined reading. **No task row, no AT assignment and no
+ledger row is falsified by the upstream move.** What is stale is the header's three version
+numerals and the line-36 sentence "Behaviour lives in REQ v0.9 / FSPEC v0.13 / TSPEC v0.9". That is
+a pin refresh, filed Low below — under freeze it is not a blocking finding, because it falsifies no
+load-bearing claim: this PLAN references upstream **by id**, the ids it references are unchanged,
+and the sibling documents that did re-pin (TSPEC, DECISIONS) both record that the move touched
+nothing decided.
+
+**The P-A-7 → P-A-6 dependency, re-checked as a gate input.** P-A-6 now defers to "P-A-7's
+governing case" instead of naming case B's mechanism directly. That makes P-A-6's answer a
+**pointer** rather than a restatement, which is the right shape: one rule, one place, and the
+pointer cannot go stale when the governing case changes. The clause it replaced could — it named
+the ledger-amendment route unconditionally, and that route is foreclosed at HEAD. P-A-6 still
+resolves to a concrete instruction for an implementer standing at HEAD, because it names the live
+case inline ("which at HEAD is case C") and states the obligation it carries (green-at-landing).
+Nothing downstream of P-A-6 changed: it still ends "No task row in this PLAN owns either", so Phase
+P's suite remains outside the ledger's universe exactly as P-A-3 rules.
+
 ## Verification
 
 ## Findings
