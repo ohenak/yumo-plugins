@@ -306,13 +306,17 @@ The FSPEC routed five obligations here (§7.1 there). Each is answered in one na
 | O-3 | Reuse of the tier's exported model rung | §2.2 | `runAdvisorySeam` already resolves the rung through `resolveAdvisoryRung`; A6 adds no rung code at all, so NFR-6 is discharged by not writing anything |
 | O-4 | How the owned-path set is computed and compared | §3.4, §4.3 | Computed from the same `parsePlanOwnership` rows `computeWaves` already annotates onto each task; compared by the tier's shipped `classifyEnvelope` X-d clause over a live `declaredScope` array, the `buildA4SeamOps` idiom |
 | O-5 | Whether the root cause is derived by the seam or supplied by the wave's agents | §3.3 | Supplied by the **A6 agent**, on its own `ROOT-CAUSE:` trailer line, read by a total parser; the wave's own agents are gone by gate time. Q-4's ownership-delivery check is *evidence*, never the verdict |
-| O-8 | How an E-6 repair reaches committed state, and how the later task is told | §2.5, §3.6 | **One further `commitPaths` call** after the per-task loop, inside the same `if (waveGit)` block, carrying the promotion's paths under its own `message` and `what` (§3.6); the owning task's own commit keeps its own pathspec, unwidened. Widening the existing per-task call is the rejected option A of `DECISIONS-pdlc-advisory-wave-gate.md`'s DEC-A6-02. `waveImplementPrompt` gains a promotions clause read by that task's dispatch |
+| O-8 | How an E-6 repair reaches committed state, and how the later task is told | §2.5, §3.6 | **One `commitPaths` call per promoted task** — a loop over `groupPromotedPaths`'s rows, after the per-task loop and inside the same `if (waveGit)` block, each call carrying that promotion's own paths under its own `message` and `what` (§3.6). Per-task, not one aggregate call: the `message` template's single `{taskId}` slot is only coherent under that reading, and it is the shipped shape; the owning task's own commit keeps its own pathspec, unwidened. Widening the existing per-task call is the rejected option A of `DECISIONS-pdlc-advisory-wave-gate.md`'s DEC-A6-02. `waveImplementPrompt` gains a promotions clause read by that task's dispatch |
 
 ### 1.2 Where the code goes
 
 Everything lands in `pdlc/workflows/orchestrate-dev.js`. That is not a preference: the workflow
-runtime loads one bundled artifact per script (`pdlc/workflows/dist/orchestrate-dev.bundle.js`,
-built by `build-runtime.mjs`), and every advisory-tier symbol — `ADVISORY_SEAMS`,
+runtime loads a single generated artifact — `build-runtime.mjs` emits exactly
+`pdlc/workflows/dist/pdlc-cli.mjs`, and the per-script `*.bundle.js` artifacts are retired — while the
+published engine channel is fed by `pdlc/engine/scripts/prepack.mjs`, which vendors its `MODULE_NAMES`
+set (`orchestrate-dev.js`, `orchestrate-queue.js`) **verbatim** from `pdlc/workflows/` into
+`@kaneho/pdlc-engine` at pack time. Both channels therefore carry whatever this file says and nothing
+else has to be kept in sync by hand. Every advisory-tier symbol — `ADVISORY_SEAMS`,
 `classifyEnvelope`, `runAdvisorySeam`, `appendAdvisoryEntry`, `appendEscalationEntry` — already
 lives in that one module. A6 is placed as three adjacent regions:
 
@@ -335,12 +339,14 @@ literal* in a test rather than a computed value.
 **State of these surfaces at HEAD (re-grounded, PM F-02 / TE F-01).** The table below was written
 as future work and is no longer that. Commit `e3b9d5a3` — titled `docs(cross-review): …` but
 carrying test-side edits and a sweep of tracked `.claude/workflows/.pdlc-backups/*.bak` and bundle
-artifacts alongside them — landed almost all of the transcription ahead of Phase I. The production
-side did not move: `orchestrate-dev.js` still declares
-`export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"])` and
-`ADVISORY_SEAM_PHASES` still carries five rows. The two halves therefore disagree at HEAD and the
-workflows suite is **red before Phase I opens** — e.g. `advisoryQueueSeams.test.js`'s row-count
-assertion now reads `toHaveLength(6)` against a five-row report. The `Change` column below reads as
+artifacts alongside them — landed almost all of the transcription ahead of Phase I. **Re-measured at
+this erratum's HEAD (v1.12): the production side has since moved too.** `orchestrate-dev.js` now
+declares `export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5", "A6"])` and
+`ADVISORY_SEAM_PHASES` carries six rows, `A6` among them (`{ id: "I", outcome: "halted" }`). The two
+halves therefore **agree** on the seam-list surface at HEAD, and the earlier claim that the workflows
+suite is red before Phase I opens *because* of this disagreement — `advisoryQueueSeams.test.js`'s
+`toHaveLength(6)` counted against a five-row report — is falsified: that assertion's production
+counterpart is present. The `Change` column below reads as
 "required end state", not "edit still to make"; the `At HEAD` column records which half of each
 surface has already moved:
 
