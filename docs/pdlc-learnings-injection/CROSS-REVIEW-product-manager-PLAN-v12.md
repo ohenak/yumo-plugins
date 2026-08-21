@@ -47,6 +47,54 @@ number). The edit did not touch that sentence and did not put it out of step wit
 
 ## Batches
 
+This is where the unlisted half of the delta lands — LI-08's task row — so it gets the closer read.
+
+**The corrected `renderSection` claim, checked clause by clause at HEAD.** The note now reads: the
+knobs "already exist — `renderSection` accepts `ordinal` and `gloss`, both unexercised by any landed
+suite, and a free-form `body` the landed suites already use (`learningsBlock.test.js` passes `body:`
+on all six of its section specs, and `learningsSelect.test.js` passes it on the non-BR-6 section)".
+Four checkable assertions, all four true:
+
+- **`ordinal` and `gloss` unexercised.** Grepping both identifiers across `pdlc/workflows/__tests__/`
+  outside `helpers/learningsFixtures.js` itself returns nothing. No landed suite passes either.
+- **All six of `learningsBlock.test.js`'s section specs pass `body:`.** That suite has exactly one
+  `sections:` array, exactly six `name:` keys, and exactly six `body:` keys — the six BR-6-priority
+  and non-priority specs from `Process Learnings` through `Non-Convergences`, each carrying its own
+  `*_MARKER` body text. "All six" is the exact count, not a round number.
+- **`learningsSelect.test.js` passes it on the non-BR-6 section.** That suite has fifteen `sections:`
+  arrays and exactly one `body:`, on `{ name: "Not A BR-6 Section", … }` in the `at28-no-material`
+  document. Singular, and it is the non-BR-6 one — the note's phrasing is precise on both counts.
+- **`renderSection` accepts all three.** The helper's JSDoc declares `section.ordinal`,
+  `section.gloss` and `section.body`, with `ordinal` documented as omitted entirely when
+  null/undefined. So the "knobs already exist" premise survives the correction intact.
+
+**The correction does not weaken the conclusion it supports — it strengthens it, as claimed.** The
+note's point is that the heading-form amendment adds *callers*, not knobs, and therefore is an
+amendment to landed files by their existing owners rather than a new spec surface. Under the old
+(false) claim the amendment lit up three dormant knobs; under the corrected one it lights up two and
+reuses a third that is already in service. That is strictly less new surface, so "not four new knobs"
+still holds and holds more easily. The ownership consequence the sentence exists to carry — ownership
+does not move, the single-writer manifest is unchanged — is unaffected. This is the right shape for
+an erratum: the false clause is replaced with a true one and the argument it fed is re-derived, not
+quietly dropped.
+
+**Traceability of the correction back to who raised it.** TE v10 F-01 raised this as Medium with the
+exact citations the erratum adopted; PM v10 F-01 raised the same defect as Low, citing the AT-29
+contamination corpus in `learningsFixtures.js` instead. Both are pointing at the same false clause,
+and the erratum's chosen evidence (the two landed suites) is the stronger of the two, because it
+proves the knob is exercised *by a suite* rather than by the fixture builder's own internals. The
+changelog credits both. That reconciliation across reviewers is exactly what the tag-selection
+discipline asks for.
+
+**Nothing else in §Batches moved, and nothing else went stale.** LI-08's `Batch` cell still reads
+`3`, its `Deps` still reads `LI-02`, its owned files still read `__tests__/learningsBlock.test.js`,
+and its `Status` still reads ⬚ — the diff touches only prose inside the description cell. I re-checked
+the two rows that could have gone stale beside it: LI-02, whose spec surface is where the variant
+heading forms are declared, names no knob count and no case letter; LI-12, whose three-case AT-30 is
+the other "three cases" phrase in this document, is untouched and unrelated to P-A-7's three cases —
+the two threes do not collide, because LI-12's are zero-threshold cases and P-A-7's are commit-timing
+cases. No other row references the amendment note's knob count.
+
 ## Dependencies
 
 ## Verification
