@@ -13,7 +13,7 @@
 non-approving lenses: `[pm-review, te-review]`.
 **Document at halt:** `TSPEC-pdlc-advisory-wave-gate.md` v1.12 (`0f2a9710`, content `sha256:4de9cd6b…`)
 
-RESOLVED: no
+RESOLVED: yes
 
 ---
 
@@ -302,6 +302,14 @@ and is tracked by the `RESOLVED:` marker at the top of this file.
 
 - Engine version: 0.2.0
 - Plugin version: 0.23.0
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
+
+**Provenance**
+- Engine version: 0.2.2
+- Plugin version: 0.23.2
 - Plugin compat: ^0.23.0
 - Channel: engine
 - Mode: latest (pin: n/a)
