@@ -174,7 +174,26 @@ wording, not a defect — recorded as a DEFERRED item, not a finding.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | §G.3's second new bullet punctuates a PLAN citation as a quotation — *"every batch from the landing batch through the batch that greens them"* — but PLAN case B reads *"every batch from the one the commit lands in through the batch that greens them"* (PLAN line 492). *the landing batch* is a paraphrase of *the one the commit lands in*; the meaning is identical and the inference the bullet draws is unaffected, but the quoted span is not verbatim. This is the same class as my v8 F-02, which the delta fixed at the P-A-6 citation and reintroduced here in new prose. **Fix:** restore PLAN's words inside the quote marks, or drop the marks and paraphrase openly | PLAN P-A-7 case B |
+| F-02 | Low | Local | §G.3 bullet 1 names the uncovered case *"PROP-BOUND-03's `maxBytesPerDocument <= 0` case"* while §C.4 line 1129 names the same case *"PROP-BOUND-03's `maxBytes <= 0` case"*. Neither is wrong — `maxBytesPerDocument` is REQ §4.1's threshold and the property's stated domain (PROPERTIES line 235), `maxBytes` is the parameter of the unit that falsifies it (PLAN LI-16, line 156) — but the two spellings sit ~150 lines apart, describing one case, with nothing linking them. A PLAN author receiving the erratum sees only the `maxBytesPerDocument` form. **Fix:** in §G.3 bullet 1, add *(the unit-level `maxBytes <= 0` short-circuit of TSPEC §D.5)* after the first mention | PROP-BOUND-03; TSPEC §D.5 |
+
+**Deferred under the freeze** — recorded, not raised as findings:
+
+DEFERRED: §C.4 line 1098 now carries the ignore rule twice — *"the `/.baseline-worktree/` ignore rule (the `.gitignore` rule `/.baseline-worktree/`, landed `ae2af1da`)"*; the parenthetical is the F-03 fix and is the half worth keeping, so the outer mention can shorten to *"whose artifact is an ignore rule"*.
+DEFERRED: carried from v8 and untouched — the header `Upstream` cell closes with *"both absorbed in §C.4 and §G.3"* after enumerating four v0.7 changelog items, so *both* still has no two-item antecedent; name the two or say *all*.
+DEFERRED: carried from v8 — §C.4 opens with three consecutive bolded paragraph-length arguments before its conclusion; a one-sentence result line at the top would let a reader arriving cold take the section's answer first.
+DEFERRED: carried from v8 — the inventory's *At `21edb7c5`* column is a constant (**exists (landed)** in all fourteen rows) and could collapse into the pin sentence, leaving File / Owning task / Added by.
+DEFERRED: carried from v8 — §C.4 cites LI-05's artifact as *"the capture script (below)"*; a section anchor would survive the next restructuring better than *(below)*.
+DEFERRED: §G.3's three-item list now mixes one item routed in an earlier round with two routed from this dispatch, distinguished only by a parenthetical at the end of the third bullet; if the list grows again, a per-bullet *routed at* marker would read better than a trailing note.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Answered by this delta, recorded closed: my v8 Q-01 asked whether §G.3's bullets would prejudge PLAN's answer between a new ledger case C and an extension of case B's span. Both bullets close with *"this document routes the gap and decides nothing"* and bullet 2 names the two candidate readings without choosing — exactly the shape I hoped for. No answer needed |
+| Q-02 | Still PLAN's rather than yours, carried unanswered from v7 and v8: now that LI-16/LI-17 are green, is the heading-form amendment expected to land **green** — production already implements F-O-1's second rule — or **red**? If green, §G.3's second bullet may need no ledger answer at all, only a note in case B that the span is vacuous for a self-greening amendment. I re-emit it as an ERRATUM line so it reaches PLAN with the two gaps rather than sitting in a review file |
 
 ## Positive Observations
 
