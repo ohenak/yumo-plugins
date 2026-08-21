@@ -85,6 +85,36 @@ claim about them does not. That is F-01, and it is the only High.
 
 ## Oracles
 
+- **§G.1's T-O-6 row** — the third locator rewrite lands here, and the sentence now reads "per
+  TSPEC's T-O-6 instruction (TSPEC, Named obligations carried forward)". Same verdict as above:
+  correct target (TSPEC:1502/1511), verbatim quote, no oracle content changed. The row's partition
+  statement — PROP-BOUND-03 owns the unit's whole return domain including the four-field zero return,
+  PROP-CONFIG-09 owns `RSN-NO-MATERIAL` and the unconsumed `maxDocuments` slot — is byte-identical
+  and still non-overlapping.
+- **The row's tail is now stale in the same way §C.4 is.** "All three land on tasks that already
+  exist (LI-07 red / LI-16 green … LI-08 red / LI-17 green …). **No new PLAN task is required**"
+  remains true as a *task* claim — PLAN adds no task — but all four of those tasks are committed at
+  HEAD (`1544fdbd`, `d462ddd8`, `5e522a52`, `2cbacada`), so "land on tasks that already exist" no
+  longer means what a reader will take it to mean. This is the same defect as F-01, not a second one;
+  I record it there rather than double-counting.
+- **§O.9's generated arms** — untouched. The domain statement (`every non-negative maxBytes, 0
+  included`) still quotes TSPEC's T-O-6 row verbatim, and the surrounding argument that the zero case
+  is a positive four-field return rather than an absence-shaped assertion is intact. This is the
+  right discipline: the negative ("nothing was cut") is paired with the positive
+  (`{material: "", bounded: false, bytes: 0, sections: []}`) on the same path, so it is not an
+  absence-only oracle.
+- **§O.5's level table** — only the PROP-CONFIG-09 row's parenthetical moved. The L1/L3 split
+  argument is unchanged.
+- **§O.8's mutation ledger** — untouched by the delta and not re-litigated.
+- **Set-equality discipline** — unchanged and still satisfied where it matters: `LI-AT-11`'s
+  section-set claim is stated as an equality over `BR6_SECTION_NAMES ∩ headings`, and the landed
+  suite asserts `expect(result.sections).toEqual([…])` (`learningsBlock.test.js:118`, `:139`), an
+  equality rather than a containment. No enumerated contract in the delta weakened to containment.
+- **No implementation echo introduced.** Nothing in the delta derives an expected value from the code
+  under test; the byte counts §C.4 references remain hand-computed literals in §G.2.2.
+
+No oracle is retracted, weakened or made unfalsifiable by this revision.
+
 ## Fixtures
 
 ## Findings
