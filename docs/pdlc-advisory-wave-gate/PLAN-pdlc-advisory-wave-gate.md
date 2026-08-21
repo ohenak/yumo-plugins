@@ -565,10 +565,18 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 - [ ] AT-06-4's overwrite warning is asserted **co-located** with the ref pointer in one `notices` element,
       by spec-side literals rather than a constant imported from the module under test, and AT-06-4b asserts
       its absence on the capture-failure run. Both of AT-06-4's arms are present: the seam arm in
-      `advisoryWaveGate.test.js` (A6-18) and the post-gate un-skip arm in `waveExecution.test.js` (A6-21).
+      `advisoryWaveGate.test.js` (A6-18) and the post-gate un-skip arm in `waveExecution.test.js` (A6-21),
+      **each with its paired negative** (TE v3 F-02): AT-06-4b on the seam side, and on the un-skip side a
+      halt on a wave where A6 did **not** fire — `a6.calls.length === 0` and the outcome and `haltReason`
+      positively asserted on the same run — where the `advisory` argument is omitted and no overwrite notice
+      appears anywhere in `notices`. A positive-only un-skip arm does not tick this leg: without the negative,
+      an implementation pushing the notice unconditionally at the un-skip site satisfies it.
 - [ ] The two shipped exact-shape oracles the `snapshotRef` field disturbs were widened by the task that
       widened the production `fields` object, not left to the gate to discover (PM v2 F-01, F-02):
-      `advisoryWaveGateMain.test.js`'s `expect(result.haltAdvisory).toEqual({…})` reads **five** keys, its
+      `advisoryWaveGateMain.test.js`'s `expect(result.haltAdvisory).toEqual({…})` reads **five** keys whose
+      fifth is the wave-scoped **ref** — that fixture's `_git` double succeeds at every capture verb, so the
+      value is `refs/pdlc/a6-snapshot-1`, written spec-side as `"refs/pdlc/a6-snapshot-" + waveNum` and never
+      `null` (TE v3 F-01) — its
       `haltReason` containment assertion untouched (AT-05-3), and `advisoryEscalationLog.test.js`'s
       `expect(failed.notices).toHaveLength(…)` reads **3** — capture succeeds on that real-temp-repo run, so
       the overwrite notice is the third.
