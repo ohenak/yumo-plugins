@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.9 — §D.3's section matcher and extent-assembly rule absorbed here); `PLAN-pdlc-learnings-injection.md` (v0.7 — LI-12's three-case AT-30 still matches PROP-CONFIG-09; the *Amendment commits on landed suites (P-A-7)* two-case table was added at **v0.6** and is unchanged at v0.7, whose own changelog row instead names LI-16 the owner of TSPEC §D.5's zero-bound production half, gives LI-AT-30 conjunct (iii) its fixture precondition, records ERR-8 and relocates LI-08's amendment note; both absorbed in §C.4 and §G.3); `DECISIONS-pdlc-learnings-injection.md` |
+| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.9 — §D.3's section matcher and extent-assembly rule absorbed here); `PLAN-pdlc-learnings-injection.md` (**v0.8** — LI-12's three-case AT-30 still matches PROP-CONFIG-09; the *Amendment commits on landed suites (P-A-7)* table was added at **v0.6** with two cases and grew to **three** at v0.8, whose changelog re-scopes case B to batches 9–12 and adds **case C** — *"after batch 13, the case that is live at HEAD"* — as the case that governs the amendments this document routes; v0.7 named LI-16 the owner of TSPEC §D.5's zero-bound production half, gave LI-AT-30 conjunct (iii) its fixture precondition, recorded ERR-8 and relocated LI-08's amendment note; all absorbed in §C.4 and §G.3); `DECISIONS-pdlc-learnings-injection.md` |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/learnings*.test.js`) |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,software-engineer}-PROPERTIES[-v{N}].md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.6 | 2026-08-21 |
+| pdlc | Draft | Claude | 0.7 | 2026-08-21 |
 
 ## Overview
 
