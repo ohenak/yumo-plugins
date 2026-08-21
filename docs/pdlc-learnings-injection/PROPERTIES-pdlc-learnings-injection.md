@@ -1131,7 +1131,10 @@ landed at `92b7ea0c`, so that point has **arrived**: the window P-A-6 deferred i
 rather than ahead, and the suite may be committed as soon as it is green — or, if it lands red, its
 rows are amended into the ledger by name first, under the same P-A-7 rule. The conclusion that **no
 property of this document changes either way** is unaffected; what changes is only when its cases may
-land and which case of the table governs them.
+land and which case of the table governs them. The two mechanisms stay distinct, as this document has
+held since v0.3: **P-A-7 case B** governs the amendment commit against the landed *implementation*
+suite `learningsBlock.test.js`, while **P-A-6** governs this document's own PROPERTIES suite — the
+restatement above moves neither rule, only the point in the run each is read from.
 
 **No property in this document names a test
 file the PLAN does not create**, and none names one that exists but is owned by no task. The
