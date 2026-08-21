@@ -211,6 +211,38 @@ sized. AT-12's outcome-(c) oracle still matches REQ-WVR-08's rescoped no-commit 
 
 ## Open Questions
 
+No question is open against the operator, and this confirmation opens none. Two items are owed
+downstream and both already have named owners in the FSPEC's §7 table or in this review:
+
+| # | Item | Owner | Discharged when |
+|---|---|---|---|
+| Q-01 | The §3.4 operator-pointed recording behaviour needs a falsifying oracle (F-01). No new obligation row is required in the FSPEC if PROPERTIES carries it. | PROPERTIES (te-author), or a later FSPEC round via AT-19 | a two-invocation property asserts a pointer-run's record is honoured by the next automatic run |
+| Q-02 | EC-17's citation points at REQ OB-3 where the worktree/`D-DIST-07` material is OB-1's (F-02). | se-author or pm-author, opportunistically | the row cites REQ OB-1 |
+
+**Positive observations.**
+
+- The edit is genuinely targeted. Three items, three commits, one section each, and the diff is
+  +14/−3 with no collateral rewording. That is what makes a delta confirmation cheap to trust —
+  I could verify the whole blast radius by reading fourteen lines.
+- The §3.4 paragraph does the harder thing: it states an unflattering consequence out loud ("a
+  later automatic invocation can resume above waves whose completion only the operator asserted")
+  and then bounds it with named rules, instead of quietly asserting the behaviour is safe. That is
+  a spec a reviewer can falsify, which is worth more than one that reads reassuringly.
+- The closing sentence "No record content distinguishes the two provenances" is a real
+  contribution: it forecloses a TSPEC inventing a provenance field the REQ never asked for, which
+  is precisely the FSPEC's job at this altitude.
+- OB-F1's correction preserved the obligation's force while fixing only its reading of upstream.
+  An erratum that quietly softened the obligation would have been the easy failure mode here.
+- §1's citation discipline (symbol names as the durable half, line anchors explicitly labelled as
+  positional and non-re-verifiable in this tree) continues to satisfy DEC-DOC-01 unchanged.
+
+## Recommendation
+
+**Approved with minor changes.** The delta resolves all three routed items, is faithful to the REQ
+at v1.7 — including the two changes v1.7 made after the dispatch brief was written — and breaks
+nothing previously approved. The two findings below are Medium and Low, neither gating; F-01 is
+best discharged in PROPERTIES rather than by another FSPEC round.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
