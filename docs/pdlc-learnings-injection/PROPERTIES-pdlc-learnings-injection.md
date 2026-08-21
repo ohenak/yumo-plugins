@@ -1089,28 +1089,59 @@ that output rather than carried forward (PM F-01, SE F-01):
 | `learningsSuiteMap.test.js` | LI-14 | **exists** (landed) | `960c229c` |
 | `fixtures/learnings-baseline/` | LI-06 | **exists** (landed) — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` | `4a6c1816` |
 
-Seven of the fourteen files have landed. The tasks committed so far are LI-01…LI-05, LI-07, LI-08,
-LI-09 and LI-13 — nine ids against seven rows, because **two** of them own none of the fourteen:
-LI-04, whose artifact is the `/.baseline-worktree/` ignore rule (PLAN's LI-04 row, landed at
-`.gitignore:13`), and LI-05, whose artifact is the capture script (below). The
-remaining seven are explicitly planned and unstarted. **On the re-red of landed suites (SE Q-02):**
+**Fourteen of fourteen, and which task ids stand behind them.** Every one of the fourteen rows is
+tracked at `21edb7c5`. The task ids with commits on this branch are **LI-01…LI-21 and LI-23**;
+**LI-22 is the only id with no commit**, and it owns none of the fourteen — its row is the
+🔵 REFACTOR-and-close task, whose artifact is a full-suite green run and the human cross-check of
+LI-23's arm inventory, not a file (PLAN, LI-22 row). Two further committed ids also own none of the
+fourteen: LI-04, whose artifact is the `/.baseline-worktree/` ignore rule (`.gitignore:13`, landed
+`ae2af1da`), and LI-05, whose artifact is the capture script (below). Earlier revisions of this
+paragraph said seven had landed and "the remaining seven are explicitly planned and unstarted"; that
+was true when written and is not now — `learningsBaselineGuard.test.js` and
+`fixtures/learnings-baseline/` landed at `4a6c1816`, `learningsRecord.test.js` at `2fe07964`,
+`learningsDispatchSet.test.js` at `c3e723e5`, `learningsConfig.test.js` at `eb32d7d2`,
+`learningsArmInventory.test.js` at `100e3d9c` and `learningsSuiteMap.test.js` at `960c229c`.
+
+**On the re-red of landed suites (SE Q-02), restated against `21edb7c5` (PM F-02, PM F-03).**
 PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments — **four** properties, not three —
-land in `learningsBlock.test.js`, which is committed, so they are a re-red on landed green code
-rather than a fold into LI-16/LI-17's green tasks — which is exactly PLAN P-A-7's case ("a live
-table is amended by an edit to this PLAN, committed before the run it governs"). **The ledger-row
-naming this document routed upward is answered at HEAD:** PLAN (v0.7) now carries *Amendment commits
-on landed suites (P-A-7)*, a two-case table — case A, the follow-up commit landing before batch 7,
-adds **no** row because the ledger already reds `learningsBlock` as a whole suite there; case B, a
-commit landing at batch 9 or later, adds the named row for every batch from the landing batch
-through the greening one. Case B names `LI-AT-11`'s heading-form cases specifically; this document's
-own four properties travel under P-A-6's rule, which holds the PROPERTIES suite's commit to the
-first point it is green (in practice after LI-21, batch 13), so they enter no ledger row unless that
-commit is brought forward. No property of this document changes either way. **No property in this document names a test
+land in `learningsBlock.test.js`. That suite is not merely landed but **greened**: its red owner
+LI-08 landed at `5e522a52` and its green owner LI-17 at `2cbacada`, and LI-16 — the task PLAN v0.7
+names as the owner of TSPEC §D.5's zero-bound production half — landed at `d462ddd8`. So of PLAN's
+two-case table, **case B is the live case and case A is unreachable**: case A is scoped to a
+follow-up commit landing *before batch 7*, and batch 9 is behind us. Any commit carrying these four
+cases re-reds committed green code, which is exactly what case B governs — the ledger gains the named
+row `learningsBlock` → `LI-AT-11`'s heading-form cases, stated in test names, for every batch from
+the landing batch through the batch that greens them. **None of the four is present in the landed
+suite**: at `21edb7c5` `learningsBlock.test.js` declares one `describe` naming three ATs
+(`describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)")`, `learningsBlock.test.js:38`),
+carries no un-numbered `## Cross-Feature Patterns` / un-glossed `## Rejected Proposals` heading-form
+arm, no `###`-as-body case and no `## Process Findings` near-miss, and its only `maxBytes` literals
+are `40` (`:111`) and `66` (`:131`) — no `extractInjectableMaterial(text, 0)` case. All four are
+therefore **property-owed cases with no red-owning task remaining ahead of them**: they land into
+green committed code, not into a scheduled red, and two gaps in case B's wording follow from that —
+its named row covers `LI-AT-11`'s heading-form cases only, so PROP-BOUND-03's `maxBytes <= 0` case
+has no named row, and its span ends at "the batch that greens them", which no remaining batch is.
+Both are PLAN's call, not this document's, and both are routed as errata rather than decided here.
+
+**And the deferral this document previously leaned on is spent, not pending.** Earlier revisions
+concluded that this document's own four properties "travel under P-A-6's rule … so they enter no
+ledger row unless that commit is brought forward." P-A-6 holds the PROPERTIES **suite**'s commit to
+"the first point it is green, which in practice is after LI-21 (batch 13)" (PLAN, P-A-6). LI-21
+landed at `92b7ea0c`, so that point has **arrived**: the window P-A-6 deferred into is open now
+rather than ahead, and the suite may be committed as soon as it is green — or, if it lands red, its
+rows are amended into the ledger by name first, under the same P-A-7 rule. The conclusion that **no
+property of this document changes either way** is unaffected; what changes is only when its cases may
+land and which case of the table governs them.
+
+**No property in this document names a test
 file the PLAN does not create**, and none names one that exists but is owned by no task. The
-properties this revision adds or amends land in files on both sides of that line — PROP-CONFIG-09 in
-the not-yet-created `learningsConfig.test.js` (LI-12), and the Group D amendments in the **already
-landed** `learningsSelect.test.js` (LI-07) and `learningsBlock.test.js` (LI-08), which means those
-two suites need the amendment applied to committed code rather than written fresh. PLAN records the
+properties this revision adds or amends now all land in **landed** files — PROP-CONFIG-09 in
+`learningsConfig.test.js` (LI-12), which landed at `eb32d7d2` and already carries LI-AT-30's three
+cases (`learningsConfig.test.js:226`, `:242`, `:258`, the third asserting `RSN-NO-MATERIAL` on every
+non-self path and no document carrying `RSN-COUNT`), and the Group D amendments in
+`learningsSelect.test.js` (LI-07, `1544fdbd`) and `learningsBlock.test.js` (LI-08, `5e522a52`). Every
+one of them is therefore an amendment applied to committed code rather than a suite written fresh;
+none is a file the PLAN has yet to create. PLAN records the
 same thing in its own note that LI-02/LI-08's heading-form cases are "an amendment to landed
 suites". The two
 **existing** files this document names are the pin's subject `consolidationPredicate.test.js` and the
