@@ -133,7 +133,18 @@ No property's fixture bytes move under any of this, and no generator or corpus d
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | **High** | Local | §C.4's test-file inventory (lines 1070–1085) marks seven rows *not yet created*; all seven are tracked at HEAD — `learningsBaselineGuard.test.js` (`4a6c1816`), `learningsRecord.test.js` (`2fe07964`), `learningsDispatchSet.test.js` (`c3e723e5`), `learningsConfig.test.js` (`eb32d7d2`), `learningsArmInventory.test.js` (`100e3d9c`), `learningsSuiteMap.test.js` (`960c229c`), `fixtures/learnings-baseline/` (`4a6c1816`). The section states its own method — *"restated against `git ls-files pdlc/workflows/__tests__` at HEAD"* (line 1068) — and that command returns fourteen of fourteen. **Fix:** re-run it, set all fourteen rows to *exists (landed)*, and restate lines 1087–1091 as fourteen-of-fourteen with the task ids that landed them (LI-01…LI-14, LI-16…LI-21, LI-23; only LI-22 has no commit on this branch). Also correct *"the not-yet-created `learningsConfig.test.js` (LI-12)"* at lines 1105–1106 | PLAN §File-ownership manifest; §C.4 |
+| F-02 | **High** | Local | §C.4's ledger conclusion (lines 1100–1103) rests on batch 13 being ahead: the four landed-suite properties *"travel under P-A-6's rule … in practice after LI-21, batch 13 … so they enter no ledger row unless that commit is brought forward."* At HEAD LI-16 (`d462ddd8`), LI-17 (`2cbacada`) and LI-21 (`92b7ea0c`) are landed, so PLAN P-A-7 case A (*"before batch 7"*, PLAN line 489) is unreachable and P-A-6's defer-until-green window is closed, not open. **Fix:** restate the paragraph against HEAD — say which of case A / case B is live now, and that the deferral P-A-6 offered has been overtaken — keeping the unchanged conclusion that no property of this document changes either way | PLAN P-A-6, P-A-7; §C.4 |
+| F-03 | Medium | Local | At HEAD `learningsBlock.test.js` (7.6 K, `describe` at line 38 naming LI-AT-05/11/12) carries none of the four amendment cases §C.4 owes it — no non-canonical heading-form arm, no `###`-as-body case, no `## Process Findings` near-miss, no `extractInjectableMaterial(text, 0)` case (only `maxBytes` literals `40`:111 and `66`:131) — while both of their green owners have landed. Record in §C.4 that these four oracles are property-owed cases with no red-owning task remaining ahead of them, so a reader knows the amendment now lands into green code rather than into a scheduled red | PROP-BOUND-03/05/07/08; §C.4 |
+| F-04 | Low | Local | The header `Upstream` cell now reads *"v0.6/v0.7 added the *Amendment commits on landed suites (P-A-7)* two-case table"*. PLAN's changelog attributes the two-case table to **v0.6** alone; v0.7's row lists LI-16 ownership, LI-AT-30's fixture precondition, ERR-8, LI-08's note relocation and the pin correction, and does not touch that table. Attribute it to v0.6 and pin v0.7 for what v0.7 did change | Header table, `Upstream` row |
+
+**Deferred under the freeze** — recorded, not raised as findings:
+
+DEFERRED: §C.4 lines 1093–1094 call the four properties' cases "a re-red on landed green code … exactly PLAN P-A-7's case" and lines 1100–1103 conclude they "enter no ledger row"; once F-02's restatement lands, reconcile the two sentences so the paragraph reads as one claim rather than two.
+DEFERRED: §C.4's inventory would survive the next wave of commits if the *At HEAD* column carried the measuring commit sha beside the verdict, so a stale reading is visible without re-running the command.
+DEFERRED: §G.3's newly struck P-A-7 item is written as prose about "PLAN v0.6/v0.7"; a bare pin to the PLAN section title would age better than a version pair.
 
 ## Questions
 
