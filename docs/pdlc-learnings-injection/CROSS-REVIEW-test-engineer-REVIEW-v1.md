@@ -172,3 +172,6 @@ The Medium findings (F-06, F-07, F-08) and F-09 are recorded, not gating, but F-
 of the set and removes F-02's root cause.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 5, "medium": 3, "low": 1}
