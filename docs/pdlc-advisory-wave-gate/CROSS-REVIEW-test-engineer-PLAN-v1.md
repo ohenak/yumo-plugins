@@ -39,6 +39,41 @@ call: the reasoning still governs the file even though the marker it justified i
 
 ## Upstream re-grounding (DEC-ERR-03)
 
+I read the upstream text at the dispatched hashes rather than trusting the changelog's account of it.
+
+**REQ AC-5.1 (v1.15) — verified, quoted correctly.** AC-5.1 pins the observation point as "the moment
+restoration completes" and excludes exactly the three carriers the PLAN names: AC-6.1's record append,
+AC-6.2's escalation-log append, AC-5.2's queue-row write (M-WG-7). It also excludes "paths ignored by
+`.gitignore`, which are operator files A6 never wrote and never restores over" — the PLAN quotes that
+clause verbatim in its Overview bullet. Faithful.
+
+**FSPEC BR-9 / AT-05-1 / AT-05-2 (v1.6) — verified.** BR-9 fixes the domain as "tracked files and
+**non-ignored** untracked files, generated outputs included" with ignored paths "outside the map in
+both directions", and pins the observation point before the BR-13 record and escalation writes.
+AT-05-1 carries the sentence the PLAN's strongest new claim rests on, verbatim: "Ignored paths are
+excluded on both sides — **an implementation that restores one fails this test rather than passing
+it** — and a file the repair created is asserted **absent**, not merely reset." So the PLAN's
+"restoring one *fails* AT-05-1" is upstream's own words, not an invention of this edit.
+
+**TSPEC (v1.11) — verified.** §2.5's `clean -fd` bullet and observation-point bullet now read as
+transcription of a decided boundary, and §6's OQ-7 row reads **Closed upstream, answered *no***, with
+OQ-9 marked moot and OQ-11 unaffected. The PLAN's "no mechanism moved" claim matches §2.5. Three
+surviving "OQ-7 stays open upstream" strings in the TSPEC are inside its **v1.4 / v1.6 historical
+changelog rows**, not its live body — correctly not treated as live by this PLAN.
+
+**DECISIONS — not re-grounded upstream, and the PLAN's absolute claim slightly overreaches.** At the
+dispatched hash, DEC-A6-01's option-D row and its "What follows from DEC-A6-01" section still route the
+ignored-path boundary as "upstream's open question (TSPEC §6 OQ-7)" and still describe a *scoped
+ignored-path capture arm* as contingent on how the erratum returns. Nothing in the PLAN's task graph
+reads that arm — the closure landed in the direction that leaves DEC-A6-01 untouched — so this is
+upstream staleness rather than a plan defect, but it sits under the PLAN's new sentence "**no upstream
+dependency of this plan is open**". Recorded as F-04 below, Low.
+
+**Lineage claim — verified, not edited.** The PLAN's `Downstream` row reads `PROPERTIES`, `IMPL`;
+`pdlc-engineering-loop` appears nowhere in the file; and the REQ row the Phase F item described already
+reads `FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory)` at v1.15. The changelog's "verified, not
+edited" disposition is correct.
+
 ## Mechanical re-derivation
 
 ## Delta-Confirmation Findings
