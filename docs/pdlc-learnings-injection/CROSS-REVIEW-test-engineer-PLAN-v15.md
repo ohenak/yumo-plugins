@@ -199,6 +199,39 @@ Low, `delta`/`local`.
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+Both of round 14's High findings are closed against the repository, not against the edit's account
+of itself. F-01's enumeration is now complete over `2fc6fcd3`'s 45 paths and closes by set equality
+— the two paths without rows are excused by name in the lead-in, so a future reader can tell
+"omitted" from "excluded", which is the property a containment-shaped manifest never has. F-02's
+three stale `package.json` claims now state the shipped `c8` block, DoD 11 names the four-module
+stage-2 set with its historical three-row measurement correctly labelled, and DoD 12 records the
+exemption as retired rather than quietly dropping it. F-03 and F-04 are closed too, and both
+arithmetic decompositions of the eighteen tracked files agree with `git ls-tree`.
+
+Nothing I previously approved is broken: the two dispatcher-parsed task tables and the batches 7–13
+expected-red ledger are byte-identical across the delta, and the only touch inside a task row is a
+version string in LI-12's prose.
+
+One Low remains, non-gating: the CODE_REVIEW v1 finding ids credited in two `2fc6fcd3` rows do not
+match the ids the code itself carries (F2 for the `_log` emitter, F3 for the `selectLearnings`
+signature drop). It is provenance annotation in a "why" column that no gate parses; the file, owner,
+batch and single-writer claims are unaffected. Worth a one-line correction whenever this subsection
+is next touched, not worth a round.
+
+DEFERRED: credit CODE_REVIEW v1 F2 (`_log` emitter) and F3 (`selectLearnings` signature) explicitly in §Post-batch remediation's lead-in finding list and in the `orchestrate-dev.js` row's rationale cell.
+DEFERRED: the `learningsSelect.test.js` row's rationale mentions only the signature change, though the commit also adds that suite's two F3 supporting tests (39 insertions / 16 deletions) — a fuller "why" cell would make the row self-explaining.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The `orchestrate-dev.js` row credits CODE_REVIEW v1 **F1** for both the `selectLearnings` parameter drop and the `_log` wiring; the code attributes the emitter to **F2** (`orchestrate-dev.js` comment) and the parameter drop to **F3** (`learningsSelect.test.js`'s added block). The subsection lead-in's finding list names neither F2 nor F3. Provenance annotation only — file, ladder owner, batch and the single-writer argument are unaffected, and no gate parses the "why" column | §File-ownership manifest → Post-batch remediation (CODE_REVIEW v1) |
+
+FINDING: Low | delta | local | §File-ownership manifest → Post-batch remediation (CODE_REVIEW v1) | the `orchestrate-dev.js` row credits CODE_REVIEW v1 F1 for both the `selectLearnings` parameter drop and the `_log` emitter wiring, but the code carries different ids — `orchestrate-dev.js`'s own comment says "CODE_REVIEW v1 F2: the run's own emitter" and `learningsSelect.test.js`'s added block is headed "CODE_REVIEW v1 F3: selectLearnings declares no unread `feature` parameter" — and the subsection lead-in's finding list ("F1/F7/F12, F8, F9, F10, F11/F12, and F4's second round") names neither F2 nor F3; this is provenance annotation in a "why" cell that no gate parses, so no file, owner, batch or single-writer claim moves with it
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
