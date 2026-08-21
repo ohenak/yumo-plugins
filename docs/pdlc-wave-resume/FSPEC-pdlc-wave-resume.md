@@ -183,6 +183,14 @@ wave 3 — not a record that begins at the resumed run's own first executed wave
 therefore never regresses across invocations while the record is honoured at all; the only way it
 returns to the plan's first wave is a disregard cause of §3.2.
 
+**An operator-pointed run records exactly as any other run does.** Recording follows what the
+run committed, not how its start point was chosen: when an explicit operator pointer is in force
+(§3.3) the run still records completed waves as it goes, in the same high-water form counted from
+the plan's first wave. So a later automatic invocation can resume above waves whose completion
+only the operator asserted. That is bounded by BR-10 — the first executed wave's gate verifies
+the whole tree — and the assertion is attributable, because the run that made it announced
+provenance `operator-set` (BR-07). No record content distinguishes the two provenances.
+
 Recording is **best-effort**: a record that cannot be written costs the *next* invocation its
 resume and nothing else, so failure to write is announced as a notice and never halts the run.
 Recording is also **per wave**, so a failed write costs only the waves recorded after the last
