@@ -87,10 +87,45 @@ this round widened its distance from HEAD.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | REQ v1.16 appended a second conjunct to AC-6.3 — where the halt report points at a captured pre-A6 tree state it must warn, in the same place, that re-running the feature overwrites that capture. FSPEC compresses only AC-6.3's first sentence (BR-14, AT-06-4, E-30); the warning appears in no business rule, edge-case row or acceptance test, while §2's concordance still claims `FSPEC-AWG-06` covers AC-6.1…AC-6.4. Fix: add the conditional observable as a clause on BR-14 and a *Then* conjunct on AT-06-4, leaving the ref's name, storage form and lifetime to §7 O-1. | §4 BR-14 / §6.6 AT-06-4 / §2 concordance |
+| F-02 | Medium | inherited | nonlocal | FSPEC §1 still pins its upstream as "`REQ-pdlc-advisory-wave-gate` v1.13" (and the v1.5/v1.6 changelog entries ground against REQ v1.13). REQ is now v1.16 — three erratum rounds on, two of which edited text this FSPEC compresses (AC-5.1, AC-1.1, R-5, and now AC-6.3). Raised as v3 F-02 and still open; this round widens the gap. Fix: re-ground the pin to v1.16 in the same edit that lands F-01. | §1, upstream pin |
+
+FINDING: High | delta | local | §4 BR-14 / §6.6 AT-06-4 / §2 concordance | REQ v1.16's new AC-6.3 conjunct — the halt report must warn, in the same place it points at a captured pre-A6 tree state, that re-running the feature overwrites that capture (DEC-A6-03) — is compressed nowhere in FSPEC: BR-14, AT-06-4 and E-30 carry only AC-6.3's diagnosis-and-root-cause sentence, `overwrit` does not occur in the document, and DEC-A6-03 confirms the halt message does print the ref name so the condition is live rather than vacuous; §2's concordance therefore overclaims coverage of AC-6.3, and the obligation would reach no downstream author. Fix at FSPEC altitude: a conditional clause on BR-14 plus a *Then* conjunct on AT-06-4, with the ref name and storage form left to §7 O-1
+FINDING: Medium | inherited | nonlocal | §1 upstream pin | FSPEC §1 pins its upstream at "REQ-pdlc-advisory-wave-gate v1.13" while REQ is now v1.16; the pin no longer names the version this document is a compression of, and should be re-grounded in the same edit that lands F-01
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | AC-6.3's warning is conditional on the halt report pointing at a captured state. Should FSPEC state the conditional form (silent when no capture exists, e.g. E-34's capture-failure branch), or does the author intend the warning to be unconditional wherever a capture was attempted? My reading — and the one F-01's proposed fix assumes — is the conditional form, which keeps E-34's no-capture branch clean. |
+| Q-02 | DEC-A6-03 records a "documented operator remedy: copy the ref before re-running a halted feature." Is that remedy sentence itself part of the halt report's observable, or is only the overwrite warning in scope for AC-6.3? FSPEC should say which, since the two produce different AT-06-4 oracles. |
 
 ## Positive Observations
 
+- The REQ edit is well-scoped and stays at requirements altitude: it states the operator-visible
+  outcome, names DEC-A6-03 as provenance, and explicitly leaves the capture's name and storage form
+  to O-1 — so landing it in FSPEC does not force any TSPEC-altitude text into either document.
+- The delta is genuinely one hunk plus a changelog entry. Nothing else FSPEC compresses moved, which
+  made this confirmation cheap and kept the blast radius to a single AC.
+- FSPEC's existing coverage of AC-6.3's first sentence is precise and multiply anchored (BR-14,
+  AT-06-4, and E-30's failed-log-write carrier), and E-34's capture-failure branch is already
+  specified — so the gap F-01 names is an addition to a sound structure, not a rework.
+- The v1.16 changelog is honest about the item being routed since round 5 and previously unlanded,
+  which is exactly the provenance a cascade reviewer needs to bound the scope of this round.
+
 ## Recommendation
 
+**Needs revision**
+
+FSPEC no longer holds as a faithful compression of REQ at HEAD. One High finding (F-01): AC-6.3's
+new preservation-warning conjunct is unrepresented in §4, §5 and §6, while §2's concordance still
+claims full coverage of AC-6.1…AC-6.4. The fix is bounded and FSPEC-shaped — one clause on BR-14, one
+*Then* conjunct on AT-06-4, and the §1 upstream pin re-grounded to v1.16 (F-02) in the same edit.
+Nothing else in the document needs to move, and no settled decision is reopened.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
