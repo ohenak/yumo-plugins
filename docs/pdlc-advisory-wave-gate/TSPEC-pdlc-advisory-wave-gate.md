@@ -1410,15 +1410,22 @@ configuration, and are listed here so the PLAN's file-ownership manifest carries
   `mkdtempSync` + `execFileSync("git", …)` with a `_git` adapter over it, the shape
   `advisoryDodSeams.test.js` already ships for the A3 fixtures — and asserts:
   1. the content-hash map taken immediately before A6 acted equals the map after restore, over
-     tracked and untracked files alike, generated outputs included;
+     tracked files and **non-ignored** untracked files, generated outputs included — BR-9's decided
+     domain (FSPEC v1.6), with ignored paths excluded from both sides of the comparison;
   2. a `git status`-level comparison is explicitly **not** the oracle, and a companion case pins
      why: a re-run post-wave command that rewrites an already-dirty path passes a status
      comparison and fails the hash-map one (AT-05-2's own stated reason);
   3. an untracked file the wave added is absent after restore;
   4. a `.gitignore`d file the wave added is still present after restore — the assertion that pins
-     `git clean -fd` over `-fdx`. **This case is written to the boundary that comes back from
-     §2.5's erratum**, not to this document's preference; until the erratum resolves it is written
-     as described here and flagged in the suite as upstream-pending.
+     `git clean -fd` over `-fdx`. **This is now a plain positive assertion, no longer upstream-pending**:
+     FSPEC BR-9 at v1.6 and REQ AC-5.1 at v1.14 both put ignored paths outside the map in both
+     directions, which is the boundary this case asserts;
+  5. the map is taken **immediately after restoration completes and before** the advisory-record
+     append, the escalation-log append and the queue-row write (AC-6.1, AC-6.2, AC-5.2/M-WG-7) — the
+     observation point AC-5.1 pins. The case asserts the *ordering*, not only the content: it observes
+     the map at that point and separately asserts the three carriers are written afterwards, so an
+     implementation that interleaved them fails here rather than passing on a map that happens to
+     match.
 
 - **The capture-failure disposition, with the writers named.** `captureTreeSnapshot` failing
   yields, on one run: an advisory record entry, an escalation entry, `attempts === 0`, an unchanged
@@ -1656,7 +1663,7 @@ not that nothing committed. AC-4.3 (prohibited operations) is the `(f)`…`(i)` 
 | Owned-path row spellings | §3.4's trailing-slash precondition (TE F-06) | manifest row `pdlc/workflows/dist/` covers `…/dist/x.js`; row `pdlc/workflows/dist` refuses the same path as `out-of-envelope`. Both asserted, so the precondition is visible rather than latent |
 | Citation floor boundary | §3.3's `A6_MIN_CITATION_CHARS = 24` (TE F-09) | a 23-normalised-character citation is malformed and consumes one attempt; a 24-character one is accepted. Both sides on one fixture — a floor asserted only from above passes an implementation with no floor |
 | Both-prerequisites-absent notice | §2.6's single-statement shape (TE F-08) | a run with no ownership manifest **and** no `testCommand` emits exactly **one** inapplicability statement naming both causes, not two. The only configuration where the hoist could regress AT-01-5 |
-| Ignored-path-only repair | §3.3's `apply` observation (TE F-07) | a repair writing only a `.gitignore`d path yields `producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an escalation entry, and a tree carried no further. Flagged upstream-pending with §2.5's erratum |
+| Ignored-path-only repair | §3.3's `apply` observation (TE F-07) | a repair writing only a `.gitignore`d path yields `producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an escalation entry, and a tree carried no further. No longer upstream-pending: BR-9 at FSPEC v1.6 puts ignored paths outside the restoration map in both directions, so this is the decided disposition and the row's expected values are final |
 
 
 ### 5.6 Every FSPEC acceptance test has a home
@@ -1707,7 +1714,7 @@ table is where the set-equality is checked (se-author erratum).
 | AT-04-3 | `waveExecution.test.js` | committing writer identities equal the pre-A6 baseline, both still past a green gate; scope widening is AT-04-5's, not this one's |
 | AT-04-4 | `advisoryWaveGate.test.js` | budget-exhausting red re-gate: refusal reason recorded, escalation entry written, pre-A6 behaviour taken — the AC-4.5 pairing, asserted positively |
 | AT-04-5 | `waveExecution.test.js` | **§3.6's promotion commit** — the repair is in the branch's committed state with no residual working-tree change, identified by the `message` literal and its pathspec; advisory record names the paths; later task's prompt carries the promotions clause. Companion: later-task paths outside every post-wave pathspec, which fails before the fix and passes after |
-| AT-05-1 | `advisoryWaveGate.test.js` | refusal, budget exhaustion and red re-gate each restore to the post-dispatch, pre-commit tree — the content-hash-map oracle of §5.2, on the real-repo fixture. **Upstream-pending on the same erratum as §5.2's case 4 and §6 OQ-7** (TE F-16): whether the map ranges over `.gitignore`d generated outputs is FSPEC BR-9's to say, so PLAN mints the red-test task with the expected value marked pending rather than this document choosing one |
+| AT-05-1 | `advisoryWaveGate.test.js` | refusal, budget exhaustion and red re-gate each restore to the post-dispatch, pre-commit tree — the content-hash-map oracle of §5.2, on the real-repo fixture. **No longer upstream-pending** (TE F-16 closed): FSPEC BR-9 / AT-05-1 at v1.6 fix the map's domain as tracked plus **non-ignored** untracked files and its observation point as immediately-after-restoration-before-the-record-writes, so PLAN mints the red-test task with those expected values transcribed rather than marked pending |
 | AT-05-2 | `advisoryWaveGate.test.js` | post-wave command writing generated outputs: whole-tree restore asserted, a repair-paths-only restore fails the same oracle |
 | AT-05-3 | `advisoryWaveGate.test.js` | halt reason string equals the pre-A6 literal, computed from the **first** pass's gate result (§2.3) |
 | AT-05-4 | `waveExecution.test.js` | green re-gate then un-skip halt: no restoration, repair still present, and **both** the record entry and the halt report state it and name the paths — the halt-report half is §4.5's new `fields` argument |
