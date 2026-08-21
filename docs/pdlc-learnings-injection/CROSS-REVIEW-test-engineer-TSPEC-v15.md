@@ -224,4 +224,26 @@ written. None of the four blocks the erratum from closing.
 
 ## Delta-Confirmation Findings
 
+The routed item is **resolved** and required no edit: its disposition ("§D.5 records ERR-8; the
+PLAN's rows already encode the corrected order; no PLAN change is owed") was already present in the
+pre-round bytes and re-measured true this round. No `delta` finding is owed against it.
+
+All four findings below are **inherited** — carried forward unchanged from v14 because the file is
+byte-identical — and all are **nonlocal**, since this edit changed no sections.
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | §D.3 makes `sections[]` bound-dependent ("every section whose normalised text survives in `material`"), but §T.6's T-O-6 still states its corpus conjunct as `sections` equals the intersection of `BR6_SECTION_NAMES` with the document's level-2 headings, over a domain declared as any text and any non-negative `maxBytes` — `0` included. Read literally, the conjunct reds a conforming implementation whenever the bound cuts, the exact failure mode T-O-6's first half exists to prevent. Add a no-cut qualifier (bound large enough that no cut occurs, or `maxBytes = Infinity`) | §T.6, T-O-6 corpus conjunct |
+| F-02 | Low | inherited | nonlocal | §I.3's JSDoc states the `bytes = Σ(normalised section lengths) + 2·(n−1)` identity unconditionally; it holds only on the uncut path (`bytes` is the character-safe cut length when the bound binds, and `0` on the `maxBytes <= 0` short-circuit). §D.5's restatement is correctly scoped; the interface comment alone is not | §I.3, `extractInjectableMaterial` JSDoc |
+| F-03 | Low | inherited | nonlocal | §T.5's AT-11 oracle scans the **whole** rendered block and asserts equality with `BR6_SECTION_NAMES`, while FSPEC's AT-11 asserts over the section names appearing in **its** block material. The two coincide only while the fixture's corpus holds exactly one selected document; scope the scan to the document's `<<< {path} … >>>` / `<<< end {path} >>>` extent (§OQ.1) | §T.5, AT-11 oracle table, first row |
+| F-04 | Low | inherited | nonlocal | §D.5 retains "headings and bodies BR-6 selects, **ignore the delimiter**" one sentence before adding "**2 bytes per join**". The join separator is a delimiter; the two clauses read as contradicting each other until the reader reaches the parenthetical. Qualify the older clause | §D.5, "AT-11's and AT-12's expected counts are hand-computable" |
+
+FINDING: Medium | inherited | nonlocal | §T.6 T-O-6 corpus conjunct | T-O-6's corpus conjunct still asserts `sections` == intersection of `BR6_SECTION_NAMES` with the document's level-2 headings over a domain including `maxBytes: 0`, while §D.3 now defines `sections[]` as bound-dependent — written literally the property reds a conforming implementation whenever the bound cuts; add a no-cut qualifier
+FINDING: Low | inherited | nonlocal | §I.3 extractInjectableMaterial JSDoc | The `bytes = Σ(section lengths) + 2·(n−1)` identity is stated unconditionally but holds only on the uncut path; scope it, since `bytes` is the cut length when the bound binds and `0` on the zero-bound short-circuit
+FINDING: Low | inherited | nonlocal | §T.5 AT-11 oracle table, first row | The AT-11 oracle scans the whole rendered block, while FSPEC's AT-11 asserts over the names appearing in *its* block material; scope the scan to the document's `<<< {path} >>>` / `<<< end {path} >>>` extent so a second selected document cannot false-red it
+FINDING: Low | inherited | nonlocal | §D.5 hand-computable-counts paragraph | "ignore the delimiter" stands one sentence before "2 bytes per join"; the join separator is a delimiter, so the two clauses contradict until the parenthetical resolves them
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
