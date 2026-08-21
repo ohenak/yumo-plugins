@@ -19,6 +19,8 @@
  * still loads and the skips take effect while the symbols are absent.
  */
 
+import fc from "fast-check";
+
 import { BR6_SECTION_NAMES, buildLearningsDocument } from "./helpers/learningsFixtures.js";
 
 const DEV_MODULE_PATH = "../orchestrate-dev.js";
@@ -256,5 +258,72 @@ describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {
     expect(unbounded.bytes).toBe(96);
     expect(unbounded.bounded).toBe(false);
     expect(unbounded.sections).toEqual(["Cross-Feature Patterns", "Non-Convergences"]);
+  });
+});
+
+// PROP-BOUND-03's generated arm (TSPEC T-O-6, PROPERTIES §O.9): the example-level cases above
+// (LI-AT-12) pin the character-safe cut at fixed bounds; this generates documents whose first
+// priority section straddles a random bound with multi-byte codepoints and asserts, for EVERY
+// non-negative `maxBytes` including `0`: `bytes === Buffer.byteLength(material)`, `bytes <=
+// maxBytes`, a whole-character (never split-codepoint) prefix, and `bounded` true exactly when a
+// cut actually occurred. The `maxBytes <= 0` case rides as a guarded branch inside the same
+// property body (SE Q-01) — a positive four-field return, not an exclusion — and is additionally
+// pinned as a distinguished example so LI-08's red stays reproducible on any seed (§O.9).
+// `extractInjectableMaterial` exists at HEAD (landed by LI-17), so this is an amendment to landed
+// code, authored green (PLAN P-A-7 case C).
+describe("PROP-BOUND-03 generated arm: extractInjectableMaterial character-safety over every non-negative maxBytes (TSPEC T-O-6)", () => {
+  // 2-byte, 3-byte and 4-byte (astral, surrogate-pair) codepoints, mixed with 1-byte ASCII, so
+  // a random draw's byte boundaries land unpredictably relative to any given `maxBytes`.
+  const CODEPOINTS = ["a", "é", "≤", "😀"];
+
+  test("PROP-BOUND-03: bytes === Buffer.byteLength(material), bytes <= maxBytes, no split codepoint, bounded true exactly when a cut occurred", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom(...CODEPOINTS), { maxLength: 40 }),
+        fc.integer({ min: -5, max: 120 }),
+        (bodyChars, maxBytes) => {
+          const body = bodyChars.join("");
+          const text = "## Cross-Feature Patterns\n\n" + body + "\n";
+
+          const result = extractInjectableMaterial(text, maxBytes);
+
+          if (maxBytes <= 0) {
+            // The guarded branch (TSPEC §I.3): a positive four-field return, not an exclusion —
+            // §O.9's instruction that "the zero conjunct rides as a guarded branch inside the
+            // same property body".
+            expect(result).toEqual({ material: "", bounded: false, bytes: 0, sections: [] });
+            return;
+          }
+
+          // `bytes` is never a value separate from the material's own byte length.
+          expect(result.bytes).toBe(Buffer.byteLength(result.material, "utf8"));
+          // The bound is never exceeded.
+          expect(result.bytes).toBeLessThanOrEqual(maxBytes);
+          // Character-safe: no split codepoint — no replacement character, and an exact UTF-8
+          // round-trip (TSPEC T-O-6's char-safety property, generated here).
+          expect(result.material).not.toContain("�");
+          expect(Buffer.from(result.material, "utf8").toString("utf8")).toBe(result.material);
+          // `bounded` is true exactly when a cut actually occurred.
+          const wholeBytes = Buffer.byteLength("## Cross-Feature Patterns\n\n" + body, "utf8");
+          expect(result.bounded).toBe(wholeBytes > maxBytes);
+        }
+      ),
+      { numRuns: 300 }
+    );
+  });
+
+  test("PROP-BOUND-03: maxBytes === 0 is pinned as a distinguished example case, not left to sampling frequency (TSPEC §I.3)", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    const text = buildLearningsDocument({
+      feature: "zero-bound-example",
+      sections: [{ name: "Cross-Feature Patterns", body: "Material that would otherwise be taken." }],
+    });
+
+    const result = extractInjectableMaterial(text, 0);
+
+    expect(result).toEqual({ material: "", bounded: false, bytes: 0, sections: [] });
   });
 });

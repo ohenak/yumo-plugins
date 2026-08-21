@@ -29,6 +29,8 @@
 // `{paths, contents}` corpus shape to `selectLearnings`'s `CorpusEntry[]` input shape (TSPEC
 // §I.3); it builds no fixture data of its own.
 
+import fc from "fast-check";
+
 import {
   buildLearningsCorpus,
   buildCountBindingCorpus,
@@ -36,6 +38,7 @@ import {
   buildDiscardedNestedCorpus,
   buildDiscardedDirectCorpus,
   buildCompletedMixedCorpus,
+  buildLearningsDocument,
   COUNT_BINDING_THRESHOLDS,
   LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
 } from "./helpers/learningsFixtures.js";
@@ -644,5 +647,225 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     // corpus member: it is selected, and carries no exclusion reason at all.
     expect(directResult.selected.map((d) => d.path)).toEqual(["docs/discarded/LEARNINGS-x.md"]);
     expect(directResult.rejected).toEqual([]);
+  });
+});
+
+// PROP-ORDER-06 (TSPEC T-O-4, PROPERTIES §O.9): `orderCorpus`'s output is a permutation of its
+// input and its comparator is a strict weak ordering — irreflexive, antisymmetric, transitive —
+// so the result is invariant under input permutation. PROP-ORDER-01 pins the ORDER'S DIRECTION
+// by example (LI-16, above); this pins its ALGEBRA, generated per §O.9's instruction to
+// parameterise over permutations of a fixed multiset including null keys and duplicate keys.
+// Both `orderCorpus` and `selectLearnings` exist at HEAD (landed by LI-16/LI-17/LI-19), so this
+// suite is authored green — an amendment to landed code, not a staged TDD red (PLAN P-A-7 case
+// C; §C.4's reconciliation for the Group D amendments follows the same rule).
+describe("PROP-ORDER-06: orderCorpus permutation invariance and strict-weak-ordering (TSPEC T-O-4)", () => {
+  // A fixed 8-entry (orderKey, path) multiset — includes null keys (twice) and a duplicate
+  // non-null key (three-way), per §O.9's instruction. `path` is unique per entry, so a
+  // permutation of this array is unambiguous even where entries tie on `orderKey`.
+  const fixedEntries = Object.freeze([
+    { orderKey: "2026-01-05", path: "docs/a/LEARNINGS-a.md" },
+    { orderKey: "2026-01-05", path: "docs/b/LEARNINGS-b.md" }, // ties with a and g
+    { orderKey: "2026-02-01", path: "docs/c/LEARNINGS-c.md" },
+    { orderKey: null, path: "docs/d/LEARNINGS-d.md" },
+    { orderKey: null, path: "docs/e/LEARNINGS-e.md" }, // ties with d (both null)
+    { orderKey: "2025-12-31", path: "docs/f/LEARNINGS-f.md" },
+    { orderKey: "2026-01-05", path: "docs/g/LEARNINGS-g.md" }, // ties with a and b
+    { orderKey: "2026-06-30", path: "docs/h/LEARNINGS-h.md" },
+  ]);
+
+  /** An independent restatement of BR-4 / TSPEC §D.4, sharing no code with production:
+   *  `orderKey` descending, `null` last, ties broken by UTF-8 byte-ascending `path`. Used only
+   *  to check `orderCorpus`'s output against a second, hand-written total order — never to
+   *  derive an expected value from the implementation under test (DC-14). */
+  function referenceCompare(a, b) {
+    if (a.orderKey !== b.orderKey) {
+      if (a.orderKey === null) return 1;
+      if (b.orderKey === null) return -1;
+      return a.orderKey < b.orderKey ? 1 : -1;
+    }
+    return Buffer.compare(Buffer.from(a.path, "utf8"), Buffer.from(b.path, "utf8"));
+  }
+
+  test("PROP-ORDER-06: output is a permutation of the input, invariant under input permutation, and its consecutive pairs never invert a strict-weak-ordering comparator", async () => {
+    const { orderCorpus } = await import("../orchestrate-dev.js");
+
+    const expectedPathOrder = [...fixedEntries].sort(referenceCompare).map((e) => e.path);
+
+    fc.assert(
+      fc.property(
+        fc.shuffledSubarray(fixedEntries, { minLength: fixedEntries.length, maxLength: fixedEntries.length }),
+        (permuted) => {
+          const result = orderCorpus(permuted);
+
+          // Permutation of input (T-O-4): same multiset of paths, no loss, no duplication —
+          // `path` is unique per fixed entry, so set equality over paths is exact.
+          expect([...result.map((e) => e.path)].sort()).toEqual(
+            [...fixedEntries.map((e) => e.path)].sort()
+          );
+
+          // Invariant under input permutation: every shuffle of the same multiset produces the
+          // same output order.
+          expect(result.map((e) => e.path)).toEqual(expectedPathOrder);
+
+          // Strict weak ordering: no consecutive pair in the produced order inverts against the
+          // independent reference comparator (irreflexivity/antisymmetry/transitivity follow,
+          // over a finite sequence, from agreeing with a hand-written total order at every
+          // adjacent pair).
+          for (let i = 0; i + 1 < result.length; i += 1) {
+            expect(referenceCompare(result[i], result[i + 1])).toBeLessThanOrEqual(0);
+          }
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  test("PROP-ORDER-06: the comparator itself is irreflexive, antisymmetric and transitive over arbitrary triples of the fixed multiset", () => {
+    // Direct algebraic check of `referenceCompare` — the same relation `orderCorpus` is proven
+    // (above) to reproduce at every adjacent pair of its output — over every ordered triple
+    // drawn from the fixed multiset, so the algebra is checked independently of any single
+    // permutation's output.
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...fixedEntries),
+        fc.constantFrom(...fixedEntries),
+        fc.constantFrom(...fixedEntries),
+        (a, b, c) => {
+          // Irreflexive: an entry never strictly precedes itself.
+          expect(referenceCompare(a, a)).toBe(0);
+
+          // Antisymmetric (asymmetric on strict precedence): if a strictly precedes b, b does
+          // not strictly precede a.
+          const ab = referenceCompare(a, b);
+          const ba = referenceCompare(b, a);
+          if (ab < 0) expect(ba).toBeGreaterThan(0);
+          if (ab > 0) expect(ba).toBeLessThan(0);
+          if (ab === 0) expect(ba).toBe(0);
+
+          // Transitive: a precedes-or-ties b, b precedes-or-ties c ⇒ a precedes-or-ties c.
+          if (referenceCompare(a, b) <= 0 && referenceCompare(b, c) <= 0) {
+            expect(referenceCompare(a, c)).toBeLessThanOrEqual(0);
+          }
+        }
+      ),
+      { numRuns: 200 }
+    );
+  });
+});
+
+// PROP-CORPUS-09 (TSPEC T-O-5, PROPERTIES §O.9): `selectLearnings` is total — for any
+// `{entries, feature, thresholds}`, it returns without throwing, and every input path appears
+// exactly once across `selected ∪ rejected`. Named corner cases (empty corpus, all-self corpus,
+// all-unreadable entries, zero-valued thresholds) are asserted individually first, then the same
+// two conjuncts are re-asserted over a generated spread of entry shapes and threshold values
+// (§O.9: "drawn from the fixture generators"). `selectLearnings` exists at HEAD (landed by
+// LI-16/LI-19), so this is an amendment to landed code, authored green (PLAN P-A-7 case C).
+describe("PROP-CORPUS-09: selectLearnings totality (TSPEC T-O-5)", () => {
+  const zeroThresholds = Object.freeze({ maxDocuments: 0, maxBytesPerDocument: 0, maxTotalBytes: 0 });
+
+  function assertTotality(entries, thresholds) {
+    let result;
+    expect(() => {
+      result = selectLearningsUnderTest({ entries, feature: "dispatching-feature", thresholds });
+    }).not.toThrow();
+
+    const observedPaths = [
+      ...result.selected.map((e) => e.path),
+      ...result.rejected.map((e) => e.path),
+    ].sort();
+    const inputPaths = entries.map((e) => e.path).sort();
+
+    // Totality: every input path appears — no loss.
+    expect(observedPaths).toEqual(inputPaths);
+    // "Exactly once": no path is double-counted across selected ∪ rejected.
+    expect(new Set(observedPaths).size).toBe(observedPaths.length);
+  }
+
+  // `selectLearnings` is resolved once per test via the module-level `beforeAll` binding below,
+  // so `assertTotality` above can stay a plain synchronous helper.
+  let selectLearningsUnderTest;
+  beforeAll(async () => {
+    ({ selectLearnings: selectLearningsUnderTest } = await import("../orchestrate-dev.js"));
+  });
+
+  test("PROP-CORPUS-09: named corner cases — empty corpus, all-self corpus, all-unreadable entries, zero-valued thresholds", () => {
+    assertTotality([], LEARNINGS_CORPUS_DEFAULT_THRESHOLDS);
+
+    assertTotality(
+      [
+        { path: "docs/f/LEARNINGS-f.md", feature: "f", text: null, readOk: false, excluded: "RSN-SELF" },
+        { path: "docs/f/LEARNINGS-f2.md", feature: "f", text: null, readOk: false, excluded: "RSN-SELF" },
+      ],
+      LEARNINGS_CORPUS_DEFAULT_THRESHOLDS
+    );
+
+    assertTotality(
+      [
+        { path: "docs/a/LEARNINGS-a.md", feature: "a", text: null, readOk: false, excluded: null },
+        { path: "docs/b/LEARNINGS-b.md", feature: "b", text: null, readOk: false, excluded: null },
+      ],
+      LEARNINGS_CORPUS_DEFAULT_THRESHOLDS
+    );
+
+    const normalCorpus = buildLearningsCorpus([
+      { path: "docs/z1/LEARNINGS-z1.md" },
+      { path: "docs/z2/LEARNINGS-z2.md" },
+    ]);
+    assertTotality(entriesFromCorpus(normalCorpus), zeroThresholds);
+  });
+
+  test("PROP-CORPUS-09: generated entries and thresholds — never throws, selected ∪ rejected always equals the input, exactly once each", () => {
+    const entryShape = fc
+      .record({
+        slug: fc.stringMatching(/^[a-z0-9]{1,12}$/),
+        kind: fc.constantFrom("self", "unreadable", "unparseable", "no-material", "has-material"),
+      })
+      .map((spec, index) => ({ ...spec, path: `docs/gen-${index}-${spec.slug}/LEARNINGS-gen-${index}-${spec.slug}.md` }));
+
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(entryShape, { maxLength: 12, selector: (e) => e.path }),
+        fc.record({
+          maxDocuments: fc.integer({ min: 0, max: 6 }),
+          maxBytesPerDocument: fc.integer({ min: 0, max: 300 }),
+          maxTotalBytes: fc.integer({ min: 0, max: 900 }),
+        }),
+        (specs, thresholds) => {
+          const entries = specs.map((spec) => {
+            switch (spec.kind) {
+              case "self":
+                return { path: spec.path, feature: "dispatching-feature", text: null, readOk: false, excluded: "RSN-SELF" };
+              case "unreadable":
+                return { path: spec.path, feature: "dispatching-feature", text: null, readOk: false, excluded: null };
+              case "unparseable":
+                return { path: spec.path, feature: "dispatching-feature", text: "not a LEARNINGS document", readOk: true, excluded: null };
+              case "no-material":
+                return {
+                  path: spec.path,
+                  feature: "dispatching-feature",
+                  text: buildLearningsDocument({ feature: "gen", sections: [] }),
+                  readOk: true,
+                  excluded: null,
+                };
+              case "has-material":
+              default:
+                return {
+                  path: spec.path,
+                  feature: "dispatching-feature",
+                  text: buildLearningsDocument({
+                    feature: "gen",
+                    sections: [{ name: "Cross-Feature Patterns", body: "Generated material." }],
+                  }),
+                  readOk: true,
+                  excluded: null,
+                };
+            }
+          });
+
+          assertTotality(entries, thresholds);
+        }
+      ),
+      { numRuns: 150 }
+    );
   });
 });
