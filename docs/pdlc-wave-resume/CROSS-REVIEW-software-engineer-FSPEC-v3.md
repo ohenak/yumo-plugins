@@ -143,6 +143,36 @@ opposite of the truth. Filed with the §7 twin as F-03.
 
 ## Acceptance Tests
 
+The oracles are where an upstream shift does real damage, so I checked every AT whose *Then* or
+*Oracle* clause depends on edited REQ text.
+
+**AT-12 — the wave loop skipped in full (REQ-WVR-08).** This is the AT the erratum could have
+invalidated, and it survives intact. Its counting oracle asserts **zero** agent dispatches and
+**zero** gate invocations *for the implementation wave loop*, and its fourth conjunct asserts the
+V-wave still dispatches **exactly one** agent and invokes the gate command **exactly once**, its
+commit being the run's only Phase-I-adjacent commit. REQ v1.6 now asserts precisely that split
+("continues to dispatch, gate and commit on every invocation"), so the fourth conjunct is no
+longer a FSPEC-local refinement of a broken upstream claim — it is the direct compression of an
+upstream sentence. Had the erratum resolved the other way (V-wave folded into the record's
+scope), AT-12's fourth conjunct would have inverted; it did not, and the AT needs no edit.
+
+**AT-02 — the disregard catalogue (REQ-WVR-02).** The AT asserts set equality over the *announced
+reasons*, with IG-1's arms enumerated, "not over the six cause labels", and gives the reason: a
+six-label set-equality check cannot fail when one of IG-1's arms is deleted. REQ v1.6's added
+sentence disclaims precedence but still owes "a **set-equality** check over IG-1..6 rather than a
+containment check". These do not collide: the REQ names the floor (set equality, not containment),
+the FSPEC raises it (over announced reasons, arms included). The FSPEC's oracle strictly implies
+the REQ's, so a te-author building to AT-02 discharges REQ-WVR-02's obligation. Holds.
+
+**AT-03 — the IG-5 × IG-4 discriminating fixture.** This fixture exists because §3.2's order is
+ancestry-before-over-count, and v1.6 now explicitly assigns that order to the FSPEC. The fixture
+remains the discriminating one and its expectation (IG-5 announced) still fails under the REQ's
+numbering. Holds — and it is now testing a settled contract rather than a contested one.
+
+**AT-18, AT-15, AT-08, AT-13** and the rest trace to criteria untouched this round. My two open
+non-gating v2 findings against AT-18's counterfactual arithmetic and AT-12's fixture condition are
+unaffected by the upstream move and are carried below unchanged, tagged `inherited`.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
