@@ -208,6 +208,30 @@ property still names a fixture PLAN still creates under a task PLAN still owns.
 
 ## Findings
 
+**Prior findings — all three closed.**
+
+| Prior ID | Severity at v10 | Status at v11 | Evidence |
+|---|---|---|---|
+| F-01 | High | **Closed** | §C.4 lines 1110 and 1142 re-derived under case C: *"case C is the live case and cases A and B are both behind us"*, *"under case C they owe no ledger row, and they owe green"*, and the standing restatement now reads *"P-A-7 case C governs the amendment commits against the landed implementation suites `learningsBlock.test.js` and `learningsSelect.test.js`"*. Quotations are character-exact against PLAN's case C row. The Group D extension I asked to ride with the fix landed in the same edit |
+| F-02 | Medium | **Closed** | §G.3 is now *"Still open — one item"*; both P-A-7 case-B gaps are struck into *"Also answered — by PLAN v0.6/v0.7/v0.8"* in the form they resolved (the zero-case gap dissolved, the span replaced by batch 14's unqualified gate), PM Q-02 is recorded closed as green, and the AT-15 bullet correctly states it is the only routed erratum line this dispatch emits |
+| F-03 | Low | **Closed** | Header line 11 pins PLAN **v0.8** and describes the table as two cases at v0.6 grown to three at v0.8, naming case C as governing; version cell reads 0.7 |
+
+**New findings this round.**
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Process | Every commit SHA this document cites is a **pre-rebase** hash and is no longer an ancestor of HEAD: the branch was rebased at `51b37597` (*"re-untrack `.claude/pdlc-wave-state.json` after rebase"*), and `21edb7c5`, `1920f281` (LI-02), `5e522a52` (LI-08), `1544fdbd` (LI-07), `d462ddd8` (LI-16), `2cbacada` (LI-17) and `92b7ea0c` (LI-21) each have an equivalent on the branch under a new hash (`f451651e`, `618537c4`, `333cc891`, `7f675cf4`, `c0e7151f`, `12a18628` respectively). **This is not a blocking finding under either freeze criterion:** no load-bearing claim is false — LI-16/17/21 have landed, both suites are landed, and I re-measured every §C.4 absence claim against the files at **HEAD** (see Oracles) where they all still hold. It is Process rather than Local because PLAN v0.8 cites the same pre-rebase hashes in the same paragraph and the condition is branch-wide: the durable lesson is that a rebase silently rots every SHA anchor in the document set, which argues for citing tasks and test titles (as this document mostly does) over bare hashes. Suggested handling: leave the hashes until the next round that touches these passages for another reason, then re-pin | DEC-DOC-01; PLAN P-A-7 |
+
+**Deferred observations (frozen round — recorded, not decided):**
+
+DEFERRED: §C.4's new *"the first call may red"* hedge for PROP-BOUND-03's zero case is pessimistic — the short-circuit is shipped at `orchestrate-dev.js:2370-2371` returning exactly the four-field object the property transcribes, so a green landing is the likelier outcome; case C's rule is unchanged either way.
+
+DEFERRED: the pre-rebase SHA anchors (F-01) could be re-pinned to their post-rebase equivalents in a later round, together with PLAN's, rather than one document at a time.
+
+DEFERRED: §C.4 still eliminates cases A and B one at a time; if P-A-7 ever grows a fourth case the passage will go stale again, where *"batches 9–12 are behind us, so case C governs"* would not — a wording preference, not a defect, and explicitly out of scope for a frozen round.
+
+DEFERRED: §G.3's *"Also answered — by PLAN v0.6/v0.7/v0.8"* heading will keep accreting version numbers; a later round may prefer *"answered upstream"* with the version recorded per bullet.
+
 ## Questions
 
 ## Positive Observations
