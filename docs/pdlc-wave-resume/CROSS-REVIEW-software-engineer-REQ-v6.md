@@ -139,7 +139,28 @@ file's own control rule).
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | None blocking. For the record: is anyone tracking BL-04 as an actual pre-implementation task, or is the intent to let Phase I discover the 1,637-commit gap? The REQ now states the status honestly either way, so this is an operator question, not a document defect. |
+
 ## Positive Observations
+
+- **The erratum did exactly what an erratum should do.** Two items in, two items out, four diff
+  hunks, a version bump, and a changelog paragraph that names the raisers. No opportunistic
+  rewriting rode along — the assertion "nothing else changed" is verifiable and true.
+- **The BL-04 fix repaired both sides of the contradiction.** The cheap fix would have been to
+  soften §10 to match §5; instead §5 was corrected to the measured truth and cross-referenced to
+  §10, so the two sites now reinforce rather than merely coexist.
+- **The worktree fix kept the conclusion and demoted only the evidence.** This is the harder and
+  more correct move: the finding was about evidential provenance, not about the conclusion, and
+  the edit resisted the temptation to weaken a sound conclusion because one citation was
+  over-claimed.
+- **The consumer-local/repo-fact distinction is now stated explicitly**, which is durable signal
+  for any future reviewer who reaches for a `.claude/`-adjacent file as repo evidence. It pairs
+  with the same distinction the REQ already draws around `WAVE_STATE_PATH`.
+- **Upstream re-grounding came back clean across eight independent claims** — symbol names,
+  baseline version and id ceiling, commit-distance arithmetic, and OF-1's wave arithmetic. A
+  document that survives that check at 1,637 commits of drift is carrying its citations well.
 
 ## Recommendation
 
