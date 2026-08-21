@@ -150,6 +150,50 @@ P's suite remains outside the ledger's universe exactly as P-A-3 rules.
 
 ## Verification
 
+**How I verified this round, command by command.** Nothing below is taken from the changelog's
+account of itself.
+
+| Check | Command / artefact | Result |
+|---|---|---|
+| Delta is as described | `git diff ba120270 -- …/PLAN-…md` | 8 insertions, 5 deletions, one file: version cell, P-A-7 cases A/B/C, new DoD 14, P-A-6, two changelog rows |
+| Ledger untouched | diff over the batches 7–13 table | Byte-identical; no row on either side of the diff |
+| Task table untouched | diff over the twenty-two `LI-*` rows | Byte-identical — no `Batch`, `Deps`, file or `Status` cell changed |
+| Case A's premise | ledger rows for batches 7, 8, 9 | `learningsBlock` red whole after 7 and after 8, dropped entire at 9 — the header's "includes batches 7 and 8" is true |
+| Upstream state | `shasum -a 256` on REQ/FSPEC/TSPEC/DECISIONS | All four differ from round 12; REQ→v0.10, FSPEC→v0.14, DECISIONS→v0.5, TSPEC still v0.9 |
+| Upstream change is non-contradicting | `git diff ba120270` on REQ/FSPEC | AC-2.4 / `BR-6` attribution made cause-defined, `AT-13` named; PLAN's arm rows are cause-keyed already |
+| DoD 14 (a) — restatement retry | `erratumProtocol.test.js` `RT-1g-a`…`RT-1g-e` (lines 1384, 1425, 1452, 1466, 1495); `orchestrate-dev.js:14873` "one restatement retry before fail-closed" | Present, five named tests, production site inside `erratumRound` |
+| DoD 14 (b) — `findingGrammarClause()` | `pdlc/workflows/orchestrate-dev.js:11032` (definition), callers at 10971, 11004, 11110 | Present, three call sites |
+| DoD 14 (c) — the hook | `pdlc/hooks/scripts/check-finding-grammar.sh` exists; registered in `pdlc/hooks/hooks.json` as the third `PostToolUse: Write\|Edit` command | Registered, not merely present |
+| DoD 14 (c) — its tests | `hookCompatibility.test.js:490` `describe("CR round 1 (PM F-09): check-finding-grammar.sh behaviour")` | Present under exactly the name DoD 14 cites |
+| DoD 14 (d) — skill sections | `grep -l "## Delta-Confirmation Findings (erratum rounds)"` over `pdlc/skills/{pm,se,te}-review/SKILL.md` | All three match |
+| v1.0's `dist/` claim | `node pdlc/workflows/build-runtime.mjs --check` | `in-sync pdlc/workflows/dist/pdlc-cli.mjs`, exit 0 — the repair the row describes is landed |
+| v1.0's `T32` claim | `consolidationBuild.test.js:174` `describe("T32 — the consolidation bundle …")` | Present and named as cited |
+
+**The check that mattered this round.** DoD 14 is a clause whose entire content is factual claims
+about HEAD — four remediations, each with a named owning test. A disclosure clause that names a
+test which does not exist is worse than no disclosure, because it converts an unverified assumption
+into a citation a later reader will trust. Every one of the eight artefacts it names resolves, and
+each resolves **under the name given**: the tests are `RT-1g-a`…`RT-1g-e`, not "some tests in
+`erratumProtocol.test.js`"; the hook block is titled `CR round 1 (PM F-09)`, exactly as cited; the
+hook is *registered* in `hooks.json`, not merely deposited in `scripts/`. That last one is the
+distinction my lens exists to make — a hook script present but unregistered is dead config, and the
+clause would have been claiming coverage that never runs. It is registered.
+
+**Does the delta break anything I previously approved?** No. The four case-header and P-A-6 edits
+are strictly clarifying: each replaces a wording that under-claimed a domain with one that claims
+it, and none changes the outcome any case yields for any batch. Case C's Effect cell — the
+mechanism citation into shipped `canonicalSectionName` / `SECTION_HEADING_RE` behaviour, the
+green-at-landing obligation, and the routing of PROPERTIES' §C.4 re-reds — is byte-identical, so
+the "expected to land green" ruling still rests on the shipped code I verified at rounds 11 and 12.
+The TDD ordering, the `[Fake first]` labelling, the red-before-green pairing, LI-06's mutation-proof
+discipline and the file-ownership manifest are all untouched.
+
+**Did the delta break anything else?** One thing, and it is a carry-forward rather than new: my
+round-12 F-01 is unedited, so the v0.7 changelog row still contradicts the 0.9 row and LI-08's note
+about `renderSection`'s `body` knob. The new v1.0 and v1.1 rows do not touch it either way.
+
+**Verification bar for the round.** No open High, old or new. Two Lows are recorded, not gating.
+
 ## Findings
 
 ## Questions
