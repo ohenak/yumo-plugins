@@ -37,6 +37,46 @@ the values I recorded at v9 — REQ `ff605dd3…`, FSPEC `ae75fa62…`, TSPEC `2
 
 ## Batches
 
+**The task ladder did not move.** I extracted the `Batch`, `Deps`, owner and file columns for all 23
+rows from `6a2d3007` and from HEAD and compared them: identical. The changelog's closing sentence —
+"No task moved batch, no `Deps` edge changed, no AT partition, fixture or manifest row was touched"
+(PLAN:605) — is true as written, not merely asserted.
+
+**Three task rows changed prose; none changed contract.**
+
+- **LI-16 (PLAN:156)** gains the zero-bound production half. This is the round's substantive fix and
+  it is correct in both directions: the two functions it claims exist at `orchestrate-dev.js:2306`
+  and `:2367`, and the *reason* the row gives for claiming them ("no other task's enumerated edits
+  reach it") is checkable and checks out. The row also states the branch shape — one branch keyed on
+  *yields no material*, covering both §T.7 disjuncts, with **no** zero-bound special case in the
+  selector. That matches the landed code, which rejects on `sections: []` rather than on a threshold
+  test (`orchestrate-dev.js:2367-2372`).
+- **LI-12 (PLAN:152)** gains conjunct (iii)'s fixture precondition. Product-relevant because (iii)
+  is the conjunct standing in for a user-visible promise — a corpus at `maxBytesPerDocument: 0`
+  produces an *enabled* run with empty rows, not a silent slot-burning selection. Below the stated
+  bound the assertion could not fail under any implementation, so the promise was unproven. Now it
+  is provable, and the precondition costs no new fixture shape.
+- **LI-02 (PLAN:140-ish, fixture-helper row)** states the `###` variant is emitted as body text
+  through the existing `body` knob because `renderSection` hardcodes the two-`#` prefix and grows no
+  `level` parameter. Verified: `learningsFixtures.js:64-68` builds the heading as
+  `` `## ${ordinalPrefix}${section.name}${glossSuffix}` `` — literal two `#`, no level parameter.
+
+**One small inaccuracy the delta introduced.** LI-08's rewritten amendment note says `renderSection`
+accepts "`ordinal`, `gloss` and a free-form `body`, **all three** unexercised by any landed suite".
+Two of the three are right — I grepped every landed suite and no caller passes `ordinal` or `gloss`.
+But `body` **is** exercised at HEAD: the shipped AT-29 contamination corpus passes it
+(`__tests__/helpers/learningsFixtures.js:402`, `sections: [{ name: "Cross-Feature Patterns", body:
+contaminatedBody }]`). The sentence's conclusion is unharmed — it goes on to say the amendment adds
+"callers for **two** knobs that are already there", which is exactly right, and `body` already
+having a caller only strengthens "adds callers, not knobs". So this is a precision slip in a
+supporting clause, not a false load-bearing claim: F-01, Low.
+
+**LI-08's note now closes the enumeration.** My v9 F-05 asked for this and it landed: the order is
+`LI-AT-05` → `LI-AT-11` → `LI-AT-12` → amendment note. The note also reconciles the ⬚ `Status` cells
+with the two landed commits by naming them and by naming the distinction (file existence is a fact
+about HEAD; `Status` is the dispatcher's bookkeeping). Both commits exist: `1920f281` is LI-02,
+`5e522a52` is LI-08.
+
 ## Dependencies
 
 ## Verification
