@@ -95,7 +95,45 @@ authored against a decision that lost. It is a stale hand-off statement, not a d
 
 ## Interfaces
 
-_TBD_
+**The errata channel is where this cascade lands.** TSPEC §6.3 is the hand-off interface between
+this document and the phases downstream of it — it is read by the PLAN author and by harvest, and
+it declares itself to be a list of things still wrong upstream. This round's edit closes three of
+its four items, and the section says nothing about that, because TSPEC's bytes have not moved.
+
+Item by item, against FSPEC and REQ at HEAD:
+
+| §6.3 item | What it asserts | Status at HEAD | Disposition |
+|---|---|---|---|
+| 1 | "FSPEC states it derives from REQ v1.5; the REQ at HEAD is **v1.6**" | Both halves stale: FSPEC §1 now says **v1.7**, and REQ is **v1.7** (REQ:13). The item's own content note — that the version cell was stale rather than the content — was correct and is now moot | **Landed.** F-03 (Low) |
+| 2 | "FSPEC OB-F1 says the REQ's §10 records BL-04 as 'discharged at FSPEC authoring'. REQ v1.6 §10 says the opposite" | FSPEC OB-F1 now reads "…which now records BL-04 as **open and unmet** in §5 and §10 (v1.7)". The quoted string no longer appears in FSPEC | **Landed.** F-02 (Medium) |
+| 3 | "FSPEC has no clause stating what a run **writes** when an explicit operator pointer is in force" | False at HEAD: FSPEC §3.4 now carries exactly that clause | **Landed.** F-01 (Medium) |
+| 4 | REQ OB-1's worktree conclusion rests on `.worktreeinclude` | Landed in REQ v1.7; already raised as v3 F-01 and still open in unchanged bytes | Carried, F-04 (Medium, inherited) |
+
+So all four items of §6.3 are now closed upstream while the section still presents all four as
+open. That is the whole cascade cost of this round, and it is the same defect class my v3 raised
+against item 4 — which is itself the signal in Q-01 below: a hand-off section whose entries have
+no disposition column goes stale silently, and only the owning document can clear it.
+
+**§6.2 OB-F1's justification clause moves with item 2.** OB-F1's disposition ends "Re-raised as an
+erratum below, because the REQ's §10 and the FSPEC's OB-F1 characterise it inconsistently." That
+inconsistency is now closed on both sides — REQ v1.7 §5 and §10 record BL-04 open and unmet, and
+FSPEC OB-F1 now says so too. The *substance* of OB-F1 is untouched and remains correct: BL-04 is
+still unmet, the branch is still behind, AT-14 is still red in this tree, and the PLAN sequencing
+precondition still binds. Only the stated reason for re-raising is spent. I fold this into F-02
+rather than raising it separately, because it is one sentence with one fix.
+
+**Nothing else in TSPEC's interface surface is reached.** I checked the three places a
+recording-behaviour clause could in principle have moved a contract:
+
+- **§2.6 requirement → component map.** Ten rows, each mapping a REQ criterion through FSPEC BRs
+  to a named component. The edit adds no BR, retires none, and renumbers none. The map is
+  unchanged and still complete against FSPEC §4.
+- **§3.1's three closed catalogues** (`RESUME_OUTCOMES`, `RESUME_PROVENANCE`,
+  `WAVE_IGNORE_REASONS`). FSPEC's new clause names `operator-set` and BR-07 but adds no member to
+  any of them and closes no new set. Set-equality oracles at AT-02/AT-08/AT-13 still discharge
+  OB-F5 as written.
+- **§3.2's evaluation order.** The new clause is about writing, not about disregarding; it names
+  no disregard cause and touches no arm of the `else if` chain. Order table unchanged.
 
 ## Data Model
 
