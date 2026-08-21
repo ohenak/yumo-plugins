@@ -196,7 +196,19 @@ No AT in §6 lost its oracle, and none gained a vacuous one, as a result of this
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|---|---|
+| Q-01 | REQ is now `approved (shipped)` at v1.15 while FSPEC is still `Draft` v1.6 pinned to REQ v1.13. Is the intent that FSPEC's Status follows REQ's on the same erratum sweep, or does FSPEC stay `Draft` until PUB? F-02 asks only for the version pin to be re-grounded; the Status field is a separate call I am not making for you. |
+| Q-02 | REQ's `Cross-Reviews` row now distinguishes harvested rounds from post-harvest erratum rounds. Should the sibling artifacts (FSPEC, TSPEC, PLAN, PROPERTIES) adopt the same sentence in this sweep, so a reader of any one of them knows why `CROSS-REVIEW-software-engineer-FSPEC-v2.md` and this v3 appear in no LEARNINGS table? If yes, this is one line per artifact and worth doing once rather than per-document as each is confirmed. |
+| Q-03 | AC-5.1's ignored-path rationale (F-01) is REQ's clause to widen. Does the workflow route a confirmation-round finding whose fix lands upstream back to REQ's ordinary revision loop, or does it wait for the next REQ erratum sweep? I have tagged it `inherited`/`nonlocal` so it routes rather than halts, but the routing target is the orchestrator's call, not mine. |
+
+## Obligations carried forward, unchanged
+
+FSPEC §7.1's O-1, O-3, O-4, O-5 and O-8 all still route to the TSPEC, and the window touched none of
+their upstream text. O-1 in particular ("the restoration mechanism behind BR-9, and the point at
+which the pre-A6 tree state is captured") is the obligation AC-5.1's new text explicitly preserves —
+REQ still closes with "The mechanism of restoration is TSPEC's to choose (O-1)". Altitude holds on
+both sides: upstream added observables, not mechanics.
 
 ## Delta-Confirmation Findings
 
