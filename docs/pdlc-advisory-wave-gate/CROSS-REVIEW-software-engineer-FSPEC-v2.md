@@ -45,6 +45,68 @@ AT-07-1's partition survives the BR-4 move: proposable `{BR-2, 3, 4, 5, 6, 7, 8}
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | BR-2/E-08b's first-match rule and AT-02-1's two-class arm presuppose that the *seam* derives the classification; §7.1 O-5 still leaves that open, and under the shipped agent-supplied design the arm degenerates to asserting the stub's own echo | §4 BR-2, §5.2 E-08b, §6.2 AT-02-1, §7.1 O-5 |
+| F-02 | Medium | Local | E-34 states three positive observables and no AT asserts any of them, while its sibling restoration row E-28 has AT-05-5 | §5.4 E-34, §6.5 |
+| F-03 | Low | Local | AT-05-1's *When* ("each terminates") and its *Then* ("taken immediately after restoration completes and before the record and escalation writes") name two different observation points — the same two-clause mismatch v1 F-03 flagged in AT-03-7 | §6.5 AT-05-1 |
+
+### F-01 (Medium) — the ordering rule is only script-observable if the seam classifies
+
+The F-01 fix landed as asked, and the rule it states is the right one. What the revision did not
+settle is *who* applies it. BR-2 says "the first matching class wins, so a failure matching both #1
+and #2 is classed `plan-ordering-defect`"; E-08b's *Given* is "the gate output matches two classes";
+AT-02-1's second arm is "*Given instead* a gate output matching both class 1 and class 2. *When* it
+is classified. *Then* the class reported is `plan-ordering-defect`", with *Who* = the workflows
+suite. Matching a gate output against classes is a derivation step.
+
+§7.1's O-5 routes to the TSPEC "whether the root-cause classification is derived by the seam or
+supplied by the wave's own agents", and its "This FSPEC states" cell still reads "Only the
+vocabulary and its totality (BR-2)" — no longer accurate now that BR-2 also states a precedence
+rule. The shipped tier takes the second branch: `parseA6RootCause` scans the reply for a
+`ROOT-CAUSE:` trailer, keeps the **last** one, and checks membership — it never inspects gate output
+and never ranks two candidates (`pdlc/workflows/orchestrate-dev.js:2378-2391`). If the TSPEC keeps
+that design, a workflows-suite test for AT-02-1's second arm can only hand a stub a reply saying
+`plan-ordering-defect` and assert `plan-ordering-defect` came back — the expected value derived from
+the fixture's own input, which is the echo shape §6 elsewhere refuses.
+
+Note this does not make the arm wholly vacuous: "exactly one class is carried" is observable in the
+record whoever classifies. It is the *first-match* half that needs a classifier to be falsifiable.
+
+**To resolve** (one clause plus one cell): state in BR-2 or E-08b where the ordering is enforced —
+either the seam derives and the arm is exercised at the derivation site, or the class is
+agent-supplied and the observable A6 owns is the record's single-class shape while the ordering
+binds the prompt (in which case say the arm is a prompt-contract test, not a workflows-suite one) —
+and update §7.1's O-5 cell to record that BR-2 now constrains the choice rather than being neutral
+to it.
+
+### F-02 (Medium) — E-34's safe branch is stated but never asserted
+
+E-34 is a good addition and the right default: capture failure means "no repair is proposed and none
+is applied", the wave halts on its own red gate, the agents' uncommitted work is untouched. That is
+three positive, checkable observables — zero dispatches, the pre-A6 halt reason, an unchanged tree —
+and §6 carries no AT for any of them. Its sibling row E-28 is asserted by AT-05-5, which is exactly
+the model: halt, name the cause, reach no commit.
+
+The gap matters more than the usual unasserted-row case because E-34's claim is mostly negative
+("nothing ever wrote to the tree"), and §6's own preamble is strict about absence-only oracles. The
+positive companion is available and cheap: dispatch count `0` on that wave, and the same
+tracked-plus-non-ignored map BR-9 defines, taken at termination, equal to the pre-invocation map.
+
+**To resolve:** add one AT in §6.5 — *Given* a run whose pre-A6 capture fails, *Then* zero A6
+dispatches occurred on that wave, the halt reason is AT-05-3's transcribed literal, the escalation
+names the capture as the cause, and the tree map is unchanged — citing (E-34, BR-9, AC-5.1).
+
+### F-03 (Low) — AT-05-1's two observation points
+
+AT-05-1's *When* is "each terminates" and its *Then* pins the map "immediately after restoration
+completes and before the record and escalation writes". Termination is strictly later: E-23 now says
+the halt path appends the record and escalation entries and rewrites and commits the `halted` queue
+row after that point. A fixture author transcribing the *When* observes at termination and sees the
+map differ by exactly the bytes BR-13 mandates — the difference BR-9's observation-point clause
+exists to exclude. The *Then* already says the right thing; the *When* should say "*When* restoration
+completes" and let the terminal assertions that need termination stay where they are.
+
 ## Questions
 
 ## Positive Observations
