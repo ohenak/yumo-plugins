@@ -76,6 +76,53 @@ Filed as F-01 below with the exact remedy.
 
 ## Test Strategy
 
+**This is where v3's High finding is discharged, and it is discharged well.**
+
+AT-06-4 (line 1823) is restated from the single conjunct ("carries the root-cause class") to the
+full three FSPEC v1.7 pins, transcribed faithfully — I diffed the row against FSPEC lines 474–478
+and the conjuncts, the co-location observable, and the "never the capture's name (O-1)" exclusion
+all match with no TSPEC-side invention. Critically, the row does not stop at listing conjuncts: it
+names the oracle shape as **co-location within one rendered report string** and rules out the
+false-green form explicitly ("not merely both present somewhere in the run, since two independent
+`toContain` assertions over separate strings cannot falsify a split"). That is exactly the split
+oracle my v3 finding asked to be foreclosed.
+
+AT-06-4b (line 1824) supplies the falsifying arm, and it is not an absence-only oracle: it pairs
+the two negatives (no ref pointer, no overwrite sentence) with two positives on the same rendered
+report (diagnosis present, root-cause class present), on a fixture whose field state is pinned to
+`snapshotRef: null`. The row also states the mutation it exists to catch in one line — "an
+implementation emitting the warning unconditionally passes AT-06-4 and fails here" — which is the
+form I look for in a paired arm.
+
+Set-equality over the AT enumeration still holds after the addition. I extracted the 48 AT ids from
+FSPEC §6 and the 48 row ids from §5.6's table and diffed them: **set-equal, zero asymmetry**. The
+preamble's arithmetic ("forty-eight ATs at FSPEC v1.7, forty-seven before AT-06-4b") matches the
+measured count, so the row-per-AT/batch-safety argument it carries is not stale.
+
+Two gaps remain in the strategy, neither gating.
+
+**1. The `snapshotRef: null` field value has no positive oracle (F-01, Medium).** AT-06-4b asserts
+absence *in the rendered report*; §5.2's capture-failure fixture asserts the halt fields "at their
+literal values" but still enumerates them as four. An implementation that omits `snapshotRef`
+entirely from the capture-failure halt's `fields` object passes both: the rendered report shows no
+ref (AT-06-4b green) and a four-key transcription matches (§5.2 green). §4.5 line 1369 states the
+literal; nothing in §5 asserts it. Remedy is mechanical: change "four fields" to "five fields" at
+lines 302, 1357 and 1530, and state §5.2's transcription as a **set-equality over the halt-field
+keys** including `snapshotRef: null`, so a dropped field reddens rather than passing a containment
+check — the same discipline §5.6 already applies to AT-06-1's entry-field set.
+
+**2. Conjunct (3)'s matcher is unspecified, and the obvious implementation is an echo (F-02,
+Medium).** TSPEC answers TE Q-01 by declining a verbatim sentence pin (correctly — FSPEC pins
+co-location, not wording, so inventing a sentence at TSPEC altitude would be a new decision). But
+"presence of the statement" leaves the implementer without a matching predicate, and the cheapest
+way to write it is `expect(report).toContain(devModule.OVERWRITE_WARNING)` — an expectation whose
+expected value is imported from the code under test, which cannot fail on any wording and defeats
+AT-06-4b's whole purpose. What the TSPEC can pin without deciding the wording is the **predicate
+and the anti-echo rule**: the oracle is a spec-side, case-insensitive `/overwrit/` match plus the
+`refs/pdlc/a6-snapshot-{waveNum}` substring, both found in the *same* `haltError` report string,
+with the matched literal written in the test file and **never** imported or derived from the
+production module. One clause on the AT-06-4 row closes it.
+
 ## Open Questions
 
 ## Findings
