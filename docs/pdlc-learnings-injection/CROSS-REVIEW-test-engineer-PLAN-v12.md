@@ -140,6 +140,47 @@ it. Low, and I tag it `delta` because this edit is what created the disagreement
 
 **Verification bar for the round.** No open High, old or new. The three Lows are recorded, not gating.
 
+## Questions
+
+None. Round 11's Q-01 (whether the `body` knob claim had been checked against the landed suites) is
+answered by this delta and by my own grep: it had not been, it now has, and the corrected numerals are
+right.
+
+## Positive Observations
+
+- The `body`-knob correction was *verified*, not asserted. It names the two files, the count (six
+  specs) and the specific non-BR-6 section — all three check out against HEAD. A repair that swapped
+  one ungrepped claim for another would have been worse than the original; this one is grepped.
+- The lead-in fix adds "(A, B and C below)" rather than only bumping the numeral, so the sentence names
+  the rows a reader must reach instead of counting them. That survives the next time the table grows.
+- The erratum is genuinely minimal: 4/3 lines, no task row, no `Deps` edge, no AT partition, no fixture
+  or manifest row, and a byte-identical batches 7–13 ledger. The changelog's claim to that effect is
+  accurate against the diff.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both routed items land, and the second lands correctly against HEAD rather than merely landing. Nothing
+I previously approved is disturbed: the expected-red ledger, the batch DAG, the file-ownership manifest
+and the TDD ordering are byte-identical. Three Low findings — one newly-created stale sibling claim in
+the v0.7 changelog row, and my two round-11 Lows carried forward unedited — none of which changes what
+an implementer would do at HEAD, since case C's own header is unambiguous about the live case. They are
+worth a single sweep whenever this document is next opened; they do not gate this round.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | nonlocal | The v0.7 changelog row still states, in the present tense, that "`renderSection` already carries unexercised `ordinal`, `gloss` and `body` knobs" — the exact claim this round corrected in LI-08's note. The document now contradicts itself across two sections, and the stale copy is the one a `renderSection` grep reaches first. Fix: tense it as what round 8 believed, or strike `and `body``. | §Changelog → row 0.7 |
+| F-02 | Low | inherited | nonlocal | Case B's header bounds at batch 12 and case C's opens "after batch 13", leaving **batch 13** claimed by no header. Case C's second header clause ("once LI-21 (`92b7ea0c`) has landed") closes it in practice — LI-21 *is* batch 13 and has landed — so this is a wording gap, not a live ambiguity. Fix: read C's domain as "batch 13 or later". | §The three gate wordings → P-A-7 case headers |
+| F-03 | Low | inherited | nonlocal | §Open questions' P-A-6 row still offers "or else its red rows are amended into the ledger by name first (P-A-7)" as the PROPERTIES suite's fallback, but case C forecloses that branch: after batch 13 no ledger remains to amend and the obligation is green-at-landing. P-A-6 cites P-A-7, so a reader who follows the pointer reaches the right rule. Fix: one clause — "or else its rows are handled under P-A-7's governing case". | §Open questions → P-A-6 |
+
+FINDING: Low | delta | nonlocal | §Changelog → row 0.7 | still asserts in the present tense that `renderSection`'s `ordinal`, `gloss` and `body` knobs are unexercised — the claim this round corrected in LI-08's note — so the document now contradicts itself and the stale copy is what a `renderSection` grep finds first
+FINDING: Low | inherited | nonlocal | §The three gate wordings → P-A-7 case headers | batch 13 is claimed by no case header (B ends at 12, C opens "after batch 13"); C's "once LI-21 has landed" clause closes it in practice, fix is to read C's domain as "batch 13 or later"
+FINDING: Low | inherited | nonlocal | §Open questions → P-A-6 | P-A-6 still offers "its red rows amended into the ledger by name first (P-A-7)" as the PROPERTIES suite's fallback, a branch case C forecloses (no ledger remains after batch 13; the obligation is green-at-landing)
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
