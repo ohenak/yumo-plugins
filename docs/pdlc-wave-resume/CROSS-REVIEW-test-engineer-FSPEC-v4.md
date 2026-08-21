@@ -171,7 +171,34 @@ the erratum succeeded, and the FSPEC's *description of the erratum* is what is n
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+Two edge cases sit near this round's bytes; both are confirmed.
+
+**EC-17 — confirmed, and its warrant is now correctly labelled upstream.** Analysed in full under
+*Behavioral Flow*. EC-17 cites REQ **OB-3** and D-DIST-07, not OB-1, so E-3 does not even touch its
+citation; and the claim it compresses is entailed by OB-1's weakened evidence as fully as by the
+strong form. No change.
+
+**EC-16 — confirmed, and worth one sentence because E-3 brushes the same vocabulary.** EC-16 asserts
+that no advisory remediation envelope of this run can authorise touching the record, because *"this
+feature's PLAN claims it in no wave's owned-path set"*, and routes the general form (no PLAN may
+claim consumer-local state as owned) to Phase P via OB-F6. E-3 relabels a *different* consumer-local
+artifact (the worktree include list) and says nothing about ownership manifests. EC-16's per-feature
+arm remains a PLAN-shaped assertion, falsifiable against this feature's PLAN once it exists, and
+OB-F6's split between the per-feature test and the Phase P gate question is untouched.
+
+**EC-01, EC-09..EC-15a, EC-18..EC-21 — untouched upstream, not re-read** under the delta protocol.
+
+**One inherited Medium remains open on the record and is not re-filed here.** v3's F-04 held that
+EC-20 and AT-12's fourth conjunct describe the Phase PT V-wave as one that *"dispatches, gates and
+commits on every invocation"*, where dispatch and gate are script-owned and mechanically checkable
+(`phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)")`; the gate's `runCommandFn` call) but the
+**commit** is agent-instructed inside `propertiesTestPrompt` and never verified afterwards — so an
+oracle asserting "the V-wave produces a commit" is flaky by construction, since under outcome (c) the
+suite may already be green and the agent may correctly add nothing. That finding is unchanged by this
+round: REQ-WVR-08 and FSPEC EC-20 both carry the same overstatement they carried at v3, and neither
+was edited. Per the delta protocol I do not re-file a finding this round's edit did not touch; it
+stands where v3 filed it, still owed to te-author at PROPERTIES authoring, and the counts below
+reflect this round's table only, not the cumulative backlog.
 
 ## Acceptance Tests
 
