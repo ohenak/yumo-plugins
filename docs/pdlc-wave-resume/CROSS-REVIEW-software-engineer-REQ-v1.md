@@ -74,3 +74,57 @@ _(pending)_
 ## Recommendation
 
 _(pending)_
+
+### F-03 — REQ-WVR-05 contradicts the shipped retention decision (High, Local)
+
+REQ-WVR-05 requires that after a Phase I that completes all waves, "no resume state survives for a
+later fresh run of any feature to inherit; a subsequent invocation behaves as if no halted run ever
+existed." G-4 restates it as "self-clearing lifecycle".
+
+Shipped behaviour is the opposite, and deliberately so. `main:pdlc/workflows/orchestrate-dev.js:15607`
+opens the post-wave block with the comment *"Every implementation wave is green and committed. The
+record is KEPT"* — because the last per-wave write already records `lastGreenWave === waves.length`,
+and the read path at `:15318-15334` uses exactly that shape to **skip Phase I entirely** on a later
+invocation that halted downstream (CR, DOD, PUB). That is a load-bearing outcome, not an oversight:
+it is what turns a DOD-phase halt into a minutes-long re-entry instead of a re-dispatch of every wave
+over an already-finished tree. Invalidation is carried by `planHash` (a PLAN change re-derives the
+hash and the ledger is ignored, `:15302-15306`) and by `feature` (`:15294-15298`), not by deletion.
+
+As written, REQ-WVR-05 is an instruction to delete that record and lose that behaviour, and no
+Non-Goal or Risk acknowledges the trade. This is the single most likely place for the FSPEC to
+implement a regression while believing it is satisfying the REQ.
+
+**Required change:** restate REQ-WVR-05 as **retention with invalidation** — a leftover record must
+never *warp* a later run (wrong feature, changed plan, non-ancestor head ⇒ ignored with an announced
+reason), which is the property G-4's second clause already asks for — and drop the "no state
+survives" clause, or record explicitly that the phase-skip behaviour is being withdrawn and why.
+`main`'s v1.2 amendment already resolves it this way ("REQ-WVR-05 is restated as **retention with
+invalidation**"), which is further evidence this branch is reverting settled ground (F-01).
+
+### F-04 — REQ-WVR-06 over-generalises OF-2 and forbids a shipped safety control (High, Local)
+
+REQ-WVR-06's Then clause: "the determination does not consult commit presence or commit messages".
+
+OF-2's actual observation supports the narrow claim — *a completed task may produce no commit, so
+the presence of a task commit is not usable as completion evidence*. The AC generalises that to *any*
+git observation, and the shipped mechanism makes a different, sound git observation that the AC as
+written forbids:
+
+- the ledger record carries an optional `head` field — the commit that carried the recorded wave's
+  work (`main:…orchestrate-dev.js:12296-12304` on read, `:12325-12333` on write);
+- the read path corroborates it by asking the tree whether that sha is an **ancestor of HEAD**
+  (`headCorroborated`, `:15280`, applied at `:15307`), and ignores the ledger with an announced
+  reason when it is not — "branch was reset or re-cut since it was written, so the work it records
+  is not in this tree".
+
+That is not commit-presence-as-completion-evidence; it is falsification of a record the pipeline
+otherwise has no way to distrust, and it is precisely the mitigation R-1 (§8) claims for
+"stale record after history rewrite" — R-1 currently attributes that mitigation only to
+REQ-WVR-03/-02, which is a weaker story than what already ships.
+
+**Required change:** narrow REQ-WVR-06 to what OF-2 supports — *completion is never inferred from
+the presence, absence, or message of a task's commit; a task that completes with nothing staged
+never causes its wave to be treated as incomplete* — and add an explicit allowance (or a separate
+AC) for ancestry corroboration of a recorded commit, then update R-1 to cite it. Leaving the
+absolute wording in place sets up a contract-fidelity conflict the TSPEC cannot resolve without
+either regressing the control or contradicting the REQ.
