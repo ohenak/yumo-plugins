@@ -222,4 +222,26 @@ DEFERRED: P-A-6 now routes through "P-A-7's governing case" by indirection, whic
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three of my routed v12 findings are resolved, and each was fixed at the header rather than by
+re-arguing the ruling underneath — the case A/B/C outcome columns are byte-identical apart from case
+B's em dash, and the batch line now tiles with no gap between A, B and C. The two v12 Lows I did not
+route (the 0.9 row's wrong attribution, the 0.5/0.6 inversion) remain open and remain non-gating.
+The delta introduced one Low: case A's derivation still quotes its own superseded "before batch 7"
+text.
+
+Nothing I previously approved moved. No task changed batch, no `Deps` edge changed, no AT partition,
+fixture or manifest row was touched, and the batches 7–13 ledger is byte-identical. The two
+substantive additions — DoD 14 and the P-A-6 correction — are disclosures and repairs, not new
+decisions, so the freeze held. Every repository claim in the new bytes checks out at HEAD, including
+the four POSTMORTEM-D remediations with their named suites, the hook registration with its
+`Write|Edit` matcher, and the dist-freshness gate, which now prints `in-sync`.
+
+No High and no Medium, so nothing blocks. The three Lows are one word, one row swap and one quoted
+string; they belong in whatever pass next edits those blocks, not in a round of their own.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
