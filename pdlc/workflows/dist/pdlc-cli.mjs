@@ -2363,14 +2363,6 @@ function findSectionExtents(text) {
   }));
 }
 
-/** Whether `text` carries at least one candidate level-2 heading line at all (matching
- *  `SECTION_HEADING_RE`, whether or not it is one of BR-6's five). Distinguishes a document that
- *  names sections which just do not match BR-6 (E-33's structural case) from one carrying no
- *  section headings whatsoever. */
-function hasAnySectionHeadingLine(text) {
-  return text.split("\n").some((line) => SECTION_HEADING_RE.test(line));
-}
-
 /** Split on `\n`, drop trailing blank/whitespace-only lines, re-join with `\n` — no trailing
  *  newline (TSPEC §D.3 step 1). */
 function normaliseExtent(extentLines) {
@@ -2459,10 +2451,19 @@ function selectLearnings({ entries, feature, thresholds }) {
     }
     const orderKey = parseHarvestDate(entry.text);
     const extraction = extractInjectableMaterial(entry.text, thresholds.maxBytesPerDocument);
-    if (extraction.sections.length === 0 && hasAnySectionHeadingLine(entry.text)) {
-      // BR-9's structural disjunct (E-33): the document names sections, but none is one of
-      // BR-6's five. A document with no section headings at all is not this case — it is
-      // simply a zero-material eligible document.
+    if (extraction.sections.length === 0) {
+      // BR-9/D-12, TSPEC §D.5 and §T.6: ONE branch covering BOTH disjuncts — the structural one
+      // (the document carries none of `BR6_SECTION_NAMES`, E-33) and the zero-bound one
+      // (`maxBytesPerDocument: 0`, E-36). The predicate is `sections[] === []`, nothing else.
+      //
+      // CR round 1, TE F-04: this branch previously carried a second conjunct
+      // (`hasAnySectionHeadingLine(entry.text)`) that no upstream document states. Its effect was
+      // that a LEARNINGS document with no `##` heading at all stayed ELIGIBLE, consumed a
+      // `maxDocuments` slot, pushed a genuine contributor out with `RSN-COUNT`, and rendered an
+      // empty `<<< … >>>`/`<<< end … >>>` pair into an author's prompt with `bytesInjected: 0` —
+      // exactly the outcome FSPEC BR-6 gives as this rule's rationale ("otherwise it would take a
+      // `maxDocuments` slot while injecting zero bytes"). It also made E-36 unreachable for such a
+      // document. Removed: "yields no material" is one predicate, per §T.6.
       rejected.push({ path: entry.path, reason: "RSN-NO-MATERIAL" });
       continue;
     }
@@ -2501,9 +2502,29 @@ function selectLearnings({ entries, feature, thresholds }) {
 
   for (const doc of windowRejected) rejected.push({ path: doc.path, reason: "RSN-BYTES" });
 
-  const propagateBytes = firstByteFailIndex !== -1 && firstByteFailIndex < window.length - 1;
+  // CR round 1, PM F-06 / TE F-07 (Medium). This used to read
+  //   const propagateBytes = firstByteFailIndex !== -1 && firstByteFailIndex < window.length - 1;
+  // and label the overflow `RSN-BYTES` when it held. That guard appears in no upstream document
+  // (grepped over REQ, FSPEC, TSPEC, PLAN, PROPERTIES), and its effect was a split an operator
+  // could not predict: with `maxDocuments: 5`, a total-byte failure at window index 2 labelled
+  // documents 6+ `RSN-BYTES` while the same failure at window index 4 labelled them `RSN-COUNT`,
+  // though in both cases those documents were cut by the count bound.
+  //
+  // The rule now follows the one upstream actually states. BR-5: the count bound "is applied
+  // first, over BR-4's order", and "documents cut here carry `RSN-COUNT`"; AT-08: "every
+  // unselected one carries `RSN-COUNT`". The total bound then accumulates over what the count
+  // bound left — the window — so BR-6's "that document and every lower-ordered one is dropped
+  // whole, with `RSN-BYTES`" ranges over the window, and `windowRejected` above is exactly that
+  // set. A document past the window was removed by the count cut before the total bound was
+  // consulted at all, so `RSN-COUNT` is its cause under AC-3.2's cause-defined ids, whatever the
+  // window's byte outcome turns out to be.
+  //
+  // The mixed case is still not stated in so many words upstream; it is routed as
+  // `ERRATUM: FSPEC` and `ERRATUM: REQ`. If upstream lands the other reading, the change is this
+  // one line and `LI-AT-13`'s expectations, which no longer encode a byte-count tuned to keep
+  // the failure off the window's last slot.
   for (const doc of overflow) {
-    rejected.push({ path: doc.path, reason: propagateBytes ? "RSN-BYTES" : "RSN-COUNT" });
+    rejected.push({ path: doc.path, reason: "RSN-COUNT" });
   }
 
   return { selected, rejected, totalBytes, orderKeys };
@@ -2552,9 +2573,7 @@ function renderLearningsBlock({ selected }) {
  *  matching either `docs/{feature}/…` or `docs/completed/{feature}/…` so a re-run of a harvested
  *  feature is excluded whichever location its LEARNINGS doc sits in (E-31). */
 function isLearningsSelfPath(path, feature) {
-  return (
-    path.startsWith(`docs/${feature}/`) || path.startsWith(`docs/completed/${feature}/`)
-  );
+  return path.startsWith(`docs/${feature}/`) || path.startsWith(`docs/completed/${feature}/`);
 }
 
 /** TSPEC §I.4. The whole shell is one outer `try/catch` returning `{unlistable: true}` — the
@@ -10281,11 +10300,14 @@ async function dispatchAndVerify({
   // seam — called on BOTH arms, once per episode, never inside the loop (TE Q-01).
   const injectHere =
     dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType);
-  _recordDocType(docType);
-  const learningsBlock =
-    injectHere && typeof _injectLearnings === "function"
-      ? await _injectLearnings({ feature, docType, phaseId })
-      : "";
+  // CR round 1, TE F-08: the probe carries the DECISION, not only the docType. Recording the
+  // docType alone left the composition-site set-equality test re-deriving `injectHere` from its
+  // own hand-transcribed literal, which is a tautology that never consults the production
+  // predicate — and that tautology is why F-02's mutant (dropping BR-1's second conjunct)
+  // survived the whole suite. `injectHere` and `dispatchKind` are passed as the 2nd/3rd
+  // arguments, so the existing one-argument default (`() => {}`) and every existing caller are
+  // unaffected.
+  _recordDocType(docType, injectHere, dispatchKind);
 
   // §5.6.1: mode is computed ONCE per episode, at the episode's entry, over state
   // this episode itself observed.
@@ -10321,6 +10343,18 @@ async function dispatchAndVerify({
       startIndex: 1,
     });
   }
+
+  // CR round 1, PM F-07: injection runs AFTER `selection`, so the dispatch record's `mode`
+  // (TSPEC §D.2 per-dispatch context) carries this episode's actual authoring mode instead of
+  // shipping permanently `undefined` — the only production caller previously omitted the
+  // argument that `buildLearningsInjector`'s closure already accepted. Still exactly once per
+  // episode, still before the `for(;;)` loop, so TSPEC §A.2 property 1(c)/2 and TE Q-01's
+  // once-per-episode claim are unchanged; the BR-1 decision itself is still taken (and probed)
+  // above, before any review-state I/O, so `_recordDocType`'s call site is untouched.
+  const learningsBlock =
+    injectHere && typeof _injectLearnings === "function"
+      ? await _injectLearnings({ feature, docType, phaseId, mode: selection.mode })
+      : "";
 
   let invocations = 0;
   let consecutiveNoProgress = 0;
