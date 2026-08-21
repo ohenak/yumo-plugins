@@ -220,9 +220,57 @@ than the product. One conjunct on AT-05 is the honest ask; a correlation suite w
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | FSPEC v1.2's new §3.4 paragraph specifies observable behaviour but adds no AT to FSPEC §6. TSPEC's §5.4 map is keyed to FSPEC's AT list, so the clause has no home by construction. Should the orchestrator route a small follow-up to FSPEC adding an AT for it (an "AT-19: an operator-pointed run records, plan-absolute" in the existing style), rather than having TSPEC invent an unkeyed row? Either resolution closes F-01; the FSPEC-side one keeps the AT-keyed contract intact and is the cheaper of the two to review. Raised as a question, not a finding against FSPEC, since FSPEC is not the document under confirmation here. |
+| Q-02 | §6.3's errata ledger is now stale in **all four** of its items — three landed in FSPEC v1.2 this round, one landed in REQ v1.7 last round — which is the second consecutive confirmation to spend findings on it (v3 F-01/F-02, this round F-03/F-04). Repeating Q-01 from v3: should the section carry a per-item disposition column (`open` / `landed in FSPEC v1.2` / `landed in REQ v1.7`)? At four-for-four, the pattern is no longer incidental: an errata ledger written as a live list in a document whose bytes are frozen between rounds will always be stale by the round after it is written. This is `Process`-shaped signal for harvest, not a defect in this TSPEC's engineering. |
+| Q-03 | With FSPEC OB-F1 corrected, **no document in the set still asserts BL-04 discharged** — REQ §5 and §10, FSPEC OB-F1, and TSPEC §1.1/§6.2 now all say open and unmet. The rebase that OB-F1 owes is therefore the last unresolved item, and it is a PLAN sequencing precondition (the wave carrying AT-14 must not be dispatched before it). Is that precondition recorded anywhere the Phase P dispatcher will read it — i.e. as a dependency edge in the PLAN table — rather than only as prose in TSPEC §5.4 and §6.2? Flagged for the orchestrator's Phase P attention; not a finding against TSPEC, which states it as emphatically as a TSPEC can. |
+
 ## Positive Observations
 
+- **The document specified its own upstream clause, and the clause came back in its own terms.**
+  TSPEC §2.5 did not merely flag that FSPEC was silent on pointer-run recording — it stated the
+  behaviour, bounded it by BR-10, and pre-empted the misreading ("this is recorded here so the
+  erratum's FSPEC clause is not read as asking for a field"). FSPEC v1.2 landed the clause with the
+  BR-10 bound and with "No record content distinguishes the two provenances" — the exact
+  foreclosure TSPEC asked for. A downstream document that writes its upstream's missing paragraph
+  well enough that the upstream adopts the reasoning is the strongest available evidence that the
+  compression was faithful to begin with.
+- **Three-for-three on this round's errata.** All three substantive items in the FSPEC delta are
+  TSPEC §6.3 items 1, 2 and 3. Combined with REQ v1.7 landing §6.3 item 4 last round, every erratum
+  this TSPEC raised has now been actioned upstream, and none of them required TSPEC to change a
+  claim. That is a clean record for a document that read two upstreams closely.
+- **The provenance-is-announced-not-persisted call has now paid off twice.** DEC-WVR-03 chose an
+  announcement token over a record field; §2.5 defended that choice against PM Q-02; FSPEC v1.2 now
+  *depends* on the announcement for attribution and explicitly rules out the field. A decision that
+  gets load put on it by a later upstream round, and holds, was the right decision.
+- **The bounding argument survived contact with upstream unchanged.** TSPEC's safety case for
+  pointer-run recording ("the first executed wave's gate verifies the whole tree") is reproduced
+  almost verbatim in FSPEC §3.4. Two documents arriving independently at the same one-sentence
+  safety argument, with the same rule id attached, is how you tell the argument is real.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+TSPEC still holds as approved against FSPEC at HEAD (v1.2, `sha256:9a6be7b5…`) and against REQ at
+HEAD (v1.7, unmoved since my v3 confirmation). No High finding is open. The delta contradicts no
+TSPEC claim, invalidates no oracle, removes no citation target, and changes no obligation's
+disposition; on the load-bearing point — what a pointer run records — upstream adopted TSPEC's own
+formulation, including the explicit foreclosure of a persisted provenance field.
+
+One Medium (F-01): FSPEC now *specifies* pointer-run recording, and no oracle in §5.4 discriminates
+it — the intuitive wrong implementation (widen `!explicitPointer` to cover the write site) ships
+green. This is a missing conjunct, not a wrong design: §2.5 already states the correct behaviour.
+Resolve by adding a write conjunct to AT-05 (`ledgerWrites` non-empty; last write carries
+`lastGreenWave = 3` on a 3-wave plan started at wave 2 — plan-absolute, not run-relative), ideally
+alongside an FSPEC AT to key it to (Q-01). Medium is the honest severity: it does not gate this
+confirmation, and it must be closed before Phase I dispatches the wave that owns AT-05.
+
+Three Lows, all bookkeeping lag with no test, oracle, assertion, or obligation reading from them,
+and all resolvable in one authoring touch: §2.5's "the FSPEC does not state" sentence (F-02),
+§6.3 items 1–3 plus §6.2 OB-F1's now-resolved inconsistency rationale (F-03), and the two items
+carried unchanged from my v3 confirmation (F-04). Per DEC-ERR-01 these are the demoted class.
 
 ## Delta-Confirmation Findings
 
