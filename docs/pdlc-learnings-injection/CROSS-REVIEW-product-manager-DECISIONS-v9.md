@@ -85,6 +85,49 @@ decisions, post-implementation reads only *confirm* them — is honoured in the 
 
 ## Decision
 
+**No High finding. My v8 blocker is resolved, and the revision broke nothing.** Under the freeze a
+finding may block only if this revision introduced a defect or if a load-bearing claim contradicts
+the repository at HEAD. Neither applies: every numeric and structural claim in the delta was
+re-derived by running HEAD's code, and every upstream citation was read at HEAD.
+
+Prior-finding status:
+
+| v8 finding | Status | Evidence |
+|---|---|---|
+| F-01 (High) — `DEC-LI-08`'s 694 / 1,012 framing literals were unreproducible, and `D-O-4` restated them | **Resolved.** The literals are replaced by the renderer's actual shape (477-byte block constant + `49 + 2·len(path) + len(feature) + len(orderKey)` per document + `30 + len(String(bytes))` abridged), the worked example names its fixture, and the ceiling is stated as a function of the corpus. `D-O-4` now cites the formula rather than restating numbers, and adds that "neither quantity has a transcribable expected constant" | Formula reproduces HEAD's `renderLearningsBlock` exactly at n = 1, 2, 3 synthetic and n = 1, 5 on the named fixture, abridged and not (6/6 and 4/4 exact); fixture command yields the stated 684 / 1,607 / 718 / 1,777 |
+| F-02 (Low) — `D-O-9` attributes the TSPEC erratum's discharge to the version it was *observed* at | **Still open, still non-gating.** The delta did not touch `D-O-9`; the discharge is real, so no reader is misled about whether it landed. Carried as F-01 below | `D-O-9` row unchanged in `git diff 6f28eded..HEAD` |
+| F-03 (Low) — `DEC-LI-03`'s trigger cites `G-C` without signalling it is this document's own ground | **Still open, still non-gating.** Unchanged section, not re-litigated. Carried as F-02 below | `G-C` occurrences unchanged; the id is defined in this document's own grounding table |
+
+Delta passages verified clean, with no finding:
+
+- The framing formula's three terms and both named constants, against `renderLearningsBlock` and
+  the `LEARNINGS_BLOCK_HEADER` / `LEARNINGS_BLOCK_TRAILER` declarations at HEAD.
+- The named fixture and its four figures, by running the stated `git ls-files` command and
+  rendering its first five paths.
+- The claim that framing "is a block term plus one opener/closer pair per selected document, and
+  each pair embeds that document's path twice, its feature name and its `orderKey`", against TSPEC
+  §D.5's three-pool table, whose *per-document framing* row names the `<<< path — feature {p},
+  completed {d} >>>` opener, the `ABRIDGED` annotation and the `<<< end path >>>` closer, and
+  against the renderer's `opener`/`closer` template literals, which do embed `doc.path` in both.
+- The re-pin to REQ v0.10 / FSPEC v0.14 / TSPEC v0.9, against the three documents' version rows at
+  HEAD.
+- The characterisation of what v0.14 and v0.10 changed, against FSPEC's v0.14 erratum note and REQ
+  AC-2.4, and the negative claim that the byte-accounting basis, `E-36` and `AT-30` are untouched,
+  against those three passages at HEAD.
+- The grounding-pin scope paragraph, against the two entries it names, both of which do label their
+  post-implementation citations as *shipped*.
+- The v0.5 changelog cell, against the five commits that landed round 7.
+- `D-O-4`'s revised row: its (a)/(b) split is unchanged and was verified at v8; the substitution
+  removes the literals without weakening the obligation, and the added sentence about
+  non-transcribable constants is the correct instruction for a test author.
+
+One Low finding is new, in the same passage: the "roughly **21,600 bytes**" ceiling is the
+unabridged five-document evaluation (20,000 + 1,607), while the same sentence's own parenthetical
+says abridgement "at §4.1's 6,000-byte per-document default is the common case", where the figure
+is 21,777. It is hedged with "roughly", the paragraph's load-bearing claim (the overshoot is a
+corpus function, not a constant) is unaffected, and it is a ~180-byte imprecision against a
+predecessor that was wrong by ~600–800 in the unsafe direction. It is recorded, not gating.
+
 ## Consequences
 
 ## Findings
