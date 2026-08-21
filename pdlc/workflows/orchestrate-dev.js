@@ -2354,14 +2354,6 @@ function findSectionExtents(text) {
   }));
 }
 
-/** Whether `text` carries at least one candidate level-2 heading line at all (matching
- *  `SECTION_HEADING_RE`, whether or not it is one of BR-6's five). Distinguishes a document that
- *  names sections which just do not match BR-6 (E-33's structural case) from one carrying no
- *  section headings whatsoever. */
-function hasAnySectionHeadingLine(text) {
-  return text.split("\n").some((line) => SECTION_HEADING_RE.test(line));
-}
-
 /** Split on `\n`, drop trailing blank/whitespace-only lines, re-join with `\n` — no trailing
  *  newline (TSPEC §D.3 step 1). */
 function normaliseExtent(extentLines) {
@@ -2450,10 +2442,19 @@ export function selectLearnings({ entries, feature, thresholds }) {
     }
     const orderKey = parseHarvestDate(entry.text);
     const extraction = extractInjectableMaterial(entry.text, thresholds.maxBytesPerDocument);
-    if (extraction.sections.length === 0 && hasAnySectionHeadingLine(entry.text)) {
-      // BR-9's structural disjunct (E-33): the document names sections, but none is one of
-      // BR-6's five. A document with no section headings at all is not this case — it is
-      // simply a zero-material eligible document.
+    if (extraction.sections.length === 0) {
+      // BR-9/D-12, TSPEC §D.5 and §T.6: ONE branch covering BOTH disjuncts — the structural one
+      // (the document carries none of `BR6_SECTION_NAMES`, E-33) and the zero-bound one
+      // (`maxBytesPerDocument: 0`, E-36). The predicate is `sections[] === []`, nothing else.
+      //
+      // CR round 1, TE F-04: this branch previously carried a second conjunct
+      // (`hasAnySectionHeadingLine(entry.text)`) that no upstream document states. Its effect was
+      // that a LEARNINGS document with no `##` heading at all stayed ELIGIBLE, consumed a
+      // `maxDocuments` slot, pushed a genuine contributor out with `RSN-COUNT`, and rendered an
+      // empty `<<< … >>>`/`<<< end … >>>` pair into an author's prompt with `bytesInjected: 0` —
+      // exactly the outcome FSPEC BR-6 gives as this rule's rationale ("otherwise it would take a
+      // `maxDocuments` slot while injecting zero bytes"). It also made E-36 unreachable for such a
+      // document. Removed: "yields no material" is one predicate, per §T.6.
       rejected.push({ path: entry.path, reason: "RSN-NO-MATERIAL" });
       continue;
     }

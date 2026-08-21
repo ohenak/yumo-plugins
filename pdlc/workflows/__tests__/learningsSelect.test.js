@@ -67,10 +67,10 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     const feature = "self-check";
     const selfPath = `docs/${feature}/LEARNINGS-${feature}.md`;
     const corpus = buildLearningsCorpus([
-      { path: selfPath, doc: { feature, dateCompleted: "2026-01-05" } },
+      { path: selfPath, doc: { feature, dateCompleted: "2026-01-05", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] } },
       {
         path: "docs/self-check-other/LEARNINGS-self-check-other.md",
-        doc: { feature: "self-check-other", dateCompleted: "2026-01-01" },
+        doc: { feature: "self-check-other", dateCompleted: "2026-01-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] },
       },
     ]);
     const entries = entriesFromCorpus(corpus, { feature, selfPath });
@@ -86,6 +86,9 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(result.selected.map((d) => d.path)).toEqual([
       "docs/self-check-other/LEARNINGS-self-check-other.md",
     ]);
+    // CR round 1, TE F-04's control: these fixtures now carry a BR-6 priority section, so the
+    // ordering asserted above orders documents that actually contribute a byte.
+    expect(result.selected.every((d) => d.bytes > 0)).toBe(true);
   });
 
   test("LI-16: LI-AT-07 — count-binding regime: exactly 3 contribute, exactly 5 carry RSN-COUNT, no RSN-BYTES", async () => {
@@ -169,11 +172,11 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     const corpus = buildLearningsCorpus([
       {
         path: "docs/at09-zzz/LEARNINGS-at09-zzz.md",
-        doc: { feature: "at09-zzz", dateCompleted: "2026-02-01" },
+        doc: { feature: "at09-zzz", dateCompleted: "2026-02-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] },
       },
       {
         path: "docs/at09-aaa/LEARNINGS-at09-aaa.md",
-        doc: { feature: "at09-aaa", dateCompleted: "2026-02-01" },
+        doc: { feature: "at09-aaa", dateCompleted: "2026-02-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] },
       },
     ]);
     const entries = entriesFromCorpus(corpus);
@@ -192,6 +195,9 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     ];
     expect(first.selected.map((d) => d.path)).toEqual(expectedOrder);
     expect(second.selected.map((d) => d.path)).toEqual(expectedOrder);
+    // CR round 1, TE F-04's control: both documents carry a BR-6 priority section, so the
+    // tiebreak asserted above orders documents that actually contribute a byte.
+    expect(first.selected.every((d) => d.bytes > 0)).toBe(true);
   });
 
   test("LI-16: LI-AT-10 — no-row, trailing-text and unparseable dates all stay eligible; the trailing-text date reads correctly; the order is a pure function of (key, path)", async () => {
@@ -203,16 +209,20 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     // at10-unparseable: a Date Completed value that is not a date at all.
     // at10-early: a clean, earlier date, for the trailing-text document to out-rank.
     const corpus = buildLearningsCorpus([
-      { path: "docs/at10-norow/LEARNINGS-at10-norow.md", doc: { feature: "at10-norow", dateCompleted: null } },
+      { path: "docs/at10-norow/LEARNINGS-at10-norow.md", doc: { feature: "at10-norow", dateCompleted: null, sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] } },
       {
         path: "docs/at10-trailing/LEARNINGS-at10-trailing.md",
-        doc: { feature: "at10-trailing", dateCompleted: "2026-03-15 (Phase H harvest; partial close-out)" },
+        doc: {
+          feature: "at10-trailing",
+          dateCompleted: "2026-03-15 (Phase H harvest; partial close-out)",
+          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }],
+        },
       },
       {
         path: "docs/at10-unparseable/LEARNINGS-at10-unparseable.md",
-        doc: { feature: "at10-unparseable", dateCompleted: "not-a-date" },
+        doc: { feature: "at10-unparseable", dateCompleted: "not-a-date", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] },
       },
-      { path: "docs/at10-early/LEARNINGS-at10-early.md", doc: { feature: "at10-early", dateCompleted: "2026-03-01" } },
+      { path: "docs/at10-early/LEARNINGS-at10-early.md", doc: { feature: "at10-early", dateCompleted: "2026-03-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] } },
     ]);
     const entries = entriesFromCorpus(corpus);
     const args = {
@@ -234,6 +244,10 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
       "docs/at10-norow/LEARNINGS-at10-norow.md",
       "docs/at10-unparseable/LEARNINGS-at10-unparseable.md",
     ]);
+    // CR round 1, TE F-04's control: these fixtures now carry a BR-6 priority section, so the
+    // ordering asserted above orders documents that actually contribute a byte.
+    expect(result.selected.every((d) => d.bytes > 0)).toBe(true);
+
 
     // BR-4's negative invariants (git order, ctime, mtime, wall clock) are not selectLearnings
     // inputs at all — the pure function consults only entry bytes and paths. Simulating "the
@@ -401,6 +415,55 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(result.rejected).toEqual([
       { path: "docs/at28-no-material/LEARNINGS-at28-no-material.md", reason: "RSN-NO-MATERIAL" },
     ]);
+  });
+
+  // CR round 1, TE F-04. AT-28's own fixture names a section BR-6 does not recognise; this is
+  // the OTHER shape of "yields no material" — a LEARNINGS document with no `##` heading line at
+  // all. TSPEC §D.5/§T.6 make both the same predicate (`sections[] === []`, one branch), so both
+  // must be dropped before the bounds. The shipped code carried an extra
+  // `hasAnySectionHeadingLine(entry.text)` conjunct that no upstream document states, under which
+  // THIS document stayed eligible, took the only slot, pushed the genuine contributor out with
+  // `RSN-COUNT`, and rendered an empty `<<< … >>>` pair carrying `bytesInjected: 0` into an
+  // author's prompt. Deleting the conjunct is what makes this case green; re-adding it reds it.
+  test("LI-16: LI-AT-28 (second disjunct shape) — a document with NO section heading line at all is dropped RSN-NO-MATERIAL on the same branch, consumes no slot, and never displaces a contributor", async () => {
+    const { selectLearnings } = await import("../orchestrate-dev.js");
+
+    const corpus = buildLearningsCorpus([
+      {
+        path: "docs/at28b-nohdr/LEARNINGS-at28b-nohdr.md",
+        doc: {
+          feature: "at28b-nohdr",
+          dateCompleted: "2026-05-09", // ranks FIRST — so under the defect it takes the slot
+          // No `sections` at all: the front-matter table and nothing else. Not one `##` line.
+        },
+      },
+      {
+        path: "docs/at28b-normal/LEARNINGS-at28b-normal.md",
+        doc: {
+          feature: "at28b-normal",
+          dateCompleted: "2026-05-01",
+          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }],
+        },
+      },
+    ]);
+    const entries = entriesFromCorpus(corpus);
+
+    const result = selectLearnings({
+      entries,
+      feature: "at28b-dispatcher",
+      thresholds: { maxDocuments: 1, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
+    });
+
+    expect(result.selected.map((d) => d.path)).toEqual([
+      "docs/at28b-normal/LEARNINGS-at28b-normal.md",
+    ]);
+    expect(result.rejected).toEqual([
+      { path: "docs/at28b-nohdr/LEARNINGS-at28b-nohdr.md", reason: "RSN-NO-MATERIAL" },
+    ]);
+    // The control that makes the two clauses above non-vacuous: the document that DID get the
+    // slot contributes bytes. A selection of zero-byte documents satisfies a path-only oracle.
+    expect(result.selected[0].bytes).toBeGreaterThan(0);
+    expect(result.totalBytes).toBeGreaterThan(0);
   });
 
   // LI-AT-15 is written WHOLE — one test, FSPEC's four clauses — and its `.skip` is titled
