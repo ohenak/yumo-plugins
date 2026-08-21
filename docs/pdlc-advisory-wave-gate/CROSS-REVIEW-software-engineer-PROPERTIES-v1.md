@@ -57,7 +57,33 @@ as F-02 (Low, inherited: the convention predates this round; the two new rows fo
 
 ## Oracles
 
-_(pending)_
+**O-C, extended header (`-01, -02, -03, -10`) and the new two-conjunct paragraph.** Measured against
+FSPEC BR-9 v1.6, AT-05-1/-05-2, REQ AC-5.1 and TSPEC §5.2: faithful, and it does the right job for
+an oracle section — it states *why* each conjunct is positive rather than restating the property.
+
+- *Domain half.* "the fixture must carry a `.gitignore`d file the wave added and assert it **present**
+  afterwards … an implementation that ran `clean -fdx` fails it" matches TSPEC §5.2 case 4 and §2.5's
+  "`clean -fd`, not `clean -fdx` — and the boundary is upstream's, now decided".
+- *Vacuity guard.* "A fixture whose only generated output is `.gitignore`d tests nothing at all here
+  (AT-05-2), so PROP-REST-02's rewritten path must be a non-ignored one" is FSPEC AT-05-2's own
+  sentence ("whose generated output is `.gitignore`d tests nothing here, since BR-9 puts it outside
+  the map"). Good catch to propagate it into the oracle rather than leaving it in the AT.
+- *Observation-point half.* "a map observed after them differs from the pre-A6 map by exactly the
+  bytes BR-13 mandates, so a correct restore would read as red" is BR-9's own reasoning, and E-23
+  supplies the third carrier (the `halted` queue row, M-WG-7) that BR-9's sentence names only as
+  "the record and escalation writes". The document is right to enumerate all three: REQ AC-5.1 does.
+- O-D's counted-quantity rule (`commit-tree === 1`) is untouched by this delta and still matches
+  TSPEC §5.2's capture-failure block.
+
+**Falsifiability close.** The edit demotes PROP-REST-03 from the weak list with a one-sentence
+history rather than deleting it — the right shape: a reader of v1.2 can still follow the trail, and
+the "no longer weak" claim is now true because the property carries transcribed expected values on
+both halves.
+
+**Oracle-level effect of F-01.** The attempt-consumption conjunct lives in PROP-ENV-13's row, not in
+an oracle, so no oracle text needs to change with it — the fix is one clause in one row (and,
+optionally, an explicit `attempts` observable, since asserting `attempts` *unchanged* here is a real
+and worthwhile discriminator against an implementation that charges the wave for a refusal).
 
 ## Fixtures
 
