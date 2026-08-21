@@ -167,10 +167,52 @@ exactly that, and the four-column diff bears the claim out.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **Delta-introduced precision slip.** LI-08's amendment note says `renderSection`'s `ordinal`, `gloss` and `body` are "all three unexercised by any landed suite". `ordinal` and `gloss` are indeed unexercised, but `body` is passed by the shipped AT-29 contamination corpus (`__tests__/helpers/learningsFixtures.js:402`). The sentence's conclusion — the amendment adds callers for **two** existing knobs, not four new knobs — is unaffected and in fact strengthened. Fix: say "`ordinal` and `gloss` unexercised, `body` already exercised by the AT-29 corpus" | AC-2.4 / F-O-1 second rule (LI-08 task row) |
+| F-02 | Low | Local | **Inherited, unrouted (v9 F-01).** §The three gate wordings → *Amendment commits on landed suites*, case A keys on "before batch 7", but batches 4–6 also run in that window under the green-terminal and RED-terminal wordings, neither of which has a clause for new red cases spliced into a suite that landed red two batches earlier; the stated red reason (`extractInjectableMaterial` does not implement F-O-1's second rule) is the batch-7/8 reason, not the pre-batch-7 one. No gate is made unsafe. One clause fixes it: cases landing in batches 4–6 read under that batch's own wording as part of the already-red `learningsBlock` suite | PLAN §The three gate wordings, case A (PLAN:491) |
+| F-03 | Low | Local | **Inherited, pre-existing at `6a2d3007`.** §Changelog's 0.6 row (PLAN:603) sits ahead of its 0.5 row (PLAN:604); the new 0.7 row is correctly appended last. Reorder 0.5 before 0.6 so the table reads monotonically | §Changelog |
+
+DEFERRED: LI-15…LI-20's `Status` cells read ⬚ although their feature commits landed (`d462ddd8` … `c261941e`), while LI-21 reads 🟢 from `92b7ea0c` — the column is the dispatcher's ledger and the flip was not made by this revision, but the ledger is now internally inconsistent and worth a dispatcher-side sweep.
+DEFERRED: §Open questions' ERR-8 status row is long enough to read as an argument rather than a status; a two-line summary with the detail beneath would serve a reader scanning for "does this PLAN owe a change" (answer: no).
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | If FSPEC's author closes ERR-8 by adopting TSPEC's suggested item ordering, does this PLAN's §Open questions row get retired in the same round, or does it stay as the record of why no task moved? The row currently reads as permanent; a retirement trigger would keep §Open questions from accreting closed items. |
 
 ## Positive Observations
 
+- The zero-bound fix does the harder half: it does not merely name an owner, it states **why no
+  other task could be the owner** (LI-12 has no production column; LI-21's enumerated edits are
+  `main()` and `buildFinalReport`). That reasoning is independently checkable in one diff, and it
+  is what turns an assignment into a claim a reviewer can falsify.
+- LI-AT-30's precondition is written as a *product* bound — "more eligible non-self documents than
+  the `maxDocuments` in force", with REQ §4.1's default given as the concrete number — rather than
+  as a magic fixture size. It stays correct if the default ever changes, and it says which document
+  owns the number.
+- The ERR-8 entry resists the temptation a frozen round creates: it records an open upstream defect,
+  demonstrates the PLAN already encodes the corrected rule, and explicitly declines to re-decide the
+  question. That is the right disposition, and it pre-answers the delta confirmation that a
+  corrected FSPEC will trigger.
+- The changelog row is unusually honest about negative space, and this time the negative space is
+  verifiable in one command: I compared all four contract columns across 23 rows and found them
+  identical.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+All five of my v9 findings are resolved, each verified against the repository rather than against
+the document's account of itself. The revision broke nothing I had approved: the batch ladder,
+`Deps` edges, file ownership, AT partition and fixture set are byte-identical, and the arm table's
+twelve-arm / thirteen-case arithmetic and LI-23's reason-code set equality survived the one cell
+that was re-split. Upstream is unchanged at all four digests, so no cascade entered this round.
+
+No High finding. Three Low findings are recorded and none blocks: F-01 is a supporting-clause
+inaccuracy the delta introduced whose conclusion holds regardless, and F-02 and F-03 are inherited
+items outside this round's routing scope. Two observations are recorded as DEFERRED rather than
+folded into the verdict, per the freeze.
 
 ## Verdict
