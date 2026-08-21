@@ -281,10 +281,22 @@ still holds: exactly one task per wave owns the production file.
    by exactly one task per batch, and parallelism exists only among test-side tasks in the odd
    batches.
 
-**Not in scope here.** OQ-7 (`.gitignore`d paths inside BR-9's restoration oracle) is upstream-pending
-on FSPEC `BR-9` / `AT-05-1` and REQ `AC-5.1`. Per TSPEC §6 OQ-9 the plan does **not** wait for it:
-A6-10's former-A6-09 red step mints the ignored-path round-trip case with its expected value marked
-pending, and transcribes whichever boundary the erratum returns.
+**Decided upstream, transcribed here.** OQ-7 (`.gitignore`d paths inside BR-9's restoration oracle)
+is **closed**, in the TSPEC's favour — it is no longer pending and this document no longer routes it.
+FSPEC `BR-9` / `AT-05-1` / `AT-05-2` at v1.6 and REQ `AC-5.1` at v1.15 state both halves of the
+boundary A6-10 has to transcribe:
+
+- **Domain** — the path-to-content-hash map ranges over tracked and **non-ignored** untracked files,
+  generated outputs included. Ignored paths are excluded **on both sides**, so an implementation that
+  restores one *fails* AT-05-1 rather than passing it. AC-5.1's words: ignored paths "are operator
+  files A6 never wrote and never restores over."
+- **Observation point** — the map is taken immediately after restoration completes and **before** the
+  record carriers the run still owes: AC-6.1's record append, AC-6.2's escalation-log append, and
+  AC-5.2's queue-row write (M-WG-7). Those writes are the halt's, not a restoration defect (FSPEC E-23).
+
+TSPEC §2.5's mechanism already implements exactly that boundary, so no task, batch, wave, dependency
+edge or file-ownership cell moves. What changes is that A6-10's ignored-path case is now a **real,
+asserted case** with a known expected value, not a pending marker — see its row.
 
 ## Batches
 
