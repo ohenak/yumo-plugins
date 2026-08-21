@@ -20,13 +20,10 @@ depends-on: [pdlc-consolidation-agent, pdlc-advisory-wave-gate]
 default branch, which an earlier dispatch of this round had regressed to v1.0 (SE F-01): the
 v1.2 amendments below are **not** withdrawn. Frontmatter `ready:` flips to `true` — BL-01, BL-02
 and BL-03 (§5) are all resolved at HEAD of the default branch, and both depended-on features are
-archived under `docs/completed/`. Further changes: §4's observed facts cite the wave-gate
-baseline's `M-WG-*` ids and carry re-derivation commands (SE F-05, F-09; TE F-03, F-04);
-REQ-WVR-02 closes its ignore-reason catalogue (TE F-06); REQ-WVR-04 states the outcome when the
-manual pointer is set to its default value (TE F-01); REQ-WVR-06 is narrowed to
-commit-as-completion-evidence and gains a positive conjunct (SE F-04, TE F-05); REQ-WVR-08..10
-are added for the all-green skip outcome (SE F-06), strand prevention (TE F-02) and record
-untrackedness (SE F-08, TE F-07); R-1 and R-2 are re-attributed accordingly.
+archived under `docs/completed/`. §4 cites `M-WG-*` ids with re-derivation commands; REQ-WVR-02
+closes its ignore catalogue; REQ-WVR-04 gains its default-pointer boundary; REQ-WVR-06 is
+narrowed with a positive conjunct; REQ-WVR-08..10 are added; R-1 and R-2 are re-attributed. Per
+finding, see `CROSS-REVIEW-software-engineer-REQ-v1.md` and `CROSS-REVIEW-test-engineer-REQ-v1.md`.
 
 **Amendment, 2026-08-21 (v1.4) — round-2 cross-review.** §1's operational finding is restated
 (TE G-01); REQ-WVR-02 splits IG-4 and renumbers the silent case to IG-6 (TE G-02); §5 gains BL-04
@@ -46,12 +43,10 @@ default-branch base is a branch-management step owed before FSPEC authoring; it 
 aligning the requirement with the shipped interim ledger; OQ-1 resolves to **record deletion as the
 only force-full-run hatch**, with no new config knob. No question in this REQ is open.
 
-**Amendment, 2026-08-13.** OB-1, OB-2, and OB-3 (§9) are answered against the shipped interim
-mechanism, which reconciliation confirms is already merged to main. OQ-1 (§9) remains open pending
-an operator decision on the escape-hatch form. A previously unrecorded conflict between REQ-WVR-05's
-self-clearing lifecycle and the shipped ledger's deliberate persistence is flagged open under
-REQ-WVR-05 (§7), also pending an operator decision. §1 and §5 are corrected for staleness: the
-interim mechanism and BL-01/BL-03 are resolved at HEAD of main, not pending on a feature branch.
+**Amendment, 2026-08-13.** OB-1, OB-2 and OB-3 (§9) are answered against the shipped interim
+mechanism, which reconciliation confirms is already merged to main; §1 and §5 are corrected for
+staleness. The two questions this amendment left open — OQ-1's hatch form and REQ-WVR-05's
+lifecycle — were both decided in v1.2 above; neither is open.
 
 ## 1. Problem / Context
 
@@ -86,16 +81,12 @@ This feature makes the resume point self-determining: a re-invocation after a Ph
 halt resumes at the correct wave with no operator action, while an explicit operator
 override still wins and correctness never depends on the resume record being right.
 
-At authoring time an **interim** mechanism for this already exists at HEAD of the
-pdlc-consolidation-agent branch (added 2026-08-09 to unblock the live run, and marked
-INTERIM in its comments). Per the activation-check discipline, this feature's deliverable
-is therefore the *formalized, reviewed contract* — behavioural specification, property
-tests, and operator-facing documentation — that supersedes or replaces the interim
-mechanism, not necessarily new wiring.
-
-**Correction, 2026-08-13.** The paragraph above is stale: the interim mechanism is
-**already merged to main** (it landed with `pdlc-consolidation-agent`), not sitting at
-HEAD of a feature branch. BL-01 and BL-03 (§5) are correspondingly already resolved.
+An **interim** mechanism for this is **already merged to the default branch** (added 2026-08-09
+to unblock the live run, marked INTERIM in its comments, landed with
+`pdlc-consolidation-agent`), so BL-01 and BL-03 (§5) are already resolved. Per the
+activation-check discipline, this feature's deliverable is therefore the *formalized, reviewed
+contract* — behavioural specification, property tests, and operator-facing documentation — that
+supersedes or replaces the interim mechanism, not necessarily new wiring.
 
 **Operational finding, 2026-08-13, re-verified 2026-08-21 — the interim ledger fires, but
 narrowly, and several routine conditions discard what it writes.** The 2026-08-13 observation was
@@ -420,22 +411,25 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   determination procedure are implementation contracts owned by the TSPEC — this REQ
   deliberately states only their observable outcomes (REQ-WVR-01..06).
   **Answered 2026-08-13.** The mechanism this REQ formalizes already ships, merged to
-  main, all in `pdlc/workflows/orchestrate-dev.js`: `WAVE_STATE_PATH =
-  ".claude/pdlc-wave-state.json"` (`:9976`, consumer-local and untracked, mirroring the
-  drift-state precedent); `computePlanHash` (`:9992`, an FNV-1a "same plan?" fingerprint
+  main, all in `pdlc/workflows/orchestrate-dev.js` and cited by **exported symbol name**, which
+  is grep-stable where a line anchor is not (SE G-02, TE G-04): `WAVE_STATE_PATH`
+  (`.claude/pdlc-wave-state.json`, consumer-local and untracked, mirroring the
+  drift-state precedent); `computePlanHash` (an FNV-1a "same plan?" fingerprint
   over wave order, task ids, and owned paths — not an integrity hash); `parseWaveLedger`
-  (`:10029`, total, never throws, with three outcomes: silent no-record including `{}`
+  (total, never throws, with three outcomes: silent no-record including `{}`
   or absent, ignored-with-reason, or well-formed — fail-open); `formatWaveLedger`
-  (`:10087`, `{version: 1, feature, planHash, lastGreenWave, head?}`); read/decide
-  (`:12191-12280`, a manual `implementation.startWave > 1` outranks the ledger, the
+  (`{version: 1, feature, planHash, lastGreenWave, head?}`); read/decide (`explicitPointer`
+  — a manual `implementation.startWave > 1` outranks the ledger, and is computed *before* the
+  out-of-range clamp so a past-the-end pointer still suppresses the ledger; the
   ledger is ignored with an announced reason on feature mismatch, planHash mismatch,
-  out-of-range, or failed head corroboration via `git merge-base --is-ancestor`
-  (fail-open when no transport), otherwise resume at `lastGreenWave + 1`, and a complete
-  record skips Phase I with a `⏭` row); and write (`:12284`, `:12429`, best-effort, once
+  out-of-range, or failed `headCorroborated` via `git merge-base --is-ancestor`
+  (fail-open when no transport), otherwise resume at `lastGreenWave + 1`, and
+  `allWavesRecorded` skips Phase I with a `⏭` row); and the `writeWaveLedger` call, nested
+  inside the wave loop's git-transport branch, best-effort, once
   per wave, after the script's own pathspec-scoped commits, with write failure a notice
-  never a halt). Skipping skips dispatch only — every executed wave's gate still runs the
-  full suite over the whole tree, so REQ-WVR-03 holds structurally. Tests exist at
-  `pdlc/workflows/__tests__/waveExecution.test.js:1573` onward. TSPEC's job is therefore
+  never a halt. Skipping skips dispatch only — every executed wave's gate still runs the
+  full suite over the whole tree, so REQ-WVR-03 holds structurally. Tests exist in
+  `pdlc/workflows/__tests__/waveExecution.test.js` (the wave-ledger describe block). TSPEC's job is therefore
   to **ratify or revise this shipped contract, not invent one**. Reconciliation findings
   for TSPEC to carry forward: git per-task commits remain the only source of truth for
   *work*, and the ledger is only a dispatch-skipping optimization — worst case of a bad
@@ -447,32 +441,30 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   test; and a Claude-created worktree has no ledger, because `.worktreeinclude` lists
   only `.claude/workflows/`, so it fails open to a full run — consistent with the
   D-DIST-07 deferral, but TSPEC should say so explicitly rather than inherit it silently.
-  Two decisions remain genuinely left to TSPEC: retention-vs-clearing (see the
-  REQ-WVR-05 open note in §7) and the `{}` "cleared" shape that `parseWaveLedger`
-  reserves but nothing ever writes — wire it or drop it.
+  One decision remains genuinely left to TSPEC: the `{}` "cleared" shape that `parseWaveLedger`
+  reserves but nothing ever writes — wire it or drop it. (Retention-vs-clearing was
+  decided in v1.2 under REQ-WVR-05.)
 - **OB-2 (owner: this feature's se-author, at FSPEC/TSPEC authoring).** Promote OF-1..3
   into `docs/_constraints/pdlc-wave-gate-baseline.md` as measured `M-*` facts once BL-02
   resolves, and cite them by id from downstream artifacts.
-  **Answered 2026-08-13.** Promotion mechanics: `docs/_constraints/pdlc-wave-gate-baseline.md`
-  exists at HEAD (v1.0, 2026-08-09), and its own control rule is that a successor
-  feature's facts go in a **new section, never interleaved**, with any content change
-  requiring a `Version` bump — so promotion means adding a new §3 cited by this REQ, ids
-  `M-WVR-1..3` mapping OF-1..3, each with a Measured-by command, bumping the baseline to
-  1.1, and re-verifying at a fresh default-branch commit. Avoid restating: OF-3
-  duplicates M-WG-4 and OF-1's re-entry half duplicates M-WG-6, so cite those ids instead
-  of re-deriving them; the genuinely new facts to measure are the replay cost (7 no-op
-  dispatches, waves 1–3) and OF-2 (a completed task may legitimately produce no commit;
-  stray agent commits were also observed). Two corrections to carry into that promotion:
-  **BL-02's stated gate is stricter than reality** — the baseline file is already
-  committed on main and citable now, so OB-2 can execute at FSPEC-authoring time
-  regardless of queue row 19. **Partly discharged, v1.3:** §4's duplicated facts now cite
-  `M-WG-4`, `M-WG-6` and `M-WG-12` directly instead of restating them, so what this obligation
-  still owes the baseline is only the two genuinely new observations (the replay cost and OF-2).
-  And **M-WG-6 is now false at HEAD** (it says a
-  re-invocation re-enters at wave 1, which the shipped ledger contradicts), which the
-  promoted section and a fresh check of M-WG-6 must record. One ownership wrinkle: after
-  promotion, §4 should cite by `M-WVR-*` id, which is a pm-author edit even though OB-2's
-  own owner is se-author.
+  **Answered 2026-08-13; recipe restated v1.4 (SE/TE G-03).** `docs/_constraints/pdlc-wave-gate-baseline.md`
+  exists at HEAD, at `Version | 1.2 · 2026-08-20`, with sections through §4 occupied and ids
+  through `M-WG-14`. Its own control rule is that a successor feature's facts go in a **new
+  section, never interleaved**, with any content change requiring a `Version` bump, and that a
+  consumer cites the file *at its `Version`*. Promotion therefore means: re-read the file at the
+  version current when promotion runs, append the **next unoccupied section** (`## 5.` if the file
+  is still at 1.2), ids `M-WVR-1..2`, each with a Measured-by command, and bump to the **next**
+  version above the one found (1.3 from 1.2) — never to a fixed number written here, which would
+  be a downgrade if the file has moved again. **Partly discharged, v1.3:** §4's duplicated facts
+  cite `M-WG-4`, `M-WG-6` and `M-WG-12` instead of restating them, so what this obligation still
+  owes the baseline is only the two genuinely new observations — the replay cost (7 no-op
+  dispatches, waves 1–3) and OF-2 (a completed task may legitimately produce no commit; stray
+  agent commits were also observed). Also carry: **BL-02's stated gate is stricter than reality**
+  — the baseline is committed on main and citable now, regardless of queue row 19. And **M-WG-6
+  needs a re-check, not an assumed correction**: it was found false at HEAD against 1.0 and read
+  unchanged at 1.2, so the promoted section must state the version it was checked against and
+  record that the row was reviewed and left, not missed. One ownership wrinkle: after promotion,
+  §4 should cite by `M-WVR-*` id, a pm-author edit even though OB-2's owner is se-author.
 - **OB-3 (owner: pm-author, at FSPEC authoring).** Confirm the interaction ordering with
   the advisory wave-gate remediation seam (`pdlc-advisory-wave-gate`): proposed default —
   remediation acts *within* the halted run, automatic resume acts at the *next*
@@ -500,9 +492,9 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
   action, or both? Product requirement is only that one exists and is announced;
   form is the TSPEC's choice unless the operator states a preference at FSPEC review.
   **Decided 2026-08-13 — deletion only.** What exists at HEAD: exactly one hatch, the
-  record-removal action, announced in both banners ("Delete
-  `.claude/pdlc-wave-state.json` to force a full run", `orchestrate-dev.js:12265` and
-  `:12276`). No config value can force a full run today — `implementation.startWave`
+  record-removal action, announced in both banners (grep `orchestrate-dev.js` for the
+  banner string "to force a full run" — one under the complete-record skip, one under the
+  mid-plan resume). No config value can force a full run today — `implementation.startWave`
   defaults to 1, which *defers to* the ledger, and the parser clamps invalid values back
   to 1, so there is no sentinel meaning "ignore ledger, start at wave 1" and
   `startWave: 1` is indistinguishable from the default; any `startWave > 1` bypasses the
