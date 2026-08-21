@@ -216,7 +216,61 @@ changes.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | What is the intended observable outcome of an operator explicitly setting the manual resume point to 1? (F-01 — the AT's *When* depends entirely on this answer.) |
+| Q-02 | Does OF-1's "15-wave plan" refer to a PLAN revision predating HEAD? If so, which commit — a measured fact promoted under OB-2 needs a reproducible subject. |
+| Q-03 | REQ-WVR-05 says "no resume state survives **for a later fresh run of any feature**". Does a completed Phase I for feature A have to clear a record left by feature B, or is clearing scoped to the running feature? The two give different ATs. |
+| Q-04 | Is a wave whose tasks produce no commits *at all* (OF-2's case, run through) required to be recorded complete, or merely permitted to be? REQ-WVR-06's negative phrasing leaves both readings open (F-05). |
+| Q-05 | Should REQ-WVR-03's "before any new commit lands" be observable as ordering (gate outcome precedes the first commit of the resumed run) or as a stronger post-condition (no commit exists in the resumed run unless the whole-tree suite passed)? The latter is testable after the fact; the former needs an ordering oracle. |
+
 ## Positive Observations
+
+- **§4 is measurable, and most of it measures true.** OF-2 (wave 1's single task) and OF-3
+  (halted work uncommitted at the halt) both reproduce mechanically — OF-3 by construction, at
+  `pdlc/workflows/orchestrate-dev.js:10321-10335`, where the gate throws before the commit loop.
+  A constraints section that a reviewer can re-derive instead of believe is exactly what OB-2's
+  promotion into a `M-*` baseline needs, and it is why F-03/F-04 are narrow corrections rather
+  than a challenge to the section.
+- **G-2 is stated as a testable invariant, not an aspiration.** "no new commit lands before the
+  full test suite has verified the whole tree" is falsifiable, it is carried into REQ-WVR-03
+  with an adversarial *Given* ("corrupt or adversarial bytes"), and it makes the resume record a
+  pure optimisation. This is the right shape for the property that everything else depends on.
+- **The altitude discipline is well kept.** OB-1 explicitly parks location, format, matching
+  rules and procedure with the TSPEC, and §7 mostly states operator-visible outcomes. My
+  testability findings ask for *more precise outcomes*, not for mechanics — the one place
+  mechanics leaked in (REQ-WVR-06's "does not consult commit presence") is flagged as F-05.
+- **Non-Goals are enforceable, not decorative.** "Commit-history archaeology … explicitly
+  rejected (OF-2), not deferred" and "no form of trust-the-record-and-skip-the-gate" both name
+  behaviours a test can look for, and both are grounded in an observed fact rather than taste.
+- **The interim mechanism is honestly disclosed.** §1's INTERIM paragraph plus BL-03's gating
+  logic ("formalize or replace, never duplicate") is the activation-check discipline applied
+  correctly; it is what let me diff the REQ against a real implementation instead of against
+  assumption, which is how F-01 surfaced.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings must be closed before this REQ is a sound basis for FSPEC/PROPERTIES work:
+
+1. **F-01** — state the outcome when the manual resume point is explicitly set to its default
+   value, so REQ-WVR-04's acceptance test has a writable *When*. Coordinate with OQ-1: if the
+   escape hatch is the answer, say so in the AC.
+2. **F-02** — promote R-2's strand-prevention property from a risk into an acceptance criterion
+   with a positive oracle, so the AT the risk demands has a requirement to trace to.
+
+The five Medium findings (F-03..F-07) are all closable with sentence-level edits: correct OF-1's
+two numbers, give REQ-WVR-06 a positive conjunct, close or explicitly delegate REQ-WVR-02's
+rejection catalogue with a set-equality obligation, and give C-1 an observable AC. The Lows are
+precision, not correctness.
+
+Nothing in this review contests the product judgement, the goal set, or the decision to make
+resume self-determining — the shape of the feature is right, and §4's measurable-facts approach
+is a model for other REQs. The revision needed is to make the two properties that carry the
+safety argument falsifiable.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 5, "low": 3}
