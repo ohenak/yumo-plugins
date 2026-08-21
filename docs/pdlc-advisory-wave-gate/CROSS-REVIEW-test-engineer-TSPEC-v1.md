@@ -95,6 +95,8 @@ semantics' neighbourhood: the "growth since the last `apply`, not a suffix" rule
 justification are unaffected by the ignored-path decision, and the two mutation fixtures §5.5 owes
 it are still allocated.
 
+## Data Model
+
 **§4.4's `nonNegativeInt` and the OQ-1 closure.** The delta withdraws OQ-1's "the behaviour is
 coherent but undocumented upstream" clause. I checked whether upstream now documents it, since the
 withdrawal is only correct if it does.
@@ -116,8 +118,6 @@ justification in PROPERTIES, whereas a transcribed one is tested by transcribing
 `nonNegativeInt`) is consistent with E-33 on every field — value domain, default, and the reason `0`
 is a legal configured value rather than a misconfiguration. No enum, range or return-type divergence
 against upstream in the delta.
-
-## Data Model
 
 ## Test Strategy
 
@@ -247,4 +247,13 @@ mis-specified. Fix it in passing at the next edit to this section; it does not g
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | §2.5's new observation-point bullet attributes a three-carrier exclusion list to "BR-9 and AC-5.1" jointly, but FSPEC BR-9 at v1.6 names only two carriers ("the record and escalation writes BR-13 requires") and does not reach AC-5.2/M-WG-7's queue-row write. REQ AC-5.1 does name all three, so the substance is correct and no test is mis-specified — the TSPEC excludes a superset, the stricter reading. Attribute the third carrier to AC-5.1 alone. §5.6's AT-05-1 row already scopes its BR-9 citation correctly. | §2.5, "The observation point is pinned, and the mechanism honours it" |
+
+FINDING: Low | delta | local | §2.5 observation-point bullet | attributes a three-carrier exclusion list to "BR-9 and AC-5.1" jointly, but BR-9 at FSPEC v1.6 names only the record and escalation writes and does not reach AC-5.2/M-WG-7's queue-row write; AC-5.1 names all three, so the exclusion is a correct superset and no test is mis-specified — attribute the third carrier to AC-5.1 alone
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
