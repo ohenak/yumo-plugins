@@ -68,6 +68,79 @@ approved at v1/v2/v4 are not re-litigated.
 
 ## Properties
 
+Two properties changed. Both are in the delta's blast radius, and both hold.
+
+### P.1 `PROP-BOUND-03` now transcribes T-O-6 instead of arguing with it — F-01 (v4) closed
+
+The v0.2 form scoped the property to `> 0` and justified the exclusion from the *un-amended*
+cut-and-flag reading — the reading TSPEC §D.5 had already carved out. The v0.3 form does the
+opposite, and the difference is not cosmetic:
+
+> **At `maxBytesPerDocument <= 0` the carve-out conjunct holds instead, and it is positive rather
+> than an exclusion:** `extractInjectableMaterial(text, maxBytes)` tests the bound *before* the cut
+> and **must** return `{material: "", bounded: false, bytes: 0, sections: []}` for every `text`,
+> including one carrying all five priority sections.
+
+Four things make this the right closure rather than a compliant one:
+
+- **It is a positive oracle, not an exclusion.** Four asserted fields, on a fixture *carrying all
+  five sections* — so a fixture that would green vacuously (a section-less document) cannot satisfy
+  it. This is the same discipline `PROP-CONFIG-09` established at v0.2, applied one altitude down.
+- **It states why `bounded` is `false` rather than leaving it to look like an inconsistency.** *"No
+  cut occurs, so `bounded` is **false** — the 'bounded exactly when cut' conjunct holds precisely
+  because nothing was taken."* T-O-6 says the same thing in the same shape (`TSPEC-…md:1511`: *"no
+  cut, so `bounded` is false, and the 'bounded exactly when cut' conjunct holds only because nothing
+  was taken"*). A reader who meets the property without T-O-6 in hand reaches the same reading.
+- **It resolves the altitude confusion that produced the v4 defect.** *"No `maxDocuments` slot
+  question arises at this altitude at all: the drop and its `RSN-NO-MATERIAL` reason (FSPEC E-36,
+  BR-9) are the **caller's** decision, observable only in a finished report. That run-level half is
+  owned by **PROP-CONFIG-09**. The two properties **partition** §D.5's inputs rather than duplicating
+  each other."* The v0.2 rationale had mixed a unit-level return with a run-level slot; naming the
+  partition is what stops that recurring.
+- **Its cost claim is checkable and checks out.** *"The zero case costs one added case in
+  `pdlc/workflows/__tests__/learningsBlock.test.js` (landed, 7.6 K) under the **existing** LI-08 red
+  / LI-17 green tasks — no new fixture, no new PLAN task, no new AT id, no new property id."*
+  Verified: the file is tracked (`git ls-files`) and `wc -c` reports **7744** bytes; PLAN's LI-08 row
+  (`PLAN-…md:147`) and LI-17 exist and are unamended by this delta; the unique property count is
+  unchanged at **70** (`grep -o "PROP-[A-Z]*-[0-9]*" | sort -u | wc -l` ⇒ 70).
+
+The trace line widens correctly too — `AC-4.4`, `E-36` and `TSPEC §I.3` are added alongside the
+existing `AC-2.3, BR-6, E-15, E-16, AT-11, AT-12, §D.5`, which is exactly the set of upstream clauses
+the new conjunct answers to.
+
+### P.2 `PROP-BOUND-05`'s intersection oracle is a strengthening, not a relaxation
+
+The oracle changed from *"equals `BR6_SECTION_NAMES`"* to *"equals — as an **ordered** list — the
+**priority-ordered intersection** of `BR6_SECTION_NAMES` with the headings the fixture document
+actually carries, hand-transcribed for the fixture at hand rather than derived at runtime."* I read
+this against the completeness bar (set equality over the full enumeration, so a deleted case reds)
+before accepting it, because "intersection" is the shape a weakened oracle usually takes.
+
+It is not weakened, on three grounds:
+
+- **On AT-11's own fixture the assertion is still over the full catalogue.** FSPEC AT-11's third
+  clause is stated over *"an unbounded document carrying all six conventional sections"*
+  (`FSPEC-…md:860-864`), so the intersection *is* all five — and the property says so explicitly:
+  *"On AT-11's fixture, which carries all five, that intersection *is* the full `BR6_SECTION_NAMES`
+  catalogue."* Set equality over the full enumeration survives where the AC puts it. TSPEC's AT-11
+  oracle row states it the same way (`TSPEC-…md:1252`, *"assert the resulting list equals
+  `BR6_SECTION_NAMES` — as an **ordered** list"*).
+- **The generalisation is upstream's own, and it buys AT-11's *second* document.** T-O-6's
+  corpus-driven conjunct reads *"`sections` equals the intersection of `BR6_SECTION_NAMES` with the
+  level-2 headings it carries, ordinals and an optional trailing gloss ignored"* (`TSPEC-…md:1511`),
+  and FSPEC AT-11's second document is *"one missing some of BR-6's priority sections"* which *"contributes
+  its present sections in priority order"*. The v0.2 wording would have demanded all five of a fixture
+  the AC says carries fewer. The intersection form covers both documents of the AC; the old form
+  covered one.
+- **"Hand-transcribed … rather than derived at runtime" is the anti-echo clause, kept.** The expected
+  value stays a literal transcription; nothing computes it from the code under test, and the DC-14
+  sentence demoting `sections[]` to a supporting equality (*"**in addition** … **never instead**"*)
+  is untouched.
+
+Everything else in Groups A–H is byte-identical to what I approved at v4, and the two properties'
+own untouched conjuncts — the character-safe prefix, the Approval-Record absence paired with the
+five body-marker presences, `PROP-BOUND-06`'s two driven disjuncts — are unchanged.
+
 ## Oracles
 
 ## Fixtures
