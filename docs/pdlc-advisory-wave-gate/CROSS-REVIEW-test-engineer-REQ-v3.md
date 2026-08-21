@@ -36,6 +36,50 @@ No prior finding regressed, and the revision disturbed no section outside the th
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | AC-2.4 names the zero-budget escalation's class without naming its carrier; the summary row itself has no class field, so a literal transcription could pin `rootCause` onto the row and go RED | AC-2.4 |
+| F-02 | Low | Local | C-5 now states the hook's soft threshold (630 lines / 55,296 bytes) but the REQ measures 656 lines, past it — the constraint the document just adopted is one the document is already outside, with no stated consequence | C-5 |
+
+### F-01 (Low, Local) — the class's carrier is unnamed
+
+AC-2.4's new clause reads "…the per-seam A6 row is present and reads `resolved: 0` with one
+`escalated` invocation per red wave, each carrying `unclassified` as its class". The substance is
+correct and verified (see Delta Basis), and the grammatical subject of "each" is the *invocation*,
+not the row. But the sentence's only named observable is the summary row, and the row carries no
+class: `advisorySummaryRows` emits `{seam, invocations, resolved, escalated, noAction, model,
+fallback}` and nothing else (`orchestrate-dev.js:3697-3706`). The class lives on three other
+artifacts — the record entry's `| Root cause |` line (`:3636`), the escalation log's
+(`:3770`), and the halt's `advisory.rootCause` (`:3566`).
+
+Why it is Low and not Medium: AC-6.2 and AC-6.4 already establish the class as a field on the
+record and on `ESCALATIONS.md`, so the carrier is recoverable from the document — a PROPERTIES
+author who reads §6 as a whole lands on the right oracle. The residual risk is a local one: read
+alone, this sentence invites `summary.rows.find(r => r.seam === "A6").rootCause === "unclassified"`,
+which is `undefined === "unclassified"` against shipped code.
+
+Resolving change: three words — "…each carrying `unclassified` as its class **on the record and the
+escalation log** (no reply having been classified — AC-2.2's default)". No new claim, just the
+carrier the assertion attaches to.
+
+### F-02 (Low, Local) — C-5 adopts a threshold the REQ is already past
+
+C-5 now transcribes both of the hook's bounds, and the transcription is exact
+(`check-req-size.sh:39-47`). The measurement it invites is not: at HEAD the REQ is **656 lines /
+52,844 bytes**. That is inside both hard bounds (44 lines, 8,596 bytes of headroom) but past the
+soft **line** threshold of 630, so `check-req-size.sh` emits its soft nudge on every write to this
+file — the hook's own words, "a REQ that can only absorb the next review round by deleting existing
+text will eventually delete a reason rather than a restatement" (`:42-45`).
+
+This is not a testability defect in an AC, which is why it is Low rather than Medium: C-5 states a
+measurement discipline, not a compliance claim, and the hook never blocks (`exit 0` on every path).
+It is worth a line because C-5's whole purpose is to make the size question decidable from the
+document, and the document now names a bound it silently exceeds. Two resolving changes are equally
+acceptable: state the current measurement and the consequence ("past the soft line threshold;
+further rounds relocate measured facts to the baseline file rather than growing this document"), or
+relocate ~30 lines to `docs/_constraints/pdlc-wave-gate-baseline.md` and come back under 630. The
+first is the cheaper one and preserves the round's reasons.
+
 ## Questions
 
 ## Positive Observations
