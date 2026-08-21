@@ -223,6 +223,52 @@ F-06 (`:174`, `:195`, `:249-252`), F-07 (`:7`).
 
 ## Positive Observations
 
+- **The F-03 repair converted an impossibility into a cost without reopening the decision.** This is
+  the hardest correction to make well, and `:138-163` makes it: it names the three lists and their
+  files, cites `OPERATIONS.md:97` for the vendoring rule, records what the old bullet said and why it
+  was wrong, and then re-rejects "add a module" **on merit** — co-location with `buildA4SeamOps` /
+  `buildA5SeamOps`, no benefit against a three-list edit and a second vendoring surface. Every limb
+  checked out at HEAD. A weaker revision would have quietly deleted the false premise; this one keeps
+  the record of the miscount, which is what makes the next reader trust the rest.
+- **The fail-closed split names the *pair* as the property, which is the right unit.** `:412-427` does
+  not merely correct capture's disposition — it states why the two halves are discharged differently
+  (`__preDispatch` is a `runAdvisorySeam` return value and the driver is never entered on the capture
+  path) and then says what to transcribe: "Both halves end the wave; neither leaves a repair
+  half-applied. That conjunction is the property." That sentence is a property statement, not prose,
+  and it matches `orchestrate-dev.js:12558-12561` and `:12628-12631` line for line.
+- **The v1.11 preamble answers my Q-01 honestly rather than defensively.** `:114-119` says the v1.10
+  sweep was scoped, not exhaustive, names which claims it covered, and characterises the misses as a
+  class. A revision note that narrows its own prior claim of completeness is rarer than it should be,
+  and it is what makes `:52`'s "all claims re-grounded" readable now instead of misleading.
+- **F-05's repair refused to close an obligation it had not discharged.** `:517-530` says
+  "**specified**, not yet asserted", names A6-15 as owing the conjunct, and ends "recorded here rather
+  than closed, because a closed obligation is what stops the next reader looking". That is the exact
+  reasoning I filed the finding on, adopted rather than argued with.
+- **PM F-02's cardinality repair reasons from the code's own shape.** `:301-305` derives the per-task
+  reading from two independent facts — `groupPromotedPaths` returns rows keyed by task id, and the
+  message template has a single `{taskId}` slot — rather than from assertion. Both hold
+  (`orchestrate-dev.js:3329-3342`, `:15474`). F-08 asks only that the *oracle* half be described as
+  precisely as the mechanism half is.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+All three v1 High findings are resolved on ground I re-verified against the working tree, and both v1
+Mediums and both v1 Lows are resolved. No High finding is open, old or new, so this document is not
+blocked. Two non-gating items for the author to take at convenience:
+
+1. **F-08 (Medium) — `DEC-A6-02` `:320-330`.** Split the reversibility caveat the way F-05's repair
+   was split: the promotion commit's *message literal* is asserted (`waveExecution.test.js:1347`);
+   the *per-task cardinality* the delta just made load-bearing is not, and wants a two-promotion
+   fixture asserting set-equality over the observed `advisory promotion (…)` messages.
+2. **F-09 (Low) — `## Context` `:147-150`.** Say "three production lists plus the packed-set fixture
+   (`pdlc/engine/__tests__/_tspec-packed-set.mjs:51`)", so the countable cost is counted completely.
+
+Neither touches a decision entry; `DEC-A6-01`…`DEC-A6-04`'s decisions stay exactly where v1.11 leaves
+them.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
