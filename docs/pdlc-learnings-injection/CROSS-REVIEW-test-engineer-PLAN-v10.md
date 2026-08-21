@@ -116,6 +116,66 @@ same-batch same-new-file guard are byte-identical to the v0.6 bytes I approved a
 
 ## Dependencies
 
+**Batch DAG — re-derived mechanically, not assumed.** The delta adds no task, no file and no edge, but
+the dispatcher reads the `Batch` column and this is the check that is cheap to do and expensive to
+skip, so I re-derived every row from its declared `Deps` with `batch == max(dep batch) + 1`:
+
+| Task | Deps | max(dep batch) + 1 | Column | ✓ |
+|---|---|---|---|---|
+| LI-01 | — | 1 | 1 | ✓ |
+| LI-02, LI-03, LI-13 | LI-01 (1) | 2 | 2 | ✓ |
+| LI-04 | LI-03 (2) | 3 | 3 | ✓ |
+| LI-05 | LI-02 (2), LI-03 (2) | 3 | 3 | ✓ |
+| LI-07, LI-08, LI-09 | LI-02 (2) | 3 | 3 | ✓ |
+| LI-06 | LI-04 (3), LI-05 (3) | 4 | 4 | ✓ |
+| LI-10, LI-11, LI-12, LI-23 | LI-02 (2), LI-06 (4) | 5 | 5 | ✓ |
+| LI-14 | LI-07…LI-12 (3,3,3,5,5,5) | 6 | 6 | ✓ |
+| LI-15 | LI-06 (4), LI-13 (2), LI-14 (6) | 7 | 7 | ✓ |
+| LI-16 | LI-15 (7), LI-07 (3) | 8 | 8 | ✓ |
+| LI-17 | LI-16 (8), LI-08 (3) | 9 | 9 | ✓ |
+| LI-18 | LI-17 (9), LI-09 (3) | 10 | 10 | ✓ |
+| LI-19 | LI-18 (10), LI-10 (5), LI-07 (3) | 11 | 11 | ✓ |
+| LI-20 | LI-19 (11), LI-11 (5) | 12 | 12 | ✓ |
+| LI-21 | LI-20 (12), LI-12 (5), LI-23 (5) | 13 | 13 | ✓ |
+| LI-22 | LI-21 (13) | 14 | 14 | ✓ |
+
+Twenty-two ids, all unique; every `Deps` entry resolves to a declared id; no cycle (every edge points
+strictly backwards in batch). Fourteen batches, matching the header. No desync.
+
+**Red-before-green is intact across the changed rows.** LI-16 (batch 8) is the green whose red is
+LI-07 (batch 3), and its `Deps` carries that edge explicitly; the PLAN's own dependency-rationale
+table states the pairing at `:284` (`LI-16 → LI-07 … red-before-green — each green task names the red
+suite it satisfies`). The delta added production behaviour to LI-16 without adding a test, which is
+the correct direction only because the red already exists: the zero-bound oracle is LI-12's third
+`LI-AT-30` case at batch 5, three batches ahead of LI-16 and eight ahead of LI-21. So the new
+production ownership has a preceding red that names it, and the delta did not create an
+implementation task without one.
+
+**The arm table's re-split does not move an edge.** The zero-bound cell went from `LI-12 / LI-21` to
+`LI-12 (red) / **LI-16** (production green) / LI-21 (config plumbing only)` (`:358`). That is a
+correction to an *entering-task* annotation, not a `Deps` change — LI-16 already depended on LI-07 and
+LI-15, and LI-12 already sat at batch 5. The following prose (`:366`) is consistent with it: the arm
+count stays twelve, thirteen entering cases, and LI-23's set equality is still taken over reason codes
+rather than disjuncts, so the arm inventory's oracle is untouched by the re-split. I confirmed the
+arithmetic on the page rather than accepting the claim: the `RSN-NO-MATERIAL` row is the only row with
+two disjuncts, and 12 + 1 = 13.
+
+**The `Status` column now carries one 🟢 (LI-21) against thirteen ⬚, and that is not a batch problem.**
+LI-21 sits at batch 13 while LI-16 at batch 8 still reads ⬚, which looks inverted until you read the
+column's declared semantics: the v0.7 amendment note states it is the dispatcher's bookkeeping, not a
+record of what is on disk. `git log` confirms LI-14 through LI-21 have all landed (`960c229c`,
+`d462ddd8`, `2cbacada`, `e9fc93fd`, `5becd6b5`, `c261941e`, `92b7ea0c`), so the column is simply
+behind on twelve rows and current on one. The document is now explicit that this is expected, which is
+what my round-8 F-01 asked for. It is not a batch-order violation, and the DAG above is unaffected.
+
+**The follow-up amendment commit still creates no row, and the P-A-7 paragraph is untouched.** The
+delta does not modify §The three gate wordings, so the "Amendment commits on landed suites (P-A-7)"
+rule I confirmed at round 9 stands byte-identical — Case A's empty row-set, Case B's re-red rows in
+test-name grammar, and the additivity premise. My two round-9 findings against that paragraph (F-01
+Medium on its generic title's reach, F-02 Low on Case A's batches 2–6 silence) were not addressed by
+this revision, which was scoped to round 8. Both remain open and both remain non-gating; I re-record
+them below rather than re-argue them.
+
 ## Verification
 
 ## Findings
