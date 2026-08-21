@@ -49,6 +49,33 @@ symbol and file names are the durable half and are what downstream artifacts sho
 
 ## 2. Linked Requirements
 
+Every FSPEC clause below traces to at least one REQ acceptance criterion, and every P0/P1
+criterion of the REQ is covered by at least one clause. REQ-WVR-07 (P2, Phase 2) is specified
+here as a parity clause rather than a distinct flow, because its content is "the same outcome on
+a second entry path".
+
+| FSPEC | Subject | Traces to |
+|---|---|---|
+| FSPEC-WVR-01 | The start-of-Phase-I resume decision and its three outcomes | REQ-WVR-01, REQ-WVR-08 |
+| FSPEC-WVR-02 | Disregard conditions and their announcements | REQ-WVR-02, REQ-WVR-05 |
+| FSPEC-WVR-03 | Verification independence of any executed wave | REQ-WVR-03, REQ-WVR-08 |
+| FSPEC-WVR-04 | Operator override precedence, provenance, and the force-full-run hatch | REQ-WVR-04, OQ-1 |
+| FSPEC-WVR-05 | What counts as a completed wave (committed, never merely verified) | REQ-WVR-06, REQ-WVR-09 |
+| FSPEC-WVR-06 | Record lifecycle: retained, invalidated by the reader | REQ-WVR-05, REQ-WVR-10 |
+| FSPEC-WVR-07 | Queue-delegated parity | REQ-WVR-07 |
+
+**Behavioural complexity justifying an FSPEC.** Three of the seven carry branching a reader
+should not be left to infer: FSPEC-WVR-01 resolves one of three mutually exclusive outcomes;
+FSPEC-WVR-02 enumerates six disregard causes with two different announcement behaviours; and
+FSPEC-WVR-04 defines a precedence relation between two resume sources whose boundary case (the
+pointer at its default) reverses which source wins. The remaining four are single-rule clauses
+recorded here so the traceability chain has no gap.
+
+**Vocabulary.** *Resume record* — the consumer-local state naming how far a previous run of this
+plan got. *Resume point* — the wave number Phase I begins executing at. *Provenance* —
+`operator-set` or `automatic`, the source of the resume point. *Completed wave* — a wave whose
+work is committed (FSPEC-WVR-05); never a wave that merely passed its gate.
+
 ## 3. Behavioral Flow
 
 ## 4. Business Rules
