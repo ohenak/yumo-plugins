@@ -235,6 +235,36 @@ No test-strategy change is owed by this confirmation, and none was made.
 |----|---------|
 | Q-01 | This dispatch confirms an erratum whose bytes were already present in the commit I approved at v14 (`739fea34`; TSPEC sha256 unchanged, both upstream hashes unchanged). Confirming a byte-empty delta is safe but not free. If the round was dispatched because ERR-8 was *routed* rather than because new bytes landed, the routing predicate may be reading an open erratum register row as an unlanded item — worth checking before the next erratum round. |
 
+## Recommendation
+
+**Approved with minor changes.**
+
+The routed item is landed and correct: ERR-8 is recorded in TSPEC §D.5 and §Open Questions, its
+quotation of FSPEC Step 5 items 15–16 is verbatim-accurate at HEAD, its claim that BR-6, BR-9, D-12
+and E-36 demand the opposite ordering is accurate at HEAD, and the rule the TSPEC states for the
+implementer — extract for every eligible document, then apply the count and total bounds — is the
+one that satisfies E-36's "every one … consumes no slot". The PLAN's rows encode that rule (LI-16
+production, LI-12 red) with an oracle that discriminates it from Step 5's literal order, so "no PLAN
+change is owed" is verified, not asserted.
+
+Nothing I approved at v14 is weakened: the TSPEC is byte-identical to the approved bytes
+(sha256 `22dee8ce…d562131`), and both upstream documents are at the hashes v14 recorded, so no
+citation has gone stale. Re-checked directly against upstream anyway per DEC-ERR-03 — BR-6's
+zero-bound paragraph, BR-9's `RSN-NO-MATERIAL` row, D-12, E-36, AT-30 and REQ AC-4.4 all still say
+what this TSPEC says they say.
+
+One Low finding carries forward, inherited from before this erratum and untouched by it. It does not
+gate.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | local | §D.5 says AT-11's **and AT-12's** expected counts are hand-computable as the sum of normalised section lengths plus 2 bytes per join. AT-12's fixture is the *bounded* case, where the same subsection's next paragraph fixes the expected count at the bound exactly. The sum gives the pre-cut material length, which is not AT-12's `bytesInjected`. Present before this erratum and untouched by it. Fix when next unfrozen: qualify as "the unbounded material's length; where the cut applies the bound governs and AT-12's literal is the bound". | §D.5 "Byte accounting" / zero-bound bullet block |
+
+FINDING: Low | inherited | local | TSPEC §D.5 byte-accounting paragraph | the hand-computable-sum sentence names AT-12 alongside AT-11, but AT-12 is the bounded case whose expected count is the bound exactly, not the pre-cut sum — qualify the clause when the document is next unfrozen (raised at v14 as F-01, unchanged by this erratum)
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
