@@ -188,7 +188,55 @@ untouched by the REQ delta. I re-derived nothing there because nothing upstream 
 
 ## Open Questions
 
+**§6 OQ-2 now states a superseded disposition.** Its cell reads, in part: "Both costs are the
+operator's and neither touches content, so the disposition stands; a run id or capture timestamp in
+the ref name is the recorded remedy if the overwrite ever costs an investigation." The *ref-naming*
+half of that disposition still stands — REQ v1.16 does not ask for a run discriminator. The
+*remedy* half no longer does: REQ has decided that the operator is warned at halt time rather than
+left to discover the hazard, so "recorded remedy" understates what upstream now requires. The row
+needs one clause acknowledging that the halt-message obligation has landed at REQ v1.16 and pointing
+at wherever §4.5 puts it; otherwise the design record contradicts its own upstream and the next
+reader has to reconcile them. Medium, because a stale open-question disposition is how a landed
+obligation gets silently re-dropped — this one has already been dropped once between rounds 5 and
+15.
+
+**DEC-A6-03's "known gap" clause is now dischargeable, and that is DECISIONS' business, not this
+document's.** The entry says "The routing has not landed (PM Q-02, TE): at REQ v1.15 and FSPEC v1.6,
+`a6-snapshot`, 'copy the ref' and 'overwrit' match nothing in either document". Half of that is now
+false — REQ v1.16 lands it. I flag it here for the orchestrator's routing only; the DECISIONS
+document has its own cascade round and I am not raising a finding against it in a TSPEC
+confirmation.
+
+**Q-01 (for the orchestrator, not a finding against this TSPEC).** REQ landed the obligation; FSPEC
+is byte-identical at `sha256:91ef2557…` and, per DEC-A6-03's own grep, still says nothing about the
+overwrite. FSPEC E-28 and AT-05-5 therefore still require only that the halt name the failed
+restoration. If the intent is that the AT-level contract carries the new conjunct, FSPEC needs the
+cascade too — and the TSPEC round that fixes §4.5 will otherwise be transcribing a REQ clause with
+no FSPEC AT behind it, which inverts this feature's usual REQ→FSPEC→TSPEC transcription discipline.
+Not gating on this document; routing question.
+
+**Q-02.** Which halt is the "same place" AC-6.3 means — the E-28 restore-failure halt (the one §2.5
+says names the ref) or every A6-touched halt on a wave that reached the snapshot step? The two
+readings differ in test count and in which fixture carries the conjunct. §4.5's next revision should
+answer it explicitly rather than leaving the implementer to infer it.
+
 ## Positive Observations
+
+- **The analysis the fix needs is already in the document.** §2.5's overwrite paragraph reasons the
+  hazard through to its exact cost ("inspectability of the pre-repair tree, never content") and even
+  states the operator remedy verbatim. The revision is a *relocation* of an existing sentence into a
+  machine-emitted slot, not new thinking — which is why this High is a bounded follow-up rather than
+  a design reopening.
+- **The message/`fields` discipline pre-empted the trap.** §4.5's rule that the diagnosis travels in
+  `fields` and never in the reason string, written to protect AT-05-3's literal equality oracle, is
+  exactly the rule that keeps the new warning from breaking a shipped oracle. The document had the
+  right invariant in place before it was needed.
+- **The conditional's negative half is already mechanically distinguishable.** The capture-failure
+  halt provably has no snapshot to point at, so AC-6.3's antecedent is false there and §5.5's
+  four-field equality fixture is a free negative oracle. Few documents leave a new conditional's
+  false branch this cleanly pinned.
+- **FSPEC-side bindings held.** Every TSPEC↔FSPEC binding I approved in v1 re-reads unchanged
+  against a byte-identical FSPEC; the cascade touches exactly one AC.
 
 ## Recommendation
 
