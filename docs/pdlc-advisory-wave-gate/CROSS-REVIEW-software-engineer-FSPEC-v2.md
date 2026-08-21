@@ -109,7 +109,40 @@ completes" and let the terminal assertions that need termination stay where they
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | BR-12 names "the branch's committed state and the advisory record entry" as the durable carriers. E-23 says a halt commits only the queue row, so after an E-6 resolution followed by a later wave's halt the record entry survives as an **uncommitted** working-tree file. Durable across the run, yes — but is it durable across a fresh clone or a different machine, and does AT-04-5's second companion need to pin which of the two carriers the re-dispatch actually reads? |
+| Q-02 | BR-9's Domain clause puts the untracked wave ledger outside the map, and `.claude/pdlc-wave-state.json` is indeed `.gitignore`d. Is the ledger's *content* after a restored red re-gate something the operator should be able to trust — i.e. does an A6 attempt leave wave-state entries a later re-invocation reads as authoritative, even though restoration deliberately does not touch them? |
+| Q-03 | §2's before-base clause says a green result for AT-01-1, AT-07-2 or AT-04-5's first companion at any later base "is a vacuum, not a pass". Is there anything in the suite that makes that base explicit to a future runner, or does the FSPEC intend the TSPEC to carry the base pin? A comment in the fixture is cheap; a silent vacuum three months from now is not. |
+
 ## Positive Observations
+
+- **The revision is a targeted edit, exactly as the v1 recommendation asked.** Five commits, each
+  scoped to one section, no restructuring, no altitude drift into TSPEC contracts. The document is
+  the same document with six holes filled.
+- **The F-02 fix went further than the finding did.** I asked for a non-ignored qualifier; BR-9 came
+  back with a named **Domain** and a named **Observation point**, plus the "a file the repair created
+  is absent afterwards, not merely reset" clause that closes a hole I had not raised — a per-path
+  restore of a *created* file has no pre-A6 entry to compare against, and now that case is pinned.
+  AT-05-2's "a fixture whose generated output is `.gitignore`d tests nothing here" is the kind of
+  clause that stops a whole class of green-but-empty test.
+- **BR-5 and BR-15 transcribing the shipped orders is the right shape.** The v1 problem with
+  ordered-sequence assertions was that the oracle had no spec-side literal, so a test would compare
+  the catalogue against itself. Both now carry the literal, and both say *why* they carry it. I
+  checked both against `orchestrate-dev.js:2446-2453` and `:2459` — character-exact, including
+  `X-a, X-e, X-d, X-b, X-c`'s deliberately non-alphabetical order, which is precisely the property a
+  copied-from-source oracle would fail to protect.
+- **§2's "where before is measured" paragraph is the strongest new prose in the revision.** Three ATs
+  define themselves against a state HEAD no longer carries; naming the base commit and saying "a
+  green result at any later base is a vacuum, not a pass" converts a silent future failure into a
+  loud one. Every commit it cites resolves, and the five-member reading at `c8aa22a4` is real.
+- **AT-07-1's BR-4 move is a genuine self-consistency repair, not bookkeeping.** The *Given* had
+  named E-5's scope rule and E-6's two halves — BR-4's content — while the partition listed BR-4 as
+  not proposable. The partition is now total and disjoint and agrees with its own *Given*.
+- **§6's transcribed-literal preamble states the reason, not just the rule.** "A comparand
+  re-derived from the code under test compares the pipeline against itself and passes
+  unconditionally" is the sentence that makes the constraint survive a future author who does not
+  know why it is there.
 
 ## Recommendation
 
