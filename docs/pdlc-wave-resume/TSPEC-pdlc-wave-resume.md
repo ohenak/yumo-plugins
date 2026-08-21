@@ -336,6 +336,15 @@ unspecified upstream. Ratified as-is (changing it would make an operator-pointer
 record anything, losing resume for the very recovery path the feature serves); raised as an
 erratum against the FSPEC so the clause exists.
 
+**And the record carries no provenance of its own (PM Q-02).** The FSPEC clause being asked for is
+an *announcement* clause, not a record field: `RESUME_PROVENANCE` is announced content (§2.4), and
+the record's shape stays exactly the four-or-five fields of §4.1. Adding a `provenance` field would
+be new persisted state the FSPEC does not specify, would need its own staleness semantics, and — by
+§4.4's reasoning — would invite a reader that treats operator-asserted completion differently from
+pipeline-observed completion, which is a distinction the safety argument (BR-10: the first executed
+wave's gate verifies the whole tree) deliberately does not need. Announcement-only is sufficient;
+this is recorded here so the erratum's FSPEC clause is not read as asking for a field.
+
 ### 2.6 Requirement → component map
 
 | Requirement | FSPEC business rules | Component |
@@ -722,6 +731,23 @@ map is the contract that no AT is left without a home.
 | AT-16 queue parity | integration + structural | Scoped to what the delegation boundary can honestly carry (DEC-WVR-07; TE F-04, PM F-03). `orchestrate-queue` delegates `await runPipelineFn({ reqPath: entry.reqPath })` and forwards **no** seam, so the delegated pipeline would use its real `_readFile`/`_git`/`_runCommand` — a record cannot be placed in front of it through the queue's own wiring, and both workarounds dissolve the oracle (injecting `_runPipeline` replaces `realMain`; wrapping `realMain` with test seams makes "same working directory" true by construction of the double). The oracle is therefore: **(i)** the queue's `_runPipeline` is left at its default and that fact is asserted — an unconfigured queue call reaches `orchestrate-dev`'s exported default, checked by asserting the module's delegation is not overridden anywhere on the default path; **(ii)** the delegation payload is exactly `{reqPath}` — `Object.keys(arg)` asserted `toEqual(["reqPath"])` against a spy, so any queue-side resume configuration, seam override or `startWave` forwarding reds it; **(iii)** both paths request exactly `WAVE_STATE_PATH` — the direct run's `_readFile` call list, filtered to the ledger path, is compared for string equality against the constant, and the queue adds nothing that could change it. **Falsification arm:** mutate the queue to forward any additional key (e.g. a `startWave` or a ledger-path override) and (ii) reds while AT-01..05 all still pass. **Fixtures this needs, by name:** a `QUEUE.md` table with one `pending` row for this feature, a `.claude/pdlc.config.json` carrying `distribution.checkEnabled: false` so the drift gate does not refuse the invocation before `QUEUE.md` is read, and a Phase-0 readiness-triage `_agent` double. Without all three the queue returns `outcome: "blocked"` and asserts nothing. **What this does not prove, stated plainly:** it does not observe a real delegated Phase I resolving a record. That gap is REQ-WVR-07-structural, not behavioural: the queue carries no resume configuration of its own (FSPEC BR-16, V-15), and the behavioural half is AT-01..05 on the direct path. |
 | AT-17 advisory remediation composes | integration + repo-state | Green-after-remediation → wave commits and records; failed remediation → identical halt, record still names the wave below. *And:* this feature's PLAN ownership manifest names `WAVE_STATE_PATH` in no wave's owned set (finite check, asserted by name). |
 | AT-18 completion accumulates across invocations | integration | Halt at 2 → resume → halt at 4 → third run announces **wave 4** and skips 1–3 individually. Discriminates against a record that counts only the waves the previous run itself executed. |
+
+**Each of the seven codes is reachable through `main()` with `makeLedgerArgs`, confirmed against the
+shipped reader (TE Q-04).** `makeLedgerArgs`'s `ledger` option is the raw byte string the
+`WAVE_STATE_PATH` read returns, so every arm is expressible as a fixture:
+
+| Code | Fixture (the `ledger` string) | Why it lands there |
+|---|---|---|
+| `unreadable-json` | `"{"` | `JSON.parse` throws → `"it is not readable JSON"` |
+| `not-an-object` | `"\"x\""` (or `"[]"`) | parses to a string/array → `isPlainObject` false → `"it is not a JSON object"` |
+| `wrong-shape` | `{version:1, feature, planHash, lastGreenWave: "1"}` | `lastGreenWave` not an integer → the shipped `wellFormed` conjunction fails |
+| `feature-mismatch` | well-formed, `feature: "other-feature"` | guard 3 |
+| `plan-changed` | well-formed, `planHash: "00000000"` | guard 4 |
+| `head-unreachable` | well-formed for this plan, `head: HEAD_SHA`, `_git` scripted to answer `merge-base --is-ancestor` with `ok: false` | guard 5, one probe |
+| `over-count` | well-formed for this plan, `lastGreenWave: 9`, **`head` omitted** | guard 6; with no `head`, `headCorroborated` returns `true` without a transport call, so guard 5 passes and guard 6 is the first failure |
+
+The `over-count` row is the one that needs care: with a `head` present *and* unreachable, guard 5
+fires first — which is exactly the AT-03 pair, not an AT-02 fixture.
 
 ### 5.5 Mutation-resistance notes
 
