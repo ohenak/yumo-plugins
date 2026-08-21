@@ -73,6 +73,30 @@ open when it is not.
 
 ## Oracles
 
+- **§G.1's T-O-6 row** — holds. It names LI-08 red / LI-17 green for the example arm "with the
+  generated arm folded into the same suites", and closes with "**No new PLAN task is required**". PLAN
+  v0.6 adds no task and moves no batch, so the sentence is still true at HEAD; the erratum in fact
+  strengthens it, since the amendment mechanism it now spells out is explicitly ownership-preserving
+  ("Ownership does not move, so the single-writer manifest is unchanged", PLAN:147).
+- **§O.9's generated arms** — untouched. The domain statement (`every non-negative maxBytes, 0
+  included`) quotes TSPEC §T.5, which is byte-identical at HEAD. Nothing in the PLAN delta bears on
+  generator domains.
+- **§O.5's level table and §O.8's mutation ledger** — untouched, and neither cites PLAN's ledger
+  paragraph. The mutation ledger's M-5 row still reads against FSPEC BR-6 / TSPEC §D.5 as approved.
+- **The re-red discipline is where the two documents now have to agree, and mostly do.** PROPERTIES
+  §C.4 says the Group D amendments land on committed code, so they are a re-red rather than a fold
+  into LI-16/LI-17, "which is exactly PLAN P-A-7's case". PLAN v0.6 now *implements* P-A-7 for one
+  slice of that surface — `LI-AT-11`'s heading-form cases. The remaining slice PROPERTIES names in the
+  same breath (PROP-BOUND-05/07/08's amendments, and PROP-BOUND-03's zero case at :252, all landing in
+  the same `learningsBlock.test.js`) is governed instead by **P-A-6** (PLAN:577: the PROPERTIES suite
+  commits at the first point it is green, in practice after LI-21/batch 13, "or else its red rows are
+  amended into the ledger by name first"). Both mechanisms exist and together they cover the surface —
+  but §C.4's sentence points the reader at the erratum-shaped route for all of it, which after v0.6
+  reads as though the heading-form paragraph were the governing rule for amendments it does not
+  mention. That is F-03: a one-clause pointer fix, not a mechanism gap.
+
+No oracle is retracted, weakened or made unfalsifiable by the delta.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
