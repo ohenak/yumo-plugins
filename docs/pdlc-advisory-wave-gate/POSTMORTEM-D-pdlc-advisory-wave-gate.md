@@ -276,6 +276,26 @@ Carry forward to LEARNINGS (Phase H):
 
 ## Appendix A — prior Phase D halt (review-cap, resolved)
 
+This file previously recorded an earlier, unrelated Phase D halt: the **DECISIONS review-cap halt**
+of 2026-08-19, where `DECISIONS-pdlc-advisory-wave-gate.md` v1.7 (`bbe65771`) exhausted the
+five-round review window (rounds 4–8) without a both-lens approving round. The four decisions
+themselves were approved on substance early; what did not converge was the repository-sizing section
+the document had taken on — each round closed one count and opened another in the same paragraph.
+That halt was resolved, and DECISIONS went on to converge at **v1.11**.
+
+Its full text is preserved in git at
+`e3a3e947:docs/pdlc-advisory-wave-gate/POSTMORTEM-D-pdlc-advisory-wave-gate.md` (retrieve with
+`git show`). Its carry-forward learnings remain live and are unaffected by the present halt — in
+particular: route repository sizing to the artifact that consumes it and keep the recipe rather than
+the total; a round that re-measures one population must re-measure every population its edit puts in
+the same sentence; a seam between two counts that fails in three or more consecutive rounds should be
+removed rather than re-welded; and a run beats a reading, so a claim that is a count of test sites
+should be measured by executing the suite before the first review. The second of those recurs in the
+present halt as PM F-03, which is why §6 flags it as a promotion candidate.
+
+The current halt is a different class (`ERRATUM-PROTOCOL`, on the TSPEC's delta-confirmation round)
+and is tracked by the `RESOLVED:` marker at the top of this file.
+
 ---
 
 **Provenance**
