@@ -10279,10 +10279,6 @@ async function dispatchAndVerify({
   // arguments, so the existing one-argument default (`() => {}`) and every existing caller are
   // unaffected.
   _recordDocType(docType, injectHere, dispatchKind);
-  const learningsBlock =
-    injectHere && typeof _injectLearnings === "function"
-      ? await _injectLearnings({ feature, docType, phaseId })
-      : "";
 
   // §5.6.1: mode is computed ONCE per episode, at the episode's entry, over state
   // this episode itself observed.
@@ -10318,6 +10314,18 @@ async function dispatchAndVerify({
       startIndex: 1,
     });
   }
+
+  // CR round 1, PM F-07: injection runs AFTER `selection`, so the dispatch record's `mode`
+  // (TSPEC §D.2 per-dispatch context) carries this episode's actual authoring mode instead of
+  // shipping permanently `undefined` — the only production caller previously omitted the
+  // argument that `buildLearningsInjector`'s closure already accepted. Still exactly once per
+  // episode, still before the `for(;;)` loop, so TSPEC §A.2 property 1(c)/2 and TE Q-01's
+  // once-per-episode claim are unchanged; the BR-1 decision itself is still taken (and probed)
+  // above, before any review-state I/O, so `_recordDocType`'s call site is untouched.
+  const learningsBlock =
+    injectHere && typeof _injectLearnings === "function"
+      ? await _injectLearnings({ feature, docType, phaseId, mode: selection.mode })
+      : "";
 
   let invocations = 0;
   let consecutiveNoProgress = 0;

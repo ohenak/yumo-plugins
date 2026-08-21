@@ -199,6 +199,7 @@ async function runScenario({
   forcePhases = null,
   agentOpts = {},
   _recordDocType = () => {},
+  listFiles = null,
 } = {}) {
   const dev = await import("../orchestrate-dev.js");
   const mainDev = dev.default;
@@ -251,6 +252,10 @@ async function runScenario({
   const result = await mainDev({
     reqPath: REQ_PATH,
     forcePhases,
+    // Passed ONLY when a caller asks for it (CR round 1, PM F-07): every other scenario in this
+    // file leaves `_listFiles` at its shipped default, so their review state — and therefore
+    // their episode modes, round windows and prompts — are untouched by this option's existence.
+    ...(listFiles ? { _listFiles: listFiles } : {}),
     _agent: buildRecordingAgent(calls, agentOpts),
     _recordDocType,
     _parallel: (promises) => Promise.all(promises),
@@ -523,6 +528,67 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     expect(JSON.stringify(reportWithoutInjection)).not.toContain(SOURCE_PATH);
     // The control for the negative: the instrument is looking at a non-trivial subject.
     expect(JSON.stringify(reportWithoutInjection).length).toBeGreaterThan(100);
+  });
+});
+
+describe("learningsDispatchSet — per-dispatch context: `mode` (TSPEC §D.2, no FSPEC AT id)", () => {
+  // CR round 1, PM F-07 (Medium). TSPEC §D.2 lists `mode` beside `phaseId`/`docType` as the
+  // per-dispatch context "that lets an operator find the dispatch". `buildLearningsInjector`'s
+  // closure has always destructured `mode` and copied it onto the record, but the ONE production
+  // caller — the composition site in `runDispatch` — omitted the argument, because injection ran
+  // BEFORE `selectMode` was consulted. Every shipped record therefore carried `mode: undefined`,
+  // which `JSON.stringify` drops entirely: the field an operator was promised was absent from
+  // every serialised report, and no test in the suite looked at it.
+  //
+  // This test drives the PRODUCTION caller (`mainDev`) and reads `mode` off the report, so it
+  // reds under the old ordering (`undefined`) and under any future change that hoists injection
+  // back above `selectMode`.
+  test("LI-20: every injected dispatch's `mode` is the mode `selectMode` chose for THAT episode — `revision` for the docType whose branch already carries a dual-approved round, `authoring` for the rest", async () => {
+    const corpus = buildLearningsCorpus([
+      {
+        path: "docs/completed/prior-a/LEARNINGS-prior-a.md",
+        doc: { feature: "prior-a", dateCompleted: "2026-01-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }] },
+      },
+    ]);
+
+    // The branch already carries a round-1 cross-review per reviewer role FOR TSPEC ONLY, and
+    // `runScenario`'s `_readFile` answers every `CROSS-REVIEW-*.md` with "VERDICT: Approved".
+    // `selectMode` rule 2 therefore puts the TSPEC episode in `revision` ("every observed round
+    // is dual-approved; addressing round 1"), while `deriveRoundWindow` skips these basenames for
+    // every OTHER docType (`result.docType !== docType` is its third outcome), leaving those
+    // episodes greenfield. One run, two modes, and the difference is attributable to the listing.
+    const listFiles = async (dirPath) =>
+      dirPath === `docs/${FEATURE}`
+        ? {
+            ok: true,
+            files: [
+              "CROSS-REVIEW-software-engineer-TSPEC.md",
+              "CROSS-REVIEW-test-engineer-TSPEC.md",
+            ],
+          }
+        : { ok: false, reason: "dir_missing" };
+
+    const { result } = await runScenario({ corpus, listFiles });
+
+    const dispatches = result.report.learningsInjection.dispatches;
+    expect(dispatches.length).toBeGreaterThan(0);
+
+    // (1) The field is present and typed on EVERY record — the clause that reds on `undefined`.
+    expect(dispatches.every((d) => typeof d.mode === "string")).toBe(true);
+
+    // (2) Set equality against `selectMode`'s two-member codomain, both members observed in this
+    // one run — not containment, so a run that silently produced only one kind of episode reds
+    // rather than passing by omission.
+    expect(new Set(dispatches.map((d) => d.mode))).toEqual(new Set(["authoring", "revision"]));
+
+    // (3) And it is THIS episode's mode, not a run-level constant and not the docType-blind
+    // default: the docType whose review round the listing supplies is the one recorded
+    // `revision`, and its neighbours in the same run are recorded `authoring`.
+    const modesFor = (docType) => dispatches.filter((d) => d.docType === docType).map((d) => d.mode);
+    expect(modesFor("TSPEC").length).toBeGreaterThan(0);
+    expect(modesFor("TSPEC").every((m) => m === "revision")).toBe(true);
+    expect(modesFor("FSPEC").length).toBeGreaterThan(0);
+    expect(modesFor("FSPEC").every((m) => m === "authoring")).toBe(true);
   });
 });
 
