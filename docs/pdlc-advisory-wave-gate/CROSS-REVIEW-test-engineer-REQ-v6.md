@@ -89,13 +89,65 @@ whether the cited obligation exists (F-02).
 
 ## Risks
 
+- **Conditional-antecedent false green (F-01).** AC-6.3's new obligation is keyed to "Where the halt
+  report points the operator at a captured pre-A6 tree state". Nothing in the REQ or in FSPEC E-28 /
+  AT-05-5 requires the halt to point at the capture at all — E-28 requires only that the halt name the
+  *failed restoration*, and the ref-naming requirement lives in TSPEC (`§2.5`, and the line DEC-A6-03
+  cites). An implementation that drops the pointer therefore satisfies AC-6.3 vacuously, and an AT
+  written from the REQ alone cannot force the antecedent true. In the shipping design the antecedent
+  *is* pinned true by the TSPEC, so this is a routing note rather than a hole: the PROPERTIES/TSPEC AT
+  for this AC must fix a fixture in which the halt names the capture, and assert the warning
+  positively (exact string presence, same report section), not `warning is not absent`.
+- **DECISIONS/REQ disagreement (F-02).** DEC-A6-03 still says the routing has not landed and pins that
+  claim to "REQ v1.15 and FSPEC v1.6". It is now a record that denies the existence of the obligation
+  the REQ cites it for. Low, and not this document's to fix — but it must not be read as evidence that
+  v1.16 did not land.
+- **FSPEC half.** The routed item said "REQ **or** FSPEC". The REQ half has landed; `a6-snapshot`,
+  "copy the ref" and "overwrit" still match nothing in the FSPEC, so AT-05-5 does not yet assert the
+  warning. That is the FSPEC's round to run, not a finding against this REQ; I record it so the
+  orchestrator does not read this approval as closing DEC-A6-03's gap end-to-end.
+- **Size (F-03).** +10 lines against a soft budget already exceeded. The dissolution path recorded at
+  v5 (SE Q-02's relocation) is unchanged, and the hard gate has 14 lines of headroom — enough for one
+  more erratum clause, not two.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Should AC-6.3's clause be unconditional — "the halt report tells the operator whether an inspectable pre-A6 capture exists, and if it does, that re-running overwrites it" — so the antecedent is a REQ obligation rather than a TSPEC accident? Either shape is defensible at this altitude; the conditional shape simply moves the fixture obligation into PROPERTIES (F-01). |
+| Q-02 | DEC-A6-03's known-gap paragraph is pinned to "REQ v1.15 and FSPEC v1.6". When the FSPEC half lands, is the intent to close the paragraph outright, or to keep it as a historical record of the routing? A record that closes cleanly is easier for harvest to read (F-02). |
 
 ## Positive Observations
 
+- The item landed exactly scoped: one clause, in one AC, in the one place US-02 already owns the halt
+  path. No new AC id, no new obligation row, no ripple into AC-5.1's or AC-3.2's exclusion sets.
+- The clause is written as an operator outcome and stops precisely at the O-1 boundary — it never
+  names `refs/pdlc/a6-snapshot-{waveNum}` — while still being concrete enough to test black-box.
+  Landing an obligation without importing the mechanism it guards is the hard part, and it is done.
+- "In the same place" is the load-bearing phrase, and it is the right one: it is what distinguishes
+  the landed remedy from the pre-existing state (a remedy documented in TSPEC and DECISIONS, neither
+  of which an operator reads at halt) and it is directly assertable.
+- The v1.16 changelog names the item, all three raisers, the AC touched, and what was deliberately not
+  imported. The diff matches the changelog exactly, which is what makes a delta confirmation cheap.
+
 ## Obligations
 
+- **O-1 (unchanged).** The capture's name, namespace and storage form remain the TSPEC's. This edit
+  respects that boundary; nothing in it reopens O-1.
+- **Routed out of this document by this round:** the AT that pins AC-6.3's antecedent and asserts the
+  warning positively belongs to PROPERTIES/TSPEC (F-01). The FSPEC-side landing of the same obligation
+  belongs to the FSPEC's round.
+- **Carried forward from v5, still open, non-gating:** C-5 soft-budget overage (F-03); the AC-6.4/O-2
+  "deleted after Phase PUB" vs corpus-baseline §1 "after Phase H2's distil" phase-name slip (F-04);
+  the two upstream `Cited by` rows that understate which REQ sections cite them (F-05).
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves the routed item and breaks nothing I approved at v5. No High findings: one Medium
+(AC-6.3's conditional antecedent, which routes a fixture obligation to PROPERTIES rather than leaving
+a hole) and five Lows, four of them inherited and unchanged since v5.
 
 ## Delta-Confirmation Findings
 
