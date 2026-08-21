@@ -159,6 +159,46 @@ either would be the anti-pattern.
 
 ## Fixtures
 
+**§F.1–§F.4 are outside the delta, and the one fixture-adjacent claim the erratum touches lands in
+PROPERTIES' favour.** The fourteen-row fixture inventory, `fixtures/learnings-baseline/`'s four-path
+row (`4a6c1816`), the `helpers/learningsFixtures.js` row (LI-02, `1920f281`), §F.2's byte-identity
+baseline, §F.3's verbatim-fixture-string rule and §F.4's seam doubles are all downstream of PLAN rows
+the erratum did not move.
+
+**The corrected LI-08 note is a claim about the fixture builder — and PROPERTIES' version of it was
+already the accurate one.** PLAN v0.8 said `renderSection`'s `ordinal`, `gloss` and `body` were "all
+three unexercised by any landed suite". PROPERTIES never said this. What §F.1 says instead is about
+the **corpus** and the **rendered form**: the ordinal prefix is optional and carries no meaning
+(`:876`), the trailing gloss is optional and 9 of 9 corpus documents write the glossed form (`:891`,
+`:893`), and at `21edb7c5` the builder renders the canonical glossed `"Rejected Proposals (with
+rationale)"` (`:1121`). None of those is a statement about which named arguments landed suites pass,
+so none is invalidated. I verified the corrected claim independently rather than accepting it:
+`git grep -c "body:"` returns 6 in `learningsBlock.test.js` and 1 in `learningsSelect.test.js`, both
+at `21edb7c5` and at HEAD — exactly the two counter-examples v0.9 cites.
+
+**The consumer-exemption sentence still tracks PLAN exactly.** §C.4:1155 says
+`helpers/learningsFixtures.js` and its other consumers carry no row of their own in *"any of the three
+cases"*, a ruling PLAN scopes to *"**this** heading-form follow-up commit, not a standing exemption
+for those files"*. That PLAN sentence is present verbatim at HEAD (grep count 1), and the erratum did
+not touch the case A/B/C table it sits beneath. The "three cases" phrasing in PROPERTIES is now
+*more* aligned with PLAN than it was, since PLAN's lead-in says "three" too.
+
+**The additivity premise is undisturbed.** PLAN still declares the heading-form follow-up commit
+additive against `learningsBlock.test.js` and non-additive against the Group D amendments to the
+landed `learningsSelect.test.js` (LI-07, `1544fdbd`), with case C governing both — empty ledger, green
+at landing, fix owed before batch 14 if one reds. PROPERTIES' §C.4 routes its amendments the same way.
+The two documents still agree on which branch is live.
+
+**§F.3's verbatim-fixture rule is unaffected.** Nothing in the delta pins a user-facing string, moves
+a normative lexicon entry or paraphrases a fixture body. The `## Cross-Feature Patterns`,
+`## Rejected Proposals`, `## Process Findings` and `###` spellings PROPERTIES reproduces are spelled
+identically in PLAN's LI-08 row before and after the erratum — I diffed the row and the variant-shape
+enumeration is character-for-character unchanged.
+
+**Fixture-side conclusion.** No fixture row, path, hash pin or consumer status moved; the `21edb7c5`
+snapshot pin that protects the fourteen-row reconciliation from staleness still resolves to a real
+commit; the cascade's fixture half is clean.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
