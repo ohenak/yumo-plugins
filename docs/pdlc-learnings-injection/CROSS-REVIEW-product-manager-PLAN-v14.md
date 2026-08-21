@@ -31,6 +31,83 @@ round opened. Every commit pin, file inventory and test count in the new bytes I
 
 ## Batches
 
+**No task row moved, and none could have.** The diff touches no `LI-*` row, no `Batch` cell, no
+`Deps` cell and no AT partition. Both dispatcher-parsed manifest tables are byte-unchanged — I
+diffed them column by column against `aca213a9`. The new material is one subsection appended after
+them plus one sentence appended to §The arithmetic. That containment decision is the right one and I
+say so in Positive Observations: the dispatcher parses `Owner` as a task id, and a row reading
+`2fc6fcd3` or `none` would have been a stale-row contract violation.
+
+### The routed manifest item lands, but only for two of the nine second writes
+
+The new §Post-batch remediation opens with a factual claim about the tree: `2fc6fcd3` "landed after
+batch 13 and touched **six test-side surfaces**". I resolved the commit and enumerated it
+(`git show --name-status 2fc6fcd3`). It touched **twenty** files, and the discrepancy is not
+bookkeeping — it changes which of the manifest's own rules are still satisfied at HEAD:
+
+| Surface at `2fc6fcd3` | Status | Manifest owner | Recorded by this delta? |
+|---|---|---|---|
+| `helpers/learningsBaselineScenarios.js` | added | none | **yes** |
+| `helpers/learningsComposition.js` | added | none | **yes** |
+| `learningsDisclosure.test.js` | added | none | **yes** |
+| `learningsErratumBinding.test.js` | added | none | **yes** |
+| `fixtures/learnings-baseline/**` | modified | LI-06 / batch 4 | **yes** (second writer) |
+| `learningsBaselineGuard.test.js` | modified (70/130) | LI-06 / batch 4 | **yes** (second writer) |
+| `pdlc/workflows/orchestrate-dev.js` | **modified (15/6) — production** | LI-15…LI-22, eight rows | **no** |
+| `scripts/capture-learnings-baseline.mjs` | **modified (74/19) — production** | LI-05 / batch 3 | **no** |
+| `pdlc/workflows/.gitignore` | modified (1/0) | one ladder row | **no** |
+| `learningsSelect.test.js` | modified (39/16) | LI-07 / batch 3 | **no** |
+| `learningsCaptureScript.test.js` | modified (222/1) | LI-03 / batch 2 | **no** |
+| `learningsConfig.test.js` | modified (235/2) | LI-12 / batch 5 | **no** |
+| `learningsDispatchSet.test.js` | modified (113/24) | LI-11 / batch 5 | **no** |
+| `learningsArmInventory.test.js` | modified (0/7) | LI-23 / batch 5 | **no** |
+| `learningsCorpus.test.js` | modified (0/3) | LI-09 / batch 3 | **no** |
+| `pdlc/engine/__tests__/learnings-config-example.test.js` | **added** | none | **no** |
+| `pdlc/workflows/package.json` | **modified (13/6)** | declared *"not modified"* in prose | **no** |
+| `pdlc/workflows/dist/pdlc-cli.mjs` | modified | no owner, by design | covered by existing prose |
+| `coverageInstrumentation.test.js`, `pdlc/engine/__tests__/docs-uniqueness.test.js` | modified | outside this feature's manifest | n/a |
+
+The section's own stated rule is the one it under-applies. It says two of the surfaces "are **second
+writes** to files the batch ladder already owns, which is exactly the case P-A-5 says must be
+recorded as a manifest amendment rather than left in a completion note." P-A-5's answer cell is
+explicit about the form: **"one added row per file, naming the causing task and its batch."** Nine
+files that the manifest assigns to a named `LI-*` owner received a second write in this commit; two
+of them got a row. The remaining seven — including a **production** write to `orchestrate-dev.js`,
+the file the manifest protects with its most emphatic single-writer paragraph ("Eight source edits,
+eight batches, one writer each") — are in exactly the state P-A-5 says enforces nothing.
+
+The `orchestrate-dev.js` write is not cosmetic. `2fc6fcd3` changes `selectLearnings`'s **signature**
+(dropping the `feature` parameter), updates its caller in `buildLearningsInjector`, rewrites the
+`RSN-COUNT` mixed-case comment from *"routed as `ERRATUM: FSPEC`"* to *"stated upstream as of FSPEC
+v0.14's BR-6 … there is nothing left routed"*, and wires a live `_log` emitter into `main()` for
+CODE_REVIEW v1 F2. That is a production behaviour change to a ladder-owned file, landing outside the
+ladder, invisible to the manifest. Filed as F-01, High.
+
+### The prose claim that package.json is not modified is false at HEAD
+
+§Production and generated states, as one of two deliberate no-owner exceptions:
+"`pdlc/workflows/package.json` is **not** modified: `scripts/capture-learnings-baseline.mjs` is
+deliberately left outside `c8.include`, exactly because `orchestrate-dev.js`, `orchestrate-queue.js`
+and `build-runtime.mjs` are resolved relative to `pdlc/workflows/`." At HEAD `package.json` **is**
+modified by `2fc6fcd3`: `allow-external: true` is set, all four include entries are rewritten as
+`**/`-anchored paths, `**/scripts/capture-learnings-baseline.mjs` is now **inside** `c8.include`,
+and an `exclude` block for capture worktrees is added. The commit message region records this as
+CODE_REVIEW v1 F4, second round. So the exemption this paragraph justifies no longer exists, and
+DoD 11's "silence" rationale rests on a premise the tree contradicts. These bytes are pre-round, and
+this edit did not touch them — but they sit inside the very section this edit was dispatched to
+reconcile with `2fc6fcd3`, so the reconciliation is where the correction belongs. Filed as F-02,
+High, tagged `inherited` so it routes back rather than halts.
+
+### The eighteenth file
+
+Changelog item (3) states the arithmetic it is closing: "fourteen test rows against **eighteen**
+`learnings*` files tracked at `09c7c62f`." I counted at HEAD: seventeen under
+`pdlc/workflows/__tests__/` (thirteen `learnings*.test.js`, three helpers, plus the fixtures
+directory carried as its own row) and one more — `pdlc/engine/__tests__/learnings-config-example.test.js`,
+**added by the same `2fc6fcd3`**. The four rows this delta adds close thirteen-plus-four = seventeen.
+The eighteenth is the engine-side file, and it is owned by no `LI-*` row and appears in no manifest
+row, which is the same defect the routed item named. Filed as F-03, Medium.
+
 ## Dependencies
 
 ## Verification
