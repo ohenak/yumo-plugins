@@ -56,6 +56,98 @@ Unchanged sections I approved at v1/v2 are not re-litigated.
 
 ## Properties
 
+Property by property, over the surface the revision touched.
+
+### P.1 `PROP-CONFIG-09` is a good property, and it is the right shape
+
+It asserts **four positive conjuncts** and says why: *"the distinguishing observable is the reason id
+and the unconsumed slot, not the empty selection: an empty selection is what `maxDocuments: 0` and
+`maxTotalBytes: 0` produce too."* That is the absence-only-oracle trap named and avoided at the
+point where it would have bitten — a property that asserted only `selected` is empty would have been
+satisfied by a disabled run, a refusal, and a crashed injector alike.
+
+Three further things it gets right, each verifiable upstream:
+
+- **The fixture must carry material.** *"A fixture of section-less documents would green through
+  PROP-BOUND-06's first disjunct even if the zero bound were unimplemented."* This is the
+  precedence-defeating requirement, and it is why `ZERO-BOUND` is specified as a **threshold override
+  on an existing corpus fixture** rather than a new corpus shape.
+- **Set equality, not containment.** The reject rows are asserted over **every** corpus document,
+  matching TSPEC §I.2's *"a set equality over the reject rows (every enumerated non-self path present
+  with `RSN-NO-MATERIAL`, none `bounded`), not merely an empty `selected`"* and PLAN v0.5's LI-12
+  conjunct (ii), which says the same in the same words. Three documents agree; a deleted case reds.
+- **It adds no AT id and no PLAN task.** Verified: PLAN v0.5's LI-12 row already reads
+  *"`LI-AT-30` (**three** cases, one per zero threshold … **and `maxBytesPerDocument: 0`** (E-36))"*,
+  and §C.3's LI-12 / LI-21 rows widen from `PROP-CONFIG-01…08` to `…09` without a new row. The
+  35-member AT partition is untouched, so `PROP-META-05` does not red.
+
+`PROP-CONFIG-04` gains the disambiguating sentence that the two properties **partition** AT-30 rather
+than overlapping on it — which is what keeps §C.1's row honest now that it names two owners.
+
+### P.2 `PROP-BOUND-03`'s new `> 0` precondition contradicts TSPEC at HEAD — F-01
+
+The property is now *"stated where `maxBytesPerDocument > 0`"*, and the stated ground is:
+
+> a property stated over all bounds would demand a zero-byte contribution flagged `bounded: true`
+> occupying a `maxDocuments` slot, which no conforming implementation can also satisfy
+
+That is a true statement about the **un-amended** cut-and-flag rule, and it is precisely the reading
+TSPEC v0.9 identifies and **carves out**:
+
+> Reading the unamended cut-and-flag rule … would give `{bytes: 0, bounded: true}` on a *selected*
+> document — the shape FSPEC v0.13 explicitly carves out. (`TSPEC` §D.5, *The zero bound yields
+> nothing*)
+
+Upstream at HEAD does not leave the boundary to inference. TSPEC §I.3's contract for
+`extractInjectableMaterial` states it at the unit:
+
+> `maxBytes <= 0` short-circuits BEFORE the cut and returns `{material: "", bounded: false,
+> bytes: 0, sections: []}` for every `text` — no cut occurs, so `bounded` is false, and the caller
+> drops the document `RSN-NO-MATERIAL` (E-36, §D.5).
+
+So a property stated over all non-negative bounds demands `bounded: **false**`, not `true`, and
+demands nothing about a slot at this unit at all. The premise the precondition rests on is a
+reading upstream retired before this revision was written (`daa43540`, 03:59; the PROPERTIES commit
+that introduced the carve-out is `727ffd62`, 17:11).
+
+**Why this is High rather than a wording nit.** T-O-6 is a *carried obligation* — upstream's
+instruction to this document, phrased as an instruction:
+
+> **The bound domain includes `0`, and the property must state its carve-out** (FSPEC v0.13, E-36)
+> … A generated-bound property written from the cut-and-flag rule alone with `0` in its domain reds
+> against a conforming implementation; **one written with `0` excluded loses the edge to AT-30's L3
+> case with no unit-level oracle. State the zero conjunct, keep `0` in the domain.**
+
+The revision took the second branch of a fork upstream had already closed, and then §G.1 records the
+obligation as **discharged** — *"The obligation is discharged across the pair with no input of §D.5
+unclaimed"* — while `grep -n 'sections: \[\]\|bounded: false' PROPERTIES-…md` returns **no match**:
+no property in this document asserts the zero-bound return shape. The claim and the artifact
+disagree.
+
+### P.3 The other Group D amendments are faithful
+
+- **`PROP-BOUND-05`** now reads the **rendered block**, not the extractor's own `sections[]`, mapping
+  heading lines through §D.3's rule and asserting the result **equals `BR6_SECTION_NAMES` as an
+  ordered list**. This transcribes TSPEC §T.5's AT-11 oracle verbatim, and the explicit DC-14 cite
+  is correct — `docs/_constraints/DOMAIN-CONSTRAINTS.md:379` is *"An oracle never sources its
+  expected value from the code under test"*. Demoting `sections[]` to a supporting equality
+  ("**in addition**, … **never instead**") is exactly right: the producer's report of what it
+  intended cannot falsify a renderer that takes a section and drops it.
+- **`PROP-BOUND-07`** absorbs §D.3's assembly rule, so the hand-computed literal becomes a stated
+  procedure — normalise each extent, join in priority order with `"\n\n"`, cut once — and the byte
+  identity becomes *"the sum of each taken section's normalised byte length **plus 2 bytes per
+  join**"*. This closes my standing worry about hand-computed literals: two conforming
+  implementations can no longer split on the arithmetic, so a literal fixture cannot red a correct
+  implementation. It also retires §G.3's AT-11 erratum at the source rather than by assertion.
+- **`PROP-BOUND-08`** now checks *"a matcher upstream **specifies** rather than bounding exposure to
+  one upstream left open"*, while keeping the real-corpus operand and the positive-presence conjunct
+  on the document's own heading lines. The load-bearing half — a wrong-spelling matcher and a
+  synthetic fixture written to the same wrong spelling red instead of greening together — survives
+  the rewrite intact.
+- **`PROP-BOUND-06`** carries both disjuncts and names the falsifier: *"an implementation reaching
+  `RSN-NO-MATERIAL` by testing 'document carries no section' greens on `NO-MATERIAL` and reds on
+  `ZERO-BOUND`."* That is a mutation argument, not a restatement, and it closes my v3 F-04 properly.
+
 ## Oracles
 
 ## Fixtures
