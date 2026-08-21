@@ -120,8 +120,8 @@ deriving mechanically, because the delta re-scoped one case's domain and added a
 | 14+ | C — "after batch 13 … any commit landing once LI-21 (`92b7ea0c`) has landed" | ✓ |
 
 Two seams, both **vacuous at HEAD** and neither reachable by any future commit: batches 7, 8 and 13
-are all behind us (LI-15 `?`, LI-16 `d462ddd8`, LI-17 `2cbacada` … LI-21 `92b7ea0c` have landed), so
-no commit can land in them. Case A's body already reasons explicitly about batches 7 and 8 ("the
+are all behind us, so
+no commit can land in them (LI-16 `d462ddd8`, LI-17 `2cbacada` and LI-21 `92b7ea0c` are all in `git log`). Case A's body already reasons explicitly about batches 7 and 8 ("the
 ledger already lists it as a **whole suite** red after batches 7 and 8"), so the 7/8 seam is a header
 that under-claims what the body decides, not a missing rule. The batch-13 seam is a true partition
 gap introduced by re-scoping B's upper bound from "or later" to "through batch 12" — but case C's
