@@ -751,7 +751,7 @@ async function runWaveGateSeam({
 }) : Promise<{
   resolved: boolean,
   disposition: AdvisoryDisposition,
-  haltFields: { rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[] },
+  haltFields: { rootCause: string, diagnosis: string, repairApplied: boolean, repairPaths: string[], snapshotRef: string | null },
   postWaveRan: boolean,
 }>
 ```
@@ -1312,7 +1312,7 @@ TSPEC-owned (§5.1), and without it no test in the feature's set would fail on a
 | Advisory record entry | `docs/{feature}/ADVISORY-{feature}.md` | The tier's `renderAdvisoryEntry` table, plus the root-cause class and, on a resolution, the repair's paths | Every terminal disposition, including the no-dispatch escalation |
 | Escalation log entry | `docs/_queue/ESCALATIONS.md` | The tier's `renderEscalationEntry`, root-cause class in the decision sentence | Every `escalated` disposition |
 | Report notice | run report `notices` | The tier's `ADVISORY ESCALATION: seam A6 …`; and, separately, a failed escalation-log write | Every escalation (E-30, AT-06-6) |
-| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths}`, at the literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
+| Halt fields | `haltError`'s `fields` | `{rootCause, diagnosis, repairApplied, repairPaths, snapshotRef}`, at the literal values named below | Every A6-touched halt: a non-resolved wave (AC-6.3), a capture-failure escalation (§2.5), **and** a post-gate un-skip halt on a wave A6 resolved (below) |
 | Snapshot ref | `refs/pdlc/a6-snapshot-{waveNum}` | A dangling commit | Every A6 invocation that reached the snapshot step; one ref per wave, never overwritten by a later wave (§2.5, PM F-03), asserted on §5.2's two-red-wave run — a single-wave fixture cannot see it |
 
 Two consequences worth stating rather than discovering:
@@ -1329,9 +1329,26 @@ Two consequences worth stating rather than discovering:
   | `diagnosis` | the fixed sentence `snapshot capture failed (snapshot-unavailable); no repair was proposed and none was applied` — the one place this diagnostic is required to appear verbatim, and the string §5.5 transcribes |
   | `repairApplied` | `false` |
   | `repairPaths` | `[]` — the empty array, not `undefined`: the field is present so the halt report's shape is the same on every A6-touched halt |
+  | `snapshotRef` | `null` — this *is* the capture-failure path, so there is no ref to point at, and `null` is what suppresses the overwrite warning (FSPEC E-34's arm) |
 
   AC-6.3 asks that an A6-touched halt carry a diagnosis; here the honest diagnosis is that none
   could be obtained, and the fixed sentence says exactly that rather than leaving the field null.
+
+- **`snapshotRef` is the carrier for FSPEC BR-14's co-located overwrite warning (absorbed at
+  v1.12).** BR-14 binds the halt *report*: where it points the operator at a captured pre-A6 tree
+  state, the same report, in the same place, must state that re-running this feature overwrites that
+  capture. The field makes that mechanical rather than editorial:
+
+  | Aspect | Contract |
+  |---|---|
+  | Value when the capture succeeded | the ref name `refs/pdlc/a6-snapshot-{waveNum}` for **this** wave — the wave that is halting, not an earlier resolved one (§2.5) |
+  | Value when no capture was taken | `null` — E-34's arm and the capture-failure halt above; the report then points at nothing |
+  | What the report renders | from a non-`null` value, both halves together and adjacent: the ref name, and the sentence that re-running this feature overwrites that capture, so an operator who intends to inspect it copies the ref first. From `null`, neither half — no dangling pointer and no warning about a capture that does not exist |
+  | Why a field and not a prose string in `diagnosis` | the two are asserted separately: AC-6.3's diagnosis conjunct compares `diagnosis`, while BR-14's oracle asserts co-location and the presence of the overwrite statement, never the ref's name (FSPEC §5.x). Folding the warning into `diagnosis` would couple them and break the literal comparison |
+
+  This is the one place the run-scoped promise §2.5 describes becomes operator-visible at the moment
+  it matters. The advisory record entry BR-13 mandates is read after the fact and carries **no**
+  such warning — BR-14 binds the report only.
 
 - **The post-gate un-skip halt is a designed carrier, not an inherited one (TE F-01).** BR-10's
   three restoration triggers are exhaustive, so a wave A6 *resolved* whose un-skip guard then
@@ -1346,7 +1363,7 @@ Two consequences worth stating rather than discovering:
   |---|---|
   | Call shape | the un-skip `haltError` gains a **second argument**, `{ advisory: waveAdvisoryFields }`, exactly as the test-gate halt in §2.3 does |
   | Value when A6 did not fire on this wave | `undefined` — the argument is omitted and the halt is byte-identical to today's, which keeps every shipped un-skip fixture green and keeps the disabled tier's byte-identity claim (§5.2) true |
-  | Value when A6 resolved this wave | `{rootCause, diagnosis, repairApplied: true, repairPaths}` — the same object §4.5's row names, read from the wave's A6 outcome |
+  | Value when A6 resolved this wave | `{rootCause, diagnosis, repairApplied: true, repairPaths, snapshotRef}` — the same object §4.5's row names, read from the wave's A6 outcome |
   | Restoration | none. The un-skip halt is not one of BR-10's triggers, and §5.2 asserts the *absence* of restoration on this path alongside the positive assertion that the repair is still present |
   | Message string | unchanged — `formatUnskipViolations`'s output is not rewritten. The diagnosis travels in `fields`, never in the reason string, which is what lets AT-05-3's literal comparison and AC-6.3 both hold |
 
