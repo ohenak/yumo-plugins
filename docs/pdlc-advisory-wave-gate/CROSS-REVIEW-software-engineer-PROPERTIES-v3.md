@@ -167,8 +167,44 @@ settled by whoever writes the property row.
 
 ## Delta-Confirmation Findings
 
-*(pending)*
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | REQ v1.16's AC-6.3 gained a second falsifiable conjunct — where the halt report points at a captured pre-A6 tree state it must also warn, in the same place, that re-running the feature overwrites that capture (DEC-A6-03). Matrix C-1's `AC-6.3 → PROP-REC-05, PROP-REST-08` row covers neither half of it: PROP-REC-05 asserts only diagnosis + root-cause class, and PROP-REST-08's fixture is the `captureTreeSnapshot === null` path where the new conjunct's antecedent is false and any assertion passes vacuously. No other property, oracle or fixture in §§A–H mentions the ref, the capture's operator-facing description or the re-run cost. FSPEC (`91ef2557`), TSPEC (`3fa21acf`) and PLAN (`f7de7fc…`) did not cascade, so nothing between this document and the implementation mints a test for it, and §G-4's "None. Every REQ acceptance criterion and NFR yielded at least one falsifiable property" no longer holds at conjunct granularity. Fix: one property row on the existing applied-repair/red-re-gate fixture, once the slot decision in F-02 is made, plus a C-1 row update and a G-4 restatement. | §C-1 matrix row AC-6.3; §F PROP-REC-05; §E PROP-REST-08; §G-4 |
+| F-02 | Medium | delta | local | Both physical carriers for AC-6.3's new warning are already pinned by properties approved in v1/v2, so the conjunct cannot be homed without an upstream slot decision. Halt reason string: PROP-REST-09 asserts it must **equal** the pre-A6 pipeline's literal on exactly this case (a wave A6 did not resolve), and the shared Pre-A6 baseline fixture feeding it is read by five properties. Advisory fields: TSPEC §4.5's object is the four-member `{rootCause, diagnosis, repairApplied, repairPaths}` and TSPEC §6 OQ-13 has already decided `diagnosis` stays a fixed transcribable sentence, so the warning cannot ride it and a fifth field is a TSPEC edit. Fix: FSPEC/TSPEC name the slot (new advisory field is the lower-blast-radius option — it leaves PROP-REST-09's equality intact); this document then pins the literal. Filed Medium, not High, because it constrains F-01's resolution rather than falsifying anything currently asserted. | §E PROP-REST-09; §Fixtures "Pre-A6 baseline"; TSPEC §4.5 / §6 OQ-13 |
+| F-03 | Low | delta | nonlocal | The document's grounding pins are stale against HEAD. Changelog v1.3/v1.4 and §Overview scope cite REQ `sha256:c62cfc35…` (v1.15) and DECISIONS `sha256:84deee10…`; at HEAD REQ is v1.16 (`sha256:f97f4f66…`) and DECISIONS is `sha256:ef59893d…` (`3143290a`, reconciling the v1.10 note with v1.11's re-grounding — no A6 decision reopened, verified). Not gating and no property text depends on it, but the next round's re-grounding claim should name the versions it actually read, per this document's own DEC-ERR-03 practice. | §Changelog v1.3/v1.4; §Overview scope |
+
+FINDING: High | delta | local | §C-1 matrix row AC-6.3; §F PROP-REC-05; §E PROP-REST-08; §G-4 | REQ v1.16 added a second conjunct to AC-6.3 (halt report must warn that re-running overwrites the captured pre-A6 tree state, DEC-A6-03) and this document has no property, oracle or fixture asserting it; PROP-REC-05 covers only diagnosis + root-cause, PROP-REST-08's antecedent is false on its own fixture, FSPEC/TSPEC/PLAN did not cascade, and §G-4's blanket coverage claim is now false at conjunct granularity
+FINDING: Medium | delta | local | §E PROP-REST-09; §Fixtures "Pre-A6 baseline"; TSPEC §4.5 / §6 OQ-13 | both carriers for the new warning are pinned by approved properties — PROP-REST-09 requires halt-reason-string equality with the pre-A6 literal on exactly this case, and TSPEC §4.5's four-field object plus OQ-13's fixed `diagnosis` sentence rule out the advisory-field route without a TSPEC edit — so the slot decision must land upstream before the property row can be written
+FINDING: Low | delta | nonlocal | §Changelog v1.3/v1.4; §Overview scope | grounding pins cite REQ sha256:c62cfc35 (v1.15) and DECISIONS sha256:84deee10; HEAD is REQ v1.16 sha256:f97f4f66 and DECISIONS sha256:ef59893d
 
 ## Recommendation
 
-*(pending)*
+**Needs revision.**
+
+The v2 approval was taken against REQ v1.15 and does not carry forward: AC-6.3 at HEAD states an
+operator-facing obligation that this document leaves entirely unasserted, and no downstream document
+picks it up. One High finding is mandatory Needs revision under the approval rules, and I am not
+softening it — the whole point of the DEC-A6-03 routing, recorded in DECISIONS since round 5, was
+that an operator learns the ref's *name* at halt and nothing about the ordinary next action
+destroying it. Approving here would land the REQ sentence and lose the behaviour.
+
+What must change, in order:
+
+1. **Upstream slot decision (F-02, FSPEC/TSPEC).** Name where the warning is carried. A new advisory
+   halt field is the lower-blast-radius option: it leaves PROP-REST-09's reason-string equality and
+   the shared Pre-A6 baseline fixture untouched. The reason-string route requires PROP-REST-09 to be
+   relaxed to containment on the A6 path, which is a change to an approved property and must be made
+   explicitly, not incidentally.
+2. **One property row here (F-01).** Homed on the existing applied-repair / red-re-gate run
+   (`advisoryWaveGate.test.js`, PLAN A6-18's former-A6-15 step) — a fixture where the capture
+   succeeded, never PROP-REST-08's `null`-capture run. Update matrix C-1's AC-6.3 row and restate
+   §G-4 so its coverage claim is true again.
+3. **Re-ground the pins (F-03).** Cite REQ v1.16 / `f97f4f66` and DECISIONS `ef59893d`.
+
+Everything else I approved in v1 and v2 stands. No settled decision is reopened by this round, and my
+three v2 Low findings remain open and non-gating in the v2 record rather than being re-filed here.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
