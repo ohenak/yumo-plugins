@@ -400,6 +400,95 @@ indistinguishable from unset (FSPEC AT-06) and a past-the-end value is a full ru
 
 ## 4. Data Model
 
+### 4.1 The record on disk
+
+Path: `.claude/pdlc-wave-state.json` (`WAVE_STATE_PATH`, V-1). Consumer-local, untracked, excluded
+by a **root-anchored** `.gitignore` rule (V-14). The anchor is load-bearing and is ratified as
+such: an unanchored `.claude/pdlc-wave-state.json` pattern would match at every depth and reach the
+checked-in fixture trees under `pdlc/`, which is the same reasoning the sibling
+`/.claude/workflows/` rule records. Precedent for the location: the drift-state record the
+`check-workflow-drift` hook writes, also consumer-local and untracked.
+
+Encoding: pretty-printed JSON, two-space indent, newline-terminated (`formatWaveLedger`, V-4) —
+deliberately human-readable, because the reader who matters most is a person debugging a resumed
+run.
+
+```json
+{
+  "version": 1,
+  "feature": "pdlc-wave-resume",
+  "planHash": "3fa91c07",
+  "lastGreenWave": 4,
+  "head": "4f0c1d9a3b8e5c2170fd94ab6e13c2d5081ff7a2"
+}
+```
+
+| Field | Type | Written | Read | Meaning |
+|---|---|---|---|---|
+| `version` | `1` | always | **ignored** | Forward-compat marker. The reader does not gate on it: a future writer that bumps it must decide then whether an older reader should reject it, and today rejecting on version would fail *closed* against a record this same code wrote. |
+| `feature` | non-empty string | always | required | The feature the record belongs to. Mismatch → IG-2. |
+| `planHash` | non-empty string, 8 lowercase hex | always | required | `computePlanHash(waves)`. Mismatch → IG-3. |
+| `lastGreenWave` | integer ≥ 1 | always | required | The **plan-absolute** number of the highest wave committed and recorded, not a count of waves this run ran (§2.5 item 5). `> waveCount` → IG-4; `=== waveCount` → skip-phase; otherwise resume at `+1`. |
+| `head` | 40-hex string, or absent | when a git transport answered `rev-parse HEAD` | optional | The commit the recorded wave's work landed on. Absent → honoured on the other fields alone (FSPEC EC-21). Present and unreachable from HEAD → IG-5. |
+
+**Absent, empty, and `{}` are the same state** — `parseWaveLedger` returns `{state: null, reason:
+null}` for all three (V-2), which is IG-6: a silent full run. That equivalence is the whole content
+of the `{}` "cleared" shape, and §6 records why nothing writes it.
+
+**The record is not an integrity artifact.** `planHash` is FNV-1a (V-3): it answers "is this the
+same plan?", not "has anyone tampered with this?". The adversary model is REQ G-2's: whatever the
+record says, no new commit lands before the full suite has verified the whole tree, so the worst a
+wrong record can do is a full run or a gate halt. This is why the digest question — sha256 versus
+FNV-1a — is settled by "no crypto seam in this module" rather than by a security argument.
+
+### 4.2 In-memory types
+
+```ts
+/** parseWaveLedger's return — three states, distinguished by which field is null. */
+type ParsedWaveLedger =
+  | { state: null; reason: null }                       // absent / empty / {}  — IG-6, silent
+  | { state: null; reason: string }                     // content, not ours    — IG-1, announced
+  | { state: WaveLedgerRecord; reason: null };          // well-formed; still has to MATCH
+
+interface WaveLedgerRecord {
+  feature: string;
+  planHash: string;
+  lastGreenWave: number;   // integer >= 1
+  head: string | null;     // normalised: absent, blank, or non-string all become null
+}
+```
+
+`WaveLedgerRecord` is the **validated** shape: `parseWaveLedger` admits it only when `feature` and
+`planHash` are non-empty strings and `lastGreenWave` is an integer ≥ 1, so nothing downstream
+re-checks types. `head` is normalised at parse time to `string | null`, which is why
+`headCorroborated`'s falsy check is total.
+
+### 4.3 Derived values, computed per run
+
+| Value | Source | Notes |
+|---|---|---|
+| `waves` | `computeWaves(parsePlanTasks(PLAN), parsePlanOwnership(PLAN))` | The wave layout. `waves.length` is `waveCount`. |
+| `planHash` | `computePlanHash(waves)` | Canonical string is `id:file,file` joined by `|` within a wave and `;` between waves, hashed FNV-1a 32-bit, rendered as 8 hex digits. Sensitive to wave order, task ids, task-to-wave assignment, and owned paths — each of which changes what a resume would skip. |
+| `startWave` | `implConfig.startWave`, then the decision | 1-indexed. `waveCount + 1` encodes "skip everything". |
+| `explicitPointer` | `startWave > 1` **before** the clamp | The one boolean that decides whether the record is read at all. |
+| `ledgerResume` | set by the `resume`/`skip-phase` outcomes | Selects which per-wave skip line the loop emits. |
+| `provenance` | `operator-set` when `explicitPointer`, else `automatic` | Announced content (§2.4); never persisted. |
+
+### 4.4 What is deliberately not modelled
+
+- **No per-wave list.** The record stores a high-water integer, not a set of completed waves.
+  Waves are executed in topological order and the loop is serial, so a set could only ever be a
+  prefix; storing one would invite a reader that honours a non-prefix set and skips a wave whose
+  predecessor never ran.
+- **No timestamps.** Staleness is proved by the reader from feature, plan hash and ancestry (REQ
+  G-4, FSPEC BR-13); a clock would add a fourth criterion that neither the REQ nor the FSPEC asks
+  for, and this module has no clock seam in Phase I.
+- **No task-level state.** Completion is a property of a wave, because the gate is a property of a
+  wave. Task-level resume would require trusting a per-task record against a tree the gate has not
+  yet verified.
+- **No commit list.** One `head` per record, not a history — completion is never inferred from
+  commit presence (FSPEC BR-09); `head` exists only to *falsify* the record.
+
 ## 5. Test Strategy
 
 ## 6. Open Questions
