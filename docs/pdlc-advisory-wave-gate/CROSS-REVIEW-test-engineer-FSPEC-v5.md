@@ -265,8 +265,19 @@ summary-table refresh the edit left behind.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | AT-06-4's *Given* is the unqualified "a halt following an A6 escalation" while its *Then* conjunct (3) is conditional on the report pointing at a captured pre-A6 tree state. An E-34 fixture satisfies (3) vacuously, so the test can go green without ever exercising the overwrite warning. AT-06-4b pins its own arm explicitly; AT-06-4 should mirror it. Fix: pin the capture-exists arm in the *Given* and make (3) unconditional. | §6.6 AT-06-4 |
+| F-02 | Low | inherited | nonlocal | §2's preamble still pins upstream as `REQ-pdlc-advisory-wave-gate` v1.13; REQ is v1.16, and this round's own changelog (line 14) cites v1.16 three lines above. Individual traces still resolve — stale token, not a broken citation. Carried from v3 F-01 / v4 F-03. | §2 Linked Requirements, preamble |
+| F-03 | Low | inherited | nonlocal | BR-9's observation-point clause excludes "the record and escalation writes … both carriers"; AC-5.1 v1.16 names three (AC-6.1 record append, AC-6.2 escalation-log append, AC-5.2 M-WG-7 queue-row write). E-23 covers the third and the observation point structurally precedes it, so no oracle is wrong — enumerative gap at the rule site AT-05-1 reads from. Carried from v3 F-02 / v4 F-04. | §4 BR-9, observation point |
+| F-04 | Low | delta | local | The edit amended §3.2 step 10 to two arms but left §3.3's one-table summary row 10 reading `halt exactly as today, diagnosis attached` — a single-branch summary of a now-two-branch step. §3.2 is authoritative so no oracle misreads it; a reader working from the flow-at-a-glance table will not see the branch AT-06-4b covers. One-cell fix. | §3.3 flow table, row 10 |
+
+FINDING: Medium | delta | local | §6.6 AT-06-4 | AT-06-4's Given does not pin the capture-exists arm its Then conjunct (3) is conditional on, so an E-34 fixture satisfies the conjunct vacuously and the test passes without exercising the overwrite warning — mirror AT-06-4b's explicitly pinned Given and make conjunct (3) unconditional
+FINDING: Low | inherited | nonlocal | §2 Linked Requirements, preamble | FSPEC pins upstream REQ v1.13 while REQ is v1.16 and this round's own changelog cites v1.16; traces still resolve, version token stale
+FINDING: Low | inherited | nonlocal | §4 BR-9, observation point | BR-9 names two excluded record carriers ("both") where AC-5.1 v1.16 names three (record append, escalation-log append, M-WG-7 queue-row write); E-23 covers the third, so the gap is enumerative rather than a coverage hole
+FINDING: Low | delta | local | §3.3 flow table, row 10 | The edit gave §3.2 step 10 two arms but left §3.3's summary row reading "diagnosis attached", so the flow-at-a-glance table omits the branch AT-06-4b exists to cover
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
