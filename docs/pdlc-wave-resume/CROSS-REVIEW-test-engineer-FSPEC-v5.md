@@ -137,6 +137,35 @@ no AT reaches is prose that PROPERTIES can silently fail to pick up.
 
 ## Edge Cases and Error Scenarios
 
+Regression sweep over the edge-case table — did the delta invalidate any row I previously approved?
+The edit touched no EC row, so this is a semantic check, not a diff check.
+
+- **EC-06 (history rewritten → record disregarded), EC-15 (partial write cost), EC-19
+  (concurrency)** — unaffected: none of them reasons about how a run's start point was chosen.
+- **EC-10 (stale operator pointer)** — the one row where the new clause could have bitten. EC-10
+  mitigates a stale pointer by *announcement*, per assumption A-2. The new clause's consequence
+  ("a later automatic invocation can resume above waves whose completion only the operator
+  asserted") is the downstream tail of exactly that scenario, and the clause resolves it the same
+  way EC-10 does — attribution, not expiry. Consistent, and arguably it strengthens EC-10 by making
+  the tail explicit instead of leaving a reader to discover it.
+- **EC-12 (halt at wave 1 records nothing)** — unaffected; still governed by "completion means
+  committed".
+- **EC-16 / EC-17 (advisory remediation; worktree without consumer-local state)** — unaffected by
+  the delta. EC-17 is where F-02 sits: it attributes the worktree/`D-DIST-07` deferral to **REQ
+  OB-3**, but at HEAD that material is OB-1's (OB-1's shipped-contract paragraph carries the
+  include-list-is-consumer-local reasoning and the `D-DIST-07` reference); **OB-3** is the advisory
+  wave-gate ordering obligation, which EC-16 cites correctly. A reader following the EC-17 citation
+  lands on the wrong obligation. Inherited (present before this round, untouched by it), Low, and
+  a one-token fix whenever this document is next opened — not worth its own erratum round.
+- **EC-20 (V-wave replays under outcome (c))** — re-verified against REQ-WVR-08 at v1.7 because
+  this is the row the v1.6 rescoping created. It still matches upstream word for word in substance,
+  including the "17th wave" figure and the "not this FSPEC's to decide" routing note. The routing
+  note reads slightly historically now — the erratum it announces has landed — but it is a
+  statement about ownership ("whether the V-wave should be recordable is an upstream question"),
+  which remains true, so it is not stale. No finding.
+
+**No previously-approved edge case is broken by the delta.**
+
 ## Acceptance Tests
 
 ## Open Questions
