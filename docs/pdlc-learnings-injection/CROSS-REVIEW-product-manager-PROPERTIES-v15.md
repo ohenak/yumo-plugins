@@ -106,6 +106,45 @@ asserts.
 
 ## Oracles
 
+**No oracle row, AT mapping, level or red/green owner changed.** §O.1–§O.10 (608–808) are outside
+every changed line range; the delta adds no commit anchor and retires none. What it touches on the
+oracle side is the upstream ruling each case-C status is read against, plus §G's routing state — and
+this round both sweeps are complete.
+
+| Oracle-side dependency | Delta effect | Verified at HEAD |
+|---|---|---|
+| **P-A-6 → this document's own PROPERTIES suite** | **Swept** — case-B ledger route replaced by case C's green-at-landing obligation; the v0.8 currency claim re-dated to v1.1 | `PLAN:663` verbatim (1 hit); `PLAN:682` attributes the rewrite to v1.1 / TE F-03 (1 hit) — **v14 F-01 closed** |
+| **§G.3's "Newly routed — one item"** | **Swept** — struck into the *Also answered* list, citing PLAN v1.2 items (3)/(4) and v1.3 item (1) | `PLAN:683` carries items (3) and (4); `PLAN:684` carries v1.3 item (1); the §Post-batch remediation subsection at `PLAN:244` has **19** data rows, counted — **v14 F-02 closed** |
+| PROP-BOUND-03/05/07/08 → P-A-7 case C | Quotation extended, still verbatim | `PLAN:561` (1 hit) |
+| Case-C paraphrase in the struck §G.3 bullet | `after batch 13` → `in batch 13 or later` | Matches `PLAN:561`'s case header *"batch 13 or later, the case that is live at HEAD"* — **v14 F-05 closed** |
+| PROP-ORDER-05's two-process oracle | Now disclosed as running through an unowned helper | `helpers/learningsComposition.js:2–3` and `learningsDispatchSet.test.js:42/47/528/531` — see below, **v14 F-04 closed** |
+| PROP-CONFIG-09 ↔ LI-12's three-case `LI-AT-30` | Untouched | Unchanged since v13 |
+
+**F-04's clause is not just added, it is accurate to the code.** Gap 5 now states that
+`helpers/learningsComposition.js` *"is unnamed but not unexercised"*, quoting its header as *"the
+AC-2.5 / PROP-ORDER-05 composition, in one place so it can be driven from TWO SEPARATE NODE
+PROCESSES (CODE_REVIEW v1 F8)"*. That is verbatim across
+`pdlc/workflows/__tests__/helpers/learningsComposition.js:2–3` (the capitalisation is the file's
+own). The wiring claim checks out at the level the finding asked for — this is a production-path
+question, not a builder-in-isolation one: `learningsDispatchSet.test.js:42` imports
+`composeAuthoringPrompts` from it, `:47` binds `COMPOSITION_CHILD_PATH` to the same file, `:528`
+calls the import in-process and `:531` `spawnSync`s the file as a child. So the two-process oracle
+genuinely **executes through** the unowned helper, in both processes, exactly as the new clause
+says. The clause is also correctly bounded: *"the oracle does not move and is not weakened by the
+file's unowned status; the gap is one of manifest completeness, not of oracle fidelity"*.
+
+**The struck §G.3 bullet reports PLAN's choice, and PLAN made that choice.** The strike says *"PLAN
+chose the third of the three options this item left open — a remediation subsection outside the
+ladder, not task rows"*. `PLAN:244` is headed *"### Post-batch remediation (CODE_REVIEW v1) — outside
+the batch ladder"*, its rows carry a `Landing commit` column and no `Owner` cell, and `PLAN:310`
+excludes them from the ladder arithmetic *"by construction"*. Third option, as reported. The
+*"Still open — one item"* list below is untouched and still carries exactly one item, so striking
+the routed bullet did not silently empty a routing channel.
+
+**DEC-DOC-01: no finding.** The delta adds no bare `file:line` anchor. Its two new anchors
+(`PLAN`, P-A-6 and §The arithmetic) travel with verbatim quotations, so the quotation is the claim
+and the id is convenience.
+
 ## Fixtures
 
 ## Findings
