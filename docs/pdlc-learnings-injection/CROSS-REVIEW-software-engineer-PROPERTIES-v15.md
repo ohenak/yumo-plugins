@@ -246,6 +246,53 @@ DEFERRED: the document has now converged with PLAN at v1.3 on every quotation an
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §G.2 gap 5 is now the record of a **closed** gap, retained *"as the record of where it landed"*. That is the right call, and it raises a lifecycle question this document will hit again: does a closed gap stay in §G.2 indefinitely, or move to a §G.4 "closed gaps" list once the phase ends? I read "keep it" as better — the gap's value is now the audit trail — but stating it once would stop the next reviewer proposing a move. |
+| Q-02 | PLAN reaches eighteen as 13 + 5; this document reaches it as 17 + 1. Both are right and the document now says so. Is it worth one sentence naming which decomposition is canonical for future citation, so the two documents do not drift into quoting different derivations of the same number? |
+
+## Positive Observations
+
+- **Every finding from the round is closed, and the residual-phrase sweep proves it globally.** All four
+  retired strings — `manifest that is now incomplete`, `amended into the ledger by name`,
+  `byte-unchanged at v0.8`, `after batch 13` — return **zero hits** document-wide, not merely in the
+  paragraphs the delta visited. The usual failure mode of a "fix the wording" round is that the visited
+  copy is corrected and a second copy elsewhere survives; this revision left none.
+
+- **The header's completeness claim was narrowed rather than defended.** My v14 F-01 said the claim
+  *"every ruling this document cites is still present at v1.3"* was false in two places. The easy
+  discharge was to fix the two places and keep the claim. This revision instead scoped the claim to
+  *"the rulings actually re-checked"* **and** named the counter-example in the same sentence
+  (*"v1.0 extends the sweep to P-A-6, which PLAN did move"*). A claim that names its own exception is
+  one the next reviewer can audit; one that has merely been patched is not.
+
+- **The counting finding was closed by explaining the number, not by changing it.** "Eighteen" was
+  ambiguous across three rounds. The fix could have been to write 39, or 17, and move on. Instead §G.2
+  gap 5 now derives the number two ways, publishes the command, states which entities each convention
+  counts, reconciles against `PLAN:310`, and says outright that the two eighteens *"agree by coincidence
+  of arithmetic, not by naming the same entities"*. That last clause is the part that stops the
+  coincidence hardening into a fact, which is exactly what I said the risk was at v14.
+
+- **The unowned-file worry was converted into an execution-path fact.** *"`helpers/learningsComposition.js`
+  is unnamed but not unexercised"* — with the header quote, the import at `learningsDispatchSet.test.js:42`
+  and the `spawnSync` at `:531` behind it. I verified all three at HEAD. A reviewer reading "no property
+  names this file" could reasonably have suspected a coverage hole; the document now shows PROP-ORDER-05's
+  two-process oracle running **through** the file, and correctly diagnoses the remaining gap as manifest
+  completeness rather than oracle fidelity.
+
+- **The fixture row's two landing events were caught without being asked for.** No finding of mine
+  required `:1094`. A `git log --diff-filter=A -1` anchor on a *directory* row reports the first add and
+  is silent about everything that arrived later — a quiet class of wrong anchor — and this delta found
+  it, named both events, and tied the second to PLAN's P-A-5 second-owner rows. I checked it four ways
+  (`744311f7` → 4 adds; the arm → 18 files; `2fc6fcd3` → 18 adds plus `MANIFEST.json` as `M`;
+  `PLAN:277`/`:278`) and every limb holds.
+
+- **The routing loop closed end to end.** At v0.8 this document declined to absorb four unowned files and
+  routed them to PLAN. PLAN answered across v1.2 and v1.3 with a nineteen-row subsection. At v1.0 this
+  document notices the reply, strikes the item, records which of the three options PLAN chose, and cites
+  DEC-ERR-01 for why it will not re-route. That is the full cycle working as designed, and it is the
+  first round in this phase where I can say so.
+
 ## Positive Observations
 
 ## Recommendation
