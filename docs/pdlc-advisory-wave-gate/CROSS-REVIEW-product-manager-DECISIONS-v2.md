@@ -124,6 +124,12 @@ for all four entries would close it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | v1's Q-01 (the `0`-configured repo still accumulating one dangling ref and one commit object per red wave, forever) is not addressed in the delta. A6-15's `waveBudgetPerRun: 0` fixture confirms the behaviour — `advisoryWaveGate.test.js:1592` asserts `commit-tree` observed exactly once on a zero-budget red wave, so an operator who set `0` to mean "off" still pays a capture per red wave. DEC-A6-04's new "what the example teaches is the default, not the affordance" bullet is a good answer to a different question. Is the accumulation under `0` an accepted cost, and if so is DEC-A6-04 or DEC-A6-03 the entry that should say so? Not gating — no requirement is misstated either way — but a `0`-configured repo is the one configuration that pays a cost for a feature it opted out of, and the reader currently has to compose two entries to notice. |
+| Q-02 | DEC-A6-03's routing paragraph now states the gap honestly and checkably ("`a6-snapshot`, 'copy the ref' and 'overwrit' match nothing in either document" — I confirmed zero matches in REQ v1.15 and FSPEC v1.6). It says the item "is re-emitted as a REQ erratum this round"; I am emitting it. Since REQ is `approved (shipped)`, the likely dispositions are "add the sentence to E-28" or "decline and record". Either is fine for this record — but if it is declined, this entry should say *declined*, not carry the gap indefinitely. Worth a re-evaluation trigger of its own? |
+| Q-03 | DEC-A6-04's TE F-05 passage is the most product-honest paragraph in the delta: it says the collapse regression "ships green" today and names A6-15 as owing the present-and-zero conjunct. I verified that: `advisoryWaveGate.test.js:1592–1619` asserts disposition, `agent.calls` empty and `commit-tree` once, drives `runWaveGateSeam` directly, and never reaches a report advisory summary key. Given the feature is shipped, who holds that obligation now — is it a PLAN task still open, or a post-ship follow-up? The record says "recorded here rather than closed"; naming the owner surface (task id, or queue row) would make it findable. |
+
 ## Positive Observations
 
 ## Recommendation
