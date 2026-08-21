@@ -131,7 +131,7 @@ Inherited from v1.12 — but the delta makes `:1530` load-bearing: the new AT-06
 cites "§5.2's existing E-34 capture-failure fixture (`snapshotRef: null`, §4.5's literal field
 values)" as the whole basis for the negative arm. A fixture whose own section says it attaches four
 fields is the wrong fixture for asserting the fifth field's `null` value, and if that fixture's
-oracle is a set-equality over the field set — which §5.6 `:1806` requires elsewhere for exactly this
+oracle is a set-equality over the field set — which §5.6 `:1820` requires elsewhere for exactly this
 reason — the two sections contradict each other outright. One edit fixes all three counts.
 
 ## Findings
