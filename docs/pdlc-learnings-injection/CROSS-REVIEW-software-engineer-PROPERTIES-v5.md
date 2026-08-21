@@ -61,6 +61,53 @@ and `git ls-files scripts/`; confirmed `learningsBlock.test.js` exists at 7.6 K 
 
 ## Properties
 
+Only the two properties the delta touched are assessed.
+
+### PROP-BOUND-03 — the zero conjunct is stated correctly, and it is genuinely falsifiable
+
+The property (PROPERTIES:235–252) now carries two regimes in one body: at a **positive** bound, the
+cut-and-flag conjuncts (contribution ≤ bound, `bounded: true` decided at the cut, character-safe
+longest prefix); at `maxBytesPerDocument <= 0`, the four-field return. Three things make this the right
+shape rather than a re-worded version of the old one:
+
+1. **The conjunct is positive, not an absence claim.** `material === ""`, `bounded === false`,
+   `bytes === 0`, `sections.length === 0` are four asserted values on a returned object, each of which
+   an implementation can get wrong in a distinguishable way (returning `bounded: true` on an empty cut,
+   returning the uncut material, throwing). My v4's objection was precisely that the old text called
+   this "absence-shaped"; the new text names why it is not, and the naming is correct against
+   `TSPEC:578–581`.
+2. **The universal quantifier is retained where it bites** — "for every `text`, including one carrying
+   all five priority sections". Without that clause the conjunct would be satisfiable by an
+   implementation that returns the empty shape only when the input has no sections, which is
+   PROP-BOUND-06's first disjunct wearing a disguise.
+3. **The cost is stated and checkable.** "one added case in
+   `pdlc/workflows/__tests__/learningsBlock.test.js` (landed, 7.6 K) under the **existing** LI-08 red /
+   LI-17 green tasks — no new fixture, no new PLAN task, no new AT id, no new property id." Verified:
+   the file is tracked at that size (`git ls-files` + `ls -l`), and PLAN:147 assigns
+   `learningsBlock.test.js` to LI-08 with the v0.5 amendment note that landed suites are amended by
+   their existing owners. The coverage line's added ids resolve: AC-4.4 at `REQ:371`, E-36 at
+   `FSPEC:775`, TSPEC §I.3 at `TSPEC:557` (heading) / `:579` (the contract sentence).
+
+The partition claim is the part I checked hardest, because a partition asserted is not a partition
+achieved. It holds: PROP-BOUND-03's observables are the return fields of `extractInjectableMaterial`;
+PROP-CONFIG-09's are the report-level `RSN-NO-MATERIAL` reason id, the contributing count and the
+unconsumed `maxDocuments` slot. No observable appears in both, and every input of TSPEC §D.5 —
+including `maxBytes = 0`, which was the hole in v0.2 — is now claimed by one of them.
+
+### PROP-BOUND-05 — the intersection oracle closes the over-generalisation
+
+The amended sentence (PROPERTIES:264–275) asserts equality against "the **priority-ordered
+intersection** of `BR6_SECTION_NAMES` with the headings the fixture document actually carries,
+hand-transcribed for the fixture at hand rather than derived at runtime". This is right on both axes I
+care about: it is still a **set equality over an ordered list** (a deleted or reordered section reds,
+containment would not have caught it), and the expected value is a literal transcription rather than a
+value recomputed from the code under test. The AT-11-specific note — that on the all-five fixture the
+intersection *is* the full catalogue, "TSPEC states it that way for AT-11" — keeps the previously
+approved AT-11 expectation intact while removing the false universal.
+
+PROP-CONFIG-09, PROP-BOUND-06, PROP-BOUND-07 and PROP-BOUND-08 are untouched by this delta and were
+approved in my v4 on verified grounds; I did not re-litigate them.
+
 ## Oracles
 
 ## Fixtures
