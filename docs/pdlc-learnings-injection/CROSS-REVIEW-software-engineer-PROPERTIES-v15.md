@@ -213,6 +213,37 @@ mapping or coverage **mapping** row"*.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The delta struck §G.3's routed item but left §C.4's present-tense pointer to it.** `:1110` still reads *"…the fourteen-row manifest is no longer a complete listing of the feature's test surface, which §G.2 now records as a gap and **§G.3 routes to PLAN**."* That sentence was true before this delta and is false after it: the same revision struck the §G.3 item as *"answered, and answered before this round"* (`:1382`–`:1394`) and rewrote §G.2 gap 5 to say *"**PLAN has since closed it**"* (`:1310`). One document now says the item is routed and open, and, forty lines later, that it is struck and closed. The first half of `:1110`'s sentence remains true — PLAN's fourteen-row §File-ownership manifest is still fourteen rows at HEAD, with the remainder in §Post-batch remediation (`PLAN:244`) — so only the routing clause is stale. **Non-blocking:** no property, oracle, fixture, AT mapping or coverage mapping row depends on it; the two authoritative statements (§G.2 gap 5's closure record and §G.3's struck bullet) both say the resolved thing, and this is the one echo of the old state left behind. Fix: replace *"and §G.3 routes to PLAN"* with *"and §G.3 records as answered by PLAN v1.2/v1.3"*. | §C.4 `:1110` |
+| F-02 | Low | Local | **The header's "no coverage row moves" claim is looser than the delta.** `:11` asserts *"No property, oracle, fixture, AT mapping or coverage row moves at v1.0 either"*, and one §C.4 inventory row's *Added by* cell did move (`:1094`, the `fixtures/learnings-baseline/` two-landing-events correction). §C.4 sits inside §Coverage Matrix (`:918`), so the claim reads as covering it. No **mapping** row moved — I verified that from the eleven hunk offsets against the section map, not from the assertion — and the edit is a provenance correction that the delta's own §G.2 text announces, so the claim is imprecise rather than untrue. Fix: say *"coverage **mapping** row"*, or add *"(one §C.4 inventory row's provenance cell is corrected)"*. | Header `:11`; §C.4 `:1094` |
+| F-03 | Low | Local | **"Four of the seventeen" is exact but invites an off-by-one reading.** §G.2 gap 5 at `:1301` says *"Four of the seventeen no PLAN **task row** owns"*, having just established that the eighteenth file is engine-side. That eighteenth file is **also** owned by no task row — `PLAN:276` rows `pdlc/engine/__tests__/learnings-config-example.test.js` as *"new — no LI owner; the fifth added file"* — so across the full eighteen the unowned count is **five**, not four. Scoped to the seventeen the sentence is correct, and the four named files are the four this document has always routed, so nothing downstream is affected. Fix: *"Four of the seventeen — five of the eighteen, counting the engine-side file — no PLAN task row owns"*. | §G.2 gap 5 `:1301` |
+
+**Prior-round findings — all four resolved.** My v14 carried no High, one Medium (F-01, in three sites)
+and three Lows. **F-01(a)** the case-B fallback at `:1181` is replaced by P-A-7's governing case with
+PLAN v1.1's wording quoted verbatim (`grep -cF` → 1 at `PLAN:663`); **F-01(a′)** `:1185`'s
+*"byte-unchanged at v0.8"* is restated as *"whose fallback route PLAN rewrote at v1.1"*; **F-01(b)**
+§G.3's routed manifest item is struck as answered, citing the PLAN versions that answered it;
+**F-01(c)** the header's completeness claim is narrowed to the rulings actually re-checked and names
+P-A-6 as the ruling that did move; **F-02** `:1131`'s quotation is extended through the em-dash clause
+and now `grep -cF`s to 1; **F-03** the struck bullet reads *"batch 13 or later"*; **F-04** §G.2 gap 5 is
+re-derived from the tree with both counting conventions stated and reconciled against `PLAN:310`. A
+residual-phrase sweep for all four retired strings returns **zero hits** document-wide.
+
+**Freeze accounting.** F-01 is the one finding in the freeze's blocking *category* — a defect this
+revision introduced, an internal contradiction that did not exist in the bytes I approved at v0.9. I
+record it at Medium and do not gate on it, on the same basis I have applied for four rounds: it is a
+cross-reference in prose, no property, oracle, fixture, AT mapping or coverage mapping row turns on it,
+and both authoritative statements of the item's status now say the resolved thing. F-02 and F-03 are
+precision, not substance. I have opened no new decision, contested no settled one, and escalated no
+unchanged substance; observations that would improve the document but are not defects are recorded as
+`DEFERRED:` lines below.
+
+DEFERRED: §C.4's inventory *Added by* column now carries one row whose cell is a two-event narrative and thirteen that are bare anchors; a separate *Landing events* column would make the subtree row's shape structural rather than parenthetical.
+DEFERRED: §G.2 gap 5 now states the tree count with the command that produces it; the same treatment applied to §C.4's *"Eighteen files, fourteen of them task-owned"* paragraph would let a reader falsify both eighteens from the document alone.
+DEFERRED: three of this round's five commits fixed a stale cross-reference to a *routed* item; a convention that every routed item's *status* lives in exactly one place, with all other mentions linking rather than restating, would have made F-01 unwritable.
+DEFERRED: the document has now converged with PLAN at v1.3 on every quotation and every count; a content-hash pin (as `UPSTREAM-STATE` anchors already do) would let the next round prove that in one command instead of six greps.
+
 ## Questions
 
 ## Positive Observations
