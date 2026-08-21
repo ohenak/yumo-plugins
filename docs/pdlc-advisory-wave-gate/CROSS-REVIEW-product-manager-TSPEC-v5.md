@@ -72,8 +72,32 @@ exactly that. Fix: restate the count, or drop the numeral and keep the claim.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AT-06-4b still has no home in PLAN. `PLAN:527` lists `AT-06-4` alone, and A6-18's `Covers` list (`PLAN:331`) enumerates nineteen ids ending `AT-05-3, AT-06-4, AT-07-1` — no `AT-06-4b`. §5.6's discharge rule is a **set-equality over AT ids**, so PLAN is one short of set-equal. This is PLAN's obligation, not TSPEC's (PLAN is downstream of this document, so it is not an erratum against an upstream doc) — I raise it so Phase P absorbs it deliberately rather than discovering it at the set-equality check. The same edit could recount A6-18's own "six positive assertions on one run" phrasing, which mirrors F-02. |
+| Q-02 | §4.5's notice row says the notice fires on "every A6-touched halt whose `snapshotRef` is non-`null`" — including the post-gate un-skip halt that names a wave A6 already resolved (the third trigger in the halt-fields row, `:1390`). Is that intended? BR-14's operator story is "you are about to lose the capture you might want to inspect", which reads the same on that path, so I believe yes; one clause confirming the un-skip halt is in scope would close it, and §5.6 has no AT on that combination today. |
+
 ## Positive Observations
+
+- **The High was fixed by finding a real seam, not by softening the oracle.** The delta could have retreated to "both halves present somewhere in the run" — the split-tolerant assertion my v4 said cannot falsify a split. Instead it named a carrier that exists (`notices`, `orchestrate-dev.js:14635`), proved it is reachable on the A6 path specifically (`_notice: advisoryNotice` at the wave-gate call site, `:15387`), and proved it survives to the **halt** report (`:16049`, `:16059`). Co-location stayed the oracle.
+- **The two contrast rows preempt exactly the two wrong answers.** "Why not the halt message" (pinned to equality by AT-05-3) and "why not `haltAdvisory`" (a plain object, over which "adjacent" is meaningless) are the two carriers an implementer would reach for first, and both refutations check out at HEAD.
+- **The AT-05-3 survival paragraph is the right thing to write down.** A reviewer's first worry about any new halt-report content is that it reddens the message-equality oracle. §4.5 answers it in four lines, from the mechanism (`haltError` builds the `Error` from `message` alone; the handler sets `haltReason = err.message`), instead of leaving the next reader to re-derive it.
+- **The anti-echo rule was volunteered, and it is the right rule.** `expect(notice).toMatch(/overwrit/i)` written test-side, never `toContain(devModule.SOME_WARNING)` — with the reason stated (an echo cannot fail on wording, and would neuter AT-06-4b). That is the discipline I would otherwise have had to demand, applied unasked, and it keeps TE Q-01's answer intact: a stem predicate is not a minted sentence.
+- **The negative arm got a positive oracle underneath it.** §5.2 now transcribes the capture-failure fields as a **set-equality over the halt-field keys**, so an implementation that omits `snapshotRef` reddens rather than passing on the four keys it did emit — which is precisely what AT-06-4b's `snapshotRef: null` premise rests on. Set-equality where a containment check would have been easier.
+- **Both fixtures were homed against discriminating runs.** AT-06-4 lands on the two-red-wave fixture because a single-wave run cannot distinguish a wave-scoped ref name; AT-06-4b lands on the existing E-34 fixture, no new file and no new double.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My v4 High (F-01) and Medium (F-02) are both resolved, on the merits and against HEAD. Nothing
+previously approved is broken: AT-05-3's message equality is explicitly preserved, §1.2's
+no-new-file constraint holds (both named sibling renderers are existing exports), the 48-id AT set
+is unchanged, and no product decision was taken at TSPEC altitude — FSPEC still owns BR-14's
+wording. The two Low findings are recorded, not gating: fold F-01's symbol-name correction and
+F-02's recount into whichever edit next touches §4.5/§5.2, and route Q-01 to Phase P.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
