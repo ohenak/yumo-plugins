@@ -197,7 +197,53 @@ I also did not file two things I looked at hard:
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | `:52` opens "all claims re-grounded against the working tree", and three of this round's findings are claims the tree falsifies (`:318`, `:203`, `:93-100`). The re-grounding pass evidently covered the claims the preamble *names* — `stash`, `reset --hard`, `ADVISORY_DEFAULTS.enabled`, the commit precedents, all of which I re-verified and all of which hold. Was the sweep scoped to the enumerated claims, or intended to be exhaustive? If the former, saying so in the preamble would stop a reviewer reading the unswept claims as verified; if the latter, the three misses share a signature worth a checklist line — they are claims about *failure modes, visibility and impossibility* rather than about counts, and none is falsifiable by the grep-shaped checks the preamble's other claims invite. |
+| Q-02 | `TSPEC:477`'s capture block specifies `git add -A --`; the shipped call is `["add", "-A"]` (`orchestrate-dev.js:12579`). Behaviourally identical here, and no oracle ranges over the trailing `--` — §5.2's argv assertions match on `argv[0]`. Is the `--` intended as a load-bearing pathspec terminator (in which case the implementation is short one token and an argv oracle should pin it), or as documentation of intent (in which case TSPEC's block is the thing to relax)? Routed as a question rather than an erratum because I cannot tell which document is wrong. |
+| Q-03 | DEC-A6-04 justifies the example-config channel on discoverability — "the operator's first and possibly only encounter with the key" (`:390-392`) — but the shipped example carries `"waveBudgetPerRun": 1`, and the affordance the entry exists to protect is `0`. The engine expectation only requires a non-negative integer (`advisory-config-example.test.js:53-56`), so `1` passes. Is `1` deliberate (the default, shown as a default), and if so what surfaces `0` to the operator? `TSPEC:1240` states the example "does **not** teach E-33's `waveBudgetPerRun: 0`-with-`enabled: true` affordance" — which reads as a known gap rather than a decision, and this record is where the decision would live. |
+
 ## Consequences
+
+**For this document.** Not approvable at v1.10. Three High findings must land before the phase
+closes; all three are transcription repairs inside prose the four decision entries do not depend on,
+so `DEC-A6-01`…`DEC-A6-04` can stay byte-frozen through the fix. F-02's repair is the largest at five
+sites, and it is mechanical.
+
+**For the testing surface, and for whoever writes PROPERTIES from this document.** One property is
+actively mis-specified by `:318` and must not be transcribed as written: capture's failure contract
+is a `null` return plus a caller-written disposition, not a throw. The correct pair is already
+carried by the suite and can be read there —
+`advisoryWaveGate.test.js:410-459` (restore throws on each of the three verbs, tagged
+`__isRevertFailure`) and the capture-failure path's disposition assertions. Nothing else in the
+document mis-specifies an oracle: DEC-A6-02's message literal, DEC-A6-03's two-ref set-equality and
+DEC-A6-04's `nonNegativeInt` boundary are all correctly described and all three are asserted in the
+shipped suite.
+
+**For the implementation phase (not a finding against this document).** A6-15's `waveBudgetPerRun: 0`
+fixture (`advisoryWaveGate.test.js:1591-1619`) is short of what `TSPEC:1484-1493` specifies. It is
+missing the conjunct that does the actual separating work — the report's advisory summary key
+**present** with the sixth row's counters at **zero** — and it exercises `runWaveGateSeam` directly
+rather than a run, so nothing on this path reaches the report at all. As it stands the arm is
+distinguishable from `advisory.enabled: false` only by inspection, not by assertion, and the collapse
+regression TSPEC names ships green. The paired oracle matters in both directions: `0` ⇒ key present
+with zeroes, `enabled: false` ⇒ key absent (AT-01-4). This is the one place in the feature where a
+positive-presence conjunct is specified upstream and absent downstream.
+
+**For harvest.** F-03 is the durable item. "One module, one bundle, synced to `.claude/workflows/`"
+was a true and load-bearing constraint for several features; the plugin channel's retirement
+falsified it, and this document inherited it as an unbuildability claim without re-checking. Any
+artifact still reasoning from a bundle-era build constraint — in this feature or a sibling — should
+be re-grounded on `pdlc/engine/scripts/prepack.mjs`'s vendored-module list. The general shape is
+worth a `DOMAIN-CONSTRAINTS` line: *a constraint that forecloses an option must cite the mechanism
+that enforces it, at the version that enforces it — an inherited impossibility is the cheapest kind
+of claim to keep and the most expensive kind to be wrong about.*
+
+**For the erratum machinery.** One item routes upstream: REQ carries no halt-message obligation for
+the snapshot ref, though `TSPEC:534` describes the re-run overwrite and DEC-A6-03 records the PM as
+routing it (`:265-271`). At REQ v1.15 and FSPEC v1.6 the routing has not landed — `grep` for
+`a6-snapshot`, `copy the ref` and `overwrit` over both returns nothing — so an operator still learns
+the ref's name at halt and nothing about the ordinary next action destroying it.
 
 ## Positive Observations
 
