@@ -216,6 +216,45 @@ complete statement of what is open against the FSPEC rather than only of what th
 
 ## Open Questions
 
+§7 is where both halves of this round land, and where the FSPEC's remaining stale provenance sits.
+
+**OB-F1 — substance right, quotation now doubly stale.** The obligation's body is correct and is
+now fully agreed by upstream: BL-04 is not met, the authoring tree is 1,637 commits behind the
+default branch and carries neither the mechanism nor
+`docs/_constraints/pdlc-wave-gate-baseline.md`, §1's shipped-behaviour claims are therefore
+verified against `origin/main`, and the branch must be rebased before TSPEC authoring. Its
+discharge condition ("the branch is rebased and the mechanism is readable in the tree") is right
+and I am not asking for it to change.
+
+What is stale is its closing clause: *"Raised as an erratum against the REQ, whose §10 records
+BL-04 as \"discharged at FSPEC authoring\"."* At v1.6 that quotation was already false of §10. At
+v1.7 it is false of **§5 as well** — §5's row now reads "Checked at FSPEC authoring and found
+**unmet** — this row is not discharged (§10)", and §10 reads "BL-04 is **open and unmet** — not
+discharged at FSPEC authoring". There is no longer any section of upstream that says what the
+FSPEC quotes it as saying. The round did not create this finding, but it removed the last place a
+reader could have gone to find the quoted text plausible, which is why I restate it at its widened
+extent rather than merely carrying it forward. The fix is one clause: say the erratum was raised
+and landed across REQ v1.6 (§10) and v1.7 (§5), which record BL-04 open and unmet. Filed as F-01.
+
+**The §7 "Round 1 revision note" — same defect, second location.** It says two upstream defects
+"were routed rather than fixed in place: REQ-WVR-08's 'Phase I produces no new commit' … and the
+REQ's discharge of BL-04, both raised as errata against the REQ." Both have now been adjudicated
+in this FSPEC's favour — the first in v1.6, the second completed in v1.7 — and the note gives no
+indication of it. Carried with EC-20's twin as F-03.
+
+**OB-F4 (promote OF-1..3 into the baseline as `M-WVR-*`).** OF-1..3 did not move this round.
+Because OB-F4 names them by id rather than transcribing them, it needs no edit — the same property
+that made the v1.6 restatement free.
+
+**OB-F6 (no PLAN may claim consumer-local state as owned; a Phase P gate question).** Worth a
+second look this round, since OB-1's relabelling is about consumer-local state and OB-F6 is the
+FSPEC's obligation about it. The two are complementary, not colliding: OB-1's clause observes that
+the record's path is absent in a worktree, OB-F6 obliges Phase P to refuse a PLAN that claims that
+path as owned. Nothing in the relabelling touches OB-F6's routing or its owner. No finding.
+
+**OB-F2, OB-F3, OB-F5, and the Assumptions block (A-1, A-2).** Trace to untouched material; not
+re-reviewed.
+
 ## Recommendation
 
 ## Delta-Confirmation Findings
