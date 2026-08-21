@@ -515,7 +515,7 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
 | AT-04-3 | A6-19 | A6-21 | waveExecution.test.js |
 | AT-04-4 | A6-15 | A6-18 | advisoryWaveGate.test.js |
 | AT-04-5 | A6-19 | A6-21 | waveExecution.test.js — the one AT whose companion is red against shipped behaviour |
-| AT-05-1 | A6-09, A6-15 | A6-10, A6-18 | advisoryWaveGate.test.js — real-repo hash-map oracle; ignored-path case pending on OQ-7 |
+| AT-05-1 | A6-09, A6-15 | A6-10, A6-18 | advisoryWaveGate.test.js — real-repo hash-map oracle over tracked + non-ignored untracked paths, taken at BR-9's observation point; ignored-path case live (OQ-7 closed), restoring one fails |
 | AT-05-2 | A6-09 | A6-10 | advisoryWaveGate.test.js |
 | AT-05-3 | A6-15 | A6-18 | advisoryWaveGate.test.js |
 | AT-05-4 | A6-19 | A6-21 | waveExecution.test.js |
@@ -639,5 +639,7 @@ former id resolves to its owning task via the mapping in the v1.3 changelog row.
       `node_modules/`). Do not attempt to close it here; do run the full suite from a clean tree so
       it is not mistaken for an A6 regression.
 - [ ] `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0 (consumer runtime not left stale).
-- [ ] OQ-7's erratum either landed and is transcribed in A6-10's former-A6-09 red step's ignored-path case, or that one case
-      is still marked upstream-pending with its expected value named — never silently dropped.
+- [ ] A6-10's former-A6-09 red step transcribes OQ-7's **landed** boundary: the hash-map oracle ranges
+      over tracked and non-ignored untracked paths and is taken immediately after restoration completes,
+      before the record, escalation and queue-row writes; the ignored-path case is asserted live (no
+      `test.todo`) and fails an implementation that restores an ignored path.
