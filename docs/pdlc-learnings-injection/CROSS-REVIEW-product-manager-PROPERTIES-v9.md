@@ -143,6 +143,35 @@ Under `DEC-DOC-01` these are now symbol/quote citations, not bare positional anc
 
 ## Fixtures
 
+**No fixture claim changed, and the one the delta re-scopes is now stated more conservatively.**
+§F.1–§F.4 are byte-unchanged: no generator, corpus declaration, named fixture or fixture dependency is
+re-pointed. The only fixture-adjacent movement is §C.4's re-scoping of what the LI-AT-11 amendment owes
+`helpers/learningsFixtures.js` — from *"the un-numbered spelling is absent"* to *"the variant fixture as
+a whole"* is a widening of the fixture debt and a narrowing of the assertion debt, and both directions
+match the file.
+
+| Fixture dependency | State at `23adb5e5` | Effect of this delta |
+|---|---|---|
+| `helpers/learningsFixtures.js` (LI-02, `1920f281`) | tracked; renders the canonical glossed section names, `ordinal`/`gloss` knobs unexercised by any landed suite | row unchanged; §C.4 now names the variant-heading fixture as what is owed here |
+| `fixtures/learnings-baseline/` (LI-06, `4a6c1816`) | tracked — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` | unchanged from v0.5's repair |
+| §F.1's named corpora (`NO-MATERIAL`, `ZERO-BOUND`, `DIVERGENT-CORPUS`, the five-section AT-11 fixture) | declared through the helper | untouched |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | `learningsBlock.test.js:106–139` still carries the 25 + 2 + n arithmetic in comments and literal expected strings | unchanged; the delta now quotes the *"Hand-computed (never derived here)"* comment rather than pointing at its line |
+| `scripts/capture-learnings-baseline.mjs` (LI-05, `ced75955`) | tracked | unchanged; still cited as *"the capture script (below)"* |
+| `.gitignore` `/.baseline-worktree/` (LI-04, `ae2af1da`) | present at line 13 | cited by rule text instead of by `:13` |
+
+**The `21edb7c5` snapshot pin still holds, which is what keeps the fourteen-row inventory current.** I
+re-ran the document's own staleness test: `git diff --name-status 21edb7c5 HEAD` returns three paths,
+all documentation — this PROPERTIES file and the two v8 cross-reviews. No test file and no fixture has
+landed since the pin, so every row of the inventory and every absence claim §C.4 measures at the pin is
+equally true at HEAD. This is the pinned-table method paying off exactly as designed: I could confirm
+currency in one command instead of re-deriving fourteen adding commits.
+
+**One cosmetic regression from the F-03 anchor fix.** Replacing the `.gitignore:13` anchor left the
+sentence carrying the rule twice: *"whose artifact is the `/.baseline-worktree/` ignore rule (the
+`.gitignore` rule `/.baseline-worktree/`, landed `ae2af1da`)"* (line 1098). Both halves are correct and
+the parenthetical is what the fix needed; the outer mention is now redundant. Under the freeze this is
+wording, not a defect — recorded as a DEFERRED item, not a finding.
+
 ## Findings
 
 ## Questions
