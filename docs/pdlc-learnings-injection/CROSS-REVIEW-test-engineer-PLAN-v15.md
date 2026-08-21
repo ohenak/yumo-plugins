@@ -40,6 +40,59 @@ moves with it. Non-gating; recorded as F-01 below.
 
 ## Batches
 
+**No task row moved, and I measured that mechanically rather than accepting the changelog's word.**
+I extracted the last four cells of every `| LI-NN |` row — files, `Owner`/production file, `Batch`,
+`Deps`, `Status` — from both `95098af5` and `6792fa5f` and diffed them: **identical**. The
+expected-red ledger table (`| After batch | Landed by | Still expected red |`, PLAN:535–549) is
+likewise **byte-identical** across the delta. The only touch inside a dispatcher-parsed table is
+LI-12's description cell, where `FSPEC v0.13` became `FSPEC v0.14` twice; no `Batch`, `Deps`, file
+or `Status` cell is on either side of the diff, so the batch-DAG derivation cannot have been
+perturbed. `[Fake first]` labelling on LI-02, LI-06 and LI-23 and every red-before-green pairing are
+untouched.
+
+**F-01 (round 14, High, delta/local) — resolved, and the enumeration is now complete by set
+equality, which is the standard my lens asked for.** `git show --name-status 2fc6fcd3` reports
+**45 paths** (23 A / 22 M), which is exactly the number the new lead-in states. Its partition
+reconciles to 45 with nothing left over:
+
+| Lead-in's class | Claimed | Measured |
+|---|---|---|
+| added fixture prompts under `PIPELINE-NON-AUTHORING-PROMPTS/` | 18 | 18 (`.../fixtures/learnings-baseline/PIPELINE-NON-AUTHORING-PROMPTS/*.txt`) |
+| added test-side files | 5 | 5 (`helpers/learningsBaselineScenarios.js`, `helpers/learningsComposition.js`, `learningsDisclosure.test.js`, `learningsErratumBinding.test.js`, `pdlc/engine/__tests__/learnings-config-example.test.js`) |
+| modified under `pdlc/workflows/__tests__/` | 9 | 9 (`coverageInstrumentation`, `fixtures/learnings-baseline/MANIFEST.json`, `learningsArmInventory`, `learningsBaselineGuard`, `learningsCaptureScript`, `learningsConfig`, `learningsCorpus`, `learningsDispatchSet`, `learningsSelect`) |
+| modified pre-existing engine suite | 1 | 1 (`pdlc/engine/__tests__/docs-uniqueness.test.js`) |
+| modified production/configuration | 4 | 4 (`orchestrate-dev.js`, `scripts/capture-learnings-baseline.mjs`, `pdlc/workflows/package.json`, `pdlc/workflows/.gitignore`) |
+| regenerated `dist/pdlc-cli.mjs` | 1 | 1 |
+| pipeline/document files | 7 | 7 (`REQ`, `FSPEC`, `TSPEC`, `CLAUDE.md`, `pdlc/OPERATIONS.md`, `pdlc/README.md`, `.claude/pdlc.config.example.json`) |
+| **total** | **45** | **45** |
+
+The subsection's table carries **nineteen rows** (measured by parse, not by counting on the page):
+five added files, LI-06's two second-writer rows, the six ladder-owned suites round 14 named
+(LI-03 `learningsCaptureScript`, LI-07 `learningsSelect`, LI-09 `learningsCorpus`, LI-11
+`learningsDispatchSet`, LI-12 `learningsConfig`, LI-23 `learningsArmInventory`), `orchestrate-dev.js`
+(LI-15…LI-22), `scripts/capture-learnings-baseline.mjs` (LI-05), `pdlc/workflows/package.json`,
+`pdlc/workflows/.gitignore`, `coverageInstrumentation.test.js` and `docs-uniqueness.test.js`. The
+two paths with no row — `dist/pdlc-cli.mjs` and the seven pipeline documents — are excused *in the
+lead-in by name*, so the table closes over the commit rather than merely containing part of it. The
+claim that LI-04's **root** `.gitignore` is not in the commit is true: the only `.gitignore` present
+is `pdlc/workflows/.gitignore`, `1	0`, adding the single line `/.tmp-capture-driver-*/`.
+
+**The per-row rationales are true, not decorative.** `orchestrate-dev.js` `15	6` and
+`scripts/capture-learnings-baseline.mjs` `74	19` match the row's stated counts exactly. The
+`learningsCorpus` (`0	3`) and `learningsArmInventory` (`0	7`) diffs are pure removals of
+`feature:` arguments — the row's "tracks the same `selectLearnings` signature change" is what the
+bytes show. `learningsDispatchSet` imports `composeAuthoringPrompts` from the new
+`helpers/learningsComposition.js` (F8, as the row says); `learningsCaptureScript` adds a
+`captureFixturesFromWorktree` describe block driving the script directly (F4 round 2, as the row
+says); `learningsConfig` adds a `configReadError` seam arm. Every second-writer row names a ladder
+owner and batch that matches the ladder table.
+
+**The generalised single-writer paragraph is sound and no weaker than the two-row version it
+replaced.** It still argues from serialisation — one commit, landing after batch 13, no batch in
+flight — which is the property batch-safety rule 2 protects, and it now says explicitly that the
+same argument covers every row identically and that ladder ownership does not move. That is the
+right generalisation: the reasoning was never per-file.
+
 ## Dependencies
 
 ## Verification
