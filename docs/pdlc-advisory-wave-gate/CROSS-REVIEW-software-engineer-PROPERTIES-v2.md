@@ -84,7 +84,37 @@ no other property in §E covers capture failure (PROP-REST-05 is E-28, restorati
 
 ## Oracles
 
-<!-- pending -->
+### Item 5 — PROP-REST-03's ignored-path conjunct (my v1 F-03, Low) — **resolved**
+
+The conjunct is now `still **present** after restore`, with the byte-for-byte clause deleted and a
+sentence stating why ("BR-9 states that an ignored path the re-gate mutated is not a restoration
+defect, so no property may assert an ignored path is unchanged byte for byte"). Checked against the
+three upstream sites:
+
+- **FSPEC BR-9 / AT-05-1 (v1.6)** put ignored paths outside the map *in both directions* — the exact
+  words the row quotes.
+- **TSPEC §5.2, case 4**: "a `.gitignore`d file the wave added is still **present** after restore —
+  the assertion that pins `git clean -fd` over `-fdx`." Presence only. The PROPERTIES row is now a
+  verbatim-strength match rather than a strengthening.
+- **TSPEC §2.5's `clean -fd, not -fdx` bullet** reaches the same boundary from the mechanism side.
+
+The discrimination the conjunct exists for survives the weakening: an implementation running
+`clean -fdx` deletes the file and fails the presence assertion. What no longer fails it is an
+implementation whose re-run post-wave command writes into an ignored cache — which is precisely what
+BR-9 says is not a defect. Correct scoping, not a loss of falsifying power.
+
+**Oracle-level regression check (nothing I approved is broken).** I re-read the four sites that
+reference these rows and did not change in this delta, to confirm the edit did not leave one stranded:
+
+| Site | Says | Still consistent? |
+|---|---|---|
+| §"Falsifiability check" close (~L240) | fixture "must carry a `.gitignore`d file the wave added and assert it **present** afterwards (PROP-REST-03)" | Yes — already presence-only before the delta; the edit brought the property row into line with it, not the other way round |
+| §"Three properties are deliberately weak" (~L300) | PROP-REST-03 is no longer weak, OQ-7 closed | Yes — unaffected by a scope narrowing that is still a plain positive assertion |
+| §G-2 known-soft bullet (~L484–495) | PROP-REST-03 not soft; PROP-ENV-13 is the ignored-path-only case's home | Yes — the home statement is version-neutral ("PROP-ENV-13 is its home"), so the re-home did not stale it |
+| §"Oracle G — fixed strings transcribed verbatim" (~L267) | names PROP-REST-08 | Yes — PROP-REST-08's literals (`n/a`, `unclassified`, the diagnosis sentence) are untouched; only the Traces cell and a trailing clause changed |
+
+Coverage tables: AC-3.4's row still lists PROP-ENV-13, AC-5.1's still lists PROP-REST-03, AC-6.1/AC-6.3
+still list PROP-REST-08, and AT-05-1's row still lists PROP-REST-03. No trace was orphaned by the edit.
 
 ## Fixtures
 
