@@ -290,8 +290,9 @@ requirements altitude.
 - **AC-1.1** — Given the advisory tier's seam catalogue, Then it carries a sixth member, `A6`, and
   every surface driven by that catalogue — the per-seam report rows in particular — carries six rows
   where it carried five. The catalogue is closed and transcribed in tests (M-WG-8), so this is a
-  deliberate, test-visible change; a run in which the sixth row is absent is a defect.
-  *(Traces: US-01, US-05.)*
+  deliberate, test-visible change; a run in which the sixth row is absent is a defect. The
+  five-member "before" this argues from is the reading at base commit `c8aa22a4`; HEAD already
+  carries A6 (baseline v1.2 §4, M-WG-13). *(Traces: US-01, US-05.)*
 - **AC-1.2** — Given a Phase I wave, Then A6 fires on **exactly one** condition: the script-owned
   test gate returning non-zero (M-WG-3). It does **not** fire on a dispatch-level failure (M-WG-1) —
   there is no completed work to repair — nor on a post-wave command failure (M-WG-2). **Correction,
@@ -573,7 +574,8 @@ requirements altitude.
   transcribed `ADVISORY_SEAMS` set-equalities by design (M-WG-8), and so do the two envelope members
   and the new config key on their own transcribed sets (M-WG-9). That is the intended signal, but it
   means this feature cannot be delivered as a purely additive change and every transcribed surface —
-  including the disabled-tier fixtures — must be re-checked (BL-06).
+  including the disabled-tier fixtures — must be re-checked (BL-06). The pre-change readings are
+  measured at `c8aa22a4`; M-WG-13/M-WG-14 are the post-change ones.
 
 ## 8. Obligations
 
