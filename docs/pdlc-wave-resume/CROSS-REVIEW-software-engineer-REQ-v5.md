@@ -103,7 +103,51 @@ branch whose tree does not contain the file being anchored into. Nothing to file
 
 ## Risks
 
+Three residual risks, none blocking, recorded so the next round can price them.
+
+- **RR-1 — the V-wave scoping is now stated in three places and only two of them are scoped.**
+  REQ-WVR-08 (§7) is scoped by this delta; FSPEC §2 and BR-11 are scoped upstream of it. But
+  REQ-WVR-03's own **Then:** clause still reads "the full test suite verifies the whole tree
+  before any new commit lands", unqualified, and the V-wave commits *before* its gate by design
+  (V-6 — the code's own comment calls the gate "verification rather than as permission"). The
+  same defect the erratum fixed in REQ-WVR-08 therefore survives one AC over. It is not a new
+  break — it predates this round and the FSPEC already handles it — but leaving it means a
+  PROPERTIES author reading REQ-WVR-03 alone would write an oracle the shipped pipeline fails.
+  Filed as F-01.
+
+- **RR-2 — hard-coded distance to the default branch.** "1,637 commits behind" now appears in
+  three places (§1's branch-base note, §10, and the reasoning behind BL-04). It is exactly right
+  today (V-1) and it is genuinely load-bearing evidence, so I would not remove it. But it decays
+  every time `origin/main` moves, and BL-04's own resolution — rebasing — sets it to zero and
+  falsifies all three sentences at once. Whoever performs the rebase owes a sweep of those three
+  passages in the same commit. Recorded here rather than filed as a finding, because the fix
+  belongs to BL-04's discharge and not to this document's current version.
+
+- **RR-3 — a REQ leaning on its own downstream.** REQ-WVR-08 and REQ-WVR-02 now cite `FSPEC §2`,
+  `FSPEC §3.2` and `EC-20` for facts the REQ declines to state itself. In both cases this is the
+  right routing — evaluation order and V-wave replay are contract-altitude material and belong
+  downstream, so the REQ deferring to the FSPEC is the Altitude Rule working, not a violation.
+  The residual risk is ordinary co-editing risk: the REQ is now brittle against renumbering of
+  FSPEC sections. Both anchors are verified live for this round (V-7, V-8). No finding.
+
 ## Obligations
+
+- **OB-A (owner: se-author, next ordinary REQ round).** Scope REQ-WVR-03's "before any new commit
+  lands" to the implementation wave loop, in the same words REQ-WVR-08 now uses, or state the
+  V-wave's commit-then-verify order as the named exception. See F-01. This is a routed-back item,
+  not an erratum for this round — it was not in the routed set and the fix touches an AC the
+  erratum did not open.
+- **OB-B (owner: se-author, next ordinary REQ round).** Reconcile §9 OB-2's bare "exists at HEAD"
+  with §10's new statement that the authoring tree carries no baseline file. §4 and §5 already
+  disambiguate ("present at HEAD of the default branch", "already exists on main"); OB-2 is the
+  one place left where "HEAD" is unqualified and now reads as a contradiction. See F-03.
+- **OB-C (owner: whoever discharges BL-04).** Sweep the three "1,637 commits behind" passages in
+  the rebase commit itself. See RR-2.
+- **Unchanged and still owed:** OB-1 (TSPEC ratifies the shipped contract), OB-2's promotion of
+  OF-1..3 into the baseline as `M-WVR-*` in a new section with a version bump, OB-3's advisory
+  wave-gate interaction note. This round changes none of them. OB-2's promotion now has a
+  materially better source: OF-1's figures are re-derivable by one command (V-4), which is exactly
+  the "Measured-by command" shape the baseline file's own control rule demands.
 
 ## Delta-Confirmation Findings
 
