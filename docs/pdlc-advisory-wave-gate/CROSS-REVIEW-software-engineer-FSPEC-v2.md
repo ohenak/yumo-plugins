@@ -146,4 +146,21 @@ completes" and let the terminal assertions that need termination stay where they
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v1 High findings are resolved, and resolved at the right altitude — BR-2 and BR-9 now state
+observables with the oracle unit each one needs, and neither fix reached down into TSPEC mechanics.
+The four Mediums and the Low are resolved as well. Nothing in the five diffs broke a section I had
+already approved: the partition in AT-07-1 got more consistent, not less, and every literal the
+revision newly transcribed matches the shipped code character for character.
+
+Three non-gating items remain, all one-clause edits. F-01 is the one worth doing before TSPEC
+authoring rather than after: BR-2's ordering rule quietly constrains O-5's open choice, and the
+TSPEC author who reads O-5 as still-neutral will pick the shipped agent-supplied design and then
+write AT-02-1's second arm as an echo. F-02 adds the AT E-34 should have arrived with. F-03 is a
+two-word fix to a *When* clause.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
