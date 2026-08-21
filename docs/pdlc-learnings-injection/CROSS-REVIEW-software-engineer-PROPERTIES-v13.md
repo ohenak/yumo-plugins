@@ -121,6 +121,69 @@ property changes on any of it.
 
 ## Oracles
 
+**No oracle section moved; the three discipline checks are applied to the text the delta reaches.**
+§O.1–§O.9 (`:608`–`:808`) and §G.1's obligation table are byte-identical. What this delta adds is a
+block of *evidence* — the seven-row reversal table and the green measurement — and evidence carries
+the same three obligations an oracle does.
+
+**No implementation echoes.** This is the check that mattered most here, because the reversal table's
+right-hand column is quoted test source. Every cell is a **literal transcription** of a line in the
+suite, not a value derived from the code under test, and I re-derived each one independently with
+`sed -n {N}p` rather than trusting the quotation:
+
+| Anchor | Line at HEAD | Matches the cell |
+|---|---|---|
+| `learningsBlock.test.js:40` | `describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {` | yes |
+| `:105` | `test("LI-AT-11: heading-form variants — ordinal stripped, gloss optional, a ### sub-heading reads as body text, and a near-miss title is excluded …")` | yes |
+| `:125` | `name: "Rejected Proposals",` | yes (the un-glossed arm) |
+| `:133` | `"### A sub-heading that is body text, not a section boundary.\n\n" +` | yes |
+| `:139` | `name: "Process Findings",` | yes (the near-miss) |
+| `:152` | `"Rejected Proposals (with rationale)",` | yes (the canonical glossed form asserted) |
+| `:160` | `"### A sub-heading that is body text, not a section boundary."` | yes (survives verbatim in extent) |
+| `:235` | `const maxBytes = 60;` | yes (the third binding literal) |
+| `:274` | `describe("PROP-BOUND-03 generated arm: extractInjectableMaterial character-safety over every non-negative maxBytes (TSPEC T-O-6)", () => {` | yes |
+| `:329` | `test("PROP-BOUND-03: maxBytes === 0 is pinned as a distinguished example case, not left to sampling frequency (TSPEC §I.3)", async () => {` | yes |
+| `:337` | `const result = extractInjectableMaterial(text, 0);` | yes |
+| `learningsSelect.test.js:647` | `describe("PROP-ORDER-06: orderCorpus permutation invariance and strict-weak-ordering (TSPEC T-O-4)", () => {` | yes |
+| `:786` | `describe("PROP-CORPUS-09: selectLearnings totality (TSPEC T-O-5)", () => {` | yes |
+| `learningsConfig.test.js:247`, `:248`, `:264`, `:280` | the `LI-AT-30` describe and its three tests, in that order | yes |
+
+Seventeen anchors, seventeen exact landings. The `const maxBytes = 60` row is the one I most expected
+to drift, because the old text asserted *"its only binding `maxBytes` literals are 40 and 66"* and the
+revision claims a third: `grep -n "maxBytes = "` returns exactly `174: = 40`, `194: = 66`, `235: = 60`,
+so the enumeration is complete at three and the revision's *"a third binding literal"* is the whole
+truth, not a partial correction.
+
+**No absence-only oracles — the delta moves in the right direction on this axis.** The old §C.4 was
+built out of seven absence assertions with no positive counterpart on the same path. The revision
+pairs every one of them: *"no un-glossed `## Rejected Proposals`"* becomes "present at `:125`, asserted
+to normalise to the canonical glossed form at `:152`"; *"no `###`-as-body case"* becomes "supplied as
+body at `:133`, asserted to survive verbatim inside its section's extent at `:160`"; *"no
+`extractInjectableMaterial(text, 0)` case"* becomes "present at `:337` under the named test at `:329`".
+The one remaining negative — the `## Process Findings` near-miss — carries its positive counterpart in
+the same clause (*"excluded from the taken section set"*, i.e. the taken set is asserted, not merely
+its non-membership). This is a strict improvement on the oracle discipline of the text it replaces.
+
+**The green claim is a measurement I reproduced, not a citation.** The revision asserts
+*"`npm test -- __tests__/learningsBlock.test.js __tests__/learningsSelect.test.js` at `09c7c62f`
+reports **26 passed, 26 total**, and a `test.skip`/`describe.skip` count over both files returns 0."*
+I ran it: `Test Suites: 2 passed, 2 total` / `Tests: 26 passed, 26 total`, and
+`grep -c "test.skip\|describe.skip\|it.skip"` returns `0` on both files. Exact match on both numbers.
+The skip count is the right companion to the pass count and the revision was right to pair them —
+26-of-26 green means nothing if arms are skipped, and it names the check that rules that out.
+
+**The failure limb is recorded as unexercised, not waived.** Case C's red branch (*"has found a real
+defect, not staged a TDD red"*, fix owed before batch 14, survivor is a gate failure) did not fire.
+The revision says so in those terms — *"therefore **unexercised**, not waived"* — which is the honest
+statement: an untaken branch is untaken, and calling it discharged would have been the error. It did
+not make that error.
+
+**Set-equality on §G.3's enumeration.** §G.3 is itself a closed list. The delta adds one item (the PLAN
+manifest under-count) and removes none; the still-open TSPEC AT-15 suite-assignment item is untouched
+and still routed, and the struck items keep their strikethrough with two anchors re-pinned
+(`2cbacada` → `a4998e13`, `92b7ea0c` → `e7fa8d87`). No item was quietly dropped while the section was
+being edited — the risk in editing a routed-errata list — and I diffed the list to confirm it.
+
 ## Fixtures
 
 ## Findings
