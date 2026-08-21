@@ -10,7 +10,7 @@ depends-on: [pdlc-consolidation-agent, pdlc-advisory-wave-gate]
 |---|---|
 | Status | Draft |
 | Author | pm-author (operator-directed session, 2026-08-09) |
-| Version | 1.3 |
+| Version | 1.4 |
 | Upstream | **REQ** |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | (none yet) |
@@ -28,12 +28,18 @@ commit-as-completion-evidence and gains a positive conjunct (SE F-04, TE F-05); 
 are added for the all-green skip outcome (SE F-06), strand prevention (TE F-02) and record
 untrackedness (SE F-08, TE F-07); R-1 and R-2 are re-attributed accordingly.
 
+**Amendment, 2026-08-21 (v1.4) — round-2 cross-review.** §1's operational finding is restated
+(TE G-01); REQ-WVR-02 splits IG-4 and renumbers the silent case to IG-6 (TE G-02); §5 gains BL-04
+(SE G-01); the wave-gate baseline is cited at its current version (SE/TE G-03); code citations
+move to symbol and banner-string names (SE G-02, TE G-04); REQ-WVR-08 names its phase-row reading
+(TE G-05); REQ-WVR-05's superseded position is labelled history (SE G-04).
+
 **Note on this branch's base (SE F-01, F-02).** This feature branch is 1,637 commits behind the
 default branch and predates the merge of the mechanism §1 describes; the code claims in this REQ
-are verified against the default branch, not against this branch's tree, where the mechanism does
-not exist at all. Bringing the branch onto the current default-branch base is a branch-management
-step owed before FSPEC authoring; it is not a document change and is recorded here rather than
-performed by this revision.
+have their **substance** verified against the default branch — not against this branch's tree,
+where the mechanism does not exist at all — while any positional anchor inherited from earlier
+revisions dates from 2026-08-13 and is not re-verified. Bringing the branch onto the current
+default-branch base is a branch-management step owed before FSPEC authoring; it is BL-04 (§5).
 
 **Amendment, 2026-08-13 (v1.2).** The two decisions this REQ was waiting on are recorded
 (operator delegated adjudication). REQ-WVR-05 is restated as **retention with invalidation**,
