@@ -54,6 +54,23 @@ unpassable-by-construction rather than merely imprecise.
 
 ## Acceptance Criteria
 
+Item-by-item landing check against the erratum diff (`4b925b1a..c58fd61d`):
+
+| # | Routed item | Landed? | Evidence in the delta |
+|---|---|---|---|
+| 1 | AC-1.1 / R-5 name the pre-A6 base (`c8aa22a4`) | **Yes** | AC-1.1 now reads "The five-member 'before' this argues from is the reading at base commit `c8aa22a4`; HEAD already carries A6 (baseline v1.2 §4, M-WG-13)." R-5 adds "The pre-change readings are measured at `c8aa22a4`; M-WG-13/M-WG-14 are the post-change ones." Both agree with upstream §4 verbatim. See F-03 for the one loose end. |
+| 2 | AC-5.1 observation point pinned / record carriers excluded | **Partly** | The observation point is now pinned ("the moment restoration completes") and two carriers are excluded. The enumeration is not exhaustive over AC-5.1's own trigger path — see **F-01**. |
+| 3 | AC-5.1 ignored-path boundary | **Yes** | "So are paths ignored by `.gitignore`, which are operator files A6 never wrote and never restores over." This closes the destructive-restore reading cleanly and is black-box checkable (compare tracked + non-ignored untracked paths only). |
+| 4 | Observable for a failed **capture** | **Yes** | "Given the pre-A6 state cannot be captured at all, Then no repair is proposed, none is applied, and the wave halts on its own gate (AC-5.2) — a different outcome from a failed restoration." Three positive conjuncts, all observable at REQ altitude, and it correctly routes to AC-5.2 rather than inventing a new halt. This is now writable as its own acceptance test. |
+| 5 | `Downstream` row names artifacts, not a feature | **Yes** | Now `FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory)`; all four files verified present in `docs/pdlc-advisory-wave-gate/`. |
+| 6 | `Upstream` row carries the ordered chain | **Yes**, with a regression | Now `` `pdlc-advisory-tier` REQ (the five-seam tier this extends) → **REQ** ``. Chain shape and bolding are as requested; the resolvable path was dropped in the process — see **F-02**. |
+| 7 | `Cross-Reviews` row | **Yes** | Now `harvested into `LEARNINGS-pdlc-advisory-wave-gate.md``; that file exists on the branch (32.8 KB). |
+| 8 | `Status` disposed | **Yes** | `approved (shipped)`, v1.14, with the changelog naming PR #66 (`bb4d36fb`), queue row 19 `done`, and explicitly leaving relocation with SE Q-02. The changelog paragraph is accurate against the diff it describes. |
+
+Nothing I previously approved was broken: the delta touches only the header block, AC-1.1's closing
+sentence, AC-5.1's body, and R-5's closing sentence. AC-5.2, AC-5.3 and all of REQ-AWG-06 are
+byte-identical, so the halt contract and the record contract I approved at v1.13 stand unchanged.
+
 ## Risks
 
 ## Obligations
