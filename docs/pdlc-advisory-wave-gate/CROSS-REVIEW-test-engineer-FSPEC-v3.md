@@ -100,6 +100,28 @@ No business rule needs to change for FSPEC to hold. No High finding here.
 
 ## Edge Cases and Error Scenarios
 
+Two §5 rows sit directly under the delta; both survive, and one is the reason the delta is
+non-gating.
+
+- **E-23 (run ends on the wave's own gate halt).** This row already enumerates all three carriers
+  REQ v1.15 now lists: "the halt path still appends the record and escalation entries BR-13
+  requires and still rewrites and commits the `halted` queue row (M-WG-7), and those writes are
+  the halt's, not a restoration defect." Read together, BR-9 + E-23 cover REQ's excluded set
+  exactly — which is why F-02 is a Low enumeration gap and not a coverage gap. The residual risk
+  is only that a fixture author working from BR-9 alone never reaches E-23; the fix is one clause
+  in BR-9, not a new rule.
+- **E-34 (pre-A6 state cannot be captured at all).** REQ v1.15's new sentence — "no repair is
+  proposed, none is applied, and the wave halts on its own gate (AC-5.2) — a different outcome
+  from a failed restoration" — is E-34 verbatim in substance, including the *distinctness from
+  E-28* that my v1 F-04 asked for and FSPEC v1.6 landed. Upstream converged onto the FSPEC here;
+  the compression is ahead of its source, not behind it.
+- **E-28 (restoration fails)** — untouched, and still the contrasting row REQ now implicitly
+  points at.
+- **E-22** — untouched; the post-gate-halt disclosure obligation is unaffected by carrier
+  exclusion.
+
+No new edge case is created by the delta, and no §5 row is falsified by it.
+
 ## Acceptance Tests
 
 ## Open Questions
