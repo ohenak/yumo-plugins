@@ -434,7 +434,7 @@ remains is obligations owed downstream, each with a named owner.
 
 | # | Obligation | Owner | Discharged when |
 |---|---|---|---|
-| OB-F1 | REQ BL-04 is **not met**: this authoring tree is 1,637 commits behind the default branch and contains neither the resume mechanism nor `docs/_constraints/pdlc-wave-gate-baseline.md`. Every shipped-behaviour claim in §1 is therefore verified against `origin/main`, and this FSPEC's positional citations are not re-verifiable in this tree. Bring the branch onto the current default-branch base before TSPEC authoring, or R-4's "new code alongside" outcome becomes unavoidable. Raised as an erratum against the REQ, whose §10 records BL-04 as "discharged at FSPEC authoring". | orchestrator / operator (branch management) | the branch is rebased and the mechanism is readable in the tree |
+| OB-F1 | REQ BL-04 is **not met**: this authoring tree is 1,637 commits behind the default branch and contains neither the resume mechanism nor `docs/_constraints/pdlc-wave-gate-baseline.md`. Every shipped-behaviour claim in §1 is therefore verified against `origin/main`, and this FSPEC's positional citations are not re-verifiable in this tree. Bring the branch onto the current default-branch base before TSPEC authoring, or R-4's "new code alongside" outcome becomes unavoidable. Raised as an erratum against the REQ, which now records BL-04 as open and unmet in §5 and §10 (v1.7). | orchestrator / operator (branch management) | the branch is rebased and the mechanism is readable in the tree |
 | OB-F2 | Ratify or revise the shipped interim contract — the record's location, encoding, matching procedure and write mechanics — rather than inventing a second one alongside it (REQ BL-03, R-4). This FSPEC deliberately states none of them. | TSPEC (se-author) | TSPEC names the contract and states whether it formalises or replaces the interim |
 | OB-F3 | Decide the fate of the content-free "cleared" record shape that the reader tolerates (EC-02) but nothing ever writes: wire it or drop it. The observable behaviour is identical either way, which is why it is not a requirement here. | TSPEC (se-author) | TSPEC states the decision |
 | OB-F4 | Promote REQ OF-1 and OF-2 into `docs/_constraints/pdlc-wave-gate-baseline.md` as `M-WVR-1..2` in the next unoccupied section, each with a re-derivation command, bumping the file to the next version above the one found — and record that `M-WG-6` was reviewed and left, not missed. Blocked on OB-F1: the file is not in this tree. | se-author, at TSPEC authoring | the baseline carries the new section and §4 of the REQ cites by `M-WVR-*` id |
@@ -446,6 +446,9 @@ wave budget is scoped per *run*. Automatic resume makes runs shorter and more nu
 budget effectively refreshes per re-invocation. It stays bounded in practice because clearing a
 halt still requires a human, but `pdlc-advisory-wave-gate`'s compounding-drift bound is weaker
 under resume than that feature assumed. Noted for its owner; nothing in this FSPEC changes.
+
+**Erratum, v1.2 (Phase T).** §1 re-grounded on REQ v1.7; §3.4 states what an operator-pointed
+run records; OB-F1's reading of REQ §10 corrected — the REQ's BL-04 erratum has landed.
 
 **Round 1 revision note.** This version addresses the v1 cross-reviews
 (`CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md`); the
