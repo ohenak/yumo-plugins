@@ -111,7 +111,40 @@ completeness point inside the same paragraph F-01 already reopens.
 
 ## Oracles
 
-TBD
+**No oracle moved, and none is downstream of the PLAN edit.** §O.1–§O.9, §G.1's obligation table and
+§O.8's mutation ledger derive from FSPEC, TSPEC and DECISIONS — all four of those pins are
+byte-identical to the ones my v9 approval recorded — so the oracle surface is untouched by this
+cascade. I re-ran the three discipline checks anyway against the one thing the edit could plausibly
+disturb, PLAN's ledger semantics, and all three hold:
+
+- **No implementation echo.** PLAN's edit introduces no expected value and moves none. §G.2.2's
+  hand-computed 40/66 derivation and the landed suite's "Hand-computed (never derived here)" label
+  are outside the diff, and case C's premise sentence is a claim about production behaviour, not a
+  value this document may assert.
+- **No absence-only oracle is created.** Case C's ruling is "no ledger row", which is an *absence in
+  PLAN's table*, not an absence-shaped assertion in a test. The one absence-shaped oracle nearby,
+  PROP-BOUND-03's zero case, keeps its positive conjunct — the `{material: "", bounded: false,
+  bytes: 0, sections: []}` return on the same path — unchanged.
+- **Set-equality, not containment.** Untouched; the LI-AT-30 citations §C.4 carries are into
+  `learningsConfig.test.js`, which the PLAN edit does not mention.
+
+**I did verify case C's production-behaviour claim, because PROPERTIES will inherit it.** PLAN
+asserts that F-O-1's second rule is already shipped, and the four owed heading-form arms therefore
+assert shipped behaviour. At HEAD, `pdlc/workflows/orchestrate-dev.js:2242` is verbatim
+`const SECTION_HEADING_RE = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/;` — `^##` followed by a required
+`[ \t]+` cannot match a `###` line, since the third `#` is not whitespace, so the `###`-as-body case
+is genuinely shipped. `canonicalSectionName` (`:2248–:2255`) tries an exact `BR6_SECTION_NAMES`
+membership first (case-sensitive — `includes` on an array of strings, no folding anywhere), then
+strips a trailing gloss from both sides via `GLOSS_RE` (`:2243`) and re-compares. So the un-numbered
+and un-glossed spellings canonicalise and `## Process Findings` returns `null`. PLAN's premise is
+correct as written, and the document may compress it without qualification.
+
+**One oracle-adjacent consequence the rewrite must not lose.** §G.3's third "still open" item — the
+TSPEC AT-15 suite-assignment mismatch — is **not** touched by the PLAN edit and remains genuinely
+open: it is a TSPEC item, its subject is §T.5's suite table, and TSPEC's pin is unchanged. When
+§G.3's header count drops from three to one, that bullet must survive verbatim. I flag this here
+because the last time a bullet was struck from that list the surrounding sentence went untrue and had
+to be re-labelled a round later — the document records that episode itself, in the same bullet.
 
 ## Fixtures
 
