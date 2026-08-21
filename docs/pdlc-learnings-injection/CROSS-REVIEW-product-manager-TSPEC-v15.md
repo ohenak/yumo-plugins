@@ -87,6 +87,44 @@ the correct disposition for a downstream document that has found a defect in its
 
 ## Interfaces
 
+The erratum's rule has to be visible at the seam an implementer reads, not only in prose, or the
+"rule the implementer follows" claim is unenforceable. It is:
+
+- **`extractInjectableMaterial(text, maxBytes)` JSDoc (§I.3)** carries the short-circuit explicitly:
+  "`maxBytes <= 0` short-circuits BEFORE the cut and returns `{material: "", bounded: false,
+  bytes: 0, sections: []}` for every `text` — no cut occurs, so `bounded` is false, and **the caller
+  drops the document `RSN-NO-MATERIAL`** (E-36, §D.5)." The caller's obligation is stated at the
+  callee's contract, which is what makes the ordering rule reach a reader who only opens the
+  signature.
+- **`selectLearnings` (§D.5)** owns the drop: a document whose extraction returns `sections: []` is
+  dropped `RSN-NO-MATERIAL` **before** the count and total bounds, one branch keyed on *yields no
+  material*, covering the structural disjunct (E-33) and the zero-bound disjunct (E-36), with no
+  zero-bound special case. This is the operative statement of the corrected sequencing.
+- **`bounded: false` at a zero bound** is the product-visible half. FSPEC AC-2.3 makes *bounded* the
+  operator's signal that a document was **abridged**; at a zero bound nothing was taken, so nothing
+  was abridged, and E-36 says such a document is rejected rather than selected. `bounded: true` with
+  `bytes: 0` on a selected document would be a false abridgement report. The TSPEC names this
+  explicitly as the shape FSPEC v0.13 carves out. Fidelity holds.
+
+**AT-30's operand, checked against FSPEC at HEAD.** §I.2 says "upstream enumerates **three** zeros,
+not two: `maxDocuments: 0`, `maxTotalBytes: 0`, and `maxBytesPerDocument: 0`". FSPEC AT-30 at HEAD:
+
+> *Given* thresholds configured to admit nothing — `maxDocuments: 0`, separately `maxTotalBytes: 0`,
+> and separately `maxBytesPerDocument: 0` — … *and* in the `maxBytesPerDocument: 0` case **every
+> corpus document carries `RSN-NO-MATERIAL`** (E-36).
+
+Three zeros, and the third case's extra conjunct is upstream's own, quoted faithfully. REQ AC-4.4 —
+AT-30's requirement of record per FSPEC's traceability table (`AC-4.4 | BR-5, BR-14 | AT-30`) — is
+preserved as written: "behaves as an enabled run whose selection is empty — AC-3.1's empty rows, not
+AC-5.1a's absent key — rather than treating the configuration as invalid and refusing." §I.2 and
+§D.5 both state exactly that trichotomy (enabled-run shape, not the disabled one, not a refusal),
+and §I.2 goes further by requiring the third fixture's oracle to be a **set equality over the reject
+rows** rather than an empty `selected`, on the reasoning that an implementation selecting documents
+at `bytes: 0` satisfies the weaker oracle while violating E-36's no-slot clause. That is the
+acceptance criterion tightened toward its intent, never narrowed.
+
+No interface named in the erratum's blast radius has drifted from upstream at HEAD.
+
 ## Data Model
 
 ## Test Strategy
