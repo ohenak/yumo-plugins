@@ -2536,6 +2536,61 @@ export function renderLearningsBlock({ selected }) {
   );
 }
 
+// ─── TSPEC §I.4, §D.6 — the IO shell (LI-18) ────────────────────────────────────────────────
+
+/** TSPEC §D.6: `RSN-SELF` is decided from the path alone, by feature DIRECTORY (not filename),
+ *  matching either `docs/{feature}/…` or `docs/completed/{feature}/…` so a re-run of a harvested
+ *  feature is excluded whichever location its LEARNINGS doc sits in (E-31). */
+function isLearningsSelfPath(path, feature) {
+  return (
+    path.startsWith(`docs/${feature}/`) || path.startsWith(`docs/completed/${feature}/`)
+  );
+}
+
+/** TSPEC §I.4. The whole shell is one outer `try/catch` returning `{unlistable: true}` — the
+ *  fail-open outcome for both a graceful `!reply.ok` enumeration reply AND an ungraceful thrown
+ *  fault from `_git` itself (BR-12's last row): nothing in this feature throws past
+ *  `dispatchAndVerify`. Self paths (§D.6) are carried into `entries` with `text: null,
+ *  readOk: false, excluded: "RSN-SELF"` and are NEVER opened. Every other path gets exactly one
+ *  `_readFile` call inside its OWN `try/catch` (P-8: the runtime `rtReadFile` throws where the
+ *  test double `defaultReadFile` returns `null` — both degrade the same document alone to
+ *  `readOk: false`, never the whole corpus).
+ *  @param {{feature: string, _git: Function, _readFile: Function}} args
+ *  @returns {Promise<{unlistable: true} | {unlistable: false, entries: object[]}>} never throws */
+export async function gatherLearningsCorpus({ feature, _git, _readFile }) {
+  try {
+    const reply = await _git(LEARNINGS_CORPUS_ARGV);
+    if (!reply || !reply.ok) return { unlistable: true };
+
+    const paths = String(reply.stdout || "")
+      .split("\n")
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    const entries = [];
+    for (const path of paths) {
+      if (isLearningsSelfPath(path, feature)) {
+        entries.push({ path, text: null, readOk: false, excluded: "RSN-SELF" });
+        continue;
+      }
+
+      let text = null;
+      let readOk = true;
+      try {
+        text = await _readFile(path);
+        if (text === null || text === undefined) readOk = false;
+      } catch {
+        readOk = false;
+      }
+      entries.push({ path, text: readOk ? text : null, readOk, excluded: null });
+    }
+
+    return { unlistable: false, entries };
+  } catch {
+    return { unlistable: true };
+  }
+}
+
 // === LEARNINGS INJECTION REGION END ===
 
 // ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
