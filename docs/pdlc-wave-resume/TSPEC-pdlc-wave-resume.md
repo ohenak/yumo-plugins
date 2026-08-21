@@ -97,6 +97,164 @@ specified; changing any of them would be a re-litigation of a decision the REQ a
 
 ## 2. Architecture
 
+### 2.1 Where the code lives, and why it stays there
+
+All of it is in `pdlc/workflows/orchestrate-dev.js`: three module-level pure functions plus one
+read-site and one write-site inside `main()`'s Phase I wave branch. No new module, no new file, no
+new host capability (REQ C-3, FSPEC BR-17).
+
+The module is a **restricted dialect** (project CLAUDE.md, `pdlc/workflows/*.js`): no `import`, no
+`fs`, no `process`, no `fetch`. Everything that touches the world arrives as an injected seam. That
+is why `computePlanHash` is FNV-1a arithmetic rather than a digest — there is no crypto seam in
+this module — and why the record is read through `readMergeConfigSafely` and written through
+`writeFileFn` rather than through any direct IO. **Cite-and-reuse:** `readMergeConfigSafely` is the
+shipped never-throwing reader the merge and implementation configs already use; this feature reuses
+it rather than adding a second total reader, and `parseWaveLedger`'s total, never-throwing,
+per-key-independent shape is modelled on `parseImplementationConfig`, as that function's own doc
+comment records.
+
+The built artifacts under `pdlc/workflows/dist/` are **generated**. Every change lands in the
+source module; `node pdlc/workflows/build-runtime.mjs` regenerates the artifacts, and
+`pdlc/hooks/scripts/sync-workflows.sh` copies them into the untracked consumer tree. A wave whose
+tasks edit the source module owns the regenerated artifacts through `implementation.postWavePathspecs`,
+which is why the post-wave command runs before the gate (`M-WG-2`).
+
+### 2.2 The decision, extracted as a pure classifier
+
+Today the decision is an `if/else if` chain inline in `main()`, interleaved with `emit` calls and
+one `await`ed ancestry probe. It is correct, and every arm is reachable only through a full
+`main()` run. That is what makes AT-02's set equality over **announced reasons** and AT-13's set
+equality over **outcomes** impossible to write honestly: a test would have to enumerate what the
+chain happens to emit, which is reading the expectation back out of the mechanism under test.
+
+**The chain is therefore extracted, unchanged in behaviour, into one pure total function**
+(`classifyWaveLedger`, §3.2). The extraction is deliberately minimal:
+
+- **What moves:** the ordered decision — feature match, plan-hash match, ancestry verdict,
+  over-count, complete, mid-plan — and the choice of reason code for each rejection.
+- **What does not move:** the `await`ed `git merge-base --is-ancestor` probe, the `emit` calls, and
+  the report row. The classifier receives ancestry as an already-resolved boolean (`headOk`) and
+  returns a *description* of the outcome; `main()` performs the IO and the announcing.
+
+This keeps every seam where it is (no new injection point) while making the decision a value a
+unit test can assert over. `parseWaveLedger` keeps its current job — turning bytes into
+`{state, reason}` — so the two functions compose as *shape* then *match*.
+
+The classifier is **total**: every input resolves to exactly one of the three outcomes of FSPEC
+BR-01, which is what makes BR-01's closure mechanically checkable rather than asserted in prose.
+
+### 2.3 Control flow at Phase I entry
+
+Ordering below is normative and matches the shipped chain; FSPEC §3.2 already ratified that this
+order — ancestry (IG-5) **before** over-count (IG-4) — is the specification, not the REQ's IG
+numbering (FSPEC BR-03, AT-03).
+
+```
+waves := computeWaves(parsePlanTasks(PLAN), parsePlanOwnership(PLAN))
+planHash := computePlanHash(waves)
+
+startWave := implConfig.startWave                       # parseImplementationConfig, default 1
+explicitPointer := startWave > 1                        # judged BEFORE the clamp (V-5)
+if startWave > waves.length:                            # out of range → full run, still explicit
+    emit(pointer-past-end notice, provenance=operator-set)
+    startWave := 1
+
+if not explicitPointer:                                 # V-6: the record is consulted only here
+    raw    := readMergeConfigSafely(_readFile, WAVE_STATE_PATH)
+    parsed := parseWaveLedger(raw)                      # → {state, reason}
+    headOk := parsed.state ? await headCorroborated(parsed.state.head) : true
+    d      := classifyWaveLedger(parsed, {feature, planHash, waveCount: waves.length, headOk})
+    apply d:                                            # §3.2 return shape
+        outcome "full-run"   → startWave stays 1; emit d.reason unless d.silent
+        outcome "resume"     → startWave := d.startWave; ledgerResume := true; emit resume banner
+        outcome "skip-phase" → startWave := waves.length + 1; allWavesRecorded := true; emit skip banner
+
+for waveIndex in 0 .. waves.length-1:
+    if allWavesRecorded: break
+    if waveNum < startWave: emit per-wave skip line (naming the source); continue
+    dispatch → post-wave command → gate → (only if green) commit → write record
+```
+
+`headCorroborated` stays exactly as shipped, including both fail-open returns (V-7): a record with
+no `head` and a run with no transport both answer `true`, because an unanswerable probe is not a
+staleness finding (FSPEC EC-07, EC-21).
+
+### 2.4 Announcements and the report row (D-2, D-3)
+
+FSPEC BR-07 makes provenance **announced content**, and FSPEC §2 lets a test assert that an
+announcement *conveys* `operator-set` or `automatic`. The shipped banners convey the source but
+never those words, so this TSPEC introduces a frozen two-member vocabulary (`RESUME_PROVENANCE`,
+§3.1) and composes it into each announcement as a parenthesised suffix, leaving the existing
+sentence — and therefore every assertion in the shipped test block — intact:
+
+| Outcome | Announcement (existing text, unchanged) | Suffix added |
+|---|---|---|
+| (a) full run, operator pointer past the end | `Notice: implementation.startWave=N … is past the last wave …` | `(provenance: operator-set)` |
+| (a) full run, disregarded record | `Notice: the wave ledger … was ignored — {reason}. Running every wave from 1.` | `(provenance: automatic)` |
+| (a) full run, no record (IG-6) | *(nothing)* | *(nothing — silence is the specification, FSPEC BR-02)* |
+| (b) resume mid-plan, operator pointer | `Resuming at wave N of M (implementation.startWave). …` | `(provenance: operator-set)` |
+| (b) resume mid-plan, record | `Resuming at wave N of M (wave ledger …). … Delete … to force a full run.` | `(provenance: automatic)` |
+| (c) skip Phase I | `Skipping Phase I (wave ledger …): all M waves … Delete … to force a full run.` | `(provenance: automatic)` |
+
+The suffix is **content, not wording**: FSPEC's "announcement content, not wording" note governs,
+and PROPERTIES asserts that the announcement conveys the token, not that the sentence is
+byte-identical.
+
+The **report** carries the same two facts on one Phase I row (FSPEC EC-09's "one row with a
+distinguishing status, not a second row"):
+
+| Case | Status | Detail |
+|---|---|---|
+| Executed from wave 1, no resume | `✅` | `All M waves complete (wave mode, {gate})` — unchanged |
+| Executed from wave N > 1 | `✅` | `Waves N–M complete, waves 1–(N-1) skipped as previously completed (provenance: {p}; wave mode, {gate})` |
+| Skipped in full | `⏭` | `Skipped — all M waves previously committed and recorded green (wave ledger; provenance: automatic)` |
+
+The `⏭` row's existing text is preserved as a prefix so the shipped assertion on
+`recorded green (wave ledger)` keeps passing; the change is additive.
+
+### 2.5 What the run writes, and when
+
+Unchanged from shipped, and ratified here as the contract:
+
+1. The write happens **inside** the `if (waveGit)` branch (V-8) — the same branch that guards the
+   commits. A run with no git transport commits nothing and therefore records nothing, which is
+   REQ-WVR-09 and FSPEC EC-13. The guard is the **transport**, not the gate mode: a self-report-gate
+   run with a transport records normally (FSPEC AT-09's companion arm).
+2. It happens **after** the wave's pathspec-scoped commits, never beside the gate, so a wave is
+   recorded only once its work is on the branch (FSPEC BR-08).
+3. It is **per wave** and **best-effort**: `writeWaveLedger` catches, emits a notice, and continues
+   (V-9). A run in which some writes succeed and a later one fails leaves the last successfully
+   written record in place, so the next invocation resumes from there (FSPEC EC-15a, AT-15 arm 2).
+4. `head` is stamped from `git rev-parse HEAD` after those commits, best-effort: a transport that
+   cannot answer yields `head: null`, which the reader honours (V-7).
+5. Each write carries `lastGreenWave = waveNum`, the **plan-absolute** wave number, not a count of
+   waves this run executed — which is what makes completion the high-water property FSPEC BR-08
+   requires and AT-18 discriminates on.
+
+**One interaction the FSPEC does not state, recorded here and routed upstream.** The write site is
+outside the `!explicitPointer` guard, so a run started at wave N by an operator pointer records
+`lastGreenWave = N` for a wave the *operator*, not the pipeline, asserted the predecessors of. The
+damage is bounded exactly as FSPEC BR-10 bounds it — the first executed wave's gate verifies the
+whole tree, so an un-run predecessor reds the gate rather than shipping — but the behaviour is
+unspecified upstream. Ratified as-is (changing it would make an operator-pointer run unable to
+record anything, losing resume for the very recovery path the feature serves); raised as an
+erratum against the FSPEC so the clause exists.
+
+### 2.6 Requirement → component map
+
+| Requirement | Component |
+|---|---|
+| REQ-WVR-01 | `classifyWaveLedger` `resume` outcome; resume banner; `✅` report detail (§2.4) |
+| REQ-WVR-02 | `parseWaveLedger` reasons + `WAVE_IGNORE_REASONS` codes (§3.1); classifier's rejection arms |
+| REQ-WVR-03 | unchanged wave loop: gate before commit; skipping skips dispatch only |
+| REQ-WVR-04 | `explicitPointer`, evaluated above the clamp; `RESUME_PROVENANCE` |
+| REQ-WVR-05 | retention — no clearing write; reader-side invalidation in the classifier |
+| REQ-WVR-06 | classifier reads only the record; `headCorroborated` is falsification, not archaeology |
+| REQ-WVR-07 | no queue-specific code: `orchestrate-queue` delegates to `realMain` (V-15) |
+| REQ-WVR-08 | `skip-phase` outcome, `allWavesRecorded` break, `⏭` row |
+| REQ-WVR-09 | write site nested in the `if (waveGit)` transport branch (V-8) |
+| REQ-WVR-10 | `WAVE_STATE_PATH` under the root-anchored `.gitignore` rule (V-14); no pathspec names it |
+
 ## 3. Interfaces
 
 ## 4. Data Model
