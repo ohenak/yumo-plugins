@@ -1354,8 +1354,8 @@ TSPEC-owned (§5.1), and without it no test in the feature's set would fail on a
 
 Two consequences worth stating rather than discovering:
 
-- **The capture-failure halt's four fields have literal values, not derived ones (PM F-03, TE
-  F-18).** On that path no agent was dispatched, so there is no diagnosis to carry and no repair
+- **The capture-failure halt's five fields have literal values, not derived ones (PM F-03, TE
+  F-18; count corrected from four at v1.14 — `snapshotRef` joined the set at v1.12).** On that path no agent was dispatched, so there is no diagnosis to carry and no repair
   to name, and the row above would otherwise read as an omission rather than a decision. The
   values are fixed and transcribable, which is what lets §5.5's fixture assert them rather than
   compare against whatever the implementation happens to produce:
@@ -1380,8 +1380,16 @@ Two consequences worth stating rather than discovering:
   |---|---|
   | Value when the capture succeeded | the ref name `refs/pdlc/a6-snapshot-{waveNum}` for **this** wave — the wave that is halting, not an earlier resolved one (§2.5) |
   | Value when no capture was taken | `null` — E-34's arm and the capture-failure halt above; the report then points at nothing |
-  | What the report renders | from a non-`null` value, both halves together and adjacent: the ref name, and the sentence that re-running this feature overwrites that capture, so an operator who intends to inspect it copies the ref first. From `null`, neither half — no dangling pointer and no warning about a capture that does not exist |
+  | What the report renders, and **on which named surface** (PM F-01, v1.14) | from a non-`null` value, both halves together and adjacent **inside one string**: the ref name, and the sentence that re-running this feature overwrites that capture, so an operator who intends to inspect it copies the ref first. The carrier is a **halt-report `notices` entry rendered by a named pure helper, `renderSnapshotOverwriteNotice(snapshotRef)`** — a sibling of the tier's existing renderers (`export function renderEscalationEntry`, `export function renderAdvisoryEntry`, both in `pdlc/workflows/orchestrate-dev.js`), so no new module and no new file (§1.2). It is pushed through the sink the tier already owns — `const advisoryNotice = (line) => notices.push(line)`, declared in the pipeline entry `export default async function main` as "the one notice sink every advisory seam this run dispatches writes through" — and that same `notices` array is spread onto the **halt** report, not only the success one (the halt-path `buildFinalReport({ … notices, … })` call). From `null`, no notice is rendered and none is pushed — no dangling pointer and no warning about a capture that does not exist |
+  | Why a rendered notice and not the halt message | the halt message is pinned by AT-05-3 to equal the pre-A6 literal (§2.3, §5.6), so nothing may be appended to it; `notices` is a sibling field of `haltReason` on the same report object, which is the "same report, same place" BR-14 asks for without touching the message |
+  | Why not the structured `haltAdvisory` field | `haltError(message, fields)` `Object.assign`s the fields onto the error, and the halt handler forwards them as `haltAdvisory: err && err.advisory ? err.advisory : undefined`, spread into `buildFinalReport`'s returned **plain object**. There is no report-to-text renderer anywhere in `pdlc/workflows` — the shipped assertions read that field as data (`expect(result.haltAdvisory).toEqual(haltFields)` in `waveExecution.test.js`, `toEqual` over an object literal in `advisoryWaveGateMain.test.js`) — and "adjacent" has no meaning over an object. Co-location is observable only over a rendered string, which is why the notice, not the field, is conjunct (3)'s surface |
   | Why a field and not a prose string in `diagnosis` | the two are asserted separately: AC-6.3's diagnosis conjunct compares `diagnosis`, while BR-14's oracle asserts co-location and the presence of the overwrite statement, never the ref's name (FSPEC §5.x). Folding the warning into `diagnosis` would couple them and break the literal comparison |
+
+  **AT-05-3's message equality survives this carrier (PM F-01).** `haltError` builds the `Error`
+  from `message` alone and assigns `fields` onto the object; the halt handler then sets
+  `haltReason = err.message`. The warning rides `notices`, never the message, so the halt reason
+  string stays byte-identical to `TEST_GATE_MESSAGE` and §5.6's AT-05-3 **equality** oracle is
+  untouched by BR-14's landing — the two oracles observe two different fields of one report.
 
   This is the one place the run-scoped promise §2.5 describes becomes operator-visible at the moment
   it matters. The advisory record entry BR-13 mandates is read after the fact and carries **no**
