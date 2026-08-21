@@ -2169,6 +2169,64 @@ describe("A6-15: PROP-ENV-08 — an E-6 proposal is permitted only when all thre
   });
 });
 
+// ─── A6-08 / FSPEC AT-02-1 (E-08b): the two-class arm ────────────────────────
+//
+// AC-2.2's first-match rule ("a failure matching two classes takes the earlier one") is
+// prompt-only on the emitting side (TSPEC §3.3) — the script cannot re-derive whether an
+// earlier class also matched. But the RECEIVING side is what this arm proves: given a gate
+// output that plausibly names BOTH class 1 (`plan-ordering-defect` — a symbol the later T2
+// promotes) and class 2 (`wave-internal-defect` — a defect inside the wave's own `a.js`), and
+// a well-formed reply whose `ROOT-CAUSE:` trailer states the earlier class, `parseA6RootCause`
+// reads exactly that one class — never both (its return type is a single string), and never
+// `wave-internal-defect` — and the envelope determination that follows resolves through E-6
+// (the later task's own owned set), not E-5 (the wave's own owned set). Without this arm,
+// `ADVISORY_ROOT_CAUSES`'s order (A6-05's ordered-sequence oracle) has no behavioural
+// consequence anywhere in the suite (PM v1 F-02, PM v11 F-02).
+describe("A6-08 / FSPEC AT-02-1 (E-08b): a gate output matching class 1 AND class 2 classifies as plan-ordering-defect, exactly one class, and resolves through E-6", () => {
+  test("two-class gate output: ROOT-CAUSE reads plan-ordering-defect (never wave-internal-defect), and the wave resolves via E-6's owned set, not E-5's", async () => {
+    const repo = createA6TempRepo();
+    try {
+      const files = makeFileDouble();
+      // Names BOTH a class-2 signal (a defect inside the wave's own `a.js`) and a class-1
+      // signal (a ReferenceError for the symbol T2's PLAN row promises to add).
+      const TWO_CLASS_GATE_OUTPUT =
+        `TypeError: cannot read property 'x' of undefined at a.js:5\n` +
+        `ReferenceError: ${E6_SYMBOL} is not defined at writer.js:12`;
+      const args = makeE6Args(repo, {
+        files,
+        gateOutput: TWO_CLASS_GATE_OUTPUT,
+        reply: makeA6ReplyText({
+          proposedAction: "E-6",
+          rootCause: "plan-ordering-defect",
+          promotes: E6_SYMBOL,
+          promotesTask: "T2",
+          evidence: [TWO_CLASS_GATE_OUTPUT],
+        }),
+      });
+      // The repair writes T2's own owned path — the one file E-6's narrowed scope admits.
+      writeFileSync(join(repo.dir, "b.js"), `export function ${E6_SYMBOL}() {}\n`);
+
+      const result = await runWaveGateSeam(args);
+
+      expect(result.disposition.outcome).toBe("resolved");
+      expect(result.resolved).toBe(true);
+      const record = files.files["docs/pdlc-advisory-wave-gate/ADVISORY-pdlc-advisory-wave-gate.md"];
+      // Exactly one class, and it is the earlier one — never `wave-internal-defect`.
+      expect(record).toMatch(/\| Root cause \| plan-ordering-defect \|/);
+      expect(record).not.toMatch(/\| Root cause \| wave-internal-defect \|/);
+      // Resolved via E-6 (the later task's named, narrowed owned set) — not E-5 (the wave's
+      // own `a.js`): the record names the promotion and the repair path is T2's, not the
+      // wave's own file.
+      expect(record).toMatch(/\| Promotes \| renderPromotedThing \|/);
+      expect(record).toMatch(/\| Promotes task \| T2 \|/);
+      expect(record).toMatch(/\| Repair paths \| b\.js \|/);
+      expect(record).not.toMatch(/\| Repair paths \| a\.js \|/);
+    } finally {
+      repo.cleanup();
+    }
+  });
+});
+
 // ─── A6-15 (CR round 1, PM F-04 / TE F-02): AC-3.3's eleven prohibited operations ──
 //
 // PROP-ENV-10. `A6_PROHIBITIONS` was previously asserted set-equal to its own letters and read by
