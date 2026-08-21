@@ -71,4 +71,32 @@ mechanism nor the wave-gate baseline, every check below was run against a detach
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings. Every decision in this document traces to a real product, scope or upstream
+constraint rather than to engineering preference; no rejected alternative is required by a P0 or P1
+requirement; no acceptance criterion is narrowed, broadened or re-triggered here beyond what TSPEC
+§5.4 already carries for AT-16 with the residual gap stated in the open; and no product decision is
+being taken in an engineering artifact that belonged in the REQ or FSPEC.
+
+What to change, in one revision:
+
+1. **F-01 (Medium)** — correct `44 / 32 / 8 / 4` to `26 / 18 / 4 / 4` in O-1 and DEC-WVR-01, with the
+   command that produces it, as every neighbouring row already does.
+2. **F-02** — re-word the "largest tracked file" row to "largest tracked **source module**, second
+   largest tracked file after the generated `pdlc/workflows/dist/pdlc-cli.mjs` (738,924 B)".
+3. **F-03** — reconcile "~81 lines" with the span it names (48 lines for the chain as bounded; ~84
+   for the whole `if (!explicitPointer) {` block).
+4. **F-04** — one consistent denominator for the seam count: a 35th injected seam, a 37th parameter.
+5. **F-05** — add the queue-parity residual gap as a fourth row of the DC-08 "deliberately left open"
+   table, with the trigger DEC-WVR-07 already names as its successor surface.
+6. **F-06** — pair DEC-WVR-04's write-site absence assertion with the positive on the same path.
+
+None of these changes a decision, an alternative's disposition, or a downstream obligation. All six
+are corrections to *counted claims and completeness* in a document whose whole method is that its
+counts can be re-run — which is why they are worth making rather than waving through.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 5}
