@@ -492,20 +492,30 @@ Four decisions inside that:
   (`Do NOT git commit`) means the index equals HEAD on entry, which is what makes the reset exact;
   a wave that staged anything anyway loses only its *staging*, never its content, and §6 OQ-5
   records that as an accepted deviation.
-- **`clean -fd`, not `clean -fdx` — and the boundary is upstream's, not this document's.**
+- **`clean -fd`, not `clean -fdx` — and the boundary is upstream's, now decided.**
   `git add -A` skips `.gitignore`d paths, so capture never records them; a restore that ran
   `-fdx` would delete files the snapshot never held — `node_modules/`, `.claude/workflows/` —
   which is a worse defect than the one it fixes. Capture and restore share one ignore semantics
-  because they must. But FSPEC BR-9 and AT-05-1 state the oracle over "tracked **and untracked**
-  files alike, generated outputs included" with no ignored-path carve-out, and REQ AC-5.1 states
-  it with none either. A wave whose post-wave command writes a generated output into an ignored
-  path is therefore inside the oracle as written and outside this mechanism. **This TSPEC does
-  not narrow AC-5.1 by design choice.** The carve-out is raised as an erratum on FSPEC BR-9 and
-  AT-05-1 (and REQ AC-5.1); this section transcribes whatever boundary comes back approved. If
-  upstream ratifies the carve-out, this bullet stands as written and §5.2 pins it. If upstream
-  instead holds ignored generated outputs inside the oracle, the mechanism grows a *scoped*
-  ignored-path capture — the post-wave pathspecs only, never the whole ignored tree — and this
-  bullet is rewritten to that. Until the erratum resolves, §6 OQ-7 carries the open boundary.
+  because they must. Upstream has since decided the oracle this mechanism is measured against, and
+  it is this one: FSPEC BR-9 at v1.6 states the map's **domain** as tracked files and **non-ignored**
+  untracked files, with ignored paths outside the map *in both directions* — "an ignored path the
+  re-gate mutated is not a restoration defect" — and REQ AC-5.1 at v1.14 excludes ignored paths for
+  the stated reason that they "are operator files A6 never wrote and never restores over". A wave
+  whose post-wave command writes a generated output into an ignored path is therefore outside the
+  oracle as well as outside this mechanism, and the two agree. **This is no longer a TSPEC narrowing
+  of AC-5.1; it is the transcription of the decided boundary**, and §5.2's case 4 pins it as a
+  positive assertion rather than an upstream-pending one. The scoped ignored-path capture the earlier
+  draft held in reserve — post-wave pathspecs only — is not built: the decision that would have
+  required it did not come back.
+- **The observation point is pinned, and the mechanism honours it.** BR-9 and AC-5.1 take the map
+  **immediately after restoration completes and before** the record carriers the run still owes —
+  AC-6.1's advisory-record append, AC-6.2's escalation-log append, and AC-5.2's queue-row write
+  (M-WG-7). Those three writes are files inside the tree, so a map taken after them differs from the
+  pre-A6 map by exactly the bytes BR-13 mandates, and an implementation that observed there would
+  fail a correct restore. The `restore:` sequence above is therefore complete at `git reset --mixed
+  {head}`: the driver's record and escalation writes (§3.2 step 7) follow it and are outside the
+  comparison, never interleaved with it. §5.2's round-trip case asserts the ordering, not only the
+  content.
 - **One snapshot per wave, not per attempt.** BR-9 pins the restore target as "the wave's
   post-dispatch, pre-commit tree" — the state before A6 *first* acted. Every red re-gate on that
   wave restores to the same tree, so attempt 2 starts where attempt 1 started (§3.2 step 6).
