@@ -95,6 +95,69 @@ message — is unchanged and still correct: `haltError` builds the `Error` from 
 
 ## Test Strategy
 
+**v5 F-01 is fully discharged, and the remedy is stronger than what I asked for.** I asked for three
+things; all three landed, and §5.2 added a fourth that I did not ask for and that matters most: it
+names the *false-green route* an implementer under a red wave gate would otherwise take — "the cheap
+way green would be to leave `snapshotRef` off the capture-failure `fields`, which deletes the only
+positive oracle for the `null` value and false-greens both AT-06-4 arms". That sentence converts a
+mechanical widening instruction into a rule an implementer cannot satisfy by deletion.
+
+The counterparty inventory is **complete**, which I verified by enumerating rather than trusting.
+Every whole-object or key-set assertion over `haltFields` / `haltAdvisory` in the suite is either
+named as widened or correctly carved out:
+
+| HEAD assertion | Disposition in v1.15 | Correct? |
+|---|---|---|
+| `advisoryWaveGate.test.js:2714` — `Object.keys(result.haltFields).sort()` | named; "the only place a key *set* is asserted" | yes — no other `Object.keys` over `haltFields` exists in the suite |
+| `advisoryWaveGate.test.js:1699` — Oracle G's own literal | named as §5.2's fixture itself | yes |
+| `advisoryWaveGate.test.js:3425`, `:3462` + the `ORACLE_G_HALT_FIELDS` literal `:3369` | named | yes |
+| `advisoryWaveGate.test.js:2676` — escalation-path literal | named | yes |
+| `advisoryWaveGateMain.test.js:373` — real-seam `haltAdvisory` (DC-07 production-path test) | new §5.1 row; widened, `haltReason` containment deliberately untouched | yes |
+| `waveExecution.test.js:1094`, `:1274` | carved out: compare against fields the A6 **fake** was handed (`:1251-1256`) | yes — `toEqual` against a fixture-supplied object follows the fixture's width |
+| `advisoryWaveGate.test.js:1059`, `:1282`, `:2253` — `.repairPaths` only | unmentioned | correct to omit: single-field reads are width-insensitive |
+
+**v5 F-02's consequence claim is exact.** §4.5 and §5.1 name `advisoryEscalationLog.test.js:821`'s
+`expect(failed.notices).toHaveLength(2)` as the one exact count that becomes three, and add that the
+two `arrayContaining` content assertions (`:822-827`) are unaffected. I checked every other candidate:
+`advisoryEscalationLog.test.js:497` counts a hand-built two-element array in a pure unit
+(`PROP-ESC-08`), `waveExecution.test.js:590`/`:749`/`:2648` count *filtered log lines*, not the
+notice array, and `waveExecution.test.js:803-817` are `checkWaveUnskips`' own returns. There is no
+unnamed counterparty. The `:821` fixture does satisfy the row's premise — `runA6Escalation` runs over
+a real temp repo where the capture succeeds, so `snapshotRef` is non-`null` and a third notice is
+genuinely due.
+
+**The one thing the push-site paragraph overstates (F-01, Medium).** §4.5 says both of §5.6's arms
+"are seam-level runs that already wire `_notice`, e.g. `_notice: (m) => notices.push(m)` in
+`advisoryWaveGate.test.js`'s Oracle-G runs". The cited collector form is real — `:3412`, `:3452`,
+`:3494` — but it belongs to a *different* describe than either of AT-06-4's / AT-06-4b's named hosts.
+AT-06-4b's host, §5.2's capture-failure fixture, is the Oracle-G block at `:1671-1705`; AT-06-4's
+host, the two-red-wave PROP-REST-07 run, is at `:1623-1668`. **Both build their args through
+`makeA6RunArgs`, whose default is `_notice: () => {}` (`:996`), and neither overrides it.** Combined
+with the seam's swallowing head guard (`orchestrate-dev.js:3385`), the failure mode is the one this
+lens exists to catch: an implementer who declares `const notices = []` and asserts AT-06-4b's
+whole-array negative over it, without also passing `_notice: (m) => notices.push(m)`, gets a green
+from an array that was never populated — a vacuous negative. AT-06-4's positive arm on the *other*
+fixture would still red if the collector were missing there, so the design is not broken and the
+discriminating pair still exists; what is missing is one clause. Fix: in §4.5's push-site row (or
+§5.6's AT-06-4b cell), state that both host fixtures currently take `makeA6RunArgs`' no-op default
+and **must override it with a collector**, and that AT-06-4b's negative is only meaningful over an
+array the run actually wrote to. Medium, not High: the oracle is not absence-only — the same run
+carries the five-key equality, the diagnosis and the class as positives — and the gap is a fixture
+instruction, not a missing falsifier.
+
+**AT set-equality is unchanged.** §5.6's un-skip clause explicitly declines to mint a new AT id, and
+`grep -c '^| AT-'` over the TSPEC still returns 48, matching the "forty-eight" the document states at
+lines 52 and 1894. Folding the third arm under AT-06-4's task is the right call: the predicates are
+identical, and a witness id would have forced a PLAN row for a path whose only difference is the push
+site.
+
+**Anti-echo and set-equality discipline hold across the delta.** AT-06-4's spec-side predicates
+(`/overwrit/i`, `"refs/pdlc/a6-snapshot-" + waveNum`) are unchanged and still forbid
+`toContain(devModule.SOME_WARNING)` by name; §5.2's inventory is a set-equality, not containment; and
+the one numeral this round removed ("six positive assertions") was removed rather than corrected,
+which is the right move — a count that drifts every round is a liability, and the claim it carried
+survives without it.
+
 ## Open Questions
 
 ## Findings
