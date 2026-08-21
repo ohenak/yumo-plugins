@@ -314,6 +314,7 @@ describe("PROP-REC-04 — an entry is written for every terminal disposition, in
 // (`orchestrate-dev.js:6805`) and `appendAdvisoryEntry` (TSPEC:1112-1121) actually own.
 // ---------------------------------------------------------------------------
 
+// E-29 (FSPEC §5): the advisory record cannot be written — the failure is surfaced, never healed (BR-13).
 describe("T-08-2 / PROP-REC-05 / PROP-REC-06 — appendAdvisoryEntry throws on write failure", () => {
   test("a scripted append failure propagates as a throw, not a swallowed rejection", async () => {
     const path = "docs/some-feature/ADVISORY-some-feature.md";

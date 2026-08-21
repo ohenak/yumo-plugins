@@ -431,6 +431,8 @@ describe("A6-10 / PROP-REST-02: a git-status-level comparison is explicitly NOT 
   });
 });
 
+// E-28 (FSPEC §5, AT-05-5): restoration itself failing halts the wave — A6 must never leave a tree
+// it can neither repair nor restore (REQ O-1, carried in FSPEC §7).
 describe("A6-10 / PROP-REST-05: restoreTreeSnapshot throws on any ok !== true (TSPEC §3.5, AT-05-5) — tagged __isRevertFailure and rethrown by the driver's terminal catch", () => {
   test("throws when read-tree fails", async () => {
     const _git = async (argv) =>
@@ -1227,7 +1229,9 @@ describe("A6-18: runWaveGateSeam — step-6 resolution (TSPEC §3.2 step 6, BR-7
     }
   });
 
-  test("a red re-gate (post-wave fails) never resolves and never increments waveBudget.resolved", async () => {
+  // E-20 (FSPEC §5 error row): a red re-gate's post-wave failure truncates that attempt's
+  // invocation sequence at the failing command — an admitted form, not a defect (BR-7).
+  test("E-20: a red re-gate (post-wave fails) never resolves, never increments waveBudget.resolved, and appends exactly one truncated [post-wave] token per consumed attempt", async () => {
     const repo = createA6TempRepo();
     try {
       const _git = repo._git;
@@ -1256,8 +1260,10 @@ describe("A6-18: runWaveGateSeam — step-6 resolution (TSPEC §3.2 step 6, BR-7
 
       expect(result.resolved).toBe(false);
       expect(args.waveBudget.resolved).toBe(0);
-      expect(args.invocations.filter((t) => t === "post-wave").length).toBeGreaterThan(0);
-      expect(args.invocations).not.toContain("test");
+      // Sequence equality, not membership (AC-4.4's oracle shape): attemptBudget is 3, every
+      // attempt's post-wave command fails, so each attempt appends exactly one `post-wave` token
+      // and truncates before `test`. Capping the re-gate loop at one attempt turns this RED.
+      expect(args.invocations).toEqual(["post-wave", "post-wave", "post-wave"]);
     } finally {
       repo.cleanup();
     }
@@ -2016,6 +2022,9 @@ describe("A6-15: runWaveGateSeam — PROP-GATE-03 (conjunct i): a two-attempt ru
   });
 });
 
+// E-21 (FSPEC §5): with only a test command configured and no post-wave command, one attempt's
+// sequence is [test, test] — a re-gate that skipped a configured command would be the defect; a
+// sequence that never had the command is not (BR-7).
 describe("A6-15: runWaveGateSeam — PROP-GATE-06: the gate sequence is read from implConfig, never hard-coded", () => {
   test("testCommand only, no postWaveCommand — a one-attempt green run reads ledger [\"test\",\"test\"] and resolves", async () => {
     const repo = createA6TempRepo();
@@ -2473,6 +2482,8 @@ function writeInRepo(repo, relative, contents) {
   writeFileSync(full, contents);
 }
 
+// E-18 (FSPEC §5): a proposal that would commit, push, or tag is refused (BR-6, BR-8) — the commit,
+// push and tag arms below are that row's oracle.
 describe("A6-15: PROP-ENV-10 — each prohibited operation is refused by its own test, with its paired positive", () => {
   // (f) the PLAN, its task table and its ownership manifest; (g) the implementation configuration.
   // All six arms hold the manifest constant — it ASSIGNS the failing wave both paths — so what
@@ -2775,6 +2786,8 @@ describe("A6-15 / PROP-REST-09: an unresolved A6 leaves the wave's own first-pas
   });
 });
 
+// E-16 (FSPEC §5): a proposal partly inside and partly outside the envelope survives in no part —
+// the seam escalates and the run never reports the wave resolved (AC-3.5). No partial application.
 describe("A6-15: PROP-ENV-10 (i) / PROP-ENV-09 — outside-the-envelope paths, and no part surviving", () => {
   test.each([
     ["(i) wholly outside the computed set", { "unowned.js": "outside\n" }, ["unowned.js"]],

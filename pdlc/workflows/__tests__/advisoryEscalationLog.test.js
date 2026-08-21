@@ -859,6 +859,8 @@ function countEscalations(log, { feature, rootCause }) {
     .length;
 }
 
+// E-31 (FSPEC §5): `plan-ordering-defect` is countable per feature from the durable escalation log
+// alone, without run logs (AC-6.4). Resolution counts are not durable — REQ O-2 owns that.
 describe("A6-17 / AWG PROP-REC-06 — the class is countable per feature from the log alone", () => {
   test("four runs across two features and two classes yield the right per-feature count", async () => {
     const files = makeFileDouble();

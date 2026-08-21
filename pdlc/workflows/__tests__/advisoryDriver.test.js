@@ -590,6 +590,8 @@ describe("A-22 — driver lifecycle", () => {
     });
   });
 
+  // E-29 (FSPEC §5): the advisory record cannot be written — the driver surfaces the failure
+  // rather than aborting or healing it (BR-13).
   describe("PROP-LIFE-07 / T-08-2 — a step-7 record-write failure", () => {
     it("reverts the action and escalates record-write-failed; the action does not survive", async () => {
       const config = makeAdvisoryConfig({ enabled: true }).config;
