@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.9 — §D.3's section matcher and extent-assembly rule absorbed here); `PLAN-pdlc-learnings-injection.md` (**v0.8** — LI-12's three-case AT-30 still matches PROP-CONFIG-09; the *Amendment commits on landed suites (P-A-7)* table was added at **v0.6** with two cases and grew to **three** at v0.8, whose changelog re-scopes case B to batches 9–12 and adds **case C** — *"after batch 13, the case that is live at HEAD"* — as the case that governs the amendments this document routes; v0.7 named LI-16 the owner of TSPEC §D.5's zero-bound production half, gave LI-AT-30 conjunct (iii) its fixture precondition, recorded ERR-8 and relocated LI-08's amendment note; all absorbed in §C.4 and §G.3); `DECISIONS-pdlc-learnings-injection.md` |
+| Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** — `REQ-pdlc-learnings-injection.md` (v0.9); `FSPEC-pdlc-learnings-injection.md` (v0.13 — this revision is grounded on the v0.13 erratum: E-36, BR-6's material-only accounting basis and zero-bound clause, F-O-1's two heading rules); `TSPEC-pdlc-learnings-injection.md` (v0.9 — §D.3's section matcher and extent-assembly rule absorbed here); `PLAN-pdlc-learnings-injection.md` (**v0.8** — LI-12's three-case AT-30 still matches PROP-CONFIG-09; the *Amendment commits on landed suites (P-A-7)* table was added at **v0.6** with two cases and grew to **three** at v0.8, whose changelog re-scopes case B to batches 9–12 and adds **case C** — *"after batch 13, the case that is live at HEAD"* — as the case that governs the amendments this document routes; v0.7 named LI-16 the owner of TSPEC §D.5's zero-bound production half, gave LI-AT-30 conjunct (iii) its fixture precondition, recorded ERR-8 and relocated LI-08's amendment note; all absorbed in §C.4 and §G.3); `DECISIONS-pdlc-learnings-injection.md`. **v0.8 re-pins every commit anchor to HEAD `09c7c62f`** (PM v11 F-01): the branch was rebased and every anchor this document carried was pre-rebase, and re-measuring at HEAD showed the branch had also advanced past the reviewed commit — §C.4's seven `learningsBlock.test.js` absence claims are reversed, P-A-7 case C is recorded **discharged green** rather than pending, and the four unowned CODE_REVIEW v1 remediation files are recorded as §G.2 gap 5 and routed to PLAN in §G.3. No property, oracle, fixture, AT mapping or coverage row moves. |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/learnings*.test.js`) |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,software-engineer}-PROPERTIES[-v{N}].md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.7 | 2026-08-21 |
+| pdlc | Draft | Claude | 0.8 | 2026-08-21 |
 
 ## Overview
 
@@ -26,7 +26,7 @@ behaviour lives in REQ v0.9 / FSPEC v0.13 / TSPEC v0.9 and is referenced by id (
 `§`). What this document adds is the **oracle**: for each property, the instrument, the operand, the
 positive control that proves the instrument fires, and the mutation that must red it.
 
-**Subject, verified at HEAD on `feat-pdlc-learnings-injection` (2026-08-20).** Every premise the
+**Subject, verified at HEAD on `feat-pdlc-learnings-injection` (`09c7c62f`, 2026-08-21).** Every premise the
 properties below stand on was re-measured against the repository, not read off a document. The table
 is a **capture-time measurement, not a standing invariant**: two of its rows are falsified on schedule
 by this PLAN's own tasks (LI-04 adds the `/.baseline-worktree/` ignore rule; LI-07…LI-14 create the
