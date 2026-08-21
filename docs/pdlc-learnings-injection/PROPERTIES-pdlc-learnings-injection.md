@@ -780,15 +780,21 @@ than algebraic laws. Two exceptions are worth parameterising, and both are cheap
   bound with multi-byte codepoints and assert `Buffer.byteLength(material) <= maxBytes` **and** that
   `material` round-trips through UTF-8 decode without a replacement character. Boundary-adjacent draws
   are pinned by construction relative to the bound, not by an absolute offset. **The generator's
-  domain is `maxBytes >= 1`, stated explicitly rather than left to the draw.** This mirrors
-  PROP-BOUND-03's own precondition: at `maxBytes = 0` FSPEC BR-6 routes the document out of
-  `extractInjectableMaterial`'s cut path entirely — dropped with `RSN-NO-MATERIAL`, no slot consumed
-  (E-36) — so a generator sampling zero would red a conforming implementation on a `bounded: true`
-  clause the spec never asks it to satisfy. The boundary is **not** dropped from the suite: it is
-  routed to PROP-CONFIG-09's example arm at the workflow seam, which is where the zero bound's
-  observable (the reason id, the unconsumed slot) actually lives. Excluding it from the generator and
-  asserting it by example is the split §O.5 prescribes — an absence-shaped conjunct belongs at the
-  pipeline seam, not at an injectable unit that structurally cannot falsify it.
+  domain is every non-negative `maxBytes`, `0` included, stated explicitly rather than left to the
+  draw** (TSPEC §T.5, T-O-6: "The bound domain includes `0`, and the property must state its carve-out
+  … State the zero conjunct, keep `0` in the domain"). The zero bound is **not** absence-shaped at this
+  unit and so does not meet §O.5's L3 test: it is a four-field positive return value that
+  `extractInjectableMaterial(text, 0)` produces directly (`material === ""`, `bounded === false`,
+  `bytes === 0`, `sections.length === 0` — TSPEC §I.3), which the unit both can and must falsify.
+  **Answering the shape question explicitly (SE Q-01):** the zero conjunct rides as a **guarded branch
+  inside the same property body** — at `maxBytes <= 0` the body asserts the four-field return, otherwise
+  the cut-and-flag conjuncts — and `0` is additionally **pinned as a distinguished example case** in the
+  same suite rather than left to sampling frequency, so LI-08's red is reproducible on any seed. Running
+  the generator with `0` unguarded, against the un-amended cut-and-flag rule, is the failure TSPEC names:
+  it would red a conforming implementation on a `bounded: true` clause the spec never asks it to satisfy.
+  PROP-CONFIG-09 remains the **run-level** arm and is unchanged: it owns the reason id (`RSN-NO-MATERIAL`,
+  E-36) and the unconsumed `maxDocuments` slot, which are the genuinely report-level observables and the
+  reason that property, not this one, sits at L3 in §O.5's table.
 
 Mutation coverage is carried by O.8's ledger rather than by a mutation-testing tool: the region is
 ~300 lines inside a 15,311-line file, and `--per-file --branches 85` is enforced against the whole
