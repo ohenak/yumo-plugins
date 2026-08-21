@@ -76,7 +76,38 @@ the pin, but the pin is what the next reviewer measures the document against.
 
 ## Oracles
 
-_pending_
+**No oracle in this document reads PLAN.** Every oracle here is stated over REQ acceptance criteria,
+FSPEC business rules and acceptance tests, or TSPEC sections — PLAN enters only as scheduling (which
+task reds it, which greens it). The erratum changed scheduling *narrative*, not scheduling, so §O.1…
+§O.9 and the §O.8 mutation ledger are unaffected. Spot-checked: PROP-BOUND-03's four-field zero
+return (TSPEC §I.3), PROP-BOUND-05/08's rendered-block heading oracle (TSPEC §D.3), PROP-BOUND-07's
+mechanical byte sum (§D.3 normalise-join-cut), PROP-CONFIG-09's E-36 run-level conjuncts — all cite
+FSPEC v0.13 / TSPEC v0.9, both of which are at the shas this dispatch pins.
+
+**One coverage question the erratum opens, and it is the only substantive item of this round.**
+§C.4 lists **three** properties whose amendments land in the already-committed
+`learningsBlock.test.js` — PROP-BOUND-05, **PROP-BOUND-07** and PROP-BOUND-08 — and PROP-BOUND-03's
+own text adds a fourth ("one added case in `learningsBlock.test.js` (landed, 7.6 K) under the
+**existing** LI-08 red / LI-17 green tasks"). PLAN v0.6's new paragraph answers the ledger question
+for the **heading-form** subset only:
+
+- **Case A** (commit lands before batch 7) is stated suite-wide and covers all four: the row that
+  makes it correct is the ledger's **whole-suite** red for `learningsBlock` after batches 7–8, which
+  is indifferent to which cases inside the suite are red.
+- **Case B** (commit lands at batch 9 or later) is stated per-case: the ledger gains
+  `learningsBlock` → *"`LI-AT-11`'s heading-form cases only"*. Read literally, an amendment landing
+  after batch 9 that carries PROP-BOUND-07's re-hand-computed byte literals, or PROP-BOUND-03's
+  zero-bound case, has **no** named row — the same defect the erratum was raised to fix, one scope
+  narrower.
+
+This is a Medium, not a High, for two reasons. First, it is contingent: case A is the scheduled path
+(the whole point of "before batch 7"), and on case A the row set is provably empty for all four
+properties. Second, no oracle, fixture, AT id or trace in PROPERTIES changes under either reading —
+§C.4's "No property of this document changes either way" survives. What is needed is one sentence in
+§C.4 recording that PLAN v0.6 has now named the rows, and that case B's naming covers the
+heading-form cases specifically, so an amendment carrying PROP-BOUND-03/07's cases after batch 9
+takes the same route (F-03). Whether PLAN then widens case B's wording is PLAN's call, not this
+document's.
 
 ## Fixtures
 
