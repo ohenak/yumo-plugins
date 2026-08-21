@@ -94,6 +94,47 @@ inherited.
 
 ## Oracles
 
+No oracle text changed: §O.1–§O.9, §G.1's T-O-6 row and §O.8's mutation ledger are byte-identical to
+v0.5. The delta's effect on the oracle surface is indirect — it changes how §C.4 and §G.3 *cite* the
+landed suite — so the three discipline checks I run every round I ran against the new citation forms.
+
+- **No implementation echo.** The delta introduces no expected value. Every literal it adds is a
+  quoted source string (`const maxBytes = 40`, `const maxBytes = 66`, `100000`, a test title, a
+  comment) used as a *locator*, never as an expectation. §G.2.2's hand-computed 40/66 derivation is
+  untouched, and the landed suite still labels them "Hand-computed (never derived here)"
+  (`learningsBlock.test.js:108`).
+- **No absence-only oracle.** The revised §C.4 paragraph is strictly *more* positive than the text it
+  replaces: where v0.5 asserted a bare absence for the un-numbered spelling, v0.6 states what the
+  suite **does** carry on that path ("the un-numbered `## Cross-Feature Patterns` spelling *does*
+  appear … with `expect(result.sections).toEqual(["Cross-Feature Patterns"])` proving the matcher
+  accepts it") beside the three arms that are genuinely missing. Same for the `maxBytes` sentence:
+  the non-binding `100000` arm is now named rather than silently excluded. The one real
+  absence-shaped oracle in the neighbourhood, PROP-BOUND-03's zero case, is unchanged and still
+  pairs its negative with the positive `{material: "", bounded: false, bytes: 0, sections: []}`
+  return on the same path.
+- **Set-equality, not containment.** Unchanged where it matters. The delta re-cites
+  `learningsConfig.test.js`'s three LI-AT-30 cases **by test title instead of by line number**, and
+  the third title is transcribed verbatim: the file's `:258` reads
+  `test("LI-AT-30: maxBytesPerDocument: 0 ⇒ every non-self corpus path RSN-NO-MATERIAL, none
+  RSN-COUNT, no slot consumed (E-36)")` — byte-for-byte what the document now quotes, including the
+  `⇒`, the comma placement and the `(E-36)` tail. The two abbreviated titles
+  (`"LI-AT-30: maxDocuments: 0 …"`, `"LI-AT-30: maxTotalBytes: 0 …"`) are exact prefixes of `:226`
+  and `:242`. Its own summary of what `:258` asserts (`RSN-NO-MATERIAL` on every non-self path, no
+  document carrying `RSN-COUNT`) remains a faithful précis of the set-equality assertion there.
+- **DEC-DOC-01 posture improved, not degraded.** Three of the five hunks replace raw `file:line`
+  anchors with citations that survive a reflow: LI-04's `.gitignore:13` → the rule's literal text
+  (`the .gitignore rule /.baseline-worktree/`, still true — `sed -n 13p .gitignore` is
+  `/.baseline-worktree/`); the `maxBytes` line numbers → the `const` declarations; the LI-AT-30 line
+  numbers → the test titles. The one surviving raw anchor (`learningsBlock.test.js:38`) sits beside
+  the verbatim `describe(…)` string it names, which is the exempt form.
+- **One quotation-fidelity slip, in §G.3, not in an oracle.** §G.3's second new bullet puts PLAN's
+  case-B span in quotation marks as "every batch from the landing batch through the batch that greens
+  them". PLAN's actual text is "every batch from the one the commit lands in through the batch that
+  greens them". The substance is identical and the gap the bullet routes is real; only the quoted
+  form is a paraphrase presented as a quote. That is F-01 (Low). §C.4's own version of the same
+  phrase is unquoted paraphrase, which is fine, and §C.4's shorter quote — "the batch that greens
+  them" — is an exact substring.
+
 ## Fixtures
 
 ## Findings
