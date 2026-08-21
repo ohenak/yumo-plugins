@@ -641,8 +641,11 @@ Two corollaries, both from the reviewer-oracle clauses this project applies:
 
 ### 5.2 Test doubles — reuse, do not reinvent
 
-The shipped suite already ships the harness this feature needs, and it is reused rather than
-re-built (DC-08's cite-and-reuse rule):
+The shipped suite already ships most of the harness this feature needs, and it is reused rather
+than re-built. (No constraint id is cited for that practice: this repo's `DC-08` is *"An unresolved
+item needs a named successor surface, not prose intent"*, and `DOMAIN-CONSTRAINTS.md`'s own preamble
+warns that skill prompts citing `DC-07 / DC-08 / DC-09` point into a different consuming repo's
+constraint file — PM F-07. The behaviour is cited without the id.)
 
 | Double | Where it ships | What it gives this feature |
 |---|---|---|
@@ -652,10 +655,23 @@ re-built (DC-08's cite-and-reuse rule):
 | `makeArgs` + `record`/`logs` capture | same file | The run report's phase rows and the run log. |
 | A counting `_agent` spy and a counting `_runCommand` spy | the pattern used by the shipped "a complete ledger skips every wave without a single implementation dispatch" test | FSPEC AT-12's call-count oracle. |
 
-**New doubles are limited to fixtures**, not machinery: additional record byte-strings (malformed
-JSON, a JSON array, a well-shaped record naming another feature, one with a stale `planHash`, one
-with an unreachable `head`, one with `lastGreenWave` over the count, one with no `head`), and a
-`_git` double whose `merge-base --is-ancestor` reply is scripted per test.
+Most new doubles are **fixtures**, not machinery: additional record byte-strings (malformed JSON, a
+JSON array, a well-shaped record naming another feature, one with a stale `planHash`, one with an
+unreachable `head`, one with `lastGreenWave` over the count, one with no `head`), and a `_git` double
+whose `merge-base --is-ancestor` reply is scripted per test.
+
+**Two harness extensions are exceptions, and this feature owns them (TE F-08).** Both are named
+here so they are reviewed as design rather than discovered as diff, and because `makeLedgerArgs` is
+shared by the whole ledger `describe` — extending it is a same-file authoring-order constraint the
+PLAN must see (§5.3, and Phase P's single-writer-per-batch rule).
+
+| # | Extension | Why the shipped harness cannot express it | Owed by |
+|---|---|---|---|
+| H-1 | An **ordered event sink** that both the `_runCommand` and `_git` doubles append to, so relative order is observable. `makeLedgerArgs` gains an optional `events` array; when supplied, each double pushes `["runCommand", cmd]` / `["git", …argv]` to it in addition to its own log, and the existing per-double logs are unchanged so no shipped assertion moves. | `makeLedgerArgs` gives `runCommand` and `git` two **independent** call logs; nothing records their interleaving, and AT-04's oracle is precisely "the gate ran before the first commit". | AT-04 |
+| H-2 | A **scriptable failing `_writeFile`**: `makeLedgerArgs` gains an optional `failWriteOn` predicate over `(path, callIndex)`; the default keeps the current always-capture behaviour. | `makeLedgerArgs`'s `_writeFile` is a fixed capture with no failure scripting, and the shipped throwing-write test bypasses `makeLedgerArgs` entirely, hand-rolling `makeArgs` with its own `extra` — which cannot express "succeeds for wave 1, throws for wave M" against the same run. | AT-15 arm 2 |
+
+Both extensions are **additive and default-off**: with neither option supplied, `makeLedgerArgs`
+returns exactly what it returns today, which is what keeps RT-2's regression net a net.
 
 ### 5.3 Test categories
 
@@ -664,13 +680,19 @@ with an unreachable `head`, one with `lastGreenWave` over the count, one with no
 | Unit — pure | `classifyWaveLedger` over every guard of §3.2's table; `parseWaveLedger`'s three arms and their exact sentences; `formatWaveLedger`'s two shapes; `computePlanHash`'s sensitivities | `pdlc/workflows/__tests__/waveResume.test.js` (new) |
 | Unit — catalogues | transcribed set-equality over `RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS` keys, and `IMPLEMENTATION_DEFAULTS` keys | same file |
 | Integration — through `main()` | every FSPEC AT that names an announcement, a report row, a dispatch count, or a written record | `pdlc/workflows/__tests__/waveExecution.test.js` (existing ledger block, extended) |
-| Integration — queue parity | direct run vs `orchestrate-queue` delegation over the same feature, plan and record | `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` (new) |
+| Unit — generative | the four laws of §5.7 over `parseWaveLedger`, `formatWaveLedger`, `computePlanHash` and `classifyWaveLedger` | `pdlc/workflows/__tests__/waveResumeProperties.test.js` (new) |
+| Integration — queue parity | what the queue's delegation can honestly be held to (§5.4 AT-16, DEC-WVR-07) | `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` (new) |
 | Repo-state | the root-anchored `.gitignore` rule; this feature's PLAN ownership manifest | `pdlc/workflows/__tests__/waveResumeRepoState.test.js` (new) |
 
 Splitting the new unit and repo-state work into **new files** is deliberate: `waveExecution.test.js`
 is a large, heavily-shared file, and Phase I's single-writer-per-batch rule makes a new file the
 cheap way to let unit work and integration work land in different waves without a shared-file
-race. The extensions to `waveExecution.test.js` are one task, in one wave, owning that file alone.
+race. The extensions to `waveExecution.test.js` — the H-1/H-2 harness extensions of §5.2, the three
+assertion updates of §2.4, and every new integration case — are **one task, in one wave, owning that
+file alone**. That is a PLAN obligation this document cannot enforce, so it is recorded as one: the
+PLAN's file-ownership manifest must name `pdlc/workflows/__tests__/waveExecution.test.js` as owned by
+exactly one task, and Phase P's batch derivation is what checks it (TE Q-03). The four new files are
+each owned by one task for the same reason.
 
 ### 5.4 Acceptance-test coverage map
 
