@@ -80,7 +80,35 @@ properties' cases must land and what the PLAN owes for them.
 
 ## Oracles
 
-_pending_
+**No oracle text changed in this delta, and no oracle reads §C.4.** The three edited citations are
+locator repairs inside prose that surrounds oracles, not oracle statements:
+
+- PROP-BOUND-03's zero-return note (line 247) and §O.9's generated-bound paragraph (line 786) now
+  cite *TSPEC, Named obligations carried forward, T-O-6* instead of the non-existent `§T.5, T-O-6`.
+  The quoted instruction — *"State the zero conjunct, keep `0` in the domain"* — is verbatim in
+  TSPEC line 1511, as is the four-field zero return `{material: "", bounded: false, bytes: 0,
+  sections: []}` the oracle transcribes. The expected values remain literal transcriptions from the
+  spec, not derived from the implementation.
+- §O.5's L3 table row for PROP-CONFIG-09 (line 707) takes the same repair and keeps its
+  positive/negative pairing (`RSN-NO-MATERIAL` present **and** no document carrying `RSN-COUNT`),
+  which is the conjunct set PLAN v0.7's LI-AT-30 still names.
+- §G.1's T-O-6 row (line 1125) is the same repair. Its partition claim — PROP-BOUND-03 owns the
+  unit's whole return domain, PROP-CONFIG-09 owns the run-level consequences — is unchanged and
+  still set-partitioned by observable, so a deleted case fails rather than passing vacuously.
+
+**One state-of-the-world check the oracles now invite.** §C.4 continues to describe PROP-BOUND-03's
+zero case and PROP-BOUND-05/07/08's heading-form amendments as *pending* edits to the landed
+`learningsBlock.test.js`. That is correct as far as it goes — at HEAD the suite is 7.6 K, declares
+three ATs (`describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)")`,
+`learningsBlock.test.js:38`), and carries **none** of the four amendment cases: no un-numbered
+`## Cross-Feature Patterns` / un-glossed `## Rejected Proposals` heading-form arm, no `###`-as-body
+case, no `## Process Findings` near-miss, and no `extractInjectableMaterial(text, 0)` case (the only
+`maxBytes` literals in the file are `40` at line 111 and `66` at line 131). But their **green owners
+have already landed** (LI-16 `d462ddd8`, LI-17 `2cbacada`), so these four oracles are, at HEAD,
+property-owed test cases with no remaining red-owning task ahead of them. That is a Medium worth
+recording in §C.4 alongside the corrected inventory (F-03); it is also the upstream gap I route to
+PLAN below, since P-A-7's case table stops at *"the batch that greens them"* and no such batch
+remains.
 
 ## Fixtures
 
