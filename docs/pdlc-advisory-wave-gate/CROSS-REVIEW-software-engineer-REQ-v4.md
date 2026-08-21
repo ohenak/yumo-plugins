@@ -35,6 +35,31 @@ before each commit of this file. No `git checkout` was run in the shared tree.
 
 ## Goals
 
+Answer one question: **does the delta resolve the routed items without breaking what I previously
+approved, and is the document still a faithful compression of its upstream at HEAD?**
+
+Concretely, this round set out to:
+
+1. Confirm each of the eight routed items landed in the bytes, not merely in the changelog.
+2. Re-measure every upstream fact the new text asserts — the base commit `c8aa22a4`, the
+   post-change facts M-WG-13 / M-WG-14, M-WG-3 and M-WG-7, and the eight upstream-tier ids — at the
+   current version of the cited authority.
+3. Check the new AC-5.1 clauses for composition damage against criteria I already approved:
+   AC-5.2, AC-6.1, AC-2.4 and O-1.
+4. Check the rewritten lineage header against how sibling REQs in `docs/completed/` carry the same
+   rows, and against what actually exists on the branch today.
+
+## Non-Goals
+
+- Re-reading unchanged sections. §1–§5, §6's REQ-AWG-02/03/04/06/07 and §7's R-1…R-4 were approved
+  at v1/v2/v3 and are untouched by this erratum; nothing below re-opens them.
+- Re-litigating findings already dispositioned. SE F-01 (C-5's soft threshold) and SE F-02 (v1.12's
+  queue-block attribution) were resolved at v3 and stay resolved; SE Q-01 and Q-02 remain open by
+  design and are not converted into findings here.
+- Product, UX or test-pyramid judgement. Whether `approved (shipped)` is the right *product* status
+  vocabulary and whether the file relocates to `docs/completed/` are pm-author's and SE Q-02's
+  respectively; I record only the engineering consequence.
+
 ## Non-Goals
 
 ## Constraints
