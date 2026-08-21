@@ -90,6 +90,20 @@ names, spec ids, and `M-*` measured-fact ids.
 
 ## Acceptance Criteria
 
+What this confirmation had to be true to approve, and whether it is:
+
+| # | Criterion | Met |
+|---|---|---|
+| AC-1 | Every routed item has landed in the document bytes | **Yes** — four items, two distinct defects, both landed (see Goals table) |
+| AC-2 | No routed item landed only partially (one side of a contradiction fixed, the other left) | **Yes** — BL-04 is consistent at §5, §10, and the §Note-on-base cross-reference at line 55 |
+| AC-3 | The edit broke nothing I previously approved | **Yes** — the diff is four hunks; requirement ids, invariants, ACs, risks, measured facts untouched |
+| AC-4 | The erratum is recorded as a versioned changelog entry, not a silent edit | **Yes** — version 1.6 → 1.7 with a v1.7 paragraph naming both items and their raisers |
+| AC-5 | The document remains a faithful compression of upstream at HEAD (DEC-ERR-03) | **Yes** — eight upstream claims re-derived, all hold (see Constraints) |
+| AC-6 | No new unverified existing-code claim was introduced | **Yes** — the delta *removes* one over-claimed code/repo fact and adds no new one |
+| AC-7 | Altitude preserved: no implementation contract crept into the REQ | **Yes** — OB-1 already carried shipped-contract detail as an explicitly-flagged reconciliation note for TSPEC; the edit narrows its evidence claim rather than adding mechanics |
+
+No High finding arises against any criterion.
+
 ## Risks
 
 ## Obligations
