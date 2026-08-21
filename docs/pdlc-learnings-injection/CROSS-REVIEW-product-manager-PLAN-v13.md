@@ -77,8 +77,9 @@ the authoritative amendment to REQ as an erratum, and forbids citing (a)–(d) a
 decision is not being made in an engineering artifact here; a product decision made elsewhere is
 being disclosed, with the correct owner named. It also explicitly does not widen the DoD bar —
 clauses 1–13 remain the injection region's bar and (a)–(d) carry their own named tests. I have no
-finding against it. (The REQ-side amendment is already routed; I re-emit it below as an ERRATUM so
-the record of this round shows it still open, not because this delta introduced it.)
+finding against it. (The REQ-side amendment is already routed by
+the round that produced DoD 14; I do not re-emit it as an ERRATUM here — re-routing a live item would
+buy a second round for one edit, and this delta neither introduced it nor changed its status.)
 
 ## Dependencies
 
