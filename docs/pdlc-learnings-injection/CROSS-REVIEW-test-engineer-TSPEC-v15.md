@@ -76,6 +76,36 @@ asserted.
 
 ## Interfaces
 
+**No interface contract moved this round** — the file is byte-identical, so `parseLearningsConfig`'s
+`{config, sectionMalformed, invalidKeys}`, `renderLearningsBlock({selected})`'s `""`-when-empty rule,
+`orderCorpus`'s comparator, `selectLearnings`'s totality over `entries`, and
+`extractInjectableMaterial(text, maxBytes)`'s return shape are all exactly as approved in v14.
+
+**Two of v14's open findings live in this lens and are still unlanded.** They are inherited, not
+introduced, and neither is gating — but a confirmation that reported "nothing to see" would be
+hiding them, so I carry them forward explicitly rather than letting an empty delta launder them into
+silence:
+
+- **§I.3's JSDoc byte identity is still unscoped** (v14 F-02, Low). The comment states the
+  `bytes = Σ(normalised section lengths) + 2·(n−1)` arithmetic unconditionally, but the identity
+  holds only on the **uncut** path; where the bound binds, `bytes` is the character-safe cut length
+  ≤ the bound, and on the `maxBytes <= 0` short-circuit it is `0`. §D.5's restatement is correctly
+  scoped, so the document as a whole is not wrong — an implementer reading the interface comment
+  alone still could be. One qualifying clause fixes it.
+- **§T.5's AT-11 block scan is still whole-block rather than per-document** (v14 F-03, Low). FSPEC's
+  AT-11 asserts over the section names appearing in **its** block material; the oracle scans the
+  rendered block entire. The two coincide only while the fixture's corpus holds exactly one selected
+  document. Scoping the scan to the document's `<<< {path} … >>>` / `<<< end {path} >>>` extent
+  (§OQ.1 supplies the delimiters) makes the oracle prove the per-document placement AT-11 is
+  actually about, and immunises it against a later fixture gaining a second selected document.
+
+**The interface the routed item touches needs no change.** `extractInjectableMaterial`'s zero-bound
+branch — `maxBytes <= 0` tested *before* the cut, returning `{material: "", bounded: false, bytes: 0,
+sections: []}` for every `text` including one carrying all five sections — is the contract that makes
+§D.5's ordering rule implementable, and it is stated in §I.3 and owned by PLAN task LI-16. `bounded`
+is `false` because nothing was taken, so nothing was cut; that is the conjunct that distinguishes the
+zero-bound drop from a cut-to-zero, and it survives untouched.
+
 ## Data Model
 
 ## Test Strategy
