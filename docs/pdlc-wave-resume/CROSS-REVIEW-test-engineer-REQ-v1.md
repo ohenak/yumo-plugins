@@ -103,6 +103,117 @@ the pipeline is re-invoked for the same feature and unchanged plan; *Then:* impl
 starts at that same wave (not after it) and announces it as not previously completed. Keep R-2
 as the risk, and let it cite the new AC instead of deferring the test to the FSPEC.
 
+## Finding Detail — Medium and Low
+
+### F-03 / F-04 — OF-1's numbers do not reproduce from the cited run (Medium, Cross-Feature)
+
+§4 opens "Observed facts, each dated and **reproducible from the cited run**", and OB-2 will
+promote OF-1..3 into `docs/_constraints/pdlc-wave-gate-baseline.md` as measured `M-*` facts that
+downstream tests cite as oracle sources. So I re-derived them rather than trusting them, using
+this branch's own deriver over the cited PLAN at HEAD (`parsePlanTasks:3730`,
+`parsePlanOwnership:3948`, `computeWaves:8451`):
+
+```
+tasks: 34   ownership rows: 34   waves: 16
+W1 (1): T00
+W2 (5): T01, T02, T03, T04, T05
+W3 (1): T06
+W4 (5): T07, T08, T09, T10, T11
+waves 1-3 total tasks: 7
+```
+
+- **F-03.** The plan derives **16** waves, not 15. (17 counting Phase PT's V-wave, which the
+  script appends as wave `waves.length + 1`.) Neither reading is 15. Either the PLAN changed
+  after the run — in which case OF-1 must say so, since an unreproducible measured fact cannot
+  be promoted as `M-*` — or the count is off by one.
+- **F-04.** "each re-invocation paid seven no-op agent dispatches (waves 1–3)" reproduces for
+  the **wave-4** halt only. After the **wave-2** halt the re-invocation replays wave 1, which
+  holds a single task (`T00`) — one dispatch. The sentence generalises a single observation to
+  "each", and the generalisation is measurably false for the other observation in the same
+  sentence.
+
+OF-2 and OF-3 both reproduce (wave 1 genuinely has exactly one task; the gate throws before the
+commit loop at `pdlc/workflows/orchestrate-dev.js:10321-10335`), so this is a narrow correction,
+not a challenge to §4 as a whole.
+
+### F-05 — REQ-WVR-06 is an absence-only oracle (Medium, Local)
+
+"the determination does not consult commit presence or commit messages" is a white-box
+statement, and "a no-op-completing task never causes its wave to be treated as incomplete" is
+negative-shaped: any behaviour that is not "treated as incomplete" passes, including accidental
+ones. A test written from this AC can only fail to observe something.
+
+Rewrite with a positive conjunct on the same path, at REQ altitude — e.g. *Then:* the wave
+containing the no-commit task is treated as complete, and a subsequent re-invocation of the same
+plan starts at the **next** wave and announces that wave number as its resume point. That is
+observable in the run log, it fails if the determination regresses to commit archaeology, and it
+keeps the "how" in the TSPEC where OB-1 puts it. (Grounded: at HEAD a wave with no owned paths
+emits "nothing to commit" — `orchestrate-dev.js:10340` — and is still recorded green.)
+
+### F-06 — REQ-WVR-02's rejection catalogue is not a closed set (Medium, Local)
+
+The AC lists rejection causes with an "or" and no closure, so the only oracle available is
+containment: a test asserts that *these* three cases produce a full run, and a fourth cause
+silently deleted from the implementation still passes. Enumerated contracts need set-equality,
+so a deleted case fails.
+
+At HEAD the catalogue has four announced members plus one deliberately silent one —
+unparseable/foreign content (`parseWaveLedger` reason,
+`feat-pdlc-consolidation-agent:orchestrate-dev.js:10479`), feature mismatch (`:10483`), changed
+plan layout (`:10486`), recorded-waves-≥-plan-waves (`:10487`), and absent/empty/cleared, which
+is intentionally silent (`:8555-8565`). Either enumerate the operator-visible causes in
+REQ-WVR-02 as the complete set, or state explicitly that the set is the TSPEC's to close under
+OB-1 **and** add the obligation that it be closed with a set-equality check.
+
+### F-07 — C-1 has no AC, and its precedent does not transfer (Medium, Local)
+
+C-1 requires the record to live in "consumer-local, untracked state (the drift-state record's
+precedent)". I checked the precedent: the drift-state record is
+`.claude/workflows/.pdlc-drift-state.json`
+(`pdlc/hooks/scripts/sync-workflows.sh:239`), and it is untracked because `.gitignore:29`
+ignores `/.claude/workflows/` — an anchored rule whose own comment explains that it deliberately
+matches nothing outside that directory. The interim record sits at
+`.claude/pdlc-wave-state.json` (`feat-pdlc-consolidation-agent:orchestrate-dev.js:8536`), a
+sibling path covered by no ignore rule on either branch. Untrackedness there rests on nobody
+running `git add -A`, not on a mechanism.
+
+No AC in §7 fails if the record becomes tracked, so C-1 is currently unfalsifiable. Add the
+observable: no commit produced by a run ever contains the resume record, and the record never
+appears as a tracked file. That is a black-box assertion over `git` state, not a design choice,
+so it does not intrude on OB-1.
+
+### F-08 — REQ-WVR-05's first clause invites an oracle the mechanism cannot satisfy (Low, Local)
+
+"no resume state survives" reads as file-absence. At HEAD the end-of-phase clear *writes* a
+cleared record rather than deleting it (`WAVE_LEDGER_CLEARED = "{}\n"`,
+`feat-pdlc-consolidation-agent:orchestrate-dev.js:8544`, written at `:10628`). Both designs are
+legitimate — which is precisely why the REQ should assert only the behavioural clause it already
+has ("a subsequent invocation behaves as if no halted run ever existed"), plus the positive
+observable that it starts at wave 1 and announces no resume. Leave existence/absence of a file
+to the TSPEC.
+
+### F-09 — "exists at HEAD" has no fixed referent (Low, Local)
+
+`grep -rn startWave` across this branch returns only the REQ itself; the pointer, the ledger and
+the INTERIM comments exist on `refs/heads/feat-pdlc-consolidation-agent`, whose queue row is
+`halted` (`docs/_queue/QUEUE.md`, Order 2), not merged. §1's "A manual resume pointer now
+exists" and BL-01/BL-03's "exists at HEAD" are therefore true only of a branch the REQ names
+once, in §1, and not in the prerequisite table. Name the branch (or say "at HEAD of the default
+branch once BL-01 merges") so the FSPEC-time prerequisite check is a mechanical grep with an
+unambiguous answer.
+
+### F-10 — REQ-WVR-07 states an outcome by reference (Low, Local)
+
+"resumes exactly as a direct invocation would under REQ-WVR-01..05" gives an AT nothing of its
+own to assert, so it will be written as a duplicate of REQ-WVR-01 and will pass for the wrong
+reason. The queue delegates in-process to `orchestrate-dev`'s `main()`
+(`pdlc/workflows/orchestrate-queue.js:41`, and the module header at `:10-17`), so the only
+queue-specific risk surface is the working directory the record is resolved against and the
+absence of any queue-level configuration. Say that: *Then:* the delegated run announces the same
+resume point and provenance in the queue run's report, with no queue-specific configuration
+present. That fails if resume state is ever resolved relative to something the queue path
+changes.
+
 ## Questions
 
 ## Positive Observations
