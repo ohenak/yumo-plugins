@@ -155,8 +155,32 @@ TSPEC §T.7 inventory that actually enforces the new region are unchanged.
 
 ## Positive Observations
 
+- The repair took the route v7 recommended in the order v7 recommended — TSPEC absorbs E-36 first,
+  then PLAN takes a one-touch compression. The result is that PLAN's precedence rule ("the TSPEC
+  wins") is not load-bearing anywhere in the changed text: row and TSPEC now say the same thing, so
+  an implementer never has to know which document wins.
+- LI-12's third case carries its own mutation statement inline ("reverting §D.5's `maxBytes <= 0`
+  short-circuit would stay green" without conjunct (iii)). A task row that names the mutant it exists
+  to kill is a row an implementer cannot satisfy vacuously.
+- The arm table's "twelve arms, thirteen entering cases" sentence pre-empts the obvious wrong repair:
+  adding a thirteenth arm row would have broken LI-23's set equality against a catalogue that gained
+  no member. Explaining why the count did *not* change is more useful than changing it.
+- LI-08's heading-form fixture picks the near-miss (`## Process Findings`) that TSPEC §D.3 rule 2
+  identifies as the token-overlap hazard, not an arbitrary non-match. The case defeats the widened
+  matcher, which is the mutant that would otherwise make E-33 unreachable by construction.
+
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | LI-08's new v0.5 amendment note says LI-02 and LI-08 "have already landed on this branch", while both rows' `Status` cells still read `⬚`. Both statements are true of different ledgers, but the document contradicts itself on its face | §Batches, LI-08 / task-table `Status` column |
+| F-02 | Low | Local | LI-02's declared-heading-form knob lists a `###` sub-heading among the forms, but the landed helper's `renderSection` always emits `## ` and expresses no heading-level knob; the row does not say whether the variant is a new knob or body text | §Batches, LI-02 |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | LI-08's amendment note says the heading-form cases are taken "by their existing owners in a follow-up commit". Since LI-02 and LI-08 both still carry `⬚`, will the dispatcher simply re-enter those rows (in which case the note is guidance, not scheduling), or is a follow-up commit expected outside the batch ledger? The first reading is the one I assumed when checking TDD ordering. |
+
 
 ## Recommendation
