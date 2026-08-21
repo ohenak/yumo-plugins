@@ -40,6 +40,39 @@ P-A-6's foreclosed fallback clause) carried forward unchanged as `inherited`.
 
 ## Batches
 
+**No task row changed, so the batch table is out of scope by measurement rather than by assertion.**
+The diff touches exactly two prose spans and the changelog. All twenty-two task rows keep their `Batch`
+value, their `Deps` cell, their file-ownership cell and their `Status` cell byte-for-byte; the
+`[Fake first]` ordering, the red-before-green pairing and the single-writer manifest are unchanged from
+the v0.8 bytes I confirmed at round 11. I re-ran the batch-DAG derivation only far enough to confirm
+the diff could not have perturbed it: `git show ba120270` reports one changed row (LI-08) and the
+change is confined to a parenthetical inside that row's prose cell, leaving `Batch = 3`, `Deps = LI-02`
+and the file cell `__tests__/learningsBlock.test.js` intact.
+
+**The LI-08 edit, checked against HEAD rather than against the prose.** The corrected sentence now
+claims three separable facts, and each is falsifiable at HEAD:
+
+1. *`ordinal` and `gloss` are unexercised by any landed suite.* `grep -rn "ordinal\|gloss"
+   pdlc/workflows/__tests__/` returns hits only inside `helpers/learningsFixtures.js` — the JSDoc at
+   lines 57–59 and the render logic at 65–68. No test file passes either key. **True.**
+2. *`learningsBlock.test.js` passes `body:` on all six of its section specs.* Lines 77–82 of that file
+   are six section objects, each carrying `body:` (`Process Learnings`, `Approval Record`, `Open Items
+   for Consolidation`, `Cross-Feature Patterns`, `Rejected Proposals (with rationale)`,
+   `Non-Convergences`). Six specs, six `body:` keys, no seventh spec elsewhere in the file. **True, and
+   exactly six — the numeral is right, not rounded.**
+3. *`learningsSelect.test.js` passes it on the non-BR-6 section.* Line 497:
+   `sections: [{ name: "Not A BR-6 Section", body: "Nothing here BR-6 recognises." }]`. One occurrence,
+   and it is the non-BR-6 section. **True.**
+
+This is the check that mattered. The v0.7 note's error was a factual claim about the landed corpus that
+nobody had grepped; the repair is only worth having if it was grepped, and the numerals in it are
+specific enough (`six`, `the non-BR-6 section`) that a wrong one would have been visible. They are not
+wrong. The conclusion the note draws is also unchanged and, as the changelog says, strengthened: the
+amendment adds callers for two knobs that already exist and reuses a third that landed suites already
+drive, so it grows **no new fixture parameters**. That is the claim my lens cares about, because a new
+fixture parameter would put `helpers/learningsFixtures.js` back in scope as an edited file and reopen
+the single-writer question the closing "no row of their own" paragraph settles. It stays settled.
+
 ## Dependencies
 
 ## Verification
