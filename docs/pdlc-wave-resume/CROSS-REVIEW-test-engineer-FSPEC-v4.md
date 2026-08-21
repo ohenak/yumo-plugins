@@ -202,7 +202,35 @@ reflect this round's table only, not the cumulative backlog.
 
 ## Acceptance Tests
 
-_pending_
+The cascade question over §6 is narrow: does any AT's **oracle**, **fixture precondition**, or
+**discriminating value** depend on REQ bytes this erratum rewrote? I checked each of the three hunks
+against the AT set rather than sampling.
+
+| Hunk | Could it move an oracle? | Finding |
+|---|---|---|
+| E-1 (version bump, revision-log note) | No AT cites a REQ version number | none |
+| E-2 (§5 BL-04 states unmet) | BL-04 is a *blocker row*, not a criterion; no AT asserts over it | none — but see the precondition note below |
+| E-3 (OB-1 worktree evidence consumer-local) | Only EC-17 is worktree-shaped, and it has no AT of its own; it is discharged through EC-01's shape | none |
+
+**No AT changes.** In particular the three set-equality ATs that OB-F5 pins — AT-02 (disregard causes
+IG-1..6 as *announced reasons*, IG-1's arms included), AT-13 (the outcome catalogue closed at three),
+AT-08 (the recognised `implementation.*` key set) — target catalogues defined in REQ-WVR-02,
+REQ-WVR-05/08 and the config criterion respectively, none of which this round edited. Their
+cardinalities are unchanged at HEAD, so the set-equality oracles keep exactly the discriminating
+power they were written with. AT-12's four conjuncts likewise rest on REQ-WVR-08's outcome-(c)
+paragraph, untouched. AT-18's plan-absolute high-water-mark fixture rests on §1's OF-1 wave count,
+untouched this round.
+
+**One precondition note, not a finding.** E-2 makes REQ agree that BL-04 is unmet. Nothing in §6 may
+be relaxed on the strength of that agreement. AT-14 in particular is preconditioned on a tree in
+which the root-anchored `.gitignore` rule is readable; that rule is not in this branch's tree, so
+AT-14 is expected **RED until the rebase**, and the correct response at PROPERTIES authoring is to
+keep it red-and-pending, never to rewrite its oracle into an absence-only form ("no churn observed")
+that would pass in a tree lacking the mechanism entirely. An absence-only reformulation would be a
+High finding at PROPERTIES review; recording it here so the cascade does not tempt one. The same
+caution applies to any AT that might be tempted to prove EC-17 by asserting a tracked include-list
+fact — after E-3 there is no tracked fact to assert, and such an oracle would false-green on every
+consumer.
 
 ## Open Questions
 
