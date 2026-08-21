@@ -568,8 +568,32 @@ These are stated so that a later reader can tell a decision from an omission.
   available shape.
 - **PROP-NFR-03**'s partition is only as good as its transcribed literal. The set-equality is what
   makes a rule silently becoming proposable a red test; a per-rule containment check would not.
+- **PROP-REC-08's conjunct (3) is antecedent-guarded, and that is its whole softness.** REQ AC-6.3's
+  second sentence begins *"where the halt report points the operator at a captured pre-A6 tree
+  state"*, so on any run without a capture the conjunct is vacuously true. It is therefore never
+  asserted alone: PROP-REC-09 asserts its absence on the E-34 run over the whole `notices` array,
+  which is what turns "the warning is present" from a string that could be always present into a
+  discriminating oracle. A single-arm resolution — the warning asserted only where a capture
+  succeeded — would be satisfied by an implementation that warns on every halt, including halts where
+  there is nothing to preserve. Both arms, or neither.
+- **No property pins the warning's wording, and that is deliberate rather than a gap.** FSPEC AT-06-4
+  makes co-location and presence the observable and REQ O-1 keeps the capture's name and storage form
+  TSPEC's, so there is no normative sentence to transcribe (O-J, §Fixtures). The cost is stated: an
+  implementation could emit a technically-matching but unhelpfully phrased notice and pass. The
+  alternative — minting a literal no upstream document owns — buys a red test against a
+  spec-following implementation, which is the worse trade.
 
 ### G-3. Findings routed upstream (errata)
+
+**Nothing new is routed this round, and one previously-open cascade is closed by absorption.** The
+v3 reviews asked whether AC-6.3's second sentence should be routed as an erratum because FSPEC, TSPEC
+and PLAN had not cascaded (PM Q-01, SE F-02). At HEAD they have: FSPEC v1.7 carries AT-06-4's third
+conjunct and AT-06-4b, TSPEC v1.15 names the carrier (`snapshotRef`, `renderSnapshotOverwriteNotice`,
+the `advisoryNotice` sink), and PLAN v1.13 gives both arms owners (A6-18, A6-21). The slot question
+SE F-02 said had to be settled upstream **is settled upstream**, and settled the low-blast-radius
+way — the notice rides `notices`, not the halt reason string, so PROP-REST-09's equality with the
+pre-A6 literal stands unedited. Re-raising either would be DEC-ERR-01's anti-pattern. The three items
+below are the ones still open from earlier rounds.
 
 Three defects in upstream documents are named here rather than absorbed into this document's
 properties. In the first two this document follows the TSPEC/PLAN reading, which is also what the
@@ -604,7 +628,12 @@ levelling gap routed to se-author.
 
 ### G-4. Requirements-side gaps found while deriving
 
-None. Every REQ acceptance criterion and NFR yielded at least one falsifiable property (matrix C-1),
-and every FSPEC acceptance test has a home (matrix C-2). The two conflicts above are wording defects
-in an already-decided area, not missing requirements.
+None **at conjunct granularity, which is the bar this section now states explicitly.** Every REQ
+acceptance criterion and NFR yields at least one falsifiable property (matrix C-1), and every FSPEC
+acceptance test at v1.7 — forty-eight, `AT-06-4b` included — has a home (matrix C-2). The claim was
+previously true only at *AC* granularity: REQ v1.16 added a second, independently falsifiable
+conjunct to AC-6.3 and the row still read `PROP-REC-05, PROP-REST-08`, neither of which reached it.
+That is closed by PROP-REC-08/-09/-10, and C-1's AC-6.3 row is now split by sentence so the same gap
+cannot re-open invisibly. The conflicts in §G-3 are wording defects in an already-decided area, not
+missing requirements.
 
