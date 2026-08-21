@@ -221,8 +221,60 @@ were introduced. The v3 instruction on this was followed.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | `PROP-REST-08` (downstream) still transcribes "§4.5's four fields" while `TSPEC v1.15 §4.5` names five (`snapshotRef`). When F-02's fix names `PROP-REST-08`, should it also note that the property's field-set conjunct is stale, so the Phase T author fixes both in one pass rather than discovering the second after the first? |
+| Q-02 | The new re-evaluation trigger is "revisit if the conjunct is still unasserted by any property or test **when Phase I closes**". Is Phase I the right checkpoint, given `PROPERTIES` is authored in Phase T and an unasserted conjunct discovered at Phase I close is a late find? Naming Phase T's property sweep as the checkpoint would fire the trigger where it can still be cheap. |
+
 ## Positive Observations
+
+- **The revision re-grounded rather than transcribed.** I told the author the residual gap was
+  "FSPEC-only". The author checked upstream at HEAD instead of taking my word, found FSPEC had moved
+  to v1.7 and TSPEC to v1.15, and wrote the true state. A revision that corrects its reviewer against
+  the source is the behaviour this convention exists to produce.
+- **The specified-vs-asserted framing is the right generalisation.** Replacing a bare "nothing
+  anywhere" with "which level specifies the obligation and which level asserts it" is what makes the
+  claim degrade gracefully as routing lands one hop at a time — it is why this same passage will not
+  need another cascade repair when `PROPERTIES` lands its conjunct. Keep it.
+- **The falsifiability note is stronger than the AC it serves.** "The oracle asserts the ref pointer
+  and the overwrite statement on the **same rendered report field**, and must go RED both when the
+  warning is deleted and when it is emitted somewhere other than beside the pointer. An
+  `expect(report).toContain(ref)` alone can fail neither." That is precisely the anti-containment
+  standard this project asks for, written in the decision record where the test author will find it.
+  F-01 asks only that the Reversibility aside be brought into line with it — do not weaken this
+  sentence to match the aside.
+- **Pinning all three upstream hashes, with the reason attached.** The header cell now says *why* it
+  pins three ("a decision record's upstream-dependent claims can be falsified by an edit to any of
+  them"), which makes the convention survivable by the next author. This is the durable fix for the
+  cascade class, not just for this instance.
+- **The gap closed without the decision moving.** `refs/pdlc/a6-snapshot-{waveNum}`, wave-scoped, no
+  run discriminator, is untouched; the obligation landed at three levels around it. The boundary
+  DEC-A6-03 drew — ref *name* stays TSPEC's, operator-facing obligation goes up to REQ — held under
+  upstream change, and the shipped code confirms the naming half is still a single site
+  (`pdlc/workflows/orchestrate-dev.js:12603`).
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three v3 findings (F-01 High, F-02 Medium, F-03 Low) are resolved and verified against upstream
+at HEAD; nothing previously approved was broken. Three non-gating findings remain, all inside
+`DEC-A6-03`:
+
+1. **F-01 (Medium)** — Reversibility: co-location holds *within the single `notices` string* (ref
+   pointer + overwrite sentence), not between `haltError.fields.snapshotRef` and the notice. Restate
+   per `TSPEC §4.5` / `FSPEC BR-14`; keep the rename-cost conclusion.
+2. **F-02 (Medium)** — "What is still owed": name **both** `PROP-REC-05` and `PROP-REST-08` as
+   `AC-6.3`'s property coverage, and say what each owes — the co-location conjunct and the paired
+   `E-34` "no notice on the `null` arm" conjunct respectively.
+3. **F-03 (Low)** — Split the two channels: the halt-**field** set gained `snapshotRef`; the halt
+   report's `notices` gained the rendered overwrite notice.
+
+These may be folded into the next edit of this document; none blocks the phase. Out of bounds as
+before: the naming decision, the `DEC-03` option table, "Constraints that forced the shape", and
+every other `DEC` entry.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
