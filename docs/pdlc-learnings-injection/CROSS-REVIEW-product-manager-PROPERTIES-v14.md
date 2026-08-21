@@ -250,4 +250,47 @@ DEFERRED: The struck-bullet convention in §G.3 is working well — striking rat
 
 ## Recommendation
 
+**Needs revision.**
+
+One High (F-01), three Medium (F-02, F-03, F-04) and two Low (F-05, F-06). Against the freeze's two
+blocking criteria:
+
+- **(i) a defect this revision introduced.** **Yes — F-01.** Before this delta, lines 1178–1186 stated
+  P-A-6's fallback route accurately *as of the v0.8 pin the document then carried*. This delta moved
+  the pin to v1.3 and added the blanket assertion *"every ruling this document cites is still present
+  at v1.3, so the finding was pin freshness, not fidelity"*. PLAN v1.1 rewrote P-A-6's fallback
+  precisely to remove the amend-into-the-ledger route this document still offers, so the assertion is
+  false for the one ruling that carries a live instruction. A passage that was dated-but-true is now
+  current-and-false, which is what a re-pin round is for catching.
+- **(ii) a factual contradiction with the repository or an upstream document.** **Yes — the same
+  item.** `PLAN-pdlc-learnings-injection.md:663` says *"the amend-into-the-ledger-by-name route is
+  case B's, and case B closed at batch 12"*; this document says the PROPERTIES suite's rows *"are
+  amended into the ledger by name first"*. Direct, and PLAN's v1.1 changelog names the change as
+  deliberate.
+
+**What must change (F-01 only — the rest are recorded, not gating):**
+
+1. Lines 1180–1181: replace the *"amended into the ledger by name first"* limb with P-A-6's route at
+   HEAD — the suite's rows are handled under P-A-7's **governing case**, which is case C: no ledger to
+   amend into, green at landing, and a red that lands is a real defect owed a fix before batch 14.
+2. Line 1186: drop *"(byte-unchanged at v0.8)"* or re-date it — P-A-6 changed at PLAN v1.1.
+3. Line 11: narrow *"every ruling this document cites is still present at v1.3"* to the rulings
+   actually re-verified, or extend the sweep to P-A-6 and say so.
+
+The four non-gating items are cheap and can ride whichever round next touches those lines: strike
+§G.3's answered route into the *Also answered — by PLAN* list (F-02), reconcile gap 5's "eighteen"
+with the seventeen files the tree holds (F-03), add a clause noting `helpers/learningsComposition.js`
+is on PROP-ORDER-05's execution path (F-04), fix the *"after batch 13"* residual (F-05) and split the
+fixture row's `Added by` cell (F-06).
+
+Everything else in this delta is sound and re-measured: all six new PLAN quotations verify
+character-exactly at HEAD, the case A/B/C windows are verbatim, PLAN's version and changelog chain
+(v0.9 → v1.3) is exact, the 26-passed/0-skipped run reproduces, and no property, oracle, fixture, AT
+mapping or coverage row moved. My v13 F-01 and F-02 are both closed; my v13 F-05 was answered upstream
+by PLAN v1.2 item (4) and is not re-raised. No upstream erratum is emitted from this round — the two
+I routed at v13 have both landed in PLAN.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 2}
