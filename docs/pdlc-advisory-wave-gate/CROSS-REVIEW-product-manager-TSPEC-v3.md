@@ -36,7 +36,45 @@ remaining work (F-03).
 
 ## Design
 
-<!-- pending -->
+**The absorbed obligation is the right call, and it is absorbed at the right altitude.** My v2 F-01
+was a High: REQ v1.16's second AC-6.3 conjunct had no carrier anywhere in this TSPEC, and §2.5
+delivered the hazard as design prose for an engineering reader rather than as a contract on the halt
+report's content. That is now closed. FSPEC BR-14 at HEAD binds the halt *report* — "the **same
+report, in the same place**, states that re-running this feature overwrites that capture" — and
+explicitly reserves the capture's name, storage form and lifetime to O-1, which is this document.
+§4.5's `snapshotRef` field is exactly the seam that split implies: upstream owns the observable
+(co-location, presence of the overwrite statement), TSPEC owns the mechanism that renders it. The
+document does not re-open the product question and does not invent a product observable one level
+up. Both of my v2 High-adjacent concerns — the missing carrier and the foreclosed reason-string
+route — are resolved by the same edit.
+
+**The §2.5 rewrite is honest about what changed and what did not.** The run-scoped-overwrite hazard
+is unchanged; what changed is who tells the operator. The old text ended "an operator who wants a
+snapshot to survive the next run should copy the ref before re-running" — operator lore, owned by
+nobody. It now ends "the remedy the halt report hands the operator is to copy the ref before
+re-running", which is a promise with a carrier behind it. The bounded-cost argument (an overwritten
+ref costs inspectability, never content) is untouched and still correct.
+
+**No approved decision is reopened.** DEC-A6-02's rejected option A still stands as rejected in the
+restated O-8 row; the per-promoted-task shape is a *description* of the shipped loop, not a new
+choice, so §3.6's "routed to DECISIONS, not settled in this paragraph" paragraph correctly survives
+with only its arithmetic updated ("a third commit" → "its own commit beside the wave's per-task
+ones"). The wave-scoped ref name, the accepted overwrite cost and the capture-failure disposition
+are all where round 4 and round 5 left them.
+
+**Where the re-grounding stopped short.** The round's changelog opens by asserting a DEC-ERR-03
+re-grounding: "REQ (`sha256:f97f4f66…`) and FSPEC (`sha256:d602c440…`) have both moved since v1.11's
+anchors." The lineage row at the top of the document still reads `FSPEC … v1.6, over REQ … v1.15`.
+Those are the versions v1.11 re-grounded on — and v1.11's own changelog says "the Upstream row names
+both", so the convention this document follows is that the row tracks the re-grounding. HEAD is
+FSPEC v1.7 / REQ v1.16. The body is grounded on the new bytes; the header advertises the old ones,
+which is the one line a downstream reader (PLAN, PROPERTIES, the next reviewer) checks to learn
+which upstream this compression is measured against. That is F-02.
+
+The many inline pins of the form "FSPEC BR-9 at v1.6" and "REQ AC-5.1 at v1.14" are **not** findings:
+those cite the version at which a clause was *decided*, the clauses are byte-unchanged at HEAD
+(FSPEC v1.7's changelog says "Nothing else changed"), and provenance pinning is a legitimate style.
+Only the lineage row makes a claim about what this document compresses.
 
 ## Seams
 
