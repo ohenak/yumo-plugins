@@ -789,7 +789,8 @@ repository's own corpus.
 | `RETRY-ITERATION` | one dispatch driven to a second `for(;;)` iteration | per-iteration re-selection (PROP-DISPATCH-04) |
 | `MALFORMED-CONFIG` | `learningsInjection` present but not an object | `NTC-MALFORMED` conflated with disablement |
 | `KEYTYPE-CONFIG` | `maxDocuments: "5"` beside two valid numbers | a wrong-typed key silently coerced or silently disabling |
-| `NO-MATERIAL` | one document with all five BR-6 sections **absent** and an Approval Record present | `RSN-NO-MATERIAL` implemented as "document empty" |
+| `NO-MATERIAL` | one document with all five BR-6 sections **absent** and an Approval Record present — the *carries-no-section* disjunct of BR-9's `RSN-NO-MATERIAL`, paired with the row below | `RSN-NO-MATERIAL` implemented as "document empty" |
+| `ZERO-BOUND` | a multi-document corpus whose documents **do** carry BR-6 priority sections, run at `maxBytesPerDocument: 0` with the other two thresholds at §4.1's declared non-zero values — the **positive control** for `RSN-NO-MATERIAL`'s second disjunct, and the mirror of `NO-MATERIAL` in the same pairing discipline as `DISCARDED-NESTED`/`DISCARDED-DIRECT` and `COUNT-BINDING`/`BYTES-BINDING`. A threshold override on an existing corpus fixture, not a new corpus shape | `RSN-NO-MATERIAL` implemented as "document carries no section" — which greens on `NO-MATERIAL` alone; also `RSN-BYTES` rows, and a zero-byte contribution flagged `bounded: true` occupying a slot |
 | `GATE-GRAMMAR` (AT-29) | a LEARNINGS document whose material carries **line-initial** `FINDING:`, `ERRATUM:` and `VERDICT:` lines | PROP-ISOLATE-01 vacuity — contamination must be *possible* for non-contamination to mean anything |
 | `MULTIBYTE-BOUND` | material straddling `maxBytesPerDocument` mid-codepoint | a naive `slice` producing a replacement character |
 | `SUPPLEMENTARY-PATHS` | two paths equal in `orderKey`, differing above U+FFFF | JS code-unit comparison masquerading as byte order (M-7) |
@@ -829,9 +830,14 @@ Three families of literal are transcribed, not paraphrased:
   `## 3. Rejected Proposals (with rationale)`, `## 4. Process Learnings`,
   `## 5. Open Items for Consolidation` — **9 of 9** for every one of the five, and **0 of 9** carry a
   bare `Rejected Proposals` or a bare `Open Items`. Fixtures are written to the numbered form, and
-  **which heading forms count as which section is F-O-1's, not this document's to decide** — FSPEC
-  BR-6 delegates it and TSPEC's F-O-1 discharge covers only the document-shape predicate, which is
-  routed as an erratum in §G.3. What this document can and does pin is the consequence: PROP-BOUND-08
+  **which heading forms count as which section is F-O-1's, not this document's to decide.** FSPEC
+  v0.13 settled the ownership half: F-O-1 now reads "**Two** heading-recognition rules, on the same
+  terms: the predicate for 'presents as a LEARNINGS document' (BR-3), **and** the rule by which a
+  heading counts as one of BR-6's named sections", both owned by TSPEC. What remains open is
+  narrower and belongs to **TSPEC alone**: its §D.3 discharge covers only the document-shape
+  predicate (`LEARNINGS_HEADING_RE`), leaving `extractInjectableMaterial`'s section matcher
+  unspecified — so no upstream text yet says whether `## 3. Rejected Proposals (with rationale)` is
+  matched on the numbered form, the bare title or a prefix. Routed on those narrowed terms in §G.3. What this document can and does pin is the consequence: PROP-BOUND-08
   drives extraction over a **real** corpus document, so a matcher and a synthetic fixture written to
   the same wrong spelling red instead of greening together.
 - **The three frozen catalogues** — `LEARNINGS_REJECT_REASONS`, `LEARNINGS_CORPUS_OUTCOMES`,
