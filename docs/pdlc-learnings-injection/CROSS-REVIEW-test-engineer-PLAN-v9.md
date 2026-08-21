@@ -71,6 +71,40 @@ was not scoped to it, so I do not re-file it as a finding of this round beyond n
 
 ## Dependencies
 
+**Batch DAG — unchanged, and re-derived rather than assumed.** The delta adds no task, no file and no
+edge. LI-08 stays batch 3 on dep LI-02 (batch 2): `max(2) + 1 = 3` ✓. LI-02 stays batch 2 on LI-01
+(batch 1) ✓. LI-17, the task the new paragraph's Case A leans on, stays batch 9, and the ledger's
+batch-9 row is still `Landed by LI-17` ✓. No id was added, so uniqueness and acyclicity are
+preserved by construction.
+
+**The follow-up commit is not a task, and the paragraph is careful about that.** It creates no row in
+the task table, so it consumes no batch and adds no edge. That is the right modelling: the work is an
+amendment to two already-landed files taken by their existing owners, and turning it into a task
+would have moved the single-writer manifest, which is precisely what LI-08's note promises it does
+not do. What P-A-7 demands instead is that the *live table* — the ledger — carry its consequence, and
+that is the demand the delta satisfies.
+
+**Case A's arithmetic checks against the ledger as written.** Case A claims that a commit landing
+before batch 7 adds no row because `learningsBlock` is already ledgered as a **whole suite** red after
+batches 7 and 8 and drops entire at batch 9. I read the ledger rather than the claim: the batch-7 row
+lists `learningsSelect, learningsBlock, learningsCorpus, learningsRecord, learningsDispatchSet,
+learningsConfig, learningsArmInventory (whole suites)`; the batch-8 row still carries `learningsBlock`
+unqualified; the batch-9 row (`Landed by LI-17`) lists `LI-AT-15; learningsCorpus, learningsRecord,
+learningsDispatchSet, learningsConfig, learningsArmInventory` — `learningsBlock` is gone. Whole-suite
+red subsumes the heading-form cases, so the row-set genuinely is empty, and the "none may be dropped
+early" clause preserves the ledger's shrink-by-exactly-what-the-batch-greens property. The arithmetic
+is right.
+
+**Case B is the case that had to be stated, and it is stated in the gate's own grammar.** A commit
+landing at batch 9 or later re-reds committed green code, and the ledger then gains
+`learningsBlock` → `LI-AT-11`'s heading-form cases only, for every batch from the landing batch through
+the batch that greens them, **stated in test names, not the suite name** — the same discipline the
+existing split rows use (`learningsSelect` → `LI-AT-15` only; `learningsRecord` → `LI-AT-22` locus 2).
+That matters mechanically: the batches 7–13 gate reads "every suite still listed in that batch's
+ledger row is red for its specified reason", and "`learningsBlock` is partly red" is not a predicate a
+dispatcher can evaluate. Case B also states the failure mode explicitly — "a re-red landing without it
+is a gate failure, not a red" — which is P-A-3's bar restated at the point of use.
+
 ## Verification
 
 ## Positive Observations
