@@ -183,6 +183,47 @@ the wrong order. The disclaimer removes that trap before it reaches a test file.
 
 ## Risks
 
+### Upstream drift check (DEC-ERR-03) — clean
+
+The delta leans on upstream in three new places and inherits three load-bearing citations. I
+re-read all six at their current version:
+
+| What the REQ leans on | State at HEAD | Verdict |
+|---|---|---|
+| FSPEC §2 Vocabulary + EC-20 (V-wave outside the wave loop) | Present. §2 says the wave loop "does **not** include Phase PT's appended V-wave, which … dispatches, gates and commits on every invocation independently of any resume decision (EC-20)". EC-20 states the same and names the erratum this round is discharging. BR-11 carries the scoped rule. | Faithful |
+| FSPEC §3.2 (ancestry before over-count) | Present, with BR-03 fixing the order and an explicit "not REQ-WVR-02's IG numbering" paragraph. | Faithful |
+| `docs/_constraints/pdlc-wave-gate-baseline.md` M-WG-4 / -6 / -12 | All three ids present at `origin/main`. | Faithful |
+| OF-1's recipe (`parsePlanTasks` + `parsePlanOwnership` + `computeWaves`) | All three exported at `origin/main`; recipe reproduces 34 tasks / 16 waves / W1 `[T00]`. | Faithful |
+| §1's "this working copy carries an untracked record for `pdlc-advisory-wave-gate` with seven waves recorded green and a `head` stamp" | True today: `.claude/pdlc-wave-state.json` exists, `"feature": "pdlc-advisory-wave-gate"`, `"lastGreenWave": 7`, `"head": "8b13bd41…"`. | Faithful |
+| §1's three "shipped preconditions" (commit-guarded write, `planHash`, ancestry) | The write guard, `planHash` and the ancestry check are all present in the `origin/main` mechanism; the write's comment "Only now — verified — does anything get committed" is verbatim and grep-unique, as v4 established. | Faithful |
+
+No citation has gone stale, and no claim the delta added rests on text upstream no longer carries.
+That last row matters more than it looks: §1's record observation is a claim about *untracked
+working-copy state*, the class of claim most likely to rot between rounds. It has not.
+
+### Residual risks, none gating
+
+1. **A prerequisite with two deadlines.** The erratum corrected §10's BL-04 sentence to "owed
+   before implementation", but the header amendment note (v1.3) still says a default-branch base is
+   "owed before **FSPEC authoring**", and §5's BL-04 row still opens "Checked at FSPEC authoring".
+   FSPEC authoring has already happened, and BL-04 is unmet — so on the header note's reading the
+   deadline has been missed, while on §10's reading it is still comfortably ahead. Both sentences
+   are defensible in isolation; together they leave no single answer to "is BL-04 late?", which is
+   precisely the question the erratum was raised to settle. Filed as F-01 (Medium). §5's cell is
+   the milder of the two: it is phrased as a criterion ("must both be readable in the authoring
+   tree"), not as a verdict, so it does not itself assert discharge — the header note is the site
+   that reads as a missed deadline.
+2. **Downstream cited as authority by an upstream document.** REQ-WVR-08 and REQ-WVR-02 now
+   support their claims with "(FSPEC §2, EC-20)" and "(§3.2 there …)". The substance is verified
+   correct, and delegating *precedence* to the FSPEC is exactly right — that ordering is FSPEC's to
+   own. But a REQ whose header declares `Upstream: REQ` / `Downstream: FSPEC` and then cites its own
+   downstream inverts the dependency for a reader auditing the chain, and creates a maintenance
+   coupling: an FSPEC renumber silently invalidates a REQ citation. Filed as F-02 (Low).
+3. **Nothing previously approved broke.** The four edit sites do not disturb the traceability matrix
+   (§7 still maps US-01→REQ-WVR-08 and US-02→REQ-WVR-02 unchanged), the resume-outcome catalogue
+   is still closed at three, REQ-WVR-03's discharge argument still reaches the same conclusion by a
+   now-correct route, and the DEC-DOC-01 and size-budget regression checks both still pass.
+
 ## Open Questions
 
 ## Positive Observations
