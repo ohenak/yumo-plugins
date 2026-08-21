@@ -142,4 +142,38 @@ config parser.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, both about oracles rather than about behaviour. The behavioural content of
+this FSPEC is sound and unusually well grounded — the disregard catalogue, its ordering, and the
+committed-not-verified rule all match the shipped mechanism precisely, and I could verify each
+one without asking a question. What blocks approval is that its two closure claims cannot yet be
+turned into tests that fail when something is deleted.
+
+Exactly what must change:
+
+1. **F-01 —** define in §2's Vocabulary whether "Phase I" includes Phase PT's V-wave, then
+   restate D-5, BR-11, EC-09 and AT-12 in those terms. If the V-wave is out of scope, narrow
+   AT-12's "Phase I produces **no commit**" to the implementation waves and add an EC row
+   recording that the V-wave replays under outcome (c). If it is in scope, AT-12 needs a conjunct
+   covering the V-wave dispatch and gate. Either way give AT-12 a call-count oracle over the
+   agent and command seams instead of an absence-shaped "no commit".
+2. **F-02 —** replace AT-08's "absence of such a key from the config surface" with a set-equality
+   check over an enumerated Phase I config key list transcribed literally from the spec, paired
+   with the positive conjunct that record removal does produce outcome (a) with its announcement.
+
+The Medium findings are not gating, but F-03 and F-04 are the two that will cost te-author the
+most if they reach PROPERTIES unresolved: F-03 leaves four ATs without a readable oracle, and
+F-04 means OB-F5's set-equality check cannot detect the deletion it exists to detect. Both are
+cheap to fix now and expensive to fix in PROPERTIES review.
+
+One defect belongs to the REQ, not to this document, and is raised as an erratum in my final
+message rather than counted in the verdict below: REQ-WVR-08's "no wave executes, so no gate runs
+and **Phase I produces no new commit**" is falsified by the same V-wave that F-01 concerns. This
+FSPEC faithfully restated an upstream claim; the restating is F-01, the claim itself is the
+erratum.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 7, "low": 3}
