@@ -157,7 +157,7 @@ Every A6 verdict carries a root-cause classification drawn from exactly this set
 | 3 | `environmental` | the failure reproduces independently of this wave's diff — a pre-existing red, a missing tool, a transport failure | no |
 | 4 | `unclassified` | none of the above is decidable from the gate output | no |
 
-The set is asserted by set-equality, so a deleted or invented class fails the suite. The receiving side is total: an absent or out-of-set classification reads as `unclassified` rather than being rejected, and since `unclassified` authorises nothing the wave escalates **without consuming an attempt** — an attempt is a repair-and-re-gate cycle, and none was attempted.
+The set is **ordered** and the first matching class wins, so a failure matching both #1 and #2 is classed `plan-ordering-defect` and never carries two (E-08b). Its oracle is therefore ordered-sequence equality over class ids, never set equality: a reordering silently changes which class a two-way failure receives, and a deleted or invented class fails the suite (AT-02-1). The receiving side is total: an absent or out-of-set classification reads as `unclassified` rather than being rejected, and since `unclassified` authorises nothing the wave escalates **without consuming an attempt** — an attempt is a repair-and-re-gate cycle, and none was attempted.
 
 **BR-3 — A diagnosis without gate-output evidence is malformed (AC-2.3, AC-2.1).** The gate output is the only evidence distinguishing a repair from a guess, so a diagnosis citing none is malformed under the tier's existing rule and escalates, consuming one attempt. The evidence available is the gate command's captured output as A6 receives it, not the truncated tail the halt message shows a human, so the rule stays satisfiable on a long suite.
 
@@ -173,10 +173,13 @@ Nothing else A6 proposes is in the envelope. The shipped envelope becomes one cl
 assertable by a single set-equality over member ids, never by prose joining two sets. E-5 and E-6 are not two further act kinds beside `E-1`…`E-4`: A6 widens the envelope's semantics from act kinds alone to act-plus-scope. `E-1`…`E-4` name what may be done, E-5 and E-6 where a repair may land, and a proposal is in envelope only when both hold. A proposal whose changed paths fall outside that scope is refused by the tier's existing declared-scope exclusion, reporting that exclusion's reason, not a new one. E-5 therefore admits no act the shipped four do not; the residual — a wrong repair of a permitted kind inside owned production files — is R-1, accepted in §7.3 A-3.
 
 **BR-5 — Exclusions win over permissions, always (AC-3.2).** The tier's existing exclusion set holds unchanged for A6 and takes precedence over E-5 and E-6 wherever both could apply. Two consequences, named rather than discovered. First, the test-artifact clause binds even when the failing test sits inside the wave's own owned paths: editing a test to turn a red gate green is the pipeline's most dangerous failure mode and A6 sits closest to it. Second, the self-modification guard clause holds, so a wave owning `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/` or `.claude/workflows/` escalates `out-of-envelope` — the 2026-08-09 motivating incident would today be diagnosed, not repaired, while the 2026-08-11 consumer-repository incident is unaffected. Relaxing either is out of scope without an operator. The shipped exclusion catalogue is **ordered**, and the order is load-bearing: classification
-walks it in order and the first matching clause decides which refusal reason is reported. Its
-oracle is therefore ordered-sequence equality over the shipped clause ids — the same unit
-BR-15's refusal reasons get, never set equality (AT-03-8) — because a reordering silently
-changes the reason A6 reports while a set assertion still passes.
+walks it in order and the first matching clause decides which refusal reason is reported. That
+order is `X-a` (test artifacts), `X-e` (guard paths), `X-d` (declared scope), `X-b` (DoD
+criteria), `X-c` (membership) — transcribed here, and deliberately not alphabetical, so the
+oracle has a spec-side literal instead of copying the catalogue it asserts over (M-WG-10). Its
+oracle is ordered-sequence equality over those clause ids — the same unit BR-15's refusal
+reasons get, never set equality (AT-03-8) — because a reordering silently changes the reason A6
+reports while a set assertion still passes.
 
 **BR-6 — Four further prohibitions, as a closed set (AC-3.3, AC-4.3).** In addition to the tier's
 exclusions, A6 may not: (f) change the PLAN, its task table, or its file-ownership manifest; (g)
@@ -205,7 +208,7 @@ it stood in immediately before A6 acted: the wave's post-dispatch, pre-commit tr
 agents' own uncommitted work intact. Restoration is of the **whole** tree, never of the repair's paths
 alone, because a re-run post-wave command writes generated outputs into paths A6 never proposed and no
 envelope rule ranges over; a per-path restore would leave the halted tree carrying artifacts built
-from a repair that is no longer present. "Observably identical" is a content-level oracle, not a `git status` one: the path-to-content-hash map over tracked and untracked files alike, generated outputs included, equals the map taken immediately before A6 acted. A status-level comparison passes a per-path restore whenever the re-run post-wave command rewrote already-dirty paths — the case this rule exists to fail (AT-05-2).
+from a repair that is no longer present. "Observably identical" is a content-level oracle, not a `git status` one: the path-to-content-hash map over tracked files and **non-ignored** untracked files, generated outputs included, equals the map taken immediately before A6 acted — a file the repair created that no pre-A6 entry covers is therefore absent afterwards, not merely reset. A status-level comparison passes a per-path restore whenever the re-run post-wave command rewrote already-dirty paths — the case this rule exists to fail (AT-05-2). Two boundaries on that map are stated rather than left to the fixture author. **Domain:** `.gitignore`d paths are outside restoration's reach — A6 never deletes or rewrites one, so `node_modules/`, tool caches, `.env` and the run's own untracked wave ledger are outside the map in both directions, and an ignored path the re-gate mutated is not a restoration defect. **Observation point:** the map is taken immediately after restoration completes and **before** the record and escalation writes BR-13 requires; both carriers are files inside the tree, so an observation taken after them differs by exactly the bytes BR-13 mandates (AT-05-1, AT-06-1).
 
 **BR-10 — A post-gate halt is not a restoration trigger (AC-4.4, AC-5.3).** A green re-gate lets the
 wave proceed past the gate into the same post-gate path it would have reached anyway, and a later
@@ -226,7 +229,7 @@ than `advisory.waveBudgetPerRun` distinct waves *resolved* in one run. Only reso
 under E-6, once the wave's commit step completes the repair is part of the branch's committed state.
 This is a real gap in the shipped scope, not a restatement of it: the wave commit loop commits only
 paths owned by tasks *in that wave* (M-WG-12), and an E-6 repair by construction touches a later
-task's paths. The repair's paths and the later PLAN task owning them are named in the advisory record, and that task's dispatch is told its owned paths already carry the promotion, so it revises what exists rather than rediscovering it. How the pathspec-scoped commit path comes to cover those paths is the TSPEC's (REQ O-8).
+task's paths. The repair's paths and the later PLAN task owning them are named in the advisory record, and that task's dispatch is told its owned paths already carry the promotion, so it revises what exists rather than rediscovering it. That signal is **durable**, not in-run state: M-WG-6 has a re-invocation after a later wave's halt re-entering Phase I at wave 1 and re-dispatching every wave, so the carriers the signal must be read from are ones that survive the run — the branch's committed state and the advisory record entry, both of which this rule already requires (AT-04-5). How the pathspec-scoped commit path comes to cover those paths is the TSPEC's (REQ O-8).
 
 **BR-13 — No action without a record; every escalation is durably logged (AC-6.1, AC-6.2).** An entry
 is appended to the feature's advisory record for every A6 invocation, naming the wave, the root-cause
@@ -235,7 +238,7 @@ diagnosis rests on. The tier's rule holds: an action with no record written is a
 
 **BR-14 — Escalation adds information and never changes control flow (AC-5.2, AC-6.3).** When A6 does not resolve the wave, the pipeline halts with the same reason it emits today and writes the same `halted` queue row. The halt report carries the diagnosis and its root-cause class, so the operator's turn starts with the diagnosis on the halt path, not only in a file they must find.
 
-**BR-15 — Refusal reasons are the tier's eight, unextended (AC-3.4).** Any refusal reports a reason from the tier's closed, ordered eight-member set. A6 does not extend it: a refusal inexpressible in that set is a defect in this specification, not a missing ninth reason. A diagnosis-only outcome — `environmental` or `unclassified` — is not a refusal but an escalation with no proposal to refuse, and needs no reason.
+**BR-15 — Refusal reasons are the tier's eight, unextended (AC-3.4).** Any refusal reports a reason from the tier's closed, ordered eight-member set, transcribed here so AT-03-7's oracle has a spec-side literal: `prohibited-action`, `revert-on-test-touch`, `out-of-envelope`, `post-action-verification-failed`, `record-write-failed`, `malformed-verdict`, `low-confidence`, `budget-exhausted`. A6 does not extend it: a refusal inexpressible in that set is a defect in this specification, not a missing ninth reason. A diagnosis-only outcome — `environmental` or `unclassified` — is not a refusal but an escalation with no proposal to refuse, and needs no reason.
 
 **BR-16 — Enforcement lives in the workflow script (NFR-1, C-4).** Every boundary in §4 is enforced
 by the code that runs the pipeline. A prompt instruction is not a control, and no rule here is
