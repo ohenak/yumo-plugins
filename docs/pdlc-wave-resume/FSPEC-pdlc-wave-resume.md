@@ -284,18 +284,31 @@ with provenance `automatic`; the final report states the same.
 **AT-02 — the disregard catalogue is complete and closed (REQ-WVR-02).**
 *Who:* pipeline maintainer. *Given:* one record per row of §3.2. *When:* the pipeline is
 invoked for each. *Then:* each produces outcome (a); IG-1..5 each announce their own distinct
-reason and IG-6 announces nothing. *Oracle form:* **set equality** over {IG-1..IG-6} — a deleted
-cause must fail a test rather than pass one — not containment.
+reason and IG-6 announces nothing. *Oracle form:* **set equality** over the **announced reasons**,
+not over the six cause labels. IG-1 is one cause covering more than one distinguishable way the
+content fails to read as this pipeline's record, and each such way announces its own reason; a
+set-equality check over six labels cannot fail when one of IG-1's arms is deleted. The enumeration
+of IG-1's arms belongs to the record's contract and is owned by the TSPEC (OB-F2); the check is
+set equality over the reasons that enumeration yields, transcribed from the spec, never read back
+out of the mechanism under test.
 
 **AT-03 — ordering of disregard causes (BR-03).**
-*Given:* a record failing two causes at once (e.g. a foreign feature *and* a changed plan).
-*When:* invoked. *Then:* the earlier cause of §3.2's order is the announced reason.
+*Given:* a record failing **both ancestry (IG-5) and over-count (IG-4)** — it names a commit not
+reachable from the tip *and* claims more completed waves than the plan has. *When:* invoked.
+*Then:* **IG-5** is the announced reason. *Why this pair:* it is the one pair where §3.2's
+normative order visibly diverges from REQ-WVR-02's IG numbering, so it fails under the REQ's
+numbering while passing under the shipped order; a pair the two documents agree on (a foreign
+feature and a changed plan) passes either way and tests nothing.
 
 **AT-04 — verification independence (REQ-WVR-03).**
-*Given:* any record content, including bytes chosen adversarially, that produces outcome (b).
-*When:* the resumed run reaches its first executed wave. *Then:* the full suite runs over the
-whole tree before any new commit lands, with the same gate outcome semantics as an unresumed
-run. *Negative arm:* no record content produces a commit that precedes a whole-tree verification.
+*Given:* a record producing outcome (b). *When:* the resumed run reaches its first executed wave.
+*Then:* the full suite runs over the whole tree before any new commit lands, with the same gate
+outcome semantics as an unresumed run. *Negative arm, over a named fixture set:* the same
+assertion holds for each of — a resume point at the plan's second wave, at its last wave, a record
+whose named commit is the tip, and one whose named commit is an earlier ancestor — and no member
+of that set produces a commit that precedes a whole-tree verification. The set is finite and
+enumerated in PROPERTIES; "any content, including adversarial bytes" is not an oracle, since
+content that fails §3.2 never reaches outcome (b) at all.
 
 **AT-05 — operator override wins, with provenance (REQ-WVR-04).**
 *Given:* both a valid record and a manual resume point beyond the plan's first wave. *When:*
@@ -311,10 +324,16 @@ outcome to having set nothing.
 *Given:* a valid record and a manual point past the last wave. *When:* invoked. *Then:* outcome
 (a) from wave 1, announced, provenance `operator-set`; no wave is skipped.
 
-**AT-08 — the hatch is named where it is needed (BR-06).**
-*Given:* runs resolving outcome (b) and outcome (c). *Then:* each run's announcement of that
-outcome names the record-removal hatch. *And:* no configuration value anywhere in the pipeline
-forces a full run — asserted as the absence of such a key from the config surface.
+**AT-08 — the hatch is named where it is needed, and it is the only one (BR-06, BR-17).**
+*Who:* pipeline operator. *Given:* runs resolving outcome (b) and outcome (c). *Then:* each run's
+announcement of that outcome names the record-removal hatch. *Positive conjunct 1 — the hatch
+works:* the same fixture with the record removed resolves outcome (a) with its announcement, so
+the hatch named is the hatch that functions. *Positive conjunct 2 — set equality, not absence:*
+the recognised `implementation.*` configuration keys are exactly {`testCommand`,
+`postWaveCommand`, `postWavePathspecs`, `startWave`}, asserted as set equality against that
+literal, transcribed from this spec and never read back out of the config parser. Adding a
+`forceFullRun`-style key therefore fails a test rather than passing one. Both conjuncts are
+positive; no arm asserts the absence of an unnamed key from an open universe.
 
 **AT-09 — verified-but-uncommitted is never completed (REQ-WVR-09).**
 *Given:* a run whose waves' gates pass but which commits nothing, because no commit transport is
@@ -325,8 +344,10 @@ shown to be the transport, not the gate mode.
 
 **AT-10 — a no-change wave is still completed (REQ-WVR-06).**
 *Given:* a plan whose wave K contains only tasks that produce no changes, run to a halt at a
-later wave. *When:* re-invoked. *Then:* the resume point announced is past K. *Negative arm:*
-completion does not change when a stray unrelated commit is added or removed from history.
+later wave. *When:* re-invoked. *Then:* the resume point announced is past K. *Negative arm, with
+its positive conjunct on the same path:* with a stray unrelated commit added to, or removed from,
+history, the announced resume point is **the same wave** as without it — the positive assertion is
+the announced next wave, not the absence of a change.
 
 **AT-11 — ancestry corroboration is falsification, not archaeology (REQ-WVR-06 carve-out).**
 *Given:* a valid record whose named commit is no longer reachable from the branch tip. *When:*
