@@ -163,8 +163,46 @@ DEFERRED: The three `Process` candidates filed at v6 (unfalsifiable header pins,
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | **`DEC-LI-08`'s new framing measurement contradicts the renderer it cites, and `D-O-4` restates it.** The document says "Measured on the shipped renderer at HEAD: framing costs **694 bytes** for a one-document block and **1,012 bytes** for a five-document block … up to roughly **21,012** bytes … That gap is a known constant"; `D-O-4` repeats "(measured 694 bytes at one document, 1,012 at five)". Running HEAD's `renderLearningsBlock` (`pdlc/workflows/orchestrate-dev.js`) over this repository's actual LEARNINGS corpus gives **684 bytes** at one document and **1,607** at five (718 / 1,777 when the documents are `bounded`), so the five-document figure is low by ~60% and the "roughly 21,012" ceiling is low by ~600–800 bytes. Framing is also not a constant: each frame embeds the document's path twice plus its feature name, order key and optional ` (ABRIDGED: bounded at N bytes)` clause, so the fixed part is 479 bytes and each document adds `2×len(path) + len(feature) + len(orderKey) + 47`. The two stated figures cannot come from one fixture family — 694 needs a ~24-character feature name, 1,012 needs a ~2-character one. Delta-introduced (`b909ead8`, `f75140e3`); nothing at `e29a296e` said this. Fix: replace the two literals with the per-document formula plus this repository's corpus as the worked example, and state the ceiling as a function, not a constant. The decision itself is unaffected. | REQ C-8, AC-2.3, §4.1; FSPEC `BR-6` §"The byte-accounting basis"; `D-O-4` |
+| F-02 | Low | Local | `D-O-9`'s row records the TSPEC erratum as "**DISCHARGED at TSPEC v0.9**", the version at which the four edits were *observed* rather than the version at which they landed (`ERR-4`/`ERR-6` retirement and the `present` drop landed in earlier TSPEC revisions). Carried unchanged from v7 F-01; non-gating, because the discharge is real and no downstream reader is misled about *whether* it landed. Fix is one clause: "landed before TSPEC v0.9". | REQ AC-5.1a (via `DEC-LI-07`); `D-O-9` |
+| F-03 | Low | Local | `DEC-LI-03`'s re-evaluation trigger cites `G-C` without signalling that it is this document's own ground rather than an FSPEC or REQ id, leaving a reader to grep upstream for an id that is not there. Carried unchanged from v7 F-02; non-gating. Fix is one word: "this document's `G-C`". | REQ C-1 / FSPEC `BR-1` |
+
+**Verified, no finding:** the qualitative accounting-basis paragraph against FSPEC `BR-6` §"The
+byte-accounting basis"; `renderLearningsBlock`'s framing inventory (header, preamble, per-document
+`<<< … >>>` pair, trailer) against the shipped function; `bytes` written only by
+`extractInjectableMaterial`; `D-O-3`'s four zero-bound conjuncts against the `maxBytes <= 0` early
+return and the `sections.length === 0` → `RSN-NO-MATERIAL` branch that precedes `eligible.push`;
+FSPEC `BR-6` §"How the per-document bound binds", `E-36` and `AT-30` as cited; `D-O-4`'s premise
+against FSPEC `BR-8`'s *bytes injected* field; REQ §4.1's three defaults (5 / 6,000 / 20,000); the
+header pin against REQ v0.9, FSPEC v0.13, TSPEC v0.9 at HEAD; the v0.4 changelog row against the
+three commits it describes.
+
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Should the framing formula be stated once in `DEC-LI-08` and referenced from `D-O-4`, or restated in both? Restating it is what produced two figures that now disagree with each other; a single statement with one worked example is harder to drift. Either answer is fine — I am naming the coupling, not deciding it. |
+| Q-02 | Does the operator want the abridged-case framing (≈+34 bytes per document, the `(ABRIDGED: bounded at N bytes)` clause) reported separately in `D-O-4`(b), given that at REQ §4.1's 6,000-byte per-document default abridgement is the common case, not the rare one? |
+
 ## Positive Observations
+
+- **The accounting-basis correction is the right fix at the right altitude.** The entry could have
+  quietly re-scoped its wording; instead it names the discrepancy, states which quantity the caps
+  actually bind, and then says explicitly that the *decision* is unaffected because "which
+  quantities bound is what it decides". That is a decision document distinguishing its decision from
+  its exposition, which is exactly the distinction a frozen round needs.
+- **`D-O-4`'s split is a genuine product improvement, not a restatement.** Reporting block bytes
+  against §4.1's caps "compares incommensurable quantities and would make every conforming block
+  look over-cap" is the failure mode an operator would actually have hit, named at the place the
+  report is specified. The obligation now has a closing condition for the C-8 gap.
+- **`D-O-3`'s zero-bound conjunct closes a real oracle hole with code-level grounding.** All four
+  conjuncts (no material, no `bounded`, `RSN-NO-MATERIAL`, no slot) are individually checkable, and
+  the row names the two shipped branches that implement them — so a test author can go straight from
+  the obligation to the code path without inferring anything.
+- **Every delta claim except the two numbers survived first-pass verification.** In a frozen round
+  that is the outcome that keeps review cheap; the one defect is arithmetic, isolated to one
+  sentence and its echo, and needs no decision to fix.
 
 ## Recommendation
