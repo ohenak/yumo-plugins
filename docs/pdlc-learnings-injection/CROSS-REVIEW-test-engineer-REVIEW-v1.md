@@ -171,6 +171,31 @@ Five High findings gate this phase. Concretely, to clear them:
 The Medium findings (F-06, F-07, F-08) and F-09 are recorded, not gating, but F-08 is the cheapest
 of the set and removes F-02's root cause.
 
+## Closing Pass — Anchor Re-Verification at HEAD
+
+The findings above were taken against `6b72d587`. That commit is **no longer an ancestor of HEAD**
+(`git merge-base --is-ancestor 6b72d587 HEAD` → false); the branch was rewritten and HEAD is now
+`e010c2b2`, carrying a re-applied LI-08/LI-13/LI-14/LI-22 sequence. Every `orchestrate-dev.js`
+line anchor cited above therefore drifted. The findings are **not** re-litigated here — they are
+this round's record, and several were already addressed by the author in place. This pass only
+re-locates each anchor and states, per finding, what HEAD actually shows.
+
+| Finding | Anchor at HEAD | Status at HEAD (`e010c2b2`) |
+|---------|----------------|------------------------------|
+| F-01 | `learningsDispatchSet.test.js:478-500` | **Addressed.** The AT-29 oracle no longer reads the five keys `buildFinalReport` never emits; it reads `report.phases[]`, `.artifactPaths`, `.notices`, `.outcome`/`.testSummary`/`.harvestStatus` — live fields. The in-file comment cites "CR round 1, PM F-02 / TE F-01". |
+| F-02 | `orchestrate-dev.js:10294` | **Addressed — mutation now RED.** Re-running the exact mutant (`injectHere = dispatchKind === "authoring";`, second conjunct dropped) against `npm test -- __tests__/learnings` yields `Tests: 2 failed, 113 passed, 115 total`, failing at `learningsDispatchSet.test.js:795` on `nullAuthoring.every((d) => d.injectHere === false)`. Under `6b72d587` the same mutant survived the whole repository. Backup restored; `git diff --stat orchestrate-dev.js` clean afterwards. |
+| F-03 | `learningsBaselineGuard.test.js:61` | **Open.** `grep -rl 'learnings-baseline' __tests__/` still returns exactly `learningsBaselineGuard.test.js`, `learningsCaptureScript.test.js`, and `helpers/learningsFixtures.js` — and the helper hit is a comment (`helpers/learningsFixtures.js:14`), not a read. No test still compares a composed prompt against the committed captures. Q-02 stands unanswered. |
+| F-04 | `orchestrate-dev.js:2445` | **Addressed.** The branch is now `extraction.sections.length === 0` alone; the `hasAnySectionHeadingLine(entry.text)` conjunct is gone, with an in-place comment attributing the removal to "CR round 1, TE F-04" and restating FSPEC BR-6's rationale verbatim. |
+| F-05 | `pdlc/workflows/dist/pdlc-cli.mjs` | **Open — reproduces at HEAD.** `node pdlc/workflows/build-runtime.mjs --check` prints `STALE pdlc/workflows/dist/pdlc-cli.mjs` / "Bundles are out of date" and exits 1. Per CLAUDE.md/DEC-08 this must be rebuilt and staged in the same wave. Ship gate. |
+| F-06 | `orchestrate-dev.js` `extractInjectableMaterial` | Medium, non-gating; unchanged in substance. Routed upstream as `ERRATUM: FSPEC`. |
+| F-07 | `learningsSelect.test.js:255-268` | Medium, non-gating. The AT-13 window/propagation comment block is still the tuned-to-code expectation described above. |
+| F-08 | `orchestrate-dev.js:10294-10300` | **Addressed.** The composition-site probe now carries the decision, not only the docType (`_recordDocType(docType, injectHere, dispatchKind)`), with the comment naming "CR round 1, TE F-08" and identifying the old tautology as F-02's root cause — which the F-02 mutation result above independently confirms. |
+| F-09 | `orchestrate-dev.js:2548` | Low, non-gating; still unguarded — `completed ${doc.orderKey}` interpolates a `null` order key literally into the opener. Routed upstream as `ERRATUM: TSPEC`. |
+
+**Effect on the verdict: none.** F-03 and F-05 remain open Highs at HEAD, so the round's
+recommendation and its counts are unchanged — the counts below record what this round found, not
+what survived it.
+
 ## Verdict
 
 VERDICT: Needs revision
