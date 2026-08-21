@@ -47,6 +47,23 @@ drift. The one asymmetry left is enumerative, not semantic (F-02).
 
 ## Behavioral Flow
 
+§3's ten-step flow and the 3.3 decision table are untouched by this delta, and the delta creates
+no pressure on them: AC-5.1's erratum constrains *when the reversibility oracle is read*, not what
+the flow does. Two checks, both clean:
+
+- **Step 9 → step 10 ordering still carries the observation point.** REQ v1.15 places the
+  observation "the moment restoration completes", with the record append (AC-6.1), the
+  escalation-log append (AC-6.2) and the queue-row write (AC-5.2/M-WG-7) all *after* it. FSPEC
+  §3 step 9 (record + escalation entries) and step 10 (halt + M-WG-3 reason + M-WG-7 queue row)
+  both sit downstream of the restore that step 3b/BR-9 triggers. A test author reading FSPEC in
+  order arrives at the same seam REQ now names. No re-ordering is required.
+- **The failed-capture branch has a flow home.** REQ's new "cannot be captured at all" sentence
+  routes to *no dispatch* — FSPEC's step 1/3 inapplicability path plus E-34 ("A6 escalates without
+  dispatching a repair"). The flow already refuses to act before it writes, so the new REQ
+  sentence does not introduce a step the flow lacks.
+
+Nothing in §3.3's rows changes truth value under REQ v1.15.
+
 ## Business Rules
 
 ## Edge Cases and Error Scenarios
