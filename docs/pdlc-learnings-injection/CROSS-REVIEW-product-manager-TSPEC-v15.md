@@ -157,6 +157,43 @@ FSPEC definition at the hashes stated in this dispatch.
 
 ## Test Strategy
 
+My lens here is narrow: does an acceptance criterion end up with a test that could fail if the
+erratum's rule were violated? For ERR-8 the answer is yes, and the ownership is traceable end to
+end — which is also what makes the routed item's "no PLAN change is owed" claim checkable rather
+than asserted.
+
+**The chain, verified at HEAD:**
+
+- **TSPEC §T.5 / §I.2** put AT-30's third case in `learningsConfig.test.js` at **L3** (seam-driven
+  whole run), with the set-equality oracle over reject rows, and name the killing mutation:
+  "Reverting §D.5's `maxBytes <= 0` short-circuit to the cut-and-flag path reds that fixture."
+- **TSPEC §T.7's arm table** carries the `RSN-NO-MATERIAL` row in its two-disjuncts-one-branch form,
+  routing the structural disjunct to AT-28 and the zero-bound disjunct to AT-30's third case.
+- **TSPEC T-O-6** hands PROPERTIES a property over `extractInjectableMaterial` whose bound domain
+  **includes `0`** with the carve-out stated — so the zero case has a unit-level oracle as well as
+  the L3 one, and a property written from the cut-and-flag rule alone cannot red a conforming
+  implementation.
+- **PLAN LI-16** owns the production half by name: `extractInjectableMaterial`'s `maxBytes <= 0`
+  short-circuit **and** `selectLearnings` dropping `sections: []` as `RSN-NO-MATERIAL` "**before**
+  the count and total bounds are applied, so the drop consumes no `maxDocuments` slot … one branch
+  keyed on *yields no material* … **no** zero-bound special case in the selector (TSPEC §D.5)".
+- **PLAN LI-12** owns the red: `LI-AT-30`'s third case with the three-conjunct positive oracle,
+  conjunct (iii) being "**no** document carries `RSN-COUNT` — the no-slot conjunct", plus the
+  fixture precondition (corpus must exceed the `maxDocuments` in force, ≥ 6 at REQ §4.1's default of
+  5) without which (iii) passes for free.
+
+That last precondition is precisely what makes the PLAN a *test* of Step 5's ordering rather than a
+restatement of it: with more eligible documents than slots, an implementation following Step 5's
+literal item order emits `RSN-COUNT` rows and reds conjunct (iii). So the PLAN does not merely
+"already encode the corrected order" — it encodes an oracle that **discriminates** the corrected
+order from the literal one. The routed item's "no PLAN change is owed" is true for a stronger reason
+than the item states.
+
+**PLAN §Open questions** additionally records ERR-8 as **OPEN with FSPEC's author**, with the same
+suggested fix and the note that "a delta-confirmation against a corrected FSPEC finds no PLAN change
+owed". The erratum is registered in both documents, consistently, at the same version of upstream.
+No test-strategy change is owed by this confirmation, and none was made.
+
 ## Open Questions
 
 ## Delta-Confirmation Findings
