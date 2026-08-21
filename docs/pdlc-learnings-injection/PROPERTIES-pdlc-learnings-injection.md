@@ -1160,19 +1160,28 @@ Emitted as line items in this dispatch's final message; **no upstream document w
   answered**: F-O-1 now explicitly owns both heading-recognition rules. What remains is the TSPEC
   item below.
 
-**Still open:**
+**Also answered — by TSPEC v0.8/v0.9, which moved after this round's reviews were dispatched:**
 
-- **TSPEC** — AT-11's hand-computed byte count. Its premise has narrowed rather than disappeared:
-  the count can no longer be said to *inherit* FSPEC's framing arithmetic, because FSPEC has none,
-  so if it was computed with framing charged it is now at odds with FSPEC BR-6 **and** TSPEC §D.5
-  together. This is a **TSPEC-only** item; a reader should not go looking for FSPEC framing
-  arithmetic to reconcile it against.
-- **TSPEC** — the section matcher's discharge. F-O-1 now owns two heading-recognition rules, and
-  TSPEC §D.3 discharges only the first (`LEARNINGS_HEADING_RE`, the *document*-shape predicate),
-  leaving `extractInjectableMaterial`'s section matcher unspecified — so no upstream text yet says
-  whether `## 3. Rejected Proposals (with rationale)` is matched on the numbered form, the bare
-  title, or a prefix. PROP-BOUND-08's real-corpus arm bounds this document's exposure to the gap; it
-  does not close it.
+Both reviewers of this round recorded `UPSTREAM-STATE: TSPEC sha256:f629d29d…` (v0.7) and read TSPEC
+as byte-identical. It is not: TSPEC at HEAD is `sha256:22dee8ce…`, **v0.9**, and it closed the two
+items this list still carried as open. They are struck rather than re-routed:
+
+- ~~TSPEC's AT-11 hand-computed byte count~~ — **answered** by TSPEC v0.9's §D.3, which fixes how
+  taken extents are assembled into `material`: normalise each extent, join in priority order with
+  `"\n\n"`, then cut once. The count is now a mechanical sum — section lengths plus 2 bytes per
+  join — rather than a judgement two conforming implementations could split. Absorbed into
+  PROP-BOUND-07.
+- ~~TSPEC's undischarged section matcher~~ — **answered** by TSPEC v0.8's §D.3, which specifies
+  `BR6_SECTION_NAMES`, the optional-ordinal matcher, exact case-sensitive comparison, the optional
+  trailing gloss and the section extent, and records F-O-1's second rule as discharged where the
+  obligation sits. Absorbed into §F.3 and PROP-BOUND-05/08.
+
+**Still open:** nothing. Every item this document routed upward has been answered, and the
+absorptions are recorded above and in §G.2. One upstream item is *already routed by TSPEC and needs
+no duplicate from here*: TSPEC v0.9 records **ERR-8** against FSPEC — Step 5's items 15/16 sequence
+extraction after the count cut while §D.5 requires the drop before it. Outcomes agree at every
+bound, so no property of this document changes, and §O.7's precedence argument is unaffected;
+re-raising it here would be the DEC-ERR-01 anti-pattern of routing a question already routed.
 - TSPEC's suite assignment for AT-15, whose clauses 2–3 (corpus-level `RSN-EMPTY`, no discarded document
   in any record) are asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite — the
   mismatch PLAN LI-07/LI-19 already work around by carrying an expected-red ledger entry.
