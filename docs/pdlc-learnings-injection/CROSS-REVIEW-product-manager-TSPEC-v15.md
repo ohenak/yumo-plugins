@@ -127,6 +127,34 @@ No interface named in the erratum's blast radius has drifted from upstream at HE
 
 ## Data Model
 
+The reason-code catalogue is the operator-facing vocabulary of this feature, so contract fidelity
+here is a product concern, not a typing one. Re-diffed against upstream at HEAD:
+
+| Element | TSPEC at HEAD | FSPEC/REQ at HEAD | Verdict |
+|---|---|---|---|
+| `RSN-NO-MATERIAL` meaning | "yields no material", two disjuncts one branch (§D.5, §T.7) | BR-9: "Eligible, but yields no material — it carries none of BR-6's priority sections, **or** the per-document bound is zero and admits none" | faithful, disjuncts and wording |
+| `RSN-BYTES` vs zero-on-per-doc-key | §D.5: "Zero on the per-document key is `RSN-NO-MATERIAL`; zero on the total key is `RSN-BYTES`. The two zeros do not share a reason code." | BR-6 "How the total bound binds"; E-25 vs E-36 rows | faithful, and sharper than upstream |
+| `bounded` at zero bound | `false` (nothing taken ⇒ nothing cut) | AC-2.3's *bounded* = material was cut; E-36 rejects rather than selects | faithful |
+| Slot accounting | drop "consumes no `maxDocuments` slot" | BR-6: "is dropped before the total bound … and consumes no slot"; E-36: "every one … consumes no slot" | faithful |
+| Corpus-outcome / reject-reason domains | frozen catalogues, `null` the healthy corpus-outcome value (§D.1, §D.2) | BR-9's three closed catalogues, DC-05 | unchanged since v13, still faithful |
+
+Two details worth naming because they are where a "harmless" simplification would have cost the
+operator information:
+
+1. **The two zeros are kept distinct.** `maxTotalBytes: 0` and `maxBytesPerDocument: 0` both produce
+   an empty selection, and it would be tempting to collapse them. §D.5 refuses: the total-key zero
+   is `RSN-BYTES` (material exists, the running total binds, documents drop **whole**), the
+   per-document-key zero is `RSN-NO-MATERIAL` (no material exists at all). An operator debugging a
+   silent block reads a different cause from each. Upstream draws the same line (E-25 vs E-36), and
+   the TSPEC does not blur it.
+2. **The no-slot clause is load-bearing, and the TSPEC says why.** Without it, a zero-bound document
+   would occupy a `maxDocuments` slot while contributing zero bytes — "indistinguishable in BR-8's
+   rows from a real contribution", as FSPEC BR-6 puts it. That is the transparency failure REQ's
+   reporting criteria exist to prevent, and §D.5's ordering rule is what mechanically avoids it.
+
+No enum value, numeric bound, scale or return type in §I.2/§I.3/§D.1–§D.6 diverges from its REQ or
+FSPEC definition at the hashes stated in this dispatch.
+
 ## Test Strategy
 
 ## Open Questions
