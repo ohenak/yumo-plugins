@@ -166,7 +166,25 @@ and no property's fixture dependency is re-pointed.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | **High** | Local | §C.4's new closing sentence states that the two gaps it identifies in PLAN case B's wording — PROP-BOUND-03's `maxBytes <= 0` case having no named row, and the span *"through the batch that greens them"* naming no remaining batch — are *"routed as errata rather than decided here"* (line 1124). §G.3, this document's **Routed Errata** list, is unchanged by this delta and still reads *"Still open — one item, re-routed this round"* (line 1269), carrying only the AT-15 suite-assignment item. Neither gap appears anywhere outside §C.4 (`grep` for `case B`, `maxBytes <= 0`, `greens them`, `named row` returns §C.4 lines 1110–1135 plus the struck §G.3 entry at 1265). So the sentence is false as written: the delta asserts a routing that no list carries — the precise failure §G.3 itself records for the previous round (*"§C.4 asserted this routing and this list did not carry it, so it reached no author from here (PM v5 F-01)"*, line 1263). **Fix:** add the two gaps to §G.3's still-open list as their own bullets, change *"one item"* to the new count, and leave §C.4's sentence as it stands — it becomes true once the list carries them. I route both upward in this review's ERRATUM lines so the PLAN edit is not held behind this one | §C.4 line 1124; §G.3 line 1269; PLAN P-A-7 case B |
+| F-02 | Low | Local | The P-A-6 citation at line 1129 is punctuated as a quotation — *"the first point it is green, which in practice is after LI-21 (batch 13)"* — but PLAN's text reads *"commit at the first point **the suite** is green, which in practice is after LI-21 (batch 13)"* (PLAN line 590). The substitution of *it* for *the suite* is semantically identical here and the subject is carried outside the quote marks, so nothing is misrepresented; the quoted span simply is not verbatim. **Fix:** restore *the suite* inside the quote, or drop the quote marks | PLAN P-A-6 |
+| F-03 | Low | Process | The new prose cites `learningsConfig.test.js:226`, `:242`, `:258` (line 1141) and `.gitignore:13` (line 1100) as bare `file:line` anchors with no heading, spec id, symbol name or verbatim quote beside them, and none is runtime-measured evidence where position is itself the claim. Per `docs/_decisions/DECISIONS-review-severity-bars.md` `DEC-DOC-01` that is a Low `Process` item. **Fix:** cite the three config cases by their `test(` titles (each begins `LI-AT-30: …`, which is stable across edits) and `.gitignore` by the rule text `/.baseline-worktree/`. The `learningsBlock.test.js:38`/`:111`/`:131` anchors are correctly exempt — each carries its verbatim text or is the measurement itself | DEC-DOC-01 |
+
+**Deferred under the freeze** — recorded, not raised as findings:
+
+DEFERRED: the header `Upstream` cell now enumerates four v0.7 changelog items (LI-16 ownership, LI-AT-30's fixture precondition, ERR-8, LI-08's note relocation) and closes with *"both absorbed in §C.4 and §G.3"*; after the rewrite *both* no longer has a two-item antecedent — read it once more and either name the two or say *all*.
+DEFERRED: §C.4 now carries three consecutive bolded lead-ins on the same subject (*"Fourteen of fourteen…"*, *"On the re-red of landed suites…"*, *"And the deferral this document previously leaned on…"*); the material is right and the ordering is right, but a reader arriving at §C.4 cold meets three paragraph-length arguments before the section's actual conclusion — consider a one-sentence result line at the top.
+DEFERRED: the inventory's *At `21edb7c5`* column is now a constant (**exists (landed)** in all fourteen rows); once F-01's §G.3 edit lands, that column could collapse into the pin sentence, leaving File / Owning task / Added by.
+DEFERRED: §C.4 says LI-05's artifact is *"the capture script (below)"*; the referent is four paragraphs down past two intervening arguments — a section anchor would survive the next restructuring better than *(below)*.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §C.4 concludes that the four owed cases are *"property-owed cases with no red-owning task remaining ahead of them"* and that they land into green committed code. Once F-01's §G.3 bullets are written, do you expect the PLAN erratum to answer with a **new ledger case** (case C: an amendment landing after the last batch), or with an extension of case B's span? The former is the cleaner reading of the second gap you found, but it is PLAN's call and I do not want the §G.3 bullet to prejudge it |
+| Q-02 | Carried forward unanswered from my v7 Q-02, and still PLAN's rather than yours: now that LI-16/LI-17 are green, is the heading-form amendment expected to land **green** — production already implements F-O-1's second rule — or **red**? If green, the second of your two case-B gaps may not need a ledger answer at all |
 
 ## Positive Observations
 
