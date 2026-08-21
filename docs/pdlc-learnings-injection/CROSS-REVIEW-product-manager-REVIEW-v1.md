@@ -27,7 +27,11 @@
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | AC-2.4 and BR-6 say the total-bound overflow drops "that document and every lower-ordered one" with `RSN-BYTES`, while BR-5 says count-cut documents "carry `RSN-COUNT`" and the count bound "is applied first". For a document that is **both** past the count window **and** below a byte failure, which reason does the operator see? I have routed the ambiguity upstream (F-06), but the product answer is yours: I read AC-3.2's definitions as cause-based, which makes `RSN-COUNT` correct for anything the count bound already excluded — is that the intent? |
+| Q-02 | `_recordDocType` (`orchestrate-dev.js:9444`, plumbed through five hops from `main()`) exists solely as a test probe — no production caller supplies it, and its production value is the no-op default. TSPEC §A.2 property 1(d) sanctions it, and the composition-site set-equality test genuinely needs it, so I have not filed it as a finding. Was a recording seam on the existing `_log` channel considered instead, so the production signature does not grow a test-only parameter? |
+| Q-03 | O-1 obliges measuring realised authoring-dispatch prompt sizes on a live run before §4.1's three thresholds are treated as settled, and O-3 obliges recording whether authors used the injected material. Both are operator-side, not code deliverables — but they are the evidence base for R-1 and R-3. Is there a place in the queue or `OPERATIONS.md` where they are now tracked, so they do not evaporate when this branch's cross-reviews are deleted? |
 
 ## Positive Observations
 
