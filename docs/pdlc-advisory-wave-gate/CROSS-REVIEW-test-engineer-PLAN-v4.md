@@ -165,6 +165,73 @@ re-routed as an erratum below rather than folded into this verdict.
 
 ## Verification
 
+**Two DoD legs changed; both of my v3 findings close here, and both close as falsifiable
+conditions rather than as restated outcomes.**
+
+### F-02 (v3, Low) is resolved — the un-skip arm now carries its paired negative
+
+The AT-06-4 leg previously named two arms and two owners but named a negative only for the seam
+side, so a verifier could have ticked it on a positive-only un-skip arm. It now reads "**each with
+its paired negative** (TE v3 F-02): AT-06-4b on the seam side, and on the un-skip side a halt on a
+wave where A6 did **not** fire — `a6.calls.length === 0` and the outcome and `haltReason` positively
+asserted on the same run — where the `advisory` argument is omitted and no overwrite notice appears
+anywhere in `notices`", and it closes with the falsifying sentence: "A positive-only un-skip arm does
+not tick this leg: without the negative, an implementation pushing the notice unconditionally at the
+un-skip site satisfies it."
+
+That is the shape I asked for, and it is not an absence-only oracle. The negative ("no overwrite
+notice anywhere in `notices`", "`advisory` argument omitted") is quantified over a run whose live
+behaviour is positively pinned on the same pass — outcome, `haltReason`, and `a6.calls.length === 0`
+— which matches the shipped companion this arm attaches to (`waveExecution.test.js:1299-1302`:
+`outcome === "halted"`, `haltReason` containing `"Error: Wave 1 un-skip guard failed"`,
+`a6.calls.length === 0`). Absence plus three positives on the same run: falsifiable in both
+directions. The leg now says the same thing A6-21's task row says, so verifier and implementer read
+one contract — the same convergence my v1.12 F-01 asked for on the A6-10 leg.
+
+### The widening leg now carries the corrected value, so the two channels agree
+
+The leg's main-suite half was value-agnostic at v1.12 ("reads **five** keys"), which is why my v3
+High landed on the task row and not on this leg. It now reads: "five keys whose fifth is the
+wave-scoped **ref** — that fixture's `_git` double succeeds at every capture verb, so the value is
+`refs/pdlc/a6-snapshot-1`, written spec-side as `"refs/pdlc/a6-snapshot-" + waveNum` and never
+`null` (TE v3 F-01)". It keeps `haltReason`'s containment assertion explicitly untouched (AT-05-3)
+and keeps the escalation-log half at **3** with its real-temp-repo reason. Both halves are conditions
+a verifier can fail on, and the value a verifier checks is now the value the implementer was told to
+write — which is the property that was broken at v1.12. (F-01 below, the `waveNum` binding nit,
+applies to this leg's phrasing as well as the task row's; it is the same transplanted literal in
+both places and one edit fixes both.)
+
+### The AT set is still set-equal to FSPEC §6's, and this round did not disturb it
+
+I re-derived the comparison rather than counting: extracting AT ids from the PLAN's traceability
+table and from FSPEC §6 and diffing the two sorted sets gives **48 vs 48 with an empty diff** —
+equal in both directions, so a deleted case fails and an invented one fails too. This round mints no
+witness id, which is right: TSPEC §5.6 says AT-06-4's predicates cover the un-skip arm "rather than
+minting a witness id", and adding the arm's *negative* to the DoD leg is a strengthening of an
+existing id's oracle, not a new case. The traceability table itself is byte-identical to
+`28dd256b`.
+
+### Anti-echo, absence-only and set-equality discipline across the changed Verification surface
+
+- **No implementation echoes.** Both changed legs push spec-side literals: `/overwrit/i` and
+  `"refs/pdlc/a6-snapshot-" + waveNum` for the overwrite predicates, `refs/pdlc/a6-snapshot-1` as
+  the transcribed fifth value, `3` as the transcribed notice count. Neither leg permits a constant
+  read back from the module under test, and the widening leg says so in as many words.
+- **No absence-only oracles.** Every negative introduced or restated this round is paired with a
+  positive on the same run: AT-06-4b (diagnosis and root-cause class present, no ref and no
+  overwrite sentence anywhere in `notices`); the un-skip negative (outcome, `haltReason` and
+  `a6.calls.length === 0` positive, `advisory` omitted and no notice); the widening leg's "never
+  `null`" is itself stated as a positive value, not as a prohibition.
+- **Completeness by set-equality, not containment.** Rule 2's manifest projection (see
+  **Dependencies**), the 48-AT diff, A6-18's `A6_PROHIBITIONS` id-set comparison and its five-field
+  set-equal transcription of §4.5's halt fields all compare full enumerations. The one place this
+  round could have regressed — widening a `toEqual` to five keys — stays a `toEqual`, not a
+  `toMatchObject`, so a dropped key still fails.
+
+**The unchanged legs are unchanged.** The forty-eight-AT leg, the ordered-vocabulary leg, the A6-10
+ignored-path leg (whose two falsifying conjuncts my v1.12 F-01 put there) and the commands block are
+byte-identical to `28dd256b`; I did not re-litigate them.
+
 ## Findings
 
 ## Questions
