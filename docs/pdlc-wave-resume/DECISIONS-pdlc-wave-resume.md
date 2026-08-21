@@ -272,5 +272,88 @@ no-record case.
 emptying the file is equivalent to deleting it.
 **Re-evaluation triggers:** a future writer genuinely needs a "deliberately cleared, do not resume"
 state distinguishable from "no record", which is a REQ-level change, not an implementation one.
+### DEC-WVR-05: Ratify the plan-absolute high-water integer as the only progress field
+
+**Context:** The record carries `{version, feature, planHash, lastGreenWave}` plus an optional
+`head`. Progress is one integer.
+**Decision:** Ratify it. `lastGreenWave` stays the plan-absolute wave number — not a count of
+executed waves — and stays the only progress field. `head` stays optional on both write and read.
+**Alternatives considered:**
+- O-7, a set of completed waves — rejected: waves execute serially in plan order behind a single
+  `startWave` cut-off, so a set can only ever be a prefix; modelling it invites a future reader that
+  honours a non-prefix set and skips a wave whose predecessor never ran.
+- O-7, per-task state — rejected: it would have to survive a PLAN re-derivation, which `planHash`
+  deliberately refuses to do.
+**Constraints that forced this shape:** serial topological wave execution; `planHash` as the "same
+plan?" invalidator; REQ-WVR-05's retention-with-invalidation.
+**Reversibility:** hard — the field is the record's format, and a change means a `version: 2` and a
+reader that honours both.
+**Re-evaluation triggers:** waves ever execute out of plan order, or partially; a wave becomes
+resumable at task granularity.
+
+### DEC-WVR-06: Reason codes, not rendered sentences, are the closed catalogue
+
+**Context:** FSPEC OB-F5 wants set equality — not containment — over the announced disregard
+reasons. There are seven, three of which interpolate run-specific values.
+**Decision:** The closed, frozen catalogue is the **code** set (`unreadable-json`,
+`not-an-object`, `wrong-shape`, `feature-mismatch`, `plan-changed`, `head-unreachable`,
+`over-count`); rendered sentences are wording, produced by per-code renderers from a
+`ReasonContext` whose only constructor is the classifier. The three `parseWaveLedger` arms keep
+their exact shipped sentences as their renderers, so no shipped assertion changes.
+**Alternatives considered:**
+- O-8, set equality over rendered strings — rejected: the assertion would be over fixture data
+  wherever a sentence interpolates, and would red on every wording change that FSPEC's "content, not
+  wording" note explicitly permits.
+**Constraints that forced this shape:** FSPEC OB-F5 (set equality, not containment); FSPEC's
+content-not-wording note; DC-01 (a contract crossing a boundary is closed and total).
+**Reversibility:** easy.
+**Re-evaluation triggers:** a reason is added that cannot be rendered from `ReasonContext`; the run
+log becomes structured, at which point the code — not the sentence — is what should be logged.
+
+### DEC-WVR-07: AT-16 asserts the delegation's shape, not a delegated resume
+
+**Context:** REQ-WVR-07 / FSPEC AT-16 want queue-and-direct parity of resume point and provenance.
+The queue delegates in-process by calling `runPipelineFn({ reqPath: entry.reqPath })`, defaulted to
+`realMain` — a payload whose key set is exactly `{reqPath}`.
+**Decision:** Assert what the boundary can honestly carry: `_runPipeline` left at its default, the
+payload's key set pinned at `{reqPath}` by set equality, and the behavioural half of parity
+discharged on the direct path. The residual gap is **named in AT-16** rather than papered over.
+**Alternatives considered:**
+- O-9(a), inject `_runPipeline` and compare against a stub — rejected: the delegation is then not
+  under test, and the assertion survives every mutation this feature could make.
+- O-9(b), wrap `realMain` in test seams and drive the queue for real — rejected: the working
+  directory the two paths "agree" on would be supplied by the double, making the discriminating arm
+  true by construction.
+- O-9(c), add seam forwarding to the queue's delegation — rejected: production surface whose only
+  consumer is a test, and it would put a queue-side resume configuration where FSPEC BR-16 says none
+  exists.
+**Constraints that forced this shape:** the shipped in-process delegation and its one-key payload;
+REQ C-3; DC-08 — an unresolved item needs a **named successor surface**, which is why the gap is
+written into AT-16's own text rather than into prose intent.
+**Reversibility:** easy — if the queue ever forwards seams for an unrelated reason, the stronger
+assertion becomes available for free.
+**Re-evaluation triggers:** the queue's delegation payload grows a second key; the queue gains any
+resume-relevant configuration of its own.
+
+### DEC-WVR-08: The ancestry probe stays lazy
+
+**Context:** Extracting the decision (DEC-WVR-02) means the classifier takes ancestry as a resolved
+boolean. Resolving it naively means resolving it for every well-formed record.
+**Decision:** Resolve it only for decisions that turn on it: classify optimistically with
+`headOk: true`, and re-classify with `headOk: false` only when the optimistic decision is not a
+`full-run` whose code is in `ANCESTRY_INDEPENDENT_CODES`. At most one `merge-base` subprocess per
+run, and zero on the feature-mismatch and plan-changed paths — the shipped call counts, asserted as
+equalities rather than containments.
+**Alternatives considered:**
+- O-4, resolve `headOk` eagerly — one line shorter, and rejected anyway: shipped, the probe is the
+  *third* arm of the chain, so those two rejection paths issue zero `merge-base` calls today. Eager
+  resolution is new IO on paths that had none, contradicting TSPEC §3.4 and REQ C-3, and the shipped
+  ancestry test asserts with `toContainEqual`, so the extra call would have been unfalsifiable.
+**Constraints that forced this shape:** the shipped guard order (ancestry below feature and
+plan-hash); "no new IO"; DC-03 — the cheaper alternative's defect is precisely that no existing
+assertion could falsify it.
+**Reversibility:** easy.
+**Re-evaluation triggers:** the ancestry verdict becomes needed by a guard above the plan-hash
+guard; the probe becomes free (e.g. HEAD ancestry already resolved earlier in the run).
 
 ## Consequences
