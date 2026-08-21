@@ -87,7 +87,42 @@ any of those three would have been a High here, and there is none.
 
 ## Behavioral Flow
 
-_pending_
+Only one flow is implicated by the erratum: §3.2, *Consulting the record*. E-3 rewrote the
+paragraph of REQ-WVR-02 that the FSPEC's ordering note answers.
+
+**REQ at HEAD now says** (REQ-WVR-02, closing paragraph): *"The IG labels name **causes, not
+precedence**: this table's row order carries no claim about the order in which a run tests for
+them, which is FSPEC's to state (§3.2 there evaluates ancestry before over-count)."*
+
+**FSPEC §3.2 says** (bolded paragraph closing the question table): *"The order above is
+deliberately not REQ-WVR-02's IG numbering. The REQ enumerates IG-4 (over-count) before IG-5
+(ancestry); the evaluation order here places ancestry before over-count… The IG labels name
+causes, not precedence; only this table's order is normative (BR-03)."*
+
+The two now agree verbatim on the load-bearing phrase and agree on which document owns the
+ordering claim. Before the erratum, the FSPEC was asserting a divergence *against* an upstream
+that was silent about it; after the erratum, upstream ratifies the divergence and points at
+§3.2 as the normative source. This is the strongest possible outcome for a cascade round: the
+compression is now bidirectionally checkable.
+
+**Testability consequence, re-verified.** The ordering claim is what makes AT-03's fixture pair
+discriminating — a record that is simultaneously over-count *and* names an unreachable commit
+must announce the **ancestry** reason (IG-5), not the over-count one (IG-4), and that is the only
+oracle able to tell the shipped chain from the REQ's numbering. E-3 does not weaken it; it removes
+the reading under which a te-author could have argued the REQ's numbering was normative and
+written the oracle the other way round. I re-confirmed the shipped chain still orders
+feature → plan → ancestry → over-count in `origin/main:pdlc/workflows/orchestrate-dev.js`
+(`headCorroborated` consulted before the `lastGreenWave > waves.length` comparison), so §3.2's
+table, AT-03's expected reason and the REQ's new sentence are three consistent statements of one
+fact.
+
+**Question 5's three-answer structure is untouched.** E-3 says nothing about the no-commit-named
+arm, so §3.2's "reachable / unreachable / no commit named at all — which passes" trichotomy and
+its `pre-\`head\` record: honoured as before` grounding stand exactly as approved in v2. EC-21 and
+AT-03 need no change.
+
+**§3.1 and §3.3 were not reached by any hunk.** D-1..D-3, the explicit-pointer precedence and the
+clamp behaviour are upstream-unchanged; per the delta protocol I did not re-read them.
 
 ## Business Rules
 
