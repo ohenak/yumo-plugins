@@ -139,6 +139,85 @@ No data-model finding.
 
 ## Test Strategy
 
+This is my lens, so it gets the closest reading: **does any TSPEC test, oracle, or sequencing
+precondition change meaning under FSPEC v1.2, and does the delta owe a test nobody is writing?**
+
+**The one real finding: a newly specified behaviour with no oracle.** Before this round, FSPEC was
+silent on what a pointer run writes; TSPEC ratified the shipped behaviour in §2.5 and routed the
+gap upstream (§6.3 item 3) precisely so there would be something to trace a test to. The clause has
+now landed — and it landed **without an accompanying AT in FSPEC §6**. TSPEC's §5.4 test map is
+keyed to FSPEC's AT list ("the contract that no AT is left without a home"), so a clause with no AT
+gets no home, and I can find no oracle in the document that would fail if the behaviour were
+removed:
+
+- **AT-05** (operator override wins) runs with `startWave: 2` and a valid record. Its conjuncts are
+  the resume point, the absence of a `wave ledger … was ignored` line, and the provenance token on
+  the operator banner. It asserts **nothing about writes**.
+- **AT-07** (pointer past the end) asserts the notice, three waves dispatched, no skip, no ledger
+  consultation. Again nothing about writes.
+- **AT-09 / AT-10 / AT-15 / AT-18** all exercise the write path, but every one of them runs
+  **without** an operator pointer, so each is green under an implementation that moved the write
+  site inside the `!explicitPointer` guard.
+- **V-6** pins that `!explicitPointer` wraps the read/decide chain; it is a shipped-behaviour
+  verification row against `origin/main`, not a test the suite runs, so it does not red on
+  regression either.
+
+The failing implementation is not exotic — it is the *intuitive* one. An implementer reading
+"the operator asserted these predecessors, the pipeline did not observe them" can very reasonably
+conclude that such a run should not write a record at all, widen the `!explicitPointer` guard to
+cover the write site, and ship a green suite that violates FSPEC §3.4's new paragraph outright.
+That is the definition of an untested specified behaviour. **The fix is small**: add a write
+conjunct to AT-05 — with `startWave: 2` on a 3-wave plan and green gates, `ledgerWrites(writes)` is
+non-empty and the last write carries `lastGreenWave = 3` (plan-absolute, not `2` counted from the
+run's own first executed wave), which discriminates both against "pointer runs don't record" and
+against a run-relative counter. A second arm asserting the *next* automatic invocation resumes
+above the operator-asserted waves would carry FSPEC's "so a later automatic invocation can resume
+above…" sentence end to end. This is one conjunct on an existing integration fixture, not a new
+suite. Medium, not High: TSPEC's §2.5 states the correct behaviour and states it precisely, so no
+design is wrong and no oracle is false — what is missing is the discriminator. Filed as F-01.
+
+**Everything else in the test strategy is unaffected, checked positively.**
+
+- **AT-14 and the rebase precondition — untouched, and unaffected by OB-F1's rewording.** The delta
+  edits OB-F1's trailing provenance clause only; the obligation's substance (tree 1,637 behind,
+  mechanism and baseline absent, rebase owed) is byte-unchanged. TSPEC §5.4's ordering precondition
+  — AT-14 is red in this tree, a red gate in wave mode halts the wave and every wave after it, so
+  the wave carrying AT-14 must not be dispatched before the rebase — rests on that substance, and
+  it now agrees with both upstreams on BL-04's disposition rather than only with the REQ. AT-14's
+  three conjuncts (line-equality, root-anchoring, `git check-ignore -v` resolution) read this
+  repo's tracked `.gitignore`, which no hunk touches. The prohibition on weakening it to "no churn
+  observed" or a `some(line => line.includes(…))` still stands on its own rationale.
+- **AT-18's discriminator — reinforced, not disturbed.** AT-18 exists to falsify a record that
+  counts only the waves the previous run itself executed. FSPEC's new paragraph applies the same
+  high-water form to pointer runs, which extends AT-18's invariant to a case AT-18 does not cover
+  — the extension is exactly what F-01 asks AT-05 to pick up. AT-18's own oracle (halt at 2 →
+  resume → halt at 4 → third run announces wave 4 and skips 1–3 individually) is unchanged.
+- **AT-15's partial-write arms — unaffected.** §3.4's best-effort and per-wave paragraphs are
+  byte-unmoved; arm 2 (wave-1 write succeeds, wave-M throws) remains the discriminator against an
+  implementation that discards the record on any failure.
+- **AT-09's transport/gate-mode discrimination — reinforced.** FSPEC's new premise, "recording
+  follows what the run committed, not how its start point was chosen", is the same shape of claim
+  as AT-09's companion arm ("the guard is the transport, not the gate mode"). Two independent
+  conditions are now upstream-stated as *not* affecting recording; AT-09 covers one, and F-01 asks
+  for the other.
+- **Set-equality oracles (AT-02, AT-08, AT-13) — unaffected.** The delta adds no reason code, no
+  outcome, no config key, no announcement row. All three catalogues remain closed at their
+  transcribed sizes.
+- **Call-count / laziness oracles (AT-03, AT-11) — unaffected.** No claim about `merge-base`,
+  ancestry, or probe ordering appears in the delta.
+- **My v2 F-01 (missing set-equality oracle on `ANCESTRY_INDEPENDENT_CODES`, Medium, routed to
+  Phase P) — untouched and stays routed.** It is not re-raised here and is not tagged `inherited`,
+  because it is not open against this document.
+- **Coverage strategy — untouched.** §5.8's `npm run test:coverage` as the last wave's
+  `postWaveCommand` (RT-7, the 85% per-file branch floor) and RT-5's `postWavePathspecs` obligation
+  for `pdlc/workflows/dist/` are unmentioned by the delta.
+
+**Restraint check.** I asked whether the "attributable because the run announced `operator-set`"
+sentence creates a *new* oracle obligation beyond F-01 — e.g. correlating a log line with a record
+written in the same run. It does not: attribution here is a property of the run's announcement,
+already asserted by AT-05, and correlating the two artefacts would test the fixture harness rather
+than the product. One conjunct on AT-05 is the honest ask; a correlation suite would be theatre.
+
 ## Open Questions
 
 ## Positive Observations
