@@ -144,6 +144,28 @@ No AT is falsified, and none becomes unwritable. No High.
 
 ## Open Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | Should BR-9's excluded-carrier sentence be kept in sync with AC-5.1's list mechanically (three carriers named at the rule site), or is the current BR-9 + E-23 split deliberate — BR-9 excluding only the two step-9 writes it is temporally adjacent to, E-23 owning the step-10 queue row? Either answer is fine; the FSPEC should state which, so the next upstream erratum does not re-open it. (F-02.) |
+| Q-02 | Carried from v2 F-03, still open and still non-gating: AT-05-1's *When* says "each terminates" while BR-9's oracle is read mid-run at restoration completion. REQ v1.15 now pins the observation point explicitly, which makes the AT's framing the only remaining ambiguity — does the TSPEC obligation O-1 also carry the *post-restoration* observation seam, or only the *pre-A6 capture* point it names today? |
+
+**Obligations unchanged.** §7.1 O-1 still routes the restoration mechanism and its capture point to
+the TSPEC, and REQ v1.15's AC-5.1 still closes with "the mechanism of restoration is TSPEC's to
+choose (O-1)". The altitude split is intact in both directions — REQ gained precision about the
+*observable*, not about the mechanism, so no obligation moved.
+
+**Positive observations.**
+
+- The erratum landed upstream what FSPEC had already specified. AC-5.1's observation point,
+  ignored-path exclusion and failed-capture branch existed in BR-9/E-34 before REQ said them; the
+  cascade closed a gap in REQ, not in FSPEC. That is the cheap direction for a cascade to run.
+- AC-1.1 and R-5 now carry the same `c8aa22a4` / `11420461` pair FSPEC §2 already carried. A
+  before-base false-green — the most expensive failure available to this feature, since three ATs
+  define themselves against a state HEAD no longer holds — is now pinned in two documents that
+  would have to drift together to lose it.
+- REQ explicitly declines two items as "inherited and nonlocal" rather than absorbing them
+  silently. Recording what was *not* taken, and why, is what makes this confirmation cheap to run.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
