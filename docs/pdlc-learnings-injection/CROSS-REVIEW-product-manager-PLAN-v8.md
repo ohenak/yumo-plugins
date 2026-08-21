@@ -101,6 +101,55 @@ an assertion. That is the standard this PLAN asked for and it is being met in th
 
 ## Dependencies
 
+**No edge moved, and the changelog's claim to that effect checks out.** v0.5 closes with "No task
+moved batch, no `Deps` edge changed, no fixture was invalidated". I diffed the batch ladder, the
+`Deps` column and the edge-justification table across `f08bfbf8..HEAD`: the only touched line in
+§Dependencies is LI-01's edge rationale, where "since TSPEC v0.6" became "since TSPEC v0.9" — a pin,
+not an edge. The ordering claim holds.
+
+**The zero-bound routing is where ownership went wrong, and it is a dependency question.** v7's F-01
+had two clauses. The first — widen the gloss — landed. The second — "state which task owns the
+production half … on the current text that is LI-16" — did not, and the arm table now answers it in
+a way the task rows do not support:
+
+> `… | AT-28 (structural disjunct); AT-30 case 3 (zero-bound disjunct) | LI-07 / LI-16 (structural);
+> LI-12 / LI-21 (zero-bound) |`
+
+`LI-12 / LI-21` is right about the *suite* (LI-12 reds `learningsConfig.test.js`, LI-21 greens it)
+and wrong about the *code*. TSPEC §D.5 puts the zero-bound behaviour in two functions:
+`extractInjectableMaterial` must test the bound before the cut and return
+`{material: "", bounded: false, bytes: 0, sections: []}` at `maxBytes <= 0`, and `selectLearnings`
+must drop on *yields no material* **before** the count and total bounds so no slot is consumed. Both
+functions are LI-16's seams — LI-16's row is the task that writes them, at batch 8. LI-21's row
+enumerates its own edits precisely and none of them reaches either function: read the config once
+per run, push notices onto `buildFinalReport`'s existing `notices` channel, build the injector, hang
+it on `wrapperSeams`, build `ruleInputs.thresholds`, add one conditionally-spread
+`learningsInjection` parameter.
+
+So on the current text the zero-bound branch is greened at batch 13 by a task whose stated scope
+does not contain it, out of a seam another task closed at batch 8. Nothing breaks mechanically —
+LI-21 does write `orchestrate-dev.js`, so the single-writer manifest is not violated, and LI-12's
+red holds the line until someone implements it — but the batch-8 author is reading a row that points
+the other way, which is the second half of this finding.
+
+**LI-16's row still glosses the extractor in the pre-E-36 terms.** It commissions
+`extractInjectableMaterial` as "(BR-6 priority order, character-safe cut, `bounded` decided at the
+cut)". At a zero bound TSPEC §D.5 says the opposite in terms: "`bounded` is `false` — … `bounded`
+records that a cut occurred, and at a zero bound nothing is taken, so nothing is cut. Reading the
+unamended cut-and-flag rule … would give `{bytes: 0, bounded: true}` on a *selected* document — the
+shape FSPEC v0.13 explicitly carves out." The row cites §D.5 wholesale, and this PLAN's convention
+is that the TSPEC wins where a row and the TSPEC disagree — that is the defence, and it is why this
+is Medium rather than High. But the row's parenthetical is now a **positively misleading** gloss on
+the one case the round exists to cover, and `selectLearnings`'s gloss says nothing about extracting
+before the count bound. One clause in each closes it.
+
+**Why Medium and not High.** The v7 High was scored on user impact: an operator configures
+`maxBytesPerDocument: 0`, gets a behaviour FSPEC guarantees, and no test proves it. That is gone —
+LI-12's third case, with conjunct (iii) fixed per F-02, proves it, and it cannot ship silently
+broken. What remains is a routing and rework cost inside the engineering lane: an implementer misled
+at batch 8 reds at batch 13 and reopens a closed seam. That is a plan-hygiene defect, recorded and
+fixable in two clauses, not a product-fidelity failure.
+
 ## Verification
 
 ## Positive Observations
