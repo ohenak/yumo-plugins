@@ -69,3 +69,49 @@ explicitly read on **post-implementation** HEAD ("the shipped renderer", "shippe
 `extractInjectableMaterial`'s `maxBytes <= 0` early return"). The claims are true; the pin that
 governs them is now over-broad. Recorded as Medium — it misdescribes provenance, it does not make
 a design claim false.
+
+## Decision
+
+**Needs revision**, on one High finding introduced by this delta: the framing measurement in
+`DEC-LI-08` (and repeated in `D-O-4`) is not reproducible on the shipped renderer, and the two
+numbers cannot both come from the same fixture.
+
+**How I measured.** `renderLearningsBlock({selected})` at HEAD
+(`pdlc/workflows/orchestrate-dev.js`) with `material: ""` for every selected document, so the
+rendered length *is* the framing cost. Framing is not a constant: it is a fixed block term plus a
+per-document term that scales with the document's path length, its extracted feature name, its
+`orderKey`, and the `ABRIDGED` annotation when present — which is exactly what TSPEC §D.5 already
+says ("a framing constant **plus one opener/closer pair per selected document**",
+TSPEC:989). Measured:
+
+| Fixture | 1 document | 5 documents |
+|---|---|---|
+| `docs/{f}/LEARNINGS-{f}.md`, `f = "pdlc-learnings-injection"` | **694** | **1,562** |
+| `docs/{f}/LEARNINGS-{f}.md`, `f = "alpha"` | 599 | 1,087 |
+| `docs/{f}/LEARNINGS-{f}.md`, `f = "f1"` | 584 | **1,012** |
+| The real corpus at HEAD (`git ls-files 'docs/**/LEARNINGS-*.md'`, first five) | 684 | **1,607** |
+| Floor (1-char paths, empty `orderKey`) | 528 | 732 |
+
+So both numbers are individually reachable — 694 from a 24-character feature name at one
+document, 1,012 from a **two**-character feature name at five — but no single fixture yields the
+pair. Under the fixture that produces 694, five documents cost **1,562**; under the fixture that
+produces 1,012, one document costs **584**. On the corpus this feature will actually inject in
+this repository, five documents cost **1,607**, so the headroom sentence should read ~21,607, not
+"roughly **21,012**". The document states the pair as one measurement of one system at HEAD, and
+calls the resulting gap "a known constant"; on the shipped renderer it is neither one measurement
+nor a constant.
+
+**Why this is inside the freeze.** It is not a preference, a restructuring, or a decision I would
+have taken differently. It is (i) a defect this delta introduced — the numbers did not exist in
+v0.3 — and (ii) a claim about the repository at HEAD that re-measurement falsifies, load-bearing
+because `D-O-4`'s obligation is *the* closing condition for the acknowledged C-8 gap and the
+21,012 figure is that gap's stated size.
+
+**What must change (smallest edit that resolves it).** Keep the decision, the accounting basis,
+and both obligations exactly as they are. Replace the two bare numbers with the shape the cost
+actually has, stated over a named fixture — e.g. "framing is a **block constant of 528 bytes**
+plus a per-document term of `51 + 2·len(path) + len(feature) + len(orderKey)` bytes; on this
+repository's corpus at HEAD that is 684 bytes at one document and 1,607 at five, so a
+fully-conforming block at REQ §4.1's defaults occupies up to roughly 21,600 bytes against a
+`maxTotalBytes` of 20,000" — and make `D-O-4`'s parenthetical cite the same fixture. Any
+arithmetic that is internally consistent and reproducible from a named fixture clears this.
