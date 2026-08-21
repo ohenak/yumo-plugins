@@ -8,9 +8,9 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Field | Value |
 |---|---|
-| Upstream | `pdlc-advisory-tier` REQ (the five-seam tier this extends) → **REQ** |
+| Upstream | `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` (the five-seam tier this extends) → **REQ** |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory) |
-| Cross-Reviews | harvested into `LEARNINGS-pdlc-advisory-wave-gate.md` |
+| Cross-Reviews | rounds through harvest are in `LEARNINGS-pdlc-advisory-wave-gate.md`; the `CROSS-REVIEW-*` files on the branch are post-harvest erratum rounds, in no LEARNINGS table |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
