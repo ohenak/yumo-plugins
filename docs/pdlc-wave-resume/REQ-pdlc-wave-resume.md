@@ -266,7 +266,9 @@ mechanism, five announced and one deliberately silent:
 The set is closed: adding a seventh cause, or deleting one, is a deliberate change to this AC.
 IG-4 and IG-5 are listed separately because they are independent guards with different failure
 modes (TE G-02); fusing them would let the ancestry guard be deleted without the enumeration
-changing. PROPERTIES owes a **set-equality** check over IG-1..6 rather than a containment check,
+changing. The IG labels name **causes, not precedence**: this table's row order carries no claim
+about the order in which a run tests for them, which is FSPEC's to state (§3.2 there evaluates
+ancestry before over-count). PROPERTIES owes a **set-equality** check over IG-1..6 rather than a containment check,
 so a deleted cause fails a test instead of passing one. *Source: US-01, US-02.*
 
 ### REQ-WVR-03 — verification independence (P0, Phase 1)
