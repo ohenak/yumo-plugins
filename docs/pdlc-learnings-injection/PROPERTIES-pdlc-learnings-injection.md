@@ -752,7 +752,16 @@ than algebraic laws. Two exceptions are worth parameterising, and both are cheap
 - **PROP-BOUND-03 character-safety (TSPEC T-O-6)** — generate documents whose first priority section straddles the
   bound with multi-byte codepoints and assert `Buffer.byteLength(material) <= maxBytes` **and** that
   `material` round-trips through UTF-8 decode without a replacement character. Boundary-adjacent draws
-  are pinned by construction relative to the bound, not by an absolute offset.
+  are pinned by construction relative to the bound, not by an absolute offset. **The generator's
+  domain is `maxBytes >= 1`, stated explicitly rather than left to the draw.** This mirrors
+  PROP-BOUND-03's own precondition: at `maxBytes = 0` FSPEC BR-6 routes the document out of
+  `extractInjectableMaterial`'s cut path entirely — dropped with `RSN-NO-MATERIAL`, no slot consumed
+  (E-36) — so a generator sampling zero would red a conforming implementation on a `bounded: true`
+  clause the spec never asks it to satisfy. The boundary is **not** dropped from the suite: it is
+  routed to PROP-CONFIG-09's example arm at the workflow seam, which is where the zero bound's
+  observable (the reason id, the unconsumed slot) actually lives. Excluding it from the generator and
+  asserting it by example is the split §O.5 prescribes — an absence-shaped conjunct belongs at the
+  pipeline seam, not at an injectable unit that structurally cannot falsify it.
 
 Mutation coverage is carried by O.8's ledger rather than by a mutation-testing tool: the region is
 ~300 lines inside a 15,311-line file, and `--per-file --branches 85` is enforced against the whole
