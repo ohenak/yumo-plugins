@@ -213,18 +213,6 @@ DEFERRED: `selectLearnings`'s `RSN-NO-MATERIAL` drop carries a second branch con
 (`&& hasAnySectionHeadingLine(entry.text)`) that TSPEC §D.5 forbids — an implementation defect against
 landed LI-16, still present at HEAD, first reported in CROSS-REVIEW-test-engineer-PLAN-v10.md.
 
-## Delta-Confirmation Findings
-
-| ID | Severity | Provenance | Locality | Finding | Section anchor |
-|----|----------|-----------|----------|---------|----------------|
-| F-01 | Low | delta | local | The lead-in above the P-A-7 table still says the rows are named "in the **two** cases that can arise", but the delta made it three (A, B, C). Stale numeral only — the table is the contract and is complete. Fix: "two" → "three" | §The three gate wordings → P-A-7 lead-in |
-| F-02 | Low | delta | local | Re-scoping case B's upper bound from "batch 9 or later" to "batch 9 through batch 12" leaves **batch 13** claimed by no case header (B ends at 12, C reads "after batch 13"); batches 7–8 are likewise unclaimed by A's "before batch 7" header though A's body decides them. Both seams are vacuous at HEAD (those batches have landed) and C's second header clause "any commit landing once LI-21 has landed" closes 13 in practice. Fix: read C's domain as "batch 13 or later" | §The three gate wordings → P-A-7 case table, cases A/B/C headers |
-| F-03 | Low | delta | nonlocal | §Open questions' P-A-6 row still offers "or else its red rows are amended into the ledger by name first (P-A-7)" as the PROPERTIES suite's fallback, a branch case C forecloses — after batch 13 there is no ledger to amend into and the obligation is green-at-landing. P-A-6 cites P-A-7 by name so a reader reaches the right rule; the repair is one clause: "or else its rows are handled under P-A-7's governing case" | §Open questions → P-A-6 |
-
-FINDING: Low | delta | local | §The three gate wordings → P-A-7 lead-in | the lead-in still says "in the two cases that can arise" above a three-row table (A, B, C) — stale numeral, fix is "two" → "three"
-FINDING: Low | delta | local | §The three gate wordings → P-A-7 case table headers | re-scoping case B to "batch 9 through batch 12" leaves batch 13 claimed by no case header (C reads "after batch 13"); vacuous at HEAD since batch 13 has landed and C's "once LI-21 has landed" clause closes it — fix is to read C's domain as "batch 13 or later"
-FINDING: Low | delta | nonlocal | §Open questions → P-A-6 | P-A-6 still offers "its red rows are amended into the ledger by name first (P-A-7)" as the PROPERTIES suite's fallback, a branch case C forecloses (no ledger remains after batch 13; the obligation is green-at-landing)
-
 ## Questions
 
 None. PM Q-02 — is the heading-form amendment now expected to land green — is answered by case C, and
@@ -255,4 +243,19 @@ I verified the answer against the shipped `canonicalSectionName` / `SECTION_HEAD
 previously approved. Three Low findings, all wording-level consequences of splitting a two-case table
 into three, none of which changes what an implementer does at HEAD.
 
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The lead-in above the P-A-7 table still says the rows are named "in the **two** cases that can arise", but the delta made it three (A, B, C). Stale numeral only — the table is the contract and is complete. Fix: "two" → "three" | §The three gate wordings → P-A-7 lead-in |
+| F-02 | Low | delta | local | Re-scoping case B's upper bound from "batch 9 or later" to "batch 9 through batch 12" leaves **batch 13** claimed by no case header (B ends at 12, C reads "after batch 13"); batches 7–8 are likewise unclaimed by A's "before batch 7" header though A's body decides them. Both seams are vacuous at HEAD (those batches have landed) and C's second header clause "any commit landing once LI-21 has landed" closes 13 in practice. Fix: read C's domain as "batch 13 or later" | §The three gate wordings → P-A-7 case table, cases A/B/C headers |
+| F-03 | Low | delta | nonlocal | §Open questions' P-A-6 row still offers "or else its red rows are amended into the ledger by name first (P-A-7)" as the PROPERTIES suite's fallback, a branch case C forecloses — after batch 13 there is no ledger to amend into and the obligation is green-at-landing. P-A-6 cites P-A-7 by name so a reader reaches the right rule; the repair is one clause: "or else its rows are handled under P-A-7's governing case" | §Open questions → P-A-6 |
+
+FINDING: Low | delta | local | §The three gate wordings → P-A-7 lead-in | the lead-in still says "in the two cases that can arise" above a three-row table (A, B, C) — stale numeral, fix is "two" → "three"
+FINDING: Low | delta | local | §The three gate wordings → P-A-7 case table headers | re-scoping case B to "batch 9 through batch 12" leaves batch 13 claimed by no case header (C reads "after batch 13"); vacuous at HEAD since batch 13 has landed and C's "once LI-21 has landed" clause closes it — fix is to read C's domain as "batch 13 or later"
+FINDING: Low | delta | nonlocal | §Open questions → P-A-6 | P-A-6 still offers "its red rows are amended into the ledger by name first (P-A-7)" as the PROPERTIES suite's fallback, a branch case C forecloses (no ledger remains after batch 13; the obligation is green-at-landing)
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
