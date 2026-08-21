@@ -143,9 +143,39 @@ DEFERRED: v11's two DEFERRED lines stand — (a) AC-3.1's set-equality test is v
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The REQ, FSPEC v0.14 and the implementation now agree on the mixed case. Does TSPEC — modified in the same working tree this round — carry the matching statement, or does §I.3 still describe the retired split? This is not a REQ defect and I am not reviewing TSPEC here; it is the one place the two-readings hazard F11 named could survive the remedy. |
+| Q-02 | F11 is tagged `Cross-Feature` in CODE_REVIEW v1. "Report a cut under the bound that actually removed it, not the bound that happened to also fail" is a reusable oracle-design rule. Is it queued for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md` at harvest, or does it retire with this feature? |
+
 ## Risks
 
+- **The remedy is three-part and only two parts are verified here.** REQ AC-2.4 and FSPEC BR-6
+  now state the rule and the code implements it; if TSPEC's §I.3 still describes the retired
+  split, a future test author reads the stale document and writes a red test against correct
+  code — the same failure mode as v11's routed item, one document downstream.
+- **The removed comment is the deletion F11's remedy asked for, and it is only partly done.**
+  `orchestrate-dev.js:2497-2516` still carries a long narrative of the retired guard. It now
+  reads as history rather than open routing ("Code and specification now agree; there is nothing
+  left routed", `:2515`), so it is not a contradiction — but a comment describing a rule that no
+  longer exists is exactly the artifact that gets read as normative two features from now.
+- **`RSN-UNLISTABLE` remains the one corpus-level outcome with no natural fixture** (carried from
+  v11). Unchanged by this delta, still unproven by any suite that does not inject a failing
+  `git ls-files` reply.
+- **Twelve rounds on one REQ.** This one carried a real, code-grounded item and resolved it in
+  four lines. That is the shape a further round should have, or it should be declined at dispatch.
+
 ## Obligations
+
+- Both Low findings (F-01, F-02) remain open and are the author's to ride on any future erratum
+  touching this document, or to absorb at TSPEC time.
+- The REQ delta is uncommitted at review time. It must land on `feat-pdlc-learnings-injection`
+  together with the FSPEC v0.14 and implementation halves of the F11 remedy — the three are only
+  coherent as a set, and a partial commit would leave a document citing a version that is not
+  yet on the branch.
+- CODE_REVIEW v1 F11's remedy includes "Delete the routing comment once the text matches the
+  code". The text now matches; the comment's deletion (or demotion to a one-line historical
+  note) is still outstanding at `orchestrate-dev.js:2497-2516`.
 
 ## Positive Observations
 
