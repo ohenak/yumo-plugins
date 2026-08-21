@@ -172,9 +172,47 @@ not own and put this document back in the position round v1.4 spent its budget e
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | REQ v1.16's AC-6.3 conjunct is unlanded in **every** downstream artifact, not only here: FSPEC BR-14 and AT-06-4 still stop at "diagnosis and root-cause class", and TSPEC §4.5's halt fields carry no operator-warning field. Should PROPERTIES land its property now, traced to `AC-6.3, DEC-A6-03` alone with the FSPEC/TSPEC gap routed as a §G-3 erratum item (the shape round v1.4 used for PROP-ENV-13's run-level conjuncts), or should the cascade be resolved FSPEC-first so the property can trace an AT? Sizing is the same either way; the ordering is the orchestrator's call. |
+| Q-02 | DECISIONS moved from my v2 approval anchor (`84deee10…`) to the hash this dispatch names (`ef59893d…`), outside the delta this confirmation was scoped to. I re-read DEC-A6-03 at HEAD and found nothing PROP-REST-07 or PROP-REST-08 leans on changed, so I raise no finding — but was that move reviewed on its own cascade, or does it still owe one? |
+
 ## Positive Observations
 
+- **Everything except the new conjunct still holds, and holds for checkable reasons.** I re-read every
+  REQ clause this document transcribes — AC-5.1's domain and observation point, AC-5.2's unchanged
+  halt, AC-6.1's record obligation, AC-6.2's escalation entry, AC-6.4's honest limit — against v1.16
+  byte for byte. Not one moved. A document that cites upstream this precisely is one an erratum can be
+  measured against in an afternoon rather than re-derived.
+- **The one gap is a gap of addition, not of corruption.** No property became false, no oracle became
+  vacuous, no fixture became wrong. That is the good case for a cascade: the delta added an
+  obligation, and the document owes one row rather than a re-derivation.
+- **PROP-REST-08's negative space is what makes the fix cheap.** Because the capture-failure arm was
+  already property-covered and already fixtured, the conditional half of the new criterion — the case
+  where no warning is owed — needs no new infrastructure at all. The v1.4 round's decision to give
+  E-34 a real property home, rather than a matrix assertion, is paying off in a round nobody
+  anticipated.
+- **§G-3 is the right-shaped instrument, and it already exists.** This document has a standing,
+  exercised convention for "the conjunct is real, the downstream home is not decided yet: keep the
+  assertion, route the choice". That is precisely what Q-01 needs, so the follow-up round has a
+  pattern to follow rather than a precedent to set.
+
 ## Recommendation
+
+**Needs revision** — one High finding.
+
+Exactly what must change, and nothing beyond it:
+
+1. **Add one property** covering REQ v1.16 AC-6.3's second sentence: where the halt report points the
+   operator at a captured pre-A6 tree state, the same halt-report surface also warns that re-running
+   the feature overwrites that capture. Conditional trigger, paired with the E-34 negative arm.
+   Traces `AC-6.3, DEC-A6-03` (see Q-01 on whether an FSPEC AT should exist first). Level and PLAN
+   home: the halt-report surface is PROP-REC-05's, so `A6-15` is the natural home — se-author's call.
+2. **Update C-1's AC-6.3 row** to name the new property alongside `PROP-REC-05, PROP-REST-08`.
+3. **Bump §Scope's REQ citation** from v1.15 to v1.16 and record the cascade in the changelog.
+
+Nothing else in the document is in scope for this round. I re-checked the rest against REQ at HEAD
+and it is unchanged; do not re-open settled properties, oracles or fixtures.
 
 ## Delta-Confirmation Findings
 
