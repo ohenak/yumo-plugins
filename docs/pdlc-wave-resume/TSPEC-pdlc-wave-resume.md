@@ -680,7 +680,7 @@ returns exactly what it returns today, which is what keeps RT-2's regression net
 
 | Level | Subject | File |
 |---|---|---|
-| Unit — pure | `classifyWaveLedger` over every guard of §3.2's table; `parseWaveLedger`'s three arms and their exact sentences; `formatWaveLedger`'s two shapes; `computePlanHash`'s sensitivities | `pdlc/workflows/__tests__/waveResume.test.js` (new) |
+| Unit — pure | `classifyWaveLedger` over every guard of §3.2's table; `parseWaveLedger`'s three arms and their exact sentences (the home of IG-6's closure, §5.4 AT-02); `formatWaveLedger`'s two shapes. **`computePlanHash` already has a unit block** — `describe("computePlanHash — the ledger's plan fingerprint")` in `waveExecution.test.js`, with a determinism arm and three sensitivity arms — so it is **extended in place, never duplicated here**; the only arm this feature owes it is hashing the same PLAN *text* twice through `parsePlanTasks`/`computeWaves` (the shipped arms hash the same wave array twice), which is the form A-2 actually assumes. | `pdlc/workflows/__tests__/waveResume.test.js` (new) |
 | Unit — catalogues | transcribed set-equality over `RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS` keys, and `IMPLEMENTATION_DEFAULTS` keys | same file |
 | Integration — through `main()` | every FSPEC AT that names an announcement, a report row, a dispatch count, or a written record | `pdlc/workflows/__tests__/waveExecution.test.js` (existing ledger block, extended) |
 | Unit — generative | the four laws of §5.7 over `parseWaveLedger`, `formatWaveLedger`, `computePlanHash` and `classifyWaveLedger` | `pdlc/workflows/__tests__/waveResumeProperties.test.js` (new) |
@@ -808,12 +808,14 @@ Each is a real alternative that was weighed and rejected; they are the content o
 | DEC-WVR-04 | **Keep the `{}` read tolerance; write nothing.** (FSPEC OB-F3 discharged.) | (a) *Wire a writer* that clears the record after Phase I: rejected — REQ-WVR-05 decided **retention with invalidation**, and a clearing write is precisely the self-clearing position that decision rejected. (b) *Drop the tolerance* and let `{}` fall to IG-1: rejected — it converts a silent fresh-run case into an announced anomaly, contradicting FSPEC BR-02, and an operator who empties the file by hand would get a scary notice for using the sanctioned hatch's near-miss. |
 | DEC-WVR-05 | **Ratify the plan-absolute high-water integer** as the record's only progress field. | *A set of completed waves*, or *per-task state*. Rejected in §4.4: a set can only be a prefix given serial topological execution, and modelling it invites a reader that honours a non-prefix set and skips a wave whose predecessor never ran. |
 | DEC-WVR-06 | **Reason codes, not rendered sentences, are the closed catalogue.** | *Set equality over rendered strings*: rejected — four of the seven interpolate run-specific values, so the assertion would be over fixture data rather than over the catalogue. |
+| DEC-WVR-07 | **AT-16 asserts the delegation's shape, not a delegated resume** — `_runPipeline` left at its default, the payload's key set pinned at `{reqPath}`, and the behavioural half discharged on the direct path (§5.4 AT-16). | (a) *Inject `_runPipeline`* and compare a real run against the stub: rejected — the queue's delegation is then not under test at all, and the parity passes under every mutation this feature could make. (b) *Wrap `realMain` with test seams and drive the queue for real*: rejected — the working directory both paths "agree" on is then supplied by the test, so the discriminating arm is true by construction of the double. (c) *Add seam forwarding to `orchestrate-queue`'s delegation* so a delegated pipeline can be driven under test: rejected — it adds production surface whose only consumer is a test, on a boundary REQ C-3 says gains nothing, and it would put a queue-side resume configuration where FSPEC BR-16 says none exists. The residual gap is named in AT-16 rather than papered over. |
+| DEC-WVR-08 | **The ancestry probe stays lazy**, resolved only for decisions that turn on it, via an optimistic first classification and a re-classification on a `false` verdict (§2.2). | *Resolve `headOk` eagerly for every well-formed record* — one line shorter, one classifier call fewer. Rejected: it issues a `git merge-base` subprocess on the feature-mismatch and plan-changed paths, which shipped code rejects without asking git. That is new IO on a path that had none, which §3.4 and REQ C-3 both claim does not happen, and the shipped ancestry test asserts `toContainEqual` — containment — so the extra call would have been unfalsifiable. Cost of the rejected-alternative avoidance: one extra *pure* call on the ancestry-false path only. |
 
 ### 6.2 Upstream obligations
 
 | # | Obligation | Disposition |
 |---|---|---|
-| OB-F1 | REQ BL-04 unmet: this tree is 1,637 commits behind and carries neither the mechanism nor the wave-gate baseline. | **Not dischargeable by this document.** Owned by the orchestrator/operator as branch management. Every claim here is verified against `origin/main` by name so it re-verifies after the rebase. AT-14 is RED until it lands. Re-raised as an erratum below, because the REQ's §10 and the FSPEC's OB-F1 characterise it inconsistently. |
+| OB-F1 | REQ BL-04 unmet: this tree is 1,637 commits behind and carries neither the mechanism nor the wave-gate baseline. | **Not dischargeable by this document.** Owned by the orchestrator/operator as branch management. Every claim here is verified against `origin/main` by name so it re-verifies after the rebase. **AT-14 is red until it lands, and in wave mode a red gate halts the wave and every wave after it — so the wave carrying AT-14 must not be dispatched before the rebase (§5.4 AT-14, TE F-10). This is a PLAN sequencing precondition, not a caveat.** Re-raised as an erratum below, because the REQ's §10 and the FSPEC's OB-F1 characterise it inconsistently. |
 | OB-F2 | Ratify or revise the shipped contract, never duplicate. | **Discharged** — §1.2, §2, §3, DEC-WVR-01. |
 | OB-F3 | Decide the fate of the `{}` cleared shape. | **Discharged** — DEC-WVR-04: keep the tolerance, add no writer. |
 | OB-F4 / REQ OB-2 | Promote REQ OF-1 and OF-2 into `docs/_constraints/pdlc-wave-gate-baseline.md` as `M-WVR-1..2`. | **Deferred to implementation, blocked on OB-F1** — the file is not in this tree. Recipe, re-derived from the file at `origin/main`: it is at `Version | 1.2 · 2026-08-20` with sections through `## 4` and ids through `M-WG-14`, so promotion appends a **new `## 5`**, ids `M-WVR-1` (the replay cost: 7 no-op dispatches over waves 1–3 of a 16-wave plan) and `M-WVR-2` (a completed task may legitimately produce no commit; stray agent commits observed), each with a Measured-by command, and bumps `Version` to **1.3** — to the next version above whatever is found at promotion time, not to a fixed number. The new section must state the version it was checked against and record that `M-WG-6` was **reviewed and left**, not missed. A PLAN task owns this file; it is not a code change. |
@@ -849,15 +851,29 @@ Raised, not fixed here; each is emitted as an `ERRATUM:` line in this dispatch's
 | RT-4 | **AT-14 cannot pass in this tree**, so a wave could be tempted to weaken it to "no churn observed". | Named here and in §5.4 as a branch-state consequence: the assertion is on the ignore rule itself, and the correct response to a red is the rebase, not a weaker oracle. |
 | RT-5 | **Generated artifacts go stale.** Editing `orchestrate-dev.js` leaves `pdlc/workflows/dist/` stale, which the suite itself reds. | `implementation.postWavePathspecs` must name the dist path so each wave's build outputs are committed; the post-wave command runs before the gate (`M-WG-2`). This is a PLAN obligation, recorded here. |
 | RT-6 | **Advisory budget interaction.** Auto-resume makes runs shorter and more numerous, so `advisory.waveBudgetPerRun` effectively refreshes per re-invocation. | Recorded, not coordinated (FSPEC §7, REQ OB-3). Bounded in practice because clearing a halt still requires a human. Nothing in this TSPEC changes it. |
+| RT-7 | **The 85% per-file branch floor is a merge gate the wave gate does not run.** New branches in `orchestrate-dev.js` can be green through Phase I and red at Phase PUB, after Phase DOD. | §5.8: the last implementation wave's `postWaveCommand` runs `npm run test:coverage` from `pdlc/workflows`, making the floor a wave-level gate. Backstop if that proves too slow for a per-wave command: the per-arm unit coverage of §5.3 and the generative suite of §5.7 are designed to cover the added branches directly, and the risk degrades to a PUB-time finding rather than a silent one. |
 
 ### 6.5 Assumptions
 
 - **A-1.** The pipeline is invoked serially against one working copy (FSPEC A-1). Nothing here
   guards concurrent invocations.
 - **A-2.** `computeWaves` is deterministic for a given PLAN, so `computePlanHash` is a stable
-  "same plan?" answer across invocations. This is a property of the shipped parser, asserted by
-  the existing `computePlanHash` unit block; if it ever became order-unstable, IG-3 would fire on
-  every re-invocation and the feature would degrade to a full run — fail-open, as designed.
+  "same plan?" answer across invocations. **The unit block A-2 rests on does exist**, and is cited
+  precisely here because PM F-06 reported it absent (the finding's premise — "scanning every file
+  under `pdlc/workflows/__tests__/` for `computePlanHash` … returns zero matches" — does not hold):
+  `pdlc/workflows/__tests__/waveExecution.test.js` on `origin/main` carries
+  `describe("computePlanHash — the ledger's plan fingerprint")` at `:2717`, whose four cases are
+  `it("is deterministic, and is 8 hex digits")` (`expect(computePlanHash(WAVES)).toBe(
+  computePlanHash(WAVES))`, `:2724`), `it("changes when the owned files change")`, `it("changes when
+  the wave order changes")` and `it("changes when two waves are merged into one")`. The determinism
+  arm A-2 needs is the first of those and is shipped. **D-5 is unaffected and remains accurate as
+  written:** it scopes its claim to the *resume decision* — `parseWaveLedger`'s reason strings and
+  the set-equality assertions have no unit-level home, and neither `parseWaveLedger` nor
+  `formatWaveLedger` is unit-tested at all. Those are what §5.3 adds; `computePlanHash`'s block is
+  **extended**, not duplicated (§5.3), and §5.7's P-4 generalises its three sensitivity examples to
+  a law over generated layouts. If the hash ever became order-unstable, IG-3 would fire on every
+  re-invocation and the feature would degrade to a full run — fail-open, as designed, but silently
+  costing G-1's zero-action resume, which is why the assumption stays asserted rather than retired.
 - **A-3.** An operator who sets `implementation.startWave` intends it for the invocation in which
   it is set (FSPEC A-2); staleness there is mitigated by announcement, not by expiry.
 
