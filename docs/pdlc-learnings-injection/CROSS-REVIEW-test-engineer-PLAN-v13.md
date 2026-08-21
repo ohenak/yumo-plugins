@@ -245,3 +245,6 @@ by id. Neither changes what an implementer would do at HEAD; both are worth a si
 this document is next opened.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
