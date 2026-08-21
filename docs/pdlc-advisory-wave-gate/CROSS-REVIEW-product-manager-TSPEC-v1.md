@@ -264,6 +264,64 @@ config key. I found no criterion that the delta cites but leaves without a carri
 
 ## Open Questions
 
+§6 is where four rows close and where my one finding sits.
+
+**OQ-7 — closed, answered *no*, and the answer is upstream's.** The row that carried the open
+boundary now reads "**Closed upstream, answered *no*.** The erratum this row raised has landed",
+citing BR-9/AT-05-1 at v1.6 and AC-5.1, and recording that "§2.5's mechanism already implemented
+exactly this, so nothing in the design moved". Verified against HEAD — both quoted clauses are
+verbatim. The row also closes the loop honestly by listing where the transcription landed (§2.5, §3.3,
+§5.2 cases 4 and 5, §5.5, §5.6) and asserting "no upstream-pending flag remains in this document". I
+checked that last claim mechanically: the only surviving occurrences of "upstream-pending" in the file
+are (a) inside historical changelog entries for v1.7/v1.8, which are describing past state and must
+not be rewritten, and (b) inside the very sentences that announce the flag's retirement. There is no
+live pending flag left. The claim is true.
+
+**OQ-1 — closed, and the stale clause withdrawn.** Covered in **Data Model**; E-33 at v1.6 documents
+what v1.4 did not, so "the behaviour is coherent but undocumented upstream" is withdrawn rather than
+left to mislead. Correct.
+
+**OQ-9 — "Moot, and it never bound."** The row asked whether PLAN authoring should wait for the BR-9
+erratum. It is kept rather than deleted, on the stated ground that "the pending markers it authorised
+existed in v1.2 through v1.10 and a reader of those revisions needs the trail". I endorse the
+retention. Deleting a question because its answer stopped mattering destroys the record of why
+intermediate revisions looked the way they did; a resolved row costs one table line.
+
+**OQ-11 — "Closed, and the independence was never tested."** The row asked whether §3.3's refusal
+stands on its own merits independent of OQ-7's resolution. The new disposition answers yes on the
+merits *and* concedes that the independence claim was never exercised, because OQ-7 resolved in the
+direction that leaves the row untouched. That concession is precise and I would rather have it than a
+cleaner-sounding claim of vindication.
+
+**The closing paragraph.** "None of these blocks PLAN authoring, and as of v1.11 none is waiting on
+upstream either" — verified: no row in §6 now carries an upstream dependency, and the two DECISIONS
+candidates (OQ-8's commit shape, §2.5's dangling snapshot commit over `git stash`) are unchanged by
+this delta.
+
+**The routed item the document declines to edit for — and why declining is right.** Phase F routed an
+erratum against this document's lineage header: `Downstream` naming a downstream *feature*
+(`pdlc-engineering-loop`) rather than the artifacts fed. The changelog absorbs it without editing,
+on the ground that the finding does not hold against this document — this TSPEC's `Downstream` row
+reads `DECISIONS, PLAN, PROPERTIES, IMPL`, artifacts all, and the REQ row the finding describes
+already reads `FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory)` at v1.15. I verified both: the
+TSPEC header row and REQ line 12 read exactly as claimed. Absorbing a misrouted finding with a stated
+reason, rather than performing a cosmetic edit to look responsive, is DEC-ERR-03's intended behaviour
+and the record it leaves prevents the finding being re-raised next round.
+
+**F-01 (Low) — a version pin that outran its clause.** OQ-7's disposition attributes the full
+observation point — "immediately after restoration completes, before AC-6.1's record append, **AC-6.2's
+escalation-log append** and AC-5.2's queue-row write" — to "REQ AC-5.1 **at v1.14**". At v1.14, AC-5.1's
+excluded-carrier list did **not** include AC-6.2; that carrier was added at **v1.15** (v1.15 changelog:
+"AC-5.1's excluded-carrier list adds AC-6.2's escalation-log append (TE F-01, High)"; commit
+`f3fbbc7b`). The *substance* the row states is HEAD's and is correct — this is a citation-precision
+defect, not a fidelity one, and the same "at v1.14" pin at §2.5 and §5.2 case 4 is accurate there
+because it is attached only to the ignored-path clause, which genuinely is v1.14's. Fix: in OQ-7,
+either move the pin to v1.15 or attach it to the ignored-path quotation alone, as §2.5 already does.
+Low, non-gating, and safe to fold into the next touch of this document.
+
+**Questions for the author.** None. This round raises no question I need answered before the document
+proceeds.
+
 ## Positive Observations
 
 ## Recommendation
