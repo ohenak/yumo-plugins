@@ -55,6 +55,47 @@ upstream pins.
 
 ## Batches
 
+**No task row changed, so the batch DAG is out of scope by measurement rather than by assertion.**
+The diff touches P-A-7's three case rows, DoD 14, P-A-6 and two changelog rows — none of them a
+task row. All twenty-two `LI-*` rows keep their `Batch` value, their `Deps` cell, their
+file-ownership cell and their `Status` cell byte-for-byte; the `[Fake first]` labelling on LI-02,
+LI-06 and LI-23, the red-before-green pairing, and the single-writer file manifest are unchanged
+from the v0.9 bytes I confirmed at round 12. I re-ran the batch-derivation only far enough to
+confirm the diff could not have perturbed it, and it could not: not one `|` cell inside the task
+table is on either side of the diff.
+
+**The expected-red ledger, my lens's primary gate input, is byte-identical.** Rows for batches 7
+through 13 are unchanged: batch 7 → seven whole suites red; batch 8 → `learningsSelect` narrowed to
+`LI-AT-15` only; batch 9 → `learningsBlock` dropped entire; batch 11 → `learningsRecord` narrowed
+to `LI-AT-22`'s locus-2 assertion; batch 12 → `learningsDispatchSet` narrowed to `LI-AT-23`,
+`LI-AT-24`, `LI-AT-31`; batch 13 → **nothing**. The three load-bearing properties stated beneath it
+(stated in test names not suite names, shrinking by exactly what the batch's task claims to green,
+empty at batch 13) are likewise untouched.
+
+**Case A's new *When* cell, checked against that ledger rather than against its own prose.** The
+cell now reads *"before batch 9 (which includes batches 7 and 8)"* where v0.9 read *"before batch
+7"*. The claim it rests on — that batches 7 and 8 are "exactly the ones whose ledger already lists
+`learningsBlock` as a whole-suite red" — is true at the table: the batch-7 row lists
+`learningsBlock` among seven whole suites, the batch-8 row lists it among six, and the batch-9 row
+drops it. So a heading-form amendment landing during batch 7 or 8 is already covered by an existing
+whole-suite red row and owes no new row, which is exactly what case A's Effect cell concludes. The
+widened header does not change the outcome for any batch; it changes which clause **states** the
+outcome, moving batches 7–8 from a derivation buried in the Effect cell to the header itself. That
+is a strict improvement in a rule table a dispatcher reads by header.
+
+**No overlap was created at the seam.** Case A now ends at "before batch 9" and case B opens at
+batch 9; case B's title conjunct ("after LI-17 has greened the suite") is consistent with the
+ledger, since LI-17 is the batch-9 task that drops `learningsBlock` from the ledger entire. A and B
+are disjoint, B and C are disjoint at 12/13, and every batch from 1 to 14 is now claimed by exactly
+one case.
+
+**DoD 14 adds no task row and no test obligation.** I checked this specifically, because a DoD
+clause that names four pieces of shipped work is one edit away from becoming an implicit
+twenty-third task. It does not: the clause says in terms that the four remediations are "not owned
+by an `LI-*` task row", are "process repairs, not feature work", "carry their own tests, named
+above", and that "clauses 1–13 remain the injection region's bar". The file-ownership manifest is
+unchanged, so no new file enters the single-writer contract, and no batch acquires a new gate.
+
 ## Dependencies
 
 ## Verification
