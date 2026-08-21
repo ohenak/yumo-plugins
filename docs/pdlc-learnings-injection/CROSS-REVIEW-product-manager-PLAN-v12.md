@@ -249,4 +249,21 @@ in a round of their own.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The new 0.9 changelog row credits the lead-in fix to "(PM v10 erratum)". PM v10 raised no such item — its findings are the `renderSection` claim (F-01), case A's batches-4–6 window (F-02) and the changelog row inversion (F-03) — and no PM cross-review in this feature contains "two cases that can arise". The raiser was **TE v11 F-01**. The same row's other attribution, "(TE v10 F-01, PM v10 F-01)" for the `renderSection` correction, is correct. Fix: "(TE v11 F-01)" | §Changelog, 0.9 row |
+| F-02 | Low | inherited | local | Case B is bounded at batch 12 and case C opens "once LI-21 (`92b7ea0c`) has landed", so a commit landing in batch 13 *ahead of* LI-21's commit is governed by no case. Unreachable at HEAD — LI-21 has landed — so no commit that can now occur reads a wrong gate. Raised at PM v11 F-01 and TE v11 F-02; untouched by this edit. Fix: read case C's domain as "batch 13 or later" | §Verification → Amendment commits on landed suites (P-A-7), case B / case C *When* columns |
+| F-03 | Low | inherited | local | Case A's *When* is "before batch 7" and case B begins at batch 9, so a commit landing during batch 7 or 8 is in neither window's literal text — though case A's own derivation (the suite is already ledgered a whole-suite red after batches 7–8) covers it and yields "no row". Raised at PM v11 F-02. Fix: widen case A's cell to "before batch 9", or add the batches-7–8 clause to its derivation, which already names their red reason | §Verification → Amendment commits on landed suites (P-A-7), case A *When* column |
+| F-04 | Low | inherited | local | Case B's row opens a parenthetical aside with an em dash ("— a span that is well-formed only while a greening batch remains ahead, which is why case C exists,") and closes it with a comma, so the sentence's object ("the named row `learningsBlock` → …") arrives unseparated and the clause reads as a splice. The contract is correct; only the parse is hard, in a row read for the gate. Raised at PM v11 F-03. Fix: close the dash before "the named row" | §Verification → Amendment commits on landed suites (P-A-7), case B *Expected-red rows it adds* column |
+| F-05 | Low | inherited | nonlocal | §Changelog's 0.6 row still sits ahead of its 0.5 row, so the version table is non-monotone; the 0.7, 0.8 and 0.9 rows are all correctly appended in order. Raised at PM v10 F-03, unfixed across two errata. Fix: swap the two rows | §Changelog, 0.5 / 0.6 rows |
+
+FINDING: Low | delta | local | §Changelog 0.9 row | the lead-in fix is credited to "(PM v10 erratum)" but PM v10 raised no such item and no PM cross-review contains "two cases that can arise"; the raiser was TE v11 F-01 — the row's other attribution (TE v10 F-01, PM v10 F-01) for the renderSection correction is correct
+FINDING: Low | inherited | local | P-A-7 case B / case C When columns | a commit landing in batch 13 ahead of LI-21's commit is governed by neither case B (bounded at 12) nor case C (opens once LI-21 has landed); unreachable at HEAD, so non-gating — read case C's domain as "batch 13 or later"
+FINDING: Low | inherited | local | P-A-7 case A When column | batches 7 and 8 fall in neither case A's "before batch 7" nor case B's "batch 9 through 12", though case A's own derivation covers them and yields "no row"; widen the cell to "before batch 9" or add the clause to the derivation
+FINDING: Low | inherited | local | P-A-7 case B Expected-red rows column | the parenthetical aside opens with an em dash and closes with a comma, so the row's object clause reads as a splice; close the dash before "the named row" so the gate contract parses on first read
+FINDING: Low | inherited | nonlocal | §Changelog 0.5 / 0.6 rows | the 0.6 row still precedes the 0.5 row, leaving the version table non-monotone while every later row is correctly appended; swap the two rows
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 5}
