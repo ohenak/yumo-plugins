@@ -1215,6 +1215,18 @@ items this list still carried as open. They are struck rather than re-routed:
   trailing gloss and the section extent, and records F-O-1's second rule as discharged where the
   obligation sits. Absorbed into §F.3 and PROP-BOUND-05/08.
 
+**Also answered — by PLAN v0.6/v0.7, which moved after this round's reviews were dispatched:**
+
+- ~~PLAN's expected-red ledger does not name rows for the re-red of the landed `learningsBlock.test.js`
+  that PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments cause; P-A-7 requires the naming
+  to be an edit to the PLAN, committed before the batch it governs~~ — **answered.** §C.4 asserted this
+  routing and this list did not carry it, so it reached no author from here (PM v5 F-01); it is recorded
+  now in the form it actually resolved. PLAN at HEAD (v0.7) carries *Amendment commits on landed suites
+  (P-A-7)* with the two-case table — case A (before batch 7) adds no row because `learningsBlock` is
+  already a whole-suite red there, case B (batch 9 or later) adds the named row for every batch from the
+  landing batch through the greening one. Re-routing it would be DEC-ERR-01's anti-pattern of raising a
+  question the upstream has decided. Absorbed into §C.4.
+
 **Still open — one item, re-routed this round:**
 
 - TSPEC's suite assignment for AT-15, whose clauses 2–3 (corpus-level `RSN-EMPTY`, no discarded document
