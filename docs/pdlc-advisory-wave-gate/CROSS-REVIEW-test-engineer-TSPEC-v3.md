@@ -53,6 +53,25 @@ re-grounding plus one mechanism named where prose used to route.
 
 ## Interfaces
 
+Two seam-level surfaces changed and both are testable as written:
+
+- **`runWaveGateSeam`'s return type (§4.2, line 763)** gains `snapshotRef: string | null` inside
+  `haltFields`. The union is closed and the discriminator is total — non-`null` exactly when the
+  capture succeeded — so a test can assert the field without a "sometimes absent key" ambiguity.
+  The choice of `null` over `undefined` matches the existing `repairPaths: []`-not-`undefined`
+  convention on the same object, which keeps the halt-report shape uniform across every A6-touched
+  halt. Good.
+- **The un-skip `haltError` second argument (§4.5)** now carries `snapshotRef` in the resolved-wave
+  object and remains `undefined` when A6 did not fire. The disabled-tier byte-identity claim (§5.2,
+  T-10-3/T-10-4, PROP-DIS-04) is unaffected: the shipped gate is `a6.disposition ? {…} : undefined`
+  (`orchestrate-dev.js:15399`), not a test on `haltFields`, so a fifth member cannot leak a
+  `haltAdvisory` key onto a disabled-tier halt. I re-checked that at HEAD rather than trusting the
+  claim.
+
+The commit-writer interface in §3.6 is unchanged in its argument set; only its call multiplicity was
+restated. AT-04-3's oracle is over writer *identities*, so the restatement does not invalidate the
+AT it cites.
+
 ## Data Model
 
 ## Test Strategy
