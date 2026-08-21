@@ -73,9 +73,9 @@ const VOCAB = "docs/_constraints/pdlc-consolidation-vocabularies.md";
 // bundle reference (`:11`) and delegation-contract prose (`:8`–`:13`); these
 // four documents ground that claim, dual-approved in the same review rounds.
 const RETIREMENT_BASELINE = "docs/_constraints/pdlc-retirement-baseline.md";
-const DECISIONS_RETIREMENT = "docs/pdlc-plugin-retirement/DECISIONS-pdlc-plugin-retirement.md";
-const PLAN_RETIREMENT = "docs/pdlc-plugin-retirement/PLAN-pdlc-plugin-retirement.md";
-const TSPEC_RETIREMENT = "docs/pdlc-plugin-retirement/TSPEC-pdlc-plugin-retirement.md";
+const DECISIONS_RETIREMENT = "docs/completed/pdlc-plugin-retirement/DECISIONS-pdlc-plugin-retirement.md";
+const PLAN_RETIREMENT = "docs/completed/pdlc-plugin-retirement/PLAN-pdlc-plugin-retirement.md";
+const TSPEC_RETIREMENT = "docs/completed/pdlc-plugin-retirement/TSPEC-pdlc-plugin-retirement.md";
 
 // The citers known at the time of writing. Not the document set — a floor under
 // the derived one, so a `git grep` that silently returns nothing (no git, wrong
