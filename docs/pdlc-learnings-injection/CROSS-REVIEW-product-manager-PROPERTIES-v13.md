@@ -175,6 +175,45 @@ no decision of its own.
 
 ## Fixtures
 
+**§F.1–§F.3 are byte-untouched, so the fixture question is whether the delta's new fixture-side facts
+contradict them.** They do not, but the delta stops short of one consequence it uncovered.
+
+| Fixture-side claim | Measured at HEAD | Holds? |
+|---|---|---|
+| §C.4's fixture row: `fixtures/learnings-baseline/` holds `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt` **and a `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files** | `git ls-files` returns exactly those, and the arm is `0.txt`…`17.txt` — **18** | Yes |
+| §F.2: `MANIFEST.json` records per file the capture commit, case id, dispatch index, `docType` and a SHA-256, re-verified by PROP-META-04 | Section unchanged; the delta makes no digest claim that could contradict it | Yes |
+| §F.2: `.baseline-worktree` is **not** ignored, `git check-ignore -v .baseline-worktree` exits 1 | Exits **1** at HEAD — and it still does *after* LI-04, because `.gitignore:13`'s `/.baseline-worktree/` carries a trailing slash and the path is absent. The delta re-pins LI-04 without disturbing this | Yes |
+| §F.1 corpus fixtures declared against `helpers/learningsFixtures.js` | Helper unchanged this round; no fixture row moved | Yes |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | Still hand-computed; the third binding literal `60` (`learningsBlock.test.js:235`) is likewise beside the two-section arm, not derived from the code under test | Yes |
+
+**The `Added by` cell for the fixture row is now attributing two events to one commit.** The row reads
+`744311f7`, which is correct for `MANIFEST.json` and the two `PHASE-*` arms (*"LI-06 — pre-feature
+baseline capture committed"*). The `PIPELINE-NON-AUTHORING-PROMPTS/` arm the same cell enumerates
+arrived in **`2fc6fcd3`**, not `744311f7`. Since the table's stated convention is *"each row carries the
+commit that added the file"*, a reader auditing the arm against `744311f7` finds nothing there. Low,
+F-04.
+
+**The under-stated half of gap 5 — and this is the finding with product weight.** `2fc6fcd3` did more
+than add four files. `git show --stat` shows it also **rewrote `MANIFEST.json`** and added the entire
+18-file `PIPELINE-NON-AUTHORING-PROMPTS/` case-id arm, and rewrote `learningsBaselineGuard.test.js`
+(200 lines changed). That is a **re-capture of the byte-identity baseline**, landing under a
+docs-titled commit with no PLAN row. PLAN's own P-A-5 rules on precisely this case: a re-capture's
+manifest rows go *"To the PLAN, at the time … one added row per file, naming the causing task and its
+batch — committed **before** the re-capture runs"*, because *"a re-capture that exists only in a
+completion note is a second writer on `fixtures/learnings-baseline/**` and on the guard suite that no
+mechanical check can see"*. §G.2 gap 5 and §G.3 record the four **files** and route them; they do not
+record that the same commit is a second writer on the fixture subtree and on the guard suite, which is
+the larger half of the same manifest gap and the half PLAN already has a rule for. Recording it would
+sharpen the route without opening any decision: it tells PLAN this is a P-A-5 event, not just four
+unlisted files. F-02b — Medium, non-gating (recorded as F-05).
+
+**Nothing here falsifies a property.** PROP-META-04 reds if a **retained** digest changes; adding a new
+case-id arm and re-transcribing the manifest is a re-capture, which §F.2 and §O.2 already contemplate
+and which the delta does not claim otherwise about. The fourteen-row inventory's arithmetic is restated
+correctly (*"Eighteen files, fourteen of them task-owned"*), and every one of the fourteen still maps to
+a PLAN task row I confirmed in PLAN's §File-ownership manifest — I extracted its `learnings*` paths and
+got exactly the same fourteen, with none of the four remediation files among them.
+
 ## Findings
 
 ## Deferred
