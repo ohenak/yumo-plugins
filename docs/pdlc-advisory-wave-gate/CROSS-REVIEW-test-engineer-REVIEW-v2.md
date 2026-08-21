@@ -185,6 +185,12 @@ in `docs/_constraints/DOMAIN-CONSTRAINTS.md` beside DC-07.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | (carried from v1, still open and still non-blocking) `resolvedSnapshotRef` guards the un-skip push at the wave-loop call site. Is `resolved === true && snapshotRef === null` reachable, or is the guard defensive-only? E-34 escalates rather than resolving, so it still reads unreachable to me — in which case it is correct as written and needs no fixture. If a future disabled-tier or budget arm can return `resolved: true` without a capture, that arm needs its own case. A one-line reachability note in TSPEC §4.5 closes it either way; nothing in this round's delta changed the answer. |
+| Q-02 | Was `mainDev`'s bare `_now` (`orchestrate-dev.js:13020`) a deliberate "the driver has no clock of its own, every seam owns its default" contract, or an omission? The answer decides F-05's fix: if deliberate, the two `append*` helpers (`:3717`, `:3848`) are the bugs and should default; if an omission, defaulting `mainDev` once is the smaller and safer change. I have no evidence either way in TSPEC or DECISIONS. |
+| Q-03 | The AC-2.2 prompt oracle (`advisoryWaveGateMain.test.js:437-444`) checks catalogue order by strictly-increasing offsets over four `"<class> —"` markers. That is falsified by a reorder (M3, RED) — but does the spec require the four to be *exhaustive* in the prompt as well as ordered? If a fifth class were added to `ADVISORY_ROOT_CAUSES` and omitted from `ADVISORY_ROOT_CAUSE_MEANINGS`, this oracle would stay green. `advisoryEnvelope.test.js:334-345` pins the catalogue itself by set-equality, so the gap is only in the *rendered prompt*; a `Object.keys(ADVISORY_ROOT_CAUSE_MEANINGS)`-vs-`ADVISORY_ROOT_CAUSES` set-equality check (spec-side literals on both sides) would close it. Not filed as a finding because the catalogue is frozen and its set-equality check exists; flagging in case the catalogue is expected to grow. |
+
 ## Positive Observations
 
 ## Recommendation
