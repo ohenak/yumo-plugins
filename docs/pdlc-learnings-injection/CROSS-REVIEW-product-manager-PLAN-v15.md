@@ -129,6 +129,80 @@ record it again here rather than charging it to this document.
 
 ## Verification
 
+### F-02 (High, v14) is resolved, and the new text is byte-accurate against the shipped `c8` block
+
+My v14 High was that §Production and generated declared `pdlc/workflows/package.json` "**not**
+modified" with the capture script "deliberately left outside `c8.include`", while `2fc6fcd3` had put
+it *inside*. The correction lands in **three** places — §Overview's change-surface row (line 66), the
+§Production and generated bullet (lines 214–223) and DoD 11/12 (lines 592–593) — and each states the
+tree. I read `pdlc/workflows/package.json` at HEAD:
+
+| The PLAN's claim | `pdlc/workflows/package.json` at HEAD |
+|---|---|
+| `allow-external: true` | line 25 ✓ |
+| an `include` of **four** `**/`-anchored entries | lines 19–24: `**/pdlc/workflows/orchestrate-dev.js`, `**/pdlc/workflows/orchestrate-queue.js`, `**/pdlc/workflows/build-runtime.mjs`, `**/scripts/capture-learnings-baseline.mjs` ✓ |
+| the capture script **added to** the include set | fourth entry, line 23 ✓ |
+| a **three**-glob `exclude` for the capture tests' worktrees | lines 36–40: `**/.tmp-capture-driver-*/**`, `**/.baseline-worktree/**`, `**/pdlc-capture-entrypoint-*/**` ✓ |
+| the rationale: under `allow-external`, bare cwd-relative basenames stop matching, so the script's entry alone would have dropped the three workflow modules | stated verbatim in the file's own `//c8` note, line 17, and attributed there to "CODE_REVIEW v1 F4, second round" ✓ |
+| `coverageInstrumentation.test.js` fails if an included module stops resolving | same note, closing sentence ✓ |
+
+That is a rare thing in a reconciliation round: the document and the code now say the same thing in
+the same words, and the words came from the code. **DoD 12 is retired rather than deleted** — it
+records what it used to exempt, why the exemption died at `2fc6fcd3`, and that the three oracles it
+named (`LI-T-IGNORE`'s conjuncts, `LI-T-WORKTREE`'s two, the baseline guard) survive as behavioural
+oracles rather than as stand-ins for a missing floor. Retiring a DoD clause in place, with its
+history, is the right move: a deleted clause leaves a verifier wondering whether it was discharged
+or dropped.
+
+**DoD 11's new sentence is true and it protects a measurement I would otherwise have had to
+re-derive.** It says the stage-2 per-file set is now **four** modules, not three, and that §The
+measured baseline's three-row table (`build-runtime.mjs` 88.23, `orchestrate-dev.js` 88.14,
+`orchestrate-queue.js` 88.75) is the **pre-`2fc6fcd3`** measurement it says it is, not the set the
+gate measures at HEAD. Both halves check out: the include set is four entries, the measured-baseline
+block is dated 2026-08-20 and labelled as measured on a docs-only branch, and the `--testPathIgnore
+Patterns` quartet DoD 11 names matches the command printed in that section verbatim. The 88.14 /
+3.14-points-of-headroom claim is unchanged and still scoped to `orchestrate-dev.js`, which is what
+the region actually edits.
+
+### The three v14 Lows, re-checked at HEAD
+
+| v14 finding | Status | Evidence |
+|---|---|---|
+| F-04 — 0.9 changelog row credits "(PM v10 erratum)"; raiser was TE v11 F-01 | **Resolved** | the row now reads "(TE v11 F-01; this row originally credited a PM v10 erratum — corrected in v1.3, PM v13)". Correcting a credit *and* recording that it was corrected is better than a silent overwrite |
+| F-05 — the 0.6 changelog row precedes 0.5 | **Resolved** | the two rows are swapped; 0.1 … 1.3 is now monotone end to end |
+| F-06 — case A quotes its own superseded "before batch 7" | **Resolved** | the derivation now quotes "before batch 9", matching the *When* cell |
+
+### What the delta did not break
+
+- **Both dispatcher-parsed tables still parse.** The §Batches task table's `Owner`/`Batch`/`Deps`
+  columns are byte-identical; the file-ownership manifest table gained no row (the nineteen new rows
+  are in the `Owner`-free subsection below it, exactly as at v1.2). The containment decision I
+  praised at v14 survived a fourfold expansion of the table it protects — which is the real test of
+  it.
+- **§The arithmetic still reconciles.** Its scoping sentence now reads "nineteen rows" where it read
+  "six", and the 24-rows / 17-files count over the two parsed tables is untouched and still correct.
+  The appended tree-side reconciliation (thirteen ladder + five added = eighteen) is new, and I
+  verified it against `git ls-tree`.
+- **The batches 7–13 expected-red ledger is byte-identical.** I diffed the section: no ledger line
+  moved.
+- **DoD 13 and DoD 14 are untouched**, so the POSTMORTEM-D disclosure and the REQ G-5 narrowing
+  statement stand as approved.
+- **No AT partition, fixture or `Deps` edge moved**, as the 1.3 row claims. True against the diff.
+
+### Two new Lows, both introduced by this delta, neither load-bearing
+
+The single-writer paragraph now enumerates its domain as "LI-06's fixtures and guard, six
+ladder-owned suites, and the three production surfaces of LI-15…LI-22, LI-05 and the `c8`
+configuration" — but `package.json`'s own row two lines above reads "**first write** — previously
+owner-less". A first write to an owner-less file is not a second write to a ladder-owned surface, so
+the enumeration overreaches by one. The argument is unaffected (the serial-commit reasoning covers a
+first write trivially), and the row itself is right; only the paragraph's summary is loose. F-01,
+Low. Similarly, the `docs-uniqueness.test.js` row's cause reads "accounts for the branch's document
+set", but the actual change is narrower and more interesting: it re-pins two `locate("pdlc/README.md",
+…)` line anchors from 98/104 to 132/138 because this feature added a 24-line README section above
+them, with a comment explaining that the pin is a positive assertion and is therefore re-pinned
+rather than relaxed. F-02, Low. Neither blocks; both are one clause each.
+
 ## Findings
 
 ## Questions
