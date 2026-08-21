@@ -113,6 +113,33 @@ under two names, and the FSPEC's is the normative one. No finding.
 
 ## Business Rules
 
+No business rule traces to either edited section, and none needs an edit.
+
+**BR-11 (outcome (c) scope) — settled at v1.6, unmoved at v1.7.** This was the rule under the
+previous round's shadow. REQ-WVR-08's wave-loop scoping and the V-wave exclusion are byte-identical
+between v1.6 and v1.7, so the agreement I recorded in v3 — same scope, same discharge argument,
+same exclusion, matching violation clauses — stands untouched. Nothing to re-examine.
+
+**BR-15 (write failures are notices, never halts) — the one rule adjacent to this round's
+subject matter.** OB-1's relabelled clause reasons about an *absent* record path in a worktree,
+which is a read-side miss (outcome (a)), not a write-side failure. BR-15 governs the write side
+and is unaffected. I checked the pair explicitly because "the ledger's consumer-local path absent
+there" could be misread as a write-failure case; it is not, and neither BR-15 nor EC-15/EC-15a is
+implicated.
+
+**BR-10 (the record is an optimisation; a bad record costs a replay, never correctness) — the rule
+that makes this round cheap.** It is worth naming why the OB-1 relabelling could not have cost this
+FSPEC anything, rather than only observing that it did not. BR-10 means every worktree-shaped
+question resolves to *how much is replayed*, never to *whether the result is right*. So an upstream
+edit that downgrades the evidence for "a worktree carries no ledger" can only move a cost estimate,
+and this FSPEC states no cost estimate for the worktree case — EC-17 says "the run is correct,
+merely not cheap", which holds whether the ledger is absent by repo fact or by consumer-local
+happenstance. A downstream document that had transcribed the include-list mechanism as its
+*reason* would now be carrying a demoted fact; this one carries the outcome.
+
+**BR-01..BR-09, BR-12, BR-13, BR-14 and the remainder.** Trace to REQ criteria this round did not
+touch; not re-reviewed, per the delta protocol.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
