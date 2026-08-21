@@ -234,11 +234,23 @@ final report state the resume point and its provenance as automatic. *Source: US
 
 ### REQ-WVR-02 — fresh runs and foreign state are unaffected (P0, Phase 1)
 
-**Who:** pipeline operator. **Given:** no prior halted Phase I for this feature — or a
-resume record left by a different feature, a since-changed plan, or an out-of-range
-state. **When:** the pipeline is invoked. **Then:** every wave runs from the first; an
-ignored record is announced with the reason it was ignored; nothing about the record
-makes the invocation refuse to run (C-2). *Source: US-01, US-02.*
+**Who:** pipeline operator. **Given:** no prior halted Phase I for this feature, or a resume
+record that fails any member of the closed catalogue below. **When:** the pipeline is invoked.
+**Then:** every wave runs from the first; nothing about the record makes the invocation refuse to
+run (C-2). The catalogue of causes is **complete as enumerated**, not open-ended — four announced
+and one deliberately silent:
+
+| # | Cause | Operator-visible outcome |
+|---|---|---|
+| IG-1 | the record's content cannot be read as a record (unparseable or foreign shape) | full run, announced with the reason |
+| IG-2 | it records a different feature than the one being run | full run, announced with the reason |
+| IG-3 | the PLAN's wave layout has changed since it was written | full run, announced with the reason |
+| IG-4 | it records more waves complete than this plan has, or names a commit no longer reachable from the current branch tip | full run, announced with the reason |
+| IG-5 | no record exists, or it is empty/cleared | full run, **no** announcement — an absent record is the normal fresh-run case, not an anomaly |
+
+The set is closed: adding a sixth cause, or deleting one, is a deliberate change to this AC.
+PROPERTIES owes a **set-equality** check over IG-1..5 rather than a containment check, so a
+deleted cause fails a test instead of passing one. *Source: US-01, US-02.*
 
 ### REQ-WVR-03 — verification independence (P0, Phase 1)
 
@@ -254,7 +266,16 @@ degrades to a full run with an announced reason (C-2). *Source: US-03.*
 an automatic resume determination available for the same invocation. **When:** the run
 starts. **Then:** the manual point wins, the run announces provenance as operator-set,
 and a documented, announced escape hatch exists to force a full run despite a valid
-record. *Source: US-02.*
+record.
+
+**Boundary — the manual point set to its default (TE F-01).** A manual resume point whose value
+is the plan's first wave is **defined as not an explicit setting**: it is indistinguishable from
+having set nothing, the automatic determination is consulted, and the run announces provenance as
+automatic. Setting the manual pointer is therefore a *resume-point selector only* and can never
+mean "ignore the record". The force-a-full-run intent is served by exactly one mechanism, the
+record-removal hatch decided in OQ-1 (§9), and by no configuration value. A manual point past the
+last wave of the plan is likewise not a way to skip Phase I: it is treated as a request for a full
+run, announced as such. *Source: US-02.*
 
 ### REQ-WVR-05 — resume-state lifecycle: retained, never able to skip unverified work (P1, Phase 1)
 
@@ -293,9 +314,17 @@ checks being correct — PROPERTIES should treat them as the feature's highest-v
 ### REQ-WVR-06 — completion evidence is never commit presence (P1, Phase 1)
 
 **Who:** pipeline maintainer. **Given:** a plan containing tasks that complete without
-producing a commit (OF-2). **When:** the resume point is determined. **Then:** the
-determination does not consult commit presence or commit messages; a no-op-completing
-task never causes its wave to be treated as incomplete. *Source: US-03.*
+producing a commit (OF-2). **When:** the resume point is determined. **Then:** completion is
+never inferred from the presence, absence, or message of a task's commit; positively, the wave
+containing the no-commit task is treated as complete, and a re-invocation of the same plan
+announces the **next** wave as its resume point (that announcement is the oracle — it fails if
+the determination regresses to commit archaeology).
+
+**Carve-out — ancestry corroboration is permitted and is not archaeology (SE F-04).** Testing
+whether the *specific commit a record names* is still reachable from the current branch tip is
+falsification of the record, not derivation of completion from commit presence. It is expressly
+allowed by this AC and required by IG-4 of REQ-WVR-02; §3's rejection of commit-history
+archaeology is likewise limited to deriving completion from task commits. *Source: US-03.*
 
 ### REQ-WVR-07 — unattended queue parity (P2, Phase 2)
 
