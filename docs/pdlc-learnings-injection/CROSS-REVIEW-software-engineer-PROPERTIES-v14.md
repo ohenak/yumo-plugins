@@ -242,8 +242,70 @@ DEFERRED: this is the fourth consecutive round in which the PLAN pin was the onl
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The header now pins PLAN at v1.3 while deliberately leaving `PLAN v0.8` attributions in place as *provenance, not pins*. That is the right distinction, but it is carried in one header sentence and nowhere near the attributions themselves. Would a short inline marker at each provenance site — *"(as ruled at PLAN v0.8; unchanged at v1.3)"* — be worth the four words, given that the next reviewer will otherwise re-raise them every round? |
+| Q-02 | PLAN answered §G.3's routed manifest item with a §Post-batch remediation subsection carrying landing commits instead of `Owner` cells (`PLAN:244`). When §G.3 strikes the item, does §C.4's eighteen-row inventory keep its four unowned rows as-is, or re-attribute them to PLAN's new subsection? I read "keep and cite `PLAN:244`" as the better answer — the inventory's value is that it is the output of a command — but it is a choice worth stating once rather than re-deciding. |
+
 ## Positive Observations
+
+- **The delta is exactly as wide as the finding it discharges.** Three commits, three hunks, 17
+  insertions, 12 deletions — and every one of them inside a region I named in v13 F-01. A revision that
+  answers a finding without touching anything else is what makes a delta re-review a diff-read rather
+  than a re-read, and this is the third consecutive round where the scope claim survived being diffed.
+
+- **It re-quoted rather than re-paraphrased.** The easy discharge of "your quotation no longer matches"
+  is to drop the quotation marks. This revision instead pulled the current strings verbatim, including
+  case A's derivation clause *"(which includes batches 7 and 8)"* which it did not need to quote —
+  and that is the clause that makes the window falsifiable with a fixed-string grep rather than a
+  reading. Six quotations, six `grep -cF` hits at HEAD.
+
+- **It named the *reason* a pin update forces quotation updates.** *"A pin at HEAD may not carry a
+  quotation that is no longer verbatim at HEAD."* That sentence is the general rule behind the specific
+  fix, written down where the next person re-pinning this document will read it. Most re-pin commits
+  update the number and leave the reader to rediscover the rule.
+
+- **It separated pins from provenance explicitly instead of doing it silently.** Re-pinning a header
+  to v1.3 while leaving nine `PLAN v0.8` attributions alone looks like an incomplete edit unless the
+  document says why. It says why, in one sentence, and attributes the distinction to the review that
+  asked for it. That converts what would read as an omission into a stated policy.
+
+- **It upgraded a limb from expectation to record.** *"The amendment is expected to land green"* →
+  *"the amendment had to be green at the commit that landed it"*, with PLAN v1.2's *"records an
+  outcome, not a pending expectation"* attached. The document was already correct; it is now correct in
+  the tense that matches what happened, which is what stops a discharged obligation from reading as a
+  live risk two rounds from now.
+
+- **The routing it did at v0.8 worked.** The four unowned remediation files this document declined to
+  absorb are now rowed in PLAN's new §Post-batch remediation subsection with the second-owner P-A-5 rows
+  beside them. F-01(b) is the cost of that success not yet being reflected back — a strictly better
+  failure mode than the alternative, and worth saying out loud in a round whose findings are otherwise
+  about staleness.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The revision does what PM v13 F-01/F-02 and my v13 F-01 asked, for two of three limbs, and does it in
+the checkable form: PLAN re-pinned v0.8 → **v1.3** (`PLAN:18`), the five intervening versions all
+present in PLAN's changelog (`PLAN:680`–`:684`), case C re-quoted as *"batch 13 or later, the case that
+is live at HEAD"* and case A's window as *"before batch 9 (which includes batches 7 and 8)"* — six PLAN
+quotations written, six `grep -cF` hits at HEAD. No property, oracle, fixture, AT mapping or coverage
+row moved, and I verified that from the three-hunk diff rather than from the assertion.
+
+Four findings, none blocking. **F-01 (Medium)** — the header's new completeness claim overreaches: the
+case-B fallback at `:1181` (my v13 F-01(c), unresolved) and §G.3's routed manifest item are both stale
+against PLAN v1.3, and the re-pin did not visit either. It does not block: the substance is unchanged
+from what I recorded as non-blocking at v13, nothing downstream of the document turns on it, and §C.4
+already states the correct obligation twice. **F-02/F-03 (Low)** — a quotation period and a struck
+bullet's one-batch-narrow paraphrase. **F-04 (Low)** — the inventory-row-versus-file count, carried.
+
+Under the decision freeze I have opened no new decision and escalated no unchanged substance. Four
+observations that would improve the document but are not defects are recorded as `DEFERRED:` lines
+above rather than folded into the verdict. No upstream defect was found: PLAN at v1.3 is internally
+consistent with every claim this document makes of it, so I emit no `ERRATUM:` line this round.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
