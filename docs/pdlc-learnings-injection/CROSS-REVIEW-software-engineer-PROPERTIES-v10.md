@@ -148,7 +148,39 @@ to be re-labelled a round later — the document records that episode itself, in
 
 ## Fixtures
 
-TBD
+**No fixture obligation moved, and this is the half of the cascade that comes through clean.**
+§F.1–§F.4 are byte-identical, and the PLAN hunk that touches fixtures — the
+`helpers/learningsFixtures.js` paragraph — preserves its ruling and its premise exactly:
+
+- **The additivity premise is unchanged.** PLAN still says the declared-heading-form knob is
+  "**additive** to `buildLearningsCorpus`'s section spec — the landed helper already renders an
+  optional ordinal and an optional gloss, and existing callers that declare neither keep
+  byte-identical output". That is the sentence §F.1 and §C.4 lean on, and it is outside the diff.
+  So `learningsSelect.test.js`, `learningsCorpus.test.js` and every other consumer still hold their
+  status across the follow-up commit, and no consumer suite gains a ledger row.
+- **The ruling still lands the same way, by a different route.** Before: consumers carry "no row of
+  their own in **either** case". Now: "in **any of the three cases**", with the ruling scoped to this
+  heading-form follow-up commit rather than reading as a standing exemption, and with the non-additive
+  escape hatch re-pointed — "or, once batch 13 is behind us, under **case C**, where the obligation is
+  green-at-landing rather than a ledger row." The outcome for every fixture row in §F.1 is identical.
+- **The fourteen-row inventory is untouched.** PLAN's §File-ownership manifest is outside the diff
+  (PLAN's own changelog: "no … fixture or manifest row was touched"), so §C.4's fourteen-versus-
+  fourteen reconciliation against it still holds, including the `fixtures/learnings-baseline/`
+  four-path row (`4a6c1816`) and `helpers/learningsFixtures.js` (`1920f281`). The `21edb7c5` snapshot
+  pin still protects it from going silently stale.
+- **§F.3's verbatim-fixture-string rule is unaffected.** Nothing in the PLAN edit pins a user-facing
+  string or moves a normative lexicon entry.
+
+**One wording consequence for the rewrite.** §C.4's phrase "the two mechanisms stay distinct … as
+this document has held since v0.3: **P-A-7 case B** governs the amendment commit against the landed
+*implementation* suite `learningsBlock.test.js`, while **P-A-6** governs this document's own
+PROPERTIES suite" is still *structurally* right — two mechanisms, one for the amendment and one for
+the PROPERTIES suite's own commit — but its left-hand name is now wrong: the governing case for an
+amendment landing today is **C**, not **B**. The P-A-6 half is unchanged and still verifies: PLAN's
+P-A-6 row reads "commit at the first point the suite is green, which in practice is after LI-21
+(batch 13)", and case C's own text confirms that window is open ("LI-16 (`d462ddd8`), LI-17
+(`2cbacada`) and LI-21 (`92b7ea0c`) are all landed"). So the fix is a substitution inside one
+sentence, not a re-argument — which is the shape I would want a cascade fix to have.
 
 ## Delta-Confirmation Findings
 
