@@ -3808,6 +3808,25 @@ async function appendEscalationEntry({ disposition, ctx, _appendFile, _now }) {
 }
 
 /**
+ * `renderSnapshotOverwriteNotice(snapshotRef)` — pure, a sibling of `renderAdvisoryEntry` and
+ * `renderEscalationEntry` (TSPEC §4.5, BR-14, PLAN A6-18/A6-21). Renders the ONE string a
+ * halt-report `notices` entry carries: the ref pointer and the overwrite statement, co-located
+ * and adjacent inside the same string — never split across two independent notices, which is
+ * the observable BR-14's oracle needs. Called only from a non-`null` `snapshotRef`; the caller
+ * (the seam's own unresolved-return sites, and the un-skip halt site) owns the `null` check and
+ * pushes nothing when there is no ref to point at (FSPEC E-34).
+ *
+ * @param {string} snapshotRef
+ * @returns {string}
+ */
+function renderSnapshotOverwriteNotice(snapshotRef) {
+  return (
+    `A6 captured a pre-repair tree snapshot at ${snapshotRef} before this halt. ` +
+    "Re-running this feature overwrites that capture — copy the ref first if you intend to inspect it."
+  );
+}
+
+/**
  * `ADVISORY_SEAM_PHASES` — TSPEC §10.1's *Pipeline state* field is "the phase id and that phase's
  * outcome", and both are properties of the SEAM, not of the call site: each seam fires in exactly
  * one phase (§6.1 queue-side, §7.1 Phase DOD, §8.1 Phase PUB) and each phase has exactly one
@@ -15361,6 +15380,10 @@ async function main({
         // §4.5's advisory halt fields, carried onto the un-skip halt below ONLY when THIS
         // wave's A6 resolved before the un-skip guard found a violation (AT-05-4).
         let resolvedAdvisoryFields;
+        // TSPEC §4.5's un-skip row / BR-14 (PLAN A6-21) — THIS wave's captured snapshot ref,
+        // carried past the seam's own return so the un-skip halt below can push the co-located
+        // overwrite notice. `undefined` unless the seam supplies one (only when it captured).
+        let resolvedSnapshotRef;
 
         if (scriptGate) {
           if (gateOutcome.failed === "test") {
@@ -15409,6 +15432,7 @@ async function main({
             }
             postWaveRan = postWaveRan || a6.postWaveRan;
             resolvedAdvisoryFields = a6.haltFields;
+            resolvedSnapshotRef = a6.snapshotRef || null;
             waveResolvedPromotions = groupPromotedPaths(
               waves,
               waveIndex,
@@ -15438,6 +15462,15 @@ async function main({
           emit(`Notice: Wave ${waveNum} un-skip guard: ${notice}`);
         }
         if (unskip.violations.length > 0) {
+          // TSPEC §4.5's un-skip row / BR-14 (PLAN A6-21, AT-06-4's second arm) — the seam has
+          // already returned by the time this halt fires, so this is the one overwrite-notice
+          // push that cannot happen inside `runWaveGateSeam` itself: pushed here, through the
+          // same `advisoryNotice` sink, only when THIS wave's A6 resolved with a captured
+          // snapshot (`resolvedSnapshotRef` non-null). Omitted (no push) when A6 never fired on
+          // this wave, which keeps every shipped un-skip fixture byte-identical.
+          if (resolvedSnapshotRef) {
+            advisoryNotice(renderSnapshotOverwriteNotice(resolvedSnapshotRef));
+          }
           throw haltError(
             formatUnskipViolations(waveNum, unskip.violations),
             resolvedAdvisoryFields ? { advisory: resolvedAdvisoryFields } : undefined
