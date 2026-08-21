@@ -31,6 +31,24 @@ list as the whole scope.
 
 ## Goals
 
+One question, asked and answered: **does this delta resolve the routed items without breaking
+anything I previously approved?**
+
+Item-by-item disposition:
+
+| Routed item | Landed? | Evidence |
+|---|---|---|
+| OB-F1 — §10 says BL-04 open/unmet, §5 read as discharged at FSPEC authoring | **Yes** | §5 line 231 now reads "Checked at FSPEC authoring and found **unmet** — this row is not discharged (§10)"; §10 line 558 reads "BL-04 is **open and unmet** — not discharged at FSPEC authoring". `grep -n "BL-04\|discharged at FSPEC"` over the whole file returns six hits (lines 29, 40, 43–44, 55, 231, 558) and no residual site states or implies discharge. The contradiction is gone in both directions, not patched on one side. |
+| OB-1 cites `.worktreeinclude`, untracked on the default branch (pm-review) | **Yes** | §9 OB-1 no longer names the file as a repo fact; it names "the worktree include list that carries `.claude/workflows/` into a worktree" and labels it "consumer-local — untracked on the default branch, so a consumer fact and not a repo fact". |
+| Same item, se-author phrasing (evidence is consumer-local, conclusion holds) | **Yes** | Same hunk. The conclusion — a Claude-created worktree has no ledger and therefore fails open to a full run — is preserved verbatim in substance, with the D-DIST-07 consistency note and the TSPEC obligation untouched. |
+| Same item, se-author phrasing (file not tracked, evidence not a repo fact) | **Yes** | Same hunk. |
+
+The edits are **targeted and versioned** as an erratum round should be: the changelog paragraph
+names the two items and asserts "nothing else changed", and the diff bears that assertion out.
+The document's requirement surface (REQ-WVR-01..08), invariant guards (IG-1..IG-6), measured
+observations (OF-1..3), risks (R-1..R-5) and obligations (OB-1..OB-2) are byte-identical to the
+bytes I approved at v1.6.
+
 ## Non-Goals
 
 ## Constraints
