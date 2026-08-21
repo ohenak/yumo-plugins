@@ -49,7 +49,39 @@ the only remaining occurrences are historical changelog rows (1.1–1.9), which 
 
 ## Dependencies
 
-*(pending)*
+**Upstream at HEAD, re-read for this confirmation.** All four hashes re-computed with
+`shasum -a 256` and matched against the dispatch: REQ `c62cfc35…` (v1.15), FSPEC `91ef2557…` (v1.6),
+TSPEC `3fa21acf…` (v1.11), DECISIONS `84deee10…`.
+
+**The re-grounding interval is wider than OQ-7.** FSPEC's own v1.6 changelog enumerates what moved:
+
+> BR-2/AT-02-1 carry AC-2.2's first-matching-class rule with an ordered oracle and a two-class arm
+> (E-08b); BR-9/AT-05-1/AT-05-2 pin the map's domain (non-ignored) and observation point; BR-5 and
+> BR-15 transcribe the shipped exclusion and refusal orders; BR-12's signal is durable; §6 states
+> the pre-A6 comparands are transcribed literals; E-34, E-23's halt writes, §2's before-base,
+> AT-07-1's BR-4, AT-04-1/-02-9/-03-2/-03-7 clarified.
+
+The erratum absorbed the `BR-9` clause of that list. I walked the rest:
+
+- **`BR-5` / `BR-15` orders** — clean. `A6-05` already specifies `ADVISORY_REFUSAL_REASONS` and
+  `ADVISORY_EXCLUSIONS` as **ordered-sequence** oracles, and the eight-member refusal count matches
+  `BR-15`'s transcribed literal exactly ("unchanged — capture failure adds no ninth" is right;
+  `BR-15` says a ninth reason would be a spec defect, not a missing member).
+- **`BR-2` / `AT-02-1` ordered oracle** — **not clean.** See `F-01` below. `A6-05` reads
+  "`ADVISORY_ROOT_CAUSES` four members … Set-equality throughout, never `toContain`", while FSPEC
+  `AT-02-1` at HEAD now requires ordered-sequence equality and says in terms that "a reordering …
+  set equality would pass". The PLAN names two *other* constants as ordered-sequence in the same
+  sentence, so the set-equality reading of this one is unambiguous rather than a loose paraphrase.
+- **`E-08b` two-class arm** — **not claimed by any task.** See `F-02`.
+- **`E-23` halt writes / `E-34` capture failure** — clean; the PLAN's observation-point transcription
+  and its capture-failure routing are consistent with both at HEAD.
+- **`OQ-11` independence** — clean; TSPEC §6 `OQ-11` says exactly what the PLAN attributes to it.
+
+**Note on the propagation path for `F-01`.** TSPEC §5.6's `AT-02-1` row also still reads "set-equal
+to the four-member literal", and PROPERTIES `PROP-CTR-01` says "must set-equal". So the PLAN is
+faithfully compressing *TSPEC*, and the stale link is one level up. That is why `F-01` is tagged
+`inherited` and routes rather than halts — but it is still a finding of this confirmation, because
+DEC-ERR-03 measures this document against upstream at HEAD, and FSPEC is upstream.
 
 ## Verification
 
