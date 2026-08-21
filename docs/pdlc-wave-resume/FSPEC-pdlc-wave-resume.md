@@ -315,3 +315,26 @@ wave below. *And:* the record is in no wave's owned-path set, so no remediation 
 authorise touching it.
 
 ## 7. Open Questions
+
+No question in this FSPEC is open against the operator; the REQ closed OQ-1 and OB-1..3. What
+remains is obligations owed downstream, each with a named owner.
+
+| # | Obligation | Owner | Discharged when |
+|---|---|---|---|
+| OB-F1 | REQ BL-04 is **not met**: this authoring tree is 1,637 commits behind the default branch and contains neither the resume mechanism nor `docs/_constraints/pdlc-wave-gate-baseline.md`. Every shipped-behaviour claim in §1 is therefore verified against `origin/main`, and this FSPEC's positional citations are not re-verifiable in this tree. Bring the branch onto the current default-branch base before TSPEC authoring, or R-4's "new code alongside" outcome becomes unavoidable. Raised as an erratum against the REQ, whose §10 records BL-04 as "discharged at FSPEC authoring". | orchestrator / operator (branch management) | the branch is rebased and the mechanism is readable in the tree |
+| OB-F2 | Ratify or revise the shipped interim contract — the record's location, encoding, matching procedure and write mechanics — rather than inventing a second one alongside it (REQ BL-03, R-4). This FSPEC deliberately states none of them. | TSPEC (se-author) | TSPEC names the contract and states whether it formalises or replaces the interim |
+| OB-F3 | Decide the fate of the content-free "cleared" record shape that the reader tolerates (EC-02) but nothing ever writes: wire it or drop it. The observable behaviour is identical either way, which is why it is not a requirement here. | TSPEC (se-author) | TSPEC states the decision |
+| OB-F4 | Promote REQ OF-1 and OF-2 into `docs/_constraints/pdlc-wave-gate-baseline.md` as `M-WVR-1..2` in the next unoccupied section, each with a re-derivation command, bumping the file to the next version above the one found — and record that `M-WG-6` was reviewed and left, not missed. Blocked on OB-F1: the file is not in this tree. | se-author, at TSPEC authoring | the baseline carries the new section and §4 of the REQ cites by `M-WVR-*` id |
+| OB-F5 | Assert set equality rather than containment for both closed catalogues — the six disregard causes (AT-02) and the three outcomes (AT-13) — so a deletion fails a test instead of passing one. Treat the feature-key, plan-layout and ancestry checks as the highest-value oracles, per REQ-WVR-05's honest cost. | PROPERTIES (te-author) | PROPERTIES carries both set-equality checks |
+| OB-F6 | Record one assertion that the resume record is in no wave's owned-path set, so no advisory remediation envelope can authorise touching it (EC-16, REQ OB-3). | PROPERTIES (te-author) | the assertion exists |
+
+**One recorded interaction, not a coordination requirement (REQ OB-3).** The advisory tier's
+wave budget is scoped per *run*. Automatic resume makes runs shorter and more numerous, so that
+budget effectively refreshes per re-invocation. It stays bounded in practice because clearing a
+halt still requires a human, but `pdlc-advisory-wave-gate`'s compounding-drift bound is weaker
+under resume than that feature assumed. Noted for its owner; nothing in this FSPEC changes.
+
+**Assumptions.** (A-1) The pipeline is invoked serially against a working copy — EC-19's
+concurrency case needs no guarantee. (A-2) An operator who sets a manual resume point intends it
+for the invocation in which it is set; EC-10's stale-pointer case is mitigated by announcement,
+not by expiry. Both are vetoable by the operator; neither is relied on by any P0 criterion.
