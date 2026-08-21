@@ -335,8 +335,16 @@ from Oracle G, and the snapshot ref pattern `refs/pdlc/a6-snapshot-{waveNum}`.
    Injecting a `verifyGate` double that returns `{passed:false}` then `{passed:true}` appends no
    tokens, leaves the ledger at the pre-A6 pass's `["post-wave","test"]`, and makes the six-token
    literal a red test against a correct implementation (TSPEC §5.2).
-2. *Do not use `test.skip` for the upstream-pending case.* `orchestrate-dev.js`'s skip guard matches
-   `/\b(describe|test|it)\.skip\s*\(/`; PROP-REST-03's pending case uses `test.todo` (PLAN A6-09).
+2. *The real-repo restoration fixture needs one file of each class, and no pending marker.* Earlier
+   revisions of this document held PROP-REST-03's ignored-path half as `test.todo` while OQ-7 was
+   open — never `test.skip`, since `orchestrate-dev.js`'s skip guard matches
+   `/\b(describe|test|it)\.skip\s*\(/`. OQ-7 is closed (answered *no*), so **no case in A6-09 ships
+   with a pending marker of either kind**; PLAN A6-09 mints the red test with the expected values
+   transcribed. What the fixture must carry instead: a tracked file the wave modified, a **non-ignored**
+   untracked file the wave added (asserted absent after restore), a `.gitignore`d file the wave added
+   (asserted still present, byte for byte), and a non-ignored generated output the re-run post-wave
+   command rewrites over an already-dirty path (PROP-REST-02's discriminator). Substituting an ignored
+   path for that last one makes AT-05-2 vacuous, since BR-9 puts it outside the map.
 
 
 ## Coverage Matrix
