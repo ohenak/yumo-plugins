@@ -118,6 +118,51 @@ current content keeps the document honest between now and Phase P.
 
 ## Positive Observations
 
+- **The round found a defect nobody had asked about, and it was the expensive one.** TE F-01's
+  observation — that `toEqual` fails on an *extra* key exactly as on a missing one, so the four
+  shipped four-key halt-field equalities are counterparties of the new five-key one, not bystanders —
+  is the difference between a design that lands red-to-green in one task and one that ships a
+  surprise red suite at a wave boundary with no expected-red channel. §5.1 and §5.2 now name each
+  affected assertion individually, and every one of the five checks out at HEAD.
+- **The trap is named, not just the fix.** §5.2 states the cheap way to go green — leave `snapshotRef`
+  off the capture-failure `fields` — and why it is a false green: it deletes the only positive oracle
+  for the `null` value and neuters both AT-06-4 arms. Writing down the failure mode an implementer
+  under gate pressure would actually reach for is worth more than the widening instruction itself.
+- **The exact-count consequence was volunteered before a reviewer could find it.** `advisoryEscalationLog.test.js`'s
+  `toHaveLength(2)` becoming three is the kind of collateral that normally surfaces as a red suite
+  three tasks later. Naming it in §4.5 *and* owning it in §5.1's row is the right discipline, and my
+  own sweep of the suite found no second one it missed.
+- **The v5 Low was over-repaired in the useful direction.** The finding asked only that
+  `TEST_GATE_MESSAGE` stop being called a symbol. The round also corrected AT-05-3's oracle *form* to
+  the containment the suite actually ships — so the next reader is not told to preserve an equality
+  that was never there.
+- **PM Q-02 was answered on the operator's story, not on convenience.** The un-skip arm is in scope
+  because "you are about to lose the capture you might want to inspect" reads identically there — and
+  the answer accepts the cost that this one push cannot live in the seam. Declining to mint an AT id
+  for a third arm of one AT keeps the AT set-equality at forty-eight and keeps the id namespace
+  meaningful.
+- **The delta stayed inside its lens.** Five commits, one per section, no design change, nothing
+  previously approved reopened, and BR-14's wording still owned by FSPEC.
+
 ## Recommendation
 
+**Approved**
+
+Both v5 Low findings are resolved on the merits, and every load-bearing claim this round added was
+verified against `pdlc/workflows` at HEAD rather than against the TSPEC's prose: the `_notice` seam
+parameter and its default (`orchestrate-dev.js:3383`, `:3385`), the call site and sink (`:15387`,
+`:14635`), the halt throw (`:15399`), the un-skip forward (`:15402`, `:15434`), all five shipped
+four-key oracles (`advisoryWaveGate.test.js:1699`, `:2676`, `:2714`, `:3369`, `:3425`, `:3462`;
+`advisoryWaveGateMain.test.js:373`), AT-05-3's containment oracles (`advisoryWaveGateMain.test.js:368`,
+`waveExecution.test.js:571`), and the single moving exact count (`advisoryEscalationLog.test.js:821`).
+Nothing previously approved is broken: AT-05-3's oracle is explicitly preserved, §1.2's no-new-file
+constraint holds, and §5.6's AT set-equality is unchanged at forty-eight.
+
+The two Low findings are recorded and not gating — F-01's one-clause value-source note and F-02's
+tense correction can ride whichever edit next touches §4.5/§5.6, or be absorbed by PLAN's author at
+Phase P alongside Q-01 and Q-02.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 2}
