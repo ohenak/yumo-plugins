@@ -99,15 +99,22 @@ that no `.claude/pdlc-wave-state.json` existed anywhere in this repo. That is **
 as of 2026-08-21 this working copy carries an untracked record for `pdlc-advisory-wave-gate` with
 seven waves recorded green and a `head` stamp, so the mechanism has fired and recently. What
 survives re-verification against the default branch is the narrowness, not the never — three
-shipped preconditions discard the record under conditions this pipeline meets routinely, and that
-is the concrete gap this feature closes, so it belongs in FSPEC as such:
+shipped preconditions keep the record from reaching the next run under conditions this pipeline
+meets routinely: **one prevents it from ever being written, two discard what was written**. The two
+shapes are owed different oracles (assert no record exists, versus assert a record exists and is
+announced-ignored), and that is the concrete gap this feature closes, so it belongs in FSPEC as
+such:
 
 1. The write happens only after a wave goes green **and** its work is committed, so a run that
    halts at wave N records nothing for wave N — and one that halts at wave 1 records nothing at
    all, which is precisely the halt this feature is meant to resume from (OF-1). The write is
    guarded by the **git transport**, not by the gate mode: a run with no transport verifies but
    commits nothing and therefore records nothing, which is REQ-WVR-09's premise. A self-report-gate
-   run *with* a transport records normally.
+   run *with* a transport records normally. Re-derivable at the default branch, where the guard has
+   been read as the gate mode's (SE F-01, v3): the write's branch is the one opening with the
+   comment "Only now — verified — does anything get committed", and it is a **sibling** of the
+   gate-mode branch, which has already closed at its own `else` (the self-report arm,
+   `evaluateBatchGate`) — so the commits and the record are reached in either gate mode.
 2. The record is ignored when the PLAN's wave layout changes (`planHash`), so any PLAN edit
    between invocations — routine when remediating a halt — sends the next run back to wave 1.
 3. The record is ignored when the recorded commit is not an ancestor of HEAD, and Phase DOD step 0
