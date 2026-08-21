@@ -82,11 +82,14 @@ the feature's scope**; everything else is ratification plus tests.
 | D-8 | Nothing asserts queue/direct parity of resume point and provenance. | FSPEC AT-16, REQ-WVR-07 | Add the parity test over `realMain` (§5). |
 | D-9 | Nothing asserts that this feature's PLAN claims the record in no wave's owned-path set. | FSPEC OB-F6, EC-16 | Add the per-feature ownership assertion (§5). |
 | D-10 | `docs/_constraints/pdlc-wave-gate-baseline.md` carries no `M-WVR-*` section. | FSPEC OB-F4, REQ OB-2 | Append a new section at the next unoccupied number with `M-WVR-1..2` and bump the file's `Version` (§6). |
+| D-11 | Three shipped assertions pin announcement and report text by **whole-string equality**, so D-2's and D-3's changes cannot be additive for them. Leaving this to be discovered inside an implementation wave is how the regression net RT-2 depends on gets weakened by improvisation. | consequence of D-2, D-3 | Update exactly the three assertions §2.4 enumerates by `file:line`, each to the new whole string transcribed as a literal — never to a relaxed matcher. No other assertion in the ledger `describe` changes. |
 
 **What is explicitly *not* changed.** The path constant, the record's field names and version, the
-FNV-1a fingerprint, the evaluation order of the disregard causes, the transport-guarded write site,
-the fail-open posture of every read, and the retention of a complete record. Each is ratified as
-specified; changing any of them would be a re-litigation of a decision the REQ already closed.
+FNV-1a fingerprint, the evaluation order of the disregard causes, **the laziness of the ancestry
+probe** (§2.3: a record rejected at the feature or plan-hash guard still issues zero `merge-base`
+subprocess calls), the transport-guarded write site, the fail-open posture of every read, and the
+retention of a complete record. Each is ratified as specified; changing any of them would be a
+re-litigation of a decision the REQ already closed.
 
 ### 1.3 Scope boundaries carried from upstream
 
@@ -96,7 +99,8 @@ specified; changing any of them would be a re-litigation of a decision the REQ a
   the record is absent there and the run is a silent full one (FSPEC EC-17). This is a consequence
   of consumer-local state, not of any rule this TSPEC adds; see §6 for the citation defect the REQ
   carries about it.
-- Wave halts write **no POSTMORTEM** (`pdlc-wave-gate-baseline.md` `M-WG-5`), so there is no
+- Wave halts write **no POSTMORTEM** (`pdlc-wave-gate-baseline.md` `M-WG-5`, at `Version | 1.2 ·
+  2026-08-20`), so there is no
   `RESOLVED:` lifecycle for this feature to coordinate with. Stated here rather than assumed, per
   REQ OB-1.
 - The queue row lifecycle is orthogonal: a human resets `halted → pending`; the record governs
