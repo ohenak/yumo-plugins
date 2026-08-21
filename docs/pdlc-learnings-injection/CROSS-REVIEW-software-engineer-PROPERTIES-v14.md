@@ -54,6 +54,73 @@ case-C paragraphs state the correct obligation twice, twenty lines above the sta
 
 ## Properties
 
+**No property statement moved, and the diff proves it rather than the prose.** The three hunks are
+confined to the header upstream row, §C.4's P-A-7 paragraph and one struck bullet in §G.3. §Properties'
+Groups A–J, §C.1's 35-of-35, §C.2, §C.3's 23-of-23 and §C.4's inventory and reversal tables are
+byte-identical to the bytes I approved at v0.8. The seventy `PROP-` statements, their AT partitions,
+levels and owning tasks therefore stand exactly where my v11/v13 approvals left them, and nothing in
+this round can have disturbed them. This is the third consecutive round in which the document's scope
+claim survives being diffed.
+
+**Every PLAN task the table lists still traces, because the trace did not move.** §C.3 reconciles
+PLAN's 23 task rows against properties; no row of it is inside the delta, and PLAN's task table is
+itself unchanged in the relevant respect — `PLAN:310` still reconciles the tree at eighteen tracked
+`learnings*` test-side entities, and `git log --oneline main..HEAD` still returns a non-zero commit
+count for every id LI-01…LI-23. The four properties §C.4 routes (PROP-BOUND-03's zero case,
+PROP-BOUND-05/07/08) are named identically before and after the delta; only the *case wording* under
+which they are ruled changed, and the ruling itself — empty ledger, green at landing — is byte-identical
+across PLAN v0.8 → v1.3.
+
+**The re-quoted case windows are literal transcriptions, checked one at a time.** The delta's whole
+content is quotation, so the no-implementation-echo discipline reduces here to: is each quoted string
+actually in PLAN at HEAD? I ran `grep -cF` on each rather than reading around them:
+
+| Quotation the delta writes | `grep -cF` in PLAN at HEAD |
+|---|---|
+| *"batch 13 or later, the case that is live at HEAD"* | 1 (`PLAN:561`) |
+| *"before batch 9 (which includes batches 7 and 8)"* | 2 (`PLAN:559`, `:682`) |
+| *"batch 9 through batch 12"* | 1 |
+| *"this row records an outcome, not a pending expectation"* | 1 (`PLAN:561`) |
+| *"the ledger stays empty and the amendment must be green at the commit that lands it — and it was."* | 1 (`PLAN:561`) |
+| *"the first point the suite is green, which in practice is after LI-21 (batch 13)"* (context, unchanged) | 1 (`PLAN:663`) |
+
+Six for six. The one quotation that does **not** return 1 is `:1131`'s *"under case C they owe no ledger
+row, and they owe green."* — PLAN `:561` reads *"…and they owe green — which PROPERTIES §C.4 records as
+discharged…"*, so the words are verbatim but the terminal period is the document's, not PLAN's. That is
+inherited context, not delta text, and it is Low (F-02).
+
+**The version chain the header asserts is real.** *"PLAN has since passed through v0.9, v1.0, v1.1, v1.2
+and v1.3"* — `grep -n "^| 0\.9 \|^| 1\.0 \|^| 1\.1 \|^| 1\.2 \|^| 1\.3 "` on PLAN returns rows at
+`:680`, `:681`, `:682`, `:683`, `:684`, in that order and with those version cells, and `PLAN:18` reads
+`| pdlc | Draft | Claude | 1.3 | 2026-08-21 |`. A five-version enumeration is exactly the kind of claim
+that silently drops a member; this one is a closed set against PLAN's changelog, with no gap and no
+invented version.
+
+**Where the re-pin's completeness claim fails — two sites, neither of which moves a property.** The
+header now asserts *"every ruling this document cites is still present at v1.3, so the finding was pin
+freshness, not fidelity."* Two rulings this document cites are **not** present at v1.3:
+
+1. **`:1181` cites case B's retired fallback.** *"…or, if it lands red, its rows are amended into the
+   ledger by name first, under the same P-A-7 rule."* PLAN `:663` (P-A-6) at HEAD routes a red
+   PROPERTIES suite through *"**P-A-7's governing case** — which at HEAD is case C, where no ledger
+   remains to amend into and the obligation is green-at-landing; the amend-into-the-ledger-by-name route
+   is case B's, and case B closed at batch 12 (TE v11 F-03)."* This is my v13 F-01(c), unresolved, and
+   the re-pin sharpened it: at v0.8 the sentence was stale against a pin the document did not claim to
+   hold; at v0.9 it is stale against a pin the document explicitly claims to hold.
+2. **`:1185` says P-A-6 is *"(byte-unchanged at v0.8)"*.** True as provenance about v0.8 — and the header
+   pre-authorises exactly that reading (*"attributions of the form 'PLAN v0.8' … are provenance, not
+   pins"*) — but P-A-6 **did** change at PLAN v1.1 (`PLAN:682`: *"P-A-6's PROPERTIES fallback stops
+   offering case B's amend-into-the-ledger route unconditionally"*), and a reader arriving from a header
+   pinned at v1.3 will read the parenthetical as currency.
+
+Both are Medium, not High, and for the reason I gave in v13: **no property, oracle, fixture, AT mapping
+or coverage row depends on which fallback a hypothetical red PROPERTIES suite takes.** §C.4's own
+case-C paragraphs state the correct obligation twice above the stale sentence — *"the ledger stays empty
+and the amendment had to be green at the commit that landed it"* (`:1130`) and *"no `learningsBlock`
+ledger row was owed and none exists"* — and the delta *strengthened* the first of those from expectation
+to record. The document's operative conclusion is the one PLAN v1.3 reaffirms; what is stale is its last
+un-updated echo of case B.
+
 ## Oracles
 
 ## Fixtures
