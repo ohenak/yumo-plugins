@@ -66,6 +66,38 @@ Nothing in §3.3's rows changes truth value under REQ v1.15.
 
 ## Business Rules
 
+**BR-9 — the load-bearing rule under this cascade.** REQ AC-5.1 now says three things BR-9 must
+still compress faithfully.
+
+1. *Observation point.* REQ: "the moment restoration completes". BR-9: "the map is taken
+   immediately after restoration completes and **before** the record and escalation writes BR-13
+   requires". Same moment, stated with the seam a fixture author can instrument. Faithful.
+2. *Ignored paths.* REQ: excluded, "operator files A6 never wrote and never restores over".
+   BR-9: `.gitignore`d paths are "outside the map in both directions, and an ignored path the
+   re-gate mutated is not a restoration defect", with examples (`node_modules/`, tool caches,
+   `.env`, the run's own untracked wave ledger). BR-9 is strictly more testable than REQ here —
+   the "in both directions" clause is what stops a fixture from asserting an ignored path was
+   *restored*. Faithful, and this is the right altitude split.
+3. *Excluded carriers.* REQ names **three**: AC-6.1's record append, AC-6.2's escalation-log
+   append, AC-5.2's queue-row write (M-WG-7). BR-9's exclusion sentence names **two** — "the
+   record and escalation writes … **both** carriers are files inside the tree". The queue-row
+   write is excluded elsewhere (E-23 names it with M-WG-7 explicitly), and it is excluded *by
+   construction* anyway, since it happens at step 10, strictly after the step-9 writes the
+   observation already precedes. So the oracle a test author writes from BR-9 is unaffected in
+   behaviour — but the enumeration and the word "both" now under-count REQ's list at the rule
+   site AT-05-1 cites. That is F-02: Low, delta, local.
+
+**BR-10** — unchanged in truth value. It leans on AC-5.1/AC-5.3's *no-restoration-trigger* case,
+which the erratum did not touch; its "repair stays in the working tree, and the record and halt
+report say so" consequence is untouched by the carrier-exclusion edit (the carriers are excluded
+from the *comparison*, not from being written).
+
+**BR-13/BR-14** — the record-and-escalation write contract BR-9's observation point references.
+REQ's carrier list is now the same set BR-13 mandates plus the queue row; no BR-13 clause is
+contradicted.
+
+No business rule needs to change for FSPEC to hold. No High finding here.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
