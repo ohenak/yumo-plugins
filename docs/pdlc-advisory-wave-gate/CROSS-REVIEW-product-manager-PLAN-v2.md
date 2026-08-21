@@ -36,7 +36,25 @@ sees a red suite with no owner authorised to fix it.
 
 ## Verification
 
-*(pending)*
+Every claim below was re-derived at HEAD; a next round can re-run each command.
+
+| Check | Method | Result |
+|---|---|---|
+| Upstream bytes = the header's pins | `shasum -a 256` on the four upstream documents | 4/4 match (`f97f4f66…`, `d602c440…`, `1f6ea486…`, `dc7a8d65…`) |
+| REQ / FSPEC version labels | Changelog heads: REQ `v1.16` (line 20), FSPEC `v1.7` (line 14) | Correct |
+| TSPEC version label | Changelog head of the pinned bytes: `**v1.15 (round 5 …)**` (TSPEC line 16); PLAN header says `v1.13` | **Mismatch — `F-04`** |
+| v1.14/v1.15 landed before this round | `git merge-base --is-ancestor ffbc2b18 e9a8943e` | True — the round could see them |
+| Delta bounded | `git diff --stat 1972402c..HEAD` on the PLAN | 29 insertions, 12 deletions, one file |
+| v1 `F-01` closed | PLAN `A6-05` red step vs FSPEC `AT-02-1` (FSPEC §6.2) | Ordered-sequence equality, literal transcribed in FSPEC's order — resolved |
+| v1 `F-02` closed | PLAN `A6-08` red step + `AT-02-1` row vs FSPEC `E-08b` (FSPEC line 281) | Two-class arm claimed, one class carried, `E-6` named — resolved |
+| AT set-equality (48) | Extracted `AT-\d\d-\d+[a-z]?` from FSPEC and from the PLAN table, `sort -u`, `diff` | 48 = 48, **set-equal both directions**, `AT-06-4b` included |
+| Manifest vs TSPEC §5.1 | `comm -23` of TSPEC §5.1's `edited`/`new` file list against the PLAN's file-ownership manifest | Exactly one missing: `pdlc/workflows/__tests__/advisoryWaveGateMain.test.js` — **`F-01`** |
+| The unowned oracle is real and four-key | `pdlc/workflows/__tests__/advisoryWaveGateMain.test.js` lines 372–378: `expect(result.haltAdvisory).toEqual({rootCause, diagnosis, repairApplied, repairPaths})` | Confirmed shipped and green today |
+| Escalation-log exact count | `pdlc/workflows/__tests__/advisoryEscalationLog.test.js:821` — `expect(failed.notices).toHaveLength(2)` | Shipped; PLAN never names it — **`F-02`** |
+| Un-skip halt notice arm | `grep -c renderSnapshotOverwriteNotice` over the PLAN = 2 (changelog + A6-18's green step); no hit in `A6-21` | Un-skip push unclaimed — **`F-03`** |
+| `A6-18` carries v1.14's content | Read `A6-18` red + green step in full | Five halt fields set-equally with `snapshotRef: null`, `AT-06-4b` on the E-34 fixture, co-location by spec-side literals — all present |
+| `A6-10` ignored-path case | Read the row in full | Positive-presence conjunct (case 4), absent-untracked companion (case 3), ordering conjunct (case 5), `non-ignored` qualifier — all landed |
+| Graph unchanged | Diffed task/batch/wave/dependency rows | No task, batch, wave or edge moved; 11 tasks / 7 waves claim unchanged |
 
 ## Findings
 
