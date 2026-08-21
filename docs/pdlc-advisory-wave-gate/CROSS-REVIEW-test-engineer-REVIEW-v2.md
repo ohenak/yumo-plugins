@@ -193,5 +193,50 @@ in `docs/_constraints/DOMAIN-CONSTRAINTS.md` beside DC-07.
 
 ## Positive Observations
 
+- **The v1 High is closed by the mutation, not by the assertion.** M1 — severing `_notice:
+  advisoryNotice` at the wave-loop A6 call site (`orchestrate-dev.js:15463`) — was silently green
+  in v1 across the whole 4229-test suite. It is RED now. That is the acceptance criterion I stated
+  in v1, met exactly: the seam→report hop has a falsifiable oracle rather than an assertion that
+  happens to pass.
+- **The negative arm found a real production defect, which is the whole argument for putting it on
+  the production surface.** AT-06-4b's E-34 companion (`advisoryWaveGateMain.test.js:461-507`)
+  failed on first run and the cause was shipped behaviour, not fixture noise: `mainDev` passes an
+  `undefined` clock, `appendAdvisoryEntry`/`appendEscalationEntry` called `_now()` unguarded, and
+  every real E-34 run was replacing the ADVISORY record and the ESCALATIONS.md entry with two
+  "write failed" notices. No seam-level oracle could have seen it — every unit arm injects a clock.
+  This is the single most valuable thing the round produced, and it came from following the DC-07
+  rule rather than from looking for that bug.
+- **The durable-trace conjunct is a positive assertion on an absence-shaped claim.** The E-34 arm
+  does not merely assert that no overwrite notice appears; it asserts that both durable artifacts
+  were created through the real transports (`:504-505`) and that no `/write failed for seam A6/`
+  notice appears (`:507`), plus the exact five-key `toEqual` on `haltAdvisory` and a zero-dispatch
+  conjunct. Three positive conjuncts against two absence predicates — the falsifiability bar is met
+  with room to spare, and the absence predicates are asserted over the *whole* array (an
+  element-selecting oracle would pass vacuously on this fixture, and the comment at `:496-499` says
+  so).
+- **Co-location survives the revision.** M4 (dropping `${snapshotRef}` from
+  `renderSnapshotOverwriteNotice` while keeping the overwrite sentence) is RED at the new
+  report-level arm, so the oracle enforces BR-14's *one element carries both halves* clause rather
+  than a presence-anywhere check. The `find`-then-assert-on-that-element shape I flagged as the
+  pattern to copy in v1 was copied.
+- **Anti-echo discipline held on all four new oracles.** The ref is composed from the fixture's own
+  wave number rather than read back off `result.haltAdvisory` (`:411`); the four AC-2.2 meaning
+  fragments are transcribed spec-side rather than read off `ADVISORY_ROOT_CAUSE_MEANINGS`
+  (`:433-436`) — which matters, because reading them off the map would make M3's reversal
+  unfalsifiable; the ordered catalogue literal at `advisoryEnvelope.test.js:341-346` is written out,
+  not imported. Nothing in the delta derives an expectation from the code under test.
+- **The new AC-2.2 oracle reads the dispatched prompt, not the builder's return.**
+  `A6_DISPATCHES(dispatched)[0].prompt` (`advisoryWaveGateMain.test.js:431`) is what the real driver
+  actually sent. Order is checked by strictly-increasing offsets rather than by a golden string, so
+  it is robust to rewording but falsified by a reorder (M3, RED).
+- **No existing oracle was weakened to make room.** PM F-02's ordered `toEqual` was added *beside*
+  the sorted set-equality check (`advisoryEnvelope.test.js:328-346`), not in place of it, so a
+  rename and a reorder still fail distinctly; PM F-03's widened `NO_HALT_FIELDS` sentinel
+  (`waveExecution.test.js:952-957`) is transcribed rather than imported. I re-ran every advisory
+  suite after each of the five mutations and found no arm that had become vacuous.
+- **Generated runtime is in sync and the delta matches.** `build-runtime.mjs --check` reports
+  `in-sync pdlc/workflows/dist/pdlc-cli.mjs`, and `dist/`'s 37-line delta equals the source's — the
+  rebuild-and-stage obligation was honoured on the remediation commit as it was on the original.
+
 ## Recommendation
 
