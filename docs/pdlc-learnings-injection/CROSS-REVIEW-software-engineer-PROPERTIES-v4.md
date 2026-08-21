@@ -153,6 +153,42 @@ is not true. See **F-01**.
 
 ## Fixtures
 
+- **`ZERO-BOUND` (§F.1, new row) is correct and cheap.** "A multi-document corpus whose documents **do**
+  carry BR-6 priority sections, run at `maxBytesPerDocument: 0` with the other two thresholds at §4.1's
+  declared non-zero values … a threshold override on an existing corpus fixture, not a new corpus
+  shape." I checked feasibility against the landed helper: `helpers/learningsFixtures.js` already builds
+  per-case threshold objects beside its corpora (`maxBytesPerDocument: 6000` at
+  `pdlc/workflows/__tests__/helpers/learningsFixtures.js:180` and `:189`), so a threshold override is a
+  literal change in an existing builder, not new machinery. The row's defeater column names three wrong
+  answers, which is the pairing discipline §F.1 already applies in
+  `DISCARDED-NESTED`/`DISCARDED-DIRECT`; `NO-MATERIAL`'s row was widened in the same edit to name itself
+  as the *carries-no-section* disjunct and point at its mirror. This is exactly the fixture my v3 asked
+  for.
+- **§F.3's F-O-1 paragraph is now a transcription, not a hedge.** The three matcher rules are
+  byte-faithful to TSPEC:810–882: optional ordinal stripped and carrying no priority; exact
+  case-sensitive comparison after trim; optional trailing parenthetical gloss, stated as a defensive
+  tolerance and explicitly *not* measured. The two supporting facts check out against the repository,
+  not just against TSPEC: all **9** documents under §I.1's glob carry all five priority headings in the
+  numbered form (`git ls-files 'docs/*/LEARNINGS-*.md' 'docs/completed/*/LEARNINGS-*.md'` less the two
+  `docs/discarded/` paths; 5-of-5 in each), and the corpus's own numbering does put
+  `1. Non-Convergences` before `2. Cross-Feature Patterns` while BR-6 ranks Cross-Feature Patterns
+  first — so §F.3's warning that a fixture reading order off the ordinals "would invert the first two
+  sections of every corpus document" is a measured claim, not a rhetorical one. The separate rejection
+  ground for the prefix candidate is preserved from TSPEC:834–846 rather than collapsed into the E-33
+  argument, which is the subtle half.
+- **§F.2's byte-identity baseline** — untouched by the delta; retained digests unaffected.
+- **§C.4's re-measured test-file inventory is honest and was overdue.** I verified every row:
+  `git ls-files pdlc/workflows/__tests__` shows `helpers/learningsFixtures.js`, `learningsPremises`,
+  `learningsCaptureScript`, `learningsPredicatePin`, `learningsSelect`, `learningsBlock`,
+  `learningsCorpus` present (7 of 14) and the other seven absent — exactly as tabulated. The
+  consequential sentence is right too: PROP-BOUND-05/07/08's amendments land in **already-landed**
+  suites, and PLAN records the same at PLAN:147, whose v0.5 amendment note says LI-02 and LI-08 "have
+  already landed on this branch … so the heading-form cases are an amendment to those landed files,
+  taken by their **existing owners** in a follow-up commit." One nit: the parenthetical "(LI-01…LI-04,
+  LI-07, LI-08, LI-09, LI-13 are committed)" enumerates eight tasks against seven of the fourteen rows,
+  because LI-04 (the `/.baseline-worktree/` ignore rule, PLAN:144 — landed, `.gitignore:13`) owns none
+  of them (**F-04**).
+
 ## Findings
 
 ## Questions
