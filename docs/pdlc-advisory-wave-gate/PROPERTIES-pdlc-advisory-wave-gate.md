@@ -356,7 +356,7 @@ unless the row says otherwise.
 | Fixture | Shape | Used by | Source of truth |
 |---|---|---|---|
 | `SEAMS` literal | Six members, `["A1","A2","A3","A4","A5","A6"]`; `helpers/advisoryDoubles.js`'s `const SEAMS` declaration already carries the six-member form at HEAD (TSPEC §1.3), so this fixture row records the required end state, not an edit outstanding | PROP-SEAM-01, -02 | TSPEC §3.1 |
-| Recording `_git` double | Records argv per call; the counted quantities are **verbs** (`commit-tree`, `update-ref`, `read-tree`, `clean`, `reset`) and the `update-ref` target set, never the raw call count | PROP-REST-06, -07, -08, PROP-CTR-12, PROP-ENV-10 `(h)` | TSPEC §5.2 |
+| Recording `_git` double | Records argv per call; the counted quantities are **verbs** (`commit-tree`, `update-ref`, `read-tree`, `clean`, `reset`) and the `update-ref` target set, never the raw call count | PROP-REST-06, -07, -08, PROP-REC-08, PROP-CTR-12, PROP-ENV-10 `(h)` | TSPEC §5.2 |
 | Real-repository fixture builder | `mkdtempSync` + `execFileSync("git", …)` with a `_git` adapter over it — the shape `advisoryDodSeams.test.js:371` already ships for the A3 fixtures | PROP-REST-01, -02, -03, -05 | TSPEC §5.2 |
 | A6 agent double | Emits the tier's six verdict lines plus `ROOT-CAUSE:`, `PROMOTES:` and `PROMOTES-TASK:` trailers; parameterised over class, proposed action, confidence and evidence | PROP-CTR-*, PROP-ENV-*, PROP-NFR-03 | TSPEC §4.1 |
 | `_runCommand` double | Drives red-then-green re-gates by outcome, **not** by stubbing `verifyGate`: the real `verifyGate` runs `runWaveGateSequence`, which is what appends the ledger tokens | PROP-GATE-01, -03, -06 | TSPEC §5.2 |
@@ -366,6 +366,9 @@ unless the row says otherwise.
 | Citation-floor pair | One citation of 23 normalised characters and one of 24, on the same run | PROP-CTR-05 | TSPEC §3.3 (`A6_MIN_CITATION_CHARS = 24`) |
 | Config fixtures | `waveBudgetPerRun` at `1`, `0`, `-1`, `1.5`, `"x"`, `null`, and absent; plus tier-off (`enabled: false`) and tier-on-A6-off (`enabled: true, waveBudgetPerRun: 0`) whole-config arms | PROP-CFG-01, -02, PROP-CTR-13, PROP-SEAM-05 | TSPEC §3.1, §4.4 |
 | Example-config fixture | The tracked `.claude/pdlc.config.example.json` itself, read by the engine-channel test — the same file `ci-arrangement.test.js`'s module-scope `const configPath` already resolves, so the fixture is a second reader of a live file, not a new one; the `testCommand` regex pair inside that file's `ci arrangement — .claude/pdlc.config.example.json's implementation.testCommand` test (`/cd pdlc\/workflows\s*&&\s*npm test/` and `/cd pdlc\/engine\s*&&\s*npm test/`) is the pre-edit baseline the advisory-key addition must leave standing | PROP-CFG-03 | TSPEC §4.4; `ci-arrangement.test.js`, `const configPath` and the `implementation.testCommand` test |
+| Two-red-wave run | Two waves whose gates both go red, already built for PROP-REST-07's `update-ref` target set; it is the **only** fixture that distinguishes a wave number, which is why PROP-REC-08's ref-pointer half is asserted on it rather than on a single-wave run where `-1` would pass a hard-coded implementation | PROP-REST-07, PROP-REC-08 | TSPEC §5.2, §5.6 |
+| Capture-failure run (E-34) | `captureTreeSnapshot` returning `null`, driven by a `_git` double failing on `write-tree`; already built for PROP-REST-08. It is PROP-REC-09's negative arm at **no new cost** — the antecedent of the overwrite obligation is false here by construction, so the assertion is that no `notices` element matches either predicate, paired with the five-key set-equality carrying `snapshotRef: null` | PROP-REST-08, PROP-REC-09, PROP-REC-11 | TSPEC §5.2, §4.5, §5.6 |
+| Un-skip halt pair | A wave A6 **resolved** whose post-gate un-skip guard then halts (`snapshotRef` non-`null`), and its companion in which A6 never fired (`a6.calls.length === 0`, `advisory` argument omitted); the first is already built for PROP-REST-04 | PROP-REST-04, PROP-REC-10 | TSPEC §4.5 (un-skip row) |
 | Pre-A6 baseline | The halt reason string, queue row and created-file set captured from the shipped pipeline on the same inputs; the gate-failure literal is `orchestrate-dev.js`'s existing `Error: Wave {N} test gate failed — \`{testCommand}\` did not pass. Output tail:\n{tail}` | PROP-SEAM-03, -04, -05, PROP-REST-09, PROP-GATE-05 | `orchestrate-dev.js` wave loop, M-WG-3 |
 
 **Verbatim-string discipline.** Every fixture string that also appears in a normative document is
@@ -375,7 +378,15 @@ refusal reasons from TSPEC §3.1 (the latter verified byte-for-byte against
 (`orchestrate-dev.js:2311`), the capture-failure `diagnosis` sentence and promotion commit message
 from Oracle G, and the snapshot ref pattern `refs/pdlc/a6-snapshot-{waveNum}`.
 
-**Two fixture-level hazards, stated so they are not rediscovered.**
+**And one string is deliberately *not* on that list.** The overwrite warning's sentence has no
+normative wording: FSPEC AT-06-4 states co-location and presence as the observable, and REQ O-1
+leaves the capture's name and storage form to TSPEC, so no document this one derives from owns a
+sentence to transcribe. Adding a fixture row pinning that phrasing — or the ref name as a warning
+literal — would manufacture a literal the spec does not own and mint a red test against a
+spec-following implementation. What *is* transcribed is the predicate pair O-J names, written
+spec-side in the test: `/overwrit/i` and `"refs/pdlc/a6-snapshot-" + waveNum`.
+
+**Three fixture-level hazards, stated so they are not rediscovered.**
 
 1. *Do not transcribe the two-attempt positive companion in the mutation fixtures' vocabulary.*
    Injecting a `verifyGate` double that returns `{passed:false}` then `{passed:true}` appends no
@@ -393,6 +404,15 @@ from Oracle G, and the snapshot ref pattern `refs/pdlc/a6-snapshot-{waveNum}`.
    rule it exists to enforce), and a non-ignored generated output the re-run post-wave
    command rewrites over an already-dirty path (PROP-REST-02's discriminator). Substituting an ignored
    path for that last one makes AT-05-2 vacuous, since BR-9 puts it outside the map.
+
+3. *Do not size PROP-REC-08's fixture as new work, and do not let the `snapshotRef` key redden a
+   suite silently.* Every fixture the three overwrite-notice properties need already exists — the
+   two-red-wave run, the E-34 capture-failure run and the un-skip halt pair — so the cost is
+   assertions, not infrastructure, and a "too expensive to test" argument for the conjunct would not
+   survive contact with them. The real hazard is the other direction: the fifth halt field disturbs
+   three shipped exact-shape oracles (PROP-REC-11), and each of them fails on an *extra* key exactly
+   as on a missing one. They are widened by the task that adds the field, in the same red-to-green
+   step, because the batch gate they sit behind has no expected-red channel.
 
 
 ## Coverage Matrix
