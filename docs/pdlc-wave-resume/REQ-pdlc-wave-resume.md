@@ -100,10 +100,8 @@ as of 2026-08-21 this working copy carries an untracked record for `pdlc-advisor
 seven waves recorded green and a `head` stamp, so the mechanism has fired and recently. What
 survives re-verification against the default branch is the narrowness, not the never — three
 shipped preconditions keep the record from reaching the next run under conditions this pipeline
-meets routinely: **one prevents it from ever being written, two discard what was written**. The two
-shapes are owed different oracles (assert no record exists, versus assert a record exists and is
-announced-ignored), and that is the concrete gap this feature closes, so it belongs in FSPEC as
-such:
+meets routinely: **one prevents it from ever being written, two discard what was written** — two
+shapes, two oracles. That is the concrete gap this feature closes, so it belongs in FSPEC as such:
 
 1. The write happens only after a wave goes green **and** its work is committed, so a run that
    halts at wave N records nothing for wave N — and one that halts at wave 1 records nothing at
