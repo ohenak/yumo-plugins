@@ -31,10 +31,9 @@ finding, see `CROSS-REVIEW-software-engineer-REQ-v1.md` and `CROSS-REVIEW-test-e
 move to symbol and banner-string names (SE G-02, TE G-04); REQ-WVR-08 names its phase-row reading
 (TE G-05); REQ-WVR-05's superseded position is labelled history (SE G-04).
 
-**Amendment, 2026-08-21 (v1.5) — round-3 cross-review.** §1's precondition list separates
-never-written from discarded and cites the write's guard by a re-derivable marker (SE F-01, F-03;
-TE H-03); OQ-1's banner recipe is replaced with one that matches both banners (SE F-02, TE H-01);
-§10's readiness note enumerates the whole §5 table and states BL-04's pickup status (TE H-02, Q-01).
+**Amendment, 2026-08-21 (v1.5) — round-3 cross-review.** §1 separates never-written from
+discarded and cites the write's guard re-derivably (SE F-01, F-03; TE H-03); OQ-1's banner recipe
+matches both banners (SE F-02, TE H-01); §10 enumerates all of §5 (TE H-02, Q-01).
 
 **Note on this branch's base (SE F-01, F-02).** This feature branch is 1,637 commits behind the
 default branch and predates the merge of the mechanism §1 describes; the code claims in this REQ
@@ -536,5 +535,7 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 | US-03 | REQ-WVR-03, REQ-WVR-06, REQ-WVR-09, REQ-WVR-10 |
 | US-04 | REQ-WVR-07 |
 
-Registered in `docs/_queue/QUEUE.md` as Order 20 (`ready: true` — BL-01..03 are all resolved,
-v1.3); project matrix row in `docs/requirements/traceability-matrix.md`.
+Registered in `docs/_queue/QUEUE.md` as Order 20; project matrix row in
+`docs/requirements/traceability-matrix.md`. Readiness over the whole §5 table (TE H-02): BL-01,
+BL-02, BL-03 resolved at HEAD of the default branch; BL-04 open, discharged at FSPEC authoring and
+**not** a pickup gate — so `ready: true` is accurate today.
