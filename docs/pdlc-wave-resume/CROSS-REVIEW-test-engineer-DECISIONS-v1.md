@@ -40,6 +40,60 @@ gives for them. They are F-01, F-03 and F-04 below.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | "44 shipped tests" is not the count the cited test file produces — the real figure is **26** test cases (`18 / 4 / 4`, not `32 / 8 / 4`). The number is the whole cost basis for rejecting O-1 and is restated as DEC-WVR-02's regression net. | Context measured-surface table; O-1; DEC-WVR-01 |
+| F-02 | High | Local | DEC-WVR-03's rule ("append to **each** announcing outcome") and its Consequences count ("**exactly three** shipped whole-string assertions change") cannot both hold: the invalid-pointer notice is a fourth announcing full-run under FSPEC BR-07 and is pinned by whole-string equality today. The risk register treats a fourth as an unforeseeable mid-wave discovery when it is discoverable now. | DEC-WVR-03; O-5; Consequences; Risks |
+| F-03 | Medium | Local | The "~81 lines" chain measurement does not match the anchor the document gives for it. From `if (ledger.reason) {` through the final `else`'s closing brace is **48** lines; 81 is the enclosing `if (!explicitPointer) {` block. | Context measured-surface table; DEC-WVR-02 Context |
+| F-04 | Medium | Local | "The module the feature edits is the largest tracked file in the repo" is falsified by the very command cited: `pdlc/workflows/dist/pdlc-cli.mjs` is 738,924 bytes vs `orchestrate-dev.js` at 734,711. The stated runner-up ("a document at 314,472 bytes") is third, not second. | Context measured-surface table; Risks |
+| F-05 | Medium | Local | DEC-WVR-04's write-side consequence — "the absence of any `{}` writer is asserted over the write site" — is an absence-only oracle with no positive conjunct named. A run that writes nothing at all satisfies it, so it cannot fail for the reason it exists. | Consequences, DEC-WVR-04 row |
+| F-06 | Medium | Local | DEC-WVR-08 prescribes call-count equalities for feature-mismatch, plan-changed and ancestry, but names no oracle for the **over-count × unreachable-head** path — the only case where the lazy scheme's correctness is non-obvious, and the one no shipped fixture covers. Its re-evaluation trigger is also one-directional. | DEC-WVR-08; Consequences |
+| F-07 | Low | Process | DEC-WVR-02's and DEC-WVR-05's re-evaluation triggers are stated as design intentions, not as conditions a test or monitor could detect. DEC-WVR-06, -07 and -08 show the observable form in the same document. | DEC-WVR-02, DEC-WVR-05 |
+
+### F-01 (High) — the "44 shipped tests" cost basis does not re-derive
+
+The Context table and O-1 both count the regression net as 32 + 8 + 4 = 44, and O-1 rejects the
+`WaveResumeStore` rewrite on the strength of "invalidates the 44 shipped tests that reach them".
+Counted against `origin/main` at `345ae358`, in the only test file that mentions any of these
+symbols (`git grep -l` over `pdlc/workflows/__tests__/` returns `waveExecution.test.js` alone):
+
+| Block | Document | Actual | Evidence |
+|---|---|---|---|
+| `describe("Phase I — the INTERIM wave ledger resumes a halted run unattended")` | 32 | **18** | 15 `it` statements, one of which is a 4-member `it.each` ⇒ 14 + 4 = 18 cases |
+| `describe("Phase I — implementation.startWave resumes a halted run")` | 8 | **4** | 4 `it` statements, no `it.each` |
+| `describe("computePlanHash — the ledger's plan fingerprint")` | 4 | **4** | ✅ correct |
+| **Total** | **44** | **26** | 23 `it` statements / 26 cases — no reading of "test" yields 44 |
+
+Note the document also names the second block as "8 tests in the `implementation.startWave` block
+(which asserts the *interaction* of the operator pointer with the record)". Only one of its four
+tests involves the record at all; the interaction test the sentence describes —
+`it("an explicit implementation.startWave outranks the ledger")` — lives in the *ledger* `describe`,
+so the two blocks are also mischaracterised, not only miscounted.
+
+**Why this is High rather than a nit.** The document's stated method is its warrant: "Where a *cost*
+is claimed below it is a counted cost, and the count is stated with the command that produced it,
+not asserted from intuition." Two of the three counts in the sentence that rejects O-1 fail that
+standard by ~1.7×. Three consequences follow, all of them testing consequences:
+
+1. **A downstream oracle transcribed from this number is born red.** DEC-WVR-02's Consequences row
+   makes the ledger `describe` "the extraction's regression net", kept "entirely unchanged by that
+   task". A PLAN or PROPERTIES author writing the natural gate — *the extraction task leaves N
+   ledger tests green and unchanged* — transcribes 32 from here and gets a failure that says nothing
+   about the extraction.
+2. **The rejection of O-1 loses its measured footing.** O-1 is still correctly rejected — 26
+   invalidated tests plus the `.gitignore` anchor plus the no-`import` dialect is ample — but as
+   written the argument is carried by a number that does not exist, which is precisely the
+   "asserted from intuition" failure the Verification frame promises to avoid.
+3. **It is the one class of error this document cannot absorb.** A DECISIONS record whose counts are
+   approximate is indistinguishable, to a future reader, from one whose counts are wrong in a way
+   that flips a decision.
+
+**Required change.** Replace `32 / 8 / 4 = 44` with `18 / 4 / 4 = 26` in both the Context table and
+O-1, state the counting rule used (test **cases**, with `it.each` members counted individually — the
+choice matters, since `it` statements give 23), and correct the parenthetical describing the
+`implementation.startWave` block. If a different, defensible counting rule yields a different number,
+state the rule and the command; what must not survive is a figure no command reproduces.
+
 ## Questions
 
 ## Positive Observations
