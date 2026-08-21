@@ -180,4 +180,17 @@ Strategy**; nothing else in the delta needs to move.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | nonlocal | §4.5's new `snapshotRef` rendering contract and FSPEC v1.7's AT-06-4 conjunct (3) / AT-06-4b have no oracle: §5.6's AT-06-4 row still asserts the root-cause class only and there is no AT-06-4b row, so an implementation that never renders the overwrite sentence — or renders it unconditionally, including on E-34 where FSPEC requires its absence — is green under every AT this TSPEC maps | §5.6 AT-06-4 row (line 1795); §5.1 `advisoryWaveGate.test.js` row |
+| F-02 | Medium | delta | nonlocal | §6 OQ-2's disposition still records the re-run overwrite as an accepted operator-borne cost whose remedy is a recorded future ref discriminator, contradicting §2.5's absorbed BR-14 statement that the halt report hands the operator the remedy; second round flagged | §6 OQ-2; §2.5 paragraph |
+| F-03 | Low | inherited | local | §4.5's Snapshot-ref row promises "never overwritten by a later wave" with no cross-reference to §2.5's *next-run* overwrite correction — the condition the new `snapshotRef` rendering exists to warn about is absent from the row where the field contract is read | §4.5 Snapshot ref row |
+
+FINDING: High | delta | nonlocal | §5.6 AT-06-4 row (line 1795) and §5.1's `advisoryWaveGate.test.js` row | the erratum landed BR-14's obligation in §2.5/§4.5 as a `snapshotRef` field with a rendering contract (non-`null` ⇒ ref name and overwrite sentence, adjacent; `null` ⇒ neither) but left §5 untouched: §5.6's AT-06-4 still reads "carries the root-cause class" — FSPEC v1.7's conjunct (1) diagnosis and conjunct (3) co-located overwrite statement are absent — and FSPEC's AT-06-4b, the no-capture companion that exists precisely to make conjunct (3) falsifiable rather than an always-present string, has no row at all; grep for `overwrit` across §5.1–§5.6 returns nothing, so the new contract has zero oracles and both failure modes (never rendered, always rendered) pass. Resolve by extending AT-06-4 to all three conjuncts with a co-location-within-one-rendered-report oracle and adding an AT-06-4b row on the existing E-34 capture-failure fixture in `advisoryWaveGate.test.js`
+FINDING: Medium | delta | nonlocal | §6 OQ-2 disposition | OQ-2 still disposes the re-run overwrite as an accepted cost that is "the operator's, not the pipeline's", with a run-scoped ref discriminator as the recorded remedy, while §2.5 at v1.12 records that upstream has decided the halt report itself must warn the operator; the design record now presents as an open accepted-cost question something BR-14 closed, and one clause acknowledging that landing fixes it
+FINDING: Low | inherited | local | §4.5 Snapshot ref row | the row's "one ref per wave, never overwritten by a later wave" promise is true as written but carries no cross-reference to §2.5's correction that the *next run* overwrites the ref — which is the condition the new `snapshotRef` rendering warns about, so the implementer reading the field contract in §4.5 does not find the warning's trigger there
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
