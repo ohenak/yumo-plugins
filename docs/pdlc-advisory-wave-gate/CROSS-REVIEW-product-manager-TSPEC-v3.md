@@ -78,11 +78,54 @@ Only the lineage row makes a claim about what this document compresses.
 
 ## Seams
 
-<!-- pending -->
+Three interface surfaces moved in this delta. All three are HEAD-faithful.
+
+**The runtime-artifact seam (§1.2).** The old text justified "everything lands in
+`orchestrate-dev.js`" on a bundling premise that no longer exists. The replacement grounds the same
+conclusion on two real channels — `build-runtime.mjs` emitting only `pdlc-cli.mjs`, and
+`prepack.mjs` vendoring `MODULE_NAMES` verbatim into `@kaneho/pdlc-engine` — and draws the correct
+product consequence: "Both channels therefore carry whatever this file says and nothing else has to
+be kept in sync by hand." I verified `MODULE_NAMES` (`prepack.mjs:20`) and the contents of
+`pdlc/workflows/dist/`. The single-module placement argument, which several downstream sections
+lean on, is now resting on load-bearing ground instead of a retired artifact.
+
+**The promotion-commit seam (§1.1 O-8, §3.6).** `groupPromotedPaths(waves, waveIndex, repairPaths)`
+returns rows; the wave loop iterates them and issues one `commitPaths` per row. The restated O-8 row
+names the loop, names its source rows, and gives the coherence argument — the `message` template
+carries a single `{taskId}` slot, which only reads under a per-task call. §3.6's prose matches. The
+row and the section no longer disagree, which was the point of the v1.10 fix and is preserved here.
+
+**The envelope-example seam (§3.4).** The trailing-slash lesson is unchanged; only its worked example
+is re-grounded, from a refused `orchestrate-dev.bundle.js` to a refused `pdlc-cli.mjs`, described as
+"the one artifact `build-runtime.mjs` emits at HEAD". The pedagogical point — a slash-less manifest
+row refuses silently — is intact, and the example is now one an operator could actually hit.
 
 ## Data Model
 
-<!-- pending -->
+`haltFields` gains a fifth member: `snapshotRef: string | null`. The shape change is propagated
+consistently — the `runWaveGateSeam` return type (§3.2), §4.5's carrier row, §4.5's capture-failure
+literal table (`null`, with the reason given: this *is* the capture-failure path, and `null` is what
+suppresses the warning under E-34's arm), and §4.5's un-skip `fields` row. I checked for a fourth
+site the edit might have missed and found none; every place the four-field object was enumerated now
+enumerates five.
+
+Two modelling choices are worth endorsing explicitly, because they are the ones that make the
+upstream observable mechanically checkable rather than editorial:
+
+- **`null` rather than an absent key.** This matches the existing `repairPaths: []` reasoning
+  already in §4.5 ("the field is present so the halt report's shape is the same on every A6-touched
+  halt"), and it gives E-34's negative arm a *value* to assert rather than an absence to prove.
+- **A field rather than prose folded into `diagnosis`.** §4.5's "Why a field and not a prose string"
+  row gets this right for the right reason: AC-6.3's diagnosis conjunct compares `diagnosis`
+  literally, while BR-14's oracle asserts co-location and the presence of the overwrite statement,
+  never the ref's name. Folding them would couple two assertions upstream deliberately keeps apart.
+  This is also what dissolves my v2 F-02 — with the second conjunct carried in `fields`, §4.5's
+  claim that "the diagnosis travels in `fields`, never in the reason string, which is what lets
+  AT-05-3's literal comparison and AC-6.3 both hold" is now true of *both* conjuncts, where at v1.11
+  it was true of only one.
+
+Naming the ref in the rendered report is TSPEC's prerogative, not a divergence: BR-14 says the
+*oracle* never asserts the name because the name is O-1's, and O-1 is this document.
 
 ## Verification
 
