@@ -107,6 +107,39 @@ one case a dispatcher can be in, and it is C. I carry it forward as `inherited` 
 
 ## Verification
 
+**How I verified this round, command by command.** Nothing below is taken from the changelog's account
+of itself.
+
+| Check | Command / artefact | Result |
+|---|---|---|
+| Delta is as described | `git show ba120270 -- …/PLAN-…md` | 4 insertions, 3 deletions, one file: version cell, P-A-7 lead-in, LI-08 clause, 0.9 changelog row |
+| Upstream unmoved | `shasum -a 256` on REQ/FSPEC/TSPEC/DECISIONS | All four match the dispatch-pinned hashes exactly |
+| Ledger untouched | diff of batches 7–13 expected-red table | Byte-identical |
+| Case table untouched | diff of the A/B/C rows | Byte-identical |
+| `ordinal`/`gloss` unexercised | `grep -rn "ordinal\|gloss" pdlc/workflows/__tests__/` | Hits only in `helpers/learningsFixtures.js` (JSDoc + render); no test caller |
+| Six `body:` section specs | `grep -n "body:" …/learningsBlock.test.js` | Lines 77–82, six specs, six keys |
+| One non-BR-6 `body:` | `grep -n "body:" …/learningsSelect.test.js` | Line 497, `name: "Not A BR-6 Section"` |
+| Case C's production half shipped | `canonicalSectionName`, `SECTION_HEADING_RE` at HEAD | Ordinal strip, gloss strip, case-sensitive compare, `###` never matched — all present |
+
+**Does the delta break anything I previously approved?** No. Both edits are strictly subtractive of
+false or stale statements; neither adds an obligation, moves a task, or changes what any suite must
+assert. The TDD ordering, the `[Fake first]` labelling, the red-before-green pairing and the
+mutation-proof discipline on LI-06 are all untouched, and the expected-red ledger — the gate input my
+lens most cares about — is byte-identical.
+
+**The one thing the delta *did* break, and it is cosmetic.** The v0.7 changelog row (line 609) still
+records that round's action as dropping the false "bare-title form only" claim on the grounds that
+"`renderSection` already carries unexercised `ordinal`, `gloss` **and `body`** knobs". At v0.8 that row
+and the LI-08 note agreed — both were wrong about `body`. At v0.9 the note is right and the row is
+still wrong, so the document now contradicts itself across two sections. Changelog rows are historical
+records of what a round did, and the 0.9 row explicitly names and corrects the error, so a reader who
+reads forward reaches the right fact. But the 0.7 row states the claim in the present tense as a fact
+about HEAD, not as a report of a belief held then, and a reader who greps for `renderSection` finds the
+wrong answer first. One clause — tensing it as what round 8 believed, or striking `and `body`` — closes
+it. Low, and I tag it `delta` because this edit is what created the disagreement.
+
+**Verification bar for the round.** No open High, old or new. The three Lows are recorded, not gating.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
