@@ -39,6 +39,120 @@ shipped oracle); everything else is cited by symbol, spec id or verbatim quote p
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | BR-14's **seam arm** is never observed on the production halt report. The seam pushes the notice at `orchestrate-dev.js:3579-3581`, the wiring that carries it to the operator is `_notice: advisoryNotice` (`:15432`) → `notices.push` (`:14676`) → the halt-path `buildFinalReport({ … notices … })` (`:16119`). No test asserts any element of that report's `notices` on a run that drives the real seam. Delete `_notice: advisoryNotice` at `:15432` and the whole 4 159-test suite stays green while AC-6.3's warning silently stops reaching the operator. | REQ-AWG-06 AC-6.3 |
+| F-02 | High | Local | `ADVISORY_ROOT_CAUSES` is still asserted by **sorted set-equality** (`advisoryEnvelope.test.js:329-330`), so AC-2.2's *ordered* "first matching class winning" semantics has no oracle at all. PLAN §DoD leg 3 requires ordered-sequence equality for this catalogue by name, and PLAN changelog v1.11 records it as PM F-01 (High). Both sibling catalogues already comply. | REQ-AWG-02 AC-2.2 (P0) |
+| F-03 | Medium | Local | `NO_HALT_FIELDS` (`waveExecution.test.js:947-952`) is an ad-hoc four-key stand-in for the five-key production sentinel `noHaltFields` (`orchestrate-dev.js:3385-3391`); the A6 fake at the wave-loop call site therefore returns a shape production never returns. | REQ-AWG-06 AC-6.3 |
+| F-04 | Medium | Local | The A6 dispatch prompt hands the agent four bare class labels — `` `Classify with a trailer line ROOT-CAUSE: one of ${ADVISORY_ROOT_CAUSES.join(", ")}.` `` (`orchestrate-dev.js:3144`) — with neither AC-2.2's Meaning column nor its first-match rule. The classification AC-6.4 makes countable is produced with no statement of what the classes mean. | REQ-AWG-02 AC-2.2, REQ-AWG-06 AC-6.4 |
+| F-05 | Low | Local | `runWaveGateSeam`'s JSDoc `@returns` (`orchestrate-dev.js:3358`) still documents the four-key `haltFields` shape; `snapshotRef` is missing from the one place a reader looks for the seam's contract. | REQ-AWG-06 AC-6.3 |
+
+### F-01 — the co-located warning is proven at the seam, never on the report
+
+AC-6.3's observable is the **halt report**: *"the halt report carries the diagnosis and the
+root-cause class … Where the halt report points the operator at a captured pre-A6 tree state, it
+also warns, in the same place …"*. FSPEC BR-14 sharpens it: *"Co-location is the observable — a
+pointer in the halt report and the warning in a runbook does not satisfy it."* TSPEC §4.5 names the
+carrier and, crucially, the wiring claim: the notice is pushed *"through the sink the tier already
+owns — `const advisoryNotice = (line) => notices.push(line)` … and that same `notices` array is
+spread onto the **halt** report, not only the success one"*.
+
+Walking AC → production caller → served artifact for each of the three arms:
+
+| Arm | Production push site | Test that drives the production assembler | Verdict |
+|---|---|---|---|
+| Ordinary A6 escalation (BR-14's primary arm) | seam, `orchestrate-dev.js:3579-3581` | **none** | gap |
+| E-34 capture failure (negative arm) | none, by design | seam-level only (`advisoryWaveGate.test.js:1926`) | acceptable — nothing to assemble |
+| Post-gate un-skip halt | wave loop, `orchestrate-dev.js:15485` | `waveExecution.test.js:1340-1342`, driving `main` and reading `result.notices` | wired and proven |
+
+Every assertion on the primary arm reads a **test-owned sink** rather than the report:
+`advisoryWaveGate.test.js:1834-1836` and `:1853-1855` (PROP-REC-08) pass `_notice: (m) => notices1.push(m)`
+straight into `runWaveGateSeam`; `advisoryEscalationLog.test.js:827` reads `runA6Escalation`'s local
+`notices` array (helper at `:633-665`), not a report. The one test that reaches the real seam from
+`mainDev` and halts — `advisoryWaveGateMain.test.js:347-388` — asserts `result.haltAdvisory`'s five
+keys and never touches `result.notices`. So the run that *does* exercise `:15432` makes no claim
+about its effect.
+
+This is the DC-14 pattern whose origin line is literally *"`pdlc-advisory-tier` (§4 —
+`refusalReasonFor`'s precedence had zero production callers)"*: a helper proven pure and a seam
+proven to push, with nothing asserting the two ever meet the artifact the operator reads. The repo
+already has the proof shape for a sibling seam — `advisoryDodSeams.test.js:1185` asserts
+`result.notices.some((n) => /^ADVISORY ESCALATION: seam A3 for test-feat/.test(n))` on a report — so
+this is a one-assertion gap, not a design problem.
+
+**What must change.** In `advisoryWaveGateMain.test.js`'s escalation case (the real-seam `mainDev`
+halt), add the same co-location oracle the un-skip arm already uses, on `result.notices`: pick the
+single element containing `"refs/pdlc/a6-snapshot-" + waveNum` and assert `/overwrit/i` **on that
+same element**, both halves spec-side literals. The fixture already establishes the ref is
+`refs/pdlc/a6-snapshot-1` (its own `haltAdvisory` oracle asserts exactly that), so no new fixture
+and no new double is needed.
+
+### F-02 — AC-2.2's ordering is a P0 semantic with no oracle
+
+AC-2.2 defines the classification as a *"closed, **ordered** set, the first matching class winning
+so a failure matching two still has one class"*, and the order decides product-visible authority: a
+failure classified `plan-ordering-defect` may be repaired through E-6 (promoting a later task's
+symbol), while `wave-internal-defect` routes to E-5 (the wave's own owned set). The shipped oracle
+sorts both sides:
+
+```js
+expect([...devModule.ADVISORY_ROOT_CAUSES].sort()).toEqual(
+  ["environmental", "plan-ordering-defect", "unclassified", "wave-internal-defect"].sort()
+);
+```
+
+Reversing the catalogue in source leaves that assertion green. The order is not inert in
+production — it is rendered into the agent's prompt verbatim by
+`ADVISORY_ROOT_CAUSES.join(", ")` (`orchestrate-dev.js:3144`) — so a reordering changes what the
+model is shown, with no test to catch it.
+
+Both sibling catalogues already carry the ordered assertion, which is what makes this an omission
+rather than a house-style question: `ADVISORY_REFUSAL_REASONS` deep-equals its ordered literal
+(`advisoryEnvelope.test.js:260`), and `ADVISORY_EXCLUSIONS` carries **both** the set check and a
+separate ordered check with the reason stated in place (`:288` and `:292`, *"order is observable and
+load-bearing"*). PLAN §DoD leg 3 names all three together and requires ordered-sequence equality for
+each; PLAN changelog v1.11 records this as an accepted High from an earlier round. It was not
+landed: `advisoryEnvelope.test.js` does not appear in this branch's diff at all.
+
+**What must change.** Add the ordered conjunct beside the existing set check, in `ADVISORY_EXCLUSIONS`'s
+shape — `expect(devModule.ADVISORY_ROOT_CAUSES).toEqual(["plan-ordering-defect", "wave-internal-defect",
+"environmental", "unclassified"])`, transcribed from REQ AC-2.2's table, with the set check kept so a
+*renamed* member still fails distinctly from a *reordered* one.
+
+### F-03 — the call-site A6 double no longer matches the contract it stands in for
+
+`orchestrate-dev.js:3385-3391` is the disabled-tier sentinel and now carries five keys, `snapshotRef:
+null` among them. The wave-loop suite's own stand-in was not widened with it
+(`waveExecution.test.js:947-952`, four keys), so every case using `makeA6Fake({ haltFields:
+NO_HALT_FIELDS })` exercises the call site against a return shape the seam can no longer produce.
+
+Nothing false-greens **today** — both users pass `disposition: null`, so `haltFields` never reaches
+`haltError` — but this is exactly DC-03's recorded corollary: *"A test double for a gate is
+canonical, never ad-hoc. A per-test stub silently diverges from the real component's return protocol
+and produces false passes."* The next case that gives that fake a non-null disposition would assert
+a four-key `haltAdvisory` against a five-key production reality. Widen the literal to five keys
+(`snapshotRef: null`), matching `advisoryWaveGate.test.js:1067-1075`'s already-widened sentinel
+equality.
+
+### F-04 — the class the operator counts is requested without its definitions
+
+AC-2.2 gives each class a Meaning, and AC-6.4 rests the feature's durable signal on the class being
+right (*"a recurring wave-ordering defect becomes a visible signal rather than a repeated
+surprise"*). The receiving side is faithful and total — `parseA6RootCause`
+(`orchestrate-dev.js:2378-2391`) accepts only catalogue members and defaults to `unclassified` — but
+the *emitting* side is asked for a class with no definitions and no first-match instruction:
+`orchestrate-dev.js:3140-3148` sends the four labels joined by `", "`, one E-6-specific sentence,
+and nothing else. The Meaning column appears nowhere in `orchestrate-dev.js` (`grep
+plan-ordering-defect` returns the catalogue member, that one prompt line, and two comments).
+
+This is the shipped state at the merge base, not something this branch changed, and the
+software-engineer reviewer already carries the document-altitude half of it as an open Medium
+(`CROSS-REVIEW-software-engineer-FSPEC-v2` F-01, *"BR-2's first-match rule needs a classifier to be
+falsifiable"*, still open per v3). I tag it Medium to reconcile with that rather than inflate: the
+concrete change is to render AC-2.2's table — class, meaning, and the first-match sentence — into
+the prompt from the same frozen catalogue, so the classification an operator later counts was asked
+for against a stated definition.
+
 ## Questions
 
 ## Positive Observations
