@@ -42,6 +42,41 @@ a plain object, and the shipped halt assertions read it as data
 
 ## Architecture
 
+The delta moves one thing architecturally: conjunct (3)'s observable surface, from an unnamed
+"rendered report string" to a **halt-report `notices` entry** produced by
+`renderSnapshotOverwriteNotice(snapshotRef)`. From a test-architecture standpoint this is the right
+surface — it is a string (so "adjacent" is meaningful), it rides a field that already exists on the
+halt report, and it leaves `haltReason` untouched, so no existing message oracle is disturbed.
+`renderSnapshotOverwriteNotice` does **not** exist at HEAD (`grep -rn renderSnapshotOverwriteNotice
+pdlc/` returns only this TSPEC), which is correct: it is the thing the PLAN mints. Its two named
+siblings do exist, at the line numbers cited above, so the "no new module, no new file" claim (§1.2)
+survives.
+
+**The one architectural question the delta leaves open is the push site**, and it is not cosmetic
+for testing. §4.5 line 1419 says the notice "is pushed through the sink the tier already owns —
+`const advisoryNotice = (line) => notices.push(line)`". That sink reaches A6 as the `_notice`
+parameter of `runWaveGateSeam` (`orchestrate-dev.js:3383`, `:15387`), so "pushed through
+`advisoryNotice`" reads most naturally as *pushed from inside the seam*. But the document never says
+so, and the two readings have different test consequences:
+
+- **Pushed inside the seam.** Then every seam-level fixture that counts notices sees one more.
+  `advisoryEscalationLog.test.js:821` asserts `expect(failed.notices).toHaveLength(2)` on a
+  `runA6Escalation` run built over a **real** temp repo (`makeRealRepoFixture`, `:634`, `:655`) with
+  the tier on and `waveNum: 2`. `captureTreeSnapshot` runs unconditionally before dispatch on that
+  path (`orchestrate-dev.js:3403`, guarded only by the tier gate at `:3392`), so the capture
+  succeeds, `snapshotRef` is non-`null`, and §4.5's "Every A6-touched halt whose `snapshotRef` is
+  non-`null`" makes a third notice due — that shipped exact-count oracle reddens.
+- **Pushed at `main`'s halt handler.** Then the seam-level count is safe, but §5.2's capture-failure
+  fixture — where the delta puts AT-06-4b — is a **seam-level** run at HEAD (it asserts
+  `result.haltFields` off `runWaveGateSeam`: `advisoryWaveGate.test.js:1699`, `:3425`), and a
+  seam-level run has no halt report to read `notices` off at all.
+
+Either reading needs a sentence in §4.5 and a consequent edit named in §5.1/§5.2. Filed as F-02.
+
+The rest of the architecture is unmoved: no new double, no new test file, both arms still land in
+`advisoryWaveGate.test.js` (§5.1 line 1481), so the same-batch same-new-file authoring guard is
+still satisfied — PLAN A6-15 remains the single writer.
+
 ## Interfaces
 
 ## Data Model
