@@ -90,9 +90,41 @@ I would like the follow-up edit to reach for.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | OB-1's worktree sentence now needs only one more pass to be right at HEAD: would you rather ground it on `origin/main:.gitignore`'s "never shared" block (which names both `/.claude/workflows/` and `/.claude/pdlc-wave-state.json`) and drop the include-list clause entirely, or keep the include list and attribute its absence to retirement class M-11j? The first is shorter and cites a live artifact; the second preserves the causal story. Either resolves F-01. |
+| Q-02 | With D-DIST-07 recorded closed-by-construction upstream, is there anything left for TSPEC to *coordinate* on worktrees, or is the whole obligation now "state that a worktree fails open, and test it"? If the latter, OB-1's closing clause can shrink to that, which also resolves F-02. |
+
 ## Positive Observations
 
+- The erratum is exactly as scoped as it claims. The v1.7 note says "Two items, nothing else
+  changed", and the diff bears that out: two content hunks, one version cell, one note. Reading
+  the diff was sufficient to confirm the round — that is what a well-behaved erratum edit looks
+  like, and it made this confirmation cheap.
+- BL-04 is now stated identically in both places that carry it. §5's row no longer reads as a
+  discharged check, §10 no longer stands alone in saying it is unmet, and both name the same
+  consequence. The routed OB-F1 contradiction is fully gone.
+- §10's readiness reasoning stayed coherent through the edit: BL-04 is unmet, is owed before
+  implementation, and is explicitly **not** a pickup gate — which is why `ready: true` in the
+  frontmatter is still the right value. I re-checked the frontmatter against that sentence; they
+  agree.
+- The edit correctly refused to cite `.worktreeinclude` from this branch's tree. The file *is*
+  tracked at this branch's HEAD, and citing it would have been the easy, wrong move under the
+  base-note's own rule. Reaching for a default-branch check instead was the right instinct — the
+  remaining problem is only the explanation attached to the result.
+- Nothing I approved in v5 regressed. The mechanism inventory, the requirement set, the ignore
+  catalogue and the risk table are byte-identical across the delta.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+Both routed items landed, and the document is not broken anywhere I previously approved. The two
+Medium findings are grounding defects in OB-1's hand-off prose — a wrong reason attached to a right
+fact (F-01) and a decision cited as deferred that upstream now records as closed (F-02) — plus one
+inherited wording mismatch on BL-04's deadline (F-03). None changes a conclusion, a requirement, or
+a testable outcome, so none blocks Phase T. All three are one-sentence edits; the natural place to
+land them is the next revision of this document rather than another erratum round.
 
 ## Delta-Confirmation Findings
 
