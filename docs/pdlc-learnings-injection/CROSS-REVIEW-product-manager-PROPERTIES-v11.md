@@ -174,6 +174,38 @@ staged TDD red, so a red that lands is a defect to fix, not a ledger row to writ
 
 ## Fixtures
 
+**No fixture row, corpus, generator or manifest entry moved in this delta.** §F.1–§F.4 carry no hunk;
+the AT-11 fixture, the `GATE-GRAMMAR` corpus, `fixtures/learnings-baseline/`,
+`scripts/capture-learnings-baseline.mjs` and the `.gitignore` entry are all byte-unchanged in the
+document. What the delta changes is the *rule* under which a fixture-touching amendment commit lands,
+so the question for this section is whether any fixture claim depends on the case that changed. One
+does, and it now reads correctly.
+
+| Fixture dependency | What the delta now says | Checked against | Holds? |
+|---|---|---|---|
+| `helpers/learningsFixtures.js` and its consumers | *"carry no row of their own in **any of the three cases**"*, with PLAN's narrowing quoted: *"**this** heading-form follow-up commit, not a standing exemption for those files"* | PLAN's paragraph under the P-A-7 table says exactly this, including the "any of the three cases" wording and the TE v9 F-01 attribution | Yes |
+| The additivity premise for the declared-heading-form knob | Unchanged in this document | PLAN still states it verbatim: the landed helper renders an optional ordinal and gloss, and callers declaring neither keep byte-identical output | Yes |
+| The non-additive escape hatch | Not restated in PROPERTIES; PLAN now routes it *"under case B's rule first … or, once batch 13 is behind us, under **case C**"* | PLAN, closing sentence of the additivity paragraph, which itself names *"the PROPERTIES amendments §C.4 routes here"* as falling under the case-C branch | Yes — and PROPERTIES' §C.4 statement is the matching half of that sentence |
+| The Group D amendments against the landed `learningsSelect.test.js` | New paragraph: *"no ledger row, and green at landing"*, same fix-before-batch-14 rule | `learningsSelect.test.js` is landed at HEAD from LI-07 (`333cc891`); PLAN case C names the Group D amendments explicitly | Yes |
+| PROP-BOUND-07's hand-computed byte literals over the AT-11 fixture | Untouched | Still hand-computed in the document with the arithmetic written out; the landed suite follows the same discipline (`learningsBlock.test.js:107-116`, `:129-139`, `:166-183`) | Yes |
+
+**The fixture-debt scoping survived the re-derivation.** §C.4's earlier ruling — that what is owed is
+*"the variant fixture as a whole"* rather than four separate knobs, because the landed helper already
+renders ordinal and gloss and the amendment adds **callers** — is untouched by the delta and still
+rests on a premise PLAN still states. That is worth checking explicitly in a frozen round, because the
+re-derivation could easily have dragged the fixture-debt sentence along with the ledger sentence and
+changed what an implementer thinks they owe. It did not: the delta moved the *ledger* obligation and
+left the *fixture* obligation exactly where it was.
+
+**No new fixture entered the upstream this round, so no new fixture row is owed here.** PLAN v0.8's
+changelog closes with *"Nothing else changed: no task moved batch, no `Deps` edge changed, no AT
+partition, fixture or manifest row was touched, and the batches 7–13 ledger is byte-identical"*
+(`PLAN-pdlc-learnings-injection.md:610`). I confirmed the negative on this document's side too: the
+delta's four hunks are all in the header, §C.4 and §G.3, and none of them adds, removes or renames a
+fixture. The fourteen-row inventory, the 70/35/23/21/12 counts and the 23-of-23 task accounting are
+byte-identical to the version I approved at v9, so every PLAN task still has its properties and every
+property still names a fixture PLAN still creates under a task PLAN still owns.
+
 ## Findings
 
 ## Questions
