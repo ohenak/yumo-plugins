@@ -1027,7 +1027,7 @@ directory today, and LI-05's row says so.
 |---|---|
 | **T-O-4** — `orderCorpus` output is a permutation of its input and the comparator is a strict weak ordering | **PROP-ORDER-06**, parameterised per §O.9 |
 | **T-O-5** — `selectLearnings` is total: no throw, every input path exactly once across `selected ∪ rejected` | **PROP-CORPUS-09**, parameterised per §O.9 |
-| **T-O-6** — `extractInjectableMaterial`: `bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`, whole-character prefix, `bounded` true exactly when cut | **PROP-BOUND-03** (example arm, AT-11/AT-12) **plus** §O.9's generated arm, which is the half that makes the all-inputs claim of §D.5 checkable |
+| **T-O-6** — `extractInjectableMaterial`: `bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`, whole-character prefix, `bounded` true exactly when cut | **PROP-BOUND-03** (example arm, AT-11/AT-12) **plus** §O.9's generated arm, which is the half that makes the all-inputs claim of §D.5 checkable. Both are stated over `maxBytes >= 1`; the `maxBytes = 0` boundary is **not** dropped but routed to **PROP-CONFIG-09**, because FSPEC BR-6 takes that case out of the cut path entirely (dropped, `RSN-NO-MATERIAL`, no slot — E-36) and its observables live at the workflow seam, not at this unit. The obligation is discharged across the pair with no input of §D.5 unclaimed |
 
 All three land on tasks that already exist (LI-07 red / LI-16 green for T-O-4 and T-O-5; LI-08 red /
 LI-17 green for T-O-6's example arm, with the generated arm folded into the same suites). **No new
@@ -1035,18 +1035,27 @@ PLAN task is required**, and no obligation is deferred to implementation.
 
 ### G.2 Known gaps in this document
 
-1. **`maxBytesPerDocument: 0` is undecided upstream and therefore untested here.** AT-30 exercises
-   `maxDocuments: 0` and `maxTotalBytes: 0` only. §4.1 admits `0` as a valid non-negative threshold, so
-   the third zero is reachable by configuration, and REQ AC-4.4's "zero bytes" branch does not say
-   whether the outcome is `RSN-NO-MATERIAL`, `RSN-BYTES`, or a zero-byte contribution. **No property
-   asserts it**, deliberately: inventing the answer here would freeze a guess into the suite. Routed as
-   an erratum below; when FSPEC decides, the property belongs in Group H beside PROP-CONFIG-04 and
-   costs one case in `learningsConfig.test.js`.
-2. **Byte accounting of framing is specified two ways.** TSPEC §D.5 says material only, framing never
-   charged; FSPEC BR-6's worked example charges the identification line and delimiters. PROP-BOUND-07
-   and PROP-BLOCK-02 are written to **TSPEC's** reading, because PLAN LI-08's hand-computed AT-11/AT-12
-   counts are computed that way and the fixtures follow. If FSPEC's reading is the intended one, both
-   properties' expected counts change and LI-08's row changes with them. Routed as an erratum.
+1. **`maxBytesPerDocument: 0` — resolved upstream, now asserted (not a gap).** This entry recorded a
+   deliberate omission: at the time, no upstream text decided the third zero, and the entry said the
+   property "belongs in Group H beside PROP-CONFIG-04 and costs one case in `learningsConfig.test.js`"
+   once FSPEC spoke. **FSPEC v0.13 decided it** — E-36, BR-6's *Where the bound is zero* clause, and
+   AT-30's third arm — and the property landed exactly where this entry predicted: **PROP-CONFIG-09**,
+   in Group H, one case in `learningsConfig.test.js` under LI-12 (red) / LI-21 (green), with the
+   `ZERO-BOUND` fixture as its positive control and PROP-BOUND-06 widened to BR-9's second disjunct.
+   PROP-BOUND-03 and §O.9's generated arm were bounded to `maxBytes >= 1` in the same change, since
+   their universal form contradicted the new rule at the boundary. The entry is retained rather than
+   deleted because the *episode* is the point: declining to guess cost one confirmation round and no
+   retracted property, where a guessed answer would have frozen a wrong expected value into the suite.
+2. **Byte accounting of framing — resolved upstream, no recomputation owed (not a gap).** This entry
+   recorded a live contradiction: TSPEC §D.5 said material only, while FSPEC BR-6's worked example
+   charged the identification line and delimiters, and PROP-BOUND-07 / PROP-BLOCK-02 were written to
+   **TSPEC's** reading with the blast radius named. **FSPEC v0.13 closed it in that direction** — a
+   document's contributed bytes are "its **material** — the section headings and bodies taken from it,
+   and nothing else", and framing counts "toward none of the three quantities". The conditional this
+   entry carried ("both properties' expected counts change and LI-08's row changes with them")
+   therefore resolves to **no change**: no expected value in Group D moves, `BYTES-BINDING`'s 3/5/0
+   literal stands, and PLAN LI-08's row keeps its arithmetic. PROP-BOUND-07 now cites BR-6 beside
+   §D.5, and mutation M-5 (§O.8) is a mutation away from **both** specs rather than toward one.
 3. **`runMirror` is deliberately unasserted** (PROP-RECORD-09). This is a gap by decision, not by
    oversight: upstream leaves its value unconstrained, an implementation omitting it entirely conforms,
    and a test pinning it would red a conforming implementation. The **decision** is a gap; the
@@ -1079,15 +1088,30 @@ PLAN task is required**, and no obligation is deferred to implementation.
 
 Emitted as line items in this dispatch's final message; **no upstream document was edited.**
 
-- FSPEC's BR-6 worked example versus TSPEC §D.5 on framing bytes (gap 2 above).
-- FSPEC's missing edge decision for `maxBytesPerDocument: 0` (gap 1 above).
-- TSPEC's AT-11 byte count, which inherits FSPEC's framing arithmetic and so cannot be right if §D.5 is.
-- FSPEC BR-6's delegation of the section-heading recognition rule to F-O-1, where TSPEC's F-O-1
-  discharge (§D.3) covers only the *document*-shape predicate (`LEARNINGS_HEADING_RE`) and leaves
-  `extractInjectableMaterial`'s section matcher unspecified — so no upstream text says whether
-  `## 3. Rejected Proposals (with rationale)` is matched on the numbered form, the bare title, or a
-  prefix. PROP-BOUND-08's real-corpus arm bounds this document's exposure to the gap; it does not
-  close it.
+**Answered by FSPEC v0.13, no longer routed** — retained as a record of where each landed:
+
+- ~~FSPEC's BR-6 worked example versus TSPEC §D.5 on framing bytes~~ — **answered**. BR-6 is now
+  material-only and framing is charged to nothing; the two specs agree and PROP-BOUND-07 compresses
+  both (gap 2 above).
+- ~~FSPEC's missing edge decision for `maxBytesPerDocument: 0`~~ — **answered** as E-36, with BR-6's
+  zero-bound clause and AT-30's third arm; asserted here by PROP-CONFIG-09 (gap 1 above).
+- ~~FSPEC BR-6's *delegation* of the section-heading recognition rule~~ — **the ownership half
+  answered**: F-O-1 now explicitly owns both heading-recognition rules. What remains is the TSPEC
+  item below.
+
+**Still open:**
+
+- **TSPEC** — AT-11's hand-computed byte count. Its premise has narrowed rather than disappeared:
+  the count can no longer be said to *inherit* FSPEC's framing arithmetic, because FSPEC has none,
+  so if it was computed with framing charged it is now at odds with FSPEC BR-6 **and** TSPEC §D.5
+  together. This is a **TSPEC-only** item; a reader should not go looking for FSPEC framing
+  arithmetic to reconcile it against.
+- **TSPEC** — the section matcher's discharge. F-O-1 now owns two heading-recognition rules, and
+  TSPEC §D.3 discharges only the first (`LEARNINGS_HEADING_RE`, the *document*-shape predicate),
+  leaving `extractInjectableMaterial`'s section matcher unspecified — so no upstream text yet says
+  whether `## 3. Rejected Proposals (with rationale)` is matched on the numbered form, the bare
+  title, or a prefix. PROP-BOUND-08's real-corpus arm bounds this document's exposure to the gap; it
+  does not close it.
 - TSPEC's suite assignment for AT-15, whose clauses 2–3 (corpus-level `RSN-EMPTY`, no discarded document
   in any record) are asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite — the
   mismatch PLAN LI-07/LI-19 already work around by carrying an expected-red ledger entry.
