@@ -39,6 +39,34 @@ unchanged in `0f2a9710..033cd093`.
 
 ## What the delta changed
 
+Six edits, all bounded, none reopening a decision:
+
+1. **Lineage + changelog** — the `Upstream` cell re-grounded, a v1.13 entry that answers TE Q-01
+   before touching §5 and states what it is closing.
+2. **§1.3 residue table** — the last non-`none` cell re-measured; the residue column is now empty
+   across all eight rows, which is what the surrounding prose ("the table below was written as
+   future work and is no longer that", `:369`) has claimed since v1.12. The routing sentence to
+   PLAN survives, correctly: whether the early-landed edits are reverted or PLAN's batches are
+   re-derived is still open, and emptying the residue does not settle it.
+3. **§4.5's Snapshot-ref carrier row** — gains a pointer to §2.5's next-run-overwrite correction so
+   the implementer reading the field contract finds the warning's trigger (TE F-03). Faithful:
+   §2.5 `:599-608` is where that trigger is stated.
+4. **§5.1's manifest row** — `advisoryWaveGate.test.js` now names both arms. The `new` status on
+   that row is not a finding: the Status-column caveat (`:1449-1457`) already says `new` means
+   required end state and explicitly records that the file is on disk — and it is
+   (`pdlc/workflows/__tests__/advisoryWaveGate.test.js`, 3645 lines, tracked).
+5. **§5.6 preamble arithmetic** — forty-seven ATs becomes forty-eight. Verified: FSPEC §6 carries
+   48 distinct AT ids at v1.7. The companion claim that "A6-15 alone covers nineteen in
+   `advisoryWaveGate.test.js`" is also still true at HEAD — PLAN `:331`'s former-A6-15 step
+   enumerates exactly nineteen `Covers` ids.
+6. **§6 OQ-2 / OQ-7 dispositions** — the two Low inherited items, closed as described above.
+
+The one design judgement in the round is TE Q-01's answer: conjunct (3)'s oracle is
+presence-plus-co-location, never a verbatim sentence pin, because FSPEC declines to fix the
+capture's name (O-1). That is the right call and it is the right altitude — inventing a sentence at
+TSPEC altitude would be a new product decision, not an absorption. My remaining High is not with
+that judgement; it is with the surface the oracle is stated over.
+
 ## New findings in changed sections
 
 ## Findings
