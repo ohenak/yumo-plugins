@@ -184,6 +184,36 @@ re-reviewed. My open non-gating finding against EC-15a's unconstrained failed-wr
 
 ## Acceptance Tests
 
+**No acceptance test in §6 cites either edited section.** I checked this mechanically rather than
+by recollection: over the §6 block, `grep -n "worktree\|BL-0\|OB-1"` returns nothing. No AT names
+a worktree fixture, no AT's Given/Then depends on BL-04's discharge state, and no AT transcribes
+OB-1's evidence. The round therefore cannot have inverted an oracle, which is the failure mode that
+would have made this a High.
+
+That absence is itself worth recording as a design property rather than luck: the worktree case is
+specified (EC-17) but deliberately **not** given an acceptance test, because its observable is
+identical to EC-01's — a silent full run — and EC-01 already owns that oracle. A test suite that
+had added a worktree-specific AT would now be pinning behaviour whose upstream justification just
+lost its repo-fact status, and a te-author would be re-deriving the fixture this round. The FSPEC's
+choice to route the case to an existing oracle is what makes the upstream move free at the test
+layer.
+
+**AT-12 (wave loop skipped in full, REQ-WVR-08).** The AT most exposed to upstream movement, and
+REQ-WVR-08 is byte-identical between v1.6 and v1.7. Its four conjuncts — zero dispatches and zero
+gate invocations for the implementation wave loop, exactly one V-wave dispatch and one gate
+invocation, the V-wave commit as the run's only Phase-I-adjacent commit — remain the direct
+compression of upstream's sentence. Holds, unchanged from v3.
+
+**AT-02, AT-03 (disregard catalogue; the IG-5 × IG-4 discriminating fixture).** REQ-WVR-02 did not
+move this round. The v3 conclusions stand: the FSPEC's set-equality oracle over announced reasons
+strictly implies the REQ's floor, and AT-03's fixture tests a settled contract.
+
+**AT-18, AT-15, AT-08, AT-13 and the remainder.** Trace to criteria untouched this round. My two
+open non-gating findings — AT-18's counterfactual arithmetic (a per-run record skips waves 1–2, not
+"only wave 3") and AT-12's unstated first-call-succeeds fixture condition — are unaffected by the
+upstream move and are carried below as F-05 and F-06, tagged `inherited`, so that this round is a
+complete statement of what is open against the FSPEC rather than only of what this round found.
+
 ## Open Questions
 
 ## Recommendation
