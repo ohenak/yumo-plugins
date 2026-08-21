@@ -287,6 +287,25 @@ FINDING: Low | inherited | nonlocal | FSPEC §1 upstream version pin | §1 says 
 FINDING: Low | inherited | local | FSPEC §7 OB-F1 closing clause | OB-F1 quotes REQ §10 as recording BL-04 "discharged at FSPEC authoring"; §10 already said the opposite at v3 and this round's E-2 removes the phrase from §5's BL-04 row as well, so it is absent from REQ entirely — the erratum landed the FSPEC's ask and the narration was not updated
 FINDING: Low | inherited | local | FSPEC §7 round-1 revision note | the note cites REQ-WVR-08's deleted string "Phase I produces no new commit" and "REQ's discharge of BL-04" as open routed defects; both are withdrawn upstream, the latter now in §5 as well as §10, so both citations point at text REQ no longer carries
 
+## Recommendation
+
+**Approved with minor changes.** The FSPEC still holds as approved against REQ v1.7.
+
 ## Verdict
 
-_pending_
+**FSPEC still holds against REQ at HEAD.** No High finding, `delta` or `inherited`. All three hunks
+move REQ toward this FSPEC: E-2 completes, in §5, the BL-04 correction the FSPEC itself routed
+through OB-F1 and that §10 already carried — the two documents now state the same proposition in the
+same direction; E-3 weakens OB-1's worktree *evidence* from a repo fact to a consumer fact while
+leaving its conclusion standing, and the FSPEC survives that weakening intact because EC-17 states
+the worktree condition hypothetically, cites OB-3 rather than OB-1, and never transcribed the strong
+`.worktreeinclude` form; E-1 is bookkeeping. No criterion was added, renamed, deleted or
+re-prioritised, so §2's traceability resolves unchanged and the three set-equality catalogues keep
+their cardinality — the check that would have been High had it failed. The three findings are all
+Low and all `inherited`: stale FSPEC narration of errata that have now fully landed upstream (the
+v1.5 version pin, OB-F1's withdrawn quotation, §7's round-1 note). They are documentary, not
+behavioural, and none blocks TSPEC or PROPERTIES from proceeding. v3's Medium (EC-20/AT-12's
+V-wave commit conjunct) is untouched by this round and stands where it was filed.
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
