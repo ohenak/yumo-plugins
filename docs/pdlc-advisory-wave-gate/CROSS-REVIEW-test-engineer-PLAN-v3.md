@@ -213,6 +213,63 @@ waits on, and no task row reads it.
 
 ## Verification
 
+**My v2 F-01 is resolved, and resolved in both places the wording gap existed.** The DoD leg for
+A6-10 no longer states the outcome alone. It now reads that the ignored-path case is ticked only by
+"**the two conjuncts that can falsify one**": (a) a `.gitignore`d file the wave added is **still
+present** after restore — TSPEC §5.2 case 4, the assertion pinning `git clean -fd` over `-fdx` —
+paired with case 3's untracked-but-non-ignored file asserted **absent**; and (b) case 5's ordering
+conjunct, with AC-6.1's record append, AC-6.2's escalation-log append and AC-5.2's queue-row write
+each asserted to happen afterwards. It closes with "A hash-map assertion alone does not tick it",
+which is the sentence a DoD verifier needs, and it states the *reason* the map cannot falsify the
+defect (its domain excludes ignored paths on both sides). The AT-05-1 traceability row (line 536)
+carries the same two conjuncts, so the row the implementer reads and the leg the verifier reads no
+longer disagree. I re-checked both transcriptions against TSPEC §5.2 cases 3, 4 and 5: faithful.
+
+**The AT set is still set-equal to FSPEC §6's, and I checked it mechanically rather than by count.**
+Extracting AT ids from the PLAN's traceability table and from FSPEC §6 (lines 324–503) and diffing
+the two sorted sets gives **48 vs 48 with an empty diff** — equal in both directions, so a deleted
+case fails and an invented one fails too. This round adds no witness id, which is the right call:
+TSPEC §5.6 explicitly says AT-06-4's predicates cover the un-skip arm "rather than minting a witness
+id", so splitting the arm across two owners without splitting the id keeps the set-equality intact.
+
+**AT-06-4's row now carries two arms and two owners, and both halves keep the full oracle.** The row
+(line 544) reads "Two arms, two owners" — seam arm (A6-18) in `advisoryWaveGate.test.js` on §5.2's
+two-red-wave fixture; un-skip arm (A6-21) in `waveExecution.test.js` on the post-gate un-skip halt
+whose `snapshotRef` is non-`null`. Critically, the un-skip arm is not described as a weaker
+containment check: "same co-location and anti-echo oracle". The red/green owner columns moved with
+it (`A6-15, A6-19` red → `A6-18, A6-21` green), so the traceability table's owner cells and the task
+rows agree.
+
+**Three DoD legs changed; two are falsifiable as written and one carries the High.**
+
+- *The forty-eight-AT leg* and *the ordered-vocabulary leg* are unchanged from v1.11 and remain
+  falsifiable ("checked both directions"; "never set equality or `toContain`", plus E-08b's arm).
+- *The AT-06-4 leg* gained "Both of AT-06-4's arms are present: the seam arm in
+  `advisoryWaveGate.test.js` (A6-18) and the post-gate un-skip arm in `waveExecution.test.js`
+  (A6-21)." That is a condition a verifier can fail on — two named files, two named tasks. One
+  omission I record as Low (F-02): the leg names AT-06-4b's absence arm for the *seam* side but not
+  the un-skip arm's paired negative (the no-A6-fired un-skip halt where no overwrite notice appears
+  anywhere in `notices`), which A6-21's task row does carry. As written, a verifier could tick the
+  leg on a positive-only un-skip arm — the same shape of gap my v2 F-01 flagged, one arm over.
+- *The new widening leg* is the right idea — "widened by the task that widened the production
+  `fields` object, not left to the gate to discover" — and it is correct on the escalation-log half
+  ("`expect(failed.notices).toHaveLength(…)` reads **3** — capture succeeds on that real-temp-repo
+  run", verified above). On the main-suite half it asks only that
+  `expect(result.haltAdvisory).toEqual({…})` "reads **five** keys", which is value-agnostic and
+  therefore survives F-01's correction unchanged; it is A6-18's task row, not this leg, that
+  prescribes the wrong fifth value. A verifier ticking this leg against a red suite would notice, so
+  the leg is not itself the defect — but it also cannot catch it before the batch-6 gate does.
+
+**Anti-echo, absence-only and set-equality discipline across the changed Verification surface.**
+Every negative assertion introduced or restated this round is paired with a positive on the same
+run: AT-06-4b (diagnosis and root-cause class present, no ref and no overwrite sentence anywhere in
+`notices`); the un-skip negative (halt outcome and `haltReason` positively asserted, `a6.calls`
+zero, no overwrite notice); AT-05-1's ignored-path pair (present *and* absent, discriminating the
+boundary rather than a blanket keep or delete). The overwrite predicates stay spec-side literals
+(`/overwrit/i`, `"refs/pdlc/a6-snapshot-" + waveNum`), never a constant imported from the module
+under test — the one place F-01's fix must not regress, since a hand-written `snapshotRef`
+expectation is exactly where an implementation echo is tempting.
+
 ## Findings
 
 ## Questions
