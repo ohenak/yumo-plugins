@@ -190,6 +190,32 @@ assertion is a test-design choice for te-author, not a requirement of this spec.
 
 ## 5. Edge Cases and Error Scenarios
 
+| # | Scenario | Expected behaviour | Traces to |
+|---|---|---|---|
+| EC-01 | No record exists (first ever run of the feature). | Outcome (a), **no announcement**. Silence is correct: this is the fresh-run case. | IG-6, BR-02 |
+| EC-02 | A record exists but is empty, or has been cleared to a content-free shape. | Same as EC-01: outcome (a), silent. | IG-6 |
+| EC-03 | The record's content is unreadable, or is readable but is not something this pipeline wrote. | Outcome (a), announced with the reason. Never a halt, never a partial run. | IG-1, BR-12 |
+| EC-04 | The record names a different feature — e.g. a consumer that ran another feature in the same working copy. | Outcome (a), announced. Cross-feature resume is out of scope by REQ §3. | IG-2 |
+| EC-05 | The PLAN was edited between invocations — the routine case when remediating a halt. | Outcome (a), announced as a changed wave layout. A changed plan is never resumed into. | IG-3, R-1 |
+| EC-06 | The branch was reset, re-cut, or rebased (including by Phase DOD step 0) since the record was written. | Outcome (a), announced: the recorded commit is no longer reachable from the branch tip. | IG-5, R-1 |
+| EC-07 | The record names a commit, but the run has no way to interrogate the tree about it. | The probe's unavailability is **not** a staleness claim; the record is not disregarded on that ground alone and the remaining questions still apply. | §3.2, BR-12 |
+| EC-08 | The record claims more completed waves than the current plan has. | Outcome (a), announced. Listed separately from EC-06 because the two are independent guards with different failure modes; fusing them would let one be deleted without the catalogue changing. | IG-4, TE G-02 |
+| EC-09 | The record accounts for exactly every wave of the plan — the state after Phase I finished and a later phase halted. | Outcome (c): Phase I skipped in full, announced with the reason and the hatch, and the run report's Phase I row carries a skip status distinct from an executed Phase I's — one row with a distinguishing status, not a second row. | REQ-WVR-08 |
+| EC-10 | An operator left a manual resume point set from an earlier recovery. | It wins (BR-04) and the run announces provenance `operator-set`. This is the one case where the operator can still start mid-plan on a stale intent; the announcement is the mitigation, and BR-10 bounds the damage to a gate halt or wasted work, never an unverified commit. | REQ-WVR-04, R-3 |
+| EC-11 | A manual resume point is set past the plan's last wave. | Treated as an explicit request; the record is suppressed and the run corrects to wave 1 and announces it. Not a way to skip Phase I. | BR-05 |
+| EC-12 | Phase I halts at wave 1. | Nothing is recorded — there is no completed wave — so the next invocation is EC-01: a silent full run. The re-entry is correct but pays no replay tax, since nothing below wave 1 exists to replay. | REQ §1, OF-1 |
+| EC-13 | A wave's gate passes but the run commits nothing for it (no commit transport). | The wave is **not** recorded completed; a later invocation starts at that same wave and announces it as not previously completed. This is the feature's only unrecoverable failure mode if got wrong, so it is stated as its own criterion rather than left to inference. | REQ-WVR-09, R-2 |
+| EC-14 | A wave's tasks complete without producing any commit because nothing they own changed. | The wave **is** completed — the run committed past it — and a re-invocation of the same plan announces the **next** wave as its resume point. That announcement is the oracle: it fails if completion regresses to commit archaeology. | REQ-WVR-06, OF-2 |
+| EC-15 | The record cannot be written (read-only location, permissions). | Announced as a notice; the run continues to completion. The cost is borne by the *next* invocation, which starts from wave 1. | BR-15 |
+| EC-16 | Advisory wave-gate remediation acts on a halted wave. | The two compose without coordination: remediation either turns the gate green — after which the wave commits and is recorded normally — or restores the pre-remediation tree and the identical halt stands, leaving the record naming the wave below. Neither path can touch the record, which is in no wave's owned-path set. | REQ OB-3 |
+| EC-17 | Phase I runs inside a worktree that does not carry consumer-local state. | No record is visible: outcome (a), silent, as EC-01. Consistent with the standing worktree deferral; the run is correct, merely not cheap. | REQ OB-3, D-DIST-07 |
+| EC-18 | A record is stale but passes all six questions — e.g. work was reverted by a commit that is itself an ancestor of the tip. | The run resumes and its first executed wave's gate verifies the whole tree, so the worst outcome is a gate halt, never an unverified commit. This is the accepted residual cost of retention (REQ-WVR-05's "honest cost"). | BR-10, BR-13 |
+| EC-19 | Two invocations run concurrently in the same working copy. | Out of scope: the pipeline is serial by construction and the record is consumer-local. No guarantee is offered, and none is needed for any REQ criterion. | REQ §3 |
+
+**No scenario in this table halts the pipeline.** That is the table's own invariant and the
+strongest reading of REQ C-2: every row resolves to one of the three outcomes of BR-01, with or
+without an announcement.
+
 ## 6. Acceptance Tests
 
 ## 7. Open Questions
