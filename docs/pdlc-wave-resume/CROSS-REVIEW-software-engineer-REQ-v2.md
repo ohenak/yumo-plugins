@@ -37,6 +37,114 @@ answer against the shipped A6 seam.
 
 ## Findings
 
+No High findings. Three new Mediums and one Low, all in sections this revision changed; none
+contests a contract, and none blocks FSPEC on its own.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| G-01 | Medium | Process | The branch-base obligation is recorded only in a dated header note, not as a prerequisite row or an obligation with an owner — so nothing gates FSPEC authoring on it, and FSPEC will be authored in a tree where neither the mechanism nor the cited baseline file exists. | v1.3 header note, §5, §9 |
+| G-02 | Medium | Local | Every inline `orchestrate-dev.js:NNNN` line anchor in §1, §7 (WVR-05 note), §9 OB-1 and §9 OQ-1 is stale by ~2,200 lines and resolves to unrelated code at the default branch's HEAD, although every claim's *substance* verifies. The v1.3 note's assertion that "the code claims in this REQ are verified against the default branch" does not hold for the anchors. | §1, §7, §9 |
+| G-03 | Medium | Local | OB-2's promotion recipe is concretely unexecutable: the baseline is at `Version 1.2 · 2026-08-20` with a §3 and a §4 already present, but OB-2 instructs adding "a new §3" and "bumping the baseline to 1.1", and §5's correction cites it as "v1.0, 2026-08-09". The baseline's own rule is that a consumer cites it *at its Version*. | §5 correction, §9 OB-2 |
+| G-04 | Low | Local | REQ-WVR-05's preserved "Decided 2026-08-13" block still states in the present tense that "WVR-05 requires self-*clearing*", directly above/below the AC that no longer does. It is history, but it does not read as history. | §7 REQ-WVR-05 |
+
+### G-01 — the branch-base step has no gate (Medium, Process)
+
+The v1.3 header records it honestly: this branch is 1,637 commits behind the default branch,
+"the code claims in this REQ are verified against the default branch, not against this branch's
+tree, where the mechanism does not exist at all", and bringing the branch onto the current base is
+"owed before FSPEC authoring". I agree that is a branch-management step and not a document change,
+and I do not hold the revision responsible for performing it.
+
+What is missing is the *gate*. Confirmed in this tree at `005dc47d`:
+
+- `grep -c startWave pdlc/workflows/orchestrate-dev.js` → **0** (this tree's file is 11,003 lines);
+- `docs/_constraints/pdlc-wave-gate-baseline.md` does not exist here, so §4's newly-added
+  `M-WG-4` / `M-WG-6` / `M-WG-12` citations point at a file the next author cannot open.
+
+§5 is where this REQ puts things that must be true before FSPEC authoring, and each row there
+carries an explicit *Gating logic* column. The branch-base step meets that description exactly and
+belongs there — as a BL-04 row whose gating logic is "checked at FSPEC authoring; the mechanism
+and the baseline must be readable in the authoring tree" — rather than in a dated note that no
+phase reads. Without it, R-4 (interim/final divergence) is the live risk: an se-author grounding
+claims in *this* tree finds no ledger at all and can only conclude the wiring is missing, which is
+precisely the "new code alongside" outcome BL-03 exists to forbid.
+
+**Required change (non-blocking):** add the branch-base step as a §5 prerequisite row with gating
+logic, or as an obligation in §9 with a named owner. Either makes it a checked precondition rather
+than a remembered one.
+
+### G-02 — the inline line anchors are stale at the branch they claim to cite (Medium, Local)
+
+I checked each anchor against `main:pdlc/workflows/orchestrate-dev.js` (16,336 lines):
+
+| REQ cites | What is actually there | Where the claim really lives |
+|---|---|---|
+| `:12171-12177` (§1 — `startWave` clamped to 1 with a notice) | an ownership-violation loop | `:15237-15243` |
+| `:12128` (§1 — `scriptGate` requires `testCommand` + `_runCommand`) | a per-task `for` loop | `:15067`; the guard around the write is `if (scriptGate)` at `:15432` |
+| `:12345-:12429` (§1 — the write inside `if (scriptGate)`) | halt-handling prose, then `approvalHashOf` | `:15528-15605` |
+| `:12252-12267` (§7 — complete-record skip) | `parseWaveLedger`'s doc comment | `:15318-15334` |
+| `:9976`, `:9992`, `:10029`, `:10087` (OB-1 — `WAVE_STATE_PATH`, `computePlanHash`, `parseWaveLedger`, `formatWaveLedger`) | unrelated review-loop code | `:12214`, `:12230`, `:12267`, `:12325` |
+| `:12191-12280` (OB-1 — read/decide) | mostly `parseWaveLedger`'s body | `:15228-15346` |
+| `:12265`, `:12276` (OQ-1 — the two delete-to-force-a-full-run banners) | comment text and a bare `catch` | `:15331` and `:15341-15342` |
+
+The good news is the part that matters most: **every one of these claims is substantively true.**
+I re-verified the whole mechanism independently — `WAVE_STATE_PATH` (`:12214`), the `!explicitPointer`
+gate (`:15263`), the four announced ignore reasons and the silent absent case, the complete-record
+skip, the per-wave skip emit, the `⏭` row, and the ledger write nested inside `if (waveGit)` under
+`if (scriptGate)`. The contract the REQ describes is the contract that ships. Only the coordinates
+have drifted, because these numbers were measured on 2026-08-13 and the file has grown since.
+
+Two things follow. First, the v1.3 note over-claims: the anchors were inherited, not re-verified,
+and the note should say so. Second — and this is the durable fix — the REQ altitude bar is that a
+REQ carries shipped-behaviour facts as **`M-*` ids cited from a constraints file**, not as inline
+line-cited code claims, precisely because line numbers rot and `M-*` rows carry re-derivation
+commands instead. §4 now does this correctly; §1, §7 and §9 do not. The right resolution is not to
+renumber the anchors (they will rot again) but to move these facts into the wave-gate baseline
+under OB-2 and cite them by id, or to anchor them by **symbol name** (`WAVE_STATE_PATH`,
+`parseWaveLedger`, `formatWaveLedger`, `explicitPointer`, `headCorroborated`, `allWavesRecorded`),
+which is grep-stable. A TSPEC author told to "ratify or revise this shipped contract, not invent
+one" will find every one of those symbols in seconds; they will not find `:9976`.
+
+**Required change (non-blocking):** re-anchor by symbol name or by `M-*` id, and soften the v1.3
+note to say the code claims' *substance* is verified against the default branch while their line
+anchors date from 2026-08-13.
+
+### G-03 — OB-2's promotion recipe is written against a superseded baseline version (Medium, Local)
+
+`main:docs/_constraints/pdlc-wave-gate-baseline.md` is at `Version | 1.2 · 2026-08-20`, and it
+already carries `## 3. Facts added for the v1 cross-review round (measured 2026-08-18)` and
+`## 4. The catalogue after pdlc-advisory-wave-gate shipped (measured 2026-08-20)`, ids running to
+`M-WG-14`. OB-2 instructs the se-author to promote by "adding a new §3 … bumping the baseline to
+1.1", and §5's correction describes the file as "v1.0, 2026-08-09". Executed literally, that
+collides with an occupied section number and numbers the version backwards.
+
+The file states the rule OB-2 is trying to honour: "A consumer cites this file **at its `Version`**;
+a content change unaccompanied by a version bump" is the failure mode it guards. So the citation
+version is load-bearing, not decorative — and citing 1.0 means the REQ is reasoning about a
+snapshot two revisions old. Note this also interacts with OB-2's own live claim that "`M-WG-6` is
+now false at HEAD": M-WG-6 survived the 1.1 and 1.2 revisions unchanged, so that observation is
+still correct and still owed a correction in the baseline — worth stating against 1.2 so the next
+editor knows the row was reviewed and left, not merely missed.
+
+**Required change (non-blocking):** cite the baseline at `1.2`, and restate OB-2's recipe as "a new
+`## 5.`, ids `M-WVR-1..2`, bumping to 1.3".
+
+### G-04 — the WVR-05 decision record reads as current requirement text (Low, Local)
+
+REQ-WVR-05's body is now correct (retention with invalidation). Immediately below it, the preserved
+"Decided 2026-08-13" block opens: "The shipped interim ledger conflicts with this requirement as
+written and is not being changed here. WVR-05 requires self-*clearing*: after Phase I completes, no
+resume state survives." It closes with "The first is chosen below; WVR-05 above is already restated
+accordingly", so a careful reader gets there — but three paragraphs of present-tense text asserting
+the *rejected* requirement sit inside the AC section, and this is the exact place I flagged in v1 as
+"the single most likely place for the FSPEC to implement a regression while believing it is
+satisfying the REQ".
+
+**Suggested change:** past-tense the block and label it explicitly as a superseded position (e.g.
+"**Superseded — the position considered and rejected on 2026-08-13 was:** …"), or move it under a
+`### Decision history` sub-heading. Content-preserving; it only changes what a skimmer takes as
+operative.
+
 ## Questions
 
 ## Positive Observations
