@@ -2138,9 +2138,10 @@ export async function readAdvisoryConfigSafely(readFileFn, path) {
 //
 // pdlc-learnings-injection TSPEC §D.1, §I.1, §I.2. Frame authored by PLAN LI-15; the region
 // grows in place (LI-16 … LI-21 insert before the END sentinel below) and stays self-contained —
-// LI-11's static scan asserts no `fs.`, `writeFileSync`, `mkdirSync`, `appendFileSync` or
-// `require("fs")` appears anywhere between the two sentinel comments (seam discipline: all I/O
-// here is via injected seams, never a direct filesystem call).
+// LI-11's static scan asserts no direct filesystem-module access appears anywhere between
+// the two sentinel comments — no `fs` namespace member access, no synchronous file-write
+// helper, no direct `require` of that built-in module (seam discipline: all I/O here is via
+// injected seams, never a direct filesystem call).
 
 export const LEARNINGS_CONFIG_PATH = MERGE_CONFIG_PATH; // ".claude/pdlc.config.json"
 
@@ -8674,6 +8675,11 @@ export async function reviewLoop({
   _log,
   _git,
   provenance = NO_PROVENANCE,
+  // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 3. Forwarded to
+  // `dispatchAndVerify` by `wrapped`, below — Phase CR's `docType: null` reaches the
+  // composition site through this path and no other.
+  _injectLearnings = null,
+  _recordDocType = () => {},
 }) {
   // The doc type the round record is keyed by. Derived from `doc` when the caller
   // does not name it, so Phase CR's directory target degrades to "no doc type"
@@ -8730,6 +8736,8 @@ export async function reviewLoop({
       _probeReviewState,
       _log: emit,
       _git,
+      _injectLearnings,
+      _recordDocType,
     });
 
   // An episode that exhausts an authoring budget RETURNS through the loop rather
@@ -10250,9 +10258,25 @@ async function dispatchAndVerify({
   _probeReviewState,
   _log,
   _git,
+  // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 5. Defaulted to `null`/a
+  // no-op so an uninjected run is byte-unchanged (AC-4.3).
+  _injectLearnings = null,
+  _recordDocType = () => {},
 }) {
   const emit = typeof _log === "function" ? _log : () => {};
   const artifactClass = artifactClassOf(targetPath);
+
+  // pdlc-learnings-injection TSPEC §A.2 properties 1(c)/2. Computed ONCE per episode,
+  // before the `for(;;)` loop: BR-1's two-conjunct rule (dispatchKind === "authoring" AND
+  // docType ∈ LEARNINGS_TARGET_DOCTYPES). `_recordDocType` is the composition-site probe
+  // seam — called on BOTH arms, once per episode, never inside the loop (TE Q-01).
+  const injectHere =
+    dispatchKind === "authoring" && LEARNINGS_TARGET_DOCTYPES.includes(docType);
+  _recordDocType(docType);
+  const learningsBlock =
+    injectHere && typeof _injectLearnings === "function"
+      ? await _injectLearnings({ feature, docType, phaseId })
+      : "";
 
   // §5.6.1: mode is computed ONCE per episode, at the episode's entry, over state
   // this episode itself observed.
@@ -10350,7 +10374,10 @@ async function dispatchAndVerify({
         opener = `${opener}\n\n${planLintFeedForwardClause(planLint.diagnostics)}`;
       }
     }
-    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
+    // The learnings block is a suffix, appended AFTER the per-iteration-mutated
+    // `opener` — pdlc-learnings-injection TSPEC §A.2 property 2/3 — so a retry
+    // iteration carries the same block bytes appended to a possibly different opener.
+    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}${learningsBlock}`;
 
     let faulted = false;
     try {
@@ -13630,6 +13657,13 @@ export default async function main({
   // supplies nothing gets `NO_PROVENANCE`, whose empty `line`/`block` make
   // kind 1's report field readable-but-empty and skip kind 2's append (P-5).
   _provenance: provenance = NO_PROVENANCE,
+  // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 1: `_recordDocType`,
+  // alongside `_recordQueueRow`'s defaulted-recorder precedent.
+  _recordDocType: recordDocTypeFn = () => {},
+  // TSPEC §I.5: the injector FACTORY seam, defaulting to the real builder — a
+  // caller that supplies nothing gets the real, config-driven injector wired onto
+  // `wrapperSeams._injectLearnings` below.
+  _learningsInjector: learningsInjectorFactory = buildLearningsInjector,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -13976,6 +14010,25 @@ export default async function main({
   const forcedDetail = (detail, forced) =>
     forced ? `${detail} — forced (recorded approval overridden)` : detail;
 
+  // pdlc-learnings-injection TSPEC §A.2/§I.4/§I.5. Config read ONCE per run, from the
+  // same `.claude/pdlc.config.json` the advisory config reader uses. The malformed-config
+  // notice half of the report-facing surface is a later task's job (LI-21); this task's
+  // job is the attachment, which needs a real injector AND a place on the report for the
+  // sink it fills — `learningsInjectionField` below, threaded to every `buildFinalReport`
+  // call site so `report.learningsInjection.dispatches` is readable off any run this
+  // injector actually attached to. Absent (never `undefined`-spread) when the injector
+  // itself is `null` (config-disabled, AC-5.1a) — the empty-but-present shape stays LI-21's.
+  const learningsConfigText = await readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH);
+  const learningsConfigParsed = parseLearningsConfig(learningsConfigText);
+  const learningsSink = { dispatches: [] };
+  const learningsInjectorFn = learningsInjectorFactory({
+    config: learningsConfigParsed.config,
+    sink: learningsSink,
+    _git: gitFn,
+    _readFile: readFileFn,
+  });
+  const learningsInjectionField = learningsInjectorFn ? learningsSink : undefined;
+
   /** The seams every wrapped dispatch and every reviewLoop entry shares. */
   const wrapperSeams = {
     _agent: agentFn,
@@ -13990,6 +14043,11 @@ export default async function main({
     _log: emit,
     _git: gitFn,
     provenance,
+    // pdlc-learnings-injection TSPEC §A.2 property 1(d), hop 2. An enumerated
+    // literal, not a spread — this hop alone carries Phase H's docType: "LEARNINGS"
+    // into `wrappedDispatch`'s `...wrapperSeams`.
+    _injectLearnings: learningsInjectorFn,
+    _recordDocType: recordDocTypeFn,
   };
 
   /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
@@ -15292,6 +15350,7 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -15308,6 +15367,7 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -15332,6 +15392,7 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
   const forcedPhases = forceParse.phases;
@@ -15355,6 +15416,7 @@ export default async function main({
       testSummary: "Not run",
       harvestStatus: "Not run",
       haltReason,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -16848,6 +16910,7 @@ export default async function main({
       // distinctly here so a halt that carries BOTH a run-level tier summary AND one wave's own
       // A6 diagnostic never has the second overwrite the first.
       haltAdvisory: err && err.advisory ? err.advisory : undefined,
+      learningsInjection: learningsInjectionField,
     });
   }
 
@@ -16882,6 +16945,7 @@ export default async function main({
     // invocations (this run's `advisoryDispositions` stayed empty) — only a disabled tier
     // leaves the field itself absent (see `buildFinalReport`'s own conditional spread).
     advisory: advisoryTierOn ? advisorySummaryRows(advisoryDispositions, advisoryPubOutcome) : undefined,
+    learningsInjection: learningsInjectionField,
   });
 }
 
@@ -16983,11 +17047,16 @@ function buildFinalReport({
   // returned record (never conditionally spread), since `NO_PROVENANCE`
   // itself is the readable "no provenance supplied" value kind 1 reports.
   provenance = NO_PROVENANCE,
+  // pdlc-learnings-injection TSPEC §I.4/§I.5 (LI-20). `learningsInjectionField`
+  // from `main()` — conditionally spread like `advisory`/`prUrl`/`ciStatus`: a
+  // config-disabled run must never carry a defined `learningsInjection` key
+  // (LI-21's AT-31), so `undefined` here means "omit the key", not "empty".
+  learningsInjection = undefined,
 }) {
   const dodHeadUnverified = Boolean(
     dodVerifiedCommit && headSha && headSha !== dodVerifiedCommit
   );
-  return {
+  const report = {
     feature,
     outcome,
     phases,
@@ -17020,5 +17089,12 @@ function buildFinalReport({
     // (never on success, never on a halt A6 never touched); conditionally spread like
     // `advisory` above so an untouched report's `haltAdvisory` key stays absent, not `undefined`.
     ...(haltAdvisory ? { haltAdvisory } : {}),
+    ...(learningsInjection ? { learningsInjection } : {}),
   };
+  // `report` also rides on its own return, non-circularly (a shallow snapshot of the
+  // same fields taken before this key is added) — pdlc-learnings-injection's
+  // `learningsDispatchSet.test.js` reads its observables off `mainDev(...).report`
+  // alongside the module's established flat top-level fields; every existing flat
+  // consumer (`result.outcome`, `result.notices`, …) is unaffected.
+  return { ...report, report };
 }
