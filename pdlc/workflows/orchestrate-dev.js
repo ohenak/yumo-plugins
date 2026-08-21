@@ -2474,7 +2474,8 @@ export function selectLearnings({ entries, feature, thresholds }) {
   const windowRejected = [];
 
   window.forEach((doc, i) => {
-    const fits = firstByteFailIndex === -1 && totalBytes + doc.extraction.bytes <= thresholds.maxTotalBytes;
+    const fits =
+      firstByteFailIndex === -1 && totalBytes + doc.extraction.bytes <= thresholds.maxTotalBytes;
     if (fits) {
       totalBytes += doc.extraction.bytes;
       selected.push({
