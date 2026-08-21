@@ -57,6 +57,31 @@ and no new High.
 
 ## Findings
 
+New findings only; round-3 findings are dispositioned above, not restated. One delta-introduced
+item, non-gating.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §10 now enumerates all four §5 rows, but §5's own dated preamble ("Correction, 2026-08-13") still speaks only of BL-01, BL-02 and BL-03 — the same subset-of-a-growing-table shape H-02 named, one section earlier. BL-04's *status* (open) is stated only in §10; §5's row states its gating logic but not whether it is satisfied. A reader who stops at §5 gets a complete-looking status summary that silently omits a row. | §5 preamble vs §5 table row BL-04 |
+
+### F-01 — §5's preamble enumerates three of four prerequisite rows (Low, Local)
+
+The correction block at the top of §5 is dated 2026-08-13 and BL-04 was added in round 3, so
+this is defensible as a dated historical note rather than an error — that is why it is Low and
+not Medium. But it reads as a current status summary ("BL-01 and BL-03 are already resolved …
+BL-02's file also already exists on main"), and it sits immediately above a table that now has
+four rows. The document has already paid for this exact pattern once at §10.
+
+The cheapest fix is one clause, not a rewrite: either date-scope the preamble explicitly ("as
+of 2026-08-13, when the table had three rows") or add BL-04's current status to it so the
+summary and the table stay in set-equality. The substance is correct wherever it is stated — the
+finding is about which sections a reader can trust as complete.
+
+Applying the write-the-test-right-now check: an acceptance test derived from §5 alone would set
+up three prerequisites and consider the fixture complete. One derived from §10 would set up
+four and know that only three gate pickup. The two readings do not conflict on facts, only on
+completeness, which is why this does not gate.
+
 ## Questions
 
 ## Positive Observations
