@@ -310,8 +310,91 @@ arrive.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For F-02: is the invalid-pointer notice (`implementation.startWave … is not a valid value — using the default.`) intended to carry `operator-set`? FSPEC BR-07's "a full run reached by an operator pointer" reads as yes; TSPEC §2.4's table omits it. Whichever answer, what is the criterion a test can apply to decide whether a given notice is in the provenance catalogue? |
+| Q-02 | For F-01: what counting rule produced 32 and 8? Neither `it` statements (15 and 4) nor test cases (18 and 4) nor `expect` calls yields them, so I could not reconstruct the intended basis to check whether the figure is stale rather than wrong. |
+| Q-03 | DEC-WVR-05 freezes the record at `version: 1` and the Consequences row says "no PLAN task may add a field". Is that enforced by an oracle — e.g. set equality over the keys `formatWaveLedger` emits, in both the `head`-present and `head`-absent shapes — or is it a prohibition on the PLAN author only? Set equality over both shapes would make it mechanical and costs one assertion. |
+| Q-04 | DEC-WVR-03 extends the executed Phase I report row with the resume point and provenance. The `✅` detail for a run starting at wave 1 stays the shipped string, and the resume variant is a different sentence. Is there an oracle that the two are mutually exclusive — that no run emits a detail matching both shapes? An absent one is how a future refactor ends up emitting the resume sentence for a wave-1 run with `N–M` reading `1–3`, which no named assertion would catch. |
+
 ## Positive Observations
+
+- **The Verification frame is the right response to a stale branch, and it is executed honestly.**
+  Naming the 1,637-commit gap, the absent mechanism and the absent baseline up front, then pinning
+  every claim to `origin/main` at `345ae358` *by exported symbol, enclosing test and comment text*
+  rather than by bare `file:line`, is exactly the DEC-DOC-01 discipline — and it is what let me
+  re-verify the document after a rebase would have invalidated any line-number-only citation. The
+  three findings I raise against counted claims are findings only because the document made itself
+  checkable; a document that asserted these costs vaguely would have been harder to review, not
+  easier to approve.
+- **O-4's rejection is the strongest oracle argument in the feature so far.** Noticing that the
+  cheaper alternative's real defect is *unfalsifiability* — the shipped ancestry assertion uses
+  `toContainEqual`, so an extra `merge-base` call could not have redded anything — and then upgrading
+  the replacement oracles from containment to equality, is precisely the reasoning DC-03 asks for.
+  It rejects the simpler option for a testing reason and pays a named price (one extra pure
+  classifier call) to get a falsifiable one.
+- **O-5's placement rule is a genuine piece of engineering, and it was checked rather than asserted.**
+  "After the sentence's terminal punctuation and outside every existing parenthesis" is the rule that
+  makes the change additive to every prefix and substring matcher, and the document verifies it
+  against a specific surviving assertion by name. I confirmed all four `startsWith` matchers and both
+  `some(…) === false` negatives are untouched. F-02 is about an announcement missing from the
+  catalogue, not about this rule, which is sound.
+- **DEC-WVR-07 refuses to fake a test, and names the gap in the artifact rather than in prose.** The
+  queue genuinely delegates `runPipelineFn({ reqPath: entry.reqPath })` with `_runPipeline` defaulted
+  to `realMain`, and all three ways of asserting more were rejected for the right reason: each would
+  have produced an assertion true by construction. Putting the residual gap into AT-16's own text, so
+  a reader cannot mistake it for full parity, is the DC-08 successor-surface discipline applied where
+  it is least comfortable — against a REQ that asked for more than the boundary can carry.
+- **DEC-WVR-06 separates the closed catalogue from the wording it renders.** Freezing the *codes* and
+  treating sentences as renderers is what makes FSPEC OB-F5's set equality an assertion over a
+  contract instead of over fixture data — and keeping the three `parseWaveLedger` arms' exact shipped
+  sentences as their renderers means the change is provably assertion-neutral there.
+- **The document corrected an upstream count instead of propagating it.** O-8 flags TSPEC §3.1's
+  "four of the seven reasons interpolate" as an erratum and states the correct figure. I re-derived
+  it: three reasons interpolate, carrying four interpolated values. Catching an upstream off-by-one
+  while writing a derived document, and routing it rather than silently fixing it, is the behaviour
+  the erratum mechanism exists for.
+- **The Consequences section is written for the PLAN author, not for the record.** One row per
+  decision, each naming what the implementation inherits — task boundaries ("its own task, before any
+  announcement change"), oracle shapes ("asserted as **equalities**"), and prohibitions ("no matcher
+  is relaxed"). That is the form that survives into a PLAN without re-interpretation.
+- **"What a future reader should not re-litigate" closes the document well.** Naming the settled
+  ground explicitly, each item tied to an alternative recorded above and to a re-evaluation trigger,
+  is what keeps round 2 from reopening round 1. F-07 asks two of those triggers to become observable;
+  the structure itself is right.
 
 ## Recommendation
 
+**Needs revision** — two High findings.
+
+The decisions themselves are, with one exception, sound and correctly grounded: I re-derived ten
+distinct claims about shipped code and found them accurate, including every claim on which the
+rejection of O-3, O-4, O-6, O-7 and O-9 turns. The engineering judgement in DEC-WVR-02, -06, -07 and
+-08 is good and should not be revisited.
+
+What must change before Phase P:
+
+1. **F-01** — correct the regression-net count from 44 to the figure the cited file produces (26
+   cases / 23 `it` statements; `18 / 4 / 4`, not `32 / 8 / 4`), in both the Context table and O-1,
+   and state the counting rule. Correct the parenthetical describing the `implementation.startWave`
+   block, whose four tests do not include the pointer-versus-record interaction test it names.
+2. **F-02** — resolve the contradiction between "append to each announcing outcome" and "exactly
+   three shipped whole-string assertions change". Either the invalid-pointer notice carries
+   `operator-set` and the count is four with the fourth assertion named and its replacement
+   specified, or it is excluded by a stated criterion a test can apply. Add the set-equality
+   consequence over the announcements that carry a provenance token.
+
+The Medium findings (F-03 chain measurement, F-04 largest-file claim, F-05 absence-only write-side
+oracle, F-06 the unoracled over-count × unreachable-head path) should be addressed in the same
+revision — F-05 and F-06 in particular, since both prescribe or omit oracles that the PROPERTIES
+author will inherit directly, and both have a concrete replacement stated above that costs one
+assertion each. F-07 is a Low `Process` finding for harvest.
+
+One upstream defect is routed as an erratum rather than folded into this verdict: TSPEC §2.4's
+announcement table omits the invalid-pointer notice, and TSPEC §3.1's "four of the seven reasons
+interpolate" is an off-by-one that this document already caught and corrected.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 4, "low": 1}
