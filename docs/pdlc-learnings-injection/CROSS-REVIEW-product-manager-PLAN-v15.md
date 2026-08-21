@@ -205,6 +205,15 @@ rather than relaxed. F-02, Low. Neither blocks; both are one clause each.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **The single-writer paragraph's enumeration includes one file that is not a second write to a ladder-owned surface.** It reads "The second-writer rows name ladder-owned files — LI-06's fixtures and guard, six ladder-owned suites, and the three production surfaces of LI-15…LI-22, LI-05 and the `c8` configuration", but the `pdlc/workflows/package.json` row two lines above reads "**first write** — previously owner-less **and unmodified**". Both statements cannot hold; the row is the correct one. The serial-commit argument is unaffected — it covers a first write to an owner-less file trivially — so this is a summary that overreaches its own table by one entry, not a defect in the reasoning. Fix: say "the two production surfaces of LI-15…LI-22 and LI-05, plus the owner-less `c8` configuration and `pdlc/workflows/.gitignore`, whose first writes the same serial argument covers" | P-A-5; §File-ownership manifest single-writer contract |
+| F-02 | Low | Local | **`docs-uniqueness.test.js`'s cause cell understates what the commit did to it.** The row reads "accounts for the branch's document set". `git show 2fc6fcd3 -- pdlc/engine/__tests__/docs-uniqueness.test.js` is 7/2: it re-pins two `locate("pdlc/README.md", …, "claude plugin install")` line anchors from 98/104 to **132/138**, because this feature added a 24-line "Prior-feature learnings injection" section above them, and adds a comment recording that the pin is deliberate — "it asserts the sites as a POSITIVE at a known locus rather than merely counting occurrences — so it is re-pinned, not relaxed". That is a runtime-position claim this feature moved, which is more than "the branch's document set" conveys. Fix: one clause — "re-pins two README line anchors (98/104 → 132/138) displaced by this feature's own README section; the pin is a positive-locus assertion, re-pinned rather than relaxed" | Local record; no REQ clause |
+
+DEFERRED: the §Post-batch remediation table has grown from six rows to nineteen and now mixes four relations to the ladder (new/no owner, second writer, pre-existing suite with no prior row, first write to an owner-less file); a one-line legend above it naming those four categories would let a reader classify a row without reading the paragraph below the table.
+DEFERRED: §Overview and §The arithmetic now reach "eighteen" by two different decompositions (14 suites + 3 helpers + 1 engine file; 13 ladder + 5 added); both are correct and their agreement is the interesting fact, so stating that they are two routes to one number would make the reconciliation self-evidencing.
+DEFERRED: DoD 12 is retired in place but keeps its clause number in the DoD's running order; a verifier walking clauses 1–14 now encounters one that asserts nothing to verify, which a "(retired — no obligation)" marker in the clause's first three words would signal before the paragraph is read.
+
 ## Questions
 
 ## Positive Observations
