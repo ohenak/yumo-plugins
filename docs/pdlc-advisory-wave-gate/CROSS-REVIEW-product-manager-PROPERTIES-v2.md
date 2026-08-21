@@ -187,4 +187,15 @@ PLAN home. Neither gates the round; both are one-line edits whenever this docume
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | PROP-ENV-13's new supporting prose says the driver's `attempts` increments live "only on the malformed-verdict and red-re-gate arms". At HEAD `runAdvisorySeam` also increments on the seam-budget preemption arm (the in-flight attempt counts as consumed by the preemption) and on the dispatch-error arm. The asserted conjunct — `attempts` unchanged across a `post-action-verification-failed` refusal — is correct and unaffected; only the "only" is over-strong. Fix: drop "only", or list the four increment sites. | §C, PROP-ENV-13 |
+| F-02 | Low | delta | local | PROP-ENV-13's Home cell is spelled in PLAN's HEAD numbering (`A6-14, former-A6-13 red step`) while every sibling Home cell and the whole C-3 matrix use the retired v1.2 numbering the matrix preamble declares — and that preamble lists A6-14 among the GREEN tasks that "carry no properties of their own by construction". Both spellings name the same step and the C-3 row (`A6-13`) is right under the matrix's own convention, so this is legibility, not a wrong home. Fix: spell the Home cell `A6-13` like its siblings and keep the "PLAN A6-14's former-A6-13 red step" gloss in the row text, or add one sentence to the C-3 preamble reconciling the two numberings. | §C PROP-ENV-13 Home; §C-3 preamble |
+
+FINDING: Low | delta | local | §C, PROP-ENV-13 | the new prose claims the driver's attempts increments live "only on the malformed-verdict and red-re-gate arms", but at HEAD the seam-budget preemption arm and the dispatch-error arm also increment; the asserted unchanged-attempts conjunct is correct and unaffected, only the "only" is over-strong
+FINDING: Low | delta | local | §C PROP-ENV-13 Home and the §C-3 preamble | the Home cell is spelled in PLAN's HEAD numbering (A6-14) while every sibling Home cell and the C-3 matrix use the retired v1.2 numbering, whose preamble lists A6-14 as a GREEN task carrying no properties — same step, two spellings, one of which the preamble contradicts
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
