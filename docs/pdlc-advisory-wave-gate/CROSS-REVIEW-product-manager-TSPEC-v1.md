@@ -371,4 +371,13 @@ No High or Medium findings. Nothing routes back to an owning phase, and nothing 
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | OQ-7's disposition attributes the full three-carrier observation point (AC-6.1 record append, **AC-6.2 escalation-log append**, AC-5.2/M-WG-7 queue-row write) to "REQ AC-5.1 at v1.14". AC-6.2 entered AC-5.1's excluded-carrier list at **v1.15** (`f3fbbc7b`), not v1.14. The substance is HEAD-correct; only the version pin is stale. Move the pin to v1.15, or attach it to the ignored-path quotation alone, as §2.5 already does correctly. | §6, OQ-7 disposition |
+
+FINDING: Low | delta | local | §6 OQ-7 disposition | version pin reads "REQ AC-5.1 at v1.14" while attributing the three-carrier observation point, but AC-6.2's escalation-log append entered AC-5.1 only at v1.15; substance is correct against HEAD, pin should read v1.15 or attach to the ignored-path clause alone
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
