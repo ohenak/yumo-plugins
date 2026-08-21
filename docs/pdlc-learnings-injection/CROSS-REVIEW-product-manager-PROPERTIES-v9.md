@@ -54,6 +54,42 @@ below.
 
 ## Properties
 
+**No property moves, and none is disturbed.** The diff touches the version cell (0.5 → 0.6), three
+sentences of §C.4 and §G.3's still-open list. No property id, no `red LI-xx` / `green LI-yy` trace, no
+AT id, no severity and no group membership changed. §C.4's reconciliation table — 70 properties, 35
+ATs, 23 tasks, 21 owning tasks, 0 properties with no owning task, 12 fail-open arms — is
+byte-unchanged, as is §C.3's 23-of-23 task accounting and the fourteen-row inventory whose adding
+commits I re-derived and matched fourteen-for-fourteen at v8.
+
+**Every task in PLAN's table still traces.** The delta adds no property and removes none, so the
+23-of-23 accounting I verified at v7 and v8 stands unchanged. The two ids the delta names in prose
+verify at HEAD: LI-17 is `2cbacada` (*"GREEN the renderer. renderLearningsBlock({selected})…"*) and
+LI-21 is `92b7ea0c` (*"GREEN the run wiring and the report key. In main(): re…"*), both on the branch,
+which is what makes §G.3's second bullet's premise — *"no remaining batch greens them"* — a statement
+about the repository rather than a conjecture.
+
+**The one property the new §G.3 bullets speak for is correctly identified, in both of its two names.**
+Bullet 1 attributes the uncovered re-red to *"PROP-BOUND-03's `maxBytesPerDocument <= 0` case"*, while
+§C.4 line 1129 calls the same case *"PROP-BOUND-03's `maxBytes <= 0` case"*. Both readings are right in
+their own frame and neither is a drift: PROP-BOUND-03 is stated *"over every non-negative
+`maxBytesPerDocument`, zero included"* (PROPERTIES line 235) — the REQ §4.1 configuration threshold —
+whereas `maxBytes` is the parameter name of the unit the property falsifies, `extractInjectableMaterial(text, maxBytes)`
+(PLAN LI-16 uses exactly *"`maxBytes <= 0` is tested _before_ the cut"*, PLAN line 156). A reader who
+greps either spelling reaches the same property.
+
+**The gap bullet 1 asserts is real at the pin, and I re-measured it rather than reading it.** The claim
+is that at `21edb7c5` the landed suite *"carries no `extractInjectableMaterial(text, 0)` call at all"*.
+Running `git show 21edb7c5:pdlc/workflows/__tests__/learningsBlock.test.js | grep
+extractInjectableMaterial` returns exactly three call sites — `(text, 100000)`, and twice
+`(text, maxBytes)` with `maxBytes` bound to `40` and `66`. No zero-bound call exists, so PROP-BOUND-03's
+zero case genuinely re-reds committed green code with no ledger row standing for it. That is a true
+statement about PLAN, correctly routed upward rather than decided here.
+
+**PROP-BOUND-03's own downstream traces are untouched by the delta and still hold**: the coverage matrix
+rows `AT-11 → PROP-BLOCK-02, PROP-BOUND-03, PROP-BOUND-05`, `AT-12 → PROP-BOUND-03`, `AC-2.3 →
+PROP-BLOCK-02, PROP-BOUND-03/05/07/08`, and the red/green pair `LI-08` (red) / `LI-17` (green) are all
+byte-identical to the version I approved these rows in.
+
 ## Oracles
 
 ## Fixtures
