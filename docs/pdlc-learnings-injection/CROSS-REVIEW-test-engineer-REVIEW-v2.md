@@ -89,6 +89,65 @@ control `selected.every((d) => d.bytes > 0)` (`learningsSelect.test.js:89-91`, `
 
 ## Delta Verification — v1's Medium and Low findings
 
+**F-06 (multi-section per-document cut had no oracle) — RESOLVED.** `learningsBlock.test.js:148-198`
+adds the two-section LI-AT-12 case with the bound landing eight bytes inside section 2's heading.
+Expected values are hand-computed from the fixture and shown as arithmetic (50 + 2 + 44 = 96;
+cut at 60), the material is asserted as a literal string, and `sections` is asserted by
+`toEqual` — set equality in priority order, so a change from "cut the assembled string" to "omit
+the overflowing section whole" reds. The unbounded control (`bytes: 96`, `bounded: false`)
+proves the 60 is the cut's doing. The FSPEC/TSPEC divergence this exposes is still open upstream
+and re-emitted as `ERRATUM: FSPEC`.
+
+**F-07 (an implementation-invented reason-id rule, and an expected value tuned to it) — RESOLVED.**
+The `propagateBytes` guard is deleted; overflow documents are unconditionally `RSN-COUNT`
+(`orchestrate-dev.js:2432-2434`), which is what BR-5 and AC-3.2's cause-defined ids actually say.
+`LI-AT-13`'s comment no longer justifies `4973` by keeping the byte failure off the window's last
+slot (`learningsSelect.test.js:291-305`), and a new companion test holds the corpus fixed while
+moving the first byte failure between window index 4 and index 2, asserting the full
+path→reason map by `toEqual` at both positions (`:380-465`) — set equality over the whole
+enumeration, so a deleted or relabelled row reds. `LI-AT-07`'s expectations were corrected in the
+same pass: `RSN-COUNT` rows are now `8 - maxDocuments` rather than the zero the deleted guard had
+been hiding (`:124-146`).
+
+**F-08 (the composition-site set-equality test's clause (b) was a tautology) — RESOLVED.** The
+probe now carries the production decision — `_recordDocType(docType, injectHere, dispatchKind)`
+(`orchestrate-dev.js:9472`) — and `acceptedDocTypes` is populated from `injectHere === true`
+rather than from the test's own re-application of the hand-transcribed literal
+(`learningsDispatchSet.test.js:675-684`). The literal survives as the *expected* value of a set
+the production code computed. Two controls were added
+(`observedDocTypes.length > acceptedDocTypes.length`, and `null` is among the observed). This is
+the repair that makes F-02's mutant die at this seam as well as at the dedicated AC-1.2 test
+(E-1). The three-argument signature is backward-compatible: the shipped default is a
+one-argument `() => {}` and every pre-existing caller is unaffected (full suite green).
+
+**F-09 (a null ordering key renders the literal `null` in the prompt) — STILL OPEN, still Low.**
+`orchestrate-dev.js:2462` interpolates `doc.orderKey` unguarded, so a document with material but
+no parseable `Date Completed` renders `completed null` into an author's prompt. Unchanged in this
+delta and carried forward below as F-01. TSPEC §OQ.1 does not state the rendering for that case;
+re-emitted as `ERRATUM: TSPEC`.
+
+### Collateral checks on the revision's other changes
+
+The delta also lands three PM-round repairs that touch code this lens covers; none regresses
+anything v1 approved.
+
+- **Injection moved after `selection`** (`orchestrate-dev.js:9506-9519`) so the dispatch record's
+  `mode` is this episode's actual mode. Verified: `mode` is consumed only by the record
+  (`buildLearningsInjector`'s `record` object), never by `renderLearningsBlock`, so no composed
+  prompt byte moves — which is why the F-03 baseline oracles above still hold on all four states.
+  The call is still once per episode and still outside the `for(;;)` loop, and the BR-1 decision
+  and its probe remain at the original site before any review-state I/O. Its test drives
+  `mainDev` and asserts set equality over `selectMode`'s two-member codomain with both members
+  observed in one run (`learningsDispatchSet.test.js:600-644`).
+- **AC-5.2's read/write halves** (`learningsDispatchSet.test.js:1084-1148`). The two BR-15 prefix
+  clauses that were true by construction of `isCorpusPath` are replaced by an arm-difference
+  instrument, with a control asserting the disabled arm really does open `docs/_decisions/` so the
+  cancellation is meaningful. The write half is a set equality over both arms' `_writeFile`/
+  `_appendFile` paths with no exemption list, plus the four named BR-15 forms.
+- **`check-finding-grammar.sh` executed, not inventoried** (`hookCompatibility.test.js:434-544`):
+  five cases spawning the real script by bare path through the real hook envelope, each pairing
+  the negative (`nudgeOf(result)` is null) with a positive on the same path.
+
 ## Findings
 
 ## Questions
