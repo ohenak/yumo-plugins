@@ -74,6 +74,54 @@ documents whose edits can falsify its claims.
 
 ## Decision
 
+**All three v3 findings are resolved. No new High. Two new Low findings, neither gating.**
+
+### F-01 (v3, High) — RESOLVED
+
+The false negative claim is gone. `DEC-A6-03:377-397` now reads *"The gap this entry carried was
+real and is now closed at the specification levels"* and states the split as three cited limbs
+(REQ v1.16 AC-6.3, FSPEC v1.7 BR-14/AT-06-4/AT-06-4b/E-34, TSPEC v1.15 §4.5). Every limb verifies
+at HEAD per the table above. Two things the repair did that I asked for and one it did better:
+
+- The Re-evaluation trigger no longer advertises the routing as open. `:412-419` marks the
+  halt-message trigger **fired at REQ v1.16 and spent**, and replaces it with a narrower one —
+  *revisit if the conjunct is still unasserted by any property or test when Phase I closes*. That
+  replacement trigger is **observable**, which is what my lens asks of a re-evaluation trigger: it
+  is decidable by exactly the grep I ran (`overwrit` in PROPERTIES, `renderSnapshotOverwriteNotice`
+  in `pdlc/workflows/`), so a monitor or a DoD sweep can fire it without judgement.
+- It states HEAD, not the reviews' snapshot. Both reviewers caught only the REQ limb; the author
+  re-grounded and found FSPEC v1.6 → v1.7 and TSPEC v1.11 → v1.15 had also landed it. I confirmed
+  both version rows. A repair that resolved the finding *as filed* would have shipped a second
+  stale sentence in the same place, one cascade later.
+
+### F-02 (v3, Medium) — RESOLVED
+
+`:399-410` records the specified-vs-asserted split explicitly, in the shape the document already
+uses for DEC-A6-04's `waveBudgetPerRun: 0`, and — the part that matters in my lens — it transcribes
+the **falsifiable oracle** rather than the obligation:
+
+> The falsifiable half is **co-location**, not presence: the oracle asserts the ref pointer and the
+> overwrite statement on the **same rendered report field**, and must go RED both when the warning
+> is deleted and when it is emitted somewhere other than beside the pointer. An
+> `expect(report).toContain(ref)` alone can fail neither.
+
+Two RED conditions and a named non-oracle. That is a test author's instruction, not a wish. It also
+agrees with the authoritative statement downstream of it (`TSPEC:1942`, which additionally supplies
+the anti-echo rule: both halves matched by spec-side literals, never a constant imported from the
+module under test).
+
+### F-03 (v3, Low) — RESOLVED
+
+`:5` pins all three upstream hashes and dates the pin; `:42-45` re-labels the v1.9 hashes as *"that
+round's dated observation, not a current pin"*. I recomputed all three pinned hashes at HEAD and
+all three match (see table above). The cell also states *why* it pins three rather than one, which
+is the generalisation of the F-01 defect.
+
+### New Low findings
+
+Both sit inside changed lines, both are accuracy nits on claims about downstream state, and
+neither changes a decision or an oracle. They are in `## Findings`.
+
 ## Consequences
 
 ## Findings
