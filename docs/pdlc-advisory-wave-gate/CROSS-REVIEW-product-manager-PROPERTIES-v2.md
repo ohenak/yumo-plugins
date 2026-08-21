@@ -39,6 +39,57 @@ changelog's word for it, and both check out — see the sections below.
 
 ## Properties
 
+### PROP-ENV-13 — the `attempts` conjunct (v1 F-01, SE F-01)
+
+The replacement expected value is **transcribed, and the transcription is correct**. I checked each
+of the three sources the row now cites, at HEAD:
+
+- **FSPEC BR-15** (line 249) lists `post-action-verification-failed` inside the tier's closed
+  eight-member *refusal* reason set. So this disposition is a refusal, not a diagnosis-only
+  escalation.
+- **FSPEC §3.3's flow table, step 5** (line 140) reads, verbatim: *"escalate with a refusal reason,
+  no attempt consumed"*. That is the rule governing refusals, and it decides the literal the v1
+  round found undecided.
+- **The shipped driver** agrees: `runAdvisorySeam`'s step-4 `ACT` arm calls `doRevert()` and then
+  `terminate({outcome:"escalated", reason: refuse({"post-action-verification-failed": true}),
+  verdict, attempts, appliedSuccessfully:false})` with `attempts` passed through unincremented.
+
+So the property no longer mints a red test that a spec-following implementation fails — which was
+the whole of the v1 concern. The row also records *why* the earlier literal was wrong, which is the
+right disposition: it stops the "one attempt consumed" reading being re-derived by a later reader.
+
+One imprecision in the supporting prose, not in the expected value: the row says the increments live
+"only on the malformed-verdict and red-re-gate arms". At HEAD the driver also increments on the
+seam-budget preemption arm and on the dispatch-error arm, both of which terminate or re-enter with
+`budget-exhausted`. The asserted conjunct is unaffected — this is an over-strong "only" in an aside
+about the shipped code — but it is the kind of claim a later reader will check, so F-01 below.
+
+### PROP-ENV-13 — the re-home (v1 F-02, SE F-02)
+
+Correct, and the residue is routed rather than dropped. PLAN at HEAD mints this case in exactly one
+place, **A6-14's former-A6-13 red step**: *"`apply` … returning `{ok:true}` iff `producedPaths()` is
+non-empty (an empty set is `{ok:false}` ⇒ `post-action-verification-failed`, which is also the
+disposition for a repair writing only `.gitignore`d paths — OQ-11, stands independently of OQ-7)"*.
+A6-18's row enumerates the former-A6-15/-16/-17 red steps in full and names no such case. The new
+Home cell and the C-3 matrix row both point there.
+
+The honest part of this fix is §G-3 item 3. That red step is a `buildA6SeamOps` member contract, so
+it mints the `producedPaths() === []` / `{ok:false}` half directly; the property's run-level
+conjuncts (escalation entry written, no re-gate token appended past the anchor) need a
+`runWaveGateSeam` run that PLAN does not enumerate. Rather than silently narrow the property to what
+PLAN happens to mint — which would have lost product behaviour AC-3.4 requires — the document keeps
+every conjunct, levels the property `Unit + Integration`, names the two acceptable PLAN resolutions,
+and routes the choice to se-author. From the product lens that is the right trade: no acceptance
+criterion is quietly dropped, and the open question is visible to whoever owns it.
+
+One consistency nit the re-home introduces: the new Home cell is spelled in PLAN's **HEAD**
+numbering (`A6-14, former-A6-13 red step`) while every sibling Home cell and the whole C-3 matrix
+are spelled in the retired **v1.2** numbering the matrix preamble declares (`A6-15`, `A6-09`, …).
+The two spellings are individually correct and reconcilable — the matrix's own row for this property
+is `A6-13`, which is the v1.2 name of the same step — but a reader who takes the matrix preamble at
+face value reads that A6-14 is a GREEN task "carrying no properties by construction" and then finds
+a Home cell pointing at it. F-02 below; the fix is one spelling, not a re-home.
+
 ## Oracles
 
 ## Fixtures
