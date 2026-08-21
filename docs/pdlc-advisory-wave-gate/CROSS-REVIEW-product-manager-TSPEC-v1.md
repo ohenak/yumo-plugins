@@ -324,7 +324,50 @@ proceeds.
 
 ## Positive Observations
 
+- **The narrowing was routed, not resolved locally — and the routing worked.** v1.10 refused to
+  settle the ignored-path boundary in the engineering layer and raised it as an erratum on FSPEC BR-9
+  and REQ AC-5.1. Upstream decided it, and v1.11 transcribes the answer. This is the traceability
+  principle producing its intended outcome end to end, and it is worth naming because the tempting
+  shortcut — quietly documenting the mechanism's boundary as the criterion's boundary — would have
+  been invisible in review a round later.
+- **The document noticed a gap the erratum did not route to it.** AC-5.1's observation point was new
+  upstream material with no assertion anywhere in this TSPEC. The delta adds §5.2 case 5 and says so
+  explicitly. Absorbing a new upstream clause into prose while leaving the suite untouched is the
+  standard erratum failure; this round did the opposite.
+- **The retired fallback design is recorded as retired.** "The scoped ignored-path capture the
+  earlier draft held in reserve — post-wave pathspecs only — is not built: the decision that would
+  have required it did not come back." A reader of v1.10 who goes looking for that branch finds its
+  disposition instead of a silence.
+- **A misrouted finding is absorbed with its reason, not edited around.** The `Downstream` lineage
+  erratum does not hold against this document, and the changelog says why and records it so it is not
+  re-raised. Both claims check out against the files at HEAD.
+- **Quotation discipline is high.** Every clause the delta attributes to BR-9, AT-05-1, AC-5.1 or
+  E-33 is verbatim and in context — I checked each against upstream at HEAD rather than trusting the
+  paraphrase, and found no drift.
+- **OQ-9 and OQ-11 close with concessions rather than claims of vindication.** "It never bound";
+  "the independence was never tested". Precision about what was *not* proven is what makes the rest
+  of the document's claims credible.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves every routed item — all of which the dispatch already reported ABSORBED — and it
+does so without breaking anything I previously approved. Measured against REQ v1.15 and FSPEC v1.6 at
+HEAD, per DEC-ERR-03, this TSPEC remains a faithful compression of its upstream: the boundary it now
+transcribes is upstream's decided boundary, every quoted clause matches HEAD verbatim, no mechanism
+moved, no acceptance criterion is narrowed or reinterpreted, and the one criterion upstream *added*
+in the interval (AC-5.1's observation point) gained both a design statement and a test assertion in
+the same round.
+
+One Low finding, non-gating:
+
+- **F-01** — OQ-7's disposition pins the full three-carrier observation point to "REQ AC-5.1 at
+  v1.14", but AC-6.2's escalation-log append entered that list at v1.15. Substance correct, pin
+  stale. Move the pin to v1.15, or attach it to the ignored-path quotation alone as §2.5 already
+  does. Fold into the next touch of this document; it does not warrant a round of its own.
+
+No High or Medium findings. Nothing routes back to an owning phase, and nothing halts.
 
 ## Delta-Confirmation Findings
 
