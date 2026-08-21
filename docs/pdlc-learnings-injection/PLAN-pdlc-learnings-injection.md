@@ -232,6 +232,36 @@ on the survivor.
 | `pdlc/workflows/__tests__/learningsArmInventory.test.js` | LI-23 | 5 |
 | `pdlc/workflows/__tests__/learningsSuiteMap.test.js` | LI-14 | 6 |
 
+### Post-batch remediation (CODE_REVIEW v1) — outside the batch ladder
+
+The DoD remediation commit `2fc6fcd3` (CODE_REVIEW v1 findings F1/F7/F12, F8, F10, F11/F12) landed
+after batch 13 and touched six test-side surfaces. Four are **new files owned by no LI task**; two
+are **second writes** to files the batch ladder already owns, which is exactly the case P-A-5 says
+must be recorded as a manifest amendment rather than left in a completion note (TE v12, PM v12).
+
+This table is deliberately **not** an `Owner`-bearing manifest table. The dispatcher parses `Owner`
+cells as task ids and reconciles them against §Batches; there is no LI task to name here, and a
+cell reading `2fc6fcd3` or `none` would parse as a stale row — the same contract violation
+§Production and generated states in prose for `dist/pdlc-cli.mjs`. So the rows carry a **landing
+commit** instead, and the two dispatcher-parsed tables above are unchanged.
+
+| File | Relation to the ladder | Landing commit | Cause |
+|---|---|---|---|
+| `pdlc/workflows/__tests__/helpers/learningsBaselineScenarios.js` | new — no LI owner | `2fc6fcd3` | F1/F7/F12 — the capture matrix the refusing `main` never wired |
+| `pdlc/workflows/__tests__/helpers/learningsComposition.js` | new — no LI owner | `2fc6fcd3` | F8 — two-invocation composition, replacing the same-process arm |
+| `pdlc/workflows/__tests__/learningsDisclosure.test.js` | new — no LI owner | `2fc6fcd3` | F10 — the operator-facing config-disclosure family |
+| `pdlc/workflows/__tests__/learningsErratumBinding.test.js` | new — no LI owner | `2fc6fcd3` | F11/F12 — binding the two unbound deferrals |
+| `pdlc/workflows/__tests__/fixtures/learnings-baseline/` (incl. `MANIFEST.json`) | **second writer** after LI-06 (batch 4) | `2fc6fcd3` | F7 — re-capture extending the matrix to the whole non-authoring dispatch set |
+| `pdlc/workflows/__tests__/learningsBaselineGuard.test.js` | **second writer** after LI-06 (batch 4) | `2fc6fcd3` | F7 — the guard rewritten over the re-captured matrix |
+
+**The single-writer premise survives, and here is why it is not merely asserted.** The two
+second-writer rows name `LI-06`'s files, so on the manifest's own terms they are a second write to
+batch 4's surfaces. They race nothing: `2fc6fcd3` is one serial commit landing **after batch 13**,
+with no batch in flight and no concurrent agent holding either file, so there is no batch in which
+two writers coexist — which is the property batch-safety rule 2 actually protects, and it is
+preserved rather than excepted. LI-06 remains the ladder owner of both files; this commit did not
+move ownership, and a future in-ladder write to either still belongs to LI-06.
+
 **The arithmetic, restated so it reconciles with the tables above it (TE F-11).** Twenty-four rows
 over **seventeen distinct files** — ten production rows over three files (`orchestrate-dev.js`
 eight times, `.gitignore` and the capture script once each) and fourteen test rows over fourteen
@@ -239,7 +269,7 @@ files. **Every one of the 23 tasks in §Batches owns at least one row**, which i
 dispatcher's manifest check enforces and which LI-01 did not satisfy before TE F-05. The only
 multi-owner file is `orchestrate-dev.js`, and its eight owners occupy eight different batches; the
 only task owning two files is LI-06, whose guard suite and guarded fixture subtree are committed
-together by construction. No two rows share a batch and a file.
+together by construction. No two rows share a batch and a file. This arithmetic is taken over the **two dispatcher-parsed tables only**; §Post-batch remediation's six rows are outside the ladder, carry no `Owner` cell, and are excluded from every count in this paragraph by construction (TE v12).
 
 ### Read-only for this feature — no task owns them
 
