@@ -2,16 +2,39 @@
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.4) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (`docs/pdlc-advisory-wave-gate/FSPEC-pdlc-advisory-wave-gate.md` v1.6, over `REQ-pdlc-advisory-wave-gate.md` v1.15) |
 | Downstream | `DECISIONS`, `PLAN`, `PROPERTIES`, `IMPL` |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md`, `CROSS-REVIEW-product-manager-TSPEC-v2.md`, `CROSS-REVIEW-test-engineer-TSPEC-v2.md`, `CROSS-REVIEW-product-manager-TSPEC-v3.md`, `CROSS-REVIEW-test-engineer-TSPEC-v3.md` (active), `CROSS-REVIEW-product-manager-TSPEC-v4.md`, `CROSS-REVIEW-test-engineer-TSPEC-v4.md`, `CROSS-REVIEW-product-manager-TSPEC-v5.md`, `CROSS-REVIEW-test-engineer-TSPEC-v5.md` (active) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 1.10 | 2026-08-19 |
+| pdlc | Draft | Claude | 1.11 | 2026-08-20 |
 
 ## Changelog
+
+**v1.11 (erratum round, Phase F — closing pass).** Re-grounded on upstream HEAD first, and the
+re-grounding is most of what this round is. REQ moved v1.9 → **v1.15** (`sha256:c62cfc35…`) and
+FSPEC moved v1.4 → **v1.6** (`sha256:91ef2557…`) since v1.10; the Upstream row names both. Absorbed
+(DEC-ERR-03), not raised: **OQ-7 is closed upstream, in this TSPEC's favour.** FSPEC BR-9 at v1.6 and
+REQ AC-5.1 at v1.14/v1.15 now state the restoration oracle's **domain** — the path-to-content-hash map
+ranges over tracked and **non-ignored** untracked files, ignored paths excluded on both sides — and its
+**observation point** — immediately after restoration completes and before the record carriers the run
+still owes (AC-6.1's record append, AC-6.2's escalation-log append, AC-5.2's queue-row write, M-WG-7).
+That is the boundary §2.5's mechanism already implements, so no mechanism moves; what changes is that
+this document stops describing it as a TSPEC narrowing pending upstream, which after the decision would
+be DEC-ERR-01's anti-pattern — routing a settled question. Every flag raised against that erratum is
+retired and restated on the decided form: §2.5's `clean -fd` bullet, §3.3's `apply` row, §5.2's
+round-trip case 4, §5.5's ignored-path-only row, §5.6's AT-05-1 row, and §6 OQ-7 / OQ-9 / OQ-11. §5.2
+additionally gains the observation-point assertion the decided form requires, which nothing here
+asserted before. OQ-1's disposition drops its "undocumented upstream" clause for the same reason: FSPEC
+E-33 at HEAD documents the honoured `0` and the non-negative validator, and AT-07-2b tests it.
+**The raised item, absorbed:** Phase F's erratum against this document's lineage header — `Downstream`
+naming a downstream *feature* (`pdlc-engineering-loop`) rather than the artifacts fed — does not hold
+against this document. This `Downstream` row reads `DECISIONS, PLAN, PROPERTIES, IMPL`, artifacts all;
+the REQ row the finding describes already reads `FSPEC, TSPEC, PLAN, PROPERTIES (all in this
+directory)` at REQ v1.15. No edit is owed; it is recorded here so the finding is not re-raised. No
+design decision reopened.
 
 **v1.10 (erratum round, Phase PR).** Two current-state repairs, no design change: the v1.9
 re-grounding paragraph below is corrected (PM F-01) and §1.3 / §5.1 are re-grounded on the branch
