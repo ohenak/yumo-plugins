@@ -43,6 +43,37 @@ report, not a stale one.
 
 ## Architecture
 
+**A zero-byte delta cannot regress structure, so this section records what I re-verified rather than
+what I re-read.** The confirmation question — "does the delta resolve the items without breaking what
+was previously approved?" — has a mechanical answer when the delta is empty: the only way this round
+could carry a defect is if the *disposition itself* were wrong, i.e. if ERR-8's "no behavioural
+divergence" claim were false and the TSPEC were silently specifying something FSPEC forbids. That is
+the claim worth re-testing, and it is the one I re-tested.
+
+**ERR-8's outcome-equivalence claim, re-derived.** The two orderings differ only in *when* extraction
+runs relative to the count cut:
+
+| Ordering | At `maxBytesPerDocument > 0` | At `maxBytesPerDocument: 0` |
+|---|---|---|
+| FSPEC Step 5 literal (drop structurally → count cut → extract) | Structural drops consume no slot; count cut applies to the rest; every taken document extracts non-empty material | Count-surviving documents extract to `""`; the count-cut remainder is *already* `RSN-COUNT`, so the zero-bound drop is unobservable for them |
+| TSPEC §D.5 (extract for all eligible → drop on *yields no material* → count and total bounds) | Extraction of a document that is later count-cut is wasted work but changes no reported row: a structurally-empty document still drops `RSN-NO-MATERIAL` before the bounds | **Every** eligible document yields no material, so all drop `RSN-NO-MATERIAL` before the count bound, none consumes a slot, and none carries `RSN-COUNT` — E-36's shape |
+
+The orderings agree wherever the bound is non-zero, and diverge exactly at `maxBytesPerDocument: 0`,
+where FSPEC's own E-36 decides the outcome the TSPEC implements. So the TSPEC is not diverging from
+FSPEC's *decisions*; it is diverging from FSPEC's *procedure prose*, which contradicts E-36 — and it
+says so, in the right register, with the fix addressed to FSPEC's author. That is the faithful-
+compression behaviour I want from a TSPEC that finds an upstream self-contradiction: implement the
+decided outcome, record the prose defect, do not silently pick either side.
+
+**The architectural split the disposition rests on is unchanged.** §D.5 keeps the zero-bound
+short-circuit inside `extractInjectableMaterial` and the no-slot drop inside `selectLearnings`, one
+branch keyed on *yields no material* covering both of §T.7's disjuncts (structural E-33, zero-bound
+E-36) with no zero-bound special case in the selector. §T.7's "two disjuncts, one branch" and the
+twelve-arm fail-open table are outside this round's (empty) diff and I did not re-review them; I did
+confirm the PLAN's arm table still routes the zero-bound disjunct to AT-30 case 3 with LI-16 as the
+production owner, which is the wiring that makes "no PLAN change is owed" true rather than merely
+asserted.
+
 ## Interfaces
 
 ## Data Model
