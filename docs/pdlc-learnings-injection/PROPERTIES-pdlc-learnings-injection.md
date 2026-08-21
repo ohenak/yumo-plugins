@@ -1002,17 +1002,38 @@ green by two, and each split is named in the PLAN row that carries it:
 | Properties with **no** owning task | 0 | §C.3 |
 | Fail-open arms | 12 | TSPEC §T.7, mechanised by PROP-FAILOPEN-01 |
 
-**All twelve** `learnings*.test.js` suites this document depends on **do not yet exist**, and neither
-do the fixture helper nor the baseline fixture directory — `learningsPremises.test.js` (LI-01),
-`learningsCaptureScript.test.js` (LI-03), `learningsPredicatePin.test.js` (LI-13),
-`learningsSelect.test.js` (LI-07), `learningsBlock.test.js` (LI-08), `learningsCorpus.test.js`
-(LI-09), `learningsBaselineGuard.test.js` (LI-06), `learningsRecord.test.js` (LI-10),
-`learningsDispatchSet.test.js` (LI-11), `learningsConfig.test.js` (LI-12),
-`learningsArmInventory.test.js` (LI-23), `learningsSuiteMap.test.js` (LI-14), plus
-`helpers/learningsFixtures.js` (LI-02) and `fixtures/learnings-baseline/` (LI-06) — **fourteen** rows
-over fourteen files, exactly PLAN §File-ownership manifest's fourteen new test rows (a
-`ls pdlc/workflows/__tests__ | grep -i learnings` on `HEAD` returns nothing). Every one is explicitly
-planned; **no property in this document names a test file the PLAN does not create.** The two
+**Test-file inventory, re-measured at HEAD (implementation has begun).** This document depends on
+twelve `learnings*.test.js` suites plus the fixture helper and the baseline fixture directory —
+**fourteen** rows over fourteen files, exactly PLAN §File-ownership manifest's fourteen new test
+rows. Earlier revisions of this section recorded that none of them existed yet; that is **no longer
+true**, and the count is restated against `git ls-files pdlc/workflows/__tests__` at HEAD:
+
+| File | Owning task | At HEAD |
+|---|---|---|
+| `helpers/learningsFixtures.js` | LI-02 | **exists** (landed) |
+| `learningsPremises.test.js` | LI-01 | **exists** (landed) |
+| `learningsCaptureScript.test.js` | LI-03 | **exists** (landed) |
+| `learningsPredicatePin.test.js` | LI-13 | **exists** (landed) |
+| `learningsSelect.test.js` | LI-07 | **exists** (landed) |
+| `learningsBlock.test.js` | LI-08 | **exists** (landed) |
+| `learningsCorpus.test.js` | LI-09 | **exists** (landed) |
+| `learningsBaselineGuard.test.js` | LI-06 | not yet created |
+| `learningsRecord.test.js` | LI-10 | not yet created |
+| `learningsDispatchSet.test.js` | LI-11 | not yet created |
+| `learningsConfig.test.js` | LI-12 | not yet created |
+| `learningsArmInventory.test.js` | LI-23 | not yet created |
+| `learningsSuiteMap.test.js` | LI-14 | not yet created |
+| `fixtures/learnings-baseline/` | LI-06 | not yet created |
+
+Seven of the fourteen have landed (LI-01…LI-04, LI-07, LI-08, LI-09, LI-13 are committed); the
+remaining seven are explicitly planned and unstarted. **No property in this document names a test
+file the PLAN does not create**, and none names one that exists but is owned by no task. The
+properties this revision adds or amends land in files on both sides of that line — PROP-CONFIG-09 in
+the not-yet-created `learningsConfig.test.js` (LI-12), and the Group D amendments in the **already
+landed** `learningsSelect.test.js` (LI-07) and `learningsBlock.test.js` (LI-08), which means those
+two suites need the amendment applied to committed code rather than written fresh. PLAN records the
+same thing in its own note that LI-02/LI-08's heading-form cases are "an amendment to landed
+suites". The two
 **existing** files this document names are the pin's subject `consolidationPredicate.test.js` and the
 seam helpers `helpers/seams.js` / `helpers/consolidationDoubles.js`, none of which any task edits.
 Likewise
