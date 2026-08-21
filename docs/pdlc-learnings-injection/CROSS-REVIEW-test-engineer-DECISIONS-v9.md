@@ -125,6 +125,25 @@ learning should preserve — I am re-filing it for harvest rather than re-openin
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **The ceiling sentence quotes the non-abridged five-document figure while the sentence beside it calls abridged "the common case".** `DEC-LI-08` states "a fully-conforming block over *this* corpus occupies up to roughly **21,600 bytes**". Over the named fixture, five non-abridged documents cost 1,607 (20,000 + 1,607 = 21,607 ≈ 21,600 ✓), but five *abridged* documents cost **1,777** (21,777) — and the preceding clause says abridging is what §4.1's 6,000-byte per-document default makes usual. An "up to" bound should take the larger arm: "roughly 21,800" would cover both. Non-gating and no transcription hazard — `D-O-4` explicitly forbids copying either number, and the formula, which is the load-bearing artifact, is exact. Fix if the document is touched again for another reason; not worth a round on its own | `DEC-LI-08` §"What the caps bound" |
+| F-02 | Low | Process | **Fourth consecutive round decided by re-deriving upstream version movement by hand.** v6, v7, v8 and now v9 each spent review budget confirming that sibling-document bumps left this document's present-tense claims true. This round was cheaper only because the author pre-wrote the anchors (FSPEC:489, FSPEC:798, FSPEC:967-968) into the upstream version note. A mechanical sweep — grep present-tense sibling-version citations in a document under review, diff the cited anchors' bytes since the pinned commit — would retire the manual check entirely. Re-filed from v8 F-04 for harvest, not re-opened against this document | §"Upstream version note"; process |
+
+**DEFERRED items** (freeze-scope observations, recorded and not blocking; no decision reopened):
+
+DEFERRED: `DEC-LI-08`'s decomposition of the 477-byte block constant ("the `\n\n` prefix, the 50-byte header, the preamble, the separators and the 35-byte trailer") silently absorbs the `-2` that `docs.join("\n\n")` contributes (the joiner is charged per document in the 49 term, so the constant carries `479 − 2`); the total is exact, only the prose inventory is one term short of self-explaining.
+DEFERRED: the formula writes `len(feature)`, and the shipped code derives that feature from the **filename** via `LEARNINGS_DOC_FEATURE_RE` (`orchestrate-dev.js:2534,2546-2547`), not from the directory; the two coincide on every path in the named fixture, but a PROPERTIES author computing the expected value should be told which one.
+DEFERRED: the 477 and 49 constants are stated without a citation to the renderer that fixes them; a `pdlc/workflows/orchestrate-dev.js` §symbol reference in the paragraph would let the next reviewer re-derive without grepping.
+DEFERRED: `D-O-4`'s two quantities are still named prose-side but not bound to report field names — that contract belongs to PROPERTIES/report, not here.
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | (Carried from v7 and v8, still open.) `D-O-6` is the sole falsifier of a wrongly-`null` `corpusOutcome`. Should PROPERTIES additionally carry a **mutation** check on it — revert the `RSN-UNLISTABLE` record on a failing dispatch and expect RED — given that no other obligation would catch the regression? |
+| Q-02 | Should `D-O-4`'s report assertion be required to evaluate the formula from **this document's** text rather than importing the renderer's framing constants? The obligation implies it ("never a number copied from here"), but an implementer could satisfy the letter by calling `renderLearningsBlock` on both sides, which proves nothing. |
+
 ## Questions
 
 ## Positive Observations
