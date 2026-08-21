@@ -92,6 +92,41 @@ added). Both are true, and they agree.
 
 ## Dependencies
 
+**No `Deps` edge changed.** The column diff above is mechanical, not impressionistic: the `Deps`
+cells of all 23 `LI-*` rows are byte-identical between `95098af5` and HEAD. This delta scheduled
+nothing and re-ordered nothing.
+
+**The upstream re-pin is a pin refresh, and the pins are right.** The header now reads REQ v0.10 /
+FSPEC v0.14 / TSPEC v0.9 / DECISIONS v0.5. I read each document's own version row rather than
+trusting the PLAN's header:
+
+| Document | Version row at HEAD | PLAN's pin |
+|---|---|---|
+| `REQ-pdlc-learnings-injection.md` | `0.10` (line 18) | v0.10 ✓ |
+| `FSPEC-pdlc-learnings-injection.md` | `0.14` (line 18) | v0.14 ✓ |
+| `TSPEC-pdlc-learnings-injection.md` | `0.9` (line 18) | v0.9 ✓ |
+| `DECISIONS-pdlc-learnings-injection.md` | `0.5` (line 18) | v0.5 ✓ |
+
+The three prose pins that moved with the header are LI-12's `LI-AT-30` cell, the `RSN-NO-MATERIAL`
+arm row and the F-O-1 obligations row — all three are version references to text whose substance did
+not change (REQ v0.10 is AC-2.4's attribution erratum, FSPEC v0.14 restates BR-6's window and the
+same attribution; DECISIONS v0.5 re-grounds DEC-LI-08's byte formula and explicitly records that
+"v0.14's window restatement and AC-2.4's attribution clause leave the byte-accounting basis, `E-36`
+and `AT-30` untouched"). So the cited claims — E-36's third `LI-AT-30` case, the two-disjuncts-one-
+branch `RSN-NO-MATERIAL` arm, F-O-1's second heading rule — are unmoved beneath the new pin numbers.
+A pin refresh with no cascade is the correct handling and the 1.3 row says so in those words.
+
+**P-A-7's case table is unchanged in substance.** The only edit inside it is case A's derivation
+quoting `"before batch 9"` instead of the superseded `"before batch 7"` — my v14 F-06. The *When*
+cell it now agrees with has read "before batch 9 (which includes batches 7 and 8)" since v1.1, so
+the quotation and the cell are finally the same string. Case B's span (9–12), case C's domain
+(batch 13 or later), the commit triple `e7fa8d87` / `be2456c8` / `a4998e13` and the 26/26 discharge
+record are all byte-identical to the bytes I approved at v14.
+
+**Downstream is untouched by this delta**, and the one PROPERTIES-side lag I recorded at v14 (§C.4
+still offering case B's amend-into-the-ledger route) is still downstream's field to advance. I
+record it again here rather than charging it to this document.
+
 ## Verification
 
 ## Findings
