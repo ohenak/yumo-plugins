@@ -35,7 +35,7 @@ move to symbol and banner-string names (SE G-02, TE G-04); REQ-WVR-08 names its 
 discarded and cites the write's guard re-derivably (SE F-01, F-03; TE H-03); OQ-1's banner recipe
 matches both banners (SE F-02, TE H-01); §10 enumerates all of §5 (TE H-02, Q-01).
 
-**Erratum, 2026-08-21 (v1.6) — Phase F erratum round.** §1's wave count and replay cost are
+**Erratum, 2026-08-21 (v1.6) — Phase F erratum.** §1's wave count and replay cost are
 match OF-1; REQ-WVR-02 notes IG labels name causes, not precedence; REQ-WVR-08's no-commit claim
 is scoped to the implementation wave loop (Phase PT's V-wave excluded); §10 records BL-04 open and
 unmet.
@@ -370,7 +370,7 @@ message only, not on the report row). **How REQ-WVR-03 is discharged here:** no 
 **implementation wave loop** executes, so that loop runs no gate and **lands no new commit** — the
 guarantee "no new commit lands before the full suite has verified the whole tree" is satisfied
 because the skipped loop lands none, not because a verification was skipped. The claim is scoped
-to that loop: Phase PT's appended verification wave, which OF-1 counts as the 17th wave, is
+to that loop: Phase PT's appended verification wave, OF-1's 17th wave, is
 outside the resume record's scope and continues to dispatch, gate and commit on every
 invocation (FSPEC §2, EC-20). The tree's most recent whole-tree verification is the one performed by
 the last wave of the run that wrote the record; any later phase that wants to commit runs its own
