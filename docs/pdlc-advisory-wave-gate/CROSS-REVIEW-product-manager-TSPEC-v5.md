@@ -32,7 +32,43 @@ delta names is a real, reachable seam at HEAD.
 
 ## New findings in changed sections
 
+Nothing in the delta reopens an approved section, and no product decision was invented at TSPEC
+altitude: the carrier is a mechanism choice (the "same report, same place" observable FSPEC
+`:476-478` states is unchanged), and TE Q-01's answer still stands — no verbatim sentence is minted
+here, only a `/overwrit/` stem predicate written test-side. Two Low citation/arithmetic items.
+
+### `TEST_GATE_MESSAGE` is cited as a symbol that HEAD does not have (F-01, Low)
+
+The new AT-05-3 survival paragraph asserts the halt reason "stays byte-identical to
+`TEST_GATE_MESSAGE`" (TSPEC `:1427`). At HEAD there is no such constant anywhere in `pdlc/` —
+`grep -rn TEST_GATE_MESSAGE pdlc/` returns nothing. The real thing is a function-local template
+literal, `const testGateMessage = \`Error: Wave ${waveNum} test gate failed — …\`
+(`orchestrate-dev.js:15359-15361`), thrown at `:15399`. The substance of the claim is correct —
+`haltError` builds the `Error` from `message` alone and the handler sets `haltReason = err.message`,
+so a `notices` push cannot touch it — and §2.3's pseudocode (`:531`) already uses the upper-case
+name as a stand-in, so this is a naming convention carried into prose, not a wrong claim about
+behavior. Still worth one word: prose that names a symbol reads as a citation, and an implementer
+grepping for `TEST_GATE_MESSAGE` finds nothing. Fix: write "the wave's own
+`Wave N test gate failed` literal (`testGateMessage`, built per-wave)" or mark the pseudocode name
+as such.
+
+### §5.2's "Six positive assertions" count is stale after this round's additions (F-02, Low)
+
+The capture-failure fixture bullet still concludes "Six positive assertions on one fixture, not an
+absence check" (TSPEC `:1582-1583`) after this round added, to that same fixture, (a) the
+set-equality over the five halt-field keys and (b) AT-06-4b's whole negative arm over `notices`
+(`:1573-1582`). This document maintains its arithmetic elsewhere — v1.13 updated §5.6's
+"forty-seven → forty-eight" in the same edit that added a row — so the stale six is a local
+exception, not the house style. It is also mildly self-undercutting: the sentence's point is that
+the fixture proves things happen rather than that nothing happened, and the round just strengthened
+exactly that. Fix: restate the count, or drop the numeral and keep the claim.
+
 ## Findings
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | §4.5's new AT-05-3 survival paragraph (`:1427`) cites `TEST_GATE_MESSAGE` as a production symbol; no such constant exists at HEAD (`grep -rn TEST_GATE_MESSAGE pdlc/` — no matches). The message is a per-wave local template literal, `orchestrate-dev.js:15359-15361`, thrown at `:15399`. The behavioral claim is correct; the symbol name is not. Fix: name the literal as §2.4/§5.6 do, or mark the upper-case name as pseudocode shorthand. | AC-6.3 (REQ v1.16), AT-05-3 |
+| F-02 | Low | Local | §5.2's capture-failure bullet still ends "Six positive assertions on one fixture" (`:1582`) after this round added the five-key set-equality and AT-06-4b's negative arm to that fixture (`:1573-1582`). Fix: recount or drop the numeral. | AC-6.3, FSPEC E-34 / AT-06-4b (`FSPEC:479-483`) |
 
 ## Questions
 
