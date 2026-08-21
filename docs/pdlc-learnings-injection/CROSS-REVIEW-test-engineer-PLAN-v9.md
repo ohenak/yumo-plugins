@@ -107,6 +107,66 @@ is a gate failure, not a red" — which is P-A-3's bar restated at the point of 
 
 ## Verification
 
+**The additivity premise is checkable, and I checked it on disk rather than reading it.** The
+paragraph's empty row-set for `learningsFixtures.js`'s consumers rests on one claim: the
+declared-heading-form knob is *additive* to `buildLearningsCorpus`'s section spec, so existing callers
+keep byte-identical output. At HEAD, `renderSection` in
+`pdlc/workflows/__tests__/helpers/learningsFixtures.js` already computes
+`ordinalPrefix` from `section.ordinal` (empty string when null/undefined), `glossSuffix` from
+`section.gloss` (empty when falsy), and takes `section.name` and `section.body` verbatim. So three of
+LI-08's four variants need **no helper change at all** — the un-numbered form is `ordinal` omitted,
+the un-glossed form is `gloss` omitted, the near-miss is a `name` value — and the fourth, the `###`
+sub-heading that must read as body text, is expressible through the existing `body` knob (or
+`spec.extraLines`) without touching the `## ` literal any current caller depends on. A caller
+declaring neither field gets the same bytes it gets today. The premise holds, and it holds more
+strongly than the paragraph claims: the additive change may be nil.
+
+That also retires the open half of my v8 F-02, which asked whether the `###` variant was a new knob
+or body text. The answer implied by the additivity sentence — and confirmed by the helper — is body
+text.
+
+**No oracle was weakened, and none was added that can only pass.** The delta introduces no test, no
+assertion and no fixture; it introduces a *gate rule*. The rule it introduces is falsifiable in the
+sense that matters here: under Case B, a batch run in which `learningsBlock`'s heading-form tests are
+red while the ledger lacks their row is a declared failure, and a batch in which the ledger carries
+the row but the tests are green is equally a failure under the pre-existing "a suite dropping out of
+the ledger early is as much a failure as one lingering" clause. Both directions are pinned, so the
+amended ledger stays a set equality rather than a containment — which is the property three earlier
+rounds spent findings establishing.
+
+**The mutation this paragraph exists to prevent.** Without it: an owner lands the heading-form
+amendment at, say, batch 10; `learningsBlock` re-reds; the batch-10 gate reads "every suite whose
+green task has landed is green" and halts on a suite whose red is intended. The wave stops on a
+correct test. With it, that landing is either a no-op (Case A) or is preceded by a PLAN edit naming
+the exact test names (Case B). The routed item was real and the repair addresses its mechanism, not
+just its wording.
+
+**Where the paragraph's reach exceeds its scope.** Its title is generic —
+"Amendment commits on landed suites (P-A-7)" — and its closing sentence names
+`learningsSelect.test.js` and `learningsCorpus.test.js` as carrying "**no** row of their own in either
+case". Read at the title's altitude, that sentence looks like a ruling about those suites; read in
+context it is a ruling about *this* commit's fixture-helper knob only. There is a second, live P-A-7
+case on the same two landed files: PROPERTIES §C.4 at HEAD states that PROP-BOUND-05/07/08's
+amendments land in the committed `learningsBlock.test.js` and that the Group D amendments land in the
+already-landed `learningsSelect.test.js` (LI-07) too, classifies them as "a re-red on landed green
+code … exactly PLAN P-A-7's case", and routes the row-naming to this PLAN as an erratum
+("that naming is the PLAN's to do and is routed as an erratum, not decided here"). Those rows are not
+named here, and the closing sentence gives a hurried reader a reason to think they need not be. That
+is finding F-01 — Medium, not gating, and the fix is one qualifying clause plus (when the PROPERTIES
+erratum returns) a second case row.
+
+**A smaller gap in Case A's justification.** Case A's window is "before batch 7", but its reasoning
+cites only the batches 7–8 ledger rows. A commit landing during batches 2–6 is inside that window and
+those batches have no ledger; their gate rows speak of "the batch's new tests" and "every
+pre-existing test's status", neither of which is the amended `learningsBlock`. The outcome is still
+"no row" — nothing evaluates it — but the reader has to derive that silence. One sentence closes it.
+That is F-02, Low.
+
+**Version pins and DoD.** Both untouched by the delta and both still correct against the files they
+cite: `:11` reads TSPEC v0.9 / FSPEC v0.13 / REQ v0.9 / DECISIONS v0.3, `:36` and `:275` agree, and
+each upstream file's version cell matches. DoD's thirteen clauses, the `--per-file --branches 85`
+floor and the twelve-arm inventory are byte-identical to what I approved.
+
 ## Positive Observations
 
 ## Delta-Confirmation Findings
