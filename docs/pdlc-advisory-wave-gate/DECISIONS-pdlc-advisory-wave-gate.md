@@ -121,7 +121,7 @@ grep-shaped check that confirms a count.
 A6 is the sixth advisory seam: it fires at exactly one place — Phase I's wave loop, at the moment
 the script-owned test gate goes red — snapshots the tree, attempts one bounded in-envelope repair,
 re-runs the wave's own gate sequence, and either keeps the repair or restores the snapshot
-byte-identical and halts with a diagnosis attached. TSPEC v1.10 settles the design; this document
+byte-identical and halts with a diagnosis attached. TSPEC v1.11 settles the design; this document
 records the four load-bearing choices inside it that had a live alternative, so that a later reader
 finds the rejected option and its reason here rather than reverse-engineering it from a test oracle.
 
@@ -133,16 +133,41 @@ and PM F-03) and the admission of `waveBudgetPerRun: 0` as a legal configured va
 
 Constraints that shaped all four, none of them this feature's to change:
 
-- **One module, one bundle.** The workflow runtime loads a single built artifact per workflow —
-  `orchestrate-dev.bundle.js`, produced by inlining `pdlc/workflows/orchestrate-dev.js`
-  (`build-runtime.mjs` reads that one file as `devSource`) and delivered to a consumer's
-  `.claude/workflows/` by the maintainer sync step, not to `pdlc/workflows/dist/`, which carries
-  the `pdlc-cli.mjs` query CLI only. Every advisory-tier symbol A6 reuses —
-  `runAdvisorySeam`, `classifyEnvelope`, `appendAdvisoryEntry`, `appendEscalationEntry` — lives in
-  `pdlc/workflows/orchestrate-dev.js`. A new file is not an option, so "add a module" never appears
-  as an alternative below.
+- **The shipping channel vendors a fixed list of module files.** Every advisory-tier symbol A6
+  reuses — `runAdvisorySeam`, `classifyEnvelope`, `appendAdvisoryEntry`, `appendEscalationEntry` —
+  lives in `pdlc/workflows/orchestrate-dev.js`, and that module reaches an operator by being copied
+  **verbatim** into the published `@kaneho/pdlc-engine` package at pack time:
+  `pdlc/engine/scripts/prepack.mjs` iterates a hardcoded `MODULE_NAMES = ["orchestrate-dev.js",
+  "orchestrate-queue.js"]`, `copyFileSync`s each into `pdlc/engine/vendor/workflows/`, and records a
+  `VENDOR-MANIFEST.json`. `pdlc/OPERATIONS.md` states it directly — workflow modules are vendored
+  into the package at pack time and the engine never loads `.claude/workflows/`. A file added beside
+  `orchestrate-dev.js` is therefore not vendored, does not resolve at runtime, and stays invisible to
+  the published package until **three** hardcoded lists are edited together: `MODULE_NAMES` in
+  `prepack.mjs`, `WORKFLOW_MEMBERS` in `pdlc/engine/scripts/publish-preflight.mjs`, and
+  `WORKFLOW_MODULE_NAMES` in `pdlc/engine/scripts/fixture-machine.mjs`.
+  **That is a cost, not an impossibility, and this document previously miscounted it as one**
+  (PM F-01, TE F-03): through v1.10 this bullet read "one module, one bundle" and rejected the whole
+  class on unbuildability, reasoning from a per-module runtime bundle
+  (`orchestrate-dev.bundle.js`) and a `.claude/workflows/` maintainer sync step that the plugin
+  channel's retirement had already removed — `build-runtime.mjs` emits `pdlc-cli.mjs` alone and the
+  consumer copy is *swept* by `pdlc/hooks/scripts/cleanup-consumer-workflows.sh` rather than synced.
+  So "add a module" is rejected **on merit** wherever it would apply below: A6's mechanism is
+  co-located with the advisory-tier symbols it calls, in the same file region as `buildA4SeamOps`
+  and `buildA5SeamOps` (TSPEC §1.2's reuse map), and splitting it out would buy nothing while
+  paying the three-list edit and a second vendoring surface to keep in step. TSPEC §1.2 states the
+  same envelope as a design commitment — "No new module, no new file, no new transport, no new
+  credential".
 - **No new transport.** A6 gets `_git`, `_runCommand`, `_readFile`, `_appendFile` and `_agent`
-  already threaded through Phase I (NFR-3). Anything a decision needs, it needs from those.
+  already threaded through Phase I. Anything a decision needs, it needs from those. **The clause
+  that closes the set is TSPEC §1.2's**, not REQ NFR-3's (PM F-03): §1.2 states "No new module, no
+  new file, no new transport, no new credential (NFR-3): A6 uses `_git`, `_runCommand`, `_readFile`,
+  `_appendFile` and `_agent` — every one of them already threaded into Phase I or into
+  `runAdvisorySeam`". NFR-3 itself says something narrower — A6 "holds no credentials the pipeline
+  does not already hold, and reaches no network surface Phase I does not already reach" — which a
+  sixth injected transport over the *local filesystem* would not violate, and a sixth local
+  transport is exactly what this constraint is invoked below to forbid (DEC-01 option B). Stated
+  plainly so the pruning stays auditable: no requirement closes the transport set; TSPEC's design
+  envelope does, and this feature adopts it as an engineering constraint.
 - **The wave contract forbids agent commits *and* agent staging.** `waveImplementPrompt` tells wave
   agents, in full, `Do NOT run git add or git commit — the orchestrator verifies your work and
   commits it.` The prohibition on `git add` is the load-bearing half: it is what makes "the index
