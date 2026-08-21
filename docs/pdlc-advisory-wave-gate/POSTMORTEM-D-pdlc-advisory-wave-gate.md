@@ -51,6 +51,33 @@ is the table PLAN mints red-test tasks from.
 
 ## 2. Iterations
 
+**One delta-confirmation round, non-approving from both lenses.** The erratum channel is
+single-round by construction: an erratum round is authored, one confirmation round reads the delta,
+and a non-approving confirmation halts rather than looping. There was no second attempt to absorb.
+
+| Round | Doc rev | PM verdict | PM findings | TE verdict | TE findings |
+|---|---|---|---|---|---|
+| Delta confirmation (iteration 3) | v1.12 (`0f2a9710`) | Needs revision | 1 High, 2 Medium (delta); 2 Low (inherited) | Needs revision | 1 High, 1 Medium (delta); 1 Low (inherited) |
+
+**The delta itself passed on the raised list.** Both reviewers built a routed-item verification table
+and measured every claim against the tree, not the prose:
+
+| Routed item | Independently measured at HEAD by both lenses | Verdict |
+|---|---|---|
+| Retired bundle premise (§1.2, §3.4) | `build-runtime.mjs`'s `bundles` array holds one entry, `pdlc-cli.mjs`; `prepack.mjs`'s `MODULE_NAMES` = `["orchestrate-dev.js", "orchestrate-queue.js"]`, copied verbatim | landed |
+| O-8 `commitPaths` shape | `for (const promo of waveResolvedPromotions)` over `groupPromotedPaths`'s rows | landed, per promoted task |
+| `.claude/workflows/` sync premise | `git ls-files .claude/workflows/` returns zero rows | landed |
+| §2.5 `git add -A --` | shipped call is `["add", "-A"]` | landed |
+| `advisory-config-example.test.js` red-reason | example config carries `{"enabled": false, "waveBudgetPerRun": 1}` | landed; stated reason correctly retracted as falsified |
+| `advisoryQueueSeams.test.js` red-reason | `ADVISORY_SEAMS` is `Object.freeze(["A1"…"A6"])`; `ADVISORY_SEAM_PHASES` carries six rows | landed |
+| DEC-A6-03 obligation "unlanded" | FSPEC v1.7 BR-14 / Step 10 / E-34 / AT-06-4 + AT-06-4b; REQ v1.16 AC-6.3 | **inverted by HEAD; correctly absorbed, not re-routed** |
+
+**Erratum-round history on this document.** v1.12 is the **seventh consecutive erratum round** on the
+TSPEC (v1.6 Phase D, v1.7 Phase P, v1.8 and v1.9 and v1.10 Phase PR, v1.11 Phase F, v1.12 Phase D).
+Six closed; this one did not. The findings that closed it are not new material in the ordinary sense —
+two of the four delta findings name sites that a prior round already flagged (`§6 OQ-2` is on its
+**second** consecutive flag by TE; §4.5's Snapshot-ref cross-reference on its **third**).
+
 ## 3. Reviewers
 
 ## 4. Pattern of Disagreement
