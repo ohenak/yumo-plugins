@@ -171,9 +171,70 @@ DEFERRED: The three `Process` candidates filed at v6 (unfalsifiable header pins,
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | `DEC-LI-08`'s ceiling sentence — "at REQ §4.1's defaults a fully-conforming block over *this* corpus occupies up to roughly **21,600 bytes**" — is the **unabridged** five-document evaluation (20,000 + 1,607). The same sentence's parenthetical states the abridged figures (718 / 1,777) and says abridgement "at §4.1's 6,000-byte per-document default is the common case", where the ceiling is 21,777. Since the number is introduced as an "up to", the common case should set it. Non-gating: it is hedged "roughly", the paragraph's load-bearing claim (framing is a corpus function, not a constant) is unaffected, and the imprecision is ~180 bytes in a passage whose predecessor was wrong by ~600–800. Fix is one number, or "up to roughly 21,600 bytes, or 21,800 when every selected document is abridged". | REQ C-8, §4.1, O-1; `D-O-4` |
+| F-02 | Low | Local | `D-O-9`'s row records the TSPEC erratum as "**DISCHARGED at TSPEC v0.9**", the version at which the four edits were *observed* rather than the version at which they landed (`ERR-4`/`OQ.2` closure and the `present` drop landed in earlier TSPEC revisions). Carried unchanged from v7 F-01 and v8 F-02; non-gating, because the discharge is real and no downstream reader is misled about *whether* it landed. Fix is one clause: "landed before TSPEC v0.9". | REQ AC-5.1a (via `DEC-LI-07`); `D-O-9` |
+| F-03 | Low | Local | `DEC-LI-03`'s re-evaluation trigger cites `G-C` without signalling that it is this document's own ground (defined in this document's grounding table) rather than an FSPEC or REQ id, leaving a reader to grep upstream for an id that is not there. Carried unchanged from v7 F-02 and v8 F-03; non-gating. Fix is one word: "this document's `G-C`". | REQ C-1 / FSPEC `BR-1` |
+
+**Verified, no finding:** the 477-byte block constant and the `49 + 2·len(path) + len(feature) +
+len(orderKey)` per-document term against HEAD's `renderLearningsBlock` (exact at n = 1, 2, 3
+synthetic and n = 1, 5 on the named fixture, abridged and unabridged); the `30 +
+len(String(bytes))` abridged term against the ` (ABRIDGED: bounded at N bytes)` clause; the 50-byte
+header and 35-byte trailer against their `const` declarations; the named fixture's four figures
+(684 / 1,607 / 718 / 1,777) by running the stated `git ls-files` command; the TSPEC §D.5 attribution
+against §D.5's three-pool table; the re-pin against REQ v0.10, FSPEC v0.14 and TSPEC v0.9 at HEAD;
+the characterisation of FSPEC v0.14's window restatement and `RSN-COUNT` attribution against FSPEC's
+v0.14 erratum note; REQ v0.10's matching AC-2.4 clause; the negative claim that the byte-accounting
+basis, `E-36` and `AT-30` are untouched, against all three at HEAD; the grounding-pin scope
+paragraph against `DEC-LI-08`'s "shipped … at HEAD" and `D-O-3`'s "shipped as …" labels and against
+both code branches they name; `D-O-4`'s revised row against `DEC-LI-08`'s formula; the v0.5
+changelog cell against the five commits of round 7.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Should the worked example's fixture be a frozen list of five paths rather than `git ls-files | grep …` evaluated at read time? The command is what made this round's numbers checkable in one step, which is a real gain — but it also means the four figures silently go stale the next time a LEARNINGS file lands. I am naming the tradeoff, not deciding it. |
+| Q-02 | Given that `D-O-4` now says neither quantity has a transcribable constant, does PROPERTIES need the formula restated in its own terms, or is the citation to `DEC-LI-08` sufficient for a property author to build the assertion? Either answer is fine; the coupling is worth being deliberate about, since restating it is what produced v8's disagreeing pair. |
 
 ## Positive Observations
 
+- **The fix went past what I asked for and landed a better partition than I proposed.** My v8
+  finding suggested `479 + 47/doc`; the revision charges the `"\n\n"` join to the document instead,
+  giving `477 + 49/doc`. Both are arithmetically identical at every `n`, but the document's version
+  composes correctly *per document*, which is the form a report or a property actually needs. That
+  is an author verifying the mechanism rather than transcribing a reviewer's arithmetic.
+- **Naming the fixture is the durable move.** "The first five of `git ls-files | grep -E
+  'LEARNINGS-.*\.md$'`, with a ten-character `orderKey`" turns a claim that previously took a
+  bespoke measurement to falsify into one any reader reproduces in a single command. The v8 defect
+  was not really the wrong numbers — it was numbers with no stated fixture. This round fixed the
+  class, not just the instance.
+- **The negative upstream claim is stated positively.** "Neither touches the byte-accounting basis
+  … `E-36` and `AT-30` … are unchanged" names exactly which passages a reader should check, which is
+  what let me confirm it at HEAD in three greps rather than re-reading FSPEC v0.14 whole. An
+  absence-only claim ("nothing decided here is affected") would not have been checkable.
+- **`D-O-4` now carries the anti-echo instruction itself.** Telling the downstream author that the
+  expectation is the formula's evaluation over their fixture — "never a number copied from here" —
+  puts the discipline where the obligation is read, which is the only place it reliably survives.
+- **The grounding-pin scope paragraph is an honest structural answer to a real hazard.** A
+  decisions document that cites post-implementation code risks reading as if the decisions were
+  reverse-engineered from the implementation. Separating grounds from confirmations, and labelling
+  the confirmations *shipped* in the text, resolves that without weakening either citation.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+My v8 High finding is resolved on the merits and nothing in the delta broke what was approved at
+`6f28eded`. Three Low findings are recorded and none gate: F-01 (the "roughly 21,600" ceiling omits
+the abridged common case, ~180 bytes), F-02 and F-03 (both carried unchanged from v7/v8, in
+sections this delta did not touch). Six deferred items are recorded in `## Consequences` per the
+freeze. No decision is opened, reopened or contradicted by this review — `DEC-LI-08`'s decision
+(static caps only, no dynamic budget) stands exactly as approved at v7, and this round's change was
+exposition, as the entry itself says.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
