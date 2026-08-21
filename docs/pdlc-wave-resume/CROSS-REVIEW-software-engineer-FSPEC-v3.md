@@ -210,4 +210,32 @@ since landed.
 
 ## Delta-Confirmation Findings
 
+No High findings. Three `delta` findings are stale-provenance sentences created by the upstream
+move; three `inherited` findings are my still-open non-gating v2 findings, restated so this round
+is a complete statement of what is open against the FSPEC.
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | OB-F1 quotes REQ §10 as recording BL-04 "discharged at FSPEC authoring"; REQ v1.6 §10 records the opposite. The obligation's substance is correct and now agrees with upstream — only the quotation is stale. | §7, OB-F1 |
+| F-02 | Low | delta | local | §1 pins the derivation to "REQ-pdlc-wave-resume.md v1.5"; the upstream is now v1.6 and that version no longer exists. | §1 Overview |
+| F-03 | Low | delta | nonlocal | EC-20 and §7's Round-1 revision note describe both errata as open ("an upstream question, raised as an erratum against REQ-WVR-08"); both were adjudicated in REQ v1.6, in the FSPEC's favour. | EC-20; §7 Round 1 revision note |
+| F-04 | Medium | inherited | nonlocal | EC-15a fixes the partial-write behaviour but pins nothing about the failed-write notice's content, and the shipped notice asserts the opposite ("a later invocation will simply start from wave 1"). Carried from v2 F-01, unaffected by this round. | EC-15a, BR-15, AT-15 |
+| F-05 | Medium | inherited | nonlocal | AT-18's discriminating-value sentence mis-computes the counterfactual: a per-run record skips waves 1–2, not "only wave 3". The Then clause is right. Carried from v2 F-02. | AT-18 |
+| F-06 | Low | inherited | nonlocal | AT-12's "exactly one agent dispatch" conjunct is fixture-conditional — the V-wave dispatch is wrapped in a retry envelope — and the first-call-succeeds condition is unstated. Carried from v2 F-03. | AT-12 |
+
+FINDING: Medium | delta | local | §7 OB-F1 | quotes REQ §10 as recording BL-04 "discharged at FSPEC authoring"; REQ v1.6 §10 now records BL-04 open and unmet, so the quoted upstream sentence no longer exists — state instead that the erratum landed and upstream agrees
+FINDING: Low | delta | local | §1 Overview | derivation is pinned to "REQ-pdlc-wave-resume.md v1.5"; upstream is now v1.6 after the Phase F erratum round, so the pin names a version a downstream author cannot obtain
+FINDING: Low | delta | nonlocal | EC-20 and §7 Round 1 revision note | both describe the V-wave scoping and BL-04 errata as open/raised; REQ v1.6 adjudicated both in the FSPEC's favour, so the framing invites a reader to re-raise a settled question
+FINDING: Medium | inherited | nonlocal | EC-15a / BR-15 / AT-15 | the failed-write notice's content is unconstrained, so an implementation can land EC-15a's resume behaviour while keeping today's notice, which announces a false cost, and every AT still passes (v2 F-01, still open)
+FINDING: Medium | inherited | nonlocal | AT-18 | the discriminating-value sentence names the wrong counterfactual skip set: a per-run record skips waves 1–2, not "only wave 3" (v2 F-02, still open)
+FINDING: Low | inherited | nonlocal | AT-12 | the "exactly one agent dispatch" conjunct holds only for a fixture whose transport does not fail on the first call, and that condition is unstated (v2 F-03, still open)
+
+## Recommendation
+
+**Approved with minor changes.** The FSPEC still holds as approved against REQ v1.6. Two of the
+four upstream edits moved the REQ toward this document; the other two cost it nothing, because it
+compressed OF-1's shape rather than its arithmetic and cited it by id. Three sentences describe a
+version of upstream that no longer exists and should be corrected in a single pass; none of them
+touches an observable, a rule, an edge case or an oracle.
+
 ## Verdict
