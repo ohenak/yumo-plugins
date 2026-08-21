@@ -34,6 +34,18 @@ leans on, read at upstream's current bytes rather than at the version the REQ wa
 
 ## Constraints
 
+Measured at HEAD, not recalled:
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` resolves | Present (26.7K). The `Upstream` row is now a reachable path. |
+| 2 | Every upstream id this REQ cites exists at HEAD — AC-1.6, AC-2.2, AC-3.4, AC-3.6, AC-9.2, NFR-1, BL-01 | All seven resolve in the tier REQ (`:87`, `:109`, `:134`, `:148`, `:276`, `:321`, `:347`). Upstream is unchanged at v1.4 / 2026-08-03, so no withdrawal or re-anchoring happened under this REQ. |
+| 3 | `11420461`, newly pinned by AC-1.1 and R-5, is what upstream says | Baseline v1.2 header: "§1–§2 at `c8aa22a4`; §3 at `1efb9a3b`; §4 at `11420461`". §4 states M-WG-8's five-member reading is "true at `c8aa22a4`, false at this base", and M-WG-13/M-WG-14 are the post-change readings. The pin is upstream's own word, at the right section, for the right facts. |
+| 4 | Baseline version cited (`v1.2`) matches upstream's `Version` field | Yes — `1.2 · 2026-08-20`. |
+| 5 | C-5's quoted thresholds match the hook | Exact: `pdlc/hooks/scripts/check-req-size.sh` `LINE_LIMIT=700`, `BYTE_LIMIT=61440`, `SOFT_LINE_LIMIT=630`, `SOFT_BYTE_LIMIT=55296`. |
+| 6 | Document size after the edit | 676 lines / 54,803 bytes. Over the 630-line soft threshold, 24 lines under the hard ceiling, 493 bytes under the soft byte threshold. See F-01. |
+| 7 | The `Cross-Reviews` claim | LEARNINGS `:10` enumerates the 116 harvested rounds as "all deleted in the harvest commit"; the twelve `CROSS-REVIEW-*` files now on the branch are post-harvest erratum rounds appearing in no LEARNINGS table. The rewritten row is accurate. |
+
 ## Acceptance Criteria
 
 ## Risks
