@@ -177,4 +177,15 @@ a round for either one alone would cost more than it returns.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | nonlocal | The v1.6 erratum changelog sentence reads "§1's wave count and replay cost are match OF-1" — ungrammatical, a leftover from the v1.6 byte-bound trim. Content is correct; only the sentence is malformed. Present in pre-round bytes; this edit did not touch it. Fix opportunistically (OB-C6-1), not in a dedicated round. | §Erratum changelog, v1.6 paragraph |
+| F-02 | Low | delta | local | The rewritten OB-1 worktree clause chains four sub-clauses across two dashes and two "so"s ("…is consumer-local — untracked on the default branch, so a consumer fact and not a repo fact — leaving the ledger's consumer-local path absent there, so it fails open to a full run"). Accurate and complete, but denser than the sentence it replaced; a two-sentence split would read better at the next TSPEC ratification pass (OB-C6-2). | §9 OB-1, worktree/ledger reconciliation clause |
+
+FINDING: Low | inherited | nonlocal | §Erratum changelog, v1.6 paragraph | The v1.6 changelog sentence "§1's wave count and replay cost are match OF-1" is ungrammatical (leftover from the v1.6 byte-bound trim); the content it states is correct and matches OF-1's re-derivation
+FINDING: Low | delta | local | §9 OB-1, worktree/ledger reconciliation clause | The relabelled worktree-evidence clause is accurate but chains four sub-clauses across two dashes and two "so"s; splitting it into two sentences would preserve the meaning and read better
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
