@@ -169,6 +169,40 @@ No test-strategy finding.
 | Q-01 | §6.3's errata ledger is written as a live list ("Raised, not fixed here; each is emitted as an `ERRATUM:` line in this dispatch's final message"), but items 2 and 4 have now been actioned upstream by this very round. Should the section carry a per-item disposition column (`open` / `landed in REQ v1.7`) so a later reader — or Phase DOD — can tell which errata are still outstanding without diffing REQ? This is the mechanism behind F-01/F-02 and would prevent the same lag recurring on the next erratum round. Non-blocking; a Phase P or authoring-time nicety. |
 | Q-02 | §6.3 item 2 (FSPEC OB-F1 says BL-04 is "discharged at FSPEC authoring") is now the **only** document in the set still asserting BL-04 discharged: REQ §5 and §10 both say unmet, and TSPEC says unmet. Does that FSPEC erratum still have a route to landing, given FSPEC is byte-unmoved and its approvals are recorded? Flagging for the orchestrator's routing, not as a finding against TSPEC — TSPEC states the discrepancy correctly and is not the document that owes the fix. |
 
+## Positive Observations
+
+- **The document predicted its own upstream fix.** Both items this erratum round landed were
+  raised by this TSPEC's §6.3 (items 2 and 4), with the correct diagnosis in each case. A
+  downstream document that reads its upstream closely enough to name the upstream's defects, and
+  is then vindicated by the upstream adopting its wording, is the strongest available evidence
+  that the compression was faithful in the first place.
+- **TSPEC was already at the stricter reading of BL-04.** §1.1 and OB-F1 asserted "unmet" with
+  re-derivable evidence (`git rev-list --count HEAD..origin/main` → 1637, `grep -n WAVE_STATE_PATH`
+  returning nothing, the baseline file absent) at a time when REQ §5 read neutrally. The erratum
+  moved REQ to TSPEC's position, not the reverse.
+- **The worktree characterisation converged from both ends.** TSPEC §1.2 called the worktree
+  fail-open "a consequence of consumer-local state, not any rule this TSPEC adds"; REQ v1.7 now
+  says the include list is "consumer-local — untracked on the default branch, so a consumer fact
+  and not a repo fact". Independent arrival at the same framing.
+- **Restraint where a new oracle would have been fake.** The erratum sharpened *why* a worktree
+  lacks the ledger without changing the observable state, and TSPEC does not manufacture a test for
+  an untracked consumer-local file's absence. That is the correct call, and it survives the delta.
+
+## Recommendation
+
+**Approved with minor changes**
+
+TSPEC still holds as approved against REQ at HEAD (v1.7, `sha256:17e83bfc…`). No High finding is
+open; the delta contradicts no TSPEC claim, invalidates no oracle, and changes no obligation's
+disposition — it strengthens the upstream anchor under AT-14's rebase sequencing precondition.
+
+The two Low findings are both bookkeeping lag confined to §6.3, the errata hand-off section: item
+4 now describes an upstream defect that this round fixed, and the section's preamble names the REQ
+at HEAD as v1.6 when it is v1.7. Per DEC-ERR-01 these are the demoted class — false statements in
+a hand-off section with no downstream test, oracle, assertion, or obligation reading from them.
+Neither gates. Both are one-line edits that a later authoring touch on this document should absorb;
+neither warrants a round of its own.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
