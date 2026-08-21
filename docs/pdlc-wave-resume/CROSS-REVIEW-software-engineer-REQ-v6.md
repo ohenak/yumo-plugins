@@ -106,6 +106,23 @@ No High finding arises against any criterion.
 
 ## Risks
 
+- **BL-04 stays unmet and is now loudly unmet (residual, not a finding).** The delta improved the
+  document's honesty, not the branch's state: the authoring tree still lacks both the resume
+  mechanism and the baseline file. R-4's "new code alongside the shipped mechanism" outcome
+  remains live and is now correctly advertised at two sites. The REQ explicitly says BL-04 is not
+  a pickup gate and that `ready: true` is accurate — that is a defensible operator position, and
+  it is stated rather than assumed, which is all this document owes. The residual risk belongs to
+  Phase I, not to this confirmation.
+- **Downstream drift on the worktree evidence.** The TSPEC (`§ near line 879`) still cites the
+  include-list file by name. It does so while noting the untracked status itself, so it is not
+  wrong — but the REQ and TSPEC now phrase the same fact differently. Low risk of a future
+  reviewer reading them as two claims; not this document's defect.
+- **Prose density in OB-1.** The rewritten worktree clause is now a four-clause chain of dashes
+  and `so`s. Accurate, but harder to read than what it replaced. Filed Low below; it does not
+  affect any downstream mechanical read.
+- **No convergence risk.** This is a confirmation with zero High findings, so it does not consume
+  an erratum follow-up round or approach the phase halt path.
+
 ## Obligations
 
 ## Questions
