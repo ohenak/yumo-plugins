@@ -15,7 +15,14 @@ depends-on: [pdlc-advisory-tier, pdlc-consolidation-agent]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved (shipped) | Claude | 1.14 | 2026-08-20 |
+| pdlc | approved (shipped) | Claude | 1.15 | 2026-08-20 |
+
+*v1.15 changelog (erratum round, Phase F). `Upstream` restores the resolvable path (SE F-02,
+TE F-02); `Cross-Reviews` scopes harvest to the rounds LEARNINGS enumerates (SE F-03). AC-5.1's
+excluded-carrier list adds AC-6.2's escalation-log append (TE F-01, High). AC-1.1 and R-5 pin the
+post-change reading at `11420461` (TE F-03). Not taken, inherited and nonlocal: C-5's soft-budget
+overage (SE F-04), which SE Q-02's relocation dissolves, and the baseline's `Cited by` row (TE
+F-04), upstream's. No decision reopened.*
 
 *v1.14 changelog (erratum round, Phase F). Lineage header restated (chain, artifacts fed, harvested
 cross-reviews); Status `approved (shipped)` — PR #66 (`bb4d36fb`), row 19 `done`, relocation still
