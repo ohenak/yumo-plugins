@@ -149,6 +149,45 @@ Three residual risks, none blocking, recorded so the next round can price them.
   materially better source: OF-1's figures are re-derivable by one command (V-4), which is exactly
   the "Measured-by command" shape the baseline file's own control rule demands.
 
+## Positive Observations
+
+- The erratum fixed the *reasoning*, not just the number. §1 could have been made consistent by
+  editing OF-1 down to 15 waves; instead the wrong figure was corrected upward to the measured one
+  and the false uniformity claim was replaced with the correct cost rule. That rule survives
+  independent re-derivation (V-4).
+- REQ-WVR-02's fix left the closed IG-1..6 table byte-identical and added a precedence disclaimer
+  instead of renumbering. Renumbering would have silently broken the set-equality obligation and
+  every downstream `IG-n` citation; this is the cheap, correct edit.
+- REQ-WVR-08's new text discharges the question EC-20 explicitly referred upstream, rather than
+  merely hedging the clause. The FSPEC's open referral now has an answer in the document that owns
+  it.
+- §10's BL-04 correction is unusually honest: it records the prerequisite as open and unmet, names
+  the three grounds, and still defends `ready: true` on the correct basis (BL-04 gates FSPEC
+  authoring, not queue pickup) instead of quietly flipping the readiness flag.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta lands all eight routed items, each in the section that owns it, and each survives
+verification against upstream at its current state. No High finding — the two Medium items are a
+sibling AC the erratum did not open (F-01, inherited: route to the ordinary revision loop, not a
+halt) and one stale sentence inside the rewritten passage (F-02), and neither weakens a guarantee
+or resizes an enumeration. The v4 approval stands.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | REQ-WVR-03's **Then:** clause still reads "the full test suite verifies the whole tree before any new commit lands", unqualified. Phase PT's V-wave commits its own work and gates afterwards ("verification rather than as permission"), so the clause is falsified at HEAD by exactly the mechanism REQ-WVR-08 was just scoped around. Pre-round bytes; this edit did not touch the AC. Fix: apply REQ-WVR-08's "implementation wave loop" scoping here too. | §7, REQ-WVR-03 |
+| F-02 | Medium | delta | local | Inside the passage this round rewrote, the sentence "The tree's most recent whole-tree verification is the one performed by the last wave of the run that wrote the record" now sits two sentences below the new admission that the V-wave "continues to dispatch, gate and commit on every invocation". Under outcome (c) the most recent whole-tree verification is the V-wave's, from *this* invocation. The paragraph's conclusion (later phases run their own gates) is unaffected; only the intermediate claim is now stale against its own neighbour. | §7, REQ-WVR-08 |
+| F-03 | Low | inherited | nonlocal | §9 OB-2 states the baseline file "exists at HEAD" with "HEAD" unqualified, while §10's new BL-04 text states the authoring tree carries no such file. Both are true under different readings of "HEAD" (default branch vs. this tree), and §4 and §5 disambiguate explicitly; OB-2 is the one place that does not, so the delta makes it read as a contradiction. Fix: "exists at HEAD of the default branch". | §9, OB-2 |
+
+FINDING: Medium | inherited | nonlocal | §7 REQ-WVR-03 | "the full test suite verifies the whole tree before any new commit lands" is unqualified and is falsified by Phase PT's V-wave, which commits before its gate; the erratum scoped REQ-WVR-08 but left the identical defect in REQ-WVR-03 — route to the ordinary revision loop
+FINDING: Medium | delta | local | §7 REQ-WVR-08 | the rewritten passage still asserts "the tree's most recent whole-tree verification is the one performed by the last wave of the run that wrote the record", which its own new V-wave sentence contradicts under outcome (c)
+FINDING: Low | inherited | nonlocal | §9 OB-2 | OB-2's bare "exists at HEAD" now reads as a contradiction of §10's new "the authoring tree carries neither the resume mechanism nor the baseline file"; §4 and §5 qualify "HEAD of the default branch" and OB-2 does not
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
