@@ -504,7 +504,7 @@ that a first-class per-seam `enabled` map becomes the better surface.
   TE F-06).
 - `waveBudgetPerRun: 0` and `advisory.enabled: false` are **observably different** and must stay so:
   the former reports a sixth advisory row reading zero, the latter carries no `advisory` key at all.
-  **The collapse is falsified upstream at TSPEC v1.10.** v1.1 of this entry recorded that nothing
+  **The collapse is falsified upstream at TSPEC v1.11.** v1.1 of this entry recorded that nothing
   exercised the behaviour it rests on — the FSPEC ATs reach `0` only obliquely (AT-01-4 is the
   disabled-tier case; AT-01-6's premise is "tier enabled, **no wave red**", so it never reaches the
   budget gate; AT-07-2b is parse-level only, `0` in, `0` back, absent from `invalidKeys`) — and
@@ -515,8 +515,25 @@ that a first-class per-seam `enabled` map becomes the better surface.
   order), and the report's advisory summary key **present** with the sixth row's counters at zero.
   That present-and-zero conjunct is what separates this arm from `advisory.enabled: false`, where
   the key is absent entirely (AT-01-4) — so a future "simplification" collapsing `0` into
-  `enabled: false` now fails the suite rather than passing it. The behaviour is decided here and
-  asserted upstream; nothing further is owed by this record.
+  `enabled: false` is **specified** to fail rather than pass. Specified, not yet asserted, and the
+  difference is worth stating precisely (TE F-05): the requirement is TSPEC §5.2's, and the fixture
+  that must carry it — A6-15's `waveBudgetPerRun: 0` case in `advisoryWaveGate.test.js` — is short
+  of it at HEAD. A6-15 asserts the disposition (`escalated` / `budget-exhausted`), zero `_agent`
+  calls and `commit-tree` observed once, and it drives `runWaveGateSeam` directly rather than a run,
+  so it never reaches the report's advisory summary key at all. Until it does, the two arms are
+  distinguishable by inspection and not by assertion, and the collapse regression ships green. The
+  behaviour is decided here and specified upstream; **what is still owed is the fixture conjunct,
+  and it is A6-15's to complete** — recorded here rather than closed, because a closed obligation is
+  what stops the next reader looking.
+- **What the example teaches is the default, not the affordance** (TE Q-03). `.claude/pdlc.config.example.json`
+  carries `"waveBudgetPerRun": 1`, and `pdlc/engine/__tests__/advisory-config-example.test.js`
+  requires only a non-negative integer, so `1` passes. That is deliberate: an example config's job is
+  to show a working default configuration, and shipping `0` in it would teach an operator to disable
+  the seam by default on a tier that is already off by default. The `0` affordance's documented
+  surface is REQ C-2 and FSPEC E-33; what the example channel buys is that the *key* is
+  discoverable at all, which is the discoverability claim above and the whole of it. The residual
+  gap — nothing operator-facing spells out that `0`-with-`enabled: true` is legal — is REQ/FSPEC's
+  to close if it is worth closing, not this record's.
 
 ### What follows for the whole feature
 
