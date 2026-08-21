@@ -144,4 +144,56 @@ describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {
     expect(result.material).not.toContain("�");
     expect(Buffer.from(result.material, "utf8").toString("utf8")).toBe(result.material);
   });
+
+  test("LI-AT-12: character-safe cut — TWO sections, the bound landing inside the SECOND section's heading: the cut is over the assembled string, not per section", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    // CR round 1, TE F-06 (Medium). Both LI-AT-12 cases above use single-section fixtures, so
+    // the multi-section arm of the cut — the one place FSPEC and TSPEC disagree — had no oracle
+    // at all. TSPEC §D.3 rule 3 is explicit: "Then, and only then, cut. §D.5's character-safe
+    // cut applies to the assembled string, not to each extent — so `bounded` and `bytes` are
+    // properties of one string and E-16's 'first section alone exceeds the bound' is the same
+    // rule, not a special case." FSPEC BR-6 §"How the per-document bound binds" instead reads
+    // section-granular for sections 2+ ("sections are taken in priority order until the next one
+    // would exceed ...; the remaining sections are omitted"), which would drop section 2 whole
+    // here. The implementation follows TSPEC; the divergence is routed upstream as
+    // `ERRATUM: FSPEC`, and this test pins the behaviour that is actually shipped so that a
+    // later reconciliation cannot change it silently.
+    //
+    // Hand-computed from the fixture alone, never derived from the function (DC-14):
+    //   normalised section 1 = "## 2. Cross-Feature Patterns" (28) + "\n\n" (2) + 20 "a" = 50
+    //   normalised section 2 = "## 3. Non-Convergences"       (22) + "\n\n" (2) + 20 "b" = 44
+    //   assembled            = 50 + 2 (the "\n\n" join) + 44                             = 96
+    // At a 60-byte bound the cut lands 8 bytes into section 2's own heading line: 50 + 2 = 52
+    // bytes of section 1 and its join, then "## 3. No" — 8 more, 60 exactly, every byte ASCII.
+    const text =
+      "## 2. Cross-Feature Patterns\n\n" + "a".repeat(20) +
+      "\n\n## 3. Non-Convergences\n\n" + "b".repeat(20) + "\n";
+    const maxBytes = 60;
+
+    const result = extractInjectableMaterial(text, maxBytes);
+
+    // The literal cut, transcribed — including the truncated heading. This is the string an
+    // author's prompt receives, and asserting it as a literal is the only way a change from
+    // "cut the assembled string" to "omit the whole overflowing section" reds here.
+    expect(result.material).toBe(
+      "## 2. Cross-Feature Patterns\n\n" + "a".repeat(20) + "\n\n## 3. No"
+    );
+    expect(result.bytes).toBe(60);
+    expect(result.bytes).toBeLessThanOrEqual(maxBytes);
+    expect(result.bounded).toBe(true);
+
+    // §D.3: a section is a member of `sections[]` iff at least one byte of its normalised text
+    // survives in `material`. Eight bytes of section 2 survive, so BOTH names are members even
+    // though section 2 kept none of its body — set equality in priority order, not containment.
+    expect(result.sections).toEqual(["Cross-Feature Patterns", "Non-Convergences"]);
+
+    // The control that the fixture really does exercise the multi-section path: unbounded, the
+    // same text yields both whole sections and 96 bytes, so the 60 above is the cut's doing and
+    // not the fixture's.
+    const unbounded = extractInjectableMaterial(text, 100000);
+    expect(unbounded.bytes).toBe(96);
+    expect(unbounded.bounded).toBe(false);
+    expect(unbounded.sections).toEqual(["Cross-Feature Patterns", "Non-Convergences"]);
+  });
 });
