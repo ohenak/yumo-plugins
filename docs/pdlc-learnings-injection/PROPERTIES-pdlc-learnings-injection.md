@@ -1102,7 +1102,7 @@ directory today, and LI-05's row says so.
 |---|---|
 | **T-O-4** — `orderCorpus` output is a permutation of its input and the comparator is a strict weak ordering | **PROP-ORDER-06**, parameterised per §O.9 |
 | **T-O-5** — `selectLearnings` is total: no throw, every input path exactly once across `selected ∪ rejected` | **PROP-CORPUS-09**, parameterised per §O.9 |
-| **T-O-6** — `extractInjectableMaterial`: `bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`, whole-character prefix, `bounded` true exactly when cut | **PROP-BOUND-03** (example arm, AT-11/AT-12) **plus** §O.9's generated arm, which is the half that makes the all-inputs claim of §D.5 checkable. Both are stated over `maxBytes >= 1`; the `maxBytes = 0` boundary is **not** dropped but routed to **PROP-CONFIG-09**, because FSPEC BR-6 takes that case out of the cut path entirely (dropped, `RSN-NO-MATERIAL`, no slot — E-36) and its observables live at the workflow seam, not at this unit. The obligation is discharged across the pair with no input of §D.5 unclaimed |
+| **T-O-6** — `extractInjectableMaterial`: `bytes === Buffer.byteLength(material)`, `bytes <= maxBytes`, whole-character prefix, `bounded` true exactly when cut | **PROP-BOUND-03** (example arm, AT-11/AT-12) **plus** §O.9's generated arm, which is the half that makes the all-inputs claim of §D.5 checkable. Both are stated over **every non-negative `maxBytes`, `0` included**, per TSPEC §T.5's T-O-6 instruction ("State the zero conjunct, keep `0` in the domain"). The partition is by **observable, not by input**: PROP-BOUND-03 owns the whole domain of the unit's return value — the cut-and-flag conjuncts at `maxBytes > 0` and the four-field zero return `{material: "", bounded: false, bytes: 0, sections: []}` at `maxBytes <= 0` (TSPEC §I.3) — while **PROP-CONFIG-09** owns the run-level consequences that no unit can produce: the `RSN-NO-MATERIAL` reason id and the unconsumed `maxDocuments` slot (FSPEC E-36). No input of §D.5 is unclaimed, and no observable is claimed twice |
 
 All three land on tasks that already exist (LI-07 red / LI-16 green for T-O-4 and T-O-5; LI-08 red /
 LI-17 green for T-O-6's example arm, with the generated arm folded into the same suites). **No new
@@ -1117,9 +1117,11 @@ PLAN task is required**, and no obligation is deferred to implementation.
    AT-30's third arm — and the property landed exactly where this entry predicted: **PROP-CONFIG-09**,
    in Group H, one case in `learningsConfig.test.js` under LI-12 (red) / LI-21 (green), with the
    `ZERO-BOUND` fixture as its positive control and PROP-BOUND-06 widened to BR-9's second disjunct.
-   PROP-BOUND-03 and §O.9's generated arm were bounded to `maxBytes >= 1` in the same change, since
-   their universal form contradicted the new rule at the boundary. The entry is retained rather than
-   deleted because the *episode* is the point: declining to guess cost one confirmation round and no
+   PROP-BOUND-03 and §O.9's generated arm keep `0` in their domain and state TSPEC §I.3's zero
+   carve-out as a positive conjunct — an earlier revision of this document briefly excluded `0` from
+   both, which TSPEC v0.9 §T.5 had already rejected in terms; that exclusion is retracted, and the
+   unit-level and run-level arms now partition §D.5's inputs (§G.1's T-O-6 row). The entry is retained
+   rather than deleted because the *episode* is the point: declining to guess cost one confirmation round and no
    retracted property, where a guessed answer would have frozen a wrong expected value into the suite.
 2. **Byte accounting of framing — resolved upstream, no recomputation owed (not a gap).** This entry
    recorded a live contradiction: TSPEC §D.5 said material only, while FSPEC BR-6's worked example
