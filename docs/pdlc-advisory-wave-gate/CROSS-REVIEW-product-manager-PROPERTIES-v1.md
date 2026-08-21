@@ -130,8 +130,54 @@ side. No divergence.
 
 ## Positive Observations
 
+- **The re-grounding was done first and done properly.** All five upstream hashes recompute to the dispatch
+  values, and the three version claims (REQ v1.15, FSPEC v1.6, TSPEC v1.11) match the upstream headers. The
+  changelog row leads with the absorbed decision rather than the routed item, which is DEC-ERR-03's order.
+- **Five pending sites retired together, not one at a time.** OQ-7's closure touched PROP-REST-01,
+  PROP-REST-03, Oracle O-C, the falsifiability close, Fixtures hazard 2 and §G-2. All six moved in the same
+  round. A partial retirement — the common failure — would have left the document self-contradicting.
+- **The closure was used to find a gap, not just to delete markers.** PROP-ENV-13 gives TSPEC §5.5's
+  ignored-path-only-repair row its first PROPERTIES home; that case previously had a TSPEC-assigned test and
+  no property. Absorbing a decision and noticing the coverage hole it exposes is the better move.
+- **PROP-ENV-13 ships with a positive control.** "an otherwise identical repair writing one **non-ignored**
+  in-envelope path returns a non-empty `producedPaths()` and `{ok:true}`, so the refusal is pinned to the
+  ignored-ness and not to the fixture being broken." Without it the refusal assertion passes on any broken
+  fixture. This is the discipline AC-4.5 asks for, applied where no rule compelled it.
+- **PROP-REST-10 asserts ordering rather than trusting the comparison.** A map that happens to match is not
+  evidence the observation was taken at the right point; asserting each carrier's write follows the
+  observation is what makes the AC-5.1 observation-point clause falsifiable at all.
+- **The raised item was answered by verification, not by editing.** The lineage-header `Downstream` defect
+  belongs to the REQ, not here; this document's `Downstream` row reads `IMPL` and its tests, and the REQ's row
+  at HEAD already reads `FSPEC, TSPEC, PLAN, PROPERTIES (all in this directory)`. Recording "verified, not
+  edited" is the right disposition and stops the item being re-raised.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | PROP-ENV-13 transcribes "one attempt must be consumed" as an expected value, but no upstream text decides the attempt count for a post-action `apply` refusal. TSPEC §3.3's `apply` row and §5.5's *Ignored-path-only repair* row enumerate the expected values (`producedPaths() === []`, `{ok:false}`, `post-action-verification-failed`, an escalation entry, a tree carried no further) and are silent on attempts; the nearest FSPEC rule points the other way — §3.3's flow table, step 5, reads "escalate with a refusal reason, **no attempt consumed**", and BR-15 puts `post-action-verification-failed` in that same refusal-reason set. A red test minted on this conjunct can fail an implementation that followed the spec. Fix: drop the conjunct, or route it to TSPEC/FSPEC as an erratum and cite the answer. | §C, PROP-ENV-13 |
+| F-02 | Medium | delta | local | PROP-ENV-13's Home reads `advisoryWaveGate.test.js` (A6-15), and the PLAN-home matrix adds it to the A6-15 row, but PLAN at HEAD mints this case in **A6-14's former-A6-13 red step**, whose text names the ignored-path-only disposition and OQ-11 explicitly. PLAN's A6-18 row enumerates the former-A6-15 red step in full and contains no ignored-path-only case. A reader following the property to its stated owner finds no test. Fix: retarget the Home and the PLAN-home matrix row to A6-13/A6-14, or state which conjuncts are integration-level additions A6-15 must mint on top of A6-13's unit assertion. | §C PROP-ENV-13 Home; §"PLAN homes" A6-15 row |
+| F-03 | Low | delta | local | Scope was widened from `E-01…E-33` to `E-01…E-34` to match FSPEC v1.6, but no property traces E-34 (capture cannot be taken at all). The behaviour is covered — PROP-REST-08 is exactly E-34's observable — so this is a missing trace, not a missing property. Fix: add `E-34` to PROP-REST-08's Traces cell. | §Scope; §E, PROP-REST-08 |
+
+FINDING: Medium | delta | local | §C, PROP-ENV-13 | "one attempt must be consumed" is transcribed as an expected value, but TSPEC §3.3's `apply` row and §5.5's ignored-path-only row are silent on attempts and FSPEC §3.3's step-5 refusal row says refusals consume none — the literal is undecided upstream
+FINDING: Medium | delta | local | §C PROP-ENV-13 Home and the PLAN-home matrix | the property is homed at A6-15, but PLAN mints the ignored-path-only refusal in A6-14's former-A6-13 red step; A6-18's former-A6-15 step contains no such case
+FINDING: Low | delta | local | §Scope and §E PROP-REST-08 | Scope widened to E-01…E-34 without any property tracing E-34; PROP-REST-08 carries the behaviour but not the trace
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves the absorbed items and breaks nothing previously approved. OQ-7's closure is transcribed
+faithfully at every one of the five sites that carried the pending form, the domain and observation point
+match REQ AC-5.1 and FSPEC BR-9 word for word, and PROP-REST-10's ordering assertion is TSPEC §5.2 case 5
+compressed without loss. No High finding; nothing here gates the round.
+
+Two Medium findings sit entirely inside the newly minted PROP-ENV-13 — one expected value upstream does not
+decide (F-01) and one PLAN home PLAN does not mint (F-02) — plus one Low missing trace (F-03). All three are
+addressable in place and none touches a property statement, category, level assignment or oracle form that
+was previously approved.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
