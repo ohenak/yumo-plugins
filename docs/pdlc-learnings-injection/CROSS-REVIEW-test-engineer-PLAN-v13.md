@@ -196,10 +196,52 @@ about `renderSection`'s `body` knob. The new v1.0 and v1.1 rows do not touch it 
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **Carried from round 12, unedited.** The v0.7 changelog row still states in the present tense that "`renderSection` already carries unexercised `ordinal`, `gloss` and `body` knobs" — the exact claim the 0.9 row and LI-08's amendment note both now correct as false for `body` at HEAD (`learningsBlock.test.js` passes `body:` on all six of its section specs). The document contradicts itself across two sections, and the stale copy is the one a `renderSection` grep reaches first. Fix: one clause — tense it as what round 8 believed, or strike `` and `body` ``. | §Changelog → row 0.7 |
+| F-02 | Low | Local | The header's upstream pins and the line-36 sentence still read **REQ v0.9 / FSPEC v0.13 / DECISIONS v0.3**; at HEAD those are **v0.10 / v0.14 / v0.5**. TSPEC v0.9 is still correct. Not a cascade and not blocking: REQ v0.10 / FSPEC v0.14 only make AC-2.4 / `BR-6` attribution cause-defined and name `AT-13`, which this PLAN's arm-inventory rows already key by cause and already assign to LI-07/LI-16; DECISIONS v0.5 states in terms that neither move touched anything decided. Fix: refresh three numerals at the next open. | §Header → Upstream; line 36 |
+
+DEFERRED: refresh the header's upstream pins to REQ v0.10 / FSPEC v0.14 / DECISIONS v0.5 (TSPEC v0.9 is already right) at the next open of this document.
+DEFERRED: close the v0.7 changelog row's stale present-tense `renderSection` `body` claim, which the 0.9 row already corrects downstream of it.
+DEFERRED: case A's Effect cell still narrates the derivation over "before batch 7" while its *When* header now reads "before batch 9"; the two agree in substance, and a one-clause reflow would make the cell read in one pass.
+
 ## Questions
+
+None. Round 12's questions were closed by that round's own greps, and this delta raises none: every
+factual claim it adds is checkable at HEAD, and I checked each rather than asking about it.
 
 ## Positive Observations
 
+- **DoD 14 is a disclosure that survives being checked.** Eight named artefacts — five test names,
+  a function, a hook script and its registration, three SKILL.md sections — and all eight resolve
+  under exactly the names given. The hook is *registered* in `hooks.json`, not merely present in
+  `scripts/`, which is the difference between a tested behaviour and dead config.
+- **DoD 14 declines to widen the bar, and says so.** "Clauses 1–13 remain the injection region's
+  bar", "no task row was added", "they carry their own tests, named above". A DoD clause that names
+  four pieces of carried work is one edit from becoming an implicit twenty-third task; this one
+  states the boundary rather than leaving a reader to infer it.
+- **Case C's domain is now stated by batch number, not by a commit sha.** That is the more durable
+  half of the fix my F-02 asked for: "batch 13 or later" cannot go stale, whereas "once LI-21 has
+  landed" required the reader to know which batch LI-21 was. The cell also says *why* the numeral
+  form was chosen, so the next editor will not revert it.
+- **P-A-6 now points at the governing rule instead of restating one branch of it.** One rule, one
+  place — the pointer cannot rot when the live case changes, and it still names the live case
+  inline so an implementer at HEAD gets a concrete instruction, not a redirection.
+- **The delta stayed inside its own footprint.** 8/5 lines, no task row, no `Deps` edge, no AT
+  partition, no fixture or manifest row, a byte-identical batches 7–13 ledger. Four rounds running,
+  this document's errata have not once perturbed the gate table my lens cares most about.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+Both of my open round-12 findings are resolved, and resolved in the durable form rather than the
+minimal one. The one substantive addition, DoD 14, is a disclosure clause whose every factual claim
+about HEAD checks out, and which explicitly declines to widen the DoD or add a task row. Nothing I
+previously approved is disturbed: the expected-red ledger, the batch DAG, the file-ownership
+manifest and the TDD ordering are byte-identical. Two Low findings remain — my carried v0.7
+changelog row, and three stale upstream version numerals whose substance the PLAN already reflects
+by id. Neither changes what an implementer would do at HEAD; both are worth a single sweep whenever
+this document is next opened.
 
 ## Verdict
