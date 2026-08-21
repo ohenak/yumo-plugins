@@ -224,6 +224,42 @@ inferred.
 
 ## Positive Observations
 
+- **Every code claim the delta makes is true at HEAD, and I checked each one individually**:
+  `renderAdvisoryEntry` (`orchestrate-dev.js:3605`), `renderEscalationEntry` (`:3743`),
+  `advisoryNotice` (`:14635`), `notices` on the **halt** report (`:16068`), `haltAdvisory`'s
+  forwarding expression verbatim (`:16072`), `haltError`'s `Object.assign` (`:4544`),
+  `haltReason = err.message` (`:15966`), and the two shipped `haltAdvisory` data assertions the row
+  cites (`waveExecution.test.js:1094`, `advisoryWaveGateMain.test.js:373`). The "no report-to-text
+  renderer" negative claim also holds — `buildFinalReport` (`:16169`) returns a plain object. A round
+  that names a new carrier and grounds every hop of its plumbing is rare; this one did it.
+- **The anti-echo rule is written the way a reviewer wants to find it**: the forbidden form is
+  spelled out (`toContain(devModule.SOME_WARNING)`), the reason is stated (cannot fail on wording),
+  and the consequence is named (would neuter AT-06-4b). An implementer cannot accidentally comply.
+- **AT-06-4b's negative was strengthened without being asked**: "asserted over the whole array so a
+  notice pushed elsewhere cannot hide" closes the containment hole a `find`-then-assert form would
+  have left, while the two positives on the same run keep it from being an absence-only oracle.
+- **The fixture choice answers Q-01 with the discriminating option.** Putting AT-06-4 on the
+  two-red-wave run — where `refs/pdlc/a6-snapshot-1` and `-2` both exist — means the wave-scoped ref
+  assertion can actually fail on a wave-number bug, which a single-wave fixture could not.
+- **`/overwrit/i` is justified as the weakest predicate that still discriminates**, rather than
+  asserted. That reasoning is what keeps the oracle from drifting into a wording pin at the next
+  revision.
+
 ## Recommendation
 
+**Needs revision**
+
+All three v4 findings are resolved and nothing previously approved was reopened — but F-01 is a
+High, and the bar is a bar. Concretely, to clear it: (1) add a §5.1 row for
+`pdlc/workflows/__tests__/advisoryWaveGateMain.test.js` (`edited`, the real-seam halt oracle at
+`:373` gains `snapshotRef`); (2) extend `advisoryWaveGate.test.js`'s "Carries" cell to name the four
+shipped four-key halt-field oracles (`:1699`, `:2676`, `:2714`, `:3369`) as widened to five by the
+same task that widens the production `fields` object; (3) state in §5.2 that the five-key
+set-equality **replaces** the shipped four-key one. F-02's one sentence on the push site (and its
+§5.1 consequence) is not gating but is cheap to land in the same edit, and F-03 is a one-line
+citation fix. No design change is required — the carrier, the predicates and the fixtures all stand.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
