@@ -120,6 +120,69 @@ parses with a non-negative integer budget, exactly as the entry allocates.
 
 ## Decision
 
+**Needs revision.** Three High findings, all of the same shape and none of them a design objection:
+a claim that a downstream reader would transcribe into an oracle, or that forecloses an option, no
+longer holds at the bytes it describes. The four decision entries themselves — the dangling-snapshot
+capture, the `commitPaths`-owned promotion, the wave-scoped ref, the `nonNegativeInt` affordance —
+are sound, shipped, and I am not asking for any of them to move.
+
+**Why F-01 is High and not a wording nit.** `:318` is the only sentence in the document that states
+A6's failure semantics as a single rule, and it is the sentence a PROPERTIES author writes a property
+from. Transcribed as written it yields `await assert.rejects(captureTreeSnapshot(...))` — a test that
+fails against correct code, and whose "fix" is to make capture throw, which would break the
+capture-failure disposition path the very next bullet describes (`:322-327`). The document contains
+both readings four lines apart; the reader has no way to know the second one wins. The repair is one
+sentence: restore throws (`orchestrate-dev.js:12638-12662`), capture returns `null` and the call site
+writes the capture-failure disposition itself (`:12558-12561`, `TSPEC:1430`) — fail-closed is a
+property of the *pair*, discharged two different ways on purpose.
+
+**Why F-02 is High.** A re-evaluation trigger is the one part of a decision record that is supposed
+to be *observable* — a condition someone can watch for. `:208-210` asks the reader to watch for "the
+OQ-7 erratum returns holding ignored generated outputs inside the oracle", an event that has already
+happened and resolved the *other* way (`TSPEC:1755`, `REQ:503`), with the contingent arm explicitly
+not built (`TSPEC:504-509`). A trigger that fires on a past event with the opposite outcome is worse
+than a missing trigger: it tells a future implementer that a mechanism arm is still owed. Three more
+sites carry the same stale hedge (`:125`, `:199-201`, `:331-333`), and the `Upstream` cell (`:5`)
+binds a TSPEC version that no longer exists. All five repairs are transcriptions of a decided
+boundary, not new design.
+
+**Why F-03 is High, and what I am *not* asking for.** I am not asking for "add a module" to be
+adopted, or even reopened on merit — co-locating with `runAdvisorySeam`, `classifyEnvelope` and
+`appendAdvisoryEntry` is very likely still the right call. I am asking that the reason be one the
+tree supports. As written, `:93-100` rejects a whole class of alternatives by declaring it
+unbuildable, on a bundle-and-sync mechanism that no longer exists: the sole build output is
+`pdlc-cli.mjs`, the consumer copy is swept rather than synced, and the engine channel ships the
+module as a *file* among two. The same paragraph is also the premise for the "no `fs`, no `process`"
+half of option B's rejection (`:123`), which is enforced today by an in-suite source scan
+(`advisoryWaveGate.test.js:3194`) rather than by a bundle format — a stronger and still-true reason,
+which is what the rewrite should cite. This one is `Cross-Feature`: any sibling feature whose
+DECISIONS or TSPEC still reasons from "one module, one bundle, synced to `.claude/workflows/`" has
+inherited the same falsified premise.
+
+**On F-05, and what I deliberately did not file.** DECISIONS describes TSPEC §5.2 accurately; the
+missing conjunct is the *implementation's*. I file it against this document only because of what the
+entry does with it — `:408` closes the obligation ("The behaviour is decided here and asserted
+upstream; nothing further is owed by this record"), and a closed obligation is what stops the next
+reader looking. Medium, with the repair being a hedge ("asserted in TSPEC §5.2; the fixture that
+carries it is A6-15's to complete") rather than a deletion. I did **not** file the fixture gap itself
+as a DECISIONS finding — it belongs to the implementation phase, and it is recorded under
+`## Consequences` for that reader.
+
+I also did not file two things I looked at hard:
+
+1. **`git add -A --` (`:174`) versus `git add -A` (`:125`)** as a High. It is a real inconsistency and
+   it is F-06, but at Low: `TSPEC:477`'s block is the authority and it carries the `--`, so DECISIONS
+   at `:174` is the faithful transcription and `:125` is the loose one. The shipped call is
+   `["add", "-A"]` (`orchestrate-dev.js:12579`) — a divergence from TSPEC's block that no oracle
+   catches, since no test asserts the capture argv's trailing `--`. That is an implementation
+   question (Q-02), not a defect of this record.
+2. **The `Known gap in the remedy's reach` (`:265-271`)** as a DECISIONS defect. The entry is honest
+   and correctly routes the halt-message obligation to REQ/FSPEC. But `grep -n "a6-snapshot\|copy the
+   ref\|overwrit"` over REQ v1.15 and FSPEC v1.6 returns **nothing** — the routing never landed, and
+   the ref-overwrite that `TSPEC:534` describes still reaches an operator with no warning at halt
+   time. That is an upstream gap, not this document's, and it is emitted as an ERRATUM rather than
+   folded into this verdict.
+
 ## Findings
 
 ## Questions
