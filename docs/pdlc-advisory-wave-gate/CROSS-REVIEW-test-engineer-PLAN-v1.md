@@ -108,6 +108,40 @@ TDD order is likewise unchanged: A6-10's row still carries its red steps ahead o
 the one task, with the wave-gate rationale for the in-task RED→GREEN restructure intact, and A6-01
 retains its `[Fake first]` label in batch 1 ahead of every production task.
 
+## Positive Observations
+
+- The round re-grounded on upstream HEAD **before** touching the raised item, and the absorbed
+  closure is the larger half of the edit — exactly DEC-ERR-03's intent rather than item-list servicing.
+- Retiring all four upstream-pending routings in one pass, including the DoD leg's disjunction, leaves
+  no surface where a future reader could re-open a settled question (DEC-ERR-01's anti-pattern).
+- Dropping `test.todo` while keeping the `scanSkipTokens` / `checkWaveUnskips` prohibition reasoning is
+  the right split: the marker was contingent, the `.skip` halt reasoning still governs the file.
+- The graph-invariance claim was stated in falsifiable form (11 tasks, 7 waves, re-run over the edited
+  table) and reproduces exactly.
+- The AT-05-1 traceability row was updated in lockstep with the task row — the usual failure mode here
+  is a row updated in one place and left stale in the other.
+
+## Recommendation
+
+**Approved with minor changes.** The delta resolves the routed surface, transcribes both halves of the
+landed boundary, and breaks nothing I previously approved. The findings below are refinements to
+A6-10's red-step text so the implementer cannot write a case that only passes; none is gating.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | A6-10's ignored-path case claims falsifiability the oracle it names cannot deliver: the only stated oracle is the hash map, whose domain excludes ignored paths **on both sides**, so a restore-over-ignored-path implementation leaves both maps equal and passes. TSPEC §5.2 case 4 carries the conjunct that actually fails it — "a `.gitignore`d file the wave added is **still present** after restore … the assertion that pins `git clean -fd` over `-fdx`" — and the compression drops it. Add that positive-presence conjunct to the row. | Batches → A6-10 red step (former A6-09) |
+| F-02 | Low | delta | local | The observation-point sentence transcribes *where* the map is taken but not TSPEC §5.2 case 5's second half: the case must "assert the *ordering*, not only the content", separately asserting the three carriers are written **afterwards**. Without that conjunct an implementation that interleaved record/escalation/queue writes with the comparison can still pass on a map that happens to match. | Batches → A6-10 red step (former A6-09) |
+| F-03 | Low | inherited | local | The row's first clause still reads "over tracked and untracked files alike, generated outputs included", without BR-9 v1.6's **non-ignored** qualifier; the row's own later sentence and the AT-05-1 traceability row both state the qualified domain, so the row now disagrees with itself. Qualify the first clause. | Batches → A6-10 red step (former A6-09) |
+| F-04 | Low | delta | local | "**No upstream dependency of this plan is open**" is true of REQ/FSPEC/TSPEC but overreaches DECISIONS at the dispatched hash (`sha256:84deee10…`), which still routes the ignored-path boundary as "upstream's open question (TSPEC §6 OQ-7)" in DEC-A6-01's option-D row and in "What follows from DEC-A6-01", with a contingent scoped-capture arm. No task reads that arm, so nothing is blocked — note DECISIONS as not yet re-grounded rather than asserting closure across all four upstream documents. | Dependencies → *Upstream dependency that was open, and is now closed* |
+
+FINDING: Medium | delta | local | Batches → A6-10 red step (former A6-09) | the ignored-path case is claimed to fail an implementation that restores an ignored path, but the only oracle the row names is the hash map, whose domain excludes ignored paths on both sides and therefore cannot falsify that implementation; transcribe TSPEC §5.2 case 4's positive-presence conjunct (the ignored file is still present after restore, pinning `clean -fd` over `-fdx`)
+FINDING: Low | delta | local | Batches → A6-10 red step (former A6-09) | the observation-point transcription omits TSPEC §5.2 case 5's ordering conjunct — the case must separately assert the record, escalation and queue-row writes happen after the map is taken, or an interleaving implementation passes
+FINDING: Low | inherited | local | Batches → A6-10 red step (former A6-09) | the row's first clause states the map domain as "tracked and untracked files alike" without BR-9 v1.6's non-ignored qualifier, disagreeing with the row's own later sentence and with the AT-05-1 traceability row
+FINDING: Low | delta | local | Dependencies → Upstream dependency that was open, and is now closed | "no upstream dependency of this plan is open" overreaches DECISIONS at the dispatched hash, which still routes the ignored-path boundary as OQ-7-pending in DEC-A6-01; no task reads it, so the claim should be scoped rather than absolute
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}

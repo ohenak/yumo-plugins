@@ -109,11 +109,30 @@ matching class 1 and class 2 yields `plan-ordering-defect` and carries exactly o
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-01 | `F-01`'s stale link is one level up — TSPEC §5.6's `AT-02-1` row and PROPERTIES `PROP-CTR-01` both still say "set-equal". Does the orchestrator want the ordered-oracle correction routed to TSPEC first (so PLAN and PROPERTIES re-transcribe a corrected parent), or landed in all three in one pass? The PLAN-only fix would leave the document faithful to upstream but diverging from its immediate parent, which is the worse end state. |
+| Q-02 | The PLAN's lineage header still reads `Cross-Reviews: *(none yet — active while Phase P runs)*` and pins no upstream versions in the `Upstream` row, where TSPEC's row names "FSPEC v1.6, over REQ v1.15". With this document now on its tenth erratum round and re-grounded twice, is the unpinned header intentional? Not raised as a finding — it is housekeeping, and the changelog carries the pins. |
 
 ## Positive Observations
 
-*(pending)*
+- **The absorption is the right shape.** The four sites were not patched to say "closed" and left
+  otherwise intact — the *Not in scope here* block was rewritten as *Decided upstream, transcribed
+  here*, and the "Upstream dependency that is still open" heading was retitled and closed with a flat
+  "**No upstream dependency of this plan is open.**" A reader arriving cold cannot mistake the routed
+  state for the current one, which is exactly what DEC-ERR-01 is about.
+- **`A6-10` transcribes the hard half.** REQ `AC-5.1` says ignored paths are "excluded from the
+  comparison", which read alone would permit an implementation that restores one. FSPEC `AT-05-1`
+  supplies the direction — restoring one *fails*. The PLAN took the FSPEC reading and asserts it
+  **both ways**: mutating an ignored path leaves the round trip green, restoring one fails the case.
+  That is stronger than either upstream sentence in isolation and it is the product-correct reading:
+  ignored paths are operator files.
+- **The DoD leg lost its escape hatch.** The old check passed if the case was "still marked
+  upstream-pending with its expected value named". With OQ-7 closed that arm would have been a
+  vacuously-satisfiable ship gate. The edit deleted it rather than leaving it as harmless residue.
+- **The changelog row states what did *not* move.** "No task, batch, wave, dependency edge or
+  file-ownership cell moves" — and I verified it. A prose-only erratum that says so up front is
+  cheap to confirm.
 
 ## Delta-Confirmation Findings
 
