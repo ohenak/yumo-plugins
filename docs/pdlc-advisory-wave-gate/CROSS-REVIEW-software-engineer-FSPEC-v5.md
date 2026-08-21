@@ -86,11 +86,58 @@ in DECISIONS, not here.
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+**E-34 (capture impossible) — correct, and the placement move helps.** E-34 now names itself as the
+arm on which the halt report carries diagnosis and class with **no** overwrite warning, "there being
+no capture to point at". That is the right reading of AC-6.3's conditional: the antecedent is false,
+so the consequent is not owed. Moving the row to sit beside E-28 (its sibling restoration row) makes
+the pair readable in one pass.
+
+**E-30 (escalation log unwritable) — the deferral is an improvement.** Replacing the enumerated
+"diagnosis and root-cause class" with "BR-14's halt-report contents in full" removes a second copy of
+a list that just grew a third member. Had it been left as-is, E-30 would already be stale against
+BR-14. This is the right maintenance instinct.
+
+**E-28 (restoration fails) is the gap this edit left.** E-34 gained a reciprocal pointer to BR-14's
+arms; E-28 did not. E-28 is the row where the halt *does* point the operator at a captured pre-A6
+tree state — that is precisely what TSPEC §2.5 specifies (the halt names the ref for the halting
+wave, `TSPEC:534`'s re-run-overwrite paragraph) — yet at FSPEC altitude no row, rule or AT ever
+asserts that any halt report points at a capture. The consequence is that BR-14's conditional and
+AT-06-4's conjunct (3) have an antecedent that the FSPEC never establishes as reachable: a reader
+holding only REQ + FSPEC cannot tell which halt is the with-capture arm, and the conjunct is
+vacuously satisfiable against a document that never requires the pointer.
+
+I am filing this **Medium, not High**, deliberately. REQ AC-6.3 has the identical conditional shape
+and likewise never names which halt points at a capture, so the FSPEC *is* a faithful compression —
+raising it High would be contesting upstream through the FSPEC, and the behaviour is grounded
+downstream in TSPEC §2.5 either way. The fix is one clause on E-28 ("this is the arm on which BR-14's
+overwrite warning is owed"), symmetric with the one E-34 just received, and it can ride along with
+the §2 pin correction. Filed as F-02.
+
+The rest of §5.4 and §5.5 are untouched and I re-confirm them as previously approved. E-33's
+`waveBudgetPerRun: 0` reasoning and E-31's honest limit are unchanged.
 
 ## Acceptance Tests
 
-_pending_
+**AT-06-4's three-conjunct restatement is the strongest part of this edit.** Numbering the *Then*
+into (1) diagnosis, (2) root-cause class, (3) the co-located overwrite statement gives the oracle
+three separately failable assertions instead of one compound sentence. The explicit oracle boundary —
+*"asserts co-location and the presence of the overwrite statement, never the capture's name — that is
+O-1's"* — is exactly the instruction a test author needs to avoid pinning `refs/pdlc/a6-snapshot-{n}`
+at the wrong layer, and it forecloses the string-coupling failure mode where the FSPEC-level test
+breaks when TSPEC renames the ref.
+
+**AT-06-4b is the conjunct that makes AT-06-4 honest.** Without it, conjunct (3) is satisfiable by a
+halt report that emits the overwrite sentence unconditionally, which would pass while specifying
+nothing. The companion pins the E-34 arm to *no* pointer and *no* warning, so the pair distinguishes
+"conditional, correctly implemented" from "constant string". The author named this reasoning inline
+("the companion that makes AT-06-4's conjunct (3) falsifiable rather than a string always present") —
+that is the property-thinking this pipeline asks for, and it should be preserved verbatim into
+PROPERTIES rather than paraphrased.
+
+**AT-05-5 remains E-28's only AT** and still requires only that "the halt names the failed
+restoration". It is not wrong, but it is the natural owner of the with-capture assertion under F-02;
+if E-28 gains the reciprocal clause, AT-05-5 or a companion should gain the matching conjunct so the
+with-capture arm is exercised by a test and not only by AT-06-4's conditional.
 
 ## Open Questions
 
