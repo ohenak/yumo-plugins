@@ -257,6 +257,20 @@ re-reviewed.
 
 ## Recommendation
 
+**Approved with minor changes.** The FSPEC still holds as approved against REQ v1.7. Both
+substantive upstream edits are benign for this document: §5's BL-04 restatement moves the REQ into
+agreement with what §1 and OB-F1 have said since v1, and §9's OB-1 relabelling demotes a premise
+whose conclusion — the one thing EC-17 compressed — upstream explicitly preserves. No behavioural
+claim, business rule, edge case or acceptance oracle needs an edit, and no finding in this round is
+High.
+
+Six findings are open against the file, all `inherited` and all non-gating. Three are
+stale-provenance sentences that describe a version of upstream that no longer exists (F-01, F-02,
+F-03); this round widened two of them without changing their character. Three are the substantive
+non-gating findings carried from v2 (F-04, F-05, F-06). All six should be addressed in a single
+pass when the FSPEC is next opened — most naturally at the same time as the rebase OB-F1 owes,
+since that is the change that will make §1's citations re-verifiable in the tree.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
