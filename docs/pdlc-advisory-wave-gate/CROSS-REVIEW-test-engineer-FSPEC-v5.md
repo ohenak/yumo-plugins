@@ -37,7 +37,32 @@ replacement text widens rather than narrows. Two Low findings carry forward unto
 
 ## Linked Requirements
 
-_pending_
+Upstream re-read at the dispatched sha, restricted to the clauses this delta touches plus the ones
+the previous rounds pinned (DEC-ERR-03 duty — the scope is this FSPEC against REQ v1.16, not the
+item list):
+
+| REQ v1.16 clause | FSPEC v1.7 compression site | Faithful? |
+|---|---|---|
+| AC-6.3 sentence 1 — halt report carries diagnosis + root-cause class, "not only in a file the operator must go and find" | §3 step 10, BR-14, AT-06-4 conjuncts (1)(2) | Yes — unchanged and still verbatim in substance |
+| **AC-6.3 sentence 2** — "Where the halt report points the operator at a captured pre-A6 tree state, it also warns, **in the same place**, that re-running this feature overwrites that capture" (DEC-A6-03) | BR-14 conditional clause; §3 step 10 arm 1; AT-06-4 conjunct (3) | **Yes** — "same report, in the same place" mirrors "in the same place"; co-location named as *the observable*; O-1 deferral preserved |
+| AC-5.1 failed-capture outcome — "Given the pre-A6 state cannot be captured at all, Then no repair is proposed, none is applied, and the wave halts on its own gate" | §5.4 E-34 (now also the no-warning arm), AT-06-4b | Yes — the delta adds a halt-report consequence without disturbing the no-dispatch outcome |
+| AC-5.1 excluded-carrier list (three carriers: AC-6.1 record append, AC-6.2 escalation-log append, AC-5.2 M-WG-7 queue row) | §4 BR-9 ("both carriers"), §5 E-23 | **Under-enumerated** — F-03, Low, inherited, carried from v3 F-02 / v4 F-04 |
+| AC-5.2 — same halt, same M-WG-3 reason, same `halted` queue row; escalation adds information, never control flow | §3 step 10, BR-14 opening | Yes — the delta prepends nothing to control flow; the added clause is report content only |
+| AC-6.1 / AC-6.2 / AC-6.4 | BR-13, AT-06-1/-3/-5, E-31 | Yes — untouched by this delta, confirmed unchanged upstream |
+| O-1 — capture point, mechanism, and its failure modes stay TSPEC's | §7.1 O-1; BR-14's closing sentence; AT-06-4's oracle note | Yes — and the delta strengthens it: AT-06-4 explicitly forbids asserting the capture's name |
+
+**DEC-A6-03 boundary, checked directly.** DECISIONS `:342-355` fixes the ref name
+(`refs/pdlc/a6-snapshot-{waveNum}`), its wave-scoping, and the "copy the ref" remedy; `:462-471`
+records that the promise is run-scoped and that what an overwrite costs is *inspectability of a
+pre-repair tree, never content*. FSPEC v1.7 compresses only the operator-visible outcome and
+explicitly routes name/storage/lifetime to O-1 — the correct altitude for an FSPEC, and it does not
+pre-empt the TSPEC's `:534` halt-message wording.
+
+**§2 version token still stale.** §2's preamble reads "Every clause below traces to
+`REQ-pdlc-advisory-wave-gate` **v1.13**" while upstream is v1.16 and this round's own changelog entry
+(line 14) cites "REQ v1.16" three lines above it. Every individual trace still resolves, so it is a
+stale token, not a broken citation — F-02, Low, `inherited`/`nonlocal` (v3 F-01 → v4 F-03, now one
+round staler and internally inconsistent with the changelog).
 
 ## Behavioral Flow
 
