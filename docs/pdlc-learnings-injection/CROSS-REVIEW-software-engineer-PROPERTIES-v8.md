@@ -104,7 +104,7 @@ oracles the landed suite already carries, and those I re-checked.
     in it is a commit sha, a line number or a file count, none derived from the code under test.
     §G.2.2's hand-computed 40/66 literals are untouched, and the landed suite still states them as
     literals with "hand-computed (never derived here)" comments (`learningsBlock.test.js:108`,
-    `:126`).
+    `:129`).
   - **No absence-only oracle.** §C.4's new "none of the four is present in the landed suite"
     paragraph is an *inventory*, not an oracle, and it is stated positively — it names what the suite
     *does* carry (one describe, three ATs, two `maxBytes` literals) beside what it lacks. The one
@@ -138,6 +138,36 @@ oracles the landed suite already carries, and those I re-checked.
   around them is F-01, but the restraint itself is right and is DEC-ERR-01-compliant.
 
 ## Fixtures
+
+No fixture named by this document changed, and the delta names no new one. §F.1–§F.4 are
+byte-identical. Three fixture-adjacent facts in the new §C.4 text are checkable, and all three hold.
+
+- **`fixtures/learnings-baseline/` — now correct.** Last round the table said "not yet created" while
+  the directory existed; the row now reads **exists (landed)** and enumerates its contents as
+  "`MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt}`" added by
+  `4a6c1816`. `git ls-tree -r --name-only 21edb7c5` returns exactly those four paths and no others
+  under that directory, and `git log --diff-filter=A -1 -- …/MANIFEST.json` is `4a6c1816`. Exact.
+- **`helpers/learningsFixtures.js` — correct.** Row says landed by `1920f281`; verified, and the
+  commit subject is `LI-02 … fixture helper (TSPEC §T.2): buildLe…`, the right owning task. The
+  additivity premise for the declared-heading-form knob is unchanged from v0.6/v0.7 (PLAN:147 states
+  `renderSection` already accepts `ordinal`, `gloss` and `body`, all three unexercised by a landed
+  suite), so no fixture obligation moved.
+- **`scripts/capture-learnings-baseline.mjs` — still correct.** The sentence survived the rewrite
+  unchanged and still measures true: `git ls-files scripts/` returns exactly that one path, and
+  `ced75955` is "LI-05 — GREEN the capture script".
+- **No expected byte count moved.** The `BYTES-BINDING` (3/5/0), `ZERO-BOUND`, `DIVERGENT-CORPUS`,
+  `DISCARDED-NESTED`/`DISCARDED-DIRECT` and `COUNT-BINDING` fixtures are not mentioned in the delta
+  and none derives an expected value from PLAN's ledger or from the code under test.
+- **One fixture-shaped overstatement.** §C.4's enumeration of what `learningsBlock.test.js` lacks
+  says it "carries no un-numbered `## Cross-Feature Patterns` / un-glossed `## Rejected Proposals`
+  heading-form arm". The second half is right (`:81` renders the **glossed** name
+  `"Rejected Proposals (with rationale)"`, and no un-glossed variant appears), as are the `###`-as-body
+  and `## Process Findings` halves (neither string occurs in the file). But the un-numbered
+  `## Cross-Feature Patterns` form is exercised three times — `:42` as LI-AT-05's material and `:110`
+  / `:130` as LI-AT-12's fixture text, with `expect(result.sections).toEqual(["Cross-Feature
+  Patterns"])` at `:118` / `:139` proving the matcher accepted the un-numbered form. That is F-02:
+  the conclusion it supports (all four properties still owed) is independently true, so it is Low,
+  but the enumeration should not claim an absence the file contradicts.
 
 ## Findings
 
