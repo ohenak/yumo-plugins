@@ -289,8 +289,8 @@ requirements altitude.
   every surface driven by that catalogue — the per-seam report rows in particular — carries six rows
   where it carried five. The catalogue is closed and transcribed in tests (M-WG-8), so this is a
   deliberate, test-visible change; a run in which the sixth row is absent is a defect. The
-  five-member "before" this argues from is the reading at base commit `c8aa22a4`; HEAD already
-  carries A6 (baseline v1.2 §4, M-WG-13). *(Traces: US-01, US-05.)*
+  five-member "before" this argues from is the reading at base commit `c8aa22a4`; the post-change
+  reading, at `11420461`, carries A6 (baseline v1.2 §4, M-WG-13). *(Traces: US-01, US-05.)*
 - **AC-1.2** — Given a Phase I wave, Then A6 fires on **exactly one** condition: the script-owned
   test gate returning non-zero (M-WG-3). It does **not** fire on a dispatch-level failure (M-WG-1) —
   there is no completed work to repair — nor on a post-wave command failure (M-WG-2). **Correction,
@@ -491,7 +491,8 @@ requirements altitude.
   **post-dispatch, pre-commit** tree, with the wave agents' own uncommitted work intact. A6 never
   destroys the wave's work in the course of failing to repair it. The observation point is the
   moment restoration completes: the record carriers the run still owes afterwards — AC-6.1's record
-  append and AC-5.2's queue-row write (M-WG-7) — are excluded from the comparison. So are paths
+  append, AC-6.2's escalation-log append, and AC-5.2's queue-row write (M-WG-7) — are excluded from
+  the comparison. So are paths
   ignored by `.gitignore`, which are operator files A6 never wrote and never restores over.
   Given the pre-A6 state cannot be captured at all, Then no repair is proposed, none is applied, and
   the wave halts on its own gate (AC-5.2) — a different outcome from a failed restoration. The
@@ -578,7 +579,7 @@ requirements altitude.
   and the new config key on their own transcribed sets (M-WG-9). That is the intended signal, but it
   means this feature cannot be delivered as a purely additive change and every transcribed surface —
   including the disabled-tier fixtures — must be re-checked (BL-06). The pre-change readings are
-  measured at `c8aa22a4`; M-WG-13/M-WG-14 are the post-change ones.
+  measured at `c8aa22a4`; M-WG-13/M-WG-14 are the post-change ones, measured at `11420461`.
 
 ## 8. Obligations
 
