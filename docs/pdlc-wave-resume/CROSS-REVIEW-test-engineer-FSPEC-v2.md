@@ -32,6 +32,25 @@ Every claim the delta newly asserts about shipped behaviour was re-verified agai
 
 ## Prior Findings — Disposition
 
+| v1 ID | Sev | Disposition | Evidence in the revision |
+|---|---|---|---|
+| F-01 | High | **Resolved** | §2 Vocabulary now defines *Phase I* as the implementation wave loop and excludes Phase PT's V-wave; BR-11, EC-09 and D-5 are restated in those terms; EC-20 states the V-wave's replay explicitly; AT-12 is rewritten with a **call-count** oracle (zero agent dispatches, zero gate invocations on the wave loop) instead of the absence-shaped "no commit". The upstream half was routed as an erratum rather than absorbed — correct handling. |
+| F-02 | High | **Resolved** | AT-08's "absence of such a key from the config surface" is replaced by set equality over the four recognised `implementation.*` keys, transcribed literally and explicitly "never read back out of the config parser", plus a positive conjunct (record removed ⇒ outcome (a) announced) proving the named hatch is the hatch that works. The literal set is exact against `parseImplementationConfig`. |
+| F-03 | Medium | **Resolved** | §2 defines *Announcement* as the run log, names the report as a second observable where a criterion names it, and states that provenance is announced content a test may assert on. AT-05/06/07/16 are now readable. |
+| F-04 | Medium | **Resolved (routed)** | AT-02's set-equality target moves from the six IG **labels** to the **announced reasons**, and states explicitly that IG-1 covers more than one distinguishable arm; the enumeration of those arms is assigned to the TSPEC (OB-F2). See F-03 below — the routing is right, but the AT is not executable until the TSPEC lands. |
+| F-05 | Medium | **Resolved** | AT-04's "adversarial bytes" is replaced by a named, finite fixture set (second wave, last wave, named commit = tip, named commit = earlier ancestor), with the reason the old phrasing was vacuous stated in-line. |
+| F-06 | Medium | **Resolved** | AT-13 now names one fixture per outcome and asserts set equality over the observed outcomes. |
+| F-07 | Medium | **Resolved** | §3.4 and EC-09 split the retention benefit by whether history was rewritten; the DOD step-0 rebase case is routed to EC-06, and §5 carries one row for each. The collision I flagged is gone. |
+| F-08 | Medium | **Resolved** | AT-17 and EC-16 narrow the ownership claim to *this feature's PLAN* (a finite check over its manifest) and route the general form to Phase P's ownership gate via OB-F6. |
+| F-09 | Medium | **Resolved (recorded)** | AT-14 now carries an explicit branch precondition: the rule exists on the default branch, not here, so the test is RED until OB-F1 is discharged, and te-author is told not to weaken the arm to observed quiet. That is the right disposition for a branch-state fact. |
+| F-10 | Low | **Resolved** | AT-10's negative arm gains its positive conjunct on the same path — the announced resume point is *the same wave*, not merely unchanged. |
+| F-11 | Low | **Partially resolved** | AT-08, AT-12, AT-13 and AT-18 gained *Who*; AT-03, AT-04, AT-09, AT-10, AT-11, AT-14, AT-15, AT-16 and AT-17 still lack it. Re-filed as F-04. |
+| F-12 | Low | **Resolved** | §3.5's raw `orchestrate-queue.js:45` anchor is replaced by a symbol description (`imports orchestrate-dev`'s `main` as `realMain`). The remaining `file:line` anchors are confined to §1's grounding table, where position is itself the evidence under test — the DEC-DOC-01 carve-out. |
+
+Both v1 High findings are resolved, and neither resolution introduced a weaker oracle: F-01's
+replacement is a call-count oracle over two seams and F-02's is a set-equality check over a
+literal I could verify against the parser, which is stronger than what it replaced.
+
 ## Findings
 
 ## Questions
