@@ -109,8 +109,53 @@ is one clause.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | BR-9's domain excludes ignored paths "in both directions", and AT-05-1 says an implementation that restores one **fails** this test. Is that the intent — a restore that over-restores an ignored path is a defect — or is the intent merely that ignored paths are not *required* to match? The former is the stronger, more useful oracle, but it makes `git checkout`-style whole-tree restores that happen to touch an ignored path fail; worth one sentence either way. |
+| Q-02 | AT-04-5's new durability companion asserts the later task's dispatch is "still told the promotion exists — read from the branch's committed state and the advisory record". Which of the two carriers is the load-bearing one? A test that satisfies the assertion from the advisory record alone would pass while the committed state was lost, and vice versa; naming the conjunct pair (or requiring both) closes it. |
+| Q-03 | Carried from v1 and still open under F-01: does any test own a closed assertion over the fields A6 *adds* to the record entry — wave number, root-cause class, BR-12's promotion fields? AT-06-1 deliberately asserts containment and delegates the closed shape to the tier; the added fields are not in the tier's shape, so a dropped promotion field currently fails neither suite. |
+
 ## Positive Observations
+
+- Both v1 Highs were resolved by *adding spec-side literals and boundaries*, not by weakening the
+  oracles — which is the outcome the findings existed to produce. BR-5 and BR-15 now carry the two
+  sequences byte-for-byte as shipped, including the non-alphabetical exclusion order, and I verified
+  each against `orchestrate-dev.js:2445-2459` rather than against the prose. AT-03-2's move from "the
+  reason the ordered catalogue yields" to the literal `revert-on-test-touch` is the sharpest single
+  edit in the delta: the precedence claim went from unwritable to falsifiable in one clause.
+- BR-2's first-match restatement did more than restate AC-2.2. It changed the oracle unit from set
+  to ordered sequence *and* supplied E-08b, the two-class arm that makes the ordering load-bearing
+  rather than decorative — the FSPEC says so in exactly those words. An ordered oracle without a
+  multi-match fixture is a claim no test can fail; the delta noticed that unprompted.
+- E-34 is placed beside E-28 and specified by its *difference*: no repair proposed, none applied,
+  agents' work untouched. A capture-failure row that merely said "the wave halts" would have been
+  indistinguishable from E-28 and would have let an implementer satisfy both with one code path.
+- §2's base anchor closes the red-before question in the strongest available form — a named commit
+  per reading, plus "a green result for one of those three at any later base is a vacuum, not a
+  pass". I verified all three commits resolve and that `c8aa22a4` is the base
+  `pdlc-wave-gate-baseline.md:70` names for M-WG-8's pre-change reading.
+- BR-12's durability half is grounded in a real re-invocation mechanism, not asserted: M-WG-6
+  (`pdlc-wave-gate-baseline.md:45`) does record that no phase-skip path names `I`, so a re-invocation
+  after a halt genuinely re-enters Phase I at wave 1. AT-04-5's second companion is the arm that
+  fails an in-run-only signal, and it was added with the rule rather than left implied.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both blocking findings from v1 are closed on the evidence, not on the prose: I re-derived BR-5's and
+BR-15's transcriptions against the shipped constants, checked AT-03-2's reason against
+`classifyEnvelope`'s `X-a` branch, and confirmed the BR-9 observation point sits ahead of the record
+append in the shipped driver. Nothing in the delta reopened a section I approved at v1.
+
+Three Medium findings and one Low are recorded, none gating. F-01 and F-02 are each one sentence:
+say who owns the disposition set-equality, and put the halt-reason template where a fixture author
+can reach it. F-03 asks AT-05-1's *When* and *Then* to name the same moment. F-04 adds one arm to
+AT-02-1. The oracle discipline in §6 remains well above the bar for this phase, and the
+transcribed-literal paragraph added in this round is a genuine standard raise — F-02 asks only that
+it be applied to its own third comparand.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 1}
