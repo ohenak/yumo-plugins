@@ -148,6 +148,38 @@ DEFERRED: `D-O-4`'s two quantities are still named prose-side but not bound to r
 
 ## Positive Observations
 
+- **The fix converted an assertion into something a reviewer can execute.** Four rendered lengths,
+  two constants and one per-document coefficient all reproduce exactly against
+  `renderLearningsBlock` at HEAD (`orchestrate-dev.js:2542-2561`). Replacing two literals with a
+  formula plus a *named* fixture is what made this round a five-minute mechanical check instead of a
+  re-measurement argument — and it is the same property that will make `D-O-4`'s eventual test
+  falsifiable.
+- **`D-O-4` now closes the transcription hazard explicitly, in the obligation's own text.** "Neither
+  quantity has a transcribable expected constant" tells the downstream author *why* there is no
+  number to copy, not merely that there isn't one. That sentence is doing real work: it pre-empts the
+  most likely failure mode, a report test pinned to a constant that goes green on one corpus.
+- **The two-kinds-of-citation paragraph is the right general answer to v8 F-02**, not a local patch —
+  it names which citations are grounds and which are shipped-code confirmations, so a future reader
+  can tell at a glance which claims would need re-grounding if the implementation changed.
+- **The upstream note carries its own evidence.** Rather than asserting "v0.14 changed nothing that
+  matters", it names what v0.14 *did* change (BR-6's window, the `RSN-COUNT` attribution) and which
+  anchors it left alone. Both halves check out at HEAD (FSPEC:83-90, 489-495, 798, 967-968).
+- **Surgical delta.** +36/−11 lines across five commits, each mapped to one open finding; nothing
+  approved in v8 regressed.
+
 ## Recommendation
 
+**Approved with minor changes.**
+
+The v8 High (F-01) is resolved by verification, not assertion: the framing formula and all four
+fixture figures reproduce byte-exactly on the shipped renderer, and the two literals that created the
+transcription hazard are gone from `D-O-4` and survive only as a labelled retraction in the
+changelog. The two v8 Mediums (grounding-pin scope, upstream re-pin) are resolved and re-verified at
+HEAD. Two Low findings are recorded and do not gate: an "up to" ceiling that quotes the non-abridged
+arm (F-01), and the recurring version-cascade process cost routed to harvest (F-02). Four DEFERRED
+observations are recorded for a future round; none reopens a frozen decision.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
