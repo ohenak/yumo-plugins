@@ -274,4 +274,51 @@ F-04, Low.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding, and it is narrow. Everything I asked for at v3 landed, and landed better than I
+asked: `PROP-CONFIG-09` owns AT-30's third arm with four positive conjuncts and a positive-control
+fixture, §G.2's two gaps are correctly restated as resolved-with-no-recomputation-owed, §F.3
+transcribes the now-decided matcher with the reasons its clauses exist, and `PROP-BOUND-05`/`07`/`08`
+absorbed TSPEC v0.9's AT-11 oracle relocation and assembly rule — none of which I had asked for, all
+of which strengthen the suite. The property count, the AT partition, the PLAN task map and the
+test-file inventory all reconcile against repository state.
+
+What blocks is a single partially-absorbed upstream instruction. TSPEC v0.9's T-O-6 says *"State the
+zero conjunct, keep `0` in the domain"* and §I.3 fixes the unit's return at that boundary; this
+revision excludes `0` from `PROP-BOUND-03` and §O.9, on a rationale drawn from the cut-and-flag
+reading TSPEC explicitly retired, and then §G.1 records the obligation as fully discharged while no
+property asserts the boundary. That is not a hole in the product's proof — AT-30's L3 case still reds
+the mutation TSPEC names — but it is a **false claim about upstream inside the document whose job is
+to be the faithful compression of upstream**, and it is undeclared where every previous divergence in
+this document was declared with its blast radius. The standard that made §G.2.2 valuable at v3 is the
+standard that makes this gating at v4.
+
+**What must change to approve:**
+
+1. **F-01 (High)** — restore `0` to `PROP-BOUND-03`'s and §O.9's domain with T-O-6's carve-out
+   conjunct stated literally: at `maxBytes <= 0` the return is `{material: "", bounded: false,
+   bytes: 0, sections: []}` for every text, including one carrying all five sections; no cut occurs,
+   so `bounded` is `false`. Correct the rationale sentence that attributes a `bounded: true` demand to
+   a universal property. Restate §G.1's T-O-6 row as discharged across a **unit** arm and
+   `PROP-CONFIG-09`'s **seam** arm — which is more coverage than the row currently claims, not less.
+   Lands as one case in `learningsBlock.test.js` under existing LI-08 (red) / LI-17 (green): **no new
+   fixture, no new PLAN task, no new AT id, no new property, no upstream edit.**
+2. **F-02 (Medium, not gating)** — once (1) is applied, §G.3's *"Still open: nothing"* becomes true as
+   written and needs no edit. If the `>= 1` domain is kept instead, re-open it as a §G.2 gap naming
+   T-O-6 as the text it departs from, and route it upward rather than absorbing it silently.
+3. **F-03 (Low, Process)** — no edit to this document required; carry to harvest the rule that a
+   reviewer finding is as version-bound as an erratum, and is re-grounded against upstream at HEAD
+   before it is implemented.
+4. **F-04 (Low)** — split §C.4's summary sentence so the file count and the task list are not read as
+   the same seven.
+
+Nothing here re-opens the phase, changes a REQ acceptance criterion's coverage, or touches PLAN,
+TSPEC, FSPEC or REQ. Every REQ acceptance criterion still carries at least one property, AC-4.4's
+three zeros are all asserted at the seam, and the 35-member AT partition is intact. This is one
+absorption completed, not a revision round.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 2}
