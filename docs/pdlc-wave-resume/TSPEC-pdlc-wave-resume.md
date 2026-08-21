@@ -365,7 +365,7 @@ JSDoc, and the JSDoc blocks are the shipped convention this feature follows.
 Three closed catalogues, each `Object.freeze`d and each **transcribed** into a test as a literal
 so a deletion or an addition reds an assertion rather than passing one (FSPEC OB-F5). Precedent
 and shape: `ADVISORY_SEAMS` and `ENVELOPE_DEFAULTS`, whose transcribed set-equality discipline is
-the baseline's `M-WG-8`/`M-WG-9`/`M-WG-13`/`M-WG-14`.
+`pdlc-wave-gate-baseline.md` `M-WG-8`/`M-WG-9`/`M-WG-13`/`M-WG-14`, at `Version | 1.2 · 2026-08-20`.
 
 ```ts
 /** FSPEC BR-01 — the outcome catalogue, closed at three. */
@@ -403,11 +403,11 @@ shipped assertion changes.
 
 ```ts
 interface ReasonContext {
-  feature: string;        // the feature this run is for
-  recordedFeature?: string;
-  recordedHead?: string | null;
-  recordedWaves?: number;
-  waveCount: number;      // waves this plan derives
+  feature: string;             // the feature this run is for
+  recordedFeature?: string;    // parsed.state.feature, when there is a state
+  recordedHead?: string | null;// parsed.state.head
+  recordedLastGreenWave?: number; // parsed.state.lastGreenWave — the over-count sentence's subject
+  waveCount: number;           // waves this plan derives
 }
 
 interface ClassifyInput {
@@ -424,12 +424,34 @@ type WaveResumeDecision =
   | { outcome: "resume";     startWave: number;          provenance: "automatic"; lastGreenWave: number }
   | { outcome: "skip-phase"; startWave: number;          provenance: "automatic" };
 
+/** §2.2 — the codes guards 1–4 decide, i.e. those the ancestry verdict cannot affect. */
+export const ANCESTRY_INDEPENDENT_CODES: readonly [
+  null, "unreadable-json", "not-an-object", "wrong-shape", "feature-mismatch", "plan-changed"
+];
+
 /**
  * Pure and total. Never throws, never reads, never emits. Given a parsed record
- * and this run's context, returns exactly one decision.
+ * and this run's context, returns exactly one decision. Every rejecting decision
+ * carries the `ReasonContext` it was rendered from, so `main()` announces
+ * `WAVE_IGNORE_REASONS[d.code](d.ctx)` without reconstructing it.
  */
 export function classifyWaveLedger(input: ClassifyInput): WaveResumeDecision;
 ```
+
+**`ReasonContext` has one constructor, and it is the classifier (TE F-11).** No caller builds one:
+the classifier derives it from `input.parsed.state` plus `input.feature` and `input.waveCount`, and
+returns it on the decision (`code !== null` ⇒ `ctx` present). That fixes the input of each
+renderer's unit test — a `ReasonContext` literal transcribed from §3.1 — and removes the ambiguity
+over `recordedWaves`, now named `recordedLastGreenWave` after the record field the over-count
+sentence actually interpolates.
+
+**`lastGreenWave` on the `resume` decision has a named consumer (TE F-12).** It is what the
+per-wave skip line interpolates — the shipped string is `Wave 1/3: skipped (wave ledger: waves 1–1
+already green)`, pinned today by a whole-string `expect(logs).toContain(…)` in `it("records each
+committed wave, and the next invocation resumes at the failed one")`. It carries no provenance
+suffix and does not change. Keeping the field on the decision on the decision is what lets that line be rendered from the decision rather than
+re-derived from `startWave - 1` at the call site, and §5.4 AT-01 pins it by asserting the skip line's
+text for every `k < N`. A field with no reader would be unfalsifiable; this one has one.
 
 **Totality is the contract.** For every `ClassifyInput`, `outcome` is a member of
 `RESUME_OUTCOMES` and `provenance` a member of `RESUME_PROVENANCE`. The `operator-set` provenance
@@ -448,6 +470,13 @@ never originates here: an explicit pointer means the classifier is not called at
 | 6 | `parsed.state.lastGreenWave <= waveCount` | `full-run`, `code: "over-count"` — IG-4 |
 | 7 | `parsed.state.lastGreenWave === waveCount` | `skip-phase`, `startWave = waveCount + 1` |
 | — | otherwise | `resume`, `startWave = lastGreenWave + 1` |
+
+**Guards 5 and 6 are ordered, and the laziness of §2.2 preserves that.** The optimistic first call
+(`headOk: true`) can only ever return a guard-1..4 code, a guard-6 `over-count`, a `skip-phase` or a
+`resume`; ancestry is then resolved for exactly the last three, and a `false` verdict re-enters at
+guard 5, which sits **above** guard 6. So a record that fails both ancestry and the wave count still
+classifies `head-unreachable`, never `over-count` — the divergence from the REQ's IG numbering that
+FSPEC BR-03 ratified, and the pair §5.4 AT-03 asserts on.
 
 Guard 2's code is carried by `parseWaveLedger`, which is the only place that can distinguish the
 three arms; the classifier maps its `reason` string to the code through
