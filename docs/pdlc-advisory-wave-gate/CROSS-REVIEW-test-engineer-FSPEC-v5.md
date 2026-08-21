@@ -141,7 +141,42 @@ eight-member refusal set — the literal AT-03-7's oracle depends on — is unto
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+**E-34 gains the negative arm — this is what makes the new conjunct falsifiable.** The row now reads
+"…this is the arm on which the halt report carries BR-14's diagnosis and class with **no** overwrite
+warning, there being no capture to point at." Without this sentence, an implementation that prints
+the overwrite warning unconditionally — as a constant string in every halt report — would satisfy
+BR-14 and AT-06-4 while lying to the operator on the E-34 path. The row now forbids it, and AT-06-4b
+is the test. This is precisely the "a test that can only pass is not yet a test" remedy v4 asked
+for, landed as specified.
+
+The rest of E-34 is untouched: no repair proposed, none applied, wave halts on its own red gate,
+wave agents' uncommitted work intact because nothing ever wrote to the tree, mechanism deferred to
+O-1. The delta appends to the row's escalation sentence and disturbs nothing the earlier rounds
+approved.
+
+**E-28 correctly left alone.** E-28 is *restoration fails* — a capture existed and the restore from
+it failed. BR-14's clause is conditional on the report pointing at a capture, so E-28's halt falls
+under the capture-exists arm and inherits the warning obligation automatically; it needs no row of
+its own, and adding one would have duplicated BR-14. AT-05-5's oracle (halt names the failed
+restoration, no commit reached) is unaffected. I checked this because E-28/E-34 are the pair most
+likely to be conflated, and the delta keeps them distinct exactly as §5.4's "Distinct from E-28"
+lead already did.
+
+**E-30 no longer narrows the obligation — v4 F-02 resolved.** The row previously re-listed the halt
+report as carrying "BR-14's diagnosis and root-cause class"; it now says the halt report "goes on
+carrying **BR-14's halt-report contents in full**." That is the right repair: it stops the row from
+being a second, staler definition of the halt report, and it means AT-06-6 — which is written from
+this row — inherits the amended contents rather than pinning the pre-erratum pair. The row's actual
+subject (the failed escalation-log write surfaces on the run report's notice channel, never upgrades
+`escalated` to `resolved`, never changes the halt) is unchanged.
+
+A degraded-carrier interaction worth naming for the TSPEC, not a finding here: on the E-30 path the
+escalation log is unwritable while the halt report is fine, so the halt report is the *only* carrier
+the operator gets — which makes the co-location obligation load-bearing on exactly that path. E-30's
+new phrasing covers it by reference, and AT-06-6 need not restate it.
+
+**E-31, E-32, E-33 byte-identical.** Confirmed by diff, including E-33's non-negative-integer
+validator variant and its `resolved: 0` summary-row oracle.
 
 ## Acceptance Tests
 
