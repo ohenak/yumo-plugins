@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level decision record.** Not a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` §8 |
+| Cited by | `docs/completed/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` §8 |
 | Version | 1.0 · 2026-08-18 |
 
 **Why this file exists.** The five questions below were asked by REQ v1.1, answered by the operator

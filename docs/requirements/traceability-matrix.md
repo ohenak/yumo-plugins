@@ -115,7 +115,7 @@ per-criterion mapping lives in FSPEC §15.1; roll-up below.
 
 ## pdlc-advisory-wave-gate
 
-Upstream: `docs/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (v1.0). Downstream: FSPEC
+Upstream: `docs/completed/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (v1.0). Downstream: FSPEC
 not yet authored — the REQ carries `ready: false` pending operator review.
 
 | User Story | Requirement | FSPEC |
@@ -151,8 +151,8 @@ Upstream: `docs/completed/pdlc-engine-distribution/REQ-pdlc-engine-distribution.
 
 ## pdlc-plugin-retirement
 
-Upstream: `docs/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.9). Downstream:
-`docs/pdlc-plugin-retirement/FSPEC-pdlc-plugin-retirement.md` (`FSPEC-RET-01`, v0.1).
+Upstream: `docs/completed/pdlc-plugin-retirement/REQ-pdlc-plugin-retirement.md` (v0.9). Downstream:
+`docs/completed/pdlc-plugin-retirement/FSPEC-pdlc-plugin-retirement.md` (`FSPEC-RET-01`, v0.1).
 Authoritative per-criterion mapping lives in §2 of the FSPEC; roll-up below.
 
 | User story | Requirements | FSPEC |
