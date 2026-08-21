@@ -127,6 +127,16 @@ Consequences for PROPERTIES' fixture surface, all null:
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | nonlocal | §C.4 states "PLAN's LI-08 v0.5 amendment note assigns the follow-up commit to the existing owners but **does not name the ledger rows**; that naming is the PLAN's to do and is routed as an erratum, not decided here." False at HEAD: PLAN v0.6 names them, in both cases, at PLAN:484–503 (§The three gate wordings, *Amendment commits on landed suites (P-A-7)*), and LI-08's row now points at that paragraph. The routed erratum is CLOSED; the sentence should record it as such and cite the paragraph, so a reader does not re-route a settled item | §C.4 Landed files and re-red of landed suites |
+| F-02 | Low | delta | nonlocal | Header upstream row pins `PLAN-pdlc-learnings-injection.md` at **v0.5**; HEAD is **v0.6** (`d028d972…`). The parenthetical reason for the pin ("LI-12's three-case AT-30 matches PROP-CONFIG-09") is still true, so this is a version-cell refresh only | §Document control, Upstream row (:11) |
+| F-03 | Low | delta | nonlocal | §C.4 attributes the whole re-red surface of `learningsBlock.test.js` to "PLAN P-A-7's case", but PLAN v0.6's new paragraph names rows for `LI-AT-11`'s heading-form cases only. PROPERTIES' own amendments to that landed suite (PROP-BOUND-05/07/08, and PROP-BOUND-03's zero case at :252) are governed by **P-A-6** (PLAN:577 — PROPERTIES suite commits once green after LI-21, or its red rows are ledgered by name first). Both mechanisms exist and jointly cover the surface; the sentence should name P-A-6 for its own amendments rather than let the heading-form paragraph read as the governing rule for them | §C.4 Landed files and re-red of landed suites |
+
+FINDING: Medium | delta | nonlocal | §C.4 Landed files / re-red of landed suites | PROPERTIES says PLAN's LI-08 note "does not name the ledger rows" and routes that naming as an open erratum; PLAN v0.6 (PLAN:484–503, *Amendment commits on landed suites (P-A-7)*) now names them in both cases A and B, so the sentence describes an upstream state that no longer exists and re-routes a closed item
+FINDING: Low | delta | nonlocal | §Document control, Upstream row (:11) | The PLAN pin reads v0.5; PLAN at HEAD is v0.6 (`d028d972…`) — version-cell refresh only, the stated reason for the pin still holds
+FINDING: Low | delta | nonlocal | §C.4 Landed files / re-red of landed suites | §C.4 attributes the whole `learningsBlock.test.js` re-red surface to P-A-7's case, but PLAN v0.6's paragraph is scoped to `LI-AT-11`'s heading-form cases; PROPERTIES' own amendments (PROP-BOUND-05/07/08, PROP-BOUND-03's zero case) fall under P-A-6 (PLAN:577) and should cite it
+
 ## Recommendation
 
 ## Verdict
