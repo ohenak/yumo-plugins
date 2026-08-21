@@ -140,6 +140,41 @@ the clause to *any A6-touched halt* rather than to escalation halts.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | AC-6.3's *Given* is "the pipeline halts after an A6 escalation", but the only halt naming the capture at HEAD is E-28's restore-failure rethrow, which TSPEC §3.5 says is rethrown "rather than mapping it to an escalation" and which §4.5's halt-fields row does not enumerate. The new conditional can therefore never fire on the path DEC-A6-03 is about. Scope it to any A6-touched halt. | REQ-AWG-06 / AC-6.3 |
+| F-02 | Medium | delta | nonlocal | DEC-A6-03's "Known gap in the remedy's reach" still states "**The routing has not landed** … at REQ v1.15 and FSPEC v1.6, `a6-snapshot`, 'copy the ref' and 'overwrit' match nothing in either document" — false for the REQ at v1.16. The REQ now cites an authority whose text contradicts the REQ's own landing. | DECISIONS DEC-A6-03, "Known gap" paragraph |
+| F-03 | Medium | delta | nonlocal | AC-6.3's new conjunct has no downstream home: "overwrit", "copy the ref" and `a6-snapshot` match zero lines in FSPEC v1.6, FSPEC E-28 and AT-05-5 still require only that the halt name the failed restoration, and PROPERTIES' AC-6.3 row (PROP-REC-05, PROP-REST-08) covers diagnosis and root-cause only. The obligation is currently unverifiable as shipped. | FSPEC E-28 / AT-05-5; PROPERTIES §AC-6.3 traceability |
+
+FINDING: Medium | delta | local | REQ-AWG-06 / AC-6.3 | the new warning clause is gated on "halts after an A6 escalation", yet the only halt that points at the capture (E-28's restore-failure rethrow) is explicitly not mapped to an escalation per TSPEC §3.5 and is absent from §4.5's A6-touched-halt enumeration — widen the Given to any A6-touched halt or the obligation is vacuous on the path DEC-A6-03 names
+FINDING: Medium | delta | nonlocal | DECISIONS DEC-A6-03 "Known gap in the remedy's reach" | upstream still asserts the routing has not landed and pins that to REQ v1.15; at HEAD the REQ is v1.16 and carries the obligation, so the decision record and the REQ now disagree about the same fact
+FINDING: Medium | delta | nonlocal | FSPEC E-28 / AT-05-5 and PROPERTIES AC-6.3 traceability | the REQ's new conjunct has no behavioural home and no property — FSPEC v1.6 matches zero lines for "overwrit"/"copy the ref"/`a6-snapshot`, and AC-6.3's properties cover diagnosis and root-cause only
+
+## Positive Observations
+
+- The edit is exactly as wide as the item it lands. Two hunks, one AC clause plus a changelog block;
+  no other AC, business rule or measured fact moved, and the changelog says so explicitly.
+- Altitude discipline held under pressure. The obvious way to land this item was to name the ref;
+  the author instead wrote "a captured pre-A6 tree state" and left the name to O-1. `a6-snapshot`
+  matches zero REQ lines at v1.16, which is the right outcome and the harder one to write.
+- The clause carries its *why* — "so an operator who intends to inspect it preserves it first" —
+  which is what makes it reviewable as an outcome rather than as a message-format request.
+- Traceability is intact: `(DEC-A6-03)` as the authority, `*(US-02.)*` as the scenario, both in the
+  forms the pipeline parses.
+- The changelog names all three reviewers who raised the item and asserts no decision was reopened —
+  an erratum that documents its own bound is much cheaper to confirm.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The delta lands the routed item and breaks nothing I previously approved. The obligation is present,
+correctly scoped to observable outcomes, traced and cited; no High finding stands.
+
+Three Medium findings should be carried forward rather than dropped. F-01 is the substantive one: as
+worded, the clause's condition is not satisfied on the halt path DEC-A6-03 describes, so the item is
+landed in text but at risk of being vacuous in effect — a one-clause widening fixes it. F-02 and F-03
+are propagation debts in DECISIONS, FSPEC and PROPERTIES rather than defects in this REQ; they are
+tagged `nonlocal` so they route to the owning phases instead of gating this document.
 
 ## Verdict
