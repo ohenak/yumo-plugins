@@ -222,6 +222,78 @@ at v4 — is unchanged, and remains the strongest passage in §F.
 
 ## Positive Observations
 
+- **The High was closed against upstream's own words, not paraphrased into compliance.** The v0.3
+  `PROP-BOUND-03` states the zero return as four literal fields *"for every `text`, including one
+  carrying all five priority sections"* — the exact shape T-O-6 dictates, on the exact fixture class
+  §I.3 names. The revision could have satisfied my finding with a sentence saying the boundary is
+  covered; it wrote the conjunct instead.
+- **The Medium turned up a defect I had missed, because the author verified my prediction instead of
+  applying it.** I wrote that once F-01 landed, §G.3's *"Still open: nothing"* would become true and
+  need no edit. It would not have: an AT-15 bullet sat orphaned below the sentence, stranded when
+  v0.2 struck two answered items. §G.3 now names the item, re-routes it, and records the cause in
+  plain terms. A reviewer's predicted consequence treated as a hypothesis is worth more than one
+  treated as an instruction, and this is the round that demonstrates it.
+- **The retraction is recorded as an episode rather than quietly reverted.** §G.2 gap 1 now reads
+  *"an earlier revision of this document briefly excluded `0` from both, which TSPEC v0.9 §T.5 had
+  already rejected in terms; that exclusion is retracted."* Nothing forced that sentence — the domain
+  could simply have been restored. Keeping the wrong turn visible is the same instinct that made
+  §G.2's earlier gap entries the most transferable content in this document.
+- **§O.5's new row fixes the class of error, not the instance.** The zero bound's two halves are now
+  separated by a stated *test* — is the observable a positive return value a unit can produce, or a
+  run-level decision only a report records — with PROP-CONFIG-09 placed at L3 for the second half and
+  explicitly *not* placed there for the first. That is what stops the next boundary from being
+  mislocated by the same reasoning that produced v4's High.
+- **§O.9 answered the shape question by taking both branches.** My v4 Q-01 offered generated-with-zero
+  or generated-plus-example and said the choice should be stated rather than left to the implementer.
+  The document takes both — a guarded branch inside the property body *and* `0` pinned as a
+  distinguished example *"so LI-08's red is reproducible on any seed"*. The seed-independence
+  argument is the part I did not think to ask for and the part that makes the boundary undeletable.
+- **The intersection oracle widened AT-11's coverage while I was watching for it to narrow.** The old
+  form would have demanded all five priority sections from AT-11's *second* document, which FSPEC
+  describes as *"one missing some of BR-6's priority sections"*. The new form covers both documents of
+  the AC and keeps the expected value hand-transcribed. A change that looks like a relaxation and is
+  in fact a fidelity fix is worth calling out, because the next reviewer will have the same reflex.
+- **Every countable claim in the delta reconciles against repository state.** Seven landed test files,
+  eight committed task ids with LI-04's `.gitignore` artifact named, `learningsBlock.test.js` at
+  7.6 K, six L3 rows against "six claims", 70 unique property ids, 35 ATs. I checked each
+  mechanically; none was off by one.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+All four of my v4 findings are closed. The one that gated — `maxBytes = 0` excluded from
+`PROP-BOUND-03` and §O.9 while §G.1 recorded the obligation as discharged — is closed at every one of
+its three sites: the property states TSPEC §I.3's four-field zero return as a positive conjunct over
+a fixture carrying all five sections, §O.9's generator keeps `0` in its domain with the guarded
+branch *and* a pinned example so the red is seed-independent, and §G.1's row is rewritten as a
+partition **by observable** that claims more coverage than the v0.2 row did, not less. §O.5 gains the
+row that prevents the misreading from recurring. The Medium closed by finding a second real defect —
+an orphaned AT-15 bullet that made *"Still open: nothing"* untrue — and re-routing it. Both Lows are
+closed or carried as intended. No fixture changed, no property was added or retired, the AT partition
+is still 35, the property count is still 70, and no PLAN task row moved.
+
+What remains is two record-keeping items, neither gating:
+
+1. **F-01 (Medium)** — §C.4 says the PLAN ledger-row naming *"is routed as an erratum"*; §G.3's routed
+   list does not carry it. Add the bullet to §G.3 in the AT-15 bullet's form. I emit the erratum from
+   this review regardless, so nothing waits on the edit.
+2. **F-02 (Low)** — four citations place T-O-6 in TSPEC §T.5; it lives under *Named obligations
+   carried forward*. The quotations are verbatim-correct; only the locator is wrong. Fix all four.
+3. **F-03 (Low, Process)** — no edit here; carry to harvest the rule that both a reviewer's *finding*
+   and a reviewer's *predicted consequence* are re-grounded against HEAD before they are acted on.
+
+Two upstream items leave this review as ERRATUM lines — TSPEC's §T.5 suite table assigning AT-15
+wholly to L1 against FSPEC's report-level clauses 2–3, and PLAN's LI-08 amendment note not naming the
+expected-red ledger rows for the re-red of a landed suite. Neither is a defect of the document in
+front of me, and neither is folded into this verdict.
+
+Nothing here re-opens the phase, changes an acceptance criterion's coverage, or requires an upstream
+edit before Phase P can close. Every REQ acceptance criterion still carries at least one property,
+AC-4.4's three zeros are asserted at the seam with AC-2.3's zero bound now also asserted at the unit,
+and the 35-member AT partition is intact.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
