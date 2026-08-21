@@ -181,6 +181,16 @@ and needs no new constraint.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | "The routing has not landed" and the negative-match citation "at REQ v1.15 ... `overwrit` match nothing in either document" are false at HEAD: REQ v1.16 AC-6.3 lands the halt-message obligation and cites DEC-A6-03 by name. Downstream readers are told no requirement obliges the overwrite warning. | DEC-A6-03 → "Known gap in the remedy's reach (PM F-05)" |
+| F-02 | Medium | delta | local | The remedy is still described as "documented ... until DEC-A6-03 is revisited"; under REQ v1.16 AC-6.3 the halt report itself must carry the overwrite warning, so the bullet understates the required operator-facing surface and omits its upstream AC. | Consequences → "What follows from DEC-A6-03", remedy bullet |
+| F-03 | Low | delta | local | Re-evaluation trigger "or the halt-message obligation the PM is routing to REQ lands" is phrased as a future condition but has fired at REQ v1.16; a spent trigger left in the future tense is indistinguishable from a live one. | DEC-A6-03 → "Re-evaluation triggers" |
+
+FINDING: High | delta | local | DEC-A6-03 "Known gap in the remedy's reach (PM F-05)" | The entry asserts "The routing has not landed" and pins it to a negative-match citation at REQ v1.15; at HEAD REQ is v1.16 and AC-6.3 requires the halt report to warn, in the same place it names the captured pre-A6 tree state, that re-running the feature overwrites that capture (citing DEC-A6-03). The claim is false for REQ and load-bearing: it tells PLAN/implementation/DoD readers that the remedy is record-only and that no AC obliges the warning.
+FINDING: Medium | delta | local | Consequences "What follows from DEC-A6-03" remedy bullet | "The documented operator remedy, until DEC-A6-03 is revisited: copy the ref before re-running a halted feature" understates REQ v1.16 AC-6.3, under which the warning is a required element of the halt report itself rather than documentation the operator must already have read; the bullet should name AC-6.3 as its upstream.
+FINDING: Low | delta | local | DEC-A6-03 "Re-evaluation triggers" | The trigger "or the halt-message obligation the PM is routing to REQ lands, in which case ... this entry's known gap closes" has fired at REQ v1.16 but is still written as a future condition, leaving no way to distinguish spent triggers from live ones.
+
 ## Recommendation
 
 ## Verdict
