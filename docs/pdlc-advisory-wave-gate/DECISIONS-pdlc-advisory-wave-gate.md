@@ -407,10 +407,24 @@ that a first-class per-seam `enabled` map becomes the better surface.
   §5.5 counts a capture-*unique* verb (`commit-tree === 1`) rather than raw `_git` calls, since
   `restoreTreeSnapshot` drives the same transport with `read-tree`/`clean`/`reset`. An
   under-enumerated verb set is exactly how a restore-path double false-greens (TE F-02).
-- **Fail-closed in both directions.** Any capture or restore call returning `ok !== true` throws. On
-  the restore side the throw surfaces through `seamOps.revert()`, which `runAdvisorySeam`'s
-  `doRevert` tags `__isRevertFailure` and whose terminal catch rethrows rather than mapping to an
-  escalation — shipped behaviour, relied on rather than re-invented.
+- **Fail-closed is a property of the *pair*, discharged two different ways on purpose.** Do not read
+  it as one rule; through v1.10 this bullet stated it as "any capture or restore call returning
+  `ok !== true` throws", which is false for capture and which a PROPERTIES author transcribing it
+  would turn into a rejection assertion that correct code never satisfies (TE F-01).
+  - **Restore throws.** `restoreTreeSnapshot` raises on each of its three verbs — `read-tree
+    --reset -u`, `clean -fd`, `reset --mixed` — with the failing argv and git's stderr in the
+    message. The throw surfaces through `seamOps.revert()`, which `runAdvisorySeam`'s `doRevert`
+    tags `__isRevertFailure` and whose terminal catch rethrows rather than mapping to an
+    escalation — shipped behaviour, relied on rather than re-invented.
+  - **Capture returns `null`, and the call site writes the disposition.** `captureTreeSnapshot`
+    routes every failed verb through a `fail(verb)` helper that returns `null` (optionally recording
+    the failing verb on the caller-owned `failure` carrier) and **never throws**; its docstring says
+    so in as many words. `runWaveGateSeam` reads the `null` and writes the capture-failure
+    disposition itself, which is the disposition TSPEC §2.5's table assigns to the call site — and
+    which the next bullet describes. The reason it cannot throw its way there is the same reason the
+    `__preDispatch` escape is unavailable: the driver is never entered on this path.
+  Both halves end the wave; neither leaves a repair half-applied. That conjunction is the property,
+  and it is the one worth transcribing.
 - **Capture failure escalates, then halts** — in that order — writing its record through
   `appendAdvisoryEntry` and `appendEscalationEntry` directly, because the driver is never entered.
   The `__preDispatch` escape is unavailable on this path: it is a return value of
@@ -420,15 +434,20 @@ that a first-class per-seam `enabled` map becomes the better surface.
 - **A wave that staged something anyway loses its staging, never its content.** The `reset --mixed`
   is exact only because the wave contract keeps the index equal to HEAD. This is an accepted
   deviation, inside BR-9's content-level oracle (TSPEC §6 OQ-5).
-- **The ignored-path boundary is inherited, not set here.** If the OQ-7 erratum returns holding
-  ignored generated outputs inside AC-5.1, this decision's mechanism grows an arm; the *stash*
-  rejection is unaffected either way.
+- **The ignored-path boundary is inherited, not set here — and it is now settled.** OQ-7 closed
+  *no* at TSPEC v1.11: ignored paths sit outside BR-9's map in both directions (FSPEC BR-9 v1.6,
+  REQ AC-5.1 — they "are operator files A6 never wrote and never restores over"), so the scoped
+  ignored-path arm this record held in reserve is explicitly **not built**. Mechanism and oracle
+  agree on the same domain. Only a reversal of that exclusion would grow the arm; the *stash*
+  rejection is unaffected either way (TE F-02).
 
 ### What follows from DEC-A6-02
 
 - A resolved wave with a promotion produces **three** commit kinds on the branch: per-task commits,
-  the promotion commit, and (when a post-wave command ran with pathspecs configured) the build-output
-  commit. An operator reading `git log` sees the promotion as its own entry with its own message —
+  **one promotion commit per promoted task**, and (when a post-wave command ran with pathspecs
+  configured) the build-output commit. Kinds, not counts: a wave that promotes into two later tasks'
+  paths shows two promotion commits, each naming its own task id in its message (PM F-02).
+  An operator reading `git log` sees each promotion as its own entry with its own message —
   the intended legibility, and the reason the message literal is fixed in TSPEC §3.6 rather than
   left to Phase I.
 - The later task's dispatch is *also* told through the prompt: `waveImplementPrompt` gains an
