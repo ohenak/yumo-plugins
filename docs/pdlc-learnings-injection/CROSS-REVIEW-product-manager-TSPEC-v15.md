@@ -41,6 +41,50 @@ approved at v14 is weakened. One Low finding carries forward, inherited and unch
 
 ## Architecture
 
+The product question behind ERR-8 is a user-visible one: at `maxBytesPerDocument: 0`, does the run
+report *every* corpus document as `RSN-NO-MATERIAL` (REQ's transparency promise — the operator sees
+why nothing was injected), or only the handful that happened to survive a count cut, with the rest
+mislabelled `RSN-COUNT`? Those are different operator-facing reports from the same configuration.
+So I checked the ordering claim against upstream directly rather than accepting the TSPEC's
+paraphrase.
+
+**FSPEC Step 5 at HEAD, items 15–16, verbatim:**
+
+> 15. Drop any eligible document carrying none of BR-6's priority sections, with
+>     `RSN-NO-MATERIAL` — it consumes no slot — then take the first
+>     `learningsInjection.maxDocuments` of the rest in BR-4's order; the remainder are
+>     dropped with `RSN-COUNT` (BR-5, BR-6).
+> 16. For each taken document, extract its injectable material per BR-6, bounded by
+>     `learningsInjection.maxBytesPerDocument`; a document whose material was cut is flagged
+>     **bounded** in its row (BR-6, AC-2.3).
+
+ERR-8's characterisation is exact: the drop at 15 is keyed on the **structural** condition
+("carrying none of BR-6's priority sections"), the count cut happens at 15, and extraction — the
+only step that can discover a zero bound admits nothing — happens at 16, after it.
+
+**What upstream demands instead, also at HEAD:**
+
+| Upstream locus | Text at HEAD | Consequence |
+|---|---|---|
+| BR-6, "How the per-document bound binds" | "Where the bound is **zero**, no material is admissible from any document: each yields nothing, is dropped before the total bound with `RSN-NO-MATERIAL` (BR-9) and consumes no slot" | every document, not just count survivors |
+| BR-9 catalogue row | `RSN-NO-MATERIAL` = "Eligible, but yields no material — it carries none of BR-6's priority sections, **or** the per-document bound is zero and admits none (BR-6)" | two disjuncts, one reason code |
+| D-12 (Step 4 decision table) | "Does the document yield any material? yes / no → `RSN-NO-MATERIAL`" | the question is *yields*, not *carries a heading* |
+| E-36 | "`maxBytesPerDocument: 0` — No document yields material: every one carries `RSN-NO-MATERIAL` and consumes no slot; enabled run, empty selection, BR-8 rows present and empty" → AT-30 | "every one" is the operand |
+
+E-36's "**every one** … consumes no slot" is unreachable under Step 5's literal order whenever the
+corpus exceeds `maxDocuments`: documents cut at item 15 never reach extraction, so they would carry
+`RSN-COUNT`. The gap is real, it is upstream's, and the TSPEC is right that it is procedural prose
+versus rule text rather than a behavioural divergence — at any non-zero bound the two predicates
+coincide, which is why it survived this long.
+
+**The TSPEC's response is the product-correct one.** §D.5 states the implementer's rule as "extract
+for every eligible document, then apply the count and total bounds", and keys the drop on *yields no
+material* — BR-9's and D-12's own words — with one branch covering both disjuncts and no zero-bound
+special case in the selector. That reading satisfies E-36's "every one" and preserves the operator
+report the REQ's transparency criteria promise. The TSPEC does not rewrite upstream to match: it
+files ERR-8 against FSPEC with a suggested fix and states the rule it follows meanwhile. That is
+the correct disposition for a downstream document that has found a defect in its own upstream.
+
 ## Interfaces
 
 ## Data Model
