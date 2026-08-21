@@ -180,7 +180,49 @@ validator variant and its `resolved: 0` summary-row oracle.
 
 ## Acceptance Tests
 
-_pending_
+**AT-06-4 gains the conjunct; AT-06-4b gains the companion.** The pair is the right shape — a
+positive arm and a negative arm over one discriminator — and the oracle note ("asserts co-location
+and the presence of the overwrite statement, never the capture's name — that is O-1's") tells a
+TSPEC author precisely where the assertion boundary sits. AT-06-4b's self-description ("the
+companion that makes AT-06-4's conjunct (3) falsifiable rather than a string always present") shows
+the author internalised the false-green this lens was worried about.
+
+**F-01, Medium — AT-06-4's *Given* does not pin the arm its *Then* conditions on.** The *Then* is
+now:
+
+> (1) it carries the diagnosis, (2) it carries the root-cause class, and (3) **where it points the
+> operator at a captured pre-A6 tree state**, the same report states there that re-running this
+> feature overwrites that capture.
+
+while the *Given* remains the unqualified "a halt following an A6 escalation". A conditional
+consequent whose antecedent the fixture does not pin is **vacuously satisfiable**: instantiate
+AT-06-4 with an E-34 fixture and conjunct (3) holds because its antecedent is false, so the test
+goes green having never once exercised the warning. That is the classic precedence-chain false-green
+— the fixture must defeat the branch that preempts the behavior under test.
+
+The intent is legible (AT-06-4b takes the no-capture arm and names AT-06-4 as its counterpart, so
+AT-06-4 is by elimination the capture-exists arm), which is why this is Medium and not High: the
+obligation is normatively stated in BR-14, both arms are named in §3 step 10 and E-34, and no
+implementer reading §3 could conclude the warning is optional. But an FSPEC acceptance test is the
+artifact a TSPEC author transcribes, and this one transcribes into a passing-either-way test.
+
+**The fix is one clause.** Move the discriminator into the *Given* and make the conjunct
+unconditional:
+
+> *Given* a halt following an A6 escalation **in which a pre-A6 tree state was captured and the halt
+> report points the operator at it**. *When* the report is produced. *Then* (1) … (2) … and (3) the
+> same report states, in the same place it names that capture, that re-running this feature
+> overwrites it.
+
+That reads as the exact mirror of AT-06-4b's already-pinned *Given* ("in which no pre-A6 tree state
+could be captured (E-34)"), and it turns the pair into a true partition where each test can only
+pass by exercising its own arm.
+
+**Everything else in §6 is untouched.** AT-06-1/-2/-3/-5/-6 and the AT-05 family are byte-identical;
+AT-06-6 now inherits the amended halt-report contents through E-30's reference rather than a stale
+re-listing (see above). No AT id collides — `AT-06-4b` follows the `AT-02-7`/`AT-07-2b` suffix
+convention already in use — and no count claim elsewhere in the document needed updating (§1's
+reading order refers to §6 generically, not by cardinality).
 
 ## Open Questions
 
