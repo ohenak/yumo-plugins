@@ -348,17 +348,19 @@ suite is red before Phase I opens *because* of this disagreement — `advisoryQu
 `toHaveLength(6)` counted against a five-row report — is falsified: that assertion's production
 counterpart is present. The `Change` column below reads as
 "required end state", not "edit still to make"; the `At HEAD` column records which half of each
-surface has already moved:
+surface has already moved. **Re-measured at v1.12 (erratum): the `Residue` column below no longer
+holds as written — the production halves have since landed.** The rows are kept, with their residue
+restated on the measurement, because reviews of v1.2–v1.11 read them as outstanding work:
 
 | Surface | At HEAD | Residue |
 |---|---|---|
-| `ADVISORY_SEAMS` assertion | `advisoryEnvelope.test.js` already asserts the six-member list | production constant still five members |
-| `ENVELOPE_DEFAULTS` assertion | `advisoryEnvelope.test.js` already asserts `{E-1 … E-6}` | production default still four members |
-| `ADVISORY_DEFAULTS` re-declared literal | `advisoryConfig.test.js` already carries `waveBudgetPerRun: 1` | production default key absent |
-| Per-seam report rows | `advisoryRecord.test.js`'s `test.each` list already carries `A6`; its `rows.map((r) => r.seam)` equality **still reads `["A1" … "A5"]`** | the one test-side literal not yet transcribed |
-| Gate-exclusivity registry | `advisoryDriver.test.js` already carries an `A6` block | production registry has no `A6` |
-| Harvest / property seam lists | `advisoryHarvest.test.js`, `consolidationProperties.test.js` and `helpers/advisoryDoubles.js` already carry six members and an A6 double | production seam list still five |
-| Bare row-count assertions | all four sites already read `toHaveLength(6)` | production report still yields five rows |
+| `ADVISORY_SEAMS` assertion | `advisoryEnvelope.test.js` already asserts the six-member list | **none** — the production constant reads `["A1","A2","A3","A4","A5","A6"]` at HEAD, and `ADVISORY_SEAM_PHASES` carries a sixth row `A6: { id: "I", outcome: "halted" }` |
+| `ENVELOPE_DEFAULTS` assertion | `advisoryEnvelope.test.js` already asserts `{E-1 … E-6}` | **none** — the production default reads `["E-1" … "E-6"]` at HEAD |
+| `ADVISORY_DEFAULTS` re-declared literal | `advisoryConfig.test.js` already carries `waveBudgetPerRun: 1` | **none** — the production default carries `waveBudgetPerRun: 1` at HEAD |
+| Per-seam report rows | `advisoryRecord.test.js`'s `test.each` list already carries `A6`; its `rows.map((r) => r.seam)` equality **still reads `["A1" … "A5"]`** | the one test-side literal not yet transcribed — unchanged by the v1.12 re-measurement, which moved production surfaces only |
+| Gate-exclusivity registry | `advisoryDriver.test.js` already carries an `A6` block | **none** — `ADVISORY_SEAM_PHASES` carries `A6` at HEAD, and the driver exposes A6's behaviour through the optional `seamOps.classifyReply` member rather than an `if (seam === "A6")` branch, which is what the registry asserts |
+| Harvest / property seam lists | `advisoryHarvest.test.js`, `consolidationProperties.test.js` and `helpers/advisoryDoubles.js` already carry six members and an A6 double | **none** — these derive from `ADVISORY_SEAMS`, six at HEAD |
+| Bare row-count assertions | all four sites already read `toHaveLength(6)` | **none** — the queue report's rows are built by `advisorySummaryRows` over `ADVISORY_SEAMS`, one row per member, so it yields six at HEAD |
 | `.enabled` occurrence count | unchanged at three, as required | none |
 
 Whether the remedy is to revert `e3b9d5a3`'s test-side edits and let Phase I make them in PLAN
