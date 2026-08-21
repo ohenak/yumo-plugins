@@ -217,6 +217,32 @@ Medium rather than Low.
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+The delta resolves seven of the eight routed items outright and the eighth (item 4) in its
+control-flow half. Nothing I previously approved is broken by it: I re-read AC-5.2, AC-6.1, AC-2.4,
+O-1 and the eight upstream-tier citations against the new text and against upstream at its current
+version, and the document remains a faithful compression of it. No High finding, so this
+confirmation approves and the phase proceeds.
+
+What I would change, none of it gating:
+
+1. **F-01 (Medium)** — give the failed-capture arm its operator-visible observable. One clause on
+   AC-5.1 naming whether the run reports the arm through the advisory record (AC-6.1) and what the
+   per-seam A6 row of AC-2.4 reads, or an explicit statement that the arm is not an invocation and
+   therefore carries neither. Either answer is fine; the silence is the problem, because AC-2.4's row
+   oracle cannot be written against it as it stands.
+2. **F-02, F-03 (Low)** — two lineage-header rows: restore the resolvable upstream path alongside the
+   new chain, and qualify the `Cross-Reviews` row so it does not assert harvest over the rounds
+   currently on the branch.
+3. **F-05 (Low)** — one cross-reference on AC-5.1 making explicit that excluding the record carriers
+   from the tree comparison does not license reverting them, AC-6.1 still governing.
+4. **F-04 (Low, inherited)** — the 630-line soft budget, which SE Q-02's relocation dissolves.
+
+If the orchestrator prefers to spend no further rounds on this document, every item above is safe to
+carry into the FSPEC/TSPEC layer as-is *except* F-01, which should be answered before a test author
+writes an oracle over AC-5.1's failure arms.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
