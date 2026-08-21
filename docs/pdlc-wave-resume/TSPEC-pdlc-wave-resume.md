@@ -4,11 +4,18 @@
 |---|---|
 | Status | Draft |
 | Author | se-author |
-| Version | 1.0 |
+| Version | 1.1 |
 | Upstream | REQ → FSPEC → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | (none yet) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` |
 | LEARNINGS | docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md |
+
+**Revision history.**
+
+| Version | Change |
+|---|---|
+| 1.0 | Initial authoring. |
+| 1.1 | Round-1 cross-review revision. Provenance is announced as a clause **appended outside** the existing punctuation, and the shipped assertions that nonetheless change are enumerated by `file:line` with their replacements (§2.4; TE F-01, PM F-01). The ancestry probe stays **lazy** and gains a call-count oracle (§2.2, §2.3, §3.2, AT-03/AT-11; TE F-02, PM F-05). AT-06 compares configs differing only in the `startWave` key (TE F-03, PM F-02); AT-16 states the oracle real delegation can honestly carry (DEC-WVR-07; TE F-04, PM F-03). Added: the operator resume banner to §2.3 (TE F-05), a generative property suite (§5.3, §5.7; TE F-06), the coverage-floor obligation (§5.8, RT-7; TE F-07), the two named harness extensions (§5.2; TE F-08), the `⏭` provenance conjunct (AT-12; TE F-09), AT-14’s ordering precondition (TE F-10), and IG-6’s positive conjunct and named closure home (AT-02; PM F-04). A-2 restated on the coverage this feature adds (PM F-06). Lows: DC-08 miscitation dropped (PM F-07), BR ids added to §2.6 (PM F-08), baseline citations version-qualified (PM F-09), `ReasonContext` given a constructor (TE F-11), `lastGreenWave`’s consumer named (TE F-12), the no-echo rule restated at AT-02 (TE F-13), and the announcement table given a set-equality oracle (AT-13; TE F-14). |
 
 ## 1. Overview
 
