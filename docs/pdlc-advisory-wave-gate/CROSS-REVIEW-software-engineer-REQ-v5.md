@@ -94,4 +94,37 @@ Then, or trace list changed except AC-5.1's exclusion list and the two commit pi
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | This round's 8-line v1.15 changelog block took the document to 676 lines / 54,803 bytes against C-5's own 630-line / 55,296-byte soft budget — 493 bytes and 24 lines of hard-ceiling headroom left. At ~8 lines per erratum changelog, the next round breaches the soft byte threshold and the third trips the 700-line hard block in `check-req-size.sh`. The growth is entirely changelog, not requirements: collapse superseded blocks in the next edit, or land SE Q-02's relocation. Filed separately from the dispositioned SE F-04 overage because the numbers are this round's. | Lineage header, v1.15 changelog block, vs §5 C-5 |
+| F-02 | Low | inherited | nonlocal | `docs/_constraints/pdlc-wave-gate-baseline.md`'s `Cited by` row records this REQ as citing the baseline from §1/§4/§5/§8, but §6 AC-1.1 and §7 R-5 cite `M-WG-13`/`M-WG-14` from §4 — and this round added a further §4-grounded pin at both sites. The defect is in upstream's bytes and its fix belongs to the baseline's change control (row + version bump), not to this REQ. Recorded so it is not lost with the erratum round. | Baseline `Cited by` row vs REQ §6 AC-1.1 / §7 R-5 |
+| F-03 | Low | delta | local | AC-5.1's edit left ragged reflow — "…are excluded from / the comparison. So are paths / ignored by `.gitignore`…" wraps mid-clause across three short lines where the surrounding paragraph is filled to margin. Content is correct; only the fill is off. Reflow the paragraph on the next touch. | §6 REQ-AWG-05 AC-5.1 |
+
+FINDING: Low | delta | local | Lineage header v1.15 changelog vs §5 C-5 | this round's changelog block took the document to 676 lines / 54,803 bytes against C-5's 630-line / 55,296-byte soft budget, leaving 493 bytes and 24 lines of hard-ceiling headroom; at ~8 lines per erratum round the next round breaches the soft byte threshold and the third trips the hard block — collapse superseded changelog blocks or land SE Q-02's relocation
+FINDING: Low | inherited | nonlocal | baseline `Cited by` row vs REQ §6 AC-1.1 / §7 R-5 | upstream records this REQ as citing the baseline from §1/§4/§5/§8 only, while §6 and §7 cite `M-WG-13`/`M-WG-14` from §4; fix belongs to the baseline file's change control (row + version bump), not to this REQ
+FINDING: Low | delta | local | §6 REQ-AWG-05 AC-5.1 | the edit left ragged mid-clause reflow ("excluded from / the comparison. So are paths / ignored by `.gitignore`") in an otherwise margin-filled paragraph; content correct, fill only
+
+## Positive Observations
+
+- The High landed exactly as it should have: AC-5.1 now names all three record carriers the run
+  still owes at the observation point, and it did so by extending the exclusion list rather than by
+  importing capture mechanics — the fix stayed at requirements altitude and left O-1 intact.
+- The two commit pins are quoted from upstream's `Verified at` row rather than reasoned, and they
+  attach to the right facts (`M-WG-13`/`M-WG-14` at §4, `M-WG-8` at `c8aa22a4`). This is the DC-02
+  measured-fact discipline working as designed.
+- The v1.15 changelog states both what was taken and what was **not**, with provenance and locality
+  for the two declined items. That is what let this round confirm the declines instead of
+  re-deriving them.
+- The `Cross-Reviews` rewrite is a rare instance of a lineage row being made *less* tidy in order to
+  be true. Verified against LEARNINGS `:10`; it earns its extra clause.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves every routed item it took, declines the two inherited ones correctly, and breaks
+nothing v4 approved. Upstream re-read at HEAD: the tier REQ is unchanged at v1.4 and all seven cited
+ids resolve; the baseline is at the cited v1.2 and its `Verified at` row backs both new pins. The
+document remains a faithful compression of its upstream. All three findings are Low; none gates.
+
 ## Verdict
