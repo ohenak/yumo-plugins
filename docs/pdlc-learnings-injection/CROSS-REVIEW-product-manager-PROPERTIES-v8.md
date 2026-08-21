@@ -188,6 +188,51 @@ DEFERRED: §C.4 says LI-05's artifact is *"the capture script (below)"*; the ref
 
 ## Positive Observations
 
+- **All four v7 findings are resolved, and the two High ones are resolved in a form I could
+  independently re-derive.** I did not read the adding commits off the table and check them for
+  plausibility — I regenerated all fourteen with `git log --diff-filter=A` and compared. Fourteen of
+  fourteen match, including the two that are easy to get wrong: `learningsBaselineGuard.test.js` and
+  `fixtures/learnings-baseline/` share a single adding commit (`4a6c1816`), and the table says so.
+- **The fix generalises instead of patching.** I asked for a re-measurement; v0.5 delivers a stated
+  method — *"a snapshot, not a live claim"*, pinned to `21edb7c5`, with a per-row **Added by** column
+  — which is my own v7 DEFERRED item taken up unprompted. The difference matters: a re-measured table
+  goes stale silently, a pinned one goes stale visibly. This is the shape I would want every
+  HEAD-dependent table in the pipeline to adopt.
+- **The superseded readings are named rather than erased.** *"Earlier revisions recorded that none of
+  these files existed, then that seven of them did; both readings are now superseded"* and *"that was
+  true when written and is not now"* keep the document's own history legible. A document that records
+  where it was wrong is one a reader can calibrate against; one that quietly overwrites is not.
+- **F-03's resolution is evidence, not assertion.** §C.4 does not merely say the four amendment cases
+  are absent — it names the single `describe`, the two `maxBytes` literals with their lines, and each
+  of the four missing arms by its exact heading form. Every element verified. Stating the negative
+  that way is what makes "no red-owning task remains ahead of them" checkable rather than trusting.
+- **The two mechanisms are now cleanly separated.** The closing paragraph distinguishing P-A-7 case B
+  (the landed *implementation* suite) from P-A-6 (this document's own PROPERTIES suite), and saying
+  explicitly that the restatement *"moves neither rule, only the point in the run each is read from"*,
+  closes my v7 DEFERRED reconciliation item exactly.
+- **The header attribution is now precise in both directions.** It credits the two-case table to
+  **v0.6**, states it is unchanged at v0.7, and names what v0.7 *did* change. I checked PLAN's v0.6
+  and v0.7 changelog rows: both readings are correct.
+
 ## Recommendation
 
+**Needs revision** — on a single High finding, and a narrow one. F-01 is a delta-introduced
+contradiction inside this document: §C.4's new closing sentence claims two upstream gaps are *routed
+as errata*, while §G.3 — the list that does the routing, untouched by this delta — still says *"Still
+open — one item"* and carries neither. It is the same asserted-but-not-listed pattern §G.3 itself
+records as PM v5 F-01, which is why I hold the standard rather than waive it: §G.3 is what harvest
+reads, and an item that reaches no list reaches no author.
+
+**What must change — three lines:** add the two case-B gaps to §G.3's still-open list as their own
+bullets and correct *"one item"* to the new count. §C.4 needs no edit; its sentence becomes true once
+the list carries them. F-02 and F-03 are Low and can ride along in the same edit or be left.
+
+Everything else in v0.5 should be kept exactly as written. All four of my v7 findings are resolved,
+two of them in a better form than I asked for, and no property, oracle, fixture, AT id, severity or
+red/green trace moved. I have routed both PLAN gaps upward in this review's ERRATUM lines so the
+upstream work proceeds in parallel with the §G.3 edit rather than behind it.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
