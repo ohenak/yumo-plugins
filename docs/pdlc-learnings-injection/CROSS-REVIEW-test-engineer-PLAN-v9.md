@@ -36,6 +36,39 @@ Case A's justification being stated only for the batches that have a ledger. No 
 
 ## Batches
 
+Exactly one task row changed, and it changed by one clause.
+
+**LI-08 (RED block/material suite, batch 3) — the note now points somewhere enforceable.** The v0.5
+sentence ended at "Ownership does not move, so the single-writer manifest is unchanged". v0.6 adds:
+"and the expected-red rows that follow-up commit owes are named in §The three gate wordings under
+**Amendment commits on landed suites**, which is what P-A-7 requires be committed before the run it
+governs (v0.6 erratum)". That is the correct repair shape for the routed item. P-A-7's own words are
+"a live table is amended by an edit to this PLAN, committed before the run it governs" (`P-A-7`, the
+open-questions table) — the naming had to land *in this document*, not in a completion note, and it
+did. The cross-reference is a section-title-plus-bold-paragraph anchor, not a raw `file:line`, so it
+is a citation DEC-DOC-01 accepts.
+
+**Nothing else in the task table moved.** `git diff` touches no other row: `[Fake first]` ordering,
+the red-before-green pairing for every implementation task, the single-writer file manifest and the
+same-batch same-new-file guard are byte-identical to the v0.5 bytes I approved. LI-12's three-case
+`LI-AT-30` oracle — v7's High, resolved at v0.5 — is untouched, and its three conjuncts still read
+key-present / reject-rows set-equal / no `RSN-COUNT`.
+
+**The heading-form cases are still the right red.** Re-read against TSPEC at HEAD rather than
+re-derived from my own round-8 notes: §D.3 states the second rule (exactly two `#`, optional ordinal
+stripped and discarded, optional trailing gloss, otherwise exact case-sensitive comparison against
+`BR6_SECTION_NAMES`) and names the token-overlap hazard the near-miss must defeat —
+`## Cross-Feature Findings` would match `Cross-Feature Patterns` and `## Process Findings` would match
+`Process Learnings` under a widened matcher (`TSPEC §D.3`, the `SECTION_HEADING_RE` discussion). LI-08's
+fixture picks `## Process Findings` as its non-matching near-miss, which is that exact hazard. The
+compression is faithful; the erratum did not disturb it.
+
+**The `Status` cell contradiction I filed as v8 F-01 is still on the page.** LI-02 and LI-08 read `⬚`
+while the amendment note says both "have already landed on this branch" — and PROPERTIES §C.4 at HEAD
+independently confirms the landing ("Seven of the fourteen files have landed. The tasks committed so
+far are LI-01…LI-04, LI-07, LI-08, LI-09 and LI-13"). It was Low then and it is Low now; this erratum
+was not scoped to it, so I do not re-file it as a finding of this round beyond noting it stands.
+
 ## Dependencies
 
 ## Verification
