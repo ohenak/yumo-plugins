@@ -80,6 +80,37 @@ two of the four delta findings name sites that a prior round already flagged (`�
 
 ## 3. Reviewers
 
+**pm-review (product-manager lens)** — 5 findings: 1 High + 2 Medium delta, 2 Low inherited.
+
+| # | Sev | Class | Locality | Site | Substance |
+|---|---|---|---|---|---|
+| PM F-01 | High | delta | local | §5.6 AT-06-4 row; §5.1 file table | `snapshotRef` landed as a designed two-arm operator-facing contract in §4.5, but §5.6's AT-06-4 row still asserts only the root-cause class and there is no AT-06-4b row; FSPEC v1.7's third conjunct (co-location) and E-34's no-capture arm have no oracle. The routed obligation's mechanism half landed and its proof half did not — and PLAN mints red-test tasks from §5.6 |
+| PM F-02 | Medium | delta | local | Lineage header, `Upstream` row | The row still pins FSPEC v1.6 over REQ v1.15 while this round's changelog re-grounds on REQ v1.16 / FSPEC v1.7 and cites their hashes; the header advertises superseded upstream against the body's actual grounding |
+| PM F-03 | Medium | delta | local | §1.3 residue table, "Per-seam report rows" | The re-measured cell asserts `rows.map((r) => r.seam)` "still reads `["A1" … "A5"]`" and is "unchanged by the v1.12 re-measurement"; at HEAD it reads `["A1" … "A6"]`. The round claims to have checked this cell and left the stale value, inflating the residue PLAN reads |
+| PM F-04 | Low | inherited | nonlocal | §6 OQ-2 | Frames the overwrite question as wholly contingent when BR-14/AC-6.3 now make the operator warning unconditionally due; correct only for the ref-naming remedy, and §2.5 points here for that half |
+| PM F-05 | Low | inherited | nonlocal | §6 OQ-7 | Pin reads "REQ AC-5.1 at v1.14" for the three-carrier observation point where AC-6.2's escalation-log append entered at v1.15; substance HEAD-correct, unresolved since v1 |
+
+**te-review (test-engineer lens)** — 3 findings: 1 High + 1 Medium delta, 1 Low inherited.
+
+| # | Sev | Class | Locality | Site | Substance |
+|---|---|---|---|---|---|
+| TE F-01 | High | delta | nonlocal | §5.6 AT-06-4 row; §5.1's `advisoryWaveGate.test.js` row | Same defect as PM F-01, stated as an oracle-coverage argument: the new rendering contract has **zero** oracles, so both failure modes pass — an implementation that plumbs `snapshotRef` and never renders the sentence is green, and so is one that emits it unconditionally, including on the E-34 halt where FSPEC requires its absence. Without AT-06-4b, conjunct (3) degenerates into an always-present string. Resolution named concretely: extend AT-06-4 to all three conjuncts with a **co-location-within-one-rendered-report** oracle, and add an AT-06-4b row on the existing E-34 capture-failure fixture in `advisoryWaveGate.test.js` |
+| TE F-02 | Medium | delta | nonlocal | §6 OQ-2 | OQ-2 still disposes the re-run overwrite as an accepted cost "the operator's, not the pipeline's" with a run-scoped ref discriminator as the recorded remedy, while §2.5 at v1.12 records upstream's decision that the halt report itself warns the operator. The design record presents as open an accepted-cost question BR-14 closed; one clause acknowledging the landing fixes it. Second round flagged |
+| TE F-03 | Low | inherited | local | §4.5 Snapshot ref row | The row's "one ref per wave, never overwritten by a later wave" is true as written but carries no cross-reference to §2.5's correction that the *next run* overwrites the ref — which is the condition the new `snapshotRef` rendering warns about. §4.5 is where an implementer reads the field contract, and the warning's trigger is not there |
+
+**TE Q-01, open and worth answering before the repair:** is conjunct (3)'s intended oracle a
+verbatim sentence transcribed into §5.5 alongside the other halt literals, or a
+presence-of-statement check? The choice determines what PLAN mints as the red test. FSPEC
+deliberately declines to fix the capture's *name* but is silent on the *sentence*.
+
+**Reviewer quality.** Both lenses re-measured every current-state claim against the shipped tree
+rather than reading it, both independently discovered the eighth item was inverted by HEAD and
+endorsed the absorption, and both named the same High with a concrete, implementable resolution. TE
+overstated one detail — "grep for `overwrit` across §5.1–§5.6 returns nothing" is very nearly true:
+there is exactly one hit, §5.2's "never overwritten by a later wave", which is the *cross-wave*
+invariant and not the *cross-run* warning under discussion. The overstatement does not change the
+finding.
+
 ## 4. Pattern of Disagreement
 
 ## 5. Best-Guess Root Cause
