@@ -62,6 +62,34 @@ Every claim below was re-measured at HEAD rather than taken from the changelog.
 
 ## Positive Observations
 
+- **The High was closed by fixing the omission, not the sentence.** The v2 finding could have been
+  satisfied by adding one path to one cell. Instead `advisoryWaveGateMain.test.js` entered the
+  `Test File` cell, the file-ownership manifest **and** the single-writer walk, the Overview's count
+  moved twelve → thirteen with the fixture restated as the fourteenth path, and the widening itself
+  (four keys → five, `snapshotRef: null` on the escalation path) is named in A6-18's red step with
+  the reason the file reddens. That is the whole blast radius of one unowned file, walked.
+- **The fix names what it deliberately leaves alone.** "Its `haltReason` containment assertion is
+  deliberately **not** touched — that is AT-05-3's surviving oracle" is the sentence that stops the
+  next reader from "tidying" a `toContain` into a `toBe` while widening the neighbouring `toEqual`.
+  A revision that says what must *not* change is rarer than one that says what must.
+- **`F-03` was resolved by locating the obligation, not by duplicating it.** The un-skip overwrite
+  push could have been bolted onto A6-18 and left to reach across a batch boundary. The revision
+  instead reasons from TSPEC §4.5 — the seam has already returned by then, so this is the one push
+  that cannot happen inside `runWaveGateSeam` — and hands the site, the helper call and the assertion
+  to A6-21, which already owns `waveExecution.test.js` and the wave loop, under AT-06-4's existing
+  witness id rather than minting a new one. A6-18 keeps the seam-level arms. Two owners, one contract,
+  no shared file in a batch.
+- **The new un-skip arm carries its positive companion by construction.** The A6-21 text pairs the
+  overwrite assertion with "on an un-skip halt where A6 did **not** fire, the `advisory` argument is
+  omitted and no overwrite notice appears" — and pins both halves to spec-side literals written in
+  the test, never a constant imported from the module under test. That is the anti-echo and
+  no-absence-only-oracle discipline applied without being asked for it in this round.
+- **The DoD grew legs that a gate can actually fail.** The new checklist item does not say "the
+  shipped oracles were updated"; it says which two files, which assertion in each, and what the
+  literal must read (`five` keys; `3` notices) — a leg an implementer either ticks truthfully or
+  cannot tick.
+
+
 ## Recommendation
 
 ## Verdict
