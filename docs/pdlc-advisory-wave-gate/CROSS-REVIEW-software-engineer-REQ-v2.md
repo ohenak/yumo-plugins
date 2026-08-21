@@ -116,3 +116,27 @@ it is a provenance sentence in this document's changelog, not a reusable constra
 - **Every prior finding was addressed at its own altitude and none by amending an approved
   criterion.** AC-1.1 and R-5 are byte-identical to v1.11, exactly as v1's F-02 asked. No settled
   decision was re-opened, and the diff contains no restructuring.
+
+## Recommendation
+
+**Approved with minor changes**
+
+v1's single High (F-01 — the `ready: false` / `pending`-row pair contradicting a merged HEAD and
+blocking queue rows 6 and 20) is resolved at the control plane, not merely in prose: the flag reads
+`true`, QUEUE row 19 reads `done`, and the pre-check at
+`pdlc/workflows/orchestrate-queue.js:879-886` no longer matches. No High finding is open, old or
+new, so the approval bar is met.
+
+The two findings above are Low and non-gating. Both are single-clause edits that touch neither an
+acceptance criterion nor a decision: F-01 extends C-5's parenthetical to name the soft threshold
+alongside the hard ceiling; F-02 corrects one causal clause in the v1.12 changelog. They can land
+in this document's next revision or be carried — neither changes what the REQ requires.
+
+Scanned only the changed hunks per the delta protocol; unchanged sections approved in v1 were not
+re-litigated. No defect found in an upstream document this round — the constraints file's v1.2
+edit is the correct home for v1's F-02 and was verified, not assumed. No `ERRATUM:` lines emitted.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
