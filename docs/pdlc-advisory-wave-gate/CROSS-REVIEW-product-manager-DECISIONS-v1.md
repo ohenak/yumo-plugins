@@ -142,6 +142,13 @@ replacing the enumeration with a count plus the harvest commit — resolves it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | `DEC-A6-04` says `waveBudgetPerRun: 0` "means 'keep the tier on, keep A6 off' **at the dispatch level, not at the mechanism level**", and that every red wave still captures — so an operator who set `0` to mean "off" still accumulates one dangling ref and one commit object per red wave, forever, in a namespace the feature never prunes (DEC-A6-03's third Consequences bullet). The document justifies the ordering as leaving that operator "a pre-repair snapshot to inspect". Is that the right default for someone whose configured intent was *off*? The two entries are individually well-argued but their interaction is the one place a `0`-configured repo pays an unbounded cost for a feature it opted out of. If the answer is "yes, and the cost is bounded by re-runs", say so in DEC-A6-04 with DEC-A6-03's accumulation named — the reader currently has to compose the two entries to discover it. |
+| Q-02 | `DEC-A6-03`'s "Known gap in the remedy's reach" routes a halt-message obligation to REQ/FSPEC and says "the PM is routing it". Read at HEAD, FSPEC E-28 still says only that the halt "names the failed restoration", and AT-05-5 asserts only that the halt names the failed restoration and that no commit is reached — neither carries the "re-running destroys this ref" sentence. So the routing has not landed. Is it still open, or was it dispositioned somewhere this entry does not cite? The entry reads as if a routing is in flight; nine rounds later, an uncited in-flight routing is indistinguishable from a dropped one. Naming the destination (REQ item id, or "raised and declined") would close it either way. |
+| Q-03 | `DEC-A6-01` argues at length that a `-m`-less `commit-tree` fails silently and that "the literal belongs in the implementing task's argv, not in its judgement" — i.e. deliberately no test asserts the message text. The shipped literal is `A6 snapshot: wave {N} pre-repair tree ({feature})`, and it is the only thing that tells an operator inspecting a dangling ref which wave and feature the object belongs to. Since the entry's own argument is that the operator-facing legibility of that message is "the whole point of capturing it", is leaving it unasserted the intended trade? This is a question rather than a finding because the entry states the trade explicitly and it is a test-strategy call, not a product one — but the *product* asset at risk (operator recoverability) is this document's own stated stake. |
+
+
 ## Positive Observations
 
 ## Recommendation
