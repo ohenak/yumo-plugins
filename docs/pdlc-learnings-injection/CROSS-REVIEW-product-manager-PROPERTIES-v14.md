@@ -111,6 +111,52 @@ in no property statement — the filename hits in this document are all in §C.4
 
 ## Oracles
 
+**No oracle row, AT mapping, level or red/green owner changed.** §O.1–§O.10 are outside every changed
+line range, and the delta adds no commit anchor and retires none — every SHA in §C.4's inventory is
+the same one I verified at v13. What the delta touches on the oracle side is the *upstream ruling*
+each case-C status is read against, and there the sweep is incomplete in a second place.
+
+| Oracle-side dependency | Delta effect | Verified at HEAD |
+|---|---|---|
+| PROP-BOUND-03/05/07/08 → P-A-7 case C | Case name re-quoted; verdict limb restated as record | `PLAN:493` carries *"batch 13 or later, the case that is live at HEAD"* (1 hit); v1.2 changelog carries the tense change (1 hit) |
+| Case A window | `before batch 7` → *"before batch 9 (which includes batches 7 and 8)"* | 2 fixed-string hits in PLAN; PLAN v1.1 made this change (PM F-02, TE F-02) |
+| Case B window | Re-quoted *"batch 9 through batch 12"* | 1 hit, unchanged since v0.8 |
+| PROP-CONFIG-09 ↔ LI-12's three-case `LI-AT-30` | Untouched | `learningsConfig.test.js:247/:248/:264/:280` still character-exact |
+| **P-A-6 → this document's own PROPERTIES suite** | **Not swept** — still cites the case-B ledger route and calls P-A-6 *"byte-unchanged at v0.8"* | `PLAN:663` retired that route at v1.1; **contradiction** (F-01) |
+| **§G.3's "Newly routed this round — one item"** | **Not swept** — the re-pin to v1.3 stopped at the struck bullets above it | PLAN v1.2 item (3)/(4) and v1.3 item (1) recorded these files; the route is **answered**, not open (F-02) |
+
+**§G.3's routed item is the second miss, and this document has a name for it.** The bullet at lines
+1357–1367 routes to PLAN the four `2fc6fcd3` remediation files PLAN's fourteen-row manifest omits,
+and leaves PLAN the choice *"whether the four take task rows, a remediation row, or an explicit
+out-of-manifest note"*. PLAN has since chosen: v1.2 item (3) records the four in a new
+**§Post-batch remediation** subsection, item (4) adds the P-A-5 second-owner rows for `2fc6fcd3`'s
+re-capture of `fixtures/learnings-baseline/**` and `learningsBaselineGuard.test.js` (which was my
+v13 F-05), and v1.3 item (1) re-derives the subsection from `git show --name-status 2fc6fcd3` into
+**nineteen rows**. So the item is discharged upstream, and continuing to route it is exactly the
+DEC-ERR-01 anti-pattern this document names three times in the same section — *"re-emitting either
+item now would be DEC-ERR-01's anti-pattern"*, *"re-raising it here would be the DEC-ERR-01
+anti-pattern of routing a question already routed"*. Non-gating, because a stale route misdirects
+attention rather than falsifying a property, but it is the same missed sweep as F-01 and should be
+fixed in the same edit. F-02.
+
+**One residual from my v13 F-02, now cosmetic.** Line 1340 still paraphrases case C as *"an amendment
+landing **after** batch 13"*. PLAN v1.3's case C is *"batch 13 or later"*, which is one batch wider.
+The bullet is struck-through history describing what PLAN v0.8 answered, so it is provenance rather
+than a live rule, and the conclusion it draws (no ledger row) is identical under either width — Low,
+F-05.
+
+**DEC-DOC-01: no finding.** The delta adds no bare `file:line` anchor; the two anchors it touches
+(`PLAN:493`-class quotations) travel with their verbatim text, so the quotation is the claim and the
+line number is convenience.
+
+**The provenance/pin distinction the delta draws is correct and I checked it.** The header now states
+that *"attributions of the form 'PLAN v0.8' elsewhere in §C.4 and in §G.3's struck bullets are
+**provenance, not pins**"*. Nine `v0.8` occurrences remain (lines 872, 1126, 1172, 1186, 1307, 1318,
+1323, 1339, 1346, 1351, 1379). All but one are genuinely of the form *"answered by PLAN v0.8"* /
+*"a ruling PLAN v0.8 scopes to …"* and are right to stay. The exception is line 1186's *"P-A-6
+(byte-unchanged at v0.8)"*, which reads as a present-tense currency claim, not provenance — and is
+the one that is false. That is part of F-01.
+
 ## Fixtures
 
 ## Findings
