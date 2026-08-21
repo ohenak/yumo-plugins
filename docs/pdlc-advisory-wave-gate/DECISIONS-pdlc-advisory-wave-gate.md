@@ -369,26 +369,53 @@ on wave 2 ends holding both refs; a *re-run* of a halted feature reaches wave 1 
 **Constraints that forced the shape.** The halt message must print the ref name, so the name has to
 be derivable from what the halting wave knows. Phase I has no run id.
 
-**Reversibility:** easy — the name is computed in one function and printed in one halt field.
+**Reversibility:** easy — the name is computed in one function. It is *printed* in two places as of
+the routing above (TE v3 F-02): the halt field that names the ref, and, adjacent to it, the
+overwrite notice `renderSnapshotOverwriteNotice(snapshotRef)` renders — co-located by contract, so a
+rename moves one computation and one rendered string, not two independent ones.
 
-**Known gap in the remedy's reach (PM F-05).** The "copy the ref" remedy below is documented in
-TSPEC §2.5 and in this record — neither of which an operator reads at halt time. FSPEC E-28 requires
-the halt to name the failed restoration and TSPEC requires it to name the ref, so at halt an operator
-learns the object's *name* but gets no indication that the ordinary next step after a halt —
-re-running the feature, which §2.5 itself describes — destroys it. Putting that sentence on the halt
-message is a product decision about an operator-facing obligation and therefore belongs in
-REQ/FSPEC, not here; the PM is routing it. **The routing has not landed** (PM Q-02, TE): at REQ v1.15
-and FSPEC v1.6, `a6-snapshot`, "copy the ref" and "overwrit" match nothing in either document, so
-FSPEC E-28 and AT-05-5 still require only that the halt name the failed restoration, and an operator
-still learns the ref's name at halt and nothing about the ordinary next action destroying it. It is
-re-emitted as a REQ erratum this round rather than left implied — an uncited in-flight routing is
-indistinguishable from a dropped one. This entry carries the gap until it lands.
+**The gap in the remedy's reach, and how it closed (PM F-05; state re-grounded at HEAD, v1.12).**
+The gap this entry carried was real and is now closed at the specification levels. The original
+finding: the "copy the ref" remedy below was documented in TSPEC §2.5 and in this record — neither of
+which an operator reads at halt time — so at halt an operator learned the object's *name* but got no
+indication that the ordinary next step after a halt, re-running the feature, destroys it. Putting
+that sentence on the halt message is a product decision about an operator-facing obligation and
+therefore belonged in REQ/FSPEC, not here; the PM routed it, and this entry carried the gap until it
+landed. **It has landed, at all three specification levels** — each citing this entry by id:
+
+- **REQ v1.16, AC-6.3** — where the halt report points the operator at a captured pre-A6 tree state,
+  it also warns, *in the same place*, that re-running this feature overwrites that capture (DEC-A6-03).
+- **FSPEC v1.7, BR-14** — states the same conjunct as an observable and names **co-location** as the
+  observable ("a pointer in the halt report and the warning in a runbook does not satisfy it"),
+  with `AT-06-4` conjunct (3) as its acceptance test and `AT-06-4b` as the negative arm for the
+  capture-failure branch, where **E-34** requires no warning because there is no capture to point at.
+- **TSPEC v1.15, §4.5** — the halt-field contract is no longer the closed four-literal set
+  `{rootCause, diagnosis, repairApplied, repairPaths}`: it adds a snapshot-overwrite notice rendered
+  by `renderSnapshotOverwriteNotice(snapshotRef)` into the report's `notices`, one string carrying
+  the ref pointer and the overwrite statement adjacent, emitted on every A6-touched halt whose
+  `snapshotRef` is non-`null` and never when it is `null`.
+
+**What is still owed, and to whom (TE v3 F-02).** Specified is not asserted. At HEAD the conjunct
+has no property and no test: `PROPERTIES` covers AC-6.3 through `PROP-REC-05`, which asserts only
+that the halt report carries the diagnosis and the root-cause class, and `overwrit` matches nothing
+in PROPERTIES; no test in the suite inspects halt text for an overwrite warning. This is the same
+specified-vs-asserted split DEC-A6-04 records for `waveBudgetPerRun: 0`, and it is named here so a
+test author reads an open obligation rather than an absent one. The falsifiable half is
+**co-location**, not presence: the oracle asserts the ref pointer and the overwrite statement on the
+**same rendered report field**, and must go RED both when the warning is deleted and when it is
+emitted somewhere other than beside the pointer. An `expect(report).toContain(ref)` alone can fail
+neither. Recording the routing rather than implying it is what let this close — an uncited in-flight
+routing is indistinguishable from a dropped one.
 
 **Re-evaluation triggers:** an operator investigation is ever lost to the re-run overwrite; a run id
 or capture timestamp becomes available in Phase I scope; or the accumulated refs (one per wave per
 run, in a namespace nothing prunes) become an operational complaint, at which point pruning and
-discrimination are decided together; or the halt-message obligation the PM is routing to REQ lands,
-in which case the remedy stops being record-only and this entry's known gap closes.
+discrimination are decided together. The halt-message trigger — "the obligation the PM is
+routing to REQ lands, in which case the remedy stops being record-only" — **fired at REQ v1.16 and
+is spent** (PM v3 F-03): it landed in REQ AC-6.3, FSPEC v1.7 BR-14/AT-06-4 and TSPEC v1.15 §4.5, and
+the remedy is no longer record-only. What replaces it is narrower: revisit if the conjunct is still
+unasserted by any property or test when Phase I closes, since an obligation specified at three levels
+and checked at none is the shape this entry exists to make visible.
 
 ### DEC-A6-04: `waveBudgetPerRun: 0` is a supported affordance, validated by a new `nonNegativeInt`
 
