@@ -231,3 +231,8 @@ Nothing in this document duplicates the shipped mechanism or invents a parallel 
 is not triggered; the revision is additive. One erratum is raised against the REQ separately —
 BL-04 is recorded as discharged there while remaining objectively unmet, which is what OB-F1
 already says, plus two internal inconsistencies in the REQ's own §1/OF-1 replay-cost figures.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 4, "low": 2}
