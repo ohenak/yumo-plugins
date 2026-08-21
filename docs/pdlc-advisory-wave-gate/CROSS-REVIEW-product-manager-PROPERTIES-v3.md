@@ -143,6 +143,33 @@ a new assertion, I state the oracle hazard here so the follow-up round does not 
 
 ## Fixtures
 
+**The REQ delta obliges no new fixture, and invalidates none.** Both hazards stand exactly as
+approved: hazard 1's mutation-fixture vocabulary warning derives from TSPEC §5.2 (unchanged), and
+hazard 2's four-file real-repo composition derives from FSPEC BR-9 / AT-05-1 / AT-05-2 and REQ AC-5.1
+— all four unchanged at v1.16. The `.gitignore`d file is still asserted **present, and only present**;
+the non-ignored untracked file still **absent**; the generated output is still PROP-REST-02's
+discriminator. Nothing in the erratum touches the restoration domain.
+
+**The fixture F-01's missing property needs already exists — twice over, and neither needs editing.**
+This matters for sizing the follow-up: the gap is one property row plus one matrix cell, not new test
+infrastructure.
+
+- The **recording `_git` double** already records `update-ref` targets, which is where the capture the
+  warning refers to becomes observable — PROP-REST-07 and PROP-REST-08 both drive it today.
+- The **capture-failure arm** (`captureTreeSnapshot` returning `null`) is already fixtured for
+  PROP-REST-08, and is exactly the negative control the §Oracles note above asks for. The conditional
+  arm is therefore free.
+- The **Pre-A6 baseline** fixture already captures the shipped halt reason string, which is the
+  surface the warning must travel on; PROP-SEAM-03/-04/-05, PROP-REST-09 and PROP-GATE-05 read it.
+
+**One thing the follow-up must not do to §Fixtures.** Do not add a fixture row pinning the ref name
+or the warning's phrasing as a verbatim string. The §"Verbatim-string discipline" list is scoped to
+strings that appear in a *normative* document — the four class names, the eight refusal reasons, the
+five exclusion ids, Oracle G's diagnosis sentence, the ref pattern. REQ v1.16 states an
+operator-visible **outcome** and explicitly leaves the capture's name and storage form to TSPEC (O-1);
+there is no normative wording to transcribe, so adding one would manufacture a literal the spec does
+not own and put this document back in the position round v1.4 spent its budget escaping.
+
 ## Questions
 
 ## Positive Observations

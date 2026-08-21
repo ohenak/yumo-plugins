@@ -38,7 +38,68 @@ edit and are not re-filed here — they remain open, non-gating, in the v2 recor
 
 ## Properties
 
-*(pending)*
+### The delta, read at REQ HEAD
+
+REQ v1.16 adds to AC-6.3 (REQ §"AC-6.3", the `*(US-02.)*` bullet):
+
+> Where the halt report points the operator at a captured pre-A6 tree state, it also warns, in the
+> same place, that re-running this feature overwrites that capture — so an operator who intends to
+> inspect it preserves it first, rather than losing it to the ordinary next action after a halt
+> (DEC-A6-03).
+
+This is a genuine new observable, not a restatement. DECISIONS DEC-A6-03 §"Known gap in the remedy's
+reach (PM F-05)" is explicit that it was **not** landed before this round: "at REQ v1.15 and FSPEC
+v1.6, `a6-snapshot`, 'copy the ref' and 'overwrit' match nothing in either document, so FSPEC E-28
+and AT-05-5 still require only that the halt name the failed restoration". The REQ erratum closes
+that gap on the REQ side only.
+
+### Coverage of the new conjunct in this document — none
+
+Matrix C-1's row is unchanged: `| AC-6.3 | PROP-REC-05, PROP-REST-08 |`. Neither reaches the
+conjunct:
+
+- **PROP-REC-05** (§F) asserts the halt report carries *the diagnosis and the root-cause class* in
+  its `advisory` fields. That is AC-6.3's first half. It says nothing about the capture, the ref, or
+  the re-run consequence, and its Traces cell (`AC-6.3, AT-06-4, BR-14, TSPEC §4.5`) points only at
+  material that predates the erratum — AT-06-4 at FSPEC HEAD is "halt report following an escalation
+  carries the root-cause class" (TSPEC §5.6 row), which is the same first half.
+- **PROP-REST-08** (§E) is the `captureTreeSnapshot === null` path — E-34's observable, where *no
+  capture exists*. AC-6.3's new conjunct is antecedent-guarded on "where the halt report points the
+  operator at a captured pre-A6 tree state", so on PROP-REST-08's fixture the conjunct is vacuous by
+  construction. It cannot be this obligation's home even in principle.
+
+No other property in §§A–H mentions the ref name, the capture's operator-facing description, or a
+re-run warning; `grep -n "overwrit|re-running|preserve"` over PROPERTIES matches nothing outside the
+changelog. So the obligation ships with zero falsifiable coverage in the document whose stated job is
+to leave every AC with at least one falsifiable property. **F-01, High.**
+
+Downstream cannot absorb it either, and I checked rather than assumed: FSPEC at `91ef2557` and TSPEC
+at `3fa21acf` are the bytes I approved against, and PLAN at `f7de7fc…` mints no task for it — the
+same `overwrit`/`a6-snapshot` grep over FSPEC returns nothing operator-facing, and TSPEC's only
+matches (§2.5 lines 522–541, §6 OQ-2) are the *design record* of the cost, explicitly noted there as
+what wave-scoping "does **not** buy". Nothing between this document and the implementation will mint
+a test for AC-6.3's second half.
+
+### Nothing I approved is contradicted outright — but two carriers are pinned
+
+I looked for the opposite failure mode too: a property I approved that the new AC now falsifies.
+There is none, and that is worth stating so a later reader does not re-derive it. There is, however,
+a real slot problem, which is why F-02 is filed rather than waved through:
+
+- If the warning is carried on the **halt reason string**, it falsifies **PROP-REST-09**, which
+  asserts that on a wave A6 did not resolve "the halt reason string must **equal** the reason the
+  pre-A6 pipeline emits for the same gate failure" (Traces `AC-5.2, AT-05-3, BR-14, E-23, M-WG-3`).
+  Equality, not containment. AC-6.3's antecedent — a halt pointing at a captured tree state — is
+  exactly PROP-REST-09's case, so the two are in direct tension on that carrier.
+- If it is carried in the **`advisory` halt fields**, TSPEC §4.5's object is the four-member
+  `{rootCause, diagnosis, repairApplied, repairPaths}` (TSPEC §"Call shape" row, line 1308), and
+  TSPEC §6 OQ-13 has already decided that `diagnosis` "stays the fixed, transcribable sentence" —
+  "a variable tail would make that oracle untestable". So the warning cannot ride `diagnosis`, and a
+  fifth field is a TSPEC edit, not a PROPERTIES one.
+
+Neither carrier is available without an upstream decision. That is a Medium finding against this
+document only in the sense that it constrains how F-01 can be resolved — the decision itself is
+FSPEC/TSPEC's, and I say so in the finding rather than pretending PROPERTIES can fix it alone.
 
 ## Oracles
 
