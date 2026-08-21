@@ -191,4 +191,50 @@ standing constraint (DC-07's production-path rule is *strengthened* by §5.1's n
 
 ## Positive Observations
 
+- **The five-key remedy names the false-green route, not just the edit.** §5.2's "the cheap way green
+  under a red wave gate would be to leave `snapshotRef` off the capture-failure `fields`" is the
+  sentence that makes the widening un-gameable. An instruction to widen can be satisfied by deletion;
+  an instruction that names deletion as the trap cannot.
+- **"Counterparties, not bystanders" is the right framing, and it is mechanically true.** `toEqual`
+  fails on an extra key exactly as on a missing one, so the red test and the shipped-oracle edit are
+  one step. Stating that they land in the *same* task forecloses the follow-up-PR reading that would
+  have left the suite red between tasks.
+- **The carve-out is as valuable as the inventory.** Saying `waveExecution.test.js` needs no widening
+  *and why* (its assertions compare against fields the A6 fake was handed) prevents a widening that
+  would have broken two passing tests. I verified both sites; the reasoning holds.
+- **`advisoryWaveGateMain.test.js` earns its own row for the DC-07 reason.** The new row keeps the
+  real-seam production-path oracle widened while explicitly protecting its `haltReason` containment
+  assertion as AT-05-3's surviving oracle — two assertions in one test, one widened and one frozen,
+  each labelled.
+- **The un-skip answer explains why that one push cannot live in the seam.** "The seam has already
+  returned by then" is the correct mechanism, and the choice not to mint an AT id keeps §5.6's
+  set-equality at forty-eight rather than trading a coverage claim for a bookkeeping churn.
+- **`TEST_GATE_MESSAGE` was corrected in the honest direction.** Rather than defending the name, §4.5
+  marks it as §2.3 pseudocode shorthand and restates the oracle in the form the suite ships —
+  containment, not equality. A spec that quietly upgrades a shipped containment oracle to an equality
+  oracle would have produced an implementer surprise at exactly the wrong moment.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+The v5 High is resolved, and resolved in code-checkable terms rather than by assertion: every oracle
+the widening touches is named, every carve-out is justified, and every count claim I re-derived from
+the suite came out right. Nothing previously approved was reopened. The two remaining findings are
+non-gating and both are one-clause edits, best folded into whichever revision PLAN's author touches
+next rather than driving a round of their own:
+
+1. **F-01 (Medium)** — state in §4.5 (or §5.6's AT-06-4b cell) that both host fixtures currently take
+   `makeA6RunArgs`' `_notice: () => {}` default (`advisoryWaveGate.test.js:996`) and must override it
+   with a collector, since AT-06-4b's whole-array negative is vacuous over an array the run never
+   wrote to.
+2. **F-02 (Low)** — drop or correct the "Four shipped halt-field oracles" numeral in §5.1; the
+   enumeration beneath it is complete and lists five sites.
+
+Optionally, answer Q-01 by phrasing §4.5's push condition as a truthiness guard rather than
+`!== null`.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
