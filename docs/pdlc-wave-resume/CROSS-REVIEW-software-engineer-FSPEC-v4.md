@@ -41,6 +41,45 @@ confirmation. Severity is unchanged; no finding in this round is High.
 
 ## Linked Requirements
 
+**No REQ acceptance criterion moved in this round.** The whole diff is four hunks: the header
+version cell, the v1.7 changelog paragraph, §5's BL-04 outcome cell, and §9's OB-1 evidence
+clause. `REQ-WVR-01` through `REQ-WVR-09`, §1/OF-1..OF-3, the risk table, the user stories and
+§10's resolution text are byte-identical to the v1.6 bytes I confirmed this FSPEC against in v3.
+So §2's traceability table — FSPEC-WVR-01..07 onto REQ-WVR-01..08 — is untouched by construction,
+and I did not re-derive it. The per-row verification stands as written in
+`CROSS-REVIEW-software-engineer-FSPEC-v3.md` §"Linked Requirements".
+
+**What this FSPEC leans on from the two edited sections.** Both edits sit in material the FSPEC
+cites, so neither is out of scope for this confirmation; I checked each lean at HEAD.
+
+- **§5 / BL-04 → FSPEC §1 "Grounding, and one prerequisite that is not met".** The FSPEC's
+  grounding paragraph makes two claims about upstream: that "REQ BL-04 requires the resume
+  mechanism and `docs/_constraints/pdlc-wave-gate-baseline.md` to be readable in the authoring
+  tree at FSPEC authoring time", and that the prerequisite is "**not**" met. The first is a
+  restatement of BL-04's requirement, and the edited row still carries it verbatim in its outcome
+  cell ("the resume mechanism and `docs/_constraints/pdlc-wave-gate-baseline.md` must both be
+  readable in the authoring tree, or R-4's 'new code alongside' outcome is unavoidable"). The
+  second is now upstream's own recorded outcome. Both leans hold, and the second is stronger than
+  it was: the FSPEC no longer contradicts its upstream on this point in either direction.
+- **§5 / BL-03 → FSPEC §1 "ratifies or revises the shipped interim contract rather than inventing
+  one (REQ BL-03)".** BL-03's row is untouched by this round and still reads "Checked at FSPEC
+  authoring: the deliverable formalizes or replaces it, never duplicates it alongside". Holds.
+- **§9 / OB-1 → FSPEC §1 "those are implementation contracts owned by the TSPEC (REQ OB-1)".**
+  The FSPEC cites OB-1 for *ownership* — record location, encoding, field names, matching
+  procedure, write mechanics belong to the TSPEC — not for any of OB-1's evidence. OB-1's owner
+  line (`owner: TSPEC`) and its ownership scope are untouched; only the worktree sub-clause's
+  evidence label moved. The lean holds.
+- **§9 / OB-3 → FSPEC EC-16, EC-17.** Both rows cite `REQ OB-3`. OB-3 is untouched in this round.
+  EC-17 additionally leans on the worktree conclusion inside OB-1, which upstream explicitly
+  preserves ("which stands"); see Edge Cases below.
+
+**One residue, carried and widened.** §1's opening sentence still pins the derivation to
+"`REQ-pdlc-wave-resume.md` **v1.5**". Upstream's header now reads `| Version | 1.7 |`. This was
+already a finding at v1.6 (v3 F-02); the round widens the gap to two versions without changing its
+character. The fix remains one token plus a clause naming the rounds this FSPEC has since been
+confirmed against — not a re-derivation, since (per this confirmation and v3) no derived content
+is wrong. Restated as F-02 below.
+
 ## Behavioral Flow
 
 ## Business Rules
