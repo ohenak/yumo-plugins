@@ -1091,7 +1091,7 @@ the manifest's **fourteen** rows are joined by **four** files that no PLAN task 
 | `learningsConfig.test.js` | LI-12 | **exists** (landed) | `d9b51a9a` |
 | `learningsArmInventory.test.js` | LI-23 | **exists** (landed) | `ad58b052` |
 | `learningsSuiteMap.test.js` | LI-14 | **exists** (landed) | `6467afa6` |
-| `fixtures/learnings-baseline/` | LI-06 | **exists** (landed) — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt`, and a `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files | `744311f7` |
+| `fixtures/learnings-baseline/` | LI-06 | **exists** (landed) — `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`, `PHASE-R-REVIEW-PROMPTS/{0,1}.txt`, and a `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files | `744311f7` (subtree added; the `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18 files and the `MANIFEST.json` re-capture arrived later, at `2fc6fcd3` — two landing events, recorded as PLAN §Post-batch remediation's P-A-5 second-owner rows) |
 | `helpers/learningsBaselineScenarios.js` | *none* — CODE_REVIEW v1 F1/F7/F12 | **exists** (landed) | `2fc6fcd3` |
 | `helpers/learningsComposition.js` | *none* — CODE_REVIEW v1 F8 | **exists** (landed) | `2fc6fcd3` |
 | `learningsDisclosure.test.js` | *none* — CODE_REVIEW v1 F10 | **exists** (landed) | `2fc6fcd3` |
@@ -1131,7 +1131,7 @@ LI-17 has greened the suite, with a greening batch still ahead (batch 9 through 
 batch 13 is behind us. Case C — *"batch 13 or later, the case that is live at HEAD"* — names these four
 properties by name and rules the opposite obligation from case B's: **the ledger stays empty and the
 amendment had to be green at the commit that landed it.** PLAN states it in terms: *"under case C they owe no ledger
-row, and they owe green."* PLAN v1.2 turned that limb from expectation into record — *"this row
+row, and they owe green — which PROPERTIES §C.4 records as discharged"*. PLAN v1.2 turned that limb from expectation into record — *"this row
 records an outcome, not a pending expectation"* — which is the reading the next paragraph already took.
 
 **Case C is now discharged, not pending — all four have landed, and landed green.** Earlier
@@ -1178,12 +1178,18 @@ ledger row unless that commit is brought forward." P-A-6 holds the PROPERTIES **
 "the first point the suite is green, which in practice is after LI-21 (batch 13)" (PLAN, P-A-6). LI-21
 landed at `e7fa8d87`, so that point has **arrived**: the window P-A-6 deferred into is open now
 rather than ahead, and the suite may be committed as soon as it is green — or, if it lands red, its
-rows are amended into the ledger by name first, under the same P-A-7 rule. The conclusion that **no
+rows are handled under **P-A-7's governing case**, which at HEAD is **case C**: no ledger remains to
+amend into, the obligation is green-at-landing, and a red landing is a real defect owed a fix
+**before batch 14 runs**. PLAN rewrote that fallback at **v1.1** (TE v11 F-03), retiring the
+amend-into-the-ledger-by-name route this document previously named: *"or else its rows are handled
+under **P-A-7's governing case** — which at HEAD is case C, where no ledger remains to amend into and
+the obligation is green-at-landing; the amend-into-the-ledger-by-name route is case B's, and case B
+closed at batch 12"* (PLAN, P-A-6). The conclusion that **no
 property of this document changes either way** is unaffected; what changes is only when its cases may
 land and which case of the table governs them. The two mechanisms stay distinct, as this document has
 held since v0.3: **P-A-7 case C** governs the amendment commits against the landed *implementation*
 suites `learningsBlock.test.js` and `learningsSelect.test.js` — empty ledger, green at landing — while
-**P-A-6** (byte-unchanged at v0.8) governs this document's own PROPERTIES suite — the
+**P-A-6** (whose fallback route PLAN rewrote at **v1.1**, restated above) governs this document's own PROPERTIES suite — the
 restatement above moves neither rule, only the point in the run each is read from.
 
 **No property in this document names a test
