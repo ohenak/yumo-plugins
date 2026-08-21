@@ -1199,12 +1199,18 @@ items this list still carried as open. They are struck rather than re-routed:
   trailing gloss and the section extent, and records F-O-1's second rule as discharged where the
   obligation sits. Absorbed into §F.3 and PROP-BOUND-05/08.
 
-**Still open:** nothing. Every item this document routed upward has been answered, and the
-absorptions are recorded above and in §G.2. One upstream item is *already routed by TSPEC and needs
-no duplicate from here*: TSPEC v0.9 records **ERR-8** against FSPEC — Step 5's items 15/16 sequence
-extraction after the count cut while §D.5 requires the drop before it. Outcomes agree at every
-bound, so no property of this document changes, and §O.7's precedence argument is unaffected;
-re-raising it here would be the DEC-ERR-01 anti-pattern of routing a question already routed.
+**Still open — one item, re-routed this round:**
+
 - TSPEC's suite assignment for AT-15, whose clauses 2–3 (corpus-level `RSN-EMPTY`, no discarded document
-  in any record) are asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite — the
-  mismatch PLAN LI-07/LI-19 already work around by carrying an expected-red ledger entry.
+  in any record) are asserted at L2/L3 while §T.5 lists AT-15 wholly under the L1 selection suite
+  (TSPEC §T.5's suite table, `learningsSelect.test.js` row, level `L1`, at HEAD) — the mismatch PLAN
+  LI-07/LI-19 already work around by carrying an expected-red ledger entry. The v0.2 revision struck the
+  two items TSPEC v0.9 answered and wrote "**Still open:** nothing" above this bullet, which left it
+  orphaned and the sentence untrue; it is re-labelled here and re-emitted as a routed erratum line.
+
+Every **other** item this document routed upward has been answered, and the absorptions are recorded
+above and in §G.2. One upstream item is *already routed by TSPEC and needs no duplicate from here*:
+TSPEC v0.9 records **ERR-8** against FSPEC — Step 5's items 15/16 sequence extraction after the count
+cut while §D.5 requires the drop before it. Outcomes agree at every bound, so no property of this
+document changes, and §O.7's precedence argument is unaffected; re-raising it here would be the
+DEC-ERR-01 anti-pattern of routing a question already routed.
