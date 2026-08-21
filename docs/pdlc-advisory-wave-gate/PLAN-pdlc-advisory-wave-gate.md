@@ -4,7 +4,7 @@
 |---|---|
 | Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` — grounded on REQ v1.16 (`sha256:f97f4f66…`), FSPEC v1.7 (`sha256:d602c440…`), TSPEC v1.15 (`sha256:1f6ea486…`), DECISIONS (`sha256:dc7a8d65…`) |
 | Downstream | `PROPERTIES`, `IMPL` |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-PLAN-v1.md`, `CROSS-REVIEW-test-engineer-PLAN-v1.md` (active; harvested into `LEARNINGS-pdlc-advisory-wave-gate.md` after Phase H) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PLAN-v1.md`, `CROSS-REVIEW-test-engineer-PLAN-v1.md`, `CROSS-REVIEW-product-manager-PLAN-v2.md`, `CROSS-REVIEW-test-engineer-PLAN-v2.md` (active; harvested into `LEARNINGS-pdlc-advisory-wave-gate.md` after Phase H) |
 | LEARNINGS | `docs/pdlc-advisory-wave-gate/LEARNINGS-pdlc-advisory-wave-gate.md` |
 
 | Version | Date | Change |
