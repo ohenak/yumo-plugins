@@ -216,7 +216,37 @@ generalisation and the one live instruction it makes wrong.
 
 ## Deferred
 
+Observations that are improvements, not defects. Under DECISION FREEZE none of these blocks, and none
+reopens a decision:
+
+DEFERRED: A re-pin round would be safer if it carried a mechanical sweep — grep the pinned document for every `P-A-n` / `DoD n` id this document cites, and diff each one across the version range being crossed — rather than sweeping the quotations the reviewer happened to name.
+DEFERRED: The header's v0.9 paragraph enumerates its consequences ("two consequences are taken with it"); an explicit list of what was checked *and found unchanged* would make an incomplete sweep visible to the next reviewer instead of invisible.
+DEFERRED: "Eighteen" now means three different sets across §C.4, §G.2 and PLAN v1.3; naming each count by what it counts ("inventory rows", "`learnings*` files under workflows/__tests__", "tracked test-side files") would retire the ambiguity permanently.
+DEFERRED: §Overview's HEAD measurement pin is still `09c7c62f` while HEAD is `cb09985d`; that is correct as a snapshot label, but saying "measured at `09c7c62f`, document at v0.9" would spare a reader the reconciliation.
+DEFERRED: The struck-bullet convention in §G.3 is working well — striking rather than deleting is what let me confirm F-02 in one pass; consider making it the standing form for routed items that land upstream.
+
 ## Positive Observations
+
+- **Both of my v13 findings are genuinely closed, and closed by measurement.** The PLAN pin is now
+  v1.3 at line 11 *and* at line 1326 (the one place it was stated as a fact about HEAD rather than as
+  provenance), and case C is re-quoted verbatim. Six fixed-string greps, six hits; the retired form
+  has zero. That is the hardest kind of fix to fake and it checked out on every string.
+- **The re-quote went further than the finding asked.** I flagged case C's *When* cell; the delta also
+  re-quoted **case A**'s window (*"before batch 9 (which includes batches 7 and 8)"*, changed at PLAN
+  v1.1) and **case B**'s, so §G.3's three-case restatement is now verbatim end to end rather than
+  verbatim in the one cell a reviewer named.
+- **It absorbed PLAN v1.2's tense change without over-reading it.** *"the amendment is expected to
+  land green"* became *"had to be green at the commit that landed it"*, cited to PLAN's own *"this row
+  records an outcome, not a pending expectation"* — and the failure limb is still *"**unexercised**,
+  not waived"*. Four green amendments plus a tense change is exactly where "case C validated" would
+  have crept in; it did not.
+- **It drew the provenance/pin distinction explicitly and applied it correctly.** The header states
+  that *"PLAN v0.8"* attributions in §C.4 and §G.3's struck bullets are *"provenance, not pins"* and
+  leaves them. I checked all eleven remaining `v0.8` occurrences: ten are provenance and right to
+  stay. That is the correct discrimination, and it is why F-01 is one line rather than a rewrite.
+- **The blast radius was kept honest.** 17 insertions, 12 deletions, three commits, and `## Properties`,
+  `## Oracles` and `## Fixtures` byte-untouched — the header's claim that no property, oracle, fixture,
+  AT mapping or coverage row moves is true against the diff, not just against the sentence.
 
 ## Recommendation
 
