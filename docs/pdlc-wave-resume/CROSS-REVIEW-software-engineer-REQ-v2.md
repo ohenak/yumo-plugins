@@ -147,7 +147,46 @@ operative.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | REQ-WVR-04's out-of-range boundary says a manual point past the last wave "is treated as a request for a full run, announced as such". Shipped behaviour is subtler and I think better: `explicitPointer` is computed **before** the clamp (`:15236` precedes `:15237-15243`), so an out-of-range pointer clamps to 1 *and still suppresses the ledger* — the operator gets a genuine full run rather than a silent auto-resume. That is the outcome the AC wants, reached by an ordering that is easy to "fix" into a regression. Should the AC say so explicitly, so a TSPEC that reorders the clamp above the `explicitPointer` computation fails an acceptance test rather than passing one? |
+| Q-02 | REQ-WVR-08 says the all-green skip is announced "naming the reason and the force-a-full-run hatch". Shipped emit at `:15328-15334` names both. But the `⏭` phase row at `:15615-15621` names only the reason, not the hatch. Is the hatch required in *both* surfaces, or is the run-log banner sufficient? As written the AC is ambiguous about which surface carries what, and PROPERTIES will have to guess. |
+| Q-03 | REQ-WVR-10 ("the record never becomes tracked content") is anchored to a `.gitignore` rule in the *consuming* repo. In a Claude-created worktree, `.worktreeinclude` governs what the tree carries and OB-1 already notes the ledger is absent there. Does REQ-WVR-10's guarantee need a worktree clause, or is "fails open to a full run, no record written, therefore nothing to track" the complete answer? I believe the latter, but the AC does not say it. |
+| Q-04 | REQ-WVR-07's queue observable is "the record must resolve against the same working directory on both paths". Given OB-1's finding that the queue delegates in-process and forwards no implementation config, is there any way for this to fail other than a future change that gives the queue its own cwd? If not, PROPERTIES should own it as a regression guard and PLAN should budget a test, not work — worth saying which. |
+
 ## Positive Observations
+
+- **The revision converged on evidence, not on argument.** Every one of my four Highs was resolved
+  by moving the requirement to match a shipped behaviour that was independently verified, and in
+  the one case where my premise was wrong (Q-02 in v1, per-wave skip announcements) the author kept
+  the original wording rather than deferring to the reviewer. That is the right instinct.
+- **REQ-WVR-06's rewrite fixes exactly the oracle problem, not just the wording.** The old text was
+  an absence-only requirement ("does not consult commit presence"). The new one pairs the negative
+  with a positive on the same path — the no-commit wave is treated as complete and the *next* wave
+  is announced as the resume point — and then names that announcement as the oracle. A test written
+  against it fails when the determination regresses, which a test written against the old wording
+  could not.
+- **REQ-WVR-02's IG-1..5 catalogue is set-equal to the shipped branch ladder**, which I checked
+  arm by arm: `ledger.reason` (IG-1), feature mismatch (IG-2), `planHash` mismatch (IG-3),
+  `!headCorroborated` and `lastGreenWave > waves.length` (IG-4, correctly fused since both are
+  "the record describes a tree this isn't"), and the `{state: null, reason: null}` fall-through
+  for absent/empty/`{}` (IG-5, correctly identified as the *silent* one). Five causes, four
+  announced, one silent — and the AC says out loud that deleting one is a deliberate change and
+  demands set-equality rather than containment in PROPERTIES. This is the strongest section of the
+  document.
+- **REQ-WVR-09 is grounded in the shipped guard rather than inventing one.** The ledger write sits
+  inside `if (waveGit)` (`:15528`, write at `:15599`) with a comment giving the same reason the AC
+  gives — "without a git transport this run made no commits, and recording the wave green would
+  strand that wave's uncommitted work". Promoting R-2 from a deferred FSPEC concern to a P0 AC with
+  a traceable acceptance test is the correct response to my v1 note.
+- **REQ-WVR-08's discharge paragraph answers the hard half of the question.** It would have been
+  easy to add the all-green AC and leave REQ-WVR-03 vacuously satisfied. Instead it states *why*
+  the guarantee holds when no gate runs — the phase lands no commit, so there is nothing for a
+  verification to precede — and names the violating implementation ("an implementation that commits
+  anything in Phase I under this outcome violates REQ-WVR-03"). That is a testable statement.
+- **The altitude discipline held through a large revision.** Ten ACs, three new, and not one of
+  them names a seam signature, a file format, or an algorithm. OB-1 still carries all of that. It
+  is unusual for a REQ to grow by 40% without leaking contract material downward.
 
 ## Recommendation
 
