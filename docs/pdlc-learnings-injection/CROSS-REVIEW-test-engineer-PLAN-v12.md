@@ -75,6 +75,36 @@ the single-writer question the closing "no row of their own" paragraph settles. 
 
 ## Dependencies
 
+**No `Deps` edge changed.** The dependency graph is byte-identical to v0.8: same edges, same acyclicity,
+same unique ids, every dependency resolving to a declared task. Nothing in this delta could have moved
+it, and the diff confirms nothing did.
+
+**The lead-in fix, checked as a gate input.** P-A-7's paragraph is not decoration — it is the rule the
+dispatcher applies when deciding whether an amendment commit to a landed suite owes an expected-red
+ledger row. A lead-in that announces "two cases" above a three-case table invites a reader to stop at
+case B, and case B is precisely the case that does **not** apply at HEAD. The repaired sentence now
+reads "in the three cases that can arise (A, B and C below)", which fixes the numeral and adds an
+explicit roster. The roster is the better half of the fix: the numeral alone would go stale again the
+next time the table grows, whereas "(A, B and C below)" names the rows a reader must reach. The three
+table rows themselves are untouched, so case C — the case live at HEAD, where the ledger stays empty
+and the amendment is expected to land green — retains the wording I confirmed at round 11.
+
+**What the delta did not disturb.** Case A's derived pre-batch-7 window, case B's re-scoping to batches
+9–12, case C's mechanism citation into shipped `canonicalSectionName` / `SECTION_HEADING_RE` behaviour,
+and the closing paragraph's scoping of the "no row of their own" ruling to *this* follow-up commit all
+survive unedited. I re-read case C's production-half citation once more against HEAD to be sure the
+delta had not orphaned it — `canonicalSectionName` still strips an optional ordinal, strips an optional
+trailing gloss, compares case-sensitively against `BR6_SECTION_NAMES`, and `^##[ \t]+` still never
+matches a `###` line — so the "expected to land green" ruling still rests on shipped code rather than
+on hope, exactly as it did at v0.8.
+
+**The one dependency-shaped consequence still open.** My round-11 F-02 stands unedited: case B's header
+now bounds at batch 12 and case C's header opens "after batch 13", leaving **batch 13 itself** claimed
+by no header. Case C's second header clause (*"any commit landing once LI-21 (`92b7ea0c`) has landed"*)
+closes the gap in practice, since LI-21 *is* batch 13 and it has landed — which is why this stays Low
+rather than rising. It is a wording gap in a rule table, not a live ambiguity: at HEAD there is exactly
+one case a dispatcher can be in, and it is C. I carry it forward as `inherited` below.
+
 ## Verification
 
 ## Delta-Confirmation Findings
