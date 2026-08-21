@@ -286,6 +286,48 @@ expectation is exactly where an implementation echo is tempting.
 
 ## Positive Observations
 
+- **My v2 F-01 is closed in both places it lived, and closed by naming the falsifying conjuncts
+  rather than by restating the outcome.** The A6-10 DoD leg now says outright that a hash-map
+  assertion alone does not tick it, and gives the reason (the map's domain excludes ignored paths on
+  both sides). The AT-05-1 traceability row carries the same two conjuncts. A verifier and an
+  implementer now read the same contract.
+- **The round found its own High before I did, by walking TSPEC §5.1's file table against the
+  ownership manifest with `comm`.** The changelog records that walk as the step that produced the
+  round's High and promotes it to a standing part of the re-grounding protocol. That is the right
+  instinct: the "shipped exact-shape oracle in an unowned file" defect class is invisible to prose
+  review and mechanical to a set comparison. I ran the complementary sweep
+  (`grep -l repairPaths pdlc/workflows/__tests__/*.js`) and it returns exactly the four files the
+  manifest now owns — the class is closed, not just the one instance.
+- **AT-06-4's split across two owners keeps the oracle intact instead of weakening the second arm.**
+  The un-skip arm inherits co-location within one `notices` element, spec-side literals, and a
+  paired negative; it does not degrade into a `toContain` over the run. And it rides AT-06-4's
+  existing witness id per TSPEC §5.6, so the 48-AT set-equality with FSPEC §6 survives the split —
+  I re-derived it, empty diff both directions.
+- **The escalation-log count literal is right for a reason the row states.** `runA6Escalation` is a
+  real-temp-repo fixture, so the capture genuinely succeeds and the overwrite notice genuinely is
+  the third element. The row does not merely assert the new number; it says why, which is what let
+  me verify it in one read of the helper rather than by running the suite.
+- **The graph-invariance claim reproduces.** 11 tasks, 7 waves, every `planBatch` equal to
+  `max(dep batch) + 1`, ids unique, acyclic, single writer per file per batch — re-derived from the
+  shipped parser at HEAD, with the `Batch` and `Dependencies` columns byte-identical to the
+  previously reviewed commit.
+
 ## Recommendation
 
+**Needs revision**
+
+One High (F-01) is open, so the bar is not met — but the gap between this round and approval is a
+single value in a single clause. A6-18's ownership of `advisoryWaveGateMain.test.js` is correct, the
+reasoning behind the widening is correct, and every other file exposed to the same widening is
+accounted for; what is wrong is the prescribed fifth value, `snapshotRef: null`, on a fixture whose
+git double makes the capture succeed. Replace it with the wave-scoped ref literal the fixture
+produces, matched by a spec-side string rather than a module constant, and add the clause that the
+overwrite notice is consequently due on that halt (no collateral: every notice oracle in that suite
+is a filtered count). Folding F-02's un-skip negative into the AT-06-4 DoD leg in the same edit
+would close both. Nothing else in this round needs to move — my v2 finding is resolved, the AT set
+is still set-equal at forty-eight, and the batch DAG is unchanged and re-derives clean.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
