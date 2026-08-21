@@ -2432,7 +2432,7 @@ function extractInjectableMaterial(text, maxBytes) {
  *  every lower-ordered document past it, window or not) with `RSN-BYTES`, no back-fill.
  *  @param {{entries: object[], feature: string, thresholds: object}} arg
  *  @returns {{selected: object[], rejected: object[], totalBytes: number, orderKeys: object[]}} */
-function selectLearnings({ entries, feature, thresholds }) {
+function selectLearnings({ entries, thresholds }) {
   const rejected = [];
   const eligible = [];
 
@@ -2520,10 +2520,11 @@ function selectLearnings({ entries, feature, thresholds }) {
   // consulted at all, so `RSN-COUNT` is its cause under AC-3.2's cause-defined ids, whatever the
   // window's byte outcome turns out to be.
   //
-  // The mixed case is still not stated in so many words upstream; it is routed as
-  // `ERRATUM: FSPEC` and `ERRATUM: REQ`. If upstream lands the other reading, the change is this
-  // one line and `LI-AT-13`'s expectations, which no longer encode a byte-count tuned to keep
-  // the failure off the window's last slot.
+  // The mixed case is stated upstream as of FSPEC v0.14's BR-6 ("The mixed case, stated") and
+  // REQ v0.10's AC-2.4: each dropped document carries the id of the bound that removed it, so a
+  // document past the window is `RSN-COUNT` whatever the window's byte outcome. `LI-AT-13`
+  // exercises it, and no longer encodes a byte-count tuned to keep the failure off the window's
+  // last slot. Code and specification now agree; there is nothing left routed.
   for (const doc of overflow) {
     rejected.push({ path: doc.path, reason: "RSN-COUNT" });
   }
@@ -2658,7 +2659,7 @@ function buildLearningsInjector({ config, sink, _git, _readFile, _log }) {
     } else if (gathered.entries.length === 0) {
       corpusOutcome = "RSN-EMPTY";
     } else {
-      selection = selectLearnings({ entries: gathered.entries, feature, thresholds });
+      selection = selectLearnings({ entries: gathered.entries, thresholds });
     }
 
     const rows = selection.selected.map((doc) => ({
@@ -14087,6 +14088,14 @@ async function main({
     sink: learningsSink,
     _git: gitFn,
     _readFile: readFileFn,
+    // CODE_REVIEW v1 F2: the run's own emitter, so the per-dispatch observability line is live
+    // in production and not only under test doubles. An operator debugging a silent
+    // non-injection reads this line rather than the report.
+    _log: ({ feature: dispatchFeature, docType: dispatchDocType, phaseId: dispatchPhaseId, corpusOutcome }) =>
+      emit(
+        `learnings-injection: phase ${dispatchPhaseId ?? "-"} ${dispatchDocType ?? "-"} ` +
+          `(feature ${dispatchFeature ?? "-"}) — corpus ${corpusOutcome ?? "OK"}`
+      ),
   });
   if (learningsInjectorFn) {
     // BR-10 locus 2 (TSPEC §D.2): the three REQ §4.1 thresholds actually in force, built

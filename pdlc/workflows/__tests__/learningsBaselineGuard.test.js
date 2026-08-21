@@ -75,6 +75,32 @@ const EXPECTED_DIGESTS = Object.freeze({
   "PHASE-F-AUTHORING-PROMPT": Object.freeze({
     "0.txt": "d8234ea164018c54c9128871b79b69d4cbda910f423ad06de085d71630ef1514",
   }),
+  // CODE_REVIEW v1 F7. The three prompts above are two narrow scenarios; AC-1.2 quantifies over
+  // EVERY dispatch outside BR-1's rule, and the only same-branch instrument that covered the
+  // rest (LI-AT-03) compared an enabled run to a disabled run of the same branch — the
+  // comparison AC-5.1a rules out. This case is a WHOLE `main()` run's non-authoring dispatch
+  // set (18 prompts: reviewers across every phase, plus se-implement, harvest-learnings,
+  // dod-verify and ship-pr), so the AC-6.2 oracle is whole-run rather than three-prompt.
+  "PIPELINE-NON-AUTHORING-PROMPTS": Object.freeze({
+    "0.txt": "13964aa0090858f48f7059b99ec2584a296283ade75601d23fc213ad24c70a29",
+    "1.txt": "ffb5d2eda6b006c7eccac1eabbe7f4031b36416d5ef629bf4c42089a9b63e378",
+    "2.txt": "4d77b0ba51ad64c6edd124178bc9f269f9c6fc39fed66a388c5ac7e06cfa2036",
+    "3.txt": "0ae3222ce0e430125a7e878d07e86c40bab8a4f3fc8bf4512dbbad1752595f51",
+    "4.txt": "df4afe903ae57be25c02b80618fa38b1c78c9c67eb7367396e69387c9641629c",
+    "5.txt": "38ea8c1fcfcb6b813eef9a410ee38126765cfab106c21e4a5921a3d2f0e94aa1",
+    "6.txt": "844b8c71d9e6bab97b1fb9c192d624436b816446ba2129a68addfba4d82440a6",
+    "7.txt": "4a2e8aecd0d7d63dac1abcf21560f06aee9a165821d4ca2dde08565536f69ca3",
+    "8.txt": "4103c82ee094cbe77291065fd18be250b4114ff105f60c2577eac5f170992603",
+    "9.txt": "f665ebade95b0a187fa75a4b769e68ca9026b542f01a2092b34527d1a2ba7a68",
+    "10.txt": "0830b8bc2ec4253fbbe7d6c777d81613496625eb5c6e675befb9d3ce79faaa72",
+    "11.txt": "54c8131fd4cdc98f7ddbab475de6bc3160b8dbc70b35fb2f1111911d9ebd62b3",
+    "12.txt": "858f2e9055f0c1261e3d06e03f37af2d0dd1550b3c98b810eb1b8542147f1946",
+    "13.txt": "567036df2aa39a041eff434c10d3cd8d40f649ff7138c4aa37b47fccb8ca5f8a",
+    "14.txt": "102fe57bc219cfc708fd3dc5961469772b6699ba508ad44bf80770c6843b55c9",
+    "15.txt": "e90b8c36451d32020bb9cd9a31d15f0f6cf836bded505c9dca51f5567c3a57fb",
+    "16.txt": "2c91edff6cd3d2e91393e1ea9a283e23b3543f4b2ae1390038746c2bf020f890",
+    "17.txt": "a15fc36f1484d029836b05c6e5b794a607aa373d0c971f9b815118f66ddd2b59",
+  }),
 });
 
 /** The merge-base sha the capture was taken at (transcribed alongside the digests above). */
@@ -199,147 +225,44 @@ describe("learningsBaselineGuard — pre-feature prompt-composition baseline (TS
 // the other three never take — it is the only arm where the injector actually opens a file and
 // renders. AC-6.2's named regression is undetectable without it.
 
-import mainDev, { reviewLoop as reviewLoopDev } from "../orchestrate-dev.js";
-import { fakeFs, fakeGit, fakeListFiles } from "./helpers/seams.js";
-
-/** `LEARNINGS_CORPUS_ARGV`'s recognisable prefix, restated (never imported) as every other
- *  suite in this feature restates it. */
-const isLearningsEnumerateCall = (argv) =>
-  Array.isArray(argv) && argv[0] === "ls-files" && argv.includes(":(glob)docs/*/LEARNINGS-*.md");
-
-const REV_PARSE = "rev-parse --abbrev-ref HEAD";
-const silent = () => {};
-
-/**
- * The scripted all-approve `_agent` double both scenarios below dispatch through — a locally
- * scoped double, never the live transport (AC-6.1, and `learningsSuiteMap.test.js`'s
- * PROP-META-06 scans for exactly this construction shape).
- *
- * @param {(skill: string, prompt: string) => void} record - called once per dispatch.
- */
-function makeBaselineAgent(record) {
-  const agent = async (skill, prompt) => {
-    record(skill, String(prompt ?? ""));
-    return 'Done.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
-  };
-  return agent;
-}
+import * as devModule from "../orchestrate-dev.js";
+import {
+  BASELINE_MERGE_BASE_REF,
+  BASELINE_SCENARIOS,
+  NON_INJECTING_STATES,
+} from "./helpers/learningsBaselineScenarios.js";
 
 /** The fixture bytes, read from disk — the expected value, never recomputed from the code. */
 const baselineBytes = (caseId, dispatchIndex) =>
   readFileSync(path.join(FIXTURE_DIR, caseId, `${dispatchIndex}.txt`), "utf8");
 
-/**
- * One non-injecting state, expressed as the two seam behaviours that distinguish it: the
- * `.claude/pdlc.config.json` text, and the reply to the LEARNINGS enumeration call.
- * `corpusFiles` are additional readable paths (arm 4's real corpus document).
- */
-const NON_INJECTING_STATES = [
-  {
-    name: "DISABLED — learningsInjection.enabled is false",
-    configText: JSON.stringify({ learningsInjection: { enabled: false } }),
-    enumerateReply: () => ({ ok: true, stdout: "" }),
-    corpusFiles: {},
-  },
-  {
-    name: "EMPTY — enumeration succeeds and returns no corpus document (RSN-EMPTY)",
-    configText: null,
-    enumerateReply: () => ({ ok: true, stdout: "" }),
-    corpusFiles: {},
-  },
-  {
-    name: "UNLISTABLE — enumeration fails (RSN-UNLISTABLE, fail-open)",
-    configText: null,
-    enumerateReply: () => ({ ok: false, stdout: "", stderr: "fatal: not a git repository" }),
-    corpusFiles: {},
-  },
-  {
-    name: "ADMITS-NOTHING — a real corpus document is read and rejected RSN-NO-MATERIAL",
-    configText: null,
-    enumerateReply: () => ({
-      ok: true,
-      stdout: "docs/completed/li06-prior/LEARNINGS-li06-prior.md\n",
-    }),
-    corpusFiles: {
-      // A well-formed LEARNINGS document carrying none of BR-6's five priority sections, so the
-      // selection is empty even though the injector enumerated, opened and parsed it.
-      "docs/completed/li06-prior/LEARNINGS-li06-prior.md":
-        "# LEARNINGS — li06-prior\n\n| Field | Value |\n|---|---|\n| Date Completed | 2026-01-01 |\n\n## Not A BR-6 Section\n\nNothing BR-6 recognises.\n",
-    },
-  },
-];
-
 describe("learningsBaselineGuard — the committed baseline as an ORACLE (AC-5.1a, AC-6.2; PLAN §DoD item 4)", () => {
+  // The scenarios are the SAME module the capture drives against the merge-base worktree
+  // (`scripts/capture-learnings-baseline.mjs`), so "the code that produced the fixtures" and
+  // "the code the fixtures are compared against" are one definition differing only in which
+  // `orchestrate-dev.js` they are handed. Before CODE_REVIEW v1 F1 the capture harness was an
+  // uncommitted one-off script and this file re-implemented it by hand.
   for (const state of NON_INJECTING_STATES) {
     describe(state.name, () => {
-      it("PHASE-R-REVIEW-PROMPTS: both Phase R reviewer prompts are byte-identical to the committed pre-feature fixture", async () => {
-        const FEATURE = "li06-phase-r-review";
-        const prompts = [];
-        const git = fakeGit((argv) => {
-          if (isLearningsEnumerateCall(argv)) return state.enumerateReply();
-          return argv.join(" ") === REV_PARSE
-            ? { ok: true, stdout: `feat-${FEATURE}\n` }
-            : { ok: true };
+      for (const scenario of BASELINE_SCENARIOS) {
+        it(`${scenario.caseId}: every composed dispatch is byte-identical to the committed pre-feature fixture`, async () => {
+          const prompts = await scenario.run(devModule, state);
+
+          // The control: the run composed the dispatches the fixture records, so the equalities
+          // below are not passing on an empty list. Asserted as an EQUALITY against the
+          // committed file count, never `> 0` — a run that composed half the dispatch set would
+          // otherwise pass on the prefix it did compose.
+          const expectedCount = Object.keys(EXPECTED_DIGESTS[scenario.caseId]).length;
+          expect(prompts).toHaveLength(expectedCount);
+
+          for (let i = 0; i < expectedCount; i += 1) {
+            expect({ index: i, prompt: prompts[i] }).toEqual({
+              index: i,
+              prompt: baselineBytes(scenario.caseId, i),
+            });
+          }
         });
-
-        await reviewLoopDev({
-          doc: `docs/${FEATURE}/REQ-${FEATURE}.md`,
-          phase: "R",
-          docType: "REQ",
-          reviewers: ["se-review", "te-review"],
-          optimizer: "pm-author",
-          feature: FEATURE,
-          _agent: makeBaselineAgent((skill, prompt) => prompts.push(prompt)),
-          _parallel: (promises) => Promise.all(promises),
-          _checkFile: () => ({ ok: true }),
-          _listFiles: fakeListFiles([]),
-          _readFile: (p) => state.corpusFiles[String(p)] ?? null,
-          _log: silent,
-          _git: git,
-        });
-
-        // The control: the run composed the dispatches the fixture records, so the equalities
-        // below are not passing on an empty list.
-        expect(prompts).toHaveLength(2);
-        expect(prompts[0]).toBe(baselineBytes("PHASE-R-REVIEW-PROMPTS", 0));
-        expect(prompts[1]).toBe(baselineBytes("PHASE-R-REVIEW-PROMPTS", 1));
-      });
-
-      it("PHASE-F-AUTHORING-PROMPT: Phase F's creator prompt is byte-identical to the committed pre-feature fixture", async () => {
-        const FEATURE = "li06-phase-f-authoring";
-        const REQ_PATH = `docs/${FEATURE}/REQ-${FEATURE}.md`;
-        const fs = fakeFs({ [REQ_PATH]: "# REQ\n\nBody.\n", ...state.corpusFiles });
-        const git = fakeGit((argv) => {
-          if (isLearningsEnumerateCall(argv)) return state.enumerateReply();
-          return argv.join(" ") === REV_PARSE
-            ? { ok: true, stdout: `feat-${FEATURE}\n` }
-            : { ok: true };
-        });
-        const authoring = [];
-        const injections = fs.injections();
-        const baseReadFile = injections._readFile;
-
-        await mainDev({
-          ...injections,
-          reqPath: REQ_PATH,
-          _agent: makeBaselineAgent((skill, prompt) => {
-            if (skill === "pm-author" || skill === "se-author") authoring.push(prompt);
-          }),
-          _parallel: (promises) => Promise.all(promises),
-          _pipeline: async (label, fn) => fn(),
-          _phase: silent,
-          _log: silent,
-          _listFiles: fakeListFiles([]),
-          _git: git,
-          // The config is read off this same seam, once per run (§I.2) — the one channel that
-          // turns the injector off. Everything else falls through to the fake filesystem.
-          _readFile: async (p) =>
-            String(p).endsWith("pdlc.config.json") ? state.configText : baseReadFile(p),
-        });
-
-        expect(authoring).toHaveLength(1); // the control
-        expect(authoring[0]).toBe(baselineBytes("PHASE-F-AUTHORING-PROMPT", 0));
-      });
+      }
     });
   }
 
@@ -350,5 +273,22 @@ describe("learningsBaselineGuard — the committed baseline as an ORACLE (AC-5.1
     const f = baselineBytes("PHASE-F-AUTHORING-PROMPT", 0);
     expect(f.length).toBeGreaterThan(1000);
     expect(f).not.toBe(`${f}\n\n--- PRIOR-FEATURE LEARNINGS (advisory context) ---`);
+  });
+
+  // The capture entry point and this guard must agree on WHICH "before" state the fixtures
+  // record; otherwise `node scripts/capture-learnings-baseline.mjs` would rewrite them against
+  // a different merge base and this file's hand-transcribed digests would be re-transcribed to
+  // match, defeating the guard (CODE_REVIEW v1 F1).
+  it("the capture entry point's pinned merge-base ref is the one the hand-transcribed digests were taken at", () => {
+    expect(BASELINE_MERGE_BASE_REF).toBe(EXPECTED_MERGE_BASE_SHA);
+  });
+
+  // Set equality over the SCENARIO set, not only over the fixture directory: a scenario silently
+  // dropped from the matrix would stop being captured and stop being compared, while every
+  // digest assertion above still passed over the fixtures that remained.
+  it("the committed scenario matrix's caseId set equals the hand-transcribed digest set", () => {
+    expect(BASELINE_SCENARIOS.map((s) => s.caseId).sort()).toEqual(
+      Object.keys(EXPECTED_DIGESTS).sort()
+    );
   });
 });

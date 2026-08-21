@@ -15,7 +15,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — round 7; erratum v0.8 moves AC-3.2's not-selected rows and corpus-level outcomes to the same per-dispatch locus AC-3.3 uses, decides the malformed `learningsInjection` section fails open with a notice (AC-5.1b), and closes AC-1.2's outside-set over authoring-tagged dispatches with no C-1 document type; erratum v0.9 restates §1.2 claim 2's unlistable behaviour against shipped code and names this feature's divergence, scopes AC-3.1's closure to each selected document's row, and names the implementation-config reader in AC-5.1b | Claude | 0.9 | 2026-08-19 |
+| pdlc | draft — round 7; erratum v0.10 (DoD round 1, CODE_REVIEW v1 F11) makes AC-2.4's report attribution cause-defined: a document cut by AC-2.2's count bound is reported under that cause even when the total bound also bound, which is what the shipped selection does and what FSPEC v0.14's BR-6 now states; erratum v0.8 moves AC-3.2's not-selected rows and corpus-level outcomes to the same per-dispatch locus AC-3.3 uses, decides the malformed `learningsInjection` section fails open with a notice (AC-5.1b), and closes AC-1.2's outside-set over authoring-tagged dispatches with no C-1 document type; erratum v0.9 restates §1.2 claim 2's unlistable behaviour against shipped code and names this feature's divergence, scopes AC-3.1's closure to each selected document's row, and names the implementation-config reader in AC-5.1b | Claude | 0.10 | 2026-08-21 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -297,7 +297,10 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
   `learningsInjection.maxTotalBytes`, *when* the dispatch is composed, *then* the excess is
   resolved by dropping whole documents from the low end of the ordering — never by silently
   cutting one mid-document beyond the per-document bound — and each dropped document appears in
-  the report as available-but-not-selected (AC-3.2).
+  the report as available-but-not-selected (AC-3.2), **attributed to the bound that actually
+  removed it**: a document the count bound (AC-2.2) already cut is reported under that cause even
+  when the total bound also failed on the documents that remained, and only documents this bound
+  drops are reported under it. The reason ids of AC-3.2 name causes, not coincidences.
 - **AC-2.5** *Given* two runs over an identical repository state, *when* the two composed
   dispatches for the same document type are compared, *then* the injected material is
   byte-identical, including order (G-3, C-5).

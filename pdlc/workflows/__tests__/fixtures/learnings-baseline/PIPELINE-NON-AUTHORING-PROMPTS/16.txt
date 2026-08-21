@@ -1,0 +1,15 @@
+Harvest learnings for feature li06-pipeline:
+1. Read all CROSS-REVIEW-*.md and CODE_REVIEW-*.md files (every doc type, every -vN suffix) for docs/li06-pipeline/.
+2. Read all POSTMORTEM-*.md files for docs/li06-pipeline/ (if any).
+3. Write docs/li06-pipeline/LEARNINGS-li06-pipeline.md.
+4. Commit and push LEARNINGS before any delete operation.
+5. Only after the LEARNINGS commit is confirmed on remote, delete the harvested CROSS-REVIEW-* and CODE_REVIEW-* files.
+6. Commit and push the deletions.
+
+Open-promotion list, computed from docs/_decisions/.consolidation-log.md and handed to you (FSPEC §8.4 step 1). For each §5 Open Item you write, ask one question per entry below: does this item report the failure that entry's symptom describes, on that entry's artifact, in that entry's phase? On a yes, copy that entry's id VERBATIM onto the item as `failure-mode-id: {id}` — never re-slug, abbreviate, or mint a new id. On no matches, write no line.
+(none — no open promotions are recorded)
+All commits for this task must land on branch feat-li06-pipeline. Immediately before each commit run `git rev-parse --abbrev-ref HEAD`; if it prints anything else — especially the default branch — STOP and report instead of committing. Do not run `git checkout` yourself; the orchestrator has already placed the tree on the branch.
+
+Pacing contract (H-3): lay down the skeleton first, then write ONE top-level section per edit, keep every single write under 12,000 bytes, and commit after each section. A monolithic write is killed by the 180 s stall watchdog and loses everything it had not yet flushed.
+
+This artifact is not on disk yet. Begin by laying out its top-level headings as a skeleton, then fill them one at a time under the pacing contract above.

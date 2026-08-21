@@ -25,10 +25,11 @@
 // `helpers/seams.js` only — no ad-hoc corpus builder or ad-hoc seam double is defined here
 // beyond the whole-pipeline driving harness immediately below, which is glue, not fixture data.
 
-import { execFileSync } from "child_process";
+import { execFileSync, spawnSync } from "child_process";
 import { mkdtempSync, rmSync, readFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 import {
   buildLearningsCorpus,
@@ -38,6 +39,12 @@ import {
   LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
 } from "./helpers/learningsFixtures.js";
 import { fakeGit, fakeFs } from "./helpers/seams.js";
+import { composeAuthoringPrompts } from "./helpers/learningsComposition.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** The CLI entry point of the composition helper — PROP-ORDER-05's SECOND process invocation. */
+const COMPOSITION_CHILD_PATH = join(__dirname, "helpers", "learningsComposition.js");
 
 // TSPEC §I.1's literal, restated here (as `learningsFixtures.js` restates it) so this file can
 // recognise the LEARNINGS enumeration call in a scripted `_git` without importing the
@@ -227,6 +234,7 @@ async function runScenario({
   agentOpts = {},
   _recordDocType = () => {},
   listFiles = null,
+  injectorFactory = null,
 } = {}) {
   const dev = await import("../orchestrate-dev.js");
   const mainDev = dev.default;
@@ -283,6 +291,9 @@ async function runScenario({
     // file leaves `_listFiles` at its shipped default, so their review state — and therefore
     // their episode modes, round windows and prompts — are untouched by this option's existence.
     ...(listFiles ? { _listFiles: listFiles } : {}),
+    // Passed ONLY when a caller asks for it, on the same rule as `_listFiles` above: every
+    // other scenario leaves the shipped `buildLearningsInjector` in place.
+    ...(injectorFactory ? { _learningsInjector: injectorFactory } : {}),
     _agent: buildRecordingAgent(calls, agentOpts),
     _recordDocType,
     _parallel: (promises) => Promise.all(promises),
@@ -393,7 +404,17 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
       expect(c.prompt).toContain("docs/completed/prior-feature/LEARNINGS-prior-feature.md");
     }
   });
-  test("LI-20: LI-AT-03 — every dispatch outside BR-1's rule is byte-identical to the recorded pre-feature baseline", async () => {
+  // CODE_REVIEW v1 F7. This test's registered title used to claim byte-identity to "the recorded
+  // pre-feature baseline", but its body compares an ENABLED run of this branch against a
+  // DISABLED run of the same branch — precisely the comparison AC-5.1a rules out ("that
+  // committed baseline, not a same-branch disabled run"). It cannot fail if the injection seam
+  // corrupts non-authoring prompts identically in both arms. The title now states the property
+  // the body actually delivers (enabled/disabled parity, which is a real and useful half of
+  // AC-1.2: the block is a suffix on authoring dispatches and nothing else moves). The
+  // committed-baseline half of AC-1.2 belongs to `learningsBaselineGuard.test.js`, whose fixture
+  // matrix now covers the WHOLE non-authoring dispatch set of a pipeline run rather than three
+  // prompts (`PIPELINE-NON-AUTHORING-PROMPTS`).
+  test("LI-20: LI-AT-03 — enabled/disabled parity: every dispatch outside BR-1's rule is byte-identical between an enabled and a disabled run of this branch (the committed-baseline half is learningsBaselineGuard.test.js's)", async () => {
     const corpus = buildLearningsCorpus([
       {
         path: "docs/completed/prior-feature/LEARNINGS-prior-feature.md",
@@ -438,29 +459,97 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
   });
 });
 
+// CODE_REVIEW v1 F2 (Low, "unwired integration"): `buildLearningsInjector` declares a `_log`
+// seam and guards its use with `if (typeof _log === "function")`, but the single production
+// construction site never passed one — so the per-dispatch observability line fired only under
+// test doubles, and an operator debugging a silent non-injection had no runtime signal at all.
+// The run now threads its own `emit` through the seam. The oracle reads the seam, not a log
+// string: it captures the options object the production site actually constructs the injector
+// with, and then drives the returned injector to prove the threaded value is invoked per
+// dispatch with the record TSPEC §D.2 names.
+describe("learningsDispatchSet — CODE_REVIEW v1 F2: the production construction site supplies the _log seam", () => {
+  test("supporting: mainDev constructs the learnings injector with a callable _log, and every dispatch emits through it", async () => {
+    const corpus = buildLearningsCorpus([
+      {
+        path: "docs/completed/f2-prior/LEARNINGS-f2-prior.md",
+        doc: { feature: "f2-prior", dateCompleted: "2026-01-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }] },
+      },
+    ]);
+
+    const dev = await import("../orchestrate-dev.js");
+    const constructedWith = [];
+    const emitted = [];
+    const injectorFactory = (options) => {
+      constructedWith.push(options);
+      const inner = dev.buildLearningsInjector({
+        ...options,
+        _log: (entry) => {
+          emitted.push(entry);
+          options._log(entry);
+        },
+      });
+      return inner;
+    };
+
+    await runScenario({ corpus, injectorFactory });
+
+    // (1) The seam is supplied at all — the finding's literal subject.
+    expect(constructedWith.length).toBe(1);
+    expect(typeof constructedWith[0]._log).toBe("function");
+
+    // (2) It is live: the guarded call fires once per dispatch, carrying §D.2's fields. Without
+    // this conjunct a site that passed a non-callable placeholder would still satisfy (1).
+    expect(emitted.length).toBeGreaterThan(0);
+    for (const entry of emitted) {
+      expect(Object.keys(entry).sort()).toEqual(["corpusOutcome", "docType", "feature", "phaseId"]);
+      expect(entry.feature).toBe(FEATURE);
+    }
+
+    // (3) The production value does not throw when invoked — an `emit` of the wrong arity or a
+    // logger expecting a string would red here rather than in a real run.
+    expect(() => constructedWith[0]._log({ feature: FEATURE, docType: "FSPEC", phaseId: "F", corpusOutcome: null })).not.toThrow();
+  });
+});
+
 describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertness (FSPEC AT-14/23/24/29/31)", () => {
   test("LI-20: LI-AT-14 — two whole-process runs over an identical fixture repository state compose byte-identical blocks, including order", async () => {
-    // "Two whole-process runs, not two loop iterations" (TE F-02): this test invokes
-    // `runScenario` twice, each a fresh call into a dynamically re-imported module namespace —
-    // never one run whose loop retries once — so an in-process memo (E-32, forbidden by AC-3.2)
-    // cannot masquerade as determinism.
-    const corpusSpec = [
-      {
-        path: "docs/completed/prior-a/LEARNINGS-prior-a.md",
-        doc: { feature: "prior-a", dateCompleted: "2026-01-01", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }] },
-      },
-      {
-        path: "docs/completed/prior-b/LEARNINGS-prior-b.md",
-        doc: { feature: "prior-b", dateCompleted: "2026-01-02", sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }] },
-      },
-    ];
-    const run1 = await runScenario({ corpus: buildLearningsCorpus(corpusSpec) });
-    const run2 = await runScenario({ corpus: buildLearningsCorpus(corpusSpec) });
+    // CODE_REVIEW v1 F8. PROPERTIES §O.7 states this property as two compositions made in TWO
+    // SEPARATE PROCESS INVOCATIONS — that is what rules out module-level memoisation and
+    // insertion-order dependence surviving in a warm module. This test used to call
+    // `runScenario` twice inside the same jest worker, against the module-cached
+    // `await import("../orchestrate-dev.js")` at line 222: any per-process cached state was
+    // shared by both arms and therefore invisible, so the suite delivered a strictly weaker
+    // property than the document claimed.
+    //
+    // Arm 1 is composed in THIS process; arm 2 is composed by a child `node` invocation of the
+    // same `helpers/learningsComposition.js` entry point — a cold module registry, a cold V8
+    // heap, no shared state of any kind with arm 1. Both arms run identical code over identical
+    // fixtures, so a difference can only come from the module's own per-process state.
+    const inProcess = await composeAuthoringPrompts();
 
-    const authoring1 = run1.calls.filter((c) => AUTHORING_SKILLS.has(c.skill) && carriesLearningsBlock(c.prompt));
-    const authoring2 = run2.calls.filter((c) => AUTHORING_SKILLS.has(c.skill) && carriesLearningsBlock(c.prompt));
-    expect(authoring1.length).toBeGreaterThan(0);
-    expect(authoring1.map((c) => c.prompt)).toEqual(authoring2.map((c) => c.prompt));
+    const coverageScratch = mkdtempSync(join(tmpdir(), "pdlc-composition-cov-"));
+    const child = spawnSync(process.execPath, [COMPOSITION_CHILD_PATH], {
+      encoding: "utf8",
+      cwd: join(__dirname, ".."),
+      // The child's V8 coverage is diverted away from c8's temp directory. This child imports
+      // `orchestrate-dev.js`, so under `test:coverage` it would emit a second coverage entry for
+      // that URL covering only the composition path. c8 does not union two entries for one URL —
+      // the merged report comes out lower than either arm — so a second entry would silently
+      // DEPRESS the module's measured branch coverage toward the arm this child happens to
+      // exercise. `NODE_V8_COVERAGE` must be overridden rather than omitted: node re-propagates
+      // it to children whatever `options.env` says.
+      env: { ...process.env, NODE_V8_COVERAGE: join(coverageScratch, "v8-coverage") },
+    });
+    rmSync(coverageScratch, { recursive: true, force: true });
+    // The control: a child that failed to run would emit `[]`, and `[] === []` would pass
+    // vacuously. Assert the child succeeded and that both arms composed a non-empty block set.
+    expect({ status: child.status, stderr: child.stderr }).toEqual({ status: 0, stderr: "" });
+    const childPrompts = JSON.parse(child.stdout.trim().split("\n").pop());
+
+    expect(inProcess.length).toBeGreaterThan(0);
+    expect(childPrompts.length).toBe(inProcess.length);
+    // Byte-identical, INCLUDING ORDER: an ordered-sequence equality, never a set equality.
+    expect(childPrompts).toEqual(inProcess);
   });
 
   test("LI-21: LI-AT-24 — no prior LEARNINGS at all: every authoring dispatch is byte-identical to baseline, and the report records corpus-level RSN-EMPTY", async () => {

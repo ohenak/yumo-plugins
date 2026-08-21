@@ -1,0 +1,20 @@
+Challenge the Definition of Done for feature li06-pipeline (review version v1). Assume incomplete until the evidence proves otherwise.
+
+Step 1 — Read the specs first (before touching any code):
+  docs/li06-pipeline/REQ-li06-pipeline.md — acceptance criteria and success conditions
+  docs/li06-pipeline/FSPEC-li06-pipeline.md — functional requirements, user flows, error cases
+  docs/li06-pipeline/PROPERTIES-li06-pipeline.md — testable system properties
+Build a checklist of every acceptance criterion, requirement, error case, and property.
+
+Step 2 — Scan production code (non-test files changed by this feature via git diff --name-only) for:
+1. Stubs, TODOs, placeholders, NotImplementedError in production code (read function bodies, not signatures)
+2. Unwired integrations — unused imports, dead config, placeholder URLs (trace request-to-response paths)
+3. Mock/fake data in production code — hardcoded test data, mock variables outside test files
+4. Branch coverage ≥85% for all new modules with property-based tests for parameterisable components
+5. Requirements delivered — for each checklist item: trace it to a production code path AND a test that would fail if the implementation broke. Trace to the FINAL operator-visible artifact (after any entry-point re-render/overwrite), not the node/builder output; enumerate all writers of the traced output (grep the filename/key) and confirm no later writer clobbers the AC value without a test pinning the final artifact. Missing either one is a gap (req_gaps count). An assertion-free test does not count. A stub-backed test does not count.
+6. Integration-boundary integrity (boundary_gaps count) — two checks:
+   (a) Adjacent-surface falsification: does the diff make any existing artifact, disclosure string, comment, config default, or doc claim FALSE? For every output file the feature writes, grep for other writers of the same file/key and check for a later overwrite. When the feature touches one member of a same-shape family (one tools/get_* among several, one writer of a multi-writer artifact), enumerate the family and require each sibling covered or explicitly out-of-scope in the REQ.
+   (b) Deferral binding: every deferral this feature introduces or leaves in place must name a successor that exists as a queue row (docs/_queue/QUEUE.md) or a named successor REQ file in docs/. A runbook step, operator config, or bare prose mention is NOT a successor.
+
+Document every finding (all six criteria) with a Scope tag (Local | Cross-Feature | Process) in docs/li06-pipeline/CODE_REVIEW-li06-pipeline-v1.md — include a §2 Requirements Traceability table listing every criterion with implementation path, test path, and Gap? column. Commit and push the review file. Do NOT fix anything — you are the evaluator, not the optimizer.
+End with the DOD_STATUS trailer including req_gaps and boundary_gaps in the JSON.

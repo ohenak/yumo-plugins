@@ -39,7 +39,7 @@ import { fileURLToPath, pathToFileURL } from "url";
  *
  * @param {object} options
  * @param {string} options.cwd - repository root the worktree was added under.
- * @param {string} options.worktreePath - path (relative to `cwd`) of the merge-base worktree.
+ * @param {string} options.worktreePath - path of the merge-base worktree, absolute or relative to `cwd`.
  * @param {string} options.outputDir - directory the captured fixtures are written under.
  * @param {string} options.mergeBaseRef - the resolved merge-base sha, recorded in the manifest.
  * @param {Array<{caseId: string, run: (mainFn: Function) => Promise<string[]>}>} options.matrix
@@ -62,8 +62,12 @@ export async function captureFixturesFromWorktree({
     );
   }
 
-  const modulePath = path.join(cwd, worktreePath, "pdlc", "workflows", "orchestrate-dev.js");
-  const { default: mainFn } = await import(pathToFileURL(modulePath).href);
+  // `resolve`, not `join`: `worktreePath` may be absolute (the `--worktree` flag accepts one,
+  // and tests pass a scratch directory). `join` would graft an absolute path onto `cwd` and
+  // import from a directory that does not exist (CODE_REVIEW v1 F1, second round).
+  const modulePath = path.resolve(cwd, worktreePath, "pdlc", "workflows", "orchestrate-dev.js");
+  const devModule = await import(pathToFileURL(modulePath).href);
+  const mainFn = devModule.default;
 
   mkdirSync(outputDir, { recursive: true });
 
@@ -78,7 +82,7 @@ export async function captureFixturesFromWorktree({
     }
     seenCaseIds.add(caseId);
 
-    const prompts = await run(mainFn);
+    const prompts = await run(mainFn, devModule);
     const caseDir = path.join(outputDir, caseId);
     mkdirSync(caseDir, { recursive: true });
 
@@ -104,7 +108,7 @@ export async function captureFixturesFromWorktree({
  *
  * @param {object} options
  * @param {string} options.cwd - repository root to run `git worktree` commands in.
- * @param {string} options.worktreePath - path (relative to `cwd`) to materialise the
+ * @param {string} options.worktreePath - path, absolute or relative to `cwd`, to materialise the
  *   merge-base checkout at, e.g. `.baseline-worktree`.
  * @param {string} options.mergeBaseRef - ref/sha to check out into the worktree.
  * @param {string} options.outputDir - directory the captured fixtures are written under.
@@ -136,21 +140,72 @@ export async function runCaptureScript({
 const isMainModule =
   process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
 
+/**
+ * Minimal flag parser for the entry point: `--ref <sha>`, `--out <dir>`, `--worktree <path>`.
+ *
+ * @param {string[]} argv
+ * @returns {Record<string,string>}
+ */
+export function parseCaptureArgv(argv) {
+  const options = {};
+  for (let i = 0; i < argv.length; i += 1) {
+    const flag = argv[i];
+    if (!flag.startsWith("--")) continue;
+    const name = flag.slice(2);
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith("--")) {
+      throw new Error(`pdlc-learnings-capture: flag --${name} requires a value`);
+    }
+    options[name] = value;
+    i += 1;
+  }
+  return options;
+}
+
 if (isMainModule) {
+  // CODE_REVIEW v1 F1/F12. This entry point used to be a refusal stub: it printed "no built-in
+  // L3 fixture matrix is wired into this CLI entrypoint yet" and exited 1, so every
+  // operator-reachable path of a shipped production script did nothing, the committed fixtures'
+  // AC-6.2 provenance was not reproducible by the committed tooling, and the word "yet" was a
+  // deferral bound to no successor. The matrix is now committed
+  // (`pdlc/workflows/__tests__/helpers/learningsBaselineScenarios.js`) and wired here:
+  // `node scripts/capture-learnings-baseline.mjs` regenerates the committed fixture set in
+  // place, and re-running it on an unmodified merge-base reproduces the committed digests
+  // byte-for-byte — which is what makes the provenance checkable rather than asserted.
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(__dirname, "..");
-  const mergeBaseRef = execFileSync(
-    "git",
-    ["merge-base", "origin/main", "HEAD"],
-    { cwd: repoRoot, encoding: "utf8" }
-  ).trim();
+  const { BASELINE_SCENARIOS, BASELINE_MERGE_BASE_REF, NEUTRAL_STATE, BASELINE_FIXTURE_DIR } =
+    await import(
+      pathToFileURL(
+        path.join(repoRoot, "pdlc", "workflows", "__tests__", "helpers", "learningsBaselineScenarios.js")
+      ).href
+    );
 
-  console.error(
-    "pdlc-learnings-capture: no built-in L3 fixture matrix is wired into this CLI entrypoint " +
-      "yet (TSPEC §T.3 names the matrix as branch code assembled at capture time). Invoke " +
-      "runCaptureScript({cwd, worktreePath, mergeBaseRef, outputDir, matrix}) programmatically " +
-      "with the current L3 matrix, e.g. from a one-off invocation script."
-  );
-  console.error(`resolved merge-base: ${mergeBaseRef}`);
-  process.exitCode = 1;
+  const options = parseCaptureArgv(process.argv.slice(2));
+  // The ref is PINNED by default, never `git merge-base origin/main HEAD`: the merge base moves
+  // every time the default branch advances, so a computed default would silently re-baseline the
+  // fixtures against a different "before" state and quietly invalidate AC-6.2's recorded
+  // provenance. `--ref` is the deliberate override.
+  const mergeBaseRef = options.ref ?? BASELINE_MERGE_BASE_REF;
+  const outputDir = path.resolve(repoRoot, options.out ?? BASELINE_FIXTURE_DIR);
+  const worktreePath = options.worktree ?? ".baseline-worktree";
+
+  const manifest = await runCaptureScript({
+    cwd: repoRoot,
+    worktreePath,
+    mergeBaseRef,
+    outputDir,
+    matrix: BASELINE_SCENARIOS.map(({ caseId, run }) => ({
+      caseId,
+      // Merge-base code consults neither the config seam nor the LEARNINGS enumeration seam, so
+      // the neutral (config absent, enumeration empty) reading defines the recorded bytes.
+      run: (_mainFn, devModule) => run(devModule, NEUTRAL_STATE),
+    })),
+  });
+
+  console.error(`pdlc-learnings-capture: captured at merge-base ${manifest.mergeBaseSha}`);
+  console.error(`pdlc-learnings-capture: wrote ${Object.keys(manifest.files).length} prompt fixtures to ${outputDir}`);
+  for (const [relPath, digest] of Object.entries(manifest.files)) {
+    console.error(`  ${digest}  ${relPath}`);
+  }
 }

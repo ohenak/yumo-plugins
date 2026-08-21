@@ -101,6 +101,8 @@ The parsing contracts for these files — verdict grammar, approval anchors and 
 
 ### Deep-dive reference
 
+Authoring dispatches (REQ, FSPEC, TSPEC, PLAN, DECISIONS, PROPERTIES) carry a bounded suffix of prior features' `LEARNINGS-*.md` material. It ships **on**: `.claude/pdlc.config.json` → `learningsInjection` (`enabled` true, `maxDocuments` 5, `maxBytesPerDocument` 6000, `maxTotalBytes` 20000), every failure mode fails open, and non-authoring prompts stay byte-identical to a pre-feature run. See `pdlc/OPERATIONS.md`.
+
 `pdlc/OPERATIONS.md` carries the full operational detail split out of this file: review loop mechanics, the phase graph and erratum channel, implementation waves, the CI check table, worktrees, model selection, the advisory tier, the engine channel, and the artifact/queue parsing contracts. Read it before debugging pipeline behavior or editing workflow sources.
 
 ### Ptah engine integration

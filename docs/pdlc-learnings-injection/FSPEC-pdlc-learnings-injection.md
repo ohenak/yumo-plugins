@@ -8,14 +8,14 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.9); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+| Upstream | **REQ** — `docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md` (v0.10); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | TSPEC, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` — every round present on this branch, not hand-enumerated |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.13 | 2026-08-20 |
+| pdlc | Draft | Claude | 0.14 | 2026-08-21 |
 
 
 > **v0.6 erratum (re-grounded on REQ v0.8).** BR-14 and dependents now carry REQ §4.1's
@@ -79,6 +79,15 @@ depends-on: []
 > rather than "carries a section". F-O-1 now owns **both** heading-recognition rules — the
 > document-shape predicate and the rule by which a heading counts as one of BR-6's named sections
 > — so BR-6's delegation names a real owner. No other change.
+
+> **v0.14 erratum (DoD round 1, CODE_REVIEW v1 F11; re-grounded on REQ v0.10, bumped this same round).** BR-6's
+> total bound is now stated over **the window** the count bound leaves rather than over the whole
+> ordering, and the mixed count/byte case is stated outright: a document past the window carries
+> `RSN-COUNT` whatever the window's byte outcome, because the count bound is what removed it
+> (AC-3.2's ids are cause-defined). This is the rule the shipped code implements and AT-13
+> exercises; the disagreement was in this document, which had been routed as an `ERRATUM: FSPEC`
+> comment in `orchestrate-dev.js` bound to no successor. REQ AC-2.4 carries the matching
+> attribution clause. No behavioural change — the text now states what the code does.
 
 > **Scope in one line.** The behaviour of the injection step that `orchestrate-dev` performs when it
 > composes an authoring dispatch: which corpus documents are eligible, how they are ordered and
@@ -497,12 +506,26 @@ admissible from any document: each yields nothing, is dropped before the total b
 `RSN-NO-MATERIAL` (BR-9) and consumes no slot, and the run is the enabled, empty-selection
 run BR-14 describes (E-36, AT-30).
 
-**How the total bound binds.** Documents are accumulated in BR-4's order until the next
-document's contributed bytes would carry the running total past
-`learningsInjection.maxTotalBytes`; that document and every lower-ordered one is dropped
-**whole**, with `RSN-BYTES` (AC-2.4). No document is ever cut mid-document to make a total
-fit — the per-document bound is the only cut this feature makes — and no back-fill follows
-(BR-5).
+**How the total bound binds.** The total bound accumulates over **the window** — the
+documents BR-5's count bound left, in BR-4's order — and over nothing else. The count bound
+"is applied first, over BR-4's order" (BR-5), so a document past the window was already gone
+before the total bound was consulted at all. Within the window, documents are accumulated
+until the next one's contributed bytes would carry the running total past
+`learningsInjection.maxTotalBytes`; that document and every lower-ordered one **in the
+window** is dropped **whole**, with `RSN-BYTES` (AC-2.4). No document is ever cut
+mid-document to make a total fit — the per-document bound is the only cut this feature makes
+— and no back-fill follows (BR-5).
+
+**The mixed case, stated.** When both bounds bind on the same corpus, each dropped document
+carries the id of **the bound that removed it**, per AC-3.2's cause-defined ids. Documents
+past the window carry `RSN-COUNT` whatever the window's byte outcome turns out to be; only
+documents the total bound dropped from inside the window carry `RSN-BYTES`. The alternative
+reading — propagating `RSN-BYTES` outward to the count-cut documents whenever the byte
+failure happened early enough in the window — was implemented once and removed: it made the
+split depend on *where* in the window the byte failure fell, so with `maxDocuments: 5` a
+failure at window index 2 labelled documents 6+ `RSN-BYTES` while the same failure at index
+4 labelled them `RSN-COUNT`, though in both cases the count bound is what cut them. An
+operator cannot predict that, and no rule here ever stated it.
 
 **Determinism.** Both bounds and every byte count are derived from bytes alone, so two runs
 over identical repository state produce byte-identical blocks, in the same order (AC-2.5).

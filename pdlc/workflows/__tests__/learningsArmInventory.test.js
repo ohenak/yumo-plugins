@@ -144,7 +144,6 @@ describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to th
       });
       const { rejected } = selectLearnings({
         entries: gathered.entries,
-        feature: "arm-unreadable-null",
         thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
       });
       for (const r of rejected) observedRejectReasons.push(r.reason);
@@ -170,7 +169,6 @@ describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to th
       });
       const { rejected } = selectLearnings({
         entries: gathered.entries,
-        feature: "arm-unreadable-throw",
         thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
       });
       for (const r of rejected) observedRejectReasons.push(r.reason);
@@ -188,7 +186,6 @@ describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to th
       const entries = entriesFromCorpus(corpus, { feature: "arm-unparseable" });
       const { rejected } = selectLearnings({
         entries,
-        feature: "arm-unparseable",
         thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
       });
       for (const r of rejected) observedRejectReasons.push(r.reason);
@@ -215,7 +212,6 @@ describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to th
       const entries = entriesFromCorpus(corpus, { feature: "arm-no-material" });
       const { rejected } = selectLearnings({
         entries,
-        feature: "arm-no-material",
         thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
       });
       for (const r of rejected) observedRejectReasons.push(r.reason);
@@ -227,7 +223,6 @@ describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to th
       const entries = entriesFromCorpus(corpus, { feature: "arm-count" });
       const { rejected } = selectLearnings({
         entries,
-        feature: "arm-count",
         thresholds: COUNT_BINDING_THRESHOLDS,
       });
       for (const r of rejected) observedRejectReasons.push(r.reason);
@@ -239,7 +234,6 @@ describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to th
       const entries = entriesFromCorpus(corpus, { feature: "arm-bytes" });
       const { rejected } = selectLearnings({
         entries,
-        feature: "arm-bytes",
         thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
       });
       for (const r of rejected) observedRejectReasons.push(r.reason);
@@ -255,7 +249,6 @@ describe("LI-21: learningsArmInventory — twelve fail-open arms set-equal to th
       const entries = entriesFromCorpus(corpus, { feature, selfPath });
       const { rejected } = selectLearnings({
         entries,
-        feature,
         thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
       });
       for (const r of rejected) observedRejectReasons.push(r.reason);

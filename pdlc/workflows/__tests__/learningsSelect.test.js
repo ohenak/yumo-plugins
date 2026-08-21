@@ -80,7 +80,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature,
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
 
@@ -102,7 +101,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature: "count-binding-dispatcher",
       thresholds: COUNT_BINDING_THRESHOLDS,
     });
 
@@ -120,7 +118,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature: "bytes-binding-dispatcher",
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
 
@@ -169,7 +166,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature: "at08-dispatcher",
       thresholds: { maxDocuments: 3, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
     });
 
@@ -204,7 +200,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     const entries = entriesFromCorpus(corpus);
     const args = {
       entries,
-      feature: "at09-dispatcher",
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     };
 
@@ -249,7 +244,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     const entries = entriesFromCorpus(corpus);
     const args = {
       entries,
-      feature: "at10-dispatcher",
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     };
 
@@ -329,7 +323,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature: "at13-dispatcher",
       thresholds: { maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
     });
 
@@ -371,7 +364,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     ]);
     const soloResult = selectLearnings({
       entries: entriesFromCorpus(soloCorpus),
-      feature: "at13-solo-dispatcher",
       thresholds: { maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes: 1000 },
     });
     expect(soloResult.selected).toEqual([]);
@@ -420,7 +412,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     const reasonsFor = (maxTotalBytes) => {
       const result = selectLearnings({
         entries,
-        feature: "f07-dispatcher",
         thresholds: { maxDocuments: 5, maxBytesPerDocument: 6000, maxTotalBytes },
       });
       return {
@@ -470,7 +461,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature: "at16-dispatcher",
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
 
@@ -513,7 +503,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature: "at28-dispatcher",
       thresholds: { maxDocuments: 1, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
     });
 
@@ -561,7 +550,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
 
     const result = selectLearnings({
       entries,
-      feature: "at28b-dispatcher",
       thresholds: { maxDocuments: 1, maxBytesPerDocument: 6000, maxTotalBytes: 20000 },
     });
 
@@ -599,7 +587,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     // nothing.
     const pureResult = selectLearnings({
       entries: entriesFromCorpus(nestedCorpus, { feature: dispatchingFeature }),
-      feature: dispatchingFeature,
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
     expect(pureResult.selected).toEqual([]);
@@ -640,7 +627,6 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     const directCorpus = buildDiscardedDirectCorpus();
     const directResult = selectLearnings({
       entries: entriesFromCorpus(directCorpus, { feature: dispatchingFeature }),
-      feature: dispatchingFeature,
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
     // `docs/discarded/LEARNINGS-x.md` occupies the glob's single `*` segment, so it IS a
@@ -753,8 +739,45 @@ describe("PROP-ORDER-06: orderCorpus permutation invariance and strict-weak-orde
   });
 });
 
+// CODE_REVIEW v1 F3 (Low, "unwired parameter"): `selectLearnings` used to destructure a
+// `feature` parameter it never read — self-exclusion (`RSN-SELF`) is decided upstream, in
+// `gatherLearningsCorpus`, and is delivered to selection as `entry.excluded`. A signature that
+// advertises `feature` implies selection re-checks self-exclusion, a guarantee that is not
+// there. The parameter is dropped from the signature and from every call site; this static pin
+// is what keeps it dropped.
+describe("CODE_REVIEW v1 F3: selectLearnings declares no unread `feature` parameter", () => {
+  let selectLearningsSignature;
+  beforeAll(async () => {
+    const dev = await import("../orchestrate-dev.js");
+    const source = dev.selectLearnings.toString();
+    selectLearningsSignature = source.slice(0, source.indexOf(")") + 1);
+  });
+
+  test("supporting: the destructured parameter list is exactly {entries, thresholds}", () => {
+    expect(selectLearningsSignature).toContain("entries");
+    expect(selectLearningsSignature).toContain("thresholds");
+    expect(selectLearningsSignature).not.toMatch(/\bfeature\b/);
+  });
+
+  test("supporting: self-exclusion is read off entry.excluded, not off any dispatching-feature argument", async () => {
+    const { selectLearnings } = await import("../orchestrate-dev.js");
+    const selfEntry = {
+      path: "docs/f3-self/LEARNINGS-f3-self.md",
+      text: null,
+      readOk: false,
+      excluded: "RSN-SELF",
+    };
+    const { selected, rejected } = selectLearnings({
+      entries: [selfEntry],
+      thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
+    });
+    expect(selected).toEqual([]);
+    expect(rejected).toEqual([{ path: selfEntry.path, reason: "RSN-SELF" }]);
+  });
+});
+
 // PROP-CORPUS-09 (TSPEC T-O-5, PROPERTIES §O.9): `selectLearnings` is total — for any
-// `{entries, feature, thresholds}`, it returns without throwing, and every input path appears
+// `{entries, thresholds}`, it returns without throwing, and every input path appears
 // exactly once across `selected ∪ rejected`. Named corner cases (empty corpus, all-self corpus,
 // all-unreadable entries, zero-valued thresholds) are asserted individually first, then the same
 // two conjuncts are re-asserted over a generated spread of entry shapes and threshold values
@@ -766,7 +789,7 @@ describe("PROP-CORPUS-09: selectLearnings totality (TSPEC T-O-5)", () => {
   function assertTotality(entries, thresholds) {
     let result;
     expect(() => {
-      result = selectLearningsUnderTest({ entries, feature: "dispatching-feature", thresholds });
+      result = selectLearningsUnderTest({ entries, thresholds });
     }).not.toThrow();
 
     const observedPaths = [

@@ -119,6 +119,11 @@ test("AT-2.2: the plugin's three `claude plugin install` sites are asserted as a
   };
 
   locate("README.md", 115, "claude plugin install");
-  locate("pdlc/README.md", 98, "claude plugin install");
-  locate("pdlc/README.md", 104, "claude plugin install");
+  // These line pins move whenever pdlc/README.md gains a section above the install block;
+  // `pdlc-learnings-injection` added the "Prior-feature learnings injection" section (24 lines)
+  // ahead of them, so 98/104 became 132/138. The pin is deliberate — it asserts the sites as a
+  // POSITIVE at a known locus rather than merely counting occurrences — so it is re-pinned, not
+  // relaxed.
+  locate("pdlc/README.md", 132, "claude plugin install");
+  locate("pdlc/README.md", 138, "claude plugin install");
 });

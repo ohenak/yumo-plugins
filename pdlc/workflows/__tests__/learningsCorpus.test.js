@@ -89,7 +89,6 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
 
     const { rejected } = selectLearnings({
       entries: result.entries,
-      feature: "authoring-feature",
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
     expect(rejected).toContainEqual({ path: missingPath, reason: "RSN-UNREADABLE" });
@@ -135,7 +134,6 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
 
     const { rejected } = selectLearnings({
       entries: result.entries,
-      feature: "authoring-feature",
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
     expect(rejected).toContainEqual({ path: throwingPath, reason: "RSN-UNREADABLE" });
@@ -174,7 +172,6 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
 
     const { rejected } = selectLearnings({
       entries: result.entries,
-      feature: "authoring-feature",
       thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
     });
     expect(rejected).toContainEqual({ path: notLearningsPath, reason: "RSN-UNPARSEABLE" });

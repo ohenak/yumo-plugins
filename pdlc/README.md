@@ -65,6 +65,30 @@ The workflows pin a model per phase (passed to the runtime via the `agent()` `mo
 
 Both workflows default their agent calls to the phase model and let an explicit call-site `model` win, so downstream helpers inherit the default. Constants live at the top of `workflows/orchestrate-dev.js` (`MODEL_DEFAULT` / `MODEL_IMPLEMENTATION`) and `workflows/orchestrate-queue.js` (`MODEL_QUEUE`).
 
+## Prior-feature learnings injection
+
+Authoring dispatches (REQ, FSPEC, TSPEC, PLAN, DECISIONS, PROPERTIES) are suffixed with a
+bounded, delimited digest of prior features' `LEARNINGS-*.md` files, so each new feature
+starts from what the last ones learned. Non-authoring dispatches are unchanged, byte for byte.
+
+It is **on by default**. Configure — or disable — it under `learningsInjection` in
+`.claude/pdlc.config.json`:
+
+```jsonc
+{
+  "learningsInjection": {
+    "enabled": true,          // set false to turn the feature off entirely
+    "maxDocuments": 5,        // documents per dispatch
+    "maxBytesPerDocument": 6000,
+    "maxTotalBytes": 20000    // per dispatch, across all documents
+  }
+}
+```
+
+Every failure mode fails open: an unreadable corpus, an unparseable document, a malformed
+section or a wrong-typed key injects less, never halts, and never silently disables. Keys and
+notice ids are documented in `pdlc/OPERATIONS.md`.
+
 ## Convention contract (what installing pdlc expects of a repo)
 
 - Artifacts live under `docs/{feature}/`: `REQ → FSPEC → TSPEC → PLAN → PROPERTIES`
