@@ -293,4 +293,15 @@ FINDING: Medium | inherited | local | FSPEC EC-20 and AT-12 fourth conjunct | Th
 
 ## Verdict
 
-_pending_
+**FSPEC still holds as approved against REQ v1.6.** No High finding, `delta` or `inherited`. The
+erratum moved the REQ toward this FSPEC on all three substantive hunks — it ratified §3.2's
+ancestry-before-over-count ordering, scoped REQ-WVR-08's no-commit claim to the implementation wave
+loop exactly as BR-11 does, and recorded BL-04 as unmet exactly as OB-F1 asked — so the compression
+relation is stronger after the edit than before it. What the landing leaves behind is three Low
+stale citations inside the FSPEC (a v1.5 version pin and two §7 notes that quote REQ text the
+erratum rewrote or deleted) and one inherited Medium that the erratum has now mirrored upstream
+(the V-wave "commits" conjunct in EC-20/AT-12), all recorded above for the FSPEC's own revision
+loop. None of them blocks the TSPEC or PROPERTIES from proceeding.
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
