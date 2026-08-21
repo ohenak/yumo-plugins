@@ -188,4 +188,89 @@ weighed:
 
 ## Decision
 
+Eight decisions, each stating what was chosen, what was rejected, what forced the shape, how
+reversible it is, and what should make a future reader re-open it. Ids are the TSPEC's
+(`TSPEC §6.1`), so the two documents cite one another by the same name.
+
+### DEC-WVR-01: Formalise the shipped interim mechanism in place
+
+**Context:** The mechanism ships today, marked INTERIM, contained "precisely so that feature can
+replace it cleanly rather than untangle it". The feature has to decide whether to replace it or to
+adopt it.
+**Decision:** Adopt it. Remove the INTERIM commentary and replace it with the formalised contract
+citing this feature's TSPEC; keep every constant, field name, evaluation order and write site. The
+shipped header comment also miscounts its own surface ("two pure functions … two write sites"; it
+is three pure functions and one write site), and the replacement states the surface correctly.
+**Alternatives considered:**
+- O-1, rewrite behind a `WaveResumeStore` abstraction — rejected because it invalidates 44 shipped
+  tests, re-opens a path constant that `.gitignore` pins by a root-anchored rule, and in a dialect
+  with no `import` is a second in-file block, i.e. the duplication REQ BL-03 forbids.
+**Constraints that forced this shape:** REQ BL-03 (ratify or revise, never duplicate); R-4
+(interim/final divergence is the named risk); the restricted `pdlc/workflows/*.js` dialect (no
+`import`, no `fs`, no `process`).
+**Reversibility:** easy — nothing here forecloses a later extraction into a module if the dialect
+ever gains imports.
+**Re-evaluation triggers:** the dialect gains module imports; a second consumer outside
+`orchestrate-dev.js` needs the record; the record's format needs a version 2.
+
+### DEC-WVR-02: Extract the decision chain into one pure total classifier
+
+**Context:** The resume decision is an inline `if / else if` chain of ~81 lines in `main()`,
+interleaved with `emit` calls and one `await`ed probe. FSPEC AT-02 and AT-13 demand set equality
+over announced reasons and over outcomes.
+**Decision:** Extract the ordered decision — feature match, plan-hash match, ancestry verdict,
+over-count, complete, mid-plan — into one pure, total `classifyWaveLedger`, taking the ancestry
+verdict as an already-resolved boolean and returning a *description* of the outcome. The probe, the
+`emit` calls and the report row stay in `main()`.
+**Alternatives considered:**
+- O-2, leave it inline — rejected: AT-02 and AT-13 then have no honest oracle (DC-03, DC-04).
+- O-3, extract the probe too behind a new injected seam — rejected: a 36th `main()` parameter
+  duplicating the `_git` transport the probe already reaches through `branchGuardTransport`, plus a
+  second adapter binding, for a probe that already fails open three ways.
+**Constraints that forced this shape:** REQ C-3 (no new capabilities); TSPEC §3.4's structural
+discharge of it ("the diff adds no parameter to `main()`"); totality, which is what makes FSPEC
+BR-01's three-outcome closure mechanically checkable rather than asserted in prose.
+**Reversibility:** easy for the extraction itself; the *behaviour* it preserves is not up for
+revision.
+**Re-evaluation triggers:** the announcements themselves need to become pure values (e.g. a
+structured run log), at which point more of `main()`'s emit layer could follow the same move.
+
+### DEC-WVR-03: Announce provenance as an explicit `operator-set` / `automatic` token
+
+**Context:** FSPEC BR-07 makes provenance announced content and FSPEC §2 lets a test assert that an
+announcement *conveys* it. The shipped banners name the source but never the words.
+**Decision:** Introduce a frozen two-member vocabulary `RESUME_PROVENANCE` and append
+` (provenance: …)` to each announcing outcome, **after the sentence's terminal punctuation and
+outside every existing parenthesis**. Extend the executed Phase I report row with the resume point
+and provenance; leave the `⏭` row's shipped text whole, the token outside its parenthesis.
+**Alternatives considered:**
+- O-5, ratify source-naming as conveying provenance — rejected: it makes every provenance oracle an
+  inference from a source string, so a banner naming the wrong source would still pass.
+**Constraints that forced this shape:** FSPEC BR-07 and §2; REQ-WVR-01's "run log **and final
+report**"; and the shipped regression net — the placement rule is what keeps every prefix and
+substring matcher green, leaving exactly three whole-string assertions to change, each named with
+its replacement in TSPEC §2.4 and landed in the same task as the change that forces it.
+**Reversibility:** easy — the suffix is additive text behind a frozen catalogue.
+**Re-evaluation triggers:** a third provenance ever exists (e.g. a resume sourced from something
+that is neither an operator pointer nor the record); the run log becomes structured, at which point
+provenance should be a field rather than a clause.
+
+### DEC-WVR-04: Keep the `{}` read tolerance; write nothing
+
+**Context:** FSPEC OB-F3 asks for the fate of the cleared `{}` shape, which `parseWaveLedger`
+tolerates as "no record" and which no writer produces.
+**Decision:** Keep the tolerance exactly as shipped; add no writer. FSPEC OB-F3 is discharged by
+this decision plus a test, not by a code change.
+**Alternatives considered:**
+- O-6(a), wire a clearing writer — rejected: REQ-WVR-05 decided retention with invalidation, and a
+  clearing write is the self-clearing position that decision rejected.
+- O-6(b), drop the tolerance — rejected: it converts a silent fresh-run case into an announced
+  anomaly (contra FSPEC BR-02) and punishes an operator who empties the file by hand.
+**Constraints that forced this shape:** REQ-WVR-05; FSPEC BR-02's silence requirement for the
+no-record case.
+**Reversibility:** easy in code; **hard in expectation** — operators will have learned that
+emptying the file is equivalent to deleting it.
+**Re-evaluation triggers:** a future writer genuinely needs a "deliberately cleared, do not resume"
+state distinguishable from "no record", which is a REQ-level change, not an implementation one.
+
 ## Consequences
