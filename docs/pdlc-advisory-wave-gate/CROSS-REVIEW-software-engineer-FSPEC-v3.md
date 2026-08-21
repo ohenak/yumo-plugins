@@ -45,7 +45,32 @@ clause narrower than the set it justifies, and two lineage-hygiene items. None i
 
 ## Linked Requirements
 
-_pending_
+The upstream hunks in the window, and the FSPEC surface each one lands on. "Faithful?" is the
+confirmation verdict for that pair.
+
+| REQ hunk (v1.13 → v1.15) | What upstream now says | FSPEC surface that compresses it | Faithful? |
+|---|---|---|---|
+| Lineage header: `Upstream` → `docs/completed/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md` … → **REQ** | Resolvable path to the tier REQ | FSPEC §1 header cites `REQ-pdlc-advisory-wave-gate.md` only; it never cites the tier REQ by path (it cites `docs/_constraints/pdlc-advisory-corpus-baseline.md` §1–§4 for inherited behaviour) | Yes — nothing to update. Path verified to exist. |
+| Lineage header: `Cross-Reviews` scoped to harvested rounds vs post-harvest errata | Rounds through harvest live in LEARNINGS; branch `CROSS-REVIEW-*` files are post-harvest errata in no LEARNINGS table | FSPEC §1 header row reads `Cross-Reviews \| (active)` | Substantively yes; hygiene gap — F-04 |
+| Status/Version: `draft` 1.13 → `approved (shipped)` 1.15 | REQ is shipped, two errata on | FSPEC §1 line 52 pins "`REQ-pdlc-advisory-wave-gate` v1.13"; FSPEC Status still `Draft` v1.6 | Pin is now stale — F-02 |
+| AC-1.1 + R-5: post-change reading pinned at `11420461` | Replaces the HEAD-relative "HEAD already carries A6" | FSPEC §2 "Where 'before' is measured" (before `c8aa22a4`, post-change M-WG-13/M-WG-14 at `11420461`); AT-07-2 cites `R-5` | Yes — FSPEC said it first. Residual HEAD-relative phrasing — F-03 |
+| AC-5.1: observation point, excluded carriers (AC-6.1 record, **AC-6.2 escalation log**, AC-5.2 queue row), ignored paths, failed-capture outcome | The full restoration contract | FSPEC BR-9 (domain + observation point), E-23 (queue-row write is later), E-34 (failed capture), AT-05-1, AT-05-2 | Yes on all four; one rationale clause diverges — F-01 |
+
+**The excluded-carrier check, done explicitly**, because it is the one hunk with oracle consequences.
+REQ v1.15 excludes three carriers by enumeration: AC-6.1's record append, AC-6.2's escalation-log
+append, AC-5.2's queue-row write. FSPEC BR-9 excludes by **temporal cut** instead of enumeration —
+the map is taken "immediately after restoration completes and before the record and escalation
+writes BR-13 requires". A temporal cut at that instant is a superset of REQ's enumeration: all three
+carriers are written after restoration completes, and FSPEC E-23 states the queue-row half of that
+ordering explicitly ("the halt path still appends the record and escalation entries BR-13 requires
+and still rewrites and commits the `halted` queue row (M-WG-7)"). So FSPEC's oracle admits nothing
+REQ's enumeration excludes, and excludes nothing REQ's admits. AT-05-1 transcribes the same cut. No
+finding.
+
+**Traceability table unchanged.** FSPEC §1's FSPEC-AWG-01…07 → REQ-AWG-01…07 concordance still
+resolves: no AC id was added, removed or renumbered in the window, so every `AC-x.y` FSPEC cites
+still exists and still says what FSPEC says it says. AC-5.1 and AC-1.1 grew text; neither changed
+its subject.
 
 ## Behavioral Flow
 
