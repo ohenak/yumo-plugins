@@ -139,4 +139,24 @@ FINDING: Low | delta | nonlocal | §C.4 Landed files / re-red of landed suites |
 
 ## Recommendation
 
+**Approved with minor changes.**
+
+PROPERTIES still holds as approved against PLAN at HEAD. No High finding: every property, oracle,
+fixture, owning-task cite and traceability count survives the erratum unchanged, and the erratum's
+substance — naming the expected-red rows for the heading-form follow-up, and discharging the
+fixture-helper question on a verified additivity premise (`learningsFixtures.js:65–68`) — is what
+§C.4 asked upstream for. The three findings are documentation-accuracy items in prose that
+*describes* PLAN's state, and all three are single-clause edits:
+
+1. **F-01** — rewrite §C.4's routing sentence to record the erratum as closed and cite PLAN §The
+   three gate wordings, *Amendment commits on landed suites (P-A-7)*.
+2. **F-03** — in the same sentence, cite **P-A-6** as the rule governing this document's own
+   amendments to landed suites, keeping P-A-7 for the heading-form follow-up.
+3. **F-02** — refresh the header's PLAN pin to v0.6.
+
+None blocks implementation and none touches a suite. Nothing else in PROPERTIES needs to move.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
