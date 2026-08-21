@@ -249,20 +249,23 @@ final report state the resume point and its provenance as automatic. *Source: US
 **Who:** pipeline operator. **Given:** no prior halted Phase I for this feature, or a resume
 record that fails any member of the closed catalogue below. **When:** the pipeline is invoked.
 **Then:** every wave runs from the first; nothing about the record makes the invocation refuse to
-run (C-2). The catalogue of causes is **complete as enumerated**, not open-ended — four announced
-and one deliberately silent:
+run (C-2). The catalogue of causes is **complete as enumerated**, not open-ended — one row per
+mechanism, five announced and one deliberately silent:
 
 | # | Cause | Operator-visible outcome |
 |---|---|---|
 | IG-1 | the record's content cannot be read as a record (unparseable or foreign shape) | full run, announced with the reason |
 | IG-2 | it records a different feature than the one being run | full run, announced with the reason |
 | IG-3 | the PLAN's wave layout has changed since it was written | full run, announced with the reason |
-| IG-4 | it records more waves complete than this plan has, or names a commit no longer reachable from the current branch tip | full run, announced with the reason |
-| IG-5 | no record exists, or it is empty/cleared | full run, **no** announcement — an absent record is the normal fresh-run case, not an anomaly |
+| IG-4 | it records more waves complete than this plan has | full run, announced with the reason |
+| IG-5 | it names a commit no longer reachable from the current branch tip | full run, announced with the reason |
+| IG-6 | no record exists, or it is empty/cleared | full run, **no** announcement — an absent record is the normal fresh-run case, not an anomaly |
 
-The set is closed: adding a sixth cause, or deleting one, is a deliberate change to this AC.
-PROPERTIES owes a **set-equality** check over IG-1..5 rather than a containment check, so a
-deleted cause fails a test instead of passing one. *Source: US-01, US-02.*
+The set is closed: adding a seventh cause, or deleting one, is a deliberate change to this AC.
+IG-4 and IG-5 are listed separately because they are independent guards with different failure
+modes (TE G-02); fusing them would let the ancestry guard be deleted without the enumeration
+changing. PROPERTIES owes a **set-equality** check over IG-1..6 rather than a containment check,
+so a deleted cause fails a test instead of passing one. *Source: US-01, US-02.*
 
 ### REQ-WVR-03 — verification independence (P0, Phase 1)
 
@@ -296,7 +299,7 @@ completed all its waves. **When:** any later run reads it. **Then:** the record 
 completed phase, but it can never cause a run to skip work it has not verified — it is usable only
 while it validates against the feature key, the PLAN hash, and commit ancestry from the current
 HEAD, and a record failing any of those checks is treated exactly as an absent record — a full
-run — with the reason announced (REQ-WVR-02, IG-1..4; an absent record itself is IG-5 and is
+run — with the reason announced (REQ-WVR-02, IG-1..5; an absent record itself is IG-6 and is
 silent). Staleness is therefore a property the reader proves, not a property the
 writer promises. *Source: US-01.*
 
@@ -336,7 +339,7 @@ the determination regresses to commit archaeology).
 **Carve-out — ancestry corroboration is permitted and is not archaeology (SE F-04).** Testing
 whether the *specific commit a record names* is still reachable from the current branch tip is
 falsification of the record, not derivation of completion from commit presence. It is expressly
-allowed by this AC and required by IG-4 of REQ-WVR-02; §3's rejection of commit-history
+allowed by this AC and required by IG-5 of REQ-WVR-02; §3's rejection of commit-history
 archaeology is likewise limited to deriving completion from task commits. *Source: US-03.*
 
 ### REQ-WVR-07 — unattended queue parity (P2, Phase 2)
@@ -395,7 +398,7 @@ produces tracked-file churn on the feature branch. *Source: US-01, US-03.*
 - **R-1 — stale record after history rewrite.** An operator rebase/reset — or Phase DOD's own
   rebase onto the default branch — can invalidate what the record believes is committed. The
   first-line mitigation is ancestry corroboration: a record naming a commit no longer reachable
-  from the current branch tip is ignored with an announced reason (REQ-WVR-02, IG-4), which this
+  from the current branch tip is ignored with an announced reason (REQ-WVR-02, IG-5), which this
   REQ **requires** rather than merely permits. Behind it stand REQ-WVR-03 (nothing commits before
   full-tree verification) and IG-3 (a changed plan invalidates the record). Residual worst case is
   a full run or a gate halt, as today — the risk is therefore Low, not the load-bearing one it
