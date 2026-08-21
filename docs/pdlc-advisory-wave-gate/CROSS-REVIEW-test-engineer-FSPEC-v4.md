@@ -73,6 +73,39 @@ are untouched by the delta and are not re-reviewed.
 
 ## Business Rules
 
+**BR-14 is the rule site the delta lands on, and it does not yet carry the delta.** BR-14 —
+"Escalation adds information and never changes control flow (AC-5.2, **AC-6.3**)" — names AC-6.3 as
+one of its two upstream anchors, so it is the rule an implementer and a test author will both read
+when asking "what must the halt report contain?". Its current last sentence stops at: *"The halt
+report carries the diagnosis and its root-cause class, so the operator's turn starts with the
+diagnosis on the halt path, not only in a file they must find."* REQ v1.16's AC-6.3 now says strictly
+more than that, and BR-14 is the only place in FSPEC where the extra obligation could live without
+inventing a new rule number.
+
+Why this is High and not a citation nit:
+
+- **A rule that does not state an obligation cannot be tested for it.** BR-14 as written is fully
+  satisfied by a halt report with no overwrite warning. An implementation that ships the pre-A6
+  capture pointer and no warning passes every FSPEC rule and every FSPEC AT while violating REQ
+  AC-6.3 — the definition of a downstream compression gap, not a style issue.
+- **The obligation is operator-visible, which is exactly the altitude FSPEC owns.** REQ deliberately
+  states it as an outcome and leaves the capture's name and storage form to TSPEC O-1 (the v1.16
+  changelog says so explicitly). So there is no altitude excuse for FSPEC to stay silent: the
+  outcome-level clause is FSPEC's to compress, and O-1 continues to own the mechanism.
+- **It is a positive-presence obligation.** The warning is a string that must be *present* in a named
+  artifact — the cheapest kind of falsifiable oracle there is, and one BR-14 can state in a single
+  clause.
+
+**Suggested BR-14 amendment (one sentence, no decision reopened):** *"Where the halt report names a
+captured pre-A6 tree state, the same report also states that re-running this feature overwrites that
+capture; the pointer and the warning are carried by one artifact, not split across channels (AC-6.3,
+DEC-A6-03). What the capture is called and how it is stored remain O-1's."*
+
+**BR-9, BR-10, BR-13, BR-15, BR-16 unchanged in truth value.** The delta adds nothing about
+restoration triggers, the observation point, or record-write semantics. v3's F-02 (BR-9 enumerates
+two excluded record carriers where AC-5.1 names three, with E-23 covering the third) is untouched by
+this edit and remains open — F-04 below, Low, `inherited`/`nonlocal`.
+
 ## Edge Cases and Error Scenarios
 
 ## Acceptance Tests
