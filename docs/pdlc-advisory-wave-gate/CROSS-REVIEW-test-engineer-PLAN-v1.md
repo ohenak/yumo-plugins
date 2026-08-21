@@ -76,6 +76,38 @@ edited" disposition is correct.
 
 ## Mechanical re-derivation
 
+The changelog claims the edit moved no task, batch, wave, dependency edge or file-ownership cell, and
+cites a re-run of `parsePlanTasks` → `computeWaves` returning 11 tasks and 7 waves. I re-ran it rather
+than trusting the claim, importing the shipped `pdlc/workflows/orchestrate-dev.js` at HEAD:
+
+```
+tasks 11
+A6-00 batch 1 exp 1 OK   deps []
+A6-01 batch 1 exp 1 OK   deps []
+A6-04 batch 1 exp 1 OK   deps []
+A6-05 batch 1 exp 1 OK   deps []
+A6-06 batch 2 exp 2 OK   deps ["A6-04"]
+A6-08 batch 2 exp 2 OK   deps ["A6-00","A6-05"]
+A6-10 batch 3 exp 3 OK   deps ["A6-08"]
+A6-12 batch 4 exp 4 OK   deps ["A6-10"]
+A6-14 batch 5 exp 5 OK   deps ["A6-12"]
+A6-18 batch 6 exp 6 OK   deps ["A6-14"]
+A6-21 batch 7 exp 7 OK   deps ["A6-18"]
+waves 7  A6-00+A6-01+A6-04+A6-05 | A6-06+A6-08 | A6-10 | A6-12 | A6-14 | A6-18 | A6-21
+```
+
+Every `Batch` cell equals `max(dep batch) + 1`, ids are unique, every dependency resolves, the graph is
+acyclic, batch 1 is four tasks (under `computeTopologicalBatches`' five-task cap), and each batch
+collapses to exactly one wave. No same-batch task pair creates or appends the same new file: batch 1's
+four tasks own `advisoryWaveGate.test.js` + a verify-only probe (A6-00), `helpers/advisoryDoubles.js`
+(A6-01), `pdlc/engine/__tests__/advisory-config-example.test.js` (A6-04) and `advisoryEnvelope.test.js`
+(A6-05); batch 2's two tasks split across `.claude/pdlc.config.example.json` (A6-06) and
+`advisoryWaveGate.test.js` (A6-08). The claim holds and the dispatcher contract is intact.
+
+TDD order is likewise unchanged: A6-10's row still carries its red steps ahead of its green step inside
+the one task, with the wave-gate rationale for the in-task RED→GREEN restructure intact, and A6-01
+retains its `[Fake first]` label in batch 1 ahead of every production task.
+
 ## Delta-Confirmation Findings
 
 ## Verdict

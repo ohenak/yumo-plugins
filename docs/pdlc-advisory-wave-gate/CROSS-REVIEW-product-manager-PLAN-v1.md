@@ -85,7 +85,27 @@ DEC-ERR-03 measures this document against upstream at HEAD, and FSPEC is upstrea
 
 ## Verification
 
-*(pending)*
+How each conclusion above was reached, so the next round can re-run it rather than re-derive it.
+
+| Check | Method | Result |
+|---|---|---|
+| Upstream bytes are the ones the dispatch pinned | `shasum -a 256` on all four upstream documents | 4/4 match |
+| The delta is bounded | `git diff --stat b902f40b..HEAD` on the PLAN | 36 insertions, 14 deletions, one file — no collateral edits |
+| No OQ-7 pending framing survives | grep `OQ-7\|pending\|test.todo` over the PLAN | 4 live sites retired; remaining hits are historical changelog rows and `A6-04`'s unrelated "already exists" note |
+| `AC-5.1` transcription | Read REQ §REQ-AWG-05 at HEAD | Observation point and record-carrier exclusions match word for word in substance |
+| `AT-05-1` "both sides" claim | Read FSPEC `AT-05-1` at HEAD | Matches, including the "fails this test rather than passing it" direction |
+| `A6-10` is a live case | Read the `A6-10` row in full | Asserts both directions, names the observation point, explicitly excludes `test.todo` / `.skip` idioms with the `scanSkipTokens` rationale |
+| Graph unchanged | Diff inspected for task/batch/wave/dependency/file-ownership rows | None touched — the edit is prose plus one traceability cell plus one DoD leg |
+| `AT-02-1` oracle | Read FSPEC `AT-02-1` + `BR-2` at HEAD against PLAN `A6-05` | Divergence — `F-01` |
+| `E-08b` two-class arm | grep `first-match\|matching both\|two-class` over the PLAN | Zero hits outside `A6-05`'s unrelated text — `F-02` |
+| `AC-2.2` priority | Read REQ-AWG-02 heading | **P0**, which is what sets `F-01` at High |
+
+**What would close `F-01`.** One sentence in `A6-05`'s red step: `ADVISORY_ROOT_CAUSES` is compared
+by **ordered-sequence** equality against the transcribed literal
+`["plan-ordering-defect","wave-internal-defect","environmental","unclassified"]`, alongside the two
+constants already carrying that oracle — and, for `F-02`, one case in whichever task owns
+classification (`A6-08`'s `parseA6RootCause` step is the natural home) asserting that a gate output
+matching class 1 and class 2 yields `plan-ordering-defect` and carries exactly one class.
 
 ## Questions
 
