@@ -1337,7 +1337,7 @@ items this list still carried as open. They are struck rather than re-routed:
   and they owe green."* The gap is dissolved rather than filled — there is no row to widen, because
   there is no row. Absorbed into §C.4.
 - ~~PLAN's P-A-7 **case B** scopes its named row to "every batch from the landing batch through the
-  batch that greens them", and with LI-17 (`2cbacada`) and LI-21 (`92b7ea0c`) landed no remaining
+  batch that greens them", and with LI-17 (`a4998e13`) and LI-21 (`e7fa8d87`) landed no remaining
   batch greens them — the span as worded has no terminus~~ — **answered** by PLAN **v0.8**, which
   re-scopes case B to *"batch 9 through batch 12"* (the window where a greening batch still remains)
   and replaces the span, under case C, with **batch 14's unqualified gate**: a red that lands is a
@@ -1346,6 +1346,20 @@ items this list still carried as open. They are struck rather than re-routed:
   commit**, and its v0.8 changelog records the ruling as *"answering PM Q-02"*. That closes PM's
   carried Q-02 (green, not red) as well; re-emitting either item now would be DEC-ERR-01's
   anti-pattern. Absorbed into §C.4.
+
+**Newly routed this round — one item:**
+
+- **PLAN's §File-ownership manifest lists fourteen new test files; eighteen `learnings*` files are
+  tracked at `09c7c62f`.** The four it does not list —
+  `pdlc/workflows/__tests__/helpers/learningsBaselineScenarios.js`,
+  `pdlc/workflows/__tests__/helpers/learningsComposition.js`,
+  `pdlc/workflows/__tests__/learningsDisclosure.test.js` and
+  `pdlc/workflows/__tests__/learningsErratumBinding.test.js` — arrived in `2fc6fcd3` as
+  `CODE_REVIEW-pdlc-learnings-injection-v1.md` remediation (F1/F7/F12, F8, F10, F11/F12) and are owned
+  by no LI task. No property of this document names any of the four and no oracle moves, so this is
+  routed rather than absorbed: it is PLAN's manifest that is now incomplete, and PLAN's to decide
+  whether the four take task rows, a remediation row, or an explicit out-of-manifest note. Recorded as
+  §G.2 gap 5.
 
 **Still open — one item:**
 
