@@ -186,6 +186,62 @@ being edited — the risk in editing a routed-errata list — and I diffed the l
 
 ## Fixtures
 
+**§F.1–§F.4 are byte-identical.** No hunk lands in `:817`–`:917`, so the fourteen-row corpus fixture
+table, the byte-identity baseline rules (§F.2), §F.3's verbatim-fixture-string rule and §F.4's seam
+doubles are untouched. The fixture surface this delta reaches is entirely inside §C.4's inventory.
+
+**The baseline fixture row grew, and the growth is real.** The row for
+`__tests__/fixtures/learnings-baseline/` gains *"and a `PIPELINE-NON-AUTHORING-PROMPTS/` arm of 18
+files"*. `git ls-files` on that subtree returns `MANIFEST.json`, `PHASE-F-AUTHORING-PROMPT/0.txt`,
+`PHASE-R-REVIEW-PROMPTS/{0,1}.txt` and `PIPELINE-NON-AUTHORING-PROMPTS/{0…17}.txt` — **18** files in
+that arm exactly, numbered contiguously from 0. The count is right and the enumeration is closed.
+This matters more than a row detail: §F.2's byte-identity oracle runs over whatever the baseline
+directory contains, so an arm the document did not know about would have been an unmeasured input to
+a preservation property. Recording it closes that.
+
+**§F.3's verbatim-fixture-string rule is what makes the reversal table checkable, and it held.** The
+rule says a fixture string in this document must be the normative string, not a paraphrase. That is
+precisely why I could check the reversal table with `sed -n {N}p` and get exact matches on
+`"Rejected Proposals"`, `"Rejected Proposals (with rationale)"`, `"Process Findings"` and the
+`"### A sub-heading that is body text, not a section boundary."` body line. Had the revision
+paraphrased, the seven-row reversal would have been unfalsifiable prose. It did not, and the
+discipline paid for itself in this exact round.
+
+**The four unowned files are fixture-adjacent, and the revision classified them correctly.** Two of the
+four are *helpers*, not suites — `helpers/learningsBaselineScenarios.js` and
+`helpers/learningsComposition.js` — which means they sit in the same category as
+`helpers/learningsFixtures.js`: modules that register no jest test and can carry no red/green status.
+I read the header of each to check the attribution the revision writes:
+
+| File | Header at HEAD | Attribution in the document |
+|---|---|---|
+| `learningsDisclosure.test.js` | *"— CODE_REVIEW v1 F10."* | F10 — matches |
+| `learningsErratumBinding.test.js` | *"— CODE_REVIEW v1 F11 and F12."* | F11/F12 — matches |
+| `helpers/learningsComposition.js` | *"…so it can be driven from TWO SEPARATE NODE PROCESSES (CODE_REVIEW v1 F8)."* | F8 — matches |
+| `helpers/learningsBaselineScenarios.js` | *"the committed L3 fixture matrix for `scripts/capture-learnings-baseline.mjs` (TSPEC §T.3), CODE_REVIEW v1 F1/F7/F12."* | F1/F7/F12 — matches |
+
+All four resolve to `2fc6fcd3` under `git log --diff-filter=A -1`, and `2fc6fcd3`'s subject is
+`docs(cross-review): TE DECISIONS v8 context` — a docs-titled commit, exactly as the revision says,
+which is why no `LI-*` id stands behind them. `grep` for all four names across PLAN returns nothing, so
+*"no PLAN task owns them"* is verified against PLAN's bytes and not inferred from the absence of a task
+id in a commit subject.
+
+**The routing decision is the right one.** `helpers/learningsBaselineScenarios.js` is a *fixture
+matrix* for the capture script — the same production surface §F.2's byte-identity baseline covers. A
+reviewer could reasonably have argued it should be absorbed into §F.2's fixture accounting. The
+revision does not do that, and should not: no property of this document names it, PLAN's manifest is
+what is incomplete, and PLAN is where the decision (task row, remediation row, or explicit
+out-of-manifest note) belongs. Routing rather than absorbing keeps this document's fixture accounting
+a faithful compression of PLAN instead of quietly diverging from it.
+
+**One count-convention imprecision.** *"finds **eighteen** `learnings*` files under
+`pdlc/workflows/__tests__`"* (§G.2 gap 5) counts the `fixtures/learnings-baseline/` **subtree** as one
+file. `git ls-files pdlc/workflows/__tests__ | grep learnings` returns **39 paths** — 14 suites, 3
+helpers and 22 fixture files. Eighteen is the count of *inventory rows*, which is the useful number and
+the one the surrounding prose reasons with; the word "files" is what is imprecise. The document already
+used this convention at v0.7 (*"fourteen rows over fourteen files"*), so it is inherited, not
+introduced. Low, below.
+
 ## Findings
 
 ## Questions
