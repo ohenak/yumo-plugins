@@ -146,16 +146,44 @@ A6-15 for this case, so no fixture text went stale.
 
 ## Positive Observations
 
-<!-- pending -->
+- **The `attempts` correction took the harder, better road.** It would have been enough to delete the
+  conjunct; the row instead replaced it with a falsifiable positive (`attempts` unchanged) and
+  recorded the three sources plus the superseded wording. That is a row a red-test author can mint
+  from without opening FSPEC.
+- **The re-home was verified against PLAN, not asserted.** §G-3 item 3 quotes A6-14's step and states
+  what A6-18's step does *not* contain — the shape of claim I can check in one grep, and it held.
+- **Item 5 was resolved by narrowing to upstream's exact strength**, matching TSPEC §5.2 case 4 word
+  for word, rather than by deleting the conjunct or by inventing a middle position.
+- **The unhomed Integration conjuncts were routed, not dropped.** §G-3 item 3 names two acceptable
+  PLAN resolutions and states the interim reading. That is the correct handling of a downstream gap a
+  PROPERTIES cannot fix itself.
+- **The changelog's "no other property statement, category, level assignment, oracle form or PLAN home
+  changed" claim is true** — I diffed rather than trusted it, and the delta is exactly the six sites
+  it names.
 
 ## Recommendation
 
-<!-- pending -->
+**Approved with minor changes**
+
+The delta resolves all five routed items on the form upstream states at HEAD, and breaks nothing I
+approved in v1. Three Low findings are recorded and none gates: F-01 is inherited task-id drift the
+edit did not introduce, F-02 is a label inconsistency worth one sweep whenever the matrix is next
+touched, F-03 records a residual the document already routes to se-author. No High, no Medium.
+
 
 ## Delta-Confirmation Findings
 
-<!-- pending -->
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | inherited | local | The §C-3 PLAN-home matrix keys its rows on PLAN v1.2 task ids (`A6-09`, `A6-13`, `A6-15`), but PLAN v1.3 folded each RED step into its GREEN task — the tasks that exist at HEAD are `A6-10`, `A6-14`, `A6-18`. This is my v1 F-02 unchanged: the edit moved a property between two of these rows without renumbering them. Not gating, and the matrix is readable, but a PLAN reader grepping `A6-15` finds a step that no longer owns what the matrix says it owns. Fix: retitle the matrix rows as `A6-14 (former-A6-13 red step)` etc., matching the convention the property Home cells already use. | §C-3 PLAN-home matrix |
+| F-02 | Low | delta | local | The delta introduced a naming split for one and the same home: PROP-ENV-13's Home cell reads `advisoryWaveGate.test.js` (A6-14, former-A6-13 red step)` — PLAN v1.3 ids — while the §C-3 matrix places it under a row headed `A6-13` — PLAN v1.2 ids. Both point at the same step, but a reader diffing the two sites sees two different task numbers for one property and cannot tell without opening PLAN which is current. Same one-line fix as F-01; filed separately because this half is the edit's own, not inherited. | §C PROP-ENV-13 Home cell vs §C-3 matrix |
+| F-03 | Low | delta | local | PROP-ENV-13 is now levelled `Unit + Integration`, but only its Unit (seam-op) half has a minted home: A6-14's red step is a `buildA6SeamOps` member-contract step, so it mints `producedPaths() === []` and `{ok:false}` but not the run-level conjuncts (escalation entry written; no re-gate token appended to the ledger after the anchor; `attempts` unchanged across the refusal, which is only observable on a `runWaveGateSeam` run). §G-3 item 3 routes this to se-author with two acceptable resolutions, which is the right handling and why this is Low rather than High — but until PLAN answers, three conjuncts of a property have no test that will be written. Worth a note on the phase's open-items list so the routing is not lost with this cross-review file. | §C PROP-ENV-13 Level; §G-3 item 3 |
+
+FINDING: Low | inherited | local | §C-3 PLAN-home matrix | matrix rows still keyed on PLAN v1.2 task ids (A6-09/A6-13/A6-15) while PLAN v1.3's tasks at HEAD are A6-10/A6-14/A6-18; my v1 F-02, untouched by this edit
+FINDING: Low | delta | local | §C PROP-ENV-13 Home cell vs §C-3 matrix | the edit names PROP-ENV-13's home twice in two different id conventions — "A6-14, former-A6-13 red step" in the Home cell, row "A6-13" in the matrix — so one home reads as two task numbers
+FINDING: Low | delta | local | §C PROP-ENV-13 Level; §G-3 item 3 | property levelled Unit + Integration but only the seam-op half has a PLAN home; the run-level conjuncts (escalation entry, no post-anchor re-gate token, unchanged attempts) are routed to se-author and unminted until PLAN answers
 
 ## Verdict
 
-<!-- pending -->
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
