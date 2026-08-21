@@ -2543,9 +2543,7 @@ export function renderLearningsBlock({ selected }) {
  *  matching either `docs/{feature}/…` or `docs/completed/{feature}/…` so a re-run of a harvested
  *  feature is excluded whichever location its LEARNINGS doc sits in (E-31). */
 function isLearningsSelfPath(path, feature) {
-  return (
-    path.startsWith(`docs/${feature}/`) || path.startsWith(`docs/completed/${feature}/`)
-  );
+  return path.startsWith(`docs/${feature}/`) || path.startsWith(`docs/completed/${feature}/`);
 }
 
 /** TSPEC §I.4. The whole shell is one outer `try/catch` returning `{unlistable: true}` — the
