@@ -83,6 +83,38 @@ buy a second round for one edit, and this delta neither introduced it nor change
 
 ## Dependencies
 
+**No `Deps` edge changed.** The diff contains no line inside §Dependencies and no `Deps` cell; the
+23-row dependency graph is byte-identical to the base. This delta scheduled nothing.
+
+**The one cross-document dependency this delta touches is P-A-6, and the edit tightens it.** The
+answer cell previously offered two routes for a PROPERTIES suite that lands red: land it green in one
+commit, "or else its red rows are amended into the ledger by name first (P-A-7)". That second route
+is **case B's** route, and case B closed at batch 12 — so at HEAD the fallback pointed at a mechanism
+that no longer exists. The cell now reads "its rows are handled under **P-A-7's governing case** —
+which at HEAD is case C, where no ledger remains to amend into and the obligation is
+green-at-landing; the amend-into-the-ledger-by-name route is case B's, and case B closed at batch
+12". I checked this against P-A-7's table at HEAD: case B's *When* is "batch 9 through batch 12" and
+case C's is "batch 13 or later", so the cell's claim about which case governs at HEAD is exactly
+right, and it is stated by indirection ("the governing case") rather than by naming C outright — so
+the sentence does not go stale again if the domain moves. This is a correctness repair to a
+downstream instruction, not a new decision: the obligation on Phase P is unchanged (commit when
+green), only the description of the fallback is corrected.
+
+**PROPERTIES' side of the dependency still agrees.** §C.4 of PROPERTIES continues to route
+PROP-BOUND-03's `maxBytesPerDocument <= 0` case, PROP-BOUND-05/07/08 and the Group D amendments to
+this PLAN, and states they travel under case C — no ledger row, green at landing, fix owed before
+batch 14. The P-A-6 edit brings the PLAN's own fallback wording into line with what PROPERTIES
+already says, so the two documents now describe the same route from both ends. That closes the last
+asymmetry I noted at v12 (where agreement existed on the ruling but the PLAN's P-A-6 cell still
+offered the superseded route).
+
+**One version pin remains behind, and it is still not this document's to fix.** PROPERTIES' Upstream
+cell pins this PLAN at an earlier version while the PLAN is now v1.1. As at v12, the lag is harmless
+in substance — none of the text PROPERTIES quotes changed in this delta, and the case A/B/C outcome
+columns it leans on are byte-identical apart from case B's em dash — so every PROPERTIES quotation
+still resolves. A downstream document's Upstream pin is that document's field to advance; recording
+it here rather than raising it keeps the finding with its owner.
+
 ## Verification
 
 ## Findings
