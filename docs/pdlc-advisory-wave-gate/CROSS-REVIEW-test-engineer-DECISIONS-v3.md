@@ -170,7 +170,43 @@ both are untouched by this cascade and I do not re-file them.
 
 ## Consequences
 
-_pending_
+**For this erratum round.** F-01 is `delta` and `local`, so the correct disposition is one bounded
+follow-up edit to DEC-A6-03 — not a halt, and not a return to the ordinary DECISIONS revision loop.
+The repair is confined to two paragraphs of one entry (Known gap, Re-evaluation triggers), touches
+no decision, and can be verified by re-running the entry's own grep. Nothing in `## Options
+Considered`, `## Decision`'s other entries, or `## Consequences` of the subject document moves.
+
+**For the PROPERTIES / test author.** Until F-01 lands, do not read DEC-A6-03's Known-gap paragraph
+as authority on what is required. REQ AC-6.3 at HEAD carries two conjuncts on the halt path, and the
+second is new: (1) the halt report carries the diagnosis and root-cause class — asserted today via
+§4.5's four halt fields; (2) where the report points at a captured pre-A6 tree state, it warns **in
+the same place** that re-running overwrites it — asserted nowhere. When it is specified downstream,
+the falsifiable form is a co-location oracle over a single rendered field, not two independent
+containment checks: a fixture whose halt names the ref must go RED when the warning is removed, and
+RED again when the warning is emitted somewhere other than beside the pointer. A pointer-only
+`toContain(ref)` passes both regressions.
+
+**For FSPEC and TSPEC (upstream of me, not findings against this document).** The obligation has
+landed in REQ and stopped there. FSPEC E-28/AT-05-5 and TSPEC §4.5's closed four-field halt contract
+do not yet carry it, so AC-6.3's new sentence currently has no behavioral spec and no acceptance
+test to descend into a property. That is the next routing hop, and DEC-A6-03 should name it as such
+rather than describing the whole routing as unlanded.
+
+**For harvest — the durable item is the shape of this failure, and it is a repeat.** A decision
+record that documents a *routed but unlanded* obligation embeds a negative claim about upstream that
+its own upstream is expected to falsify. Its truth has an expiry date built in at authoring time,
+yet it is written in the same voice as claims that are stable. This is the fourth instance of the
+class my v2 named at Q-02 — claims about **failure modes, visibility and impossibility**, none
+falsifiable by the grep-shaped check that confirms a count — and this one is the sharpest, because
+here the falsifying edit was *solicited by the document itself*. Worth a durable checklist line in
+`LEARNINGS-pdlc-advisory-wave-gate.md`: **any "the routing has not landed" / "X matches nothing in
+upstream" sentence must carry the upstream version it was checked against and be re-checked on every
+upstream cascade — it is a dated observation, not a decision.** Tagged `Process` at F-01 for that
+reason; the same rule would have caught this before dispatch.
+
+**No decision entry moved, and none needed to.** DEC-A6-01…DEC-A6-04 stand exactly where v1.11
+leaves them. REQ v1.16 ratifies DEC-A6-03's remedy at the operator surface; it does not contest the
+ref's wave-scoped shape. The finding is that the record has not noticed it won.
 
 ## Delta-Confirmation Findings
 
