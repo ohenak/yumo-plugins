@@ -93,7 +93,44 @@ change in any of the three would have been a High finding here; there is none.
 
 ## Behavioral Flow
 
-_pending_
+**No flow is implicated.** The erratum's three hunks land in REQ's header/revision log (E-1),
+Blockers table (E-2) and Obligations (E-3). §3.1's decision D-1..D-3, §3.2's six-question record
+consultation, and §3.3's explicit-pointer precedence and range clamp all compress REQ criteria that
+this round did not open. Under the delta protocol I did not re-read them, and I re-litigate nothing
+settled in v2 or v3.
+
+One flow-adjacent check was worth running anyway, because E-3 weakens an upstream evidence claim and
+a weakening is the failure mode a cascade round exists to catch. E-3's subject is the **worktree**
+case, and exactly one behavioural site in this FSPEC turns on worktrees:
+
+> EC-17 — *"Phase I runs inside a worktree that does not carry consumer-local state. No record is
+> visible: outcome (a), silent, as EC-01. Consistent with the standing worktree deferral; the run is
+> correct, merely not cheap."* (source: REQ OB-3, D-DIST-07)
+
+REQ at HEAD now reads: *"a Claude-created worktree has no ledger, because the worktree include list
+that carries `.claude/workflows/` into a worktree is consumer-local — untracked on the default
+branch, so a consumer fact and not a repo fact — leaving the ledger's consumer-local path absent
+there, so it fails open to a full run."*
+
+Same conclusion, weaker warrant. EC-17's compressed claim — *no record visible ⇒ outcome (a) ⇒ silent
+full run* — is entailed by the new text as fully as by the old. Critically, EC-17 states the
+worktree condition **hypothetically** ("a worktree that does not carry consumer-local state"), not
+as a repo-level assertion about what `.worktreeinclude` contains. Had the FSPEC transcribed the old
+strong form — "`.worktreeinclude` lists only `.claude/workflows/`" — as a repo fact, E-3 would have
+falsified it and that would be a `delta` finding here. `grep -n "worktreeinclude"` over the FSPEC
+returns nothing; `grep -n "worktree"` returns EC-17 alone. The compression survives the weakening
+because it never depended on the strong form. That is the authoring decision paying off, and I
+record it as a positive rather than a finding.
+
+**Testability consequence, stated so it is checkable downstream.** EC-17's oracle is now cheaper than
+it looked: because the *mechanism* by which a worktree lacks the ledger is consumer-local
+configuration and not a repo invariant, a PROPERTIES test must not assert EC-17 by inspecting a
+tracked file (there is nothing tracked to inspect — such a test would false-green on any consumer).
+The falsifiable form is a state-shaped one: given a tree in which the record's consumer-local path is
+absent, the run announces outcome (a) and executes wave 1. That is exactly how EC-01 is already
+tested, so EC-17 costs one fixture, not one new mechanism. No finding — the FSPEC already routes
+this correctly through EC-01's shape — but te-author should not read E-3 as inviting a
+`.worktreeinclude` oracle.
 
 ## Business Rules
 
