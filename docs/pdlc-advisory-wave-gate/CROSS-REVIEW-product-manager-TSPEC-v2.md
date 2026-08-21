@@ -41,6 +41,52 @@ overwrite should not happen"; the overwrite is accepted. It is "REQ now requires
 
 ## Architecture
 
+### The new obligation's condition is live in this TSPEC, not vacuous
+
+AC-6.3's new conjunct is conditional: it binds *where* the halt report points the operator at a
+captured pre-A6 tree state. A conditional obligation over a condition that never fires would be a
+non-finding. Here the condition fires, and it is this TSPEC that makes it fire. §2.5:
+
+> *"E-28's halt names the ref for the halting wave, which is the difference between 'A6 left a tree
+> it could neither repair nor restore' and 'A6 left a tree, and here is the object name that has the
+> original in it'."*
+
+That is precisely "the halt report points the operator at a captured pre-A6 tree state." So on
+TSPEC's own design, AC-6.3's antecedent is satisfied on the E-28 path, and its consequent — the
+same-place warning — is required.
+
+### The TSPEC knows the hazard, and answers it at the wrong altitude
+
+This is not a design that overlooked the overwrite. §2.5 states it more precisely than REQ does:
+
+> *"The name is derived from the wave number alone, so a re-run of a halted feature — the ordinary
+> next step after a halt — reaches wave 1, captures, and overwrites `refs/pdlc/a6-snapshot-1`, the
+> very ref the operator was told to keep."*
+
+and it names the remedy:
+
+> *"An operator who wants a snapshot to survive the next run should copy the ref before re-running."*
+
+The analysis is right and the remedy is right. The gap is **where the remedy is delivered.** As
+written, it is delivered to the reader of the TSPEC — a design-document sentence addressed to
+engineers. REQ v1.16 requires it delivered to the operator, *in the halt report, in the same place*
+the ref is named. Those are different artifacts with different audiences. An operator reading a halt
+message is not reading §2.5. The whole point of DEC-A6-03's routing, and of the "in the same place"
+clause REQ chose, is that the warning must reach the person at the moment they are deciding what to
+do next — which is exactly the moment they are about to re-run.
+
+`grep -c overwrit` over the TSPEC returns matches only in §2.5's design prose and §6 OQ-2's
+disposition. Neither is a contract on the halt report's content.
+
+### Why this is High rather than Medium
+
+REQ AC-6.3 is an acceptance criterion on US-02, and this conjunct exists to prevent a concrete,
+irreversible user loss: an operator halts, is handed a ref, does the ordinary next thing (re-run),
+and the ref they were told to keep is gone. TSPEC §2.5 itself concedes the cost is "the operator's,
+not the pipeline's" — which is the argument for *telling the operator*, not for leaving it
+undocumented at the halt. A design that does not carry a P0-path acceptance criterion has dropped
+it, and no downstream author (PLAN, PROPERTIES, implementation) would mint work for it.
+
 ## Interfaces
 
 ## Data Model
