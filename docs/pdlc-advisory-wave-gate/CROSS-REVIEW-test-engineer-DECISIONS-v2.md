@@ -110,6 +110,59 @@ rounds as harvested and the current round as post-harvest round 1.
 
 ## Decision
 
+**Approved with minor changes.** All three v1 Highs are resolved on verified ground, both v1 Mediums
+and both v1 Lows are resolved, and the delta introduces no High. Two new findings, both non-gating,
+both in text the delta added.
+
+**Why the Highs are closed and not merely reworded.** Each of the three was a claim whose *ground*
+was wrong, so I re-derived the new ground from the tree rather than from the document: capture's
+`null`-return and restore's throw at `orchestrate-dev.js:12572-12613` / `:12641-12662`; OQ-7's
+closure at `TSPEC:1755` and `REQ:503`; the vendoring lists at `prepack.mjs:20`,
+`publish-preflight.mjs:220-224`, `fixture-machine.mjs:426`, plus `OPERATIONS.md:97` and
+`build-runtime.mjs:5-12`. Every limb held. Notably, the F-03 repair resisted the tempting overreach:
+it did not reopen "add a module" on merit, it converted an impossibility claim into a cost claim and
+re-rejected on co-location — the decision outcome is untouched, which is what a decision record's
+repair should look like.
+
+**The one new Medium, and why it is the same shape as F-05 rather than a new class.** The delta
+promotes the promotion commit's cardinality from an aside to a load-bearing claim: "one further
+`commitPaths` call **per promoted task**", with "the cardinality is load-bearing, not a detail"
+(`:296-307`). The claim is *true of the code* — `groupPromotedPaths` groups promoted paths by owning
+task id into a `Map` that can hold more than one row (`orchestrate-dev.js:3329-3342`), and the wave
+loop issues one `commitPaths` per row with `{promo.taskId}` in the message
+(`:15471-15482`). What has not moved is the **oracle**. The entry's Reversibility paragraph still
+says "the commit *message* is asserted, so a later reshaping is a test-visible change, not a silent
+one" (`:322-323`) — and at HEAD the only assertion is a single-promotion fixture using containment:
+`expect(commits).toContain("chore(test-feat): wave 1 advisory promotion (T2)")`
+(`waveExecution.test.js:1347`), with one promoted task in the fixture. TSPEC §5.6's AT-04-5 row
+identifies the promotion commit "by its `message` literal and its pathspec" (`TSPEC:1716`), also
+singular. So the *cardinality* — two promoted tasks ⇒ two commits, each naming its own id — has no
+falsifying test: a regression that emits one widened commit naming the first promoted task passes
+`toContain` untouched, exactly the loss the entry says option A is rejected to prevent. This is F-05's
+shape: a claim correctly decided here, whose upstream oracle is thinner than the claim, and where the
+record's own "it is asserted" hedge is what stops the next reader from checking. Repair is the one
+the author already applied at F-05 — say which conjunct is asserted (the message literal of a single
+promotion) and which is not yet (the per-task cardinality, which wants a two-promotion fixture and a
+**set-equality** over the observed `advisory promotion (…)` messages, not containment). Medium, not
+High, because nothing here mis-specifies a property the way `:318` did at v1.10: a PROPERTIES author
+transcribing `:296-307` writes a *correct* test that does not exist yet, rather than an incorrect one.
+
+**The new Low is a cost count, not a direction.** Context's three-list figure (`:147-150`) counts the
+production lists and omits the packed-set fixture `pdlc/engine/__tests__/_tspec-packed-set.mjs:51`,
+which enumerates `vendor/workflows/orchestrate-queue.js` alongside its siblings and would go red on a
+fourth vendored module. Since the whole point of the F-03 repair is that the cost is *countable*, the
+count should be complete; the rejection stands either way.
+
+**What I deliberately did not file.** `git add -A --` now appears at `:174`, `:195` and `:265` while
+the shipped call is `["add", "-A"]` (`orchestrate-dev.js:12579`). That divergence is TSPEC §2.5's to
+own, my v1 Q-02 asked it, and the document is now a faithful transcription of its upstream — which is
+the right disposition for a decision record. I carry the question forward unchanged rather than
+converting it into a finding against this document. Likewise the halt-message routing gap the entry
+records at `:357-362`: at REQ v1.15 and FSPEC v1.6, `a6-snapshot`, "copy the ref" and "overwrit"
+still match **zero** lines in either document, so the routing has not landed. The document is right
+about its own gap and says so; the defect is upstream's, and it goes out as an erratum rather than
+into this verdict.
+
 ## Consequences
 
 ## Findings
