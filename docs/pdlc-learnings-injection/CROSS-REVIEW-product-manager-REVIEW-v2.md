@@ -53,3 +53,22 @@ All three of my blocking findings are closed, and closed by the mechanism I aske
 - **F-06 was fixed by deleting the undocumented behaviour, not by documenting it after the fact.** The easy resolution was to write the `propagateBytes` guard into FSPEC and call it specified. Instead the guard was removed, the code was aligned to the rule BR-5 already states, `LI-AT-13`'s fixture comment was stripped of the byte count tuned to keep the failure off the window's last slot, and the residual ambiguity was routed upstream as an erratum. The comment at `orchestrate-dev.js:2410-2431` even names the one line to change if upstream lands the other reading. That is the disposition that leaves the next operator able to predict the report.
 - **F-05's boundary is now an experiment, not a filter.** Asserting BR-15's two directory prefixes over a set built by `.filter(isCorpusPath)` was true by construction; asserting that the *enabled-minus-disabled read difference* is set-equal to the corpus set makes any extra open red, in any directory, without anyone having to guess which directory to name. Same reasoning as F-04's "subject is the whole report minus one key". Both replaced a guessed channel with an exhaustive one.
 - **The hook now has behaviour coverage that runs the real script through the real envelope.** `hookCompatibility.test.js:490+` spawns `check-finding-grammar.sh` by bare path with a PostToolUse stdin envelope, so the shebang and the executable bit are part of the subject, and pairs the warn case with the no-warn case on the same document shape. POSTMORTEM-D item 8's two halted rounds now have a guard that can actually fail.
+
+## Recommendation
+
+**Approved with minor changes**
+
+All three of my v1 High findings are closed, each by the mechanism the finding asked for:
+
+1. **F-01** — the shipped runtime bundle is rebuilt and in sync; `build-runtime.mjs --check` exits 0 and T32 is green on the committed tree.
+2. **F-02** — AC-4.3 has a live oracle over report keys that actually exist, with controls proving the compared value is non-empty and carries the round-window arithmetic.
+3. **F-03** — the committed pre-feature fixture is read from disk and compared byte-for-byte with prompts composed by branch code, across all four non-injecting states, with a recorded mutation proof.
+
+Four of the seven v1 Mediums (F-04, F-05, F-07, F-08) and F-09 are also closed, two of them by production changes rather than by test changes. No High finding is open, old or new, and nothing in the changed sections broke what I approved in v1: the sole full-suite red is `documentOracles.test.js` AT-22, a local worktree artifact documented in `CLAUDE.md`, and the feature's own 153 tests are green.
+
+The three findings above are recorded, not gating. F-01 (v2) is a scope-ledger decision for the operator, not a code change. F-02 (v2) and F-03 (v2) both have their durable half routed upstream as errata; the code half of each is already in the state I would ask for.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 2}
