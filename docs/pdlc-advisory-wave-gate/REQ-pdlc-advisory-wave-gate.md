@@ -360,7 +360,9 @@ requirements altitude.
   the next red wave escalates without a dispatch. `advisory.waveBudgetPerRun` admits any integer
   ≥ 0; `0` is a configured operator mode, not a misconfiguration: with the tier enabled every red
   wave then escalates with no dispatch, distinguishably from AC-1.4 inertness — the per-seam A6 row
-  is present and reads zero, where under `advisory.enabled: false` there is no advisory section. *(US-04.)*
+  is present and reads `resolved: 0` with one `escalated` invocation per red wave, each carrying
+  `unclassified` as its class (no reply having been classified — AC-2.2's default), where under
+  `advisory.enabled: false` there is no advisory section. *(US-04.)*
 
 ### REQ-AWG-03 — The envelope (P0)
 
