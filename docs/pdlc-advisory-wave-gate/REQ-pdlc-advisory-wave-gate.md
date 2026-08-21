@@ -264,7 +264,7 @@ classification is malformed input with a defined fallback, not undefined behavio
 instruction is not a control (inherits `REQ-pdlc-advisory-tier` NFR-1).
 
 **C-5 — Size discipline.** This REQ is measured against `pdlc/hooks/scripts/check-req-size.sh`
-(700 lines / 61,440 bytes) at authoring time and at the start of every review round. Measured facts
+(700 lines / 61,440 bytes hard, 630 lines / 55,296 bytes soft) at authoring time and at the start of every review round. Measured facts
 about shipped behaviour are held in `docs/_constraints/pdlc-wave-gate-baseline.md` v1.2 and cited
 by `M-WG-*` id rather than restated, both to keep this document inside its budget and to keep it at
 requirements altitude.
