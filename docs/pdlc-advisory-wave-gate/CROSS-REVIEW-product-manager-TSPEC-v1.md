@@ -113,6 +113,48 @@ rather than from its own convenience, even though its own convenience happened t
 
 ## Interfaces
 
+The delta touches exactly one seam row, §3.3's `apply`, and only its dispositional prose.
+
+**What changed.** The row's behaviour is untouched: `apply` dispatches the repair edit and returns
+`{ok:true}` **iff `producedPaths()` is non-empty**; an empty set is `{ok:false}` ⇒
+`post-action-verification-failed`. What changed is the *justification* for the consequence that a
+repair writing only `.gitignore`d paths reads as no change and is refused. Previously: "the right
+disposition **while §2.5's boundary sits with upstream**", with a stated conditional — "if the erratum
+widens BR-9's oracle to ignored generated outputs, the widened capture arrives with a widened
+`producedPaths` and this row is unchanged." Now: "the right disposition under §2.5's **now-decided**
+boundary … BR-9 at FSPEC v1.6 puts ignored paths outside the restoration map in both directions … the
+widened-oracle branch this row previously held in reserve is closed — no widened `producedPaths` is
+coming."
+
+**Product assessment.** Three things matter to me here and all three hold.
+
+1. **The disposition did not change, only its standing.** An ignored-path-only repair was refused
+   before and is refused now, with the same reason code. No user-visible behaviour moved under cover
+   of a citation update — which is the failure mode I look for hardest in an erratum round.
+2. **The conditional was resolved in the direction that leaves the row untouched, and the row says
+   so.** The old text was explicit that it was "unchanged in either direction". Upstream picked one
+   direction; the row records which, and closes the branch. Nothing dangles.
+3. **The refusal is still traceable to a requirement, not to engineering taste.** The stated reason —
+   "the seam refuses to claim a repair it cannot see, cannot restore, and cannot prove was undone" —
+   is a restatement of AC-5.1's guarantee (the tree is observably identical after a refusal) applied
+   to a repair whose paths sit outside that guarantee's domain. Under BR-9 at HEAD, an ignored path
+   the seam wrote is not something restoration will undo; so a seam that reported `{ok:true}` on it
+   would be claiming a repair AC-5.1 cannot promise to reverse. Refusing is the faithful reading, and
+   it is now the *only* reading upstream permits.
+
+**Traceability check on the surrounding row.** The rest of the `apply` row is unchanged context —
+the step-6 ledger anchor (`ledgerAnchor.value = invocations.length` written into the caller's
+carrier), and the `producedPaths` / `revert` / `verifyGate` rows beneath it. I confirmed the diff does
+not touch them. The `orchestrate-dev.js:3521` / `:3544` anchors in that row are raw `file:line`
+citations into production source, which DEC-DOC-01 would discourage in new text — but they are
+pre-existing bytes this edit does not touch, and DEC-DOC-01's own **Scope** clause says it "does not
+require retrofitting citations already committed". Not a finding of this round, and I am recording
+that judgement so a later reviewer does not re-litigate it.
+
+**No interface is added, removed or reshaped by this delta.** `buildA6SeamOps` keeps its four-member
+surface; no new seam, no new return shape, no new reason code. There is nothing here for the product
+lens to object to, and nothing that reopens a scope question.
+
 ## Data Model
 
 ## Test Strategy
