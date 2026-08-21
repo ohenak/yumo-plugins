@@ -71,6 +71,42 @@ file manifest and the same-batch same-new-file guard are byte-identical to what 
 
 ## Dependencies
 
+**Batch DAG — arithmetic unchanged, and I checked rather than assumed.** The diff adds no task, no
+file and no edge; the only cells inside the task table that moved are prose inside LI-02, LI-08 and
+LI-12. LI-12 stays batch 5 on deps LI-02 (2) / LI-06 (4) — `max(2,4)+1 = 5` ✓. LI-08 stays batch 3
+on dep LI-02 (2) — `max(2)+1 = 3` ✓. LI-02 stays batch 2 on LI-01 (1) ✓. The zero-bound branch is
+greened by LI-21 (batch 13, deps LI-20 / LI-12 / LI-23), already in the graph and already
+red-before-green via the `LI-21 → LI-12` edge the §Dependencies edge table names. No new same-batch
+same-new-file collision: `learningsConfig.test.js` is LI-12's alone, and it does not exist at HEAD
+(`ls pdlc/workflows/__tests__/` shows `learningsBlock`, `learningsCaptureScript`, `learningsCorpus`,
+`learningsPredicatePin`, `learningsPremises`, `learningsSelect` only), so the row's implicit
+new-file claim holds.
+
+**Upstream precedence — the reason v7 could not approve is gone.** v7's High rested on PLAN faithfully
+compressing a TSPEC that had not yet absorbed E-36. TSPEC v0.9 has: §I.2 enumerates the three zeros
+and states the third case's reject-row set equality; §T.7's arm table carries "Two disjuncts, one
+branch … AT-28 (structural disjunct); AT-30's third case (zero-bound disjunct, §I.2)"; §D.3 assigns
+F-O-1's second rule with `SECTION_HEADING_RE` and `BR6_SECTION_NAMES` spelled out; §T.5 keeps the
+per-file counts. PLAN v0.5 now compresses that, so row and TSPEC agree and PLAN's own
+"where a row and the TSPEC disagree, the TSPEC wins" precedence rule is not being exercised anywhere
+I could find in the changed text.
+
+**Version pins — F-04 resolved, verified against the cited files' own version cells.** The front
+matter now reads `TSPEC (v0.9)`, `FSPEC (v0.13)`, `REQ (v0.9)`, `DECISIONS (v0.3)`; §Overview reads
+"REQ v0.9 / FSPEC v0.13 / TSPEC v0.9"; §Dependencies' LI-01 reason reads "since TSPEC v0.9". HEAD's
+version cells are TSPEC 0.9, FSPEC 0.13, DECISIONS 0.3, REQ 0.9 (each file's `| pdlc | … |` row,
+line 18). Four pins, four matches — the DECISIONS pin is new and correct rather than newly stale.
+
+**ERR-3 / ERR-7 — correctly closed, not silently dropped.** The §Errata table now records both as
+`CLOSED at HEAD` with an explicit "Effect on this PLAN: None" column, and I verified both closures
+upstream rather than taking the changelog's word: FSPEC states BR-1's two-conjunct rule and names the
+`docType: null` optimizer round as the excluded branch (`FSPEC-…md:287`, D-2), quantifies AT-03/AT-29
+over dispatches "outside BR-1's rule" (`FSPEC-…md:622`), and states BR-15's expected set "as a set,
+not a count" with the enumeration dropped (`FSPEC-…md:57`). TSPEC's erratum register marks both
+CLOSED (`TSPEC-…md:1569`, `:1615`). The two task rows they touched (LI-11's `LI-AT-02`, `LI-AT-33`)
+were already written to TSPEC's reading, so "no change needed" is a checkable claim, and it checks
+out.
+
 ## Verification
 
 ## Positive Observations
