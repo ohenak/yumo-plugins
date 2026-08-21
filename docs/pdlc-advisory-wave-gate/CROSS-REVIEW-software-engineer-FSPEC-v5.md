@@ -197,8 +197,17 @@ written.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | §2's preamble still pins upstream as "REQ-pdlc-advisory-wave-gate v1.13" while REQ is v1.16 at HEAD and this round's own v1.7 changelog cites v1.16 — the document contradicts itself about which upstream it compresses. Carried from v4 F-02 / v3 F-02. Concordance rows are correct against v1.16, so this is a misleading pin, not a coverage gap. | §2 Linked Requirements, preamble |
+| F-02 | Medium | delta | local | E-34 gained a reciprocal pointer to BR-14's two arms; E-28 did not. E-28 is the arm whose halt does point at a captured pre-A6 tree state (TSPEC §2.5), yet no FSPEC row, rule or AT ever asserts that any halt report points at a capture — so BR-14's conditional and AT-06-4 conjunct (3) have an antecedent the FSPEC never establishes as reachable. Medium not High: REQ AC-6.3 has the identical conditional shape, so the FSPEC is still a faithful compression. Fix: one clause on E-28 symmetric with E-34's, plus a matching conjunct on AT-05-5. | §5.4 E-28 / BR-14 / AT-06-4 |
+| F-03 | Low | delta | local | BR-14 cites DEC-A6-03, whose record at HEAD still reads "The routing has not landed … at REQ v1.15 and FSPEC v1.6" and "This entry carries the gap until it lands" — now false, and false because of this edit. DEC-A6-03's own re-evaluation trigger anticipates the close. Fix lands in DECISIONS, not in this FSPEC. | §4 BR-14, DEC-A6-03 citation |
+
+FINDING: Medium | inherited | nonlocal | §2 Linked Requirements preamble | Upstream pin still reads "REQ v1.13" while REQ is v1.16 at HEAD and the v1.7 changelog itself cites v1.16 — internal contradiction about which upstream this FSPEC compresses; carried from v4 F-02.
+FINDING: Medium | delta | local | §5.4 E-28 / BR-14 / AT-06-4 | E-28 did not get the reciprocal with-capture clause that E-34 got, so no FSPEC row asserts that any halt report points at a capture and BR-14's conditional antecedent is never established as reachable at FSPEC altitude; AT-06-4 conjunct (3) is correspondingly vacuously satisfiable. Faithful to REQ's identical conditional shape, hence Medium.
+FINDING: Low | delta | local | §4 BR-14, DEC-A6-03 citation | DEC-A6-03 still asserts "The routing has not landed … at REQ v1.15 and FSPEC v1.6"; it landed this round, so the cited record now contradicts the citing clause. Close the known-gap paragraph in DECISIONS.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
