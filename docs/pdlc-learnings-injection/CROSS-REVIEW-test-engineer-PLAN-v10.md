@@ -178,6 +178,90 @@ them below rather than re-argue them.
 
 ## Verification
 
+**ERR-8 is real, is open at HEAD, and is recorded rather than re-decided.** The new §Open questions row
+claims FSPEC's Step 5 "drops on the *structural* condition at item 15, takes the first `maxDocuments`
+of the rest, and extracts material only at item 16 — **after** the count cut". I read FSPEC rather than
+the summary: `FSPEC-…md:255-258` is "Drop any eligible document carrying none of BR-6's priority
+sections, with `RSN-NO-MATERIAL` — it consumes no slot — then take the first
+`learningsInjection.maxDocuments` of the rest", and `:259-261` is "For each **taken** document, extract
+its injectable material per BR-6". The ordering defect is exactly as described, and it is still on the
+page at the hash this dispatch pins. The row's handling is right for a frozen round: it records that
+LI-16 and LI-12 already encode TSPEC's corrected rule, states "**Already absorbed; no task moves**",
+and explicitly declines to re-decide ("This PLAN does **not** re-decide the question — TSPEC decided
+it"). That is the correct posture — the erratum belongs to FSPEC's author, and I re-raise it as an
+`ERRATUM: FSPEC` line rather than as a finding here.
+
+**The oracle that is claimed to catch a literal Step-5 implementation does catch it.** The row asserts
+"LI-12's third `LI-AT-30` case is the oracle that reds if an implementer follows Step 5's literal
+order instead." I checked the mechanism rather than the claim. Under Step 5's literal order at
+`maxBytesPerDocument: 0` with ≥ 6 eligible documents: item 15 drops nothing structurally (the fixtures
+carry BR-6 headings), takes the first 5, drops the remaining ≥ 1 with `RSN-COUNT`; item 16 then
+extracts nothing for the 5. The resulting `rejected[]` carries `RSN-COUNT` rows and is *not* set-equal
+to every non-self path at `RSN-NO-MATERIAL`. Conjunct (ii) reds and conjunct (iii) reds. Under TSPEC's
+order, every document is dropped `RSN-NO-MATERIAL` before the count bound and both conjuncts pass. The
+oracle discriminates the two orderings — and it discriminates them *only because* the new fixture
+precondition (≥ 6 documents) is in force. Below 6, both orderings produce the same `rejected[]` and the
+oracle is blind. So the two additions are load-bearing on each other, and the delta landed both.
+
+**Conjunct (ii) is a set equality, not a containment, and the delta did not weaken it.** `:152` still
+reads "`rejected[]` is **set-equal** to every enumerated non-self corpus path, each with reason exactly
+`RSN-NO-MATERIAL`, and none `bounded` — set equality, never "at least one"". A deleted case fails. And
+conjunct (i) is positive on the presence of the `learningsInjection` key with empty BR-8 rows, so the
+three-conjunct oracle is not an absence-only shape: it says what *does* happen (enabled run, key
+present, rows present and empty, every path rejected for a named reason) rather than only what does
+not.
+
+**No expected value in the changed rows is derived from the code under test.** LI-16's return literal
+`{material: "", bounded: false, bytes: 0, sections: []}` is transcribed from TSPEC §D.5 `:1006`, not
+read off the implementation. LI-12's `≥ 6` is derived from REQ §4.1's `5` (`REQ-…md:224`), a spec
+constant. LI-08's `LI-AT-12` byte counts are still declared "hand-computed from the fixture over
+**material only**, ignoring every delimiter (§D.5)" — unchanged, and still the right rule.
+
+**The one clause I could falsify on disk, and one I could not.** F-01's "all three unexercised" is
+falsified above. Everything else the delta asserts about HEAD holds: the two landing commits exist,
+`renderSection` hardcodes `## ` and takes no level parameter, no caller passes `ordinal` or `gloss`,
+REQ's `maxDocuments` default is 5, and FSPEC's Step 5 items 15/16 are ordered as ERR-8 describes.
+
+**The changelog's own arithmetic.** The 0.5 row's "four stale version pins" is corrected to "three",
+with the justification that the 0.1 changelog row is a historical record that correctly keeps the pins
+it was written against. Counting on the page: `:36`, `:152` and `:275` are the three live pins reading
+FSPEC v0.13 / TSPEC v0.9; `:599` is the 0.1 historical row reading FSPEC v0.10 / TSPEC v0.6. Three is
+right, four was an overcount, and correcting a historical changelog row's arithmetic in place (with
+the correction annotated) rather than silently is the honest form.
+
+---
+
+**An implementation defect found while grounding LI-16's claim — not a defect of this document.**
+
+I verified LI-16's new sentence against the shipped code as well as against TSPEC, because LI-16 has
+already landed (`d462ddd8`). TSPEC and this PLAN agree; the code does not.
+
+- `pdlc/workflows/orchestrate-dev.js:2306-2309` implements the short-circuit exactly as specified:
+  `if (typeof maxBytes !== "number" || maxBytes <= 0) return { material: "", bounded: false, bytes: 0,
+  sections: [] };`. That half is correct.
+- `pdlc/workflows/orchestrate-dev.js:2367-2374` implements the drop as
+  `if (extraction.sections.length === 0 && hasAnySectionHeadingLine(entry.text))`, with a comment
+  reading "A document with no section headings at all is not this case — it is simply a zero-material
+  eligible document." `hasAnySectionHeadingLine` (`:2276-2278`) tests `SECTION_HEADING_RE` (`:2242`),
+  which matches **any** level-2 heading, not a BR-6 name.
+
+That second conjunct is precisely the "second branch" TSPEC §D.5 `:1017` forbids ("There is no second
+branch and no zero-bound special case in the selector"), and it changes behaviour: a LEARNINGS document
+carrying **no** `##` heading at all carries none of BR-6's priority sections, so FSPEC E-33
+(`FSPEC-…md:762`) and TSPEC `:907` both require `RSN-NO-MATERIAL` consuming no slot. At HEAD it is
+instead made eligible with zero material and **burns a `maxDocuments` slot**.
+
+No landed test catches it, and the reason is worth recording: `learningsSelect.test.js:375`, the AT-28
+fixture, is `{ name: "Not A BR-6 Section", body: … }` — a document that *does* carry a `##` heading, so
+it takes the same path under both readings. The oracle is green against a divergent implementation.
+The falsifying test that is missing is one AT-28 case whose document carries no `##` heading at all,
+asserting `RSN-NO-MATERIAL` **and** that a later-ordered document still occupies the slot it did not
+consume.
+
+This is out of scope as a blocking finding here: it is not a defect this PLAN's delta introduced, and
+this document's claim is the *correct* one. It is carried as a `DEFERRED:` line and surfaced in my
+final message so the orchestrator can route it to the implementation phase.
+
 ## Findings
 
 ## Questions
