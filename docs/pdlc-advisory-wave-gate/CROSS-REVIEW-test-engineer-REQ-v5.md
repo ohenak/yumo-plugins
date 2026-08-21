@@ -144,3 +144,7 @@ FINDING: Low | inherited | nonlocal | Lineage / pdlc-advisory-corpus-baseline `C
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 4}
+
+APPROVAL-HASH: sha256:c62cfc35ac9e49f60f70226036a3381c1d08518f33d5454fbef062ced0611bf7
+APPROVAL-HASH-NORMALIZED: sha256:c62cfc35ac9e49f60f70226036a3381c1d08518f33d5454fbef062ced0611bf7
+REVIEWED-COMMIT: 0cef714887f1511a7e468236ba39bac6259d9fc5
