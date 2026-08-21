@@ -136,8 +136,35 @@ matching class 1 and class 2 yields `plan-ordering-defect` and carries exactly o
 
 ## Delta-Confirmation Findings
 
-*(pending)*
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | inherited | nonlocal | `A6-05`'s red step specifies `ADVISORY_ROOT_CAUSES` as "four members" under "Set-equality throughout", but FSPEC `AT-02-1` at v1.6 now requires **ordered-sequence** equality and states that "a reordering … set equality would pass". The order is the first-match rule (`BR-2`, `AC-2.2`, P0): a reordering silently changes whether a two-way failure is authorised under `E-6` or `E-5`. The same sentence already names two other constants as ordered-sequence, so the weaker oracle here is unambiguous, not loose phrasing. Fix: state ordered-sequence equality against the transcribed literal `["plan-ordering-defect","wave-internal-defect","environmental","unclassified"]`. | `## Batches` — `A6-05` red step (former A6-02); and the `AT-02-1` row in the traceability table |
+| F-02 | Medium | inherited | nonlocal | FSPEC `AT-02-1` at v1.6 also carries a second arm (`E-08b`): a gate output matching class 1 and class 2 is classed `plan-ordering-defect` and carries **exactly one** class — the arm FSPEC calls "what makes the ordering load-bearing rather than decorative". No task in this plan claims it; grep for the first-match rule returns nothing outside unrelated text. Fix: add the case to whichever task owns classification — `A6-08`'s `parseA6RootCause` red step is the natural home — and cite it in the `AT-02-1` traceability row. | `## Batches` — `A6-08` red step (former A6-07); `AT-02-1` traceability row |
+
+FINDING: High | inherited | nonlocal | ## Batches — A6-05 red step (former A6-02), and the AT-02-1 traceability row | `ADVISORY_ROOT_CAUSES` is specified with a set-equality oracle ("four members … Set-equality throughout"), but FSPEC `AT-02-1` at v1.6 requires ordered-sequence equality because the order is `BR-2`'s first-match rule under P0 `AC-2.2` — a reordering would change which repair authorisation (`E-6` vs `E-5`) a two-way failure receives, and set equality passes it
+FINDING: Medium | inherited | nonlocal | ## Batches — A6-08 red step (former A6-07), and the AT-02-1 traceability row | FSPEC `AT-02-1`'s two-class arm (`E-08b`) — a failure matching class 1 and class 2 yields `plan-ordering-defect` and carries exactly one class — is claimed by no task in this plan
 
 ## Recommendation
 
-*(pending)*
+**Needs revision** — on the mandatory rule that any High finding gates, not on the delta.
+
+To be explicit about what this verdict does and does not say:
+
+- **The erratum delta is confirmed.** Every routed item was already absorbed, every one of the four
+  OQ-7 sites is now on the decided form, each restatement matches FSPEC / REQ at HEAD, and nothing
+  previously approved was broken — no task, batch, wave, dependency edge or file-ownership cell moved.
+  If the delta were the whole question, this would be an approval.
+- **DEC-ERR-03 makes the whole document the question.** FSPEC v1.6 moved `AT-02-1` as well as `BR-9`,
+  and this document's `AT-02-1` coverage no longer matches what upstream says. Both findings are
+  tagged `inherited` — they were in the pre-round bytes and this edit did not touch them — so this
+  round routes back to the owning phase rather than halting.
+
+What must change, in full: `A6-05`'s root-cause oracle becomes ordered-sequence equality (`F-01`),
+and one task claims `E-08b`'s two-class arm (`F-02`). See `Q-01` — the correction probably belongs in
+TSPEC §5.6 and PROPERTIES `PROP-CTR-01` in the same pass, since both still carry the set-equality
+wording this PLAN is faithfully compressing.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
