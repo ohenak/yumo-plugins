@@ -255,4 +255,29 @@ exit 0.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All five High findings from v1 are resolved, each confirmed by restoring the defect and observing
+a red (E-1..E-4). The revision introduced no new High finding in the changed sections, and the
+one repository red that remains is the environmental `coveredViolations` walk over untracked
+agent worktrees, not this feature's (E-6). The shipped runtime bundle is back in sync, so the
+DoD's rebuild-and-stage rule (DEC-08) is satisfied.
+
+Two non-gating items are recorded: F-01 (Medium) — give the baseline oracle's ADMITS-NOTHING arm
+a control so it cannot silently degrade into a second EMPTY arm; F-02 (Low) — the unguarded
+`orderKey` interpolation, which waits on a TSPEC sentence. Neither blocks; both are cheap and
+F-01 is worth taking in the optimizer loop, since it protects the strongest instrument this
+feature added.
+
+Three upstream divergences this implementation surfaces remain open in documents this review does
+not own, and are emitted as `ERRATUM:` lines rather than folded into this verdict: FSPEC BR-6's
+section-granular per-document cut versus TSPEC §D.3's assembled-string cut; the absence of any
+upstream statement of the reason id for a document cut by the count bound when the total bound
+also fails inside the window; and TSPEC §T.4's claim that each bound is asserted not to bind where
+the other does, which the `BYTES-BINDING` fixture (8 documents against `maxDocuments: 5`)
+contradicts. TSPEC §OQ.1's silence on rendering a null `orderKey` is the fourth.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
