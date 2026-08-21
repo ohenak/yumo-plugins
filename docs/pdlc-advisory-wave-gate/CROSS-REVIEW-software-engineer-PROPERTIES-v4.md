@@ -175,16 +175,69 @@ property names a file the PLAN's manifest does not assign.
 
 ## Findings
 
-_(pending)_
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §C-3's *File existence, verified at HEAD* paragraph still reads "**The ten** edited suites all exist" and enumerates ten names, but the same revision moved §Scope to "**eleven** existing suites … all eleven verified present at HEAD" by adding `advisoryWaveGateMain.test.js`. The count and the enumeration were outrun by the Overview's own edit. No coverage hole follows — I confirmed `pdlc/workflows/__tests__/advisoryWaveGateMain.test.js` is on disk and that PLAN owns it in A6-18's file-ownership row (`PLAN…md:369`) — so this is a stale count, not a wrong claim about the world. Fix: make it eleven and add the eleventh name to the parenthetical list. | §C-3, *File existence, verified at HEAD* (vs §Scope, *Where the tests live*) |
+| F-02 | Low | Local | The lineage header's Cross-Reviews row moved **backwards**, from `…-v1.md`…`-v4.md` to `…-v1.md`…`-v3.md` for both reviewers. It was accurate at the moment of writing (no v4 existed), but this round produces `CROSS-REVIEW-software-engineer-PROPERTIES-v4.md` and its PM counterpart, so the row is stale again on landing. A row that has to be re-edited every round to stay true is better written as an open range. Fix: restore `-v4` (or write the range open-ended) next time the header is touched — not worth a round of its own. | §Lineage header, Cross-Reviews row |
+
+**Scope note.** Both are `Local`: they are bookkeeping inside this artifact and carry no durable
+constraint. Nothing this round warrants `Cross-Feature` or `Process` — the process signal that would
+have qualified (route the carrier decision upstream rather than inventing a slot in PROPERTIES) was
+already acted on correctly and needs no new tag.
+
+**My three v2 Low findings** (C-3's matrix still titled on pre-restructure task ids) remain open and
+non-gating; §C-3 acknowledges them by name and states the both-forms workaround. I am not re-filing
+them here.
+
+**Nothing routed upstream this round.** The v3 cascade question is closed by absorption, not by
+deferral: FSPEC v1.7, TSPEC v1.15 and PLAN v1.13 all carry the obligation with owners. Re-raising it
+would be the DEC-ERR-01 anti-pattern, and §G-3 says so.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | PROP-REC-11 routes `advisoryEscalationLog.test.js`'s `toHaveLength(2)` → `3` widening to **A6-18**, while the file itself is A6-17's test home. PLAN v1.12 makes the same assignment and C-3's A6-17 row states it in prose, so the contract is coherent and I am not filing it. The question is only for the implementer's benefit: is the single-writer-per-batch walk comfortable with A6-17 and A6-18 both writing that file in batch 6, or does it rely on A6-17's red step landing first within the same task sequence? Answering it in the PLAN's batch-safety clause rather than in PROPERTIES would keep the answer where the walk lives. |
 
 ## Positive Observations
 
-_(pending)_
+- The round **absorbed** the cascade instead of routing it, and proved the absorption was legitimate
+  by re-hashing all five upstream documents at HEAD first. I re-computed all five independently and
+  every digest matches. Re-grounding before answering findings is the practice that made the rest of
+  this round cheap.
+- The carrier decision landed the **low-blast-radius** way. `notices` rather than the halt reason
+  string means `PROP-REST-09`'s equality with the pre-A6 literal and the shared Pre-A6 baseline
+  fixture are untouched. The blast radius I sized in v3 as the thing to protect is zero, and it was
+  protected upstream, where the decision belonged.
+- `PROP-REC-11` is the strongest row added this round and it was not asked for. Recognising that a
+  *fifth* key breaks exact-shape oracles as surely as a missing one, enumerating the three that
+  break, checking the fifth **value** on each (the ref on the main-suite fixture, `null` on E-34),
+  and binding the widening to the same red-to-green step, is the difference between a spec that ships
+  green and one that discovers a red batch gate at the wave boundary.
+- The vacuous-pass trap I named in v3 was avoided on exactly the terms named: PROP-REC-08 lives on the
+  two-red-wave run, never on E-34's. The two-red-wave fixture is also correctly justified as the only
+  one that would catch a hard-coded wave number.
+- Every negative assertion added this round is paired with a positive on the same run — PROP-REC-09
+  with PROP-REST-08's five-key set-equality, PROP-REC-10's no-A6-fired companion with outcome, halt
+  reason and `a6.calls.length === 0`. No absence-only oracle entered the document.
+- C-2's set-equality survives contact with a mechanical check: 48 = 48, both `comm` difference sets
+  empty against FSPEC v1.7.
+- §G-4 no longer overclaims. Restating the bar as *conjunct* granularity, and naming the AC-level
+  claim that was previously true only by accident, is what stops the same gap re-opening invisibly.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+All three of my v3 findings are resolved — the High by four correctly-homed properties and a new
+oracle, the Medium by an upstream decision that landed the way that protects the approved properties,
+the Low by re-grounding I verified digest-by-digest. Nothing I previously approved was broken: the
+one edit to an approved property (`PROP-REST-08`'s four→five fields) was compelled by the upstream
+field addition and is required to keep the suite green. The two remaining findings are Low
+bookkeeping items — a stale suite count and a lineage row that rolled backwards — and neither blocks
+Phase I. Fix them in the next edit that touches those lines; do not spend a round on them.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
