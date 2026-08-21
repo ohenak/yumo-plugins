@@ -189,6 +189,42 @@ upstream asked for, and is strictly more coverage than the current text claims.
 
 ## Fixtures
 
+§F gained one row and rewrote one; nothing else in the inventory moved, and no hand-computed literal
+changed — which is the outcome my v3 predicted once FSPEC's byte basis landed on material only.
+
+| Fixture | Change in this delta | Assessment |
+|---|---|---|
+| `ZERO-BOUND` *(new)* | *"a multi-document corpus whose documents **do** carry BR-6 priority sections, run at `maxBytesPerDocument: 0` … the **positive control** for `RSN-NO-MATERIAL`'s second disjunct"* | **Correct and well-sized.** It is a threshold override on an existing corpus fixture, not a new corpus shape, so it costs no fixture-authoring budget. Its "what it stops" cell names three wrong answers, not one: the carries-no-section implementation, `RSN-BYTES` rows, and the zero-byte contribution flagged `bounded: true` occupying a slot |
+| `NO-MATERIAL` *(reworded)* | now labelled *"the *carries-no-section* disjunct of BR-9's `RSN-NO-MATERIAL`, paired with the row below"* | **Correct.** The pairing is what makes the reason id's meaning falsifiable; the document explicitly places it in the same discipline as `DISCARDED-NESTED`/`DISCARDED-DIRECT` and `COUNT-BINDING`/`BYTES-BINDING`, which is a pattern this feature has used consistently |
+| `BYTES-BINDING`, `COUNT-BINDING`, `MULTIBYTE-BOUND`, `GATE-GRAMMAR`, `SUPPLEMENTARY-PATHS`, corpus/self/unreadable, §F.4 seam doubles | untouched | **Unaffected.** The 3/5/0 literal stands, as §G.2 gap 2 now records |
+| §F.3 heading-forms note *(rewritten)* | from "F-O-1's, not this document's to decide" to "decided", with the three-clause matcher transcribed | **Faithful.** Verified against `TSPEC` §D.3: `SECTION_HEADING_RE = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/`, exactly two `#`, optional ordinal *discarded*, exact case-sensitive comparison, optional trailing gloss. My v3 F-03 is closed |
+
+**Two things in §F.3 deserve to be called out as better than a transcription.** First, clause 1
+explains *why* the discarded ordinal is load-bearing for fixtures — *"the corpus's own numbering is
+**not** BR-6's priority order … a fixture whose expected order was read off the ordinals would invert
+the first two sections of every corpus document."* That is a real defect the clause prevents, stated
+concretely. Second, clause 2 grounds exact case-sensitive matching on **E-33 rather than on taste**:
+the measured `RSN-NO-MATERIAL` document carries `## Cross-Feature Findings` and `## Process
+Findings`, which a substring or token rule would match, *"making E-33 and AT-28 unreachable by
+construction"*. A rule that would make an edge case unreachable is a rule that would make a test
+vacuous, and naming that is exactly the standard I want applied here.
+
+**The one fixture consequence of F-01.** Closing F-01 needs **no new fixture**. The unit-level
+carve-out T-O-6 asks for is an assertion over `extractInjectableMaterial(text, 0)` for any text
+already in the suite — including, per TSPEC §I.3, *"one carrying all five sections"*, which
+`ZERO-BOUND`'s corpus already provides. It lands in `learningsBlock.test.js` (LI-08 red / LI-17
+green), a suite §C.3 already owns, alongside `PROP-BOUND-03`'s existing example arm. So the fix is
+three sentences of specification and one test case, and it changes no count in §C.4 except by
+leaving the property total at 70.
+
+**One inventory wrinkle worth fixing while the file is open.** §C.4's re-measurement is materially
+right and I verified it file by file, but the summary sentence reads *"Seven of the fourteen have
+landed (LI-01…LI-04, LI-07, LI-08, LI-09, LI-13 are committed)"* — **seven files** against **eight
+task ids**, because LI-04's artifact is `.gitignore` (landed: `.gitignore:13` carries
+`/.baseline-worktree/`), which is not one of the fourteen rows. Both halves are true; a reader
+reconciling them has to discover that the parenthetical changed subject from files to tasks. That is
+F-04, Low.
+
 ## Findings
 
 ## Questions
