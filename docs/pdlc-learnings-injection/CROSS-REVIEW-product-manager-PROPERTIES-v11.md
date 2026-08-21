@@ -127,6 +127,51 @@ including the two-name case). A deleted case would red. Nothing in the delta rel
 
 ## Oracles
 
+**No oracle changed, and none needed to.** §O.1–§O.10 carry no hunk in this delta. They are stated
+against TSPEC §D.3/§D.5, FSPEC F-O-1's two heading rules and the AT partition — none of which moved
+between `7e7d96aa` and HEAD. My v10 conclusion was that the *evidence* §C.4 gathered survived the
+upstream change intact and only its *conclusion* needed re-deriving; the revision did exactly that
+scope of edit and no more, which is the right shape of fix for a frozen round.
+
+**The evidence the re-derivation leans on, re-measured at HEAD rather than trusted from v10.** My v10
+review asserted that no test file had moved since the `21edb7c5` pin. That statement was made against
+the pre-rebase branch and I re-checked it properly this round: `learningsBlock.test.js` at HEAD carries
+**five** `extractInjectableMaterial` calls where the pinned bytes carried three — a third `LI-AT-12`
+case (the two-section cut, `learningsBlock.test.js:147-199`) has landed. That is a fact the delta's
+own text is robust to, and I checked each absence claim against the file at **HEAD** rather than
+against the pin:
+
+| §C.4 absence claim | State at HEAD | Holds? |
+|---|---|---|
+| No `extractInjectableMaterial(text, 0)` / non-positive-bound call anywhere in the landed suite | Bounds at HEAD are `100000`, `40`, `66`, `60`, `100000` (`learningsBlock.test.js:87,113,133,174,194`) — none zero or negative | Yes |
+| No un-glossed `## Rejected Proposals` arm, no `###`-as-body arm, no `## Process Findings` near-miss arm | `grep` over the suite at HEAD finds none of the three headings anywhere in the file | Yes |
+| The un-numbered `## Cross-Feature Patterns` spelling **is** exercised and accepted | `learningsBlock.test.js:118`, `:139`; the numbered `## 2. …` form at `:189`, `:197` | Yes |
+| Contributed-byte literals are hand-computed from the fixture, never derived from the function | The suite says so in comments and asserts literals (`toBe(40)`, `toBe(65)`, `toBe(60)`, `toBe(96)`) with the arithmetic written out | Yes |
+
+So the delta's evidentiary base is sound at HEAD even though its pin is off-branch. That is the
+distinction that keeps the anchor-rot item Low rather than High: the anchors are stale, the
+measurements they stand for are not.
+
+**The oracle-adjacent claim the delta newly makes is the production-half claim, and it verifies.**
+§C.4 now asserts that PROP-BOUND-05/07/08's heading-form arms *"assert behaviour that is **shipped**"*,
+quoting PLAN's description of `canonicalSectionName`. Checked directly:
+`SECTION_HEADING_RE = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/` at `orchestrate-dev.js:2313` — the
+optional `(?:\d+\.[ \t]*)?` group is the ordinal strip and it is **discarded**, not captured as a
+priority; the `[ \t]+` after `^##` is why a `###` line never matches; `canonicalSectionName`
+(`orchestrate-dev.js:2319-2326`) strips the gloss, compares `strippedTitle === name.replace(GLOSS_RE,"")`
+case-sensitively against `BR6_SECTION_NAMES`, and returns `null` otherwise, which is what makes the
+`## Process Findings` near-miss fail to match. All four heading-form arms therefore assert shipped
+behaviour, exactly as the delta says.
+
+**PM Q-02 is recorded closed on the right channel.** I carried Q-02 through v7–v10: is the heading-form
+amendment expected green or red? PLAN v0.8's changelog row (`PLAN-pdlc-learnings-injection.md:610`)
+states case C is *"answering PM Q-02"* and rules green. §G.3's revised bullet now records that closure
+in the document — *"That closes PM's carried Q-02 (green, not red) as well"* — instead of re-emitting
+it as a routed erratum. That is the DEC-ERR-01 mechanic working the way it is supposed to: the
+question left the document once, was answered upstream, and came back recorded rather than re-asked.
+The oracle consequence is the one that matters to an implementer: an amendment expected green is not a
+staged TDD red, so a red that lands is a defect to fix, not a ledger row to write.
+
 ## Fixtures
 
 ## Findings
