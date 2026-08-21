@@ -155,4 +155,22 @@ DEFERRED: F-01 above (fourth round as a Low) could be closed with a five-word ed
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta does exactly one thing, and it does it correctly: it makes AC-2.4's report attribution
+cause-defined, in the same words FSPEC v0.14's BR-6 uses and in agreement with the selection that
+ships at HEAD (`orchestrate-dev.js:2467-2469`, `:2494`, `:2520-2522`). It introduced no defect, it
+contradicts nothing in the repository or upstream, and it did not disturb any section I approved in
+earlier rounds. Both v11 findings that pointed outside this document — the TSPEC gate divergence and
+the stale FSPEC pointer — have since been closed in their own documents.
+
+The single open finding is F-01, a Low carried unchanged from v10/v11: `AC-5.1b` over-attributes the
+malformed-section operator notice to `parseImplementationConfig`, which ships only the flag. It is
+imprecision in a citation, not a wrong decision, and under the freeze it is not mine to reopen.
+
+Nothing here requires a further REQ round.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
