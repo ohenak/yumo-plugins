@@ -10,7 +10,7 @@ depends-on: [pdlc-consolidation-agent, pdlc-advisory-wave-gate]
 |---|---|
 | Status | Draft |
 | Author | pm-author (operator-directed session, 2026-08-09) |
-| Version | 1.4 |
+| Version | 1.5 |
 | Upstream | **REQ** |
 | Downstream | FSPEC, TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | (none yet) |
@@ -30,6 +30,11 @@ finding, see `CROSS-REVIEW-software-engineer-REQ-v1.md` and `CROSS-REVIEW-test-e
 (SE G-01); the wave-gate baseline is cited at its current version (SE/TE G-03); code citations
 move to symbol and banner-string names (SE G-02, TE G-04); REQ-WVR-08 names its phase-row reading
 (TE G-05); REQ-WVR-05's superseded position is labelled history (SE G-04).
+
+**Amendment, 2026-08-21 (v1.5) — round-3 cross-review.** §1's precondition list separates
+never-written from discarded and cites the write's guard by a re-derivable marker (SE F-01, F-03;
+TE H-03); OQ-1's banner recipe is replaced with one that matches both banners (SE F-02, TE H-01);
+§10's readiness note enumerates the whole §5 table and states BL-04's pickup status (TE H-02, Q-01).
 
 **Note on this branch's base (SE F-01, F-02).** This feature branch is 1,637 commits behind the
 default branch and predates the merge of the mechanism §1 describes; the code claims in this REQ
