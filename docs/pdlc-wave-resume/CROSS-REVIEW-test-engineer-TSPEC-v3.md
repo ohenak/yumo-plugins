@@ -205,4 +205,15 @@ neither warrants a round of its own.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | nonlocal | §6.3 item 4 raises as an open erratum that "REQ OB-1's worktree conclusion rests on `.worktreeinclude` listing only `.claude/workflows/`, but that file is not tracked on the default branch". REQ v1.7 has landed exactly that correction — OB-1 now labels the include-list evidence consumer-local and untracked rather than resting on it — so the item now narrates a defect that no longer exists upstream. The conclusion TSPEC drew is unaffected; only the ledger entry is stale. Resolve by marking item 4 landed in REQ v1.7 (or striking it), not by changing any claim in the body. | TSPEC §6.3 Errata raised upstream, item 4 |
+| F-02 | Low | delta | nonlocal | §6.3's items 1–2 state "the REQ at HEAD is **v1.6**"; REQ at HEAD is now **v1.7**. The content claims attached to that version cell remain true (v1.6's rescoping of REQ-WVR-08 to the implementation wave loop is still recorded in REQ's amendment history, and item 2's verbatim quotation of REQ §10 — "**open and unmet** — not discharged at FSPEC authoring" — still matches byte-for-byte at v1.7). Only the version number is stale. Resolve by updating the two version references. | TSPEC §6.3 Errata raised upstream, items 1–2 preamble |
+
+FINDING: Low | delta | nonlocal | TSPEC §6.3 Errata raised upstream, item 4 | The erratum against REQ OB-1's worktree evidence is recorded as open, but REQ v1.7 landed that exact correction this round; the item now describes a defect that no longer exists upstream. Bookkeeping only — the conclusion and every dependent claim in §1.2/§3.2 are unaffected, and no test or oracle reads this section.
+FINDING: Low | delta | nonlocal | TSPEC §6.3 Errata raised upstream, items 1–2 preamble | "the REQ at HEAD is v1.6" is stale; REQ at HEAD is v1.7. The attached content claims and item 2's verbatim quotation of REQ §10 still hold exactly, so this is a version-cell refresh, not a fidelity break.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
