@@ -150,4 +150,39 @@ them without lengthening the paragraph.
 
 ## Recommendation
 
+**Needs revision**
+
+All four of my v2 findings (G-01..G-04) are resolved, and I verified each against the code rather
+than against the document's account of itself. The revision is a net improvement: the citations are
+greppable, the branch-base step has a gate, OB-2's recipe is executable, and the superseded WVR-05
+position can no longer be misread as operative.
+
+One new **High** blocks approval, and it is a delta defect, not an inherited one: §1's rewrite of
+the operational finding deleted a *true* precondition (the write is inside the script-owned-gate
+branch) and replaced it with its negation ("guarded by the git transport, **not** by the gate
+mode … a self-report-gate run *with* a transport records normally"). At HEAD of the default branch
+the write at `orchestrate-dev.js:15600` is nested inside `if (scriptGate)` (`:15432`) *and*
+`if (waveGit)` (`:15531`), and a wave-mode run with a degraded gate (`:15196`) commits nothing and
+records nothing. Because §1 declares that list the concrete FSPEC scope, shipping it as written
+hands the next phase a false premise about the mechanism it is meant to formalize.
+
+What must change to reach approval:
+
+1. **F-01** — restore the gate-mode precondition alongside the transport one, and re-count the
+   list. Suggested text is in the finding; it keeps every other improvement in the rewritten
+   paragraph. OB-1's `writeWaveLedger` sentence needs the same conjunct.
+
+Non-gating, addressable in the same edit:
+
+2. **F-02** — replace OQ-1's grep recipe with one that finds both banners, or anchor on the
+   `allWavesRecorded` / `ledgerResume` emits.
+3. **F-03** — separate "never written" from "discarded" in the §1 preamble.
+
+No `ERRATUM` lines: this REQ is the upstream-most pipeline artifact for the feature, and the only
+external document it depends on (`docs/_constraints/pdlc-wave-gate-baseline.md`) is a constraints
+file, whose owed correction is already carried as OB-2 rather than as an erratum.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
