@@ -134,7 +134,40 @@ this correctly through EC-01's shape — but te-author should not read E-3 as in
 
 ## Business Rules
 
-_pending_
+No rule is reached by this round's bytes. BR-01, BR-03, BR-06, BR-10, BR-11, BR-13, BR-15, BR-16 and
+BR-17 each compress a REQ criterion or an OF-* observation, and this erratum edited neither. In
+particular:
+
+- **BR-11** (outcome (c) scoped to the implementation wave loop) was reconciled with REQ-WVR-08 in
+  the *previous* round's E-4 and confirmed in v3. REQ-WVR-08's bytes are unchanged here, so that
+  confirmation stands unretested.
+- **BR-10 / BR-13** (a bad record costs at most a full run; the gate verifies the whole tree) rest on
+  REQ-WVR-03 and R-2/G-2, untouched.
+- **BR-15** (per-wave recording, write failure is a notice not a halt) was verified in v2 against the
+  shipped write site; no hunk touches it.
+
+**One rule interacts with E-2, and is strengthened, not broken.** The FSPEC's §1 grounding preamble
+carries the load-bearing statement that *"REQ BL-04 requires the resume mechanism and
+`docs/_constraints/pdlc-wave-gate-baseline.md` to be readable in the authoring tree at FSPEC
+authoring time. It is **not**"*, and derives from that the rule governing every positional claim in
+the document: each shipped-behaviour claim is verified against `origin/main`, and every claim names a
+symbol or file, per DEC-DOC-01. Before E-2, this statement stood in direct contradiction to REQ §5,
+whose BL-04 row read as discharged at FSPEC authoring — the FSPEC asserted a prerequisite unmet that
+its own upstream's blocker table recorded as satisfied. E-2 removes that contradiction: §5 now reads
+*"Checked at FSPEC authoring and found **unmet** — this row is not discharged (§10)"*, which is the
+same proposition the FSPEC states, in the same direction, citing the same section the FSPEC's OB-F1
+cites. Two documents that disagreed now agree.
+
+**What E-2 does not do, and must not be read as doing.** It changes what REQ *records*; it does not
+rebase the branch. The tree is still 1,637 commits behind the default branch, the resume mechanism
+and `docs/_constraints/pdlc-wave-gate-baseline.md` are still absent from it, every shipped-behaviour
+claim in §1 is still verified against `origin/main` rather than in-tree, and the FSPEC's positional
+citations are still not re-verifiable here. OB-F1's discharge condition — *"the branch is rebased and
+the mechanism is readable in the tree"* — remains unmet, **OB-F4 stays blocked on it**, and AT-14's
+branch precondition (the `.gitignore` rule is absent in this tree, so the test is RED until the
+rebase) is unaffected and must not be softened into an "observed quiet" oracle. Removing a
+documentary contradiction adds no capability. That distinction is the whole substance of F-02 below:
+the erratum succeeded, and the FSPEC's *description of the erratum* is what is now stale.
 
 ## Edge Cases and Error Scenarios
 
