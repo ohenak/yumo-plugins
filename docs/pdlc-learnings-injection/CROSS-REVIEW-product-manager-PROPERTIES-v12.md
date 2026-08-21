@@ -97,6 +97,38 @@ records. No finding — a confirmation of the reading this document took.
 
 ## Oracles
 
+**No oracle in this document draws on either changed PLAN passage.** §O.1–§O.10 map properties to
+AT ids, levels and red/green owners; the erratum moved no task, no batch, no `Deps` edge, no AT
+partition and no red/green attribution (PLAN v0.9 changelog states this, and the diff confirms it —
+the only task-table hunk is LI-08's prose note, whose `Suite` / `Prod` / `Batch` / `Deps` / `Status`
+cells are byte-identical).
+
+| Oracle-side dependency | Erratum effect | Holds? |
+|---|---|---|
+| PROP-BOUND-03/05/07/08 → red LI-08 / green LI-17 | LI-08's row cells unchanged; only its amendment-note prose edited | Yes |
+| LI-16 named owner of TSPEC §D.5's zero-bound production half | v0.7 ruling, untouched at v0.9 | Yes |
+| PROP-CONFIG-09 ↔ LI-12's three-case `LI-AT-30` | LI-12 row untouched | Yes |
+| Case C's shipped-production evidence — `canonicalSectionName` strips ordinal and gloss, compares case-sensitively against `BR6_SECTION_NAMES`, `^##[ \t]+` never matches `###` | Case C row byte-unchanged; production at HEAD (`orchestrate-dev.js:2313`, `:2319-2326`) unchanged this round | Yes |
+| PROP-BOUND-03's transcribed four-field zero-bound return | Production short-circuit at `orchestrate-dev.js:2370-2371` untouched | Yes |
+
+**The heading-form oracle question the erratum brushes against.** Hunk 3 concerns which
+`renderSection` knobs the amendment must newly drive. An oracle-level reading asks instead which
+*behaviours* the amendment asserts — the second rule of F-O-1: ordinal stripped and discarded (not
+read as priority), gloss stripped, case-sensitive comparison, `###` never a heading. Those four are
+what PROPERTIES' PROP-BOUND-05/07/08 pin, and the fixture mechanism used to produce the variant text
+is deliberately not part of the property statement. That separation is why hunk 3 cannot invalidate
+an oracle here: PLAN corrected a claim about the *fixture builder's* exercised surface, and
+PROPERTIES' oracles are stated over the *extractor's* observable output.
+
+**PM Q-02 stays closed on the right channel.** §G.3 records the closure (*"answering PM Q-02"*, PLAN
+v0.8's changelog) rather than re-emitting a routed erratum line. v0.9 does not reopen it — the case C
+row that answered it is byte-unchanged. I carry no question forward this round either.
+
+**§G.3's "Also answered — by PLAN v0.6/v0.7/v0.8" list is history, and history did not change.**
+Each struck item cites the PLAN version that answered it, not the current PLAN version, so v0.9
+leaves the list correct as written. This is the right citation form for a resolved-items list, and
+it is why that section needs no edit even though the document's version pin does.
+
 ## Fixtures
 
 ## Recommendation
