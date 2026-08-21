@@ -219,6 +219,38 @@ exit 0.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01: is a per-arm control on ADMITS-NOTHING best written as a read-log assertion (the corpus path was opened on that arm only) or as a sink assertion (`corpusOutcome === null`, one `RSN-NO-MATERIAL` row)? The second also pins *why* the arm injects nothing, which is what makes it a different code path from EMPTY. |
+| Q-02 | v1's Q-01 is answered — the gate inputs are read where they live and the production report was not grown to fit the oracle. v1's Q-02 is answered — the fixture is wired to a comparison across four states. v1's Q-03 is answered by deletion. Only v1's Q-04 remains open, and it is upstream: with `propagateBytes` gone, does FSPEC/REQ agree that a document cut by the count bound carries `RSN-COUNT` regardless of the window's byte outcome? The implementation and its tests now both assume so, and the two `ERRATUM` lines below ask upstream to say it. |
+
+- **Every High repair was verified by its own falsifier, not by its own assertion.** Each of the
+  four code-level repairs reds when the defect is restored (E-1..E-4). That is the standard this
+  lens asks for and it was met without prompting — the AC-1.2 test's own comment even states the
+  mutant it exists to kill.
+- **The composition-site probe repair is the structurally right one.** Passing `injectHere` to
+  `_recordDocType` moved the test from "re-derive the decision" to "observe the decision", which
+  is what turned one tautology into the falsifier for two separate tests. The hand-transcribed
+  literal was kept as the expected value rather than replaced by an import — no implementation
+  echo was introduced while removing one.
+- **`reviseOnceInPhases` widened the dispatch universe rather than faking a dispatch.** The case
+  AC-1.2 names is now reached by driving the real pipeline to a "Needs revision" round, off the
+  reviewer prompt's own opening line, instead of by constructing a synthetic call. The two
+  scenarios that need it say why in-line.
+- **The baseline oracle is the strongest instrument added in this round.** Subject = branch code
+  at HEAD, expected value = merge-base bytes on disk, across four non-injecting states × two
+  capture scenarios, with a dedicated "the instrument fires" test asserting the fixture is
+  non-trivial and that an altered prompt would not compare equal. F-01 is a control missing from
+  one arm of an otherwise exemplary block.
+- **The F-07 companion test is a model of a cause-based oracle.** It holds the corpus fixed,
+  moves the failure position, and asserts the complete path→reason map by `toEqual` at both
+  positions — set equality over the full enumeration, with the arithmetic behind `4973` shown so
+  the expected values are transcribed rather than observed.
+- **Negative claims are consistently paired now.** AC-3.4's "nowhere else in the report" is paired
+  with "the path IS in BR-8's rows"; BR-15's two prefix clauses are paired with "the disabled arm
+  does open `docs/_decisions/`"; the CR optimizer's "carries no block" is paired with "this run
+  did inject somewhere". The absence-only oracles v1 flagged are gone.
+
 ## Positive Observations
 
 ## Recommendation
