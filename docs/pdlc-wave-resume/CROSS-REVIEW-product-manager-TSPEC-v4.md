@@ -223,7 +223,32 @@ the oracles I approved at v2 and v3 against bytes that have not moved.
 
 ## Open Questions
 
-_TBD_
+| ID | Question |
+|----|---------|
+| Q-01 | **Raised at v3, and this round is the evidence for it.** §6.3 has no disposition column, so an entry that lands upstream stays indistinguishable from one still open. At v3 one of four items had landed; at v4 **all four** have, and the section still reads as four open defects. Should §6.3 gain a `Status` column (`open` / `landed in FSPEC v1.2` / `landed in REQ v1.7`) when TSPEC is next edited? I have no view on the format and this is not a finding about the design — but the errata channel is the one section whose entries go stale by being *successful*, and only the owning document can clear them. |
+| Q-02 | Carried, unanswered, and unchanged because TSPEC's bytes have not moved: §6.2 OB-F4's "7 no-op dispatches over waves 1–3 of a 16-wave plan" is a measurement not re-derivable in this tree. Who re-measures it, and is a Measured-by command owed by PLAN or by the promotion task itself? |
+| Q-03 | **New, and for the PLAN author rather than for se-author.** Now that all four §6.3 errata have landed upstream, is there anything left that PLAN must *act on* from that section, or is it now purely a harvest record? My reading is the latter — the substantive obligations live in §6.2 (OB-F1's rebase precondition, OB-F4's promotion task) and those are unchanged. I ask because a PLAN author who reads §6.3 as a live worklist will author tasks for problems that no longer exist. |
+
+## Risks carried
+
+- **A-1 (changed, and stated).** Unlike v3, this round's upstream did move: FSPEC is at
+  `sha256:9a6be7b5…`, not the `sha256:1c05f51…` my v3 approval pinned. REQ is unmoved at
+  `sha256:17e83bfc…`, identical to the hash v3 recorded, so exactly one leg of the cascade is in
+  question this round and the REQ leg needs no re-reading. I verified both hashes against the
+  working tree rather than trusting the dispatch.
+- **R-1 (closed).** v3 recorded that TSPEC §6.3's routed FSPEC↔REQ inconsistency was wider than
+  TSPEC stated, and that the phase owning FSPEC must not read "the REQ erratum landed" as "the
+  inconsistency is closed", because only the REQ half was ever right. This round closes it
+  properly: FSPEC's OB-F1 has been corrected on its own side, so both halves now say BL-04 is open
+  and unmet. The risk is discharged, and F-02 is only the residue in TSPEC's own note.
+- **R-2 (carried, unchanged).** The 85% branch floor is placed on the last implementation wave's
+  `postWaveCommand`, which is a single per-run key; F-06 below. This remains the one open item I
+  would most want closed during PLAN authoring, since se-author will otherwise write a PLAN
+  obligation the shipped config surface cannot express.
+- **R-3 (new, low).** With all four §6.3 items landed, harvest will read a hand-off section none
+  of whose entries is live. If §6.3 is not given a disposition column (Q-01), the LEARNINGS pass
+  should be told these four are closed, or it will promote four settled questions as durable
+  signal. Recorded here so the harvest phase has it in writing.
 
 ## Positive Observations
 
