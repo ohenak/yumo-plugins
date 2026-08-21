@@ -272,10 +272,67 @@ DEFERRED: consider recording, beside the 26-of-26 green measurement, the jest in
 | Q-01 | PLAN v1.1's P-A-6 now routes a red PROPERTIES suite through *"P-A-7's governing case"* rather than naming a route directly. When this document re-pins to v1.1, does §C.4 `:1178` want to quote that indirection verbatim, or state the resolved answer at HEAD (case C, green at landing, no ledger)? The second reads better but goes stale the next time P-A-7 gains a case — which has now happened twice. |
 | Q-02 | The four unowned remediation files are routed to PLAN. If PLAN answers with *"explicit out-of-manifest note"* rather than task rows, does §C.4's inventory keep all 18 rows, or drop back to 14 with a pointer to PLAN's note? I read the 18-row form as the better one — the inventory's value is that it is the output of a command — but the choice is PLAN's answer to make legible. |
 
-## Questions
-
 ## Positive Observations
+
+- **The revision reverses its own claims out loud instead of editing them away.** Seven absence
+  assertions had gone false when the branch advanced. The easy move was to delete them and restate the
+  new state; the revision instead prints a two-column table of *"claim as it stood"* against *"state at
+  `09c7c62f`"* and says plainly *"every one of those absence claims is false"*. That costs the document
+  nothing in correctness and buys every future reader the ability to see which readings expired and
+  why — and it is what let me check the reversal in seventeen `sed -n` calls rather than by re-reading
+  two suites.
+
+- **It retired a hedge instead of deferring it.** Earlier revisions flagged PROP-BOUND-03's
+  `maxBytesPerDocument <= 0` case as *not obviously green at landing* — unexercised through the
+  `extractInjectableMaterial` seam, so *"the first call may red"*. It landed green on first exercise
+  (`learningsBlock.test.js:337` under the named test at `:329`, inside the 26-of-26 pass). The revision
+  records that the hedge is spent rather than carrying it forward as a live risk. Carrying a discharged
+  hedge is how documents accumulate false urgency; this one stopped.
+
+- **It distinguishes unexercised from waived.** Case C's failure limb never fired, and the revision says
+  it is *"**unexercised**, not waived"*. That is a precise and slightly uncomfortable distinction — the
+  comfortable version would have called the obligation discharged — and getting it right is what keeps
+  the branch honest if an amendment does red before batch 14.
+
+- **It reported a gap that was purely to its own cost.** Nothing forced the re-measurement to notice
+  four files that no task owns; §C.3's accounting closes without them and no property names them. The
+  revision surfaced them anyway, classified the gap as **PLAN's rather than its own**, and routed it
+  instead of absorbing it — which is exactly right, and is the harder of the two options to write.
+
+- **Every measurement it asserts, it made checkable.** Commit anchors with `git log --diff-filter=A -1`
+  named as the derivation; a test command with its exact output; a skip count paired with the pass count;
+  file headers quoted so the CODE_REVIEW attribution can be confirmed with `head -4`. I re-ran all of it
+  and every number matched on the first attempt. That is not luck — it is what happens when a document
+  writes down the command as well as the result.
+
+- **The blast radius is exactly what the header claims.** *"No property, oracle, fixture, AT mapping or
+  coverage row moves"* — fifteen hunks, all four inside the header, §C.4, §G.2 item 5 and §G.3. A
+  scope claim that survives being diffed makes a re-review cheap, and this one did.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The revision does what PM v11 F-01 asked and does it well: 21 commit anchors re-pinned and all 21
+resolve, 17 `file:line` anchors written and all 17 land on the quoted text, seven absence claims
+reversed with positive counterparts on the same paths, a green claim I reproduced exactly
+(26 passed / 26 total, 0 skips), and a real gap in PLAN's manifest found, classified and routed. No
+property, oracle, fixture, AT mapping or coverage row moved, and I verified that from the diff rather
+than from the assertion.
+
+Two findings, neither blocking. **F-01 (Medium)** — the PLAN pin is stale at v0.8 against PLAN v1.1,
+costing one non-resolving verbatim quotation, one false case-A paraphrase, and one fallback sentence at
+`:1178` that PLAN v1.1 retired. It does not block: case C's ruling is byte-identical across the version
+gap, every load-bearing PLAN quotation still resolves verbatim, and §C.4 already states the correct
+obligation. **F-02 (Low)** — "eighteen files" is a row count, inherited from v0.7's convention.
+
+Under the decision freeze I have opened no new decision. Four observations that would improve the
+document but are not defects are recorded as `DEFERRED:` lines above rather than folded into the
+verdict.
 
 ## Recommendation
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
