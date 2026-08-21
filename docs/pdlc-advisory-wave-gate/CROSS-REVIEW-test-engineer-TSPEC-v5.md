@@ -79,7 +79,48 @@ still satisfied — PLAN A6-15 remains the single writer.
 
 ## Interfaces
 
+One interface is added by the delta and one is re-asserted; neither is contested.
+
+- **`renderSnapshotOverwriteNotice(snapshotRef)`** (§4.5 line 1419) — pure, one argument, returns
+  one string, no call on `null`. As a signature this is testable in isolation and its purity claim
+  is checkable the way `PROP-ESC-01` already checks `renderEscalationEntry`'s
+  (`advisoryEscalationLog.test.js:177-181`). Two things the TSPEC leaves unstated but which do not
+  block: whether it returns `null`/`""` on a `null` argument or is simply not called (line 1419 says
+  "no notice is rendered and none is pushed", which reads as *not called* — fine, and AT-06-4b's
+  whole-array negative assertion covers both), and whether it is exported (its siblings are; a
+  non-exported helper would still be reachable through the seam, which is where both ATs observe it,
+  so no finding).
+- **`runWaveGateSeam`'s return type** (§4.2 line 826) still carries
+  `haltFields: { rootCause, diagnosis, repairApplied, repairPaths, snapshotRef: string | null }` —
+  unchanged since v1.12, five members, closed, with `null` (not `undefined`) as the absent value.
+  That is the contract F-01 below is about: at HEAD the same seam returns a **four**-key
+  `noHaltFields` literal (`orchestrate-dev.js:3386`), which is the implementation the PLAN will
+  widen — expected. What is *not* expected is that the shipped tests pin the four-key shape by
+  set-equality; see Test Strategy.
+
+`haltError`'s interface is untouched by the design (message + fields), which is precisely why
+AT-05-3's message oracle survives — verified at `orchestrate-dev.js:4539-4546` and `:15966`.
+
 ## Data Model
+
+§4.5's halt-field set is now internally consistent at five members in all three places I flagged at
+v4: the artifact-table row (line 1388) enumerates
+`{rootCause, diagnosis, repairApplied, repairPaths, snapshotRef}`, the bullet (line 1394) reads
+"five fields", §2.5's back-reference (line 336) carries the correction, and the per-field literal
+table gives `snapshotRef` its value on the capture-failure path — `null` (line 1405). The
+new artifact-table row for the notice (line 1387) is correctly scoped by a positive **and** a
+negative condition ("Every A6-touched halt whose `snapshotRef` is non-`null`; never on `null`
+(E-34)"), which is exactly the pair AT-06-4 / AT-06-4b assert.
+
+One data-model claim in the delta is loose enough to note. Line 1427 states the halt reason "stays
+byte-identical to `TEST_GATE_MESSAGE`". No such symbol exists in `pdlc/workflows` — `grep -rn
+TEST_GATE_MESSAGE pdlc/` matches only this TSPEC (line 531) and two cross-review files. At HEAD the
+message is an inline template and the shipped oracles are **containment**, not equality
+(`expect(result.haltReason).toContain("Wave 1 test gate failed")`,
+`advisoryWaveGateMain.test.js:370`; `.toContain("Error: Wave 1 test gate failed")`,
+`waveExecution.test.js:1091`). The argument the paragraph makes is still correct — the warning rides
+`notices`, never the message — but it rests on a name the reader cannot resolve, and it calls
+AT-05-3 an equality oracle where the shipped ones are containment. Low, filed as F-03.
 
 ## Test Strategy
 
