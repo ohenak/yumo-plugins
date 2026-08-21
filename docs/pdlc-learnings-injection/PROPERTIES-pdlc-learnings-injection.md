@@ -1084,16 +1084,23 @@ true**, and the count is restated against `git ls-files pdlc/workflows/__tests__
 | `learningsSuiteMap.test.js` | LI-14 | not yet created |
 | `fixtures/learnings-baseline/` | LI-06 | not yet created |
 
-Seven of the fourteen files have landed. The tasks committed so far are LI-01…LI-04, LI-07, LI-08,
-LI-09 and LI-13 — eight ids against seven rows, because LI-04 owns none of the fourteen: its artifact
-is the `/.baseline-worktree/` ignore rule (PLAN's LI-04 row, landed at `.gitignore:13`). The
+Seven of the fourteen files have landed. The tasks committed so far are LI-01…LI-05, LI-07, LI-08,
+LI-09 and LI-13 — nine ids against seven rows, because **two** of them own none of the fourteen:
+LI-04, whose artifact is the `/.baseline-worktree/` ignore rule (PLAN's LI-04 row, landed at
+`.gitignore:13`), and LI-05, whose artifact is the capture script (below). The
 remaining seven are explicitly planned and unstarted. **On the re-red of landed suites (SE Q-02):**
-PROP-BOUND-05/07/08's amendments land in `learningsBlock.test.js`, which is committed, so they are a
-re-red on landed green code rather than a fold into LI-16/LI-17's green tasks — which is exactly
-PLAN P-A-7's case ("a live table is amended by an edit to this PLAN, committed before the run it
-governs"). PLAN's LI-08 v0.5 amendment note assigns the follow-up commit to the existing owners but
-does not name the ledger rows; that naming is the PLAN's to do and is routed as an erratum, not
-decided here. No property of this document changes either way. **No property in this document names a test
+PROP-BOUND-03's zero case and PROP-BOUND-05/07/08's amendments — **four** properties, not three —
+land in `learningsBlock.test.js`, which is committed, so they are a re-red on landed green code
+rather than a fold into LI-16/LI-17's green tasks — which is exactly PLAN P-A-7's case ("a live
+table is amended by an edit to this PLAN, committed before the run it governs"). **The ledger-row
+naming this document routed upward is answered at HEAD:** PLAN (v0.7) now carries *Amendment commits
+on landed suites (P-A-7)*, a two-case table — case A, the follow-up commit landing before batch 7,
+adds **no** row because the ledger already reds `learningsBlock` as a whole suite there; case B, a
+commit landing at batch 9 or later, adds the named row for every batch from the landing batch
+through the greening one. Case B names `LI-AT-11`'s heading-form cases specifically; this document's
+own four properties travel under P-A-6's rule, which holds the PROPERTIES suite's commit to the
+first point it is green (in practice after LI-21, batch 13), so they enter no ledger row unless that
+commit is brought forward. No property of this document changes either way. **No property in this document names a test
 file the PLAN does not create**, and none names one that exists but is owned by no task. The
 properties this revision adds or amends land in files on both sides of that line — PROP-CONFIG-09 in
 the not-yet-created `learningsConfig.test.js` (LI-12), and the Group D amendments in the **already
@@ -1104,8 +1111,11 @@ suites". The two
 **existing** files this document names are the pin's subject `consolidationPredicate.test.js` and the
 seam helpers `helpers/seams.js` / `helpers/consolidationDoubles.js`, none of which any task edits.
 Likewise
-`scripts/capture-learnings-baseline.mjs` is new — the repository has no root-level `scripts/`
-directory today, and LI-05's row says so.
+`scripts/capture-learnings-baseline.mjs` was new to this feature and has since **landed by LI-05**
+at `scripts/capture-learnings-baseline.mjs` (`ced75955`, "LI-05 — GREEN the capture script"): it is
+tracked at HEAD (`git ls-files scripts/` returns exactly that one path), so the root-level `scripts/`
+directory this feature created now exists. Earlier revisions of this sentence recorded the absence,
+which was true when written and is not now.
 
 ## Gaps, Obligations and Routed Errata
 
