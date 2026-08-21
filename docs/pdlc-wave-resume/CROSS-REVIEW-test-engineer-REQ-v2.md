@@ -53,6 +53,16 @@ restatement.
 
 ## Findings
 
+New findings only — round-1 findings are dispositioned above and are not restated here.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| G-01 | High | Local | §1's operational-finding block routes four "shipped preconditions" to the FSPEC as the concrete gap this feature closes. Precondition 1 is false at the default branch: the ledger write is gated on the **git transport** (`if (waveGit)`), not on `if (scriptGate)`, so a self-report-gate run with a git transport records normally. The block's headline conclusion — the ledger "has never once fired here" — is also falsified by the live tree, which carries a written record. An FSPEC oracle derived from this list would pin a defect that does not exist. | §1 operational finding, items 1 and the two "consequences" |
+| G-02 | Medium | Local | IG-4 bundles two independent rejection mechanisms into one catalogue row (over-range `lastGreenWave`, and a recorded commit not reachable from HEAD). The set-equality check REQ-WVR-02 owes PROPERTIES is over the five *rows*, so deleting the ancestry check alone leaves the enumeration intact and the test green — precisely the regression R-1 now leans on IG-4 to prevent. | §7 REQ-WVR-02 (IG-4), §8 R-1 |
+| G-03 | Medium | Local | §5's correction and OB-2 both state the wave-gate baseline is "v1.0, 2026-08-09". At the default branch it is **v1.2, 2026-08-20**. OB-2's promotion instruction — "bumping the baseline to 1.1" — would therefore be a version *downgrade*, and its instruction to re-check M-WG-6 was written against a two-versions-old file. | §5 correction, §9 OB-2 |
+| G-04 | Low | Process | Every code citation added in this revision is a raw `orchestrate-dev.js:NNNN` line anchor, and every one of them is stale against the default branch it claims to cite (e.g. the clamp cited as `:12171-12177`, the ledger constants as `:9976`/`:9992`/`:10029`/`:10087`, the read/decide block as `:12191-12280`). Per DEC-DOC-01 a raw line anchor is a Low `Process` finding on its own; stale ones additionally make the claims uncheckable by the reader they were added for. | §1 correction, §9 OB-1, OQ-1 |
+| G-05 | Low | Local | REQ-WVR-08 requires the full-skip outcome be "recorded as its **own** phase row, visibly distinct from a Phase I that executed". The shipped behaviour records the *same* row id `I` with a distinct `⏭` status. Two ATs can be written from this sentence — one asserting a second row, one asserting a status glyph on the existing row — and only one can pass. | §7 REQ-WVR-08 |
+
 ## Finding Detail
 
 ## Questions
