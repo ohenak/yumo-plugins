@@ -279,7 +279,17 @@ obligation it creates is unchanged in scope.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | §1 pins the upstream as "REQ-pdlc-wave-resume.md **v1.5**"; the REQ at HEAD is v1.6. Stale version provenance for a document this FSPEC declares it derives from entirely. | FSPEC §1, "derives entirely from … v1.5" |
+| F-02 | Low | delta | local | OB-F1 states the REQ's "§10 records BL-04 as 'discharged at FSPEC authoring'". §10 at HEAD says the opposite — "open and unmet — not discharged at FSPEC authoring". The quoted phrase no longer exists upstream; the erratum landed the FSPEC's own ask and the row was not updated to record it. OB-F1's substance (branch base unmet) remains open and correct. | FSPEC §7, OB-F1 |
+| F-03 | Low | delta | local | §7's round-1 revision note quotes REQ-WVR-08's "Phase I produces no new commit" as an open routed defect; E-4 deleted that string (HEAD: "lands no new commit", scoped to the implementation wave loop) and E-5 withdrew the BL-04 discharge. Both routed errata have landed; the note still reads as though neither had. | FSPEC §7, "Round 1 revision note" |
+| F-04 | Medium | inherited | local | EC-20 / AT-12's fourth conjunct assert the V-wave "commits on every invocation". The commit is not script-owned — it is an instruction inside `propertiesTestPrompt`, never verified, and a correct agent may add nothing under outcome (c) — so the oracle is flaky by construction (v2 F-01, unresolved). E-4 has now copied the overstatement into REQ-WVR-08 citing EC-20 as its authority, so the fix is a two-document edit and a te-author reading only the REQ finds it uncaveated. | FSPEC EC-20, AT-12; REQ-WVR-08 |
+
+FINDING: Low | delta | local | FSPEC §1 upstream pin | §1 says the FSPEC "derives entirely from REQ-pdlc-wave-resume.md v1.5"; the REQ at HEAD is v1.6, so the provenance pin names a version this FSPEC no longer derives from
+FINDING: Low | delta | local | FSPEC §7 OB-F1 | OB-F1 quotes REQ §10 as recording BL-04 "discharged at FSPEC authoring"; §10 at HEAD says "open and unmet — not discharged at FSPEC authoring", so the quoted phrase exists nowhere upstream (the erratum landed the FSPEC's ask; the row was not updated to say so)
+FINDING: Low | delta | local | FSPEC §7 round-1 revision note | The note quotes REQ-WVR-08's deleted string "Phase I produces no new commit" and describes the BL-04 discharge as still standing; both routed errata have landed, so both citations now point at text the REQ no longer carries
+FINDING: Medium | inherited | local | FSPEC EC-20 and AT-12 fourth conjunct | The V-wave "commits on every invocation" conjunct is agent-dependent, not script-owned (the commit is an unverified instruction in propertiesTestPrompt), making the oracle flaky by construction; the erratum has mirrored the overstatement into REQ-WVR-08, so the fix now spans both documents
 
 ## Verdict
 
