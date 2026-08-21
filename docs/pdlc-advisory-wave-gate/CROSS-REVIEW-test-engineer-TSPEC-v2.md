@@ -277,3 +277,6 @@ FINDING: Medium | delta | local | §6 OQ-2 disposition | OQ-2 still records the 
 FINDING: Low | inherited | local | §4.5 Snapshot ref row | the row's "never overwritten by a later wave" promise is true as written but carries no cross-reference to §2.5's correction that the *next run* does overwrite the ref; now that the overwrite is the subject of an operator-facing AC, §4.5 is where an implementer looks for the warning's trigger condition and does not find it
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
