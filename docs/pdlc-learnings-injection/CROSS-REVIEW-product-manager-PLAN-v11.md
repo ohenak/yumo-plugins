@@ -207,7 +207,15 @@ They are worth a single cleanup pass whenever this block is next edited; they do
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | Case B's new upper bound (batch 12) and case C's opening condition ("once LI-21 has landed") leave a commit landing in batch 13 *ahead of* LI-21's commit governed by no case. Unreachable at HEAD — LI-21 landed at `92b7ea0c` — so no commit that can now occur reads a wrong gate. Fix: extend case C's condition to "batch 13 onward, from LI-21's commit or any point after it", or state that batch 13's pre-LI-21 slot is closed | §Verification → The three gate wordings → Amendment commits on landed suites (P-A-7), case B / case C |
+| F-02 | Low | inherited | local | Case A's window is "before batch 7" and case B now begins at batch 9, so a commit landing *during* batch 7 or 8 is in neither window's literal text — even though case A's own reasoning (the suite is already ledgered a whole-suite red after batches 7–8) covers it and yields "no row". Pre-dates this round (case B previously read "batch 9 or later"). Fix: widen case A's *When* cell to "before batch 9" or add the batches-7–8 clause to its derivation, which already names their red reason | §Verification → Amendment commits on landed suites (P-A-7), case A *When* column |
+| F-03 | Low | delta | local | Case B's row opens a parenthetical aside with an em dash ("— a span that is well-formed only while a greening batch remains ahead, which is why case C exists,") and closes it with a comma, so the sentence's object ("the named row `learningsBlock` → …") arrives unseparated and the clause reads as a splice. The contract is correct; only the parse is hard, in a row a dispatcher reads for the gate. Fix: close the dash before "the named row" | §Verification → Amendment commits on landed suites (P-A-7), case B *Expected-red rows it adds* column |
+
+FINDING: Low | delta | local | P-A-7 case B / case C boundary | a commit landing in batch 13 ahead of LI-21's commit is governed by neither case B (bounded at 12) nor case C (opens once LI-21 has landed); unreachable at HEAD, so non-gating — close the seam by extending case C's opening condition
+FINDING: Low | inherited | local | P-A-7 case A When column | batches 7 and 8 fall in neither case A's "before batch 7" nor case B's "batch 9 through 12", though case A's own reasoning covers them and yields "no row"; widen the cell to "before batch 9" or add the clause to case A's derivation
+FINDING: Low | delta | local | P-A-7 case B Expected-red rows column | the new parenthetical aside opens with an em dash and closes with a comma, so the row's object clause reads as a splice; close the dash before "the named row" so the gate contract parses on first read
 
 ## Verdict
 
