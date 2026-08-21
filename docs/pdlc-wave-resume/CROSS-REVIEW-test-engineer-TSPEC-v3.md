@@ -62,7 +62,56 @@ document's load-bearing body.
 
 ## Interfaces
 
+The delta touches no interface TSPEC specifies, and I confirmed that positively rather than by
+absence.
+
+TSPEC's interface surface is §2 and §3: the three module-level pure functions extracted from
+`orchestrate-dev.js`, the `parseWaveLedger` contract and its `{}` "cleared" tolerance
+(DEC-WVR-04), the `WAVE_STATE_PATH` location and encoding, the `ANCESTRY_INDEPENDENT_CODES`
+frozen export, the announcement suffix strings, and the run-report detail field. The REQ delta
+edits a header version cell, an amendment paragraph, one prerequisite-table row's outcome text,
+and one paragraph of OB-1's rationale. None of those name a symbol, a config key, a path, an
+encoding, or a string literal.
+
+Two interface-adjacent checks I ran because the confirmation bar is fidelity, not item-landing:
+
+1. **`WAVE_STATE_PATH` / ledger location.** REQ v1.7's OB-1 rewording is the only place the
+   record's location is discussed in the delta, and it discusses it as *absence in a worktree*,
+   not as a location contract. REQ §9 OB-1 still explicitly delegates "the resume record's
+   location, format, matching rules" to the TSPEC (`owner: TSPEC`). TSPEC's ownership of that
+   interface is unchanged and unchallenged.
+2. **The ignore-rule interface behind AT-14.** REQ-WVR-10 and the `.gitignore` line
+   `/.claude/pdlc-wave-state.json` are untouched by the delta. AT-14's three conjuncts —
+   line-equality, root-anchoring, and `git check-ignore -v` resolving to *that* line — still
+   trace to unchanged REQ text. Notably the delta's new "consumer-local, untracked" framing of
+   the worktree include list does **not** weaken AT-14: AT-14 asserts over this repo's tracked
+   `.gitignore`, not over any consumer-local include list, so the two live on different sides of
+   the tracked/untracked boundary the erratum drew.
+
+No interface finding.
+
 ## Data Model
+
+The delta introduces, removes, and renames nothing in the data model, and the one place it comes
+close is worth stating explicitly because it is the load-bearing one for this feature.
+
+**The ledger record.** `{ lastGreenWave, headSha, … }` written to `.claude/pdlc-wave-state.json`,
+its `{}` cleared-shape tolerance, and the matching procedure in §3.2 are TSPEC-owned per REQ OB-1
+and are not mentioned by the delta. `parseWaveLedger`'s tolerance decision (DEC-WVR-04: keep the
+tolerance, add no writer) rests on OB-F3, which is discharged and untouched.
+
+**The worktree absence case.** This is the only data-model-shaped statement the delta rewrites,
+and it rewrites the *justification*, not the *state*. Before: the record is absent in a
+Claude-created worktree because `.worktreeinclude` lists only `.claude/workflows/`. After: the
+record is absent because the include list that carries `.claude/workflows/` is itself
+consumer-local and untracked, so the ledger's consumer-local path is absent there. **The modelled
+state is identical in both readings — record absent, run fails open to a full run.** TSPEC §1.2
+and §3.2 model exactly that state and attribute it to consumer-local state, so the model TSPEC
+carries survives the rewrite intact. FSPEC EC-17, which TSPEC cites for this case, is byte-unmoved.
+
+**Prerequisite state.** BL-04's value changed from "checked" to "checked and unmet". TSPEC models
+BL-04 as unmet in §1.1 and OB-F2/OB-F1 — it was already at the stricter value. No data-model
+finding.
 
 ## Test Strategy
 
