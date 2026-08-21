@@ -164,7 +164,42 @@ erratum touches C-2/C-3, its upstream.
 
 ## Edge Cases and Error Scenarios
 
-_pending_
+**EC-09 — confirmed.** Its outcome-(c) description ("skipped in full, announced with the reason
+and the hatch, one report row with a distinguishing status") is a clause-for-clause compression of
+REQ-WVR-08's outcome-(c) paragraph, which the erratum edited only in its *discharge* sentence. The
+compressed half is unchanged upstream.
+
+**EC-12 — confirmed against the recount.** EC-12 cites `REQ §1, OF-1` for "a halt at wave 1 pays
+no replay tax". E-2's new §1 text says re-entry after the **wave-2** halt "replayed wave 1 only, a
+single task". These are consistent, not contradictory: EC-12's case is a halt *at* wave 1, below
+which there is nothing. The citation still resolves to text that supports the claim.
+
+**EC-20 — confirmed as a compression; its Medium defect is now mirrored upstream.** EC-20 says the
+V-wave *"dispatches, gates and commits on every invocation"*. E-4 now says the V-wave *"continues
+to dispatch, gate and commit on every invocation"* and cites `FSPEC §2, EC-20` as its source. So
+the FSPEC is a faithful compression of the REQ — the two agree exactly — and there is **no cascade
+finding** on fidelity grounds.
+
+What has changed is where the defect I already filed has to be fixed. My v2 **F-01 (Medium)** held
+that the *commit* third of that triple is not script-owned: the dispatch and the gate are
+mechanical (`phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)")`, and the `runCommandFn(implConfig.testCommand)`
+call under the script gate), but the script commits nothing for the V-wave — the commit is an
+instruction inside `propertiesTestPrompt` ("All tests must pass before committing. Commit and
+push.") and is never verified afterwards. Under outcome (c) with the PROPERTIES suite already
+written and green, the agent may correctly add nothing, so any oracle asserting "the V-wave
+produces a commit" is flaky by construction.
+
+The erratum has copied that overstatement **into the REQ**, so what was one Medium in one document
+is now the same Medium asserted in two, with the REQ citing the FSPEC as its authority. That does
+not gate this confirmation — it is `inherited`, it was in the pre-round bytes, and the round's edit
+did not create it. It does mean the eventual fix is a two-document edit, and that a te-author who
+reads only the REQ will now find the flaky oracle stated there with no caveat. Filed as **F-04
+(Medium, inherited)** so the routing is explicit rather than assumed to have been handled by the
+erratum.
+
+**EC-15/EC-15a, EC-16, EC-17, EC-21 — untouched upstream, not re-read.** EC-15a's replay-cost
+clause is relational and survives E-2's recount (see §Business Rules). EC-16's per-feature
+ownership arm traces to REQ OB-3, which no hunk touched.
 
 ## Acceptance Tests
 
