@@ -216,4 +216,15 @@ and it is unchanged; do not re-open settled properties, oracles or fixtures.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | REQ v1.16's new AC-6.3 conjunct — where the halt report points at a captured pre-A6 tree state it must also warn, in the same place, that re-running the feature overwrites it (DEC-A6-03) — has no property. C-1's AC-6.3 row (`PROP-REC-05, PROP-REST-08`) is now half-covering: PROP-REC-05 asserts only the first sentence (diagnosis + root-cause class), PROP-REST-08 is the capture-failure arm where no capture exists to point at, and PROP-REST-07 pins ref *naming*, never what the operator is told. A P1 operator-facing criterion can ship unproven. Fix: one property, conditional trigger, paired with the E-34 negative arm; update C-1's AC-6.3 row. | §Properties C (PROP-REC-*), §Coverage Matrix C-1 row AC-6.3 |
+| F-02 | Low | delta | local | §Scope cites "REQ v1.15"; REQ is v1.16 (`sha256:f97f4f66…`) at HEAD. The citation is now stale in the one place a later reader checks what this document was grounded against. Fix: bump to v1.16 and record the cascade in the changelog alongside F-01's edit. | §Overview, "**Scope.**" paragraph |
+
+FINDING: High | delta | local | §Properties C / §Coverage Matrix C-1 row AC-6.3 | REQ v1.16's added AC-6.3 conjunct (halt report warns, in the same place it points at a captured pre-A6 tree state, that re-running the feature overwrites that capture — DEC-A6-03) has no property; C-1's AC-6.3 row covers only the diagnosis/root-cause half via PROP-REC-05, and PROP-REST-08 is the capture-failure arm where the conjunct is vacuous, so a conforming implementation can omit the warning and pass every property here
+FINDING: Low | delta | local | §Overview "Scope." paragraph | §Scope still cites REQ v1.15; REQ is v1.16 at HEAD, leaving the grounding citation stale
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
