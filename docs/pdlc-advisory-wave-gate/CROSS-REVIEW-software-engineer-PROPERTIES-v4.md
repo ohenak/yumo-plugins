@@ -91,7 +91,47 @@ constant cannot fail on wording and would neuter PROP-REC-09.
 
 ## Oracles
 
-_(pending)_
+**O-J is the section I asked for, and it rules out the three wrong units by name.** Containment over
+the stringified report; two independent `toContain` calls over separate strings; a constant imported
+from the module under test. The second is the one that actually bites — a split across two notices
+satisfies both assertions and defeats BR-14's *"in the same place"* — and the oracle's response
+(select the single `notices` element matching the ref pattern, assert the overwrite predicate **on
+that same element**) is the correct unit.
+
+**The carrier claim is true at HEAD, which is what makes O-J implementable.** O-J says the warning
+rides `notices`, which the halt-path `buildFinalReport({… notices …})` call already spreads onto the
+halt report. Verified: the halt-path call passes `notices` at `orchestrate-dev.js:16064`, inside the
+`outcome: "halted"` report construction beginning at `:16049`, and `buildFinalReport` accepts
+`notices = []` in its destructured signature at `:16169+`. So no new transport is invented, and
+`PROP-NFR-04`'s "no A6 datum at module scope" discipline is unaffected.
+
+**The exported-sibling claim checks out.** `renderSnapshotOverwriteNotice` is to be exported like its
+two siblings: `export function renderAdvisoryEntry` at `orchestrate-dev.js:3605` and
+`export function renderEscalationEntry` at `:3743`. O-J is careful to call the helper's direct purity
+assertion *"an available unit assertion, not a substitute"* — the seam-level observation is what
+proves the notice reaches the report. That is the right ordering; a pure-helper unit test alone would
+have been the cheap wrong answer.
+
+**Weakest-sufficient predicate, deliberately.** The `/overwrit/i` stem is named as the weakest
+predicate that still discriminates a warning from its absence, and the document refuses to pin a
+verbatim sentence because no upstream document owns one — FSPEC AT-06-4 pins co-location and
+presence, REQ O-1 keeps the capture's name and storage form TSPEC's. I agree with the trade and with
+its stated cost (a technically-matching but poorly-phrased notice passes). Minting a literal the spec
+does not own would produce a red test against a spec-following implementation, which is strictly
+worse, and the document cites the round-v1.4 `attempts` incident as precedent rather than asserting
+the principle abstractly.
+
+**The falsifiability paragraph now names the vacuous-pass mode.** The added clause — "a guarded
+conjunct asserted only on the fixture where its antecedent is false passes vacuously, which is why
+PROP-REC-08 lives on the two-red-wave run and never on E-34's" — is the reasoning I asked to be
+written down so a later reader would not have to re-derive it.
+
+**Set-equality over the enumerated contract, checked mechanically rather than read.** C-2 claims
+forty-eight ATs at FSPEC v1.7 with no id present that FSPEC does not carry. I extracted both id sets
+with `grep -oE "AT-[0-9]{2}-[0-9]+[a-z]?" | sort -u` and diffed them with `comm`: 48 ids on each side,
+**both difference sets empty**. `AT-06-4b` is present in FSPEC (`FSPEC…md:479`) and carries a home
+(`PROP-REC-09, PROP-REST-08`). The set-equality is real, not a containment check wearing its name, so
+a deleted case fails.
 
 ## Fixtures
 
