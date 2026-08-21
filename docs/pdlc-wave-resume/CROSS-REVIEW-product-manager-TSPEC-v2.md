@@ -57,9 +57,9 @@ The product consequence is a self-inflicted halt of the phase this feature exist
 
 ### F-02 (Low, Local) — H-1's "the shipped harness cannot express it" is stronger than the code supports
 
-§5.2 H-1 says: *"`makeLedgerArgs` gives `runCommand` and `git` two **independent** call logs; nothing records their interleaving."* `makeLedgerArgs` does not supply either double — it takes `git` from the caller and defaults `runCommand` to an inline green stub (`waveExecution.test.js:2204-2232`), and `makeGit(calls)` pushes into a caller-supplied array (`:2180-2195`). A test that wants ordering can pass a `_git` and a `runCommand` that both append tagged entries to one array it owns, with no harness change at all.
+§5.2 H-1 says: *"`makeLedgerArgs` gives `runCommand` and `git` two **independent** call logs; nothing records their interleaving."* `makeLedgerArgs` does not supply either double — it takes `git` from the caller and defaults `runCommand` to an inline green stub (`waveExecution.test.js:2204-2232`), and `makeGit(calls)` pushes into a caller-supplied array (`:144-159`). A test that wants ordering can pass a `_git` and a `runCommand` that both append tagged entries to one array it owns, with no harness change at all.
 
-H-2 is a different matter and is correctly argued: `makeLedgerArgs`'s `_writeFile` is a fixed capture with no failure scripting (`:2228-2230`), and the shipped throwing-write test does bypass it with a hand-rolled `makeArgs`/`extra` (`:2686-2700`). That one is a real extension.
+H-2 is a different matter and is correctly argued: `makeLedgerArgs`'s `_writeFile` is a fixed capture with no failure scripting (`:2228-2230`), and the shipped throwing-write test does bypass it with a hand-rolled `makeArgs`/`extra` (`:2685-2700`). That one is a real extension.
 
 This is Low because the design outcome is defensible either way — an `events` option shared by the whole ledger `describe` is arguably better than each test rolling its own — and because it changes no AT's oracle. It is filed because §5.2's justification is the reason the PLAN will be asked to schedule H-1 as owned work on a shared file, and that reason should be true. *What to change:* restate H-1's rationale as a reuse/consistency choice ("one ordered sink for the whole block, rather than per-test ad-hoc pairs") rather than as an expressiveness limit, or drop H-1 and let AT-04's test own its doubles.
 
@@ -68,6 +68,11 @@ This is Low because the design outcome is defensible either way — an `events` 
 Line 469: *"Keeping the field on the decision on the decision is what lets that line be rendered from the decision…"*. Delete the repetition. The paragraph's substance is correct and verified: the skip line's shipped text is `Wave 1/3: skipped (wave ledger: waves 1–1 already green)` (rendered at `orchestrate-dev.js:15373-15379`, pinned whole-string at `waveExecution.test.js:2293`), so `lastGreenWave` on the `resume` decision does have the named reader the section claims.
 
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §5.4 AT-16 oracle (i) reads *"the queue's `_runPipeline` is left at its default and that fact is asserted — checked by asserting the module's delegation is not overridden anywhere on the default path."* Oracles (ii) and (iii) are mechanical and I can see the test; (i) I cannot. Is (i) meant to be anything more than "the test calls `main()` without an `_runPipeline` override", which is a property of the test's own call rather than of the queue? If not, saying so plainly would keep AT-16's honesty — the section's whole virtue this round — intact, and would put all of the discriminating weight where it actually sits, on (ii)'s `Object.keys(arg)` equality. |
+| Q-02 | §6.2 OB-F4 says the promoted `M-WVR-1` records "the replay cost: 7 no-op dispatches over waves 1–3 of a 16-wave plan". That number is a measurement from a run I cannot re-derive from this tree (the baseline file is not here) and it is not carried in §1.1's verification table. When the rebase lands, is the promotion task expected to re-measure it, or to transcribe it as a historical observation with its date? Either is fine; the constraint file's Measured-by column makes the difference visible to a later reader, so the PLAN task should say which. |
 
 ## Positive Observations
 
