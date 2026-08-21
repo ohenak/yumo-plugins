@@ -74,6 +74,21 @@ AT it cites.
 
 ## Data Model
 
+The halt-fields contract (§4.5) moves from a closed four-member set to a closed five-member set:
+`{rootCause, diagnosis, repairApplied, repairPaths, snapshotRef}`. The v1.12 addition is specified
+well at the design altitude:
+
+| Aspect | State in v1.12 | Assessment |
+|---|---|---|
+| Domain | ref name for **this** halting wave, or `null` | total, no third state — falsifiable |
+| Capture-failure literal | `snapshotRef: null`, listed in the verbatim-literals table beside `repairPaths: []` | consistent with E-34's arm; assertable as an exact value |
+| Rendering contract | from non-`null`: ref name **and** the overwrite sentence, adjacent; from `null`: neither half | this is the co-location observable BR-14 names, stated as a mechanism rather than an intention |
+| Why a field, not prose in `diagnosis` | keeps AT-05-3's literal `diagnosis` comparison intact while BR-14's oracle asserts co-location | correct separation — folding it in would have coupled two independently-asserted oracles |
+
+This is a good piece of design work: it turns an editorial obligation ("the report should also say")
+into a data-model discriminator a test can drive both arms of. My objection is not to the model. It
+is that the model arrived without the two oracles that make it falsifiable — see **Test Strategy**.
+
 ## Test Strategy
 
 ## Open Questions
