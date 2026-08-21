@@ -232,17 +232,25 @@ a defect in this document or in the PLAN, not a nice-to-have.
   `RSN-BYTES` rows and **no** `RSN-COUNT` row — so each bound is asserted where it binds *and* asserted
   not to bind where the other does.
   *Functional · L1 · AC-2.1, BR-5, AT-07 · red LI-07 · green LI-16.*
-- **PROP-BOUND-03** *(stated where `maxBytesPerDocument > 0`)*: A document whose material exceeds
-  `maxBytesPerDocument` **must** contribute material of at most that bound, **must** carry
-  `bounded: true` decided at the cut, and the cut **must** be character-safe — the longest character
-  prefix whose UTF-8 length is ≤ the bound, never splitting a codepoint. **The `> 0` precondition is
-  load-bearing, not decoration.** FSPEC BR-6's *Where the bound is zero* clause prescribes the opposite
-  outcome at the boundary — a document there "yields nothing, is dropped before the total bound with
-  `RSN-NO-MATERIAL` (BR-9) and consumes no slot" (E-36) — so a property stated over all bounds would
-  demand a zero-byte contribution flagged `bounded: true` occupying a `maxDocuments` slot, which no
-  conforming implementation can also satisfy. The boundary is owned by **PROP-CONFIG-09**, and
-  §O.9's generated T-O-6 arm excludes `maxBytes = 0` from its domain for the same reason.
-  *Data Integrity · L1 · AC-2.3, BR-6, E-15, E-16, AT-11, AT-12, TSPEC §D.5 · red LI-08 · green LI-17.*
+- **PROP-BOUND-03** *(stated over every non-negative `maxBytesPerDocument`, zero included)*: A document
+  whose material exceeds a **positive** `maxBytesPerDocument` **must** contribute material of at most that
+  bound, **must** carry `bounded: true` decided at the cut, and the cut **must** be character-safe — the
+  longest character prefix whose UTF-8 length is ≤ the bound, never splitting a codepoint. **At
+  `maxBytesPerDocument <= 0` the carve-out conjunct holds instead, and it is positive rather than an
+  exclusion:** `extractInjectableMaterial(text, maxBytes)` tests the bound *before* the cut and **must**
+  return `{material: "", bounded: false, bytes: 0, sections: []}` for every `text`, including one carrying
+  all five priority sections (TSPEC §I.3's `extractInjectableMaterial` JSDoc contract, "`maxBytes <= 0`
+  short-circuits BEFORE the cut"; TSPEC §D.5 states the same return). No cut occurs, so `bounded` is
+  **false** — the "bounded exactly when cut" conjunct holds precisely because nothing was taken — and no
+  `maxDocuments` slot question arises at this altitude at all: the drop and its `RSN-NO-MATERIAL` reason
+  (FSPEC E-36, BR-9) are the **caller's** decision, observable only in a finished report. That run-level
+  half is owned by **PROP-CONFIG-09**. The two properties **partition** §D.5's inputs rather than
+  duplicating each other: this one owns the unit's return shape at a zero bound, PROP-CONFIG-09 owns the
+  reason id and the unconsumed slot. §O.9's generated T-O-6 arm keeps `0` in its domain for the same
+  reason (TSPEC §T.5, T-O-6: "State the zero conjunct, keep `0` in the domain"). The zero case costs one
+  added case in `pdlc/workflows/__tests__/learningsBlock.test.js` (landed, 7.6 K) under the **existing**
+  LI-08 red / LI-17 green tasks — no new fixture, no new PLAN task, no new AT id, no new property id.
+  *Data Integrity · L1 · AC-2.3, AC-4.4, BR-6, E-15, E-16, E-36, AT-11, AT-12, TSPEC §D.5, §I.3 · red LI-08 · green LI-17.*
 - **PROP-BOUND-04:** Where the accumulated material would exceed `maxTotalBytes`, whole documents
   **must** be dropped from the **low end** of BR-4's order with `RSN-BYTES`; no document is ever cut
   mid-document to make the total fit; the selected set **must** be a **prefix** of the ordered eligible
