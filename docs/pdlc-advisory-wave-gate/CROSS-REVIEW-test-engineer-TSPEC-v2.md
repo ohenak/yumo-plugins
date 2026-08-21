@@ -240,6 +240,40 @@ answer it explicitly rather than leaving the implementer to infer it.
 
 ## Recommendation
 
+**Needs revision.**
+
+The routed item landed upstream — that part is clean — but landing it in REQ is necessary, not
+sufficient: REQ v1.16 now asserts an operator-visible behaviour on the halt report that this TSPEC
+neither designs nor tests, so the document has stopped being a faithful compression of the AC it
+cites twice in §4.5. One High, and it is not a re-litigation of anything settled: the overwrite
+hazard, the wave-scoped ref name and the accepted cost are all decisions I approved and none is
+reopened here.
+
+Exactly what must change, all inside two sections:
+
+1. **§4.5** — add the warning to the halt-fields contract: name the slot (a `fields` member, per the
+   section's own "never in the reason string" rule), transcribe the literal sentence, and state the
+   condition under which it is present (a halt that points at a captured pre-A6 tree state) so the
+   capture-failure halt's four-field literal set stays four.
+2. **§5.6** — give AT-05-3 or AT-05-5 (whichever halt §4.5 chooses; see Q-02) a positive conjunct
+   asserting both the ref name and the warning sentence on the halt report, so the AC becomes
+   falsifiable and the mutation check — delete the member, expect RED — is mechanical.
+3. **§6 OQ-2** — one clause noting the halt-message obligation has landed at REQ v1.16, so the row
+   stops reading as an accepted record-only cost.
+
+Nothing else in the document needs to move. §2.5's mechanism, §3.5's helpers, §5.2's fixtures and
+every FSPEC-derived binding re-read clean against upstream at HEAD.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | REQ v1.16's AC-6.3 addendum requires the halt report that points at a captured pre-A6 tree state to warn, in the same place, that re-running overwrites it. §4.5's halt-fields contract is a closed four-member set (`rootCause`, `diagnosis`, `repairApplied`, `repairPaths`) with no warning slot and no literal string, and no AT in §5.6 (AT-05-3 asserts the pre-A6 literal by equality; AT-05-4 asserts repair paths; AT-05-5 asserts the failed restoration is named) can fail if the warning is never emitted. The AC has zero oracles. | §4.5 halt-fields row; §5.6 AT-05-3/-05-4/-05-5 |
+| F-02 | Medium | delta | local | §6 OQ-2 still frames the re-run overwrite as an accepted, record-only cost whose remedy is "copy the ref" documented in §2.5 and DECISIONS — the disposition REQ v1.16 supersedes by requiring the warning to reach the operator at halt time. The design record now contradicts its own upstream. | §6 OQ-2; §2.5 overwrite paragraph |
+| F-03 | Low | inherited | local | §4.5's Snapshot-ref row promises the ref is "never overwritten by a later wave" with no adjacent note that the *next run* does overwrite it (§2.5 carries the correction, §4.5 does not cross-reference it). Harmless before the erratum; now §4.5 is where an implementer looks for the warning's trigger condition and the trigger is not stated there. | §4.5 Snapshot ref row |
+
+FINDING: High | delta | local | §4.5 halt-fields row and §5.6 AT rows | REQ v1.16's AC-6.3 now requires the halt report that points at a captured pre-A6 tree state to warn, in the same place, that re-running the feature overwrites that capture (DEC-A6-03); §4.5's halt `fields` contract is a closed four-member set with no slot and no transcribed literal for that warning, and no AT in §5.6 can fail if it is never emitted — AT-05-3 asserts the pre-A6 reason literal by equality, AT-05-4 asserts the retained repair's paths, AT-05-5 asserts only that the failed restoration is named — so the AC as it now stands has zero oracles and an implementation that omits the warning passes every test this TSPEC specifies
+FINDING: Medium | delta | local | §6 OQ-2 disposition | OQ-2 still records the re-run overwrite as an accepted cost whose remedy is "copy the ref before re-running", documented in §2.5 and DECISIONS only — the exact disposition REQ v1.16 supersedes by making the warning an operator-facing halt-time obligation; the row needs one clause acknowledging the landing, or the design record contradicts its upstream and the obligation can be silently re-dropped as it already was between rounds 5 and 15
+FINDING: Low | inherited | local | §4.5 Snapshot ref row | the row's "never overwritten by a later wave" promise is true as written but carries no cross-reference to §2.5's correction that the *next run* does overwrite the ref; now that the overwrite is the subject of an operator-facing AC, §4.5 is where an implementer looks for the warning's trigger condition and does not find it
 
 ## Verdict
