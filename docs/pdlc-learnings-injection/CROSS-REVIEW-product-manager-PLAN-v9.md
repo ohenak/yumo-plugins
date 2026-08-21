@@ -188,6 +188,22 @@ that, and the diff bears the claim out.
   edge changed, no AT partition or fixture was touched." That is the claim a reviewer most wants to
   be able to verify in one diff, and it verified.
 
+## Recommendation
+
+**Approved with minor changes.**
+
+The three routed items are resolved. The expected-red rows the heading-form follow-up owes are now
+named in the live table, ahead of the run they govern, in both landing windows — which is precisely
+what P-A-7 requires and what all three reviewers asked for. Nothing I approved at v8 is broken: no
+batch, `Deps` edge, owner, AT partition or fixture moved, and the PLAN remains a faithful compression
+of REQ v0.9 / FSPEC v0.13 / TSPEC v0.9 / DECISIONS v0.3 as those documents read at HEAD, whose digests
+I re-derived and matched.
+
+No High finding, so this confirmation approves. F-01 is a one-clause precision fix to the paragraph
+this round added. F-02 through F-06 are inherited from v8, were outside this erratum's routing scope,
+and are tagged `inherited` so they route back to the PLAN's ordinary revision loop rather than
+halting the phase — none is a product-fidelity defect against a REQ acceptance criterion.
+
 ## Delta-Confirmation Findings
 
 | ID | Severity | Provenance | Locality | Finding | Section anchor |
@@ -206,20 +222,7 @@ FINDING: Medium | inherited | nonlocal | LI-16 task row | The zero-bound product
 FINDING: Low | inherited | local | LI-08 task row | The amendment note is spliced mid-enumeration and orphans LI-AT-12; this round lengthened the splice without closing the enumeration first
 FINDING: Low | inherited | nonlocal | §Changelog, 0.5 row | "the four stale version pins" overcounts; three were refreshed and the 0.1 row correctly keeps its historical pins
 
-## Recommendation
-
-**Approved with minor changes.**
-
-The three routed items are resolved. The expected-red rows the heading-form follow-up owes are now
-named in the live table, ahead of the run they govern, in both landing windows — which is precisely
-what P-A-7 requires and what all three reviewers asked for. Nothing I approved at v8 is broken: no
-batch, `Deps` edge, owner, AT partition or fixture moved, and the PLAN remains a faithful compression
-of REQ v0.9 / FSPEC v0.13 / TSPEC v0.9 / DECISIONS v0.3 as those documents read at HEAD, whose digests
-I re-derived and matched.
-
-No High finding, so this confirmation approves. F-01 is a one-clause precision fix to the paragraph
-this round added. F-02 through F-06 are inherited from v8, were outside this erratum's routing scope,
-and are tagged `inherited` so they route back to the PLAN's ordinary revision loop rather than
-halting the phase — none is a product-fidelity defect against a REQ acceptance criterion.
-
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 3}
