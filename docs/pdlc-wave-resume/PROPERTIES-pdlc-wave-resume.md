@@ -61,15 +61,15 @@ line number appears it is a locator only; the stable citation is the enclosing e
 | Pre-flight (`P`) | 2 | `waveResumePreflight.test.js` (new, T-01) | the baseline-existence and script-owned-gate gate that must red **before** any dependent wave dispatches |
 | Unit — pure (`U`) | 11 | `waveResume.test.js` (new, T-02/T-10) | `classifyWaveLedger`, `parseWaveLedger`, `formatWaveLedger` and the three catalogues are pure and total; every guard arm is cheapest here |
 | Unit — generative (`UG`) | 4 | `waveResumeProperties.test.js` (new, T-08) | four laws over a parser, a serialiser, a hash and a total classifier (TSPEC §5.7) |
-| Integration — through `main()` (`I`) | 33 | `waveExecution.test.js` (existing, T-07/T-10) | every announcement, report row, dispatch count and written byte lives in `main()`'s Phase I branch and is reachable only through `makeLedgerArgs` |
+| Integration — through `main()` (`I`) | 34 | `waveExecution.test.js` (existing, T-07/T-10) | every announcement, report row, dispatch count and written byte lives in `main()`'s Phase I branch and is reachable only through `makeLedgerArgs` |
 | Integration — queue (`Q`) | 4 | `waveResumeQueueParity.test.js` (new, T-04) | the delegation boundary, scoped by DEC-WVR-07 |
 | Repo-state (`R`) | 3 | `waveResumeRepoState.test.js` (new, T-03) | `.gitignore`, `git check-ignore`, this PLAN's manifest, the promoted `M-WVR-*` facts |
 | Coverage / mutation duty (`C`) | 3 | measured by T-10; mutation runs recorded by T-02 and T-07 | the floor and the delta oracle are measured over the complete diff, not per wave |
 | **E2E** | **0** | — | there is no E2E tier in `pdlc/workflows`; `main()`-level integration *is* the top of this pyramid, and the budget of 3–5 E2E tests is therefore spent at zero |
 
-**57 properties.** Four carry both a unit and an integration half (PROP-OVERRIDE-04,
+**58 properties.** Four carry both a unit and an integration half (PROP-OVERRIDE-04,
 PROP-SAFETY-02, PROP-RECORD-07 and — across files — PROP-REPO-02/03), so the level column sums
-above 57 by four; every property has exactly one owning task per half.
+above 58 by four; every property has exactly one owning task per half.
 
 Six test files, five of them new. Exactly one exists today —
 `pdlc/workflows/__tests__/waveExecution.test.js`, 2,761 lines at `origin/main` — and it is
@@ -170,6 +170,7 @@ form — the assertion that makes each row falsifiable — is in **§ Oracles**,
 | PROP-RECORD-07 | `head` must be stamped from `git rev-parse HEAD` after the wave's commits when the transport answers, and must be **absent** from the written bytes when it does not; a record with no `head` must still be honoured by the reader (paired with PROP-DISREGARD-08). | Data Integrity | I + U | TSPEC §2.5 item 4, V-7, EC-21 | T-07 · T-02 |
 | PROP-RECORD-08 | `formatWaveLedger` must produce exactly two shapes — with and without `head` — each pretty-printed at two-space indent and newline-terminated, asserted as transcribed whole strings, and `version` must be the literal `1` in both. | Contract | U | TSPEC §4.1, V-4, §5.6 | T-02 · `waveResume.test.js` |
 | PROP-RECORD-09 | The record must carry **no** provenance field: the parsed key set of any written record must be set-equal to `{version, feature, planHash, lastGreenWave}` or `{version, feature, planHash, lastGreenWave, head}` and nothing else. Provenance is announced content, never persisted state. | Data Integrity | U | TSPEC §2.5 (PM Q-02), §4.1 | T-02 · `waveResume.test.js` |
+| PROP-RECORD-10 | A run that halts at **wave 1** must write no record at all, and the next invocation must therefore be a silent full run (IG-6) — the halt REQ §1 names as the one this feature is meant to resume from, and the one that pays no replay tax. | Data Integrity | I | EC-12, REQ §1, OF-1 | T-07 · `waveExecution.test.js` |
 
 ### 8. Queue parity, at the boundary it can honestly carry
 
@@ -275,6 +276,7 @@ Restated rather than assumed, because they are what makes the property set falsi
 | PROP-RECORD-07 | With a transport answering `rev-parse HEAD`: the written bytes parse to an object whose `head` equals the transcribed sha. With a transport that cannot answer: the parsed key set excludes `head` entirely, and a reader fixture built from those bytes is honoured. | Positive on both branches — `formatWaveLedger`'s two shapes are a real branch (TSPEC §5.6), and asserting only the presence branch leaves the omission branch uncovered. |
 | PROP-RECORD-08 | `expect(formatWaveLedger("f","3fa91c07",4,"4f0c…")).toBe(<transcribed whole string, trailing newline included>)` and the same for the no-`head` shape. | Whole-string with the terminal `\n`, so indentation drift or a lost newline reds. `version: 1` is pinned here rather than by a field-read test, per TSPEC §5.6. |
 | PROP-RECORD-09 | `expect(new Set(Object.keys(JSON.parse(written)))).toEqual(new Set(["version","feature","planHash","lastGreenWave","head"]))` (and the four-key set for the no-`head` shape). | Set equality is what makes "the record carries no provenance field" falsifiable; a `toMatchObject` shape assertion would pass with an extra field present. |
+| PROP-RECORD-10 | Gate scripted red on wave 1: `expect(ledgerWrites(writes)).toEqual([])`, `expect(result.outcome).toBe("halted")` with `haltReason` containing `Wave 1 test gate failed`, then a second run asserted against PROP-DISREGARD-03's silent-full-run oracle. | Two legs, because the first leg's empty-writes assertion is absence-shaped on its own; the second leg is the positive conjunct that the absence *meant* a fresh run rather than a lost record. |
 | PROP-PARITY-01 | Assert `orchestrate-queue`'s delegation resolves to `orchestrate-dev`'s exported default — the module's `_runPipeline` is not overridden anywhere on the default path. | Structural by necessity (DEC-WVR-07): injecting `_runPipeline` would replace the very thing under test. |
 | PROP-PARITY-02 | `expect(Object.keys(arg)).toEqual(["reqPath"])` against a delegation spy. | `toEqual` on the key array, so an extra forwarded key — a `startWave`, a ledger-path override — reds. |
 | PROP-PARITY-03 | The direct run's `_readFile` call list filtered to the ledger path compared for **string equality** against `WAVE_STATE_PATH`. | Pins the one thing both paths share. What it does **not** prove is stated in § Gaps, not implied by silence. |
