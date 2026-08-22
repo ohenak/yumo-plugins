@@ -215,8 +215,28 @@ and -08."
   future reader consults — while keeping the sentence in the test — puts the gap where it will be
   found rather than only where it will be read.
 
-## Positive Observations
-
 ## Recommendation
 
+**Approved with minor changes** — both v1 High findings are resolved, and no new High finding exists.
+
+F-01 (the `head` conditional) and F-02 (the trigger with no observer) are Medium and each carries a
+one-clause replacement above; both land in the Consequences rows that the PROPERTIES author reads
+directly, so folding them in costs one edit each and saves a transcription defect later. F-03 and
+F-04 are Low wording corrections. None of the four blocks Phase P.
+
+The revision did not break anything I had approved: I re-derived every claim in the changed sections
+against `origin/main` `345ae358`, and the decisions, their alternative dispositions and the
+already-approved Consequences rows are intact — the four rows that changed all grew obligations
+rather than relaxing them.
+
+Two upstream defects are routed as errata rather than folded into this verdict, both first raised in
+v1 and both still present at HEAD: TSPEC §2.4's announcement table omits the invalid-`startWave`
+config notice entirely — it is excluded here by a stated rule, which is the right disposition, but
+the table the oracle transcribes from should carry the exclusion rather than leave it silent — and
+TSPEC's "four of the seven reasons interpolate" (§3.1 and the DEC-WVR-06 row) remains an off-by-one
+that this DECISIONS document already corrected to three.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
