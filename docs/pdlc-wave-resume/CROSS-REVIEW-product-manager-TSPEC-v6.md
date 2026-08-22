@@ -70,7 +70,27 @@ the delta touches a `REQ-WVR-*` outcome, a `BR-*`, an `EC-*`, or an `AT-*`.
 
 ## Interfaces
 
-_pending_
+The delta's central factual claim is an interface claim, so I re-measured it rather than
+accepting it:
+
+| Claim in the delta | Where it is made | Verified |
+|---|---|---|
+| `implementation` config surface is exactly four keys | §5.8, RT-7, revision row (via V-13) | ✓ FSPEC `:341` asserts the same four-member set `{testCommand, postWaveCommand, postWavePathspecs, startWave}` as **set equality** |
+| `postWaveCommand` is a single *global* key, not per-wave | §5.8, RT-7 | ✓ consistent with the four-key set-equality above and with PLAN §3.4/RK-2 |
+| A global setting would run `test:coverage` after **every** wave | §5.8, RT-7 | ✓ follows from the above; PLAN RK-2 states it identically |
+
+The consequence the delta draws from those facts — red on waves whose new branches are not yet
+covered — is the correct product consequence, and it is the one that matters to a user of this
+pipeline: a floor that reds on waves 1..N-1 would halt runs for a reason that is not a defect,
+which is worse than the risk RT-7 names. Re-specifying to T-10 avoids inventing a fifth config
+key, which would have been a real scope addition and would have contradicted FSPEC `:341`'s
+set-equality assertion. The edit takes the option that costs no surface change. Good call.
+
+**No interface in this TSPEC changed.** The record shape, the announcement catalogue, the
+classifier arms and the config keys the feature reads are all untouched by this diff — I
+re-checked that the four-key set, `RESUME_PROVENANCE` and the §2.4 announcement enumeration are
+byte-identical to the version I approved. The delta is confined to prose about who runs a test
+command.
 
 ## Data Model
 
