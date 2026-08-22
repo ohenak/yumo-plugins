@@ -151,8 +151,59 @@ DoD verifies — keeps that lesson from being re-learned.
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | T-01 ships permanently and asserts on a file no consumer is required to have. If a second consuming repo ever runs `pdlc/workflows`' suite, does the `GITHUB_ACTIONS` guard still express the intent, or should the arm key off "a config exists ⇒ it must run this suite"? (F-11 suggests the latter; the answer is the author's.) |
+| Q-02 | §4.5.1's fourth and fifth rows are `integration only` and land in `waveExecution.test.js`, which T-10 owns in batch 4 after T-07 owns it in batch 3. Does T-10 append new cases, or does it fill gaps T-07 was already expected to cover — i.e. is a non-empty T-10 diff to that file a success or a sign T-07 under-delivered? Either answer is fine; naming it stops the two tasks negotiating at runtime. |
+
 ## Positive Observations
+
+- **The v1.0 → v1.1 structural move is the right one, and it is argued rather than asserted.** §2.2's
+  closing paragraph does not just declare batches green-terminal; it names the halt at `:15436`, the
+  forbidden escape, and `M-WG-4`'s uncommitted-work consequence — the three facts that made the old
+  split unworkable. A revision that restates *why* the old shape failed is a revision the next
+  reader cannot accidentally undo.
+- **§2.3 states the trade instead of hiding it, and prices it.** "That is a real loss of mechanical
+  enforcement" followed by three named partial replacements, one of which (executed mutations) is
+  genuinely stronger than the enforcement it replaces. RK-1 repeats it in the risk register rather
+  than letting the good news sit alone. This is the clearest cost-accounting I have read in a PLAN
+  in this repo.
+- **Every mechanical claim reproduced, for the second round running.** §4.6 was re-run after the
+  merge — not copied forward — and the seven-task graph, the batch column, the topological batches,
+  the ownership manifest (`nearMisses: []`) and the wave partition all match what the shipped parser
+  returns for me. The §2.3 `Files (…)` → `Paths touched, …` header rename is a real fix to a real
+  near miss, found by the author's own re-run.
+- **§4.5.1 is the delta oracle F-05 asked for and slightly better than what I suggested:** the
+  branch classes are counted (8/7/1/5/3) and each carries its reachability, so the table's
+  completeness is a set-equality a deleted case fails, rather than a percentage a deleted case moves
+  by 0.05.
+- **The retired ids are retired, not reused.** `T-05`, `T-06`, `T-09` appear in no `#` cell and no
+  `Deps` cell, and the revision history says why — every round-1 reference stays resolvable. Small
+  discipline, large effect on a document that will be read against two review rounds.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three round-1 High findings are resolved, verified against the repository rather than the
+document: the batches are green-terminal and the runtime can evaluate every one of them (F-01), the
+script-owned gate has both a pre-flight assertion and a paired positive/negative DoD observation
+(F-02), and T-10 owns the file containing the branches it is assigned to cover (F-03). The seven
+Medium and Low findings are resolved as well, and re-running the shipped parsers shows the merge
+broke nothing that round 1 had verified.
+
+F-11 and F-12 are recorded, not gating. Neither changes the task graph: F-11 narrows one assertion
+inside T-01, F-12 adds a sentence to T-03 and two cheap falsification arms. Both are worth taking in
+the optimizer loop, and neither is a reason to hold Phase P.
+
+One upstream item is routed as an erratum rather than folded into this verdict: TSPEC §5.8 and RT-7
+assign the coverage floor to "the last implementation wave's `postWaveCommand`", which the shipped
+config surface cannot express — `postWaveCommand` is a single global key
+(`origin/main:orchestrate-dev.js:171`, applied at `:3280` and `:3322` after every wave). The PLAN's
+RK-2 and §3.4 diagnose this correctly and reassign the floor to T-10; the TSPEC is the document that
+needs the edit.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
