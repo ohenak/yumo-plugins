@@ -180,7 +180,15 @@ so the obligation is doubly recorded — adequate.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | §2.5 states the operator-pointer write is "unspecified upstream" and raises an erratum "so the clause exists"; FSPEC v1.2 §3.4 now carries that clause and agrees with the TSPEC's ratification. Replace the framing with the citation; keep the ratification. | §2.5 |
+| F-02 | Medium | inherited | nonlocal | §6.3 presents four errata as "raised, not fixed"; all four are landed upstream (FSPEC v1.2, REQ v1.7) and each quotes upstream text that no longer exists. Convert to a discharged record naming the closing versions. | §6.3 |
+| F-03 | Low | inherited | nonlocal | §6.2's OB-F1 row says REQ §10 and FSPEC OB-F1 characterise BL-04 inconsistently, and cites "REQ v1.6"; both now say open-and-unmet and the REQ is v1.7. The row's substantive claim (BL-04 unmet, rebase owed) stands. | §6.2 |
+
+FINDING: Medium | inherited | nonlocal | §2.5 | Says the FSPEC "does not state" what an operator-pointed run records and that the behaviour is "unspecified upstream"; FSPEC v1.2 §3.4 (`:186-192`) now specifies it and agrees with this TSPEC's ratification — the trace exists, so the framing is stale (substance unaffected; DEC-ERR-01 demotion applies, hand-off framing not a shipped assertion)
+FINDING: Medium | inherited | nonlocal | §6.3 | All four errata raised upstream have landed: item 1 (FSPEC now derives from REQ v1.7, REQ is v1.7 not v1.6), item 2 (FSPEC OB-F1 now records BL-04 as open and unmet, matching REQ §10), item 3 (FSPEC §3.4 clause exists), item 4 (REQ v1.7 no longer mentions `.worktreeinclude`) — the section still reads "raised, not fixed here"
+FINDING: Low | inherited | nonlocal | §6.2 OB-F1 row | Claims REQ §10 and FSPEC OB-F1 characterise BL-04 inconsistently and cites REQ v1.6; both now say "open and unmet" and the REQ is v1.7 — the row's substantive claim that BL-04 is unmet and the rebase is owed before implementation remains correct
 
 ## Positive Observations
 
