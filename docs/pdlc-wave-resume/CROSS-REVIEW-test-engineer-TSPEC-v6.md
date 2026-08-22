@@ -183,7 +183,28 @@ acceptance test changed severity, level, owner or assertion in this edit.
 
 ## Open Questions
 
-*(pending)*
+None open against the operator. Two notes, neither a finding:
+
+- **The four errata this TSPEC raises upstream (§6.3) are unchanged by this edit** and remain
+  outstanding against FSPEC and REQ. Since both upstream hashes are byte-identical to round 3, none
+  of them has been landed or invalidated in the interim; they are still correctly stated as raised,
+  not fixed. Nothing in this confirmation touches them.
+- **`TE Q-05` is no longer referenced anywhere in the TSPEC.** The pre-round §5.8 carried
+  "(TE Q-05: yes)" as the provenance of the wave-gate assignment; the edit removed the clause along
+  with the assignment it justified. That is correct — the answer no longer describes the design —
+  and the v1.3 history row records why the assignment changed, so no provenance is lost. I mention
+  it only so a future reader searching for Q-05's disposition finds it here.
+
+### Positive observations
+
+- The negative clause is the best part of this edit. Most erratum rounds delete the wrong statement
+  and stop; this one records *why* the wrong statement was unbuildable, in terms a reader can
+  falsify against the runtime. That is the difference between a correction and a durable one.
+- Both sites (§5.8 body and RT-7 mitigation) were rewritten in the same round, in the same terms.
+  Half-landed errata that leave a risk row quoting the retired design are the common failure here,
+  and this edit avoided it.
+- The threshold, the command, the runner directory and the branch-class enumeration all survived
+  the re-assignment unchanged. The floor moved owners without losing a single operative noun.
 
 ## Delta-Confirmation Findings
 
