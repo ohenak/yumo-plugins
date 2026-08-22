@@ -65,9 +65,13 @@ at rather than the cost it was assumed to have. Where an alternative is called "
 
 A `WaveResumeStore` protocol with a versioned record format and its own module. **Cost, counted:**
 it replaces the three exported pure functions and the two call sites in `orchestrate-dev.js`, and
-therefore invalidates the 44 shipped tests that reach them — 32 in the ledger `describe`, 8 in the
-`implementation.startWave` block (which asserts the *interaction* of the operator pointer with the
-record), 4 in the `computePlanHash` block. It also re-opens `WAVE_STATE_PATH` as a name, which
+therefore invalidates the **26 shipped test cases** that reach them (`npm test --
+__tests__/waveExecution.test.js --verbose` from `pdlc/workflows` at `origin/main` `345ae358`;
+cases, `it.each` members counted individually) — **18** in the ledger `describe`, **4** in the
+`implementation.startWave` block, **4** in the `computePlanHash` block. The `implementation.startWave`
+block is the *operator pointer's own* four cases (skip-before-pointer, past-the-end, default,
+invalid); the pointer-versus-record interaction test, `it("an explicit implementation.startWave
+outranks the ledger")`, lives in the ledger `describe` and is counted there. It also re-opens `WAVE_STATE_PATH` as a name, which
 `.gitignore` pins by a root-anchored rule (`/.claude/pdlc-wave-state.json`, line 41 of the file at
 `origin/main`, under a comment block explaining the anchor). The module is a restricted dialect —
 no `import` — so a "new module" is not a file split but a second in-file block, which is exactly the
@@ -89,7 +93,8 @@ Superficially the cleaner extraction: one function, no two-call dance. **Cost, c
 actual signature:** the probe is `await transport(["merge-base", "--is-ancestor", recordedHead,
 "HEAD"])` where `transport = branchGuardTransport(gitFn)`. Moving it into a pure classifier means
 the classifier is no longer pure, so the probe must arrive as a new injected parameter on `main()` —
-a **36th seam**, duplicating a transport `main()` already has, and a second adapter binding beside
+a **35th injected seam** (a 37th parameter on a signature that already destructures 36),
+duplicating a transport `main()` already has, and a second adapter binding beside
 the two existing `_git: rtGit` lines in `runtime-adapter.js`. It is a new *seam over an existing
 capability*, not a new host capability (the adapter's `rtGit` already answers `merge-base`), but it
 is still production surface whose only consumer is a test, on a probe that already fails open in
@@ -128,6 +133,39 @@ and the count is three, not "a few": the past-the-end notice in `it("a pointer p
 runs every wave, and says so")`, the four-member `it.each` ignored-record notice, and the
 `phaseDetail(result, "I")` equality in `it("skips the waves before the pointer entirely — no
 dispatch, no gate, no commit")`. No matcher is relaxed to absorb them.
+
+**The enumeration is closed, and its boundary is stated rather than left implicit (TE F-02).** A
+*fourth* shipped whole-string assertion pins an announcement reached on the operator-pointer path:
+the config-validation notice `Notice: implementation.startWave in {cfg} is not a valid value — using
+the default.`, asserted by `expect(logs).toContain(` + the full sentence in `it("an invalid pointer
+degrades to wave 1 and is named in the run's notices")` — structurally the same shape as
+assertions 1 and 2. It takes **no** provenance token, and the criterion that excludes it is
+mechanical, not a matter of taste:
+
+> **A notice carries a provenance token iff the resume decision emits it about a resolved start
+> point.** Notices emitted *before* the decision, by the shared `implementation`-config validation
+> loop, do not.
+
+That criterion is checkable against the shipped code rather than against intent. The invalid-value
+notice is emitted by a **key-generic** loop — `for (const key of implParsed.invalidKeys) emit(
+\`Notice: implementation.${key} … is not a valid value — using the default.\`)` — which is shared
+verbatim by every `implementation` key (`testCommand`, `postWaveCommand`, `postWavePathspecs`,
+`startWave`) and appears at two call sites (legacy mode and wave mode). Attaching provenance there
+would attach it to `testCommand`'s notice too. And by the time the resume decision runs,
+`parseImplementationConfig` has already replaced the rejected value with the default, so
+`const explicitPointer = startWave > 1` is **false**: there is no operator pointer left to attribute
+the run to. FSPEC BR-07's own carve-out is what covers the case — this is "the absence of a resume",
+not "a full run reached by an operator pointer"; BR-02 makes that state silent about resume, and it
+stays silent here. The past-the-end notice is on the other side of the line for the same mechanical
+reason: it is emitted **inside** the resume decision, from a valid pointer that resolved to a full
+run, with `explicitPointer` **true**.
+
+The count therefore stays **three**, and it stays three by a rule a test can apply rather than by an
+omission. The corresponding obligation is in Consequences: the announcement catalogue is asserted by
+set equality over the announcements that carry a token, with the excluded notices enumerated as
+literals — so a *fifth* announcement reds an assertion instead of slipping through. (TSPEC §2.4's
+announcement table omits the invalid-pointer notice entirely rather than excluding it by rule; that
+is an upstream gap, raised as an erratum rather than repaired here.)
 
 ### O-6 — Wire a writer for the cleared `{}` shape, or drop the tolerance (→ DEC-WVR-04)
 
