@@ -109,7 +109,36 @@ work is only that RK-2 and §3.4 still narrate the disagreement in the present t
 
 ## Verification
 
-*(pending)*
+Every claim in this confirmation is a command I ran, not an impression.
+
+| Claim | Verification | Result |
+|---|---|---|
+| PLAN's bytes are unchanged since approval | `shasum -a 256 docs/pdlc-wave-resume/PLAN-pdlc-wave-resume.md` vs. v2's `APPROVAL-HASH` | `5f5b50db3bd447e661daeceb63a450ef07c23507293e267adde6168b14df1c85` — identical |
+| TSPEC is the only feature document that moved | `git diff --stat b8ddcc56 HEAD -- docs/pdlc-wave-resume/` | one non-review file changed: `TSPEC-pdlc-wave-resume.md`, `9 insertions(+), 4 deletions(-)` |
+| REQ / FSPEC / DECISIONS match my approval's upstream anchors | `shasum -a 256` on each vs. `UPSTREAM-STATE:` lines in v2 | `17e83bfc…` / `9a6be7b5…` / `37b3684d…` — all three exact |
+| TSPEC at HEAD matches the hash this dispatch names | `shasum -a 256 …/TSPEC-…md` | `5ed76227d8e4cb5b37681421d30a3c50d29e755a7334d37e5ef09c996832234a` — exact |
+| The edit is confined to three locations | `git diff b8ddcc56 HEAD -- …/TSPEC-…md` | metadata `Version`, one new revision-history row, §5.8 body, §6.4 `RT-7` mitigation — nothing else |
+| §5.8 no longer says "wave's `postWaveCommand`" | `grep -n "### 5.8" -A 30 …/TSPEC-…md` | reads "the **last implementation task** (PLAN T-10, RK-2)"; the phrase survives only as the explicitly-rejected alternative |
+| RT-7's mitigation now names T-10 | `grep RT-7` in §6.4 | "§5.8: the last implementation **task** (PLAN T-10, RK-2) runs `npm run test:coverage` …" |
+| PLAN pins no TSPEC version | `grep -n "TSPEC" …/PLAN-…md` | nineteen citations, all by section/id (`§1.2`, `§5.8`, `RT-1`, `AT-17`, `V-13`), zero by version number |
+| PLAN's floor obligation is command-identical to §5.8's | compare T-10 row, §4.2 batch-4 gate, §4.5 DoD box | all three say `npm run test:coverage` from `pdlc/workflows`, `--per-file --branches 85`, measured per-file number reported |
+| The two stale sentences are the whole residue | `grep -n "erratum\|last wave's" …/PLAN-…md` | exactly two hits: §3.4's `Coverage floor` row, §4.4's RK-2 |
+
+**What I deliberately did not re-do.** I did not re-run §4.6's `parsePlanTasks` /
+`computeTopologicalBatches` / `computeWaves` verification, and that is a judgement, not an
+omission: the edit adds no task, no `Deps` cell and no ownership row, and PLAN's bytes are
+hash-identical to the ones I parsed at v2, so the recorded parse cannot have changed. I did not
+re-litigate Q-01 (the fifth test file, `waveResumePreflight.test.js`), Q-02 (AT-16's
+characterisation shape) or Q-03 (where §4.5.1's filled-in table is checked); all three were
+open questions at v2, none is touched by this edit, and none is re-opened here. F-01 … F-04 from
+v2 remain the author's outstanding non-gating list and are not restated as findings of this round.
+
+**The check that decides the verdict.** With §5.8 and RT-7 both re-read at HEAD, PLAN's coverage
+floor assignment is not merely compatible with upstream — it is the assignment upstream now
+prescribes, down to the task id. No P0 or P1 requirement lost an owning task, no acceptance
+criterion was narrowed, broadened or re-triggered, and nothing entered scope. PLAN holds as
+approved; the two Low findings are corrections to how it *describes* upstream, not to what it
+plans.
 
 ## Delta-Confirmation Findings
 
