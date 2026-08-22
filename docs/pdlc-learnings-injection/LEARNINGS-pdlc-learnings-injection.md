@@ -174,4 +174,56 @@ reds. That is the pattern to keep.
 
 ## 5. Open Items for Consolidation
 
+The handed open-promotion list was empty (*no open promotions are recorded*), so **no item below
+carries a `failure-mode-id:` line**. Each was checked against that empty list and matched nothing.
+
+1. **A POSTMORTEM item whose absence can halt a phase must not be harvest-deferred.** Promote as a
+   standing rule: such items land before the next round of the phase that halted. Evidence is the
+   T→D recurrence, where deferral of four items produced the identical halt two phases later on both
+   channels. Target: `docs/_decisions/DECISIONS-review-severity-bars.md` or the `orchestrate-dev`
+   halt-recovery contract.
+2. **Erratum rounds must enumerate a named commit's full file list before writing rows about it.**
+   Routed here explicitly by `POSTMORTEM-PR` recommendation 11. Target: `se-author` / `pm-author` /
+   review-skill *Erratum Rounds — Re-ground Upstream First* section, extended from documents to
+   commits.
+3. **Manifest-completeness oracle** reconciling a document's file-ownership manifest against
+   `git ls-tree` for the feature's path globs. Third document on this branch to carry a stale count
+   of a set `git` can enumerate. Already routed as candidate `DEC-ORACLE-05` in
+   `docs/_decisions/DECISIONS-test-oracle-mechanics.md`; consolidation should confirm or reject it.
+4. **`DEC-SEV-04`** (a spec claiming a file is unmodified must name the commit range over which that
+   holds) landed in `docs/_decisions/DECISIONS-review-severity-bars.md` during Phase PR. Flagged for
+   consolidation to confirm the wording survives review, not to re-promote.
+5. **The two-module vendoring constraint deserves project-level status.** `MODULE_NAMES =
+   ["orchestrate-dev.js", "orchestrate-queue.js"]` silently rejected three separate design proposals
+   on this feature (DEC-LI-01 twice, DEC-LI-03 once), and its failure mode is the worst kind: green
+   in CI, absent in every consumer repository, nothing errors. Target:
+   `docs/_constraints/DOMAIN-CONSTRAINTS.md` as a hard constraint with the CI-green/production-absent
+   failure mode named.
+6. **"A rule that cannot notice its own omission is not a rule"** (DEC-LI-04) and **"a memo lets the
+   determinism test pass because the second call never happened"** (DEC-LI-05) are two statements of
+   one bar: a set-equality oracle against *the run that happened* cannot detect a missing producer.
+   Target: `docs/_decisions/DECISIONS-test-oracle-mechanics.md`.
+7. **Prompt leniency language must be branch-exact.** `findingGrammarClause()`'s "tagging can only
+   ever widen the outcome" was true for approving confirmations and false — inverted, halting —
+   for non-approving ones. Corrected on this branch (`d015ff89`); promote the general rule that a
+   leniency claim in a dispatch prompt must state the branch on which it does not hold. Target:
+   skill-authoring guidance.
+8. **Review-template schema collisions.** One `Scope` column served two orthogonal axes and caused
+   two halts. Promote: when a gate parses a vocabulary, the authoring template must have exactly one
+   column per axis of that vocabulary. Fixed for erratum rounds (`42289c5e`); the general rule is not
+   recorded anywhere.
+9. **Reconsider the review-iteration ceiling.** Four documents stopped at exactly 15 rounds. Either
+   the cap is doing bar-lowering work or the convergence bar is mis-set; consolidation should look at
+   this across features rather than from this branch alone. Target: `pdlc/OPERATIONS.md` review-loop
+   economics.
+10. **Cheap mechanical lints not yet built**, each ending a Low class that recurred all branch:
+    a stale-`Cross-Reviews`-header check (state the row as a glob), a `DEC-DOC-01` raw-`file:line`
+    citation lint, a present-tense sibling-claim sweep at the top of each cascade round, and a
+    dispatcher refusal of delta-confirmation rounds over a zero-byte diff. Target: `pdlc/hooks/` —
+    `check-finding-grammar.sh` is the working precedent.
+11. **Out-of-scope pipeline behaviour shipped without ladder ownership.** The systemic erratum fixes
+    have no REQ AC and no PLAN task row. Consolidation should decide whether such recurrence-driven
+    fixes get a standing exemption with a named oracle requirement, or must be split to their own
+    REQ. Target: `pdlc/OPERATIONS.md`.
+
 ## 6. Approval Record
