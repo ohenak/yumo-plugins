@@ -148,7 +148,7 @@ edge into an ordering **within** one task: the merged task writes and commits it
 first, runs them, records the observed failure in its task report, and only then writes the code
 that turns them green.
 
-| Merged pair (v1.0 ids) | Surviving id | Files (disjoint, so the merge is legal) |
+| Merged pair (v1.0 ids) | Surviving id | Paths touched, disjoint, which is what makes the merge legal |
 |---|---|---|
 | T-02 + T-05 | T-02 | `__tests__/waveResume.test.js` / `orchestrate-dev.js` — neither touches `waveExecution.test.js`, so RT-2's byte-unchanged invariant survives intact |
 | T-03 + T-06 | T-03 | `__tests__/waveResumeRepoState.test.js` / `docs/_constraints/pdlc-wave-gate-baseline.md` |
@@ -438,18 +438,23 @@ cannot enter them (round-1 F-03).
 
 ### 4.6 Parse verification of this document (rule 6)
 
-The task table is machine-parsed, so this document was parsed with the shipped parser before it was
-submitted, not merely written to look parseable. Run against `git show
-origin/main:pdlc/workflows/orchestrate-dev.js`, since this tree is 1,637 commits behind:
+The task table is machine-parsed, so this document was parsed with the shipped parser **after the
+v1.1 merge**, not merely written to look parseable. Run against
+`git show origin/main:pdlc/workflows/orchestrate-dev.js`, since this tree is 1,637 commits behind:
 
 | Check | Result |
 |---|---|
-| `parsePlanTasks(PLAN)` | 10 tasks, no warnings; ids `T-01 … T-10`, dependencies exactly the edge set of §3.1 |
-| `planBatch` per row vs. `max(dep batches) + 1` | agrees on every row: 1, 2, 2, 2, 3, 3, 4, 4, 5, 6 |
-| `computeTopologicalBatches(tasks)` | `[[T-01], [T-02,T-03,T-04], [T-05,T-06], [T-07,T-08], [T-09], [T-10]]` — identical to the `Batch` column, so the column is a contract that holds, not a caption |
-| `parsePlanOwnership(PLAN)` | 10 rows, one per task, **zero near misses** — every other table in this document is spelled so it neither qualifies as nor near-misses a manifest |
-| `computeWaves(tasks, ownership)` | six ownership-disjoint waves, identical to the topological batches — no wave contains two tasks sharing a path |
+| `parsePlanTasks(PLAN)` | 7 tasks, `warnings` undefined; ids `T-01, T-02, T-03, T-04, T-07, T-08, T-10`; `dependencies` exactly `[] / [T-01] / [T-01] / [T-01] / [T-02] / [T-02] / [T-07,T-08,T-03,T-04]` — the edge set of §3.1 |
+| `planBatch` per row vs. `max(dep batches) + 1` | agrees on every row: 1, 2, 2, 2, 3, 3, 4 |
+| `computeTopologicalBatches(tasks)` | `[[T-01], [T-02,T-03,T-04], [T-07,T-08], [T-10]]` — identical to the `Batch` column, so the column is a contract that holds, not a caption |
+| `parsePlanOwnership(PLAN)` | 7 rows, one per task, **zero near misses**; multi-path cells parse as lists (`T-02 → [waveResume.test.js, orchestrate-dev.js]`, `T-10 → [waveResume.test.js, waveExecution.test.js]`) |
+| `computeWaves(tasks, ownership)` | four ownership-disjoint waves, identical to the topological batches — no wave contains two tasks sharing a path |
+| Retired ids | `T-05`, `T-06`, `T-09` appear in no `#` cell and no `Deps` cell; the parser sees seven tasks and no dangling dependency |
 | Dependency cycles | none; the edge set is a DAG (Phase P refuses a PLAN whose dependencies contain a cycle) |
 | Bare basenames in `Test File` / `Source File` | none — every path is subpackage-qualified (`pdlc/workflows/__tests__/…`, `pdlc/workflows/orchestrate-dev.js`, `docs/_constraints/…`) |
 | Id spelling | identical in the `#` column and in every `Deps` cell — bare `T-NN`, never bolded in one and plain in the other |
 
+One near miss was found and fixed while re-running this check: §2.3's merged-pair table originally
+carried a `Files (…)` header, which normalises to the manifest's `files` cell and made the block a
+files-side near miss. Its heading now reads `Paths touched, …`, and `nearMisses` is empty — the
+parser finds exactly one manifest, §3.3.
