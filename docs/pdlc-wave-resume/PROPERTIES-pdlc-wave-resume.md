@@ -133,6 +133,75 @@ form — the assertion that makes each row falsifiable — is in **§ Oracles**,
 | PROP-SKIP-03 | Under outcome (c) Phase PT's V-wave must still dispatch exactly **one** agent and invoke the gate exactly **once**: the skip is scoped to the wave loop, and the V-wave replays on every invocation. This is the positive conjunct that keeps PROP-SKIP-01 from being an absence-only oracle. | Integration | I | AT-12 (fourth conjunct), EC-20, BR-11 | T-07 · `waveExecution.test.js` |
 | PROP-SKIP-04 | Under outcome (c) the implementation wave loop must land **no** commit: the `_git` spy's `add` argv list must contain no path owned by any wave task, and the V-wave's own commit must be the only Phase-I-adjacent commit observed. | Security | I | REQ-WVR-08, BR-11, AT-12 | T-07 · `waveExecution.test.js` |
 
+### 5. Operator override and the single hatch
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-OVERRIDE-01 | With both a valid record and `implementation.startWave: 2`, the run must start at wave 2 and must emit **no** line matching `wave ledger … was ignored` — the record was never consulted. The single log line beginning `Resuming at wave 2 of 3 (implementation.startWave)` must end with the literal ` (provenance: operator-set)`; a token found on any other line does not satisfy this property. | Functional | I | AT-05 (TE F-05), BR-04, REQ-WVR-04 | T-07 · `waveExecution.test.js` |
+| PROP-OVERRIDE-02 | Two runs of the same config differing **only** in `startWave: 1` present versus the key omitted must produce whole-array-equal logs and an equal Phase I report row. Positive conjunct so two equally-broken runs cannot compare equal: in both runs the banner beginning `Resuming at wave 2 of 3 (wave ledger` is present with ` (provenance: automatic)` and `dispatchedTaskIds` equals `["T2", "T3"]`, not the whole plan. | Functional | I | AT-06 (TE F-03, PM F-02), BR-05 | T-07 · `waveExecution.test.js` |
+| PROP-OVERRIDE-03 | `startWave: 99` on a three-wave plan must emit the past-the-end notice ending ` (provenance: operator-set)`, dispatch all three waves, announce no wave as skipped, and **not read the record at all** — the `_readFile` call list must contain no entry for `WAVE_STATE_PATH`. | Functional | I | AT-07, BR-05, EC-11 | T-07 · `waveExecution.test.js` |
+| PROP-OVERRIDE-04 | The force-a-full-run hatch must be exactly one and must be named where it is needed: (i) the outcome (b) and (c) banners each contain `to force a full run`; (ii) the same fixture with the record removed resolves outcome (a) — the hatch works; (iii) `Object.keys(IMPLEMENTATION_DEFAULTS)` is **set-equal** to the four keys `testCommand`, `postWaveCommand`, `postWavePathspecs`, `startWave`, so a fifth key (in particular a `forceFullRun`) reds. | Contract | I + U | AT-08, BR-06, BR-17, OQ-1 | T-07 (i)(ii) · T-02 (iii) |
+| PROP-OVERRIDE-05 | The config-validation notice `Notice: implementation.startWave in {cfg} is not a valid value — using the default.` must **not** gain a provenance token: it precedes any resume decision and is about a rejected value, not a resolved start point. This is the one excluded notice, and the property that keeps the announcement catalogue's count of changed shipped assertions at three. | Contract | I | TSPEC §2.4 exclusion table, BR-07 | T-07 · `waveExecution.test.js` |
+
+### 6. Verification independence and the closed outcome catalogue
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-SAFETY-01 | Over the enumerated fixture set — resume at wave 2, resume at the last wave, `head` = tip, `head` = an earlier ancestor — the wave gate command must be invoked **before** the first commit call, asserted on the interleaving of the `_runCommand` and `_git` doubles through the H-1 ordered event sink, never on two independent call logs. | Security | I | AT-04, BR-10, REQ-WVR-03 | T-07 · `waveExecution.test.js` |
+| PROP-SAFETY-02 | `RESUME_OUTCOMES` must be set-equal to the three transcribed literals `full-run`, `resume`, `skip-phase`, and three integration fixtures must each resolve exactly one of them and announce it — so a deleted outcome fails a test. | Contract | U + I | AT-13, BR-01, REQ-WVR-08 | T-02 (set equality) · T-07 (fixtures) |
+| PROP-SAFETY-03 | `classifyWaveLedger` must resolve each of the eight rows of TSPEC §3.2's guard table to exactly the transcribed decision, must never throw, and must perform no IO — it receives ancestry as an already-resolved boolean and returns a description, never an `emit` or a probe. | Functional | U | TSPEC §3.2, DEC-WVR-02, C-3 | T-02 · `waveResume.test.js` |
+| PROP-SAFETY-04 | `RESUME_PROVENANCE` must be set-equal to the two transcribed literals `operator-set`, `automatic`, and every decision `classifyWaveLedger` returns must carry `automatic` — the `operator-set` provenance never originates in the classifier, because an explicit pointer means it is not called at all. | Contract | U | TSPEC §3.1/§3.2, BR-07 | T-02 · `waveResume.test.js` |
+
+### 7. The record: write site, cadence and failure posture
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-RECORD-01 | A run whose gates are all green but which has **no** git transport must write nothing — `ledgerWrites(writes)` is empty — and the next invocation must start at that same wave and announce it as not previously completed. Completion means committed, never merely verified. | Data Integrity | I | AT-09, REQ-WVR-09, EC-13, BR-08 | T-07 · `waveExecution.test.js` |
+| PROP-RECORD-02 | The companion: the same run **with** a transport must record normally under **each** gate mode in turn — script-owned and self-report — proving the write's guard is the transport, not the gate mode. | Data Integrity | I | AT-09 companion, TSPEC §2.5 item 1 (V-8) | T-07 · `waveExecution.test.js` |
+| PROP-RECORD-03 | For every recorded wave the record write must occur **after** that wave's pathspec-scoped commits, asserted on the H-1 event sink's ordering, never beside the gate. | Data Integrity | I | BR-08, TSPEC §2.5 item 2 | T-07 · `waveExecution.test.js` |
+| PROP-RECORD-04 | Each write must carry `lastGreenWave` as the **plan-absolute** wave number, never a count of the waves this run executed — the discriminator is PROP-RESUME-05's three-invocation sequence, which every single-halt fixture passes under the run-relative mutation. | Data Integrity | I | AT-18, BR-08, TSPEC §2.5 item 5 | T-07 · `waveExecution.test.js` |
+| PROP-RECORD-05 | When **every** write throws, each failure must be announced as a notice beginning `Notice: could not record wave `, the run must still complete (`outcome === "success"`), and the next invocation must resolve outcome (a). | Error Handling | I | AT-15 arm 1, BR-15, EC-15 | T-07 · `waveExecution.test.js` |
+| PROP-RECORD-06 | When the wave-1 write succeeds and the wave-M write throws, the run must complete and the next invocation must resolve outcome **(b)** at the wave after the last **successfully** written record — the discriminator against an implementation that discards the record on any failure. | Error Handling | I | AT-15 arm 2 (D-6), EC-15a | T-07 · `waveExecution.test.js` |
+| PROP-RECORD-07 | `head` must be stamped from `git rev-parse HEAD` after the wave's commits when the transport answers, and must be **absent** from the written bytes when it does not; a record with no `head` must still be honoured by the reader (paired with PROP-DISREGARD-08). | Data Integrity | I + U | TSPEC §2.5 item 4, V-7, EC-21 | T-07 · T-02 |
+| PROP-RECORD-08 | `formatWaveLedger` must produce exactly two shapes — with and without `head` — each pretty-printed at two-space indent and newline-terminated, asserted as transcribed whole strings, and `version` must be the literal `1` in both. | Contract | U | TSPEC §4.1, V-4, §5.6 | T-02 · `waveResume.test.js` |
+| PROP-RECORD-09 | The record must carry **no** provenance field: the parsed key set of any written record must be set-equal to `{version, feature, planHash, lastGreenWave}` or `{version, feature, planHash, lastGreenWave, head}` and nothing else. Provenance is announced content, never persisted state. | Data Integrity | U | TSPEC §2.5 (PM Q-02), §4.1 | T-02 · `waveResume.test.js` |
+
+### 8. Queue parity, at the boundary it can honestly carry
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-PARITY-01 | `orchestrate-queue`'s `_runPipeline` must be left at its default on the delegation path, and that fact must be asserted — an unconfigured queue call reaches `orchestrate-dev`'s exported default. | Integration | Q | AT-16 (i), DEC-WVR-07, BR-16 | T-04 · `waveResumeQueueParity.test.js` |
+| PROP-PARITY-02 | The delegation payload's key set must equal `["reqPath"]`, asserted with `toEqual` against a spy — so any queue-side resume configuration, seam override or `startWave` forwarding reds. | Contract | Q | AT-16 (ii), BR-16, V-15 | T-04 · `waveResumeQueueParity.test.js` |
+| PROP-PARITY-03 | The direct run's `_readFile` call list, filtered to the ledger path, must be string-equal to `WAVE_STATE_PATH`, and the queue must add nothing that could change it. | Contract | Q | AT-16 (iii), REQ-WVR-07 | T-04 · `waveResumeQueueParity.test.js` |
+| PROP-PARITY-04 | The falsification arm must be executed and its output recorded: mutating the queue to forward any additional key must red PROP-PARITY-02 while PROP-RESUME-01 … PROP-OVERRIDE-01 all still pass. A parity net that cannot be shown to fail is not a net. | Contract | Q | AT-16 falsification arm, PLAN T-04 | T-04 · task report |
+
+### 9. The record never becomes tracked content
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-REPO-01 | `.gitignore` must contain a line **equal** to `/.claude/pdlc-wave-state.json`; that matched line must be root-anchored (leading `/` asserted on it); and `git check-ignore -v .claude/pdlc-wave-state.json` must resolve to **that** line, not to a broader pattern. `some(line => line.includes(...))` and "no churn observed" are forbidden weakenings. | Security | R | AT-14, BR-14, REQ-WVR-10, C-1 | T-03 · `waveResumeRepoState.test.js` |
+| PROP-REPO-02 | Over **this feature's PLAN**, no row of the §3.3 ownership manifest and no `implementation.postWavePathspecs` value may name `WAVE_STATE_PATH` — a finite check by name, so no advisory remediation envelope of this run can authorise touching the record. | Security | R | AT-17 (repo-state half), OB-F6, EC-16, D-9 | T-03 · `waveResumeRepoState.test.js` |
+| PROP-REPO-03 | No commit a run produces may contain the record: across every wave of a full run the `_git` `add` argv list must contain no entry naming `.claude/pdlc-wave-state.json`. This is the run-side conjunct that PROP-REPO-01's repo-side rule cannot supply. | Security | I | REQ-WVR-10, BR-14 | T-07 · `waveExecution.test.js` |
+| PROP-REPO-04 | `docs/_constraints/pdlc-wave-gate-baseline.md` must carry `M-WVR-1` and `M-WVR-2` in a **new**, next-unoccupied section, each with a Measured-by command; the file's `Version` must be strictly above the version found at promotion time; and the new section must record `M-WG-6` as reviewed-and-left, not missed. | Observability | R | D-10, OB-F4, REQ OB-2 | T-03 · `waveResumeRepoState.test.js` |
+| PROP-REPO-05 | Advisory wave-gate remediation must compose without coordination: a wave that goes green after remediation commits and records normally; a failed remediation leaves the identical halt and a record still naming the wave **below**. | Integration | I | AT-17 (integration half), EC-16, REQ OB-3 | T-07 · `waveExecution.test.js` |
+
+### 10. Generative laws
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-LAW-01 | **ROUND-TRIP.** For all `(feature, planHash, lastGreenWave, head)` with `feature` and `planHash` non-empty strings and `lastGreenWave` an integer ≥ 1, `parseWaveLedger(formatWaveLedger(...)).state` must deep-equal `{feature, planHash, lastGreenWave, head: head ?? null}` and `.reason` must be `null`. | Data Integrity | UG | P-1, TSPEC §5.7 | T-08 · `waveResumeProperties.test.js` |
+| PROP-LAW-02 | **TOTALITY (reader).** For arbitrary strings — including arbitrary JSON values and non-string inputs — `parseWaveLedger` must never throw and must return exactly one of the three shapes of TSPEC §4.2. | Error Handling | UG | P-2, V-2 | T-08 · `waveResumeProperties.test.js` |
+| PROP-LAW-03 | **TOTALITY (classifier).** For arbitrary `ClassifyInput`, `outcome` must be a member of `RESUME_OUTCOMES`, `provenance` a member of `RESUME_PROVENANCE`, and `code`, where present, must be `null` or a member of `Object.keys(WAVE_IGNORE_REASONS)`. This is what makes BR-01's closure mechanically checkable rather than asserted in prose. | Contract | UG | P-3, BR-01, TSPEC §2.2 | T-08 · `waveResumeProperties.test.js` |
+| PROP-LAW-04 | **HASH DISCRIMINATION.** For generated pairs of wave layouts differing in wave order, task ids, task-to-wave assignment or owned paths, `computePlanHash` must differ across the generated corpus. The suite must state the bounded-corpus caveat: FNV-1a over 32 bits is not injective, so a generated collision is a finding about the corpus, not a failed law. | Data Integrity | UG | P-4, TSPEC §4.3 | T-08 · `waveResumeProperties.test.js` |
+
+### 11. Coverage and mutation duty
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-COV-01 | `npm run test:coverage` from `pdlc/workflows` (`--per-file --branches 85`) must exit 0, with the measured per-file branch number for `orchestrate-dev.js` recorded in the task report. | Performance | C | RT-7, TSPEC §5.8, PLAN T-10 | T-10 |
+| PROP-COV-02 | c8's per-file uncovered-line list for `orchestrate-dev.js` must contain no line inside the ranges this feature introduces, and PLAN §4.5.1's mapping table must be **complete** — every branch class named, every row naming a covering test. A deleted case must fail that table's set equality rather than move a percentage by 0.05. | Observability | C | RT-7, PLAN §4.5.1 (F-05) | T-10 |
+| PROP-COV-03 | Each of PLAN §4.3's four mutations must be **applied, observed RED against its named oracle, reverted, and its failure output recorded** in the owning task's report — a believed mutation is not an observed one. | Contract | C | PLAN §4.3 (F-04), TSPEC §5.5 | T-02, T-07 |
+
 ## Oracles
 
 ## Fixtures
