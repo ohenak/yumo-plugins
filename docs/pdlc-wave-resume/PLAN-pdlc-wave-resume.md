@@ -147,4 +147,92 @@ then does T-07 edit it.
 
 ## 3. Dependencies
 
+### 3.1 Dependency edges, and why each exists
+
+Every edge below is a real ordering constraint, not id order. Task ids are written identically in
+the `#` column and in `Deps` cells — bare `T-NN`, never bolded in one and plain in the other.
+
+| Edge | Why |
+|---|---|
+| T-02, T-03, T-04 → T-01 | §1.2: no task may run before the baseline is proven present. T-03 in particular carries AT-14, which is red pre-rebase, and a red gate in wave mode halts the wave and every wave after it. |
+| T-05 → T-02 | Red-before-green. T-02 is the failing unit suite for `classifyWaveLedger` and the three catalogues; T-05 is what turns it green. |
+| T-06 → T-03 | Red-before-green. T-03 carries the `M-WVR-1`/`M-WVR-2` presence assertion; T-06 appends the section. |
+| T-07 → T-05 | The integration cases assert on the classifier's resolved outcomes and on the lazy-probe call counts, which do not exist until T-05. It is also rule 2: T-07 must not append to `waveExecution.test.js` in the batch that proves T-05 left it unchanged. |
+| T-08 → T-05 | P-3 quantifies over `ClassifyInput` and asserts `outcome ∈ RESUME_OUTCOMES`; both symbols are T-05's. |
+| T-09 → T-07 | Red-before-green, and TSPEC §2.4's "never a later fix-the-suite task": the three assertion updates are in T-09's immediate red predecessor, not in a task after it. |
+| T-10 → T-09 | The announcement and report branches are the last branches added; the floor is measured over the complete diff. |
+| T-10 → T-08, T-06, T-04 | The floor is measured over the whole suite as it will merge; a suite still missing the property or repo-state files would measure a different number. |
+
+**No cycle.** The edge set is `T-01 → {T-02,T-03,T-04}`, `T-02 → T-05`, `T-03 → T-06`,
+`T-05 → {T-07,T-08}`, `T-07 → T-09`, `{T-09,T-08,T-06,T-04} → T-10`: a DAG whose topological order
+is exactly the batch numbering of §2.2.
+
+### 3.2 Prior-phase baseline pre-flight (T-01)
+
+`BL-PREREQ` symbols and files, asserted **present** at HEAD and nothing more — never the shape T-05
+creates:
+
+| Subject | Assertion form | Where it lives at `origin/main` |
+|---|---|---|
+| `WAVE_STATE_PATH`, `parseWaveLedger`, `computePlanHash`, `formatWaveLedger`, `IMPLEMENTATION_DEFAULTS` | importable / present on the module's exports | `pdlc/workflows/orchestrate-dev.js` |
+| `docs/_constraints/pdlc-wave-gate-baseline.md` | file exists and is tracked | tracked at `origin/main`; **absent in this tree** |
+| `/.claude/pdlc-wave-state.json` | a line exists in `.gitignore` | `.gitignore` at `origin/main`; **absent in this tree** |
+| `test:coverage`, `c8`, `fast-check` | keys present in the manifest | `pdlc/workflows/package.json` at `origin/main`; **absent in this tree** |
+| `makeLedgerArgs`, `ledgerWrites`, `PLAN_THREE_WAVES`, `CONFIG_WITH_TEST_COMMAND` | referenced in the ledger harness | `pdlc/workflows/__tests__/waveExecution.test.js` at `origin/main` |
+
+`classifyWaveLedger`, `RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS` and
+`ANCESTRY_INDEPENDENT_CODES` are **deliberately not** in this table: they do not exist at
+`origin/main` either (verified: zero occurrences), and asserting them here would make the pre-flight
+gate assert the new shape a dependent task creates, which the gate's contract forbids.
+
+`pdlc/workflows/__tests__/waveResumePreflight.test.js` is a fifth new test file beyond the four
+TSPEC §5.3 names. It is declared new here and is a PLAN-level artifact — the pre-flight gate — not
+a TSPEC test category. It is kept out of `waveResumeRepoState.test.js` on purpose: that file is
+T-03's, and the gate must run in an earlier batch than any file whose assertions the gate protects.
+
+### 3.3 File-ownership manifest (per batch, mechanically auditable)
+
+Every physical file any task creates or appends to, with its single owning task. Two tasks in the
+same batch never share a row's file.
+
+| File | New? | Owning task | Batch |
+|---|---|---|---|
+| `pdlc/workflows/__tests__/waveResumePreflight.test.js` | new | T-01 | 1 |
+| `pdlc/workflows/__tests__/waveResume.test.js` | new | T-02, then T-10 | 2, then 6 |
+| `pdlc/workflows/__tests__/waveResumeRepoState.test.js` | new | T-03 | 2 |
+| `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` | new | T-04 | 2 |
+| `pdlc/workflows/orchestrate-dev.js` | existing (tracked at `origin/main`) | T-05, then T-09 | 3, then 5 |
+| `docs/_constraints/pdlc-wave-gate-baseline.md` | existing (tracked at `origin/main`; absent in this tree until the rebase) | T-06 | 3 |
+| `pdlc/workflows/__tests__/waveExecution.test.js` | existing (tracked at `origin/main`) | T-07 | 4 |
+| `pdlc/workflows/__tests__/waveResumeProperties.test.js` | new | T-08 | 4 |
+
+Two files carry two owners **in different batches**, which rule 2 permits and rule 4 constrains:
+`waveResume.test.js` (T-02 → T-10) and `orchestrate-dev.js` (T-05 → T-09). In both cases the later
+task is strictly downstream of the earlier one through the `Deps` chain
+(`T-10 → T-09 → T-07 → T-05 → T-02`), so neither is a shared-prerequisite race.
+
+**Files not in this manifest, and why (D-9, FSPEC OB-F6, TSPEC AT-17):**
+
+- **`.claude/pdlc-wave-state.json` is owned by no task and named by no row.** It is
+  consumer-local, untracked, and excluded by a root-anchored ignore rule. This absence is the
+  subject of T-03's finite check — the assertion reads this manifest, so the claim is falsifiable
+  rather than editorial.
+- **`pdlc/workflows/dist/*` is owned by no task.** It is generated by
+  `node pdlc/workflows/build-runtime.mjs`; §3.4 carries it per wave through
+  `implementation.postWavePathspecs`. A task that hand-edited it would be editing a build output.
+- **`.claude/workflows/*` is owned by no task.** It is the untracked consumer copy, produced by
+  `pdlc/hooks/scripts/sync-workflows.sh`, never committed.
+- **`.claude/pdlc.config.json` is owned by no task.** It is untracked run configuration (§3.4).
+
+### 3.4 Integration points and run configuration
+
+| Point | Value | Why |
+|---|---|---|
+| `implementation.testCommand` | the `pdlc/workflows` jest suite | The script-owned wave gate. Present ⇒ the gate is script-owned; absent ⇒ the run degrades to the legacy self-report gate, which would make every gate wording in §2.2 unenforceable. |
+| `implementation.postWaveCommand` | `node pdlc/workflows/build-runtime.mjs` | RT-5: editing `orchestrate-dev.js` leaves `pdlc/workflows/dist/` stale, and the suite itself reds on stale artifacts. The post-wave command runs **before** the gate (`pdlc-wave-gate-baseline.md` `M-WG-2`), which is what makes this ordering work. |
+| `implementation.postWavePathspecs` | `pdlc/workflows/dist/` | The regenerated artifacts are committed per wave as a chore commit. This value names **no** consumer-local path, and in particular not `WAVE_STATE_PATH` — asserted by T-03. |
+| `implementation.startWave` | **unset** | Leaving it unset is what lets this feature's own resume mechanism govern a re-invocation. Setting it would suppress record consultation entirely (FSPEC BR-04) — on the very feature whose behaviour is under test. |
+| Coverage floor | **T-10**, not `postWaveCommand` | See RK-2 in §4.4 and the erratum this dispatch raises: `implementation.postWaveCommand` is a single global key (TSPEC V-13 closes the config surface at four keys), so "the last implementation wave's `postWaveCommand`" is not expressible; setting it globally would run `test:coverage` after **every** wave, including waves 2 and 4, where new branches are deliberately not yet covered. |
+| Upstream branch | `feat-pdlc-wave-resume`, rebased onto the default branch | OB-F1. T-01 is the gate that proves it landed. |
+
 ## 4. Verification
