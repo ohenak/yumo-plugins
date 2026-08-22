@@ -71,6 +71,11 @@ and no downstream obligation — as its own revision-history row claims.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | DEC-WVR-03's Consequences row asks the announcement set-equality oracle to enumerate the exclusions "as literals — the invalid-`startWave` config-validation notice, **and the IG-6 no-record silence**". The first exclusion is a literal string that can be enumerated. The second is an absence: there is no sentence to transcribe, and asserting a silence inside a set-equality over emitted announcements is a different shape of assertion (no announcement on that path matches the token pattern) rather than a member of the excluded set. Worth one clause saying which of the two it is, so the implementer does not go looking for a string that does not exist. This is a wording question, not a defect: the intent — a fifth token-carrying announcement reds an assertion — is unambiguous, and te-review owns the oracle's shape. |
+| Q-02 | The O-5 exclusion criterion is stated as a rule over *where the emit sits* ("notices emitted before the decision, by the shared `implementation`-config validation loop, do not [carry a token]"). That is checkable today because the config-validation loop is the only pre-decision emitter on this path. If a future change moves the invalid-`startWave` notice into the resume decision — e.g. so that an invalid pointer can be attributed — the criterion silently reclassifies it rather than flagging the move. Is the criterion meant to be a *description* of today's boundary (fine as written) or a *constraint* on where future notices may be emitted (which would want a sentence in DEC-WVR-03 saying so)? |
+
 ## Positive Observations
 
 ## Recommendation
