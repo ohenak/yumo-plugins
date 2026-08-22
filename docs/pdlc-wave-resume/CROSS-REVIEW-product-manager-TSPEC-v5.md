@@ -77,7 +77,46 @@ for, and it is better than the shape I asked for.
 
 ## Upstream Re-Grounding (DEC-ERR-03)
 
-_(pending)_
+My scope is this TSPEC measured against its upstream at HEAD, not against the item list. Both
+upstream documents are byte-identical to the versions I approved against at v4, so the re-grounding
+reduces to two questions: (a) do the clauses the **new** bytes lean on still say what the new bytes
+say they say, and (b) do the upstream-drift findings I already recorded still stand?
+
+**(a) Clauses the new bytes newly lean on.** Re-read at HEAD, not from my v4 notes:
+
+| New text | Upstream clause it leans on | Faithful at HEAD? |
+|---|---|---|
+| §2.4 exclusion rule ("full run reached by an operator pointer does not describe it") | FSPEC BR-07 (`FSPEC:230`) | Yes — BR-07's operative phrase is quoted verbatim, and the negation is applied to a run whose pointer was discarded, which is a case BR-07's phrase genuinely does not reach. |
+| §2.4 "including the silent IG-6 row when there is no record" | FSPEC BR-02, restated inside BR-07 ("A full run reached with no record at all (IG-6) is silent … and is not an unattributed start") | Yes — the exclusion does not create a new silent case; it routes into the silent case FSPEC already sanctions. |
+| §3.1 / DEC-WVR-06 interpolation claim | FSPEC BR-02 reason catalogue and the shipped renderer sentences | Direction faithful, arithmetic not (F-01). |
+| §6.1 DEC-WVR-02 (b) "existing `_git` seam … `rtGit` for both bundles" | Not an upstream claim — a tree claim, checked against the tree | Yes — verified in `runtime-adapter.js` (`rtGit` defined; `_git: rtGit` bound). |
+| §6.4 RT-1 file sizes | Not an upstream claim — a repo claim | Yes — re-measured, both figures exact. |
+
+Nothing in the delta cites REQ text, so no REQ clause is newly load-bearing; REQ C-3 is referenced by
+DEC-WVR-02 only as the constraint the *rejected* alternative would have strained, and the corrected
+wording weakens rather than strengthens that reliance, which is the safe direction.
+
+**(b) The drift findings I recorded at v4 are unchanged.** This erratum round did not route them, so
+they are inherited rather than delta, and they remain non-gating — but they do not disappear by not
+being routed, and a reader of the TSPEC at HEAD still meets them. Re-verified at HEAD rather than
+copied forward:
+
+- §2.5's "One interaction the FSPEC does not state" and §6.3 item 3 still assert FSPEC has no clause
+  on what an operator-pointed run writes. FSPEC §3.4 at HEAD carries exactly that clause ("An
+  operator-pointed run records exactly as any other run does … in the same high-water form counted
+  from the plan's first wave … bounded by BR-10 … No record content distinguishes the two
+  provenances"). Still false; still cheap to fix. (F-02)
+- §6.3 item 2 still quotes FSPEC OB-F1 as saying BL-04 was "discharged at FSPEC authoring". FSPEC's
+  own erratum (v1.2) rewrote that; the quoted string is not at HEAD. (F-03)
+- §6.3 items 1–2 still carry `REQ v1.5` / `REQ v1.6` labels; FSPEC is at `Version | 1.2` and
+  re-grounded on REQ v1.7, and the REQ at HEAD is `Version | 1.7`. (F-05)
+- §6.3 item 4's REQ OB-1 `.worktreeinclude` observation is closed in REQ v1.7. (F-06)
+
+None of these four are new, none were routed to this round, and none of them change a decision — but
+leaving them unmarked means the next reader re-opens questions the pipeline already closed, which is
+the specific downstream cost DEC-ERR-01 tells me to score them on. They stay Medium/Low and
+`inherited`, which is exactly the tag that routes them back to the owning phase instead of halting
+here.
 
 ## Carried Findings (inherited, unchanged bytes)
 
