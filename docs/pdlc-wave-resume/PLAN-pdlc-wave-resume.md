@@ -83,7 +83,7 @@ T-01 — the cheapest possible wave — instead of at T-03's ignore-rule asserti
 ### 1.3 Scope boundaries this PLAN inherits
 
 - The extraction is **behaviour-preserving** and lands alone, before any announcement change
-  (TSPEC RT-2). T-05 leaves `pdlc/workflows/__tests__/waveExecution.test.js` byte-unchanged; that
+  (TSPEC RT-2). T-02 leaves `pdlc/workflows/__tests__/waveExecution.test.js` byte-unchanged; that
   shipped `describe` block *is* the extraction's regression net, and a task that edits its net in
   the same diff has no net.
 - The record is **consumer-local and untracked**. It appears in no task's owned-path set and in no
@@ -350,7 +350,7 @@ Restated here rather than assumed, because they are what makes the tests above f
 | Record a run-relative wave number | AT-18 only | T-07 |
 | Resolve the ancestry probe eagerly | AT-03/AT-11 `merge-base` call counts, `toEqual` only | T-07 |
 
-The fourth is the reason T-05 and T-07 are ordered as they are: the eager-probe mutation is
+The fourth is the reason T-02 and T-07 are ordered as they are: the eager-probe mutation is
 invisible to every behavioural assertion, so the extraction task cannot be self-certifying and is
 measured against the shipped net instead.
 
@@ -362,7 +362,7 @@ measured against the shipped net instead.
 | RK-2 | **The coverage floor is not a wave gate.** TSPEC §5.8 asks for it as the last wave's `postWaveCommand`; the config surface has one global `postWaveCommand` (V-13), so a global setting would run `test:coverage` after every wave — red at waves 2 and 4 by construction. | §3.4 assigns the floor to **T-10**, the last task, which runs it explicitly and reports the measured per-file branch number. The floor stays a Phase-I-level gate rather than a PUB-time surprise; the difference from TSPEC's wording is raised as an erratum. |
 | RK-3 | **Rebase churn (TSPEC RT-1).** `orchestrate-dev.js` is the largest tracked source module (734,711 B at `origin/main`) and this feature's edit surface. | The rebase happens before implementation, gated by T-01. The edit surface is one comment block, one extracted function, five announcement suffixes and two report details. |
 | RK-4 | **A fourth shipped assertion turns out to break** (TSPEC RT-3's residual). | T-07 runs the full `pdlc/workflows` suite as its own check before the wave's gate; any further assertion found to change is added to TSPEC §2.4's table in the same commit, never fixed silently. |
-| RK-5 | **T-07 is a large single task** — harness extensions, three assertion updates and sixteen integration cases in one file. Splitting it is what rule 2 forbids. | Bounded by the fact that its three parts have distinct oracles and by T-05 having already landed and been proven net-neutral. If T-07 exceeds a wave's budget the correct response is to re-invoke, not to split the file across two same-batch tasks. |
+| RK-5 | **T-07 is a large single task** — harness extensions, three assertion updates and sixteen integration cases in one file. Splitting it is what rule 2 forbids. | Bounded by the fact that its three parts have distinct oracles and by T-02's extraction having already landed and been proven net-neutral. If T-07 exceeds a wave's budget the correct response is to re-invoke, not to split the file across two same-batch tasks. |
 
 ### 4.5 Definition of Done
 
@@ -375,7 +375,8 @@ measured against the shipped net instead.
 - [ ] All eighteen FSPEC ATs have a passing owning test per §4.1, and the four laws P-1 … P-4 pass.
 - [ ] Exactly three shipped assertions changed, each named by TSPEC §2.4, each to a transcribed
       literal, with no matcher relaxed and no other assertion in the ledger `describe` touched.
-- [ ] `waveExecution.test.js` was byte-unchanged by T-05 (RT-2's regression-net invariant).
+- [ ] `waveExecution.test.js` was byte-unchanged across the whole of batch 2 (RT-2's regression-net
+      invariant); T-02's two commits show the test half landing before the code half.
 - [ ] `M-WVR-1` and `M-WVR-2` are in `docs/_constraints/pdlc-wave-gate-baseline.md` under a new
       section, the `Version` is bumped, and `M-WG-6` is recorded as reviewed-and-left.
 - [ ] `.claude/pdlc-wave-state.json` appears in no owned-path set, no `postWavePathspecs` value and
