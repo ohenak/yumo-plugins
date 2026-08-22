@@ -48,6 +48,52 @@ cites now says the same thing a different way.
 
 ## Options Considered
 
+Three dispositions were available. I record the rejected two because a reader of the findings table
+could reasonably expect either.
+
+### C-1 — Approve with zero findings: the delta is non-interacting, so there is nothing to say *(rejected)*
+
+Strictly true of the **delta**: no DECISIONS sentence quotes §5.8, RT-7 or the coverage floor, so
+this edit could not have made any of them stale. But DECISIONS' bytes have not changed since
+`020b74a0`, and my v3 confirmation left seven findings open — three Medium, four Low. A
+zero-finding confirmation would silently retire them: the erratum machinery reads `FINDING:` lines,
+not review history, so an open finding that stops being re-filed stops existing. Rejected: it would
+launder seven open defects through a round that had nothing to do with them.
+
+### C-2 — Escalate the reassignment itself, on the ground that the wave gate no longer closes the floor *(rejected)*
+
+There is a real testing question buried in this erratum — a floor enforced by “T-10 runs
+`npm run test:coverage` and reports the number” is a **task-discipline** gate, not a script-owned
+one, and it is weaker than a command the runtime executes and halts on. If DECISIONS had taken a
+position on how the floor is enforced, this delta would have moved out from under it and I would be
+filing a High here.
+
+It did not, and the weakening is not this document's to answer:
+
+- **The floor was never script-owned in the first place.** At v1.2 the proposal was
+  `implementation.postWaveCommand`, and TSPEC v1.3's own argument is that it was *not expressible* —
+  V-13's single global key would have run `test:coverage` after every wave, reddening waves whose new
+  branches are not yet covered. A gate that cannot be configured was never a gate; v1.3 replaces an
+  unimplementable mechanism with an implementable obligation, which is strictly forward.
+- **T-10 is not a bare promise.** PLAN §3.4 and the batch-4 DoD row make the floor a green-gate
+  condition of the last task, and §4.5.1 pairs it with a **delta oracle** — c8's per-file uncovered
+  line list asserted to contain no line inside this feature's introduced ranges, against a mapping
+  table whose completeness is itself the check. That is a falsifiable oracle over exactly the
+  branches this feature adds, which the whole-file percentage alone is not.
+- **The lens boundary.** Whether a floor belongs in `postWaveCommand`, a task DoD or CI is a TSPEC
+  and PLAN question, and it was answered in TSPEC's own round-4 and in PLAN RK-2 — both of which I
+  review under their own doc types, and where I raised the coverage-floor findings (F-06/F-07) that
+  produced §5.8 in the first place. Re-raising it here, against a document that never spoke to it,
+  would be re-litigating a settled upstream decision from a downstream confirmation.
+
+Rejected: no High, and not this document's finding to carry.
+
+### C-3 — Approve, re-filing every still-open finding as `inherited` *(chosen)*
+
+Chosen. It states the confirmation's actual answer — the delta is non-interacting — while keeping
+the seven open findings visible to the next revision and to harvest, tagged `inherited` so the round
+routes them back to Phase D's ordinary loop instead of halting on them.
+
 ## Decision
 
 ## Consequences
