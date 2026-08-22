@@ -114,7 +114,7 @@ same component through a real `Deps` edge, never through id order.
 Batches re-derive mechanically as `batch == max(batch of dependencies) + 1`; sources are batch 1.
 The derivation is shown so a reviewer checks arithmetic, not intent.
 
-| Batch | Tasks | Files written this batch (pairwise disjoint) | Gate wording |
+| Batch | Contents | Paths written (pairwise disjoint) | Gate wording |
 |---|---|---|---|
 | 1 | T-01 | `__tests__/waveResumePreflight.test.js` | Full `pdlc/workflows` suite green, **including** T-01. A red T-01 is the rebase (OB-F1) missing; it is blocking work, not a flaky gate. |
 | 2 | T-02, T-03, T-04 | `__tests__/waveResume.test.js`; `__tests__/waveResumeRepoState.test.js`; `__tests__/waveResumeQueueParity.test.js` | **RED-terminal.** *New tests fail for exactly two specified reasons — `classifyWaveLedger` and the three catalogues are not yet exported (T-02), and `M-WVR-1`/`M-WVR-2` are not yet in the baseline file (T-03) — and every pre-existing test is green.* T-04 and T-03's AT-14 arms are green in this batch. |
@@ -195,21 +195,31 @@ T-03's, and the gate must run in an earlier batch than any file whose assertions
 Every physical file any task creates or appends to, with its single owning task. Two tasks in the
 same batch never share a row's file.
 
-| File | New? | Owning task | Batch |
+| Owning task | Files | Batch | New? |
 |---|---|---|---|
-| `pdlc/workflows/__tests__/waveResumePreflight.test.js` | new | T-01 | 1 |
-| `pdlc/workflows/__tests__/waveResume.test.js` | new | T-02, then T-10 | 2, then 6 |
-| `pdlc/workflows/__tests__/waveResumeRepoState.test.js` | new | T-03 | 2 |
-| `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` | new | T-04 | 2 |
-| `pdlc/workflows/orchestrate-dev.js` | existing (tracked at `origin/main`) | T-05, then T-09 | 3, then 5 |
-| `docs/_constraints/pdlc-wave-gate-baseline.md` | existing (tracked at `origin/main`; absent in this tree until the rebase) | T-06 | 3 |
-| `pdlc/workflows/__tests__/waveExecution.test.js` | existing (tracked at `origin/main`) | T-07 | 4 |
-| `pdlc/workflows/__tests__/waveResumeProperties.test.js` | new | T-08 | 4 |
+| T-01 | `pdlc/workflows/__tests__/waveResumePreflight.test.js` | 1 | new |
+| T-02 | `pdlc/workflows/__tests__/waveResume.test.js` | 2 | new |
+| T-03 | `pdlc/workflows/__tests__/waveResumeRepoState.test.js` | 2 | new |
+| T-04 | `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` | 2 | new |
+| T-05 | `pdlc/workflows/orchestrate-dev.js` | 3 | existing, tracked at `origin/main` |
+| T-06 | `docs/_constraints/pdlc-wave-gate-baseline.md` | 3 | existing, tracked at `origin/main`; absent in this tree until the rebase |
+| T-07 | `pdlc/workflows/__tests__/waveExecution.test.js` | 4 | existing, tracked at `origin/main` |
+| T-08 | `pdlc/workflows/__tests__/waveResumeProperties.test.js` | 4 | new |
+| T-09 | `pdlc/workflows/orchestrate-dev.js` | 5 | existing; second owner, batch 3 ≠ batch 5 |
+| T-10 | `pdlc/workflows/__tests__/waveResume.test.js` | 6 | existing by then; second owner, batch 2 ≠ batch 6 |
 
-Two files carry two owners **in different batches**, which rule 2 permits and rule 4 constrains:
-`waveResume.test.js` (T-02 → T-10) and `orchestrate-dev.js` (T-05 → T-09). In both cases the later
-task is strictly downstream of the earlier one through the `Deps` chain
-(`T-10 → T-09 → T-07 → T-05 → T-02`), so neither is a shared-prerequisite race.
+The manifest is **one row per owning task**, never a merged cell, so every owner cell is a bare
+task id the ownership parser resolves. Two files therefore appear twice, each time with a different
+owner **in a different batch** — which rule 2 permits and rule 4 constrains:
+`waveResume.test.js` (T-02, batch 2 → T-10, batch 6) and `orchestrate-dev.js` (T-05, batch 3 →
+T-09, batch 5). In both cases the later task is strictly downstream of the earlier one through the
+`Deps` chain (`T-10 → T-09 → T-07 → T-05 → T-02`), so neither is a shared-prerequisite race, and no
+two tasks in one batch share a path.
+
+**This is the only ownership manifest in this document.** Every other table here is prose
+structure: §2.2 names batch contents, §4.1 maps ATs to suites, §4.3 maps mutations to tasks. Their
+headers are deliberately spelled so none of them qualifies as, or near-misses, an ownership
+manifest — the parser must find exactly one.
 
 **Files not in this manifest, and why (D-9, FSPEC OB-F6, TSPEC AT-17):**
 
@@ -242,7 +252,7 @@ task is strictly downstream of the earlier one through the `Deps` chain
 TSPEC §5.4 is the contract that no AT is left without a home; this table is the contract that no AT
 is left without an *owner*. Files are named as they will exist after T-01's gate passes.
 
-| FSPEC AT | Owning task(s) | File |
+| FSPEC AT | Discharged by | Suite |
 |---|---|---|
 | AT-01 automatic resume at the failed wave | T-07 | `waveExecution.test.js` |
 | AT-02 disregard catalogue complete and closed | T-02 (unit, incl. IG-6's closure), T-07 (integration, per code) | `waveResume.test.js`, `waveExecution.test.js` |
@@ -288,7 +298,7 @@ Restated here rather than assumed, because they are what makes the tests above f
 
 ### 4.3 Mutation resistance — the four mutations this plan's task split preserves
 
-| Mutation | Killed by | Task |
+| Mutation | Killed by | Landed in |
 |---|---|---|
 | Delete the ancestry guard | AT-02 set equality (`head-unreachable` disappears) + AT-11 | T-02, T-07 |
 | Move the record write outside the transport branch | AT-09's empty `ledgerWrites(writes)` | T-07 |
@@ -331,3 +341,21 @@ measured against the shipped net instead.
       measured `orchestrate-dev.js` branch number recorded.
 - [ ] No new `main()` parameter, no new runtime-adapter binding, no fifth `implementation.*` key
       (REQ C-3, TSPEC §3.4/§3.5).
+
+### 4.6 Parse verification of this document (rule 6)
+
+The task table is machine-parsed, so this document was parsed with the shipped parser before it was
+submitted, not merely written to look parseable. Run against `git show
+origin/main:pdlc/workflows/orchestrate-dev.js`, since this tree is 1,637 commits behind:
+
+| Check | Result |
+|---|---|
+| `parsePlanTasks(PLAN)` | 10 tasks, no warnings; ids `T-01 … T-10`, dependencies exactly the edge set of §3.1 |
+| `planBatch` per row vs. `max(dep batches) + 1` | agrees on every row: 1, 2, 2, 2, 3, 3, 4, 4, 5, 6 |
+| `computeTopologicalBatches(tasks)` | `[[T-01], [T-02,T-03,T-04], [T-05,T-06], [T-07,T-08], [T-09], [T-10]]` — identical to the `Batch` column, so the column is a contract that holds, not a caption |
+| `parsePlanOwnership(PLAN)` | 10 rows, one per task, **zero near misses** — every other table in this document is spelled so it neither qualifies as nor near-misses a manifest |
+| `computeWaves(tasks, ownership)` | six ownership-disjoint waves, identical to the topological batches — no wave contains two tasks sharing a path |
+| Dependency cycles | none; the edge set is a DAG (Phase P refuses a PLAN whose dependencies contain a cycle) |
+| Bare basenames in `Test File` / `Source File` | none — every path is subpackage-qualified (`pdlc/workflows/__tests__/…`, `pdlc/workflows/orchestrate-dev.js`, `docs/_constraints/…`) |
+| Id spelling | identical in the `#` column and in every `Deps` cell — bare `T-NN`, never bolded in one and plain in the other |
+
