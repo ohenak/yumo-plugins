@@ -256,6 +256,22 @@ The suffix is **content, not wording**: FSPEC's "announcement content, not wordi
 and PROPERTIES asserts that the announcement conveys the token, not that the sentence is
 byte-identical.
 
+**The catalogue is closed by rule, not by omission (TE erratum, PM erratum).** The rule is:
+
+> A notice carries a provenance token **iff** the resume decision emits it about a *resolved start
+> point* — the wave this run actually begins at, and where that start point came from.
+
+Exactly one notice on the Phase I path is in scope of the discussion and **excluded** by that rule,
+so it is named here rather than left to inference:
+
+| Notice (shipped, unchanged) | Carries a token? | Why |
+|---|---|---|
+| `Notice: implementation.startWave in {cfg} is not a valid value — using the default.` | **No** | It is emitted by config validation, *before* any resume decision, and it is about a **rejected value**, not a resolved start point. The pointer it names is discarded; no operator pointer is in force for the run that follows, so FSPEC BR-07's "full run reached by an operator pointer" does not describe it. That run is an ordinary automatic run, and whatever it announces afterwards is one of the six rows above — including the silent IG-6 row when there is no record. |
+
+The exclusion is what keeps the row set above complete, and with it the count in the next
+subsection: because this notice gains no suffix, no assertion pinning it changes, and the shipped
+assertions that do change remain exactly three.
+
 The **report** carries the same two facts on one Phase I row (FSPEC EC-09's "one row with a
 distinguishing status, not a second row"):
 
