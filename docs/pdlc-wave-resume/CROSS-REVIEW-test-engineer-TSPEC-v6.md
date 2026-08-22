@@ -80,7 +80,38 @@ command and does not accidentally indict its neighbour.
 
 ## Interfaces
 
-*(pending)*
+No interface in this TSPEC changed. The edit touches prose only — no signature, no exported symbol,
+no seam parameter, no config key. I re-read the two interface surfaces the changed text names, to
+confirm the document's description of them still matches the shipped code.
+
+**`implementation.*` config surface (V-13, TSPEC §5.6).** At `origin/main`:
+
+```
+export const IMPLEMENTATION_DEFAULTS = Object.freeze({
+  testCommand: null,
+  postWaveCommand: null,
+  postWavePathspecs: Object.freeze([]),
+  startWave: 1,
+});
+```
+
+Exactly four keys, in exactly the order V-13 and FSPEC §341 list them, and `postWaveCommand` is a
+scalar `string|null` — there is no per-wave map, no array, no wave-indexed variant. The
+"not expressible" claim is therefore a property of the type, not an opinion about ergonomics. This
+is the strongest form the claim could take, and it is the form the edit uses.
+
+**The post-wave execution seam.** `postWaveCommand` is consumed at
+`orchestrate-dev.js:3280-3282` and again at `:3322-3324`, in both cases inside the per-wave body,
+and `:3310` returns the gate label list `["post-wave", "test"]` whenever the key is set. So a set
+`postWaveCommand` runs **once per wave, for every wave, unconditionally** — which is precisely the
+failure the edit describes ("red on waves whose new branches are not yet covered"). The
+announcement sites at `:15412`/`:15418` confirm the same per-wave framing in the operator-visible
+strings.
+
+I note for the record that this is a *runtime-measured* citation — the line positions are the
+evidence, not decoration — so citing them by `file:line` is the sanctioned form under DEC-DOC-01
+rather than a Low finding. The TSPEC itself cites the surface by symbol name (`V-13`,
+`IMPLEMENTATION_DEFAULTS`), which is the right altitude for a spec.
 
 ## Data Model
 
