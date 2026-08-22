@@ -122,6 +122,92 @@ pair it with the positive observation that the gate command was invoked — `M-W
 observable, and §2.2's own batch-3 wording already relies on `script-owned gate` appearing verbatim
 in the Phase I detail (`orchestrate-dev.js:15628` builds it).
 
+### F-03 (High) — T-10 cannot reach the branches it is assigned to cover
+
+T-10's row assigns it four gap classes and one instrument, and the instrument does not reach two of
+the classes:
+
+> "close every gap this feature opened — the eight classifier arms, the seven renderer closures, the
+> lazy-probe short-circuit, and the announcement/report branches — by adding **unit** arms only, in
+> the file this task owns."
+
+The first two classes are fine: `classifyWaveLedger` is pure (§3.2's own contract) and the
+`WAVE_IGNORE_REASONS` closures are pure renderers, so both are unit-reachable from
+`waveResume.test.js`. The announcement and report branches are not. T-09's own row places them
+inside `main()` — "In `orchestrate-dev.js`: append ` (provenance: …)` to each of the five announcing
+rows", "extend the executed Phase I `✅` row's detail" — and at `origin/main` those strings are built
+in the Phase I wave loop (`orchestrate-dev.js:15620` for the `Skipped — all …` detail, `:15628` for
+`All ${waves.length} waves complete (wave mode, …)`). The only harness that drives that path is
+`makeLedgerArgs` in `waveExecution.test.js`, and §3.3 gives that file **exactly one owner, T-07**,
+whose sole-ownership §2.2 defends at length.
+
+So T-10, in batch 6, discovers uncovered announcement branches and has no legal file in which to
+cover them. It cannot append to `waveExecution.test.js` (not its file), and a unit arm in
+`waveResume.test.js` structurally cannot enter `main()`.
+
+This is the same defect the role's builder-not-wired rule names, seen from the coverage side: the
+production path and the unit path are different paths, and the task charged with the production
+path has been handed only the unit path.
+
+**What must change** — one of:
+
+1. Give T-10 a second manifest row for `pdlc/workflows/__tests__/waveExecution.test.js`. This is
+   **legal under rule 2**: T-07 is batch 4, T-10 is batch 6, and `T-10 → T-09 → T-07` is a real
+   `Deps` chain, so it is exactly the same shape §3.3 already permits for `orchestrate-dev.js`
+   (T-05 batch 3 → T-09 batch 5). Then drop the words "unit arms only" from T-10's row.
+2. Or move the announcement/report coverage obligation into T-09 (which owns the production edit and
+   whose predecessor owns the test file), and narrow T-10 to the pure-unit gaps it can actually
+   reach.
+
+Whichever is chosen, the DoD's coverage checkbox should name the task that owns each gap class, so
+the assignment is checkable before the batch runs rather than after it halts.
+
+### F-04 (Medium) — the four mutations in §4.3 are claimed, never run
+
+§4.3 is a good table and it is the right analysis. But it is a table of *predictions*: "killed by",
+"landed in". No task is instructed to perform any of the four mutations, no task reports the RED,
+and §4.5 has no checkbox for it. Under this PLAN the four mutations are believed, not observed.
+
+The fourth row is the one this matters most for, because it is the one that is invisible to
+behaviour: "Resolve the ancestry probe eagerly … Killed by AT-03/AT-11 `merge-base` call counts,
+`toEqual` only". TSPEC §5.5 makes the point sharper — the shipped ancestry test's `toContainEqual`
+**passes** under that mutation. A matcher that load-bearing deserves to be demonstrated, not
+asserted; if T-07's author writes `toContainEqual` by muscle memory, nothing in this PLAN notices.
+
+The document already knows the right shape. T-04's row says its falsification arm "is executed and
+recorded in the task's report". Apply that to §4.3.
+
+**What must change.** Assign each of the four mutations to the task that owns the killing test
+(rows 1–4 all land in T-07, except row 1's unit half in T-02), instruct that task to apply the
+mutation, observe RED, revert, and record the observed failure in its task report; and add one DoD
+checkbox: "each of §4.3's four mutations was applied and observed RED against its named oracle."
+
+### F-05 (Medium) — the per-file 85% floor cannot detect this feature's uncovered branches
+
+The floor is real and correctly located: `origin/main:pdlc/workflows/package.json:9` defines
+`test:coverage` as `c8 npm test -- --runInBand && c8 report --check-coverage --per-file --branches
+85 …`, the c8 `include` list carries `orchestrate-dev.js`, and `.github/workflows/pr-tests.yml`
+runs `npm run test:coverage` in the Unit tests job. T-10 correctly runs the gate command rather
+than claiming membership of the include list — that is the right instinct and I want to credit it.
+
+The problem is sensitivity, and it is arithmetic. `orchestrate-dev.js` at `origin/main` is 16,336
+lines with roughly 2,054 branch points by token proxy (`if (`, `?`, `??`, `&&`, `||`). This feature
+adds on the order of twenty: eight classifier arms, seven renderer closures, one lazy-probe
+short-circuit, and the announcement/report branches. Twenty branches out of ~2,000 is about **one
+percent of the denominator**. Unless the module happens to sit within one point of 85%, every one
+of this feature's new branches can be entirely uncovered and `npm run test:coverage` still exits 0.
+
+So the DoD line "`npm run test:coverage` … exits 0" is not falsifiable with respect to *this
+feature*. It is a regression guard for the module, which is worth keeping, but it is not the oracle
+T-10's purpose statement ("close every gap this feature opened") requires.
+
+**What must change.** Keep the whole-file floor as-is, and add a delta-scoped oracle that can
+actually fail. The cheapest form that needs no new tooling: T-10 reports c8's per-file **uncovered
+line list** for `orchestrate-dev.js` and asserts, in the task report, that no uncovered line falls
+inside the ranges this feature introduced — plus a transcribed mapping table (each of the eight
+classifier arms, seven renderers, the short-circuit, and each announcement/report branch → the named
+test that covers it), so a deleted case fails the set rather than moving a percentage by 0.05.
+
 ## Questions
 
 *(pending)*
