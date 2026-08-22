@@ -845,8 +845,12 @@ has run, which is the most expensive place to discover it.
 
 **The floor for this feature is `npm run test:coverage` from `pdlc/workflows`, `--per-file
 --branches 85`** — not "the module is already in the include list". It is named as an obligation of
-the **last implementation wave's `postWaveCommand`** (TE Q-05: yes), so the floor is a wave-level
-gate rather than a PUB-level surprise. That is a PLAN obligation, recorded here and carried as RT-7.
+the **last implementation task** (PLAN T-10, RK-2), which runs it explicitly and reports the measured
+per-file branch number, so the floor is closed inside Phase I rather than surfacing as a PUB-level
+surprise. It is deliberately **not** `implementation.postWaveCommand`: V-13 closes the config surface
+at four keys with a single *global* `postWaveCommand`, so a per-wave-scoped setting is not
+expressible, and a global one would run `test:coverage` after **every** wave — red on waves whose new
+branches are not yet covered. That is a PLAN obligation, recorded here and carried as RT-7.
 
 ## 6. Open Questions
 
