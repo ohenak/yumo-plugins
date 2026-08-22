@@ -60,6 +60,108 @@ unchanged"), so the decision and its upstream agree rather than diverge.
 
 ## Findings
 
+No High findings. All four are against text the v1.1 diff introduced; none blocks Phase P.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | DEC-WVR-04's new write-side oracle conditions `head`'s presence on "when a transport is injected", but the shipped write site makes `head` present only when a transport is injected **and** `rev-parse HEAD` returns `ok` — a `waveHead` of `null` is a reachable shipped outcome with a transport present. Transcribed as written, the key-set equality reds on a legitimate fixture. | Consequences, DEC-WVR-04 row |
+| F-02 | Medium | Local | DEC-WVR-05's new observable trigger names a detector (contiguity of executed wave numbers) that no Consequences row obliges anyone to write. An observable trigger with no observer never fires. | DEC-WVR-05 trigger vs. its Consequences row |
+| F-03 | Low | Local | The criterion's parenthetical describes the past-the-end notice as "emitted **inside** the resume decision"; in the shipped module it is emitted above the ledger block, in the pointer-resolution segment. The discriminant that actually holds is subject-matter plus `explicitPointer`, not code location — and after DEC-WVR-02's extraction the location reading gets worse, not better. | DEC-WVR-03; O-5 |
+| F-04 | Low | Local | The revision-history row ends "No decision, alternative disposition or downstream obligation changed", but four downstream obligations were **added**. A PLAN author who reads that sentence as "Consequences is unchanged" skips the four rows that grew. | Revision history, v1.1 row |
+
+### F-01 (Medium) — the `head` conditional over-specifies the shipped write site
+
+The new row prescribes: *every observed ledger write parses to an object whose key set is exactly
+`{version, feature, planHash, lastGreenWave}` (plus `head` when a transport is injected)*. The
+positive-first shape is right, and set equality rather than containment is right. The parenthetical
+is one clause too strong.
+
+At the write site, `waveHead` starts `null` and is filled only through a successful probe:
+
+```js
+let waveHead = null;
+if (waveGit) {
+  try {
+    const rev = await waveGit(["rev-parse", "HEAD"]);
+    if (rev && rev.ok === true) waveHead = String(rev.stdout ?? "").trim() || null;
+  } catch { waveHead = null; }
+}
+await writeWaveLedger(formatWaveLedger(featureName, planHash, waveNum, waveHead), …);
+```
+
+(`orchestrate-dev.js` `:15590-15602`, inside the `if (waveGit)` branch of the wave loop.) A transport
+that answers commits but returns `ok: false` — or throws — on `rev-parse` writes the **four-key**
+shape with a transport injected, and `formatWaveLedger` `:12325-12331` renders exactly that: the
+`head` key is omitted, not set to `null`. The shipped comment above the site says as much ("Omitted
+(null) when no git transport was injected" is the *other* case it names, but the code's own
+`catch { waveHead = null; }` is the third).
+
+Why it matters for a test rather than for prose: this row is the oracle a PROPERTIES author
+transcribes. Written as a biconditional on transport injection, the assertion is falsified by a fixture
+the feature must keep working — a git fake whose `rev-parse` fails while its commits succeed, which is
+precisely the fail-open behaviour the ledger's `head` field is designed for. The author then either
+weakens the set equality to containment (losing the whole point of the row) or edits a shipped
+behaviour to satisfy a document.
+
+**Required change (one clause).** State the two admissible shapes and assert membership in the set of
+two: *every observed write's key set is exactly `{version, feature, planHash, lastGreenWave}` or
+exactly that set plus `head`; `head` is present iff a transport was injected **and** its
+`rev-parse HEAD` returned `ok`; and no observed write is `{}` or `""`.* That keeps set equality,
+keeps the positive-first shape, and covers the reachable third case.
+
+### F-02 (Medium) — the observable trigger has no observer
+
+DEC-WVR-05's trigger now reads: *the executed wave numbers of a run ever fail to form a contiguous
+ascending run from `startWave` — … and that a test asserting contiguity over the dispatched wave
+numbers reds the day it stops holding.* The property is real: the serial loop
+`for (let waveIndex = 0; waveIndex < waves.length; waveIndex++)` with the single `if (waveNum <
+startWave)` cut-off (`orchestrate-dev.js` `:15368-15372`) is what makes the completed set necessarily
+a prefix, and that is the whole warrant for rejecting O-7.
+
+But the sentence describes a test in the conditional — "a test asserting contiguity … reds the day
+it stops holding" — and DEC-WVR-05's Consequences row obliges only the key-set equality over
+`formatWaveLedger`'s output. No row obliges the contiguity assertion. Compare DEC-WVR-08, whose
+trigger names a regression **and** whose Consequences row commissions the third call-count fixture
+that catches it; and DEC-WVR-03, whose trigger is backed by the catalogue set-equality oracle. Those
+two are the pattern; this one names the observation and stops.
+
+**Required change.** Add the conjunct to DEC-WVR-05's Consequences row: on a resumed run, the
+dispatched wave numbers are asserted **equal** to the contiguous ascending sequence
+`startWave..waves.length`, paired positively with the skipped numbers asserted equal to
+`1..startWave-1` (both set equalities, so a dropped or reordered wave reds rather than passing a
+containment). One assertion, and the trigger acquires the observer it claims.
+
+### F-03 (Low) — "inside the resume decision" is a location reading of a subject-matter criterion
+
+The criterion is sound and the exclusion it produces is correct; this is about the sentence a test
+author will apply it with. The document justifies the past-the-end notice's inclusion by saying it is
+"emitted **inside** the resume decision, from a valid pointer that resolved to a full run, with
+`explicitPointer` **true**". In the shipped module the past-the-end `emit` is at `:15237-15242`, in
+the pointer-resolution segment that begins `let startWave = implConfig.startWave;` `:15230` — *above*
+`if (!explicitPointer) {` `:15263`, i.e. outside the block DEC-WVR-02 extracts into
+`classifyWaveLedger`. Read by location, the past-the-end notice sits with the excluded notice, not
+with the included ones; read by subject matter plus `explicitPointer`, it sits exactly where the
+document puts it. Only the second reading survives the extraction, since afterwards "the resume
+decision" names a pure classifier that emits nothing at all.
+
+**Suggested change.** Drop the location clause and let the two conjuncts the criterion already has do
+the work: *a notice carries a token iff it announces a resolved start point for this run — the
+pointer-resolution and ledger-classification notices do (`explicitPointer` true and false
+respectively); notices about a config key's validity, emitted by the shared `invalidKeys` loop before
+any start point is resolved, do not.*
+
+### F-04 (Low) — "no downstream obligation changed" undersells four added obligations
+
+The v1.1 revision-history row closes: "No decision, alternative disposition or downstream obligation
+changed." Nothing was *removed* or weakened, which is the true and useful half. But four obligations
+were added, all of them oracles a PLAN or PROPERTIES author must carry: the catalogue set-equality
+plus exclusivity conjunct (DEC-WVR-03), the positive write-side key-set equality (DEC-WVR-04), the
+both-shapes key-set equality (DEC-WVR-05), and the third call-count fixture (DEC-WVR-08).
+
+**Suggested change.** "No decision or alternative disposition changed; no downstream obligation was
+removed or weakened, and four were **added** — see the Consequences rows for DEC-WVR-03, -04, -05
+and -08."
+
 ## Questions
 
 ## Positive Observations
