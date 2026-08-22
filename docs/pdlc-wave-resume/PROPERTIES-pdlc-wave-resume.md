@@ -598,11 +598,28 @@ exactly one — so a disconnected seam fails the pair rather than passing the ab
 
 ### Findings routed upstream, not fixed here
 
-Four defects were found in documents this one derives from. Per the erratum convention they are
-emitted as `ERRATUM:` lines in the response, not patched into those documents and not silently
-absorbed into this one. In summary: TSPEC §5.7 leaves the generative run count unpinned while
-PLAN T-08 pins it at 500; TSPEC §5.4 files AT-14 as run-level while FSPEC files it as repo-state;
-PLAN §4.1 inherits that same AT-14 mis-filing; and TSPEC §2.4's config-validation snippet disagrees
-with §5.4's. This document follows the **FSPEC** reading in each case (AT-14 is split across
-PROP-REPO-01 repo-state and PROP-REPO-03 run-side, and PROP-LAW-* pin `numRuns: 500`), and records
-the divergence here so a reader of the tests is never left guessing which parent was believed.
+Each candidate defect in a document this one derives from was **re-verified against those documents
+at HEAD** before being routed, because three of the four raised in this document's first drafting
+pass have since been absorbed by their owners and re-raising a settled question is itself a defect
+(`docs/_decisions/DECISIONS-review-severity-bars.md`, DEC-ERR-01).
+
+| Candidate | State at HEAD | Routed? |
+|---|---|---|
+| TSPEC §5.7 leaves the generative run count at "fast-check's default run count" while PLAN T-08 pins `fc.assert(fc.property(…), { numRuns: 500 })` on the same precedent (`advisoryHelperProperties.test.js`) | **Still open.** TSPEC §5.7's closing convention paragraph says *default*; no `numRuns` or `500` appears anywhere in TSPEC. PLAN T-08 pins 500 and says round-1 F-06 required it. | **Yes** — one `ERRATUM: TSPEC` line. |
+| TSPEC §5.4 files AT-14 at a level that disagrees with FSPEC | **Closed by the owner.** TSPEC §5.4's AT-14 row now reads `repo-state`, matching FSPEC's `AT-14 — the record never becomes tracked content (REQ-WVR-10)`. | No. |
+| PLAN §4.1 inherits an AT-14 mis-filing | **Closed by the owner.** PLAN §4.1 maps `AT-14 → T-03 → waveResumeRepoState.test.js`, and PLAN §3.2 T-03 carries AT-14's three strict conjuncts verbatim. | No. |
+| TSPEC §2.4's config-validation treatment of `implementation.startWave` disagrees with §5.4's | **Not reproducible at HEAD.** §2.4's excluded-notice row and §5.4 AT-06 agree that a rejected value is discarded before any resume decision and that `startWave: 1` is indistinguishable from unset; TSPEC v1.2's erratum round names this as the change that closed it. | No. |
+
+**What this document does with the one open item.** PROP-LAW-01…PROP-LAW-04 pin `numRuns: 500`,
+following PLAN T-08 rather than TSPEC §5.7, because 500 is the depth the cited precedent actually
+runs and a law suite that runs 5× shallower than the block it is modelled on is the weaker of the two
+readings. `## Fixtures` already records this divergence at its run-depth paragraph and names the
+precedent it is measured against, so if the erratum resolves the other way the change is one
+run-depth decision applied to four `fc.assert` calls in a single new file, not a redesign.
+
+**AT-14's two-property split is this document's own choice, not a routed defect.** PROP-REPO-01
+(repo-state: the ignore rule) and PROP-REPO-03 (run-side: no `add` argv names the record) split
+AT-14 because its two conjuncts are falsifiable at different levels and by different fixtures; TSPEC
+§5.4 files the AT as a whole at `repo-state` and folds the run-side conjunct into the same row. Both
+readings assert the same behaviour, and the split is recorded here only so a reader tracing AT-14
+from TSPEC finds two ids rather than one.
