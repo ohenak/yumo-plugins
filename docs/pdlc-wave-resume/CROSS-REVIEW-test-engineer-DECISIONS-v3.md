@@ -127,7 +127,40 @@ delta touched them.
 
 ## Consequences
 
-_(pending)_
+**For Phase D.** DECISIONS is approved as it stands. The two stale raises are Medium and Low, so
+neither blocks convergence; they are corrections owed at the document's next touch, and if that
+touch never comes they are harvest material rather than a shipping defect.
+
+**For the PROPERTIES author, concretely.** Nothing in the transcription changes, and that is the
+load-bearing consequence of this confirmation:
+
+- The announcement set-equality oracle (DEC-WVR-03 Consequences) is transcribed from TSPEC §2.4.
+  At v1.2 that section supplies both halves the assertion needs — the six announcement rows and the
+  one excluded notice — so the oracle can be written from upstream alone. At v1.1 the exclusion
+  existed only in DECISIONS, which is what my v2 erratum was about. The assertion's *content* is
+  identical either way: the set of announcements observed to carry a `(provenance: …)` token equals
+  the token-carrying rows, and `Notice: implementation.startWave in {cfg} is not a valid value —
+  using the default.` is asserted, as a literal, **not** to carry one. A fifth announcement, or a
+  token appearing on the excluded notice, still reds.
+- The seven-code catalogue (DEC-WVR-06) is unchanged; the corrected "three reasons, four values"
+  sentence is a rationale for *why* the codes rather than the sentences are the closed set, not an
+  input to any assertion. No test transcribes the interpolation count.
+- The three-changed-assertion count (DEC-WVR-03, RT-3) is unchanged at three, and §2.4 now states
+  the mechanism that holds it there. A PLAN task that lands a fourth changed assertion is still
+  caught by the announcement task's own full-suite gate.
+
+**For the next DECISIONS revision.** The correction is small and mechanical: delete the two stale
+parentheticals (O-5's closing sentence, O-8's closing sentence), or restate them in the past tense
+as *resolved upstream at TSPEC v1.2* with the erratum round named. A v1.2 revision-history row
+should record it — and, per my v2 F-04, that row should not repeat the "no downstream obligation
+changed" formula without checking, since this correction genuinely changes none while the v1.1 row
+claimed the same while adding four.
+
+**For harvest.** The pattern is worth carrying: an erratum raise embedded in a downstream document's
+prose has a lifetime, and nothing in the pipeline expires it when the upstream honours it. The
+raising document's own text is what goes stale, and only an upstream-cascade confirmation reads it
+again. Filing the raise in the cross-review — which is disposable — rather than in the durable
+document body would have avoided it entirely. Tagged `Process` in the findings below.
 
 ## Delta-Confirmation Findings
 
