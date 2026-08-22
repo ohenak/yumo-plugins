@@ -56,15 +56,20 @@ line number appears it is a locator only; the stable citation is the enclosing e
 
 ### Test levels and the pyramid budget
 
-| Level | Count | Files | Why here |
+| Level | Properties | Files | Why here |
 |---|---|---|---|
-| Unit — pure | 14 | `waveResume.test.js` (new, T-02/T-10) | `classifyWaveLedger`, `parseWaveLedger`, `formatWaveLedger` and the three catalogues are pure and total; every guard arm is cheapest here |
-| Unit — generative | 4 | `waveResumeProperties.test.js` (new, T-08) | four laws over a parser, a serialiser, a hash and a total classifier (TSPEC §5.7) |
-| Integration — through `main()` | 20 | `waveExecution.test.js` (existing, T-07/T-10) | every announcement, report row, dispatch count and written byte lives in `main()`'s Phase I branch and is reachable only through `makeLedgerArgs` |
-| Integration — queue | 1 | `waveResumeQueueParity.test.js` (new, T-04) | the delegation boundary, scoped by DEC-WVR-07 |
-| Repo-state | 4 | `waveResumeRepoState.test.js` (new, T-03) | `.gitignore`, `git check-ignore`, this PLAN's manifest, the promoted `M-WVR-*` facts |
-| Pre-flight | 2 | `waveResumePreflight.test.js` (new, T-01) | the baseline-existence and script-owned-gate gate that must red **before** any dependent wave dispatches |
+| Pre-flight (`P`) | 2 | `waveResumePreflight.test.js` (new, T-01) | the baseline-existence and script-owned-gate gate that must red **before** any dependent wave dispatches |
+| Unit — pure (`U`) | 11 | `waveResume.test.js` (new, T-02/T-10) | `classifyWaveLedger`, `parseWaveLedger`, `formatWaveLedger` and the three catalogues are pure and total; every guard arm is cheapest here |
+| Unit — generative (`UG`) | 4 | `waveResumeProperties.test.js` (new, T-08) | four laws over a parser, a serialiser, a hash and a total classifier (TSPEC §5.7) |
+| Integration — through `main()` (`I`) | 33 | `waveExecution.test.js` (existing, T-07/T-10) | every announcement, report row, dispatch count and written byte lives in `main()`'s Phase I branch and is reachable only through `makeLedgerArgs` |
+| Integration — queue (`Q`) | 4 | `waveResumeQueueParity.test.js` (new, T-04) | the delegation boundary, scoped by DEC-WVR-07 |
+| Repo-state (`R`) | 3 | `waveResumeRepoState.test.js` (new, T-03) | `.gitignore`, `git check-ignore`, this PLAN's manifest, the promoted `M-WVR-*` facts |
+| Coverage / mutation duty (`C`) | 3 | measured by T-10; mutation runs recorded by T-02 and T-07 | the floor and the delta oracle are measured over the complete diff, not per wave |
 | **E2E** | **0** | — | there is no E2E tier in `pdlc/workflows`; `main()`-level integration *is* the top of this pyramid, and the budget of 3–5 E2E tests is therefore spent at zero |
+
+**57 properties.** Four carry both a unit and an integration half (PROP-OVERRIDE-04,
+PROP-SAFETY-02, PROP-RECORD-07 and — across files — PROP-REPO-02/03), so the level column sums
+above 57 by four; every property has exactly one owning task per half.
 
 Six test files, five of them new. Exactly one exists today —
 `pdlc/workflows/__tests__/waveExecution.test.js`, 2,761 lines at `origin/main` — and it is
