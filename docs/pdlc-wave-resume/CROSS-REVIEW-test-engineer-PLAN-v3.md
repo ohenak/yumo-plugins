@@ -193,48 +193,6 @@ and an `origin/main` this edit did not touch. Re-running them could not return a
 The three v2 findings (F-11 Medium, F-12 Medium, F-13 Low) were non-gating and are out of scope for
 a cascade confirmation; they are not re-raised here and their disposition remains the author's.
 
-## Delta-Confirmation Findings
-
-| ID | Severity | Provenance | Locality | Finding | Section anchor |
-|----|----------|-----------|----------|---------|----------------|
-| F-01 | Medium | delta | local | §3.4's `Coverage floor` row describes the erratum as one "this dispatch raises" and frames T-10 as a departure from upstream. The erratum has landed; TSPEC v1.3 §5.8 now assigns the floor to T-10 itself. The row should read as agreement with upstream, not as a defended divergence from it. | PLAN §3.4, `Coverage floor` row (line 286) |
-| F-02 | Medium | delta | local | RK-2 states "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`". TSPEC §5.8 at HEAD says the opposite — the floor is "deliberately **not** `implementation.postWaveCommand`" and is assigned to "the last implementation task (PLAN T-10, RK-2)". PLAN attributes to upstream a sentence upstream no longer contains, and RK-2's closing clause "the difference from TSPEC's wording is raised as an erratum" describes a divergence that no longer exists. | PLAN §4.4, RK-2 row (line 377) |
-
-FINDING: Medium | delta | local | PLAN §3.4 `Coverage floor` row (line 286) | The row says "See RK-2 in §4.4 and the erratum this dispatch raises" and argues T-10 rather than `postWaveCommand`. That erratum has now landed: TSPEC v1.3 §5.8 assigns the floor to the last implementation task (PLAN T-10, RK-2) and disclaims `postWaveCommand` itself. The row's reasoning is still correct and still matches upstream's reasoning verbatim, but its framing as a live, unresolved divergence is stale — it should read as ratified agreement with TSPEC §5.8, dropping "the erratum this dispatch raises".
-
-FINDING: Medium | delta | local | PLAN §4.4 RK-2 row (line 377) | RK-2 asserts "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" and closes "the difference from TSPEC's wording is raised as an erratum". Both statements are false against TSPEC v1.3, which says the floor is "deliberately **not** `implementation.postWaveCommand`" and assigns it to "the last implementation task (PLAN T-10, RK-2)". This is worse than ordinary staleness because TSPEC §5.8 now cites RK-2 as where the obligation lives: a reader following upstream's own pointer arrives at PLAN RK-2 and is told upstream asks for the thing upstream explicitly disclaims. The mitigation half of the row (floor assigned to T-10, per-file number reported, paired with §4.5.1's delta oracle) is correct and should stand; only the risk statement and the erratum clause need rewording.
-
-### Why both are Medium and not High
-
-The demotion is deliberate and rests on the bar in
-`docs/_decisions/DECISIONS-review-severity-bars.md` (DEC-ERR-01): a delta-confirmation finding that
-is a **false statement confined to a hand-off / rationale section** is demoted rather than gating.
-Both findings sit in rationale prose — a "Why" cell in an integration-points table and a "Risk"
-cell in a risk register. Neither is read by a gate, a task, an oracle, a batch derivation or a
-DoD checkbox. Concretely, if this PLAN were handed to an implementer unchanged:
-
-- T-10 would still run `npm run test:coverage` from `pdlc/workflows` with `--per-file --branches 85`
-  and report the measured per-file branch number — exactly what TSPEC v1.3 asks.
-- §4.5.1's delta-coverage mapping table would still be filled and set-equality-checked.
-- §4.5's DoD checkbox at line 412 would still bind the `exits 0` conjunct.
-- No batch, dependency edge, file-ownership row or AT assignment would differ by one character.
-
-The feature ships correctly either way. What is wrong is that PLAN misdescribes its own upstream,
-which costs a future reader — and the harvest phase — accuracy, not the implementation correctness.
-That is the textbook Medium.
-
-Equally, I am not waving them through as Low. A downstream document that contradicts the upstream
-section which cites it back is a real defect with a real reader-facing consequence, and the fix is
-two sentences. Low would understate it.
-
-### Nothing was left unlanded
-
-The routed erratum item — reassign the coverage floor off `postWaveCommand` — landed completely in
-TSPEC: §5.8, the RT-7 mitigation cell, and the revision history all moved together, and the version
-cell was bumped. I found no half-applied edit, no section left describing the old framing, and no
-new claim in TSPEC v1.3 that PLAN fails to carry. The two findings above are the *mirror* of a
-successful erratum, not evidence of a failed one.
-
 ## Questions
 
 | ID | Question |
@@ -285,6 +243,48 @@ disturbed. Both findings are Medium and non-gating — two stale rationale sente
 exist. Neither is read by any gate. They should be corrected in the next touch of this document,
 ideally in the same pass, since RK-2 is now cited *by* TSPEC §5.8 and currently contradicts it.
 No High findings; nothing here should hold up Phase P.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §3.4's `Coverage floor` row describes the erratum as one "this dispatch raises" and frames T-10 as a departure from upstream. The erratum has landed; TSPEC v1.3 §5.8 now assigns the floor to T-10 itself. The row should read as agreement with upstream, not as a defended divergence from it. | PLAN §3.4, `Coverage floor` row (line 286) |
+| F-02 | Medium | delta | local | RK-2 states "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`". TSPEC §5.8 at HEAD says the opposite — the floor is "deliberately **not** `implementation.postWaveCommand`" and is assigned to "the last implementation task (PLAN T-10, RK-2)". PLAN attributes to upstream a sentence upstream no longer contains, and RK-2's closing clause "the difference from TSPEC's wording is raised as an erratum" describes a divergence that no longer exists. | PLAN §4.4, RK-2 row (line 377) |
+
+FINDING: Medium | delta | local | PLAN §3.4 `Coverage floor` row (line 286) | The row says "See RK-2 in §4.4 and the erratum this dispatch raises" and argues T-10 rather than `postWaveCommand`. That erratum has now landed: TSPEC v1.3 §5.8 assigns the floor to the last implementation task (PLAN T-10, RK-2) and disclaims `postWaveCommand` itself. The row's reasoning is still correct and still matches upstream's reasoning verbatim, but its framing as a live, unresolved divergence is stale — it should read as ratified agreement with TSPEC §5.8, dropping "the erratum this dispatch raises".
+
+FINDING: Medium | delta | local | PLAN §4.4 RK-2 row (line 377) | RK-2 asserts "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" and closes "the difference from TSPEC's wording is raised as an erratum". Both statements are false against TSPEC v1.3, which says the floor is "deliberately **not** `implementation.postWaveCommand`" and assigns it to "the last implementation task (PLAN T-10, RK-2)". This is worse than ordinary staleness because TSPEC §5.8 now cites RK-2 as where the obligation lives: a reader following upstream's own pointer arrives at PLAN RK-2 and is told upstream asks for the thing upstream explicitly disclaims. The mitigation half of the row (floor assigned to T-10, per-file number reported, paired with §4.5.1's delta oracle) is correct and should stand; only the risk statement and the erratum clause need rewording.
+
+### Why both are Medium and not High
+
+The demotion is deliberate and rests on the bar in
+`docs/_decisions/DECISIONS-review-severity-bars.md` (DEC-ERR-01): a delta-confirmation finding that
+is a **false statement confined to a hand-off / rationale section** is demoted rather than gating.
+Both findings sit in rationale prose — a "Why" cell in an integration-points table and a "Risk"
+cell in a risk register. Neither is read by a gate, a task, an oracle, a batch derivation or a
+DoD checkbox. Concretely, if this PLAN were handed to an implementer unchanged:
+
+- T-10 would still run `npm run test:coverage` from `pdlc/workflows` with `--per-file --branches 85`
+  and report the measured per-file branch number — exactly what TSPEC v1.3 asks.
+- §4.5.1's delta-coverage mapping table would still be filled and set-equality-checked.
+- §4.5's DoD checkbox at line 412 would still bind the `exits 0` conjunct.
+- No batch, dependency edge, file-ownership row or AT assignment would differ by one character.
+
+The feature ships correctly either way. What is wrong is that PLAN misdescribes its own upstream,
+which costs a future reader — and the harvest phase — accuracy, not the implementation correctness.
+That is the textbook Medium.
+
+Equally, I am not waving them through as Low. A downstream document that contradicts the upstream
+section which cites it back is a real defect with a real reader-facing consequence, and the fix is
+two sentences. Low would understate it.
+
+### Nothing was left unlanded
+
+The routed erratum item — reassign the coverage floor off `postWaveCommand` — landed completely in
+TSPEC: §5.8, the RT-7 mitigation cell, and the revision history all moved together, and the version
+cell was bumped. I found no half-applied edit, no section left describing the old framing, and no
+new claim in TSPEC v1.3 that PLAN fails to carry. The two findings above are the *mirror* of a
+successful erratum, not evidence of a failed one.
 
 ## Verdict
 
