@@ -215,6 +215,74 @@ finding from this round remains open at `20b301d0`**. The remaining open items a
 (Medium, non-gating) and F-09 (Low, non-gating), of which F-06 and F-09 are routed upstream as
 errata rather than as defects of the implementation.
 
+## Closing Pass (3) — Whole-Document Re-Verification at `5e952bdb`
+
+HEAD advanced once more after Closing Pass (2) (`20b301d0` → `2c3cd864` and `80d41e4f`, both
+cross-review docs, → `5e952bdb`). Only `5e952bdb` carries code, and `git show --stat 5e952bdb`
+shows it touches **four test files and no production file** (`learningsBlock.test.js`,
+`learningsDispatchSet.test.js`, `learningsRecord.test.js`, `learningsSelect.test.js`; +212/-0).
+Every closure recorded in the two passes above therefore stands unchanged — none of them depended
+on a test that this commit rewrote, and no production line moved under them. This pass re-locates
+the three findings that were still open, and reviews the five new tests against the same bars the
+rest of this round applied.
+
+### Re-check of the still-open findings
+
+| Finding | Anchor at `5e952bdb` | Status |
+|---------|----------------------|--------|
+| F-06 | `learningsBlock.test.js:238-267` | **Closed.** The multi-section cut now has the pinned oracle this finding asked for: a two-section fixture at a 60-byte bound whose expected `material` is a **literal transcription** — `"## 2. Cross-Feature Patterns\n\n" + "a".repeat(20) + "\n\n## 3. No"` — with the byte arithmetic (50 + 2 + 8 = 60) hand-shown in the comment and computed from the fixture, never from `extractInjectableMaterial`. It pins `sections` by set equality over both names with the §D.3 iff-rule restated, and adds an unbounded control (96 bytes, `bounded: false`) proving the 60 is the cut's doing and not the fixture's. The truncated heading is asserted as shipped, with the FSPEC/TSPEC divergence named in the comment and routed as `ERRATUM: FSPEC` — exactly the "pin it so reconciliation cannot happen silently" shape. |
+| F-07 | `learningsSelect.test.js:386-416` | **Open, Medium, non-gating.** The AT-13 comment still records the fixture as tuned to `propagateBytes` ("4973 is therefore what lands each document's material on exactly 5000 bytes … at 5000 … the byte failure would move off the window's last slot"), and `grep -n 'propagat' docs/pdlc-learnings-injection/{REQ,FSPEC,TSPEC,PLAN,PROPERTIES}-*.md` still returns no match. No upstream document owns the reason id for a document that is both outside the count window and behind a binding total-byte bound. Q-04 stands unanswered. |
+| F-09 | `orchestrate-dev.js:2550` | **Open, Low, non-gating.** ``const opener = `<<< ${doc.path} — feature ${feature}, completed ${doc.orderKey}${abridged} >>>`;`` still interpolates the order key unguarded, so a null key renders as the literal `null`. Routed upstream as `ERRATUM: TSPEC`; not a defect of the implementation against any written contract. |
+
+### Green at HEAD
+
+```
+$ node pdlc/workflows/build-runtime.mjs --check
+  in-sync  pdlc/workflows/dist/pdlc-cli.mjs        # exit 0  -> F-05 stays closed
+$ npm test -- __tests__/learnings __tests__/consolidationBuild.test.js
+Test Suites: 15 passed, 15 total
+Tests:       224 passed, 224 total                  # 106 at 6b72d587 -> 224 here
+```
+
+### The five new tests, against this round's bars
+
+- **No implementation echoes.** Every expected value in the five is a literal or a hand-transcribed
+  constant. `PROP-RECORD-06` asserts `["orderKey", "path"]` as a sorted literal
+  (`learningsRecord.test.js:341`); `PROP-ISOLATE-02` transcribes eighteen SHA-256 digests inline and
+  recomputes only the *observed* side (`learningsDispatchSet.test.js:664-681`) — the manifest is not
+  regenerated inside the assertion, which is the failure mode that would make a digest test
+  unfalsifiable against precisely the drift it exists to catch.
+- **No absence-only oracles.** `PROP-DISPATCH-06` pairs its three negatives with the positive
+  `expect(block).toBe("")` on the same path (`learningsBlock.test.js:283-285`); `PROP-RECORD-06`
+  pairs `not.toBe("")` / `not.toBeUndefined()` with the positive `toBeNull()` **and** a JSON
+  round-trip proving the key survives as a literal `null` (`learningsRecord.test.js:343-350`);
+  `PROP-ORDER-04`'s forbidden-token scan is guarded on both ends — a positive control that the
+  extracted spans are non-empty and are the right ones (`ISO_DATE_RE`, `Buffer.compare`), and a
+  separate negative control planting `new Date(` to prove the matcher fires
+  (`learningsSelect.test.js:298-317`). A static scan without those two conjuncts is the classic
+  test that can only pass; both are present.
+- **Set equality, not containment.** `PROP-ISOLATE-02` asserts
+  `new Set(observedPaths)` equals `new Set(Object.keys(EXPECTED_DIGESTS))` before comparing digests,
+  plus a non-vacuity control that the enumerated set is non-empty — so an added or deleted SKILL.md
+  reds rather than being skipped by both sides. It enumerates via real `git ls-files`, correctly
+  refusing a scripted double for files no run's fixture contains.
+- **Runtime oracle, not a shape assertion.** `PROP-CORPUS-02` is a call-count spy
+  (`enumerateCalls.length === authoringCalls.length`, `learningsDispatchSet.test.js:369-371`) driven
+  through `runScenario`'s real `mainDev`, with `authoringCalls.length > 0` guarding against the
+  vacuous `0 === 0`. This is the right instrument for a behaviour-indistinguishable envelope.
+
+One durable observation, recorded rather than filed as a finding (it is not a defect of this
+feature, and this round's counts are its record): `PROP-ISOLATE-02`'s manifest pins the digest of
+**every** `pdlc/skills/**` file repo-wide, including SKILL.md files no future feature has any reason
+to leave alone. It will red on the next legitimate skill edit, at which point the manifest must be
+re-transcribed by hand. That is the intended cost of a digest oracle for BR-16's scope boundary, and
+the comment says so — but it is a maintenance obligation that belongs in the harvest, not a surprise
+for the next feature's author.
+
+**Effect on the verdict: none.** The counts in `## Verdict` record what this round found at
+`6b72d587`, not what survived remediation. For the record, at `5e952bdb` **no High and no Medium
+finding remains open except F-07**, and F-06 and F-09's substance is routed upstream as errata.
+
 ## Verdict
 
 VERDICT: Needs revision
