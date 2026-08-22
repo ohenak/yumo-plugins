@@ -69,6 +69,79 @@ named that no task creates, and no task creates a file the document does not nam
 
 ## Delta Reviewed
 
+Two substantive additions beyond the re-verification table. I checked both against the parents,
+because both are places where a PROPERTIES document decides something on its own authority.
+
+### The document picks PLAN over TSPEC on run depth, and says so twice
+
+`PROPERTIES:613–618` states that PROP-LAW-01…04 pin `numRuns: 500` following PLAN T-08 rather than
+TSPEC §5.7's "default", and gives the reason: 500 is the depth the cited precedent
+(`advisoryHelperProperties.test.js`) actually runs, and a law suite running 5× shallower than the
+block it is modelled on is the weaker reading.
+
+From the product lens this is the right posture and it is correctly executed. A PROPERTIES document
+that finds its two parents in conflict has three options — silently pick one, halt, or pick one and
+record the divergence where the reader of the tests will hit it. This takes the third, and the
+divergence is recorded in **both** places a reader would look: here, and at the run-depth paragraph
+in `## Fixtures` (`PROPERTIES:404–407`), which names the precedent and quotes its
+`const runs = { numRuns: 500 }` declaration. The four `fc.assert` sites at `PROPERTIES:289–292` all
+carry `{ numRuns: 500 }` consistently, so the choice is applied uniformly rather than half-applied.
+The document's own note that reversing this is "one run-depth decision applied to four `fc.assert`
+calls in a single new file, not a redesign" is accurate — I checked, and all four sites are in
+`waveResumeProperties.test.js` (PLAN T-08).
+
+This is why the conflict belongs upstream as an erratum against TSPEC and **not** as a finding
+against this document: the document behaved correctly given a defective parent. I emit the
+`ERRATUM: TSPEC` line rather than folding it into my verdict.
+
+### AT-14's two-property split is faithful, and I verified it conjunct by conjunct
+
+`PROPERTIES:620–625` claims the PROP-REPO-01 / PROP-REPO-03 split is the document's own presentation
+choice and that "both readings assert the same behaviour". That is a completeness claim about an
+acceptance criterion, so I checked it against TSPEC's single row rather than accepting it:
+
+| TSPEC `:757` AT-14 conjunct | Where it lands in PROPERTIES | Verdict |
+|---|---|---|
+| (i) a line **equal** to `/.claude/pdlc-wave-state.json` in `.gitignore` | PROP-REPO-01 (`:188`), oracle `:284` (i) `toContain` element-equality over lines | preserved verbatim |
+| (ii) that matched line is root-anchored, leading `/` asserted on it | PROP-REPO-01, oracle `:284` (ii) | preserved verbatim |
+| (iii) `git check-ignore -v` resolves to **that** line, not a broader pattern | PROP-REPO-01, oracle `:284` (iii) | preserved verbatim |
+| plus: no `implementation.postWavePathspecs` value and no PLAN-owned path names it | PROP-REPO-02 (`:189`), filed under **AT-17** | preserved, re-filed — and this matches PLAN T-03 (`:117`), which likewise files that conjunct under AT-17 |
+| run-side: no commit a run produces contains the record | PROP-REPO-03 (`:190`) | preserved, split to the integration level |
+
+Nothing is dropped, narrowed, or reinterpreted. The one re-filing (the manifest conjunct moving to
+AT-17) is not this document inventing a mapping — PLAN T-03 already files it that way, so PROPERTIES
+is consistent with its immediate parent. AT-14's traceability row (`:446`) names both ids and both
+tasks, so a reader tracing AT-14 from TSPEC finds two ids and is told why. The claim holds.
+
+### Oracle-quality checks over the delta's scope
+
+The three standards, applied to the properties the delta discusses:
+
+- **No absence-only oracles.** PROP-REPO-03 is the one at risk — it is a negative ("no `add` argv
+  names the record"). `PROPERTIES:286` pairs it explicitly: the negative
+  `expect(...).not.toContain(".claude/pdlc-wave-state.json")` is asserted alongside the positive
+  conjunct that the expected wave pathspecs **are** in that same list, so an empty `gitCalls` list
+  cannot false-green it. The document states that rationale in its own right-hand column. Correct.
+  PROP-REPO-05 (`:288`) likewise asserts on the record in both arms rather than only on the halt.
+- **No implementation echoes.** PROP-REPO-04's version oracle (`:287`) asserts strictly-greater than
+  the literal `1.2 · 2026-08-20` transcribed from the PLAN as found — a literal from the spec, not a
+  value read back out of the file under test. Correct, and the "strictly greater rather than a
+  pinned 1.3" reasoning is the right call for a file that may move before promotion.
+- **Completeness by set-equality.** The enumerated contracts the delta touches are the PLAN task set
+  (checked above — seven for seven, both directions) and the AT-14 conjunct set (checked above — five
+  for five). PROP-LAW-03 (`:200`) additionally holds the three closed catalogues to membership over
+  `RESUME_OUTCOMES`, `RESUME_PROVENANCE` and `Object.keys(WAVE_IGNORE_REASONS)`, which is what makes
+  BR-01's closure mechanical rather than prose. Unchanged by this delta, but it is the thing that
+  would fail if a case were deleted.
+
+### Did the revision break anything?
+
+No. The diff deletes ten lines, all of them the superseded routed-findings prose, and adds
+twenty-seven. No property id, oracle row, fixture, generator, or traceability-matrix row is touched.
+The property set at HEAD is identical to the set I saw at `1b9de7c0`. The AT / BR / EC / REQ matrices
+are byte-unchanged, so the coverage posture my v1 Grounding recorded as strong (AT-01…AT-18, BR-01…
+BR-17, EC-01…EC-21 with EC-17/18/19 explicitly parked, all ten REQ-WVR ids) still stands.
+
 ## Findings
 
 ## Questions
