@@ -179,4 +179,5 @@ FINDING: Low | delta | local | §4.4 Risk register — RK-2 | RK-2 states "TSPEC
 
 ## Verdict
 
-*(pending)*
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
