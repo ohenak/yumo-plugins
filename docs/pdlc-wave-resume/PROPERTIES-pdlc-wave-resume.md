@@ -539,3 +539,70 @@ predecessors at PLAN v1.1 and are not reused.
 
 
 ## Gaps, Risks and Routed Findings
+
+### Gaps — obligations this document knowingly does not cover
+
+**G-1 · EC-18 "stale but passing" is bounded, not asserted.** EC-18 describes a record that survives
+every disregard check yet no longer describes the tree — the PLAN is byte-identical, the feature key
+matches, and the recorded head is still an ancestor, but the wave's *content* was amended in a way
+ancestry cannot see. No property asserts EC-18 directly, because no in-suite fixture can produce a
+tree that is simultaneously ancestry-clean and semantically stale without reaching for real git
+history. What bounds the risk instead is PROP-SAFETY-01: the gate re-runs on every executed wave and
+the run's correctness never depends on the record being accurate, so an EC-18 record costs a skipped
+wave, not a wrong result. This is a deliberate residual, and it is the reason REQ-WVR-06 forbids
+treating commit presence as completion.
+
+**G-2 · EC-17 (record absent because the worktree is fresh) is covered only in its run-facing half.**
+PROP-DISREGARD-03 asserts the silent full run when no record is readable, which is EC-17's observable
+consequence. What is not asserted is the *cause* — that a Claude-created worktree does not carry
+`.claude/pdlc-wave-state.json` because `.worktreeinclude` does not list it. That is a property of the
+consumer's worktree configuration, not of `orchestrate-dev.js`, and asserting it in this suite would
+be testing git rather than the feature. Routed to the repo-level worktree decision (D-DIST-07) rather
+than fabricated here.
+
+**G-3 · No E2E tier.** `pdlc/workflows` has no end-to-end harness at `origin/main`, and this feature
+does not introduce one; `main()`-level integration is the top of the pyramid, exactly as TSPEC §5.1
+states. The consequence is honest: nothing in this suite proves that a *real* interrupted pipeline,
+resumed by a *real* operator, lands where PROP-RESUME-01 says it lands. The pre-flight properties
+(PROP-PRE-01/-02) exist partly to compensate — they assert the shipped constant and the shipped
+ignore path in the built artifact, which is the nearest thing to an end-to-end anchor available.
+
+**G-4 · PROP-REPO-01 is expected RED before the rebase.** It asserts `/.claude/pdlc-wave-state.json`
+in `.gitignore`, which exists at `origin/main:.gitignore:41` but not in this pre-rebase tree. The
+property is written against the post-rebase state and must not be weakened to pass locally; a green
+PROP-REPO-01 in this tree would mean the assertion had been softened, which is the failure mode
+REQ BL-04 and FSPEC OB-F1 were opened to prevent.
+
+### Risks in the oracles themselves
+
+**R-1 · Whole-string announcement assertions are brittle by construction.** PROP-RESUME-04,
+PROP-SKIP-03 and PROP-OVERRIDE-05 assert exact announcement text, including the U+2013 en-dash in
+`Waves 1–1`. That is intentional — an announcement is a contract with the operator and a substring
+match would let a truncated or mis-numbered line pass — but it means any copy edit to those strings
+is a test change, and a copy edit made with an ASCII hyphen will fail in a way whose diff is hard to
+read. The mitigation is in `## Fixtures`: announcement expectations are built from named constants,
+so the dash lives in exactly one place per string.
+
+**R-2 · Captured-envelope fixtures can encode a bug as an expectation.** Honoured-record fixtures are
+captured from a first run (`ledgerWrites(firstWrites)[0]`) rather than hand-written, which keeps the
+record's shape truthful as the writer evolves. The cost is that if the writer emits a wrong record,
+the reader's test will faithfully accept it. This is why every *rejection* fixture is a hand-built
+literal instead, and why PROP-LAW-01 and PROP-LAW-02 check the round-trip generatively rather than
+against captured bytes: the two styles falsify each other.
+
+**R-3 · Call-count controls are absence-shaped.** PROP-DISREGARD-07's "no ancestry probe was
+attempted" is proved by a zero call count on the git seam. A zero count is an absence, and absence
+oracles pass when the seam is never wired at all. Each such property therefore carries a positive
+companion in the same test — an ancestry-dependent code in the same table that asserts a count of
+exactly one — so a disconnected seam fails the pair rather than passing the absence.
+
+### Findings routed upstream, not fixed here
+
+Four defects were found in documents this one derives from. Per the erratum convention they are
+emitted as `ERRATUM:` lines in the response, not patched into those documents and not silently
+absorbed into this one. In summary: TSPEC §5.7 leaves the generative run count unpinned while
+PLAN T-08 pins it at 500; TSPEC §5.4 files AT-14 as run-level while FSPEC files it as repo-state;
+PLAN §4.1 inherits that same AT-14 mis-filing; and TSPEC §2.4's config-validation snippet disagrees
+with §5.4's. This document follows the **FSPEC** reading in each case (AT-14 is split across
+PROP-REPO-01 repo-state and PROP-REPO-03 run-side, and PROP-LAW-* pin `numRuns: 500`), and records
+the divergence here so a reader of the tests is never left guessing which parent was believed.
