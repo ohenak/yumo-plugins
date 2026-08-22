@@ -428,12 +428,12 @@ would silently flip an over-count record with an unreachable head from `head-unr
 |---|---|
 | DEC-WVR-01 | One comment-block replacement in `orchestrate-dev.js`; no behavioural diff in that task. The replacement states the surface correctly (three pure functions, one read site, one write site), since the shipped INTERIM comment miscounts it. |
 | DEC-WVR-02 | The extraction lands as **its own task, before any announcement change**, with the shipped ledger `describe` block kept green **entirely unchanged by that task** — it is the extraction's regression net. |
-| DEC-WVR-03 | Exactly three shipped whole-string assertions change, in the **same task** as the announcement change, each to the new whole string transcribed as a literal. No matcher is relaxed to a `startsWith` or an `includes`; doing so would retire the exact-wording oracle, a strictly larger change than this feature owes. |
-| DEC-WVR-04 | A test, not a code change: the `{}` and `""` inputs are asserted to reach the silent no-record outcome, and the absence of any `{}` writer is asserted over the write site. |
-| DEC-WVR-05 | The record's format is frozen at `version: 1`; no PLAN task may add a field. |
+| DEC-WVR-03 | Exactly three shipped whole-string assertions change, in the **same task** as the announcement change, each to the new whole string transcribed as a literal. No matcher is relaxed to a `startsWith` or an `includes`; doing so would retire the exact-wording oracle, a strictly larger change than this feature owes. **Plus one oracle that closes the catalogue:** the set of announcements observed to carry a `(provenance: …)` token is asserted **equal** to the announcing rows transcribed from TSPEC §2.4, and the excluded notices are enumerated in the same assertion as literals — the invalid-`startWave` config-validation notice, and the IG-6 no-record silence — so a fifth announcement, or a token appearing on an excluded notice, reds an assertion instead of passing containment. **And one exclusivity conjunct:** no run emits a Phase I detail matching both `✅` shapes; a wave-1 run's detail is asserted equal to the shipped `All M waves complete (wave mode, {gate})` literal, which is what stops a future refactor emitting the resume sentence with `1–M` for a fresh run. |
+| DEC-WVR-04 | A test, not a code change: the `{}` and `""` inputs are asserted to reach the silent no-record outcome (positive, on the read path), **and the write path is asserted positively, with the absence as a derived conjunct**: on a run that commits at least one wave, every observed ledger write parses to an object whose key set is **exactly** `{version, feature, planHash, lastGreenWave}` (plus `head` when a transport is injected), and no observed write is `{}` or `""`. Set equality, not containment — so a writer that drops a field, emits a cleared shape, **or disappears entirely** reds the assertion. An absence-only oracle ("no write equals `{}`") would be satisfied by a run that writes nothing at all, and is not what this row prescribes. |
+| DEC-WVR-05 | The record's format is frozen at `version: 1`; no PLAN task may add a field — enforced mechanically, not by prohibition on the PLAN author: set equality over the keys `formatWaveLedger` emits, asserted in **both** shapes (`head` present and `head` absent). `version` is written and not read, so the freeze binds the writer only (see the decision). |
 | DEC-WVR-06 | Three frozen catalogues, each transcribed into a test as a literal so an addition or a deletion reds an assertion. |
 | DEC-WVR-07 | AT-16 carries its own residual-gap sentence; a reviewer who reads it as full parity has misread it, and the sentence is what prevents that. |
-| DEC-WVR-08 | Two call-count oracles asserted as **equalities**: zero `merge-base` calls on the feature-mismatch and plan-hash-mismatch fixtures, exactly one on the ancestry fixture. |
+| DEC-WVR-08 | **Three** call-count oracles asserted as **equalities**: zero `merge-base` calls on the feature-mismatch and plan-hash-mismatch fixtures, exactly one on the ancestry fixture, and exactly one on an **over-count record whose head is unreachable** — which must announce `head-unreachable`, not `over-count`. That third fixture is the only one that pins the laziness and the guard order together (`over-count` is not in `ANCESTRY_INDEPENDENT_CODES`, so the probe fires and the record re-classifies); without it, adding `over-count` to that set to save a subprocess would flip the announced reason with nothing red: both codes stay in the seven, so AT-02's set equality holds, and the shipped over-count test asserts by containment. |
 
 ### What is deliberately left open, and where it goes
 
@@ -444,14 +444,24 @@ Per DC-08, each unresolved item names a successor surface rather than an intent:
 | The branch is 1,637 commits behind and carries neither the mechanism nor `docs/_constraints/pdlc-wave-gate-baseline.md` (TSPEC OB-F1). | Orchestrator/operator branch management, **before** implementation. It is a PLAN sequencing precondition: the wave carrying the ignore-rule assertion (AT-14) must not be dispatched before the rebase, because in wave mode a red gate halts that wave and every wave after it. |
 | Promotion of REQ OF-1/OF-2 into the wave-gate baseline as `M-WVR-1..2` (TSPEC OB-F4). | A dedicated PLAN task owning that file — a document change, not a code change — appending a **new** section at the next unoccupied number and bumping the file's `Version` to the next above whatever is found at promotion time. |
 | Advisory budget interaction: shorter, more numerous runs refresh `advisory.waveBudgetPerRun` per invocation (TSPEC RT-6). | Recorded, not coordinated. Nothing in these decisions changes it, and clearing a halt still requires a human. |
+| AT-16 observes the delegation's *shape*, not a delegated resume: FSPEC BR-16's behavioural half — that a delegated and a direct run resolve the same outcome, resume point and provenance — is discharged on the **direct path only** (REQ-WVR-07, P2, Phase 2). DEC-WVR-07 names this inside AT-16's own text, but a sentence in a test is a disclosure, not a successor surface. | The re-evaluation trigger DEC-WVR-07 already names: **the queue's delegation payload growing a second key**, at which point the stronger assertion becomes available for free. Until then the gap stays here, in the table a future reader consults, rather than only inside the test. |
 
 ### Risks these decisions accept
 
-- **A fourth whole-string assertion is discovered mid-wave.** Mitigated by running the full
-  `pdlc/workflows` suite as the announcement task's own gate before the wave's, and by the rule that
-  any further changed assertion is added to TSPEC §2.4's table in the same commit — never absorbed
-  by relaxing a matcher.
-- **Rebase churn in the largest tracked file in the repo** (`orchestrate-dev.js`, 734,711 bytes).
+- **A fifth announcement, or a fourth changed whole-string assertion, is discovered mid-wave.** The
+  fourth *announcement* is no longer an unforeseeable discovery: the invalid-`startWave` notice is
+  identified and excluded by rule in O-5 and DEC-WVR-03. Two residual halves remain, and each has its
+  own mitigation, because a suite run only covers one of them. The **loud** half — an assertion that
+  changes — is mitigated by running the full `pdlc/workflows` suite as the announcement task's own
+  gate before the wave's, and by the rule that any further changed assertion is added to TSPEC §2.4's
+  table in the same commit, never absorbed by relaxing a matcher. The **silent** half — an
+  announcement that *should* carry a token and is simply left untouched, which reds nothing — is
+  mitigated by the set-equality oracle over the token-carrying announcements with the exclusions
+  enumerated as literals (DEC-WVR-03's Consequences row). Without that oracle this risk has no
+  detector at all.
+- **Rebase churn in the largest tracked *source module* in the repo** (`orchestrate-dev.js`,
+  734,711 bytes; second overall behind the generated `pdlc/workflows/dist/pdlc-cli.mjs` at 738,924
+  bytes, which is built *from* it — which is exactly why the third risk below exists).
   Mitigated by the small, localised edit surface these decisions produce — one comment block, one
   extracted function, three announcement suffixes, one report detail — and by rebasing *before*
   implementation rather than during it.
