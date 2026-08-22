@@ -78,7 +78,54 @@ The three findings above are recorded, not gating. F-01 (v2) is a scope-ledger d
 
 Nothing in the five post-draft commits broke anything I approved: LI-13 and LI-22 are the PLAN's own final tasks, the two review-file commits touch no code, and the two remaining commits each close a finding. My two open findings are Low, both with the code half already in the state I would ask for and the durable half routed upstream.
 
+**Second closing pass (re-verified at HEAD = `2c3cd864`).** The pass above was measured at
+`558d0d96`, which is **no longer reachable** — the branch history was rewritten after it, so every
+hash that pass cites has been replaced. I re-ran the pass against the current tree rather than
+re-labelling the old one, and it changed two things.
+
+**1. F-03 (v2) is closed upstream; the FSPEC/REQ errata I routed have landed.** That finding said
+the overflow rule was correct but *derived* — BR-5/BR-6 and AC-3.2 did not state the mixed case
+(count cut and total-byte failure in the same selection), so `LI-AT-13` was the only place it was
+written down. Both halves are now stated. FSPEC v0.14 carries a **"The mixed case, stated."**
+paragraph under BR-6: "Documents past the window carry `RSN-COUNT` whatever the window's byte
+outcome turns out to be; only documents the total bound dropped from inside the window carry
+`RSN-BYTES`", and it records the rejected `propagateBytes` reading with the concrete operator
+symptom that killed it (a failure at window index 2 labelling documents 6+ `RSN-BYTES` while the
+same failure at index 4 labels them `RSN-COUNT`). REQ v0.10's **AC-2.4** carries the product half:
+each dropped document is "**attributed to the bound that actually removed it**… The reason ids of
+AC-3.2 name causes, not coincidences." I checked the code against the new text rather than assuming
+they were written together — `selectLearnings`'s overflow loop still pushes `RSN-COUNT`
+unconditionally, and the epitaph comment above it has been rewritten from "routed upstream" to
+"Code and specification now agree; there is nothing left routed", which is now a true statement.
+**F-03 is resolved and removed from the counts**, and the `ERRATUM: FSPEC` / `ERRATUM: REQ` lines
+my draft carried are **withdrawn** — re-routing a landed erratum would send the author back to work
+already done. Counts fall from `{0,0,2}` to `{0,0,1}`; the verdict value is unchanged.
+
+**2. F-02 (v2) is still open, and I confirmed it rather than assuming it survived.** TSPEC §D.2's
+BR-10 locus-1 comment still reads "ordering key **per corpus document**, as observed by THIS
+dispatch", and the illustrative `runMirror` still shows an `{ path: "docs/x/LEARNINGS-x.md",
+orderKey: null }` entry, while `selectLearnings` still derives `orderKeys` from `ordered` — the
+eligible documents only — so a rejected document produces no entry and the document's own example
+remains a shape the code does not emit. Still Low: `rejected[]` carries the reason, so nothing an
+operator needs is lost. Its `ERRATUM: TSPEC` line stands, as does Q-01's (§D.2's `mode: "creator"`
+literal, still present, still outside `selectMode`'s `{authoring, revision}` codomain).
+
+**Re-measured, not carried forward.** `node pdlc/workflows/build-runtime.mjs --check` prints
+`in-sync pdlc/workflows/dist/pdlc-cli.mjs`, exit 0 — the rewritten history re-staled and re-rebuilt
+the bundle, and it is in sync at HEAD, so v1 F-01 stays closed against the tree that will actually
+ship. The feature's suites are **235/235 green across 16 suites**; the pass above measured 147/147
+across 14, and the difference is one new commit adding **419 lines of test** for eight PROPERTIES
+properties that no AT-driven suite reached. I sampled it rather than counting lines: its
+PROP-ORDER-01 case is the kind of test I would have asked for — it picks a path pair where UTF-16
+code-unit order and UTF-8 byte order **disagree** (U+FFFF versus U+10000), asserts the fixture's two
+orderings really do disagree *before* asserting on the comparator, and pins both documents to an
+identical absent `Date Completed` so the path comparator alone decides. That is a fixture that can
+fail for the reason it names. Nothing in the three post-pass commits touches behaviour I approved:
+one is test-only, one is the dist rebuild, one is another reviewer's file. The
+`documentOracles.test.js` AT-22 caveat recorded above stands unchanged — still an untracked-worktree
+artifact of this machine, not a defect of this feature.
+
 ## Verdict
 
 VERDICT: Approved with minor changes
-{"high": 0, "medium": 0, "low": 2}
+{"high": 0, "medium": 0, "low": 1}
