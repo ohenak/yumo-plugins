@@ -86,6 +86,18 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > 19" or "row 23" is historical record and keeps its meaning: the feature name, not the row, is the
 > identity.
 
+> **Row 21 (`pdlc-learnings-injection`) removed from this table on 2026-08-22.** Merged as
+> `8880f5d5` (#70, 2026-08-22) and the per-feature docs moved to
+> `docs/completed/pdlc-learnings-injection/`, LEARNINGS included;
+> `learningsErratumBinding.test.js`'s FSPEC/REQ path pins were repointed to the
+> `docs/completed/` paths in the same change. The feature shipped on the engine channel the
+> same day as `@kaneho/pdlc-engine@0.2.3` (tag cut at the #71 merge commit `4d11b9c9`, which
+> also advertised plugin `0.23.4`; evidence convention:
+> `docs/completed/pdlc-engine-distribution/EVIDENCE-ENGINE-V0.2.2.md` records the predecessor).
+> `Order` value 21 stays allocated, never reused. No live row names the feature in
+> `Depends-On`, so nothing else in the table moves. Prose below that says "row 21" is
+> historical record and keeps its meaning: the feature name, not the row, is the identity.
+
 
 | Order | Status | Feature | REQ Path | Depends-On | Engine |
 |-------|--------|---------|----------|------------| --- |
@@ -93,7 +105,6 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |  |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |  |
 | 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
-| 21 | pending | pdlc-learnings-injection | docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md | — |  |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
 | 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
 | 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |

@@ -27,8 +27,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..", "..");
 const read = (relPath) => readFileSync(join(repoRoot, relPath), "utf8");
 
-const FSPEC = "docs/pdlc-learnings-injection/FSPEC-pdlc-learnings-injection.md";
-const REQ = "docs/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md";
+const FSPEC = "docs/completed/pdlc-learnings-injection/FSPEC-pdlc-learnings-injection.md";
+const REQ = "docs/completed/pdlc-learnings-injection/REQ-pdlc-learnings-injection.md";
 const DEV = "pdlc/workflows/orchestrate-dev.js";
 const CAPTURE = "scripts/capture-learnings-baseline.mjs";
 
