@@ -51,6 +51,56 @@ is absent from the tree except as the historical note at `:2451`, and the delete
 guard survives only as the commented-out line at `:2498`, both consistent with F-04 and F-07 being
 resolved by deletion rather than by re-shaping.
 
+**Second closing pass (whole document re-verified at HEAD `ef62951f`).** Between the first closing
+pass (HEAD `558d0d96`) and this one, four commits landed — `20b301d0` and `5e952bdb` (PROPERTIES
+coverage gaps: `learningsDisclosure`, `learningsErratumBinding`, `learningsRecord`,
+`learningsSuiteMap`, `learnings-config-example`, and a rewrite of the baseline guard onto the shared
+`__tests__/helpers/learningsBaselineScenarios.js` harness), plus two documentation closing passes.
+Every anchor and every kill in this review was re-run against that tree. Nothing in the delta moves
+a claim, a severity, or a count; what moved is line numbering and one file boundary.
+
+- **Corrected anchors at `ef62951f`.** The BR-1 decision `const injectHere =` is at
+  `orchestrate-dev.js:10295-10296`; its composition-site probe `_recordDocType(docType, injectHere,
+  dispatchKind)` at `:10304`; the post-`selection` injection call at `:10341-10351`; the reviewer
+  prompt literal `This is iteration ${iteration}.` at `:10713`; the single-predicate
+  `RSN-NO-MATERIAL` branch at `:2459`; the unconditional `RSN-COUNT` push at `:2521`; the unguarded
+  `doc.orderKey` interpolation at `:2550`. `hasAnySectionHeadingLine` still exists only as the
+  historical note at `:2452` and the deleted `propagateBytes` guard only as the commented-out line
+  at `:2499` — F-04 and F-07 remain resolved by deletion.
+- **F-01's anchor moved files.** The ADMITS-NOTHING arm now lives in the shared scenario harness at
+  `__tests__/helpers/learningsBaselineScenarios.js:75-89` (its `enumerateReply` stdout and the
+  `corpusFiles` document); the four-arm commentary the finding quotes is now
+  `learningsBaselineGuard.test.js:216-226`, and the per-arm assertion body is the single
+  parameterised `it` at `:245-265`. The finding itself is unchanged and **still open**: re-running
+  the E-5 mutant at HEAD — the arm's `stdout` degraded to `""`, collapsing it into a second EMPTY
+  arm — leaves `Tests: 63 passed, 63 total`. The rewrite onto the shared harness made the arm
+  *tidier* (the corpus document is now a named fixture with a comment stating why it admits
+  nothing) without making it *asserted*: no test reads the arm's `_readFile` log or its
+  `corpusOutcome`, so the premise the arm's value rests on is still unasserted. The file grew from
+  20 to 63 tests without closing it. Medium, non-gating, and the suggested fix stands verbatim.
+- **The High kills still kill.** F-02's mutant was re-applied at the corrected anchor
+  (`const injectHere = dispatchKind === "authoring";`) and still reds exactly the two tests E-1
+  records — the composition-site set-equality test and the dedicated AC-1.2 test —
+  `Tests: 2 failed, 25 passed, 27 total` (the file grew from 20 tests to 27 in the delta, and both
+  killers survived the growth). `orchestrate-dev.js` was restored and `git diff --stat` confirmed
+  empty after each mutation, as was `learningsBaselineScenarios.js`.
+- **E-6 supersedes itself: the repository is now fully green.** `npm test` in `pdlc/workflows`:
+  `Test Suites: 116 passed, 116 total`, `Tests: 70 skipped, 4384 passed, 4454 total`. The single red
+  E-6 recorded — `documentOracles.test.js` › AT-22 `coveredViolations(LIVE_ROOT)` — is gone now that
+  the parallel-reviewer worktrees under `.claude/worktrees/agent-*/` have been cleared, which
+  confirms v1's and v2's attribution of it to the environment rather than to this feature.
+  `node pdlc/workflows/build-runtime.mjs --check` → `in-sync  pdlc/workflows/dist/pdlc-cli.mjs`,
+  exit 0, so DEC-08's rebuild-and-stage rule still holds after `5e952bdb` touched
+  `orchestrate-dev.js`'s neighbourhood.
+- **New material in the delta was read for new High findings; none was found.** The added suites are
+  additive coverage over PROPERTIES rows, not changes to the selection, rendering, or dispatch
+  contracts this review's findings sit on, and none of them weakens an oracle v2 relied on: the
+  baseline guard's fixture bytes, its count-equality control, its "the instrument fires" control,
+  and its scenario-set equality all survive the harness extraction intact (`:245-294`).
+
+The verdict below is therefore unchanged and is the verdict of record at `ef62951f`: no High open,
+F-01 Medium, F-02 Low.
+
 ## Delta Verification — v1's five High findings
 
 All five are **resolved**, each confirmed by a kill, not by reading the change.
