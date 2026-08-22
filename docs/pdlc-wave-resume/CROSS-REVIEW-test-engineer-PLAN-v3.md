@@ -147,7 +147,51 @@ both, so the shared premise is consistent.
 
 ## Verification
 
-_(pending)_
+Every claim in this confirmation that could be checked by running something, was. Commands and
+results:
+
+| Check | Command | Result |
+|---|---|---|
+| PLAN bytes really are unchanged since my approval | `git rev-parse 88677711:…/PLAN-….md` vs `git rev-parse HEAD:…/PLAN-….md` | both `4df3434e30472fb286b432dcad58754bfbc3ff34` — **byte-identical**, so the round-type premise holds and no PLAN-internal re-review is owed |
+| The upstream I read is the upstream that was pinned | `shasum -a 256` over all four upstream docs | REQ `17e83bfc…`, FSPEC `9a6be7b5…`, TSPEC `5ed76227…`, DECISIONS `37b3684d…` — **all four match the dispatch exactly** |
+| The full extent of the upstream edit | `git diff b4a628b8..HEAD -- …/TSPEC-….md` | one file, **+9/−4**, three hunks: version cell, revision-history row, §5.8 paragraph, §6.4 RT-7 cell. Nothing else in TSPEC moved |
+| The edit's commits | `git log --oneline -- …/TSPEC-….md` | `91f93b8e` (reassign §5.8 floor to last task), `6ac1df9f` (align RT-7), `5d5bbd75` (v1.3 revision-history row) — a clean, corrections-only erratum round |
+| Does `postWaveCommand` still appear in TSPEC as the floor's owner? | read §5.8 and §6.4 at HEAD | No. Both now say the opposite — "deliberately **not** `implementation.postWaveCommand`" |
+| Does PLAN still attribute that framing to TSPEC? | `grep -n 'postWaveCommand\|coverage floor' PLAN` → lines 283, 286, 377 | **Yes at lines 286 and 377** — the two stale passages. Line 283 is the unrelated `build-runtime.mjs` use and is correct |
+| Does T-10 carry the obligation TSPEC now assigns it? | read PLAN §2.1 T-10 row (line 121) and §2.2 gate row (line 133) | Yes: `npm run test:coverage` from `pdlc/workflows`, `--per-file --branches 85`, exits 0, per-file number for `orchestrate-dev.js` reported, paired with §4.5.1's delta oracle |
+| Does the DoD bind it? | PLAN §4.5 line 412 | `- [ ] npm run test:coverage … exits 0 (--per-file --branches 85)` — present and positively shaped |
+| Every cited spec id resolves | `grep -oE` id families in PLAN, diffed against each owner's definitions | 18/18 ATs, BR-04, 11/11 D-rows, V-13, five RT-rows, three DEC-WVR rows — **zero unresolved** |
+| Working tree is clean before I write | `git status --porcelain docs/pdlc-wave-resume/` | empty |
+
+### Oracle quality of the thing being confirmed
+
+Because the erratum lands on a *coverage* obligation, the oracle-falsifiability lens applies directly
+and I re-applied it to T-10 as it now stands against TSPEC v1.3:
+
+- **Not absence-only.** T-10's oracle (i) asserts `exits 0` *and* requires the measured per-file
+  branch number to be reported — a positive value, not a `!= failure` shape. Oracle (ii) is
+  set-equality against §4.5.1's transcribed mapping table, which is the strongest form available
+  here: a deleted test case fails set-equality rather than nudging a percentage by 0.05.
+- **The gate command is the right one.** The floor is a *branch* floor and the command carries
+  `--per-file --branches 85`, not statement mode, and it is invoked explicitly from `pdlc/workflows`
+  rather than resting on source-list membership. This is exactly the distinction DC-09 warns about
+  and PLAN gets it right — the claim cites the gate command, not "already inside source".
+- **The delta oracle survives the reassignment.** §4.5.1's five branch classes (8 classifier arms,
+  7 renderers, 1 lazy-probe short-circuit, 5 announcement suffixes, 3 report-row branches) are
+  reached from unit and integration respectively, with the integration-only rows explicitly routed
+  through `waveExecution.test.js`. The reassignment from a wave-level command to a task changes
+  *who runs it*, not *what it proves*, so this structure is undisturbed.
+- **Nothing became vacuous.** The one way this erratum could have false-greened the floor is if the
+  floor had moved to a runner that never executes. T-10 is a real task in batch 4 with real `Deps`
+  edges (`T-07, T-08, T-03, T-04`) and its own gate row in §2.2; it executes or the wave reds.
+
+### What I deliberately did not re-check
+
+The batch-DAG re-derivation, the `parsePlanTasks` round-trip, the harness-reuse occurrence counts and
+the `origin/main` line-anchor facts were all verified at v2 against a PLAN blob that has not changed
+and an `origin/main` this edit did not touch. Re-running them could not return a different answer.
+The three v2 findings (F-11 Medium, F-12 Medium, F-13 Low) were non-gating and are out of scope for
+a cascade confirmation; they are not re-raised here and their disposition remains the author's.
 
 ## Delta-Confirmation Findings
 
