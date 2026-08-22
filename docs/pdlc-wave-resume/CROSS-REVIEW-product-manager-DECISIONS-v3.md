@@ -154,6 +154,47 @@ downstream obligation in this document depends on text the erratum round altered
 
 ## Consequences
 
+**For this document.** Two sentences need a tense change, not a rewrite. Both are one-line edits
+inside parentheses, neither touches a decision clause, and both can land in the same commit:
+
+- `:205`–`:207` → the correction is now upstream's own text; the note should record that the erratum
+  landed (TSPEC v1.2, §3.1 and the DEC-WVR-06 row) rather than that it is outstanding. Keep the
+  substantive count sentence above it exactly as written — it is correct and it is what the erratum
+  produced.
+- `:167`–`:169` → same shape; §2.4 now closes the catalogue by the rule DECISIONS stated, so the
+  note should record the repair rather than assert the gap. Again, keep the O-5 argument above it
+  untouched: it is the reasoning upstream adopted.
+
+A general form worth stating once, because it will recur every time an erratum round runs: **a
+document that flags a defect in its upstream acquires a maintenance obligation the moment that
+defect is fixed.** The flag is written in the present tense about a file that is going to change,
+which makes it the one kind of sentence guaranteed to go stale on success. The durable fix is not to
+stop flagging — flagging upstream defects instead of silently propagating them is exactly right, and
+DECISIONS did it twice — but to write the flag so that landing the erratum does not falsify it:
+attribute it to a version ("TSPEC v1.1 §3.1 said…"), or state the correction without a claim about
+what upstream currently says. I have tagged this `Process` rather than `Local`, because it is a
+property of the erratum mechanism and not of this feature.
+
+**For downstream phases.** None. PLAN and PROPERTIES consume DECISIONS' decision clauses,
+constraints and obligations; all of those are unchanged and all of them still match TSPEC at HEAD.
+Specifically: the seven-code set equality (DEC-WVR-06), the three-shipped-assertion count and the
+announcement set-equality oracle with its enumerated exclusions (DEC-WVR-03), the 48-line extraction
+boundary (DEC-WVR-02), the plan-absolute high-water field (DEC-WVR-05) and the AT-16 shape oracle
+(DEC-WVR-07) all survive this round untouched and un-contradicted. Nothing that Phase P would parse
+out of this document changes.
+
+**For the approval record.** My v2 approval was taken against TSPEC `3cd713c0…`, which no longer
+exists; this confirmation re-takes it against `458e9ec6…`. The two v2 Lows (build inputs in the
+largest-file row; DEC-WVR-05's `*(observable)*` trigger with no detector in its Consequences row)
+were non-gating then and remain non-gating now — they are inherited, they are not cascade defects,
+and they are carried below only so that the record does not lose them.
+
+**Residual risk accepted.** I verified the two stale notes by grep against TSPEC at HEAD
+(`four of the seven` → no hits; §2.4's excluded-notice table row → present). I did not re-verify
+every measured figure in DECISIONS' Context table against `origin/main`; those were re-derived in my
+v2 review, DECISIONS' bytes have not changed since, and `origin/main` is pinned at `345ae358` in
+both documents. That is a bounded, stated gap, not an unexamined one.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
