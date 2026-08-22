@@ -195,8 +195,64 @@ every measured figure in DECISIONS' Context table against `origin/main`; those w
 v2 review, DECISIONS' bytes have not changed since, and `origin/main` is pinned at `345ae358` in
 both documents. That is a bounded, stated gap, not an unexamined one.
 
-## Delta-Confirmation Findings
+## Positive Observations
+
+- **DECISIONS was right first, on both of the substantive errata.** The corrected count in §3.1 and
+  the seam-versus-capability distinction in §6.1 (b) are not corrections DECISIONS absorbed — they
+  are positions DECISIONS took while its upstream said otherwise, and that upstream has now adopted.
+  A compression that refuses to propagate an upstream error, states the right figure, and says so in
+  the open is doing more than compressing. That is the behaviour DEC-ERR-03 exists to protect, and
+  the reason this confirmation has no High findings is that the author declined to propagate.
+- **The §2.4 exclusion rule travelled upstream verbatim.** TSPEC's new closure clause — "a notice
+  carries a provenance token iff the resume decision emits it about a resolved start point" — is
+  DECISIONS' O-5 criterion, adopted intact. Excluding a case by a stated falsifiable rule rather
+  than by not mentioning it was the right call when only this document made it, and it is now the
+  spec's own rule.
+- **Every figure the erratum round touched was already re-derivable from DECISIONS' own stated
+  command.** RT-1's two byte counts, the `345ae358` baseline and the `git ls-tree` invocation match
+  across both documents. Confirming edit 4 took one comparison rather than a re-measurement, which
+  is what stating the method alongside the figure buys.
+- **The stale sentences are stale for the best possible reason.** Both parentheticals are false at
+  HEAD only because the errata they raised were acted on. A document whose only cascade defects are
+  the receipts of its own successful escalations is in good shape.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+DECISIONS still holds as approved against TSPEC at `sha256:458e9ec6…`. No High findings, none
+carried. Every decision clause, alternative disposition, constraint, reversibility claim,
+re-evaluation trigger and downstream obligation in this document remains a faithful compression of
+upstream at HEAD; on three of the five upstream edits the movement was toward this document, not
+away from it. No P0 or P1 requirement is narrowed, dropped, reinterpreted or re-triggered by the
+cascade.
+
+Two Medium corrections to land, both one-line and neither blocking Phase P:
+
+1. **F-01** — `:205`–`:207`: the parenthetical quotes TSPEC §3.1 as saying "four of the seven
+   reasons interpolate". Re-attribute to TSPEC v1.1, or record the erratum as landed in v1.2.
+2. **F-02** — `:167`–`:169`: the parenthetical asserts §2.4 "omits the invalid-pointer notice
+   entirely rather than excluding it by rule". §2.4 now excludes it by rule and names it. Same fix.
+
+Two Lows carried from v2, unchanged and non-gating: **F-03** (the largest-file row names one build
+input where the artifact header names two) and **F-04** (DEC-WVR-05's `*(observable)*` trigger has
+no detector owed in its Consequences row).
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | O-8's closing parenthetical quotes TSPEC §3.1 as saying "four of the seven reasons interpolate" and describes the correction as an outstanding erratum. §3.1 at HEAD says "Three of the seven reasons interpolate… carrying four interpolated values", and `git grep 'four of the seven'` over TSPEC returns nothing. The count DECISIONS states is correct and matches upstream; only the claim about what upstream says is stale. | `## Options Considered` → O-8 (`DECISIONS:205`–`:207`) |
+| F-02 | Medium | delta | local | O-5's closing parenthetical asserts "TSPEC §2.4's announcement table omits the invalid-pointer notice entirely rather than excluding it by rule; that is an upstream gap". §2.4 at HEAD carries "The catalogue is closed by rule, not by omission", states the iff rule, and gives the notice its own table row with its exclusion reason. The gap the sentence reports no longer exists. | `## Options Considered` → O-5 (`DECISIONS:167`–`:169`) |
+| F-03 | Low | inherited | local | The measured-surface row calls `dist/pdlc-cli.mjs` "a generated artifact built from the module below"; the artifact's own header names `orchestrate-dev.js` **and** `cli.mjs` as inputs. Carried from v2 F-01, unresolved; TSPEC RT-1 makes no corresponding claim, so this is not cascade drift. | `## Context` → measured-surface table, largest-file row (`DECISIONS:44`) |
+| F-04 | Low | inherited | nonlocal | DEC-WVR-05's `*(observable)*` re-evaluation trigger relies on a contiguity property no assertion in its Consequences row owes, so the trigger cannot fire. Carried from v2 F-02, unresolved; untouched by this round. | `## Decision` → DEC-WVR-05 Consequences/trigger (`DECISIONS:331`–`:356`) |
+
+FINDING: Medium | delta | local | O-8 parenthetical, DECISIONS:205-207 | Quotes TSPEC §3.1 as saying "four of the seven reasons interpolate" and calls the correction an outstanding erratum; §3.1 at HEAD says three reasons carrying four values, and the quoted string is absent from TSPEC. Fix: attribute to TSPEC v1.1 or record the erratum as landed in v1.2. The substantive count above the parenthetical is correct and should not change.
+FINDING: Medium | delta | local | O-5 parenthetical, DECISIONS:167-169 | Asserts TSPEC §2.4's announcement table "omits the invalid-pointer notice entirely rather than excluding it by rule" and calls it an open upstream gap; §2.4 at HEAD closes the catalogue by rule, states the iff criterion, and names the excluded notice with its reason. Fix: same tense/version re-attribution; keep the O-5 argument itself, which upstream adopted.
+FINDING: Low | inherited | local | Context measured-surface table, DECISIONS:44 | Calls `dist/pdlc-cli.mjs` a generated artifact "built from the module below"; its header names `orchestrate-dev.js` and `cli.mjs`. Carried from v2 F-01, non-gating, no upstream counterpart.
+FINDING: Low | inherited | nonlocal | DEC-WVR-05 Consequences/trigger, DECISIONS:331-356 | The `*(observable)*` trigger depends on a contiguity property no assertion in the Consequences row owes, so no detector can fire it. Carried from v2 F-02, non-gating, untouched by this round.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
