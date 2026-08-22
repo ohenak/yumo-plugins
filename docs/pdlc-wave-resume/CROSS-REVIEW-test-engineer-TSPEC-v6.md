@@ -208,8 +208,30 @@ None open against the operator. Two notes, neither a finding:
 
 ## Delta-Confirmation Findings
 
-*(pending)*
+Both routed items landed and are independently re-measured. Two residual imprecisions, both Low,
+neither gating. Recommendation: **Approved with minor changes**.
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | §5.8 and RT-7 now pin the downstream PLAN's task ids (`T-10`, `RK-2`) as the primary name for the floor's owner. PLAN has already retired ids `T-05`/`T-06`/`T-09` once, so id churn is demonstrated; a renumber leaves these two TSPEC citations stale with nothing mechanical going red. Lead with the role — "the last implementation task, per PLAN §3.4's run-configuration row" — and keep the id as a parenthetical locator. | TSPEC §5.8, §6.4 RT-7 |
+| F-02 | Low | inherited | local | §5.8 says the floor "closes inside Phase I" without naming the whole-file denominator problem or the delta oracle that answers it. `orchestrate-dev.js` is 734,711 B (RT-1), so every branch this feature adds could be uncovered and `--per-file --branches 85` would still exit 0 — for this feature the floor alone is an unfalsifiable oracle. PLAN T-10 and §4.5.1 do carry the delta oracle; TSPEC should say so in one clause after "reports the measured per-file branch number". | TSPEC §5.8 |
+
+## Recommendation
+
+**Approved with minor changes**
+
+The delta resolves both routed items — exactly, and at both sites that carried the retired wording —
+without breaking anything I previously approved. No interface, type, acceptance test, oracle, batch
+or ownership claim changed. Upstream is byte-identical to round 3, so the document remains a
+faithful compression of REQ and FSPEC at their current version; FSPEC §341's four-key set equality
+is precisely what the edit's not-expressible argument leans on, and it says what the TSPEC says it
+says. The two residual findings are one-clause repairs, both non-gating, and neither blocks Phase P
+from converging.
+
+FINDING: Low | delta | local | TSPEC §5.8 / §6.4 RT-7 | The floor's owner is cited primarily by downstream PLAN task ids (T-10, RK-2); PLAN has retired ids before, so a renumber silently staleifies both citations. Lead with the role and keep the id as a parenthetical locator.
+FINDING: Low | inherited | local | TSPEC §5.8 | The floor is described as closing the gap inside Phase I without naming the whole-file denominator (orchestrate-dev.js is 734,711 B) or the delta oracle at PLAN §4.5.1 that makes the floor sensitive to this feature's branches; read alone, §5.8 claims an oracle that structurally cannot go red for this feature.
 
 ## Verdict
 
-*(pending)*
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
