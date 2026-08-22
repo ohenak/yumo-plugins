@@ -307,6 +307,121 @@ Four mutations, each with the property that must red and the task that must **ru
 
 ## Fixtures
 
+### Reuse, do not reinvent
+
+The shipped ledger `describe` in `pdlc/workflows/__tests__/waveExecution.test.js` already carries
+the harness this feature needs, and it is reused rather than rebuilt. All four helpers resolve at
+`origin/main` (`git show origin/main:pdlc/workflows/__tests__/waveExecution.test.js`):
+
+| Helper | Role | Located by |
+|---|---|---|
+| `makeLedgerArgs` | builds a full `main()` argument set for the ledger cases; its `ledger` option **is the raw byte string** the `WAVE_STATE_PATH` read returns, which is why every one of the seven codes is expressible as a fixture | `function makeLedgerArgs({` |
+| `ledgerWrites` | filters a captured `writes` array to the ledger path | `const ledgerWrites = (writes) =>` |
+| `PLAN_THREE_WAVES` | the three-wave, three-task plan every ledger case runs against (`T1`, `T2`, `T3` owning `src/one.js`, `src/two.js`, `src/three.js`) | `const PLAN_THREE_WAVES = [` |
+| `CONFIG_WITH_TEST_COMMAND` | the config that makes `scriptGate === true`, so no case is silently graded by a self-report gate | `const CONFIG_WITH_TEST_COMMAND = JSON.stringify({` |
+
+The enclosing suite is `describe("Phase I — the INTERIM wave ledger resumes a halted run
+unattended")`; the fingerprint block this feature extends in place is
+`describe("computePlanHash — the ledger's plan fingerprint")`. **Neither is duplicated**: the
+`computePlanHash` block already carries a determinism arm and three sensitivity arms, and the only
+arm this feature owes it is hashing the same PLAN *text* twice through
+`parsePlanTasks`/`computeWaves`.
+
+### The two harness extensions this feature owns
+
+Both are **additive and default-off**: with neither option supplied, `makeLedgerArgs` returns
+exactly what it returns today, which is what keeps the shipped `describe` a regression net
+(TSPEC RT-2).
+
+| # | Extension | Consumed by |
+|---|---|---|
+| H-1 | Optional `events` array; when supplied, the `_runCommand` and `_git` doubles each append `["runCommand", cmd]` / `["git", …argv]` to it **in addition to** their own unchanged logs, so relative order is observable. | PROP-SAFETY-01, PROP-RECORD-03 |
+| H-2 | Optional `failWriteOn(path, callIndex)` predicate over the `_writeFile` double; the default keeps today's always-capture behaviour. | PROP-RECORD-05, PROP-RECORD-06 |
+
+### Ledger fixtures — one per reason code, plus the honoured shapes
+
+The `ledger` option's value, verbatim. Confirmed reachable through `main()` against the shipped
+reader (`export function parseWaveLedger` at `origin/main:pdlc/workflows/orchestrate-dev.js:12267`).
+
+| Code / shape | `ledger` value | Why it lands there |
+|---|---|---|
+| IG-6 (silent) | option omitted, `""`, or `"{}"` | `parseWaveLedger` returns `{state: null, reason: null}` for all three — the `text == null`, `trimmed === ""` and `trimmed === "{}"` arms |
+| `unreadable-json` | `"{"` | `JSON.parse` throws → `"it is not readable JSON"` |
+| `not-an-object` | `"\"x\""` (or `"[]"`) | parses to a string/array → `isPlainObject` false → `"it is not a JSON object"` |
+| `wrong-shape` | `{version:1, feature: FEATURE, planHash: <this plan's>, lastGreenWave: "1"}` | `lastGreenWave` is not an integer → the shipped `wellFormed` conjunction fails |
+| `feature-mismatch` | well-formed, `feature: "other-feature"` | guard 3 |
+| `plan-changed` | well-formed, `planHash: "00000000"` | guard 4 |
+| `head-unreachable` | well-formed for this plan, `head: HEAD_SHA`, `_git` scripted to answer `merge-base --is-ancestor` with `{ok: false}` | guard 5, exactly one probe |
+| `over-count` | well-formed for this plan, `lastGreenWave: 9`, **`head` omitted** | guard 6 — with no `head`, `headCorroborated` returns `true` without touching the transport, so guard 5 passes and guard 6 is the first failure |
+| honoured, mid-plan | the wave-1 record written by a first run, taken from `ledgerWrites(firstWrites)[0]` | outcome (b) |
+| honoured, complete | the record with `lastGreenWave === 3`, taken from a completed first run | outcome (c) |
+| honoured, no `head` | well-formed for this plan, `head` omitted | outcome (b) with zero `merge-base` calls (PROP-DISREGARD-08) |
+
+**The `over-count` row is the one that needs care.** With a `head` present *and* unreachable,
+guard 5 fires first — that is the PROP-DISREGARD-06 pair, not an `over-count` fixture. Omitting
+`head` is what makes the fixture exercise the guard it names.
+
+**Records are produced by a real first run wherever possible**, not hand-built: `makeLedgerArgs`
+already models the write path, so the mid-plan and complete fixtures are captured envelopes
+(`ledgerWrites(firstWrites)[0]`) rather than synthetic JSON. Hand-built literals are used only for
+the rejection fixtures, where the point *is* that the bytes are not something this workflow wrote.
+
+### Config fixtures
+
+| Fixture | Value | Used by |
+|---|---|---|
+| `CONFIG_WITH_TEST_COMMAND` | shipped | every integration property, so `scriptGate === true` in all of them |
+| `configWithStartWave(n)` | shipped | PROP-OVERRIDE-01 (`2`), PROP-OVERRIDE-03 (`99`) |
+| `startWave: 1` **present** vs. the key **omitted** | two variants of `CONFIG_WITH_TEST_COMMAND`, differing in exactly one key | PROP-OVERRIDE-02 — both must carry `testCommand`, so neither run degrades to the self-report gate |
+| config with an **invalid** `startWave` (e.g. `"two"`) | one variant | PROP-OVERRIDE-05, the excluded notice |
+| no `testCommand` | one variant | PROP-RECORD-02's self-report-gate arm only — never as the default for any other property |
+
+### Queue fixtures (all three required)
+
+Without **all three**, `orchestrate-queue` returns `outcome: "blocked"` and asserts nothing —
+which is a vacuous pass, not a failure:
+
+1. a `QUEUE.md` table with one `pending` row for this feature;
+2. a `.claude/pdlc.config.json` carrying `distribution.checkEnabled: false`, so the drift gate does
+   not refuse the invocation before `QUEUE.md` is read;
+3. a Phase-0 readiness-triage `_agent` double.
+
+The queue suite asserts `result.outcome !== "blocked"` as a precondition of its own oracles, so a
+fixture regression reds rather than silently emptying the test.
+
+### Generative generators (PROP-LAW-01…04)
+
+| Generator | Bounds | Why bounded |
+|---|---|---|
+| `genFeature`, `genHash` | non-empty strings, length ≤ 64, no leading/trailing whitespace | `parseWaveLedger`'s `wellFormed` requires non-empty after `trim()`; whitespace-only draws would test the rejection arm, which PROP-DISREGARD-05 already owns |
+| `genWave` | integer in `[1, 10_000]` | the reader requires `Number.isInteger` and `>= 1`; the upper bound keeps the corpus finite without changing the law |
+| `genHeadOrNull` | 40-hex string, or `null` | matches what `formatWaveLedger` writes and what `parseWaveLedger` normalises; blank and non-string draws are pinned by unit cases instead |
+| `genClassifyInput` | must reach **all three** `ParsedWaveLedger` shapes and both `headOk` values | a generator producing only well-formed records makes PROP-LAW-03 vacuous on exactly the arms that matter |
+| `genWaveLayoutPair` | ≤ 6 waves, ≤ 6 tasks per wave, ids and paths from a small alphabet | keeps the corpus small enough that a 32-bit collision is diagnosable as a corpus finding rather than a flake |
+
+Run depth: `fc.assert(fc.property(…), { numRuns: 500 })` for all four laws, no pinned seed, one
+`describe` per subject with the law named in the title (`ROUND-TRIP:`, `TOTALITY:`). The precedent
+is `pdlc/workflows/__tests__/advisoryHelperProperties.test.js`, whose
+`describe("PROP-CTR-05 (generative): citesGateOutput …")` block declares `const runs = { numRuns:
+500 }` and applies it at five `fc.assert` sites. **Note the divergence, and it is routed rather
+than resolved here:** TSPEC §5.7's convention paragraph says "at fast-check's default run count",
+while PLAN T-08 and PLAN §4.5 pin 500 on that same precedent. This document follows the PLAN;
+the TSPEC clause is raised as an erratum.
+
+### String and fixture ownership
+
+Every announcement, report detail and reason sentence asserted anywhere in this document is
+transcribed **verbatim from TSPEC §2.4 / §3.1** into the test as a literal. Where TSPEC §2.4 gives
+a template (`Waves N–M complete, …`), the test transcribes the *instantiated* string for its
+fixture — `Waves 2–3 complete, waves 1–1 skipped as previously completed (wave mode, script-owned
+gate) (provenance: operator-set)` — never a template rebuilt at runtime from the same interpolation
+the implementation performs. The en-dash in `Waves 1–1` and in `waves 1–1 already green` is the
+shipped character (U+2013), verified in
+`git show origin/main:pdlc/workflows/orchestrate-dev.js`; a hyphen-minus substitution is a silent
+whole-string mismatch and is called out here because it is the cheapest way to fail these
+properties for the wrong reason.
+
+
 ## Coverage Matrix
 
 ## Gaps, Risks and Routed Findings
