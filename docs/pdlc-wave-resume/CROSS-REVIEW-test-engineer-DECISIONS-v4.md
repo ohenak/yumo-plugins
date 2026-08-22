@@ -96,6 +96,40 @@ routes them back to Phase D's ordinary loop instead of halting on them.
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC v1.3.** The round-4 erratum touched §5.8, the RT-7
+mitigation cell and the revision history — three surfaces this DECISIONS never compressed — so no
+claim it makes about upstream became stale, and no oracle a downstream author transcribes from it
+changed. No High finding, so this confirmation approves.
+
+### The full fidelity re-read, not just the changed hunks
+
+DEC-ERR-03's bar is faithfulness at HEAD, not item-list arithmetic, so I re-read every TSPEC passage
+DECISIONS leans on at v1.3 — the same six citation families my v3 pass enumerated — and confirmed
+each is byte-identical to what it was at my v1.2 confirmation:
+
+| DECISIONS site | TSPEC dependency | State at v1.3 |
+|---|---|---|
+| O-3; DEC-WVR-02 | §3.4 seam table and “the diff adds no parameter to `main()`”; §6.1 DEC-WVR-02 (b) “plumbing, not capability” | Untouched by round 4 — **faithful** |
+| O-5; DEC-WVR-03 | §2.4's announcement table, its by-rule closure block and the named exclusion row | Untouched — **faithful on the rule**, with the two stale raises of v3 still standing (F-01, F-06) |
+| DEC-WVR-03; Risks | §2.4's “three shipped assertions that do change” | Untouched — **faithful**, still three |
+| O-8; DEC-WVR-06 | §3.1's “three of the seven … carrying four interpolated values” | Untouched — **faithful**, with O-8's stale parenthetical still standing (F-02) |
+| Risks, rebase-churn bullet | §6.4 RT-1's two byte figures and their `git ls-tree` provenance | Untouched — **faithful** |
+| Risks, generated-artifacts bullet; O-5 key list | §6.4 RT-5 (`M-WG-2` ordering); V-13's four-key surface | Untouched, and V-13 is now *load-bearing for the erratum's own argument* — **faithful and reinforced** |
+| Open table | OB-F1, OB-F4, RT-6 | Untouched — **faithful** |
+
+The only TSPEC row adjacent to the delta that DECISIONS references at all is RT-5, and RT-5 is a
+different risk from RT-7: RT-5 is stale generated artifacts (mitigated by `postWavePathspecs`, which
+still exists), RT-7 is the branch floor (reassigned). The erratum did not touch RT-5, and DECISIONS
+does not touch RT-7. They pass each other without contact.
+
+### Where the delta *does* land, and why it is not a finding here
+
+The reassignment's real downstream consumer is PLAN — which already holds the destination position
+(RK-2, §3.4, the batch-4 DoD row, §4.5.1's mapping table) and raised the erratum that produced this
+edit. TSPEC v1.3 moved onto PLAN's side; the two now agree, and the agreement is the thing the
+erratum bought. PROPERTIES, when authored, transcribes the floor from PLAN T-10's two oracles, not
+from DECISIONS, which is silent on the subject.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
