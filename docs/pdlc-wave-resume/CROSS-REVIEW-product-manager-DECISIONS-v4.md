@@ -183,7 +183,53 @@ gap, not an unexamined one.
 
 ## Positive Observations
 
+- **The erratum corrected upstream without disturbing this document's premises.** The round-4 edit
+  had to justify itself against the config surface, and the surface it invoked — V-13's four keys,
+  with `postWaveCommand` global — is the same fact DECISIONS `:153` relies on for an unrelated
+  argument about the key-generic validation loop. Two documents reasoning independently from the same
+  shipped constant, arriving at consistent conclusions, is what a faithful compression looks like
+  from the outside.
+- **The correction landed where the obligation is executed.** TSPEC states the floor; PLAN's T-10 and
+  RK-2 run it. Reassigning the floor from a wave-level config key to a named task moved the
+  requirement to the artifact that can actually discharge it, rather than leaving a gate specified in
+  terms of a setting that cannot express it. From the product lens, the 85% floor is what users of
+  this pipeline get; where it runs is an implementation detail, and it is now stated in a way that is
+  executable rather than aspirational.
+- **The backstop survived the rewrite verbatim.** RT-7's fallback — per-arm unit coverage plus the
+  generative suite, with the risk degrading to a PUB-time finding rather than a silent one — is
+  carried through the edit word for word. Erratum rounds are where mitigations quietly get lost; this
+  one did not lose it.
+- **Three consecutive rounds of upstream churn, zero product surface touched.** DECISIONS has been
+  byte-stable across v2, v3 and v4 while TSPEC moved three times. No P0 or P1 requirement has been
+  narrowed, dropped or reinterpreted by any of it, and no re-evaluation trigger has fired. That
+  stability is evidence the decisions were compressed at the right altitude.
+
 ## Recommendation
+
+**Approved with minor changes.**
+
+DECISIONS remains approved against TSPEC at `sha256:5ed76227…`. No High findings, and none carried.
+This round's delta touches §5.8, §6.4's RT-7 row and the version header; DECISIONS cites none of the
+three, and the one config fact it does rely on (V-13's four-key `implementation` surface, DECISIONS
+`:153`) is reaffirmed by the edit rather than moved. Every decision clause, alternative disposition,
+constraint row, reversibility claim, re-evaluation trigger and downstream obligation in the document
+remains a faithful compression of upstream at HEAD. No P0 or P1 requirement is narrowed, dropped or
+reinterpreted, and no re-triggered cascade is owed.
+
+Four findings are carried forward, all `inherited` and all non-gating — no round has yet addressed
+them, and this edit was not asked to:
+
+1. **F-01** (Medium) `:205`–`:207`: parenthetical quotes TSPEC §3.1 saying "four of the seven reasons
+   interpolate" and reports the erratum as outstanding. Re-attribute to TSPEC v1.1; record that it
+   landed in v1.2.
+2. **F-02** (Medium) `:167`–`:169`: parenthetical asserts §2.4 "omits the invalid-pointer notice
+   entirely rather than excluding it by rule". §2.4 now excludes it by rule and names it. Same fix.
+3. **F-03** (Low) `:44`: measured-surface row names one build input where the artifact header names
+   two.
+4. **F-04** (Low): DEC-WVR-05's `*(observable)*` trigger has no detector owed in its Consequences
+   row.
+
+None blocks Phase P.
 
 ## Delta-Confirmation Findings
 
