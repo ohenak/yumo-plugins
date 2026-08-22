@@ -143,7 +143,43 @@ unusual-but-deliberate here and the content is correct today.
 
 ## Test Strategy
 
-*(pending)*
+This is the section where the re-assignment could have cost coverage, so I checked it hardest. It
+did not — but it left one clause weaker than the mechanism behind it, which is F-02.
+
+**Did the move weaken the gate's timing?** No. A `postWaveCommand` firing after the last wave and a
+task obligation discharged in the terminal batch close at the same moment in Phase I; both are
+before Phase DOD and well before Phase PUB. §5.8's "closed inside Phase I rather than surfacing as
+a PUB-level surprise" survives the move intact. T-10 is in batch 4 with
+`Deps = T-07, T-08, T-03, T-04`, so it genuinely runs after every other implementation task —
+the floor is measured over the complete diff, which is the property that matters.
+
+**Did the move weaken falsifiability?** This is the real question, and here the answer is
+"unchanged, but the document under-states its own defence". A whole-file `--per-file --branches 85`
+floor over `orchestrate-dev.js` — 734,711 B, per RT-1 — has an enormous denominator. Every branch
+this feature adds (8 classifier arms + 7 renderer closures + 1 short-circuit + 5 announcement/report
+branches) could be entirely uncovered and `npm run test:coverage` would still exit 0. A floor that
+cannot go red for this feature's branches is, for this feature, an unfalsifiable oracle.
+
+That gap is closed — but only in PLAN. T-10 carries **two** oracles: (i) the whole-file floor, and
+(ii) the delta oracle, which reports c8's per-file uncovered-line list and asserts no uncovered line
+falls inside this feature's introduced ranges, against PLAN §4.5.1's transcribed mapping table
+(a deleted case fails a set equality rather than moving a percentage by 0.05). PLAN §4.5.1 states
+the denominator problem explicitly. **TSPEC §5.8 names neither the denominator problem nor the
+delta oracle**, so read on its own it asserts a floor closes a gap the floor structurally cannot
+see.
+
+This is *inherited*, not introduced by this edit — the pre-round §5.8 had the same silence, and I
+approved it then on the strength of PLAN carrying the delta oracle. I raise it now at Low because
+the edit brought §5.8 into the same sentence as T-10 and made the omission more visible, and
+because the repair is one clause: after "reports the measured per-file branch number", add "paired
+with the delta oracle of PLAN §4.5.1, since the whole-file denominator cannot by itself falsify an
+uncovered new branch". No test changes, no scope change.
+
+**Everything else in the test strategy is untouched and re-confirmed as approved.** §5.3's per-arm
+unit coverage, §5.4's integration acceptance tests, §5.5's mutation duties, §5.7's generative suite
+with its pinned `numRuns`, the §2.4 announcement set-equality oracle and the `merge-base`
+call-count equality oracles of AT-03/AT-11 are byte-identical to the version I approved. No
+acceptance test changed severity, level, owner or assertion in this edit.
 
 ## Open Questions
 
