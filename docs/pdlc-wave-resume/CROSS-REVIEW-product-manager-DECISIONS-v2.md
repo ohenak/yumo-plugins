@@ -123,4 +123,34 @@ and no downstream obligation — as its own revision-history row claims.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings, and none carried over. All six v1 findings (F-01 Medium, F-02..F-06 Low) are
+resolved, each verified by re-running the measurement rather than by reading the claim; both v1
+questions are answered inside the decision text. Nothing the revision added disturbs what v1
+approved: no decision changed, no alternative's disposition changed, no downstream obligation
+changed, and no P0/P1 requirement is narrowed, dropped or re-triggered. The three genuinely new
+load-bearing claims — the `N > 1` report-row condition, O-5's exclusion criterion, and DEC-WVR-08's
+third call-count fixture — were each checked against `origin/main` and each holds.
+
+The two remaining findings are Low and non-gating. Both can land in one pass:
+
+1. **F-01 (Low)** — name both build inputs in the largest-file row: `dist/pdlc-cli.mjs` is built by
+   `build-runtime.mjs` from `orchestrate-dev.js` **and** `cli.mjs`.
+2. **F-02 (Low)** — give DEC-WVR-05's `*(observable)*` trigger a detector in its Consequences row, or
+   mark it the way DEC-WVR-02's trigger is marked.
+
+Neither changes a decision, and neither blocks Phase P.
+
+Three defects sit in the upstream TSPEC, not in this document, and are raised as errata rather than
+folded into this verdict: §3.1's "Four of the seven reasons interpolate" (three do —
+`feature-mismatch`, `head-unreachable`, `over-count`; the sentence's own parenthetical lists exactly
+three kinds of interpolated value, and §5.4's decision table repeats the four); §2.4's announcement
+table, which omits the invalid-`startWave` config-validation notice entirely rather than excluding it
+by rule — the gap this document identified and worked around correctly; and a duplicated clause in
+§3.2's prose ("Keeping the field on the decision on the decision").
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
