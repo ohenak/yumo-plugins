@@ -167,4 +167,34 @@ re-file. Tagged `Process` below (F-03).
 
 ## Delta-Confirmation Findings
 
+Every finding this round is `inherited`: DECISIONS' bytes have not changed since `020b74a0`, and the
+round-4 TSPEC erratum introduced none of them. Every finding is `nonlocal`: the sections this edit
+changed (TSPEC §5.8, the §6.4 RT-7 row, the revision history) have no counterpart in DECISIONS —
+this document holds no position on the coverage floor — so no finding can sit inside them.
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | Carried from v3 F-01, unresolved. O-5's closing parenthetical says “TSPEC §2.4's announcement table omits the invalid-pointer notice entirely rather than excluding it by rule; that is an upstream gap”. TSPEC has closed the catalogue by rule since v1.2 and names the excluded notice in a one-row table, so an approved document is asserting something false about its own upstream (DEC-ERR-01). Non-gating: DECISIONS held the winning side and DEC-WVR-03's oracle transcribes identically either way. Delete the parenthetical, or restate it in the past tense naming TSPEC v1.2. | O-5, closing parenthetical (→ DEC-WVR-03) |
+| F-02 | Low | inherited | nonlocal | Carried from v3 F-02, unresolved. O-8's closing parenthetical says “TSPEC §3.1 says 'four of the seven reasons interpolate'”. §3.1 has said **three** — `feature-mismatch`, `head-unreachable`, `over-count`, carrying four values between them — since v1.2, which is the count DECISIONS itself held. Same class as F-01, lower cost: no oracle transcribes the interpolation count. | O-8, closing parenthetical (→ DEC-WVR-06) |
+| F-03 | Low | inherited | nonlocal | `Process`. Carried from v3 F-03, unresolved and now demonstrated twice more: erratum raises written into the durable document body have no expiry, so nothing in the pipeline retires them when upstream honours the raise — only an upstream-cascade confirmation re-reads the text. Two rounds later F-01 and F-02 are still stale. File errata in the cross-review, and state only the position taken in the body. | Cross-cutting (O-5, O-8) |
+| F-04 | Medium | inherited | nonlocal | Carried from v2 F-01 / v3 F-04, unresolved. DEC-WVR-04's write-side key-set oracle conditions `head`'s presence on “the transport being injected”; the shipped write site fills `waveHead` only when the transport is injected **and** `rev-parse HEAD` returns a sha, so a strict key-set equality reds on a fixture where `rev-parse` fails. State the two admissible key-sets instead of one. | DEC-WVR-04, Consequences |
+| F-05 | Medium | inherited | nonlocal | Carried from v2 F-02 / v3 F-05, unresolved. DEC-WVR-05's re-evaluation trigger is stated observably, but no Consequences row obliges anyone to build the observer — a trigger with no detector can never fire, which makes the decision effectively irreversible in practice while documented as reversible. | DEC-WVR-05, trigger vs. Consequences |
+| F-06 | Low | inherited | nonlocal | Carried from v2 F-03 / v3 F-06, unresolved. O-5's parenthetical discriminates the past-the-end notice by **code location** (“emitted inside the resume decision”), while TSPEC §2.4's adopted rule discriminates by **subject matter** (“about a resolved start point”). The upstream discriminant is the better one and survives DEC-WVR-02's extraction; the location-based one does not. Restate O-5 on the upstream discriminant. | O-5; DEC-WVR-03 criterion parenthetical |
+| F-07 | Low | inherited | nonlocal | Carried from v2 F-04 / v3 F-07, unresolved. The v1.1 revision-history row ends “No decision, alternative disposition or downstream obligation changed”, but v1.1 added four downstream obligations. A PLAN or PROPERTIES author who trusts that line skips four obligations. | Revision history, v1.1 row |
+
+FINDING: Medium | inherited | nonlocal | O-5, closing parenthetical (→ DEC-WVR-03) | v3 F-01, still open: O-5 raises TSPEC §2.4's missing exclusion as an outstanding upstream gap, but §2.4 has closed the catalogue by rule and named the excluded notice since v1.2 — a false statement about upstream standing in an approved document (DEC-ERR-01). Non-gating: DECISIONS holds the winning side and DEC-WVR-03's set-equality oracle transcribes identically either way.
+FINDING: Low | inherited | nonlocal | O-8, closing parenthetical (→ DEC-WVR-06) | v3 F-02, still open: O-8 cites TSPEC §3.1 as saying "four of the seven reasons interpolate"; §3.1 has said three reasons carrying four values since v1.2, which is the count DECISIONS already held. No oracle transcribes the count.
+FINDING: Low | inherited | nonlocal | Cross-cutting (O-5, O-8), Process | v3 F-03, still open: erratum raises live in the durable document body rather than in the disposable cross-review, so nothing expires them when upstream honours the raise — F-01 and F-02 have now survived two confirmations as stale text.
+FINDING: Medium | inherited | nonlocal | DEC-WVR-04, Consequences | v2 F-01 / v3 F-04, still open: the write-side key-set oracle conditions `head` on transport injection alone, while the shipped site also requires `rev-parse HEAD` to succeed — strict key-set equality reds on a fixture where `rev-parse` fails. State two admissible key-sets.
+FINDING: Medium | inherited | nonlocal | DEC-WVR-05, trigger vs. Consequences row | v2 F-02 / v3 F-05, still open: the observable re-evaluation trigger has no Consequences row obliging anyone to build the observer, so the trigger cannot fire and the reversibility claim is untestable.
+FINDING: Low | inherited | nonlocal | O-5 / DEC-WVR-03 criterion parenthetical | v2 F-03 / v3 F-06, still open: O-5 discriminates the past-the-end notice by code location while TSPEC §2.4's adopted rule discriminates by subject matter (about a resolved start point) — the upstream discriminant is the one that survives DEC-WVR-02's extraction.
+FINDING: Low | inherited | nonlocal | Revision history, v1.1 row | v2 F-04 / v3 F-07, still open: the row's "No decision, alternative disposition or downstream obligation changed" is false — v1.1 added four downstream obligations.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 4}
+
+UPSTREAM-STATE: REQ sha256:17e83bfcd332f8f8f0482e2ebee7bbe78a3f434193dd3f9c3589723e39e8c79f
+UPSTREAM-STATE: FSPEC sha256:9a6be7b5a95e9b7f16c30e88154995fdd546a60093a3b3620af24e831552356e
+UPSTREAM-STATE: TSPEC sha256:5ed76227d8e4cb5b37681421d30a3c50d29e755a7334d37e5ef09c996832234a
