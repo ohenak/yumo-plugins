@@ -147,9 +147,9 @@ mechanical, not a matter of taste:
 > loop, do not.
 
 That criterion is checkable against the shipped code rather than against intent. The invalid-value
-notice is emitted by a **key-generic** loop — `for (const key of implParsed.invalidKeys) emit(
-\`Notice: implementation.${key} … is not a valid value — using the default.\`)` — which is shared
-verbatim by every `implementation` key (`testCommand`, `postWaveCommand`, `postWavePathspecs`,
+notice is emitted by a **key-generic** loop — `for (const key of implParsed.invalidKeys)` around one
+`emit` of the templated sentence `implementation.{key} … is not a valid value — using the default.` —
+which is shared verbatim by every `implementation` key (`testCommand`, `postWaveCommand`, `postWavePathspecs`,
 `startWave`) and appears at two call sites (legacy mode and wave mode). Attaching provenance there
 would attach it to `testCommand`'s notice too. And by the time the resume decision runs,
 `parseImplementationConfig` has already replaced the rejected value with the default, so
