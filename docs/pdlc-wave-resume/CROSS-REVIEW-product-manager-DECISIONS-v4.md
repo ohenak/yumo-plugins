@@ -138,6 +138,49 @@ outside the erratum range. No finding.
 
 ## Consequences
 
+**For this document.** Nothing new is owed by this round. The two Medium corrections named in v3 are
+still owed and are still one-line edits inside parentheses, neither touching a decision clause:
+
+- `:205`–`:207` — re-attribute the quoted count to the TSPEC version that said it ("TSPEC v1.1 §3.1
+  said…") and record that the erratum landed in v1.2, rather than reporting it as outstanding. Keep
+  the substantive count sentence above exactly as written.
+- `:167`–`:169` — same shape. §2.4 now closes the catalogue by the rule DECISIONS supplied, so the
+  note should record the repair rather than assert the gap. Keep the O-5 argument above untouched.
+
+The general form is worth restating once, because it recurs every time an erratum round succeeds: **a
+document that flags a defect in its upstream acquires a maintenance obligation the moment that defect
+is fixed.** A flag written in the present tense about a file that is about to change is a sentence
+guaranteed to go stale on success. The durable fix is not to stop flagging — flagging upstream
+defects instead of silently propagating them is exactly right, and DECISIONS did it twice — but to
+write the flag so that landing the erratum does not falsify it: attribute it to a version, or state
+the correction without a claim about what upstream currently says. Tagged `Process` in v3 for the
+same reason it stays `Process` here: it is a property of the erratum mechanism, not of this feature.
+This round is the second consecutive confirmation in which the observation recurs, which is itself
+the signal that it belongs in process learnings at harvest rather than in this file.
+
+**For downstream phases.** None. PLAN and PROPERTIES consume DECISIONS' decision clauses, constraint
+rows and obligations; all are unchanged and all still match TSPEC at HEAD. Specifically re-checked
+against this delta: the seven-code set equality (DEC-WVR-06), the three-shipped-assertion count and
+the announcement set-equality oracle with its enumerated exclusions (DEC-WVR-03), the 48-line
+extraction and its "no new `main()` parameter" constraint (DEC-WVR-02), the plan-absolute high-water
+mark (DEC-WVR-05) and AT-16 (DEC-WVR-07). None is touched by a coverage-floor reassignment, and the
+one config fact any of them leans on — the four-key `implementation` surface — is reaffirmed by the
+edit rather than moved. **PLAN already carries the correction** (`PLAN:286`, `PLAN:377`/RK-2), so the
+erratum has landed where the obligation is executed; no downstream document is left citing the
+superseded wording.
+
+**For the approval record.** My v3 confirmation was taken against TSPEC `458e9ec6…`, which no longer
+exists. This confirmation re-takes it against `5ed76227…`. REQ and FSPEC are unmoved from what v2
+pinned. DECISIONS' own bytes are unchanged at `37b3684d…`, so the v2 `APPROVAL-HASH` still describes
+the approved artifact exactly and is re-appended below unchanged.
+
+**Residual risk accepted.** I verified the two stale notes by grep against TSPEC at HEAD (`four of
+the seven` → no hits; §2.4's excluded-notice table row → present) and verified the two cascade-facing
+citations at `:153` and `:472` against `TSPEC:63`, `:561` and `:916`. I did **not** re-derive the
+byte counts in DECISIONS' measured-surface table against `origin/main`; I re-derived them at v2,
+DECISIONS' bytes have not changed since, and both documents pin `345ae358`. That is a bounded, stated
+gap, not an unexamined one.
+
 ## Positive Observations
 
 ## Recommendation
