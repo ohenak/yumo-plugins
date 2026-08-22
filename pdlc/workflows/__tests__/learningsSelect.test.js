@@ -217,6 +217,47 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     expect(first.selected.every((d) => d.bytes > 0)).toBe(true);
   });
 
+  test("PROP-ORDER-01: the path tiebreak is UTF-8 BYTE order (Buffer.compare), not JavaScript's `<`/`>` code-unit order — a supplementary-plane path case where the two disagree (M-7)", async () => {
+    const { selectLearnings } = await import("../orchestrate-dev.js");
+
+    // U+FFFF (a lone BMP code unit, 0xFFFF) versus U+10000 (the first supplementary-plane
+    // codepoint, a surrogate pair whose leading unit is 0xD800). JavaScript's UTF-16 code-unit
+    // `<`/`>` compares 0xD800 < 0xFFFF, ranking the U+10000 path FIRST. UTF-8 byte order compares
+    // the encoded bytes instead — U+FFFF encodes to `EF BF BF`, U+10000 encodes to `F0 90 80 80`
+    // — and `0xEF < 0xF0` ranks the U+FFFF path FIRST: the opposite order. Both documents share
+    // an identical (absent) `Date Completed`, so `null === null` never breaks the tie above the
+    // path comparison — the path comparator alone decides.
+    const pathBmp = "docs/order01-supp/LEARNINGS-￿.md";
+    const pathSupplementary = "docs/order01-supp/LEARNINGS-\u{10000}.md";
+    // Sanity on the fixture itself: confirm the two orderings really do disagree before trusting
+    // the assertion below to be meaningful.
+    expect(pathSupplementary < pathBmp).toBe(true); // JS code-unit order: supplementary FIRST
+    expect(Buffer.compare(Buffer.from(pathBmp, "utf8"), Buffer.from(pathSupplementary, "utf8"))).toBeLessThan(0); // UTF-8 byte order: BMP FIRST
+
+    const corpus = buildLearningsCorpus([
+      {
+        path: pathSupplementary,
+        doc: { feature: "order01-supp", dateCompleted: null, sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] },
+      },
+      {
+        path: pathBmp,
+        doc: { feature: "order01-supp", dateCompleted: null, sections: [{ name: "Cross-Feature Patterns", bodyBytes: 100 }] },
+      },
+    ]);
+    const entries = entriesFromCorpus(corpus);
+    const args = {
+      entries,
+      thresholds: LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
+    };
+
+    const result = selectLearnings(args);
+
+    // Buffer.compare's order (BMP path first) — never the JS `<`/`>` order (which would place
+    // the supplementary-plane path first), proving the implementation truly compares UTF-8
+    // bytes rather than UTF-16 code units.
+    expect(result.selected.map((d) => d.path)).toEqual([pathBmp, pathSupplementary]);
+  });
+
   test("LI-16: LI-AT-10 — no-row, trailing-text and unparseable dates all stay eligible; the trailing-text date reads correctly; the order is a pure function of (key, path)", async () => {
     const { selectLearnings } = await import("../orchestrate-dev.js");
 

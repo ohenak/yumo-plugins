@@ -34,8 +34,12 @@ import {
   LEARNINGS_CORPUS_DEFAULT_THRESHOLDS,
 } from "./helpers/learningsFixtures.js";
 import { fakeGit, fakeFs } from "./helpers/seams.js";
+import { readdirSync, readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 const DEV_MODULE_PATH = "../orchestrate-dev.js";
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** A fresh, empty run-scoped sink shape (TSPEC §A.5): `buildLearningsInjector` mutates this
  *  in place across calls — pushing one dispatch record per call, and setting the run-level
@@ -319,5 +323,54 @@ describe("LI-21: LI-AT-22 locus 2 — run-level thresholds completeness, once pe
       ["maxBytesPerDocument", "maxDocuments", "maxTotalBytes"].sort()
     );
     expect(sink.ruleInputs.thresholds).toEqual(LEARNINGS_CORPUS_DEFAULT_THRESHOLDS);
+  });
+});
+
+// PROP-RECORD-09 (PROPERTIES §Group J, negative — about the test suite itself): no test of
+// this feature may assert on `runMirror`'s value — it is additive by upstream decision (REQ
+// AC-3.2), deliberately unconstrained, and an implementation omitting it entirely conforms.
+// Instrumented as the same static directory walk PROP-META-05/06 use in
+// learningsSuiteMap.test.js: enumerate `__tests__/learnings*.test.js` from disk, parse each
+// file's TEXT, and assert no file contains a `runMirror` reference in an assertion position.
+describe("PROP-RECORD-09: no learnings*.test.js suite asserts on runMirror's value", () => {
+  function listLearningsSuiteFiles() {
+    return readdirSync(__dirname)
+      .filter((name) => /^learnings.*\.test\.js$/.test(name))
+      .sort();
+  }
+
+  // "Assertion position": the field name appearing as (or inside) the argument to a jest
+  // `expect` call — asserted on directly, or supplied as the expected side of a matcher. A
+  // bare mention in a comment or in fixture-shape data (this file's own `makeSink()` sets the
+  // field to `{}` as a fixture default, never asserted on) does not count, which is why the
+  // scan below is scoped to `expect(` call arguments specifically.
+  function hasRunMirrorAssertion(text) {
+    const expectCallRe = /\bexpect\(([^)]*)\)/g;
+    let match;
+    while ((match = expectCallRe.exec(text)) !== null) {
+      if (/runMirror/.test(match[1])) return true;
+    }
+    return false;
+  }
+
+  test("PROP-RECORD-09: the enumerated suite set is non-empty (positive control), and none of it asserts on runMirror", () => {
+    const allSuiteFiles = listLearningsSuiteFiles();
+    // Positive control: the walk's own non-empty file set, so a walk that finds no files reds
+    // rather than vacuously passing over zero bytes.
+    expect(allSuiteFiles.length).toBeGreaterThan(0);
+
+    const offendingFiles = allSuiteFiles.filter((fileName) =>
+      hasRunMirrorAssertion(readFileSync(join(__dirname, fileName), "utf8"))
+    );
+    expect(offendingFiles).toEqual([]);
+  });
+
+  test("PROP-RECORD-09: negative control — the scanner detects a planted runMirror assertion in a synthetic snippet", () => {
+    // Built via concatenation (never a literal "runMirror" substring in this file's own
+    // source) so this suite's OWN text is not falsely flagged as an offender by the walk
+    // above — the walk scans real source text, not this test's synthetic subject.
+    const fieldName = "run" + "Mirror";
+    const synthetic = `test("x", () => { expect(sink.${fieldName}).toEqual({}); });`;
+    expect(hasRunMirrorAssertion(synthetic)).toBe(true);
   });
 });

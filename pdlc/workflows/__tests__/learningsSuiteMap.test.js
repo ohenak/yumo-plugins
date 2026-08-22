@@ -118,3 +118,50 @@ describe("LI-T-SUITEMAP: §T.5 suite-map closure over the learnings*.test.js dir
     expect(sortedUnion).toEqual(FULL_35);
   });
 });
+
+// PROP-META-06 (PROPERTIES §Group J): no suite of this feature reaches a live agent. Driven
+// over the SAME static directory walk PROP-META-05 uses above — enumerate
+// `__tests__/learnings*.test.js` from disk, parse each file's TEXT (never import it) — asserted
+// as a set equality over the enumerated files, never containment, so a newly added suite that
+// skips the scripted double reds rather than being silently missed.
+describe("LI-T-SUITEMAP: PROP-META-06 — no learnings*.test.js suite reaches a live agent transport", () => {
+  // A scripted-double-shaped construction: `makeAgentDouble(`, `buildRecordingAgent(`, or a
+  // locally-defined `async function agent(`/`const agent = async (` stub (this file's own
+  // idiom in learningsConfig.test.js). A file that constructs none of these but still supplies
+  // `_agent` would be reaching for a live transport instead.
+  const SCRIPTED_DOUBLE_RE =
+    /\bmakeAgentDouble\(|\bbuildRecordingAgent\(|\basync function agent\(|\bconst agent\s*=\s*async/;
+  // A live-transport symbol: the module-level `agent` stub production code falls back to
+  // (`orchestrate-dev.js`'s `async function agent(skill, prompt, opts)`, "Provided by
+  // runtime"), or a real child-process invocation of the `claude` binary itself.
+  const LIVE_TRANSPORT_RE = /\bimport\s*\{\s*agent\s*\}\s*from\s*["']\.\.\/orchestrate-dev\.js["']|execFileSync\(\s*["']claude["']|spawnSync\(\s*["']claude["']/;
+
+  test("PROP-META-06: every enumerated learnings*.test.js suite that supplies an _agent seam constructs it via a scripted double, and none references a live transport symbol", () => {
+    const allSuiteFiles = listLearningsSuiteFiles();
+    expect(allSuiteFiles.length).toBeGreaterThan(0); // positive control: the walk found files
+
+    // Scoped to files that actually wire an `_agent` seam at all (an L1/L2 suite driving a
+    // pure function directly, with no whole-run dispatch, has none) — never containment: a
+    // file supplying `_agent` but matching neither pattern below reds.
+    const agentWiringFiles = allSuiteFiles.filter((fileName) =>
+      /_agent\s*[:(]/.test(readFileSync(join(__dirname, fileName), "utf8"))
+    );
+    expect(agentWiringFiles.length).toBeGreaterThan(0); // positive control: some suite wires _agent
+
+    const withoutScriptedDouble = [];
+    const withLiveTransport = [];
+    for (const fileName of agentWiringFiles) {
+      const text = readFileSync(join(__dirname, fileName), "utf8");
+      if (!SCRIPTED_DOUBLE_RE.test(text)) withoutScriptedDouble.push(fileName);
+      if (LIVE_TRANSPORT_RE.test(text)) withLiveTransport.push(fileName);
+    }
+
+    expect(withoutScriptedDouble).toEqual([]);
+    expect(withLiveTransport).toEqual([]);
+  });
+
+  test("PROP-META-06: negative control — the scanner detects a planted live-transport reference in a synthetic file", () => {
+    const synthetic = 'import { agent } from "../orchestrate-dev.js";\n';
+    expect(LIVE_TRANSPORT_RE.test(synthetic)).toBe(true);
+  });
+});

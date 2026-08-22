@@ -1339,4 +1339,79 @@ describe("learningsDispatchSet — AC-5.2's write half, and the static seam-disc
       expect(region).not.toContain(forbidden);
     }
   });
+
+  // PROP-FOOTPRINT-04 (PROPERTIES §Group I): the static scan above is a pure absence over a
+  // span the scanner located itself — which is only meaningful with two conjuncts giving the
+  // instrument an oracle. Extracted as a reusable scanner so both controls run over the exact
+  // same matching logic the production scan above uses.
+  function scanForFilesystemModuleReferences(text) {
+    const forbidden = ["fs.", "writeFileSync", "mkdirSync", "appendFileSync", 'require("fs")'];
+    return forbidden.filter((token) => text.includes(token));
+  }
+
+  test("LI-20: PROP-FOOTPRINT-04 positive control — the extracted sentinel-bounded region is non-empty and is the right span (contains LEARNINGS_TARGET_DOCTYPES)", () => {
+    const source = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
+    const startMarker = "// === LEARNINGS INJECTION REGION START ===";
+    const endMarker = "// === LEARNINGS INJECTION REGION END ===";
+    const startIdx = source.indexOf(startMarker);
+    const endIdx = source.indexOf(endMarker);
+    const region = source.slice(startIdx, endIdx);
+
+    // A scan that returns an empty or mislocated region (a reworded sentinel, a later refactor
+    // moving the region, a regex anchored on a drifted string) must red, never pass.
+    expect(region.length).toBeGreaterThan(0);
+    expect(region).toContain("LEARNINGS_TARGET_DOCTYPES");
+  });
+
+  test("LI-20: PROP-FOOTPRINT-04 negative control — the scanner reds on a planted fs.writeFileSync token in a synthetic span, proving the matcher fires", () => {
+    const syntheticRegion =
+      "// === LEARNINGS INJECTION REGION START ===\n" +
+      "const debugDump = () => fs.writeFileSync('/tmp/debug.json', '{}');\n" +
+      "// === LEARNINGS INJECTION REGION END ===\n";
+    const violations = scanForFilesystemModuleReferences(syntheticRegion);
+    expect(violations.length).toBeGreaterThan(0);
+  });
+});
+
+describe("learningsDispatchSet — PROP-DISPATCH-08: dispatchAndVerify has exactly two call sites (structural, replaces the tautological half of PROP-DISPATCH-03)", () => {
+  test("PROP-DISPATCH-08: exactly two `dispatchAndVerify(` call sites exist, one inside reviewLoop's `wrapped` closure and one inside main()'s `wrappedDispatch`", () => {
+    const source = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
+
+    // Every actual call site (never the `async function dispatchAndVerify(` declaration
+    // itself) — a hand-transcribed set equality keyed by (enclosing named function, call-site
+    // form), never a bare count, so a third call site added anywhere still reds even if the
+    // count coincidentally stayed at two elsewhere.
+    const callRe = /\bdispatchAndVerify\(/g;
+    const declRe = /\basync function dispatchAndVerify\(/g;
+    const totalCalls = (source.match(callRe) || []).length;
+    const declarations = (source.match(declRe) || []).length;
+    expect(declarations).toBe(1);
+    // The declaration's own `(` also matches `callRe` (it ends in `dispatchAndVerify(`), so the
+    // real call-site count is total minus the one declaration.
+    expect(totalCalls - declarations).toBe(2);
+
+    const wrappedClosureIdx = source.indexOf("const wrapped = (skill, basePrompt, targetPath, dispatchKind, sessionKey) =>");
+    const wrappedDispatchIdx = source.indexOf("async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId, sessionKey })");
+    expect(wrappedClosureIdx).toBeGreaterThan(-1);
+    expect(wrappedDispatchIdx).toBeGreaterThan(-1);
+
+    // Each named enclosing form's own call site must be the one immediately following its
+    // definition, not some other dispatchAndVerify( call reached through unrelated code.
+    const afterWrapped = source.slice(wrappedClosureIdx, wrappedClosureIdx + 400);
+    const afterWrappedDispatch = source.slice(wrappedDispatchIdx, wrappedDispatchIdx + 400);
+    expect(afterWrapped).toContain("dispatchAndVerify(");
+    expect(afterWrappedDispatch).toContain("dispatchAndVerify(");
+  });
+
+  test("PROP-DISPATCH-08: the wave-mode se-implement dispatch calls agentFn directly, never dispatchAndVerify — a fifth authoring-shaped site would red the two-call-site count above", () => {
+    const source = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
+    expect(source).toContain('agentFn("se-implement"');
+
+    // Negative control: the wave path's own 400-byte neighbourhood must not itself contain a
+    // dispatchAndVerify( call — proving the two symbols are genuinely distinct call forms, not
+    // an accidental adjacency the count alone could not tell apart.
+    const waveIdx = source.indexOf('agentFn("se-implement"');
+    const waveNeighbourhood = source.slice(Math.max(0, waveIdx - 200), waveIdx + 200);
+    expect(waveNeighbourhood).not.toContain("dispatchAndVerify(");
+  });
 });

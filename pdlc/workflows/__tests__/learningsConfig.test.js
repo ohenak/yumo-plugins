@@ -40,6 +40,8 @@
  * suite.
  */
 
+import { readFileSync } from "fs";
+
 import fc from "fast-check";
 
 import * as devModule from "../orchestrate-dev.js";
@@ -410,6 +412,52 @@ describe("LI-21: learnings configuration — LI-AT-30, LI-AT-32", () => {
       const noticeIds = (result.notices || []).map((n) => n.id);
       expect(noticeIds).not.toContain("NTC-MALFORMED");
       expect(noticeIds).not.toContain("NTC-KEYTYPE");
+    });
+
+    // PROP-CONFIG-06 (PROPERTIES §Group H): NTC-* notices ride the run-level `notices`
+    // channel, never `learningsInjection` itself — so an explicitly disabled run, which
+    // carries no `learningsInjection` key at all, still has a home for a configuration
+    // defect. The combination that isolates this from PROP-CONFIG-05 (which only asserts
+    // the key's absence) and from the AT-32 notice tests above (which never set `enabled:
+    // false`): `enabled: false` (a valid, deliberate disable) PLUS a wrong-typed sibling key.
+    test("PROP-CONFIG-06: enabled: false combined with a wrong-typed sibling key ⇒ no learningsInjection key, but NTC-KEYTYPE still lands on the top-level notices channel", async () => {
+      const result = await runLearningsPipeline({
+        configText: JSON.stringify({ learningsInjection: { enabled: false, maxDocuments: "not-a-number" } }),
+        lsFilesStdout: ZERO_CORPUS.lsFilesStdout,
+        corpusContents: ZERO_CORPUS.contents,
+      });
+
+      // The disable took effect: no learningsInjection key at all (AC-5.1a).
+      expect(Object.prototype.hasOwnProperty.call(result, "learningsInjection")).toBe(false);
+
+      // The configuration defect still has a home: the run-level notices channel, never
+      // folded inside a (now-absent) learningsInjection object.
+      const noticeIds = (result.notices || []).map((n) => n.id);
+      expect(noticeIds).toContain("NTC-KEYTYPE");
+    });
+
+    // PROP-CONFIG-08 (PROPERTIES §Group H): the configuration is read once per run via
+    // `readLearningsConfigSafely`, and the learnings feature reads the SAME config file the
+    // advisory-tier config reader uses — no second file, no per-phase override.
+    test("PROP-CONFIG-08: LEARNINGS_CONFIG_PATH is the shared MERGE_CONFIG_PATH — no second config file (NG-7)", () => {
+      expect(devModule.LEARNINGS_CONFIG_PATH).toBe(devModule.MERGE_CONFIG_PATH);
+      expect(devModule.LEARNINGS_CONFIG_PATH).toBe(".claude/pdlc.config.json");
+    });
+
+    test("PROP-CONFIG-08: `readLearningsConfigSafely` has exactly one call site in orchestrate-dev.js (structural — read once per run, not per dispatch)", () => {
+      // A hand-transcribed structural count over the production source, mirroring
+      // PROP-DISPATCH-08's idiom: the exported reader's own declaration is excluded, leaving
+      // exactly one invocation — inside main(), before any dispatch is composed. Were it called
+      // per-dispatch instead, a multi-dispatch run (several authoring episodes) would call it
+      // more than once per process, which this static count would catch regardless of how many
+      // dispatches a given fixture happens to drive.
+      const source = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
+      const callRe = /\breadLearningsConfigSafely\(/g;
+      const declRe = /\bexport async function readLearningsConfigSafely\(/g;
+      const totalMatches = (source.match(callRe) || []).length;
+      const declarations = (source.match(declRe) || []).length;
+      expect(declarations).toBe(1);
+      expect(totalMatches - declarations).toBe(1);
     });
 
     test("supporting: readLearningsConfigSafely returns null instead of propagating a throwing read", async () => {

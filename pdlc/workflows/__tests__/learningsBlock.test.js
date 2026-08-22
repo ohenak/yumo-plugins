@@ -19,11 +19,18 @@
  * still loads and the skips take effect while the symbols are absent.
  */
 
+import { execFileSync } from "child_process";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
 import fc from "fast-check";
 
 import { BR6_SECTION_NAMES, buildLearningsDocument } from "./helpers/learningsFixtures.js";
 
 const DEV_MODULE_PATH = "../orchestrate-dev.js";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 // TSPEC §OQ.1's four-sentence advisory preamble, transcribed literally (F-O-2, BR-7's three
 // things), with the doc's own `{f}` notation (used the same way at TSPEC lines 590/952, "the
@@ -337,5 +344,106 @@ describe("PROP-BOUND-03 generated arm: extractInjectableMaterial character-safet
     const result = extractInjectableMaterial(text, 0);
 
     expect(result).toEqual({ material: "", bounded: false, bytes: 0, sections: [] });
+  });
+});
+
+// PROP-BOUND-08 (real-corpus arm — the recognition rule): driven over a REAL corpus document —
+// the first path in `LEARNINGS_CORPUS_ARGV`'s live `git ls-files` output, sorted by UTF-8 byte
+// order (`Buffer.compare`), never a synthetic fixture — so a matcher written against a wrong
+// heading spelling, which greens on every synthetic fixture pinned to the same wrong spelling,
+// still reds here: a real document never carries the wrong spelling to match against. Read-only,
+// no `_git` seam substitution — the real repository IS the fixture.
+describe("PROP-BOUND-08: real-corpus arm — the recognition rule (a live document, not a synthetic fixture)", () => {
+  test("PROP-BOUND-08: the first real corpus document's rendered-block section set equals BR-6's five names intersected with the headings it carries, excludes Approval Record, and its own heading lines are present in the raw fixture text", async () => {
+    const { extractInjectableMaterial, renderLearningsBlock } = await import(DEV_MODULE_PATH);
+
+    const lsFilesOutput = execFileSync(
+      "git",
+      [
+        "ls-files",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+        "--",
+        ":(glob)docs/*/LEARNINGS-*.md",
+        ":(glob)docs/completed/*/LEARNINGS-*.md",
+      ],
+      { cwd: REPO_ROOT, encoding: "utf8" }
+    );
+    const paths = lsFilesOutput.split("\n").filter((line) => line.length > 0);
+    // Positive control: the real corpus is non-empty, so this property is not vacuously true.
+    expect(paths.length).toBeGreaterThan(0);
+
+    paths.sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
+    const firstPath = paths[0];
+
+    const text = readFileSync(join(REPO_ROOT, firstPath), "utf8");
+
+    // Positive-presence conjunct (stops this property greening over a document whose headings
+    // the matcher never actually saw): the document's own heading lines, verbatim, in the raw
+    // fixture text.
+    const expectedHeadingLines = [
+      "## 1. Non-Convergences",
+      "## 2. Cross-Feature Patterns",
+      "## 3. Rejected Proposals (with rationale)",
+      "## 4. Process Learnings",
+      "## 5. Open Items for Consolidation",
+    ];
+    for (const headingLine of expectedHeadingLines) {
+      expect(text).toContain(headingLine);
+    }
+
+    const extracted = extractInjectableMaterial(text, 1_000_000); // unbounded: never cuts
+    const selected = [
+      {
+        path: firstPath,
+        orderKey: "2026-01-01",
+        bytes: extracted.bytes,
+        bounded: extracted.bounded,
+        position: 1,
+        material: extracted.material,
+      },
+    ];
+    const block = renderLearningsBlock({ selected });
+
+    // Recover the canonical section set from the RENDERED BLOCK (PROP-BOUND-05's oracle) — never
+    // from `extractInjectableMaterial`'s own `sections[]` report — via an independently
+    // implemented matcher (§D.3's rule: ordinal stripped, gloss optional on either side, exact
+    // case-sensitive match against BR6_SECTION_NAMES), so this test cannot pass merely because
+    // it shares the production matcher's own bug.
+    const headingLineRe = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/;
+    const glossRe = /[ \t]*\([^()]*\)$/;
+    const br6Names = [
+      "Cross-Feature Patterns",
+      "Non-Convergences",
+      "Rejected Proposals (with rationale)",
+      "Process Learnings",
+      "Open Items for Consolidation",
+    ];
+    const canonicalize = (title) => {
+      if (br6Names.includes(title)) return title;
+      const stripped = title.replace(glossRe, "");
+      for (const name of br6Names) {
+        if (stripped === name.replace(glossRe, "")) return name;
+      }
+      return null;
+    };
+    const recovered = new Set();
+    for (const line of block.split("\n")) {
+      const m = headingLineRe.exec(line);
+      if (!m) continue;
+      const canonical = canonicalize(m[1].trim());
+      if (canonical) recovered.add(canonical);
+    }
+    const recoveredInPriorityOrder = br6Names.filter((name) => recovered.has(name));
+
+    // Non-empty: the observed set must not be vacuously empty.
+    expect(recoveredInPriorityOrder.length).toBeGreaterThan(0);
+    // Measured at HEAD (PROPERTIES doc): every corpus document carries all five BR-6 headings.
+    expect(recoveredInPriorityOrder).toEqual(br6Names);
+    // Approval Record is never matched, never taken — excluded from both the recovered set and
+    // the rendered block's text entirely.
+    expect(recovered.has("Approval Record")).toBe(false);
+    expect(block).not.toContain("Approval Record");
   });
 });

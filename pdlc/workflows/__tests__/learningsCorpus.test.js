@@ -31,6 +31,8 @@
 // body (rather than a top-level import) so this file still loads cleanly today, with
 // `gatherLearningsCorpus`/`selectLearnings` absent from that module's exports.
 
+import { readFileSync } from "fs";
+
 import { fakeGit, fakeFs } from "./helpers/seams.js";
 import {
   buildLearningsCorpus,
@@ -200,5 +202,50 @@ describe("gatherLearningsCorpus — corpus-shell fail-open arms (TSPEC §A.3, §
     });
 
     expect(result).toEqual({ unlistable: true });
+  });
+});
+
+// PROP-CORPUS-07 (§D.3, BR-3, E-19, E-33, F-O-1): `looksLikeLearningsDocument` is a first-line
+// recognition rule, deliberately weak (BR-3) — a document missing later sections, or truncated
+// mid-body, keeps its first line and stays eligible; only a first non-blank line that is not a
+// level-1 `LEARNINGS` heading is rejected. Driven directly at L1, never through the corpus
+// shell — the predicate under test is exported and pure.
+describe("looksLikeLearningsDocument — PROP-CORPUS-07: the first-line recognition rule (BR-3)", () => {
+  test("PROP-CORPUS-07: accepts a document missing later sections (only a heading and a preamble, no section bodies at all)", async () => {
+    const { looksLikeLearningsDocument } = await import("../orchestrate-dev.js");
+
+    const text = "# LEARNINGS — some-feature\n\nHarvested on 2026-01-01.\n";
+
+    expect(looksLikeLearningsDocument(text)).toBe(true);
+  });
+
+  test("PROP-CORPUS-07: accepts a document truncated mid-body (its first line survives, everything after is cut off)", async () => {
+    const { looksLikeLearningsDocument } = await import("../orchestrate-dev.js");
+
+    const text = "# LEARNINGS — some-feature\n\n## 1. Non-Convergences\n\nThis section never clo";
+
+    expect(looksLikeLearningsDocument(text)).toBe(true);
+  });
+
+  test("PROP-CORPUS-07: rejects a file whose first non-blank line is not a level-1 LEARNINGS heading", async () => {
+    const { looksLikeLearningsDocument } = await import("../orchestrate-dev.js");
+
+    const text = "# Some Other Document\n\n## 1. Non-Convergences\n\nNot a LEARNINGS document at all.\n";
+
+    expect(looksLikeLearningsDocument(text)).toBe(false);
+  });
+
+  test("PROP-CORPUS-07: leading blank lines before the heading are skipped, not treated as the first line", async () => {
+    const { looksLikeLearningsDocument } = await import("../orchestrate-dev.js");
+
+    const text = "\n   \n# LEARNINGS — some-feature\n\nBody text.\n";
+
+    expect(looksLikeLearningsDocument(text)).toBe(true);
+  });
+
+  test("PROP-CORPUS-07: no RSN-TRUNCATED id is ever emitted anywhere in orchestrate-dev.js — a truncated document is never a distinguished rejection reason, per BR-3's deliberate weakness", () => {
+    const source = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
+
+    expect(source).not.toContain("RSN-TRUNCATED");
   });
 });
