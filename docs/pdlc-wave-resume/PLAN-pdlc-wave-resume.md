@@ -58,7 +58,7 @@ than assumed:
 | The branch is behind the default branch | `git rev-list --count HEAD..origin/main` | `1637` |
 | The shipped mechanism is absent here | `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js` | `0` |
 | The wave-gate baseline is absent here | `ls docs/_constraints/` | no `pdlc-wave-gate-baseline.md` |
-| The ignore rule is absent here | `grep -n 'wave-state' .gitignore` | no match (only `/.claude/workflows/`, line 29) |
+| The ignore rule is absent here | `grep -n 'wave-state' .gitignore` | no match; the only `.claude`-anchored rule present is `/.claude/workflows/` |
 | `fast-check` / `c8` / `test:coverage` are absent here | `grep -nE '"test\|fast-check\|c8' pdlc/workflows/package.json` | only `test` and `test:watch` |
 
 All five are present at `origin/main` (`345ae358`), verified by name:
@@ -66,9 +66,12 @@ All five are present at `origin/main` (`345ae358`), verified by name:
 `headCorroborated` and `IMPLEMENTATION_DEFAULTS` all resolve in
 `git show origin/main:pdlc/workflows/orchestrate-dev.js`; `classifyWaveLedger` and
 `RESUME_OUTCOMES` resolve **nowhere** (they are this feature's new exports);
-`docs/_constraints/pdlc-wave-gate-baseline.md` is tracked; `.gitignore` line 41 is
-`/.claude/pdlc-wave-state.json`; and `pdlc/workflows/package.json` line 9 defines
-`test:coverage` with `--per-file --branches 85` alongside the `c8` and `fast-check` devDependencies.
+`docs/_constraints/pdlc-wave-gate-baseline.md` is tracked; `.gitignore` carries the verbatim line
+`/.claude/pdlc-wave-state.json` in the same block as `/.claude/workflows/`; and
+`pdlc/workflows/package.json` defines the `test:coverage` script with `--per-file --branches 85`
+alongside the `c8` and `fast-check` devDependencies. Cited by content rather than by line number
+on purpose (DEC-DOC-01): every one of these anchors would move under the rebase this section is
+about, and the content is what the claim is.
 
 **Consequence for this PLAN, and it is structural, not a caveat.** TSPEC §5.4 AT-14 and §6.2 OB-F1
 state that in wave mode a red gate halts the wave *and every wave after it*, so the wave carrying
