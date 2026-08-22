@@ -10,12 +10,12 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** — operator handoff 2026-08-10 relaying the `regime-ledger` `wheel-paper-portfolio` run (this REQ is its record); `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
 | Downstream | FSPEC, TSPEC, PROPERTIES |
-| Cross-Reviews | — |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v3.md`, `CROSS-REVIEW-test-engineer-REQ-v3.md` |
 | LEARNINGS | `docs/pdlc-learnings-injection/LEARNINGS-pdlc-learnings-injection.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft — awaiting operator review | Claude | 0.1 | 2026-08-10 |
+| pdlc | draft — round 7; erratum v0.10 (DoD round 1, CODE_REVIEW v1 F11) makes AC-2.4's report attribution cause-defined: a document cut by AC-2.2's count bound is reported under that cause even when the total bound also bound, which is what the shipped selection does and what FSPEC v0.14's BR-6 now states; erratum v0.8 moves AC-3.2's not-selected rows and corpus-level outcomes to the same per-dispatch locus AC-3.3 uses, decides the malformed `learningsInjection` section fails open with a notice (AC-5.1b), and closes AC-1.2's outside-set over authoring-tagged dispatches with no C-1 document type; erratum v0.9 restates §1.2 claim 2's unlistable behaviour against shipped code and names this feature's divergence, scopes AC-3.1's closure to each selected document's row, and names the implementation-config reader in AC-5.1b | Claude | 0.10 | 2026-08-21 |
 
 > **Scope in one line.** At authoring-dispatch time, `orchestrate-dev` supplies each authoring
 > role with the LEARNINGS the pipeline has already harvested from *earlier* features, as a
@@ -25,27 +25,23 @@ depends-on: []
 
 ## 1. Problem / Context
 
-The pipeline harvests a LEARNINGS document at the end of every feature (Phase H), and that
-document is where the run's durable signal survives after its cross-reviews are deleted. Today
-that signal has exactly two consumers: a human reading the file, and the periodic consolidation
-pass that distils some of it into project-level `docs/_constraints/` and `docs/_decisions/`
-material. **The pipeline itself never reads it.** An author dispatched to write the next
-feature's REQ, TSPEC or PROPERTIES is given the phase's grounding manifest and the upstream
-documents — and nothing at all from the features that came before it.
+The pipeline harvests a LEARNINGS document at the end of every feature (Phase H), and that document
+is where the run's durable signal survives after its cross-reviews are deleted. The pipeline reads a
+feature's LEARNINGS only for that feature's own purposes — harvest completeness scoring and a Tier-2
+approval record (§1.2 claim 1). **No author is ever composed with a different feature's LEARNINGS.**
+An author dispatched to write the next feature's REQ, TSPEC or PROPERTIES gets the phase's grounding
+manifest and the upstream documents, and nothing from the features that came before it.
 
-The consequence is a loop that does not close within its own cadence. A lesson the pipeline paid
-a full feature to learn is unavailable to the very next feature unless (a) a consolidation pass
-has run since, *and* (b) that pass judged the lesson general enough to promote, *and* (c) the
-promoted form landed in a file the phase's grounding already names. Any of those three failing —
-and the first fails by default, because consolidation is periodic and the queue is not — leaves
-the next author re-deriving, or re-making, a decision already recorded on disk one directory
-over.
+So the loop does not close within its own cadence. A lesson the pipeline paid a full feature to
+learn is unavailable to the very next feature unless (a) a consolidation pass has run since, *and*
+(b) that pass judged the lesson general enough to promote, *and* (c) the promoted form landed in a
+file the phase's grounding already names. Any of the three failing — and the first fails by default,
+because consolidation is periodic and the queue is not — leaves the next author re-deriving a
+decision already recorded on disk one directory over.
 
-The operator handoff of 2026-08-10 (the `regime-ledger` `wheel-paper-portfolio` run) is the
-occasion for this REQ but not the whole of its evidence. That run's specific pain points were
-checked against the modules at HEAD and found already fixed; the one gap the check did **not**
-close was this one — no mechanism injects sibling-feature LEARNINGS into an authoring dispatch.
-This REQ is scoped to that gap alone.
+The operator handoff of 2026-08-10 (the `regime-ledger` `wheel-paper-portfolio` run) is the occasion
+for this REQ, not the whole of its evidence: that run's pain points were checked against the modules
+at HEAD and found already fixed, except this one gap. This REQ is scoped to it alone.
 
 ### 1.1 Who has this problem
 
@@ -61,14 +57,27 @@ This REQ is scoped to that gap alone.
 Recorded at authoring time against this repository, so a later reviewer can check the premise
 rather than trust it:
 
-1. **LEARNINGS is written, then read only by humans and consolidation.** `orchestrate-dev`
-   composes and dispatches Phase H, scores the resulting document for structural completeness,
-   and copies approval anchors into it. No phase dispatch composed for an authoring role
-   references any LEARNINGS file belonging to a *different* feature.
-2. **The corpus is already on disk and already conventional.** Per-feature LEARNINGS live at
-   `docs/{feature}/LEARNINGS-{feature}.md`, and completed features are archived under
-   `docs/completed/{feature}/`. Both locations are established conventions this feature reads;
-   neither is introduced by it.
+1. **No authoring dispatch is composed with another feature's LEARNINGS.** `orchestrate-dev` does
+   read LEARNINGS today: it dispatches harvest, scores the resulting document for structural
+   completeness, and reads `docs/{f}/LEARNINGS-{f}.md` as the Tier-2 approval-record source when a
+   round produced no cross-review file. Every one of those reads is the *authored feature's own*
+   LEARNINGS. No dispatch composed for an authoring role carries material from a **different**
+   feature's LEARNINGS — the narrower claim this REQ rests on. C-2's self-exclusion leaves the
+   existing Tier-2 reader undisturbed.
+2. **The corpus is on disk, conventional, and already enumerated by shipped code.** Per-feature
+   LEARNINGS live at `docs/{feature}/LEARNINGS-{feature}.md`; completed features are archived under
+   `docs/completed/{feature}/`. `pdlc-consolidation-agent` already ships an enumeration over exactly
+   those two path shapes — tracked and untracked but not ignored, reaching one directory
+   level under `docs/` and one under `docs/completed/`. Its listing failure is **not** fail-open:
+   `consolidate-learnings.js`'s `enumerateCorpus` is total — it returns an unlistable outcome rather
+   than throwing — but the pass around it then marks itself `failed` and stops on that outcome.
+   This feature deliberately diverges and fails **open** (`RSN-UNLISTABLE`, AC-3.2), because a failed
+   listing must not halt an authoring dispatch (G-4, C-7). This feature reuses that shipped
+   **pass-side** definition — the predicate `consolidate-learnings.js` declares (`LS_FILES_ARGV`) —
+   by restating and pinning it, not importing it: the engine vendors only `orchestrate-dev.js` and
+   `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs:20`), so `consolidate-learnings.js` is
+   unreachable from an authoring dispatch at runtime (C-3, G-6). DEC-CONS-05 ships *one predicate,
+   two enumerations*, and nothing in it claims readers agree on sets (C-3).
 3. **The prompt budget is already contested.** Authoring dispatches already carry the phase's
    grounding manifest, the upstream documents and the pacing contract. Anything this feature
    adds competes for the same budget, which is why every acceptance criterion below is stated
@@ -94,97 +103,114 @@ passes is exactly where an unattended queue does its work.
 
 ## 2. Goals
 
-- **G-1 — Prior lessons reach the next author, in-run.** *(US-01, US-02)* Every authoring
-  dispatch for a PM-, SE- or TE-owned document is composed with material drawn from LEARNINGS
-  documents of features other than the one being authored, taken from the repository state the
-  run itself sees. No human turn, no separate pass and no configuration change is required for
-  this to happen on a repository that already has LEARNINGS files.
-- **G-2 — Bounded by construction, not by hope.** *(US-03)* What the dispatch carries is capped
-  by declared limits (§4.1) that do not grow with the size of the corpus. A repository with two
-  prior features and a repository with fifty produce dispatches whose injected material is
-  within the same stated bound.
-- **G-3 — Deterministic and observable.** *(US-03)* Two runs over the same repository state
-  select the same material, in the same order. Which LEARNINGS documents were selected — and
-  which were available but not selected — is visible in the run report, so an operator reading a
-  surprising authoring result can see what the author was given rather than infer it.
-- **G-4 — Fail-open, always.** *(US-04)* An absent, empty, malformed or unreadable corpus
-  degrades the dispatch to exactly today's behaviour and records that it did so. No state of the
-  corpus can halt a phase, fail a run, or change any convergence outcome.
+- **G-1 — Prior lessons reach the next author, in-run.** *(US-01, US-02)* Every authoring dispatch
+  for a PM-, SE- or TE-owned document is composed with material drawn from LEARNINGS documents of
+  features other than the one being authored, taken from the repository state the run itself sees.
+  No human turn, no separate pass and no configuration change is required on a repository that
+  already has LEARNINGS files.
+- **G-2 — Bounded by construction, not by hope.** *(US-03)* What a dispatch carries is capped by
+  declared limits (§4.1) that do not grow with the corpus. A repository with two prior features and
+  one with fifty produce dispatches whose injected material is within the same stated bound.
+- **G-3 — Deterministic and observable.** *(US-03)* Two runs over the same repository state select
+  the same material in the same order, and which documents were selected — and which were available
+  but not selected — is visible in the run report, so an operator reading a surprising authoring
+  result can see what the author was given rather than infer it.
+- **G-4 — Fail-open, always.** *(US-04)* An absent, empty, malformed, truncated or unreadable
+  corpus, or a corpus listing that fails outright, degrades the dispatch to exactly today's
+  behaviour and records that it did so. No state of the corpus can halt a phase, fail a run, or
+  change any convergence outcome.
 - **G-5 — Pipeline semantics untouched.** *(US-03)* Round windows, completeness scoring, verdict
-  parsing, approval anchors, erratum routing, POSTMORTEM lifecycle and queue lifecycle are
-  unchanged. This feature changes what an author is told, never what the pipeline requires of
-  what the author produces.
-- **G-6 — Composes with consolidation rather than duplicating it.** *(US-01)* The feature reads
-  the LEARNINGS corpus and, where they exist, the project-level artifacts consolidation has
-  already produced. It writes neither, proposes no promotion, and its behaviour is identical
-  whether or not a consolidation pass has ever run.
-
+  parsing, approval anchors, erratum routing, POSTMORTEM and queue lifecycle are unchanged. This
+  feature changes what an author is told, never what the pipeline requires of what they produce.
+- **G-6 — Composes with consolidation rather than duplicating it.** *(US-01)* The feature reads the
+  LEARNINGS corpus — by the same definition consolidation already uses (C-3) — and, where they
+  exist, the project-level artifacts consolidation produced. It writes neither, proposes no
+  promotion, and behaves identically whether or not a consolidation pass has ever run.
 ## 3. Non-Goals
 
-- **NG-1 — No distillation, promotion or project-level authorship.** This feature never writes
-  or proposes an edit to `docs/_constraints/`, `docs/_decisions/`, any skill prompt, or any
-  LEARNINGS file. Distilling recurring lessons into durable project law is
-  `pdlc-consolidation-agent`'s job and stays there (§1.3); nothing here duplicates its
-  distillation, its promotion bar, its PR mechanism or its effectiveness loop.
-- **NG-2 — No judgement about relevance.** Selection is a stated rule over documents that
-  exist, not an agent deciding which lessons matter. A "pick the most relevant learnings"
-  dispatch is explicitly rejected: it would add a model call, a nondeterminism source and a
-  failure mode to the front of every authoring phase.
-- **NG-3 — No change to the LEARNINGS grammar.** Section structure, the completeness criterion,
-  the approval record and the harvest metadata table are unchanged. This feature is a reader of
-  the existing format.
-- **NG-4 — No new corpus, index, cache or state file.** Nothing is written to disk to make
-  selection work. If selection needs a fact, it is derived from the files at the time of
-  dispatch.
-- **NG-5 — Not applied to review, implementation, DoD or harvest dispatches.** Scope is the
-  authoring roles named in §4 C-1. Widening it later is a separate decision with its own
-  evidence, not an implicit extension of this one.
+- **NG-1 — No distillation, promotion or project-level authorship.** This feature never writes or
+  proposes an edit to `docs/_constraints/`, `docs/_decisions/`, any skill prompt, or any LEARNINGS
+  file. Distilling recurring lessons into durable project law is `pdlc-consolidation-agent`'s job
+  and stays there (§1.3): its promotion bar, PR mechanism and effectiveness loop are not duplicated.
+- **NG-2 — No judgement about relevance.** Selection is a stated rule over documents that exist, not
+  an agent deciding which lessons matter. A "pick the most relevant learnings" dispatch is rejected:
+  it adds a model call, a nondeterminism source and a failure mode to the front of every phase.
+- **NG-3 — No change to the LEARNINGS grammar.** Section structure, the completeness criterion, the
+  approval record and the harvest metadata table are unchanged; this feature reads the format.
+- **NG-4 — No new corpus, index, cache or state file.** Nothing is written to disk to make selection
+  work; any fact selection needs is derived from the files at dispatch time.
+- **NG-5 — Not applied to review, implementation, DoD or harvest dispatches.** Scope is C-1's rule.
+  Widening it later is a separate decision with its own evidence, not an implicit extension.
 - **NG-6 — No cross-repository reading.** Only LEARNINGS inside the consumer repository the run
-  is executing in are read. Consolidating or borrowing across repositories remains
-  `pdlc-consolidation-agent`'s deferral D-CONS-02, untouched here.
-- **NG-7 — No configuration surface beyond the thresholds in §4.1.** No per-feature allow-list,
-  no per-phase override, no exclusion syntax. A repository either has LEARNINGS or does not.
-
+  executes in are read; borrowing across repositories remains `pdlc-consolidation-agent`'s deferral
+  D-CONS-02, untouched here.
+- **NG-7 — No configuration surface beyond §4.1's thresholds.** No per-feature allow-list, no
+  per-phase override, no exclusion syntax. A repository either has LEARNINGS or does not.
 ## 4. Constraints
 
-- **C-1 — The affected dispatches are a closed, named set.** Injection applies to authoring
-  dispatches for exactly these documents: REQ and FSPEC (PM role), TSPEC, PLAN and DECISIONS
-  (SE role), and PROPERTIES (TE role). Every other dispatch the pipeline makes — reviews,
-  implementation, DoD verification and remediation, harvest, ship, advisory seams — is unchanged
-  and must be observably unchanged (NG-5).
+- **C-1 — The affected dispatches are those the pipeline already classifies as authoring.** Injection
+  applies to every dispatch the pipeline tags `dispatchKind: "authoring"` at HEAD (its creator,
+  optimizer and erratum sites in `orchestrate-dev.js`) whose target document is REQ, FSPEC,
+  TSPEC, PLAN, DECISIONS or PROPERTIES: the phase's creator dispatch where it has one,
+  the optimizer (revision) dispatch of each review round, and an erratum dispatch against one of
+  those documents. This is deliberately a rule over the taxonomy that already exists rather than a
+  hand-counted set of six, because at HEAD Phase R has **no creator** (a REQ arrives already
+  authored, so its only authoring dispatches are `pm-author` optimizer rounds), the DECISIONS phase
+  is conditional and may not run at all, and optimizer dispatches recur once per review round. Every
+  dispatch outside that rule — reviews, implementation, DoD verification and remediation, harvest,
+  ship, advisory seams — is unchanged and observably unchanged (NG-5).
+
 - **C-2 — Self-exclusion.** The feature currently being authored never contributes its own
   LEARNINGS document to its own dispatch, in any phase, including a re-run of a feature whose
   LEARNINGS already exists from an earlier completed attempt.
-- **C-3 — The corpus is read-only and its locations are the established ones.** Per-feature
-  LEARNINGS under `docs/{feature}/` and archived features under `docs/completed/{feature}/` are
-  the corpus. `docs/discarded/` is excluded, matching the treatment abandoned work already
-  receives elsewhere in the pipeline. No file in the corpus is written, moved, deleted or
-  reformatted by this feature.
+- **C-3 — Corpus definition, reused from consolidation's pass side, read-only.** The corpus is
+  every LEARNINGS document under `docs/{feature}/` and `docs/completed/{feature}/`, tracked or
+  untracked, **excluding** files git ignores — the definition
+  `pdlc-consolidation-agent` already ships (§1.2 claim 2; DECISIONS-pdlc-consolidation-agent §
+  DEC-CONS-05). Reuse is definitional, not by import: this feature restates that predicate and a
+  test pins the restatement against `consolidate-learnings.js`'s own declaration — DEC-CONS-05's
+  own evidence form, needing no packaging change (O-7). No claim is made that the definition is
+  held equal across readers: DEC-CONS-05 ships one predicate with two enumerations and rejected a
+  set-equality oracle against the `SessionStart` hook, so none is owed here. `docs/discarded/` gets
+  **no exclusion rule of its own** (AC-2.6). The feature reads the corpus and writes nothing (NG-1, NG-4).
 - **C-4 — Injected material is labelled advisory, and its status is stated to the author.** The
   material arrives delimited and identified by its source document, and the author is told that
   it is prior-feature context, not a requirement of the feature being authored and not an
   upstream document being traced. An author must be able to disregard it without leaving a gap
   in what they were asked to produce.
-- **C-5 — Determinism has no clock and no model in it.** Selection is a total function of the
-  repository state at dispatch time. It consults no wall clock, makes no model call, and yields
-  the same result and the same order for the same state. Every input it uses is recorded in the
-  run report (G-3) so the selection can be reproduced from the report alone.
+- **C-5 — Determinism: no clock, and no model deciding what is selected.** Selection is a total
+  function of repository state at dispatch time: no wall clock, no model judgement about which
+  lessons matter (NG-2), same state ⇒ the same documents in the same order, and every input the rule
+  used recorded in the run report (G-3) so the selection is reproducible from the report alone. It
+  is **not** claimed that no model call occurs: on the Claude Code runtime channel the pipeline's
+  file listing and reading seams are themselves model-mediated, while on the engine's plain-Node
+  channel they are not. AC-2.5's byte-identity across two runs is asserted where the transport is
+  deterministic; where a listing or read reports failure rather than content, C-7 governs — inject
+  nothing from that source and record why, never read an unreadable listing as an empty corpus.
+
 - **C-6 — Injected material is not in the errata channel.** A defect an author notices in an
   injected LEARNINGS document is not an `ERRATUM` against an upstream document, because a
-  sibling feature's LEARNINGS is not this feature's upstream. It is reported in the run report
-  and left for a human; the erratum mechanism's bounded per-document rounds are untouched.
-- **C-7 — Fail-open is unconditional and total.** Every corpus state — directory absent, no
-  files, a file unreadable, a file that does not parse as LEARNINGS, a file exceeding every
-  bound — resolves to a defined outcome that is at worst "inject nothing, record why". No corpus
-  state produces an exception, a halt, a POSTMORTEM, or a changed convergence outcome (G-4).
+  sibling feature's LEARNINGS is not this feature's upstream. The run report's record of what was
+  injected (AC-3.1) is the trace a human follows; this feature adds no author-emitted channel and
+  leaves the erratum mechanism's bounded per-document rounds untouched.
+- **C-7 — Fail-open is unconditional and total.** Every corpus state — directory absent, no files,
+  the listing itself failing, a file unreadable, a file truncated mid-document, a file that does not
+  parse as a LEARNINGS document, a file exceeding every bound — resolves to a defined outcome whose
+  worst case is "inject nothing, record why". "I could not find out" never collapses into "there is
+  nothing". No corpus state produces an exception, a halt, a POSTMORTEM, or a changed convergence
+  outcome (G-4).
+
 - **C-8 — The budget is shared, not additive.** The material injected competes with the prompt
   content the dispatch already carries; the grounding manifest, upstream documents and pacing
   contract are never displaced, shortened or reordered to make room. When the bound in §4.1
   cannot be honoured alongside them, less is injected — never something existing removed.
-- **C-9 — Operator-visible strings and parsed values are disciplined** *(DC-01)*. Each report
-  line and each notice this feature emits is a registered catalogue entry asserted by id, and
-  every value read out of a corpus file is read by a total function with a defined outcome for
-  malformed input.
+- **C-9 — Operator-visible strings are catalogued; every input state is total** *(DC-01)*. Every
+  report line and notice this feature emits is a registered catalogue entry with an id a test can
+  assert on — including AC-3.2's per-document reason and corpus-level outcome ids, and the
+  AC-5.1b/AC-5.1c configuration notices.
+  On the receive side, every corpus input state and every configuration state — absent, malformed,
+  truncated — resolves to a defined outcome (C-7, Group 4). How the catalogue is registered is
+  TSPEC's; the closure of the set and the id-per-reason discipline are requirements.
 
 ### 4.1 Declared thresholds
 
@@ -194,24 +220,23 @@ the consumer repository unless stated otherwise.
 
 | Name | Default | Owner | Used by |
 |---|---|---|---|
-| `learningsInjection.enabled` | `true` | consumer config | AC-1.1, AC-5.1 |
+| `learningsInjection.enabled` | `true` | consumer config | AC-1.1, AC-5.1a, AC-5.1b, AC-5.1c |
 | `learningsInjection.maxDocuments` | 5 documents per dispatch | consumer config | AC-2.1, AC-2.2 |
 | `learningsInjection.maxBytesPerDocument` | 6,000 bytes | consumer config | AC-2.3 |
 | `learningsInjection.maxTotalBytes` | 20,000 bytes per dispatch | consumer config | AC-2.3, AC-2.4 |
 
 **Derivation, stated honestly.** These are a declared starting point, not a measured floor. The
-document count comes from the corpus size this repository actually has (a handful of completed
-features, of which the most recent few are the ones an author would read); the byte figures are
-set so that a full complement of documents stays well inside the room an authoring dispatch has
-left after its grounding manifest and upstream documents, under the same per-write discipline
-authors already work to. O-1 obliges measuring the realised prompt sizes on a live run and
-re-deriving all three before they are treated as settled.
+document count is set by corpus size (a repository has a handful of completed features); the byte
+figures are set so a full complement stays inside the room an authoring dispatch has left after its
+grounding manifest and upstream documents. Because injection is re-composed per authoring dispatch
+(C-1), run-level cost scales with rounds, not phases. O-1 obliges measuring realised prompt sizes on
+a live run and re-deriving all three before they are treated as settled.
 
 ### 4.2 Upstream dependencies
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | A LEARNINGS corpus of at least two prior features in the consumer repository | Files already on disk (`docs/{feature}/` and `docs/completed/{feature}/`) | **Met** in this repository and in `regime-ledger`. Does **not** gate FSPEC: AC-5.1's empty-corpus behaviour is a first-class specified state |
+| BL-01 | A LEARNINGS corpus of at least one prior feature in the consumer repository | Files already on disk (`docs/{feature}/` and `docs/completed/{feature}/`) | **Met** in this repository and in `regime-ledger`. Does **not** gate FSPEC: AC-4.1's empty-corpus behaviour is a first-class specified state |
 | BL-02 | The harvest metadata a LEARNINGS document carries, as the ordering input (§5 Group 2) | Existing convention, `harvest-learnings` output | Must exist at HEAD before FSPEC authoring; O-2 records the measured shape and the total fallback for documents lacking it |
 | BL-03 | `pdlc-consolidation-agent` delivered | PR merged | **Not required.** This feature composes with it (§1.3, G-6) but does not consume anything it produces; the queue row therefore declares no dependency on it |
 
@@ -222,15 +247,20 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 **Group 1 — the material reaches the authoring roles** *(US-01, US-02; G-1; C-1, C-2, C-4)*
 
-- **AC-1.1** *Who:* the operator. *Given* a repository holding LEARNINGS documents for two or
-  more prior features `{p}` and a run authoring feature `{f}` with
-  `learningsInjection.enabled` at its default, *when* any of the six authoring dispatches named
-  in C-1 is composed, *then* the composed dispatch contains material drawn from at least one
-  `{p}` LEARNINGS document, delimited and identified by its source document path.
-- **AC-1.2** *Given* the same run, *when* every dispatch the pipeline makes is inspected, *then*
-  exactly the six authoring dispatches of C-1 carry injected material and **no other dispatch
-  does** — reviews, implementation, DoD verification and remediation, harvest, ship and the
-  advisory seams are byte-identical to the same run with injection disabled.
+- **AC-1.1** *Who:* the operator. *Given* a repository holding LEARNINGS documents for at least one
+  prior feature `{p}`, and a run authoring `{f}` with `learningsInjection.enabled` at its default,
+  *when* any dispatch matching C-1's rule is composed — creator, optimizer round, or erratum — *then*
+  that dispatch contains material drawn from at least one `{p}` LEARNINGS document, delimited and
+  identified by source document path. Derived over the dispatches a run actually makes: Phase R has
+  no creator at HEAD, so a fixed count of six is not the oracle.
+- **AC-1.2** *Given* the same run, *when* every dispatch the pipeline made is inspected, *then* the
+  set carrying injected material equals exactly the set C-1's rule names — no more, no fewer — and
+  every dispatch outside it (reviews, implementation, DoD verification and remediation, harvest,
+  ship, advisory seams, and any dispatch the pipeline tags authoring whose target is none of C-1's
+  six document types — the code-review phase's optimizer at HEAD) is byte-identical to the same run with injection disabled — asserted under
+  AC-6.1's fixtures, not by comparing live runs (AC-4.3). The oracle is a set equality over the pipeline's own dispatch classification evaluated against the run that
+  happened, so a run with no DECISIONS phase, or with five optimizer rounds, satisfies it as stated
+  rather than vacuously.
 - **AC-1.3** *Given* a repository where `docs/{f}/LEARNINGS-{f}.md` already exists (a re-run of a
   previously harvested feature), *when* any authoring dispatch for `{f}` is composed, *then* it
   contains no material from that document, in any phase (C-2).
@@ -244,78 +274,136 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 - **AC-2.1** *Given* a corpus of `N` prior LEARNINGS documents for any `N`, *when* a dispatch is
   composed, *then* the number of source documents contributing to it is at most
-  `learningsInjection.maxDocuments`, and for `N` greater than that threshold the count equals it
-  exactly — a corpus of 5 and a corpus of 50 produce the same document count.
-- **AC-2.2** *Given* `N` greater than `learningsInjection.maxDocuments`, *when* the selection is
-  compared against the corpus, *then* the documents selected are the highest-ordered ones under
-  a **stated total ordering** whose sole inputs are facts carried by the documents and their
-  paths — the recency the harvest metadata records, with a defined, documented fallback for any
-  document not carrying it — and never wall-clock time, file mtime, or a model's judgement
-  (C-5, NG-2).
+  `learningsInjection.maxDocuments` for every `N`. It reaches that cap only where the byte bounds
+  (AC-2.3, AC-2.4) do not bind first; under §4.1's values they bind on measured corpora, so
+  equality above it is **not** claimed.
+- **AC-2.2** *Given* a corpus whose `N` exceeds `learningsInjection.maxDocuments`, *when* a dispatch
+  is composed, *then* the selected documents are the highest-ordered under a total ordering that is
+  a function of repository state alone, with a **total tiebreak**: where the ordering key is absent,
+  unparseable or equal — the common case, since the harvest metadata date row is free text and no
+  completeness criterion checks its parseability — rank falls back to byte order over the document
+  path, as the shipped corpus enumeration already does (DEC-CONS-05). The ordering never consults
+  wall-clock time, file mtime, or a model's judgement (C-5, NG-2). The ordering key itself is O-2's
+  to bind before FSPEC authoring; two properties are testable today without it: permuting file
+  mtimes and re-running yields an identical selection, and the ordering is a pure function of
+  (ordering key value, repository-relative path) and nothing else. Rank invariance under a
+  directory rename is **not** claimed: the path is load-bearing here.
 - **AC-2.3** *Given* a corpus containing a document larger than
-  `learningsInjection.maxBytesPerDocument`, *when* it is selected, *then* the material taken
-  from it does not exceed that threshold, the total across all selected documents does not
-  exceed `learningsInjection.maxTotalBytes`, and the report states for each such document that
-  it was bounded.
+  `learningsInjection.maxBytesPerDocument`, *when* it is selected, *then* the material taken from it
+  does not exceed that threshold, the total across selected documents does not exceed
+  `learningsInjection.maxTotalBytes`, and that document's report row carries the per-document
+  bounded flag AC-3.1 enumerates.
 - **AC-2.4** *Given* selected documents whose combined material would exceed
   `learningsInjection.maxTotalBytes`, *when* the dispatch is composed, *then* the excess is
   resolved by dropping whole documents from the low end of the ordering — never by silently
   cutting one mid-document beyond the per-document bound — and each dropped document appears in
-  the report as available-but-not-selected (AC-3.2).
+  the report as available-but-not-selected (AC-3.2), **attributed to the bound that actually
+  removed it**: a document the count bound (AC-2.2) already cut is reported under that cause even
+  when the total bound also failed on the documents that remained, and only documents this bound
+  drops are reported under it. The reason ids of AC-3.2 name causes, not coincidences.
 - **AC-2.5** *Given* two runs over an identical repository state, *when* the two composed
   dispatches for the same document type are compared, *then* the injected material is
   byte-identical, including order (G-3, C-5).
-- **AC-2.6** *Given* a corpus containing a LEARNINGS document under `docs/discarded/`, *when*
-  selection runs, *then* that document is not selected and does not count toward any threshold
-  (C-3); *and given* one under `docs/completed/{p}/`, it is eligible on the same terms as one
-  under `docs/{p}/`.
+- **AC-2.6** *Given* a LEARNINGS document under `docs/discarded/{p}/`, *when* selection runs,
+  *then* it is neither selected nor recorded, C-3's enumeration not reaching that depth; *and
+  given* one directly at `docs/discarded/LEARNINGS-*.md`, it is a corpus member on ordinary terms;
+  *and given* one under `docs/completed/{p}/`, it is eligible as one under `docs/{p}/` is.
 
 **Group 3 — observability** *(US-03; G-3; C-9)*
 
-- **AC-3.1** *Given* a completed or halted run in which injection was active, *when* the run
-  report is read, *then* it carries, per authoring dispatch: the source document paths selected,
-  in the order used, and the total bytes injected. A dispatch that injected nothing carries an
-  empty set of rows, not a missing field.
-- **AC-3.2** *Given* the same report, *when* it is read, *then* it also names the corpus
-  documents that were **available but not selected**, with the reason for each drawn from a
-  closed set (below the count threshold's cut, dropped for the total byte bound, excluded as the
-  authored feature's own, unreadable, unparseable) — so an operator can tell an absent lesson
-  from an unread one.
-- **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce the
-  selection by hand against the same repository state, *then* every input the rule used is
-  present in the report and the reproduction matches (C-5).
-- **AC-3.4** *Given* an author that notices a defect in an injected document, *when* it reports
-  the defect, *then* the report surfaces it as a note against the named source document and
-  **no** erratum round is opened against any upstream document of `{f}` (C-6).
+- **AC-3.1** *Given* a completed or halted run in which injection was active, *when* the run report
+  is read, *then* it carries, per authoring dispatch: the source document paths selected, in the
+  order used; the bytes injected per document; per document, whether its material was bounded
+  (AC-2.3); and the total bytes injected. A dispatch that injected nothing carries an empty set of
+  rows, not a missing field. The enumeration is closed over these per-dispatch row fields alone (a
+  completeness test asserts set equality) — that closure is over each **selected document's row**,
+  not over the dispatch record as a whole. AC-3.2's per-dispatch not-selected rows and corpus-level
+  outcomes, and AC-3.3's rule inputs, share the dispatch record but sit outside AC-3.1's set, each
+  closed by its own completeness test at the loci AC-3.2 and AC-3.3 name.
+- **AC-3.2** *Given* the same report, *when* it is read, *then* it also names, **per authoring dispatch**, the corpus documents
+  **not** selected for that dispatch, each with a **per-document** reason drawn from a closed set of catalogued ids
+  (C-9): `RSN-COUNT` (below the count threshold's cut), `RSN-BYTES` (dropped by the total byte
+  bound), `RSN-SELF` (the authored feature's own, C-2), `RSN-UNREADABLE`, `RSN-UNPARSEABLE` (read,
+  not a LEARNINGS document), `RSN-NO-MATERIAL` (eligible, carrying none of the material the
+  bounding rule takes). Truncation is **not** a member: a truncated file is either still a
+  LEARNINGS document, so eligible, or `RSN-UNPARSEABLE`. States in which no document is
+  known are **corpus-level outcomes**, recorded **per authoring dispatch**, alongside AC-3.1's rows
+  for that dispatch (a run-level mirror, if carried, is additive, is not the oracle, and has a
+  deliberately unconstrained value that nothing asserts on), drawn from
+  their own closed set:
+  `RSN-UNLISTABLE` (the listing failed) and `RSN-EMPTY` (none found). The configuration notices form a
+  **third** closed catalogue with two members: the malformed-section notice (AC-5.1b) and the
+  wrong-typed-declared-key notice (AC-5.1c). Three set-equality tests, one per
+  catalogue; with a corpus-level outcome for a dispatch, that dispatch's AC-3.1 rows are present
+  and empty.
+- **AC-3.3** *Given* an operator holding only the run report, *when* they reproduce **a given
+  authoring dispatch's** selection by hand against the corpus as it stood at that dispatch, *then*
+  every input the rule used is in the report and the reproduction matches (C-5). Reproducibility is
+  claimed **per dispatch, not per run**: the corpus may move mid-run — a feature harvested while the
+  run is in flight — so two authoring dispatches in one run may legitimately observe different
+  corpora, and one run-level record could not describe both. The inputs divide by locus accordingly:
+  the **ordering key value per document** is recorded **per authoring dispatch**, alongside AC-3.1's
+  rows for that dispatch; the **§4.1 thresholds in force** are recorded **once per run**, the
+  configuration being read once. Each locus's fields are a closed set: two completeness tests assert
+  set equality, one per locus, as AC-3.2's catalogues do.
+- **AC-3.4** *Given* an author who notices a defect in an injected LEARNINGS document, *when* the run
+  finishes, *then* **no** erratum round is opened against any upstream document of `{f}` on account
+  of it, and the report's AC-3.1 rows name the source document — the trace an operator follows. This
+  feature opens no new author-emitted channel and requires nothing new of any author (G-5, NG-3);
+  defects observed in injected material are O-3's operator-side record.
 
 **Group 4 — fail-open under every corpus state** *(US-04; G-4; C-7)*
 
 - **AC-4.1** *Given* a repository with no prior LEARNINGS document at all — the first feature
   ever run there — *when* the pipeline runs, *then* every authoring dispatch is composed exactly
-  as it is today, the run completes with unchanged behaviour, and the report records that the
-  corpus was empty rather than omitting the field.
+  as it is today, the run completes with unchanged behaviour, and the report records the
+  corpus-level `RSN-EMPTY` outcome (AC-3.2).
 - **AC-4.2** *Given* a corpus file that cannot be read, or that reads but does not parse as a
-  LEARNINGS document, *when* selection runs, *then* that file is skipped with its reason
-  recorded (AC-3.2), the remaining corpus is used normally, and no exception, halt or POSTMORTEM
-  results.
-- **AC-4.3** *Given* any corpus state whatsoever, *when* the run is compared against the same run
-  with `learningsInjection.enabled` set to `false`, *then* the set of artifacts produced, every
-  verdict, every round count and the halt/complete outcome are unchanged — the corpus can change
-  what an author reads, never whether the pipeline converges (G-4, G-5).
+  LEARNINGS document — where a truncated file lands — *and* separately given a listing that fails
+  outright, *when* selection runs, *then* the affected document is skipped with its per-document
+  reason id recorded and the rest of the corpus used normally, a failed listing injects nothing and
+  records `RSN-UNLISTABLE` at corpus level (AC-3.2), and
+  no exception, halt or POSTMORTEM results.
+- **AC-4.3** *Given* any corpus state whatsoever, *when* the convergence machinery is inspected,
+  *then* no injection-derived value reaches any gate input: verdict parsing, structural completeness
+  scoring, round-window arithmetic, approval anchors and erratum routing consume nothing selection
+  produced, and non-authoring dispatch prompts stay byte-identical to the disabled run (AC-1.2).
+  This is the falsifiable form of "the corpus changes what an author reads, never whether the
+  pipeline converges" (G-4, G-5): comparing verdicts or round counts across live runs measures model
+  nondeterminism, and comparing them under AC-6.1's scripted fixtures is vacuous.
 - **AC-4.4** *Given* thresholds in §4.1 configured to values that admit nothing (zero documents
-  or zero bytes), *when* the pipeline runs, *then* it behaves exactly as the disabled case and
-  records that it did, rather than treating the configuration as invalid and refusing.
+  or zero bytes), *when* the pipeline runs, *then* it behaves as an enabled run whose selection is
+  empty — AC-3.1's empty rows, not AC-5.1a's absent key — rather than treating the configuration
+  as invalid and refusing. A wrong-typed key is AC-5.1c's state, likewise enabled.
 
 **Group 5 — inertness when disabled, and semantics preserved** *(G-5; NG-3, NG-4, NG-7)*
 
-- **AC-5.1** *Given* `learningsInjection.enabled` set to `false`, or the configuration section
-  absent or malformed, *when* the pipeline runs, *then* no corpus file is opened, every composed
-  dispatch is byte-identical to the pre-feature baseline, and the run report carries no
-  injection summary at all — the key is absent, not present-and-empty.
-- **AC-5.2** *Given* a run with injection active, *when* the filesystem is observed for its whole
-  duration, *then* no file under `docs/_constraints/`, `docs/_decisions/`, any LEARNINGS
-  document, or any skill prompt is written, and no new index, cache or state file is created
-  anywhere (NG-1, NG-4).
+- **AC-5.1a** *Given* `learningsInjection.enabled` is explicitly `false`, *when* the pipeline runs,
+  *then* every composed dispatch is byte-identical to AC-6.2's recorded baseline — that committed
+  pre-feature fixture, not a second branch of this run — and no injection summary is carried: the
+  key is absent, not present-and-empty. An **absent configuration section is not this state**: no
+  consumer repository carries the section at HEAD, so absent must read as §4.1's declared defaults,
+  which leave `enabled` at `true` and the run injecting under AC-1.1. Disablement is an explicit
+  act, and there is no second gate beyond this key (G-1).
+- **AC-5.1b** *Given* the `learningsInjection` section present but **not an object** — malformed
+  as the repository's sibling config readers already read it — *when* the pipeline runs,
+  *then* the run stays **enabled** on §4.1's declared defaults **and** the report carries a
+  catalogued notice naming the malformed section, so it is distinguishable from a deliberate
+  disable (DC-01, C-9). Fail-open is the decided response: disablement is the explicit
+  `enabled: false` of AC-5.1a and no non-deliberate configuration mistake turns the feature off
+  (G-1, G-4, C-7) — the same response `orchestrate-dev.js`'s `parseImplementationConfig` ships,
+  whose malformed section yields defaults plus an explicit operator notice. A **misspelt section name** reads as absent, and is therefore the same
+  default-enabled state — consistent with AC-5.1c; no unknown-key registry is required.
+- **AC-5.1c** *Given* the section well-shaped but a **declared §4.1 key wrong-typed**, *when* the
+  pipeline runs, *then* the run stays **enabled** with that key at its default and the report
+  carries a catalogued notice naming it — a mistyped threshold does not disable the feature.
+- **AC-5.2** *Given* a run with injection active, *when* the filesystem is observed for the whole
+  run, *then* the corpus paths touched are exactly the reads of the documents AC-3.1 and AC-3.2 name
+  — a positive membership claim, not an absence-only one — and no file under `docs/_constraints/` or
+  `docs/_decisions/`, no LEARNINGS document and no skill prompt is written, and no new index, cache
+  or state file is created anywhere (NG-1, NG-4).
+  On a disabled run (AC-5.1a) the same window shows no corpus path touched at all, carrying that run's
+  zero-reads claim positively (C-7).
 - **AC-5.3** *Given* a run with injection active, *when* the documents it produces are scored,
   *then* the completeness criteria, required headings, verdict grammar, round windows and
   approval anchors are exactly those in force without it — this feature adds no new requirement
@@ -323,70 +411,86 @@ question. `{f}` denotes the feature being authored; `{p}` denotes a prior featur
 
 **Group 6 — verification strategy** *(Team Principle 2)*
 
-- **AC-6.1** *Given* the test suite, *when* it runs in CI, *then* selection, bounding, ordering
-  and every fail-open state of Group 4 are exercised against fixture corpora with **no live
-  model calls**, and the determinism of AC-2.5 is asserted by comparing two compositions rather
-  than by inspection.
-- **AC-6.2** *Given* the disabled configuration, *when* the suite runs, *then* it asserts the
-  byte-identity of AC-5.1 against a recorded baseline, so a regression that leaks injected text
-  into a disabled run is a test failure rather than a discovery.
+- **AC-6.1** *Given* the test suite, *when* it runs in CI, *then* selection, bounding, ordering,
+  AC-1.2's dispatch-set equality and non-authoring byte-identity, and every fail-open state in
+  Group 4 are exercised against fixture corpora with **no live model calls**, and determinism
+  (AC-2.5) is asserted by comparing two compositions rather than by inspection.
+- **AC-6.2** *Given* the disabled configuration, *when* the suite runs, *then* it asserts
+  byte-identity against **the recorded baseline** — a fixture composition captured from the
+  pre-feature HEAD (no injection seam present), committed and never regenerated by the branch under
+  test — and asserts that AC-5.1b's catalogued notice fires on a section that is present and not an
+  object, and AC-5.1c's on a wrong-typed key, so a regression leaking injected text into a
+  disabled run, or silencing either notice, is a test failure, not a production discovery.
 
 ## 6. Risks
 
-- **R-1 — Prompt budget crowding.** Injection competes with material an authoring dispatch
-  already needs, and the observable failure is not an error but a worse document. Mitigation:
-  C-8 makes existing content non-displaceable, §4.1 caps the addition, and O-1 obliges measuring
-  realised prompt sizes on a live run before the caps are treated as settled.
-- **R-2 — Stale or wrong lessons carried forward.** A LEARNINGS document records what was true
-  for its feature; injected into a later one it may be obsolete, or right for a context that has
-  changed. Mitigation: C-4's labelling makes its status explicit rather than authoritative, and
-  AC-3.4 gives the author a reporting channel that does not route a sibling document's defect
-  into the erratum mechanism. The deeper answer — deciding which lessons have become project
-  law — is consolidation's, by design (§1.3).
-- **R-3 — Recency is a proxy for relevance, and a poor one.** The ordering of AC-2.2 selects the
-  latest, not the most applicable; a feature in an unrelated area can crowd out the one that
-  mattered. This is a deliberate trade against NG-2's rejection of a judgement call at the front
-  of every authoring phase. Mitigation: O-3 obliges recording, from real runs, whether authors
-  actually used the injected material, so a later relevance rule is proposed from evidence
-  rather than from intuition.
-- **R-4 — Authors treating injected text as requirements.** The worst outcome is an author
-  importing a prior feature's decisions into this feature's document, producing scope creep that
-  survives review because it reads as grounded. Mitigation: C-4 and AC-1.4 state the material's
-  status in the dispatch itself; O-3's usage record is also the detector for this failure mode.
-- **R-5 — Overlap pressure with consolidation.** Two mechanisms reading one corpus invite scope
-  drift — an injection rule that starts summarising, ranking or promoting is consolidation
-  rebuilt badly. Mitigation: NG-1 and NG-2 are stated as absolutes rather than defaults, and
-  AC-5.2 asserts the write-side boundary observationally rather than by intent.
-- **R-6 — Corpus growth changing behaviour silently.** As a repository accumulates features, the
-  selected set turns over even though nothing about the feature changed. Mitigation: AC-3.1 and
-  AC-3.2 put both the selected and the unselected sets in the run report, so the turnover is
-  visible in the record of every run rather than inferred later.
-
+- **R-1 — Prompt budget crowding.** Injection competes with material an authoring dispatch already
+  needs, and the failure shows up not as an error but as a worse document. Mitigation: C-8 makes
+  existing content non-displaceable, §4.1 caps the addition, and O-1 obliges measuring realised
+  prompt sizes — per dispatch and per run across rounds — before the caps are treated as settled.
+- **R-2 — Stale or wrong lessons carried forward.** A LEARNINGS document records what was true for
+  its feature; injected into a later one it may be obsolete. Mitigation: C-4's labelling makes its
+  status advisory rather than authoritative, and C-6 keeps a sibling document's defect out of the
+  erratum mechanism. Deciding which lessons have become project law is consolidation's, by design.
+- **R-3 — Recency is a proxy for relevance, and a poor one.** AC-2.2's ordering can let a feature in
+  an unrelated area crowd out the one that mattered — a deliberate trade against NG-2's rejection of
+  a judgement call at the front of every authoring phase. Mitigation: O-3 obliges recording, from
+  real runs, whether authors used the injected material, so a later relevance rule comes from
+  evidence rather than intuition.
+- **R-4 — Authors treating injected text as requirements.** The worst outcome is a prior feature's
+  decisions imported into this feature's document, surviving review because it reads as grounded.
+  Mitigation: C-4 and AC-1.4 state the material's status in the dispatch itself; O-3's usage record
+  is the detector.
+- **R-5 — Overlap pressure with consolidation.** An injection rule that starts summarising, ranking
+  or promoting is consolidation rebuilt badly. Mitigation: NG-1 and NG-2 are absolutes, not
+  defaults, and AC-5.2 asserts the write-side boundary observationally.
+- **R-6 — Corpus growth changing behaviour silently.** As features accumulate, the selected set
+  turns over though nothing about the feature changed. Mitigation: AC-3.1 and AC-3.2 put both the
+  selected and unselected sets in every run's report, so turnover is visible rather than inferred.
 ## 7. Obligations / Open Questions
 
-- **O-1** Measure the realised authoring-dispatch prompt sizes with injection active on a live
-  run, and re-derive `learningsInjection.maxDocuments`, `maxBytesPerDocument` and
-  `maxTotalBytes` (§4.1) from that measurement before treating them as settled. The current
-  values are a declared starting point, not a measured floor.
+- **O-1** Measure realised authoring-dispatch prompt sizes with injection active on a live run —
+  per dispatch and per run across review rounds (C-1) — and re-derive
+  `learningsInjection.maxDocuments`, `maxBytesPerDocument` and `maxTotalBytes` (§4.1) from that
+  measurement before treating them as settled.
 - **O-2** Record the harvest metadata a LEARNINGS document actually carries at HEAD (BL-02),
-  measured from the documents in this repository and in `regime-ledger`, and state the total
-  fallback ordering for documents that do not carry it — before FSPEC authoring, so AC-2.2's
-  ordering is specified over a measured shape rather than an assumed one.
-- **O-3** Record, from real runs, whether authors used the injected material and whether any
-  document shows the R-4 failure mode (prior-feature decisions imported as requirements). This
-  is the evidence base for any later relevance rule and for retiring or widening the feature; it
-  is an operator-and-report obligation, not a code deliverable of this REQ.
-- **O-4** Decide which part of each LEARNINGS document is injected when the per-document bound
-  binds (AC-2.3) — the whole document up to the bound, or a named subset of its sections. The
-  decision is FSPEC's; this REQ requires only that the outcome be bounded, deterministic and
-  reported.
-- **O-5** Confirm with the operator that the consumer-config location of §4.1 is right, given
-  that a consumer repository already carries `.claude/pdlc.config.json` for
-  `implementation.testCommand` and the advisory tier. No AC depends on the answer; the keys move
-  together if it changes.
-- **O-6** *(open question, deliberately unresolved)* Whether the review roles should receive the
-  same material. NG-5 excludes them for now on the argument that a reviewer grounded in a prior
-  feature's lessons may file findings this feature's REQ never asked for. Revisit with O-3's
-  usage evidence; a widening is a successor REQ with its own queue row, not an extension of this
-  one.
+  measured from the documents in this repository and in `regime-ledger`, and state the ordering key
+  over that measured shape — before FSPEC authoring. AC-2.2 already fixes the tiebreak and the
+  negative invariants; O-2 owes only the key itself.
+- **O-3** Record, from real runs, whether authors used the injected material and whether any document
+  shows the R-4 failure mode (prior-feature decisions imported as requirements). This is also where
+  an author's observation of a defect in an injected document lands (AC-3.4). Evidence base for any
+  later relevance rule; an operator-and-report obligation, not a code deliverable of this REQ.
+- **O-4** Decide which part of each LEARNINGS document is injected when the per-document bound binds
+  (AC-2.3) — the whole document up to the bound, or a named subset of its sections. FSPEC's
+  decision; this REQ requires only that the outcome be bounded, deterministic and reported.
+- **O-5** Confirm with the operator that §4.1's consumer-config location is right, given that a
+  consumer repository already carries `.claude/pdlc.config.json` for `implementation.testCommand`
+  and the advisory tier. No AC depends on the answer; the keys move together if it changes.
+- **O-6** *(open question, deliberately unresolved)* Whether the review roles should receive the same
+  material. NG-5 excludes them for now, on the argument that a reviewer grounded in a prior feature's
+  lessons may file findings this feature's REQ never asked for. Revisit with O-3's evidence; a
+  widening is a successor REQ with its own queue row.
+- **O-7** — Pin this feature's corpus definition to `pdlc-consolidation-agent`'s **pass-side**
+  predicate by literal restatement plus a pinning test (C-3, §1.2 claim 2); TSPEC specifies the
+  pin's form. Import is unavailable: the engine vendors only `orchestrate-dev.js` and
+  `orchestrate-queue.js` (`pdlc/engine/scripts/prepack.mjs:20`). No agreement test against the
+  `SessionStart` hook is owed: DEC-CONS-05 rejected that oracle.
+- **O-8** — Because §4.1's byte bounds bind first on measured corpora (AC-2.1), the count
+  cap and `RSN-COUNT` (AC-3.2) have no exercise under default thresholds. TSPEC owes a named
+  non-default-threshold fixture that makes the count cut the binding one.
 
+### 7.1 Stopping rule for this REQ's review loop *(DC-09, pasted in deliberately)*
+
+- A round whose blocking findings are **all** implementability or oracle-falsifiability defects —
+  none contesting user need, scope, priority or phasing — means this REQ has met its bar: approve it
+  and carry the findings downstream as named entry obligations for FSPEC/TSPEC.
+- A finding of the form "this AC has no oracle" is closable by **deferring** the oracle to TSPEC,
+  not only by writing one into this REQ.
+- **Two consecutive rounds with a non-decreasing blocking count is a fixed point, not slow
+  convergence**; a round in which this document grows while the count does not fall is stronger
+  evidence of the same. Churn is the exception — all prior findings closed, the new blockers
+  introduced by the latest revision — and must be said explicitly, with a pre-commitment to escalate
+  if the next round does not close them.
+- Blocking findings landing on the **same AC clause in two consecutive rounds** stop being revised
+  in place: that clause is split into its own REQ with a `depends-on` edge.

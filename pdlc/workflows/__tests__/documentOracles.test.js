@@ -367,7 +367,13 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
 describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 1's four titles, L-6 row 2's host retains PROP-COMPAT-04/05/06", () => {
   test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals CODE_REVIEW v1's corrected literal of 102, pending the coupled sweep's post-sweep re-derivation", () => {
     const testDir = resolve(WORKFLOWS, "__tests__");
-    const count = readdirSync(testDir).filter((name) => name.endsWith(".test.js")).length;
+    // §4.4's literal counts the population the retirement sweep left behind. The
+    // pdlc-learnings-injection feature adds suites under its own reserved
+    // `learnings*.test.js` namespace (that PLAN's suite-map closure owns their
+    // census), so they are excluded here rather than the literal re-pinned per wave.
+    const count = readdirSync(testDir).filter(
+      (name) => name.endsWith(".test.js") && !name.startsWith("learnings")
+    ).length;
     expect(count).toBe(102);
   });
 
@@ -715,6 +721,7 @@ describe("PROP-SWEEP-2/PROP-SWEEP-3: L-3's sweep command (AC-1.2, FSPEC L-2, L-3
     "docs/_queue/QUEUE.md",
     "docs/pdlc-plugin-retirement/**",
     "docs/pdlc-advisory-wave-gate/**",
+    "docs/pdlc-learnings-injection/**",
     "docs/PLAN-*.md",
     "docs/design/**",
     "docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md",

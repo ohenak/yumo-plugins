@@ -1,0 +1,469 @@
+/**
+ * learningsBlock.test.js — LI-08, PLAN §pdlc-learnings-injection.
+ *
+ * RED block/material suite (L1, TSPEC §T.5): LI-AT-05 (the block's preamble, transcribed
+ * literally from TSPEC §OQ.1 rather than keyword-matched), LI-AT-11 (section-set equality
+ * over what BR-6 selected), LI-AT-12 (the character-safe cut of §D.5 — an ASCII fixture
+ * pinning the bound exactly, plus a separate multi-byte fixture pinning `<=` the bound).
+ *
+ * Expected byte counts (LI-AT-12) are hand-computed from the fixture text over MATERIAL
+ * ONLY (§D.5) — the section heading line through the section body, ignoring every framing
+ * delimiter — and committed here as literal integers, never derived via `Buffer.byteLength`
+ * inside an assertion (TSPEC AT-11/AT-12).
+ *
+ * `extractInjectableMaterial` and `renderLearningsBlock` do not exist yet at HEAD (PLAN
+ * LI-16/LI-17 write them into `orchestrate-dev.js`); this suite's blocks are therefore
+ * authored `.skip`, titled `"LI-17: …"` — LI-17 is the task the PLAN's `Deps` table names as
+ * the one that greens `learningsBlock.test.js` (PLAN row LI-17, edge `LI-17 → LI-08`) — and
+ * the module is loaded via a deferred dynamic `import()` inside each test body so the file
+ * still loads and the skips take effect while the symbols are absent.
+ */
+
+import { execFileSync } from "child_process";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+import fc from "fast-check";
+
+import { BR6_SECTION_NAMES, buildLearningsDocument } from "./helpers/learningsFixtures.js";
+
+const DEV_MODULE_PATH = "../orchestrate-dev.js";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(__dirname, "..", "..", "..");
+
+// TSPEC §OQ.1's four-sentence advisory preamble, transcribed literally (F-O-2, BR-7's three
+// things), with the doc's own `{f}` notation (used the same way at TSPEC lines 590/952, "the
+// feature being authored") resolved to the fixed phrase "this feature" — the only resolution
+// consistent with `renderLearningsBlock({ selected })` carrying no `feature` parameter, so the
+// preamble cannot vary per authoring feature and must be one constant string.
+const OQ1_PREAMBLE =
+  "The documents below are LEARNINGS harvested from OTHER features in this repository. They are " +
+  "context, not content of this feature. They are neither a requirement of this feature nor an " +
+  "upstream document to be traced: nothing you write must cite them, and no traceability " +
+  "obligation attaches to them. You may disregard them entirely without leaving a gap in what " +
+  "you were asked to produce.";
+
+describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {
+  test("LI-AT-05: the preamble is byte-equal to TSPEC §OQ.1's literal wording, not keyword-matched", async () => {
+    const { renderLearningsBlock } = await import(DEV_MODULE_PATH);
+
+    const material = "## Cross-Feature Patterns\n\nSample AT-05 material text.\n";
+    const selected = [
+      {
+        path: "docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md",
+        orderKey: "2026-08-02",
+        bytes: 55,
+        bounded: false,
+        position: 1,
+        material,
+      },
+    ];
+
+    const block = renderLearningsBlock({ selected });
+
+    // The block framing pool (§D.5): "\n\n" prefix, the header line, the preamble, then a
+    // blank line before the first document's opener delimiter (TSPEC §OQ.1's fenced example).
+    const expectedPrefix =
+      "\n\n--- PRIOR-FEATURE LEARNINGS (advisory context) ---\n" +
+      OQ1_PREAMBLE +
+      "\n\n<<< docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md" +
+      " — feature pdlc-merge-phase, completed 2026-08-02 >>>";
+
+    expect(block.slice(0, expectedPrefix.length)).toBe(expectedPrefix);
+  });
+
+  test("LI-AT-11: the section-set taken equals BR-6's five injected names, in priority order", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    // Document order is deliberately scrambled relative to BR-6 priority order, and includes
+    // the sixth conventional section (Approval Record), which is not one of BR6_SECTION_NAMES
+    // and so must not appear in the taken material (TSPEC §D.3's "Approval Record … is never
+    // matched, never taken").
+    const text = buildLearningsDocument({
+      feature: "at11-sections",
+      sections: [
+        { name: "Process Learnings", body: "PROCESS_MARKER body text." },
+        { name: "Approval Record", body: "APPROVAL_MARKER should never be injected." },
+        { name: "Open Items for Consolidation", body: "OPENITEMS_MARKER body text." },
+        { name: "Cross-Feature Patterns", body: "CROSSFEATURE_MARKER body text." },
+        { name: "Rejected Proposals (with rationale)", body: "REJECTED_MARKER body text." },
+        { name: "Non-Convergences", body: "NONCONV_MARKER body text." },
+      ],
+    });
+
+    // Unbounded: large enough that maxBytes never binds, so nothing is cut (TSPEC §D.5).
+    const result = extractInjectableMaterial(text, 100000);
+
+    expect(result.bounded).toBe(false);
+    expect(result.sections).toEqual(BR6_SECTION_NAMES);
+    for (const marker of [
+      "CROSSFEATURE_MARKER",
+      "NONCONV_MARKER",
+      "REJECTED_MARKER",
+      "PROCESS_MARKER",
+      "OPENITEMS_MARKER",
+    ]) {
+      expect(result.material).toContain(marker);
+    }
+    expect(result.material).not.toContain("APPROVAL_MARKER");
+  });
+
+  test("LI-AT-11: heading-form variants — ordinal stripped, gloss optional, a ### sub-heading reads as body text, and a near-miss title is excluded (§D.3 F-O-1 rule 2, TE F-03 amendment)", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    // Beside the corpus's usual numbered form (Non-Convergences, `## 2. …`): an un-numbered
+    // heading (Cross-Feature Patterns, no ordinal), an un-glossed heading (Rejected Proposals,
+    // no trailing "(with rationale)"), a `###` sub-heading embedded in a section's body — which
+    // §D.3 rule requires stay body text because SECTION_HEADING_RE matches exactly two `#`s,
+    // never three — and a near-miss title (`## Process Findings`, §D.3's own E-33 example) that
+    // must NOT match `BR6_SECTION_NAMES`'s "Process Learnings" under rule 2's exact,
+    // case-sensitive, no-substring comparison. These knobs (`ordinal`, `gloss`, `body`) are
+    // LI-02's `renderSection` surface, not built ad hoc here (PLAN LI-08 Deps: LI-02).
+    const text = buildLearningsDocument({
+      feature: "at11-heading-forms",
+      sections: [
+        {
+          name: "Cross-Feature Patterns",
+          ordinal: null,
+          body: "CROSSFEATURE_MARKER body text.",
+        },
+        {
+          name: "Rejected Proposals",
+          gloss: null,
+          body: "REJECTED_MARKER body text.",
+        },
+        {
+          name: "Non-Convergences",
+          ordinal: 2,
+          body:
+            "### A sub-heading that is body text, not a section boundary.\n\n" +
+            "NONCONV_MARKER follows the sub-heading.",
+        },
+        {
+          // §D.3's own E-33 near-miss: shares a token with "Process Learnings" but is not a
+          // substring/prefix/token match under rule 2 — must be dropped entirely.
+          name: "Process Findings",
+          body: "PROCESSFINDINGS_MARKER must never be injected.",
+        },
+      ],
+    });
+
+    // Unbounded: large enough that maxBytes never binds, so nothing is cut (TSPEC §D.5).
+    const result = extractInjectableMaterial(text, 100000);
+
+    expect(result.bounded).toBe(false);
+    expect(result.sections).toEqual([
+      "Cross-Feature Patterns",
+      "Non-Convergences",
+      "Rejected Proposals (with rationale)",
+    ]);
+    expect(result.material).toContain("CROSSFEATURE_MARKER");
+    expect(result.material).toContain("NONCONV_MARKER");
+    expect(result.material).toContain("REJECTED_MARKER");
+    // The ### line survives verbatim, as body text within Non-Convergences's extent — proof it
+    // was never treated as a heading boundary.
+    expect(result.material).toContain(
+      "### A sub-heading that is body text, not a section boundary."
+    );
+    // The near-miss title's body is never taken — the section itself is unmatched and dropped.
+    expect(result.material).not.toContain("PROCESSFINDINGS_MARKER");
+  });
+
+  test("LI-AT-12: character-safe cut — ASCII fixture, contributed bytes equal the bound exactly", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    // Fixture: "## Cross-Feature Patterns" (25 bytes, all ASCII) + "\n\n" (2 bytes) + 100 "a"
+    // bytes, so the section's whole extent is 128 bytes — comfortably past the 40-byte bound.
+    // Hand-computed (never derived here): the character-safe cut of an all-ASCII text lands on
+    // exactly the byte bound, because every character is exactly one byte.
+    const text = "## Cross-Feature Patterns\n\n" + "a".repeat(100) + "\n";
+    const maxBytes = 40;
+
+    const result = extractInjectableMaterial(text, maxBytes);
+
+    expect(result.material).toBe("## Cross-Feature Patterns\n\naaaaaaaaaaaaa");
+    expect(result.bytes).toBe(40);
+    expect(result.bounded).toBe(true);
+    expect(result.sections).toEqual(["Cross-Feature Patterns"]);
+  });
+
+  test("LI-AT-12: character-safe cut — multi-byte fixture, the cut backs off before splitting ≤ rather than landing exactly on the bound", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    // Fixture: "## Cross-Feature Patterns" (25 bytes) + "\n\n" (2 bytes) + 38 "b" bytes = 65
+    // bytes, then the multi-byte codepoint "≤" (3 UTF-8 bytes), then more filler. At a
+    // 66-byte bound, admitting one more ASCII byte would be legal in isolation, but the next
+    // character in the text is the 3-byte "≤" (65 + 3 = 68 > 66), so a character-safe cut
+    // must stop BEFORE it rather than splitting its UTF-8 encoding — contributed bytes land at
+    // 65, strictly less than the 66-byte bound (hand-computed, never derived here).
+    const text = "## Cross-Feature Patterns\n\n" + "b".repeat(38) + "≤" + "c".repeat(20) + "\n";
+    const maxBytes = 66;
+
+    const result = extractInjectableMaterial(text, maxBytes);
+
+    expect(result.material).toBe("## Cross-Feature Patterns\n\n" + "b".repeat(38));
+    expect(result.bytes).toBe(65);
+    expect(result.bytes).toBeLessThanOrEqual(maxBytes);
+    expect(result.bounded).toBe(true);
+    expect(result.sections).toEqual(["Cross-Feature Patterns"]);
+
+    // The cut never splits the multi-byte codepoint: re-decoding the material through UTF-8
+    // round-trips without a replacement character (TSPEC T-O-6's char-safety property, pinned
+    // here at the example level).
+    expect(result.material).not.toContain("�");
+    expect(Buffer.from(result.material, "utf8").toString("utf8")).toBe(result.material);
+  });
+
+  test("LI-AT-12: character-safe cut — TWO sections, the bound landing inside the SECOND section's heading: the cut is over the assembled string, not per section", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    // CR round 1, TE F-06 (Medium). Both LI-AT-12 cases above use single-section fixtures, so
+    // the multi-section arm of the cut — the one place FSPEC and TSPEC disagree — had no oracle
+    // at all. TSPEC §D.3 rule 3 is explicit: "Then, and only then, cut. §D.5's character-safe
+    // cut applies to the assembled string, not to each extent — so `bounded` and `bytes` are
+    // properties of one string and E-16's 'first section alone exceeds the bound' is the same
+    // rule, not a special case." FSPEC BR-6 §"How the per-document bound binds" instead reads
+    // section-granular for sections 2+ ("sections are taken in priority order until the next one
+    // would exceed ...; the remaining sections are omitted"), which would drop section 2 whole
+    // here. The implementation follows TSPEC; the divergence is routed upstream as
+    // `ERRATUM: FSPEC`, and this test pins the behaviour that is actually shipped so that a
+    // later reconciliation cannot change it silently.
+    //
+    // Hand-computed from the fixture alone, never derived from the function (DC-14):
+    //   normalised section 1 = "## 2. Cross-Feature Patterns" (28) + "\n\n" (2) + 20 "a" = 50
+    //   normalised section 2 = "## 3. Non-Convergences"       (22) + "\n\n" (2) + 20 "b" = 44
+    //   assembled            = 50 + 2 (the "\n\n" join) + 44                             = 96
+    // At a 60-byte bound the cut lands 8 bytes into section 2's own heading line: 50 + 2 = 52
+    // bytes of section 1 and its join, then "## 3. No" — 8 more, 60 exactly, every byte ASCII.
+    const text =
+      "## 2. Cross-Feature Patterns\n\n" + "a".repeat(20) +
+      "\n\n## 3. Non-Convergences\n\n" + "b".repeat(20) + "\n";
+    const maxBytes = 60;
+
+    const result = extractInjectableMaterial(text, maxBytes);
+
+    // The literal cut, transcribed — including the truncated heading. This is the string an
+    // author's prompt receives, and asserting it as a literal is the only way a change from
+    // "cut the assembled string" to "omit the whole overflowing section" reds here.
+    expect(result.material).toBe(
+      "## 2. Cross-Feature Patterns\n\n" + "a".repeat(20) + "\n\n## 3. No"
+    );
+    expect(result.bytes).toBe(60);
+    expect(result.bytes).toBeLessThanOrEqual(maxBytes);
+    expect(result.bounded).toBe(true);
+
+    // §D.3: a section is a member of `sections[]` iff at least one byte of its normalised text
+    // survives in `material`. Eight bytes of section 2 survive, so BOTH names are members even
+    // though section 2 kept none of its body — set equality in priority order, not containment.
+    expect(result.sections).toEqual(["Cross-Feature Patterns", "Non-Convergences"]);
+
+    // The control that the fixture really does exercise the multi-section path: unbounded, the
+    // same text yields both whole sections and 96 bytes, so the 60 above is the cut's doing and
+    // not the fixture's.
+    const unbounded = extractInjectableMaterial(text, 100000);
+    expect(unbounded.bytes).toBe(96);
+    expect(unbounded.bounded).toBe(false);
+    expect(unbounded.sections).toEqual(["Cross-Feature Patterns", "Non-Convergences"]);
+  });
+
+  // PROP-DISPATCH-06's L1 half (TSPEC §A.2 property 3, AC-4.1/AC-4.4, AT-24): the L3 arm
+  // (`LI-AT-24` in learningsDispatchSet.test.js) proves an empty/unlistable/admits-nothing
+  // corpus leaves a whole run's prompts byte-identical to the pre-feature baseline; this is the
+  // unit-level half — `renderLearningsBlock({selected})` itself, over `selected: []`, must
+  // return **exactly** `""`: not a header alone, not a marker alone, not bare whitespace. Any of
+  // those would still compose an invisible-looking but non-empty suffix onto every authoring
+  // prompt, which the L3 byte-identity comparison would also catch, but only this test names the
+  // unit responsible and pins the four-way distinction (header / marker / whitespace / genuinely
+  // empty) directly, rather than through the extra indirection of a whole dispatch fixture.
+  // `renderLearningsBlock` exists at HEAD (landed by LI-17), so this is authored green (P-A-7).
+  test("PROP-DISPATCH-06: renderLearningsBlock({selected: []}) returns exactly the empty string — no header, no marker, no whitespace", async () => {
+    const { renderLearningsBlock } = await import(DEV_MODULE_PATH);
+
+    const block = renderLearningsBlock({ selected: [] });
+
+    expect(block).toBe("");
+    expect(block.length).toBe(0);
+    expect(block).not.toMatch(/\S/);
+  });
+});
+
+// PROP-BOUND-03's generated arm (TSPEC T-O-6, PROPERTIES §O.9): the example-level cases above
+// (LI-AT-12) pin the character-safe cut at fixed bounds; this generates documents whose first
+// priority section straddles a random bound with multi-byte codepoints and asserts, for EVERY
+// non-negative `maxBytes` including `0`: `bytes === Buffer.byteLength(material)`, `bytes <=
+// maxBytes`, a whole-character (never split-codepoint) prefix, and `bounded` true exactly when a
+// cut actually occurred. The `maxBytes <= 0` case rides as a guarded branch inside the same
+// property body (SE Q-01) — a positive four-field return, not an exclusion — and is additionally
+// pinned as a distinguished example so LI-08's red stays reproducible on any seed (§O.9).
+// `extractInjectableMaterial` exists at HEAD (landed by LI-17), so this is an amendment to landed
+// code, authored green (PLAN P-A-7 case C).
+describe("PROP-BOUND-03 generated arm: extractInjectableMaterial character-safety over every non-negative maxBytes (TSPEC T-O-6)", () => {
+  // 2-byte, 3-byte and 4-byte (astral, surrogate-pair) codepoints, mixed with 1-byte ASCII, so
+  // a random draw's byte boundaries land unpredictably relative to any given `maxBytes`.
+  const CODEPOINTS = ["a", "é", "≤", "😀"];
+
+  test("PROP-BOUND-03: bytes === Buffer.byteLength(material), bytes <= maxBytes, no split codepoint, bounded true exactly when a cut occurred", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom(...CODEPOINTS), { maxLength: 40 }),
+        fc.integer({ min: -5, max: 120 }),
+        (bodyChars, maxBytes) => {
+          const body = bodyChars.join("");
+          const text = "## Cross-Feature Patterns\n\n" + body + "\n";
+
+          const result = extractInjectableMaterial(text, maxBytes);
+
+          if (maxBytes <= 0) {
+            // The guarded branch (TSPEC §I.3): a positive four-field return, not an exclusion —
+            // §O.9's instruction that "the zero conjunct rides as a guarded branch inside the
+            // same property body".
+            expect(result).toEqual({ material: "", bounded: false, bytes: 0, sections: [] });
+            return;
+          }
+
+          // `bytes` is never a value separate from the material's own byte length.
+          expect(result.bytes).toBe(Buffer.byteLength(result.material, "utf8"));
+          // The bound is never exceeded.
+          expect(result.bytes).toBeLessThanOrEqual(maxBytes);
+          // Character-safe: no split codepoint — no replacement character, and an exact UTF-8
+          // round-trip (TSPEC T-O-6's char-safety property, generated here).
+          expect(result.material).not.toContain("�");
+          expect(Buffer.from(result.material, "utf8").toString("utf8")).toBe(result.material);
+          // `bounded` is true exactly when a cut actually occurred.
+          // The whole normalised section, hand-stated rather than imported. §D.3 normalisation
+          // drops a section extent's TRAILING BLANK LINES before assembly, so the draw
+          // `bodyChars === []` does not normalise to "heading + blank line + empty body": every
+          // line after the heading is blank and all of them are dropped, leaving the heading
+          // alone. Deriving `wholeBytes` from the raw fixture text instead overstated it by the
+          // two join bytes on exactly that draw, which is why this arm failed on any seed that
+          // sampled the empty array against a bound of 25 or 26.
+          const normalised =
+            body === "" ? "## Cross-Feature Patterns" : "## Cross-Feature Patterns\n\n" + body;
+          const wholeBytes = Buffer.byteLength(normalised, "utf8");
+          expect(result.bounded).toBe(wholeBytes > maxBytes);
+          // Non-vacuity control: when no cut occurred the material IS the whole normalised
+          // section, so `bounded === false` cannot be reached by returning less than everything.
+          if (!result.bounded) expect(result.material).toBe(normalised);
+        }
+      ),
+      { numRuns: 300 }
+    );
+  });
+
+  test("PROP-BOUND-03: maxBytes === 0 is pinned as a distinguished example case, not left to sampling frequency (TSPEC §I.3)", async () => {
+    const { extractInjectableMaterial } = await import(DEV_MODULE_PATH);
+
+    const text = buildLearningsDocument({
+      feature: "zero-bound-example",
+      sections: [{ name: "Cross-Feature Patterns", body: "Material that would otherwise be taken." }],
+    });
+
+    const result = extractInjectableMaterial(text, 0);
+
+    expect(result).toEqual({ material: "", bounded: false, bytes: 0, sections: [] });
+  });
+});
+
+// PROP-BOUND-08 (real-corpus arm — the recognition rule): driven over a REAL corpus document —
+// the first path in `LEARNINGS_CORPUS_ARGV`'s live `git ls-files` output, sorted by UTF-8 byte
+// order (`Buffer.compare`), never a synthetic fixture — so a matcher written against a wrong
+// heading spelling, which greens on every synthetic fixture pinned to the same wrong spelling,
+// still reds here: a real document never carries the wrong spelling to match against. Read-only,
+// no `_git` seam substitution — the real repository IS the fixture.
+describe("PROP-BOUND-08: real-corpus arm — the recognition rule (a live document, not a synthetic fixture)", () => {
+  test("PROP-BOUND-08: the first real corpus document's rendered-block section set equals BR-6's five names intersected with the headings it carries, excludes Approval Record, and its own heading lines are present in the raw fixture text", async () => {
+    const { extractInjectableMaterial, renderLearningsBlock } = await import(DEV_MODULE_PATH);
+
+    const lsFilesOutput = execFileSync(
+      "git",
+      [
+        "ls-files",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+        "--",
+        ":(glob)docs/*/LEARNINGS-*.md",
+        ":(glob)docs/completed/*/LEARNINGS-*.md",
+      ],
+      { cwd: REPO_ROOT, encoding: "utf8" }
+    );
+    const paths = lsFilesOutput.split("\n").filter((line) => line.length > 0);
+    // Positive control: the real corpus is non-empty, so this property is not vacuously true.
+    expect(paths.length).toBeGreaterThan(0);
+
+    paths.sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
+    const firstPath = paths[0];
+
+    const text = readFileSync(join(REPO_ROOT, firstPath), "utf8");
+
+    // Positive-presence conjunct (stops this property greening over a document whose headings
+    // the matcher never actually saw): the document's own heading lines, verbatim, in the raw
+    // fixture text.
+    const expectedHeadingLines = [
+      "## 1. Non-Convergences",
+      "## 2. Cross-Feature Patterns",
+      "## 3. Rejected Proposals (with rationale)",
+      "## 4. Process Learnings",
+      "## 5. Open Items for Consolidation",
+    ];
+    for (const headingLine of expectedHeadingLines) {
+      expect(text).toContain(headingLine);
+    }
+
+    const extracted = extractInjectableMaterial(text, 1_000_000); // unbounded: never cuts
+    const selected = [
+      {
+        path: firstPath,
+        orderKey: "2026-01-01",
+        bytes: extracted.bytes,
+        bounded: extracted.bounded,
+        position: 1,
+        material: extracted.material,
+      },
+    ];
+    const block = renderLearningsBlock({ selected });
+
+    // Recover the canonical section set from the RENDERED BLOCK (PROP-BOUND-05's oracle) — never
+    // from `extractInjectableMaterial`'s own `sections[]` report — via an independently
+    // implemented matcher (§D.3's rule: ordinal stripped, gloss optional on either side, exact
+    // case-sensitive match against BR6_SECTION_NAMES), so this test cannot pass merely because
+    // it shares the production matcher's own bug.
+    const headingLineRe = /^##[ \t]+(?:\d+\.[ \t]*)?(.*?)[ \t]*$/;
+    const glossRe = /[ \t]*\([^()]*\)$/;
+    const br6Names = [
+      "Cross-Feature Patterns",
+      "Non-Convergences",
+      "Rejected Proposals (with rationale)",
+      "Process Learnings",
+      "Open Items for Consolidation",
+    ];
+    const canonicalize = (title) => {
+      if (br6Names.includes(title)) return title;
+      const stripped = title.replace(glossRe, "");
+      for (const name of br6Names) {
+        if (stripped === name.replace(glossRe, "")) return name;
+      }
+      return null;
+    };
+    const recovered = new Set();
+    for (const line of block.split("\n")) {
+      const m = headingLineRe.exec(line);
+      if (!m) continue;
+      const canonical = canonicalize(m[1].trim());
+      if (canonical) recovered.add(canonical);
+    }
+    const recoveredInPriorityOrder = br6Names.filter((name) => recovered.has(name));
+
+    // Non-empty: the observed set must not be vacuously empty.
+    expect(recoveredInPriorityOrder.length).toBeGreaterThan(0);
+    // Measured at HEAD (PROPERTIES doc): every corpus document carries all five BR-6 headings.
+    expect(recoveredInPriorityOrder).toEqual(br6Names);
+    // Approval Record is never matched, never taken — excluded from both the recovered set and
+    // the rendered block's text entirely.
+    expect(recovered.has("Approval Record")).toBe(false);
+    expect(block).not.toContain("Approval Record");
+  });
+});

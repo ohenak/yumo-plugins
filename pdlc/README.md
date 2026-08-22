@@ -24,6 +24,16 @@ Invoked as `/pdlc:<skill>`:
 | `harvest-learnings` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes the harvested files |
 | `consolidate-learnings` | Merges LEARNINGS across features into project-level knowledge |
 
+## Hooks
+
+| Hook | Trigger | Script | Purpose |
+|---|---|---|---|
+| `guard-harvest-before-delete` | PreToolUse: Bash | `hooks/scripts/guard-harvest-before-delete.sh` | Blocks deletion of a `CROSS-REVIEW-*` or `CODE_REVIEW-*` file unless a `LEARNINGS-{feature}.md` exists on the branch |
+| `check-scope-field` | PostToolUse: Write\|Edit | `hooks/scripts/check-scope-field.sh` | Warns if a `CROSS-REVIEW-*` / `CODE_REVIEW-*` doc is missing the `Scope:` field |
+| `check-req-size` | PostToolUse: Write\|Edit | `hooks/scripts/check-req-size.sh` | Warns if a `REQ-*.md` doc exceeds the pdlc REQ size budget (700 lines or 60 KB) |
+| `check-finding-grammar` | PostToolUse: Write\|Edit | `hooks/scripts/check-finding-grammar.sh` | Warns if an erratum-round `CROSS-REVIEW-*` doc has findings not expressed as line-leading `FINDING:` lines (the only form the engine's fail-closed gate reads) |
+| `nudge-consolidation` | SessionStart | `hooks/scripts/nudge-consolidation.sh` | Reminds to run consolidate-learnings if stale LEARNINGS files are detected |
+
 ## Review loop mechanics
 
 - **Round indices are derived, not assumed.** `deriveRoundWindow` computes the round window
@@ -54,6 +64,30 @@ The workflows pin a model per phase (passed to the runtime via the `agent()` `mo
 | `orchestrate-queue` → `orchestrate-dev` delegation | **Opus** (dev pins its own) | The delegated pipeline applies its own per-phase pinning above |
 
 Both workflows default their agent calls to the phase model and let an explicit call-site `model` win, so downstream helpers inherit the default. Constants live at the top of `workflows/orchestrate-dev.js` (`MODEL_DEFAULT` / `MODEL_IMPLEMENTATION`) and `workflows/orchestrate-queue.js` (`MODEL_QUEUE`).
+
+## Prior-feature learnings injection
+
+Authoring dispatches (REQ, FSPEC, TSPEC, PLAN, DECISIONS, PROPERTIES) are suffixed with a
+bounded, delimited digest of prior features' `LEARNINGS-*.md` files, so each new feature
+starts from what the last ones learned. Non-authoring dispatches are unchanged, byte for byte.
+
+It is **on by default**. Configure — or disable — it under `learningsInjection` in
+`.claude/pdlc.config.json`:
+
+```jsonc
+{
+  "learningsInjection": {
+    "enabled": true,          // set false to turn the feature off entirely
+    "maxDocuments": 5,        // documents per dispatch
+    "maxBytesPerDocument": 6000,
+    "maxTotalBytes": 20000    // per dispatch, across all documents
+  }
+}
+```
+
+Every failure mode fails open: an unreadable corpus, an unparseable document, a malformed
+section or a wrong-typed key injects less, never halts, and never silently disables. Keys and
+notice ids are documented in `pdlc/OPERATIONS.md`.
 
 ## Convention contract (what installing pdlc expects of a repo)
 

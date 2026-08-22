@@ -84,6 +84,49 @@ run is byte-identical to the pre-advisory baseline (`advisoryDisabled.test.js`, 
   `ciStatus` provenance is always a real `checkPrCi` observation, never an advisory verdict
   field.
 
+## Prior-feature learnings injection (on by default)
+
+Every **authoring** dispatch whose target document is one of REQ, FSPEC, TSPEC, PLAN,
+DECISIONS or PROPERTIES gets a bounded, visibly delimited suffix carrying prior features'
+`LEARNINGS-*.md` material. Non-authoring dispatches — reviews, implementation waves, DoD,
+harvest, PR/CI — are byte-identical to a pre-feature run; that is asserted against a
+committed baseline fixture set, not against a same-branch disabled run
+(`pdlc/workflows/__tests__/learningsBaselineGuard.test.js`).
+
+Unlike the advisory tier and `mergeMode`, this one ships **on**: `learningsInjection.enabled`
+defaults to `true`, so an absent section, an absent config file or a misspelt section name all
+mean *enabled with the declared defaults*. Turning it off is a deliberate act.
+
+- **Config keys** (`.claude/pdlc.config.json` → `learningsInjection`, parsed by
+  `parseLearningsConfig` in `pdlc/workflows/orchestrate-dev.js` with per-key independent
+  fallback — one bad key never retunes the rest): `enabled` (`true`), `maxDocuments` (`5`
+  documents per dispatch), `maxBytesPerDocument` (`6000` bytes, over-long documents are
+  abridged and annotated rather than dropped), `maxTotalBytes` (`20000` bytes per dispatch,
+  applied as a five-document priority window with back-fill). `.claude/pdlc.config.example.json`
+  carries the block at these values. There is no configuration surface beyond these four keys
+  — no per-feature allow-list, no path overrides.
+- **Fail-open, everywhere.** A corpus that cannot be listed, a document that cannot be read or
+  parsed, a config file whose read throws (`EACCES`, `EISDIR`), a malformed section, a
+  wrong-typed key: each degrades to "inject less", never to a halt and never to a silent
+  disable. In particular `enabled: "false"` — a string, not a boolean — is a *mistake*, not a
+  disable: the run stays enabled on the declared default and records a notice. Only a real
+  `false` turns the feature off.
+- **Two notice ids** appear on the run report when a config mistake was tolerated:
+  `NTC-MALFORMED` (the section did not parse as an object; defaults retained) and
+  `NTC-KEYTYPE` (a declared key was wrong-typed; that key alone fell back, and the notice
+  names it). These are the whole catalogue (`LEARNINGS_NOTICES`).
+- **Reading the report.** `report.learningsInjection` carries one row per candidate document
+  per authoring dispatch — its path, whether it was selected, and if not, why, from a closed
+  catalogue: `RSN-COUNT`, `RSN-BYTES`, `RSN-SELF` (a feature never reads its own LEARNINGS),
+  `RSN-UNREADABLE`, `RSN-UNPARSEABLE`, `RSN-NO-MATERIAL` — plus a corpus-level outcome
+  (`RSN-UNLISTABLE`, `RSN-EMPTY`) and the thresholds in force. An operator asking "why did
+  this prompt not carry X" answers it from that field alone.
+- **Where the material comes from:** `docs/*/LEARNINGS-*.md` and `docs/completed/*/LEARNINGS-*.md`.
+  `docs/discarded/` is excluded by not being listed, not by a rule of its own.
+- **Debugging an unexpected prompt suffix:** set `learningsInjection.enabled` to `false` in
+  `.claude/pdlc.config.json` to get the pre-feature prompts back, then read
+  `report.learningsInjection` from the enabled run to see which document supplied the text.
+
 ## The engine channel (`pdlc/engine`)
 
 `pdlc/engine/` is the distribution channel for the pipeline, published to npm as `@kaneho/pdlc-engine` (`pdlc/engine/package.json`). It is the only channel: `pdlc`'s SKILL.md files delegate to the installed engine CLI rather than loading a workflow bundle directly.

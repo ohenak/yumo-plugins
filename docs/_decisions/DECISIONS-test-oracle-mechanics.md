@@ -100,3 +100,23 @@ injected caller locale) is often one line, where proving the downstream collatio
 
 **Testability:** the widening is the testability — a divergence resolved without widening the property
 to an observable composition leaves the same hole under a corrected value.
+
+---
+
+## DEC-ORACLE-05: A file-ownership manifest is reconciled against `git ls-tree`, not against prose (candidate)
+
+**Context.** Recorded per `POSTMORTEM-PR-pdlc-learnings-injection.md` (2026-08-21) Recommendation
+item 9. The PLAN's §File-ownership manifest was amended from an erratum's routed list ("four new
+files, two second writers") instead of from the commit it described; `git show --name-status`
+listed 45 paths, and every High in the halting round was a count a single `git` command settles.
+This was the third document on that branch to carry a stale count of a set `git` can enumerate.
+
+**Decision (proposed, pending promotion).** A manifest that claims completeness over the tree is
+populated and re-verified **from the tree**: reconcile its rows against `git ls-tree` (or
+`git show --name-status <sha>` for a commit-scoped amendment) over the feature's path globs, and
+treat a tracked file matching the globs with no row as a defect. Propose the mechanical form as an
+engine-side check. `pdlc/workflows/__tests__/learningsSuiteMap.test.js` already does the
+directory-closure version of this for suites; the manifest version is the same idea one layer up.
+
+**Testability:** the check is one shell command per claim today (prompt-level); the engine-side
+oracle is the promotion target for `/pdlc:consolidate-learnings`.

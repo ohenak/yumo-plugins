@@ -1,0 +1,26 @@
+Review the document at docs/li06-phase-r-review/REQ-li06-phase-r-review.md for phase R of feature li06-phase-r-review. This is iteration 1.
+All commits for this task must land on branch feat-li06-phase-r-review. Immediately before each commit run `git rev-parse --abbrev-ref HEAD`; if it prints anything else — especially the default branch — STOP and report instead of committing. Do not run `git checkout` yourself; the orchestrator has already placed the tree on the branch.
+Ground every claim in code, not only in documents: verify claims against the actual repository state, and cite file:line for every claim you make about existing behavior.
+- Every code path or file the REQ names — confirm it exists and matches the described behavior.
+- Every existing-behavior claim in the REQ — verify against current code, not assumption.
+Write your cross-review to exactly this path: docs/li06-phase-r-review/CROSS-REVIEW-software-engineer-REQ-v1.md. Do not derive a different file type from the artifact under review — this phase's round history is keyed by that exact name, and a file outside it is not counted.
+When you review acceptance tests, properties, or unit tests, demand:
+- No implementation echoes: an expectation must never import or derive its expected value from the code under test; expected values are literal transcriptions from the spec.
+- No absence-only oracles: every negative assertion (X does not happen) must be paired with a positive assertion on the same path (what DOES happen instead).
+- Completeness by set-equality, not containment: enumerated contracts (row tables, catalogues) need a set-equality check over the full enumeration, so a deleted case fails.
+If you find a defect in an UPSTREAM document — one this document derives from — do not edit that document yourself, and do not fold the defect into your verdict as if it were a defect of the document in front of you. Emit one line per item in your final message, in exactly this form:
+ERRATUM: {DOCTYPE}: {one-line item}
+where {DOCTYPE} is one of REQ, FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES (uppercase). The orchestrator routes each item to that document's author for a targeted versioned edit and to its approvers for a delta confirmation.
+
+Pacing contract (H-3): lay down the skeleton first, then write ONE top-level section per edit, keep every single write under 12,000 bytes, and commit after each section. A monolithic write is killed by the 180 s stall watchdog and loses everything it had not yet flushed.
+
+This artifact is not on disk yet. Begin by laying out its top-level headings as a skeleton, then fill them one at a time under the pacing contract above.
+
+The completeness gate accepts these top-level sections — canonical title, or any listed accepted alternative — cover every one:
+## Problem / Context (accepted: Problem / Context, Context, Problem, Background)
+## Goals (accepted: Goals, Objectives)
+## Non-Goals (accepted: Non-Goals, Scope, Out of scope)
+## Constraints
+## Acceptance Criteria (accepted: Acceptance Criteria, Acceptance)
+## Risks
+## Obligations (accepted: Obligations, Open Questions, Assumptions)

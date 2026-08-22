@@ -1,0 +1,5 @@
+Implement PROPERTIES tests for feature li06-pipeline.
+Read: docs/li06-pipeline/PROPERTIES-li06-pipeline.md
+For each property without a corresponding test, write it using TDD at the specified test level.
+Run the full test suite. All tests must pass before committing. Commit and push.
+All commits for this task must land on branch feat-li06-pipeline. Immediately before each commit run `git rev-parse --abbrev-ref HEAD`; if it prints anything else — especially the default branch — STOP and report instead of committing. Do not run `git checkout` yourself; the orchestrator has already placed the tree on the branch.

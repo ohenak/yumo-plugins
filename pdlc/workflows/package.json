@@ -13,14 +13,16 @@
     "fast-check": "^4.9.0",
     "jest": "^29.7.0"
   },
-  "//c8-per-file": "`test:coverage` is two stages. Stage 1 (`c8 npm test`) applies the `c8` block below in AGGREGATE. Stage 2 re-reports the same run with `--per-file`, enforcing only the floor DoD criterion 4 names — branch >= 85% — on EVERY included module (the other three are passed 0 because their aggregate floors are already enforced by stage 1; naming per-file numbers for them would mean lowering the declared 90 to orchestrate-queue.js's 77.46% functions, i.e. weakening the declaration to fit the code). Without stage 2 the block's floors are not the floors it enforces: orchestrate-dev.js is ~15k lines and dominates the aggregate, so a small module could sit under 85% branch unnoticed (CODE_REVIEW v2 §1-1).",
-  "//c8": "Coverage is measured by c8, not by jest's own --coverage: under --experimental-vm-modules the modules under test are evaluated as ESM through jest's vm-module path, where babel instrumentation reports 0% for them. c8 reads V8's own coverage and sees them. The include set is the modules this feature edits (CODE_REVIEW v1 §1-2); dist/ is generated and __tests__/ is the measuring instrument, so neither is a subject.",
+  "//c8-per-file": "`test:coverage` is two stages. Stage 1 (`c8 npm test`) applies the `c8` block below in AGGREGATE. Stage 2 re-reports the same run with `--per-file`, enforcing only the floor DoD criterion 4 names \u2014 branch >= 85% \u2014 on EVERY included module (the other three are passed 0 because their aggregate floors are already enforced by stage 1; naming per-file numbers for them would mean lowering the declared 90 to orchestrate-queue.js's 77.46% functions, i.e. weakening the declaration to fit the code). Without stage 2 the block's floors are not the floors it enforces: orchestrate-dev.js is ~15k lines and dominates the aggregate, so a small module could sit under 85% branch unnoticed (CODE_REVIEW v2 \u00a71-1).",
+  "//c8": "Coverage is measured by c8, not by jest's own --coverage: under --experimental-vm-modules the modules under test are evaluated as ESM through jest's vm-module path, where babel instrumentation reports 0% for them. c8 reads V8's own coverage and sees them. The include set is the modules this feature edits (CODE_REVIEW v1 \u00a71-2); dist/ is generated and __tests__/ is the measuring instrument, so neither is a subject. `scripts/capture-learnings-baseline.mjs` is production tooling that lives above this package, so it needs `allow-external` (c8 drops every file outside its cwd otherwise). `allow-external` also changes how the REST of the include set resolves: bare cwd-relative basenames stop matching under it, so adding the script's entry alone silently dropped orchestrate-dev.js, orchestrate-queue.js and build-runtime.mjs out of the report and left the aggregate gate measuring a 200-line script (CODE_REVIEW v1 F4, second round). EVERY entry is therefore `**/`-anchored and path-qualified, and `exclude` drops the merge-base worktrees the capture tests materialise, whose own copies of orchestrate-dev.js would otherwise match. `coverageInstrumentation.test.js` runs c8 against this block and fails if a module stops resolving.",
   "c8": {
     "include": [
-      "orchestrate-dev.js",
-      "orchestrate-queue.js",
-      "build-runtime.mjs"
+      "**/pdlc/workflows/orchestrate-dev.js",
+      "**/pdlc/workflows/orchestrate-queue.js",
+      "**/pdlc/workflows/build-runtime.mjs",
+      "**/scripts/capture-learnings-baseline.mjs"
     ],
+    "allow-external": true,
     "reporter": [
       "text",
       "lcov"
@@ -30,7 +32,12 @@
     "branches": 85,
     "lines": 90,
     "functions": 90,
-    "statements": 90
+    "statements": 90,
+    "exclude": [
+      "**/.tmp-capture-driver-*/**",
+      "**/.baseline-worktree/**",
+      "**/pdlc-capture-entrypoint-*/**"
+    ]
   },
   "jest": {
     "testEnvironment": "node",

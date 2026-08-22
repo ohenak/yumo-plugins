@@ -92,17 +92,28 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 
 ## Delta-Confirmation Findings (erratum rounds)
 
-When the orchestrator dispatches a **delta confirmation** — you previously approved this document, a targeted erratum edit has landed, and you are asked whether that delta resolves the routed items without breaking what you approved — tag every finding you raise. One finding per line, outside any fenced block, above the `## Verdict` section:
+When the orchestrator dispatches a **delta confirmation** — you previously approved this document, a targeted erratum edit has landed, and you are asked whether that delta resolves the routed items without breaking what you approved — tag every finding you raise.
 
-```
+**Skeleton requirement (hard):** your cross-review file MUST contain a section headed exactly `## Delta-Confirmation Findings`, placed immediately before `## Verdict`. That section is the only place `FINDING:` lines may appear — do not scatter them section-by-section next to the material they discuss. It contains exactly one line-leading `FINDING:` line per row of the findings table below, outside any fenced block. If this round raises no findings, write the single line `No findings.` in that section instead of a table or any `FINDING:` line.
+
+```markdown
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High/Medium/Low | delta/inherited | local/nonlocal | Description | Section anchor |
+
 FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section anchor} | {what is wrong}
 ```
 
 - **delta** — this round's edit introduced it, or left a routed item unlanded. **inherited** — it was already in the pre-round bytes and this edit did not touch it.
 - **local** — it sits inside the sections this edit changed. **nonlocal** — anywhere else.
 - The section anchor and the finding text are free-form; pipes inside the text are fine, since only the first four `|` delimit fields.
+- **Provenance** (`delta`/`inherited`) and **Locality** (`local`/`nonlocal`) are two orthogonal axes, not one `Scope` column — do not reuse the ordinary-round `Scope` legend (`Local`/`Cross-Feature`/`Process`, see below) inside this table, and do not collapse the two axes into a single tag. The table's Provenance and Locality columns and the `FINDING:` line's second and third fields must agree for the same finding; the table is a rendering aid for humans, the `FINDING:` line is the parsed contract.
 
-The workflow reads these tags to decide whether the erratum earns one bounded follow-up round, routes the finding back to this document's ordinary revision loop, or halts the phase — a distinction it cannot recover from prose. An untagged finding is read as `{delta, nonlocal}`, the strictest reading, so tagging can only ever widen the outcome, never narrow it. This is additional to the `VERDICT:` contract below, not a replacement for it.
+The workflow reads the `FINDING:` tags to decide whether the erratum earns one bounded follow-up round, routes the finding back to this document's ordinary revision loop, or halts the phase — a distinction it cannot recover from prose. An untagged finding is read as `{delta, nonlocal}` — the HALTING reading when it is High. Tagging a genuinely inherited High `inherited` keeps it non-gating (the round routes back to the owning phase, no halt); a non-approving confirmation carrying zero `FINDING:` lines fails closed and halts the phase. The tags are not optional annotation — they are the gate's input. This is additional to the `VERDICT:` contract below, not a replacement for it.
+
+Ordinary (non-erratum) review rounds are unaffected: the `## Findings` table keeps its single `Scope` column and the `Local`/`Cross-Feature`/`Process` legend below unchanged. The Provenance/Locality split applies only inside `## Delta-Confirmation Findings`.
 
 ---
 

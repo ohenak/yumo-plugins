@@ -17,17 +17,28 @@
 // and a test that re-ran the whole suite under coverage from inside the suite
 // would not terminate.
 
-import { readFileSync } from "fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import os from "os";
 import path from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
+import { spawnSync } from "child_process";
 
 const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const PKG_DIR = packageRoot;
 const pkg = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8"));
 
 // The modules this feature edits on the workflows side. Transcribed literally,
 // not derived from a directory listing: a module dropped from the include set
 // must fail here rather than quietly stop being measured.
-const REQUIRED_INCLUDES = ["orchestrate-dev.js", "orchestrate-queue.js", "build-runtime.mjs"];
+// Every entry is `**/`-anchored and path-qualified because `allow-external` is on: see the
+// `//c8` note in package.json, and the resolution oracle at the bottom of this file.
+const CAPTURE_SCRIPT_INCLUDE = "**/scripts/capture-learnings-baseline.mjs";
+
+const REQUIRED_INCLUDES = [
+  "**/pdlc/workflows/orchestrate-dev.js",
+  "**/pdlc/workflows/orchestrate-queue.js",
+  "**/pdlc/workflows/build-runtime.mjs",
+];
 
 describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
   test("a coverage runner is declared as a script", () => {
@@ -94,6 +105,112 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
     expect(/--per-file\b/.test(stages[0])).toBe(false);
     expect(stages.some((s) => /--per-file\b/.test(s))).toBe(true);
     expect(pkg.c8?.["check-coverage"]).toBe(true);
+  });
+
+  // CODE_REVIEW v1 F4. `scripts/capture-learnings-baseline.mjs` is production
+  // tooling this feature added, but it lives ABOVE `pdlc/workflows/` and the
+  // include set was written as bare basenames, so c8 never opened it: its
+  // digest/MANIFEST writes could regress to any number without moving a
+  // coverage number.
+  //
+  // Two things are needed and both are asserted, because either alone is inert.
+  // (1) c8 refuses to report any file outside its cwd unless `allow-external`
+  //     is set — with it off, an include entry naming the script matches
+  //     nothing and the table comes back empty.
+  // (2) The entry must be a glob c8 actually resolves. A `../../`-relative
+  //     climb does NOT work (verified: empty table); a basename-anchored
+  //     `**/` glob does. So the anti-regression assertion is that the entry is
+  //     not a parent-relative path, which is the shape that silently measures
+  //     nothing.
+  test("the capture script is measured too, by a glob c8 can actually resolve (F4)", () => {
+    const include = pkg.c8?.include ?? [];
+    expect(include).toContain(CAPTURE_SCRIPT_INCLUDE);
+    expect(CAPTURE_SCRIPT_INCLUDE.startsWith("..")).toBe(false);
+    expect(pkg.c8?.["allow-external"]).toBe(true);
+    // `allow-external` makes bare cwd-relative entries stop resolving, so a bare
+    // basename anywhere in the set is the silent-drop shape (CODE_REVIEW v1 F4, round 2).
+    for (const entry of include) {
+      expect(entry.startsWith("**/")).toBe(true);
+    }
+    // The merge-base worktrees the capture tests materialise carry their own
+    // orchestrate-dev.js, which matches the include globs under `allow-external`.
+    expect(pkg.c8?.exclude ?? []).toEqual(
+      expect.arrayContaining([
+        "**/.tmp-capture-driver-*/**",
+        "**/.baseline-worktree/**",
+        "**/pdlc-capture-entrypoint-*/**",
+      ]),
+    );
+    expect(existsSync(path.resolve(PKG_DIR, "../../scripts/capture-learnings-baseline.mjs"))).toBe(
+      true,
+    );
+  });
+
+  // CODE_REVIEW v1 F4, second remediation round. The shape assertions above are
+  // all satisfiable by a config that measures NOTHING but the capture script:
+  // `allow-external` changes how c8 resolves the include set, and under it the
+  // three bare cwd-relative basenames stop matching, so adding the script's
+  // glob silently dropped `orchestrate-dev.js`, `orchestrate-queue.js` and
+  // `build-runtime.mjs` out of the report — the aggregate gate then measured a
+  // 200-line script instead of a 17k-line one, and every shape assertion above
+  // still passed. A declared-configuration oracle cannot catch that, because
+  // the defect is in what the declaration RESOLVES TO, not in what it says.
+  //
+  // So this one runs the real thing: c8, from the package root, with the
+  // package's own shipped `c8` block (no include/exclude overrides — only the
+  // temp and report directories are redirected so the run cannot clobber
+  // `coverage/`), over a driver that loads one in-package module and the
+  // out-of-package script. Both must appear in the resulting report. It stays
+  // fast because the driver loads `build-runtime.mjs --check` rather than the
+  // suite: the question is which paths c8 RESOLVES, and one in-package module
+  // answers it for all three.
+  test("the shipped c8 config resolves BOTH in-package modules and the external script (F4)", () => {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "pdlc-c8-arrangement-"));
+    try {
+      const buildRuntime = path.join(PKG_DIR, "build-runtime.mjs");
+      const captureScript = path.resolve(PKG_DIR, "../../scripts/capture-learnings-baseline.mjs");
+      const driver = path.join(tmp, "driver.mjs");
+      // `build-runtime.mjs` runs its work at import; `--check` keeps it read-only.
+      // The capture script's own work is behind an `isMainModule` guard, so importing
+      // it evaluates the module body without running a capture.
+      writeFileSync(
+        driver,
+        `await import(${JSON.stringify(pathToFileURL(buildRuntime).href)});\n` +
+          `await import(${JSON.stringify(pathToFileURL(captureScript).href)});\n`,
+        "utf8",
+      );
+
+      const reportDir = path.join(tmp, "report");
+      const run = spawnSync(
+        process.execPath,
+        [
+          path.join(PKG_DIR, "node_modules", "c8", "bin", "c8.js"),
+          "--reporter=json-summary",
+          `--temp-directory=${path.join(tmp, "v8")}`,
+          `--report-dir=${reportDir}`,
+          "--check-coverage=false",
+          process.execPath,
+          driver,
+          "--check",
+        ],
+        { cwd: PKG_DIR, encoding: "utf8" },
+      );
+
+      // Control: a driver that failed to run would produce an empty report, and
+      // "no rows" must not be readable as "the config is fine".
+      expect({ status: run.status, stderr: run.stderr }).toMatchObject({ status: 0 });
+
+      const summary = JSON.parse(
+        readFileSync(path.join(reportDir, "coverage-summary.json"), "utf8"),
+      );
+      const measured = Object.keys(summary).filter((k) => k !== "total");
+
+      expect(measured).toEqual(
+        expect.arrayContaining([buildRuntime, captureScript]),
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   test("dist/ and the test tree are excluded — generated and test bytes are not the subject", () => {

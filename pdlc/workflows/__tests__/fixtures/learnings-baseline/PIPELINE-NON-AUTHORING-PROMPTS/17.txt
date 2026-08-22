@@ -1,0 +1,8 @@
+Raise a pull request for feature li06-pipeline. The branch was already rebased onto the latest default branch in Phase DOD — do NOT rebase again.
+1. Push the branch if needed: git push origin feat-li06-pipeline.
+2. Open a pull request from feat-li06-pipeline into the default branch. If a PR is already open for this branch, reuse it — do not open a duplicate.
+3. Base the PR title and description on the feature's REQ/FSPEC.
+Do NOT merge the PR. End your final message with this trailer as the last line:
+PR_URL: <the full https URL of the pull request>
+If the PR could not be created, end with:
+PR_URL: none

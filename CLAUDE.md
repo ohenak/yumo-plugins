@@ -82,6 +82,7 @@ This table is the human-facing citation of FSPEC §5.1's required-check set, and
 | `guard-harvest-before-delete` | PreToolUse: Bash | `hooks/scripts/guard-harvest-before-delete.sh` | Blocks deletion of any `CROSS-REVIEW-*` or `CODE_REVIEW-*` file unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | PostToolUse: Write\|Edit | `hooks/scripts/check-scope-field.sh` | Warns if a `CROSS-REVIEW-*` / `CODE_REVIEW-*` doc is missing the `Scope:` field |
 | `check-req-size` | PostToolUse: Write\|Edit | `hooks/scripts/check-req-size.sh` | Warns if a `REQ-*.md` doc exceeds the pdlc REQ size budget (700 lines or 60 KB) |
+| `check-finding-grammar` | PostToolUse: Write\|Edit | `hooks/scripts/check-finding-grammar.sh` | Warns if an erratum-round `CROSS-REVIEW-*` doc has findings not expressed as line-leading `FINDING:` lines (the only form the engine's fail-closed gate reads) |
 | `nudge-consolidation` | SessionStart | `hooks/scripts/nudge-consolidation.sh` | Reminds to run consolidate-learnings if stale LEARNINGS files are detected |
 
 The `SessionStart` entry is registered in `hooks/hooks.json`, invoked via `${CLAUDE_PLUGIN_ROOT}`.
@@ -99,6 +100,8 @@ Entry points:
 The parsing contracts for these files — verdict grammar, approval anchors and `UPSTREAM-STATE` staleness, POSTMORTEM `RESOLVED:` lifecycle, queue drift gate and halt-row semantics, auto-merge — are in `pdlc/OPERATIONS.md`.
 
 ### Deep-dive reference
+
+Authoring dispatches (REQ, FSPEC, TSPEC, PLAN, DECISIONS, PROPERTIES) carry a bounded suffix of prior features' `LEARNINGS-*.md` material. It ships **on**: `.claude/pdlc.config.json` → `learningsInjection` (`enabled` true, `maxDocuments` 5, `maxBytesPerDocument` 6000, `maxTotalBytes` 20000), every failure mode fails open, and non-authoring prompts stay byte-identical to a pre-feature run. See `pdlc/OPERATIONS.md`.
 
 `pdlc/OPERATIONS.md` carries the full operational detail split out of this file: review loop mechanics, the phase graph and erratum channel, implementation waves, the CI check table, worktrees, model selection, the advisory tier, the engine channel, and the artifact/queue parsing contracts. Read it before debugging pipeline behavior or editing workflow sources.
 
