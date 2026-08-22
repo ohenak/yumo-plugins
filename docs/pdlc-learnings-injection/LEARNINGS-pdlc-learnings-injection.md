@@ -81,6 +81,97 @@ style preference — it will reject the same proposals again for any future pipe
 
 ## 4. Process Learnings
 
+**The highest-signal learning on this branch: harvest-channel deferral is the wrong disposition for a
+rule that halts phases.** `POSTMORTEM-T` raised four systemic items (engine restatement retry, skill
+mutual-exclusion of the two finding shapes, prompt clause fix, mechanical guard) and deferred all
+four to harvest. Two phases later `POSTMORTEM-D` recorded the *identical* failure mode on both
+channels at once, and its root cause section is one sentence: *"Nothing was changed after the first
+occurrence… A repeat was the expected outcome, not a surprise."* Only after the second halt were the
+items escalated out of the harvest channel and landed (`472e505c`, `42289c5e`, `d015ff89`,
+`eef6fedb`). **Proposed rule: a POSTMORTEM item whose absence can halt a phase is not harvestable —
+it lands before the next round of the phase that halted, or the halt is accepted as recurring.**
+
+**Every phase ran long, and four hit the same ceiling.** REQ 12 rounds; FSPEC, TSPEC, PLAN and
+PROPERTIES all **15** — with 55 of 166 rounds non-approving. Four documents stopping at exactly the
+same number is a ceiling signature, not four independent convergences, and it means the approvals at
+v15 are budget-exhaustion approvals rather than convergence approvals. Worth checking whether the
+review-iteration cap is doing bar-lowering work here.
+
+**A schema collision in the review template caused two of the three halts.** The findings table is
+`| ID | Severity | Scope | Finding | Section ref |` — **one** scope column where the erratum grammar
+has **two orthogonal axes** (provenance `delta`/`inherited`, locality `local`/`nonlocal`). Reviewers
+resolved the collision by writing `Local` in the column and the real tags as inline code inside the
+finding-text cell — semantically complete, mechanically invisible, and an internal contradiction
+visible in the artifact. Fixed during Phase D by splitting the column (`42289c5e`).
+
+**An obligation with no skeleton slot decays.** Under the Authoring Pacing Contract a cross-review is
+written section-by-section from a skeleton of `##` headings; the `FINDING:` block had no heading, so
+it was the one obligation with nowhere to live. Conformance went 3–5 lines per round at REQ v5–v7 →
+**zero on six consecutive rounds**. The fix was to give it a literal `## Delta-Confirmation Findings`
+heading immediately above `## Verdict`. Generalisable: *if the pacing contract emits sections, then
+every obligation must be a section.*
+
+**A gate that inspects only failing rounds cannot see its own erosion.** The fail-closed rule only
+reads non-approving confirmations, so four approving zero-`FINDING:` rounds passed ungated. The
+signal was present four times and observable only at the halt. `check-finding-grammar.sh` now lints
+**every** round regardless of verdict.
+
+**Reviewers reasoned about the outcome they wanted rather than about the parser's input.** te-review
+stated "the rigour bar is any open High, old or new"; the engine filters `severity High && provenance
+delta`, so an inherited High is *non-gating*. Both reviewers had done the expensive work of dating
+the drift to establish `inherited`, then dropped that conclusion in the one place it was load-bearing
+— because `findingGrammarClause()` told them tagging "can only ever widen the outcome, never narrow
+it," which is **false for exactly this case**. Prompt leniency language that is true for one branch
+and false for another is worse than no leniency language.
+
+**Erratum rounds must re-read the commit, not the raise.** (POSTMORTEM-PR item 11, routed here.) The
+role's *Erratum Rounds — Re-ground Upstream First* discipline covers upstream **documents**; Phase PR
+showed the same discipline is owed to a **commit**. The v1.2 edit wrote "touched six test-side
+surfaces" — `4 + 2` from the routed item's own sentence restated as if it were a measurement — where
+`git show --name-status 2fc6fcd3` lists 45 files. **Proposed skill amendment: when an erratum item
+names a commit, enumerate that commit's full file list before writing the rows it asks for.** The
+`package.json` finding is the proof: it was never in the routed list, so describing the routed list
+could not possibly have surfaced it.
+
+**Reviewer scope tags were systematically under-used, and the tag vocabulary collided with a second
+vocabulary.** Only 52 findings across 166 documents carried a `Cross-Feature` or `Process` tag, and
+several `Local`-tagged findings referenced sibling features or repo-wide mechanisms (the
+`DEC-CONS-05` miscitation, the `_git` seam contract, the `MODULE_NAMES` vendoring constraint) — these
+were re-routed to §2 under the under-tagging check. Consolidation should treat this branch's §2 as
+under-counted, not as an exhaustive census.
+
+**Recurring Low-severity classes that a lint would end outright:**
+- **Raw `file:line` anchors** (DEC-DOC-01 anti-pattern) recurred in at least eight rounds across
+  TSPEC, PLAN and DECISIONS, and drifted for real: `orchestrate-dev.js` gained +154 lines under
+  `472e505c`, moving cited anchors by 40–140 lines. Cite by heading, rule id, symbol or verbatim
+  quote — a raw `file:line` is only legitimate when position *is* the measured evidence.
+- **Header `Cross-Reviews` rows go stale by construction**, every round, on every document. One
+  reviewer's fix is the right one: state the row as a glob (`-v{N}.md`) rather than a brace list.
+- **Version-cascade rounds re-derived by hand** — v6, v7, v8 and v9 each spent review budget
+  confirming that sibling-document bumps left present-tense claims true. A mechanical sweep of
+  present-tense sibling claims at the top of each cascade round would have surfaced four of six edits
+  in one round without a reviewer re-deriving each.
+- **A review round was dispatched over a zero-byte delta** (TE v8 returned `Needs revision` on
+  `386e4f0c`; iteration 9 re-dispatched both reviewers against the same commit with no intervening
+  author edit). A delta-confirmation round over an empty diff cannot change any reviewer's mind and
+  should be refused by the dispatcher.
+
+**Out-of-scope pipeline behaviour shipped on this branch.** The systemic erratum fixes (restatement
+retry, rewritten `findingGrammarClause()`, `check-finding-grammar.sh`, the `## Delta-Confirmation
+Findings` slot) carry **no REQ acceptance criterion and no PLAN task row** — the PLAN's table runs
+LI-01…LI-23 and covers only the injection region. This was the right call under the recurrence
+pressure, but it means the branch ships behaviour that no oracle in the feature's own ladder owns.
+The lint in particular shipped as 97 live operator-facing lines with no behavioural test at first
+(raised at Medium, closed by `558d0d96`).
+
+**The DoD loop, by contrast, converged cleanly in 2 rounds** — 12 findings in v1, all remediated,
+one Low residue (G1: a JSDoc `@param` left behind by the v1 F3 signature change), then PASS at
+`67523a26` with 25/25 requirements traced, 0 gaps, 117 suites / 4388 tests, 0 live skips, 88.23%
+lowest-module branch coverage. Notably the verifier **checked the whole disclosure family, not the
+nearest member** ("G1 is the whole family, not its nearest member") and refused assertion-free or
+stub-backed remediation, mutation-verifying fixes by deleting the seam and confirming the oracle
+reds. That is the pattern to keep.
+
 ## 5. Open Items for Consolidation
 
 ## 6. Approval Record
