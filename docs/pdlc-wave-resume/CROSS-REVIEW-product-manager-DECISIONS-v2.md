@@ -32,6 +32,43 @@ the "hard in expectation" caveat to an operator who discovered the behaviour by 
 
 ## Findings
 
+**Did the revision break anything?** The load-bearing new claims were re-run, not read:
+
+- DEC-WVR-03's new `N > 1` condition is what now holds the changed-assertion count at three, so it
+  was checked exhaustively rather than spot-checked. `git grep -n 'waves complete (wave mode'
+  origin/main -- pdlc/workflows/__tests__/` returns **three** hits repo-wide, all in
+  `waveExecution.test.js`: two whole-string `phaseDetail` equalities on **wave-1** runs inside
+  `describe("Phase I — the script-owned test gate")` (`:539`, `:593`), which the condition leaves
+  verbatim, and one on a **resuming** run (`:2117`, `"All 3 waves complete (wave mode,
+  script-owned gate)"`) — which sits inside `it("skips the waves before the pointer entirely — no
+  dispatch, no gate, no commit")`, i.e. the third of the three assertions the document already
+  enumerates. The condition is load-bearing exactly as claimed, and it introduces no fourth.
+- O-5's new exclusion criterion is mechanical and checks out. The invalid-value notice is emitted by
+  the key-generic `for (const key of implParsed.invalidKeys)` loop around one templated `emit`
+  (`orchestrate-dev.js:15093` legacy mode, `:15185` wave mode — two call sites, as claimed), shared
+  verbatim by every `implementation` key, so attaching provenance there would attach it to
+  `testCommand`'s notice too. And `parseImplementationConfig` (`:236`–`:243`) replaces a rejected
+  `startWave` with the default before the decision runs, so `const explicitPointer = startWave > 1`
+  (`:15236`) is false — there is no pointer left to attribute the run to. The criterion is
+  falsifiable against code, not against intent.
+- DEC-WVR-08's new third call-count fixture is grounded. The shipped guard order is
+  feature → plan-hash → ancestry → over-count (`:15301`, `:15305`, `:15307`, `:15313`), so an
+  over-count record with an unreachable head announces `head-unreachable` today; and TSPEC §3.1's
+  `ANCESTRY_INDEPENDENT_CODES` is `{null, unreadable-json, not-an-object, wrong-shape,
+  feature-mismatch, plan-changed}` — `over-count` is not in it, exactly as the row states. The
+  bidirectional trigger is the right shape: the silent-flip failure mode it names is real.
+- DEC-WVR-05's "written, not gated on" and DEC-WVR-04's positive write-side oracle are both
+  verified above and consistent with the single write site.
+
+No prior finding was reopened by the revision, and nothing that was approved in v1 was disturbed:
+the diff adds material and corrects figures, and changes no decision, no alternative's disposition
+and no downstream obligation — as its own revision-history row claims.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **The corrected largest-file row names one build input where there are two.** §Context's new row calls `pdlc/workflows/dist/pdlc-cli.mjs` "a *generated* artifact built from the module below", and the accepted-risks bullet says it is "built *from* it". The artifact's own header says otherwise: `// Built by \`node pdlc/workflows/build-runtime.mjs\` from: pdlc/workflows/orchestrate-dev.js` **and** `pdlc/workflows/cli.mjs` (first eight lines of the file at `origin/main`). The substance is unaffected — the risk framing ("rebase churn in a file whose build output is the largest tracked file") and the third accepted risk both hold — but this row is in the table whose whole method is that every figure is re-derivable from a stated command, and it is the one claim in the corrected set that a reader re-running the check would find stated slightly wider than the evidence. *Fix:* "a generated artifact built by `build-runtime.mjs` from the module below together with `cli.mjs`". | REQ R-4 |
+| F-02 | Low | Local | **DEC-WVR-05's newly-`*(observable)*` trigger is the one observable trigger with no obligation carrying it.** The revision draws a sharp and welcome line: DEC-WVR-02's trigger is marked *(design aspiration, deliberately not an observable signal — no test or monitor is owed one)*, and DEC-WVR-05's is marked *(observable)* and describes the detector — "a test asserting contiguity over the dispatched wave numbers reds the day it stops holding". Every other observable trigger in the document has a Consequences row that owes the assertion: DEC-WVR-06's seven-code set equality, DEC-WVR-08's three call-count equalities, DEC-WVR-03's announcement set equality. DEC-WVR-05's Consequences row owes only the key-set equality over `formatWaveLedger`'s output — the contiguity assertion the trigger relies on is owed by nobody, so the trigger cannot actually fire. The property itself is real and verified (one `startWave` cut-off over the single loop at `orchestrate-dev.js:15369`), which is precisely why the marking matters: an `*(observable)*` label with no detector reads to a future reader as a fired-alarm guarantee that does not exist. *Fix:* either add the contiguity assertion to DEC-WVR-05's Consequences row alongside the key-set equality, or mark the trigger the way DEC-WVR-02's is marked and say the property is held by inspection of the single cut-off. | REQ-WVR-05, DC-03 |
+
 ## Questions
 
 ## Positive Observations
