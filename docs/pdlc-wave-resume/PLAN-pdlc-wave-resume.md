@@ -109,6 +109,42 @@ same component through a real `Deps` edge, never through id order.
 | T-09 | **GREEN — announcements and report row (D-2, D-3).** In `orchestrate-dev.js`: append ` (provenance: operator-set)` / ` (provenance: automatic)` to each of the five announcing rows of TSPEC §2.4 — **after the sentence's terminal punctuation and outside every existing parenthesis**, never interpolated — leaving the IG-6 row silent and leaving the config-validation `is not a valid value` notice untouched (the one excluded notice, named in §2.4). Extend the executed Phase I `✅` row's detail with resume point and provenance, and the `⏭` row's detail with ` (provenance: automatic)` outside the existing parenthesis so `toContain("recorded green (wave ledger)")` still passes. Per-wave skip lines and the operator banner's shipped sentence body unchanged. | `pdlc/workflows/__tests__/waveExecution.test.js` | `pdlc/workflows/orchestrate-dev.js` | 5 | T-07 | ⬚ |
 | T-10 | **Coverage floor (RT-7, TSPEC §5.8).** Run `npm run test:coverage` from `pdlc/workflows` (`--per-file --branches 85`) and close every gap this feature opened — the eight classifier arms, the seven renderer closures, the lazy-probe short-circuit, and the announcement/report branches — by adding **unit** arms only, in the file this task owns. Report the measured per-file branch number for `orchestrate-dev.js` in the task's output, so the floor is an observed number rather than a claim. | `pdlc/workflows/__tests__/waveResume.test.js` | — | 6 | T-09, T-08, T-06, T-04 | ⬚ |
 
+### 2.2 Batch composition and gate wording
+
+Batches re-derive mechanically as `batch == max(batch of dependencies) + 1`; sources are batch 1.
+The derivation is shown so a reviewer checks arithmetic, not intent.
+
+| Batch | Tasks | Files written this batch (pairwise disjoint) | Gate wording |
+|---|---|---|---|
+| 1 | T-01 | `__tests__/waveResumePreflight.test.js` | Full `pdlc/workflows` suite green, **including** T-01. A red T-01 is the rebase (OB-F1) missing; it is blocking work, not a flaky gate. |
+| 2 | T-02, T-03, T-04 | `__tests__/waveResume.test.js`; `__tests__/waveResumeRepoState.test.js`; `__tests__/waveResumeQueueParity.test.js` | **RED-terminal.** *New tests fail for exactly two specified reasons — `classifyWaveLedger` and the three catalogues are not yet exported (T-02), and `M-WVR-1`/`M-WVR-2` are not yet in the baseline file (T-03) — and every pre-existing test is green.* T-04 and T-03's AT-14 arms are green in this batch. |
+| 3 | T-05, T-06 | `orchestrate-dev.js`; `docs/_constraints/pdlc-wave-gate-baseline.md` | Full suite green, **and** `waveExecution.test.js` byte-unchanged versus batch 2 (`git diff --stat` over that path is empty for T-05's commit — RT-2's regression-net invariant, mechanically checkable). |
+| 4 | T-07, T-08 | `__tests__/waveExecution.test.js`; `__tests__/waveResumeProperties.test.js` | **RED-terminal.** *New integration tests and exactly the three enumerated assertion updates fail because the provenance clause and the resume-aware report detail do not exist yet; every other pre-existing test — including all four prefix matchers and both `startsWith` negatives TSPEC §2.4 names — is green.* T-08 is green in this batch. |
+| 5 | T-09 | `orchestrate-dev.js` | Full suite green, including every assertion batch 4 left red. Nothing else in the ledger `describe` changed. |
+| 6 | T-10 | `__tests__/waveResume.test.js` | Full suite green **and** `npm run test:coverage` from `pdlc/workflows` exits 0 (`--per-file --branches 85`). |
+
+**Why batches 2 and 4 are RED-terminal, and what that costs.** Rule 3 of the batch-safety contract
+makes red-before-green a dependency edge: a green implementation task lists its red-test task in
+`Deps`, so the red tests are necessarily in an earlier batch than the code that satisfies them. A
+blanket "full suite green after every batch" is therefore unsatisfiable here, which is exactly the
+case the rule's split gate wording exists for. The cost is recorded honestly as RK-1 in §4.4 —
+under a script-owned gate the runtime evaluates a wave's gate mechanically and has no notion of a
+declared RED-terminal wording — together with the two ways to run it.
+
+**Why `waveExecution.test.js` is one task and not four.** TSPEC §5.3 makes it a design obligation
+on this PLAN: the file is large, heavily shared, and `makeLedgerArgs` is shared by the whole ledger
+`describe`, so H-1/H-2 cannot be split from the cases that use them without two tasks appending to
+one physical file. Rule 2 is unenforceable-by-prose for precisely this shape — the green gate
+cannot detect last-writer-wins between concurrent agents — so the file has exactly one owner
+(T-07) in exactly one batch, and every other file this feature touches is new and single-owned for
+the same reason.
+
+**Why T-05 and T-09 are two tasks and not one.** They both write `orchestrate-dev.js`, so rule 2
+alone would force them apart, but the binding reason is RT-2: an extraction that ships in the same
+diff as an announcement change has no regression net, because the net is the very assertion set the
+announcement change edits. T-05 is measured against the shipped `describe` block unchanged; only
+then does T-07 edit it.
+
 ## 3. Dependencies
 
 ## 4. Verification
