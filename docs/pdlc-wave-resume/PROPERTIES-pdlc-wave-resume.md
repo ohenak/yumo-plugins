@@ -82,6 +82,57 @@ duty). Ids are stable and are never reused if a property is retired.
 
 ## Properties
 
+Every row is a testable statement of the form *{component} {must / must not} {observable
+behaviour} {when / given}*. `Traces` names the FSPEC AT, business rule or REQ criterion the row
+derives from; `Owner` names the PLAN task that lands it and the physical file it lands in. Oracle
+form — the assertion that makes each row falsifiable — is in **§ Oracles**, one entry per id.
+
+**Legend.** Level: `U` pure unit · `UG` unit/generative · `I` integration through `main()` ·
+`Q` queue integration · `R` repo-state · `P` pre-flight · `C` coverage/mutation duty.
+
+### 1. Pre-flight — the gate that must red before any dependent wave dispatches
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-PRE-01 | The pre-flight suite must fail when any of `WAVE_STATE_PATH`, `parseWaveLedger`, `computePlanHash`, `formatWaveLedger`, `IMPLEMENTATION_DEFAULTS` is absent from `orchestrate-dev.js`'s exports, or `docs/_constraints/pdlc-wave-gate-baseline.md` is untracked, or `pdlc/workflows/package.json` lacks any of `test:coverage`, `c8`, `fast-check` — existence only, never the shape T-02 creates. | Contract | P | PLAN T-01(a), §3.2 | T-01 · `waveResumePreflight.test.js` |
+| PROP-PRE-02 | The pre-flight suite must fail when the resolved `implementation.testCommand` is not string-equal to the literal transcribed in PLAN §3.4; when `.claude/pdlc.config.json` is absent it must instead assert `process.env.GITHUB_ACTIONS === "true"`, so a locally missing or drifted config reds rather than passing vacuously. | Contract | P | PLAN T-01(b), RK-6 | T-01 · `waveResumePreflight.test.js` |
+
+### 2. Outcome (b) — resume mid-plan on the record
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-RESUME-01 | Given a run halted at wave N>1 of an M-wave plan, the same feature, an unchanged PLAN and no resume configuration, a re-invocation must dispatch exactly the tasks of waves N..M and must dispatch none of waves 1..N-1. | Functional | I | AT-01, REQ-WVR-01 | T-07 · `waveExecution.test.js` |
+| PROP-RESUME-02 | That re-invocation must emit exactly one resume banner, beginning `Resuming at wave N of M (wave ledger `, ending with the literal ` (provenance: automatic)`, and containing `Delete .claude/pdlc-wave-state.json to force a full run.` | Observability | I | AT-01, BR-06, BR-07, TSPEC §2.4 row (b)/record | T-07 · `waveExecution.test.js` |
+| PROP-RESUME-03 | For every wave k < N that re-invocation must emit the whole line `Wave k/M: skipped (wave ledger: waves 1–(N-1) already green)`, rendered from the decision's `lastGreenWave`, carrying **no** provenance suffix. | Observability | I | TSPEC §3.2 (`lastGreenWave` consumer), AT-01 | T-07 · `waveExecution.test.js` |
+| PROP-RESUME-04 | The Phase I report row of a run that started at wave N>1 must carry status `✅` and detail string-equal to `Waves N–M complete, waves 1–(N-1) skipped as previously completed (wave mode, {gate}) (provenance: {p})`; a run that starts at wave 1 must keep the shipped detail `All M waves complete (wave mode, {gate})` byte-identically. | Contract | I | AT-01 (D-3), TSPEC §2.4 report table | T-07 · `waveExecution.test.js` |
+| PROP-RESUME-05 | Completion must accumulate across invocations: a plan halted at wave 2, resumed, then halted at wave 4 must make the third invocation announce wave **4** and skip waves 1–3 individually — never a wave number relative to what the previous run itself executed. | Data Integrity | I | AT-18, BR-08 | T-07 · `waveExecution.test.js` |
+| PROP-RESUME-06 | A wave whose tasks own no changed path must still be recorded completed, and the next invocation of the same plan must announce the **next** wave as its resume point; adding or removing an unrelated commit must leave the announced resume point identical. | Data Integrity | I | AT-10, REQ-WVR-06, OF-2 | T-07 · `waveExecution.test.js` |
+
+### 3. Outcome (a) — the disregard catalogue
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-DISREGARD-01 | `Object.keys(WAVE_IGNORE_REASONS)` must be **set-equal** to the seven codes `unreadable-json`, `not-an-object`, `wrong-shape`, `feature-mismatch`, `plan-changed`, `head-unreachable`, `over-count`, transcribed from TSPEC §3.1 — a containment check must not be used, so a deleted code fails a test instead of passing one. | Contract | U | AT-02, OB-F5, REQ-WVR-02 | T-02 · `waveResume.test.js` |
+| PROP-DISREGARD-02 | For each of the seven codes, a run over its fixture must resolve outcome (a): every wave of the plan dispatched from wave 1, and exactly one notice equal to `Notice: the wave ledger .claude/pdlc-wave-state.json was ignored — {reason}. Running every wave from 1. (provenance: automatic)`, the reason transcribed as a literal from TSPEC §3.1/§2.4. | Error Handling | I | AT-02, BR-02, BR-07 | T-07 · `waveExecution.test.js` |
+| PROP-DISREGARD-03 | An absent, empty or `{}` record (IG-6) must produce **no** announcement — asserted positively: no log line contains `wave ledger`, **and** `dispatchedTaskIds` equals the whole plan, **and** no line starts with `Resuming at wave`. | Error Handling | I | AT-02 (PM F-04), BR-02, EC-01, EC-02 | T-07 · `waveExecution.test.js` |
+| PROP-DISREGARD-04 | `parseWaveLedger` must return exactly `{state: null, reason: null}` for each of the three transcribed no-record inputs `null`, `""` and `"{}"` — this is where IG-6's membership in the closed six lives, so a change that made an absent record announce, or made `{}` fall through to IG-1, reds here. | Contract | U | AT-02, DEC-WVR-04, EC-02 | T-02 · `waveResume.test.js` |
+| PROP-DISREGARD-05 | `parseWaveLedger`'s three rejecting arms must return their exact shipped sentences — `it is not readable JSON`, `it is not a JSON object`, `its fields are not the shape this workflow writes` — as `reason` with `state: null`. | Contract | U | AT-02, TSPEC §3.1 | T-02 · `waveResume.test.js` |
+| PROP-DISREGARD-06 | A record failing **both** ancestry and the wave count must classify `head-unreachable`, never `over-count` — guard 5 precedes guard 6, which is the one pair where TSPEC §3.2's order diverges from the REQ's IG numbering. | Functional | U | AT-03, BR-03, FSPEC §3.2 | T-02 · `waveResume.test.js` |
+| PROP-DISREGARD-07 | The ancestry probe must be lazy: on a feature-mismatch fixture and on a plan-hash-mismatch fixture the `_git` call list filtered to `merge-base` must equal `[]`, and on the ancestry fixture it must equal `[["merge-base", "--is-ancestor", HEAD_SHA, "HEAD"]]` — equality, never containment. | Performance | I | AT-03, AT-11, DEC-WVR-08, TSPEC §2.2 | T-07 · `waveExecution.test.js` |
+| PROP-DISREGARD-08 | A well-formed record naming **no** commit must be honoured with **zero** `merge-base` calls, because `headCorroborated` returns before reaching the transport. | Performance | I | AT-11, EC-21, TSPEC V-7 | T-07 · `waveExecution.test.js` |
+| PROP-DISREGARD-09 | A record whose ancestry probe is unanswerable — no transport, or a transport that throws — must be **honoured**, not disregarded: an unavailable probe is not a staleness claim. Positive conjunct: the resume banner is present and the resumed subset is dispatched. | Error Handling | I | AT-11, EC-07, BR-12 | T-07 · `waveExecution.test.js` |
+| PROP-DISREGARD-10 | No state of the record may make the pipeline refuse to run: over all seven code fixtures plus the IG-6 fixture, `result.outcome` must equal `"success"` and must never be `"halted"` or `"blocked"`. | Error Handling | I | BR-12, REQ C-2, REQ-WVR-02 | T-07 · `waveExecution.test.js` |
+| PROP-DISREGARD-11 | The **set** of TSPEC §2.4 announcement rows observed to announce must be set-equal to the five announcing rows transcribed from that table, with the IG-6 row asserting silence positively — so a deleted announcement reds set equality rather than depending on some other property happening to name it. | Contract | I | AT-13 (TE F-14), BR-01, BR-07 | T-07 · `waveExecution.test.js` |
+
+### 4. Outcome (c) — Phase I skipped in full
+
+| # | Property | Category | Level | Traces | Owner |
+|---|---|---|---|---|---|
+| PROP-SKIP-01 | Given a valid record for this feature and unchanged plan recording every wave complete, the implementation wave loop must perform **zero** agent dispatches and **zero** gate invocations, and must emit a banner beginning `Skipping Phase I (wave ledger ` that names both the reason and the literal `to force a full run`. | Functional | I | AT-12, REQ-WVR-08, BR-11 | T-07 · `waveExecution.test.js` |
+| PROP-SKIP-02 | That run's Phase I report row must carry status `⏭` and detail string-equal to `Skipped — all M waves previously committed and recorded green (wave ledger) (provenance: automatic)` — one row with a distinguishing status, never a second row. | Contract | I | AT-12 (TE F-09), EC-09, D-3 | T-07 · `waveExecution.test.js` |
+| PROP-SKIP-03 | Under outcome (c) Phase PT's V-wave must still dispatch exactly **one** agent and invoke the gate exactly **once**: the skip is scoped to the wave loop, and the V-wave replays on every invocation. This is the positive conjunct that keeps PROP-SKIP-01 from being an absence-only oracle. | Integration | I | AT-12 (fourth conjunct), EC-20, BR-11 | T-07 · `waveExecution.test.js` |
+| PROP-SKIP-04 | Under outcome (c) the implementation wave loop must land **no** commit: the `_git` spy's `add` argv list must contain no path owned by any wave task, and the V-wave's own commit must be the only Phase-I-adjacent commit observed. | Security | I | REQ-WVR-08, BR-11, AT-12 | T-07 · `waveExecution.test.js` |
+
 ## Oracles
 
 ## Fixtures
