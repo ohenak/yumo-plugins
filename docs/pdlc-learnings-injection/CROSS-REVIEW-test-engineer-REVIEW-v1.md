@@ -196,6 +196,25 @@ re-locates each anchor and states, per finding, what HEAD actually shows.
 recommendation and its counts are unchanged — the counts below record what this round found, not
 what survived it.
 
+## Closing Pass (2) — Final Re-Verification at `20b301d0`
+
+HEAD advanced again after the pass above (`e010c2b2` → `20b301d0`). The two findings that pass
+recorded as **Open** were re-checked at the new HEAD; both now close. Again, the counts in
+`## Verdict` are this round's record and are not restated.
+
+| Finding | Re-check at `20b301d0` | Status |
+|---------|------------------------|--------|
+| F-03 | `learningsBaselineGuard.test.js:248` now asserts, per scenario, that *every composed dispatch is byte-identical to the committed pre-feature fixture* — `expect({index, prompt}).toEqual({index, expected})` against the bytes under `__tests__/fixtures/learnings-baseline/`, driven by the shared matrix `helpers/learningsBaselineScenarios.js` that the capture entry point also imports (so the fixtures are regenerable, and the pinned `BASELINE_MERGE_BASE_REF = 5a080c7a…` is asserted equal to `MANIFEST.json`'s `mergeBaseSha`, `:180-183`, `:282-283`). The instrument is proved to fire (`:272-275`: a mutated prompt does not compare equal), and the caseId/file/scenario sets are all **set-equality**, not containment (`:126-148`, `:289-290`). AC-5.1a's "that committed pre-feature fixture, not a second branch of this run" is now literally satisfied. `npm test -- __tests__/learningsBaselineGuard.test.js` → 77 passed. Q-02 is answered by the code. | **Closed** |
+| F-05 | `node pdlc/workflows/build-runtime.mjs --check` → `in-sync  pdlc/workflows/dist/pdlc-cli.mjs`, exit 0; `consolidationBuild.test.js` › "build-runtime.mjs --check is clean" passes. The regenerated bundle is committed, satisfying CLAUDE.md / DEC-08. | **Closed** |
+
+Combined run: `npm test -- __tests__/learningsBaselineGuard.test.js __tests__/consolidationBuild.test.js` →
+`Test Suites: 2 passed, Tests: 78 passed, 78 total`; `git status --porcelain` clean.
+
+With F-01, F-02, F-04, F-08 already recorded as addressed in the first closing pass, **no High
+finding from this round remains open at `20b301d0`**. The remaining open items are F-06 and F-07
+(Medium, non-gating) and F-09 (Low, non-gating), of which F-06 and F-09 are routed upstream as
+errata rather than as defects of the implementation.
+
 ## Verdict
 
 VERDICT: Needs revision
