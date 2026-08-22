@@ -87,6 +87,71 @@ which is why it is not a nit. But it gates nothing: no High, so no halt, and the
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC as it now stands.** Confirmed, with two Medium
+findings that are corrections to two parenthetical sentences and change no decision.
+
+Section by section, against upstream at HEAD:
+
+**Edit 1 — §3.1's count (O-8, DEC-WVR-06).** TSPEC §3.1 at HEAD (`:425`–`:428`) reads "Three of the
+seven reasons interpolate run-specific values — `feature-mismatch`, `head-unreachable` and
+`over-count` — carrying four interpolated values between them", and the §6.1 DEC-WVR-06 row now
+reads "three of the seven interpolate run-specific values (four values in total, §3.1)". DECISIONS
+O-8 says "of the seven disregard reasons, **three** interpolate run-specific values", names the same
+three by their rendered sentences, and adds "The other four are fixed sentences"; DEC-WVR-06's
+Context says "There are seven, three of which interpolate run-specific values". **The counts agree
+exactly, including the reason/value split that was the substance of the erratum.** What does not
+agree is DECISIONS' trailing parenthetical (`:205`–`:207`), which quotes TSPEC as saying "four of
+the seven reasons interpolate" and describes the correction as "raised as an erratum, not silently
+propagated here". The quoted string is gone from TSPEC and the erratum is landed. **F-01.**
+
+**Edit 2 — §2.4's catalogue closure (O-5, DEC-WVR-03).** TSPEC §2.4 at HEAD now carries "The
+catalogue is closed by rule, not by omission", states the rule as "A notice carries a provenance
+token **iff** the resume decision emits it about a *resolved start point*", and gives the excluded
+notice its own table row with the exclusion reason ("emitted by config validation, *before* any
+resume decision… about a **rejected value**, not a resolved start point"). DECISIONS O-5 reaches the
+same rule by the same mechanical route — `parseImplementationConfig` has already replaced the
+rejected value, so `explicitPointer` is false, so FSPEC BR-07's "full run reached by an operator
+pointer" does not describe the run. Both documents also land on the same consequence: TSPEC's "the
+shipped assertions that do change remain exactly three" and DECISIONS' "The count therefore stays
+**three**, and it stays three by a rule a test can apply rather than by an omission". **This is the
+strongest agreement in the delta** — the upstream now states the rule DECISIONS supplied. The stale
+sentence is again the parenthetical (`:167`–`:169`): "TSPEC §2.4's announcement table omits the
+invalid-pointer notice entirely rather than excluding it by rule; that is an upstream gap, raised as
+an erratum rather than repaired here." §2.4 no longer omits it and no longer leaves it to inference.
+**F-02.**
+
+**Edit 3 — §6.1 DEC-WVR-02 alternative (b).** The old TSPEC row rejected extraction because it "adds
+a `main()` parameter and a runtime capability… contradicting REQ C-3's 'no new capabilities'".
+DECISIONS O-3 (`:99`–`:100`) had declined to follow that framing, writing instead: "It is a new
+*seam over an existing capability*, not a new host capability (the adapter's `rtGit` already answers
+`merge-base`)". The erratum round rewrote the TSPEC row to say exactly this — "the probe already
+runs through the existing `_git` seam, which `runtime-adapter.js` binds as `rtGit` for both bundles,
+so extraction would add a `main()` parameter and one more adapter binding, not a host capability."
+**Fidelity improved without DECISIONS moving.** DEC-WVR-02's Alternatives row (`:267`–`:269`) and
+its Constraints row survive intact: the constraint it cites, TSPEC §3.4's "the diff adds no
+parameter to `main()`", is present verbatim at `TSPEC:556` and was not touched by this round. No
+finding.
+
+**Edit 4 — §6.4 RT-1's file-size ranking.** TSPEC RT-1 now says "the largest tracked *source module*
+in the repo (734,711 B) and the second-largest tracked file of any kind — the generated
+`pdlc/workflows/dist/pdlc-cli.mjs` is larger at 738,924 B (`git ls-tree -r -l origin/main` at
+`345ae358`)". DECISIONS' measured-surface row (`:44`) carries the identical two byte counts, the
+identical command, and the identical `345ae358` baseline. **Same numbers, same method, same
+provenance.** My v2 F-01 remains open against DECISIONS' extra clause "a *generated* artifact built
+from the module below" — the artifact header names `orchestrate-dev.js` **and** `cli.mjs` as
+inputs — but that clause has no counterpart in TSPEC to have drifted from, so it is inherited, not
+cascade. **F-03 (carried).**
+
+**Edit 5 — §3.2's duplicated clause.** Cosmetic, and DECISIONS quotes no sentence from §3.2. No
+finding.
+
+**Nothing else in DECISIONS cites changed text.** `grep -n 'TSPEC'` over DECISIONS returns fifteen
+citations. Four are to §2.4's three-assertion enumeration (`:132`, `:303`, `:433`, `:458`) — the
+edit reaffirmed that count rather than disturbing it. Two are to §3.4 (`:103`, `:270`), untouched.
+The remainder are id-mapping (`:232`), OB-F1/OB-F4 and RT-6 (`:446`–`:448`), all outside the diff.
+No decision, alternative disposition, constraint, reversibility claim, re-evaluation trigger or
+downstream obligation in this document depends on text the erratum round altered.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
