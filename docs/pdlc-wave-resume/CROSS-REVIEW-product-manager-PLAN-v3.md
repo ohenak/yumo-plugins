@@ -70,7 +70,42 @@ F-02 ask for touch prose in §3.4 and §4.4 only, not the task table.
 
 ## Dependencies
 
-*(pending)*
+PLAN cites TSPEC in nineteen places. Every one was re-read against TSPEC at HEAD, not against my
+memory of TSPEC at approval time. Grouped by whether the cascade could reach them:
+
+| PLAN citation | TSPEC at HEAD | Reached by this edit? |
+|---|---|---|
+| §1.1 "TSPEC §1.2 scopes this feature to eleven delta rows (D-1 … D-11)" | §1.2 still carries D-1 … D-11 | No |
+| §1.2 "REQ BL-04 / FSPEC OB-F1 / TSPEC §6.2" (rebase precondition) | §6.2 OB-F1 unchanged | No |
+| §1.2 "TSPEC §5.4 AT-14 and §6.2 OB-F1" | unchanged | No |
+| §1.3 "(TSPEC RT-2)", "(TSPEC §1.3)" Phase PT out of scope | unchanged | No |
+| §1.3 / §3.3 "FSPEC OB-F6, TSPEC AT-17" `postWavePathspecs` | unchanged | No |
+| §2.1 T-02 "all eight rows of TSPEC §3.2's guard table", `RESUME_OUTCOMES` set-equality | §3.2 guard table still eight rows | No |
+| §2.1 T-04 "AT-16 exactly as DEC-WVR-07 scopes it" | DECISIONS unchanged (`sha256:37b3684d…`) | No |
+| §2.1 T-08 P-1 … P-4 ← "TSPEC §5.7 laws" | §5.7 unchanged | No |
+| §2.1 T-10 "(RT-7, TSPEC §5.8)" | **§5.8 and RT-7 both edited** — and both now name T-10 explicitly | Yes, and it strengthens the citation |
+| §3.1 "TSPEC §5.3 makes it a design obligation"; §3.2 "the four TSPEC §5.3 names" | §5.3 catalogue unchanged (four new files) | No |
+| §3.4 `implementation.postWaveCommand` ← RT-5 | RT-5 unchanged | No |
+| §3.4 `Coverage floor` row | **edited** | Yes — F-01 |
+| §4.2 rule 1 "transcribed from the TSPEC"; §4.2 "TSPEC §5.5 records `toContainEqual` passes" | §5.5 unchanged | No |
+| §4.4 RK-2 | **edited** | Yes — F-02 |
+| §4.4 RK-3 "(TSPEC RT-1)" 734,711 B; RK-4 "(TSPEC RT-3's residual)" | RT-1/RT-3 unchanged at HEAD | No |
+| §4.5 "All eleven TSPEC delta rows D-1 … D-11"; "each named by TSPEC §2.4"; "(REQ C-3, TSPEC §3.4/§3.5)" | unchanged | No |
+| §4.5.1 "`classifyWaveLedger` guard arms (TSPEC §3.2) — 8" | unchanged | No |
+
+**REQ, FSPEC and DECISIONS are byte-identical to the versions my approval was taken against.** I
+re-hashed all three: `REQ sha256:17e83bfc…`, `FSPEC sha256:9a6be7b5…`,
+`DECISIONS sha256:37b3684d…` — each matches the `UPSTREAM-STATE:` anchor in
+`CROSS-REVIEW-product-manager-PLAN-v2.md` exactly. So the product-lens chain I verified by set
+equality at v2 (REQ-WVR-01 … -10 → FSPEC-WVR-01 … -07 → AT-01 … AT-18 → owning task) is undisturbed
+at its source; only the technical-compression layer between TSPEC and PLAN moved, and it moved
+toward PLAN.
+
+**The one dependency worth naming as durable signal, and it is already handled.** PLAN's RK-2 is a
+worked example of the behaviour the pipeline wants from a downstream author who finds an upstream
+defect: implement the reading that is expressible, state the divergence, route an erratum, do not
+silently re-specify. That erratum has now landed upstream and the divergence is gone. The residual
+work is only that RK-2 and §3.4 still narrate the disagreement in the present tense.
 
 ## Verification
 
