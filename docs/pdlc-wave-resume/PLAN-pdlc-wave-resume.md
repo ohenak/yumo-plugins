@@ -4,10 +4,10 @@
 |---|---|
 | Status | Draft |
 | Author | se-author |
-| Version | 1.0 |
+| Version | 1.1 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → **PLAN** |
 | Downstream | PROPERTIES, IMPL |
-| Cross-Reviews | *(none yet — round 1 pending)* |
+| Cross-Reviews | `CROSS-REVIEW-test-engineer-PLAN-v1.md` |
 | LEARNINGS | `docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md` |
 
 **Revision history.**
@@ -15,6 +15,7 @@
 | Version | Change |
 |---|---|
 | 1.0 | Initial authoring. |
+| 1.1 | Round-1 test-engineer review addressed (F-01 … F-10). Structural change: the three RED/GREEN task pairs are **merged**, so every batch is green-terminal and the runtime's script-owned gate can evaluate it (F-01); `implementation.testCommand` is transcribed as a literal and its resolution is asserted by T-01 (F-02, F-07); T-10 gains the `waveExecution.test.js` manifest row and a delta-scoped coverage oracle (F-03, F-05); §4.3's four mutations gain owning tasks, an execution step and a DoD checkbox (F-04); T-08 pins `numRuns: 500` on its precedent (F-06); the report-row extension carries its `N > 1` condition (F-08); T-01 gains a stated lifecycle and drops the weakened AT-14 restatement (F-09); §1.2's bare line anchors are replaced by content citations (F-10). Ids `T-05`, `T-06` and `T-09` are **retired, not reused** — each was merged into its red predecessor, and keeping the surviving ids stable keeps every round-1 review reference resolvable. |
 
 ## 1. Overview
 
