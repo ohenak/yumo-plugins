@@ -181,45 +181,52 @@ then does T-07 edit it.
 ### 3.1 Dependency edges, and why each exists
 
 Every edge below is a real ordering constraint, not id order. Task ids are written identically in
-the `#` column and in `Deps` cells — bare `T-NN`, never bolded in one and plain in the other.
+the `#` column and in `Deps` cells — bare `T-NN`, never bolded in one and plain in the other. Ids
+`T-05`, `T-06` and `T-09` are retired by the v1.1 merge and appear in no `Deps` cell.
 
 | Edge | Why |
 |---|---|
-| T-02, T-03, T-04 → T-01 | §1.2: no task may run before the baseline is proven present. T-03 in particular carries AT-14, which is red pre-rebase, and a red gate in wave mode halts the wave and every wave after it. |
-| T-05 → T-02 | Red-before-green. T-02 is the failing unit suite for `classifyWaveLedger` and the three catalogues; T-05 is what turns it green. |
-| T-06 → T-03 | Red-before-green. T-03 carries the `M-WVR-1`/`M-WVR-2` presence assertion; T-06 appends the section. |
-| T-07 → T-05 | The integration cases assert on the classifier's resolved outcomes and on the lazy-probe call counts, which do not exist until T-05. It is also rule 2: T-07 must not append to `waveExecution.test.js` in the batch that proves T-05 left it unchanged. |
-| T-08 → T-05 | P-3 quantifies over `ClassifyInput` and asserts `outcome ∈ RESUME_OUTCOMES`; both symbols are T-05's. |
-| T-09 → T-07 | Red-before-green, and TSPEC §2.4's "never a later fix-the-suite task": the three assertion updates are in T-09's immediate red predecessor, not in a task after it. |
-| T-10 → T-09 | The announcement and report branches are the last branches added; the floor is measured over the complete diff. |
-| T-10 → T-08, T-06, T-04 | The floor is measured over the whole suite as it will merge; a suite still missing the property or repo-state files would measure a different number. |
+| T-02, T-03, T-04 → T-01 | §1.2: no task may run before the baseline is proven present and the gate is proven script-owned. T-03 in particular carries AT-14, which is red pre-rebase, and a red gate in wave mode halts the wave and every wave after it. |
+| T-07 → T-02 | The integration cases assert on the classifier's resolved outcomes and on the lazy-probe call counts, which do not exist until T-02's green half. It is also rule 2 twice over: T-07 must not append to `waveExecution.test.js` in the batch that proves T-02 left it unchanged, and both tasks write `orchestrate-dev.js`. |
+| T-08 → T-02 | P-3 quantifies over `ClassifyInput` and asserts `outcome ∈ RESUME_OUTCOMES`; both symbols are T-02's. |
+| T-10 → T-07 | The announcement and report branches are the last branches added; the floor and the delta oracle are measured over the complete diff. It is also rule 2: T-10 appends to `waveExecution.test.js`, which T-07 owns in the previous batch. |
+| T-10 → T-08, T-03, T-04 | The floor is measured over the whole suite as it will merge; a suite still missing the property, repo-state or queue-parity files would measure a different number. |
 
-**No cycle.** The edge set is `T-01 → {T-02,T-03,T-04}`, `T-02 → T-05`, `T-03 → T-06`,
-`T-05 → {T-07,T-08}`, `T-07 → T-09`, `{T-09,T-08,T-06,T-04} → T-10`: a DAG whose topological order
-is exactly the batch numbering of §2.2.
+**No cycle.** The edge set is `T-01 → {T-02,T-03,T-04}`, `T-02 → {T-07,T-08}`,
+`{T-07,T-08,T-03,T-04} → T-10`: a DAG whose topological order is exactly the batch numbering
+of §2.2.
 
 ### 3.2 Prior-phase baseline pre-flight (T-01)
 
-`BL-PREREQ` symbols and files, asserted **present** at HEAD and nothing more — never the shape T-05
+`BL-PREREQ` symbols and files, asserted **present** at HEAD and nothing more — never the shape T-02
 creates:
 
 | Subject | Assertion form | Where it lives at `origin/main` |
 |---|---|---|
 | `WAVE_STATE_PATH`, `parseWaveLedger`, `computePlanHash`, `formatWaveLedger`, `IMPLEMENTATION_DEFAULTS` | importable / present on the module's exports | `pdlc/workflows/orchestrate-dev.js` |
 | `docs/_constraints/pdlc-wave-gate-baseline.md` | file exists and is tracked | tracked at `origin/main`; **absent in this tree** |
-| `/.claude/pdlc-wave-state.json` | a line exists in `.gitignore` | `.gitignore` at `origin/main`; **absent in this tree** |
 | `test:coverage`, `c8`, `fast-check` | keys present in the manifest | `pdlc/workflows/package.json` at `origin/main`; **absent in this tree** |
 | `makeLedgerArgs`, `ledgerWrites`, `PLAN_THREE_WAVES`, `CONFIG_WITH_TEST_COMMAND` | referenced in the ledger harness | `pdlc/workflows/__tests__/waveExecution.test.js` at `origin/main` |
+| `implementation.testCommand` | resolved value **string-equals** §3.4's transcribed literal; when `.claude/pdlc.config.json` is absent, `process.env.GITHUB_ACTIONS === "true"` | `.claude/pdlc.config.json` (untracked, consumer-local) |
+
+The ignore rule is deliberately **not** a row here: AT-14 owns it in T-03 in its strict, line-equality
+form, and restating it in T-01 could only be done in the weaker `includes` shape T-03 forbids
+(round-1 F-09). T-01 still proves the rebase landed — the tracked constraints file and the three
+manifest keys are absent in this tree and present at `origin/main`, so either one reds pre-rebase.
 
 `classifyWaveLedger`, `RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS` and
 `ANCESTRY_INDEPENDENT_CODES` are **deliberately not** in this table: they do not exist at
 `origin/main` either (verified: zero occurrences), and asserting them here would make the pre-flight
 gate assert the new shape a dependent task creates, which the gate's contract forbids.
 
-`pdlc/workflows/__tests__/waveResumePreflight.test.js` is a fifth new test file beyond the four
-TSPEC §5.3 names. It is declared new here and is a PLAN-level artifact — the pre-flight gate — not
-a TSPEC test category. It is kept out of `waveResumeRepoState.test.js` on purpose: that file is
-T-03's, and the gate must run in an earlier batch than any file whose assertions the gate protects.
+**Lifecycle (round-1 F-09).** `pdlc/workflows/__tests__/waveResumePreflight.test.js` is a fifth new
+test file beyond the four TSPEC §5.3 names, and it **ships permanently**; no task deletes it. Its
+two obligations survive the rebase that makes the first half look tautological: the export arms red
+if a later change removes a symbol `classifyWaveLedger` depends on, and the config arm reds whenever
+a consumer's `.claude/pdlc.config.json` drifts from §3.4's literal — which is the difference between
+a script-owned wave gate and an agent grading its own homework (round-1 F-02). It is kept out of
+`waveResumeRepoState.test.js` on purpose: that file is T-03's, and the gate must run in an earlier
+batch than any file whose assertions the gate protects.
 
 ### 3.3 File-ownership manifest (per batch, mechanically auditable)
 
