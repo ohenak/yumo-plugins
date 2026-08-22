@@ -421,8 +421,10 @@ type WaveIgnoreCode =
   | "over-count";       // IG-4
 ```
 
-**Why codes and not strings.** Four of the seven reasons interpolate run-specific values (the
-recorded feature name, the recorded commit's short sha, the recorded and actual wave counts), so a
+**Why codes and not strings.** Three of the seven reasons interpolate run-specific values —
+`feature-mismatch`, `head-unreachable` and `over-count` — carrying four interpolated values between
+them (the recorded feature name, the recorded commit's short sha, and the recorded and actual wave
+counts, both of which the `over-count` sentence names), so a
 set-equality assertion over rendered sentences would be an assertion over fixture data. The codes
 are the closed set; the renderers are the wording, governed by FSPEC's "content, not wording" note.
 The three `parseWaveLedger` arms keep their **exact shipped sentences** as their renderers, so no
@@ -482,7 +484,7 @@ sentence actually interpolates.
 per-wave skip line interpolates — the shipped string is `Wave 1/3: skipped (wave ledger: waves 1–1
 already green)`, pinned today by a whole-string `expect(logs).toContain(…)` in `it("records each
 committed wave, and the next invocation resumes at the failed one")`. It carries no provenance
-suffix and does not change. Keeping the field on the decision on the decision is what lets that line be rendered from the decision rather than
+suffix and does not change. Keeping the field on the decision is what lets that line be rendered from the decision rather than
 re-derived from `startWave - 1` at the call site, and §5.4 AT-01 pins it by asserting the skip line's
 text for every `k < N`. A field with no reader would be unfalsifiable; this one has one.
 
