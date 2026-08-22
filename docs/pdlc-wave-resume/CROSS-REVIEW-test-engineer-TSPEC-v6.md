@@ -42,7 +42,41 @@ Two residual imprecisions remain, both **Low**, neither gating.
 
 ## Architecture
 
-*(pending)*
+### §5.8 — the floor moves from a wave gate to a task obligation
+
+The pre-round sentence assigned the floor to "the **last wave's `postWaveCommand`** (TE Q-05: yes),
+so the floor is a wave-level gate rather than a PUB-level surprise". The edit replaces that with an
+obligation of "the **last implementation task** (PLAN T-10, RK-2), which runs it explicitly and
+reports the measured per-file branch number", plus an explicit negative clause naming why
+`implementation.postWaveCommand` cannot carry it.
+
+Three things about the *shape* of this edit matter to my lens, and all three hold:
+
+- **The obligation still names a runner, a command and a threshold.** `npm run test:coverage` from
+  `pdlc/workflows`, `--per-file --branches 85`. A floor that moved owners but lost its command
+  would have been a regression disguised as a correction; this one keeps every operative noun.
+- **The negative clause is stated as a mechanism, not as a preference.** "V-13 closes the config
+  surface at four keys with a single *global* `postWaveCommand`, so a per-wave-scoped setting is
+  not expressible, and a global one would run `test:coverage` after **every** wave — red on waves
+  whose new branches are not yet covered." That is a falsifiable statement about the runtime, and I
+  falsified it against `origin/main` rather than accepting it (§Data Model). A future reader who
+  wonders "why not just set `postWaveCommand`?" gets the answer in the document instead of
+  re-discovering it.
+- **The risk row and the body now agree.** RT-7's mitigation cell was rewritten in the same edit
+  and now says the same thing as §5.8 in the same terms. Pre-round they would have diverged, which
+  is the failure mode an erratum round exists to prevent. The revision-history row (v1.3) records
+  the change, its cause and its non-scope, so the provenance of the re-assignment survives.
+
+### What the edit deliberately did not touch, and should not have
+
+The threshold (85%), the per-file mode, the include-list argument ("not 'the module is already in
+the include list'"), the enumeration of the branch classes this feature adds (eight classifier arms,
+seven renderer closures, the lazy-probe short-circuit, the announcement and report branches), and
+RT-7's backstop (per-arm unit coverage in §5.3, the generative suite in §5.7) are byte-identical to
+what I approved. RT-5's separate use of `implementation.postWavePathspecs` for the `dist/` path is
+also untouched and remains correct — that key *is* legitimately global, since every wave's build
+outputs want committing, so the edit's "global is wrong here" argument is scoped to the coverage
+command and does not accidentally indict its neighbour.
 
 ## Interfaces
 
