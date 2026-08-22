@@ -298,6 +298,58 @@ describe("LI-19: LI-AT-22 locus 1 — per-dispatch orderKeys, hand-transcribed a
   });
 });
 
+// PROP-RECORD-06 (mutation M-8): a document with no `Date Completed` row is still eligible
+// (BR-4's `null` key, ranked last), and its `orderKeys[j].orderKey` must be a PRESENT key
+// carrying JSON `null` — never an omitted key, never the empty string "". Omitting the key
+// would make "this document's date is unrecorded" indistinguishable from "this document was
+// never observed at all"; emitting "" would make it indistinguishable from a parse that
+// silently coerced a genuinely-absent value into a string. Both are the specific confusions
+// AC-3.3 is written to prevent (TSPEC §A.5, BR-10 locus 1).
+describe("PROP-RECORD-06: orderKey: null is a present key carrying JSON null, never omitted, never coerced to a string", () => {
+  test("a document with no Date Completed row is recorded with a present orderKey key whose value is JS/JSON null", async () => {
+    const { buildLearningsInjector } = await import(DEV_MODULE_PATH);
+
+    const corpus = buildLearningsCorpus([
+      {
+        path: "docs/completed/no-date/LEARNINGS-no-date.md",
+        doc: {
+          feature: "no-date",
+          dateCompleted: null,
+          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }],
+        },
+      },
+    ]);
+    const sink = makeSink();
+    const inject = buildLearningsInjector({
+      config: makeConfig(),
+      sink,
+      _git: fakeGit({ ok: true, stdout: corpus.lsFilesStdout }),
+      _readFile: fakeFs(corpus.contents).readFile,
+      _log: () => {},
+    });
+
+    await inject({ feature: "this-feature", docType: "TSPEC", phaseId: "T" });
+
+    expect(sink.dispatches).toHaveLength(1);
+    const { orderKeys } = sink.dispatches[0];
+    expect(orderKeys).toHaveLength(1);
+    const entry = orderKeys[0];
+
+    // Present key, closed field set (BR-10 locus 1's completeness, restated per-entry).
+    expect(Object.keys(entry).sort()).toEqual(["orderKey", "path"]);
+    expect("orderKey" in entry).toBe(true);
+    // JS `null`, never omitted (`undefined`) and never coerced to "" (M-8).
+    expect(entry.orderKey).toBeNull();
+    expect(entry.orderKey).not.toBe("");
+    expect(entry.orderKey).not.toBeUndefined();
+    // The record must survive a real JSON round-trip carrying a literal `null`, not a
+    // dropped key — `JSON.stringify` omits `undefined`-valued keys but keeps `null` ones.
+    const roundTripped = JSON.parse(JSON.stringify(entry));
+    expect("orderKey" in roundTripped).toBe(true);
+    expect(roundTripped.orderKey).toBeNull();
+  });
+});
+
 describe("LI-21: LI-AT-22 locus 2 — run-level thresholds completeness, once per run", () => {
   test("ruleInputs.thresholds carries exactly maxDocuments, maxBytesPerDocument and maxTotalBytes, read once for the whole run", async () => {
     const { buildLearningsInjector } = await import(DEV_MODULE_PATH);

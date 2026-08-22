@@ -26,6 +26,7 @@
 // beyond the whole-pipeline driving harness immediately below, which is glue, not fixture data.
 
 import { execFileSync, spawnSync } from "child_process";
+import { createHash } from "crypto";
 import { mkdtempSync, rmSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
@@ -342,6 +343,33 @@ describe("learningsDispatchSet — Group 1: the material reaches the authoring r
     }
   });
 
+  // PROP-CORPUS-02 (PROPERTIES §O.3): a re-enumeration of the corpus would return the same
+  // listing every time, so the envelope is identical whether the corpus is fetched once per
+  // dispatch or re-fetched wastefully inside a loop — the oracle is therefore a call-count spy,
+  // not a shape assertion. `LI-T-RETRY-2` pins the same rule for ONE dispatch spanning two
+  // `for(;;)` iterations; this pins it across a whole run's MULTIPLE authoring dispatches, where
+  // a bug that re-enumerated per authoring call site (rather than per episode) would still leave
+  // every composed prompt looking correct.
+  test("PROP-CORPUS-02: the corpus is enumerated exactly once per authoring dispatch — never re-fetched, never shared short of that", async () => {
+    const corpus = buildLearningsCorpus([
+      {
+        path: "docs/completed/prior-feature/LEARNINGS-prior-feature.md",
+        doc: {
+          feature: "prior-feature",
+          dateCompleted: "2026-01-01",
+          sections: [{ name: "Cross-Feature Patterns", bodyBytes: 200 }],
+        },
+      },
+    ]);
+    const { calls, git } = await runScenario({ corpus });
+
+    const authoringCalls = calls.filter((c) => AUTHORING_SKILLS.has(c.skill));
+    const enumerateCalls = git.calls.filter(isLearningsEnumerateCall);
+
+    expect(authoringCalls.length).toBeGreaterThan(0);
+    expect(enumerateCalls.length).toBe(authoringCalls.length);
+  });
+
   test("LI-20: LI-AT-02 — set equality over the whole dispatch universe: the subset carrying a block equals BR-1's two-conjunct rule's subset", async () => {
     const corpus = buildLearningsCorpus([
       {
@@ -619,6 +647,61 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     for (let i = 0; i < enabledRun.calls.length; i += 1) {
       if (AUTHORING_SKILLS.has(enabledRun.calls[i].skill)) continue;
       expect(enabledRun.calls[i].prompt).toBe(disabledRun.calls[i].prompt);
+    }
+  });
+
+  // PROP-ISOLATE-02's SKILL.md conjunct (BR-16): "no SKILL.md text moves" is a digest equality,
+  // never a prose claim. Enumerated by real `git ls-files` (not a scripted double — SKILL.md
+  // files are not part of any run's fixture, so a fake corpus cannot stand in for them), SHA-256
+  // per file, and asserted set-equal by path AND equal by digest against a hand-transcribed
+  // manifest recorded at authoring time (DC-14) — never regenerated inside the assertion, which
+  // would make the test unfalsifiable against exactly the drift it exists to catch.
+  test("PROP-ISOLATE-02: every file under pdlc/skills/** has the SHA-256 digest recorded in the hand-transcribed manifest (BR-16, no SKILL.md text moves)", () => {
+    const REPO_ROOT = join(__dirname, "..", "..", "..");
+
+    // Hand-transcribed (DC-14): path -> SHA-256 hex digest, recorded once at authoring time by
+    // running `git ls-files -- 'pdlc/skills/**'` and `shasum -a 256` over each result. This
+    // feature's own scope boundary (§Scope boundary) touches no file under `pdlc/skills/**`, so
+    // every digest below is expected to still match at green.
+    const EXPECTED_DIGESTS = {
+      "pdlc/skills/consolidate-learnings/SKILL.md": "c579adbb346b1892855d93e71252901c3ff5a432aa6f1f14ff5d2e9b5efb598d",
+      "pdlc/skills/dod-verify/SKILL.md": "8be3ac4056afe74aebc9c2a7c1c036720a3105317aebc29c50c50009c4ecaa83",
+      "pdlc/skills/harvest-learnings/SKILL.md": "aca0b14757cc71a4986599cbf01d68c635585132e6bf6c3ed3be2d14d835e07b",
+      "pdlc/skills/orchestrate-dev/SKILL.md": "e649610ab1ea008ba5b5ad2e5df3412308bf0a0f122801d37302e75a11697fc1",
+      "pdlc/skills/orchestrate-dev/WORKFLOW-MIGRATION-PLAN.md": "a1fc0854cef941cf60b7b45c04b5688ca3c602234978391a57f1eff3f5c735ec",
+      "pdlc/skills/orchestrate-queue/SKILL.md": "9f408b5b48b263cf27667363f7e7db1130643ca6f8260185790cc4023e6ab90b",
+      "pdlc/skills/pm-author/SKILL.md": "6e1e4884cb90ae323c71d3083c5b34d577529a7ef6e0080b466b5696517a60f8",
+      "pdlc/skills/pm-review/SKILL.md": "4bd6abaf6b3c20e644526c4a1b4dcc383a6f697dcca2ebcc83959d21e5d1fd09",
+      "pdlc/skills/se-author/SKILL.md": "071a63c5d32095d3f21a5b2dd440c4a16ff17dda1b9c4fff22a0a49fec699267",
+      "pdlc/skills/se-implement/SKILL-python.md": "b6e44dd4aa1db0a9a34fcdab86f2cf43fce35e227e8816a6938415d545d7b41a",
+      "pdlc/skills/se-implement/SKILL-typescript.md": "928c9d3d273a3a80369707c47aed7c40d8126d996475ff0e9fc9a4c5e8da397a",
+      "pdlc/skills/se-implement/SKILL.md": "68a07a6e215552c81507bd212b372cc0233ef414bdcdb12c011c1bc45349c354",
+      "pdlc/skills/se-review/SKILL.md": "64d52f5ad1623ab9a05240069fa34236d9daf5660acea7897661295901f734c4",
+      "pdlc/skills/ship-pr/SKILL.md": "4ed57b1ef856963bcd21dd43c5df979b1cc01f63e5d073a217acb160ccd5bad1",
+      "pdlc/skills/te-author/SKILL.md": "7d380a607856e3d087c612b244d9d77210d87ce51e11632de5b2f67aefdc59b8",
+      "pdlc/skills/te-review/SKILL.md": "0e69aa4b8e68acec232cfa416ba9642b552ac86fe587bec28c5860490ad4be57",
+      "pdlc/skills/tech-lead-python/SKILL.md": "70cc06dfb6b83b93b4c6ceab3f847b2d1c910539abc4f1d13695d32eb93d5501",
+      "pdlc/skills/tech-lead/SKILL.md": "781909cbc145e620548535bb5ab6c61014d255cf0ebed1e3fc6dcf20708584f4",
+    };
+
+    const stdout = execFileSync("git", ["ls-files", "--", "pdlc/skills/**"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    });
+    const observedPaths = stdout.split("\n").filter(Boolean);
+
+    // Set equality over paths — never containment, so a newly added or removed SKILL.md file
+    // reds here rather than being silently ignored by both sides.
+    expect(new Set(observedPaths)).toEqual(new Set(Object.keys(EXPECTED_DIGESTS)));
+    // Positive control: the enumerated set is non-empty, so the equality above is not vacuously
+    // true over two empty sets.
+    expect(observedPaths.length).toBeGreaterThan(0);
+
+    for (const relPath of observedPaths) {
+      const digest = createHash("sha256")
+        .update(readFileSync(join(REPO_ROOT, relPath)))
+        .digest("hex");
+      expect(digest).toBe(EXPECTED_DIGESTS[relPath]);
     }
   });
 

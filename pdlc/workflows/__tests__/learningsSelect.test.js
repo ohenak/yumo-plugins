@@ -29,6 +29,8 @@
 // `{paths, contents}` corpus shape to `selectLearnings`'s `CorpusEntry[]` input shape (TSPEC
 // §I.3); it builds no fixture data of its own.
 
+import { readFileSync } from "fs";
+
 import fc from "fast-check";
 
 import {
@@ -256,6 +258,61 @@ describe("learningsSelect — eligibility, ordering and count (TSPEC §T.5, PLAN
     // the supplementary-plane path first), proving the implementation truly compares UTF-8
     // bytes rather than UTF-16 code units.
     expect(result.selected.map((d) => d.path)).toEqual([pathBmp, pathSupplementary]);
+  });
+
+  // PROP-ORDER-04 (Security-of-determinism, TSPEC §D.4): the ordering must not construct a
+  // `Date` object, read a clock, or consult git history, filesystem timestamps or a model's
+  // judgement — keys are compared as plain strings. This is a static scan over
+  // `parseHarvestDate` and `orderCorpus`'s own function bodies, carrying the same two-conjunct
+  // instrument oracle as PROP-FOOTPRINT-04 (§O.1/§O.6): a scan that finds nothing must red, not
+  // pass silently, so it also asserts the extracted span is non-empty and is the right one, and
+  // that the same scanner fires on a planted forbidden token.
+  function extractFunctionBody(source, exportedName) {
+    const startMarker = `export function ${exportedName}(`;
+    const startIdx = source.indexOf(startMarker);
+    if (startIdx === -1) return "";
+    // The next top-level `export ` after this function's opening is a reliable enough end
+    // marker for these two short, sequential functions (TSPEC §D.4) without a full parser.
+    const nextExportIdx = source.indexOf("\nexport ", startIdx + startMarker.length);
+    return nextExportIdx === -1 ? source.slice(startIdx) : source.slice(startIdx, nextExportIdx);
+  }
+
+  function scanForClockOrFilesystemReferences(text) {
+    const forbidden = [
+      "new Date(",
+      "Date.now(",
+      "fs.",
+      "readFileSync",
+      "statSync",
+      "execFileSync",
+      "mtime",
+      "ctime",
+      "_git(",
+    ];
+    return forbidden.filter((token) => text.includes(token));
+  }
+
+  test("PROP-ORDER-04: parseHarvestDate and orderCorpus construct no Date object, read no clock, and consult no filesystem or git history — keys compared as strings", () => {
+    const source = readFileSync(new URL("../orchestrate-dev.js", import.meta.url), "utf8");
+
+    const parseHarvestDateBody = extractFunctionBody(source, "parseHarvestDate");
+    const orderCorpusBody = extractFunctionBody(source, "orderCorpus");
+
+    // Positive control: the extracted spans are non-empty and are the right ones — a
+    // mislocated or empty span (a renamed export, a moved function) must red, never pass.
+    expect(parseHarvestDateBody.length).toBeGreaterThan(0);
+    expect(parseHarvestDateBody).toContain("ISO_DATE_RE");
+    expect(orderCorpusBody.length).toBeGreaterThan(0);
+    expect(orderCorpusBody).toContain("Buffer.compare");
+
+    expect(scanForClockOrFilesystemReferences(parseHarvestDateBody)).toEqual([]);
+    expect(scanForClockOrFilesystemReferences(orderCorpusBody)).toEqual([]);
+  });
+
+  test("PROP-ORDER-04: negative control — the scanner reds on a planted `new Date(` token in a synthetic function body, proving the matcher fires", () => {
+    const synthetic = "export function orderCorpus(entries) {\n  const now = new Date();\n  return entries;\n}\n";
+    const violations = scanForClockOrFilesystemReferences(synthetic);
+    expect(violations.length).toBeGreaterThan(0);
   });
 
   test("LI-16: LI-AT-10 — no-row, trailing-text and unparseable dates all stay eligible; the trailing-text date reads correctly; the order is a pure function of (key, path)", async () => {

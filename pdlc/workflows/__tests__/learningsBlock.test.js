@@ -266,6 +266,26 @@ describe("LI-17: block/material suite (LI-AT-05, LI-AT-11, LI-AT-12)", () => {
     expect(unbounded.bounded).toBe(false);
     expect(unbounded.sections).toEqual(["Cross-Feature Patterns", "Non-Convergences"]);
   });
+
+  // PROP-DISPATCH-06's L1 half (TSPEC §A.2 property 3, AC-4.1/AC-4.4, AT-24): the L3 arm
+  // (`LI-AT-24` in learningsDispatchSet.test.js) proves an empty/unlistable/admits-nothing
+  // corpus leaves a whole run's prompts byte-identical to the pre-feature baseline; this is the
+  // unit-level half — `renderLearningsBlock({selected})` itself, over `selected: []`, must
+  // return **exactly** `""`: not a header alone, not a marker alone, not bare whitespace. Any of
+  // those would still compose an invisible-looking but non-empty suffix onto every authoring
+  // prompt, which the L3 byte-identity comparison would also catch, but only this test names the
+  // unit responsible and pins the four-way distinction (header / marker / whitespace / genuinely
+  // empty) directly, rather than through the extra indirection of a whole dispatch fixture.
+  // `renderLearningsBlock` exists at HEAD (landed by LI-17), so this is authored green (P-A-7).
+  test("PROP-DISPATCH-06: renderLearningsBlock({selected: []}) returns exactly the empty string — no header, no marker, no whitespace", async () => {
+    const { renderLearningsBlock } = await import(DEV_MODULE_PATH);
+
+    const block = renderLearningsBlock({ selected: [] });
+
+    expect(block).toBe("");
+    expect(block.length).toBe(0);
+    expect(block).not.toMatch(/\S/);
+  });
 });
 
 // PROP-BOUND-03's generated arm (TSPEC T-O-6, PROPERTIES §O.9): the example-level cases above
