@@ -41,7 +41,32 @@ this confirmation regardless, and both are cheap one-line corrections in the sam
 
 ## Batches
 
-*(pending)*
+The TSPEC edit is 9 insertions / 4 deletions across three places. Below, each edited upstream
+location against the PLAN material that leans on it, and the verdict for that pairing.
+
+| TSPEC location at HEAD | What changed | PLAN material that leans on it | Still faithful? |
+|---|---|---|---|
+| Metadata `Version` | `1.2` → `1.3` | PLAN pins no TSPEC version number anywhere (its metadata names only its own version and its own cross-review file) | Yes — nothing to restate |
+| Revision history, row `1.3` | New row recording the round-4 erratum: floor re-assigned from "the last wave's `postWaveCommand`" to "the last implementation task (PLAN T-10, RK-2, PLAN §3.4)"; scope explicitly unchanged | PLAN §1.1's delta enumeration D-1 … D-11; PLAN's own revision history | Yes — the row names PLAN as the source of the correction and adds no delta row; D-1 … D-11 are untouched |
+| §5.8 body | "the **last wave's `postWaveCommand`**" → "the **last implementation task** (PLAN T-10, RK-2)", plus the explicit V-13 four-key non-expressibility reasoning | T-10 (§2.1, cited "RT-7, TSPEC §5.8"); §3.4 `Coverage floor` row; RK-2 (§4.4); §4.2 batch-4 gate; §4.5's DoD checkbox; §4.5.1's delta map | Substance yes, wording stale in two places — F-01, F-02 |
+| §6.4 `RT-7` mitigation | Same re-assignment, plus "Not `implementation.postWaveCommand`: that key is a single *global* setting (V-13's four-key surface)" | T-10's parenthetical `(RT-7, TSPEC §5.8)`; RK-2's framing | Substance yes; RK-2's "difference from TSPEC's wording" is the stale half — F-02 |
+
+**The obligation PLAN carries is unchanged, and I checked it as an obligation, not as a string.**
+TSPEC §5.8 at HEAD asks for four things: (i) the floor is `npm run test:coverage` from
+`pdlc/workflows` at `--per-file --branches 85`; (ii) it is run by the last implementation task;
+(iii) that task reports the *measured* per-file branch number; (iv) the floor closes inside Phase I
+rather than surfacing at PUB. PLAN discharges each: (i) and (ii) in T-10's row and §4.2's batch-4
+gate ("`npm run test:coverage` from `pdlc/workflows` exits 0 (`--per-file --branches 85`)"), (iii)
+in T-10's oracle (i) — "with the measured per-file branch number for `orchestrate-dev.js`
+reported" — and again in §4.5's DoD checkbox, (iv) by T-10 sitting in batch 4 of Phase I with
+`Deps` `T-07, T-08, T-03, T-04`, i.e. genuinely last. Set-equality, not containment: there is no
+fifth obligation in §5.8 at HEAD that PLAN leaves homeless.
+
+**Nothing else in the batch/task table is reachable from this edit.** The edit adds no delta row,
+no AT, no property, no config key, and no file. The `#`/`Deps` cells, §3.3's ownership manifest and
+§4.6's recorded parse are untouched by anything upstream now says, so the converged-PLAN
+self-parse I reproduced at v2 remains valid without re-running it — and the corrections F-01 and
+F-02 ask for touch prose in §3.4 and §4.4 only, not the task table.
 
 ## Dependencies
 
