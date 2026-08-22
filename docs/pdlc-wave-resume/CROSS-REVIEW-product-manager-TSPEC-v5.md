@@ -169,11 +169,40 @@ carried.
 
 ## Positive Observations
 
-_(pending)_
+- **The §2.4 fix is better than the finding asked for.** Three reviewers asked for a missing row;
+  the author supplied a *rule* that closes the catalogue and derives the missing row from it, then
+  named the excluded notice anyway so no reader has to run the derivation. That is the difference
+  between patching a table and fixing the thing that let the table go stale.
+- **The corrections are honest about their own arithmetic.** RT-1 now carries the measuring command
+  and the commit (`git ls-tree -r -l origin/main` at `345ae358`) alongside both byte counts, so the
+  claim can be re-checked in one line — which is exactly how I re-checked it. A claim that names its
+  own falsifier is worth more than a claim that happens to be true.
+- **DEC-WVR-02 (b) got stronger by getting weaker.** The corrected alternative no longer leans on a
+  REQ C-3 capability argument it could not support; it now says the cost is plumbing and rejects the
+  alternative on the smaller, true ground. A rejection that survives the correction of its own
+  rationale is a rejection I trust more.
+- **The revision-history row is a model erratum record.** §1's v1.2 row names each correction, its
+  section, and the roles that raised it, and states outright that no decision was re-litigated and no
+  scope changed. I verified that claim against the diff and it holds: +26/−7 lines, every one of
+  them corrective.
+- **Nothing I approved regressed.** The six announcement rows, the report-row table, the three named
+  assertion replacements, the evaluation-order table and the §5.4 AT set are byte-identical to the
+  version I approved at v4.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+The delta lands six of six routed defects, resolves one of my own carried v4 findings (§3.2's
+duplicated clause), and breaks nothing I previously approved. No High finding is open: F-01 is a
+Low-severity residual on the same sentence this round corrected — the count of interpolated *values*
+is five, not four, because `feature-mismatch` interpolates both the recorded feature name and this
+run's feature name — and every other finding is inherited, unchanged in these bytes, and already
+recorded at v4.
+
+For the record, since this is a confirmation and not a revision request: nothing here needs to land
+before this document moves on. F-01 is a one-clause correction whenever §3.1 is next touched; F-04
+is the one I would prioritise ahead of PLAN authoring, on product grounds set out above.
 
 ## Delta-Confirmation Findings
 
