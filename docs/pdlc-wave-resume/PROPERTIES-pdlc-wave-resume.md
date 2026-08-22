@@ -426,4 +426,116 @@ properties for the wrong reason.
 
 ## Coverage Matrix
 
+### FSPEC acceptance tests → properties (all 18, plus the four laws)
+
+| FSPEC AT | Properties | Owning task |
+|---|---|---|
+| AT-01 automatic resume at the failed wave | PROP-RESUME-01, -02, -03, -04 | T-07 |
+| AT-02 disregard catalogue complete and closed | PROP-DISREGARD-01, -02, -03, -04, -05 | T-02 (unit), T-07 (integration) |
+| AT-03 ordering of disregard causes | PROP-DISREGARD-06, -07 | T-02 (unit), T-07 (call counts) |
+| AT-04 verification independence | PROP-SAFETY-01 | T-07 |
+| AT-05 operator override wins | PROP-OVERRIDE-01 | T-07 |
+| AT-06 pointer at default is not a setting | PROP-OVERRIDE-02 | T-07 |
+| AT-07 pointer past the end | PROP-OVERRIDE-03 | T-07 |
+| AT-08 the hatch is named, and is the only one | PROP-OVERRIDE-04 | T-07 (i)(ii), T-02 (iii) |
+| AT-09 verified-but-uncommitted is never completed | PROP-RECORD-01, -02 | T-07 |
+| AT-10 a no-change wave is still completed | PROP-RESUME-06 | T-07 |
+| AT-11 ancestry is falsification, not archaeology | PROP-DISREGARD-07, -08, -09 | T-07 |
+| AT-12 complete record skips the wave loop in full | PROP-SKIP-01, -02, -03, -04 | T-07 |
+| AT-13 outcome catalogue closed at three | PROP-SAFETY-02, PROP-DISREGARD-11 | T-02 (set equality), T-07 (closure) |
+| AT-14 the record never becomes tracked content | PROP-REPO-01 (repo-state), PROP-REPO-03 (run-side) | T-03, T-07 |
+| AT-15 failed writes are notices, bounded | PROP-RECORD-05, -06 | T-07 |
+| AT-16 queue parity | PROP-PARITY-01, -02, -03, -04 | T-04 |
+| AT-17 advisory remediation composes | PROP-REPO-02 (manifest), PROP-REPO-05 (integration) | T-03, T-07 |
+| AT-18 completion accumulates across invocations | PROP-RESUME-05, PROP-RECORD-04 | T-07 |
+| P-1 … P-4 (TSPEC §5.7) | PROP-LAW-01 … -04 | T-08 |
+
+No AT is without a property, and no property is without an AT, a business rule, an edge case or a
+PLAN obligation. The three properties with no FSPEC AT of their own — PROP-PRE-01/-02 and
+PROP-COV-01/-02/-03 — trace to PLAN T-01, RT-7 and PLAN §4.3 respectively, which is where those
+obligations are owned.
+
+### REQ acceptance criteria → properties
+
+| REQ criterion | Properties |
+|---|---|
+| REQ-WVR-01 automatic resume at the failed wave | PROP-RESUME-01, -02, -03, -04 |
+| REQ-WVR-02 fresh runs and foreign state unaffected | PROP-DISREGARD-01 … -11 (the IG-1..6 set-equality obligation is PROP-DISREGARD-01 + -04) |
+| REQ-WVR-03 verification independence | PROP-SAFETY-01, PROP-RECORD-03, PROP-SKIP-04 |
+| REQ-WVR-04 operator override precedence | PROP-OVERRIDE-01 … -05 |
+| REQ-WVR-05 retention with invalidation | PROP-DISREGARD-02 (feature-mismatch, plan-changed rows), -06, -07; PROP-SKIP-01 (retention past a completed Phase I) |
+| REQ-WVR-06 completion is never commit presence | PROP-RESUME-06; carve-out: PROP-DISREGARD-07, -08 |
+| REQ-WVR-07 unattended queue parity | PROP-PARITY-01 … -04 |
+| REQ-WVR-08 all waves recorded ⇒ Phase I skipped in full | PROP-SKIP-01 … -04 |
+| REQ-WVR-09 verified-but-uncommitted never recorded | PROP-RECORD-01, -02, -03, -10 |
+| REQ-WVR-10 the record never becomes tracked content | PROP-REPO-01, -03 |
+| C-1 consumer-local state | PROP-REPO-01, -02 |
+| C-2 fail open, never halt | PROP-DISREGARD-09, -10; PROP-RECORD-05, -06 |
+| C-3 no new runtime capabilities | PROP-OVERRIDE-04 (iii), PROP-SAFETY-03 |
+| G-2 correctness independent of the record | PROP-SAFETY-01, PROP-SKIP-04 |
+
+REQ-WVR-05's "honest cost" clause asks that the feature key, PLAN hash and ancestry checks be
+treated as the **highest-value oracles**. They are the three carrying the most conjuncts in this
+document: the feature-key and plan-hash arms each get a unit guard row (PROP-SAFETY-03), an
+integration notice (PROP-DISREGARD-02), a zero-probe call-count control (PROP-DISREGARD-07) and a
+generative totality law (PROP-LAW-03); ancestry additionally gets PROP-DISREGARD-06's ordering
+pair, -08's no-`head` arm, -09's fail-open pair, and a mutation run (PROP-COV-03 row 1).
+
+### FSPEC business rules → properties
+
+| BR | Properties | | BR | Properties |
+|---|---|---|---|---|
+| BR-01 | PROP-SAFETY-02, PROP-LAW-03 | | BR-10 | PROP-SAFETY-01 |
+| BR-02 | PROP-DISREGARD-01, -03 | | BR-11 | PROP-SKIP-01, -03, -04 |
+| BR-03 | PROP-DISREGARD-06 | | BR-12 | PROP-DISREGARD-10 |
+| BR-04 | PROP-OVERRIDE-01 | | BR-13 | PROP-SKIP-01, PROP-RESUME-05 |
+| BR-05 | PROP-OVERRIDE-02, -03 | | BR-14 | PROP-REPO-01, -03 |
+| BR-06 | PROP-OVERRIDE-04 | | BR-15 | PROP-RECORD-05, -06 |
+| BR-07 | PROP-RESUME-02, PROP-SKIP-02, PROP-OVERRIDE-01, PROP-SAFETY-04 | | BR-16 | PROP-PARITY-01, -02, -03 |
+| BR-08 | PROP-RECORD-01, -03, -04, PROP-RESUME-05 | | BR-17 | PROP-OVERRIDE-04 (iii) |
+| BR-09 | PROP-RESUME-06, PROP-DISREGARD-07 | | | |
+
+### FSPEC edge cases → properties
+
+| EC | Property | EC | Property |
+|---|---|---|---|
+| EC-01, EC-02 | PROP-DISREGARD-03, -04 | EC-13 | PROP-RECORD-01 |
+| EC-03 | PROP-DISREGARD-02 (three IG-1 arms), -05 | EC-14 | PROP-RESUME-06 |
+| EC-04, EC-05, EC-06, EC-08 | PROP-DISREGARD-02 | EC-15 | PROP-RECORD-05 |
+| EC-07 | PROP-DISREGARD-09 | EC-15a | PROP-RECORD-06 |
+| EC-09 | PROP-SKIP-02 | EC-16 | PROP-REPO-02, -05 |
+| EC-10 | PROP-OVERRIDE-01 | EC-17 | *(gap G-2 below — worktree absence is not reproducible in-suite)* |
+| EC-11 | PROP-OVERRIDE-03 | EC-18 | *(gap G-1 below — bounded by PROP-SAFETY-01, not directly assertable)* |
+| EC-12 | PROP-RECORD-10 | EC-19 | out of scope (TSPEC §5.6) |
+| | | EC-20 | PROP-SKIP-03 |
+| | | EC-21 | PROP-DISREGARD-08, PROP-RECORD-07 |
+
+### PLAN tasks → properties (every task in PLAN §2.1 is traced)
+
+| PLAN task | Properties it lands | Files |
+|---|---|---|
+| T-01 pre-flight gate | PROP-PRE-01, -02 | `waveResumePreflight.test.js` *(new)* |
+| T-02 pure-unit suite, then the extraction | PROP-DISREGARD-01, -04, -05, -06; PROP-SAFETY-02 (unit half), -03, -04; PROP-OVERRIDE-04 (iii); PROP-RECORD-07 (unit half), -08, -09; PROP-COV-03 (unit half) | `waveResume.test.js` *(new)*, `orchestrate-dev.js` |
+| T-03 repo-state suite, then the constraints promotion | PROP-REPO-01, -02, -04 | `waveResumeRepoState.test.js` *(new)*, `docs/_constraints/pdlc-wave-gate-baseline.md` |
+| T-04 queue-parity suite | PROP-PARITY-01, -02, -03, -04 | `waveResumeQueueParity.test.js` *(new)* |
+| T-07 integration suite, then the announcements | PROP-RESUME-01 … -06; PROP-DISREGARD-02, -03, -07, -08, -09, -10, -11; PROP-SKIP-01 … -04; PROP-OVERRIDE-01, -02, -03, -04 (i)(ii), -05; PROP-SAFETY-01, -02 (integration half); PROP-RECORD-01 … -07, -10; PROP-REPO-03, -05; PROP-COV-03 | `waveExecution.test.js` *(existing)*, `orchestrate-dev.js` |
+| T-08 generative property suite | PROP-LAW-01 … -04 | `waveResumeProperties.test.js` *(new)* |
+| T-10 coverage floor and delta oracle | PROP-COV-01, -02 | `waveResume.test.js`, `waveExecution.test.js` |
+
+Retired PLAN ids `T-05`, `T-06`, `T-09` appear in no row above: they were merged into their red
+predecessors at PLAN v1.1 and are not reused.
+
+### Test files → status
+
+| File | Status | Verified |
+|---|---|---|
+| `pdlc/workflows/__tests__/waveExecution.test.js` | **exists**, extended in place, never duplicated | `git show origin/main:…` resolves; 2,761 lines |
+| `pdlc/workflows/__tests__/waveResume.test.js` | **new** (PLAN T-02) | no match at `origin/main` or in this tree |
+| `pdlc/workflows/__tests__/waveResumeRepoState.test.js` | **new** (PLAN T-03) | no match at `origin/main` or in this tree |
+| `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` | **new** (PLAN T-04) | no match at `origin/main` or in this tree |
+| `pdlc/workflows/__tests__/waveResumeProperties.test.js` | **new** (PLAN T-08) | no match at `origin/main` or in this tree |
+| `pdlc/workflows/__tests__/waveResumePreflight.test.js` | **new** (PLAN T-01) | no match at `origin/main` or in this tree; ships permanently, deleted by no task |
+| `pdlc/workflows/__tests__/advisoryHelperProperties.test.js` | **exists at `origin/main`**, cited as precedent only — no property lands in it | absent in this tree (pre-rebase), present at `origin/main` |
+
+
 ## Gaps, Risks and Routed Findings
