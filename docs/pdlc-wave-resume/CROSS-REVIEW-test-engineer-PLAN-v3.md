@@ -237,16 +237,56 @@ successful erratum, not evidence of a failed one.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | TSPEC v1.3 §5.8 asks T-10 to "report the measured per-file branch number". T-10's oracle (i) carries that, but §4.5's DoD checkbox at line 412 binds only `exits 0 (--per-file --branches 85)`. Would you consider extending that checkbox to also require the reported number, so the reporting obligation is visible at the DoD and not only inside the task row? Non-blocking — the task row is binding either way — but the DoD is where a verifier looks. |
+| Q-02 | RT-7's backstop clause now reads "Backstop if **T-10's run** proves too slow" rather than "too slow for a per-wave command". If T-10's `test:coverage` run does prove slow enough to matter, is the intended response to fall back to §5.3/§5.7 coverage and accept a PUB-time finding, or to keep T-10's run and absorb the cost? PLAN's RK-2 does not carry the backstop at all, which is fine — TSPEC owns its own risk rows — but if the answer is "fall back", RK-2 might be the more useful place for the operator to find it. |
 
 ## Positive Observations
 
-_(pending)_
+- **The erratum moved upstream toward this PLAN, which is the outcome a well-argued downstream
+  divergence is supposed to produce.** PLAN v1.1 refused TSPEC's `postWaveCommand` framing, gave the
+  precise reason (V-13's four-key surface makes a per-wave-scoped setting inexpressible; a global one
+  reds on waves whose new branches are not yet covered), assigned the floor to T-10 instead, and
+  raised the difference as an erratum rather than silently diverging or silently complying. TSPEC
+  v1.3 adopted that reasoning almost word for word. This is the errata mechanism working exactly as
+  designed, and the credit belongs to the PLAN author for filing it as an erratum instead of
+  quietly editing upstream or quietly following a spec they knew was unbuildable.
+- **T-10's obligation needed no change at all.** Across a version bump of its upstream, the task row,
+  its two oracles, its gate wording in §2.2, its file ownership and its DoD checkbox are all still
+  exactly right. A downstream document that survives an upstream erratum untouched is a well-compressed
+  one.
+- **The two oracles remain the right shape.** Oracle (i) is a positive exit-plus-reported-number, not
+  an absence check; oracle (ii) is set-equality against a transcribed mapping table, so a deleted
+  case fails loudly instead of moving a percentage by 0.05. The distinction PLAN draws in §4.5.1 —
+  that the 85% floor structurally *cannot* see a feature this small against a 16,000-line denominator,
+  so the delta oracle is the real gate — is one of the better pieces of test reasoning in this
+  feature's documents, and the erratum leaves it fully intact.
+- **The gate command is cited, not assumed.** `--per-file --branches 85`, invoked explicitly from
+  `pdlc/workflows`, rather than a coverage claim resting on source-list membership. That is precisely
+  the DC-09 trap and PLAN avoids it.
+- **`postWaveCommand` is used for two different things and PLAN keeps them apart explicitly.** The key
+  carries `build-runtime.mjs` for RT-5, and §3.4 carries a *separate* `Coverage floor` row stating
+  the floor is T-10 and not `postWaveCommand`. After the erratum, that separation is exactly the
+  distinction TSPEC v1.3 draws — so the potential for confusion the edit could have introduced was
+  already pre-empted.
+- **Zero unresolved citations.** All 18 ATs, BR-04, all 11 D-rows, V-13, five RT-rows and three
+  DEC-WVR rows resolve against the documents that own them, at the pinned hashes.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+PLAN still holds as approved against TSPEC as it now stands. The erratum ratified PLAN's design
+rather than displacing it: every obligation PLAN places on T-10 is exactly what TSPEC v1.3 asks for,
+and no task, batch, dependency edge, ownership row, AT assignment, oracle or DoD checkbox is
+disturbed. Both findings are Medium and non-gating — two stale rationale sentences (§3.4's
+`Coverage floor` row and RK-2) that describe a divergence and a pending erratum which no longer
+exist. Neither is read by any gate. They should be corrected in the next touch of this document,
+ideally in the same pass, since RK-2 is now cited *by* TSPEC §5.8 and currently contradicts it.
+No High findings; nothing here should hold up Phase P.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
