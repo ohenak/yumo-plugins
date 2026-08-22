@@ -35,7 +35,38 @@ match what upstream says. Those are the findings below — all **inherited**, al
 
 ## Design
 
-_pending_
+**The re-assignment is correct and it is the assignment PLAN already carries.** The product
+question I have to answer is not "is a task better than a config key" — that is an engineering
+call — but "does the floor still bind, at the same threshold, at a point where the product is
+protected?" It does, and more tightly than before:
+
+| Property | v1.2 (as I approved it) | v1.3 (after the erratum) |
+|---|---|---|
+| Threshold | 85% per-file branch | 85% per-file branch — **unchanged** |
+| Where it binds | "last implementation wave's `postWaveCommand`" | last implementation **task**, PLAN T-10 |
+| Phase it closes in | Phase I | Phase I — **unchanged** |
+| Backstop if too slow | §5.3 per-arm unit coverage + §5.7 generative suite; degrades to a PUB-time finding | identical wording, now conditioned on "T-10's run" |
+| RT-7 risk statement | unchanged | unchanged |
+
+The risk RT-7 exists to retire — "new branches green through Phase I, red at Phase PUB, after
+Phase DOD" — is retired by the new wording exactly as it was by the old, because the closing
+point is the same: inside Phase I, before DOD. No acceptance criterion moved, no threshold was
+softened, and the backstop clause survives verbatim. This is a **fidelity correction, not a
+scope change**, and the revision-history row says so in those words ("The floor itself, its
+threshold and its backstop are unchanged").
+
+**It now agrees with the downstream document that owns the obligation.** PLAN `§3.4` carries the
+row `| Coverage floor | **T-10**, not `postWaveCommand` |`, and PLAN RK-2 records the same
+reasoning and flags the divergence as the erratum this round is discharging. Before this edit,
+TSPEC §5.8 and PLAN §3.4 disagreed about who owns the floor; a downstream implementer reading
+both would have had to pick one. They now say the same thing, and TSPEC names T-10 and RK-2
+explicitly so the trace is followable in one hop. That is the outcome I asked for.
+
+**No product decision was taken in an engineering artifact.** The edit reassigns a mechanism, not
+a requirement. Neither REQ v1.7 nor FSPEC v1.2 mentions coverage at all (`grep -c 'coverage'`
+over both → 0), so the floor was never an upstream acceptance criterion this TSPEC could narrow
+or drop — it is a project test-depth standard the TSPEC volunteers and PLAN executes. Nothing in
+the delta touches a `REQ-WVR-*` outcome, a `BR-*`, an `EC-*`, or an `AT-*`.
 
 ## Interfaces
 
