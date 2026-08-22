@@ -115,7 +115,31 @@ rather than a Low finding. The TSPEC itself cites the surface by symbol name (`V
 
 ## Data Model
 
-*(pending)*
+The edit makes four checkable factual claims. I re-derived each against `origin/main` and against
+the downstream PLAN at HEAD, rather than reading them back out of the document that asserts them.
+
+| # | Claim as written | Where it is asserted | Measurement | Verdict |
+|---|---|---|---|---|
+| 1 | "V-13 closes the config surface at four keys" | §5.8, RT-7, v1.3 history row | `Object.keys(IMPLEMENTATION_DEFAULTS)` at `origin/main` is exactly `["testCommand","postWaveCommand","postWavePathspecs","startWave"]` | holds, exactly |
+| 2 | `postWaveCommand` is "a single *global* setting", so per-wave scoping "is not expressible" | §5.8, RT-7 | The key's value type is `string \| null` — a scalar with no wave dimension; no sibling key carries one | holds; it is a type-level impossibility, not a limitation of convention |
+| 3 | "a global one would run `test:coverage` after **every** wave" | §5.8, RT-7 | Consumed inside the per-wave body at `:3280` and `:3322`, guarded only on the key being non-empty, never on wave index | holds |
+| 4 | The floor is a "last implementation **task**" obligation, at PLAN T-10 / RK-2 | §5.8, RT-7 | PLAN §3.4's run-configuration table carries the row `Coverage floor \| **T-10**, not postWaveCommand`; RK-2 in PLAN §4.4 states the same in risk form; T-10 sits in batch 4, the terminal batch | holds; the two documents now say the same thing in the same terms |
+
+**Consistency across the pair.** The whole point of this erratum was that TSPEC and PLAN disagreed
+about who owns the floor. They now agree, and they agree at three independent sites — TSPEC §5.8,
+TSPEC RT-7, PLAN §3.4 + RK-2 — with no fourth site left carrying the old wording. I grepped the
+TSPEC for surviving instances of the retired phrasing ("last implementation wave's
+`postWaveCommand`", "wave-level gate"): the only remaining occurrences are inside the v1.3
+revision-history row, quoted as the thing that was corrected. That is the right place for it.
+
+**One structural observation, which is F-01 below.** The agreement is now held by *task ids*: TSPEC
+§5.8 and RT-7 both pin `T-10` and `RK-2`, ids owned by a downstream document. PLAN's own revision
+history records that ids `T-05`, `T-06` and `T-09` were retired during its round-1 revision, so id
+churn in this PLAN is demonstrated, not hypothetical. If a later PLAN round renumbers, these two
+TSPEC citations go stale silently — nothing mechanical reds. The fix is one clause, not a
+restructure: lead with the role ("the last implementation task, per PLAN §3.4's run-configuration
+row") and keep the id as a parenthetical locator. Low, because the coupling direction is already
+unusual-but-deliberate here and the content is correct today.
 
 ## Test Strategy
 
