@@ -39,7 +39,50 @@ confirmation's findings.
 
 ## Options Considered
 
-_(pending)_
+Three dispositions were available for this confirmation, and the choice between them is what the
+`FINDING:` tags encode. I record them because the second and third are live readings that a reader
+of the findings table could reasonably expect.
+
+### C-1 — Confirm unchanged: the routed items landed, so DECISIONS holds *(rejected as insufficient)*
+
+Both items I routed landed, and both landed in the form DECISIONS already carried — the count is
+three, and the exclusion is by rule. If the item list were the whole scope, this confirmation would
+be a one-line approval. It is not: DEC-ERR-03 makes the question *is this document still a faithful
+compression of upstream at HEAD*, and a document that **quotes** the pre-erratum upstream in order
+to complain about it becomes unfaithful at exactly the moment the complaint is honoured. Rejected:
+it would leave two false statements about upstream standing in an approved document.
+
+### C-2 — Treat the two stale erratum raises as High, halting the round *(rejected)*
+
+`docs/_decisions/DECISIONS-review-severity-bars.md` **DEC-ERR-01** is directly on point: routing a
+question the upstream has already decided "is **not** a demoted finding: it is a false statement in
+a hand-off section, and it is scored on **what it costs downstream** (High when a downstream task is
+authored against the losing side)." The bar is a cost test, not a reflex, so I applied it rather
+than cited it:
+
+- **Which side did DECISIONS take?** The winning one, in both cases. O-8 states the count as three
+  reasons carrying four values — which is now verbatim what TSPEC §3.1 says. O-5 and DEC-WVR-03
+  state the exclusion criterion — *a notice carries a token iff the resume decision emits it about a
+  resolved start point* — which is now **word-for-word** the rule TSPEC §2.4 adopted. There is no
+  losing side for a PLAN or PROPERTIES task to be authored against; the two documents now agree on
+  the substance and disagree only about whether the disagreement is over.
+- **What can a downstream author get wrong?** Only the provenance of the agreement, not its content.
+  A PROPERTIES author transcribing DEC-WVR-03's set-equality oracle reads "the announcing rows
+  transcribed from TSPEC §2.4, and the excluded notices enumerated in the same assertion as
+  literals". At v1.2 that instruction is executable as written — §2.4 carries six announcement rows
+  and one named exclusion row, so the transcription produces the same assertion whether or not the
+  author noticed O-5's stale parenthetical. **The oracle does not change.** That is the whole reason
+  this is not High.
+
+Rejected: scoring these High would halt Phase D over two sentences that cost no test its
+falsifiability and no task its correctness.
+
+### C-3 — Approve with the two stale raises filed as delta findings *(chosen)*
+
+Chosen. It records the defect where the harvest and the next revision can both see it, keeps the
+phase moving, and keeps the severity honest in both directions — the finding is real (an approved
+document asserting something false about its own upstream is a defect, not a nit), and it is not
+gating (nothing downstream is misdirected).
 
 ## Decision
 
