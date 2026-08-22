@@ -4,10 +4,10 @@
 |---|---|
 | Status | Draft |
 | Author | te-author |
-| Version | 1.0 |
+| Version | 1.1 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/`) |
-| Cross-Reviews | (none yet) |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md` |
 | LEARNINGS | `docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md` |
 
 ## Overview
