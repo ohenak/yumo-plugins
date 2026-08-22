@@ -220,8 +220,81 @@ Filed Low per DEC-DOC-01's neighbourhood: the citation is to a heading id rather
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Under outcome (c), is the V-wave's commit observable to the suite at all? The agent double is `makeAgent(record)`, which records the dispatch and touches no git seam — so unless T-07 scripts a git-issuing agent double, "the V-wave's own commit" is not a thing any oracle in this document can read. If the answer is "it is not observable", PROP-SKIP-04 should say so and assert the dispatch instead (F-01). |
+| Q-02 | PROP-COV-02 asserts that c8's per-file uncovered-line list for `orchestrate-dev.js` intersects none of the feature's introduced line ranges, mapped through PLAN §4.5.1. How is that mapping kept honest across a rebase? The feature's line ranges move whenever anything upstream of `:15257` changes, and the document's own grounding says this branch is 1637 commits behind. Is the mapping expressed against line numbers, or against the enclosing exported symbols (which DEC-DOC-01 would prefer)? |
+| Q-03 | PROP-PRE-02's absent-config arm asserts `process.env.GITHUB_ACTIONS === "true"`. A contributor running `npm test` locally in a clone that has never had `.claude/pdlc.config.json` written gets a permanently red pre-flight suite with no way to make it green short of authoring consumer-local config. Is that the intended developer contract, or should the arm skip rather than fail when neither the config nor CI is present? I read the current wording as deliberate — the PLAN calls it RK-6's mitigation — but it deserves to be stated as a contributor-facing cost rather than left as a footnote. |
+| Q-04 | H-2's `failWriteOn(path, callIndex)` predicate: `_writeFile` in `makeLedgerArgs` is synchronous while the production call is `await writeFileFn(...)` inside `writeWaveLedger`'s `try`. A synchronous throw is caught identically, so this works — but PROP-RECORD-06's "bounded" conjunct depends on how many write attempts the run makes. Is `callIndex` counted over *all* writes or over ledger-path writes only? The two differ once a run writes anything else. |
+
 ## Positive Observations
+
+- **The grounding discipline is the best I have reviewed in this feature's chain.** The § Overview
+  table states the tree's own delta from `origin/main` up front and derives the consequence — *every
+  property below is red in this tree and is expected to be* — instead of leaving a reviewer to
+  discover it. Naming the specific weakening that is forbidden (relaxing PROP-REPO-01 to
+  `some(line => line.includes(...))`) is the kind of pre-registration that makes a later softening
+  legible as a defect rather than a judgement call.
+- **DEC-DOC-01 is honoured properly, not nominally.** "Where a line number appears it is a locator
+  only; the stable citation is the enclosing exported symbol, `describe`/`it` title, or verbatim
+  string" — and the document then actually cites that way (`function makeLedgerArgs({`,
+  `const ledgerWrites =`, `export function parseWaveLedger`). Every one of those located correctly on
+  the first try.
+- **The `over-count` fixture note is a real piece of engineering.** Working out that a `head`-carrying
+  over-count record fires guard 5 before guard 6, and that omitting `head` is what makes the fixture
+  exercise the guard it names, is exactly the kind of guard-ordering reasoning that normally surfaces
+  mid-implementation. I re-derived it from the ledger block's `else if` chain and it is correct.
+- **Reuse over reinvention, with the precedent cited.** The harness section adopts the shipped
+  `makeLedgerArgs`/`ledgerWrites`/`PLAN_THREE_WAVES`/`CONFIG_WITH_TEST_COMMAND` set and states that
+  `waveExecution.test.js` and the `computePlanHash` `describe` are extended in place, never
+  duplicated. `numRuns: 500` is likewise taken from a named shipped precedent rather than invented.
+  All six helpers resolve.
+- **PROP-DISREGARD-11 and PROP-OVERRIDE-04 get set-equality where containment would have been
+  easier.** `new Set(Object.keys(WAVE_IGNORE_REASONS))` against seven transcribed literals, and the
+  announcement table asserted as a set rather than row-by-row, mean a deleted case reds without any
+  property having to name it. PROP-RECORD-09's key-set equality catches an *added* field, which
+  `toMatchObject` would have missed — the document says so explicitly.
+- **The gaps are declared, not hidden.** G-1 through G-4 name four obligations this suite does not
+  discharge, each with the reason and the compensating control. G-3 in particular admits that nothing
+  here proves a real interrupted pipeline resumes — that is an uncomfortable thing to write and the
+  right thing to write.
+- **R-2's reasoning about captured-envelope fixtures falsifying against generative round-trips** is a
+  genuinely good oracle-design argument, and it is why F-01 is my only High: the document's instincts
+  about oracle strength are sound almost everywhere, and PROP-SKIP-04 is where one slipped.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding, F-01, and the rule is mandatory. The revision it asks for is small and local:
+PROP-SKIP-04's oracle must be re-expressed against something the script actually produces under
+outcome (c), because the script never stages the V-wave and the expectation as written reduces to
+`toEqual([])`. Nothing else in the property set is contested — the traceability is complete across
+all seven PLAN tasks, eighteen ATs, seventeen business rules and twenty-one edge cases, and the
+remaining findings are three Mediums and a Low that make the next iteration better without blocking
+it.
+
+Concretely, to converge:
+
+1. **F-01 (must fix):** re-anchor PROP-SKIP-04 on the full `add` argv list read with `.flat()` (as
+   PROP-REPO-03 does), paired with a positive assertion that the git seam was live — or move the
+   conjunct to the agent axis and assert the V-wave's single `propertiesTestPrompt` dispatch. Remove
+   the claim that the git spy can observe "the V-wave's own commit".
+2. **F-02:** drop the drift-gate reason for queue fixture 2, or keep the fixture with a truthful one,
+   and re-anchor the `outcome !== "blocked"` precondition on the in-progress disposition that can
+   still fire.
+3. **F-03:** state that H-1 wraps the caller-supplied `git`/`runCommand` doubles, and give
+   PROP-SAFETY-01 and PROP-RECORD-03 a both-axes-present precondition on `events`.
+4. **F-04:** record the measured per-file branch percentage for the three c8-included modules and
+   scope PROP-COV-01 to what this feature can actually hold green.
+5. **F-05:** fix or drop the `§ Gaps, G-3` anchor in PROP-REPO-02's note.
+
+Two upstream defects are routed as errata rather than folded into this verdict: TSPEC §5.4 AT-12's
+"its commit is the only Phase-I-adjacent commit" premise (F-01's source), and TSPEC §5.4 AT-16 plus
+PLAN T-04's retired-drift-gate fixture rationale (F-02's source). This document should follow whatever
+its owners settle; it should not contest them here.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 1}
