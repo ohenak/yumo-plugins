@@ -202,10 +202,25 @@ entirely), so every code claim above was re-derived from `git show origin/main:�
 checked-out file. That is RT-1's rebase risk showing up in review, exactly as RT-1 predicts; it is
 not a defect in the document.
 
+## Recommendation
+
+**Approved with minor changes.** The erratum resolves every routed item, and nothing I approved at
+v4 is broken. Both findings are Low, both introduced by this round's own prose, both confined to the
+sections it changed, and neither touches an oracle, a catalogue, a count of changing assertions, or
+any downstream obligation. They can be folded into the next touch of this document.
+
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The replacement figure "four interpolated values" undercounts: `feature-mismatch` renders two (`recorded.feature` and `featureName`), so counted by the document's own rule — which counts `over-count`'s `waves.length` — the total is five. Repeated in §6.1's DEC-WVR-06 row ("four values in total, §3.1"). The corrected *reasons* count (three) is right and is the figure the argument needs. | §3.1 "Why codes and not strings"; §6.1 DEC-WVR-06 |
+| F-02 | Low | delta | local | The exclusion rule's second conjunct does not discriminate. The past-the-end pointer notice is also about a pointer that is rejected and clamped to wave 1, yet it carries `operator-set` — so "about a rejected value, not a resolved start point" would exclude it too if applied mechanically. Only the first conjunct ("the resume decision emits it") does the work; rest the Why column on that. | §2.4 "The catalogue is closed by rule, not by omission" |
+
+FINDING: Low | delta | local | §3.1 "Why codes and not strings" (and §6.1 DEC-WVR-06) | The corrected reasons count (three: `feature-mismatch`, `head-unreachable`, `over-count`) is right, but the new "four interpolated values between them" undercounts — `feature-mismatch` renders two values (`it records feature "${recorded.feature}", not "${featureName}"`), and the document counts `over-count`'s run-derived `waves.length`, so by its own rule the total is five. §6.1's DEC-WVR-06 row repeats the figure. Non-gating: DEC-WVR-06's rejection rests on the reasons count, not the value count.
+
+FINDING: Low | delta | local | §2.4 "The catalogue is closed by rule, not by omission" | The stated rule's second conjunct ("about a resolved start point") does not discriminate the excluded notice from the table's own past-the-end row, which is equally about a rejected, clamped pointer and equally begins at wave 1 yet carries `(provenance: operator-set)`. The Why column leans on that half. The first conjunct — the resume decision emits it — settles both rows correctly (and the un-named `sectionMalformed` notice too), so the catalogue is genuinely closed; the fix is wording in the Why column, not a row, token, or count.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
