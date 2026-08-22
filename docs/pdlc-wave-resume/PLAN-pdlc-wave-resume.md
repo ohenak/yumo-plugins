@@ -379,15 +379,25 @@ tree, run only the named oracle's test file, paste the failure header into the t
 
 ### 4.5 Definition of Done
 
-- [ ] T-01 passes: the branch is rebased and every `BL-PREREQ` symbol and file is present at HEAD.
+- [ ] T-01 passes: the branch is rebased, every `BL-PREREQ` symbol and file is present at HEAD, and
+      the resolved `implementation.testCommand` string-equals §3.4's literal.
+- [ ] **The gate was script-owned for every wave** — positively observed, not inferred from silence:
+      the Phase I report row's detail contains `script-owned gate`, **and** the run log carries no
+      `Notice: the script-owned test gate is unavailable` line (round-1 F-02).
 - [ ] All eleven TSPEC delta rows D-1 … D-11 are landed, each by the task §1.1 names.
+- [ ] Each merged task (T-02, T-03, T-07) landed its test half in a commit **before** its code half,
+      checkable with `git log -p` over the task's commits (§2.3).
+- [ ] Each of §4.3's four mutations was applied, observed RED against its named oracle, reverted,
+      and its failure output recorded in the owning task's report (round-1 F-04).
 - [ ] `classifyWaveLedger` is pure, total and never performs IO; the three catalogues are
       `Object.freeze`d exports.
 - [ ] The lazy-probe contract holds: **zero** `merge-base` calls on the feature-mismatch,
       plan-changed and no-`head` fixtures; **exactly one** on the ancestry fixture.
-- [ ] All eighteen FSPEC ATs have a passing owning test per §4.1, and the four laws P-1 … P-4 pass.
+- [ ] All eighteen FSPEC ATs have a passing owning test per §4.1, and the four laws P-1 … P-4 pass
+      at `numRuns: 500`.
 - [ ] Exactly three shipped assertions changed, each named by TSPEC §2.4, each to a transcribed
-      literal, with no matcher relaxed and no other assertion in the ledger `describe` touched.
+      literal, with no matcher relaxed and no other assertion in the ledger `describe` touched; the
+      wave-1 `✅` detail is byte-identical to the shipped string (the `N > 1` condition, F-08).
 - [ ] `waveExecution.test.js` was byte-unchanged across the whole of batch 2 (RT-2's regression-net
       invariant); T-02's two commits show the test half landing before the code half.
 - [ ] `M-WVR-1` and `M-WVR-2` are in `docs/_constraints/pdlc-wave-gate-baseline.md` under a new
@@ -398,8 +408,33 @@ tree, run only the named oracle's test file, paste the failure header into the t
       `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0.
 - [ ] `npm run test:coverage` from `pdlc/workflows` exits 0 (`--per-file --branches 85`), with the
       measured `orchestrate-dev.js` branch number recorded.
+- [ ] **§4.5.1's mapping table is complete and every row names a covering test**, and c8's uncovered
+      line list for `orchestrate-dev.js` contains no line inside this feature's introduced ranges
+      (round-1 F-05).
 - [ ] No new `main()` parameter, no new runtime-adapter binding, no fifth `implementation.*` key
       (REQ C-3, TSPEC §3.4/§3.5).
+
+#### 4.5.1 Delta-scoped coverage map (the oracle the 85% floor cannot be)
+
+The whole-file floor is a regression guard for the module and is kept as-is. It cannot be this
+feature's oracle: `orchestrate-dev.js` is 16,336 lines at `origin/main` with on the order of two
+thousand branch points, and this feature adds roughly twenty — about **one percent of the
+denominator**, so every new branch could be uncovered and `npm run test:coverage` would still exit 0
+(round-1 F-05). T-10 therefore fills in and reports this table, and its completeness — not a
+percentage — is the checkable thing. Column headings are deliberately not those of an ownership
+manifest.
+
+| Branch class this feature introduces | Count | Reached from | Covering test named by T-10 |
+|---|---|---|---|
+| `classifyWaveLedger` guard arms (TSPEC §3.2) | 8 | unit | *(filled in by T-10, one test name per arm, in `waveResume.test.js`)* |
+| `WAVE_IGNORE_REASONS` reason renderers | 7 | unit | *(one per code, in `waveResume.test.js`)* |
+| Lazy ancestry-probe short-circuit | 1 | unit + integration | *(the `merge-base` call-count case, AT-03)* |
+| Announcement suffix branches in `main()` | 5 | integration only | *(in `waveExecution.test.js`, T-10's second owned file)* |
+| Report-row branches (`✅` wave-1 vs `N > 1`, `⏭`) | 3 | integration only | *(in `waveExecution.test.js`)* |
+
+The last two classes are why T-10 owns `waveExecution.test.js` as well: they live inside `main()` and
+are reachable only through `makeLedgerArgs`, so a unit arm in `waveResume.test.js` structurally
+cannot enter them (round-1 F-03).
 
 ### 4.6 Parse verification of this document (rule 6)
 
