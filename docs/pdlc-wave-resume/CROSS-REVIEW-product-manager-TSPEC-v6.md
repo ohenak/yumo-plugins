@@ -129,7 +129,54 @@ _pending_
 
 ## Risks
 
-_pending_
+### The DEC-ERR-03 sweep: what upstream no longer says
+
+This TSPEC's §2.5 and §6.3 make claims *about* the REQ and the FSPEC. Both upstream documents
+took erratum edits after those claims were written. Three of them are now false against upstream
+at HEAD. None changes a behavioural clause, and none is in the sections this delta touched — all
+are **inherited, nonlocal**.
+
+**1 — §2.5 says the FSPEC does not state what an operator-pointed run records. It now does.**
+TSPEC §2.5: *"One interaction the FSPEC does not state… the behaviour is unspecified upstream…
+raised as an erratum against the FSPEC so the clause exists."* FSPEC v1.2 §3.4 (`:186–192`) now
+carries the clause under the heading **"An operator-pointed run records exactly as any other run
+does"**, and it specifies precisely what this TSPEC ratifies: the run records completed waves in
+the same high-water form counted from the plan's first wave, bounded by BR-10, with provenance
+`operator-set` announced (BR-07). The *substance* is unchanged and the two documents agree — the
+TSPEC's ratification is faithful. What is stale is the framing: the TSPEC tells a reader it is
+ratifying an unspecified behaviour with nothing upstream to trace to, when the trace now exists
+and points at FSPEC §3.4. Fix: keep the ratification, replace "the FSPEC does not state" /
+"unspecified upstream" with the citation to FSPEC §3.4's clause and mark the erratum discharged.
+This is a false statement in a hand-off framing rather than in a shipped assertion, so per
+DEC-ERR-01's demotion bar it is **Medium**, not High.
+
+**2 — §6.3's four errata are all landed upstream; the section reads as open.** §6.3 says "Raised,
+not fixed here", and each item quotes upstream text that no longer exists:
+
+| §6.3 item | What it claims upstream says | Upstream at HEAD |
+|---|---|---|
+| 1 | FSPEC "states it derives from REQ v1.5"; REQ at HEAD is v1.6 | FSPEC `:17` derives from **REQ v1.7**; REQ is **v1.7** |
+| 2 | FSPEC OB-F1 says REQ §10 records BL-04 as "discharged at FSPEC authoring" | FSPEC OB-F1 (`:437`) now says the REQ "records BL-04 as **open and unmet** in §5 and §10 (v1.7)" — matching REQ `:558` |
+| 3 | FSPEC has no clause for what an operator-pointer run writes | FSPEC §3.4 `:186` carries it (see item 1 above) |
+| 4 | REQ OB-1's worktree conclusion rests on `.worktreeinclude` | REQ v1.7 does not mention `.worktreeinclude` at all (`grep -c` → 0) |
+
+Fix: convert §6.3 from "raised, not fixed" to a discharged record naming the upstream versions
+that closed each item (FSPEC v1.2, REQ v1.7), or delete the items that landed. Leaving them open
+misroutes the next reader — and, at harvest, would preserve as durable signal a set of defects
+that upstream has already repaired. **Medium**, record-section only.
+
+**3 — §6.2's OB-F1 row says REQ §10 and FSPEC OB-F1 characterise BL-04 inconsistently. They now
+agree.** Both say open and unmet. The row's underlying claim — BL-04 is unmet, the tree is behind
+the default branch, the rebase is owed before implementation — remains true and remains correctly
+owned by the orchestrator/operator; only the "characterise inconsistently" clause and the "REQ
+v1.6" version cite are stale. **Low**.
+
+### Residual risk in the delta itself
+
+None found. The one thing worth watching is not a spec defect: T-10's `test:coverage` run is now
+the single point where the floor is observed, so if T-10 is descoped or split during Phase I the
+floor loses its owner. PLAN §4.5's batch-4 gate and DoD checkbox both restate it independently,
+so the obligation is doubly recorded — adequate.
 
 ## Delta-Confirmation Findings
 
