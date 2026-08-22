@@ -240,8 +240,8 @@ citing this feature's TSPEC; keep every constant, field name, evaluation order a
 shipped header comment also miscounts its own surface ("two pure functions … two write sites"; it
 is three pure functions and one write site), and the replacement states the surface correctly.
 **Alternatives considered:**
-- O-1, rewrite behind a `WaveResumeStore` abstraction — rejected because it invalidates 44 shipped
-  tests, re-opens a path constant that `.gitignore` pins by a root-anchored rule, and in a dialect
+- O-1, rewrite behind a `WaveResumeStore` abstraction — rejected because it invalidates the 26
+  shipped test cases counted in §Context (18 / 4 / 4), re-opens a path constant that `.gitignore` pins by a root-anchored rule, and in a dialect
   with no `import` is a second in-file block, i.e. the duplication REQ BL-03 forbids.
 **Constraints that forced this shape:** REQ BL-03 (ratify or revise, never duplicate); R-4
 (interim/final divergence is the named risk); the restricted `pdlc/workflows/*.js` dialect (no
@@ -253,8 +253,9 @@ ever gains imports.
 
 ### DEC-WVR-02: Extract the decision chain into one pure total classifier
 
-**Context:** The resume decision is an inline `if / else if` chain of ~81 lines in `main()`,
-interleaved with `emit` calls and one `await`ed probe. FSPEC AT-02 and AT-13 demand set equality
+**Context:** The resume decision is an inline `if / else if` chain of **48 lines** in `main()`
+(`if (ledger.reason) {` through the final `else`'s closing brace), interleaved with `emit` calls and
+one `await`ed probe, inside an 84-line read block. FSPEC AT-02 and AT-13 demand set equality
 over announced reasons and over outcomes.
 **Decision:** Extract the ordered decision — feature match, plan-hash match, ancestry verdict,
 over-count, complete, mid-plan — into one pure, total `classifyWaveLedger`, taking the ancestry
@@ -262,16 +263,19 @@ verdict as an already-resolved boolean and returning a *description* of the outc
 `emit` calls and the report row stay in `main()`.
 **Alternatives considered:**
 - O-2, leave it inline — rejected: AT-02 and AT-13 then have no honest oracle (DC-03, DC-04).
-- O-3, extract the probe too behind a new injected seam — rejected: a 36th `main()` parameter
-  duplicating the `_git` transport the probe already reaches through `branchGuardTransport`, plus a
+- O-3, extract the probe too behind a new injected seam — rejected: a 35th injected seam — a 37th
+  parameter on a signature that already destructures 36 — duplicating the `_git` transport the probe already reaches through `branchGuardTransport`, plus a
   second adapter binding, for a probe that already fails open three ways.
 **Constraints that forced this shape:** REQ C-3 (no new capabilities); TSPEC §3.4's structural
 discharge of it ("the diff adds no parameter to `main()`"); totality, which is what makes FSPEC
 BR-01's three-outcome closure mechanically checkable rather than asserted in prose.
 **Reversibility:** easy for the extraction itself; the *behaviour* it preserves is not up for
 revision.
-**Re-evaluation triggers:** the announcements themselves need to become pure values (e.g. a
-structured run log), at which point more of `main()`'s emit layer could follow the same move.
+**Re-evaluation triggers:** *(design aspiration, deliberately not an observable signal — no
+observation of a running system raises it, so no test or monitor is owed one)* the announcements
+themselves need to become pure values (e.g. a structured run log), at which point more of `main()`'s
+emit layer could follow the same move. The observable half of this decision is carried by
+DEC-WVR-06's trigger, which reds the seven-code set equality.
 
 ### DEC-WVR-03: Announce provenance as an explicit `operator-set` / `automatic` token
 
@@ -279,15 +283,25 @@ structured run log), at which point more of `main()`'s emit layer could follow t
 announcement *conveys* it. The shipped banners name the source but never the words.
 **Decision:** Introduce a frozen two-member vocabulary `RESUME_PROVENANCE` and append
 ` (provenance: …)` to each announcing outcome, **after the sentence's terminal punctuation and
-outside every existing parenthesis**. Extend the executed Phase I report row with the resume point
-and provenance; leave the `⏭` row's shipped text whole, the token outside its parenthesis.
+outside every existing parenthesis**. "Each announcing outcome" is bounded by a stated criterion, not
+by enumeration alone: **a notice carries a token iff the resume decision emits it about a resolved
+start point**, so the shared `implementation`-config validation notice for an invalid `startWave`
+(emitted before the decision, by the key-generic `invalidKeys` loop, with `explicitPointer` already
+`false`) is excluded — see O-5. Extend the executed Phase I report row with the resume point and
+provenance **only for a run that resumes** (`N > 1`); a run starting at wave 1 reuses the shipped
+sentence `All M waves complete (wave mode, {gate})` verbatim, which is what keeps the two
+`phaseDetail` equalities in `describe("Phase I — the script-owned test gate")` green and holds the
+changed-assertion count at three. Leave the `⏭` row's shipped text whole, the token outside its
+parenthesis.
 **Alternatives considered:**
 - O-5, ratify source-naming as conveying provenance — rejected: it makes every provenance oracle an
   inference from a source string, so a banner naming the wrong source would still pass.
 **Constraints that forced this shape:** FSPEC BR-07 and §2; REQ-WVR-01's "run log **and final
 report**"; and the shipped regression net — the placement rule is what keeps every prefix and
 substring matcher green, leaving exactly three whole-string assertions to change, each named with
-its replacement in TSPEC §2.4 and landed in the same task as the change that forces it.
+its replacement in TSPEC §2.4 and landed in the same task as the change that forces it; and the
+`N > 1` condition on the `✅` row, without which two further whole-string equalities outside the
+ledger blocks would change and the count would not be three.
 **Reversibility:** easy — the suffix is additive text behind a frozen catalogue.
 **Re-evaluation triggers:** a third provenance ever exists (e.g. a resume sourced from something
 that is neither an operator pointer nor the record); the run log becomes structured, at which point
@@ -306,8 +320,10 @@ this decision plus a test, not by a code change.
   anomaly (contra FSPEC BR-02) and punishes an operator who empties the file by hand.
 **Constraints that forced this shape:** REQ-WVR-05; FSPEC BR-02's silence requirement for the
 no-record case.
-**Reversibility:** easy in code; **hard in expectation** — operators will have learned that
-emptying the file is equivalent to deleting it.
+**Reversibility:** easy in code. The "hard in expectation" caveat is scoped honestly: the `{}`
+tolerance is **not** documented anywhere an operator reads — every banner names *deleting* the file
+as the hatch — so the expectation exists only for an operator who discovered the behaviour by
+experiment. Making it a supported hatch would be a REQ-level statement, not an implementation one.
 **Re-evaluation triggers:** a future writer genuinely needs a "deliberately cleared, do not resume"
 state distinguishable from "no record", which is a REQ-level change, not an implementation one.
 ### DEC-WVR-05: Ratify the plan-absolute high-water integer as the only progress field
@@ -316,6 +332,10 @@ state distinguishable from "no record", which is a REQ-level change, not an impl
 `head`. Progress is one integer.
 **Decision:** Ratify it. `lastGreenWave` stays the plan-absolute wave number — not a count of
 executed waves — and stays the only progress field. `head` stays optional on both write and read.
+`version` is **written, not gated on**: `parseWaveLedger` never reads `parsed.version` — its
+well-formedness check is over `feature`, `planHash` and `lastGreenWave` only — and this decision
+ratifies that read-side indifference rather than closing it. Freezing the record at `version: 1`
+therefore constrains the **writer** (no PLAN task adds a field), not the reader.
 **Alternatives considered:**
 - O-7, a set of completed waves — rejected: waves execute serially in plan order behind a single
   `startWave` cut-off, so a set can only ever be a prefix; modelling it invites a future reader that
@@ -326,7 +346,10 @@ executed waves — and stays the only progress field. `head` stays optional on b
 plan?" invalidator; REQ-WVR-05's retention-with-invalidation.
 **Reversibility:** hard — the field is the record's format, and a change means a `version: 2` and a
 reader that honours both.
-**Re-evaluation triggers:** waves ever execute out of plan order, or partially; a wave becomes
+**Re-evaluation triggers:** *(observable)* the executed wave numbers of a run ever fail to form a
+contiguous ascending run from `startWave` — the prefix property that a single `startWave` cut-off over
+`for (let waveIndex = 0; waveIndex < waves.length; waveIndex++)` guarantees today, and that a test
+asserting contiguity over the dispatched wave numbers reds the day it stops holding; or a wave becomes
 resumable at task granularity.
 
 ### DEC-WVR-06: Reason codes, not rendered sentences, are the closed catalogue
@@ -391,8 +414,11 @@ equalities rather than containments.
 plan-hash); "no new IO"; DC-03 — the cheaper alternative's defect is precisely that no existing
 assertion could falsify it.
 **Reversibility:** easy.
-**Re-evaluation triggers:** the ancestry verdict becomes needed by a guard above the plan-hash
-guard; the probe becomes free (e.g. HEAD ancestry already resolved earlier in the run).
+**Re-evaluation triggers:** *(bidirectional — movement in either direction invalidates the scheme)*
+the ancestry verdict becomes needed by a guard **above** the plan-hash guard, **or ceases to be needed
+by a guard below it** — in particular, `over-count` being added to `ANCESTRY_INDEPENDENT_CODES`, which
+would silently flip an over-count record with an unreachable head from `head-unreachable` to
+`over-count`; the probe becomes free (e.g. HEAD ancestry already resolved earlier in the run).
 
 ## Consequences
 
