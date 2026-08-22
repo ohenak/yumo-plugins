@@ -2136,12 +2136,13 @@ export async function readAdvisoryConfigSafely(readFileFn, path) {
 
 // === LEARNINGS INJECTION REGION START ===
 //
-// pdlc-learnings-injection TSPEC §D.1, §I.1, §I.2. Frame authored by PLAN LI-15; the region
-// grows in place (LI-16 … LI-21 insert before the END sentinel below) and stays self-contained —
-// LI-11's static scan asserts no direct filesystem-module access appears anywhere between
-// the two sentinel comments — no `fs` namespace member access, no synchronous file-write
-// helper, no direct `require` of that built-in module (seam discipline: all I/O here is via
-// injected seams, never a direct filesystem call).
+// pdlc-learnings-injection TSPEC §D.1, §I.1, §I.2. Frame authored by PLAN LI-15; LI-16 … LI-21
+// inserted their functions before the END sentinel below, in build order (each consumes the
+// previous task's output), and LI-22 closes the region — self-contained throughout: LI-11's
+// static scan asserts no direct filesystem-module access appears anywhere between the two
+// sentinel comments — no `fs` namespace member access, no synchronous file-write helper, no
+// direct `require` of that built-in module (seam discipline: all I/O here is via injected
+// seams, never a direct filesystem call).
 
 export const LEARNINGS_CONFIG_PATH = MERGE_CONFIG_PATH; // ".claude/pdlc.config.json"
 
