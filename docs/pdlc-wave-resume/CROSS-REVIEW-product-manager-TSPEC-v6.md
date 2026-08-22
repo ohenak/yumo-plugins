@@ -192,11 +192,51 @@ FINDING: Low | inherited | nonlocal | §6.2 OB-F1 row | Claims REQ §10 and FSPE
 
 ## Positive Observations
 
-_pending_
+- **Both routed items landed, in one edit, with no collateral.** Nine insertions, four deletions,
+  three touched locations. An erratum round that changes only what it was asked to change is the
+  cheapest possible thing for the next reviewer to confirm — this one took minutes, not a
+  re-read.
+- **The correction states its own reasoning, not just its conclusion.** §5.8 now carries the
+  "deliberately **not** `implementation.postWaveCommand`" clause with the V-13 four-key ground and
+  the every-wave-red consequence. A future author tempted to "simplify" this back into a config
+  key will read why that fails before they try it. That is the durable half of the fix.
+- **RT-7 and §5.8 were corrected together.** A common erratum failure is fixing the body and
+  leaving the risk table saying the old thing; both moved, and the backstop clause was preserved
+  verbatim rather than rewritten in passing.
+- **The revision-history row is honest about scope.** "Corrections only; no decision re-litigated
+  and no scope change… The floor itself, its threshold and its backstop are unchanged" — it names
+  what did *not* change, which is exactly the claim a confirmation round has to check.
+- **TSPEC and PLAN now agree on who owns the floor.** The two documents disagreed before this
+  edit; T-10 / RK-2 / PLAN §3.4 are cited by name, so the trace is one hop and mechanically
+  checkable.
 
 ## Recommendation
 
-_pending_
+**Approved with minor changes**
+
+The delta resolves both routed items completely and breaks nothing I previously approved. The
+coverage floor keeps its 85% per-file branch threshold, keeps closing inside Phase I before DOD,
+keeps its backstop, and now names an owner that actually exists in the config surface — matching
+PLAN RK-2 and §3.4, which is what both reviewers asked for. No acceptance criterion, no
+requirement trace, and no interface moved.
+
+Three findings come out of the DEC-ERR-03 sweep, not the delta: this TSPEC's §2.5, §6.2 and §6.3
+describe upstream text that REQ v1.7 and FSPEC v1.2 no longer carry, because the upstream errata
+those sections raised have since landed. All three are **inherited** and confined to hand-off and
+record sections; the TSPEC's behavioural content remains a faithful compression of upstream, and
+in the one case where it matters most (§2.5's operator-pointer ratification) the TSPEC and the
+now-existing FSPEC clause say the same thing. Nothing here is gating.
+
+Suggested wording changes, none blocking, all appropriate for the next ordinary revision of this
+document rather than a further erratum round:
+
+1. §2.5 — replace "the FSPEC does not state" / "unspecified upstream" with a citation to FSPEC
+   §3.4's "An operator-pointed run records exactly as any other run does" clause; keep the
+   ratification and its rationale as written.
+2. §6.3 — retitle to a discharged record and mark items 1–4 closed against FSPEC v1.2 / REQ v1.7,
+   or drop them.
+3. §6.2 OB-F1 row — drop the "characterise inconsistently" clause and the v1.6 cite; keep the
+   unmet-BL-04 claim and the rebase-before-implementation sequencing precondition unchanged.
 
 ## Verdict
 
