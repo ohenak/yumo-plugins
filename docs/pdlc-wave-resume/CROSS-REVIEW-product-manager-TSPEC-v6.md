@@ -94,7 +94,34 @@ command.
 
 ## Data Model
 
-_pending_
+Nothing in the wave-ledger record's shape is in the delta's blast radius, and I confirmed that
+rather than assuming it. The record stays `{version: 1, feature, planHash, lastGreenWave, head?}`
+(§4.1), which is what REQ OB-1's answered text describes at `formatWaveLedger` and what FSPEC
+§3.4 reasons over. The delta adds no persisted state, no field, and no new file — it moves a test
+command from one runner to another.
+
+One state-shaped consequence is worth naming as a positive: because the floor now runs inside
+T-10 rather than as a global `postWaveCommand`, no per-wave chore commit changes, so
+`implementation.postWavePathspecs` (`pdlc/workflows/dist/`) keeps its current meaning and
+`WAVE_STATE_PATH` still appears in no owned-path set — the invariant AT-14 and AT-17 assert, and
+the one a stray coverage artifact could plausibly have disturbed. The delta leaves it intact.
+
+## Verification
+
+The floor's verifiability improved, which is the part of this delta I would most want kept.
+
+- **Before:** "the last implementation wave's `postWaveCommand` runs `npm run test:coverage`" —
+  an obligation with no expressible configuration, therefore no observable that could fail.
+- **After:** T-10 "runs it explicitly and reports the measured per-file branch number" — an
+  obligation with a named owner, a named command (`--per-file --branches 85`), and a reported
+  number. PLAN §4.5's batch-4 gate and its checklist row assert exactly that, and §4.5.1's
+  delta-scoped coverage map supplies the oracle the raw percentage cannot be.
+
+That last pairing matters for product fidelity: a whole-repo 85% floor over a 700 KB module can
+stay green while every branch this feature adds is uncovered. The delta preserves the reference
+to the two-oracle structure (backstop clause: §5.3 per-arm coverage + §5.7 generative suite), so
+the feature's *own* branches remain the thing under test, not a repo-wide average. No test
+obligation was dropped or weakened by this edit.
 
 ## Verification
 
