@@ -4,10 +4,10 @@
 |---|---|
 | Status | Draft |
 | Author | se-author |
-| Version | 1.0 |
+| Version | 1.1 |
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** |
 | Downstream | PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | *(none yet — this round)* |
+| Cross-Reviews | CROSS-REVIEW-product-manager-DECISIONS-v1.md, CROSS-REVIEW-test-engineer-DECISIONS-v1.md |
 | LEARNINGS | docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md |
 
 **Revision history.**
@@ -15,6 +15,7 @@
 | Version | Change |
 |---|---|
 | 1.0 | Initial authoring. Records DEC-WVR-01..08, the alternatives weighed against them, and the cost each alternative was measured at. |
+| 1.1 | Round-1 cross-review revision. Every counted claim re-derived at `origin/main` `345ae358`: the regression net is **26 cases (18 / 4 / 4)**, not 44, with the command and the counting rule stated (TE F-01, PM F-01); the decision chain is **48 lines** as bounded, inside an 84-line read block (TE F-03, PM F-03); `orchestrate-dev.js` is the largest tracked **source module**, second overall behind the generated `dist/pdlc-cli.mjs` (TE F-04, PM F-02); one seam denominator throughout — a 35th seam, a 37th parameter (PM F-04). DEC-WVR-03's "each announcing outcome" is **bounded by a stated criterion** and the invalid-`startWave` config notice excluded by it, with a set-equality oracle over token-carrying announcements and the exclusions enumerated (TE F-02); the `N > 1` condition on the `✅` row is written into the decision (PM Q-01). DEC-WVR-04's write-side oracle becomes a positive key-set equality with the absence as a conjunct (TE F-05, PM F-06); DEC-WVR-08 gains a third call-count equality for over-count × unreachable head and a bidirectional trigger (TE F-06); DEC-WVR-05 gains an observable trigger and states that `version` is written, not gated on (TE F-07, PM Q-02, TE Q-03); DEC-WVR-02's trigger is marked a design aspiration (TE F-07). The queue-parity residual gap is added to the DC-08 open table (PM F-05), and the fourth-assertion risk is split into its loud and silent halves. No decision, alternative disposition or downstream obligation changed. |
 
 ## Context
 
