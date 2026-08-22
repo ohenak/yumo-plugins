@@ -90,7 +90,60 @@ collision.
 
 ## Dependencies
 
-_(pending)_
+This section is the DEC-ERR-03 sweep: **every upstream claim PLAN leans on, re-read at the upstream's
+current version**, not just the routed items. PLAN's upstream surface is four documents, all of which
+I hashed at HEAD and matched against the hashes in this dispatch — REQ `17e83bfc…`, FSPEC
+`9a6be7b5…`, TSPEC `5ed76227…`, DECISIONS `37b3684d…`. All four match exactly, so the text I read is
+the text the orchestrator pinned.
+
+### Citation resolution (mechanical)
+
+Every spec id PLAN cites resolves to a definition in the document that owns it:
+
+| Id family | PLAN cites | Owner defines | Unresolved |
+|---|---|---|---|
+| `AT-01…AT-18` | all 18 | FSPEC defines `AT-01…AT-18` | none |
+| `BR-04` | 1 | FSPEC defines `BR-01…BR-17` | none |
+| `D-1…D-11` | all 11 | TSPEC defines `D-1…D-11` | none |
+| `V-13` | 1 | TSPEC defines `V-1…V-19` | none |
+| `RT-1, RT-2, RT-3, RT-5, RT-7` | 5 | TSPEC defines `RT-1…RT-7` | none |
+| `DEC-WVR-04, -07, -08` | 3 | DECISIONS defines `DEC-WVR-01…08` | none |
+
+No nonexistent-authority citation, which is the failure mode the REQ/FSPEC verification checks call
+out as having shipped three times. This is unchanged from v2 but cheap to re-confirm, and the TSPEC
+edit did add a version bump that could in principle have renumbered something — it did not.
+
+### The claims that actually moved
+
+The edit rewrote two passages of TSPEC. PLAN references both. Re-read side by side:
+
+| TSPEC at HEAD (v1.3) | What PLAN says about it | Faithful? |
+|---|---|---|
+| §5.8: the floor is closed by "the **last implementation task** (PLAN T-10, RK-2), which runs it explicitly and reports the measured per-file branch number… deliberately **not** `implementation.postWaveCommand`" | **T-10's row** (§2.1): run `npm run test:coverage` from `pdlc/workflows`, oracle (i) exits 0 with the measured per-file branch number reported | **Yes** — this is now an exact match |
+| §5.8 / RT-7 rationale: V-13's four-key surface makes a per-wave-scoped setting inexpressible; a global one reds on waves whose new branches are not yet covered | **§3.4 `Coverage floor` row**: same reasoning, same V-13 citation, same "red on every wave" consequence | **Yes on the reasoning** — but framed as PLAN's argument *against* TSPEC rather than as agreement with it (see F-01) |
+| §5.8: no longer says "the last implementation wave's `postWaveCommand`" anywhere | **RK-2**: "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" | **No** — PLAN attributes to §5.8 a sentence §5.8 no longer contains (F-02) |
+| §6.4 RT-7 mitigation: now names T-10 and PLAN's mechanism as the mitigation, with the backstop conditioned on "if T-10's run proves too slow" | **T-10's row** cites `(RT-7, TSPEC §5.8)` as its provenance | **Yes** — RT-7 and T-10 now point at each other consistently |
+
+### The mutual-citation loop, checked in both directions
+
+TSPEC v1.3's §5.8 now cites **PLAN T-10, RK-2 and PLAN §3.4** as where the obligation lives. That
+makes the two documents mutually referential, so a stale sentence on either side is worse than
+usual: a reader arriving from TSPEC §5.8 is sent to PLAN RK-2, and PLAN RK-2 tells them TSPEC §5.8
+asks for something TSPEC §5.8 explicitly disclaims. The loop closes on a contradiction. This is why
+F-02 is filed at all rather than waved through as harmless staleness — it is not merely out of date,
+it actively mis-instructs a reader following upstream's own pointer. It remains Medium because the
+contradiction is confined to rationale prose: no task, oracle, threshold or gate reads these
+sentences.
+
+### Everything else PLAN leans on
+
+I re-read PLAN's other upstream-dependent sections against HEAD and found no further drift: §1.1's
+eleven D-rows still map to TSPEC §1.2's eleven delta rows; §4.1's AT set-equality against FSPEC's
+`AT-01…AT-18` is unchanged (FSPEC bytes did not move); §3.4's `implementation.startWave` rationale
+still cites FSPEC BR-04, which FSPEC still defines; the `DEC-WVR-04/07/08` citations in §4.3 and
+§4.4 still resolve against a DECISIONS whose hash matches its own just-completed erratum round. The
+`V-13` four-key claim that both PLAN §3.4 and TSPEC's new §5.8 rest on is asserted identically in
+both, so the shared premise is consistent.
 
 ## Verification
 
