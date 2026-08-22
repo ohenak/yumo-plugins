@@ -366,6 +366,17 @@ Mechanics, so the observation is cheap rather than ceremonial: apply the mutatio
 tree, run only the named oracle's test file, paste the failure header into the task report,
 `git checkout --` the file. Nothing is committed in the mutated state.
 
+### 4.4 Risks this PLAN carries
+
+| # | Risk | Mitigation |
+|---|---|---|
+| RK-1 | **Red-before-green is now a within-task ordering, not a batch gate** (§2.3). The runtime cannot enforce it, so a task that wrote its code first and its tests second would look identical at the gate. | Three partial replacements, none of which is a promise: each merged task lands the test half in its own commit before the code half, so `git log -p` over the task's commits is the after-the-fact check; §4.3's four mutations are *executed*, which tests the oracles harder than commit ordering does; and the DoD carries a checkbox for both. This is a genuine loss of mechanical enforcement, accepted knowingly, and it is the same trade v1.0 already made for T-04. |
+| RK-2 | **The coverage floor is not a wave gate.** TSPEC §5.8 asks for it as the last wave's `postWaveCommand`; the config surface has one global `postWaveCommand` (V-13), so a global setting would run `test:coverage` after every wave — red on waves whose new branches are not yet covered. | §3.4 assigns the floor to **T-10**, the last task, which runs it explicitly, reports the measured per-file branch number, and pairs it with §4.5.1's delta oracle. The floor stays a Phase-I-level gate rather than a PUB-time surprise; the difference from TSPEC's wording is raised as an erratum. |
+| RK-3 | **Rebase churn (TSPEC RT-1).** `orchestrate-dev.js` is the largest tracked source module (734,711 B at `origin/main`) and this feature's edit surface. | The rebase happens before implementation, gated by T-01. The edit surface is one comment block, one extracted function, five announcement suffixes and one conditional report detail. |
+| RK-4 | **A fourth shipped assertion turns out to break** (TSPEC RT-3's residual). | T-07 runs the full `pdlc/workflows` suite as its own check before the wave's gate; any further assertion found to change is added to TSPEC §2.4's table in the same commit, never fixed silently. |
+| RK-5 | **T-07 is now the largest task in the plan** — harness extensions, three assertion updates, sixteen integration cases, five announcement suffixes, one report-row branch and four mutation runs, in two files. Splitting the test file is what rule 2 forbids; splitting the code half back out is what round-1 F-01 forbids. | Bounded by the fact that its parts have distinct oracles and by T-02's extraction having already landed and been proven net-neutral. If T-07 exceeds a wave's budget the correct response is to re-invoke — the wave ledger this feature is *about* resumes it — not to split the file across two same-batch tasks. |
+| RK-6 | **The gate could silently degrade to self-report** if a consumer's `.claude/pdlc.config.json` loses or misspells `implementation.testCommand`; every gate wording in §2.2 would become an agent's claim about itself. | T-01 asserts the resolved value against §3.4's literal in batch 1 (round-1 F-02), and the DoD requires the positive observation — the Phase I report row naming `script-owned gate`, with no degradation notice in the run log. |
+
 ### 4.5 Definition of Done
 
 - [ ] T-01 passes: the branch is rebased and every `BL-PREREQ` symbol and file is present at HEAD.
