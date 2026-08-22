@@ -120,11 +120,52 @@ here.
 
 ## Carried Findings (inherited, unchanged bytes)
 
-_(pending)_
+Every v4 finding, with its status at HEAD. The one thing I want visible is that this round **closed
+one of them outright** and left the rest untouched — which is correct behaviour for a bounded
+erratum round, not a shortfall.
+
+| v4 ID | Subject | Status after this delta | v5 ID |
+|---|---|---|---|
+| F-01 | §2.5 / §6.3 item 3 — "FSPEC does not state" is false at HEAD | Open, bytes untouched | F-02 |
+| F-02 | §6.3 item 2 — OB-F1 quotation not at HEAD | Open, bytes untouched | F-03 |
+| F-03 | §5.4 AT-05 lacks a write-side conjunct for operator-pointed runs | Open, bytes untouched (AT-05 unchanged) | F-04 |
+| F-04 | §6.3 items 1–2 — stale REQ/FSPEC version labels | Open, bytes untouched | F-05 |
+| F-05 | §6.3 item 4 — REQ OB-1 `.worktreeinclude` closed in REQ v1.7 | Open, bytes untouched | F-06 |
+| F-06 | §5.8 / RT-7 — coverage floor placed on a per-run `postWaveCommand` key | Open, bytes untouched | F-07 |
+| F-07 | §5.2 H-1 — over-strong "harness cannot express it" rationale | Open, bytes untouched | F-08 |
+| F-08 | §3.2 duplicated clause | **Closed** by this delta | — |
+
+Two of these deserve a sentence of product framing so the next round does not treat them as
+bookkeeping:
+
+**F-04 (was v4 F-03) is the only carried finding about behaviour.** FSPEC §3.4 now specifies that an
+operator-pointed run records exactly as any other run does, and §2.5 ratifies that. No oracle
+asserts it: AT-05 asserts the resume point, the provenance token on the operator banner, and that
+the record was never *consulted* — nothing about what the run *writes*. An implementation that
+suppresses the write while `explicitPointer` is true passes AT-05, AT-07, AT-15 and AT-18, and
+silently removes the resume path from exactly the recovery scenario the feature exists to serve. The
+cheapest close is still a write-side conjunct on AT-05 (a record exists after the run, and its
+`lastGreenWave` is the plan-absolute number) plus an entry in §5.5's mutation list. That is one
+clause in each of two subsections, and it is the finding I would most like to see land before PLAN
+authoring — not because it gates this round, but because a PLAN authored against the current AT set
+can satisfy every listed oracle and still ship the wrong product.
+
+**F-07 (was v4 F-06) is the one that will bite an implementer.** §5.8 and RT-7 both place the 85%
+per-file branch floor on "the last implementation wave's `postWaveCommand`". `postWaveCommand` is a
+single per-run key in `IMPLEMENTATION_DEFAULTS`, applied to every wave: configuring it for the last
+wave configures it for wave 1, so the slow coverage run lands on the first wave and a red halts
+there. The obligation as written cannot be expressed in the shipped config surface. This is a PLAN
+authoring concern rather than a TSPEC-blocking one, which is why it has stayed non-gating across
+three rounds — but three rounds is long enough that I want it named again rather than quietly
+carried.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | §2.4's iff-rule says a notice carries a token iff the resume decision emits it "about a resolved start point". The `Notice: could not write/update the wave ledger …` message (shipped, §2.5 item 3) is emitted *after* a start point is resolved but is not *about* it — I read the rule as excluding it, and the exclusion table names only the invalid-pointer notice. Is that reading intended? If so, one clause ("about — not merely after — a resolved start point") would make it unambiguous; if not, the exclusion table has a second row. Not a finding: on either reading the shipped assertion count is unaffected, since the write-failure notice carries no whole-string assertion in the ledger `describe`. |
+| Q-02 | Now that the exclusion is stated as a rule, is it worth one line in §5.4 or §5.7 pinning it — a property that every provenance-bearing announcement is one of the six rows? The rule is currently reviewable but not falsifiable, and it is the thing keeping the "exactly three assertions change" count honest. Raised for the te-review lens to weigh; I am not asking for a new AT on product grounds. |
+
 
 ## Positive Observations
 
