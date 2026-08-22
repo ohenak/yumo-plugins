@@ -236,28 +236,27 @@ same batch never share a row's file.
 | Owning task | Files | Batch | New? |
 |---|---|---|---|
 | T-01 | `pdlc/workflows/__tests__/waveResumePreflight.test.js` | 1 | new |
-| T-02 | `pdlc/workflows/__tests__/waveResume.test.js` | 2 | new |
-| T-03 | `pdlc/workflows/__tests__/waveResumeRepoState.test.js` | 2 | new |
+| T-02 | `pdlc/workflows/__tests__/waveResume.test.js`, `pdlc/workflows/orchestrate-dev.js` | 2 | new; existing, tracked at `origin/main` |
+| T-03 | `pdlc/workflows/__tests__/waveResumeRepoState.test.js`, `docs/_constraints/pdlc-wave-gate-baseline.md` | 2 | new; existing at `origin/main`, absent in this tree until the rebase |
 | T-04 | `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` | 2 | new |
-| T-05 | `pdlc/workflows/orchestrate-dev.js` | 3 | existing, tracked at `origin/main` |
-| T-06 | `docs/_constraints/pdlc-wave-gate-baseline.md` | 3 | existing, tracked at `origin/main`; absent in this tree until the rebase |
-| T-07 | `pdlc/workflows/__tests__/waveExecution.test.js` | 4 | existing, tracked at `origin/main` |
-| T-08 | `pdlc/workflows/__tests__/waveResumeProperties.test.js` | 4 | new |
-| T-09 | `pdlc/workflows/orchestrate-dev.js` | 5 | existing; second owner, batch 3 ≠ batch 5 |
-| T-10 | `pdlc/workflows/__tests__/waveResume.test.js` | 6 | existing by then; second owner, batch 2 ≠ batch 6 |
+| T-07 | `pdlc/workflows/__tests__/waveExecution.test.js`, `pdlc/workflows/orchestrate-dev.js` | 3 | existing, tracked at `origin/main`; second owner of the module, batch 2 ≠ batch 3 |
+| T-08 | `pdlc/workflows/__tests__/waveResumeProperties.test.js` | 3 | new |
+| T-10 | `pdlc/workflows/__tests__/waveResume.test.js`, `pdlc/workflows/__tests__/waveExecution.test.js` | 4 | existing by then; second owner of each, batch 2/3 ≠ batch 4 |
 
 The manifest is **one row per owning task**, never a merged cell, so every owner cell is a bare
-task id the ownership parser resolves. Two files therefore appear twice, each time with a different
-owner **in a different batch** — which rule 2 permits and rule 4 constrains:
-`waveResume.test.js` (T-02, batch 2 → T-10, batch 6) and `orchestrate-dev.js` (T-05, batch 3 →
-T-09, batch 5). In both cases the later task is strictly downstream of the earlier one through the
-`Deps` chain (`T-10 → T-09 → T-07 → T-05 → T-02`), so neither is a shared-prerequisite race, and no
-two tasks in one batch share a path.
+task id the ownership parser resolves, and every file cell is a comma-separated list of backticked
+paths (the parser reads every backticked span in the cell). Three files therefore appear twice, each
+time with a different owner **in a different batch** — which rule 2 permits and rule 4 constrains:
+`orchestrate-dev.js` (T-02, batch 2 → T-07, batch 3), `waveResume.test.js` (T-02, batch 2 → T-10,
+batch 4) and `waveExecution.test.js` (T-07, batch 3 → T-10, batch 4). In every case the later task
+is strictly downstream of the earlier one through the `Deps` chain (`T-10 → T-07 → T-02 → T-01`), so
+none is a shared-prerequisite race, and no two tasks in one batch share a path.
 
 **This is the only ownership manifest in this document.** Every other table here is prose
-structure: §2.2 names batch contents, §4.1 maps ATs to suites, §4.3 maps mutations to tasks. Their
-headers are deliberately spelled so none of them qualifies as, or near-misses, an ownership
-manifest — the parser must find exactly one.
+structure: §2.2 names batch contents, §2.3 names the merged pairs, §4.1 maps ATs to suites, §4.3
+maps mutations to tasks, §4.5.1 maps branches to covering tests. Their headers are deliberately
+spelled so none of them qualifies as, or near-misses, an ownership manifest — the parser must find
+exactly one.
 
 **Files not in this manifest, and why (D-9, FSPEC OB-F6, TSPEC AT-17):**
 
@@ -270,18 +269,26 @@ manifest — the parser must find exactly one.
   `implementation.postWavePathspecs`. A task that hand-edited it would be editing a build output.
 - **`.claude/workflows/*` is owned by no task.** It is the untracked consumer copy, produced by
   `pdlc/hooks/scripts/sync-workflows.sh`, never committed.
-- **`.claude/pdlc.config.json` is owned by no task.** It is untracked run configuration (§3.4).
+- **`.claude/pdlc.config.json` is owned by no task.** It is untracked run configuration (§3.4). T-01
+  *reads* it and asserts on its content; reading is not ownership, and no task writes it.
 
 ### 3.4 Integration points and run configuration
 
 | Point | Value | Why |
 |---|---|---|
-| `implementation.testCommand` | the `pdlc/workflows` jest suite | The script-owned wave gate. Present ⇒ the gate is script-owned; absent ⇒ the run degrades to the legacy self-report gate, which would make every gate wording in §2.2 unenforceable. |
+| `implementation.testCommand` | transcribed literal, exactly: `cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'` | The script-owned wave gate. Present ⇒ the gate is script-owned; absent ⇒ the run degrades to the legacy self-report gate (`Notice: the script-owned test gate is unavailable — …`), which would make every gate wording in §2.2 unenforceable. It is the oracle every batch gate rests on, so it is a literal, not a description (round-1 F-07), and T-01 asserts the resolved value against this exact string (round-1 F-02). |
 | `implementation.postWaveCommand` | `node pdlc/workflows/build-runtime.mjs` | RT-5: editing `orchestrate-dev.js` leaves `pdlc/workflows/dist/` stale, and the suite itself reds on stale artifacts. The post-wave command runs **before** the gate (`pdlc-wave-gate-baseline.md` `M-WG-2`), which is what makes this ordering work. |
 | `implementation.postWavePathspecs` | `pdlc/workflows/dist/` | The regenerated artifacts are committed per wave as a chore commit. This value names **no** consumer-local path, and in particular not `WAVE_STATE_PATH` — asserted by T-03. |
-| `implementation.startWave` | **unset** | Leaving it unset is what lets this feature's own resume mechanism govern a re-invocation. Setting it would suppress record consultation entirely (FSPEC BR-04) — on the very feature whose behaviour is under test. |
-| Coverage floor | **T-10**, not `postWaveCommand` | See RK-2 in §4.4 and the erratum this dispatch raises: `implementation.postWaveCommand` is a single global key (TSPEC V-13 closes the config surface at four keys), so "the last implementation wave's `postWaveCommand`" is not expressible; setting it globally would run `test:coverage` after **every** wave, including waves 2 and 4, where new branches are deliberately not yet covered. |
+| `implementation.startWave` | **unset** | Leaving it unset is what lets this feature's own resume mechanism govern a re-invocation. Setting it would suppress record consultation entirely (FSPEC BR-04) — on the very feature whose behaviour is under test. Since v1.1 no batch is RED-terminal, nothing in the happy path wants it (round-1 F-01). |
+| Coverage floor | **T-10**, not `postWaveCommand` | See RK-2 in §4.4 and the erratum this dispatch raises: `implementation.postWaveCommand` is a single global key (TSPEC V-13 closes the config surface at four keys), so "the last implementation wave's `postWaveCommand`" is not expressible; setting it globally would run `test:coverage` after **every** wave, including waves where this feature's new branches are not yet covered. |
 | Upstream branch | `feat-pdlc-wave-resume`, rebased onto the default branch | OB-F1. T-01 is the gate that proves it landed. |
+
+**A note on the literal.** The string above is what `.claude/pdlc.config.json` carries in this
+working tree, verified by reading it. `.claude/pdlc.config.example.json` at `origin/main` carries a
+longer variant that also runs `pdlc/engine`'s suite; the example is not what the runtime reads, and
+the consumer config is untracked, so the rebase does not change the resolved value. If an operator
+does widen it, T-01 reds in batch 1 and this row is the thing to update — which is the intended
+failure mode, not an inconvenience.
 
 ## 4. Verification
 
