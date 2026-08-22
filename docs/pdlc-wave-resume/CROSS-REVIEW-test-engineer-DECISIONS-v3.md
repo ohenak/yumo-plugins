@@ -86,7 +86,44 @@ gating (nothing downstream is misdirected).
 
 ## Decision
 
-_(pending)_
+**DECISIONS still holds as approved against TSPEC v1.2, with two stale upstream raises to correct in
+its next touch.** No High finding, so this confirmation approves.
+
+### Citation-by-citation fidelity against TSPEC v1.2
+
+Each row is a claim DECISIONS makes *about* TSPEC, re-read at HEAD rather than trusted from my v2
+pass. "Faithful" means the upstream text still says it, and still says it the same way.
+
+| DECISIONS site | What it asserts about TSPEC | TSPEC v1.2 at HEAD | Verdict |
+|---|---|---|---|
+| O-3; DEC-WVR-02 "Constraints that forced this shape" | TSPEC §3.4's "the diff adds no parameter to `main()`" is a structural discharge of REQ C-3 | §3.4 verbatim: "**No new seam is introduced.** … the diff adds no parameter to `main()` and no capability to the runtime adapter." | **Faithful** — untouched by the erratum |
+| O-3 | Extracting the probe is "a new *seam over an existing capability*, not a new host capability (the adapter's `rtGit` already answers `merge-base`)" | §6.1 DEC-WVR-02 (b) now reads "the probe already runs through the existing `_git` seam, which `runtime-adapter.js` binds as `rtGit` for both bundles … not a host capability. The cost is plumbing, not capability" | **Faithful, and newly so** — the erratum moved TSPEC onto this text rather than away from it |
+| O-3 | The seam denominator: a 35th injected seam, a 37th parameter on a signature destructuring 36 | §3.4's seam table names six seams, all pre-existing; the denominator claim is DECISIONS' own re-derivation against `origin/main` `345ae358`, re-run in my v2 and unaffected by this delta | **Faithful** |
+| O-5; DEC-WVR-03 | The exclusion criterion for "each announcing outcome" | §2.4's new block states the identical rule as a block quote | **Faithful on the rule** |
+| O-5 closing parenthetical | "TSPEC §2.4's announcement table omits the invalid-pointer notice entirely rather than excluding it by rule; that is an upstream gap" | §2.4 now carries "**The catalogue is closed by rule, not by omission**" plus a named exclusion row | **Stale — F-01** |
+| DEC-WVR-03; Risks | Exactly three shipped whole-string assertions change, each named with its replacement in TSPEC §2.4 | §2.4's subsection "The three shipped assertions that do change" is intact, and the new block's closing sentence reinforces it ("the shipped assertions that do change remain exactly three") | **Faithful, and better grounded than at approval** |
+| DEC-WVR-03 Consequences | The set-equality oracle transcribes "the announcing rows … from TSPEC §2.4", excluded notices enumerated as literals (invalid-`startWave` notice, IG-6 silence) | §2.4 has six announcement rows (three token-carrying, one silent IG-6, two operator/record resume rows) plus the one excluded notice row | **Faithful and now executable** — at v1.1 the transcriber had to supply the exclusion themselves |
+| O-8; DEC-WVR-06 | Three of the seven reasons interpolate, carrying four values, named as feature name / short sha / wave counts | §3.1: "**Three** of the seven … `feature-mismatch`, `head-unreachable` and `over-count` — carrying four interpolated values between them"; §6.1 DEC-WVR-06 agrees | **Faithful** — the count DECISIONS held is now upstream's |
+| O-8 closing parenthetical | "TSPEC §3.1 says 'four of the seven reasons interpolate'" | §3.1 says three | **Stale — F-02** |
+| Risks, rebase-churn bullet | Largest tracked source module 734,711 B; second overall behind generated `dist/pdlc-cli.mjs` at 738,924 B | §6.4 RT-1 now carries the identical two figures and the `git ls-tree` provenance | **Faithful** |
+| Open table | TSPEC OB-F1 (rebase), OB-F4 (baseline promotion), RT-6 (advisory budget) | All three present and untouched by the delta | **Faithful** |
+
+Nothing DECISIONS leans on has moved out from under it. Both stale rows are the same defect class:
+a raise that outlived the thing it raised.
+
+### Status of my v2 findings
+
+DECISIONS' bytes have not changed since `020b74a0`, so all four v2 findings remain open exactly as
+written. They were non-gating then and are non-gating now; I re-file them tagged `inherited` so the
+round routes them back to Phase D's ordinary revision loop rather than losing them, not because this
+delta touched them.
+
+| v2 ID | Severity | Still open? | Effect of the TSPEC delta on it |
+|---|---|---|---|
+| F-01 | Medium | Yes | None. DEC-WVR-04's `head`-presence conditional is a claim about the shipped write site, not about TSPEC. |
+| F-02 | Medium | Yes | None. DEC-WVR-05's contiguity trigger still has no Consequences row obliging an observer. |
+| F-03 | Low | Yes | **Sharpened by the delta.** O-5 discriminates the past-the-end notice by code location ("emitted **inside** the resume decision"); §2.4's new rule discriminates by subject matter ("about a *resolved start point*") — the better discriminant, and now the upstream one. |
+| F-04 | Low | Yes | None directly, but see F-01 of this round: the v1.1 revision-history row will need a v1.2 successor when the stale raises are corrected. |
 
 ## Consequences
 
