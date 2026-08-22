@@ -40,6 +40,23 @@ number in §4.6 with it.
 
 ## Round-1 findings — disposition
 
+| Round-1 id | Severity | Status | Evidence |
+|---|---|---|---|
+| F-01 | High | **Resolved** | The three RED/GREEN pairs are merged (§2.3); §2.2's table declares all four batches green-terminal, and §2.2's closing paragraph states the runtime reason in the terms the finding used — the halt at `:15436`, the forbidden `implementation.startWave` escape, and `M-WG-4`'s uncommitted-work consequence. §3.4's `startWave` row now closes the loop explicitly ("no batch is RED-terminal, nothing in the happy path wants it"). The escape I could not find a runtime affordance for is no longer needed, because no batch is left red. |
+| F-02 | High | **Resolved** | T-01 obligation (b) asserts the resolved `implementation.testCommand` **string-equals** §3.4's literal, with the absent-config arm guarded by `GITHUB_ACTIONS === "true"` so a locally missing config reds instead of passing vacuously; RK-6 records the risk; and §4.5's second checkbox is the positive observation I asked for — `script-owned gate` present in the report detail **and** no `Notice: the script-owned test gate is unavailable` line. Both strings exist verbatim at `:15629` and `:15201`. The absence-only half is paired, which is the part that mattered. |
+| F-03 | High | **Resolved** | T-10's row now owns `pdlc/workflows/__tests__/waveExecution.test.js` as well as `waveResume.test.js`; §3.3's manifest carries both paths on T-10's row (parser confirms `T-10 → [waveResume.test.js, waveExecution.test.js]`); rule 2 is satisfied by batch separation (T-07 batch 3, T-10 batch 4) through the real `T-10 → T-07` edge, and §4.5.1's last two branch classes are marked `integration only` with the structural reason restated. The "unit arms only" wording that made the assignment unreachable is gone. |
+| F-04 | Medium | **Resolved** | §4.3's fourth column is now `Applied and observed by`, each row names a task, the section body specifies the mechanics (apply, run only the named oracle's file, paste the failure header into the task report, `git checkout --`, commit nothing mutated), T-02 and T-07 carry a **Mutation duty** clause, and §4.5 carries the checkbox. |
+| F-05 | Medium | **Resolved** | §4.5.1 is the delta-scoped oracle, with the one-percent-of-the-denominator arithmetic stated as the reason the floor cannot be the oracle; T-10 carries both oracles explicitly; §4.5 carries the uncovered-line-list checkbox. The mapping table's completeness — not a percentage — is the checkable thing, which is what makes a deleted case fail. |
+| F-06 | Medium | **Resolved** | T-08 pins `numRuns: 500` for all four laws and cites the precedent precisely (`const runs = { numRuns: 500 }` at `advisoryHelperProperties.test.js:261`, applied at five `fc.assert` sites, the file's other properties at default) — verified exactly as written. |
+| F-07 | Medium | **Resolved** | §3.4's `testCommand` row is a transcribed literal, and it is byte-identical to this tree's `.claude/pdlc.config.json`. |
+| F-08 | Low | **Resolved** | T-07's green half changes the `✅` detail **only in the `N > 1` case**, and §4.5's checkbox states the wave-1 detail stays byte-identical — which is what holds the shipped-assertion count at three. |
+| F-09 | Low | **Resolved** | T-01 has no `.gitignore` arm, §3.2 states why in the `includes`-weakening terms the finding used, and the **Lifecycle** paragraph gives both non-tautological failure modes. |
+| F-10 | Low | **Resolved** | §1.2's line anchors are replaced by content citations, with the rebase-churn rationale stated — the anchors would move under the very rebase the section is about. |
+
+Ten of ten resolved, including all three Highs, and none of the fixes broke a claim I had already
+verified: §4.6 re-parses to the seven-task graph it now describes, and every §1.2 / §2 / §4.1 number
+that survived the merge still reproduces.
+
 ## Findings
 
 ## Questions
