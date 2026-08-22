@@ -132,6 +132,39 @@ from DECISIONS, which is silent on the subject.
 
 ## Consequences
 
+**For Phase D.** DECISIONS as approved stands. Seven findings remain open, all carried from earlier
+rounds, none gating: three Medium and four Low, every one of them `inherited`. They route back to
+Phase D's ordinary revision loop, not to a halt.
+
+**For the PROPERTIES author, concretely.** Nothing to change. The three oracles a PROPERTIES author
+transcribes from this DECISIONS are unaffected by the delta:
+
+- the announcement **set-equality** oracle (DEC-WVR-03 Consequences) — transcribed from TSPEC §2.4,
+  which round 4 did not touch;
+- the write-side **key-set equality** for the wave-state record (DEC-WVR-04) — still carrying the
+  `head`-presence conditional flagged as F-04, still a shipped-code question, not a TSPEC one;
+- the seven-code **catalogue closure** (DEC-WVR-06) — unchanged at three interpolating reasons
+  carrying four values.
+
+The coverage floor is *not* one of them: it is transcribed from PLAN T-10's two oracles (the
+whole-file `--per-file --branches 85` run and §4.5.1's delta oracle over the uncovered line list),
+and this erratum is what makes those two the single source. A PROPERTIES author who read
+“the last wave's `postWaveCommand`” out of TSPEC v1.2 would have written a property against a config
+key that cannot express it; at v1.3 that trap is closed.
+
+**For the next DECISIONS revision.** The correction list is unchanged from v3 and still small:
+delete O-5's closing parenthetical and O-8's closing parenthetical (both now resolved upstream),
+restate them in the past tense naming the erratum round that settled them, add the Consequences
+observer that DEC-WVR-05's trigger needs, state DEC-WVR-04's `head` conjunct as two admissible
+key-sets, and give the revision-history row a truthful downstream-obligation line.
+
+**For harvest.** One durable observation, sharper this round than last: this is the **second**
+upstream-cascade confirmation in a row where the delta was non-interacting with DECISIONS and the
+whole value of the round was re-filing findings that already existed. The cost is per-round dispatch
+of a reviewer against a document whose bytes have not moved in three rounds; the signal is that a
+confirmation's finding set is not derivable from the delta alone, which is precisely why it must
+re-file. Tagged `Process` below (F-03).
+
 ## Delta-Confirmation Findings
 
 ## Verdict
