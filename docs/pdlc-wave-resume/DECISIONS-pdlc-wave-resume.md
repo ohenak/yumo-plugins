@@ -327,6 +327,7 @@ as the hatch — so the expectation exists only for an operator who discovered t
 experiment. Making it a supported hatch would be a REQ-level statement, not an implementation one.
 **Re-evaluation triggers:** a future writer genuinely needs a "deliberately cleared, do not resume"
 state distinguishable from "no record", which is a REQ-level change, not an implementation one.
+
 ### DEC-WVR-05: Ratify the plan-absolute high-water integer as the only progress field
 
 **Context:** The record carries `{version, feature, planHash, lastGreenWave}` plus an optional
