@@ -44,6 +44,47 @@ assertions about upstream text that upstream no longer contains.
 
 ## Options Considered
 
+Not the document's options — mine. A cascade confirmation has a narrow catalogue of verdicts, and
+naming the ones I rejected is what makes the one I chose auditable.
+
+**(a) Confirm on item-landing alone.** The routed items all landed: §3.1 says three, §2.4 closes by
+rule, §6.1 (b) says seam-not-capability, RT-1 gives both file sizes. If the bar were "did the
+erratum land", this would be a clean re-approval with no findings. Rejected — DEC-ERR-03 is explicit
+that landing is necessary, not sufficient, and the bar is whether *this* document is still a
+faithful compression of upstream **at its current version**. Two of DECISIONS' sentences are now
+false as statements about TSPEC precisely *because* the items landed. Confirming on item-landing
+would ratify a document that misdescribes its own upstream, and would do it in the one round
+designed to catch exactly that.
+
+**(b) Raise the two stale erratum notes as High and halt.** Both sentences make an assertion about
+upstream that is now untrue, and one of them puts a verbatim quotation in TSPEC's mouth
+(`TSPEC §3.1 says "four of the seven reasons interpolate"`) that no longer appears anywhere in the
+file — `git grep -n 'four of the seven'` over `docs/pdlc-wave-resume/TSPEC-pdlc-wave-resume.md` at
+HEAD returns nothing. Rejected on severity calibration, not on charity. Severity here is measured in
+product impact, and I applied three tests:
+
+1. **Does the substantive position change?** No. DECISIONS' own count is *three reasons carrying
+   four interpolated values* — which is now, word for word, what §3.1 says. Its own account of the
+   §2.4 boundary is the exclusion rule "a notice carries a provenance token iff the resume decision
+   emits it about a resolved start point" — which is now, word for word, the rule §2.4 states. On
+   the facts that flow downstream into PLAN, PROPERTIES and implementation, DECISIONS and TSPEC are
+   in exact agreement. The compression is faithful; the *annotation about the compression* is stale.
+2. **Is any P0/P1 requirement narrowed, dropped or reinterpreted?** No. Neither sentence sits in a
+   decision clause, a constraint row, a re-evaluation trigger, or a downstream obligation. Both are
+   parentheticals in the Options Considered narrative whose grammatical subject is TSPEC, not this
+   feature. No acceptance criterion moves if they are struck entirely.
+3. **Is this the DEC-ERR-01 shape?** Yes — a delta-confirmation finding that is a false statement in
+   a hand-off/bookkeeping section rather than in load-bearing content is demoted, per
+   `docs/_decisions/DECISIONS-review-severity-bars.md`. An erratum-tracking parenthetical is
+   bookkeeping about the review process by construction: its entire job was to hand an item to the
+   round that has now completed.
+
+**(c) Confirm, with the two stale notes recorded as Medium and the two open v2 Lows carried
+forward.** Chosen. The defect is real, cheap to fix, and worth naming — a reader of DECISIONS at
+HEAD is told that TSPEC contains two defects it does not contain, and told that two errata are
+outstanding when both have shipped in TSPEC v1.2. That misdirects the next reader of this document,
+which is why it is not a nit. But it gates nothing: no High, so no halt, and the round routes on.
+
 ## Decision
 
 ## Consequences
