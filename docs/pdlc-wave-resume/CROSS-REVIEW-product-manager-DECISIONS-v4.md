@@ -233,4 +233,26 @@ None blocks Phase P.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | O-8's closing parenthetical quotes TSPEC §3.1 as saying "four of the seven reasons interpolate" and reports the correction as an outstanding erratum. `git grep -n 'four of the seven'` over TSPEC at HEAD returns no hits; `TSPEC:426`–`:428` states three reasons carrying four interpolated values — DECISIONS' own count. Carried from v3 F-01, unresolved; the round-4 edit did not touch §3.1 or this text. Fix: re-attribute to TSPEC v1.1, record that the erratum landed in v1.2, leave the substantive count sentence unchanged. | `## Options Considered` → O-8 (`DECISIONS:205`–`:207`) |
+| F-02 | Medium | inherited | nonlocal | O-5's closing parenthetical asserts "TSPEC §2.4's announcement table omits the invalid-pointer notice entirely rather than excluding it by rule; that is an upstream gap". §2.4 at HEAD closes the catalogue by rule, states the `iff` criterion, and gives the notice its own table row with an exclusion reason. The gap the sentence reports no longer exists. Carried from v3 F-02, unresolved; untouched by the round-4 edit. Same tense/version re-attribution fix; the O-5 argument above it stands. | `## Options Considered` → O-5 (`DECISIONS:167`–`:169`) |
+| F-03 | Low | inherited | nonlocal | The measured-surface row calls `dist/pdlc-cli.mjs` "a *generated* artifact built from the module below"; the artifact's own header names `orchestrate-dev.js` **and** `cli.mjs` as inputs. Carried from v2 F-01 and v3 F-03, unresolved; TSPEC RT-1 makes no competing claim, so this is document-local drift, not cascade. | `## Context` → measured-surface table, largest-file row (`DECISIONS:44`) |
+| F-04 | Low | inherited | nonlocal | DEC-WVR-05's `*(observable)*` re-evaluation trigger relies on a contiguity property that no assertion in its Consequences row owes, so the trigger has no detector and cannot fire. Carried from v2 F-02 and v3 F-04, unresolved; untouched this round. | `## Decision` → DEC-WVR-05 Consequences/trigger (`DECISIONS:331`–`:356`) |
+
+FINDING: Medium | inherited | nonlocal | O-8 parenthetical, DECISIONS:205-207 | Quotes TSPEC §3.1 as saying "four of the seven reasons interpolate" and reports the correction as an outstanding erratum; §3.1 at HEAD says three reasons carrying four values and the quoted string is absent from TSPEC. Carried from v3 F-01, unresolved, not touched by the round-4 edit. Re-attribute to TSPEC v1.1 and record that the erratum landed in v1.2; the substantive count sentence above it does not change.
+FINDING: Medium | inherited | nonlocal | O-5 parenthetical, DECISIONS:167-169 | Asserts TSPEC §2.4's announcement table omits the invalid-pointer notice entirely rather than excluding it by rule, and calls that an upstream gap; §2.4 at HEAD closes the catalogue by rule and gives the notice its own row with an exclusion reason. Carried from v3 F-02, unresolved, not touched by the round-4 edit. Tense/version re-attribution; O-5's argument stands.
+FINDING: Low | inherited | nonlocal | measured-surface table largest-file row, DECISIONS:44 | Calls `dist/pdlc-cli.mjs` a generated artifact built from the module below; its own header names `orchestrate-dev.js` and `cli.mjs` as inputs. Carried from v2 F-01 and v3 F-03, non-gating, still unresolved.
+FINDING: Low | inherited | nonlocal | DEC-WVR-05 Consequences/trigger, DECISIONS:331-356 | The `*(observable)*` re-evaluation trigger depends on a contiguity property that no assertion in the Consequences row owes, so no detector exists to make the trigger fire. Carried from v2 F-02 and v3 F-04, non-gating, untouched this round.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
+
+APPROVAL-HASH: sha256:37b3684d4a042b5dfb3be0b8e259f8db5f4cc8823f61c61ad69db22fb950fd46
+APPROVAL-HASH-NORMALIZED: sha256:37b3684d4a042b5dfb3be0b8e259f8db5f4cc8823f61c61ad69db22fb950fd46
+REVIEWED-COMMIT: 18c629a879bb48cdf052e97aebf7440a10afbe94
+UPSTREAM-STATE: REQ sha256:17e83bfcd332f8f8f0482e2ebee7bbe78a3f434193dd3f9c3589723e39e8c79f
+UPSTREAM-STATE: FSPEC sha256:9a6be7b5a95e9b7f16c30e88154995fdd546a60093a3b3620af24e831552356e
+UPSTREAM-STATE: TSPEC sha256:5ed76227d8e4cb5b37681421d30a3c50d29e755a7334d37e5ef09c996832234a
