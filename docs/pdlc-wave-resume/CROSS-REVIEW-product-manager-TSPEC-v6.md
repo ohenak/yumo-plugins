@@ -123,10 +123,6 @@ to the two-oracle structure (backstop clause: §5.3 per-arm coverage + §5.7 gen
 the feature's *own* branches remain the thing under test, not a repo-wide average. No test
 obligation was dropped or weakened by this edit.
 
-## Verification
-
-_pending_
-
 ## Risks
 
 ### The DEC-ERR-03 sweep: what upstream no longer says
