@@ -127,7 +127,40 @@ one is test-only, one is the dist rebuild, one is another reviewer's file. The
 `documentOracles.test.js` AT-22 caveat recorded above stands unchanged — still an untracked-worktree
 artifact of this machine, not a defect of this feature.
 
+**Closing pass over the whole document (re-verified at HEAD = `ef62951f`).** Two commits landed
+after the pass above (`5e952bdb`, tests; `ef62951f`, another reviewer's file), so I re-checked every
+claim in this file against the committed tree rather than carrying the previous pass forward, and it
+changed one thing.
+
+**1. One new Medium, F-04, from the new test commit.** `5e952bdb` adds five PROPERTIES-driven tests
+(+212 lines) for claims that had no literal assertion. I read them rather than counting them, and
+four are the kind I would have asked for: `PROP-DISPATCH-06` pins `renderLearningsBlock({selected:
+[]})` to exactly `""` and separates the four ways a block can be invisible-but-nonempty;
+`PROP-ORDER-04` carries a two-conjunct instrument oracle (the extracted span must be non-empty and
+contain `ISO_DATE_RE` / `Buffer.compare`) plus a negative control that plants `new Date(` and proves
+the scanner fires — a static scan that finds nothing reds instead of passing silently;
+`PROP-CORPUS-02` asserts enumerate-calls **equal** authoring-calls, a call-count oracle rather than a
+shape assertion, with a positive control that the authoring count is non-zero; `PROP-RECORD-06` pins
+`orderKey: null` as a present key carrying JSON `null` through a real `JSON.stringify` round-trip,
+with a closed field set — all positive assertions paired with each negative one. The fifth,
+`PROP-ISOLATE-02`, is well-built but mis-baselined: its digest manifest was transcribed from this
+branch's tree while its comment asserts the feature touches no file under `pdlc/skills/**`, which the
+merge-base diff contradicts. Filed as **F-04, Medium, Local** — non-gating, and the movement it
+mis-describes is already disclosed by PLAN DoD 14 and tracked by F-01.
+
+**2. Everything else re-measured, not carried forward.** `node pdlc/workflows/build-runtime.mjs
+--check` prints `in-sync  pdlc/workflows/dist/pdlc-cli.mjs`, exit 0, so v1 F-01 stays closed on the
+tree that ships. The feature's suites are **241/241 green across 16 suites** (up from 235 by the six
+new tests). F-02 (v2) is unchanged and still open: `selectLearnings` still derives `orderKeys` from
+`ordered` (`orchestrate-dev.js:2466`), TSPEC §D.2 still words BR-10 locus 1 as "ordering key per
+corpus document" (`:724`) and still illustrates `"docs/x/LEARNINGS-x.md", orderKey: null` (`:712`),
+and §D.2's `mode: "creator"` literal (`:717`) still stands behind Q-01 — both `ERRATUM: TSPEC` lines
+carry forward. F-03 (v2) remains closed by the landed FSPEC/REQ errata; its erratum lines stay
+withdrawn. The `documentOracles.test.js` AT-22 caveat is unchanged and still an artifact of untracked
+agent worktrees on this machine. Counts move from `{0,0,1}` to `{0,1,1}`; **no High finding is open,
+old or new, so the verdict value is unchanged.**
+
 ## Verdict
 
 VERDICT: Approved with minor changes
-{"high": 0, "medium": 0, "low": 1}
+{"high": 0, "medium": 1, "low": 1}
