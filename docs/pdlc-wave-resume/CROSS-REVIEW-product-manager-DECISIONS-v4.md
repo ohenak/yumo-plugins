@@ -48,6 +48,41 @@ from it. This is a clean cascade with no product surface touched.
 
 ## Options Considered
 
+Not the document's options — mine. A cascade confirmation has a narrow catalogue of verdicts, and
+naming the ones I rejected is what makes the one I chose auditable.
+
+**(a) Confirm with no findings, since the delta does not touch anything DECISIONS cites.** Tempting,
+and the grep in Context supports the first half of it. Rejected — not because the cascade analysis is
+wrong, but because DEC-ERR-03 makes this round's scope *this document measured against its upstream
+at HEAD*, not *this document measured against the delta*. Two Medium findings from v3 and two Lows
+from v2 are still open in bytes that have not changed. Dropping them because this particular edit did
+not touch them would quietly retire findings that were never addressed, and would make the v4 record
+read as if the document had improved when it has not moved at all.
+
+**(b) Escalate the two open Medium stale-erratum notes to High, on the grounds that they have now
+survived two rounds.** Rejected. Severity is calibrated to user impact, not to age. Both sentences
+are still parentheticals inside `## Options Considered` narrative, both still have TSPEC as their
+grammatical subject rather than this feature, and striking either one entirely still moves no
+acceptance criterion, no constraint row, no re-evaluation trigger and no downstream obligation. The
+DEC-ERR-01 demotion that applied in v3 applies unchanged — a false statement in a hand-off or
+bookkeeping section is demoted, not promoted, and persistence does not convert bookkeeping into
+load-bearing content. Inflating severity to attract attention is exactly what the Scope tags exist to
+make unnecessary.
+
+**(c) Raise a finding that DECISIONS should have absorbed the round-4 coverage-floor correction.**
+Rejected as out of lens and factually wrong. PLAN already owns this: `PLAN:286` records "Coverage
+floor | **T-10**, not `postWaveCommand`" with the erratum it raised, and `PLAN:377` carries it as
+RK-2. The correction travelled REQ→FSPEC→TSPEC→PLAN and landed where the obligation is executed.
+DECISIONS is a compression of the *decisions taken for this feature*; where a test gate runs is not
+one of them, and asking DECISIONS to grow a section for it would be scope creep into a sibling
+document.
+
+**(d) Confirm, carrying the two open Mediums and two open Lows forward unchanged, all tagged
+`inherited`.** Chosen. It is the only reading that is honest in both directions: the cascade is
+clean, and the document's four known defects are still there. Tagging them `inherited` is what keeps
+them non-gating and routes them to the owning phase rather than halting this one — which is the
+correct disposition for findings that this edit neither introduced nor was asked to fix.
+
 ## Decision
 
 ## Consequences
