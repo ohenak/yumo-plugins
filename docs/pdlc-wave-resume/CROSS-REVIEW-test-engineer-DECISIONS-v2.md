@@ -164,6 +164,57 @@ and -08."
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01: is a git transport whose `rev-parse HEAD` fails while its commits succeed a fixture the PROPERTIES suite is expected to carry? If yes, the two-shape phrasing above is required; if the position is that such a transport is out of scope, saying so in the row is what keeps the assertion writable. |
+| Q-02 | DEC-WVR-03's catalogue oracle transcribes the token-carrying set from **TSPEC §2.4**, whose table does not contain the invalid-`startWave` notice at all — it is excluded here by rule, not there by row. Once the erratum lands upstream, should the exclusion list in the assertion be transcribed from TSPEC too, so the two documents cannot drift into disagreeing about what is excluded? |
+
+## Positive Observations
+
+- **Every counted claim I disputed was re-run rather than adjusted, and one of them corrected me.**
+  The enclosing read block is 84 lines, not the 81 my v1 finding asserted; the revision states the
+  larger figure with the boundary that produces it and does not quietly adopt my number. That is the
+  behaviour that makes a counted-cost document worth reviewing at all — the count is a measurement,
+  not a negotiation.
+- **F-02 was closed by a mechanism, not by a ruling.** The easy resolution was to declare the
+  invalid-pointer notice out of scope. Instead the revision found the property that actually
+  separates the two notices — the invalid value is replaced by the default *before* the resume
+  decision runs, so `explicitPointer` is false and there is no operator pointer left to attribute a
+  run to — and grounded it in a key-generic loop shared by all four `implementation` keys, where
+  attaching provenance would have leaked a token onto `testCommand`'s notice. I checked all three
+  limbs; every one holds. A criterion a test can apply is what I asked for, and this one is checkable
+  against the module rather than against intent.
+- **The set-equality oracle closes the enumeration in the direction that was open.** Asserting the
+  token-carrying set equal to TSPEC §2.4's announcing rows *with the exclusions enumerated as
+  literals* means a fifth announcement, or a token appearing on an excluded notice, reds an
+  assertion. That is set equality over the full enumeration rather than containment over a sample —
+  and it is what turns the excluded notice from an omission into a pinned decision.
+- **The Risks section now distinguishes the loud half from the silent half.** "A suite run only reds
+  if the assertion *changes*" was the core of my v1 F-02, and the revision writes that asymmetry into
+  the register explicitly, gives each half its own mitigation, and says plainly that without the
+  set-equality oracle the silent half "has no detector at all". A risk register that names which of
+  its risks its mitigations do *not* cover is rarer than it should be.
+- **DEC-WVR-08's third fixture pins two things with one assertion.** An over-count record with an
+  unreachable head announcing `head-unreachable` is simultaneously the laziness oracle and the
+  guard-order oracle, and the row explains exactly why nothing else would red the optimisation that
+  breaks it (both codes stay in the seven, so AT-02's set equality holds; the shipped over-count test
+  asserts by containment). The bidirectional trigger names the concrete change rather than a
+  category.
+- **DEC-WVR-05 separated write-side freeze from read-side indifference.** `parseWaveLedger` genuinely
+  never reads `parsed.version` (`:12281-12295`), and saying so — rather than implying a version gate
+  that does not exist — stops a PROPERTIES author writing an assertion about a reader that would pass
+  for the wrong reason. Ratifying an indifference explicitly is harder than closing it, and the right
+  call here.
+- **DEC-WVR-04's reversibility caveat got narrower rather than louder.** "Hard in expectation" became
+  a scoped, checkable statement: the `{}` tolerance is documented nowhere an operator reads, every
+  banner names *deleting* the file as the hatch (`:15328`, `:15342`), so the expectation exists only
+  for an operator who found it by experiment. Shrinking an accepted risk with evidence is worth as
+  much as raising one.
+- **The DC-08 open table absorbed the AT-16 gap.** "A sentence in a test is a disclosure, not a
+  successor surface" is the right diagnosis, and moving the queue-parity residual into the table a
+  future reader consults — while keeping the sentence in the test — puts the gap where it will be
+  found rather than only where it will be read.
+
 ## Positive Observations
 
 ## Recommendation
