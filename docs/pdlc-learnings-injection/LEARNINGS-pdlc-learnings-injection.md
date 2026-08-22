@@ -7,7 +7,7 @@
 | Date Completed | 2026-08-21 |
 | Total Iterations | REQ: 12, FSPEC: 15, TSPEC: 15, PLAN: 15, PROPERTIES: 15, DECISIONS: 9, REVIEW: 2, DoD: 2 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → PROPERTIES → IMPL |
-| Harvested from | _(pending — filled in §6 pass)_ |
+| Harvested from | 166 CROSS-REVIEW files (deleted): `CROSS-REVIEW-software-engineer-REQ-v{1..12}.md`, `CROSS-REVIEW-test-engineer-REQ-v{1..12}.md`, `CROSS-REVIEW-software-engineer-FSPEC-v{1..15}.md`, `CROSS-REVIEW-test-engineer-FSPEC-v{1..15}.md`, `CROSS-REVIEW-product-manager-TSPEC-v{1..15}.md`, `CROSS-REVIEW-test-engineer-TSPEC-v{1..15}.md`, `CROSS-REVIEW-product-manager-PLAN-v{1..15}.md`, `CROSS-REVIEW-test-engineer-PLAN-v{1..15}.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v{1..15}.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v{1..15}.md`, `CROSS-REVIEW-product-manager-DECISIONS-v{1..9}.md`, `CROSS-REVIEW-test-engineer-DECISIONS-v{1..9}.md`, `CROSS-REVIEW-product-manager-REVIEW-v{1,2}.md`, `CROSS-REVIEW-test-engineer-REVIEW-v{1,2}.md`. 2 CODE_REVIEW files (deleted): `CODE_REVIEW-pdlc-learnings-injection-v{1,2}.md`. 3 POSTMORTEM files (read, **retained** — all `RESOLVED: yes`): `POSTMORTEM-T-pdlc-learnings-injection.md`, `POSTMORTEM-D-pdlc-learnings-injection.md`, `POSTMORTEM-PR-pdlc-learnings-injection.md`. |
 | Phases exercised | R, F, T, D, P, PT, IMPL, DOD, PR |
 | DoD rounds | 2 |
 
