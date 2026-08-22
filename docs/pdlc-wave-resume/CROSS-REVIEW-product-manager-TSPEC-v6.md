@@ -240,4 +240,5 @@ document rather than a further erratum round:
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
