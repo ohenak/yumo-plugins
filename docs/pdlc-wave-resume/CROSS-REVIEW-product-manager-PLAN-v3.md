@@ -142,7 +142,40 @@ plans.
 
 ## Delta-Confirmation Findings
 
-*(pending)*
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | §3.4's `Coverage floor` row says the assignment rests on "the erratum this dispatch raises" and quotes upstream as asking for "the last implementation wave's `postWaveCommand`". TSPEC §5.8 at HEAD asks for the last implementation **task** (PLAN T-10, RK-2) — the erratum has landed and there is no longer a divergence to raise. The row now attributes to upstream a wording upstream does not carry. Fix: keep the row's value (`T-10`, not `postWaveCommand`) and its V-13 four-key reasoning verbatim, and replace "the erratum this dispatch raises" with a citation to TSPEC §5.8 / RT-7 at v1.3, which now state the same assignment. | §3.4 Configuration points — `Coverage floor` row |
+| F-02 | Low | delta | local | §4.4's RK-2 reads "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" and closes "the difference from TSPEC's wording is raised as an erratum". Both halves are now false against TSPEC v1.3: §5.8 and RT-7 name the last implementation task and cite PLAN T-10 / RK-2 by id, so the difference is closed. The mitigation itself is correct and should not change. Fix: restate the risk as the standing one it still is (the 85% per-file floor is a merge gate the wave gate does not run, TSPEC RT-7) and record that §5.8 now assigns it to T-10, rather than describing an open disagreement. | §4.4 Risk register — RK-2 |
+
+**Why both are Low and neither is Medium.** Severity here tracks user impact, and the impact is
+zero on what gets built: T-10's obligation, its two oracles, its batch position and §4.2's batch-4
+gate are all unchanged and all now match upstream verbatim. What is wrong is a description of
+upstream inside PLAN, which costs a future reader one wasted lookup — real, worth fixing in the
+same edit, but not a coverage, scope or acceptance-criterion gap. Under DEC-DOC-01's neighbouring
+logic a stale upstream citation is a finding rather than a style nit, and that is exactly the bar I
+have applied: filed, tagged, actionable, not inflated.
+
+**Why both are `delta` and not `inherited`.** Neither sentence was wrong in the pre-round bytes. At
+`b8ddcc56` both were accurate reports of a genuine divergence, and my v2 approval endorsed them as
+the correct handling of an upstream defect. This round's edit is precisely what made them stale —
+the staleness was introduced by the erratum landing, not carried in from before it. That is the
+`delta` reading, and tagging it so is honest even though `inherited` would be the more comfortable
+tag: `delta` is the accurate provenance, and with both findings Low neither tag changes the gate.
+
+**Why both are `local`.** PLAN's own bytes did not change, so locality is measured against the
+material the upstream edit bears on: TSPEC §5.8 and RT-7, whose downstream footprint in PLAN is
+exactly §3.4's `Coverage floor` row and §4.4's RK-2. Both findings sit inside that footprint.
+Nothing outside it — the task table, `Deps` cells, §3.3's ownership manifest, §4.1's AT map,
+§4.5.1's coverage map, §4.6's recorded parse — was reached by the edit or is faulted here.
+
+**No High finding, old or new.** I checked for the halting reading explicitly: no requirement lost
+an owning task, no acceptance criterion changed meaning, nothing entered or left scope, and no
+routed item was left unlanded — the single routed item (my own v2 `ERRATUM: TSPEC` on §5.8) is
+landed in full, in both §5.8 and RT-7, with the config-surface reasoning that made it necessary
+carried into upstream rather than dropped.
+
+FINDING: Low | delta | local | §3.4 Configuration points — `Coverage floor` row | The row cites "the erratum this dispatch raises" and quotes upstream as asking for the last implementation wave's `postWaveCommand`; TSPEC §5.8 at HEAD assigns the floor to the last implementation task (PLAN T-10, RK-2), so the quoted divergence no longer exists — re-point the row at TSPEC §5.8 / RT-7 v1.3, keeping the T-10 assignment and V-13 reasoning unchanged
+FINDING: Low | delta | local | §4.4 Risk register — RK-2 | RK-2 states "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" and that "the difference from TSPEC's wording is raised as an erratum"; both are now false against TSPEC v1.3, which names the last implementation task and cites PLAN T-10 / RK-2 by id — restate as the standing merge-gate risk (TSPEC RT-7) with the floor assigned to T-10 by upstream, mitigation text unchanged
 
 ## Verdict
 
