@@ -78,7 +78,8 @@ state that in wave mode a red gate halts the wave *and every wave after it*, so 
 AT-14 must not be dispatched before the rebase. This PLAN discharges that mechanically rather than
 in prose: **T-01 is the first task, it is a pre-flight gate over exactly those baseline facts, and
 every other task depends on it** (directly or transitively). A pre-rebase run therefore fails at
-T-01 — the cheapest possible wave — instead of at T-03's ignore-rule assertion three waves in.
+T-01 — the cheapest possible wave, and the whole of batch 1 — instead of at T-03's ignore-rule
+assertion a wave later.
 
 ### 1.3 Scope boundaries this PLAN inherits
 
@@ -102,8 +103,10 @@ shipped `makeLedgerArgs` / `ledgerWrites` / `PLAN_THREE_WAVES` / `CONFIG_WITH_TE
 9 and 29 occurrences respectively). The two harness *extensions* H-1 and H-2 are the only
 double-shaped work, and they are additive, default-off, and owned by T-07 together with the file
 they live in. Rows that create a test double or a test-only fixture ahead of the production code
-they exercise are marked `[Fake first]`; each such row precedes every implementation row for the
-same component through a real `Deps` edge, never through id order.
+they exercise are marked `[Fake first]`. Since v1.1 that precedence is **within** the marked task —
+its test half is written, run and committed before its code half (§2.3) — and, where the component
+crosses tasks, still through a real `Deps` edge (`T-07 → T-02`, `T-10 → T-07`), never through id
+order.
 
 ### 2.1 Task table
 
