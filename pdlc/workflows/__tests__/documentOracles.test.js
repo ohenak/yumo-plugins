@@ -233,7 +233,7 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
 // bundles and its retired index-manifest file, which the retirement sweep's
 // class 7 already deleted, making the sweep its own witness (DEC-09). Class
 // 9 replaces them with a direct, positive check of the shipped handshake:
-// `pdlc/.claude-plugin/plugin.json`'s version equals the literal `0.23.3`
+// `pdlc/.claude-plugin/plugin.json`'s version equals the literal `0.23.4`
 // and `satisfiesRange(version, pdlcPluginCompat).ok === true` against
 // `pdlc/engine/package.json`'s declared `pdlcPluginCompat` range. The
 // negative arm below exercises the same shipped `satisfiesRange`
@@ -247,11 +247,11 @@ describe("AT-1.6 / DEC-09 — pdlcPluginCompat handshake", () => {
     readFileSync(join(LIVE_ROOT, "pdlc", "engine", "package.json"), "utf8"),
   ).pdlcPluginCompat;
 
-  test("post-sweep plugin.json version is the literal 0.23.3 and satisfies pdlcPluginCompat", () => {
+  test("post-sweep plugin.json version is the literal 0.23.4 and satisfies pdlcPluginCompat", () => {
     const pluginJson = JSON.parse(
       readFileSync(join(LIVE_ROOT, "pdlc", ".claude-plugin", "plugin.json"), "utf8"),
     );
-    expect(pluginJson.version).toBe("0.23.3");
+    expect(pluginJson.version).toBe("0.23.4");
     expect(satisfiesRange(pluginJson.version, pdlcPluginCompat).ok).toBe(true);
   });
 
