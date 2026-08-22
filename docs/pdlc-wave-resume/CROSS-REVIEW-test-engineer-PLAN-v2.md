@@ -59,6 +59,96 @@ that survived the merge still reproduces.
 
 ## Findings
 
+No High findings. The three that blocked round 1 are resolved and the revision introduced no new
+blocking defect. Two Mediums and one Low below, all recorded rather than gating.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-11 | Medium | Cross-Feature | T-01's `testCommand` assertion is **string equality against an untracked, machine-local file**, and it "ships permanently". The shipped `.claude/pdlc.config.example.json` at `origin/main` carries a strict superset of §3.4's literal, so any maintainer running the example config reds T-01 in batch 1 — halting every wave — on a config that is correct. | §2.1 T-01(b), §3.2, §3.4 |
+| F-12 | Medium | Local | T-03 is described as "*Red half first*", but two of its three assertion groups are **green on write**: `.gitignore` already carries `/.claude/pdlc-wave-state.json` at `origin/main`, and AT-17's finite check over §3.3 is already satisfied by this PLAN's own text. Only the `M-WVR-1` / `M-WVR-2` presence arm can go red. §2.3's blanket "records the observed failure" is unachievable for T-03 as written. | §2.1 T-03, §2.3 |
+| F-13 | Low | Local | §2.2's column is headed `Gate wording`, but only the first conjunct of each cell (`Full suite green`) is what the script-owned gate actually runs — `implementation.testCommand`. The byte-unchanged conjunct (batch 2) and the coverage/mapping conjuncts (batch 4) are DoD observations, not gate outcomes. | §2.2 |
+
+### F-11 (Medium) — a permanent equality assertion pinned to one machine's untracked config
+
+This is my own F-02 landing slightly harder than intended, so I want to be precise about what is
+right in it and what is over-tight.
+
+Right: the gate must not be allowed to degrade silently, T-01 is the correct home for that check,
+the `GITHUB_ACTIONS` guard correctly refuses to pass vacuously on a locally-absent config, and the
+literal in §3.4 is byte-identical to `.claude/pdlc.config.json` in this tree — verified, so this
+run passes.
+
+Over-tight: §3.2's Lifecycle paragraph makes `waveResumePreflight.test.js` permanent ("no task
+deletes it"), and §3.4's note accepts the consequence ("If an operator does widen it, T-01 reds in
+batch 1 and this row is the thing to update — which is the intended failure mode, not an
+inconvenience"). But the widening is not hypothetical: `git show
+origin/main:.claude/pdlc.config.example.json` carries
+
+```
+"testCommand": "(cd pdlc/engine && npm test) && cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'"
+```
+
+— the §3.4 literal prefixed by `pdlc/engine`'s suite. A maintainer who copies the **shipped
+example** into place gets a permanently red batch-1 gate, and in wave mode a red gate halts that
+wave and every wave after it (§1.2's own consequence). The assertion would then be failing on a
+config that is strictly stronger than the one it demands.
+
+The falsifiable content of F-02 is "the resolved command runs this repo's `pdlc/workflows` suite,
+and the key resolves at all" — not "the operator's command is exactly this string". Both are
+falsifiable; only the second fails on correct inputs.
+
+**Suggested change (non-blocking).** Keep the equality assertion, but scope it: assert (i)
+`implementation.testCommand` resolves and is non-empty, (ii) it **contains** the transcribed
+`cd pdlc/workflows && npm test -- --testPathIgnorePatterns …` substring — transcribed as a literal,
+not derived — and (iii) record §3.4's full literal as the expected default in the failure message.
+That still reds on a missing key, a misspelling, or a command that does not run this suite (the
+three ways the gate actually degrades), and stops reddening on a legitimate superset. If the author
+prefers strict equality, say so in §3.2's Lifecycle paragraph against the example-config case by
+name, so the next operator reads it as a decision rather than a surprise.
+
+### F-12 (Medium) — "red half first" is not achievable for two of T-03's three arms
+
+§2.3 states the merged-task contract as a blanket: the task "writes and commits its failing tests
+first, runs them, records the observed failure in its task report". For T-02 and T-07 that is exactly
+right — `classifyWaveLedger` and the announcement suffixes do not exist until the green half. For
+T-03 it is only one-third right:
+
+| T-03 red-half arm | State when written (post-rebase, pre-green-half) | Evidence |
+|---|---|---|
+| AT-14: `.gitignore` line equality, leading `/`, `git check-ignore -v` resolution | **green** | `git show origin/main:.gitignore` — `/.claude/pdlc-wave-state.json` is already line 41, in the same block as `/.claude/workflows/` (§1.2 says so itself) |
+| AT-17: no §3.3 row and no `postWavePathspecs` value names `WAVE_STATE_PATH` | **green** | already true of this PLAN's own text; §3.3 asserts it as a property of the document under review |
+| `M-WVR-1` / `M-WVR-2` present in `docs/_constraints/pdlc-wave-gate-baseline.md` | **red** | the file at `origin/main` runs to `## 4` / `M-WG-14`; T-03's green half appends `## 5` |
+
+This is not a defect in the tests — characterisation tests over a state a *prior* feature
+established are exactly right for AT-14 and AT-17, and v1.0 already made this distinction honestly
+for T-04 ("Green on write against shipped `orchestrate-queue.js` — it is a **regression net** over a
+boundary this feature must not move"). The defect is that T-03 does not say so, so the implementer
+either reports a red that cannot have happened or is left to improvise.
+
+**Suggested change (non-blocking).** Give T-03 the sentence T-04 already has: name the `M-WVR`
+presence arm as the one that reds on write, mark the AT-14 and AT-17 arms as characterisation over
+the rebase baseline, and add T-04's falsification shape to them — for AT-14, delete or unanchor the
+ignore line in the working tree, observe the red, revert (this is cheap and it is the only thing
+that proves the line-equality matcher is not a tautology); for AT-17, insert a `WAVE_STATE_PATH`
+row into a scratch copy of §3.3 and observe the red. Then §2.3's blanket sentence can stay true by
+being narrowed to "each merged task records, per arm, either the observed RED or the falsification
+that stands in for it".
+
+### F-13 (Low) — `Gate wording` names three things the gate does not evaluate
+
+The runtime's script-owned gate runs one thing per wave: `implementation.testCommand`
+(`origin/main:orchestrate-dev.js:15436` is the halt on its non-zero exit). Batch 2's "`waveExecution.test.js`
+byte-unchanged across every commit of this batch" and batch 4's "`npm run test:coverage` exits 0
+**and** §4.5.1's mapping table is complete" are not reachable from that command, so they are not
+gate outcomes; they are DoD observations, and §4.5 does carry all three as checkboxes, which is why
+this is Low rather than Medium — nothing is lost, only mislabelled.
+
+Worth fixing because §2.2's own closing paragraph is a lesson about exactly this confusion: v1.0's
+RED-terminal wording failed because "the runtime has no notion of a *declared* RED-terminal
+wording". The same is true of a declared byte-unchanged conjunct. Renaming the column to
+`Gate (script-run) + batch checks` — or splitting the cells into what the gate runs and what the
+DoD verifies — keeps that lesson from being re-learned.
+
 ## Questions
 
 ## Positive Observations
