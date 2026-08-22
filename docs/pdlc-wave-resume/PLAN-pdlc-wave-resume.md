@@ -29,17 +29,24 @@ contract falsifiable.
 
 | Delta | Landed by |
 |---|---|
-| D-1 remove the INTERIM commentary, cite the TSPEC | T-05 |
-| D-2 provenance token on every announcing outcome | T-09 |
-| D-3 resume point + provenance on the executed Phase I report row | T-09 |
+| D-1 remove the INTERIM commentary, cite the TSPEC | T-02 |
+| D-2 provenance token on every announcing outcome | T-07 |
+| D-3 resume point + provenance on the executed Phase I report row | T-07 |
 | D-4 keep the `{}` read tolerance, add no writer (DEC-WVR-04) | T-02 (asserted; no code change) |
-| D-5 extract the decision as a pure classifier; add the set-equality suites | T-05 (code), T-02 (suites) |
+| D-5 extract the decision as a pure classifier; add the set-equality suites | T-02 (suite **and** code, in that order within the task) |
 | D-6 EC-15a discriminating test (early write succeeds, later write fails) | T-07 |
 | D-7 the ignore-rule assertion | T-03 |
 | D-8 queue/direct parity | T-04 |
 | D-9 this PLAN claims the record in no wave's owned-path set | T-03 (§3.3 is the subject) |
-| D-10 `M-WVR-1..2` in `docs/_constraints/pdlc-wave-gate-baseline.md` | T-06 |
+| D-10 `M-WVR-1..2` in `docs/_constraints/pdlc-wave-gate-baseline.md` | T-03 |
 | D-11 the three shipped whole-string assertions | T-07 |
+
+**Why one task lands both halves of D-5 and of D-2/D-3.** v1.0 split each red suite from the green
+code that satisfies it, which put two batches in a state the runtime cannot evaluate (round-1 F-01).
+The split is now internal to the task: each merged task writes its failing tests **first**, observes
+and records the RED, then writes the code that turns it green. §2.3 states the trade that makes
+this legitimate — the same trade T-04 already made in v1.0 — and §2.2's gates are green-terminal
+throughout.
 
 ### 1.2 The one precondition this PLAN is built around
 
