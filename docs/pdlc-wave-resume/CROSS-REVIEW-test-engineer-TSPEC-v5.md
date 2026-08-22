@@ -161,11 +161,46 @@ claim, and leaving a fresh one in the sentence that fixed the old one is worth o
 
 ## Test Strategy
 
-_(pending)_
+The testing lens is what this confirmation is for, so I checked the edit against the three things
+that could have quietly moved a test obligation. None did.
+
+1. **The "three shipped assertions that do change" count is still exact.** §2.4's subsection names
+   three whole-string-equality assertions (`:2137-2141` past-the-end notice, `:2652-2657` the
+   four-member `it.each` ignored-record notice, `:2117-2118` the `phaseDetail` equality). The
+   invalid-`startWave` notice added to the discussion in this edit is pinned by a fourth
+   whole-string assertion at `:2186` — and that one does *not* change, because the exclusion means
+   no suffix reaches it. Had the erratum resolved the other way (token on that notice), the count
+   would have become four and RT-3's residual-risk argument would have needed rewriting. It didn't,
+   and it doesn't. This is the single most consequential thing the edit could have broken, and it
+   is intact.
+2. **No matcher is relaxed and no oracle weakened.** The three constraints beneath §2.4's table
+   ("no matcher is relaxed", "no other assertion in the ledger `describe` changes", "the diff is one
+   task") are unchanged bytes. The four prefix matchers and two `startsWith(...) === false`
+   negatives enumerated there remain unaffected by an appended clause, which I re-checked against
+   the current test file at `origin/main`.
+3. **AT-01/AT-03/AT-11's oracles are untouched.** The §3.2 clause deletion did not disturb the
+   sentence naming AT-01 as `lastGreenWave`'s falsifying reader, and DEC-WVR-08's lazy-probe
+   rejection argument — including the observation that the shipped ancestry test asserts
+   `toContainEqual`, i.e. containment, so an extra `merge-base` call would be unfalsifiable — is
+   unchanged, as is RT-2's reliance on AT-03/AT-11's call-count equality oracles. The falsifiability
+   posture I approved at v4 is preserved exactly.
+
+One positive worth recording: the DEC-WVR-02 rewrite makes the rejected alternative's cost
+*testable* rather than rhetorical. "Adds a runtime capability" was a claim no test could ever red;
+"widens the classifier's signature and its fake surface" is a claim a reviewer can check against
+the seam table. That is the direction reviewer-facing prose should move.
 
 ## Open Questions
 
-_(pending)_
+None. No question from v4 is reopened by this edit, and the two findings below are wording repairs
+with no downstream obligation — neither changes PROPERTIES, the PLAN's task set, or any batch edge.
+
+Assumption stated for the record: this confirmation measures the TSPEC against `origin/main` at
+`345ae358`, which is what the document's own citations are pinned to. The working tree on this
+branch is behind that base (the tree's `orchestrate-dev.js` predates `implementation.startWave`
+entirely), so every code claim above was re-derived from `git show origin/main:…`, never from the
+checked-out file. That is RT-1's rebase risk showing up in review, exactly as RT-1 predicts; it is
+not a defect in the document.
 
 ## Delta-Confirmation Findings
 
