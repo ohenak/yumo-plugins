@@ -78,6 +78,49 @@ and no downstream obligation — as its own revision-history row claims.
 
 ## Positive Observations
 
+- **Every corrected figure was corrected with its command, not just with its value.** The 26-case
+  row does not merely replace `44`; it states the command, the counting rule (`it.each` members
+  counted individually), and the fact that the *same* three blocks are 23 `it` statements — which is
+  what stops the next reviewer re-opening the count because they counted a different unit. That is
+  the correction I asked for and one more thing besides.
+- **F-02's correction made the document's argument stronger, not weaker.** The obvious minimal fix
+  was to demote the claim to "second largest". The revision instead observed that the largest tracked
+  file in the repo is a *build output of the very module this feature edits* and wired that into the
+  third accepted risk (generated artifacts going stale, and the `postWavePathspecs` obligation). A
+  correction that improves the risk register is a better outcome than a correction that survives
+  review.
+- **The `N > 1` condition was promoted from a question into a decision clause with its cost
+  attached.** My Q-01 asked whether the conditionality was load-bearing. The answer is now in
+  DEC-WVR-03's own text *and* in its Constraints row, phrased in the count's currency: "without which
+  two further whole-string equalities outside the ledger blocks would change and the count would not
+  be three". That is exactly the form that makes a future implementer discover the cost in the
+  decision rather than in a red suite.
+- **The fourth-announcement boundary is now closed by rule rather than by omission.** The strongest
+  new material in the revision is O-5's criterion — "a notice carries a provenance token iff the
+  resume decision emits it about a resolved start point" — because it is checkable against shipped
+  code (a key-generic loop at two call sites; `explicitPointer` already false by the time the
+  decision runs) rather than against intent, and because it comes with the oracle that makes a
+  *fifth* announcement red something instead of slipping through. Excluding a case by a stated,
+  falsifiable rule is a categorically better artifact than excluding it by not mentioning it.
+- **The loud/silent split on the accepted risk is honest bookkeeping.** The old bullet implied one
+  risk with one mitigation (run the suite). The revision splits it into the half a suite run detects
+  and the half it cannot — an announcement that *should* carry a token and is simply left untouched,
+  which reds nothing — and names the different detector each half needs, ending with "without that
+  oracle this risk has no detector at all". Naming the undetectable half is the part most risk
+  registers omit.
+- **The DC-08 open table now distinguishes disclosure from successor surface.** "A sentence in a test
+  is a disclosure, not a successor surface" is the general lesson behind my F-05, stated in one line
+  that a future feature can reuse. It also keeps DEC-WVR-07's disposition intact rather than
+  re-opening it, which is the correct handling of a residual gap that was always known.
+- **Both open questions were answered in the document, not in a reply.** Q-02's answer (`version` is
+  written and never read, so the freeze binds the writer only) and Q-03's answer (the `{}` tolerance
+  is undocumented, so the "hard in expectation" caveat is scoped to an operator who found it by
+  experiment) both landed as decision text. Answers that live in the artifact outlive answers that
+  live in a review thread.
+- **The revision history row is a faithful index of the diff.** Every change it claims is in the
+  diff, and every substantive change in the diff is in it — including the ones that came from the
+  other reviewer. Checking a revision against its own changelog should be boring, and here it was.
+
 ## Recommendation
 
 ## Verdict
