@@ -2422,7 +2422,7 @@ export function extractInjectableMaterial(text, maxBytes) {
  *  unconditionally; the total-byte bound then walks that same window from the top, dropping a
  *  whole document (and — only when that drop leaves at least one further window slot unused —
  *  every lower-ordered document past it, window or not) with `RSN-BYTES`, no back-fill.
- *  @param {{entries: object[], feature: string, thresholds: object}} arg
+ *  @param {{entries: object[], thresholds: object}} arg
  *  @returns {{selected: object[], rejected: object[], totalBytes: number, orderKeys: object[]}} */
 export function selectLearnings({ entries, thresholds }) {
   const rejected = [];
