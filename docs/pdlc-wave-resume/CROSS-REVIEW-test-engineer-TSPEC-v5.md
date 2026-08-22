@@ -103,11 +103,61 @@ adapter", so the two sections are now consistent where before one overstated the
 
 ## Interfaces
 
-_(pending)_
+No interface changed in this edit, and I confirmed that rather than assuming it.
+
+- §3.1's exported catalogues (`RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS`) and the
+  `WaveIgnoreCode` union are byte-identical across the diff. The edit rewrote only the prose
+  paragraph beneath the code block. The seven codes, and the comment attributing three of them to
+  IG-1's arms, are unchanged — so the OB-F5 set-equality transcription obligation is untouched.
+- §3.2's return shape, `ReasonContext`, and the classification order table are unchanged apart from
+  the deleted duplicated clause. The clause deletion is a pure prose repair: the surrounding
+  sentence still names `lastGreenWave`'s reader and still points at §5.4 AT-01 as the assertion that
+  pins the per-wave skip line for every `k < N`. The reader-existence argument — a field with no
+  reader would be unfalsifiable — survives intact, which is the part I approved.
+- §3.4's seam table is unchanged, and its "no new seam is introduced" claim is now the sole home of
+  the C-3 discharge, with DEC-WVR-02 deferring to it rather than re-arguing it. That is the right
+  direction of dependency.
+- §3.5 still closes the configuration surface at four keys including `startWave`, which matches
+  `parseImplementationConfig`'s post-edit shape on `origin/main` (`testCommand`, `postWaveCommand`,
+  `postWavePathspecs`, `startWave`). AT-08's set-equality over recognised keys is unaffected.
 
 ## Data Model
 
-_(pending)_
+The record shape (§4.1, four-or-five fields) is untouched by this edit. The one data-model-adjacent
+claim the edit rewrote is §3.1's interpolation count, and it is where my first finding sits.
+
+I re-derived the renderers from the shipped chain on `origin/main` (`:15297-15316`) and from
+`parseWaveLedger` (`:12277-12294`):
+
+| Code | Shipped renderer | Interpolated values |
+|---|---|---|
+| `unreadable-json` | `it is not readable JSON` | 0 |
+| `not-an-object` | `it is not a JSON object` | 0 |
+| `wrong-shape` | `its fields are not the shape this workflow writes` | 0 |
+| `feature-mismatch` | `it records feature "${recorded.feature}", not "${featureName}"` | **2** |
+| `plan-changed` | `the PLAN's wave layout has changed since it was written` | 0 |
+| `head-unreachable` | `the commit it records (${String(recorded.head).slice(0, 12)}) is not an ancestor of HEAD — …` | 1 |
+| `over-count` | `it records ${recorded.lastGreenWave} wave(s) green and this plan has only ${waves.length}` | 2 |
+
+The corrected headline — **three** of the seven interpolate, and they are exactly
+`feature-mismatch`, `head-unreachable`, `over-count` — is right, and it is the figure the
+DEC-WVR-06 rejection argument actually needs. The routed off-by-one is resolved.
+
+The *replacement* figure is now off by one in the other direction. The edit says those three carry
+"four interpolated values between them (the recorded feature name, the recorded commit's short sha,
+and the recorded and actual wave counts)". The `feature-mismatch` sentence interpolates **two**
+values, not one: the recorded feature *and* the run's own `featureName`. The document cannot exclude
+the second on the grounds that the test knows it, because it applies the opposite rule one clause
+later — it counts `over-count`'s `waves.length`, which the test knows just as well, and says so
+explicitly ("both of which the `over-count` sentence names"). Counted consistently, the total is
+**five**. §6.1's DEC-WVR-06 row repeats the same figure ("four values in total, §3.1"), so the fix
+is two edits, as the original off-by-one was.
+
+This is **Low** and non-gating: the argument DEC-WVR-06 rests on is "some reasons interpolate, so
+set equality over rendered sentences asserts fixture data", and that argument is carried entirely by
+the *reasons* count, which is now correct. No oracle, no catalogue, no assertion depends on the
+value count. I file it because this erratum round exists to retire exactly this class of arithmetic
+claim, and leaving a fresh one in the sentence that fixed the old one is worth one line. **F-01.**
 
 ## Test Strategy
 
