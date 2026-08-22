@@ -144,9 +144,47 @@ BR-17, EC-01…EC-21 with EC-17/18/19 explicitly parked, all ten REQ-WVR ids) st
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Process | Round 1 of this document's review produced **no findings and no verdict**: `CROSS-REVIEW-product-manager-PROPERTIES-v1.md` is committed with `## Findings`, `## Questions`, `## Positive Observations` and `## Recommendation` all empty and no `VERDICT:` line anywhere in the file, while its own Grounding promises "findings below about three specific seams". The author of PROPERTIES therefore received nothing actionable from round 1 and had to self-generate this revision's agenda. The fix is not in this document — it is that a review file whose Findings table is empty **and** whose verdict is unparseable should be recognised as a truncated write and re-dispatched, not counted as a completed round. Routed to process learnings. | — (pipeline artifact, not a REQ clause) |
+| F-02 | Low | Local | The lineage header bumps `Version` 1.0 → 1.1 (`PROPERTIES:7`) but the document carries **no revision-history block**, so nothing in it records what changed between the two versions. Both sibling documents do carry one — `TSPEC:13` and `PLAN:13` each open with `**Revision history.**` followed by a per-version row. Suggested fix: add the same block, with a `1.1` row naming the two changes this delta actually made (errata re-verified at HEAD, three closed by their owners and one routed; retired PLAN ids T-05/T-06/T-09 called out). Without it a later reader diffing 1.0 against 1.1 has to reconstruct the intent from the diff. | REQ-WVR traceability posture; matches TSPEC/PLAN convention |
+
+Scope note: F-01 is tagged `Process` and not `Local` deliberately — it references a failure mode of
+the review mechanism that recurs across phases and is reusable regardless of where the fix lands,
+which is the `Cross-Feature`/`Process` tag-selection test. Neither finding is High; neither blocks.
+
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | If the routed `ERRATUM: TSPEC` resolves the *other* way — TSPEC's author defends "default run count" and asks PLAN to drop the pin — the document says the change is four `fc.assert` sites in one new file. Is that reversal expected to come back through PROPERTIES as a v1.2, or is it small enough to be absorbed at implementation time by T-08? I read the current text as the former; confirming it would save a round. |
+| Q-02 | PROP-REPO-01 is knowingly RED until the OB-F1 rebase lands (`PROPERTIES:570–573`), and TSPEC `:757` warns that in wave mode a red gate halts the wave and every wave after it. That sequencing precondition is stated in three documents now. Is there anything in this document that a reader could mistake for permission to author the T-03 test *before* the rebase, or is "the correct pre-rebase state is the test not yet authored" (TSPEC `:757`) unambiguous enough as it stands? I believe it is, but it is the one place where a misread costs a halted feature rather than a failed test. |
+
 ## Positive Observations
+
+- **The re-verification discipline is the right instinct, and it is the thing I would most want kept.**
+  Rather than re-asserting four errata from a previous drafting pass, the revision re-opened each one
+  against the parent documents at HEAD and found three had been closed by their owners. That is
+  exactly DEC-ERR-01's requirement, and the four-row table makes the adjudication auditable instead
+  of asking the reader to trust it. I re-ran all four myself and the table was right in every row.
+- **The one genuinely open item was not softened to make the table look clean.** It would have been
+  easy to close all four and move on. Routing one erratum while closing three is the honest outcome,
+  and it is the outcome that protects the implementer from a 5×-shallow law suite.
+- **Divergence from a parent is recorded where the reader will actually hit it.** The `numRuns: 500`
+  choice appears in the routed-findings section *and* at the `## Fixtures` run-depth paragraph, with
+  the precedent named and quoted at both. A reader of the tests is never left guessing which parent
+  was believed — which is precisely what the document claims it is doing.
+- **Retired PLAN ids are now explicit.** `PROPERTIES:525–526` states that T-05/T-06/T-09 were merged
+  at PLAN v1.1 and are not reused. My round-1 grounding noted a reader could wonder about the gap;
+  the revision closed it unprompted.
+- **AT-14's split is presented as a presentation choice and defended as one.** The document is careful
+  to say the split is its own, not a routed defect, and that both readings assert the same behaviour.
+  I verified conjunct by conjunct that this is true. Distinguishing "I chose to render this as two
+  ids" from "my parent got this wrong" is a distinction plenty of documents blur.
+- **Negative oracles carry their positive halves.** PROP-REPO-03 and PROP-REPO-05 both pair the
+  absence claim with a presence assertion on the same observable, and both say why in the oracle
+  table. The Overview's promise that "no property is discharged by an absence alone"
+  (`PROPERTIES:21–22`) is kept, not just stated.
 
 ## Recommendation
 
