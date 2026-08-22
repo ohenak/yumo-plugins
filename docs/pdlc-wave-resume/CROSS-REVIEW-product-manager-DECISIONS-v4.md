@@ -85,6 +85,57 @@ correct disposition for findings that this edit neither introduced nor was asked
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC as it now stands.** Confirmed. No new finding is
+raised by this round's delta; four findings are carried forward, all `inherited`, none gating.
+
+Edit by edit, against TSPEC at HEAD:
+
+**Edit 1 — the version header and revision-history row (`TSPEC:7`, `TSPEC:20`).** Bookkeeping.
+DECISIONS pins no TSPEC version number anywhere — `grep -n "TSPEC v1"` over DECISIONS returns
+nothing, so the bump cannot falsify a citation. Worth noting for its own sake: the new row states
+"Corrections only; no decision re-litigated and no scope change", and the diff bears that out — the
+floor itself, its 85% threshold and its backstop are carried through unchanged. That is the erratum
+mechanism behaving as designed, and it is what makes this confirmation cheap.
+
+**Edit 2 — §5.8's coverage floor re-assigned to the last implementation task (`TSPEC:846`–`:852`).**
+The substitution is `the last implementation wave's postWaveCommand` → `the last implementation task
+(PLAN T-10, RK-2)`, with the reason now stated inline. DECISIONS says nothing about §5.8, the
+coverage floor, the 85% branch threshold, T-10 or RK-2 — verified by grep, reported in Context. The
+one adjacent fact DECISIONS does assert is `:153`'s enumeration of the four `implementation` keys,
+and the erratum's own justification quotes that same four-key surface (V-13) as its premise. Both
+documents now say, independently, that `postWaveCommand` is a single global key. **The compression is
+faithful and got no less faithful.** No finding.
+
+**Edit 3 — RT-7's mitigation rewritten to match (`TSPEC:918`).** Same substitution, same reason,
+backstop preserved word for word ("the per-arm unit coverage of §5.3 and the generative suite of §5.7
+are designed to cover the added branches directly, and the risk degrades to a PUB-time finding rather
+than a silent one"). DECISIONS' own risk material is in `## Consequences` and in the measured-surface
+table; neither cites RT-7. The nearest neighbour is DECISIONS `:472`, which cites the *post-wave
+command runs before the gate* fact that RT-**5** owns — and `TSPEC:916` still states it verbatim,
+outside the erratum range. No finding.
+
+**What is still open, and unchanged.** Four findings, none introduced by this round:
+
+- **Medium (was v3 F-01, now F-01).** DECISIONS `:205`–`:207` quotes TSPEC §3.1 as saying "four of
+  the seven reasons interpolate" and reports the correction as an outstanding erratum. `git grep -n
+  'four of the seven'` over TSPEC at HEAD returns **no hits**; `TSPEC:426`–`:428` reads "Three of the
+  seven reasons interpolate run-specific values … carrying four interpolated values between them",
+  which is DECISIONS' own count, adopted. The substantive sentence above the parenthetical
+  (`:200`–`:204`) is correct and should not change; only the parenthetical's tense and attribution
+  are stale.
+- **Medium (was v3 F-02, now F-02).** DECISIONS `:167`–`:169` asserts "TSPEC §2.4's announcement
+  table omits the invalid-pointer notice entirely rather than excluding it by rule; that is an
+  upstream gap". §2.4 at HEAD closes the catalogue by rule, states the `iff` criterion, and gives the
+  excluded notice its own table row with an exclusion reason. The gap the sentence reports no longer
+  exists.
+- **Low (was v2 F-01, v3 F-03, now F-03).** DECISIONS `:44`'s measured-surface row calls
+  `pdlc/workflows/dist/pdlc-cli.mjs` "a *generated* artifact built from the module below"; the
+  artifact's own header names `orchestrate-dev.js` **and** `cli.mjs` as inputs. Re-verified at HEAD;
+  still open.
+- **Low (was v2 F-02, v3 F-04, now F-04).** DEC-WVR-05's `*(observable)*` re-evaluation trigger
+  depends on a contiguity property that no assertion in its Consequences row owes, so the trigger has
+  no detector. Untouched this round; still open.
+
 ## Consequences
 
 ## Positive Observations
