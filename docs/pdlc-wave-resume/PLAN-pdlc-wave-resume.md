@@ -236,3 +236,98 @@ task is strictly downstream of the earlier one through the `Deps` chain
 | Upstream branch | `feat-pdlc-wave-resume`, rebased onto the default branch | OB-F1. T-01 is the gate that proves it landed. |
 
 ## 4. Verification
+
+### 4.1 Acceptance-test coverage — every FSPEC AT has an owning task
+
+TSPEC §5.4 is the contract that no AT is left without a home; this table is the contract that no AT
+is left without an *owner*. Files are named as they will exist after T-01's gate passes.
+
+| FSPEC AT | Owning task(s) | File |
+|---|---|---|
+| AT-01 automatic resume at the failed wave | T-07 | `waveExecution.test.js` |
+| AT-02 disregard catalogue complete and closed | T-02 (unit, incl. IG-6's closure), T-07 (integration, per code) | `waveResume.test.js`, `waveExecution.test.js` |
+| AT-03 ordering of disregard causes | T-02 (unit pair), T-07 (`merge-base` call-count oracle) | both |
+| AT-04 verification independence | T-07 (via H-1's ordered event sink) | `waveExecution.test.js` |
+| AT-05 operator override wins | T-07 | `waveExecution.test.js` |
+| AT-06 pointer at default is not a setting | T-07 | `waveExecution.test.js` |
+| AT-07 pointer past the end | T-07 | `waveExecution.test.js` |
+| AT-08 the hatch is named, and is the only one | T-07 (i)(ii), T-02 (iii, `IMPLEMENTATION_DEFAULTS` set equality) | both |
+| AT-09 verified-but-uncommitted is never completed | T-07 (+ companion arm) | `waveExecution.test.js` |
+| AT-10 a no-change wave is still completed | T-07 | `waveExecution.test.js` |
+| AT-11 ancestry is falsification, not archaeology | T-07 | `waveExecution.test.js` |
+| AT-12 complete record skips the wave loop in full | T-07 (four conjuncts) | `waveExecution.test.js` |
+| AT-13 outcome catalogue closed at three | T-02 (set equality), T-07 (announcement-table closure) | both |
+| AT-14 the record never becomes tracked content | T-03 | `waveResumeRepoState.test.js` |
+| AT-15 failed writes are notices, bounded | T-07 (arm 1 and arm 2, via H-2) | `waveExecution.test.js` |
+| AT-16 queue parity | T-04 | `waveResumeQueueParity.test.js` |
+| AT-17 advisory remediation composes | T-07 (integration half), T-03 (ownership-manifest half) | both |
+| AT-18 completion accumulates across invocations | T-07 | `waveExecution.test.js` |
+| P-1 … P-4 (TSPEC §5.7 laws) | T-08 | `waveResumeProperties.test.js` |
+
+Coverage claims above are stated against the **current** suite layout, verified: of the six files
+named, exactly one — `pdlc/workflows/__tests__/waveExecution.test.js` — exists today (2,761 lines
+at `origin/main`); `waveResume.test.js`, `waveResumeProperties.test.js`,
+`waveResumeQueueParity.test.js`, `waveResumeRepoState.test.js` and `waveResumePreflight.test.js`
+match nothing under `pdlc/workflows/__tests__/` at `origin/main` or in this tree, and every task row
+that names one declares it new.
+
+### 4.2 The three oracle rules every task is held to
+
+Restated here rather than assumed, because they are what makes the tests above falsifiable
+(TSPEC §5.1):
+
+1. **No implementation echoes.** Every expected value is a literal transcribed from the TSPEC or
+   the FSPEC. An expected announcement is never obtained by calling `WAVE_IGNORE_REASONS[code](ctx)`
+   — that would make each renderer trivially agree with itself.
+2. **No absence-only oracles.** Every skip assertion is a call count on a spy paired with a
+   positive conjunct. "No commit was produced" cannot distinguish a skipped wave from one that ran
+   with nothing to add.
+3. **No matcher is relaxed.** Replacing `toContain(exactString)` with a `startsWith` predicate is
+   forbidden in T-07; `toEqual` on the filtered `merge-base` call list is load-bearing, not
+   stylistic — `toContainEqual` passes under the eager-probe mutation DEC-WVR-08 rejects.
+
+### 4.3 Mutation resistance — the four mutations this plan's task split preserves
+
+| Mutation | Killed by | Task |
+|---|---|---|
+| Delete the ancestry guard | AT-02 set equality (`head-unreachable` disappears) + AT-11 | T-02, T-07 |
+| Move the record write outside the transport branch | AT-09's empty `ledgerWrites(writes)` | T-07 |
+| Record a run-relative wave number | AT-18 only | T-07 |
+| Resolve the ancestry probe eagerly | AT-03/AT-11 `merge-base` call counts, `toEqual` only | T-07 |
+
+The fourth is the reason T-05 and T-07 are ordered as they are: the eager-probe mutation is
+invisible to every behavioural assertion, so the extraction task cannot be self-certifying and is
+measured against the shipped net instead.
+
+### 4.4 Risks this PLAN carries
+
+| # | Risk | Mitigation |
+|---|---|---|
+| RK-1 | **RED-terminal batches under a script-owned gate.** Batches 2 and 4 legitimately end red (rule 3), but the runtime evaluates a wave's gate mechanically — it has no notion of a declared RED-terminal wording, and a red gate halts the wave and every wave after it. | Two runnable options, and the choice is the operator's: **(a)** dispatch each RED/GREEN pair as one wave by accepting the halt and re-invoking with `implementation.startWave` pointing at the green wave once its task has landed; **(b)** run Phase I for batches 2→3 and 4→5 as paired dispatches. Recorded here rather than discovered at wave 2. This is a runtime/authoring-contract tension, not a defect of any upstream document, so it is not raised as an erratum. |
+| RK-2 | **The coverage floor is not a wave gate.** TSPEC §5.8 asks for it as the last wave's `postWaveCommand`; the config surface has one global `postWaveCommand` (V-13), so a global setting would run `test:coverage` after every wave — red at waves 2 and 4 by construction. | §3.4 assigns the floor to **T-10**, the last task, which runs it explicitly and reports the measured per-file branch number. The floor stays a Phase-I-level gate rather than a PUB-time surprise; the difference from TSPEC's wording is raised as an erratum. |
+| RK-3 | **Rebase churn (TSPEC RT-1).** `orchestrate-dev.js` is the largest tracked source module (734,711 B at `origin/main`) and this feature's edit surface. | The rebase happens before implementation, gated by T-01. The edit surface is one comment block, one extracted function, five announcement suffixes and two report details. |
+| RK-4 | **A fourth shipped assertion turns out to break** (TSPEC RT-3's residual). | T-07 runs the full `pdlc/workflows` suite as its own check before the wave's gate; any further assertion found to change is added to TSPEC §2.4's table in the same commit, never fixed silently. |
+| RK-5 | **T-07 is a large single task** — harness extensions, three assertion updates and sixteen integration cases in one file. Splitting it is what rule 2 forbids. | Bounded by the fact that its three parts have distinct oracles and by T-05 having already landed and been proven net-neutral. If T-07 exceeds a wave's budget the correct response is to re-invoke, not to split the file across two same-batch tasks. |
+
+### 4.5 Definition of Done
+
+- [ ] T-01 passes: the branch is rebased and every `BL-PREREQ` symbol and file is present at HEAD.
+- [ ] All eleven TSPEC delta rows D-1 … D-11 are landed, each by the task §1.1 names.
+- [ ] `classifyWaveLedger` is pure, total and never performs IO; the three catalogues are
+      `Object.freeze`d exports.
+- [ ] The lazy-probe contract holds: **zero** `merge-base` calls on the feature-mismatch,
+      plan-changed and no-`head` fixtures; **exactly one** on the ancestry fixture.
+- [ ] All eighteen FSPEC ATs have a passing owning test per §4.1, and the four laws P-1 … P-4 pass.
+- [ ] Exactly three shipped assertions changed, each named by TSPEC §2.4, each to a transcribed
+      literal, with no matcher relaxed and no other assertion in the ledger `describe` touched.
+- [ ] `waveExecution.test.js` was byte-unchanged by T-05 (RT-2's regression-net invariant).
+- [ ] `M-WVR-1` and `M-WVR-2` are in `docs/_constraints/pdlc-wave-gate-baseline.md` under a new
+      section, the `Version` is bumped, and `M-WG-6` is recorded as reviewed-and-left.
+- [ ] `.claude/pdlc-wave-state.json` appears in no owned-path set, no `postWavePathspecs` value and
+      no commit; `git check-ignore -v` resolves it to the root-anchored rule.
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and
+      `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0.
+- [ ] `npm run test:coverage` from `pdlc/workflows` exits 0 (`--per-file --branches 85`), with the
+      measured `orchestrate-dev.js` branch number recorded.
+- [ ] No new `main()` parameter, no new runtime-adapter binding, no fifth `implementation.*` key
+      (REQ C-3, TSPEC §3.4/§3.5).
