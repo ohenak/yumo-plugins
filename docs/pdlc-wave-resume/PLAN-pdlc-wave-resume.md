@@ -341,28 +341,30 @@ Restated here rather than assumed, because they are what makes the tests above f
    forbidden in T-07; `toEqual` on the filtered `merge-base` call list is load-bearing, not
    stylistic — `toContainEqual` passes under the eager-probe mutation DEC-WVR-08 rejects.
 
-### 4.3 Mutation resistance — the four mutations this plan's task split preserves
+### 4.3 Mutation resistance — four mutations, each with an owner who **runs** it
 
-| Mutation | Killed by | Landed in |
+v1.0 asserted these four as predictions ("killed by"). Round-1 F-04 is right that a believed
+mutation is not an observed one, so each row now names the task that must **apply the mutation,
+observe the RED against the named oracle, revert, and record the observed failure output in its
+task report** — the shape T-04's falsification arm already used in v1.0. The DoD carries the
+checkbox.
+
+| Mutation | Oracle that must red | Applied and observed by |
 |---|---|---|
-| Delete the ancestry guard | AT-02 set equality (`head-unreachable` disappears) + AT-11 | T-02, T-07 |
+| Delete the ancestry guard | AT-02 set equality (`head-unreachable` disappears) + AT-11 | unit half T-02, integration half T-07 |
 | Move the record write outside the transport branch | AT-09's empty `ledgerWrites(writes)` | T-07 |
 | Record a run-relative wave number | AT-18 only | T-07 |
 | Resolve the ancestry probe eagerly | AT-03/AT-11 `merge-base` call counts, `toEqual` only | T-07 |
 
-The fourth is the reason T-02 and T-07 are ordered as they are: the eager-probe mutation is
-invisible to every behavioural assertion, so the extraction task cannot be self-certifying and is
-measured against the shipped net instead.
+The fourth is the reason T-02 and T-07 are ordered as they are, and it is the row that most needed
+promoting from claim to observation: the eager-probe mutation is invisible to every behavioural
+assertion, and TSPEC §5.5 records that the shipped ancestry test's `toContainEqual` **passes** under
+it. A matcher that load-bearing is demonstrated, not asserted — if T-07's author reaches for
+`toContainEqual` by muscle memory, the recorded mutation run is what notices.
 
-### 4.4 Risks this PLAN carries
-
-| # | Risk | Mitigation |
-|---|---|---|
-| RK-1 | **RED-terminal batches under a script-owned gate.** Batches 2 and 4 legitimately end red (rule 3), but the runtime evaluates a wave's gate mechanically — it has no notion of a declared RED-terminal wording, and a red gate halts the wave and every wave after it. | Two runnable options, and the choice is the operator's: **(a)** dispatch each RED/GREEN pair as one wave by accepting the halt and re-invoking with `implementation.startWave` pointing at the green wave once its task has landed; **(b)** run Phase I for batches 2→3 and 4→5 as paired dispatches. Recorded here rather than discovered at wave 2. This is a runtime/authoring-contract tension, not a defect of any upstream document, so it is not raised as an erratum. |
-| RK-2 | **The coverage floor is not a wave gate.** TSPEC §5.8 asks for it as the last wave's `postWaveCommand`; the config surface has one global `postWaveCommand` (V-13), so a global setting would run `test:coverage` after every wave — red at waves 2 and 4 by construction. | §3.4 assigns the floor to **T-10**, the last task, which runs it explicitly and reports the measured per-file branch number. The floor stays a Phase-I-level gate rather than a PUB-time surprise; the difference from TSPEC's wording is raised as an erratum. |
-| RK-3 | **Rebase churn (TSPEC RT-1).** `orchestrate-dev.js` is the largest tracked source module (734,711 B at `origin/main`) and this feature's edit surface. | The rebase happens before implementation, gated by T-01. The edit surface is one comment block, one extracted function, five announcement suffixes and two report details. |
-| RK-4 | **A fourth shipped assertion turns out to break** (TSPEC RT-3's residual). | T-07 runs the full `pdlc/workflows` suite as its own check before the wave's gate; any further assertion found to change is added to TSPEC §2.4's table in the same commit, never fixed silently. |
-| RK-5 | **T-07 is a large single task** — harness extensions, three assertion updates and sixteen integration cases in one file. Splitting it is what rule 2 forbids. | Bounded by the fact that its three parts have distinct oracles and by T-02's extraction having already landed and been proven net-neutral. If T-07 exceeds a wave's budget the correct response is to re-invoke, not to split the file across two same-batch tasks. |
+Mechanics, so the observation is cheap rather than ceremonial: apply the mutation in the working
+tree, run only the named oracle's test file, paste the failure header into the task report,
+`git checkout --` the file. Nothing is committed in the mutated state.
 
 ### 4.5 Definition of Done
 
