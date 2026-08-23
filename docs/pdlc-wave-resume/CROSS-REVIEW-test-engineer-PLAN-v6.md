@@ -142,7 +142,20 @@ pinned, matching TSPEC §5.7 and PROPERTIES — the divergence flagged in round 
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **One "four mutations" survives the five-mutation correction.** §4.4's RK-5 still sizes T-07 as "harness extensions, three assertion updates, sixteen integration cases, five announcement suffixes, one report-row branch and **four mutation runs**, in two files". Every *duty-bearing* statement was corrected — §4.3's heading and its five rows, T-07's "§4.3 rows 1–5" cell, §2.3's trade paragraph, RK-1, and §4.5's DoD checkbox — so no implementer can stop at four: the checkbox they tick and the cell they work from both say five. What is wrong is the risk row's own arithmetic, and it matters only in that RK-5 is the row that decides whether T-07 fits a wave budget; sizing it one mutation light is a small, one-directional understatement of the largest task in the plan. Remedy is one word: `four mutation runs` → `five mutation runs`. Measured: `grep -n "four mutation"` over the PLAN returns exactly this one line. | §4.4, RK-5 |
+
+No High and no Medium findings are open. The four prior Mediums (v5 F-02, F-03, F-04, and the
+round-4 carry-overs behind them) are each resolved by a landed edit whose factual claim was
+re-measured above, and v5's High (F-01) is resolved in every place where an implementer's obligation
+is written down.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §1.2 now keeps the v1.0 pre-rebase measurement table *and* labels it "no longer the tree's current state", which is the honest way to preserve why T-01 exists. As the document ages further, would it be worth marking the table's rows with the v1.3 re-measured value in a fourth column, so a future reader who skims the table without reading the paragraph above it cannot misread `1637` as current? Not a finding — the paragraph does the job today, and T-01's own oracle is what actually enforces the state. |
 
 ## Positive Observations
 
