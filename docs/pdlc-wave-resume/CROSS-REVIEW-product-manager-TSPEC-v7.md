@@ -166,3 +166,9 @@ into the next touch of this document — no separate erratum round is warranted 
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 1, "low": 0}
+
+APPROVAL-HASH: sha256:4b5f7f5b2097a344e1e8fafffaa1d7e12f0fd5f583e302f5bf798d22c13c48f5
+APPROVAL-HASH-NORMALIZED: sha256:299b4edf0dd6d8518efab331bfd6e50f98cc8d8a9c6720054fda57a3440548ca
+REVIEWED-COMMIT: 31df4edae2f11429449ed860850a8a784dea6486
+UPSTREAM-STATE: REQ sha256:17e83bfcd332f8f8f0482e2ebee7bbe78a3f434193dd3f9c3589723e39e8c79f
+UPSTREAM-STATE: FSPEC sha256:9a6be7b5a95e9b7f16c30e88154995fdd546a60093a3b3620af24e831552356e
