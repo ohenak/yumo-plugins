@@ -104,7 +104,24 @@ Every claim above is a command I ran in this tree, not an impression.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | §4.6's preamble justifies parsing against `git show origin/main:pdlc/workflows/orchestrate-dev.js` "since this tree is 1,637 commits behind". This revision's own §1.2 re-dating retracts that fact — `git rev-list --count HEAD..origin/main` is `0` at HEAD, and `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` is empty. No parse result is affected (the two parsers are byte-identical), so this is description staleness, not a wrong measurement. The same paragraph also still says the parse was run "after the v1.2 erratum edit" while the retired-ids row below it reads "re-measured v1.3" and the v1.3 revision-history row claims a v1.3 parser re-run. Fix, one edit: replace the "commits behind" clause with the reason that survives (the parser is the shipped one at `origin/main`, byte-identical to this tree's), and say the parse was re-run after the v1.3 edit. Keep every row of the table verbatim. | REQ BL-04 / PLAN rule 6 |
+
+Prior findings, all closed this round and recorded here so the round history is readable without
+opening v5:
+
+| Prior ID | Severity | Status in v1.3 |
+|---|---|---|
+| v5 F-01 | High | **Resolved.** §4.3 gains the fifth mutation row with AT-05's write-side conjunct as its sole oracle and T-07 as its owner; the five count claims are corrected; no task, batch or `Deps` change, as scoped |
+| v5 F-02 | Low | **Resolved.** §3.4's `Coverage floor` row cites TSPEC RT-7 as agreed; value and V-13 reasoning verbatim unchanged |
+| v5 F-03 | Low | **Resolved.** §4.4's RK-2 records the agreement; merge-gate risk and mitigation text unchanged |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §4.6's parse verification is now a record of three separate runs (post-v1.1, post-v1.2, and the v1.3 re-run the revision history claims). Would a single "last parsed at" line above the table be worth more to the implementer than the accreted history? Not a finding — the results are what the implementer needs, and they are current — but the provenance is getting harder to read than the data. |
 
 ## Positive Observations
 
