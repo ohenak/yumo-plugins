@@ -373,9 +373,9 @@ Restated here rather than assumed, because they are what makes the tests above f
    forbidden in T-07; `toEqual` on the filtered `merge-base` call list is load-bearing, not
    stylistic — `toContainEqual` passes under the eager-probe mutation DEC-WVR-08 rejects.
 
-### 4.3 Mutation resistance — four mutations, each with an owner who **runs** it
+### 4.3 Mutation resistance — five mutations, each with an owner who **runs** it
 
-v1.0 asserted these four as predictions ("killed by"). Round-1 F-04 is right that a believed
+v1.0 asserted these as predictions ("killed by"). Round-1 F-04 is right that a believed
 mutation is not an observed one, so each row now names the task that must **apply the mutation,
 observe the RED against the named oracle, revert, and record the observed failure output in its
 task report** — the shape T-04's falsification arm already used in v1.0. The DoD carries the
@@ -387,12 +387,19 @@ checkbox.
 | Move the record write outside the transport branch | AT-09's empty `ledgerWrites(writes)` | T-07 |
 | Record a run-relative wave number | AT-18 only | T-07 |
 | Resolve the ancestry probe eagerly | AT-03/AT-11 `merge-base` call counts, `toEqual` only | T-07 |
+| Suppress the record write while `explicitPointer` is true (write only on automatic runs) | AT-05's **write-side** conjunct only — the mutation leaves AT-05's resume-point, provenance-token and never-consulted conjuncts green, and leaves AT-07, AT-15 and AT-18 green with them (TSPEC §5.5, mutation 5) | T-07 |
 
 The fourth is the reason T-02 and T-07 are ordered as they are, and it is the row that most needed
 promoting from claim to observation: the eager-probe mutation is invisible to every behavioural
 assertion, and TSPEC §5.5 records that the shipped ancestry test's `toContainEqual` **passes** under
 it. A matcher that load-bearing is demonstrated, not asserted — if T-07's author reaches for
 `toContainEqual` by muscle memory, the recorded mutation run is what notices.
+
+The fifth (added v1.3, from TSPEC §5.5's five-mutation set) is the one that removes resume from
+exactly the recovery path §2.5 ratifies the write for: an operator who points a run at a wave still
+gets a record written, so the *next* resume works. Suppressing the write on operator-pointed runs
+only is invisible to the automatic-provenance tests — which is why AT-05's write-side conjunct is
+the single oracle named, and why T-07 must run this mutation rather than predict its outcome.
 
 Mechanics, so the observation is cheap rather than ceremonial: apply the mutation in the working
 tree, run only the named oracle's test file, paste the failure header into the task report,
