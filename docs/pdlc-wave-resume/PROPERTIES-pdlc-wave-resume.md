@@ -251,6 +251,15 @@ then the stage-2 `c8 report --check-coverage --per-file --branches 85 …`, whic
 | `build-runtime.mjs` | 88.23 | +3.23 — untouched |
 | `scripts/capture-learnings-baseline.mjs` | 89.47 | +4.47 — untouched |
 
+**Which reading of the threshold is intended (PM Q-03, SE Q-06).** `88.75` is a *recorded baseline*,
+not a frozen constant: PROP-COV-01's floor is `≥ 85` **and** `≥ the number T-10 measures on
+`orchestrate-dev.js` immediately before applying this feature's diff`, with `88.75` as the value
+measured on 2026-08-23 and the figure to use if T-10 finds the module unchanged since. T-10
+therefore re-measures at task start, records both numbers in its report, and treats the *delta* as
+the guard. This is deliberate: an unrelated upstream commit that drops the module to 88.60 is not a
+regression this feature caused and must not block T-10, while a drop caused by this feature's own
+~20 new branches must.
+
 No included module is under the floor today, so PROP-COV-01 starts from a green gate rather than
 inheriting a red one — which is the fact that makes it a usable regression guard. Two caveats the
 implementer must carry: (i) none of the four CI checks in the repo's `CLAUDE.md` table runs
