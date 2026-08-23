@@ -133,4 +133,79 @@ not rejected.
 
 ## Best-Guess Root Cause
 
+**Primary: the erratum item list was minted from the routed `ERRATUM: PLAN` lines only, so findings
+raised by upstream-cascade confirmation rounds had no channel into the edit.**
+
+Compare the two lists. The round was opened with items about: §5.7's `numRuns` divergence; adding
+`docs/pdlc-wave-resume/**` to A-1's frozen glob list (raised four times, deduped); T-04's retired
+`distribution.checkEnabled` rationale; and untracking `.claude/pdlc-wave-state.json`,
+`.claude/pdlc.config.json` and `pdlc/workflows/coverage/**`. Every one of those originates in a
+`ERRATUM: PLAN` line emitted downstream, during Phase PR. Every one of them landed, correctly, as
+T-11, T-12, the T-04 rationale replacement and an absorbed `numRuns` note.
+
+Not one item on that list is a v3 or v4 cross-review finding. The mutation-5 High and the two
+coverage-floor Lows were filed as `F-` rows in cross-review documents by the PLAN's own approvers, in
+rounds whose type is "upstream-cascade confirmation" — rounds that exist precisely because TSPEC moved
+under an approved PLAN. Those rounds record findings but do not, by themselves, re-open the owning
+phase or mint erratum items. When Phase PR later opened its erratum round, the mint drew from the
+routed-ERRATUM channel and the cascade findings were invisible to it. se-author then did exactly what
+the dispatch asked and nothing more — which is the correct behaviour against the list it was given,
+and is why the revision history is silent rather than dismissive.
+
+**Contributing: TSPEC moved twice under an approved PLAN, and the second move added an obligation.**
+PLAN v1.1 was approved at v2 against TSPEC v1.2. TSPEC then went to v1.3 (RT-7 reassigns the coverage
+floor to the last implementation task, PLAN T-10) and to v1.4 (§5.5 goes from three mutations to five,
+§5.4's AT-05 gains the write-side conjunct, §5.7 pins `numRuns: 500`). The v1.3 move made two PLAN
+sentences false — cheap, and the v3 Lows say so. The v1.4 move created a *new obligation* the PLAN had
+never been asked to discharge: a fifth mutation with an owner, an oracle pairing, an execution step
+and a DoD checkbox. DEC-ERR-01's re-grounding rule exists for exactly this — the author of an erratum
+round must re-read its immediate upstream at HEAD, enumerate what the upstream *decided*, and absorb
+those decisions ahead of the raised items. Here the `numRuns` decision was absorbed and recorded; the
+§5.5 five-mutation decision, from the same TSPEC revision, was not. Partial absorption is the more
+dangerous failure, because the changelog then reads as though re-grounding happened.
+
+**Contributing: count claims are duplicated across seven sites, so a one-row addition is nonlocal.**
+"Four mutations" is asserted in §1.1, §1.2's revision history, §4.3's heading and table, T-07's
+"Mutation duty (§4.3 rows 1–4)", RK-1, RK-5's "four mutation runs" and §4.5's DoD checkbox. A single
+number restated in seven places is what turns a one-row edit into a `nonlocal` High, and it is what
+made pm's and te's locality tags diverge. The same duplication bit §4.6's "Retired ids" row, where the
+task count moved from seven to nine in one cell of a table and stayed seven in the next (te F-05).
+
+**Not a cause.** Reviewer disagreement, reviewer fatigue, an under-specified TSPEC, or an se-author
+error of judgement. The upstream is clear, the reviewers agree, and the edit that shipped is good work
+against the list it received. This is a routing failure, and it will recur on any feature whose
+upstream takes a cascade round after approval.
+
 ## Recommendation
+
+Every item below is a one-shot edit to `docs/pdlc-wave-resume/PLAN-pdlc-wave-resume.md` by se-author.
+No task is added or moved, no `Deps` cell changes, and the batch DAG does not re-derive — te-review
+confirmed the nine-task parse of v1.2 is already correct. Land all six, bump the PLAN to v1.3 with a
+revision-history row that names the v3/v4/v5 findings each item discharges, then flip this file's
+marker to `RESOLVED: yes` in a commit that names what addressed each finding.
+
+| # | Finding(s) | Edit |
+|---|---|---|
+| R-1 | pm F-01, te F-01 (**High**) | Add the fifth row to §4.3's mutation table: *suppress the record write while `explicitPointer` is true* — **Oracle must red:** AT-05's write-side conjunct (non-empty `ledgerWrites`, `lastGreenWave` plan-absolute); **Applied and observed by:** T-07. Then update **all five** "four mutations" count claims — §1.1, §4.3's heading, T-07's "Mutation duty (§4.3 rows 1–4)" → `1–5`, RK-1's "§4.3's four mutations executed", RK-5's "four mutation runs" — and add the matching §4.5 DoD checkbox so the fifth mutation has an owner, a duty and a box |
+| R-2 | pm F-02, te F-03 | §3.4's `Coverage floor` row: replace "the erratum this dispatch raises" with a citation of **TSPEC RT-7** as it stands at HEAD. Keep the T-10 assignment and the V-13 four-key reasoning verbatim |
+| R-3 | pm F-03, te F-03 | §4.4 RK-2: delete "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" and "the difference from TSPEC's wording is raised as an erratum"; record instead that TSPEC RT-7 now assigns the floor to the last implementation task (PLAN T-10, RK-2) — i.e. that upstream and PLAN agree. **Leave the merge-gate risk and its mitigation text unchanged** |
+| R-4 | te F-02 (Medium) | §2.1 T-12's rationale: replace "reds no oracle today" with the measured fact — `npm run test:coverage`, which T-10 runs for batch 4's gate, deletes tracked `coverage/tmp/*.json` and reds `PROP-SWEEP-2(a)`. T-12's action and DoD already stand; only the reason sentence is wrong, and it is wrong in the direction that makes a batch-4 gate look like tidiness |
+| R-5 | te F-04 (Medium) | §2.1 T-10 oracle (i), §2.2's batch-4 gate and §4.5's coverage DoD line: scope the oracle to `orchestrate-dev.js`'s per-file number rather than binding `npm run test:coverage` to exit 0 unconditionally. TSPEC §5.8's fourth `c8.include` entry is external to this feature; report the whole-command exit, do not assert it |
+| R-6 | te F-05 (Low) | §4.6's "Retired ids" row: seven → **nine**, matching the same table's own corrected count and the parser's actual return |
+
+**Process changes, to prevent the recurrence rather than this instance.** Route these as findings on
+the pipeline itself, not as PLAN edits:
+
+1. **Mint erratum item lists from the union of routed `ERRATUM:` lines *and* unlanded findings from
+   the document's own prior cross-review rounds** — cascade-confirmation rounds included. A finding
+   filed by an approver against an approved document is an obligation with no home today; three
+   rounds of silence is the evidence.
+2. **Make DEC-ERR-01 absorption enumerable and checkable.** The re-grounding rule was followed for
+   TSPEC §5.7 and missed for TSPEC §5.5 in the same revision. The erratum changelog should list every
+   upstream decision considered, each marked absorbed or not-applicable, so a half-absorbed
+   re-grounding is visible to the confirmer instead of reading as a complete one.
+3. **Single-source repeated counts.** Seven restatements of "four mutations" is what made a one-row
+   fix nonlocal and split the reviewers' locality tags. Where a PLAN states a count of rows in one of
+   its own tables, state it once and reference it.
+
+REVISION-COMPLETE: yes
