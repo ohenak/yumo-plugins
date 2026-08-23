@@ -134,3 +134,70 @@ the table is the document's exhibit of "verified in this working tree rather tha
 figure that its own next commit falsifies weakens that exhibit. Either drop the ahead-count (the
 `--is-ancestor` exit code carries the whole claim on its own) or qualify it as "≥ 478 as of
 `<sha>`".
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-08 | Still open from v2 Q-04 / v3 Q-05, and untouched by this round: H-2's `failWriteOn(path, callIndex)` — is `callIndex` counted over *all* `_writeFile` calls or over calls to the ledger path only? PROP-RECORD-06 scripts "succeed on wave 1, throw on wave 3", which is only well defined once that is pinned, and the shipped `makeLedgerArgs` `_writeFile` double captures every path. The predicate taking `path` as its first argument suggests "all calls, filtered by the predicate itself" — if that is the intent, one clause in § The two harness extensions saying so closes it, and it is the last unpinned thing I can see in the harness design. |
+| Q-09 | Given F-02's ordering point: is the untrack expected to happen before PLAN batch 1's gate, or before batch 2's? T-01's gate is "full suite green, including T-01" (PLAN §2.2), and the whole suite includes `documentOracles.test.js` — so on my reading batch **1** already cannot pass in this tree, one batch earlier than T-03's own conjunct needs it. If that is right it is worth stating, because it means the untrack is a precondition of the very first wave rather than of the repo-state task. |
+
+## Positive Observations
+
+- **Both High findings were closed by re-measuring, not by re-wording.** The grounding table was
+  replaced row for row with commands I could re-run, and all five rows reproduced exactly, down to
+  `:12864`, `:46` and `b1b846bd`. The `check-ignore` subtlety — exit 1 with no output on a *tracked*
+  path, versus `--no-index` resolving to `.gitignore:46` — is now stated in both § Overview and G-4,
+  which is precisely the trap an implementer would otherwise fall into.
+- **The revision says it was wrong, in the document, in both places.** "The earlier version of this
+  section described a pre-rebase tree; that premise is now false and the correction is recorded here
+  rather than silently overwritten," and G-4's "that diagnosis was wrong". A spec that keeps a record
+  of its own corrected claims is worth more to the next reader than one that reads as though it was
+  always right, and it is what makes a round-4 delta review cheap.
+- **F-07's remedy was researched, not just accepted.** The § 11 red table cites `A1_GLOBS`' actual
+  membership, names `docs/_constraints/pdlc-retirement-baseline.md`'s glob table as the second half of
+  the change, and carries the `docs/pdlc-advisory-wave-gate/**` precedent with its rationale — so the
+  eventual PLAN task can be written from the row without re-deriving anything. I re-ran the suite and
+  got the same three failures the table predicts.
+- **G-4's third consequence is the observation I would have wanted a reviewer to make.**
+  "REQ-WVR-10's own failure mode is occurring live on the feature branch that implements the guard
+  against it." That is the sentence that turns a repo-hygiene chore into something an orchestrator
+  will actually prioritise.
+- **AT-12's partial trace is honest about a coverage hole rather than papering it.** The coverage
+  matrix row now says which conjunct is uncovered, why it is unobservable through the `makeAgent`
+  double, and where it went instead. I verified the conjunct numbering against `TSPEC:755` and
+  confirmed PROP-SKIP-03 carries the dispatch-once/gate-once half, so "partial" is exactly the right
+  word — not "uncovered", not silently "covered".
+- **Q-06 was answered by making the guard *more* precise rather than by picking the easy reading.**
+  Choosing the delta over the literal constant is the harder commitment to implement (see F-01), and
+  it is the right one: a coverage floor that an unrelated upstream commit can red is a floor that
+  teams learn to ignore.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both of my blocking findings from v3 are closed, and closed by measurement I reproduced independently:
+the grounding table's five rows all re-derive in this tree, and `documentOracles.test.js` fails
+exactly the three tests § 11 now enumerates. F-08 is closed at the seam. Nothing in the property set,
+the oracles, the fixtures or the traceability is contested — that material has been stable since v2
+and this round did not weaken it (no property was added, deleted or weakened, and I checked the diff
+rather than taking the revision-history row's word for it).
+
+The three findings this round are all improvements to executability and routing, none of them
+blocking:
+
+1. **F-01 (Medium):** name the merge-base measurement mechanism T-10 uses for the pre-diff number,
+   and restate the fallback condition as "unchanged by commits other than this feature's", so the
+   delta guard is runnable rather than only intended.
+2. **F-02 (Medium):** give the tracked-`.claude/` untrack the same routing its sibling red got — a
+   row in § Findings routed upstream — and state the ordering constraint (before the first batch
+   gate, per Q-09).
+3. **F-03 (Low):** drop or sha-qualify the ahead-count.
+
+All three can be made in a single pass and none of them changes a property, an oracle or a fixture.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
