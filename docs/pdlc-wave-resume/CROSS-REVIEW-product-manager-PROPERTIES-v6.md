@@ -105,6 +105,66 @@ approved at v4 and re-confirmed at v5; I did not re-litigate them.
 
 ## Oracles
 
+### The write-side oracle is an assertion, not new machinery — as forecast
+
+PROP-OVERRIDE-01's oracle row gains:
+
+> Write-side conjunct: `expect(ledgerWrites(writes)).not.toEqual([])` and the last written record
+> parses to `lastGreenWave: 3` — the plan-absolute last wave — on the `startWave: 2` fixture.
+
+Three things I checked, in the order that matters for my lens:
+
+1. **No implementation echo.** The expected value is the literal `3`, transcribed from the fixture's
+   shape (`PLAN_THREE_WAVES`, `configWithStartWave(2)`), not read back out of the module. A
+   run-relative implementation would write `2` — the mutation TSPEC §5.5 row 3 already covers — and a
+   suppressed write would leave `ledgerWrites` empty. Both fail this row.
+2. **No absence-only oracle.** `not.toEqual([])` is a negative form, but it is paired **in the same
+   conjunct** with the positive `lastGreenWave: 3` parse on the last write. The positive half is what
+   carries the claim; the negative half is redundancy, not the oracle. This is the discipline the rest
+   of the document already applies (PROP-SKIP-04, PROP-OVERRIDE-03).
+3. **It reuses existing fixture support.** `ledgerWrites(writes)` is declared in `## Fixtures` and
+   already used by PROP-RECORD-01's `expect(ledgerWrites(writes)).toEqual([])`. The oracle's own
+   rationale says so ("Same fixture, same `writes` capture — the cost is one assertion, not new
+   machinery"), which is exactly the resolution I recorded in v5.
+
+The rationale cell also states why this conjunct is load-bearing rather than decorative: "a write
+suppressed while `explicitPointer` is true leaves AT-07, AT-15 and AT-18 green because those drive
+automatic-provenance runs". TSPEC §5.5's fifth mutation says the same in the same terms ("Without
+this mutation leaves AT-05, AT-07, AT-15 and AT-18 green"). Consistent.
+
+### PROP-COV-03's oracle row updated with the mutation the count added
+
+The oracle row moved from "For each of the four mutations" to "For each of the five mutations", and
+its rationale now names **two** rows as the ones that most need an observed run rather than a
+predicted one — the eager probe and the suppressed operator-pointed write, "killed only by
+PROP-OVERRIDE-01's write-side conjunct". The "apply / run only the named oracle's file / paste the
+failure header / `git checkout --`" mechanics are unchanged, so the evidence obligation is uniform
+across all five.
+
+### The mutation → oracle map is complete against upstream
+
+The map's preamble is now "Five mutations, each with the property that must red and the task that
+must **run** it (TSPEC §5.5, which owns the count; PLAN §4.3 at v1.4 carries the same five rows with
+the same owners, so this map, TSPEC and PLAN agree)", and the fifth row reads:
+
+> | Suppress the record write while `explicitPointer` is true (write only on automatic runs) |
+> PROP-OVERRIDE-01's write-side conjunct only — `ledgerWrites` non-empty with the plan-absolute
+> `lastGreenWave` on the `startWave: 2` fixture (TSPEC §5.5 row 5); every automatic-provenance
+> property stays green under it | T-07 |
+
+The "property that must red" column is populated, which was the precise defect in v5 (adding the row
+with an empty column would have produced a mutation the implementer applies and watches stay green).
+Owner T-07 matches PLAN §4.3's owner cell and PLAN T-07's mutation duty. The set of five rows here is
+row-for-row the set of five in PLAN §4.3 — I compared them as sets, not by count, so a substituted row
+would have shown up.
+
+### Oracles confirmed unaffected
+
+No other oracle row moved. PROP-SKIP-04's flattened `add`-list oracle, PROP-DISREGARD-07/-08's
+`toEqual` call-list oracles, PROP-OVERRIDE-04(iii)'s `IMPLEMENTATION_DEFAULTS` set equality,
+PROP-DISREGARD-11's six-row table case and PROP-LAW-01…04's `{ numRuns: 500 }` sites are unchanged
+and remain aligned with TSPEC v1.4.
+
 ## Fixtures
 
 ## Questions
