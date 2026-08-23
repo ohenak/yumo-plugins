@@ -618,6 +618,13 @@ pair, -08's no-`head` arm, -09's fail-open pair, and a mutation run (PROP-COV-03
 | T-07 integration suite, then the announcements | PROP-RESUME-01 … -06; PROP-DISREGARD-02, -03, -07, -08, -09, -10, -11; PROP-SKIP-01 … -04; PROP-OVERRIDE-01, -02, -03, -04 (i)(ii), -05; PROP-SAFETY-01, -02 (integration half); PROP-RECORD-01 … -07, -10; PROP-REPO-03, -05; PROP-COV-03 | `waveExecution.test.js` *(existing)*, `orchestrate-dev.js` |
 | T-08 generative property suite | PROP-LAW-01 … -04 | `waveResumeProperties.test.js` *(new)* |
 | T-10 coverage floor and delta oracle | PROP-COV-01, -02 | `waveResume.test.js`, `waveExecution.test.js` |
+| T-11 retirement-sweep glob promotion (batch-1 precondition, added at PLAN v1.2) | *(no property — PLAN records `**ATs:** none; wave-gate precondition`)*. It lands no behaviour of this feature; it clears the `PROP-SWEEP-2(b)` red this feature's own artifacts cause, recorded in § 11's local-red table | `documentOracles.test.js` *(existing)*, `docs/_constraints/pdlc-retirement-baseline.md` |
+| T-12 untrack the machine-local artifacts already in the index (batch-1 precondition, added at PLAN v1.2) | *(no property — index-only removal, no file written)*. Distinct from PROP-REPO-01/-03, which pin the **ignore rule** and the **`add` argv**: neither can falsify a path that was tracked before those rules existed | *(no file written — `git rm -r --cached` over the three paths PLAN §2.1 spells out)* |
+
+Two rows carry no property on purpose. Both are preconditions PLAN v1.2 added in its erratum round
+for document oracles already red in this tree before any of this feature's work starts, and PLAN
+files both with `**ATs:** none`. Every task that lands feature behaviour carries at least one
+property.
 
 Retired PLAN ids `T-05`, `T-06`, `T-09` appear in no row above: they were merged into their red
 predecessors at PLAN v1.1 and are not reused.
