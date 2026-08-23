@@ -166,6 +166,60 @@ here. They pass this document without contact, exactly as RT-7 did last round.
 
 ## Consequences
 
+**For Phase D.** DECISIONS as approved stands. Eight findings are open: two raised this round
+(`delta`) and six carried (`inherited`), four Medium and four Low, none gating. They route back to
+Phase D's ordinary revision loop, not to a halt. One prior finding (v4 F-06, the O-5 discriminant)
+is **retired** — upstream adopted DECISIONS' position.
+
+**For the PROPERTIES author, concretely.** Nothing to change. I checked each of the three oracles a
+PROPERTIES author transcribes from this DECISIONS against the delta:
+
+- the announcement **set-equality** oracle (DEC-WVR-03 Consequences, line 433) — transcribed from
+  TSPEC §2.4's six announcing rows plus the two enumerated exclusions. The v1.4 re-argument changed
+  *why* the config-validation notice is excluded, not *whether* it is, and did not add or remove a
+  row. The oracle is byte-identical either way. The **criterion prose** around it is what F-03
+  flags: a transcriber who builds a filter on “about a resolved start point” rather than on the
+  enumerated literals will wrongly exclude the past-the-end row, which upstream now says explicitly.
+  DECISIONS' own Consequences already prescribe the literal enumeration, so the safe path is the one
+  already written — but the prose invites the other, and that is worth one sentence in the revision.
+- the write-side **key-set equality** for the wave-state record (DEC-WVR-04, line 434) — still
+  carrying the `head`-presence conditional flagged as F-06, and now *adjacent* to new upstream
+  material: TSPEC AT-05 gained a write-side conjunct and §5.5 gained mutation 5 (suppress the write
+  while `explicitPointer` is true). Those strengthen the same seam DECISIONS prescribes and do not
+  touch the `head` defect. A PROPERTIES author writing strict key-set equality still needs the two
+  admissible key-sets, not one.
+- the seven-code **catalogue closure** (DEC-WVR-06, lines 360–361, 436) — unchanged at seven codes,
+  three interpolating reasons. The value tally moved four → five upstream, but no oracle reads it
+  (F-01), and I confirmed by grep that neither PLAN nor PROPERTIES transcribed either number.
+
+**For the next DECISIONS revision.** The correction list is shorter than v4's in one place and
+longer in another. Delete O-5's closing parenthetical (line 167) — the “upstream gap” it raises has
+been closed since TSPEC v1.2 and is now doubly false, since v1.4 not only excludes by rule but
+credits TE with sharpening the rule. Update O-8's value tally from four to five, or drop the tally
+and keep only the reason count of three, which is the number the argument actually needs; and delete
+O-8's closing parenthetical (lines 205–207), whose characterisation of §3.1 has been wrong for three
+versions. Strike or footnote the second conjunct in DEC-WVR-03's criterion (lines 146–148, 288),
+citing §2.4 v1.4. Then the three carried items unchanged from v4: state DEC-WVR-04's `head` conjunct
+as two admissible key-sets, add the Consequences observer that DEC-WVR-05's trigger needs, and give
+the v1.1 revision-history row a truthful downstream-obligation line.
+
+**For harvest.** The observation I filed as `Process` in v3 and v4 now has a positive instance to
+sit beside its negative ones, and the pair is sharper than either alone. **Negative:** an erratum
+raise written into the durable document body (O-5's and O-8's closing parentheticals) has no expiry
+— nothing in the pipeline retires it when upstream honours the raise, and both have now survived
+four confirmations as stale text, one of them acquiring a *second* way of being wrong this round.
+**Positive:** a raise kept in the disposable cross-review (my F-06, re-filed each round) was
+retired the moment upstream adopted it, cleanly and by the same mechanism that carried it. Same
+pipeline, same reviewer, same three rounds — the only variable is where the raise was written. That
+is the durable lesson: **file errata in the cross-review, and state only the position taken in the
+document body.** Tagged `Process` below (F-05).
+
+A second, smaller harvest note: this is the fourth upstream-cascade confirmation for this document,
+and the first where the delta actually reached a claim it makes. Three rounds of “non-interacting”
+did not predict the fourth — which is the concrete argument for why a confirmation's finding set
+cannot be derived from the delta alone, and why the round must re-read the cited upstream text at
+its current version rather than diffing the item list.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
