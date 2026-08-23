@@ -63,6 +63,28 @@ c8 in v3 — is unchanged, so the verification I did last round still stands for
 
 ## Findings
 
+The delta answers my three findings and both of my open questions, and it does it by re-measuring
+rather than by re-asserting — the § Overview grounding table, G-4 and § 11 are now the strongest part
+of the document. One thing the answer to Q-03 introduced does not hold up, and it is the only new
+finding I have.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | **PROP-COV-01's threshold now has two incompatible readings, and the one this delta added cannot be executed at the point it names.** Three places state the same gate. `:232` (property): `≥ 85 and ≥ the baseline recorded below`. `:368` (oracle, the falsifiable form the document itself designates in § Overview): `>= 85` and `>= 88.75` (the 2026-08-23 baseline recorded in § 11)`. `:254–261` (new this delta): `88.75` is *a recorded baseline, not a frozen constant*, the floor is `≥ the number T-10 measures on `orchestrate-dev.js` immediately before applying this feature's diff`, and *T-10 therefore re-measures at task start*. The first two are consistent with each other; the third is not consistent with either, and its own instruction is unperformable where it lands. PLAN puts T-10 in **batch 4**, downstream of T-02, T-07, T-08, T-03 and T-04 (`PLAN:121`, `:199` — `{T-07,T-08,T-03,T-04} → T-10`), so at *T-10's task start* the feature's diff to `orchestrate-dev.js` is already applied: re-measuring the working tree then yields a number derived from the code under test, and `measured ≥ measured` is a tautology. The guard degrades from a regression gate to a no-op precisely in the case it exists to catch — a drop caused by this feature's own ~20 new branches. The product intent stated at `:259–261` is right and worth keeping (an unrelated upstream drop to 88.60 must not block T-10; the feature's own drop must). What is needed is a source for the baseline that is not the post-diff tree: state that T-10 re-measures against the **merge-base content** (`git worktree add` on `origin/main`, or c8 over `git show origin/main:pdlc/workflows/orchestrate-dev.js`), records both numbers, and gates on the delta — and align `:368`'s literal `>= 88.75` to that same wording so the oracle and § 11 read as one gate. I verified the baseline is currently sound either way: `git diff origin/main HEAD -- pdlc/workflows/orchestrate-dev.js pdlc/workflows/package.json` is empty, so `88.75` measured today **is** the pre-diff number. | RT-7, TSPEC §5.8, PLAN T-10 |
+| F-02 | Low | Local | **The new threshold paragraph's markdown nests backticks and will not render.** `:255–256` reads ``≥ the number T-10 measures on `orchestrate-dev.js` immediately before applying this feature's diff`` — a code span opened at `≥` and containing a second pair around the filename, which closes the outer span early and leaves the tail as literal backticks. The sentence carrying the reading an implementer is meant to act on is the one that renders as noise. Suggested fix: drop the inner pair (`≥ the number T-10 measures on orchestrate-dev.js immediately before applying this feature's diff`), or unwrap the outer span entirely. Purely presentational; no content change, and it falls out of F-01's rewrite anyway. | RT-7 |
+
+**Scope tags.** Both are `Local`: each is fixed inside this document, and neither reveals a durable
+product constraint or a recurring process defect. F-01 is the closer call — "a baseline re-measured
+after the change under test is applied is not a baseline" is a reusable lesson — but the pipeline
+already carries it as the no-implementation-echoes rule in the review contract, so promoting it would
+duplicate standing guidance rather than add to it.
+
+**Nothing here is High.** No P0 or P1 requirement is dropped, narrowed or reinterpreted by this
+delta. The one behavioural gate it touches, PROP-COV-01, is a self-imposed guard *stricter* than the
+`85` floor TSPEC §5.8 and RT-7 actually mandate (`TSPEC:918`), and both `:232` and `:368` still carry
+that mandated floor unconditionally — so even on the worst reading of F-01, the requirement-level gate
+holds and only the extra baseline conjunct goes soft.
+
 ## Questions
 
 ## Positive Observations
