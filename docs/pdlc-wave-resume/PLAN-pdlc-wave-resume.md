@@ -199,6 +199,8 @@ the `#` column and in `Deps` cells — bare `T-NN`, never bolded in one and plai
 
 | Edge | Why |
 |---|---|
+| T-11, T-12 → *(none)* | Both are batch-1 sources: they depend on nothing this feature builds, and everything else depends on the tree they leave behind. Stating the absence of edges explicitly, rather than by omission, is what makes the `max(dep batches) + 1` derivation for batch 1 checkable. |
+| T-01 → *(none, but co-batched with T-11 and T-12)* | T-01's gate is the whole suite, so it cannot pass while `PROP-SWEEP-2(b)` or the two `.claude/`-tracking oracles are red. This is a **gate** relation, not a `Deps` edge: T-01's own assertions do not read anything T-11 or T-12 produces, so forcing a batch split would serialise three independent tasks for nothing. The batch gate is what enforces the joint condition, and it is evaluated once, after all three. |
 | T-02, T-03, T-04 → T-01 | §1.2: no task may run before the baseline is proven present and the gate is proven script-owned. T-03 in particular carries AT-14, which is red pre-rebase, and a red gate in wave mode halts the wave and every wave after it. |
 | T-07 → T-02 | The integration cases assert on the classifier's resolved outcomes and on the lazy-probe call counts, which do not exist until T-02's green half. It is also rule 2 twice over: T-07 must not append to `waveExecution.test.js` in the batch that proves T-02 left it unchanged, and both tasks write `orchestrate-dev.js`. |
 | T-08 → T-02 | P-3 quantifies over `ClassifyInput` and asserts `outcome ∈ RESUME_OUTCOMES`; both symbols are T-02's. |
@@ -206,8 +208,8 @@ the `#` column and in `Deps` cells — bare `T-NN`, never bolded in one and plai
 | T-10 → T-08, T-03, T-04 | The floor is measured over the whole suite as it will merge; a suite still missing the property, repo-state or queue-parity files would measure a different number. |
 
 **No cycle.** The edge set is `T-01 → {T-02,T-03,T-04}`, `T-02 → {T-07,T-08}`,
-`{T-07,T-08,T-03,T-04} → T-10`: a DAG whose topological order is exactly the batch numbering
-of §2.2.
+`{T-07,T-08,T-03,T-04} → T-10`, with `T-11` and `T-12` as isolated sources: a DAG whose
+topological order is exactly the batch numbering of §2.2.
 
 ### 3.2 Prior-phase baseline pre-flight (T-01)
 
@@ -255,6 +257,8 @@ same batch never share a row's file.
 | T-07 | `pdlc/workflows/__tests__/waveExecution.test.js`, `pdlc/workflows/orchestrate-dev.js` | 3 | existing, tracked at `origin/main`; second owner of the module, batch 2 ≠ batch 3 |
 | T-08 | `pdlc/workflows/__tests__/waveResumeProperties.test.js` | 3 | new |
 | T-10 | `pdlc/workflows/__tests__/waveResume.test.js`, `pdlc/workflows/__tests__/waveExecution.test.js` | 4 | existing by then; second owner of each, batch 2/3 ≠ batch 4 |
+| T-11 | `pdlc/workflows/__tests__/documentOracles.test.js`, `docs/_constraints/pdlc-retirement-baseline.md` | 1 | both existing and tracked; sole owner of each in this plan |
+| T-12 | *(no file written — index-only `git rm --cached`; the three paths are spelled in §2.1's T-12 row)* | 1 | tracked today, untracked after; T-12 writes no bytes, so it collides with nothing |
 
 The manifest is **one row per owning task**, never a merged cell, so every owner cell is a bare
 task id the ownership parser resolves, and every file cell is a comma-separated list of backticked
@@ -264,6 +268,14 @@ time with a different owner **in a different batch** — which rule 2 permits an
 batch 4) and `waveExecution.test.js` (T-07, batch 3 → T-10, batch 4). In every case the later task
 is strictly downstream of the earlier one through the `Deps` chain (`T-10 → T-07 → T-02 → T-01`), so
 none is a shared-prerequisite race, and no two tasks in one batch share a path.
+
+**T-12's row deliberately spells no path (v1.2).** T-03's AT-17 is a finite check over *this*
+manifest — no row may name `WAVE_STATE_PATH` — and D-9's invariant is that no wave claims the
+ledger as something it writes. T-12's obligation is the exact opposite of an owned write path: it
+**removes** the ledger from the index, and leaves the working-tree file alone. Keeping the paths in
+§2.1's task text rather than in the manifest keeps both true at once — AT-17 stays exactly as T-03
+states it, and D-9 is strengthened rather than weakened, since after T-12 the ledger is untracked
+as well as unowned.
 
 **This is the only ownership manifest in this document.** Every other table here is prose
 structure: §2.2 names batch contents, §2.3 names the merged pairs, §4.1 maps ATs to suites, §4.3
