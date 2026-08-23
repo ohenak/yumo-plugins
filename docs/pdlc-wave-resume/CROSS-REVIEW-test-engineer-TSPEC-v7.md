@@ -66,7 +66,37 @@ ultimately settles. Neither is a nonexistent-authority citation.
 
 ## Interfaces
 
-_pending_
+The seams this document hands the implementer are untouched by the delta, with one exception
+worth naming precisely: §5.7's *precedent* interface — the shape the property suite is told to
+copy — is now described in more detail than before, and the added detail is where my Medium
+finding sits.
+
+The new sentence says the pin "follows the depth precedent in
+`pdlc/workflows/__tests__/advisoryHelperProperties.test.js`, whose generative block declares
+`const runs = { numRuns: 500 }` in `describe("PROP-CTR-05 (generative): citesGateOutput …")` **and
+applies it at every `fc.assert` site in that block**."
+
+The first two conjuncts are exactly right at HEAD: line 261 of that file is
+`const runs = { numRuns: 500 };`, declared inside the `PROP-CTR-05 (generative): citesGateOutput —
+normalise, then substring, floored at 24` describe. The third conjunct is not. That block contains
+**seven** `fc.assert` sites and `runs` is passed at **five** of them. The two that take
+fast-check's default are the boundary-shape test (the hand-picked "same needle at length n and
+n+1" case, whose own comment explains why a generator cannot express it) and the
+`EMPTY / NON-ARRAY evidence never cites` test. "Every site in that block" is therefore an
+overstatement of the precedent.
+
+PLAN T-08 gets this right and says so explicitly — "applied at five `fc.assert` sites there; the
+file's other properties take fast-check's default". So the erratum has introduced a divergence
+from the very document it claims agreement with, in the same sentence that asserts "the three
+documents agree". The figure they agree on (500) is genuinely agreed; the characterisation of the
+precedent is not. Filed as F-01 (Medium, delta, local) — it is a fidelity defect in a HEAD
+citation, not a testability defect, because P-1…P-4 are pinned at 500 either way and the
+implementer follows PLAN T-08 for the task.
+
+Everything else in the interface surface is inherited and unchanged: `parseWaveLedger`'s three
+return shapes (§4.2), `classifyWaveLedger`'s `ClassifyInput` → `{outcome, provenance, code}`
+contract, `formatWaveLedger`'s two shapes, `computePlanHash`, and the H-1/H-2 harness extensions
+(`events` array; `failWriteOn(path, callIndex)`) that PLAN T-07 owns. None appears in the diff.
 
 ## Data Model
 
