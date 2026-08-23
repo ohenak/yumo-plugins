@@ -232,6 +232,43 @@ touches an enumeration (the seven PLAN tasks, checked in both directions).
 
 ## Findings
 
+Before the table, the one thing I most expected to find and did not. PROP-COV-01 now pins a hard
+numeric threshold — `>= 88.75` — to a measurement the document dates and attributes to a specific
+command. A property that hard-codes a number somebody once saw is a classic place for a
+non-reproducible figure to become an unsatisfiable gate, and two of the four rows carrying the
+*identical* value `88.75` for two different modules looked to me like a transcription error. So I ran
+it: `npx c8 --temp-directory=… npm test -- --runInBand --forceExit`, then the stage-2
+`c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0`.
+
+| Module | Document's § 11 table | My run, 2026-08-23 |
+|---|---|---|
+| `orchestrate-dev.js` | 88.75 | **88.75** |
+| `orchestrate-queue.js` | 88.75 | **88.75** |
+| `build-runtime.mjs` | 88.23 | **88.23** |
+| `scripts/capture-learnings-baseline.mjs` | 89.47 | **89.47** |
+
+Four for four, to the second decimal, and **stage 2 exited 0** exactly as the document says it does —
+including the coincidence of two modules at the same figure, which is real and not a copy-paste. The
+document's characterisation of stage 1 is also right: it exits 1 in this tree, on the three
+`documentOracles.test.js` failures G-4 predicts and for the reason G-4 gives. PROP-COV-01's baseline
+is sound and the threshold is attainable. I am recording the verification rather than a finding,
+because a dated measured number in a spec is only worth what its reproducibility is worth, and this
+one reproduces.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | **AT-12's traceability row still claims complete coverage after the delta conceded one of its conjuncts is unobservable.** `PROPERTIES:494` reads `AT-12 complete record skips the wave loop in full \| PROP-SKIP-01, -02, -03, -04 \| T-07` and is byte-unchanged by this delta. But the delta's own routed-findings row (`:680`) and PROP-SKIP-04's new text (`:147`) concede that AT-12's fourth conjunct — "its commit is the only Phase-I-adjacent commit", `TSPEC:755` — "is **not** an observable of this suite" and is routed upstream. I verified the concession is correct: the V-wave block at `origin/main:pdlc/workflows/orchestrate-dev.js:16470–16500` issues no `_git(["add", …])` and no `commitPaths`, and the commit is made by the dispatched agent, which `makeAgent(record)` replaces. So an acceptance criterion is now knowingly covered in part while the matrix a reader consults to check coverage says it is covered in full. This is the specific way a routed erratum leaks into a false completeness claim: the property text is honest, the matrix is not, and the matrix is what gets read. Suggested fix, purely documentary — annotate the AT-12 row to the effect of `PROP-SKIP-01, -02, -03, -04 (fourth conjunct's commit clause not observable — routed, see § Gaps / routed findings)`, or give it a `G-6` gap entry alongside G-1…G-5, which is where the document already parks bounded-but-unasserted obligations. No new property is needed; the clause genuinely is unobservable at this harness level. | AT-12 (TSPEC §5.4), REQ-WVR-08 |
+| F-02 | Medium | Local | **A third upstream defect is corrected in place instead of routed, breaking the erratum discipline this same delta applies twice.** `PROPERTIES:223` states the c8 `include` set is "**four** modules, not three" and enumerates them. The "three" it is contradicting is `TSPEC:838`, which states the include list as `["orchestrate-dev.js", "orchestrate-queue.js", "build-runtime.mjs"]`. I confirmed `pdlc/workflows/package.json`'s `c8.include` carries four entries, the fourth being `**/scripts/capture-learnings-baseline.mjs`, so PROPERTIES is right and TSPEC is wrong. The problem is the handling, not the fact: this delta correctly routes two inherited defects as `ERRATUM: TSPEC` / `ERRATUM: PLAN` lines rather than fixing them locally, and then fixes a third locally with a bare "not three" and no routed line and no row in the routed-findings table. The consequence is asymmetric and real — TSPEC §5.8 keeps a stale include list that the next document derived from it will inherit, and the next reader of §5.8 has no way to know a downstream document has already contradicted it. Suggested fix: add a row to the routed-findings table for TSPEC §5.8's include list and emit the `ERRATUM: TSPEC` line, exactly as done for AT-12 and AT-16; the local correction at `:223` can stay as it is. I emit that erratum line myself below so the routing is not lost either way. | TSPEC §5.8, RT-7 (PROP-COV-01's parent) |
+| F-03 | Low | Local | **PROP-SKIP-04's new conjunct label points at conjuncts it does not assert.** `PROPERTIES:147` now traces PROP-SKIP-04 to `AT-12 (first three conjuncts)`. AT-12's first three conjuncts (`TSPEC:755`) are zero agent dispatches in the wave loop, zero gate invocations in the wave loop, and the banner naming reason and hatch — and all three are asserted by **PROP-SKIP-01** (`:144`, oracle `:293`), not by PROP-SKIP-04. What PROP-SKIP-04 actually asserts is an empty `add` list, a live-seam `rev-parse` call, and a single V-wave dispatch; the dispatch half belongs to AT-12's *fourth* conjunct, which is also what PROP-SKIP-03 traces (`:146`). So after the delta two properties cite the fourth conjunct, one property cites three conjuncts it does not test, and the conjunct actually being routed is identified only in prose. Nothing is untested — the coverage is fine, the labelling is not. Suggested fix: trace PROP-SKIP-04 as `AT-12 (fourth conjunct, less the commit clause — routed)`, which is both accurate and makes F-01's gap self-evident from the row. | AT-12 (TSPEC §5.4) |
+
+**Scope tags.** All three are tagged `Local`: each is about this artifact's own traceability
+bookkeeping and is fixed inside it, and none reveals a durable product constraint or a recurring
+process defect worth promoting. F-02 is the closest call — inconsistent erratum routing *could* be a
+`Process` signal — but this document routed two of three correctly in the same revision, so the
+evidence reads as one omission rather than a pattern, and inflating it to `Process` would mis-file it
+for harvest. No finding is High: no P0 or P1 requirement is dropped, narrowed, or reinterpreted by
+this delta, and all three findings are documentary rather than behavioural.
+
 ## Questions
 
 ## Positive Observations
