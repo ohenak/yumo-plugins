@@ -86,6 +86,49 @@ marked new, not assumed present.
 
 ## Oracles
 
+**The write-side oracle is falsifiable and cites no implementation.** `PROPERTIES:337` adds
+`expect(ledgerWrites(writes)).not.toEqual([])` plus "the last written record parses to
+`lastGreenWave: 3` — the plan-absolute last wave — on the `startWave: 2` fixture". The expected
+value `3` is a literal transcription derived from the fixture's plan shape, not read back from the
+code under test, and `ledgerWrites` is the shipped helper
+(`origin/main:pdlc/workflows/__tests__/waveExecution.test.js:2236`), so no new machinery is
+introduced. The rationale column also states why this oracle is the only one that can red: "a write
+suppressed while `explicitPointer` is true leaves AT-07, AT-15 and AT-18 green because those drive
+automatic-provenance runs" — which matches TSPEC §5.5 row 5's own justification.
+
+**Absence-only discipline is preserved on the changed rows.** PROP-OVERRIDE-01's pre-existing
+negative (`expect(logs.some(m => m.includes("was ignored"))).toBe(false)`) was already paired with a
+positive on the same path (the filtered banner list has length 1 and ends with the token); the new
+conjunct is itself a positive assertion and does not introduce a bare negative. PROP-OVERRIDE-05's
+oracle is unchanged and still positively locates the notice before asserting the token's absence.
+
+**Mutation → oracle map — five rows, header corrected, provenance of the count named.**
+`PROPERTIES:375` now reads "Five mutations … (TSPEC §5.5, which owns the count; PLAN §4.3 at v1.4
+carries the same five rows with the same owners, so this map, TSPEC and PLAN agree)", and row 5
+(`PROPERTIES:385`) names PROP-OVERRIDE-01's write-side conjunct as the sole killer. I compared the
+map row-for-row against PLAN §4.3's table at `PLAN:396-400`: the five mutations, their oracles and
+their owners correspond one-to-one, and the map is a set-equality-shaped enumeration (five rows
+against a five-row catalogue) rather than a containment sample. PROP-COV-03's oracle row
+(`PROPERTIES:371`) is updated in step — "For each of the five mutations" — and now names rows 4 and
+5 as the two that most need running, replacing the single-row justification.
+
+**One residual in the changed text (F-02, Low).** Map row 3 still reads "Record a run-relative wave
+number instead of the plan-absolute one → **PROP-RESUME-05 / PROP-RECORD-04 only**". That "only" was
+true before this round and is not any more: the conjunct added to PROP-OVERRIDE-01 in the same edit
+pins `lastGreenWave: 3` on a run that entered at wave 2, where a run-relative build writes `2` — so
+PROP-OVERRIDE-01 now reds under mutation 3 as well. Over-coverage is harmless; the stale minimality
+word is what I am flagging, because "only" is the load-bearing justification for keeping the row.
+The same word sits in TSPEC §5.5 row 3 ("Killed only by AT-18") and PLAN §4.3 ("AT-18 only") — both
+made stale by the same round-5 edit. I am deliberately **not** routing that upstream: it is a
+non-behavioural wording residue, no oracle or count depends on it, and re-opening two approved
+documents for it costs more than it is worth (DEC-ERR-01). Fixing PROPERTIES' own copy is a
+one-word edit and is not gating.
+
+**Everything else in § Oracles is byte-identical.** The four oracle rules, the
+`toEqual`-over-`toContainEqual` discipline that kills the eager-probe mutation, the H-1 sink as the
+sole ordering witness, and the set-equality oracles over `RESUME_OUTCOMES` / `RESUME_PROVENANCE` /
+`WAVE_IGNORE_REASONS` are unchanged in the diff. I did not re-review them.
+
 ## Fixtures
 
 ## Findings
