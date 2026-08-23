@@ -151,7 +151,57 @@ never emits it — config validation does, before any resume decision runs", and
 
 ## Fixtures
 
-_(pending)_
+Two things live in this document's fixture-and-ledger material that the TSPEC erratum has overtaken.
+
+### The routed-errata ledger now asserts two closed items are open (F-02, F-03)
+
+`### Findings routed upstream, not fixed here` opens by saying each candidate was "re-verified
+against those documents **at HEAD** before being routed" — the right discipline, and the reason the
+staleness matters: a reader trusts these rows to describe HEAD. Two rows no longer do.
+
+| Row | What PROPERTIES asserts | TSPEC at HEAD |
+|---|---|---|
+| §5.7 run count | "**Still open.** TSPEC §5.7's closing convention paragraph says *default*; **no `numRuns` or `500` appears anywhere in TSPEC**." Routed as one `ERRATUM: TSPEC` line. | §5.7 reads "`fc.assert(fc.property(…), { numRuns: 500 })` — **the run count is pinned at 500, not left to fast-check's default**", cites the same `advisoryHelperProperties.test.js` precedent, and states "PLAN T-08 and PROPERTIES carry the same figure, so the three documents agree". |
+| §5.8 c8 include | "**Open, and newly raised this round (PM F-02).** `TSPEC:838` reads `include: ["orchestrate-dev.js", …]`" — three entries. Routed as one `ERRATUM: TSPEC` line. | §5.8 reads "a **four-entry** `c8.include`" with the `**/`-anchored list including `**/scripts/capture-learnings-baseline.mjs`, and explains `allow-external` and the `--per-file` consequence. |
+
+Both were *my own* findings in earlier rounds, and both landed exactly as asked — the substance of
+this document is vindicated, not wrong. The defect is that the ledger still instructs: it emits
+`ERRATUM: TSPEC` lines for questions the owner has closed, and `DECISIONS-review-severity-bars.md`
+DEC-ERR-01 (quoted by this very section) makes re-raising a settled question a defect in its own
+right. The `**What this document does with the open items**` paragraph inherits the same staleness —
+"PROP-LAW-01…PROP-LAW-04 pin `numRuns: 500`, following PLAN T-08 **rather than TSPEC §5.7**" is now
+backwards; TSPEC §5.7 is where 500 is pinned. Medium each, not High: no property, oracle, fixture or
+requirement mapping changes, and the numbers PROPERTIES ships were already the correct ones. The
+resolution is to re-label both rows `Closed by the owner` with the landing version (TSPEC v1.4), drop
+their `ERRATUM: TSPEC` routing, and restate the run-depth paragraph as agreement rather than
+divergence.
+
+One consequential detail for whoever revises: the §5.8 row is also the place PROPERTIES explains why
+§ 11's local correction "is not enough on its own" — that TSPEC keeps a stale include list "that the
+next document derived from it inherits". That justification is now spent, and § 11's measured
+baseline (four modules, the 2026-08-23 per-file figures, the `--per-file` reasoning) stands on its
+own as agreeing with upstream. Nothing in § 11 needs to change.
+
+### The mutation → oracle table is one row short (F-01, same finding)
+
+`## Fixtures` carries the four-row mutation table each mutation is applied and observed against
+(ancestry guard deleted; write moved outside `if (waveGit)`; run-relative wave number; eager ancestry
+probe), introduced as "For each of the **four** mutations". TSPEC §5.5 at HEAD names five. The
+missing row is the suppressed write under `explicitPointer`, and its "property that must red" column
+is empty today — which is precisely the gap: with PROP-OVERRIDE-01 as written, no property reds. The
+row and the conjunct have to land together; adding the row alone would produce a mutation the
+implementer applies and observes staying green.
+
+### Fixture support confirmed unaffected
+
+`makeLedgerArgs`, `ledgerWrites`, `PLAN_THREE_WAVES`, `CONFIG_WITH_TEST_COMMAND`, `configWithStartWave(n)`
+and the invalid-`startWave` fixture all survive this round untouched. The §5.2 H-1 restatement
+("a reuse-and-consistency choice, not an expressiveness limit") changes TSPEC's *justification* for
+the ordered event sink, not its shape or its default-off contract — PROP-SAFETY-01 and PROP-RECORD-03
+assert on the H-1 sink and are unaffected. The generators (`genFeature`, `genHash`, `genWave`,
+`genHeadOrNull`, `genClassifyInput`, `genWaveLayoutPair`) and their stated bounds are likewise
+unaffected by the `numRuns` pin — 500 draws against the same bounded corpora is what they were
+already written for.
 
 ## Delta-Confirmation Findings
 
