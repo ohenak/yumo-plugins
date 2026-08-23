@@ -193,4 +193,42 @@ routed-upstream language of its own about the operator-pointer write.
 
 ## Recommendation
 
+**Needs revision** — one High finding (F-01), mandatory under the approval rules.
+
+The v4 approval does **not** carry forward against TSPEC v1.4. Two of the three defects are
+bookkeeping in PROPERTIES' routed-erratum ledger and would not on their own have cost the approval;
+F-01 is a genuine fidelity gap, because the round-5 TSPEC edit added a normative obligation — an
+operator-pointed run must be shown to write a plan-absolute record — that no property, oracle or
+mutation row in PROPERTIES owns. TSPEC states in as many words that the mutation this defends
+against leaves AT-05, AT-07, AT-15 and AT-18 green, so the gap is invisible to the suite as
+currently specified.
+
+Exactly what to change, in one bounded pass:
+
+1. **PROP-OVERRIDE-01** (§ 5) — add the third conjunct from TSPEC §5.4 AT-05: on the `startWave: 2`
+   run, `ledgerWrites(writes)` is non-empty and the written `lastGreenWave` is the plan-absolute
+   number of the last wave completed, not a run-relative count. Level `I`, owner T-07, existing
+   fixture. Update the § Oracles row for PROP-OVERRIDE-01 with the matching assertion. (An
+   equivalent PROP-OVERRIDE-06 is fine if the author prefers one property per conjunct.)
+2. **Mutation → oracle map** (§ Oracles) — header "Four mutations" → five, and add the row:
+   suppress the record write while `explicitPointer` is true → PROP-OVERRIDE-01's write-side
+   conjunct → applied and observed in T-07.
+3. **PROP-COV-03** (§ 11) — "PLAN §4.3's four mutations" → five, keeping the `TSPEC §5.5` trace.
+   PLAN §4.3 still reads four; that is PLAN's own cascade, and the mismatch should be noted rather
+   than silently resolved here.
+4. **§ "Findings routed upstream"** — close the §5.7 run-count row and the §5.8 c8-include row as
+   *Closed by the owner*, drop both `ERRATUM: TSPEC` promises, and restate § Fixtures' run-depth
+   note as agreement with TSPEC rather than divergence from it. The pinned `numRuns: 500` and the
+   four-entry include figures themselves are already right and must not move.
+
+No property is deleted, no fixture is added, and no settled decision is reopened. I expect this to
+close in one round.
+
+**Positive observations.** The document's two upstream errata both landed the way it argued, which
+is the routing loop working as designed — pinning 500 against TSPEC's then-default, and correcting
+the include set to four entries locally while routing the source. The `explicitPointer` write path
+is the one seam the round-5 TSPEC edit found that this document had compressed faithfully but
+incompletely, and it is a narrow one. § 11's measured-not-assumed baseline discipline (dated
+measurement, both c8 stages, per-file scope) is why F-03 is bookkeeping rather than a wrong number.
+
 ## Verdict

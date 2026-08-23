@@ -203,10 +203,51 @@ assert on the H-1 sink and are unaffected. The generators (`genFeature`, `genHas
 unaffected by the `numRuns` pin — 500 draws against the same bounded corpora is what they were
 already written for.
 
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | PLAN §4.3 still enumerates four mutations while TSPEC §5.5 now names five. PROP-COV-03 traces to PLAN §4.3; should it trace to TSPEC §5.5 as the count's owner so PROPERTIES stops inheriting a number that lags the erratum channel? |
+
+## Positive Observations
+
+- The two items I raised in earlier rounds — the `numRuns` pin and the four-entry `c8.include` —
+  landed upstream in the numbers PROPERTIES already shipped. This document was right on both before
+  TSPEC agreed, and § 11's measured 2026-08-23 baseline needs no change at all.
+- The `§2.5 item N` citation style used by PROP-RECORD-02/-03/-04/-07/-09 survived an erratum that
+  rewrote the prose around those items untouched. Citing numbered items rather than surrounding
+  narrative is what made this confirmation cheap — worth keeping.
+- `ledgerWrites(writes)` already exists as a fixture helper, so closing F-01 is one assertion plus
+  one table row, not new machinery.
+
+## Recommendation
+
+**Needs revision**
+
+Exactly what must change: (1) add AT-05's write-side conjunct to PROP-OVERRIDE-01 and the fifth
+mutation to PROP-COV-03 and the `## Fixtures` mutation table (F-01); (2) re-label the §5.7 and §5.8
+routed-errata rows as closed by the owner at TSPEC v1.4 and drop their `ERRATUM: TSPEC` routing,
+restating the run-depth paragraph as agreement (F-02, F-03); (3) restate PROP-OVERRIDE-05's rationale
+on the discriminating conjunct (F-04) and replace the `TSPEC:838` anchor with `TSPEC §5.8` (F-05).
+Nothing else in the document needs to move — the remaining five upstream edits leave it faithful.
+
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | TSPEC §5.4 AT-05 gained a write-side conjunct and §5.5 a fifth mutation ("suppressing the record write while `explicitPointer` is true", killed **only** by that conjunct). PROP-OVERRIDE-01, which owns AT-05, asserts only the resume point, the operator-banner provenance token and that the record was not consulted; PROP-COV-03 and the `## Fixtures` mutation table still say **four** mutations. The mutation therefore reds nothing in this document, and the operator-pointed recovery path REQ-WVR-04/REQ-WVR-09/BR-08 promise loses its resume record with every property still green. Add the write-side conjunct to PROP-OVERRIDE-01 (`ledgerWrites` non-empty; written `lastGreenWave` plan-absolute), take PROP-COV-03 to five naming TSPEC §5.5, and add the fifth mutation row with PROP-OVERRIDE-01 as the property that must red. | `## Properties` PROP-OVERRIDE-01 / § 11 PROP-COV-03 / `## Fixtures` mutation table |
+| F-02 | Medium | delta | local | The routed-errata row "TSPEC §5.7 leaves the generative run count at fast-check's default" asserts "**Still open** … no `numRuns` or `500` appears anywhere in TSPEC" and routes an `ERRATUM: TSPEC` line. TSPEC v1.4 §5.7 pins `numRuns: 500` on the same precedent and states PLAN T-08 and PROPERTIES agree. Re-label the row closed-by-owner (TSPEC v1.4), drop the erratum routing, and restate the "following PLAN T-08 **rather than** TSPEC §5.7" paragraph as agreement — re-raising a settled question is itself a defect under DEC-ERR-01, which this section cites. | `### Findings routed upstream, not fixed here`, §5.7 row |
+| F-03 | Medium | delta | local | The routed-errata row "TSPEC §5.8 states the c8 `include` set as three modules" asserts "**Open, and newly raised this round**" and routes an `ERRATUM: TSPEC` line. TSPEC v1.4 §5.8 now carries the four-entry `**/`-anchored list including `**/scripts/capture-learnings-baseline.mjs`, with the `allow-external` and `--per-file` reasoning. Re-label closed-by-owner and drop the routing; § 11's measured baseline already agrees with upstream and needs no change. | `### Findings routed upstream, not fixed here`, §5.8 row |
+| F-04 | Low | delta | local | PROP-OVERRIDE-05 justifies the excluded config-validation notice as "it precedes the resume decision **and** is about a rejected value, not a resolved start point". TSPEC §2.4 at HEAD names the **first** conjunct as the discriminator and states the rejected-value conjunct explicitly does *not* discriminate (a clamped past-the-end pointer is a rejected value that does carry the token — PROP-OVERRIDE-03's own case). The oracle is unaffected; restate the rationale as "the resume decision never emits it — config validation does, before any resume decision runs". | `## Properties` § 5, PROP-OVERRIDE-05 |
+| F-05 | Low | inherited | nonlocal | The §5.8 routed-errata row cites upstream as the raw anchor `TSPEC:838` rather than a heading, spec id or verbatim quote, and the position is not itself the claim under test. `Process` scope per DECISIONS-review-severity-bars.md DEC-DOC-01. Cite `TSPEC §5.8` (the row already quotes the include list verbatim, which is the durable anchor). | `### Findings routed upstream, not fixed here`, §5.8 row |
+
+FINDING: High | delta | local | ## Properties PROP-OVERRIDE-01 / § 11 PROP-COV-03 / ## Fixtures mutation table | TSPEC §5.4 AT-05's new write-side conjunct and §5.5's fifth mutation (suppressed record write while explicitPointer is true, killed only by that conjunct) have no counterpart here: PROP-OVERRIDE-01 asserts nothing about the write and PROP-COV-03 still counts four mutations, so a build that stops recording on operator-pointed runs passes every property while removing resume from the REQ-WVR-04 recovery path
+FINDING: Medium | delta | local | ### Findings routed upstream, not fixed here — §5.7 row | The row asserts the run-count erratum is "Still open" and that "no numRuns or 500 appears anywhere in TSPEC", and routes an ERRATUM: TSPEC line; TSPEC v1.4 §5.7 pins numRuns: 500 on the same precedent, so the row re-raises a settled question (DEC-ERR-01)
+FINDING: Medium | delta | local | ### Findings routed upstream, not fixed here — §5.8 row | The row asserts the c8 include-list erratum is "Open, and newly raised this round" and routes an ERRATUM: TSPEC line; TSPEC v1.4 §5.8 now carries the four-entry include list with the allow-external and --per-file reasoning
+FINDING: Low | delta | local | ## Properties § 5, PROP-OVERRIDE-05 | The property's rationale rests on the rejected-value conjunct, which TSPEC §2.4 at HEAD explicitly names as non-discriminating; the discriminator is that the resume decision never emits the notice
+FINDING: Low | inherited | nonlocal | ### Findings routed upstream, not fixed here — §5.8 row | Raw file:line anchor `TSPEC:838` used as a citation where position is not the claim under test (DEC-DOC-01, Process scope)
 
 ## Verdict
 
-_(pending)_
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
