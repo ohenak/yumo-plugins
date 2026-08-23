@@ -100,7 +100,33 @@ contract, `formatWaveLedger`'s two shapes, `computePlanHash`, and the H-1/H-2 ha
 
 ## Data Model
 
-_pending_
+No type, catalogue, enum or numeric range changed in this delta. I ran the contract-fidelity
+diff anyway over the two values the erratum *did* introduce, since both are numbers that
+downstream documents transcribe:
+
+| Value | TSPEC v1.4 | Downstream / HEAD source | Agrees? |
+|---|---|---|---|
+| Generative run count | `numRuns: 500`, all four laws | PLAN T-08 `{ numRuns: 500 }`; PROPERTIES PROP-LAW-01…04 each `{ numRuns: 500 }` | Yes |
+| `c8.include` cardinality | four entries, enumerated verbatim | `pdlc/workflows/package.json` — four entries, `**/`-anchored, `allow-external: true` | Yes |
+| Per-file branch floor | 85 | `test:coverage` stage 2: `--per-file --branches 85` | Yes |
+
+The catalogues the property laws quantify over are unchanged and still resolve: P-3 asserts
+`outcome ∈ RESUME_OUTCOMES`, `provenance ∈ RESUME_PROVENANCE` and `code ∈
+Object.keys(WAVE_IGNORE_REASONS) ∪ {null}`, and it grounds the closure claim in **FSPEC BR-01**.
+Per DEC-ERR-03 I re-read BR-01 at FSPEC v1.2 rather than trusting the pre-round reading:
+`FSPEC:224` still states that every Phase I invocation resolves to exactly one of three outcomes
+and that "the set is closed: adding or removing an outcome is a deliberate change to this rule",
+traced to REQ-WVR-08. §5.7's P-3 is a faithful mechanical restatement of that, and FSPEC's own
+AT-13 (`FSPEC:378`, "the outcome catalogue is closed at three (BR-01)") independently pins the
+same closure with the explicit warning that containment does not discharge BR-01 — which is
+precisely why P-3 is stated as membership plus set-equality rather than containment. Still
+faithful.
+
+The two other upstream ids reachable from the delta's neighbourhood also verify at current
+version: **EC-19** (`FSPEC:271`, concurrent invocations out of scope, traced to REQ §3) and
+**OB-F6** (`FSPEC:442`, the per-feature assertion that the resume record is in no wave's
+owned-path set, with the general form routed to a Phase P gate). Neither has been reworded in a
+way that would strand a TSPEC citation.
 
 ## Test Strategy
 
