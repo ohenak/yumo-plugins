@@ -212,9 +212,37 @@ form — the assertion that makes each row falsifiable — is in **§ Oracles**,
 
 | # | Property | Category | Level | Traces | Owner |
 |---|---|---|---|---|---|
-| PROP-COV-01 | `npm run test:coverage` from `pdlc/workflows` (`--per-file --branches 85`) must exit 0, with the measured per-file branch number for `orchestrate-dev.js` recorded in the task report. | Performance | C | RT-7, TSPEC §5.8, PLAN T-10 | T-10 |
+| PROP-COV-01 | `npm run test:coverage` from `pdlc/workflows` must exit 0, and the measured per-file branch number for **`orchestrate-dev.js`** — the one c8-included module this feature edits — must be **≥ 85 and ≥ the baseline recorded below**, pasted into the owning task's report. This is a *regression guard scoped to the module the feature touches*, not an inherited gate over the other three included modules: a per-file red in `orchestrate-queue.js`, `build-runtime.mjs` or `scripts/capture-learnings-baseline.mjs` is a blocked task to be reported and routed, never a reason to weaken this property or the threshold. | Performance | C | RT-7, TSPEC §5.8, PLAN T-10 | T-10 |
 | PROP-COV-02 | c8's per-file uncovered-line list for `orchestrate-dev.js` must contain no line inside the ranges this feature introduces, and PLAN §4.5.1's mapping table must be **complete** — every branch class named, every row naming a covering test. A deleted case must fail that table's set equality rather than move a percentage by 0.05. | Observability | C | RT-7, PLAN §4.5.1 (F-05) | T-10 |
 | PROP-COV-03 | Each of PLAN §4.3's four mutations must be **applied, observed RED against its named oracle, reverted, and its failure output recorded** in the owning task's report — a believed mutation is not an observed one. | Contract | C | PLAN §4.3 (F-04), TSPEC §5.5 | T-02, T-07 |
+
+**Measured baseline (SE F-04) — the numbers PROP-COV-01 rides on, measured, not assumed.**
+`test:coverage` is two stages: stage 1 runs `c8 npm test -- --runInBand` under the `c8` block's
+aggregate floors (`branches 85 / lines 90 / functions 90 / statements 90`), stage 2 re-reports with
+`--check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0`. The c8 `include`
+set is **four** modules, not three: `**/pdlc/workflows/orchestrate-dev.js`,
+`**/pdlc/workflows/orchestrate-queue.js`, `**/pdlc/workflows/build-runtime.mjs` and
+`**/scripts/capture-learnings-baseline.mjs` (`pdlc/workflows/package.json`, `c8.include`).
+
+Measured on this branch on **2026-08-23** (`npx c8 --temp-directory=/tmp/c8tmp npm test -- --runInBand`,
+then the stage-2 `c8 report --check-coverage --per-file --branches 85 …`, which exited **0**):
+
+| Included module | % Branch | Against the 85 per-file floor |
+|---|---|---|
+| `orchestrate-dev.js` | **88.75** | +3.75 — this is PROP-COV-01's baseline; the feature's ~20 new branches must not drive it below 85 |
+| `orchestrate-queue.js` | 88.75 | +3.75 — untouched by this feature; recorded so a red here is legible as inherited |
+| `build-runtime.mjs` | 88.23 | +3.23 — untouched |
+| `scripts/capture-learnings-baseline.mjs` | 89.47 | +4.47 — untouched |
+
+No included module is under the floor today, so PROP-COV-01 starts from a green gate rather than
+inheriting a red one — which is the fact that makes it a usable regression guard. Two caveats the
+implementer must carry: (i) none of the four CI checks in the repo's `CLAUDE.md` table runs
+`test:coverage`, so this floor is held green only by the owning task actually running it (RK-2, PLAN
+T-10); (ii) in *this pre-rebase tree* the run has a known unrelated red — `documentOracles.test.js`
+fails because build artifacts under `pdlc/workflows/coverage/` and the machine-local
+`.claude/pdlc-wave-state.json` / `.claude/pdlc.config.json` are tracked on this branch (see G-4).
+Those failures are repo-state, not coverage; the numbers above are from the c8 report itself, whose
+stage-2 check exited 0.
 
 ## Oracles
 
@@ -298,7 +326,7 @@ Restated rather than assumed, because they are what makes the property set falsi
 | PROP-LAW-02 | `fc.assert(fc.property(fc.anything().map(v => …), …), { numRuns: 500 })` asserting no throw and shape membership in the three §4.2 shapes. | The input space deliberately includes non-strings and arbitrary JSON — the mechanical form of a claim that is today a doc comment carried by three hand-picked inputs. |
 | PROP-LAW-03 | `fc.assert(fc.property(genClassifyInput, …), { numRuns: 500 })` asserting `RESUME_OUTCOMES.includes(outcome)`, `RESUME_PROVENANCE.includes(provenance)` and the `code` membership. | The generator must reach all three `ParsedWaveLedger` shapes, not only the well-formed one; a generator that only produces valid records makes the law vacuous on the arms that matter. |
 | PROP-LAW-04 | `fc.assert(fc.property(genWaveLayoutPair, …), { numRuns: 500 })` asserting `computePlanHash(a) !== computePlanHash(b)` over pairs differing in wave order, task ids, assignment or owned paths. | The suite states the caveat in its own preamble: FNV-1a over 32 bits is not injective, so a generated collision is a finding about the corpus, not a failed law. |
-| PROP-COV-01 | `npm run test:coverage` exits 0; the measured per-file branch number for `orchestrate-dev.js` is pasted into the task report. | The floor is a module-level regression guard. It is explicitly **not** this feature's oracle — see PROP-COV-02. |
+| PROP-COV-01 | `npm run test:coverage` exits 0, **and** the stage-2 per-file branch number for `orchestrate-dev.js` read out of that run is `>= 85` and `>= 88.75` (the 2026-08-23 baseline recorded in § 11), pasted into the task report. | A floor plus a measured baseline, so the property is a module-level regression guard rather than an unquantified re-assertion of the threshold. It is explicitly **not** the feature's own coverage oracle — see PROP-COV-02 — and it is scoped to the single included module the feature edits, so an inherited red elsewhere is a blocked task, not a softened property. |
 | PROP-COV-02 | c8's per-file uncovered-line list for `orchestrate-dev.js` is reported and asserted to intersect none of this feature's introduced line ranges, against PLAN §4.5.1's mapping table; the table's completeness is asserted as set equality over its five branch classes. | `orchestrate-dev.js` is 16,336 lines at `origin/main` and this feature adds ~20 branches — about one percent of the denominator — so **every** new branch could be uncovered and PROP-COV-01 would still pass. Completeness of the map, not a percentage, is the checkable thing. |
 | PROP-COV-03 | For each of the four mutations: apply in the working tree, run only the named oracle's file, paste the failure header into the task report, `git checkout --` the file. Nothing is committed in the mutated state. | An asserted mutation is a prediction; a run one is evidence. Row 4 (eager probe) is the one that most needs it: it is invisible to every behavioural assertion and is killed only by PROP-DISREGARD-07's `toEqual`. |
 
