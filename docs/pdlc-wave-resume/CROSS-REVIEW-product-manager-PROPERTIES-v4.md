@@ -124,4 +124,34 @@ already exist outside this document.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All three v3 findings are closed in bytes, not in prose, and I verified each closure against the
+document and — where it made a factual claim — against the tree. No High finding is open, old or new:
+no P0 or P1 requirement is dropped, narrowed or reinterpreted by this delta, the property set is
+unchanged apart from one requirement-trace cell, and the mandated `85` per-file floor is carried
+unconditionally in both the property and the oracle.
+
+Two non-gating items to fold into the next touch of this document:
+
+- **F-01 (Medium, Local)** — give PROP-COV-01's re-measured baseline a source that is not the
+  post-diff tree (merge-base worktree or `git show origin/main:…`), since T-10 sits in batch 4 and
+  `measured >= measured` is a tautology; then align `:368`'s literal `>= 88.75` to that same wording
+  so § 11 and the oracle state one gate rather than two.
+- **F-02 (Low, Local)** — unnest the backticks at `:255-256` so the sentence renders. Falls out of
+  F-01's rewrite.
+
+Four upstream defects travel as `ERRATUM:` lines in my response rather than as findings against this
+document, because in each case this document behaved correctly given a defective parent and already
+routes them in its own routed-findings table. I re-verified all four are still open at HEAD:
+`TSPEC:830` still reads "at fast-check's default run count" while PLAN T-08 pins `numRuns: 500`;
+`TSPEC:755` AT-12's fourth conjunct still asserts "its commit is the only Phase-I-adjacent commit",
+which the V-wave provably never issues; `TSPEC:838` still lists three `c8.include` modules where
+`package.json` carries four; `TSPEC:759` and `PLAN:118` still justify the queue fixture set by the
+retired `distribution.checkEnabled` gate; and no PLAN task owns this feature's missing `A1_GLOBS`
+entry. I re-emit them so the routing survives regardless of how this round closes.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
