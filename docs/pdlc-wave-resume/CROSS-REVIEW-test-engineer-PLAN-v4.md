@@ -179,7 +179,37 @@ counts in the verdict are the counts of that table.
 
 ## Delta-Confirmation Findings
 
-_(placeholder)_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | TSPEC §5.5 now names **five** mutations, adding "suppressing the record write while `explicitPointer` is true", killed only by AT-05's new write-side conjunct. The PLAN still enumerates **four** in three binding places: §4.3's heading and four-row table, T-07's "Mutation duty (§4.3 rows 1–4)", and §4.5's DoD checkbox "Each of §4.3's four mutations". An implementer runs four and stops, leaving unproven the oracle TSPEC says nothing else catches ("leaves AT-05, AT-07, AT-15 and AT-18 green") — the write that makes an operator-pointed recovery run resumable. Not covered by existing row 2, which relocates the write and is killed by AT-09 on an automatic run. Fix: add the fifth row naming AT-05's write-side conjunct as its oracle and T-07 as owner, change `rows 1–4` to `rows 1–5`, and change both count words. | §4.3 (heading, table), T-07 mutation-duty cell, §4.5 DoD mutation checkbox |
+| F-02 | Medium | delta | local | TSPEC §5.8 now discloses a **four-entry** `c8.include` whose fourth entry, `**/scripts/capture-learnings-baseline.mjs`, is external to `pdlc/workflows/`, and states that under `--per-file` "a red there is not a red in this feature's module". The PLAN binds `npm run test:coverage` **exits 0** unconditionally in three places — T-10 oracle (i), the batch-4 gate row, and the §4.5 DoD line — so a per-file red on a file this feature never touches blocks a complete feature with no sanctioned response, inviting an ad-hoc relaxation of the gate command. Fix: scope the exit-0 conjunct to this feature's module (the `orchestrate-dev.js` per-file branch number the same line already requires), and note the external entry so an unrelated per-file red is diagnosable rather than surprising. | T-10 oracle (i); §2.2 batch-4 gate row; §4.5 `test:coverage` DoD line |
+| F-03 | Medium | inherited | local | Carried from v3 F-01/F-02 and still uncorrected: §3.4's integration-points table says the coverage-floor placement is "the erratum this dispatch raises" and RK-2 says TSPEC §5.8 "asks for it as the last wave's `postWaveCommand`". TSPEC v1.3 already reassigned the floor to the last task, so the PLAN agrees with its upstream while describing itself as diverging from it; v1.4's §6.3 now records all four errata as landed and none re-emitted, making the self-description further from the truth. Rationale prose only — no gate, task, oracle, batch derivation or DoD checkbox reads it, and the implementation is unaffected in every particular. Fix: two sentences, restating both cells as agreement with TSPEC §5.8 as it now stands. | §3.4 integration-points "Coverage floor" row; §4.4 RK-2 mitigation cell |
+
+FINDING: High | delta | local | §4.3 mutation table, T-07 duty cell, §4.5 DoD checkbox | TSPEC §5.5 grew from three to five mutations; the PLAN's four-mutation enumeration leaves mutation 5 (record write suppressed while `explicitPointer` is true, killed only by AT-05's write-side conjunct) with no owner, no observation duty and no DoD coverage.
+FINDING: Medium | delta | local | T-10 oracle (i), §2.2 batch-4 gate, §4.5 coverage DoD line | TSPEC §5.8's newly disclosed fourth, external `c8.include` entry can red `--per-file` outside this feature's module, but the PLAN binds `npm run test:coverage` exits 0 unconditionally.
+FINDING: Medium | inherited | local | §3.4 "Coverage floor" row; §4.4 RK-2 mitigation | The PLAN still describes its coverage-floor placement as diverging from TSPEC §5.8 and as raising an erratum, though TSPEC landed that reassignment in v1.3 and v1.4 records all errata as closed; rationale prose only, per DEC-ERR-01.
+
+## Questions
+
+None. The delta is unambiguous and every claim I needed is stated in TSPEC v1.4's own text.
+
+## Positive Observations
+
+- The `numRuns: 500` pin closes in the PLAN's favour: TSPEC, PLAN T-08 and PROPERTIES now state one
+  figure, so the DoD line "the four laws P-1 … P-4 pass at `numRuns: 500`" is a transcription
+  rather than a PLAN-local invention.
+- AT-05's new write-side conjunct reaches the implementer without a PLAN edit, because T-07 owns
+  TSPEC §5.4 *by section* rather than by transcribed conjunct list. That is the compression style
+  that survived this delta intact — and the contrast with §4.3's transcribed enumeration, which did
+  not, is the useful lesson.
+- Task decomposition, the batch DAG, file ownership and the AT→task map re-derive unchanged; the
+  erratum touched no structural commitment the PLAN makes.
+
+## Recommendation
+
+**Needs revision** — one High finding (F-01). The revision is small and surgical: one new mutation
+row, one range change, two count words, plus F-02's scoping clause and F-03's two sentences. No
+decision is reopened and no task, batch or ownership boundary moves.
 
 ## Verdict
 
