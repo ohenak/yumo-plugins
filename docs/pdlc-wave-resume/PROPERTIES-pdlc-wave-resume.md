@@ -621,7 +621,15 @@ ignore path in the built artifact, which is the nearest thing to an end-to-end a
 in `.gitignore`, which exists at `origin/main:.gitignore:41` but not in this pre-rebase tree. The
 property is written against the post-rebase state and must not be weakened to pass locally; a green
 PROP-REPO-01 in this tree would mean the assertion had been softened, which is the failure mode
-REQ BL-04 and FSPEC OB-F1 were opened to prevent.
+REQ BL-04 and FSPEC OB-F1 were opened to prevent. Measured on 2026-08-23, this tree is worse than "the ignore
+rule is absent": `.claude/pdlc-wave-state.json` and `.claude/pdlc.config.json` are **tracked** here,
+and the shipped repo-level oracle already forbids it — `__tests__/documentOracles.test.js`'s
+`` `.claude/` machine-local state is untracked and stays untracked (CODE_REVIEW v1 §1-1) `` block
+fails on both paths in this tree and passes at `origin/main`. Build artifacts under
+`pdlc/workflows/coverage/` are tracked here too and are absent from `origin/main`. Both are pre-rebase
+branch state, not feature behaviour; they are reported to the orchestrator rather than fixed from this
+document, and they are the reason a local `npm test` in this tree is red in ways PROP-REPO-01 and
+PROP-COV-01 must not be softened to accommodate.
 
 **G-5 · "No PLAN may ever own consumer-local state" is asserted for this feature only.**
 PROP-REPO-02 parses *this* feature's PLAN §3.3 ownership manifest and its
@@ -669,8 +677,10 @@ pass have since been absorbed by their owners and re-raising a settled question 
 | TSPEC §5.4 files AT-14 at a level that disagrees with FSPEC | **Closed by the owner.** TSPEC §5.4's AT-14 row now reads `repo-state`, matching FSPEC's `AT-14 — the record never becomes tracked content (REQ-WVR-10)`. | No. |
 | PLAN §4.1 inherits an AT-14 mis-filing | **Closed by the owner.** PLAN §4.1 maps `AT-14 → T-03 → waveResumeRepoState.test.js`, and PLAN §3.2 T-03 carries AT-14's three strict conjuncts verbatim. | No. |
 | TSPEC §2.4's config-validation treatment of `implementation.startWave` disagrees with §5.4's | **Not reproducible at HEAD.** §2.4's excluded-notice row and §5.4 AT-06 agree that a rejected value is discarded before any resume decision and that `startWave: 1` is indistinguishable from unset; TSPEC v1.2's erratum round names this as the change that closed it. | No. |
+| TSPEC §5.4 AT-12's fourth conjunct asserts the V-wave's own commit and a wave-task pathspec list on the `add` argv seam | **Open, and newly raised this round.** At `origin/main` the V-wave block in `orchestrate-dev.js` dispatches `agentFn("se-implement", propertiesTestPrompt(featureName), …)`, calls `evaluateWaveDispatch`, and runs `runCommandFn(implConfig.testCommand)` — it issues no `commitPaths` and no `_git(["add", …])`; the enclosing comment says so in as many words ("the V-wave is the one wave-mode dispatch that still commits its OWN work"), and that commit is made by the dispatched agent, which the `makeAgent(record)` double replaces. So no oracle in this suite can observe it. | **Yes** — one `ERRATUM: TSPEC` line. PROP-SKIP-04 is re-expressed here in the meantime (SE F-01). |
+| TSPEC §5.4 AT-16 and PLAN T-04 justify the queue fixture set by the `distribution.checkEnabled` drift gate | **Open, and newly raised this round.** That gate has been retired from `orchestrate-queue.js`: `git grep parseDistributionCheckEnabledOptOut origin/main` resolves only under `docs/completed/**`, and `orchestrateQueue.test.js` asserts the module's source contains neither `"distribution" + ".checkEnabled"` nor `"DRIFT_STATE" + "_PATH"`. The stated reason the three-fixture set is complete is therefore false, though the surplus fixture is inert rather than harmful. | **Yes** — one `ERRATUM: TSPEC` line and one `ERRATUM: PLAN` line. § Fixtures is re-anchored here on the dispositions that still fire (SE F-02). |
 
-**What this document does with the one open item.** PROP-LAW-01…PROP-LAW-04 pin `numRuns: 500`,
+**What this document does with the open items.** PROP-LAW-01…PROP-LAW-04 pin `numRuns: 500`,
 following PLAN T-08 rather than TSPEC §5.7, because 500 is the depth the cited precedent actually
 runs and a law suite that runs 5× shallower than the block it is modelled on is the weaker of the two
 readings. `## Fixtures` already records this divergence at its run-depth paragraph and names the
