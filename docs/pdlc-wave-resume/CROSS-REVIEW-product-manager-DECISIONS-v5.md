@@ -125,10 +125,69 @@ and is a reusable lesson regardless of where the fix lands. F-03 and F-04 are `L
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01 and F-02 have now survived three and four rounds respectively because every round has been scoped to something else. Is there a point in the pipeline that will ask the author to land them — a final DECISIONS revision pass, or a Phase DOD sweep — or should they be handed to harvest as recorded-and-accepted? Neither is wrong; what would be wrong is carrying them silently to ship. |
+| Q-02 | §3.1's count has now moved twice (seven→"four of seven" reasons, then four→five values). Both moves were counting *renderer interpolations*, and both were caught by review rather than by a test. Is there an assertion — over the shipped renderers rather than over prose — that would make the number self-checking, so no document has to restate it? This is a question for the TSPEC/PROPERTIES owners, not a finding against DECISIONS. |
+
 ## Positive Observations
+
+- **The decisions absorbed a nine-commit upstream round with two parenthetical scratches and nothing
+  structural.** Four rounds of TSPEC churn have now passed over a byte-stable DECISIONS, and in all
+  four the decision clauses, alternative dispositions and constraint rows have held. That is what
+  compressing at the right altitude looks like: the document commits to *why* three interpolating
+  reasons make set-equality-over-sentences a fixture assertion, not to how many values those three
+  sentences happen to carry.
+- **The one thing this round could have broken, it did not.** OB-F1's sequencing precondition —
+  AT-14 is red until the rebase lands, so the wave carrying it must not be dispatched first — is the
+  document's highest-consequence product claim, and the erratum edit went out of its way to state
+  that OB-F1's substance is untouched. DECISIONS `:446` still reads true verbatim.
+- **DEC-WVR-06 survives a correction to its own supporting number.** The decision was written so that
+  the *shape* of the argument (some sentences interpolate, therefore set equality is over fixture
+  data) carries it, with the count as evidence rather than as premise. That is why a four→five
+  correction upstream is a Medium erratum here and not a re-litigation.
+- **F-01 is a genuinely good catch by the author, half-landed.** DECISIONS refused to propagate a
+  count it believed wrong and said so in writing; the TSPEC then corrected it — to a third number.
+  The remaining work is bookkeeping, not judgement.
 
 ## Consequences
 
+- **DECISIONS remains approved**, now against TSPEC `31df4eda` (v1.4). The v4 approval anchors should
+  be read as re-affirmed with the `UPSTREAM-STATE` TSPEC hash advanced to HEAD; no re-approval of the
+  decision content is owed.
+- **No downstream cascade is triggered on the product lens.** PLAN and PROPERTIES consume DECISIONS'
+  clauses, not its parentheticals; nothing they depend on moved. If the TSPEC's five-value count is
+  restated anywhere in PROPERTIES, that is a TSPEC→PROPERTIES cascade already covered by this round's
+  fan-out, not a consequence of this confirmation.
+- **F-01 and F-02 stay open and non-gating.** They cost nothing at runtime and nothing to users; they
+  cost a future reader ten minutes of reconciling a document against an upstream that has moved. The
+  fix for both is a sentence each, and either the next DECISIONS edit takes them or harvest records
+  them — Q-01 asks which.
+- **If any later round reopens DECISIONS for substantive reasons, F-01 becomes cheap to land and
+  should be landed in the same pass**, together with F-02's re-attribution, so the erratum ledger in
+  the document stops describing a state of the world that ended three rounds ago.
+
 ## Recommendation
 
+**Approved with minor changes.**
+
+DECISIONS still holds against the TSPEC that now stands. Every decision clause, alternative
+disposition, constraint row, reversibility claim, re-evaluation trigger and downstream obligation
+remains a faithful compression of upstream at HEAD. No High findings, and none carried. No P0 or P1
+requirement is narrowed, dropped or reinterpreted, and no re-triggered cascade is owed.
+
+Changes requested, neither gating:
+
+1. **F-01 (Medium, delta)** — `DECISIONS:205`–`:207`: replace "the correct count is three reasons
+   carrying four interpolated values — raised as an erratum" with "three reasons carrying five
+   interpolated values (TSPEC §3.1, v1.4)", and drop the quoted superseded sentence and the
+   erratum clause.
+2. **F-02 (Medium, inherited)** — `DECISIONS:167`–`:169`: re-attribute the "§2.4 omits the notice
+   entirely" characterisation to TSPEC v1.0 and record it as closed; leave O-5's argument as written.
+
+F-03 and F-04 remain recorded, Low, and unresolved by choice.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 2}
