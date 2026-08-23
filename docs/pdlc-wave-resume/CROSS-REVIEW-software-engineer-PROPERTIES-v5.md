@@ -232,3 +232,6 @@ incompletely, and it is a narrow one. § 11's measured-not-assumed baseline disc
 measurement, both c8 stages, per-file scope) is why F-03 is bookkeeping rather than a wrong number.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
