@@ -164,8 +164,22 @@ but it is an edit to the plan, which is why this is a revision and not a confirm
 
 ## Delta-Confirmation Findings
 
-_(pending)_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | TSPEC §5.5 at HEAD enumerates **five** mutations; PLAN §4.3 transcribes a closed set of **four**. The fifth — suppressing the record write while `explicitPointer` is true, which TSPEC says is "Killed only by AT-05's write-side conjunct" and whose escape removes resume from the recovery path §2.5 ratifies the write for — has no row in §4.3, no oracle pairing, no owning task, no execution step in T-07's "Mutation duty (§4.3 rows 1–4)", no RK-1 commitment and no §4.5 DoD checkbox. AT-05's new conjunct itself is fine (PLAN cites AT-05 by id and delegates the oracle text upstream), so the assertion would be written — but nothing in PLAN makes anyone prove it has teeth. Fix: add the fifth row to §4.3 (oracle: AT-05's write-side conjunct; applied and observed by: T-07) and update the four count claims — §4.3's heading, T-07's "rows 1–4", RK-1, §4.5's checkbox. No new task, no batch move, no `Deps` change. | §4.3 Mutation resistance; T-07 mutation duty (§2.1); RK-1 (§4.4); §4.5 DoD |
+| F-02 | Low | inherited | local | §3.4's `Coverage floor` row still cites "the erratum this dispatch raises" and quotes upstream as asking for "the last implementation wave's `postWaveCommand`". TSPEC §5.8 has assigned the floor to the last implementation **task** (PLAN T-10, RK-2) since v1.3; the quoted divergence no longer exists. Raised as v3 F-01, not yet landed. Fix: keep the row's value (`T-10`, not `postWaveCommand`) and the V-13 four-key reasoning verbatim, replace the erratum citation with TSPEC §5.8 / RT-7 at v1.4, and state the assignment as agreed rather than raised. | §3.4 Configuration points — `Coverage floor` row |
+| F-03 | Low | inherited | local | §4.4's RK-2 still reads "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" and closes with "the difference from TSPEC's wording is raised as an erratum". False against TSPEC v1.4, which assigns the floor to the last implementation task and cites PLAN T-10 / RK-2 by id. Raised as v3 F-02, not yet landed. Fix: keep the merge-gate risk (TSPEC RT-7) and the mitigation text unchanged; record that §5.8 now assigns the floor to T-10 rather than describing an open disagreement. | §4.4 Risk register — RK-2 |
+
+**On the relationship between the three.** F-02 and F-03 are the same one-line corrections v3 filed
+and the author has not yet landed; they are non-gating and stay that way. F-01 is what makes this
+round different: it is not a description of upstream that has gone stale, it is a unit of work
+upstream now requires that this plan does not schedule. All three should land in one edit.
+
+FINDING: High | delta | local | §4.3 Mutation resistance / T-07 mutation duty / RK-1 / §4.5 DoD checkbox | TSPEC §5.5 at HEAD enumerates five mutations, PLAN §4.3 transcribes four — the fifth (suppress the record write while `explicitPointer` is true, killed only by AT-05's new write-side conjunct) has no owning task, no oracle pairing, no execution step and no DoD checkbox, so the mutation upstream added to protect the resume recovery path is one nobody runs; add the fifth §4.3 row owned by T-07 and update the four "four mutations" count claims
+FINDING: Low | inherited | local | §3.4 Configuration points — `Coverage floor` row | Row cites "the erratum this dispatch raises" and quotes upstream as asking for the last implementation wave's `postWaveCommand`; TSPEC §5.8 has assigned the floor to the last implementation task (PLAN T-10, RK-2) since v1.3, so the quoted divergence no longer exists — re-point the row at TSPEC §5.8 / RT-7 at v1.4, keeping the T-10 assignment and V-13 reasoning unchanged (v3 F-01, unlanded)
+FINDING: Low | inherited | local | §4.4 Risk register — RK-2 | RK-2 states "TSPEC §5.8 asks for it as the last wave's `postWaveCommand`" and that "the difference from TSPEC's wording is raised as an erratum"; both are false against TSPEC v1.4, which assigns the floor to the last implementation task and cites PLAN T-10 / RK-2 by id — record the agreement, leaving the merge-gate risk (TSPEC RT-7) and mitigation text unchanged (v3 F-02, unlanded)
 
 ## Verdict
 
-_(pending)_
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
