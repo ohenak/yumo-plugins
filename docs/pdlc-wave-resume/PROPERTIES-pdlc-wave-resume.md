@@ -619,7 +619,7 @@ predecessors at PLAN v1.1 and are not reused.
 | `pdlc/workflows/__tests__/waveResumeQueueParity.test.js` | **new** (PLAN T-04) | no match at `origin/main` or in this tree |
 | `pdlc/workflows/__tests__/waveResumeProperties.test.js` | **new** (PLAN T-08) | no match at `origin/main` or in this tree |
 | `pdlc/workflows/__tests__/waveResumePreflight.test.js` | **new** (PLAN T-01) | no match at `origin/main` or in this tree; ships permanently, deleted by no task |
-| `pdlc/workflows/__tests__/advisoryHelperProperties.test.js` | **exists at `origin/main`**, cited as precedent only — no property lands in it | absent in this tree (pre-rebase), present at `origin/main` |
+| `pdlc/workflows/__tests__/advisoryHelperProperties.test.js` | **exists at `origin/main`**, cited as precedent only — no property lands in it | present in this tree and at `origin/main` (re-verified 2026-08-23; the earlier "absent here, pre-rebase" note is stale — the rebase has landed, see § The tree these properties are written against) |
 
 
 ## Gaps, Risks and Routed Findings
