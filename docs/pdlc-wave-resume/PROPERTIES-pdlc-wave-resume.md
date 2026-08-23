@@ -271,13 +271,13 @@ Restated rather than assumed, because they are what makes the property set falsi
 | PROP-OVERRIDE-03 | Past-the-end notice asserted as a transcribed element ending ` (provenance: operator-set)`; `dispatchedTaskIds` equals the whole plan; `expect(logs.some(m => m.includes("skipped (implementation.startWave"))).toBe(false)`; `expect(readCalls.filter(p => p === WAVE_STATE_PATH)).toEqual([])`. | The read-call assertion is what makes "the record was suppressed" observable — outcome alone cannot distinguish suppression from a record that happened to be absent. |
 | PROP-OVERRIDE-04 | (i) `toContain("to force a full run")` on both banners; (ii) the same fixture with `ledger` omitted resolves outcome (a) — asserted as the full dispatch list; (iii) `expect(new Set(Object.keys(IMPLEMENTATION_DEFAULTS))).toEqual(new Set(["testCommand","postWaveCommand","postWavePathspecs","startWave"]))`. | (iii) is what makes "no config value can force a full run" falsifiable: a `forceFullRun` key added later reds the set equality instead of quietly shipping. |
 | PROP-OVERRIDE-05 | `expect(logs.filter(m => m.includes("is not a valid value — using the default."))).toHaveLength(1)` and that element `.not.toContain("provenance:")`. | A negative asserted **on a positively-located line** — the notice must be present *and* token-free, so a run that never emitted it cannot pass. |
-| PROP-SAFETY-01 | With H-1's `events` array supplied: the index of the first `["runCommand", <testCommand>]` event is less than the index of the first `["git", "commit", ...]` event, asserted per fixture. | Two independent call logs cannot express interleaving; H-1 exists for exactly this oracle. A "gate was called" count would pass under a commit-then-gate reordering. |
+| PROP-SAFETY-01 | With H-1's `events` array supplied, **first** the shape precondition — `expect(events.some(e => e[0] === "git")).toBe(true)` and `expect(events.some(e => e[0] === "runCommand")).toBe(true)` — **then** the ordering claim: the index of the first `["runCommand", <testCommand>]` event is less than the index of the first `["git", "commit", ...]` event, asserted per fixture. | Two independent call logs cannot express interleaving; H-1 exists for exactly this oracle. A "gate was called" count would pass under a commit-then-gate reordering. The both-axes precondition is what stops the ordering claim from being trivially satisfied by a one-axis `events` array: an unwired seam reds on the precondition instead of passing an ordering assertion over a list that only ever had `runCommand` entries in it (SE F-03). |
 | PROP-SAFETY-02 | `expect(new Set(RESUME_OUTCOMES)).toEqual(new Set(["full-run","resume","skip-phase"]))` plus three fixtures each resolving one outcome and announcing it. | Set equality plus a witness per member: the set alone could be satisfied by a catalogue no code path reaches. |
 | PROP-SAFETY-03 | Eight table-driven unit cases, one per guard row of TSPEC §3.2, each asserting the whole returned decision object with `toEqual` against a transcribed literal. | Whole-object equality catches a decision that gets the outcome right and the `code`, `startWave` or `silent` flag wrong — a per-field assertion would not. |
 | PROP-SAFETY-04 | `expect(new Set(RESUME_PROVENANCE)).toEqual(new Set(["operator-set","automatic"]))`, and over the eight guard rows every returned `provenance` is `"automatic"`. | The "never `operator-set` from the classifier" half is asserted over the full guard table, not on one row. |
 | PROP-RECORD-01 | `expect(ledgerWrites(writes)).toEqual([])` on the no-transport run, **paired** with the positive conjunct that all gates passed (`runCommand` call count equals the wave count) and that the next run's dispatch list starts at that same wave. | The empty-writes assertion alone is absence-only; the gate-count conjunct is what proves the run got far enough to have recorded something had the guard been wrong. This is the only oracle that kills "move the write outside the transport branch" (TSPEC §5.5 row 2). |
 | PROP-RECORD-02 | The same fixture **with** a transport, run twice — once with `testCommand` present (script-owned gate) and once without (self-report gate) — asserting `ledgerWrites(writes)` is non-empty and records the expected `lastGreenWave` in both. | Two gate modes is the discriminator: a single-mode companion cannot distinguish "guarded by the transport" from "guarded by the gate mode", which is the misreading REQ §1 records. |
-| PROP-RECORD-03 | On the H-1 event sink, for each recorded wave the index of that wave's `writeFile` event exceeds the index of its last `["git","commit",...]` event. | Ordering, not membership. "Both happened" passes under a write that precedes the commit, which is the shape REQ-WVR-09 forbids. |
+| PROP-RECORD-03 | On the H-1 event sink, the same both-axes-present precondition PROP-SAFETY-01 asserts (`events` carries at least one `"git"` entry **and** at least one `"runCommand"` entry) is asserted first; then, for each recorded wave, the index of that wave's `writeFile` event exceeds the index of its last `["git","commit",...]` event. | Ordering, not membership. "Both happened" passes under a write that precedes the commit, which is the shape REQ-WVR-09 forbids — and an ordering claim over a sink that never received a `git` event is vacuous in the same way, which the precondition forecloses (SE F-03). |
 | PROP-RECORD-04 | Parsed `lastGreenWave` of each written record equals the plan-absolute wave number, asserted against transcribed integers over the three-leg sequence of PROP-RESUME-05. | Single-leg fixtures agree under the run-relative mutation; only the third leg diverges. |
 | PROP-RECORD-05 | H-2 `failWriteOn` matching every call: `logs.filter(m => m.startsWith("Notice: could not record wave "))` length equals the wave count; `expect(result.outcome).toBe("success")`; the next run's dispatch list is the whole plan. | Notice **count** equals wave count, not "at least one" — a single swallowed failure would otherwise pass. |
 | PROP-RECORD-06 | H-2 `failWriteOn(path, callIndex)` scripted to succeed on wave 1 and throw on wave 3: assert one notice, `outcome === "success"`, and that the next run resolves outcome (b) at wave 2. | The discriminator against an implementation that discards the whole record on any write failure — arm 1 alone cannot see that bug, because both behaviours end in a full run. |
@@ -345,7 +345,7 @@ exactly what it returns today, which is what keeps the shipped `describe` a regr
 
 | # | Extension | Consumed by |
 |---|---|---|
-| H-1 | Optional `events` array; when supplied, the `_runCommand` and `_git` doubles each append `["runCommand", cmd]` / `["git", …argv]` to it **in addition to** their own unchanged logs, so relative order is observable. | PROP-SAFETY-01, PROP-RECORD-03 |
+| H-1 | Optional `events` array. `makeLedgerArgs` owns no doubles of its own — its `git` and `runCommand` are **caller-supplied parameters**, spread in conditionally (`...(git ? { _git: git } : {})`), with `git` having no default at all and `runCommand` defaulting to a green stub. H-1 therefore **wraps** whichever double the caller passed: when `events` is supplied, each seam is replaced by a wrapper that appends `["runCommand", cmd]` / `["git", …argv]` to `events` and then delegates to the caller's double (or, on the git axis with no caller double, records the call and returns a green result), leaving that double's own log unchanged. Wrapping, not owning, is what keeps the extension a single change to `makeArgs` and keeps the git axis instrumented in the cases that pass no `git`. | PROP-SAFETY-01, PROP-RECORD-03 |
 | H-2 | Optional `failWriteOn(path, callIndex)` predicate over the `_writeFile` double; the default keeps today's always-capture behaviour. | PROP-RECORD-05, PROP-RECORD-06 |
 
 ### Ledger fixtures — one per reason code, plus the honoured shapes
@@ -386,18 +386,32 @@ the rejection fixtures, where the point *is* that the bytes are not something th
 | config with an **invalid** `startWave` (e.g. `"two"`) | one variant | PROP-OVERRIDE-05, the excluded notice |
 | no `testCommand` | one variant | PROP-RECORD-02's self-report-gate arm only — never as the default for any other property |
 
-### Queue fixtures (all three required)
+### Queue fixtures (two required, and the one that is not)
 
-Without **all three**, `orchestrate-queue` returns `outcome: "blocked"` and asserts nothing —
-which is a vacuous pass, not a failure:
+Two fixtures are load-bearing; without either, `orchestrate-queue` returns before the delegation
+seam PROP-PARITY-01…04 read, which is a vacuous pass rather than a failure:
 
-1. a `QUEUE.md` table with one `pending` row for this feature;
-2. a `.claude/pdlc.config.json` carrying `distribution.checkEnabled: false`, so the drift gate does
-   not refuse the invocation before `QUEUE.md` is read;
-3. a Phase-0 readiness-triage `_agent` double.
+1. a `QUEUE.md` table with exactly one `pending` row for this feature and **no** `in-progress` row —
+   an `in-progress` row short-circuits `selectNextPending` to `{ kind: "blocked-active" }` and
+   `runQueue` returns `outcome: "blocked"` before any candidate is triaged, and a table whose only
+   rows are `done`/`awaiting-merge`/`blocked`/`halted` returns `outcome: "idle"` for the same reason
+   (`origin/main:pdlc/workflows/orchestrate-queue.js`, `selectNextPending` and the `blocked-active`
+   / `empty` arms of `runQueue`'s selection block);
+2. a Phase-0 readiness-triage `_agent` double whose last line is `TRIAGE: ready` — the queue reads
+   that verdict with `/^TRIAGE:\s*(ready|blocked|needs-human)\b/` and escalates anything else.
 
-The queue suite asserts `result.outcome !== "blocked"` as a precondition of its own oracles, so a
-fixture regression reds rather than silently emptying the test.
+**A `.claude/pdlc.config.json` carrying `distribution.checkEnabled: false` is *not* required, and
+earlier drafts of this section were wrong to say it was.** The distribution drift gate that opt-out
+addressed has been retired from `orchestrate-queue.js`: `git grep parseDistributionCheckEnabledOptOut
+origin/main` resolves only inside `docs/completed/**`, and `orchestrateQueue.test.js` now asserts the
+module's own source contains neither `"distribution" + ".checkEnabled"` nor `"DRIFT_STATE" + "_PATH"`.
+The fixture is inert rather than harmful, so it may be supplied or omitted; what it must not do is
+carry the *reason* the fixture set is complete. This premise is inherited from TSPEC §5.4 AT-16 and
+PLAN T-04 and is routed upstream as an erratum rather than corrected there from here.
+
+The queue properties therefore assert `expect(result.outcome).toBe(<the outcome the case expects>)`
+positively — never merely `!== "blocked"` — so a fixture regression that returns `blocked` or `idle`
+reds on the outcome value itself instead of silently emptying the delegation assertions.
 
 ### Generative generators (PROP-LAW-01…04)
 
