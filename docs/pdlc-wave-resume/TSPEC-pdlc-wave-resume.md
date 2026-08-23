@@ -349,14 +349,18 @@ Unchanged from shipped, and ratified here as the contract:
    waves this run executed — which is what makes completion the high-water property FSPEC BR-08
    requires and AT-18 discriminates on.
 
-**One interaction the FSPEC does not state, recorded here and routed upstream.** The write site is
+**One interaction the FSPEC now states, ratified here.** The write site is
 outside the `!explicitPointer` guard, so a run started at wave N by an operator pointer records
 `lastGreenWave = N` for a wave the *operator*, not the pipeline, asserted the predecessors of. The
 damage is bounded exactly as FSPEC BR-10 bounds it — the first executed wave's gate verifies the
-whole tree, so an un-run predecessor reds the gate rather than shipping — but the behaviour is
-unspecified upstream. Ratified as-is (changing it would make an operator-pointer run unable to
-record anything, losing resume for the very recovery path the feature serves); raised as an
-erratum against the FSPEC so the clause exists.
+whole tree, so an un-run predecessor reds the gate rather than shipping. This was raised as an
+erratum against the FSPEC in an earlier round, and **FSPEC §3.4 at HEAD carries the clause**: "An
+operator-pointed run records exactly as any other run does … in the same high-water form counted
+from the plan's first wave", bounded by BR-10, with "no record content distinguishes the two
+provenances". That is this TSPEC's own ratified position returned verbatim, so nothing in the design
+moves: the behaviour is ratified as specified (changing it would make an operator-pointer run unable
+to record anything, losing resume for the very recovery path the feature serves), and the erratum is
+landed, not open — see §6.3 item 3.
 
 **And the record carries no provenance of its own (PM Q-02).** The FSPEC clause being asked for is
 an *announcement* clause, not a record field: `RESUME_PROVENANCE` is announced content (§2.4), and
