@@ -39,6 +39,31 @@ made materially worse by this round, which is why it is recorded as `delta` rath
 
 ## Options Considered
 
+Three dispositions were open for this confirmation, and the choice between them is what the verdict
+encodes:
+
+- **(a) Re-confirm unchanged — "no findings, approval carries over."** Rejected. It is the honest answer
+  only if no DECISIONS clause leans on text the round moved, and one does: O-8's count claim now
+  disagrees with §3.1 at HEAD on the substance, not merely on attribution. Silently re-approving would
+  freeze a number in a downstream document that upstream has corrected — exactly the drift this
+  cascade check exists to catch.
+- **(b) Route the whole document back to a full DECISIONS revision round (a `delta` High).** Rejected on
+  evidence. A High here would have to show a decision clause, an alternative's disposition, a
+  constraint row or a re-evaluation trigger that no longer follows from upstream. The affected text is
+  a supporting parenthetical: DEC-WVR-06's actual claim — *reason codes, not rendered sentences, are the
+  closed catalogue* — rests on **three of seven reasons interpolating**, and three is exactly what
+  §3.1 still says at HEAD (`TSPEC:432`–`:436`). The count that moved is the count of interpolated
+  *values*, which no decision, no obligation and no acceptance criterion turns on. Escalating it would
+  be inflating severity to attract attention, which the severity bar forbids.
+- **(c) Confirm the decisions as still holding, and record the count divergence as a non-gating
+  `delta` Medium alongside the three findings already carried.** Chosen. It keeps the approval
+  standing where the evidence supports it, and leaves the author a precise, mechanical fix
+  (`four` → `five`, plus a tense change) that the next DECISIONS edit — whenever one is owed — can
+  land without reopening anything settled.
+
+I did not consider re-reading DECISIONS from scratch: the delta protocol scopes this round to prior
+findings plus the sections upstream churn reaches, and every settled decision is out of scope.
+
 ## Decision
 
 ## Delta-Confirmation Findings
