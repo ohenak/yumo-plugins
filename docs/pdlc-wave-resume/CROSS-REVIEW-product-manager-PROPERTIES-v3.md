@@ -271,6 +271,14 @@ this delta, and all three findings are documentary rather than behavioural.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | `PROP-COV-02` (`:330`) argues from "`orchestrate-dev.js` is 16,336 lines at `origin/main`". At `origin/main` today `git grep -c "" origin/main -- pdlc/workflows/orchestrate-dev.js` reports **17,176**. The argument is unaffected — ~20 new branches is about one percent of either denominator, so "completeness of the map, not a percentage, is the checkable thing" stands either way — and the row is outside this delta, so I have not filed it. But § 11 immediately above it now carries figures re-measured and dated 2026-08-23, and a stale number sitting directly beneath fresh ones invites a reader to distrust both. Worth a one-word refresh next time this section is open for another reason? |
+| Q-02 | The two errata this delta routes are both *premises* in TSPEC that turned out to be false about shipped code (AT-12's V-wave commit, AT-16's drift gate), and F-02 adds a third (§5.8's include list). All three are TSPEC asserting something about `orchestrate-dev.js` / `orchestrate-queue.js` / `package.json` that has since drifted. Is the right resolution three targeted edits, or does TSPEC's author want a single pass re-verifying every code-shaped claim in §5 against `origin/main`? I ask because the three found so far were each surfaced by a different reviewer looking at a different property — which is a sampling pattern, not an exhaustive one, and the sample is three-for-three. |
+| Q-03 | PROP-COV-01 pins `>= 88.75` as of 2026-08-23. That number is measured on *this* pre-rebase tree. After the OB-F1 rebase drops the tracked `.claude/` and `coverage/` artifacts and greens `documentOracles.test.js`, three currently-failing tests will start passing and the figure will move — probably up, since those tests exercise `orchestrate-dev.js` paths. Should T-10 re-measure the baseline post-rebase before treating `88.75` as the regression floor, or is the floor intended to be exactly this pre-rebase number so that a post-rebase run can only ever be comfortably above it? Either reading is defensible; the document does not say which, and an implementer who re-measures and gets 89.1 will not know whether to update the constant. |
+
+
+
 ## Positive Observations
 
 - **The response to five findings was to go and read the code, not to patch the prose.** Every one of
@@ -319,3 +327,45 @@ this delta, and all three findings are documentary rather than behavioural.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No High findings — none open from round 2 (both prior findings are closed or correctly parked), and
+none introduced by this revision. The delta is corrective throughout and, unusually, leaves the
+property set strictly harder to pass than it found it: two ordering oracles gained both-axes
+preconditions that close a real vacuity against REQ-WVR-09, the queue oracles moved from a
+containment assertion to equality against the expected outcome, and PROP-SKIP-04 was re-anchored off
+a premise that could never have gone green onto three conjuncts that can. No property was deleted, no
+oracle weakened, no P0 or P1 requirement dropped or narrowed. The seven-to-seven PLAN task trace
+holds in both directions, and every named test file is either present in the tree or declared new
+with exactly one owning task.
+
+I verified the delta's factual claims rather than reading them, because this revision rests almost
+entirely on assertions about shipped code: thirteen citations re-run against `origin/main` and the
+working tree, thirteen holds, including two verbatim quotations. The § 11 coverage baseline — the one
+place a hard number could have made the property unsatisfiable — reproduces to the second decimal on
+all four modules, with stage 2 exiting 0 exactly as documented.
+
+Three non-gating items, in the order I would pick them up:
+
+- **F-01 (Medium, Local)** — annotate AT-12's traceability row at `:494`, or give the routed conjunct
+  a `G-6` entry. The property text is honest that the commit clause is unobservable; the matrix is
+  not, and the matrix is what a reader consults for coverage. Documentary only — no new property.
+- **F-02 (Medium, Local)** — route TSPEC §5.8's three-module include list as an erratum and add the
+  row to the routed-findings table, matching how AT-12 and AT-16 were handled in this same delta.
+  The local correction at `:223` is right and can stay.
+- **F-03 (Low, Local)** — re-label PROP-SKIP-04's trace at `:147` from `AT-12 (first three
+  conjuncts)` to the fourth conjunct less the routed commit clause. Fixing this makes F-01's gap
+  legible from the row itself, so the two are worth doing together.
+
+Three upstream defects travel as `ERRATUM:` lines in my response rather than as findings against this
+document, because in each case this document behaved correctly given a defective parent: TSPEC §5.7's
+run count still reads "at fast-check's default" at `TSPEC:830` while PLAN T-08 pins `numRuns: 500`
+(re-emitted from my v2 — still unactioned); TSPEC §5.4 AT-12's fourth conjunct asserts a V-wave `add`
+list and own-commit that the script provably never issues; and TSPEC §5.8's include list names three
+modules where `package.json` carries four. The first two the document already routes; the third is
+F-02, and I route it so it is not lost regardless of how F-02 is resolved.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
