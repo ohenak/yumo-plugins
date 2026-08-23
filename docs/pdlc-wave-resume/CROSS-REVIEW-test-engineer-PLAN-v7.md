@@ -151,20 +151,69 @@ implementation. That row was verified against the upstream in round 6 and is byt
 
 ## Findings
 
-*(pending)*
+No findings.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | *(none)* | — |
+
+The round-6 Low (F-01, RK-5's "four mutation runs") is resolved by the landed edit, verified by grep
+at HEAD. The v1.4 revision introduced no defect: it touched no task row, no `Deps` cell, no oracle,
+no ownership manifest and no DoD checkbox, and the parse results §4.6 publishes were re-run against
+the shipped parser after the edit and are unchanged in every cell. Both of the delta's factual claims
+— that `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` is empty at HEAD and that the tree
+is no longer behind — reproduce exactly.
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| — | *(none)* — round-6's Q-01 needed no answer to proceed and the delta did not raise a new one. |
 
 ## Positive Observations
 
-*(pending)*
+- **A retraction was written as a retraction, not as a silent deletion.** §4.6's preamble no longer
+  claims the tree is 1,637 commits behind; the v1.4 history row says so explicitly and names what
+  retracted it (`git rev-list --count HEAD..origin/main` → `0`). A reader who remembers the old
+  sentence can find out what happened to it instead of wondering whether it was quietly dropped.
+- **The replacement justification is stronger than the one it replaced, and it is checkable.** "The
+  shipped parser, byte-identical to this tree's copy" is a claim a reviewer can falsify in one
+  command — and I did: `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` is empty at HEAD.
+  The old justification asserted a distance; the new one asserts an identity, which is what the parse
+  results actually depend on.
+- **The count fix landed in the one place that still had it wrong, and nowhere else.** The v1.1
+  history row still says "four mutations" — correctly, because that is what v1.1 did. Leaving a
+  historical count alone while correcting the live one is the discipline that keeps a revision
+  history usable as evidence rather than turning it into a second copy of the current state.
+- **The edit re-dated its own parse verification.** §4.6 now says the parse was re-run "after the
+  **v1.3 edit** (and, before it, after the v1.2 erratum edit and the v1.1 merge)". A published parse
+  result whose as-of date drifts behind the document is exactly how §4.6 would rot; carrying the date
+  forward with the document keeps the section's guarantee honest.
+- **A prose-only edit still left the machine-read surfaces intact.** The two new backticked spans in
+  §4.6 read like paths, which is the classic way a document edit trips an ownership parser. Measured:
+  `nearMisses: []`, `T-12 → []`, nine rows, four batches — nothing moved.
 
 ## Deferred Items
 
-*(pending)*
+DEFERRED: The header's `Cross-Reviews` field stops at the v5 round and does not list the v6 or v7 cross-reviews; the round history is complete on disk, so this is a bookkeeping lag in one metadata cell, not a missing artifact.
+DEFERRED: §1.2's historical measurement table still shows `1637` in its own row (line 69); the paragraph above it labels the whole table "no longer the tree's current state", but a fourth re-measured column (round-6 Q-01) would make the row unmisreadable in isolation.
 
 ## Recommendation
 
-*(pending)*
+**Approved**
+
+The single round-6 Low is resolved and the revision broke nothing. This delta is 8 insertions and 5
+deletions across three hunks — a version bump, a history row, one count word in a risk-sizing
+sentence, and one prose justification replaced by a stronger and now-verified one. It touched no
+task, batch, dependency edge, ownership manifest, oracle or DoD checkbox, and the four parse results
+§4.6 publishes were re-run against the shipped parser at HEAD and reproduce cell for cell: nine
+tasks, `planBatch` `1,2,2,2,3,3,4,1,1`, the four topological batches, `nearMisses: []` and
+`T-12 → []`. Both factual claims the delta introduces were measured and hold. Under DECISION FREEZE
+there is no blocking finding of either admissible kind — nothing this revision broke, and no
+contradiction with the repository at HEAD — and the two observations that remain are recorded above
+as DEFERRED rather than folded into a verdict.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
