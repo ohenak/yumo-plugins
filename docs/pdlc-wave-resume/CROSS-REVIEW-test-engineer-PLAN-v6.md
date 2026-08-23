@@ -197,4 +197,20 @@ is written down.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The round-5 High (F-01) is resolved: TSPEC §5.5's fifth mutation now has a row, a named single
+oracle transcribed from the spec, an owner who must *run* it, and a DoD checkbox — verified in each
+of those four places. All four round-5 Mediums are resolved by edits whose factual claims reproduce
+in this tree, and the Low is fixed. Nothing in the revision broke a section the previous rounds
+approved: the parse results §4.6 publishes were re-run post-edit and are unchanged, the batch column
+still equals the re-derived DAG, and no near miss was introduced by the new backticked spans.
+
+One Low remains — RK-5's "four mutation runs", the single surviving instance of the old count in a
+risk-sizing sentence that carries no implementer duty. It does not block; fixing it is one word and
+can ride with any later edit.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
