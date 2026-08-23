@@ -589,6 +589,12 @@ resumed by a *real* operator, lands where PROP-RESUME-01 says it lands. The pre-
 (PROP-PRE-01/-02) exist partly to compensate — they assert the shipped constant and the shipped
 ignore path in the built artifact, which is the nearest thing to an end-to-end anchor available.
 
+**G-4 · PROP-REPO-01 is expected RED before the rebase.** It asserts `/.claude/pdlc-wave-state.json`
+in `.gitignore`, which exists at `origin/main:.gitignore:41` but not in this pre-rebase tree. The
+property is written against the post-rebase state and must not be weakened to pass locally; a green
+PROP-REPO-01 in this tree would mean the assertion had been softened, which is the failure mode
+REQ BL-04 and FSPEC OB-F1 were opened to prevent.
+
 **G-5 · "No PLAN may ever own consumer-local state" is asserted for this feature only.**
 PROP-REPO-02 parses *this* feature's PLAN §3.3 ownership manifest and its
 `implementation.postWavePathspecs` value and asserts `WAVE_STATE_PATH` appears in neither. The
@@ -598,12 +604,6 @@ ships could break it without reddening anything here. The compensating control i
 each new PLAN, and the routing target for the general claim is that review, not this document. This
 gap is what PROP-REPO-02's falsifiability note points at (SE F-05; the note previously pointed at
 G-3, which covers the absent E2E tier and is a different obligation entirely).
-
-**G-4 · PROP-REPO-01 is expected RED before the rebase.** It asserts `/.claude/pdlc-wave-state.json`
-in `.gitignore`, which exists at `origin/main:.gitignore:41` but not in this pre-rebase tree. The
-property is written against the post-rebase state and must not be weakened to pass locally; a green
-PROP-REPO-01 in this tree would mean the assertion had been softened, which is the failure mode
-REQ BL-04 and FSPEC OB-F1 were opened to prevent.
 
 ### Risks in the oracles themselves
 
