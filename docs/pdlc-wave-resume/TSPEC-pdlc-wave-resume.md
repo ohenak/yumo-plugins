@@ -101,8 +101,9 @@ re-litigation of a decision the REQ already closed.
   record's scope and replays on every invocation (FSPEC §2, EC-20, BR-11).
 - Worktrees fail open. A Claude-created worktree does not carry `.claude/pdlc-wave-state.json`, so
   the record is absent there and the run is a silent full one (FSPEC EC-17). This is a consequence
-  of consumer-local state, not of any rule this TSPEC adds; see §6 for the citation defect the REQ
-  carries about it.
+  of consumer-local state, not of any rule this TSPEC adds — which is also the framing REQ OB-1
+  carries at HEAD (v1.7), so the citation defect this bullet formerly pointed at is closed
+  (§6.3 item 4).
 - Wave halts write **no POSTMORTEM** (`pdlc-wave-gate-baseline.md` `M-WG-5`, at `Version | 1.2 ·
   2026-08-20`), so there is no
   `RESOLVED:` lifecycle for this feature to coordinate with. Stated here rather than assumed, per
@@ -885,7 +886,7 @@ Each is a real alternative that was weighed and rejected; they are the content o
 
 | # | Obligation | Disposition |
 |---|---|---|
-| OB-F1 | REQ BL-04 unmet: this tree is 1,637 commits behind and carries neither the mechanism nor the wave-gate baseline. | **Not dischargeable by this document.** Owned by the orchestrator/operator as branch management. Every claim here is verified against `origin/main` by name so it re-verifies after the rebase. **AT-14 is red until it lands, and in wave mode a red gate halts the wave and every wave after it — so the wave carrying AT-14 must not be dispatched before the rebase (§5.4 AT-14, TE F-10). This is a PLAN sequencing precondition, not a caveat.** Re-raised as an erratum below, because the REQ's §10 and the FSPEC's OB-F1 characterise it inconsistently. |
+| OB-F1 | REQ BL-04 unmet: this tree is 1,637 commits behind and carries neither the mechanism nor the wave-gate baseline. | **Not dischargeable by this document.** Owned by the orchestrator/operator as branch management. Every claim here is verified against `origin/main` by name so it re-verifies after the rebase. **AT-14 is red until it lands, and in wave mode a red gate halts the wave and every wave after it — so the wave carrying AT-14 must not be dispatched before the rebase (§5.4 AT-14, TE F-10). This is a PLAN sequencing precondition, not a caveat.** The characterisation inconsistency between the REQ's §10 and the FSPEC's OB-F1 that this row formerly re-raised is **closed**: OB-F1 records BL-04 as open and unmet at HEAD, matching the REQ (§6.3 item 2). The sequencing precondition above is unaffected. |
 | OB-F2 | Ratify or revise the shipped contract, never duplicate. | **Discharged** — §1.2, §2, §3, DEC-WVR-01. |
 | OB-F3 | Decide the fate of the `{}` cleared shape. | **Discharged** — DEC-WVR-04: keep the tolerance, add no writer. |
 | OB-F4 / REQ OB-2 | Promote REQ OF-1 and OF-2 into `docs/_constraints/pdlc-wave-gate-baseline.md` as `M-WVR-1..2`. | **Deferred to implementation, blocked on OB-F1** — the file is not in this tree. Recipe, re-derived from the file at `origin/main`: it is at `Version | 1.2 · 2026-08-20` with sections through `## 4` and ids through `M-WG-14`, so promotion appends a **new `## 5`**, ids `M-WVR-1` (the replay cost: 7 no-op dispatches over waves 1–3 of a 16-wave plan) and `M-WVR-2` (a completed task may legitimately produce no commit; stray agent commits observed), each with a Measured-by command, and bumps `Version` to **1.3** — to the next version above whatever is found at promotion time, not to a fixed number. The new section must state the version it was checked against and record that `M-WG-6` was **reviewed and left**, not missed. A PLAN task owns this file; it is not a code change. |
