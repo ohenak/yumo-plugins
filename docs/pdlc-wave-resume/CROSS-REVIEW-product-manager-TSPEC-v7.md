@@ -31,3 +31,31 @@ item list but sit inside the same delta:
 **Beyond the item list (DEC-ERR-03).** The items landing is necessary, not sufficient. I re-read the
 upstream text this TSPEC leans on at its current version — REQ v1.7, FSPEC v1.2 — and re-measured
 the two repo facts the delta now asserts. One finding follows, on new bytes.
+
+## Design
+
+Neither routed item is a product decision, and neither edit takes one. Both are fidelity
+corrections to statements about the repository the TSPEC compresses. What matters from the product
+lens is that the correction does not move an acceptance criterion, a threshold, or an obligation,
+and that the corrected statement now agrees with the downstream document that executes it.
+
+**§5.7, the generative run depth.** Before the edit, TSPEC said the suite runs at fast-check's
+default; PLAN T-08 and PROPERTIES PROP-LAW-01…04 both pin `numRuns: 500`. The implementer reading
+TSPEC and the implementer reading PLAN would have built suites of different depth from the same
+requirement. After the edit TSPEC pins 500 explicitly and says all four laws P-1…P-4 take the pin.
+The laws themselves are byte-identical — P-1 round trip, P-2 reader totality, P-3 classifier
+totality, P-4 hash discrimination, with P-4's bounded-corpus caveat intact. Test depth increased
+against the previously stated position; nothing was weakened.
+
+**§5.8, the coverage floor's include set.** The floor itself — per-file 85% branch, enforced at
+merge, closed inside Phase I by PLAN T-10 as round 4 established — is unchanged in threshold, owner
+and backstop. What changed is the description of *what else* the same c8 config measures. The new
+text adds that the fourth entry is external to `pdlc/workflows/`, that this is why the config sets
+`allow-external: true`, that it covers no code this feature touches, and that `--per-file` therefore
+keeps a red there off this feature's module. That last clause is the product-relevant one: it stops
+a future operator reading a red in an unrelated script as a failure of this feature's floor.
+
+**No scope movement.** The delta touches no `REQ-WVR-*` outcome, no `BR-*`, no `EC-*`, and no `AT-*`
+oracle except AT-05, which *gained* a conjunct (write-side assertion, with §5.5 mutation 5 to match)
+— a strengthening I raised at v5 and which is additive. Nothing in the delta adds behaviour the REQ
+does not ask for, and nothing drops behaviour the REQ requires.
