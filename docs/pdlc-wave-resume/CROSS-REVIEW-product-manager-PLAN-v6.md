@@ -80,6 +80,28 @@ consequence, one edit to fix.
 
 ## Verification
 
+Every claim above is a command I ran in this tree, not an impression.
+
+| Claim | Verification | Result |
+|---|---|---|
+| The branch is the one I may commit on | `git rev-parse --abbrev-ref HEAD` | `feat-pdlc-wave-resume` |
+| PLAN's bytes moved this round | `shasum -a 256` vs. v5's reviewed hash | `ea7bdc57…`, was `3cf0229a…` |
+| The delta's shape | `git log --oneline 423d6802..HEAD` on the PLAN | Nine commits, `f1fc897b`…`5d5f15b4`, each one finding |
+| TSPEC §5.5 item 5 says what PLAN's new row says | `sed -n '/### 5.5/,/### 5.6/p'` on the TSPEC | "Suppressing the record write while `explicitPointer` is true (writing only on automatic runs). Killed only by AT-05's write-side conjunct… removing resume from exactly the recovery path §2.5 ratifies the write for" |
+| §4.3 now has five mutation rows | Count `\|`-leading lines in §4.3 | 7 — header, separator, **five** rows |
+| No stale "four mutations" / "rows 1–4" survives | `grep -n "four mutations\|rows 1–4"` | Only the v1.1 revision-history row (`:18`), where it is a historical record and correct |
+| The five corrected count claims | `grep -n "five mutations\|rows 1–5"` | §1.1 (`:184`), T-07 (`:129`), §4.3 heading (`:385`), RK-1 (`:421`), §4.5 checkbox (`:446`) — five for five |
+| TSPEC RT-7 assigns the floor to the task, not `postWaveCommand` | Read TSPEC `:949` and §5.8 | "the last implementation **task** (PLAN T-10, RK-2)… Not `implementation.postWaveCommand`" |
+| No erratum language survives in §3.4 / §4.4 | `grep -n "erratum"` | Only §4.6's reference to the v1.2 edit, which is a factual back-reference |
+| `c8.include` has four entries, fourth is the external script | Read `pdlc/workflows/package.json:19–25` | Four; fourth `**/scripts/capture-learnings-baseline.mjs`, `allow-external: true` |
+| `test:coverage` is `--per-file --branches 85` | `pdlc/workflows/package.json:9` | `c8 npm test -- --runInBand && c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0` |
+| T-12's 94 / 81 figures | `git ls-files pdlc/workflows/coverage \| wc -l`; same on `coverage/tmp` | `94` and `81` — exact |
+| `PROP-SWEEP-3` pins no count | Read `documentOracles.test.js:809–817` | `expect(baseline).toEqual(expect.stringContaining(glob))` per glob — no number |
+| The task table really holds nine tasks | Read §2.1's `#` column | `T-01, T-02, T-03, T-04, T-07, T-08, T-10, T-11, T-12` |
+| §1.2's five v1.3 re-measurements | `git rev-list --count HEAD..origin/main`; `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js`; `ls docs/_constraints/pdlc-wave-gate-baseline.md`; `sed -n '46p' .gitignore`; `pdlc/workflows/package.json` | `0`; `10`; present; `/.claude/pdlc-wave-state.json`; `test:coverage` with `--per-file --branches 85` — **five for five** |
+| §4.6's "1,637 commits behind" is stale | `git rev-list --count HEAD..origin/main`; `git diff origin/main -- pdlc/workflows/orchestrate-dev.js \| wc -l` | `0` and `0` — behind by nothing, and the parser is byte-identical, so §4.6's parse results stand |
+| Requirement coverage unchanged by the delta | Re-walked §2.1's owner column against REQ-WVR-01…-10 and FSPEC-WVR-01…-07 | Every P0/P1 still owned; no task added, removed or re-batched this round |
+
 ## Findings
 
 ## Questions
