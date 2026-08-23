@@ -1,6 +1,6 @@
 # POSTMORTEM — Phase PR (erratum protocol) — pdlc-wave-resume
 
-RESOLVED: no
+RESOLVED: yes
 
 | Field | Value |
 |---|---|
