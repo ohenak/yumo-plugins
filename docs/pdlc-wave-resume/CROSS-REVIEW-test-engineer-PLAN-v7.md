@@ -79,7 +79,42 @@ T-02, T-03 and T-07 and the red-half-first commit convention are untouched by th
 
 ## Dependencies
 
-*(pending)*
+The batch column was re-derived from the declared edges at HEAD rather than carried over from round
+6, because a document that publishes its own parse results has to keep publishing true ones — and
+because a prose-only edit can still perturb a table-driven parser.
+
+| Task | Declared `Deps` | `max(dep batch) + 1` | `Batch` column | Agrees |
+|---|---|---|---|---|
+| T-01 | — | 1 | 1 | yes |
+| T-11 | — | 1 | 1 | yes |
+| T-12 | — | 1 | 1 | yes |
+| T-02 | T-01 | 2 | 2 | yes |
+| T-03 | T-01 | 2 | 2 | yes |
+| T-04 | T-01 | 2 | 2 | yes |
+| T-07 | T-02 | 3 | 3 | yes |
+| T-08 | T-02 | 3 | 3 | yes |
+| T-10 | T-07, T-08, T-03, T-04 | 4 | 4 | yes |
+
+Measured, not asserted: the shipped `parsePlanTasks` returns `planBatch` `[1,2,2,2,3,3,4,1,1]` in row
+order, character-identical to the column, and `computeTopologicalBatches` returns
+`[[T-01,T-11,T-12],[T-02,T-03,T-04],[T-07,T-08],[T-10]]`. The edge set is acyclic, ids are unique,
+every dependency resolves, and the retired ids `T-05`, `T-06`, `T-09` appear in no `#` and no `Deps`
+cell, so there is no dangling edge. All of this is identical to the v1.3 measurement — the delta
+moved nothing in the DAG.
+
+**Same-new-file guard, re-checked at HEAD.** The ownership parser returns nine rows and
+`nearMisses: []`. Batch 1's three tasks own pairwise-disjoint path sets — T-01
+`[waveResumePreflight.test.js]`, T-11 `[documentOracles.test.js, pdlc-retirement-baseline.md]`, T-12
+`[]` — so the T-11/T-12 collision over `documentOracles.test.js` remains avoided *by declaration*:
+T-12's cell is marked read-only and its manifest parses as the empty list. Batch 2's three tasks own
+three distinct new test files, batch 3's two own one new and one existing file, and batch 4 is a
+single task. No batch contains two tasks creating or appending the same new file.
+
+This was the specific risk of the v1.4 edit worth checking: §4.6's new preamble introduces two fresh
+backticked spans that look like paths — `` `git show origin/main:pdlc/workflows/orchestrate-dev.js` ``
+and `` `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` ``. Both sit in §4.6 prose, outside
+the §3.1 task table the ownership parser reads, and the measured `nearMisses: []` confirms neither
+was picked up as an owned path.
 
 ## Verification
 
