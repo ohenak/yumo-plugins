@@ -175,7 +175,20 @@ observe RED against the named oracle, revert, record) still point at live oracle
 
 ## Open Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | §5.7 now says the precedent applies its pin "at every `fc.assert` site in that block", where PLAN T-08 says "five sites … the file's other properties take fast-check's default". Both cannot describe the same file. Was the broader phrasing intended as a simplification, or is it a transcription slip? PLAN's reading is the one that matches HEAD — I would align §5.7 to it. |
+| Q-02 | §5.8 says a red in the fourth c8 entry "is not a red in this feature's module". Agreed on attribution — but should the paragraph also say that it would still fail `npm run test:coverage`, and therefore PLAN T-10's oracle (i), so the implementer knows where to look if that command goes red on a module this feature never touched? |
+
+**No open obligations are created or discharged by this delta.** OB-F1's substance (BL-04 unmet,
+AT-14 red, wave sequencing) was already recorded as unchanged in the v1.4 changelog, and §6.3
+items 1–4 remain marked landed upstream at REQ v1.7 / FSPEC v1.2 — I spot-checked that those
+version labels are the ones this dispatch names as current, and they are.
+
+**Assumption stated for the record:** I did not execute `npm run test:coverage` as part of this
+confirmation. My claim that the fourth c8 entry clears the 85 floor today rests on CI being green
+on this branch's base, not on a local measurement. Nothing in this round's verdict depends on it —
+F-02 is a documentation-clarity finding either way.
 
 ## Delta-Confirmation Findings
 
