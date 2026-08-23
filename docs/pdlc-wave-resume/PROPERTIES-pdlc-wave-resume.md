@@ -744,8 +744,12 @@ pass have since been absorbed by their owners and re-raising a settled question 
 **What this document does with the open items.** PROP-LAW-01…PROP-LAW-04 pin `numRuns: 500` in
 agreement with **both** PLAN T-08 and TSPEC v1.4 §5.7 — the two errata this document routed (§5.7
 run count at v1.1, §5.8 include list at v1.3) both landed as argued, so no run-depth or
-include-list question remains open here. The items still open above are the AT-12 commit clause,
-the AT-16/T-04 fixture rationale and the A-1 glob-list owner, each carried with its routing.
+include-list question remains open here. Two items remain open, both against TSPEC only: the AT-12
+commit clause (§5.4, reworded but not resolved at v1.4) and the AT-16 queue-fixture rationale
+(§5.4, still resting on the retired `distribution.checkEnabled` drift gate). The PLAN halves of the
+AT-16 item and of the A-1 glob-list item both landed — PLAN v1.2's T-04 re-files the config fixture
+as inert and optional, and PLAN v1.2's T-11 owns the `A1_GLOBS` promotion — so neither is routed
+again here.
 
 **AT-14's two-property split is this document's own choice, not a routed defect.** PROP-REPO-01
 (repo-state: the ignore rule) and PROP-REPO-03 (run-side: no `add` argv names the record) split
