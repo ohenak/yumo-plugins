@@ -39,7 +39,63 @@ engineering feasibility remain with te-review and se-review.
 
 ## Properties
 
-_(pending)_
+The property set is measured here against TSPEC at HEAD, not against the TSPEC I approved it over.
+
+### The one property that no longer compresses its upstream (F-01)
+
+TSPEC §5.4 AT-05 at HEAD carries a conjunct it did not carry when I approved PROPERTIES:
+
+> **Write-side conjunct (PM):** after the run the operator-pointed run must itself have *written* a
+> record — `ledgerWrites` is non-empty and the written `lastGreenWave` is the **plan-absolute**
+> number of the last wave this run completed, not a run-relative count.
+
+and TSPEC §5.5 now opens "**Five** mutations this suite is specifically designed to kill" with a
+fifth row:
+
+> 5. **Suppressing the record write while `explicitPointer` is true** (writing only on automatic
+>    runs). Killed **only** by AT-05's write-side conjunct.
+
+PROP-OVERRIDE-01 is the property that owns AT-05 (`Traces: AT-05 (TE F-05), BR-04, REQ-WVR-04`). At
+HEAD it asserts three things: resume at wave 2, no `wave ledger … was ignored` line, and the
+` (provenance: operator-set)` token on the named operator banner. It asserts nothing about the
+write. So the mutation TSPEC now says is killed *only* by that conjunct is killed by nothing in this
+document — PROP-RECORD-01/-04 and PROP-RESUME-05, the other write-side properties, all drive
+automatic-provenance runs, exactly as TSPEC §5.5 item 5 says.
+
+Why this matters at the product level rather than as a test-design nit: REQ-WVR-04 gives the
+operator pointer as the **recovery** path, and REQ-WVR-09/BR-08 make the per-wave record what makes
+recovery repeatable. A build that silently stops recording on operator-pointed runs satisfies every
+property in this document and still hands the operator a run they cannot resume from — which is the
+user-visible failure the feature exists to remove. Whether the property carries the conjunct is a
+statement about what we promise the operator, so it belongs in my lens.
+
+The resolution is narrow: add the write-side conjunct to PROP-OVERRIDE-01 (or a new PROP-OVERRIDE-06
+tracing AT-05), and take PROP-COV-03 from "PLAN §4.3's **four** mutations" to five, adding the
+suppressed-write row to the mutation → oracle table in `## Fixtures` with PROP-OVERRIDE-01 as the
+property that must red. Note the count is also now split against PLAN §4.3, which still lists four —
+that is PLAN's cascade to resolve, not this document's, but the implementer reading PROP-COV-03 will
+meet the disagreement, so PROP-COV-03 should name TSPEC §5.5's five explicitly rather than
+delegating the count to PLAN.
+
+### Properties confirmed unaffected
+
+- **PROP-RECORD-02/-03/-04/-07/-09** cite `TSPEC §2.5 item 1/2/4/5`. §2.5's five numbered items are
+  byte-identical after the erratum — the edit rewrote only the surrounding paragraph, which changed
+  §2.5 from "routed upstream as an erratum" to "ratifies FSPEC §3.4 at HEAD". The item numbering
+  these five properties depend on is stable, and the behaviour they pin (write inside the `waveGit`
+  transport branch, after the wave's commits, `head` best-effort, plan-absolute `lastGreenWave`, no
+  provenance field) is unchanged. PROP-RECORD-09's "provenance is announced content, never persisted
+  state" is if anything now *better* grounded: FSPEC §3.4 at HEAD says "no record content
+  distinguishes the two provenances".
+- **PROP-DISREGARD-01/-02/-05 and PROP-SAFETY-04** transcribe the seven codes and the two provenance
+  literals from TSPEC §3.1. The §3.1 edit changed only the prose count of *interpolated values*
+  (four → five) inside the set-equality justification; the code set and the literals are untouched,
+  and PROPERTIES never restates that count. Confirmed intact.
+- **PROP-REPO-01/-03 and the AT-14 split**, the OB-F1-dependent gap notes, and PROP-SKIP-04's
+  re-expression are all downstream of TSPEC §6.2/§6.3, where the erratum struck a *re-raise
+  justification* and re-labelled four items as landed. TSPEC is explicit that OB-F1's substance —
+  BL-04 unmet, AT-14 red until the rebase, the wave-sequencing precondition — is unchanged, and that
+  substance is what PROPERTIES leans on. Confirmed intact.
 
 ## Oracles
 
