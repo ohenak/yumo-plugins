@@ -51,6 +51,29 @@ recorded as a DEFERRED line under §Findings, not as a finding.
 
 ## Dependencies
 
+PLAN's citations of upstream and of the tree, restricted to the ones this delta reaches. Citations
+outside the changed lines were walked in v3–v6 and are not re-litigated under the freeze.
+
+| PLAN citation | Upstream / tree at HEAD | Status |
+|---|---|---|
+| §4.6 preamble — "byte-identical to this tree's copy now that the OB-F1 rebase has landed" | `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` | **Agrees** — 0 lines of diff |
+| §4.6 preamble — cross-reference to §1.2 for the rebase fact | §1.2's v1.3 re-measurement table | **Agrees** — §1.2 already carries `HEAD..origin/main` → `0` as a v1.3 re-measurement, so the two sections now tell one story instead of contradicting each other |
+| §4.6 preamble — "run after the v1.3 edit (and, before it, after the v1.2 erratum edit and the v1.1 merge)" | The v1.3 revision row's "parser re-run confirms 9 tasks and the same four batches" | **Agrees** — the dating and the history row are consistent for the first time since v1.3 |
+| §4.6 table — `parsePlanTasks(PLAN)` → 9 tasks, ids `T-01…T-12`, `warnings` undefined, the nine dependency cells | I re-ran `parsePlanTasks` over the v1.4 bytes | **Agrees exactly**: `T-01,T-02,T-03,T-04,T-07,T-08,T-10,T-11,T-12`; `warnings` `undefined`; deps `[] / [T-01] / [T-01] / [T-01] / [T-02] / [T-02] / [T-07,T-08,T-03,T-04] / [] / []` |
+| §4.6 table — `computeTopologicalBatches` → `[[T-01,T-11,T-12],[T-02,T-03,T-04],[T-07,T-08],[T-10]]` | Same run | **Agrees exactly** |
+| §4.6 table — `parsePlanOwnership` → 9 rows, **zero near misses** | Same run | **Agrees exactly** — 9 ownership entries, `nearMisses: []` |
+| §4.6 `Retired ids` row — nine tasks, `T-05/T-06/T-09` retired and unreused | The parse above | **Agrees** — nine ids, none of the retired three present |
+| RK-5 — "five mutation runs" | §4.3's table (`:386` and its five rows); T-07's mutation duty (`:130`) | **Agrees** — three independent statements of five, no fourth statement of four outside history |
+| Task-table manifest paths | The tree | **Agrees.** `waveExecution.test.js`, `orchestrate-dev.js` and `docs/_constraints/pdlc-wave-gate-baseline.md` exist; `waveResumePreflight.test.js`, `waveResume.test.js`, `waveResumeRepoState.test.js`, `waveResumeQueueParity.test.js`, `waveResumeProperties.test.js` are each marked `*(new)*` in their manifest cell (`:126–:132`) and are correctly absent |
+
+**On the one thing the delta could have broken and did not.** §4.6's whole purpose is a claim about the
+*current* task table parsing cleanly. A prose-only edit cannot change the parse — but the revision
+re-dated the parse without re-running it, which is exactly the shape that goes stale silently. I ran it
+myself against the v1.4 bytes with the tree's `orchestrate-dev.js` (byte-identical to `origin/main`'s,
+so the parser the document names and the parser I used are the same program): every one of the four
+result rows reproduces. The re-dating is therefore true of the bytes as shipped, not merely of the
+bytes it was written against.
+
 ## Verification
 
 ## Findings
