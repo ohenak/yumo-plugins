@@ -125,6 +125,42 @@ opening v5:
 
 ## Positive Observations
 
+- **The High landed exactly as scoped, including the parts that were easy to skip.** T-07's mutation
+  duty does not merely widen `rows 1–4` to `rows 1–5`; it names row 5 and its single oracle inline,
+  so an implementer reading only T-07 cannot miss that this mutation has one killer and that
+  predicting its outcome is not the same as running it. The paragraph under the table explains *why*
+  the automatic-provenance tests are blind to it. That is the difference between correcting a count
+  and landing the obligation the count stood for.
+- **The oracle re-scoping in T-10 was argued down to the mechanism, and it is a re-scoping rather
+  than a retreat.** Swapping "exits 0" for "per-file branch number `>= 85` on `orchestrate-dev.js`,
+  whole-command exit reported" could have been a quiet weakening; instead the row names the fourth
+  `c8.include` entry, says why `--per-file` reaches it, and keeps the wider red visible by reporting
+  it. TSPEC §5.8 already said a red there is not a red in this module — PLAN now matches its upstream
+  more closely than it did before.
+- **T-12's rationale got stronger under review, not softer.** "Coverage output in every diff is
+  noise" became "94 tracked files that `test:coverage` deletes and rewrites, reddening
+  `PROP-SWEEP-2(a)` during T-10's own batch-4 gate — verified: pristine → 3 reds, after
+  `test:coverage` → 4". A task that was defensible on tidiness is now a precondition with a measured
+  failure mode. Both figures reproduce exactly.
+- **§1.2's re-dating is a retraction nobody asked for.** No reviewer raised it. The rebase landing
+  made a whole evidence table stale in the direction that *weakens* the case for T-01, and the author
+  reframed it, re-measured all five facts, and defended T-01 on its lifecycle instead of leaving the
+  convenient stale number standing. Retracting evidence that was helping you is the honest move.
+- **TE Q-01 was answered by removing a number, not by re-measuring it.** T-11 now instructs the
+  implementer to measure at promotion time, with the reason (the set grows one file per review
+  round) and the check that no oracle pins it. Refusing to transcribe a figure that is guaranteed to
+  be wrong on arrival is better than transcribing a fresher wrong figure.
+
 ## Recommendation
 
+**Approved with minor changes.** Every finding from v5 is closed, and closed as specified — the High
+with the exact edit set I named, the two Lows with their values and mitigations left untouched. The
+revision broke nothing: no acceptance criterion moved, no P0/P1 lost an owner, no task or batch
+changed. One new Low, self-inflicted by an otherwise-good correction elsewhere in the same revision:
+§4.6 still cites a "1,637 commits behind" premise that §1.2 retracted this round. It affects no parse
+result and no task, and can ride along with any later edit.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
