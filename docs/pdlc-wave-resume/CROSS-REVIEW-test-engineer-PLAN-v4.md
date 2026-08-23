@@ -90,7 +90,37 @@ response — the checkbox is unconditional. See F-02.
 
 ## Dependencies
 
-_(placeholder)_
+Upstream dependency state at this dispatch, verified by hashing the working tree:
+
+| Upstream | Hash at HEAD | Hash in my v3 `UPSTREAM-STATE` | Moved? |
+|---|---|---|---|
+| REQ | `sha256:17e83bfc…` | `sha256:17e83bfc…` | No |
+| FSPEC | `sha256:9a6be7b5…` | `sha256:9a6be7b5…` | No |
+| TSPEC | `sha256:4b5f7f5b…` | `sha256:5ed76227…` | **Yes** (v1.3 → v1.4) |
+| DECISIONS | `sha256:37b3684d…` | `sha256:37b3684d…` | No |
+
+So every finding below is TSPEC-caused, and the REQ/FSPEC claims the PLAN carries — the eighteen
+ATs, the three shipped-assertion budget, the five announcing rows, REQ C-3's no-fifth-key
+constraint — re-verify unchanged. I re-checked the two most cascade-prone of those by hand:
+FSPEC still carries eighteen ATs (§4.1's map is complete against it), and TSPEC §2.4 still
+enumerates exactly three shipped whole-string assertion changes, which is what holds the PLAN's
+D-11 row and DoD line at three.
+
+One genuine improvement worth recording as a dependency, not a defect: TSPEC §5.7's pin at
+`numRuns: 500` was previously a PLAN-only figure with TSPEC silent, which I had let pass in v3 as
+the PLAN being stricter than its upstream. The erratum closes that gap in the right direction —
+TSPEC, PLAN T-08 and PROPERTIES now state the same number, and the PLAN's DoD line "the four laws
+P-1 … P-4 pass at `numRuns: 500`" is now a transcription rather than an invention. This is the
+delta making the PLAN *more* faithful, and it needs no PLAN edit.
+
+The §6.3 change is a subtler dependency. All four erratum items are now recorded as **landed
+upstream**, and TSPEC states none is re-emitted as an `ERRATUM:` line. The PLAN twice describes
+itself as raising an erratum about the coverage floor — §3.4's integration-points table ("the
+erratum this dispatch raises") and RK-2's mitigation cell ("the difference from TSPEC's wording is
+raised as an erratum"). I filed both as a Medium in v3 when TSPEC v1.3 landed the reassignment;
+they remain uncorrected, and v1.4's "resolved ledger, none open" framing makes the PLAN's
+self-description read further from the truth. It is still the same defect, still confined to
+rationale prose, still Medium — inherited, not delta. See F-03.
 
 ## Verification
 
