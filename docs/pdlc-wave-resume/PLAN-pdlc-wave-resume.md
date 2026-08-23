@@ -130,7 +130,7 @@ The derivation is shown so a reviewer checks arithmetic, not intent.
 
 | Batch | Contents | Paths written (pairwise disjoint) | Gate wording |
 |---|---|---|---|
-| 1 | T-01 | `__tests__/waveResumePreflight.test.js` | Full `pdlc/workflows` suite green, **including** T-01. A red T-01 is either the rebase (OB-F1) missing or `implementation.testCommand` drifted from §3.4's literal; both are blocking work, neither is a flaky gate. |
+| 1 | T-01, T-11, T-12 | `__tests__/waveResumePreflight.test.js`; `__tests__/documentOracles.test.js` + `docs/_constraints/pdlc-retirement-baseline.md`; *(T-12 writes no file — `git rm --cached` only)* | Full `pdlc/workflows` suite green, **including** T-01, `PROP-SWEEP-2(b)` and the two `.claude/`-tracking oracles. A red T-01 is either the rebase (OB-F1) missing or `implementation.testCommand` drifted from §3.4's literal; both are blocking work, neither is a flaky gate. **Why this batch grew in v1.2:** those three oracles are red in this tree *before* any task runs (measured — §2.1 T-11, T-12), so the gate as written in v1.1 was unsatisfiable and every later batch inherits the same red. T-11 and T-12 have no dependencies and are pairwise disjoint from T-01 and from each other (T-11 owns `documentOracles.test.js`; T-12 touches the index only), so they are batch-1 sources under the same `max(dep batches) + 1` derivation. |
 | 2 | T-02, T-03, T-04 | `__tests__/waveResume.test.js` + `orchestrate-dev.js`; `__tests__/waveResumeRepoState.test.js` + `docs/_constraints/pdlc-wave-gate-baseline.md`; `__tests__/waveResumeQueueParity.test.js` | Full suite green, **and** `waveExecution.test.js` byte-unchanged across every commit of this batch (`git diff --stat` over that path is empty — RT-2's regression-net invariant, mechanically checkable). |
 | 3 | T-07, T-08 | `__tests__/waveExecution.test.js` + `orchestrate-dev.js`; `__tests__/waveResumeProperties.test.js` | Full suite green, including the three enumerated whole-string assertion updates and every prefix matcher and both `startsWith` negatives TSPEC §2.4 names. Nothing else in the ledger `describe` changed. |
 | 4 | T-10 | `__tests__/waveResume.test.js`, `__tests__/waveExecution.test.js` | Full suite green **and** `npm run test:coverage` from `pdlc/workflows` exits 0 (`--per-file --branches 85`) **and** §4.5.1's mapping table is complete with no uncovered line inside this feature's ranges. |
@@ -146,6 +146,13 @@ for this feature. Worse, on a gate failure the wave's agent-authored work surviv
 be on the branch when the halt fired. A plan whose happy path requires hand-surgery inside a
 script-owned phase is not a plan; so the RED/GREEN split moved **inside** the task, where the runtime
 never sees it.
+
+**Batch 1 carries two precondition tasks, and that is not scope creep (v1.2).** Neither T-11 nor
+T-12 lands a TSPEC delta row; both exist because a wave gate is a whole-suite gate. A red that this
+feature did not introduce halts the wave just as hard as one it did, and three such reds are sitting
+in this tree today. The alternative — weakening batch 1's gate to "green except for the three
+known reds" — was rejected: the gate is script-owned (§3.4), the script compares an exit code, and
+there is no wording the runtime reads. Fixing the tree is the only form the fix can take.
 
 ### 2.3 Where red-before-green now lives, and the trade that buys it
 
