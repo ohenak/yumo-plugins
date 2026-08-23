@@ -4,10 +4,10 @@
 |---|---|
 | Status | Draft |
 | Author | se-author |
-| Version | 1.1 |
+| Version | 1.2 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → **PLAN** |
 | Downstream | PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-test-engineer-PLAN-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-test-engineer-PLAN-v1.md`, `CROSS-REVIEW-product-manager-PLAN-v4.md`, `CROSS-REVIEW-test-engineer-PLAN-v4.md` |
 | LEARNINGS | `docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md` |
 
 **Revision history.**
@@ -16,6 +16,7 @@
 |---|---|
 | 1.0 | Initial authoring. |
 | 1.1 | Round-1 test-engineer review addressed (F-01 … F-10). Structural change: the three RED/GREEN task pairs are **merged**, so every batch is green-terminal and the runtime's script-owned gate can evaluate it (F-01); `implementation.testCommand` is transcribed as a literal and its resolution is asserted by T-01 (F-02, F-07); T-10 gains the `waveExecution.test.js` manifest row and a delta-scoped coverage oracle (F-03, F-05); §4.3's four mutations gain owning tasks, an execution step and a DoD checkbox (F-04); T-08 pins `numRuns: 500` on its precedent (F-06); the report-row extension carries its `N > 1` condition (F-08); T-01 gains a stated lifecycle and drops the weakened AT-14 restatement (F-09); §1.2's bare line anchors are replaced by content citations (F-10). Ids `T-05`, `T-06` and `T-09` are **retired, not reused** — each was merged into its red predecessor, and keeping the surviving ids stable keeps every round-1 review reference resolvable. |
+| 1.2 | **Erratum round (Phase PR).** Corrections only — no decision re-litigated, no scope change, no task restructured. Two **precondition tasks** are added to batch 1, because three document oracles are red in this tree *before* any of this feature's own work starts, and batch 1's gate wording ("the `pdlc/workflows` suite is green") is therefore unsatisfiable as written (PM, TE, SE): **T-11** promotes `docs/pdlc-wave-resume/**` onto A-1's frozen glob list — `A1_GLOBS` in `documentOracles.test.js` plus the matching row in `docs/_constraints/pdlc-retirement-baseline.md` — on the `docs/pdlc-advisory-wave-gate/**` precedent, closing `PROP-SWEEP-2(b)`; **T-12** untracks the machine-local artifacts a mid-pipeline commit added to the index (`.claude/pdlc-wave-state.json`, `.claude/pdlc.config.json`, `pdlc/workflows/coverage/**`), closing the two `.claude/`-tracking oracles. §2.2's batch-1 row, §3.1's edge table, §3.3's manifest and §4.5's DoD carry both. **T-04's fixture rationale is corrected** (PM, TE, and PROPERTIES §Fixtures): the `distribution.checkEnabled: false` opt-out no longer gates anything — the drift gate it addressed is retired from `orchestrate-queue.js` — so the fixture is inert and may be supplied or omitted; it is no longer the *reason* the three-fixture set is complete. The §5.7 `numRuns` divergence raised this round is **absorbed, not applied**: TSPEC v1.4 now pins `numRuns: 500`, which is what T-08 already says. Ids `T-05`, `T-06`, `T-09` remain retired and are still not reused. |
 
 ## 1. Overview
 
