@@ -106,7 +106,61 @@ F-01.
 
 ## Verification
 
-_(pending)_
+Every claim in this confirmation is a command I ran, not an impression.
+
+| Claim | Verification | Result |
+|---|---|---|
+| PLAN's bytes are unchanged since approval | `shasum -a 256 …/PLAN-pdlc-wave-resume.md` vs. v3's `APPROVAL-HASH` | `5f5b50db3bd447e661daeceb63a450ef07c23507293e267adde6168b14df1c85` — identical |
+| TSPEC is the only upstream that moved | `shasum -a 256` on REQ / FSPEC / DECISIONS vs. v3's `UPSTREAM-STATE:` lines | `17e83bfc…` / `9a6be7b5…` / `37b3684d…` — all three exact |
+| TSPEC at HEAD is the version this dispatch names | `shasum -a 256 …/TSPEC-pdlc-wave-resume.md` | `4b5f7f5b2097a344e1e8fafffaa1d7e12f0fd5f583e302f5bf798d22c13c48f5` — exact match to the dispatch |
+| The edit's size and reach | `git diff 485d62fa HEAD -- …/TSPEC-…md` | `68 insertions(+), 37 deletions(-)`; eight locations, enumerated in §Batches |
+| TSPEC §5.5 now enumerates **five** mutations | `grep -n "mutations" …/TSPEC-…md` | line 790: "**Five** mutations this suite is specifically designed to kill" |
+| The fifth mutation is killed only by AT-05's new conjunct | TSPEC §5.5 item 5, read in full | "Suppressing the record write while `explicitPointer` is true … **Killed only by AT-05's write-side conjunct.** Without it the mutation leaves AT-05, AT-07, AT-15 and AT-18 green" |
+| PLAN carries **four** mutations, in five places | `grep -n "mutation" …/PLAN-…md` | §1.1 "§4.3's four mutations gain owning tasks"; §4.3 heading "**Mutation resistance — four mutations**"; §4.3 table = 4 rows; T-07 "Mutation duty (§4.3 rows **1–4**)"; RK-1 "§4.3's four mutations *executed*"; §4.5 "Each of §4.3's four mutations applied, observed RED …" |
+| No PLAN row owns the fifth mutation | §4.3 table read row by row | Rows: ancestry guard / write outside transport branch / run-relative wave number / eager ancestry probe. **No suppressed-write row** |
+| PLAN T-08 already pins the run count TSPEC now specifies | `grep -n "numRuns" …/PLAN-…md` | T-08: `fc.assert(fc.property(…), { numRuns: 500 })`, same `advisoryHelperProperties.test.js` precedent, all four laws — and §4.5's DoD line "at `numRuns: 500`" |
+| PLAN does not enumerate `c8.include` | `grep -n "c8\|include\|allow-external" …/PLAN-…md` | Only the *command* and the *manifest keys*; no entry list, no count, no `allow-external` |
+| PLAN does not cite the interpolated-value count | `grep -n "interpolat" …/PLAN-…md` | No match |
+| PLAN's H-1 framing does not contradict §5.2's restatement | `grep -n "H-1" …/PLAN-…md` | §2.2 "additive, default-off"; T-07 same; §4.1 AT-04 row — no expressiveness-limit claim anywhere |
+| v3's two findings are still open | §3.4 `Coverage floor` row and §4.4 RK-2 read at HEAD | Both still say "the erratum this dispatch raises" / "the last wave's `postWaveCommand`" / "the difference from TSPEC's wording is raised as an erratum" |
+| AT-05 is owned and its oracle delegated upstream | `grep -n "AT-05" …/PLAN-…md` | §4.1 "AT-05 operator override wins | T-07 | `waveExecution.test.js`"; T-07 lists AT-05 among integration cases by id only |
+
+**What the checks decide.** Seven of the eight edited TSPEC locations leave PLAN faithful, two of
+them because PLAN was already correct and upstream moved toward it. The eighth splits: AT-05's new
+conjunct is carried by PLAN's by-id citation, but §5.5's fifth mutation has **no owning task, no
+execution step, and no DoD checkbox** in a PLAN whose §4.3 exists specifically to guarantee that
+every mutation upstream names is applied, observed RED against a named oracle, reverted and
+recorded. A mutation absent from that table is a mutation nobody runs.
+
+**Why that is High and not Medium.** Severity tracks user impact. The mutation TSPEC added is the
+one that suppresses the ledger write on operator-pointed runs — and TSPEC says in the same sentence
+that without it the suppression "stays green here and everywhere else", removing resume from the
+very recovery path §2.5 ratifies the write for. That is this feature's core promise: an operator who
+resumes at a wave still gets a record written, so the *next* resume works. PLAN would ship the
+AT-05 assertion (it is carried by reference) but would never prove the assertion has teeth, because
+the mechanism PLAN built for exactly that proof does not know the mutation exists. This is a
+work-breakdown gap, not a description defect — which is the line v3's two Low findings sat on the
+other side of, and I am holding that line rather than moving it.
+
+**Why `delta` and not `inherited`.** PLAN's four-row table was a complete and accurate transcription
+of TSPEC §5.5 at `485d62fa`; my v3 approval of it was correct on the bytes then in front of me. This
+round's edit added the fifth member and thereby made the transcription incomplete. The incompleteness
+was introduced by this erratum landing, not carried in before it. `inherited` would be the more
+comfortable tag — it routes back to R2 instead of halting — but it would be false, and the tag is
+the gate's input, not a comment.
+
+**Why `local`.** PLAN's own bytes did not change, so locality is measured against the material the
+upstream edit bears on: TSPEC §5.4 AT-05 and §5.5. PLAN's footprint for those is §4.3's table,
+T-07's mutation duty, RK-1, §4.5's DoD checkbox and §1.1's count sentence — and the finding sits
+inside that footprint. Nothing outside it is disturbed: the task table, `Deps` cells, §3.3's
+ownership manifest, §4.1's AT map and §4.5.1's coverage map are all unreached.
+
+**What must change to close F-01.** Add a fifth row to §4.3 (mutation: suppress the record write
+while `explicitPointer` is true; oracle that must red: AT-05's write-side conjunct; applied and
+observed by: T-07), and update the four count claims that follow from it — §4.3's heading, T-07's
+"rows 1–4", RK-1 and §4.5's DoD checkbox. No task is added, no batch moves, no dependency edge
+changes: T-07 already owns AT-05 and already carries the mutation-duty step. It is a small edit —
+but it is an edit to the plan, which is why this is a revision and not a confirmation.
 
 ## Delta-Confirmation Findings
 
