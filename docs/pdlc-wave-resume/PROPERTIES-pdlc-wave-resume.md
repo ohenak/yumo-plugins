@@ -42,26 +42,42 @@ property is discharged by an absence alone.
 
 ### The tree these properties are written against
 
-Two grounding facts, verified in this working tree at authoring time rather than assumed, because
-they change what "existing test" means for every row below:
+**Re-measured in this working tree on 2026-08-23 (SE F-06). The earlier version of this section
+described a pre-rebase tree; that premise is now false and the correction is recorded here rather
+than silently overwritten.** The REQ BL-04 / FSPEC OB-F1 / TSPEC §6.2 rebase has landed on this
+branch, so the mechanism, the ignore rule and the coverage tooling are all present *here*, not only
+at `origin/main`:
 
 | Fact | Command | Result |
 |---|---|---|
-| This branch is behind the default branch | `git rev-list --count HEAD..origin/main` | `1637` |
-| The mechanism under test is absent **here** | `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js` | `0` |
-| It is present at `origin/main` | `git show origin/main:pdlc/workflows/orchestrate-dev.js \| grep -n 'export const WAVE_STATE_PATH'` | `:12214` |
-| The ignore rule exists only at `origin/main` | `git show origin/main:.gitignore \| grep -n pdlc-wave-state` | `:41 /.claude/pdlc-wave-state.json` |
-| `fast-check`, `c8`, `test:coverage` exist only at `origin/main` | `git show origin/main:pdlc/workflows/package.json` | `c8 ^10.1.3`, `fast-check ^4.9.0`, `test:coverage` present; this tree's manifest has `jest` only |
+| This branch is **not** behind the default branch; it is ahead of it | `git rev-list --count HEAD..origin/main`; `git merge-base --is-ancestor origin/main HEAD`; `git rev-list --count origin/main..HEAD` | `0`; exit 0 (`origin/main` is an ancestor of HEAD); `478` |
+| The mechanism under test is present **here** | `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js`; `grep -n 'export const WAVE_STATE_PATH' …` | `10`; `:12864 export const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";` |
+| The ignore rule exists **here** | `grep -n pdlc-wave-state .gitignore` | `:46 /.claude/pdlc-wave-state.json` (and `:30`, its explanatory comment) |
+| `fast-check`, `c8` and `test:coverage` exist **here** | `grep -n 'c8\|fast-check\|test:coverage' pdlc/workflows/package.json` | `:9 "test:coverage"`, `:12 "c8": "^10.1.3"`, `:13 "fast-check": "^4.9.0"` |
+| Two `.claude/` paths and the c8 HTML report are **tracked**, by a commit made on this branch | `git ls-files .claude/ pdlc/workflows/coverage`; `git log --oneline -1 -- .claude/pdlc-wave-state.json` | `.claude/pdlc-wave-state.json`, `.claude/pdlc.config.json` (plus the two shared, reviewable files) and `pdlc/workflows/coverage/**`; introduced by `b1b846bd` on this branch, absent at `origin/main` |
 
-Consequence, and it is the same one PLAN §1.2 draws: **every property below is red in this tree and
-is expected to be**, until REQ BL-04 / FSPEC OB-F1 / TSPEC §6.2's rebase lands. PLAN T-01 is the
-gate that proves it landed; PROP-PRE-01/02 are its properties. Weakening any property so that it
-passes pre-rebase — in particular relaxing PROP-REPO-01 to a `some(line => line.includes(...))` —
-is forbidden by TSPEC §5.4 AT-14 and would be a defect, not an accommodation.
+**Consequence, restated.** The earlier consequence — "every property below is red in this tree and is
+expected to be, until the rebase lands" — no longer holds and must not be used to excuse a red. The
+rebase *has* landed; PLAN T-01's pre-flight gate, whose job is to prove exactly that, is expected to
+be **green** here, and PROP-PRE-01's five export/key resolutions all resolve in this tree. What is
+still red is narrower and has a different cause and a different remedy, recorded in § Gaps G-4 and
+enumerated in § 11: the tracked `.claude/` and `pdlc/workflows/coverage/` paths were **added by a
+commit on this branch**, so no rebase clears them — the remedy is `git rm --cached` on this branch,
+which is orchestrator-owned repo hygiene, not a change to any property here.
 
-Shipped-behaviour claims in this document are cited against `git show origin/main:...`. Where a
-line number appears it is a locator only; the stable citation is the enclosing exported symbol,
-`describe`/`it` title, or verbatim string (DEC-DOC-01).
+That distinction is load-bearing for PROP-REPO-01, whose third conjunct is the one actually failing
+and whose failure is *not* a missing ignore rule: `git check-ignore -v .claude/pdlc-wave-state.json`
+exits 1 with no output here, while `git check-ignore -v --no-index …` resolves to
+`.gitignore:46:/.claude/pdlc-wave-state.json` — because `check-ignore` skips **tracked** paths. An
+implementer who reads the red as "the rule is missing" will reach for the wrong fix. Weakening any
+property so that it passes in this tree — in particular relaxing PROP-REPO-01 to a
+`some(line => line.includes(...))` — is forbidden by TSPEC §5.4 AT-14 and would be a defect, not an
+accommodation; and untracking the two paths is what makes the conjunct satisfiable.
+
+Shipped-behaviour claims in this document are cited against `git show origin/main:...` where the
+claim is about the default branch, and against the working tree where the claim is about this branch;
+each citation says which. Where a line number appears it is a locator only; the stable citation is
+the enclosing exported symbol, `describe`/`it` title, or verbatim string (DEC-DOC-01).
 
 ### Test levels and the pyramid budget
 
