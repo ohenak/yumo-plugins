@@ -118,7 +118,36 @@ was picked up as an owned path.
 
 ## Verification
 
-*(pending)*
+Every claim below was measured in this tree at `86a61ab6`, not read off the document.
+
+| Claim under test | Method | Result |
+|---|---|---|
+| Round-6 F-01 resolved — RK-5 counts five | `grep -n "four mutation"` over the PLAN | **Confirmed**: one hit only, revision-history row `1.1` (line 18), where the count is historical; RK-5 (line 426) reads "five mutation runs" |
+| Every present-tense five-count still says five | read §4.3 heading, T-07's cell, §1.1, RK-1, §4.5 | **Confirmed** in all six sites (table in §Batches) |
+| §4.6's new claim: `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` is empty at HEAD | ran it | **Confirmed exactly**: 0 bytes of output |
+| §4.6's retraction: the tree is no longer behind | `git rev-list --count HEAD..origin/main` | **Confirmed**: `0` — the "1,637 commits behind" justification was genuinely stale, and its removal is the correct fix |
+| The stale figure is gone from every *current-state* claim | `grep -n "1,637\|1637"` | **Confirmed**: two hits, both correct — the v1.4 history row, which quotes the retracted phrase to record the retraction, and §1.2's historical measurement table (line 69), which the paragraph above it labels "no longer the tree's current state" |
+| §4.6 `parsePlanTasks(PLAN)` → 9 tasks, no warnings, the stated ids | ran the shipped parser from `pdlc/workflows/orchestrate-dev.js` | **Confirmed**: 9 tasks, `T-01,T-02,T-03,T-04,T-07,T-08,T-10,T-11,T-12`, no warnings |
+| §4.6 `planBatch` row order `1,2,2,2,3,3,4,1,1` | same run, post-edit | **Confirmed**, unchanged from v1.3 |
+| §4.6 `computeTopologicalBatches` → the four batches | ran the shipped function | **Confirmed**, identical to the `Batch` column |
+| §4.6 `parsePlanOwnership(PLAN)` → 9 rows, zero near misses, `T-12 → []` | ran the shipped parser | **Confirmed**: `nearMisses: []`, `T-12`'s `files` is `[]`, and the multi-path cells parse as the three lists §4.6 names |
+| Every file the task table names exists or is declared new | `git ls-files --error-unmatch` over all ten paths | **Confirmed** (table in §Batches): five tracked, five absent-and-declared-new |
+| T-12's `94` / `81` coverage counts (unchanged, re-checked because the tree moved) | `git ls-files pdlc/workflows/coverage` and `… /tmp` | **Confirmed exactly**: 94 and 81 |
+| §3.4's coverage-gate literal | read `pdlc/workflows/package.json:9` | **Confirmed**: `test:coverage` is `c8 npm test -- --runInBand && c8 report --check-coverage --per-file --branches 85 …` — `--per-file` and `--branches 85` both present, so T-10's per-file oracle binds a real gate flag |
+
+**Coverage claims against the current suite layout.** Unchanged by this delta and still true: the
+five new suites the PLAN creates collide with no existing file name in `pdlc/workflows/__tests__/`,
+`waveExecution.test.js` and `documentOracles.test.js` are the only two existing files the plan
+touches and both are correctly marked *(existing)*, and the property strategy for the parameterisable
+components (`classifyWaveLedger`, `parseWaveLedger`, the plan hash) is still carried by T-08's
+P-1…P-4 with `numRuns: 500` pinned. The branch-coverage floor T-10 asserts is verified at the **gate
+command**, not by source-list membership: `--per-file --branches 85` is in the script itself.
+
+**Oracle discipline, spot-checked on the one edited duty-bearing region.** RK-5 is a mitigation row,
+not an oracle, so the edit introduces no assertion. The oracle it now sizes correctly — §4.3 row 5 —
+still names AT-05's write-side conjunct as its *single* killing oracle and enumerates AT-05, AT-07,
+AT-15, AT-18 as staying green, transcribed from TSPEC §5.5 item 5 rather than derived from the
+implementation. That row was verified against the upstream in round 6 and is byte-unchanged here.
 
 ## Findings
 
