@@ -51,10 +51,18 @@ throughout.
 
 ### 1.2 The one precondition this PLAN is built around
 
-REQ BL-04 / FSPEC OB-F1 / TSPEC §6.2 are **not met in this tree**, and that is verified rather
-than assumed:
+REQ BL-04 / FSPEC OB-F1 / TSPEC §6.2 were **not met in this tree** at v1.0 authoring time, and
+that was verified rather than assumed. The table below is that measurement, kept as the record of
+why T-01 exists — **it is no longer the tree's current state:** the OB-F1 rebase has since landed on
+this branch (re-measured at v1.3: `git rev-list --count HEAD..origin/main` → `0`;
+`grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js` → `10`;
+`docs/_constraints/pdlc-wave-gate-baseline.md` present; `.gitignore:46` carries
+`/.claude/pdlc-wave-state.json`; `pdlc/workflows/package.json` defines `test:coverage` with
+`--per-file --branches 85`). T-01 stays, and stays first, for the lifecycle reason stated in its
+row: it is a permanent gate against a later drift or de-rebase, not a one-shot check that this
+re-measurement discharges.
 
-| Fact | Command run in this tree | Result |
+| Fact | Command run in this tree (at v1.0 authoring, pre-rebase) | Result |
 |---|---|---|
 | The branch is behind the default branch | `git rev-list --count HEAD..origin/main` | `1637` |
 | The shipped mechanism is absent here | `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js` | `0` |
