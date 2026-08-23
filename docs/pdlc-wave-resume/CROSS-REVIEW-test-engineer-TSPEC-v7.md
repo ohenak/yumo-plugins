@@ -192,8 +192,20 @@ F-02 is a documentation-clarity finding either way.
 
 ## Delta-Confirmation Findings
 
-_pending_
+Both routed items landed and are correct on the load-bearing figures. Neither finding below is
+High: the pin scope (all four laws at 500) and the c8 cardinality (four entries, verbatim) are
+right, and no oracle, fixture, law or decision is weakened. F-01 is a fidelity slip in a HEAD
+citation; F-02 is an unstated consequence in otherwise-accurate prose.
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §5.7's new sentence says the precedent block "applies it at every `fc.assert` site in that block". At HEAD, `advisoryHelperProperties.test.js`'s `PROP-CTR-05 (generative): citesGateOutput …` describe has seven `fc.assert` sites and passes `runs` at five; the boundary-shape "same needle at length n and n+1" test and the `EMPTY / NON-ARRAY evidence never cites` test take fast-check's default. PLAN T-08 states this correctly ("five `fc.assert` sites there; the file's other properties take fast-check's default"), so the same sentence that asserts "the three documents agree" introduces a divergence from one of them. The pinned figure itself (500, all four laws) is right and agreed — only the characterisation of the precedent is wrong. Fix: replace "every" with "five", or with "every site in that block that states a law over a generated space". | §5.7, convention paragraph |
+| F-02 | Low | delta | local | §5.8's new gloss — the fourth c8 entry "covers no code this feature touches, but `--per-file` applies the floor to it independently, so a red there is not a red in this feature's module" — is true about attribution but silent about the gate consequence: `--per-file` failing on any included file makes `c8 report --check-coverage` exit non-zero, and PLAN T-10's oracle (i) is "`npm run test:coverage` exits 0". An implementer reading only this sentence could expect the gate to stay green and then debug the wrong module. T-10's delta-scoped oracle (ii) is unaffected. Fix: one clause noting that such a red still fails the command, and that oracle (ii) is what localises the failure to this feature. | §5.8, coverage-floor paragraph |
+
+FINDING: Medium | delta | local | §5.7 convention paragraph | §5.7 claims the cited precedent applies `numRuns: 500` "at every `fc.assert` site in that block"; at HEAD that block has seven `fc.assert` sites and only five pass `runs` — the boundary-shape and EMPTY/NON-ARRAY tests take fast-check's default. PLAN T-08 says "five sites", so the sentence asserting the three documents agree itself diverges from PLAN. The 500 figure and its application to all four laws P-1…P-4 are correct; replace "every" with "five".
+FINDING: Low | delta | local | §5.8 coverage-floor paragraph | §5.8's new sentence that "a red there is not a red in this feature's module" is true about attribution but omits that `--per-file` failing on any included file still fails `npm run test:coverage`, which is PLAN T-10's oracle (i) verbatim; add a clause saying so and pointing at T-10's delta-scoped oracle (ii) as the localiser.
 
 ## Verdict
 
-_pending_
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
