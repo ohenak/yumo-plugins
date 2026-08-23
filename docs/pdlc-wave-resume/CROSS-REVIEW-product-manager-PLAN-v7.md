@@ -76,6 +76,35 @@ bytes it was written against.
 
 ## Verification
 
+Every claim above is a command I ran in this tree, not an impression.
+
+| Claim | Verification | Result |
+|---|---|---|
+| The branch I may commit on | `git rev-parse --abbrev-ref HEAD` | `feat-pdlc-wave-resume` |
+| PLAN's bytes moved this round | `shasum -a 256` vs. v6's approval hash | `136abcfb…`, was `ea7bdc57…` |
+| The delta's shape | `git log --oneline 5d5f15b4..HEAD --` and `git diff --stat` on the PLAN | One commit `86a61ab6`; **8 insertions, 5 deletions** |
+| The delta's content | `git diff 5d5f15b4..HEAD --` on the PLAN | Three hunks only: version cell + v1.4 row; RK-5's count; §4.6's preamble sentence. Nothing else |
+| My v6 F-01's premise is really retracted | `grep -n "1,637"` on the PLAN | No hit outside §1.2's re-dated historical table |
+| The replacement premise is true | `git rev-list --count HEAD..origin/main`; `git diff origin/main -- pdlc/workflows/orchestrate-dev.js \| wc -l` | `0` and `0` |
+| RK-5's new count matches §4.3 | `grep -n "five mutation\|rows 1–5"` | §1.1 (`:185`), §4.3 heading (`:386`), RK-1 (`:422`), **RK-5 (`:426`)**, §4.5 checkbox (`:447`), T-07 duty (`:130`) |
+| No stale "four mutations" survives outside history | `grep -n "four mutation"` | `:18` (v1.1 history row) and `:21` (the v1.4 row describing the fix) — both historically correct |
+| §4.6's `parsePlanTasks` row is true of the **v1.4** bytes | Imported `pdlc/workflows/orchestrate-dev.js` and ran `parsePlanTasks` over the current PLAN | 9 tasks, ids as listed, `warnings` `undefined`, all nine dependency cells identical to the table |
+| §4.6's `computeTopologicalBatches` row | Same run | `[[T-01,T-11,T-12],[T-02,T-03,T-04],[T-07,T-08],[T-10]]` — identical |
+| §4.6's `parsePlanOwnership` row (9 rows, zero near misses) | Same run | `ownership` length 9, `nearMisses` `[]` |
+| The parser I ran is the parser §4.6 names | `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` | Empty — same program |
+| Every file the task table names exists, or is declared new | `test -e` over all seven manifest paths; `grep -n "\*(new)\*"` at `:126–:132` | `waveExecution.test.js`, `orchestrate-dev.js`, `docs/_constraints/pdlc-wave-gate-baseline.md` present; the five `waveResume*.test.js` files absent and each marked `*(new)*` |
+| Requirement coverage unchanged by the delta | The diff touches no task row, no `Deps` cell, no batch, no oracle | Every P0/P1 retains the owner it had at v1.3; nothing re-batched |
+
+**Test-quality checks on the changed material.** The delta changes no oracle, no assertion and no
+property, so the three standing bars are inherited rather than re-tested — but I re-checked that the
+delta did not quietly weaken the two that live in the changed lines' neighbourhood. RK-5's inventory is
+a *sizing* claim, not an oracle, and raising it from four to five makes the risk row larger, never
+smaller. §4.6's table is a set-equality style check by construction (it enumerates all nine ids, all
+nine dependency cells and the full batch partition, so a dropped task fails it), and the preamble edit
+left every row of it byte-identical — verified by the diff and by re-running the parse. No absence-only
+oracle was introduced: §4.6's "zero near misses" negative is paired on the same run with the positive
+"9 ownership rows, these paths", which is exactly the pairing the bar asks for.
+
 ## Findings
 
 ## Questions
