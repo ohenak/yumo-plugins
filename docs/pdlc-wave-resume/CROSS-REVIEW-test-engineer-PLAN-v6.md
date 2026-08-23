@@ -159,6 +159,42 @@ is written down.
 
 ## Positive Observations
 
+- **The High closed where it counts, and it closed by transcription.** §4.3's fifth row does not
+  paraphrase TSPEC §5.5 item 5 — it carries the same mutation, the same single oracle, and the same
+  enumeration of ATs that stay green. An expectation copied from the spec rather than reasoned back
+  out of the implementation is exactly the discipline a mutation table needs, and it is what makes
+  the row falsifiable when T-07 actually runs it.
+- **The fifth row was given an owner *and* a duty *and* a checkbox, not just a row.** The three
+  places that decide whether a mutation is really run — T-07's cell (`rows 1–5`), §4.5's DoD
+  checkbox ("five mutations was applied… reverted, and its failure output recorded"), and §2.3's
+  trade paragraph — moved together. A row added without those three would have been decoration.
+- **The paragraph explaining the fifth mutation states the stakes in behavioural terms.** "Removes
+  resume from exactly the recovery path §2.5 ratifies the write for" is the sentence that tells an
+  implementer why the write-side conjunct is load-bearing; it is a better guard against reaching for
+  a weaker oracle than the row alone would be.
+- **T-10's coverage oracle became falsifiable by this feature's own work.** Binding the gate to
+  `orchestrate-dev.js`'s per-file number while *reporting* the whole-command exit is the right split:
+  the number this feature can move is the assertion, and the wider red still surfaces for whoever
+  owns it. All three statements of that obligation (§2.1 oracle (i), §2.2's batch-4 gate, §4.5's DoD)
+  were moved in the same revision, so there is no stale third copy to mislead the implementer.
+- **T-12's rationale was replaced by a measurement, not by a stronger adjective.** 94 tracked files,
+  81 under `coverage/tmp/`, pristine tree → 3 reds, post-`test:coverage` → 4 with the extra being
+  `PROP-SWEEP-2(a)`. Both counts reproduce exactly. A precondition justified this way cannot be
+  descoped as tidiness by a reader in a hurry, which was the whole risk.
+- **§3.4 and RK-2 now record agreement instead of an erratum, and the upstream backs them.** TSPEC
+  RT-7 really does assign the floor to the last implementation task and give the PLAN's reasoning
+  back. Closing a self-described divergence by checking the upstream rather than by softening the
+  wording is the harder and the correct move.
+- **Q-01 from round 5 was answered inside the document.** T-11 now says the implementer re-runs the
+  sweep and records what it then returns, "rather than transcribing the ten above… and no oracle pins
+  the number either way". That converts a number a reviewer could misread as a defect into an
+  explicit instruction, and it states the reason the number is unpinnable.
+- **§4.6 stayed a true record after being edited.** Adding a table row to §4.3 is exactly the kind of
+  change that quietly breaks a published parse result; re-running `parsePlanTasks`,
+  `parsePlanOwnership` and `computeTopologicalBatches` after the edit returns the same nine tasks,
+  the same four batches, `nearMisses: []` and `T-12 → []`. The document's most valuable section is
+  still trustworthy.
+
 ## Recommendation
 
 ## Verdict
