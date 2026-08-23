@@ -122,3 +122,47 @@ confirm from the delta is the precedent's own internal application, which is wha
 | ID | Question |
 |----|---------|
 | Q-01 | PROPERTIES still carries a "Note the divergence, routed and resolved here" paragraph saying "TSPEC §5.7's convention paragraph says fast-check's default", plus an erratum-ledger row routing it as `ERRATUM: TSPEC`. That divergence is now discharged by this edit. It is a downstream bookkeeping item, not a TSPEC defect, so I have not raised it as a finding — but PROPERTIES and PLAN's erratum ledgers should retire those rows the next time either document is touched, so a later reader does not go looking for an open route that no longer exists. |
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|------------|----------|----------------|-------------|
+| F-01 | Medium | delta | local | §5.7 convention paragraph | The new sentence overstates the precedent: the `PROP-CTR-05` block applies `runs` at five of its seven `fc.assert` sites, not at every one |
+
+FINDING: Medium | delta | local | §5.7 convention paragraph | The erratum's new text says the precedent block in `advisoryHelperProperties.test.js` "applies it at every `fc.assert` site in that block". It does not: the `describe("PROP-CTR-05 (generative): citesGateOutput …")` block spans seven `fc.assert` sites and passes `runs` to five of them — the `FLOOR` property and the `EMPTY / NON-ARRAY evidence never cites` property both call `fc.assert(fc.property(…))` with no options argument and therefore run at fast-check's default. PLAN T-08 and PROPERTIES both state the precedent correctly as five sites with the file's other properties left at the default, so the paragraph's closing claim that "the three documents agree" holds for the figure 500 and the four laws but not for this sub-claim — reintroducing, in miniature, the TSPEC-vs-PLAN divergence this erratum was routed to close. Non-gating: the load-bearing instruction (all four laws P-1…P-4 pinned at `numRuns: 500`) is unambiguous, correct and matches PLAN and PROPERTIES, so no implementer is misdirected about what to build. Fix: replace "at every `fc.assert` site in that block" with "at five of that block's `fc.assert` sites, the file's remaining properties being left at fast-check's default" — matching PLAN T-08's wording. Scope: Local. Requirement ref: TSPEC §5.7 / PLAN T-08 / REQ-WVR test-depth obligation.
+
+## Positive Observations
+
+- **Both routed items land in the strong form, not the minimal one.** §5.7 could have changed four
+  words; instead it names the precedent file, the precedent's `describe` block, the declaration
+  form, and states that PLAN and PROPERTIES carry the same figure — so the next reader can check the
+  agreement rather than trust it. That is what let me find F-01 at all, which is the point of
+  writing claims checkably.
+- **§5.8 answers the question the correction raises rather than just fixing the count.** Going from
+  three to four entries invites "so is this feature now measured against a script it does not
+  touch?" — and the new text answers it in place: external, hence `allow-external`, covers nothing
+  this feature touches, and `--per-file` keeps a red there off this module. A three-to-four
+  correction that left that unanswered would have been technically complete and operationally worse.
+- **All three of my v6 findings are discharged, and each was discharged at the right altitude.**
+  §6.3 became a resolved ledger rather than being deleted, so the erratum chain stays
+  reconstructable; §6.2 OB-F1 had its re-raise justification struck while its live substance —
+  BL-04 unmet, AT-14 red, no wave carrying AT-14 before the rebase — was explicitly preserved and
+  flagged as unaffected. That distinction was the whole risk in that finding, and the edit names it.
+- **The round-5 revision row is honest about attribution.** It credits each correction to the lenses
+  that raised it (PM, TE, SE) and states plainly that no decision was re-litigated and no scope
+  changed — which my own read of the diff confirms.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both routed items land correctly and completely, all three of my v6 findings are discharged, upstream
+REQ v1.7 and FSPEC v1.2 still say at HEAD what this TSPEC compresses them as saying, and no
+acceptance criterion, threshold or obligation moved. The single Medium finding is a factual
+overstatement inside one new sentence in §5.7; it does not gate. Fold F-01's one-line correction
+into the next touch of this document — no separate erratum round is warranted for it.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
