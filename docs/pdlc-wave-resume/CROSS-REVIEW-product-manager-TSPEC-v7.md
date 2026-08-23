@@ -59,3 +59,37 @@ a future operator reading a red in an unrelated script as a failure of this feat
 oracle except AT-05, which *gained* a conjunct (write-side assertion, with §5.5 mutation 5 to match)
 — a strengthening I raised at v5 and which is additive. Nothing in the delta adds behaviour the REQ
 does not ask for, and nothing drops behaviour the REQ requires.
+
+## Interfaces
+
+Both edits are factual claims about files outside this feature's documents, so I re-measured every
+one of them at HEAD rather than accepting the erratum's own account.
+
+| Claim in the delta | Where made | Verified against | Result |
+|---|---|---|---|
+| `c8.include` has **four** entries | §5.8, revision row 1.4 | `pdlc/workflows/package.json` `c8.include` | ✓ four |
+| The four entries are `**/pdlc/workflows/orchestrate-dev.js`, `**/pdlc/workflows/orchestrate-queue.js`, `**/pdlc/workflows/build-runtime.mjs`, `**/scripts/capture-learnings-baseline.mjs` | §5.8 | same | ✓ transcribed exactly, `**/`-anchoring included |
+| The fourth entry is outside `pdlc/workflows/` and is why `allow-external: true` is set | §5.8 | `package.json`'s `//c8` note: "production tooling that lives above this package, so it needs `allow-external`" | ✓ |
+| `test:coverage` is `c8 npm test -- --runInBand && c8 report --check-coverage --per-file --branches 85 …` | §5.8 | `package.json` `scripts.test:coverage` | ✓ verbatim |
+| `--per-file` applies the floor to the external script independently | §5.8 | `//c8-per-file` note: stage 2 enforces branch ≥ 85 "on EVERY included module" | ✓ |
+| `.github/workflows/pr-tests.yml` runs `npm run test:coverage` in the `Unit tests` job | §5.8 (unchanged bytes) | project CI table | ✓ still true |
+| PLAN T-08 and PROPERTIES carry `numRuns: 500` | §5.7 | PLAN T-08; PROPERTIES PROP-LAW-01…04 and its run-depth paragraph | ✓ all pin 500 |
+| The precedent block declares `const runs = { numRuns: 500 }` in `describe("PROP-CTR-05 (generative): citesGateOutput …")` | §5.7 | `advisoryHelperProperties.test.js:260-261` | ✓ |
+| The precedent "applies it at **every** `fc.assert` site in that block" | §5.7 | same file, block spans `:260-387` | ✗ — see F-01 |
+
+The last row is the one finding. The `PROP-CTR-05` block contains **seven** `fc.assert` sites; five
+pass `runs` and two do not — the `FLOOR` property and the `EMPTY / NON-ARRAY evidence` property both
+call `fc.assert(fc.property(…))` with no options argument, so they run at fast-check's default. PLAN
+T-08 states this correctly ("applied at five `fc.assert` sites … the file's other properties are at
+fast-check's default"), and PROPERTIES states it correctly too ("applies it at five `fc.assert`
+sites"). The TSPEC's new sentence is the only one of the three that overstates it, and it closes
+with "so the three documents agree" — which is true of the figure 500 and of the four laws, and not
+true of this sub-claim.
+
+## Data Model
+
+No type, record shape, or catalogue moved in this delta. `WAVE_IGNORE_REASONS` (seven codes),
+`RESUME_OUTCOMES`, `RESUME_PROVENANCE`, `IMPLEMENTATION_DEFAULTS` (four keys), the `ParsedWaveLedger`
+three-arm shape and the ledger record's fields are byte-identical to the version I approved. §3.1's
+interpolated-value count (five, `e75295b6`) predates this round and was already in the bytes at v6;
+the 1.4 revision row records it retrospectively, which is bookkeeping rather than a change.
