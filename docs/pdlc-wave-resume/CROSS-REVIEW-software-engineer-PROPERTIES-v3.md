@@ -40,6 +40,29 @@ kind of measured fact — one a reviewer can reproduce and does.
 
 ## Findings
 
+### F-01's resolution, checked conjunct by conjunct
+
+PROP-SKIP-04 now reads as an empty flattened `add` list paired with two positive assertions. I
+verified each against `origin/main:pdlc/workflows/orchestrate-dev.js`:
+
+| Conjunct | Check | Result |
+|---|---|---|
+| `gitCalls.filter(a => a[0] === "add").flat()` is `[]` | the V-wave block issues no `commitPaths` and no `_git(["add", …])`; it dispatches, evaluates, then runs `runCommandFn(implConfig.testCommand)` | holds — and `.flat()` now matches PROP-REPO-03's decoding, so the `a[2]` bug I raised is gone |
+| `gitCalls` contains `["rev-parse", "--abbrev-ref", "HEAD"]` | `main()` calls `await ensureFeatureBranch({ feature: featureName, _git: gitFn, _log: emit })` **unconditionally, inside the top-level `try`, before `pipelineFn` runs any phase**; `ensureFeatureBranch` → `readHeadBranch(git)` → `await git(["rev-parse", "--abbrev-ref", "HEAD"])` | holds on every outcome including (c), and the shipped `makeGit`/`makeShaGit` doubles push the raw argv array (`calls.push(argv)`), so `toContainEqual` on that literal triple is exact |
+| exactly one `se-implement` dispatch, prompt = the V-wave's | `propertiesTestPrompt(featureName)` begins `Implement PROPERTIES tests for feature ${featureName}.` | holds, and the document's parenthetical is right: that first line does not match `dispatchedTaskIds`' `/^Implement task (T\d+):/`, so the `[]` and the single-dispatch claim are two readings of one record rather than two independent assumptions |
+
+The "V-wave's own commit" premise is gone from the property and routed upstream as an
+`ERRATUM: TSPEC` line instead of contested here. That is the right disposition and it is executed
+correctly. **F-01 is closed.**
+
+### New findings this round
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-06 | High | Local | § Gaps G-4 and § 11's caveat (ii) are dated **2026-08-23** and describe a "pre-rebase tree", but the rebase has landed: `git rev-list --count HEAD..origin/main` is **0**, `origin/main` is an ancestor of HEAD, `.gitignore` carries the rule here, and `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js` is **10**. The tracked `.claude/` files were committed **on this branch**, so no rebase clears them — the remediation the document routes does not exist. | § Gaps G-4; § 11 measured-baseline caveat (ii) |
+| F-07 | High | Cross-Feature | § 11's newly added enumeration of this tree's local reds is incomplete, and the missing item is a hard gate blocker: `documentOracles.test.js`'s `PROP-SWEEP-2(b)` reds because **this feature's own tracked docs** hit the retirement sweep terms and `docs/pdlc-wave-resume/**` is not on A-1's frozen glob list. The wave gate's `testCommand` is the whole jest suite, so **every** wave gate reds and Phase I cannot pass a single wave. | § 11 measured-baseline caveat (ii); PROP-COV-01 |
+| F-08 | Low | Local | § Fixtures says the triage double's fixture requirement is "a Phase-0 readiness-triage `_agent` double **whose last line is** `TRIAGE: ready`". `parseTriageVerdict` scans bottom-up for the last line that *matches*, so trailing blank or non-matching lines are tolerated. The stated fixture obligation is stricter than the seam's. | § Fixtures → "Queue fixtures (two required, and the one that is not)" |
+
 ## Questions
 
 ## Positive Observations
