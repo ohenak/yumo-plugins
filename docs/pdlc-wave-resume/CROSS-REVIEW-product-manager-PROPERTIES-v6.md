@@ -237,11 +237,46 @@ Every test file named in the trace is either present or explicitly marked new:
 `waveResume.test.js`, `waveResumePreflight.test.js`, `waveResumeRepoState.test.js`,
 `waveResumeQueueParity.test.js` and `waveResumeProperties.test.js` are each marked *(new)*.
 
+## Findings
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | The v1.5 revision-history row says "PLAN §4.3 landed its fifth mutation row at **PLAN v1.4**". PLAN's own history files that landing at **v1.3** ("§4.3 gains a **fifth** mutation row"); v1.4 is the round-6 pass that corrected RK-5's sizing. PROP-COV-03's body ("PLAN v1.4's §4.3 carries the fifth row") is true and needs no change. Restate the history row as "landed at PLAN v1.3, carried unchanged at v1.4". | TSPEC §5.5 / PLAN §4.3 (record accuracy) |
+| F-02 | Low | Local | The AT-16 routed-errata row still opens "**Open, and newly raised this round.**" — phrasing written for the v1.2 round, in a document at v1.5 whose row was edited in this pass. Restate as "Open; raised at v1.2, unchanged at TSPEC v1.4", matching the treatment the A-1 glob row already received. | TSPEC §5.4 AT-16 |
+| F-03 | Low | Process | § 11's local-red row and the A-1 glob routed-errata row cite `documentOracles.test.js:712` as a raw `file:line` anchor. Position is not the claim under test (the claim is that a glob entry is absent), so DEC-DOC-01 applies as it did to the `TSPEC:838` anchor this round removed. Cite the symbol `A1_GLOBS` in `documentOracles.test.js`, which the same sentence already names. | DECISIONS-review-severity-bars.md DEC-DOC-01 |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | § 11's local-red table records the `PROP-SWEEP-2(b)` red as owned by PLAN T-11 and still present at HEAD. T-11 is a batch-1 precondition and the wave gate runs the whole suite — is there anything this document should say about the *ordering* consequence (batch 1's gate is unsatisfiable until T-11 lands), or is that entirely PLAN's to carry? I read it as PLAN's, and raise it only so the answer is on the record rather than inferred. |
 
 ## Positive Observations
 
+- **The High closed exactly as scoped, and no wider.** PROP-OVERRIDE-01 gained one conjunct,
+  PROP-COV-03 one number, the mutation map one row. No property was deleted, weakened or reworded
+  around the edges — which is what makes a delta re-review cheap and is worth saying out loud.
+- **The revision verified upstream rather than trusting it.** The write-side conjunct is transcribed
+  in TSPEC's own words, the fifth mutation's owner matches PLAN's owner cell, and the `Traces` cell
+  picked up REQ-WVR-09 — the requirement that actually explains why a suppressed write is a product
+  failure and not just a missing assertion.
+- **v1.5 is unprompted correctness work.** No v5 finding asked for the PLAN re-verification or the
+  T-11/T-12 trace rows; the author went and checked the ledger against PLAN at HEAD anyway, closed
+  the two landed `ERRATUM: PLAN` halves, and kept the still-real red recorded with its owner. Closing
+  a routing while keeping the red is the harder, right call.
+- **The two remaining `ERRATUM: TSPEC` items are genuinely open.** I re-read both against TSPEC at
+  HEAD. Neither is a re-raise of a settled question, which is the DEC-ERR-01 trap this ledger is most
+  exposed to.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+Every v5 finding — the High and both Mediums and both Lows — is resolved and verified against the
+upstream document at HEAD, not merely asserted in the revision history. The three findings above are
+record-accuracy nits (one mis-cited PLAN version, one stale "this round", one raw line anchor); none
+touches a property, an oracle, a fixture or a requirement mapping, and none blocks. They can be folded
+into the next edit this document takes for any reason, or landed as a single Low pass.
 
 ## Delta-Confirmation Findings
 
