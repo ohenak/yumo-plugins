@@ -413,6 +413,14 @@ tree, run only the named oracle's test file, paste the failure header into the t
 
 - [ ] T-01 passes: the branch is rebased, every `BL-PREREQ` symbol and file is present at HEAD, and
       the resolved `implementation.testCommand` string-equals §3.4's literal.
+- [ ] **T-11 passes:** `PROP-SWEEP-2(b)` is green — `docs/pdlc-wave-resume/**` is on `A1_GLOBS`
+      **and** carries a row in `docs/_constraints/pdlc-retirement-baseline.md` recording rationale,
+      scope justification and the hit count measured at promotion time, so `PROP-SWEEP-3` is green
+      too. A one-sided edit that greens one and reds the other does not satisfy this box.
+- [ ] **T-12 passes:** both `.claude/`-tracking oracles are green — `git ls-files .claude/` returns
+      exactly `pdlc.config.example.json` and `settings.json` (set-equality, not a subset), and
+      `git ls-files pdlc/workflows/coverage/` is empty. Checked with the working tree intact:
+      `.claude/pdlc.config.json` must still exist on disk for T-01 to read.
 - [ ] **The gate was script-owned for every wave** — positively observed, not inferred from silence:
       the Phase I report row's detail contains `script-owned gate`, **and** the run log carries no
       `Notice: the script-owned test gate is unavailable` line (round-1 F-02).
