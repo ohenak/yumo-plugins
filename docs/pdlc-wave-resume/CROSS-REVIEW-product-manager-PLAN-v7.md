@@ -107,7 +107,24 @@ oracle was introduced: §4.6's "zero near misses" negative is paired on the same
 
 ## Findings
 
+**No findings.** The v1.3 → v1.4 delta introduced no defect and contradicts nothing in the repository
+at HEAD or in any upstream document. Under the freeze, the two blocking categories — a regression this
+revision caused, or a load-bearing claim made false by the tree — are both empty.
+
+Prior findings, closed this round and recorded here so the round history reads without opening v6:
+
+| Prior ID | Severity | Status in v1.4 |
+|---|---|---|
+| v6 F-01 | Low | **Resolved, exactly as scoped.** §4.6's preamble drops the retracted "1,637 commits behind" premise for the byte-identity reason, and re-dates the parse to the v1.3 edit while keeping the v1.2 and v1.1 runs as history — both halves of the finding, in one edit. §4.6's result table is byte-unchanged, and I re-ran the parse to confirm every row is still true of the v1.4 bytes |
+
+DEFERRED: §4.6's provenance sentence still accretes three parse dates (v1.1, v1.2, v1.3) inline; a single "last parsed at" line above the table would read better than the history, though the results the implementer needs are current and correct either way (v6 Q-01, now partly answered).
+DEFERRED: The header's `Cross-Reviews` cell still stops at the round-5 files and does not list the round-6 cross-reviews whose findings v1.4 lands; harmless provenance drift, no parsing or task consequence.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| — | None. The delta is two corrections I asked for or agreed with, and both reproduce against the tree. |
 
 ## Positive Observations
 
