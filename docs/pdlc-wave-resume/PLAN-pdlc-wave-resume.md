@@ -500,7 +500,7 @@ Run against
 | `computeTopologicalBatches(tasks)` | `[[T-01,T-11,T-12], [T-02,T-03,T-04], [T-07,T-08], [T-10]]` — identical to the `Batch` column, so the column is a contract that holds, not a caption |
 | `parsePlanOwnership(PLAN)` | 9 rows, one per task, **zero near misses**; multi-path cells parse as lists (`T-02 → [waveResume.test.js, orchestrate-dev.js]`, `T-10 → [waveResume.test.js, waveExecution.test.js]`, `T-11 → [documentOracles.test.js, pdlc-retirement-baseline.md]`), and `T-12` parses as the **empty** path list — measured, and the reason its cell carries no backticked span (§3.3) |
 | `computeWaves(tasks, ownership)` | four ownership-disjoint waves, identical to the topological batches — no wave contains two tasks sharing a path; wave 1 is `[T-01, T-11, T-12]` and its three path sets are pairwise disjoint (one file, two files, none) |
-| Retired ids | `T-05`, `T-06`, `T-09` appear in no `#` cell and no `Deps` cell; the parser sees seven tasks and no dangling dependency |
+| Retired ids | `T-05`, `T-06`, `T-09` appear in no `#` cell and no `Deps` cell; the parser sees **nine** tasks (seven before v1.2 added T-11 and T-12; re-measured v1.3) and no dangling dependency |
 | Dependency cycles | none; the edge set is a DAG (Phase P refuses a PLAN whose dependencies contain a cycle) |
 | Bare basenames in `Test File` / `Source File` | none — every path is subpackage-qualified (`pdlc/workflows/__tests__/…`, `pdlc/workflows/orchestrate-dev.js`, `docs/_constraints/…`) |
 | Second near miss, found and fixed in v1.2 | T-12's manifest cell first read ``index-only `git rm --cached` ``; the parser reads **every** backticked span as a path, so the command string parsed as a file T-12 owned. The backticks are gone and the row now parses as zero paths. |
