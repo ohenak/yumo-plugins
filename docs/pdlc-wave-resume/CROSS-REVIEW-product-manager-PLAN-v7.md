@@ -30,6 +30,25 @@ true of the bytes in front of me. Zero findings; approving.
 
 ## Batches
 
+The whole delta, hunk by hunk, each checked against the tree or the upstream text at HEAD rather than
+against the routing note that asked for it.
+
+| Change | What v1.4 did | Verdict |
+|---|---|---|
+| **PM v6 F-01 (Low) — §4.6's stale premise** | The preamble's `since this tree is 1,637 commits behind` clause is replaced by "the shipped parser, byte-identical to this tree's copy now that the OB-F1 rebase has landed (`git diff origin/main -- pdlc/workflows/orchestrate-dev.js` is empty at HEAD, §1.2)", and the parse is dated "**after the v1.3 edit** (and, before it, after the v1.2 erratum edit and the v1.1 merge)" | **Closed exactly as scoped.** Both new facts verified in this tree: `git rev-list --count HEAD..origin/main` → `0`; `git diff origin/main -- pdlc/workflows/orchestrate-dev.js` → 0 lines. The replacement keeps the reason for parsing against `origin/main` (it is what ships) instead of dropping the justification with the stale number, and the staleness in the same sentence's dating — the second half of my v6 finding — is fixed in the same edit. §4.6's result table is untouched, as I asked |
+| **TE v6 F-01 (Low) — RK-5's sizing** | RK-5's inventory of T-07's size reads "…one report-row branch and **five** mutation runs" (was "four") | **Closed, and it is the right number.** §4.3's table carries five mutation rows (`:386` heading, five `\|`-leading data rows), and T-07's `Mutation duty (§4.3 rows 1–5…)` at `:130` owns all five. `grep "four mutation"` now returns only `:18` (the v1.1 history row, historically correct) and `:21` (the v1.4 row describing this correction). RK-5's mitigation text — the re-invoke-don't-split argument — is verbatim unchanged, so no risk posture moved |
+| **Version cell + v1.4 revision-history row** | `Version` 1.3 → 1.4; a new row records both findings, their severities, and "No task, batch, `Deps`, oracle or parse-result change" | **Accurate as written.** The diff bears the claim out: outside these two prose fixes the file is byte-identical. The row does not claim a v1.4 parser re-run, which would have been the tempting overstatement — it leaves §4.6 dated at v1.3, which is honest, and I re-ran the parser myself to confirm the results survive the v1.4 bytes anyway (see §Verification) |
+
+**On scope.** This revision adds nothing and removes nothing. Two counts and one justification clause
+changed; no obligation was created, discharged, moved or weakened. Requirement coverage is therefore
+identical to the mapping I walked in v3/v4/v5 and re-confirmed in v6: every P0/P1 requirement still has
+an owning task, no batch changed hands, no acceptance criterion was narrowed, broadened or re-triggered.
+
+**On the freeze.** Nothing in this delta opens a decision, and I open none. My v6 Q-01 (§4.6's
+provenance history is accreting faster than its data reads) is now *partly* answered — the preamble
+folds three runs into one sentence — and the remainder is a readability preference, not a defect. It is
+recorded as a DEFERRED line under §Findings, not as a finding.
+
 ## Dependencies
 
 ## Verification
