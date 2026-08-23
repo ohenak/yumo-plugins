@@ -167,6 +167,76 @@ and remain aligned with TSPEC v1.4.
 
 ## Fixtures
 
+Nothing in the fixture machinery moved this round — `makeLedgerArgs`, `ledgerWrites`,
+`PLAN_THREE_WAVES`, `CONFIG_WITH_TEST_COMMAND`, `configWithStartWave(n)`, the invalid-`startWave`
+fixture, the H-1/H-2 harness extensions and the six generators are byte-identical. What moved is the
+ledger material that lives in and around this section, and that is where my two remaining Lows sit.
+
+### The run-depth paragraph now records agreement (v5 F-02 — resolved)
+
+The paragraph that read "**Note the divergence, and it is routed rather than resolved here**" now
+reads "All three documents now agree: TSPEC v1.4 §5.7 pins `numRuns: 500` on this same precedent,
+matching PLAN T-08 and PLAN §4.5 — the divergence this paragraph recorded through v1.3 was closed by
+the owner when the routed erratum landed, and no run-depth decision remains open." Verified: TSPEC's
+v1.4 revision row records "§5.7: generative count **pinned `numRuns: 500`** on the
+`advisoryHelperProperties.test.js` precedent". The `advisoryHelperProperties.test.js` precedent file
+exists in the tree (`pdlc/workflows/__tests__/advisoryHelperProperties.test.js`), so the citation
+resolves.
+
+### The routed-errata ledger now describes HEAD (v5 F-02, F-03 — resolved; and more)
+
+Both rows I flagged are re-labelled and de-routed, and the `**What this document does with the open
+items**` paragraph is rewritten from "following PLAN T-08 **rather than** TSPEC §5.7" to agreement
+with both. Two `ERRATUM: TSPEC` items remain routed, and I re-verified each against upstream at HEAD
+rather than taking the row's word:
+
+| Remaining routed item | Still genuinely open? |
+|---|---|
+| TSPEC §5.4 AT-12's fourth conjunct asserts a commit this suite cannot observe | **Yes.** TSPEC's AT-12 row at HEAD reads "*Fourth conjunct:* Phase PT dispatches exactly **one** agent and invokes the gate exactly **once**, and its commit is the only Phase-I-adjacent commit" — the round-5 erratum reworded it without removing the unobservable half, exactly as the row now says. The row's re-quotation of the v1.4 wording is accurate. |
+| TSPEC §5.4 AT-16 / the queue-fixture rationale rests on the retired `distribution.checkEnabled` drift gate | **Yes for the TSPEC half.** The `ERRATUM: PLAN` half is correctly closed: PLAN T-04 at HEAD re-files the opt-out as "**inert and optional**: the distribution drift gate that opt-out addressed has been retired from `orchestrate-queue.js`", and PLAN's v1.2 revision row records the correction. |
+
+The self-initiated PLAN re-verification is the substantive addition here, and it is right on both
+counts. PLAN v1.2's revision row states T-11 and T-12 were added as batch-1 precondition tasks and
+that "**T-11** promotes `docs/pdlc-wave-resume/**` onto A-1's frozen glob list — `A1_GLOBS` in
+`documentOracles.test.js` plus the matching row in `docs/_constraints/pdlc-retirement-baseline.md`".
+§ 11's local-red row is correspondingly restated from "**No PLAN task owns it**" to "**PLAN T-11 owns
+it** … the entry is still absent at HEAD". I confirmed the residual red is real: `A1_GLOBS` in
+`pdlc/workflows/__tests__/documentOracles.test.js` lists `docs/pdlc-plugin-retirement/**`,
+`docs/pdlc-advisory-wave-gate/**` and `docs/pdlc-learnings-injection/**` and no
+`docs/pdlc-wave-resume/**` entry. Recording the owner *and* keeping the red is the correct pairing —
+a closed routing with the red silently dropped would have been the worse outcome.
+
+**F-02 (Low).** The AT-16 row's state cell still opens "**Open, and newly raised this round.**" That
+sentence was written for the v1.2 round; this is v1.5, and the row was edited in this very pass (its
+closing clause now records the PLAN half as closed). A reader at HEAD takes "this round" as round 6.
+Restate as "Open; raised at v1.2, unchanged at TSPEC v1.4" — the same treatment the A-1 glob row
+already received ("**Raised at v1.3 (SE F-07); closed by the owner since.**").
+
+**F-03 (Low, Process).** The revision replaced my v5 F-05 anchor `TSPEC:838` and introduced a new raw
+`file:line` anchor in its place elsewhere: § 11's local-red row and the A-1 glob routed-errata row
+both cite `documentOracles.test.js:712`. The line is currently accurate — `A1_GLOBS` is declared
+there — but position is not the claim under test (the claim is that a glob entry is *absent* from the
+list), so DEC-DOC-01 applies exactly as it did to `TSPEC:838`: cite the symbol, `A1_GLOBS` in
+`documentOracles.test.js`, which the same sentence already names. Process scope per
+`docs/_decisions/DECISIONS-review-severity-bars.md` DEC-DOC-01, whose own context paragraph cites
+`orchestrate-dev.js:1842` as the archetype, so code anchors are in scope, not just document ones.
+
+### The PLAN-task trace is now complete — a gap I would have raised
+
+The trace table grew rows for **T-11** and **T-12**, PLAN v1.2's two precondition tasks, both
+correctly property-free with the reason stated rather than assumed. I checked the claim in each row
+against PLAN: both T-11 and T-12 carry the literal `**ATs:** none; this is a wave-gate precondition.`
+The table now covers all nine live PLAN tasks (T-01, -02, -03, -04, -07, -08, -10, -11, -12) with
+`T-05`/`T-06`/`T-09` explicitly recorded as retired and unreused — a set-equality read against PLAN
+§4.6's measured nine, not a containment read. T-12's row makes the sharpest point in the addition:
+it is distinct from PROP-REPO-01/-03 because "neither can falsify a path that was tracked before
+those rules existed", which is the honest reason an index-only task carries no property.
+
+Every test file named in the trace is either present or explicitly marked new:
+`waveExecution.test.js` and `documentOracles.test.js` exist under `pdlc/workflows/__tests__/`;
+`waveResume.test.js`, `waveResumePreflight.test.js`, `waveResumeRepoState.test.js`,
+`waveResumeQueueParity.test.js` and `waveResumeProperties.test.js` are each marked *(new)*.
+
 ## Questions
 
 ## Positive Observations
