@@ -130,7 +130,48 @@ way that would strand a TSPEC citation.
 
 ## Test Strategy
 
-_pending_
+This is the lens the delta lands squarely in, so I checked it hardest.
+
+**The pin is the right call and is now stated where the implementer will read it.** A property
+suite that cites `advisoryHelperProperties.test.js` as its model while running at fast-check's
+default would run 5× shallower than the block it is modelled on — the substance of PLAN round-1
+F-06. §5.7 now carries the pin explicitly, in bold, with the negation spelled out ("not left to
+fast-check's default"), so it can no longer be read past. P-1 (round trip), P-2 (reader totality),
+P-3 (classifier totality) and P-4 (hash discrimination) all take it. That is the correct scope:
+all four are laws over a parameterised input space, none is a hand-picked boundary shape, so
+none has the excuse the precedent's two default-depth tests have.
+
+**P-4's caveat survives the pin and still matters.** §5.7 keeps the bounded-corpus statement —
+FNV-1a over 32 bits is not injective, so a generated collision is a finding about the corpus, not
+a failed law — and PROPERTIES restates it (`PROPERTIES:367`). Raising the run count to 500
+increases collision exposure across the generated corpus, which makes keeping that caveat
+*in the suite preamble* more load-bearing after this delta than before it, not less. §5.7 still
+requires it there. Good.
+
+**§5.8's coverage story is now factually correct, with one unstated consequence.** The corrected
+four-entry list is right, and the new gloss — the fourth entry "covers no code this feature
+touches, but `--per-file` applies the floor to it independently, so a red there is not a red in
+this feature's module" — is true as a statement about *attribution*. What it leaves unsaid is the
+gate consequence: `--per-file` failing on **any** included file makes the whole `c8 report
+--check-coverage` invocation exit non-zero, and PLAN T-10's oracle (i) is literally
+"`npm run test:coverage` exits 0". So a red on `capture-learnings-baseline.mjs` would block T-10's
+first oracle even though it is correctly not this feature's regression. The risk is small in
+practice — CI is green at HEAD, so the fourth entry clears 85 today — but an implementer reading
+§5.8's sentence could reasonably expect the gate to stay green regardless, and would then debug
+the wrong module. One clause fixes it. Filed as F-02 (Low, delta, local).
+
+Worth recording that T-10's **second** oracle is what protects this feature either way, and the
+delta did not weaken it: the delta-scoped uncovered-line oracle asserts that no uncovered line
+falls inside the ranges this feature introduced, checked against §4.5.1's transcribed mapping
+table. That oracle is falsifiable by deletion of a single case (it fails a set-equality rather
+than moving a percentage by 0.05), and it is unaffected by anything happening in the fourth c8
+entry. The two-oracle design remains the right answer to round-1 F-05.
+
+**Nothing I previously approved regressed.** §5.4's AT-05 write-side conjunct and §5.5's fifth
+mutation (killing a suppressed write while `explicitPointer` is true), §2.4's exclusion column
+naming the first conjunct as discriminating, and §5.5's mutation set generally are all outside
+this diff and unchanged. The mutation duty rows PLAN T-02 and T-07 carry (§4.3 rows 1–4: apply,
+observe RED against the named oracle, revert, record) still point at live oracles.
 
 ## Open Questions
 
