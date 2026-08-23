@@ -63,7 +63,46 @@ upstream addition; a transcription does not.
 
 ## Dependencies
 
-_(pending)_
+PLAN cites TSPEC in nineteen places. Every one was re-read against TSPEC at HEAD. Grouped by
+whether this round's edit reaches them.
+
+| PLAN citation | TSPEC location at HEAD | Reached by the edit? |
+|---|---|---|
+| §1.1 "TSPEC §1.2 scopes the feature at eleven delta rows (D-1…D-11)" | §1.2, D-1…D-11 | No — the round-5 row adds no delta |
+| §1.2 "REQ BL-04 / FSPEC OB-F1 / TSPEC §6.2" | §6.2 OB-F1 | Touched (re-raise struck), but OB-F1's substance unchanged — no PLAN consequence |
+| §1.2 "TSPEC §5.4 AT-14, §6.2 OB-F1" | §5.4 AT-14 | No — AT-14 unchanged |
+| §1.3 "(TSPEC RT-2)", "(TSPEC §1.3)" | §1.3, RT-2 | §1.3 repointed at REQ OB-1's current framing; PLAN leans only on the worktree conclusion, which upstream says still holds |
+| §2.1 T-01 pre-flight: `test:coverage`, `c8`, `fast-check` in `package.json` | §5.8 | Touched, but the *manifest keys* PLAN asserts are unchanged — the correction is inside `c8.include`, which PLAN does not enumerate |
+| §2.1 T-02, `RESUME_OUTCOMES` / `WAVE_IGNORE_REASONS` (seven codes) / `IMPLEMENTATION_DEFAULTS` (four keys) set-equality | §3.2, §3.1 | No — the code set stays seven, the key set stays four; only the interpolated-value count moved, which PLAN does not cite |
+| §2.1 T-04 "AT-16 asserts exactly what DEC-WVR-07 scopes" | DECISIONS unchanged (`sha256:37b3684d…`), §5.4 AT-16 | No |
+| §2.1 T-07 (b) "the **three** whole-string assertion updates TSPEC §2.4 enumerates" | §2.4 | Touched (exclusion column), but TSPEC states in the same edit that "no assertion pinning changes" — count still three |
+| §2.1 T-07 green half, "five announcing rows of TSPEC §2.4" | §2.4 row set | No — six rows, five announcing, IG-6 silent, unchanged |
+| §2.1 T-07 "**Mutation duty (§4.3 rows 1–4)**" | §5.5 | **Yes — F-01** |
+| §2.1 T-08 "P-1…P-4, TSPEC §5.7 laws", `numRuns: 500` | §5.7 | **Yes, and PLAN already matches** — TSPEC moved to PLAN's figure |
+| §2.1 T-10 "(RT-7, TSPEC §5.8)" | §5.8, §6.4 RT-7 | Touched; T-10's two oracles and its obligation are unchanged and still exactly what §5.8 assigns to the last implementation task |
+| §2.2 `[Fake first]`, "harness extensions H-1 and H-2 … additive, default-off" | §5.2 | Touched (H-1 rationale restated); PLAN's framing already agrees |
+| §3.1/§3.2 "TSPEC §5.3 design obligation", "the four new files TSPEC §5.3 names" | §5.3 | No |
+| §3.4 `implementation.postWaveCommand` / RT-5 | §6.4 RT-5, V-13 | No |
+| §3.4 `Coverage floor` row | §5.8 | Touched — **F-02** (inherited, unlanded from v3) |
+| §4.2 batch-4 gate; §4.2 "TSPEC §5.5 records `toContainEqual` passes" | §5.5 | Touched; the `toContainEqual` observation (mutation 4) is unchanged. The batch-4 gate's own text is unaffected — the gap is in §4.3's table, not here |
+| §4.3 mutation table (four rows) | §5.5 (five mutations) | **Yes — F-01** |
+| §4.4 RK-1 "§4.3's four mutations executed"; RK-2; RK-3 "(TSPEC RT-1)"; RK-4 "(TSPEC RT-3's residual)" | §5.5; §5.8/RT-7; RT-1; RT-3 | RK-1 **yes — F-01**; RK-2 touched — **F-03** (inherited, unlanded from v3); RT-1/RT-3 unchanged |
+| §4.5 DoD ("each of §4.3's four mutations"), delta map D-1…D-11, "(REQ C-3, TSPEC §3.4/§3.5)" | §5.5; §1.2; §3.4/§3.5 | DoD checkbox **yes — F-01**; the rest unchanged |
+| §4.5.1 "`classifyWaveLedger` (TSPEC §3.2), 8 arms", seven renderer closures | §3.2, §3.1 | No — arm and renderer counts unchanged |
+
+**REQ, FSPEC and DECISIONS are byte-identical to what I approved against.** All three re-hash to the
+`UPSTREAM-STATE:` anchors recorded in v3: `REQ sha256:17e83bfc…`, `FSPEC sha256:9a6be7b5…`,
+`DECISIONS sha256:37b3684d…`. The product-lens traceability I checked in v2 — REQ-WVR-01…-10 and
+FSPEC-WVR-01…-07 each reaching an owning task — is therefore untouched, and no acceptance criterion
+has been narrowed, broadened or re-triggered by this round. The one gap is a *technical-depth*
+obligation upstream added and PLAN has not scheduled.
+
+**On the two inherited findings.** v3's F-01 and F-02 asked for one-line corrections to §3.4's
+`Coverage floor` row and §4.4's RK-2, both of which still describe a divergence from TSPEC that the
+round-4 erratum already closed. PLAN's bytes have not changed since, so both are still open and both
+are re-filed here as `inherited` — they were stale in the pre-round bytes and this round's edit did
+not touch them. Their tags keep them non-gating; they should be landed in the same edit that closes
+F-01.
 
 ## Verification
 
