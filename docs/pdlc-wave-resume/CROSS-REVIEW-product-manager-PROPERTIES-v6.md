@@ -280,4 +280,17 @@ into the next edit this document takes for any reason, or landed as a single Low
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Low | delta | local | The v1.5 revision-history row mis-attributes PLAN's fifth mutation row to PLAN v1.4; PLAN's own history lands it at v1.3 (v1.4 corrected RK-5's sizing). PROP-COV-03's body is accurate and needs no change. | Revision history, row 1.5 |
+| F-02 | Low | inherited | local | The AT-16 routed-errata row still opens "Open, and newly raised this round", phrasing from the v1.2 round, in a row this pass edited. Restate with the raising version, as the A-1 glob row already does. | `### Findings routed upstream, not fixed here`, AT-16 row |
+| F-03 | Low | delta | local | New raw `file:line` anchor `documentOracles.test.js:712` in § 11's local-red row and the A-1 glob ledger row; position is not the claim under test, so DEC-DOC-01 applies. Cite the `A1_GLOBS` symbol instead. | § 11 local-red table / `### Findings routed upstream, not fixed here`, A-1 glob row |
+
+FINDING: Low | delta | local | Revision history, row 1.5 | The v1.5 row says PLAN's fifth mutation row landed at PLAN v1.4; PLAN's revision history lands it at v1.3, with v1.4 correcting RK-5's sizing — PROP-COV-03's own wording is accurate and unaffected
+FINDING: Low | inherited | local | ### Findings routed upstream, not fixed here — AT-16 row | The row's state cell still opens "Open, and newly raised this round", phrasing written for the v1.2 round, in a document at v1.5 whose row was edited in this pass
+FINDING: Low | delta | local | § 11 local-red table and the A-1 glob ledger row | Raw file:line anchor `documentOracles.test.js:712` used where position is not the claim under test (the claim is a glob entry's absence) — DEC-DOC-01, Process scope; cite the `A1_GLOBS` symbol the same sentence already names
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
