@@ -131,6 +131,57 @@ sole ordering witness, and the set-equality oracles over `RESUME_OUTCOMES` / `RE
 
 ## Fixtures
 
+**F-02 (Medium, v5) — resolved.** The run-depth paragraph (`PROPERTIES:504`) no longer records a
+divergence or promises an erratum: "All three documents now agree: TSPEC v1.4 §5.7 pins `numRuns:
+500` on this same precedent, matching PLAN T-08 and PLAN §4.5 — the divergence this paragraph
+recorded through v1.3 was closed by the owner when the routed erratum landed". Verified upstream:
+TSPEC at HEAD carries `fc.assert(fc.property(…), { numRuns: 500 })` and the sentence "the run count
+is pinned at 500, not left to fast-check's default" (`TSPEC:843`). The pinned figure itself did not
+move, which is what I asked for. The routed-errata row (`PROPERTIES:741`) is re-labelled **Closed by
+the owner** with the routing dropped.
+
+**F-03 (Medium, v5) — resolved.** The c8-include row is likewise **Closed by the owner**, and the
+close is specific rather than generic: TSPEC v1.4 §5.8 "carries the four-entry `**/`-anchored
+include set — the fourth, `**/scripts/capture-learnings-baseline.mjs`, sits outside
+`pdlc/workflows/` and is why the config sets `allow-external: true`". Verified at `TSPEC:858`. § 11's
+measured 2026-08-23 baseline is correctly left untouched. The closing "What this document does with
+the open items" paragraph is rewritten to match: two items remain routed, both against TSPEC only
+(AT-12's commit clause, AT-16's queue-fixture rationale), and both PLAN halves are recorded closed.
+
+**The routed-errata ledger's re-verification is sound.** I spot-checked each disposition against
+the repository rather than the prose. (i) AT-12's fourth conjunct at HEAD still reads "its commit is
+the only Phase-I-adjacent commit" (`TSPEC:763`), and `orchestrate-dev.js:16474` still carries the
+comment "the V-wave is the one wave-mode dispatch that still commits its OWN work" — so the item is
+correctly reported as reworded-but-open, and PROPERTIES' re-expression of PROP-SKIP-04 remains the
+right local mitigation. (ii) The A-1 glob item is correctly reported as **owned** by PLAN T-11
+(`PLAN:133`, deliverables `documentOracles.test.js` + `docs/_constraints/pdlc-retirement-baseline.md`,
+`**ATs:** none`) while **still red at HEAD**: `A1_GLOBS` at `pdlc/workflows/__tests__/documentOracles.test.js:712`
+lists `docs/pdlc-plugin-retirement/**`, `docs/pdlc-advisory-wave-gate/**` and
+`docs/pdlc-learnings-injection/**` and carries no `docs/pdlc-wave-resume/**` entry. Keeping the red
+recorded in § 11's local-red table while closing the routing is the right disposition — the fix has
+an owner, the symptom has not gone away. (iii) The AT-16 PLAN half is correctly closed: PLAN v1.2's
+T-04 re-files the `distribution.checkEnabled` config as inert and optional (`PLAN:19`).
+
+**New: the write-side conjunct needs a transport the fixture spec does not name (F-01, Medium).**
+§ Fixtures records, precisely, that `makeLedgerArgs` "owns no doubles of its own — its `git` and
+`runCommand` are **caller-supplied parameters**, spread in conditionally (`...(git ? { _git: git } :
+{})`), with `git` having no default at all" (`PROPERTIES:419`), and I confirmed that against the
+shipped helper (`origin/main:…/waveExecution.test.js:2204-2232` — `git` appears in the destructuring
+with no default). The record write is guarded by that transport: PROP-RECORD-01 exists precisely to
+assert `ledgerWrites(writes)` is **empty** on a green run with no transport. PROP-OVERRIDE-01's new
+conjunct asserts the opposite on its own fixture, so that fixture must supply a `git` double — but
+the config-fixture table row for `configWithStartWave(n)` (`PROPERTIES:455`) names only the config
+value, and no line in § Fixtures states that PROP-OVERRIDE-01's run carries a transport. As written,
+an implementer who reuses the existing `startWave: 2` fixture unchanged gets a red for the wrong
+reason. This fails loudly rather than silently — it cannot make a wrong build pass — which is why it
+is Medium and not High. One clause in the fixture row closes it.
+
+**Fixture inventory otherwise unchanged.** The ledger fixtures (one per reason code plus the
+honoured shapes, including `over-count`'s `head`-omitted construction), the two harness extensions
+H-1/H-2, the queue fixtures, the generators `genFeature`/`genClassifyInput`/`genWaveLayoutPair` with
+their bounds, and § "String and fixture ownership" (verbatim transcription from TSPEC §2.4/§3.1,
+U+2013 en-dash pin included) are byte-identical across the diff.
+
 ## Findings
 
 ## Questions
