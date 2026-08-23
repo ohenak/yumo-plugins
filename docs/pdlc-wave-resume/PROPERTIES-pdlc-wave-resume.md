@@ -290,7 +290,7 @@ Restated rather than assumed, because they are what makes the property set falsi
 | PROP-PARITY-03 | The direct run's `_readFile` call list filtered to the ledger path compared for **string equality** against `WAVE_STATE_PATH`. | Pins the one thing both paths share. What it does **not** prove is stated in § Gaps, not implied by silence. |
 | PROP-PARITY-04 | Mutate the queue to forward one additional key; observe PROP-PARITY-02 red while PROP-RESUME-01 … PROP-OVERRIDE-01 stay green; revert; paste the failure header into the task report. | A characterisation net that has never been shown to fail is indistinguishable from a net that cannot fail. |
 | PROP-REPO-01 | (i) `expect(lines).toContain("/.claude/pdlc-wave-state.json")` — element equality over `.gitignore`'s lines; (ii) `expect(matched.startsWith("/")).toBe(true)` asserted on that matched line; (iii) `git check-ignore -v .claude/pdlc-wave-state.json` output parsed and its rule field asserted equal to that same line. | Three conjuncts, falsifiable in both directions. `some(l => l.includes(...))` would be satisfied by an **unanchored** rule that also reaches the checked-in fixture trees — which is the failure the anchor exists to prevent, so the weaker matcher is forbidden. |
-| PROP-REPO-02 | Parse this feature's PLAN §3.3 manifest and the `implementation.postWavePathspecs` value; assert `WAVE_STATE_PATH` appears in neither — a finite check by name over a finite document. | Finite and mechanical. The **general** claim (no PLAN may ever own consumer-local state) is unfalsifiable per-feature and is routed to Phase P (§ Gaps, G-3). |
+| PROP-REPO-02 | Parse this feature's PLAN §3.3 manifest and the `implementation.postWavePathspecs` value; assert `WAVE_STATE_PATH` appears in neither — a finite check by name over a finite document. | Finite and mechanical. The **general** claim (no PLAN may ever own consumer-local state) is unfalsifiable per-feature and is routed to Phase P (§ Gaps, **G-5**). |
 | PROP-REPO-03 | Across a full run, `expect(gitCalls.filter(a => a[0] === "add").flat()).not.toContain(".claude/pdlc-wave-state.json")`, paired with the positive conjunct that the expected wave pathspecs **are** in that list. | The negative is paired with a positive-presence assertion on the same list, so an empty list cannot satisfy it. |
 | PROP-REPO-04 | Read `docs/_constraints/pdlc-wave-gate-baseline.md`: assert `M-WVR-1` and `M-WVR-2` are present with a Measured-by cell each; assert the `Version` cell parses to a version strictly greater than the one recorded in the PLAN as found (`1.2 · 2026-08-20`); assert the new section's text contains the `M-WG-6` reviewed-and-left statement. | Strictly-greater rather than equal to a fixed number: pinning `1.3` would silently downgrade the file if it has moved again by promotion time, which is the baseline's own control rule. |
 | PROP-REPO-05 | Two arms through the A6 seam: green-after-remediation asserts the wave's commits **and** its record write; failed remediation asserts the identical halt reason **and** that the last written record still names the wave below. | Both arms assert on the record, not merely on the halt — "composes without coordination" is otherwise an absence claim about an interaction. |
@@ -588,6 +588,16 @@ states. The consequence is honest: nothing in this suite proves that a *real* in
 resumed by a *real* operator, lands where PROP-RESUME-01 says it lands. The pre-flight properties
 (PROP-PRE-01/-02) exist partly to compensate — they assert the shipped constant and the shipped
 ignore path in the built artifact, which is the nearest thing to an end-to-end anchor available.
+
+**G-5 · "No PLAN may ever own consumer-local state" is asserted for this feature only.**
+PROP-REPO-02 parses *this* feature's PLAN §3.3 ownership manifest and its
+`implementation.postWavePathspecs` value and asserts `WAVE_STATE_PATH` appears in neither. The
+general rule the FSPEC states — that no PLAN, in any feature, may put consumer-local state under a
+wave's ownership — is not falsifiable by a per-feature test: a future PLAN authored after this suite
+ships could break it without reddening anything here. The compensating control is Phase P review of
+each new PLAN, and the routing target for the general claim is that review, not this document. This
+gap is what PROP-REPO-02's falsifiability note points at (SE F-05; the note previously pointed at
+G-3, which covers the absent E2E tier and is a different obligation entirely).
 
 **G-4 · PROP-REPO-01 is expected RED before the rebase.** It asserts `/.claude/pdlc-wave-state.json`
 in `.gitignore`, which exists at `origin/main:.gitignore:41` but not in this pre-rebase tree. The
