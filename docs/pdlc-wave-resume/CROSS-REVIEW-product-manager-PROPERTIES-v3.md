@@ -236,5 +236,49 @@ touches an enumeration (the seven PLAN tasks, checked in both directions).
 
 ## Positive Observations
 
+- **The response to five findings was to go and read the code, not to patch the prose.** Every one of
+  SE F-01…F-05 was answered by re-anchoring the claim on a citation into shipped source — the V-wave
+  block, `selectNextPending`, the triage regex, `makeArgs`'s conditional spread, `documentOracles`'s
+  block title, `package.json`'s `c8` block. I independently re-ran thirteen of those citations and
+  all thirteen hold, line for line, including the two verbatim quotations. A revision that gets
+  harder to falsify is the point of the loop; this one did.
+- **A false premise was retracted in writing rather than quietly overwritten.** § Fixtures says
+  outright that "earlier drafts of this section were wrong to say it was" about
+  `distribution.checkEnabled`. It would have been easier and less exposing to just rewrite the list.
+  Saying which premise died, and why, is what lets the next reader tell a corrected fact from a
+  changed requirement — and it is the difference between an erratum and a silent scope change.
+- **The queue oracles got stronger than the finding asked for.** SE F-02 was about a stale rationale.
+  The revision also replaced `expect(result.outcome !== "blocked")` with equality against the outcome
+  each case expects. The old form is containment-shaped and an `idle` return satisfies it; the new
+  form cannot be satisfied by the wrong disposition. Unprompted strengthening, in the direction the
+  team's own standards point.
+- **The both-axes preconditions close a genuine vacuity, not a theoretical one.** PROP-SAFETY-01 and
+  PROP-RECORD-03 are the two oracles standing between REQ-WVR-09 and a gate-after-commit regression,
+  and both were ordering claims over a sink that — given `makeLedgerArgs`'s `git` parameter has no
+  default at all (`waveExecution.test.js:2210`, `:192`) — could legitimately have received zero `git`
+  events. They would have passed while proving nothing. They now red. This is my favourite change in
+  the delta.
+- **PROP-COV-01 was scoped without being narrowed, and the document says so explicitly.** It keeps
+  `exit 0` — which, because stage 2 is `--per-file --branches 85`, still holds every included module
+  to the floor — and adds a module-specific regression guard on top. The sentence "a per-file red in
+  `orchestrate-queue.js`, `build-runtime.mjs` or `scripts/capture-learnings-baseline.mjs` is a
+  blocked task to be reported and routed, never a reason to weaken this property or the threshold"
+  forecloses the exact move by which coverage gates erode. Whatever happens to the baseline number
+  (F-02), keep that sentence.
+- **G-4 names the reason a local red is expected, which is what stops it being "fixed".** An
+  implementer meeting a red `documentOracles.test.js` and a red PROP-REPO-01 in this pre-rebase tree
+  has an obvious and wrong remedy available: soften the assertion. G-4 tells them the red is tracked
+  `.claude/` and `coverage/` artifacts, that it is branch state rather than feature behaviour, and
+  that these are "the reason a local `npm test` in this tree is red in ways PROP-REPO-01 and
+  PROP-COV-01 must not be softened to accommodate." I verified every fact in it. That paragraph is
+  worth more than most properties.
+- **SE Q-03 was answered by accepting a cost and naming who pays it.** The contributor with no local
+  `.claude/pdlc.config.json` gets a red suite. The document keeps the arm — the alternative is RK-6's
+  vacuous pass — and requires the failure message to name the file to create. Stating a cost and
+  mitigating it beats both hiding it and capitulating to it.
+- **My one actionable v2 finding was closed properly.** The revision-history block at `:12–19` does
+  not just exist; its `1.2` row enumerates all six changes and attributes each to the finding that
+  raised it, which makes the next reviewer's delta protocol cheap to run. I used it.
+
 ## Recommendation
 
