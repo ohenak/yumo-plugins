@@ -255,11 +255,24 @@ No included module is under the floor today, so PROP-COV-01 starts from a green 
 inheriting a red one — which is the fact that makes it a usable regression guard. Two caveats the
 implementer must carry: (i) none of the four CI checks in the repo's `CLAUDE.md` table runs
 `test:coverage`, so this floor is held green only by the owning task actually running it (RK-2, PLAN
-T-10); (ii) in *this pre-rebase tree* the run has a known unrelated red — `documentOracles.test.js`
-fails because build artifacts under `pdlc/workflows/coverage/` and the machine-local
-`.claude/pdlc-wave-state.json` / `.claude/pdlc.config.json` are tracked on this branch (see G-4).
-Those failures are repo-state, not coverage; the numbers above are from the c8 report itself, whose
-stage-2 check exited 0.
+T-10); (ii) `npm test` in this tree has **two distinct local reds**, both in
+`documentOracles.test.js`, which fails **three** tests, not one — enumerated below and neither of
+them coverage. The numbers above are from the c8 report itself, whose stage-2 check exited **0**.
+
+**The two local reds, re-measured on 2026-08-23 (SE F-06, SE F-07).** Naming both matters because an
+implementer meeting a red suite has an obviously wrong remedy available — softening the assertion —
+and each red has a different owner and a different fix:
+
+| Red | Failing tests | Cause | Owner / remedy |
+|---|---|---|---|
+| Tracked machine-local state | `` `.claude/` machine-local state is untracked and stays untracked (CODE_REVIEW v1 §1-1) `` — both of its tests (`none of the six machine-local artifacts are tracked`; `the only tracked files under .claude/ are the two shared, reviewable ones`) | `.claude/pdlc-wave-state.json` and `.claude/pdlc.config.json` were **committed on this branch** (`b1b846bd`), along with `pdlc/workflows/coverage/**`; none of them is at `origin/main`. This is not pre-rebase state — see § Gaps G-4 | Orchestrator-owned repo hygiene: untrack the paths on this branch (`git` `rm --cached`), leaving the working files in place. No rebase clears it, and no property here changes |
+| The retirement sweep | `PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty — AC-1.2's required-empty gate` | This feature's own tracked artifacts hit `L2_TERMS` — `TSPEC-pdlc-wave-resume.md`, `PLAN-pdlc-wave-resume.md`, `PROPERTIES-pdlc-wave-resume.md` and several of this feature's cross-review files quote the retired `distribution.checkEnabled` key while documenting its retirement — and `docs/pdlc-wave-resume/**` is **not** on `A1_GLOBS`, whose entries include `docs/pdlc-plugin-retirement/**`, `docs/pdlc-advisory-wave-gate/**` and `docs/pdlc-learnings-injection/**` | Not this document's to fix: it needs a row in `docs/_constraints/pdlc-retirement-baseline.md`'s glob table plus the matching `A1_GLOBS` entry, on the precedent of `docs/pdlc-advisory-wave-gate/**` (same rationale — the feature's subject matter *is* the retired mechanism). **No PLAN task owns it**, so it is routed as an `ERRATUM: PLAN` line |
+
+The second red is the sharper hazard, and it is why it is recorded here rather than left to be
+discovered: the wave gate runs `implementation.testCommand` over the whole suite, so a red anywhere
+in `documentOracles.test.js` halts the wave before PROP-COV-01's own measurement is ever reached.
+Neither red is a reason to weaken PROP-REPO-01, PROP-COV-01 or any oracle below; both are reported to
+the orchestrator with the remedy named.
 
 ## Oracles
 
