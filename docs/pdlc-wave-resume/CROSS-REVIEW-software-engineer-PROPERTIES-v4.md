@@ -68,3 +68,69 @@ partial and PROP-SKIP-04 re-traced to "fourth conjunct, less the commit clause";
 `TSPEC:755` — AT-12's fourth conjunct is indeed "Phase PT dispatches exactly one agent, invokes the
 gate exactly once, and its commit is the only Phase-I-adjacent commit", and PROP-SKIP-03 covers the
 first two clauses while PROP-SKIP-04 covers the `add`-list. The labelling is accurate.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | PROP-COV-01's re-measured delta guard has no executable procedure at the task that owns it: T-10 runs in batch 4, *after* T-07 has changed `orchestrate-dev.js`, so "the number T-10 measures immediately before applying this feature's diff" cannot be measured in the tree T-10 runs in, and the stated fallback condition — "if T-10 finds the module unchanged since" — can never be literally true, because this feature is what changes the module. | § 11 → "Which reading of the threshold is intended" |
+| F-02 | Medium | Local | The untrack remedy for the first local red is named as "orchestrator-owned repo hygiene, reported from this document" but is routed through prose only, while its sibling red — with the same halting consequence — is routed as an `ERRATUM: PLAN` row. The channel the pipeline actually reads is the routed-findings table, so as written the item has a correct diagnosis and no mechanical owner. | § Gaps G-4; § 11 red table row 1 |
+| F-03 | Low | Local | The grounding table's "`git rev-list --count origin/main..HEAD` → `478`" is `487` in this tree today — drifted by the document's own subsequent commits. A commit-count is self-invalidating in a table whose stated discipline is reproducibility; cite the measured HEAD sha instead. | § The tree these properties are written against |
+
+### F-01 (Medium) — the delta guard is stated but not made measurable
+
+The new block reads: PROP-COV-01's floor is `≥ 85` **and** `≥ the number T-10 measures on
+`orchestrate-dev.js` immediately before applying this feature's diff`, with `88.75` as the value
+measured on 2026-08-23 "and the figure to use if T-10 finds the module unchanged since". The
+*intent* is right and it is the right answer to my Q-06 — an unrelated upstream commit that drops the
+module to 88.60 should not block T-10, a drop caused by this feature's own ~20 branches should. Two
+mechanics are missing to make it executable:
+
+1. **The pre-diff measurement has no home.** PLAN `T-10` (§2.1) runs in batch 4 with
+   `Deps: T-07, T-08, T-03, T-04`; T-07 has already written the announcement and classifier branches
+   into `orchestrate-dev.js` by then. Measuring the module "immediately before applying this
+   feature's diff" therefore needs a second tree — and the precedent exists in this very package:
+   `pdlc/workflows/package.json`'s `//c8` note records that `exclude` drops "the merge-base worktrees
+   the capture tests materialise", i.e. `scripts/capture-learnings-baseline.mjs` already materialises
+   a merge-base worktree for exactly this class of before/after measurement. One clause naming that
+   mechanism (or naming `git worktree add` at `merge-base(origin/main, HEAD)`) turns a stated
+   intention into a runnable step.
+2. **"Unchanged since" cannot fire as written.** The module is changed by this feature, so an
+   implementer reading the condition literally never reaches the `88.75` fallback and is left with an
+   unmeasurable floor; one reading it loosely uses `88.75` unconditionally and the delta guard
+   evaporates. The condition you want is "unchanged **by commits other than this feature's**", i.e.
+   the module as it stands at the merge-base — say that, and the fallback becomes well-defined.
+
+Neither problem invalidates a property: the `≥ 85` arm is hard, checkable and independently
+sufficient as a floor, and `88.75` remains a reproducible recorded fact (I re-derived all four
+per-file numbers at v3 and they held). This is a "make the stated guard runnable" finding, not a
+"the guard is wrong" finding — hence Medium.
+
+### F-02 (Medium) — the correct diagnosis has no mechanical owner
+
+G-4 and § 11 now diagnose the tracked-`.claude/` red exactly, and the remedy is a one-line command,
+which is why this is not High: an implementer or orchestrator who reads either section can execute
+it. What is asymmetric is the routing. Both local reds halt Phase I identically — the wave gate runs
+`implementation.testCommand` over the whole `pdlc/workflows` suite, so *any* red in
+`documentOracles.test.js` halts wave 1 before a property here is ever evaluated. The sweep red is
+routed as a row in § Findings routed upstream with an `ERRATUM: PLAN` disposition. The tracked-state
+red is routed as a sentence in a gap ("reported to the orchestrator rather than fixed from this
+document"). Prose in G-4 is not a channel any downstream phase reads.
+
+Concretely, PROP-REPO-01's third conjunct and PLAN T-03 (batch 2, which owns AT-14's three strict
+conjuncts) are both unsatisfiable until the untrack happens, and batch 2's gate is "full suite
+green". So the ordering constraint is real: the untrack must land **before batch 2**, and nothing in
+PLAN §2.1 or §2.2 says so. Give it the same treatment as its sibling — a row in § Findings routed
+upstream with an `ERRATUM: PLAN` disposition, stating the ordering constraint (before batch 2) and
+the command — so it reaches an owner the way the pipeline routes things rather than the way a reader
+notices things. I am emitting that erratum line myself below so the item moves this round regardless.
+
+### F-03 (Low) — a commit count is not a reproducible citation
+
+`git rev-list --count origin/main..HEAD` returns `487` here, against the table's `478`; the nine
+commits this revision itself added account for the difference. The row's *claim* — this branch is
+ahead, not behind — is true and is what the section needs, so nothing downstream is affected. But
+the table is the document's exhibit of "verified in this working tree rather than assumed", and a
+figure that its own next commit falsifies weakens that exhibit. Either drop the ahead-count (the
+`--is-ancestor` exit code carries the whole claim on its own) or qualify it as "≥ 478 as of
+`<sha>`".
