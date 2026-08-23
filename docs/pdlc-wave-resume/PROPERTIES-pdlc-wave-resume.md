@@ -161,7 +161,7 @@ form — the assertion that makes each row falsifiable — is in **§ Oracles**,
 | PROP-SKIP-01 | Given a valid record for this feature and unchanged plan recording every wave complete, the implementation wave loop must perform **zero** agent dispatches and **zero** gate invocations, and must emit a banner beginning `Skipping Phase I (wave ledger ` that names both the reason and the literal `to force a full run`. | Functional | I | AT-12, REQ-WVR-08, BR-11 | T-07 · `waveExecution.test.js` |
 | PROP-SKIP-02 | That run's Phase I report row must carry status `⏭` and detail string-equal to `Skipped — all M waves previously committed and recorded green (wave ledger) (provenance: automatic)` — one row with a distinguishing status, never a second row. | Contract | I | AT-12 (TE F-09), EC-09, D-3 | T-07 · `waveExecution.test.js` |
 | PROP-SKIP-03 | Under outcome (c) Phase PT's V-wave must still dispatch exactly **one** agent and invoke the gate exactly **once**: the skip is scoped to the wave loop, and the V-wave replays on every invocation. This is the positive conjunct that keeps PROP-SKIP-01 from being an absence-only oracle. | Integration | I | AT-12 (fourth conjunct), EC-20, BR-11 | T-07 · `waveExecution.test.js` |
-| PROP-SKIP-04 | Under outcome (c) the script must issue **zero** `git add` invocations for wave work: the flattened `add` argv list observed on the `_git` double must be set-equal to `[]`, and the same run must positively show (i) the branch-guard `["rev-parse", "--abbrev-ref", "HEAD"]` call on that same `_git` double — proving the git seam was wired and live, not disconnected — and (ii) exactly one agent dispatch, whose prompt is the V-wave's `propertiesTestPrompt` for this feature. The V-wave's own commit is made by the dispatched agent, not by the script, so it is **not** an observable of this suite (SE F-01; the `add`-list conjunct in TSPEC §5.4 AT-12 is routed upstream). | Security | I | REQ-WVR-08, BR-11, AT-12 (first three conjuncts) | T-07 · `waveExecution.test.js` |
+| PROP-SKIP-04 | Under outcome (c) the script must issue **zero** `git add` invocations for wave work: the flattened `add` argv list observed on the `_git` double must be set-equal to `[]`, and the same run must positively show (i) the branch-guard `["rev-parse", "--abbrev-ref", "HEAD"]` call on that same `_git` double — proving the git seam was wired and live, not disconnected — and (ii) exactly one agent dispatch, whose prompt is the V-wave's `propertiesTestPrompt` for this feature. The V-wave's own commit is made by the dispatched agent, not by the script, so it is **not** an observable of this suite (SE F-01; the `add`-list conjunct in TSPEC §5.4 AT-12 is routed upstream). | Security | I | REQ-WVR-08, BR-11, AT-12 (fourth conjunct, less the commit clause — routed) | T-07 · `waveExecution.test.js` |
 
 ### 5. Operator override and the single hatch
 
@@ -455,8 +455,12 @@ seam PROP-PARITY-01…04 read, which is a vacuous pass rather than a failure:
    rows are `done`/`awaiting-merge`/`blocked`/`halted` returns `outcome: "idle"` for the same reason
    (`origin/main:pdlc/workflows/orchestrate-queue.js`, `selectNextPending` and the `blocked-active`
    / `empty` arms of `runQueue`'s selection block);
-2. a Phase-0 readiness-triage `_agent` double whose last line is `TRIAGE: ready` — the queue reads
-   that verdict with `/^TRIAGE:\s*(ready|blocked|needs-human)\b/` and escalates anything else.
+2. a Phase-0 readiness-triage `_agent` double whose last **`TRIAGE:` line** is `TRIAGE: ready` —
+   the queue scans the double's output bottom-up and returns on the first line matching
+   `/^TRIAGE:\s*(ready|blocked|needs-human)\b\s*(.*)$/i`, so it is the last *matching* line that
+   decides, trimmed and case-insensitively; a trailing sign-off line after the verdict still triages
+   `ready`. Stating it as "the last line" is stricter than the seam (SE F-08) and would invite both a
+   brittle fixture and a reader who mistakes a passing fixture for a malformed one.
 
 **A `.claude/pdlc.config.json` carrying `distribution.checkEnabled: false` is *not* required, and
 earlier drafts of this section were wrong to say it was.** The distribution drift gate that opt-out
@@ -521,7 +525,7 @@ properties for the wrong reason.
 | AT-09 verified-but-uncommitted is never completed | PROP-RECORD-01, -02 | T-07 |
 | AT-10 a no-change wave is still completed | PROP-RESUME-06 | T-07 |
 | AT-11 ancestry is falsification, not archaeology | PROP-DISREGARD-07, -08, -09 | T-07 |
-| AT-12 complete record skips the wave loop in full | PROP-SKIP-01, -02, -03, -04 | T-07 |
+| AT-12 complete record skips the wave loop in full | PROP-SKIP-01, -02, -03, -04 — **partial**: AT-12's fourth conjunct also asserts that the V-wave's commit is the only Phase-I-adjacent commit, which is not an observable of this suite (the V-wave issues no `add` and its commit is made by the dispatched agent, which the `makeAgent(record)` double replaces). That clause is routed upstream, not covered here — see § Gaps / Findings routed upstream | T-07 |
 | AT-13 outcome catalogue closed at three | PROP-SAFETY-02, PROP-DISREGARD-11 | T-02 (set equality), T-07 (closure) |
 | AT-14 the record never becomes tracked content | PROP-REPO-01 (repo-state), PROP-REPO-03 (run-side) | T-03, T-07 |
 | AT-15 failed writes are notices, bounded | PROP-RECORD-05, -06 | T-07 |
