@@ -128,6 +128,38 @@ DEFERRED: The header's `Cross-Reviews` cell still stops at the round-5 files and
 
 ## Positive Observations
 
+- **The fix kept the justification and dropped only the false part.** The easy version of my v6 finding
+  was to delete the "1,637 commits behind" clause and leave `git show origin/main:…` unexplained. The
+  revision instead replaced the retracted premise with the one that is true and still load-bearing —
+  that `origin/main`'s parser is the shipped one and is byte-identical here — and cited §1.2 for it, so
+  the two sections now agree instead of contradicting each other. A reader can still tell *why* the
+  parse is run against a ref rather than the working tree.
+- **The second half of the finding was fixed too, unprompted by any table.** My v6 finding buried the
+  dating problem ("after the v1.2 erratum edit" vs. the v1.3 re-run claimed below it) in the same
+  paragraph as the main one. It would have been easy to close the headline and leave the dating stale.
+  Both landed in one sentence.
+- **The v1.4 history row does not overclaim.** It says what changed and asserts "No task, batch,
+  `Deps`, oracle or parse-result change" — a claim the diff supports exactly — and pointedly does not
+  claim a v1.4 parser re-run it did not perform. Given how many rounds of this document have turned on
+  stale measurement provenance, declining to date a run that was not made is the right instinct.
+- **The last stale count is gone.** RK-5 was the one place "four mutation runs" survived outside
+  history; with it corrected, all six statements of the mutation cardinality across §1.1, §4.3, §4.5,
+  T-07, RK-1 and RK-5 now say five. The v5 High is not just closed at its site — it is closed
+  everywhere it echoed.
+- **A minimal delta on a frozen document.** Eight lines added, five removed, three hunks, one commit,
+  zero task-table bytes touched. That is what a freeze round should look like: the two agreed
+  corrections and nothing else riding along.
+
 ## Recommendation
 
+**Approved.** My single v6 finding is closed with the exact edit I specified, and the co-landed
+test-engineer correction is verified true against §4.3. Nothing regressed: the diff touches no task,
+batch, dependency edge, oracle, acceptance criterion or requirement mapping, and I re-ran the shipped
+parser over the v1.4 bytes to confirm §4.6's four result rows — the only claims a prose edit could have
+quietly falsified — are all still exact. No High findings, none of any severity. Two observations are
+recorded as DEFERRED lines rather than findings, per the freeze.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
