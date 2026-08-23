@@ -250,3 +250,10 @@ FINDING: Medium | inherited | nonlocal | DEC-WVR-05, trigger vs. Consequences ro
 FINDING: Low | inherited | nonlocal | Revision history, v1.1 row | v2 F-04 / v3 F-07 / v4 F-07, still open: the row's "No decision, alternative disposition or downstream obligation changed" is false — v1.1 added four downstream obligations.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 4, "low": 4}
+
+UPSTREAM-STATE: REQ sha256:17e83bfcd332f8f8f0482e2ebee7bbe78a3f434193dd3f9c3589723e39e8c79f
+UPSTREAM-STATE: FSPEC sha256:9a6be7b5a95e9b7f16c30e88154995fdd546a60093a3b3620af24e831552356e
+UPSTREAM-STATE: TSPEC sha256:4b5f7f5b2097a344e1e8fafffaa1d7e12f0fd5f583e302f5bf798d22c13c48f5
