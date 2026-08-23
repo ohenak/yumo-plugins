@@ -894,22 +894,30 @@ Each is a real alternative that was weighed and rejected; they are the content o
 
 ### 6.3 Errata raised upstream
 
-Raised, not fixed here; each is emitted as an `ERRATUM:` line in this dispatch's final message.
+All four items below were raised in earlier rounds and have since **landed upstream**. They are
+kept as a resolved ledger rather than deleted, so the chain stays reconstructable; none is an open
+question against REQ, FSPEC or the operator, and none is re-emitted as an `ERRATUM:` line.
 
-1. **FSPEC** states it derives from REQ v1.5; the REQ at HEAD is **v1.6**, whose erratum round
-   rescoped REQ-WVR-08's no-commit claim to the implementation wave loop — a change FSPEC §2 and
-   BR-11 already reflect, so the version cell is stale rather than the content.
-2. **FSPEC** OB-F1 says the REQ's §10 records BL-04 as "discharged at FSPEC authoring". REQ v1.6
-   §10 says the opposite — "**open and unmet** — not discharged at FSPEC authoring".
-3. **FSPEC** has no clause stating what a run **writes** when an explicit operator pointer is in
-   force. The shipped write site is outside the `!explicitPointer` guard, so an operator-pointer
-   run records `lastGreenWave` for waves the operator, not the pipeline, asserted the predecessors
-   of (§2.5). Bounded by BR-10, but unspecified; this TSPEC ratifies the shipped behaviour and
-   needs the clause to trace to.
-4. **REQ** OB-1's worktree conclusion rests on `.worktreeinclude` listing only `.claude/workflows/`,
-   but that file is **not tracked on the default branch** (`git ls-tree -r origin/main` finds no
-   `.worktreeinclude`). The conclusion still holds — an untracked include list is, if anything,
-   less likely to carry the record — but the evidence cited is consumer-local, not a repo fact.
+1. **Landed (moot).** Raised that FSPEC's derivation cell named REQ v1.5 while the REQ had moved on.
+   FSPEC is at `Version | 1.2` with §1 re-grounded on **REQ v1.7**, and the REQ at HEAD is
+   `Version | 1.7`; the observation was about a stale version cell rather than content, and the
+   cell is now current. Nothing in this TSPEC depended on it.
+2. **Landed in REQ v1.7 / FSPEC v1.2.** Raised that FSPEC OB-F1 read the REQ's §10 as recording
+   BL-04 "discharged at FSPEC authoring" while the REQ said the opposite. That string is no longer
+   at HEAD: OB-F1 now records BL-04 as **open and unmet**, matching the REQ, and FSPEC v1.2's
+   erratum note records the correction. The inconsistency is closed — and with it the trailing
+   re-raise justification formerly carried in §6.2 OB-F1. **OB-F1's substance is untouched and is
+   not part of this item:** BL-04 is still unmet, AT-14 is still red in this tree, and no wave
+   carrying AT-14 should be dispatched before the rebase.
+3. **Landed in FSPEC v1.2.** Raised that FSPEC had no clause stating what a run **writes** when an
+   explicit operator pointer is in force. FSPEC §3.4 now states it — an operator-pointed run
+   records exactly as any other run does, in the same high-water form counted from the plan's first
+   wave, bounded by BR-10, with no record content distinguishing the two provenances. §2.5 ratifies
+   that clause rather than routing the question.
+4. **Landed in REQ v1.7.** Raised that REQ OB-1's worktree conclusion cited `.worktreeinclude`
+   evidence that is not tracked on the default branch. REQ v1.7 landed the consumer-local framing,
+   and §1.3 cites OB-1's current framing. The conclusion both documents draw — worktrees fail
+   open — was never affected.
 
 ### 6.4 Risks
 
