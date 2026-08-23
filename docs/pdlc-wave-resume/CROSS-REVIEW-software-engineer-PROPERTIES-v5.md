@@ -40,6 +40,60 @@ scoping to `orchestrate-dev.js`, the pyramid budget — is untouched here and st
 
 ## Properties
 
+**§5 Operator override — AT-05 now carries a conjunct no property asserts (F-01).** TSPEC §5.4's
+AT-05 row at HEAD (`TSPEC:756`) has grown a third conjunct beyond the resume point and the
+provenance token:
+
+> **Write-side conjunct (PM):** the run must show that the operator-pointed run itself *written* a
+> record — `ledgerWrites` non-empty, the written `lastGreenWave` the **plan-absolute** number of the
+> last wave the run completed, not a run-relative count.
+
+PROPERTIES' AT-05 owner is PROP-OVERRIDE-01 (`PROPERTIES:170`, coverage matrix row
+`PROPERTIES:530`), and it asserts exactly two things: resume at wave 2 with no `wave ledger … was
+ignored` line, and the provenance token on the named banner. There is no write-side conjunct, and no
+sibling property covers it: every PROP-RECORD-01…10 fixture drives an **automatic**-provenance run
+(§7), so none of them exercises the `explicitPointer` arm. AT-05's write side is, at HEAD, traced to
+nothing.
+
+This is a real behavioural hole rather than a wording mismatch. TSPEC's own justification for adding
+the conjunct is that a mutation suppressing the write while `explicitPointer` is true leaves AT-05,
+AT-07, AT-15 and AT-18 green — i.e. it survives the whole suite as PROPERTIES currently specifies it
+— "removing resume from exactly the recovery path §2.5 ratifies the write for". §2.5's ratification
+is now anchored on FSPEC §3.4 at HEAD ("an operator-pointed run records exactly as any other run
+does … no record content distinguishes the two provenances"), so the behaviour is specified upstream
+and unowned downstream.
+
+**Fix is small and additive.** Add the conjunct to PROP-OVERRIDE-01 (or a PROP-OVERRIDE-06 owned by
+T-07 on the same fixture): on the `startWave: 2` run, `ledgerWrites(writes)` is non-empty and the
+written `lastGreenWave` equals the plan-absolute number of the last completed wave. Same fixture,
+same file, no new harness — the H-1 sink and `ledgerWrites` helper already exist in § Fixtures.
+
+**§11 Coverage and mutation duty — the count is pinned at four (F-01, same finding).**
+PROP-COV-03 (`PROPERTIES:234`) requires "PLAN §4.3's **four** mutations" to be applied and observed,
+and it traces to `PLAN §4.3 (F-04), TSPEC §5.5`. TSPEC §5.5 at HEAD (`TSPEC:790`) opens "**Five**
+mutations this suite is specifically designed to kill", the fifth being the suppressed write under
+`explicitPointer`. PROPERTIES therefore under-counts a duty it names TSPEC §5.5 as a source for.
+PLAN §4.3 still says four (`PLAN:347`), so PLAN lags the same edit — but that is PLAN's cascade to
+answer, not a reason for PROPERTIES to stay at four while citing §5.5.
+
+**§2.4 exclusion — still faithful, no finding.** The §2.4 edit renamed which conjunct discriminates
+(the first: *the resume decision emits it*) without changing the exclusion or the catalogue's shape.
+PROP-OVERRIDE-05 states the excluded notice as "it precedes any resume decision and is about a
+rejected value" — the first conjunct is the one it leads with, so the property reads correctly
+against the new column. The dependent count is also intact: TSPEC still says the changed shipped
+assertions "remain exactly three" (`TSPEC:277`, §2.4 heading at `TSPEC:295`), which is the figure
+PROP-OVERRIDE-05 pins.
+
+**§2.5 ratification — still faithful, no finding.** The rewrite removed the "unspecified upstream /
+raised as an erratum" framing and replaced it with ratification of the landed FSPEC §3.4 clause. The
+five §2.5 items PROP-RECORD-02/03/04/07/09 trace by number are unchanged and still say what those
+properties compress. PROPERTIES carries no "FSPEC does not state" language of its own (grepped: no
+hits for `FSPEC does not`, `no clause`, `unspecified`), so nothing there went stale.
+
+**§3.1 interpolated-value count — no exposure.** The four → five correction is confined to a count
+sentence and the DEC-WVR-06 rejection rationale. PROPERTIES asserts no such count; its dependency on
+§3.1 is the verbatim-string ownership rule, which is unchanged.
+
 ## Oracles
 
 ## Fixtures
