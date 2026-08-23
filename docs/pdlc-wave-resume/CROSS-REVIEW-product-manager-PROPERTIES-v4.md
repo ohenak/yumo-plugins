@@ -87,7 +87,40 @@ holds and only the extra baseline conjunct goes soft.
 
 ## Questions
 
+Both of my v3 questions were answered in the delta — Q-01 by re-measuring `orchestrate-dev.js` at
+17,176 lines (`:369`, which I confirmed with `wc -l`) and Q-03 by the threshold paragraph that F-01
+now addresses. One new question, and it is a question rather than a finding because the answer may
+already exist outside this document.
+
+| ID | Question |
+|----|---------|
+| Q-01 | § 11's second local red — `PROP-SWEEP-2(b)` reddening on this feature's own artifacts — is routed as an `ERRATUM: PLAN` line because no PLAN task owns adding this feature's docs directory to `A1_GLOBS` and to `docs/_constraints/pdlc-retirement-baseline.md`'s glob table. I confirmed the red (3 failed / 32 passed in `documentOracles.test.js`) and the missing glob (`documentOracles.test.js:712-724` lists the three sibling feature dirs and not this one). The document also observes, correctly, that the wave gate runs the whole suite, so this red halts Phase I *before any property here is reached* (`:280-282`). That makes it a **blocker on the feature's own implementation phase**, not just a documentation gap — and it is currently carried only as an erratum against PLAN. Is one routed line the right weight for something that will stop the first wave, or should it also appear in § Gaps as a named precondition on T-01/T-07 so an implementer meets it before the gate does? |
+
 ## Positive Observations
+
+- **The correction of a wrong diagnosis is recorded, not silently overwritten.** § Overview `:46-48`
+  and G-4 `:665-667` both say in as many words that the earlier "pre-rebase tree" premise was false
+  and that the earlier gap text was wrong. A revision that quietly fixes its own bad diagnosis leaves
+  the next reader unable to tell which of the two readings the surrounding text was written against;
+  this one makes it impossible to get wrong.
+- **G-4's rewrite turns a red into a diagnosis with an owner.** The distinction it draws — the red is
+  `check-ignore` skipping a **tracked** path, not a missing ignore rule, so untracking on this branch
+  is the remedy and no rebase clears it (`:663-676`) — is exactly the misreading an implementer would
+  otherwise make, and it is named before they can make it. The observation at `:678-681` that
+  REQ-WVR-10's own failure mode is occurring live on the branch built to prevent it is the sharpest
+  sentence in the document.
+- **Both local reds are enumerated with owner and remedy, and the count is right.** § 11's table
+  (`:270-279`) says three failing tests in one file, names each, and assigns each a different owner.
+  I ran it: `3 failed, 32 passed, 35 total`, and the three names match. A properties document that
+  tells the implementer which reds are theirs and which are not is doing the job the pipeline needs
+  it to do.
+- **The fixture restatement is a genuine tightening.** Queue fixture 2 moved from "last line" to
+  "last **`TRIAGE:` line**, trimmed and case-insensitive" (`:468-473`) with the reason stated: the
+  stricter form would invite a brittle fixture *and* a reader who mistakes a passing fixture for a
+  malformed one. It matches `parseTriageVerdict`'s bottom-up scan at `orchestrate-queue.js:351-355`.
+- **Erratum discipline is now applied uniformly.** Four upstream defects, four routed rows, zero
+  fixed-in-place-and-not-routed — which is what my v3 F-02 asked for, and the reason I have no
+  process finding this round.
 
 ## Recommendation
 
