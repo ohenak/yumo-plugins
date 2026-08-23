@@ -99,7 +99,55 @@ delegating the count to PLAN.
 
 ## Oracles
 
-_(pending)_
+The oracle table is where the AT-05 gap becomes concrete, and where one rationale now contradicts
+upstream.
+
+### PROP-OVERRIDE-01's oracle stops one assertion short (F-01, same finding)
+
+At HEAD the oracle reads:
+
+> `logs.filter(m => m.startsWith("Resuming at wave 2 of 3 (implementation.startWave)"))` has length 1
+> and that element ends with ` (provenance: operator-set)`; plus
+> `expect(logs.some(m => m.includes("was ignored"))).toBe(false)`.
+
+Both halves are log-side. The helper the write-side needs already exists in this document —
+`ledgerWrites(writes)` is declared in `## Fixtures` and is used by PROP-RECORD-01's oracle
+(`expect(ledgerWrites(writes)).toEqual([])`). So the fix is an assertion, not new machinery:
+`ledgerWrites(writes)` non-empty, and the parsed `lastGreenWave` of the last write equal to the
+plan-absolute number of the final wave this run completed. Recording it here so the revision does not
+have to rediscover that the fixture support is already in place.
+
+### PROP-OVERRIDE-05's rationale now states the reasoning TSPEC rejected (F-04)
+
+PROP-OVERRIDE-05 says the config-validation notice must not gain a provenance token because "it
+precedes the resume decision **and** is about a rejected value, not a resolved start point", tracing
+to `TSPEC §2.4 exclusion table`. TSPEC's §2.4 exclusion row at HEAD now says the opposite about the
+second half of that sentence:
+
+> **The discriminating conjunct is the first one — *the resume decision emits it*.** … The second
+> conjunct does **not** discriminate here and is not what excludes it (TE): a past-the-end
+> `implementation.startWave` is also a rejected value, is clamped, and still yields a start point
+> that carries ` (provenance: operator-set)`.
+
+The **assertion** is unaffected — the notice still gains no token, and PROP-OVERRIDE-05's oracle
+(`.not.toContain("provenance:")` on the filtered notice) still holds. What is stale is the stated
+reason, and PROPERTIES states it in a form TSPEC has explicitly ruled out as a discriminator. Left as
+is, this document is the place a reader would meet the rejected reasoning, and it sits next to
+PROP-OVERRIDE-03, which is the very past-the-end row that falsifies it. Low, because no oracle or
+requirement mapping moves; worth fixing because the reasoning is the reason the announcement
+catalogue's count is stable. Suggested edit: replace the second conjunct with "the resume decision
+never emits it — config validation does, before any resume decision runs", and keep the trace.
+
+### Oracles confirmed unaffected
+
+- PROP-DISREGARD-11's table-driven case over "TSPEC §2.4's six rows … the five announcing rows" is
+  unaffected: the erratum changed the *exclusion* row's justification prose, not the six-row table
+  above it, and did not add or remove a row. The count words in PROPERTIES stay true.
+- PROP-DISREGARD-01's transcription of the seven codes and PROP-SAFETY-02's three outcome literals
+  are untouched by this round.
+- PROP-LAW-01…04's oracles already read `fc.assert(fc.property(…), { numRuns: 500 })`. TSPEC §5.7 at
+  HEAD now pins the same 500 on the same `advisoryHelperProperties.test.js` precedent, so the oracles
+  are *more* aligned than when I approved them. Only the surrounding narrative is stale (F-02).
 
 ## Fixtures
 
