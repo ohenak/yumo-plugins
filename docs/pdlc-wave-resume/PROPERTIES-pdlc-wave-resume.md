@@ -500,10 +500,10 @@ Run depth: `fc.assert(fc.property(…), { numRuns: 500 })` for all four laws, no
 `describe` per subject with the law named in the title (`ROUND-TRIP:`, `TOTALITY:`). The precedent
 is `pdlc/workflows/__tests__/advisoryHelperProperties.test.js`, whose
 `describe("PROP-CTR-05 (generative): citesGateOutput …")` block declares `const runs = { numRuns:
-500 }` and applies it at five `fc.assert` sites. **Note the divergence, and it is routed rather
-than resolved here:** TSPEC §5.7's convention paragraph says "at fast-check's default run count",
-while PLAN T-08 and PLAN §4.5 pin 500 on that same precedent. This document follows the PLAN;
-the TSPEC clause is raised as an erratum.
+500 }` and applies it at five `fc.assert` sites. All three documents now agree: TSPEC v1.4 §5.7
+pins `numRuns: 500` on this same precedent, matching PLAN T-08 and PLAN §4.5 — the divergence this
+paragraph recorded through v1.3 was closed by the owner when the routed erratum landed, and no
+run-depth decision remains open.
 
 ### String and fixture ownership
 
