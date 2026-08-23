@@ -838,16 +838,26 @@ chose. The same split applies here, in `waveResumeProperties.test.js`.
 | P-3 **Totality of the classifier** | For arbitrary `ClassifyInput`: `outcome ∈ RESUME_OUTCOMES` and `provenance ∈ RESUME_PROVENANCE`, and `code`, where present, is `null` or a member of `Object.keys(WAVE_IGNORE_REASONS)`. | §2.2's "the classifier is total" as an assertion rather than as prose — the only thing that makes FSPEC BR-01's closure mechanically checkable, which §2.2 claims it is. |
 | P-4 **Hash discrimination** | For generated pairs of wave layouts differing in wave order, task ids, task-to-wave assignment, or owned paths: `computePlanHash` differs across the generated corpus. | §4.3's four sensitivity examples as a law. **Caveat stated in the suite:** FNV-1a over 32 bits is not injective, so the property is "differs over this bounded generated corpus", not "is injective" — a collision found by the generator is a finding about the corpus, not a failed law, and the suite says so. |
 
-Convention, copied from the shipped property suite rather than invented: `fc.assert(fc.property(…))`
-at fast-check's default run count, with no pinned seed, and one `describe` per subject naming the law
-in the test title (`TOTALITY:`, `ROUND-TRIP:`) so a failure names the law it falsified.
+Convention, copied from the shipped property suite rather than invented:
+`fc.assert(fc.property(…), { numRuns: 500 })` — **the run count is pinned at 500, not left to
+fast-check's default** — with no pinned seed, and one `describe` per subject naming the law in the
+test title (`TOTALITY:`, `ROUND-TRIP:`) so a failure names the law it falsified. The pin follows the
+depth precedent in `pdlc/workflows/__tests__/advisoryHelperProperties.test.js`, whose generative
+block declares `const runs = { numRuns: 500 }` in `describe("PROP-CTR-05 (generative): citesGateOutput …")`
+and applies it at every `fc.assert` site in that block. All four laws P-1…P-4 take the pin; PLAN
+T-08 and PROPERTIES carry the same figure, so the three documents agree.
 
 ### 5.8 The coverage floor this feature is measured against
 
 `orchestrate-dev.js` carries a **per-file 85% branch floor enforced at merge** (TE F-07). It is not
 enforced by the wave gate: `pdlc/workflows/package.json` defines
 `test:coverage` as `c8 npm test -- --runInBand && c8 report --check-coverage --per-file --branches
-85 …` with `include: ["orchestrate-dev.js", "orchestrate-queue.js", "build-runtime.mjs"]`, and
+85 …` with a **four-entry** `c8.include`: `["**/pdlc/workflows/orchestrate-dev.js",
+"**/pdlc/workflows/orchestrate-queue.js", "**/pdlc/workflows/build-runtime.mjs",
+"**/scripts/capture-learnings-baseline.mjs"]` — the fourth entry, the learnings-baseline capture
+script, is outside `pdlc/workflows/` and is why the config also sets `allow-external: true`. It
+covers no code this feature touches, but `--per-file` applies the floor to it independently, so a
+red there is not a red in this feature's module. And
 `.github/workflows/pr-tests.yml` runs `npm run test:coverage` in the `Unit tests` job — whereas
 `.claude/pdlc.config.example.json`'s `implementation.testCommand` is plain jest, no `c8`.
 
