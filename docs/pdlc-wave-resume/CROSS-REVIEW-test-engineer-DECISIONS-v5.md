@@ -55,6 +55,61 @@ without contact.
 
 ## Options Considered
 
+Three dispositions were available. I record the rejected two because the interpolated-value drift
+makes at least one of them look reachable this round.
+
+### C-1 — Escalate the value-count drift to High and halt the phase *(rejected)*
+
+This round is the first of the four confirmations where the delta actually landed on a DECISIONS
+claim rather than passing it by. O-8 and DEC-WVR-06 assert “three reasons carrying **four**
+interpolated values”; TSPEC §3.1 at HEAD says **five**. An approved document now contradicts its
+upstream on a counted fact, and DEC-ERR-01 is exactly about approved documents asserting things
+upstream no longer says. So: is this High?
+
+No, and the test is the one that decides every severity call in my lens — *does a downstream oracle
+transcribe the wrong number?*
+
+- **DEC-WVR-06's oracle is over codes, not values.** Consequences (line 436) prescribes “Three
+  frozen catalogues, transcribed into a test literal so an addition or deletion reds the
+  assertion”, and the decision body (line 361) closes the catalogue as the **code** set —
+  `unreadable-json`, `not-an-object`, `wrong-shape`, `feature-mismatch`, `plan-changed`,
+  `head-unreachable`, `over-count`. Seven codes. That count is untouched by the delta and is the
+  only number the oracle reads. The interpolated-value count appears solely in the *rejected*
+  alternative's rationale — it is the reason O-8 loses, not a quantity any assertion pins.
+- **Nothing downstream transcribed it.** I grepped PLAN and PROPERTIES for `interpolat`. PLAN's
+  only hit is T-07's instruction that the provenance suffix is appended “never interpolated” —
+  a different subject. PROPERTIES' only hit (line 512) is the same suffix-never-rebuilt point. No
+  fixture, oracle or literal anywhere downstream carries “four” or “five”. The drift is confined to
+  a rationale sentence in a rejected alternative.
+- **The direction of the correction is DECISIONS-favourable.** §3.1 v1.4 did not overturn
+  DECISIONS' position; it refined a count *inside* the position DECISIONS won. Three reasons
+  interpolate — the number DECISIONS held against TSPEC v1.1's “four reasons” — is now settled and
+  unchanged. Only the value tally moved, and it moved because `feature-mismatch`'s renderer names
+  two features, which DECISIONS' own enumeration (line 202, `it records feature "X", not "Y"`)
+  visibly contains but counts as one.
+
+A High here would halt Phase D over a parenthetical arithmetic error in a rejected alternative that
+no test reads. Rejected: Medium is the honest severity, and Medium routes rather than halts.
+
+### C-2 — Approve with zero findings, since the two settled errata now favour DECISIONS *(rejected)*
+
+Tempting this round in a way it was not last round: the delta actually *resolved* one of my standing
+findings. §2.4's re-argument adopts the code-location discriminant, which is precisely what my v4
+F-06 (and v3 F-06, v2 F-03) asked for — I filed it three rounds running, upstream has now agreed,
+and I retire it below. That is a real reduction in the open set.
+
+But it does not empty the set. Six findings from earlier rounds remain unresolved in DECISIONS'
+unchanged bytes, and this round adds two of its own. The erratum machinery reads `FINDING:` lines,
+not review history: an open finding that stops being re-filed stops existing, and a non-approving
+confirmation carrying zero `FINDING:` lines fails closed and halts the phase. Rejected: it would
+launder six live defects through a round that had nothing to do with them.
+
+### C-3 — Approve; re-file every still-open finding as `inherited`, file this round's two as `delta`, retire the one upstream resolved *(chosen)*
+
+Chosen. It states the confirmation's actual answer — DECISIONS still holds, with two claims now in
+need of a one-line correction — while keeping the open set honest in both directions: the count
+goes down by the finding upstream fixed and up by the two this delta created.
+
 ## Decision
 
 ## Consequences
