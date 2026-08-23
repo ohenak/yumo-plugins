@@ -32,6 +32,47 @@ adding a fifth mutation row did not perturb the task, batch, ownership or wave d
 
 ## Batches
 
+The task table itself is unchanged in structure — nine tasks, four batches, no task added, moved or
+retired by this revision. What changed inside the rows was re-checked file by file.
+
+**Every file the table names exists, or is declared new.** Measured with `git ls-files` against this
+tree: `pdlc/workflows/__tests__/documentOracles.test.js` (T-11, marked *(existing)*) and
+`pdlc/workflows/orchestrate-dev.js` (T-02, T-07) are tracked; `waveResumePreflight.test.js`,
+`waveResume.test.js`, `waveResumeRepoState.test.js`, `waveResumeQueueParity.test.js`,
+`waveResumeProperties.test.js` are absent and each row creates them; `waveExecution.test.js` is
+tracked and T-07 is declared its **sole** owner, with T-10 appending. `docs/_constraints/
+pdlc-wave-gate-baseline.md` is present (T-03 edits it) and `pdlc-retirement-baseline.md` is present
+(T-11 adds a row). T-12's manifest cell names *no* file and parses as the empty path list — measured,
+not assumed (see §Verification).
+
+**T-07's mutation duty now matches §4.3.** The cell reads "§4.3 rows 1–5, row 5's operator-pointed
+write suppression, whose only oracle is AT-05's write-side conjunct — apply, observe RED against the
+named oracle, revert, record". That closes v5 F-01's ownership half: the fifth mutation has an owner,
+an observation duty, and a DoD checkbox (`§4.5`, "Each of §4.3's **five** mutations was applied,
+observed RED against its named oracle, reverted, and its failure output recorded").
+
+**The fifth row's oracle is a literal transcription of the upstream, not a paraphrase.** TSPEC §5.5
+item 5 reads "Suppressing the record write while `explicitPointer` is true (writing only on automatic
+runs). Killed only by AT-05's write-side conjunct… leaves AT-05, AT-07, AT-15 and AT-18 green".
+§4.3's new row names the same mutation, the same single oracle and the same four green ATs. This is
+the shape a mutation row should have: the expected value is copied from the spec, never derived from
+the implementation it guards.
+
+**T-10's oracle is now falsifiable by this feature's own work.** Oracle (i) asserts c8's per-file
+branch number for `orchestrate-dev.js` `>= 85` and *reports* the whole-command exit status rather
+than gating on it, with the reason stated in the row: the fourth `c8.include` entry
+(`**/scripts/capture-learnings-baseline.mjs`, `allow-external: true`) takes the same per-file floor
+and is outside this feature's reach. §2.2's batch-4 gate and §4.5's DoD line were both re-worded to
+match, so the three statements of the same obligation now agree — which is what v5 F-04 asked for.
+
+**T-12's coverage rationale is now the measured one.** The row states 94 tracked files under
+`pdlc/workflows/coverage`, 81 of them under `coverage/tmp/`, and that `test:coverage` rewriting them
+reds `PROP-SWEEP-2(a)` during T-10's own batch. Both counts reproduce exactly in this tree
+(`git ls-files pdlc/workflows/coverage` → 94; `… coverage/tmp` → 81). The row correctly demotes the
+diff-noise argument to "real but secondary". The `[Fake first]` convention and the boundary note
+("must not touch `.claude/pdlc.config.json` in the working tree — T-01 reads it") are unchanged and
+still correct.
+
 ## Dependencies
 
 ## Verification
