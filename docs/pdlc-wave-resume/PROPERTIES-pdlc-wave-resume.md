@@ -4,10 +4,10 @@
 |---|---|
 | Status | Draft |
 | Author | te-author |
-| Version | 1.2 |
+| Version | 1.3 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/`) |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v2.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v2.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v2.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v2.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v3.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v3.md` |
 | LEARNINGS | `docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md` |
 
 **Revision history.**
@@ -17,6 +17,7 @@
 | 1.0 | Initial authoring. |
 | 1.1 | Round-1 delta. Every candidate upstream defect raised in the first drafting pass was re-verified against its parent document at HEAD: three had been closed by their owners and were withdrawn, one (TSPEC §5.7's run count vs. PLAN T-08's `numRuns: 500`) was still open and was routed as an `ERRATUM: TSPEC` line. The retired PLAN ids `T-05`/`T-06`/`T-09` are called out so the seven-row task trace reads as complete. No property, oracle, fixture or matrix row changed. |
 | 1.2 | Round-2 cross-review revision. **PROP-SKIP-04 re-expressed** (SE F-01): the script issues no `git add` in the V-wave, so the pathspec-equality oracle and the "V-wave's own commit" premise are replaced by a flattened whole-`add`-list assertion paired with a positive dispatch-identity conjunct; the retired premise is routed as an `ERRATUM: TSPEC` line against AT-12's fourth conjunct. **Queue fixture 2's rationale corrected** (SE F-02): the `distribution.checkEnabled` drift gate no longer exists in `orchestrate-queue.js`, so the precondition is re-anchored on the dispositions that still fire; routed upstream against TSPEC AT-16 and PLAN T-04. **H-1 restated as a wrapper** over the caller-supplied `git`/`runCommand` doubles, and its two consumers gained a both-axes-present precondition (SE F-03). **PROP-COV-01 scoped and grounded** on measured per-file numbers (SE F-04). PROP-REPO-02's dangling `G-3` anchor now points at the new gap **G-5** (SE F-05). This revision-history block added (PM F-02). |
+| 1.3 | Round-3 cross-review revision. **The grounding table and G-4 re-measured in this tree** (SE F-06): the OB-F1 rebase has landed — `git rev-list --count HEAD..origin/main` is `0` and `git merge-base --is-ancestor origin/main HEAD` succeeds — so the mechanism, the ignore rule and the coverage tooling are all present here, and the tracked `.claude/` and `pdlc/workflows/coverage/` paths are a commit made **on this branch**, not pre-rebase state a rebase will clear. **§ 11's local-red enumeration completed** (SE F-07): `documentOracles.test.js` fails three tests, not one, and the third — `PROP-SWEEP-2(b)` — reds on this feature's own artifacts against A-1's frozen glob list; recorded, with the missing owner routed as an `ERRATUM: PLAN` line. **Queue fixture 2 restated at the seam** (SE F-08): the double's *last `TRIAGE:` line*, not its last line. **AT-12's traceability row annotated** with the routed commit clause and **PROP-SKIP-04 re-traced** to AT-12's fourth conjunct less that clause (PM F-01, F-03). **TSPEC §5.8's three-module `c8.include` list routed** as an erratum instead of only being corrected locally (PM F-02). No property was added, deleted or weakened. |
 
 ## Overview
 
