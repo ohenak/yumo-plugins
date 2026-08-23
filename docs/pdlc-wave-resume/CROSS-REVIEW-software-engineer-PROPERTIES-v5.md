@@ -164,6 +164,33 @@ structural revision.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | TSPEC §5.4 AT-05 gained a **write-side conjunct** (`ledgerWrites` non-empty, plan-absolute `lastGreenWave`) and §5.5 grew from three to five mutations, the fifth being "suppress the record write while `explicitPointer` is true". PROPERTIES' AT-05 owner PROP-OVERRIDE-01 asserts only the resume point and the provenance token; no PROP-RECORD property drives an operator-pointed run; PROP-COV-03 and the mutation → oracle map are both pinned at four. The mutation TSPEC says is required has no killing oracle and no row. Fix: add the write-side conjunct to PROP-OVERRIDE-01 (same fixture, same owner T-07), add the fifth mutation row naming it, and change "four mutations" to five in PROP-COV-03 and the map header. | PROPERTIES § 5 (PROP-OVERRIDE-01), § 11 (PROP-COV-03), § Oracles "Mutation → oracle map"; TSPEC §5.4 AT-05, §5.5 |
+| F-02 | Medium | delta | local | § "Findings routed upstream" still reports the generative run-count divergence as "**Still open** … no `numRuns` or `500` appears anywhere in TSPEC" and promises one `ERRATUM: TSPEC` line. TSPEC §5.7 at HEAD pins `{ numRuns: 500 }` explicitly and states PLAN T-08 and PROPERTIES carry the same figure. The § Fixtures run-depth note ("the TSPEC clause is raised as an erratum") and the closing "What this document does with the open items" paragraph inherit the same staleness. Re-raising a settled question is the defect DEC-ERR-01 names and this very section cites. Fix: mark the row **Closed by the owner**, drop the ERRATUM promise, and restate the run-depth note as agreement. | PROPERTIES § Gaps → "Findings routed upstream" row 1; § Fixtures run-depth paragraph; TSPEC §5.7 |
+| F-03 | Medium | delta | local | Same class, second row: "TSPEC §5.8 states the c8 `include` set as three modules … **Open, and newly raised this round (PM F-02)** … **Yes** — one `ERRATUM: TSPEC` line". TSPEC §5.8 at HEAD carries the four `**/`-anchored entries including `**/scripts/capture-learnings-baseline.mjs`, and derives `allow-external: true` from the fourth. § 11's local correction is confirmed by the owner rather than standing alone "in the meantime". Fix: close the row and drop the ERRATUM promise; § 11's measured text needs no change. | PROPERTIES § Gaps → "Findings routed upstream" row on §5.8; § 11 measured baseline; TSPEC §5.8 |
+
+FINDING: High | delta | local | PROPERTIES § 5 PROP-OVERRIDE-01 and § 11 PROP-COV-03 / mutation → oracle map — AT-05's new write-side conjunct and TSPEC §5.5's fifth mutation are unowned; no property or mutation row can kill a write suppressed under `explicitPointer`
+FINDING: Medium | delta | local | PROPERTIES § "Findings routed upstream" row 1 and § Fixtures run-depth note — the generative run-count erratum is reported open, but TSPEC §5.7 at HEAD pins `{ numRuns: 500 }`
+FINDING: Medium | delta | local | PROPERTIES § "Findings routed upstream" c8-include row — reported open, but TSPEC §5.8 at HEAD carries the four-entry `**/`-anchored include set
+
+**Why these are `delta`, not `inherited`.** None of the three existed against TSPEC v1.3. F-01's
+obligation was created by the round-5 edit that added AT-05's conjunct and mutation 5; F-02 and F-03
+were *true statements* when written and were falsified by the same round's §5.7/§5.8 corrections.
+PROPERTIES' own bytes have not moved.
+
+**Why `local`, not `nonlocal`.** Each finding sits in the PROPERTIES surface that compresses exactly
+the TSPEC sections the erratum edited — §5.4/§5.5 for F-01, §5.7 for F-02, §5.8 for F-03. None
+reaches into a part of the document the upstream edit does not touch, and none re-opens a settled
+decision.
+
+**Two candidate findings I checked and did not raise.** (i) The §2.4 rewrite of the exclusion
+column: PROP-OVERRIDE-05 already leads with the conjunct §2.4 now names as discriminating, and the
+dependent "exactly three changed shipped assertions" figure is unchanged at `TSPEC:277`. (ii) The
+§2.5 rewrite from "unspecified upstream" to ratification of the landed FSPEC §3.4 clause: the five
+numbered §2.5 items PROP-RECORD-02/03/04/07/09 cite are unchanged, and PROPERTIES carries no
+routed-upstream language of its own about the operator-pointer write.
+
 ## Recommendation
 
 ## Verdict
