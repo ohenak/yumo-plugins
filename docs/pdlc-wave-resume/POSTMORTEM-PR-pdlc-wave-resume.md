@@ -207,5 +207,3 @@ the pipeline itself, not as PLAN edits:
 3. **Single-source repeated counts.** Seven restatements of "four mutations" is what made a one-row
    fix nonlocal and split the reviewers' locality tags. Where a PLAN states a count of rows in one of
    its own tables, state it once and reference it.
-
-REVISION-COMPLETE: yes
