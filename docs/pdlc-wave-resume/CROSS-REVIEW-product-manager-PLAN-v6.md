@@ -51,6 +51,33 @@ owned AT-05 and already carried a mutation-duty step, which is exactly the shape
 
 ## Dependencies
 
+PLAN's citations of upstream, restricted to the ones this delta reaches. Citations outside the
+changed sections were walked in v3/v4/v5 and are not re-litigated here.
+
+| PLAN citation | Upstream / tree at HEAD | Status |
+|---|---|---|
+| §4.3 row 5 — "suppress the record write while `explicitPointer` is true", oracle "AT-05's write-side conjunct only" | TSPEC §5.5 item 5 | **Agrees**, including the "leaves AT-07, AT-15 and AT-18 green" reasoning and the §2.5 recovery-path framing |
+| T-07's `Mutation duty (§4.3 rows 1–5, including row 5's suppressed write…)` | §4.3's five-row table | **Agrees** — the range and the table now have the same cardinality, and the duty names row 5 explicitly rather than relying on the range alone |
+| §1.1's trade paragraph, RK-1, §4.5's DoD checkbox — "five mutations" | §4.3 | **Agrees** — all three corrected; `grep` finds no surviving "four mutations" outside the v1.1 revision-history row, where it is historically correct |
+| §3.4 `Coverage floor` row; §4.4 RK-2 | TSPEC RT-7 (`:949`), TSPEC §5.8 | **Agrees.** RT-7 assigns the floor to the last implementation *task*, cites PLAN T-10 and RK-2 by id, and excludes `implementation.postWaveCommand` — which is what both PLAN rows now say |
+| T-10 oracle (i); §2.2 batch-4 gate; §4.5 DoD line — per-file `>= 85` on `orchestrate-dev.js`, exit reported | TSPEC §5.8; `pdlc/workflows/package.json` | **Agrees.** `c8.include` has exactly four entries, the fourth `**/scripts/capture-learnings-baseline.mjs` with `allow-external: true`; `test:coverage` is `c8 npm test … && c8 report --check-coverage --per-file --branches 85 …` |
+| T-12 — 94 tracked coverage files, 81 under `tmp/`, `PROP-SWEEP-2(a)` | `git ls-files`; `documentOracles.test.js` | **Agrees, measured** |
+| T-11 — "no oracle pins the number either way" | `documentOracles.test.js:809–817` | **Agrees.** The assertion is a `stringContaining` over the glob, weaker than the sentence claims, so the claim is safe in the direction that matters |
+| §1.2's five v1.3 re-measurements | The tree | **All five verified** — see §Verification |
+| §4.6 — "Run against `git show origin/main:…`, since this tree is 1,637 commits behind" | `git rev-list --count HEAD..origin/main` → `0` | **F-01 (Low) — now false.** §1.2's re-dating in this same revision is what makes it false |
+
+**On the one new finding.** The v1.3 edit correctly retracted §1.2's "the branch is behind the
+default branch → `1637`" claim by re-framing that whole table as an authoring-time record. But §4.6
+carries the same fact as a *live* rationale, outside the reframed table and outside the sections this
+edit touched: it justifies parsing against `git show origin/main:pdlc/workflows/orchestrate-dev.js`
+"since this tree is 1,637 commits behind". At HEAD the tree is zero commits behind, and
+`git diff origin/main -- pdlc/workflows/orchestrate-dev.js` is empty — so the parser used and the
+parser in the tree are byte-identical and every parse result in §4.6 stands unchanged. The same
+paragraph also still frames the parse as run "after the v1.2 erratum edit", while the retired-ids row
+below it says "re-measured v1.3" and the v1.3 revision-history row says "parser re-run confirms 9
+tasks and the same four batches". Both are description staleness in one paragraph, no product
+consequence, one edit to fix.
+
 ## Verification
 
 ## Findings
