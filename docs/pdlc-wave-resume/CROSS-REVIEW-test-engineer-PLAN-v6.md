@@ -75,6 +75,42 @@ still correct.
 
 ## Dependencies
 
+Batch-column arithmetic was re-derived from the declared edges after the edit, because a document
+that publishes its own parse results has to keep publishing true ones.
+
+| Task | Declared `Deps` | `max(dep batch) + 1` | `Batch` column | Agrees |
+|---|---|---|---|---|
+| T-01 | — | 1 | 1 | yes |
+| T-11 | — | 1 | 1 | yes |
+| T-12 | — | 1 | 1 | yes |
+| T-02 | T-01 | 2 | 2 | yes |
+| T-03 | T-01 | 2 | 2 | yes |
+| T-04 | T-01 | 2 | 2 | yes |
+| T-07 | T-02 | 3 | 3 | yes |
+| T-08 | T-02 | 3 | 3 | yes |
+| T-10 | T-07, T-08, T-03, T-04 | 4 | 4 | yes |
+
+The edge set is acyclic, ids are unique, every dependency resolves, and `T-05`, `T-06`, `T-09` appear
+in no `#` and no `Deps` cell — so there is no dangling edge. `computeTopologicalBatches` run over the
+current bytes returns `[[T-01,T-11,T-12],[T-02,T-03,T-04],[T-07,T-08],[T-10]]`, character-identical
+to the column.
+
+**Same-new-file guard, re-checked for batch 1.** T-11 and T-12 are concurrent and both concern
+`documentOracles.test.js`; the collision is avoided by declaration rather than by luck — T-11 owns
+the file, T-12's cell marks it *(read only — no edit; T-11 owns the file)* and T-12's manifest is
+the empty path list, so the ownership parser records zero owned paths for T-12 and no wave contains
+two tasks sharing a path. No other batch has two tasks touching the same new file: batch 2's three
+tasks own three distinct new test files, batch 3's two own one new and one existing file, and batch 4
+is a single task.
+
+**TDD ordering.** Unchanged by this revision and still sound within the merged-task convention: T-02,
+T-03 and T-07 are `[Fake first]` and each states the red half is written and committed first, in a
+separate commit; §2.3's trade paragraph now cites "§4.3's **five** mutations are now *executed*" as
+the compensating control for the ordering the runtime cannot enforce, and the DoD carries the
+`git log -p` check. The one place the arithmetic of that argument was not carried through is RK-5 —
+see F-01 below; it is a description of task size, not a duty, so nothing an implementer must do
+depends on it.
+
 ## Verification
 
 ## Findings
