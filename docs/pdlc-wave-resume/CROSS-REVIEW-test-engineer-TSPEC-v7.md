@@ -42,7 +42,27 @@ unstated. Neither touches a decision, a law, a fixture, or an oracle.
 
 ## Architecture
 
-_pending_
+Nothing architectural moved in this delta, and I confirmed that rather than assuming it.
+`git show 57c5948c` touches exactly one file and exactly two hunks — the closing convention
+paragraph of §5.7 and the coverage-floor paragraph of §5.8 — for a net +14/−4. No section
+heading was added, removed or renumbered; no guard-table row, catalogue, protocol step or
+decision id appears in the diff. §2.2's optimistic-then-reclassify lazy-probe protocol, §3.2's
+eight-row ordered guard table, and the frozen catalogues (`RESUME_OUTCOMES`,
+`RESUME_PROVENANCE`, `WAVE_IGNORE_REASONS`, `ANCESTRY_INDEPENDENT_CODES`) are byte-unchanged.
+
+The one architectural claim inside the delta's blast radius is §5.8's characterisation of where
+the 85% branch floor is enforced: **at merge, by CI, not by the wave gate**. That was already in
+the pre-round bytes and I re-verified it at HEAD rather than inheriting it on trust —
+`.github/workflows/pr-tests.yml` runs `npm run test:coverage` in the `Unit tests` job, while
+`.claude/pdlc.config.example.json`'s `implementation.testCommand` is plain jest with no `c8`.
+Both halves of that contrast still hold, and the delta preserved the sentence carrying them.
+
+The provenance chain for §5.8 also still resolves. The paragraph attributes the floor to
+`TE F-07`; I opened `CROSS-REVIEW-test-engineer-TSPEC-v1.md` and F-07 is indeed the Medium,
+`Cross-Feature`-scoped finding about a per-file 85% branch gate that binds at CI merge but not
+at the wave gate. The `TE F-06` reference carried nearby resolves to
+`CROSS-REVIEW-test-engineer-PLAN-v1.md` F-06, which is the run-count finding this erratum
+ultimately settles. Neither is a nonexistent-authority citation.
 
 ## Interfaces
 
