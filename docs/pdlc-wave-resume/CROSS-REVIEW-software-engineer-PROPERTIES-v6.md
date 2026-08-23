@@ -184,10 +184,49 @@ U+2013 en-dash pin included) are byte-identical across the diff.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | PROP-OVERRIDE-01's new write-side conjunct requires the `startWave: 2` fixture to supply a `git` double, because the record write is guarded by the transport and § Fixtures itself records that `makeLedgerArgs`'s `git` parameter "has no default at all" (`PROPERTIES:419`, confirmed at `origin/main:pdlc/workflows/__tests__/waveExecution.test.js:2204-2232`). PROP-RECORD-01 is the property that pins the no-transport case to an **empty** `ledgerWrites`, so the two fixtures must differ on exactly this axis — yet the config-fixture row for `configWithStartWave(n)` (`PROPERTIES:455`) names only the config value. Fix: add "with a transport supplied, so the write is reachable — contrast PROP-RECORD-01's no-transport arm" to that row, or to PROP-OVERRIDE-01's oracle row. Non-gating: the omission reds loudly at implementation time and cannot make a mutated build pass. | § Fixtures config-fixture table (`PROPERTIES:455`); § 5 PROP-OVERRIDE-01 (`PROPERTIES:171`); § Oracles (`PROPERTIES:337`) |
+| F-02 | Low | Local | Mutation → oracle map row 3 still says the run-relative-wave mutation is killed by "PROP-RESUME-05 / PROP-RECORD-04 **only**". The conjunct added to PROP-OVERRIDE-01 in this same round pins `lastGreenWave: 3` on a run entering at wave 2, where a run-relative build writes `2`, so that property now reds under mutation 3 too. Fix: drop "only", or restate as "PROP-RESUME-05 / PROP-RECORD-04 (and, incidentally, PROP-OVERRIDE-01's write-side conjunct)". Not routed upstream: TSPEC §5.5 row 3 and PLAN §4.3 carry the same stale word, but nothing behavioural or numeric depends on it and re-opening two approved documents for one adverb is the churn DEC-ERR-01 warns against. | § Oracles, mutation → oracle map row 3 (`PROPERTIES:382`) |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | PROP-OVERRIDE-01 now asserts three distinct behaviours on one row (resume point, provenance token on the named banner, and the write side). That is within this document's house style and I am not asking for a split — but if T-07's author finds the failure message ambiguous when it reds, would you prefer the write side promoted to a PROP-OVERRIDE-06 on the same fixture at implementation time? A "yes, at the implementer's discretion" sentence would pre-authorise it without another PROPERTIES round. |
 
 ## Positive Observations
 
+- **F-01 landed exactly as bounded, and no wider.** One conjunct, one map row, two count corrections,
+  same fixture, same owner, same level. No property was deleted, no fixture added, no settled
+  decision reopened — and the trace cell was widened so the new obligation is reachable from
+  `TSPEC §5.5 row 5`, not merely present in prose.
+- **The PLAN cascade was handled the right way round.** v1.4 recorded PLAN's divergence as pending
+  rather than silently asserting agreement, and v1.5 closed it only once PLAN v1.4 actually landed
+  the fifth row. That is the discipline that stops a document claiming three-way agreement it has
+  not measured — and I did measure it: PLAN is v1.4 at HEAD and §4.3 carries all five rows with
+  matching owners.
+- **Closing the two routed errata was done as verification, not bookkeeping.** Both rows cite what
+  the owner actually landed (`numRuns: 500` at `TSPEC:843`; the four-entry include set at
+  `TSPEC:858`) instead of asserting closure, and the A-1 glob row keeps the still-red symptom
+  recorded while closing the routing now that T-11 owns it. `A1_GLOBS` at
+  `documentOracles.test.js:712` still lacks the entry, so that distinction is load-bearing.
+- **PROP-OVERRIDE-05's restated rationale caught a real self-inconsistency** — the rejected-value
+  framing would have contradicted PROP-OVERRIDE-03's clamped-pointer case — and replaced it with the
+  conjunct that actually discriminates.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+Both of my v5 Mediums and the v5 High are resolved, verified against the repository and against
+TSPEC/PLAN at HEAD rather than against the revision history. Nothing that was approved in rounds
+v1–v4 was broken by this revision: I diffed the whole document and the changes are confined to the
+seven surfaces listed in § Overview. The two findings above are a missing fixture clause (Medium)
+and a stale adverb (Low); neither gates, and both can be folded into the next edit this document
+takes for any reason — they do not require a round of their own.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
