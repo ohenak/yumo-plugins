@@ -647,19 +647,31 @@ resumed by a *real* operator, lands where PROP-RESUME-01 says it lands. The pre-
 (PROP-PRE-01/-02) exist partly to compensate — they assert the shipped constant and the shipped
 ignore path in the built artifact, which is the nearest thing to an end-to-end anchor available.
 
-**G-4 · PROP-REPO-01 is expected RED before the rebase.** It asserts `/.claude/pdlc-wave-state.json`
-in `.gitignore`, which exists at `origin/main:.gitignore:41` but not in this pre-rebase tree. The
-property is written against the post-rebase state and must not be weakened to pass locally; a green
-PROP-REPO-01 in this tree would mean the assertion had been softened, which is the failure mode
-REQ BL-04 and FSPEC OB-F1 were opened to prevent. Measured on 2026-08-23, this tree is worse than "the ignore
-rule is absent": `.claude/pdlc-wave-state.json` and `.claude/pdlc.config.json` are **tracked** here,
-and the shipped repo-level oracle already forbids it — `__tests__/documentOracles.test.js`'s
-`` `.claude/` machine-local state is untracked and stays untracked (CODE_REVIEW v1 §1-1) `` block
-fails on both paths in this tree and passes at `origin/main`. Build artifacts under
-`pdlc/workflows/coverage/` are tracked here too and are absent from `origin/main`. Both are pre-rebase
-branch state, not feature behaviour; they are reported to the orchestrator rather than fixed from this
-document, and they are the reason a local `npm test` in this tree is red in ways PROP-REPO-01 and
-PROP-COV-01 must not be softened to accommodate.
+**G-4 · PROP-REPO-01's third conjunct is RED here because the record is *tracked*, not because the
+ignore rule is missing.** Re-measured in this tree on 2026-08-23 (SE F-06); the earlier version of
+this gap said the red was pre-rebase state that the rebase would clear, and that diagnosis was
+wrong. The rebase has landed (`git rev-list --count HEAD..origin/main` → `0`, `origin/main` is an
+ancestor of HEAD), and `.gitignore:46` carries `/.claude/pdlc-wave-state.json` **here**, so
+PROP-REPO-01's first two conjuncts are satisfiable in this tree today. What fails is the third:
+`git check-ignore -v .claude/pdlc-wave-state.json` exits 1 with no output, while
+`git check-ignore -v --no-index …` resolves to `.gitignore:46:/.claude/pdlc-wave-state.json` —
+`check-ignore` skips tracked paths, and `.claude/pdlc-wave-state.json`, `.claude/pdlc.config.json`
+and `pdlc/workflows/coverage/**` are **tracked here**, introduced by `b1b846bd` on this branch and
+absent from `origin/main`. The shipped repo-level oracle already forbids it:
+`__tests__/documentOracles.test.js`'s `` `.claude/` machine-local state is untracked and stays
+untracked (CODE_REVIEW v1 §1-1) `` block fails on exactly those paths here and passes at
+`origin/main`.
+
+Three consequences, in the order an implementer meets them. First, **no rebase fixes this** — the
+paths were added by a commit on this branch, so the remedy is to untrack them here (`git`
+`rm --cached`, working files left in place). That is orchestrator-owned repo hygiene, reported from
+this document rather than performed by it. Second, the red must not be read as "the ignore rule is
+absent"; an implementer who reads it that way will add a rule that already exists and still be red.
+Third — and this is why it is a gap rather than a footnote — REQ-WVR-10's own failure mode is
+occurring live on the feature branch that implements the guard against it: the feature exists to keep
+the record untracked, and the branch is tracking it. Weakening PROP-REPO-01 or PROP-COV-01 to
+accommodate either red is the failure mode REQ BL-04 and FSPEC OB-F1 were opened to prevent; § 11
+enumerates both reds with their owners.
 
 **G-5 · "No PLAN may ever own consumer-local state" is asserted for this feature only.**
 PROP-REPO-02 parses *this* feature's PLAN §3.3 ownership manifest and its
