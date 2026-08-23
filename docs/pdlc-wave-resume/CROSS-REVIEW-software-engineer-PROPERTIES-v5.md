@@ -128,6 +128,40 @@ identical across the diff. I re-read those rows rather than assuming; no drift.
 
 ## Fixtures
 
+**Run depth: the divergence PROPERTIES routed has been resolved in its favour (F-02).**
+`PROPERTIES:497-504` pins `fc.assert(fc.property(…), { numRuns: 500 })` for all four laws, cites
+`advisoryHelperProperties.test.js` as the precedent, and then records: "**Note the divergence,
+routed but resolved here:** TSPEC §5.7's convention paragraph says *fast-check's default run count*,
+while PLAN T-08 and PLAN §4.5 pin 500 on the same precedent. This document follows PLAN; the TSPEC
+clause is raised as an erratum."
+
+That is no longer what TSPEC says. §5.7 at HEAD reads `fc.assert(fc.property(…), { numRuns: 500 })`
+— "**the run count is pinned at 500, not left to fast-check's default**" — cites the same
+`advisoryHelperProperties.test.js` precedent, and closes "PLAN T-08 and PROPERTIES carry the same
+figure, so the three documents agree." The generator specs, bounds and the four laws are unaffected;
+the numbers already match. What is stale is only the divergence note and the routed-erratum
+promise — see F-02.
+
+**The `c8.include` correction has also landed upstream (F-03).** § 11's measured-baseline paragraph
+already states the include set as **four** `**/`-anchored entries including
+`**/scripts/capture-learnings-baseline.mjs`, and PROP-COV-01's scoping to `orchestrate-dev.js`
+rides on it. TSPEC §5.8 at HEAD now carries the same four-entry list and explains `allow-external:
+true` from it. So the local correction is confirmed, not contradicted — again, only the routed row
+is stale.
+
+**Fixture inventory otherwise unchanged.** The ledger fixtures (one per reason code plus the
+honoured shapes), the config fixtures, the two required queue fixtures, the H-1 ordered event sink
+and H-2, the generative generators `genFeature`/`genClassifyInput`/`genWaveLayoutPair` with their
+bounds, and § "String and fixture ownership" (verbatim transcription from TSPEC §2.4/§3.1, including
+the U+2013 en-dash pin) all rest on TSPEC text the erratum round left alone. The §3.1 edit changed a
+value **count**, not any template or literal, so no transcribed fixture string moves.
+
+**One fixture consequence of F-01.** The AT-05 write-side conjunct needs no new fixture: the
+`startWave: 2` + valid-record integration fixture already exists for PROP-OVERRIDE-01 and already
+carries a `writes` log, since § Fixtures builds all integration runs through `makeLedgerArgs`. The
+work is an assertion, not test data — which is why I read this as a bounded follow-up rather than a
+structural revision.
+
 ## Delta-Confirmation Findings
 
 ## Recommendation
