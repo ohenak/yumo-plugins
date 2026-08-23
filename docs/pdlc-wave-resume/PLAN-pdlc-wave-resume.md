@@ -258,7 +258,7 @@ same batch never share a row's file.
 | T-08 | `pdlc/workflows/__tests__/waveResumeProperties.test.js` | 3 | new |
 | T-10 | `pdlc/workflows/__tests__/waveResume.test.js`, `pdlc/workflows/__tests__/waveExecution.test.js` | 4 | existing by then; second owner of each, batch 2/3 ≠ batch 4 |
 | T-11 | `pdlc/workflows/__tests__/documentOracles.test.js`, `docs/_constraints/pdlc-retirement-baseline.md` | 1 | both existing and tracked; sole owner of each in this plan |
-| T-12 | *(no file written — index-only `git rm --cached`; the three paths are spelled in §2.1's T-12 row)* | 1 | tracked today, untracked after; T-12 writes no bytes, so it collides with nothing |
+| T-12 | *(no file written — index-only removal; the three paths are spelled in §2.1's T-12 row)* | 1 | tracked today, untracked after; T-12 writes no bytes, so it collides with nothing. The cell carries no backticked span deliberately: the ownership parser reads every backticked span as a path, and T-12 owns none |
 
 The manifest is **one row per owning task**, never a merged cell, so every owner cell is a bare
 task id the ownership parser resolves, and every file cell is a comma-separated list of backticked
@@ -479,19 +479,21 @@ cannot enter them (round-1 F-03).
 ### 4.6 Parse verification of this document (rule 6)
 
 The task table is machine-parsed, so this document was parsed with the shipped parser **after the
-v1.1 merge**, not merely written to look parseable. Run against
+v1.2 erratum edit** (and, before it, after the v1.1 merge), not merely written to look parseable.
+Run against
 `git show origin/main:pdlc/workflows/orchestrate-dev.js`, since this tree is 1,637 commits behind:
 
 | Check | Result |
 |---|---|
-| `parsePlanTasks(PLAN)` | 7 tasks, `warnings` undefined; ids `T-01, T-02, T-03, T-04, T-07, T-08, T-10`; `dependencies` exactly `[] / [T-01] / [T-01] / [T-01] / [T-02] / [T-02] / [T-07,T-08,T-03,T-04]` — the edge set of §3.1 |
-| `planBatch` per row vs. `max(dep batches) + 1` | agrees on every row: 1, 2, 2, 2, 3, 3, 4 |
-| `computeTopologicalBatches(tasks)` | `[[T-01], [T-02,T-03,T-04], [T-07,T-08], [T-10]]` — identical to the `Batch` column, so the column is a contract that holds, not a caption |
-| `parsePlanOwnership(PLAN)` | 7 rows, one per task, **zero near misses**; multi-path cells parse as lists (`T-02 → [waveResume.test.js, orchestrate-dev.js]`, `T-10 → [waveResume.test.js, waveExecution.test.js]`) |
-| `computeWaves(tasks, ownership)` | four ownership-disjoint waves, identical to the topological batches — no wave contains two tasks sharing a path |
+| `parsePlanTasks(PLAN)` | 9 tasks, `warnings` undefined; ids `T-01, T-02, T-03, T-04, T-07, T-08, T-10, T-11, T-12`; `dependencies` exactly `[] / [T-01] / [T-01] / [T-01] / [T-02] / [T-02] / [T-07,T-08,T-03,T-04] / [] / []` — the edge set of §3.1, with `T-11` and `T-12` as isolated sources |
+| `planBatch` per row vs. `max(dep batches) + 1` | agrees on every row: 1, 2, 2, 2, 3, 3, 4, 1, 1 |
+| `computeTopologicalBatches(tasks)` | `[[T-01,T-11,T-12], [T-02,T-03,T-04], [T-07,T-08], [T-10]]` — identical to the `Batch` column, so the column is a contract that holds, not a caption |
+| `parsePlanOwnership(PLAN)` | 9 rows, one per task, **zero near misses**; multi-path cells parse as lists (`T-02 → [waveResume.test.js, orchestrate-dev.js]`, `T-10 → [waveResume.test.js, waveExecution.test.js]`, `T-11 → [documentOracles.test.js, pdlc-retirement-baseline.md]`), and `T-12` parses as the **empty** path list — measured, and the reason its cell carries no backticked span (§3.3) |
+| `computeWaves(tasks, ownership)` | four ownership-disjoint waves, identical to the topological batches — no wave contains two tasks sharing a path; wave 1 is `[T-01, T-11, T-12]` and its three path sets are pairwise disjoint (one file, two files, none) |
 | Retired ids | `T-05`, `T-06`, `T-09` appear in no `#` cell and no `Deps` cell; the parser sees seven tasks and no dangling dependency |
 | Dependency cycles | none; the edge set is a DAG (Phase P refuses a PLAN whose dependencies contain a cycle) |
 | Bare basenames in `Test File` / `Source File` | none — every path is subpackage-qualified (`pdlc/workflows/__tests__/…`, `pdlc/workflows/orchestrate-dev.js`, `docs/_constraints/…`) |
+| Second near miss, found and fixed in v1.2 | T-12's manifest cell first read ``index-only `git rm --cached` ``; the parser reads **every** backticked span as a path, so the command string parsed as a file T-12 owned. The backticks are gone and the row now parses as zero paths. |
 | Id spelling | identical in the `#` column and in every `Deps` cell — bare `T-NN`, never bolded in one and plain in the other |
 
 One near miss was found and fixed while re-running this check: §2.3's merged-pair table originally
