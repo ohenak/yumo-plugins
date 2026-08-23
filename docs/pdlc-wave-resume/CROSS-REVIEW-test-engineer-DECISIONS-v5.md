@@ -112,6 +112,58 @@ goes down by the finding upstream fixed and up by the two this delta created.
 
 ## Decision
 
+**DECISIONS still holds as approved against TSPEC v1.4.** No decision it takes was overturned, no
+oracle a downstream author transcribes from it changed, and the one substantive move upstream made
+in territory this document occupies — §2.4's discriminant — moved *toward* DECISIONS, not away. Two
+sentences are now factually stale against upstream and need a one-line correction in the next
+revision; neither is load-bearing on a test. No High finding, so this confirmation approves.
+
+### The one finding this delta resolves
+
+My v2 F-03 / v3 F-06 / v4 F-06 said: O-5 discriminates the past-the-end notice by **code location**
+(“emitted inside the resume decision”), while TSPEC §2.4's adopted rule discriminated by **subject
+matter** (“about a resolved start point”), and the upstream discriminant was the weaker of the two
+because it does not survive contact with a clamped past-the-end pointer. TSPEC v1.4 now says exactly
+that, in its own words:
+
+> **The discriminating conjunct is the first one — *the resume decision emits it*.** … The second
+> conjunct does **not** discriminate here and is not what excludes it (TE): a past-the-end
+> `implementation.startWave` is also a rejected value, is clamped, and still yields a start point
+> that carries ` (provenance: operator-set)` in the table above — so “about a rejected value rather
+> than a resolved start point” would exclude a row that is in fact included.
+
+Credited to TE, and it is the mechanism DECISIONS argued at line 161. **F-06 is retired**, and the
+open count drops accordingly. This is the payoff of the confirmation channel working as designed:
+the raise lived three rounds, upstream honoured it, and this round is where it stops being re-filed.
+
+### The full fidelity re-read, not just the changed hunks
+
+DEC-ERR-03's bar is faithfulness at HEAD, not item-list arithmetic, so I re-read every TSPEC passage
+DECISIONS leans on at v1.4 — the same six citation families my v3 and v4 passes enumerated, plus the
+two the delta newly implicates:
+
+| DECISIONS site | TSPEC dependency | State at v1.4 |
+|---|---|---|
+| O-3; DEC-WVR-02; DEC-WVR-08 (lines 103, 113, 270, 413) | §3.4's “the diff adds no parameter to `main()`”; the “no new IO” claim (§3.4 line 565, §6.1 DEC-WVR-08 line 899) | Untouched — **faithful**. The §3.4 hunk edited the FSPEC-interaction paragraph, not the seam table. |
+| O-5 (line 161); DEC-WVR-03 criterion (146–148, 288) | §2.4's exclusion rule and its discriminating conjunct | **Re-argued in DECISIONS' favour** — faithful on the mechanism, over-specified on the criterion (F-03) |
+| O-5 closing parenthetical (line 167) | §2.4's announcement table | Still names the excluded notice in a one-row table — the parenthetical's “omits it entirely … an upstream gap” is **doubly stale** now (F-02) |
+| O-5 key list (line 153) | V-13's four-key `implementation` surface | Untouched — **faithful** |
+| DEC-WVR-03; line 132 | §2.4's “the shipped assertions that do change remain exactly **three**” | Untouched, and the v1.4 re-argument explicitly re-derives the count as three — **faithful and reinforced** |
+| O-8 (201–207); DEC-WVR-06 (360) | §3.1's interpolating-reason and interpolated-value counts | **Three reasons faithful; four-vs-five values stale** (F-01, F-04) |
+| DEC-WVR-04 Consequences (line 434) | §5.4 AT-05, §5.5 mutation 5 | AT-05 gained a write-side conjunct and mutation 5 kills write-suppression — **faithful and newly reinforced**; the `head`-conjunct defect (F-06 below) is untouched by it |
+| Risks, rebase-churn bullet (line 30) | §6.4 RT-1's two byte figures and their `git ls-tree` provenance | Untouched — **faithful** |
+| Risks, generated-artifacts bullet (line 472) | §6.4 RT-5 (`M-WG-2` ordering) | Untouched — **faithful** |
+| Open table (446–448) | §6.2 OB-F1, OB-F4; §6.4 RT-6 | OB-F1's re-raise was retired upstream, but its **substance** — BL-04 open and unmet, AT-14 red until rebase, PLAN sequencing precondition — is restated verbatim at v1.4. DECISIONS cites the substance, not the re-raise. **Faithful and reinforced.** |
+
+### Where the delta *does* land, and why it is not a finding here
+
+Four of the eight hunks (§2.5/§3.4 ratification, §5.7's pinned `numRuns: 500`, §5.8's four-entry
+`c8.include`, §6.3's landed-errata rewrite) address documents that are not this one. The FSPEC
+ratification discharges an erratum FSPEC has already honoured; the `numRuns` pin and the coverage
+config are TSPEC-and-PLAN obligations that this DECISIONS never compressed — it holds no position on
+run counts or the branch floor, and PROPERTIES transcribes both from PLAN T-08 and T-10, not from
+here. They pass this document without contact, exactly as RT-7 did last round.
+
 ## Consequences
 
 ## Delta-Confirmation Findings
