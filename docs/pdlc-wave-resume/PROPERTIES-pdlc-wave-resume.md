@@ -232,7 +232,7 @@ form — the assertion that makes each row falsifiable — is in **§ Oracles**,
 |---|---|---|---|---|---|
 | PROP-COV-01 | `npm run test:coverage` from `pdlc/workflows` must exit 0, and the measured per-file branch number for **`orchestrate-dev.js`** — the one c8-included module this feature edits — must be **≥ 85 and ≥ the baseline recorded below**, pasted into the owning task's report. This is a *regression guard scoped to the module the feature touches*, not an inherited gate over the other three included modules: a per-file red in `orchestrate-queue.js`, `build-runtime.mjs` or `scripts/capture-learnings-baseline.mjs` is a blocked task to be reported and routed, never a reason to weaken this property or the threshold. | Performance | C | RT-7, TSPEC §5.8, PLAN T-10 | T-10 |
 | PROP-COV-02 | c8's per-file uncovered-line list for `orchestrate-dev.js` must contain no line inside the ranges this feature introduces, and PLAN §4.5.1's mapping table must be **complete** — every branch class named, every row naming a covering test. A deleted case must fail that table's set equality rather than move a percentage by 0.05. | Observability | C | RT-7, PLAN §4.5.1 (F-05) | T-10 |
-| PROP-COV-03 | Each of TSPEC §5.5's **five** mutations must be **applied, observed RED against its named oracle, reverted, and its failure output recorded** in the owning task's report — a believed mutation is not an observed one. PLAN §4.3 still reads four: the fifth (suppressed write under `explicitPointer`) landed in TSPEC v1.4 and its PLAN cascade is pending, so the mismatch is noted here with the fifth's owner recorded (T-07, per the mutation → oracle map), not silently resolved. | Contract | C | PLAN §4.3 (F-04), TSPEC §5.5 | T-02, T-07 |
+| PROP-COV-03 | Each of TSPEC §5.5's **five** mutations must be **applied, observed RED against its named oracle, reverted, and its failure output recorded** in the owning task's report — a believed mutation is not an observed one. TSPEC §5.5 owns the count and PLAN §4.3 agrees with it at HEAD: PLAN v1.4's §4.3 carries the fifth row (suppressed write under `explicitPointer`, oracle `AT-05's **write-side** conjunct only`, owner T-07), so no count divergence remains open and the fifth's owner is T-07 per the mutation → oracle map. | Contract | C | PLAN §4.3 (F-04), TSPEC §5.5 | T-02, T-07 |
 
 **Measured baseline (SE F-04) — the numbers PROP-COV-01 rides on, measured, not assumed.**
 `test:coverage` is two stages: stage 1 runs `c8 npm test -- --runInBand` under the `c8` block's
@@ -373,8 +373,8 @@ Restated rather than assumed, because they are what makes the property set falsi
 ### Mutation → oracle map
 
 Five mutations, each with the property that must red and the task that must **run** it
-(TSPEC §5.5; PLAN §4.3 still lists the first four — the fifth's PLAN cascade is pending, per
-PROP-COV-03's note):
+(TSPEC §5.5, which owns the count; PLAN §4.3 at v1.4 carries the same five rows with the same
+owners, so this map, TSPEC and PLAN agree):
 
 | Mutation | Property that must red | Applied and observed by |
 |---|---|---|
