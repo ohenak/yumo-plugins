@@ -66,6 +66,44 @@ findings plus the sections upstream churn reaches, and every settled decision is
 
 ## Decision
 
+**DECISIONS still holds against the TSPEC that now stands.** No decision clause, alternative
+disposition, constraint row, reversibility claim, re-evaluation trigger or downstream obligation in
+the document has been falsified by the round-5 erratum edit. No P0 or P1 requirement is narrowed,
+dropped or reinterpreted by the cascade, and no re-triggered cascade is owed to PLAN or PROPERTIES on
+the product lens.
+
+Checked positively, clause by clause, against upstream at HEAD rather than against the round's item list:
+
+- **DEC-WVR-06** (`:205`–`:207` / `:360`, decision at `:897` upstream) — the load-bearing claim is
+  "three of the seven disregard reasons interpolate run-specific values". `TSPEC:432`–`:436` at HEAD
+  names the same three reasons (`feature-mismatch`, `head-unreachable`, `over-count`), and TSPEC's own
+  DEC-WVR-06 row still reads "three of the seven interpolate run-specific values". The rejection of
+  set-equality-over-rendered-sentences therefore stands on unchanged ground. Only the parenthetical
+  value count diverges — F-01.
+- **DEC-WVR-03 / O-5** (`:132`, `:167`–`:169`, `:303`, `:433`, `:458`) — the "exactly three shipped
+  whole-string assertions change" claim and the enumerated replacements still trace to §2.4's
+  enumeration, which the round did not renumber; it only named the discriminating conjunct in the
+  exclusion column. The count of announcements carrying a token, and the "a *fifth* announcement reds
+  the assertion" obligation, are untouched. The stale characterisation in the closing parenthetical is
+  F-02, carried.
+- **DEC-WVR-01** (`:45`, `:240`–`:242`, `:431`) — three pure functions, one read site, one write site;
+  §2.5's restatement changes what FSPEC *says* about the write, not where the write is or how many
+  there are. Faithful.
+- **DEC-WVR-05** (`:331`–`:356`) — the plan-absolute high-water integer and its prefix-only argument
+  are untouched upstream; the round edited nothing in §2.2/§3.2 the trigger reads. F-04 remains as
+  recorded.
+- **DEC-WVR-07** (AT-16 parity scope) — §5.4's AT-05 edit adds a write-side conjunct to a *different*
+  AT. AT-16's oracle, and DECISIONS' statement of what BR-16's behavioural half discharges on the
+  direct path only, are unchanged.
+- **Obligations and risks** (`:37`, `:446`) — OB-F1's substance is explicitly preserved by the round
+  ("BL-04 is still unmet, AT-14 is still red in this tree"), so DECISIONS' sequencing precondition —
+  do not dispatch the wave carrying AT-14 before the rebase — remains exactly as true as when it was
+  approved. This is the highest-consequence product claim in the document, and the round left it intact.
+
+The four findings below are the complete set. One is `delta` (this round's upstream edit created it);
+three are `inherited` and carried unresolved from v2/v3/v4, since no round has yet asked the author to
+address them. None is High.
+
 ## Delta-Confirmation Findings
 
 ## Questions
