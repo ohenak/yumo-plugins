@@ -4,11 +4,19 @@
 |---|---|
 | Status | Draft |
 | Author | te-author |
-| Version | 1.1 |
+| Version | 1.2 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/`) |
-| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v2.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v2.md` |
 | LEARNINGS | `docs/pdlc-wave-resume/LEARNINGS-pdlc-wave-resume.md` |
+
+**Revision history.**
+
+| Version | Change |
+|---|---|
+| 1.0 | Initial authoring. |
+| 1.1 | Round-1 delta. Every candidate upstream defect raised in the first drafting pass was re-verified against its parent document at HEAD: three had been closed by their owners and were withdrawn, one (TSPEC §5.7's run count vs. PLAN T-08's `numRuns: 500`) was still open and was routed as an `ERRATUM: TSPEC` line. The retired PLAN ids `T-05`/`T-06`/`T-09` are called out so the seven-row task trace reads as complete. No property, oracle, fixture or matrix row changed. |
+| 1.2 | Round-2 cross-review revision. **PROP-SKIP-04 re-expressed** (SE F-01): the script issues no `git add` in the V-wave, so the pathspec-equality oracle and the "V-wave's own commit" premise are replaced by a flattened whole-`add`-list assertion paired with a positive dispatch-identity conjunct; the retired premise is routed as an `ERRATUM: TSPEC` line against AT-12's fourth conjunct. **Queue fixture 2's rationale corrected** (SE F-02): the `distribution.checkEnabled` drift gate no longer exists in `orchestrate-queue.js`, so the precondition is re-anchored on the dispositions that still fire; routed upstream against TSPEC AT-16 and PLAN T-04. **H-1 restated as a wrapper** over the caller-supplied `git`/`runCommand` doubles, and its two consumers gained a both-axes-present precondition (SE F-03). **PROP-COV-01 scoped and grounded** on measured per-file numbers (SE F-04). PROP-REPO-02's dangling `G-3` anchor now points at the new gap **G-5** (SE F-05). This revision-history block added (PM F-02). |
 
 ## Overview
 
