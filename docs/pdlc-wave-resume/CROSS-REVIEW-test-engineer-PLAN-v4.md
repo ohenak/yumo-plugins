@@ -124,11 +124,58 @@ rationale prose, still Medium — inherited, not delta. See F-03.
 
 ## Verification
 
-_(placeholder)_
+How I checked, so this is reproducible rather than assertive:
+
+1. `git rev-parse --abbrev-ref HEAD` ⇒ `feat-pdlc-wave-resume`.
+2. `git diff 485d62fa -- …/PLAN-…md` ⇒ empty. The PLAN's bytes are the ones I approved.
+3. Hashed all four upstreams; located the TSPEC blob matching my v3 `UPSTREAM-STATE` hash by
+   replaying `shasum` over every TSPEC commit — it is `03483136`. Diffed `03483136..HEAD` for the
+   TSPEC and read every hunk.
+4. For each hunk, grepped the PLAN for the claim it changes (`numRuns`, `500`, `interpolat`,
+   `c8`, `include:`, `allow-external`, `per-file`, `85`, `mutation`, `H-1`, `AT-05`, `erratum`,
+   `§2.5`, `3.4`, `write-side`, `ledgerWrites`) and read the surrounding PLAN prose in full rather
+   than the grep line.
+5. Re-derived the batch column from the `Deps` column for all seven tasks; checked file ownership
+   for same-batch collisions on new files.
+6. Re-read `CROSS-REVIEW-test-engineer-PLAN-v3.md` to separate inherited findings from delta ones.
+
+**Why F-01 is High and not Medium.** In v3 I demoted two findings to Medium under DEC-ERR-01
+because they were false statements confined to rationale prose that no gate, task, oracle or DoD
+checkbox reads. F-01 is the opposite on every one of those axes. §4.3 is read by a task (T-07's
+duty line cites it by row range), by a DoD checkbox (which counts it), and by an implementer
+deciding how many mutations to run. The consequence is not a reader's inaccuracy — it is a
+load-bearing oracle that ships unproven. TSPEC states in terms that mutation 5 leaves four ATs
+green, so nothing else in the suite would catch it, and what goes unproven is the write that makes
+resume work on the recovery path the whole feature exists to serve. A missing mutation observation
+on an oracle the upstream names as otherwise-invisible is a real false-green risk, which is the
+High bar, not the Medium one. It is also a two-line fix, which is why I expect one bounded
+follow-up round rather than a phase re-run.
+
+**Why F-02 is Medium and not High.** Its failure mode is a false *red*, not a false green: if the
+external `capture-learnings-baseline.mjs` entry sits under 85% branch coverage, T-10's gate command
+exits non-zero and the batch-4 gate blocks a feature that is in fact complete. False reds announce
+themselves and cost time, not correctness — no shipped behaviour is left unverified. But it is not
+Low either: the DoD checkbox is unconditional, so an implementer hitting it has no sanctioned way
+forward and may be tempted to relax the gate command, which *would* be a correctness loss. Naming
+the per-file scope (this feature's module, per TSPEC §5.8) resolves it.
+
+**Why F-03 stays Medium and inherited.** Nothing about it changed except that its upstream got
+further away. Same demotion rationale as v3: rationale-prose falsehood, no gate reads it, the
+implementation is unaffected in every particular.
+
+**Nothing else came loose.** I looked specifically for the failure mode where an erratum lands
+half-applied and a downstream document keeps describing the old framing: §5.7's pin, §5.8's include
+list, §3.1's count, §2.5's ratification and §6.3's ledger all moved together in TSPEC, with the
+version cell bumped to 1.4 and a revision-history row describing each change. I found no
+half-applied TSPEC edit. The two delta findings below are the PLAN failing to follow a *successful*
+erratum, not evidence of a failed one.
 
 ## Findings
 
-_(placeholder)_
+The ordinary-round findings table is not used in this round; the round's findings are in
+`## Delta-Confirmation Findings` below, which is the only section carrying `FINDING:` lines. The
+counts in the verdict are the counts of that table.
+
 
 ## Delta-Confirmation Findings
 
