@@ -46,6 +46,21 @@ line" wording really was stricter than the code.
 
 ## Prior findings
 
+All three of my v3 findings are closed. None was High, so nothing was gating; I checked them anyway,
+because a Medium closed in words rather than in bytes is the way a traceability defect survives a
+round.
+
+| v3 finding | Status at HEAD |
+|---|---|
+| **F-01 (Medium, Local)** — the AT-12 coverage-matrix row claimed complete coverage after the delta conceded one conjunct is unobservable | **Resolved, and in the stronger of the two forms I suggested.** `PROPERTIES:538` now reads `PROP-SKIP-01, -02, -03, -04 — **partial**: AT-12's fourth conjunct also asserts that the V-wave's commit is the only Phase-I-adjacent commit, which is not an observable of this suite (the V-wave issues no `add` and its commit is made by the dispatched agent, which the `makeAgent(record)` double replaces). That clause is routed upstream, not covered here — see § Gaps / Findings routed upstream`. A reader consulting the matrix for AT-12 coverage now meets the gap and its reason in the same cell, without having to find the routed-findings table first. Committed `61207b09`. |
+| **F-02 (Medium, Local)** — TSPEC §5.8's three-module `c8.include` list was corrected locally instead of routed, breaking the erratum discipline the same delta applied twice | **Resolved.** A routed-findings row now exists (`:738`), naming `TSPEC:838`'s three-entry list against `package.json`'s four `**/`-anchored entries, marked `Open, and newly raised this round (PM F-02)` and carrying `**Yes** — one `ERRATUM: TSPEC` line`. I re-verified the underlying fact: `TSPEC:838` still reads `include: ["orchestrate-dev.js", "orchestrate-queue.js", "build-runtime.mjs"]`, and `pdlc/workflows/package.json`'s `c8.include` still carries the fourth `**/scripts/capture-learnings-baseline.mjs` entry. The local correction at § 11 was left standing, which is what I asked for. Committed `8ed988c1`. |
+| **F-03 (Low, Local)** — PROP-SKIP-04's trace pointed at conjuncts it does not assert | **Resolved, exactly as suggested.** `PROPERTIES:165` now traces `AT-12 (fourth conjunct, less the commit clause — routed)` where it read `AT-12 (first three conjuncts)`. The three conjuncts PROP-SKIP-01 owns are no longer double-claimed, and the routed clause is legible from the row itself — which was the point of doing F-01 and F-03 together. Committed `61207b09`. |
+
+**Nothing I approved in v3 was broken by the revision.** The two things I would have caught if it
+had been: the property set is byte-identical apart from PROP-SKIP-04's trace cell (checked above),
+and PROP-COV-01's measured baseline table at `:245–250` — the four figures I reproduced by running
+c8 in v3 — is unchanged, so the verification I did last round still stands for this one.
+
 ## Findings
 
 ## Questions
