@@ -113,6 +113,33 @@ depends on it.
 
 ## Verification
 
+Every claim below was measured in this tree at `5d5f15b4`, not read.
+
+| Claim under test | Method | Result |
+|---|---|---|
+| §4.6 `parsePlanTasks(PLAN)` → 9 tasks, no warnings, the stated ids and edges | ran the shipped parser from `pdlc/workflows/orchestrate-dev.js` | **Confirmed**: 9 tasks, `warnings` empty, `T-11`/`T-12` isolated sources |
+| The fifth mutation row did not perturb the parse | same run, post-edit | **Confirmed**: `planBatch` `1,2,2,2,3,3,4,1,1`, unchanged from v1.2 |
+| §4.6 `computeTopologicalBatches` → the four batches | ran the shipped function | **Confirmed**, identical to the `Batch` column |
+| §4.6 `parsePlanOwnership(PLAN)` → 9 rows, `nearMisses: []`, `T-12 → []` | ran the shipped parser | **Confirmed**; `nearMisses` is `[]` and `T-12`'s file list is `[]` — the new §4.3 row and its backticked `explicitPointer` spans introduced no near miss |
+| §4.3 row 5's oracle wording matches TSPEC §5.5 item 5 | read `TSPEC:805` | **Confirmed**: same mutation, same single oracle (AT-05's write-side conjunct), same four ATs that stay green |
+| T-07's mutation-duty cell says rows 1–5 | read the row | **Confirmed** |
+| §4.5's DoD mutation checkbox says five | read `§4.5` | **Confirmed** |
+| v5 F-03's remedy is true upstream, not asserted | read TSPEC RT-7 and §5.8 | **Confirmed**: RT-7 reads "the last implementation **task** (PLAN T-10, RK-2) runs `npm run test:coverage`… Not `implementation.postWaveCommand`" — the PLAN's new "no erratum is open" claim is accurate |
+| T-12's `94` / `81` coverage counts | `git ls-files pdlc/workflows/coverage` and `… /tmp` | **Confirmed exactly**: 94 and 81 |
+| §1.2's four re-measured post-rebase facts | ran all four | **Confirmed exactly**: `git rev-list --count HEAD..origin/main` → `0`; `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js` → `10`; `docs/_constraints/pdlc-wave-gate-baseline.md` present; `pdlc/workflows/package.json:9` defines `test:coverage` with `--per-file --branches 85` |
+| §1.2's `.gitignore:46` citation | read the file | **Confirmed**: line 46 is `/.claude/pdlc-wave-state.json`, and the PLAN quotes the line verbatim alongside the anchor, so this is not a bare `file:line` citation under DEC-DOC-01 |
+| §4.6's "Retired ids" row now reports nine | read `§4.6` | **Confirmed**, and nine is what the parser returns |
+| Residual "four mutation" occurrences | `grep -n "four mutation"` over the PLAN | **One left**: RK-5 (`§4.4`) — see F-01 |
+
+**Coverage claims against the current suite layout.** The task table's test-file assignments still
+match the tree: `pdlc/workflows/__tests__/` holds `waveExecution.test.js` and
+`documentOracles.test.js` (both existing, both correctly marked), and none of the five new suites
+the PLAN creates collides with an existing name. T-08's `fast-check` precedent
+(`advisoryHelperProperties.test.js`) is present, so the property suite has a live pattern to copy
+rather than an invented one. The property strategy for the parameterisable components
+(`classifyWaveLedger`, `parseWaveLedger`, the hash) is carried by T-08's P-1…P-4 with `numRuns: 500`
+pinned, matching TSPEC §5.7 and PROPERTIES — the divergence flagged in round 4 stays closed.
+
 ## Findings
 
 ## Questions
