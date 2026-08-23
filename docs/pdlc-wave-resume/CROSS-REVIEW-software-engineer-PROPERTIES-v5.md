@@ -96,6 +96,36 @@ sentence and the DEC-WVR-06 rejection rationale. PROPERTIES asserts no such coun
 
 ## Oracles
 
+**PROP-OVERRIDE-01's oracle needs one more assertion, not a redesign.** The oracle at
+`PROPERTIES:336` filters logs by the banner prefix, asserts length 1 and the trailing
+` (provenance: operator-set)`, plus `expect(logs.some(m => m.includes("was ignored"))).toBe(false)`.
+Both halves survive the upstream edit unchanged — AT-05's first two conjuncts are byte-identical at
+v1.4. What is missing is an oracle over `writes`: the same integration fixture already threads the
+write log that PROP-RECORD-01's `ledgerWrites(writes)` oracle reads, so the addition is one
+`expect(ledgerWrites(writes)).not.toEqual([])` plus a plan-absolute `lastGreenWave` equality on the
+last entry. Level stays `I`, owner stays T-07, no fixture is added.
+
+**The mutation → oracle map is now a four-row table against a five-row catalogue (F-01).**
+`PROPERTIES:374` opens "Four mutations, and the property task must **run** them (PLAN §4.3, TSPEC
+§5.5)" and lists: delete ancestry guard; move record outside `if (waveGit)`; record run-relative
+wave number; resolve ancestry probe eagerly. TSPEC §5.5's fifth row — suppress the record write
+while `explicitPointer` is true — has no row here, and by construction it cannot get one until
+PROP-OVERRIDE-01 grows the write-side conjunct: TSPEC states the mutation is "killed only by AT-05's
+write-side conjunct". So the map's missing row and the missing property conjunct are one defect with
+two surfaces, and both must land together or the new row would name an oracle that cannot go red.
+
+Note the map's third row already asserts plan-absolute recording (PROP-RESUME-05 / PROP-RECORD-04)
+— but only on **automatic** runs. It does not subsume mutation 5: a mutation guarded on
+`explicitPointer` leaves every automatic-provenance fixture untouched, which is precisely why TSPEC
+predicts AT-05/07/15/18 stay green under it.
+
+**Everything else in § Oracles holds.** The four rules the oracles are held to, the `toEqual`-over-
+`toContainEqual` discipline that kills the eager-probe mutation (PROP-DISREGARD-07), the H-1 event
+sink as the sole ordering witness (PROP-SAFETY-01, PROP-RECORD-03), and the set-equality oracles for
+`RESUME_OUTCOMES` / `RESUME_PROVENANCE` / `WAVE_IGNORE_REASONS` all cite TSPEC sections the round-5
+erratum did not touch. §3.2's eight-row guard table, which PROP-SAFETY-03 enumerates, is byte-
+identical across the diff. I re-read those rows rather than assuming; no drift.
+
 ## Fixtures
 
 ## Delta-Confirmation Findings
