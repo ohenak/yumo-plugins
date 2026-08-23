@@ -207,3 +207,11 @@ the pipeline itself, not as PLAN edits:
 3. **Single-source repeated counts.** Seven restatements of "four mutations" is what made a one-row
    fix nonlocal and split the reviewers' locality tags. Where a PLAN states a count of rows in one of
    its own tables, state it once and reference it.
+
+**Provenance**
+- Engine version: 0.2.2
+- Plugin version: 0.23.2
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
