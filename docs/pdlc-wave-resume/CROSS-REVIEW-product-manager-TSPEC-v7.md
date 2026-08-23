@@ -93,3 +93,32 @@ No type, record shape, or catalogue moved in this delta. `WAVE_IGNORE_REASONS` (
 three-arm shape and the ledger record's fields are byte-identical to the version I approved. §3.1's
 interpolated-value count (five, `e75295b6`) predates this round and was already in the bytes at v6;
 the 1.4 revision row records it retrospectively, which is bookkeeping rather than a change.
+
+## Verification
+
+**Upstream re-read at the current version (DEC-ERR-03).** The dispatch names REQ v1.7 and FSPEC
+v1.2; both are at those versions at HEAD, and every place this TSPEC compresses them still says what
+the TSPEC says it says:
+
+| TSPEC location | Upstream text it leans on | State at HEAD |
+|---|---|---|
+| §2.5, ratification of the operator-pointed write | FSPEC §3.4 "An operator-pointed run records exactly as any other run does … in the same high-water form counted from the plan's first wave", bounded by BR-10, "No record content distinguishes the two provenances." | ✓ present; the TSPEC's quotation is faithful, including the BR-10 bound and the no-distinguishing-content clause |
+| §6.3 item 2 / §6.2 OB-F1 | FSPEC OB-F1: "REQ BL-04 is **not met** … Raised as an erratum against the REQ, which now records BL-04 as open and unmet in §5 and §10 (v1.7)." | ✓ consistent with the REQ; the inconsistency this row formerly re-raised is genuinely closed |
+| §6.3 item 3 | FSPEC v1.2's erratum note records the §3.4 clause landing | ✓ |
+| §6.3 item 4 and §1.3 | REQ OB-1's worktree conclusion no longer rests on `.worktreeinclude` (no occurrence anywhere in REQ v1.7) | ✓ the citation defect is closed; the fail-open conclusion both documents draw is unchanged |
+| §6.2 OB-F1 substance | REQ BL-04 still open and unmet | ✓ still unmet — the sequencing precondition (no wave carrying AT-14 dispatched before the rebase) remains live and is correctly still stated as such |
+
+**Coverage-floor obligation, product view.** Unchanged across the delta and re-checked: threshold 85%
+per-file branch; owner PLAN T-10; closes inside Phase I; backstop §5.3 per-arm unit coverage plus
+§5.7's generative suite. The §5.8 rewrite added text around this and altered none of it.
+
+**Test depth, product view.** The delta raises the stated depth of the generative suite from
+"default" to 500 runs across four laws and adds a fifth mutation (§5.5 item 5) that AT-05's new
+write-side conjunct kills. Both are increases in what the suite proves. The one thing I cannot
+confirm from the delta is the precedent's own internal application, which is what F-01 records.
+
+## Open Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | PROPERTIES still carries a "Note the divergence, routed and resolved here" paragraph saying "TSPEC §5.7's convention paragraph says fast-check's default", plus an erratum-ledger row routing it as `ERRATUM: TSPEC`. That divergence is now discharged by this edit. It is a downstream bookkeeping item, not a TSPEC defect, so I have not raised it as a finding — but PROPERTIES and PLAN's erratum ledgers should retire those rows the next time either document is touched, so a later reader does not go looking for an open route that no longer exists. |
