@@ -172,8 +172,80 @@ fixture and, worse, invites an implementer to read a passing fixture as malforme
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | Q-04 from v2 is still open in my reading: H-2's `failWriteOn(path, callIndex)` — is `callIndex` counted over *all* `_writeFile` calls or over ledger-path writes only? PROP-RECORD-06 scripts "succeed on wave 1, throw on wave 3", which is only well defined once that is pinned, and `makeLedgerArgs`'s `_writeFile` captures every path, not just `WAVE_STATE_PATH`. One clause in H-2 settles it. |
+| Q-06 | PROP-COV-01 now pins `>= 88.75`. That number is a property of `orchestrate-dev.js` at today's HEAD; the feature's own ~20 branches will move it, and so will any unrelated commit that lands before T-10 runs. Is the intent "≥ the number recorded on the day the task runs, re-measured at task start" or "≥ 88.75 literally"? If the latter, a wholly unrelated upstream commit that drops the module to 88.60 blocks T-10 with no feature-side cause; if the former, say re-measure and record both numbers, since the guard is then a delta, not a constant. |
+| Q-07 | Given F-06: are the pre-implementation properties actually red in this tree at all? PROP-PRE-01's five exports resolve **here**, not only at `origin/main`, and `test:coverage`/`c8`/`fast-check` are present. If T-01's pre-flight is green before a line is written, what does T-01 still prove — that the rebase happened, or that it has not been undone? The second is a real and worthwhile claim, but it is a different one from the pre-registration § Overview currently makes. |
+
 ## Positive Observations
+
+- **Every one of my five findings was addressed at the right altitude, and two were addressed by
+  correcting me rather than complying with me.** F-04's revision points out that `c8.include` is
+  four modules, not the three I named — `**/scripts/capture-learnings-baseline.mjs` is in the set and
+  I missed it. That is what a review loop is supposed to produce.
+- **The measured baseline is genuinely measured.** I re-ran the coverage measurement independently
+  and got 88.75 / 88.75 / 88.23 / 89.47 — all four to the digit, including the two identical values
+  that looked like a transcription slip until I reproduced them. A document that states a number a
+  reviewer can reproduce in one command is worth more than a page of reasoning about the number.
+- **PROP-SKIP-04's rewrite is better than either fix I proposed.** It takes both: the flattened
+  whole-list equality *and* the dispatch-identity conjunct, and then adds the branch-guard call as
+  the live-seam witness. The observation that `propertiesTestPrompt`'s first line cannot match
+  `dispatchedTaskIds`' `/^Implement task (T\d+):/` — so `[]` and "exactly one V-wave dispatch" are
+  two readings of the same record — is the detail that makes the pairing non-redundant rather than
+  decorative. I checked it against the shipped prompt builder; it holds.
+- **H-1's restatement is now implementable without re-reading `makeArgs`.** Spelling out that `git`
+  has no default and `runCommand` has a green one, that the spread is conditional, and that the
+  extension therefore *wraps* rather than owns, converts a helper description that needed archaeology
+  into one an implementer can execute. The both-axes precondition added to PROP-SAFETY-01 and
+  PROP-RECORD-03 closes the vacuous-ordering hole exactly.
+- **§ Fixtures' queue rewrite does the harder, more honest thing.** It could have dropped the
+  sentence; instead it says *"earlier drafts of this section were wrong to say it was"*, keeps the
+  fixture as explicitly optional, replaces `!== "blocked"` with positive `toBe(<expected outcome>)`
+  assertions, and cites the two dispositions that can still fire. I verified `selectNextPending` and
+  `runQueue`'s selection block: `blocked-active → outcome:"blocked"` and `empty → outcome:"idle"`,
+  both before the triage phase, exactly as described.
+- **Both upstream defects were routed, not absorbed.** The § Findings-routed table gained two rows
+  with the evidence attached and an explicit `ERRATUM` disposition, and the properties were
+  re-expressed to stand without the upstream premise in the meantime. That is the correct handling of
+  a defect in a parent document and it is rarer than it should be.
 
 ## Recommendation
 
+**Needs revision**
+
+My one blocking finding from v2 is closed, and closed well — I re-derived all three of PROP-SKIP-04's
+conjuncts from source and they hold. All four non-blocking findings are also closed. If the only
+question were "did the revision resolve what I raised", this would be an approval.
+
+It is not an approval because the revision's new material introduced two High findings of its own,
+both in the freshly written grounding text and both mechanical to check:
+
+1. **F-06:** the "pre-rebase tree" premise the new § 11 and § Gaps G-4 text is built on is false in
+   this tree today (`HEAD..origin/main` is 0, the ignore rule is present, `WAVE_STATE_PATH` resolves
+   locally), and the remediation G-4 implies — that a rebase clears the tracked `.claude/` files —
+   does not exist: those files were tracked by a commit on this branch and must be untracked here.
+2. **F-07:** § 11's new enumeration of local reds misses `PROP-SWEEP-2(b)`, which reds because this
+   feature's own tracked docs hit the retirement sweep terms while `docs/pdlc-wave-resume/**` is not
+   on A-1's frozen glob list. Since the wave gate's `testCommand` is the whole suite, that red halts
+   Phase I at wave 1 — a blocker no property in this document can see and no task in the PLAN owns.
+
+Both are corrections to the document's account of the tree it runs in, not to its property set. The
+properties, oracles, fixtures and traceability I reviewed at v2 and again here are sound; nothing in
+the mechanism half of this document is contested. Concretely, to converge:
+
+1. **F-06 (must fix):** re-measure § Overview's grounding table and § Gaps G-4 in this tree; state
+   that the tracked `.claude/` and `pdlc/workflows/coverage/` paths came from a commit on this branch
+   and are untracked here, not by rebasing; restate what PROP-REPO-01's red actually means today.
+2. **F-07 (must fix):** record `PROP-SWEEP-2(b)` as the second local red, with its cause (the
+   feature's own docs vs. A-1's glob list), its precedent (`docs/pdlc-advisory-wave-gate/**`), and
+   its owner — which is a PLAN task, routed as an erratum below, not a property here.
+3. **F-08:** restate the triage fixture obligation as "the last `TRIAGE:` line".
+
+One upstream defect is routed as an erratum rather than folded into this verdict: no PLAN task owns
+adding `docs/pdlc-wave-resume/**` to A-1's frozen glob list, without which every wave gate reds.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 1}
