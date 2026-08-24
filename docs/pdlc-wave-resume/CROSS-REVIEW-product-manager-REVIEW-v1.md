@@ -285,11 +285,49 @@ real row from a bare id gives less protection than its presence suggests.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Is T-10 being deliberately dropped, or was it simply not reached? The two need different responses: "not reached" is F-01's remediation, "dropped" is a scope change that owes a DECISIONS entry naming what replaces §4.5.1's completeness oracle. |
+| Q-02 | REQ-WVR-08 scopes outcome (c)'s "no dispatch, no gate, no commit" to the wave loop, and FSPEC EC-20 records that Phase PT's V-wave replays on every invocation. On a `skip-phase` run the operator pays the V-wave's full gate cost for a tree that is already recorded green. Is that the intended product trade, or is a recordable V-wave a follow-up? (FSPEC names it as an upstream question against REQ-WVR-08; I am reading the answer as "intended for now" and not filing it.) |
+| Q-03 | The record is retained after the final wave (REQ-WVR-05, decided v1.2). After the feature branch merges and the next feature starts on a fresh plan, guard 4's `planHash` re-derivation ignores the stale record — but the file lingers in `.claude/` indefinitely. Is there an intended lifecycle end, or is "ignored forever, deleted by hand" the product answer? |
+| Q-04 | DEC-WVR-07's re-evaluation trigger is "the queue's delegation payload growing a key". Who is expected to notice? Nothing in the tree fails when a second key is added to that payload — `PROP-PARITY-02`'s `Object.keys(arg)` set-equality would red, which is good, but that reds the *test*, not the decision. Should the trigger be recorded in `docs/_decisions/` so it survives this feature's harvest? |
 
 ## Positive Observations
 
-_pending_
+- **The behavioural ACs are driven through `main()`, not through the builder.** This is the single
+  thing I most expected to find wrong and did not. `waveExecution.test.js` carries 96 `main(` call
+  sites and gained ~429 lines in this feature; the five new `waveResume*.test.js` modules are
+  unit-level *in addition to* that, never instead of it. Every new export traces to a production
+  caller in `main()` (see the wiring table in §Scope and method). No zero-caller seam, no dead config.
+- **Closed catalogues are checked by set-equality against literal transcriptions.** `waveResume.test.js:48`
+  compares `new Set(Object.keys(WAVE_IGNORE_REASONS))` to a hand-written seven-element set; `:70` and
+  `:83` do the same for the ancestry-independent codes and the four `implementation.*` keys. Nothing
+  derives its expected value from the code under test. A deleted disregard cause fails a test.
+- **The announcement-closure test is the best oracle in the feature.** `waveExecution.test.js:2978`
+  drives `main()` over five fixtures, asserts each emits **exactly one** `(provenance: …)` line, and
+  set-equality-checks the observed row kinds against a literal five-element list. That is
+  REQ-WVR-08's "closed at three outcomes" and REQ-WVR-02's closed catalogue proven where the operator
+  actually sees them — in the run log — rather than in the classifier.
+- **Negative assertions are paired.** `:2679` (no ledger without a git transport) carries a positive
+  `verified but NOT committed` notice assertion on the same path, and `:2699` supplies the companion
+  arm proving the guard is the git transport and not the gate mode. `:1300` and `:1358` do the same
+  for the A6/un-skip arms. I looked for absence-only oracles and did not find one.
+- **REQ-WVR-09's P0 invariant is enforced structurally, not by convention.** The ledger write at
+  `orchestrate-dev.js:16576` sits inside the `if (waveGit)` block opened at `:16506`, past the comment
+  "Only now — verified — does anything get committed (M-6)". A run that cannot commit cannot record.
+  The `waveHead` capture is best-effort and explicitly costs the *next* run its corroboration, never
+  this run its record — the right direction to fail in.
+- **REQ-WVR-10 is anchored where the REQ asked.** `.gitignore:46` is root-anchored, and
+  `waveResumeRepoState.test.js:77` asserts `git check-ignore -v` resolves to *that exact line* rather
+  than a broader pattern — the difference between "it happens to be ignored" and "it is ignored by
+  the rule C-1 names".
+- **The lazy ancestry probe is honest in both directions.** `:2472` proves a non-ancestor record is
+  ignored and `:2511` proves the same record with a reachable commit *is* honoured — the probe is a
+  real input, not a decoration — while the `ANCESTRY_INDEPENDENT_CODES` short-circuit at
+  `orchestrate-dev.js:16272` keeps guards 1–4 from paying for a `merge-base` call they cannot use.
+- **The generated runtime was rebuilt in the same branch.** `node pdlc/workflows/build-runtime.mjs --check`
+  reports `in-sync`, exit 0. The wave gate's `postWaveCommand` contract held.
+- **The suites pass, cleanly and fast.** 6 suites / 177 tests green in 3.7 s.
 
 ## Recommendation
 
