@@ -8,10 +8,18 @@
  * `orchestrate-dev.js` export) and forwards exactly `{reqPath}` — and,
  * separately, that the DIRECT path reads the ledger at exactly
  * `WAVE_STATE_PATH`. It does NOT observe a real delegated Phase I resolving a
- * resume record end-to-end through the queue; that gap is named in FSPEC
- * AT-16's own text as structural, not behavioural (REQ-WVR-07-structural),
- * because the behavioural half is already covered on the direct path by
- * AT-01..05 in `waveExecution.test.js`.
+ * resume record end-to-end through the queue.
+ *
+ * Where that narrowing is written down (corrected, Phase CR round 1, PM F-04):
+ * it is DEC-WVR-07's, recorded against option O-9 ("Make AT-16 assert a real
+ * delegated resume") with its rejected alternatives, and restated by TSPEC §5.4's
+ * AT-16 row — whose closing sentence is the source of the phrase "REQ-WVR-07-
+ * structural, not behavioural". It is NOT in FSPEC AT-16's own text, which asks
+ * for behavioural parity without qualification; this header previously
+ * attributed it there. Cite DEC-WVR-07 and TSPEC §5.4, never the FSPEC, for why
+ * this suite stops where it does. The behavioural half is covered on the DIRECT
+ * path by AT-01..05 in `waveExecution.test.js`, and DEC-WVR-07 carries the
+ * re-evaluation trigger for closing the delegated half.
  */
 
 import { readFileSync } from "fs";
@@ -66,10 +74,12 @@ function makeRecorder(impl) {
 
 // ─── PROP-PARITY-01 — `_runPipeline` is left at its default (structural) ────
 //
-// AT-16 (i): "queue's `_runPipeline` left at default (unconfigured) and that
-// fact asserted ... checked by asserting the module's delegation is not
-// overridden on the default path." Asserted on the module's OWN source, per
-// AT-16's "integration + structural" level — never by invoking the real,
+// TSPEC §5.4's AT-16 row, oracle (i): "the queue's `_runPipeline` is left at
+// its default and that fact is asserted — an unconfigured queue call reaches
+// `orchestrate-dev`'s exported default, checked by asserting the module's
+// delegation is not overridden anywhere on the default path." Asserted on the
+// module's OWN source, per that row's "integration + structural" test level —
+// the level is TSPEC §5.4's word, not the FSPEC's — never by invoking the real,
 // multi-phase `orchestrate-dev` pipeline just to prove a default parameter
 // was not overridden.
 
