@@ -111,4 +111,43 @@ overstates churn; what they measure is upstream volatility, not downstream quali
 
 ## 5. Open Items for Consolidation
 
+The handed open-promotion list was empty (no open promotions recorded in
+`docs/_decisions/.consolidation-log.md`), so no item below carries a `failure-mode-id:` line.
+
+1. **Give upstream-cascade findings a channel into the erratum item mint.** The post-mortem's primary
+   root cause. Candidate target: a decision record plus an `se-author` / `orchestrate-dev` skill change
+   requiring the erratum mint to draw from *both* routed `ERRATUM:` lines and any unlanded `F-` rows in
+   cross-reviews of cascade rounds since the last approval. Highest-value item in this document.
+
+2. **Define `delta`/`inherited` and `local`/`nonlocal` against a single referent.** Because the gate
+   takes the union of findings, an ambiguous tag is a coin-flip on whether the pipeline halts. Pick
+   round-relative or document-relative, write it down, and cite it in both review skills.
+
+3. **Make the erratum raise disposable, not durable.** Promote to a constraint: an erratum raise lives
+   in the cross-review; the durable document may cite the raise only via a form that expires (an
+   approval hash / commit, never "the erratum this dispatch raises"). Evidenced in both failure
+   directions on this feature.
+
+4. **Ban restated counts; derive them.** A number asserted at seven sites is what converted a one-row
+   edit into a `nonlocal` High and split the two reviewers' locality tags. Candidate for
+   `docs/_constraints/DOMAIN-CONSTRAINTS.md`.
+
+5. **Pin upstream by hash, not by version label.** Eight-plus findings on this feature are "§1 says it
+   derives from REQ v1.5; HEAD is v1.7". `APPROVAL-HASH` / `REVIEWED-COMMIT` already exist and do not
+   rot; the human version label in prose does.
+
+6. **Reconcile the harvest's Scope contract with what reviewers actually tag.** Either make `Scope:`
+   gate-visible in the review skills or re-key the harvest routing to the `local`/`nonlocal` field.
+   Today the harvest infers, and inference is not auditable.
+
+7. **Treat a missing verdict as a failure, not a silence.** A cross-review with no `VERDICT:` line
+   should be re-dispatched rather than superseded quietly (2 occurrences here).
+
+8. **Re-adjudicate "deferred until X lands" deferrals in the round where X lands.** DoD B-2 caught one
+   (`waveBudgetPerRun`, in a project-level decision record); a mechanical sweep would catch them all.
+
+9. **Consider whether upstream-cascade confirmation rounds should count toward the iteration limit.**
+   PLAN reached 7 rounds partly on rounds where its bytes never moved. If they count, features with
+   volatile upstreams halt for reasons unrelated to their own quality.
+
 ## 6. Approval Record
