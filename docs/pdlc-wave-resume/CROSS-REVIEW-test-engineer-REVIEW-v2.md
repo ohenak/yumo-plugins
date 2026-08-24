@@ -64,6 +64,91 @@ Every line citation below was re-checked against the working tree at
 
 ## F-08 detail — the delta-coverage gate detonates on merge
 
+The gate resolves its base and its ranges like this:
+
+```js
+// check-wave-resume-delta-coverage.mjs:57
+function resolveBase() {
+  for (const ref of ["origin/main", "main"]) {
+    try {
+      const sha = git(["merge-base", "HEAD", ref]).trim();
+      if (sha) return { sha, source: `merge-base with ${ref}` };
+```
+
+```js
+// check-wave-resume-delta-coverage.mjs:144
+const ranges = introducedRanges();
+if (ranges.length === 0) {
+  fail(`no introduced ranges found in ${SUBJECT} against ${BASE_SHA} …`);
+}
+```
+
+`fail` is `console.error` + `process.exit(1)` (`:48`-`:51`).
+
+**Today** this is fine, and I verified why: `git merge-base HEAD origin/main`
+returns `b029e853c2287861363cac1039b0c74161719cb2`, which is the pre-feature
+base (and identical to `PINNED_BASE_SHA` at `:43`), so the diff is this
+feature's own ~24 branches and the gate reports 0 uncovered in-delta lines.
+
+**After merge** the same expression returns a commit that already contains
+those lines. `git diff -U0 <that commit> HEAD -- pdlc/workflows/orchestrate-dev.js`
+is then empty, `ranges.length === 0`, and the script exits 1. I ran the shipped
+script with `resolveBase`'s ref list replaced by a base containing the feature
+— the only change, everything else byte-identical — and got:
+
+```
+delta-coverage: no introduced ranges found in pdlc/workflows/orchestrate-dev.js
+against 799ae90bc89a8e9c451ac75eb618e12bf188b6fb (merge-base with HEAD). The base
+or the path is wrong.
+exit=1
+```
+
+The blast radius is not this feature's branch. `package.json:9` chains it as
+
+```
+c8 npm test -- --runInBand && c8 report --reporter=json && node scripts/check-wave-resume-delta-coverage.mjs && c8 report --check-coverage …
+```
+
+and `.github/workflows/pr-tests.yml:92` runs `npm run test:coverage` as the
+required check `Unit tests (ubuntu-latest, node 20)` — one of the four checks
+CLAUDE.md and FSPEC §5.1 pin as gating. So the day after this PR merges, that
+check is red on `main` and on every subsequent feature branch whose diff does
+not happen to touch `orchestrate-dev.js`, for a reason that has nothing to do
+with the work under test. The `--per-file --branches 85` floor step is
+`&&`-chained *after* the script, so it never even runs.
+
+The empty-range case is a deliberate fail-closed guard against a
+mis-typed `SUBJECT` or a wrong base — the comment says "The base or the path is
+wrong." The defect is that it cannot distinguish that from "this feature has
+merged and the delta is now zero by construction", which is the terminal state
+of every delta-scoped oracle and therefore the first case its own tests should
+have covered (F-09).
+
+**Changes that resolve it** — any one is sufficient, in my order of preference:
+
+1. **Make zero ranges the success case when the subject is unchanged and the
+   base is live.** Distinguish the two readings mechanically: if
+   `git cat-file -e <PINNED_BASE_SHA>` resolves and
+   `git merge-base --is-ancestor <feature-tip-marker> HEAD` shows the feature
+   has landed — or, more simply, if `SUBJECT` exists and the diff is empty
+   while `git log --oneline <BASE>..HEAD -- <SUBJECT>` is also empty — print
+   `no delta in this range — nothing for this oracle to check` and exit 0. Keep
+   `fail` for the genuinely broken case: `SUBJECT` missing from the working
+   tree, or absent from the coverage report (that check at `:113` already
+   covers the mis-typed path, which is what the empty-range guard was really
+   reaching for).
+2. **Scope the gate's lifetime explicitly.** If oracle (ii) is a
+   feature-duration control rather than a permanent one, say so in PLAN §4.5.1,
+   have the script exit 0 with a `retire me` notice when the delta is empty,
+   and add a follow-up queue item to delete it.
+3. **Do not gate a required check on it at all** — run it as a separate,
+   feature-branch-only step. This is the weakest option: it moves the oracle
+   out of the path that made it worth having.
+
+Whichever is chosen, F-09's four-case suite over the script should land in the
+same revision, with the "base already contains the delta" case as its first
+row — that is the falsifying test for the fix itself.
+
 ## Questions
 
 ## Positive Observations
