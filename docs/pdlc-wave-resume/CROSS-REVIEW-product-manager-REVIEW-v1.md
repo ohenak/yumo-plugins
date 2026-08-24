@@ -160,6 +160,129 @@ is wrong, and no requirement is unmet — but a stated DoD row is recorded as la
 (the `describe` title included), regenerate `pdlc/workflows/dist/` in the same commit, and re-tick
 the D-1 half of §4.5's delta-row box.
 
+
+### F-03 (Medium, Process) — the `waveResume*` census exclusion has no compensating enumeration
+
+`pdlc/workflows/__tests__/documentOracles.test.js:373-386` counts `*.test.js` files and asserts
+`102`, filtering out two namespaces:
+
+```js
+(name) => name.endsWith(".test.js") && !name.startsWith("learnings") && !name.startsWith("waveResume")
+```
+
+The comment at `:365` justifies the new exclusion: the suites "take the same treatment as
+`learnings*`: excluded from the census, with that PLAN's §3.3 manifest owning their census."
+
+That ownership is asserted nowhere. The only test that reads PLAN §3.3 is
+`waveResumeRepoState.test.js:96-108`, and it checks a different property entirely — that no manifest
+row names `WAVE_STATE_PATH` (AT-17/D-9). No test enumerates the five `waveResume*.test.js` files, so
+the census is open on both sides: deleting `waveResumeQueueParity.test.js` — the **only** artifact
+tracing to REQ-WVR-07 — reds nothing, and neither does deleting `waveResumeRepoState.test.js`, the
+only artifact proving REQ-WVR-10's ignore-rule anchoring. This is exactly the completeness-by-
+set-equality property the brief demands of enumerated contracts, and it is the second-order
+consequence of F-01: §4.5.1 filled in would have covered part of it.
+
+Tagged `Process` because the precedent, not this feature, is the durable signal: the `learnings*`
+exclusion at `:376-384` carries the identical unmechanised claim. Two features have now widened the
+census hole with the same sentence; a third will do it again unless the rule is "a namespace may be
+census-excluded only if a named test set-equality-checks that namespace's own membership".
+
+**To resolve:** add a set-equality assertion over
+`readdirSync(testDir).filter(n => n.startsWith("waveResume"))` against a literal five-element list,
+in this feature's own suite, and (as durable signal) raise the general rule during harvest.
+
+### F-04 (Medium, Local) — the queue-parity suite cites a sentence FSPEC AT-16 does not contain
+
+`waveResumeQueueParity.test.js:9-14` states:
+
+> It does NOT observe a real delegated Phase I resolving a resume record end-to-end through the
+> queue; **that gap is named in FSPEC AT-16's own text as structural**, not behavioural
+> (REQ-WVR-07-structural) …
+
+FSPEC AT-16 (`FSPEC-pdlc-wave-resume.md:406-411`) reads, in full:
+
+> *Given:* the same feature, plan and record. *When:* run once directly and once through a
+> queue-delegated iteration. *Then:* both resolve the same outcome, the same resume point and the
+> same provenance, and the queue run's own report states them. *Discriminating arm:* the record
+> resolves against the same working directory on both paths — a resume point differing between the
+> two fails this test while AT-01..05 all still pass.
+
+There is no residual-gap sentence, no "structural" qualifier and no token `REQ-WVR-07-structural`
+anywhere in the FSPEC (`grep -n 'structural' FSPEC-…` returns nothing). `DECISIONS-…:437` makes the
+same attribution — "AT-16 carries its own residual-gap sentence" — so the narrowing was decided
+(DEC-WVR-07) and recorded, but the disclosure it depends on was never written into the FSPEC.
+
+Two consequences, and only the second is this codebase's to fix:
+
+1. **Upstream.** FSPEC AT-16's text and DEC-WVR-07 disagree about what AT-16 demands. That is a
+   defect of the FSPEC, not of the implementation, and I am routing it as an erratum rather than
+   folding it into my verdict.
+2. **Local.** Shipped test code makes a false, checkable claim about a document in the same feature
+   directory. A future reader who follows the citation finds the opposite of what the comment says
+   and cannot tell whether the test or the spec is stale. Meanwhile REQ-WVR-07's stated observable —
+   "a resume point that differs between a direct and a delegated run of the same feature and plan
+   fails this AC" — is unobserved: `PROP-PARITY-01` asserts on the queue module's **source text** via
+   regex, and `PROP-PARITY-02` asserts the delegation payload's key set through `queueMain` with a
+   spy. Both are honest structural checks; neither runs a delegated Phase I.
+
+REQ-WVR-07 is P2 and DEC-WVR-07 names a re-evaluation trigger, so I am not treating the narrowing
+itself as a High gap. **To resolve locally:** rewrite the suite header to cite DEC-WVR-07 as the
+source of the narrowing (which it is) rather than AT-16's text (which does not say it), and drop the
+invented `REQ-WVR-07-structural` id.
+
+### F-05 (Medium, Local) — the new resume behaviour and its only escape hatch are undocumented for operators
+
+`git diff --stat main...HEAD -- pdlc/OPERATIONS.md CLAUDE.md pdlc/README.md pdlc/RELEASE-CHECKLIST.md`
+is empty, and neither `pdlc/OPERATIONS.md` nor `CLAUDE.md` contains the string `pdlc-wave-state` or
+`wave ledger`.
+
+From an operator's seat, this feature changes Phase I's default behaviour: a re-invocation may now
+silently start at wave 4, or skip Phase I entirely, on the strength of a machine-local file the
+operator has never been told about. The recovery action exists and is correct — the run log emits
+`Delete .claude/pdlc-wave-state.json to force a full run.` at `orchestrate-dev.js:16308` and `:16319`
+— but it is discoverable only from a run that is already behaving unexpectedly, and `forcePhases`
+cannot name Phase I at all (`waveExecution.test.js:2609`). An operator who reaches for the mechanism
+they know is told it is rejected.
+
+REQ-WVR-04 makes the hatch an owed observable and OQ-1 tracks it as open. `pdlc/OPERATIONS.md` is
+this repo's stated home for "the artifact/queue parsing contracts" and Phase I mechanics, and
+`CLAUDE.md` routes readers there.
+
+**To resolve:** one paragraph in `pdlc/OPERATIONS.md` under the implementation-waves material — the
+record's path, the three outcomes, the five announcement forms an operator will see, and the delete-
+to-force-a-full-run hatch — plus a pointer from `CLAUDE.md`'s pdlc section.
+
+### F-06 (Low, Local) — AT-09's re-invocation conjunct is proven by composition, not by its own fixture
+
+REQ-WVR-09 is P0 and its *When/Then* is a **re-invocation**: "the pipeline is re-invoked over the
+same feature and unchanged plan … [the wave is] never skipped". `waveExecution.test.js:2679` drives
+`main()` once with no `_git`, asserts `ledgerWrites(writes)` is `[]`, and — correctly — pairs that
+negative with a positive assertion on the same path (the `verified but NOT committed` notice), so it
+is not an absence-only oracle. Good. But the second invocation is never run; the re-invocation half
+holds only because `:2898` separately proves that no ledger is a silent full run (IG-6).
+
+Composition is sound and the property is true. It is Low because a reader auditing the P0 AC cannot
+see it discharged in one place, and a future edit that made an empty-transport run write a *cleared*
+record rather than none would keep both tests green while breaking the AC. AT-18 already demonstrates
+the two-invocation fixture shape (`:3060`ff), so the cost is small.
+
+**To resolve:** extend the AT-09 fixture with a second `main()` call over the same record store and
+assert the resume point is wave 1.
+
+### F-07 (Low, Local) — the D-10 / OB-F4 baseline oracle is containment, not set-equality
+
+`waveResumeRepoState.test.js:126-144` asserts
+`baselineText.includes("M-WVR-1")` and `baselineText.includes("M-WVR-2")` against
+`docs/_constraints/pdlc-wave-gate-baseline.md`. The suite labels this "presence-only", and PLAN D-10
+does ask only for promotion — so this is within spec, not a violation of it.
+
+The gap is that the check passes on a baseline row that has been emptied of its measured content, or
+whose scope has been rewritten to describe a different measurement, as long as the two ids remain as
+substrings. `docs/_constraints` baselines are measured records; a promotion oracle that cannot tell a
+real row from a bare id gives less protection than its presence suggests.
+
+**To resolve:** assert the two rows' measured fields (or the row's full cell set), not just the ids.
+
 ## Questions
 
 _pending_
