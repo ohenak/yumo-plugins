@@ -36,6 +36,20 @@ aborted review is indistinguishable from a review that found nothing.
 
 ## 2. Cross-Feature Patterns
 
+Reviewers on this feature almost never used per-finding `Scope:` tags — 133 `FINDING:` lines carry
+only 5 `Local` tags. What they used instead was the erratum grammar's `local`/`nonlocal` locality
+field (67 of 133 findings are `nonlocal`). Per the under-tagging rule, those `nonlocal` findings that
+name a repo-wide mechanism are routed here as Cross-Feature signal even though nobody tagged them so.
+
+| Finding | Suggested Promotion Target |
+|---|---|
+| **Upstream-cascade confirmation rounds have no channel into the erratum item mint.** A cross-review filed during a cascade round records a finding that no later phase is obliged to read. This will recur on any feature whose upstream takes a cascade round after downstream approval — it is structural, not a property of this feature. | skill update (`se-author` / `orchestrate-dev` erratum mint) + `docs/_decisions/DECISIONS-{erratum-routing}.md` |
+| **Errata raised in the durable document body have no expiry.** Filed against O-5/O-8 in v3, still open in v4 and v5, and demonstrated in both directions: a TSPEC §6.3 item narrated an erratum as "open" after the upstream round had already adjudicated it, *and* a PLAN §3.4 row cited "the erratum this dispatch raises" after TSPEC RT-7 at HEAD had already assigned it. The disposable cross-review is where a raise belongs; nothing expires a raise written into the spec. | skill update (all `*-author` skills) + `docs/_constraints/` |
+| **A count restated at seven sites turns a one-row edit into a `nonlocal` High.** "Four mutations" was asserted in PLAN §1.1, §1.2 revision history, §4.3 heading and table, T-07, RK-1, RK-5 and §4.5's DoD checkbox. The same duplication bit §4.6's "Retired ids" row (seven vs nine in adjacent cells). This is what made pm's and te's locality tags diverge and thus what selected the halt branch. | `docs/_constraints/DOMAIN-CONSTRAINTS.md` — derive counts from one site, never restate |
+| **Version pins in provenance lines go stale within one erratum round.** At least eight distinct findings across FSPEC, TSPEC and PLAN are "§1 says it derives from REQ v1.5; REQ at HEAD is v1.6/v1.7". Pinning a *version number* in prose is a guaranteed staleness generator when the upstream takes erratum rounds. | skill update — pin `APPROVAL-HASH`/`REVIEWED-COMMIT`, not a human version label |
+| **Raw `file:line` anchors used where position is not the claim.** Flagged twice (`documentOracles.test.js:712`, `TSPEC:838`) and already named as DEC-DOC-01 elsewhere; DoD B-1 fixed a third (`:9976`) by repointing to the file. The remediation route is established: point at the file or the named symbol. | `docs/_decisions/` — reinforce DEC-DOC-01 |
+| **DoD's adjacent-surface criterion (6a) keeps catching docs, not code.** All four v1 DoD findings and both v2 findings were *documentation* surfaces falsified by later commits (`DECISIONS-advisory-wave-gate-questions.md`, `OPERATIONS.md:40`, `PROPERTIES` G-4, `TSPEC` §5.4/§5.5) — zero code-quality findings in §1 across all three rounds. The implementation was clean; the prose around it was not. | skill update (`dod-verify`) — the 6a sweep is the load-bearing criterion here |
+
 ## 3. Rejected Proposals (with rationale)
 
 ## 4. Process Learnings
