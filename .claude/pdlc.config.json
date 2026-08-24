@@ -1,7 +1,0 @@
-{
-  "implementation": {
-    "testCommand": "cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'",
-    "postWaveCommand": "node pdlc/workflows/build-runtime.mjs",
-    "postWavePathspecs": ["pdlc/workflows/dist/"]
-  }
-}
