@@ -124,7 +124,7 @@ required for this round to be approved.
 
 | ID | Question |
 |----|---------|
-| Q-05 | Now that oracle (ii) is permanent, does its subject list stay one file? The gate hard-codes `SUBJECT = "pdlc/workflows/orchestrate-dev.js"` (`:57`). The argument that motivated it — a large module whose whole-file percentage cannot see a small delta — applies verbatim to `orchestrate-queue.js` (the `package.json` note records it at 77.46 % functions). If the answer is "yes, one file", a sentence in `pdlc/OPERATIONS.md` saying so prevents the next reader assuming the gate covers the module they are editing; if "no", `SUBJECT` wants to become a list before a second copy of this script appears. |
+| Q-05 | Now that oracle (ii) is permanent, does its subject list stay one file? The gate hard-codes `SUBJECT = "pdlc/workflows/orchestrate-dev.js"` (`:56`). The argument that motivated it — a large module whose whole-file percentage cannot see a small delta — applies verbatim to `orchestrate-queue.js` (the `package.json` note records it at 77.46 % functions). If the answer is "yes, one file", a sentence in `pdlc/OPERATIONS.md` saying so prevents the next reader assuming the gate covers the module they are editing; if "no", `SUBJECT` wants to become a list before a second copy of this script appears. |
 | Q-06 | Is the `hadHunks` distinction load-bearing beyond its message? `:132` computes it so the empty-delta success can say "pure deletions" instead of "no commit touches it", and `a deletions-only diff is a SUCCESS and says so distinctly` pins that. Deleting covered lines is genuinely benign, but deleting the *last caller* of a range this feature introduced is how a feature quietly stops being exercised — is that a case the gate should distinguish, or one the census and set-equality oracles already own? I lean to the latter and ask only so the answer is recorded. |
 
 ## Positive Observations
@@ -169,4 +169,36 @@ required for this round to be approved.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+No open High findings. v2's blocker (F-08) is closed at the reading rather than
+the symptom, and I verified the fix twice against the real repository — once by
+running the shipped module with a base that already contains the feature (exit
+**0**, `no delta in range`, where the same experiment returned exit 1 last
+round), and once by mutation, reinstating the old `fail` and watching
+`waveResumeDeltaGate.test.js` go RED. v2's F-09 is closed by a suite that covers
+all four failure paths and both positive paths, asserting status and message on
+every one. F-10 came back as a defensible counter-proposal with a test behind it,
+F-11 as a transcribed literal. The full `pdlc/workflows` suite is green at 4495
+tests, and no production source moved this round.
+
+Remaining items, none gating:
+
+1. **F-14 (Medium)** — the permanence decision leaves `PINNED_BASE_SHA` frozen at
+   a pre-feature commit on the tier-3 fallback path, which the required check
+   never takes but a future maintainer will. Warn-and-pass on the fallback, or
+   prefer `GITHUB_BASE_REF`, or assert the pin is still the merge-base.
+2. **F-15 (Low, Process)** — a permanent repo-wide coverage policy is shipping
+   under a feature-scoped filename and cites a feature PLAN; rename to the
+   subject it guards and move the rationale to `pdlc/OPERATIONS.md`.
+3. **F-16, F-17 (Low)** — carried and unchanged: 16 derived `planHash` fixtures,
+   and no `PROP-*` tags in test titles. Harvest-time cleanup.
+
+F-14 and F-15 are worth a queue item together — they are the same observation
+(this gate outlived the feature it was named for) seen from two angles — but
+neither should hold this branch.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 3}
