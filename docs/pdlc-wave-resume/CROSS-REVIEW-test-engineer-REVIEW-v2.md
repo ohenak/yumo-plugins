@@ -38,7 +38,7 @@ check** and is itself covered by nothing.
 | F-03 | Medium | **Resolved** | `waveResumeRepoState.test.js` › `census: the waveResume* suite set equals PLAN §3.3's manifest` asserts `onDisk()).toEqual(fromManifest())` — set equality in both directions, exactly what I asked for — plus a non-empty floor and a binder test asserting `documentOracles.test.js` still carries `startsWith("waveResume")`, so the compensation cannot silently outlive the exclusion it compensates for. `799ae90b` added `waveResumeRepoState.test.js` to T-10's manifest row to make the equality hold. |
 | F-04 | Medium | **Resolved** | `coverageInstrumentation.test.js` and `package.json` are now named in PLAN §3.3's manifest and §4.6's `parsePlanOwnership` transcription as T-10's (`PLAN:270`), so the edit has an owner. The retry's weakening is bounded rather than argued: `attemptsRaced` is counted and `expect({raceWindowNeverClosed: attemptsRaced === 5, stderr: run.stderr}).toMatchObject({raceWindowNeverClosed: false})` (`coverageInstrumentation.test.js:227`-`:229`) makes exhaustion a distinct, attributable red instead of a generic non-zero exit. Q-02 is answered by that bound; I am content to leave the hermetic fix to a separate item. |
 | F-05 | Low | **Open** (not gating) | `computePlanHash(` still appears 16 times in `waveExecution.test.js` fixtures; no literal 8-hex fixture was pinned. Unchanged risk, unchanged verdict: not blocking. |
-| F-06 | Low | **Resolved** | `waveResume.test.js:70` and `:90` add `Object.isFrozen` for `WAVE_IGNORE_REASONS` and `ANCESTRY_INDEPENDENT_CODES`; all four catalogues are now uniform. |
+| F-06 | Low | **Resolved** | `waveResume.test.js:72` and `:90` add `Object.isFrozen` for `WAVE_IGNORE_REASONS` and `ANCESTRY_INDEPENDENT_CODES`; all four catalogues are now uniform. |
 | F-07 | Low | **Open** (not gating) | No `PROP-*` tags were added to `it`/`describe` titles; `PROP-RESUME-*`/`PROP-SKIP-*` still return no grep hits in `pdlc/workflows/__tests__/`. Harvest-time cleanup, still non-gating. |
 | Q-01 | — | **Answered, and closed in code** | `waveExecution.test.js:2499`-`:2506` adds `expect(notice).toContain(HEAD_SHA.slice(0, 12))` with a comment explaining the substring form is deliberate (fixture-dependent sha) — the ctx-wiring check I asked for, without pinning the whole line. |
 
@@ -50,9 +50,8 @@ across the six wave suites pass.
 
 ## Findings
 
-Fix the `waveResume.test.js:70`/`:90` references above to `:72`/`:90` — the
-freeze assertions are at `waveResume.test.js:72` and `:90`; every other line
-citation in this document was re-checked against the working tree.
+Every line citation below was re-checked against the working tree at
+`799ae90b`.
 
 | ID | Severity | Scope | Finding | Section ref |
 |----|----------|-------|---------|------------|
