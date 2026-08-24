@@ -4,8 +4,8 @@
 |---|---|
 | Kind | **Project-level shared reference.** Read-only measured input; **not** a pipeline artifact, not reviewed, not queue-eligible. |
 | Cited by | `docs/completed/pdlc-advisory-wave-gate/REQ-pdlc-advisory-wave-gate.md` (§1, §4, §5, §8) |
-| Version | 1.2 · 2026-08-20 |
-| Verified at | §1–§2 at default-branch commit `c8aa22a4`; §3 at `1efb9a3b`; §4 at `11420461` |
+| Version | 1.3 · 2026-08-23 |
+| Verified at | §1–§2 at default-branch commit `c8aa22a4`; §3 at `1efb9a3b`; §4 at `11420461`; §5 checked against `Version 1.2 · 2026-08-20` |
 
 **Why this file exists.** `REQ-pdlc-advisory-wave-gate` states requirements over behaviour that
 already ships. Under the pm-author altitude rule a REQ may not carry file/line-cited internals, and
@@ -76,3 +76,19 @@ default branch needs. Recipes are symbol-based.
 |---|---|---|
 | M-WG-13 | **The advisory seam catalogue is now closed at six, and every transcribed set-equality reads six.** `ADVISORY_SEAMS` is a frozen six-member list `A1…A6`, and the transcribing assertions moved with it, which is the test-visible, non-additive change M-WG-8 predicted a sixth member would be. | `grep -n "ADVISORY_SEAMS = " pdlc/workflows/orchestrate-dev.js`; `grep -rn 'toEqual(\["A1"' pdlc/workflows/__tests__/` → `advisoryEnvelope.test.js`, `advisoryHarvest.test.js`, `advisoryRecord.test.js`, each six members |
 | M-WG-14 | **The default envelope is now closed at six members.** `ENVELOPE_DEFAULTS` is a frozen `E-1…E-6`, and its set-equality transcription reads the same six. | `grep -n "ENVELOPE_DEFAULTS = " pdlc/workflows/orchestrate-dev.js`; `grep -rn 'toEqual(\["E-1"' pdlc/workflows/__tests__/` → `advisoryEnvelope.test.js` |
+
+## 5. Facts added for `pdlc-wave-resume` (OB-F4, promoting REQ OF-1/OF-2)
+
+Checked against `Version | 1.2 · 2026-08-20`, sections through `## 4` and ids through `M-WG-14` —
+the state found at promotion time, per the *Re-verification* note above. **`M-WG-6` was reviewed
+against this promotion, not missed:** it records that Phase I has no recorded-approval skip and
+that a re-invocation after a wave halt re-dispatches every wave, including those whose commits
+already landed; the shipped wave-ledger record (`pdlc-wave-resume`'s own subject matter) partly
+supersedes that re-dispatch behaviour going forward, but `M-WG-6` itself is a `c8aa22a4`-era
+mechanism fact and is left as measured, unchanged, for the same reason `M-WG-8` was left after
+`pdlc-advisory-wave-gate` shipped (§4): criteria that cite it argue from the pre-change state.
+
+| # | Fact | Measured by |
+|---|---|---|
+| M-WVR-1 | **Replay cost of a wave re-entry is the task count of every wave below the halted one, and it is not uniform per halt.** On the `pdlc-consolidation-agent` run of 2026-08-09, the plan derives 16 waves (17 counting Phase PT's appended V-wave); waves 1–3 hold 7 tasks, so re-entry after the wave-4 halt paid seven no-op dispatches, while re-entry after the wave-2 halt replayed wave 1 only (a single task). | `parsePlanTasks` + `parsePlanOwnership` + `computeWaves` from `pdlc/workflows/orchestrate-dev.js`, run over `docs/pdlc-consolidation-agent/PLAN-pdlc-consolidation-agent.md` → 34 tasks, 16 waves, W1 = `[T00]`, W2 = `[T01..T05]`, W3 = `[T06]` |
+| M-WVR-2 | **A completed task may legitimately produce no commit; stray agent-authored commits were also observed in the same run.** On the same `pdlc-consolidation-agent` run, wave 1's only task finished with "nothing staged — no changes to commit". Commit presence is therefore not usable as completion evidence in either direction. | The wave-1 task list above (one task) against that run's log; the nothing-to-commit path is reachable at HEAD for any wave whose owned paths are unchanged |
