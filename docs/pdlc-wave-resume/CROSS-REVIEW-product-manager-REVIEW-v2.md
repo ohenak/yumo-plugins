@@ -116,6 +116,79 @@ run discovering. `CLAUDE.md:106` indexes it from the file people actually read f
 
 ## Findings
 
+Two new findings, both non-gating. Neither is a regression: the delta broke nothing I had approved,
+and I re-ran the feature's suites and the full coverage gate to say that with evidence rather than
+by inspection.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Process | PLAN §4.5's Definition of Done ships **16 of 18 boxes unticked**, including boxes for work that demonstrably landed. The completed feature's own completion record therefore reads as incomplete. | PLAN §4.5; REQ §1 |
+| F-02 | Low | Local | `check-wave-resume-delta-coverage.mjs`'s header comment misstates its own position in the `test:coverage` chain — it says it runs *after* `c8 report --check-coverage`, but the chain runs it *before*. | PLAN T-10 oracle (ii) |
+
+### F-01 (Medium, Process) — the DoD checklist is not a record of what happened
+
+`docs/pdlc-wave-resume/PLAN-pdlc-wave-resume.md` §4.5 carries 18 checkboxes. **Two** are ticked —
+both added by `780971b5`, both T-10's, both carrying a measured number and a named oracle. That is
+exactly the right form, and it is what makes the other sixteen conspicuous. The unticked ones
+include claims I independently verified as **true** at HEAD this round:
+
+- "All eleven TSPEC delta rows D-1 … D-11 are landed" — D-1 is the row v1 F-02 said was unlanded, and
+  it is now landed (`grep -rn INTERIM` over production, the shipped runtime and the integration suite
+  returns nothing).
+- "`node pdlc/workflows/build-runtime.mjs --check` exits 0" — I ran it: `in-sync`, exit 0.
+- "`.claude/pdlc-wave-state.json` appears in no owned-path set … `git check-ignore -v` resolves a
+  root-anchored rule" — asserted by `waveResumeRepoState.test.js:63-83`, green in the run above.
+
+So the gap is bookkeeping, not behaviour, which is why this is Medium and not High: no user-visible
+capability is missing and no oracle is absent. But the product cost is real and it is not
+cosmetic. §4.5 is the artifact a future maintainer reads to answer "was this feature finished, or
+did it stop early?" — it is the *only* durable record of that, since `POSTMORTEM-PR-…` covers the PR
+phase and PLAN §2.1's status column is likewise still `⬚` for tasks that shipped. A checklist that
+reads "incomplete" on a complete feature trains the next reader to ignore checklists, which is how
+the *next* feature's genuinely-skipped batch gets missed. That is precisely the failure v1 F-01
+caught by hand.
+
+I tag this **Process**, not Local, deliberately and per the tag-selection discipline: the lesson is
+reusable regardless of where the fix lands, and it recurred across phases — the earlier mis-numbered
+review round raised the same defect as its own F-02, also tagged `Process`. I am reconciling to that
+tag rather than shipping a conflicting one for the same defect.
+
+**What to change:** tick §4.5's boxes against observed evidence, recording the evidence beside each
+as T-10's two boxes already model (a measured number, or the named oracle that proves it). Where a
+box is genuinely not satisfied, leave it unticked and say why — an honest unticked box is useful;
+an unticked box on landed work is noise. Additionally, and this is the durable half: a mechanical
+"PLAN task ids minus landed task ids must be empty, and every id in the remainder must be an
+index-only task whose stated effect is already true" check belongs in the DoD phase, where it would
+have caught v1 F-01 before it reached a product reviewer.
+
+### F-02 (Low, Local) — the delta oracle's header misdescribes when it runs
+
+`scripts/check-wave-resume-delta-coverage.mjs:13-16` reads:
+
+> It runs as the third step of `npm run test:coverage`, after `c8 report --check-coverage`, so it
+> reads the coverage artifact that run just produced rather than re-running the suite
+
+The chain at `pdlc/workflows/package.json:9` is:
+
+```
+c8 npm test -- --runInBand && c8 report --reporter=json
+  && node scripts/check-wave-resume-delta-coverage.mjs
+  && c8 report --check-coverage --per-file --branches 85 …
+```
+
+It *is* the third step, but the step it follows is `c8 report --reporter=json` — the one that
+produces `coverage/coverage-final.json`, which is what the script actually reads
+(`:46`, `:105`). `--check-coverage` runs *after* it. The substance of the sentence (it consumes a
+freshly-produced artifact rather than re-running the suite) is correct and the wiring is correct;
+only the named neighbour is wrong.
+
+Low, and Local, because nothing depends on the ordering claim: the script fails loudly and
+actionably if the artifact is missing (`:105-110`). But this comment is load-bearing documentation —
+it is the explanation of *why* this script is not a jest test, and the very next reader debugging a
+red delta oracle will use it to reason about ordering. **What to change:** replace "after
+`c8 report --check-coverage`" with "after `c8 report --reporter=json`, and before
+`c8 report --check-coverage`".
+
 ## Questions
 
 ## Positive Observations
