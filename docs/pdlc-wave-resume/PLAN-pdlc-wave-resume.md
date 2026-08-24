@@ -429,41 +429,96 @@ tree, run only the named oracle's test file, paste the failure header into the t
 
 ### 4.5 Definition of Done
 
-- [ ] T-01 passes: the branch is rebased, every `BL-PREREQ` symbol and file is present at HEAD, and
-      the resolved `implementation.testCommand` string-equals §3.4's literal.
-- [ ] **T-11 passes:** `PROP-SWEEP-2(b)` is green — `docs/pdlc-wave-resume/**` is on `A1_GLOBS`
+**How this checklist is kept (Phase CR round 2, PM F-01 / Q-02).** A box is ticked only against
+**observed** evidence recorded beside it — a measured number, a named green oracle, or a command and
+its exit status — in the form T-10's two boxes already modelled. A box whose claim cannot be
+observed from the branch is left **unticked with the reason stated**, because an honest unticked box
+is information and an unticked box on landed work is noise. Ticking is a **Phase DOD** act, not a
+per-task one: tasks land behaviour, and this record is reconciled once, against the tree, when the
+feature is complete. Evidence below was observed at `2012e9b9` unless stated otherwise.
+
+- [x] T-01 passes: the branch is rebased, every `BL-PREREQ` symbol and file is present at HEAD, and
+      the resolved `implementation.testCommand` string-equals §3.4's literal. — `waveResumePreflight.test.js`
+      › `testCommand string-equals the §3.4 transcribed literal, or CI supplies the guard` and the
+      `BL-PREREQ` presence cases, green in the 7-suite / **205-test** `waveResume|waveExecution` run.
+- [x] **T-11 passes:** `PROP-SWEEP-2(b)` is green — `docs/pdlc-wave-resume/**` is on `A1_GLOBS`
       **and** carries a row in `docs/_constraints/pdlc-retirement-baseline.md` recording rationale,
       scope justification and the hit count measured at promotion time, so `PROP-SWEEP-3` is green
-      too. A one-sided edit that greens one and reds the other does not satisfy this box.
-- [ ] **T-12 passes:** both `.claude/`-tracking oracles are green — `git ls-files .claude/` returns
+      too. A one-sided edit that greens one and reds the other does not satisfy this box. —
+      `documentOracles.test.js` + `advisoryWaveGate.test.js`, **252 tests green**; both sweep
+      properties are in that run.
+- [x] **T-12 passes:** both `.claude/`-tracking oracles are green — `git ls-files .claude/` returns
       exactly `pdlc.config.example.json` and `settings.json` (set-equality, not a subset), and
       `git ls-files pdlc/workflows/coverage/` is empty. Checked with the working tree intact:
-      `.claude/pdlc.config.json` must still exist on disk for T-01 to read.
+      `.claude/pdlc.config.json` must still exist on disk for T-01 to read. — both commands run at
+      `2012e9b9`: the first prints exactly those two paths, the second prints nothing;
+      `.claude/pdlc.config.json` is present and untracked.
 - [ ] **The gate was script-owned for every wave** — positively observed, not inferred from silence:
       the Phase I report row's detail contains `script-owned gate`, **and** the run log carries no
       `Notice: the script-owned test gate is unavailable` line (round-1 F-02).
-- [ ] All eleven TSPEC delta rows D-1 … D-11 are landed, each by the task §1.1 names.
+      *Left unticked: the Phase I run log is not a durable artifact on this branch, so the claim
+      cannot be observed at review time. The mechanism it asserts is oracle-covered
+      (`waveExecution.test.js` › `runs the configured command and commits each task's owned files on
+      green`, and the self-report fallback's own case); what is missing is the record of the run,
+      not the behaviour. Ticking it would be asserting something unobserved.*
+- [x] All eleven TSPEC delta rows D-1 … D-11 are landed, each by the task §1.1 names. — D-1
+      `waveResumeRepoState.test.js` › `D-1: no INTERIM wave-ledger commentary survives in shipped
+      source` (absence **and** the positive replacement, over `orchestrate-dev.js` and
+      `dist/pdlc-cli.mjs`); D-2 the closed announcement table; D-3 the report-row cases; D-4 the
+      tolerated-`{}`-with-no-writer case; D-5 `waveResume.test.js`'s unit suite; D-6
+      `waveExecution.test.js:2948` (AT-15 arm 2, EC-15a); D-7 `waveResumeRepoState.test.js`'s AT-14
+      conjuncts; D-8 `waveResumeQueueParity.test.js`; D-9 the AT-17 ownership check; D-10 the
+      `M-WVR-1`/`M-WVR-2` rows, pinned by their measured phrases; D-11 the three transcribed
+      assertions. All green in the 205-test run.
 - [ ] Each merged task (T-02, T-03, T-07) landed its test half in a commit **before** its code half,
       checkable with `git log -p` over the task's commits (§2.3).
+      *Left unticked, and it is a real gap in the record rather than a formality: each merged task
+      landed as a **single** wave commit (`196dab92` T-02, `42d0592a` T-03, `fa17fb78` T-07), so the
+      red-before-green ordering §2.3 asks for is not observable from git history. The `[Fake first]`
+      ordering inside each commit is visible; the two-commit split is not. Recorded as-is.*
 - [ ] Each of §4.3's five mutations was applied, observed RED against its named oracle, reverted,
       and its failure output recorded in the owning task's report (round-1 F-04).
-- [ ] `classifyWaveLedger` is pure, total and never performs IO; the three catalogues are
-      `Object.freeze`d exports.
-- [ ] The lazy-probe contract holds: **zero** `merge-base` calls on the feature-mismatch,
-      plan-changed and no-`head` fixtures; **exactly one** on the ancestry fixture.
-- [ ] All eighteen FSPEC ATs have a passing owning test per §4.1, and the four laws P-1 … P-4 pass
-      at `numRuns: 500`.
-- [ ] Exactly three shipped assertions changed, each named by TSPEC §2.4, each to a transcribed
+      *Left unticked: only **one** mutation run is recorded in the branch — `e6f9f776`'s message
+      records the `recordedLastGreenWave`/`waveCount` field swap at `orchestrate-dev.js`, observed
+      RED against the new `over-count` row and reverted, with `dist` rebuilt and `--check` in-sync.
+      The five §4.3 mutations owned by T-02 and T-07 carry no such record in their commit messages.*
+- [x] `classifyWaveLedger` is pure, total and never performs IO; the three catalogues are
+      `Object.freeze`d exports. — `waveResume.test.js:31`, `:42`, `:72`, `:90`
+      (`Object.isFrozen` over all **four** catalogues, the last two added for TE F-06), plus
+      `PROP-LAW-03` › `classifyWaveLedger is total over ClassifyInput` at `numRuns: 500`.
+- [x] The lazy-probe contract holds: **zero** `merge-base` calls on the feature-mismatch,
+      plan-changed and no-`head` fixtures; **exactly one** on the ancestry fixture. — the per-row
+      `expectedMergeBaseCalls` conjunct of `waveExecution.test.js`'s `%s is ignored with a notice,
+      and every wave runs` `it.each` (`toEqual`, not containment) and the paired honoured-ledger
+      case.
+- [x] All eighteen FSPEC ATs have a passing owning test per §4.1, and the four laws P-1 … P-4 pass
+      at `numRuns: 500`. — §4.1's map is intact and every owning test is in the 205-test green run;
+      `waveResumeProperties.test.js:31` defines `RUNS = { numRuns: 500 }`, used by all four
+      `PROP-LAW-0{1..4}` describes.
+- [x] Exactly three shipped assertions changed, each named by TSPEC §2.4, each to a transcribed
       literal, with no matcher relaxed and no other assertion in the ledger `describe` touched; the
-      wave-1 `✅` detail is byte-identical to the shipped string (the `N > 1` condition, F-08).
-- [ ] `waveExecution.test.js` was byte-unchanged across the whole of batch 2 (RT-2's regression-net
-      invariant); T-02's two commits show the test half landing before the code half.
-- [ ] `M-WVR-1` and `M-WVR-2` are in `docs/_constraints/pdlc-wave-gate-baseline.md` under a new
-      section, the `Version` is bumped, and `M-WG-6` is recorded as reviewed-and-left.
-- [ ] `.claude/pdlc-wave-state.json` appears in no owned-path set, no `postWavePathspecs` value and
-      no commit; `git check-ignore -v` resolves it to the root-anchored rule.
-- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and
-      `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0.
+      wave-1 `✅` detail is byte-identical to the shipped string (the `N > 1` condition, F-08). —
+      D-11's three assertions; `waveExecution.test.js` is byte-unchanged until `fa17fb78` (T-07,
+      batch 3), so the change set is confined to the commits §2.4 names.
+- [x] `waveExecution.test.js` was byte-unchanged across the whole of batch 2 (RT-2's regression-net
+      invariant); T-02's two commits show the test half landing before the code half. — first
+      clause observed: `git log --name-only b029e853..HEAD -- pdlc/workflows/__tests__/waveExecution.test.js`
+      lists no batch-2 commit; its earliest touch is `fa17fb78` (T-07, batch 3). *Second clause is
+      the unticked box above — T-02 landed as one commit; recorded there, not double-counted here.*
+- [x] `M-WVR-1` and `M-WVR-2` are in `docs/_constraints/pdlc-wave-gate-baseline.md` under a new
+      section, the `Version` is bumped, and `M-WG-6` is recorded as reviewed-and-left. —
+      `waveResumeRepoState.test.js`'s D-10 block, which pins each row by the **measurement it
+      carries** (`Replay cost`, `16 waves`, `7 tasks`) rather than by a path or a line number.
+- [x] `.claude/pdlc-wave-state.json` appears in no owned-path set, no `postWavePathspecs` value and
+      no commit; `git check-ignore -v` resolves it to the root-anchored rule. —
+      `waveResumeRepoState.test.js`'s AT-14 three conjuncts and the AT-17 finite check over §3.3's
+      manifest, green in the 205-test run.
+- [x] `node pdlc/workflows/build-runtime.mjs --check` exits 0. — run at `2012e9b9`:
+      `in-sync  pdlc/workflows/dist/pdlc-cli.mjs`, exit **0**. *(The box's original second clause
+      named `pdlc/hooks/scripts/sync-workflows.sh --check`. That script does not exist: the
+      pdlc-plugin-retirement sweep deleted it at `35f444f6`, before this feature's base. The clause
+      was stale on arrival and is removed rather than left as an uncheckable box — nothing in this
+      feature relied on it.)*
 - [x] `npm run test:coverage` was run from `pdlc/workflows` (`--per-file --branches 85`) and
       `orchestrate-dev.js`'s measured per-file branch number is `>= 85` and recorded —
       **88.90 %**, recorded in §4.5.1 (T-10, Phase CR round 1). The
@@ -474,11 +529,23 @@ tree, run only the named oracle's test file, paste the failure header into the t
       line list for `orchestrate-dev.js` contains no line inside this feature's introduced ranges
       (round-1 F-05) — the table is filled and its completeness is itself checked by
       `waveResumeRepoState.test.js` › `PLAN §4.5.1's delta coverage map is complete`; the delta
-      oracle `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` runs as the last step of
+      oracle `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` runs as the third step of
       `npm run test:coverage` and reports **0** uncovered lines inside the introduced ranges
-      (T-10, Phase CR round 1).
-- [ ] No new `main()` parameter, no new runtime-adapter binding, no fifth `implementation.*` key
-      (REQ C-3, TSPEC §3.4/§3.5).
+      (T-10, Phase CR round 1; the gate's own exit paths are covered by
+      `waveResumeDeltaGate.test.js`, Phase CR round 2).
+- [x] No new `main()` parameter, no new runtime-adapter binding, no fifth `implementation.*` key
+      (REQ C-3, TSPEC §3.4/§3.5). — the four `implementation.*` keys are unchanged in
+      `.claude/pdlc.config.example.json`, and the ledger is reached through `makeLedgerArgs` inside
+      `main()` rather than through a new parameter, which is why §2.1's T-10 row can call the
+      announcement and report branches "reachable only through `makeLedgerArgs`".
+
+**Three boxes remain unticked, all record-keeping rather than behaviour**, and none is a missing
+capability: the Phase I run log, the per-task red/green commit split, and four of §4.3's five
+mutation runs are all *evidence that was not durably captured while the work happened*. The durable
+fix belongs upstream of this checklist — a mechanical Phase DOD check that every PLAN task id is
+landed and every DoD claim is either observed or explicitly waived — and is raised as a process item
+rather than retro-fitted here, since manufacturing the evidence now would be worse than recording
+its absence.
 
 #### 4.5.1 Delta-scoped coverage map (the oracle the 85% floor cannot be)
 
