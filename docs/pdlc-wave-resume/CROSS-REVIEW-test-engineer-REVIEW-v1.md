@@ -101,11 +101,53 @@ above as the mutation check (`PROP-COV-03`), observe RED, revert, record.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | `PROP-DISREGARD-02` says "for each of the seven codes"; `head-unreachable` (`waveExecution.test.js:2472`) gets the dispatch conjunct and the exactly-one-probe equality but matches its reason with `toContain("is not an ancestor of HEAD")` rather than the whole transcribed notice, so the short-SHA rendering (`String(ctx.recordedHead).slice(0, 12)`, `orchestrate-dev.js:12896`) is asserted nowhere through `main()`. Was the substring form a deliberate concession — the SHA is fixture-dependent — or the same omission as F-01? If deliberate, a `toContain(HEAD_SHA.slice(0, 12))` conjunct restores the ctx-wiring check without pinning the whole line. |
+| Q-02 | F-04's retry loop names `consolidationBuild.test.js` as the racing writer. Is making that suite hermetic (mutate a temp copy of `dist/pdlc-cli.mjs` rather than the tracked file) in scope for this feature, or should it be routed as a separate queue item with the retry left as a documented stopgap? |
 
 ## Positive Observations
 
-_(pending)_
+- **The extraction is exactly the shape that makes testing cheap.** Pulling the
+  decision into a pure, total `classifyWaveLedger` (`orchestrate-dev.js:12942`)
+  with the IO — one lazy `merge-base --is-ancestor` probe — left in `main()`
+  means the eight-row guard table is a table-driven unit test
+  (`waveResume.test.js:206`-`:330`) instead of eight orchestrator runs. The
+  optimistic-then-reclassify protocol (`orchestrate-dev.js:16262`-`:16283`)
+  keeps that purity without an eager probe.
+- **The lazy-probe contract is pinned by call-list equality, not containment.**
+  `waveExecution.test.js:2503`-`:2506` asserts
+  `calls.filter(a => a[0] === "merge-base")` **equals** the single expected
+  argv, and `:2801` asserts it equals `[]` on the ancestry-independent
+  fixtures. The comment at `:2501` says explicitly why `toContainEqual` alone
+  would not kill the eager-probe mutation. That is the difference between a
+  performance claim and a tested one.
+- **Fail-open is asserted positively everywhere I checked.** The
+  no-transport and throwing-transport arms (`:2545`-`:2610`) assert the resume
+  banner is *present* and the resumed subset *was* dispatched, rather than
+  "no ignore notice appeared". IG-6's silence carries the
+  `dispatchedTaskIds(record)` conjunct (`:2898`). Absence-only oracles are
+  genuinely absent from this diff.
+- **The announcement table is closed by set equality**, not by a per-message
+  containment check (`waveExecution.test.js:2978`, "exactly the five §2.4
+  provenance rows fire, each once") — so deleting an announcement reds *there*
+  rather than silently.
+- **Generative and example-based layers are both present and neither is
+  cargo-culted.** `waveResumeProperties.test.js` states four laws
+  (round-trip, totality of `parseWaveLedger`, totality of `classifyWaveLedger`,
+  hash discrimination) at `numRuns: 500`, and its header (`:1`-`:16`) argues
+  explicitly why it does not subsume the named-example tables.
+- **AT-14 is proved against the repository, not against a document.**
+  `waveResumeRepoState.test.js:64`-`:88` reads the real `.gitignore` and the
+  real `git check-ignore` source, which is why my independent run of
+  `git check-ignore -v` agreed with it.
+- **Coverage clears the floor with headroom and the gate really runs.**
+  `npm run test:coverage` exits 0; `orchestrate-dev.js` reports **88.87 %**
+  branch against the `--per-file --branches 85` gate in
+  `pdlc/workflows/package.json`, with `--check-coverage` and an explicit
+  `include` list naming the file — not source-list membership.
+- **No dist drift.** `build-runtime.mjs --check` reports `in-sync`, so the
+  generated `dist/pdlc-cli.mjs` was rebuilt in the same commits as the source.
 
 ## Recommendation
 
