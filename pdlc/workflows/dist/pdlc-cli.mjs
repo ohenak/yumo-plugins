@@ -12968,7 +12968,8 @@ function classifyWaveLedger({ parsed, feature, planHash, waveCount, headOk }) {
 
   // Guard 2 (IG-1): content that is not something this workflow wrote.
   if (reason != null) {
-    const code = PARSE_REASON_CODES[reason] || "wrong-shape";
+    // Own-property-only: `reason` is arbitrary text and could match a prototype key (e.g. "constructor").
+    const code = Object.hasOwn(PARSE_REASON_CODES, reason) ? PARSE_REASON_CODES[reason] : "wrong-shape";
     return fullRunWith(code, { feature, waveCount });
   }
 
@@ -16211,7 +16212,8 @@ async function main({
       if (startWave > waves.length) {
         emit(
           `Notice: implementation.startWave=${startWave} in ${MERGE_CONFIG_PATH} is past the ` +
-            `last wave of this plan (${waves.length}) — running every wave from 1.`
+            `last wave of this plan (${waves.length}) — running every wave from 1. ` +
+            `(provenance: operator-set)`
         );
         startWave = 1;
       }
@@ -16224,7 +16226,7 @@ async function main({
           `Resuming at wave ${startWave} of ${waves.length} (implementation.startWave). ` +
             `Waves 1–${startWave - 1} are skipped as previously completed; the first ` +
             `executed wave's gate still verifies the whole tree. Clear ` +
-            `implementation.startWave before the next fresh run.`
+            `implementation.startWave before the next fresh run. (provenance: operator-set)`
         );
       }
 
@@ -16296,7 +16298,7 @@ async function main({
           if (!decision.silent) {
             emit(
               `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ` +
-                `${decision.reason}. Running every wave from 1.`
+                `${decision.reason}. Running every wave from 1. (provenance: automatic)`
             );
           }
         } else if (decision.outcome === "resume") {
@@ -16312,7 +16314,7 @@ async function main({
               `${WAVE_STATE_PATH}). Waves 1–${decision.lastGreenWave} were committed ` +
               `and recorded green by an earlier run of this same plan; the first ` +
               `executed wave's gate still verifies the whole tree. Delete ` +
-              `${WAVE_STATE_PATH} to force a full run.`
+              `${WAVE_STATE_PATH} to force a full run. (provenance: automatic)`
           );
         } else if (decision.outcome === "skip-phase") {
           // A COMPLETE ledger: every wave of this exact plan was committed and
@@ -16324,7 +16326,7 @@ async function main({
             `Skipping Phase I (wave ledger ${WAVE_STATE_PATH}): all ` +
               `${waves.length} waves of this plan were committed and recorded ` +
               `green by an earlier run. Delete ${WAVE_STATE_PATH} to force a ` +
-              `full run.`
+              `full run. (provenance: automatic)`
           );
         }
       }
@@ -16602,7 +16604,21 @@ async function main({
           "Implementation",
           "⏭",
           `Skipped — all ${waves.length} waves previously committed and ` +
-            `recorded green (wave ledger)`
+            `recorded green (wave ledger) (provenance: automatic)`
+        );
+      } else if (startWave > 1) {
+        // TSPEC §2.4 — the report row's resume-point detail (D-3): only when
+        // this run actually skipped a prefix of the plan (an operator pointer or
+        // a ledger resume), never on an ordinary wave-1 run, which keeps the
+        // shipped `All M waves complete (…)` string verbatim (round-1 F-08).
+        recordPhase(
+          "I",
+          "Implementation",
+          "✅",
+          `Waves ${startWave}–${waves.length} complete, waves 1–${startWave - 1} ` +
+            `skipped as previously completed (wave mode, ` +
+            `${scriptGate ? "script-owned gate" : "self-report gate"}) ` +
+            `(provenance: ${explicitPointer ? "operator-set" : "automatic"})`
         );
       } else {
         recordPhase(
