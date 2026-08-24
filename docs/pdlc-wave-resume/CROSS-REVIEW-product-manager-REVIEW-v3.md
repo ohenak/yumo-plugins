@@ -138,6 +138,86 @@ document and the run agree digit for digit.
 
 ## Findings
 
+Two new findings, both non-gating, neither a regression. Both come from the same source: this round
+promoted a feature-scoped tool into a **permanent** control, and the consequences of that promotion
+are recorded in the feature's PLAN — a document that is archived when the feature ships.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Cross-Feature | Oracle (ii) is now a **permanent** required-check step (PLAN §4.5.1 "The gate is **permanent**, not a feature-duration control"), but it is documented only inside this feature's PLAN and is named after this feature. A future contributor whose unrelated branch reds `check-wave-resume-delta-coverage` has no durable place to read what it is. `pdlc/OPERATIONS.md` and `CLAUDE.md` do not mention it. | REQ-WVR-04; PLAN §4.5.1 |
+| F-02 | Low | Local | `waveResumeDeltaGate.test.js:216-226` proves the invoked-directly guard by string-matching the source file's own text, so it stays green if the line it quotes is commented out. | PLAN §2.1 T-10 |
+
+### F-01 (Medium, Cross-Feature) — a permanent control documented in a per-feature artifact
+
+This is the same shape as my v1 F-05, which asked for the wave ledger's escape hatch to be written
+somewhere an operator would find it and was answered at `pdlc/OPERATIONS.md:30-42` plus a
+`CLAUDE.md:106` index entry. The lifetime decision this round makes creates a second instance of
+that shape, and the answer stopped one step short.
+
+The facts, checked rather than assumed:
+
+- The gate is `&&`-chained into `test:coverage` (`pdlc/workflows/package.json:9`), which the required
+  check `Unit tests (ubuntu-latest, node 20)` runs. It gates **every** PR in this repo from now on,
+  not just this feature's.
+- PLAN §4.5.1 says so explicitly and correctly: "it outlives this branch whether or not anyone
+  maintains it."
+- `grep -rn "delta-coverage\|check-wave-resume-delta" pdlc/OPERATIONS.md CLAUDE.md
+  pdlc/RELEASE-CHECKLIST.md` returns **nothing**. The only durable description lives in
+  `docs/pdlc-wave-resume/PLAN-pdlc-wave-resume.md` §4.5.1 and in the script's own 42-line header.
+
+Why this is a product finding and not an engineering preference: the artifact is **operator-facing**
+by construction. The next person to meet it is someone who did not work on this feature, whose PR is
+red, on a step whose name is `check-wave-resume-delta-coverage` — a feature that by then is merged
+and archived. The two failure modes are the ones the pdlc pipeline exists to prevent: they weaken a
+control they do not understand and cannot find an owner for, or they lose a day reading a shipped
+feature's PLAN to find out that the control is not about wave resume at all. The script's header is
+good — genuinely good, `:34-42` states the lifetime rule — but a header is found only by someone who
+has already located the file.
+
+I am not asking for behaviour to change and I am not asking for a rename. What is missing is one
+paragraph in `pdlc/OPERATIONS.md`, in the register `:30-42` already uses for the wave ledger: what
+the gate asserts (no uncovered line inside the branch's own introduced ranges in
+`orchestrate-dev.js`), the one benign green ("no delta in range" — an unrelated branch), the four
+fail-closed reds and what each means, and the fact that a red is attributable because the script
+prints which base it resolved. `CLAUDE.md`'s CI section is the natural index: its four-check table is
+unchanged and correct — the gate lives *inside* `Unit tests`, it is not a fifth check — but a
+sentence naming the step inside that check would put the pointer where people already look.
+
+Severity **Medium**, not High: no capability is missing, no acceptance criterion is unmet, and no
+oracle is absent. The gate works and is well tested. The gap is that a permanent control is
+discoverable only through a document that is about to be archived. Scope **Cross-Feature** per the
+tag-selection discipline, deliberately: the lesson generalises past this fix — *when a feature
+promotes one of its own tools into a permanent repo-wide control, the promotion is not finished until
+the control has a durable home outside the feature's artifacts* — and it recurs, since this is the
+second instance in this one feature. That is precisely the "reusable regardless of where the fix
+lands" test, and it belongs in `docs/_constraints/DOMAIN-CONSTRAINTS.md` at harvest whether or not
+the paragraph is written now.
+
+**What to change:** add the paragraph to `pdlc/OPERATIONS.md` beside the wave-ledger entry and index
+it from `CLAUDE.md`, or record a decision that the PLAN is the intended home and accept the archive.
+Either resolves it; leaving a permanent required-check step described only in a feature PLAN does
+not.
+
+### F-02 (Low, Local) — one oracle in the new suite is a text match, not a behaviour check
+
+`waveResumeDeltaGate.test.js:216-226` — "the module self-executes only when invoked directly" — reads
+the script with `cat` and asserts the output contains
+`"if (invokedDirectly) process.exit(runDeltaCoverageGate());"`. The guard it checks is real and
+load-bearing: without it, importing the module would call `process.exit` and kill the jest worker.
+But the assertion is satisfied by the *presence of the text*, so commenting the line out
+(`// if (invokedDirectly) …`) leaves the test green while the guard is gone.
+
+In practice this is close to harmless, which is why it is Low and not Medium: if the guard actually
+broke, the other **twelve** tests in the same file would fail to run at all, loudly. The behavioural
+proof already exists — it is the suite's own ability to import the module. The text assertion adds a
+false sense of a dedicated check.
+
+**What to change:** either assert the behaviour (import the module in a case that would not survive a
+top-level `process.exit`, and assert the gate's exported symbols are reachable), or keep the text
+check and reword the title to say what it is — a source-shape reminder, not an exit-guard oracle. The
+second is legitimate; what should not stand is a test title claiming an oracle the assertion does not
+provide.
+
 ## Questions
 
 ## Positive Observations
