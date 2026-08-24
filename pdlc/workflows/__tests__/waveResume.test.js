@@ -63,6 +63,14 @@ describe("WAVE_IGNORE_REASONS — the disregard-reason codes, closed at seven (T
       expect(typeof WAVE_IGNORE_REASONS[code]).toBe("function");
     }
   });
+
+  // Phase CR round 1, TE F-06: PLAN §4.5's DoD row asserts all three
+  // catalogues are `Object.freeze`d exports, but only RESUME_OUTCOMES and
+  // RESUME_PROVENANCE were checked. A closed catalogue an importer can extend
+  // at runtime is not closed.
+  it("is frozen", () => {
+    expect(Object.isFrozen(WAVE_IGNORE_REASONS)).toBe(true);
+  });
 });
 
 describe("ANCESTRY_INDEPENDENT_CODES — the guard-1..4 codes ancestry cannot affect (TSPEC §2.2/§3.2)", () => {
@@ -75,6 +83,11 @@ describe("ANCESTRY_INDEPENDENT_CODES — the guard-1..4 codes ancestry cannot af
       "feature-mismatch",
       "plan-changed",
     ]);
+  });
+
+  // Phase CR round 1, TE F-06 — see the WAVE_IGNORE_REASONS note above.
+  it("is frozen", () => {
+    expect(Object.isFrozen(ANCESTRY_INDEPENDENT_CODES)).toBe(true);
   });
 });
 
