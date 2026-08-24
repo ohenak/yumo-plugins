@@ -331,8 +331,47 @@ real row from a bare id gives less protection than its presence suggests.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+One High finding, so the rule applies without discretion. I want to be precise about what that does
+and does not mean, because the implementation itself is in good shape.
+
+The shipped behaviour satisfies **nine of ten** requirements, verified against production callers
+rather than builders: REQ-WVR-01, -02, -03, -04, -05, -06, -08, -09 and -10 all trace to a branch in
+`main()` and to a test that drives `main()`. REQ-WVR-07 (P2) is met structurally and its behavioural
+half was consciously deferred under DEC-WVR-07. The oracles are the kind I would ask for and did not
+have to: set-equality over literal transcriptions, paired positives on every negative, and closure
+proven in the run log where the operator reads it. Nothing here is unwired.
+
+What must change before approval:
+
+1. **F-01 (High) — run PLAN T-10.** Fill §4.5.1's fourth column with one real test name per branch
+   class, add the delta oracle (no c8-uncovered line for `orchestrate-dev.js` inside this feature's
+   introduced ranges, checked by set-equality over the table so a deleted row reds), report the
+   measured per-file branch number, and tick §4.5's DoD boxes against observed evidence rather than
+   leaving all of them `[ ]`. If T-10 is being dropped rather than deferred, that is a scope decision
+   and owes a DECISIONS entry naming its replacement — see Q-01.
+
+Recorded, not gating — address in the same pass if convenient, but they do not hold the phase:
+
+2. **F-02 (Medium)** — finish D-1: three residual `INTERIM` mentions at `orchestrate-dev.js:16224`,
+   `dist/pdlc-cli.mjs:16233` and `waveExecution.test.js:2197`/`:2278`, with `dist/` regenerated in
+   the same commit.
+3. **F-03 (Medium)** — set-equality over the `waveResume*.test.js` namespace's own membership, so the
+   census exclusion is compensated rather than merely declared.
+4. **F-04 (Medium)** — re-attribute the queue-parity suite's narrowing to DEC-WVR-07 and drop the
+   invented `REQ-WVR-07-structural` id. The FSPEC half is routed as an erratum, not counted here.
+5. **F-05 (Medium)** — document the record, the three outcomes and the delete-to-force hatch in
+   `pdlc/OPERATIONS.md`.
+6. **F-06 / F-07 (Low)** — a second `main()` call in AT-09's fixture; measured-field assertions in
+   the D-10 baseline oracle.
+
+One item is **not** counted against this document and is routed upstream instead: FSPEC AT-16's text
+demands a behavioural queue/direct comparison while DEC-WVR-07 and the shipped suite both assert that
+AT-16 "carries its own residual-gap sentence". It does not. That is a defect of the FSPEC, emitted as
+an erratum for its author.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 4, "low": 2}
