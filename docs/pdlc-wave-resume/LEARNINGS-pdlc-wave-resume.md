@@ -62,6 +62,53 @@ name a repo-wide mechanism are routed here as Cross-Feature signal even though n
 
 ## 4. Process Learnings
 
+**1. The erratum mint is the leak, and it is not a people problem.** Every phase here needed 5–7
+rounds, but the *only* halt came from a finding that no channel obliged anyone to read. The
+post-mortem's own conclusion is worth carrying verbatim: this is *"a routing failure, and it will
+recur on any feature whose upstream takes a cascade round after approval."* Explicitly **not** causes:
+reviewer disagreement, reviewer fatigue, an under-specified TSPEC, or an se-author error of judgement.
+Any process fix aimed at reviewer diligence is aimed at the wrong target.
+
+**2. Provenance/locality tags select gate branches, and their semantics are genuinely ambiguous.**
+pm and te tagged the *identical* defect `delta`/`nonlocal` vs `inherited`/`local`, because pm reads
+provenance against the **round** (was the item routed into this round?) and te reads it against the
+**document** (did these bytes move?). Both are defensible; the gate takes the union, so the stricter
+tagging always wins and always halts. Until the tag is defined against one referent, the halt decision
+is effectively decided by whichever reviewer reads it more strictly.
+
+**3. Per-finding `Scope:` tagging was essentially not practised.** 133 `FINDING:` lines across 76
+cross-reviews produced 5 `Local` tags and no `Cross-Feature` or `Process` tags at all. The `Scope:`
+field that *was* filled in was the review-header scope statement ("product lens only…"), which is a
+different thing. Reviewers instead leaned on the erratum grammar's `local`/`nonlocal` field, which the
+gate actually reads. **The routing this harvest performed was therefore inference, not transcription**
+— §2 was populated by re-reading `nonlocal` findings for repo-wide mechanisms. Either the harvest
+contract should key off `local`/`nonlocal` (the field reviewers demonstrably fill), or the review
+skills need the `Scope:` tag to be gate-visible so it stops being optional.
+
+**4. Partial re-grounding is more dangerous than none.** TSPEC v1.4 carried two decisions; the PLAN's
+erratum round absorbed one (`numRuns: 500`) and recorded it in the changelog, and missed the other
+(five mutations). The changelog then *reads as though re-grounding happened*. A re-grounding step
+that does not enumerate the upstream's decisions exhaustively produces a false all-clear.
+
+**5. Reviews can terminate without a verdict and nothing notices.** Two of 76 cross-reviews
+(`pm-PROPERTIES-v1`, `te-PLAN-v1`) have no `VERDICT:` line — one truncated mid-table, one left
+`*(pending)*`. Both were superseded by the next round, so the pipeline never saw them. A missing
+verdict should be as loud as a `Needs revision`.
+
+**6. Approval anchors were absent from every round-1 and every `Needs revision` review** — 30 of 76
+files carry `APPROVAL-HASH: unavailable`. That is correct behaviour (nothing is approved yet), but it
+means the §6 Approval Record's coverage is a direct function of how many rounds a doc took, not of how
+well it was reviewed.
+
+**7. DoD converged in 3 rounds and found zero code-quality defects.** All findings across
+`CODE_REVIEW-v1..v3` were §3/§4 integration-boundary (criterion 6a/6b) findings against *documentation*
+surfaces. Each remediation diff introduced new 6a findings of its own (v1 → B-5/B-6 in v2), which is
+why 3 rounds were needed rather than 2. Remediating a stale-prose finding is itself a stale-prose risk.
+
+**8. High iteration counts were not waste.** TSPEC and PLAN at 7 rounds each include 2 upstream-cascade
+confirmation rounds where the document's bytes did not move at all. Counting those as "iterations"
+overstates churn; what they measure is upstream volatility, not downstream quality.
+
 ## 5. Open Items for Consolidation
 
 ## 6. Approval Record
