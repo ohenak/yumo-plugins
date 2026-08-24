@@ -163,6 +163,52 @@ a pointer to the arm that discharges the re-invocation conjunct so the trace is 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | PLAN §2.1's T-12 row states `git ls-files pdlc/workflows/coverage` returns **94** tracked files and that commit `b1b846bd` added three machine-local paths to the index. At the current merge base both are already false (`0` tracked coverage files; `.claude/` tracked set is exactly the two shared files), so T-12 was a no-op after the BL-04 rebase. Was that confirmed at implementation time, or did T-12 pass vacuously? I have routed the stale measurement as a PLAN erratum rather than a finding, since the document is upstream of this review. |
+| Q-02 | On F-03: was the decision to leave the ledger out of `pdlc/OPERATIONS.md` deliberate (the announcement is self-documenting, per FSPEC §3.3) or simply not scoped into any task? PLAN §2.1 assigns no task an `OPERATIONS.md` edit, which suggests the latter. |
+
+## Positive Observations
+
+- **The three ACs I most expected to be softened are the ones landed most strictly.** REQ-WVR-08's
+  "outcome catalogue closed at three" is a genuine set-equality check, not containment —
+  `waveResume.test.js:26` asserts `new Set(RESUME_OUTCOMES)).toEqual(new Set(["full-run","resume","skip-phase"]))`
+  **and** `.length).toBe(3)`, against a literal transcribed from the spec rather than read back out
+  of the module. The same shape covers the `implementation.*` key surface (`:83`, AT-08 conjunct 2).
+  A deleted outcome fails a test.
+- **AT-12's oracle is call counts, not absence.** REQ-WVR-08's "Phase I skipped in full" could have
+  been discharged with a "no commit was produced" assertion that cannot tell a skipped V-wave from a
+  V-wave that ran with nothing to add. It was not: the shipped arm counts agent dispatches and gate
+  invocations on the seams, and separately pins Phase PT's one dispatch and one gate call. That is
+  the distinction the AC actually cares about.
+- **Negative arms carry their positive conjunct on the same path throughout.** The clearest example
+  is `waveExecution.test.js:2621-2658`: rather than assert only that `forcePhases` cannot override
+  the ledger, the arm asserts the token is *rejected* with the six-token catalogue named, then adds
+  the control — same forced run with the ledger removed dispatches `["T1","T2","T3"]`. "The lever
+  does not exist" and "the lever exists and loses" are separated deliberately.
+- **REQ-WVR-10's ignore-rule anchoring is asserted against the rule, not against observed quiet.**
+  `waveResumeRepoState.test.js:63-83` checks line **equality** (`toContainEqual`), root-anchoring on
+  the matched line, and `git check-ignore -v` resolving to *that* line — with the forbidden weakenings
+  (`some(line => line.includes(...))`, "no churn observed") named in a header comment so a reviewer
+  can check they were avoided. This is the AC's "anchored to an ignore rule, not to nobody happening
+  to stage it" read literally.
+- **Provenance is announced in exactly the places TSPEC §2.4 enumerates, and nowhere else.** Five
+  announcing rows (`orchestrate-dev.js:16207, 16220, 16292, 16308, 16320`) plus the two Phase I
+  report rows (`:16594`, `:16605`), with the wave-1 `All M waves complete (…)` string kept verbatim
+  so the pre-existing report contract is unchanged. REQ-WVR-01's "resume point and provenance in both
+  the run log and the report" is satisfied on both channels.
+- **The ancestry probe is genuinely lazy and the reason is written down where it can be checked.**
+  `ANCESTRY_INDEPENDENT_CODES` (`:12896`) plus the `outcome === "full-run" &&` conjunct at the call
+  site keep the `merge-base` probe off the paths whose verdict it cannot change, and the comment
+  states the invariant rather than asserting it in prose only.
+- **Runtime artifact and CI gate both green at review time**, which matters for a feature whose whole
+  value is a run that resumes: `build-runtime.mjs --check` → `in-sync`; 212 tests across the seven
+  touched suites pass; `npm run test:coverage` exits 0 at 88.87 % branches on `orchestrate-dev.js`.
+- **REQ-WVR-05's honest framing survived into code.** The requirement was moved from "self-clearing"
+  to "self-invalidating" during authoring, and the shipped retention comment above the `⏭` report row
+  (`:16584-16591`) states exactly that rationale — a halt in CR/DOD/PUB must not re-dispatch a green
+  wave. Documents and code agree.
+
 ## Positive Observations
 
 ## Recommendation
