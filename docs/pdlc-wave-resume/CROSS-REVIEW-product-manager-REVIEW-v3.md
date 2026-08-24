@@ -263,4 +263,45 @@ provide.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both of my round-2 findings are closed, one of them more thoroughly than I asked. No High finding is
+open — mine or anyone's — and the delta broke nothing I had previously approved: the single property
+it reverses (the empty-range hard failure) was a defect in my own round-2 reading, and the protection
+I actually cared about survives in a stronger, mechanically-separated and individually-tested form.
+The feature's suites went 191 → **205 tests, all passing**; the runtime artifact is `in-sync`;
+`npm run test:coverage` exits **0** with **0** uncovered lines inside the feature's introduced
+ranges.
+
+The product bar this phase sets is met. Every P0 and P1 requirement traces to a production caller
+reached from `main()`; every AC claiming an operator-visible artifact is driven through that caller,
+not through a builder's own unit test; there is no zero-caller seam and no dead config — including
+the one tooling artifact this round adds, whose own wiring is asserted and whose five exit paths are
+now each driven by a named case. Closed catalogues are checked by set-equality against literal
+transcriptions, and every negative assertion I checked carries its paired positive on the same path.
+
+The two findings I file are recorded, not gating:
+
+1. **F-01 (Medium, Cross-Feature).** Give the now-permanent delta-coverage gate a durable home
+   outside this feature's PLAN — one paragraph in `pdlc/OPERATIONS.md` beside the wave-ledger entry
+   (what it asserts, the one benign green, the four fail-closed reds, and that the resolved base is
+   printed so a red is attributable), indexed from `CLAUDE.md`'s CI section. `CLAUDE.md`'s four-check
+   table needs no change: the gate lives inside `Unit tests`, it is not a fifth check. If the team
+   prefers to route this at harvest rather than retro-fit it, that is acceptable — but route it, and
+   promote the general lesson (*a feature that promotes its own tool into a permanent repo-wide
+   control has not finished until that control is documented outside the feature*) to
+   `docs/_constraints/DOMAIN-CONSTRAINTS.md`.
+
+2. **F-02 (Low, Local).** In `waveResumeDeltaGate.test.js:216-226`, either assert the invoked-directly
+   guard behaviourally or retitle the case to say it is a source-shape reminder. A text match that
+   survives commenting out the line it quotes should not carry an oracle's title.
+
+One item is **not** mine to fold into this verdict and is routed upstream instead, unchanged from v2:
+FSPEC AT-16 still states an unqualified behavioural-parity requirement that DEC-WVR-07 deliberately
+narrowed and that no shipped test meets. It is a defect in the document that this work derives from,
+not in the work, so it goes back to FSPEC's author as an erratum (see Q-01).
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
