@@ -213,4 +213,38 @@ a pointer to the arm that discharges the re-invocation conjunct so the trace is 
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01) — PLAN batch 4 / T-10 is unimplemented and the PLAN ships with
+`*(filled in by T-10…)*` placeholders in §4.5.1 — and by the approval rules any High finding means
+Needs revision.
+
+To be clear about what this verdict is and is not saying: every acceptance criterion I traced from
+REQ §7 through FSPEC §6 to a production caller is implemented and driven from `main()`, all eighteen
+ATs have an owning test file, the CI gate the pipeline polls is green, and the oracle forms are the
+strict ones the specs asked for (set equality, call counts, paired positives, rule-anchored ignore
+check). This is good work that stopped one batch short of its own plan.
+
+Exactly what to change, in order:
+
+1. **F-01 (blocking).** Implement PLAN §2.1's T-10 in `waveResume.test.js` and
+   `waveExecution.test.js`: assert `orchestrate-dev.js`'s c8 per-file branch number `>= 85` (report
+   the whole-command exit status, do not assert it), and add the delta arm asserting no uncovered
+   line falls inside the ranges this feature introduced. Then replace every
+   `*(filled in by T-10…)*` cell in PLAN §4.5.1 with the measured covering-test name, and tick
+   §4.5's two coverage DoD checkboxes.
+2. **F-02 (non-blocking).** Tick PLAN §2.1's status cells for the seven tasks that landed, so the
+   status column carries signal, and raise the "PLAN task ids minus landed task ids is empty" check
+   for the DoD phase.
+3. **F-03 (non-blocking).** Add one subsection to `pdlc/OPERATIONS.md` covering
+   `.claude/pdlc-wave-state.json`, the three outcomes, the six disregard causes and the deletion
+   hatch. No behaviour change, no REQ/FSPEC edit.
+4. **F-04 (non-blocking).** Sequence the two invocations inside the AT-09 arm, or annotate it with a
+   pointer to the arm that discharges the re-invocation conjunct.
+
+Items 2–4 are recorded, not gating; item 1 alone is what the next round has to close.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
