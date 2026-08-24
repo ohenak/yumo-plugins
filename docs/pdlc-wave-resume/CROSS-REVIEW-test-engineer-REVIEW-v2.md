@@ -151,8 +151,78 @@ row — that is the falsifying test for the fix itself.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-03 | Is oracle (ii) meant to outlive the feature? PLAN §4.5.1 wires it into a permanent required check but describes it entirely in this feature's terms ("this feature's introduced line ranges", a pinned pre-feature base sha). If it is permanent, F-08 fix option 1 is the one to take and the script needs a name and a docstring that do not say `wave-resume`; if it is a feature-duration control, option 2 plus a retirement item. The answer changes the fix, so it belongs in the PLAN before the code lands. |
+| Q-04 | `PINNED_BASE_SHA` (`:43`) is described as the deterministic fallback, but nothing asserts it is still an ancestor of `main` or that it precedes the feature's first commit. `learningsBaselineGuard.test.js`'s `EXPECTED_MERGE_BASE_SHA` precedent is cited — does that suite assert its pin's reachability, and if so should this one borrow the same assertion? A silently-wrong pin only surfaces in the fallback path, which CI never takes. |
+
 ## Positive Observations
+
+- **Every v1 finding was closed with an oracle, not with prose.** F-02 could
+  have been answered by deleting a comment; instead it landed as a source-text
+  assertion **with a positive conjunct** (`Phase I's script-owned resume
+  pointer (pdlc-wave-resume)` must be present), which is precisely the shape
+  that survives the next well-meaning tidy-up. F-03 landed as two-way set
+  equality plus a binder test tying the compensation to the exclusion it
+  compensates for — a pattern I would like to see reused the next time a
+  census exemption is granted.
+- **The `over-count` fix was folded into the existing table rather than
+  bolted alongside it.** The weaker standalone test was deleted, not left to
+  rot, and the table's blanket `merge-base` `toEqual([])` was generalised to a
+  per-row expected list rather than relaxed to `toContainEqual` — the easy,
+  wrong way to make a heterogeneous row fit. Equality survived the
+  generalisation on both sides.
+- **The mutation duty was actually discharged and recorded.** `e6f9f776`'s
+  message states the field swap at `orchestrate-dev.js:12989` was applied, the
+  new row observed RED with the received log array, then reverted and `dist`
+  rebuilt with `--check` in-sync. That is PROP-COV-03 done properly.
+- **The retry weakening from v1 F-04 came back bounded rather than defended.**
+  `attemptsRaced === 5` is now asserted false, so exhaustion reads as its own
+  named failure instead of vanishing into the generic exit-status check. This
+  is the right response to "retry-until-green hides a real defect".
+- **Q-01 was answered in code.** The short-sha conjunct at
+  `waveExecution.test.js:2506` closes the classifier→renderer wiring for
+  `head-unreachable` without pinning a fixture-dependent line, and the comment
+  explains the trade-off for the next reader.
+- **The §4.5.1 completeness oracle is genuinely three independent conjuncts**
+  — branch-class set equality against a **transcribed** literal (not read back
+  out of the PLAN under test), a no-placeholder check, and a
+  title-exists-in-the-named-file check with a `checked >= 20` floor so an
+  empty parse cannot read as green. The floor is the detail that makes it hard
+  to false-green, and it was not asked for.
+- **The delta-coverage idea itself is right.** A 16,300-line file with a
+  whole-file percentage floor genuinely cannot see 24 new branches; a
+  delta-scoped uncovered-line check is the correct compensating control, and
+  it found a real gap (the `self-report gate` ternary arm) on its first run.
+  F-08 is about its lifecycle, not its premise.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-08), and it is the only thing standing between this branch
+and approval. Everything I raised in v1 is closed, closed well, and closed with
+tests that can fail — this is a strong round, and the new gate is a good idea
+executed with one unexamined terminal case.
+
+To reach approval:
+
+1. **F-08 (required).** Make the empty-delta case a success rather than a
+   `fail` in `check-wave-resume-delta-coverage.mjs`, per option 1 (or option 2
+   with an explicit retirement item), so `npm run test:coverage` does not go
+   red on `main` and on unrelated branches the moment this merges. Keep the
+   genuinely-broken cases failing.
+2. **F-09 (required alongside it, and cheap).** Add a small suite over the
+   script with four rows — base already contains the delta (the F-08 case,
+   expect exit 0 with the new message), uncovered line inside a range (expect
+   exit 1), missing `coverage-final.json` (expect exit 1), subject absent from
+   the report (expect exit 1) — driven by a synthetic `coverage-final.json` and
+   a synthetic base, asserting exit status **and** the message. Without it the
+   fix has no falsifying test of its own.
+
+F-10, F-11, F-12 and F-13 are cleanups and do not gate.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 4}
