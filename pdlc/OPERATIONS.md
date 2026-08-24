@@ -27,6 +27,23 @@ Three further behaviours, added by the orchestrate-dev optimization (Slice A):
 
 With a valid ownership manifest, Phase I runs **same-tree waves instead of worktree batches**: waves = topological ready-sets partitioned into ownership-disjoint groups (`computeWaves`; a directory entry collides with everything under it), agents are dispatched without worktree isolation and told not to commit, and **the script owns the gate** — after each wave it runs `.claude/pdlc.config.json` → `implementation.testCommand` through the `_runCommand` seam, then (optionally) `implementation.postWaveCommand`, and only then commits each task's work itself, pathspec-scoped to the task's owned files (never `-a`), with an index.lock retry (5 × 5 s). `implementation.postWavePathspecs` names build outputs (e.g. `pdlc/workflows/dist/`) committed as a per-wave chore commit. Missing `testCommand` or an absent `_runCommand` seam degrades to the legacy self-report gate with a notice; a PLAN with no manifest (reachable only when Phase P was skipped on a recorded approval) degrades to the legacy worktree path. Worktrees are the exception path, not the default.
 
+### The wave ledger — Phase I's automatic resume pointer
+
+Phase I keeps a **machine-local resume record** at `.claude/pdlc-wave-state.json` (git-ignored by a root-anchored rule, never tracked content). After each wave's gate passes and its work is committed, the script rewrites the record with the feature name, a hash of the derived wave plan, the wave number just committed and the commit it landed on. A later invocation over the same feature reads it and decides one of three outcomes, always announced on the run log:
+
+| Outcome | What the operator sees |
+|---|---|
+| **resume** | `Resuming at wave N of M (wave ledger .claude/pdlc-wave-state.json). Waves 1–K were committed and recorded green by an earlier run of this same plan; the first executed wave's gate still verifies the whole tree. Delete .claude/pdlc-wave-state.json to force a full run. (provenance: automatic)` |
+| **skip Phase I** | `Skipping Phase I (wave ledger …): all M waves of this plan were committed and recorded green by an earlier run. Delete … to force a full run. (provenance: automatic)` |
+| **ignore, run everything** | `Notice: the wave ledger … was ignored — {reason}. Running every wave from 1. (provenance: automatic)` |
+
+The record is only ever honoured when it names **this** feature and hashes to **this** plan, and when the commit it records is an ancestor of `HEAD`. Otherwise it is disregarded with the reason spelled out — one of seven: unreadable JSON, not a JSON object, fields of the wrong shape, a different feature, a changed PLAN wave layout, a recorded commit that is not an ancestor of HEAD (the branch was reset or re-cut), or more waves recorded green than the plan has. A missing record is the ordinary fresh-run case and is **silent**. Every rejection is a notice and a full run — never a halt — so the ledger can only ever cost time, not correctness. The first executed wave's gate verifies the whole tree regardless of where the resume starts.
+
+**The escape hatch is deletion.** `implementation.forcePhases` cannot name Phase I and will not override the ledger; to force every wave to re-run, delete `.claude/pdlc-wave-state.json`. That instruction is printed in both honouring announcements above, so an operator surprised by a run that started at wave 4 reads the fix in the same line that surprised them.
+
+`implementation.startWave` remains the **manual** pointer and outranks the record: when it is set, the run announces `(provenance: operator-set)` and the ledger is not consulted.
+
+
 ## Continuous integration
 
 The required-check table — four checks across `.github/workflows/pr-tests.yml` and `.github/workflows/fixture-machine.yml`, whose membership is decided by each file's `on:` trigger rather than its name — lives in `CLAUDE.md`'s `### Continuous integration` section, which is the oracle-covered citation of FSPEC §5.1. This section carries only the rationale behind those rows.
