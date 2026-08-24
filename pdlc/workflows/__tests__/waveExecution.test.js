@@ -2355,11 +2355,46 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
     expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3]);
   });
 
+  // PROP-REPO-03 (REQ-WVR-10's RUN half; CODE_REVIEW v1 §2-12). The repo half —
+  // `.gitignore` naming the path — is asserted in waveResumeRepoState.test.js,
+  // and it only proves the file is ignorable. It cannot see a run that stages
+  // the record explicitly: `git add -- <path>` overrides `.gitignore`. This is
+  // the run-side conjunct, and it is emergent — no wave owns the path, so no
+  // other test in this suite looks at the `add` argv list at all.
+  it("no commit a full run produces ever stages the wave ledger", async () => {
+    const writes = [];
+    const gitCalls = [];
+    const result = await main(makeLedgerArgs({ writes, git: makeGit(gitCalls) }));
+
+    expect(result.outcome).toBe("success");
+    // Three waves were recorded, so the run really did reach every commit site
+    // whose staging this assertion is about.
+    expect(ledgerWrites(writes).map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3]);
+
+    const staged = gitCalls.filter((a) => a[0] === "add").flat();
+    // Positive presence: this run DID stage work, so the absence below is a
+    // fact about what was staged, not about a run that staged nothing.
+    expect(staged.length).toBeGreaterThan(0);
+    // The record itself is never among it — flattened, so a multi-pathspec
+    // `add` cannot hide the path in a later argv position.
+    expect(staged).not.toContain(WAVE_STATE_PATH);
+    expect(staged).not.toContain(".claude/pdlc-wave-state.json");
+    // Nor by any suffix: an absolute or `./`-prefixed spelling of the same file.
+    expect(staged.filter((p) => String(p).endsWith("pdlc-wave-state.json"))).toEqual([]);
+  });
+
   it("a complete ledger skips every wave without a single implementation dispatch — and Phase PT's V-wave and its gate still run", async () => {
     const record = [];
     const logs = [];
     const writes = [];
     const gateCommands = [];
+    // PROP-SKIP-04 (CODE_REVIEW v1 §2-13): the `add`-list oracle needs a
+    // RECORDING double. `makeGit([])` discards its own argv log, so the
+    // flattened-`add` half could only ever have been written as an absence
+    // claim about a list nobody kept — the absence-only shape PROPERTIES R-3
+    // forbids. Keeping the calls lets the same run carry its positive
+    // live-seam conjunct (the branch guard) beside the negative one.
+    const gitCalls = [];
     const ledger = JSON.stringify({
       version: 1,
       feature: FEATURE,
@@ -2376,7 +2411,7 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
         record,
         logs,
         writes,
-        git: makeGit([]),
+        git: makeGit(gitCalls),
         runCommand: async (command) => {
           gateCommands.push(String(command));
           return { ok: true, output: "green" };
@@ -2393,6 +2428,16 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
     expect(logs.some((m) => m.startsWith("Skipping Phase I (wave ledger"))).toBe(true);
     // The record is left standing for the invocation after this one.
     expect(ledgerWrites(writes)).toEqual([]);
+
+    // ── PROP-SKIP-04, both halves on ONE run ────────────────────────────────
+    // Negative: zero `git add` for wave work. Flattened exactly as PROP-REPO-03
+    // flattens, so a multi-pathspec `add` cannot hide behind `argv[2]` and
+    // `add -A` cannot read as `undefined`.
+    expect(gitCalls.filter((a) => a[0] === "add").flat()).toEqual([]);
+    // Positive (i): the git seam was WIRED and LIVE on this same run — the
+    // branch guard's `readHeadBranch` went through it. Without this conjunct
+    // an empty `add` list cannot be told apart from a disconnected double.
+    expect(gitCalls).toContainEqual(["rev-parse", "--abbrev-ref", "HEAD"]);
 
     // ── The positive half: the safety claim, asserted rather than commented ──
     // "Phase PT's V-wave verification is its own phase and still runs" was true
@@ -2803,6 +2848,12 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
   // ancestry block's HEAD_SHA (which is scoped to that describe) so the two
   // fixtures cannot be confused for one another.
   const OVER_COUNT_HEAD = "b".repeat(40);
+  // A `head` on a record whose disregard reason is ancestry-INDEPENDENT. The two
+  // rows below carry it so the zero-probe conjunct has something to be about:
+  // with no `head` in the fixture, `headCorroborated` short-circuits before it
+  // probes and an eagerly-probing build is indistinguishable from a lazy one
+  // (TSPEC §5.5 mutation 4, measured surviving in CODE_REVIEW v1's remediation).
+  const DISREGARDED_HEAD = "c".repeat(40);
 
   // Each row carries its expected filtered `merge-base` call list as a fourth
   // element, because the codes are NOT uniformly ancestry-independent: guards
@@ -2828,13 +2879,25 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
     ],
     [
       "a record for another feature",
-      JSON.stringify({ version: 1, feature: "other-feat", planHash: "deadbeef", lastGreenWave: 1 }),
+      JSON.stringify({
+        version: 1,
+        feature: "other-feat",
+        planHash: "deadbeef",
+        lastGreenWave: 1,
+        head: DISREGARDED_HEAD,
+      }),
       'it records feature "other-feat", not "test-feat"',
       [],
     ],
     [
       "a plan hash that no longer matches",
-      JSON.stringify({ version: 1, feature: FEATURE, planHash: "00000000", lastGreenWave: 1 }),
+      JSON.stringify({
+        version: 1,
+        feature: FEATURE,
+        planHash: "00000000",
+        lastGreenWave: 1,
+        head: DISREGARDED_HEAD,
+      }),
       "the PLAN's wave layout has changed since it was written",
       [],
     ],

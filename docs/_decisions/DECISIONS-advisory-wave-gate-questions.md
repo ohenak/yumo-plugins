@@ -26,7 +26,8 @@ Q-1…Q-5 below).
   cross-invocation counter, new machinery rather than reuse of A1–A5's `runAdvisorySeam` attempt
   counter (`pdlc/workflows/orchestrate-dev.js:3350-3457`); (b) the "headroom for a second unrelated
   failure" rationale has no observed instance — both motivating incidents were single-wave; (c) the
-  interim wave ledger (`WAVE_STATE_PATH`, `orchestrate-dev.js:9976`) means a halt after one repair
+  wave ledger (`WAVE_STATE_PATH`, defined in `pdlc/workflows/orchestrate-dev.js` — interim when this
+  decision was taken, shipped by `pdlc-wave-resume` on 2026-08-24) means a halt after one repair
   resumes at the failed wave on re-invocation, so a budget of 1 costs one wave on re-run, not a
   phase. Also, any value bounds per-invocation drift only, so R-3's "compounding drift across waves"
   wording slightly overclaims what the knob controls. The operator's actual question: after A6 has
@@ -37,12 +38,24 @@ Q-1…Q-5 below).
   distinct wave per run, and a second red wave in the same run escalates. The deciding argument is
   the one the analysis names: a second unattended repair would land on top of a first repair no
   human has seen, and re-invocation is cheap. Two costs are accepted rather than hidden. (i) The
-  "budget 1 costs one wave, not the phase" consolation depends on the interim ledger resuming the
-  failed wave, and the ledger is not observably firing (the operational finding at
-  `docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md` §1, queue row 20) — so today a budget of 1 can cost a full Phase-I re-run. (ii)
+  "budget 1 costs one wave, not the phase" consolation depends on the ledger resuming the
+  failed wave, and **as of 2026-08-13** the ledger was not observably firing (the operational
+  finding at `docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md` §1, queue row 20) — so on that date a
+  budget of 1 could cost a full Phase-I re-run. (ii)
   R-3's "compounding drift across waves" wording still overclaims what a per-run knob controls;
-  FSPEC should narrow it. Revisiting to `2` is in scope once wave resume lands and re-invocation
-  demonstrably resumes the failed wave — recorded as revisitable, not settled forever.
+  FSPEC should narrow it. Revisiting to `2` was recorded as in scope once wave resume landed and
+  re-invocation demonstrably resumed the failed wave — revisitable, not settled forever.
+
+  **Update 2026-08-24 — cost (i) is discharged; the deferral is closed at `1`.** `pdlc-wave-resume`
+  (queue row 20) shipped the ledger as a first-class mechanism: it fires observably under the five
+  announced outcomes catalogued in `docs/pdlc-wave-resume/TSPEC-pdlc-wave-resume.md` §2.4, and a
+  re-invocation resumes at the failed wave (`REQ-WVR-01`, exercised by
+  `pdlc/workflows/__tests__/waveExecution.test.js`). The trigger this deferral named has therefore
+  arrived, and it lands on the side of the shipped default: with resume live, a budget of `1` really
+  does cost one wave rather than a phase, which is the argument the decision rested on. No successor
+  REQ or queue row is opened for a `2`, and this deferral is closed — raising the budget now needs a
+  fresh REQ making a positive case, not this record's standing permission. The 2026-08-13 decision
+  and its analysis above are left as written, as the dated record of what was known then.
 - **Q-2** — Should A6 also fire on a post-wave command failure (M-WG-2)? Proposed **no** (AC-1.2),
   because that failure is a build failure the script has already attempted and its repair is
   usually the same repair a wave task owes. Bound as D-AWG-04 if the operator wants it revisited.

@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft |
 | Author | te-author |
-| Version | 1.5 |
+| Version | 1.6 |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/`) |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v2.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v2.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v3.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v3.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v4.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v4.md`, `CROSS-REVIEW-product-manager-PROPERTIES-v5.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v5.md` |
@@ -20,6 +20,7 @@
 | 1.3 | Round-3 cross-review revision. **The grounding table and G-4 re-measured in this tree** (SE F-06): the OB-F1 rebase has landed — `git rev-list --count HEAD..origin/main` is `0` and `git merge-base --is-ancestor origin/main HEAD` succeeds — so the mechanism, the ignore rule and the coverage tooling are all present here, and the tracked `.claude/` and `pdlc/workflows/coverage/` paths are a commit made **on this branch**, not pre-rebase state a rebase will clear. **§ 11's local-red enumeration completed** (SE F-07): `documentOracles.test.js` fails three tests, not one, and the third — `PROP-SWEEP-2(b)` — reds on this feature's own artifacts against A-1's frozen glob list; recorded, with the missing owner routed as an `ERRATUM: PLAN` line. **Queue fixture 2 restated at the seam** (SE F-08): the double's *last `TRIAGE:` line*, not its last line. **AT-12's traceability row annotated** with the routed commit clause and **PROP-SKIP-04 re-traced** to AT-12's fourth conjunct less that clause (PM F-01, F-03). **TSPEC §5.8's three-module `c8.include` list routed** as an erratum instead of only being corrected locally (PM F-02). No property was added, deleted or weakened. |
 | 1.4 | Round-5 delta-confirmation revision against TSPEC v1.4 (both v5 reviews). **AT-05's write-side conjunct owned** (PM/SE F-01): PROP-OVERRIDE-01 gains the conjunct — `ledgerWrites` non-empty, plan-absolute `lastGreenWave`, same `startWave: 2` fixture — and the mutation → oracle map gains TSPEC §5.5's fifth row (suppressed write under `explicitPointer`), with PROP-COV-03 counting five and noting PLAN §4.3's pending cascade rather than resolving it silently. **The §5.7 run-count and §5.8 c8-include routed errata closed as landed** (F-02, F-03): TSPEC v1.4 pins `numRuns: 500` and the four-entry include set, so both rows are re-labelled closed-by-owner, the `ERRATUM: TSPEC` routings are dropped, and § Fixtures' run-depth paragraph is restated as three-way agreement. **PROP-OVERRIDE-05's rationale restated on the discriminating conjunct** (PM F-04): the notice precedes any resume decision; the rejected-value framing does not discriminate. **`TSPEC:838` anchor replaced by `TSPEC §5.8`** (PM F-05, DEC-DOC-01). No property was deleted or weakened; one conjunct and one mutation row were added. |
 | 1.5 | Cascade bookkeeping only — no property, oracle, fixture or trace changed. PLAN §4.3 landed its fifth mutation row at PLAN v1.4 (suppress the record write while `explicitPointer` is true; oracle `AT-05's **write-side** conjunct only`, owner T-07), so PROP-COV-03's "PLAN §4.3 still reads four … PLAN cascade is pending" note and the mutation → oracle map's matching parenthetical were false at HEAD; both are restated as three-way agreement between TSPEC §5.5, PLAN §4.3 and this map. The routed-errata ledger is re-verified against PLAN at HEAD in the same pass: the `ERRATUM: PLAN` halves of the AT-16 queue-fixture item (PLAN v1.2 T-04 re-files the `distribution.checkEnabled` config as inert and optional) and of the A-1 glob-list item (PLAN v1.2 adds T-11 as owner) are **closed by the owner**; the AT-12 row is restated on TSPEC v1.4's wording, and only two `ERRATUM: TSPEC` items remain routed. The PLAN-task trace gains rows for T-11 and T-12, PLAN v1.2's two precondition tasks, both correctly property-free. |
+| 1.6 | **Measurement refresh only — no property, oracle, fixture or trace changed** (CODE_REVIEW v1 §3 B-3). Three claims this document made about the tree were re-measured at the branch tip on 2026-08-24 and had become false: the tracked `.claude/` paths, the tracked `pdlc/workflows/coverage/**`, and the absent `A1_GLOBS` entry for `docs/pdlc-wave-resume/**`. `git ls-files .claude` now returns only `pdlc.config.example.json` and `settings.json`, `git ls-files pdlc/workflows/coverage` returns nothing, `git check-ignore -v .claude/pdlc-wave-state.json` exits 0 on `.gitignore:46`, and `documentOracles.test.js` passes all 35 tests. § Grounding's tracked-paths row, § Gaps **G-4**, § 11's two-local-red enumeration and the routed-errata `A1_GLOBS` row are restated as **closed**, each keeping its diagnosis and remedy, because the reasoning — a tracked path is why `check-ignore` goes silent, not a missing rule — is what a future reader needs. No red was closed by weakening an assertion. § Fixtures' ledger table gains the one substantive change of this pass: the `feature-mismatch` and `plan-changed` rows now carry a `head`, because without one the AT-03/AT-11 zero-probe conjunct was vacuous and TSPEC §5.5's mutation 4 survived — a strengthening, recorded with its measurement in `MUTATION-EVIDENCE-pdlc-wave-resume.md`. |
 
 ## Overview
 
@@ -56,16 +57,18 @@ at `origin/main`:
 | The mechanism under test is present **here** | `grep -c WAVE_STATE_PATH pdlc/workflows/orchestrate-dev.js`; `grep -n 'export const WAVE_STATE_PATH' …` | `10`; `:12864 export const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";` |
 | The ignore rule exists **here** | `grep -n pdlc-wave-state .gitignore` | `:46 /.claude/pdlc-wave-state.json` (and `:30`, its explanatory comment) |
 | `fast-check`, `c8` and `test:coverage` exist **here** | `grep -n 'c8\|fast-check\|test:coverage' pdlc/workflows/package.json` | `:9 "test:coverage"`, `:12 "c8": "^10.1.3"`, `:13 "fast-check": "^4.9.0"` |
-| Two `.claude/` paths and the c8 HTML report are **tracked**, by a commit made on this branch | `git ls-files .claude/ pdlc/workflows/coverage`; `git log --oneline -1 -- .claude/pdlc-wave-state.json` | `.claude/pdlc-wave-state.json`, `.claude/pdlc.config.json` (plus the two shared, reviewable files) and `pdlc/workflows/coverage/**`; introduced by `b1b846bd` on this branch, absent at `origin/main` |
+| Nothing machine-local is tracked any more — **re-measured 2026-08-24** | `git ls-files .claude/ pdlc/workflows/coverage`; `git check-ignore -v .claude/pdlc-wave-state.json` | only the two shared, reviewable files (`.claude/pdlc.config.example.json`, `.claude/settings.json`); `pdlc/workflows/coverage` → nothing; `check-ignore` exits **0** resolving `.gitignore:46:/.claude/pdlc-wave-state.json`. The `b1b846bd` tracking recorded at v1.3 was undone by later commits on this branch |
 
 **Consequence, restated.** The earlier consequence — "every property below is red in this tree and is
 expected to be, until the rebase lands" — no longer holds and must not be used to excuse a red. The
 rebase *has* landed; PLAN T-01's pre-flight gate, whose job is to prove exactly that, is expected to
-be **green** here, and PROP-PRE-01's five export/key resolutions all resolve in this tree. What is
-still red is narrower and has a different cause and a different remedy, recorded in § Gaps G-4 and
-enumerated in § 11: the tracked `.claude/` and `pdlc/workflows/coverage/` paths were **added by a
-commit on this branch**, so no rebase clears them — the remedy is `git rm --cached` on this branch,
-which is orchestrator-owned repo hygiene, not a change to any property here.
+be **green** here, and PROP-PRE-01's five export/key resolutions all resolve in this tree. The narrower red this
+paragraph used to carry — the tracked `.claude/` and `pdlc/workflows/coverage/` paths added by a
+commit on this branch — was closed by the `git rm --cached` remedy it named: **re-measured
+2026-08-24**, nothing machine-local is tracked and `check-ignore` resolves the rule directly. § Gaps
+G-4 and § 11 record the closure and keep the diagnosis, because the reasoning (a tracked path is why
+`check-ignore` goes silent, not a missing rule) is what a future reader needs. No property here
+changed at any point in that sequence.
 
 That distinction is load-bearing for PROP-REPO-01, whose third conjunct is the one actually failing
 and whose failure is *not* a missing ignore rule: `git check-ignore -v .claude/pdlc-wave-state.json`
@@ -206,7 +209,7 @@ form — the assertion that makes each row falsifiable — is in **§ Oracles**,
 | PROP-PARITY-01 | `orchestrate-queue`'s `_runPipeline` must be left at its default on the delegation path, and that fact must be asserted — an unconfigured queue call reaches `orchestrate-dev`'s exported default. | Integration | Q | AT-16 (i), DEC-WVR-07, BR-16 | T-04 · `waveResumeQueueParity.test.js` |
 | PROP-PARITY-02 | The delegation payload's key set must equal `["reqPath"]`, asserted with `toEqual` against a spy — so any queue-side resume configuration, seam override or `startWave` forwarding reds. | Contract | Q | AT-16 (ii), BR-16, V-15 | T-04 · `waveResumeQueueParity.test.js` |
 | PROP-PARITY-03 | The direct run's `_readFile` call list, filtered to the ledger path, must be string-equal to `WAVE_STATE_PATH`, and the queue must add nothing that could change it. | Contract | Q | AT-16 (iii), REQ-WVR-07 | T-04 · `waveResumeQueueParity.test.js` |
-| PROP-PARITY-04 | The falsification arm must be executed and its output recorded: mutating the queue to forward any additional key must red PROP-PARITY-02 while PROP-RESUME-01 … PROP-OVERRIDE-01 all still pass. A parity net that cannot be shown to fail is not a net. | Contract | Q | AT-16 falsification arm, PLAN T-04 | T-04 · task report |
+| PROP-PARITY-04 | The falsification arm must be executed and its output recorded: mutating the queue to forward any additional key must red PROP-PARITY-02 while PROP-RESUME-01 … PROP-OVERRIDE-01 all still pass. A parity net that cannot be shown to fail is not a net. The recording lives at `docs/pdlc-wave-resume/MUTATION-EVIDENCE-pdlc-wave-resume.md`, in the repository rather than in an agent transcript, and `waveResumeRepoState.test.js` asserts the artifact exists and enumerates the arm (CODE_REVIEW v1 §2-15). | Contract | Q | AT-16 falsification arm, PLAN T-04 | T-04 · `MUTATION-EVIDENCE-pdlc-wave-resume.md`, `waveResumeRepoState.test.js` |
 
 ### 9. The record never becomes tracked content
 
@@ -233,7 +236,7 @@ form — the assertion that makes each row falsifiable — is in **§ Oracles**,
 |---|---|---|---|---|---|
 | PROP-COV-01 | `npm run test:coverage` from `pdlc/workflows` must exit 0, and the measured per-file branch number for **`orchestrate-dev.js`** — the one c8-included module this feature edits — must be **≥ 85 and ≥ the baseline recorded below**, pasted into the owning task's report. This is a *regression guard scoped to the module the feature touches*, not an inherited gate over the other three included modules: a per-file red in `orchestrate-queue.js`, `build-runtime.mjs` or `scripts/capture-learnings-baseline.mjs` is a blocked task to be reported and routed, never a reason to weaken this property or the threshold. | Performance | C | RT-7, TSPEC §5.8, PLAN T-10 | T-10 |
 | PROP-COV-02 | c8's per-file uncovered-line list for `orchestrate-dev.js` must contain no line inside the ranges this feature introduces, and PLAN §4.5.1's mapping table must be **complete** — every branch class named, every row naming a covering test. A deleted case must fail that table's set equality rather than move a percentage by 0.05. | Observability | C | RT-7, PLAN §4.5.1 (F-05) | T-10 |
-| PROP-COV-03 | Each of TSPEC §5.5's **five** mutations must be **applied, observed RED against its named oracle, reverted, and its failure output recorded** in the owning task's report — a believed mutation is not an observed one. TSPEC §5.5 owns the count and PLAN §4.3 agrees with it at HEAD: PLAN v1.4's §4.3 carries the fifth row (suppressed write under `explicitPointer`, oracle `AT-05's **write-side** conjunct only`, owner T-07), so no count divergence remains open and the fifth's owner is T-07 per the mutation → oracle map. | Contract | C | PLAN §4.3 (F-04), TSPEC §5.5 | T-02, T-07 |
+| PROP-COV-03 | Each of TSPEC §5.5's **five** mutations must be **applied, observed RED against its named oracle, reverted, and its failure output recorded** in the owning task's report — a believed mutation is not an observed one. TSPEC §5.5 owns the count and PLAN §4.3 agrees with it at HEAD: PLAN v1.4's §4.3 carries the fifth row (suppressed write under `explicitPointer`, oracle `AT-05's **write-side** conjunct only`, owner T-07), so no count divergence remains open and the fifth's owner is T-07 per the mutation → oracle map. The five recordings live at `docs/pdlc-wave-resume/MUTATION-EVIDENCE-pdlc-wave-resume.md` — a tracked home, because a duty whose evidence sits only in an agent transcript cannot be checked after the fact (CODE_REVIEW v1 §2-14) — and `waveResumeRepoState.test.js` asserts that artifact enumerates all five with their named oracles and real failure output. | Contract | C | PLAN §4.3 (F-04), TSPEC §5.5 | T-02, T-07 · `MUTATION-EVIDENCE-pdlc-wave-resume.md`, `waveResumeRepoState.test.js` |
 
 **Measured baseline (SE F-04) — the numbers PROP-COV-01 rides on, measured, not assumed.**
 `test:coverage` is two stages: stage 1 runs `c8 npm test -- --runInBand` under the `c8` block's
@@ -266,24 +269,27 @@ No included module is under the floor today, so PROP-COV-01 starts from a green 
 inheriting a red one — which is the fact that makes it a usable regression guard. Two caveats the
 implementer must carry: (i) none of the four CI checks in the repo's `CLAUDE.md` table runs
 `test:coverage`, so this floor is held green only by the owning task actually running it (RK-2, PLAN
-T-10); (ii) `npm test` in this tree has **two distinct local reds**, both in
-`documentOracles.test.js`, which fails **three** tests, not one — enumerated below and neither of
-them coverage. The numbers above are from the c8 report itself, whose stage-2 check exited **0**.
+T-10); (ii) `npm test` in this tree had **two distinct local reds** when this section
+was written, both in `documentOracles.test.js`, which failed **three** tests, not one — enumerated
+below and neither of them coverage. **Both are closed at HEAD as of 2026-08-24** (CODE_REVIEW v1 §3
+B-3): `documentOracles.test.js` passes all 35 of its tests here. The table is kept with each row's
+closing evidence, because the remedy each red needed is the durable part. The numbers above are from
+the c8 report itself, whose stage-2 check exited **0**.
 
-**The two local reds, re-measured on 2026-08-23 (SE F-06, SE F-07).** Naming both matters because an
-implementer meeting a red suite has an obviously wrong remedy available — softening the assertion —
-and each red has a different owner and a different fix:
+**The two local reds, raised 2026-08-23 (SE F-06, SE F-07), re-measured and CLOSED 2026-08-24.**
+Naming both still matters because an implementer meeting either red again has an obviously wrong
+remedy available — softening the assertion — and each red had a different owner and a different fix:
 
-| Red | Failing tests | Cause | Owner / remedy |
+| Red | Failing tests | Cause | Owner / remedy — and how it closed |
 |---|---|---|---|
-| Tracked machine-local state | `` `.claude/` machine-local state is untracked and stays untracked (CODE_REVIEW v1 §1-1) `` — both of its tests (`none of the six machine-local artifacts are tracked`; `the only tracked files under .claude/ are the two shared, reviewable ones`) | `.claude/pdlc-wave-state.json` and `.claude/pdlc.config.json` were **committed on this branch** (`b1b846bd`), along with `pdlc/workflows/coverage/**`; none of them is at `origin/main`. This is not pre-rebase state — see § Gaps G-4 | Orchestrator-owned repo hygiene: untrack the paths on this branch (`git` `rm --cached`), leaving the working files in place. No rebase clears it, and no property here changes |
-| The retirement sweep | `PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty — AC-1.2's required-empty gate` | This feature's own tracked artifacts hit `L2_TERMS` — `TSPEC-pdlc-wave-resume.md`, `PLAN-pdlc-wave-resume.md`, `PROPERTIES-pdlc-wave-resume.md` and several of this feature's cross-review files quote the retired `distribution.checkEnabled` key while documenting its retirement — and `docs/pdlc-wave-resume/**` is **not** on `A1_GLOBS`, whose entries include `docs/pdlc-plugin-retirement/**`, `docs/pdlc-advisory-wave-gate/**` and `docs/pdlc-learnings-injection/**` | Not this document's to fix: it needs a row in `docs/_constraints/pdlc-retirement-baseline.md`'s glob table plus the matching `A1_GLOBS` entry, on the precedent of `docs/pdlc-advisory-wave-gate/**` (same rationale — the feature's subject matter *is* the retired mechanism). **PLAN T-11 owns it** as of PLAN v1.2 (batch 1, wave-gate precondition, deliverables `documentOracles.test.js` + `docs/_constraints/pdlc-retirement-baseline.md`), so the routed `ERRATUM: PLAN` line is closed; the entry is still absent at HEAD (`A1_GLOBS`, `documentOracles.test.js:712`), which is why the red is recorded here |
+| ~~Tracked machine-local state~~ **CLOSED 2026-08-24** | `` `.claude/` machine-local state is untracked and stays untracked (CODE_REVIEW v1 §1-1) `` — both of its tests (`none of the six machine-local artifacts are tracked`; `the only tracked files under .claude/ are the two shared, reviewable ones`) | `.claude/pdlc-wave-state.json` and `.claude/pdlc.config.json` were **committed on this branch** (`b1b846bd`), along with `pdlc/workflows/coverage/**`; none of them is at `origin/main`. This is not pre-rebase state — see § Gaps G-4 | Orchestrator-owned repo hygiene: untrack the paths on this branch (`git` `rm --cached`), leaving the working files in place. No rebase clears it, and no property here changes. **Done:** at HEAD `git ls-files .claude` returns only the two shared files and `git ls-files pdlc/workflows/coverage` returns nothing, so both tests pass |
+| ~~The retirement sweep~~ **CLOSED 2026-08-24** | `PROP-SWEEP-2(b): the unfiltered sweep minus A-1's frozen glob list is empty — AC-1.2's required-empty gate` | This feature's own tracked artifacts hit `L2_TERMS` — `TSPEC-pdlc-wave-resume.md`, `PLAN-pdlc-wave-resume.md`, `PROPERTIES-pdlc-wave-resume.md` and several of this feature's cross-review files quote the retired `distribution.checkEnabled` key while documenting its retirement — and `docs/pdlc-wave-resume/**` is **not** on `A1_GLOBS`, whose entries include `docs/pdlc-plugin-retirement/**`, `docs/pdlc-advisory-wave-gate/**` and `docs/pdlc-learnings-injection/**` | Not this document's to fix: it needs a row in `docs/_constraints/pdlc-retirement-baseline.md`'s glob table plus the matching `A1_GLOBS` entry, on the precedent of `docs/pdlc-advisory-wave-gate/**` (same rationale — the feature's subject matter *is* the retired mechanism). **PLAN T-11 owns it** as of PLAN v1.2 (batch 1, wave-gate precondition, deliverables `documentOracles.test.js` + `docs/_constraints/pdlc-retirement-baseline.md`), so the routed `ERRATUM: PLAN` line is closed. **Done:** `A1_GLOBS` carries `docs/pdlc-wave-resume/**` at HEAD, and `PROP-SWEEP-2(b)` is green |
 
-The second red is the sharper hazard, and it is why it is recorded here rather than left to be
+The second red was the sharper hazard, and that is why it was recorded here rather than left to be
 discovered: the wave gate runs `implementation.testCommand` over the whole suite, so a red anywhere
 in `documentOracles.test.js` halts the wave before PROP-COV-01's own measurement is ever reached.
-Neither red is a reason to weaken PROP-REPO-01, PROP-COV-01 or any oracle below; both are reported to
-the orchestrator with the remedy named.
+Neither red was a reason to weaken PROP-REPO-01, PROP-COV-01 or any oracle below, and neither was
+weakened: both were closed by the remedies named above, in the tree rather than in this document.
 
 ## Oracles
 
@@ -430,13 +436,22 @@ reader (`export function parseWaveLedger` at `origin/main:pdlc/workflows/orchest
 | `unreadable-json` | `"{"` | `JSON.parse` throws → `"it is not readable JSON"` |
 | `not-an-object` | `"\"x\""` (or `"[]"`) | parses to a string/array → `isPlainObject` false → `"it is not a JSON object"` |
 | `wrong-shape` | `{version:1, feature: FEATURE, planHash: <this plan's>, lastGreenWave: "1"}` | `lastGreenWave` is not an integer → the shipped `wellFormed` conjunction fails |
-| `feature-mismatch` | well-formed, `feature: "other-feature"` | guard 3 |
-| `plan-changed` | well-formed, `planHash: "00000000"` | guard 4 |
+| `feature-mismatch` | well-formed, `feature: "other-feature"`, **`head` present** | guard 3 — the `head` is what makes the zero-probe conjunct falsifiable; see the note below |
+| `plan-changed` | well-formed, `planHash: "00000000"`, **`head` present** | guard 4 — same reason |
 | `head-unreachable` | well-formed for this plan, `head: HEAD_SHA`, `_git` scripted to answer `merge-base --is-ancestor` with `{ok: false}` | guard 5, exactly one probe |
 | `over-count` | well-formed for this plan, `lastGreenWave: 9`, **`head` omitted** | guard 6 — with no `head`, `headCorroborated` returns `true` without touching the transport, so guard 5 passes and guard 6 is the first failure |
 | honoured, mid-plan | the wave-1 record written by a first run, taken from `ledgerWrites(firstWrites)[0]` | outcome (b) |
 | honoured, complete | the record with `lastGreenWave === 3`, taken from a completed first run | outcome (c) |
 | honoured, no `head` | well-formed for this plan, `head` omitted | outcome (b) with zero `merge-base` calls (PROP-DISREGARD-08) |
+
+**The two ancestry-INDEPENDENT rows must carry a `head`.** `headCorroborated` returns `true`
+without touching the transport when the record has no `head`, so a fixture written without one
+cannot tell a lazily-probing build from an eagerly-probing one: TSPEC §5.5's mutation 4 was
+measured **surviving** against head-less fixtures, and the AT-03/AT-11 zero-probe conjunct was
+vacuous on those rows (recorded in `MUTATION-EVIDENCE-pdlc-wave-resume.md`). With a `head`
+present and the expected `merge-base` call list still `[]`, the conjunct asserts what it claims:
+the probe was skipped because the code is ancestry-independent, not because there was nothing to
+probe.
 
 **The `over-count` row is the one that needs care.** With a `head` present *and* unreachable,
 guard 5 fires first — that is the PROP-DISREGARD-06 pair, not an `over-count` fixture. Omitting
@@ -671,31 +686,30 @@ resumed by a *real* operator, lands where PROP-RESUME-01 says it lands. The pre-
 (PROP-PRE-01/-02) exist partly to compensate — they assert the shipped constant and the shipped
 ignore path in the built artifact, which is the nearest thing to an end-to-end anchor available.
 
-**G-4 · PROP-REPO-01's third conjunct is RED here because the record is *tracked*, not because the
-ignore rule is missing.** Re-measured in this tree on 2026-08-23 (SE F-06); the earlier version of
-this gap said the red was pre-rebase state that the rebase would clear, and that diagnosis was
-wrong. The rebase has landed (`git rev-list --count HEAD..origin/main` → `0`, `origin/main` is an
-ancestor of HEAD), and `.gitignore:46` carries `/.claude/pdlc-wave-state.json` **here**, so
-PROP-REPO-01's first two conjuncts are satisfiable in this tree today. What fails is the third:
-`git check-ignore -v .claude/pdlc-wave-state.json` exits 1 with no output, while
-`git check-ignore -v --no-index …` resolves to `.gitignore:46:/.claude/pdlc-wave-state.json` —
-`check-ignore` skips tracked paths, and `.claude/pdlc-wave-state.json`, `.claude/pdlc.config.json`
-and `pdlc/workflows/coverage/**` are **tracked here**, introduced by `b1b846bd` on this branch and
-absent from `origin/main`. The shipped repo-level oracle already forbids it:
-`__tests__/documentOracles.test.js`'s `` `.claude/` machine-local state is untracked and stays
-untracked (CODE_REVIEW v1 §1-1) `` block fails on exactly those paths here and passes at
-`origin/main`.
+**G-4 · CLOSED — PROP-REPO-01's third conjunct is GREEN here; kept for its diagnosis.**
+Re-measured in this tree on **2026-08-24** (CODE_REVIEW v1 §3 B-3), and all three of this gap's
+earlier claims are now false at the branch tip:
+`git ls-files .claude` returns only `.claude/pdlc.config.example.json` and `.claude/settings.json`;
+`git ls-files pdlc/workflows/coverage` returns nothing; and
+`git check-ignore -v .claude/pdlc-wave-state.json` exits **0**, resolving
+`.gitignore:46:/.claude/pdlc-wave-state.json` without needing `--no-index`. The
+`__tests__/documentOracles.test.js` block `` `.claude/` machine-local state is untracked and stays
+untracked (CODE_REVIEW v1 §1-1) `` passes here.
 
-Three consequences, in the order an implementer meets them. First, **no rebase fixes this** — the
-paths were added by a commit on this branch, so the remedy is to untrack them here (`git`
-`rm --cached`, working files left in place). That is orchestrator-owned repo hygiene, reported from
-this document rather than performed by it. Second, the red must not be read as "the ignore rule is
-absent"; an implementer who reads it that way will add a rule that already exists and still be red.
-Third — and this is why it is a gap rather than a footnote — REQ-WVR-10's own failure mode is
-occurring live on the feature branch that implements the guard against it: the feature exists to keep
-the record untracked, and the branch is tracking it. Weakening PROP-REPO-01 or PROP-COV-01 to
-accommodate either red is the failure mode REQ BL-04 and FSPEC OB-F1 were opened to prevent; § 11
-enumerates both reds with their owners.
+The history is kept because the *diagnosis* is the durable part, and it is easy to re-derive wrongly.
+When this gap was raised (v1.3, measured 2026-08-23) `.claude/pdlc-wave-state.json`,
+`.claude/pdlc.config.json` and `pdlc/workflows/coverage/**` were tracked, introduced by `b1b846bd` on
+this branch. `check-ignore` **skips tracked paths**, so it exited 1 with no output while
+`check-ignore --no-index` resolved the rule — a reading that looks exactly like "the ignore rule is
+missing" and is not. The remedy this gap named — untrack on this branch with `git rm --cached`,
+working files left in place, no rebase involved — was carried out by later commits on the branch, and
+that is what closed the red. An implementer who meets this signature again should untrack the path,
+not add a rule that already exists.
+
+The third consequence recorded here also stands down: REQ-WVR-10's own failure mode is no longer
+occurring live on the feature branch that implements the guard against it. No property was weakened
+to reach that state, which is the outcome REQ BL-04 and FSPEC OB-F1 were opened to protect; § 11's
+local-red table records both reds as closed.
 
 **G-5 · "No PLAN may ever own consumer-local state" is asserted for this feature only.**
 PROP-REPO-02 parses *this* feature's PLAN §3.3 ownership manifest and its
@@ -746,7 +760,7 @@ pass have since been absorbed by their owners and re-raising a settled question 
 | TSPEC §5.4 AT-12's fourth conjunct asserts a commit made by the V-wave (Phase PT) on a seam this suite cannot observe — at TSPEC v1.4 it reads "Phase PT dispatches exactly **one** agent and invokes the gate exactly **once**, and its commit is the only Phase-I-adjacent commit" | **Still open at TSPEC v1.4** (the round-5 erratum reworded the conjunct without removing the unobservable half; re-verified against `orchestrate-dev.js` at HEAD). At `origin/main` the V-wave block in `orchestrate-dev.js` dispatches `agentFn("se-implement", propertiesTestPrompt(featureName), …)`, calls `evaluateWaveDispatch`, and runs `runCommandFn(implConfig.testCommand)` — it issues no `commitPaths` and no `_git(["add", …])`; the enclosing comment says so in as many words ("the V-wave is the one wave-mode dispatch that still commits its OWN work"), and that commit is made by the dispatched agent, which the `makeAgent(record)` double replaces. So no oracle in this suite can observe it. | **Yes** — one `ERRATUM: TSPEC` line. PROP-SKIP-04 is re-expressed here in the meantime (SE F-01). |
 | TSPEC §5.4 AT-16 and PLAN T-04 justify the queue fixture set by the `distribution.checkEnabled` drift gate | **Open, and newly raised this round.** That gate has been retired from `orchestrate-queue.js`: `git grep parseDistributionCheckEnabledOptOut origin/main` resolves only under `docs/completed/**`, and `orchestrateQueue.test.js` asserts the module's source contains neither `"distribution" + ".checkEnabled"` nor `"DRIFT_STATE" + "_PATH"`. The stated reason the three-fixture set is complete is therefore false, though the surplus fixture is inert rather than harmful. | **Yes** — one `ERRATUM: TSPEC` line. The `ERRATUM: PLAN` half is **closed by the owner**: PLAN v1.2's T-04 now records two required fixtures and re-files the `distribution.checkEnabled` config as "inert and optional", citing the same retirement evidence. § Fixtures is re-anchored here on the dispositions that still fire (SE F-02). |
 | TSPEC §5.8 stated the c8 `include` set as three modules | **Closed by the owner.** The routed erratum landed: TSPEC v1.4 §5.8 carries the four-entry `**/`-anchored include set — the fourth, `**/scripts/capture-learnings-baseline.mjs`, sits outside `pdlc/workflows/` and is why the config sets `allow-external: true`, with `--per-file` keeping a red there off this feature's module. § 11's measured 2026-08-23 baseline already agrees and needs no change. | No longer — routed at v1.3 (PM F-02), landed at TSPEC v1.4. |
-| No PLAN task owns adding `docs/pdlc-wave-resume/**` to A-1's frozen glob list | **Raised at v1.3 (SE F-07); closed by the owner since.** `documentOracles.test.js`'s `PROP-SWEEP-2(b)` reds on this feature's own tracked artifacts, which quote the retired `distribution.checkEnabled` key while documenting its retirement; `A1_GLOBS` carries `docs/pdlc-plugin-retirement/**`, `docs/pdlc-advisory-wave-gate/**` and `docs/pdlc-learnings-injection/**` but not this feature's directory, and `docs/_constraints/pdlc-retirement-baseline.md`'s glob table has no row for it. The wave gate runs the whole suite, so this red halts Phase I before any property here is reached. No task in PLAN §2.1 owned the addition when this row was raised. | **Closed by the owner.** PLAN v1.2 adds **T-11** (batch 1, wave-gate precondition) owning the `A1_GLOBS` entry and the matching `docs/_constraints/pdlc-retirement-baseline.md` row. The entry is still absent at HEAD (`documentOracles.test.js:712`), so § 11's local-red table keeps the cause and the precedent. |
+| No PLAN task owns adding `docs/pdlc-wave-resume/**` to A-1's frozen glob list | **Raised at v1.3 (SE F-07); closed by the owner since.** `documentOracles.test.js`'s `PROP-SWEEP-2(b)` reds on this feature's own tracked artifacts, which quote the retired `distribution.checkEnabled` key while documenting its retirement; `A1_GLOBS` carries `docs/pdlc-plugin-retirement/**`, `docs/pdlc-advisory-wave-gate/**` and `docs/pdlc-learnings-injection/**` but not this feature's directory, and `docs/_constraints/pdlc-retirement-baseline.md`'s glob table has no row for it. The wave gate runs the whole suite, so this red halts Phase I before any property here is reached. No task in PLAN §2.1 owned the addition when this row was raised. | **Closed by the owner.** PLAN v1.2 adds **T-11** (batch 1, wave-gate precondition) owning the `A1_GLOBS` entry and the matching `docs/_constraints/pdlc-retirement-baseline.md` row. The entry is **present at HEAD** (`A1_GLOBS` in `documentOracles.test.js` carries `docs/pdlc-wave-resume/**`, re-measured 2026-08-24) and `PROP-SWEEP-2(b)` is green, so § 11's local-red table records the row as closed while keeping the cause and the precedent. |
 
 **What this document does with the open items.** PROP-LAW-01…PROP-LAW-04 pin `numRuns: 500` in
 agreement with **both** PLAN T-08 and TSPEC v1.4 §5.7 — the two errata this document routed (§5.7

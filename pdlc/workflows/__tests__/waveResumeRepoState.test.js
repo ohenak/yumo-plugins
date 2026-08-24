@@ -380,6 +380,41 @@ describe("PLAN §4.5.1's delta coverage map is complete", () => {
     expect(checked).toBeGreaterThanOrEqual(20);
   });
 
+  // PROP-COV-03 and PROP-PARITY-04 are process duties: a mutation has to be
+  // applied, observed red against a NAMED oracle, reverted, and its failure
+  // output RECORDED. Both properties used to send that recording to "the owning
+  // task's report" — an agent transcript, which is not in the repository, so
+  // nothing on the branch could show either duty had been discharged
+  // (CODE_REVIEW v1 §2, findings 14 and 15). The recording now has a tracked
+  // home, and this test is what keeps it honest: the artifact must exist and
+  // must actually enumerate all five mutations and the parity arm, so a future
+  // edit that drops one of them reds here rather than nowhere.
+  test("the mutation-evidence artifact records all five mutations and the parity arm", () => {
+    const EVIDENCE_PATH = join(
+      REPO_ROOT,
+      "docs/pdlc-wave-resume/MUTATION-EVIDENCE-pdlc-wave-resume.md"
+    );
+    expect(existsSync(EVIDENCE_PATH)).toBe(true);
+    const text = readFileSync(EVIDENCE_PATH, "utf8");
+
+    // Both duties are named, so the artifact cannot silently narrow to one.
+    for (const prop of ["PROP-COV-03", "PROP-PARITY-04"]) {
+      expect(text).toContain(prop);
+    }
+
+    // TSPEC §5.5's five mutations, each traced to the oracle §5.5 names for it.
+    // Asserted as a set, not a count: a count alone passes when one mutation is
+    // recorded twice and another not at all.
+    const oracles = ["AT-02", "AT-11", "AT-09", "AT-18", "AT-03", "AT-05"];
+    expect(oracles.filter((at) => text.includes(at))).toEqual(oracles);
+
+    // Recorded, not merely claimed: each mutation carries a real jest failure
+    // block, which is what "its failure output recorded" means.
+    const failureBlocks = text.match(/^● /gm) ?? [];
+    expect(failureBlocks.length).toBeGreaterThanOrEqual(6);
+    expect(text).toContain("expect(received)");
+  });
+
   test("the delta line-coverage oracle is wired into the coverage runner", () => {
     // §4.5.1's oracle (ii): the executable half is a `test:coverage` step, and
     // this asserts the wiring rather than the script's own behaviour.

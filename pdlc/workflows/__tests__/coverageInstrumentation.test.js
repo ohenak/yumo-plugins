@@ -38,6 +38,11 @@ const REQUIRED_INCLUDES = [
   "**/pdlc/workflows/orchestrate-dev.js",
   "**/pdlc/workflows/orchestrate-queue.js",
   "**/pdlc/workflows/build-runtime.mjs",
+  // CODE_REVIEW v1 §1-1: the delta-coverage gate is itself production code on a
+  // required check (`test:coverage` &&-chains it), so it is measured like the
+  // modules it measures. Leaving it out was the asymmetry the finding named —
+  // a coverage gate over orchestrate-dev.js whose own module nobody measured.
+  "**/pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs",
 ];
 
 describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {

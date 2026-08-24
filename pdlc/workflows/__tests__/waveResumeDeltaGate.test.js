@@ -19,6 +19,8 @@
 // "passed because the report was empty".
 
 import { execFileSync } from "child_process";
+import { mkdtempSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 import {
@@ -62,6 +64,8 @@ function coverageReport({ uncoveredLines = [], includeSubject = true } = {}) {
  */
 function harness({
   diff = DIFF_WITH_DELTA,
+  diffThrows = false,
+  readFile,
   dirty = false,
   baseRefs = true,
   pinReachable = true,
@@ -89,14 +93,17 @@ function harness({
       if (dirty) throw new Error("dirty");
       return "";
     }
-    if (args[0] === "diff") return diff;
+    if (args[0] === "diff") {
+      if (diffThrows) throw new Error("fatal: bad revision");
+      return diff;
+    }
     throw new Error(`unexpected git ${args.join(" ")}`);
   };
 
   const code = runDeltaCoverageGate({
     git,
     fileExists: (p) => (p === COVERAGE ? coverageExists : p === SUBJECT_PATH ? subjectExists : false),
-    readFile: () => JSON.stringify(report),
+    readFile: readFile ?? (() => JSON.stringify(report)),
     log: (m) => logs.push(m),
     error: (m) => errors.push(m),
     coverageJson: COVERAGE,
@@ -210,6 +217,139 @@ describe("delta-coverage gate: base resolution", () => {
         cwd: REPO_ROOT,
       })
     ).not.toThrow();
+  });
+});
+
+// CODE_REVIEW v1 §1-1. The gate is wired into a REQUIRED check but its own
+// module sat at 72.13 % branch / 60 % functions, unmeasured by `c8.include`:
+// the feature added a coverage gate over `orchestrate-dev.js` while the gate
+// itself went unchecked. The three uncovered readings were the ones a harness
+// that injects EVERY seam can never reach — the injected-IO defaults, the
+// diff-failure arm, and the non-`GateFailure` rethrow.
+describe("delta-coverage gate: the readings a fully-injected harness cannot reach", () => {
+  /** Redirect the DEFAULT log/error sinks — `console.log`/`console.error` — into arrays. */
+  function captureConsole() {
+    const out = [];
+    const err = [];
+    const realLog = console.log;
+    const realError = console.error;
+    console.log = (m) => out.push(String(m));
+    console.error = (m) => err.push(String(m));
+    return {
+      out,
+      err,
+      restore: () => {
+        console.log = realLog;
+        console.error = realError;
+      },
+    };
+  }
+
+  /** A tmp file holding `report`, so the DEFAULT `readFile`/`fileExists` can read it. */
+  function realCoverageFile(report) {
+    const dir = mkdtempSync(join(tmpdir(), "pdlc-delta-gate-"));
+    const file = join(dir, "coverage-final.json");
+    writeFileSync(file, JSON.stringify(report), "utf8");
+    return file;
+  }
+
+  test("the un-injected defaults drive the gate against the real repository", () => {
+    // Every seam but `coverageJson` defaults: real `git` in the real checkout,
+    // real `existsSync`/`readFileSync`, real `console.log`. This is the
+    // configuration CI actually runs, and no other case in this file touches it.
+    // The verdict is 0 under BOTH readings of the delta — non-empty ranges
+    // (this branch) find only line 999999 uncovered, which is outside them;
+    // empty ranges (`main`, post-merge) short-circuit to "no delta in range".
+    const coverageJson = realCoverageFile(coverageReport({ uncoveredLines: [999999] }));
+    const { out, restore } = captureConsole();
+    let code;
+    try {
+      code = runDeltaCoverageGate({ coverageJson });
+    } finally {
+      restore();
+    }
+    expect(code).toBe(0);
+    expect(out.join("\n")).toContain(`delta-coverage: ${SUBJECT}`);
+    // The default `git` really resolved a base: one of the two sources is named.
+    expect(out.join("\n")).toMatch(/merge-base with (origin\/)?main|pinned fallback/);
+  });
+
+  test("the default error sink carries a failure to stderr", () => {
+    // `git` is the only injected seam here, so the range set is fixed and the
+    // failure reading is reached on `main` as well as on this branch. Everything
+    // that reports — `console.error` — is the shipped default.
+    const coverageJson = realCoverageFile(coverageReport({ includeSubject: false }));
+    const { err, restore } = captureConsole();
+    let code;
+    try {
+      code = runDeltaCoverageGate({
+        coverageJson,
+        git: (args) => (args[0] === "merge-base" ? `${BASE}\n` : DIFF_WITH_DELTA),
+      });
+    } finally {
+      restore();
+    }
+    expect(code).toBe(1);
+    expect(err.join("\n")).toContain("has no entry in the coverage report");
+  });
+
+  test("a diff that fails reds naming the base and its source, not a stack", () => {
+    // A base sha that resolves but cannot be diffed (a corrupt or shallow
+    // object store). Round 1 had no case here, so the arm that turns git's
+    // error into an operator-readable line was never executed.
+    const { code, err } = harness({ diffThrows: true });
+    expect(code).toBe(1);
+    expect(err).toContain(`could not diff ${SUBJECT} against base ${BASE}`);
+    expect(err).toContain("merge-base with origin/main");
+    expect(err).toContain("fatal: bad revision");
+  });
+
+  test("a report entry with no maps at all is read as 'nothing uncovered, coverage n/a'", () => {
+    // c8 emits a bare entry for a file it loaded but never executed. The reader
+    // must treat every absent map as empty rather than throwing on it, and the
+    // percentage must print as `n/a` rather than as `NaN %`.
+    const { code, out } = harness({ report: { [`/repo/${SUBJECT}`]: {} } });
+    expect(code).toBe(0);
+    expect(out).toContain("per-file branch coverage: n/a");
+    expect(out).toContain("uncovered lines in file: 0");
+    expect(out).toContain("uncovered lines inside introduced ranges: 0 — OK");
+  });
+
+  test("a zero-count branch with no usable location is skipped, not reported as line undefined", () => {
+    // The `loc && loc.start && typeof loc.start.line === "number"` guard. A
+    // branch id whose `branchMap` entry is missing, or whose location array is
+    // short or location-less, would otherwise push `undefined` into the
+    // uncovered set and print it as an uncovered "line" in the failure text.
+    const report = {
+      [`/repo/${SUBJECT}`]: {
+        statementMap: {},
+        s: {},
+        b: { 0: [0, 0], 1: [0], 2: [0] },
+        branchMap: {
+          // 0: absent entirely.
+          1: {},
+          2: { locations: [{ start: {} }] },
+        },
+      },
+    };
+    const { code, out } = harness({ report });
+    expect(code).toBe(0);
+    expect(out).toContain("uncovered lines in file: 0");
+    // Four zero-count branch counters, none of them takeable: 0 %, not n/a.
+    expect(out).toContain("per-file branch coverage: 0.00 %");
+  });
+
+  test("an error that is not a GateFailure propagates instead of exiting 1", () => {
+    // The rethrow is deliberate: `GateFailure` is the gate's own vocabulary for
+    // "this run is red", and swallowing anything else would report a programming
+    // fault (a malformed report, a broken seam) as an ordinary coverage failure.
+    expect(() =>
+      harness({
+        readFile: () => {
+          throw new TypeError("EISDIR: illegal operation on a directory");
+        },
+      })
+    ).toThrow(TypeError);
   });
 });
 
