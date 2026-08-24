@@ -2194,7 +2194,7 @@ describe("Phase I — implementation.startWave resumes a halted run", () => {
   });
 });
 
-// ─── Phase I: the INTERIM wave ledger — the resume pointer with no operator ───
+// ─── Phase I: the wave ledger — the resume pointer with no operator ──────────
 //
 // `implementation.startWave` needs a human to edit the config between the halt
 // and the re-invocation. The ledger is the same pointer written and read by the
@@ -2275,7 +2275,7 @@ function makeLedgerArgs({
 const ledgerWrites = (writes) =>
   writes.filter((w) => w.path === WAVE_STATE_PATH).map((w) => w.contents);
 
-describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", () => {
+describe("Phase I — the wave ledger resumes a halted run unattended", () => {
   it("records each committed wave, and the next invocation resumes at the failed one", async () => {
     // ── Run 1: wave 1 is green and committed; wave 2's gate is red. ──────────
     const firstWrites = [];

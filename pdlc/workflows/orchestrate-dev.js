@@ -16221,7 +16221,7 @@ export default async function main({
         );
       }
 
-      // ── INTERIM wave ledger (see WAVE_STATE_PATH) — the automatic half of the
+      // ── The wave ledger (see WAVE_STATE_PATH) — the automatic half of the
       // resume pointer. Read through the same never-throwing reader the config
       // uses; every rejection below is a notice and a full run, never a halt.
       const planHash = computePlanHash(waves);
