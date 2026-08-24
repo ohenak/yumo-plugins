@@ -19,7 +19,7 @@
 | 1.2 | **Erratum round (Phase PR).** Corrections only — no decision re-litigated, no scope change, no task restructured. Two **precondition tasks** are added to batch 1, because three document oracles are red in this tree *before* any of this feature's own work starts, and batch 1's gate wording ("the `pdlc/workflows` suite is green") is therefore unsatisfiable as written (PM, TE, SE): **T-11** promotes `docs/pdlc-wave-resume/**` onto A-1's frozen glob list — `A1_GLOBS` in `documentOracles.test.js` plus the matching row in `docs/_constraints/pdlc-retirement-baseline.md` — on the `docs/pdlc-advisory-wave-gate/**` precedent, closing `PROP-SWEEP-2(b)`; **T-12** untracks the machine-local artifacts a mid-pipeline commit added to the index (`.claude/pdlc-wave-state.json`, `.claude/pdlc.config.json`, `pdlc/workflows/coverage/**`), closing the two `.claude/`-tracking oracles. §2.2's batch-1 row, §3.1's edge table, §3.3's manifest and §4.5's DoD carry both. **T-04's fixture rationale is corrected** (PM, TE, and PROPERTIES §Fixtures): the `distribution.checkEnabled: false` opt-out no longer gates anything — the drift gate it addressed is retired from `orchestrate-queue.js` — so the fixture is inert and may be supplied or omitted; it is no longer the *reason* the three-fixture set is complete. The §5.7 `numRuns` divergence raised this round is **absorbed, not applied**: TSPEC v1.4 now pins `numRuns: 500`, which is what T-08 already says. Ids `T-05`, `T-06`, `T-09` remain retired and are still not reused. |
 | 1.3 | **Round-5 delta confirmation addressed (PM F-01…F-03, TE F-01…F-05, TE Q-01).** **F-01 (High, both reviewers, unlanded since v4) landed:** §4.3 gains a **fifth** mutation row — suppressing the record write while `explicitPointer` is true, whose only oracle is AT-05's write-side conjunct (TSPEC §5.5 mutation 5) — owned and *run* by T-07, and the five count claims are corrected (§4.3 heading, §1.1's trade paragraph, T-07's mutation duty `rows 1–4` → `rows 1–5`, RK-1, §4.5's DoD checkbox). No new task, no batch move, no `Deps` change; parser re-run confirms 9 tasks and the same four batches. **PM F-02/F-03 and TE F-03:** §3.4's `Coverage floor` row and §4.4's RK-2 no longer describe an open erratum — TSPEC RT-7 assigns the floor to the last implementation **task** (PLAN T-10, RK-2) and gives PLAN's reasoning back, so both now record agreement; values and mitigations unchanged. **TE F-02:** T-12's `pdlc/workflows/coverage/**` rationale is corrected from diff-noise to the measured one — 94 tracked files (81 under `coverage/tmp/`) that `test:coverage` rewrites, so leaving them tracked reds `PROP-SWEEP-2(a)` during T-10's own batch-4 gate. Action and DoD unchanged. **TE F-04:** T-10's oracle (i), §2.2's batch-4 gate and §4.5's DoD line are scoped to `orchestrate-dev.js`'s per-file branch number `>= 85`, with the whole-command exit **reported, not asserted**, because `c8.include`'s fourth entry (`**/scripts/capture-learnings-baseline.mjs`, `allow-external`) takes the same `--per-file` floor and is outside this feature's reach (TSPEC §5.8). **TE F-05:** §4.6's `Retired ids` row now reports the measured **nine** tasks. **TE Q-01 answered in T-11:** the implementer re-measures the sweep residual at promotion time rather than transcribing the ten counted at v1.2. Also corrected, not raised: §1.2's baseline table is now dated to v1.0 authoring — the OB-F1 rebase has landed (`HEAD..origin/main` → `0`, `WAVE_STATE_PATH` present, baseline file tracked), and T-01 is retained on its stated permanent-gate lifecycle, not as a one-shot check. Ids `T-05`, `T-06`, `T-09` remain retired and unreused. |
 | 1.4 | **Round-6 minor changes landed (PM F-01, TE F-01 — both Low, both local).** TE F-01: §4.4 RK-5's T-07 sizing now counts **five** mutation runs, matching §4.3's five-row table — this was the single surviving "four mutation" instance outside the v1.1 revision-history row, where the count is historical and correct. PM F-01: §4.6's preamble no longer cites "1,637 commits behind" — retracted by §1.2's re-dating (`git rev-list --count HEAD..origin/main` → `0`) — and records the parse as re-run after the v1.3 edit; the parser cited is the shipped one at `origin/main`, byte-identical to this tree's copy. Every row of §4.6's table is unchanged. No task, batch, `Deps`, oracle or parse-result change. |
-| 1.5 | **Phase CR round 1 addressed (PM F-01 High; TE F-04 Medium).** PM F-01: T-10's two oracles are landed rather than described. §4.5.1's mapping table no longer carries `*(filled in by T-10…)*` placeholders — every branch class names the tests that cover it — and the table's own completeness is checked by `waveResumeRepoState.test.js` › `PLAN §4.5.1's delta coverage map is complete` (branch-class set-equality, no-placeholder, and every named test title present in the file the row names). Oracle (i) is measured at **88.88 %** per-file branches for `orchestrate-dev.js`; oracle (ii) ships as `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs`, wired as the last step of `npm run test:coverage` so the `Unit tests (ubuntu-latest, node 20)` required check gates it. On first run it found one uncovered line inside the feature's ranges — the report row's `self-report gate` ternary arm — closed by a new `waveExecution.test.js` case; it now reports **0**. TE F-04: `coverageInstrumentation.test.js`, `package.json` and the delta script are named in §3.3's manifest and §4.6's `parsePlanOwnership` transcription as T-10's, and the dist-race retry's bound is now asserted (`raceWindowNeverClosed: false`) instead of only argued. No decision re-litigated, no task added or restructured; the nine ids and four batches are unchanged. |
+| 1.5 | **Phase CR round 1 addressed (PM F-01 High; TE F-04 Medium).** PM F-01: T-10's two oracles are landed rather than described. §4.5.1's mapping table no longer carries `*(filled in by T-10…)*` placeholders — every branch class names the tests that cover it — and the table's own completeness is checked by `waveResumeRepoState.test.js` › `PLAN §4.5.1's delta coverage map is complete` (branch-class set-equality, no-placeholder, and every named test title present in the file the row names). Oracle (i) is measured at **88.90 %** per-file branches for `orchestrate-dev.js` (the 88.88 % on the same c8 table is the `All files` aggregate, not this file's row); oracle (ii) ships as `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs`, wired as the last step of `npm run test:coverage` so the `Unit tests (ubuntu-latest, node 20)` required check gates it. On first run it found one uncovered line inside the feature's ranges — the report row's `self-report gate` ternary arm — closed by a new `waveExecution.test.js` case; it now reports **0**. TE F-04: `coverageInstrumentation.test.js`, `package.json` and the delta script are named in §3.3's manifest and §4.6's `parsePlanOwnership` transcription as T-10's, and the dist-race retry's bound is now asserted (`raceWindowNeverClosed: false`) instead of only argued. No decision re-litigated, no task added or restructured; the nine ids and four batches are unchanged. |
 
 ## 1. Overview
 
@@ -466,7 +466,7 @@ tree, run only the named oracle's test file, paste the failure header into the t
       `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0.
 - [x] `npm run test:coverage` was run from `pdlc/workflows` (`--per-file --branches 85`) and
       `orchestrate-dev.js`'s measured per-file branch number is `>= 85` and recorded —
-      **88.88 %**, recorded in §4.5.1 (T-10, Phase CR round 1). The
+      **88.90 %**, recorded in §4.5.1 (T-10, Phase CR round 1). The
       whole-command exit status is recorded alongside it but is not the gate — the fourth
       `c8.include` entry (`**/scripts/capture-learnings-baseline.mjs`) takes the same per-file floor
       and is outside this feature's reach (§2.1 T-10 oracle (i), TSPEC §5.8).
@@ -503,18 +503,32 @@ are reachable only through `makeLedgerArgs`, so a unit arm in `waveResume.test.j
 cannot enter them (round-1 F-03).
 
 **Measured, T-10 (Phase CR round 1, PM F-01):** `npm run test:coverage` from `pdlc/workflows` reports
-**88.88 %** per-file branch coverage for `orchestrate-dev.js` against the `--per-file --branches 85`
-floor — oracle (i), asserted as the per-file number rather than the whole-command exit status, for
-the reason §2.1's T-10 row gives.
+**88.90 %** branch coverage on `orchestrate-dev.js`'s **own row** against the `--per-file --branches
+85` floor — oracle (i), asserted as the per-file number rather than the whole-command exit status,
+for the reason §2.1's T-10 row gives. Read the file's row, not the table's `All files` line: that
+aggregate is 88.88 % on the same run, and it is the aggregate that RT-7 says cannot see this
+feature.
 
 **Oracle (ii) is now executable, not narrative.**
 `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` is the delta oracle: it derives this
-feature's introduced line ranges in `orchestrate-dev.js` by `git diff -U0` against a **transcribed**
-pre-feature merge-base sha (the precedent `learningsBaselineGuard.test.js` sets with
+feature's introduced line ranges in `orchestrate-dev.js` by `git diff -U0` against the **live**
+merge-base with `origin/main`, falling back to a **transcribed** pre-feature merge-base sha when
+neither `origin/main` nor `main` resolves (the precedent `learningsBaselineGuard.test.js` sets with
 `EXPECTED_MERGE_BASE_SHA` — CI checks out with `fetch-depth: 0` but not necessarily a local `main`
-ref), reads c8's per-file uncovered line list from `coverage/coverage-final.json`, and exits non-zero
-when any uncovered line falls inside those ranges. It is wired as the last step of
-`npm run test:coverage`, so the `Unit tests (ubuntu-latest, node 20)` required check gates it.
+ref). It reads c8's per-file uncovered line list from `coverage/coverage-final.json` and exits
+non-zero when any uncovered line falls inside those ranges.
+
+The live base is preferred over the pin on purpose: **Phase DOD rebases the feature branch**, which
+moves the merge-base forward. A diff taken against a sha *behind* the new base would count lines
+`main` contributed in that window as lines this feature introduced — and `orchestrate-dev.js` carries
+839 uncovered lines outside this feature's reach, so the oracle would go red on work T-10 does not
+own. The pin stays as the deterministic fallback and is a commit on `main`, so it never disappears;
+the script prints which of the two it used, so a red is always attributable. It is wired as the last step of
+`npm run test:coverage`, ahead of the `--check-coverage --per-file` floor step, so the
+`Unit tests (ubuntu-latest, node 20)` required check gates it. Ordered ahead of the floor on
+purpose: `&&`-chained after it, a floor failure in an unrelated included module — the
+`capture-learnings-baseline.mjs` case §2.1's T-10 row describes — would skip the delta oracle
+entirely, and the one oracle scoped to this feature's own work is the one that must always run.
 It reads the artifact the preceding `c8` step produced rather than re-running the suite, because a
 test that re-ran the suite under coverage from inside the suite would not terminate — the constraint
 `coverageInstrumentation.test.js` already records.

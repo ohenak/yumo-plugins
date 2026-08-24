@@ -15,11 +15,20 @@
 // rather than re-running the suite (a test that re-ran the suite under coverage
 // from inside the suite would not terminate — see coverageInstrumentation.test.js).
 //
-// The introduced ranges are derived from git, against a TRANSCRIBED pre-feature
-// merge-base sha rather than a `main` ref: CI checks out with `fetch-depth: 0`
-// but not necessarily a local `main` branch, and pinning the sha follows the
-// precedent `learningsBaselineGuard.test.js` already sets in this package
-// (`EXPECTED_MERGE_BASE_SHA`).
+// The introduced ranges are derived from git. The base is the LIVE merge-base
+// with `origin/main` when that ref resolves, and a TRANSCRIBED pre-feature
+// merge-base sha otherwise — CI checks out with `fetch-depth: 0` but not
+// necessarily a local `main` branch, and pinning a sha follows the precedent
+// `learningsBaselineGuard.test.js` already sets here (`EXPECTED_MERGE_BASE_SHA`).
+//
+// Why not the pinned sha alone: Phase DOD rebases the feature branch, which
+// moves the merge-base forward. Diffing against a sha behind the new base would
+// count lines `main` contributed in that window as lines THIS feature
+// introduced, and `orchestrate-dev.js` carries hundreds of uncovered lines
+// outside this feature's reach — the oracle would go red on work it does not
+// own. Preferring the live merge-base keeps the delta the feature's own; the
+// pinned sha stays as the deterministic fallback, and it is a commit on `main`,
+// so it never disappears.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -30,8 +39,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
 const REPO_ROOT = resolve(WORKFLOWS, "../..");
 
-/** The pre-feature merge-base of `feat-pdlc-wave-resume` with `main`. */
-const BASE_SHA = "b029e853c2287861363cac1039b0c74161719cb2";
+/** Fallback: the pre-feature merge-base of `feat-pdlc-wave-resume` with `main`. */
+const PINNED_BASE_SHA = "b029e853c2287861363cac1039b0c74161719cb2";
 
 const SUBJECT = "pdlc/workflows/orchestrate-dev.js";
 const COVERAGE_JSON = join(WORKFLOWS, "coverage/coverage-final.json");
@@ -41,21 +50,41 @@ const fail = (msg) => {
   process.exit(1);
 };
 
+// ── The base commit ─────────────────────────────────────────────────────────
+const git = (args) =>
+  execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+
+function resolveBase() {
+  for (const ref of ["origin/main", "main"]) {
+    try {
+      const sha = git(["merge-base", "HEAD", ref]).trim();
+      if (sha) return { sha, source: `merge-base with ${ref}` };
+    } catch {
+      // ref absent in this checkout — try the next one, then the pin.
+    }
+  }
+  try {
+    git(["cat-file", "-e", `${PINNED_BASE_SHA}^{commit}`]);
+  } catch {
+    fail(
+      `no base commit available: neither origin/main nor main resolves, and the ` +
+        `pinned base ${PINNED_BASE_SHA} is absent from this checkout ` +
+        `(CI checks out with fetch-depth: 0).`
+    );
+  }
+  return { sha: PINNED_BASE_SHA, source: "pinned fallback" };
+}
+
+const { sha: BASE_SHA, source: BASE_SOURCE } = resolveBase();
+
 // ── The introduced ranges ───────────────────────────────────────────────────
 // `git diff -U0` hunk headers give post-image start and length directly.
 function introducedRanges() {
   let diff;
   try {
-    diff = execFileSync("git", ["diff", "-U0", BASE_SHA, "HEAD", "--", SUBJECT], {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-    });
+    diff = git(["diff", "-U0", BASE_SHA, "HEAD", "--", SUBJECT]);
   } catch (err) {
-    fail(
-      `could not diff ${SUBJECT} against the pinned base ${BASE_SHA}: ${err.message}\n` +
-        `This oracle needs the base commit present (CI checks out with fetch-depth: 0).`
-    );
+    fail(`could not diff ${SUBJECT} against base ${BASE_SHA} (${BASE_SOURCE}): ${err.message}`);
   }
   const ranges = [];
   for (const line of diff.split("\n")) {
@@ -114,7 +143,10 @@ function branchPercent(entry) {
 // ── Run ─────────────────────────────────────────────────────────────────────
 const ranges = introducedRanges();
 if (ranges.length === 0) {
-  fail(`no introduced ranges found in ${SUBJECT}. The pinned base or the path is wrong.`);
+  fail(
+    `no introduced ranges found in ${SUBJECT} against ${BASE_SHA} (${BASE_SOURCE}). ` +
+      `The base or the path is wrong.`
+  );
 }
 
 const { uncovered, entry } = uncoveredLines();
@@ -126,7 +158,7 @@ const pct = branchPercent(entry);
 const rangeText = ranges.map(([lo, hi]) => (lo === hi ? `${lo}` : `${lo}-${hi}`)).join(", ");
 
 console.log(`delta-coverage: ${SUBJECT}`);
-console.log(`  introduced ranges (vs ${BASE_SHA.slice(0, 12)}): ${rangeText}`);
+console.log(`  introduced ranges (vs ${BASE_SHA.slice(0, 12)}, ${BASE_SOURCE}): ${rangeText}`);
 console.log(`  per-file branch coverage: ${pct === null ? "n/a" : `${pct.toFixed(2)} %`}`);
 console.log(`  uncovered lines in file: ${uncovered.length}`);
 
