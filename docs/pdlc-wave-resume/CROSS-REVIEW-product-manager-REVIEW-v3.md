@@ -87,6 +87,55 @@ it is worth naming because nothing forced it.
 
 ## Did the revision break anything I had approved?
 
+One thing in this delta reverses a property I *specifically praised* in v2, so I checked it rather
+than assuming good faith. In v2 I wrote that the delta oracle "cannot vacuously pass" because an
+empty introduced-range set was a hard failure, and I called that "the absence-only-oracle trap,
+avoided without being asked". `55bcbf0c` (TE F-08) turns that same reading into a **success**. A
+reviewer who only remembered his own praise would file that as a regression. It is not one, and the
+reason matters more than the verdict:
+
+**The v2 shape was wrong, and wrong in a way my round-2 lens could not see.** The gate is
+`&&`-chained into `npm run test:coverage`, which the **required** check
+`Unit tests (ubuntu-latest, node 20)` runs (`CLAUDE.md`'s CI table; `pdlc/workflows/package.json`).
+The day after this feature merges, the merge-base *contains* the feature's lines, the diff is
+legitimately empty — and the v2 shape would have exited 1 on `main` and on every branch cut from it
+that does not touch `orchestrate-dev.js`. A required check red forever, with the `--branches 85`
+floor step never reached because it is chained *after*. My v2 finding asked for an oracle that could
+not pass vacuously; taken literally it would have shipped a permanently-red gate on the default
+branch. TE caught the thing I missed, and the fix is the correct reading of what I was actually
+protecting.
+
+**The protection I cared about is still there, and it is now falsifiable rather than argued.** The
+guard was reaching for "the base or the path is wrong". That reading is separated **mechanically**,
+not by comment: `check-wave-resume-delta-coverage.mjs:185-190` fails when `SUBJECT` is absent from
+the checkout ("The path is wrong"), `:139-144` fails when the coverage artifact is missing, `:147-152`
+fails when the subject has no entry in the report, and `:105-110` fails when no base commit resolves
+at all. Four fail-closed readings, one benign reading, and the benign one prints *which* of two
+distinct reasons applies (`:193-197`). All five are driven by
+`waveResumeDeltaGate.test.js:108-214` through the injected IO seam, and the **first** case in the
+file is F-08's own post-merge scenario — the falsifying test for the fix itself, placed first with a
+comment saying so.
+
+**No absence-only assertion among them.** Each negative case asserts the exit status *and* the
+message (`:17-19` states this as the suite's convention, and the reason: "a status-only assertion
+cannot tell 'passed because there is no delta' from 'passed because the report was empty'"). The
+one that matters most for my lens is `:147-153`: an uncovered line **outside** every introduced
+range exits 0 *and* prints `uncovered lines in file: 1` — the positive half proving the gate is
+delta-scoped rather than silently doing nothing. That is exactly the paired-positive discipline I
+would have asked for.
+
+**The rest of the delta is document-only or additive.** No production runtime file is in
+`b5c217cf..HEAD`. The census change (`waveResumeRepoState.test.js:229-250`) *adds* a transcribed
+literal set of six suite names alongside the existing two-way set-equality — it closes the
+matched-pair-deletion hole (delete a suite and its manifest row together and both sides stay equal)
+without weakening what was there. Nothing I approved in v2 is narrowed, reinterpreted or dropped.
+
+**Verified end to end.** `npm run test:coverage` from `pdlc/workflows` exits **0**; the delta oracle
+prints `per-file branch coverage: 88.90 %`, `uncovered lines in file: 836`, and
+`uncovered lines inside introduced ranges: 0 — OK`, resolving its base as
+`merge-base with origin/main`. Those are the exact three numbers PLAN §4.5/§4.5.1 now record, so the
+document and the run agree digit for digit.
+
 ## Findings
 
 ## Questions
