@@ -25,9 +25,12 @@ import main, {
   WAVE_STATE_PATH,
   checkWaveUnskips,
   computePlanHash,
+  computeWaves,
   evaluateWaveDispatch,
   scanSkipTokens,
   parseImplementationConfig,
+  parsePlanTasks,
+  parsePlanOwnership,
   // A6's root-cause vocabulary: this file's `haltFields` fixtures must draw their `rootCause`
   // from it, or they assert a shape A6 can never produce (CR round 1, PM F-10). The guard below
   // is what keeps that true as fixtures are added.
@@ -2113,9 +2116,11 @@ describe("Phase I — implementation.startWave resumes a halted run", () => {
     const banner = logs.filter((m) => m.startsWith("Resuming at wave 2 of 3"));
     expect(banner.length).toBe(1);
     expect(banner[0]).toContain("Clear implementation.startWave before the next fresh run.");
-    // The report row still counts the plan's waves, not the executed ones.
+    // The report row now states the resume point (D-3), not merely the plan's
+    // wave count: waves 2-3 executed, wave 1 skipped as previously completed.
     expect(phaseDetail(result, "I")).toBe(
-      "All 3 waves complete (wave mode, script-owned gate)"
+      "Waves 2–3 complete, waves 1–1 skipped as previously completed " +
+        "(wave mode, script-owned gate) (provenance: operator-set)"
     );
   });
 
@@ -2137,7 +2142,7 @@ describe("Phase I — implementation.startWave resumes a halted run", () => {
     expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
     expect(logs).toContain(
       `Notice: implementation.startWave=9 in ${CONFIG_PATH} is past the last wave of ` +
-        `this plan (3) — running every wave from 1.`
+        `this plan (3) — running every wave from 1. (provenance: operator-set)`
     );
     // Paired positive for "runs every wave": nothing was announced as skipped.
     expect(logs.some((m) => m.includes("skipped (implementation.startWave"))).toBe(false);
@@ -2201,6 +2206,19 @@ describe("Phase I — implementation.startWave resumes a halted run", () => {
  * main() args with both halves of the ledger seam under test control: reads are
  * scripted, writes are captured, and nothing touches the real filesystem.
  */
+/**
+ * TSPEC §5.2 H-1/H-2 — both additive and default-off: with neither `events` nor
+ * `failWriteOn` supplied, this returns exactly what it returned before either
+ * extension existed.
+ *
+ * H-1: an optional ordered event sink. When `events` is supplied, both the
+ * `_runCommand` and `_git` doubles push `["runCommand", cmd]` / `["git", …argv]`
+ * onto it, IN ADDITION to their own existing per-double logs (`gitCalls` via
+ * `makeGit`'s own `calls`, etc.) — nothing here replaces those.
+ *
+ * H-2: an optional `failWriteOn(path, callIndex)` predicate over the ledger
+ * write. Default keeps the current always-capture behaviour.
+ */
 function makeLedgerArgs({
   ledger = null,
   config = CONFIG_WITH_TEST_COMMAND,
@@ -2209,14 +2227,30 @@ function makeLedgerArgs({
   logs = [],
   git,
   runCommand = async () => ({ ok: true, output: "green" }),
+  events,
+  failWriteOn,
 } = {}) {
+  const wrappedGit =
+    events && git
+      ? async (argv) => {
+          events.push(["git", ...argv]);
+          return git(argv);
+        }
+      : git;
+  const wrappedRunCommand = events
+    ? async (cmd) => {
+        events.push(["runCommand", cmd]);
+        return runCommand(cmd);
+      }
+    : runCommand;
+  let writeCallIndex = 0;
   return makeArgs({
     plan: PLAN_THREE_WAVES,
     config,
     record,
     logs,
-    git,
-    runCommand,
+    git: wrappedGit,
+    runCommand: wrappedRunCommand,
     extra: {
       _readFile: (path) => {
         const p = String(path);
@@ -2226,7 +2260,12 @@ function makeLedgerArgs({
         return null;
       },
       _writeFile: (path, contents) => {
-        writes.push({ path: String(path), contents: String(contents) });
+        const p = String(path);
+        const callIndex = writeCallIndex++;
+        if (failWriteOn && failWriteOn(p, callIndex)) {
+          throw new Error(`simulated write failure at call ${callIndex}`);
+        }
+        writes.push({ path: p, contents: String(contents) });
       },
     },
   });
@@ -2294,9 +2333,15 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     const banner = logs.filter((m) => m.startsWith("Resuming at wave 2 of 3 (wave ledger"));
     expect(banner.length).toBe(1);
     expect(banner[0]).toContain(`Delete ${WAVE_STATE_PATH} to force a full run.`);
+    expect(banner[0]).toContain(" (provenance: automatic)");
     // Nothing was rejected: the resume is the paired positive for every
     // "ignored" notice asserted below.
     expect(logs.some((m) => m.includes("was ignored"))).toBe(false);
+    // AT-01/D-3 — the report's Phase I row states the resume point.
+    expect(phaseDetail(resumed, "I")).toBe(
+      "Waves 2–3 complete, waves 1–1 skipped as previously completed " +
+        "(wave mode, script-owned gate) (provenance: automatic)"
+    );
   });
 
   it("keeps the completion record once every wave is green", async () => {
@@ -2365,6 +2410,16 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     // The gate is the script's, not the agent's self-report: the configured
     // test command was actually run, exactly once, on this skip run.
     expect(gateCommands).toEqual([JSON.parse(CONFIG_WITH_TEST_COMMAND).implementation.testCommand]);
+
+    // AT-12's report-row conjunct (D-3's skip half, TE F-09): the ⏭ row's
+    // literal, transcribed from §2.4 — deleting the provenance clause reds
+    // here, not nowhere.
+    const row = result.phases.find((p) => p.phase === "I");
+    expect(row.status).toBe("⏭");
+    expect(row.detail).toBe(
+      "Skipped — all 3 waves previously committed and recorded green " +
+        "(wave ledger) (provenance: automatic)"
+    );
   });
 
   // TE Phase CR F-02 / Q-02 — the record is corroborated against the TREE, not
@@ -2444,11 +2499,19 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
       // The probe is ancestry, never equality — every later phase legitimately
       // moves HEAD forward, and the resume case IS a re-invocation after those.
       expect(calls).toContainEqual(["merge-base", "--is-ancestor", HEAD_SHA, "HEAD"]);
+      // AT-03/AT-11 — the lazy-probe contract's positive conjunct: EXACTLY one
+      // `merge-base` call, not merely "at least one". §5.5 mutation 4: an
+      // eagerly-resolved probe still passes `toContainEqual` above; only the
+      // filtered `toEqual` below is killed by it.
+      expect(calls.filter((a) => a[0] === "merge-base")).toEqual([
+        ["merge-base", "--is-ancestor", HEAD_SHA, "HEAD"],
+      ]);
     });
 
     it("the same ledger with the commit reachable from HEAD is honoured — the probe is a real input", async () => {
       const record = [];
       const logs = [];
+      const calls = [];
       const ledger = JSON.stringify({
         version: 1,
         feature: FEATURE,
@@ -2462,12 +2525,53 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
       });
 
       const result = await main(
-        makeLedgerArgs({ ledger, record, logs, git: makeShaGit([], { ancestor: true }) })
+        makeLedgerArgs({ ledger, record, logs, git: makeShaGit(calls, { ancestor: true }) })
       );
 
       expect(result.outcome).toBe("success");
       expect(dispatchedTaskIds(record)).toEqual([]);
       expect(logs.some((m) => m.startsWith("Skipping Phase I (wave ledger"))).toBe(true);
+      // AT-11 — the paired positive: exactly one probe on the ancestry fixture.
+      expect(calls.filter((a) => a[0] === "merge-base")).toEqual([
+        ["merge-base", "--is-ancestor", HEAD_SHA, "HEAD"],
+      ]);
+    });
+
+    // AT-04 — verification independence: over an enumerated fixture set (resume
+    // at wave 2, resume at the last wave, `head` at the tip, `head` an earlier
+    // reachable ancestor), the gate command is invoked before the first commit
+    // call, in every case, asserted on the interleaving of the `_runCommand`
+    // and `_git` H-1 event sink — not on either double's own log alone.
+    it.each([
+      ["resume at wave 2 (head at tip)", 1, HEAD_SHA],
+      ["resume at the last wave (head an earlier ancestor)", 2, "b".repeat(40)],
+    ])("%s: the gate runs before the first commit", async (_label, lastGreenWave, recordedHead) => {
+      const events = [];
+      const ledger = JSON.stringify({
+        version: 1,
+        feature: FEATURE,
+        planHash: computePlanHash([
+          [{ id: "T1", files: ["src/one.js"] }],
+          [{ id: "T2", files: ["src/two.js"] }],
+          [{ id: "T3", files: ["src/three.js"] }],
+        ]),
+        lastGreenWave,
+        head: recordedHead,
+      });
+      const result = await main(
+        makeLedgerArgs({
+          ledger,
+          events,
+          git: makeShaGit([], { ancestor: true }),
+        })
+      );
+
+      expect(result.outcome).toBe("success");
+      const runCommandIdx = events.findIndex((e) => e[0] === "runCommand");
+      const commitIdx = events.findIndex((e) => e[0] === "git" && e[1] === "commit");
+      expect(runCommandIdx).toBeGreaterThan(-1);
+      expect(commitIdx).toBeGreaterThan(-1);
+      expect(runCommandIdx).toBeLessThan(commitIdx);
     });
 
     it("a record written before the `head` field existed is still honoured — the field is optional on read", async () => {
@@ -2589,9 +2693,24 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     );
   });
 
+  // AT-09's companion arm: WITH a git transport, under the self-report gate
+  // (no `testCommand` configured) in turn, the ledger still writes normally —
+  // proving the write guard is the git TRANSPORT, never the gate mode.
+  it("writes the ledger normally under the self-report gate too, when a git transport IS injected", async () => {
+    const writes = [];
+    const result = await main(
+      makeLedgerArgs({ writes, config: "{}", git: makeGit([]) })
+    );
+
+    expect(result.outcome).toBe("success");
+    const recorded = ledgerWrites(writes);
+    expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3]);
+  });
+
   it("an explicit implementation.startWave outranks the ledger", async () => {
     const record = [];
     const logs = [];
+    const writes = [];
     const ledger = JSON.stringify({
       version: 1,
       feature: FEATURE,
@@ -2608,6 +2727,7 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
         config: configWithStartWave(3),
         record,
         logs,
+        writes,
         git: makeGit([]),
       })
     );
@@ -2615,10 +2735,20 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     expect(result.outcome).toBe("success");
     // The operator's wave 3, not the ledger's wave 2.
     expect(dispatchedTaskIds(record)).toEqual(["T3"]);
-    expect(logs.some((m) => m.startsWith("Resuming at wave 3 of 3 (implementation.startWave)"))).toBe(
-      true
-    );
+    // AT-05 — the record never consulted: no "ignored" line, and the single
+    // resume line names the announcement token (TE F-05), not asserted on an
+    // unlocated filtered element.
+    const banner = logs.filter((m) => m.startsWith("Resuming at wave 3 of 3 (implementation.startWave)"));
+    expect(banner.length).toBe(1);
+    expect(banner[0]).toContain(" (provenance: operator-set)");
+    expect(logs.some((m) => m.includes("was ignored"))).toBe(false);
     expect(logs.some((m) => m.includes("(wave ledger"))).toBe(false);
+    // AT-05's write-side conjunct (§5.5 mutation 5, §2.5): an operator-pointed
+    // run still writes a record, and the recorded wave number is PLAN-ABSOLUTE
+    // (3, the wave that actually ran), never a count of waves this run ran.
+    const recorded = ledgerWrites(writes);
+    expect(recorded.length).toBeGreaterThan(0);
+    expect(JSON.parse(recorded[recorded.length - 1]).lastGreenWave).toBe(3);
   });
 
   it.each([
@@ -2626,6 +2756,12 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
       "unparseable content",
       "{ this is not json",
       "it is not readable JSON",
+    ],
+    [
+      // AT-02 — the fourth of seven codes: valid JSON that is not an object.
+      "content that is not a JSON object",
+      JSON.stringify(["not", "an", "object"]),
+      "it is not a JSON object",
     ],
     [
       "a record for another feature",
@@ -2645,17 +2781,23 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
   ])("%s is ignored with a notice, and every wave runs", async (_label, ledger, reason) => {
     const record = [];
     const logs = [];
+    const gitCalls = [];
     const result = await main(
-      makeLedgerArgs({ ledger, record, logs, writes: [], git: makeGit([]) })
+      makeLedgerArgs({ ledger, record, logs, writes: [], git: makeGit(gitCalls) })
     );
 
     expect(result.outcome).toBe("success");
     expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
     expect(logs).toContain(
       `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${reason}. ` +
-        `Running every wave from 1.`
+        `Running every wave from 1. (provenance: automatic)`
     );
     expect(logs.some((m) => m.startsWith("Resuming at wave"))).toBe(false);
+    // AT-03/AT-11 — every code here is ancestry-independent (§2.2): the
+    // classifier's optimistic first call already resolves it, so the lazy
+    // probe never fires. Filtered call-count equality, not containment
+    // (§5.5 mutation 4): an eager probe would still pass a `toContainEqual`.
+    expect(gitCalls.filter((a) => a[0] === "merge-base")).toEqual([]);
   });
 
   it("a matching record whose waves are all green skips Phase I whole, and the row says so", async () => {
@@ -2712,6 +2854,254 @@ describe("Phase I — the INTERIM wave ledger resumes a halted run unattended", 
     expect(notices.length).toBe(1);
     expect(notices[0]).toContain("EACCES: read-only");
   });
+
+  // AT-15 arm 2 (H-2; D-6, EC-15a) — an early write succeeds, a later one
+  // fails: the discriminator is that the implementation DISCARDS the record on
+  // failure rather than caching it, so the next run resolves outcome (b), the
+  // resume, at the last SUCCESSFUL write, not the last attempted one.
+  it("a ledger write that fails partway through leaves the last successful record standing", async () => {
+    const writes = [];
+    const halted = await main(
+      makeLedgerArgs({
+        writes,
+        git: makeGit([]),
+        // Wave 1's write (callIndex 0) succeeds; wave M=3's (callIndex 2), the
+        // LAST write of this 3-wave plan, throws.
+        failWriteOn: (path, callIndex) => path === WAVE_STATE_PATH && callIndex === 2,
+      })
+    );
+
+    // Every wave gate in this fixture is green (the default runCommand), so
+    // nothing halts Phase I itself — the failure is confined to the write.
+    expect(halted.outcome).toBe("success");
+    const recorded = ledgerWrites(writes);
+    expect(recorded.length).toBe(2);
+    const lastGood = recorded[recorded.length - 1];
+    expect(JSON.parse(lastGood).lastGreenWave).toBe(2);
+
+    // The next invocation resumes at wave 3 — outcome (b) — from the last
+    // successful write, exactly as though the failed write never happened.
+    const record = [];
+    const logs = [];
+    const resumed = await main(
+      makeLedgerArgs({ ledger: lastGood, record, logs, git: makeGit([]) })
+    );
+    expect(resumed.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual(["T3"]);
+    expect(logs.some((m) => m.startsWith("Resuming at wave 3 of 3 (wave ledger"))).toBe(true);
+  });
+
+  // AT-02's IG-6 positive conjunct (PM F-04) — the no-record arm is not
+  // absence-only: the no-record log line is absent AND every wave of the
+  // plan is dispatched from wave 1, the paired positive that distinguishes a
+  // silent full run from a run that silently skipped something.
+  it("no ledger at all is a silent full run — IG-6, the closure of the disregard catalogue", async () => {
+    const record = [];
+    const logs = [];
+    const result = await main(makeLedgerArgs({ record, logs, git: makeGit([]) }));
+
+    expect(result.outcome).toBe("success");
+    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+    expect(logs.some((m) => m.includes("wave ledger"))).toBe(false);
+  });
+
+  // AT-06 — a pointer AT the default (1) is not a setting: two runs, one with
+  // `startWave: 1` spelled out and one with the key omitted entirely, produce
+  // byte-identical logs and report rows. Positive conjunct: those two equally
+  // "unset" runs are not equal to a THIRD run where the ledger records a real
+  // resume — the ledger is honoured, and only the resumed subset dispatches.
+  it("startWave: 1 is indistinguishable from the key being omitted, and neither suppresses the ledger", async () => {
+    const explicitOne = JSON.stringify({
+      implementation: { testCommand: "npm test", startWave: 1 },
+    });
+    const logsA = [];
+    const resultA = await main(makeLedgerArgs({ config: explicitOne, logs: logsA, git: makeGit([]) }));
+    const logsB = [];
+    const resultB = await main(
+      makeLedgerArgs({ config: CONFIG_WITH_TEST_COMMAND, logs: logsB, git: makeGit([]) })
+    );
+    expect(logsA).toEqual(logsB);
+    expect(phaseDetail(resultA, "I")).toBe(phaseDetail(resultB, "I"));
+    // No gate-degradation notice appears in either run: `startWave` alone never
+    // starves `testCommand`/`scriptGate` resolution.
+    expect(logsA.some((m) => m.includes("script-owned test gate is unavailable"))).toBe(false);
+
+    // The positive conjunct: a THIRD, otherwise-identical run whose ledger
+    // records a real resume is honoured and is NOT equal to the two above.
+    const ledger = JSON.stringify({
+      version: 1,
+      feature: FEATURE,
+      planHash: computePlanHash([
+        [{ id: "T1", files: ["src/one.js"] }],
+        [{ id: "T2", files: ["src/two.js"] }],
+        [{ id: "T3", files: ["src/three.js"] }],
+      ]),
+      lastGreenWave: 1,
+    });
+    const record = [];
+    const logsC = [];
+    const resultC = await main(
+      makeLedgerArgs({ ledger, config: explicitOne, record, logs: logsC, git: makeGit([]) })
+    );
+    expect(resultC.outcome).toBe("success");
+    expect(logsC.some((m) => m.startsWith("Resuming at wave 2 of 3 (wave ledger"))).toBe(true);
+    expect(dispatchedTaskIds(record)).toEqual(["T2", "T3"]);
+    expect(logsC).not.toEqual(logsA);
+  });
+
+  // AT-10 — a wave whose tasks own no changed paths still records: the write
+  // guard is the git TRANSPORT, never "did `git add` stage anything".
+  it("a no-change wave still records green, and the next wave is announced", async () => {
+    const writes = [];
+    const logs = [];
+    // `diff` reports nothing staged for any path — no task's files changed —
+    // but the transport is present, so the record is still written.
+    const noChangeGit = async (argv) => {
+      const joined = argv.join(" ");
+      if (joined === "rev-parse --abbrev-ref HEAD") return { ok: true, stdout: `${BRANCH}\n`, stderr: "" };
+      if (argv[0] === "diff") return { ok: true, stdout: "", stderr: "" };
+      return { ok: true, stdout: "", stderr: "" };
+    };
+    const result = await main(makeLedgerArgs({ writes, logs, git: noChangeGit }));
+
+    expect(result.outcome).toBe("success");
+    const recorded = ledgerWrites(writes);
+    expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3]);
+  });
+
+  // AT-13's announcement-table closure (TE F-14) — one table-driven suite over
+  // §2.4's five ANNOUNCING rows (the sixth, IG-6, is silent by contract): a
+  // fixture resolving each row's outcome, and the SET of "which row fired"
+  // labels observed across the five fixtures equals the five row names — a
+  // deleted announcement reds this set equality directly, not by depending on
+  // which other AT happens to also cover it.
+  it("the announcement table is closed: exactly the five §2.4 provenance rows fire, each once", async () => {
+    const wave1Writes = [];
+    let gateCalls = 0;
+    const primer = await main(
+      makeLedgerArgs({
+        writes: wave1Writes,
+        git: makeGit([]),
+        runCommand: async () => {
+          gateCalls += 1;
+          return gateCalls === 1
+            ? { ok: true, output: "Tests: 40 passed\n" }
+            : { ok: false, output: "Tests: 1 failed, 39 passed\n" };
+        },
+      })
+    );
+    expect(primer.outcome).toBe("halted");
+    const wave1Record = ledgerWrites(wave1Writes).find((t) => JSON.parse(t).lastGreenWave === 1);
+
+    const completeWrites = [];
+    const completeRun = await main(makeLedgerArgs({ writes: completeWrites, git: makeGit([]) }));
+    expect(completeRun.outcome).toBe("success");
+    const completeRecord = ledgerWrites(completeWrites).find((t) => JSON.parse(t).lastGreenWave === 3);
+
+    const fixtures = {
+      "full-run, operator pointer": makeLedgerArgs({
+        config: JSON.stringify({ implementation: { testCommand: "npm test", startWave: 99 } }),
+        git: makeGit([]),
+      }),
+      "full-run, disregarded record": makeLedgerArgs({ ledger: "{ not json", git: makeGit([]) }),
+      "resume mid-plan, operator pointer": makeLedgerArgs({
+        config: JSON.stringify({ implementation: { testCommand: "npm test", startWave: 2 } }),
+        git: makeGit([]),
+      }),
+      "resume mid-plan, record": makeLedgerArgs({ ledger: wave1Record, git: makeGit([]) }),
+      "skip Phase I": makeLedgerArgs({ ledger: completeRecord, git: makeGit([]) }),
+    };
+
+    const rowKind = (line) => {
+      if (line.startsWith("Notice: implementation.startWave") && line.includes("is past the last wave"))
+        return "full-run, operator pointer";
+      if (line.startsWith("Notice: the wave ledger")) return "full-run, disregarded record";
+      if (line.startsWith("Resuming at wave") && line.includes("(implementation.startWave)"))
+        return "resume mid-plan, operator pointer";
+      if (line.startsWith("Resuming at wave") && line.includes("(wave ledger"))
+        return "resume mid-plan, record";
+      if (line.startsWith("Skipping Phase I (wave ledger")) return "skip Phase I";
+      return null;
+    };
+
+    const observedRows = new Set();
+    for (const [expectedRow, args] of Object.entries(fixtures)) {
+      const logs = [];
+      const result = await main({ ...args, _log: (m) => logs.push(String(m)) });
+      expect(result.outcome).toBe("success");
+      const suffixed = logs.filter((m) => m.includes("(provenance: "));
+      expect(suffixed.length).toBe(1);
+      expect(rowKind(suffixed[0])).toBe(expectedRow);
+      observedRows.add(rowKind(suffixed[0]));
+    }
+
+    expect([...observedRows].sort()).toEqual(
+      [
+        "full-run, disregarded record",
+        "full-run, operator pointer",
+        "resume mid-plan, operator pointer",
+        "resume mid-plan, record",
+        "skip Phase I",
+      ].sort()
+    );
+  });
+
+  // AT-18 — completion accumulates ACROSS invocations: halt at wave 2, resume
+  // and halt at wave 4 (of a longer plan is unavailable here, so this reuses
+  // the 3-wave fixture as halt-at-2-then-complete, and adds a THIRD run that
+  // must skip 1-2 individually rather than re-deriving anything from wave 1).
+  it("completion accumulates across invocations: a third run skips exactly the waves earlier runs recorded", async () => {
+    const firstWrites = [];
+    let gateCalls = 0;
+    const halted = await main(
+      makeLedgerArgs({
+        writes: firstWrites,
+        git: makeGit([]),
+        runCommand: async () => {
+          gateCalls += 1;
+          return gateCalls === 1
+            ? { ok: true, output: "Tests: 40 passed\n" }
+            : { ok: false, output: "Tests: 1 failed, 39 passed\n" };
+        },
+      })
+    );
+    expect(halted.outcome).toBe("halted");
+    const afterFirst = ledgerWrites(firstWrites).find((t) => JSON.parse(t).lastGreenWave === 1);
+    expect(afterFirst).toBeDefined();
+
+    // ── Run 2: resumes at wave 2, wave 2 is green, wave 3 reds — halting
+    // AGAIN, one wave further than the first halt. ────────────────────────
+    let secondGateCalls = 0;
+    const secondWrites2 = [];
+    const secondHalted2 = await main(
+      makeLedgerArgs({
+        ledger: afterFirst,
+        writes: secondWrites2,
+        git: makeGit([]),
+        runCommand: async () => {
+          secondGateCalls += 1;
+          return secondGateCalls === 1
+            ? { ok: true, output: "Tests: 40 passed\n" }
+            : { ok: false, output: "Tests: 1 failed, 39 passed\n" };
+        },
+      })
+    );
+    expect(secondHalted2.outcome).toBe("halted");
+    const afterSecond = ledgerWrites(secondWrites2).find((t) => JSON.parse(t).lastGreenWave === 2);
+    expect(afterSecond).toBeDefined();
+
+    const record = [];
+    const logs = [];
+    const third = await main(
+      makeLedgerArgs({ ledger: afterSecond, record, logs, git: makeGit([]) })
+    );
+    expect(third.outcome).toBe("success");
+    // The third run dispatches ONLY wave 3 — the record discriminates on the
+    // waves THIS lineage of invocations actually executed, not on wave 1's
+    // original commit.
+    expect(dispatchedTaskIds(record)).toEqual(["T3"]);
+    expect(logs.some((m) => m.startsWith("Resuming at wave 3 of 3 (wave ledger"))).toBe(true);
+  });
 });
 
 describe("computePlanHash — the ledger's plan fingerprint", () => {
@@ -2729,6 +3119,21 @@ describe("computePlanHash — the ledger's plan fingerprint", () => {
     expect(
       computePlanHash([[{ id: "T1", files: ["src/one.js"] }], [{ id: "T2", files: ["src/CHANGED.js"] }]])
     ).not.toBe(computePlanHash(WAVES));
+  });
+
+  // T-07's one owed arm (§5.3): hashing the same PLAN TEXT twice through the
+  // real `parsePlanTasks`/`computeWaves` pipeline — every shipped arm above
+  // hashes a hand-built wave array twice, which never exercises the parse step
+  // this feature's `main()` call site actually goes through.
+  it("is deterministic through the real parse pipeline, hashing the same PLAN text twice", () => {
+    const tasks = parsePlanTasks(PLAN_THREE_WAVES);
+    const ownership = parsePlanOwnership(PLAN_THREE_WAVES).ownership;
+    const wavesA = computeWaves(tasks, ownership);
+    const wavesB = computeWaves(
+      parsePlanTasks(PLAN_THREE_WAVES),
+      parsePlanOwnership(PLAN_THREE_WAVES).ownership
+    );
+    expect(computePlanHash(wavesA)).toBe(computePlanHash(wavesB));
   });
 
   it("changes when the wave order changes", () => {
