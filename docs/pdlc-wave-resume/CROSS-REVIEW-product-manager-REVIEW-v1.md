@@ -74,7 +74,91 @@ That is the standard I would ask for, and it was met without being asked.
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | PLAN task **T-10 never ran**: §4.5.1's delta-scoped coverage map ships with `*(filled in by T-10…)*` placeholders and every §4.5 DoD box is unchecked, so the feature's own completeness oracle does not exist. | PLAN T-10, §4.5.1; TSPEC RT-7/§5.8 |
+| F-02 | Medium | Local | TSPEC delta **D-1 ("remove the INTERIM commentary") is only partly landed** — `INTERIM` survives in production, in the shipped runtime, and in the integration suite's `describe` titles, so the DoD row "All eleven TSPEC delta rows D-1 … D-11 are landed" is false. | PLAN §1.1 D-1; REQ §1 |
+| F-03 | Medium | Process | The `waveResume*.test.js` namespace is excluded from the `*.test.js` census on the stated ground that "that PLAN's §3.3 manifest owns their census" — but nothing mechanises that ownership, so deleting a whole suite reds no test. | REQ-WVR-07, REQ-WVR-10; PLAN §3.3 |
+| F-04 | Medium | Local | The queue-parity suite attributes to FSPEC AT-16 a residual-gap sentence AT-16 does not contain, and AT-16's behavioural conjunct is unmet on the delegated path. | REQ-WVR-07 (P2), FSPEC AT-16, DEC-WVR-07 |
+| F-05 | Medium | Local | The automatic resume, its five announcements and its **only** escape hatch (delete `.claude/pdlc-wave-state.json`) appear in no operator-facing document. | REQ-WVR-04, OQ-1 |
+| F-06 | Low | Local | AT-09's re-invocation conjunct is not asserted in AT-09's own fixture; it holds only by composing two separate tests. | REQ-WVR-09 (P0), FSPEC AT-09 |
+| F-07 | Low | Local | The D-10 / OB-F4 baseline oracle is a containment check (`includes("M-WVR-1")`), so it cannot detect a mis-scoped or emptied baseline row. | PLAN D-10, FSPEC OB-F4 |
+
+*Tag reconciliation:* F-01 corresponds to `CROSS-REVIEW-product-manager-REVIEW-v2.md` F-01 (High, Local),
+F-05 to that file's F-03 (Medium, Local), F-06 to its F-04 (Low, Local). I have kept those Scope tags
+unchanged rather than shipping a conflicting tag for the same defect. F-03 is tagged `Process` because
+the same census-exclusion precedent was already set for the `learnings*` namespace
+(`documentOracles.test.js:376-384`) — the lesson is reusable regardless of where the fix lands.
+
+### F-01 (High, Local) — PLAN T-10 never ran, so this feature's completeness oracle does not exist
+
+PLAN §2.1's T-10 row owns two oracles (`PLAN-pdlc-wave-resume.md` §2.1, row `T-10`):
+
+> (i) … per-file `orchestrate-dev.js` … `85`; … (ii) delta oracle — report c8's per-file **uncovered
+> line list** for `orchestrate-dev.js` and assert no uncovered line falls inside the line ranges this
+> feature introduced, against the transcribed mapping table in §4.5.1 … a deleted [row] fails
+> set-equality.
+
+Neither exists. Evidence, all in the tree at HEAD:
+
+1. **§4.5.1's table is still a stub.** Its "Covering test named by T-10" column reads
+   `*(filled in by T-10, one test name per arm, in `waveResume.test.js`)*` for the 8 classifier arms,
+   `*(one per code, …)*` for the 7 renderers, `*(the `merge-base` call-count case, AT-03)*`,
+   `*(in `waveExecution.test.js`, T-10's second owned file)*` for the 5 announcement branches, and
+   `*(in `waveExecution.test.js`)*` for the 3 report-row branches. The PLAN itself says the table's
+   "completeness — not a percentage — is the checkable thing". It is not complete, so nothing is checked.
+2. **No coverage assertion was added.** `grep` for a per-file branch floor over `orchestrate-dev.js`
+   in `waveResume.test.js` / `waveResumePreflight.test.js` returns nothing; the only change to
+   `coverageInstrumentation.test.js` in this branch is a `spawnSync` retry loop for a
+   `consolidationBuild.test.js` race, not a T-10 oracle.
+3. **No T-10 commit.** `git log --oneline main..HEAD --format='%s' | grep '^feat(pdlc-wave-resume): T-'`
+   lists T-01, T-02, T-03, T-04, T-07, T-08, T-11 — seven of the nine tasks §4.6 measures. T-12 is
+   index-only and needs none; T-10 is the one task with owed work that did not land.
+4. **Every §4.5 DoD box is `[ ]`.** Including "All eighteen FSPEC ATs have a passing owning test per
+   §4.1" and "Each of §4.3's five mutations was applied, observed RED against its named oracle,
+   reverted, and its failure output recorded".
+
+Why this is High and not Medium, in product terms: PLAN §4.5.1 exists *because* round-1 F-05
+established that the whole-file 85% floor cannot serve as this feature's oracle — the module is
+~16,300 lines and this feature adds ~20 branches, "about one percent of the denominator, so every new
+branch could be uncovered and `npm run test:coverage` would still exit 0". The delta map was the
+compensating control. With it unfilled, the feature ships with **no mechanism that fails when one of
+its own branches loses its cover** — which is the same class of gap as a builder with no production
+caller, one level up. The 177 tests I ran are genuinely good; the point is that nothing detects their
+erosion.
+
+**To resolve:** run T-10 — fill §4.5.1's fourth column with one real test name per row, add the
+delta oracle asserting no c8-uncovered line for `orchestrate-dev.js` falls inside this feature's
+introduced ranges (set-equality over the table, so a deleted row reds), report the measured per-file
+branch number, and tick §4.5's boxes against observed evidence. If T-10 is being deliberately
+dropped, that is a scope decision and belongs in DECISIONS with a rejected-alternatives entry — not
+in an unticked checkbox.
+
+### F-02 (Medium, Local) — TSPEC delta D-1 is only partly landed; `INTERIM` survives in three places
+
+PLAN §1.1 lists eleven TSPEC delta rows and assigns **D-1 "remove the INTERIM commentary, cite the
+TSPEC"** to T-02, and §4.5's DoD asserts "All eleven TSPEC delta rows D-1 … D-11 are landed, each by
+the task §1.1 names."
+
+The banner comment was updated — `orchestrate-dev.js:12843` now reads `wave ledger, Phase I's
+script-owned resume pointer (pdlc-wave-resume)` where `main` read `INTERIM: wave ledger, …`. But
+three further occurrences were missed:
+
+- `pdlc/workflows/orchestrate-dev.js:16224` — `// ── INTERIM wave ledger (see WAVE_STATE_PATH) — the automatic half of the`
+- `pdlc/workflows/dist/pdlc-cli.mjs:16233` — the same line in the **shipped runtime artifact**
+- `pdlc/workflows/__tests__/waveExecution.test.js:2197` and `:2278` — a section banner and, more
+  visibly, the `describe` title `"Phase I — the INTERIM wave ledger resumes a halted run unattended"`,
+  which is printed in CI test output
+
+The product point is not comment hygiene. REQ §1 frames this feature as the formalisation of an
+explicitly interim mechanism; `docs/_queue/QUEUE.md` row 20 was the promise. A maintainer reading
+`main()`'s Phase I branch at HEAD, or a reviewer reading CI output, is told the mechanism is still
+interim and still awaiting the feature that just shipped. Medium, not High: no user-visible behaviour
+is wrong, and no requirement is unmet — but a stated DoD row is recorded as landed when it is not.
+
+**To resolve:** replace the three remaining `INTERIM` mentions with the TSPEC citation D-1 asks for
+(the `describe` title included), regenerate `pdlc/workflows/dist/` in the same commit, and re-tick
+the D-1 half of §4.5's delta-row box.
 
 ## Questions
 
