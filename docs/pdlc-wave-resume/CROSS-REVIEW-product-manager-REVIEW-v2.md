@@ -246,4 +246,43 @@ red delta oracle will use it to reason about ordering. **What to change:** repla
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My round-1 High (F-01, T-10's missing completeness oracle) is **resolved**, and resolved at the
+root: the delta oracle exists, is wired into the CI-gated `test:coverage` chain, is rebase-safe, and
+fails on an empty range set rather than passing vacuously. My other six findings are closed too. The
+revision broke nothing I had previously approved — the feature's suites went 177 → **191 tests, all
+passing**, the runtime artifact is `in-sync`, and the full coverage gate exits **0**.
+
+Against the bar this phase sets: every P0 and P1 requirement traces to a production caller reached
+from `main()`, and every AC claiming an operator-visible artifact is driven through that caller
+rather than through a builder's own unit test. There is no zero-caller seam and no dead config —
+including the one new tooling artifact this round adds, whose wiring is itself asserted by a test.
+Closed catalogues are checked by set-equality against literal transcriptions, negative assertions
+carry paired positives on the same path, and the one absence-only oracle I flagged in v1 now has its
+positive half inside the same fixture. I have no open High finding, so this is not a blocking
+verdict.
+
+The two findings I file are recorded, not gating, and neither needs to hold the feature:
+
+1. **F-01 (Medium, Process).** Tick PLAN §4.5's sixteen remaining DoD boxes against observed
+   evidence, in the form T-10's two ticked boxes already model — a measured number or a named
+   oracle beside each. Leave genuinely unsatisfied boxes unticked *with a reason*. Separately, raise
+   the mechanical "PLAN task ids minus landed task ids is empty" check for the DoD phase; if it is
+   not adopted inside this feature, it should survive as a process learning at harvest.
+2. **F-02 (Low, Local).** In `scripts/check-wave-resume-delta-coverage.mjs:14`, replace "after
+   `c8 report --check-coverage`" with "after `c8 report --reporter=json`, and before
+   `c8 report --check-coverage`".
+
+One item is **not** mine to fold into this verdict and is routed upstream instead: FSPEC AT-16 still
+states an unqualified behavioural-parity requirement that DEC-WVR-07 deliberately narrowed and that
+no shipped test meets. The code and the DECISIONS record agree with each other; the FSPEC is the
+document out of step. That is emitted as an ERRATUM against FSPEC (see Q-01), not counted against
+the artifact under review here.
+
+Good work, and the F-01 remediation in particular is better than the fix I asked for.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
