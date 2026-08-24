@@ -87,6 +87,80 @@ asserted) and add the delta arm over c8's uncovered-line list — then replace e
 `*(filled in by T-10…)*` cell in PLAN §4.5.1 with the measured covering-test name, and tick §4.5's
 two coverage checkboxes.
 
+### F-02 (Medium, Process) — an unrun PLAN task left no trace, on a feature about not losing waves
+
+F-01's gap is only findable by diffing PLAN §2.1's task ids against the branch's commit subjects. The
+tree holds no artifact saying "batch 4 was not attempted": every task's status cell in PLAN §2.1 is
+still `⬚`, including the seven that landed, so the status column carries no signal either way, and
+`POSTMORTEM-PR-pdlc-wave-resume.md` covers the PR phase, not Phase I.
+
+This is worth a `Process` tag rather than a `Local` one because the failure mode is generic: any
+feature whose last batch is skipped reaches CR looking finished. The cheap, mechanical check is the
+one I had to run by hand — the set of `T-NN` ids in PLAN §2.1 minus the set of `T-NN` ids in the
+branch's implementation commit subjects must be empty, or every id in the remainder must be an
+index-only task whose stated effect is already true at the merge base (T-12's case here). That check
+belongs in the DoD phase, where it would have caught this before CR.
+
+I am not claiming the orchestrator misbehaved — I can only observe the absent commit, and the last
+commit on the branch is `chore(pdlc-wave-resume): wave 3 build outputs`. The finding is about the
+absence of an observable, which is exactly the class of defect this feature exists to fix.
+
+**What to change:** after F-01 is closed, tick PLAN §2.1's status cells for the tasks that landed so
+the column carries signal, and raise the id-set check for the DoD phase (harvest as a `Process`
+learning if it is not adopted in this feature).
+
+### F-03 (Medium, Local) — the automatic resume and its hatch are in no operator-facing document
+
+REQ-WVR-04 (P0) requires "a **documented**, announced escape hatch exists to force a full run despite
+a valid record". The announced half ships and is well covered: the deletion hatch is named in both the
+resume banner and the skip banner (`orchestrate-dev.js:16308`, `:16320`), and AT-08's positive
+conjunct 1 proves the named hatch is the hatch that works.
+
+The documented half has no home in the repository:
+
+```
+grep -rn "pdlc-wave-state\|wave ledger" pdlc/OPERATIONS.md CLAUDE.md pdlc/README.md
+→ (no output)
+```
+
+`CLAUDE.md` states that `pdlc/OPERATIONS.md` "carries the full operational detail … the phase graph
+and erratum channel, implementation waves … Read it before debugging pipeline behavior", and this
+feature adds a new automatic behaviour — a run that skips Phase I entirely on the strength of a
+machine-local file — that an operator debugging "why did my run skip Phase I?" cannot look up.
+
+I am **not** raising this as High, because the narrowing was made deliberately upstream and approved:
+FSPEC §3.3 (`FSPEC-pdlc-wave-resume.md:161-164`) states the hatch "is named in the announcement of
+outcomes (b) and (c), so an operator reading either announcement learns how to undo it **without
+consulting documentation**". That is a conscious, reviewed reading of REQ-WVR-04's "documented", not
+a silent reinterpretation, so re-litigating it in CR would be re-opening an approved decision. The
+residual product gap is still real and cheap to close.
+
+**What to change:** add a short subsection to `pdlc/OPERATIONS.md` naming `.claude/pdlc-wave-state.json`,
+the three resume outcomes, the six disregard causes and the deletion hatch — one paragraph, no
+behaviour change, no REQ/FSPEC edit needed.
+
+### F-04 (Low, Local) — AT-09's re-invocation conjunct is not asserted in the AT-09 fixture
+
+FSPEC AT-09 (REQ-WVR-09, P0) reads: "*Given* a run whose waves' gates pass but which commits nothing
+… *When* the pipeline is re-invoked for the same feature and unchanged plan, *Then* implementation
+starts at that same wave, announcing it as not previously completed."
+
+The shipped AT-09 arm (`waveExecution.test.js:2679-2694`, "writes no ledger at all when there is no
+git transport to commit with") asserts the write side only — `expect(ledgerWrites(writes)).toEqual([])`
+paired with a positive assertion on the "no git transport is injected" notice. The pairing rule is
+respected, so this is not an absence-only oracle; what is missing is the AC's own operator-visible
+outcome, the **second** invocation's resume point. The companion arm at `:2699` varies gate mode, not
+invocation count.
+
+The behaviour is in fact covered — `:2652-2658` drives `main()` with `ledger: null` and asserts
+`dispatchedTaskIds(freshRecord)).toEqual(["T1","T2","T3"])`, and `waveResume.test.js` covers guard 1
+(no record → full run from wave 1) at the unit level — so this is a traceability gap, not a coverage
+hole, which is why it is Low and not blocking.
+
+**What to change:** either sequence the two invocations inside the AT-09 arm (run with no `_git`,
+then re-invoke the same fixture and assert every wave is dispatched), or annotate the AT-09 arm with
+a pointer to the arm that discharges the re-invocation conjunct so the trace is readable.
+
 ## Questions
 
 ## Positive Observations
