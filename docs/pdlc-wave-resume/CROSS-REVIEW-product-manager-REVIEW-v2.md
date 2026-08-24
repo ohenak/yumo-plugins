@@ -191,6 +191,12 @@ red delta oracle will use it to reason about ordering. **What to change:** repla
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On the FSPEC/DECISIONS disagreement behind v1 F-04: `6502b422` correctly re-pointed the test's citation at DEC-WVR-07 and TSPEC §5.4, but FSPEC AT-16 (`FSPEC-pdlc-wave-resume.md:406-412`) still asks for behavioural parity without qualification — "*Then:* both resolve the same outcome, the same resume point and the same provenance, **and the queue run's own report states them**". No shipped test observes a delegated run's report, by design (DEC-WVR-07 option O-9). So AT-16 as written is unmet while AT-16 as narrowed is met. I have routed this as an **ERRATUM to FSPEC** rather than folding it into my verdict, since the document at fault is upstream of the code. Should AT-16's text be amended to carry DEC-WVR-07's narrowing, or should DEC-WVR-07 be re-opened? Either resolves it; leaving the two documents disagreeing does not. |
+| Q-02 | On F-01: is the intent that §4.5's boxes are ticked at Phase DOD rather than by the implementing tasks? If so that is a reasonable division and I would only ask that it be written down, because right now the two ticked boxes were ticked *by* a task (T-10, `780971b5`) and the sixteen unticked ones were owned by tasks that completed — which reads as an inconsistent convention rather than a deliberate one. |
+| Q-03 | `check-wave-resume-delta-coverage.mjs:43` pins `PINNED_BASE_SHA = b029e853…` as the fallback base. The live merge-base is preferred and resolved cleanly in my run (the output names `merge-base with origin/main`), so the pin is dormant here. After this feature merges, is the pin expected to be removed, or to stay as a permanent artefact of a now-merged branch? I am not filing it as a finding — it is inert and the comment at `:24-31` explains the design — but a stale pin nobody owns is the kind of thing that outlives its reason. |
+
 ## Positive Observations
 
 ## Recommendation
