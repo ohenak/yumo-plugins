@@ -199,6 +199,51 @@ red delta oracle will use it to reason about ordering. **What to change:** repla
 
 ## Positive Observations
 
+- **Every one of the seven prior findings was addressed at the root, not at the symptom.** The
+  clearest case is v1 F-07: I flagged that the D-10 baseline oracle was a containment check
+  (`includes("M-WVR-1")`) blind to an emptied row. The fix (`waveResumeRepoState.test.js:144-166`)
+  did not just add a longer substring — it pins each row by the **measured phrases it carries**
+  (`"Replay cost"`, `"16 waves"`, `"7 tasks"`), and the comment records the constraint that governs
+  it: "`docs/_constraints` baselines are measured records, so each row is pinned by the measurement
+  it carries — never by a path or line number, and never by rewriting the record itself." That is
+  the standing project constraint restated correctly at the point of use.
+
+- **The F-01 fix resisted the two temptations I expected it to take.** It would have been easy to
+  satisfy "fill in §4.5.1's fourth column" by typing plausible test names, and easy to satisfy the
+  delta oracle by asserting the whole-file percentage a second time. It did neither: the table's
+  cells are checked against the test files they name (`:350-369`), so an invented name reds, and the
+  delta oracle reads c8's actual uncovered-line list and intersects it with git-derived ranges. The
+  oracle now proves something the whole-file floor provably cannot.
+
+- **The no-implementation-echo rule was applied where it was least convenient.** §4.5.1's expected
+  branch-class set is transcribed from TSPEC §3.1/§3.2/§2.4 into a literal array
+  (`waveResumeRepoState.test.js:315-323`), with the comment stating "never read back out of the
+  PLAN, which is the document under test here". Deriving it from the PLAN would have been shorter
+  and would have passed. Choosing the longer, falsifiable form when the shortcut was invisible is
+  the habit that makes an oracle worth having.
+
+- **The F-06 fix names the false-green it closes.** The re-invocation conjunct moved inside AT-09's
+  own fixture (`waveExecution.test.js:2685-2699`), and the comment does not just say what it asserts
+  — it says what would otherwise have passed: an implementation that *cleared* the record on an
+  empty transport would keep the separate IG-6 test green while breaking a P0 acceptance criterion.
+  A test that documents the mutant it kills is a test the next reader can maintain.
+
+- **The rebase-safety fix (`b487e3d7`) is a product save, not just an engineering one.** A delta
+  oracle pinned to a pre-feature sha would have gone red at Phase DOD — after rebase, on lines
+  `main` contributed — and the operator's most likely response to a red oracle they do not own is to
+  weaken it. Preferring the live merge-base and demoting the pin to a fallback means the oracle
+  stays strict at exactly the moment it would otherwise have been loosened.
+
+- **The escape hatch is now documented against the question an operator actually asks.**
+  `pdlc/OPERATIONS.md:42` leads with the negative — `forcePhases` **cannot** name Phase I — before
+  giving the remedy. My v1 finding only asked for the hatch to be written down; naming the thing
+  that *looks* like it should work, and does not, is the part that saves a wasted run.
+
+- **Verified end to end, not asserted.** `npm run test:coverage` exits **0**; the delta oracle
+  reports `uncovered lines inside introduced ranges: 0 — OK` against 836 uncovered lines elsewhere
+  in the file, at **88.90 %** per-file branch coverage. That 836-vs-0 contrast is the whole argument
+  for why this feature needed a delta oracle, and it is now printed on every CI run.
+
 ## Recommendation
 
 ## Verdict
