@@ -181,20 +181,35 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
       );
 
       const reportDir = path.join(tmp, "report");
-      const run = spawnSync(
-        process.execPath,
-        [
-          path.join(PKG_DIR, "node_modules", "c8", "bin", "c8.js"),
-          "--reporter=json-summary",
-          `--temp-directory=${path.join(tmp, "v8")}`,
-          `--report-dir=${reportDir}`,
-          "--check-coverage=false",
+      // `consolidationBuild.test.js` mutates and restores the real
+      // `dist/pdlc-cli.mjs` in a parallel jest worker (its TT-5 mutation case
+      // and its rebuild-from-backup case), so `--check` here can transiently
+      // see STALE or a missing dist through no fault of the c8 config. Retry
+      // through that window only; a genuine defect fails every attempt.
+      let run;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        run = spawnSync(
           process.execPath,
-          driver,
-          "--check",
-        ],
-        { cwd: PKG_DIR, encoding: "utf8" },
-      );
+          [
+            path.join(PKG_DIR, "node_modules", "c8", "bin", "c8.js"),
+            "--reporter=json-summary",
+            `--temp-directory=${path.join(tmp, "v8")}`,
+            `--report-dir=${reportDir}`,
+            "--check-coverage=false",
+            process.execPath,
+            driver,
+            "--check",
+          ],
+          { cwd: PKG_DIR, encoding: "utf8" },
+        );
+        const distRaced =
+          run.status !== 0 &&
+          /STALE\s+pdlc\/workflows\/dist\/|ENOENT.*pdlc-cli\.mjs/.test(
+            `${run.stderr}`,
+          );
+        if (!distRaced) break;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+      }
 
       // Control: a driver that failed to run would produce an empty report, and
       // "no rows" must not be readable as "the config is fine".
