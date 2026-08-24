@@ -2658,24 +2658,6 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
     expect(dispatchedTaskIds(freshRecord)).toEqual(["T1", "T2", "T3"]);
   });
 
-  it("a ledger recording more waves than the plan has is ignored, not honoured", async () => {
-    const logs = [];
-    const ledger = JSON.stringify({
-      version: 1,
-      feature: FEATURE,
-      planHash: computePlanHash([
-        [{ id: "T1", files: ["src/one.js"] }],
-        [{ id: "T2", files: ["src/two.js"] }],
-        [{ id: "T3", files: ["src/three.js"] }],
-      ]),
-      lastGreenWave: 4,
-    });
-    const result = await main(makeLedgerArgs({ ledger, logs, git: makeGit([]) }));
-
-    expect(result.outcome).toBe("success");
-    expect(logs.some((m) => m.includes("was ignored") && m.includes("only 3"))).toBe(true);
-  });
-
   it("writes no ledger at all when there is no git transport to commit with", async () => {
     const writes = [];
     const logs = [];
@@ -2751,54 +2733,96 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
     expect(JSON.parse(recorded[recorded.length - 1]).lastGreenWave).toBe(3);
   });
 
+  // The recorded commit used by the `over-count` row below. Distinct from the
+  // ancestry block's HEAD_SHA (which is scoped to that describe) so the two
+  // fixtures cannot be confused for one another.
+  const OVER_COUNT_HEAD = "b".repeat(40);
+
+  // Each row carries its expected filtered `merge-base` call list as a fourth
+  // element, because the codes are NOT uniformly ancestry-independent: guards
+  // 1–4's codes are resolved by the classifier's optimistic first call and the
+  // lazy probe never fires (`[]`), while `over-count` is guard 6 — *after*
+  // ancestry — so its record's `head` is probed exactly once before the code is
+  // decided. Equality, not containment (§5.5 mutation 4): an eagerly-resolved
+  // probe still passes a `toContainEqual`, and a probe deleted from the
+  // over-count path still passes a `toEqual([])` written for the other rows.
   it.each([
     [
       "unparseable content",
       "{ this is not json",
       "it is not readable JSON",
+      [],
     ],
     [
       // AT-02 — the fourth of seven codes: valid JSON that is not an object.
       "content that is not a JSON object",
       JSON.stringify(["not", "an", "object"]),
       "it is not a JSON object",
+      [],
     ],
     [
       "a record for another feature",
       JSON.stringify({ version: 1, feature: "other-feat", planHash: "deadbeef", lastGreenWave: 1 }),
       'it records feature "other-feat", not "test-feat"',
+      [],
     ],
     [
       "a plan hash that no longer matches",
       JSON.stringify({ version: 1, feature: FEATURE, planHash: "00000000", lastGreenWave: 1 }),
       "the PLAN's wave layout has changed since it was written",
+      [],
     ],
     [
       "a record whose fields are the wrong shape",
       JSON.stringify({ version: 1, feature: FEATURE, planHash: "00000000", lastGreenWave: "1" }),
       "its fields are not the shape this workflow writes",
+      [],
     ],
-  ])("%s is ignored with a notice, and every wave runs", async (_label, ledger, reason) => {
-    const record = [];
-    const logs = [];
-    const gitCalls = [];
-    const result = await main(
-      makeLedgerArgs({ ledger, record, logs, writes: [], git: makeGit(gitCalls) })
-    );
+    [
+      // AT-02 / IG-4 — the seventh code, `over-count`, closed end-to-end here
+      // (Phase CR round 1, TE F-01). The standalone test this replaces matched
+      // only `includes("only 3")`, which the `recordedLastGreenWave`/`waveCount`
+      // field swap at the `fullRunWith("over-count", …)` call site survives:
+      // both halves of the swapped notice still contain "only 3"'s other half.
+      // Transcribing the WHOLE notice binds classifier context to renderer
+      // output through `main()`, and the row inherits this table's dispatch and
+      // `merge-base` conjuncts (PROP-DISREGARD-02, PROP-DISREGARD-10).
+      "a record naming more green waves than the plan has",
+      JSON.stringify({
+        version: 1,
+        feature: FEATURE,
+        planHash: computePlanHash([
+          [{ id: "T1", files: ["src/one.js"] }],
+          [{ id: "T2", files: ["src/two.js"] }],
+          [{ id: "T3", files: ["src/three.js"] }],
+        ]),
+        lastGreenWave: 4,
+        head: OVER_COUNT_HEAD,
+      }),
+      "it records 4 wave(s) green and this plan has only 3",
+      [["merge-base", "--is-ancestor", OVER_COUNT_HEAD, "HEAD"]],
+    ],
+  ])(
+    "%s is ignored with a notice, and every wave runs",
+    async (_label, ledger, reason, expectedMergeBaseCalls) => {
+      const record = [];
+      const logs = [];
+      const gitCalls = [];
+      const result = await main(
+        makeLedgerArgs({ ledger, record, logs, writes: [], git: makeGit(gitCalls) })
+      );
 
-    expect(result.outcome).toBe("success");
-    expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
-    expect(logs).toContain(
-      `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${reason}. ` +
-        `Running every wave from 1. (provenance: automatic)`
-    );
-    expect(logs.some((m) => m.startsWith("Resuming at wave"))).toBe(false);
-    // AT-03/AT-11 — every code here is ancestry-independent (§2.2): the
-    // classifier's optimistic first call already resolves it, so the lazy
-    // probe never fires. Filtered call-count equality, not containment
-    // (§5.5 mutation 4): an eager probe would still pass a `toContainEqual`.
-    expect(gitCalls.filter((a) => a[0] === "merge-base")).toEqual([]);
-  });
+      expect(result.outcome).toBe("success");
+      expect(dispatchedTaskIds(record)).toEqual(["T1", "T2", "T3"]);
+      expect(logs).toContain(
+        `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${reason}. ` +
+          `Running every wave from 1. (provenance: automatic)`
+      );
+      expect(logs.some((m) => m.startsWith("Resuming at wave"))).toBe(false);
+      // AT-03/AT-11 — the lazy-probe contract, per row. See the table header.
+      expect(gitCalls.filter((a) => a[0] === "merge-base")).toEqual(expectedMergeBaseCalls);
+    }
+  );
 
   it("a matching record whose waves are all green skips Phase I whole, and the row says so", async () => {
     // Same feature, same plan, the whole plan recorded done — honoured: the
