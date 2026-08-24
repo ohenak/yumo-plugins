@@ -52,6 +52,14 @@ name a repo-wide mechanism are routed here as Cross-Feature signal even though n
 
 ## 3. Rejected Proposals (with rationale)
 
+| Proposal | Rejected By | Rationale | Reusable for future features? |
+|---|---|---|---|
+| Confirm an upstream-cascade round on **item-landing alone** — the routed erratum items all landed, so re-approve with no findings | pm-review / te-review (DECISIONS v3, v4) | DEC-ERR-03 is explicit that landing is *necessary, not sufficient*. The bar is whether the document is still a faithful compression of upstream **at its current version**. Two DECISIONS sentences became false *because* the items landed; confirming on landing would ratify a document that misdescribes its own upstream, in the one round designed to catch exactly that | **Yes** — this is the standing reading of DEC-ERR-03 and should be quoted, not re-derived |
+| Scope a cascade round to **the delta** rather than to the document measured against upstream at HEAD | te-review (DECISIONS v4) | Dropping open findings because *this particular edit* did not touch those bytes would quietly retire findings never addressed, and would make the v4 record read as if the document had improved when it had not moved at all (PLAN v3/v4 were byte-identical, `sha256:5f5b50db…`, and still correctly accrued findings) | **Yes** — a byte-identical document can still fail a cascade round |
+| Add a config key for REQ OQ-1 | se-author (TSPEC §3.5), upheld by pm-review | OQ-1 was rejected at REQ level; adding the key in an engineering artifact would be a product decision taken in the wrong document. TSPEC §3.5 declines explicitly rather than silently | **Yes** — the pattern (decline *explicitly, in writing*) is what made this auditable |
+| Leave `waveBudgetPerRun`'s deferral bound to "revisit once wave resume lands" | dod-verify B-2 (v1), remediated by v2 | A deferral whose trigger is *this feature shipping* becomes unbound the moment it ships. Closed via the second permitted route: the record now states the deferral **is closed at `1`**, that no successor REQ or queue row is opened, and what raising the budget would require | **Yes** — "deferred until X lands" must be re-adjudicated in the round where X lands |
+| Silently propagate a corrected count downstream / state the correction only in the fixing document | pm-review (TSPEC rounds) | A count fixed in one site while six sites still assert the old value is not a fix; the correction must be stated where the count is *derived*, not where it was noticed | **Yes** — see §2's seven-sites finding |
+
 ## 4. Process Learnings
 
 ## 5. Open Items for Consolidation
