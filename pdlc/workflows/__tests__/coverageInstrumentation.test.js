@@ -186,7 +186,17 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
       // and its rebuild-from-backup case), so `--check` here can transiently
       // see STALE or a missing dist through no fault of the c8 config. Retry
       // through that window only; a genuine defect fails every attempt.
+      //
+      // What this retry does and does not weaken (Phase CR round 1, TE F-04):
+      // the loop breaks out immediately on any failure whose stderr is not the
+      // race signature, so a wrong c8 `include` list is still reported on the
+      // first attempt. A genuine STALE dist is a property of the bytes on disk,
+      // not of timing, so it fails all five attempts and is reported by the
+      // `status: 0` control below — `attemptsRaced` is asserted separately so
+      // that exhaustion reads as "the race window never closed" rather than
+      // disappearing into a generic non-zero exit.
       let run;
+      let attemptsRaced = 0;
       for (let attempt = 0; attempt < 5; attempt++) {
         run = spawnSync(
           process.execPath,
@@ -208,8 +218,14 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
             `${run.stderr}`,
           );
         if (!distRaced) break;
+        attemptsRaced += 1;
         Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
       }
+
+      // Exhaustion is not success. Five consecutive race-signature failures
+      // means the dist is stale on disk, not that a worker was mid-write.
+      expect({ raceWindowNeverClosed: attemptsRaced === 5, stderr: run.stderr })
+        .toMatchObject({ raceWindowNeverClosed: false });
 
       // Control: a driver that failed to run would produce an empty report, and
       // "no rows" must not be readable as "the config is fine".
