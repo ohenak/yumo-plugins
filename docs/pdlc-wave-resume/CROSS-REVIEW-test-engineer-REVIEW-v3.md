@@ -62,6 +62,64 @@ Every line citation below was re-checked against the working tree at `f59266b2`.
 
 ## F-14 detail — the pinned fallback base is now permanently stale
 
+The base resolution has three tiers (`check-wave-resume-delta-coverage.mjs:93`-`:112`):
+
+```js
+for (const ref of ["origin/main", "main"]) {
+  try {
+    const sha = git(["merge-base", "HEAD", ref]).trim();
+    if (sha) return { sha, source: `merge-base with ${ref}` };
+  } catch { /* ref absent in this checkout — try the next one, then the pin. */ }
+}
+try { git(["cat-file", "-e", `${PINNED_BASE_SHA}^{commit}`]); } catch { fail(...); }
+return { sha: PINNED_BASE_SHA, source: "pinned fallback" };
+```
+
+Tiers 1 and 2 are self-correcting: whatever `main` is, the merge-base moves with
+it, and the delta stays the branch's own. Tier 3 is not. `PINNED_BASE_SHA`
+(`:54`) is frozen at `b029e853…`, this feature's pre-feature merge-base, and the
+round-2 decision to make the gate permanent means it will still be frozen there
+when `main` is a year further on.
+
+What that produces on the fallback path, on a future unrelated branch:
+
+- `git diff -U0 b029e853 HEAD -- pdlc/workflows/orchestrate-dev.js` yields this
+  feature's ranges **plus** every range `main` has added since — not the
+  branch's own delta.
+- The gate then asserts that none of `orchestrate-dev.js`'s uncovered lines
+  falls in any of them. I measured the uncovered list on this branch today:
+  **836 lines** (`node scripts/check-wave-resume-delta-coverage.mjs` →
+  `uncovered lines in file: 836`). The chance that none of the file's future
+  uncovered lines lands inside a widening window falls with every commit.
+- The red is then unattributable in exactly the way the script's own header says
+  it must not be: "the oracle would go red on work it does not own" (`:26`-`:31`).
+
+The failure mode is the mirror of F-08. F-08 was "empty delta misread as broken";
+this is "over-wide delta misread as this branch's". Both come from the same
+place — a base whose meaning was fixed while the feature was in flight — and the
+round-2 fix corrected one reading without revisiting the other.
+
+**Why it is Medium rather than High.** The fallback is unreachable on the path
+that matters. `.github/workflows/pr-tests.yml` checks out with `fetch-depth: 0`,
+so `origin/main` resolves and tier 1 wins; my real run on this branch confirms
+the source line (`introduced ranges (vs b029e853c228, merge-base with
+origin/main)`). Tier 3 is for hand-made checkouts and shallow clones. So this is
+a latent trap for a future maintainer, not a break of the required check — the
+distinction that made F-08 High and keeps this one off the gating list.
+
+**Why the new ancestry oracle does not cover it.** `waveResumeDeltaGate.test.js`
+› `the pinned fallback sha is a real ancestor of HEAD in this repository` asserts
+two things about the pin: that it is a commit, and that
+`merge-base --is-ancestor <pin> HEAD` succeeds. Both are monotone — once true,
+true forever, and *more* true the staler the pin gets. The oracle proves the pin
+exists; the property that matters after permanence is that the pin is still the
+merge-base, which is not monotone and is the one an assertion could actually
+falsify. If option (c) is taken, that assertion is a two-line addition to the
+same test, guarded on `origin/main` resolving.
+
+Any of the three resolutions in the findings table is sufficient, and none is
+required for this round to be approved.
+
 ## Questions
 
 ## Positive Observations
