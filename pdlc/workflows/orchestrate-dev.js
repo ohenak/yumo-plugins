@@ -12843,7 +12843,7 @@ export function formatUnskipViolations(waveNum, violations) {
   );
 }
 
-// ─── INTERIM: the wave ledger, Phase I's script-owned resume pointer ──────────
+// ─── The wave ledger, Phase I's script-owned resume pointer (pdlc-wave-resume) ─
 //
 // `implementation.startWave` is a MANUAL pointer: after a wave-gate halt an
 // operator has to edit the config before re-invoking, and an unattended queue
@@ -12852,16 +12852,155 @@ export function formatUnskipViolations(waveNum, violations) {
 // work the script itself committed, the script records the wave number; the next
 // invocation reads it and resumes at the wave that actually needs doing.
 //
-// INTERIM, and marked as such deliberately. The formalized mechanism is the
-// `pdlc-wave-resume` feature (docs/_queue/QUEUE.md row 20) — this block is
-// contained (one path constant, two pure functions, one read site and two write
-// sites, all inside Phase I's wave branch) precisely so that feature can replace
-// it cleanly rather than untangle it.
+// Formalized by the `pdlc-wave-resume` feature (TSPEC-pdlc-wave-resume.md): the
+// decision is `classifyWaveLedger` (§3.2), a pure total function over the three
+// frozen catalogues below (§3.1). `main()` resolves ancestry lazily — at most one
+// `merge-base --is-ancestor` probe, only when the decision turns on it (§2.2) —
+// and then applies the classifier's decision: announcing, setting the resume
+// point, or (outcome `skip-phase`) skipping Phase I's wave loop in full.
 //
 // Every failure mode here is FAIL-OPEN. A ledger that cannot be read, parsed,
 // matched or written never halts the pipeline: the worst case is the behaviour
 // that shipped before it existed — a full run from wave 1.
 export const WAVE_STATE_PATH = ".claude/pdlc-wave-state.json";
+
+/** FSPEC BR-01 — the outcome catalogue, closed at three (TSPEC §3.1). */
+export const RESUME_OUTCOMES = Object.freeze(["full-run", "resume", "skip-phase"]);
+
+/** FSPEC BR-07 — the provenance vocabulary, closed at two (TSPEC §3.1). */
+export const RESUME_PROVENANCE = Object.freeze(["operator-set", "automatic"]);
+
+/**
+ * FSPEC BR-02 / AT-02 — the announced disregard reasons, keyed by code. Seven
+ * codes, because IG-1 has three distinguishable arms; IG-6 is silent and carries
+ * no code. Each value renders the reason clause that follows "the wave ledger
+ * ... was ignored — " (TSPEC §3.1).
+ *
+ * The three `parseWaveLedger` arms keep their exact shipped sentences as their
+ * renderers, so no shipped assertion changes.
+ *
+ * @type {Readonly<Record<string, (ctx: object) => string>>}
+ */
+export const WAVE_IGNORE_REASONS = Object.freeze({
+  "unreadable-json": () => "it is not readable JSON",
+  "not-an-object": () => "it is not a JSON object",
+  "wrong-shape": () => "its fields are not the shape this workflow writes",
+  "feature-mismatch": (ctx) =>
+    `it records feature "${ctx.recordedFeature}", not "${ctx.feature}"`,
+  "plan-changed": () => "the PLAN's wave layout has changed since it was written",
+  "head-unreachable": (ctx) =>
+    `the commit it records (${String(ctx.recordedHead).slice(0, 12)}) is not an ` +
+    `ancestor of HEAD — the branch was reset or re-cut since it was written, ` +
+    `so the work it records is not in this tree`,
+  "over-count": (ctx) =>
+    `it records ${ctx.recordedLastGreenWave} wave(s) green and this plan has ` +
+    `only ${ctx.waveCount}`,
+});
+
+/**
+ * TSPEC §2.2 — the codes guards 1–4 decide, i.e. those the ancestry verdict
+ * cannot affect. Read only in conjunction with `outcome === "full-run"`:
+ * `resume` and `skip-phase` decisions carry no `code`, and both DO turn on
+ * ancestry.
+ */
+export const ANCESTRY_INDEPENDENT_CODES = Object.freeze([
+  null,
+  "unreadable-json",
+  "not-an-object",
+  "wrong-shape",
+  "feature-mismatch",
+  "plan-changed",
+]);
+
+// Guard 2's code is carried by `parseWaveLedger`'s exact reason sentence — the
+// only place that can distinguish the three IG-1 arms. This maps that sentence
+// back to its code (TSPEC §3.2's closing paragraph).
+const PARSE_REASON_CODES = {
+  "it is not readable JSON": "unreadable-json",
+  "it is not a JSON object": "not-an-object",
+  "its fields are not the shape this workflow writes": "wrong-shape",
+};
+
+/**
+ * The resume decision, extracted as a pure total classifier (TSPEC §2.2/§3.2).
+ * Never throws, never reads, never emits. Given a parsed ledger record and this
+ * run's context, returns exactly one decision. Every rejecting decision carries
+ * the code needed to render its reason via `WAVE_IGNORE_REASONS[code](ctx)`,
+ * without `main()` reconstructing the context.
+ *
+ * Evaluation order is normative (FSPEC §3.2/BR-03), first failure wins: (1) no
+ * record at all → silent full run (IG-6); (2) unreadable/malformed content →
+ * full run (IG-1); (3) feature mismatch → full run (IG-2); (4) plan hash
+ * mismatch → full run (IG-3); (5) ancestry unresolved → full run (IG-5); (6)
+ * `lastGreenWave` beyond this plan's wave count → full run (IG-4); (7)
+ * `lastGreenWave` equal to the wave count → skip Phase I; otherwise → resume.
+ *
+ * @param {{parsed: {state: object|null, reason: string|null}, feature: string,
+ *          planHash: string, waveCount: number, headOk: boolean}} input
+ * @returns {object} a `WaveResumeDecision` (TSPEC §3.2)
+ */
+export function classifyWaveLedger({ parsed, feature, planHash, waveCount, headOk }) {
+  const state = parsed && parsed.state;
+  const reason = parsed && parsed.reason;
+
+  const fullRunWith = (code, ctx) => ({
+    outcome: "full-run",
+    startWave: 1,
+    provenance: "automatic",
+    silent: false,
+    code,
+    reason: WAVE_IGNORE_REASONS[code](ctx),
+  });
+
+  // Guard 1 (IG-6): no record to speak of — silent full run.
+  if (state == null && reason == null) {
+    return { outcome: "full-run", startWave: 1, provenance: "automatic", silent: true, code: null };
+  }
+
+  // Guard 2 (IG-1): content that is not something this workflow wrote.
+  if (reason != null) {
+    const code = PARSE_REASON_CODES[reason] || "wrong-shape";
+    return fullRunWith(code, { feature, waveCount });
+  }
+
+  // From here, `state` is well-formed (guards 3–7 all read it).
+  const recordedFeature = state.feature;
+  const recordedHead = state.head;
+  const recordedLastGreenWave = state.lastGreenWave;
+
+  // Guard 3 (IG-2): recorded for a different feature.
+  if (recordedFeature !== feature) {
+    return fullRunWith("feature-mismatch", { feature, recordedFeature, waveCount });
+  }
+
+  // Guard 4 (IG-3): recorded against a different PLAN.
+  if (state.planHash !== planHash) {
+    return fullRunWith("plan-changed", { feature, waveCount });
+  }
+
+  // Guard 5 (IG-5): the recorded commit is not an ancestor of HEAD.
+  if (!headOk) {
+    return fullRunWith("head-unreachable", { feature, recordedHead, waveCount });
+  }
+
+  // Guard 6 (IG-4): recorded more waves green than this plan has.
+  if (recordedLastGreenWave > waveCount) {
+    return fullRunWith("over-count", { feature, recordedLastGreenWave, waveCount });
+  }
+
+  // Guard 7: every wave of this exact plan was already committed and recorded.
+  if (recordedLastGreenWave === waveCount) {
+    return { outcome: "skip-phase", startWave: waveCount + 1, provenance: "automatic" };
+  }
+
+  // Otherwise: resume at the wave after the last one recorded green.
+  return {
+    outcome: "resume",
+    startWave: recordedLastGreenWave + 1,
+    provenance: "automatic",
+    lastGreenWave: recordedLastGreenWave,
+  };
+}
 
 /**
  * An integrity-lite fingerprint of a computed wave plan: FNV-1a (32-bit) over
@@ -16088,12 +16227,7 @@ export default async function main({
       let allWavesRecorded = false;
       if (!explicitPointer) {
         const ledgerRaw = await readMergeConfigSafely(readFileFn, WAVE_STATE_PATH);
-        const ledger = parseWaveLedger(ledgerRaw);
-        const ignore = (why) =>
-          emit(
-            `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ${why}. ` +
-              `Running every wave from 1.`
-          );
+        const parsed = parseWaveLedger(ledgerRaw);
 
         // The tree-side corroboration. `feature` and `planHash` are both
         // functions of the PLAN document, so neither can tell a finished tree
@@ -16120,54 +16254,69 @@ export default async function main({
           }
         };
 
-        if (ledger.reason) {
-          ignore(ledger.reason);
-        } else if (ledger.state) {
-          const recorded = ledger.state;
-          if (recorded.feature !== featureName) {
-            ignore(
-              `it records feature "${recorded.feature}", not "${featureName}"`
-            );
-          } else if (recorded.planHash !== planHash) {
-            ignore("the PLAN's wave layout has changed since it was written");
-          } else if (!(await headCorroborated(recorded.head))) {
-            ignore(
-              `the commit it records (${String(recorded.head).slice(0, 12)}) is not an ` +
-                `ancestor of HEAD — the branch was reset or re-cut since it was written, ` +
-                `so the work it records is not in this tree`
-            );
-          } else if (recorded.lastGreenWave > waves.length) {
-            ignore(
-              `it records ${recorded.lastGreenWave} wave(s) green and this plan has ` +
-                `only ${waves.length}`
-            );
-          } else if (recorded.lastGreenWave === waves.length) {
-            // A COMPLETE ledger: every wave of this exact plan was committed and
-            // recorded green by an earlier run. Honouring it is what makes a
-            // post-Phase-I re-invocation (a halt in CR, DOD or PUB) resume in
-            // minutes instead of re-dispatching every wave over a finished tree.
-            // The feature and planHash matches above are what make it safe: any
-            // PLAN change re-derives a different hash and runs every wave.
-            startWave = waves.length + 1;
-            ledgerResume = true;
-            allWavesRecorded = true;
+        // TSPEC §2.2 — optimistic, pure, no IO. `resume` and `skip-phase`
+        // decisions carry no `code`, so the `outcome === "full-run"` conjunct
+        // below is what keeps them from skipping the probe they both turn on.
+        let decision = classifyWaveLedger({
+          parsed,
+          feature: featureName,
+          planHash,
+          waveCount: waves.length,
+          headOk: true,
+        });
+        if (
+          !(
+            decision.outcome === "full-run" &&
+            ANCESTRY_INDEPENDENT_CODES.includes(decision.code)
+          )
+        ) {
+          // At most ONE probe, ever (§2.2).
+          const headOk = await headCorroborated(parsed.state && parsed.state.head);
+          if (!headOk) {
+            decision = classifyWaveLedger({
+              parsed,
+              feature: featureName,
+              planHash,
+              waveCount: waves.length,
+              headOk: false,
+            });
+          }
+        }
+
+        if (decision.outcome === "full-run") {
+          if (!decision.silent) {
             emit(
-              `Skipping Phase I (wave ledger ${WAVE_STATE_PATH}): all ` +
-                `${waves.length} waves of this plan were committed and recorded ` +
-                `green by an earlier run. Delete ${WAVE_STATE_PATH} to force a ` +
-                `full run.`
-            );
-          } else {
-            startWave = recorded.lastGreenWave + 1;
-            ledgerResume = true;
-            emit(
-              `Resuming at wave ${startWave} of ${waves.length} (wave ledger ` +
-                `${WAVE_STATE_PATH}). Waves 1–${recorded.lastGreenWave} were committed ` +
-                `and recorded green by an earlier run of this same plan; the first ` +
-                `executed wave's gate still verifies the whole tree. Delete ` +
-                `${WAVE_STATE_PATH} to force a full run.`
+              `Notice: the wave ledger ${WAVE_STATE_PATH} was ignored — ` +
+                `${decision.reason}. Running every wave from 1.`
             );
           }
+        } else if (decision.outcome === "resume") {
+          // Honouring the record is what makes a post-Phase-I re-invocation (a
+          // halt in CR, DOD or PUB) resume in minutes instead of re-dispatching
+          // every wave over a finished tree. The feature and planHash matches
+          // above are what make it safe: any PLAN change re-derives a different
+          // hash and runs every wave.
+          startWave = decision.startWave;
+          ledgerResume = true;
+          emit(
+            `Resuming at wave ${startWave} of ${waves.length} (wave ledger ` +
+              `${WAVE_STATE_PATH}). Waves 1–${decision.lastGreenWave} were committed ` +
+              `and recorded green by an earlier run of this same plan; the first ` +
+              `executed wave's gate still verifies the whole tree. Delete ` +
+              `${WAVE_STATE_PATH} to force a full run.`
+          );
+        } else if (decision.outcome === "skip-phase") {
+          // A COMPLETE ledger: every wave of this exact plan was committed and
+          // recorded green by an earlier run.
+          startWave = decision.startWave;
+          ledgerResume = true;
+          allWavesRecorded = true;
+          emit(
+            `Skipping Phase I (wave ledger ${WAVE_STATE_PATH}): all ` +
+              `${waves.length} waves of this plan were committed and recorded ` +
+              `green by an earlier run. Delete ${WAVE_STATE_PATH} to force a ` +
+              `full run.`
+          );
         }
       }
 
