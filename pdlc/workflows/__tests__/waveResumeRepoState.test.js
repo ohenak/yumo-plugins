@@ -229,8 +229,29 @@ describe("census: the waveResume* suite set equals PLAN §3.3's manifest", () =>
     return [...names].sort();
   };
 
+  // Phase CR round 2, TE F-11: set equality alone is symmetric but UNANCHORED —
+  // deleting a suite and its manifest row in the same commit keeps both sides
+  // equal and reds nothing. This literal is transcribed from the suites this
+  // feature ships (PLAN §3.3), never derived from either side, so a silent
+  // matched-pair deletion reds here.
+  const EXPECTED_SUITES = [
+    "waveResume.test.js",
+    "waveResumeDeltaGate.test.js",
+    "waveResumePreflight.test.js",
+    "waveResumeProperties.test.js",
+    "waveResumeQueueParity.test.js",
+    "waveResumeRepoState.test.js",
+  ];
+
   test("the manifest names a non-empty waveResume* set", () => {
     expect(fromManifest().length).toBeGreaterThan(0);
+  });
+
+  test("both sides equal the transcribed literal set of six suites", () => {
+    expect({ onDisk: onDisk(), manifest: fromManifest() }).toEqual({
+      onDisk: EXPECTED_SUITES,
+      manifest: EXPECTED_SUITES,
+    });
   });
 
   test("on-disk waveResume*.test.js set-equals the manifest's", () => {
