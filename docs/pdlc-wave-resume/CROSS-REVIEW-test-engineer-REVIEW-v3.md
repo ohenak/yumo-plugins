@@ -122,7 +122,50 @@ required for this round to be approved.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | Now that oracle (ii) is permanent, does its subject list stay one file? The gate hard-codes `SUBJECT = "pdlc/workflows/orchestrate-dev.js"` (`:57`). The argument that motivated it — a large module whose whole-file percentage cannot see a small delta — applies verbatim to `orchestrate-queue.js` (the `package.json` note records it at 77.46 % functions). If the answer is "yes, one file", a sentence in `pdlc/OPERATIONS.md` saying so prevents the next reader assuming the gate covers the module they are editing; if "no", `SUBJECT` wants to become a list before a second copy of this script appears. |
+| Q-06 | Is the `hadHunks` distinction load-bearing beyond its message? `:132` computes it so the empty-delta success can say "pure deletions" instead of "no commit touches it", and `a deletions-only diff is a SUCCESS and says so distinctly` pins that. Deleting covered lines is genuinely benign, but deleting the *last caller* of a range this feature introduced is how a feature quietly stops being exercised — is that a case the gate should distinguish, or one the census and set-equality oracles already own? I lean to the latter and ask only so the answer is recorded. |
+
 ## Positive Observations
+
+- **F-08 was fixed at the reading, not at the symptom.** The easy fix was to
+  delete the guard; instead the two readings of an empty range set are separated
+  by an actual mechanical test — is `SUBJECT` present in the checkout? — so the
+  case the guard was really reaching for (a mistyped path) still fail-closes
+  while the terminal state of any delta-scoped oracle passes. The `hadHunks`
+  refinement then makes the success message say *which* benign reading it is,
+  which is what makes a green attributable rather than merely quiet.
+- **The fix was made testable before it was made.** `runDeltaCoverageGate`
+  returning an exit code instead of calling `process.exit`, with every IO edge
+  injected and a single `GateFailure` unwind point, is the change that let F-09's
+  suite exist at all — and `the module self-executes only when invoked directly`
+  pins the guard that keeps importing it from killing a jest worker. That is a
+  seam introduced for the oracle's benefit, which is the right order.
+- **Every case in the new suite asserts status *and* message, and the header
+  says why**: "a status-only assertion cannot tell 'passed because there is no
+  delta' from 'passed because the report was empty'". That sentence is the
+  finding I would otherwise have had to write, pre-empted by the author.
+- **The positive half of the delta-scoping was tested, not just the negative.**
+  `an uncovered line OUTSIDE every introduced range is green` asserts the green
+  *and* `uncovered lines in file: 1` — so it proves the gate ignored a real
+  uncovered line by scope, not that the report was empty. That is the
+  absence-plus-positive pairing I ask for, applied without being asked.
+- **F-11 was closed with a transcribed literal, not a derived one.**
+  `EXPECTED_SUITES` (`waveResumeRepoState.test.js:237`) is written out by hand
+  and both sides are compared to it, so neither the manifest nor the directory
+  listing can define its own expectation. Six names, `toEqual` — a matched-pair
+  deletion now reds.
+- **F-10 came back as a reasoned counter-proposal with an oracle behind it.**
+  Warning instead of failing on an uncommitted subject is the better call for a
+  gate that also runs in the local edit-and-run loop, the reasoning is in the
+  code at the point of the decision (`:211`-`:216`), and the behaviour is pinned
+  by a test. A reviewer's suggestion declined this way is worth more than one
+  accepted silently.
+- **The lifetime question was answered in the artifact, not in a reply.** PLAN
+  §1.6 and the script's `LIFETIME` header block both record that the gate is
+  permanent and what follows from that, so the next person to see an empty-delta
+  green will find the reasoning where they are standing.
 
 ## Recommendation
 
