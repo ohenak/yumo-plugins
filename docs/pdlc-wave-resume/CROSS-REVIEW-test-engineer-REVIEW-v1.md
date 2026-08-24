@@ -151,8 +151,35 @@ above as the mutation check (`PROP-COV-03`), observe RED, revert, record.
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
+
+One High finding (F-01), so this is mandatory rather than a judgement on the
+work — the suite is, on the whole, the strongest oracle set I have reviewed on
+this pipeline. The gap is narrow and the fix is mechanical.
+
+To reach approval:
+
+1. **F-01 (required).** Add the `over-count` row to the `it.each` disregard
+   table at `waveExecution.test.js:2757` with the whole transcribed notice, so
+   it inherits that table's dispatch and `merge-base` conjuncts; delete or fold
+   in the weaker standalone test at `:2661`. Run the field-swap mutation on
+   `orchestrate-dev.js:12989`, observe RED, revert, record it in the task
+   report per `PROP-COV-03`.
+2. **F-02 (strongly recommended, one line each).** Replace the residual
+   `INTERIM` marker at `orchestrate-dev.js:16224`, rebuild `dist/`, and add a
+   source-text assertion in `waveResumeRepoState.test.js` that
+   `orchestrate-dev.js` contains no `INTERIM wave ledger` — scoped to the
+   production source so RT-2's byte-freeze on `waveExecution.test.js` is
+   untouched.
+3. **F-03 (strongly recommended).** Make the census exemption honest: assert in
+   `waveResumeRepoState.test.js` — which already parses the PLAN — that the
+   on-disk `waveResume*.test.js` set **set-equals** PLAN §3.3's manifest.
+4. **F-04.** Either route the `coverageInstrumentation.test.js` edit to an
+   owning task (`ERRATUM: PLAN`) or revert it and fix the race hermetically.
+
+F-05, F-06 and F-07 are cleanups and need not gate.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 3}
