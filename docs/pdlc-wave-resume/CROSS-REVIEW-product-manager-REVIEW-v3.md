@@ -220,7 +220,46 @@ provide.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **FSPEC AT-16 still disagrees with DEC-WVR-07, unchanged since v2.** `FSPEC-pdlc-wave-resume.md:406-412` still requires, without qualification, that "both resolve the same outcome, the same resume point and the same provenance, **and the queue run's own report states them**". No shipped test observes a delegated run's report — by design, per DEC-WVR-07 option O-9 — and `waveResumeQueueParity.test.js:1-23` now says so in its own header, explicitly disowning FSPEC as the source of its narrowing. So AT-16 as written is unmet, while AT-16 as narrowed is met. This is an upstream document defect, not a defect in the code or in the PLAN in front of me, so I am routing it as **ERRATUM: FSPEC** again rather than folding it into the verdict. Should AT-16's text be amended to carry DEC-WVR-07's narrowing, or should DEC-WVR-07 be re-opened? Either resolves it; two documents disagreeing about a P0-adjacent acceptance test does not. |
+| Q-02 | Does F-01's paragraph belong in this feature, or at harvest? The fix is one paragraph, but §4.5's own closing argument — that the durable fix for a records gap "belongs upstream of this checklist" — applies here too. I have no objection to it being routed as a process/constraint item instead of retro-fitted, provided it is *routed* rather than assumed. |
+| Q-03 | `PINNED_BASE_SHA` (`check-wave-resume-delta-coverage.mjs:54`) is now asserted to be a real ancestor of `HEAD` (`waveResumeDeltaGate.test.js:200-213`), which closes the "silently wrong pin" hole I worried about in v2's Q-03. But that assertion runs against the real repository, so it pins the *current* branch's ancestry. After merge, is the pin expected to remain — a permanent fallback for a permanent gate, which is coherent — or is it feature residue? §4.5.1 answers this for the gate but not for the constant. Not a finding; the fallback is correct either way, and the ancestry test means a wrong value reds rather than lying dormant. |
+
 ## Positive Observations
+
+- **The reversal of my own v2 praise was handled the right way round.** I had commended the
+  hard-failing empty-range set by name. The remediation did not quietly keep it to avoid contradicting
+  a reviewer, and did not throw the property away either — it split the one reading into five,
+  four of them fail-closed, and put the case that motivated the change **first** in the new suite
+  with a comment naming what round 1 got wrong. That is how a reviewer's finding should be
+  overturned: by showing the mechanism, not by arguing.
+
+- **PLAN §4.5's three unticked boxes are the best thing in this delta.** Anyone can tick eighteen
+  boxes. Leaving three unticked, in italics, each naming the specific artifact that does not exist
+  (the Phase I run log; the single-commit landings `196dab92`/`42d0592a`/`fa17fb78`; four of five
+  mutation runs unrecorded) is a completion record a future maintainer can actually trust — because
+  it demonstrably distinguishes "done" from "not observed". The closing sentence, that manufacturing
+  the evidence now would be worse than recording its absence, is the correct product judgement and
+  I want it preserved at harvest.
+
+- **The census fix understood the difference between symmetry and anchoring.** TE F-11's hole was
+  subtle: two-way set-equality between disk and manifest is symmetric, so deleting a suite *and* its
+  manifest row keeps both sides equal and reds nothing.
+  `waveResumeRepoState.test.js:229-250` adds a **transcribed literal** of the six suite names —
+  "never derived from either side", says the comment — and asserts both sides against it in one
+  `toEqual`. That is completeness-as-set-equality applied to the oracle itself, not just to the
+  thing it watches.
+
+- **F-02's fix went looking for the same error elsewhere.** I flagged one comment line. `f59266b2`
+  fixed it, then found and fixed the identical misstatement in PLAN §4.5.1 that I had not caught,
+  and re-measured the 836 figure rather than copying it forward. Nothing compelled the second half.
+
+- **Every number in the documents matches a command I ran.** 205 tests; `build-runtime.mjs --check`
+  in-sync, exit 0; `test:coverage` exit 0; 88.90 % per-file branches; 836 uncovered lines in file;
+  **0** inside the introduced ranges; nine `✅` in §2.1. The 836-versus-0 contrast is still the
+  whole argument for why this feature needed a delta oracle, and it is now printed on every CI run
+  of every PR — which is exactly what F-01 asks be written down somewhere durable.
 
 ## Recommendation
 
