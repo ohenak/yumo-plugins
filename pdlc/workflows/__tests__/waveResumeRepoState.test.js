@@ -140,6 +140,30 @@ describe("D-10 / OB-F4: docs/_constraints/pdlc-wave-gate-baseline.md carries M-W
     const baselineText = readFileSync(BASELINE_PATH, "utf8");
     expect(baselineText.includes("M-WVR-2")).toBe(true);
   });
+
+  // Phase CR round 1, PM F-07. Presence-only is what PLAN D-10 asks for, but
+  // it passes on a row emptied of its measured content, or one rewritten to
+  // describe a different measurement, as long as the id survives as a
+  // substring. `docs/_constraints` baselines are measured records, so each row
+  // is pinned by the measurement it carries — never by a path or line number,
+  // and never by rewriting the record itself.
+  test.each([
+    ["M-WVR-1", ["Replay cost", "pdlc-consolidation-agent", "16 waves", "7 tasks"]],
+    ["M-WVR-2", ["may legitimately produce no commit", "pdlc-consolidation-agent", "nothing staged"]],
+  ])("%s's row carries its measured content, not just its id", (id, phrases) => {
+    const baselineText = readFileSync(BASELINE_PATH, "utf8");
+    const row = baselineText
+      .split("\n")
+      .find((line) => line.trim().startsWith(`| ${id} `) || line.trim().startsWith(`| ${id}|`));
+    expect({ id, rowFound: row !== undefined }).toEqual({ id, rowFound: true });
+    for (const phrase of phrases) {
+      expect({ id, phrase, present: row.includes(phrase) }).toEqual({
+        id,
+        phrase,
+        present: true,
+      });
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -219,5 +243,127 @@ describe("census: the waveResume* suite set equals PLAN §3.3's manifest", () =>
     // longer load-bearing and should be re-read rather than silently kept.
     const censusText = readFileSync(join(TEST_DIR, "documentOracles.test.js"), "utf8");
     expect(censusText.includes('startsWith("waveResume")')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T-10's completeness oracle over PLAN §4.5.1 (Phase CR round 1, PM F-01).
+//
+// §2.1's T-10 row promises the delta coverage map is checked by SET EQUALITY —
+// "a deleted [row] fails set-equality". §4.5.1 itself says its "completeness —
+// not a percentage — is the checkable thing". Neither was mechanised: the table
+// shipped with every `Covering test named by T-10` cell still a
+// `*(filled in by T-10…)*` placeholder and nothing reading it.
+//
+// Three conjuncts, each falsifiable on its own:
+//   (i)   the branch-class column set-equals a transcribed literal set, so
+//         deleting or renaming a row reds;
+//   (ii)  no cell is still a placeholder, so an unfilled table cannot pass;
+//   (iii) every backticked test title a cell names exists in the test file that
+//         cell names, so renaming or deleting a covering test reds.
+//
+// The line-coverage half of T-10's oracle (ii) is
+// `scripts/check-wave-resume-delta-coverage.mjs`, run by `npm run test:coverage`
+// — it needs the c8 artifact and so cannot live in this suite.
+// ---------------------------------------------------------------------------
+
+describe("PLAN §4.5.1's delta coverage map is complete", () => {
+  const planText = readFileSync(PLAN_PATH, "utf8");
+
+  // Everything between §4.5.1's heading and the next `####`.
+  const section = (() => {
+    const lines = planText.split("\n");
+    const start = lines.findIndex((l) => /^#### 4\.5\.1 /.test(l));
+    expect(start).toBeGreaterThan(-1);
+    const rest = lines.slice(start + 1);
+    const end = rest.findIndex((l) => /^#{1,4} /.test(l));
+    return (end === -1 ? rest : rest.slice(0, end)).join("\n");
+  })();
+
+  /** The table's data rows, as `{branchClass, count, reachedFrom, covering}`. */
+  const rows = section
+    .split("\n")
+    .filter((l) => l.startsWith("|"))
+    .map((l) => l.split("|").slice(1, -1).map((c) => c.trim()))
+    .filter((cells) => cells.length === 4)
+    .filter((cells) => !/^-+$/.test(cells[0]) && cells[0] !== "Branch class this feature introduces")
+    .map(([branchClass, count, reachedFrom, covering]) => ({
+      branchClass,
+      count,
+      reachedFrom,
+      covering,
+    }));
+
+  // Transcribed from TSPEC §3.1/§3.2/§2.4 and the shipped module — never read
+  // back out of the PLAN, which is the document under test here.
+  const EXPECTED_CLASSES = [
+    "`classifyWaveLedger` guard arms (TSPEC §3.2)",
+    "`WAVE_IGNORE_REASONS` reason renderers",
+    "Lazy ancestry-probe short-circuit",
+    "Announcement suffix branches in `main()`",
+    "Report-row branches (`✅` wave-1 vs `N > 1`, `⏭`)",
+  ];
+
+  test("(i) the branch-class rows set-equal the transcribed set", () => {
+    expect(rows.map((r) => r.branchClass).sort()).toEqual([...EXPECTED_CLASSES].sort());
+  });
+
+  test("(ii) no covering-test cell is still a T-10 placeholder", () => {
+    for (const row of rows) {
+      expect(row.covering).not.toMatch(/filled in by T-10/);
+      expect(row.covering.length).toBeGreaterThan(40);
+    }
+  });
+
+  test("(iii) every test title a cell names exists in the test file that cell names", () => {
+    const sources = new Map();
+    const sourceFor = (basename) => {
+      if (!sources.has(basename)) {
+        sources.set(basename, readFileSync(join(WORKFLOWS, "__tests__", basename), "utf8"));
+      }
+      return sources.get(basename);
+    };
+
+    let checked = 0;
+    for (const row of rows) {
+      // Backticked spans in the cell are either a `*.test.js` filename or a
+      // test/describe title. A cell may name its file before or after the
+      // titles it lists, so titles are checked against every file the cell
+      // names — the claim being tested is "this title exists in a file this row
+      // points at", not "in this exact position".
+      const spans = [...row.covering.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+      const files = spans.filter((sp) => sp.endsWith(".test.js"));
+      expect({ row: row.branchClass, namesAFile: files.length > 0 }).toEqual({
+        row: row.branchClass,
+        namesAFile: true,
+      });
+      for (const span of spans) {
+        if (span.endsWith(".test.js")) continue;
+        // Only spans that look like a title — a sentence of four or more
+        // words. Shorter backticked spans in these cells are branch labels
+        // (`N > 1`) or announcement fragments (`provenance: operator-set`),
+        // not test titles, and asserting them here would test the wrong claim.
+        if (span.trim().split(/\s+/).length < 4) continue;
+        const probe = span.replace(/\s*…$/, "");
+        const found = files.some((f) => sourceFor(f).includes(probe));
+        expect({ row: row.branchClass, files, title: probe }).toEqual({
+          row: row.branchClass,
+          files,
+          title: found ? probe : `MISSING: ${probe}`,
+        });
+        checked += 1;
+      }
+    }
+    // The loop above vacuously passes on an empty table; pin a floor so a
+    // parser regression that yields no spans cannot read as green.
+    expect(checked).toBeGreaterThanOrEqual(20);
+  });
+
+  test("the delta line-coverage oracle is wired into the coverage runner", () => {
+    // §4.5.1's oracle (ii): the executable half is a `test:coverage` step, and
+    // this asserts the wiring rather than the script's own behaviour.
+    const pkg = JSON.parse(readFileSync(join(WORKFLOWS, "package.json"), "utf8"));
+    expect(pkg.scripts["test:coverage"]).toContain("check-wave-resume-delta-coverage.mjs");
+    expect(existsSync(join(WORKFLOWS, "scripts/check-wave-resume-delta-coverage.mjs"))).toBe(true);
   });
 });

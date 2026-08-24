@@ -2496,6 +2496,14 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
       const notice = logs.find((m) => m.includes("was ignored"));
       expect(notice).toBeDefined();
       expect(notice).toContain("is not an ancestor of HEAD");
+      // Phase CR round 1, TE Q-01. The substring form above is deliberate — the
+      // rest of the notice interpolates a sha, so transcribing the whole line
+      // would pin a fixture value. But that left the ctx wiring unchecked: the
+      // renderer's `String(ctx.recordedHead).slice(0, 12)` short-sha was
+      // asserted nowhere through `main()`, so a classifier that forwarded the
+      // wrong field would still read "is not an ancestor of HEAD". This
+      // conjunct restores the wiring check without pinning the whole line.
+      expect(notice).toContain(HEAD_SHA.slice(0, 12));
       // The probe is ancestry, never equality — every later phase legitimately
       // moves HEAD forward, and the resume case IS a re-invocation after those.
       expect(calls).toContainEqual(["merge-base", "--is-ancestor", HEAD_SHA, "HEAD"]);
@@ -2673,6 +2681,35 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
       "Notice: no git transport is injected — wave work will be verified but NOT " +
         "committed by the orchestrator."
     );
+
+    // ── Re-invocation half (Phase CR round 1, PM F-06) ──────────────────────
+    // REQ-WVR-09's When/Then is a RE-INVOCATION: over the same feature and an
+    // unchanged plan, a verified-but-uncommitted wave is never skipped. That
+    // half used to hold only by composition with the separate IG-6 test, so a
+    // change that made an empty-transport run write a *cleared* record rather
+    // than none would have kept both tests green while breaking the P0 AC.
+    // Here the second run reads back whatever the first run actually left at
+    // WAVE_STATE_PATH, so the two invocations are joined in one fixture.
+    const leftBehind = ledgerWrites(writes);
+    const secondRecord = [];
+    const secondLogs = [];
+    const second = await main(
+      makeLedgerArgs({
+        // `[]` ⇒ nothing was left behind ⇒ the second run reads no record.
+        ledger: leftBehind.length > 0 ? leftBehind[leftBehind.length - 1] : null,
+        record: secondRecord,
+        logs: secondLogs,
+      })
+    );
+
+    expect(second.outcome).toBe("success");
+    // Wave 1's tasks are dispatched again — the resume point is wave 1, not 2.
+    expect(dispatchedTaskIds(secondRecord)).toEqual(["T1", "T2", "T3"]);
+    // Positive conjunct on the silence: no record means a silent full run, so
+    // no disregard notice is printed either.
+    expect(secondLogs.some((m) => m.includes("wave ledger") && m.includes("ignored"))).toBe(
+      false
+    );
   });
 
   // AT-09's companion arm: WITH a git transport, under the self-report gate
@@ -2687,6 +2724,35 @@ describe("Phase I — the wave ledger resumes a halted run unattended", () => {
     expect(result.outcome).toBe("success");
     const recorded = ledgerWrites(writes);
     expect(recorded.map((t) => JSON.parse(t).lastGreenWave)).toEqual([1, 2, 3]);
+  });
+
+  // T-10's delta coverage oracle (PLAN §4.5.1) found this branch uncovered: the
+  // resume report row's gate-name ternary had only its `script-owned gate` arm
+  // reached, because every resume fixture above configures a `testCommand`. The
+  // whole-file 85 % floor cannot see a single uncovered arm in a 16,000-line
+  // module — which is the whole reason §4.5.1 exists (RT-7).
+  it("a ledger resume under the SELF-REPORT gate names that gate in the report row", async () => {
+    const writes = [];
+    const logs = [];
+    const seed = await main(makeLedgerArgs({ writes, config: "{}", git: makeGit([]) }));
+    expect(seed.outcome).toBe("success");
+    const wave1Record = ledgerWrites(writes).find((t) => JSON.parse(t).lastGreenWave === 1);
+    expect(wave1Record).toBeDefined();
+
+    const resumed = await main(
+      makeLedgerArgs({ ledger: wave1Record, logs, config: "{}", git: makeGit([]) })
+    );
+
+    expect(resumed.outcome).toBe("success");
+    // The resume really happened on this path too — the paired positive, so the
+    // row below cannot be satisfied by an unrelated run.
+    expect(logs.some((m) => m.startsWith("Resuming at wave 2 of 3 (wave ledger"))).toBe(true);
+    // Whole-string equality: the gate name is the point, and a relaxed matcher
+    // would pass on the `script-owned gate` string this test exists to exclude.
+    expect(phaseDetail(resumed, "I")).toBe(
+      "Waves 2–3 complete, waves 1–1 skipped as previously completed " +
+        "(wave mode, self-report gate) (provenance: automatic)"
+    );
   });
 
   it("an explicit implementation.startWave outranks the ledger", async () => {
