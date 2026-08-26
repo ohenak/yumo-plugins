@@ -114,7 +114,12 @@ test("prepack vendors the workflow modules byte-for-byte with a verifiable manif
     // vendored nothing, or vendored a third file, must still fail this
     // assertion.
     const names = manifest.modules.map((m) => m.name).sort();
-    assert.deepEqual(names, ["orchestrate-dev.js", "orchestrate-queue.js"]);
+    assert.deepEqual(names, [
+      "lib/escalation-view.mjs",
+      "lib/loop-session.mjs",
+      "orchestrate-dev.js",
+      "orchestrate-queue.js",
+    ]);
 
     for (const entry of manifest.modules) {
       const vendoredBytes = readFileSync(path.join(vendorDir, entry.name));
@@ -217,7 +222,7 @@ test("prepack defaults engineVersion to the engine's own package.json version, n
 // but nothing writes inside the checkout. The closing assertion pins that
 // invariant directly, so re-introducing an in-place run reddens *here*
 // rather than intermittently somewhere else.
-test("prepack run as a process (npm's prepack lifecycle) vendors both modules (AF-2)", () => {
+test("prepack run as a process (npm's prepack lifecycle) vendors every workflow module (AF-2)", () => {
   // `realpathSync`, deliberately: on macOS `mkdtempSync` hands back a
   // `/var/...` path while `import.meta.url` inside the spawned child
   // resolves through the `/private/var` symlink, so an un-realpath'd
@@ -239,8 +244,15 @@ test("prepack run as a process (npm's prepack lifecycle) vendors both modules (A
       path.join(engineRoot, "scripts", "prepack.mjs"),
       path.join(scratchEngine, "scripts", "prepack.mjs"),
     );
-    for (const name of ["orchestrate-dev.js", "orchestrate-queue.js"]) {
-      cpSync(path.join(repoRoot, "pdlc", "workflows", name), path.join(scratchWorkflows, name));
+    for (const name of [
+      "orchestrate-dev.js",
+      "orchestrate-queue.js",
+      "lib/loop-session.mjs",
+      "lib/escalation-view.mjs",
+    ]) {
+      const dest = path.join(scratchWorkflows, name);
+      mkdirSync(path.dirname(dest), { recursive: true });
+      cpSync(path.join(repoRoot, "pdlc", "workflows", name), dest);
     }
 
     const vendorRoot = path.join(scratchEngine, "vendor");
@@ -256,7 +268,12 @@ test("prepack run as a process (npm's prepack lifecycle) vendors both modules (A
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.deepEqual(
       manifest.modules.map((m) => m.name).sort(),
-      ["orchestrate-dev.js", "orchestrate-queue.js"],
+      [
+        "lib/escalation-view.mjs",
+        "lib/loop-session.mjs",
+        "orchestrate-dev.js",
+        "orchestrate-queue.js",
+      ],
     );
     for (const entry of manifest.modules) {
       assert.ok(
@@ -417,6 +434,57 @@ test("runQueue refuses and never imports the workflow modules when startup faile
   assert.equal(imported, 0);
   assert.equal(result.ok, false);
   assert.match(result.refusal, /not found/);
+});
+
+// ─── CR v1 F-01/F-06: runQueue forwards the loop protocol's arguments ─────────
+//
+// The middle link of the operator's real invocation chain:
+//   /loop run /pdlc:orchestrate-queue -> skill -> `pdlc queue --loop-state <token>`
+//   -> cmdQueue -> deps.runQueue -> orchestrate-queue.js#main
+// `loop-cli.test.js` pins the cmdQueue -> runQueue hop with a spy; these pin the
+// runQueue -> queueMain hop, so no link in the chain is covered only by a builder test.
+
+/** Captures the argument object `runQueue` hands to `orchestrate-queue.js`'s `main`. */
+async function captureQueueMainArgs(extra) {
+  let seen = null;
+  await runQueue({
+    adapter: fakeAdapter(),
+    startup: { ok: true, reason: null },
+    importWorkflow: async (name) => ({
+      default: async (args) => {
+        if (name === "queue") seen = args;
+        return { outcome: "idle" };
+      },
+    }),
+    ...extra,
+  });
+  return seen;
+}
+
+test("runQueue forwards loopState/loopStartup/loopStartupRemediation to orchestrate-queue's main", async () => {
+  const startup = { ok: true, reason: null, rungs: [], notices: [] };
+  const seen = await captureQueueMainArgs({
+    loopState: "new",
+    loopStartup: startup,
+    loopStartupRemediation: "run `npm i -g @kaneho/pdlc-engine`",
+  });
+
+  assert.equal(seen.loopState, "new", "the session token must reach `main` as `loopState`");
+  // Without this, `main`'s AC-3.1 engine-readiness conjunct is unfalsifiable at that layer.
+  assert.deepEqual(seen.loopStartup, startup);
+  assert.equal(seen.loopStartupRemediation, "run `npm i -g @kaneho/pdlc-engine`");
+});
+
+test("runQueue omits the loop keys entirely for a non-loop dispatch (AC-1.2 byte-identity)", async () => {
+  const seen = await captureQueueMainArgs({});
+
+  // AC-1.2 requires a plain `pdlc queue` invocation to stay byte-identical. `main` derives
+  // `loopActive` from `loopState !== undefined`, so the keys must be ABSENT, not present-and-
+  // undefined — a `{loopState: undefined}` spread would still read as absent to that check
+  // today, but pinning absence keeps the contract from drifting to a truthiness test.
+  assert.equal(Object.hasOwn(seen, "loopState"), false);
+  assert.equal(Object.hasOwn(seen, "loopStartup"), false);
+  assert.equal(Object.hasOwn(seen, "loopStartupRemediation"), false);
 });
 
 test("a passing startup does not refuse", async () => {

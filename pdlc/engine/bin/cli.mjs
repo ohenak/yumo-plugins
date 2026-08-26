@@ -33,9 +33,9 @@ import path from "node:path";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 
-import { PLUGIN_ROOT_ENV, resolvePluginRoot } from "../lib/skills.mjs";
+import { resolvePluginRoot } from "../lib/skills.mjs";
 import { listVersions, rootFor } from "../lib/store.mjs";
-import { runStartupChecks, formatStartup } from "../lib/startup.mjs";
+import { runStartupChecks, formatStartup, STARTUP_REMEDIATION } from "../lib/startup.mjs";
 import { createAdapter } from "../lib/adapter.mjs";
 import { createTransport } from "../lib/transport.mjs";
 import {
@@ -60,6 +60,7 @@ const USAGE = [
   "Usage:",
   "  pdlc dev <docs/{feature}/REQ-{feature}.md> [--force-phases <R,F,T,P,D,PR|all>] [--dry-run]",
   "  pdlc queue [--queue-path <path>] [--loop [--max-iterations <n>]] [--dry-run]",
+  "  pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [--rationale <text>]",
   "  pdlc doctor",
   "  pdlc hello | pdlc spike:sdk",
   "",
@@ -97,6 +98,46 @@ function positionals(argv, valueFlags) {
   return out;
 }
 
+/**
+ * Dynamically loads `pdlc/workflows/lib/loop-session.mjs` from whichever
+ * workflow root `resolveWorkflowRoot` resolves (vendor tree when packaged,
+ * checkout tree in-repo — TSPEC §5.2). Used only by `cmdQueue`'s
+ * `--loop-state` surface (P4-05): decoding the session token and evaluating
+ * the loop's own preflight are pure, in-process operations, never a
+ * dispatch.
+ */
+async function loopSessionModule() {
+  const { rootPath } = resolveWorkflowRoot();
+  return import(pathToFileURL(path.join(rootPath, "lib", "loop-session.mjs")).href);
+}
+
+/** Same arrangement as `loopSessionModule`, for `lib/escalation-view.mjs`. */
+async function escalationViewModule() {
+  const { rootPath } = resolveWorkflowRoot();
+  return import(pathToFileURL(path.join(rootPath, "lib", "escalation-view.mjs")).href);
+}
+
+/**
+ * Read-only `git status` probe for the loop's working-tree preflight
+ * condition (BR-11). Never mutates, never dispatches — a plain
+ * `spawnSync("git", ["status", …])` in `cwd`.
+ *
+ * @param {string} cwd
+ * @param {"tracked"|"any"} policy
+ * @returns {{ok: true, dirtyPaths: string[]} | {ok: false, detail: string}}
+ */
+function gitTreeStatus(cwd, policy) {
+  const args =
+    policy === "any"
+      ? ["status", "--porcelain", "--untracked-files=normal"]
+      : ["status", "--porcelain", "--untracked-files=no"];
+  const result = spawnSync("git", args, { cwd, encoding: "utf8" });
+  const output = (result.stdout || "").trim();
+  if (output === "") return { ok: true, dirtyPaths: [] };
+  const dirtyPaths = output.split("\n");
+  return { ok: false, detail: `${dirtyPaths.length} dirty path(s) under policy "${policy}"` };
+}
+
 const VALUE_FLAGS = [
   "plugin-root",
   "cwd",
@@ -104,6 +145,18 @@ const VALUE_FLAGS = [
   "queue-path",
   "dry-run-skill",
   "max-iterations",
+  "loop-state",
+  // E-25/AT-49 (CR v1 F-08): the session's report of the wait it took before this
+  // invocation — requested (what the previous directive asked for) and actual (what the
+  // host managed). Value flags, so `--wait-requested 5` consumes its value token.
+  "wait-requested",
+  "wait-actual",
+  // AC-4.4 (CR v1 F-07): `pdlc decide`'s four inputs — the entry id the view printed, the
+  // outcome, who decided, and the optional rationale.
+  "entry",
+  "outcome",
+  "by",
+  "rationale",
 ];
 const VALUE_FLAGS_SET = new Set(VALUE_FLAGS);
 
@@ -117,6 +170,7 @@ const FLAGS_BY_COMMAND = {
   queue: [
     "queue-path",
     "loop",
+    "loop-state",
     "dry-run",
     "plugin-root",
     "cwd",
@@ -124,8 +178,11 @@ const FLAGS_BY_COMMAND = {
     "max-iterations",
     "dry-run-skill",
     "dev",
+    "wait-requested",
+    "wait-actual",
   ],
   doctor: ["plugin-root", "cwd", "allow-api-key-billing", "dev"],
+  decide: ["entry", "outcome", "by", "rationale", "plugin-root", "cwd", "dev"],
 };
 
 /**
@@ -470,10 +527,11 @@ async function cmdDoctor(argv) {
     // DEC-EDIST-04 makes the env var inert unless dev-mode is declared, so
     // offering it unqualified sent a refused operator down a path that does
     // nothing. Both remedies are stated with the condition each needs.
-    console.log(
-      `Override the plugin root with --plugin-root <path>, or with ${PLUGIN_ROOT_ENV}=<path> ` +
-        `together with --dev (the variable alone is ignored — DEC-EDIST-04).`
-    );
+    // Sourced from STARTUP_REMEDIATION (lib/startup.mjs) — the same constant
+    // preflight's !startup.ok refusal shares (PLAN P4-03; TSPEC §Modified
+    // exports, the STARTUP_REMEDIATION row — cited by id, not line number,
+    // per DEC-DOC-01).
+    console.log(STARTUP_REMEDIATION);
     process.exitCode = 1;
   }
 }
@@ -685,17 +743,64 @@ async function cmdQueue(argv, deps) {
   const startup = deps.startupFor(argv);
   if (!startup.ok) {
     // See cmdDev's identical branch: a rung refusal emits a report line
-    // (BR-REP-0a / PROP-EXIT-10), unlike a pure CLI usage error.
+    // (BR-REP-0a / PROP-EXIT-10), unlike a pure CLI usage error. This
+    // branch's shipped refusal behaviour is preserved byte-for-byte
+    // (DEC-LOOP-06 alternative B) — the `--loop-state` path below only
+    // ADDS the `loop` block on the existing `emitReport` seam (P4-07,
+    // TSPEC §3's policy table).
     for (const line of formatStartup(startup, { withChecks: true })) console.error(line);
     console.error("");
     console.error(startup.reason);
     console.error("pdlc: startup did not pass — the engine refuses to dispatch (fail-closed, C-10).");
     const startedAt = new Date().toISOString();
-    process.exitCode = emitReport(null, { adapter: null, startup, startedAt, finishedAt: startedAt });
+    let loop = null;
+    if (readFlag(argv, "loop-state") !== null) {
+      // BR-28: a zero-iteration session summary is owed on both refusal
+      // paths reachable through `--loop-state` — `"strict"` refuses on
+      // its own preflight (`preflight-refused`), `"off"` still hits this
+      // shipped `!startup.ok` branch and reports the engine's own
+      // dispatch refusal (`engine-dispatch-refused`, TSPEC E-19/E-20(a)).
+      const { sessionSummary, readLoopConfig } = await loopSessionModule();
+      const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
+      let configText = null;
+      try {
+        configText = nodeFs.readFileSync(path.join(cwd, ".claude", "pdlc.config.json"), "utf8");
+      } catch {
+        configText = null;
+      }
+      const { config } = readLoopConfig(configText);
+      const stopReason = config.preflight === "off" ? "engine-dispatch-refused" : "preflight-refused";
+      const { fields } = sessionSummary({
+        stopReason,
+        iterations: 0,
+        merged: [],
+        halted: [],
+        escalationsRaised: [],
+        operatorView: null,
+        openEscalations: 0,
+        nextActionable: null,
+        notices: [],
+      });
+      loop = fields;
+    }
+    process.exitCode = emitReport(null, { adapter: null, startup, startedAt, finishedAt: startedAt, loop });
     return;
   }
 
   const queuePath = readFlag(argv, "queue-path");
+  const loopStateFlag = readFlag(argv, "loop-state");
+  if (hasFlag(argv, "loop") && loopStateFlag !== null) {
+    // TSPEC §2: `--loop-state` is the session-side, one-iteration-per-process
+    // protocol; `--loop` is the engine's own in-process driver
+    // (`runQueueLoop`). The two are mutually exclusive — same validation
+    // shape as the shipped `--max-iterations` usage error.
+    console.error(
+      "pdlc queue: --loop and --loop-state may not be used together (they are two different loop drivers).",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   if (hasFlag(argv, "dry-run")) {
     emitDryRun(argv, startup, { command: "queue", target: queuePath || "docs/_queue/QUEUE.md" });
     return;
@@ -703,6 +808,149 @@ async function cmdQueue(argv, deps) {
 
   for (const line of formatStartup(startup)) console.log(line);
   const { adapter, cwd, tunables } = deps.liveAdapter(argv, startup);
+
+  if (loopStateFlag !== null) {
+    // TSPEC §2/§3/§6 (P4-05..P4-07): the session-side, one-iteration-per-process
+    // protocol. Decode the session's carried state, dispatch ONE real `runQueue`
+    // pass with that state threaded through, and emit the `loop` block the shipped
+    // `orchestrate-queue` SKILL.md's "Directive protocol (session side)" already
+    // documents: step 2's `kind` (`stop`/`continue`) and step 3's `nextState`.
+    //
+    // CR v1 F-01/F-02: this branch previously decoded the token, printed two prose
+    // lines and returned 0 WITHOUT dispatching — so the entire session-loop path in
+    // `orchestrate-queue.js#main` had no production caller, and the SKILL documented
+    // a response shape the binary never emitted. Because the SKILL's own
+    // launch-failure predicate is "exits without producing a parseable `loop` block",
+    // a correctly installed engine on a healthy repo satisfied it on every iteration.
+    //
+    // The preflight is NOT evaluated here: `main` evaluates it, with this layer's real
+    // `startup` threaded in as `loopStartup` (F-06), so AC-3.1's engine-readiness
+    // conjunct and AC-3.2's clean-tree conjunct are decided together over one session
+    // rather than one per layer.
+    const { sessionSummary, iterationLine, decodeLoopState } = await loopSessionModule();
+
+
+
+    // AT-12 (CR v1 F-02): the engine-version comparison, computed HERE — the only layer
+    // that can, since the plugin manifest and the engine's declared compat range are both
+    // this process's own facts — and threaded down to `evaluatePreflight`. `versionDoctorFor`
+    // is the same builder `pdlc --version` and `pdlc doctor` render, so a session's mismatch
+    // notice and the doctor's mismatch line can never disagree (TSPEC §Interfaces names it as
+    // this value's source). `orchestrate-queue.js` previously supplied a hardcoded
+    // `{mismatched: false}` literal, which made AT-12's notice unreachable by any operator.
+    const versionDoctor = versionDoctorFor(argv, "version");
+    const loopVersionMismatch = !versionDoctor.plugin.ok
+      ? { mismatched: true, detail: versionDoctor.plugin.reason }
+      : versionDoctor.resolvedEngineVersion && versionDoctor.resolvedEngineVersion !== pkg.version
+        ? {
+            mismatched: true,
+            // The skew startup cannot see: rung 3 compares the PLUGIN against this engine's
+            // declared range, never the version store's answer against the engine actually
+            // running. They diverge whenever the resolution hop was bypassed — a resolved-child
+            // marker inherited from an outer session, a stale `PATH` shim — and the symptom is a
+            // session silently driven by bytes the operator did not install. Report-only, per
+            // AT-12: preflight does not refuse on the preamble alone and iteration 1 still runs.
+            detail: `the version store resolves pdlc-engine v${versionDoctor.resolvedEngineVersion}, but this process is v${pkg.version}`,
+          }
+        : { mismatched: false, detail: null };
+
+    // E-25 (CR v1 F-08): the wait that PRECEDED this invocation. The session performs the
+    // wait (DEC-LOOP-02), so it is the only party that knows what it actually waited; it
+    // reports the pair back the same way it echoes `nextState`. Absent flags mean no wait
+    // was taken (iteration 1), which is a `null` `WaitRecord`, not a zero-length one.
+    const waitRequestedFlag = readFlag(argv, "wait-requested");
+    const waitActualFlag = readFlag(argv, "wait-actual");
+    const wait =
+      waitRequestedFlag === null
+        ? null
+        : {
+            requestedMinutes: Number(waitRequestedFlag),
+            actualMinutes: waitActualFlag === null || waitActualFlag === "" ? null : Number(waitActualFlag),
+          };
+
+    const state = decodeLoopState(loopStateFlag);
+    const startedAt = new Date().toISOString();
+    const { report } = await deps.runQueue({
+      queuePath,
+      cwd,
+      adapter,
+      startup,
+      provenance: provenanceFor(startup),
+      loopState: loopStateFlag,
+      loopStartup: startup,
+      loopStartupRemediation: STARTUP_REMEDIATION,
+      loopVersionMismatch,
+    });
+    const finishedAt = new Date().toISOString();
+
+    // `main` returns its directive on `report.loop` for every loop-active pass —
+    // both the preflight-refusal early return and `finish`'s normal projection.
+    const directive = (report && report.loop) || {
+      kind: "stop",
+      stopReason: "engine-dispatch-refused",
+      waitMinutes: 0,
+      nextState: null,
+      detail: "The queue driver returned no directive.",
+    };
+    const notices = (report && report.notices) || [];
+    const operatorView = (report && report.operatorView) || null;
+
+    // The session's state AFTER this pass, read back from the directive's own `nextState`
+    // token — the authoritative value, because it is the exact token the session echoes into
+    // the next invocation, so the summary cannot describe a session different from the one
+    // that continues. `state` (the INCOMING token) is the wrong source: it predates this
+    // pass, so a feature merged during it would be missing from the very summary reporting
+    // it. A preflight refusal encodes the incoming state unchanged, which is what makes
+    // BR-28's zero-iteration summary come out at zero here rather than by a special case.
+    const endState = directive.nextState ? decodeLoopState(directive.nextState) : state;
+
+    // AC-7.1: one line per iteration naming outcome, feature and merge status.
+    const pipelineReport = report && report.pipelineReport;
+    const { text: iterationText } = iterationLine({
+      // THIS invocation's ordinal: the session has already run `state.iteration` of them.
+      iteration: state.iteration + 1,
+      outcome: report ? report.outcome : "refused",
+      feature: (report && report.picked) || null,
+      mergeStatus: (pipelineReport && pipelineReport.mergeStatus) || "n/a",
+      prUrl: (pipelineReport && pipelineReport.prUrl) || null,
+      wait,
+      notices,
+    });
+    console.log(iterationText);
+
+    let loop = { ...directive, notices, operatorView };
+
+    // AC-7.2: the session's LAST iteration owes a summary — features merged with PR
+    // URLs, the open-escalation count and the next actionable item. Previously this
+    // was reachable only when the engine refused to start, i.e. on the one path where
+    // all three fields are empty by construction.
+    if (directive.kind === "stop") {
+      const items = (operatorView && operatorView.items) || [];
+      const { fields, text } = sessionSummary({
+        stopReason: directive.stopReason,
+        iterations: Number.isInteger(endState.iteration) ? endState.iteration : 0,
+        merged: endState.merged ?? [],
+        halted: endState.halted ?? [],
+        escalationsRaised: endState.escalationsRaised ?? [],
+        operatorView,
+        openEscalations: items.length,
+        nextActionable: items.length ? items[0] : null,
+        notices,
+      });
+      console.log(text);
+      loop = { ...loop, ...fields };
+    }
+
+    process.exitCode = emitReport(report, {
+      adapter,
+      startup,
+      startedAt,
+      finishedAt,
+      tunables,
+      loop,
+    });
+    return;
+  }
 
   if (hasFlag(argv, "loop")) {
     // AC-1.3 / `queue.loopIdleExit`: one feature per pass until no ready row
@@ -906,6 +1154,98 @@ export default defaultDeps;
  * whether the real `bin/pdlc.mjs` guard or a test — passes a
  * process-argv-shaped array, not a sliced argument list.
  */
+/** Same arrangement as `loopSessionModule`, for `orchestrate-dev.js`'s escalation writers. */
+async function devWorkflowModule() {
+  const { rootPath } = resolveWorkflowRoot();
+  return import(pathToFileURL(path.join(rootPath, "orchestrate-dev.js")).href);
+}
+
+/** The closed outcome set a decision block's `| Decision |` row may carry (TSPEC §4b). */
+const DECISION_OUTCOMES = ["resolved", "rejected"];
+
+/**
+ * `pdlc decide` — AC-4.4's operator surface, and the production caller
+ * `renderDecisionEntry`/`appendEscalationEntry`'s `kind: "decision"` branch never had.
+ *
+ * The loop prints each open item's `entryId` in its rendered view (TSPEC §Architecture §6);
+ * this command takes one of those ids back and records the operator's decision as a durable
+ * block appended to the same `docs/_queue/ESCALATIONS.md`. It rewrites nothing: the decided
+ * entry's own block is untouched, and the view derives closure by overlay at read time —
+ * which is exactly what makes the record retainable input for a later calibration pass.
+ *
+ * Dispatches nothing: no adapter, no transport, no model. It reads one file, parses it with
+ * the shipped reader, and appends one block.
+ */
+async function cmdDecide(argv) {
+  const cwd = path.resolve(readFlag(argv, "cwd") || process.cwd());
+  const entry = readFlag(argv, "entry");
+  const outcome = readFlag(argv, "outcome");
+  const decidedBy = readFlag(argv, "by");
+  const rationale = readFlag(argv, "rationale");
+
+  if (!entry || !outcome || !decidedBy) {
+    console.error("pdlc decide: --entry, --outcome and --by are all required.");
+    process.exitCode = 1;
+    return;
+  }
+  if (!DECISION_OUTCOMES.includes(outcome)) {
+    console.error(
+      `pdlc decide: --outcome must be one of ${DECISION_OUTCOMES.join(", ")} (got "${outcome}").`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  const logPath = path.join(cwd, "docs", "_queue", "ESCALATIONS.md");
+  let logText = null;
+  try {
+    logText = nodeFs.readFileSync(logPath, "utf8");
+  } catch {
+    logText = null;
+  }
+
+  const { parseEscalationLog } = await escalationViewModule();
+  const log = parseEscalationLog(logText);
+  // Refuse an id the log does not carry: a decision naming nothing is a block no overlay can
+  // ever match, i.e. a silent no-op that still looks recorded. The reader is the SAME export
+  // the view uses, so an id this command accepts is an id the overlay will match.
+  const known = log.entries.some((e) => e.kind !== "decision" && e.id === entry);
+  if (!known) {
+    console.error(
+      `pdlc decide: no escalation entry with id "${entry}" in ${path.join("docs", "_queue", "ESCALATIONS.md")}.`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const decided = log.entries.find((e) => e.kind !== "decision" && e.id === entry);
+
+  const { appendEscalationEntry } = await devWorkflowModule();
+  const decidedAt = new Date().toISOString();
+  await appendEscalationEntry({
+    disposition: {
+      kind: "decision",
+      decision: outcome,
+      decidedBy,
+      decidesId: entry,
+      decidedAt,
+      rationale: rationale || null,
+    },
+    ctx: { feature: decided.feature },
+    // `appendEscalationEntry` writes to its own repo-relative `ESCALATIONS_PATH`; this seam
+    // anchors that path at the operator's `--cwd`, the same way every other engine-side
+    // workflow seam does.
+    _appendFile: async (relPath, contents) => {
+      const target = path.join(cwd, relPath);
+      nodeFs.mkdirSync(path.dirname(target), { recursive: true });
+      nodeFs.appendFileSync(target, contents);
+    },
+    _now: () => Date.now(),
+  });
+
+  console.log(`Recorded ${outcome} for entry ${entry} (${decided.feature}) in ${logPath}.`);
+  process.exitCode = 0;
+}
+
 export async function main(argv = process.argv, deps = defaultDeps) {
   const [, , cmd, ...rest] = argv;
   switch (cmd) {
@@ -927,6 +1267,9 @@ export async function main(argv = process.argv, deps = defaultDeps) {
       break;
     case "doctor":
       if (checkFlags(rest, "doctor")) await cmdDoctor(rest);
+      break;
+    case "decide":
+      if (checkFlags(rest, "decide")) await cmdDecide(rest);
       break;
     case "dev":
       if (checkFlags(rest, "dev")) await cmdDev(rest, deps);

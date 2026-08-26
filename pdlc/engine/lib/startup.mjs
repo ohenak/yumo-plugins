@@ -23,6 +23,19 @@ import nodeFs from "node:fs";
 import { spawnSync } from "node:child_process";
 
 import { resolvePluginRoot, loadSkill, PLUGIN_ROOT_ENV } from "./skills.mjs";
+
+/**
+ * The one two-remedy sentence shared by `cmdDoctor` and preflight (TSPEC
+ * §Modified exports, the STARTUP_REMEDIATION row; PLAN P4-02 — cited by id
+ * rather than line number, per DEC-DOC-01) — a rung-1 (`plugin resolved`,
+ * AC-3.2) failure's
+ * remedy: override with `--plugin-root`, or with `PLUGIN_ROOT_ENV` together
+ * with `--dev` (the env var alone is ignored — DEC-EDIST-04). Transcribed
+ * verbatim from `cmdDoctor`'s inline template at HEAD (`bin/cli.mjs`).
+ */
+export const STARTUP_REMEDIATION =
+  `Override the plugin root with --plugin-root <path>, or with ${PLUGIN_ROOT_ENV}=<path> ` +
+  `together with --dev (the variable alone is ignored — DEC-EDIST-04).`;
 import { readPluginVersion, checkCompat, buildBanner } from "./handshake.mjs";
 import { DEFAULT_PERMISSION_MODE, buildGuardHooksOption, assertCwdIsGitRepository } from "./transport.mjs";
 import { readLoginEvidence, resolveAuthPosture } from "./auth.mjs";

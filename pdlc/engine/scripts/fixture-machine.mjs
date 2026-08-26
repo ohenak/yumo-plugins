@@ -423,7 +423,12 @@ const ENGINE_PACK_INPUT_ENTRIES = [
   "lib",
   "scripts",
 ];
-const WORKFLOW_MODULE_NAMES = ["orchestrate-dev.js", "orchestrate-queue.js"];
+export const WORKFLOW_MODULE_NAMES = [
+  "orchestrate-dev.js",
+  "orchestrate-queue.js",
+  "lib/loop-session.mjs",
+  "lib/escalation-view.mjs",
+];
 
 /**
  * Copies the engine's real package inputs, plus the two canonical workflow
@@ -447,10 +452,9 @@ function buildScratchEnginePackTree(versionOverride) {
     cpSync(source, path.join(buildEngineDir, entry), { recursive: true });
   }
   for (const name of WORKFLOW_MODULE_NAMES) {
-    cpSync(
-      path.join(REPO_ROOT, "pdlc", "workflows", name),
-      path.join(buildWorkflowsDir, name),
-    );
+    const dest = path.join(buildWorkflowsDir, name);
+    mkdirSync(path.dirname(dest), { recursive: true });
+    cpSync(path.join(REPO_ROOT, "pdlc", "workflows", name), dest);
   }
   if (versionOverride) {
     // The upgrade leg needs a second pack whose *manifest* version genuinely
@@ -469,14 +473,19 @@ function buildScratchEnginePackTree(versionOverride) {
 
 /**
  * Derives a synthetic "next" version for the upgrade leg's second pack from
- * the real engine package's own version: a `-fixture.<timestamp>` prerelease
- * suffix appended to the real version, so `resolvedVersion` and
+ * the real engine package's own version: the patch component bumped plus a
+ * `-fixture.<timestamp>` prerelease suffix, so `resolvedVersion` and
  * `resolvedStoreEntry` (which is keyed off the version's store path)
  * genuinely change between the baseline install and the upgrade, while the
- * real checkout's `package.json` is never edited.
+ * real checkout's `package.json` is never edited. The patch bump matters:
+ * the launcher's ladder picks the highest store entry via `handshake.mjs`'s
+ * `compare`, which ignores prerelease suffixes, so a bare
+ * `${base}-fixture.<ts>` compares *equal* to the baseline and resolution
+ * never moves off the pre-upgrade entry.
  */
 function deriveUpgradeVersion(baseVersion) {
-  return `${baseVersion}-fixture.${Date.now()}`;
+  const [major, minor, patch] = baseVersion.split(".").map(Number);
+  return `${major}.${minor}.${patch + 1}-fixture.${Date.now()}`;
 }
 
 /**

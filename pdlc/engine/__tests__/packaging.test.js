@@ -46,9 +46,12 @@ const DECISIONS_PATH = path.join(
 // `checkPackedSet`'s own refusal message (TE CR v2 F-03). The co-change
 // obligation — TSPEC §5.4 and FSPEC §5.2 move first — is recorded there.
 
+// TSPEC §7 D-6: relative path preserved, never flattened with
+// `path.basename` — the vendored `lib/*.mjs` members would otherwise
+// resolve to a non-existent top-level `pdlc/workflows/{basename}`.
 const WORKFLOW_MODULE_NAMES = WORKFLOW_MEMBERS.filter(
   (member) => member !== "vendor/workflows/VENDOR-MANIFEST.json",
-).map((member) => path.basename(member));
+).map((member) => member.replace(/^vendor\/workflows\//, ""));
 
 // Local aliases keeping this file's existing call sites (`licenceRecorded`)
 // unchanged while the transcription itself lives in one place.
@@ -117,10 +120,9 @@ function packRealTarball() {
     }
 
     for (const name of WORKFLOW_MODULE_NAMES) {
-      cpSync(
-        path.join(REPO_ROOT, "pdlc", "workflows", name),
-        path.join(buildWorkflowsDir, name),
-      );
+      const dest = path.join(buildWorkflowsDir, name);
+      mkdirSync(path.dirname(dest), { recursive: true });
+      cpSync(path.join(REPO_ROOT, "pdlc", "workflows", name), dest);
     }
 
     const packResult = spawnSync(
