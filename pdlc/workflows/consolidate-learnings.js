@@ -2004,7 +2004,10 @@ export function parseEscalations(text) {
     distinctFeatures.set(seam, perFeature.size);
   }
 
-  const corpusState = blocks.length === 0 ? "empty" : "present";
+  // P6-02 / DEC-LOOP-03: derive from counted entries, not the raw block count — a malformed
+  // (non-advisory/decision) block inflates blocks.length without ever incrementing entryCount,
+  // and must not lift an otherwise-empty corpus to "present".
+  const corpusState = entryCount === 0 ? "empty" : "present";
 
   return { bySeamFeature, totals, distinctFeatures, entryCount, corpusState };
 }

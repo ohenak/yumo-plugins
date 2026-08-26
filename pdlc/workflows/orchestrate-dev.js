@@ -1627,7 +1627,35 @@ export async function phaseMerge({
   _now = () => Date.now(),
   _sleep = sleep,
   _configPath = MERGE_CONFIG_PATH,
+  _appendFile = defaultAppendFile,
 }) {
+  // PLAN P3-08 (PROP-ESC-08/PROP-ESC-10 merge variant, TSPEC §10.1) — every merge-refusal
+  // escalation `phaseMerge` produces is ALSO appended to `ESCALATIONS.md` via
+  // `appendEscalationEntry`, with `ctx.source = "merge-refusal"` (never `ctx.seam` — that would
+  // render as an advisory entry, per `renderEscalationEntry`'s `isAdvisory` branch). Appending is
+  // best-effort: a rejecting `_appendFile` is caught here, outside the merge action itself, and
+  // surfaced as an `escalation-append-failed` note — it never changes `mergeStatus` or any other
+  // outcome field (E-08).
+  const appendMergeEscalation = async (notice, notes) => {
+    try {
+      await appendEscalationEntry({
+        disposition: { reason: notice, verdict: null },
+        ctx: {
+          feature,
+          source: "merge-refusal",
+          phase: "MERGE",
+          phaseOutcome: "refused",
+          decision: notice,
+        },
+        _appendFile,
+        _now,
+      });
+    } catch (err) {
+      notes.push(
+        `escalation-append-failed: ${err && err.message ? err.message : String(err)}`,
+      );
+    }
+  };
   const skippedOutcome = (row, reason, notes = []) => ({
     mergeStatus: "skipped",
     mergeSha: null,
@@ -1704,6 +1732,12 @@ export async function phaseMerge({
     }
 
     const escalations = [...d.escalations];
+    // The guard-match / guard-unretrievable / CI-absent sites (`decideMerge`'s own inline
+    // `MERGE_ESCALATIONS.guard`/`.ci` literals) all surface here as `d.escalations` — one
+    // durable-log append per notice, PLAN P3-08.
+    for (const notice of escalations) {
+      await appendMergeEscalation(notice, notes);
+    }
 
     if (d.mergeStatus !== "merged") {
       // FSPEC §9.4 — one plain note for every deferred/refused run.
@@ -1761,14 +1795,14 @@ export async function phaseMerge({
           typeof d.mergeSha === "string" && d.mergeSha.length >= 7
             ? d.mergeSha.slice(0, 7)
             : "sha unknown";
-        escalations.push(
-          MERGE_ESCALATIONS.queue({
-            prUrl,
-            shortSha,
-            feature,
-            detail: (rec && rec.detail) || "queue row not found",
-          }),
-        );
+        const queueNotice = MERGE_ESCALATIONS.queue({
+          prUrl,
+          shortSha,
+          feature,
+          detail: (rec && rec.detail) || "queue row not found",
+        });
+        escalations.push(queueNotice);
+        await appendMergeEscalation(queueNotice, notes);
       } else if (queueRow === "recorded (uncommitted)") {
         notes.push(
           MERGE_NOTES.recordedUncommitted(
@@ -1794,9 +1828,13 @@ export async function phaseMerge({
     }
 
     if (!tree.ok) {
-      escalations.push(
-        MERGE_ESCALATIONS.tree({ prUrl, reason: tree.reason, branch: tree.branch ?? "unknown" }),
-      );
+      const treeNotice = MERGE_ESCALATIONS.tree({
+        prUrl,
+        reason: tree.reason,
+        branch: tree.branch ?? "unknown",
+      });
+      escalations.push(treeNotice);
+      await appendMergeEscalation(treeNotice, notes);
     }
 
     return {
@@ -1950,6 +1988,15 @@ export const ADVISORY_DEFAULTS = Object.freeze({
 });
 
 export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5", "A6"]);
+
+// `LOOP_SOURCES` — pinned equal to `./lib/loop-session.mjs`'s export of the same name by
+// loopEntryVocabulary.test.js's differential assertion (P3-04, DEC-CONS-05 precedent). This
+// module does NOT import from `./lib/` (see P3-04 PLAN note): `build-runtime.mjs` hoists every
+// top-level `import` line verbatim into `dist/pdlc-cli.mjs`, which is emitted one directory
+// deeper than this file, so a relative `"./lib/loop-session.mjs"` specifier would resolve against
+// `dist/`, where no `lib/` exists. The two literals are therefore declared independently and held
+// equal by the test, not by a shared import.
+export const LOOP_SOURCES = Object.freeze(["pipeline-halt", "merge-refusal"]);
 
 // TSPEC §3.1 — the four-member root-cause classification catalogue `parseA6RootCause` validates
 // membership against (AC-6.4, PROP-CTR-01).
@@ -4351,6 +4398,29 @@ export function advisorySummaryRows(dispositions, pubOutcome = {}) {
 // newest-last (L-1). Eight declared fields, the one-sentence decision statement first (L-2).
 const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
 
+// BR-18 / NFR-5 / AT-34 / AT-34a — the redaction catalogue (six literal entries; `gh[pousr]_`
+// subsumes `ghs_`, so five behavioural match families): `gh[pousr]_`, `ghs_`, `github_pat_`,
+// `sk-`, `xox[baprs]-`, `AKIA`. A match requires a left-boundary anchor — the character
+// immediately preceding the catalogue prefix (if any) must NOT be `[A-Za-z0-9_-]` — so an
+// interior occurrence (e.g. `abc-sk-...`) never fires (AT-34a's anchor-control seed).
+const REDACTION_PATTERN =
+  /(?<![A-Za-z0-9_-])(?:gh[pousr]_|github_pat_|sk-|xox[baprs]-|AKIA)[A-Za-z0-9_-]+/g;
+
+/**
+ * `redactEntryText(value)` — pure (TSPEC "Redaction", BR-18, NFR-5). Replaces every
+ * left-boundary-anchored catalogue match in `value` with `[redacted:{n} chars]`, where `n` is
+ * the length of the matched run. Applied to every free-prose field on both the advisory and
+ * escalation branches (decision sentence, Refusal reason, diagnosis, proposed action, each
+ * evidence line) — never to the closed-vocabulary fields (Feature, Seam, Source, Root cause, the
+ * heading timestamp, Pipeline state), so `parseEscalations`' calibration keys stay untouched.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+export function redactEntryText(value) {
+  return String(value).replace(REDACTION_PATTERN, (match) => `[redacted:${match.length} chars]`);
+}
+
 /**
  * `renderEscalationEntry(disposition, ctx, { now })` — pure, mirroring `renderAdvisoryEntry`
  * (TSPEC §10.1). Unlike the advisory record's `now`, this `now` is a millisecond epoch value
@@ -4364,8 +4434,13 @@ const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
  */
 export function renderEscalationEntry(disposition, ctx, { now }) {
   const { reason, verdict, rootCause } = disposition;
-  const { feature, seam, phase, phaseOutcome, decision } = ctx;
+  const { feature, seam, source, phase, phaseOutcome, decision } = ctx;
   const iso = new Date(now).toISOString();
+  // `ctx.source`-shaped input (LOOP_SOURCES) is non-advisory — it renders a `| Source |` row and
+  // no `| Seam |` row, and the heading's third segment is the source rather than the seam id
+  // (AT-21, BR-12).
+  const isAdvisory = seam !== undefined;
+  const headingId = isAdvisory ? seam : source;
 
   const diagnosis = verdict ? verdict.diagnosis : "no verdict was produced";
   const proposedAction = verdict ? verdict.proposedAction : "(none)";
@@ -4375,15 +4450,15 @@ export function renderEscalationEntry(disposition, ctx, { now }) {
       : ["(none)"];
 
   const lines = [
-    `## ${iso} — ${feature} — ${seam}`,
+    `## ${iso} — ${feature} — ${headingId}`,
     "",
-    `**Decide:** ${advisoryEntrySingleLine(decision)}`,
+    `**Decide:** ${advisoryEntrySingleLine(redactEntryText(decision))}`,
     "",
     "| Field | Value |",
     "|---|---|",
     `| Feature | ${feature} |`,
-    `| Seam | ${seam} |`,
-    `| Refusal reason | ${advisoryEntrySingleLine(reason ?? "n/a")} |`,
+    isAdvisory ? `| Seam | ${seam} |` : `| Source | ${source} |`,
+    `| Refusal reason | ${advisoryEntrySingleLine(redactEntryText(reason ?? "n/a"))} |`,
     // AC-6.2 — the root-cause class alongside the fields the tier already requires, and the field
     // AC-6.4's countability rests on: `plan-ordering-defect` must be countable per feature from
     // this durable log alone, without reading a run log or the (PUB-distilled) advisory record.
@@ -4391,14 +4466,51 @@ export function renderEscalationEntry(disposition, ctx, { now }) {
     // PM F-02 / TE F-04).
     ...(rootCause ? [`| Root cause | ${advisoryEntrySingleLine(rootCause)} |`] : []),
     "",
-    `**Diagnosis.** ${advisoryEntrySingleLine(diagnosis)}`,
+    `**Diagnosis.** ${advisoryEntrySingleLine(redactEntryText(diagnosis))}`,
     "",
-    `**Proposed action.** ${advisoryEntrySingleLine(proposedAction)}`,
+    `**Proposed action.** ${advisoryEntrySingleLine(redactEntryText(proposedAction))}`,
     "",
     "**Evidence.**",
-    ...evidence.map((e) => `- ${advisoryEntrySingleLine(e)}`),
+    ...evidence.map((e) => `- ${advisoryEntrySingleLine(redactEntryText(e))}`),
     "",
     `**Pipeline state.** ${phase} — ${phaseOutcome}`,
+    "",
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * `renderDecisionEntry({feature, decision, decidedBy, decidesId, decidedAt, rationale}, {now})`
+ * — pure, exported beside `renderEscalationEntry` (PLAN P3-06, TSPEC Architecture §6 / Data
+ * Model "escalation-view.mjs"). Renders the five-row decision block `escalation-view.mjs`'s
+ * `parseEscalationLog` reads back into `decidedOutcome`/`decidedBy`/`decidesId`/`decidedAt` —
+ * `feature` is threaded through in the same fields object because, unlike `renderEscalationEntry`,
+ * a decision block has no separate `ctx` at its one call site (`appendEscalationEntry`, below).
+ * Like its sibling, `now` is the injected-clock millisecond epoch rendered via
+ * `new Date(now).toISOString()` for the heading — distinct from `decidedAt`, the caller-supplied
+ * decision timestamp that lands in the `| Decided at |` row. The block carries no `| Seam |` row
+ * (Architecture §6): `parseEscalationLog`'s `ESCALATION_SEAM_ROW` scan finds none, so the block
+ * contributes no calibration key (BR-12a).
+ *
+ * @param {{feature: string, decision: string, decidedBy: string|null, decidesId: string, decidedAt: string, rationale?: string|null}} fields
+ * @param {{now: number}} opts
+ * @returns {string}
+ */
+export function renderDecisionEntry(
+  { feature, decision, decidedBy, decidesId, decidedAt, rationale },
+  { now },
+) {
+  const iso = new Date(now).toISOString();
+  const lines = [
+    `## ${iso} — ${feature} — decision`,
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    `| Decision | ${decision} |`,
+    `| Decided by | ${advisoryEntrySingleLine(redactEntryText(decidedBy ?? ""))} |`,
+    `| Decides | ${decidesId} |`,
+    `| Decided at | ${decidedAt} |`,
+    ...(rationale ? [`| Rationale | ${advisoryEntrySingleLine(redactEntryText(rationale))} |`] : []),
     "",
   ];
   return lines.join("\n");
@@ -4411,12 +4523,19 @@ export function renderEscalationEntry(disposition, ctx, { now }) {
  * disposition is never upgraded to `resolved` on account of it — the asymmetry with a failed
  * record write (§9.2, R-2), which does revert.
  *
+ * `disposition.kind === "decision"` routes through `renderDecisionEntry` instead of
+ * `renderEscalationEntry` (PLAN P3-06) — every existing caller's `disposition` carries no `kind`
+ * field, so this branch is inert for them and their rendered bytes are unchanged.
+ *
  * @param {{disposition: object, ctx: object, _appendFile: function, _now: function}} args
  * @returns {Promise<void>}
  */
 export async function appendEscalationEntry({ disposition, ctx, _appendFile, _now }) {
   const now = _now();
-  const entry = renderEscalationEntry(disposition, ctx, { now });
+  const entry =
+    disposition && disposition.kind === "decision"
+      ? renderDecisionEntry({ ...disposition, feature: ctx?.feature }, { now })
+      : renderEscalationEntry(disposition, ctx, { now });
   await _appendFile(ESCALATIONS_PATH, entry);
 }
 

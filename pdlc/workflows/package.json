@@ -21,7 +21,9 @@
       "**/pdlc/workflows/orchestrate-queue.js",
       "**/pdlc/workflows/build-runtime.mjs",
       "**/pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs",
-      "**/scripts/capture-learnings-baseline.mjs"
+      "**/scripts/capture-learnings-baseline.mjs",
+      "**/pdlc/workflows/lib/loop-session.mjs",
+      "**/pdlc/workflows/lib/escalation-view.mjs"
     ],
     "allow-external": true,
     "reporter": [
