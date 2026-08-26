@@ -25,7 +25,7 @@ const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 const QUEUE_TEXT = readFileSync(join(REPO_ROOT, "docs", "_queue", "QUEUE.md"), "utf8");
 const REQ_TEXT = readFileSync(
-  join(REPO_ROOT, "docs", "pdlc-engineering-loop", "REQ-pdlc-engineering-loop.md"),
+  join(REPO_ROOT, "docs", "completed", "pdlc-engineering-loop", "REQ-pdlc-engineering-loop.md"),
   "utf8",
 );
 
@@ -65,7 +65,9 @@ describe("DoD 6(b): pdlc-engineering-loop's deferrals are bound to live queue ro
 
   test("the queue-table parse finds live rows (not vacuous)", () => {
     expect(QUEUE_FEATURES.length).toBeGreaterThan(0);
-    expect(QUEUE_FEATURES).toEqual(expect.arrayContaining(["pdlc-engineering-loop"]));
+    // Row 6 (the feature's own row) was removed at archival (2026-08-26); the
+    // successor row that holds the D-LOOP-01…05 bindings anchors non-vacuity now.
+    expect(QUEUE_FEATURES).toEqual(expect.arrayContaining(["pdlc-loop-automation-followups"]));
   });
 
   test.each([...REQ_IDS, ...DECISION_DEFERRAL_IDS])(

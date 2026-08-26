@@ -164,8 +164,8 @@ Authoritative per-criterion mapping lives in §2 of the FSPEC; roll-up below.
 
 ## pdlc-engineering-loop
 
-Upstream: `docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md`. Downstream:
-`docs/pdlc-engineering-loop/FSPEC-pdlc-engineering-loop.md` (`FSPEC-LOOP-01`…`FSPEC-LOOP-06`).
+Upstream: `docs/completed/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md`. Downstream:
+`docs/completed/pdlc-engineering-loop/FSPEC-pdlc-engineering-loop.md` (`FSPEC-LOOP-01`…`FSPEC-LOOP-06`).
 Authoritative per-criterion mapping lives in the FSPEC's Business Rules and Acceptance Tests
 sections; roll-up below.
 
