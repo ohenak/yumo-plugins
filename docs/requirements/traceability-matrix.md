@@ -161,3 +161,18 @@ Authoritative per-criterion mapping lives in §2 of the FSPEC; roll-up below.
 | US-02 | G-1, C-3, AC-1.2, AC-1.4, AC-1.6 | §3.1 classes 1–9, §4.2 L-2/L-3, §4.3 L-7/L-8; AT-1.2, AT-1.4, AT-1.6 |
 | US-03 | G-4, AC-4.1–AC-4.4 | §3.5, §4.5; AT-4.1–AT-4.4 |
 | US-04 | G-2, NG-1, C-2, AC-1.7, AC-3.1, AC-3.3 | §3.4, §4.2 L-4/L-10, §4.4; AT-1.7, AT-3.1, AT-3.3 |
+
+## pdlc-engineering-loop
+
+Upstream: `docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md`. Downstream:
+`docs/pdlc-engineering-loop/FSPEC-pdlc-engineering-loop.md` (`FSPEC-LOOP-01`…`FSPEC-LOOP-06`).
+Authoritative per-criterion mapping lives in the FSPEC's Business Rules and Acceptance Tests
+sections; roll-up below.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-LOOP-01 (AC-1.1–AC-1.3), REQ-LOOP-03 | §3.1, §3.2; BR-04, BR-10, BR-11; AT-01, AT-02, AT-11–AT-17 |
+| US-02 | REQ-LOOP-04, REQ-LOOP-07 | §3.3, §3.4, §3.5; BR-12–BR-18; AT-18–AT-29 |
+| US-03 | REQ-LOOP-01 (AC-1.4–AC-1.6), REQ-LOOP-02 | §3.2; BR-05–BR-09; AT-03–AT-10 |
+| US-04 | REQ-LOOP-05, NFR-6 | BR-23–BR-26; AT-32, AT-33, E-23 |
+| US-05 | REQ-LOOP-05 (AC-5.3), REQ-LOOP-06, NFR-2/NFR-3 | BR-19–BR-22; AT-30, AT-31, AT-35 |
