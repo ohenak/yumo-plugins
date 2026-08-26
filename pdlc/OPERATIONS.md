@@ -161,6 +161,125 @@ mean *enabled with the declared defaults*. Turning it off is a deliberate act.
 
 Because the plugin's bytes are half of that published pairing, **changing anything under `pdlc/skills/`, `pdlc/hooks/` or `pdlc/workflows/` means bumping `pdlc/.claude-plugin/plugin.json`'s version** — plugin bytes that change under an unchanged version number are exactly the skew the pairing record exists to make visible.
 
+## Loop directive protocol
+
+`/loop run /pdlc:orchestrate-queue` drives `pdlc queue` one iteration at a time; each iteration is
+exactly one `pdlc queue` process. Session-scoped state — the once-per-session preflight marker, the
+consecutive-idle counter, and the schedule position — is carried **through the caller**, on a
+`--loop-state <token>` flag, not through a durable file: a state file would survive the session that
+created it, and a stale file from an abandoned session would silently seed a fresh session's idle
+counter, which is exactly the failure mode a loop restart must not have. `--loop-state` is present
+on every iteration, including the first, where the reserved literal `new` means "start session".
+
+`--loop-state` is an **internal** protocol detail supplied by the session-side skill
+(`pdlc/skills/orchestrate-queue/SKILL.md`) — the operator never types it. `/loop run
+/pdlc:orchestrate-queue` is the only thing an operator types. `--loop-state` is therefore documented
+here, under the protocol, and is explicitly **not** a member of the four-item steady-state operator
+surface below (BR-25) — including it there would break that set's set-equality with what an
+operator actually does.
+
+## Operator surface (BR-25)
+
+The session also reports the wait it took back to the engine on the next iteration
+(`--wait-requested`, `--wait-actual`): the session is the waiting party, so the engine cannot
+observe the interval, and a host that cannot honour a requested wait is reported at the length
+actually waited rather than silently accepted (FSPEC E-25). Both flags are optional — iteration 1
+took no wait, and an absent `--wait-actual` is reported as an unknown actual length, never
+backfilled from the requested one.
+
+Open escalations are resolved with `pdlc decide --entry <entryId> --outcome <resolved|rejected>
+--by <who> [--rationale <text>]`, where `entryId` is the id the loop's rendered operator view
+prints for each open item. The command appends a decision block to `docs/_queue/ESCALATIONS.md`
+and rewrites nothing: the decided entry's own block survives verbatim, escalation counts are
+unchanged, and the view derives closure by overlay at read time (REQ AC-4.4).
+
+Once a repo is running the loop, the **steady-state** operator surface is exactly these four items —
+nothing else is a recurring operator action:
+
+1. Flipping `ready: true` on a REQ's frontmatter.
+2. Approving a PR that touches a guarded path (see *Merge guard-path extras* below).
+3. Resolving open escalations (`docs/_queue/ESCALATIONS.md`).
+4. Product/business-judgment calls that fall outside the pipeline's scope.
+
+This set is disjoint from **one-time setup**, which is a separate, non-recurring list and is not
+part of the steady-state surface: installing the engine (`pdlc/engine`), creating
+`docs/_queue/QUEUE.md` from the shipped template, installing the loop prompt template
+(`pdlc/templates/loop.md`, optional — see the one-time-setup list in `pdlc/README.md`, which
+names the install destination `.claude/commands/`), and, in
+a repo that guards paths beyond the shipped defaults, configuring `merge.guardPaths` in that
+machine's `.claude/pdlc.config.json` (this repo's own extra is `pdlc/engine/` — see *Merge
+guard-path extras* below, which is the section that enumerates the documented set). A stop
+condition that is neither in this four-item set nor in the one-time setup list is a **defect in the
+feature**, not an expected mode: the enumerated operator surface is understated and must be
+corrected.
+
+## Merge guard-path extras (BR-23/BR-24)
+
+`effectiveGuardPaths(configured)` unions `MERGE_GUARD_DEFAULTS`
+(`["pdlc/workflows/", "pdlc/skills/", "pdlc/hooks/", ".claude/workflows/"]`,
+`pdlc/workflows/orchestrate-dev.js`) with this repo's own configured extras, and never subtracts.
+This repo's configured guard-path extra is:
+
+- `pdlc/engine/`
+
+That extra is **configured** in this repo's own `.claude/pdlc.config.json`, under
+`merge.guardPaths`:
+
+```json
+{ "merge": { "guardPaths": ["pdlc/engine/"] } }
+```
+
+That file is gitignored (`.gitignore`, `/.claude/pdlc.config.json`) — operator-local, like every
+other repo-local pdlc setting — so it is **an operator setup step, not something a clone
+inherits**. It is listed as such under one-time setup (AC-5.2). The extra deliberately does not
+live in `.claude/pdlc.config.example.json`: BR-29/P8-02 requires that file to ship
+`guardPaths: []`, because `effectiveGuardPaths` unions and never subtracts, so a non-empty example
+would silently widen the guarded set of every consuming repo that copies it.
+
+AC-5.1a's "the documented set and the enforced set are the same object" is enforced by the `AT-32`
+document oracle (`pdlc/workflows/__tests__/loopGuardPaths.test.js`), which reads this section from
+tracked default-branch content rather than the working tree, and which has three conjuncts:
+
+1. **The equality that matters.** When `.claude/pdlc.config.json` is present, the bullet list above
+   must be set-equal to its `merge.guardPaths`. This is the conjunct that makes the documented set
+   and the enforced set one object, and its referent is the config file, not the sentence under
+   test — so documenting an extra nobody configured, or configuring one nobody documented, reds it.
+2. **A named skip, never a silent pass.** When the config is absent (CI, a fresh clone), that
+   conjunct cannot run; the oracle reports the skip with its reason rather than passing quietly, so
+   an absent referent is visible instead of being mistaken for agreement.
+3. **Conjuncts that always run.** Applying the shipped `effectiveGuardPaths` to the documented
+   extras is set-equal to `MERGE_GUARD_DEFAULTS` ∪ those extras, and every documented extra is
+   absent from `MERGE_GUARD_DEFAULTS` itself (BR-24 additivity) — so a later widening of the
+   shipped defaults reds this documentation on every machine, config or no config.
+
+Widening the shipped defaults for every consumer belongs to `pdlc-merge-phase`, not here (§5).
+
+## Durability and cadence (BR-30)
+
+**`/loop`'s scope and lifetime** (runtime version **2.1.245**, transcribed from the runtime's own
+`/loop` documentation rather than restated from memory): `/loop` is **session-scoped** — its
+built-in confirmation dialog states plainly, in its own words, "This loop stops when you close this
+session," offering "Cloud schedule (recommended) — Runs in Anthropic's cloud even after you close
+this session" against "This session only" as the alternative. `/loop` **fires only while its
+session is open**: each tick is driven by the session's own `ScheduleWakeup` tool, called before the
+turn ends to keep the loop alive, and omitting a rescheduled wakeup ends the loop after that tick.
+Put together, `/loop` **expires** with the session that started it — closing the session, or the
+model failing to reschedule the next wakeup, ends the loop; nothing about `/loop` outlives the
+session. These are runtime facts, not this feature's design choices — they are recorded here,
+cited to the runtime version above, so the claim is checkable when the runtime changes; figures are
+not restated anywhere else in this pipeline's documentation.
+
+**Promotion paths, when a cadence needs to outlive a session:**
+
+- **Desktop scheduled task** — local files, and the machine must be on. Fits pipeline work: the
+  pipeline needs the working tree `orchestrate-dev` authors specs against.
+- **Routine** — cloud-hosted, runs against a fresh clone. Fits consolidation-style work that needs
+  no persistent local state.
+
+`orchestrate-dev` is a **poor fit for a Routine**: the pipeline authors specs against a working
+tree, and a Routine has none. Use a Desktop scheduled task for `orchestrate-dev`/`orchestrate-queue`
+cadences; reserve Routines for work — such as `consolidate-learnings` — that a fresh clone can do.
+
 ## Artifact convention (for consuming repos)
 
 pdlc expects:
