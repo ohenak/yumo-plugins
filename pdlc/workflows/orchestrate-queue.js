@@ -42,7 +42,17 @@
  */
 
 // Single-line on purpose: stripModuleSyntax recognises imports line-wise.
-import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, advisorySummaryRows, commitPaths, ADVISORY_RUNG_SKILL } from "./orchestrate-dev.js";
+import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, appendEscalationEntry, ADVISORY_CONFIG_PATH, advisorySummaryRows, commitPaths, ADVISORY_RUNG_SKILL } from "./orchestrate-dev.js";
+import {
+  readLoopConfig,
+  evaluatePreflight,
+  nextDirective,
+  decodeLoopState,
+  encodeLoopState,
+  collectNotices,
+  isRestartToken,
+} from "./lib/loop-session.mjs";
+import { buildOperatorView, parseEscalationLog, blockedFeatureCounts } from "./lib/escalation-view.mjs";
 
 // ─── Exported meta object (mirrors orchestrate-dev) ──────────────────────────
 export const meta = {
@@ -62,6 +72,12 @@ export const meta = {
 
 // Default location of the queue file.
 export const DEFAULT_QUEUE_PATH = "docs/_queue/QUEUE.md";
+
+// Engineering-loop (PLAN P5-02, TSPEC §Interfaces): the loop's config section lives
+// in the same file as the advisory/merge config (ADVISORY_CONFIG_PATH === MERGE_CONFIG_PATH
+// in orchestrate-dev.js, DEC-LOOP-04), and the escalation log `buildOperatorView` reads from.
+const LOOP_CONFIG_PATH = ADVISORY_CONFIG_PATH;
+const LOOP_ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
 
 // ─── Dispatchable skill set (TSPEC §3.3) ─────────────────────────────────────
 //
@@ -1244,8 +1260,24 @@ export default async function main({
   _log: logFn = log,
   _phase: phaseFn = phase,
   _provenance: provenance = NO_PROVENANCE,
+  loopState,
+  // AC-3.1/AC-3.4 (CR v1 F-06): the engine-readiness half of the loop preflight, supplied
+  // by `cmdQueue` from the real `startupFor(argv)` result. Defaulted to a passing shape so
+  // that every caller that is not the engine keeps its previous behaviour exactly.
+  loopStartup = { ok: true, reason: null, rungs: [], notices: [] },
+  loopStartupRemediation = "",
+  // AT-12 (CR v1 F-02): the version preamble's own verdict, supplied by `cmdQueue` from
+  // the SAME `runVersionDoctor` call `pdlc --version` / `pdlc doctor` print. It never
+  // drives `decision` — it is surfaced as an `engine-version-mismatch` notice — and it is
+  // defaulted to the not-mismatched shape so every non-engine caller is unchanged. It used
+  // to be a hardcoded `{ mismatched: false }` literal at the `evaluatePreflight` call site,
+  // which made AT-12's notice unreachable by any operator.
+  loopVersionMismatch = { mismatched: false, detail: null },
+  _now: nowFn = () => new Date(),
 } = {}) {
   const emit = logFn;
+  const loopActive = loopState !== undefined;
+  void nowFn;
 
   // MODEL-01: pin the queue's own agent calls (Phase-0 triage) to Sonnet. The
   // delegated orchestrate-dev pipeline is invoked without _agent below, so it uses
@@ -1259,8 +1291,8 @@ export default async function main({
   // is fine); `advisorySummaryRows` guarantees one row per `ADVISORY_SEAMS` member —
   // six since A6 joined it — a seam that never fired visibly zero.
   const advisoryDispositions = [];
-  const finish = (fields) =>
-    buildQueueReport({
+  const finish = (fields) => {
+    const report = buildQueueReport({
       ...fields,
       advisory:
         advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled
@@ -1268,12 +1300,198 @@ export default async function main({
           : undefined,
     });
 
+    if (!loopActive) return report;
+
+    // Accumulate this pass's outcome onto the session's own `merged`/`halted`
+    // memory before handing `state` to `nextDirective` (pure, TSPEC §Interfaces:
+    // "reads no file, clock or queue itself — every fact it needs arrives on
+    // DirectiveInput"). This is also what iteration 2's candidate-selection
+    // override above reads back on the next `main` invocation (AT-01).
+    // AC-7.1/AC-7.2 (CR v1 F-01): reaching `finish` on a loop-active pass MEANS an iteration
+    // ran, so the session's iteration counter advances here — the one place the post-pass
+    // state is built. `nextDirective` encodes whichever state it is handed into `nextState`
+    // on every stop AND continue arm, so bumping it here is what makes the count survive to
+    // the next iteration's token. Nothing incremented this field before; wiring the driver to
+    // a production caller is what made that visible, since a permanently-zero counter is
+    // invisible while the only readers are builder unit tests.
+    //
+    // The preflight-refusal early return above deliberately does NOT pass through here: a
+    // refusal ran zero iterations, which is exactly what BR-28's zero-iteration summary means.
+    let stateForDirective = { ...loopSessionState, iteration: loopSessionState.iteration + 1 };
+    // AC-5.1/AC-5.1a (CR v1 F-06): every escalation appended during THIS pass joins the
+    // session's own memory here, the same way `merged` and `halted` do — `SessionState` is
+    // the only cross-iteration channel (DEC-LOOP-01), so an append that is not accumulated
+    // here is invisible to the end-of-session report no matter how correctly it reached
+    // `ESCALATIONS.md`. That was the shipped state: all three append sites wrote, and
+    // `cli.mjs` reported `escalationsRaised: []` on every session.
+    if (loopEscalationsRaised.length > 0) {
+      stateForDirective = {
+        ...stateForDirective,
+        escalationsRaised: [...loopSessionState.escalationsRaised, ...loopEscalationsRaised],
+      };
+    }
+    if (report.outcome === "ran" && report.picked) {
+      const merged =
+        report.pipelineReport && report.pipelineReport.mergeStatus === "merged"
+          ? [
+              ...loopSessionState.merged,
+              { feature: report.picked, prUrl: report.pipelineReport.prUrl ?? null },
+            ]
+          : loopSessionState.merged;
+      stateForDirective = { ...stateForDirective, merged };
+    } else if (report.outcome === "halted" && report.picked) {
+      stateForDirective = {
+        ...stateForDirective,
+        halted: [...loopSessionState.halted, { feature: report.picked, reason: report.reason }],
+      };
+    }
+
+    const directive = nextDirective({
+      report,
+      threw: fields.threw ?? null,
+      queue: loopQueueInfo,
+      config: loopConfigResult.config,
+      state: stateForDirective,
+    });
+    const escalationLog = parseEscalationLog(loopEscalationsText);
+    const operatorView = buildOperatorView({
+      log: escalationLog,
+      counts: blockedFeatureCounts({
+        queueEntries: loopQueueEntries,
+        frontmatterDeps: loopFrontmatterDeps,
+      }),
+    });
+
+    // AC-2.5/AC-4.7/AC-7.1 (CR v1 F-03): the notice channel is assembled HERE, on the
+    // production path, rather than only in `collectNotices`' own unit tests. Two of its
+    // inputs had no production producer before: `loopConfigResult` (whose `.case` names
+    // which of the four configuration states applied — AC-2.5's entire observable content,
+    // previously computed and discarded) and `escalationLog.parseNotices` (AC-4.7's named
+    // detail, previously reduced to a bare count by the CLI).
+    const notices = collectNotices({
+      configResult: loopConfigResult,
+      preflight: loopPreflight,
+      parseNotices: escalationLog.parseNotices,
+      appendFailures: loopAppendFailures,
+      report,
+      queue: loopQueueInfo,
+      restarted: loopRestarted,
+    });
+
+    return { ...report, loop: directive, operatorView, notices };
+  };
+
   // ─── Advisory-tier config (TSPEC §6.1) ───────────────────────────────────
   // Read once per run: after the drift gate (a blocked gate costs no advisory work) and before
   // QUEUE.md is read, so every candidate walked below shares one config read and one rung-state
   // memo (TSPEC §3.4/§3.5 — model-rung resolution happens once per run, not once per seam call).
   const advisoryConfig = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
   const rungState = { resolved: null };
+
+  // ─── Engineering-loop preflight (PLAN P5-02, TSPEC §Interfaces, E-18) ────
+  // Evaluated before QUEUE.md is read at all: a refusal must leave QUEUE.md
+  // byte-identical and run zero iterations (AT-14).
+  //
+  // AC-3.1/AC-3.4 (CR v1 F-06): the engine-readiness conjunct is supplied by the
+  // `cmdQueue` layer as `loopStartup` and threaded into `evaluatePreflight` here, so
+  // both of AC-3.1's conjuncts are evaluated together over ONE session. This used to be
+  // a hardcoded `{ ok: true }` literal justified by "the engine layer refuses one layer
+  // up" — true of the `!startup.ok` branch, but that branch is not the only caller, and
+  // a conjunct no fixture can drive red is not an enforced conjunct. The default keeps
+  // every non-engine caller (tests, direct workflow invocation) on the previous shape.
+  let loopConfigResult = null;
+  let loopSessionState = null;
+  let loopQueueInfo = { readable: false, awaitingMerge: [] };
+  let loopQueueEntries = [];
+  let loopEscalationsText = null;
+  let loopFrontmatterDeps = new Map();
+  let loopPreflight = null;
+  // AC-4.7 (CR v1 F-03): best-effort escalation appends that rejected this pass. `emit`
+  // already surfaces each one on the console; collecting them here also puts them on the
+  // report's notice channel, which is what an unattended session actually reads.
+  const loopAppendFailures = [];
+  // AC-5.1 (CR v1 F-06): the escalations THIS pass appended to `docs/_queue/ESCALATIONS.md`.
+  // `finish` accumulates them onto `SessionState.escalationsRaised`, which is where FSPEC
+  // §3.4's "escalations raised this session" field is sourced from (TSPEC's producer table:
+  // "accumulated from each append site's return"). Nothing accumulated this before, so the
+  // engine's end-of-session report carried a structurally-empty array on every session.
+  const loopEscalationsRaised = [];
+  // E-24/AT-48 (CR v1 F-05): whether THIS invocation carried a token that failed to decode.
+  // `decodeLoopState` is total and cannot report it — a malformed token, `null` and the
+  // reserved `new` all decode to the same fresh state — so the distinction is taken from the
+  // token itself, through `isRestartToken`. The previous `loopSessionState.restarted` read
+  // was of a field no decode path has ever returned, so `session-restarted` could never fire.
+  const loopRestarted = loopActive ? isRestartToken(loopState) : false;
+
+  if (loopActive) {
+    const loopConfigText = await readFileFn(LOOP_CONFIG_PATH);
+    loopConfigResult = readLoopConfig(loopConfigText);
+    loopSessionState = decodeLoopState(loopState);
+  }
+
+  // AC-3.1 / FSPEC §3.1 (CR v1 F-03): S1–S3 run EXACTLY ONCE per session. The marker rides
+  // the session token; this is the one place it is read and the one place it is set. Before,
+  // it was decoded and re-encoded and never consulted, so the whole preflight — including
+  // the `git status` probe — re-ran on every iteration of every session, which is precisely
+  // what AC-3.1, AT-17 and PROP-PRE-06 forbid. Iteration 2+ of a session therefore evaluates
+  // no condition and emits no preflight notice. A session whose token was lost decodes
+  // fresh, so the marker is `false` again and preflight runs a second time — E-24/AT-48's
+  // restart, which is what keeps "exactly once per session" falsifiable across a restart.
+  if (loopActive && !loopSessionState.preflightRan) {
+    loopSessionState = { ...loopSessionState, preflightRan: true };
+
+    const dirtyTreePolicy = loopConfigResult.config.dirtyTreePolicy;
+    const untrackedFlag = dirtyTreePolicy === "any" ? "normal" : "no";
+    const statusResult = await gitFn(["status", "--porcelain", `--untracked-files=${untrackedFlag}`]);
+    const dirtyPaths =
+      statusResult && statusResult.ok
+        ? String(statusResult.stdout ?? "")
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+        : [];
+    const treeStatus =
+      statusResult && statusResult.ok
+        ? { ok: dirtyPaths.length === 0, dirtyPaths }
+        : { ok: false, detail: firstLine(statusResult && statusResult.stderr) || "git status failed" };
+
+    loopPreflight = evaluatePreflight({
+      startup: loopStartup,
+      treeStatus,
+      policy: loopConfigResult.config.preflight,
+      remediation: loopStartupRemediation,
+      versionMismatch: loopVersionMismatch,
+    });
+
+    if (loopPreflight.decision === "refuse") {
+      const failing = loopPreflight.conditions.find((c) => !c.held);
+      emit(`Loop preflight refused: ${failing ? failing.detail : "a preflight condition failed"}.`);
+      return {
+        ...buildQueueReport({ outcome: "idle", reason: "Preflight refused.", remaining: 0 }),
+        loop: {
+          kind: "stop",
+          stopReason: "preflight-refused",
+          waitMinutes: 0,
+          nextState: encodeLoopState(loopSessionState),
+          detail: failing ? failing.detail : "Preflight refused.",
+        },
+        operatorView: buildOperatorView({ log: { entries: [], parseNotices: [] }, counts: new Map() }),
+        // AC-2.5/AC-4.7 (CR v1 F-03): a refusal is a session end like any other, so it owes
+        // the same notice channel — which of the four config states applied, and any key
+        // that fell back to its default. A refusal that reported nothing left the operator
+        // unable to tell a deliberate `"strict"` policy from a malformed config.
+        notices: collectNotices({
+          configResult: loopConfigResult,
+          preflight: loopPreflight,
+          parseNotices: [],
+          appendFailures: [],
+          report: null,
+          queue: loopQueueInfo,
+          restarted: loopRestarted,
+        }),
+      };
+    }
+  }
 
   // ─── Load queue ─────────────────────────────────────────────────────────
   phaseFn("Queue: Load");
@@ -1287,7 +1505,63 @@ export default async function main({
   }
 
   const entries = parseQueue(queueText);
+
+  // AT-01 — a feature this loop session already merged (carried on
+  // `loopSessionState.merged`, decoded from the incoming `loopState` token)
+  // is treated as done for candidate selection even if this read of
+  // `queuePath` has not yet observed the write: the session's own memory of
+  // what it just ran takes precedence over a possibly-stale re-read, so
+  // iteration 2 never re-triages a feature iteration 1 already merged.
+  if (loopActive) {
+    const mergedFeatures = new Set(loopSessionState.merged.map((m) => m.feature));
+    for (const entry of entries) {
+      if (mergedFeatures.has(entry.feature) && entry.status !== "done") {
+        entry.status = "done";
+      }
+    }
+  }
+
   const remainingPending = entries.filter((e) => e.status === "pending").length;
+
+  if (loopActive) {
+    loopQueueInfo = {
+      readable: true,
+      awaitingMerge: entries.filter((e) => e.status === "awaiting-merge").map((e) => e.feature),
+    };
+    loopQueueEntries = entries;
+    loopEscalationsText = await readFileFn(LOOP_ESCALATIONS_PATH);
+
+    // AC-4.3 (CR v1 F-04): `blockedFeatureCounts` orders the operator view by the
+    // **effective** dependency union — the QUEUE.md `Depends-On` column ∪ the REQ
+    // frontmatter's `depends-on` — because a queue-column-only count under-counts every
+    // feature that declares its dependencies in frontmatter alone, which is a supported
+    // declaration form. This resolves the same union the candidate walk below already
+    // computes for `precheckDependencies`, but for EVERY non-done row rather than only the
+    // picked candidate: the count is over the whole queue, so a row the walk never reaches
+    // still contributes its dependencies. Previously this map was hardcoded `new Map()` at
+    // the call site, which silently collapsed AC-4.3's ordering to its tie-break.
+    //
+    // Only the frontmatter half is stored: `blockedFeatureCounts` reads the column half off
+    // `queueEntries` itself and unions the two, so seeding both here would be redundant.
+    loopFrontmatterDeps = new Map();
+    for (const entry of entries) {
+      if (entry.status === "done") continue;
+      let reqText;
+      try {
+        reqText = await readFileFn(entry.reqPath);
+      } catch {
+        // Same tolerance as the candidate walk: a missing or unreadable REQ contributes no
+        // frontmatter dependencies rather than failing the pass. The row still counts through
+        // its `Depends-On` column.
+        reqText = null;
+      }
+      if (reqText == null) continue;
+      const fm = parseReqFrontmatter(reqText);
+      if (fm.dependsOn && fm.dependsOn.length) {
+        loopFrontmatterDeps.set(entry.feature, fm.dependsOn);
+      }
+    }
+  }
 
   // ─── Select candidate(s) ─────────────────────────────────────────────────
   phaseFn("Queue: Select");
@@ -1471,6 +1745,10 @@ export default async function main({
             emit,
             finish,
             provenance,
+            appendFileFn,
+            nowFn,
+            appendFailures: loopAppendFailures,
+            escalationsRaised: loopEscalationsRaised,
           });
         }
 
@@ -1512,6 +1790,10 @@ export default async function main({
       emit,
       finish,
       provenance,
+      appendFileFn,
+      nowFn,
+      appendFailures: loopAppendFailures,
+      escalationsRaised: loopEscalationsRaised,
     });
   }
 
@@ -1531,6 +1813,11 @@ export default async function main({
  * Note: success is `awaiting-merge`, NOT `done` — a human merges the PR and sets
  * `done`, which is the signal a dependent's Phase-0 triage looks for in the base.
  */
+// AC-5.1a (CR v1 F-06) — the literal every `MERGE_ESCALATIONS` renderer in
+// `orchestrate-dev.js` prefixes its notice with. Named once here so the queue's tally and
+// that module's renderers cannot drift apart silently in more than one place.
+const MERGE_ESCALATION_PREFIX = "MERGE ESCALATION: ";
+
 async function runPicked({
   entry,
   dependsOn,
@@ -1554,6 +1841,23 @@ async function runPicked({
   // that composes `provenance.line` into the row and the commit message; this
   // function only threads the value through.
   provenance,
+  // PLAN P5-04 (PROP-ESC-09/PROP-ESC-10, AT-29) — the halt-escalation append
+  // seam, threaded from `main`'s `_appendFile`/`_now` so a rejecting append
+  // never costs the durable queue-row write (see `appendHaltEscalation`
+  // below).
+  appendFileFn,
+  nowFn,
+  // AC-4.7 (CR v1 F-03) — `main`'s per-pass sink for best-effort escalation appends that
+  // rejected. Threaded rather than returned so the existing "the append never changes
+  // `newStatus` or `report.outcome`" guarantee (E-08) is untouched: this array is written
+  // in the same catch that already calls `emit`, and read only by `finish`'s
+  // `collectNotices` call.
+  appendFailures = [],
+  // AC-5.1/AC-5.1a (CR v1 F-06) — `main`'s per-pass sink for escalations THIS pass raised.
+  // Threaded exactly like `appendFailures` (a caller-owned array this function appends to)
+  // rather than returned, because both of this function's exits go through `finish`, and
+  // `finish` is the one place that folds the pass's facts onto `SessionState`.
+  escalationsRaised = [],
 }) {
   phaseFn(`Pipeline: ${entry.feature}`);
   emit(
@@ -1596,6 +1900,7 @@ async function runPicked({
       reason: `Pipeline threw for ${entry.feature}: ${err && err.message}`,
       remaining: remainingPending - 1,
       picked: entry.feature,
+      threw: err,
     });
   }
 
@@ -1618,6 +1923,50 @@ async function runPicked({
     null,
     provenance
   );
+
+  // PLAN P5-04 (PROP-ESC-09/PROP-ESC-10, AT-29, TSPEC §10.1/E-08) — the durable
+  // `halted` row above is written first; the escalation append below is
+  // best-effort and deliberately OUTSIDE any try/catch that could roll the row
+  // back. A rejecting `_appendFile` is caught right here and surfaced as an
+  // `escalation-append-failed` notice via `emit`; it never changes `newStatus`
+  // or `report.outcome` (E-08's ordering guarantee, PROP-ESC-10).
+  if (newStatus === "halted") {
+    try {
+      await appendEscalationEntry({
+        disposition: { reason: report && report.haltReason, verdict: null },
+        ctx: {
+          feature: entry.feature,
+          source: "pipeline-halt",
+          phase: "PIPELINE",
+          phaseOutcome: "halted",
+          decision: report && report.haltReason,
+        },
+        _appendFile: appendFileFn,
+        _now: nowFn,
+      });
+      // Recorded only AFTER the append resolves: a rejected append is an
+      // `escalation-append-failed` notice (below), never an entry the session claims to
+      // have raised.
+      escalationsRaised.push({ feature: entry.feature, sourceLabel: "pipeline-halt" });
+    } catch (err) {
+      const message = err && err.message ? err.message : String(err);
+      emit(`escalation-append-failed: ${message}`);
+      appendFailures.push({ path: LOOP_ESCALATIONS_PATH, message });
+    }
+  }
+
+  // AC-5.1a (CR v1 F-06) — Phase MERGE's own escalation appends (`appendMergeEscalation`,
+  // `ctx.source = "merge-refusal"`) happen inside `orchestrate-dev`, one durable append per
+  // `MERGE ESCALATION:` line, and each such line is republished verbatim on the pipeline
+  // report's `notices` channel (`orchestrate-dev.js`: `for (const line of
+  // mergeOutcome.escalations) notices.push(line)`). That channel is the only view of them
+  // the queue layer has, so it is what the session's own tally is derived from — one entry
+  // per refusal the pipeline reported, never a hardcoded count.
+  for (const line of (report && report.notices) || []) {
+    if (typeof line === "string" && line.startsWith(MERGE_ESCALATION_PREFIX)) {
+      escalationsRaised.push({ feature: entry.feature, sourceLabel: "merge-refusal" });
+    }
+  }
 
   emit(
     merged
