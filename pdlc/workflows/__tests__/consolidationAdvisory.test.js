@@ -123,4 +123,22 @@ describe("T18 — AT-A1 … AT-A7: the advisory corpus (parseEscalations, seamCa
     expect(counts.totals.get("A2")).toBe(1);
     expect(counts.bySeamFeature.get("A2").get("feature-alpha")).toBe(1);
   });
+
+  test("AT-A7b — a corpus of only malformed entries is an otherwise-empty corpus: corpusState 'empty', not 'present' (DEC-LOOP-03)", () => {
+    // Sibling oracle to loopCalibrationIsolation.test.js's AT-20 whole-output identity (P6-02):
+    // `corpusState` is derived from counted entries, not the raw block count, so a malformed block
+    // (missing Feature) no longer lifts an otherwise-empty corpus to 'present' on its own.
+    const text = buildEscalationsFixture([{ seam: "A1" }]); // `feature` omitted — the only block present
+
+    const counts = parseEscalations(text);
+
+    expect(counts.entryCount).toBe(0);
+    expect(counts.corpusState).toBe("empty");
+
+    // 'empty' behaves like §7.7's stock-repo case: no seam proposal of any kind.
+    const verdict = seamCandidates(counts);
+    expect(verdict.over).toBeNull();
+    expect(verdict.tie).toEqual([]);
+    expect(verdict.under).toEqual([]);
+  });
 });

@@ -662,14 +662,16 @@ describe("learningsDispatchSet — Group 2: determinism, fail-open, and inertnes
     // Hand-transcribed (DC-14): path -> SHA-256 hex digest, recorded once at authoring time by
     // running `git ls-files -- 'pdlc/skills/**'` and `shasum -a 256` over each result. This
     // feature's own scope boundary (§Scope boundary) touches no file under `pdlc/skills/**`, so
-    // every digest below is expected to still match at green.
+    // every digest below is expected to still match at green. A later feature that legitimately
+    // edits a listed file re-records that file's digest here in the same change
+    // (orchestrate-queue/SKILL.md was re-recorded by pdlc-engineering-loop).
     const EXPECTED_DIGESTS = {
       "pdlc/skills/consolidate-learnings/SKILL.md": "c579adbb346b1892855d93e71252901c3ff5a432aa6f1f14ff5d2e9b5efb598d",
       "pdlc/skills/dod-verify/SKILL.md": "8be3ac4056afe74aebc9c2a7c1c036720a3105317aebc29c50c50009c4ecaa83",
       "pdlc/skills/harvest-learnings/SKILL.md": "aca0b14757cc71a4986599cbf01d68c635585132e6bf6c3ed3be2d14d835e07b",
       "pdlc/skills/orchestrate-dev/SKILL.md": "e649610ab1ea008ba5b5ad2e5df3412308bf0a0f122801d37302e75a11697fc1",
       "pdlc/skills/orchestrate-dev/WORKFLOW-MIGRATION-PLAN.md": "a1fc0854cef941cf60b7b45c04b5688ca3c602234978391a57f1eff3f5c735ec",
-      "pdlc/skills/orchestrate-queue/SKILL.md": "9f408b5b48b263cf27667363f7e7db1130643ca6f8260185790cc4023e6ab90b",
+      "pdlc/skills/orchestrate-queue/SKILL.md": "0513580aba153e065f0b39cf431a2b3e7dfc660a58531a5705c89d1eb89f0978",
       "pdlc/skills/pm-author/SKILL.md": "6e1e4884cb90ae323c71d3083c5b34d577529a7ef6e0080b466b5696517a60f8",
       "pdlc/skills/pm-review/SKILL.md": "4bd6abaf6b3c20e644526c4a1b4dcc383a6f697dcca2ebcc83959d21e5d1fd09",
       "pdlc/skills/se-author/SKILL.md": "071a63c5d32095d3f21a5b2dd440c4a16ff17dda1b9c4fff22a0a49fec699267",

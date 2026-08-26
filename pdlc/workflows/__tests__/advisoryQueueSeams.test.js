@@ -270,6 +270,7 @@ describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: blocked a dependency is not merged"] }),
       _runAdvisorySeam: seam,
@@ -297,6 +298,7 @@ describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: triageAgent,
       _runAdvisorySeam: seam,
@@ -324,6 +326,7 @@ describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: needs-human ambiguous, no token"] }),
       _runAdvisorySeam: seam,
@@ -355,6 +358,7 @@ describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
     await queueModule.default({
       _readFile: filesA2._readFile,
       _writeFile: filesA2._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: filesA2._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: needs-human [SEAM:A2] citations drifted"] }),
       _runAdvisorySeam: seamA2,
@@ -374,6 +378,7 @@ describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
     await queueModule.default({
       _readFile: filesA1._readFile,
       _writeFile: filesA1._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: filesA1._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: needs-human [SEAM:A1] ambiguous"] }),
       _runAdvisorySeam: seamA1,
@@ -413,6 +418,7 @@ describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: triage,
       _runAdvisorySeam: seam,
@@ -447,6 +453,7 @@ describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…0
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: needs-human [SEAM:A2] citations drifted"] }),
       _runAdvisorySeam: seam,
@@ -523,6 +530,7 @@ describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…0
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: needs-human [SEAM:A2] citations drifted"] }),
       _runAdvisorySeam: seam,
@@ -553,6 +561,7 @@ describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…0
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: needs-human [SEAM:A2] citations drifted"] }),
       _runAdvisorySeam: seam,
@@ -580,6 +589,7 @@ describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…0
     await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: triage1,
       _runAdvisorySeam: seam1,
@@ -596,6 +606,7 @@ describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…0
     await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: triage2,
       _runAdvisorySeam: scriptedSeamRunner([]),
@@ -622,6 +633,7 @@ describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…0
     const report = await queueModule.default({
       _readFile: files._readFile,
       _writeFile: files._writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
       _appendFile: files._appendFile,
       _agent: makeAgentDouble({ script: ["TRIAGE: needs-human [SEAM:A1] ambiguous"] }),
       _runAdvisorySeam: seam,

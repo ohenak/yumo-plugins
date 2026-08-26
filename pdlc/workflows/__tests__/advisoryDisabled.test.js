@@ -164,6 +164,7 @@ describe("A-33 — disabled-tier equivalence", () => {
       const report = await queue.default({
         _readFile: readFile,
         _writeFile: writeFile,
+        _git: async () => ({ ok: true, stdout: "", stderr: "" }),
         _appendFile: appendFile,
         _agent: agent,
         _runAdvisorySeam: dev.runAdvisorySeam,
@@ -196,6 +197,7 @@ describe("A-33 — disabled-tier equivalence", () => {
       const report = await queue.default({
         _readFile: readFile,
         _writeFile: writeFile,
+        _git: async () => ({ ok: true, stdout: "", stderr: "" }),
         _appendFile: appendFile,
         _agent: agent,
         _runAdvisorySeam: dev.runAdvisorySeam,
@@ -670,6 +672,7 @@ describe("A-33 — disabled-tier equivalence", () => {
         _checkFile: () => ({ ok: true }),
         _readFile: harness._readFile,
         _writeFile: harness._writeFile,
+        _git: async () => ({ ok: true, stdout: "", stderr: "" }),
         _appendFile: harness._appendFile,
         _git,
         _hashFile: harness._hashFile,

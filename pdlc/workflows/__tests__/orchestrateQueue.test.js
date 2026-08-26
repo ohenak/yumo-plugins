@@ -354,6 +354,8 @@ describe("main()", () => {
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => ({ outcome: "success" }),
       _log: (m) => logMessages.push(m),
@@ -371,6 +373,8 @@ describe("main()", () => {
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready deps merged",
       _runPipeline: async ({ reqPath }) => {
         runs.push(reqPath);
@@ -401,6 +405,8 @@ describe("main()", () => {
     await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => {
         pipelineCalls += 1;
@@ -431,6 +437,8 @@ describe("main()", () => {
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => ({ outcome: "success" }),
       _log: (m) => logMessages.push(m),
@@ -449,6 +457,8 @@ describe("main()", () => {
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: blocked dependency not merged",
       _runPipeline: async () => ({ outcome: "success" }),
       _log: (m) => logMessages.push(m),
@@ -466,6 +476,8 @@ describe("main()", () => {
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => {
         pipelineCalls += 1;
@@ -487,6 +499,8 @@ describe("main()", () => {
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => ({ outcome: "halted", haltReason: "boom" }),
       _log: (m) => logMessages.push(m),
@@ -508,6 +522,8 @@ describe("main()", () => {
     await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => {
         // Capture the on-disk status while the pipeline is "running".
@@ -544,6 +560,8 @@ describe("main()", () => {
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async (_skill, prompt) => {
         agentPrompts.push(prompt);
         return "TRIAGE: ready deps merged";

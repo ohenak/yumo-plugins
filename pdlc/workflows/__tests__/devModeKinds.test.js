@@ -496,6 +496,7 @@ describe("TSPEC §12.3 oracle 2 — dev-mode kind equality (T24)", () => {
       _ghRun,
       _git,
       _readFile: async () => null, // unused: `config` bypasses the read
+      _appendFile: async () => {},
       _recordQueueRow: queueBackedRecordQueueRow,
       _log: () => {},
       _sleep: async () => {},
