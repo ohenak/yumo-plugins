@@ -101,6 +101,25 @@ notice ids are documented in `pdlc/OPERATIONS.md`.
   ready REQ in dependency order, one feature per iteration. See
   `skills/orchestrate-queue/SKILL.md` for the queue format and the status lifecycle.
 
+## Operator surface
+
+**Steady-state — once a repo is set up and a loop session is running — needs a human for
+exactly four things:**
+
+1. Flipping `ready: true` on a REQ.
+2. Approving any PR that touches a guarded path.
+3. Resolving open escalations.
+4. Product- and business-judgment calls outside the pipeline's scope.
+
+**One-time setup — before steady state — is a separate list, not part of the four above:**
+
+- Install the engine — the canonical command is in the "Headless engine (npm)" section
+  below (or `npm i -g ./pdlc/engine` from a checkout — see `pdlc/engine/README.md`).
+- Create `docs/_queue/QUEUE.md` from the shipped template (`pdlc/templates/QUEUE.md`).
+- Install the loop prompt — copy `pdlc/templates/loop.md` into the consuming repo's
+  `.claude/commands/` (or the equivalent slash-command location) so `/loop run
+  /pdlc:orchestrate-queue` is available.
+
 ## Operator conventions
 
 Changes that touch an **entry point, a repo-default config, or a shared artifact writer**
