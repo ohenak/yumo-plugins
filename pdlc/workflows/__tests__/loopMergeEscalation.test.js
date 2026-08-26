@@ -458,4 +458,25 @@ describe("PROP-ESC-10 (merge variant) — append failure is a notice, not an out
     expect(failOutcome.notes.some((n) => /escalation-append-failed/.test(n))).toBe(true);
     expect(okOutcome.notes.some((n) => /escalation-append-failed/.test(n))).toBe(false);
   });
+
+  test("P3-08: a message-less rejection (non-Error throw) is stringified into the notice, not dropped", async () => {
+    // The notice ternary reads `err && err.message ? err.message : String(err)` — a rejection
+    // whose value carries no `.message` (a bare string here) must still surface through
+    // `String(err)` rather than rendering as `undefined` or losing the notice entirely.
+    const calls = [];
+    const _appendFile = async (path, contents) => {
+      calls.push({ path, contents });
+      // eslint-disable-next-line no-throw-literal
+      throw "scripted message-less append rejection";
+    };
+
+    const { outcome } = await runMerge({ recordDisposition: "error", _appendFile });
+
+    expect(calls).toHaveLength(1);
+    expect(
+      outcome.notes.some((n) =>
+        n.includes("escalation-append-failed: scripted message-less append rejection"),
+      ),
+    ).toBe(true);
+  });
 });
