@@ -543,6 +543,19 @@ export async function runQueue({
   startup = null,
   provenance = NO_PROVENANCE,
   importWorkflow = defaultImportWorkflow,
+  // TSPEC §2 (`--loop-state`, CR v1 F-01/F-06): the session-side loop protocol's carried
+  // state token, plus the engine-readiness result `main` needs to evaluate AC-3.1's
+  // conjunct. `main` is loop-active only when `loopState` is passed at all, and all three
+  // keys are omitted from the `queueMain` call below when this caller omits them — so a
+  // plain `pdlc queue` dispatch stays byte-identical, which is what AC-1.2's "keeps every
+  // non-loop invocation of `pdlc queue` byte-identical" requires.
+  loopState,
+  loopStartup,
+  loopStartupRemediation,
+  // AT-12 (CR v1 F-02): the engine/plugin version comparison `cmdQueue` computes from
+  // `versionDoctorFor` (TSPEC §Interfaces names that as its source). Threaded, and omitted
+  // exactly like its three siblings when absent, so a non-loop `pdlc queue` is unchanged.
+  loopVersionMismatch,
 } = {}) {
   const refusal = refusalFor(startup);
   if (refusal) return { ok: false, report: null, refusal };
@@ -573,7 +586,14 @@ export async function runQueue({
 
   const injection = queueInjection(adapter, runPipeline, provenance);
   const report = await withCwd(root, () =>
-    queueMain({ ...(queuePath ? { queuePath } : {}), ...injection })
+    queueMain({
+      ...(queuePath ? { queuePath } : {}),
+      ...(loopState !== undefined ? { loopState } : {}),
+      ...(loopStartup !== undefined ? { loopStartup } : {}),
+      ...(loopStartupRemediation !== undefined ? { loopStartupRemediation } : {}),
+      ...(loopVersionMismatch !== undefined ? { loopVersionMismatch } : {}),
+      ...injection,
+    })
   );
   return { ok: report && report.outcome !== "halted" && report.outcome !== "blocked", report, refusal: null };
 }

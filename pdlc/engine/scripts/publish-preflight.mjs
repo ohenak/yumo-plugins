@@ -217,10 +217,12 @@ const LIB_MODULES_AT_HEAD = [
   "transport",
 ];
 const LIB_MODULES_FROM_THIS_FEATURE = ["resolve-version", "store", "provenance"];
-const WORKFLOW_MEMBERS = [
+export const WORKFLOW_MEMBERS = [
   "vendor/workflows/orchestrate-dev.js",
   "vendor/workflows/orchestrate-queue.js",
   "vendor/workflows/VENDOR-MANIFEST.json",
+  "vendor/workflows/lib/loop-session.mjs",
+  "vendor/workflows/lib/escalation-view.mjs",
 ];
 
 function licenceRecorded(decisionsText) {

@@ -46,10 +46,14 @@ export const LIB_MODULES_FROM_THIS_FEATURE = ["resolve-version", "store", "prove
 
 // AT-3.8b's Workflow-members class (FSPEC §5.2, "three members and nothing
 // else" — TSPEC §5.4). PK-20…PK-22.
+// TSPEC §7 D-3 / P7-00: co-changed with TSPEC §5.4's `PK-*` table and
+// FSPEC §5.2's per-class counts in the same change — never this file alone.
 export const WORKFLOW_MEMBERS = [
   "vendor/workflows/orchestrate-dev.js",
   "vendor/workflows/orchestrate-queue.js",
   "vendor/workflows/VENDOR-MANIFEST.json",
+  "vendor/workflows/lib/loop-session.mjs",
+  "vendor/workflows/lib/escalation-view.mjs",
 ];
 
 export const TSPEC_SOURCE_NOTE =
@@ -76,19 +80,21 @@ export function tspecPackedSet({ licence }) {
     "bin/cli.mjs", // PK-4b
     ...LIB_MODULES_AT_HEAD.map((m) => `lib/${m}.mjs`), // PK-5…PK-16
     ...LIB_MODULES_FROM_THIS_FEATURE.map((m) => `lib/${m}.mjs`), // PK-17…PK-19
-    ...WORKFLOW_MEMBERS, // PK-20…PK-22
+    ...WORKFLOW_MEMBERS, // PK-20…PK-22, PK-24…PK-25
     "scripts/postinstall.mjs", // PK-23
   ];
 }
 
 /**
  * The count conjunct (TSPEC §5.4, FSPEC §5.2): 4 manifest-adjacent/`bin/`
- * + 15 `lib/*.mjs` + 3 vendored + 1 install script + 0/1 licence.
+ * + 15 `lib/*.mjs` + 5 vendored + 1 install script + 0/1 licence.
  *
  * Derived from the class sizes rather than from `tspecPackedSet().length`,
  * deliberately: a count computed from the list it is meant to check would
- * agree with any list at all.
+ * agree with any list at all. TSPEC §7 D-3 / P7-00: the vendored class size
+ * (5, was 3) is co-changed with TSPEC §5.4's `PK-*` table and FSPEC §5.2's
+ * per-class counts — never this file alone.
  */
 export function tspecPackedCount({ licence }) {
-  return 4 + 15 + 3 + 1 + (licence ? 1 : 0);
+  return 4 + 15 + 5 + 1 + (licence ? 1 : 0);
 }

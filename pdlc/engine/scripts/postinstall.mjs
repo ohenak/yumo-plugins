@@ -12,6 +12,8 @@
 // {recursive}?)`, `writeFileSync(path, data)`.
 
 import path from "node:path";
+import nodeFs from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 function copyTree(fs, srcDir, destDir) {
   fs.mkdirSync(destDir, { recursive: true });
@@ -32,4 +34,23 @@ export async function install(fs, { packageRoot, storeRoot, version }) {
   const resolvedStoreEntry = path.join(storeRoot, version);
   copyTree(fs, packageRoot, resolvedStoreEntry);
   return { resolvedVersion: version, resolvedStoreEntry };
+}
+
+// npm's postinstall hook runs this file as the entry script (`node
+// scripts/postinstall.mjs`); only that caller may touch the real
+// filesystem. The argv guard keeps a test-suite `import()` of `install`
+// side-effect-free (postinstall.test.js imports lazily and records every
+// read/write through its injected fs seam).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const { storeRootFrom } = await import("../bin/cli.mjs");
+  const packageRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const { version } = JSON.parse(
+    nodeFs.readFileSync(path.join(packageRoot, "package.json"), "utf8"),
+  );
+  const { resolvedStoreEntry } = await install(nodeFs, {
+    packageRoot,
+    storeRoot: storeRootFrom(),
+    version,
+  });
+  console.log(`pdlc-engine ${version} installed to ${resolvedStoreEntry}`);
 }

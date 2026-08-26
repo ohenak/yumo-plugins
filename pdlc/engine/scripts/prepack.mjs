@@ -17,7 +17,12 @@ const REPO_ROOT = path.resolve(ENGINE_ROOT, "..", "..");
 const SOURCE_DIR = path.join(REPO_ROOT, "pdlc", "workflows");
 const VENDOR_DIR = path.join(ENGINE_ROOT, "vendor", "workflows");
 
-const MODULE_NAMES = ["orchestrate-dev.js", "orchestrate-queue.js"];
+export const MODULE_NAMES = [
+  "orchestrate-dev.js",
+  "orchestrate-queue.js",
+  "lib/loop-session.mjs",
+  "lib/escalation-view.mjs",
+];
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -38,8 +43,10 @@ export function runPrepack({
 
   const modules = MODULE_NAMES.map((name) => {
     const sourcePath = path.join(sourceDir, name);
+    const destPath = path.join(vendorDir, name);
     const bytes = readFileSync(sourcePath);
-    copyFileSync(sourcePath, path.join(vendorDir, name));
+    mkdirSync(path.dirname(destPath), { recursive: true });
+    copyFileSync(sourcePath, destPath);
     return {
       name,
       source: `pdlc/workflows/${name}`,
