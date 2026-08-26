@@ -108,6 +108,37 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
 | 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
 | 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |
+| 26 | blocked | pdlc-loop-automation-followups | docs/pdlc-loop-automation-followups/REQ-pdlc-loop-automation-followups.md | pdlc-engineering-loop |  |
+
+**Row 26 (`pdlc-loop-automation-followups`) added 2026-08-25 to bind `pdlc-engineering-loop`'s
+prose-only deferrals (CODE_REVIEW-pdlc-engineering-loop-v2 §4(b), B-03…B-08).** REQ §8 defers five
+loop extensions and DECISIONS defers one CI leg, and before this row every one of them was bound by
+prose alone — the shape the Definition-of-Done criterion exists to catch, because prose-only
+deferrals never ship. Each line below names the deferral and the row that now owns it:
+
+- D-LOOP-01 (parallel execution of disjoint features) → `pdlc-loop-automation-followups`, whose REQ
+  must first settle the subsystem-disjointness check without which two pipelines author conflicting
+  changes to the same files.
+- D-LOOP-02 (REQ-readiness watcher proposing queue rows) → `pdlc-loop-automation-followups`;
+  propose-only by construction, and it touches this queue's `ready: true` latch, so it needs its own
+  design before it is picked up.
+- D-LOOP-03 (desktop scheduled task / Routine packaging) → `pdlc-loop-automation-followups`; REQ
+  AC-6.2 documents the path, packaging it is separate work.
+- D-LOOP-04 (multi-repo loop driving) → `pdlc-loop-automation-followups`, deferred while there is
+  one real consumer repo; the row is where a second consumer re-opens it.
+- D-LOOP-05 (Monitor-tool build/test watching inside phases) → `pdlc-loop-automation-followups`;
+  it applies inside `se-implement`, not at loop level, so it is scoped with the other loop
+  follow-ups rather than against row 6.
+- DEC-LOOP-07 → row 8 `pdlc-release-ci`. The decision descopes AT-52's installed-engine leg and
+  accepts the residual risk that no CI check exercises the packed-and-installed binary; row 8
+  already owns release automation for the published npm package, so that leg belongs there.
+  Recorded here so the descope cannot vanish silently: row 8's REQ, when authored, must either
+  land that leg or re-state the accepted risk.
+
+`Order` 26 is next free after 25. No REQ exists at row 26's `REQ Path` yet — the row is a
+placeholder holding these deferrals, exactly as rows 7, 8 and 22 were before it, and one must be
+authored before the row can be picked up. The row stays `blocked` until `pdlc-engineering-loop`
+merges.
 
 **Row 25 (`pdlc-retirement-operator-verification`) added 2026-08-18 to bind
 `pdlc-plugin-retirement`'s nine `PENDING-OPERATOR` acceptance criteria to a successor.**

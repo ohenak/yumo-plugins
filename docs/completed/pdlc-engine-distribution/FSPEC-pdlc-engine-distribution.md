@@ -13,7 +13,17 @@ feature: pdlc-engine-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | Draft | Claude | 0.8 | 2026-08-16 |
+| pdlc | Draft | Claude | 0.9 | 2026-08-24 |
+
+*0.9 (2026-08-24, versioned co-change amendment by `pdlc-engineering-loop`, TSPEC §7 D-4): §5.2's
+**Workflow members** class is widened from three to **five** — TSPEC §5.4's `PK-24`
+(`vendor/workflows/lib/loop-session.mjs`) and `PK-25` (`vendor/workflows/lib/escalation-view.mjs`)
+join `PK-20`…`PK-22`, "and nothing else." The class note and the §14 per-class total are amended
+in the same change; the class's *members* still live only in TSPEC §5.4's `PK-*` table, per this
+document's own AC-1.3 split. Not a re-opening of this completed feature — a spec-first edit of
+the shipped tables that §5.2's own co-change obligation requires whenever a `PK-*` row is added,
+made because `pdlc-engineering-loop` vendors two more workflow modules onto the installed engine.
+No criterion, oracle, or any count outside the Workflow-members class changed in 0.9.*
 
 *0.8 (2026-08-16, CODE_REVIEW v1 §3-1/§3-2, round-8): §5.1 gained row 6 (`fixture-machine.yml`), a
 file column, trigger-derived BR-7.1 scope, trigger-not-filename BR-7.5, **BR-7.7**. Round-8:
@@ -570,11 +580,11 @@ never derives from a directory listing of the code under test (TE round-1 F-01).
 | CLI entry | named in TSPEC §5.4 (`PK-4`, `PK-4b`) | the executable(s) the `bin` mapping resolves to; the class holds the **2** members counted below, and moving that number is an FSPEC edit |
 | Engine modules | named in TSPEC §5.4 (`PK-5`…`PK-19`) | the class is *every* `lib/*.mjs` module of the engine package; the member names live in TSPEC §5.4's `PK-*` table, and a decomposition change updates that table **in the same change**, since decomposition itself is the TSPEC's (SE round-1 F-12) |
 | Install script | named in TSPEC §5.4 (`PK-23`) | the postinstall script the packaged install runs (§9.2 of the TSPEC); unconditional, and a member like any other |
-| Workflow members | named in TSPEC §5.4 (`PK-20`…`PK-22`) | the class is TSPEC §5.4's **three vendored workflow members** (`TSPEC:390`), two `.js` modules and a JSON manifest. TSPEC §5.4 names the three vendored members under `vendor/workflows/` "and nothing else", unblocking this row and AT-3.8b (SE/TE round-4); O-10 owns *how* they get there (BR-8.2), not *which* they are. At HEAD the engine reaches them outside the package root (`pdlc/engine/lib/run.mjs:53`) |
+| Workflow members | named in TSPEC §5.4 (`PK-20`…`PK-22`, `PK-24`…`PK-25`) | the class is TSPEC §5.4's **five vendored workflow members** (`TSPEC:390`), two `.js` modules, a JSON manifest, and two `lib/*.mjs` modules vendored by `pdlc-engineering-loop` (0.9, D-4). TSPEC §5.4 names the five vendored members under `vendor/workflows/` "and nothing else", unblocking this row and AT-3.8b (SE/TE round-4); O-10 owns *how* they get there (BR-8.2), not *which* they are. At HEAD the engine reaches them outside the package root (`pdlc/engine/lib/run.mjs:53`) |
 
 **The member *count* is owned here, per class and in total** (SE F-01; TE `F-01`, `Q-02`):
-manifest 1, package README 1, CLI entry 2, engine modules 15, workflow members 3, install script
-1, licence 0 before N-2's decision is recorded and 1 after — **23 members before N-2 and 24
+manifest 1, package README 1, CLI entry 2, engine modules 15, workflow members 5, install script
+1, licence 0 before N-2's decision is recorded and 1 after — **25 members before N-2 and 26
 after** (`TSPEC:386-389` carries the same arithmetic). The split is deliberate: this document says
 which classes exist and how many members each holds, TSPEC §5.4's `PK-*` table says which files —
 so REQ AC-1.3's *classes and per-class member counts stated in the FSPEC* (REQ v0.11, `:268`) is satisfied here, and a decomposition change that
@@ -803,10 +813,10 @@ heading and is overridden per test where it differs; an unlabelled family is a d
 - **AT-3.8a** *(AC-1.5, AC-1.3)* **Who:** verifier. **Given:** the built package, offline.
   **When:** the packed tarball's contents are enumerated. **Then:** the enumerated members equal
   the expected set member-for-member — so an added `SKILL.md`, an added test file and a
-  **removed member** each fail; the member count equals §5.2's (**23 before N-2's licence
-  decision is recorded, 24 after**, and §5.2's per-class counts); and the pairing record of F-5
+  **removed member** each fail; the member count equals §5.2's (**25 before N-2's licence
+  decision is recorded, 26 after**, and §5.2's per-class counts); and the pairing record of F-5
   step 6 is present inside it. The count conjunct asserts that the **transcribed** `PK-*`
-  list's length, and each class's slice of it, equal §5.2's total (23/24) and per-class numbers —
+  list's length, and each class's slice of it, equal §5.2's total (25/26) and per-class numbers —
   so it fails when the transcription has drifted from §5.2. It is never asserted against the
   tarball's own length: that is a tautology once the first conjunct passes, and a self-derived
   expectation BR-8.1 forbids (TE round-4 F-03, SE round-6 `F-05`).
@@ -819,8 +829,10 @@ heading and is overridden per test where it differs; an unlabelled family is a d
   (SE round-4 F-02).
 - **AT-3.8b** *(AC-1.3)* **Given:** the same package. **When:** its workflow members are
   enumerated. **Then:** they equal §5.2's workflow-member class member-for-member — TSPEC §5.4's
-  `PK-20`…`PK-22`, three members and not three modules — and a removed member fails. Writable: §5.4 names those three "and nothing
-  else", so O-10 now blocks only BR-8.2 (SE/TE round-4).
+  `PK-20`…`PK-22`, `PK-24`…`PK-25`, five members and not five modules — and a removed member
+  fails. Writable: §5.4 names those five "and nothing
+  else", so O-10 now blocks only BR-8.2 (SE/TE round-4). Widened from three to five members by
+  `pdlc-engineering-loop` (0.9, D-4).
 
 ### AT-4 — Provenance **[fixture]**, **[blocked on O-9 for AT-4.2 and AT-4.5]** — AT-4.4 is *not* blocked: it needs two plugin versions and a revert, no new carrier (TE round-1 F-04)
 
