@@ -33,7 +33,7 @@ const WORKFLOWS = resolve(HERE, "..");
 const REPO_ROOT = resolve(WORKFLOWS, "../..");
 
 const GITIGNORE_PATH = join(REPO_ROOT, ".gitignore");
-const PLAN_PATH = join(REPO_ROOT, "docs/pdlc-wave-resume/PLAN-pdlc-wave-resume.md");
+const PLAN_PATH = join(REPO_ROOT, "docs/completed/pdlc-wave-resume/PLAN-pdlc-wave-resume.md");
 const BASELINE_PATH = join(REPO_ROOT, "docs/_constraints/pdlc-wave-gate-baseline.md");
 
 const EXPECTED_IGNORE_LINE = "/.claude/pdlc-wave-state.json";
@@ -392,7 +392,7 @@ describe("PLAN §4.5.1's delta coverage map is complete", () => {
   test("the mutation-evidence artifact records all five mutations and the parity arm", () => {
     const EVIDENCE_PATH = join(
       REPO_ROOT,
-      "docs/pdlc-wave-resume/MUTATION-EVIDENCE-pdlc-wave-resume.md"
+      "docs/completed/pdlc-wave-resume/MUTATION-EVIDENCE-pdlc-wave-resume.md"
     );
     expect(existsSync(EVIDENCE_PATH)).toBe(true);
     const text = readFileSync(EVIDENCE_PATH, "utf8");

@@ -41,7 +41,7 @@ as designed in the same run.
 
 **Reported:** 2026-08-15, second live 0.23.0 finding (regime-ledger, same in-flight
 feature), via the architect session. Not urgent. Touches the wave ledger
-(`.claude/pdlc-wave-state.json`), so coordinate with `docs/pdlc-wave-resume/` if that
+(`.claude/pdlc-wave-state.json`), so coordinate with `docs/completed/pdlc-wave-resume/` if that
 feature is in flight when this is picked up.
 
 **The edge.** A PLAN revision grew the task table 20→22 tasks mid-feature, re-keying the

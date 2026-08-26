@@ -98,13 +98,34 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > `Depends-On`, so nothing else in the table moves. Prose below that says "row 21" is
 > historical record and keeps its meaning: the feature name, not the row, is the identity.
 
+> **Row 20 (`pdlc-wave-resume`) removed from this table on 2026-08-26.** Merged as `928a74d9`
+> (#72, 2026-08-26) and the per-feature docs moved to `docs/completed/pdlc-wave-resume/`,
+> LEARNINGS and MUTATION-EVIDENCE included; `waveResumeRepoState.test.js`'s PLAN and
+> mutation-evidence path pins were repointed to the `docs/completed/` paths in the same change.
+> The retirement baseline's `docs/pdlc-wave-resume/**` exemption glob stays as written, matching
+> the precedent of every prior archived feature: the moved files fall under the already-exempt
+> `docs/completed/**`, and A-1's glob list is frozen. `Order` value 20 stays allocated, never
+> reused. No live row names the feature in `Depends-On`, so nothing else in the table moves.
+> Prose below that says "row 20" is historical record and keeps its meaning: the feature name,
+> not the row, is the identity.
+
+> **Row 6 (`pdlc-engineering-loop`) removed from this table on 2026-08-26.** Merged as
+> `a3781491` (#73, 2026-08-26) and the per-feature docs moved to
+> `docs/completed/pdlc-engineering-loop/`, LEARNINGS and both post-mortems included;
+> `loopDeferralBinding.test.js`'s REQ path pin was repointed to the `docs/completed/` path and
+> its queue-vacuity anchor moved to the successor row in the same change. Row 26
+> (`pdlc-loop-automation-followups`) names the feature in `Depends-On`: per the standing
+> convention above, that dependency now resolves against the base branch during Phase-0
+> readiness triage, so row 26 does not move. The feature's six deferrals (REQ §8's
+> D-LOOP-01…05 and DECISIONS' DEC-LOOP-07) stay bound to rows 26 and 8 as recorded below.
+> `Order` value 6 stays allocated, never reused. Prose below that says "row 6" is historical
+> record and keeps its meaning: the feature name, not the row, is the identity.
+
 
 | Order | Status | Feature | REQ Path | Depends-On | Engine |
 |-------|--------|---------|----------|------------| --- |
-| 6 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
 | 8 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution, pdlc-engine-distribution |  |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |  |
-| 20 | pending | pdlc-wave-resume | docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md | pdlc-consolidation-agent, pdlc-advisory-wave-gate |  |
 | 22 | blocked | pdlc-halt-hardening-followups | docs/pdlc-halt-hardening-followups/REQ-pdlc-halt-hardening-followups.md | — |  |
 | 24 | pending | pdlc-consolidation-rehost | docs/pdlc-consolidation-rehost/REQ-pdlc-consolidation-rehost.md | pdlc-plugin-retirement, pdlc-headless-engine |  |
 | 25 | blocked | pdlc-retirement-operator-verification | docs/pdlc-retirement-operator-verification/REQ-pdlc-retirement-operator-verification.md | pdlc-plugin-retirement |  |

@@ -40,7 +40,7 @@ Q-1…Q-5 below).
   human has seen, and re-invocation is cheap. Two costs are accepted rather than hidden. (i) The
   "budget 1 costs one wave, not the phase" consolation depends on the ledger resuming the
   failed wave, and **as of 2026-08-13** the ledger was not observably firing (the operational
-  finding at `docs/pdlc-wave-resume/REQ-pdlc-wave-resume.md` §1, queue row 20) — so on that date a
+  finding at `docs/completed/pdlc-wave-resume/REQ-pdlc-wave-resume.md` §1, queue row 20) — so on that date a
   budget of 1 could cost a full Phase-I re-run. (ii)
   R-3's "compounding drift across waves" wording still overclaims what a per-run knob controls;
   FSPEC should narrow it. Revisiting to `2` was recorded as in scope once wave resume landed and
@@ -48,7 +48,7 @@ Q-1…Q-5 below).
 
   **Update 2026-08-24 — cost (i) is discharged; the deferral is closed at `1`.** `pdlc-wave-resume`
   (queue row 20) shipped the ledger as a first-class mechanism: it fires observably under the five
-  announced outcomes catalogued in `docs/pdlc-wave-resume/TSPEC-pdlc-wave-resume.md` §2.4, and a
+  announced outcomes catalogued in `docs/completed/pdlc-wave-resume/TSPEC-pdlc-wave-resume.md` §2.4, and a
   re-invocation resumes at the failed wave (`REQ-WVR-01`, exercised by
   `pdlc/workflows/__tests__/waveExecution.test.js`). The trigger this deferral named has therefore
   arrived, and it lands on the side of the shipped default: with resume live, a budget of `1` really
