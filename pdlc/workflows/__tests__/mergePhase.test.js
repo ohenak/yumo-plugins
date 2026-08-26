@@ -106,6 +106,7 @@ async function run({
     throw new Error("_readFile should not be called when config is supplied directly");
   };
   const outcome = await phaseMerge({
+    _appendFile: async () => {},
     feature,
     prUrl,
     config: { ...BASE_CONFIG, ...config },
@@ -158,6 +159,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     const queueRow = queueRowSeam();
     let readFileCalled = false;
     const outcome = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       _enabled: false,
@@ -432,6 +434,7 @@ describe("phaseMerge — MERGE_NOTES.aheadOfRemote gating (CR product-manager fi
     const detail = 'row for widget-feature left unchanged: found status "blocked"';
     const queueRow = queueRowSeam("recorded", detail);
     const outcome = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       config: { ...BASE_CONFIG },
@@ -519,6 +522,7 @@ describe("phaseMerge — PROP-M-17 (report totality: mergeStatus/mergeSha/mergeM
     const gitDouble = fakeGit();
     const queueRow = queueRowSeam();
     const outcome = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       _enabled: false,
@@ -666,6 +670,7 @@ describe("phaseMerge — never throws to the pipeline (FSPEC §2.1, TSPEC §5.2)
     const gitDouble = fakeGit();
     const queueRow = queueRowSeam();
     const outcome = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       config: { ...BASE_CONFIG },
@@ -696,6 +701,7 @@ describe("phaseMerge — never throws to the pipeline (FSPEC §2.1, TSPEC §5.2)
     };
     const queueRow = queueRowSeam();
     const outcome = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       config: { ...BASE_CONFIG, deleteBranchOnPdlcMerge: true },
@@ -796,6 +802,7 @@ describe("phaseMerge — PROP-M-06 (guard dominance, crossed enumeration)", () =
 
   test("control block — the five conditions resolving above the guard each preempt it", async () => {
     const disabled = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       _enabled: false,
@@ -995,6 +1002,7 @@ describe("phaseMerge — PROP-M-19 (notice-catalogue closure)", () => {
     const gitDouble = fakeGit();
     const queueRow = queueRowSeam();
     const outcome = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       _ghRun: ghRun._ghRun,
@@ -1102,6 +1110,7 @@ describe("phaseMerge — PROP-M-20 (single-fault injection per injected seam)", 
         : queueRow._recordQueueRow;
 
     return phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       config: { ...BASE_CONFIG },
@@ -1135,6 +1144,7 @@ describe("phaseMerge — PROP-M-20 (single-fault injection per injected seam)", 
     const gitDouble = fakeGit();
     const queueRow = queueRowSeam();
     const outcome = await phaseMerge({
+      _appendFile: async () => {},
       feature: FEATURE,
       prUrl: PR_URL,
       _ghRun: ghRun._ghRun,

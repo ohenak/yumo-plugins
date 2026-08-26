@@ -233,25 +233,50 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
 // bundles and its retired index-manifest file, which the retirement sweep's
 // class 7 already deleted, making the sweep its own witness (DEC-09). Class
 // 9 replaces them with a direct, positive check of the shipped handshake:
-// `pdlc/.claude-plugin/plugin.json`'s version equals the literal `0.23.4`
-// and `satisfiesRange(version, pdlcPluginCompat).ok === true` against
+// `pdlc/.claude-plugin/plugin.json`'s version satisfies
+// `satisfiesRange(version, pdlcPluginCompat).ok === true` against
 // `pdlc/engine/package.json`'s declared `pdlcPluginCompat` range. The
 // negative arm below exercises the same shipped `satisfiesRange`
 // (`pdlc/engine/lib/handshake.mjs`) against a version just outside that
 // range so a version bump that silently leaves the handshake window reds
 // this suite instead of shipping quietly (DC-03).
+//
+// The post-sweep pin was originally the frozen literal `0.23.4`. That froze
+// the manifest against the rule `pdlc/OPERATIONS.md` states as shipped —
+// "changing anything under `pdlc/skills/`, `pdlc/hooks/` or `pdlc/workflows/`
+// means bumping `pdlc/.claude-plugin/plugin.json`'s version" — so a branch
+// that changed plugin bytes could only stay green by leaving the version
+// stale (CODE_REVIEW-pdlc-engineering-loop-v4 B-01). The pin is therefore a
+// MONOTONIC bar, not an equality: the shipped version must be strictly
+// greater than the post-sweep baseline `0.23.4` and still inside the
+// handshake window. A stale manifest reds; a bump that leaves the window
+// reds; a compliant bump is green.
 // ---------------------------------------------------------------------------
+
+/** `-1 | 0 | 1` over dotted numeric versions; pre-release suffixes are not used here. */
+function compareVersions(a, b) {
+  const partsA = a.split(".").map(Number);
+  const partsB = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i += 1) {
+    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+    if (diff !== 0) return diff > 0 ? 1 : -1;
+  }
+  return 0;
+}
 
 describe("AT-1.6 / DEC-09 — pdlcPluginCompat handshake", () => {
   const pdlcPluginCompat = JSON.parse(
     readFileSync(join(LIVE_ROOT, "pdlc", "engine", "package.json"), "utf8"),
   ).pdlcPluginCompat;
 
-  test("post-sweep plugin.json version is the literal 0.23.4 and satisfies pdlcPluginCompat", () => {
+  /** The version the retirement sweep left behind; every later plugin-byte change bumps past it. */
+  const POST_SWEEP_BASELINE = "0.23.4";
+
+  test("shipped plugin.json version is bumped past the post-sweep baseline and satisfies pdlcPluginCompat", () => {
     const pluginJson = JSON.parse(
       readFileSync(join(LIVE_ROOT, "pdlc", ".claude-plugin", "plugin.json"), "utf8"),
     );
-    expect(pluginJson.version).toBe("0.23.4");
+    expect(compareVersions(pluginJson.version, POST_SWEEP_BASELINE)).toBe(1);
     expect(satisfiesRange(pluginJson.version, pdlcPluginCompat).ok).toBe(true);
   });
 
@@ -378,11 +403,16 @@ describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 
     // census), so they are excluded here rather than the literal re-pinned per wave.
     // pdlc-wave-resume's `waveResume*.test.js` suites land one wave at a time and are
     // excluded on the same precedent (its PLAN's §3.3 manifest owns their census).
+    // pdlc-engineering-loop does the same under its reserved `loop*.test.js`
+    // and `escalationView*.test.js` namespaces (its PLAN's file-ownership
+    // table owns that census).
     const count = readdirSync(testDir).filter(
       (name) =>
         name.endsWith(".test.js") &&
         !name.startsWith("learnings") &&
-        !name.startsWith("waveResume")
+        !name.startsWith("waveResume") &&
+        !name.startsWith("loop") &&
+        !name.startsWith("escalationView")
     ).length;
     expect(count).toBe(102);
   });
@@ -732,6 +762,7 @@ describe("PROP-SWEEP-2/PROP-SWEEP-3: L-3's sweep command (AC-1.2, FSPEC L-2, L-3
     "docs/pdlc-plugin-retirement/**",
     "docs/pdlc-advisory-wave-gate/**",
     "docs/pdlc-learnings-injection/**",
+    "docs/pdlc-engineering-loop/**",
     "docs/PLAN-*.md",
     "docs/design/**",
     "docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md",

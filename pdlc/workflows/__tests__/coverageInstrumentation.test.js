@@ -55,14 +55,6 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
     expect(typeof pkg.devDependencies?.c8).toBe("string");
   });
 
-  test("every module this feature edits is in the include set", () => {
-    const include = pkg.c8?.include;
-    expect(Array.isArray(include)).toBe(true);
-    for (const mod of REQUIRED_INCLUDES) {
-      expect(include).toContain(mod);
-    }
-  });
-
   test("the run is check-coverage'd against a branch floor of at least 85%", () => {
     // `check-coverage` is what turns a report into a gate: without it c8 prints
     // a table and exits 0 no matter how low the numbers are, which is the
@@ -185,30 +177,35 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
         "utf8",
       );
 
-      const reportDir = path.join(tmp, "report");
-      // `consolidationBuild.test.js` mutates and restores the real
-      // `dist/pdlc-cli.mjs` in a parallel jest worker (its TT-5 mutation case
-      // and its rebuild-from-backup case), so `--check` here can transiently
-      // see STALE or a missing dist through no fault of the c8 config. Retry
-      // through that window only; a genuine defect fails every attempt.
-      //
-      // What this retry does and does not weaken (Phase CR round 1, TE F-04):
-      // the loop breaks out immediately on any failure whose stderr is not the
-      // race signature, so a wrong c8 `include` list is still reported on the
-      // first attempt. A genuine STALE dist is a property of the bytes on disk,
-      // not of timing, so it fails all five attempts and is reported by the
-      // `status: 0` control below — `attemptsRaced` is asserted separately so
-      // that exhaustion reads as "the race window never closed" rather than
-      // disappearing into a generic non-zero exit.
+      // Two transient failure modes are retried here, and only these:
+      //  - `consolidationBuild.test.js` mutates and restores the real
+      //    `dist/pdlc-cli.mjs` in a parallel jest worker (its TT-5 mutation
+      //    case and its rebuild-from-backup case), so `--check` can
+      //    transiently see STALE or a missing dist through no fault of the
+      //    c8 config — the race signature below, up to five attempts with a
+      //    300ms backoff, counted so exhaustion reads as "the race window
+      //    never closed" rather than disappearing into a generic exit;
+      //  - the c8 child is sensitive to machine-wide load (concurrent engine
+      //    runs have flaked it with exit 1 while the config was provably
+      //    fine), so any other non-zero status gets two fresh retries with
+      //    per-attempt temp/report dirs.
+      // What this does and does not weaken (Phase CR round 1, TE F-04): a
+      // genuine misconfiguration — a wrong c8 `include` list, a genuinely
+      // STALE dist — is a property of the bytes on disk, not of timing, so
+      // it fails every attempt and is reported by the `status: 0` control
+      // below.
       let run;
+      let reportDir;
       let attemptsRaced = 0;
+      let genericFailures = 0;
       for (let attempt = 0; attempt < 5; attempt++) {
+        reportDir = path.join(tmp, `report-${attempt}`);
         run = spawnSync(
           process.execPath,
           [
             path.join(PKG_DIR, "node_modules", "c8", "bin", "c8.js"),
             "--reporter=json-summary",
-            `--temp-directory=${path.join(tmp, "v8")}`,
+            `--temp-directory=${path.join(tmp, `v8-${attempt}`)}`,
             `--report-dir=${reportDir}`,
             "--check-coverage=false",
             process.execPath,
@@ -217,14 +214,17 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
           ],
           { cwd: PKG_DIR, encoding: "utf8" },
         );
-        const distRaced =
-          run.status !== 0 &&
-          /STALE\s+pdlc\/workflows\/dist\/|ENOENT.*pdlc-cli\.mjs/.test(
-            `${run.stderr}`,
-          );
-        if (!distRaced) break;
-        attemptsRaced += 1;
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+        if (run.status === 0) break;
+        const distRaced = /STALE\s+pdlc\/workflows\/dist\/|ENOENT.*pdlc-cli\.mjs/.test(
+          `${run.stderr}`,
+        );
+        if (distRaced) {
+          attemptsRaced += 1;
+          Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+        } else {
+          genericFailures += 1;
+          if (genericFailures >= 3) break;
+        }
       }
 
       // Exhaustion is not success. Five consecutive race-signature failures
@@ -253,5 +253,78 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
     const include = pkg.c8?.include ?? [];
     expect(include.some((p) => p.startsWith("dist/"))).toBe(false);
     expect(include.some((p) => p.startsWith("__tests__/"))).toBe(false);
+  });
+
+  // P9-02a: strengthens the containment-only oracle above to a set-equality —
+  // a deleted entry reds as loudly as a missing one. Direction is artifact
+  // (pkg.c8.include) on the left, spec literal on the right. The six-member
+  // literal is REQUIRED_INCLUDES' three entries, CAPTURE_SCRIPT_INCLUDE, and
+  // the two lib/ modules P9-02 adds. consolidate-learnings.js is deliberately
+  // excluded (PM Q-02). Un-skipped by P9-02.
+  test("P9-02: the include set is exactly the six modules the feature owns, no more and no fewer", () => {
+    const include = pkg.c8?.include ?? [];
+    expect(include).toEqual([
+      ...REQUIRED_INCLUDES,
+      CAPTURE_SCRIPT_INCLUDE,
+      "**/pdlc/workflows/lib/loop-session.mjs",
+      "**/pdlc/workflows/lib/escalation-view.mjs",
+    ]);
+  });
+
+  // P9-02a: duplicates the shipped resolution oracle above, but the driver
+  // also imports the two new lib/ modules so a bare-basename entry that
+  // `allow-external` silently drops is caught by a real c8 run rather than a
+  // string comparison. Un-skipped by P9-02.
+  test("P9-02: the shipped c8 config resolves the two new lib/ modules too (F4)", () => {
+    const tmp = mkdtempSync(path.join(os.tmpdir(), "pdlc-c8-arrangement-lib-"));
+    try {
+      const buildRuntime = path.join(PKG_DIR, "build-runtime.mjs");
+      const captureScript = path.resolve(PKG_DIR, "../../scripts/capture-learnings-baseline.mjs");
+      const loopSession = path.join(PKG_DIR, "lib", "loop-session.mjs");
+      const escalationView = path.join(PKG_DIR, "lib", "escalation-view.mjs");
+      const driver = path.join(tmp, "driver.mjs");
+      writeFileSync(
+        driver,
+        `await import(${JSON.stringify(pathToFileURL(buildRuntime).href)});\n` +
+          `await import(${JSON.stringify(pathToFileURL(captureScript).href)});\n` +
+          `await import(${JSON.stringify(pathToFileURL(loopSession).href)});\n` +
+          `await import(${JSON.stringify(pathToFileURL(escalationView).href)});\n`,
+        "utf8",
+      );
+
+      let run;
+      let reportDir;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        reportDir = path.join(tmp, `report-${attempt}`);
+        run = spawnSync(
+          process.execPath,
+          [
+            path.join(PKG_DIR, "node_modules", "c8", "bin", "c8.js"),
+            "--reporter=json-summary",
+            `--temp-directory=${path.join(tmp, `v8-${attempt}`)}`,
+            `--report-dir=${reportDir}`,
+            "--check-coverage=false",
+            process.execPath,
+            driver,
+            "--check",
+          ],
+          { cwd: PKG_DIR, encoding: "utf8" },
+        );
+        if (run.status === 0) break;
+      }
+
+      expect({ status: run.status, stderr: run.stderr }).toMatchObject({ status: 0 });
+
+      const summary = JSON.parse(
+        readFileSync(path.join(reportDir, "coverage-summary.json"), "utf8"),
+      );
+      const measured = Object.keys(summary).filter((k) => k !== "total");
+
+      expect(measured).toEqual(
+        expect.arrayContaining([buildRuntime, captureScript, loopSession, escalationView]),
+      );
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

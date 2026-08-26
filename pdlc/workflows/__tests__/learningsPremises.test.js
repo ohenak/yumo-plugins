@@ -69,11 +69,13 @@ function extractFunctionBody(source, declRegex, label) {
 }
 
 // ---------------------------------------------------------------------------
-// P-1 — the engine vendors exactly two workflow modules (prepack.mjs).
+// P-1 — the engine vendors exactly the canonical workflow modules (prepack.mjs).
+// pdlc-engineering-loop added lib/loop-session.mjs and lib/escalation-view.mjs
+// to the vendored set.
 // ---------------------------------------------------------------------------
 
 describe("P-1 — prepack.mjs MODULE_NAMES exact membership", () => {
-  test("MODULE_NAMES is exactly [orchestrate-dev.js, orchestrate-queue.js]", () => {
+  test("MODULE_NAMES is exactly the four canonical workflow modules", () => {
     const m = /const MODULE_NAMES = \[([^\]]*)\];/.exec(PREPACK_SOURCE);
     expect(m).not.toBeNull();
     const names = m[1]
@@ -81,7 +83,12 @@ describe("P-1 — prepack.mjs MODULE_NAMES exact membership", () => {
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
       .map((s) => s.replace(/^"|"$/g, ""));
-    expect(names).toEqual(["orchestrate-dev.js", "orchestrate-queue.js"]);
+    expect(names).toEqual([
+      "orchestrate-dev.js",
+      "orchestrate-queue.js",
+      "lib/loop-session.mjs",
+      "lib/escalation-view.mjs",
+    ]);
   });
 });
 

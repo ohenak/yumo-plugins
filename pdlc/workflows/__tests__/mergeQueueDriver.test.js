@@ -84,6 +84,8 @@ describe("runPicked — done transition (AT-M4)", () => {
     return main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: runPipelineFn,
       _log: (m) => logMessages.push(m),
@@ -198,6 +200,8 @@ describe("buildQueueReport — pass-through of the merge fields (TSPEC §9.3)", 
     const report = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => fakeReport,
       _log: (m) => logMessages.push(m),
@@ -237,6 +241,8 @@ describe("AT-M5 — end-to-end selection across two invocations", () => {
     const first = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => ({
         outcome: "success",
@@ -252,6 +258,8 @@ describe("AT-M5 — end-to-end selection across two invocations", () => {
     const second = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => ({ outcome: "success" }),
       _log: (m) => logMessages.push(m),
@@ -266,6 +274,8 @@ describe("AT-M5 — end-to-end selection across two invocations", () => {
     const first = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => ({ outcome: "success" }), // no mergeStatus -> awaiting-merge
       _log: (m) => logMessages.push(m),
@@ -277,6 +287,8 @@ describe("AT-M5 — end-to-end selection across two invocations", () => {
     const second = await main({
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
+      _git: async () => ({ ok: true, stdout: "", stderr: "" }),
+      _appendFile: async () => {},
       _agent: async () => "TRIAGE: ready",
       _runPipeline: async () => {
         throw new Error("must not be reached — nothing should be picked this pass");
