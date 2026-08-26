@@ -358,21 +358,31 @@ describe("§6.3 document-correction oracles (D-1, D-3)", () => {
 // (`fast-check`) properties for A6's five pure helpers, landed as a module of their own rather
 // than folded into `advisoryWaveGate.test.js` — the table-driven cases there pin the named
 // examples and remain the readable documentation of intent, while the new module pins the laws
-// those examples are instances of. Hence 102. The literal still is
-// NOT the post-sweep count: it only
+// those examples are instances of. Hence 102. pdlc-wave-resume adds suites of its own
+// (`waveResumePreflight.test.js` in batch 1, then three more in batch 2 and one in batch 3, per
+// that PLAN's §3.3 manifest) — but its manifest lands one file per wave, so re-pinning the
+// literal here would red the wave gate mid-feature at every wave. Its suites share the
+// `waveResume*.test.js` namespace, so they take the same treatment as `learnings*`: excluded
+// from the census, with that PLAN's §3.3 manifest owning their census. The literal stays 102.
+// The literal still is NOT the post-sweep count: it only
 // drops to the coupled sweep's post-sweep figure once class 6 (T15's deletions: 19 M-8
 // modules plus runtimeProvenanceWiring.test.js) lands in that sweep, at which point the
 // coupled sweep must re-derive it — this comment names the coupling rather than leaving it
 // to be inferred, and TSPEC §4.4 (a different feature's document) still reads 99.
 describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 1's four titles, L-6 row 2's host retains PROP-COMPAT-04/05/06", () => {
-  test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals CODE_REVIEW v1's corrected literal of 102, pending the coupled sweep's post-sweep re-derivation", () => {
+  test("pre-sweep pdlc/workflows/__tests__/*.test.js count equals 102 (CODE_REVIEW v1's corrected figure; learnings* and waveResume* namespaces census-excluded), pending the coupled sweep's post-sweep re-derivation", () => {
     const testDir = resolve(WORKFLOWS, "__tests__");
     // §4.4's literal counts the population the retirement sweep left behind. The
     // pdlc-learnings-injection feature adds suites under its own reserved
     // `learnings*.test.js` namespace (that PLAN's suite-map closure owns their
     // census), so they are excluded here rather than the literal re-pinned per wave.
+    // pdlc-wave-resume's `waveResume*.test.js` suites land one wave at a time and are
+    // excluded on the same precedent (its PLAN's §3.3 manifest owns their census).
     const count = readdirSync(testDir).filter(
-      (name) => name.endsWith(".test.js") && !name.startsWith("learnings")
+      (name) =>
+        name.endsWith(".test.js") &&
+        !name.startsWith("learnings") &&
+        !name.startsWith("waveResume")
     ).length;
     expect(count).toBe(102);
   });
@@ -727,6 +737,7 @@ describe("PROP-SWEEP-2/PROP-SWEEP-3: L-3's sweep command (AC-1.2, FSPEC L-2, L-3
     "docs/pdlc-halt-hardening/PLAN-pdlc-halt-hardening.md",
     "pdlc/hooks/scripts/cleanup-consumer-workflows.sh",
     "pdlc/workflows/__tests__/consumerCleanup.test.js",
+    "docs/pdlc-wave-resume/**",
   ];
 
   // Minimal glob->RegExp: '**/' matches zero or more leading path segments,

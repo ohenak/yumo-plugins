@@ -130,10 +130,10 @@ not yet authored — the REQ carries `ready: false` pending operator review.
 
 | User story | Requirements | FSPEC |
 |---|---|---|
-| US-01 | REQ-WVR-01, REQ-WVR-02, REQ-WVR-05 | (pending) |
-| US-02 | REQ-WVR-02, REQ-WVR-04 | (pending) |
-| US-03 | REQ-WVR-03, REQ-WVR-06 | (pending) |
-| US-04 | REQ-WVR-07 | (pending) |
+| US-01 | REQ-WVR-01, REQ-WVR-02, REQ-WVR-05, REQ-WVR-08, REQ-WVR-10 | FSPEC-WVR-01, FSPEC-WVR-02, FSPEC-WVR-06 |
+| US-02 | REQ-WVR-02, REQ-WVR-04 | FSPEC-WVR-02, FSPEC-WVR-04 |
+| US-03 | REQ-WVR-03, REQ-WVR-06, REQ-WVR-09, REQ-WVR-10 | FSPEC-WVR-03, FSPEC-WVR-05, FSPEC-WVR-06 |
+| US-04 | REQ-WVR-07 | FSPEC-WVR-07 |
 
 ## pdlc-engine-distribution
 

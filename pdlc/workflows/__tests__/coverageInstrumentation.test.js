@@ -38,6 +38,11 @@ const REQUIRED_INCLUDES = [
   "**/pdlc/workflows/orchestrate-dev.js",
   "**/pdlc/workflows/orchestrate-queue.js",
   "**/pdlc/workflows/build-runtime.mjs",
+  // CODE_REVIEW v1 §1-1: the delta-coverage gate is itself production code on a
+  // required check (`test:coverage` &&-chains it), so it is measured like the
+  // modules it measures. Leaving it out was the asymmetry the finding named —
+  // a coverage gate over orchestrate-dev.js whose own module nobody measured.
+  "**/pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs",
 ];
 
 describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
@@ -181,20 +186,51 @@ describe("workflows coverage instrumentation (CODE_REVIEW v1 §1-2)", () => {
       );
 
       const reportDir = path.join(tmp, "report");
-      const run = spawnSync(
-        process.execPath,
-        [
-          path.join(PKG_DIR, "node_modules", "c8", "bin", "c8.js"),
-          "--reporter=json-summary",
-          `--temp-directory=${path.join(tmp, "v8")}`,
-          `--report-dir=${reportDir}`,
-          "--check-coverage=false",
+      // `consolidationBuild.test.js` mutates and restores the real
+      // `dist/pdlc-cli.mjs` in a parallel jest worker (its TT-5 mutation case
+      // and its rebuild-from-backup case), so `--check` here can transiently
+      // see STALE or a missing dist through no fault of the c8 config. Retry
+      // through that window only; a genuine defect fails every attempt.
+      //
+      // What this retry does and does not weaken (Phase CR round 1, TE F-04):
+      // the loop breaks out immediately on any failure whose stderr is not the
+      // race signature, so a wrong c8 `include` list is still reported on the
+      // first attempt. A genuine STALE dist is a property of the bytes on disk,
+      // not of timing, so it fails all five attempts and is reported by the
+      // `status: 0` control below — `attemptsRaced` is asserted separately so
+      // that exhaustion reads as "the race window never closed" rather than
+      // disappearing into a generic non-zero exit.
+      let run;
+      let attemptsRaced = 0;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        run = spawnSync(
           process.execPath,
-          driver,
-          "--check",
-        ],
-        { cwd: PKG_DIR, encoding: "utf8" },
-      );
+          [
+            path.join(PKG_DIR, "node_modules", "c8", "bin", "c8.js"),
+            "--reporter=json-summary",
+            `--temp-directory=${path.join(tmp, "v8")}`,
+            `--report-dir=${reportDir}`,
+            "--check-coverage=false",
+            process.execPath,
+            driver,
+            "--check",
+          ],
+          { cwd: PKG_DIR, encoding: "utf8" },
+        );
+        const distRaced =
+          run.status !== 0 &&
+          /STALE\s+pdlc\/workflows\/dist\/|ENOENT.*pdlc-cli\.mjs/.test(
+            `${run.stderr}`,
+          );
+        if (!distRaced) break;
+        attemptsRaced += 1;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+      }
+
+      // Exhaustion is not success. Five consecutive race-signature failures
+      // means the dist is stale on disk, not that a worker was mid-write.
+      expect({ raceWindowNeverClosed: attemptsRaced === 5, stderr: run.stderr })
+        .toMatchObject({ raceWindowNeverClosed: false });
 
       // Control: a driver that failed to run would produce an empty report, and
       // "no rows" must not be readable as "the config is fine".
