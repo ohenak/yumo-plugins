@@ -10,12 +10,12 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2}.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.1 | 2026-08-28 |
+| Draft | pm-author | 1.2 | 2026-08-28 |
 
 ## 1. Problem / Context
 
@@ -52,15 +52,20 @@ re-filing; this one addresses decision-level re-litigation.
 review dispatch includes a rendered index of the closed decisions in scope for the document
 under review: one line per decision carrying **exactly two required fields** — the decision id
 and a one-line statement of what it decided — plus a **source citation** naming the record file
-and heading it was rendered from. No other field is required; where a record carries an origin
+and, where the record places the decision under a heading, that heading. No other field is
+required; where a record carries an origin
 or evidence datum it may follow, and where it does not the line renders without it — not a
-defect. **In scope** is a derivable set, not a per-document relevance judgement: every record
-under `docs/_decisions/` plus the feature's own `DECISIONS-{feature}.md` if it exists. All
-sources exist today — this REQ mints no new record file type, adds no field to any existing
+defect. **In scope** is a derivable set, not a per-document relevance judgement, and **its unit
+is the individual decision, not the file**: a decision is in scope when it carries a decision id
+in the project's `DEC-{NAMESPACE}-{NUMBER}` convention (O-3) and lives under `docs/_decisions/`
+or the feature's own `DECISIONS-{feature}.md` — whatever carries the id (heading or bullet: at
+HEAD `DEC-AWG-Q1`…`Q5` are bullets in `DECISIONS-advisory-wave-gate-questions.md`). A file with
+no decision id contributes zero lines: an ordinary empty result, not a failure. Which carriers
+the renderer recognises is TSPEC material (O-1). All sources exist today — this REQ mints no new record file type, adds no field to any existing
 record shape, and does not require every feature to author one.
 
-**G-2 (never-re-litigate rule is reviewer-side, config-gated, default off, requires G-1).** The
-rule reaches the reviewer as prompt text accompanying the index, the way prior-feature learnings
+**G-2 (never-re-litigate rule is reviewer-side, config-gated, default off, one key with G-1 —
+C-3).** The rule reaches the reviewer as prompt text accompanying the index, the way prior-feature learnings
 do; **it changes no driver-side accounting whatsoever.** The observable is the reviewer's own
 output — the cross-review artifact and its counts. Stated once as a criterion in
 REQ-DECLEDGER-03, its no-change guarantee in REQ-DECLEDGER-08.
@@ -73,8 +78,8 @@ a new halt or operator-facing failure class.
 **G-4 (measurable outcome — non-binding rationale, no acceptance criterion).** The intended
 effect is that findings restating an indexed decision id without new evidence trend to zero
 across a feature's review rounds, measured retrospectively from the **committed `CROSS-REVIEW-*`
-artifacts on the branch** (present every round regardless of any flag) read against the decision
-ids in `docs/_decisions/`. It carries no acceptance criterion by design: no gate, test or phase
+artifacts on the branch** (present every round regardless of any flag) read against G-1's
+in-scope decision ids. It carries no acceptance criterion by design: no gate, test or phase
 outcome depends on it.
 
 ## 3. Non-Goals
@@ -137,7 +142,7 @@ not left to TSPEC to invent:
 | Key | Default | Type | Config owner | Rationale |
 |---|---|---|---|---|
 | `decisionLedger.enabled` | `false` | boolean | operator, `.claude/pdlc.config.json` → `decisionLedger` | Tier 3: off by default per proposal §6 |
-| `decisionLedger.maxEntries` | `40` | positive integer | operator, same block | Author default by analogy to `learningsInjection.maxDocuments` (5), scaled up because an index row is one line, not a document; vetoable per A-1 |
+| `decisionLedger.maxEntries` | `60` | positive integer | operator, same block | Measured floor at HEAD: 41 ids under `docs/_decisions/` + largest feature record (14) = 55, plus headroom; a default under the standing corpus drops a line on day one |
 | `decisionLedger.maxBytes` | `8000` | positive integer | operator, same block | Author default by analogy to `learningsInjection.maxBytesPerDocument` (6000) / `maxTotalBytes` (20000); vetoable per A-1 |
 
 `maxBytes` bounds **the rendered index text alone** — the index block as it appears in the
@@ -155,10 +160,11 @@ material (O-1).
 **Who:** review-loop driver, constructing a review dispatch.
 **Given:** `decisionLedger.enabled` is `true`.
 **When:** a dispatch prompt for a document under review is constructed.
-**Then:** the prompt includes a rendered index with one line per decision in G-1's in-scope set
-— derivable, so the expected index is checkable as **set equality, not containment** — each line
-carrying the decision id, a one-line statement and a source citation naming record file and
-heading, and no other required field. The index reflects records as they exist at
+**Then:** the prompt includes a rendered index with one line per decision in G-1's in-scope set,
+each line carrying the decision id, a one-line statement and a source citation as G-1 defines it,
+and no other required field. Derivable, so the
+expected index is checkable as **set equality, not containment**, over the **rendered** set: the
+in-scope set after REQ-DECLEDGER-07's budgeting. The index reflects records as they exist at
 dispatch-construction time, never a snapshot carried forward within the round window (mirrors
 the shipped `REQ-LOOPECON-01b` recompute-at-dispatch contract).
 
@@ -183,8 +189,9 @@ decision id — NG-4, REQ-DECLEDGER-08).
 **Then:** the prompt carries, adjacent to the index, rule text instructing the reviewer not to
 file a finding re-opening an indexed decision unless **both** hold: it is High severity, and it
 cites evidence not part of that decision's own record. Evidence novelty is a reviewer judgement,
-deliberately not a machine predicate — no parser compares citations. The rule text must make the
-boundary decidable via these exemplars: *in* — a shipped behaviour that changed after the
+deliberately not a machine predicate — no parser compares citations. The test reads the **cited
+record**, not the line alone: the line need not carry the decision's own citations. The rule
+text must make the boundary decidable via these exemplars: *in* — a shipped behaviour that changed after the
 decision was recorded, cited at the changed source; *out* — a source the decision already cites,
 re-cited at a different line or later commit with no behavioural change.
 
@@ -198,9 +205,9 @@ and/or the feature's own records) is missing, unreadable, or fails to parse at
 dispatch-construction time.
 **When:** the dispatch prompt is constructed.
 **Then:** where **every** source is unavailable, the dispatch falls back to REQ-DECLEDGER-02's
-disabled behavior — no index, no rule text. Where **one record of several** fails, that line is
-omitted and the rest render: a decision absent from the index is one a reviewer may freely
-challenge, the safe direction. Neither path is a halt or a new operator-facing failure class;
+disabled behavior — no index, no rule text. Where **one decision of several** fails to render,
+that line is omitted and the rest render (no-id files are not this path — G-1): a decision
+absent from the index is one a reviewer may freely challenge, the safe direction. Neither path is a halt or a new operator-facing failure class;
 it degrades as `learningsInjection`'s fail-open path does.
 
 ### REQ-DECLEDGER-05 Config keys fail open independently (P0)
@@ -225,8 +232,9 @@ not containment — mirrors shipped `REQ-LOOPECON-08`.
 reopening attempt against an indexed decision id that did not clear REQ-DECLEDGER-03's bar.
 **When:** the reviewer would raise that reopening again.
 **Then:** the rule text directs the reviewer to treat the decision id as the reopening key and
-record the repeat in the cross-review artifact as a repeat naming that id, not a fresh finding —
-the observable is that artifact's text. **Driver-side finding identity is unchanged:**
+record the repeat as a repeat naming that id, not a fresh finding. **The observable is the
+prompt text**, as in REQ-DECLEDGER-03; the reviewer's prose is the intended effect, not an
+asserted outcome. **Driver-side finding identity is unchanged:**
 `DEC-LOOPECON-06`'s exact-match triple (severity, section anchor, normalised text) stays the sole
 key the driver dedupes on; this REQ does not re-key it. The keys govern different consumers and
 never compete — the id guides reviewer prose, the triple is the driver's ledger.
@@ -251,7 +259,9 @@ exceeding `maxBytes`, omitted whole, never truncated mid-line, without aborting 
 
 **Who:** review-loop driver.
 **Given:** one fixed set of reviewer outputs (verdict lines, counts, any `FINDING:` lines) for a
-round, replayed twice — once with `decisionLedger.enabled` `true`, once `false`.
+round, replayed twice — once with `decisionLedger.enabled` `true`, once `false`. Reviewer
+output is a recorded fixture, and the replay compares the **accounting** leg; the dispatch-construction leg
+legitimately differs.
 **When:** the driver accounts for that round.
 **Then:** every driver-side outcome is identical across the two runs: the convergence decision,
 `DEC-LOOPECON-06`'s identity-triple dedupe and the resulting open-finding ledger, the
@@ -279,13 +289,15 @@ Measured retrospectively per G-4, not enforced.
 **R-4** Default-off means zero effect until an operator opts in — by design (proposal §6),
 mirroring the `cascade.pinCheck` / `review.derivativeStop` rollout.
 
-**R-5** The C-5 defaults are author analogies, not measured. Mitigated by A-1's vetoable label
+**R-5** `maxBytes` is an author analogy, not measured (`maxEntries` is measured, C-5).
+Mitigated by A-1's vetoable label
 and REQ-DECLEDGER-07 pinning the bound whatever the values.
 
 ## 7. Obligations / Open
 
-**O-1** Which lines are omitted when the in-scope set exceeds `maxEntries` / `maxBytes`
-(REQ-DECLEDGER-07) is FSPEC/TSPEC material. The in-scope set is *not* routed — G-1 states it.
+**O-1** Which lines are omitted when the set exceeds `maxEntries` / `maxBytes`
+(REQ-DECLEDGER-07), and which id carriers are recognised, is TSPEC material. The in-scope set
+itself is *not* routed — G-1 states it.
 
 **O-2** Whether the wiring needs a `SKILL.md` edit or can go through dispatch construction is a
 TSPEC choice (NG-7). Either path stays config-gated (C-1/C-2).
@@ -299,9 +311,9 @@ silently satisfying REQ-DECLEDGER-02, is TSPEC material.
 
 **Assumptions.** Authored in an orchestrated dispatch; these are explicit, operator-vetoable
 assumptions rather than blocking open questions:
-- **A-1** The `maxEntries` (40) / `maxBytes` (8000) defaults are analogies to the shipped
-  `learningsInjection` budget, not measured. An operator may revise either before FSPEC
-  authoring without a REQ revision.
+- **A-1** `maxEntries` (60) derives from a HEAD measurement (C-5); `maxBytes` (8000) remains a
+  `learningsInjection` analogy, not measured. An operator may revise
+  either before FSPEC authoring without a REQ revision.
 - **A-2** Same rollout posture as `pdlc-loop-economics` (config-gated, default off); Tier 3 risk
   (Medium, proposal §0) is read as requiring it, not merely permitting it.
 - **A-3** Reviewer-side enforcement (G-2) is the intended reading of proposal R3-2, which
