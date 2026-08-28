@@ -147,10 +147,13 @@ the `decisionLedger` block never retunes the rest of the block or any other conf
 
 **C-2** The disabled path is byte-identical to the pre-feature baseline, verified against a
 committed fixture baseline (not a same-branch before/after assertion) — mirrors the shipped
-`learningsBaselineGuard.test.js` precedent named in `pdlc/OPERATIONS.md`.
+`learningsBaselineGuard.test.js` precedent named in `pdlc/OPERATIONS.md`. Which commit that
+baseline is captured at, and how the pointer to it is pinned so a re-capture cannot silently
+satisfy the check, is TSPEC material (O-4).
 
-**C-3** Config keys are spelled exactly `decisionLedger.enabled`, `decisionLedger.maxEntries`,
-`decisionLedger.maxBytes`; no other spelling or nesting satisfies this REQ's criteria.
+**C-3** The config block holds **exactly three keys**, spelled exactly `decisionLedger.enabled`,
+`decisionLedger.maxEntries`, `decisionLedger.maxBytes`. This enumeration is exhaustive: a
+fourth key does not satisfy this REQ's criteria, and no other spelling or nesting does.
 
 **C-4** This REQ does not touch `MAX_REVIEW_ROUNDS` or `MAX_LIFETIME_ROUNDS` math (NG-5); a
 decision blocked from re-opening under G-2 still consumes round budget exactly as an ordinary
@@ -166,10 +169,11 @@ not left to TSPEC to invent:
 | `decisionLedger.maxEntries` | `40` | positive integer | operator, `.claude/pdlc.config.json` → `decisionLedger` | Author default, chosen by analogy to the shipped `learningsInjection.maxDocuments` (5) budget, scaled up because a decision-index row is a single line, not a multi-paragraph document; open to operator veto before FSPEC authoring (see Assumptions) |
 | `decisionLedger.maxBytes` | `8000` | positive integer | operator, `.claude/pdlc.config.json` → `decisionLedger` | Author default, chosen by analogy to the shipped `learningsInjection.maxBytesPerDocument` (6000) and `maxTotalBytes` (20000) budgets; open to operator veto before FSPEC authoring (see Assumptions) |
 
-When the full set of closed decisions relevant to a dispatch exceeds either bound, some
-decisions are omitted from that dispatch's rendered index rather than the dispatch being
-oversized or aborted; the selection rule for which decisions are omitted is TSPEC material
-(see Obligations, O-1), not specified here.
+`maxBytes` bounds **the rendered index text alone** — the index block as it appears in the
+prompt, not its contribution to total dispatch size, and not the underlying records. When the
+in-scope decision set exceeds either bound, whole decision lines are omitted from that
+dispatch's index rather than the dispatch being oversized or aborted, and a line is never
+truncated mid-line; which lines are omitted is TSPEC material (O-1).
 
 ## 5. Acceptance Criteria
 
