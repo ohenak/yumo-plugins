@@ -28,3 +28,21 @@
 | ID | Question |
 |----|---------|
 | Q-01 | F-01: was `DECISIONS-headless-engine-obligations.md` weighed? If the intent is that an obligations-style companion record is out of scope, saying so costs one clause and closes the enumeration; if it is in scope, C-5's 60 needs re-taking before TSPEC transcribes it. |
+
+## Positive Observations
+
+- **The set is now derived, not asserted.** v1.3 stated a predicate and a number and left the reader to reconcile them; v1.4 states three orthogonal clauses — carrier form, file scope, distinct-id key — and the number falls out. I re-ran it independently over the tree and got 41 without consulting the REQ's own figure. That is the difference between a set-equality oracle and an implementation echo, and it is the finding that has gated three rounds.
+- **Every HEAD exemplar in the delta is true, and each one earns its place.** `DEC-CONS-01` at `:65` demonstrates the section-number clause; `DEC-LOOP-01`…`06` demonstrates first-record-wins on real duplicates rather than a hypothetical; the log's "four line-leading corroboration items" is exact — `DEC-ERRROUTE-01`, `DEC-ERRROUTE-03`, `DEC-TERM-02`, `DEC-ORACLE-06` at `.consolidation-log.md:275,277,279,281` — and the "already recorded in sibling files besides" half checks out too, all four having heading records under `docs/_decisions/` (`DECISIONS-erratum-routing.md`, `DECISIONS-loop-termination.md`, `DECISIONS-test-oracle-mechanics.md`). Four independent claims, four verified.
+- **Narrowing the carrier to headings retired a defect that was not in the finding list.** G-1 requires the source citation to name the record's heading (`:56-57`). While bullets were carriers, a bullet-recorded decision had no heading to render — the unrenderable-field problem raised in round 2. Heading-only makes the required field total by construction, and v1.4 simplified `:56` from the conditional "where the record places the decision under a heading" to the flat "the record's heading" in the same edit. That is the edit noticing its own consequence.
+- **O-1's boundary moved in the right direction.** "Membership is *not* routed: G-1 fixes the carrier form and the first-record-wins key, so adding a carrier form — a table row, a list item — is a REQ revision, not a TSPEC choice" (`:311-314`). This converts a soft altitude claim into a testable one: a TSPEC that recognises list items is now checkably out of contract.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The round-4 High is resolved on its merits, not narrowed away: the in-scope set is derivable from the document alone and reproduces C-5's 41 against HEAD, so AC-01's set-equality expectation is satisfiable and REQ-DECLEDGER-01's citation field is renderable for every member. F-01 (second `DECISIONS-*.md` in a feature directory; the two readings differ on C-5's floor by 8) and F-02 (cross-file tiebreak has no HEAD instance) are recorded for the next revision or for TSPEC to inherit, and neither blocks.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
