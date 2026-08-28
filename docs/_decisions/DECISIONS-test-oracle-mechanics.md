@@ -120,3 +120,24 @@ directory-closure version of this for suites; the manifest version is the same i
 
 **Testability:** the check is one shell command per claim today (prompt-level); the engine-side
 oracle is the promotion target for `/pdlc:consolidate-learnings`.
+
+---
+
+## DEC-ORACLE-06: Byte-identical text from two review lenses is a generator signature, not independent agreement
+
+**Decision.** When two review lenses (e.g. author-facing and reviewer-facing) emit byte-identical
+finding text, that identity is evidence of a **shared generator**, not of two independent judgments
+converging. A synthesized finding fed back into a downstream round must be marked
+**machine-synthesized**, and downstream consumers must never treat two concurring machine-synthesized
+judgments as independent corroboration.
+
+**Rationale.** `pdlc-engineering-loop`'s Phase PR halted after 6 iterations of synthesized findings
+being fed back to the author as if they were fresh reviewer judgment, inflating the apparent
+consensus. `pdlc-learnings-injection` produced 6 consecutive approving rounds with zero `FINDING:`
+lines — a fail-closed class the grammar gate should have caught, since an approving round with no
+findings and no `FINDING:` line is a different thing from a round that actually re-derived its own
+verdict.
+
+**Origin.** Promoted 2026-08-27 from LEARNINGS of pdlc-engineering-loop (Phase PR halt: 6 iterations
+feeding synthesized findings back to the author) and pdlc-learnings-injection (zero `FINDING:` lines
+across 6 approving rounds — a fail-closed class).
