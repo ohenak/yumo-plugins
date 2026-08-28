@@ -89,6 +89,47 @@ Every failure mode fails open: an unreadable corpus, an unparseable document, a 
 section or a wrong-typed key injects less, never halts, and never silently disables. Keys and
 notice ids are documented in `pdlc/OPERATIONS.md`.
 
+## Loop economics: pin-cascade and derivative-stop (opt-in)
+
+Two review-loop economies ship **off by default**. Each is gated by its own key in
+`.claude/pdlc.config.json` (same per-key fail-open parsing as `learningsInjection`: a
+missing or wrong-typed key falls back to its default and never disturbs the rest of the
+block); with a key off, the dispatch stream is byte-identical to a run without the feature.
+
+```jsonc
+{
+  "cascade": {
+    "pinCheck": {
+      "enabled": true          // default false — M2, pin-cascade confirmation round
+    }
+  },
+  "review": {
+    "derivativeStop": {
+      "enabled": true,         // default false — M3, derivative-stop convergence
+      "rounds": 2              // consecutive flat rounds required; positive integer
+    }
+  }
+}
+```
+
+- **`cascade.pinCheck` (M2).** In the post-erratum staleness walk, an approved downstream
+  document whose own bytes have not changed — only its upstream pin moved — is routed into
+  one batched pin-check dispatch (`PIN-CHECK: {DOCTYPE}: PASS | FAIL` per document) instead
+  of a full re-review. `PASS` re-stamps the anchor's `UPSTREAM-STATE` rows in place, engine-
+  side, consuming no review-round budget; `FAIL` — or any malformed reply — falls back to
+  the ordinary full re-confirmation, so fail-open always means *more* review, never less.
+- **`review.derivativeStop` (M3).** A document converges as `converged-by-derivative-stop`
+  after `rounds` consecutive flat rounds (no *new* finding at severity ≥ Medium; new Lows
+  don't block; an open High always does). **Enabling this also tightens the loop's ordinary
+  bar:** the high-only convergence shortcut (the 2026-08-08 relaxation) is suspended for
+  that loop, so a round converges only on a literal approving verdict or the derivative
+  stop. A document that today converges leniently with an open Medium may run more rounds —
+  that is the intended trade (DEC-TERM-01). Lifetime caps and POSTMORTEM behavior are
+  unchanged.
+
+Grammar, eligibility rules, and notice ids are documented in `pdlc/OPERATIONS.md`
+(§Review loop mechanics); defaults are mirrored in `.claude/pdlc.config.example.json`.
+
 ## Convention contract (what installing pdlc expects of a repo)
 
 - Artifacts live under `docs/{feature}/`: `REQ → FSPEC → TSPEC → PLAN → PROPERTIES`
