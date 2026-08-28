@@ -21,6 +21,26 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does "every review dispatch" (G-1) mean every document review round (pm/se/te across REQ→PROPERTIES), or also the non-document review dispatches — DoD verification, advisory, erratum/delta-confirmation rounds? The three have different finding grammars, and REQ-DECLEDGER-02's byte-identity claim is only checkable once the set is named. |
+| Q-02 | With `decisionLedger.enabled` defaulting to `false`, should `.claude/pdlc.config.example.json` disclose the block at its declared defaults (the `loop`/`merge`/`cascade` default-off precedent) or omit it? This decides whether F-07's engine-side disclosure test is in scope. |
+| Q-03 | Is a decision "closed" the moment its record exists, or only once the owning document's round is approved? For a feature's own in-flight `DECISIONS-{feature}.md`, those differ, and REQ-DECLEDGER-01's freshness rule makes the distinction observable within a single phase. |
+
 ## Positive Observations
 
+- C-5 declares every threshold with a default, a type, a named config owner and a rationale, and R-4 says plainly that the two budget numbers are analogy-derived rather than measured. That is exactly the disclosure that keeps TSPEC from inventing a number and an operator from trusting one.
+- C-2 pins the disabled path against a *committed fixture baseline* rather than a same-branch before/after run, naming the shipped `learningsBaselineGuard.test.js` precedent (`pdlc/workflows/__tests__/learningsBaselineGuard.test.js:80-83` records why the same-branch comparison was insufficient). Reusing the precedent instead of reinventing the oracle is the right call.
+- C-1 / REQ-DECLEDGER-05 reuse the per-key independent-fallback shape that is genuinely shipped (`parseLearningsConfig`, `pdlc/workflows/orchestrate-dev.js:2252-2290`), so the config work is a copy of a proven parser rather than a new one.
+- NG-1..NG-7 draw a scope boundary that survives contact with the proposal: M5/Phase G is named as a possible future *source* rather than a dependency, which keeps this feature independently shippable.
+
 ## Recommendation
+
+**Needs revision**
+
+Three High findings. Concretely: (1) F-01 — say which index fields are required versus omitted-when-absent, because "phase/round it closed in" and "citation" are not in any shipped decision record; (2) F-02 — name the actor whose observable behaviour implements the never-re-litigate discount, since the driver holds neither the decision id nor a decidable evidence-comparison; (3) F-03 — reconcile REQ-DECLEDGER-06's decision-id dedupe key with the shipped exact-triple identity of `DEC-LOOPECON-06`, or say which consumer uses which. The Medium findings (F-04 derivative-stop interaction, F-05 relevance rule, F-06 measurability of G-4, F-07 NG-6's engine claim) are cheap to close in the same revision.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 4, "low": 2}
