@@ -55,3 +55,28 @@ reads as reconciled when it is not.
 
 **Origin.** Promoted 2026-08-27 from LEARNINGS of pdlc-advisory-wave-gate, pdlc-learnings-injection,
 pdlc-wave-resume, pdlc-engineering-loop.
+
+---
+
+## DEC-ERRROUTE-04: a confirmation round with an unchanged document pin-checks, it does not re-review
+
+**Decision.** When a confirmation round's own document hash is unchanged across the round boundary —
+only its upstream pins moved — the round dispatches as a dependency-cell pin-check, not a full
+re-review. A pin-check is cheap and batchable: one sweep can cover multiple documents whose own
+content did not change. This is a decision about the document's hash, not about the round's verdict —
+the document's bytes stayed put; only what it points at moved.
+
+**Rationale.** The failure mode this closes is proving, round after round, that late upstream edits
+did not silently invalidate an already-approved downstream document, at the cost of a full review
+dispatch each time the fact needed re-establishing.
+
+**Origin.** Cross-repo. `yumo-plugins`: `pdlc-wave-resume` — 2 of PLAN/TSPEC's 7 rounds were
+confirmation rounds in which the document's bytes never moved. `regime-ledger` (external corpus, relayed
+cross-session 2026-08-27): `longhorizon-product-scaffold` — DECISIONS v2–v7 and PLAN v2–v7 each carried
+an identical hash across six rounds, with only upstream pins moving, inside a 112-cross-review-file
+feature; `macro-nightly-job` — rounds 3 and later were overwhelmingly cascade-confirmation closing at
+{high: 0, medium: 1–2}, with the harvest's own verdict recorded as "the expensive part was not getting
+the spec right; it was proving, repeatedly, that late upstream edits had not silently invalidated
+approved downstream text." The regime-ledger evidence is cited from that repo's harvest summaries, its surviving primary
+source post-harvest. Promoted here in the cross-repo consolidation pass of 2026-08-27
+(`2026-08-27-2`) alongside regime-ledger's own same-day consolidation pass.
