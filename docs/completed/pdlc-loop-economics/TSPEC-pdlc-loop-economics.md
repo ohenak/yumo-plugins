@@ -10,7 +10,7 @@ Feature: pdlc-loop-economics
 | Upstream | REQ → FSPEC → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | (none yet) |
-| LEARNINGS | docs/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
+| LEARNINGS | docs/completed/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
 
 # TSPEC — pdlc-loop-economics
 
@@ -18,7 +18,7 @@ Technical design for FSPEC §1–§5. FSPEC says *what* the loop computes; this 
 *which symbol in which module* computes it, through which seam, and how it is falsified.
 
 Evidence for every claim about shipped code is the feature's verified seam map
-(`docs/pdlc-loop-economics/_evidence/seam-map.md`), re-verified against the working tree while
+(`docs/completed/pdlc-loop-economics/_evidence/seam-map.md`), re-verified against the working tree while
 this document was written. Per DEC-DOC-01 this spec cites **stable content** — exported symbol
 names, function names, literal source strings — not line numbers; the seam map holds the
 `file:line` positions and is the artifact that carries the re-verification obligation.

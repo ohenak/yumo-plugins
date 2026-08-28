@@ -10,7 +10,7 @@ Feature: pdlc-loop-economics
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → **PLAN** |
 | Downstream | PROPERTIES, IMPL |
 | Cross-Reviews | (none yet) |
-| LEARNINGS | docs/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
+| LEARNINGS | docs/completed/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
 
 # PLAN — pdlc-loop-economics
 
@@ -137,7 +137,7 @@ connected by real `Deps` edges (T-10 → T-11 → T-12 → T-13 → T-14 → T-1
 
 ## 7. Obligations that are not PLAN tasks
 
-- **PROPERTIES.** `docs/pdlc-loop-economics/PROPERTIES-pdlc-loop-economics.md` and the `AT-`/
+- **PROPERTIES.** `docs/completed/pdlc-loop-economics/PROPERTIES-pdlc-loop-economics.md` and the `AT-`/
   `PROP-` identifiers it defines are authored by `te-author` in Phase PR, not by any task here.
   The test files above are the oracles those properties will be numbered against; each red task
   names the FSPEC clause it falsifies so the mapping is mechanical.

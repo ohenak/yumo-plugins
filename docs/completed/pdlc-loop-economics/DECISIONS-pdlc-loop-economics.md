@@ -10,7 +10,7 @@ Feature: pdlc-loop-economics
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** |
 | Downstream | PLAN, PROPERTIES, IMPL |
 | Cross-Reviews | (none yet) |
-| LEARNINGS | docs/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
+| LEARNINGS | docs/completed/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
 
 # DECISIONS — pdlc-loop-economics
 

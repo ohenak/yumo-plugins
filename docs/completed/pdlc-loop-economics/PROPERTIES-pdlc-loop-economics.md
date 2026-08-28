@@ -5,7 +5,7 @@
 | Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/**`) |
 | Cross-Reviews | (none yet) |
-| LEARNINGS | `docs/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md` |
+| LEARNINGS | `docs/completed/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|

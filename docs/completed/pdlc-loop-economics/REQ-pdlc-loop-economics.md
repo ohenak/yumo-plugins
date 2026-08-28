@@ -11,7 +11,7 @@ depends-on: []
 | Upstream | **REQ** (root) |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
 | Cross-Reviews | (none yet) |
-| LEARNINGS | docs/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
+| LEARNINGS | docs/completed/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
 
 | Status | Author | Version | Date |
 |---|---|---|---|

@@ -10,7 +10,7 @@ agents in parallel.
 ## Goal
 
 Deliver proposal moves **M1, M2, M3** end-to-end with all pdlc artifacts
-(REQ, FSPEC, TSPEC, PLAN, PROPERTIES, DECISIONS, LEARNINGS) under `docs/pdlc-loop-economics/`.
+(REQ, FSPEC, TSPEC, PLAN, PROPERTIES, DECISIONS, LEARNINGS) under `docs/completed/pdlc-loop-economics/`.
 Implementation must use **TDD** and **property-based testing** (`fast-check@4` is already a
 devDependency of `pdlc/workflows`). Definition of Done: everything integrated, **no stubs, no
 unwired code paths**, working end-to-end; full suites green.
@@ -23,7 +23,7 @@ instead of running review loops.
 
 - Branch `feat-pdlc-loop-economics` exists, forked from `main` at `9dfaef197`; checked out; clean
   except the untracked proposal HTML.
-- `docs/pdlc-loop-economics/` contains only `_evidence/` (inputs, below) and this file.
+- `docs/completed/pdlc-loop-economics/` contains only `_evidence/` (inputs, below) and this file.
 - The proposal being executed: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html`
   (untracked; §0 top-moves table defines M1–M3; §3 has per-move mechanism/risk; §6 rollout rules).
 - The governing decisions are **already promoted and committed** on main:
@@ -32,7 +32,7 @@ instead of running review loops.
   `docs/_decisions/DECISIONS-loop-termination.md` (DEC-TERM-01..02),
   `docs/_decisions/DECISIONS-test-oracle-mechanics.md` (DEC-ORACLE-06),
   plus proposal rows R1–R7 in `docs/_decisions/CONSOLIDATION-PROPOSAL-2026-08-27-1.md`.
-- Evidence corpus: `docs/pdlc-loop-economics/_evidence/` —
+- Evidence corpus: `docs/completed/pdlc-loop-economics/_evidence/` —
   `report-A-learnings.md` (this repo's LEARNINGS distillation: round counts, 54× re-filed Low,
   4/6 docs at 15-round cap, 5.6× artifact-to-spec ratio),
   `report-B-costmodel.md` (dispatch/prompt cost model of `orchestrate-dev.js` with line cites:
