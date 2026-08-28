@@ -19,6 +19,10 @@ re-litigated.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The new bullet-carrier exemplar is false at HEAD.** G-1 now reads "whatever carries the id (heading or bullet: at HEAD `DEC-AWG-Q1`…`Q5` are bullets in `DECISIONS-advisory-wave-gate-questions.md`)". That file contains exactly one `DEC-` token, in prose, as a range shorthand: `docs/_decisions/DECISIONS-advisory-wave-gate-questions.md:14` — "(DEC-AWG-Q1…Q5 map onto Q-1…Q-5 below)". Its five bullets are `- **Q-1**` (`:19`), `- **Q-2**` (`:59`), `- **Q-3**` (`:84`), `- **Q-4**` (`:99`), `- **Q-5**` (`:132`) and carry **no** decision id; the literals `DEC-AWG-Q2`, `DEC-AWG-Q3`, `DEC-AWG-Q4` occur nowhere in the repository (`grep -rc` over `docs/` = 0 in every file). So the rule is sound but its only worked example is not an instance of it: at HEAD this file is a zero-line contributor under G-1's own "A file with no decision id contributes zero lines", not a bullet-carrier. Fix is one clause, not a re-scope: either drop the parenthetical, or replace it with a real bullet-carrying id (e.g. `DEC-HEADLESS-*` entries in `docs/completed/pdlc-headless-engine/DECISIONS-pdlc-headless-engine.md`) and say plainly that `DECISIONS-advisory-wave-gate-questions.md` contributes zero lines at HEAD. Not gating: the in-scope set stays derivable either way, and O-1 already routes carrier recognition to TSPEC — but a TSPEC author or an AC-01 fixture built from this exemplar would be built against a shape that does not exist. | §2 G-1 |
+
 ## Questions
 
 ## Positive Observations
