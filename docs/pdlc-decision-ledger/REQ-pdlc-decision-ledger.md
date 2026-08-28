@@ -10,12 +10,12 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5}.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.4 | 2026-08-28 |
+| Draft | pm-author | 1.5 | 2026-08-28 |
 
 ## 1. Problem / Context
 
@@ -57,13 +57,21 @@ or evidence datum it may follow, and where it does not the line renders without 
 defect. **In scope** is a derivable set, not a per-document relevance judgement, and **its unit is the
 individual decision, not the file**: a decision is in scope when it carries a decision id in the
 project's `DEC-{NAMESPACE}-{NUMBER}` convention (O-3) with `NUMBER` numeric, in a
-`DECISIONS-*.md` file under `docs/_decisions/` or the feature's own `DECISIONS-{feature}.md`,
+`DECISIONS-*.md` file under `docs/_decisions/`, or any `DECISIONS-*.md` file in the feature's
+own directory (`docs/{feature}/`, or `docs/completed/{feature}/` once shipped — a feature
+carrying a second such file contributes both, as `docs/completed/pdlc-headless-engine/` does),
 **on the line that is the decision's own record, not a line citing it**: the carrier is a
 **heading**, the id opening the heading's content after any heading marker or section number
 (`## 3. DEC-CONS-01: …`, `docs/completed/pdlc-consolidation-agent/`). The **distinct id is the
-key and the first record wins**, files in path order: any later line naming an already-recorded
-id — same file or another — is a citation, so a twice-opened heading renders once
-(`DEC-LOOP-01`…`06`, `docs/completed/pdlc-engineering-loop/DECISIONS-pdlc-engineering-loop.md`).
+key and the last record wins**: an earlier line naming an id that is recorded again later is
+superseded, so a twice-opened heading renders once, and where a file frames options before
+deciding it is the decision that renders — `DEC-LOOP-01`…`06` open under `## Options Considered`
+(`:237`–`:337`, questions) and again under `## Decision` (`:363`–`:582`) in
+`docs/completed/pdlc-engineering-loop/DECISIONS-pdlc-engineering-loop.md`, and the second is the
+record. Across files a record under `docs/_decisions/` wins over any feature-directory record —
+a decision promoted to project level renders in its promoted form — and otherwise the later
+record in byte order of the repository-relative path wins. No id at HEAD is recorded in two
+files, so that cross-file leg is satisfiable only against a constructed corpus.
 Three HEAD consequences then follow from the rule rather than stand beside it: `DEC-AWG-Q1`,
 occurring once in prose as a range shorthand in `DECISIONS-advisory-wave-gate-questions.md`, is
 a citation twice over (prose, non-numeric), so that file contributes zero lines; the three
@@ -72,7 +80,7 @@ log's four line-leading corroboration items under its "Corroborated, not re-prom
 naming ids already recorded in sibling files besides; and a feature whose ids carry no namespace
 segment contributes zero lines (`DECISIONS-pdlc-plugin-retirement.md`, `### DEC-01` …) — by
 design here, normalisation being O-3's to own. A file with no decision record contributes zero
-lines: an ordinary empty result, not a failure. C-5's 41 is this count. G-1's carrier form and
+lines: an ordinary empty result, not a failure. C-5's 41 is this count under `docs/_decisions/`. G-1's carrier form and
 key are the contract; O-1 routes only recognition detail within them. All sources exist today — this REQ mints no new record file type, adds no field to any existing
 record shape, and does not require every feature to author one.
 
@@ -154,7 +162,7 @@ not left to TSPEC to invent:
 | Key | Default | Type | Config owner | Rationale |
 |---|---|---|---|---|
 | `decisionLedger.enabled` | `false` | boolean | operator, `.claude/pdlc.config.json` → `decisionLedger` | Tier 3: off by default per proposal §6 |
-| `decisionLedger.maxEntries` | `60` | positive integer | operator, same block | Measured floor at HEAD: 41 ids under `docs/_decisions/` + largest feature record (14) = 55, plus headroom; a default under the standing corpus drops a line on day one |
+| `decisionLedger.maxEntries` | `70` | positive integer | operator, same block | Measured floor at HEAD: 41 ids under `docs/_decisions/` + largest feature directory (22 — `docs/completed/pdlc-headless-engine/`, 14 + 8 across its two `DECISIONS-*.md` files) = 63, plus headroom; a default under the standing corpus drops a line on day one |
 | `decisionLedger.maxBytes` | `8000` | positive integer | operator, same block | Author default by analogy to `learningsInjection.maxBytesPerDocument` (6000) / `maxTotalBytes` (20000); vetoable per A-1 |
 
 `maxBytes` bounds **the rendered index text alone** — the index block as it appears in the
@@ -312,8 +320,8 @@ and REQ-DECLEDGER-07 pinning the bound whatever the values.
 **O-1** Which lines are omitted when the set exceeds `maxEntries` / `maxBytes`
 (REQ-DECLEDGER-07) is TSPEC material, as is recognition detail *within* G-1's carrier form
 (heading numbering, bold or backticked ids). Membership is *not* routed: G-1 fixes the carrier
-form and the first-record-wins key, so adding a carrier form — a table row, a list item — is a
-REQ revision, not a TSPEC choice.
+form, the last-record-wins key and the cross-file precedence, so adding a carrier form — a table
+row, a list item — is a REQ revision, not a TSPEC choice.
 
 **O-2** Whether the wiring needs a `SKILL.md` edit or can go through dispatch construction is a
 TSPEC choice (NG-7). Either path stays config-gated (C-1/C-2).
@@ -327,7 +335,7 @@ silently satisfying REQ-DECLEDGER-02, is TSPEC material.
 
 **Assumptions.** Authored in an orchestrated dispatch; these are explicit, operator-vetoable
 assumptions rather than blocking open questions:
-- **A-1** `maxEntries` (60) derives from a HEAD measurement (C-5); `maxBytes` (8000) remains a
+- **A-1** `maxEntries` (70) derives from a HEAD measurement (C-5); `maxBytes` (8000) remains a
   `learningsInjection` analogy, not measured. An operator may revise
   either before FSPEC authoring without a REQ revision.
 - **A-2** Same rollout posture as `pdlc-loop-economics` (config-gated, default off); Tier 3 risk
