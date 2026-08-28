@@ -256,13 +256,18 @@ crossed with {wrong type, malformed, absent}, not containment — mirrors the sh
 
 **Source:** US-01.
 
-**Who:** review-loop driver.
-**Given:** findings in two different rounds of the same document both name the same decision
-id without meeting REQ-DECLEDGER-03's citation-and-new-evidence bar.
-**When:** the second finding is accounted for.
-**Then:** it is recognized as the same rejected reopening attempt as the first, not a fresh
-question — the decision id is the dedupe key for this purpose, the same key the proposal
-names for staleness re-filing dedup (§4(c)).
+**Who:** the reviewer authoring a cross-review.
+**Given:** `decisionLedger.enabled` is `true`; a prior round of the same document already
+recorded a reopening attempt against an indexed decision id that did not clear
+REQ-DECLEDGER-03's bar.
+**When:** the reviewer would raise the same reopening again.
+**Then:** the rule text directs the reviewer to treat the decision id as the reopening key and
+record the repeat, in the cross-review artifact, as a repeat naming that id rather than as a
+fresh finding — the observable is that artifact's text. **Driver-side finding identity is
+unchanged:** the exact-match triple of `DEC-LOOPECON-06` (severity, section anchor, normalised
+text) remains the sole key the driver dedupes findings on, and this REQ does not re-key it.
+The two keys govern different consumers and never compete: the decision id is reviewer-side
+prose guidance, the triple is the driver's open-finding ledger.
 
 ### REQ-DECLEDGER-07 Index size stays within declared bounds (P1)
 
@@ -272,8 +277,30 @@ names for staleness re-filing dedup (§4(c)).
 **Given:** `decisionLedger.enabled` is `true`; the full set of closed decisions relevant to a
 dispatch exceeds `decisionLedger.maxEntries` rows or `decisionLedger.maxBytes` bytes.
 **When:** the index for that dispatch is rendered.
-**Then:** the rendered index never exceeds either bound; the dispatch is neither oversized nor
-aborted on account of index size.
+**Then:** the rendered index text never exceeds either bound (`maxBytes` measured per C-5 over
+the index block alone), and the dispatch is neither oversized nor aborted on account of index
+size. Rendering is total over the following boundary cases, each with one stated outcome: zero
+in-scope decisions ⇒ no index block is rendered at all; `maxEntries` of `0` ⇒ same as zero
+in-scope decisions for that dispatch, and not an error; a single decision line that alone
+exceeds `maxBytes` ⇒ that line is omitted whole, never truncated mid-line, and its omission
+does not abort the remaining lines.
+
+### REQ-DECLEDGER-08 Driver-side scoring is identical whether the flag is on or off (P0)
+
+**Source:** US-03.
+
+**Who:** review-loop driver.
+**Given:** one fixed set of reviewer outputs (verdict lines, counts, and any `FINDING:` lines)
+for a round, replayed twice — once with `decisionLedger.enabled` `true` and once `false`.
+**When:** the driver accounts for that round.
+**Then:** every driver-side outcome is identical across the two runs: the convergence decision,
+the `DEC-LOOPECON-06` identity-triple dedupe and resulting open-finding ledger, the
+`review.derivativeStop` flat/non-flat classification, the erratum items minted under
+`DEC-ERRROUTE-01`, and the fail-closed read of a non-approving confirmation carrying no
+parseable `FINDING:` line. In particular a High finding that re-opens an indexed decision, if a
+reviewer files it anyway, is scored and routed exactly as any other High finding — it still
+mints its erratum item and still satisfies the confirmation-presence check. This is what makes
+NG-4's no-change claim falsifiable rather than asserted.
 
 ## 6. Risks
 
