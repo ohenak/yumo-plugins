@@ -189,3 +189,15 @@ lives in the FSPEC's §6 traceability table and PROPERTIES §7; roll-up below.
 | US-02 | REQ-LOOPECON-04, REQ-LOOPECON-05, REQ-LOOPECON-08 | §4, §7.3–§7.4 |
 | US-03 | REQ-LOOPECON-06, REQ-LOOPECON-07, REQ-LOOPECON-08 | §5, §7.3–§7.4 |
 | US-04 | REQ-LOOPECON-09 | §3 |
+
+## pdlc-decision-ledger (2026-08-28)
+
+Upstream: `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md`
+(proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move
+M4, §3/§4(c) R3-2). FSPEC not yet authored.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-DECLEDGER-01, REQ-DECLEDGER-03, REQ-DECLEDGER-06 | — (pending) |
+| US-02 | REQ-DECLEDGER-04, REQ-DECLEDGER-07 | — (pending) |
+| US-03 | REQ-DECLEDGER-02, REQ-DECLEDGER-05 | — (pending) |
