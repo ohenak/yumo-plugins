@@ -112,17 +112,26 @@ mechanism itself is a separate feature.
 **NG-3** Size-tiered pipelines (R3-3) and the CR/DoD two-axis collapse (R3-4) are out of scope;
 neither is a prerequisite for this REQ.
 
-**NG-4** No change to any fail-closed gate: untagged High findings failing closed, the erratum
-channel's R4 POSTMORTEM halt, the structural-completeness probe, the DoD mutation floor, the
-wave gate, or the document oracles. This REQ only changes whether one specific class of
-finding (one that names an already-indexed decision id without new evidence) counts toward
-convergence; every other finding is scored exactly as today.
+**NG-4** No change to any driver-side scoring or gate. Because G-2 is reviewer-side, **every
+finding that reaches the driver is scored exactly as today**: the convergence bar, the
+identity-triple finding dedupe of `DEC-LOOPECON-06`, the `review.derivativeStop` flat-round
+test, erratum-item minting under `DEC-ERRROUTE-01`, the fail-closed read of a non-approving
+confirmation carrying no parseable `FINDING:` line, untagged High findings failing closed, the
+R4 POSTMORTEM halt, the structural-completeness probe, the DoD mutation floor, the wave gate
+and the document oracles are all untouched. A finding the reviewer chooses not to file is
+absent, not suppressed — there is no driver-side "discounted finding" state for any of these
+mechanisms to disagree about. REQ-DECLEDGER-08 pins this claim as falsifiable.
 
 **NG-5** No change to `MAX_REVIEW_ROUNDS`, `MAX_LIFETIME_ROUNDS`, or
 `MAX_ERRATUM_FOLLOWUP_ROUNDS`.
 
-**NG-6** No changes under `pdlc/engine/`; the engine vendors `pdlc/workflows/*.js` and picks up
-changes automatically at the next pack/publish, per repo convention.
+**NG-6** No engine **runtime** changes under `pdlc/engine/`; the engine vendors
+`pdlc/workflows/*.js` and picks up changes automatically at the next pack/publish, per repo
+convention. This does **not** forbid the shipped per-block config-disclosure test precedent
+(`pdlc/engine/__tests__/learnings-config-example.test.js`,
+`pdlc/engine/__tests__/loop-config-example.test.js`): if this feature discloses its block in
+`.claude/pdlc.config.example.json`, adding the matching engine-side disclosure test is in
+scope and expected.
 
 **NG-7** Whether wiring the decision index and never-re-litigate rule into reviewer-facing
 prompt text requires editing a `SKILL.md` file (which would route through the consolidation
