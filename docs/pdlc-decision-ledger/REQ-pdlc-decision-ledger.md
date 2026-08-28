@@ -10,22 +10,23 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Cross-Reviews | (none yet) |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.0 | 2026-08-28 |
+| Draft | pm-author | 1.1 | 2026-08-28 |
 
 ## 1. Problem / Context
 
 Reviewers re-open decisions that are already closed, and pay for it every round. Two
 project-level decision files already name the pattern without a gate behind it:
 `docs/_decisions/DECISIONS-erratum-routing.md` (`DEC-ERRROUTE-01`) requires that a
-confirmation-round finding mechanically mint an erratum item, and its `DEC-ERR-01` absorb-
-don't-route rule (referenced there and in `pdlc/OPERATIONS.md`'s erratum-channel section)
-states that routing a question the upstream has already decided is a false statement in a
-hand-off section, not a demoted finding. `docs/_decisions/DECISIONS-loop-termination.md`
+confirmation-round finding mechanically mint an erratum item; separately,
+`docs/_decisions/DECISIONS-review-severity-bars.md` (`DEC-ERR-01`, "A collision whose upstream
+has already decided is absorbed, not routed", summarised in `pdlc/OPERATIONS.md`'s
+erratum-channel section) states that routing a question the upstream has already decided is a
+false statement in a hand-off section, not a demoted finding. `docs/_decisions/DECISIONS-loop-termination.md`
 (`DEC-TERM-02`) separately establishes that a staleness-only round is not a review round.
 Both are enforced today only as prompt instructions: `pdlc/OPERATIONS.md`'s review-loop
 mechanics section records that round-2+ delta-scoped dispatches already tell the optimizer
@@ -35,7 +36,8 @@ recorded on documents that still hit the 15-round lifetime cap on `pdlc-engineer
 (`docs/_decisions/DECISIONS-loop-termination.md` `DEC-TERM-01`), and the proposal's D4 finding
 class (staleness bookkeeping re-filed as findings) recurs independently on
 `pdlc-engineering-loop` (one hash re-filed as a Low finding across 54 cross-reviews),
-`pdlc-wave-resume` (eight findings hand-copied instead of hash-derived), and
+`pdlc-wave-resume` (eight findings hand-copied instead of hash-derived), and — from the
+separate `regime-ledger` corpus the proposal's §2 cites, not this repository —
 `structure-directional-options-scoring` (an approval anchor re-filed across four reviews,
 159 `FINDING:` lines total). Re-litigation of a already-closed decision is the same shape of
 waste, one layer up: not a stale citation, but a question with a settled answer, asked again.
