@@ -176,3 +176,16 @@ sections; roll-up below.
 | US-03 | REQ-LOOP-01 (AC-1.4–AC-1.6), REQ-LOOP-02 | §3.2; BR-05–BR-09; AT-03–AT-10 |
 | US-04 | REQ-LOOP-05, NFR-6 | BR-23–BR-26; AT-32, AT-33, E-23 |
 | US-05 | REQ-LOOP-05 (AC-5.3), REQ-LOOP-06, NFR-2/NFR-3 | BR-19–BR-22; AT-30, AT-31, AT-35 |
+
+## pdlc-loop-economics (2026-08-28)
+
+Upstream: `docs/pdlc-loop-economics/REQ-pdlc-loop-economics.md`. Downstream:
+`docs/pdlc-loop-economics/FSPEC-pdlc-loop-economics.md`. Authoritative per-criterion mapping
+lives in the FSPEC's §6 traceability table and PROPERTIES §7; roll-up below.
+
+| User story | Requirements | FSPEC |
+|---|---|---|
+| US-01 | REQ-LOOPECON-01a/01b, REQ-LOOPECON-02, REQ-LOOPECON-03 | §1.2–§1.4, §2 |
+| US-02 | REQ-LOOPECON-04, REQ-LOOPECON-05, REQ-LOOPECON-08 | §4, §7.3–§7.4 |
+| US-03 | REQ-LOOPECON-06, REQ-LOOPECON-07, REQ-LOOPECON-08 | §5, §7.3–§7.4 |
+| US-04 | REQ-LOOPECON-09 | §3 |

@@ -221,23 +221,31 @@ simultaneously, asserted as a joint conjunct, not two independent single-block a
 pass on a partially-defaulted corpus failure.
 *Traces:* FSPEC §4.1, §5.1, §7.3; REQ-LOOPECON-08; REQ C-1, C-3.
 
-**PROP-LOOPECON-13** — Flat-round classification requires all-carried and no open High, jointly.
+**PROP-LOOPECON-13** — Flat-round classification requires no new-at-≥Medium and no open High, jointly (DEC-TERM-01).
 *Domain/generator:* `fast-check` arbitrary rounds: a list of findings each independently
 `carried`/`new` (per §3's accounting) and each independently `severity ∈ {High, Medium, Low}`,
-constructed so all four quadrants of {all-carried vs. has-new} × {has-open-High vs. no-open-High} are
-reachable, including the empty-findings-list round.
-*Invariant:* a round is classified **flat** iff every finding in it is carried (no new finding, any
-severity) **and** no finding recorded in the round (carried or new) is an open High-severity finding
-— both conjuncts required; a round with one new Low finding is not flat even with zero High findings,
-and a round with all findings carried but one being a carried open High is not flat either. The
-empty-findings round (nothing to carry, nothing new, no High) is asserted flat, the boundary case
-that most readily catches an "all(...)" vacuous-truth bug being applied to the wrong list.
-*Traces:* FSPEC §5.3; REQ-LOOPECON-06.
+constructed so the following boundary sub-domains are all reachable: {new-Low-only round}, {new-Medium
+round}, {new-High round}, {all-carried round with an open carried High}, {all-carried round with no
+open High}, and the empty-findings-list round.
+*Invariant:* a round is classified **flat** iff (1) no finding recorded in the round is classified
+**new** at severity ≥ Medium — a **new Low** finding does **not** break flatness, and carried findings
+never break flatness regardless of their severity — **and** (2) no finding in the round, carried or
+new, is an open High-severity finding. Both conjuncts are required and asserted independently: a round
+whose only new finding is Low is flat (asserted `flat === true`, not merely "not disqualified by
+carried-count"); a round with a new Medium finding is not flat even with zero High findings; a round
+with a new High finding is not flat under **both** conjuncts simultaneously (new-at-≥Medium and
+open-High), asserted as two independently falsifiable conjuncts, not one collapsed check; a round with
+every finding carried but one of those carried findings an open High is not flat (conjunct (2) alone
+defeats it, with conjunct (1) trivially satisfied). The empty-findings round (nothing carried, nothing
+new, no High) is asserted flat, the boundary case that most readily catches an "all(...)"
+vacuous-truth bug being applied to the wrong list or the wrong severity threshold.
+*Traces:* FSPEC §5.3; REQ-LOOPECON-06; DEC-TERM-01.
 
 **PROP-LOOPECON-14** — Derivative-stop convergence requires N *consecutive* flat rounds, reset on interruption, never overriding open High.
 *Domain/generator:* `fast-check` arbitrary sequences of 1–12 rounds, each independently flat or not
-(per PROP-LOOPECON-13's predicate, generated directly as a boolean tag to isolate this property from
-the flat-round derivation itself), `review.derivativeStop.rounds` drawn from `{1, 2, 3, 5}`,
+(per PROP-LOOPECON-13's corrected predicate — no new finding at severity ≥ Medium, and no open High,
+carried or new — generated directly as a boolean tag to isolate this property from the flat-round
+derivation itself), `review.derivativeStop.rounds` drawn from `{1, 2, 3, 5}`,
 `review.derivativeStop.enabled = true`; a distinguished sub-domain forces the most-recent
 `rounds`-window to contain an open High finding on at least one round within it.
 *Invariant:* the document converges via `converged-by-derivative-stop` at round `R` iff rounds
@@ -245,12 +253,14 @@ the flat-round derivation itself), `review.derivativeStop.rounds` drawn from `{1
 window resets the consecutive count to zero starting after that round, so a sequence like
 `[flat, non-flat, flat, flat]` with `rounds=2` converges only at the final round, not earlier; the
 distinguished sub-domain (open High present anywhere in the window) never converges regardless of how
-many consecutive rounds otherwise satisfy the non-High-and-carried conjunct of flatness — this is the
+many consecutive rounds otherwise satisfy the no-new-at-≥Medium conjunct of flatness — this is the
 same invariant as PROP-LOOPECON-13's second conjunct but asserted at the window level to catch an
 implementation that checks flatness per-round but aggregates the High-override incorrectly across the
 window boundary.
 *Traces:* FSPEC §5.4, §5.7; REQ-LOOPECON-06; REQ R-2 (mitigation), REQ-LOOPECON-06 (open-High override
-clause).
+clause). Convergence *timing* under the enabled key — i.e. that the ordinary high-only shortcut is
+suspended so this predicate is the operative one rather than a shortcut that would fire earlier — is
+pinned by PROP-LOOPECON-16, not restated here.
 
 **PROP-LOOPECON-15** — Converged-by-derivative-stop is a distinct, never-substituted outcome; rounds still count toward MAX_LIFETIME_ROUNDS; no POSTMORTEM.
 *Domain/generator:* `fast-check` arbitrary converging sequences (per PROP-LOOPECON-14) paired with an
@@ -263,6 +273,28 @@ convergence counts, none exempted or reset); and no `POSTMORTEM-*.md` write call
 outcome (asserted via a call-count spy on the POSTMORTEM-write seam showing zero invocations for this
 document), distinguishing it from the cap-reached path which does write one.
 *Traces:* FSPEC §5.5, §5.6; REQ-LOOPECON-06; REQ NG-4, C-4.
+
+**PROP-LOOPECON-16** — Enabling derivative-stop suspends the high-only convergence shortcut; convergence fires exactly at the Nth consecutive flat round, never earlier, and a literal approving verdict still converges ordinarily.
+*Domain/generator:* `fast-check` arbitrary round sequences with readable verdicts: each round
+independently tagged `high = 0` and carrying a non-approving verdict text (e.g. `Needs revision` with
+open Medium/Low findings only) or, at a controlled subset of positions, a literal approving verdict
+string; each round additionally tagged flat/non-flat per PROP-LOOPECON-13's corrected predicate;
+`review.derivativeStop.rounds = N` drawn from `{1, 2, 3, 5}`; the key exercised both `enabled = true`
+and `enabled = false` for the same underlying sequence.
+*Invariant:* with the key **enabled**, for a sequence of all-non-approving, `high = 0` rounds, the loop
+converges with outcome `converged-by-derivative-stop` at **exactly** the Nth consecutive flat round —
+never at any earlier round via the ordinary high-only shortcut (asserted as a per-round conjunct: at
+every round strictly before the Nth consecutive flat round, the outcome is "continue dispatching," not
+an ordinary approval), and never later than the Nth (a flat round at position N does not get skipped
+past). If a round in the sequence carries a **literal approving verdict**, the loop converges at that
+round with the **ordinary approval** outcome instead — asserted by exact-string comparison against the
+approving-verdict token, distinct from `converged-by-derivative-stop` — and the derivative-stop
+consecutive-flat count is not consulted for that round's outcome. With the key **disabled**, the
+identical sequence (same verdicts, same `high = 0`, same flat tags) converges exactly as today's
+baseline: the ordinary high-only shortcut applies unchanged, `converged-by-derivative-stop` never
+appears, and the decision is asserted identical to EX-LOOPECON-02's baseline-comparison oracle for the
+same sequence, not merely re-derived independently.
+*Traces:* FSPEC §5 (amended: suspended-shortcut clause), §5.4; REQ-LOOPECON-06, REQ-LOOPECON-07.
 
 **EX-LOOPECON-02** — Disabled derivative-stop produces an identical convergence decision to the pre-M3 baseline (fixture baseline guard).
 *Domain:* fixture-based. A single committed pre-M3 baseline convergence-decision fixture stream
@@ -286,8 +318,8 @@ implementation task owns recording the digests this guard compares against.
 | REQ-LOOPECON-03 | PROP-LOOPECON-04, PROP-LOOPECON-05, PROP-LOOPECON-06 | yes |
 | REQ-LOOPECON-04 | EX-LOOPECON-01 | yes |
 | REQ-LOOPECON-05 | PROP-LOOPECON-10, PROP-LOOPECON-11 | yes |
-| REQ-LOOPECON-06 | PROP-LOOPECON-13, PROP-LOOPECON-14, PROP-LOOPECON-15 | yes |
-| REQ-LOOPECON-07 | EX-LOOPECON-02 | yes |
+| REQ-LOOPECON-06 | PROP-LOOPECON-13, PROP-LOOPECON-14, PROP-LOOPECON-15, PROP-LOOPECON-16 | yes |
+| REQ-LOOPECON-07 | EX-LOOPECON-02, PROP-LOOPECON-16 | yes |
 | REQ-LOOPECON-08 | PROP-LOOPECON-12 | yes |
 | REQ-LOOPECON-09 | PROP-LOOPECON-08, PROP-LOOPECON-09 | yes |
 
