@@ -58,19 +58,28 @@ feature fixes decision-level re-litigation, one layer up the same stack.
 ## 2. Goals
 
 **G-1 (decision index in review dispatches, config-gated, default off).** When enabled, every
-review dispatch includes a rendered index of closed decisions relevant to the document under
-review: one line per decision carrying its id, a one-line statement, the phase/round it closed
-in, and its citation. The index is sourced from decision records that already exist today
-(`docs/_decisions/*` project-level decisions, and a feature's own `DECISIONS-{feature}.md` or
-approved-round provenance where present) — this REQ does not mint a new decision-record file
-type or require every feature to author one.
+review dispatch includes a rendered index of the closed decisions in scope for the document
+under review: one line per decision carrying **exactly two required fields** — the decision id
+and a one-line statement of what it decided — plus a **source citation** naming the record file
+and the heading the line was rendered from. No other field is required. Where a record happens
+to carry an origin or evidence datum, it may be rendered after those fields; where it does not,
+the line is rendered without it and this is not a defect. The index is sourced from decision
+records that already exist today (`docs/_decisions/*` project-level decisions, and a feature's
+own `DECISIONS-{feature}.md` where present) — this REQ does not mint a new decision-record file
+type, does not add a field to any existing record shape, and does not require every feature to
+author one. **In scope for a document** means, as a derivable set: every decision record under
+`docs/_decisions/` plus the feature's own `DECISIONS-{feature}.md` if it exists — not a
+relevance judgement made per document.
 
-**G-2 (never-re-litigate rule, config-gated, default off, requires G-1 enabled).** A finding
-that names a decision id already present in that dispatch's rendered index blocks approval
-(counts against the convergence bar) only if it is High severity and cites evidence that was
-not part of the decision's original citation. A finding naming an indexed decision id without
-meeting both conditions is recorded in the cross-review artifact per the existing artifact
-convention, but does not by itself block approval of that decision.
+**G-2 (never-re-litigate rule is reviewer-side, config-gated, default off, requires G-1
+enabled).** The rule is carried to the reviewer as prompt text accompanying the index, exactly
+the way prior-feature learnings are carried today; **it changes no driver-side accounting
+whatsoever.** The reviewer is instructed not to file a finding that re-opens an indexed
+decision unless the finding is High severity and cites evidence that was not part of the
+decision's own record. The observable is therefore the reviewer's own output: a cross-review
+artifact that does not carry the discouraged finding, and counts that do not include it. The
+driver continues to read the verdict line and its `high`/`medium`/`low` counts exactly as it
+does today, applies the same convergence bar to them, and never inspects a decision id.
 
 **G-3 (currency and fail-open safety).** An index that is stale or wrong is worse than none
 (the proposal's own framing, §6 Gating). The index is therefore derived fresh at
@@ -79,12 +88,14 @@ is missing, unreadable, or fails to parse, dispatch construction falls back to t
 behavior — no index rendered, no never-re-litigate enforcement — and this is never a new halt
 or a new operator-facing failure class.
 
-**G-4 (measurable outcome).** With the config enabled, the count of findings that restate a
-decision id already present in the dispatch's index without new evidence — derivable from
-parsing `FINDING:` lines against the rendered index, the same class of derivation the
-proposal's §5 Measurement plan already uses for round counts and erratum events — goes to
-zero across a feature's review rounds. This is the observable signal that the D4-adjacent
-re-litigation class the Problem section describes has closed.
+**G-4 (measurable outcome — non-binding rationale, no acceptance criterion).** The intended
+effect is that findings restating an indexed decision id without new evidence trend to zero
+across a feature's review rounds. Its measurement source is the **committed `CROSS-REVIEW-*`
+artifacts on the branch** — which exist on every round independently of any config flag — read
+against the decision ids in `docs/_decisions/`. This is a retrospective, human-read outcome
+measure for deciding whether to keep the experiment, in the spirit of the proposal's §5
+Measurement plan. It deliberately carries no acceptance criterion: no gate, test, or phase
+outcome depends on it.
 
 ## 3. Non-Goals
 
