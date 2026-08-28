@@ -10,19 +10,23 @@ there is one set of prompts, not three drifting copies.
 
 Invoked as `/pdlc:<skill>`:
 
-| Skill | Role |
-|---|---|
-| `orchestrate-queue` | Serial queue driver — picks the next ready REQ and runs `orchestrate-dev` for it (drives the whole queue via `/loop`) |
-| `orchestrate-dev` | Pipeline orchestrator (REQ → FSPEC → TSPEC → PLAN → PROPERTIES → IMPL) |
-| `pm-author` / `pm-review` | Product Manager — authors REQ/FSPEC; reviews from product lens |
-| `se-author` / `se-review` | Senior Engineer — authors TSPEC/PLAN; reviews from technical lens |
-| `se-implement` | Implements a PLAN phase via strict TDD (loads TS/Python supplement) |
-| `te-author` / `te-review` | Test Engineer — authors PROPERTIES; reviews from testing lens |
-| `tech-lead` / `tech-lead-python` | Parses PLAN, dispatches parallel se-implement agents |
-| `dod-verify` | Definition-of-Done verifier — documents stubs, unwired integrations, mock data and coverage gaps in `CODE_REVIEW-{feature}-v{N}.md`; **does not fix** |
-| `ship-pr` | Rebases the feature branch (Phase DOD) and raises or reuses the feature PR (Phase PUB) |
-| `harvest-learnings` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes the harvested files |
-| `consolidate-learnings` | Merges LEARNINGS across features into project-level knowledge |
+| Skill | File | Role |
+|---|---|---|
+| `orchestrate-queue` | `skills/orchestrate-queue/SKILL.md` | Serial queue driver — picks next ready REQ from `docs/_queue/QUEUE.md`, runs `orchestrate-dev` for it; built to be driven by `/loop` |
+| `orchestrate-dev` | `skills/orchestrate-dev/SKILL.md` | Top-level pipeline orchestrator |
+| `pm-author` | `skills/pm-author/SKILL.md` | Authors REQ, FSPEC; addresses feedback |
+| `pm-review` | `skills/pm-review/SKILL.md` | Reviews from product lens |
+| `se-author` | `skills/se-author/SKILL.md` | Authors TSPEC, PLAN, DECISIONS; addresses feedback |
+| `se-review` | `skills/se-review/SKILL.md` | Reviews from technical lens |
+| `se-implement` | `skills/se-implement/SKILL.md` | TDD implementation (supplements: SKILL-typescript.md, SKILL-python.md) |
+| `te-author` | `skills/te-author/SKILL.md` | Authors PROPERTIES; addresses feedback |
+| `te-review` | `skills/te-review/SKILL.md` | Reviews from testing lens |
+| `dod-verify` | `skills/dod-verify/SKILL.md` | Definition of Done verifier — scans production code for stubs, unwired integrations, mock data, and coverage gaps and documents findings in a versioned `CODE_REVIEW-{feature}-v{N}.md` (does NOT fix); orchestrate-dev Phase DOD dispatches se-implement to remediate, then re-verifies |
+| `ship-pr` | `skills/ship-pr/SKILL.md` | Rebases the feature branch (Phase DOD) and raises/reuses the feature PR (Phase PUB); the workflow script reads GHA check status directly via `gh` (script owns poll timing) |
+| `tech-lead` | `skills/tech-lead/SKILL.md` | Parses PLAN, dispatches parallel se-implement agents (TypeScript) |
+| `tech-lead-python` | `skills/tech-lead-python/SKILL.md` | Same as tech-lead for Python repos |
+| `harvest-learnings` | `skills/harvest-learnings/SKILL.md` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes harvested files |
+| `consolidate-learnings` | `skills/consolidate-learnings/SKILL.md` | Merges LEARNINGS across features into project-level knowledge; `/pdlc:consolidate-learnings` now resolves to a skill and a runtime bundle sharing one name, the same shape `orchestrate-queue` already has |
 
 ## Hooks
 
@@ -208,10 +212,23 @@ npm i -g @kaneho/pdlc-engine@latest      # install fresh, or upgrade in place �
 npm view @kaneho/pdlc-engine pdlcPairing # read the {engine, compat range, plugin} pairing this build was published against
 ```
 
-> The registry only ever holds versions cut from a tag. `@latest` now resolves to `0.2.0` —
-> the bytes published from `engine-v0.2.0` (2026-08-16), which include this feature's pin
+> The registry only ever holds versions cut from a tag. `@latest` now resolves to `0.2.3` —
+> the bytes published from `engine-v0.2.3` (2026-08-22), which include this feature's pin
 > ladder, doctor routing and launcher hop. To exercise HEAD instead, install from the local
 > checkout: `npm i -g ./pdlc/engine`.
+
+## pdlc CLI
+
+Once installed, the pipeline runs only through the installed engine CLI (`pdlc/engine/bin/cli.mjs`):
+
+- `pdlc dev <docs/{feature}/REQ-{feature}.md>` — run the full pipeline for one feature
+- `pdlc queue` — run the next ready row from `docs/_queue/QUEUE.md`
+- `pdlc doctor` — startup/environment checks only; dispatches nothing
+- `pdlc decide --entry <entryId> --outcome <resolved|rejected> --by <who> [--rationale <text>]` — record a decision-entry outcome
+
+Flags: `--loop [--max-iterations <n>]` and `--loop-state <path>` (queue-only), `--dry-run` (inspection surface, no dispatch), the `forcePhases` override `<R,F,T,P,D,PR|all>` (dev-only), and the common `--plugin-root <path>`, `--cwd <path>`, `--allow-api-key-billing`.
+
+The CLI resolves versions from a local store at `~/.pdlc/versions` (override with `PDLC_HOME`). The four workflow modules it dispatches (`orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`, `lib/escalation-view.mjs`) are vendored into the package at pack time, falling back to this repo's `pdlc/workflows/` in a dev checkout. Full flag semantics live in `pdlc/OPERATIONS.md`.
 
 ## Ptah engine integration
 
