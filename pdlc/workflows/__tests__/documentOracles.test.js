@@ -406,6 +406,9 @@ describe("T15: AT-1.3 mechanical half — post-sweep *.test.js literal, L-6 row 
     // pdlc-engineering-loop does the same under its reserved `loop*.test.js`
     // and `escalationView*.test.js` namespaces (its PLAN's file-ownership
     // table owns that census).
+    // pdlc-loop-economics adds new suites under its reserved `loopEconomics*.test.js`
+    // namespace, already covered by the `loop` exclusion below (its PLAN's §4
+    // file-ownership manifest owns their census).
     const count = readdirSync(testDir).filter(
       (name) =>
         name.endsWith(".test.js") &&

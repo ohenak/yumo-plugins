@@ -1,0 +1,27 @@
+UPSTREAM-CASCADE CONFIRMATION for docs/loopecon-cascade/PROPERTIES-loopecon-cascade.md (feature loopecon-cascade).
+You previously approved PROPERTIES. Its own bytes have NOT changed. What changed is TSPEC, at docs/loopecon-cascade/TSPEC-loopecon-cascade.md: an erratum round edited it after your approval was recorded, so your approval was taken against a version of TSPEC that no longer exists.
+Do not re-review the whole document, and do not re-litigate settled decisions. Re-read your own prior cross-review of PROPERTIES, read `git diff` for the edit to docs/loopecon-cascade/TSPEC-loopecon-cascade.md, and answer ONE question: does PROPERTIES still hold as approved against TSPEC as it now stands?
+Your scope is this PROPERTIES measured against its upstream AT HEAD — not the item list. The items landing is NECESSARY, NOT SUFFICIENT. Re-read the upstream text this PROPERTIES now leans on, at its current version, and ask whether this document is still a faithful compression of it. Anything it cites that upstream no longer says, or no longer says the same way, is a finding of THIS confirmation whether or not it appears in the list above (DEC-ERR-03).
+The upstream documents, at their current version as of this dispatch:
+- REQ: docs/loopecon-cascade/REQ-loopecon-cascade.md (sha256:cf48aaabadacc4c26cb71b048a80673673f72829eb9b431605525046fda37562)
+- FSPEC: docs/loopecon-cascade/FSPEC-loopecon-cascade.md (sha256:8974d96425929e22a9e7a557cc726de042f00191d388c821120852d2bd4bf8f8)
+- TSPEC: docs/loopecon-cascade/TSPEC-loopecon-cascade.md (sha256:0f2c4c8675d90916deb554176b6ef4587daeeeea3c2df61d1416c6fc116c343a)
+- PLAN: docs/loopecon-cascade/PLAN-loopecon-cascade.md (sha256:38949b063c5ed5827dead48c2982e7c6679cdaca94ed9f2e2290d5804d11cc6a)
+Tag every finding you raise. One finding per line, outside any fenced block, above your VERDICT trailer:
+FINDING: {High|Medium|Low} | {delta|inherited} | {local|nonlocal} | {section anchor} | {what is wrong}
+- delta = this round's edit introduced it, or left it unlanded; inherited = it was already in the pre-round bytes and this edit did not touch it.
+- local = it sits inside the sections this edit changed; nonlocal = anywhere else.
+- The section anchor and the text are free-form; pipes inside the text are fine.
+An untagged finding is read as {delta, nonlocal}, which for any High is the HALTING reading. Tagging a genuinely inherited High `inherited` is what keeps it non-gating — it routes the round back to the owning phase (R2) instead of halting. A non-approving confirmation that carries ZERO FINDING: lines halts the phase, fail-closed.
+Write your confirmation as the next cross-review round for this document type — docs/loopecon-cascade/CROSS-REVIEW-software-engineer-PROPERTIES-v2.md (round v2) — and end with the standard VERDICT trailer.
+All commits for this task must land on branch feat-loopecon-cascade. Immediately before each commit run `git rev-parse --abbrev-ref HEAD`; if it prints anything else — especially the default branch — STOP and report instead of committing. Do not run `git checkout` yourself; the orchestrator has already placed the tree on the branch.
+
+Pacing contract (H-3): lay down the skeleton first, then write ONE top-level section per edit, keep every single write under 12,000 bytes, and commit after each section. A monolithic write is killed by the 180 s stall watchdog and loses everything it had not yet flushed.
+
+This artifact is not on disk yet. Begin by laying out its top-level headings as a skeleton, then fill them one at a time under the pacing contract above.
+
+The completeness gate accepts these top-level sections — canonical title, or any listed accepted alternative — cover every one:
+## Overview (accepted: Overview, Scope, Summary)
+## Properties (accepted: Properties, Invariants)
+## Oracles (accepted: Oracles, Checks, Test Oracles)
+## Fixtures (accepted: Fixtures, Generators, Test data, Test Fixtures)

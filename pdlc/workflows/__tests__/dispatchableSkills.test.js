@@ -482,7 +482,11 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
   // 15th indirect position added by the halt-hardening anchor cascade: the delta
   // re-confirmation dispatch to the downstream doc's own reviewers (skill names
   // flow through the same reviewer variables the union guard already resolves).
-  test("indirect-dispatch positions are counted, not skipped: 15 total, all in orchestrate-dev.js", () => {
+  // 16th added by pdlc-loop-economics M2 (TSPEC §7.3): the batched pin-check
+  // dispatch, one call per role in the UNION of the eligible documents' owning
+  // phases — the same `PHASE_DISPATCH[...].reviewers` variables, so the union
+  // guard resolves it the same way.
+  test("indirect-dispatch positions are counted, not skipped: 16 total, all in orchestrate-dev.js", () => {
     const indirect = (sites) => sites.filter((s) => s.outcome === "indirect").length;
     const devIndirect =
       indirect(devSites.class1) +
@@ -494,11 +498,11 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
       indirect(queueSites.class2) +
       indirect(queueSites.class3) +
       indirect(queueSites.class4);
-    expect(devIndirect).toBe(15);
+    expect(devIndirect).toBe(16);
     expect(queueIndirect).toBe(0);
   });
 
-  test("the site census totals 47 direct sites plus 15 indirect positions across both modules", () => {
+  test("the site census totals 47 direct sites plus 16 indirect positions across both modules", () => {
     const direct = (sites) => sites.filter((s) => s.outcome === "direct").length;
     const indirect = (sites) => sites.filter((s) => s.outcome === "indirect").length;
     const totalDirect =
@@ -520,7 +524,7 @@ describe("no-bare-literal guard: every skill-naming site resolves to a union mem
       indirect(queueSites.class3) +
       indirect(queueSites.class4);
     expect(totalDirect).toBe(47);
-    expect(totalIndirect).toBe(15);
+    expect(totalIndirect).toBe(16);
   });
 
   // The decisive case DEC-ENG-05 names: the reviewer-role map's keys and
