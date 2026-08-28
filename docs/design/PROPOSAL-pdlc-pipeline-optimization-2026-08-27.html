@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDLC Pipeline Optimization</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f7f7f4;
+  --surface:#fcfcfb;
+  --surface-2:#f1f0ec;
+  --ink:#0b0b0b;
+  --ink-2:#52514e;
+  --muted:#898781;
+  --rule:#e1e0d9;
+  --rule-strong:#c3c2b7;
+  --accent:#1c5cab;
+  --accent-soft:#e7effb;
+  --series-1:#2a78d6;
+  --series-2:#eb6834;
+  --series-3:#1baf7a;
+  --ordinal:#9ec5f4;
+  --good:#0ca30c;
+  --warning:#fab219;
+  --serious:#ec835a;
+  --critical:#d03b3b;
+  --chip-ink:#0b0b0b;
+  --shadow:0 1px 0 rgba(11,11,11,0.05);
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0d0d0d;
+    --surface:#1a1a19;
+    --surface-2:#232322;
+    --ink:#ffffff;
+    --ink-2:#c3c2b7;
+    --muted:#898781;
+    --rule:#2c2c2a;
+    --rule-strong:#383835;
+    --accent:#7fb0ee;
+    --accent-soft:#16273c;
+    --series-1:#3987e5;
+    --series-2:#d95926;
+    --series-3:#199e70;
+    --ordinal:#1c5cab;
+    --good:#0ca30c;
+    --warning:#fab219;
+    --serious:#ec835a;
+    --critical:#e66767;
+    --chip-ink:#ffffff;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d;
+  --surface:#1a1a19;
+  --surface-2:#232322;
+  --ink:#ffffff;
+  --ink-2:#c3c2b7;
+  --muted:#898781;
+  --rule:#2c2c2a;
+  --rule-strong:#383835;
+  --accent:#7fb0ee;
+  --accent-soft:#16273c;
+  --series-1:#3987e5;
+  --series-2:#d95926;
+  --series-3:#199e70;
+  --ordinal:#1c5cab;
+  --good:#0ca30c;
+  --warning:#fab219;
+  --serious:#ec835a;
+  --critical:#e66767;
+  --chip-ink:#ffffff;
+  --shadow:none;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;scroll-padding-top:1.5rem;}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto;}}
+body{
+  margin:0;
+  background:var(--page);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+
+.shell{
+  max-width:1320px;
+  margin:0 auto;
+  padding:2.5rem 1.5rem 6rem;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:2.5rem;
+}
+@media (min-width:1080px){
+  .shell{grid-template-columns:238px minmax(0,980px);align-items:start;}
+}
+
+/* ---------- table of contents ---------- */
+nav.toc{
+  position:sticky;
+  top:0;
+  background:var(--page);
+  border-bottom:1px solid var(--rule);
+  padding:.75rem 0;
+  z-index:20;
+}
+nav.toc h2{
+  font-size:.68rem;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:0 0 .55rem;
+  font-weight:600;
+}
+nav.toc ol{
+  list-style:none;
+  margin:0;
+  padding:0;
+  display:flex;
+  flex-wrap:wrap;
+  gap:.35rem .9rem;
+  font-size:.86rem;
+}
+nav.toc a{
+  color:var(--ink-2);
+  text-decoration:none;
+  border-bottom:1px solid transparent;
+  padding:.1rem 0;
+}
+nav.toc a:hover{color:var(--accent);border-bottom-color:var(--accent);}
+nav.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px;}
+nav.toc .num{
+  font-family:var(--mono);
+  font-size:.75rem;
+  color:var(--muted);
+  margin-right:.3rem;
+}
+@media (min-width:1080px){
+  nav.toc{
+    top:2.5rem;
+    border-bottom:none;
+    border-right:1px solid var(--rule);
+    padding:0 1.25rem 0 0;
+    background:transparent;
+  }
+  nav.toc ol{flex-direction:column;gap:.5rem;}
+}
+
+/* ---------- typography ---------- */
+main{min-width:0;}
+header.masthead{
+  border-bottom:2px solid var(--ink);
+  padding-bottom:1.25rem;
+  margin-bottom:2.25rem;
+}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:.72rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:0 0 .7rem;
+}
+h1{
+  font-size:2.05rem;
+  line-height:1.2;
+  letter-spacing:-.018em;
+  margin:0 0 .55rem;
+  text-wrap:balance;
+  font-weight:650;
+}
+.subtitle{
+  font-size:1.06rem;
+  color:var(--ink-2);
+  margin:0;
+  max-width:62ch;
+}
+.meta{
+  margin-top:1.1rem;
+  display:flex;
+  flex-wrap:wrap;
+  gap:.4rem 1.4rem;
+  font-family:var(--mono);
+  font-size:.76rem;
+  color:var(--muted);
+}
+section{margin:0 0 3.25rem;scroll-margin-top:5.5rem;}
+h2{
+  font-size:1.32rem;
+  letter-spacing:-.012em;
+  margin:0 0 .35rem;
+  padding-bottom:.45rem;
+  border-bottom:1px solid var(--rule-strong);
+  font-weight:650;
+  text-wrap:balance;
+}
+h2 .snum{
+  font-family:var(--mono);
+  font-size:.86rem;
+  color:var(--muted);
+  margin-right:.55rem;
+  font-weight:500;
+}
+h3{
+  font-size:1.02rem;
+  margin:2rem 0 .4rem;
+  font-weight:650;
+  letter-spacing:-.006em;
+  text-wrap:balance;
+}
+h4{
+  font-size:.9rem;
+  margin:1.4rem 0 .3rem;
+  font-weight:650;
+  color:var(--ink);
+}
+p{margin:.75rem 0;max-width:72ch;}
+ul,ol{max-width:72ch;padding-left:1.2rem;}
+li{margin:.3rem 0;}
+strong{font-weight:650;}
+code{
+  font-family:var(--mono);
+  font-size:.855em;
+  background:var(--surface-2);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  padding:.06em .32em;
+  word-break:break-word;
+}
+a{color:var(--accent);}
+.lede{
+  font-size:1.02rem;
+  color:var(--ink-2);
+}
+
+/* ---------- tables ---------- */
+.tablewrap{
+  overflow-x:auto;
+  border:1px solid var(--rule);
+  border-radius:6px;
+  background:var(--surface);
+  margin:1.1rem 0 1.4rem;
+  box-shadow:var(--shadow);
+}
+table{
+  border-collapse:collapse;
+  width:100%;
+  font-size:.875rem;
+  min-width:520px;
+}
+caption{
+  caption-side:top;
+  text-align:left;
+  font-size:.78rem;
+  color:var(--muted);
+  padding:.6rem .8rem 0;
+  font-family:var(--mono);
+}
+th,td{
+  text-align:left;
+  padding:.5rem .75rem;
+  border-bottom:1px solid var(--rule);
+  vertical-align:top;
+}
+thead th{
+  font-size:.72rem;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:600;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--rule-strong);
+  white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:none;}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+td.id{font-family:var(--mono);font-size:.8rem;white-space:nowrap;}
+
+/* ---------- chips ---------- */
+.chip{
+  display:inline-flex;
+  align-items:center;
+  gap:.3rem;
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  padding:.1rem .42rem;
+  border-radius:3px;
+  border:1px solid var(--rule-strong);
+  color:var(--chip-ink);
+  white-space:nowrap;
+  background:var(--surface-2);
+}
+.chip::before{
+  content:"";
+  width:7px;height:7px;border-radius:50%;
+  background:var(--rule-strong);
+}
+.chip.low::before{background:var(--good);}
+.chip.med::before{background:var(--warning);}
+.chip.high::before{background:var(--critical);}
+.chip.cap::before{background:var(--critical);}
+.chip.tier1::before{background:var(--series-1);}
+.chip.tier2::before{background:var(--series-2);}
+.chip.tier3::before{background:var(--series-3);}
+
+/* ---------- bar figures ---------- */
+figure.viz{
+  margin:1.4rem 0 1.6rem;
+  padding:1rem 1.1rem 1.05rem;
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-radius:6px;
+  box-shadow:var(--shadow);
+  overflow-x:auto;
+}
+figure.viz figcaption{
+  font-size:.94rem;
+  font-weight:650;
+  margin-bottom:.15rem;
+  color:var(--ink);
+}
+figure.viz .figsub{
+  font-size:.79rem;
+  color:var(--muted);
+  margin:0 0 .9rem;
+  max-width:70ch;
+}
+.bars{display:grid;gap:.34rem;min-width:440px;}
+.bar-row{
+  display:grid;
+  grid-template-columns:minmax(150px,190px) minmax(120px,1fr) 74px;
+  align-items:center;
+  gap:.7rem;
+}
+.bar-label{
+  font-size:.79rem;
+  color:var(--ink-2);
+  font-family:var(--mono);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.track{
+  background:var(--surface-2);
+  border-radius:0 4px 4px 0;
+  height:14px;
+  position:relative;
+  border-left:2px solid var(--rule-strong);
+}
+.fill{
+  height:14px;
+  border-radius:0 4px 4px 0;
+  background:var(--series-1);
+  display:block;
+}
+.fill.alt{background:var(--series-2);}
+.fill.quiet{background:var(--ordinal);}
+.bar-val{
+  font-variant-numeric:tabular-nums;
+  font-size:.79rem;
+  color:var(--ink);
+  display:flex;
+  gap:.35rem;
+  align-items:center;
+  justify-content:flex-end;
+  white-space:nowrap;
+}
+.bar-val .capmark{
+  font-family:var(--mono);
+  font-size:.62rem;
+  color:var(--critical);
+  border:1px solid var(--critical);
+  border-radius:2px;
+  padding:0 .2rem;
+  letter-spacing:.04em;
+}
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.35rem 1rem;
+  margin-top:.85rem;
+  padding-top:.6rem;
+  border-top:1px solid var(--rule);
+  font-size:.75rem;
+  color:var(--ink-2);
+}
+.legend span{display:inline-flex;align-items:center;gap:.35rem;}
+.swatch{width:11px;height:11px;border-radius:2px;display:inline-block;}
+.swatch.s1{background:var(--series-1);}
+.swatch.s2{background:var(--series-2);}
+.swatch.s3{background:var(--ordinal);}
+.axisnote{
+  font-family:var(--mono);
+  font-size:.7rem;
+  color:var(--muted);
+  margin-top:.55rem;
+}
+
+/* ---------- callouts ---------- */
+.headline{
+  border:1px solid var(--rule-strong);
+  border-left:3px solid var(--series-2);
+  background:var(--surface);
+  border-radius:0 6px 6px 0;
+  padding:1rem 1.15rem;
+  margin:1.5rem 0;
+}
+.headline p{margin:0;font-size:1.02rem;}
+.headline .tag{
+  display:block;
+  font-family:var(--mono);
+  font-size:.68rem;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:.35rem;
+}
+.note{
+  background:var(--surface-2);
+  border:1px solid var(--rule);
+  border-radius:6px;
+  padding:.8rem 1rem;
+  margin:1.2rem 0;
+  font-size:.88rem;
+  color:var(--ink-2);
+}
+.note p{margin:.35rem 0;}
+.note p:first-child{margin-top:0;}
+.note p:last-child{margin-bottom:0;}
+
+/* ---------- recommendation blocks ---------- */
+.rec{
+  border:1px solid var(--rule);
+  border-radius:6px;
+  background:var(--surface);
+  padding:.95rem 1.1rem;
+  margin:1rem 0;
+  box-shadow:var(--shadow);
+}
+.rec > .rechead{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:.5rem .8rem;
+  margin-bottom:.35rem;
+}
+.rec .recid{
+  font-family:var(--mono);
+  font-size:.78rem;
+  color:var(--accent);
+  font-weight:650;
+}
+.rec .rectitle{font-weight:650;font-size:.98rem;}
+.rec dl{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:.22rem .8rem;
+  margin:.5rem 0 0;
+  font-size:.88rem;
+}
+.rec dt{
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted);
+  padding-top:.22rem;
+  white-space:nowrap;
+}
+.rec dd{margin:0;color:var(--ink-2);}
+.rec dd strong{color:var(--ink);}
+
+/* ---------- details ---------- */
+details{
+  border:1px solid var(--rule);
+  border-radius:6px;
+  background:var(--surface);
+  margin:1.1rem 0;
+  overflow:hidden;
+}
+details > summary{
+  cursor:pointer;
+  padding:.65rem .95rem;
+  font-size:.88rem;
+  font-weight:650;
+  background:var(--surface-2);
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+}
+details > summary::-webkit-details-marker{display:none;}
+details > summary::before{
+  content:"▸";
+  color:var(--muted);
+  font-size:.8rem;
+}
+details[open] > summary::before{content:"▾";}
+details > summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.details-body{padding:.35rem 1rem 1rem;}
+.details-body > :first-child{margin-top:.7rem;}
+.details-body .tablewrap{border-radius:4px;}
+
+footer.docfoot{
+  border-top:1px solid var(--rule-strong);
+  padding-top:1rem;
+  margin-top:3rem;
+  font-size:.8rem;
+  color:var(--muted);
+  font-family:var(--mono);
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s0"><span class="num">0</span>Executive summary</a></li>
+    <li><a href="#s1"><span class="num">1</span>Where the cost lives</a></li>
+    <li><a href="#s2"><span class="num">2</span>Diagnosis</a></li>
+    <li><a href="#s3"><span class="num">3</span>Recommendations</a></li>
+    <li><a href="#s4"><span class="num">4</span>Grilling the agents</a></li>
+    <li><a href="#s5"><span class="num">5</span>Savings model</a></li>
+    <li><a href="#s6"><span class="num">6</span>Rollout &amp; safeguards</a></li>
+    <li><a href="#s7"><span class="num">7</span>Appendix</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">Engineering memo · pdlc · 2026-08-27</p>
+  <h1>PDLC Pipeline Optimization</h1>
+  <p class="subtitle">Speed and token economics without losing the gates.</p>
+  <div class="meta">
+    <span>Author: analysis pass over two corpora</span>
+    <span>Audience: Kane Ho, pipeline author/operator</span>
+    <span>Status: proposal — nothing shipped</span>
+  </div>
+</header>
+
+<!-- ============================================================ §0 -->
+<section id="s0">
+  <h2><span class="snum">§0</span>Executive summary</h2>
+  <p class="lede">The pdlc pipeline converges on correctness and it converges expensively. Across two independent repositories — <code>yumo-plugins</code> (6 un-consolidated LEARNINGS to the 2026-08-19 boundary) and <code>regime-ledger</code> (8 features surveyed) — the same signature appears: a document reaches substantive stability in roughly rounds 1–3, then spends rounds 4–15 re-proving that nothing changed. <code>pdlc-engineering-loop</code> produced 172 cross-review files with 4 of 6 documents pinned at the 15-round lifetime cap and 114 approving verdicts recorded on the way to that ceiling; <code>regime-swing-confirmation</code> produced 188 cross-review files with five documents at the same cap; <code>longhorizon-product-scaffold</code> produced 112 with DECISIONS v2–v7 carrying one identical approval hash six rounds running. The waste is not review rigor — it is the absence of a mechanism that can say "settled". The moves below fall into three tiers: engine defects that can be fixed today with no process risk, config-gated loop-economics rules that change when a round is allowed to exist, and a process redesign that front-loads discovery into a bounded grilling phase so that FSPEC review starts from decisions already made rather than discovering them across thirteen rounds.</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Top moves, ordered by expected saving per unit of risk. Savings are estimates from the two corpora, not measurements.</caption>
+      <thead>
+        <tr><th>#</th><th>Move</th><th>Tier</th><th>Est. saving</th><th>Risk</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="id">M1</td>
+          <td>Staleness-finding dedup + tree-derived round/anchor computation (kill re-filed bookkeeping) <span class="chip low">promoted: DEC-ANCHOR-01</span></td>
+          <td><span class="chip tier1">Tier 1</span></td>
+          <td>~5–10 dispatches/feature; 54 re-filings on one feature go to 1</td>
+          <td><span class="chip low">Low</span></td>
+        </tr>
+        <tr>
+          <td class="id">M2</td>
+          <td>Pin-cascade confirmation round: own-hash unchanged ⇒ dependency-cell check only, batched <span class="chip low">promoted: DEC-ERRROUTE-04</span></td>
+          <td><span class="chip tier2">Tier 2</span></td>
+          <td>~15–25 full review dispatches → cheap checks on cascade-heavy features</td>
+          <td><span class="chip low">Low</span></td>
+        </tr>
+        <tr>
+          <td class="id">M3</td>
+          <td>DEC-TERM-01 derivative stop rule: no new ≥Medium for 2 rounds ⇒ converged</td>
+          <td><span class="chip tier2">Tier 2</span></td>
+          <td>Caps that currently run to 15 stop at 4–6; ~6–9 rounds/doc</td>
+          <td><span class="chip med">Medium</span></td>
+        </tr>
+        <tr>
+          <td class="id">M4</td>
+          <td>Decisions-so-far index injected into every review dispatch + never-re-litigate rule</td>
+          <td><span class="chip tier3">Tier 3</span></td>
+          <td>Kills the re-litigation class; compounding across all phases</td>
+          <td><span class="chip med">Medium</span></td>
+        </tr>
+        <tr>
+          <td class="id">M5</td>
+          <td>Phase G: bounded agent-vs-agent grilling of the approved REQ, then to-spec FSPEC synthesis</td>
+          <td><span class="chip tier3">Tier 3</span></td>
+          <td>+3–8 dispatches once; removes discovery from rounds 2–15</td>
+          <td><span class="chip high">High</span></td>
+        </tr>
+        <tr>
+          <td class="id">M6</td>
+          <td>Size-tiered pipelines (S/M/L) — S merges TSPEC+PLAN, skips DECISIONS+PROPERTIES</td>
+          <td><span class="chip tier3">Tier 3</span></td>
+          <td>S features: ~2 of 6 document review windows removed entirely</td>
+          <td><span class="chip med">Medium</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ §1 -->
+<section id="s1">
+  <h2><span class="snum">§1</span>Where the cost lives</h2>
+
+  <h3>The dispatch model</h3>
+  <p>A phase that passes on round 1 costs <strong>2 dispatches</strong> (author, reviewer). Best case end-to-end, before Phase I fan-out, is <strong>22–24 dispatches</strong>: R 2, F 3, T+D 3–7, P 3, PR 3, PT 1, CR 2, DOD 1, H 1, PUB 1–2, MERGE 0. Each additional review round costs <strong>+2–3</strong>. Each erratum batch costs <strong>+3–4</strong> (route, targeted edit, delta-confirmation, and — when the bounded follow-up fires — a re-confirmation).</p>
+  <p>The budget structure is the multiplier: <code>MAX_REVIEW_ROUNDS = 5</code> is <em>per invocation</em>, while <code>MAX_LIFETIME_ROUNDS = 15</code> is per document type. A document that keeps being re-opened — staled approval anchor, erratum cascade, forced re-run — accumulates rounds without bound until the lifetime cap absorbs it, at which point the document is <em>accepted as-is</em>: not an approval, not a failure (<code>pdlc/OPERATIONS.md</code>, §Review loop mechanics).</p>
+
+  <figure class="viz">
+    <figcaption>Best-case dispatch budget before Phase I fan-out</figcaption>
+    <p class="figsub">Per-phase dispatch counts on an all-round-1-PASS run. Total 22–24. Every observed feature exceeded this by 3–8× on the review phases alone.</p>
+    <div class="bars">
+      <div class="bar-row"><span class="bar-label">R (REQ)</span><span class="track"><span class="fill" style="width:28.6%"></span></span><span class="bar-val">2</span></div>
+      <div class="bar-row"><span class="bar-label">F (FSPEC)</span><span class="track"><span class="fill" style="width:42.9%"></span></span><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">T + D (TSPEC/DEC)</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="bar-val">3–7</span></div>
+      <div class="bar-row"><span class="bar-label">P (PLAN)</span><span class="track"><span class="fill" style="width:42.9%"></span></span><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">PR (PROPERTIES)</span><span class="track"><span class="fill" style="width:42.9%"></span></span><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">CR (cross-review)</span><span class="track"><span class="fill quiet" style="width:28.6%"></span></span><span class="bar-val">2</span></div>
+      <div class="bar-row"><span class="bar-label">PT / DOD / H</span><span class="track"><span class="fill quiet" style="width:42.9%"></span></span><span class="bar-val">3</span></div>
+      <div class="bar-row"><span class="bar-label">PUB / MERGE</span><span class="track"><span class="fill quiet" style="width:28.6%"></span></span><span class="bar-val">1–2</span></div>
+    </div>
+    <p class="axisnote">Scale: 0 → 7 dispatches. Source: <code>report-B-costmodel.md</code>, derived from <code>orchestrate-dev.js</code>.</p>
+  </figure>
+
+  <h3>Observed round counts — <code>yumo-plugins</code></h3>
+  <p>Review rounds per document type, from the six un-consolidated LEARNINGS files to the 2026-08-19 boundary. The lifetime cap is 15.</p>
+
+  <figure class="viz">
+    <figcaption>Review rounds per document — <code>pdlc-engineering-loop</code> and <code>pdlc-learnings-injection</code></figcaption>
+    <p class="figsub">Two features, ten document windows, seven of them at or one below the 15-round lifetime ceiling. <code>pdlc-engineering-loop</code> recorded 114 approving verdicts on the way to those ceilings.</p>
+    <div class="bars">
+      <div class="bar-row"><span class="bar-label">eng-loop · REQ</span><span class="track"><span class="fill" style="width:93.3%"></span></span><span class="bar-val">14</span></div>
+      <div class="bar-row"><span class="bar-label">eng-loop · FSPEC</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="bar-val">15 <span class="capmark">cap</span></span></div>
+      <div class="bar-row"><span class="bar-label">eng-loop · TSPEC</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="bar-val">15 <span class="capmark">cap</span></span></div>
+      <div class="bar-row"><span class="bar-label">eng-loop · PLAN</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="bar-val">15 <span class="capmark">cap</span></span></div>
+      <div class="bar-row"><span class="bar-label">eng-loop · PROPERTIES</span><span class="track"><span class="fill" style="width:80%"></span></span><span class="bar-val">12</span></div>
+      <div class="bar-row"><span class="bar-label">eng-loop · DECISIONS</span><span class="track"><span class="fill" style="width:80%"></span></span><span class="bar-val">12</span></div>
+      <div class="bar-row"><span class="bar-label">learn-inj · REQ</span><span class="track"><span class="fill alt" style="width:80%"></span></span><span class="bar-val">12</span></div>
+      <div class="bar-row"><span class="bar-label">learn-inj · FSPEC</span><span class="track"><span class="fill alt" style="width:100%"></span></span><span class="bar-val">15 <span class="capmark">cap</span></span></div>
+      <div class="bar-row"><span class="bar-label">learn-inj · TSPEC</span><span class="track"><span class="fill alt" style="width:100%"></span></span><span class="bar-val">15 <span class="capmark">cap</span></span></div>
+      <div class="bar-row"><span class="bar-label">learn-inj · PLAN</span><span class="track"><span class="fill alt" style="width:100%"></span></span><span class="bar-val">15 <span class="capmark">cap</span></span></div>
+      <div class="bar-row"><span class="bar-label">learn-inj · PROPERTIES</span><span class="track"><span class="fill alt" style="width:100%"></span></span><span class="bar-val">15 <span class="capmark">cap</span></span></div>
+      <div class="bar-row"><span class="bar-label">learn-inj · DECISIONS</span><span class="track"><span class="fill alt" style="width:60%"></span></span><span class="bar-val">9</span></div>
+      <div class="bar-row"><span class="bar-label">learn-inj · DoD</span><span class="track"><span class="fill alt" style="width:13.3%"></span></span><span class="bar-val">2</span></div>
+    </div>
+    <div class="legend">
+      <span><i class="swatch s1"></i> pdlc-engineering-loop</span>
+      <span><i class="swatch s2"></i> pdlc-learnings-injection</span>
+      <span><span class="capmark">cap</span> at the 15-round lifetime ceiling</span>
+    </div>
+    <p class="axisnote">Scale: 0 → 15 rounds (the lifetime cap). Source: <code>report-A-learnings.md</code>.</p>
+  </figure>
+
+  <p>The contrast row is the one to keep: <code>learn-inj · DoD</code> closed in <strong>2</strong> rounds. The DoD gate scans a diff against a fixed checklist. The document phases have no equivalent stop condition, so they run to the ceiling.</p>
+
+  <h3>Cross-review corpus size — both repos</h3>
+
+  <figure class="viz">
+    <figcaption>Cross-review files produced per feature</figcaption>
+    <p class="figsub">Three features from two repositories, each producing over a hundred cross-review documents for a single feature. Individual cross-reviews on <code>pdlc-engineering-loop</code> ran 20–37&nbsp;KB — larger than the documents they reviewed.</p>
+    <div class="bars">
+      <div class="bar-row"><span class="bar-label">regime-swing-confirm.</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="bar-val">188</span></div>
+      <div class="bar-row"><span class="bar-label">pdlc-engineering-loop</span><span class="track"><span class="fill" style="width:91.5%"></span></span><span class="bar-val">172</span></div>
+      <div class="bar-row"><span class="bar-label">longhorizon-scaffold</span><span class="track"><span class="fill" style="width:59.6%"></span></span><span class="bar-val">112</span></div>
+      <div class="bar-row"><span class="bar-label">pdlc-review-convergence</span><span class="track"><span class="fill" style="width:9.6%"></span></span><span class="bar-val">18</span></div>
+    </div>
+    <p class="axisnote">Scale: 0 → 188 files. Sources: <code>report-A-learnings.md</code>, <code>regime-ledger-signals.md</code>. <code>pdlc-review-convergence</code> was discarded at REQ round 9 and is shown as a floor reference — its 18 cross-reviews still totalled ≈530&nbsp;KB.</p>
+  </figure>
+
+  <h3>Process artifacts versus specification bytes</h3>
+  <figure class="viz">
+    <figcaption>Bytes produced, <code>pdlc-engineering-loop</code></figcaption>
+    <p class="figsub">The process wrote 5.6× more bytes about the specification than the specification itself contains.</p>
+    <div class="bars">
+      <div class="bar-row"><span class="bar-label">Process artifacts</span><span class="track"><span class="fill alt" style="width:100%"></span></span><span class="bar-val">3.45 MB</span></div>
+      <div class="bar-row"><span class="bar-label">Specification bytes</span><span class="track"><span class="fill" style="width:17.9%"></span></span><span class="bar-val">617 KB</span></div>
+    </div>
+    <p class="axisnote">Scale: 0 → 3.45&nbsp;MB. Ratio 5.6×. Source: <code>report-A-learnings.md</code>.</p>
+  </figure>
+
+  <div class="headline">
+    <span class="tag">Headline finding</span>
+    <p>Two independent repositories, no shared features, no shared authors of the specs — and the same signature. <strong>Most late rounds re-prove that nothing changed.</strong> On <code>longhorizon-product-scaffold</code>, DECISIONS v2–v7 carried the identical approval hash <code>3e282f13…</code> across six consecutive rounds and PLAN v2–v7 carried <code>693805d4…</code>. On <code>pdlc-engineering-loop</code>, one stale dispatch hash was re-filed as a finding in 54 separate reviews with zero edits owed. The loop cannot distinguish "still working" from "nothing left to say, and nobody told the driver". This cross-repo recurrence was recorded as this repo's first cross-repo consolidation promotions (consolidation pass <code>2026-08-27-2</code>): <code>DEC-ERRROUTE-04</code> and <code>DEC-ANCHOR-01</code>.</p>
+  </div>
+
+  <h3>Prompt payload anatomy</h3>
+  <p>Per-dispatch cost is dominated by three things, in order: the <strong>resume opener</strong>, which embeds the entire document under review; the <strong>learnings suffix</strong>, budgeted at ≤20&nbsp;KB (5 documents × 6&nbsp;KB); and the <strong>fixed clause boilerplate</strong> re-sent every round — <code>ORACLE_QUALITY_CLAUSE</code>, <code>ERRATUM_PROTOCOL_CLAUSE</code>, <code>PACING_CONTRACT_CLAUSE</code>, plus the per-docType grounding clause. Reviewer and author SKILL.md files run 279–331 lines of which roughly 45–55% is shared procedural boilerplate (Git Workflow, Review Process, Delta Re-Review, verdict contract); the role judgment is concentrated in a single "Review Scope" block per file. Prompt-content redundancy has largely already been addressed — <code>REVIEW_CONVERGENCE_CLAUSE</code> makes rounds 2+ delta-scoped with a git-diff instruction and a High-only bar. <strong>The remaining redundancy is structural, not textual: too many rounds, not too many tokens per round.</strong></p>
+</section>
+
+<!-- ============================================================ §2 -->
+<section id="s2">
+  <h2><span class="snum">§2</span>Diagnosis: six failure modes</h2>
+
+  <h3>D1 — Cascade and pin re-confirmation dominance</h3>
+  <p>An upstream document moves; every downstream document's pins, hashes, section anchors and line references drift; the loop responds by opening a full review round on each downstream document. On <code>macro-nightly-job</code>, rounds 3 and beyond were <em>overwhelmingly</em> cascade-confirmation. On <code>longhorizon-daily-baseline</code>, roughly half of TSPEC's 12 rounds were delta re-confirmations — about 15 re-confirmation dispatches plus 4 erratum re-grounds. On <code>iv-snapshot-store-postgres</code>, PLAN v4–v7 and v10–v15 plus TSPEC v7–v9 were <em>entirely</em> provenance bookkeeping — SHAs, counts, line numbers — and a single squash invalidated 17 in-prose SHAs at once. The harvest note from that corpus states it plainly: the expensive part is not getting the spec right, it is proving repeatedly that upstream edits did not silently invalidate approved downstream text. This pattern recurred independently in <code>yumo-plugins</code>'s own <code>pdlc-wave-resume</code> feature, and the two corpora's agreement is now named as a decision: <code>docs/_decisions/DECISIONS-erratum-routing.md</code> (<code>DEC-ERRROUTE-04</code>, cross-repo consolidation pass 2026-08-27-2).</p>
+
+  <h3>D2 — The cap does the converging</h3>
+  <p>Documents do not stop because a reviewer says "converged"; they stop because they hit 15. <code>pdlc-engineering-loop</code>: 4 of 6 documents at the cap, 114 approving verdicts recorded. <code>regime-swing-confirmation</code>: REQ, FSPEC, TSPEC, PLAN and PROPERTIES all at 15, DECISIONS at 14. <code>paper-book-strategy-generalization</code>: TSPEC, PLAN and PROPERTIES at 15, DECISIONS at 14 — and the harvest notes the loop <em>was</em> converging on the 5-round per-invocation budget while the lifetime budget kept re-opening it. The verdict-at-cap terminal state is now named as a defect in <code>docs/_decisions/DECISIONS-loop-termination.md</code> (DEC-TERM-01).</p>
+
+  <h3>D3 — The erratum channel routes but never closes</h3>
+  <p>Three failures compound here. First, <strong>routing without minting</strong>: a finding recorded in a confirmation cross-review that mints no erratum item is a routing defect, not reviewer discretion (DEC-ERRROUTE-01) — <code>pdlc-wave-resume</code>'s own POSTMORTEM concludes the routing failure "will recur"; <code>pdlc-learnings-injection</code> had 3 erratum halts on this channel, the first two the same failure two phases apart. Second, <strong>channel under-sizing</strong>: a fixed 1–2 round budget fed a full architectural section is a mis-sized channel (DEC-ERRROUTE-02) — <code>pdlc-engineering-loop</code> halted Phase P on this. Third, <strong>partial re-grounding</strong>, which DEC-ERRROUTE-03 rates as worse than none: four independent instances of a dispatch absorbing only the named items while other changes in the same upstream interval went silently unabsorbed, leaving a document that <em>reads</em> as reconciled and is not. On <code>pdlc-engineering-loop</code> a truncate/restore occurred inside a confirmed delta — the round confirmed a state its own edit then reverted.</p>
+
+  <h3>D4 — Staleness bookkeeping re-filed as findings</h3>
+  <p>The single most mechanical waste in the corpus. One stale dispatch hash re-filed as a Low finding in <strong>54</strong> reviews on <code>pdlc-engineering-loop</code>, with zero edits owed. Eight findings in one <code>pdlc-wave-resume</code> erratum round were hand-copied pins that are hash-derivable. On <code>structure-directional-options-scoring</code>, an approval anchor was re-filed across four separate reviews, and rounds 10+ were stale-citation churn (159 <code>FINDING:</code> lines total, 124 of them cross-feature-tagged). DEC-TERM-02 now states that a round whose only delta is staleness bookkeeping is not a review round.</p>
+
+  <h3>D5 — Uniform six-document ceremony regardless of feature size</h3>
+  <p>Every feature gets REQ, FSPEC, TSPEC, PLAN, PROPERTIES and (when warranted) DECISIONS, each with its own review window and its own lifetime cap. <code>pdlc-rcv-budget-stop</code> produced a <strong>61&nbsp;KB REQ at 99.8% of the size budget</strong> for one constant and roughly four pure functions. <code>pdlc-review-convergence</code> grew its REQ from 1,000 to 2,629 lines / 311&nbsp;KB before being discarded at round 9. On <code>regime-swing-confirmation</code> the REQ hit 92% of the 61,440-byte ceiling by round 2, and ~90% of it was ultimately relocated to <code>docs/_constraints/</code> — meaning the reviewers spent rounds on material that did not belong in the REQ at all.</p>
+
+  <h3>D6 — Post-implementation triple coverage</h3>
+  <p>The shipped diff is evaluated three times through fully separate chains: Phase CR (pm/te lens cross-review), Phase DOD (<code>dod-verify</code>'s stub / mock-data / unwired-integration / coverage scan), and the PROPERTIES V-wave. CR and DOD have adjacent-but-not-identical lenses and no shared state; the operator decision of 2026-08-02 is explicit that they never merge. That decision predates the evidence that a same-diff review chain closes in 2 rounds while document chains run to 15 — it is worth revisiting as a <em>two-axis single gate</em> rather than a merge (see R3-4).</p>
+
+  <div class="note">
+    <p><strong>A seventh, already-mechanised mode.</strong> Rounds spent on structure and headings are largely gone: <code>isComplete</code> scores documents against <code>REQUIRED_HEADINGS</code> by normalised word-boundary containment and feeds canonical headings + alts into every first authoring prompt. The residue shows as the <code>pdlc-advisory-wave-gate</code> case where the <em>wrong</em> completeness-gate template was checked for 7 consecutive rounds — a dispatcher bug, not a review problem.</p>
+  </div>
+</section>
+
+<!-- ============================================================ §3 -->
+<section id="s3">
+  <h2><span class="snum">§3</span>Recommendations</h2>
+  <p>Three tiers, ordered by how much of the pipeline's judgment they touch. Tier 1 changes no contract and can ship first. Tier 2 changes when a round is allowed to exist, gated by config. Tier 3 changes the shape of the pipeline and is the subject of §4.</p>
+
+  <h3>Tier 1 — Mechanical engine fixes <span class="chip tier1">no process risk</span></h3>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R1-1</span><span class="rectitle">Harness-computed approval anchors</span> <span class="chip low">promoted: DEC-ANCHOR-01</span></div>
+    <dl>
+      <dt>Change</dt><dd>The engine writes and re-writes approval anchors from the tree, rather than asking an agent to hand-copy a hash into prose.</dd>
+      <dt>Mechanism</dt><dd>Anchors become derived state, like <code>deriveRoundWindow</code> already is — content-addressed, synchronous, no seam.</dd>
+      <dt>Correctness</dt><dd>Strictly stronger: an anchor that a human never types cannot be mistyped, and staleness becomes computable rather than reportable.</dd>
+      <dt>Saving</dt><dd><strong>~2–4 dispatches/feature.</strong> Removes the <code>structure-directional</code> class (anchor re-filed across four reviews) and the 9 anchor-churn rounds observed on that feature.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span> — additive derivation; existing anchors remain readable.</dd>
+      <dt>Status</dt><dd>Proposed → <strong>decided</strong> (<code>DEC-ANCHOR-01</code>, cross-repo consolidation pass 2026-08-27-2); implementation still pending.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R1-2</span><span class="rectitle">Tree-derived DoD round index</span></div>
+    <dl>
+      <dt>Change</dt><dd>DoD version index computed as <code>max(CODE_REVIEW-*-v*) + 1</code> from what is on disk, not carried in prompt state.</dd>
+      <dt>Mechanism</dt><dd>Same content-addressed derivation the review loop already uses for cross-review round windows.</dd>
+      <dt>Correctness</dt><dd>The filesystem is the record; a re-run or resume cannot produce a colliding or skipped index.</dd>
+      <dt>Saving</dt><dd><strong>~1 dispatch/DoD cycle</strong>, plus removal of a halt class. <code>regime-swing-confirmation</code> hit this directly across 6 code-review rounds.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R1-3</span><span class="rectitle">Fix the stale upstream hash in dispatch construction</span></div>
+    <dl>
+      <dt>Change</dt><dd>Snapshot the upstream document SHA from committed <code>HEAD</code> at dispatch time; never carry a SHA forward from an earlier phase.</dd>
+      <dt>Mechanism</dt><dd>Known engine defect: erratum and review dispatches quote a SHA that no commit produced. Observed on <code>longhorizon-daily-baseline</code> (<code>ace3aa35…</code> quoted as "current") and recurring as a Low finding every round on <code>pdlc-engineering-loop</code> (54 re-filings).</dd>
+      <dt>Correctness</dt><dd>Fixes a false statement in the prompt. Reviewers currently spend a finding per round telling the engine its own citation is wrong.</dd>
+      <dt>Saving</dt><dd><strong>~5–10 dispatches on a long-running feature</strong>; the single largest mechanical line item found.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R1-4</span><span class="rectitle">Staleness-finding dedup</span></div>
+    <dl>
+      <dt>Change</dt><dd>A staleness finding deduplicates against an existing open item by key instead of being re-filed each round (DEC-TERM-02).</dd>
+      <dt>Mechanism</dt><dd>Dedupe key = decision/finding id. Same normalized-dedupe machinery the erratum mint already applies to item lists.</dd>
+      <dt>Correctness</dt><dd>The finding still exists and still blocks by its severity — it exists <em>once</em>. Nothing is dropped.</dd>
+      <dt>Saving</dt><dd><strong>54 re-filings → 1</strong> on the worst observed case; token burn per round drops with it.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R1-5</span><span class="rectitle">Verdict-required terminal rounds</span></div>
+    <dl>
+      <dt>Change</dt><dd>A <code>VERDICT:</code> line becomes a hard precondition for a cross-review to count as a round.</dd>
+      <dt>Mechanism</dt><dd>Structural gate, same class as the completeness probe. <code>pdlc-wave-resume</code> produced 2 cross-reviews with no verdict at all; the regime-ledger corpus records 9 rounds on <code>structure-directional-options-scoring</code> with the same gap.</dd>
+      <dt>Correctness</dt><dd>Fail-closed and strictly tightening: a review that renders no verdict is currently indistinguishable from an approval to a downstream reader.</dd>
+      <dt>Saving</dt><dd>Indirect — prevents the ambiguous-round class that causes re-opens.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R1-6</span><span class="rectitle">Feed FINDING-grammar parse failures back in-round</span></div>
+    <dl>
+      <dt>Change</dt><dd>When a reviewer's findings fail the <code>FINDING: {sev} | {delta|inherited} | {local|nonlocal} | {anchor} | {text}</code> grammar, return the parse error to that reviewer in the same round instead of silently failing closed.</dd>
+      <dt>Mechanism</dt><dd>The regime-ledger corpus records <code>pm-review</code> FINDING fail-closes on <code>paper-book</code>, and <code>pdlc-learnings-injection</code> produced <strong>6 consecutive approving rounds with zero <code>FINDING:</code> lines</strong> — silent conformance decay that the fail-closed gate caught only at the class level. The <code>check-finding-grammar.sh</code> hook already warns interactively; the engine should do the same in-dispatch.</dd>
+      <dt>Correctness</dt><dd>Fail-closed behaviour is retained as the fallback; this only adds one corrective turn before it fires.</dd>
+      <dt>Saving</dt><dd><strong>~1–3 halts/feature</strong> converted into in-round corrections.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+
+  <h3>Tier 2 — Loop economics <span class="chip tier2">config-gated</span></h3>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R2-1</span><span class="rectitle">Pin-cascade confirmation round type</span> <span class="chip low">promoted: DEC-ERRROUTE-04</span></div>
+    <dl>
+      <dt>Change</dt><dd>A new, cheap round type. If the document's <em>own</em> content hash is unchanged since its last approval, the round checks only the dependency cells (pins, SHAs, anchors, line refs) rather than re-reviewing the document. Sweeps batch across all downstream documents affected by one upstream move.</dd>
+      <dt>Mechanism</dt><dd>Directly nominated by the <code>longhorizon-product-scaffold</code> harvest ("pin-cascade round, own-hash only, batched sweeps"). Own-hash comparison is already available — DECISIONS v2–v7 carried one identical hash across six rounds, which is exactly the detection signal.</dd>
+      <dt>Correctness</dt><dd>The substantive review already happened and its verdict stands; nothing about the document changed. What is checked is precisely what <em>did</em> change: the dependency cells. A non-trivial own-hash delta falls back to a full round automatically.</dd>
+      <dt>Saving</dt><dd><strong>~15–25 full review dispatches</strong> on a cascade-heavy feature — e.g. <code>longhorizon-daily-baseline</code>'s ~15 re-confirmation dispatches, <code>iv-snapshot-store-postgres</code>'s PLAN v4–v7 + v10–v15.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span> — narrowing what a provably-unchanged document is reviewed for.</dd>
+      <dt>Status</dt><dd>Proposed → <strong>decided</strong> (<code>DEC-ERRROUTE-04</code>, cross-repo consolidation pass 2026-08-27-2); implementation still pending.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R2-2</span><span class="rectitle">Batch upstream errata into one revision per phase-window</span></div>
+    <dl>
+      <dt>Change</dt><dd>Errata raised against one upstream document within a phase window accumulate into a single revision + single delta-confirmation, instead of routing per-raiser.</dd>
+      <dt>Mechanism</dt><dd>Extends the existing per-doc erratum bound and its item-list hygiene (normalized dedupe, per-item mint tags, multi-home split) to the whole phase window. Addresses DEC-ERRROUTE-02's mis-sized channel by widening the batch rather than the round count.</dd>
+      <dt>Correctness</dt><dd>Every item still gets minted, edited, and confirmed. Re-grounding remains full-interval per DEC-ERRROUTE-03 — batching makes full re-grounding <em>cheaper</em>, which is the main reason it currently gets done partially.</dd>
+      <dt>Saving</dt><dd><strong>~3–4 dispatches per collapsed batch</strong>; on features with 4–6 erratum events, 12–20 dispatches.</dd>
+      <dt>Risk</dt><dd><span class="chip med">Medium</span> — a larger item list per round; mitigate with the existing per-item mint tags.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R2-3</span><span class="rectitle">Refuse downstream approval while routed errata are live</span></div>
+    <dl>
+      <dt>Change</dt><dd>A downstream document cannot receive an approving verdict while an erratum routed against its upstream is open.</dd>
+      <dt>Mechanism</dt><dd>Closes the route-never-close loop directly (DEC-ERRROUTE-01). The multi-layer propagation order already exists in the erratum protocol — "a child confirmed before its parent's decision reaches it is approved stale" — this makes that statement enforceable rather than advisory.</dd>
+      <dt>Correctness</dt><dd>Strictly tightening. It removes the stale-approval state that currently causes the re-open that causes the extra rounds.</dd>
+      <dt>Saving</dt><dd>Indirect but large: stale approvals are the entry point for the D1 cascade.</dd>
+      <dt>Risk</dt><dd><span class="chip med">Medium</span> — can serialize phases that currently overlap; needs a live-erratum timeout to avoid deadlock.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R2-4</span><span class="rectitle">DEC-TERM-01 derivative stop rule</span></div>
+    <dl>
+      <dt>Change</dt><dd>A document is converged when no new ≥Medium finding has been raised for 2 consecutive rounds — regardless of remaining budget. Convergence is a derivative signal, not a verdict-at-cap.</dd>
+      <dt>Mechanism</dt><dd>Already promoted as DEC-TERM-01 in <code>docs/_decisions/DECISIONS-loop-termination.md</code>, nominated independently by <code>pdlc-wave-resume</code> (O-5) and <code>pdlc-engineering-loop</code> (P-2).</dd>
+      <dt>Correctness</dt><dd>The current terminal state is <em>worse</em>: hitting 15 accepts the document as-is with no approval at all. A derivative stop produces an approved document with a stated reason. The High-only blocking bar is unchanged, so nothing that blocks today stops blocking.</dd>
+      <dt>Saving</dt><dd><strong>~6–9 rounds per capped document.</strong> Applied to <code>pdlc-engineering-loop</code>'s four capped documents: roughly 24–36 rounds, 50–100 dispatches.</dd>
+      <dt>Risk</dt><dd><span class="chip med">Medium</span> — a genuinely slow-burning defect surfacing at round 8 would be missed. Mitigate: DoD and the V-wave still see the shipped diff.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R2-5</span><span class="rectitle">Mechanical 5g split-halt</span></div>
+    <dl>
+      <dt>Change</dt><dd>When one High finding blocks the same document for 2 consecutive rounds, halt mechanically with a split recommendation instead of relying on a reviewer to call it.</dd>
+      <dt>Mechanism</dt><dd>On <code>regime-swing-confirmation</code>, 5g fired at Phase R round 3 — and nobody split. In-place revisions continued to the 15-round ceiling on six documents and 188 cross-reviews. The recurrence condition is mechanically detectable from the finding id across rounds.</dd>
+      <dt>Correctness</dt><dd>Halting is the conservative action; the operator decides. It converts an ignorable advisory into a stop.</dd>
+      <dt>Saving</dt><dd>On the worst observed feature, most of the 188-file corpus.</dd>
+      <dt>Risk</dt><dd><span class="chip med">Medium</span> — adds an operator stop; belongs to escalations (surface item 3), not a new burden class.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R2-6</span><span class="rectitle">REQ ≥90% byte-ceiling relocation trigger</span></div>
+    <dl>
+      <dt>Change</dt><dd>A REQ crossing 90% of the 61,440-byte ceiling triggers a mechanical relocation pass into <code>docs/_constraints/</code> before the next review round.</dd>
+      <dt>Mechanism</dt><dd><code>hooks/scripts/check-req-size.sh</code> already computes the number and warns; this promotes the warning to an action. <code>regime-swing-confirmation</code> hit 92% at round 2 and ~90% of the content was eventually relocated anyway — after being reviewed repeatedly in the wrong document.</dd>
+      <dt>Correctness</dt><dd>Relocation moves material to a location the pipeline already reads (project-level constraints); nothing is deleted.</dd>
+      <dt>Saving</dt><dd>Large on oversized REQs — the <code>pdlc-rcv-budget-stop</code> (61&nbsp;KB / 99.8%) and <code>pdlc-review-convergence</code> (311&nbsp;KB) cases.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R2-7</span><span class="rectitle">Fail-closed Scope gate</span></div>
+    <dl>
+      <dt>Change</dt><dd>A cross-review missing its <code>Scope:</code> field fails closed rather than warning.</dd>
+      <dt>Mechanism</dt><dd>The under-tagging constraint was re-derived in 5 of 8 harvests on the regime-ledger side and was suppressed as a <em>learning</em> (DC-13) while remaining an un-promoted <em>mechanism</em> proposal row. One <code>Scope</code> column serving two purposes caused 2–3 halts on <code>pdlc-learnings-injection</code>. <code>hooks/scripts/check-scope-field.sh</code> already detects it interactively.</dd>
+      <dt>Correctness</dt><dd>Scope tagging is what makes cross-feature findings harvestable; an untagged finding is lost at consolidation time.</dd>
+      <dt>Saving</dt><dd>Indirect: raises harvest yield, lowers re-derivation across features.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+
+  <h3>Tier 3 — Process redesign <span class="chip tier3">experimental</span></h3>
+  <p>These adapt mattpocock's skill mechanisms to an agent-vs-agent setting. The design argument is in §4; the summary rows are here.</p>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R3-1</span><span class="rectitle">Front-loaded grilling phase (Phase G)</span></div>
+    <dl>
+      <dt>Change</dt><dd>A bounded phase between R and F: reviewers grill the approved REQ using grilling's frontier discipline. Every resolved question becomes a decision-ledger row.</dd>
+      <dt>Mechanism</dt><dd>Rounds of numbered questions whose prerequisites are settled; dependent questions deferred; a recommended answer attached to each. Question budget ≤3 rounds. Unanswerable ⇒ escalation row, never a loop. See §4(a)–(b).</dd>
+      <dt>Correctness</dt><dd>All existing gates stay. Discovery moves earlier; it does not disappear.</dd>
+      <dt>Saving</dt><dd>+3–8 dispatches once; removes the discovery currently spread across FSPEC rounds 2–15.</dd>
+      <dt>Risk</dt><dd><span class="chip high">High</span> — new phase, new failure modes. One-feature experiment only.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R3-2</span><span class="rectitle">Wayfinder-style decisions-so-far index</span></div>
+    <dl>
+      <dt>Change</dt><dd>A one-line-per-closed-decision index injected into every review dispatch, plus a never-re-litigate rule: a reviewer may re-open a closed decision only with a High finding citing <em>new</em> evidence and naming the decision.</dd>
+      <dt>Mechanism</dt><dd>Reuses the learnings-injection budget machinery. Dedupe key = decision id. See §4(c).</dd>
+      <dt>Correctness</dt><dd>Re-opening remains possible; it acquires a cost and a citation requirement.</dd>
+      <dt>Saving</dt><dd>Kills the re-litigation class and the D4 re-filing class; compounds across every phase.</dd>
+      <dt>Risk</dt><dd><span class="chip med">Medium</span> — an index that goes stale is worse than none; derive it, don't author it.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R3-3</span><span class="rectitle">Size-tiered pipelines (S / M / L)</span></div>
+    <dl>
+      <dt>Change</dt><dd><strong>S</strong>: merge TSPEC+PLAN into one document; skip DECISIONS and PROPERTIES. <strong>M</strong>: skip DECISIONS unless a trigger fires. <strong>L</strong>: unchanged.</dd>
+      <dt>Mechanism</dt><dd>Classification at REQ approval, from REQ size, file-ownership breadth and dependency count. Recorded in the REQ frontmatter so the choice is auditable and overridable.</dd>
+      <dt>Correctness</dt><dd>PROPERTIES on an S feature is the phase most likely to produce absence-only oracles; DoD's mutation floor and the V-wave still gate the diff. The tier is a floor, not a ceiling — a reviewer can escalate the tier.</dd>
+      <dt>Saving</dt><dd>Two of six review windows removed on S features. <code>pdlc-rcv-budget-stop</code> — one constant, four pure functions — is the archetype.</dd>
+      <dt>Risk</dt><dd><span class="chip med">Medium</span> — misclassification. Mitigate: default M, allow one-way escalation only.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R3-4</span><span class="rectitle">Collapse CR into DoD as a two-axis review</span></div>
+    <dl>
+      <dt>Change</dt><dd>One post-implementation gate running two parallel, non-merging axes over the same diff: <strong>Standards</strong> (repo conventions + smell baseline) and <strong>Spec</strong> (does the diff match what the REQ/FSPEC asked for), with the existing wired-caller / stub / mock-data sweep retained on the Standards axis.</dd>
+      <dt>Mechanism</dt><dd>mattpocock's <code>code-review</code> shape: two parallel sub-agents, reports aggregated verbatim under separate headings, never merged or re-ranked, one summary per axis, no overall winner. Map pm-review onto Spec and te-review onto Standards.</dd>
+      <dt>Correctness</dt><dd>This is <em>not</em> the merge the 2026-08-02 decision forbids — it keeps two independent evaluators and two independent verdicts; it removes one dispatch chain and one artifact set, not one lens. Note the corroborating DEC-ORACLE-06 signal: byte-identical text across two lenses is a shared-generator signature, not independent agreement, so lens independence must be structurally enforced regardless.</dd>
+      <dt>Saving</dt><dd><strong>~2–4 dispatches/feature</strong> plus one artifact chain.</dd>
+      <dt>Risk</dt><dd><span class="chip high">High</span> — contradicts a standing operator decision; needs an explicit re-decision, not a config flag.</dd>
+    </dl>
+  </div>
+
+  <div class="rec">
+    <div class="rechead"><span class="recid">R3-5</span><span class="rectitle">Domain modeling → repo <code>CONTEXT.md</code> glossary</span></div>
+    <dl>
+      <dt>Change</dt><dd>A per-repo glossary of domain terms, injected into authoring and review dispatches, maintained as decisions land.</dd>
+      <dt>Mechanism</dt><dd>mattpocock's <code>tdd</code> and <code>to-spec</code> both consume a project <code>CONTEXT.md</code> / domain glossary as a first-class input. The terminology-findings class — reviewers disputing what a term means round after round — has no home today.</dd>
+      <dt>Correctness</dt><dd>Purely additive grounding; a glossary entry is a decision like any other and is subject to the never-re-litigate rule.</dd>
+      <dt>Saving</dt><dd>Removes a recurring finding class; magnitude unmeasured.</dd>
+      <dt>Risk</dt><dd><span class="chip low">Low</span></dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ============================================================ §4 -->
+<section id="s4">
+  <h2><span class="snum">§4</span>Deep dive: grilling and wayfinder, aimed at the agents</h2>
+  <p class="lede">mattpocock's <code>grilling</code> skill exists to extract decisions from a human. The pdlc pipeline has no human in the loop — it is <code>/loop</code>-driven and runs unattended. Adopting grilling verbatim is therefore impossible: <strong>a grilling agent that answers its own questions has broken the skill.</strong> The interesting question is whether the mechanism survives the substitution of authority, and the answer is yes, provided the substitution is explicit and fail-closed.</p>
+
+  <h3>(a) The HITL problem and the authority ladder</h3>
+  <p>In the original, the user is the authority: the agent asks, the user decides, and the decision is grounded in something the agent cannot fabricate. Remove the user and the frontier collapses into invention — the grillee answers from plausibility, and the resulting decisions are indistinguishable from hallucination with a paper trail.</p>
+  <p>The substitute is an <strong>authority ladder</strong> for the grillee (in the first instance, <code>pm-author</code> defending the approved REQ). It is ordered and exhaustive:</p>
+  <ol>
+    <li><strong>The REQ text itself.</strong> If the REQ already answers the question, quote it. Round closed.</li>
+    <li><strong><code>docs/_constraints/DOMAIN-CONSTRAINTS.md</code> and <code>docs/_decisions/*</code>.</strong> Project-level decided material. Quote the decision id.</li>
+    <li><strong>The code.</strong> Verified, with a <code>file:line</code> citation. This is the same grounding rule the phase dispatch manifests already carry — verify claims against code, cite <code>file:line</code>.</li>
+    <li><strong>Nothing else.</strong></li>
+  </ol>
+  <p>Rung 4 is the load-bearing one. A question that can only be answered by invention <strong>becomes an escalation row in <code>docs/_queue/ESCALATIONS.md</code></strong> and the frontier moves on without it. This is not a new operator burden class: the documented steady-state operator surface has exactly four items and "resolving open escalations" is already item 3 (<code>pdlc/OPERATIONS.md</code>, §Operator surface). The resolution command already exists — <code>pdlc decide --entry &lt;entryId&gt; --outcome &lt;resolved|rejected&gt; --by &lt;who&gt;</code> — and the loop's rendered operator view already prints an id per open item.</p>
+  <div class="note">
+    <p><strong>Why this is stronger than the status quo, not weaker.</strong> Today, a question the pipeline cannot answer does not become an escalation. It becomes a finding, then a revision, then another finding — the D1/D2 loop. The ladder converts an unanswerable question from an unbounded round generator into a single bounded row with an operator on the other end.</p>
+  </div>
+
+  <h3>(b) Where it slots: Phase G, between R and F</h3>
+  <p>Phase G runs after REQ approval and before FSPEC authoring. Reviewers (pm-review and te-review as grillers) interrogate the approved REQ using grilling's discipline unchanged in structure:</p>
+  <ul>
+    <li>Build the design tree; each decision branches into the decisions that hang off it.</li>
+    <li>Work in rounds. The <strong>frontier</strong> is every decision whose prerequisites are settled — ask only those now.</li>
+    <li>Number every frontier question and attach a <strong>recommended answer</strong>.</li>
+    <li>Questions whose answers depend on other open questions belong to a <em>later</em> round, not this one. This is the property that makes the phase terminate.</li>
+    <li>Fact-finding is delegated, never asked of the authority: an exploration sub-agent resolves environmental facts (rung 3) without blocking unrelated frontier questions.</li>
+  </ul>
+  <p>Every resolved question becomes a row in the feature's decision ledger with its answer, its authority rung, and its citation. FSPEC is then authored <strong>to-spec style</strong>: pure synthesis of already-settled material, no interview, decisions pre-made, existing seams preferred over new ones.</p>
+  <p><strong>Termination is structural, three ways.</strong> The frontier empties (grilling's own completion criterion, minus the user-confirmation step). The question budget is capped at ≤3 rounds. An unanswerable question escalates rather than recirculating. None of these depends on an agent judging that it is finished — which is exactly the judgment the corpus shows agents do not make (D2).</p>
+  <p><strong>Expected effect.</strong> FSPEC review approaches round-1 approval, because the discovery that currently happens across review rounds 2..15 has happened up front in a forum whose structure guarantees termination. The failure mode this attacks is visible in the numbers: <code>pdlc-engineering-loop</code>'s FSPEC ran to the 15-round cap, and <code>pdlc-learnings-injection</code>'s did too — while both features' DoD phases, which start from a fully-decided target, closed in 2–5.</p>
+
+  <h3>(c) What wayfinder actually contributes</h3>
+  <p>The obvious reading of wayfinder — build a map of the issue tracker — is already covered here: <code>docs/_queue/QUEUE.md</code> <em>is</em> the map, dependency-ordered, and the queue drift gate and halt-row semantics are already specified. Adopting the map would be duplication.</p>
+  <p>The part worth taking is the <strong>decisions-so-far index plus the never-re-litigate rule</strong>. Concretely:</p>
+  <ul>
+    <li>Every review dispatch carries a one-line-per-closed-decision index — id, one-line statement, phase closed, citation.</li>
+    <li>A reviewer may re-open a closed decision <strong>only</strong> with a High finding that cites <em>new</em> evidence and names the decision id.</li>
+    <li>The dedupe key for both re-litigation and staleness re-filing is the same: the decision/finding id (this is R1-4 and R3-2 sharing one mechanism).</li>
+  </ul>
+  <p>This is the completion of an arc the pipeline is already halfway along. <strong>What already half-exists:</strong> DEC-ERR-01's absorb-don't-route rule states that routing a question the upstream has already decided is not a demoted finding but a false statement in a hand-off section; the round-2+ delta-scoped prompts already address the optimizer as the continuing author and instruct that settled decisions are not re-litigated. Both are <em>prose instructions to an agent</em>. Neither is enforceable, and the corpus shows what happens: 114 approving verdicts and a document still at the cap. The ledger makes the instruction a lookup with an id, which is the difference between a norm and a gate.</p>
+
+  <h3>(d) Convergence versus correctness</h3>
+  <p>The trade is explicit and it is favourable in one direction only if the arithmetic holds. Grilling costs <strong>+3–8 dispatches, once, per feature</strong>. Cascade and re-litigation rounds cost <strong>tens of dispatches, repeatedly</strong>: ~15 re-confirmation dispatches on one document of <code>longhorizon-daily-baseline</code>; PLAN v4–v7 and v10–v15 on <code>iv-snapshot-store-postgres</code> entirely bookkeeping; 54 re-filings of one hash on <code>pdlc-engineering-loop</code>.</p>
+  <p>Nothing in the gate set is relaxed. Structural completeness (<code>isComplete</code> over <code>REQUIRED_HEADINGS</code>) is untouched. Verdict grammar is untouched — R1-5 <em>tightens</em> it. Approval anchors are untouched — R1-1 makes them harder to falsify. The erratum protocol's fail-closed rules (untagged High findings fail closed; R4 halts to a POSTMORTEM) are untouched. The DoD mutation floor is untouched. <strong>What changes is when discovery happens and whether a settled question can be asked again.</strong></p>
+
+  <h3>(e) What not to adopt</h3>
+  <div class="tablewrap">
+    <table>
+      <caption>Mechanisms deliberately rejected, with reasons.</caption>
+      <thead><tr><th>Mechanism</th><th>Verdict</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>One ticket per session (<code>to-tickets</code>)</td>
+          <td>Reject</td>
+          <td>Each ticket sized to one fresh context window assumes a human starts each session. The pipeline is <code>/loop</code>-driven and unattended; this would cap throughput at operator attention, which is the resource the pipeline exists to conserve.</td>
+        </tr>
+        <tr>
+          <td>HITL <code>grilling</code> verbatim</td>
+          <td>Adapt, don't adopt</td>
+          <td>"Wait for the user's answers" and "do not act until confirmed" have no referent here. Keep the frontier, the numbering, the recommended answers and the deferral rule; replace the authority with the ladder in (a).</td>
+        </tr>
+        <tr>
+          <td><code>prototype</code> as a phase</td>
+          <td>Optional spike only</td>
+          <td>Keep it as an AFK spike ticket, used only when a DECISIONS phase would otherwise argue from intuition — which the D-phase grounding rule already forbids ("confirm against existing code, not intuition"). Not a standing phase.</td>
+        </tr>
+        <tr>
+          <td>The wayfinder map issue</td>
+          <td>Reject</td>
+          <td><code>docs/_queue/QUEUE.md</code> plus the per-feature DECISIONS files already are the map, with dependency ordering and a drift gate. A second map is a second thing to keep in sync.</td>
+        </tr>
+        <tr>
+          <td><code>grill-with-docs</code> wrapper</td>
+          <td>Reject the wrapper, take the parts</td>
+          <td>It is literally "call <code>grilling</code>, then call <code>domain-modeling</code>". Adopt the two components (R3-1, R3-5); the wrapper adds a name and no mechanism.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <details>
+    <summary>Grilling adapted: the Phase G dispatch contract in full</summary>
+    <div class="details-body">
+      <p><strong>Inputs.</strong> Approved REQ at HEAD; <code>docs/_constraints/*</code>; <code>docs/_decisions/*</code>; the decisions-so-far index; repo <code>CONTEXT.md</code> glossary when present.</p>
+      <p><strong>Per round.</strong> The griller emits numbered questions, each carrying (i) the decision it hangs off, (ii) a recommended answer, (iii) the authority rung the answer is expected from. Questions whose prerequisites are unsettled are explicitly listed as deferred, with the blocking question's number.</p>
+      <p><strong>Grillee response.</strong> For each question: answer + rung + citation (REQ section, decision id, or <code>file:line</code>), or <code>ESCALATE</code>. No answer without a citation is admissible; an uncited answer is treated as <code>ESCALATE</code>, which is the fail-closed direction.</p>
+      <p><strong>Round termination.</strong> Frontier empty, or round 3 reached. Remaining deferred questions at round 3 are carried as ledger rows marked <em>open</em>, which makes them visible to FSPEC review rather than silently dropped.</p>
+      <p><strong>Outputs.</strong> One decision-ledger file per feature; zero or more rows appended to <code>docs/_queue/ESCALATIONS.md</code>; no edits to the REQ (a REQ defect found during grilling routes through the existing erratum channel, unchanged).</p>
+      <p><strong>Cost bound.</strong> 2 dispatches/round (griller + grillee) × ≤3 rounds, plus up to 2 exploration sub-agent dispatches for rung-3 facts = <strong>≤8</strong>.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ============================================================ §5 -->
+<section id="s5">
+  <h2><span class="snum">§5</span>Expected savings model</h2>
+  <p class="lede">Every number in this section is an <strong>estimate derived from two corpora</strong>, not a measurement. There is no instrumented baseline yet; §5's last paragraph states how to get one.</p>
+
+  <div class="tablewrap">
+    <table>
+      <caption>Modelled median feature. Baseline range from observed round counts across both repos.</caption>
+      <thead>
+        <tr><th>Scenario</th><th class="num">Review dispatches</th><th>Where the change comes from</th><th>Confidence</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Current (observed)</strong></td>
+          <td class="num">~60–90</td>
+          <td>22–24 best-case floor, plus 2–3 per extra round across six document windows, plus 3–4 per erratum batch</td>
+          <td><span class="chip low">Observed</span></td>
+        </tr>
+        <tr>
+          <td>Tier 1 only</td>
+          <td class="num">~52–78</td>
+          <td>Stale-hash fix and staleness dedup remove the re-filing class; anchor and DoD-index derivation remove two halt classes</td>
+          <td><span class="chip low">Higher</span></td>
+        </tr>
+        <tr>
+          <td><strong>Tier 1 + Tier 2</strong></td>
+          <td class="num">~35–60<br><span style="color:var(--muted);font-size:.8rem">(−30 to −45%)</span></td>
+          <td>Cascade rounds become cheap confirmations (R2-1); derivative stop ends capped documents at 4–6 rounds (R2-4); errata batch per phase-window (R2-2)</td>
+          <td><span class="chip med">Medium</span></td>
+        </tr>
+        <tr>
+          <td><strong>+ Tier 3 (M/L features)</strong></td>
+          <td class="num">~22–45<br><span style="color:var(--muted);font-size:.8rem">(−50 to −65%)</span></td>
+          <td>Discovery front-loaded into ≤8 grilling dispatches; decisions index removes the re-litigation class</td>
+          <td><span class="chip high">Low</span></td>
+        </tr>
+        <tr>
+          <td>+ Tier 3 (S features)</td>
+          <td class="num">below the above</td>
+          <td>Phase-skipping: TSPEC+PLAN merged, DECISIONS and PROPERTIES skipped — two of six review windows removed outright</td>
+          <td><span class="chip high">Low</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <figure class="viz">
+    <figcaption>Modelled review dispatches per median feature</figcaption>
+    <p class="figsub">Midpoint of each range. Estimates, not measurements — the ranges above carry the uncertainty.</p>
+    <div class="bars">
+      <div class="bar-row"><span class="bar-label">Current</span><span class="track"><span class="fill alt" style="width:100%"></span></span><span class="bar-val">~75</span></div>
+      <div class="bar-row"><span class="bar-label">+ Tier 1</span><span class="track"><span class="fill" style="width:86.7%"></span></span><span class="bar-val">~65</span></div>
+      <div class="bar-row"><span class="bar-label">+ Tier 1 &amp; 2</span><span class="track"><span class="fill" style="width:62.7%"></span></span><span class="bar-val">~47</span></div>
+      <div class="bar-row"><span class="bar-label">+ Tier 3 (M/L)</span><span class="track"><span class="fill" style="width:45.3%"></span></span><span class="bar-val">~34</span></div>
+    </div>
+    <div class="legend">
+      <span><i class="swatch s2"></i> observed baseline</span>
+      <span><i class="swatch s1"></i> modelled</span>
+    </div>
+    <p class="axisnote">Scale: 0 → 75 dispatches.</p>
+  </figure>
+
+  <h3>Measurement plan</h3>
+  <p>The pipeline already emits most of what is needed, so the baseline is a query, not new instrumentation:</p>
+  <ul>
+    <li><strong>Round counts per document type</strong> are derivable from the <code>CROSS-REVIEW-{role}-{doc}-v{N}</code> basenames on disk — the same derivation <code>deriveRoundWindow</code> performs.</li>
+    <li><strong>Per-dispatch payload size</strong> is already reported through <code>report.learningsInjection</code>.</li>
+    <li><strong>Erratum events and halts</strong> are countable from POSTMORTEM files and the erratum changelog rows.</li>
+  </ul>
+  <p>Protocol: capture these three series for the last 3 completed features as the pre-change baseline, ship Tier 1, then compare the next 3 features. Tier 2 and Tier 3 each get their own 3-feature window, one tier at a time — running them together makes the result uninterpretable. Report the derivative signal (rounds until no new ≥Medium) alongside the total, since that is the quantity R2-4 is supposed to move.</p>
+</section>
+
+<!-- ============================================================ §6 -->
+<section id="s6">
+  <h2><span class="snum">§6</span>Rollout and correctness safeguards</h2>
+
+  <h3>Gating</h3>
+  <p>Everything in Tiers 2 and 3 ships the way the advisory tier shipped: <strong>config-gated, off by default</strong>. Concretely, in <code>.claude/pdlc.config.json</code>: <code>grilling.enabled: false</code>, <code>sizeTiers.enabled: false</code>, <code>cascadeConfirm.enabled: false</code>, <code>derivativeStop.enabled: false</code>. Tier 1 ships ungated because every item in it is a defect fix or a tightening of an existing gate.</p>
+
+  <h3>Experiment discipline</h3>
+  <ul>
+    <li><strong>One feature per experiment.</strong> A tier enabled on a queue-wide run produces a result nothing can attribute.</li>
+    <li><strong>Fail-closed gates stay fail-closed.</strong> Untagged High findings, erratum R4 halts, the completeness probe, the DoD mutation floor, the wave gate, the document oracles — none of these are in scope for relaxation, and no recommendation here touches them.</li>
+    <li><strong>Fail-open where the change is an optimization.</strong> The decisions-so-far index, like the learnings injection it borrows its budget machinery from, must fail open on every error path: a missing or unreadable index degrades to today's behaviour with a notice.</li>
+    <li><strong>Every new halt is an escalation row, not a new operator class.</strong> R2-5's split-halt and Phase G's unanswerable questions both land on <code>docs/_queue/ESCALATIONS.md</code>. The four-item operator surface is a contract — a stop condition outside it is a defect in the feature, per <code>pdlc/OPERATIONS.md</code>.</li>
+  </ul>
+
+  <h3>The skill-prompt path</h3>
+  <p>Tier 3 changes reviewer and author behaviour, which means editing <code>SKILL.md</code> files. Those edits do not go in through a feature branch quietly: <strong>skill-prompt changes go through a <code>CONSOLIDATION-PROPOSAL</code> with human review</strong>, per the consolidation contract. Note also the manifest coupling — a <code>SKILL.md</code> edit reds the digest manifest until the digest is re-recorded, so a Tier 3 wave must budget for that step.</p>
+
+  <h3>What the 2026-08-27 consolidation pass already landed</h3>
+  <p>Several of the decisions this proposal leans on are already promoted, which is why Tier 1 and parts of Tier 2 are implementation work rather than argument:</p>
+  <div class="tablewrap">
+    <table>
+      <caption>Decisions promoted by the 2026-08-27 consolidation pass, with the recommendations that consume them.</caption>
+      <thead><tr><th>Decision</th><th>File</th><th>Consumed by</th></tr></thead>
+      <tbody>
+        <tr><td class="id">DEC-ERRROUTE-01</td><td><code>docs/_decisions/DECISIONS-erratum-routing.md</code></td><td>R2-3</td></tr>
+        <tr><td class="id">DEC-ERRROUTE-02</td><td><code>docs/_decisions/DECISIONS-erratum-routing.md</code></td><td>R2-2</td></tr>
+        <tr><td class="id">DEC-ERRROUTE-03</td><td><code>docs/_decisions/DECISIONS-erratum-routing.md</code></td><td>R2-2</td></tr>
+        <tr><td class="id">DEC-TERM-01</td><td><code>docs/_decisions/DECISIONS-loop-termination.md</code></td><td>R2-4</td></tr>
+        <tr><td class="id">DEC-TERM-02</td><td><code>docs/_decisions/DECISIONS-loop-termination.md</code></td><td>R1-4</td></tr>
+        <tr><td class="id">DEC-ORACLE-06</td><td><code>docs/_decisions/DECISIONS-test-oracle-mechanics.md</code></td><td>R3-4</td></tr>
+        <tr><td class="id">DEC-ERRROUTE-04</td><td><code>docs/_decisions/DECISIONS-erratum-routing.md</code></td><td>R2-1 <span class="chip low">promoted</span></td></tr>
+        <tr><td class="id">DEC-ANCHOR-01</td><td><code>docs/_decisions/DECISIONS-anchor-provenance.md</code></td><td>R1-1 <span class="chip low">promoted</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <p><strong>Bookkeeping status.</strong> The consolidation pass output is committed: <code>3fd31a8</code> landed all five files — <code>CONSOLIDATION-PROPOSAL-2026-08-27-1.md</code> (proposal rows R1–R7), <code>DECISIONS-erratum-routing.md</code>, <code>DECISIONS-loop-termination.md</code>, the <strong>DEC-ORACLE-06</strong> append to <code>DECISIONS-test-oracle-mechanics.md</code>, and the Pass&nbsp;3 entry in <code>.consolidation-log.md</code>. Every decision id and proposal row cited in this memo resolves against the tracked tree, so the citations here are not the D4 staleness class this memo argues against.</p>
+    <p><strong>Cross-repo consolidation pass 2026-08-27-2</strong> promoted two further decisions from an external corpus (the regime-ledger repo's own consolidation findings, relayed cross-session): <strong>DEC-ERRROUTE-04</strong> (pin-cascade confirmation, backing R2-1) and <strong>DEC-ANCHOR-01</strong> (harness-computed anchors, backing R1-1), both status-upgraded from proposed to <em>decided, implementation still pending</em>. See <code>docs/_decisions/.consolidation-log.md</code> Pass&nbsp;4.</p>
+  </div>
+</section>
+
+<!-- ============================================================ §7 -->
+<section id="s7">
+  <h2><span class="snum">§7</span>Appendix</h2>
+
+  <details>
+    <summary>A1 — Full round-count table, <code>yumo-plugins</code> (6 un-consolidated LEARNINGS to 2026-08-19)</summary>
+    <div class="details-body">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Feature</th><th>Rounds by document</th><th>Waste signal</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>pdlc-advisory-wave-gate</code></td>
+              <td>REQ 8, FSPEC 7, TSPEC 12, DECISIONS 11, PLAN 12, PROPERTIES 6, REVIEW 2, DoD 3</td>
+              <td>2 REVIEW-CAP halts (T, D); 1 erratum DECISIONS block; 5 consecutive rounds opened on it; 44 of 116 findings tagged Process</td>
+            </tr>
+            <tr>
+              <td><code>pdlc-learnings-injection</code></td>
+              <td>REQ 12, FSPEC 15, TSPEC 15, PLAN 15, PROPERTIES 15, DECISIONS 9, DoD 2</td>
+              <td>4 erratum halts, 3 on the delta-confirmation channel, two the same failure two phases apart; 4 documents pinned at the 15-round cap; zero <code>FINDING:</code> lines across 6 consecutive rounds (silent conformance decay); DoD clean in 2 (contrast)</td>
+            </tr>
+            <tr>
+              <td><code>pdlc-wave-resume</code></td>
+              <td>REQ 6, FSPEC 5, TSPEC 7, DECISIONS 5, PLAN 7, PROPERTIES 6, DoD 3</td>
+              <td>1 erratum; 7 PLAN/TSPEC confirmations that never moved the document; 2 cross-reviews with no verdict; 8 findings in one erratum round were hand-copied pins that are hash-derivable</td>
+            </tr>
+            <tr>
+              <td><code>pdlc-engineering-loop</code></td>
+              <td>REQ 14, FSPEC 15, TSPEC 15, PLAN 15, PROPERTIES 12, DECISIONS 12, CR 3, IMPL 10 waves, DoD 5 (v1–v4 FAILED)</td>
+              <td>172 cross-reviews; 4 of 6 documents at the 15-cap; 114 approving verdicts on the way to the ceiling; one stale dispatch hash re-filed in 54 reviews with zero edits owed; process artifacts 3.45&nbsp;MB vs 617&nbsp;KB of spec (5.6×); single cross-reviews of 20–37&nbsp;KB exceeding the documents reviewed</td>
+            </tr>
+            <tr>
+              <td><code>pdlc-review-convergence</code> (discarded)</td>
+              <td>REQ 9</td>
+              <td>REQ grew 1,000 → 2,629 lines / 311&nbsp;KB; byte-identical rounds; 18 cross-reviews totalling ≈530&nbsp;KB; one round-3 zero-delta dispatch (100% waste, since mechanized by the AC-2.8 DOC-SHA256 guard)</td>
+            </tr>
+            <tr>
+              <td><code>pdlc-rcv-budget-stop</code></td>
+              <td>REQ 5+4, FSPEC 4, TSPEC 1</td>
+              <td>61&nbsp;KB REQ at 99.8% of the size budget for one constant and ~4 pure functions</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Cross-feature patterns adopted at harvest:</strong> (A) routed-change budget sizing, 4 of 6 files; (B) full-interval re-grounding with enumerated absorptions and withdrawals, 4 of 6 files; (C) derivative convergence rule, 5 of 6 files, nominated independently by <code>pdlc-wave-resume</code> O-5 and <code>pdlc-engineering-loop</code> P-2; (D) byte-identical text across lenses is a generator signature, not agreement. Suppressed as learnings but live as mechanism proposals: Scope-tag under-use (DC-13 → fail-closed Scope gate, R2-7) and shared-operator-doc mis-tagging (Local → Cross-Feature).</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>A2 — Regime-ledger corroboration (8 features, 2026-08-27 survey)</summary>
+    <div class="details-body">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Feature</th><th>Signal</th></tr></thead>
+          <tbody>
+            <tr><td><code>longhorizon-product-scaffold</code></td><td>112 cross-review files for one scaffold feature. DECISIONS v2–v7 identical approval hash (<code>3e282f13…</code>) across 6 rounds; PLAN v2–v7 identical (<code>693805d4…</code>). REQ v1.4→v1.5→v1.6→v1.8 each triggered a downstream delta-confirmation sweep. Harvest nominates a pin-cascade round: own-hash only, batched sweeps.</td></tr>
+            <tr><td><code>longhorizon-daily-baseline</code></td><td>TSPEC 12 rounds, REQ 9. Roughly half the TSPEC rounds were delta re-confirmations — ~15 re-confirmation dispatches plus 4 erratum re-grounds. Engine defect: dispatches quoted a stale FSPEC sha (<code>ace3aa35…</code>) as "current".</td></tr>
+            <tr><td><code>macro-nightly-job</code></td><td>TSPEC 8, REQ 6+, FSPEC 6. Rounds 3+ overwhelmingly cascade-confirmation. Harvest: "the expensive part is not getting the spec right; it is proving, repeatedly, that upstream edits have not silently invalidated approved downstream text."</td></tr>
+            <tr><td><code>iv-snapshot-store-postgres</code></td><td>PLAN 15 rounds, TSPEC 9. PLAN v4–v7 and v10–v15 plus TSPEC v7–v9 were entirely provenance bookkeeping (SHAs, counts). One squash invalidated 17 in-prose SHAs.</td></tr>
+            <tr><td><code>regime-swing-confirmation</code></td><td>188 cross-review files; 6 code-review rounds. REQ 15, FSPEC 15, TSPEC 15, PLAN 15, PROPERTIES 15, DECISIONS 14, REVIEW 5. Rule 5g fired at Phase R round 3; in-place revisions continued and nobody split. REQ at 92% of the 61,440-byte ceiling by round 2; ~90% eventually relocated to <code>docs/_constraints/</code>.</td></tr>
+            <tr><td><code>paper-book-strategy-generalization</code></td><td>TSPEC, PLAN, PROPERTIES at 15; DECISIONS 14; 140&nbsp;KB TSPEC. The 5-round per-invocation budget was converging while the lifetime budget kept re-opening. 6 ERRATUM re-filings; <code>pm-review</code> FINDING fail-closes.</td></tr>
+            <tr><td><code>structure-directional-options-scoring</code></td><td>159 <code>FINDING:</code> lines, 124 cross-feature-tagged. Rounds 10+ were stale-citation churn; one approval anchor re-filed across four reviews; 9 rounds on anchors.</td></tr>
+            <tr><td><code>regime-symbol-ladder</code></td><td>Included in the 8-feature survey; same cascade-confirmation family.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Mechanisms nominated by that corpus:</strong> harness-computed approval anchors; tree-derived DoD index as <code>max(CODE_REVIEW-*-v*)+1</code> from disk; verdict as a hard precondition; mechanical split-on-recurrence (a High finding blocking 2 consecutive rounds); REQ ≥90% byte-ceiling mechanical relocation; a Scope column in the findings table (under-tagging re-derived in 5 of 8 harvests).</p>
+      <p><strong>Paths:</strong> <code>regime-ledger/docs/completed/{91,93,94}-*/LEARNINGS-*.md</code>; <code>regime-ledger/docs/{longhorizon-daily-baseline,macro-nightly-job,paper-book-strategy-generalization,regime-swing-confirmation}/LEARNINGS-*.md</code>.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>A3 — Dispatch cost model and prompt anatomy</summary>
+    <div class="details-body">
+      <p><strong>Budgets.</strong> <code>MAX_REVIEW_ROUNDS = 5</code> per invocation; <code>MAX_LIFETIME_ROUNDS = 15</code> per document type (DEC-ROUNDS-02, operator decision 2026-08-10). A round-1 PASS phase costs 2 dispatches. Best case end-to-end before Phase I fan-out: <strong>22–24</strong> — R 2, F 3, T+D 3–7, P 3, PR 3, PT 1, CR 2, DOD 1, H 1, PUB 1–2, MERGE 0. Extra round: +2–3. Erratum batch: +3–4.</p>
+      <p><strong>Prompt composition, per dispatch.</strong> Per-docType grounding clause (1–3 lines) · <code>ORACLE_QUALITY_CLAUSE</code> · <code>ERRATUM_PROTOCOL_CLAUSE</code> · <code>PACING_CONTRACT_CLAUSE</code> (fixed boilerplate, every round) · resume opener embedding the <em>entire</em> document · <code>learningsBlock</code> ≤20&nbsp;KB (5 documents × 6&nbsp;KB). Dominant costs, in order: the full-document opener on resume, the 20&nbsp;KB learnings suffix, the fixed clause boilerplate.</p>
+      <p><strong>Redundancy already removed.</strong> Delta-scoped rounds 2+ exist (<code>REVIEW_CONVERGENCE_CLAUSE</code> with a git-diff instruction and a High-only approval bar). Remaining redundancy is structural: CR and DoD are two dispatch chains over the shipped diff with adjacent lenses and no shared state; PT exists in two mutually-exclusive runtime paths (legacy worktree, wave V-wave); the land-proof retry is deliberate redundancy that catches a confirmer PASS without token landing.</p>
+      <p><strong>Existing knobs, unchanged by this proposal.</strong> <code>PHASE_DOD_ENABLED</code>, <code>PHASE_H_ENABLED</code>, <code>MODEL_DEFAULT="opus"</code>, <code>MODEL_IMPLEMENTATION="sonnet"</code>, <code>MODEL_QUEUE="sonnet"</code>, the round caps, <code>mergeMode</code>, the <code>learningsInjection</code> budgets, <code>forcePhases</code>.</p>
+      <p><strong>SKILL.md composition.</strong> Reviewer and author SKILL files run 279–331 lines, of which ~45–55% is shared procedural boilerplate (Git Workflow, Review Process, Delta Re-Review, verdict contract). Role judgment is concentrated in one "Review Scope" block per file — which is why prompt-level trimming has low headroom and round-level changes have high headroom.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>A4 — mattpocock skill mechanisms referenced (summaries)</summary>
+    <div class="details-body">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Skill</th><th>Primary constraint</th><th>Mechanism used here</th></tr></thead>
+          <tbody>
+            <tr><td><code>grilling</code></td><td>Session incomplete until the frontier is empty; user confirms before action</td><td>Design tree + frontier rounds + numbered questions with recommended answers + deferral of dependent questions. HITL replaced by the authority ladder (§4a). Sub-agents find facts; the authority is never asked for them.</td></tr>
+            <tr><td><code>to-spec</code></td><td>Pure synthesis, no interview; minimize seams</td><td>FSPEC authoring after Phase G: no discovery, decisions pre-made, existing seams preferred, domain glossary consumed.</td></tr>
+            <tr><td><code>code-review</code></td><td>Two parallel axes (Standards, Spec), never merged or re-ranked</td><td>R3-4's two-axis post-implementation gate: pm lens → Spec, te lens → Standards, separate summaries, no overall winner, repo standard overrides the smell baseline.</td></tr>
+            <tr><td><code>tdd</code></td><td>Red before green; pre-agreed seams only; one slice per cycle</td><td>Already the shape of <code>se-implement</code>; cited here only for its <code>CONTEXT.md</code> domain-language input (R3-5).</td></tr>
+            <tr><td><code>triage</code></td><td>Exactly one category + one state role per issue; no re-asking resolved questions</td><td>"No re-asking resolved questions from prior triage" is the never-re-litigate rule in another domain (R3-2).</td></tr>
+            <tr><td><code>to-tickets</code></td><td>Tracer-bullet vertical slices, one context window each, dependency-ordered</td><td>Rejected — see §4(e). The dependency-ordered publish is already <code>QUEUE.md</code>.</td></tr>
+            <tr><td><code>prototype</code></td><td>One question answered; throwaway branch</td><td>Optional AFK spike only, when a DECISIONS phase would otherwise argue from intuition.</td></tr>
+            <tr><td><code>research</code></td><td>Primary sources only; every claim cited; background agent</td><td>The citation discipline is the rung-3 rule in the authority ladder: verified, <code>file:line</code>.</td></tr>
+            <tr><td><code>diagnosing-bugs</code></td><td>No progress without a tight red-capable loop</td><td>Not adopted here; noted because "refuse to proceed without a mechanical signal" is the same stance R2-4 takes on convergence.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+
+  <details>
+    <summary>A5 — Citation caveat and source list</summary>
+    <div class="details-body">
+      <p><strong>Caveat.</strong> The <code>LEARNINGS-*.md</code> files are the surviving primary source for both corpora. Cross-review files are deleted after harvest by design (the <code>guard-harvest-before-delete</code> hook permits deletion only once <code>LEARNINGS-{feature}.md</code> exists on the branch). Round counts, file counts and byte totals in this memo are therefore as recorded at harvest time and cannot be re-derived from the current tree for harvested features. Where a figure could be re-derived, the derivation is named (basename listing for round windows, <code>report.learningsInjection</code> for payload size).</p>
+      <p><strong>Sources.</strong></p>
+      <ul>
+        <li>Corpus A — 6 un-consolidated <code>LEARNINGS-*.md</code> in <code>yumo-plugins</code> to the 2026-08-19 boundary.</li>
+        <li>Corpus B — 8 features surveyed in <code>regime-ledger</code>, paths listed in A2.</li>
+        <li>Cost model — derived from <code>pdlc/workflows/orchestrate-dev.js</code> (phase dispatch table, clause constants, round-cap constants).</li>
+        <li>Terminology and contracts — <code>pdlc/OPERATIONS.md</code> (§Review loop mechanics, §Phase graph and the erratum channel, §Implementation waves, §Operator surface) and <code>CLAUDE.md</code>.</li>
+        <li>Promoted decisions — <code>docs/_decisions/DECISIONS-erratum-routing.md</code>, <code>docs/_decisions/DECISIONS-loop-termination.md</code>, <code>docs/_decisions/DECISIONS-test-oracle-mechanics.md</code>, <code>docs/_decisions/DECISIONS-review-severity-bars.md</code> (DEC-ERR-01).</li>
+        <li>External mechanisms — the mattpocock skills corpus, summarized in A4.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<footer class="docfoot">
+  docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html · proposal, not a decision record · all savings figures are estimates
+</footer>
+
+</main>
+</div>
+</body>
+</html>
