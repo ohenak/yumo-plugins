@@ -43,6 +43,21 @@
 
 ## Positive Observations
 
+- **Moving the scope unit from the file to the decision is the right correction, and it was made at the right altitude.** v2's F-12 could have been "answered" with an allow-list of filenames; instead G-1 now states a property of a decision ("carries a decision id … lives under `docs/_decisions/` or the feature's own `DECISIONS-{feature}.md`") and adds the empty-result disposition ("a file with no decision id contributes zero lines: an ordinary empty result, not a failure") — a total rule, no special cases. F-16 is about the predicate's edges, not its shape; the shape is now correct and one paragraph closes the gap.
+- **C-5's `maxEntries` rationale replaced an analogy with a measurement, and the measurement checks out.** "41 ids under `docs/_decisions/` + largest feature record (14) = 55, plus headroom" is reproducible at HEAD in both terms — I re-derived 41 heading-carried ids and confirmed `pdlc-headless-engine` at 14 is the maximum feature record. R-5 and A-1 were then re-split honestly rather than left overclaiming: `maxEntries` measured, `maxBytes` still an analogy and labelled so. That is the exact shape a threshold declaration should have.
+- **REQ-DECLEDGER-04's parenthetical is a real precision gain, not a patch.** "(no-id files are not this path — G-1)" separates *an empty result* from *a failure to render*, which is what stops a tester writing a fail-open test whose fixture actually exercises the ordinary path and passes vacuously. Two mechanisms that look alike from the outside now have one criterion each.
+- **REQ-DECLEDGER-03's added sentence pins where the oracle reads from.** "The test reads the **cited record**, not the line alone: the line need not carry the decision's own citations" resolves an ambiguity I had not filed — it tells the TSPEC author that the index line is not the evidence surface, so no test will assert citation text on a line the REQ never promised would carry it.
+- **Both of round 2's non-gating findings were taken, not deflected.** AC-06 dropped the second observable outright rather than qualifying it, and G-2's heading now cites C-3. Nothing in the diff widens scope, and nothing in the unchanged sections regressed.
+
 ## Recommendation
 
+**Needs revision** — one High (F-16), and the revision is narrow.
+
+F-16 needs one paragraph in G-1: a black-box predicate separating a decision record from a citation of one, a replacement exemplar that exists at HEAD, and an explicit disposition for the three `CONSOLIDATION-PROPOSAL-*.md` files and `.consolidation-log.md`. With that, C-5's "41" becomes consistent with the rule that produced it, O-1's carrier routing narrows to formatting detail the set no longer depends on, and AC-01's set-equality oracle becomes writable from the document alone — which is the whole point of the promise AC-01 makes.
+
+F-17 (one grammar, not two) and F-18 (one clause in AC-01's Given) are each a sentence and non-gating. F-19 is optional. Everything else in the changed sections landed cleanly: the disposition table above records three of round 2's four findings resolved, and the round's arithmetic claims verify against HEAD.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
