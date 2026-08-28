@@ -10,12 +10,12 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4}.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.3 | 2026-08-28 |
+| Draft | pm-author | 1.4 | 2026-08-28 |
 
 ## 1. Problem / Context
 
@@ -52,23 +52,28 @@ re-filing; this one addresses decision-level re-litigation.
 review dispatch includes a rendered index of the closed decisions in scope for the document
 under review: one line per decision carrying **exactly two required fields** — the decision id
 and a one-line statement of what it decided — plus a **source citation** naming the record file
-and, where the record places the decision under a heading, that heading. No other field is
-required; where a record carries an origin
+and the record's heading. No other field is required; where a record carries an origin
 or evidence datum it may follow, and where it does not the line renders without it — not a
-defect. **In scope** is a derivable set, not a per-document relevance judgement, and **its unit
-is the individual decision, not the file**: a decision is in scope when it carries a decision id
-in the project's `DEC-{NAMESPACE}-{NUMBER}` convention (O-3) and lives under `docs/_decisions/`
-or the feature's own `DECISIONS-{feature}.md`, **on the line that is the decision's own record,
-not a line citing it**: the id opens the line as its subject (a heading or a line-leading list
-item), and `NUMBER` is numeric. So at HEAD `DEC-AWG-Q1` — the sole non-numeric token, occurring
-once in prose as a range shorthand in `DECISIONS-advisory-wave-gate-questions.md` — is a
-citation, and that file contributes zero lines; and a record may open a numbered heading and be
-cited again later in its own file without contributing a second line (`DEC-CONS-01`,
-`docs/completed/pdlc-consolidation-agent/DECISIONS-pdlc-consolidation-agent.md`). A file with no
-decision record contributes zero lines: an ordinary empty result, not a failure — the three
-`CONSOLIDATION-PROPOSAL-*.md` files and `.consolidation-log.md` under `docs/_decisions/` cite
-ids but record none, and are on this path. C-5's 41 is this count. Which markup forms the
-renderer recognises as record carriers is TSPEC material (O-1). All sources exist today — this REQ mints no new record file type, adds no field to any existing
+defect. **In scope** is a derivable set, not a per-document relevance judgement, and **its unit is the
+individual decision, not the file**: a decision is in scope when it carries a decision id in the
+project's `DEC-{NAMESPACE}-{NUMBER}` convention (O-3) with `NUMBER` numeric, in a
+`DECISIONS-*.md` file under `docs/_decisions/` or the feature's own `DECISIONS-{feature}.md`,
+**on the line that is the decision's own record, not a line citing it**: the carrier is a
+**heading**, the id opening the heading's content after any heading marker or section number
+(`## 3. DEC-CONS-01: …`, `docs/completed/pdlc-consolidation-agent/`). The **distinct id is the
+key and the first record wins**, files in path order: any later line naming an already-recorded
+id — same file or another — is a citation, so a twice-opened heading renders once
+(`DEC-LOOP-01`…`06`, `docs/completed/pdlc-engineering-loop/DECISIONS-pdlc-engineering-loop.md`).
+Three HEAD consequences then follow from the rule rather than stand beside it: `DEC-AWG-Q1`,
+occurring once in prose as a range shorthand in `DECISIONS-advisory-wave-gate-questions.md`, is
+a citation twice over (prose, non-numeric), so that file contributes zero lines; the three
+`CONSOLIDATION-PROPOSAL-*.md` files and `.consolidation-log.md` fall outside the file scope, the
+log's four line-leading corroboration items under its "Corroborated, not re-promoted" heading
+naming ids already recorded in sibling files besides; and a feature whose ids carry no namespace
+segment contributes zero lines (`DECISIONS-pdlc-plugin-retirement.md`, `### DEC-01` …) — by
+design here, normalisation being O-3's to own. A file with no decision record contributes zero
+lines: an ordinary empty result, not a failure. C-5's 41 is this count. G-1's carrier form and
+key are the contract; O-1 routes only recognition detail within them. All sources exist today — this REQ mints no new record file type, adds no field to any existing
 record shape, and does not require every feature to author one.
 
 **G-2 (never-re-litigate rule is reviewer-side, config-gated, default off, one key with G-1 —
@@ -305,8 +310,10 @@ and REQ-DECLEDGER-07 pinning the bound whatever the values.
 ## 7. Obligations / Open
 
 **O-1** Which lines are omitted when the set exceeds `maxEntries` / `maxBytes`
-(REQ-DECLEDGER-07), and which markup forms count as record carriers, is TSPEC material. The in-scope set
-itself is *not* routed — G-1 states it.
+(REQ-DECLEDGER-07) is TSPEC material, as is recognition detail *within* G-1's carrier form
+(heading numbering, bold or backticked ids). Membership is *not* routed: G-1 fixes the carrier
+form and the first-record-wins key, so adding a carrier form — a table row, a list item — is a
+REQ revision, not a TSPEC choice.
 
 **O-2** Whether the wiring needs a `SKILL.md` edit or can go through dispatch construction is a
 TSPEC choice (NG-7). Either path stays config-gated (C-1/C-2).
