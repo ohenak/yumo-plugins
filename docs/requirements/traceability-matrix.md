@@ -179,8 +179,8 @@ sections; roll-up below.
 
 ## pdlc-loop-economics (2026-08-28)
 
-Upstream: `docs/pdlc-loop-economics/REQ-pdlc-loop-economics.md`. Downstream:
-`docs/pdlc-loop-economics/FSPEC-pdlc-loop-economics.md`. Authoritative per-criterion mapping
+Upstream: `docs/completed/pdlc-loop-economics/REQ-pdlc-loop-economics.md`. Downstream:
+`docs/completed/pdlc-loop-economics/FSPEC-pdlc-loop-economics.md`. Authoritative per-criterion mapping
 lives in the FSPEC's §6 traceability table and PROPERTIES §7; roll-up below.
 
 | User story | Requirements | FSPEC |

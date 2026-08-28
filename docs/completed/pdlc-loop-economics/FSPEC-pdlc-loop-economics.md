@@ -11,7 +11,7 @@ Feature: pdlc-loop-economics
 | Downstream | TSPEC, DECISIONS, PLAN, PROPERTIES |
 | Scope | Anchor-computation ownership (M1a/M1b), finding-identity normalization and carried/new accounting (M1d), DoD round-index derivation (M1c), pin-cascade confirmation round grammar (M2), derivative-stop convergence predicate (M3) |
 | Cross-Reviews | (none yet) |
-| LEARNINGS | docs/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
+| LEARNINGS | docs/completed/pdlc-loop-economics/LEARNINGS-pdlc-loop-economics.md |
 
 # FSPEC pdlc-loop-economics
 

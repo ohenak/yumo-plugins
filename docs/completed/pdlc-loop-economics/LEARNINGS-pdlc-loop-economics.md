@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Feature | pdlc-loop-economics |
-| REQ | docs/pdlc-loop-economics/REQ-pdlc-loop-economics.md |
+| REQ | docs/completed/pdlc-loop-economics/REQ-pdlc-loop-economics.md |
 | Date Completed | 2026-08-28 |
 | Total Iterations | REQ: 1, FSPEC: 1, TSPEC: 1, PLAN: 1, PROPERTIES: 1, DECISIONS: 1, DOD: 2 (CODE_REVIEW-v1, CODE_REVIEW-v2) |
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → PROPERTIES → IMPL |
