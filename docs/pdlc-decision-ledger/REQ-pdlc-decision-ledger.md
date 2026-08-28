@@ -10,12 +10,12 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3}.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.2 | 2026-08-28 |
+| Draft | pm-author | 1.3 | 2026-08-28 |
 
 ## 1. Problem / Context
 
@@ -58,10 +58,17 @@ or evidence datum it may follow, and where it does not the line renders without 
 defect. **In scope** is a derivable set, not a per-document relevance judgement, and **its unit
 is the individual decision, not the file**: a decision is in scope when it carries a decision id
 in the project's `DEC-{NAMESPACE}-{NUMBER}` convention (O-3) and lives under `docs/_decisions/`
-or the feature's own `DECISIONS-{feature}.md` — whatever carries the id (heading or bullet: at
-HEAD `DEC-AWG-Q1`…`Q5` are bullets in `DECISIONS-advisory-wave-gate-questions.md`). A file with
-no decision id contributes zero lines: an ordinary empty result, not a failure. Which carriers
-the renderer recognises is TSPEC material (O-1). All sources exist today — this REQ mints no new record file type, adds no field to any existing
+or the feature's own `DECISIONS-{feature}.md`, **on the line that is the decision's own record,
+not a line citing it**: the id opens the line as its subject (a heading or a line-leading list
+item), and `NUMBER` is numeric. So at HEAD `DEC-AWG-Q1` — the sole non-numeric token, occurring
+once in prose as a range shorthand in `DECISIONS-advisory-wave-gate-questions.md` — is a
+citation, and that file contributes zero lines; and a record may open a numbered heading and be
+cited again later in its own file without contributing a second line (`DEC-CONS-01`,
+`docs/completed/pdlc-consolidation-agent/DECISIONS-pdlc-consolidation-agent.md`). A file with no
+decision record contributes zero lines: an ordinary empty result, not a failure — the three
+`CONSOLIDATION-PROPOSAL-*.md` files and `.consolidation-log.md` under `docs/_decisions/` cite
+ids but record none, and are on this path. C-5's 41 is this count. Which markup forms the
+renderer recognises as record carriers is TSPEC material (O-1). All sources exist today — this REQ mints no new record file type, adds no field to any existing
 record shape, and does not require every feature to author one.
 
 **G-2 (never-re-litigate rule is reviewer-side, config-gated, default off, one key with G-1 —
@@ -158,13 +165,13 @@ material (O-1).
 **Source:** US-01.
 
 **Who:** review-loop driver, constructing a review dispatch.
-**Given:** `decisionLedger.enabled` is `true`.
+**Given:** `decisionLedger.enabled` is `true`, and the in-scope set is within C-5's bounds.
 **When:** a dispatch prompt for a document under review is constructed.
 **Then:** the prompt includes a rendered index with one line per decision in G-1's in-scope set,
 each line carrying the decision id, a one-line statement and a source citation as G-1 defines it,
 and no other required field. Derivable, so the
-expected index is checkable as **set equality, not containment**, over the **rendered** set: the
-in-scope set after REQ-DECLEDGER-07's budgeting. The index reflects records as they exist at
+expected index is checkable as **set equality, not containment**, over G-1's in-scope set;
+over-budget omission is REQ-DECLEDGER-07's alone. The index reflects records as they exist at
 dispatch-construction time, never a snapshot carried forward within the round window (mirrors
 the shipped `REQ-LOOPECON-01b` recompute-at-dispatch contract).
 
@@ -206,7 +213,7 @@ dispatch-construction time.
 **When:** the dispatch prompt is constructed.
 **Then:** where **every** source is unavailable, the dispatch falls back to REQ-DECLEDGER-02's
 disabled behavior — no index, no rule text. Where **one decision of several** fails to render,
-that line is omitted and the rest render (no-id files are not this path — G-1): a decision
+that line is omitted and the rest render (files with no decision record are not this path — G-1): a decision
 absent from the index is one a reviewer may freely challenge, the safe direction. Neither path is a halt or a new operator-facing failure class;
 it degrades as `learningsInjection`'s fail-open path does.
 
@@ -260,8 +267,10 @@ exceeding `maxBytes`, omitted whole, never truncated mid-line, without aborting 
 **Who:** review-loop driver.
 **Given:** one fixed set of reviewer outputs (verdict lines, counts, any `FINDING:` lines) for a
 round, replayed twice — once with `decisionLedger.enabled` `true`, once `false`. Reviewer
-output is a recorded fixture, and the replay compares the **accounting** leg; the dispatch-construction leg
-legitimately differs.
+output is a recorded fixture, and the replay compares the **accounting** leg; the
+dispatch-construction leg differs in exactly one way, asserted not merely allowed: the `false`
+run's dispatch is byte-identical to C-2's baseline (REQ-DECLEDGER-02) and the `true` run's
+carries the rendered index (REQ-DECLEDGER-01).
 **When:** the driver accounts for that round.
 **Then:** every driver-side outcome is identical across the two runs: the convergence decision,
 `DEC-LOOPECON-06`'s identity-triple dedupe and the resulting open-finding ledger, the
@@ -296,7 +305,7 @@ and REQ-DECLEDGER-07 pinning the bound whatever the values.
 ## 7. Obligations / Open
 
 **O-1** Which lines are omitted when the set exceeds `maxEntries` / `maxBytes`
-(REQ-DECLEDGER-07), and which id carriers are recognised, is TSPEC material. The in-scope set
+(REQ-DECLEDGER-07), and which markup forms count as record carriers, is TSPEC material. The in-scope set
 itself is *not* routed — G-1 states it.
 
 **O-2** Whether the wiring needs a `SKILL.md` edit or can go through dispatch construction is a
