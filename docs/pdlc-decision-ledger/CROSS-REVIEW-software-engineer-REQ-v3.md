@@ -25,8 +25,28 @@ re-litigated.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | With G-1's unit pinned to the id-bearing decision, `DECISIONS-advisory-wave-gate-questions.md` contributes zero index lines at HEAD (F-01) even though it self-declares "**Project-level decision record.**" (`:5`). Is that the intended outcome — an operator wanting those five in the index must first mint ids in the `DEC-{NAMESPACE}-{NUMBER}` convention — or should the REQ say so explicitly so nobody reads the omission as a rendering defect under REQ-DECLEDGER-04? |
+| Q-02 | REQ-DECLEDGER-01's set equality is now over the **rendered** set ("the in-scope set after REQ-DECLEDGER-07's budgeting"), while O-1 routes *which* lines are dropped when the budget binds to TSPEC. That is consistent — the oracle is writable at any corpus below budget — but it means the AC is only exercisable in its strong form under budget. Is a below-budget corpus the intended fixture posture for AC-01, with over-budget behaviour tested against REQ-DECLEDGER-07 alone? |
+
 ## Positive Observations
+
+- The unit fix is the right shape: G-1 pins the unit (individual id-bearing decision), states the zero-line case as an ordinary result rather than a failure, routes carrier recognition to TSPEC via O-1, and REQ-DECLEDGER-04 was re-cut to the same unit in the same edit. Three sites moved together, which is why the round closes rather than shifting the ambiguity downstream.
+- `maxEntries` `40` → `60` is now a measured default, and it verifies: 41 id-bearing decisions under `docs/_decisions/` + 14 in the largest feature record = 55, with headroom. R-5 and A-1 were both narrowed to say only `maxBytes` remains an analogy — the REQ no longer over-claims measurement it does not have.
+- REQ-DECLEDGER-08's replay criterion got more honest, not weaker: naming the reviewer output a recorded fixture and scoping the comparison to the **accounting** leg makes the no-change guarantee actually replayable, where comparing whole runs would have been trivially false at the dispatch-construction leg.
+- REQ-DECLEDGER-06's "the observable is the **prompt text** … the reviewer's prose is the intended effect, not an asserted outcome" is the correct falsifiability line for a reviewer-side mechanism, and it keeps `DEC-LOOPECON-06`'s exact-match triple (shipped at `pdlc/workflows/orchestrate-dev.js:6740-6798`) as the sole driver-side key — no second identity to maintain.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Every High and Medium finding from v2 is resolved, and the resolutions verify against HEAD rather than
+against the document's own prose. One new Medium (F-01) — a false bullet-carrier exemplar in G-1 — is
+recorded and non-gating: the in-scope set stays derivable without it, and the fix is a single clause the
+FSPEC author can land in passing.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
