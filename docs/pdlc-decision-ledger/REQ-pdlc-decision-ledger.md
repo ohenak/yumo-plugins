@@ -184,9 +184,11 @@ truncated mid-line; which lines are omitted is TSPEC material (O-1).
 **Who:** review-loop driver, constructing a review dispatch.
 **Given:** `decisionLedger.enabled` is `true`.
 **When:** a dispatch prompt for a document under review is constructed.
-**Then:** the dispatch prompt includes a rendered index with one line per closed decision
-relevant to the document, each line carrying at minimum the decision id, a one-line
-statement, the phase/round it closed in, and its citation; the index reflects decision
+**Then:** the dispatch prompt includes a rendered index with one line per decision in the
+in-scope set defined in G-1 (every record under `docs/_decisions/` plus the feature's own
+`DECISIONS-{feature}.md` if it exists — a derivable set, so the expected index is a set-equality
+check, not containment), each line carrying the decision id, a one-line statement and a source
+citation naming the record file and heading, and no other required field; the index reflects decision
 records as they exist at dispatch-construction time, never a snapshot carried forward from an
 earlier dispatch in the same round window (mirrors the already-shipped
 `REQ-LOOPECON-01b` contract: recomputed at dispatch-construction time, never a mint-time
@@ -206,15 +208,18 @@ text is ever rendered and the never-re-litigate rule (G-2) is never applied.
 
 **Source:** US-01.
 
-**Who:** review-loop driver, accounting for a completed round's findings.
-**Given:** `decisionLedger.enabled` is `true`; a finding in the round names a decision id that
-was present in that dispatch's rendered index.
-**When:** the round's findings are accounted for convergence purposes.
-**Then:** that finding blocks approval (counts toward the High-only convergence bar) only if
-both hold: it is High severity, and it cites evidence not present in the decision's original
-citation. A finding naming an indexed decision id that meets neither or only one condition is
-recorded in the cross-review artifact per existing artifact convention but does not by itself
-block approval.
+**Who:** the reviewer authoring a cross-review (the rule is reviewer-side; the driver never
+reads a decision id — see NG-4 and REQ-DECLEDGER-08).
+**Given:** `decisionLedger.enabled` is `true`.
+**When:** a review dispatch prompt is constructed.
+**Then:** the prompt carries, adjacent to the index, rule text instructing the reviewer not to
+file a finding that re-opens an indexed decision unless **both** hold: the finding is High
+severity, and it cites evidence that was not part of that decision's own record. Whether
+evidence is new is a reviewer judgement, deliberately not a machine predicate: no parser
+compares citations. Boundary exemplars the rule text must make decidable for a reviewer — *in*
+(clears the bar): a shipped behaviour that changed after the decision was recorded, cited at
+the changed source. *Out* (does not clear it): the same source the decision already cites,
+re-cited at a different line or a later commit with no behavioural change.
 
 ### REQ-DECLEDGER-04 Index construction fails open, never silently stale (P0)
 
@@ -225,8 +230,11 @@ block approval.
 and/or the feature's own decision records) is missing, unreadable, or fails to parse at
 dispatch-construction time.
 **When:** the dispatch prompt is constructed.
-**Then:** the driver falls back to the disabled behavior of REQ-DECLEDGER-02 for that
-dispatch — no index rendered, no never-re-litigate enforcement — and this fallback is never a
+**Then:** where **every** source is unavailable, the driver falls back to the disabled behavior
+of REQ-DECLEDGER-02 for that dispatch — no index rendered, no rule text. Where **one record of
+several** is missing, unreadable or unparseable, that record's line is omitted and the
+remaining lines are rendered: a decision absent from the index is one a reviewer may freely
+challenge, which is the safe direction. Either way the fallback is never a
 halt and never a new operator-facing failure class; it degrades exactly as
 `learningsInjection`'s own fail-open path does today.
 
@@ -239,7 +247,9 @@ halt and never a new operator-facing failure class; it degrades exactly as
 malformed key among `enabled`, `maxEntries`, `maxBytes`.
 **When:** config is parsed for a dispatch.
 **Then:** only that key falls back to its declared default (C-5); the other keys in the
-`decisionLedger` block, and every other config block, are unaffected — mirrors the shipped
+`decisionLedger` block, and every other config block, are unaffected. The block's key set is
+exactly the three of C-3, so this is verifiable as set equality over the full enumeration
+crossed with {wrong type, malformed, absent}, not containment — mirrors the shipped
 `REQ-LOOPECON-08` precedent.
 
 ### REQ-DECLEDGER-06 Decision id is the reopening dedupe key across rounds (P1)
