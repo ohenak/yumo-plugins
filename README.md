@@ -40,7 +40,7 @@ Each review loop runs reviewers **in parallel** as evaluators and the document o
 
 Round indices are derived from the `CROSS-REVIEW-{role}-{doc}-v{N}` files actually on disk, and the loop refuses to overwrite one — review history is append-only. A POSTMORTEM refuses its phase on any later run until a human adds `RESOLVED: yes` to it; no agent ever writes that marker.
 
-The PR can be merged by the pipeline itself in Phase MERGE, but `mergeMode` ships **`off`**, so today's default is still a human step: `awaiting-merge` → `done` after you merge it. A self-modification guard also means Phase MERGE never merges a PR that touches the pipeline's own workflow/skill surfaces, whatever `mergeMode` is set to (this repo's own queue rows are always in that category — see the Bootstrapping note in `docs/_queue/QUEUE.md`).
+The PR can be merged by the pipeline itself in Phase MERGE, but `mergeMode` ships **`off`**, so today's default is still a human step: `awaiting-merge` → `done` after you merge it. A self-modification guard also means Phase MERGE never merges a PR whose changed files match `merge.guardPaths` (default: `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` — this repo's own `.claude/pdlc.config.json` extends that set to also cover `pdlc/engine/`), whatever `mergeMode` is set to (this repo's own queue rows are always in that category — see the Bootstrapping note in `docs/_queue/QUEUE.md`).
 
 ### Running a whole queue
 
@@ -127,6 +127,8 @@ claude plugin install pdlc
 |---|---|---|
 | `guard-harvest-before-delete` | Before any `rm`/`del` Bash call | Blocks deletion of `CROSS-REVIEW-*` or `CODE_REVIEW-*` files unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | After Write or Edit | Warns if a skill output doc is missing the `Scope:` field |
+| `check-req-size` | After Write or Edit | Warns if a `REQ-*.md` doc exceeds the pdlc REQ size budget (700 lines or 60 KB) |
+| `check-finding-grammar` | After Write or Edit | Warns if an erratum-round `CROSS-REVIEW-*` doc has findings not expressed as line-leading `FINDING:` lines |
 | `nudge-consolidation` | Session start | Reminds to run `consolidate-learnings` when stale LEARNINGS files are detected |
 
 ---
