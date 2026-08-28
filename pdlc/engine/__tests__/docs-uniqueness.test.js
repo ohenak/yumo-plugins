@@ -122,9 +122,10 @@ test("AT-2.2: the plugin's three `claude plugin install` sites are asserted as a
   // These line pins move whenever pdlc/README.md gains a section above the install block;
   // `pdlc-learnings-injection` added the "Prior-feature learnings injection" section (24 lines)
   // ahead of them, so 98/104 became 132/138, and `pdlc-engineering-loop` added the
-  // "Operator surface" section (19 lines), so 132/138 became 151/157. The pin is deliberate —
-  // it asserts the sites as a POSITIVE at a known locus rather than merely counting
-  // occurrences — so it is re-pinned, not relaxed.
-  locate("pdlc/README.md", 151, "claude plugin install");
-  locate("pdlc/README.md", 157, "claude plugin install");
+  // "Operator surface" section (19 lines), so 132/138 became 151/157. The new
+  // "Loop economics: pin-cascade and derivative-stop (opt-in)" section (21 lines) shifts
+  // them to 192/198. The pin is deliberate — it asserts the sites as a POSITIVE at a known
+  // locus rather than merely counting occurrences — so it is re-pinned, not relaxed.
+  locate("pdlc/README.md", 192, "claude plugin install");
+  locate("pdlc/README.md", 198, "claude plugin install");
 });
