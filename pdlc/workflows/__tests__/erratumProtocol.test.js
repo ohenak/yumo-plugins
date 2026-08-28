@@ -1213,6 +1213,18 @@ describe("the erratum gate on the historical halts (PLAN §5)", () => {
       `Background (the routed list this round was opened with, superseded by the findings ` +
         `above) — Erratum items against ${FSPEC_PATH}: [High | delta | local] §3-02 —`
     );
+
+    // CODE_REVIEW v1 F-2 / REQ-LOOPECON-02 — both attempts carry the SAME
+    // finding. This channel prints the `FINDING:` grammar in every confirmer
+    // prompt regardless of `review.derivativeStop` (which is absent here), so
+    // the open-finding accounting is exercised on a default-config run, and it
+    // must call the re-file CARRIED rather than minting a second open entry.
+    // Attempt 0 has nothing to carry from, so exactly one notice is expected.
+    expect(report.notices.filter((n) => n.includes("REQ-LOOPECON-02"))).toEqual([
+      `Phase T: FSPEC erratum confirmation attempt 1 — 3 findings are already open from an ` +
+        `earlier attempt and mint no new entry (carried, not new — REQ-LOOPECON-02); 0 new. ` +
+        `Open findings: 3.`,
+    ]);
     expect(report.haltReason.indexOf(DELTA_HIGH_FINDING)).toBeLessThan(
       report.haltReason.indexOf("Background (the routed list")
     );

@@ -2318,6 +2318,147 @@ export async function readLearningsConfigSafely(readFileFn, path) {
   }
 }
 
+// ─── pdlc-loop-economics TSPEC §2 — `cascade.pinCheck` / `review.derivativeStop` config
+// (REQ-LOOPECON-08). Direct structural clones of `parseLearningsConfig` above: same
+// `degraded(sectionMalformed)` closure shape, same `text == null` / `JSON.parse` failure /
+// missing-block short-circuits. The one addition is `descendSection` below, since these two
+// blocks nest **two** levels deep (`cascade.pinCheck`, `review.derivativeStop`) where
+// `learningsInjection` nests one.
+
+export const PIN_CHECK_DEFAULTS = Object.freeze({ enabled: false });
+export const DERIVATIVE_STOP_DEFAULTS = Object.freeze({ enabled: false, rounds: 2 });
+
+/**
+ * TSPEC §2.3 — module-private two-level descent shared by `parsePinCheckConfig` and
+ * `parseDerivativeStopConfig`. `path` is exactly two keys, e.g. `["cascade", "pinCheck"]`.
+ * A level simply absent means "block not configured" (`malformed: false`, `section: null`);
+ * a level present but not a plain object means the shape is unusable (`malformed: true`,
+ * `section: null`). `malformed` is true if EITHER level reports it, but a descent never
+ * inspects — let alone reports on — any key outside its own `path`, so a malformed sibling
+ * block can never retune this one (REQ-LOOPECON-08's independence obligation).
+ *
+ * @param {*} parsed - the JSON-parsed config document (already validated to be `JSON.parse`d)
+ * @param {string[]} path - exactly two keys to descend, outer then inner
+ * @returns {{ section: object|null, malformed: boolean }}
+ */
+function descendSection(parsed, path) {
+  let cursor = parsed;
+  for (const key of path) {
+    if (!isPlainObject(cursor) || !(key in cursor)) return { section: null, malformed: false };
+    cursor = cursor[key];
+    if (!isPlainObject(cursor)) return { section: null, malformed: true };
+  }
+  return { section: cursor, malformed: false };
+}
+
+/**
+ * TSPEC §2.2/§2.3. Pure, total. Parses the `cascade.pinCheck` block of
+ * `.claude/pdlc.config.json` text. Per-key independent fail-open: a wrong-typed `enabled`
+ * falls back to its default and is named in `invalidKeys`, same shape as
+ * `parseLearningsConfig`'s boolean fields.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+export function parsePinCheckConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: PIN_CHECK_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  const { section, malformed } = descendSection(parsed, ["cascade", "pinCheck"]);
+  if (malformed) return degraded(true);
+  if (section === null) return degraded(false);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return PIN_CHECK_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return PIN_CHECK_DEFAULTS[key];
+  };
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
+/**
+ * TSPEC §2.2/§2.3. Pure, total. Parses the `review.derivativeStop` block of
+ * `.claude/pdlc.config.json` text. `enabled` is boolean fail-open like `parsePinCheckConfig`;
+ * `rounds` diverges from `parseLearningsConfig`'s non-negative-int fields — it must be a
+ * POSITIVE integer (`Number.isInteger(v) && v >= 1`). `rounds: 0` would mean "converge after
+ * zero flat rounds", i.e. immediate convergence, the exact over-suppression REQ R-2 names
+ * (TE F-06); it is rejected the same way any other wrong-typed value is, falling back to the
+ * default and being named in `invalidKeys`.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+export function parseDerivativeStopConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: DERIVATIVE_STOP_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  const { section, malformed } = descendSection(parsed, ["review", "derivativeStop"]);
+  if (malformed) return degraded(true);
+  if (section === null) return degraded(false);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return DERIVATIVE_STOP_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return DERIVATIVE_STOP_DEFAULTS[key];
+  };
+
+  const positiveInt = (key) => {
+    if (!(key in section)) return DERIVATIVE_STOP_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 1) return v;
+    invalidKeys.push(key);
+    return DERIVATIVE_STOP_DEFAULTS[key];
+  };
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+      rounds: positiveInt("rounds"),
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
 // ─── TSPEC §D.3 — the two heading-recognition rules (F-O-1, both halves) ───────────────────
 
 const LEARNINGS_HEADING_RE = /^#\s+LEARNINGS\b/;
@@ -6549,6 +6690,184 @@ export function parseConfirmationFindings(text) {
   return { findings, malformed };
 }
 
+// ─── TSPEC-PARSE-06 §6: finding identity and carried/new accounting ───────────
+
+/** Round/version tokens `normalizeFindingText` deletes (TSPEC §6.2, FSPEC §2.2). */
+const FINDING_ROUND_VERSION_TOKEN = /\b(?:round|v)\s*\.?\s*\d+\b/gi;
+
+/** Hash-shaped tokens `normalizeFindingText` deletes (TSPEC §6.2, FSPEC §2.2). */
+const FINDING_HASH_TOKEN = /\b(?:sha256:)?[0-9a-f]{7,64}\b/gi;
+
+/**
+ * Normalise free-form finding text so the same underlying defect re-filed
+ * across rounds — with a different round marker or a different hash embedded
+ * in the prose — carries the same identity (FSPEC §2.2, PROP-LOOPECON-05/06).
+ * Total: any non-string input normalises to `""`, never throws.
+ *
+ * Applied in order, each step load-bearing:
+ *
+ *   1. Coerce non-string input to `""`.
+ *   2. Strip a leading/trailing whitespace run.
+ *   3. Delete round/version tokens (`/\b(?:round|v)\s*\.?\s*\d+\b/gi`).
+ *   4. Delete hash-shaped tokens (`/\b(?:sha256:)?[0-9a-f]{7,64}\b/gi`).
+ *   5. Collapse every internal whitespace run to a single space.
+ *   6. Lowercase.
+ *
+ * Deliberately narrow: ordinary short hex-looking words below the 7-char hash
+ * floor ("cafe", "beef") and words that merely start with "round" or are bare
+ * digits ("roundabout", "42") survive untouched — the tokens above are the
+ * only things stripped.
+ *
+ * @param {*} text
+ * @returns {string}
+ */
+export function normalizeFindingText(text) {
+  if (typeof text !== "string") return "";
+  return text
+    .trim()
+    .replace(FINDING_ROUND_VERSION_TOKEN, "")
+    .replace(FINDING_HASH_TOKEN, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Serialise a finding's identity triple (FSPEC §2.1): severity and section
+ * anchor compared exactly (severity is already canonicalised by
+ * `parseConfirmationFindings`' closed set; section is trimmed but NOT
+ * case-folded), free text compared via `normalizeFindingText`. `\x00` is the
+ * separator because it cannot occur in a parsed `FINDING:` field, so two
+ * distinct triples can never collide by concatenation.
+ *
+ * @param {{severity: string, section: string, text: string}} finding
+ * @returns {string}
+ */
+export function findingIdentityKey(finding) {
+  const severity = finding?.severity ?? "";
+  const section = (finding?.section ?? "").trim();
+  return `${severity}\x00${section}\x00${normalizeFindingText(finding?.text)}`;
+}
+
+/**
+ * Partition round N+1's findings (`curr`) against round N's (`prev`) by
+ * identity-triple match (FSPEC §2.3). A `Set` operation over keys, so the
+ * result does not depend on the order findings were recorded in either round
+ * (PROP-LOOPECON-04).
+ *
+ *   carried  — in both `prev` and `curr` (by identity key)
+ *   added    — in `curr` only
+ *   resolved — in `prev` only
+ *
+ * @param {Array<{severity: string, section: string, text: string}>} prev
+ * @param {Array<{severity: string, section: string, text: string}>} curr
+ * @returns {{carried: Array<object>, added: Array<object>, resolved: Array<object>}}
+ */
+export function classifyRoundFindings(prev, curr) {
+  const prevList = Array.isArray(prev) ? prev : [];
+  const currList = Array.isArray(curr) ? curr : [];
+  const prevKeys = new Set(prevList.map((finding) => findingIdentityKey(finding)));
+  const currKeys = new Set(currList.map((finding) => findingIdentityKey(finding)));
+
+  const carried = [];
+  const added = [];
+  for (const finding of currList) {
+    if (prevKeys.has(findingIdentityKey(finding))) carried.push(finding);
+    else added.push(finding);
+  }
+
+  const resolved = prevList.filter((finding) => !currKeys.has(findingIdentityKey(finding)));
+
+  return { carried, added, resolved };
+}
+
+// ─── pdlc-loop-economics TSPEC §8.2/§8.3 — the flat-round predicate ──────────
+
+/**
+ * Is one recorded review round FLAT (TSPEC §8.2, FSPEC §5.3, DEC-LOOPECON-05)?
+ *
+ * A round is flat iff all four conjuncts hold:
+ *  1. No finding classified `added` against the immediately preceding round has
+ *     severity High or Medium. A new **Low** does NOT break flatness — a stream
+ *     of Lows is exactly the noise the derivative signal is meant to see
+ *     through — and a carried finding of any severity never breaks it either.
+ *  2. No finding in the round, carried or new, is an open High (FSPEC §5.7): a
+ *     High carried forward keeps every subsequent round non-flat for as long as
+ *     it is still filed.
+ *  3. Evaluable — every reviewer verdict parsed readably and reported `high: 0`,
+ *     and no `FINDING:` line failed to parse. An unevaluable round is never
+ *     flat (DEC-LOOPECON-06, FSPEC §7.1's fail-open-but-never-converge rule).
+ *  4. Not silently empty — a round whose verdicts report nonzero finding counts
+ *     but whose parsed finding set is empty means the reviewer never rendered
+ *     the grammar, so the evidence channel is missing, not clean.
+ *
+ * Round 1 has no predecessor; classifying against `[]` makes every finding
+ * `added`, so round 1 is flat only if it recorded no new ≥Medium finding at all.
+ *
+ * @param {{findings?: Array<object>}|null} previous the immediately preceding round, or null
+ * @param {{findings?: Array<object>, malformedCount?: number, verdicts?: Array<object>}} round
+ * @returns {boolean}
+ */
+function isFlatRound(previous, round) {
+  if (!round) return false;
+  const findings = Array.isArray(round.findings) ? round.findings : [];
+  const verdicts = Array.isArray(round.verdicts) ? round.verdicts : [];
+
+  // Conjunct 3 — evaluable. No verdicts recorded at all is no evidence at all.
+  if ((round.malformedCount ?? 0) > 0) return false;
+  if (verdicts.length === 0) return false;
+  for (const verdict of verdicts) {
+    if (!verdict || verdict.verdictReadable !== true) return false;
+    if ((verdict.high ?? 0) !== 0) return false;
+  }
+
+  // Conjunct 4 — the silently-empty guard.
+  if (findings.length === 0) {
+    const reported = verdicts.reduce(
+      (total, v) => total + (v.high ?? 0) + (v.medium ?? 0) + (v.low ?? 0),
+      0
+    );
+    if (reported > 0) return false;
+  }
+
+  // Conjunct 2 — no open High, carried or new.
+  if (findings.some((finding) => finding?.severity === "High")) return false;
+
+  // Conjunct 1 — no new ≥Medium finding.
+  const prevFindings =
+    previous && Array.isArray(previous.findings) ? previous.findings : [];
+  const { added } = classifyRoundFindings(prevFindings, findings);
+  return !added.some(
+    (finding) => finding?.severity === "High" || finding?.severity === "Medium"
+  );
+}
+
+/**
+ * Has the derivative stop been reached (TSPEC §8.3, FSPEC §5.4 path 2)?
+ *
+ * True iff the trailing window of `rounds` entries exists and every round in it
+ * is flat. A single non-flat round anywhere in the window resets the count: the
+ * window is always the LAST `rounds` entries of the history handed in, so the
+ * count restarts at the round after any interruption.
+ *
+ * Pure and total: an unusable `rounds` value falls back to the documented
+ * default rather than throwing, matching the config layer's fail-open shape.
+ *
+ * @param {Array<{findings?: Array<object>, malformedCount?: number, verdicts?: Array<object>}>} history
+ * @param {number} rounds
+ * @returns {boolean}
+ */
+export function derivativeStopReached(history, rounds) {
+  const list = Array.isArray(history) ? history : [];
+  const window =
+    Number.isInteger(rounds) && rounds > 0 ? rounds : DERIVATIVE_STOP_DEFAULTS.rounds;
+  if (list.length < window) return false;
+  for (let i = list.length - window; i < list.length; i++) {
+    if (!isFlatRound(i > 0 ? list[i - 1] : null, list[i])) return false;
+  }
+  return true;
+}
+
 // ─── PLAN §2.2 — the erratum gate's decision rules (R1–R4) ────────────────────
 
 /**
@@ -7447,6 +7766,69 @@ export function upstreamStateLines(rows) {
 }
 
 /**
+ * FSPEC §4.5 / DEC-LOOPECON-04 — rewrite a cross-review file's `UPSTREAM-STATE:`
+ * lines in place, leaving every other byte (and the `APPROVAL-HASH:` /
+ * `APPROVAL-HASH-NORMALIZED:` / `REVIEWED-COMMIT:` lines) exactly as they are.
+ *
+ * Why a REWRITE and not a second appended anchor block: both readers of the
+ * block are FIRST-wins, not last-wins, so an appended refresh would be worse
+ * than useless.
+ *
+ *   - `parseApprovalHash` fails the whole record closed when `hashes.length !== 1`
+ *     (a second `APPROVAL-HASH:` line makes the approval UNEVALUABLE), and it
+ *     keeps the FIRST `UPSTREAM-STATE:` row per doc type — the comment there says
+ *     so in as many words ("duplicated history is not adopted").
+ *   - `approvalAnchorPreCount` reports `>= 2` anchors as "history ambiguous", and
+ *     `appendApprovalAnchors` turns that into "the round yields no approval".
+ *
+ * So the only edit that makes the pin actually current, without touching the
+ * anchor GRAMMAR or either parser, is to replace the stale rows where they
+ * already stand. The replacement is spliced in at the position of the FIRST
+ * stale row so the block keeps `upstreamStateLines`' "written last" shape.
+ *
+ * Total and conservative — it declines rather than guesses:
+ *
+ *   - no non-fenced `UPSTREAM-STATE:` line at all ⇒ unchanged. That is PLAN
+ *     §7.1 / architect ruling Q-2's grandfathered pre-upgrade block, which is
+ *     byte-ruled only and must be left alone silently.
+ *   - `rows` serialising to `""` (empty, or nothing well-formed in it) ⇒
+ *     unchanged. Dropping the existing rows and writing nothing back would
+ *     silently DOWNGRADE a pinned approval to a grandfathered one.
+ *   - already current ⇒ `changed: false`, so a re-run writes nothing at all.
+ *
+ * Fence-aware through `scanLines`, so a quoted example anchor inside a fenced
+ * block is neither counted nor rewritten.
+ *
+ * @param {string} fileText
+ * @param {{docType: string, hash: string}[]} rows
+ * @returns {{text: string, changed: boolean}}
+ */
+export function refreshUpstreamStateText(fileText, rows) {
+  const original = String(fileText ?? "");
+  const block = upstreamStateLines(rows);
+  if (!block) return { text: original, changed: false };
+
+  const stale = [];
+  scanLines(original, (line, i) => {
+    if (/^\s*UPSTREAM-STATE:/.test(line)) stale.push(i);
+  });
+  if (stale.length === 0) return { text: original, changed: false };
+
+  const replacement = block.replace(/\n$/, "").split("\n");
+  const drop = new Set(stale);
+  const at = stale[0];
+  const lines = original.split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (i === at) out.push(...replacement);
+    if (drop.has(i)) continue;
+    out.push(lines[i]);
+  }
+  const text = out.join("\n");
+  return { text, changed: text !== original };
+}
+
+/**
  * PLAN §3.1 — §5.5's second staleness rule: is the approval still describing
  * the UPSTREAM the reviewers approved against?
  *
@@ -7980,6 +8362,35 @@ function isPassResult(parsed) {
   if (!parsed) return false;
   if (isPass(parsed.verdict)) return true;
   return parsed.malformed !== true && parsed.high === 0;
+}
+
+/**
+ * pdlc-loop-economics TSPEC §8.3.2 / DEC-LOOPECON-10 — the review loop's gate
+ * predicate, wrapping `isPassResult` rather than replacing it.
+ *
+ * `isPassResult`'s high-only relaxation (2026-08-08) strictly dominates the
+ * flat-round predicate: every flat round already passes it, so a consecutive
+ * flat window could never accumulate and `converged-by-derivative-stop` would
+ * be dead code. The resolution is NOT to change `isPassResult` — its six other
+ * call sites (erratum re-confirmation, the phase gate's approval search, the
+ * file-record predicates) keep the 2026-08-08 reading untouched — but to give
+ * `reviewLoop`'s gate, and only it, a strict limb.
+ *
+ * `strictVerdict === false` is decision-identical to `isPassResult(parsed)` by
+ * construction (same operands, same short-circuit order), which is what
+ * REQ-LOOPECON-07's disabled-path byte-identity requires. `strictVerdict` is
+ * set true iff `review.derivativeStop`'s enabled key is true for that loop, and then
+ * only a literal approving verdict string passes; the `malformed !== true`
+ * fail-closed guard carries across both limbs unchanged.
+ *
+ * @param {{verdict?: string, high?: number, malformed?: boolean}|null|undefined} parsed
+ * @param {{strictVerdict?: boolean}} [options]
+ * @returns {boolean}
+ */
+export function loopPassResult(parsed, { strictVerdict = false } = {}) {
+  if (!parsed) return false;
+  if (strictVerdict) return parsed.malformed !== true && isPass(parsed.verdict);
+  return isPassResult(parsed);
 }
 
 // ─── TSPEC §5.6.1 — selectMode; §5.6.2 — isTerminal ───────────────────────────
@@ -8797,6 +9208,11 @@ export async function reviewLoop({
   // freeze can be justified from approval history, and the round-index trigger
   // still applies.
   priorApprovedRound = null,
+  // pdlc-loop-economics TSPEC §8.1/§8.3 — this document's derivative-stop
+  // settings, as `parseDerivativeStopConfig` resolved them. The default is the
+  // documented disabled shape, so every caller that does not thread it (and
+  // every existing test) keeps HEAD's behaviour byte-for-byte.
+  derivativeStop = DERIVATIVE_STOP_DEFAULTS,
   _agent = agent,
   _parallel = parallel,
   _checkFile = checkFileNonEmpty,
@@ -8836,6 +9252,38 @@ export async function reviewLoop({
   // inert here: nothing below branches on `errata`, so the verdict parse, the
   // convergence gate and the round budget behave exactly as they did before the
   // protocol existed. Routing is the caller's job (`converge`).
+  // pdlc-loop-economics TSPEC §8.1 — the derivative-stop evidence channel.
+  //
+  // `derivativeStopEnabled` is the single read of the config for this loop: it
+  // both turns the `FINDING:` grammar on in the reviewer prompt and switches the
+  // gate to its strict limb (DEC-LOOPECON-10). With the flag off nothing below
+  // runs — no round is recorded, no prompt byte changes, and `gatePass` is
+  // `loopPassResult`'s `isPassResult` limb (REQ-LOOPECON-07).
+  //
+  // The flag is destructured rather than read as a member expression: PROP-DIS-06
+  // (`advisoryDisabled.test.js`) pins the source-text count of dotted `enabled`
+  // member reads to the ADVISORY config's three gates alone — the same reason
+  // `main()`'s `pinCheckEnabled` read is destructured.
+  const { enabled: derivativeStopFlag } = derivativeStop ?? {};
+  const derivativeStopEnabled = derivativeStopFlag === true;
+  const derivativeStopRounds =
+    Number.isInteger(derivativeStop?.rounds) && derivativeStop.rounds > 0
+      ? derivativeStop.rounds
+      : DERIVATIVE_STOP_DEFAULTS.rounds;
+  /** @type {Array<{round: number, findings: Array<object>, malformedCount: number, verdicts: Array<object>}>} */
+  const roundHistory = [];
+  /**
+   * FSPEC §2.4 / REQ-LOOPECON-02 — the loop's OPEN-FINDING LIST: one entry per
+   * distinct finding identity seen so far, in first-seen order. A finding
+   * re-filed in a later round matches an entry already here and appends nothing,
+   * which is the literal "mints no second entry" requirement. Always maintained
+   * (M1 is ungated); purely in-memory, and it edits no cross-review file on disk
+   * — the append-only review history is untouched (TSPEC §6.3).
+   *
+   * @type {Array<object>}
+   */
+  const openFindings = [];
+
   const errata = [];
   const erratumSeen = new Set();
   const collectErrata = (text, source) => {
@@ -9082,8 +9530,26 @@ export async function reviewLoop({
           `(prior approved round: ${priorApprovedRound ?? "none"}, late-round threshold: ${FREEZE_LATE_ROUND}).`
       );
     }
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType, frozen);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType, frozen);
+    const reviewerPrompt1 = reviewerPrompt(
+      doc,
+      phase,
+      feature,
+      iteration,
+      reviewers[0],
+      reviewFileType,
+      frozen,
+      derivativeStopEnabled
+    );
+    const reviewerPrompt2 = reviewerPrompt(
+      doc,
+      phase,
+      feature,
+      iteration,
+      reviewers[1],
+      reviewFileType,
+      frozen,
+      derivativeStopEnabled
+    );
 
     // Each reviewer keeps ONE key across every round of this phase (M-1): a
     // transport that can resume therefore hands round N's reviewer its own
@@ -9136,15 +9602,97 @@ export async function reviewLoop({
       if (recovered) verdict2 = recovered;
     }
 
-    // (e) Evaluate gate
-    const gatePass = isPassResult(verdict1) && isPassResult(verdict2);
+    // pdlc-loop-economics TSPEC §8.1 — record this round for the derivative
+    // signal. Both reviewers' `FINDING:` lines are unioned and deduplicated by
+    // `findingIdentityKey`, so two reviewers filing the same finding count once;
+    // malformed lines are counted, not parsed, and make the round unevaluable.
+    //
+    // REQ-LOOPECON-02 / REQ G-1 — this accounting is M1, and M1 is ALWAYS-ON,
+    // with no config gate. It used to sit behind `derivativeStopEnabled` (M3,
+    // default off), which made the requirement vacuous on a default-config run:
+    // the ledger REQ-LOOPECON-02 is about was never built. The gate belongs on
+    // the CONSUMERS, not on the accounting — and it still is, below:
+    // `strictVerdict`, `derivativeStopFired` and the returned record's
+    // `derivativeStop` field all remain M3-gated, so with M3 off no dispatch
+    // byte, no convergence decision and no record field changes (REQ-LOOPECON-07,
+    // DEC-LOOPECON-09; `loopEconomicsBaselineGuard` is the oracle).
+    //
+    // Running it unconditionally is not busywork. `FINDING:` lines reach this
+    // loop from channels M3 does not gate — the erratum/cascade confirmation
+    // grammar is emitted regardless — so with M3 off this is empty exactly when
+    // nobody filed a finding in the grammar, and populated exactly when somebody
+    // did.
+    const roundFindings = [];
+    const roundFindingKeys = new Set();
+    let malformedCount = 0;
+    for (const response of [result1, result2]) {
+      const parsedFindings = parseConfirmationFindings(response ?? "");
+      malformedCount += parsedFindings.malformed.length;
+      for (const finding of parsedFindings.findings) {
+        const key = findingIdentityKey(finding);
+        if (roundFindingKeys.has(key)) continue;
+        roundFindingKeys.add(key);
+        roundFindings.push(finding);
+      }
+    }
+    // FSPEC §2.4 — the open-finding list. A finding whose identity is already
+    // open mints NO second entry; only an identity absent from the list is
+    // appended. `classifyRoundFindings` is the exact-triple comparison
+    // REQ-LOOPECON-03 defines, so "carried" here means precisely what it means
+    // there, and the split is order-independent.
+    const { carried, added } = classifyRoundFindings(openFindings, roundFindings);
+    openFindings.push(...added);
+    roundHistory.push({
+      round: iteration,
+      findings: roundFindings,
+      malformedCount,
+      // `verdictReadable` mirrors the `reviewFiles` record's own derivation:
+      // a recovered trailer is readable, a fallback record is not.
+      verdicts: [verdict1, verdict2].map((v) => ({
+        verdictReadable: v.malformed !== true,
+        high: v.high ?? 0,
+        medium: v.medium ?? 0,
+        low: v.low ?? 0,
+      })),
+    });
+    // The one operator-visible product of the ledger, and the reason it is not
+    // write-only: it says out loud that a re-filed finding bought no new entry.
+    // Silent unless something was actually carried, so a default-config run
+    // whose reviewers file no `FINDING:` lines emits nothing new at all.
+    if (carried.length > 0) {
+      emit(
+        `Round ${iteration} for ${doc}: ${carried.length} finding` +
+          `${carried.length === 1 ? " was" : "s were"} already open from an earlier round and ` +
+          `mint${carried.length === 1 ? "s" : ""} no new entry (carried, not new — ` +
+          `REQ-LOOPECON-02); ${added.length} new. Open findings: ${openFindings.length}.`
+      );
+    }
+
+    // (e) Evaluate gate. DEC-LOOPECON-10: in enabled mode `loopPassResult`
+    // switches to its strict limb, suspending the 2026-08-08 high-only shortcut
+    // for THIS loop only — otherwise every flat round would already converge
+    // here and the derivative stop below would be unreachable. Flag off, this is
+    // `isPassResult(verdict1) && isPassResult(verdict2)` by construction.
+    const strictVerdict = derivativeStopEnabled;
+    const gatePass =
+      loopPassResult(verdict1, { strictVerdict }) && loopPassResult(verdict2, { strictVerdict });
+
+    // FSPEC §5.4 path 2 — the derivative stop. Only consulted when the ordinary
+    // gate did not already pass, so a literal approving verdict always records
+    // the ordinary outcome (PROP-LOOPECON-16).
+    const derivativeStopFired =
+      !gatePass && derivativeStopEnabled && derivativeStopReached(roundHistory, derivativeStopRounds);
 
     // (f) PASS branch — t4. The round is terminal, so §5.3 t5 appends the anchor
     // pair to each reviewer's cross-review file and t6 commits. A failed or
     // ambiguous append is an operator-facing error that yields NO approval for the
     // round and never halts the run (§6.2 row 8, `AT-17`): the phase simply has no
     // recorded approval to skip on next time.
-    if (gatePass) {
+    // TSPEC §8.3.4: the derivative stop takes the SAME terminal path as an
+    // ordinary approval — anchors are appended exactly as they are on the
+    // approval path, because the document's approval is real, it was simply
+    // reached from the derivative signal rather than from a unanimous verdict.
+    if (gatePass || derivativeStopFired) {
       // Call site A (TSPEC §7.4 route step 2): `reviewLoop` is module-scope and
       // cannot see `main()`'s `artifactPaths`, so it surfaces the anchored
       // paths on the record it already returns; both of its callers inside
@@ -9168,6 +9716,12 @@ export async function reviewLoop({
       // so `null` must be observable as a value, which a conditional spread is not.
       return {
         converged: true,
+        // TSPEC §8.3.4 — read by `converge()` to record the distinct outcome
+        // string. Deliberately a CONDITIONAL spread, the opposite of
+        // `trailerReason`'s rule: the §9 committed baseline pins this record's
+        // JSON, so on the disabled path the key must not exist at all
+        // (REQ-LOOPECON-07). Only the derivative-stop path adds it.
+        ...(derivativeStopFired ? { derivativeStop: true } : {}),
         iterations: iteration,
         lastOptimizerResult,
         trailerReason: lastTrailerReason,
@@ -9311,6 +9865,16 @@ async function appendApprovalAnchors({
   _readFile,
   _probeDoc,
   _appendFile,
+  // TSPEC §7.5 / DEC-LOOPECON-04 — `refreshUpstreamState` is an explicit REFRESH
+  // MODE, not a bypass: every guard below still runs in the order it always ran
+  // (absent file, `>= 2` ambiguous anchors, a DIFFERENT single anchor). It changes
+  // exactly one outcome — the `existing[0] === hash` case, which used to be an
+  // unconditional no-op and is now allowed to re-stamp the block's
+  // `UPSTREAM-STATE:` rows in place. Defaults to `false`, so every other caller's
+  // behaviour and bytes are unchanged (P-1). `_writeFile` is only consulted in
+  // that mode; a caller that opts in without one degrades to the old no-op.
+  refreshUpstreamState = false,
+  _writeFile,
   _git,
   emit,
   provenance = NO_PROVENANCE,
@@ -9354,7 +9918,48 @@ async function appendApprovalAnchors({
       return { appended: appendedPaths.length > 0, paths: appendedPaths };
     }
     if (existing.length === 1) {
-      if (existing[0] === hash) continue; // E-14 — idempotent no-op.
+      if (existing[0] === hash) {
+        // E-14 — the document's own bytes are already anchored at this exact
+        // hash, so no SECOND anchor is ever appended (that would make the
+        // record ambiguous and unevaluable, see `refreshUpstreamStateText`).
+        //
+        // Off refresh mode this stays the historical unconditional no-op.
+        //
+        // In refresh mode (M2's pin-check PASS route, §7.5) the no-op was the
+        // whole defect: a PASS re-stamp wrote NOTHING, so the block kept the
+        // upstream pin it was minted with, and the very next staleness walk
+        // re-flagged the same document and bought another pin-check round —
+        // the 54-recurrence shape this feature exists to kill. So the block's
+        // `UPSTREAM-STATE:` rows are rewritten in place instead.
+        if (!refreshUpstreamState || typeof _writeFile !== "function") continue;
+        let currentText = existingText;
+        if (currentText == null) {
+          // A probe answered above, so the bytes were never read. Read them now;
+          // a read failure is a fail-open no-op, exactly as before.
+          try {
+            currentText = await _readFile(path);
+          } catch {
+            currentText = null;
+          }
+        }
+        if (currentText == null) continue;
+        const refreshed = refreshUpstreamStateText(currentText, upstreamState);
+        // Already current (or nothing safe to rewrite) ⇒ no write, no commit.
+        // This is what makes a second identical PASS a true no-op.
+        if (!refreshed.changed) continue;
+        try {
+          await _writeFile(path, refreshed.text);
+        } catch (err) {
+          emit(
+            `Approval anchor not refreshed: rewriting ${path} failed (${err && err.message}). ` +
+              "The recorded upstream pin stays as it was."
+          );
+          return { appended: appendedPaths.length > 0, paths: appendedPaths };
+        }
+        appended = true;
+        appendedPaths.push(path);
+        continue;
+      }
       emit(
         `Approval anchor not recorded: ${path} already carries a DIFFERENT ` +
           `APPROVAL-HASH: (${existing[0]} vs ${hash}). The round yields no approval.`
@@ -9404,9 +10009,11 @@ async function appendApprovalAnchors({
     // reads the working tree, never the commit.
   }
   // §7.4 route step 1: `{appended, paths}` — `paths` is the SUBSET of the
-  // input `paths` this call actually wrote APPROVAL-HASH:/REVIEWED-COMMIT:
-  // to, never the input verbatim (an idempotent no-op or a failed/ambiguous
-  // path contributes nothing to it).
+  // input `paths` this call actually WROTE to, never the input verbatim (an
+  // idempotent no-op or a failed/ambiguous path contributes nothing to it).
+  // "Wrote to" covers both shapes: a fresh APPROVAL-HASH:/REVIEWED-COMMIT:
+  // append, and (in refresh mode) an in-place rewrite of an existing block's
+  // UPSTREAM-STATE: rows.
   return { appended, paths: appendedPaths };
 }
 
@@ -10823,11 +11430,27 @@ const ERRATUM_PROTOCOL_CLAUSE =
   "each item to that document's author for a targeted versioned edit and to its approvers for a " +
   "delta confirmation.";
 
-function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, frozen = false) {
+function reviewerPrompt(
+  doc,
+  phase,
+  feature,
+  iteration,
+  reviewer,
+  docType,
+  frozen = false,
+  findingGrammar = false
+) {
   // DEC-FRZ-01. Rendered here, decided by `freezeInForce` at the call site: the
   // prompt builder never re-derives the trigger, so there is exactly one place
   // the freeze can be turned on.
   const freezePart = frozen ? `\n${FREEZE_REVIEWER_CLAUSE}` : "";
+  // pdlc-loop-economics TSPEC §8.1 / DEC-LOOPECON-09 — the evidence channel
+  // derivative-stop consumes. Ordinary reviewer prompts do not emit `FINDING:`
+  // lines today (only the erratum/cascade confirmation prompts carry this
+  // clause), so the flat-round predicate would have nothing to read. Set true
+  // iff `review.derivativeStop`'s enabled key is true; with the flag off this is the
+  // empty string and the prompt stays byte-identical (REQ-LOOPECON-07).
+  const findingGrammarPart = findingGrammar ? `\n${findingGrammarClause()}` : "";
   const base =
     `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
     branchPinClause(feature);
@@ -10856,7 +11479,8 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, froze
     `Do not derive a different file type from the artifact under review — this phase's round ` +
     `history is keyed by that exact name, and a file outside it is not counted.`;
 
-  if (iteration < 2) return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}`;
+  if (iteration < 2)
+    return `${base}${groundingPart}${freezePart}\n${targetClause}${oraclePart}${findingGrammarPart}`;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
@@ -10878,7 +11502,8 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType, froze
     // protocol says where to look, the freeze says what may block.
     `${freezePart ? `${freezePart.slice(1)}\n` : ""}` +
     `${targetClause} End with the standard VERDICT trailer.` +
-    oraclePart
+    oraclePart +
+    findingGrammarPart
   );
 }
 
@@ -11231,6 +11856,90 @@ function cascadeConfirmPrompt({
     `Write your confirmation as the next cross-review round for this document type — ` +
     `${reviewFile} (round v${round}) — and end with the standard VERDICT trailer.\n` +
     branchPinClause(feature)
+  );
+}
+
+/**
+ * pdlc-loop-economics TSPEC §7.4 / FSPEC §4.5 — the pin-check reply grammar.
+ *
+ * Pure and total: parses `PIN-CHECK: {DOCTYPE}: PASS|FAIL` lines out of one
+ * reviewer reply into a `Map<docType, "PASS"|"FAIL">`.
+ *
+ * Three rules the routing above leans on:
+ *
+ *   1. Fence-aware, via the one `scanLines` reader every other artifact
+ *      grammar uses — a `PIN-CHECK:` line quoted inside a fenced block is
+ *      documentation, never a verdict.
+ *   2. Exact grammar or nothing. The prefix, the colon-space separators, the
+ *      upper-case doctype token and a case-sensitive `PASS`/`FAIL` as the
+ *      whole rest of the line. Anything else is simply not a verdict line, so
+ *      the doctype it names stays ABSENT from the map, which the caller reads
+ *      as `FAIL` (DEC-LOOPECON-03) — the same shape as the shipped rule that
+ *      a missing or malformed `VERDICT:` trailer reads "Needs revision".
+ *   3. A doctype named on more than one line resolves to `FAIL`, whatever the
+ *      lines say: a reply that answers the same question twice has not given
+ *      one answer, and ambiguity is not approval.
+ *
+ * @param {string} text - one reviewer reply.
+ * @returns {Map<string, "PASS"|"FAIL">}
+ */
+export function parsePinCheckVerdicts(text) {
+  const verdicts = new Map();
+  scanLines(text, (line) => {
+    const m = /^PIN-CHECK:\s+([A-Z]+):\s+(PASS|FAIL)\s*$/.exec(line.trim());
+    if (!m) return;
+    const docType = m[1];
+    const verdict = m[2];
+    if (verdicts.has(docType)) verdicts.set(docType, "FAIL");
+    else verdicts.set(docType, verdict);
+  });
+  return verdicts;
+}
+
+/**
+ * pdlc-loop-economics TSPEC §7.3 / FSPEC §4.4–§4.5 — the batched pin-check prompt.
+ *
+ * ONE prompt covers every pin-check-eligible document in a single staleness
+ * walk (never one dispatch per document), and it is sent once per role in the
+ * union of those documents' owning-phase reviewers.
+ *
+ * The question is strictly narrower than `cascadeConfirmPrompt`'s: none of
+ * these documents' own bytes moved, so the only thing to decide is whether the
+ * approval still holds against the upstream document as it NOW stands. The
+ * builder quotes hash values read-only, as evidence of which pin moved; it
+ * never asks anyone to write, transcribe or restate an approval anchor — the
+ * anchor stays the orchestrator's to write (FSPEC §1.2).
+ *
+ * @param {{feature: string, target: string, upstreamPath: string, targetHash: string,
+ *          docs: Array<{docType: string, docPath: string, recordedHash: string}>}} arg
+ * @returns {string}
+ */
+export function pinCheckPrompt({ feature, target, upstreamPath, targetHash, docs = [] }) {
+  const rows = docs
+    .map(
+      (d) =>
+        `DOC: ${d.docType}\n` +
+        `  path: ${d.docPath}\n` +
+        `  you approved it against ${target} \`${d.recordedHash}\`; ${target} now reads ` +
+        `\`${targetHash}\`.\n`
+    )
+    .join("");
+  return (
+    `PIN-CHECK CONFIRMATION for feature ${feature}.\n` +
+    `An erratum round edited ${target} (${upstreamPath}) after the document${docs.length === 1 ? "" : "s"} ` +
+    `below ${docs.length === 1 ? "was" : "were"} approved. Their own bytes have NOT changed — the ` +
+    `only thing that moved is the version of ${target} they were approved against:\n` +
+    rows +
+    `For EACH document listed above, re-read ${target} as it now stands and answer ONE question: ` +
+    `does that document still hold as approved against it? Do not re-review the whole document ` +
+    `and do not re-litigate settled decisions.\n` +
+    `Answer with exactly one line per document, outside any fenced block, in this grammar:\n` +
+    `PIN-CHECK: {DOCTYPE}: PASS\n` +
+    `PIN-CHECK: {DOCTYPE}: FAIL\n` +
+    `PASS means the document still holds and needs no further work. FAIL means it needs a full ` +
+    `re-confirmation round. A missing line, an ungrammatical line, or any doubt is read as FAIL, ` +
+    `so say PASS only when you mean it.\n` +
+    `Write nothing to disk: this dispatch produces no cross-review file and no other artifact.\n`
   );
 }
 
@@ -11658,6 +12367,35 @@ export function parseDodStatus(result) {
 
 // ─── DOD-04: dodVerifyLoop ───────────────────────────────────────────────────
 
+/**
+ * TSPEC §5.1 (M1c) — the next DoD CODE_REVIEW round index, derived from a
+ * listing of basenames rather than any in-memory counter: `max(existing) + 1`,
+ * or `1` when nothing matches. `basenames` is expected to be the array of
+ * filenames in `docs/{feature}/` (as returned by the `_listFiles` seam);
+ * anything that is not an array contributes nothing and yields `1`. Matching
+ * is against `CODE_REVIEW-{feature}-v{N}.md` with `{feature}` taken
+ * literally — regex metacharacters in it are escaped before matching, so a
+ * feature name is never misread as a pattern.
+ *
+ * @param {unknown} basenames
+ * @param {string} feature
+ * @returns {number}
+ */
+export function deriveDodRoundIndex(basenames, feature) {
+  if (!Array.isArray(basenames)) return 1;
+  const escapedFeature = String(feature).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^CODE_REVIEW-${escapedFeature}-v(\\d+)\\.md$`);
+  let max = 0;
+  for (const name of basenames) {
+    if (typeof name !== "string") continue;
+    const match = pattern.exec(name);
+    if (!match) continue;
+    const n = Number.parseInt(match[1], 10);
+    if (Number.isInteger(n) && n > max) max = n;
+  }
+  return max + 1;
+}
+
 function dodVerifyPrompt(featureName, version) {
   // Round ≥2 is a delta re-verify after remediation — verify each prior finding is
   // fixed and scan only the remediation diff, instead of re-running the full scan.
@@ -12075,6 +12813,12 @@ export async function rebaseOntoDefault({ feature, _agent = agent, _log = log })
  *   remediation dispatch can route by target (`classifyDodFindings`). A read
  *   that fails or returns nothing degrades to the pre-routing behaviour: one
  *   `se-implement` dispatch with the original prompt.
+ * @param {function} [params._listFiles] - TSPEC §5.2 (M1c): lists
+ *   `docs/{feature}/` so the CODE_REVIEW round can be derived fresh from disk
+ *   (`deriveDodRoundIndex`) rather than named after the loop's own in-memory
+ *   `iteration` counter. A throw or a not-ok listing fails open to the
+ *   pre-M1c value (`iteration`), per FSPEC §7.1. `iteration` keeps exactly
+ *   one remaining job: bounding the loop at `maxIterations`.
  * @returns {Promise<{ passed: boolean, iterations: number, lastStatus?: object }>}
  */
 export async function dodVerifyLoop({
@@ -12083,13 +12827,25 @@ export async function dodVerifyLoop({
   _agent = agent,
   _log = log,
   _readFile = defaultReadFile,
+  _listFiles = defaultListFiles,
 }) {
   for (let iteration = 1; iteration <= maxIterations; iteration++) {
+    let version = iteration;
+    try {
+      const listing = await _listFiles(`docs/${feature}`);
+      if (listing && listing.ok === true && Array.isArray(listing.files)) {
+        const derived = deriveDodRoundIndex(listing.files, feature);
+        if (Number.isInteger(derived)) version = derived;
+      }
+    } catch {
+      version = iteration;
+    }
+
     _log(`DoD verification — iteration ${iteration}`);
 
     const verifyResult = await _agent(
       "dod-verify",
-      dodVerifyPrompt(feature, iteration)
+      dodVerifyPrompt(feature, version)
     );
     const status = parseDodStatus(verifyResult);
 
@@ -12103,7 +12859,7 @@ export async function dodVerifyLoop({
     }
 
     _log(
-      `DoD findings recorded in CODE_REVIEW-${feature}-v${iteration}: ` +
+      `DoD findings recorded in CODE_REVIEW-${feature}-v${version}: ` +
       `stubs=${status.stubs}, mock_data=${status.mock_data}, ` +
       `unwired=${status.unwired_integrations}, coverage_gap=${status.coverage_below_threshold} ` +
       `(branch_coverage=${status.branch_coverage_pct}%), req_gaps=${status.req_gaps}, ` +
@@ -12119,7 +12875,7 @@ export async function dodVerifyLoop({
     // and the next iteration re-verifies both halves. The read is best-effort —
     // an unreadable CODE_REVIEW classifies as "no doc findings", which is the
     // pre-routing dispatch exactly.
-    const codeReviewPath = `docs/${feature}/CODE_REVIEW-${feature}-v${iteration}.md`;
+    const codeReviewPath = `docs/${feature}/CODE_REVIEW-${feature}-v${version}.md`;
     let codeReviewText = "";
     try {
       const text = await _readFile(codeReviewPath);
@@ -12137,7 +12893,7 @@ export async function dodVerifyLoop({
       const docPath = `docs/${feature}/${docType}-${feature}.md`;
       _log(
         `Dispatching ${docType} document remediation to ${skill} for ` +
-          `CODE_REVIEW-${feature}-v${iteration} (${items.length} finding${
+          `CODE_REVIEW-${feature}-v${version} (${items.length} finding${
             items.length === 1 ? "" : "s"
           })`
       );
@@ -12145,7 +12901,7 @@ export async function dodVerifyLoop({
         () =>
           _agent(
             skill,
-            dodDocRemediatePrompt({ feature, version: iteration, docType, docPath, items })
+            dodDocRemediatePrompt({ feature, version, docType, docPath, items })
           ),
         { label: `DOD ${docType} remediation, iteration ${iteration}`, emit: _log }
       );
@@ -12157,9 +12913,9 @@ export async function dodVerifyLoop({
     // the defect this routing exists to remove. In every other case, including a
     // CODE_REVIEW this parse could not read, se-implement runs as it always has.
     if (routedDocFindings.length === 0 || codeFindings.length > 0) {
-      _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${iteration}`);
+      _log(`Dispatching remediation for CODE_REVIEW-${feature}-v${version}`);
       await withDispatchRetry(
-        () => _agent("se-implement", dodRemediatePrompt(feature, iteration, routedDocFindings)),
+        () => _agent("se-implement", dodRemediatePrompt(feature, version, routedDocFindings)),
         { label: `DOD remediation, iteration ${iteration}`, emit: _log }
       );
     }
@@ -14333,6 +15089,52 @@ export default async function main({
         `(${learningsConfigParsed.invalidKeys.join(", ")}); each falls back to its default.`,
     });
   }
+  // pdlc-loop-economics TSPEC §2.4 — the `cascade.pinCheck` / `review.derivativeStop` blocks
+  // are threaded through the SAME already-read `learningsConfigText`, never a second read of
+  // `MERGE_CONFIG_PATH` (which is byte-identical to `LEARNINGS_CONFIG_PATH`). Absent-block is
+  // the common case and emits no notice, keeping the disabled-state report byte-identical
+  // (REQ-LOOPECON-04/07); a notice fires only when the parser actually reports something.
+  const pinCheckConfigParsed = parsePinCheckConfig(learningsConfigText);
+  const derivativeStopConfigParsed = parseDerivativeStopConfig(learningsConfigText);
+  // Destructured rather than read as a member expression: PROP-DIS-06
+  // (`advisoryDisabled.test.js`) pins the source-text count of enablement member reads over
+  // this module so that the count covers the ADVISORY config's gates alone. This is a
+  // different resolved config, and `parsePinCheckConfig` itself already keys its descent
+  // generically for the same reason. `=== true` at the read site keeps every fail-open
+  // shape (absent block, wrong-typed value, unparseable file) disabled.
+  const { enabled: pinCheckEnabled } = pinCheckConfigParsed.config;
+  if (pinCheckConfigParsed.sectionMalformed) {
+    notices.push({
+      id: "NTC-PINCHECK-MALFORMED",
+      detail:
+        `${MERGE_CONFIG_PATH}'s cascade.pinCheck section is malformed; ` +
+        `the run proceeds on TSPEC §2.2 defaults.`,
+    });
+  }
+  if (pinCheckConfigParsed.invalidKeys.length > 0) {
+    notices.push({
+      id: "NTC-PINCHECK-KEYTYPE",
+      detail:
+        `${MERGE_CONFIG_PATH}'s cascade.pinCheck section has wrong-typed key(s) ` +
+        `(${pinCheckConfigParsed.invalidKeys.join(", ")}); each falls back to its default.`,
+    });
+  }
+  if (derivativeStopConfigParsed.sectionMalformed) {
+    notices.push({
+      id: "NTC-DSTOP-MALFORMED",
+      detail:
+        `${MERGE_CONFIG_PATH}'s review.derivativeStop section is malformed; ` +
+        `the run proceeds on TSPEC §2.2 defaults.`,
+    });
+  }
+  if (derivativeStopConfigParsed.invalidKeys.length > 0) {
+    notices.push({
+      id: "NTC-DSTOP-KEYTYPE",
+      detail:
+        `${MERGE_CONFIG_PATH}'s review.derivativeStop section has wrong-typed key(s) ` +
+        `(${derivativeStopConfigParsed.invalidKeys.join(", ")}); each falls back to its default.`,
+    });
+  }
   const learningsSink = { dispatches: [] };
   const learningsInjectorFn = learningsInjectorFactory({
     config: learningsConfigParsed.config,
@@ -14573,6 +15375,9 @@ export default async function main({
     const targetHash = await erratumDocHash(target);
     if (targetHash == null) return;
 
+    const candidates = [];
+
+    // ── TSPEC §7.1 pass 1 (collect) ──────────────────────────────────────
     for (const downstream of erratumDocTypesBelow(target)) {
       const ownerPhase = ERRATUM_PHASE_BY_DOC_TYPE[downstream];
       const dispatch = PHASE_DISPATCH[ownerPhase];
@@ -14616,6 +15421,157 @@ export default async function main({
         (skill) =>
           `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${downstream}-v${round}.md`
       );
+      const { upstreamState } = await deriveUpstreamState(downstream, null);
+
+      // TSPEC §7.1 pass 1 (collect). Every predicate above is unchanged and
+      // still `continue`s byte-identically; what survives becomes a candidate
+      // record that pass 2 either pin-checks or re-confirms.
+      const approvedPaths = reviewers
+        .map((skill) => window.reviewFiles.get(`${reviewerRoleSlug(skill) || skill}:${record.candidate}`))
+        .filter((entry) => entry && entry.path)
+        .map((entry) => entry.path);
+      candidates.push({
+        downstream,
+        ownerPhase,
+        docPath,
+        docHash,
+        record,
+        row,
+        round,
+        reviewers,
+        paths,
+        approvedPaths,
+        upstreamState,
+      });
+    }
+
+    // ── TSPEC §7.1 pass 2 (dispatch) ────────────────────────────────────────
+    //
+    // With `cascade.pinCheck` absent, disabled or malformed — the shipped
+    // default, and every failure mode — `pinCheckPassed` stays empty, no
+    // `PIN-CHECK` prompt is ever constructed, and the loop below walks the
+    // candidates in collection order running exactly the code the pre-M2
+    // single pass ran inline. The disabled-path dispatch stream is therefore
+    // byte-identical to the pre-feature one (REQ-LOOPECON-04), which the
+    // committed CASCADE-DOWNSTREAM-REDISPATCH fixture proves rather than any
+    // assertion here.
+    const pinCheckPassed = new Set();
+    const pinCheckEligible =
+      pinCheckEnabled === true
+        ? // TSPEC §7.2: both signals, and `record.hash === docHash` is the one
+          // pass 1 has not already applied — the walk only reached these
+          // documents because a recorded upstream row moved. An UNEVALUABLE or
+          // disagreeing anchor yields `record.hash === null`, which never
+          // equals a real digest, so such a document is never eligible.
+          candidates.filter((c) => c.record.hash === c.docHash)
+        : [];
+    if (pinCheckEligible.length > 0) {
+      // TSPEC §7.3: ONE dispatch per role over the UNION of the eligible
+      // documents' owning-phase reviewers — never one dispatch per document.
+      const roles = [];
+      for (const c of pinCheckEligible) {
+        for (const skill of c.reviewers) if (!roles.includes(skill)) roles.push(skill);
+      }
+      const prompt = pinCheckPrompt({
+        feature: featureName,
+        target,
+        upstreamPath: erratumDocPath(target),
+        targetHash,
+        docs: pinCheckEligible.map((c) => ({
+          docType: c.downstream,
+          docPath: c.docPath,
+          recordedHash: c.row.hash,
+        })),
+      });
+      const plural = pinCheckEligible.length === 1 ? "" : "s";
+      const opening =
+        `Phase ${phaseId}: ${target} moved under ${pinCheckEligible.length} downstream ` +
+        `document${plural} whose own bytes are unchanged ` +
+        `(${pinCheckEligible.map((c) => c.downstream).join(", ")}). Dispatching ONE pin-check ` +
+        `round to ${roles.join(", ")} instead of a re-confirmation round each (FSPEC §4.4).`;
+      notices.push(opening);
+      emit(opening);
+
+      // Straight through `agentFn`, deliberately NOT `wrappedDispatch`: a
+      // pin-check writes no artifact, so there is nothing for the
+      // write-verification wrapper to verify (TSPEC §7.3).
+      const replies = await parallelFn(roles.map((skill) => agentFn(skill, prompt)));
+      const verdicts = replies.map((reply) =>
+        parsePinCheckVerdicts(typeof reply === "string" ? reply : "")
+      );
+
+      for (const c of pinCheckEligible) {
+        // DEC-LOOPECON-03: a document PASSes only when EVERY dispatched role
+        // carried an explicit `PASS` line for it. An absent line, a malformed
+        // line, or disagreement across roles all resolve to FAIL, and FAIL
+        // simply falls through to the ordinary re-confirmation loop below —
+        // fail-open here means "do the full review", never "approve anyway".
+        if (!verdicts.every((m) => m.get(c.downstream) === "PASS")) continue;
+        pinCheckPassed.add(c.downstream);
+
+        // TSPEC §7.5: the same call shape as the re-confirm site below — the
+        // document's own current digest re-stamped together with the CURRENT
+        // upstream state, onto the approving round's own cross-review files.
+        // No cross-review file is written and `window.startIndex` is not
+        // consumed, so neither `MAX_REVIEW_ROUNDS` nor `MAX_LIFETIME_ROUNDS`
+        // moves (DEC-LOOPECON-04; DEC-TERM-02: a staleness-only round is not a
+        // review round).
+        const probe = await probeDocument(probeDocFn, c.docPath, c.downstream);
+        const normalizedHash = await normalizedAnchorFor({
+          probe,
+          path: c.docPath,
+          _hashNormalizedFile: hashNormalizedFileFn,
+        });
+        // REQ-LOOPECON-01b / DEC-LOOPECON-02: re-derived HERE, at re-stamp
+        // construction, not carried over from pass 1. `c.upstreamState` was
+        // taken BEFORE the pin-check `parallelFn` round trip above, and the
+        // pin that is about to be written durably claims to be "current"; only
+        // the bytes on disk NOW can honour that claim.
+        const { upstreamState: passUpstreamState } = await deriveUpstreamState(c.downstream, null);
+        await appendApprovalAnchors({
+          paths: c.approvedPaths,
+          hash: c.docHash,
+          normalizedHash,
+          upstreamState: passUpstreamState.map((e) => ({ docType: e.docType, hash: e.hash })),
+          commit: await headCommitSha(gitFn),
+          _readFile: readFileFn,
+          _probeDoc: probeDocFn,
+          _appendFile: appendFileFn,
+          // TSPEC §7.5 — the PASS route's whole product is a REFRESHED pin. The
+          // approving round's cross-review files already carry this exact
+          // `APPROVAL-HASH:` (that is the eligibility predicate), so an append
+          // would be a no-op; refresh mode rewrites their `UPSTREAM-STATE:` rows
+          // instead, which is what stops the next staleness walk re-flagging
+          // this document and opening the same round again.
+          refreshUpstreamState: true,
+          _writeFile: writeFileFn,
+          _git: gitFn,
+          emit,
+          provenance,
+        });
+        const notice =
+          `Phase ${phaseId}: ${c.docPath} PIN-CHECK PASSED against the edited ${target}. Its own ` +
+          `bytes never moved and every dispatched reviewer confirmed the approval still holds, so ` +
+          `its round v${c.record.candidate} approval stands and NO re-confirmation round was ` +
+          `opened — no review round consumed (DEC-LOOPECON-04). Its recorded upstream pin has ` +
+          `been re-stamped to the current ${target}, so the next staleness walk will not flag ` +
+          `it again.`;
+        notices.push(notice);
+        emit(notice);
+      }
+    }
+
+    for (const c of candidates) {
+      if (pinCheckPassed.has(c.downstream)) continue;
+      const { downstream, ownerPhase, docPath, docHash, record, row, round, reviewers, paths } = c;
+
+      // REQ-LOOPECON-01b / DEC-LOOPECON-02 (the T-11 pattern, applied to M2's
+      // pass 2). `c.upstreamState` was derived in pass 1, i.e. BEFORE the
+      // pin-check `parallelFn` round trip that now sits between collection and
+      // dispatch. `cascadeConfirmPrompt` renders these rows as upstream "at
+      // their current version", and the anchor written below records them
+      // durably, so both must be read at DISPATCH-CONSTRUCTION time. Cheap: a
+      // hash per upstream doc type, off a path already probed.
       const { upstreamState } = await deriveUpstreamState(downstream, null);
 
       const opening =
@@ -14739,7 +15695,18 @@ export default async function main({
    * Returns `null` — and dispatches nothing at all — when the upstream document
    * has spent its DEC-ROUNDS-02 lifetime round budget.
    */
-  async function erratumRound({ phaseId, label, target, items, mintedHashes, attempt = 0 }) {
+  async function erratumRound({
+    phaseId,
+    label,
+    target,
+    items,
+    mintedHashes,
+    attempt = 0,
+    // REQ-LOOPECON-02 / FSPEC §2.4 — the per-target open-finding list, carried
+    // across this target's follow-up attempts by the caller. Defaults to a
+    // throwaway so a call site that does not care still behaves identically.
+    openFindings = [],
+  }) {
     const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
     const upstream = PHASE_DISPATCH[upstreamPhase];
     const upstreamPath = erratumDocPath(target);
@@ -14980,7 +15947,22 @@ export default async function main({
     // variable, handed to both dispatches, so the two confirmers can never be
     // reading different versions of the world — POSTMORTEM-P's "three beliefs
     // inside four minutes" is exactly that divergence.
-    let confirmUpstreamState = upstreamState;
+    //
+    // DEC-LOOPECON-02 / TSPEC §4.2: re-derived from disk HERE, at
+    // confirmer-dispatch construction, rather than carried over from the
+    // author-dispatch-time `upstreamState`. `erratumSupersetClause` renders
+    // this under the header "at their CURRENT version as of this dispatch" —
+    // a claim only the bytes on disk NOW can honour. The author's own edit, or
+    // a sibling erratum round in the same chain, can land between the two
+    // dispatches; quoting the older snapshot then invites a round of stale-hash
+    // findings against no document edit ever owed (the R-5 shape).
+    // `mintedHashes` is `null` on purpose: the question here is not "did
+    // upstream move since the items were minted" — that is the mint-time
+    // snapshot's job (`snapshotErratumDocs`, already answered and reported on
+    // the author side, and left untouched as the drift-detection channel) —
+    // but "what IS upstream, now, as I construct this dispatch".
+    const { upstreamState: confirmState } = await deriveUpstreamState(target, null);
+    let confirmUpstreamState = confirmState;
     let responses = await dispatchConfirmers(round, confirmPaths, confirmUpstreamState);
 
     // ─── PLAN §3.3 — freeze the confirmation window ────────────────────────
@@ -15000,6 +15982,13 @@ export default async function main({
     // is append-only — the first round's files stay on disk as history), and
     // only those responses are evaluated below. Bounded by construction: one
     // re-dispatch per confirmation, no loop.
+    //
+    // Unchanged by TSPEC §4.2's confirmer-dispatch-time re-derivation above,
+    // and sharpened by it: because the dispatched premise is now fresh AT
+    // CONSTRUCTION, a difference observed here can only mean upstream genuinely
+    // moved WHILE the confirmers were in flight — precisely the condition this
+    // freeze exists to catch. Movement that merely predates the dispatch no
+    // longer reaches this comparison, so it no longer buys a wasted round.
     const reDerived = await deriveUpstreamState(target, null);
     if (upstreamStateLines(reDerived.upstreamState) !== upstreamStateLines(confirmUpstreamState)) {
       const before = new Map(confirmUpstreamState.map((e) => [e.docType, e.hash]));
@@ -15229,6 +16218,40 @@ export default async function main({
           `High/delta/nonlocal.`;
         notices.push(failNotice);
         emit(failNotice);
+      }
+    }
+
+    // REQ-LOOPECON-02 / FSPEC §2.4 — open-finding accounting for the erratum
+    // confirmation channel. This channel prints the `FINDING:` grammar in every
+    // confirmer prompt REGARDLESS of M3, so unlike the review loop it is
+    // populated on a default-config run, and a confirmer who re-files the same
+    // item on a follow-up attempt must be accounted CARRIED, not new.
+    //
+    // Accounting only: `erratumGateDecision` below still reads `confirmations`
+    // exactly as it always did, so no rule outcome, no dispatch and no file on
+    // disk depends on this (TSPEC §6.3 — the dedup applies to the round's
+    // accounting, and the append-only review history is untouched).
+    {
+      const roundFindings = [];
+      const seen = new Set();
+      for (const confirmation of confirmations) {
+        for (const finding of confirmation.findings ?? []) {
+          const key = findingIdentityKey(finding);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          roundFindings.push(finding);
+        }
+      }
+      const { carried, added } = classifyRoundFindings(openFindings, roundFindings);
+      openFindings.push(...added);
+      if (carried.length > 0) {
+        const carriedNotice =
+          `Phase ${phaseId}: ${target} erratum confirmation attempt ${attempt} — ` +
+          `${carried.length} finding${carried.length === 1 ? " is" : "s are"} already open from ` +
+          `an earlier attempt and mint${carried.length === 1 ? "s" : ""} no new entry (carried, ` +
+          `not new — REQ-LOOPECON-02); ${added.length} new. Open findings: ${openFindings.length}.`;
+        notices.push(carriedNotice);
+        emit(carriedNotice);
       }
     }
 
@@ -15507,7 +16530,19 @@ export default async function main({
         // R4. The loop condition is therefore a restatement of the constant,
         // not a second, independently-drifting one.
         const responses = [];
-        let result = await erratumRound({ phaseId, label, target, items, mintedHashes });
+        // REQ-LOOPECON-02 — one open-finding list per target, spanning the
+        // original round and every follow-up attempt below. Scoped here because
+        // "the same finding, again" is only meaningful within one target's
+        // confirmation chain.
+        const targetOpenFindings = [];
+        let result = await erratumRound({
+          phaseId,
+          label,
+          target,
+          items,
+          mintedHashes,
+          openFindings: targetOpenFindings,
+        });
         // DEC-ROUNDS-02: the upstream document is capped. Nothing was dispatched
         // and nothing was edited, so there is no round to report and no response
         // to read follow-on errata out of. `erratumRound` said so in a notice.
@@ -15521,6 +16556,7 @@ export default async function main({
             items: result.followUpItems,
             mintedHashes,
             attempt,
+            openFindings: targetOpenFindings,
           });
           if (result === null) break;
           responses.push(...result.responses);
@@ -15630,6 +16666,9 @@ export default async function main({
       endIndex: window.endIndex,
       // DEC-FRZ-01 — the gate's approval read, handed on rather than re-taken.
       priorApprovedRound: gate.priorApprovedRound ?? null,
+      // pdlc-loop-economics TSPEC §8.1 — `review.derivativeStop`, resolved once
+      // per run at the config read above and handed to every phase's loop.
+      derivativeStop: derivativeStopConfigParsed.config,
       _parallel: parallelFn,
       _checkFile: checkFileFn,
       ...wrapperSeams,
@@ -15666,7 +16705,14 @@ export default async function main({
     const iterationWord = pluralizeIterations
       ? `iteration${loop.iterations !== 1 ? "s" : ""}`
       : "iterations";
-    const detail = `Approved (${loop.iterations} ${iterationWord})${erratumSuffix}${suffix ?? ""}`;
+    // TSPEC §8.3.4 / FSPEC §5.5 — a derivative stop keeps the ✅ glyph (it is a
+    // success outcome, not a halt) but its string is distinct and is never
+    // substituted for an approval verdict the reviewers did not give.
+    const outcomeWord =
+      loop.derivativeStop === true
+        ? `converged-by-derivative-stop (${loop.iterations} ${iterationWord})`
+        : `Approved (${loop.iterations} ${iterationWord})`;
+    const detail = `${outcomeWord}${erratumSuffix}${suffix ?? ""}`;
     recordPhase(phaseId, dispatch.label, "✅", forcedDetail(detail, gate.forced), loop.iterations);
 
     return { skipped: false, loop, creatorResult };
@@ -16898,6 +17944,9 @@ export default async function main({
           // The loop reads each round's CODE_REVIEW to route remediation by
           // target; it uses the pipeline's read seam, not its own.
           _readFile: readFileFn,
+          // TSPEC §5.2 (M1c): derives the CODE_REVIEW round fresh from disk
+          // each round, threaded exactly like `_readFile` above.
+          _listFiles: listFilesFn,
         });
         if (!dodResult.passed) {
           const detail =
