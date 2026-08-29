@@ -392,6 +392,189 @@ table: `Preflight`, `FixtureGuard`, `BaselineGuard`, `Config`, `Recognise`, `Ren
 
 ## Oracles
 
+The properties above say *what* must hold. This section fixes *how each is decided*, for the six
+oracles where the decision procedure is itself load-bearing — where writing the oracle the obvious
+way produces a check that cannot fail.
+
+### ORC-01 — the corpus oracle: whole-line equality, expectations transcribed from data
+
+**Decides:** PROP-REC-01…08, PROP-PRE-01…05, and `FSPEC` AT-01. **Owner:** T-09 → T-17. **Against:**
+FX-CORPUS.
+
+The comparison is **equality of the rendered line set** — not containment, and **not equality over
+ids alone**. Ids alone are blind to the two cases the fixture was chosen for: `M-3c`'s twice-opened
+block, where both openings carry one id and only the second states what was decided, and `M-4d`'s
+mixed file, where eight non-record headings must contribute no line while four real records render.
+The runs agree only where each line's **id, statement and citation** all agree.
+
+Two dispatches are compared, differing only in the feature whose document is under review:
+
+| Dispatch | Feature | Expected lines | What it pins |
+|---|---|---|---|
+| (a) | `pdlc-advisory-wave-gate` | 41 project-level + **4** = **45** | `M-4d`'s mixed file: 4 records render, 8 non-record headings contribute none (E-9) |
+| (b) | `pdlc-engineering-loop` | 41 project-level + **7** = **48** | `M-3c`'s twice-opened block: `DEC-LOOP-01`…`06` each render one line whose statement is the **second**, deciding opening (E-10) |
+
+No other feature's records are in scope for either dispatch. **A build rendering all 100
+feature-level ids fails** — the union is over one feature directory, not all of them.
+
+**Executed at HEAD to ground these figures, not taken on the specification's word.** Enumerating
+`DECISION_CORPUS_ARGV`'s four pathspecs at Baseline v1.2's `Verified at` commit `8c673a09f` yields
+**25** files; applying `DECISION_HEADING_RE` with §3.3's last-wins resolution over them yields **41**
+project-level distinct ids and **100** feature-level, distributed `pdlc-headless-engine` 22,
+`pdlc-advisory-tier` 11, `pdlc-engine-distribution` / `pdlc-learnings-injection` /
+`pdlc-loop-economics` 10 each, `pdlc-consolidation-agent` / `pdlc-wave-resume` 8 each,
+`pdlc-engineering-loop` 7, `orchestrate-dev-workflow` 6, `pdlc-advisory-wave-gate` /
+`pdlc-rcv-budget-stop` 4 each, `pdlc-plugin-retirement` **0**. That reproduces `TSPEC` §3.5's table
+and `M-1d` / `M-2e` exactly, so the expected sets above are transcribable rather than aspirational.
+
+**Anti-echo, stated as a rule for the implementer.** Expected statements and citations are
+transcribed from the **fixture's own heading text and record location** — data — and **never**
+captured from the renderer's output. Capturing them derives the expectation from the code under
+test, and the oracle then cannot fail for a wrong statement. `M-3c`'s verbatim second-opening
+heading is the pinned discriminating case; `M-4d`'s eight non-record headings and `M-4b`'s twelve
+namespace-less ids are the pinned exclusion cases. **If ORC-01 reddens, the correct response is
+never to trim the expected set to whatever the renderer emitted.**
+
+**ORC-01 runs with both bounds non-binding, deliberately.** Its subject is the **recognition rule**,
+not the bounds. The 45- and 48-line sets render to 7,042 and 7,650 index bytes, which sit inside
+`REQ` C-5's resolved `maxBytes` default with framing charged — so they are producible under default
+configuration today. But that margin is **measured, not structural**: `M-6b`'s 63-record case clears
+the same bound by only **441** bytes, so corpus growth or an operator lowering either threshold
+would make an expected set unproducible and redden a recognition oracle **for a bounds reason**.
+Supplying explicitly non-binding bounds, and saying so in the test file's header, is what keeps the
+failure signal attributable. The bounds are the subject of ORC-05 and PROP-BND-01…12.
+
+### ORC-02 — the citation resolution chain, which starts at the rendered line
+
+**Decides:** PROP-REND-03, PROP-FAIL-05, and `FSPEC` AT-02. **Owner:** T-09 → T-17.
+
+The chain, stated in order so it is not written the other way round:
+
+1. Parse `sourcePath` and `id` **out of the rendered line's citation field** — the substring between
+   `[` and `]`, split on ` § `.
+2. Open that path in FX-CORPUS **through the `_readFile` double**, never by a real filesystem path.
+3. Find the heading matching `DECISION_HEADING_RE` whose captured id equals the parsed id — exactly
+   one, by `M-1a` and last-wins resolution.
+4. Assert that heading's captured **statement** equals the rendered line's statement field, and that
+   it says what was **decided** rather than what was **asked**.
+
+**No field of `DecisionRecord` is read anywhere in this chain.** Reading `record.heading` instead
+would compare the recogniser's output against the file the recogniser read, leaving the rendered
+line outside the loop entirely — a renderer emitting a wrong statement, or citing the wrong
+`sourcePath`, would pass. `DecisionRecord.heading` remains on the type solely as the verbatim value
+ORC-01's expected results are transcribed from; ORC-02 does not consume it.
+
+### ORC-03 — the shipped-default assertions, in two parts that do not substitute for each other
+
+**Decides:** PROP-BND-04's live consequence and `TSPEC` §3.6's headroom claim. **Owner:**
+T-09 → T-17. **Against:** FX-CORPUS. ORC-01 runs with the bounds non-binding and PROP-BND-01…12
+quantify over generated bounds, so without ORC-03 **nothing anywhere exercises `REQ` C-5's shipped
+defaults over a realistic corpus**.
+
+**Part A — the whole-fixture build, which makes the drop order falsifiable.** Build the block over
+**all 141** records in FX-CORPUS at the shipped defaults (`maxEntries: 70`, `maxBytes: 12500`) and
+assert three conjuncts:
+
+| # | Conjunct | Falsifies |
+|---|---|---|
+| A1 | The rendered ids whose `origin` is `"project"` are **set-equal** to the fixture's 41 project-level ids, transcribed as a literal, and those lines joined by `\n` are the transcribed literal **6,305** bytes | a line-format regression, or corpus drift |
+| A2 | `6,305 ≤ maxBytes − 1200` — at the resolved default, `6,305 ≤ 11,300` (PROP-REND-08's framing pin is the other half of this sum) | a default lowered below the standing corpus |
+| A3 | `omitted[]` is **non-empty** and **every** id in it has `origin === "feature"` | a **reversed drop order** |
+
+**A3 is an absence asserted over a set that is non-empty by construction, which is why the basis is
+the whole fixture and not the project-level slice.** On the 41-record slice, 41 lines against
+`maxEntries` 70 and 6,305 bytes against an 11,300-byte allowance leave nothing to drop, so
+`omitted[]` is empty under **every** drop order and A3 is vacuously true. The 141-record fixture is
+deliberately larger than any dispatch this feature will ever construct precisely so that a bound
+binds and the drop loop actually runs.
+
+**Part B — the `M-6b`-slice build, which makes the inertness measurement falsifiable.** Part A
+watches ~4,995 bytes of project-level headroom; the claim `TSPEC` §3.6's live conclusion actually
+rests on — *no line is omitted on a real dispatch at the Baseline commit* — clears the bound by
+**441** bytes, which no assertion over the 141-record fixture can reach. So build the block over the
+**63-record `M-6b` slice** (the 41 project-level records plus `pdlc-headless-engine`'s 22, the
+largest in-scope set `REQ` G-1 can produce at that commit) at the same shipped defaults:
+
+| # | Conjunct | Falsifies |
+|---|---|---|
+| B1 | `omitted[]` is **empty**, and the rendered id set is set-equal to the slice's 63 ids, transcribed as a literal | either of B2/B3 going wrong |
+| B2 | The 63 rendered index lines joined by `\n` are the transcribed literal **10,859** bytes | corpus growth or a line-format regression consuming the 441-byte margin |
+| B3 | `10,859 ≤ maxBytes − 1200` — at the resolved default, `10,859 ≤ 11,300`, a difference of **441** bytes | an operator-facing default moved below the standing case |
+
+**Why the block total 12,059 is deliberately not asserted as an equality.** `TSPEC` §4.3 fixes
+framing as a **≤ 1,200-byte budget the rule text must be drafted to fit**, not a measurement of
+drafted text, and the constants do not exist yet. A conforming implementation drafted under budget
+produces a block **smaller** than 12,059, so an equality on that figure would redden for no defect.
+The two halves of `12,059 ≤ 12,500` are therefore each pinned where they are measurable — framing by
+PROP-REND-08, the index by B2/B3.
+
+**All four transcribed literals — the 41 ids and 6,305, the 63 ids and 10,859 — are hand-transcribed
+from the fixture, never derived at test time from the renderer or from a manifest.** Deriving either
+makes the assertion an echo; re-deriving 6,305 defeats the purpose of pinning it, which is to make
+corpus drift **visible at the re-capture** — the deliberate moment to re-decide `REQ` C-5's default
+rather than let it expire silently. PROP-REND-08's framing size is **not** a fifth literal on that
+list: it is pinned separately, so a rule-text edit inside the budget re-opens neither B2 nor B3.
+
+**What ORC-03 deliberately does not pin.** How **many** feature-level lines survive Part A. Under
+the shipped bounds roughly two dozen do — `maxEntries` 70 less 41 project-level lines caps it at 29,
+and the byte headroom against a 152–261-byte feature line trims a few more — and that count is
+renderer arithmetic that would churn on any line-format change without naming a defect. The
+falsifier lives in the **origin partition** (A3), not in the count.
+
+### ORC-04 — the byte-identity baseline guard, and the two jobs it must do
+
+**Decides:** PROP-OFF-01…06. **Owner:** T-02. **Against:** FX-BASELINE.
+
+The guard does **two** jobs, not one: it **guards the artifact** (per-file digests unchanged) *and*
+**uses it** (drives branch HEAD's `orchestrate-dev.js` through the same scenario matrix and
+byte-compares). Job one alone re-hashes a fixture against a digest of itself and proves nothing
+about the code — the lesson already written into the shipped `learningsBaselineGuard.test.js` and
+repeated in `loopEconomicsBaselineGuard.test.js`.
+
+**The three pinning clauses**, none of which is optional:
+
+| Clause | Form | Why the obvious alternative fails |
+|---|---|---|
+| (a) | Per-file digest literals **hand-transcribed into the test** | A re-capture rewrites `MANIFEST.json`; a test reading its expected digest **from** that manifest checks nothing |
+| (b) | `manifest.mergeBaseSha` asserted equal to a hand-transcribed `EXPECTED_MERGE_BASE_SHA` **literal in the test file** | Same reason. `git merge-base --is-ancestor {recorded sha} HEAD` is kept only as a documented **weaker second signal** — it cannot distinguish "pre-feature" from "mid-feature", since a later `main` commit is an ancestor of HEAD too. A form computing `git merge-base origin/main HEAD` **at test time** is specifically excluded: it makes a required check depend on a current local `origin/main` and can red on an unrelated push to `main`. Ancestry is resolved against **`HEAD`**, never `origin/main`, so the check needs no fetch and is hermetic in CI |
+| (c) | The case-id check written as **set equality**, never containment | Containment passes a **silently added** case; equality fails both a deleted and an added one, and the two halves are not interchangeable |
+
+**Mutation proof before commit**, three steps, each restored immediately and each observed red
+transcribed into the test file's header: flip one byte in a recorded stream (expect the per-file
+digest assertion **and** the oracle comparison red, the manifest assertion green); delete a case
+directory (expect the set-equality assertion red, `actual ⊉ expected`); add a spurious case
+directory (expect the same assertion red for the opposite reason).
+
+### ORC-05 — the bounds property's model, and why it must not reuse the renderer
+
+**Decides:** PROP-BND-01…07. **Owner:** T-07 → T-16.
+
+The model carries its **own** formatter, transcribed by hand from `TSPEC` §4.3's stated format, and
+applies it **per record** — it is not a re-implementation of the drop loop, so a bug in the loop
+cannot be mirrored into the oracle. Each of PROP-BND-01…04 owns the falsifying mutation named in its
+row; each is applied, observed red, reverted, and the observed failure transcribed into the test
+file's header.
+
+**Why the generator's range alone does not discharge the two bounds conjuncts.** Drawing bounds
+spanning `0`, exactly-fitting and generous is necessary but not sufficient: a drop loop that stops
+**one line late** still lands inside that range for most draws. The mutation map is what ties each
+conjunct to a defect it alone detects, and it is stated rather than assumed.
+
+### ORC-06 — the replay oracle, anchored so identical brokenness fails
+
+**Decides:** PROP-INV-01…05. **Owner:** T-10 → T-18. **Against:** FX-REPLAY.
+
+**Invariance alone is not an oracle.** Two runs of a driver broken **identically** agree perfectly,
+so a pure "the two runs match" assertion passes a total regression. ORC-06 therefore carries a
+second leg: the **open-finding ledger** — which FX-REPLAY's recorded reviewer outputs already
+determine — is asserted equal to a value **transcribed from the fixture**, and the test fails if
+that anchor moves, not only if the runs diverge.
+
+The five driver-side outcomes are asserted **individually**, and the list is explicitly **not**
+claimed exhaustive of driver-side accounting. A sixth mechanism is covered by **extending the list**,
+never by converting it to a set equality — a set equality over an open-ended list of mechanisms is
+a claim this document cannot support and would break on unrelated driver work.
+
 ## Fixtures
 
 ## Coverage Matrix
