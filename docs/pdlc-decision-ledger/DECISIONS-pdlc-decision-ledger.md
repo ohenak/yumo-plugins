@@ -73,16 +73,20 @@ Baseline's re-measurement to **v1.2** exercised exactly that path and this docum
 it: the `M-7` block (`M-7a` project-level substance bytes, `M-7b` the 63-record worst standing case,
 `M-7c` the cap that clears it) is the measured authority behind REQ C-5's shipped `maxBytes`
 **12,500**, and every byte figure below is derived against that value, never against the retired
-8,000. **One exception is live and is stated so a reader is not surprised by it:** TSPEC §3.6, the
-cited site for byte figures, has not yet taken REQ v1.8 — it is pinned at REQ v1.7 / Baseline v1.1
-and its *derived* headroom figures (the 6,800-byte allowance, the ~495 bytes of headroom, the
-conclusion that the order is live under shipped defaults) are pre-raise, pending `ERR-2`'s
-propagation. The figures this document *quotes* from §3.6 are unaffected, because they are
+8,000. **The one exception that used to be live is now closed, and is recorded rather than deleted:**
+for two rounds TSPEC §3.6 — the cited site for byte figures — was still pinned at REQ v1.7 /
+Baseline v1.1 and still carried pre-raise *derived* figures (a 6,800-byte allowance, ~495 bytes of
+headroom, the conclusion that the order is live under shipped defaults), while this document derived
+against 12,500 ahead of it. TSPEC's v0.5 erratum landed `ERR-2`'s propagation and its v0.7 erratum
+finished the tensing, so at HEAD (TSPEC **v0.7**, REQ **v1.9** / FSPEC **v1.3** / Baseline **v1.2**)
+the derived figures agree at both sites: §3.6 states `12500 − 1200 = 11,300`, the ~4,995 bytes of
+project-level headroom and `M-6b`'s 441, and every surviving mention of 8,000 there is explicitly
+tensed as retired. The figures this document *quotes* were never affected, because they are
 measurements of the corpus rather than of the bound: 10,859 and 6,305 are current as cited. The
 figures this document *derives* — the 11,300-byte allowance, DEC-DECLEDGER-12's 441 bytes of slack
-and DEC-DECLEDGER-13's 4,995 — are the current ones and have no upstream home until §3.6 is
-re-measured. That re-measurement is TSPEC's to land, is listed site-by-site in DEC-DECLEDGER-10/-12's
-re-evaluation trigger, and is not taken here.
+and DEC-DECLEDGER-13's 4,995 — now have their upstream home in §3.6, which remains the single site a
+future re-measurement moves. What this episode leaves behind is DEC-DECLEDGER-16's provenance rule
+and DEC-DECLEDGER-10/-12's one-pass trigger, not a standing divergence.
 
 ## Options Considered
 
