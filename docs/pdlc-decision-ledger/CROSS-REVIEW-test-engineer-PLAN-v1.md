@@ -138,7 +138,78 @@ lesson to have carried forward.
 
 ## Verification
 
-_pending_
+Everything below was executed against the working tree on `feat-pdlc-decision-ledger`, not read out
+of a document.
+
+### Files the task table names
+
+| Path | PLAN claim | Verified |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | exists at HEAD | ✅ present |
+| `scripts/capture-learnings-baseline.mjs` | shipped harness, reused unchanged | ✅ tracked at repo root (`git ls-files`), and `runCaptureScript` is imported by `pdlc/workflows/__tests__/learningsCaptureScript.test.js:142` |
+| `pdlc/workflows/__tests__/loopEconomicsBaselineGuard.test.js` | guard shape T-02 clones | ✅ present; its header at line 30 names the same capture harness |
+| `pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js` | census precedent T-11 clones | ✅ present |
+| `pdlc/workflows/__tests__/advisoryDisabled.test.js` | `sourceExcludingParser` / PROP-DIS-06 | ✅ present |
+| `pdlc/engine/__tests__/loop-config-example.test.js` | disclosure shape T-12 clones | ✅ present; committed-`test.skip` contract stated at line 24 |
+| `pdlc/workflows/__tests__/documentOracles.test.js` | T-19's test file | ✅ present |
+| `.claude/pdlc.config.example.json` | tracked, eight top-level blocks | ✅ tracked; parsed to exactly 8 keys, in the order the PLAN lists them |
+| `pdlc/.claude-plugin/plugin.json` | version `0.23.6` | ✅ `"version": "0.23.6"` at line 4 |
+| `pdlc/workflows/dist/pdlc-cli.mjs` | generated artifact | ✅ present |
+| `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` | exist | ✅ all present |
+
+Every remaining path in the Test File / Source File columns carries an explicit `[new]` marker. **No
+unmarked non-existent path.** The PLAN's own claim to that effect holds.
+
+### T-00's eight baseline symbols
+
+All eight exist in `pdlc/workflows/orchestrate-dev.js` and seven are exported, so an existence gate
+can import them:
+
+`LEARNINGS_CORPUS_ARGV` (line 2230), `parseLearningsConfig` (2252), `readLearningsConfigSafely`
+(2313), `parsePinCheckConfig` (2363), `parseDerivativeStopConfig` (2414), `renderLearningsBlock`
+(2731), `gatherLearningsCorpus` (2771), `reviewLoop` (9194) — all `export`ed. The sentinel-bounded
+region the PLAN cites is real: `// === LEARNINGS INJECTION REGION START ===` at line 2184,
+`... END ===` at 2892. `reviewerPrompt` (line 11433) is module-private, exactly as the PLAN's
+integration-points table states, and `main()` is the default export at line 14657.
+
+### Count literals
+
+| Literal | PLAN | Measured |
+|---|---|---|
+| in-scope `DECISIONS-*.md` at `8c673a09f` | 25 | **25** — `git ls-tree -r --name-only 8c673a09f` filtered by TSPEC §4.5's four globs |
+| in-scope files in the live tree | 26 | **26** — same globs via `git ls-files --cached --others --exclude-standard` |
+| `.claude/pdlc.config.example.json` top-level blocks | 8 | **8** |
+| FSPEC acceptance tests | AT-01…AT-18 | **18**, and the PLAN's AT-ownership table covers all 18 with no gap and no invented id |
+| TSPEC failure rows | F-1…F-14 | **14**, and the PLAN's failure-row table covers all 14 |
+| `pdlc/engine/__tests__/` | "73 files at HEAD" | 73 *directory entries*, of which 64 are `*.test.js`, 7 are `_`-prefixed helper modules and 2 are directories (`fixtures/`, `live/`). See F-08 |
+
+### Gate commands
+
+- `pdlc/workflows/package.json` `test:coverage` is
+  `c8 npm test -- --runInBand && c8 report --reporter=json && node scripts/check-wave-resume-delta-coverage.mjs && c8 report --check-coverage --per-file --branches 85 …`.
+  The PLAN quotes the first and last clauses and **omits the third**. See F-02.
+- c8 `include` does name `**/pdlc/workflows/orchestrate-dev.js`. PLAN correct.
+- jest `testPathIgnorePatterns` is exactly `["/node_modules/", "/__tests__/helpers/", "/__tests__/fixtures/"]`.
+  PLAN correct — T-01's helper and T-02/T-03's fixtures (including `scenarios.mjs`) are never
+  collected as tests.
+- `pdlc/workflows/__tests__/fixtures/` already holds `learnings-baseline/` and
+  `loop-economics-baseline/`. PLAN correct — T-02 and T-03 are the third and fourth of a shipped kind.
+- `pdlc/engine` `npm test` is `node __tests__/_run-suite.mjs`, which spawns `node --test` over the
+  whole `__tests__/` directory. A new `decision-ledger-config-example.test.js` is collected
+  automatically; no manifest to update. T-12 is safe on that axis.
+
+### The census literal that reds at batch 1
+
+`pdlc/workflows/__tests__/documentOracles.test.js:398` asserts
+
+```js
+readdirSync(testDir).filter((name) =>
+  name.endsWith(".test.js") && !name.startsWith("learnings") && !name.startsWith("waveResume")
+  && !name.startsWith("loop") && !name.startsWith("escalationView")).length === 102
+```
+
+I measured it: `ls *.test.js | wc -l` = 154; after the four prefix exclusions, **exactly 102**. The
+`decisionLedger*` namespace is not among the exclusions. This is F-01.
 
 ## Findings
 
