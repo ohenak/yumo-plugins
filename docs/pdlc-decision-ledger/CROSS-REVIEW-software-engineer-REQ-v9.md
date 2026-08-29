@@ -32,8 +32,8 @@ so `M-1`…`M-6` — and therefore `M-1d`/`M-2e`, which REQ-DECLEDGER-01 transcr
 which C-5's `maxEntries` rests on — are the same facts at the same commit. The note's "no measured
 value moves" is accurate, and `M-7e` is a fair citation for it (it records §8 as measured on the
 same tree, at the same commit, by the same re-derivation). Every `M-*` id the REQ cites
-(`M-1a`, `M-1d`, `M-2c`, `M-2d`, `M-2e`, `M-3c`, `M-4b`, `M-4c`, `M-4e`, `M-5a`, `M-5c`, `M-6a`,
-`M-6b`, `M-6c`, `M-6d`, `M-7b`, `M-7c`, `M-7d`) exists in v1.2. So do the non-Baseline citations
+(`M-1d`, `M-2c`, `M-2e`, `M-3c`, `M-4d`, `M-4e`, `M-5a`, `M-5c`, `M-6b`, `M-6c`, `M-6d`, `M-7b`,
+`M-7c`, `M-7d`, `M-7e` — checked one by one) exists in v1.2. So do the non-Baseline citations
 I re-checked at HEAD: `DEC-ERR-01` and its "absorbed, not routed" wording
 (`DECISIONS-review-severity-bars.md:88`, summarised at `pdlc/OPERATIONS.md:29`), `DEC-TERM-01`'s
 114 approving verdicts and 15-round cap on `pdlc-engineering-loop`
