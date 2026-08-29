@@ -84,11 +84,71 @@ itself is byte-identical to v0.7. Both retired referents are still on disk, verb
 
 ## Dependencies
 
-_pending_
+The round claims "no batch, dependency, ownership or task-id assignment changes"; I checked rather
+than took it.
+
+- **Task inventory unchanged at 24.** The Batches table declares exactly `T-00, T-00a, T-01, T-02,
+  T-03, T-04…T-12, T-12a, T-13…T-20` — 24 unique ids, matching §Definition of Done's "All 24 tasks".
+- **No `Batch`/`Deps` cell moved.** The diff touches only prose inside the T-11 and T-18 description
+  cells; every `Batch` and `Deps` column value is untouched. T-11 stays batch 2 / `T-00, T-01`;
+  T-18 stays batch 8 / `T-10, T-10a, T-11, T-17`.
+- **The red-before-green edge survives the T-18 rewrite, and this was the one at real risk.** v0.7
+  justified T-11-stays-red-until-T-18 partly by "T-18 writes the missing `CENSUS_TOKENS`
+  declaration". Removing that instruction could have left T-11's un-skip edge unmotivated. It did
+  not: T-18 now grounds the same edge on the surviving reason — "T-11 still stays red until this task
+  lands, because the fourteen owned members it resolves against are the declarations batches 3–8
+  write" — and keeps "Un-skips T-10, T-10a and T-11". The edge is re-argued, not orphaned.
+- **File-ownership manifest stays disjoint.** The two rewritten manifest rows changed only their
+  parenthetical annotations; neither moved a path between owners, so the batch-safety
+  same-batch/same-new-file property I approved earlier is undisturbed.
 
 ## Verification
 
-_pending_
+Sweeping this PLAN against upstream at HEAD for anything it cites that TSPEC v1.1 no longer says the
+same way — the DEC-ERR-03 obligation, independent of the item list.
+
+**Checks that pass:**
+
+- **TSPEC §6.1 row count.** PLAN's coverage-gate prose and its failure-row table both say
+  **fourteen**; TSPEC §6.1 has exactly 14 `F-n` rows. Agrees.
+- **FSPEC AT coverage.** PLAN's AT-owner table names AT-01…AT-18; FSPEC declares AT-01…AT-18. No AT
+  is unowned and none is invented.
+- **§5.5 → §7.3 re-pointing.** No stale `§5.5` citation survives outside the revision history's own
+  record of having re-pointed it.
+- **`decisionLedger`-is-not-a-token rationale.** PLAN's version tracks TSPEC §7.3's *Why the report
+  field name is not a census token* paragraph faithfully, including the "absent from
+  `DECISION_LEDGER_OWNED_DECLS` too, so the partition is unaffected in both directions" corollary
+  that v1.1 needs in order for fourteen to be the right number.
+
+**Check that fails — and it is the one the routed item named.** TSPEC §7.2's conjunct 3 was rewritten
+at **v0.9** (its own changelog: *"PM F-01 (Medium) — the flag-off `report` key set was cited against
+§7.4's recording, which captures reviewer-prompt streams for one narrow `reviewLoop` case and no
+`report` key at all"*), and v1.1 §7.3 restates the warning in bold: the referent for the key-set
+conjunct is *"the arm's own paired runs, **not** §7.4's recording"*. Upstream now specifies three
+conjuncts:
+
+1. prompt byte-identical to §7.4's committed merge-base recording — §7.4 cited **for this conjunct only**;
+2. the `report` object *the flag-off `main()` run itself returns* has a key set whose **symmetric
+   difference from the flag-on run's key set is exactly `{decisionLedger}`**, asserted as set equality
+   in both directions so a spurious add *or* drop on **either** arm fails;
+3. the emitted `NTC-DECLEDGER-*` notice set is **set-equal to empty**.
+
+PLAN T-10a still carries the pre-v0.9 form at `:157` and §Definition of Done still carries it at
+`:483`–`:484`. This is not a wording nit — as written, conjunct 3 is **unimplementable** and
+**unfalsifiable** in the one arm DC-07 requires:
+
+- *"`notices` is set-equal to the baseline notices array"* — the baseline is T-02's committed
+  merge-base recording, which records reviewer-prompt streams and holds no notices array at all.
+  There is no such array for an implementer to compare against. TSPEC's replacement is concrete and
+  buildable: set-equal to **empty**.
+- *"`report`'s key set is set-equal to the flag-off key set"* — on the flag-off run this is a
+  tautology: the run's key set is trivially equal to itself. It cannot fail, so it does not pair
+  `"decisionLedger" not in report` with any positive, which is the entire purpose the conjunct was
+  added to serve (TE F-05). TSPEC's replacement — symmetric difference against the **flag-on** run's
+  key set, asserted both directions — is the falsifiable form.
+
+TSPEC §7.2 closes that paragraph with *"which is the form PLAN T-10a already states."* At HEAD that
+sentence is false. Upstream believes this PLAN has already absorbed the correction; it has not.
 
 ## Questions
 
