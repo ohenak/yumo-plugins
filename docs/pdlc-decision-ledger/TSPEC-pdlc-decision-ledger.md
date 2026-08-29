@@ -14,7 +14,37 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.9 | 2026-08-29 |
+| Draft | se-author | 1.0 | 2026-08-29 |
+
+**v1.0 — Phase P erratum: the three census constants given a stated home, and removed from the
+owned-declaration list.** Upstream is unmoved and was re-measured at HEAD before this edit (REQ
+**v1.9** `sha256:ce6b133f…3c7b7c`, FSPEC **v1.3** `sha256:2bd5c3ef…5aed39`, Baseline **v1.2**);
+neither changelog names a new `BR-`/`E-`/`AC-` or vocabulary row since v0.5, so nothing is absorbed
+and no pin advances. The four corpus literals (6,305 / 10,859 / 12,059 / 441) are unchanged.
+Sections touched: §7.3 and this changelog, nothing else.
+
+Three routed items (te-review, se-author, pm-review+te-review) all name the same defect from two
+directions: §7.3 made `DECISION_LEDGER_CENSUS_TOKENS` a member of `DECISION_LEDGER_OWNED_DECLS`,
+which obliges every member to resolve to **exactly one top-level declaration of
+`orchestrate-dev.js`** with a **non-empty slice** — yet no module-surface section declares it (§5.2's
+frozen-catalogue table lists only `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`
+and `DECISION_LEDGER_NOTICES`, and §4 never introduces it), so both conjuncts were red by
+construction. te-review's diagnosis is the correct one and is the resolution adopted: the constant is
+the census test's **own test-file operand**, precisely as the precedent's `ANCHOR_TOKENS` is a
+top-level constant of `loopEconomicsAnchorGuard.test.js` rather than of the module that test scans.
+It is therefore given a home in §7.3 as a test-file declaration rather than a manufactured production
+one, and three edits follow: (1) a new *Where the three census constants live* paragraph states that
+`DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS`
+are declarations of the census test file, why no module-surface section declares them, and that a
+test-file constant can never be a member of the owned list; (2) `DECISION_LEDGER_CENSUS_TOKENS` is
+removed from `DECISION_LEDGER_CENSUS_EXEMPT`, with the exempt list's closing sentence stating that
+the census constants are absent from *both* sub-sets because they are not module declarations, so the
+partition stays exact and disjoint over a list that is now wholly module declarations; (3)
+`DECISION_LEDGER_CENSUS_TOKENS` is removed from the owned-declaration enumeration, together with its
+"the token strings live inside its own declaration" rationale — that rationale only held if the
+constant were production code, and with the constant in the test file the census (whose scanned
+source is `orchestrate-dev.js` alone) never reads the file its own literals live in. No approved
+decision is re-litigated, no product question re-opened, and no other section is touched.
 
 **v0.9 — round 9's confirmation findings: the census made satisfiable over its whole token set.**
 Upstream is unmoved since v0.5 and was re-measured at HEAD before this edit (REQ **v1.9**
@@ -1289,12 +1319,22 @@ fail:
   section adopts declaration-anchored slicing for the regions that *are* declarations.
 
 **The census, specified the way the precedent actually works.** Both operands are named, frozen and
-set-equality-checked, so neither can drift silently:
+set-equality-checked, so neither can drift silently.
+
+**Where the three census constants live.** `DECISION_LEDGER_CENSUS_TOKENS`,
+`DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` are declarations of the **census
+test file itself**, not of `orchestrate-dev.js`. That is why no module-surface section declares
+them: §3, §4 and §5 specify the shipped module surface, and these three are test operands, exactly
+as the precedent's `ANCHOR_TOKENS` is a top-level constant of `loopEconomicsAnchorGuard.test.js`
+rather than of the module that test scans. The consequence is load-bearing for the two operands
+below: `DECISION_LEDGER_OWNED_DECLS` enumerates *module* top-level declarations — every member must
+resolve to exactly one top-level declaration of `orchestrate-dev.js` — so a test-file constant can
+never be a member of it, and the census never scans the file the three are declared in.
 
 | Operand | Definition | How it is kept honest |
 |---|---|---|
-| **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose six members are the names that carry or produce decision-record **data**: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` | Not set equality against *all* of the module's decision-ledger exports — that comparison is red by construction, since §3.1/§4.1/§4.2/§4.4/§5.2 declare roughly a dozen and only these six are data-carrying. The companion test instead asserts **`DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`**, the two sub-sets **disjoint**, over the same frozen owned-declaration list the second operand slices. That is still an exact set equality — a symbol added later must be classified into one list or the other or the test reddens — but the partition is stated rather than assumed. `DECISION_LEDGER_CENSUS_EXEMPT` holds the plumbing declarations, each with its reason: `parseDecisionLedgerConfig` and `buildDecisionLedgerInjector` (named by the wiring block, config and construction, they carry no record), `DECISION_LEDGER_DEFAULTS` (config defaults), `DECISION_HEADING_RE` (grammar), `DECISION_CORPUS_ARGV` (the `_git` argv literal), `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT` (fixed prompt framing text, no record data), `DECISION_LEDGER_NOTICES` (run-level notice ids, which generic driver code legitimately renders and counts) and `DECISION_LEDGER_CENSUS_TOKENS` (the census's own operand). Generic tokens like `id` are excluded by construction — no member is a name the shipped module already uses |
-| **Scanned source** | The whole of `orchestrate-dev.js`, **minus** (a) the body of **every** declaration this feature introduces — the frozen list `DECISION_LEDGER_OWNED_DECLS`, i.e. §4.1/§4.2/§4.4's six functions plus every top-level constant it declares: §3.1's `DECISION_CORPUS_ARGV`, §3.2's `DECISION_HEADING_RE`, §4.1's `DECISION_LEDGER_DEFAULTS`, §4.3's `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT`, §5.2's three catalogues, and `DECISION_LEDGER_CENSUS_TOKENS` itself (the token strings live inside its own declaration, so the census would otherwise red on its own literal) — and (b) the `main()` wiring block. The declaration bodies are sliced the precedent's way: from a declaration's own line to the **next top-level declaration of any name**, boundaries taken from *all* of the module's top-level declarations rather than from the owned subset, which is `loopEconomicsAnchorGuard.test.js`'s `bodyOf` over `allTopLevelDecls` (and the same brace-anchored idea as `advisoryDisabled.test.js`'s `sourceExcludingParser` slicing `parseAdvisoryConfig`). Slicing **every** owned declaration, not a hand-picked three, is what makes the census satisfiable: a token's own declaration line, and its uses by its sibling declarations, are then never in the remainder. (b) is **not** the whole of `main()`, which owns a great deal of unrelated code a coupling could hide in: it is the contiguous run of lines between two literal sentinel comments the wiring is written between (`// === DECISION LEDGER WIRING START/END ===`, placed by the task that writes the wiring), so `main()` outside that run stays inside the census | `DECISION_LEDGER_OWNED_DECLS` is frozen and each member must resolve to **exactly one** top-level declaration at HEAD, so a rename or a deletion reddens rather than silently shrinking the exclusion. The test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous. A name pattern is deliberately **not** used to derive the owned list: the shipped module already declares `MERGE_MAX_DECISION_STEPS`, `renderDecisionEntry`, `escalationDecision`, `erratumGateDecision` and `parseDecisionsWarranted`, so any `/Decision/i` rule would exclude unrelated shipped code from the census and blind it |
+| **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose six members are the names that carry or produce decision-record **data**: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` | Not set equality against *all* of the module's decision-ledger exports — that comparison is red by construction, since §3.1/§4.1/§4.2/§4.4/§5.2 declare roughly a dozen and only these six are data-carrying. The companion test instead asserts **`DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`**, the two sub-sets **disjoint**, over the same frozen owned-declaration list the second operand slices. That is still an exact set equality — a symbol added later must be classified into one list or the other or the test reddens — but the partition is stated rather than assumed. `DECISION_LEDGER_CENSUS_EXEMPT` holds the plumbing declarations, each with its reason: `parseDecisionLedgerConfig` and `buildDecisionLedgerInjector` (named by the wiring block, config and construction, they carry no record), `DECISION_LEDGER_DEFAULTS` (config defaults), `DECISION_HEADING_RE` (grammar), `DECISION_CORPUS_ARGV` (the `_git` argv literal), `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT` (fixed prompt framing text, no record data), and `DECISION_LEDGER_NOTICES` (run-level notice ids, which generic driver code legitimately renders and counts). The census constants themselves are absent from both sub-sets because they are not module declarations at all (see *Where the three census constants live* above). Generic tokens like `id` are excluded by construction — no member is a name the shipped module already uses |
+| **Scanned source** | The whole of `orchestrate-dev.js`, **minus** (a) the body of **every** declaration this feature introduces — the frozen list `DECISION_LEDGER_OWNED_DECLS`, i.e. §4.1/§4.2/§4.4's six functions plus every top-level constant it declares: §3.1's `DECISION_CORPUS_ARGV`, §3.2's `DECISION_HEADING_RE`, §4.1's `DECISION_LEDGER_DEFAULTS`, §4.3's `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT`, and §5.2's three catalogues — and (b) the `main()` wiring block. The declaration bodies are sliced the precedent's way: from a declaration's own line to the **next top-level declaration of any name**, boundaries taken from *all* of the module's top-level declarations rather than from the owned subset, which is `loopEconomicsAnchorGuard.test.js`'s `bodyOf` over `allTopLevelDecls` (and the same brace-anchored idea as `advisoryDisabled.test.js`'s `sourceExcludingParser` slicing `parseAdvisoryConfig`). Slicing **every** owned declaration, not a hand-picked three, is what makes the census satisfiable: a token's own declaration line, and its uses by its sibling declarations, are then never in the remainder. (b) is **not** the whole of `main()`, which owns a great deal of unrelated code a coupling could hide in: it is the contiguous run of lines between two literal sentinel comments the wiring is written between (`// === DECISION LEDGER WIRING START/END ===`, placed by the task that writes the wiring), so `main()` outside that run stays inside the census | `DECISION_LEDGER_OWNED_DECLS` is frozen and each member must resolve to **exactly one** top-level declaration at HEAD, so a rename or a deletion reddens rather than silently shrinking the exclusion. The test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous. A name pattern is deliberately **not** used to derive the owned list: the shipped module already declares `MERGE_MAX_DECISION_STEPS`, `renderDecisionEntry`, `escalationDecision`, `erratumGateDecision` and `parseDecisionsWarranted`, so any `/Decision/i` rule would exclude unrelated shipped code from the census and blind it |
 
 The assertion is then the precedent's: **zero occurrences** of any member of
 `DECISION_LEDGER_CENSUS_TOKENS` in the scanned remainder. This is implementable, non-vacuous, and it
