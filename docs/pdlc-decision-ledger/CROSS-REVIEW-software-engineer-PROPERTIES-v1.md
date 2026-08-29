@@ -180,8 +180,84 @@ them.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | `PLAN` T-00a's acceptance is two-sided — the exclusion lands **and** the filtered count is still `102` once all twelve modules exist. Those two halves are separated by eight batches. Is PROP-DISC-07 intended to be one property spanning T-00a and T-12a, or two? F-01's fix depends on the answer. |
+| Q-02 | ORC-03 Part A pins A3 as *"`omitted[]` non-empty and every omitted id has `origin === "feature"`"*, and deliberately does not pin how many feature-level lines survive. Under the shipped defaults `maxEntries: 70` binds first (41 project-level + 29 feature-level = 70) well before `maxBytes`. Is the `RSN-ENTRIES` / `RSN-BYTES` reason distribution in `omitted[]` asserted anywhere for the whole-fixture build, or only under PROP-BND-05's generated sets? |
+| Q-03 | FX-CORPUS is a path-preserving copy of 25 real `DECISIONS-*.md` files. Does the fixture guard's per-file digest set need re-transcribing if an unrelated feature ever rewrites one of those 25 files at `main`? My reading is no — the copy is frozen at `8c673a09f` and never re-synced — but the guard's failure message should say so, since the obvious operator reaction to a digest mismatch is to re-capture. |
+| Q-04 | PROP-DISC-06 forbids any change to `pdlc/engine/` **runtime** files, with the disclosure test as the sole addition. `pdlc/engine` vendors `pdlc/workflows/` at pack time. Does the vendored copy of the changed `orchestrate-dev.js` count as an engine runtime change for this property's purposes, or is the property scoped to files tracked under `pdlc/engine/` at HEAD? |
+
 ## Positive Observations
+
+- **Every quantitative claim in this document reproduces at HEAD.** I re-derived the corpus
+  enumeration (25 files, 141 records, 41/100, the full per-feature distribution including
+  `pdlc-plugin-retirement`'s 0), both byte literals (6,305 and 10,859) and the 441-byte margin, plus
+  eleven existing-code claims. Not one figure was off. `§ORC-01`'s *"executed at HEAD to ground these
+  figures, not taken on the specification's word"* is an accurate description of what was done, and
+  it is rare enough to be worth naming.
+- **The anti-echo discipline is the strongest I have reviewed in this repo.** PROP-BND-07,
+  PROP-DISC-03, ORC-01's transcription rule and ORC-02's chain — which starts at the *rendered line*
+  and explicitly never reads `DecisionRecord.heading` — each independently close a route by which an
+  expectation could be derived from the code under test. ORC-02's ordering paragraph ("stated in
+  order so it is not written the other way round") is exactly the right level of instruction.
+- **Non-vacuity is argued, not assumed, in every place it could bite.** ORC-03 A3's explanation of
+  why the 141-record fixture rather than the 41-record slice is needed for the drop-order conjunct to
+  be falsifiable; PROP-BND-04 as the positive that defeats a `""`-returning renderer; PROP-INV-08's
+  "every census slice must be asserted non-empty"; FX-PRECEDENCE's three construction constraints,
+  each with its stated purpose. This is the failure mode that produced the consolidation-agent
+  vacuous green, and it has been systematically designed out.
+- **ORC-04's clause (b) is the right call and the reasoning is correct.** Resolving ancestry against
+  `HEAD` rather than computing `git merge-base origin/main HEAD` at test time is what keeps the
+  required check hermetic; a check that depends on the local `origin/main` goes red on an unrelated
+  push. Same for clause (a)'s refusal to read the expected digest from the manifest it checks.
+- **The `FX-FO-EMPTY-ONLY` / `FX-FO-ALLFAIL` pair is the sharpest thing in the document.** Two
+  corpora whose dispatch bytes are byte-identical, so that no prompt-level assertion can separate
+  them and PROP-FAIL-06's `failedSources`/`emptySources` split is provably the only oracle that can.
+  That is a real falsifiability argument for `TSPEC` §6.3 existing at all, not a restatement of it.
+- **Scripting both read-failure shapes** — runtime `throws` versus double returns `null` — catches a
+  seam-fidelity gap that has bitten this repo before.
+- **The routed `PLAN` item was raised in the right channel** rather than folded into this document,
+  and the analysis is correct: `reviewLoop` never receives config text, so T-02's single recorded
+  case cannot make AT-05 non-vacuous. I have confirmed it against `PLAN`:101 and `PLAN`:390 and
+  re-emitted it as an erratum so it is routed.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding (F-01). The document's technical content is excellent and its factual grounding is
+exact; the defects are concentrated in the Coverage Matrix's Red/Green task columns, which
+contradict `PLAN` in four places and omit two `PLAN` tasks outright. F-01 is High rather than Medium
+because the specific contradiction — binding the census exclusion to batch 9 — reproduces the
+batch-1 required-check failure the same property's prose correctly diagnoses, and a wave halt at
+batch 1 costs more than the edit does.
+
+F-02 through F-06 are Medium and F-07/F-08 are Low; none requires re-deriving anything, and all
+eight fixes are confined to the Coverage Matrix, one BND row and one CFG row.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | Coverage Matrix omits `PLAN` T-00a; PROP-DISC-07's batch-1 obligation is bound to green task T-19 (batch 9) | §Coverage Matrix / PROP-DISC-07 |
+| F-02 | Medium | delta | local | `PLAN` T-20 traced by no property; PROP-DISC-08 bound to T-19 | §Coverage Matrix / PROP-DISC-08 |
+| F-03 | Medium | delta | local | "12 modules claimed, none orphaned" not demonstrated; two modules carry no PROP id; three task mappings contradict `PLAN` | §Coverage Matrix |
+| F-04 | Medium | delta | local | Pyramid arithmetic sums to 95, not 98; 14 properties unclassified | §Coverage Matrix |
+| F-05 | Medium | delta | local | PROP-BND-07 normative but prose-only, outside the table and the count | §BND / ORC-05 |
+| F-06 | Medium | delta | local | PROP-CFG-06 absence-only; no positive return conjunct on the same path | PROP-CFG-06 |
+| F-07 | Low | delta | local | Dangling id `PROP-DIS-06` | §Census prose |
+| F-08 | Low | delta | local | PROP-BND-07 and PROP-BND-12 discharged by no AT row; three BND ranges disagree | §BND / §AT map |
+
+FINDING: High | delta | local | §Coverage Matrix / PROP-DISC-07 | `PLAN` T-00a appears zero times in the document, and PROP-DISC-07 — which restates T-00a's batch-1 census-exclusion obligation — is assigned green task T-19 (batch 9), reproducing the batch-1 required-check failure its own prose diagnoses
+FINDING: Medium | delta | local | §Coverage Matrix / PROP-DISC-08 | `PLAN` T-20 appears zero times; PROP-DISC-08 states T-20's build-runtime/dist/version-bump content but is bound to green task T-19
+FINDING: Medium | delta | local | §Coverage Matrix | "All 12 modules are claimed and none is orphaned" is asserted, not demonstrated: decisionLedgerPreflight.test.js and decisionLedgerFixtureGuard.test.js carry no PROP id, documentOracles.test.js is missing, and Census/OFF green tasks contradict `PLAN`:181, :243 and :101
+FINDING: Medium | delta | local | §Coverage Matrix | Pyramid reconciliation "47 + 11 + 37" sums to 95 against a stated total of 98; 47 double-counts BND and OFF/DISC's 14 properties fall out of the partition
+FINDING: Medium | delta | local | §BND / ORC-05 | PROP-BND-07, the family's anti-echo conjunct, is a prose paragraph rather than a table row and is excluded from the BND count of 11, so the enumeration cannot be checked by set equality
+FINDING: Medium | delta | local | PROP-CFG-06 | Absence-only oracle: three "must not" conjuncts with no positive companion stating what the call returns for empty string, top-level scalar or unparseable text — a stub returning undefined passes
+FINDING: Low | delta | local | §Census prose | Dangling id `PROP-DIS-06`; no such family, intended referent is PROP-DISC-06
+FINDING: Low | delta | local | §BND / §AT map | ORC-05 says PROP-BND-01…07, ORC-03 says 01…12, the mutation note says 01…04; PROP-BND-07 and PROP-BND-12 are discharged by no AT row
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 5, "low": 2}
