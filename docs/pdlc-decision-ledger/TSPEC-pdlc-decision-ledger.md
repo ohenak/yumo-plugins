@@ -6,15 +6,37 @@ feature: pdlc-decision-ledger
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (`REQ-pdlc-decision-ledger.md` v1.7, `FSPEC-pdlc-decision-ledger.md` v1.1) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (`REQ-pdlc-decision-ledger.md` v1.9, `FSPEC-pdlc-decision-ledger.md` v1.3) |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
-| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.1**, cited by `M-*` id, never restated |
+| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-TSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.4 | 2026-08-28 |
+| Draft | se-author | 0.5 | 2026-08-28 |
+
+**v0.5 erratum — the retired 8,000-byte arithmetic, the stale upstream pins, and nothing else.**
+Upstream moved twice while this document stood: REQ **v1.8** retyped C-5's two thresholds
+**non-negative** and replaced the `maxBytes` default `8000` with the measured **`12500`**
+(Baseline **v1.2**'s `M-7b`/`M-7c`), and REQ **v1.9** corrected the REQ's own remaining Baseline
+pins; FSPEC followed to **v1.3**. The header now pins REQ v1.9 / FSPEC v1.3 / Baseline v1.2, and
+every body pin of Baseline v1.1 follows it — v1.2 records `M-1`…`M-6` at the same `Verified at`
+commit (`M-7e`), so **no measured value in this document moves**. What does move is the arithmetic
+built on the retired default, re-measured in one pass at 12,500: the line allowance is
+`12500 − 1200 = 11,300`, project-level alone (6,305) leaves **~4,995** bytes of headroom, and
+`M-6b`'s 63-record worst standing case (10,859 + 1,200 = 12,059) now renders **whole**, with 441
+bytes to spare — §3.6, §4.1's type row and default, §4.3's framing-pin consequence, §5.3's config
+recital, §7.3's conjunct (2) threshold, §7.6's AT-01 rationale, D-10 and ERR-2. §3.6's
+live-under-shipped-defaults conclusion is reconciled with `DEC-DECLEDGER-03`: at the Baseline
+commit neither bound fires on a G-1-scoped dispatch, so the order is inert *at that commit* — a
+measurement, not a property of the mechanism — while over §7.3's whole 141-record fixture
+`maxEntries` 70 fires first and keeps that oracle's `omitted[]` conjunct non-vacuous. §7.3 no
+longer calls its 141-record fixture "what a real dispatch gathers": REQ G-1 scopes a real dispatch
+to the project set plus one feature (≤63, `M-6b`), and the fixture is deliberately over-sized so a
+bound binds. ERR-1 and ERR-2 are marked **resolved** in §9.2, naming REQ v1.8 as where they landed,
+and §9.4's A-1 stops carrying the retired "not measured" claim. Nothing else is touched: no
+approved decision is re-litigated and no section outside this list moves.
 
 **v0.4 — addresses TSPEC cross-review round 3** (`CROSS-REVIEW-product-manager-TSPEC-v3.md`,
 `CROSS-REVIEW-test-engineer-TSPEC-v3.md`). TE F-01 (High): §7.5 still carried the superseded
