@@ -106,6 +106,32 @@ unchanged.
 
 ## Data Model
 
+**`DecisionLedgerConfig` diffed against REQ C-5 at HEAD.** Per my role's contract-fidelity duty I
+diffed every value, range and type in §4.1 against C-5's rows:
+
+| §4.1 | REQ C-5 (HEAD) | Verdict |
+|---|---|---|
+| `enabled: boolean` — default `false` | `false`, A-2 rollout config-gated | agrees |
+| `maxEntries: number` — non-negative integer, default `70` | `70`, **non-negative integer**, floor `M-6b`/`M-6c` | agrees |
+| `maxBytes: number` — non-negative integer, default `12500` | `12500`, **non-negative integer**, `M-7b`/`M-7c` | agrees |
+
+Three keys, `Object.freeze`d, no fourth — C-3's exhaustive enumeration preserved. The previous
+divergence (positive-integer label vs `maxEntries: 0` as a valid admits-nothing value, FSPEC E-7) is
+gone in the right direction: REQ v1.8 retyped upstream, and §4.1's comment now claims **agreement**
+with C-5 rather than divergence from it. I verified that claim against C-5's row text rather than the
+TSPEC's summary of it — the row says "**Non-negative**: `0` is a valid admits-nothing value, not a
+malformed one falling back to `70`", which is E-7's requirement verbatim in intent. No unmarked
+internal variant, no narrowed range.
+
+**Derived quantities.** The three new arithmetic constants — `11,300`, `~4,995`, `441` — are
+internally consistent (`12500 − 1200 = 11300`; `11300 − 6305 = 4995`; `12500 − 12059 = 441`) and rest
+on measurements this document already owned (`6,305` and `10,859` from §3.6's table, unchanged) plus
+Baseline v1.2's `M-7b`/`M-7c`. I checked the one place these could have collided with upstream:
+Baseline `M-7c` states 12,500 clears `M-7b`'s **9,296 substance bytes** by 3,204, a ~50-byte-per-record
+framing allowance; this TSPEC's rendering spends 10,859 − 9,296 = 1,563 (≈25 bytes/record) plus the
+≤1,200 block framing, which sits inside `M-7c`'s allowance. `M-7d` explicitly delegates the rendering
+framing to the consuming TSPEC, so this is the intended division of labour, not a contradiction.
+
 ## Test Strategy
 
 ## Open Questions
