@@ -22,9 +22,71 @@ existence; every coverage claim was checked against the current suite layout.
 **Nothing rises to High.** Every P0 and P1 acceptance criterion has a named owning task, and both
 coverage tables are complete against the live upstreams (verified below).
 
+## Verification performed
+
+Product-lens traceability is only as good as the facts under it, so each claim below was executed
+against the working tree rather than read out of an upstream document.
+
+**Requirement coverage — complete.** FSPEC §2's Linked Requirements table maps all eight
+`REQ-DECLEDGER-01…08` onto `AT-01…AT-18`. The FSPEC enumerates exactly eighteen ATs; the PLAN's
+§Verification "Acceptance-test coverage" table names an owning task for all eighteen, with no
+extras and no gaps. TSPEC §6.1's failure table carries exactly fourteen rows `F-1…F-14`; the
+PLAN's failure-row table names an owner for all fourteen. Both P0-heavy chains are intact:
+REQ-DECLEDGER-02's disabled path lands on T-02 (AT-04) and T-10 (AT-05, AT-14), and
+REQ-DECLEDGER-08's replay lands on T-10 (AT-16, AT-17).
+
+**Every named file exists, or is declared `[new]`.** Confirmed present at HEAD:
+`pdlc/workflows/orchestrate-dev.js` (all eleven symbols the Overview and T-00 name resolve in it,
+including `parseLearningsConfig`, `readLearningsConfigSafely`, `parsePinCheckConfig`,
+`parseDerivativeStopConfig`, `LEARNINGS_CORPUS_ARGV`, `gatherLearningsCorpus`,
+`renderLearningsBlock`, `reviewLoop`, `reviewerPrompt`); `scripts/capture-learnings-baseline.mjs`
+at the repo root, exporting `runCaptureScript` and tracked by git;
+`pdlc/workflows/__tests__/{loopEconomicsBaselineGuard,loopEconomicsAnchorGuard,advisoryDisabled,documentOracles}.test.js`;
+`pdlc/engine/__tests__/loop-config-example.test.js`; `.claude/pdlc.config.example.json`;
+`pdlc/.claude-plugin/plugin.json`; `pdlc/workflows/dist/pdlc-cli.mjs`. Every remaining path in the
+task table carries `[new]`. **No task names a file that exists under a different path** — the
+Overview's own claim, and it holds.
+
+**Suite-layout claims — all true.** `pdlc/workflows/package.json`'s `testPathIgnorePatterns` is
+exactly `["/node_modules/", "/__tests__/helpers/", "/__tests__/fixtures/"]`, so T-01's helper and
+T-02/T-03's fixtures (including `scenarios.mjs`) are genuinely uncollected.
+`pdlc/workflows/__tests__/fixtures/` already holds `learnings-baseline/` and
+`loop-economics-baseline/`, so T-02 and T-03 add two more of a shipped kind.
+`pdlc/engine/__tests__/` holds 73 files. `.claude/pdlc.config.example.json` carries exactly the
+eight top-level blocks the Overview lists, in that order, so T-19 adding a ninth under a
+**containment** assertion is the right shape.
+
+**Corpus numbers — reproduced.** The live enumeration under the four `DECISION_CORPUS_ARGV` globs
+returns **26** files; the same set at `8c673a09f` returns **25** (F-01 is about the *command*, not
+the count). `8c673a09f` resolves to `docs(pdlc-decision-ledger): Phase R post-mortem`. T-09's
+line counts reconcile against the Baseline via TSPEC §7's measurement table: 41 project-level + 4
+for `pdlc-advisory-wave-gate` = **45**, and 41 + 7 for `pdlc-engineering-loop` = **48**; the
+141-record total is 41 + `M-2e`'s 100.
+
+**Gate-wording precedent — real.** The RED-terminal gate the PLAN adopts is the one
+`pdlc/engine/__tests__/loop-config-example.test.js` already followed: its header records that every
+block was committed `test.skip`, titled `"P8-02: …"`, after being run un-skipped once and observed
+red. The PLAN's "titled with the id of the `[green]` task that un-skips it" is that precedent
+restated, and every `[red]` row names its title id consistently with the Red-before-green table.
+
+**One-file constraint — sound.** `pdlc/engine/scripts/prepack.mjs` declares `MODULE_NAMES` at
+line 20 listing exactly `orchestrate-dev.js`, `orchestrate-queue.js`, `lib/loop-session.mjs`,
+`lib/escalation-view.mjs`. A new `pdlc/workflows/lib/` module would not be vendored, and REQ NG-6
+forbids editing it — so the serialisation of the six production greens is a forced consequence,
+not an authoring preference. The batch re-derivation `batch == max(deps) + 1` checks out for all
+twenty-one tasks.
+
+**Every `DEC-DECLEDGER-*` id the PLAN cites exists** in
+`DECISIONS-pdlc-decision-ledger.md` (the PLAN cites 04, 05, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16;
+the document defines 01–16).
+
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | T-20 bumps the plugin version but the feature ships **default-off**. Is a version bump the operator-visible signal you want here, or does the ledger need a paired engine release (per the `~/.pdlc/versions` store note in `CLAUDE.md`) before an operator can actually enable it? If the latter, the PLAN's Definition of Done is silent on the step that makes the feature reachable. |
+| Q-02 | T-09(d) asserts the shipped-default behaviour at `maxEntries: 70` / `maxBytes: 12500` against a corpus frozen at `8c673a09f`, where the `M-6b` slice leaves a **441-byte margin**. REQ R-5 already flags that the corpus grows. Is there a product intent that an operator learns when the margin is exhausted — i.e. does `omitted[]` becoming non-empty for the project-level set surface anywhere an operator reads, or is it report-only? No task claims an operator-facing signal. |
+| Q-03 | The dispatch that produced this review supplied a completeness gate naming `## Overview / ## Batches / ## Dependencies / ## Verification` — the **PLAN's** section contract, not a cross-review's. I have written this file in the `pm-review` SKILL's mandated cross-review format, since that is the parsed contract for the round history. Flagging in case the gate configuration for reviewer dispatches needs correcting. |
 
 ## Positive Observations
 
