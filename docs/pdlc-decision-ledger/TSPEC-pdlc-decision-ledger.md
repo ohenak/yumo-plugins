@@ -14,7 +14,48 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.8 | 2026-08-29 |
+| Draft | se-author | 0.9 | 2026-08-29 |
+
+**v0.9 — round 9's confirmation findings: the census made satisfiable over its whole token set.**
+Upstream is unmoved since v0.5 and was re-measured at HEAD before this edit (REQ **v1.9**
+`sha256:ce6b133f…3c7b7c`, FSPEC **v1.3** `sha256:2bd5c3ef…5aed39`, Baseline **v1.2**); no changelog
+of either names a new `BR-`/`E-`/`AC-` or vocabulary row since v0.5, so nothing is absorbed and no
+pin advances. The four corpus literals (6,305 / 10,859 / 12,059 / 441) are unchanged. Sections
+touched: §5.4, §7, §7.2, §7.3, and this changelog.
+
+**TE F-01 (High) — §7.3's census could not go green on a conforming implementation.** Its scanned
+source excluded three function bodies plus the wiring block, leaving `gatherDecisionCorpus` (§4.4's
+sixth function), §5.2's three frozen catalogues, and every intra-feature mention of a token inside a
+sibling declaration in the scanned remainder: four of the six tokens would have occurred there on
+correct code. Repaired the general way rather than by another exception — the scanned source now
+subtracts the body of **every** declaration this feature introduces, held in a frozen
+`DECISION_LEDGER_OWNED_DECLS` and sliced by `loopEconomicsAnchorGuard.test.js`'s `bodyOf` over *all*
+top-level declarations. §7.3 now also states the satisfiability predicate itself, so the next member
+is tested against it before it is added. **TE F-02 (High) — the companion set equality was red by
+construction**, comparing six tokens against roughly a dozen decision-ledger exports; it is restated
+as an exact **partition**: `DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` =
+`DECISION_LEDGER_OWNED_DECLS`, disjoint, with a stated reason per exempt member. A later symbol
+still cannot escape: it must be classified or the test reddens. The owned list is frozen rather than
+name-derived because the shipped module already declares `renderDecisionEntry`,
+`escalationDecision`, `erratumGateDecision`, `parseDecisionsWarranted` and
+`MERGE_MAX_DECISION_STEPS`, which any `/Decision/i` rule would wrongly exclude from the census.
+
+**PM F-01 (Medium) — the flag-off `report` key set was cited against §7.4's recording**, which
+captures reviewer-prompt streams for one narrow `reviewLoop` case and no `report` key at all. §7.2's
+conjunct 3 and §7.3's report-field paragraph now name the arm's **own paired flag-off/flag-on runs**
+as the referent, asserting the key sets differ by exactly `{decisionLedger}` in both directions;
+§7.4 stays cited for the prompt-byte conjunct only. **PM F-02 (Low)** — the same paragraph claimed
+§7.6's AT rows assert the field's flag-on presence; no AT row mentions it, so §7.2's arm is now
+named as the sole home, and §5.4 carries a forward pointer (PM Q-01) so a future editor cannot
+delete the arm without seeing what it discharges. **TE F-04 (Low)** — §7's per-file denominator is
+transcribed at HEAD's **18,509** lines rather than remembered as "~17k". **TE F-05 (Low)** — the
+v0.6 entry's `12,059 ≤ 12,500` recital is marked superseded by v0.7's 10,859 index pin.
+
+**TE F-03 (Medium) is already discharged downstream and no edit is owed here:** PLAN v0.3's T-11
+transcribes the six-member set and states `decisionLedger`'s deliberate exclusion. T-11 does still
+carry this section's *pre-v0.9* operand wording (three sliced bodies, set equality against exported
+names) and will need the ordinary downstream re-pin against this version. No approved decision is
+re-litigated and no product question is re-opened.
 
 **v0.8 erratum — Phase P's five items against §7, and nothing else.** Upstream is unmoved since v0.5
 (REQ **v1.9** `sha256:ce6b133f…3c7b7c`, FSPEC **v1.3** `sha256:2bd5c3ef…5aed39`, Baseline **v1.2**);
@@ -48,7 +89,10 @@ outside `main()`, so §5.4's equivalent sites fall in the scanned remainder; the
 from `DECISION_LEDGER_CENSUS_TOKENS` rather than carving `buildFinalReport` out of the scan (the
 carve-out would blind a far larger surface, and the field is not an exported symbol, so dropping it
 also keeps the companion set-equality exact). The field's obligation becomes behavioural, on §7.2's
-live arm and §7.6's AT rows. No approved decision is re-litigated.
+live arm and §7.6's AT rows. No approved decision is re-litigated. *(Two clauses of this entry are
+superseded in v0.9: the companion check is now a stated partition, not a set equality against all
+exported names, and §7.6 carries no `report.decisionLedger` row — §7.2's arm is the field's sole
+home.)*
 
 **v0.7 erratum — round 7's three items, and nothing else.** Upstream is unmoved since v0.5 (REQ
 **v1.9**, FSPEC **v1.3**, Baseline **v1.2**), so no pin advances and no measured value moves; the
@@ -78,7 +122,9 @@ F-13 and §7.6's AT-14 row now read `0` on **either** threshold rather than on `
 The five raised items: §3.6's "`maxBytes` binds first in every case" is tensed to the retired
 `8000` default it was computed against and its retirement at `12500` stated (PM F-01); §7.3 gains a
 **second** shipped-default assertion over the **`M-6b` slice** — `omitted[]` empty, the transcribed
-**12,059**, and `12,059 ≤ 12,500` — because the whole-fixture assertion pins ~4,995 bytes of
+**12,059**, and `12,059 ≤ 12,500` (*superseded in v0.7*: §7.3 now pins the **10,859** index-byte
+figure and states the 441-byte margin as arithmetic; this v0.6 recital is history, not a live
+reading of the section) — because the whole-fixture assertion pins ~4,995 bytes of
 project-level headroom while §3.6's "no line is omitted on any real dispatch" rests on 441, and
 §3.6 and D-10 now say which pin carries which claim (TE F-01, High); §7.3's whole-fixture rationale
 stops describing a staged "`maxEntries` binds first, forcing 71 omissions" and describes the single
