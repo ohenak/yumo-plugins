@@ -106,3 +106,78 @@ its own justification, and the two I would have challenged are the two the spec 
 run-level notice ids — true of the shipped `LEARNINGS_NOTICES` analogue — and `DECISION_LEDGER_DEFAULTS`
 because config defaults carry no record data. The partition therefore does what a set equality was
 meant to do (a later symbol must be classified or the test reddens) without being red on arrival.
+
+## Test Strategy
+
+### Item-by-item against round 9
+
+| Round 9 item | Landed | Verdict on the form |
+|---|---|---|
+| **F-01 (High)** — §7.3's census could not go green on a conforming implementation | **Yes, by the general repair** | TSPEC:1297 subtracts the body of *every* owned declaration instead of a hand-picked three; TSPEC:1308–1319 states the satisfiability predicate itself ("a token is unsatisfiable exactly when a **conforming** implementation mentions it in the scanned remainder") and requires future members to be checked against it *before* they are added. That last sentence is the part that matters: it converts a fixed defect into a rule, so the next member does not repeat the round. The token set is now chosen for what it *watches* — data-carrying names — rather than trimmed to whatever survived an exclusion list, which is the right direction of dependency between operand and predicate |
+| **F-02 (High)** — companion set equality red by construction | **Yes, and the falsifying power is kept** | TSPEC:1296 replaces "set-equal to all exported decision-ledger symbols" with an exact partition, `CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS`, disjoint, one stated reason per exempt member. This is not a weakening to containment: a symbol added later must be classified into one list or the other or the test reddens, so the escape-by-omission hole the original set equality existed to close stays closed. I re-derived the arithmetic (see **Architecture**) — 6 + 9 = 15, disjoint |
+| **F-03 (Medium)** — PLAN T-11 orphaned by the token drop | **Discharged, correctly, without an edit here** | PLAN:134 already transcribes the six-member set and the exclusion rationale, so the specific orphan is gone. The changelog is honest that T-11 still carries *this section's pre-v0.9 operand wording* (three sliced bodies, set equality against exported names) and owes the ordinary downstream re-pin — that is a PLAN-side obligation on the next PLAN round, not a TSPEC defect, and I would rather see it stated than quietly fixed in the wrong document |
+| **F-04 (Low)** — "~17k lines" | **Yes** | TSPEC:1046, **18,509**, matching HEAD exactly |
+| **F-05 (Low)** — v0.6's superseded recital | **Yes** | v0.6 entry now marks the `12,059 ≤ 12,500` recital as history superseded by v0.7's 10,859 pin |
+
+### The referent split in §7.2's conjunct 3, which is the delta's other real fix
+
+PM F-01 caught the flag-off `report` key set being cited against §7.4's recording. That citation was
+wrong in the way that produces a vacuous oracle rather than a red one: §7.4 records reviewer-prompt
+streams for one `reviewLoop` case and no `report` key at all, so "set-equal to §7.4's recording"
+would have compared against nothing. The repair (TSPEC:1136–1148) names the arm's **own paired
+flag-off/flag-on runs** as the referent and asserts the symmetric difference of the two key sets is
+exactly `{decisionLedger}`, "in both directions so a spuriously added or dropped key on **either**
+arm fails".
+
+Three things I checked about that, because a key-set oracle is easy to make unfalsifiable:
+
+1. **It is not absence-only.** `"decisionLedger" not in report` is paired with a positive on the same
+   path — the flag-on run's key set — and the equality is two-directional, so a spurious extra key on
+   either arm reddens. This is the set-equality-not-containment form, over the full enumeration.
+2. **The referent is not computed by the code under test.** The prompt conjunct still cites §7.4's
+   committed merge-base recording, explicitly "never a string computed by subtracting the block from
+   the flag-on prompt" — no implementation echo. The key-set conjunct's referent is a second live run
+   rather than a recording, which is legitimate here precisely because §7.4 *cannot* supply one, and
+   the spec now says so in-line rather than leaving the next reader to rediscover it.
+3. **The split is stated where it will be read.** "§7.4's recording is cited for the **prompt**
+   conjunct only" sits inside the conjunct, not in a changelog entry that will be skimmed.
+
+§7.2's arm otherwise still carries the three conjuncts DC-07 asks for: the call-count spy on
+`gatherDecisionCorpus`'s `_git` seam asserting ≥ 1 invocation on the served flow, the note that a
+fake of the outer interface cannot satisfy it, and positive presence ("**ends with** the rendered
+ledger block", not "differs from the baseline"). The delta did not disturb any of it.
+
+### The field's sole home is now named in two places, which is the point
+
+PM F-02's correction produced something better than a citation fix: §5.4 (TSPEC:948–953) now carries
+a forward pointer stating that §7.2's arm is `report.decisionLedger`'s only evidence and that
+deleting the arm deletes the field's proof, and §7.3's closing paragraph says the same from the other
+end. A field whose only proof lives in one test file, with no AT row and no census token, is exactly
+the thing that gets silently dropped in a later refactor; two cross-pointers make the deletion
+visibly a spec change. This is the behavioural-obligation half of item 5 finally landing where it
+can be found.
+
+### One precision item on the new slicer citation
+
+§7.3 equates its slicing rule with "`loopEconomicsAnchorGuard.test.js`'s `bodyOf` over
+`allTopLevelDecls`". The spec-level rule is unambiguous and implementable — boundaries from the next
+top-level declaration *of any name* — but the cited helper does not span the members the new owned
+list is mostly made of: its `DECL_RE`
+(`pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js:61`) is
+`/^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(/`, i.e. function declarations only,
+while nine of the fifteen owned members are top-level `const` declarations. Cloned verbatim,
+`bodyOf("DECISION_CORPUS_ARGV")` throws its "No top-level declaration found" error, and — worse for
+the census — boundaries derived from functions alone put a constant inside whichever function
+precedes it, so whether an owned constant is excluded becomes an accident of source order rather
+than a stated rule. The precedent is still the right shape to cite; the citation needs one clause
+saying the declaration regex must also match top-level `const` (the shipped module's own
+`export const MERGE_MAX_DECISION_STEPS` at `orchestrate-dev.js:88` shows the form). F-01, Medium —
+non-gating because the spec's own words ("of any name", "each member must resolve to exactly one
+top-level declaration") already require the wider rule.
+
+### One citation slip
+
+The owned list is introduced as "§4.1/§4.2/§4.4's six functions". `renderDecisionLedgerBlock` is
+declared in **§4.3** (TSPEC:759), not in any of the three sections named. The list's *content* is
+right — the six reconcile exactly with the partition — only the section citation is short by one.
+F-02, Low.
