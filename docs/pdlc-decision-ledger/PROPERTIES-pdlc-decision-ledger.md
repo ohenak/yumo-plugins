@@ -248,7 +248,7 @@ anchors, `TSPEC` §7.6):
 ### FAIL — fail-open degradation (O-6, O-7)
 
 Traces `REQ-DECLEDGER-04`, `REQ` G-3, R-1, O-6; `FSPEC` BR-7, BR-8, E-2, E-3, E-4, AT-08, AT-09,
-AT-10; `TSPEC` §6.1 F-6…F-10, §6.2, §6.3. Owner **T-08 → T-17**. Level: **integration with scripted
+AT-10; `TSPEC` §6.1 F-6…F-10 and **F-14** (no directory among the three globs, or a directory yielding zero records — PROP-FAIL-11), §6.2, §6.3. Owner **T-08 → T-17**. Level: **integration with scripted
 seams**, over **FX-FAILOPEN**. None of `E-2`/`E-3`/`E-4` has a HEAD instance, so every property here
 is constructed data by necessity, which is exactly what O-6 records.
 
@@ -361,7 +361,10 @@ why it failed: the token set was ubiquitous (`id` is one of the commonest identi
 and the scanned regions do not exist as source objects — `orchestrate-dev.js` carries exactly one
 sentinel-bounded region at HEAD (`advisoryDisabled.test.js:718–719` searches for
 `"// === LEARNINGS INJECTION REGION START ==="` by **exact string**, not by sentinel *shape*), so
-this feature's own wiring sentinels are invisible to PROP-DIS-06's slice and vice versa. What the
+this feature's own wiring sentinels are invisible to PROP-DIS-06's slice and vice versa
+(**PROP-DIS-06** is `pdlc-advisory-tier`'s shipped property id, not a misspelling of PROP-DISC-06
+below: it is the `/\.enabled\b/` count named in `advisoryDisabled.test.js:711` and in
+`orchestrate-dev.js:9263`). What the
 census deliberately does **not** attempt is proving the absence of a coupling routed through a
 generically-named local; that residue is covered behaviourally by PROP-INV-01…04, and the two
 together are the compensating control `TSPEC` §7.7 records against `REQ` R-3.
