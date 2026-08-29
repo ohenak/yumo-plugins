@@ -182,6 +182,27 @@ design is cleaner after v1.0; `PROPERTIES` simply has not caught up with it.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | inherited | local | PROP-INV-06 excludes **three brace-matched function bodies**; §7.3 at HEAD excludes the body of **every** member of `DECISION_LEDGER_OWNED_DECLS` (fourteen: six functions + eight constants), sliced declaration-line-to-next-top-level-declaration. §7.3 names the narrow form the defect it fixed ("not a hand-picked three"). A test built to PROP-INV-06 is red by construction on conforming code, and brace-matching cannot slice a constant such as `DECISION_HEADING_RE` at all. | `PROPERTIES`:377, PROP-INV-06 |
+| F-02 | High | inherited | local | PROP-INV-07 asserts `DECISION_LEDGER_CENSUS_TOKENS` **set-equal to the module's exported decision-ledger symbol names** — the comparison §7.3 calls "red by construction" and `PLAN`:152 calls "the **rejected** form". §7.3's actual contract, the partition `CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS` (disjoint) plus the resolves-to-exactly-one-top-level-declaration conjunct, has no property behind it anywhere in the document. Second site: the BR-11 / NG-4 row's "(token-set equality)" gloss. | `PROPERTIES`:378 and :893, PROP-INV-07 |
+| F-03 | Medium | delta | local | The census module's owner split — `decisionLedgerCensus.test.js`, T-11 (2) → T-18 (8) — rests on a red→green edge `PLAN` grounds in T-18 writing `DECISION_LEDGER_CENSUS_TOKENS` into `orchestrate-dev.js`. The v1.0 erratum makes that constant a test-file declaration, voiding the stated rationale. The edge itself survives via the module declarations landing in batches 3–8, so the mapping is salvageable, but its justification is now upstream-contested. | `PROPERTIES`:847, module manifest |
+
+FINDING: High | inherited | local | PROP-INV-06 (`PROPERTIES`:377) — exclusion regions specify three brace-matched function bodies where TSPEC §7.3 at HEAD specifies every member of DECISION_LEDGER_OWNED_DECLS sliced declaration-to-next-declaration
+FINDING: High | inherited | local | PROP-INV-07 (`PROPERTIES`:378, :893) — states the export-set-equality assertion TSPEC §7.3 rejects as red by construction, and the partition contract that replaced it has no owning property
+FINDING: Medium | delta | local | `PROPERTIES`:847 module manifest — the census module's T-11 to T-18 red-green rationale is voided by the constant's move to a test-file home
+
+**On the `inherited` tag for F-01 and F-02.** I want to be explicit, because the tag decides whether
+this phase halts. Neither High was introduced by the `452d72c07` erratum edit. Both entered when
+`4b28af44a` rewrote §7.3 to make the census satisfiable over its whole token set — after my v2
+approval was taken against TSPEC v0.8, and before this round opened. The erratum edit lands *inside*
+the same §7.3 cells (which is why both are `local`, not `nonlocal`), but it neither created nor
+touched the divergence: it removed one member from two lists and gave three constants a home.
+Tagging them `delta` would halt the phase for a defect this round's author did not cause; tagging
+them `inherited` routes them back to the owning phase, which is the honest and the correct
+disposition. I am reporting them here rather than deferring them because `DEC-ERR-03` measures
+PROPERTIES against upstream **at HEAD**, not against the routed-item list.
+
 ## Questions
 
 ## Positive Observations
