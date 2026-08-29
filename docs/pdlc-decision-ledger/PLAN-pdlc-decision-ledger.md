@@ -114,41 +114,66 @@ verified present at HEAD.
 
 Mechanically, `batch == max(batch of deps) + 1`, sources = batch 1:
 
-T-00, T-01, T-02, T-03, T-12 have no deps ⇒ **1**. T-04, T-05, T-06, T-07, T-11 on T-00(1), T-01(1)
-⇒ **2**; T-08 on T-00(1), T-01(1), T-03(1) ⇒ **2**; T-09 on T-01(1), T-03(1) ⇒ **2**; T-10 on
-T-01(1), T-02(1) ⇒ **2**. T-13 on T-02(1), T-04(2) ⇒ **3**. T-14 on T-05(2), T-13(3) ⇒ **4**.
+T-00, T-00a, T-01, T-02, T-03, T-12 have no deps ⇒ **1**. T-04, T-05, T-06, T-07, T-11 on T-00(1),
+T-01(1) ⇒ **2**; T-08 on T-00(1), T-01(1), T-03(1) ⇒ **2**; T-09 on T-01(1), T-03(1) ⇒ **2**; T-10
+on T-01(1), T-02(1) ⇒ **2**; T-10a on T-01(1), T-02(1), T-03(1) ⇒ **2**; T-12a on T-00(1),
+T-00a(1) ⇒ **2**. T-13 on T-02(1), T-04(2) ⇒ **3**. T-14 on T-05(2), T-13(3) ⇒ **4**.
 T-15 on T-06(2), T-14(4) ⇒ **5**. T-16 on T-07(2), T-15(5) ⇒ **6**. T-17 on T-08(2), T-09(2),
-T-16(6) ⇒ **7**. T-18 on T-10(2), T-11(2), T-17(7) ⇒ **8**. T-19 on T-12(1), T-18(8) ⇒ **9**.
-T-20 on T-19(9) ⇒ **10**.
+T-16(6) ⇒ **7**. T-18 on T-10(2), T-10a(2), T-11(2), T-17(7) ⇒ **8**. T-19 on T-12(1), T-12a(2),
+T-18(8) ⇒ **9**. T-20 on T-19(9) ⇒ **10**.
+
+The three v0.2 tasks change no other row's batch: T-00a is a source, and T-10a and T-12a sit in
+batch 2 under greens (T-18, T-19) that already sat above batch 2.
 
 The dependency graph is acyclic: every edge points from a lower-numbered batch to a higher one, and
 batch numbers strictly increase along every edge by construction of the rule above.
 
 ### Per-phase file-ownership manifest
 
-| File | Owning task(s) |
-|---|---|
-| `pdlc/workflows/__tests__/decisionLedgerPreflight.test.js` | T-00 (batch 1) |
-| `pdlc/workflows/__tests__/helpers/decisionLedgerDoubles.js` | T-01 (batch 1) |
-| `pdlc/workflows/__tests__/decisionLedgerBaselineGuard.test.js` | T-02 (batch 1) |
-| `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/**` | T-02 (batch 1) |
-| `pdlc/workflows/__tests__/decisionLedgerFixtureGuard.test.js` | T-03 (batch 1) |
-| `pdlc/workflows/__tests__/fixtures/decision-corpus/**` | T-03 (batch 1) |
-| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` | T-12 (batch 1), T-19 (batch 9, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-04 (batch 2), T-13 (batch 3, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` | T-05 (batch 2), T-14 (batch 4, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerRender.test.js` | T-06 (batch 2), T-15 (batch 5, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | T-07 (batch 2), T-16 (batch 6, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` | T-08 (batch 2), T-17 (batch 7, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-09 (batch 2), T-17 (batch 7, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` | T-10 (batch 2), T-18 (batch 8, un-skip) |
-| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-11 (batch 2), T-18 (batch 8, un-skip) |
-| `pdlc/workflows/orchestrate-dev.js` | T-13, T-14, T-15, T-16, T-17, T-18 — **serialised**, one per batch (3, 4, 5, 6, 7, 8); no two share a batch |
-| `pdlc/workflows/__tests__/documentOracles.test.js` (existing) | T-19 (batch 9) |
-| `.claude/pdlc.config.example.json` | T-19 (batch 9) |
-| `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` | T-19 (batch 9) |
-| `pdlc/workflows/dist/pdlc-cli.mjs` (generated) | T-20 (batch 10) |
-| `pdlc/.claude-plugin/plugin.json` | T-20 (batch 10) |
+**Row shape is a machine contract, not a style choice.** The engine's `parsePlanOwnership` reads
+the owner cell **whole** — it does not split a list or strip a trailing parenthetical — so a cell
+reading `T-02 (batch 1)` or `T-13, T-14, …` parses as a task id that no task table contains, and
+the task it meant to name reads as unowned. Every row therefore carries **exactly one bare task
+id**; a file with several owners gets several rows; the batch travels in its own column, which the
+parser ignores by design.
+
+| File | Owning task | Batch |
+|---|---|---|
+| `pdlc/workflows/__tests__/decisionLedgerPreflight.test.js` | T-00 | 1 |
+| `pdlc/workflows/__tests__/documentOracles.test.js` | T-00a | 1 (census exclusion) |
+| `pdlc/workflows/__tests__/helpers/decisionLedgerDoubles.js` | T-01 | 1 |
+| `pdlc/workflows/__tests__/decisionLedgerBaselineGuard.test.js` | T-02 | 1 |
+| `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/**` | T-02 | 1 |
+| `pdlc/workflows/__tests__/decisionLedgerFixtureGuard.test.js` | T-03 | 1 |
+| `pdlc/workflows/__tests__/fixtures/decision-corpus/**` | T-03 | 1 |
+| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` | T-12 | 1 |
+| `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-04 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` | T-05 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerRender.test.js` | T-06 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | T-07 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` | T-08 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-09 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` | T-10 | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerMain.test.js` | T-10a | 2 |
+| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-11 | 2 |
+| `pdlc/workflows/__tests__/documentOracles.test.js` | T-12a | 2 (disclosure oracle, skipped) |
+| `pdlc/workflows/orchestrate-dev.js` | T-13 | 3 |
+| `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-13 | 3 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-14 | 4 |
+| `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` | T-14 | 4 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-15 | 5 |
+| `pdlc/workflows/__tests__/decisionLedgerRender.test.js` | T-15 | 5 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-16 | 6 |
+| `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | T-16 | 6 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-17 | 7 |
+| `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-17 | 7 (un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-18 | 8 |
+| `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` `pdlc/workflows/__tests__/decisionLedgerMain.test.js` `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-18 | 8 (un-skip) |
+| `.claude/pdlc.config.example.json` | T-19 | 9 |
+| `pdlc/OPERATIONS.md` `pdlc/README.md` `CLAUDE.md` | T-19 | 9 |
+| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` `pdlc/workflows/__tests__/documentOracles.test.js` | T-19 | 9 (un-skip) |
+| `pdlc/workflows/dist/pdlc-cli.mjs` | T-20 | 10 (generated — never hand-edited) |
+| `pdlc/.claude-plugin/plugin.json` | T-20 | 10 |
 
 **Disjointness premise, batch by batch.** Batch 1 writes five pairwise-disjoint file sets. Batch 2
 writes eight distinct new test files and nothing else. Batches 3–8 each write exactly one
