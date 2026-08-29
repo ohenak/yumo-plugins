@@ -242,4 +242,5 @@ digest tail in the same pass.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
