@@ -205,8 +205,15 @@ phase, and the freeze forbids opening either as a new decision here.
 
 ## Delta-Confirmation Findings
 
-*(pending)*
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | Document names TSPEC's HEAD version as `v0.7`; `TSPEC:15` reads `0.9`. The other three pins (REQ v1.9 / FSPEC v1.3 / Baseline v1.2) and every figure the sentence licenses still hold at v0.9, so only the version literal is stale. | § Context (v1.4 re-grounding); § Re-evaluation triggers, DEC-DECLEDGER-10/-12 row |
+| F-02 | Medium | inherited | nonlocal | Carried from v4: DEC-DECLEDGER-16's provenance rule is stated positionally ("ceiling only on the larger side of an inequality") with an undefined prose-vs-assertion scope; it over-rejects the sound `measured + ceiling ≤ bound` form used at `TSPEC:594` and D-10 (`TSPEC:1651`) and gives no single answer at `TSPEC:625`. Intent is correct and already correctly implemented upstream. | § Decision, DEC-DECLEDGER-16 |
+
+FINDING: Medium | inherited | nonlocal | § Context (v1.4 re-grounding) and § Re-evaluation triggers DEC-DECLEDGER-10/-12 row | the document states TSPEC's HEAD version as v0.7, but TSPEC:15 reads 0.9 — the REQ v1.9 / FSPEC v1.3 / Baseline v1.2 pins and every derived figure still hold, so only the version literal is stale
+FINDING: Medium | inherited | nonlocal | § Decision, DEC-DECLEDGER-16 | carried from v4: the provenance rule is stated positionally ("ceiling only on the larger side of an inequality") over a scope that does not distinguish prose from pinned expected values, so it over-rejects the sound `measured + ceiling ≤ bound` form at TSPEC:594 and D-10 (TSPEC:1651) and cannot be run as a mechanical check
 
 ## Verdict
 
-*(pending)*
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
