@@ -337,7 +337,7 @@ the driver: the finding is **absent**, not marked, not counted, not carried. No 
 ## 6. Acceptance Tests
 
 Who / Given / When / Then. Each test names its criterion and rules. Tests over the standing corpus
-assert against a **frozen fixture copy** at Baseline v1.1's `Verified at` commit, never the live
+assert against a **frozen fixture copy** at Baseline v1.2's `Verified at` commit, never the live
 repository — which grows, on this branch included (REQ-DECLEDGER-01, O-6).
 
 ### Index rendering
