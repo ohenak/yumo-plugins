@@ -213,7 +213,103 @@ I measured it: `ls *.test.js | wc -l` = 154; after the four prefix exclusions, *
 
 ## Findings
 
-_pending_
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Cross-Feature | No task adds `decisionLedger` to `documentOracles.test.js`'s test-file census exclusion list; batch 1 alone reds the required check before any production code exists | Batches, T-00…T-03; file-ownership manifest |
+| F-02 | High | Cross-Feature | No task owns `check-wave-resume-delta-coverage.mjs`, a live per-feature delta-coverage gate on `orchestrate-dev.js` wired into `npm run test:coverage`; the PLAN's Verification section states the coverage gate is not evidence and does not lean on it | Verification, "The coverage gate is not evidence" |
+| F-03 | High | Cross-Feature | Nothing in the PLAN executes the `main()` wiring T-18 adds; it is proved only by a source-text census (T-11) — builder-not-wired, DC-07 | T-18, T-11 |
+| F-04 | High | Local | T-19 names `documentOracles.test.js` in its Test File column with no red predecessor, and its `OPERATIONS.md` / `README.md` / `CLAUDE.md` prose edits carry no falsifying assertion in any row | T-19; red-before-green table |
+| F-05 | Medium | Local | T-18's `report.decisionLedger` non-null assertion is named in a green row but appears in neither red predecessor (T-10, T-11); flag-off byte-identity of the report object and the notices channel is un-asserted | T-18, T-10 |
+| F-06 | Medium | Local | T-19 edits three documents that existing oracles already pin (`documentOracles.test.js` D-1/D-3, engine `docs-uniqueness.test.js`, `ci-arrangement.test.js`); no task budgets for re-pinning them | T-19 |
+| F-07 | Medium | Cross-Feature | `recogniseDecisionRecords` (T-05, a parser) and `renderDecisionLedgerBlock` (T-06, a serialiser) are covered example-only; no property strategy, while T-04 and T-07 have one | T-05, T-06 |
+| F-08 | Low | Local | "73 files at HEAD" for `pdlc/engine/__tests__/` counts directory entries, not test files (64 `*.test.js`) | Verification, CI-suite table |
+
+### F-01 (High, Cross-Feature) — the census literal reds at batch 1, before any production code
+
+`pdlc/workflows/__tests__/documentOracles.test.js:398` pins the number of `*.test.js` modules in
+`pdlc/workflows/__tests__/` to the literal `102`, excluding only the `learnings`, `waveResume`,
+`loop` and `escalationView` prefixes. I measured the live directory: 154 files total, **exactly 102**
+after those exclusions — so the literal is currently green and exactly saturated.
+
+Batch 1 of this PLAN creates `decisionLedgerPreflight.test.js` (T-00),
+`decisionLedgerBaselineGuard.test.js` (T-02) and `decisionLedgerFixtureGuard.test.js` (T-03) — three
+files in that directory, none matching an excluded prefix. The count becomes 105 and the test fails.
+Batch 2 adds eight more (T-04…T-11), taking it to 113.
+
+This matters more than an ordinary red because the PLAN's own batch-1/2 gate contract is *"new tests
+committed skipped, observed-red reason recorded in header, **and the pre-existing suite green**"*.
+The pre-existing suite will not be green. `documentOracles.test.js` runs under
+`Unit tests (ubuntu-latest, node 20)`, a required check, so this halts the very first wave.
+
+The fix is not to re-pin the literal — the comment block at
+`documentOracles.test.js:386-391` explains why, in this repository's own words: a manifest that lands
+one file per wave would "red the wave gate mid-feature at every wave". The fix is the treatment four
+prior features already received: add `!name.startsWith("decisionLedger")` to the filter, with a
+comment naming this PLAN's file-ownership manifest as the owner of that namespace's census. That
+edit is a **batch-1** obligation — it must land in the same wave as T-00/T-02/T-03, not at T-19 in
+batch 9.
+
+Concretely: add a task (say `T-00a`, batch 1, no deps) owning `documentOracles.test.js`, whose
+acceptance condition is that the exclusion lands **and** that a positive-control assertion exists —
+the filtered count must still be `102` with the new namespace excluded, so a future
+`decisionLedger`-prefixed module cannot silently disappear from *every* census. Note the
+file-ownership manifest currently assigns `documentOracles.test.js` to T-19 (batch 9) alone; adding
+`T-00a` means the manifest must record a second owner, which is fine — they are eight batches apart.
+
+I tagged this `Cross-Feature` rather than `Local`: this is the fifth consecutive feature to hit the
+same census, and the standing lesson ("a spec'd change with no PLAN task owning the oracle it reds")
+is already recorded in this project's learnings. It belongs in `DOMAIN-CONSTRAINTS.md` as a
+PLAN-authoring precondition, not re-derived a sixth time.
+
+### F-02 (High, Cross-Feature) — a live delta-coverage gate the PLAN does not know about
+
+The PLAN's Verification section says, of the coverage gate: *"The coverage gate is not evidence for
+this feature, and the PLAN does not lean on it… every new symbol lands in a ~817 KB file dominated by
+shipped code… the obligation is discharged by an explicit row-to-task mapping instead."* The premise
+is right; the conclusion is not, because it is drawn from an incomplete reading of the gate command.
+
+`pdlc/workflows/package.json`'s `test:coverage` has **four** clauses, not two:
+
+```
+c8 npm test -- --runInBand
+  && c8 report --reporter=json
+  && node scripts/check-wave-resume-delta-coverage.mjs
+  && c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0
+```
+
+The PLAN quotes clauses 1 and 4 and omits clause 3.
+`pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` is not wave-resume-specific despite its
+name. Its header states its purpose in terms that describe this feature exactly: `orchestrate-dev.js`
+is so large that "every new branch could be uncovered and `--per-file --branches 85` would still exit
+0. This script is the compensating control." Mechanically:
+
+- `SUBJECT = "pdlc/workflows/orchestrate-dev.js"` (line 57) — hard-coded, and this feature's only
+  production file.
+- `resolveBase()` (line 92) prefers the **live** `merge-base HEAD origin/main`, falling back to a
+  pinned sha. On `feat-pdlc-decision-ledger` that resolves to this feature's own merge base.
+- `introducedRanges()` (line 116) takes `git diff -U0 <base> HEAD -- SUBJECT` post-image hunk ranges
+  — i.e. **the lines T-13…T-18 add**.
+- The tail (line 230) fails with exit 1 if **any** uncovered line falls inside those ranges.
+
+So the gate the PLAN says is "not evidence" is in fact the strictest evidence in the repository, it
+already applies to this feature with no wiring required, and it runs at every wave gate from batch 3
+onward and in the `Definition of Done`'s own `npm run test:coverage` bullet.
+
+Two consequences the PLAN must absorb:
+
+1. **The claim must be corrected**, or a reader will take an uncovered-branch failure at batch 3 as a
+   surprise rather than a designed check.
+2. **A task must own the outcome.** The highest-risk rows are T-18's `main()` wiring (see F-03 —
+   nothing executes it, so those lines are uncovered by construction and this gate will red them) and
+   T-17's per-path `try/catch` arms. I recommend the Definition of Done gain an explicit bullet —
+   *"`node pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` reports 0 uncovered lines
+   inside this feature's introduced ranges"* — and that T-18's row name it, since T-18 is the task
+   whose lines are structurally at risk.
+
+One caveat worth writing into whichever task owns this: the script warns (does not fail) when
+`orchestrate-dev.js` has uncommitted changes, because the ranges are HEAD line numbers while c8
+measured the working tree (line 211). An implementer running it mid-edit gets an offset result. The
+task should say "commit, then run".
 
 ## Questions
 
