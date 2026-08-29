@@ -241,6 +241,45 @@ ownership, and it states both.
 
 ## Recommendation
 
+**Needs revision**
+
+One High finding is open. Both items v5 routed landed cleanly and nothing already approved was
+broken — the DAG, the file-ownership manifest, the six token members and every batch assignment
+survive the re-grounding unchanged, and all four upstream pins now verify to the character.
+
+What blocks approval is that the new partition names fifteen owned declarations while the design
+declares fourteen. `DECISION_LEDGER_CENSUS_TOKENS` is the census test's own operand — the analogue of
+the precedent's test-file-local `ANCHOR_TOKENS` — not a declaration in `orchestrate-dev.js`; no PLAN
+green task creates it, and TSPEC declares it in no module-surface section. T-11's red-on-rename
+conjunct ("resolves to exactly one top-level declaration at HEAD") and its non-empty-slice conjunct
+both red on that member for a conforming implementation, which puts a `[red]` row that T-18 depends
+on back into the state round 9 repaired for `gatherDecisionCorpus` and §5.2's catalogues.
+
+The root is upstream: TSPEC §7.3:1297 places the member in `DECISION_LEDGER_OWNED_DECLS`, with a
+rationale ("the token strings live inside its own declaration") that only holds if the constant were
+production code. That is routed as `ERRATUM: TSPEC` — the PLAN should **not** drop the member
+unilaterally, which would put it out of contract with the upstream it just re-pinned.
+
+To close F-01 once TSPEC settles the member's home, three PLAN sites move together:
+
+1. **`T-11` (PLAN:150)** — move `DECISION_LEDGER_CENSUS_TOKENS` into the same test-file-constant
+   clause that already carries `CENSUS_EXEMPT` and `OWNED_DECLS`, and restate the partition over the
+   fourteen production declarations (tokens **six** ∪ exempt **eight** = owned **fourteen**), so that
+   every member of `OWNED_DECLS` is a declaration some green task writes.
+2. **File-ownership manifest (PLAN:202)** — "the two frozen test-file lists" becomes three, naming
+   `DECISION_LEDGER_CENSUS_TOKENS` alongside the other two, so the manifest states where all three
+   operands live rather than two of them.
+3. **§Definition of Done (PLAN:488)** — the **nine** and **fifteen** literals move to **eight** and
+   **fourteen** with the same disjointness and one-declaration conjuncts.
+
+If instead TSPEC's erratum keeps the member by making it a production constant, then the PLAN owes
+the mirror-image fix: a `[green]` task that declares `DECISION_LEDGER_CENSUS_TOKENS` in
+`orchestrate-dev.js`, an entry for it in the file-ownership manifest, and a dependency edge putting
+it before T-11 in batch order. Either resolution is acceptable to this lens; what is not acceptable
+is a frozen list whose member no task creates.
+
+No Medium or Low findings this round.
+
 ## Delta-Confirmation Findings
 
 ## Verdict
