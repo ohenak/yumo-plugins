@@ -75,3 +75,34 @@ doubtful: §7.3 asserts the owned-declaration list is frozen and each member "mu
 one top-level declaration at HEAD". That is the guard that stops the exclusion silently widening,
 and it is the right one — a rename would otherwise shrink the census invisibly, which is the failure
 mode a source census exists to prevent.
+
+## Data Model
+
+Two things about the new operand lists are worth writing down, because they are what a future editor
+will get wrong.
+
+**Where the three lists live is not stated, and only one placement is consistent.** §7.3 requires
+`DECISION_LEDGER_CENSUS_TOKENS` to be an owned declaration *inside the scanned source* — that is the
+stated reason it must be sliced ("the token strings live inside its own declaration, so the census
+would otherwise red on its own literal"), which only makes sense for a declaration in
+`orchestrate-dev.js`. It says nothing about where `DECISION_LEDGER_CENSUS_EXEMPT` and
+`DECISION_LEDGER_OWNED_DECLS` live. Working the cases:
+
+| Placement | Consequence |
+|---|---|
+| All three in the module | `CENSUS_EXEMPT` and `OWNED_DECLS` are then declarations this feature introduces, so they belong in `OWNED_DECLS` and in the partition — they are in neither. Their declaration bodies transcribe four census-token names, and being unsliced those names land in the remainder. Census red on conforming code — round 9's defect, one level up |
+| All three test-side | `CENSUS_TOKENS` is then not an owned declaration, so the owned list is fourteen while tokens ∪ exempt is fifteen. Partition red by construction |
+| `CENSUS_TOKENS` in the module (as §7.3 states), the other two test-side | Both checks green: owned = 15 = 6 ∪ 9, disjoint; and the two test-side literals are outside the scanned source so their token strings are harmless. This is also the shipped precedent's shape — `FROZEN_CENSUS` and `ANCHOR_TOKENS` are test-file literals in `loopEconomicsAnchorGuard.test.js` |
+
+So a satisfiable reading exists and is the natural one, which is why this is not a blocking finding.
+But two of the three readings are red, and the document does not say which it means: one clause in
+the operand row ("`DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` are test-file
+literals; only `DECISION_LEDGER_CENSUS_TOKENS` ships in the module") removes the ambiguity. F-03,
+Low.
+
+**The exempt list's reasons are per-member and checkable, not a blanket.** Each of the nine carries
+its own justification, and the two I would have challenged are the two the spec pre-empts:
+`DECISION_LEDGER_NOTICES` is exempt because generic driver code legitimately renders and counts
+run-level notice ids — true of the shipped `LEARNINGS_NOTICES` analogue — and `DECISION_LEDGER_DEFAULTS`
+because config defaults carry no record data. The partition therefore does what a set equality was
+meant to do (a later symbol must be classified or the test reddens) without being red on arrival.
