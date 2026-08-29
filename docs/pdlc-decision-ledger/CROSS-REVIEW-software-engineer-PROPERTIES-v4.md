@@ -161,10 +161,77 @@ rather than leaving it to be inferred.
 
 ## Findings
 
+Both v3 Highs are resolved (see §Overview). Two new findings, neither gating.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **PROP-OFF-05's flag-off scope is under-specified against `TSPEC` §6.** It asserts "With the flag off, the emitted notice set must be **set-equal to empty**". The OFF family's flag-off is PROP-OFF-02's four not-enabled spellings, two of which — the wrong-typed key and the malformed `decisionLedger` block — are specified by `TSPEC`:1008–1009 (F-4, F-5) as disabled runs that emit `NTC-DECLEDGER-MALFORMED` / `NTC-DECLEDGER-KEYTYPE`. An implementer reading PROP-OFF-05 across all four spellings writes an assertion that reds on conforming code. **Fix:** scope the conjunct to the well-formed not-enabled case (PROP-OFF-01's referent — `enabled` absent or `false`), and say in the same clause that the malformed and wrong-typed spellings emit their §6 notices and are asserted by the FAIL/CFG families, so the empty-set claim is not read as contradicting them. One clause; no property added | `PROPERTIES`:362, PROP-OFF-05 |
+| F-02 | Low | Local | **§Gaps' routed `PLAN` item under-enumerates the divergent sites — six, not five.** It names `PLAN`'s revision history, the T-11 row, the two file-ownership manifest rows and the §Definition of Done census bullet. `PLAN`:158's **T-18 row** carries the divergence too, and in the most operative form of all: "**Add frozen `DECISION_LEDGER_CENSUS_TOKENS` declaration in `pdlc/workflows/orchestrate-dev.js`** … holding T-11's six token strings". A `PLAN` author repairing only the five named sites leaves the one instruction that would actually put a census constant into production code. **Fix:** say six and name `PLAN`:158 | `PROPERTIES`:980–994, §Gaps |
+
+**On F-01's severity.** I considered High, because "asserts something that reds on conforming code"
+is exactly the class my v3 F-01 was. It is not the same class in practice: there the property named
+a mechanism (`brace-matching`) that cannot slice a constant, so no reading of it was implementable,
+whereas here one of the two available readings is correct and is the one `TSPEC` §7.2's own flag-off
+arm uses. The cost of the ambiguity is one round-trip at implementation, not an unimplementable
+contract, and PROP-OFF-01 sitting four rows above supplies the disambiguating referent. Medium.
+
+**Previously-filed, still open, not re-litigated.** My v2 F-01 (DISC task attribution) and v2 F-03
+(BND range in §Overview) were addressed in v1.1; my v3 F-03 (module manifest census rationale) is
+resolved in v1.2. Nothing from the earlier rounds remains open that this round reopened.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | **Is `DECISION_LEDGER_NOTICES` still correctly `CENSUS_EXEMPT` now the partition is closed?** (Carried from v3 Q-02, unanswered and still not a finding.) Its exemption reason at `TSPEC`:1336 is *behavioural* — "run-level notice ids, which generic driver code legitimately renders and counts" — not structural like the other seven plumbing members. If a future notice id ever carries record-derived detail, the partition stays green while the census goes blind to it. One clause in PROP-INV-07 or in the exempt list's reason column would close it; I am not asking for it this round |
+| Q-02 | **Does PROP-WIRE-12's "presence and shape" have a pinned shape?** The property asserts `report.decisionLedger`'s presence **and shape** on the flag-on run, but the shape itself is specified in `TSPEC` §5.4, not restated here. That is the right altitude — I am not asking PROPERTIES to duplicate a field contract — but I want to confirm the implementer is expected to transcribe §5.4's shape literally rather than assert `typeof === "object"`, which would be a containment check where a set equality is available |
+| Q-03 | My v2 Q-01 (whether PROP-DISC-09's "set equality" is a subset check against a nine-name literal) remains open and unaffected by this round. Restated only so it is not lost between rounds |
 
 ## Positive Observations
 
+- **The repair went to the deeper upstream and routed the conflict rather than papering it.** Facing
+  a `TSPEC` v1.0 / `PLAN` v0.7 contradiction, v1.2 re-pinned to `TSPEC` and filed an `ERRATUM: PLAN`
+  with the divergence enumerated site by site. That is the disposition I argued for in v3 Q-01, and
+  the §Gaps entry states the arithmetic of *why* `PLAN`'s form cannot hold ("under `PLAN`'s form
+  `DECISION_LEDGER_CENSUS_TOKENS` is simultaneously a member of the owned list and a declaration
+  whose slice must be excluded"), which is the sentence that will let the `PLAN` author converge
+  without re-deriving the analysis.
+- **PROP-INV-11 was added rather than folded into PROP-INV-08.** The resolves-to-exactly-one conjunct
+  and the non-empty-slice conjunct catch disjoint defects, and merging them would have produced a
+  property whose failure message could not say which invariant broke. The count-of-`1` form is also
+  strictly better than the "resolves" form `TSPEC` could have been read as licensing.
+- **PROP-WIRE-12 made a deletion visible instead of asserting a value.** Its stated purpose — "so
+  deleting the arm deletes the field's only proof, which is what this property exists to make
+  un-deletable" — is the right instrument for a sole-evidence site, and it is grounded: `FSPEC`
+  really does contain zero mentions of `report.decisionLedger`, so the arm really is sole evidence.
+- **The three-way agreement on FX-BASELINE's non-referent status** (PROP-OFF-05, PROP-WIRE-12,
+  §FX-BASELINE's *Feeds* note) closes the exact trap `TSPEC` §7.2 flags as "easy to get wrong". A
+  single site would have been enough to be correct; three is what makes it hard to get wrong at
+  implementation time.
+- **Counts were re-derived, not adjusted.** 101 → 103 propagated to the family table, the partition
+  sum, the pyramid restatement and the module manifest in the same round, and both arithmetic forms
+  check out independently.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+Both High findings from my v3 confirmation are resolved, and I verified the repair against
+`orchestrate-dev.js`, `loopEconomicsAnchorGuard.test.js` and `TSPEC` HEAD rather than against the
+changelog's account of it. PROP-INV-06 now names a mechanism that can actually slice a constant;
+PROP-INV-07 asserts the partition rather than the form `TSPEC` §7.3 rejects; PROP-INV-11 and
+PROP-WIRE-12 give the two orphaned conjuncts owning properties; PROP-INV-09's hand-off lands on a
+property that exists. Nothing in the changed regions broke anything I had previously approved.
+
+The two open findings are non-gating and both are one-clause edits: **F-01** (Medium) scope
+PROP-OFF-05's empty-notice-set conjunct to the well-formed not-enabled case, so it does not read as
+contradicting `TSPEC` §6's F-4/F-5 notices; **F-02** (Low) correct the routed `PLAN` item's site
+count to six and name `PLAN`:158's T-18 row, which carries the operative form of the divergence.
+
+The `PLAN` v0.7 / `TSPEC` v1.0 contradiction is upstream-vs-upstream and is not a defect of this
+document. I re-raise it as an `ERRATUM: PLAN` in my trailer so the route does not rest on this
+document's §Gaps entry alone, and I note that until `PLAN` converges, an implementer working from
+`PLAN`'s T-11 and T-18 rows will write a partition that cannot close — this document's properties are
+the ones to follow.
 
 ## Verdict
