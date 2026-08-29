@@ -439,3 +439,55 @@ its erratum item and satisfies the confirmation-presence check. Any special-casi
 index fails. *(-08; BR-11, BR-14, N-2)*
 
 ## 7. Open Questions
+
+Nothing here blocks TSPEC authoring. Items O-1…O-6 are the REQ's, carried forward unchanged and not
+re-litigated; Q-1…Q-3 are this spec's own, and each names its owner.
+
+### Carried forward from REQ §7 — routed, not open to this spec
+
+| Id | Owner | Substance |
+|---|---|---|
+| **O-1** | se-author (TSPEC) | The **recognition rule** in full — carrier markup, id grammar, the key resolving an id recorded more than once in a file, cross-file precedence — and which lines are omitted when a bound is exceeded. A TSPEC choice rendering a set differing from `M-1d` / `M-2e` under the directory-glob reading, at the Baseline's commit, fails REQ-DECLEDGER-01 (AT-01); within that constraint the rule is TSPEC's to design |
+| **O-2** | se-author (TSPEC) | Whether wiring the index and rule text into reviewer-facing prompt text needs a `SKILL.md` edit, routing through the consolidation contract's `CONSOLIDATION-PROPOSAL` review, or can go through dispatch construction as learnings injection does. Either path stays config-gated (REQ C-1/C-2, BR-4) |
+| **O-3** | se-author (TSPEC) | How a decision id is minted and kept unique across `docs/_decisions/*` and per-feature records, which are independent namespaces today |
+| **O-4** | se-author (TSPEC) | The identity of C-2's committed baseline, and the pinning that stops a re-capture silently satisfying AT-04 |
+| **O-5** | te-author (PROPERTIES) | Cross-file precedence has no HEAD instance (`M-5a`), so E-11 is owed a **synthetic** two-file fixture recording one id in both a project-level and a feature-level file |
+| **O-6** | te-author (PROPERTIES) | E-2, E-3 and E-4 likewise have no HEAD instance and are owed constructed fixtures, as is the frozen corpus copy AT-01 asserts against |
+
+### Raised by this spec
+
+**Q-1 — the rendered line's concrete format is TSPEC's, and this spec deliberately does not fix it.**
+*(Owner: se-author.)* The REQ fixes the line's field **content** (BR-3); field order, separators and
+byte-level shape are not stated here, because the renderer that lays out a line is the same one O-1
+already owns for omission order, and splitting it across two documents is how a single clause ends up
+restated in two places. Flagged rather than silently omitted: AT-01 compares whole rendered lines, so
+TSPEC's format choice is what makes that comparison concrete, and TSPEC must fix it before PROPERTIES
+can transcribe an expected value.
+
+**Q-2 — "the feature whose document is under review" needs a definite resolution for a document with
+no feature directory.** *(Owner: se-author, TSPEC.)* §3.2 step 2 scopes the set to project-level
+decisions plus the reviewed document's feature. Every document the pipeline reviews today sits under
+a feature directory, so this has no HEAD instance and is not a defect; but the in-scope set must be
+total, and a dispatch that cannot name a feature should resolve to the project-level set alone rather
+than to a failure. Recorded so TSPEC states it rather than leaving it to fall out of an
+implementation.
+
+**Q-3 — whether this feature discloses its block in `.claude/pdlc.config.example.json`, and
+therefore whether an engine-side disclosure test is in scope.** *(Owner: se-author, TSPEC.)* REQ NG-6
+forbids engine **runtime** changes but explicitly preserves the shipped per-block
+config-disclosure precedent (`pdlc/engine/__tests__/learnings-config-example.test.js`,
+`loop-config-example.test.js`): if the block is disclosed, the matching disclosure test is in scope.
+The REQ leaves the antecedent unstated. Both shipped gated blocks — `cascade.pinCheck` and
+`review.derivativeStop` — are disclosed in the example config today, so the precedent points one way,
+but it is TSPEC's call and PLAN's task count depends on it.
+
+### Assumptions
+
+Carried from REQ §7 unchanged and operator-vetoable before TSPEC authoring: **A-1** `maxEntries`
+(70) is measured against the Baseline (`M-6b`/`M-6c`) while `maxBytes` (8000) is a
+`learningsInjection` analogy, not measured; **A-2** the rollout posture matches
+`pdlc-loop-economics` — config-gated, default off; **A-3** reviewer-side enforcement is the intended
+reading of the proposal's R3-2, and an operator wanting a mechanical gate should veto before TSPEC
+authoring, since it changes the feature.
+
+This spec adds no new assumption of its own.
