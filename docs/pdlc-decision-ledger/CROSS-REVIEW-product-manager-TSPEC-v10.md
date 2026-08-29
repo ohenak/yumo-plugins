@@ -188,3 +188,33 @@ run is the only thing standing between a wave-3 mistake and a batch-8 discovery.
 
 DEFERRED: PLAN T-11 still carries §7.3's pre-v0.9 operand wording (three sliced bodies, set equality against exported names) and needs the ordinary downstream re-pin against v0.9 — the TSPEC's own changelog already names this, and PLAN is downstream, so it is not an erratum against this document.
 DEFERRED: §7.3's "roughly a dozen" decision-ledger declarations reads low against the fifteen its own partition enumerates; a later editor may want the exact figure.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §7.3's scanned-source cell grounds the widened slicing in `loopEconomicsAnchorGuard.test.js`'s `bodyOf` over `allTopLevelDecls`, but that helper's `allTopLevelDecls` is derived by a function-only regex (`pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js:60`, `/^(?:export\s+)?(?:async\s+)?function\s+…/`), while nine of the fifteen `DECISION_LEDGER_OWNED_DECLS` members are top-level `const`s (`DECISION_CORPUS_ARGV`, `DECISION_HEADING_RE`, `DECISION_LEDGER_DEFAULTS`, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, §5.2's three catalogues, `DECISION_LEDGER_CENSUS_TOKENS`). Cloned as shipped, the precedent treats no `const` as a boundary or as a sliceable body, so a constant's own declaration can sit in the scanned remainder and red the census on a conforming implementation — the class TE F-01 raised. The design sentence itself is right ("boundaries taken from *all* of the module's top-level declarations"); what is missing is one clause saying the cloned `DECL_RE` must be widened to `const`/`let` declarations, so an implementer copying the precedent verbatim does not reintroduce the defect. Non-gating: PLAN T-11 owns the census and the "each slice non-empty" plus "exactly one declaration" guards make the failure loud rather than silent. | §7.3 (Scanned source cell, slicing precedent) |
+| F-02 | Low | delta | local | §7.3's forbidden-token cell justifies dropping the all-exports set equality on the ground that §3.1/§4.1/§4.2/§4.4/§5.2 "declare roughly a dozen" decision-ledger names; the partition the same cell then states enumerates fifteen (six tokens plus nine exempt). The argument is unaffected — fifteen makes the point better than twelve — but the exact figure is available and the cell is otherwise precise. | §7.3 (Forbidden token set cell) |
+
+FINDING: Medium | delta | local | §7.3 Scanned source cell, slicing precedent | The widened const-body slicing is grounded in `loopEconomicsAnchorGuard.test.js`'s `bodyOf`/`allTopLevelDecls`, whose `DECL_RE` (:60) matches `function` declarations only, while nine of the fifteen owned declarations are top-level `const`s; add the clause that the cloned regex must cover `const`/`let` so a verbatim clone cannot leave a catalogue's own declaration in the scanned remainder.
+FINDING: Low | delta | local | §7.3 Forbidden token set cell | "roughly a dozen" decision-ledger declarations reads low against the fifteen the same cell's partition enumerates (six tokens plus nine exempt); the exact figure is available and strengthens the argument.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both of my round-9 findings landed on the correct referent, and the F-01 fix is stronger than the
+finding asked for. TE's High items landed as a general repair with a stated satisfiability predicate
+rather than another exception, and the partition arithmetic closes exactly. Nothing I approved at v0.7
+or v0.8 was disturbed: no section outside the declared five moved, no corpus literal moved, no AT row's
+meaning drifted, and upstream is byte-unmoved at the pins the changelog recites — verified by hashing
+both files at HEAD. The decision freeze held; this round decided nothing new.
+
+The two findings are both inside §7.3's newly-written cells, both are precision defects rather than
+design defects, and the obligations behind them are owned by PLAN T-11. Neither gates the phase. Fix
+them the next time §7.3 is opened, alongside the downstream re-pin the changelog already flags.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
