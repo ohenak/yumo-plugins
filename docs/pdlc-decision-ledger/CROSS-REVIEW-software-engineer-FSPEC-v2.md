@@ -100,3 +100,8 @@ it should say the same thing. Emitted as an erratum.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 2, "low": 1}
+
+APPROVAL-HASH: sha256:a808825f4eb7c844c00556c4af599a7ad057a968b6ba225de390b49b220b129b
+APPROVAL-HASH-NORMALIZED: sha256:a808825f4eb7c844c00556c4af599a7ad057a968b6ba225de390b49b220b129b
+REVIEWED-COMMIT: a8175794731ddc9ccfae2dd8d0ae503a3e174d7f
+UPSTREAM-STATE: REQ sha256:c18b7e88715159adbad81fe59bf9ac62f9873be2b6388661c812e2788eadfecc
