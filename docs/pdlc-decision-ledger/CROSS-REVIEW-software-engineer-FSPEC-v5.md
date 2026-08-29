@@ -26,6 +26,39 @@ the item list.
 
 ## Delta-Confirmation Findings
 
+**Round-4 items — both absorbed upstream, verified at the text, not at the commit message.**
+
+- **F-01 (Low, round 4) — resolved.** The v1.8 changelog's cascade pointer used to aim the erratum at
+  FSPEC §3.3, which carries no bound literal. `REQ:35` now reads "FSPEC's recitals of the default
+  cascade — §3.1's defaults sentence and §7 A-1, not §3.3, which carries no bound literal". That names
+  the two sites the edit actually touched (`FSPEC:127`, `FSPEC:562`) and says out loud why §3.3 is not
+  one of them. The correction is in the REQ's own changelog prose, which is where the mis-aim lived;
+  nothing in the FSPEC needed to move, and nothing did.
+- **F-02 (Low, round 4) — resolved in its gating half, one residue left.** The Baseline's `Cited by`
+  list (`baseline:6`) now ends "…§6 AT-01, §7 O-5, **§7 Assumptions A-1**", so the citation minted into
+  `FSPEC:562` (`M-7b`/`M-7c`) is on the propagation path the file's own rule requires — "a new citation
+  is added here in the same edit that mints it". The second half of that finding, the change-control
+  paragraph's `§1–§8` / `§1–§7` mismatch, was not taken; it is re-raised below at unchanged severity.
+
+**Fidelity re-check at the current upstream.** Every site where the FSPEC compresses upstream text, read
+against the dispatch REQ and Baseline v1.2 as they now stand:
+
+| FSPEC site | Upstream it compresses | Status |
+|---|---|---|
+| `FSPEC:9` `Upstream … **v1.9**` | `REQ:16` `Version 1.9` | Pin resolves. REQ v1.9 moved no measured value — it corrected two stale Baseline pins in the REQ's own body (`REQ:22-27`) — so the FSPEC advancing the pin and following nothing from it is the correct response, and its v1.3 changelog says exactly that |
+| `FSPEC:11` `Baseline … **v1.2**` | `baseline:8` `Version 1.2` | Pin resolves. The Baseline's only change this round is the `Cited by` line; `git diff` confirms no `M-*` fact moved, so every id the FSPEC cites still resolves at the pinned version |
+| `FSPEC:127` defaults `70` / `12500` | `REQ:181-182` C-5 | Verbatim on both literals, and both are cited-by-id rather than re-derived, as C-5 requires |
+| `FSPEC:562` §7 A-1 | `REQ:386-389` §7 A-1 | Faithful: measured once against the Baseline's named commit, `maxEntries` (70) from `M-6b`/`M-6c`, `maxBytes` (12500) from `M-7b`/`M-7c`, operator-revisable before FSPEC authoring. The retired "unmeasured `learningsInjection` analogy" rationale appears in neither |
+| `FSPEC:331` E-7, `FSPEC:474-481` AT-14 | `REQ:181-182` (both keys **non-negative**), `REQ:295-299` O-8 | Sound. REQ types both keys non-negative, so `maxBytes` `0` is a valid operator value and the FSPEC owes it an outcome; the FSPEC does not invent one, it derives it (E-8 then E-6, since every line exceeds `0`) and says so inline. REQ's own bounds sentence at `:298` still enumerates only `maxEntries` `0`, but that is the REQ stating an outcome, not withholding one — the FSPEC completing the axis is FSPEC-altitude work, not a divergence |
+| `M-*` ids cited across the FSPEC | `baseline:101-112` and §1–§7 | All resolve at v1.2: `M-1d`, `M-2e`, `M-3a`/`M-3c`, `M-4a`/`M-4b`/`M-4d`/`M-4e`, `M-5a`/`M-5c`, `M-6b`/`M-6c`, `M-7b`/`M-7c` |
+
+Nothing I approved in round 4 was disturbed: flows, business rules, the rest of §5, and §6 apart from
+AT-14 are byte-identical, and the one edited edge case widens a stated outcome rather than replacing it.
+
+One residual finding, `Low` and inherited, in a file that is not this document:
+
+FINDING: Low | inherited | nonlocal | `docs/_constraints/pdlc-decision-corpus-baseline.md:23-24` | The change-control paragraph still says `REQ-pdlc-decision-ledger` owns "every section of this file — §1–§8 entire", then bounds the non-interleaving rule at "never interleaved into §1–§7". The file has eight sections and the same sentence pair claims both extents, so a successor author reading it literally may treat §8 as interleavable. One-word fix, no `Version` bump owed since no fact moves. Raised in round 4 as the second half of F-02 and not taken; re-raised at unchanged severity, non-gating, and it does not touch the FSPEC's own bytes.
+
 ## Questions
 
 ## Positive Observations
