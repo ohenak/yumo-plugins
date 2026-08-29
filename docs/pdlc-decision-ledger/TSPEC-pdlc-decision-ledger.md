@@ -815,8 +815,92 @@ enforce it even if one wanted to.
 
 ## 8. Traceability
 
-*(pending)*
+### 8.1 Requirement → technical component
+
+| Requirement | Business rules | Technical components |
+|---|---|---|
+| REQ-DECLEDGER-01 | BR-1, BR-2, BR-3, BR-9 | §3 recognition rule; `recogniseDecisionRecords`, `selectDecisions`, `renderDecisionLedgerBlock`; §2.6 freshness |
+| REQ-DECLEDGER-02 | BR-4 | §2.3 gate (`buildDecisionLedgerInjector` returns `null`); §4.5 default parameters; §7.4 baseline guard |
+| REQ-DECLEDGER-03 | BR-5, BR-6 | `DECISION_LEDGER_RULE_TEXT` (§4.3) |
+| REQ-DECLEDGER-04 | BR-7, BR-8 | §6.1 F-6…F-10; §6.2 leg predicate; §6.3 O-7 observable |
+| REQ-DECLEDGER-05 | BR-10 | `parseDecisionLedgerConfig` (§4.1); §2.2 notices |
+| REQ-DECLEDGER-06 | BR-6, BR-11 | `DECISION_LEDGER_RULE_TEXT`'s id-as-key clause; §5.5 |
+| REQ-DECLEDGER-07 | BR-12, BR-13 | §3.6 omission order; `selectDecisions`' drop loop; §7.5 property |
+| REQ-DECLEDGER-08 | BR-11, BR-14 | §5.5 (driver never holds an id); §7.3 source census; §7.6 AT-16 replay |
+
+### 8.2 FSPEC open questions this spec discharges
+
+| Id | Discharged in |
+|---|---|
+| O-1 recognition rule, omission order | §3 (all), §3.6 |
+| O-2 SKILL.md vs dispatch construction | §9 D-3 — decided: dispatch construction, no `SKILL.md` edit |
+| O-3 id minting and uniqueness | §9 D-4 |
+| O-4 baseline identity and pinning | §7.4 |
+| O-7 driver-internal observable for BR-8 | §6.3 |
+| Q-1 concrete line format | §4.3 |
+| Q-2 feature contributing nothing / no directory | §3.1 |
+| Q-3 config disclosure in scope | §5.3 |
+
+O-5, O-6 and O-8 remain PROPERTIES' (te-author's); §7.3 and §7.5 state what this spec owes them so
+they can be written against a fixed target.
+
+### 8.3 Non-goals held
+
+| Non-goal | How this design holds it |
+|---|---|
+| NG-4 no driver-side scoring change | §5.5, §7.3 source census; the ledger's output reaches no accounting path |
+| NG-5 no round-budget change | no constant in this design touches `MAX_REVIEW_ROUNDS`, `MAX_LIFETIME_ROUNDS`, `MAX_ERRATUM_FOLLOWUP_ROUNDS` |
+| NG-6 no engine runtime change | the only `pdlc/engine/` file added is `__tests__/decision-ledger-config-example.test.js`, the disclosure-test precedent NG-6 explicitly preserves |
+| NG-7 no new record type or field | §3 reads the corpus as it exists; nothing writes a decision record |
 
 ## 9. Open Questions
 
-*(pending)*
+Nothing here blocks PLAN authoring. §9.1 records decisions this spec took where real alternatives
+existed — DECISIONS material. §9.2 records the one erratum this spec raises upstream. §9.3 records
+what remains genuinely open.
+
+### 9.1 Decisions taken, with the alternative rejected
+
+| Id | Decision | Alternative rejected, and why |
+|---|---|---|
+| **D-1** | In-file duplicate resolution keys on the **last** record (§3.3) | Keying on the heading **separator** (`:` = decision, `—` = question). It works on the sole HEAD instance and is unfalsifiable elsewhere, makes the statement field's correctness depend on punctuation no author was instructed to use, and silently drops any record using the other separator. Keying on the **first** record is rejected outright: `M-3c` records that the first opening states the question, so it violates BR-3 |
+| **D-2** | The index attaches to `reviewerPrompt` only, not to the delta-confirmation or finding-restatement prompts (§2.5) | Attaching to every reviewer-facing prompt. Both confirmation prompts forbid re-review in their own text, so an index inviting the reader not to re-open closed decisions has nothing to act on; attaching there enlarges the byte-identity surface for no behavioural gain |
+| **D-3** | Wiring goes through **dispatch construction**, not a `SKILL.md` edit (FSPEC O-2) | Editing the reviewer `SKILL.md` files. A `SKILL.md` edit routes through the consolidation contract's `CONSOLIDATION-PROPOSAL` review, and — decisively — `SKILL.md` text cannot be config-gated, so REQ C-2's byte-identical disabled path would be unachievable. Dispatch construction is where the shipped `findingGrammarClause` gate already lives |
+| **D-4** | Ids are read, never minted; uniqueness is **not** enforced across namespaces (FSPEC O-3) | Introducing a mint or a global uniqueness check. `M-1a` records that no id repeats within `docs/_decisions/` and `M-5a` that no id is recorded in two files anywhere at HEAD, so there is nothing to fix; a uniqueness *gate* would be a new operator-facing failure class, which G-3 forbids. §3.4's precedence rule is the total resolution for the collision that does not yet exist |
+| **D-5** | Framing bytes (header, preamble, rule text, trailer) **are** charged against `maxBytes` (§4.2) | Excluding framing, as `renderLearningsBlock` does. BR-12 bounds "the bytes of the index block as it appears in the prompt", and the rule text is inside that block; excluding it would let a low `maxBytes` be satisfied while the block is arbitrarily larger than the operator asked for |
+| **D-6** | All new symbols land in `orchestrate-dev.js`, not a new `pdlc/workflows/lib/` module | A new `lib/` module. `DEC-LOOPECON-08` records why this is not available: the engine's `prepack.mjs` vendors a frozen module list, and adding to it means editing `pdlc/engine/`, which REQ NG-6 forbids. The cost — every implementation task writing one physical file, forcing serial waves — is taken knowingly and is the PLAN's to absorb via `Deps` edges |
+
+These are load-bearing and a future reader will otherwise reconsider them confidently:
+**DECISIONS is warranted.**
+
+### 9.2 Erratum raised
+
+**E-1 — REQ C-5 types `maxEntries` and `maxBytes` as "positive integer", but FSPEC E-7 requires
+`maxEntries: 0` to be a valid admits-nothing value** treated as zero in-scope decisions and
+explicitly "not an error, not a fallback to the default, not a halt". A positive-integer validator
+rejects `0` and falls it back to `70`, which is the opposite outcome. The shipped precedent resolves
+the same tension in FSPEC's favour: `parseLearningsConfig` validates its thresholds as
+**non-negative** integers precisely so that `0` is a valid admits-nothing value, and says so in its
+own comment. This spec implements non-negative (§4.1) and raises the type label upstream rather than
+editing the REQ.
+
+### 9.3 Genuinely open
+
+| Id | Owner | Substance |
+|---|---|---|
+| **O-5, O-6** | te-author (PROPERTIES) | Carried unchanged: the synthetic two-file precedence fixture, the constructed fail-open fixtures, the frozen corpus copy, and AT-16's recorded round of reviewer outputs. §7.3 and §7.4 fix the shapes they must be written against |
+| **O-8** | te-author (PROPERTIES) | The bounds invariant as a property. §7.5 states the four conjuncts, the generator's range, and the non-vacuity conjunct |
+| **T-1** | se-author (PLAN) | The capture-before-production ordering of §7.4 must be a real `Deps` edge on every production task, not a prose note — the loop-economics PLAN's §2 recorded the same requirement for the same reason |
+| **T-2** | operator | A-1's `maxBytes` of 8000 remains a `learningsInjection` analogy, not a measurement. Under the shipped corpus the block is roughly 41 project lines plus up to 22 feature lines plus framing; if that exceeds 8000 bytes the bound, not the corpus, is what silently truncates the index on day one. The PLAN should record the measured rendered size once the renderer exists, and the operator may revise the default without a REQ revision (A-1) |
+
+### 9.4 Assumptions
+
+Carried from FSPEC §7 unchanged and still operator-vetoable: **A-1** `maxEntries` 70 is measured
+against `M-6b`/`M-6c`, `maxBytes` 8000 is not measured; **A-2** rollout is config-gated, default off;
+**A-3** enforcement is reviewer-side, not a mechanical gate.
+
+This spec adds one assumption of its own: **A-4** the corpus is enumerated through `git ls-files`
+with `--others --exclude-standard`, matching `LEARNINGS_CORPUS_ARGV`, so an untracked-but-present
+`DECISIONS-*.md` is in scope. This is the shipped precedent's behaviour and is stated so it is a
+choice rather than an accident; the frozen-fixture discipline of §7.3 means it cannot make a test
+depend on the working tree.
