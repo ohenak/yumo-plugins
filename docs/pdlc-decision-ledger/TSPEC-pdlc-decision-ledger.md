@@ -448,10 +448,13 @@ pathspec order, then `git ls-files`' own ordering within a pathspec, then file o
 order was *inert* under shipped defaults, because `maxEntries` 70 clears `M-6b`'s floor of 63. Both
 TSPEC reviewers falsified that claim by executing the rule and measuring the bytes, and I have
 re-executed it and reproduce their figures exactly. The `maxEntries` half of the argument is sound;
-the claim was wrong because, **at the `8000` default then current**, `maxBytes` bound first in
-every case — D-5 charges framing to it, and 8,000 less ≤1,200 of framing left under 6,800 bytes for
-lines, below the project-level set alone. That conclusion is retired with the default it was
-computed against: at REQ C-5's resolved **`12500`** neither bound fires on a G-1-scoped dispatch at
+the claim was wrong because, **at the `8000` default and the long `§ {heading}` line format both
+then current**, `maxBytes` bound first in every case — D-5 charges framing to it, and 8,000 less
+≤1,200 of framing left under 6,800 bytes for lines, below the project-level set alone **under that
+long form (9,371 bytes)**. Both inputs are retired, and the conclusion with them: under D-7's
+shipped `§ {id}` form the project-level set is **6,305** bytes (the bolded column below), which
+would have fitted inside 6,800 even at the retired default. At REQ C-5's resolved **`12500`**, and
+in the shipped form, neither bound fires on a G-1-scoped dispatch at
 the Baseline commit (below), and over §7.3's deliberately over-sized 141-record fixture both bounds
 are exceeded from the outset, with the byte bound setting the terminal survivor count.
 
@@ -487,8 +490,9 @@ the shipped format: project-level lines run **109–200** bytes (mean 153); feat
 
 - **at the Baseline's `Verified at` commit**, a G-1-scoped dispatch — the project set plus the one
   feature under review — renders **whole**: `M-6b`'s 63-record worst standing case is 10,859 index
-  bytes, **12,059** with framing charged, inside both `maxBytes` 12,500 and `maxEntries` 70, with
-  441 bytes of headroom;
+  bytes, **12,059** with §4.3's framing charged at its ≤1,200-byte ceiling (D-5/D-9), inside both
+  `maxBytes` 12,500 and `maxEntries` 70, with **at least** 441 bytes of headroom — charging the
+  ceiling can only understate the margin, never overstate it;
 - so neither bound fires on any real dispatch at that commit, and no line is omitted.
 
 This is `DEC-DECLEDGER-03`'s conclusion, and this section states it on the same ground: **inertness
@@ -516,9 +520,12 @@ omitted on any real dispatch at the Baseline commit* rests on a different and mu
 `M-6b`'s **441** bytes (12,059 against 12,500) — which no assertion over the 141-record fixture can
 reach. So §7.3 also builds over the **`M-6b` slice** — the project-level set plus
 `pdlc-headless-engine`, the 63-record worst standing G-1-scoped case — at the same shipped defaults,
-and pins `omitted[]` **empty**, the block's total size at the transcribed **12,059** bytes, and
-`12,059 ≤ 12,500`. Without it the margin this paragraph is about could be consumed by corpus growth
-with every test still green. Both assertions redden at the
+and pins `omitted[]` **empty**, the rendered index at the transcribed **10,859** bytes, and the
+margin as arithmetic — `10,859 ≤ maxBytes − 1200`, i.e. `10,859 ≤ 11,300` at the resolved default,
+whose difference is the 441 bytes. The block total of 12,059 is deliberately *not* asserted as an
+equality: framing is a ≤1,200-byte budget (D-9), not a measured size, so the two halves of
+`12,059 ≤ 12,500` are pinned where each is measurable (§7.3, conjuncts (5)–(6)). Without it the
+margin this paragraph is about could be consumed by corpus growth with every test still green. Both assertions redden at the
 deliberate moment the fixture is re-captured, which is the right moment to re-decide ERR-2's
 default — instead of expiring silently. This is the same discipline §4.3 applies to the framing half
 of the identical arithmetic (D-9), applied to the corpus half (D-10). The order itself is load-bearing
