@@ -37,7 +37,26 @@ Arithmetic re-derived and confirmed correct:
 
 ## Architecture
 
-_(pending)_
+Nothing structural moved, and I confirm that. The delta touches literals, arithmetic and rationale
+prose only: the recognition rule (§3.1–§3.4), the two-function split (`renderDecisionLedgerBlock`
+as sole byte producer, `selectDecisions` calling it — D-8), the omission order itself, the
+attach-point (§2.5), and the fixture-copy discipline (§7.3) are byte-identical. No approved
+decision is re-litigated and no new seam appears. The erratum note's "nothing else is touched"
+claim is accurate against the diff.
+
+One architectural *conclusion* did move, and it is the one that carries this review. §3.6 formerly
+concluded "the order is **live** under shipped defaults"; it now concludes the order **does not
+fire** at the Baseline commit on a G-1-scoped dispatch, with inertness explicitly labelled "a
+measurement at one commit, not a property of the mechanism". That reconciliation with
+`DEC-DECLEDGER-03` is exactly what was routed, and it is well argued — §3.6 keeps the order
+specified and tested as load-bearing regardless, and names the three ways the measurement expires
+(corpus growth, an operator lowering either threshold, a raised framing budget).
+
+The consequence for testing is the finding in F-01: when a design's safety rests on a *measurement*
+rather than a *property*, the measurement is the thing that needs the oracle. The old text put the
+load-bearing measurement (project-level 6,305 against a 6,800-byte allowance, ~495 margin) in the
+same place §7.3's conjunct (2) asserted it. The new text puts the load-bearing measurement (63
+records at 12,059 against 12,500, 441 margin) somewhere §7.3 does not reach.
 
 ## Interfaces
 
