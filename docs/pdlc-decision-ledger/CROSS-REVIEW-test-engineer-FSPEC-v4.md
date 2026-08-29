@@ -67,6 +67,40 @@ erratum note's reasoning does not close it.
 
 ## Upstream re-measurement (DEC-ERR-03)
 
+I re-derived, against current upstream bytes rather than against the routed list:
+
+**Baseline v1.2 resolves every id this spec cites.** `M-7b` (`baseline:110`) records the 9,296-byte
+worst standing case over 63 records; `M-7c` (`:111`) records the 12,500 cap clearing it by 3,204
+bytes at 50 bytes of framing per record. `M-6b`/`M-6c` (`:101`–`:102`) give 63 and 70. So both
+halves of the restated A-1 are citations that land, at the version the header now pins.
+
+**The AT-01 expected set survives the Baseline bump.** This was the one place a v1.1 → v1.2 move
+could have silently invalidated a test. `M-1d` (`:57`) still enumerates **41** project-level ids;
+the feature-level table (`:67`) still gives `pdlc-advisory-wave-gate` **4** and
+`pdlc-engineering-loop` **7**. So AT-01's "45 and 48 lines" at `:353` still computes, and both are
+still inside `maxEntries` `70`. The corpus ATs are unaffected, as v3 predicted.
+
+**The retyping claim in the erratum note is accurate, for `maxEntries`.** REQ `:172` types
+`maxEntries` non-negative and reads `0` as the "admits-nothing" value rather than a wrong-typed
+fallback. FSPEC E-7 `:324` already treats `maxEntries` `0` as zero in-scope decisions — E-6's
+outcome, not an error, not a fallback, not a halt — and AT-14 `:467`–`:472` pins it positively
+against AT-04's committed baseline. That pairing is now right-typed upstream instead of in tension
+with it, so the note's "needs no edit here" holds on the `maxEntries` side.
+
+**It does not hold on the `maxBytes` side.** REQ `:173` retyped `maxBytes` non-negative in the same
+row, which makes `0` a *valid operator value* rather than a wrong-typed one caught by §3.1's
+fallback table. The FSPEC states no outcome for it. E-8 `:325` covers "a **single line by itself**
+exceeds `maxBytes`", which composes to the right answer under `maxBytes` `0` — every line is
+omitted whole, none remain, E-6 follows — but that is a derivation a reader has to perform, not a
+stated outcome, and no AT pins it. The asymmetry is now visible in the document: `maxEntries` `0`
+has an edge case *and* an acceptance test; `maxBytes` `0` has neither.
+
+This is a testability gap, not a correctness one, which is why it stays Medium. It bites at
+PROPERTIES: O-8 `:526` owes a property "parameterised over set size × line sizes × **both bounds**",
+universally quantified over "**any** resolved bounds". A te-author generating `maxBytes` in
+`[0, ∞)` will hit `0` on the first shrink and has no spec'd oracle to assert against — the property
+will either be written to skip `0`, which silently narrows the invariant, or written to guess.
+
 ## What remains
 
 ## Positive Observations
