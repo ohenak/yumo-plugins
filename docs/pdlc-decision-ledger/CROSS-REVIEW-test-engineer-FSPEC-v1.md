@@ -66,8 +66,39 @@ FSPEC** — see Positive Observations.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On F-03: is an empty in-scope set (E-6) byte-identical to the disabled dispatch of BR-4, or does it differ in some whitespace? AT-08 answers this for the total fail-open leg by pointing at AT-04's stream; E-6 is the one remaining path where a `true` flag produces no index and the document does not say what the bytes are. Whichever answer, stating it converts AT-14 from an absence-only oracle into a falsifiable one. |
+| Q-02 | On F-02: is E-11's cardinality claim ("One line renders") genuinely this spec's, or is it TSPEC's along with the precedence rule? I read it as this spec's — it is stated in the indicative, and BR-2's "exactly once" is a per-decision invariant that does not stop at a file boundary. If that reading is right, it is assertable now against O-5's fixture and F-02 stands. If the intent was that cardinality follows from whatever precedence rule TSPEC picks, say so in E-11 and F-02 becomes a routing note rather than a missing AT. |
+| Q-03 | On F-06: does the AT-16 fixture already exist in some shipped form (a recorded round of reviewer outputs), or is it a further constructed-fixture obligation of the O-6 class? §7 does not list it. If it is owed, it belongs beside O-6 for the same reason the frozen corpus copy does. |
+| Q-04 | On Q-3 (yours): `advisory-config-example.test.js` exists alongside the two disclosure tests you cite, so the shipped precedent is three-for-three, not two. Does that settle the antecedent enough to answer Q-3 in this document rather than deferring it — i.e. is there a reading under which a gated block ships undisclosed? |
+
 ## Positive Observations
+
+- **REQ-v7 F-32 is closed, and closed properly.** I raised at REQ that a frozen fixture corpus makes the recompute-at-dispatch clause structurally unfalsifiable — over a corpus that cannot move, a build that snapshots once per round window passes every leg. AT-03 fixes it exactly as the shipped `loopEconomicsAnchorFreshness` precedent does: mutate the record *between two dispatch constructions in the same round window* and assert the second index moved, with the explicit negative ("a snapshot taken at the first dispatch and rendered again fails"). This is the hardest oracle in the feature and it is right.
+- **§5 is total, and says so.** "Rendering is **total**: every case below has one stated outcome, and no case is left to an engineer's discretion" is the claim I most often have to *ask* for at FSPEC. Eleven edges plus two explicit non-cases, each with a stated outcome and a rule citation, and the `(no HEAD instance)` marks tell a fixture author exactly which four need construction before they start.
+- **N-1 and N-2 are the right kind of writing.** Stating the failure classes that do *not* exist ("there is no 'index too large to send' failure"; "there is no suppressed-finding state") pre-empts the invented-branch failure mode where an implementer adds a state no test covers because no document forbade it. N-2 in particular is what makes NG-4 falsifiable rather than aspirational, and §3.4's observation that the driver is never given a decision id to consult is the mechanism behind it, not a restatement of it.
+- **The fail-open path is split into two legs that degrade differently, with the third case pulled out of the failure taxonomy entirely.** §3.3's separation of the empty-but-valid file from both legs — and its grounding in `M-4e`, with two real HEAD files (`M-4a`, `M-4b`) in exactly that position — closes the empty-vs-unreadable conflation that is the classic absence-only oracle in this shape. AT-10 asserts the boundary in the direction that matters ("where it is the only source, E-6 follows rather than E-2's total leg").
+- **Set equality is demanded where containment would hide a deletion.** AT-01 (whole rendered lines, not ids), AT-11 ("a fourth key or a different spelling fails"), and BR-10's cross product are all specified as equality over a closed enumeration. This matches the shipped `learningsBaselineGuard.test.js`, whose mutation proof records that a containment check would have let a whole deleted case pass.
+- **The frozen-fixture choice honours DC-15.** Asserting against a frozen copy at the Baseline's `Verified at` commit rather than the live repository — which grows on this very branch — is the difference between an oracle that measures the change and one that measures the host.
+- **Q-1, Q-2 and Q-3 are the right three to have raised**, and each names its owner and why the answer belongs downstream. Q-2 in particular (a document with no feature directory) is a totality hole in the in-scope set that would otherwise have surfaced as an implementer's coin-flip.
 
 ## Recommendation
 
+**Needs revision**
+
+Three High findings, all of one kind: a named behavioural branch whose outcome this document states
+and no acceptance test asserts (DC-05). What must change:
+
+1. **F-01** — give E-9 an assertion. Either a conjunct on AT-01 naming `M-4d`'s mixed file in the fixture and asserting its 8 non-record headings contribute no line, or a dedicated AT.
+2. **F-02** — give E-11 an assertion. An AT over O-5's synthetic two-file corpus asserting the cardinality conjunct only ("exactly one line for an id recorded in both files"), leaving the winner to TSPEC.
+3. **F-03** — pair AT-14's absence assertion with a positive one, on the model AT-08 already sets: state what the dispatch *does* contain when the in-scope set is empty, so that a build emitting standalone rule text fails.
+
+The six Mediums are recorded and not gating, but F-04 and F-05 are the two that get materially more
+expensive downstream: both are about AT-01's expected value, both are one clause each, and both are
+on their second document. Closing them here is the last cheap moment.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 6, "low": 2}
