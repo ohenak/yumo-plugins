@@ -135,15 +135,40 @@ that paragraph as written would put the PLAN's own history in contradiction with
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | With `CENSUS_TOKENS` test-file-local, is T-11's committed-skipped / un-skipped-by-T-18 timing still needed *as stated*, or does it now rest solely on the fourteen module-owned members landing across batches 3–8? I read the latter as true and sufficient — but the row's stated reason names the wrong operand, so please restate rather than delete the edge. |
+| Q-02 | TSPEC v1.0 notes the census "never scans the file the three constants are declared in". Does any PLAN task need to assert that non-overlap positively (a cheap conjunct: the scanned path is `orchestrate-dev.js`, not the test file), or is it structurally guaranteed by T-11's single-file read? I believe the latter; flagging only so the revision does not add a redundant assertion. |
 
 ## Positive Observations
 
-_pending_
+- The erratum resolves my v7 F-01 (Medium, dead production constant with no production consumer)
+  by construction rather than by argument. A test-file constant needs no production consumer, so
+  the dead-config exposure and the DoD-sweep-deletion risk both disappear. That is a strictly
+  better outcome than the wording fix I had asked for.
+- The task graph survives the cascade untouched — batches, dependency edges, file ownership at the
+  *task* level, and the un-skip topology all still hold. The blast radius is five prose sites and
+  one pin, which is a small and well-localised repair for an inverted upstream contract.
+- PLAN v0.7's discipline in routing the residual gap as `ERRATUM: TSPEC` rather than deciding it
+  locally is exactly why this is a clean five-site fix today instead of a divergence discovered at
+  implementation time. The escalation worked; the PLAN now has to follow where it led.
+- The six token members, the `decisionLedger`-is-not-a-token rationale and the scanned-source
+  slicing contract (every owned declaration, precedent's `bodyOf` boundaries, non-empty-slice
+  assertion) are all untouched by the erratum and remain correct at HEAD. I re-checked each; none
+  needs to move.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+PLAN v0.7 does **not** still hold as approved against TSPEC v1.0. One High finding: the PLAN's
+census contract is the inverse of upstream's at five sites, and an implementer following it writes
+a production constant TSPEC forbids and an exact-set-equality assertion that reds on conforming
+code. The fix is textual and well-bounded — no batch, dependency or ownership edge moves — and is
+spelled out in §Verification.
+
+The High is tagged `delta`: it did not exist in the pre-round bytes, because the pre-round upstream
+said what the PLAN says. This round's edit created it.
 
 ## Delta-Confirmation Findings
 
