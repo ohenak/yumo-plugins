@@ -232,11 +232,66 @@ without adding yourself to it breaks the next cascade.*
 
 ## Positive Observations
 
-<!-- positives -->
+- **The TSPEC won its erratum, on the numbers it supplied.** ERR-2 routed a product judgement upstream
+  with a measurement attached rather than deciding it locally, offered both outcomes honestly ("this
+  may equally be resolved by leaving C-5 alone"), and recommended 12,500. REQ v1.8 adopted 12,500 and
+  cited a Baseline derivation for it. That is the erratum channel working exactly as designed: the
+  spec author found a REQ-owned default was wrong, refused to fix it in the wrong document, and the
+  REQ moved. The staleness I am flagging is the *cost* of that success, not a defect in the judgement.
+- **ERR-1 won too, and cost nothing.** §4.1 implemented non-negative integers ahead of the REQ,
+  matching the `parseLearningsConfig` precedent, and raised the type label upstream rather than
+  editing the REQ or quietly diverging. REQ C-5 now types both keys non-negative. No implementation
+  change falls out — which is the point of having raised it as a label question.
+- **ERR-2 pre-costed its own resolution, and the estimate was right.** "If the default moves, the
+  change is one literal in C-5's row and the same literal in the config parser's default … the only
+  test that reads the value is §7.3's shipped-default assertion, whose threshold follows the resolved
+  default while its transcribed 6,305 does not move." I re-derived this against the new value and it
+  holds: `6,305 ≤ 12500 − 1200`, all three conjuncts survive, 6,305 does not move. An author who
+  writes down what a pending decision will cost, accurately enough that the reviewer can verify it
+  after the fact, has saved this round most of its work.
+- **D-10's whole-fixture design absorbed a threshold change without redesign.** Building the oracle
+  over all 141 records rather than the 63-record in-scope set was argued in round 3 on falsifiability
+  grounds. It has now paid a second dividend nobody claimed for it: because 141 records overshoot
+  both bounds by a wide margin, the assertion still binds at 12,500 exactly as it did at 8,000. The
+  round-3 rejection of the project-level-only slice is more correct at the new default, not less.
+- **My v4 F-01 and F-02 are both absorbed by this round's repair.** F-01 asked for a one-clause
+  correction at §7.3:940–941 ("what a real dispatch gathers"); F-02 asked to reconcile "three" against
+  "two" feature-level lines in §3.6/ERR-2/§7.3. Both sit inside paragraphs F-02 above now requires
+  rewriting anyway, so they close in the same edit rather than needing a separate pass. Neither was
+  gating then and neither is gating now.
 
 ## Recommendation
 
-<!-- recommendation -->
+**Needs revision.** Two High findings are open, both delta, both local to the clauses the erratum
+edited.
+
+To be explicit about what this verdict is and is not: I am not withdrawing the v4 approval of this
+document's design. Nothing in the erratum touched the architecture, the interfaces, the data model,
+the omission mechanism, or the oracle strategy, and I re-verified that the corpus oracle's three
+conjuncts survive the new default unchanged. The TSPEC's *reasoning* was vindicated — the REQ adopted
+its recommendation. What has gone stale is a literal and the arithmetic paragraph built on it.
+
+Required to re-approve:
+
+1. **F-01** — replace `8000` with `12500` at §4.1:496, §5:760 and §7.3:942, so the document stops
+   misquoting "C-5's shipped defaults".
+2. **F-02** — rewrite §3.6's second load-bearing paragraph. The day-one partial-omission bullet at
+   §3.6:445–447 is false at 12,500 and must go; the honest replacement is stronger, namely that
+   REQ-DECLEDGER-01's one-line-per-decision intent is now fully met on first dispatch for every
+   feature, with the feature-level-first order retained as the guarantee that protects the promoted
+   corpus once growth consumes the headroom (REQ R-5's restated no-growth-model risk is the right
+   citation). Move the derived figures with it: `~495 → ~4,995` bytes, `~44 → ~73` promoted records,
+   §7.3:963–964's "roughly two", §4.3's §7.3:630 remark, and §7.4:1187's AT-01 justification.
+3. **F-03** — mark ERR-1 and ERR-2 resolved in §9.2 with the values REQ v1.8 chose, retire §9.3 T-2's
+   pointer, and correct §9.4 A-1 to REQ §7 A-1 as it now reads.
+
+Not gating, but cheap while there: **F-04**'s Baseline pin bump to v1.2 across the header, §3.5:376
+and §7.3:917 (measurements unaffected — `Verified at` did not move), and **F-05**'s addition of this
+TSPEC to the Baseline's `Cited by` propagation path, which is the durable fix for how this cascade
+was missed. Q-01 and Q-02 want answers in the revision but neither needs a further round.
+
+One round should close all of it. The document does not need re-review beyond confirming these
+edits.
 
 ## Verdict
 
