@@ -4,7 +4,7 @@
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-decision-ledger` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
 | Cited by | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` (§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, §7 O-1, §7 O-5); `docs/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md` (header, §1, §3.3, §4 BR-2/BR-8/BR-10, §5 E-4/E-9/E-10/E-11, §6 AT-01, §7 O-5). This list is the propagation path for a `Version` bump, so a new citation is added here in the same edit that mints it. |
-| Version | 1.1 · 2026-08-28 |
+| Version | 1.2 · 2026-08-28 |
 | Verified at | HEAD `8c673a09f` on `feat-pdlc-decision-ledger`, 2026-08-28 |
 
 **Why this file exists.** How many closed decisions this repository records, where they sit, and
@@ -20,9 +20,9 @@ reference shipped facts as `M-*` facts measured into `docs/_constraints/` and ci
 inlined as a contract the REQ itself must defend.
 
 **Change control, and who owns these sections.** `REQ-pdlc-decision-ledger` owns every section of
-this file — §1–§7 entire — and changes none belonging to anyone else; a successor feature's facts
+this file — §1–§8 entire — and changes none belonging to anyone else; a successor feature's facts
 belong in its own new section of this file, or in its own file, never interleaved into §1–§7. All
-seven sections are **owned normative prose**: no table here is transcribed row-for-row into a
+eight sections are **owned normative prose**: no table here is transcribed row-for-row into a
 downstream document, so no downstream oracle ranges over this file's markup. Consumers cite this
 file **at its `Version`**; a content change that is not accompanied by a version bump is itself a
 defect. Every number below was re-derived from the working tree at the `Verified at` commit —
@@ -101,3 +101,13 @@ feature directories.
 | **M-6b** | Under the **directory-glob** feature reading (M-2c/M-2d, 22), the floor is `41 + 22` = **63**. This is the governing figure for any consumer whose file scope is `DECISIONS-*.md` within a feature directory. |
 | **M-6c** | A cap of **70** clears M-6b by 7 and M-6a by 15. A cap of 60 clears M-6a but is *below* M-6b, so under the directory-glob reading it drops a line against the standing corpus on day one. |
 | **M-6d** | These floors are the corpus at one commit, not a growth model. A consumer wanting headroom sizes it against M-6b; a consumer re-taking the measurement bumps this file's `Version` (see *Change control*). |
+
+## 8. M-7 — the byte floors that follow
+
+| ID | Fact |
+|---|---|
+| **M-7a** | **Substance bytes**, per record, are the bytes of its id, its one-line heading statement and its file path. Summed over the **41** project-level records (M-1a, enumerated at M-1d): **5,262**. |
+| **M-7b** | Summed over the M-6b worst standing case — those 41 plus the **22** of the largest feature directory (M-2c/M-2d, `docs/completed/pdlc-headless-engine/`) — **9,296** over 63 records; mean **148**, maximum **238**. Under the M-6a single-file reading the same sum is smaller, so M-7b governs any consumer whose file scope is the directory glob. |
+| **M-7c** | A byte cap of **12,500** clears M-7b by **3,204**, which is **50** bytes per record of per-line framing allowance across all 63. A cap of **8,000** is *below* M-7b outright, so it drops lines against the standing corpus on day one whatever the framing costs. |
+| **M-7d** | Substance bytes are a **floor, not a rendering.** They exclude every per-line separator, prefix and newline, because the concrete format of a rendered line is not this file's to fix — it belongs to the consuming TSPEC. A consumer sizes against M-7b and declares its own framing allowance on top; a consumer re-taking the measurement bumps this file's `Version` (see *Change control*). |
+| **M-7e** | Measured on the same tree as §1–§7, at the same `Verified at` commit, by the same re-derivation. The two feature directories that hold zero records (M-4b) and the four non-`DECISIONS-*.md` files (M-4c) contribute nothing here either, for the reasons given there. |
