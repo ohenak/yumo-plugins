@@ -77,6 +77,55 @@ the rejected form. The DoD and the task table now say the same thing — in v5 t
 
 ## Grounding checks
 
+**Upstream pins re-measured at HEAD** (`shasum -a 256`, first-8…last-6, the abbreviation the header
+uses):
+
+| Upstream | Header pin (`PLAN`:9) | Measured at HEAD | |
+|---|---|---|---|
+| `REQ` v1.9 | `ce6b133f…3c7b7c` | `ce6b133f…3c7b7c` | ✓ |
+| `FSPEC` v1.3 | `2bd5c3ef…5aed39` | `2bd5c3ef…5aed39` | ✓ |
+| `TSPEC` **v0.9** | `eef45ef3…0623c8` | `eef45ef3…0623c8` | ✓ |
+| `DECISIONS` | `13aba061…4fb89a` | `13aba061…4fb89a` | ✓ |
+
+All four match. The revision history's claim that the other three were re-measured in this pass and
+found unchanged is true as stated.
+
+**Files named by the changed rows.**
+
+- `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` — absent from disk and tagged `[new]` in
+  T-11's file column and by the manifest row. Correctly declared new.
+- `pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js` — exists; the precedent T-11 clones is
+  real, and the two symbols cited are at `loopEconomicsAnchorGuard.test.js`:63 (`allTopLevelDecls`)
+  and `:114` (`ANCHOR_TOKENS`), with `bodyOf`'s boundary rule at `:124-127` ("boundaries come from
+  `allTopLevelDecls`, not just the census subset", `:119-120`) — exactly the discipline T-11
+  transcribes.
+- `pdlc/workflows/orchestrate-dev.js` — exists. Every shipped declaration T-11 cites as a
+  false-positive of a `/Decision/i` name rule is really there:
+  `MERGE_MAX_DECISION_STEPS` (`orchestrate-dev.js`:88), `renderDecisionEntry` (`:4640`),
+  `escalationDecision` (`:4738`), `erratumGateDecision` (`:6914`), `parseDecisionsWarranted`
+  (`:7044`). The enumerate-don't-pattern-match rationale is grounded in code, not asserted.
+
+**Cardinality check on the partition** (this is the arithmetic that decides whether the instrument
+can go green, so I did it rather than trusting the count words). T-11's `CENSUS_TOKENS` lists six
+names; `CENSUS_EXEMPT` lists nine (`parseDecisionLedgerConfig`, `buildDecisionLedgerInjector`,
+`DECISION_LEDGER_DEFAULTS`, `DECISION_HEADING_RE`, `DECISION_CORPUS_ARGV`,
+`DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, `DECISION_LEDGER_NOTICES`,
+`DECISION_LEDGER_CENSUS_TOKENS`); the two are disjoint; their union is fifteen names, which is
+exactly `TSPEC`:1297's enumeration of `DECISION_LEDGER_OWNED_DECLS` (§4.1/§4.2/§4.4's six functions
++ `DECISION_CORPUS_ARGV`, `DECISION_HEADING_RE`, `DECISION_LEDGER_DEFAULTS`,
+`DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT` + §5.2's three catalogues +
+`DECISION_LEDGER_CENSUS_TOKENS` itself). Six + nine = fifteen, and the sets agree name-for-name. The
+set equality is satisfiable, and it is a set equality, not a containment — a later symbol
+unclassified into either list reddens.
+
+**Anti-vacuity and absence-pairing survive the rewrite.** "Each slice asserted non-empty before
+counting, so the census cannot go vacuous" is retained; the negative census assertion (zero
+occurrences in the remainder) is paired with positive assertions on the same paths — the non-empty
+slice check, and, for the `decisionLedger` field excluded from the token set, T-10a's positive
+`report.decisionLedger` assertion on a real `main()`-driven run with the flag-off arm pairing
+absence with a set-equality on the report's key set (`PLAN`:150). No absence-only oracle is
+introduced by this round's edit.
+
 ## Findings
 
 ## Questions
