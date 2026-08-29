@@ -365,6 +365,8 @@ measured the working tree — **commit, then run**.
 | AT-03 | T-08 → T-17 | injector, scripted `_readFile` mutation (`DEC-DECLEDGER-14`) |
 | AT-04 | T-02 | committed merge-base baseline guard |
 | AT-05, AT-14, AT-16, AT-17 | T-10 → T-18 | loop integration against T-02's recording |
+| AT-04, AT-05 (live half) | T-10a → T-18 | `main()`-driven composition root: `_git` call-count spy, positive block-presence, flag-off report/notices set equality (TE F-03, F-05) |
+| FSPEC Q-3 / disclosure prose | T-12 → T-19 (engine config example), T-12a → T-19 (`OPERATIONS.md` / `README.md` / `CLAUDE.md` derived oracle) | config + documentation disclosure |
 | AT-06, AT-07 | T-06 → T-15 | pure unit on the rule-text constants |
 | AT-08, AT-09, AT-10 | T-08 → T-17 | fail-open legs + O-7's `failedSources`/`emptySources` split |
 | AT-11 | T-04 → T-13 | pure unit, set equality over C-3 |
@@ -389,13 +391,29 @@ required not to:
 
 ### Definition of Done
 
-- [ ] All 21 tasks ✅; every `[red]` block un-skipped by its named `[green]` task, none left skipped.
+- [ ] All 24 tasks ✅; every `[red]` block un-skipped by its named `[green]` task, none left skipped.
 - [ ] `cd pdlc/workflows && npm run test:coverage` exits 0; `cd pdlc/engine && npm ci && npm test`
       exits 0; `bash -n` clean over tracked `*.sh`; the fixture-machine leg green — the four
       required checks named in `CLAUDE.md`.
+- [ ] `node pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` reports **0 uncovered lines**
+      inside this feature's introduced ranges in `pdlc/workflows/orchestrate-dev.js` — run on a clean
+      tree (**commit, then run**: the script warns rather than fails on uncommitted changes, because
+      its ranges are HEAD line numbers while c8 measured the working tree). Owned by T-18.
+- [ ] `main()` is driven live with the flag on and the flag off (T-10a): the `_git` seam is invoked
+      ≥ 1 on the served reviewer flow, the served reviewer prompt **ends with** the rendered block,
+      and `report.decisionLedger` is asserted on a real composition-root run — not by source census
+      alone (DC-07).
+- [ ] `documentOracles.test.js`'s `*.test.js` census excludes the `decisionLedger` namespace and
+      still counts `102` (T-00a's positive control), and its decision-ledger disclosure family
+      (T-12a) is green with every expectation **derived** from `DECISION_LEDGER_OMIT_REASONS`,
+      `DECISION_LEDGER_NOTICES` and `DECISION_LEDGER_DEFAULTS` rather than restated.
 - [ ] Flag off ⇒ reviewer-prompt stream byte-identical to T-02's committed merge-base recording
       (AT-04), and all four not-enabled spellings collapse to it (AT-05).
-- [ ] Flag off ⇒ the report object carries **no** `decisionLedger` field and **no** notice.
+- [ ] Flag off ⇒ the report object carries **no** `decisionLedger` field and **no** notice — each
+      absence **paired with its positive** on the same `main()`-driven path (TE F-05): the report's
+      key set is **set-equal** to the flag-off key set, and `notices` is **set-equal** to the
+      baseline notices array. Set equality is what makes a spuriously-added key or notice fail;
+      "contains no `NTC-DECLEDGER-*`" alone does not.
 - [ ] Every row of TSPEC §6.1 and every FSPEC AT has a passing test, per the two tables above.
 - [ ] T-07's four mutations and T-02's three mutations each applied, observed red, reverted, and the
       observed failure transcribed into the respective test file's header.
@@ -406,9 +424,17 @@ required not to:
 - [ ] The enablement flag is read by **destructuring**; PROP-DIS-06 in `advisoryDisabled.test.js` is
       still green.
 - [ ] `.claude/pdlc.config.example.json` carries the `decisionLedger` block; `pdlc/OPERATIONS.md`,
-      `pdlc/README.md` and `CLAUDE.md` name it; no `SKILL.md` and no `pdlc/engine/` runtime file
-      changed.
+      `pdlc/README.md` and `CLAUDE.md` name it — **mechanically asserted by T-12a**, not by this
+      checkbox alone; `README.md` and `CLAUDE.md` carry a pointer rather than a restatement, keeping
+      the ~:625 confinement discipline; no `SKILL.md` and no `pdlc/engine/` runtime file changed.
+- [ ] After T-19's document edits, `documentOracles.test.js`, `pdlc/engine/__tests__/docs-uniqueness.test.js`
+      and `pdlc/engine/__tests__/ci-arrangement.test.js` are re-run and any line-anchored site the
+      insertion moved is re-pinned (TE F-06).
 - [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0 and `pdlc/workflows/dist/` is staged in
       the same commit as the workflow-source change; `pdlc/.claude-plugin/plugin.json` version bumped
-      from `0.23.6`.
+      from `0.23.6` **to `0.23.7`**, satisfying `pdlc/engine/package.json`'s
+      `"pdlcPluginCompat": "^0.23.0"` and the AT-1.6 / DEC-09 handshake check.
+- [ ] `recogniseDecisionRecords` and `renderDecisionLedgerBlock` each carry at least one
+      `fast-check` property (TE F-07), including the **one-physical-line-per-decision** law that
+      T-07's line count and T-09's `6,305` / `10,859` byte literals silently assume.
 - [ ] No test reads the live `docs/` tree; no test writes to the working tree or to a fixture file.
