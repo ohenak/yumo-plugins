@@ -69,6 +69,29 @@ FINDING: Low | delta | nonlocal | Baseline `Cited by` list (baseline:6) | FSPEC 
 
 ## Positive Observations
 
+- **The edit is exactly as wide as the defect and no wider.** 18 insertions, 9 deletions, four sites:
+  the two literals, the four version pins, and a changelog paragraph that names the retired value as
+  retired. No settled section was reopened; the flows, business rules, edge cases and acceptance tests
+  are byte-identical. That is the right shape for an erratum, and it is what makes this confirmation
+  cheap to do honestly.
+- **F-02 was fixed by mirroring the upstream, not by patching around my finding.** The easy fix was to
+  delete "is not measured" and leave the rest. Instead §7 A-1 now restates the REQ's actual new
+  rationale — measured once against a named commit, cited by id, not re-derived — in the REQ's own
+  terms. An operator exercising the A-1 veto reads the same rationale in both documents, which is the
+  whole point of the vetoable label.
+- **The changelog keeps the retired number rather than erasing it.** `FSPEC:19-25` records that `8000`
+  was the old default, that it was an unmeasured analogy, and that `12500` derives from `M-7b`/`M-7c`.
+  Erratum edits that silently swap a literal leave the next reader unable to tell a correction from a
+  typo; this one leaves a provenance trail, and it is the only place `8000` still appears in FSPEC.
+- **The AT-01 fixture pin moved with the Baseline pin.** `FSPEC:340` now pins the frozen fixture copy
+  at Baseline **v1.2**'s `Verified at` commit. It would have been easy to bump the header table and
+  miss this one, since the commit hash behind it did not change — the value of the pin is that it
+  names *which version's* commit, and getting it right when nothing observable moves is the discipline
+  the Baseline's change-control clause is asking for.
+- **I could re-verify the additive-Baseline claim mechanically.** Because the Baseline appends `M-7*`
+  as a new §8 rather than editing §1–§7, one `git diff` settles whether any prior fact moved. That
+  containment is why this confirmation is a pin refresh rather than a re-verification of every AT.
+
 ## Recommendation
 
 ## Verdict
