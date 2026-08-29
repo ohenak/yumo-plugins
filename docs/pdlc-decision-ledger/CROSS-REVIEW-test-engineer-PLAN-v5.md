@@ -138,3 +138,77 @@ the version I approved structurally at v3. Batch columns for the five touched ro
 (`T-00a` 1, `T-11` 2, `T-12a` 2, `T-19` 9), dependency edges unchanged, `[red]`/`[green]` labels
 unchanged, owned test files unchanged. No new file is introduced into any batch, so the same-batch
 same-new-file guard is undisturbed.
+
+## Dependencies
+
+### Upstream pins, re-measured at HEAD
+
+Every digest below is `shasum -a 256` over the file on disk at HEAD, compared against the PLAN
+header's transcription:
+
+| Doc | PLAN header pin | On disk at HEAD | Verdict |
+|---|---|---|---|
+| REQ v1.9 | `sha256:ce6b133f…3c7b7c` | `ce6b133f0c1d…0d3c7b7c` | ✅ |
+| FSPEC v1.3 | `sha256:2bd5c3ef…5aed39` | `2bd5c3ef055f…735aed39` | ✅ |
+| DECISIONS | `sha256:13aba061…4fb89a` | `13aba06127b4…bb4fb89a` | ✅ **v4 F-03 closed** |
+| TSPEC **v0.8** | `sha256:28d25518…32cb49` | `eef45ef32f0d…ece0623c8` (**v0.9**) | ❌ **stale** |
+
+v4's F-03 was the transposed DECISIONS tail (`4bb89f` for `4fb89a`). v0.5 re-derived it
+mechanically and it now matches to the character. Closed.
+
+The TSPEC row is the mechanical face of F-01. TSPEC front-matter (line 17) declares **v0.9**;
+its changelog names §5.4, §7, §7.2, §7.3 as the touched sections. The PLAN header still asserts
+**v0.8** and the v0.8 digest, and `T-11`'s prose cites "TSPEC v0.8 §7.3" by version number in the
+row body as well as in §Definition of Done. So the staleness is *self-declared* — the document
+says which TSPEC it was derived from, and that TSPEC is two commits behind. That is the anchor
+working as designed; the fix is a re-grounding pass, not a repair to the anchor mechanism. I file
+it Medium (F-02) separately from F-01 because the pin itself is an honest record; F-01 is the
+substantive divergence it points at.
+
+Cross-check that the *other* TSPEC-derived rows are unaffected by v0.9: v0.9's touched sections are
+§5.4, §7, §7.2, §7.3. `T-05`/`T-06` derive from §7.5 (`P-REC`/`P-LINE`, TSPEC:1426), untouched by
+v0.9, and I verified their mutation-discipline conjuncts name-for-name at v4 — they carry forward.
+`T-10a`'s flag-off referent was re-homed by `1a2d78cba` (§7/§7.2), which is worth the author's
+glance during re-grounding, but §7.2's re-homing moves the referent *to* `T-02` recording, which
+is what `T-10a` already says (approved at v3, `665eb44a8`). I do not file it.
+
+### Batch DAG re-derivation over the changed rows
+
+Re-derived `batch == max(dep batch) + 1` for every row the delta touched:
+
+| Task | Deps | max(dep batch) | Declared batch | Verdict |
+|---|---|---|---|---|
+| `T-00a` | — | — | 1 | ✅ |
+| `T-11` | `T-00`, `T-01` | 1 | 2 | ✅ |
+| `T-12a` | `T-00`, `T-01` | 1 | 2 | ✅ |
+| `T-19` | `T-12`, `T-12a`, `T-18` | 8 | 9 | ✅ |
+
+Graph still acyclic over the touched sub-graph, ids unique, every dependency resolves to a declared
+task. The new T-19 obligation does not add an edge: `documentOracles.test.js` was already in T-19's
+owned-test-file list for the un-skip, so crediting the `102` control there introduces no new
+concurrency and no new file. ✅
+
+## Verification
+
+Everything I asserted above, and the command that grounds it:
+
+| Claim | How verified |
+|---|---|
+| Delta is exactly two commits, 19+/12− | `git diff --stat 36cd34d4d..HEAD -- …PLAN…`; `git log --oneline 36cd34d4d..HEAD -- …PLAN…` |
+| Four upstream digests | `shasum -a 256` over the four upstream files at HEAD |
+| TSPEC is v0.9, not v0.8 | `TSPEC…md:17` front-matter row; `git log --oneline -5 -- …TSPEC…` |
+| §7.3 is the section v0.9 rewrote | TSPEC changelog line 23 ("Sections touched: §5.4, §7, §7.2, §7.3") and line 26 (the TE F-01 entry) |
+| §7.3 is at TSPEC:1153, §5.5 at :955, §7.5 at :1426 | heading grep over TSPEC |
+| T-11's scanned source = three slices + wiring block | `PLAN…md:134`, verbatim quote in §Batches |
+| v0.9's scanned source = every owned declaration | `TSPEC…md:1297` |
+| v0.9 repudiates the exports set-equality | `TSPEC…md:1296` |
+| `OWNED_DECLS` / `CENSUS_EXEMPT` absent from PLAN | `grep -n "OWNED_DECLS\|CENSUS_EXEMPT" PLAN` → no match |
+| Six census tokens unchanged v0.8→v0.9 | `TSPEC…md:1296` operand table, compared name-for-name with `PLAN…md:134` |
+| T-19 owns the terminal `102` | `PLAN…md:141`; manifest row; §Definition of Done bullet |
+| T-00a is now batch-1-evaluable | `PLAN…md:120` |
+| Batch columns unchanged for touched rows | re-derivation table above |
+
+**Un-verifiable by me, and not filed:** whether the author intends `DECISION_LEDGER_OWNED_DECLS`
+and `DECISION_LEDGER_CENSUS_EXEMPT` to be declared by `T-00` or by a new batch-1 row. That is a
+plan-authoring choice, not a defect; F-01 only requires that the PLAN name whichever task declares
+them.
