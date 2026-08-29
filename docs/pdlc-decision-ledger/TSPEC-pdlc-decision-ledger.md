@@ -1339,10 +1339,10 @@ editing the REQ. **Resolved in REQ v1.8**, which retypes both thresholds as **no
 integers; §4.1 now agrees with C-5 rather than diverging from it, and nothing downstream changes.
 
 **ERR-2 (RESOLVED upstream — REQ v1.8) — REQ C-5's `maxBytes` default of 8000 was measured, and
-admitted about three feature-level lines.** A-1 records 8000 as an unmeasured analogy from `learningsInjection`. The measurement is now
-taken (§3.6): at the Baseline's `Verified at` commit, under §4.3's shipped line format, the
+admitted about three feature-level lines.** A-1 recorded 8000 as an unmeasured analogy from `learningsInjection`. The measurement was
+taken here (§3.6): at the Baseline's `Verified at` commit, under §4.3's shipped line format, the
 project-level set alone renders 41 lines / **6,305** bytes, and with §4.3's ≤1,200-byte framing
-budget charged (D-5) the 8,000-byte bound leaves roughly **495** bytes — about **three**
+budget charged (D-5) the retired 8,000-byte bound left roughly **495** bytes — about **three**
 feature-level lines at the mean, two at the largest observed line, against a measured feature-level
 size of **152–261** bytes/line (means 183 / 191 / 206 for `pdlc-advisory-wave-gate` /
 `pdlc-engineering-loop` / `pdlc-headless-engine`; project-level lines are smaller, 109–200, mean
