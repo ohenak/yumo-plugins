@@ -81,7 +81,36 @@ Two of three downstream documents are now converged on fourteen; `PLAN` alone di
 
 ## Interfaces
 
-_pending_
+**The correction-direction contract, measured against `PLAN` at HEAD.** The routed items assert six
+and five stale sites respectively. I checked each against `PLAN-pdlc-decision-ledger.md` at HEAD and
+every one is still present:
+
+| Site | What `PLAN` still says | TSPEC v1.1 §7.3 |
+|---|---|---|
+| `PLAN`:19 (revision history) | "The design's intent is **production**"; "**No count moved**: six ∪ nine = fifteen stands"; TSPEC's form is the "**rejected**" resolution | test-file home, six ∪ eight = fourteen, and the fifteen-member form is *stale, not competing* |
+| `PLAN`:152 (T-11) | `CENSUS_TOKENS` "declared in `orchestrate-dev.js` as a production top-level constant, written by T-18"; `CENSUS_EXEMPT` "the **nine** plumbing declarations"; `OWNED_DECLS` "the **fifteen** top-level declarations" | test-file constant, never a member of the owned list; exempt is eight; owned is fourteen |
+| `PLAN`:158 (T-18) | "**Add the frozen `DECISION_LEDGER_CENSUS_TOKENS` declaration to `pdlc/workflows/orchestrate-dev.js`** … it is production code, not a test operand" | it is a test operand, and the census never scans the file it is declared in |
+| `PLAN`:207 (manifest, census test file) | "the third census operand … is **not** a test-file constant — it is production" | all three are declarations of the census test file |
+| `PLAN`:219 (manifest, `orchestrate-dev.js`) | claims "**and the `DECISION_LEDGER_CENSUS_TOKENS` declaration** — the one member of `DECISION_LEDGER_OWNED_DECLS` no earlier batch writes" | not a member at all |
+| `PLAN`:490–495 (§Definition of Done) | six ∪ **nine** = **fifteen**, "All fifteen owned…", "`CENSUS_TOKENS` is **production**" | six ∪ eight = fourteen |
+
+So the routed items are **factually accurate and still unresolved in the document they describe**.
+They are, however, *landed against this TSPEC*: the erratum was routed here, and what was asked of
+this document — re-pin to the v1.0 test-file home and the fourteen partition, and say so
+authoritatively — is done. I record the residue as F-01 rather than treating the round as unlanded,
+because the unlanded work is not this document's to do. Tagging it `inherited` is the honest call
+and is what keeps it routing to PLAN's phase instead of halting Phase P.
+
+**Why this matters in product terms, not just document-hygiene terms.** §7.3 is the oracle for
+BR-11 / REQ-DECLEDGER-08 / NG-4 — a P0 traceability obligation. `PLAN` is what the implementing
+agents read; TSPEC is not. If batches 3–8 run against `PLAN` v0.7, T-18 writes a production
+`DECISION_LEDGER_CENSUS_TOKENS` and T-11 freezes a fifteen-member owned list, and §7.3's
+resolves-to-exactly-one and partition conjuncts red on conforming code — the exact defect round 10's
+erratum removed, rebuilt from the instructions. The requirement would not be *served* by the code
+that gets written. That is the severity driver for F-01, and it is why I have escalated it from the
+Medium I gave it at v11: at v11 it was a foreseeable downstream re-pin; a full round later, with
+`PROPERTIES` re-pinned and `PLAN` not, it is an observed cascade miss with a P0 oracle downstream of
+it.
 
 ## Data Model
 
