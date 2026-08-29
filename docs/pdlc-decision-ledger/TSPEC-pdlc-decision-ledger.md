@@ -157,6 +157,16 @@ inside the region they would be sliced out, the pin would not see them, and §2.
 discipline with no oracle behind it. PLAN owns the placement; §7.3's source census is what
 checks it.
 
+**Two differently-named sentinel regions coexist in this file, and neither slicer sees the other**
+(TE Q-01). §7.3's census excludes this feature's `main()` wiring as the run between
+`// === DECISION LEDGER WIRING START ===` and `... END ===`. That is a *different* region from the
+learnings one named above, and both slicers match their own literals by exact string —
+`advisoryDisabled.test.js:718–719` searches for `"// === LEARNINGS INJECTION REGION START ==="` and
+its `END` counterpart specifically, not for a sentinel *shape*. So this feature's wiring sentinels
+are invisible to PROP-DIS-06's slice: the wiring stays inside the `/\.enabled\b/` count, which is
+what §2.3 requires, while §7.3's own census excludes it. A future reader meeting the phrase
+"sentinel region" in either section should not assume one slice applies to both.
+
 `buildDecisionLedgerInjector` returns `null` when the flag is not `true`. That is the gate
 (FSPEC §3.2 step 1, BR-4): with the injector `null`, `wrapperSeams._injectDecisionLedger` is
 `null`, `reviewLoop` passes `""` as the ninth `reviewerPrompt` argument, and the prompt is
