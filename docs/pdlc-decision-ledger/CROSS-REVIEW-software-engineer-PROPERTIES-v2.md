@@ -32,6 +32,19 @@ file-ownership manifest (`PLAN`:145–186) in owner **and** batch for every row.
 
 ## Prior findings — disposition
 
+| v1 | Severity | Status | Evidence |
+|---|---|---|---|
+| F-01 | High | **Resolved** | PROP-DISC-07 now states the split explicitly and names `PLAN` **T-00a** (batch 1) as the owner of the exclusion edit, quoting T-00a's own title. The batch-1 required-check hazard I raised is gone: the exclusion lands in the batch that adds the first three `decisionLedger*` modules, matching `PLAN`:99. §Coverage Matrix's DISC row and the module manifest both carry the same owner. |
+| F-02 | Medium | **Resolved** | PROP-DISC-08 is now owned by **T-20** (batch 10), matching `PLAN`:121 and `PLAN`'s file-ownership rows for `pdlc/workflows/dist/pdlc-cli.mjs` and `pdlc/.claude-plugin/plugin.json` (`PLAN`:185–186). The manifest adds the explicit "T-20 owns no test module by design" row, which is the honest form. |
+| F-03 | Medium | **Resolved** | A module manifest table now names all fourteen test files with owning task and batch; the two previously id-less modules get **PROP-DISC-09** (`decisionLedgerPreflight.test.js`, T-00) and **PROP-DISC-10** (`decisionLedgerFixtureGuard.test.js`, T-03); INV's row names `decisionLedgerCensus.test.js` under T-11 → T-18 (`PLAN`:167, :243); OFF's row correctly records T-02 as having **no** red predecessor (`PLAN`:251). All four contradictions I listed are gone. |
+| F-04 | Medium | **Resolved** | The pyramid is restated as a partition summing to **101**, and the count is checkable: the document's line-leading property rows number exactly 101, family by family. The superseded "47 / 11 / 37" reading is explicitly retracted rather than silently dropped. |
+| F-05 | Medium | **Resolved** | PROP-BND-07 is a numbered conjunct row (`✖`, Category Contract) with its own falsifying mutation column, BND re-counted at 12, and it is discharged at AT-13. |
+| F-06 | Medium | **Resolved** | PROP-CFG-06 now carries a positive return conjunct — three defaults, `invalidKeys: []`, `sectionMalformed: false` — on **each** input in its range, with the `false` (not `true`) value correctly derived from the shipped `parseLearningsConfig` short-circuit. The stub-returning-`undefined` escape is closed. |
+| F-07 | Low | **Resolved** | The dangling id is now labelled as a deliberate cross-feature reference to `pdlc-advisory-tier`'s PROP-DIS-06, with both referents cited; I verified both. |
+| F-08 | Low | **Resolved** | The three BND ranges are reconciled on one surface and the whole family is mapped to AT rows (01…04, 07, 12 → AT-13; 08, 09 → AT-14; 05, 06, 10, 11 → AT-15), which closes the two properties that no AT discharged. One stale fourth spelling survives in §Overview — F-03 below, Low. |
+
+No prior finding regressed, and the delta introduced no factual error: every claim it adds reproduces at HEAD.
+
 ## Findings
 
 ## Questions
