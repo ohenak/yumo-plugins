@@ -81,3 +81,21 @@ None. Nothing in the delta requires an answer before PROPERTIES authoring.
   is total over either bound"), so a future editor tempted to compress it back knows the obligation
   it discharges.
 
+## Recommendation
+
+**Approved**
+
+The delta resolves v4's F-01 at the edge case and the AT that witnesses it, F-02 was absorbed
+upstream in the Baseline's propagation row, and re-measurement against REQ **v1.9** at HEAD finds the
+document still a faithful compression: every Baseline pin reads v1.2, the `12500` default is recited
+only at the two sites REQ v1.9 names, and no oracle v4 approved was weakened. No open High, no new
+Medium or Low.
+
+## Delta-Confirmation Findings
+
+No findings.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
