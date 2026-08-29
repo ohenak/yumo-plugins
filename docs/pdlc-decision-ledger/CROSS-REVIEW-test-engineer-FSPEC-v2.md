@@ -91,3 +91,42 @@ fixture author down a path that either cannot be built or cannot fail.
 - **O-8 records the bounds invariant as a property, not as more examples**, and says so in the
   words that matter ("parameterised over set size × line sizes × both bounds, not as further
   examples"). That forecloses the example-only default before PROPERTIES starts.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Every High from v1 is closed, and I found no new High in the changed sections. The five findings
+above are Medium or Low and none of them gates TSPEC authoring. Two are worth closing before this
+document is handed to a fixture author, because both concern tests that would otherwise be written
+wrong rather than late: **F-01** (AT-18's differential conjunct passes a renderer that drops every
+other line — transcribe the synthetic corpus's line set instead) and **F-02** (E-5 contradicts
+§3.1's new vocabulary and asks for an unconstructible fixture, while AT-11 demands set equality over
+a different enumeration). **F-04** is the one to answer rather than fix: say whether a per-decision
+render failure exists and, if so, route step 4 into §3.3 and give the mechanism an owner, exactly as
+O-7 does for BR-8. **F-03** is one line in the Baseline's propagation row; **F-05** is one word.
+
+**No erratum items this round.** Nothing I found traces to a defect in REQ v1.7: F-02 and F-05 are
+internal to vocabulary this FSPEC introduced, F-01 and F-04 are its own test design, and F-03 is the
+Baseline's citation row, which the FSPEC's own edit minted.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Medium | delta | local | AT-18's "every other line is unchanged" conjunct is vacuously satisfiable — a renderer emitting only the duplicate's line passes; transcribe the synthetic corpus's line set | §6 AT-18 |
+| F-02 | Medium | delta | local | E-5 keeps the pre-round per-key "malformed" vocabulary §3.1 abolished; "one key malformed, the other two valid" is unconstructible and its 9-case space contradicts AT-11's 10 | §5 E-5 / §3.1 / §6 AT-11 |
+| F-03 | Medium | delta | nonlocal | Baseline `:6` propagation row omits §6 AT-18, §7 O-1, §7 Assumptions and lists §4 BR-10, which cites no `M-*` id | Baseline Cited-by row |
+| F-04 | Medium | delta | local | Both legs are now defined by "fails to render", but §3.3 is entered only from step 3 and no owner states what makes a decision unrenderable — AT-08/AT-09 fixtures unconstructible | §3.3 entry / E-2, E-3 / AT-08, AT-09 |
+| F-05 | Low | delta | local | AT-05 counts "four" over five conditions and E-1 omits the block-malformed spelling §3.1 and AT-05 now carry | §5 E-1 / §6 AT-05 |
+
+FINDING: Medium | delta | local | §6 AT-18 | The "every other line is unchanged from the same corpus without the duplicate" conjunct derives its expected value from the renderer's own output, so a build emitting only the duplicate id's line and dropping all others passes both conjuncts; transcribe O-5's synthetic corpus line set instead, leaving only the duplicate's statement field unasserted.
+FINDING: Medium | delta | local | §5 E-5 (with §3.1, §6 AT-11) | E-5 still reads "one key malformed, the other two valid … {wrong type, malformed, absent}", a state §3.1's new block-level definition of malformation makes impossible, and its 9-case space contradicts AT-11's set-equality enumeration of 3×3 plus one block-level case.
+FINDING: Medium | delta | nonlocal | docs/_constraints/pdlc-decision-corpus-baseline.md:6 | The newly minted FSPEC citation anchor list omits §6 AT-18, §7 O-1 and §7 Assumptions, and lists §4 BR-10 which cites no Baseline id, so a Version bump would not propagate to every dependent claim.
+FINDING: Medium | delta | local | §3.3 entry sentence, E-2/E-3, AT-08/AT-09 | Both fail-open legs are now defined over decisions that "fail to render", but §3.3 is entered only from step 3 (source missing/unreadable/unparseable) while rendering is step 4, and no section states what makes a decision unrenderable or owns that mechanism, leaving AT-08's second corpus and AT-09's first unconstructible.
+FINDING: Low | delta | local | §5 E-1 with §6 AT-05 | AT-05's title and Then still say "four" while its Given enumerates five conditions, and E-1 omits the block-malformed spelling that §3.1 and AT-05 both now carry.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 4, "low": 1}
