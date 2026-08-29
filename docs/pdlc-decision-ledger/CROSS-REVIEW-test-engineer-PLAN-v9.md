@@ -186,3 +186,48 @@ the composition root — the arm DC-07 requires, and the sole home of the `repor
 proof (TSPEC §7.3 names it as such). Leaving it stating a tautology and an assertion against a
 non-existent array means the one test that can catch a never-wired seam is specified in a form an
 implementer cannot write. Fix F-01 and F-02 together, re-read F-03, and this converges.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | Routed item 1 unlanded: T-10a conjunct 3 still names both retired referents | `## Batches`, T-10a row, conjunct 3 |
+| F-02 | High | inherited | local | The same two retired referents restated in the flag-off DoD bullet | `### Definition of Done`, flag-off report/notices bullet |
+| F-03 | Low | delta | local | T-11's forward pointer summarises the defective conjunct-3 wording and must move with it | `## Batches`, T-11 row |
+| F-04 | Low | delta | local | Two consecutive changelog entries both open with the literal `Revision history:` | Header revision history |
+
+**F-01 (High, delta, local).** T-10a's conjunct 3 reads: *"`report`'s key set is **set-equal** to the
+flag-off key set … and `notices` is **set-equal** to the baseline notices array."* Both referents were
+retired by TSPEC v0.9 and re-forbidden by v1.1 §7.3. The first is a tautology on the flag-off run and
+cannot fail; the second names an array that does not exist in T-02's recording, so the instruction
+cannot be implemented. This is the round's routed item, and the edit did not touch the row.
+**Fix:** replace conjunct 3's second and third clauses with TSPEC §7.2's form — the symmetric
+difference between the flag-off and flag-on runs' `report` key sets is exactly `{decisionLedger}`,
+asserted as set equality in **both** directions; and the emitted `NTC-DECLEDGER-*` notice set is
+set-equal to **empty**. Keep the first clause (prompt byte-identical to T-02's committed recording)
+exactly as it stands — §7.4 remains correctly cited for the prompt conjunct.
+
+**F-02 (High, inherited, local).** The §Definition of Done bullet *"the report's key set is set-equal
+to the flag-off key set, and `notices` is set-equal to the baseline notices array"* duplicates F-01's
+two defects in the checklist an implementer signs off against. It was not in the routed item list and
+this edit did not touch it, so it is inherited — but a fix to T-10a that leaves this bullet behind
+re-creates the contradiction inside one document. **Fix:** restate to match the corrected T-10a.
+
+**F-03 (Low, delta, local).** T-11's rewritten row ends *"the flag-off arm pairs its absence with a
+set-equality on the report's key set"* — a pointer to the wording F-01 corrects. It names no wrong
+referent, so it is not itself wrong, but it should be re-read once F-01 lands so that it points at
+the symmetric-difference form. Flagged because it sits in bytes this round rewrote.
+
+**F-04 (Low, delta, local).** The v0.8 and v0.7 entries both begin `Revision history:`, so the
+document appears to start its changelog twice. Cosmetic; the v0.7 entry should read as a
+continuation.
+
+FINDING: High | delta | local | ## Batches, T-10a row, conjunct 3 | Routed item 1 is unlanded — conjunct 3 still asserts `report`'s key set is set-equal to the flag-off key set (a tautology on the flag-off run, which cannot fail) and `notices` set-equal to the baseline notices array (T-02's recording holds no notices array), both referents retired by TSPEC v0.9 and re-forbidden by v1.1 §7.3; replace with the symmetric difference against the flag-on run's key set asserted in both directions, and the NTC-DECLEDGER-* notice set set-equal to empty
+FINDING: High | inherited | local | ### Definition of Done, flag-off report/notices bullet | The DoD checklist restates the same two retired referents ("set-equal to the flag-off key set", "set-equal to the baseline notices array"); untouched by this edit and not in the routed list, but it must be corrected alongside T-10a or the document contradicts itself
+FINDING: Low | delta | local | ## Batches, T-11 row | T-11's closing pointer "the flag-off arm pairs its absence with a set-equality on the report's key set" summarises the wording F-01 corrects and should be re-read once F-01 lands
+FINDING: Low | delta | local | Header revision history | Two consecutive changelog entries both open with the literal prefix "Revision history:", so the document appears to begin its changelog twice
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 0, "low": 2}
