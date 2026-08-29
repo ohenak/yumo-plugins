@@ -246,6 +246,74 @@ anchors, `TSPEC` §7.6):
 | **PROP-BND-11** ✖ | No input may cause the dispatch to be **aborted, oversized, retried, or reported as an error** on account of index size: over the whole generator range, `selectDecisions` must return normally and no notice or failure class may be emitted (`FSPEC` N-1). | Error Handling |
 | **PROP-BND-12** | `maxBytes` must bound the **index block alone** as it appears in the prompt — not its contribution to total dispatch size, and not the underlying record bytes: asserted by varying the surrounding prompt's size and showing `selected` and `omitted` are unchanged. | Contract |
 
+### FAIL — fail-open degradation (O-6, O-7)
+
+Traces `REQ-DECLEDGER-04`, `REQ` G-3, R-1, O-6; `FSPEC` BR-7, BR-8, E-2, E-3, E-4, AT-08, AT-09,
+AT-10; `TSPEC` §6.1 F-6…F-10, §6.2, §6.3. Owner **T-08 → T-17**. Level: **integration with scripted
+seams**, over **FX-FAILOPEN**. None of `E-2`/`E-3`/`E-4` has a HEAD instance, so every property here
+is constructed data by necessity, which is exactly what O-6 records.
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-FAIL-01** | The leg must be decided on **what survives**, never on what kind of thing failed: `selected.length === 0` ⇒ total leg; `0 < selected.length < inScope` ⇒ partial leg; `selected.length === inScope` ⇒ ordinary render. Asserted over corpora that reach each of the three by **different** causes and must agree. | Functional |
+| **PROP-FAIL-02** | **Total leg.** Where nothing survives — first every source missing/unreadable/unparseable (`_git` `!ok`, `_git` throwing, `_readFile` `null`, `_readFile` throwing), then a readable corpus in which **every** in-scope decision fails to recognise — the block must be **exactly `""`** and the dispatch prompt must be **byte-identical to FX-BASELINE's flag-off recording**. | Error Handling |
+| **PROP-FAIL-03** ✖ | Neither leg may **halt**, throw past `dispatchAndVerify`, write to disk, or emit an operator-facing failure class: over the whole of FX-FAILOPEN, the notice set must be **set-equal** to the flag-off notice set and the run must complete. | Error Handling |
+| **PROP-FAIL-04** | **Partial leg.** Where a **proper, non-empty subset** fails — one decision; several decisions; **one whole source unavailable while other sources survive** — the failed lines must be **absent**, **every** surviving expected line **present** (transcribed from the fixture), and the rule text **present**. The three sub-causes must produce **one** outcome, not three. | Error Handling |
+| **PROP-FAIL-05** ✖ | A decision that cannot be rendered faithfully must be **omitted whole**, never rendered **partially**: no line may appear carrying an empty, placeholder, truncated or synthesised `statement` or `sourcePath` (`BR-7`). Asserted positively — the block is non-empty and its every line resolves per ORC-02 — so the absence is not vacuous. | Data Integrity |
+| **PROP-FAIL-06** | **O-7's observable.** For a corpus whose only source **reads and parses to zero records**, `failedSources` must be `[]` and `emptySources` must have exactly that one member; for a corpus whose only source **fails to read**, the two must be reversed. The dispatch **bytes are identical** in both cases, so this is the only conjunct that can falsify `BR-8` — reverse the classification in the implementation and the bytes do not move but this assertion fails. | Observability |
+| **PROP-FAIL-07** | `failedSources` and `emptySources` must be **disjoint by construction** (classified by `readOk`) and their **union** must be exactly the set of in-scope sources contributing no line. | Data Integrity |
+| **PROP-FAIL-08** ✖ | An **empty** source must **not** be counted as a failure and must **not**, on its own, cause the total leg: a corpus of one empty source **plus** surviving sources must render the surviving sources' expected line set **exactly** — the empty file adding no line and removing none (`M-4a` and `M-4b` are two standing-corpus files in this position, so this is the common case). | Error Handling |
+| **PROP-FAIL-09** | `corpusOutcome` must be `"RSN-UNLISTABLE"` when the `_git` enumeration returns `!ok` **or throws**, `"RSN-EMPTY"` when it succeeds returning zero paths, and `null` otherwise — asserted as set equality against `DECISION_LEDGER_CORPUS_OUTCOMES`. | Observability |
+| **PROP-FAIL-10** | `gatherDecisionCorpus` must wrap **each path's read in its own `try/catch`**, so both the runtime shape (`rtReadFile` **throws**) and the test-double shape (`defaultReadFile` returns **`null`**) degrade **that one entry** to `readOk: false` and never the corpus. Both arms must be exercised. | Error Handling |
+| **PROP-FAIL-11** | A feature with **no directory** among `docs/{feature}/`, `docs/completed/{feature}/`, `docs/discarded/{feature}/`, and a feature whose directory yields **zero** records, must both resolve to the **project-level set alone** — not a failure, not an empty-set error (`FSPEC` Q-2, `TSPEC` §3.1). `pdlc-plugin-retirement` is the standing witness for the second: its twelve headings are namespace-less `DEC-01`…`DEC-10`, so its directory contributes **0** records while the directory exists. | Functional |
+
+**Why PROP-FAIL-10 names both arms.** `TSPEC` §4.4 records the shipped lesson directly: the runtime
+read throws where the double returns `null`. A suite that only scripts `null` proves nothing about
+production, and one that only scripts a throw proves nothing about the double the rest of the suite
+uses. This is the identical-envelope trap in its read-seam form — both arms produce the same
+`readOk: false` envelope, so only exercising both distinguishes an implementation that handles one.
+
+### WIRE — composition root, freshness and injection (DC-07)
+
+Traces `REQ-DECLEDGER-01`, `REQ` G-3; `FSPEC` BR-9, AT-03; `TSPEC` §2.3, §2.4, §2.6, §4.5, §7.2.
+Owner **T-10 → T-18** and **T-10a → T-18**. Level: **integration** (`reviewLoop`) and **composition
+root, live** (`main()`).
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-WIRE-01** | **Freshness.** `injectDecisionLedger` must re-gather the corpus on **every** call: where the scripted `_readFile` double returns one text on its first call for a path and a mutated text on its second, the **second** dispatch's index must reflect the changed record. Asserted as a **call-count** on the read seam (≥ 1 per dispatch), not only as a byte difference — a shape assertion alone cannot distinguish a re-read from a lucky snapshot. | Integration |
+| **PROP-WIRE-02** ✖ | The injector closure must hold **no** corpus, **no** rendered block and **no** snapshot between dispatches, and must **not** memoise across calls (`TSPEC` §2.6, §5.4). | Integration |
+| **PROP-WIRE-03** | Both reviewers of a round must receive the **identical** block: the single `await`ed injector call must sit immediately before the two `reviewerPrompt` calls in `reviewLoop`. | Integration |
+| **PROP-WIRE-04** | **Seam reached (live).** Driving the module's default-exported `main()` with the flag on, a **call-count spy** on the scripted `_git` seam must show `gatherDecisionCorpus`' listing call fires **≥ 1** on the **served reviewer flow**. A fake satisfying only the outer interface cannot meet this conjunct. | Integration |
+| **PROP-WIRE-05** | **Positive presence (live).** The reviewer prompt actually handed to the reviewer dispatch must **end with** the rendered ledger block — not merely "differ from the baseline". | Integration |
+| **PROP-WIRE-06** | The injector call must be **`await`ed**: a non-awaited call must be detectable, since the adapter's implementations are async while the test doubles are sync (this repo's injected-IO rule). Asserted by scripting an async `_git`/`_readFile` pair and requiring the served prompt to carry the block. | Integration |
+| **PROP-WIRE-07** | `buildDecisionLedgerInjector` must return **`null`** iff resolved `enabled` is **not `=== true`**, and with the injector `null`, `reviewLoop` must pass `""` as the `ledgerBlock` argument so the prompt is built by the identical expression it is today. | Contract |
+| **PROP-WIRE-08** | The block must be appended **last**, after `oraclePart` and `findingGrammarPart`, on **both** the iteration-1 and the iteration-≥2 return paths `reviewerPrompt` already has (`orchestrate-dev.js:11483` and `:11506`). | Contract |
+| **PROP-WIRE-09** ✖ | The index must attach to the review-loop **reviewer** prompt **only** — never to the delta-confirmation prompt or the finding-restatement prompt, both of which forbid re-review in their own text (`TSPEC` §2.5, D-2). Asserted positively and negatively on the same run: the reviewer prompt ends with the block, and the other two prompts are byte-identical to FX-BASELINE's recording of them. | Contract |
+| **PROP-WIRE-10** | The enablement flag must be read by **destructuring** (`const { enabled: decisionLedgerEnabled } = decisionLedgerConfig`), never as a dotted `.enabled` member read, and every new symbol must land **outside** the sentinel-bounded `// === LEARNINGS INJECTION REGION START/END ===` block. `advisoryDisabled.test.js`'s PROP-DIS-06 (`advisoryDisabled.test.js:707–740`) slices that region out via `sourceExcludingParser` (`:717–719`) **before** counting `/\.enabled\b/`, so a symbol landing inside it would be silently exempt and this discipline would have no oracle behind it. PROP-DIS-06 must remain green. | Contract |
+| **PROP-WIRE-11** | `report.decisionLedger` must be set **only** when the injector is non-null and **absent from the report object entirely** otherwise — never spread as `undefined` (the shipped `learningsInjectionField` discipline). | Contract |
+
+### OFF — the disabled path (byte-identity)
+
+Traces `REQ-DECLEDGER-02`, `REQ` C-2, O-4; `FSPEC` BR-4, E-1, E-6, AT-04, AT-05, AT-14; `TSPEC`
+§7.4. Owner **T-02** and **T-10 → T-18**, with the live half **T-10a**. Level: **byte-identity
+baseline guard** over **FX-BASELINE**.
+
+| Id | Property | Category |
+|---|---|---|
+| **PROP-OFF-01** | With `enabled` not `true`, the reviewer-prompt stream must be **byte-identical to the committed merge-base recording** — never to a same-branch before/after comparison, and never to a string computed by subtracting the block from the flag-on prompt. Both weaker forms pass a regression that corrupts both arms identically. | Contract |
+| **PROP-OFF-02** | All **four** not-enabled spellings — `enabled` absent, `false`, wrong-typed, and the whole `decisionLedger` block absent or malformed — must produce that identical stream, and **none** may report an error to the operator. | Error Handling |
+| **PROP-OFF-03** | The four spellings must be supplied as **four distinct config texts** run through `parseDecisionLedgerConfig` → `buildDecisionLedgerInjector`, each yielding `null`. Supplying them to a harness that enters below the config gate makes all four the **same** input (`_injectDecisionLedger: null`) and the oracle vacuously asserts that four identical inputs produce identical bytes (`TSPEC` §7.4). **The recorded arm must consume the config text it is varying.** | Contract |
+| **PROP-OFF-04** ✖ | With the flag off, the dispatch must carry **no index, no rule text, no empty block, no marker, and no added or removed whitespace** — pinned by PROP-OFF-01's single byte comparison rather than by four separate absence checks. | Contract |
+| **PROP-OFF-05** | With the flag off, the `report` key set must be **set-equal** to FX-BASELINE's flag-off key set (so a spuriously-added key fails), and the emitted notice set must be **set-equal** to the baseline notices array — not merely free of `NTC-DECLEDGER-*`. | Observability |
+| **PROP-OFF-06** | **The zero cases resolve to the disabled bytes.** All three of a zero-decision in-scope set, `maxEntries: 0`, and `maxBytes: 0` must produce a dispatch **byte-identical to PROP-OFF-01's stream** — the positive form that pins in one comparison that there is no index block, no header without rows, and **no rule text standing alone above a missing index**. A build emitting rule text without an index fails. | Contract |
+
+**PROP-OFF-06 is the structural guarantee, not a separate enforcement.** `TSPEC` §2.4 makes
+"no index ⇒ no rule text" true by construction — the rule text is inside the same string
+`renderDecisionLedgerBlock` returns, and that function returns exactly `""` when `selected` is empty
+(PROP-REND-01) — so an ordering mistake cannot violate it. PROP-OFF-06 is the falsifier that this
+construction was actually adopted.
+
 ## Oracles
 
 ## Fixtures
