@@ -49,8 +49,38 @@ FINDING: Low | delta | local | REQ:27's cascade note points at FSPEC §3.3; the 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The `12500` derivation lands on the Baseline as a **substance-byte floor plus a declared framing allowance** — `M-7d` is explicit that substance bytes "exclude every per-line separator, prefix and newline, because the concrete format of a rendered line is not this file's to fix — it belongs to the consuming TSPEC" (`docs/_constraints/pdlc-decision-corpus-baseline.md:112`). FSPEC BR-12 already scopes `maxBytes` to "the rendered index text alone … as it appears in the prompt" (`FSPEC:273-275`), i.e. **framing included**. Those two are compatible only if the 50 bytes/record of `M-7c` allowance is the framing budget BR-12's rendered form must fit inside. Is that intended to be said out loud in §7 as an obligation on the TSPEC's line format (a cheap clause, and the arithmetic is already TSPEC's at `TSPEC:435`), or is it deliberately left implicit because BR-12's rendered-text scoping plus `M-7c`'s named allowance already pin it? Not a finding — the FSPEC is not wrong either way, and the number is not FSPEC's to own. |
+| Q-02 | Propagation surface, flagged rather than filed since it is downstream of this document: `8000` survives at six TSPEC sites — the headroom arithmetic (`TSPEC:435`, `:473`), the interface comment (`TSPEC:496`), the example config block (`TSPEC:760`), the shipped-defaults assertion (`TSPEC:942`), and its own §7 A-1 recital (`TSPEC:1361`). Two of those are executable-adjacent (`:760`, `:942`) rather than prose. Notably `TSPEC:1302` **is** ERR-2, the finding that produced this erratum — the TSPEC named the defect and then kept the old value in its own body, which is expected mid-erratum but means the TSPEC's cascade round has a wider surface than this one. Should the FSPEC edit and the TSPEC cascade land in one commit so no intermediate state of the branch carries two different C-5 defaults? |
+
 ## Positive Observations
+
+- **The retyping cascades cleanly, and it fixes a latent contradiction I had approved.** REQ v1.7 typed `maxEntries` **positive**, while FSPEC E-7 (`FSPEC:315`) requires `0` to be "a valid admits-nothing value … **Not an error**, not a fallback to the default, not a halt". Under the old typing, `0` was wrong-typed and §3.1's table sent it back to the `70` default — the exact opposite outcome, in two documents I had both approved. The erratum retypes upstream rather than weakening E-7, so FSPEC's edge case is now *supported* by the REQ instead of quietly contradicted. Nothing in FSPEC needs to move for this: FSPEC never restates a config key's type, which is why the retyping cost it nothing.
+- **The upstream fix was taken at the right altitude.** `maxBytes` was wrong because it was an analogy; the repair replaces the analogy with a measurement in the Baseline (`M-7a`…`M-7e`) and has the REQ cite it by id, rather than inlining a number into the REQ or letting the TSPEC pick one locally. That keeps the REQ's existing discipline — measured facts live in `docs/_constraints/`, cited by `M-*` id — and leaves FSPEC with exactly one literal to change.
+- **The Baseline bump is genuinely additive, and I verified it rather than trusting the changelog.** `git diff` over the erratum range shows §8 appended, the `Version` line, and the two change-control counts ("§1–§8", "eight sections"); §1–§7 and `Verified at HEAD 8c673a09f` are untouched. So AT-01's `M-1d`/`M-2e` expected values, AT-03's frozen-fixture commit and every `M-*` claim I spot-checked in round 2 all still hold — the cascade here is a pin refresh, not a re-verification.
+- **R-5's rewrite is honest about what measurement did and did not buy.** It does not claim the risk is gone; it renames it from "unmeasured" to "measured at one commit, not a growth model", cites `M-6d`/`M-7d` for that limitation, and keeps A-1's vetoable label as the mitigation. That is the residual risk actually present, and it is the reason F-02 matters: FSPEC currently states the *old* risk to the operator who holds the veto.
 
 ## Recommendation
 
+**Needs revision**
+
+FSPEC's own bytes are unchanged and its behaviour still holds against REQ v1.8 — the flows,
+business rules, edge cases and acceptance tests are unaffected by the erratum, and E-7 is
+better supported now than when I approved it. But the document is no longer a faithful
+compression of its upstream at two sites, both of which state a superseded number or rationale
+as current fact. One edit, four small changes, no re-review of settled sections:
+
+1. **F-01** — `FSPEC:111`: `maxBytes` `8000` → `12500`, so the `(REQ C-5)` citation is true again.
+2. **F-02** — `FSPEC:544-546`: restate A-1 as REQ §7 now has it — both defaults measured against the Baseline's named commit and cited by id, `maxEntries` (70) from `M-6b`/`M-6c` and `maxBytes` (12500) from `M-7b`/`M-7c` — keeping the operator-vetoable label, and drop "is not measured". If §7 carries any echo of R-5's rationale, it moves with it: the residual risk is now "measured at one commit, not a growth model".
+3. **F-03** — `FSPEC:9` → REQ **v1.8**; `FSPEC:11`, `:43`, `:331` → Baseline **v1.2**. No fact behind these pins moved; the `Verified at` commit is unchanged.
+4. **F-04** — routed upstream: `REQ:27`'s cascade note should say FSPEC **§3.1**, not §3.3.
+
+Nothing else in FSPEC v1.1 is reopened by this round. My round-2 findings F-01/F-02/F-03
+(the block-level malformation definition, AT-05's count word, AT-11's `valid` cross) remain as
+recorded there and are unaffected by the erratum.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 1}
