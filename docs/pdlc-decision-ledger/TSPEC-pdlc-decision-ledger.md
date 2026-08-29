@@ -1111,7 +1111,10 @@ what remains genuinely open.
 | **D-3** | Wiring goes through **dispatch construction**, not a `SKILL.md` edit (FSPEC O-2) | Editing the reviewer `SKILL.md` files. A `SKILL.md` edit routes through the consolidation contract's `CONSOLIDATION-PROPOSAL` review, and — decisively — `SKILL.md` text cannot be config-gated, so REQ C-2's byte-identical disabled path would be unachievable. Dispatch construction is where the shipped `findingGrammarClause` gate already lives |
 | **D-4** | Ids are read, never minted; uniqueness is **not** enforced across namespaces (FSPEC O-3) | Introducing a mint or a global uniqueness check. `M-1a` records that no id repeats within `docs/_decisions/` and `M-5a` that no id is recorded in two files anywhere at HEAD, so there is nothing to fix; a uniqueness *gate* would be a new operator-facing failure class, which G-3 forbids. §3.4's precedence rule is the total resolution for the collision that does not yet exist |
 | **D-5** | Framing bytes (header, preamble, rule text, trailer) **are** charged against `maxBytes` (§4.2) | Excluding framing, as `renderLearningsBlock` does. BR-12 bounds "the bytes of the index block as it appears in the prompt", and the rule text is inside that block; excluding it would let a low `maxBytes` be satisfied while the block is arbitrarily larger than the operator asked for |
-| **D-6** | All new symbols land in `orchestrate-dev.js`, not a new `pdlc/workflows/lib/` module | A new `lib/` module. `DEC-LOOPECON-08` records why this is not available: the engine's `prepack.mjs` vendors a frozen module list, and adding to it means editing `pdlc/engine/`, which REQ NG-6 forbids. The cost — every implementation task writing one physical file, forcing serial waves — is taken knowingly and is the PLAN's to absorb via `Deps` edges |
+| **D-6** | All new symbols land in `orchestrate-dev.js`, not a new `pdlc/workflows/lib/` module | A new `lib/` module. `DEC-LOOPECON-08` records why this is not available: the engine's `prepack.mjs` vendors a frozen module list, and adding to it means editing `pdlc/engine/`, which REQ NG-6 forbids. The cost — every implementation task writing one physical file, forcing serial waves — is taken knowingly and is the PLAN's to absorb via `Deps` edges. **Placement within the file is also decided:** all new symbols land *outside* the sentinel-bounded `// === LEARNINGS INJECTION REGION ... ===` block, which belongs to `pdlc-learnings-injection`. `advisoryDisabled.test.js` slices that region out before counting `/\.enabled\b/`, so landing inside it would silently exempt this feature from PROP-DIS-06 and make §2.3's destructured-read discipline unenforceable (§2.3) |
+| **D-7** | The rendered citation is `[{sourcePath} § {id}]` (§4.3) | `[{sourcePath} § {heading}]`, which an earlier draft specified. The heading *is* the id plus the statement, so that form rendered every statement twice — 9,371 bytes against 6,305 for the project-level set, ~33% of the block spent on a duplicate. Path-plus-id resolves the record at its own source, which is all BR-3 and AT-02 require. `DecisionRecord.heading` is retained as the verbatim value expected results are transcribed from, but is not rendered |
+| **D-8** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` (§4.2) | Letting `selectDecisions` compute the size from its own concatenation. Two implementations of one format drift, and the drift is invisible in the worst direction — BR-12's bound enforced against a size the prompt does not have, with both functions individually looking right and every test green |
+| **D-9** | The framing constants are pinned to a ≤1,200-byte budget by a unit test (§4.3) | Leaving framing unmeasured. D-5 charges framing to `maxBytes`, so an unpinned framing size is an unmeasured quantity inside a measured budget, and §3.6's headroom arithmetic would be unfalsifiable prose |
 
 These are load-bearing and a future reader will otherwise reconsider them confidently:
 **DECISIONS is warranted.**
@@ -1127,6 +1130,25 @@ the same tension in FSPEC's favour: `parseLearningsConfig` validates its thresho
 own comment. This spec implements non-negative (§4.1) and raises the type label upstream rather than
 editing the REQ.
 
+**ERR-2 — REQ C-5's `maxBytes` default of 8000 is now measured, and admits about two feature-level
+lines.** A-1 records 8000 as an unmeasured analogy from `learningsInjection`. The measurement is now
+taken (§3.6): at the Baseline's `Verified at` commit, under §4.3's shipped line format, the
+project-level set alone renders 41 lines / **6,305** bytes, and with §4.3's ≤1,200-byte framing
+budget charged (D-5) the 8,000-byte bound leaves roughly **495** bytes — about **two** feature-level
+lines at the measured 137–160 bytes/line. The largest feature directory (`pdlc-headless-engine`,
+`M-6b`'s 63-line floor) would need 12,059 bytes to render whole.
+
+Nothing here is broken: the omission order is designed for exactly this, project-level material is
+never reached by the bound, and REQ-DECLEDGER-07 explicitly permits omission. But the *product*
+intent of REQ-DECLEDGER-01 — one line per in-scope decision — is met for the promoted corpus and only
+marginally for the feature under review, which is the half a reviewer is most likely to have recently
+argued about. That is a product judgement, not an engineering one, so it is routed rather than taken:
+**a default of 12,500 admits the worst standing case with headroom**, and this spec is correct at
+either value since the bound is a parameter and the order is the mechanism. The measurement is
+supplied so the choice can be made on numbers; A-1 already makes the default operator-revisable
+without a REQ revision, so this may equally be resolved by leaving C-5 alone and letting operators
+raise it.
+
 ### 9.3 Genuinely open
 
 | Id | Owner | Substance |
@@ -1134,7 +1156,7 @@ editing the REQ.
 | **O-5, O-6** | te-author (PROPERTIES) | Carried unchanged: the synthetic two-file precedence fixture, the constructed fail-open fixtures, the frozen corpus copy, and AT-16's recorded round of reviewer outputs. §7.3 and §7.4 fix the shapes they must be written against |
 | **O-8** | te-author (PROPERTIES) | The bounds invariant as a property. §7.5 states the four conjuncts, the generator's range, and the non-vacuity conjunct |
 | **T-1** | se-author (PLAN) | The capture-before-production ordering of §7.4 must be a real `Deps` edge on every production task, not a prose note — the loop-economics PLAN's §2 recorded the same requirement for the same reason |
-| **T-2** | operator | A-1's `maxBytes` of 8000 remains a `learningsInjection` analogy, not a measurement. Under the shipped corpus the block is roughly 41 project lines plus up to 22 feature lines plus framing; if that exceeds 8000 bytes the bound, not the corpus, is what silently truncates the index on day one. The PLAN should record the measured rendered size once the renderer exists, and the operator may revise the default without a REQ revision (A-1) |
+| **T-2** | ~~se-author (PLAN)~~ **closed in this revision** | *Was:* defer the measured rendered size to the PLAN, once the renderer exists. The premise was wrong — the size is computable from the corpus and the line format alone, both of which this document fixes, so nothing had to wait for an implementation. Measured and recorded in §3.6's table; the format defect it exposed is fixed in §4.3; the residual question, which is the value of a REQ-owned default, is routed upstream as **ERR-2** rather than left open here. No PLAN task is owed |
 
 ### 9.4 Assumptions
 
