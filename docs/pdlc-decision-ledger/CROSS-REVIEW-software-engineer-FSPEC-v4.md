@@ -94,4 +94,25 @@ FINDING: Low | delta | nonlocal | Baseline `Cited by` list (baseline:6) | FSPEC 
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves the three routed items that were FSPEC's to fix, and it breaks nothing I
+previously approved. Measured against the upstream rather than against the item list: FSPEC v1.2 is a
+faithful compression of REQ v1.8 and Baseline v1.2 at every site it leans on — C-5's defaults and
+types, §7 A-1's rationale, R-5's residual risk (which FSPEC correctly does not restate at all), and
+every `M-*` id it cites. FSPEC is clear to proceed downstream.
+
+Two Low findings remain, neither in this document and neither gating:
+
+1. **F-01** — `REQ:27`: change the cascade note's `§3.3` to `§3.1`. Routed upstream in v3 and not
+   picked up; one word.
+2. **F-02** — `docs/_constraints/pdlc-decision-corpus-baseline.md:6`: add FSPEC **§7 A-1** to the
+   `Cited by` propagation list, since v1.2 minted the `M-7b`/`M-7c` citation that now lives there;
+   and at `:23-24`, make the "never interleaved into §1–§7" clause say §1–§8 to match the sentence
+   above it. Neither needs a `Version` bump — no fact moves.
+
+My round-2 findings (the block-level malformation definition, AT-05's count word, AT-11's `valid`
+cross) stand as recorded there and are untouched by this erratum. Nothing else in FSPEC v1.2 is
+reopened.
+
 ## Verdict
