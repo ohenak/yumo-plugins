@@ -952,15 +952,40 @@ Suite: `pdlc/workflows/__tests__/` under jest (`cd pdlc/workflows && npm test`),
 `pdlc/engine/__tests__/` under `node:test` for the config disclosure. Both are gate checks
 (`Unit tests (ubuntu-latest, node 20)` and `Engine tests (ubuntu-latest)`).
 
-**Coverage obligation, stated because the shipped gate will not state it.** `pdlc/workflows`'
-coverage gate is `c8 ... --check-coverage --per-file --branches 85`, and its `include` list names
-`**/pdlc/workflows/orchestrate-dev.js` as a single file. Since every symbol this feature adds lands
-in that ~817 KB file (D-6), the new branches are averaged into a per-file ratio already dominated by
-~17k lines of shipped code: §6.1's **fourteen** failure rows could be entirely uncovered and the
-gate would not move. The gate is therefore not evidence for this feature, and this spec does not
-rely on it.
+**Coverage obligation, stated because the shipped percentage clause will not state it.**
+`npm run test:coverage` is four `&&`-joined clauses. Its **fourth**, `c8 report --check-coverage
+--per-file --branches 85`, has an `include` list naming `**/pdlc/workflows/orchestrate-dev.js` as a
+single file. Since every symbol this feature adds lands in that ~817 KB file (D-6), the new branches
+are averaged into a per-file ratio already dominated by ~17k lines of shipped code: §6.1's
+**fourteen** failure rows could be entirely uncovered and that ratio would not move. The percentage
+clause is therefore not evidence for this feature, and this spec does not rely on it. It is not,
+however, the whole of the coverage gate.
 
-The obligation is stated directly instead, and PLAN owns its discharge:
+**The delta-coverage clause is evidence, and it is live on this feature.** The **third** clause is
+`node scripts/check-wave-resume-delta-coverage.mjs`. Despite its name it is not wave-resume-specific:
+its exported `SUBJECT` is hard-coded to `pdlc/workflows/orchestrate-dev.js` — which D-6 makes this
+feature's **only** production file — and its `resolveBase()` prefers the live `merge-base HEAD
+origin/main`, i.e. *this* feature's own merge base, falling back to a pinned `main` commit only where
+neither `origin/main` nor `main` resolves in the checkout. It reads c8's per-file uncovered-line list
+out of the JSON report the second clause writes, and exits 1 when **any** uncovered line falls inside
+a post-image hunk range this feature introduced in that file. So the two facts sit together rather
+than in tension: the percentage clause is insensitive to this feature, and the delta clause is
+sensitive to nothing else in it. Every line §4.1–§4.5 adds is under a per-line, per-feature gate.
+
+Three consequences this spec carries rather than leaves to discovery:
+
+- It is **fail-closed** on the two genuinely broken readings — `SUBJECT` absent from the checkout, or
+  absent from the coverage report — and treats an **empty** introduced-range set as a pass, which is
+  its permanent post-merge state on `main`. Nothing this feature adds may rest on the empty-range
+  reading; on this branch the range set is non-empty by construction.
+- It is **not** part of the wave gate's `implementation.testCommand` (plain `npm test`), so it does
+  not fire per wave by default and would otherwise first speak at PR CI. PLAN T-18 owns an explicit
+  per-wave manual run for each batch that edits `orchestrate-dev.js`.
+- It must be run against a **committed** `orchestrate-dev.js`. Its ranges are HEAD line numbers while
+  c8 measured the working tree, and it only *warns* — it does not fail — when the subject is dirty,
+  so a mid-edit run returns an offset result rather than an error.
+
+The §6.1 obligation is stated directly as well, and PLAN owns its discharge:
 
 > **Every row of §6.1's failure table has at least one test that exercises it**, named in the PLAN
 > task that implements the row. F-1…F-5 are covered by `parseDecisionLedgerConfig`'s pure unit
@@ -971,7 +996,9 @@ The obligation is stated directly instead, and PLAN owns its discharge:
 
 This is a stronger obligation than a percentage floor and a checkable one: the mapping is from a
 numbered spec row to a named test, so a missing row is visible by inspection of the PLAN rather than
-by a coverage delta that rounds to zero.
+by a coverage delta that rounds to zero. The delta clause above is its mechanical backstop: a row
+whose named test is missing leaves the implementing line uncovered, and an uncovered line inside the
+introduced ranges is exactly what that clause fails on.
 
 ### 7.1 Test doubles
 
