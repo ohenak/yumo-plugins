@@ -148,8 +148,25 @@ not re-open any of it.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | `maxBytes` default `8000` still stated at three sites; REQ C-5 at HEAD ships `12500`. §5.3's config-example test asserts set equality against a hand transcription of "C-5's declared defaults verbatim", so the wrong value is pinned into `.claude/pdlc.config.example.json` and into the oracle, green | §4.1:496, §5.3:760, §7.3:942 |
+| F-02 | High | delta | local | §3.6's "the order is live under shipped defaults" is false at 12,500: the worst standing case (`M-6b`'s 63 records, 10,859 + 1,200 = 12,059) fits with 441 bytes spare, so the drop loop runs on no real dispatch at the Baseline commit. The section asserts the opposite of HEAD, and §9.1's D-10 row reproduces its ~495-byte headroom figure as D-10's warrant | §3.6:433–452, §9.1 D-10 row |
+| F-03 | High | delta | nonlocal | §9.4 recites A-1 "carried from FSPEC §7 **unchanged**" as "`maxBytes` 8000 is not measured"; REQ A-1 at HEAD says both defaults derive from measurements cited by id (`M-7b`/`M-7c`), and REQ R-5 is re-aimed at the growth model (`M-6d`/`M-7d`), which TSPEC carries nowhere. A citation of upstream that upstream no longer says | §9.4:1360–1362 |
+| F-04 | Medium | delta | local | Derived figures computed from 8,000 are stale wherever they appear: `8000 − 1200 = 6,800`, "~495 bytes ≈ three feature lines", §7.3:958's "6,800-byte allowance", §7.3:964's "roughly two". At 12,500 the allowance is 11,300 and the project-level headroom 4,995 (~27 lines at mean 183) | §3.6:435–443, §7.3:958, §7.3:964 |
+| F-05 | Medium | delta | local | AT-01's non-binding-bounds override is justified by an arithmetic that no longer holds — the 45/48-line sets render 8,242 and 8,850 bytes with framing, both under 12,500, so they are **not** unproducible at the default. Keep the override, re-justify it as insulation from the bounds; left as-is an implementer deletes it and AT-01 starts depending on C-5's default | §7.5:1185–1191 |
+| F-06 | Medium | delta | local | ERR-1 and ERR-2 are both decided upstream but §9.2 still presents them as raised and unresolved ("routed rather than taken", "may equally be resolved by leaving C-5 alone"), and §4.1:512–514 still describes a divergence from C-5's "positive integer" label that no longer exists. §9.3's T-2 note carries the same open framing | §9.2:1293–1322, §4.1:512–514, §9.3 T-2 |
+| F-07 | Low | delta | local | My v4 F-01 (rebuild D-10's input over the reachable 63-record set) is **withdrawn**, not carried: at 12,500 that set omits nothing (10,859 ≤ 11,300, 63 ≤ 70) and conjunct (3) goes vacuous. Keep the 141-record whole-fixture build; strike only the "which is what a real dispatch gathers" clause, which is the §3.1 contradiction | §7.3:940–941 |
+
+FINDING: High | delta | local | `maxBytes` default 8000 at §4.1:496, §5.3:760, §7.3:942 diverges from REQ C-5's shipped 12500; §5.3's set-equality transcription pins the wrong value green
+FINDING: High | delta | local | §3.6:433–452's "order is live under shipped defaults" is false at 12500 — the 63-record worst standing case fits with 441 bytes spare; §9.1's D-10 row reproduces the stale ~495-byte warrant
+FINDING: High | delta | nonlocal | §9.4:1360–1362 recites REQ A-1 as "`maxBytes` 8000 is not measured" and carries R-5's retired analogy claim; REQ A-1/R-5 at HEAD say both defaults are measured and re-aim the risk at growth
+FINDING: Medium | delta | local | Derived figures at §3.6:435–443, §7.3:958, §7.3:964 recompute from 8000 (6,800 allowance, ~495 headroom, "roughly two" lines); at 12500 they are 11,300 and 4,995 (~27 lines)
+FINDING: Medium | delta | local | §7.5:1185–1191's justification for AT-01's non-binding bounds is falsified (8,242 / 8,850 both fit under 12500); keep the override, re-justify it as insulation from the bounds
+FINDING: Medium | delta | local | §9.2:1293–1322 still presents ERR-1 and ERR-2 as open, and §4.1:512–514 still claims a divergence from C-5's "positive integer" label that no longer exists at HEAD
+FINDING: Low | delta | local | v4's F-01 substitution is withdrawn — the 63-record build omits nothing at 12500, making D-10's conjunct (3) vacuous; keep the 141-record build and strike only §7.3:940–941's "real dispatch gathers" clause
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 3, "medium": 3, "low": 1}
