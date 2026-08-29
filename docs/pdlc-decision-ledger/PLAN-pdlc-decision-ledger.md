@@ -6,7 +6,7 @@ feature: pdlc-decision-ledger
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` (`REQ-pdlc-decision-ledger.md` v1.9, `FSPEC-pdlc-decision-ledger.md` v1.3, `TSPEC-pdlc-decision-ledger.md` v0.7, `DECISIONS-pdlc-decision-ledger.md`) |
+| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` (`REQ-pdlc-decision-ledger.md` v1.9 `sha256:ce6b133f…3c7b7c`, `FSPEC-pdlc-decision-ledger.md` v1.3 `sha256:2bd5c3ef…5aed39`, `TSPEC-pdlc-decision-ledger.md` **v0.8** `sha256:28d25518…32cb49`, `DECISIONS-pdlc-decision-ledger.md` `sha256:13aba061…4bb89f`) |
 | Downstream | PROPERTIES, IMPL |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-PLAN-v{N}.md` |
@@ -14,9 +14,24 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.3 | 2026-08-29 |
+| Draft | se-author | 0.4 | 2026-08-29 |
 
-Revision history: **v0.3** addresses `CROSS-REVIEW-test-engineer-PLAN-v2.md` F-01…F-05 and
+Revision history: **v0.4** is a re-grounding pass, not a response to new findings: every item raised
+by `CROSS-REVIEW-test-engineer-PLAN-v2.md` (F-01…F-05, Q-01, Q-02) and
+`CROSS-REVIEW-product-manager-PLAN-v2.md` (F-01) was already applied at v0.3 and re-verified on disk
+before this edit — the corrected T-03 enumeration was **executed** and yields exactly the 25 / 26 the
+row claims. What moved is **upstream**: TSPEC advanced **v0.7 → v0.8** after v0.2's base, and its
+erratum decided two things this PLAN contradicted. (1) `decisionLedger` is **dropped** from
+`DECISION_LEDGER_CENSUS_TOKENS` as an unsatisfiable token — the shipped `learningsInjectionField`
+analogue threads its report field through `buildFinalReport`, far outside `main()`, so the name
+occurs in T-11's scanned remainder by construction and the census would red for no defect; T-11's
+operand list is now the **six** exported names, and the field's obligation is behavioural, discharged
+by T-10a's live arm. (2) TSPEC §7.5 promotes two invariants from example to property, `P-REC`
+(recognition / last-wins) and `P-LINE` (one physical line per decision); T-05 and T-06 already
+carried both as `fast-check` strategies, so they are cited by id and given O-8's mutation discipline
+rather than restated. TSPEC v0.8's other three items (§7's coverage-gate narrowing, §7.2's live
+composition-root category) were already absorbed at v0.2/v0.3 — they cite this PLAN's T-18 and T-10a,
+not the reverse. **v0.3** addresses `CROSS-REVIEW-test-engineer-PLAN-v2.md` F-01…F-05 and
 `CROSS-REVIEW-product-manager-PLAN-v2.md` F-01 (the same defect, filed by both): T-03's transcribed
 historical enumeration now carries all **four** of `DECISION_CORPUS_ARGV`'s pathspecs and its
 integrity guard is stated as set equality against a hand-transcribed 25-path literal; the
