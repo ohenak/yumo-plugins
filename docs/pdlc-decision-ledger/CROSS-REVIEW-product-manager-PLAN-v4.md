@@ -161,9 +161,49 @@ v0.8. My two v3 findings (F-01, T-03's shell-pipe escaping; F-02, the delta-cove
 delivery to batches 3–7) were Medium and non-gating, and this erratum was not scoped to them; they
 remain open in the ordinary loop and I do not re-raise them here.
 
+## Positive Observations
+
+- **Naming `P-REC` and `P-LINE` instead of counting properties is the right kind of compression.**
+  v0.3's rows said "two `fast-check` properties" and "one `fast-check` property" and then described
+  them locally; v0.4 points at the upstream that owns them, so a future `TSPEC` §7.5 edit shows up as
+  drift instead of quietly diverging. The mutation counts transferred exactly (four and three), which
+  is the check that matters.
+- **The `decisionLedger` census-token drop is reasoned, not merely asserted.** T-11 and the DoD both
+  carry §5.5's *reason* (threaded through `buildFinalReport` at sites outside the sentinel region, so
+  the token is unsatisfiable) and both name where the obligation goes instead (T-10a's live arm,
+  which does assert `report.decisionLedger` on a `main()`-driven run). A dropped assertion that names
+  its replacement is not a weakened plan.
+- **Pinning upstream by sha in the header is new and worth keeping** — three of the four pins verify
+  exactly, and the fourth is a transcription slip, not a stale ground.
+
+## Recommendation
+
+**Needs revision** — one High finding: the single item this erratum was dispatched to resolve is
+unlanded, and its ambiguity has already produced a wrong downstream artifact. Exactly what must
+change:
+
+1. **T-00a (`PLAN`:114):** name the task or checkbox that carries the terminal `102` assertion. The
+   DoD bullet at `:444–445` already is that home — say so — and drop or qualify "The namespace's own
+   census … lives in T-12a", which is true of the *set* census and false of the *count*. State
+   plainly that T-00a's own batch-1 acceptance is the exclusion landing plus the count holding **at
+   batch 1**, and that the after-twelve-modules reading is the DoD's obligation, not the
+   implementer's.
+2. **Header (`PLAN`:9):** correct the `DECISIONS` pin to `sha256:13aba061…4fb89a`.
+3. **T-11 (`PLAN`:128):** restore the operand list — move the `decisionLedger`-exclusion paragraph
+   after "`orchestrate-dev.js`'s source **minus** four owned regions …" so the second operand is not
+   an orphaned fragment behind a full stop.
+
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | nonlocal | The routed item is unlanded: T-00a is byte-identical to the reviewed bytes, still pairs an acceptance conjunct unevaluable at batch 1 with a pointer to T-12a, which disclaims being a count; the terminal `102` assertion is unnamed in T-00a though DoD:444–445 carries it. Already misdirected PROPERTIES (PROP-DISC-07). | §Batches, row T-00a (`PLAN`:114) |
+| F-02 | Medium | delta | local | The new `DECISIONS` upstream pin `sha256:13aba061…4bb89f` does not match the file, whose suffix is `4fb89a`; the pin manufactures a false drift signal against an unmoved upstream. | Header, Upstream row (`PLAN`:9) |
+| F-03 | Low | delta | local | The spliced `decisionLedger`-exclusion paragraph severs T-11's two-operand list: the scan surface now follows a full stop as a lowercase-`and` fragment instead of the list's second half. | §Batches, row T-11 (`PLAN`:128) |
+
+FINDING: High | delta | nonlocal | §Batches row T-00a (PLAN:114) | The one routed erratum item is unlanded — T-00a is byte-unchanged, still asserts a two-sided acceptance whose second conjunct ("filtered count still `102` after this PLAN's twelve new modules exist") cannot be evaluated at batch 1, and still sends the terminal obligation to T-12a, which explicitly disclaims being a count; the actual terminal home (DoD:444–445) is never named. The ambiguity has already produced a wrong downstream artifact (PROP-DISC-07 relocated the count to T-12a → T-19, leaving T-12a's twelve-name set census with no property).
+FINDING: Medium | delta | local | Header Upstream row (PLAN:9) | The newly added `DECISIONS` sha pin reads `sha256:13aba061…4bb89f`; the file's actual suffix is `4fb89a` (measured). Every sibling pin verifies exactly, so the abbreviation convention is not at fault — two digits are transposed and one is wrong, and the pin will read as drift against an unmoved upstream forever.
+FINDING: Low | delta | local | §Batches row T-11 (PLAN:128) | Inserting the `decisionLedger`-exclusion paragraph between T-11's two census operands leaves the second operand ("`and orchestrate-dev.js`'s source minus four owned regions …") stranded after a full stop as a lowercase-`and` fragment; content is intact, the list structure is not.
 
 ## Verdict
 
