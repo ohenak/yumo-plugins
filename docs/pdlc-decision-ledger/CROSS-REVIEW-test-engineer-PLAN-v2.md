@@ -73,6 +73,29 @@ an honest treatment.
 
 ## Dependencies
 
+The three new edges are all load-bearing and all correct:
+
+- **T-12a → T-19.** Without it, three of T-19's four deliverables (`OPERATIONS.md`, `README.md`,
+  `CLAUDE.md`) stood on a DoD checkbox. The edge makes the derived oracle a precondition of the
+  prose edit, which is the right direction: the oracle is written red against constants that do not
+  exist yet, then un-skipped once T-19's prose lands.
+- **T-10a → T-18.** T-10a carries `T-01, T-02, T-03` — doubles, the byte-identity baseline and the
+  frozen corpus — which is the right closure for a `main()`-driven arm that must serve a real
+  reviewer flow with scripted `_readFile`/`_git` and compare against the recording.
+- **T-00a → T-12a → T-19.** This serialises the three writers of `documentOracles.test.js` through
+  real edges rather than through a prose note, which is what the same-file rule actually requires.
+
+**The T-02-before-any-production-change ordering is still enforced as a real edge, not prose** (T-13
+carries `T-02`; the serial green chain T-13 → … → T-18 inherits it transitively). I re-checked this
+because the new tasks could have introduced a path to production that bypasses it: T-10a is a red
+task and writes no production file, so it cannot.
+
+**One dependency claim I checked against the repository and found wrong** — see F-01 in `## Findings`.
+The `Ordering constraints` bullet for T-03 states the fixture is "a frozen copy at `8c673a09f`" of
+**25** in-scope files while "the live enumeration already returns 26". Those two numbers are right;
+the enumeration command T-03's own row transcribes does not produce them. The bullet and the row
+disagree, and the row is what an implementer will run.
+
 ## Verification
 
 ## Findings
