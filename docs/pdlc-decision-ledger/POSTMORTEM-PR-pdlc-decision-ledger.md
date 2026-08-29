@@ -193,4 +193,56 @@ the most thought.
 
 ## Best-Guess Root Cause
 
+**Primary: the corrective control identified after the first occurrence was written down instead of
+built.**
+
+Edition 1's Recommendation 3 reads: "Before delta confirmation is dispatched, the engine should
+compare each routed item's named locus against the round's diff and fail closed if any routed locus
+is byte-unchanged." It was recorded in this file, and again in the project memory note
+`erratum-routed-item-unlanded-halt` as "the standing pipeline-improvement candidate". Five rounds
+later the identical failure recurred and cost two more confirmer dispatches. **A learning stored as
+prose is not a control.** The pipeline has a document oracle harness, a wave gate and a fail-closed
+finding-grammar check; the one recurring erratum-protocol defect it has observed twice has no gate at
+all. That is the root cause, and everything below is contributory.
+
+**Contributing 1: the channel routes loci, but the defect lives in claims.** TE-2 is the proof. The
+routed list named `T-10a`; the retired referents occur at two sites. Locus-shaped routing cannot
+express "this claim must not survive anywhere in the document", so it under-scopes systematically
+whenever a document states something twice — which is exactly what a large document does, and exactly
+what Shape C shows this document doing more of, not less.
+
+**Contributing 2: the item that survives an erratum round is the one whose fix is a substitution; the
+item that dies is the one whose fix is a re-derivation.** Round 9's landed work was mechanical:
+fifteen → fourteen, nine → eight, production → test-file, at five known sites, each a value swap
+against an upstream sentence that stated the target verbatim. Routed item 1 required *designing a new
+oracle* — deciding that the flag-off arm must be paired with its own flag-on run, that the comparison
+is a symmetric difference, that it must be asserted in both directions, and that the notices conjunct
+becomes an emptiness assertion over a named prefix. Different cognitive mode, no verbatim target to
+copy, and last in the list. Under a per-section pacing contract and a byte ceiling, the item needing
+invention is the one deferred to a write that never comes. Edition 1 named this as
+"`nonlocal` items are the wrong cargo for a channel shaped for local text fixes" and PM-1 again
+classes the survivor `nonlocal`. **Two for two.** The class label is predictive and nothing consumes
+it.
+
+**Contributing 3: `DEC-ERR-03` re-grounding competed with the raised items for the same budget.**
+Round 9 opened against reviews written for TSPEC v1.0 while HEAD was v1.1, so before touching any
+raised item the author had to diff two upstream versions, establish that v1.1 single-sites rather than
+reverses v1.0, re-measure four digests, and rewrite the header. That work is correct and load-bearing
+— and it is unbudgeted work performed first, in a round whose remaining capacity then had to cover
+three items, one of which needed invention. Re-grounding is doing its job; it is also crowding the
+round it precedes.
+
+**Contributing 4 (testing lens): the defective conjunct was produced *by* a falsifiability rule,
+applied to the letter.** This repo's oracle checklist says to pair an absence-shaped assertion with a
+positive conjunct. Conjunct 3 pairs `"decisionLedger" not in report` with `report`'s key set
+`set-equal to the flag-off key set` — on the flag-off run, `X == X`. The rule was obeyed and the
+purpose was missed, because **the checklist does not require the added positive conjunct to be
+falsifiable on the arm it runs on**. That gap is generic: any "add a positive conjunct" rule invites a
+tautological one. It belongs in the checklist, not just in this document.
+
+**Not causes.** Reviewer strictness — every one of the six findings is correct, and I verified three
+mechanically. Budget exhaustion or `MAX_REVIEW_ROUNDS` — never reached. Model quality — rounds 1–7
+converged twice. Hand-transcribed pins and citations — edition 1's Shape C was fixed by hand and did
+not recur; the pins verify clean at HEAD.
+
 ## Recommendation
