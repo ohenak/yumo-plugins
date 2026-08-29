@@ -180,6 +180,32 @@ absence-only oracle.
 
 ## Verification
 
+Every claim above is grounded in a command run at HEAD, not in a reading of the documents alone:
+
+| Claim | How verified |
+|---|---|
+| Delta is exactly five commits, 34+/11− | `git log --oneline a408375a6..HEAD -- …PLAN…`; `git diff a408375a6..HEAD --stat -- …PLAN…` |
+| All four upstream digests match the header pins | `shasum -a 256` over the four upstream files, compared character by character |
+| No stale `v0.8` citation remains | `grep -n "v0\.8" …PLAN…` → no TSPEC citation |
+| Scanned source and companion operands match TSPEC v0.9 | `TSPEC…md:1296` (forbidden token set), `:1297` (scanned source), compared clause by clause with `PLAN…md:150` |
+| §5.2 has exactly three catalogues, and their names | `TSPEC…md:909` frozen-catalogue table — `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`, `DECISION_LEDGER_NOTICES` |
+| `OWNED_DECLS` decomposes to 15 | Re-derived group by group from `TSPEC…md:1297`; matches the PLAN's **fifteen** |
+| Exempt list is 9 and matches TSPEC name for name | `PLAN…md:150` vs `TSPEC…md:1296`, enumerated both ways |
+| Union is 15 and the two sub-sets are disjoint | Set arithmetic over the two enumerations; no name appears twice |
+| `ANCHOR_TOKENS` is test-file-only in the precedent | `grep -n "ANCHOR_TOKENS" pdlc/workflows/__tests__/loopEconomicsAnchorGuard.test.js` → `:114`; `grep -rn "ANCHOR_TOKENS" pdlc/workflows/*.js` → no match |
+| `CENSUS_TOKENS` is never in TSPEC's module surface | `grep -c "CENSUS_TOKENS" TSPEC` → 7; all occurrences at `:32/:36/:37/:89/:1296/:1297/:1300/:1318/:1329`, i.e. §7.3 and changelog only; none in §3/§4/§5 |
+| No PLAN green task declares `CENSUS_TOKENS` | `grep -n "CENSUS_TOKENS" …PLAN…` → lines 30, 47, 150, 488 only — the revision history, the `T-11` row and the DoD bullet; no `[green]` production row |
+| The other fourteen owned declarations each have an owning task | T-13…T-18 rows at `PLAN…md:151–156`, read against the fifteen-member decomposition |
+| The five shipped `/Decision/i` decoys exist | `grep -n` for `MERGE_MAX_DECISION_STEPS`, `renderDecisionEntry`, `escalationDecision`, `erratumGateDecision`, `parseDecisionsWarranted` in `pdlc/workflows/orchestrate-dev.js` |
+| Manifest owner and batch | `PLAN…md:202`; batch column re-derived against T-11's declared dependencies |
+| No same-batch same-new-file collision introduced | File-ownership manifest read in full; `decisionLedgerCensus.test.js` has one owner |
+
+**Not verifiable at this altitude, and correctly deferred:** the exact fixture shape of
+`decisionLedgerCensus.test.js`, the assertion helper `bodyOf`/`allTopLevelDecls` is cloned into, and
+whether the fifteen (or fourteen) slices are asserted non-empty individually or in a loop. Those are
+TSPEC/PROPERTIES and implementation concerns; the PLAN owes only the operand contract and the
+ownership, and it states both.
+
 ## Positive Observations
 
 ## Recommendation
