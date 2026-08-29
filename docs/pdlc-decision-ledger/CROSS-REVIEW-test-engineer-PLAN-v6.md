@@ -125,6 +125,59 @@ and the §Definition of Done bullet's **fifteen**/**nine** literals.
 
 ## Dependencies
 
+### Upstream pins (v5 F-02 — closed)
+
+Re-measured mechanically with `shasum -a 256` against HEAD:
+
+| Pin | PLAN header | HEAD | Verdict |
+|---|---|---|---|
+| REQ v1.9 | `sha256:ce6b133f…3c7b7c` | `ce6b133f0c1d…0d3c7b7c` | ✅ |
+| FSPEC v1.3 | `sha256:2bd5c3ef…5aed39` | `2bd5c3ef055f…735aed39` | ✅ |
+| TSPEC **v0.9** | `sha256:eef45ef3…0623c8` | `eef45ef32f0d…ece0623c8` | ✅ **v5 F-02 closed** |
+| DECISIONS | `sha256:13aba061…4fb89a` | `13aba06127b4…bb4fb89a` | ✅ |
+
+All four match to the character. The version label moved v0.8 → v0.9 in the header, and the two
+in-body version citations moved with it — `T-11`'s "TSPEC v0.9 §7.3" (twice, once for the token
+rationale and once for the scanned source) and the §Definition of Done bullet's "TSPEC v0.9 §7.3"
+(twice). `grep -n "v0.8" PLAN` returns no match in any TSPEC citation. The staleness v5 flagged is
+fully gone, and the revision-history paragraph is honest that v0.6 "is a re-grounding pass on
+upstream movement, not a response to a new defect in v0.5's bytes" — an accurate self-description.
+
+### Batch-DAG re-derivation
+
+The edit touches no `Batch` or `Depends on` column. Re-derived over the tasks the diff names, plus
+their neighbours, using `batch == max(dep batch) + 1`:
+
+| Task | Depends on | max(dep batch) | Declared | Verdict |
+|---|---|---|---|---|
+| T-00, T-01 | — | — | 1 | ✅ |
+| T-11 | T-00, T-01 | 1 | 2 | ✅ |
+| T-13 | T-02, T-04 | 2 | 3 | ✅ |
+| T-14 | T-05, T-13 | 3 | 4 | ✅ |
+| T-15 | T-06, T-14 | 4 | 5 | ✅ |
+| T-18 | (greens through T-17) | 7 | 8 | ✅ |
+| T-19 | T-12, T-18 | 8 | 9 | ✅ |
+
+Acyclic over the touched sub-graph, ids unique, every declared dependency resolves to a real task.
+T-11 remains `[red]` in batch 2 with T-18 the `[green]` that depends on it, so the red-before-green
+edge is intact — which is exactly why F-01 matters: T-18 cannot un-skip a test that reddens on
+correct code.
+
+**Same-batch same-new-file check.** The manifest edit adds no file and no task. `decisionLedgerCensus.test.js`
+is still created by T-11 alone, in batch 2; naming it "the sole home" of the two frozen lists is a
+clarification of ownership, not a second author. No same-batch collision is introduced. ✅
+
+### Cross-check of other TSPEC-derived rows
+
+TSPEC v0.9's changelog names §5.4, §7, §7.2 and §7.3 as touched. v5 verified §7.5 (`T-05`/`T-06`'s
+`P-REC`/`P-LINE` mutation rows) and §7.2's re-homing were unaffected; the v0.6 diff touches neither,
+so that clearance stands. `T-10a`'s live composition-root arm is cited from §7.2 and its text is
+unchanged in this diff; the `T-11` row's cross-reference to it ("T-10a asserts `report.decisionLedger`
+on a real `main()`-driven run, and the flag-off arm pairs its absence with a set-equality on the
+report's key set") still matches TSPEC:1332–1335's two named homes. ✅ — and I note approvingly that
+this is an absence assertion correctly paired with a positive set-equality on the same path, not an
+absence-only oracle.
+
 ## Verification
 
 ## Positive Observations
