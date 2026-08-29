@@ -95,3 +95,43 @@ the expected value derived from the code under test, which is precisely the impl
 means when it says byte-identical to *today*. The committed recording is the independent referent.
 AT-14 and AT-16 both cite "AT-04's committed baseline" as their own anchor, so this change also
 keeps three acceptance criteria pointing at one artefact instead of two.
+
+## Positive Observations
+
+- **Every one of TE's five findings and my one were addressed as structure, not as prose.** Each fix
+  changed what a test asserts or where an obligation lives — the 25-path literal array, the terminal
+  namespace census, the committed-recording referent — rather than adding a sentence promising care.
+- **The document corrects itself in the open.** The coverage-gate subsection opens "v0.2 said it
+  'runs at every wave gate from batch 3 onward'. It does not", then draws the *opposite* consequence
+  from the corrected fact. A plan that names its own retracted claim is far cheaper to review than
+  one that silently rewrites, and this is the second round it has done so.
+- **T-03's numbers are now each attached to a named file.** 24→25 is
+  `docs/discarded/pdlc-rcv-budget-stop/DECISIONS-pdlc-rcv-budget-stop.md`; 25→26 is this feature's
+  own `DECISIONS` file, which is the reason the fixture is frozen at all. An implementer who
+  measures a different number can now tell *which* file explains the difference, instead of halting.
+- **The scope discipline under pressure is the right call.** The obvious fix for the coverage-gate
+  timing gap is to widen `implementation.testCommand`; the PLAN names that, rejects it as out of
+  scope with the reason, and takes the more awkward manual-run remediation instead. Declining a
+  tempting fix that would change gate semantics for unrelated work is the judgement this repo's
+  learnings say costs the most when it is missing.
+- **T-00a now states what its control does *not* prove.** Writing down the limit of an assertion is
+  rarer and more useful than adding another assertion, and it is what let the missing obligation be
+  relocated to T-12a rather than left implicitly covered.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High findings. My v2 F-01 is resolved, and the fix is stronger than the finding required. Scanning
+the changed regions raises two Mediums, neither gating and neither about the product content of the
+plan: F-01 is a copy-paste hazard in a command the PLAN assigns an implementer to execute, fixed by
+moving it out of a table cell into a fenced block; F-02 is a delivery-address problem — a correct
+per-wave instruction placed where the wrong implementer will read it, fixed by one sentence in each
+of T-13…T-17 or in the batch-gate wording. Both are best folded into batch 1's dispatch rather than
+another full round. No scope creep, and no P0/P1 acceptance criterion is left without an owning task
+in the changed regions.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
