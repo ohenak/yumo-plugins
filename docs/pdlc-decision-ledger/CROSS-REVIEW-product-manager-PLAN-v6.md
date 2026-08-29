@@ -128,10 +128,51 @@ introduced by this round's edit.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | T-11 (`PLAN`:150) never states **where** `DECISION_LEDGER_CENSUS_TOKENS` is declared, and the two cues around it point opposite ways. It opens by "cloning `loopEconomicsAnchorGuard.test.js`'s `ANCHOR_TOKENS`" — a **test-file** constant (`loopEconomicsAnchorGuard.test.js`:114) — and its parenthetical marks only the *other* two lists as test-file ("neither is production code and neither is a member of `DECISION_LEDGER_OWNED_DECLS`"), implying by contrast that `CENSUS_TOKENS` is production. The partition forces that reading: `CENSUS_TOKENS` is listed inside `CENSUS_EXEMPT` ⊆ `DECISION_LEDGER_OWNED_DECLS`, and §7.3's red-on-rename conjunct requires every owned member to resolve to exactly one top-level declaration **in `orchestrate-dev.js` at HEAD**, with its slice non-empty. The only instruction that would place it there is T-18's dangling three-word fragment "Add `DECISION_LEDGER_CENSUS_TOKENS`." (`PLAN`:156), which names no home and completes no sentence. An implementer who follows the `ANCHOR_TOKENS` analogy and declares it in `decisionLedgerCensus.test.js` makes two T-11 conjuncts unsatisfiable, and BR-11 / REQ NG-4's only falsifying instrument is red at batch 2 for a reason no one planned. **Fix:** in T-11 say `DECISION_LEDGER_CENSUS_TOKENS` is declared in `pdlc/workflows/orchestrate-dev.js` (unlike the precedent's test-file `ANCHOR_TOKENS`, and unlike this task's two test-file lists), and complete T-18's sentence to "Add the `DECISION_LEDGER_CENSUS_TOKENS` declaration to `orchestrate-dev.js`". Medium, not High: the failure is loud, local to batch 2, and cheap to correct; the cardinality arithmetic already forces the correct reading for a careful reader. | BR-11 / REQ NG-4 |
+
+**Note on F-01's severity and gating.** This is recorded, not gating. It is the only new material
+this round raises, and it does not undo the re-grounding: the partition and the scanned-source
+operand are now faithful to `TSPEC` v0.9 §7.3, which is what my v5 High demanded.
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | `PROPERTIES-pdlc-decision-ledger.md`:377-378 still carries the pre-v0.9 census contract — PROP-INV-06 scans "the four regions this feature owns: the three function bodies sliced by brace-matching", and PROP-INV-07 requires `DECISION_LEDGER_CENSUS_TOKENS` to be "set-equal to the module's exported decision-ledger symbol names", the exact form `TSPEC`:1296 now names red by construction. This is **not** a defect of the PLAN — PROPERTIES is downstream of it, and no erratum is owed from this review — but it is now the last document in the feature still describing the superseded census. Does the orchestrator intend PROPERTIES to be re-grounded on `TSPEC` v0.9 before implementation begins, so T-11's test is not written against two contradictory contracts? |
+| Q-02 | T-11 says the two new frozen lists are "declared in this task's own test file", and the manifest row calls `decisionLedgerCensus.test.js` their "sole home". T-18 nonetheless edits `orchestrate-dev.js` and mentions `DECISION_LEDGER_CENSUS_TOKENS` (see F-01). Is the intended split "TOKENS in production, EXEMPT and OWNED_DECLS in the test file"? If so, saying it in one clause closes F-01 outright. |
 
 ## Positive Observations
 
+- **The re-grounding is a real re-derivation, not a label change.** All four pins measure correctly
+  at HEAD, and the two clauses that actually moved in `TSPEC` v0.9 §7.3 — the partition and the
+  every-owned-declaration slice — were rewritten in T-11, the DoD bullet **and** the manifest row
+  together. A pin bump without the body edit is the common failure here; this pass avoided it.
+- **The count words are load-bearing and correct.** Six ∪ nine = fifteen reconciles name-for-name
+  with `TSPEC`:1297's enumeration. Carrying the cardinalities in the DoD bullet as well as the task
+  row gives the wave gate an arithmetic check a reviewer can redo in thirty seconds.
+- **The rejected forms are recorded, not silently dropped.** T-11 names set-equality-against-all-
+  exports as rejected and says why, and keeps the `decisionLedger`-is-not-a-token rationale with its
+  behavioural discharge routed to T-10a. A future reader meeting the narrower token set will not
+  read it as an oversight.
+- **Code-grounded rationale.** The five shipped `/Decision/i` collisions T-11 cites are all real
+  declarations in `orchestrate-dev.js` (`:88`, `:4640`, `:4738`, `:6914`, `:7044`). The plan argues
+  from the codebase, which is what makes the enumerate-don't-pattern-match choice checkable.
+- **Nothing previously approved regressed.** The v4 High's fix — the terminal `102` positive control
+  owned by T-19, the set census owned by T-12a, T-00a's one-sided batch-1 acceptance — is
+  byte-unchanged and still consistent across task table, manifest and DoD.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+The one open High from v5 — the PLAN grounded on superseded `TSPEC` v0.8 while v0.9 had rewritten
+the census contract T-11 compresses — is resolved on all four limbs, verified against the files on
+disk. No High finding is open anywhere in the document. F-01 (Medium) should be folded into the next
+touch of this PLAN, or into T-11's implementation brief, but it does not gate the phase.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
