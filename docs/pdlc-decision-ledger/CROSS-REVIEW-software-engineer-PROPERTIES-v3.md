@@ -205,8 +205,76 @@ PROPERTIES against upstream **at HEAD**, not against the routed-item list.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **`TSPEC` and `PLAN` now contradict each other at HEAD on the census constant's home, and `PROPERTIES` cannot be re-pinned to a coherent upstream until one gives way.** TSPEC v1.0 makes `DECISION_LEDGER_CENSUS_TOKENS` a test-file declaration and drops it from `OWNED_DECLS` (six ∪ eight = fourteen). `PLAN` v0.7 at HEAD (`PLAN`:19, :152, :207, :219, :490) says the opposite in five places — production, declared in `orchestrate-dev.js` by T-18, a member of `OWNED_DECLS` and of `CENSUS_EXEMPT`, six ∪ nine = fifteen — and explicitly records TSPEC's now-adopted resolution as "the **rejected** resolution". I am not filing this as a PROPERTIES finding: it is upstream-vs-upstream, and PM's PLAN v8 confirmation already returned Needs revision naming the TSPEC v1.0 census constants. But it bears directly on sequencing — repairing PROP-INV-06/07 against TSPEC v1.0 while `PLAN` still says fifteen would put PROPERTIES out of contract with PLAN instead. Should the PROPERTIES repair wait on PLAN converging to TSPEC v1.0? My read is yes, and that the repair is then mechanical. |
+| Q-02 | With the partition now wholly over module declarations, is `DECISION_LEDGER_NOTICES` still correctly in `CENSUS_EXEMPT` rather than in the token set? §7.3's reason — "run-level notice ids, which generic driver code legitimately renders and counts" — is a *behavioural* claim about the driver, and it is the one exempt member whose exemption is not simply "this is plumbing". If a future notice id ever carries record data the partition stays green while the census goes blind. Not a finding against this round; worth one clause in whichever property ends up owning the partition. |
+| Q-03 | My v2 Q-01 (whether PROP-DISC-09's "set equality" is a subset check against a nine-name literal or a claim about the module's whole export set) and v2 Q-02 (what an operator should *do* when PROP-DISC-10's digest guard reds) are unchanged by this cascade and remain open. Restated only so they are not lost between rounds. |
+
 ## Positive Observations
+
+- **The erratum edit is the right fix, and it is grounded rather than asserted.** Making
+  `DECISION_LEDGER_CENSUS_TOKENS` a test-file operand is exactly the precedent's arrangement —
+  `ANCHOR_TOKENS` is a top-level constant of `loopEconomicsAnchorGuard.test.js`, not of the module
+  that test scans — and I confirmed that reading of the precedent. The alternative, manufacturing a
+  production constant so that the owned list would resolve, would have shipped production code whose
+  only purpose was to satisfy a test's exclusion rule.
+- **The v1.0 partition is arithmetically sound at HEAD, which I checked rather than took on trust.**
+  `OWNED_DECLS` = six functions (`selectDecisions`, `recogniseDecisionRecords`,
+  `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `parseDecisionLedgerConfig`,
+  `buildDecisionLedgerInjector`) + eight constants (`DECISION_CORPUS_ARGV`, `DECISION_HEADING_RE`,
+  `DECISION_LEDGER_DEFAULTS`, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, and §5.2's
+  three catalogues) = **fourteen**. Tokens (6) ∪ exempt (8) = fourteen, disjoint, exact. The edit did
+  not leave a partition that only reads as closed.
+- **The erratum stayed inside its blast radius.** §7.3 and the changelog only; the four corpus
+  literals unchanged; no pin advanced; upstream re-measured at HEAD before the edit (REQ v1.9
+  `ce6b133f`, FSPEC v1.3 `2bd5c3ef`) — and I independently reproduced both hashes, plus DECISIONS
+  `13aba061`, as unmoved from my v2 anchors. An erratum round that touches one section and proves the
+  rest unmoved is what makes a cascade confirmation cheap to run.
+- **PROPERTIES' census surface is small and well-localised**, so this repair is genuinely two table
+  rows and two prose glosses. No oracle, no fixture, no AT mapping and no other family moves.
+- **PROP-INV-09 has aged correctly across three TSPEC versions.** Its `learningsInjectionField`
+  rationale still matches §7.3 verbatim at v1.0. It is the one census property that pinned its reason
+  to a shipped analogue rather than to the operand definitions, and that is precisely why it survived
+  the rewrite that broke its two neighbours — a pattern worth reusing when PROP-INV-06/07 are redrafted.
 
 ## Recommendation
 
+**Needs revision**
+
+Two High findings, so by the approval rules this cannot be an approval — but I want to be precise
+about what that means here, because both are tagged `inherited` and this is a confirmation, not a
+review round. **The erratum edit itself is correct and I have no objection to it.** What the
+confirmation establishes is that my v2 approval of PROPERTIES was taken against TSPEC v0.8 and can no
+longer be carried forward: §7.3's census specification was rewritten at v0.9 and adjusted at v1.0,
+and PROPERTIES' INV family still compresses the v0.8 design. PROP-INV-06 specifies exclusion regions
+that make the census red on conforming code; PROP-INV-07 specifies the assertion §7.3 explicitly
+rejects, while §7.3's replacement contract has no property behind it.
+
+The repair is bounded and mechanical, and I would expect it to land in one pass:
+
+1. **PROP-INV-06** — excluded regions become the body of every member of the frozen
+   `DECISION_LEDGER_OWNED_DECLS`, sliced declaration-line-to-next-top-level-declaration over all the
+   module's top-level declarations, plus the sentinel-bounded `main()` wiring run. Drop "three" and
+   "brace-matching".
+2. **PROP-INV-07** — replaced by the partition property (`CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS`,
+   sub-sets disjoint, over the frozen fourteen-member list), with a companion property for §7.3's
+   resolves-to-exactly-one-top-level-declaration conjunct.
+3. **`PROPERTIES`:383–384 and :893** — "both set-equality-checked" and "(token-set equality)"
+   re-worded to the partition.
+4. **`PROPERTIES`:847** (F-03, Medium, non-gating) — the census module's owner rationale re-stated
+   once `PLAN` and `TSPEC` agree.
+
+Sequencing matters more than the wording (Q-01): `PLAN` v0.7 at HEAD still contradicts TSPEC v1.0 in
+five places on this exact constant, and PM's PLAN v8 confirmation has already returned Needs revision
+for it. Repairing PROPERTIES against TSPEC v1.0 before PLAN converges would trade one out-of-contract
+document for another. My recommendation is to let PLAN converge to TSPEC v1.0 first, then land items
+1–4 in a single PROPERTIES revision.
+
+My v2 Mediums (F-01, F-02) and Low (F-03) remain open and are unaffected by this cascade; they can be
+folded into the same pass.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 0}
