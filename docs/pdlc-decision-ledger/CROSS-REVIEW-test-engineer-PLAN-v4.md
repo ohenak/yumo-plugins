@@ -103,7 +103,68 @@ re-litigate them here.
 
 ## Dependencies
 
-_pending_
+Per DEC-ERR-03 my scope is this PLAN against upstream **at HEAD**, not the routed item list. The
+delta re-grounds the PLAN on TSPEC v0.8, so the upstream check is the substantive half of this
+round.
+
+### Upstream pins
+
+| Doc | Dispatch sha256 | On disk | PLAN header pin | Verdict |
+|---|---|---|---|---|
+| REQ v1.9 | `ce6b133f…3c7b7c` | matches | `sha256:ce6b133f…3c7b7c` | ✅ |
+| FSPEC v1.3 | `2bd5c3ef…5aed39` | matches | `sha256:2bd5c3ef…5aed39` | ✅ |
+| TSPEC **v0.8** | `28d25518…32cb49` | matches | `sha256:28d25518…32cb49` | ✅ |
+| DECISIONS | `13aba061…4fb89a` | matches | `sha256:13aba061…4bb89f` | ❌ **wrong tail** |
+
+The DECISIONS digest on disk is
+`13aba06127b4d392bdf71f93066dd7ed6cb626dadbc4dda54029ab80bb4fb89a` — last six characters `4fb89a`.
+The header pin transcribes `4bb89f`, a transposition. The other three pins were transcribed
+correctly in the same edit, so this is an isolated slip, but a staleness anchor that does not match
+the artifact it names is a broken anchor: the next re-grounding round comparing pins will see a
+mismatch it cannot attribute. Fix the tail to `4fb89a`. (F-03, Medium.)
+
+Version claims verified against upstream front-matter: REQ line 22 declares `v1.9`, FSPEC line 19
+declares `v1.3`, TSPEC line 19 declares `v0.8`. All three match the header. ✅
+
+### T-05 / T-06 against TSPEC §7.5
+
+TSPEC §7.5 (lines 1345–1427) now promotes `P-REC` and `P-LINE` from example to property. Checked
+conjunct by conjunct:
+
+- **T-05 / `P-REC`** — PLAN claims "**four** named falsifying mutations". TSPEC §7.5 names exactly
+  four: admit an out-of-depth heading; admit an empty-statement heading; normalise/trim the
+  statement instead of slicing verbatim; resolve duplicates first-wins instead of last-wins. The
+  PLAN row reproduces all four in the same order. ✅
+- **T-06 / `P-LINE`** — PLAN claims "**three**". TSPEC names exactly three: render a statement
+  containing `\n` unescaped; join two records onto one line; emit the set in an order other than
+  §3.6's. Reproduced faithfully. ✅
+- **O-8 discipline** — both rows say the expectation is computed by an **independent model, never
+  the production recogniser/renderer**. TSPEC §7.5's closing paragraph says exactly that ("an
+  independent model, never the production renderer or recogniser, and a recorded observed red per
+  named mutation"). ✅ This is the mutation-testing bar this project asks for, stated at the right
+  altitude and with observed-red transcription required. Good work.
+
+### T-11 against TSPEC §7.3 — one misattributed citation
+
+The **six-member** `DECISION_LEDGER_CENSUS_TOKENS` set in T-11 set-equals TSPEC's operand table
+(TSPEC line 1234): `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`,
+`gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`. ✅ The
+rationale T-11 gives for dropping `decisionLedger` — the report field is threaded through
+`buildFinalReport` at sites far outside `main()`'s sentinel-bounded region, so the bare name is in
+the scanned remainder by construction and the census would red on conforming code — is a faithful
+compression of TSPEC lines 1248–1258, including the rejected alternative (carving `buildFinalReport`
+out blinds a larger surface) and the "not an exported symbol, so set-equality stays exact" point. ✅
+
+**But the section id is wrong.** T-11 and the Definition of Done both cite this as
+"TSPEC v0.8 **§5.5**". That material is in **§7.3** ("The frozen fixture copy, and why it is not the
+live repository", lines 1091–1260); the adjacent discipline it leans on is cited by TSPEC itself as
+**§5.4**. TSPEC §5.5 is "The one thing the driver never holds" — a different claim entirely
+(`DecisionRecord.id` is never a driver-side input). An implementer following §5.5 to check why
+`decisionLedger` is exempt finds nothing about the census and cannot verify the exemption. Two
+sites to fix: the T-11 row and the DoD bullet. (F-02, Medium.)
+
+I am not raising this as a High: the PLAN row restates the full rationale inline, so no implementer
+is blocked, and the drop itself is correct against upstream.
 
 ## Verification
 
