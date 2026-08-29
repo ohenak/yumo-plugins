@@ -56,3 +56,38 @@ fixture author down a path that either cannot be built or cannot fail.
 | **F-03** | Medium | Cross-Feature | **The Baseline's propagation row now names the FSPEC but its anchor list is inaccurate in both directions.** `docs/_constraints/pdlc-decision-corpus-baseline.md:6` lists "header, §1, §3.3, §4 BR-2/BR-8/BR-10, §5 E-4/E-9/E-10/E-11, §6 AT-01, §7 O-5". Grepping the FSPEC's actual `M-*` citation sites: **§6 AT-18** cites `M-5c` (`:374`), **§7 O-1** cites `M-1d`/`M-2e` (`:505`), and **§7 Assumptions** cites `M-6b`/`M-6c` (`:545`) — none listed; while **§4 BR-10** (`:249`–`:253`) cites no `M-*` id at all and is listed. The row's stated purpose is that a `Version` bump propagates to every dependent claim, so an under-listed anchor is precisely the version-skew failure I filed F-09 about: O-1's constraint ("a TSPEC choice rendering a set differing from `M-1d`/`M-2e` … fails REQ-DECLEDGER-01") and §7's `maxEntries` justification would not be re-checked on a re-measurement. One-line fix, same edit that minted the row. | Baseline `:6`; §6 AT-18, §7 O-1, §7 Assumptions |
 | **F-04** | Medium | Local | **"A decision fails to render" is now load-bearing in three places, has no route into §3.3, and no owner.** The revision restates both legs over *what survives*: Total is "every in-scope decision failed to render", Partial is "a proper, non-empty subset … fails to render", and AT-08 gains a second corpus — "a readable corpus in which every in-scope decision fails to render". But §3.3's entry sentence is unchanged: "Entered from **step 3** when a source is missing, unreadable, or fails to parse." Rendering is **step 4**. So the flow states no route from a step-4 render failure into the legs that are now defined by it, and nowhere in the document does anything say what makes an individual decision unrenderable — a heading that is not a record simply is not in the set (E-9), which is not a failure. A fixture author owed AT-08's second corpus and AT-09's first (O-6) cannot construct either without inventing the mechanism. Note the document already solved the identical problem one paragraph earlier, and solved it well: BR-8's classification had no dispatch-visible consequence, so it was routed to TSPEC as **O-7** with the consequence stated ("Without it BR-8 is unfalsifiable"). The same treatment here — an O-7-style obligation naming what constitutes a render failure, plus one clause routing step 4 into §3.3 — makes E-2/E-3 constructible. The unspecified mechanism is inherited from v1's E-3; what is new is how much now rests on it. | §3.3 entry; §5 E-2, E-3; §6 AT-08, AT-09; §7 O-6 |
 | **F-05** | Low | Local | **E-1's "four spellings" no longer spans what §3.1 and AT-05 test.** §3.1's fourth row is "the whole `decisionLedger` block **absent or malformed**" and AT-05's *Given* follows it ("the whole `decisionLedger` block absent or malformed"), but AT-05's title and *Then* still count **four** while enumerating five conditions, and E-1 (`:291`) omits *malformed* entirely ("absent, `false`, wrong-typed, or the whole block missing"). Since AT-05's *Then* is a set-equality-flavoured claim ("all four produce the AT-04 byte-identical stream"), the count word and the enumeration should agree. Cheapest fix: add malformed to E-1 and say five, or keep four and state that the block-level row has two spellings. | §5 E-1; §6 AT-05; §3.1 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | On F-04: is a render failure meant to be possible at all under the recognition rule O-1 lands, or is the only real failure mode a source-level one — in which case Total/Partial reduce to "how many sources survived" and the "every in-scope decision failed to render" clause is describing an empty possibility? Either answer is fine and both are cheap to state; the current text asserts the case exists without saying how to reach it. |
+| Q-02 | On F-01: is AT-18's "every other line is unchanged" conjunct intended as a differential check, or as shorthand for "the rest of the expected set still renders"? If the latter, transcribing the synthetic corpus's line set says it directly and removes the vacuity. |
+| Q-03 | AT-01 constructs its two dispatches over documents of **completed** features (`docs/completed/pdlc-advisory-wave-gate/`, `docs/completed/pdlc-engineering-loop/`). §3.2 step 2 scopes the set by "the feature whose document is under review" without restricting to in-flight features, so I read this as valid; worth one word in TSPEC confirming a completed feature's directory is in scope the same way, since that is what the frozen fixture pins. |
+
+## Positive Observations
+
+- **All three Highs closed at the right altitude, none by weakening the claim.** The tempting fix
+  for F-02 was to delete E-11's cardinality sentence and route the whole edge to TSPEC. Instead
+  AT-18 asserts the one conjunct the spec owns and names what it deliberately does not assert, with
+  the reason. That is the harder and better move.
+- **AT-14 is now the model the rest of the document should be read against.** Byte-identity to a
+  committed baseline replaces a three-clause absence oracle and pins strictly more, including a
+  failure mode ("rule text without an index") that no absence clause could have caught. The doc
+  even names its own falsifier.
+- **AT-01 became a real oracle this round.** Two dispatches instead of one resolves the two-valued
+  expected set; the arithmetic re-derives exactly (45 and 48); the two features are chosen *for what
+  each pins* rather than arbitrarily, so E-9 and E-10 both get covered by the same set equality; and
+  the provenance clause forecloses the implementation echo in the one place it would have been most
+  natural to introduce ("never captured from the renderer's output").
+- **AT-16's non-exhaustiveness is stated rather than papered over.** "The list is **not** claimed
+  exhaustive of driver-side accounting, so a sixth mechanism is covered by extending it, not by a
+  set equality" — the discipline of demanding set equality over *closed* enumerations only, and
+  saying so when an enumeration is open, is exactly right and is rarer than it should be.
+- **O-7 is the finding this document raised on itself.** Noticing that BR-8's empty-versus-failed
+  classification has no dispatch-visible consequence, and therefore that BR-8 is unfalsifiable
+  without a driver-internal observable TSPEC must expose, is a testability insight the review did
+  not ask for. F-04 is only asking for the same treatment one paragraph over.
+- **O-8 records the bounds invariant as a property, not as more examples**, and says so in the
+  words that matter ("parameterised over set size × line sizes × both bounds, not as further
+  examples"). That forecloses the example-only default before PROPERTIES starts.
