@@ -353,14 +353,30 @@ otherwise drift the test on unrelated decisions (REQ-DECLEDGER-01, O-6).
 
 ### Index rendering
 
-**AT-01 — the index renders the Baseline's enumeration, compared as whole lines.**
-*Who:* the driver. *Given:* the flag resolves `true`, the frozen fixture corpus is in place, and the
-set is within bounds. *When:* a review dispatch prompt is constructed. *Then:* the rendered line set
-equals the expected set — **equality of rendered lines, not containment and not equality over ids
-alone**. The expected value is the Baseline's enumeration transcribed by id: `M-1d` project-level,
-`M-2e` per feature directory, under the directory-glob reading O-1 selects. Ids alone are blind to
-`M-3c`'s twice-opened block, which is why the comparison ranges over id, statement and citation
-together. *(-01; BR-1, BR-2, BR-3)*
+**AT-01 — the index renders the Baseline's enumeration for the reviewed feature, compared as whole
+lines.** *Who:* the driver. *Given:* the flag resolves `true` and the frozen fixture corpus is in
+place. Two dispatches are constructed, differing only in the feature whose document is under review
+(§3.2 step 2): **(a)** `pdlc-advisory-wave-gate`, **(b)** `pdlc-engineering-loop`. *When:* each
+review dispatch prompt is constructed. *Then:* the rendered line set equals the expected set —
+**equality of rendered lines, not containment and not equality over ids alone**.
+
+The expected set for each dispatch is `M-1d`'s project-level enumeration (41 ids) **union the one
+`M-2e` row for that dispatch's feature** — 4 for (a), 7 for (b) — giving 45 and 48 lines, both
+inside `maxEntries` `70`, which is what the *Given* means by within bounds. No other feature's
+`M-2e` row is in scope for either dispatch; a build rendering all 100 feature-level ids fails.
+
+Two conjuncts ride on the choice of those two features, and both are the point of choosing them:
+(a)'s corpus includes `M-4d`'s mixed file, whose **8** non-record headings must contribute **no**
+line while its 4 real records render normally (E-9); (b)'s includes `M-3c`'s twice-opened block,
+where each of `DEC-LOOP-01`…`06` renders exactly one line whose statement is the **second**, deciding
+opening (E-10, BR-2). Ids alone are blind to both, which is why the comparison ranges over id,
+statement and citation together.
+
+**Where the expected statement and citation values come from.** They are transcribed from the frozen
+fixture's own heading text and record location — data — and never captured from the renderer's
+output, which would derive the expectation from the code under test and could not fail for a wrong
+statement. `M-3c`'s verbatim second-opening heading is the pinned discriminating case. *(-01; BR-1,
+BR-2, BR-3; E-9, E-10)*
 
 **AT-02 — every rendered citation resolves at its own source.** *Who:* the driver. *Given:* as
 AT-01. *When:* the index is rendered. *Then:* for each line, the cited record file exists and
@@ -368,9 +384,17 @@ carries the cited heading, and the statement field says what was decided rather 
 A line citing a record that does not exist, or a heading not in that file, fails. *(-01; BR-3)*
 
 **AT-03 — the index is derived fresh, not carried forward.** *Who:* the driver. *Given:* the flag
-resolves `true`; a decision record changes between two dispatches in the same round window. *When:*
-the second dispatch is constructed. *Then:* the second index reflects the changed record. A snapshot
+resolves `true`; a record **in the frozen fixture copy** changes between two dispatch constructions
+in the same round window — the live repository is never mutated. *When:* the second dispatch is
+constructed. *Then:* the second index reflects the changed record. A snapshot
 taken at the first dispatch and rendered again fails. *(-01; BR-9)*
+
+**AT-18 — an id recorded in two files renders exactly one line.** *Who:* the driver. *Given:* the
+flag resolves `true`; O-5's synthetic corpus recording one id in both a project-level and a
+feature-level file, both in scope. *When:* the index is rendered. *Then:* **exactly one** line
+carries that id — never two, never zero — and every other line is unchanged from the same corpus
+without the duplicate. Which of the two records supplies the statement is TSPEC's (O-1, `M-5c`) and
+is deliberately not asserted here; the cardinality is this spec's (BR-2, E-11). *(-01; BR-2, E-11)*
 
 ### Disabled path
 
@@ -380,7 +404,8 @@ stream is byte-identical to the committed fixture baseline — not a same-branch
 comparison. *(-02; BR-4)*
 
 **AT-05 — all four not-enabled spellings collapse to one outcome.** *Who:* the driver. *Given:*
-`enabled` in turn absent, `false`, wrong-typed, and the whole `decisionLedger` block missing.
+`enabled` in turn absent, `false`, and wrong-typed (§3.1), and the whole `decisionLedger` block
+absent or malformed.
 *When:* a dispatch is constructed under each. *Then:* all four produce the AT-04 byte-identical
 stream, and none reports an error to the operator. *(-02; BR-4, E-1)*
 
@@ -392,12 +417,15 @@ present adjacent to the index, requires High severity **and** evidence outside t
 record, and carries both boundary exemplars of BR-6. Rule text carrying one conjunct, or no
 exemplars, fails. *(-03; BR-5, BR-6)*
 
-**AT-07 — the boundary exemplars are decidable, read against the cited record.** *Who:* a reader
-applying the rule text to two constructed candidate findings — one matching the *in* exemplar, one
-the *out* exemplar. *Given:* the rule text of AT-06 and the decisions' own records. *When:* each
-candidate is classified. *Then:* they classify oppositely, and the classification reads the **cited
-record**, not the index line alone — the line need not carry the decision's own citations. *(-03;
-BR-6)*
+**AT-07 — the exemplars are stated so a reader can decide, and that is a property of the text.**
+*Who:* the driver — what is asserted is a property of the rule text it emits, not of anyone's
+classification, so no human is in the oracle. *Given:* the flag resolves `true`. *When:* the
+dispatch is constructed. *Then:* the rule text names **both** exemplars of BR-6, each labelled with
+the side it falls on (*in* — a shipped behavior that changed after the decision was recorded, cited
+at the changed source; *out* — a source the decision already cites, re-cited with no behavioral
+change), and directs the reviewer to decide against the **cited record** rather than the index line,
+which need not carry the decision's own citations. Text carrying one exemplar, or both unlabelled,
+fails. *(-03; BR-6)*
 
 **AT-12 — the reopening key and the driver's identity key are separate and both intact.** *Who:* the
 driver and the reviewer. *Given:* the flag resolves `true`. *When:* a dispatch is constructed and a
@@ -407,26 +435,34 @@ the sole key the driver dedupes on. A change to the driver's key fails. *(-06; B
 
 ### Fail-open
 
-**AT-08 — every source unavailable takes the total leg.** *Who:* the driver. *Given:* the flag
-resolves `true`; a constructed corpus where every source is missing, unreadable or unparseable.
+**AT-08 — nothing surviving takes the total leg.** *Who:* the driver. *Given:* the flag resolves
+`true`; a constructed corpus where nothing survives — first every source missing, unreadable or
+unparseable, then a readable corpus in which every in-scope decision fails to render.
 *When:* the dispatch is constructed. *Then:* no index and no rule text; the dispatch matches AT-04's
 byte-identical stream; no halt and no operator-facing failure. *(-04; BR-7, E-2)*
 
-**AT-09 — one failing decision omits one line.** *Who:* the driver. *Given:* the flag resolves
-`true`; a constructed corpus where one decision of several fails to render. *When:* the dispatch is
-constructed. *Then:* that line is absent, every other expected line is present, and the rule text is
-present. A partial or malformed line for the failing decision fails. *(-04; BR-7, E-3)*
+**AT-09 — a surviving proper subset takes the partial leg, whatever failed.** *Who:* the driver.
+*Given:* the flag resolves `true`; two constructed corpora — one where a single decision of several
+fails to render, one where a **whole source** is unavailable while other sources survive. *When:*
+the dispatch is constructed. *Then:* in both, the failed lines are absent, every surviving expected
+line is present, and the rule text is present — one outcome for both sub-cases, not two. A partial
+or malformed line for a failing decision fails. *(-04; BR-7, E-3)*
 
-**AT-10 — an empty file takes the ordinary path, not the failure path.** *Who:* the driver.
-*Given:* the flag resolves `true`; a source that exists, reads and parses but holds zero decision
-records — including the case where it is the only source. *When:* the dispatch is constructed.
-*Then:* it contributes nothing and neither fail-open leg is taken. Where it is the only source, E-6
-follows (no index block) rather than E-2's total leg. *(-04; BR-8, E-4)*
+**AT-10 — an empty file contributes nothing and costs nothing.** *Who:* the driver. *Given:* the
+flag resolves `true`; a corpus holding one source that exists, reads and parses but holds zero
+decision records, alongside surviving sources. *When:* the dispatch is constructed. *Then:* the
+rendered line set equals AT-01's expected set for the surviving sources exactly — the empty file
+adds no line, removes none, and produces no operator-facing report. Where the empty file is the
+**only** source, the dispatch is E-6's, which is byte-identical to E-2's total leg: the two are
+**not** discriminable in the prompt, so the classification conjunct — that this is an ordinary empty
+result and not a counted failure (BR-8) — is asserted at the driver-internal observable TSPEC owes
+under O-7, and this test asserts the dispatch bytes only. *(-04; BR-8, E-4, O-7)*
 
 ### Configuration
 
 **AT-11 — per-key fallback over the full enumeration.** *Who:* the config loader. *Given:* each of
-C-3's three keys in turn, crossed with {wrong type, malformed, absent}, with the other two valid.
+C-3's three keys in turn, crossed with §3.1's per-key condition space {valid, wrong-typed, absent},
+with the other two valid, plus the one block-level malformation case.
 *When:* config is parsed for a dispatch. *Then:* only the affected key takes its C-5 default; the
 other two keep operator values; every other config block is unaffected. Asserted as **set equality
 over C-3's enumeration**, not containment, so a fourth key or a different spelling fails. *(-05;
@@ -442,9 +478,12 @@ aborted. *(-07; BR-12, BR-13)*
 
 **AT-14 — the empty and zero cases.** *Who:* the driver. *Given:* the flag resolves `true`; first a
 zero-decision in-scope set, then `maxEntries` resolved to `0`. *When:* the index is rendered.
-*Then:* in both cases **no index block at all** — not an empty block, not a header without rows —
-and `maxEntries` of `0` is not an error, not a fallback to the default, and not a halt. *(-07; E-6,
-E-7)*
+*Then:* in both cases the dispatch stream is **byte-identical to AT-04's committed baseline** — the
+positive assertion, which pins in one comparison that there is no index block (not an empty block,
+not a header without rows), **no rule text standing alone above a missing index** (E-6), and no
+added or removed whitespace. A build emitting the rule text without an index fails. `maxEntries` of
+`0` is additionally not an error, not a fallback to the default, and not a halt. *(-07; E-6, E-7,
+BR-1, BR-4)*
 
 **AT-15 — a single oversized line is omitted whole.** *Who:* the driver. *Given:* the flag resolves
 `true`; one line alone exceeds `maxBytes`, among other lines that fit. *When:* the index is
@@ -461,7 +500,15 @@ open-finding ledger, the `review.derivativeStop` flat/non-flat classification, t
 minted under `DEC-ERRROUTE-01`, and the fail-closed read of a non-approving confirmation carrying no
 parseable `FINDING:` line are all identical. The dispatch-construction leg differs in **exactly one
 asserted way**: the `false` run's dispatch is byte-identical to AT-04's baseline and the `true`
-run's carries the rendered index. *(-08; BR-14)*
+run's carries the rendered index.
+
+Invariance alone would pass a driver broken identically in both runs, so at least one of the five
+outcomes is additionally **anchored to a value transcribed from the fixture** — the open-finding
+ledger, whose expected content the recorded reviewer outputs already determine — and the test fails
+if that anchor moves, not only if the two runs diverge. The five are asserted individually and the
+list is **not** claimed exhaustive of driver-side accounting: a sixth mechanism added later is
+covered by extending this list, not by a set equality that would red on sight. The recorded fixture
+is a constructed-fixture obligation of the O-6 class. *(-08; BR-14)*
 
 **AT-17 — a filed reopening is scored as any other High finding.** *Who:* the driver. *Given:* the
 flag resolves `true`; a reviewer files a High finding re-opening an indexed decision. *When:* the
