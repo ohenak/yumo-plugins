@@ -257,3 +257,13 @@ item 6's rule applied to that edit before submission — is what makes a single 
 round sufficient.
 
 ## Provenance
+
+- Engine version: 0.2.4
+- Plugin version: 0.23.6
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Halting gate: erratum delta confirmation, round 7 — non-approving: `te-review`
+- Follow-up budget: 1 round (spent)
+- TSPEC at halt: v0.6, `88fe6dbae`
+- Confirmations at halt: `72fd38c9d` (pm-review, Approved with minor changes), `25808e80f` (te-review, Needs revision)
