@@ -176,6 +176,95 @@ this is what makes NG-4 falsifiable rather than aspirational.
 
 ## 4. Business Rules
 
+Each rule states one behavior and names the criterion it serves. A rule is stated **once**; later
+rules cite it rather than restating it.
+
+### Index content and currency
+
+**BR-1 — the index renders when, and only when, the flag resolves true.** A rendered index block
+appears in a review dispatch prompt exactly when resolved `decisionLedger.enabled` is `true` and at
+least one in-scope decision survives §3.3. In every other case no index block exists. *(-01, -02,
+-04)*
+
+**BR-2 — every in-scope decision renders exactly once.** Not at least once, not once per file it is
+mentioned in. Where the recognition rule TSPEC owns resolves an id opened more than once to a single
+record, that resolution happens before rendering, so the index carries one line for it. Baseline
+`M-3a`/`M-3c` records the sole HEAD instance — a block where each id opens twice and only the second
+opening states what was decided. *(-01)*
+
+**BR-3 — two required fields plus a citation; nothing else is required.** A line carries the
+decision id and a one-line statement of what was decided, plus a source citation naming the record
+file and the record's heading. A record carrying an origin or evidence datum may render it; a record
+not carrying one renders a line without it, and that line is **complete**, not degraded. A line whose
+statement says what was *asked* rather than what was *decided* does not satisfy this rule. *(-01)*
+
+**BR-4 — the disabled path emits nothing, not even a placeholder.** When the flag does not resolve
+true, the dispatch prompt is byte-identical to the pre-feature baseline: no index, no rule text, no
+empty block, no marker, no added or removed whitespace. "Byte-identical" is compared against a
+committed fixture baseline, never a same-branch before/after assertion (REQ C-2). *(-02)*
+
+**BR-9 — the index is derived fresh at dispatch-construction time.** Records are read as they exist
+when the dispatch is constructed. No snapshot taken earlier in the round window is rendered, and no
+index is reused across dispatches. A stale index is the failure this rule exists to exclude
+(REQ §2 G-3, R-1). *(-01)*
+
+### Rule text
+
+**BR-5 — the bar is two conjuncts, and both are required.** The rule text instructs the reviewer not
+to file a finding re-opening an indexed decision unless it is **High severity** *and* it cites
+evidence that is not part of that decision's own record. Either conjunct alone is insufficient. *(-03)*
+
+**BR-6 — evidence novelty is a reviewer judgement, made decidable by exemplars, never by a parser.**
+No component compares citations, and nothing mechanically evaluates novelty. The rule text carries
+both boundary exemplars so the reviewer can decide: **in** — a shipped behavior that changed after
+the decision was recorded, cited at the changed source; **out** — a source the decision already
+cites, re-cited at a different line or later commit with no behavioral change. The rule text also
+directs the reviewer to treat the decision id as the reopening key across rounds, recording a repeat
+as a repeat naming that id rather than as a fresh finding. *(-03, -06)*
+
+### Failure and degradation
+
+**BR-7 — failure degrades toward absence, never toward a wrong line.** Where a decision cannot be
+rendered faithfully, its line is omitted rather than rendered partially. Absence lets a reviewer
+challenge the decision freely; a wrong line would suppress a legitimate challenge. *(-04)*
+
+**BR-8 — an empty source is an ordinary result, not a failure.** A source that exists, reads and
+parses but holds no decision record contributes nothing and takes neither fail-open leg. It does not
+trigger the total leg even when it is the only source read (`M-4e`). *(-04)*
+
+### Configuration
+
+**BR-10 — per-key independent fallback.** One wrong-typed, malformed or absent key falls back to its
+own C-5 default; the block's other keys and every other config block are unaffected. The key set is
+exactly C-3's three, so this is set equality over that enumeration crossed with {wrong type,
+malformed, absent} — not containment. Follows the shipped `learningsInjection` /
+`cascade.pinCheck` / `review.derivativeStop` precedent (REQ C-1). *(-05)*
+
+### Driver invariance
+
+**BR-11 — the driver never reads a decision id.** No driver-side computation — convergence,
+dedupe, flat/non-flat classification, erratum minting, confirmation-presence checking — takes a
+decision id as input. The reviewer-side reopening key of BR-6 and the driver's finding-identity
+triple are different keys with different consumers and never compete. *(-06, -08)*
+
+**BR-14 — a filed finding is scored identically regardless of the flag.** For one fixed set of
+reviewer outputs replayed under both flag settings, every driver-side outcome is identical: the
+convergence decision, the identity-triple dedupe and the resulting open-finding ledger, the
+`review.derivativeStop` flat/non-flat classification, the erratum items minted under `DEC-ERRROUTE-01`,
+and the fail-closed read of a non-approving confirmation carrying no parseable `FINDING:` line. A
+High finding re-opening an indexed decision that a reviewer files anyway still mints its erratum item
+and still satisfies the confirmation-presence check. *(-08)*
+
+### Size bounds
+
+**BR-12 — both bounds hold on the rendered index text alone.** `maxEntries` bounds the number of
+rendered lines; `maxBytes` bounds the bytes of the index block as it appears in the prompt — not its
+contribution to total dispatch size, and not the underlying records. Both hold simultaneously. *(-07)*
+
+**BR-13 — over-budget omits whole lines and nothing else.** No line is truncated mid-line, no line
+is abbreviated to fit, the dispatch is not oversized, and construction is not aborted. Which lines
+are omitted is TSPEC's (O-1); that the bounds hold afterwards is this rule. *(-07)*
+
 ## 5. Edge Cases & Error Scenarios
 
 ## 6. Acceptance Tests
