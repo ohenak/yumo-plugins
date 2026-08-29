@@ -885,6 +885,18 @@ from the code under test (AT-01). `M-3c`'s verbatim second-opening heading is th
 discriminating case; `M-4d`'s eight non-record headings and `M-4b`'s twelve namespace-less ids are
 the pinned exclusion cases.
 
+**The shipped-default assertion (§3.6's headroom, D-10).** AT-01 deliberately runs with the bounds
+non-binding (§7.6), so without this the shipped configuration is never exercised anywhere. One
+assertion in this oracle closes that: build the project-level-only block over the frozen fixture at
+**C-5's shipped defaults** (`maxEntries: 70`, `maxBytes: 8000`) and assert three things — the
+rendered index-line bytes equal the transcribed literal **6,305**; that value is `≤ maxBytes − 1200`
+(§4.3's framing pin is the other half of this sum); and `omitted[]` contains no id whose `origin` is
+`"project"`. Transcribing 6,305 rather than merely bounding it makes corpus drift visible at the
+re-capture, which is the deliberate moment to re-decide ERR-2's default; the `omitted[]` conjunct is
+what fails if a future change re-orders the drop loop so a project-level line goes first. If ERR-2 is
+resolved by raising C-5's default, the assertion's threshold moves to the resolved value and the
+transcribed 6,305 stays — the corpus size is what is being watched, not the bound.
+
 **Source census for BR-11 / §5.5.** Alongside the behavioural replay of AT-16, one oracle reads
 `orchestrate-dev.js`'s source and pins an *absence*. The precedent is `DEC-LOOPECON-07`, and it is
 the right instrument here because BR-11 is a claim that a coupling does not exist. An earlier draft
@@ -901,8 +913,14 @@ fail:
 - **The regions do not exist as source objects.** `orchestrate-dev.js` carries exactly **one**
   sentinel-bounded region, `// === LEARNINGS INJECTION REGION START ===` / `... END ===`. There are
   no delimiters marking "the convergence region" or "the dedupe region", so a scan cannot address
-  them. `DEC-LOOPECON-07`'s own census — the cited precedent — does not scan regions either: it
-  asserts **zero occurrences of named literal tokens over the whole file**.
+  them. The cited precedent addresses its scanned text the only way source can be addressed
+  mechanically — by **declaration**. `loopEconomicsAnchorGuard.test.js` asserts zero occurrences of
+  `ANCHOR_TOKENS` within each builder's body, sliced from that builder's own declaration line to the
+  next top-level declaration, over a builder set held to set equality against HEAD source
+  (`bodyOf`, `ANCHOR_TOKENS`, and the census set-equality `it` in that file). "Convergence",
+  "dedupe" and "erratum-mint" are not single named declarations, so they cannot be sliced that way —
+  which is the sharper reason the earlier wording could not be implemented, and the reason this
+  section adopts declaration-anchored slicing for the regions that *are* declarations.
 
 **The census, specified the way the precedent actually works.** Both operands are named, frozen and
 set-equality-checked, so neither can drift silently:
@@ -910,7 +928,7 @@ set-equality-checked, so neither can drift silently:
 | Operand | Definition | How it is kept honest |
 |---|---|---|
 | **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose members are the *distinctive, unambiguous* exported names this feature introduces: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`, `decisionLedger` | A companion test asserts **set equality** between `DECISION_LEDGER_CENSUS_TOKENS` and the module's exported decision-ledger symbol names, so a symbol added later cannot escape the census by not being listed. Generic tokens like `id` are excluded by construction — the set holds only names that are unique to this feature |
-| **Scanned source** | The whole of `orchestrate-dev.js`, **minus** the four regions this feature legitimately owns: `parseDecisionLedgerConfig`'s body, `buildDecisionLedgerInjector`'s body, `selectDecisions`/`recogniseDecisionRecords`/`renderDecisionLedgerBlock`'s bodies, and the `main()` wiring block. Each is sliced by brace-matching from its declaration, exactly as `advisoryDisabled.test.js`'s `sourceExcludingParser` slices `parseAdvisoryConfig` | The slicing helper is the shipped one's shape, and the test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous |
+| **Scanned source** | The whole of `orchestrate-dev.js`, **minus** the four regions this feature legitimately owns: `parseDecisionLedgerConfig`'s body, `buildDecisionLedgerInjector`'s body, `selectDecisions`/`recogniseDecisionRecords`/`renderDecisionLedgerBlock`'s bodies, and the `main()` wiring block. The first three are sliced by brace-matching from their declarations, exactly as `advisoryDisabled.test.js`'s `sourceExcludingParser` slices `parseAdvisoryConfig`. The fourth is **not** the whole of `main()`, which owns a great deal of unrelated code a coupling could hide in: it is the contiguous run of lines between two literal sentinel comments the wiring is written between (`// === DECISION LEDGER WIRING START/END ===`, placed by the task that writes the wiring), so `main()` outside that run stays inside the census | The slicing helper is the shipped one's shape, and the test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous |
 
 The assertion is then the precedent's: **zero occurrences** of any member of
 `DECISION_LEDGER_CENSUS_TOKENS` in the scanned remainder. This is implementable, non-vacuous, and it
