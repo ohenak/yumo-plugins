@@ -157,15 +157,71 @@ PLAN's own upstream pin (`PLAN`:19 and its §Verification citations) still reads
 
 ## Verification
 
-_pending_
+What I executed in the working tree on `feat-pdlc-decision-ledger`, so the finding rests on measured
+facts rather than reading:
+
+1. **PLAN bytes are genuinely unchanged.** `git log --oneline -- PLAN-pdlc-decision-ledger.md` shows
+   `5ffa27135` as the newest commit touching the file — the same commit my v7 `REVIEWED-COMMIT`
+   records. No PLAN edit has landed since the approval, so this is a pure cascade question.
+2. **The erratum's post-image, not its commit message.** I read `git show 452d72c07` in full: 44
+   insertions, 4 deletions, confined to the §7.3 census table plus the changelog, as claimed. The two
+   deletions are the exempt-list row and the scanned-source row; both post-images drop
+   `DECISION_LEDGER_CENSUS_TOKENS`, and the scanned-source row additionally drops the "(the token
+   strings live inside its own declaration, so the census would otherwise red on its own literal)"
+   parenthetical. I confirmed the dropped parenthetical is quoted verbatim inside `PLAN`:152 as the
+   justification for the membership TSPEC has now removed — that is the sharpest single piece of
+   evidence that PLAN is no longer a faithful compression.
+3. **The count is checkable, and it moved.** TSPEC v1.0's owned enumeration is six functions
+   (§4.1/§4.2/§4.4) plus §3.1's `DECISION_CORPUS_ARGV`, §3.2's `DECISION_HEADING_RE`, §4.1's
+   `DECISION_LEDGER_DEFAULTS`, §4.3's `DECISION_LEDGER_PREAMBLE` and `DECISION_LEDGER_RULE_TEXT`, and
+   §5.2's three catalogues = 6 + 8 = **fourteen**. PLAN:152 and PLAN:493 both say **fifteen**, and
+   PLAN's exempt count says **nine** against TSPEC's **eight**. The disagreement is arithmetic, not
+   interpretive.
+4. **No module-surface section acquired the constant.** I checked that the erratum did not instead
+   add `DECISION_LEDGER_CENSUS_TOKENS` to §5.2's frozen-catalogue table or to §4 — it did not; §5.2
+   still lists only `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` and
+   `DECISION_LEDGER_NOTICES`. So there is no reading on which PLAN's production home survives.
+5. **REQ and FSPEC really are unmoved.** I hashed all four upstreams (table in §Dependencies) rather
+   than trusting the changelog's assertion. REQ `ce6b133f…` matches the hash the dispatch supplied, so
+   no acceptance criterion behind the census — BR-11, REQ NG-4, REQ NG-6 — has changed meaning. The
+   product substance of my v7 approval (every P0/P1 criterion owning a task, the eighteen-AT and
+   fourteen-failure-row coverage tables, nothing out of scope) is therefore undisturbed, and I did
+   not re-derive it.
+6. **The rest of the PLAN still cites live upstream text.** Spot-checking PLAN's other TSPEC-derived
+   literals against HEAD: the four corpus byte literals (6,305 / 10,859 / 12,059 / 441) are unchanged
+   by the erratum, as its changelog states and as the diff confirms; T-10a's `report.decisionLedger`
+   grounding in §5.4 is untouched; the `decisionLedger`-is-not-a-token exclusion PLAN carries is still
+   §7.3's position in the post-image. Only the census-constant home moved.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | My v7 Q-01 is now sharper rather than resolved: `PROPERTIES-pdlc-decision-ledger.md`:377-378 (PROP-INV-06/07) describes the token set as "set-equal to the module's decision-ledger exports" — a contract that was superseded at TSPEC v0.8, contradicted differently by PLAN v0.7, and superseded again by TSPEC v1.0. With the census clause having now changed direction twice, does the orchestrator intend PROPERTIES to be re-grounded on TSPEC v1.0 in the same pass that fixes PLAN? Two downstream documents describing the same census three different ways is the condition under which a batch-2 implementer picks whichever they read first. |
+| Q-02 | Process, not product: my v7 raised the census-constant home as an `ERRATUM: TSPEC` route and PLAN v0.7 simultaneously argued in writing for the opposite resolution. The erratum then adopted the reviewer diagnosis without the PLAN's rejection reasoning being answered. Is there a channel by which a downstream document's *recorded rejection* of a proposed upstream fix reaches the erratum author before they edit? If not, this round is the second-cheapest possible version of that gap and worth one line in the post-mortem. |
 
 ## Positive Observations
 
-_pending_
+- **The erratum picked the right resolution, and PLAN's repair is genuinely small.** I want to be
+  clear that F-01 is not an argument that TSPEC chose wrongly. Homing the constant in the test file is
+  the reading that matches the precedent (`ANCHOR_TOKENS` is a constant of
+  `loopEconomicsAnchorGuard.test.js`, not of the module it scans), and it removes a manufactured
+  production declaration whose only purpose was to make an exclusion rule true. It is the better
+  product outcome under REQ NG-6, which wants the production diff minimal. The finding is about the
+  documents disagreeing, not about which way they should agree.
+- **The erratum bounded itself honestly.** "Sections touched: §7.3 and this changelog, nothing else",
+  the four corpus literals restated as unchanged, and the upstream re-measured at HEAD with no pin
+  advanced — all three claims hold under `git show`. A cascade confirmation is cheap to run precisely
+  because the author stated the blast radius and the statement was true.
+- **PLAN's v0.7 pass, though now pointed the wrong way, is exactly the shape that makes reversal
+  cheap.** Because the v0.7 author wrote the same sentence at four named sites and recorded *why* the
+  alternative was rejected, the reversal is a mechanical four-site edit with a known justification to
+  invert. Had the claim been diffused through the document, this confirmation would have been a
+  re-review instead. Keep that discipline.
+- **Everything outside the census clause survived the cascade intact**, and it is the majority of the
+  document: eighteen-of-eighteen AT coverage, fourteen-of-fourteen failure-row ownership, the batch
+  and dependency graph, the anti-echo and set-equality commitments, and the scope disclaimers. No P0
+  or P1 requirement lost its owning task.
 
 ## Recommendation
 
