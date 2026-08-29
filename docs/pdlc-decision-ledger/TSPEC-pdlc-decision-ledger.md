@@ -395,7 +395,7 @@ this design can reach.
 ### 3.5 Verification of §3.1–§3.4 against the standing corpus
 
 The rule above was executed over the working tree at
-`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.1's `Verified at` commit
+`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.2's `Verified at` commit
 (`8c673a09f` on `feat-pdlc-decision-ledger`), enumerating via `DECISION_CORPUS_ARGV` and
 recognising via `DECISION_HEADING_RE`, with last-record-wins per file:
 
@@ -452,34 +452,38 @@ full heading line and therefore contains both the id and the statement. §4.3 no
 all BR-3 and AT-02 require — and removes ~33% of the block. This is a Q-1 choice, entirely inside
 this document, and it is taken.
 
-**Second, the order is live under shipped defaults, and this section no longer claims otherwise.**
-Even in the shipped form, with §4.3's framing budget of ≤1,200 bytes charged, the byte bound leaves
-`8000 − 1200 = 6,800` bytes for lines. Project-level alone (6,305) fits with ~495 bytes of
-headroom — about **three** feature-level lines at the measured mean (495 / 183), two at the largest
-observed line. Per-line sizes, measured at the same commit under
+**Second, the order does not fire at the Baseline commit under REQ HEAD's measured default — and
+that is a measurement, not a property.** REQ v1.8 replaced the retired `8000` with the measured
+**`12500`** (`M-7b`/`M-7c`), so with §4.3's framing budget of ≤1,200 bytes charged the byte bound
+leaves `12500 − 1200 = 11,300` bytes for lines. Project-level alone (6,305) fits with **~4,995**
+bytes of headroom — about **twenty-seven** feature-level lines at the measured mean (4,995 / 183),
+nineteen at the largest observed line. Per-line sizes, measured at the same commit under
 the shipped format: project-level lines run **109–200** bytes (mean 153); feature-level lines run
 **152–261** bytes (means 183 for `pdlc-advisory-wave-gate`, 191 for `pdlc-engineering-loop`, 206 for
-`pdlc-headless-engine`), which is the figure ERR-2 carries upstream. So on the shipped default:
+`pdlc-headless-engine`). So on the shipped default:
 
-- **at the Baseline's `Verified at` commit**, every reviewer receives the whole project-level
-  corpus on every feature, with ~495 bytes of headroom — about **three** project-level lines at the
-  measured mean;
-- feature-level lines are admitted until the bound, and the larger feature directories are
-  partially omitted from the first enabled dispatch.
+- **at the Baseline's `Verified at` commit**, a G-1-scoped dispatch — the project set plus the one
+  feature under review — renders **whole**: `M-6b`'s 63-record worst standing case is 10,859 index
+  bytes, **12,059** with framing charged, inside both `maxBytes` 12,500 and `maxEntries` 70, with
+  441 bytes of headroom;
+- so neither bound fires on any real dispatch at that commit, and no line is omitted.
 
-That is the omission order doing exactly the job it was designed for, on day one rather than in
-some future regime — which is precisely why the order is **feature-level first**. The safety
-property the earlier draft wanted from inertness is instead delivered by the order itself: the order
+This is `DEC-DECLEDGER-03`'s conclusion, and this section states it on the same ground: **inertness
+here is a measurement at one commit, not a property of the mechanism**, and the order is specified
+and tested as load-bearing regardless. 441 bytes is under two lines of margin, `docs/_decisions/`
+grows by exactly the mechanism this pipeline runs — consolidation promotes decisions into it — and
+C-5's thresholds are operator-configurable non-negative integers, so any operator who lowers either
+one fires the order on the very next dispatch, at which point an unspecified order would be
+unfalsifiable exactly when it goes live. The order is **feature-level first** for that regime: it
 **prioritises** the promoted corpus, dropping every feature-level line before it touches a
 project-level one. It does not *guarantee* the project-level set is admitted whole, and this section
 does not claim it does: once the feature-level lines are exhausted, project-level lines are dropped
-like any other. What admits the promoted set whole today is the measured headroom, and
-`docs/_decisions/` grows by exactly the mechanism this pipeline runs — consolidation promotes
-decisions into it — so at ~44 promoted records the headroom is spent under C-5's current default.
+like any other.
 
 **That is a measured quantity, so it gets a pin rather than a sentence.** §7.3's corpus oracle
-carries an assertion over the **whole** frozen fixture, at C-5's *shipped* defaults — where the
-bound genuinely binds — that the rendered project-level ids are the fixture's 41 entire, that their
+carries an assertion over the **whole** frozen fixture — 141 records, deliberately larger than any
+G-1-scoped dispatch, so that a bound binds and the drop loop runs — at C-5's *shipped* defaults:
+that the rendered project-level ids are the fixture's 41 entire, that their
 6,305 bytes fit within `maxBytes − 1200`, and that the non-empty `omitted[]` names no project-level
 id, with both the 41 ids and 6,305 transcribed as the expected values. It reddens when the promise stops being true — at the
 deliberate moment the fixture is re-captured, which is the right moment to re-decide ERR-2's
@@ -488,13 +492,13 @@ of the identical arithmetic (D-9), applied to the corpus half (D-10). The order 
 from the first dispatch and is tested as such (§7.5's property, whose prefix conjunct is what makes
 the order falsifiable, and AT-13/AT-15).
 
-**The `maxBytes` default value is not this spec's to set.** It is REQ C-5's, and A-1 already records
-it as the unmeasured threshold an operator may revise without a REQ revision. The measurement A-1
-was waiting for is now taken and is routed upstream as an erratum (§9.2, E-2) rather than decided
-here: a default of **12,500** admits the worst standing case (10,859 + 1,200 = 12,059) with
-headroom, where 8000 admits the project-level set plus about two feature lines. Nothing in this
-design changes if the default moves — the bound is a parameter, the order is the mechanism, and
-both are correct at either value.
+**The `maxBytes` default value was never this spec's to set, and it is now settled upstream.** It is
+REQ C-5's. The measurement this spec supplied was routed upstream as an erratum (§9.2, **ERR-2**)
+rather than decided here, and REQ **v1.8** resolved it: the default is **12,500**, which admits the
+worst standing case (10,859 + 1,200 = 12,059) with headroom, where the retired `8000` admitted the
+project-level set plus about two feature lines. Nothing in this design changed when the default
+moved — the bound is a parameter, the order is the mechanism, and both are correct at either
+value; only the arithmetic above is restated on the resolved figure.
 
 Both bounds are applied by the same loop, whole line at a time: while the rendered index exceeds
 `maxEntries` lines **or** `maxBytes` bytes, drop the next line in omission order. A single line that
