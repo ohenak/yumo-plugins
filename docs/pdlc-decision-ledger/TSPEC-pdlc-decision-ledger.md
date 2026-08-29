@@ -14,7 +14,48 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 1.0 | 2026-08-29 |
+| Draft | se-author | 1.1 | 2026-08-29 |
+
+**v1.1 — round 10's two confirmation findings, and the owned-list count given one home.** Upstream
+is unmoved and was re-measured at HEAD before this edit (REQ **v1.9**
+`sha256:ce6b133f…3c7b7c`, FSPEC **v1.3** `sha256:2bd5c3ef…5aed39`, Baseline **v1.2**); neither
+changelog names a new `BR-`/`E-`/`AC-` or vocabulary row since v0.5, so nothing is absorbed and no
+pin advances. The four corpus literals (6,305 / 10,859 / 12,059 / 441) are unchanged. Sections
+touched: §7.3 and this changelog, nothing else. No approved decision is re-litigated.
+
+**PM F-01 / TE F-01 (Medium, both reviewers, same clause) — the cited slicer cannot see a `const`
+declaration.** §7.3 grounds its declaration-anchored slicing in `loopEconomicsAnchorGuard.test.js`'s
+`bodyOf` over `allTopLevelDecls`, and the rule it states — slice to the *next top-level declaration
+of any name* — is the right rule; the citation was the incomplete half. That file's `DECL_RE`
+matches `function` declarations only, which is sufficient there because its own census set is a
+builder set of functions, and insufficient here because eight of the fourteen owned declarations are
+top-level `const`s. A verbatim clone would find no boundary at a catalogue's declaration line, leave
+that catalogue's body in the scanned remainder, and red the census on its own literals — the exact
+red-by-construction shape v0.9's slice-every-owned-declaration repair removed. §7.3's *Scanned
+source* row now requires the cloned regex to recognise top-level `const` and `let` bindings
+alongside `function`, and records that the non-empty-slice and resolves-to-exactly-one conjuncts are
+what catch a regex that missed a declaration form — a name the regex cannot see reddens rather than
+silently widening the census.
+
+**PM F-02 (Low) — "roughly a dozen" read low against the enumeration in the same cell.** The exact
+figure was available and is stronger: the *Forbidden token set* row now cites fourteen.
+
+**TE F-02 (Low) — `renderDecisionLedgerBlock` is declared in §4.3, not §4.4.** The *Scanned source*
+row cited "§4.1/§4.2/§4.4's six functions"; it now reads §4.1–§4.4 and names all six, with the
+renderer's section called out so the mis-citation cannot be reintroduced.
+
+**TE F-03 (Low) and the routed se-review erratum — where the census constants live, and how big the
+owned list is.** Both are the same request from two directions, and v1.0 answered the first: the
+three census constants are declarations of the census **test file**. What v1.0 left implicit was the
+*consequence* for the count, which is what the routed item observes is contradicted downstream — a
+downstream document still carries a fifteen-member owned list and a production home in
+`orchestrate-dev.js` for `DECISION_LEDGER_CENSUS_TOKENS`, both of which v1.0 retired. Rather than
+restate the arithmetic at each site that needs it, §7.3 now states **six ∪ eight = fourteen** in one
+paragraph, declares that paragraph the sole home of the count, and states the correction direction
+explicitly: a downstream fifteen-member list, or a production home for any of the three, is stale
+against this section and is corrected downstream-to-here, never the reverse. Single-siting the count
+is the `pdlc-wave-resume` lesson applied — a count restated at seven sites is a one-row edit that
+goes stale at six of them.
 
 **v1.0 — Phase P erratum: the three census constants given a stated home, and removed from the
 owned-declaration list.** Upstream is unmoved and was re-measured at HEAD before this edit (REQ
