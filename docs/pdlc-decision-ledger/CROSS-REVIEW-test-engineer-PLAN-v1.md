@@ -485,16 +485,78 @@ assertion in this PLAN transcribes the number.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | T-02 records the reviewer-prompt stream by driving exported `reviewLoop`, and T-18 adds a `main()` wiring block. If a future edit moved the ledger append from `reviewerPrompt` into `main()`'s `wrappedDispatch`, would any test in this PLAN notice? I believe not — T-02's recording would be unchanged and T-11's census would still find the tokens inside an owned region. Is that acceptable, or should T-11's census additionally assert the wiring block's sentinel run is bounded *and* that `reviewerPrompt` is the only appender? |
+| Q-02 | T-09(d) asserts `10,859 ≤ maxBytes − 1200` with a stated 441-byte margin, and the framing budget is pinned at ≤1,200 bytes by T-06. Those two literals are one-for-one coupled (the PLAN says so). Should T-06's budget assertion and T-09's margin assertion cross-reference each other in-test — e.g. by both importing a single transcribed `FRAMING_BUDGET = 1200` from the fixture — so that raising one without the other fails, rather than leaving the coupling to a prose note? |
+| Q-03 | T-20 stages `pdlc/workflows/dist/` and bumps `pdlc/.claude-plugin/plugin.json`, and `documentOracles.test.js:275` asserts the shipped plugin version "is bumped past the post-sweep baseline and satisfies `pdlcPluginCompat`". Does T-20's bump target need to be a literal in the PLAN, or is "bump" sufficient given that oracle checks a range rather than a value? |
+| Q-04 | The three `[red]` batch-2 modules that will remain `test.skip` across batches 3–7 (T-07 un-skipped at 6, T-08/T-09 at 7, T-10/T-11 at 8) are skipped for four to six waves. Is there an intermediate check that a skipped module still *parses and imports*, or does a skipped module's stale import of a not-yet-existing symbol go unnoticed until its un-skip wave? |
 
 ## Positive Observations
 
-_pending_
+- **The batch column is mechanically perfect.** I re-derived all 21 rows from their declared edges
+  independently; 21/21 match, the graph is acyclic, ids are unique, every dependency resolves. That
+  is rare and it is the single thing a dispatcher actually reads.
+- **The one-file constraint is handled honestly.** Rather than pretending six tasks can write
+  `orchestrate-dev.js` concurrently, the PLAN serialises them one-per-batch with **real dependency
+  edges**, and says explicitly that this is the dominant shape of the document. A prose note would
+  have been unenforceable; the edges are not.
+- **The anti-echo commitments section is exemplary.** Naming the three places an expectation could
+  be derived from the code under test — T-09's statements and byte literals, T-07's oracle model
+  carrying its own transcribed formatter rather than calling the production renderer, T-02's
+  hand-transcribed `EXPECTED_MERGE_BASE_SHA` — and closing each one, is exactly the discipline that
+  keeps a green suite meaningful. T-07's separate formatter under `DEC-DECLEDGER-11` is the
+  strongest of the three.
+- **Mutation proofs are written as acceptance conditions, not aspirations.** T-07's four named
+  mutations and T-02's three-step proof both require the mutation applied, observed red, reverted,
+  and the observed failure transcribed into the test file's header. That is a falsifiability
+  obligation an implementer cannot quietly skip.
+- **Set equality is used where it bites and refused where it would be brittle.** T-12 asserts
+  containment at the top level and set equality inside the block; T-04 set-equals C-3's key
+  enumeration; T-11 set-equals the census tokens against the exported symbol set, which is the
+  conjunct that stops a later symbol escaping the census. The PLAN also correctly refuses set
+  equality on T-09's 12,059-byte block total under `DEC-DECLEDGER-16`.
+- **The census non-vacuity conjunct is present.** T-11 asserts each brace-matched slice is non-empty
+  *before* counting. An empty slice silently making a census vacuous is the classic false-green here,
+  and the PLAN names it.
+- **T-03's frozen fixture is the right call for the right reason.** I verified both counts (25 at
+  `8c673a09f`, 26 live); the PLAN's reasoning — that a live read reddens the moment the next feature
+  records a decision — matches the whole-tree-walk failure class `CLAUDE.md` already documents.
+- **T-08's `_readFile` double distinguishes `null` from `throw`** and requires both to degrade one
+  entry rather than the corpus, carrying forward a shipped lesson rather than rediscovering it. The
+  `_log` conjunct — that the observability line is live in production, not only under doubles — is
+  the same kind of carried-forward lesson.
+- **F-1…F-14 and AT-01…AT-18 both have complete, gap-free ownership tables.** I checked both against
+  the upstream enumerations: no missing row, no invented id.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+Four High findings. To resolve them:
+
+1. **F-01** — add a batch-1 task owning `documentOracles.test.js` that adds `decisionLedger` to the
+   test-file census exclusion list, with a positive control that the filtered count is still `102`.
+   Without this the first wave gate halts.
+2. **F-02** — correct the Verification section's claim about the coverage gate, and give a task (and
+   a Definition-of-Done bullet) ownership of
+   `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs`'s outcome over this feature's
+   introduced ranges in `orchestrate-dev.js`.
+3. **F-03** — add a batch-2 red row, un-skipped by T-18, that drives `main()` with the flag on and
+   off, asserting a call-count runtime oracle on the `_git` seam, a positive presence conjunct on the
+   reviewer prompt, and the paired positive for the disabled arm.
+4. **F-04** — give T-19's `documentOracles.test.js` entry a red predecessor: a disclosure oracle
+   deriving `OPERATIONS.md`'s omission-reason, notice and config-key lists from the production
+   constants by set equality.
+
+The Medium and Low findings (F-05…F-08) are recorded and non-gating; F-05 folds naturally into F-03's
+new task and F-07 into T-05/T-06's existing rows.
+
+Everything else in this document holds up under mechanical checking, and the batch DAG, the anti-echo
+commitments and the mutation obligations are better than the phase average. The four findings are
+additions, not rewrites.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 4, "medium": 3, "low": 1}
