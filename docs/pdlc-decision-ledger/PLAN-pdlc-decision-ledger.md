@@ -142,7 +142,79 @@ batches connected by the real edge chain T-13 → T-14 → T-15 → T-16 → T-1
 
 ## Dependencies
 
-*(pending)*
+### Ordering constraints that are not code dependencies
+
+- **T-02 must complete before any production change (TSPEC §7.4, §9.3 T-1).** The byte-identity
+  baseline is only valid if captured at a point where `pdlc/workflows/orchestrate-dev.js` is
+  byte-identical between the merge base and branch HEAD. This is enforced as a **real `Deps` edge**,
+  not a prose note: T-13 carries `T-02`, and every later green inherits it transitively through the
+  serial chain T-13 → T-14 → T-15 → T-16 → T-17 → T-18. T-10 also carries `T-02` because it compares
+  against the recording. This is the same requirement, for the same reason, that
+  `PLAN-pdlc-loop-economics.md` §2 records for its own `T-02`.
+- **T-03 must complete before any corpus assertion.** T-08 and T-09 carry `T-03` explicitly. The
+  fixture is a **frozen copy at `8c673a09f`**, never the live tree: the live enumeration already
+  returns 26 in-scope files against the fixture's 25, because this feature's own
+  `DECISIONS-pdlc-decision-ledger.md` landed after the Baseline commit. A live read would redden on
+  the next feature that records a decision — the `coveredViolations` whole-tree-walk failure class
+  recorded in `CLAUDE.md`.
+- **T-06 before T-15 is a budget edge, not only a red/green edge.** T-06 pins the framing at
+  ≤ 1,200 bytes; T-15 drafts `DECISION_LEDGER_RULE_TEXT` **to fit** it. If the drafted text does not
+  fit, the correct response is to shorten the text or re-open §3.6's arithmetic deliberately —
+  **never** to raise the literal, because §3.6's ~4,995-byte project-level headroom and `M-6b`'s
+  441-byte margin shrink one-for-one with any raise (`DEC-DECLEDGER-12`).
+- **T-16 depends on T-15 for a structural reason, not just ordering.** `DEC-DECLEDGER-11` makes
+  `renderDecisionLedgerBlock` the single producer of ledger bytes, and `selectDecisions` obtains
+  `renderedBytes` by calling it. The renderer must therefore exist before the selector.
+
+### Red-before-green edges
+
+Every `[green]` task lists its `[red]` task in `Deps` and names the same test file:
+
+| Red | Green | Shared test file |
+|---|---|---|
+| T-04 | T-13 | `decisionLedgerConfig.test.js` |
+| T-05 | T-14 | `decisionLedgerRecognise.test.js` |
+| T-06 | T-15 | `decisionLedgerRender.test.js` |
+| T-07 | T-16 | `decisionLedgerBounds.test.js` |
+| T-08, T-09 | T-17 | `decisionLedgerInjector.test.js`, `decisionLedgerCorpus.test.js` |
+| T-10, T-11 | T-18 | `decisionLedgerLoop.test.js`, `decisionLedgerCensus.test.js` |
+| T-12 | T-19 | `decision-ledger-config-example.test.js` |
+
+T-00, T-01, T-02 and T-03 have no red predecessor by construction: T-00 pins the existence of HEAD
+symbols and passes at HEAD; T-01 creates doubles; T-02 and T-03 create fixtures and their integrity
+guards, which pass against the artefacts they capture.
+
+### RED-terminal batch gate wording
+
+Batches 1 and 2 end **red by design** — the production symbols do not exist yet. A blanket "full
+suite green after every batch" is unsatisfiable there, so the gate for those two batches is:
+
+> The new tests are committed **skipped**, each block titled with the id of the `[green]` task that
+> un-skips it, each block having been run un-skipped once and observed to fail for the reason
+> transcribed into the test file's header; **and** the pre-existing suite is green.
+
+Batches 3–10 carry the ordinary gate: the full suite green after the batch.
+
+### Integration points
+
+| Integration point | Where | Touched by |
+|---|---|---|
+| The single `.claude/pdlc.config.json` read in `main()` (`readLearningsConfigSafely(readFileFn, LEARNINGS_CONFIG_PATH)`) | `pdlc/workflows/orchestrate-dev.js` | T-13 — adds a **fourth consumer** of the already-read text, never a fourth read |
+| `wrapperSeams` | same module | T-18 — adds `_injectDecisionLedger` alongside the shipped `_injectLearnings` |
+| `reviewLoop`'s parameter list | same module | T-18 — one optional seam, defaulting `null` |
+| `reviewerPrompt`'s parameter list (module-private; its only two call sites are inside `reviewLoop`) | same module | T-18 — one trailing parameter, defaulting `""` |
+| The run-level `notices` channel | same module | T-13 — two ids, on the established `NTC-{BLOCK}-{KIND}` convention; **no notice on the missing-block common case**, so a disabled run's report stays byte-identical |
+| The report object | same module | T-18 — `report.decisionLedger` present **only** when the injector is non-null |
+| `.claude/pdlc.config.example.json` (eight top-level blocks at HEAD) | repo root | T-19 — a ninth block; the engine disclosure test asserts **containment**, never set equality, over the top level |
+| `pdlc/workflows/dist/pdlc-cli.mjs` | generated | T-20 — rebuilt and staged **in the same commit** as the workflow-source change, per `CLAUDE.md`; the wave gate's `postWaveCommand` does the same after every wave that touches `pdlc/workflows/*.js` |
+
+### What this PLAN deliberately does not touch
+
+`MAX_REVIEW_ROUNDS`, `MAX_LIFETIME_ROUNDS`, `MAX_ERRATUM_FOLLOWUP_ROUNDS` (NG-5); any reviewer or
+author `SKILL.md` (NG-6, `DEC-DECLEDGER-05`); any file under `pdlc/engine/` other than the new
+`__tests__/decision-ledger-config-example.test.js` (NG-6); the delta-confirmation and
+finding-restatement prompt builders (`DEC-DECLEDGER-04`); and `DEC-LOOPECON-06`'s identity triple
+(BR-11 — pinned unchanged by T-10 and by T-11's census).
 
 ## Verification
 
