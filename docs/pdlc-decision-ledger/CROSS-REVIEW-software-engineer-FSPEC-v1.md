@@ -37,4 +37,19 @@
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
+
+Three High findings, all of them repairable inside this document without touching the REQ:
+
+1. **F-01** — restate §3.3's Partial leg over the *surviving subset* rather than over "one decision", so the leg conditions partition the failure space and §5's totality claim holds.
+2. **F-02** — give BR-8 / E-4 an observable, or say plainly that it has none at this altitude and route its coverage obligation accordingly. As written, AT-10 is an absence-only oracle whose stated discriminator names two cases with identical output.
+3. **F-03** — pin AT-01's expected set to `M-1d` ∪ the `M-2e` row of the feature its fixture dispatch reviews, so the sole oracle for REQ-DECLEDGER-01 is a determinate transcription and does not exceed the `maxEntries` default it is asserted under.
+
+The Medium findings (F-04 precedent mis-citation, F-05 BR-1's biconditional, F-06 AT-14's missing positive) should land in the same revision; the Lows are wording.
+
+Nothing here questions the shape of the feature: the split of concerns is right, the routing to TSPEC is correctly drawn, and the disabled-path guarantee is cheap to honour at the seam that already exists.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 3, "low": 2}
