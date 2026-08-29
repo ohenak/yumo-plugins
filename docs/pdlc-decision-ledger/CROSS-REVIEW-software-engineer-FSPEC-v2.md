@@ -69,3 +69,34 @@ rather than open — correctly, since the example config discloses all three shi
 - **Every code and Baseline claim I spot-checked this round holds**: `M-2e`'s per-feature counts,
   `M-3a`'s twice-opened enumeration, `M-4d`'s 4-records-plus-8-headings file and its owning feature,
   and the example config's three disclosed blocks.
+
+## Recommendation
+
+**Approved with minor changes**
+
+All three v1 High findings are resolved, and resolved at the right altitude — F-01 by restating the
+legs over the surviving subset so they partition, F-02 by admitting BR-8 has no dispatch-visible
+consequence and routing the discriminator to O-7, F-03 by pinning AT-01 to two named features whose
+expected sets I could transcribe and check against the Baseline by hand. The four Mediums and one
+Low from v1 landed in the same revision. Nothing in the changed sections is blocking.
+
+The three findings above are all inside §3.1/§5/§6's configuration enumeration and should land
+together in one edit, since F-02's count word depends on how F-01 settles the block-level condition:
+
+1. **F-01** — define block-level malformation as "the file does not parse, or `decisionLedger` is
+   present and is not an object", matching the shipped `sectionMalformed` condition, so §3.1's
+   exactness claim is true.
+2. **F-02** — bring E-1's enumeration and AT-05's count word into agreement with that definition.
+3. **F-03** — drop `valid` from AT-11's fallback cross and state the all-valid control separately.
+
+One item is routed upstream rather than fixed here: the REQ's AC for REQ-DECLEDGER-01 still names
+the expected value as "`M-1d` project-level, `M-2e` per feature directory"
+(`docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md:189`), which reads as all 100 feature-level
+ids and so contradicts the same REQ's G-1 scoping to the reviewed document's feature — the
+ambiguity the FSPEC has now resolved locally in AT-01. Since the REQ is the authority AT-01 cites,
+it should say the same thing. Emitted as an erratum.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
