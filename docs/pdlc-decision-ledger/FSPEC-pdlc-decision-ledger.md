@@ -265,7 +265,7 @@ contribution to total dispatch size, and not the underlying records. Both hold s
 is abbreviated to fit, the dispatch is not oversized, and construction is not aborted. Which lines
 are omitted is TSPEC's (O-1); that the bounds hold afterwards is this rule. *(-07)*
 
-## 5. Edge Cases & Error Scenarios
+## 5. Edge Cases and Error Scenarios
 
 Rendering is **total**: every case below has one stated outcome, and no case is left to an
 engineer's discretion. Cases marked *(no HEAD instance)* have no witness in the standing corpus and
