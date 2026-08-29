@@ -102,8 +102,47 @@ add it to the reconciliation's list.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | PROP-DISC-09 asserts the nine-name list by "set equality". I read the left side as *the subset of the nine that actually imports*, compared against the nine-name literal — non-vacuous, since a dropped symbol shrinks it. If instead the intent is "the module's export set equals the nine names", that is false at HEAD (`orchestrate-dev.js` exports far more) and the test cannot be written. Worth one clause fixing which side is which; the batch-1 guard is only as good as that. |
+| Q-02 | My v1 Q-03 (whether FX-CORPUS's per-file digests must be re-transcribed if an unrelated feature rewrites one of the 25 `DECISIONS-*.md` on `main`) is now partly answered by PROP-DISC-10 — the guard reds on drift. It still does not say what the operator should **do** when it reds. Is the intended remedy always "the fixture is frozen at `8c673a09f`; investigate why it moved", never "re-capture"? If so, that sentence belongs in PROP-DISC-10's failure text, since re-capture is the reflex a digest mismatch invites. |
+
 ## Positive Observations
 
+- **Every repair is grounded, not asserted.** PROP-CFG-06's new positive conjunct does not just demand
+  a return value — it derives the specific value (`sectionMalformed: false`, not `true`) from the
+  shipped `parseLearningsConfig` short-circuit, and I confirmed the derivation line for line at
+  `orchestrate-dev.js:2268` and `:2271`. That is the difference between closing the absence-only hole
+  and moving it.
+- **The pyramid repair replaced an unfalsifiable claim with a checkable one.** "101 properties over 11
+  families, `10 + 11 + 9 + 6 + 12 + 11 + 5 + 10 + 11 + 6 + 10 = 101`" is mechanically verifiable from
+  the document's own rows in one command, and it verifies. The superseded reading is retracted in
+  place, with the reason (BND double-counted, OFF and DISC outside the breakdown), so a reader of the
+  next revision cannot re-derive the old number by accident.
+- **The module manifest is the right shape for the "none orphaned" claim.** Owner *and* batch per row,
+  set-equal to `PLAN`:145–186 in both directions over test files, with T-20's module-less-ness stated
+  as a design fact rather than papered over. I checked all fourteen rows against `PLAN`; every owner
+  and batch matches.
+- **PROP-DISC-09 and PROP-DISC-10 are genuinely load-bearing, not id-assignment for its own sake.**
+  PROP-DISC-09's "existence only, so it passes at HEAD" clause is the correct discipline for a
+  green-at-both-ends batch-1 guard, and PROP-DISC-10's two-way pin (path set **and** per-file digest)
+  is what keeps ORC-01's transcribed byte literals honest against a silently re-synced fixture.
+- **PROP-OFF-06's promotion to AT-14 names the right property.** "All three zero cases produce a
+  dispatch byte-identical to PROP-OFF-01's stream … no rule text standing alone above a missing index"
+  is the criterion AT-14 states, and pairing it with PROP-FAIL-06 on the same row — with the reason
+  spelled out, that a zero-record corpus shares E-6's bytes with a *failed* read — is exactly the
+  absence/positive pairing this review asks for elsewhere.
+
 ## Recommendation
+
+**Approved with minor changes**
+
+My one High from v1 is resolved and the fix is the right one: the census exclusion is T-00a's batch-1
+obligation, so the batch-1 required-check red I diagnosed cannot occur. Seven further findings are
+resolved, none regressed, and every claim the delta adds reproduces at HEAD. Two Mediums and a Low
+remain, all in the same neighbourhood — the DISC family's task attribution (F-01) and the one `PLAN`
+conjunct that still has no property (F-02), plus a stale range in §Overview (F-03). None of them
+blocks: they are traceability repairs the author can land in a single pass, and none changes a
+property's content, a fixture, or a byte literal.
 
 ## Verdict
