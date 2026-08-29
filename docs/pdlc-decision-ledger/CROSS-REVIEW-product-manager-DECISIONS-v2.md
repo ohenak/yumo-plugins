@@ -75,4 +75,26 @@ FINDING: Medium | delta | local | Context §"Measurements are cited, never resta
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All five v1 findings are resolved, both Highs substantively rather than cosmetically: the stale
+justification layer I objected to is gone, and the arithmetic is not merely corrected but re-argued
+so that the conclusions survive the next move of the same literal. I re-verified the revision's
+factual claims rather than its prose — REQ v1.8's non-negative typing and 12,500 default
+(`REQ-…:22-25`, `:172-173`), Baseline v1.2's `M-7a`/`M-7b`/`M-7c` (`pdlc-decision-corpus-baseline.md:109-111`),
+the `MODULE_NAMES` four-entry list (`prepack.mjs:20`), PROP-DIS-06's count and slicer, and the
+TSPEC census slices DEC-DECLEDGER-09's new row depends on — and every one holds.
+
+The single Medium is not gating and needs one clause, not a round: note in the Context measurement
+rule that TSPEC §3.6's derived headroom figures are pre-raise pending `ERR-2`'s propagation, so the
+document's own 11,300 / 441 / 4,995 are the current ones. Take it or leave it at the author's
+discretion; the phase should not spend a round on it.
+
+The real remaining work is upstream and is routed as errata against TSPEC, which is still pinned at
+REQ v1.7 / Baseline v1.1 and has not absorbed v1.8. That is TSPEC's to land, not this document's,
+and this document is correct against REQ v1.8 today.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
