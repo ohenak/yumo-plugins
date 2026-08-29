@@ -11,11 +11,23 @@ depends-on:
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5}.md` |
+| Post-Mortem | `POSTMORTEM-R-pdlc-decision-ledger.md` (Phase R round budget exhausted; this version applies its Recommendation) |
+| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.0** — the measured extent of the closed-decision corpus, cited by `M-*` id |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.5 | 2026-08-28 |
+| Draft | pm-author | 1.6 | 2026-08-28 |
+
+**v1.6 disposition — corpus facts routed, not re-argued.** Per the post-mortem's Recommendation 1
+form (a) and the 5g split trigger, the corpus-recognition rule is removed from §2 G-1 and the
+measurements it carried are relocated — not deleted — to the Baseline above. The five findings
+open at round 5 are dispositioned as **routed** there, not as five further in-place clauses:
+TE F-23 (last-record-wins on the twice-opened block) → M-3a–M-3d; TE F-24 and its Q-02
+(cross-file tie-break) → M-5a–M-5c; TE F-25 (feature-leg directory unpinned) → M-2a; SE F-01
+(second `DECISIONS-*.md` in a feature directory, and the floor that follows) → M-2c and M-6b.
+SE F-02 (the cross-file leg has no HEAD instance) is not a REQ defect and is carried forward as a
+PROPERTIES obligation, O-5. Findings are not restated here; see the cross-review files.
 
 ## 1. Problem / Context
 
@@ -55,33 +67,24 @@ and a one-line statement of what it decided — plus a **source citation** namin
 and the record's heading. No other field is required; where a record carries an origin
 or evidence datum it may follow, and where it does not the line renders without it — not a
 defect. **In scope** is a derivable set, not a per-document relevance judgement, and **its unit is the
-individual decision, not the file**: a decision is in scope when it carries a decision id in the
-project's `DEC-{NAMESPACE}-{NUMBER}` convention (O-3) with `NUMBER` numeric, in a
-`DECISIONS-*.md` file under `docs/_decisions/`, or any `DECISIONS-*.md` file in the feature's
-own directory (`docs/{feature}/`, or `docs/completed/{feature}/` once shipped — a feature
-carrying a second such file contributes both, as `docs/completed/pdlc-headless-engine/` does),
-**on the line that is the decision's own record, not a line citing it**: the carrier is a
-**heading**, the id opening the heading's content after any heading marker or section number
-(`## 3. DEC-CONS-01: …`, `docs/completed/pdlc-consolidation-agent/`). The **distinct id is the
-key and the last record wins**: an earlier line naming an id that is recorded again later is
-superseded, so a twice-opened heading renders once, and where a file frames options before
-deciding it is the decision that renders — `DEC-LOOP-01`…`06` open under `## Options Considered`
-(`:237`–`:337`, questions) and again under `## Decision` (`:363`–`:582`) in
-`docs/completed/pdlc-engineering-loop/DECISIONS-pdlc-engineering-loop.md`, and the second is the
-record. Across files a record under `docs/_decisions/` wins over any feature-directory record —
-a decision promoted to project level renders in its promoted form — and otherwise the later
-record in byte order of the repository-relative path wins. No id at HEAD is recorded in two
-files, so that cross-file leg is satisfiable only against a constructed corpus.
-Three HEAD consequences then follow from the rule rather than stand beside it: `DEC-AWG-Q1`,
-occurring once in prose as a range shorthand in `DECISIONS-advisory-wave-gate-questions.md`, is
-a citation twice over (prose, non-numeric), so that file contributes zero lines; the three
-`CONSOLIDATION-PROPOSAL-*.md` files and `.consolidation-log.md` fall outside the file scope, the
-log's four line-leading corroboration items under its "Corroborated, not re-promoted" heading
-naming ids already recorded in sibling files besides; and a feature whose ids carry no namespace
-segment contributes zero lines (`DECISIONS-pdlc-plugin-retirement.md`, `### DEC-01` …) — by
-design here, normalisation being O-3's to own. A file with no decision record contributes zero
-lines: an ordinary empty result, not a failure. C-5's 41 is this count under `docs/_decisions/`. G-1's carrier form and
-key are the contract; O-1 routes only recognition detail within them. All sources exist today — this REQ mints no new record file type, adds no field to any existing
+individual decision, not the file**: the project's closed decisions, plus those of the feature
+whose document is under review.
+
+**This REQ states the outcome of that set, not the predicate that recognises it.** The outcome is
+that every closed decision in scope renders exactly once, and that no rendered line is
+unrenderable at its own source — the citation names a real record, and the statement field says
+what was decided rather than what was asked. The **measured extent** of the set — which files
+contribute records and how many, which contribute none and why, the one id block opened twice and
+which of its two openings decides, and the fact that no id is recorded in two files — is taken
+once against a named commit and recorded as `M-1`…`M-6` in the Baseline
+(`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.0), cited here by id and not restated.
+The **recognition rule** that produces that set on any other corpus — carrier markup, id grammar,
+the dedupe key, cross-file precedence — is TSPEC's (O-1). This division is deliberate: a
+recognition rule over a live, growing corpus is not requirements material (pm-author altitude
+rule 5f), and pinning it here is what the Phase R post-mortem identifies as the loop that
+exhausted the round budget.
+
+All sources exist today — this REQ mints no new record file type, adds no field to any existing
 record shape, and does not require every feature to author one.
 
 **G-2 (never-re-litigate rule is reviewer-side, config-gated, default off, one key with G-1 —
@@ -162,7 +165,7 @@ not left to TSPEC to invent:
 | Key | Default | Type | Config owner | Rationale |
 |---|---|---|---|---|
 | `decisionLedger.enabled` | `false` | boolean | operator, `.claude/pdlc.config.json` → `decisionLedger` | Tier 3: off by default per proposal §6 |
-| `decisionLedger.maxEntries` | `70` | positive integer | operator, same block | Measured floor at HEAD: 41 ids under `docs/_decisions/` + largest feature directory (22 — `docs/completed/pdlc-headless-engine/`, 14 + 8 across its two `DECISIONS-*.md` files) = 63, plus headroom; a default under the standing corpus drops a line on day one |
+| `decisionLedger.maxEntries` | `70` | positive integer | operator, same block | Floor taken once against the Baseline's named commit and cited, not re-derived here: `M-6b` (63), with `M-6c` recording that 70 clears it by 7. A default below `M-6b` drops a line against the standing corpus on day one |
 | `decisionLedger.maxBytes` | `8000` | positive integer | operator, same block | Author default by analogy to `learningsInjection.maxBytesPerDocument` (6000) / `maxTotalBytes` (20000); vetoable per A-1 |
 
 `maxBytes` bounds **the rendered index text alone** — the index block as it appears in the
@@ -182,9 +185,12 @@ material (O-1).
 **When:** a dispatch prompt for a document under review is constructed.
 **Then:** the prompt includes a rendered index with one line per decision in G-1's in-scope set,
 each line carrying the decision id, a one-line statement and a source citation as G-1 defines it,
-and no other required field. Derivable, so the
-expected index is checkable as **set equality, not containment**, over G-1's in-scope set;
-over-budget omission is REQ-DECLEDGER-07's alone. The index reflects records as they exist at
+and no other required field. The check is **set equality, not containment** — but over a *pinned*
+corpus, not over a predicate re-derived from this document: the expected set is the measured
+extent recorded in the Baseline (`M-1`, `M-2`, `M-3`) at that file's `Verified at` commit, and
+equality is asserted against those ids. Membership on any other corpus follows from the
+recognition rule TSPEC owns (O-1) and is not asserted here, so nothing in this criterion obliges
+the REQ to state that rule. Over-budget omission is REQ-DECLEDGER-07's alone. The index reflects records as they exist at
 dispatch-construction time, never a snapshot carried forward within the round window (mirrors
 the shipped `REQ-LOOPECON-01b` recompute-at-dispatch contract).
 
@@ -226,7 +232,8 @@ dispatch-construction time.
 **When:** the dispatch prompt is constructed.
 **Then:** where **every** source is unavailable, the dispatch falls back to REQ-DECLEDGER-02's
 disabled behavior — no index, no rule text. Where **one decision of several** fails to render,
-that line is omitted and the rest render (files with no decision record are not this path — G-1): a decision
+that line is omitted and the rest render (a file holding no decision record is an ordinary empty
+result, not this path — Baseline `M-4e`): a decision
 absent from the index is one a reviewer may freely challenge, the safe direction. Neither path is a halt or a new operator-facing failure class;
 it degrades as `learningsInjection`'s fail-open path does.
 
@@ -318,10 +325,15 @@ and REQ-DECLEDGER-07 pinning the bound whatever the values.
 ## 7. Obligations / Open
 
 **O-1** Which lines are omitted when the set exceeds `maxEntries` / `maxBytes`
-(REQ-DECLEDGER-07) is TSPEC material, as is recognition detail *within* G-1's carrier form
-(heading numbering, bold or backticked ids). Membership is *not* routed: G-1 fixes the carrier
-form, the last-record-wins key and the cross-file precedence, so adding a carrier form — a table
-row, a list item — is a REQ revision, not a TSPEC choice.
+(REQ-DECLEDGER-07) is TSPEC material. So, in full, is the **recognition rule** for a decision
+record: carrier markup, id grammar, the key that resolves an id recorded more than once in a
+file, and precedence across files. G-1 routes membership deliberately and states only the
+outcome; the Baseline supplies the measured extent to build against, including the three cases a
+rule has to survive — the twice-opened block whose second opening is the deciding one (`M-3c`),
+the file mixing records with question headings and back-references (`M-4d`), and the absence of
+any cross-file duplicate to calibrate precedence on (`M-5a`, `M-5c`). A TSPEC choice that renders
+a set differing from `M-1`/`M-2`/`M-3` at the Baseline's commit fails REQ-DECLEDGER-01; within
+that constraint the rule is TSPEC's to design.
 
 **O-2** Whether the wiring needs a `SKILL.md` edit or can go through dispatch construction is a
 TSPEC choice (NG-7). Either path stays config-gated (C-1/C-2).
@@ -333,10 +345,18 @@ material.
 **O-4** The identity of C-2's committed baseline, and the pinning that stops a re-capture
 silently satisfying REQ-DECLEDGER-02, is TSPEC material.
 
+**O-5** *(carried forward from cross-review, owner te-author.)* Cross-file precedence has **no
+instance in the corpus** — `M-5a` records zero ids held as records in two files — so it cannot be
+covered by transcribing anything that exists. PROPERTIES owes it a **synthetic fixture**: a
+constructed two-file corpus recording one id in both a project-level and a feature-level file,
+exercising the precedence leg that `M-5c` names the intent of. This is a coverage obligation, not
+a REQ defect, and it is recorded here rather than answered by adding a rule to G-1.
+
 **Assumptions.** Authored in an orchestrated dispatch; these are explicit, operator-vetoable
 assumptions rather than blocking open questions:
-- **A-1** `maxEntries` (70) derives from a HEAD measurement (C-5); `maxBytes` (8000) remains a
-  `learningsInjection` analogy, not measured. An operator may revise
+- **A-1** `maxEntries` (70) derives from a measurement taken once against the Baseline's named
+  commit and cited by id (C-5, `M-6b`/`M-6c`), not re-derived per revision; `maxBytes` (8000)
+  remains a `learningsInjection` analogy, not measured. An operator may revise
   either before FSPEC authoring without a REQ revision.
 - **A-2** Same rollout posture as `pdlc-loop-economics` (config-gated, default off); Tier 3 risk
   (Medium, proposal §0) is read as requiring it, not merely permitting it.

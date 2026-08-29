@@ -9,7 +9,7 @@
 | Author | pm-author |
 | Date | 2026-08-28 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -144,3 +144,11 @@ from a definition still under revision was never going to hold.
 **Not blocking, carry forward:** SE F-02 (the cross-file tie-break has no HEAD instance) is a
 genuine coverage gap for PROPERTIES, not a REQ defect — record it as a synthetic-fixture
 obligation for te-author rather than fixing it in the REQ.
+
+**Provenance**
+- Engine version: 0.2.4
+- Plugin version: 0.23.4
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
