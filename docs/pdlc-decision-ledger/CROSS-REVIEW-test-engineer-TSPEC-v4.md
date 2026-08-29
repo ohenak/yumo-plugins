@@ -83,3 +83,44 @@ Severity Medium, not High, and deliberately: the assertion as written still fail
 it exists to catch, still pins 6,305 by transcription, and still asserts set equality over the 41
 ids. Nothing in it is unfalsifiable. What is wrong is the input's provenance and one sentence's
 claim about it.
+
+## Numbers re-executed in the changed sections
+
+| Claim | Verified |
+|---|---|
+| The corpus totals 141 records (41 project-level + 100 feature-level) | §3.5's table: 41 project-level distinct ids, 100 feature-level summed over directories. The arithmetic in §7.3's "141" is right; only its description as an in-scope set is not |
+| `pdlc-headless-engine` is 22 lines / 4,553 bytes; the 63-line in-scope set is 10,859 index bytes and 12,059 with framing | 6,305 + 4,553 + 1 joining newline = 10,859; 10,859 + 1,200 = 12,059. ERR-2's re-attribution is exact, including the newline the join contributes |
+| ~495 bytes ≈ three feature-level lines at the mean | 8,000 − 1,200 − 6,305 = 495; 495 / 183 = 2.7 → three at the smallest directory mean, 495 / 261 = 1.9 → two at the largest observed line. §3.6 and ERR-2 are now both right; §7.3's note is the one place still carrying the retired figure (F-02) |
+| On a 63-record build the byte bound, not the entry cap, is the cutter | 63 ≤ `maxEntries` 70 (slack); 10,859 > 6,800 (binds). On the 141-record build both bind and the entry cap cuts first — Q-01 |
+| `advisoryDisabled.test.js` matches the learnings sentinels by exact literal | `:718–719` — two `source.indexOf` calls on the full comment strings; no shape match, no regex. §2.3's new paragraph is accurate |
+| `orchestrate-dev.js` carries exactly one sentinel pair today | `:2184` START, `:2892` END — the only two occurrences in the file, which is also what §7.3's census paragraph asserts |
+
+## Positive Observations
+
+- **The High was fixed by deletion, which is the lesson v3 tagged `Process`.** Two consecutive
+  rounds had corrected a rule by adding the correction beneath the superseded sentence. This round
+  the superseded clause is gone (`6d5a7b00c`) and §7.5 now reads as one instruction. The section is
+  the strongest argument in the document again, and this time it does not have to be read past a
+  sentence that contradicts it.
+- **D-10's fix went beyond the finding on the two axes that matter.** I asked for a binding
+  `omitted[]`; the revision also converted conjunct (1) into a **set equality** over the 41
+  project-level ids, added the non-empty guard explicitly, and partitioned `omitted[]` by origin
+  rather than asserting a bare absence. Conjunct (3) now names what *does* happen instead of only
+  what does not — the shape this pipeline's oracle checks ask for everywhere.
+- **The "what conjunct (3) deliberately does not say" note is exactly the right restraint.** Pinning
+  the surviving feature-line *count* would churn on any line-format change without naming a defect.
+  Saying so, and locating the falsifier in the origin partition, tells the implementer where the
+  test's value lives — the kind of note that keeps a suite from accreting brittle assertions.
+- **PM Q-01's answer is stated as a prohibition, not a reassurance.** "Both transcribed literals …
+  hand-transcribed from the fixture, never derived at test time from the renderer or from a
+  manifest", with the reason (deriving 6,305 defeats the drift pin, deriving the ids echoes the code
+  under test) and the manifest exclusion the §7.4 baseline guard already established. That is a
+  no-implementation-echo rule an implementer can obey mechanically.
+- **§2.3's answer to my Q-01 cites the slicer, not the intent.** It could have said "the regions are
+  different"; instead it names the exact-literal `indexOf` calls and draws the consequence in both
+  directions — the wiring stays inside PROP-DIS-06's count, §7.3's own census excludes it — and
+  closes with the warning to a future reader. Both operands verify at HEAD.
+- **ERR-2's correction moved a number onto the object that owns it.** 12,059 was a fact about the
+  63-line in-scope set the whole time; attributing it to a directory made the directory look twice
+  its size. The corrected form now also states the directory's own 4,553, so the upstream reader
+  gets both quantities rather than a corrected one.
