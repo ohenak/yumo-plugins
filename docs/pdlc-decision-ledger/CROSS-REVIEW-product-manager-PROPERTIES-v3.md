@@ -121,11 +121,61 @@ BR-11 through this paragraph is told the census is safe for a reason TSPEC has w
 
 ## Oracles
 
-_TBD_
+Two oracles are implicated by the delta; one is unaffected, one loses an assertion it was assigned.
+
+**The source census (ORC's INV leg, `decisionLedgerCensus.test.js`, owner T-11 → T-18).** The
+oracle's shape survives — it still scans `orchestrate-dev.js`, still asserts zero occurrences, still
+clones `loopEconomicsAnchorGuard.test.js`. What changes is its two operands, and the oracle is
+specified in PROPERTIES only through PROP-INV-06…08. With those three rows carrying retired wording,
+the oracle as specified here is unimplementable-as-written (F-01, F-02) and its non-vacuity guard is
+under-stated (F-04). One consequential detail for whoever repairs it: the v1.0 erratum establishes
+that `DECISION_LEDGER_CENSUS_TOKENS`, `_CENSUS_EXEMPT` and `_OWNED_DECLS` are declarations **of this
+test file**, and that "the census never scans the file the three are declared in". PROPERTIES' own
+§Module manifest assigns PROP-INV-06…10 to `decisionLedgerCensus.test.js` without recording that
+those three constants live there, which is now the fact that makes the partition check coherent —
+worth stating so the next reader does not re-derive the erratum's defect.
+
+**The live composition-root arm (`PLAN` T-10a, PROP-WIRE-04/05).** Conjuncts 1 and 2 are untouched
+and their properties hold: the `_git` call-count spy on the served reviewer flow (PROP-WIRE-04) and
+the positive "prompt ends with the block" assertion (PROP-WIRE-05) both still transcribe §7.2
+faithfully. **Conjunct 3 is rewritten and has no property (F-03).** It now reads: "the `report`
+object **the flag-off `main()` run itself returns** has a key set whose symmetric difference from the
+flag-on run's key set is exactly `{decisionLedger}`, asserted as a set equality in both directions
+so a spuriously added or dropped key on **either** arm fails". Three things in that sentence are new
+and none is asserted anywhere in PROPERTIES: the *paired-run* referent, the *symmetric difference*
+formulation, and the *both-directions* requirement that catches a dropped key as well as an added
+one. §5.4's new paragraph makes the stakes explicit — "Deleting that arm deletes the field's only
+evidence" — which is precisely the situation a property is supposed to make un-deletable.
+
+This is the DC-07 shape the pipeline has been burned by before: a live production-path assertion
+that exists in the spec, is named as an artifact's sole proof, and has no property obliging a test
+to carry it. PROP-WIRE-11 does not close it — it is a unit-level contract on the conditional spread
+(field absent, never `undefined`), asserted over the injector, not over two `main()` runs.
 
 ## Fixtures
 
-_TBD_
+**FX-BASELINE is being asked for data it does not contain (F-03, the other half).** PROP-OFF-05
+requires that "with the flag off, the `report` key set must be **set-equal** to FX-BASELINE's
+flag-off key set … and the emitted notice set must be **set-equal** to the baseline notices array".
+PROPERTIES' own FX-BASELINE section records exactly two recorded cases —
+`REVIEW-LOOP-REVIEWER-PROMPTS` (exported `reviewLoop`, reviewer-prompt streams) and
+`CONFIG-GATE-SPELLINGS` (four config texts through the config gate) — and explains the narrowness
+itself: a whole-`main()` recording "would red on this feature's own intended additions — the new
+notices, the new report field". So the fixture holds no `report` key set and no notices array to be
+set-equal *to*.
+
+TSPEC v0.9 reached the same conclusion and fixed it upstream: §7.2 now states that §7.4's recording
+"records one narrow case driving exported `reviewLoop` and captures reviewer-prompt streams, never
+`report` keys — §7.4 expressly rejects a whole-`main()` recording *because* it would red on this
+feature's new report field — so it cannot serve as the key-set referent". PROP-OFF-05 is the
+retired referent, preserved. As written it is not merely mis-pinned, it is unimplementable: the
+value it compares against does not exist in the artifact it names.
+
+The other fixtures are unaffected by this delta. FX-CORPUS (25 paths, per-file digests), FX-REPLAY
+and FX-FAILOPEN sit under §7.5/§7.6/§6.1, none of which the four commits touched, and the four
+corpus literals (6,305 / 10,859 / 12,059 / 441) are stated unchanged in the v1.0 changelog — I
+checked that claim against the diff and no literal moves. PROP-DISC-10's 25-path and digest census
+therefore still holds, as does PROP-BND's generator range.
 
 ## Delta-Confirmation Findings
 
