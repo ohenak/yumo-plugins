@@ -295,4 +295,5 @@ edits.
 
 ## Verdict
 
-<!-- written last -->
+VERDICT: Needs revision
+{"high": 2, "medium": 3, "low": 0}
