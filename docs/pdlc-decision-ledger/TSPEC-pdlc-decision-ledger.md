@@ -909,14 +909,40 @@ the pinned exclusion cases.
 
 **The shipped-default assertion (§3.6's headroom, D-10).** AT-01 deliberately runs with the bounds
 non-binding (§7.6), so without this the shipped configuration is never exercised anywhere. One
-assertion in this oracle closes that: build the project-level-only block over the frozen fixture at
-**C-5's shipped defaults** (`maxEntries: 70`, `maxBytes: 8000`) and assert three things — the
-rendered index-line bytes equal the transcribed literal **6,305**; that value is `≤ maxBytes − 1200`
-(§4.3's framing pin is the other half of this sum); and `omitted[]` contains no id whose `origin` is
-`"project"`. Transcribing 6,305 rather than merely bounding it makes corpus drift visible at the
-re-capture, which is the deliberate moment to re-decide ERR-2's default; the `omitted[]` conjunct is
-what fails if a future change re-orders the drop loop so a project-level line goes first. If ERR-2 is
-resolved by raising C-5's default, the assertion's threshold moves to the resolved value and the
+assertion in this oracle closes that: build the block over the **whole** frozen fixture — all 141
+in-scope records, project-level and feature-level, which is what a real dispatch gathers — at
+**C-5's shipped defaults** (`maxEntries: 70`, `maxBytes: 8000`), and assert three things:
+
+1. **The project-level half is admitted whole, and its size is pinned.** The set of rendered ids
+   whose `origin` is `"project"` is **set-equal** to the fixture's 41 project-level ids, transcribed
+   as a literal in the test file, and those lines joined by `\n` are the transcribed literal
+   **6,305** bytes.
+2. **The headroom that makes (1) true is stated as arithmetic.** `6,305 ≤ maxBytes − 1200`
+   (§4.3's framing pin is the other half of this sum).
+3. **No project-level id is dropped, over a set that is genuinely non-empty.** `omitted[]` is
+   non-empty and **every** id in it has `origin === "feature"`.
+
+Building over the whole fixture rather than the project-level slice is what makes conjunct (3) do
+work. At 141 records the byte bound **binds** — the drop loop must run, and §3.6's feature-level-first
+order is what decides who survives — so "no project-level id was omitted" is an absence asserted over
+a non-empty `omitted[]`, and it reddens under a reversed drop order, which is the mutation this
+assertion exists to catch. On the project-level-only slice it could not: 41 records against
+`maxEntries` 70 and 6,305 index bytes against a 6,800-byte allowance leave nothing to drop, so
+`omitted[]` is empty under *every* drop order and the conjunct is vacuously true. That is the same
+empty-by-construction shape this section's non-empty-slice guard for the census exists to prevent,
+and it is not repeated here (D-10's rejected alternative).
+
+Note what conjunct (3) deliberately does **not** say: it does not pin *how many* feature-level lines
+survive. Under the shipped bound roughly two do (§3.6's ~495 bytes of headroom against a 152–261-byte
+feature line), and that count is a renderer-arithmetic detail that would churn on any line-format
+change without naming a defect. The falsifier lives in the origin partition, not in the count.
+
+Both transcribed literals — the 41 ids and 6,305 — are **hand-transcribed from the fixture, never
+derived at test time from the renderer or from a manifest** (PM Q-01). Deriving either would make the
+assertion an echo of the code under test, and re-deriving 6,305 from the fixture would defeat the
+purpose of pinning it: transcribing rather than merely bounding it makes corpus drift visible at the
+re-capture, which is the deliberate moment to re-decide ERR-2's default. If ERR-2 is resolved by
+raising C-5's default, the assertion's threshold in (2) moves to the resolved value and the
 transcribed 6,305 stays — the corpus size is what is being watched, not the bound.
 
 **Source census for BR-11 / §5.5.** Alongside the behavioural replay of AT-16, one oracle reads
