@@ -139,7 +139,7 @@ constructed by the identical expression it is today.
 **`=== true`, not truthiness.** Every fail-open shape — absent block, wrong-typed value,
 unparseable file, malformed section — resolves `enabled` to the `false` default, and the read
 site compares with `=== true`, so all four spellings of "not enabled" collapse to one outcome
-(FSPEC E-1, AT-05).
+(FSPEC E-1, AT-05). *(Erratum ids raised by this document are prefixed `ERR-` throughout §9.2, so that a citation of `E-1` always means the FSPEC's edge case and never this spec's erratum.)*
 
 ### 2.4 Where the block is placed in the prompt
 
@@ -440,7 +440,7 @@ Validation mirrors `parseLearningsConfig` exactly: `boolField` for `enabled`, `n
 for the two thresholds. `nonNegativeInt` — not positive-int — is deliberate, because
 `maxEntries: 0` is a **valid** admits-nothing value that FSPEC E-7 requires to be treated as zero
 in-scope decisions rather than as an error or a fallback to the default. This diverges from REQ
-C-5's "positive integer" type label; see §9 E-1.
+C-5's "positive integer" type label; see §9.2, ERR-1.
 
 Divergence from `parseLearningsConfig` in one respect only: `enabled` defaults to **`false`**
 (REQ C-5, A-2), where learnings injection ships on. Both `parsePinCheckConfig` and
@@ -1062,7 +1062,7 @@ enforce it even if one wanted to.
 
 | Requirement | Business rules | Technical components |
 |---|---|---|
-| REQ-DECLEDGER-01 | BR-1, BR-2, BR-3, BR-9 | §3 recognition rule; `recogniseDecisionRecords`, `selectDecisions`, `renderDecisionLedgerBlock`; §2.6 freshness |
+| REQ-DECLEDGER-01 | BR-1, BR-2, BR-3, BR-9; E-9, E-10, E-11 | §3 recognition rule; `recogniseDecisionRecords`, `selectDecisions`, `renderDecisionLedgerBlock`; §2.6 freshness. Edge cases by id: **E-9** (mixed file — non-record headings contribute no line) → §3.2's five conjuncts, `M-4d` pinned as the exclusion case (§7.3); **E-10** (one id opened twice, question then outcome) → §3.3's last-wins resolution, `M-3c` pinned as the discriminating case (§7.3); **E-11** (same id project- and feature-level) → §3.4's precedence rule and its positive conjunct, over O-5's synthetic fixture (§7.6, AT-18) |
 | REQ-DECLEDGER-02 | BR-4 | §2.3 gate (`buildDecisionLedgerInjector` returns `null`); §4.5 default parameters; §7.4 baseline guard |
 | REQ-DECLEDGER-03 | BR-5, BR-6 | `DECISION_LEDGER_RULE_TEXT` (§4.3) |
 | REQ-DECLEDGER-04 | BR-7, BR-8 | §6.1 F-6…F-10; §6.2 leg predicate; §6.3 O-7 observable |
@@ -1118,7 +1118,7 @@ These are load-bearing and a future reader will otherwise reconsider them confid
 
 ### 9.2 Erratum raised
 
-**E-1 — REQ C-5 types `maxEntries` and `maxBytes` as "positive integer", but FSPEC E-7 requires
+**ERR-1 — REQ C-5 types `maxEntries` and `maxBytes` as "positive integer", but FSPEC E-7 requires
 `maxEntries: 0` to be a valid admits-nothing value** treated as zero in-scope decisions and
 explicitly "not an error, not a fallback to the default, not a halt". A positive-integer validator
 rejects `0` and falls it back to `70`, which is the opposite outcome. The shipped precedent resolves
