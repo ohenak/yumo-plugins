@@ -91,6 +91,47 @@ defect nobody disputes.
 
 ## Pattern of Disagreement
 
+**One arithmetic chain carried the blocking finding in six of the seven rounds, and the last
+three rounds each fixed the previous round's remedy.** The chain is the byte-budget argument
+that justifies "no line is omitted on any real dispatch": a default (`maxBytes`), minus a
+framing charge, compared against a measured rendered-index size.
+
+```
+TE F-01 (r1) → [converged r2–r4] → PM/TE cascade (r5) → TE F-01 (r6) → TE F-01 (r7)
+```
+
+All of them sit on **§3.6's headroom rationale**, **§4.3's framing pin (D-9)** and **§7.3's
+shipped-default assertions (D-10)** — three sites stating one derivation.
+
+| Round | What moved | The finding it produced |
+|---|---|---|
+| 1 | §3.6 claimed the byte bound was never reached and the omission order inert | False at the then-current `8000` default: the project-level set **alone** rendered 9,371 bytes under the then-current long line format |
+| 2–4 | line format shortened (9,371 → **6,305**), corpus measurements pinned to a frozen baseline, framing pinned at ≤1,200, D-9/D-10 recorded | Converged — v0.4 approved by both reviewers |
+| 5 | *nothing in the TSPEC*; REQ v1.8/v1.9 resolved `C-5` to `12500` | Every number derived from `8000` went stale at once: `8000 − 1200 = 6,800` and "`maxBytes` binds first in every case" became false |
+| 6 | retired the `8000` arithmetic, re-pinned upstream, re-derived `12500 − 1200 = 11,300` | The load-bearing margin moved to `M-6b`'s **441** bytes while §7.3's pin still watched the whole-fixture **~4,995** slack — the claim could expire silently with every test green |
+| 7 | added the `M-6b`-slice assertion **in the words round 6 asked for**, pinning `12,059` | `12,059 = 10,859 + 1,200` mixes a measurement with a **budget ceiling**; the equality reds a conforming implementation on day one |
+
+Two features of this shape are worth naming precisely, because they are what a re-entry has to
+break:
+
+1. **The remedy is the next defect.** Round 7's High is round 6's own suggested wording. The
+   round-6 finding asked for an assertion pinning "the transcribed 12,059"; the author landed
+   exactly that; the round-7 confirmation opens by conceding the point — *"this is my own
+   round-6 wording coming back wrong"*. Round 5→6 has the same structure one level up: the
+   round-6 High exists because round 6's own re-derivation moved the load-bearing margin from
+   ~4,995 to 441 and left the old pin in place.
+2. **The disagreement is about severity, not substance, and severity is what closed the gate.**
+   PM and TE filed the same defect in the same round with the same fix; a Medium/Medium round
+   would have passed the confirmation and left the same broken assertion in the document for
+   `se-implement` to hit. The gate did the right thing here — but it did it on a one-vote
+   calibration margin, not on a reviewer disagreement about what the document should say.
+
+Everything outside this chain converged and stayed converged: rounds 2–4 closed nine PM and
+thirteen TE findings that were never reopened; rounds 6 and 7 landed nine routed items between
+them with zero regressions outside the declared diff; DECISIONS converged in three rounds; the
+FSPEC v1.3 `maxBytes`-`0` widening was absorbed in round 7 and both reviewers verified the
+absorption as faithful at all three sites.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
