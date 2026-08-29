@@ -9,7 +9,7 @@
 | Author | te-author |
 | Date | 2026-08-29 |
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Phase
 
@@ -216,3 +216,11 @@ an *absence-shaped* oracle — reviewers assert "nothing routed remains unreflec
 own falsifiability checklist, an absence check needs a positive conjunct, and here the positive
 conjunct is trivially available: **each routed locus changed bytes.** Recommendation 3 is that
 conjunct. The channel has been shipping without it.
+
+**Provenance**
+- Engine version: 0.2.4
+- Plugin version: 0.23.4
+- Plugin compat: ^0.23.0
+- Channel: engine
+- Mode: latest (pin: n/a)
+- Load root: /Users/kaneho/.local/share/mise/installs/node/20.20.1/lib/node_modules/@kaneho/pdlc-engine/vendor/workflows
