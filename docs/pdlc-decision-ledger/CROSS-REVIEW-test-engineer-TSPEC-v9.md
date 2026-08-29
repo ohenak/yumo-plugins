@@ -168,9 +168,51 @@ Whoever fixes F-01/F-02 should re-pin T-11 in the same pass, since the token set
 
 ## Open Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01, which repair do you want — (a) narrow the token set to symbols whose every conforming mention is inside an owned region, or (b) extend the owned regions to `gatherDecisionCorpus`'s body and §5.2's three catalogue declarations? I lean (b): it keeps `gatherDecisionCorpus` and the two catalogues watched everywhere they are *not* legitimately used, which is what BR-11 claims. Either way the answer should be written into §7.3 as the predicate, since this is the second round in which the census's satisfiability has been the finding |
+| Q-02 | §7.2's conjunct (1) puts the call-count spy on `gatherDecisionCorpus`'s `_git` seam. Is there a reason to prefer `_git` over `_readFile`? `_git` fires once per dispatch regardless of corpus contents, so it proves the *listing* ran; a `_readFile` count additionally proves the corpus was actually opened. Not a finding — the `_git` conjunct is sufficient for DC-07 — but if the arm is cheap to extend, the pair is strictly stronger |
+| Q-03 | The delta says the empty-range reading is the gate's "permanent post-merge state on `main`". After this feature merges, does anything re-point `SUBJECT`'s introduced ranges at the *next* feature, or does the gate go permanently quiet for `orchestrate-dev.js` until someone re-pins it? The script's live `merge-base` preference suggests it stays live for every later branch, which would be the good answer — worth one sentence in §7 so the next feature does not re-derive it |
+
 ## Positive Observations
 
+- **The coverage paragraph was rewritten rather than patched.** The easy fix for items 1 and 3 was
+  to append "…and there is also a delta-coverage script" to the existing sentence. Instead the
+  section now explains why both clauses are true at once, which is the form that survives the next
+  reader. Naming the ordinals (third, fourth) means a future `package.json` edit that reorders the
+  clauses is visibly a spec-affecting change.
+- **The three consequences bullets are the durable half of that fix.** Fail-closed set, absence from
+  `implementation.testCommand`, and the commit-before-running rule are each things a team learns the
+  hard way at PR CI. Writing them into the design, with PLAN T-18 named as owner of the per-wave
+  run, is the difference between a gate that helps and a gate that ambushes batch 8.
+- **§7.2's live arm is textbook DC-07.** A call-count spy on the dependency's seam, an explicit note
+  that an outer-interface fake cannot satisfy it, positive presence rather than "differs from
+  baseline", and set-equality on both `report` keys and notices rather than a `not in` check. I have
+  filed the absence-only-oracle finding on this feature before; this arm has none.
+- **The number that was handed to the author was checked, not copied.** The routed item said the
+  `learningsInjectionField` analogue spreads at *eight* `buildFinalReport` sites. There are six.
+  The TSPEC says six. That is the small discipline that keeps a spec's factual claims trustworthy.
+- **`P-LINE` is the property I would have asked for if it had not landed.** It closes a false-green
+  channel under §7.3's own literals: without it, "63 lines = 10,859 bytes" is an assumption the
+  transcribed figures silently depend on. Promoting a stated-but-untested quantified claim to a
+  property, with named falsifying mutations, is exactly the standard this project holds.
+- **Item 5's rejected alternative is recorded.** Saying *why* `buildFinalReport` was not carved out
+  is what stops a later author from "helpfully" carving it out and blinding the census.
+
 ## Recommendation
+
+**Needs revision**
+
+All five routed items landed, and four of them landed in the strongest available form — I have no
+finding against items 1, 2, 3 or 4, and item 5's token removal is correct on its own terms. The
+verdict turns on two inherited Highs in the same table row the edit rewrote: §7.3's census cannot
+go green on a conforming implementation, because four of its six surviving tokens are declared in
+the scanned remainder, and its companion set-equality compares a six-member set against thirteen
+exported symbols. Both are `inherited` — they predate this delta and route back to this document's
+ordinary revision loop rather than halting the phase — but they are unsatisfiable oracles, which is
+the one thing this lens cannot pass. The repair is confined to one table row and one paragraph of
+§7.3, plus a re-pin of PLAN T-11 (F-03) once the token set settles. F-04 and F-05 are cosmetic and
+can ride along.
 
 ## Delta-Confirmation Findings
 
