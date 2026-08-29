@@ -80,7 +80,61 @@ exported decision-ledger names, which is what stops a later symbol escaping the 
 
 ## Dependencies
 
-_pending_
+### Batch-DAG mechanical re-derivation
+
+I re-derived every task's batch from its declared `Deps` edges under `batch == max(dep batch) + 1`,
+independently of the PLAN's own re-derivation paragraph, and compared against the `Batch` column.
+
+| Task | Declared Deps | max(dep batch) | Derived | Column | Match |
+|---|---|---|---|---|---|
+| T-00 | — | — | 1 | 1 | ✅ |
+| T-01 | — | — | 1 | 1 | ✅ |
+| T-02 | — | — | 1 | 1 | ✅ |
+| T-03 | — | — | 1 | 1 | ✅ |
+| T-12 | — | — | 1 | 1 | ✅ |
+| T-04 | T-00, T-01 | 1 | 2 | 2 | ✅ |
+| T-05 | T-00, T-01 | 1 | 2 | 2 | ✅ |
+| T-06 | T-00, T-01 | 1 | 2 | 2 | ✅ |
+| T-07 | T-00, T-01 | 1 | 2 | 2 | ✅ |
+| T-08 | T-00, T-01, T-03 | 1 | 2 | 2 | ✅ |
+| T-09 | T-01, T-03 | 1 | 2 | 2 | ✅ |
+| T-10 | T-01, T-02 | 1 | 2 | 2 | ✅ |
+| T-11 | T-00, T-01 | 1 | 2 | 2 | ✅ |
+| T-13 | T-02, T-04 | 2 | 3 | 3 | ✅ |
+| T-14 | T-05, T-13 | 3 | 4 | 4 | ✅ |
+| T-15 | T-06, T-14 | 4 | 5 | 5 | ✅ |
+| T-16 | T-07, T-15 | 5 | 6 | 6 | ✅ |
+| T-17 | T-08, T-09, T-16 | 6 | 7 | 7 | ✅ |
+| T-18 | T-10, T-11, T-17 | 7 | 8 | 8 | ✅ |
+| T-19 | T-12, T-18 | 8 | 9 | 9 | ✅ |
+| T-20 | T-19 | 9 | 10 | 10 | ✅ |
+
+**Result: 21/21 rows match. The graph is acyclic** (every edge points to a strictly lower-numbered
+task), **ids are unique, and every dependency resolves to a declared task.** No batch-column desync,
+no understated batch. This is the cleanest batch column I have reviewed on this feature.
+
+### Dependency edges that carry semantic weight
+
+Three edges are load-bearing beyond ordering, and the PLAN says so explicitly rather than leaving it
+to be inferred — this is worth naming as good practice:
+
+- **T-13 → `T-02`.** The byte-identity capture must be taken while `orchestrate-dev.js` is still
+  byte-identical to the merge base. Enforced as a real edge on the *first* production task, with the
+  serial chain T-13 → T-14 → T-15 → T-16 → T-17 → T-18 carrying it transitively. Correct, and the
+  correct place to put it: a prose note here would be unenforceable.
+- **T-08, T-09 → `T-03`.** Both carry the frozen-fixture edge explicitly rather than relying on
+  batch ordering.
+- **T-16 → T-15.** Structural, not merely ordinal: `DEC-DECLEDGER-11` makes
+  `renderDecisionLedgerBlock` the single producer of ledger bytes, so `selectDecisions` cannot obtain
+  `renderedBytes` before the renderer exists.
+
+### The frozen-fixture decision
+
+T-03 freezes the corpus at `8c673a09f` rather than reading the live tree. I verified both counts
+myself (see `## Verification`): 25 in-scope files at that commit, 26 live. The PLAN's reason — that a
+live read reddens the moment the next feature records a decision, the same whole-tree-walk failure
+class `CLAUDE.md` already records for `coveredViolations` — is correct and is exactly the right
+lesson to have carried forward.
 
 ## Verification
 
