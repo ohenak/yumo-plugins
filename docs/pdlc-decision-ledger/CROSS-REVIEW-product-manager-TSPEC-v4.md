@@ -107,3 +107,59 @@ direction — 8000 is tight — is unchanged either way.
 | ID | Question |
 |----|---------|
 | Q-01 | If the 63-record `M-6b` parameterisation in F-01 (2) is taken, should its `omitted[]` expectation be a set-equality against the 22 hand-transcribed `pdlc-headless-engine` ids, or the weaker origin-partition assertion §7.3 specifies today? Set-equality is falsifiable against a drop loop that stops early, but it re-introduces the line-count sensitivity §7.3's "Note what conjunct (3) deliberately does not say" paragraph just argued against — I read that paragraph as deciding against it, and would rather have that read confirmed than assumed |
+
+## Positive Observations
+
+- **The vacuous conjunct was fixed by changing the input, not by softening the claim.** The cheapest
+  escape from v3 F-01 was to delete the sentence claiming the conjunct catches re-ordering and keep the
+  conjunct as decoration. The revision took the expensive route instead: whole-fixture input, three
+  numbered conjuncts, and an explicit paragraph naming *why* the project-level slice could not falsify
+  anything (`omitted[]` empty under every drop order). The oracle now fails on the mutation it exists to
+  catch, which is what I asked for.
+- **The rejected alternative was recorded, not just abandoned.** D-10's row now carries the round-3
+  rejection in full, with the arithmetic that makes it a rejection (41 against `maxEntries` 70, 6,305
+  against 6,800). Since §9.1 is what DECISIONS harvests from, a future reader who reaches for the
+  simpler project-level input meets the reason it was refused rather than re-deriving it.
+- **Conjunct (3) declines to over-specify, and says so.** "The falsifier lives in the origin partition,
+  not in the count" is the right product call: pinning how many feature lines survive would redden on
+  any line-format change without a defect behind it, and would make §4.3's format a frozen contract it
+  was never asked to be. Naming that restraint in the spec is better than exercising it silently.
+- **PM Q-01 was answered in the strict direction and generalised.** I asked whether the `omitted[]`
+  literal follows §7.3's transcription rule or is derived at test time; the answer covers both literals,
+  states the reason for each (echo avoidance for the id set, drift visibility for 6,305), and keeps them
+  distinct — 6,305 stays put when ERR-2 resolves while the threshold in (2) moves. That is a sharper
+  answer than the question.
+- **ERR-2's misattribution was corrected in the direction that costs the author something.** The
+  12,059 figure now belongs to the 63-line in-scope set, and `pdlc-headless-engine` alone is restated at
+  22 lines / 4,553 bytes — a smaller, less dramatic number for the erratum to carry upstream. Both
+  reconcile against §3.6's table under the document's own join convention.
+- **TE Q-01's answer prevents a real future misreading.** Two sentinel-bounded regions with different
+  literals living in one file is exactly the kind of thing a later reader collapses into one concept.
+  §2.3 names both, cites the exact-string match at `advisoryDisabled.test.js:718-719`, and states the
+  consequence for §2.3's `/\.enabled\b/` count. I verified the citation and the exact-match claim.
+- **Errata still stand rather than being quietly absorbed.** ERR-3 and ERR-4 remain uncorrected at
+  `FSPEC-pdlc-decision-ledger.md:359-361` and `:364-367` — AT-02 still says "carries the cited heading",
+  AT-03 still says "a record in the frozen fixture copy changes" — and the TSPEC still routes both
+  upstream instead of reinterpreting them locally. I re-emit both this round so they land before PLAN
+  authoring.
+
+## Recommendation
+
+**Approved with minor changes**
+
+The one Medium and both Lows from round 3 are resolved, and resolved at the root rather than in wording.
+No High finding is open, and nothing this revision touched broke a section approved earlier — I checked
+each changed region against its prior state and each new numeric claim against my own re-derivation.
+From the product lens the document is ready for PLAN authoring.
+
+Neither open finding needs another review round. F-01's required part is a one-clause correction to
+§7.3:940-941 so the section stops contradicting FSPEC §3.2 step 2; its optional part — a second
+parameterisation of the same assertion over the reachable 63-record set — is worth landing before PLAN
+writes the corpus-oracle task, because it changes what that task builds rather than what it asserts.
+F-02 is a word in two places plus ERR-2's copy of it. Both, plus the two errata landing at the FSPEC,
+close the phase at v0.5.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
