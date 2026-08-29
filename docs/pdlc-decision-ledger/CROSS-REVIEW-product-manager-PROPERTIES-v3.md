@@ -177,10 +177,78 @@ corpus literals (6,305 / 10,859 / 12,059 / 441) are stated unchanged in the v1.0
 checked that claim against the diff and no literal moves. PROP-DISC-10's 25-path and digest census
 therefore still holds, as does PROP-BND's generator range.
 
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | The v1.0 erratum states the census "never scans the file the three are declared in". Should §Module manifest's `decisionLedgerCensus.test.js` row record that the three constants are declarations of that file? It is the fact that makes the partition check coherent, and it is currently derivable only by reading TSPEC §7.3. |
+| Q-02 | F-03's fix needs an owner. PROP-WIRE-04/05 are the live-arm properties (T-10a); PROP-OFF-05 sits in the OFF family under T-02 against FX-BASELINE. Is the paired-run key-set assertion a new PROP-WIRE row under T-10a, with PROP-OFF-05 narrowed to the notice-set half it can actually assert against the fixture? |
+
+## Positive Observations
+
+- **The document's own narrowness argument was right, and upstream came round to it.** PROPERTIES'
+  FX-BASELINE section already said a whole-`main()` recording "would red on this feature's own
+  intended additions — the new notices, the new report field". TSPEC v0.9 now says the same thing in
+  §7.2 as the reason the recording cannot be the key-set referent. PROPERTIES reasoned correctly
+  about the fixture; only the assertion built on top of it (PROP-OFF-05) needs to catch up.
+- **PROP-WIRE-04's call-count conjunct survived the delta untouched, and is exactly the right
+  shape.** "A fake satisfying only the outer interface cannot meet this conjunct" is DC-07's
+  builder-not-wired guard stated at the property level, and §7.2's rewrite left it alone.
+- **The anti-echo discipline holds through the cascade.** I re-checked the four corpus literals
+  (6,305 / 10,859 / 12,059 / 441) against the diff: unchanged, as the v1.0 changelog claims. No byte
+  literal, digest or path in PROPERTIES needs re-deriving — every fix below is a re-transcription of
+  operand prose, which is the cheap kind of cascade.
+- **PROP-INV-09's substantive reasoning is still verbatim-correct upstream.** The `buildFinalReport`
+  call-site argument for why `decisionLedger` cannot be a census token survived two erratum rounds
+  unchanged; only its downstream pointers moved.
+- **The failures are all upstream-pin failures, not authoring failures.** Every finding traces to
+  TSPEC v0.9 landing after my approval was recorded. The document was faithful when I approved it.
+
+## Recommendation
+
+**Needs revision**
+
+Three High findings. In order:
+
+1. **F-01** — re-transcribe PROP-INV-06's two operand halves from §7.3 at v1.0: the scanned source
+   subtracts every `DECISION_LEDGER_OWNED_DECLS` member, and the slicing runs from a declaration's
+   own line to the next top-level declaration of any name.
+2. **F-02** — restate PROP-INV-07 as the partition and disjointness check, and record that the three
+   census constants are test-file declarations belonging to neither sub-set.
+3. **F-03** — give §7.2 conjunct 3's paired-run, both-directions `{decisionLedger}` key-set
+   difference a property, and stop asserting a `report` key set against a fixture that has none.
+
+Then F-04 and F-05 (one conjunct and one pointer), and F-06's rationale paragraph, which the F-01/F-02
+fixes largely rewrite anyway.
+
+No scope finding: nothing in the delta adds product behaviour, and no acceptance criterion is
+narrowed. `REQ` BR-11 / NG-4 and `REQ` C-2 are untouched — what moved is how the spec proves them,
+and PROPERTIES has to move with it.
+
 ## Delta-Confirmation Findings
 
-_TBD_
+All six are **delta**: PROPERTIES was a faithful compression of TSPEC at the version my round-2
+approval pinned (`sha256:28d25518…`). The divergences below were created by the upstream edits in
+`1a2d78cba..452d72c07`, not by anything present in the pre-round bytes. All six are **local**: every
+one sits in a section the upstream edit changed (§7.3, §7.2 conjunct 3, §5.4).
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | PROP-INV-06 transcribes §7.3's retired exclusion set (three brace-matched function bodies + wiring). TSPEC v0.9 subtracts every declaration in `DECISION_LEDGER_OWNED_DECLS` — six functions plus seven top-level constants — sliced declaration-line-to-next-top-level-declaration, and records that the three-body form "could not go green on a conforming implementation". Brace-matching also cannot slice the constant members. Re-transcribe both operand halves. | §Properties, INV family, PROP-INV-06 |
+| F-02 | High | delta | local | PROP-INV-07 requires set equality between `DECISION_LEDGER_CENSUS_TOKENS` and the module's exported decision-ledger symbol names — the comparison §7.3 now opens by rejecting as "red by construction". Restate as the partition `CENSUS_TOKENS` ∪ `CENSUS_EXEMPT` = `OWNED_DECLS`, disjoint, and record the v1.0 erratum's correction that the three census constants are test-file declarations and members of neither sub-set. | §Properties, INV family, PROP-INV-07 |
+| F-03 | High | delta | local | §7.2 conjunct 3's rewritten flag-off assertion has no property: the `report` key sets of the arm's **own paired** flag-off/flag-on `main()` runs must differ by exactly `{decisionLedger}`, asserted in both directions. PROP-OFF-05 states the retired referent (set-equal to FX-BASELINE's flag-off key set) — unimplementable, since FX-BASELINE records reviewer-prompt streams and no `report` key at all. §5.4 names this arm the field's sole evidence. Re-point PROP-OFF-05's notice half at the baseline it can reach, and add a live PROP-WIRE row for the paired-run key-set difference. | §Oracles / §Fixtures; PROP-OFF-05, PROP-WIRE family |
+| F-04 | Medium | delta | local | §7.3's honesty column gained a conjunct with no property: each `DECISION_LEDGER_OWNED_DECLS` member must resolve to **exactly one** top-level declaration at HEAD, so a rename or deletion reddens rather than silently shrinking the exclusion. PROP-INV-08's non-emptiness check catches neither a zero-resolution nor a two-resolution member — and zero-resolution is the exact defect the v1.0 erratum round was convened over. Extend PROP-INV-08 or add a sibling row. | §Properties, PROP-INV-08 |
+| F-05 | Medium | delta | local | PROP-INV-09's closing clause routes the `report.decisionLedger` field's behavioural obligation to "PROP-OFF-05 and PROP-WIRE-11". TSPEC now names exactly two homes, both inside §7.2's live arm, and states that §7.6's AT rows are **not** a home. PROP-OFF-05 is the FX-BASELINE guard (T-02), not that arm. Re-point at the live arm's two conjuncts once F-03's row exists. | §Properties, PROP-INV-09 |
+| F-06 | Low | delta | local | The rationale paragraph under the INV table ("PROP-INV-06's two operands are both frozen and both set-equality-checked, which is the whole reason the census is implementable") states the retired argument: the second operand is no longer set-equality-checked against exports, and implementability now rests on slicing every owned declaration plus §7.3's stated satisfiability predicate. The recounted earlier failure (`id`'s ubiquity, absent sentinel regions) is pre-v0.9 history and no longer the live reason. | §Properties, INV rationale paragraph |
+
+FINDING: High | delta | local | §Properties, PROP-INV-06 | PROP-INV-06 transcribes TSPEC §7.3's retired exclusion set — three brace-matched function bodies plus the wiring run — where §7.3 now subtracts every member of DECISION_LEDGER_OWNED_DECLS (six functions plus seven top-level constants) sliced declaration-line-to-next-top-level-declaration; TSPEC records the old form as unable to go green on conforming code, and brace-matching cannot slice the constant members at all
+FINDING: High | delta | local | §Properties, PROP-INV-07 | PROP-INV-07 requires set equality between DECISION_LEDGER_CENSUS_TOKENS and the module's exported decision-ledger symbol names, which §7.3 now rejects as red by construction; the replacement partition (CENSUS_TOKENS ∪ CENSUS_EXEMPT = OWNED_DECLS, disjoint) and the v1.0 erratum's test-file homing of the three census constants are stated by no property
+FINDING: High | delta | local | §Oracles and §Fixtures, PROP-OFF-05 and the PROP-WIRE family | §7.2 conjunct 3's rewritten flag-off assertion — the arm's own paired flag-off/flag-on main() runs differ by exactly {decisionLedger}, both directions — has no property, while PROP-OFF-05 still asserts the retired referent against FX-BASELINE, which records reviewer-prompt streams and no report key set to be set-equal to; §5.4 names that arm the field's sole evidence
+FINDING: Medium | delta | local | §Properties, PROP-INV-08 | §7.3's new honesty conjunct — every DECISION_LEDGER_OWNED_DECLS member resolves to exactly one top-level declaration at HEAD — is unmapped; PROP-INV-08's non-emptiness check catches neither a zero-resolution nor a two-resolution member, and zero-resolution is the defect the v1.0 erratum round existed to fix
+FINDING: Medium | delta | local | §Properties, PROP-INV-09 | PROP-INV-09 routes report.decisionLedger's behavioural obligation to PROP-OFF-05 and PROP-WIRE-11, but TSPEC now names exactly two homes both inside §7.2's live arm and expressly denies §7.6's AT rows as a home; PROP-OFF-05 is the FX-BASELINE guard owned by T-02, not that arm
+FINDING: Low | delta | local | §Properties, INV rationale paragraph | The paragraph under the INV table grounds the census's implementability in "two operands both frozen and both set-equality-checked" and recounts the pre-v0.9 id-token failure, but the second operand is no longer set-equality-checked against exports and implementability now rests on slicing every owned declaration under §7.3's stated satisfiability predicate
 
 ## Verdict
 
-_TBD_
+VERDICT: Needs revision
+{"high": 3, "medium": 2, "low": 1}
