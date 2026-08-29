@@ -87,8 +87,21 @@ rejects — the textbook precedence false green.
 ### DEC-DECLEDGER-03 — omission order under the bound
 
 *Rejected: relying on the order being inert.* An earlier TSPEC draft argued the order never fires
-under shipped defaults because `maxEntries` 70 clears `M-6b`'s 63-line floor. Both TSPEC reviewers
-falsified it by measuring: `maxBytes` binds first in every case. *Rejected: project-level omitted
+under shipped defaults because `maxEntries` 70 clears `M-6b`'s 63-line floor; both TSPEC reviewers
+falsified that reasoning by measuring, against the then-current `maxBytes` 8,000, that the byte bound
+binds first. REQ v1.8's **measured** 12,500 (Baseline `M-7c`) moves the arithmetic again: a G-1-scoped
+worst standing case of 63 records rendering 10,859 bytes (TSPEC §3.6) sits inside an 11,300-byte
+allowance (12,500 less DEC-DECLEDGER-12's 1,200 of framing), and 63 sits inside `maxEntries` 70 — so
+at the Baseline commit **neither bound fires and the order is inert again**, for a different reason
+than the draft gave. The refusal stands on a ground that survives the raise: inertness is a
+measurement at one commit, not a property of the mechanism — the same distinction DEC-DECLEDGER-13
+draws for the promoted set — and C-5's thresholds are operator-configurable non-negative integers
+(DEC-DECLEDGER-15), so any operator who lowers either one fires the order on the very next dispatch,
+at which point an unspecified order is unfalsifiable exactly when it goes live. Which bound fires
+first is corpus-dependent and is not assumed anywhere: over the G-1-scoped 63 records the entry cap
+has slack, so a lowered `maxBytes` fires first; over TSPEC §7.3's whole 141-record fixture
+`maxEntries` 70 fires first and forces at least 71 omissions before the byte bound is reached, which
+is why §7.3's `omitted[]` conjunct does not go vacuous under the raise. *Rejected: project-level omitted
 first, or plain enumeration order.* Dropping promoted material before feature material inverts what
 the corpus is for. *Rejected: truncating or abbreviating a line to fit.* Whole-line omission keeps
 "which decisions were shown" answerable; a truncated statement is a decision misquoted to a
@@ -136,8 +149,12 @@ one place this design does not clone it.
 ### DEC-DECLEDGER-08 — where the new symbols land in the tree
 
 *Rejected: a new `pdlc/workflows/lib/` module.* Not available: `MODULE_NAMES`
-(`pdlc/engine/scripts/prepack.mjs:20`) is the frozen list the engine vendors at pack time, and
-adding a module means editing `pdlc/engine/`, which REQ NG-6 forbids. `DEC-LOOPECON-08` took the
+(`pdlc/engine/scripts/prepack.mjs`) is the frozen four-entry list the engine vendors at pack time, and
+adding a module means editing that list — a file under `pdlc/engine/`. The refusal rests on the
+frozen list itself, and on REQ NG-6's spirit of leaving `pdlc/engine/` alone, rather than on NG-6's
+literal text: NG-6 forbids engine **runtime** changes and expressly permits an engine-side
+config-disclosure test, and `prepack.mjs` is a pack-time build script, so a literal reading of NG-6
+would not by itself forbid this edit. The list is nonetheless not this feature's to grow. `DEC-LOOPECON-08` took the
 same refusal for the same reason and recorded the same cost: every implementation task writes one
 physical file, so waves serialise on it. That cost is taken knowingly and is the PLAN's to absorb
 with real `Deps` edges. *Rejected: land the symbols inside the
