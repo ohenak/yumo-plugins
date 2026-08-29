@@ -175,14 +175,23 @@ parser ignores by design.
 | `pdlc/workflows/dist/pdlc-cli.mjs` | T-20 | 10 (generated — never hand-edited) |
 | `pdlc/.claude-plugin/plugin.json` | T-20 | 10 |
 
-**Disjointness premise, batch by batch.** Batch 1 writes five pairwise-disjoint file sets. Batch 2
-writes eight distinct new test files and nothing else. Batches 3–8 each write exactly one
-production file — the same one — plus the test file(s) of a batch-2 or batch-1 task they un-skip,
-and no two tasks share a batch, so no batch contains two writers of any file. Batch 9 writes four
-documentation/config files plus the engine test; batch 10 writes the generated bundle and the
-manifest. The only multi-owner files are the nine test files whose `[red]` author and `[green]`
-un-skipper sit in different batches, and `orchestrate-dev.js`, whose six owners sit in six distinct
-batches connected by the real edge chain T-13 → T-14 → T-15 → T-16 → T-17 → T-18.
+**Disjointness premise, batch by batch.** Batch 1 writes six pairwise-disjoint file sets — T-00,
+T-01, T-02, T-03, T-12 on their own new paths, plus T-00a on the **existing**
+`documentOracles.test.js`, which no other batch-1 task touches. Batch 2 writes nine distinct new
+test files (T-04…T-11 plus T-10a's `decisionLedgerMain.test.js`) and T-12a's blocks in
+`documentOracles.test.js` — and T-12a is the only batch-2 writer of that file. Batches 3–8 each
+write exactly one production file — the same one — plus the test file(s) of a batch-1 or batch-2
+task they un-skip, and no two tasks share a batch, so no batch contains two writers of any file.
+Batch 9 writes four documentation/config files plus two un-skipped test files; batch 10 writes the
+generated bundle and the plugin manifest.
+
+The multi-owner files are: the ten test files whose `[red]` author and `[green]` un-skipper sit in
+different batches; `orchestrate-dev.js`, whose six owners sit in six distinct batches connected by
+the real edge chain T-13 → T-14 → T-15 → T-16 → T-17 → T-18; and
+`documentOracles.test.js`, whose three owners sit in batches **1** (T-00a, census exclusion),
+**2** (T-12a, the skipped disclosure oracle) and **9** (T-19, the un-skip), serialised by the real
+edges T-00a → T-12a → T-19. Three owners eight batches apart is fine — waves are what separate
+writers, and these are separated.
 
 ## Dependencies
 
@@ -221,12 +230,19 @@ Every `[green]` task lists its `[red]` task in `Deps` and names the same test fi
 | T-06 | T-15 | `decisionLedgerRender.test.js` |
 | T-07 | T-16 | `decisionLedgerBounds.test.js` |
 | T-08, T-09 | T-17 | `decisionLedgerInjector.test.js`, `decisionLedgerCorpus.test.js` |
-| T-10, T-11 | T-18 | `decisionLedgerLoop.test.js`, `decisionLedgerCensus.test.js` |
-| T-12 | T-19 | `decision-ledger-config-example.test.js` |
+| T-10, T-10a, T-11 | T-18 | `decisionLedgerLoop.test.js`, `decisionLedgerMain.test.js`, `decisionLedgerCensus.test.js` |
+| T-12, T-12a | T-19 | `decision-ledger-config-example.test.js`, `documentOracles.test.js` |
 
-T-00, T-01, T-02 and T-03 have no red predecessor by construction: T-00 pins the existence of HEAD
-symbols and passes at HEAD; T-01 creates doubles; T-02 and T-03 create fixtures and their integrity
-guards, which pass against the artefacts they capture.
+**Both of T-19's test files now have a red predecessor (TE F-04).** In v0.1 `documentOracles.test.js`
+appeared in T-19's Test File column and in the ownership manifest but in no red row and in neither
+coverage table, so three of T-19's four deliverables stood on a manual DoD checkbox alone — an
+absence-only guarantee. T-12a supplies the red half.
+
+T-00, T-00a, T-01, T-02 and T-03 have no red predecessor by construction: T-00 pins the existence of
+HEAD symbols and passes at HEAD; T-00a is a **green-at-both-ends** census edit whose positive control
+(count still `102`) passes before and after and would fail on a dropped exclusion; T-01 creates
+doubles; T-02 and T-03 create fixtures and their integrity guards, which pass against the artefacts
+they capture.
 
 ### RED-terminal batch gate wording
 
