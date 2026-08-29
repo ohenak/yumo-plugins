@@ -98,9 +98,60 @@ What that disposition costs is one *transferred* obligation: the `report.decisio
 
 ## Verification
 
+**Item 4 — two invariants promoted from examples to properties (landed).** §7.5 now owes three
+properties rather than one. The two new ones are stated in the quantified form the design already
+used prose-wise:
+
+- **P-REC (§3.2, §3.3)** — over arbitrary file text, `recogniseDecisionRecords` yields one record for
+  exactly those lines satisfying §3.2's five conjuncts with a non-empty statement remainder and no
+  others; each statement is a verbatim substring of the line; and where two qualifying lines carry the
+  same id, §3.3's last-wins keeps the later. I re-read §3.2 and §3.3 at HEAD: the five conjuncts and
+  the last-wins rule are stated there in exactly that form, so P-REC is a faithful quantification of
+  the design, not a new product rule smuggled in through the test section. The generator families
+  named (near-miss ATX depth, missing separator, empty statement, duplicate ids at varying distance)
+  cover the Baseline instances §3.2 cites as its own justification — `M-4a`…`M-4d` — which is the
+  right coverage target.
+- **P-LINE (§4.3)** — every rendered line is one physical line; equivalently the index region's
+  `split("\n")` cardinality equals the selected set's. This is the invariant §7.3's transcribed byte
+  literals silently assume: "63 lines joined by `\n` = 10,859 bytes" is only a meaningful assertion if
+  63 records really produce 63 physical lines. Promoting it closes a genuine hole — a statement
+  carrying an embedded newline would have moved both the line count and the byte total with no test
+  naming the defect.
+
+Both are given falsifying mutations and both inherit O-8's independent-model discipline (the model
+carries its own formatter transcribed from §4.3, never the production renderer), so neither property
+can echo the code under test. And §7.5 is explicit that they cost no new seam and no new double —
+they target pure functions §7.1 already tests without doubles. That matters to me on the product side
+because it means the depth increase does not buy itself with new integration surface.
+
+**§7.6 is unchanged**, and I re-checked its AT rows against FSPEC v1.3 at HEAD: AT-14's row still
+names all **three** of FSPEC v1.3's cases (zero-decision set, `maxEntries` `0`, `maxBytes` `0`), and
+AT-01/AT-02/AT-18's notes still match the corpus assertions REQ-DECLEDGER-01 requires. No AT row's
+meaning drifted under the edit.
+
 ## Risks and Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §7.3's dropped token means `report.decisionLedger` is now proved only behaviourally. Once F-01/F-02's referents are corrected, is it worth one sentence in §5.4 pointing forward to §7.2 as the field's sole proof, so a future editor cannot delete the arm without reading what it discharges? Not gating — PLAN T-10a states it, so nothing is unowned today. |
+
+The one risk I would name for the implementer, already stated in §7 and repeated here only because it
+is easy to lose: the delta-coverage gate is **fail-closed on empty ranges**, so nothing this feature
+adds may rest on the empty-range reading, and the per-wave manual run (PLAN T-18) is the only thing
+standing between a wave-3 mistake and a batch-8 discovery.
+
 ## Positive Observations
+
+- All five routed items landed, and three landed *better* than raised: the census-token count was
+  corrected against the source rather than copied from the finding (six call sites, not eight); the
+  coverage-gate correction distinguishes clause three from clause four instead of retracting the
+  original sentence wholesale; and item 4's promotion carries falsifying mutations per conjunct.
+- The changelog states the erratum's boundary precisely — five items, §7 only, upstream unmoved, four
+  corpus literals unchanged — and every one of those claims is true as measured. That is what makes a
+  delta confirmation cheap to run.
+- §7.3's "why the report field name is not a census token" paragraph records the *rejected* alternative
+  (carving `buildFinalReport` out of the scan) and why it was rejected. A future reader tempted to
+  re-add the token finds the answer already written.
 
 ## Delta-Confirmation Findings
 
