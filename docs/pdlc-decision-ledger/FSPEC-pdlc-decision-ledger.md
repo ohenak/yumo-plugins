@@ -106,15 +106,22 @@ recompute-at-dispatch contract).
 
 ### 3.1 Reading configuration
 
-Config is read for the dispatch from the operator's `.claude/pdlc.config.json`. The
-`decisionLedger` block holds exactly the three keys REQ C-3 enumerates. Each key is resolved
-independently:
+Config is **resolved** for the dispatch from the operator's `.claude/pdlc.config.json`, read once
+per run and threaded, as `learningsInjection` does; only the record corpus is re-read per dispatch
+(BR-9). The `decisionLedger` block holds exactly the three keys REQ C-3 enumerates.
 
-| Condition on a key | Resolution |
+**Two failure words, defined once and used with these meanings throughout.** A key is
+**wrong-typed** when the file parses and that key's value is not of the key's type. The file or the
+`decisionLedger` block is **malformed** when it does not parse. Wrong-typedness is per key;
+malformation is not — it is a property of the block, and resolves all three keys at once. So the
+per-key condition space is exactly {valid, wrong-typed, absent}, with malformation the one
+block-level condition. Each key is resolved independently:
+
+| Condition | Resolution |
 |---|---|
-| Present, right type, valid | Use the operator's value |
-| Present, wrong type, or malformed | That key alone falls back to its C-5 default |
-| Absent | That key falls back to its C-5 default |
+| A key present, right type, valid | Use the operator's value |
+| A key present and wrong-typed | That key alone falls back to its C-5 default |
+| A key absent | That key falls back to its C-5 default |
 | The whole `decisionLedger` block absent or malformed | All three keys take their C-5 defaults, which means `enabled` is `false` |
 
 Resolution of one key never affects another key, another config block, or the run (BR-10). Defaults
@@ -127,7 +134,9 @@ are `enabled` `false`, `maxEntries` `70`, `maxBytes` `8000` (REQ C-5).
 2. **Determine the in-scope set.** The set is the project's closed decisions plus those of the
    feature whose document is under review, with the **individual decision** as the unit, not the
    file (REQ §2 G-1). It is derivable, not a per-document relevance judgement: nothing about the
-   document under review beyond its feature narrows the set.
+   document under review beyond its feature narrows the set. The set is **total**: a feature that
+records no decision of its own, and a document with no feature directory at all, both resolve to the
+project-level set alone — never to a failure, and never to an empty-set error (Q-2).
 3. **Gather the records.** Read the decision-record sources as they exist now. A source that is
    missing, unreadable, or unparseable routes to §3.3 rather than to a failure.
 4. **Render.** Each in-scope decision renders **exactly once**, on one line carrying its id, a
@@ -146,13 +155,18 @@ computed nothing it will later consult.
 
 ### 3.3 The fail-open path — two legs that degrade differently
 
-Entered from step 3 when a source is missing, unreadable, or fails to parse. Which leg is taken
-depends on how much survives, and the legs are not interchangeable:
+Entered from step 3 when a source is missing, unreadable, or fails to parse. Which leg is taken is
+decided by **what survives**, never by what kind of thing failed, and on that reading the two legs
+partition the failure space with no case left over:
 
 | Leg | Condition | Behavior |
 |---|---|---|
-| **Total** | **Every** source is unavailable | Fall back to the disabled behavior of REQ-DECLEDGER-02 — no index block, no rule text. The dispatch is as if the flag were off |
-| **Partial** | **One decision of several** fails to render | Omit that line; every other line renders; the index and rule text are present |
+| **Total** | **Nothing survives** — the surviving subset of the in-scope set is empty, whether because every source was unavailable or because every in-scope decision failed to render | Fall back to the disabled behavior of REQ-DECLEDGER-02 — no index block, no rule text. The dispatch is as if the flag were off |
+| **Partial** | A **proper, non-empty subset** of the in-scope set fails to render, for any reason — one decision, several decisions, or a whole source unavailable while other sources survive | Omit the failed lines; every surviving line renders; the index and rule text are present |
+
+Whether one decision failed or a whole source did changes nothing but the size of the surviving
+subset, so no third outcome exists to be invented, and Total is simply the degenerate case where
+that subset is empty.
 
 Neither leg is a halt, and neither introduces an operator-facing failure class. Both degrade as
 `learningsInjection`'s fail-open path does. The direction is deliberate and safe in one direction
@@ -161,10 +175,16 @@ decision rendered **wrongly** would suppress a legitimate challenge — which is
 cannot be rendered faithfully is dropped rather than rendered partially (BR-7).
 
 **A third case is not a leg of this path at all.** A source file that exists, reads, and parses but
-holds no decision record yields an **ordinary empty result** and takes neither leg — Baseline `M-4e`
-records that nothing in the corpus distinguishes an empty file from a failure to read, so the two
-are separated by construction. Two files in the standing corpus are in exactly this position
-(`M-4a`, `M-4b`), so this is the common case and not a curiosity (BR-8, E-4).
+holds no decision record yields an **ordinary empty result**: it contributes no line and is not
+counted as a failure (`M-4e`; BR-8, E-4). Two standing-corpus files are in exactly this position
+(`M-4a`, `M-4b`), so this is the common case and not a curiosity.
+
+Being explicit about what that buys, because the legs above are stated over the surviving subset: an
+empty source and a failed source contribute the same zero lines, so the classification has **no
+dispatch-visible consequence** in either direction. BR-8 is therefore a construction rule, not a
+byte-level one — it forbids treating emptiness as an error or as a cause of the total leg — and the
+observable that distinguishes the two is driver-internal and owed by TSPEC (O-7). AT-10 asserts the
+part that is visible in the dispatch bytes and cites O-7 for the part that is not.
 
 ### 3.4 What the reviewer does with it
 
