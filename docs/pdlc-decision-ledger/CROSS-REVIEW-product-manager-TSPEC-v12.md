@@ -158,7 +158,33 @@ strike "nowhere else", or replace `:1388`'s numerals with a back-reference.
 
 ## Test Strategy
 
-_pending_
+Product lens only here — I am not reviewing the test design, only whether the requirement it serves
+is still provable as the REQ asks.
+
+- **BR-11 / REQ-DECLEDGER-08 / NG-4 remain served.** §7.3 is still the oracle, the traceability rows
+  at :1644 and :1666 still point at it, and the edit makes the oracle *more* provable, not less: with
+  the census constants outside the owned list and the clone's `DECL_RE` widened to `const`/`let`, the
+  resolves-to-exactly-one and non-empty-slice conjuncts are satisfiable on conforming code. Round
+  10's repair is now stated in a way a downstream editor cannot silently reverse.
+- **No acceptance criterion moved.** I diffed the changed regions against the AT and traceability
+  tables: no AT row, no BR/E/AC mapping, and no corpus literal is touched. The REQ and FSPEC are
+  byte-identical to the dispatch pins, so nothing this TSPEC compresses has drifted.
+- **The proof path that concerns me is the one that runs through `PLAN`.** The census is a `[red]`
+  task (T-11) un-skipped by a `[green]` task (T-18). Both rows currently encode the retired design.
+  A P0 oracle whose implementing instructions contradict its specification is not a testable
+  obligation at implementation time — it is a guaranteed wave halt at best, and a silently wrong
+  frozen list at worst. This is the substance of F-01; I am flagging the missing *instruction*, not
+  a missing test.
+- **`PROPERTIES` is now the positive control that the cascade can work.** PROP-INV-07 and
+  PROP-INV-11 at HEAD both read fourteen, and PROPERTIES' own revision history records the `PLAN`
+  divergence explicitly. That the same cascade reached PROPERTIES and not PLAN is what makes me
+  treat F-01 as an observed miss rather than a pending one.
+- **v11 F-03 (§4.3's "four constants", :864) is still open** and this round was right not to open
+  §4.3 — the round was frozen to the routed items. Recording it again so it survives the version
+  bump: §4.3 pins "the four constants together must render to ≤ 1,200 bytes" but names two. If the
+  header and trailer ship as top-level constants they are feature-introduced declarations absent
+  from the fourteen-member owned list, and §7.3's classify-or-redden guard fires on conforming code —
+  which would move the count this erratum just pinned. One sentence in §4.3 resolves it.
 
 ## Open Questions
 
