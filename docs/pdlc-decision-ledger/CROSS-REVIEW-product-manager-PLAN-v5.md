@@ -231,4 +231,13 @@ findings are resolved and the operator pass broke nothing. Exactly what must cha
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | inherited | local | PLAN pins `TSPEC` **v0.8** while approved `TSPEC` is **v0.9**; v0.9 §7.3 rewrote the census contract T-11 compresses, so T-11's token set-equality and hand-picked-three source slice are both the forms v0.9 names unsatisfiable, and v0.9's `DECISION_LEDGER_CENSUS_EXEMPT` / `DECISION_LEDGER_OWNED_DECLS` are unowned by any task. | §Header (`PLAN`:9), §Batches T-11 (`PLAN`:135), §Definition of Done (`PLAN`:469–472) |
+
+FINDING: High | inherited | local | Header Upstream row (PLAN:9) + §Batches T-11 (PLAN:135) + §Definition of Done census bullet (PLAN:469-472) | The PLAN is grounded on a superseded upstream: it pins `TSPEC` v0.8 `28d25518…32cb49` while `TSPEC-pdlc-decision-ledger.md`:17 reads v0.9 and measures `eef45ef3…0623c8` (approved, anchors `6b328e16a` 08:44; v0.9 landed 08:37-08:38, after the v0.5 pass at 08:10). This is not label hygiene — v0.9 §7.3 rewrote exactly the census contract T-11 compresses: (a) T-11 still says `DECISION_LEDGER_CENSUS_TOKENS` is "held to set equality against the module's exported decision-ledger symbol names", which §7.3 now names as red by construction, requiring instead the disjoint partition TOKENS ∪ EXEMPT = OWNED_DECLS; (b) T-11 still scans the source "minus four owned regions — three sliced by brace-matching", where §7.3 requires minus every member of `DECISION_LEDGER_OWNED_DECLS` and says slicing every owned declaration "is what makes the census satisfiable"; (c) the two catalogues v0.9 introduces (`DECISION_LEDGER_CENSUS_EXEMPT`, `DECISION_LEDGER_OWNED_DECLS`) have no owning task and no file-ownership manifest row. BR-11 / REQ NG-4's only falsifying instrument is therefore planned in a form that cannot go green. Tagged inherited: the bytes predate this round and upstream moved after the operator pass — this is a re-grounding pass owed to the ordinary revision loop, not a defect the edit introduced.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 0}
