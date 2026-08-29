@@ -899,6 +899,13 @@ There is none that survives a dispatch. `injectDecisionLedger`'s closure holds `
 seams; it holds no corpus, no rendered block and no snapshot (§2.6). The sink accumulates records
 for the report only, and nothing in the driver ever reads it back.
 
+`report.decisionLedger` is written only when the injector is non-null (the shipped
+`learningsInjectionField` conditional-spread discipline), and it is deliberately **not** a census
+token — §7.3 records why. Its whole proof is therefore §7.2's live composition-root arm: the
+flag-off/flag-on key-set difference for REQ C-2's disabled-path byte-identity, and the
+presence-and-shape assertion on the flag-on path. Deleting that arm deletes the field's only
+evidence.
+
 ### 5.5 The one thing the driver never holds
 
 No driver-side computation takes a decision id as input. `DecisionRecord.id` exists only inside
