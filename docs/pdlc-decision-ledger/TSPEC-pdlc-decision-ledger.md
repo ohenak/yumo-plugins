@@ -1060,9 +1060,9 @@ The last conjunct is what makes the property non-vacuous. A renderer that emits 
 input satisfies the three bounds conjuncts trivially; the prefix conjunct fails it. The generator
 draws record sets spanning zero, one, and many records, line lengths spanning below/at/above
 `maxBytes`, and bounds spanning `0`, exactly-fitting, and generous — so E-6, E-7 and E-8 are all
-inside the property's range rather than beside it. The model is built from the production line
-renderer applied per record, not from a re-implementation of the drop loop, so a bug in the loop
-cannot be mirrored into the oracle.
+inside the property's range rather than beside it. The model applies its **own** formatter (below)
+per record, not a re-implementation of the drop loop, so a bug in the loop cannot be mirrored into
+the oracle.
 
 **The model does not reuse the renderer, or the no-truncation conjunct would be an echo.** Building
 the expected line by calling the production line renderer would make "each rendered line is
