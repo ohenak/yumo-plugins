@@ -109,7 +109,55 @@ close, with one clause. Filed **F-01** below, Medium — the correct reading is 
 
 ## Oracles
 
+The oracle section is byte-unchanged in this diff, and I re-checked only whether the changed
+properties disturb it. They do not.
+
+| Oracle | Touched by v1.2? | Why not |
+|---|---|---|
+| ORC-01 corpus oracle | No | Whole-line equality over FX-CORPUS; no census or `report` operand |
+| ORC-02 citation resolution chain | No | Starts at the rendered line |
+| ORC-03 shipped-default assertions | No | §4.1 defaults and the transcribed 6,305 / 10,859 literals, none of which moved |
+| ORC-04 byte-identity baseline guard | No | Pins `mergeBaseSha`; the *Feeds* note gained a non-referent sentence, but ORC-04's own assertion is unchanged |
+| ORC-05 bounds model | No | O-8, renderer |
+| ORC-06 replay oracle | No | FX-REPLAY anchoring; discharges PROP-INV-01…04, untouched by the census rewrite |
+
+Two things worth stating positively because they bound the blast radius of this round. First, the
+census is still specified **only** inside the INV property table — no oracle owns it — so the repair
+was four table rows and three prose glosses, and there is no second site where the v0.8 wording could
+have survived. I grepped for one: `PROPERTIES` carries no remaining reference to "three function
+bodies", to brace-matching as the slicing mechanism, or to export set-equality as an assertion
+rather than as a rejected form.
+
+Second, ORC-04's referent is now stated in two places that agree. `§FX-BASELINE`'s *Feeds* line
+(`:792–794`) gained "It is **not** the referent for any `report` key set or notices array — see
+PROP-WIRE-12", and PROP-OFF-05 and PROP-WIRE-12 each say the same thing from their own side. That
+three-way agreement is the property I would want here, because the failure mode `TSPEC` §7.2 warns
+about ("easy to get wrong") is precisely a reader picking up the recording as a key-set referent from
+whichever site they read first.
+
 ## Fixtures
+
+No fixture literal, digest or path moved in this round, and none should have: the census reads module
+source, not a fixture, and PROP-WIRE-12's referent is the live arm's own paired runs. I re-verified
+the four transcribed literals are untouched (6,305 / 10,859 / 12,059 / 441) and that FX-CORPUS,
+FX-REPLAY, FX-FAILOPEN and FX-PRECEDENCE are byte-identical in the diff.
+
+The one fixture-adjacent edit is §FX-BASELINE's *Feeds* note, and it is a **narrowing of a referent
+claim, not a change of fixture content** — the recording is unchanged; what changed is the document's
+statement of what it may be compared against. I checked that narrowing against `TSPEC` §7.4 directly
+rather than against PROPERTIES' paraphrase: the *Recorded stream, deliberately narrow* bullet says
+the case drives exported `reviewLoop` and records reviewer-prompt streams, and gives the reason —
+a whole-`main()` recording "would red on this feature's additions (the new notices, the new report
+field) and would have to be re-transcribed mid-feature, proving nothing". So the narrowing is not
+merely permitted, it is the point of the fixture's design.
+
+The three census operands' home is likewise a fixture-shaped question and is now recorded where a
+reader will hit it: `decisionLedgerCensus.test.js` declares all three
+(`PROPERTIES`:891–898), matching the precedent exactly — `ANCHOR_TOKENS` at
+`loopEconomicsAnchorGuard.test.js:114` is a constant of the scanning test, not of the scanned module.
+That home is what makes PROP-INV-07's partition closeable at all, since a test-file constant can
+never be a member of a list of *module* declarations, and the document now says so in the manifest
+rather than leaving it to be inferred.
 
 ## Findings
 
