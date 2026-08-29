@@ -14,7 +14,7 @@ The erratum round landed in **two** commits, and only one of them touched this d
   to REQ **v1.9**, and a v1.3 changelog paragraph added (addresses `CROSS-REVIEW-test-engineer-FSPEC-v3`
   F-03, not a finding of mine).
 - `4f03479e1` — **upstream only**, 1 insertion / 1 deletion in each of two files, none in the FSPEC:
-  `REQ-pdlc-decision-ledger.md:35` and `docs/_constraints/pdlc-decision-corpus-baseline.md:6`.
+  `REQ-pdlc-decision-ledger.md:36` and `docs/_constraints/pdlc-decision-corpus-baseline.md:6`.
 
 Both of my round-4 findings were `Low`, both pointed at upstream text rather than at FSPEC bytes, and
 both were routed as absorbed-upstream. That routing is what `4f03479e1` executes, so the item list for
@@ -29,7 +29,7 @@ the item list.
 **Round-4 items — both absorbed upstream, verified at the text, not at the commit message.**
 
 - **F-01 (Low, round 4) — resolved.** The v1.8 changelog's cascade pointer used to aim the erratum at
-  FSPEC §3.3, which carries no bound literal. `REQ:35` now reads "FSPEC's recitals of the default
+  FSPEC §3.3, which carries no bound literal. `REQ:36` now reads "FSPEC's recitals of the default
   cascade — §3.1's defaults sentence and §7 A-1, not §3.3, which carries no bound literal". That names
   the two sites the edit actually touched (`FSPEC:127`, `FSPEC:562`) and says out loud why §3.3 is not
   one of them. The correction is in the REQ's own changelog prose, which is where the mis-aim lived;
@@ -45,11 +45,11 @@ against the dispatch REQ and Baseline v1.2 as they now stand:
 
 | FSPEC site | Upstream it compresses | Status |
 |---|---|---|
-| `FSPEC:9` `Upstream … **v1.9**` | `REQ:16` `Version 1.9` | Pin resolves. REQ v1.9 moved no measured value — it corrected two stale Baseline pins in the REQ's own body (`REQ:22-27`) — so the FSPEC advancing the pin and following nothing from it is the correct response, and its v1.3 changelog says exactly that |
-| `FSPEC:11` `Baseline … **v1.2**` | `baseline:8` `Version 1.2` | Pin resolves. The Baseline's only change this round is the `Cited by` line; `git diff` confirms no `M-*` fact moved, so every id the FSPEC cites still resolves at the pinned version |
+| `FSPEC:9` `Upstream … **v1.9**` | `REQ:20` `Version 1.9` | Pin resolves. REQ v1.9 moved no measured value — it corrected two stale Baseline pins in the REQ's own body (`REQ:22-27`) — so the FSPEC advancing the pin and following nothing from it is the correct response, and its v1.3 changelog says exactly that |
+| `FSPEC:11` `Baseline … **v1.2**` | `baseline:7` `Version 1.2` | Pin resolves. The Baseline's only change this round is the `Cited by` line; `git diff` confirms no `M-*` fact moved, so every id the FSPEC cites still resolves at the pinned version |
 | `FSPEC:127` defaults `70` / `12500` | `REQ:181-182` C-5 | Verbatim on both literals, and both are cited-by-id rather than re-derived, as C-5 requires |
 | `FSPEC:562` §7 A-1 | `REQ:386-389` §7 A-1 | Faithful: measured once against the Baseline's named commit, `maxEntries` (70) from `M-6b`/`M-6c`, `maxBytes` (12500) from `M-7b`/`M-7c`, operator-revisable before FSPEC authoring. The retired "unmeasured `learningsInjection` analogy" rationale appears in neither |
-| `FSPEC:331` E-7, `FSPEC:474-481` AT-14 | `REQ:181-182` (both keys **non-negative**), `REQ:295-299` O-8 | Sound. REQ types both keys non-negative, so `maxBytes` `0` is a valid operator value and the FSPEC owes it an outcome; the FSPEC does not invent one, it derives it (E-8 then E-6, since every line exceeds `0`) and says so inline. REQ's own bounds sentence at `:298` still enumerates only `maxEntries` `0`, but that is the REQ stating an outcome, not withholding one — the FSPEC completing the axis is FSPEC-altitude work, not a divergence |
+| `FSPEC:331` E-7, `FSPEC:473-481` AT-14 | `REQ:181-182` (both keys **non-negative**), `REQ:295-299` O-8 | Sound. REQ types both keys non-negative, so `maxBytes` `0` is a valid operator value and the FSPEC owes it an outcome; the FSPEC does not invent one, it derives it (E-8 then E-6, since every line exceeds `0`) and says so inline. REQ's own bounds sentence at `:298` still enumerates only `maxEntries` `0`, but that is the REQ stating an outcome, not withholding one — the FSPEC completing the axis is FSPEC-altitude work, not a divergence |
 | `M-*` ids cited across the FSPEC | `baseline:101-112` and §1–§7 | All resolve at v1.2: `M-1d`, `M-2e`, `M-3a`/`M-3c`, `M-4a`/`M-4b`/`M-4d`/`M-4e`, `M-5a`/`M-5c`, `M-6b`/`M-6c`, `M-7b`/`M-7c` |
 
 Nothing I approved in round 4 was disturbed: flows, business rules, the rest of §5, and §6 apart from
