@@ -28,9 +28,9 @@ fix the shape of nearly every decision below:
 
 | Constraint | Where it comes from | What it forecloses |
 |---|---|---|
-| No engine-runtime edit under `pdlc/engine/` | REQ NG-6 | A new `pdlc/workflows/lib/` module: `MODULE_NAMES` in `pdlc/engine/scripts/prepack.mjs:20` is a frozen vendoring list, and adding a module means editing it (`DEC-LOOPECON-08`) |
+| No engine-runtime edit under `pdlc/engine/`, and no growth of the frozen vendoring list | REQ NG-6 (runtime) + `MODULE_NAMES` in `pdlc/engine/scripts/prepack.mjs` | A new `pdlc/workflows/lib/` module: `MODULE_NAMES` is a frozen four-entry list the engine vendors at pack time, so a new module means editing `pdlc/engine/` — a build script, not runtime, so the refusal rests on the frozen list and NG-6's spirit, not on NG-6's literal text, which forbids runtime changes only and expressly permits engine-side tests (`DEC-LOOPECON-08`) |
 | The disabled path is byte-identical | REQ C-2 | Any mechanism whose text cannot be config-gated — notably a `SKILL.md` edit |
-| `/\.enabled\b/` is source-count-pinned outside one sentinel region | `pdlc/workflows/__tests__/advisoryDisabled.test.js` PROP-DIS-06, whose `sourceExcludingParser` slices between the literals `// === LEARNINGS INJECTION REGION START ===` and `... END ===` (lines 717–719) | Both a dotted `enabled` read at the new gate, and hiding the new symbols inside the sliced region |
+| `/\.enabled\b/` is source-count-pinned outside one sentinel region | `pdlc/workflows/__tests__/advisoryDisabled.test.js` PROP-DIS-06, whose `sourceExcludingParser` slices between the literals `// === LEARNINGS INJECTION REGION START ===` and `// === LEARNINGS INJECTION REGION END ===` | Both a dotted `enabled` read at the new gate, and hiding the new symbols inside the sliced region |
 | The rendered extent must equal the Baseline's measured extent | REQ-DECLEDGER-01 against `M-1d` / `M-2e` | Any recognition rule tuned by taste rather than executed against the standing corpus |
 
 **Precedents adopted rather than reinvented**, all in `pdlc/workflows/orchestrate-dev.js`:
@@ -52,7 +52,12 @@ re-derived.
 
 **Measurements are cited, never restated.** Corpus extents live in
 `docs/_constraints/pdlc-decision-corpus-baseline.md` (`M-*` ids) and byte figures in TSPEC §3.6;
-this document names them and does not carry second copies, so a re-measurement moves one site.
+this document names them and does not carry second copies, so a re-measurement moves one site. The
+Baseline's re-measurement to **v1.2** exercised exactly that path and this document was re-pinned to
+it: the `M-7` block (`M-7a` project-level substance bytes, `M-7b` the 63-record worst standing case,
+`M-7c` the cap that clears it) is the measured authority behind REQ C-5's shipped `maxBytes`
+**12,500**, and every byte figure below is derived against that value, never against the retired
+8,000.
 
 ## Options Considered
 
