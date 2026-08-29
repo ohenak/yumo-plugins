@@ -213,4 +213,26 @@ outcome. The shipped precedent already resolves the same tension the same way �
 
 ## Decision
 
+Each row states the chosen form once. `TSPEC §` is where the mechanism is specified in full — this
+table does not restate it — and `TSPEC D-` is the id the TSPEC's own §9.1 summary used, recorded so
+a reader arriving from that table lands here without guessing.
+
+| Id | Decision | TSPEC § / D- | Constraint that forced the shape | Reversibility |
+|---|---|---|---|---|
+| **DEC-DECLEDGER-01** | Where a file records one id more than once, the **last** record in file order renders | §3.3 / D-1 | BR-3's what-was-decided contract against `M-3c`'s question-then-outcome instance | Easy — one key in the recogniser; no expected value outside `M-3a`'s file moves (`M-3d`) |
+| **DEC-DECLEDGER-02** | Where one id is recognised at both origins, the **project-level** record renders, exactly one line; the key is **origin**, never path order | §3.4 / — | `M-5c`'s promoted-form intent; collation is undefined for `_` | Easy — but no HEAD witness (`M-5a`), so it is only ever exercised over a constructed fixture |
+| **DEC-DECLEDGER-03** | Feature-level lines are omitted before project-level lines; within an origin, reverse enumeration order; whole lines only, never truncated; construction never aborts | §3.6 / — | BR-13, N-1, E-8; enumeration order is deterministic via `DECISION_CORPUS_ARGV` | Easy — pure comparator; §7.5's prefix conjunct is what makes it falsifiable |
+| **DEC-DECLEDGER-04** | The index attaches to `reviewerPrompt` only — not the delta-confirmation or finding-restatement prompts | §2.5 / D-2 | REQ C-2's byte-identity surface; both other prompts forbid re-review in their own text | Easy — one more call site; the G-4 denominator disclosure moves with it |
+| **DEC-DECLEDGER-05** | Wiring goes through dispatch construction in `orchestrate-dev.js`, never a `SKILL.md` edit | §1.1, FSPEC O-2 / D-3 | REQ C-2: `SKILL.md` text cannot be config-gated | **One-way door** in practice — the gate is the whole feature's premise |
+| **DEC-DECLEDGER-06** | Ids are read, never minted; uniqueness is not enforced across namespaces and no gate is added | §3.2 / D-4 | REQ G-3 forbids a new operator-facing failure class | Easy — nothing exists to remove |
+| **DEC-DECLEDGER-07** | Framing (header, preamble, rule text, trailer) **is** charged against `maxBytes` | §4.2, §4.3 / D-5 | BR-12 bounds the block as it appears in the prompt | Easy — one term in the bound; changes the measured headroom |
+| **DEC-DECLEDGER-08** | All new symbols land in `orchestrate-dev.js`, **outside** the `// === LEARNINGS INJECTION REGION ... ===` sentinels; this feature's own wiring sentinels are differently named and are invisible to PROP-DIS-06's slice | §1.1, §2.3 / D-6 | REQ NG-6 + `prepack.mjs`'s frozen `MODULE_NAMES` (`DEC-LOOPECON-08`); PROP-DIS-06's slicer | **Hard** — reversing means a `lib/` module, i.e. an engine edit |
+| **DEC-DECLEDGER-09** | The enablement flag is read **destructured** and compared `=== true` | §2.3 / — | PROP-DIS-06's dotted-read count; FSPEC E-1's four fail-open shapes | Easy, but reverting reddens PROP-DIS-06 immediately |
+| **DEC-DECLEDGER-10** | The rendered citation is `[{sourcePath} § {id}]`; `DecisionRecord.heading` is retained but not rendered | §4.3 / D-7 | BR-3 / AT-02 need resolution at source, nothing more; the long form cost ~33% of the block | Easy — one template literal; moves every byte figure in §3.6 |
+| **DEC-DECLEDGER-11** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` | §4.2 / D-8 | BR-12 must be enforced against the bytes the prompt receives | Easy |
+| **DEC-DECLEDGER-12** | The four framing constants render to **≤ 1,200 bytes**, asserted by a pure unit test against that literal | §4.3 / D-9 | DEC-DECLEDGER-07 puts framing inside a measured budget | Easy to re-decide, deliberately noisy to breach |
+| **DEC-DECLEDGER-13** | "The promoted corpus is admitted whole" is a **measured, pinned** fact at the Baseline's commit — asserted at C-5's shipped defaults over the **whole** frozen fixture: the 41 project-level ids entire, their 6,305 bytes within `maxBytes − 1200`, and a non-empty `omitted[]` naming no project-level id | §3.6, §7.3 / D-10 | The claim is not a property of the mechanism, and `docs/_decisions/` grows by consolidation | Easy — the pin re-decides at fixture re-capture, which is the intended moment |
+| **DEC-DECLEDGER-14** | AT-03's change is applied to the scripted `_readFile` double's returned text, not to the fixture copy on disk | §7.6 / D-11 | AT-01's per-file digest guard makes the copy immutable | Easy — and routed upstream as an erratum rather than left as a silent divergence |
+| **DEC-DECLEDGER-15** | `maxEntries` / `maxBytes` are validated as **non-negative** integers, so `0` is a valid admits-nothing value | §4.1 / — | FSPEC E-7; `parseLearningsConfig`'s shipped `nonNegativeInt` | Easy — but reverting re-breaks E-7 |
+
 ## Consequences
