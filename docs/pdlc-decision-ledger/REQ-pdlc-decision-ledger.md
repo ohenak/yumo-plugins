@@ -19,16 +19,12 @@ depends-on:
 |---|---|---|---|
 | Draft | pm-author | 1.7 | 2026-08-28 |
 
-**v1.7 disposition — the Baseline gained the enumeration §5 needed.** Round 6's one High (SE
-F-01, with TE F-26) was that AC-01 asserted set equality against ids the Baseline *counted* but
-never *listed*. It is fixed in the substrate this REQ owns rather than by another clause here:
-Baseline v1.1 adds `M-1d` (the 41 project-level ids) and `M-2e` (the 100 feature-level ids per
-directory), and AC-01 transcribes them. SE F-02 (id-only equality is blind to `M-3c`) widens the
-check to the whole rendered line; SE F-03 (the pinned corpus is live and moves on this branch) is
-decided — a frozen fixture copy, not the live repository; TE F-27 names the directory-glob reading
-as governing membership (O-1); TE F-28 adds O-6. SE F-04 and TE F-29 were Baseline-side and landed
-in v1.1. No recognition rule returns to §2. Findings are not restated here; see the cross-review
-files.
+**v1.7 disposition — the Baseline gained the enumeration §5 needed.** Round 6's one High is fixed in
+the substrate this REQ owns, not by another clause: Baseline v1.1 adds `M-1d` and `M-2e`,
+the ids it previously only counted; AC-01 transcribes them. SE F-02 widens equality to the
+rendered line; SE F-03 is decided — a frozen fixture copy, not the live repository; TE F-27
+lands in O-1, TE F-28 as O-6; F-04 and F-29 were Baseline-side. No recognition rule returns
+to §2; findings are not restated here, see the cross-review files.
 
 ## 1. Problem / Context
 
@@ -188,14 +184,12 @@ material (O-1).
 each line carrying the decision id, a one-line statement and a source citation as G-1 defines it,
 and no other required field. The check is **equality of the rendered line
 set — not containment, and not equality over ids alone**: the runs agree only where each line's
-id, statement and citation all agree. Ids alone would be blind to the twice-opened block Baseline
-`M-3c` records, where both openings carry one id and only the second states what was decided; G-1's
-field contract distinguishes them, so this criterion must too. The expected value is the Baseline's
+id, statement and citation all agree. Ids alone are blind to `M-3c`'s twice-opened
+block, where both openings carry one id and only the second states what was decided. The expected value is the Baseline's
 **enumeration**, cited by id — `M-1d` project-level, `M-2e` per feature directory, at v1.1's
-`Verified at` commit — transcribed, not re-derived from any predicate in this document. It is
-asserted against a **frozen fixture copy** of that pinned corpus, never against the live
-repository: the live corpus grows, on this branch included, and an acceptance test keyed to it
-would drift on decisions unrelated to this feature (O-6). Membership on any other corpus follows
+`Verified at` commit — transcribed, not re-derived from a predicate here. It is asserted against
+a **frozen fixture copy** of that corpus, never the live repository, which grows — on this
+branch included — and would otherwise drift the test on unrelated decisions (O-6). Membership on any other corpus follows
 from the recognition rule TSPEC owns (O-1) and is not asserted here, so nothing in this criterion
 obliges the REQ to state that rule. Over-budget omission is REQ-DECLEDGER-07's alone. In
 production the index reflects records as they exist at dispatch-construction time, never a
@@ -342,7 +336,7 @@ the file mixing records with question headings and back-references (`M-4d`), and
 any cross-file duplicate to calibrate precedence on (`M-5a`, `M-5c`). **Membership reads the directory
 glob.** Where `M-2c`'s two feature file-scope readings differ (14 ids against 22), the directory
 reading governs, matching the floor C-5 already took from `M-6b`; this selects between two measured
-numbers and mints no recognition rule. A TSPEC choice that renders a set differing from `M-1d` /
+numbers, minting no rule. A TSPEC choice that renders a set differing from `M-1d` /
 `M-2e` under that reading, at the Baseline's commit, fails REQ-DECLEDGER-01; within that
 constraint the rule is TSPEC's to design.
 
@@ -368,8 +362,7 @@ instance, and Baseline `M-4e` records that an empty file and a failure to read a
 by construction. PROPERTIES owes a constructed fixture to each — every source unavailable, one
 decision of several failing while the rest render, and a file holding no record taking the
 ordinary-empty path rather than the partial one — and likewise to the frozen corpus copy
-REQ-DECLEDGER-01 asserts against. Coverage obligations, not REQ defects, recorded here rather than
-answered by adding a rule to G-1.
+REQ-DECLEDGER-01 asserts against. Coverage obligations, not REQ defects.
 
 **Assumptions.** Authored in an orchestrated dispatch; these are explicit, operator-vetoable
 assumptions rather than blocking open questions:
