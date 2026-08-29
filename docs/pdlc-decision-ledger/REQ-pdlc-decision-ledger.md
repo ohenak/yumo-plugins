@@ -12,12 +12,19 @@ depends-on:
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5,6}.md` |
 | Post-Mortem | `POSTMORTEM-R-pdlc-decision-ledger.md` (Phase R round budget exhausted; this version applies its Recommendation) |
-| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.1** — the measured extent of the closed-decision corpus, cited by `M-*` id |
+| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2** — the measured extent of the closed-decision corpus, cited by `M-*` id |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.7 | 2026-08-28 |
+| Draft | pm-author | 1.8 | 2026-08-28 |
+
+**v1.8 erratum — C-5's two thresholds, and nothing else.** Both are retyped **non-negative**:
+*positive* rejected `0`, which FSPEC E-7 requires as a valid admits-nothing `maxEntries`, and fell
+back to `70` — the opposite outcome. `maxBytes` `8000` was an unmeasured `learningsInjection`
+analogy, falsified by measurement as below the standing corpus; it becomes **`12500`**, derived
+from Baseline **v1.2**'s new `M-7b`/`M-7c` by id. R-5 and A-1 carried the retired analogy claim
+and are decided, not reconciled. FSPEC §3.3's recital of the default cascades; nothing else moves.
 
 **v1.7 disposition — the Baseline gained the enumeration §5 needed.** Round 6's one High is fixed in
 the substrate this REQ owns, not by another clause: Baseline v1.1 adds `M-1d` and `M-2e`,
@@ -162,8 +169,8 @@ not left to TSPEC to invent:
 | Key | Default | Type | Config owner | Rationale |
 |---|---|---|---|---|
 | `decisionLedger.enabled` | `false` | boolean | operator, `.claude/pdlc.config.json` → `decisionLedger` | Tier 3: off by default per proposal §6 |
-| `decisionLedger.maxEntries` | `70` | non-negative integer | operator, same block | Floor taken once against the Baseline's named commit and cited, not re-derived here: `M-6b` (63), with `M-6c` recording that 70 clears it by 7. A default below `M-6b` drops a line against the standing corpus on day one. **Non-negative**, not positive: `0` is a valid admits-nothing value, not a malformed one, so it does not fall back to `70` |
-| `decisionLedger.maxBytes` | `12500` | non-negative integer | operator, same block | Measured, not analogised: the Baseline's `M-7c` records that 12,500 clears the `M-7b` worst standing case (9,296 substance bytes over 63 records) by 3,204 — 50 bytes per record of framing allowance — while 8,000 sits *below* `M-7b` and drops lines on day one. Non-negative for the same reason as the row above |
+| `decisionLedger.maxEntries` | `70` | non-negative integer | operator, same block | Floor taken once against the Baseline's named commit and cited, not re-derived here: `M-6b` (63), with `M-6c` recording that 70 clears it by 7. A default below `M-6b` drops a line against the standing corpus on day one. **Non-negative**: `0` is a valid admits-nothing value, not a malformed one falling back to `70` |
+| `decisionLedger.maxBytes` | `12500` | non-negative integer | operator, same block | Measured, not analogised: the Baseline's `M-7c` records that 12,500 clears the `M-7b` worst standing case (9,296 substance bytes over 63 records) by 3,204 — 50 bytes per record of framing allowance — while 8,000 sits *below* `M-7b` and drops lines on day one. Non-negative as above |
 
 `maxBytes` bounds **the rendered index text alone** — the index block as it appears in the
 prompt, not its contribution to total dispatch size, nor the underlying records. When the
