@@ -177,4 +177,32 @@ needs the fix.
 
 ## Recommendation
 
+**Needs revision**
+
+This is a strong TSPEC. It discharges every open question routed to it (O-1, O-2, O-3, O-4, O-7,
+Q-1, Q-2, Q-3), it grounds its central design choice in a re-executable measurement that I
+independently reproduced, and its traceability table maps all eight acceptance criteria to concrete
+components. One High finding gates it, and the fix is small and local.
+
+Exactly what must change for approval:
+
+1. **F-01** — Restate §3.6's "the bound is never reached and the order is inert" claim to match the
+   measured reality (project-level alone is 9,371 bytes against a `maxBytes` default of 8,000), and
+   resolve the overflow. The lowest-cost route is entirely inside this spec: shorten §4.3's citation
+   field from `{sourcePath} § {heading}` to `{sourcePath} § {id}`, removing the duplicated statement.
+   Close §9.3's T-2 with the measured number rather than deferring it to PLAN.
+2. **F-02** — State in §7.6 (or §7.3) the bounds configuration the AT-01 corpus oracle runs under,
+   so its 45- and 48-line expected sets are producible.
+3. **F-03** — Record next to D-2 that G-4's measurement surface (all committed `CROSS-REVIEW-*`
+   artifacts) is wider than the injection surface (`reviewerPrompt` only).
+4. **F-04** — Correct §3.5's `pdlc-plugin-retirement` reason: the directory entry matches and is
+   enumerated; the records are excluded by the id-namespace conjunct (`M-4b`), not by absence.
+5. **F-05** — Fix §1.2's row count, §1.3's `§3.4` → `§3.5`, and §5.3's "four other blocks" → eight.
+
+F-03 through F-05 are non-gating on their own; they are listed here because they are cheap to land
+in the same revision.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 2}
