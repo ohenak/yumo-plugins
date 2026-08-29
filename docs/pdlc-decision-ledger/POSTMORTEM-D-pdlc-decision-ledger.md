@@ -17,7 +17,50 @@ TSPEC erratum round did not pass — non-approving: `te-review` — and the foll
 
 ## Phase
 
+**D** — technical design: TSPEC authoring and review, DECISIONS authoring and review, and the
+erratum channel opened against the approved TSPEC when its upstream moved.
+
+The document itself reached approval. TSPEC **v0.4** was approved by both reviewers at round 4
+(`product-manager`: *Approved with minor changes*, 0 High; `test-engineer`: *Approved with minor
+changes*, 0 High). DECISIONS reached the same state at round 3. What halted the phase is
+downstream of that approval: REQ moved to v1.8 and then v1.9 under its own erratum channel,
+changing `C-5`'s `maxBytes` default from `8000` to `12500`; the cascade re-opened the TSPEC
+(rounds 5–7). Round 7 was the **delta confirmation** of round 6's erratum edit. It returned
+`VERDICT: Needs revision` from `te-review` with one High, the follow-up budget was spent, and
+the phase stopped.
+
+No requirement, threshold or acceptance criterion is in dispute. The open defect is a single
+arithmetic conjunct in one test assertion (§7.3), and **both reviewers identified it
+independently in the same round** — they differ only on severity.
+
 ## Iterations
+
+**7 on TSPEC** (4 review rounds, then an upstream-cascade confirmation and two erratum rounds);
+**3 on DECISIONS** (converged).
+
+| Round | TSPEC version | Kind | product-manager | test-engineer |
+|---|---|---|---|---|
+| 1 | v0.1 | review | Needs revision (1 H, 2 M, 2 L) | Needs revision (5 H, 4 M, 3 L) |
+| 2 | v0.2 | delta re-review | Approved with minor changes (0 H, 2 M, 3 L) | Needs revision (1 H, 1 M) |
+| 3 | v0.3 | delta re-review | Approved with minor changes (0 H, 1 M, 1 L) | Needs revision (1 H, 1 M, 2 L) |
+| 4 | v0.4 | delta re-review | **Approved** with minor changes (0 H, 1 M, 1 L) | **Approved** with minor changes (0 H, 1 M, 1 L) |
+| 5 | v0.4 (bytes unchanged) | upstream-cascade confirmation (REQ v1.8) | Needs revision (2 H, 3 M) | Needs revision (3 H, 3 M, 1 L) |
+| 6 | v0.5 | erratum delta confirmation | Approved with minor changes (0 H, 1 M) | Needs revision (1 H, 0 M, 3 L) |
+| 7 | v0.6 | erratum delta confirmation | Approved with minor changes (0 H, **2 M**) | **Needs revision (1 H, 0 M, 1 L)** ← halt |
+
+DECISIONS, for completeness — it converged and is not part of the halt:
+
+| Round | DECISIONS version | product-manager | test-engineer |
+|---|---|---|---|
+| 1 | v1.0 | Needs revision (2 H, 1 M, 2 L) | Needs revision (4 H, 1 M, 1 L) |
+| 2 | v1.1 | Approved with minor changes (0 H, 1 M) | Needs revision (1 H, 1 M) |
+| 3 | v1.2 | Approved with minor changes (0 H, 1 M) | Approved with minor changes (0 H, 1 M) |
+
+Round 7's delta landed in four commits (`04a6dc249`, `fa41f8680`, `1b3bc5004`, `88fe6dbae`,
++90/−19) across §0, §3.6, §4.1, §6.1 F-13, §7.3, §7.6 AT-14, §9.2, §9.4 and D-10. Both
+reviewers verified the diff touched nothing outside the declared list and that every routed
+item landed. **Five of five routed items landed; the sixth item is new, minted by one of the
+five fixes.**
 
 ## Reviewers
 
