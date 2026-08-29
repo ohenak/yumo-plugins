@@ -47,6 +47,59 @@ No prior finding regressed, and the delta introduced no factual error: every cla
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | PROP-DISC-07's second conjunct is attributed to `T-12a → T-19`, but `PLAN`:99 makes it half of **T-00a**'s two-sided acceptance; `PLAN`:104 gives T-12a a different obligation | §DISC preamble, PROP-DISC-07 |
+| F-02 | Medium | Local | `PLAN` T-12a's terminal namespace census — twelve module names asserted by **set equality** — is owned by no property; the document routes it to prose instead | PROP-DISC-07's note, §Coverage Matrix |
+| F-03 | Low | Local | §Overview's O-8 row still spells the discharge `PROP-BND-01…06`, a fourth range not covered by the new "three BND ranges reconciled once here" paragraph and disagreeing with §Coverage Matrix | §Overview O-8 row |
+
+### F-01 (Medium) — the two halves are split one task later than `PLAN` splits them
+
+The repair to my v1 F-01 landed the important half: the exclusion edit is now T-00a, batch 1, and the
+batch-1 required-check hazard is gone. But the delta also assigns the *second* conjunct — "the filtered
+count is still `102` once all twelve exist" — to `PLAN` **T-12a → T-19**, batch 9, in two places
+(§DISC preamble, and PROP-DISC-07's "The two halves have different owners" sentence). `PLAN`:99 states
+T-00a's acceptance is itself two-sided: *"Acceptance is two-sided: the exclusion lands **and** the
+filtered count is still `102`"*. Both conjuncts are T-00a's, and both are satisfiable in batch 1 —
+excluding the namespace pins the complement, whose value does not depend on how many `decisionLedger*`
+modules exist yet, which is exactly why T-00a can be green-at-both-ends.
+
+This is not a scheduling hazard the way v1's F-01 was — a redundant recheck at batch 9 is harmless —
+but the document is the traceability surface, and an implementer reading it will believe T-00a's
+acceptance is one-sided and stop after the filter edit. **What must change:** state both conjuncts as
+T-00a's (batch 1), and give T-12a → T-19 the obligation `PLAN` actually assigns it — F-02.
+
+### F-02 (Medium) — `PLAN` T-12a's set-equality census has no owning property
+
+`PLAN`:104 gives T-12a, beyond the disclosure family, *"one conjunct asserting that the
+`pdlc/workflows/__tests__/decisionLedger*.test.js` names are **set-equal** to the twelve names
+hand-transcribed from this PLAN's file-ownership manifest … It is a set, not a count, so a dropped or
+renamed module names itself in the failure."* That conjunct appears nowhere as a `PROP-*`. The
+document instead writes, under PROP-DISC-07's note, that the module count *"is pinned separately by
+`PLAN`'s file-ownership manifest … verified by enumeration of the PLAN's own task table"* — an
+enumeration in prose, not an oracle in a test.
+
+That leaves a `PLAN`-mandated set-equality assertion with no property behind it, in a document whose
+own stated standard is that enumerated contracts are checked by set equality so a deleted case fails
+(the same standard PROP-CFG-05, PROP-CFG-09, PROP-DISC-02 and PROP-DISC-10 are held to). It is also
+the one assertion that would catch a module silently dropped from the twelve during batches 3–8 — the
+failure mode the namespace exclusion, by design, makes invisible to the `102` count.
+
+**What must change:** add `PROP-DISC-11` — the `decisionLedger*.test.js` name set in
+`pdlc/workflows/__tests__/` must be set-equal to a hand-transcribed twelve-name literal, owner
+`PLAN` T-12a → T-19 — and re-point the DISC preamble's T-12a mapping at it. DISC becomes 11 and the
+partition 102; both are one-line edits given the delta's new arithmetic.
+
+### F-03 (Low) — a fourth BND range survives the reconciliation
+
+The new paragraph reconciles *"the three BND ranges quoted elsewhere"* as `01…07` (ORC-05's conjunct
+table), `01…12` (the family) and `01…04` (the mutation subset). §Overview's obligation table still
+reads *"PROP-BND-01…06 (`TSPEC` §7.5's four conjuncts …)"* for O-8, while §Coverage Matrix's
+upstream-obligation row for the same O-8 now reads `PROP-BND-01…04` plus `PROP-BND-07`. Three
+spellings of one discharge, and the paragraph that exists to reconcile them does not mention the
+§Overview one. **What must change:** re-point §Overview's O-8 row at the §Coverage Matrix spelling, or
+add it to the reconciliation's list.
+
 ## Questions
 
 ## Positive Observations
