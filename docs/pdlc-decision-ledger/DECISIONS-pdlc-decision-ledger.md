@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.0
+Version: 1.1
 Feature: pdlc-decision-ledger
 ---
 
@@ -9,8 +9,8 @@ Feature: pdlc-decision-ledger
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → **DECISIONS** |
 | Downstream | PLAN, PROPERTIES, IMPL |
-| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` v1.1, cited by `M-*` id, never restated |
-| Cross-Reviews | (none yet) |
+| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
+| Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-DECISIONS-v1.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 # DECISIONS — pdlc-decision-ledger
