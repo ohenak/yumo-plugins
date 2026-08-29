@@ -292,6 +292,23 @@ no witness in the standing corpus; `M-5b` draws the consequence, that the rule i
 over a constructed corpus, which is the synthetic-fixture obligation FSPEC O-5 already places on
 PROPERTIES and over which AT-18 asserts the cardinality conjunct.
 
+**Cardinality alone is not enough, and the missing conjunct is assigned here.** "Exactly one line
+is emitted" is a terminal state both readings of the precedence rule reach: feature-level-wins also
+emits exactly one line. A cardinality-only oracle therefore passes under the rule this spec
+*rejects*, which is the precedence-chain false green in its textbook form. The **positive**
+conjunct is this, and it is asserted over O-5's synthetic two-file fixture alongside the
+cardinality one:
+
+> For the id recorded in both files, the single rendered line's `statement` and `sourcePath` equal
+> the **project-level** record's — each transcribed literally from the fixture, never captured from
+> the renderer — and its `origin` is `"project"`. The feature-level record's statement is asserted
+> **absent** from the whole rendered block.
+
+The two halves fail on different mutations, which is why both are needed: swapping the precedence
+direction leaves cardinality green and reddens the statement/origin conjunct; emitting both records
+leaves the statement conjunct green and reddens cardinality. §7.6's AT-18 row carries this
+assignment, so no conjunct is left pointing at a section that assigns no test.
+
 `M-5c` also warns that a path-ordering tie-break is *not* equivalent and is not well-defined without
 naming a collation, since `_` (`0x5F`) inverts under case-folded collation. This rule therefore
 keys on **origin** (project-level vs feature-level), never on path order.
@@ -320,7 +337,7 @@ recognising via `DECISION_HEADING_RE`, with last-record-wins per file:
 | `orchestrate-dev-workflow` | **6** | `M-2e`: 6 |
 | `pdlc-advisory-wave-gate` | **4**, exactly `DEC-A6-01`…`04` | `M-2e`: 4; `M-4d`: 8 non-records excluded |
 | `pdlc-rcv-budget-stop` | **4** | `M-2e`: 4 |
-| `pdlc-plugin-retirement` | **0** (no matching directory entry) | `M-2e`: 0 *(none; `M-4b`)* |
+| `pdlc-plugin-retirement` | **0** (directory entry matches and is enumerated; all twelve of its ids are namespace-less `DEC-01`…`DEC-10`, rejected by the id-namespace conjunct) | `M-2e`: 0 *(none; `M-4b`)* |
 | `DEC-LOOP-01`'s rendered statement | "Session state travels in a caller-echoed token, not a durable file" | `M-3c`: the second, deciding opening |
 
 Every figure agrees. Note that `pdlc-decision-ledger` itself contributes nothing today — this
@@ -335,12 +352,56 @@ enumeration order** (last enumerated dropped first). Enumeration order is `DECIS
 pathspec order, then `git ls-files`' own ordering within a pathspec, then file order within a file
 — all three deterministic, none dependent on a clock, a locale or a filesystem walk.
 
-Rationale: the project-level corpus is the shared, promoted material every reviewer of every
-feature is measured against, and it is a fixed 41 lines against a `maxEntries` default of 70
-(`M-6c`: a cap of 70 clears `M-6b`'s floor of 63 by 7), so under the shipped defaults the bound is
-never reached and the order is inert. It becomes live only when an operator lowers the bound or the
-corpus grows past it, and in that regime dropping the narrower, feature-local material first is the
-safe direction.
+**Rationale, and the measurement that governs it.** An earlier draft of this section argued the
+order was *inert* under shipped defaults, because `maxEntries` 70 clears `M-6b`'s floor of 63. Both
+TSPEC reviewers falsified that claim by executing the rule and measuring the bytes, and I have
+re-executed it and reproduce their figures exactly. The `maxEntries` half of the argument is sound;
+the claim was wrong because **`maxBytes` binds first in every case**, and D-5 charges framing to it.
+
+Measured over the corpus at the Baseline's `Verified at` commit `8c673a09f`, index lines only
+(framing excluded), under the two candidate line formats — the long form an earlier draft of §4.3
+specified, and the form §4.3 now specifies:
+
+| In-scope set | Lines | Long form `§ {heading}` | **Shipped form `§ {id}`** |
+|---|---|---|---|
+| Project-level alone (`M-1d`) | 41 | 9,371 | **6,305** |
+| + `pdlc-advisory-wave-gate` (AT-01 (a)) | 45 | 10,441 | **7,042** |
+| + `pdlc-engineering-loop` (AT-01 (b)) | 48 | 11,354 | **7,650** |
+| + `pdlc-headless-engine` (`M-6b`'s 63-line floor) | 63 | 16,283 | **10,859** |
+
+Two conclusions follow, and this spec acts on both.
+
+**First, the line format was wasteful, and that is this spec's own defect to fix.** The long form
+rendered the statement twice — once as `{statement}` and again inside `{heading}`, which is the
+full heading line and therefore contains both the id and the statement. §4.3 now cites
+`[{sourcePath} § {id}]`, which still names the record's file and locates the record within it —
+all BR-3 and AT-02 require — and removes ~33% of the block. This is a Q-1 choice, entirely inside
+this document, and it is taken.
+
+**Second, the order is live under shipped defaults, and this section no longer claims otherwise.**
+Even in the shipped form, with §4.3's framing budget of ≤1,200 bytes charged, the byte bound leaves
+`8000 − 1200 = 6,800` bytes for lines. Project-level alone (6,305) fits with ~495 bytes of
+headroom, or roughly **two** feature-level lines at the measured 137–160 bytes/line. So on the
+shipped default:
+
+- every reviewer receives the **whole** project-level corpus, on every feature, always;
+- feature-level lines are admitted until the bound, and the larger feature directories are
+  partially omitted from the first enabled dispatch.
+
+That is the omission order doing exactly the job it was designed for, on day one rather than in
+some future regime — which is precisely why the order is **feature-level first**. The safety
+property the earlier draft wanted from inertness is instead delivered by the order itself: the
+shared, promoted material every reviewer is measured against is the material the bound never
+reaches. The order is therefore load-bearing from the first dispatch and is tested as such
+(§7.5's property, whose prefix conjunct is what makes the order falsifiable, and AT-13/AT-15).
+
+**The `maxBytes` default value is not this spec's to set.** It is REQ C-5's, and A-1 already records
+it as the unmeasured threshold an operator may revise without a REQ revision. The measurement A-1
+was waiting for is now taken and is routed upstream as an erratum (§9.2, E-2) rather than decided
+here: a default of **12,500** admits the worst standing case (10,859 + 1,200 = 12,059) with
+headroom, where 8000 admits the project-level set plus about two feature lines. Nothing in this
+design changes if the default moves — the bound is a parameter, the order is the mechanism, and
+both are correct at either value.
 
 Both bounds are applied by the same loop, whole line at a time: while the rendered index exceeds
 `maxEntries` lines **or** `maxBytes` bytes, drop the next line in omission order. A single line that
