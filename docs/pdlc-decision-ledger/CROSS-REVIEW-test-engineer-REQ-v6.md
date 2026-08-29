@@ -64,12 +64,67 @@ none gating.
 
 ## Questions
 
-<!--PLACEHOLDER-QUESTIONS-->
+| ID | Question |
+|----|---------|
+| Q-03 | F-26: is there a reason not to enumerate the 41 project ids in the Baseline? It is the same kind of fact as the counts already there, it is what AC-01 actually needs, and it converts the acceptance test from a re-derivation into a transcription. |
+| Q-04 | F-27: is the directory-glob reading (`M-6b`, already governing the floor) the intended membership reading too? If yes, one clause in O-1 says so and AC-01 becomes single-valued. |
 
 ## Positive Observations
 
-<!--PLACEHOLDER-POSITIVE-->
+- **The fix is structural, not another clause, and that is why it holds.** Five rounds ran the
+  same loop: each rewrite of G-1's predicate was true against the corpus the previous round cited
+  and false against one it had not looked at. v1.6 does not attempt a sixth predicate — it removes
+  the predicate, states the outcome, and moves the measurement to a commit-pinned reference. A
+  measurement against a named commit cannot be falsified by a counterexample from elsewhere in a
+  live corpus, which is precisely the property the previous five clauses lacked. From a testing
+  standpoint this is the difference between an oracle and an argument.
+- **Every number in the new reference reproduces exactly — sixteen facts, sixteen checks, zero
+  discrepancies.** Including the ones easiest to get wrong: the twelve-entry per-file count vector
+  in path order, the twelve-entry per-directory vector, and twenty-nine individual line numbers
+  across four files. I did not spot-check; I re-derived the whole corpus and diffed. A document
+  that exists to be trusted by downstream fixtures earned that trust on first inspection.
+- **`M-2c` is a finding the reviewers had not made, found by the author.** The second
+  `DECISIONS-*.md` in `docs/completed/pdlc-headless-engine/` carries eight `DEC-HE-*` ids recorded
+  nowhere else, invisible to a `DECISIONS-{feature}.md` file scope. That is a real 8-line drop
+  under one plausible reading, and it moved the floor from 55 to 63 — which is why the old
+  `maxEntries` default of 60 was wrong. `M-6c` states the consequence in the falsifiable form: a
+  cap of 60 "drops a line against the standing corpus on day one". Raising the default to 70 on
+  the strength of a measured floor, rather than defending the old number, is the right call.
+- **`M-3c` answers F-23 by deriving the answer instead of asserting it.** Rather than declaring
+  "last record wins", it records which opening carries the decision (`:363`, the outcome heading)
+  and lets G-1's field contract — "says what was decided rather than what was asked" — select it.
+  The REQ now has one statement where it previously had two that disagreed, and the surviving one
+  is the black-box one.
+- **`M-5b`/O-5 draw the correct testing conclusion from a null measurement.** "Zero cross-file
+  duplicates" could have been read as "nothing to test". It is read instead as "not coverable by
+  transcription, therefore a synthetic-fixture obligation for PROPERTIES" — with an explicit owner
+  and an explicit note that it is a coverage obligation, not a REQ defect. That is the reasoning I
+  would want a test engineer to do, arriving from the author's side. F-28 asks only that the same
+  reasoning be applied to AC-04's legs.
+- **The routing in the version note is auditable.** Each of the five open findings is named with
+  its destination id (`F-23 → M-3a–M-3d`, `F-24 → M-5a–M-5c`, `F-25 → M-2a`, SE `F-01 → M-2c`/`M-6b`,
+  SE `F-02 → O-5`), and none is silently dropped. I checked all five landed where claimed.
+- **No stale residue from the excision.** "First record wins", "files in path order", the
+  `.consolidation-log.md` construction and the old 41-based floor prose are gone from the REQ with
+  no dangling reference left behind; C-5, A-1 and R-5 were all updated in step with the new
+  `maxEntries`.
 
 ## Recommendation
 
-<!--PLACEHOLDER-RECOMMENDATION-->
+**Approved with minor changes** — no High findings. F-23, the High that blocked rounds 1–5 in one
+form or another, is resolved, and resolved by removing the clause rather than re-arguing it. The
+rewrite touched §2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04 and §7; I re-read all
+five and found no previously approved behavior broken. The new Baseline is accurate in every fact
+I could check, which is all sixteen.
+
+The three Mediums are worth landing before FSPEC but none of them blocks it: F-26 (enumerate the
+ids the Baseline counts, so AC-01's set-equality oracle is a transcription rather than a
+re-derivation), F-27 (say which `M-2` reading governs membership, since C-5 has already chosen one
+for the floor), F-28 (extend O-5's synthetic-fixture obligation to AC-04's three construction-only
+legs). F-29 is a one-sentence correction to the Baseline's own provenance note. All four are
+additive; none requires reopening G-1's altitude decision, which I think is right.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 3, "low": 1}
