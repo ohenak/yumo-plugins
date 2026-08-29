@@ -146,3 +146,6 @@ blocks: they are traceability repairs the author can land in a single pass, and 
 property's content, a fixture, or a byte literal.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
