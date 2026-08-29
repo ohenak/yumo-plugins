@@ -148,19 +148,60 @@ downstream of this phase.
 
 ## Findings
 
-*(pending)*
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The document names TSPEC's HEAD version as `v0.7`; HEAD is `v0.9`.** The Context passage states the position "at HEAD (TSPEC **v0.7**, REQ **v1.9** / FSPEC **v1.3** / Baseline **v1.2**)", and the DEC-DECLEDGER-10/-12 trigger row repeats "TSPEC v0.7 (REQ v1.9, FSPEC v1.3, Baseline v1.2)". `TSPEC:15` reads **0.9**. The other three pins are still exact, and every figure and mechanism the sentence carries still reads true at v0.9 (see the verification table above), so the *payload* is sound and only the version literal is stale — which is why this is Medium and not High. Re-pin both literals to `v0.9` next time the file is opened. | § Context (v1.4 re-grounding passage); § Re-evaluation triggers, DEC-DECLEDGER-10/-12 row |
+| F-02 | Medium | Cross-Feature | **Carried unresolved from v4 (non-gating, and untouched because the document did not change): DEC-DECLEDGER-16's provenance rule is stated positionally rather than directionally, and its prose-versus-assertion scope is undefined.** As written — the ceiling "appears only as the larger side of an inequality" — it over-rejects the sound form `measured + ceiling ≤ bound` used at `TSPEC:47`-era, `TSPEC:594` and D-10 (`TSPEC:1651`), where the ceiling sits on the smaller side yet the substitution still errs safe; and it gives no single answer at `TSPEC:625` / `TSPEC:1651`, where `10,859 + 1,200 = 12,059` appears as recounting prose rather than as a pinned expected value. The sound criterion is directional (the ceiling may enter only where substituting it for the true, smaller drafted value overstates usage and understates margin — never in an equality) with an explicit scope predicate (pinned expected values, not prose). The rule's *intent* is right and §7.3's conjuncts (5)–(6) already implement it correctly, so nothing upstream is wrong; the defect is that the rule cannot be run as a mechanical check in the form recorded. Best fixed at promotion into `docs/_constraints/DOMAIN-CONSTRAINTS.md`. | § Decision, DEC-DECLEDGER-16 (narrative + Decision row + PROPERTIES Consequences row) |
+
+Deferred observations (freeze in force — recorded, not decided here):
+
+DEFERRED: Re-pin the two `TSPEC v0.7` literals to `v0.9` on the next edit of this document for any reason.
+DEFERRED: Restate DEC-DECLEDGER-16's provenance rule directionally with an explicit "pinned expected values, not prose" scope predicate, at promotion into DOMAIN-CONSTRAINTS.md.
+DEFERRED: When PROPERTIES are authored, have the DEC-DECLEDGER-09 falsifier slice the source the same way §7.3 v0.9 now does (frozen `DECISION_LEDGER_OWNED_DECLS` + the wiring block) rather than hand-picking regions.
 
 ## Questions
 
-*(pending)*
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried from v4/v3, still a TSPEC-side statement rather than a DECISIONS edit — noted so it is not lost at the phase boundary)* Were §7.3's frozen fixture and the 41-id / 6,305-byte expected values transcribed from the **same** capture commit? If they were captured at different moments, the fixture and the pinned corpus can drift apart silently and every byte figure inherits the discrepancy. §7.3's per-file hand-transcribed digest guard (`TSPEC:1297`-region) makes this answerable by inspection; it would be worth one sentence naming the capture commit. |
+| Q-02 | Is DEC-DECLEDGER-16's promoted form intended to be the directional statement F-02 describes? If so, fixing the wording at promotion time costs nothing and saves the next feature from re-deriving it from a rule that over-rejects its own upstream. |
 
 ## Positive Observations
 
-*(pending)*
+- **The document survived a nine-commit upstream rewrite of the exact section it leans on
+  hardest without a single false claim.** §7.3 was re-worked twice (v0.8's erratum round and
+  v0.9's census-satisfiability round) and this document derives its or-conditioned-loop
+  reading, its `omitted[]` non-vacuity argument, its 41/6,305 project-level pin and its
+  141-record fixture reference from that very section. That it all still reads true is a
+  consequence of a choice made back at v1.3/v1.4 — deriving from §7.3's *mechanism* and
+  citing §-anchors rather than transcribing line positions or restating §7.3's own wording.
+  A document that had quoted §7.3's prose would have gone stale in three places this round.
+- **The one thing that did go stale is the one thing that is cheap to fix and cannot mislead
+  a test author.** A stale `v0.7` version literal is visible, self-announcing and carries no
+  arithmetic; a stale *figure* would have been none of those. The failure mode this document
+  actually exhibits is the benign one, and that is not luck — the v1.4 revision deliberately
+  separated the version pin from the figures it licenses.
+- **The `12,059`-is-not-an-equality rule and its upstream implementation stayed in sync
+  across the rewrite.** DEC-DECLEDGER-16 records a rule; §7.3 conjuncts (5)–(6) and D-10
+  implement it; both were rewritten this round on the TSPEC side and neither drifted. That is
+  the property you want from a decision record — it stays true when its subject is edited by
+  someone who is not reading it.
 
 ## Recommendation
 
-*(pending)*
+**Approved with minor changes**
+
+No open High finding. The document under review is byte-identical to the version I approved
+at iteration 4, so this round could only fail on upstream drift — and it does not: every
+figure (11,300 / 10,859 / 12,059 / 441 / ~4,995 / 6,305 / 63 / 141 / 41 / 70 / 12,500),
+every mechanism claim (§7.3's or-conditioned loop, the non-vacuous `omitted[]` conjunct, the
+deliberate non-assertion of `12,059`, the census slices behind the DEC-DECLEDGER-09
+guidance) and every erratum status (`ERR-1`/`ERR-2` resolved at REQ v1.8, `ERR-3`/`ERR-4`
+still open) was re-read on disk at TSPEC v0.9 and holds. Two Mediums are recorded and
+neither gates: a stale `TSPEC v0.7` version literal whose surrounding claims remain true, and
+v4's carried wording defect in DEC-DECLEDGER-16's predicate, whose intent is correct and
+already correctly implemented upstream. Both are best fixed at moments downstream of this
+phase, and the freeze forbids opening either as a new decision here.
 
 ## Delta-Confirmation Findings
 
