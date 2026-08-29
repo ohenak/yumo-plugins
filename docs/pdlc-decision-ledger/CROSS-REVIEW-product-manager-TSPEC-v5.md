@@ -134,6 +134,13 @@ flagging rather than prescribing:
    §4.3's §7.3:630 remark that the 1,200-byte framing pin "is not free: §3.6's ~495 bytes of headroom
    shrink one-for-one with any raise" keeps its direction but loses most of its force — the pin is
    still right, the pressure behind it is now an order of magnitude lower.
+3. **One test justification stops being true.** §7.4:1185–1188 explains that AT-01 supplies an
+   explicitly non-binding `maxBytes` because the 45- and 48-line sets render to 7,042 and 7,650 bytes
+   which "with §4.3's framing budget exceed the `maxBytes` default of 8,000", making the expected
+   sets unproducible under default configuration. At 12,500 they no longer exceed it
+   (`7,650 + 1,200 = 8,850`). AT-01's practice is still right — its subject is the recognition rule,
+   not the bounds — but the stated reason is now false and needs rewriting rather than deleting
+   (Q-02).
 
 **What survives, and I checked this deliberately because it bounds the repair.** §7.3's corpus oracle
 is built over the **whole 141-record fixture**, not the in-scope set, and all three conjuncts hold at
@@ -146,9 +153,82 @@ the project-level-only slice still stands** — at 11,300 that slice is even mor
 So the fix here is prose and derived figures, not a re-architecture, and my v4 F-01 (which asked for a
 one-clause correction in the same paragraph) can be closed in the same edit.
 
+### F-03 (Medium) — both errata are answered; the TSPEC still routes them
+
+§9.2 raises ERR-1 and ERR-2. REQ v1.8 resolves both, and in ERR-2's case adopts this document's own
+recommended value. Leaving them stated as open sends PLAN authoring — the immediate next consumer of
+§9.2 and §9.3 — an instruction that is no longer true.
+
+- **ERR-1** asked REQ C-5 to retype `maxEntries`/`maxBytes` from "positive integer" to non-negative so
+  that `maxEntries: 0` is a valid admits-nothing value per FSPEC E-7. REQ C-5 now types both
+  **non-negative integer**. ERR-1 is satisfied exactly as asked; §4.1's implementation was already
+  correct, so nothing in the design moves — the entry should be marked resolved and retired. §4.1:512–514's
+  note that it "raises the type label upstream" and §9.2's cross-reference should follow.
+- **ERR-2** asked REQ to re-decide the 8000 default on the supplied measurement. REQ C-5 now sets
+  **12500**. ERR-2's text still reads "this is a product judgement … so it is routed rather than
+  taken" and offers "this may equally be resolved by leaving C-5 alone". That option was not taken.
+- **§9.3 T-2** closes itself by pointing at ERR-2 as the live destination for "the value of a
+  REQ-owned default"; that pointer now resolves to a settled question.
+- **§9.4 A-1** (§9.4:1360–1361) states: "**A-1** `maxEntries` 70 is measured against `M-6b`/`M-6c`,
+  `maxBytes` 8000 is not measured". REQ §7 A-1 at HEAD now reads that both are re-derived — (70) and
+  (12500). This sentence is a direct factual claim about the REQ's assumption set and it is now
+  false. REQ §6 **R-5** also changed underneath it: the residual risk is no longer "the bound is an
+  unmeasured analogy" but "**neither bound commits to a growth model** (`M-6d`, `M-7d`) — the corpus
+  grows, and a default sized to today's floor is eventually outgrown". That restated risk is a better
+  fit for §3.6's own observation about `docs/_decisions/` growing by exactly the mechanism this
+  pipeline runs, and §3.6 could cite it directly.
+
+I have rated this Medium rather than High deliberately. Once F-01 and F-02 land, the author must
+touch §9.2 and §9.4 anyway, and none of this narrows, drops or reinterprets a requirement on its
+own — it is bookkeeping that has become false. But it must land before PLAN, for the reason ERR-2
+itself gave: "What ERR-2 must not do is resolve *after* those tasks are written." It has resolved
+before them. That is the good case, and it should be recorded as such.
+
+### F-04 (Medium) — the Baseline pin is one version behind
+
+The TSPEC pins Baseline **v1.1** in its header (`:11`), at §3.5:376 ("v1.1's `Verified at`") and at
+§7.3:917 ("a frozen fixture copy at Baseline v1.1's `Verified at` commit"). REQ v1.8's `depends-on`
+table now pins **v1.2**, and C-5's new rationale is derived from `M-7b`/`M-7c` — ids that **do not
+exist** in v1.1, which stopped at the `M-6` entry floors. A reader following the TSPEC's citation to
+v1.1 cannot find the derivation the default now rests on.
+
+The reassuring half, which I verified so the author does not have to re-measure: Baseline v1.2 is
+purely additive — it adds the `M-7` rendered-index byte floors — and `Verified at` is **unchanged** at
+`8c673a09f`. So the frozen fixture is the same fixture, and every literal §3.5/§3.6/§7.3 transcribes
+still holds. This is a pin and citation correction, not a re-measurement. Worth adding while there:
+`M-7d` states that substance bytes "exclude every per-line separator, prefix and newline … a consumer
+sizes against `M-7b` and declares its own framing allowance on top", which is precisely what §4.3's
+≤1,200-byte budget is. §3.6 reconciling its 10,859 rendered bytes against `M-7b`'s 9,296 substance
+bytes explicitly would close the last gap between the two documents' arithmetic — the difference is
+~24.8 bytes/record of framing, comfortably inside `M-7c`'s 50-byte allowance, so the two derivations
+of 12,500 agree and the spec can say so.
+
+### F-05 (Medium, Cross-Feature) — the Baseline's propagation path does not list this TSPEC
+
+The Baseline's `Cited by` field (`docs/_constraints/pdlc-decision-corpus-baseline.md:6`) enumerates
+the REQ and the FSPEC, and states its own purpose: "**This list is the propagation path for a
+`Version` bump**, so a new citation is added here in the same edit that mints it."
+
+The TSPEC is not on that list, despite citing the Baseline in its header, throughout §3.5/§3.6's
+measurements, and in §7.3's frozen-fixture definition. That omission is the mechanical reason this
+cascade happened the way it did: the v1.1 → v1.2 bump and the C-5 default change propagated to the
+REQ and stopped, and the TSPEC — the document that consumes the Baseline's numbers most heavily — was
+never on the path that would have carried it.
+
+Tagged **Cross-Feature** rather than Local because the Baseline declares itself a "**Project-level
+shared reference**. Read-only input to `pdlc-decision-ledger` **and its successors**". Every future
+consumer inherits this gap, and the fix is durable: add the TSPEC to `Cited by` now, and add
+PROPERTIES and PLAN in the same edits that mint their citations, as the field's own rule requires.
+This belongs in `docs/_constraints/DOMAIN-CONSTRAINTS.md` at harvest as the general rule — *a
+versioned shared reference's citation list is a maintained propagation path, and adding a citation
+without adding yourself to it breaks the next cascade.*
+
 ## Questions
 
-<!-- questions -->
+| ID | Question |
+|----|---------|
+| Q-01 | At 12,500 the omission order never runs for any reachable in-scope dispatch (F-02). Does §7.5's property — whose prefix conjunct is what makes the order falsifiable — still exercise the order across a binding range, or does it also need its bounds parameterised away from C-5's shipped defaults the way AT-01 already does at §7.4:1185–1188? I did not re-derive §7.5's generated-input ranges; flagging so se-author checks rather than assumes. |
+| Q-02 | §7.4:1187 justifies AT-01 supplying a non-binding `maxBytes` because the 45/48-line sets render to 7,042 and 7,650 bytes and "with §4.3's framing budget exceed the `maxBytes` default of 8,000". At 12,500 both fit (`7,650 + 1,200 = 8,850 ≤ 12,500`), so the stated reason evaporates. The *practice* is still right — AT-01's subject is the recognition rule, not the bounds — but the justification needs rewriting rather than deleting. Keep the explicit non-binding override? |
 
 ## Positive Observations
 
