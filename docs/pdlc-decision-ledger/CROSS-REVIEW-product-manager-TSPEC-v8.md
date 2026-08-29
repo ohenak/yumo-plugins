@@ -49,6 +49,44 @@ that is real and countable at the named commit, which is what makes conjunct (5)
 rather than an estimate. That matters for the product claim it serves (REQ C-5's default "admits the
 worst standing case with headroom"): a reviewer can re-derive 63 from the repository in one command.
 
+## Positive Observations
+
+- **The split pin is the right product call, not just the cheapest fix.** My v7 F-02 said the
+  12,059 equality was unsatisfiable-as-written; the revision could have relaxed it to `≤` and moved
+  on. Instead §7.3:1078–1086 asserts each half of `12,059 ≤ 12,500` *where that half is measurable* —
+  the index against a transcribed fixture measurement, the framing against D-9's separate budget
+  test — so the pin still reddens on the corpus growth it exists to catch (441 bytes) without
+  reddening on a conforming implementation. The falsifier survived the fix, which is the outcome
+  that protects REQ C-5's "admits the worst standing case with headroom" promise.
+- **§3.6's retirement paragraph now states the correction against itself.** TSPEC:468–476 names the
+  figure that makes the retired claim true (9,371) *and* the shipped figure that makes it false
+  (6,305), rather than quietly tensing the sentence. A future reader who checks the claim against
+  the adjacent table now finds agreement instead of a contradiction.
+- **Charging framing at its ceiling is declared as conservative** (TSPEC:514) — "at least 441 bytes
+  … can only understate the margin, never overstate it". Getting the direction of a safety margin
+  explicit is what stops a later reader from re-deriving it the optimistic way.
+- **PM Q-01 was answered in the document, not in the changelog only** (TSPEC:1097–1101), so the
+  re-capture trigger set stays four literals and an implementer reading §7.3 alone learns which
+  edits re-open which pin.
+
+## Recommendation
+
+**Approved with minor changes**
+
+Both v7 findings are resolved, the routed TE items landed, and the round's edits are confined to the
+sections the changelog declares. The two findings below are Medium: neither moves a threshold, an
+acceptance criterion, or a requirement's meaning — both are internal-accuracy defects in prose about
+*which tests* pin C-5's default, and they should be corrected before the PLAN's test tasks are
+written from §7.3 and §9.2.
+
 ## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §9.2's ERR-2 discharge (TSPEC:1482) now reads "the only tests that read the value are §7.3's two shipped-default assertions". The census is still short: §5.3 (TSPEC:850–858) specifies `decision-ledger-config-example.test.js` asserting `decisionLedger`'s key→value map **by set equality against a literal transcription** of C-5's three defaults — including `maxBytes: 12500` — and §5.3 deliberately requires that literal be hand-transcribed "rather than imported from `DECISION_LEDGER_DEFAULTS`", precisely so it does *not* agree with the code by construction. That test therefore reads the value in the strongest sense and reddens on any default change, as does the example JSON at TSPEC:850. The paragraph's product point — that re-deciding ERR-2 costs "one literal in C-5's row and the same literal in the config parser's default" — understates the change surface by two sites. Fix: name §5.3's example block and its transcribed-literal test alongside the two §7.3 conjuncts, and say plainly that a default change costs four edits, not two. Traces to REQ C-5 / ERR-2. | §9.2 ERR-2 discharge |
+| F-02 | Medium | inherited | local | §7.3 promises "(6) reddens if an operator-facing default moves below the standing case" (TSPEC:1087–1089), and §9.2:1482 justifies it by saying both assertions "express it as `maxBytes − 1200` rather than as a transcribed literal". But both builds are specified as running "at C-5's shipped defaults (`maxEntries: 70`, `maxBytes: 12500`)" (TSPEC:1031, 1070) — with the value written out. If the oracle passes `12500` as a config literal, then `maxBytes` in the assertion is that literal, and a change to `DECISION_LEDGER_DEFAULTS.maxBytes` reddens neither conjunct (2) nor (6); the stated falsifier does not exist. The claim holds only if the oracle omits the two keys (or reads `DECISION_LEDGER_DEFAULTS`) so the *resolved* default flows into both the build and the assertion's right-hand side. §7.3 does not say which, and the two sentences pull opposite ways. Fix: state explicitly that the M-6b-slice and whole-fixture builds resolve their bounds through the config resolver with the block absent, and that `12500`/`70` appear in §7.3 as the *expected* resolved values rather than as inputs. This is the difference between a test that guards C-5's operator-facing default and one that only guards the corpus. Traces to REQ C-5. | §7.3 conjuncts (2)/(6) and the "reddens" paragraph |
+
+FINDING: Medium | delta | local | §9.2 ERR-2 discharge (TSPEC:1482) | The corrected census "the only tests that read the value are §7.3's two shipped-default assertions" is still short one site: §5.3's `decision-ledger-config-example.test.js` (TSPEC:850–858) asserts C-5's defaults by set equality against a hand-transcribed literal including `maxBytes: 12500`, and the example JSON at TSPEC:850 carries the value too — so re-deciding ERR-2 costs four edits, not the two the paragraph names. Name §5.3's two sites alongside the §7.3 conjuncts.
+FINDING: Medium | inherited | local | §7.3 conjuncts (2)/(6) and the "(6) reddens if an operator-facing default moves" paragraph (TSPEC:1031, 1070, 1087–1089) | Both builds are specified as running with `maxBytes: 12500` written out as a config value, so if the oracle passes it as a literal, `maxBytes − 1200` is computed from the literal and a change to `DECISION_LEDGER_DEFAULTS` reddens neither conjunct — contradicting the stated falsifier and §9.2's "rather than as a transcribed literal". State that both builds resolve bounds through the config resolver with the `decisionLedger` block absent, and that `12500`/`70` are the expected resolved values, not inputs.
 
 ## Verdict
