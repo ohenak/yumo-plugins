@@ -26,3 +26,35 @@ re-executed every number the revision touched against the repository.
 |----|---------|
 | Q-01 | §7.3's census now excludes the `main()` wiring as a run between two new literal sentinel comments (`// === DECISION LEDGER WIRING START/END ===`). §2.3 depends on this feature's symbols landing **outside** the *learnings* sentinel region so PROP-DIS-06's `/\.enabled\b/` count stays live over them. The two regions are differently named and the learnings slicer matches its own literals, so I read this as safe — is that also your reading, and is it worth one sentence in §2.3 saying so, given a future reader may see "sentinel region" and assume the slice applies? |
 
+## v2 findings — disposition
+
+| v2 ID | Status | Evidence |
+|---|---|---|
+| F-01 (High) — §7.4 clause (b) still specified the non-hermetic `git merge-base origin/main HEAD` computed at test time, contradicting the corrected "Baseline identity" bullet | **Resolved** | Clause (b) (§7.4:1027–1033) now reads "asserted equal to a **hand-transcribed** `EXPECTED_MERGE_BASE_SHA` literal in the test file — never read from the manifest it is checking", keeps `--is-ancestor {recorded sha} HEAD` as the documented weaker second signal, and **names the excluded form and why**: a test-time `git merge-base origin/main HEAD` "makes a required check depend on the local `origin/main` ref being current, so it can red on an unrelated push to `main` and needs a fetch to be meaningful in CI". That is the shipped shape, matching `pdlc/workflows/__tests__/loopEconomicsBaselineGuard.test.js:239–253`, and the excluded-form sentence makes the clause proof against the next re-write |
+| F-02 (Medium) — §3.6's "every reviewer receives the whole project-level corpus, always" was an unpinned, corpus-dependent promise | **Resolved, and over-delivered** | Three separate moves: the claim is hedged to what the mechanism actually does (the order "**prioritises** the promoted corpus … It does not *guarantee* the project-level set is admitted whole"); the residual fact is scoped to the Baseline commit and given a number ("at ~44 promoted records the headroom is spent"); and it is **pinned** by §7.3's shipped-default assertion with 6,305 transcribed, recorded as D-10 with the rejected alternative. The byte half of the pin is exactly the discharge I asked for. Its third conjunct is over-claimed — F-02 above |
+
+**Q-01 and Q-02 both answered in place.** Q-01 ("does anything exercise C-5's shipped default?") is
+answered honestly in the negative and then fixed: §7.6's fourth note states that nothing in the AT
+table does — AT-01 is non-binding by construction, AT-13/AT-15 are chosen examples, §7.5 quantifies
+over generated bounds — "which is why it is specified there rather than left to fall out of an
+example". Q-02 is answered with the per-conjunct mutation table in §7.5, and the answer names the
+reason the generator range alone did not discharge it ("a drop loop that stops one line late still
+lands inside that range for most draws"). That is the right level of answer: it converts my question
+into an implementer obligation rather than a reassurance.
+
+## Every number in the revision re-executed
+
+I re-derived the corrected measurements from the repository rather than reading them, since the
+revision moved them and §3.6's safety argument now rests on them:
+
+| Claim | Verified |
+|---|---|
+| Project-level set: 41 lines / **6,305** bytes under §4.3's format | 41 records recognised by §3.2's `DECISION_HEADING_RE` over `docs/_decisions/*.md` with §3.3's last-wins; rendered lines joined by `\n` total **6,305** bytes exactly |
+| Project-level per-line **109–200**, mean **153** | measured 109 / 200 / 153 |
+| Feature-level per-line **152–261**; means **183 / 191 / 206** for `pdlc-advisory-wave-gate` / `pdlc-engineering-loop` / `pdlc-headless-engine` | measured 170–191 mean 183 (n=4), 152–235 mean 191 (n=7), 169–261 mean 206 (n=22) — range and all three means exact |
+| `M-6b`'s 63-line floor; combined 10,859; 12,059 with framing | 41 + 22 = 63; 6,305 + 4,553 + 1 = 10,859; + 1,200 = 12,059 |
+| "~44 promoted records" spends the headroom | 8,000 − 1,200 − 6,305 = 495; 495 / 153 = 3.2 lines; 41 + 3 = 44 |
+
+The v2 figure this round retired (137–160 bytes/line) was indeed wrong, and the replacement is right
+to the byte. I could not falsify a single number in the revision.
+
