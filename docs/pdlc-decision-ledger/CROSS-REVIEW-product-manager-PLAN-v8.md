@@ -122,11 +122,38 @@ re-pin into the F-01 edit; it is not separately gating.
 
 ## Batches
 
-_pending_
+Confirmation scope by batch, so the revision pass knows what it may leave alone. The erratum touched
+one TSPEC section, and exactly one requirement chain runs through it (BR-11 / REQ NG-4, the source
+census).
+
+| PLAN batch | Tasks | Touched by this confirmation? |
+|---|---|---|
+| 1–2 | T-00…T-12a | **Yes, one row.** T-11 (`[red]`, batch 2) carries the census operands and must be restated. Every other row in batches 1–2 — corpus enumeration, fixtures, config, recognition, render, bounds — is untouched by the erratum and stays approved. |
+| 3–7 | T-13…T-17 | **No.** The six production greens' declarations are exactly the fourteen owned members TSPEC v1.0 keeps; nothing in their instructions moved. |
+| 8 | T-18 | **Yes.** One instruction sentence to delete (the production `DECISION_LEDGER_CENSUS_TOKENS` declaration). The wiring, sentinel, `reviewLoop`/`reviewerPrompt` and delta-coverage content of the row is untouched. |
+| 9–10 | T-19, T-20 | **No.** Documentation disclosure and the version bump are unaffected; the engine-disclosure and compat constraints I checked in earlier rounds still read correctly against upstream at HEAD. |
+
+No batch boundary, dependency edge or task count needs to move to fix F-01 — the repair is prose at
+four loci plus the revision history, all inside rows that already exist.
 
 ## Dependencies
 
-_pending_
+Upstream state at dispatch, re-measured against the working tree at `531706abb`:
+
+| Upstream | Hash at HEAD | Hash in my v7 approval | Moved? |
+|---|---|---|---|
+| REQ | `sha256:ce6b133f0c1d692f172f1753b4d17a075bf1f933827a34701b2ee69d0d3c7b7c` | same | No |
+| FSPEC | `sha256:2bd5c3ef055fd39d2645482a97219c2d096b534a6bed0c55b99306d1735aed39` | same | No |
+| TSPEC | `sha256:b1b603a86f1b5a801229bdc9911e9ab26e3dbb9f8f340d2393979084218d31a0` | `sha256:eef45ef32f0dd394e81abcf3aa5215fa54ba8dbbdc69f9d595c08feece0623c8` | **Yes** (`452d72c07`, v0.9 → v1.0) |
+| DECISIONS | `sha256:13aba06127b4d392bdf71f93066dd7ed6cb626dadbc4dda54029ab80bb4fb89a` | same | No |
+
+The erratum's own changelog states the same thing from the author's side — "Upstream is unmoved and
+was re-measured at HEAD before this edit … nothing is absorbed and no pin advances" — so no REQ or
+FSPEC acceptance criterion changed meaning, and no `DEC-DECLEDGER-*` was re-litigated. That bounds the
+confirmation to the single §7.3 clause, and is why F-01 is the only finding rather than the opening of
+a general re-review.
+
+PLAN's own upstream pin (`PLAN`:19 and its §Verification citations) still reads TSPEC v0.9; see F-02.
 
 ## Verification
 
