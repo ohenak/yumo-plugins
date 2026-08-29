@@ -828,3 +828,46 @@ The three obligations `FSPEC` §7 assigns to **te-author** — O-5, O-6, O-8 —
 named fixture and a named property family above. That is this document's completion condition.
 
 ## Gaps, Risks and Routed Items
+
+### Routed upstream (erratum channel)
+
+**One item**, raised against `PLAN` and not folded into this document, because fixing it means
+editing a task row this document does not own.
+
+**PLAN's byte-identity recording cannot make AT-05 non-vacuous.** T-02 (`PLAN`:101) defines exactly
+**one** case, `REVIEW-LOOP-REVIEWER-PROMPTS`, "driving exported `reviewLoop`". `PLAN`'s AT map
+(`PLAN`:389-390) then assigns **AT-05** — the four not-enabled spellings — to "T-10 → T-18, loop
+integration against T-02's recording". But `reviewLoop` never receives config text: the enablement
+gate lives in `main()`, and by the time `reviewLoop` is called all four spellings have already
+collapsed to the single value `_injectDecisionLedger: null`. A T-10 arm therefore feeds **four
+identical inputs** to the recorded comparison and asserts that identical inputs produce identical
+bytes — true by construction of the harness, and true even if `parseDecisionLedgerConfig` treats
+`"true"` as enabling. The `(live half)` row at T-10a mitigates the *presence* half but is scoped to
+the flag-off report/notices set, not to the four spellings. The fix is a second recorded case whose
+input **is** the config text — the `CONFIG-GATE-SPELLINGS` case `## Fixtures` specifies under
+FX-BASELINE, running each `learningsConfigText` value through `parseDecisionLedgerConfig` →
+`buildDecisionLedgerInjector` and recording the resulting stream. PROP-OFF-02 and PROP-OFF-03 are
+written against that case and will not be satisfiable until T-02 carries it.
+
+### Known gaps — deliberate, with the reason
+
+| Gap | Why it is not covered here |
+|---|---|
+| **Reviewer compliance with the rule text** | `FSPEC` §1's two-part split makes the *rule* reviewer-side; nothing the driver computes changes. AT-06/AT-07 assert the text is **present and decidable**, which is the whole testable surface. Asserting that a model obeys it is not a property. |
+| **G-4's re-open-rate trend** | An outcome measured across features over time, not an invariant of one dispatch. No oracle can be red or green on this branch. |
+| **End-to-end runs against a real model** | Deliberate: 0 E2E. The composition root is exercised live at T-10a with doubled seams; beyond that the pyramid buys nothing but flake. |
+| **The live `docs/` tree** | Excluded by rule (`## Fixtures`). FX-CORPUS is frozen at `8c673a09f` precisely because the live enumeration already moved 25 → 26 on this branch. |
+| **`git ls-tree` with `DECISION_CORPUS_ARGV`** | Not a coverage gap but a command that cannot run: `ls-tree` rejects `:(glob)` magic. `PLAN` T-03 already carries the `ls-tree -r --name-only` + `grep -E` equivalent; no test may quietly substitute the `ls-files` form. |
+
+### Risks to the implementer
+
+| Risk | Mitigation already written in |
+|---|---|
+| **The byte budget margin is thin.** The project-level set alone is 41 lines / **6,305** bytes; `M-6b`'s 63-record slice is **10,859**, and with the 1,200-byte framing (D-9) that is **12,059** against a `maxBytes` default of **12,500** — a margin of **441 bytes**, under 4%. A handful of new project-level decisions crosses it and the renderer starts omitting. Fail-open, not a defect, but a bounds test written against today's corpus would change behaviour without any code changing. | PROP-BND-01…04 quantify over generated sets, never over the live corpus; ORC-01's expected values are pinned at `8c673a09f`. |
+| **`DECISIONS-pdlc-plugin-retirement.md` looks like a bug.** Twelve `DEC-01`…`DEC-10` headings contribute **0** records, because the id grammar requires a namespace segment. An implementer who "fixes" this changes the feature-level total from 100 and reddens ORC-01. | PROP-REC-04 and PROP-FAIL-11 assert the zero **deliberately**, with the file named. |
+| **The two read-failure shapes are not interchangeable.** The runtime **throws**; the test double returns **`null`**. A suite scripting one arm proves nothing about the other. | FX-FAILOPEN scripts both (`FX-FO-ONE-NULL`, `FX-FO-ONE-THROWS`); PROP-FAIL-10 asserts they agree. |
+| **`FX-FO-EMPTY-ONLY` and `FX-FO-ALLFAIL` have identical dispatch bytes.** No prompt-level assertion separates them; reverse the classification and every byte oracle stays green. | PROP-FAIL-06 asserts over `TSPEC` §6.3's `failedSources`/`emptySources` split — the reason O-7 exists. |
+| **Ordinal-prefixed headings are easy to miss.** `## 2. DEC-EDIST-01: …` and `## 3. DEC-CONS-01: …` are real; a recognition rule without the optional ordinal group yields **82** feature-level records, not 100. | PROP-REC-03, with both instances pinned in FX-CORPUS. |
+| **Path-order tie-breaks are undefined without a collation.** `_` (`0x5F`) inverts under case-folded ordering, so `docs/_decisions/` sorts differently under two plausible implementations. | Precedence keys on `origin`, never on path order; PROP-PRE-05 asserts byte-identity under a **reversed** enumeration. |
+| **A baseline captured too late is worthless.** It must be taken while `orchestrate-dev.js` is byte-identical between merge base and branch HEAD. | Enforced structurally: T-02 sits in `PLAN` batch 1 and every green task from T-13 on reaches it transitively through T-10's `Deps` — an ordering edge, not a prose note. |
+| **Digest manifests that check themselves.** A re-capture that rewrites `MANIFEST.json` satisfies any guard that reads that manifest. | Both integrity guards use **hand-transcribed literals in the test file** — per-file digests and `EXPECTED_MERGE_BASE_SHA` — never manifest reads. |
