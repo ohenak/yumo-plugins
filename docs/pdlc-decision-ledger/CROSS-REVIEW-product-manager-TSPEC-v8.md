@@ -90,3 +90,6 @@ FINDING: Medium | delta | local | §9.2 ERR-2 discharge (TSPEC:1482) | The corre
 FINDING: Medium | inherited | local | §7.3 conjuncts (2)/(6) and the "(6) reddens if an operator-facing default moves" paragraph (TSPEC:1031, 1070, 1087–1089) | Both builds are specified as running with `maxBytes: 12500` written out as a config value, so if the oracle passes it as a literal, `maxBytes − 1200` is computed from the literal and a change to `DECISION_LEDGER_DEFAULTS` reddens neither conjunct — contradicting the stated falsifier and §9.2's "rather than as a transcribed literal". State that both builds resolve bounds through the config resolver with the `decisionLedger` block absent, and that `12500`/`70` are the expected resolved values, not inputs.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
