@@ -35,7 +35,7 @@ REQ NG-6 forbids engine **runtime** edits under `pdlc/engine/`, so a new
 engine-side disclosure test — which FSPEC Q-3 already decided is in scope and which REQ NG-6
 explicitly preserves.
 
-### 1.2 The two shipped precedents this design reuses, rather than reinvents
+### 1.2 The shipped precedents this design reuses, rather than reinvents
 
 | Obligation | Shipped precedent, cited | How this feature reuses it |
 |---|---|---|
@@ -50,7 +50,7 @@ explicitly preserves.
 The whole feature turns on one thing being right: the **recognition rule** (§3) must render exactly
 the Baseline's measured extent — 41 project-level ids (`M-1a`, `M-1d`) and the per-directory
 feature counts of `M-2e` — at the Baseline's `Verified at` commit, or AT-01 fails and
-REQ-DECLEDGER-01 is not met. The rule is not a judgement call: §3 states it, and §3.4 records the
+REQ-DECLEDGER-01 is not met. The rule is not a judgement call: §3 states it, and §3.5 records the
 result of running it over the standing corpus, which reproduces `M-1d` and `M-2e` exactly.
 
 Cost is small and bounded. There is no new dependency, no new file type, no new record shape, no
