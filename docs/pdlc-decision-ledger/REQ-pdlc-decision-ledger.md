@@ -320,9 +320,10 @@ Measured retrospectively per G-4, not enforced.
 **R-4** Default-off means zero effect until an operator opts in — by design (proposal §6),
 mirroring the `cascade.pinCheck` / `review.derivativeStop` rollout.
 
-**R-5** `maxBytes` is an author analogy, not measured (`maxEntries` is measured, C-5).
-Mitigated by A-1's vetoable label
-and REQ-DECLEDGER-07 pinning the bound whatever the values.
+**R-5** Both bounds are now measured (C-5, `M-6b`/`M-6c` and `M-7b`/`M-7c`), but against one
+commit rather than a growth model (`M-6d`, `M-7d`): the corpus grows, and a default sized to
+today's floor is eventually outgrown. Mitigated by A-1's vetoable label and by
+REQ-DECLEDGER-07, which pins the bound's behaviour whatever the values.
 
 ## 7. Obligations / Open
 
@@ -366,10 +367,10 @@ REQ-DECLEDGER-01 asserts against. Coverage obligations, not REQ defects.
 
 **Assumptions.** Authored in an orchestrated dispatch; these are explicit, operator-vetoable
 assumptions rather than blocking open questions:
-- **A-1** `maxEntries` (70) derives from a measurement taken once against the Baseline's named
-  commit and cited by id (C-5, `M-6b`/`M-6c`), not re-derived per revision; `maxBytes` (8000)
-  remains a `learningsInjection` analogy, not measured. An operator may revise
-  either before FSPEC authoring without a REQ revision.
+- **A-1** Both defaults derive from measurements taken once against the Baseline's named commit
+  and cited by id, not re-derived per revision: `maxEntries` (70) from `M-6b`/`M-6c`, `maxBytes`
+  (12500) from `M-7b`/`M-7c`. An operator may revise either before FSPEC authoring without a REQ
+  revision.
 - **A-2** Same rollout posture as `pdlc-loop-economics` (config-gated, default off); Tier 3 risk
   (Medium, proposal §0) is read as requiring it, not merely permitting it.
 - **A-3** Reviewer-side enforcement (G-2) is the intended reading of proposal R3-2, which
