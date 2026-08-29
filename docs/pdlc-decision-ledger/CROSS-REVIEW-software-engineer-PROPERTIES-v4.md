@@ -50,6 +50,63 @@ this document alone carrying it.
 
 ## Properties
 
+Four property surfaces moved. I checked each against `TSPEC` HEAD and, where it makes a claim about
+shipped code, against `orchestrate-dev.js` itself.
+
+**PROP-INV-06 (`PROPERTIES`:409) — implementable now.** The exclusion is (a) every owned
+declaration's slice and (b) the sentinel-bounded `main()` wiring run. The false-red I named in v3 is
+gone: `gatherDecisionCorpus`'s and `renderDecisionLedgerBlock`'s uses of their siblings now sit
+inside sliced regions, and `DECISION_LEDGER_OMIT_REASONS` / `DECISION_LEDGER_CORPUS_OUTCOMES` are
+themselves owned declarations, so their own declaration lines are excluded. The remainder is a real
+non-empty region — `orchestrate-dev.js` is ~817 KB and the fourteen slices are a small fraction of
+it — so the census is not vacuously green either.
+
+**PROP-INV-07 (`:411`) — the partition, in both directions.** This is now a set-equality over an
+enumerated contract, not a containment check, which satisfies the completeness bar: a member
+deleted from either sub-set, or a fifteenth declaration added to `OWNED_DECLS` and classified into
+neither, reddens. It is a transcription of `TSPEC`:1336's contract, not a derivation from code.
+
+**PROP-INV-11 (`:412`) — the right shape for the red-on-rename conjunct.** Asserting a resolution
+**count of `1`** rather than "resolves" is what makes both the zero case and the two case fail; a
+truthiness check would have caught only the first. This is the conjunct `TSPEC`:1337 states in its
+"how it is kept honest" column, and the property correctly notes PROP-INV-08's non-emptiness catches
+neither (a zero-resolution member yields no slice to be empty). No implementation echo: the count is
+a literal `1` from the spec, not derived from the module.
+
+**PROP-WIRE-12 (`:348`) — faithful to §7.2's conjunct 3, and the absence is paired.** `TSPEC`:1172
+specifies the symmetric difference of the two `report` key sets as exactly `{decisionLedger}`, set
+equality in both directions, referent the arm's own paired runs and expressly **not** §7.4's
+recording. The property transcribes that, and it satisfies the no-absence-only-oracle bar in both
+halves: the flag-off arm's "no `decisionLedger` key" is asserted as one side of a positive set
+equality against the flag-on run, and the flag-on arm carries a positive presence-and-shape
+assertion rather than a bare `toBeDefined`. Its "no `FSPEC` AT row asserts `report.decisionLedger`"
+claim is true at HEAD — `grep -c "report.decisionLedger" FSPEC-pdlc-decision-ledger.md` returns **0**.
+
+**PROP-INV-09 (`:410`) — the hand-off now lands somewhere.** In v1.1 the field's behavioural
+obligation was routed to PROP-OFF-05 and PROP-WIRE-11, neither of which asserts a `report` key set on
+a live run. It is now routed to PROP-WIRE-12's two homes, which is `TSPEC` §7.3's report-field
+paragraph verbatim ("by exactly two named homes: §7.2's live composition-root arm, whose conjunct 3
+… and, on the flag-on path, that same arm's presence-and-shape assertion"). The rationale it cites
+is also true of shipped code: `learningsInjectionField` is declared at `orchestrate-dev.js:15167` and
+named at eight `buildFinalReport`-adjacent sites (`:16734`, `:16751`, `:16776`, `:16800`, `:18322`,
+`:18357`, …), all far outside any wiring sentinel — so a census token on the field name would indeed
+red on conforming code.
+
+**PROP-OFF-05 (`:362`) — the referent correction is right; its case scope is now under-specified.**
+Dropping the FX-BASELINE referent is correct and I verified the premise: `TSPEC` §7.4's *Recorded
+stream, deliberately narrow* bullet records one case driving exported `reviewLoop` and captures
+reviewer-prompt streams only, so there is no notices array and no `report` key set in the recording
+to be set-equal *to*. Routing the key-set half to PROP-WIRE-12 is likewise right. What the edit
+leaves open is **which** flag-off case the surviving conjunct covers. PROP-OFF-05 says "With the flag
+off, the emitted notice set must be **set-equal to empty**", and the OFF family's flag-off is
+PROP-OFF-02's **four** not-enabled spellings — which include the wrong-typed key and the malformed
+block. `TSPEC`:1008–1009 (F-4, F-5) specifies those two as disabled runs that **do** emit
+`NTC-DECLEDGER-MALFORMED` / `NTC-DECLEDGER-KEYTYPE`. Under the four-spelling reading the assertion
+reds on conforming code; under the clean-`false` reading it is exactly right. §7.2's own conjunct 3
+is unambiguous because its flag-off arm is the clean one, so the ambiguity is this document's to
+close, with one clause. Filed **F-01** below, Medium — the correct reading is recoverable from
+`TSPEC` §6 and PROP-OFF-01's own referent, so it does not gate.
+
 ## Oracles
 
 ## Fixtures
