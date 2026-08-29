@@ -519,7 +519,7 @@ the filesystem, never throws, and is total over its declared input type — the 
 interface DecisionLedgerConfig {
   readonly enabled: boolean;    // default false
   readonly maxEntries: number;  // non-negative integer, default 70
-  readonly maxBytes: number;    // non-negative integer, default 8000
+  readonly maxBytes: number;    // non-negative integer, default 12500
 }
 
 /** Frozen. The three keys of REQ C-3 and no others. */
@@ -536,8 +536,9 @@ export function parseDecisionLedgerConfig(text: string | null): {
 Validation mirrors `parseLearningsConfig` exactly: `boolField` for `enabled`, `nonNegativeInt`
 for the two thresholds. `nonNegativeInt` — not positive-int — is deliberate, because
 `maxEntries: 0` is a **valid** admits-nothing value that FSPEC E-7 requires to be treated as zero
-in-scope decisions rather than as an error or a fallback to the default. This diverges from REQ
-C-5's "positive integer" type label; see §9.2, ERR-1.
+in-scope decisions rather than as an error or a fallback to the default. This **agrees with** REQ
+C-5, which types both thresholds as **non-negative** integers as of v1.8; the divergence ERR-1
+raised against the retired "positive integer" label is resolved upstream (§9.2, ERR-1).
 
 Divergence from `parseLearningsConfig` in one respect only: `enabled` defaults to **`false`**
 (REQ C-5, A-2), where learnings injection ships on. Both `parsePinCheckConfig` and
@@ -653,8 +654,9 @@ unmeasured quantity sitting inside a measured budget, and §3.6's headroom arith
 unfalsifiable prose. If a future edit to the rule text needs more than 1,200 bytes, the pin reddens and
 the budget is re-decided deliberately — which is the point. **1,200 is a budget the rule text must be
 drafted to fit, not a measurement of drafted text** (the constants do not exist yet), and it is not
-free: §3.6's ~495 bytes of headroom shrink one-for-one with any raise, so the task that writes
-`DECISION_LEDGER_RULE_TEXT` either fits the budget or re-opens the arithmetic together with ERR-2
+free: §3.6's ~4,995 bytes of headroom — and the 441 bytes by which `M-6b`'s worst standing case
+clears the bound — shrink one-for-one with any raise, so the task that writes
+`DECISION_LEDGER_RULE_TEXT` either fits the budget or re-opens §3.6's arithmetic deliberately
 rather than quietly raising the literal. Statements are transcribed verbatim and are
 single-line by construction (§3.2 matches to end of line), so no line can wrap into a second and
 "whole lines are omitted" is well-defined byte-wise. Field order and separators are fixed here so
@@ -783,7 +785,7 @@ Disjointness in kind is structural, not conventional: an omit reason may appear 
 defaults verbatim:
 
 ```json
-"decisionLedger": { "enabled": false, "maxEntries": 70, "maxBytes": 8000 }
+"decisionLedger": { "enabled": false, "maxEntries": 70, "maxBytes": 12500 }
 ```
 
 `pdlc/engine/__tests__/decision-ledger-config-example.test.js` asserts (a) the file parses, (b) the
