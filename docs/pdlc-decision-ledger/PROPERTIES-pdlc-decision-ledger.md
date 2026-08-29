@@ -777,22 +777,56 @@ Every task id is one of `PLAN`'s **24**.
 | REC | 11 | unit (pure) | T-05 | T-14 | `decisionLedgerRecognise.test.js` |
 | REND | 9 | unit (pure) | T-06 | T-15 | `decisionLedgerRender.test.js` |
 | TEXT | 6 | unit (pure) | T-06 | T-15 | `decisionLedgerRender.test.js` |
-| BND | 11 | unit + `fast-check` property | T-07 | T-16 | `decisionLedgerBounds.test.js` |
+| BND | 12 | unit + `fast-check` property | T-07 | T-16 | `decisionLedgerBounds.test.js` |
 | FAIL | 11 | integration (seam-doubled) | T-08 | T-17 | `decisionLedgerInjector.test.js` |
 | PRE | 5 | integration (fixture corpus) | T-09 | T-17 | `decisionLedgerCorpus.test.js` |
-| INV | 10 | integration (recorded replay) | T-10 | T-18 | `decisionLedgerLoop.test.js` |
+| INV | 10 | integration (recorded replay) + source census | T-10 (replay), T-11 (census) | T-18 | `decisionLedgerLoop.test.js` (PROP-INV-01…05), `decisionLedgerCensus.test.js` (PROP-INV-06…10) |
 | WIRE | 11 | integration (`main()` live) | T-10a | T-18 | `decisionLedgerMain.test.js` |
-| OFF | 6 | recorded byte-identity | T-02 | T-13 | `decisionLedgerBaselineGuard.test.js` |
-| DISC | 8 | repo/document oracle | T-00, T-03, T-11, T-12, T-12a | T-19 | `decisionLedgerPreflight.test.js`, `decisionLedgerFixtureGuard.test.js`, `decisionLedgerCensus.test.js`, `pdlc/engine/__tests__/decision-ledger-config-example.test.js` |
+| OFF | 6 | recorded byte-identity | — (T-02 has **no** red predecessor: it captures the recording and guards it, `PLAN` §Red-before-green edges) | T-02 (batch 1, capture + guard); the byte comparisons consuming it are T-10 → T-18 and T-10a → T-18 | `decisionLedgerBaselineGuard.test.js` (ORC-04), `decisionLedgerLoop.test.js` (PROP-OFF-02…06), `decisionLedgerMain.test.js` (PROP-OFF-01) |
+| DISC | 10 | repo/document oracle + two batch-1 repo guards | T-12, T-12a; **no red predecessor** for T-00, T-00a, T-03, T-20 | T-19 (T-12, T-12a); **T-00a** batch 1 (PROP-DISC-07's exclusion half); **T-20** batch 10 (PROP-DISC-08); **T-00** batch 1 (PROP-DISC-09); **T-03** batch 1 (PROP-DISC-10) | `pdlc/engine/__tests__/decision-ledger-config-example.test.js`, `documentOracles.test.js`, `decisionLedgerPreflight.test.js`, `decisionLedgerFixtureGuard.test.js` |
 
-**All 12 modules are claimed and none is orphaned.** The count reconciles: 98 properties over 11
-families, three of which (REND/TEXT, PRE/FAIL) share a module or a green task, and one of which
-(DISC) spans four.
+**Every module is claimed, and the claim is checkable in one place** — the manifest below, not
+assembled from prose. The count reconciles as a **partition**: 101 properties over 11 families,
+`10 + 11 + 9 + 6 + 12 + 11 + 5 + 10 + 11 + 6 + 10 = 101`, with no property counted twice and none
+outside a family.
 
-**Pyramid shape, as promised in `## Overview`:** 47 pure-unit properties needing no seam, 11 under a
-generator, 37 integration properties across **three** seam boundaries (`_git`/`_readFile`, the
-recorded reviewer envelope, the live `main()` composition root), **zero** end-to-end. Nothing here
-drives a real model or a real network.
+**Pyramid shape, restated as that same partition** (the `## Overview` sketch is the shape; this is
+the arithmetic): **36** pure-unit properties needing no seam (CFG 10 + REC 11 + REND 9 + TEXT 6) +
+**12** under the `fast-check` generator and its held examples (BND) + **37** integration properties
+across **three** seam boundaries — `_git`/`_readFile`, the recorded reviewer envelope, the live
+`main()` composition root — (FAIL 11 + PRE 5 + INV 10 + WIRE 11) + **6** recorded byte-identity
+(OFF) + **10** repo/document oracle (DISC) = **101**. **Zero** end-to-end; nothing here drives a
+real model or a real network. The earlier "47 / 11 / 37" reading double-counted BND across the
+pure-unit and generator buckets and left OFF and DISC outside the level breakdown altogether.
+
+### Module manifest — every test module, its owning `PLAN` task, and the properties that claim it
+
+`PLAN` v0.3's file-ownership manifest names **12** `decisionLedger*.test.js` modules plus two shared
+files this feature edits. Every one appears below with at least one `PROP-*`; the mapping is
+set-equal to `PLAN`'s manifest in both directions, which is what makes "none orphaned" a checkable
+claim rather than an assertion.
+
+| Test module | Owning `PLAN` task (batch) | Properties claiming it |
+|---|---|---|
+| `decisionLedgerPreflight.test.js` | T-00 (1) | PROP-DISC-09 |
+| `decisionLedgerBaselineGuard.test.js` | T-02 (1) | ORC-04; PROP-OFF-01's referent |
+| `decisionLedgerFixtureGuard.test.js` | T-03 (1) | PROP-DISC-10 |
+| `decisionLedgerConfig.test.js` | T-04 (2) → T-13 (3) | PROP-CFG-01…10 |
+| `decisionLedgerRecognise.test.js` | T-05 (2) → T-14 (4) | PROP-REC-01…11 |
+| `decisionLedgerRender.test.js` | T-06 (2) → T-15 (5) | PROP-REND-01…09, PROP-TEXT-01…06 |
+| `decisionLedgerBounds.test.js` | T-07 (2) → T-16 (6) | PROP-BND-01…12 |
+| `decisionLedgerInjector.test.js` | T-08 (2) → T-17 (7) | PROP-FAIL-01…11 |
+| `decisionLedgerCorpus.test.js` | T-09 (2) → T-17 (7) | PROP-PRE-01…05; ORC-01, ORC-02, ORC-03 |
+| `decisionLedgerLoop.test.js` | T-10 (2) → T-18 (8) | PROP-INV-01…05, PROP-OFF-02…06; ORC-06 |
+| `decisionLedgerMain.test.js` | T-10a (2) → T-18 (8) | PROP-WIRE-01…11, PROP-OFF-01 |
+| `decisionLedgerCensus.test.js` | T-11 (2) → T-18 (8) | PROP-INV-06…10 |
+| `documentOracles.test.js` (existing, shared) | T-00a (1, census exclusion) and T-12a (2) → T-19 (9) | PROP-DISC-05, PROP-DISC-07 |
+| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` | T-12 (1) → T-19 (9) | PROP-DISC-01…04, PROP-DISC-06 |
+
+**T-20 owns no test module by design** (batch 10): it re-runs the two suites, regenerates
+`pdlc/workflows/dist/` and bumps `pdlc/.claude-plugin/plugin.json`, and is claimed by PROP-DISC-08.
+With T-00a and T-20 above, **all 24** of `PLAN`'s task ids are traced here in both directions —
+every id named in this document is one of `PLAN`'s 24, and every one of `PLAN`'s 24 is named.
 
 ### FSPEC acceptance test → discharging properties
 
