@@ -167,7 +167,162 @@ re-derive it.
 
 ## 3. The Recognition Rule (O-1)
 
-*(pending)*
+FSPEC O-1 assigns this rule to TSPEC in full: carrier markup, id grammar, the key resolving an id
+recorded more than once in a file, cross-file precedence, and which lines are omitted when a bound
+is exceeded. The constraint is stated there too — a rule rendering a set differing from `M-1d` /
+`M-2e` under the directory-glob reading, at the Baseline's commit, fails REQ-DECLEDGER-01.
+
+### 3.1 File scope — a directory glob, enumerated through `_git`
+
+The corpus is enumerated by one `git ls-files` invocation, exactly as
+`gatherLearningsCorpus` enumerates its own (`LEARNINGS_CORPUS_ARGV`, a frozen literal argv passed
+to the `_git` seam). The decision-ledger argv is likewise a frozen exported literal:
+
+```js
+export const DECISION_CORPUS_ARGV = Object.freeze([
+  "ls-files", "--cached", "--others", "--exclude-standard", "--",
+  ":(glob)docs/_decisions/DECISIONS-*.md",
+  ":(glob)docs/*/DECISIONS-*.md",
+  ":(glob)docs/completed/*/DECISIONS-*.md",
+  ":(glob)docs/discarded/*/DECISIONS-*.md",
+]);
+```
+
+Two scope facts follow, both transcribed from the Baseline rather than invented:
+
+- **`DECISIONS-*.md` only.** `docs/_decisions/` also holds `.consolidation-log.md` and three
+  `CONSOLIDATION-PROPOSAL-*.md` files, which carry line-leading `DEC-` ids that are *re-promotion
+  citations*, not records; `M-4c` names both independent reasons the same exclusion is right.
+  The filename glob discharges it without a content rule.
+- **Directory glob, not single file.** `M-2c` / `M-2d` record two candidate feature-side readings
+  (14 ids under the largest single file, 22 under the largest directory); REQ §7 O-1 states the
+  directory reading governs, and `M-6b` sizes the `maxEntries` floor (`41 + 22 = 63`) against it.
+  `docs/completed/pdlc-headless-engine/` is the witness: two files,
+  `DECISIONS-pdlc-headless-engine.md` (14 ids) and `DECISIONS-headless-engine-obligations.md`
+  (8 ids), 22 together.
+
+**In-scope set** = every record recognised under `docs/_decisions/` (project-level, always),
+**union** every record recognised in the single directory belonging to the feature whose document
+is under review, resolved as the first of `docs/{feature}/`, `docs/completed/{feature}/`,
+`docs/discarded/{feature}/` that the enumeration returned paths for. No other feature's directory
+is in scope, which is what AT-01's "a build rendering all 100 feature-level ids fails" pins.
+
+FSPEC Q-2 is answered here rather than left to fall out of the implementation: a feature with **no**
+directory among those three, and a feature whose directory contributes **zero** records, both
+resolve to the project-level set alone. Neither is a failure and neither is empty-set error — the
+union is simply taken over one operand instead of two.
+
+### 3.2 Carrier markup and id grammar
+
+A **decision record** is a line matching, in full:
+
+```js
+export const DECISION_HEADING_RE =
+  /^#{2,4}[ \t]+(?:\d+\.[ \t]+)?(DEC(?:-[A-Z0-9]+)+-\d+)[ \t]*[:—-][ \t]*(\S.*?)[ \t]*$/;
+```
+
+Read as five conjuncts, each earning its place against a named Baseline instance:
+
+| Conjunct | What it does | Why — cited instance |
+|---|---|---|
+| `^#{2,4}[ \t]+` | ATX heading, levels 2–4 | Project-level records are `##` (`DECISIONS-loop-termination.md` carries `## DEC-TERM-01: …`); feature-level records are `###` (`DECISIONS-pdlc-engineering-loop.md` carries `### DEC-LOOP-01: …`). Requiring a heading is what excludes `M-4a`'s prose `DEC-` token and `M-4c`'s line-leading citations in the consolidation log |
+| `(?:\d+\.[ \t]+)?` | optional ordinal prefix | **Load-bearing.** `DECISIONS-pdlc-engine-distribution.md` numbers its records (`## 2. DEC-EDIST-01: Vendor the workflow modules at build time, into the tarball only`), as does `DECISIONS-pdlc-consolidation-agent.md` (`## 3. DEC-CONS-01: …`). Without this conjunct those two directories contribute **0** instead of 10 and 8, and the rendered feature-level total is 82, not `M-2e`'s 100 |
+| `DEC(?:-[A-Z0-9]+)+-\d+` | id: `DEC`, at least one uppercase namespace segment, numeric final segment | The namespace segment is what excludes `M-4b`'s twelve `DEC-01`…`DEC-10` question headings in `DECISIONS-pdlc-plugin-retirement.md` (id carries no namespace) and `M-4d`'s four `### DEC-01 — …` question headings in `DECISIONS-pdlc-advisory-wave-gate.md`. The numeric final segment additionally excludes `M-4a`'s `DEC-AWG-Q1` shorthand |
+| id **opens** the heading (only an ordinal may precede) | anchors the id at the start | `M-4d`'s other four non-records are back-references where the id appears mid-heading (`### What follows from DEC-A6-01`). `M-4d` names this consequence explicitly: an id-opens-the-heading rule excludes four headings a looser reading would admit |
+| `[ \t]*[:—-][ \t]*(\S.*?)` | a separator, then a **non-empty** statement | Both separators occur: `:` in the deciding blocks, an em dash `—` in the question blocks. Requiring a non-empty remainder is what makes BR-3's "a line whose statement says what was *asked* rather than what was *decided* does not satisfy this rule" implementable together with §3.3 |
+
+Capture group 1 is the **id**; capture group 2 is the **statement**, taken verbatim from the
+heading remainder. The **citation** is the record's file path plus its full heading text as it
+appears on disk. No field is synthesised: every rendered field is transcribed from the source, which
+is what lets AT-02 resolve each citation back at its own file.
+
+### 3.3 In-file resolution: last record wins
+
+Where one file records the same id more than once, the **last** record in file order is the one
+rendered. `M-3a` records the sole HEAD instance —
+`docs/completed/pdlc-engineering-loop/DECISIONS-pdlc-engineering-loop.md`, 13 records over 7
+distinct ids, `DEC-LOOP-01`…`06` each opening twice — and `M-3c` states the consequence for a
+consumer directly: the first opening states the *question*
+(`### DEC-LOOP-01 — where the session's state lives`), the second states the *outcome*
+(`### DEC-LOOP-01: Session state travels in a caller-echoed token, not a durable file`), so a key
+resolving to the **last** record satisfies BR-3's what-was-decided field contract and a key
+resolving to the first does not.
+
+This is a rule, not a coincidence of layout: `M-3d` records that every other id in the corpus is
+recorded exactly once, so first and last coincide everywhere else and no other expected value moves
+under either key. Choosing "last" therefore costs nothing on the rest of the corpus and is correct
+on the only instance that discriminates.
+
+**Rejected alternative:** discriminating on the separator (`:` = decision, `—` = question). It
+happens to work on the single HEAD instance and is unfalsifiable elsewhere, it would make the
+statement field's correctness depend on punctuation no author was ever told to use, and it silently
+drops any record that uses the other separator. Recorded for DECISIONS (§9, D-1).
+
+### 3.4 Cross-file precedence: project-level wins
+
+Where the same id is recognised in both a project-level file and the feature-level directory, the
+**project-level record renders**, and exactly one line is emitted. `M-5c` names this as the
+semantically intended resolution — a decision promoted to project level renders in its promoted
+form. `M-5a` records that **zero** ids are recorded in more than one file at HEAD, so this leg has
+no witness in the standing corpus; `M-5b` draws the consequence, that the rule is exercisable only
+over a constructed corpus, which is the synthetic-fixture obligation FSPEC O-5 already places on
+PROPERTIES and over which AT-18 asserts the cardinality conjunct.
+
+`M-5c` also warns that a path-ordering tie-break is *not* equivalent and is not well-defined without
+naming a collation, since `_` (`0x5F`) inverts under case-folded collation. This rule therefore
+keys on **origin** (project-level vs feature-level), never on path order.
+
+Within `docs/_decisions/` no cross-file duplicate exists either (`M-1a`: the raw carrier count and
+the distinct-id count coincide at 41), and within one feature directory the same holds. So
+precedence is needed only between the two origins, and "project-level wins" is total over the space
+this design can reach.
+
+### 3.5 Verification of §3.1–§3.4 against the standing corpus
+
+The rule above was executed over the working tree at
+`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.1's `Verified at` commit
+(`8c673a09f` on `feat-pdlc-decision-ledger`), enumerating via `DECISION_CORPUS_ARGV` and
+recognising via `DECISION_HEADING_RE`, with last-record-wins per file:
+
+| Measurement | Rule output | Baseline fact |
+|---|---|---|
+| project-level distinct ids | **41** | `M-1a` / `M-1d`: 41 |
+| feature-level distinct ids, summed over directories | **100** | `M-2e`: sum 100 |
+| `pdlc-headless-engine` (2 files) | **22** | `M-2e`: 22 |
+| `pdlc-advisory-tier` | **11** | `M-2e`: 11 |
+| `pdlc-engine-distribution`, `pdlc-learnings-injection`, `pdlc-loop-economics` | **10** each | `M-2e`: 10 each |
+| `pdlc-consolidation-agent`, `pdlc-wave-resume` | **8** each | `M-2e`: 8 each |
+| `pdlc-engineering-loop` | **7** | `M-2e`: 7 |
+| `orchestrate-dev-workflow` | **6** | `M-2e`: 6 |
+| `pdlc-advisory-wave-gate` | **4**, exactly `DEC-A6-01`…`04` | `M-2e`: 4; `M-4d`: 8 non-records excluded |
+| `pdlc-rcv-budget-stop` | **4** | `M-2e`: 4 |
+| `pdlc-plugin-retirement` | **0** (no matching directory entry) | `M-2e`: 0 *(none; `M-4b`)* |
+| `DEC-LOOP-01`'s rendered statement | "Session state travels in a caller-echoed token, not a durable file" | `M-3c`: the second, deciding opening |
+
+Every figure agrees. Note that `pdlc-decision-ledger` itself contributes nothing today — this
+feature's own DECISIONS document does not exist while this TSPEC is being written — which is
+precisely FSPEC Q-2's zero-contribution case, and it resolves to the project-level set alone.
+
+### 3.6 Omission order under a bound
+
+FSPEC BR-13 leaves *which* lines are omitted to this spec. The order is: **feature-level records
+are omitted before project-level records; within an origin, records are omitted in reverse
+enumeration order** (last enumerated dropped first). Enumeration order is `DECISION_CORPUS_ARGV`'s
+pathspec order, then `git ls-files`' own ordering within a pathspec, then file order within a file
+— all three deterministic, none dependent on a clock, a locale or a filesystem walk.
+
+Rationale: the project-level corpus is the shared, promoted material every reviewer of every
+feature is measured against, and it is a fixed 41 lines against a `maxEntries` default of 70
+(`M-6c`: a cap of 70 clears `M-6b`'s floor of 63 by 7), so under the shipped defaults the bound is
+never reached and the order is inert. It becomes live only when an operator lowers the bound or the
+corpus grows past it, and in that regime dropping the narrower, feature-local material first is the
+safe direction.
+
+Both bounds are applied by the same loop, whole line at a time: while the rendered index exceeds
+`maxEntries` lines **or** `maxBytes` bytes, drop the next line in omission order. A single line that
+alone exceeds `maxBytes` is dropped whole by the same step and the loop continues over the rest
+(FSPEC E-8, AT-15). No line is ever truncated, abbreviated, or partially rendered, and construction
+is never aborted (BR-13, N-1).
 
 ## 4. Interfaces
 
