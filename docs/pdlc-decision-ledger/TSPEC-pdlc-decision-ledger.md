@@ -1012,10 +1012,11 @@ check are what keep the duplicate honest.
 
 | AT | Level | Notes |
 |---|---|---|
-| AT-01 | corpus oracle, §7.3 | whole-line equality; two dispatches, `pdlc-advisory-wave-gate` (45 lines) and `pdlc-engineering-loop` (48) |
+| AT-01 | corpus oracle, §7.3 | whole-line equality; two dispatches, `pdlc-advisory-wave-gate` (45 lines) and `pdlc-engineering-loop` (48). **Run with `maxBytes` non-binding** — see the note below |
 | AT-02 | corpus oracle | each citation resolved back in the fixture |
-| AT-03 | integration | a record mutated **in the fixture copy** between two injector calls; second block reflects it |
-| AT-04, AT-05 | baseline guard, §7.4 | four not-enabled spellings, one stream |
+| AT-03 | integration | a record mutated **in the scripted `_readFile` double's returned text**, not on the fixture files — see the note below |
+| AT-04 | baseline guard, §7.4 | byte-identity against the merge-base recording, seam absent |
+| AT-05 | config-gate case, §7.4 | four not-enabled spellings supplied as four config texts, each resolving to a `null` injector |
 | AT-06, AT-07 | pure unit on `DECISION_LEDGER_RULE_TEXT` | both conjuncts, both exemplars, both labelled |
 | AT-08, AT-09, AT-10 | integration with scripted seams | total leg, partial leg, empty-source classification via §6.3 |
 | AT-11 | pure unit | set equality over C-3 × §3.1's condition space, plus block-level malformation |
@@ -1024,7 +1025,29 @@ check are what keep the duplicate honest.
 | AT-14 | baseline guard | positive assertion: byte-identical to AT-04's stream |
 | AT-16 | replay, both flag settings | invariance **plus** the open-finding ledger anchored to a value transcribed from the fixture, so a driver broken identically in both arms still fails |
 | AT-17 | integration | a filed High reopening mints its erratum item and satisfies the confirmation-presence check |
-| AT-18 | corpus oracle over O-5's synthetic two-file fixture | cardinality only; which record supplies the statement is §3.4's, asserted separately there |
+| AT-18 | corpus oracle over O-5's synthetic two-file fixture | cardinality **and** §3.4's positive conjunct: the single line's `statement`/`sourcePath` equal the project-level record's (transcribed from the fixture) and `origin === "project"`, with the feature-level statement asserted absent |
+
+**Two notes the rows above are too narrow to carry.**
+
+**AT-01 runs with the byte bound non-binding, and this is deliberate.** §3.6's measurement shows the
+45- and 48-line sets render to 7,042 and 7,650 bytes of index lines, which with §4.3's framing budget
+exceed the `maxBytes` default of 8,000. Under default configuration the renderer would drop lines and
+the 45/48-line expected sets would be **unproducible** — the oracle would assert a set the renderer
+cannot emit. AT-01's subject is the **recognition rule** (§3.1–§3.4), not the bounds, so the oracle
+supplies an explicitly non-binding `maxBytes` (and `maxEntries`) and says so in the test file's
+header. The bounds are the subject of §7.5's property and AT-13/AT-15, where they are exercised across
+their whole range. Stated so the wrong fix is not applied later: if this test ever reddens, the
+correct response is **never** to trim the expected set to whatever the renderer emitted — that is the
+implementation echo AT-01's own "never captured from the renderer's output" clause forbids.
+
+**AT-03 mutates the double's output, not the fixture on disk.** §7.3 guards the fixture copy with
+hand-transcribed per-file digests, so a test that edited a fixture file between two injector calls
+would red the integrity guard — the two requirements are contradictory as literally stated. They are
+separated by level: the fixture copy is **immutable**, and AT-03's "the corpus changed between
+dispatches" scenario is produced by the scripted `_readFile` double returning one text on its first
+call for a path and a mutated text on its second. This tests exactly what AT-03 is for — that the
+injector re-gathers per dispatch and holds no snapshot (§2.6, BR-9) — without any test writing to the
+working tree, which is the discipline §7.3 exists to enforce.
 
 ### 7.7 What is not tested, and why
 
