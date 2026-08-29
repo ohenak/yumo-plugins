@@ -658,7 +658,160 @@ placeholder line; and a line that will not fit is dropped whole rather than trun
 
 ## 7. Test Strategy
 
-*(pending)*
+Suite: `pdlc/workflows/__tests__/` under jest (`cd pdlc/workflows && npm test`), plus one file in
+`pdlc/engine/__tests__/` under `node:test` for the config disclosure. Both are gate checks
+(`Unit tests (ubuntu-latest, node 20)` and `Engine tests (ubuntu-latest)`).
+
+### 7.1 Test doubles
+
+No new double kind is invented. The two seams are the ones `gatherLearningsCorpus` already takes,
+and the shipped scripted doubles in `pdlc/workflows/__tests__/helpers/` supply both:
+
+| Seam | Double | Contract exercised |
+|---|---|---|
+| `_git` | scripted sync function returning `{ ok, stdout }`, or throwing | F-6's graceful `!ok` **and** ungraceful throw both reach `{unlistable: true}` |
+| `_readFile` | scripted map `path → string`, with designated paths returning `null` and designated paths throwing | P-8's shipped lesson: the runtime read throws where the double returns `null`, and both must degrade one entry, never the corpus |
+| `_log` | collector array | the per-dispatch observability line is live in production, not only under doubles (the shipped CODE_REVIEW F2 lesson on the learnings injector) |
+
+`recogniseDecisionRecords`, `selectDecisions`, `renderDecisionLedgerBlock` and
+`parseDecisionLedgerConfig` are pure and are tested with **no** doubles at all. This is the
+cite-and-reuse point: the repo's precedent is an in-process oracle over injected seams, never a
+black-box sub-process, and this feature adds no reason to deviate.
+
+### 7.2 Test categories
+
+| Level | What is tested | Against |
+|---|---|---|
+| Pure unit | `parseDecisionLedgerConfig` over C-3's three keys × {valid, wrong-typed, absent} plus the block-level malformation case; `recogniseDecisionRecords` over §3.2's five conjuncts; `renderDecisionLedgerBlock`'s exact-`""` contract | literals |
+| Corpus oracle | §3.5's table — the rule's output over a **frozen fixture copy** of the corpus reproduces `M-1d`, `M-2e`, `M-3c`, `M-4a`–`M-4d`, and `M-4b`'s zero | frozen fixture, never the live repo |
+| Integration | `reviewLoop` driven end to end with a scripted `_injectDecisionLedger`, asserting the composed reviewer-prompt bytes on both iteration-1 and iteration-≥2 paths | composed strings |
+| Byte-identity baseline | §7.4 | committed merge-base fixture |
+| Property | §7.5 (O-8) | generated inputs |
+| Source census | §7.3 | module source text |
+| Engine disclosure | §5.3 | `.claude/pdlc.config.example.json` |
+
+### 7.3 The frozen fixture copy, and why it is not the live repository
+
+REQ-DECLEDGER-01 and FSPEC AT-01 require the corpus assertions to run against a **frozen fixture
+copy** at Baseline v1.1's `Verified at` commit, never the live repository. The reason is concrete
+and this branch is the witness: `docs/pdlc-decision-ledger/` is growing while the feature is built,
+and this feature's own DECISIONS document will be added to it, so a test reading the live tree would
+red on unrelated decisions the moment any feature records one. It is the same class of failure as
+the `coveredViolations` whole-tree walk recorded in `CLAUDE.md` — a live filesystem read turns an
+unrelated file into a test failure.
+
+The fixture lives at
+`pdlc/workflows/__tests__/fixtures/decision-corpus/` and is a path-preserving copy of the 25
+in-scope `DECISIONS-*.md` files at `8c673a09f`, addressed through the `_git` and `_readFile`
+doubles rather than by real filesystem paths, so no test touches the working tree. Its integrity is
+guarded the way `loopEconomicsBaselineGuard.test.js` guards its own: a per-file digest literal
+**hand-transcribed** into the test, never recomputed and never read from a manifest, since a
+re-capture rewrites a manifest in lockstep with the thing it would be checking.
+
+Expected statements and citations are transcribed from the fixture's own heading text and record
+location — data — never captured from the renderer's output, which would derive the expectation
+from the code under test (AT-01). `M-3c`'s verbatim second-opening heading is the pinned
+discriminating case; `M-4d`'s eight non-record headings and `M-4b`'s twelve namespace-less ids are
+the pinned exclusion cases.
+
+**Source census for BR-11 / §5.5.** Alongside the behavioural replay of AT-16, one oracle reads
+`orchestrate-dev.js`'s source and asserts that no identifier from the ledger's output types
+(`DecisionRecord`'s `id`, `selectDecisions`' return) appears inside the convergence, dedupe,
+derivative-stop, erratum-mint or confirmation-presence regions. The precedent for pinning an
+*absence* with a source census rather than new production code is `DEC-LOOPECON-07`, and it is the
+right instrument here because BR-11 is a claim that a coupling does not exist.
+
+### 7.4 O-4 — the byte-identity baseline and its pinning
+
+REQ C-2 / REQ-DECLEDGER-02 / AT-04 require byte-identity against a **committed fixture baseline**,
+never a same-branch before/after comparison, because a regression corrupting both arms identically
+passes every same-branch comparison. FSPEC O-4 asks this spec to name the baseline's identity and
+the pinning that stops a re-capture silently satisfying AT-04.
+
+- **Capture harness:** `scripts/capture-learnings-baseline.mjs`'s `runCaptureScript`, reused
+  unchanged. It materialises the merge-base worktree with `git worktree add`, imports that tree's
+  `pdlc/workflows/orchestrate-dev.js`, drives a scenario matrix, writes `{caseId}/{n}.txt` plus
+  `MANIFEST.json`, and removes the worktree in a `finally`.
+- **Baseline identity:** `git merge-base origin/main HEAD` on `feat-pdlc-decision-ledger`, recorded
+  as `mergeBaseSha` in the new
+  `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/MANIFEST.json`.
+- **Scenario matrix:** `fixtures/decision-ledger-baseline/scenarios.mjs`, one definition imported by
+  **both** the capture and the guard, differing only in which `orchestrate-dev.js` namespace is
+  handed to it. It sits inside the fixture directory, not `__tests__/helpers/`, so the PLAN's
+  file-ownership manifest can give one task both paths without a second task writing `helpers/` in
+  the same batch. Jest never collects it — `testPathIgnorePatterns` already excludes
+  `/__tests__/fixtures/`.
+- **Recorded stream, deliberately narrow:** one case, `REVIEW-LOOP-REVIEWER-PROMPTS`, driving the
+  exported `reviewLoop` directly and recording the reviewer-prompt streams for a first-pass round
+  and a delta re-review round. A whole-`main()` recording would red on this feature's own intended
+  additions (the new notices, the new report field) and would have to be re-transcribed mid-feature,
+  proving nothing — the lesson `loop-economics-baseline/scenarios.mjs` records for its own narrow
+  cases.
+- **Capture validity window:** the capture must be taken **before** any production change lands, at
+  a point where `pdlc/workflows/orchestrate-dev.js` is byte-identical between merge base and branch
+  HEAD. The PLAN must make this a real dependency edge (every production task carrying `Deps` on the
+  capture task), not a prose note.
+- **The pinning O-4 asks for, three clauses:** (a) per-file digest literals hand-transcribed into
+  the guard, so a re-capture that rewrites `MANIFEST.json` does not also rewrite its checker;
+  (b) `mergeBaseSha` asserted against `git merge-base origin/main HEAD` computed at test time, so a
+  baseline captured from the wrong base fails loudly; (c) the case-id check written as **set
+  equality**, not containment, so both a deleted case and a silently added case fail — the two
+  halves the loop-economics guard proved are not interchangeable.
+- **Mutation proof before commit,** the same three steps that guard proves: flip one byte in a
+  recorded stream (expect the per-file digest assertion and the oracle comparison red, the manifest
+  assertion green); delete a case directory (expect the set-equality assertion red, `actual ⊉
+  expected`); add a spurious case directory (expect the same assertion red for the opposite reason).
+  Each restored immediately, each observed red recorded in the test file's header.
+
+The guard does **two** jobs, not one: it guards the artifact (digests unchanged) *and* uses it
+(drives branch HEAD's `orchestrate-dev.js` through the same matrix and byte-compares). Job one alone
+re-hashes a fixture against a digest of itself and proves nothing about the code — the lesson
+already written into `learningsBaselineGuard.test.js` and repeated in the loop-economics guard.
+
+### 7.5 O-8 — the bounds invariant as a property
+
+FSPEC O-8 records that BR-12/BR-13's bounds invariant is universally quantified while AT-13
+exercises two examples. It is owed as a property, parameterised over **set size × line sizes ×
+both bounds**:
+
+> For any in-scope record set and any non-negative `maxEntries` / `maxBytes`, the rendered block
+> either is exactly `""` or satisfies all of: at most `maxEntries` lines; at most `maxBytes` bytes;
+> every rendered line is byte-identical to the line the unbounded renderer would have produced for
+> that record (no truncation, no abbreviation); and the rendered set is a **prefix under §3.6's
+> omission order** of the unbounded set.
+
+The last conjunct is what makes the property non-vacuous. A renderer that emits `""` for every
+input satisfies the three bounds conjuncts trivially; the prefix conjunct fails it. The generator
+draws record sets spanning zero, one, and many records, line lengths spanning below/at/above
+`maxBytes`, and bounds spanning `0`, exactly-fitting, and generous — so E-6, E-7 and E-8 are all
+inside the property's range rather than beside it. The model is built from the production line
+renderer applied per record, not from a re-implementation of the drop loop, so a bug in the loop
+cannot be mirrored into the oracle.
+
+### 7.6 Coverage of the FSPEC's acceptance tests
+
+| AT | Level | Notes |
+|---|---|---|
+| AT-01 | corpus oracle, §7.3 | whole-line equality; two dispatches, `pdlc-advisory-wave-gate` (45 lines) and `pdlc-engineering-loop` (48) |
+| AT-02 | corpus oracle | each citation resolved back in the fixture |
+| AT-03 | integration | a record mutated **in the fixture copy** between two injector calls; second block reflects it |
+| AT-04, AT-05 | baseline guard, §7.4 | four not-enabled spellings, one stream |
+| AT-06, AT-07 | pure unit on `DECISION_LEDGER_RULE_TEXT` | both conjuncts, both exemplars, both labelled |
+| AT-08, AT-09, AT-10 | integration with scripted seams | total leg, partial leg, empty-source classification via §6.3 |
+| AT-11 | pure unit | set equality over C-3 × §3.1's condition space, plus block-level malformation |
+| AT-12 | integration + source census, §7.3 | rule text carries the id key; `DEC-LOOPECON-06`'s triple untouched |
+| AT-13, AT-15 | pure unit, subsumed by §7.5's property | examples kept as regression anchors |
+| AT-14 | baseline guard | positive assertion: byte-identical to AT-04's stream |
+| AT-16 | replay, both flag settings | invariance **plus** the open-finding ledger anchored to a value transcribed from the fixture, so a driver broken identically in both arms still fails |
+| AT-17 | integration | a filed High reopening mints its erratum item and satisfies the confirmation-presence check |
+| AT-18 | corpus oracle over O-5's synthetic two-file fixture | cardinality only; which record supplies the statement is §3.4's, asserted separately there |
+
+### 7.7 What is not tested, and why
+
+G-4's retrospective trend is explicitly non-binding in the REQ and carries no acceptance criterion;
+nothing here asserts it. Reviewer compliance with the rule text is not testable by construction —
+R-3 accepts this, and §5.5's source census is the compensating control, pinning that no gate could
+enforce it even if one wanted to.
 
 ## 8. Traceability
 
