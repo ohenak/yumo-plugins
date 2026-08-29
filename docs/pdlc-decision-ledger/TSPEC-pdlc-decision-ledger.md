@@ -998,9 +998,13 @@ work — and **the fixture is deliberately larger than any dispatch this feature
 REQ G-1 scopes a real in-scope set to the project's closed decisions plus those of the one feature
 under review — at the Baseline commit, `M-6b`'s 63-record floor, which §3.6 measures as rendering
 whole under C-5's resolved default. The 141-record whole-fixture build is an over-sized basis chosen
-so that a bound binds: at 141 records `maxEntries` 70 **binds first**, forcing at least 71
-omissions before the byte bound is reached, so the drop loop must run and §3.6's feature-level-first
-order is what decides who survives. "No project-level id was omitted" is therefore an absence
+so that a bound binds. There is one drop loop and its condition is a disjunction (§3.6), so
+"which bound binds first" is not a stage the loop has: at 141 records **both** bounds are exceeded
+from the outset — 141 lines against `maxEntries` 70, and the rendered bytes far above the
+11,300-byte line allowance — and the loop simply runs until *both* hold. It is the **byte** bound
+that sets the terminal survivor count, at fewer than 70 lines, as the paragraph below records. What
+matters for this assertion is only that the loop runs at all, and §3.6's feature-level-first order
+is what decides who survives. "No project-level id was omitted" is therefore an absence
 asserted over a non-empty `omitted[]`, and it reddens under a reversed drop order, which is the
 mutation this assertion exists to catch. On the project-level-only slice it could not: 41 records
 against `maxEntries` 70 and 6,305 index bytes against an 11,300-byte allowance leave nothing to
@@ -1008,14 +1012,41 @@ drop, so `omitted[]` is empty under *every* drop order and the conjunct is vacuo
 empty-by-construction shape this section's non-empty-slice guard for the census exists to prevent,
 and it is not repeated here (D-10's rejected alternative).
 
+**The `M-6b`-slice assertion (§3.6's 441 bytes).** The whole-fixture assertion above is an
+over-sized basis by construction, so it says nothing about the quantity §3.6's live conclusion
+actually rests on: that on a *real* G-1-scoped dispatch at the Baseline commit **no line is omitted
+at all**. That claim clears the bound by **441** bytes, not by the ~4,995 conjunct (2) pins, and a
+corpus that grows by 441 bytes would falsify it while every assertion above stayed green. A second
+assertion in this oracle closes that gap. Build the block over the **`M-6b` slice** of the frozen
+fixture — the 41 project-level records plus `pdlc-headless-engine`'s 22, the 63-record worst standing
+in-scope set REQ G-1 can produce at that commit — at the same **shipped** defaults
+(`maxEntries: 70`, `maxBytes: 12500`), and assert three things:
+
+4. **Nothing is omitted.** `omitted[]` is **empty**, and the rendered id set is set-equal to the
+   slice's 63 ids, transcribed as a literal.
+5. **The total size is pinned, not bounded.** The whole block as it appears in the prompt —
+   10,859 index bytes with §4.3's framing charged (D-5) — is the transcribed literal **12,059**
+   bytes.
+6. **The margin is stated as arithmetic.** `12,059 ≤ 12,500`, at C-5's resolved default.
+
+Conjuncts (4)–(6) are the falsifiable form of §3.6's headroom sentence: (5) reddens on corpus growth
+of 441 bytes or a line-format regression, (6) reddens if an operator-facing default moves below the
+standing case, and (4) reddens if either does. This is the **only** assertion in the design that
+exercises the shipped configuration over a set the size a dispatch really builds — the whole-fixture
+assertion exists to make the *drop order* falsifiable, this one to make the *inertness measurement*
+falsifiable, and neither substitutes for the other (D-10). Like the pair above, 12,059 and the 63 ids
+are hand-transcribed from the fixture, never derived at test time; the same re-capture moment is
+where all four literals are re-measured together.
+
 Note what conjunct (3) deliberately does **not** say: it does not pin *how many* feature-level lines
 survive. Under the shipped bounds roughly two dozen do — `maxEntries` 70 less the 41 project-level
 lines caps it at 29, and §3.6's ~4,995 bytes of headroom against a 152–261-byte feature line trims a
 few more — and that count is a renderer-arithmetic detail that would churn on any line-format
 change without naming a defect. The falsifier lives in the origin partition, not in the count.
 
-Both transcribed literals — the 41 ids and 6,305 — are **hand-transcribed from the fixture, never
-derived at test time from the renderer or from a manifest** (PM Q-01). Deriving either would make the
+All four transcribed literals — the 41 project-level ids and 6,305, the 63 `M-6b` ids and 12,059 —
+are **hand-transcribed from the fixture, never derived at test time from the renderer or from a
+manifest** (PM Q-01). Deriving either would make the
 assertion an echo of the code under test, and re-deriving 6,305 from the fixture would defeat the
 purpose of pinning it: transcribing rather than merely bounding it makes corpus drift visible at the
 re-capture, which is the deliberate moment to re-decide C-5's default. ERR-2 has since been resolved
