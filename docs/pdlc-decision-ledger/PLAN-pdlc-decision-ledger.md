@@ -91,6 +91,55 @@ verified present at HEAD.
 | T-19 | `[green]` Disclosure and documentation: add `"decisionLedger": {"enabled": false, "maxEntries": 70, "maxBytes": 12500}` to `.claude/pdlc.config.example.json`; document the block and the ledger's mechanics in `pdlc/OPERATIONS.md`'s review-loop-mechanics section (recognition rule, the two bounds and the omission order, the two fail-open legs, the notices ids); add a one-line pointer in `pdlc/README.md` and `CLAUDE.md`'s deep-dive paragraph so the config catalogue is not stale (the `pdlc-loop-economics` F-6 lesson). **No SKILL.md edits** (REQ NG-6, `DEC-DECLEDGER-05` — the wiring is dispatch construction). Un-skips T-12. | `pdlc/workflows/__tests__/documentOracles.test.js`, `pdlc/engine/__tests__/decision-ledger-config-example.test.js` | `.claude/pdlc.config.example.json`, `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` | 9 | T-12, T-18 | ⬚ |
 | T-20 | Landing: run `node pdlc/workflows/build-runtime.mjs`, confirm `--check` is clean, stage `pdlc/workflows/dist/` in the same commit; bump `pdlc/.claude-plugin/plugin.json` `version` from `0.23.6`. Re-run `npm run test:coverage` in `pdlc/workflows` and `npm test` in `pdlc/engine`. | — | `pdlc/workflows/dist/pdlc-cli.mjs` (generated — never hand-edited), `pdlc/.claude-plugin/plugin.json` | 10 | T-19 | ⬚ |
 
+### Batch column re-derivation
+
+Mechanically, `batch == max(batch of deps) + 1`, sources = batch 1:
+
+T-00, T-01, T-02, T-03, T-12 have no deps ⇒ **1**. T-04, T-05, T-06, T-07, T-11 on T-00(1), T-01(1)
+⇒ **2**; T-08 on T-00(1), T-01(1), T-03(1) ⇒ **2**; T-09 on T-01(1), T-03(1) ⇒ **2**; T-10 on
+T-01(1), T-02(1) ⇒ **2**. T-13 on T-02(1), T-04(2) ⇒ **3**. T-14 on T-05(2), T-13(3) ⇒ **4**.
+T-15 on T-06(2), T-14(4) ⇒ **5**. T-16 on T-07(2), T-15(5) ⇒ **6**. T-17 on T-08(2), T-09(2),
+T-16(6) ⇒ **7**. T-18 on T-10(2), T-11(2), T-17(7) ⇒ **8**. T-19 on T-12(1), T-18(8) ⇒ **9**.
+T-20 on T-19(9) ⇒ **10**.
+
+The dependency graph is acyclic: every edge points from a lower-numbered batch to a higher one, and
+batch numbers strictly increase along every edge by construction of the rule above.
+
+### Per-phase file-ownership manifest
+
+| File | Owning task(s) |
+|---|---|
+| `pdlc/workflows/__tests__/decisionLedgerPreflight.test.js` | T-00 (batch 1) |
+| `pdlc/workflows/__tests__/helpers/decisionLedgerDoubles.js` | T-01 (batch 1) |
+| `pdlc/workflows/__tests__/decisionLedgerBaselineGuard.test.js` | T-02 (batch 1) |
+| `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/**` | T-02 (batch 1) |
+| `pdlc/workflows/__tests__/decisionLedgerFixtureGuard.test.js` | T-03 (batch 1) |
+| `pdlc/workflows/__tests__/fixtures/decision-corpus/**` | T-03 (batch 1) |
+| `pdlc/engine/__tests__/decision-ledger-config-example.test.js` | T-12 (batch 1), T-19 (batch 9, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerConfig.test.js` | T-04 (batch 2), T-13 (batch 3, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerRecognise.test.js` | T-05 (batch 2), T-14 (batch 4, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerRender.test.js` | T-06 (batch 2), T-15 (batch 5, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerBounds.test.js` | T-07 (batch 2), T-16 (batch 6, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerInjector.test.js` | T-08 (batch 2), T-17 (batch 7, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerCorpus.test.js` | T-09 (batch 2), T-17 (batch 7, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerLoop.test.js` | T-10 (batch 2), T-18 (batch 8, un-skip) |
+| `pdlc/workflows/__tests__/decisionLedgerCensus.test.js` | T-11 (batch 2), T-18 (batch 8, un-skip) |
+| `pdlc/workflows/orchestrate-dev.js` | T-13, T-14, T-15, T-16, T-17, T-18 — **serialised**, one per batch (3, 4, 5, 6, 7, 8); no two share a batch |
+| `pdlc/workflows/__tests__/documentOracles.test.js` (existing) | T-19 (batch 9) |
+| `.claude/pdlc.config.example.json` | T-19 (batch 9) |
+| `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` | T-19 (batch 9) |
+| `pdlc/workflows/dist/pdlc-cli.mjs` (generated) | T-20 (batch 10) |
+| `pdlc/.claude-plugin/plugin.json` | T-20 (batch 10) |
+
+**Disjointness premise, batch by batch.** Batch 1 writes five pairwise-disjoint file sets. Batch 2
+writes eight distinct new test files and nothing else. Batches 3–8 each write exactly one
+production file — the same one — plus the test file(s) of a batch-2 or batch-1 task they un-skip,
+and no two tasks share a batch, so no batch contains two writers of any file. Batch 9 writes four
+documentation/config files plus the engine test; batch 10 writes the generated bundle and the
+manifest. The only multi-owner files are the nine test files whose `[red]` author and `[green]`
+un-skipper sit in different batches, and `orchestrate-dev.js`, whose six owners sit in six distinct
+batches connected by the real edge chain T-13 → T-14 → T-15 → T-16 → T-17 → T-18.
+
 ## Dependencies
 
 *(pending)*
