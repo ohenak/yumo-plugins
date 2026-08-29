@@ -1197,7 +1197,7 @@ set-equality-checked, so neither can drift silently:
 
 | Operand | Definition | How it is kept honest |
 |---|---|---|
-| **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose members are the *distinctive, unambiguous* exported names this feature introduces: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES`, `decisionLedger` | A companion test asserts **set equality** between `DECISION_LEDGER_CENSUS_TOKENS` and the module's exported decision-ledger symbol names, so a symbol added later cannot escape the census by not being listed. Generic tokens like `id` are excluded by construction — the set holds only names that are unique to this feature |
+| **Forbidden token set** | The frozen literal `DECISION_LEDGER_CENSUS_TOKENS`, whose members are the *distinctive, unambiguous* exported names this feature introduces: `selectDecisions`, `recogniseDecisionRecords`, `renderDecisionLedgerBlock`, `gatherDecisionCorpus`, `DECISION_LEDGER_OMIT_REASONS`, `DECISION_LEDGER_CORPUS_OUTCOMES` | A companion test asserts **set equality** between `DECISION_LEDGER_CENSUS_TOKENS` and the module's exported decision-ledger symbol names, so a symbol added later cannot escape the census by not being listed. Generic tokens like `id` are excluded by construction — the set holds only names that are unique to this feature |
 | **Scanned source** | The whole of `orchestrate-dev.js`, **minus** the four regions this feature legitimately owns: `parseDecisionLedgerConfig`'s body, `buildDecisionLedgerInjector`'s body, `selectDecisions`/`recogniseDecisionRecords`/`renderDecisionLedgerBlock`'s bodies, and the `main()` wiring block. The first three are sliced by brace-matching from their declarations, exactly as `advisoryDisabled.test.js`'s `sourceExcludingParser` slices `parseAdvisoryConfig`. The fourth is **not** the whole of `main()`, which owns a great deal of unrelated code a coupling could hide in: it is the contiguous run of lines between two literal sentinel comments the wiring is written between (`// === DECISION LEDGER WIRING START/END ===`, placed by the task that writes the wiring), so `main()` outside that run stays inside the census | The slicing helper is the shipped one's shape, and the test asserts each slice is non-empty before counting — an empty slice would silently make the census vacuous |
 
 The assertion is then the precedent's: **zero occurrences** of any member of
@@ -1207,6 +1207,22 @@ dedupe, derivative-stop or erratum-mint code, that code sits outside the four ow
 census reddens. What it deliberately does **not** attempt is to prove the absence of a coupling
 routed through a generically-named local; that residue is covered behaviourally by AT-16's replay
 (§7.6), and the two together are the compensating control §7.7 records against R-3.
+
+**Why the report field name is not a census token.** An earlier draft of the token set also carried
+`decisionLedger`, the `report` field of §5.4. That member is unsatisfiable against the very precedent
+this section reuses: the shipped `learningsInjectionField` analogue is threaded through
+`buildFinalReport` — declared as a parameter, spread conditionally into the returned report, and
+named at every one of the ~six shipped `buildFinalReport` call sites — all of which sit far outside
+`main()`'s wiring sentinels and therefore inside the scanned remainder. §5.4 adopts that discipline
+deliberately (the field is set **only** when the injector is non-null), so the equivalent
+`decisionLedger` sites will land in the remainder too and the census would red on conforming code.
+`decisionLedger` is therefore **dropped** from `DECISION_LEDGER_CENSUS_TOKENS` rather than the report
+sites being carved out — carving out `buildFinalReport` would blind the census to a much larger
+surface than the field name is worth, and the field name is not an exported symbol, so its removal
+also keeps the companion set-equality check (against *exported* decision-ledger symbol names) exact.
+What the field is owed instead is behavioural: §7.2's live composition-root arm asserts the flag-off
+`report` key set is set-equal to §7.4's committed recording, and §7.6's AT rows assert its presence
+and shape on the flag-on path.
 
 ### 7.4 O-4 — the byte-identity baseline and its pinning
 
