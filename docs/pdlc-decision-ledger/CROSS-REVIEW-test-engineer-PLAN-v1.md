@@ -402,6 +402,87 @@ keys of `DECISION_LEDGER_DEFAULTS`. Set equality, not containment, so a reason d
 document fails. Then T-19's Test File column has a red predecessor for both entries, and its
 documentation half becomes falsifiable.
 
+### F-05 (Medium, Local) — `report.decisionLedger` is asserted by a green row, owned by no red row
+
+T-18's row states the wiring must *"assert `report.decisionLedger` [is] non-null"*. Neither red
+predecessor covers the report object: T-10 works on `reviewLoop` streams, T-11 on source text. So the
+assertion has no home test file, and an implementer reading the PLAN literally has nowhere to put it.
+
+Two things to fix, and the second is the more important:
+
+1. Give the assertion a file. The `main()`-driven arm asked for in F-03 is the natural host.
+2. **`non-null` is not a sufficient oracle, and the disabled half is the one that matters.** The
+   feature's headline guarantee (REQ-DECLEDGER-02) is that a disabled run is byte-identical. The
+   report and the notices channel are part of what an operator sees. The PLAN's own Definition of
+   Done says *"Flag off ⇒ the report carries **no** `decisionLedger` field and **no** notice"* — an
+   absence-only pair. Pair each with the positive on the same path: flag off ⇒ `"decisionLedger" not
+   in report` **and** the report's key set is set-equal to the flag-off key set recorded at the merge
+   base; flag off ⇒ `notices` is set-equal to the baseline notices array (not merely "contains no
+   `NTC-DECLEDGER-*`"). Set equality is what makes a spuriously-added key fail.
+
+### F-06 (Medium, Local) — T-19 edits three oracle-pinned documents with no budget for re-pinning
+
+T-19 edits `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` and `.claude/pdlc.config.example.json`.
+Three of those four are already load-bearing inputs to shipped oracles:
+
+- `documentOracles.test.js:318` (D-1) constrains `CLAUDE.md`'s "Workflow scripts and the runtime
+  build" section and asserts no line co-occurs `build-runtime` with `.claude/workflows/`.
+- `documentOracles.test.js:357` (D-3) constrains `pdlc/README.md`.
+- `documentOracles.test.js:625` asserts the advisory disclosure family *"is confined to
+  OPERATIONS.md — CLAUDE.md and README.md carry no seam-count prose"*. A README pointer that
+  enumerates the ledger's mechanics rather than pointing at OPERATIONS.md risks tripping the same
+  discipline.
+- On the engine side, `pdlc/engine/__tests__/ci-arrangement.test.js` derives `CLAUDE.md`'s
+  required-check table from FSPEC §5.1, and `docs-uniqueness.test.js` pins install-command literals
+  and plugin-install sites by line. This project's learnings already record the README/`CLAUDE.md`
+  trap as a recurring wave-halt cause.
+
+None of this makes T-19 wrong; it makes T-19 **unbudgeted**. Add to its acceptance condition an
+explicit re-run of `documentOracles.test.js`, `docs-uniqueness.test.js` and `ci-arrangement.test.js`
+after the edits, and a note that the `README.md` addition is a **pointer**, not a restatement, so it
+stays on the right side of line 625's confinement rule. Nothing in this PLAN should be discovered at
+batch 9 that could have been written into the row at authoring time.
+
+### F-07 (Medium, Cross-Feature) — two parameterisable components covered example-only
+
+`fast-check` appears in exactly two rows: T-04 (totality over arbitrary JSON) and T-07 (bounds,
+quantified over set size × line sizes × bounds). Both are well chosen. Two components with equally
+parameterisable input spaces have no property strategy:
+
+- **T-05, `recogniseDecisionRecords`** — a parser. Its coverage is five conjuncts checked against
+  cited Baseline instances plus a last-record-wins case and three empty-input cases. Every case is a
+  named example. A parser is the archetypal property-based target, and the invariants are already
+  stated in TSPEC §3.2/§3.3 in quantified form. At minimum: *for any generated heading line, the
+  recogniser accepts it iff all five conjuncts hold* (which falsifies a conjunct silently dropped or
+  reordered), and *for any file text, `recogniseDecisionRecords` returns at most one record per id,
+  and that record is the last opening in the file* (BR-8's last-record-wins as a law rather than one
+  two-opening example).
+- **T-06, `renderDecisionLedgerBlock`** — a serialiser. Its coverage is the empty-`selected` contract
+  plus frozen text constants plus the line form. At minimum: *for any non-empty selected set, the
+  rendered block contains exactly `selected.length` index lines, each matching the
+  `§ {id} — {statement} [{sourcePath} § {id}]` grammar, and the block's line count equals framing
+  lines + `selected.length`* — one physical line per decision, stated as a law, is what stops a
+  statement containing a newline from silently producing two lines and desynchronising every byte
+  measurement downstream in T-09.
+
+The second of those is not a theoretical worry: T-09 hand-transcribes `6,305` and `10,859` byte
+literals and T-07 charges framing against `maxBytes`. A statement with an embedded newline breaks the
+one-line-per-decision invariant that all of that arithmetic assumes, and no named example in T-05 or
+T-06 generates one.
+
+I tagged this `Cross-Feature`: "parser and serialiser get a property strategy" is a standing project
+rule, not a fact about this PLAN, and it has now been raised at more than one phase.
+
+### F-08 (Low, Local) — "73 files at HEAD" is a directory-entry count
+
+The Verification section's CI-suite table describes `pdlc/engine/__tests__/` as *"(`node:test`, 73
+files at HEAD)"*. The directory has 73 **entries**: 64 `*.test.js` modules, 7 `_`-prefixed helper
+modules (`_run-suite.mjs`, `_bootstrap.mjs`, `_assert-suite-wide.mjs`, `_corpus.mjs`, `_doubles.mjs`,
+`_replay-double.mjs`, `_tspec-packed-set.mjs`) and 2 directories (`fixtures/`, `live/`). Since the
+sentence is about a test suite, "73 files" reads as a test-module count and is off by nine. Say "64
+test modules" (or drop the figure — nothing in the PLAN depends on it). Low, and non-gating: no
+assertion in this PLAN transcribes the number.
+
 ## Questions
 
 _pending_
