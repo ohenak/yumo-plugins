@@ -192,7 +192,42 @@ ordinary loop and are unaffected by this edit; I do not re-raise them here.
 
 ## Positive Observations
 
+- **The `102` ownership fix landed at every site that carried the ambiguity, not just the one the
+  erratum named.** The dispatch asked for T-00a; the edit also corrected T-12a's disclaimer, T-19's
+  acceptance, the file-ownership manifest row and the DoD checkbox. Four sites now tell the same
+  story, which is what makes the fix durable rather than local — and it retires the ambiguity that
+  had already misdirected PROPERTIES (PROP-DISC-07).
+- **The one-sided/terminal split is the right product framing.** "Evaluable at batch 1" versus
+  "first evaluable at batch 9" states *why* the obligation moved, not merely *that* it moved, so a
+  future reader cannot re-merge them by accident.
+- **The `DECISIONS` pin was re-derived, not patched.** The revision history says `shasum -a 256`
+  and the measured value agrees to the character. Three of four pins now verify exactly; the fourth
+  fails for upstream movement, not transcription — a different and more legible failure than v4's.
+- **The §5.5 → §7.3 re-point is substantively correct.** It reads the current `TSPEC` accurately on
+  why `report.decisionLedger` is not a census token and where its proof lives (T-10a). The author
+  was reading the right section — the pass simply predates v0.9 by 27 minutes.
+
 ## Recommendation
+
+**Needs revision**
+
+One open High finding — the PLAN is no longer grounded on the approved `TSPEC`. All three of my v4
+findings are resolved and the operator pass broke nothing. Exactly what must change:
+
+1. **Header (`PLAN`:9):** re-pin `TSPEC` to **v0.9** `sha256:eef45ef3…0623c8` (measured at HEAD),
+   and re-verify the other three pins in the same pass.
+2. **T-11 (`PLAN`:135) — the token operand:** replace "set equality against the module's exported
+   decision-ledger symbol names" with `TSPEC` v0.9 §7.3's partition:
+   `DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`,
+   the two sub-sets disjoint. Mirror the same correction in the §Definition of Done census bullet
+   (`PLAN`:469–472), which restates the superseded form.
+3. **T-11 — the scanned-source operand:** replace "minus four owned regions — three sliced by
+   brace-matching" with the source minus **every** member of `DECISION_LEDGER_OWNED_DECLS` plus the
+   sentinel-bounded wiring run, per §7.3.
+4. **Ownership of the two new catalogues:** give `DECISION_LEDGER_CENSUS_EXEMPT` and
+   `DECISION_LEDGER_OWNED_DECLS` an owning task (T-13/T-18-era) and a §Per-phase file-ownership
+   manifest row, so BR-11 / REQ NG-4's only falsifying instrument is landable.
+5. **Citation labels:** the two "TSPEC v0.8 §7.3" citations become v0.9 once the pin advances.
 
 ## Delta-Confirmation Findings
 
