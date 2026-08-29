@@ -26,3 +26,19 @@ against the working tree independently of the Baseline's text before comparing.
 Both Baseline pin claims also hold at HEAD: `8c673a09f` is the post-mortem commit as v1.1 now
 states, and `git diff --name-only 8c673a09f..HEAD` touches no `DECISIONS-*.md`, so the pinned
 extent is still the live extent as of this review.
+
+## Findings
+
+No High findings. The blocking gap from round 6 is closed and nothing in the delta opened another.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **The comparison basis is now wider than the expected value that backs it.** AC-01 asserts "equality of the rendered line set … the runs agree only where each line's id, statement and citation all agree" (`REQ:185-187`), but the expected value it then cites supplies ids only — `M-1d` and `M-2e` are id enumerations, and no `M-*` fact pins a statement or a citation string except `M-3c`, which pins the two openings of the single contested block verbatim. So for 62 of the 63 in-scope lines the criterion demands agreement on two fields whose expected text has no stated source. There is a second, smaller edge in the same sentence: G-1 permits an optional origin/evidence datum to follow on the line (`REQ:64-66`), so *line*-set equality and *three-field* equality are not the same test, and AC-01 asserts both spellings in one sentence. Neither needs new REQ machinery to fix — the frozen fixture copy is authored test material, so a one-clause statement that statement and citation are transcribed from the frozen fixture (never re-derived by the code under test) while membership is pinned by `M-1d`/`M-2e`, and that the optional datum is outside the compared fields, closes it without any predicate returning to §2. | §5 REQ-DECLEDGER-01 |
+| F-02 | Medium | Local | **The `Cited by` propagation rule added in this round is already violated by this round's own edit.** Baseline v1.1 states the list "is the propagation path for a `Version` bump, so a new citation is added here in the same edit that mints it", and lists `§2 G-1, §4 C-5, §5 REQ-DECLEDGER-01, §5 REQ-DECLEDGER-04, §7 O-1, §7 O-5`. Grepping every `M-*` citation in the REQ at HEAD gives two further sites: **§7 O-6** (`REQ:361`, cites `M-4e`) — minted this round, in `479716725`, after the Baseline edit `3bdf541b6` — and **§7 A-1** (`REQ:370`, cites `M-6b`/`M-6c`), which predates it. The A-1 omission is the one that costs: A-1 is where the `maxEntries` default is justified, so a future re-measurement that bumps `M-6b` has no pointer to the clause that must move with it. Fix is two list entries in the Baseline, no REQ change. | Baseline *Cited by*; §7 O-6, §7 A-1 |
+| F-03 | Low | Local | **Two small referential slips in the new AC-01 and O-1 text.** (a) "the runs agree only where each line's id, statement and citation all agree" (`REQ:186-187`) — "the runs" has no antecedent; the comparison is expected-versus-actual for one construction, not two runs of the driver, and the phrase reads as a determinism check, which is a different property. (b) `M-2e` is cited as "per feature directory" (`REQ:189`) but enumerates all twelve directories and 100 ids; the in-scope set per G-1 is the project set plus *the directory of the document under review*, so the criterion is asserting against a slice of `M-2e`, not `M-2e`. Both are one-word fixes and neither changes what an implementer would build. | §5 REQ-DECLEDGER-01 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | On F-01: is the intended oracle (i) membership pinned by `M-1d`/`M-2e` plus statement/citation transcribed literally from the frozen fixture, or (ii) a fully transcribed 63-line expected block in PROPERTIES? Both are sound; (i) is cheaper and keeps the REQ at altitude, but only (ii) is what "equality of the rendered line set" reads as today. |
