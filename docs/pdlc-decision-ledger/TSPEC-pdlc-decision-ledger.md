@@ -407,7 +407,8 @@ this document, and it is taken.
 **Second, the order is live under shipped defaults, and this section no longer claims otherwise.**
 Even in the shipped form, with §4.3's framing budget of ≤1,200 bytes charged, the byte bound leaves
 `8000 − 1200 = 6,800` bytes for lines. Project-level alone (6,305) fits with ~495 bytes of
-headroom, or roughly **two** feature-level lines. Per-line sizes, measured at the same commit under
+headroom — about **three** feature-level lines at the measured mean (495 / 183), two at the largest
+observed line. Per-line sizes, measured at the same commit under
 the shipped format: project-level lines run **109–200** bytes (mean 153); feature-level lines run
 **152–261** bytes (means 183 for `pdlc-advisory-wave-gate`, 191 for `pdlc-engineering-loop`, 206 for
 `pdlc-headless-engine`), which is the figure ERR-2 carries upstream. So on the shipped default:
@@ -429,9 +430,10 @@ like any other. What admits the promoted set whole today is the measured headroo
 decisions into it — so at ~44 promoted records the headroom is spent under C-5's current default.
 
 **That is a measured quantity, so it gets a pin rather than a sentence.** §7.3's corpus oracle
-carries an assertion over the frozen fixture, at C-5's *shipped* defaults, that the rendered
-project-level block fits within `maxBytes − 1200` and `omitted[]` names no project-level id, with
-6,305 transcribed as the expected size. It reddens when the promise stops being true — at the
+carries an assertion over the **whole** frozen fixture, at C-5's *shipped* defaults — where the
+bound genuinely binds — that the rendered project-level ids are the fixture's 41 entire, that their
+6,305 bytes fit within `maxBytes − 1200`, and that the non-empty `omitted[]` names no project-level
+id, with both the 41 ids and 6,305 transcribed as the expected values. It reddens when the promise stops being true — at the
 deliberate moment the fixture is re-captured, which is the right moment to re-decide ERR-2's
 default — instead of expiring silently. This is the same discipline §4.3 applies to the framing half
 of the identical arithmetic (D-9), applied to the corpus half (D-10). The order itself is load-bearing
@@ -1254,7 +1256,6 @@ what remains genuinely open.
 | **D-7** | The rendered citation is `[{sourcePath} § {id}]` (§4.3) | `[{sourcePath} § {heading}]`, which an earlier draft specified. The heading *is* the id plus the statement, so that form rendered every statement twice — 9,371 bytes against 6,305 for the project-level set, ~33% of the block spent on a duplicate. Path-plus-id resolves the record at its own source, which is all BR-3 and AT-02 require. `DecisionRecord.heading` is retained as the verbatim value expected results are transcribed from, but is not rendered |
 | **D-8** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` (§4.2) | Letting `selectDecisions` compute the size from its own concatenation. Two implementations of one format drift, and the drift is invisible in the worst direction — BR-12's bound enforced against a size the prompt does not have, with both functions individually looking right and every test green |
 | **D-9** | The framing constants are pinned to a ≤1,200-byte budget by a unit test (§4.3) | Leaving framing unmeasured. D-5 charges framing to `maxBytes`, so an unpinned framing size is an unmeasured quantity inside a measured budget, and §3.6's headroom arithmetic would be unfalsifiable prose |
-
 | **D-10** | §3.6's "the promoted corpus is admitted whole" is stated as a **measured, pinned** fact at the Baseline's commit, with an assertion at C-5's shipped defaults in §7.3's corpus oracle | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is ~495 bytes of headroom — about three more promoted decisions, in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision |
 | **D-11** | AT-03's mutation is applied to the scripted `_readFile` double's returned text, not to the fixture copy FSPEC AT-03's Given names (§7.6) | Mutating the fixture file, as AT-03 literally says. §7.3's per-file digest guard makes the copy immutable and AT-01 requires it, so the two clauses are contradictory as written; mutating on disk also writes to the working tree, which §7.3 exists to prevent. The double's return preserves what AT-03 is *for* — re-gathering per dispatch, holding no snapshot (§2.6, BR-9) — and is a stronger falsifier, since it varies only the bytes the injector reads. Raised at the FSPEC as ERR-4 rather than left as an unexplained divergence |
 
@@ -1272,15 +1273,17 @@ the same tension in FSPEC's favour: `parseLearningsConfig` validates its thresho
 own comment. This spec implements non-negative (§4.1) and raises the type label upstream rather than
 editing the REQ.
 
-**ERR-2 — REQ C-5's `maxBytes` default of 8000 is now measured, and admits about two feature-level
-lines.** A-1 records 8000 as an unmeasured analogy from `learningsInjection`. The measurement is now
+**ERR-2 — REQ C-5's `maxBytes` default of 8000 is now measured, and admits about three
+feature-level lines.** A-1 records 8000 as an unmeasured analogy from `learningsInjection`. The measurement is now
 taken (§3.6): at the Baseline's `Verified at` commit, under §4.3's shipped line format, the
 project-level set alone renders 41 lines / **6,305** bytes, and with §4.3's ≤1,200-byte framing
-budget charged (D-5) the 8,000-byte bound leaves roughly **495** bytes — about **two** feature-level
-lines at the measured feature-level size of **152–261** bytes/line (means 183 / 191 / 206 for
-`pdlc-advisory-wave-gate` / `pdlc-engineering-loop` / `pdlc-headless-engine`; project-level lines are
-smaller, 109–200, mean 153). The largest feature directory (`pdlc-headless-engine`,
-`M-6b`'s 63-line floor) would need 12,059 bytes to render whole.
+budget charged (D-5) the 8,000-byte bound leaves roughly **495** bytes — about **three**
+feature-level lines at the mean, two at the largest observed line, against a measured feature-level
+size of **152–261** bytes/line (means 183 / 191 / 206 for `pdlc-advisory-wave-gate` /
+`pdlc-engineering-loop` / `pdlc-headless-engine`; project-level lines are smaller, 109–200, mean
+153). The largest feature directory is `pdlc-headless-engine` at **22 lines / 4,553 bytes**; the
+in-scope set that directory produces — project-level plus itself, which is `M-6b`'s 63-line floor —
+is 10,859 index bytes, and **12,059** with framing charged, to render whole.
 
 Nothing here is broken: the omission order is designed for exactly this, project-level material is
 never reached by the bound, and REQ-DECLEDGER-07 explicitly permits omission. But the *product*
