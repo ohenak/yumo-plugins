@@ -134,6 +134,33 @@ framing to the consuming TSPEC, so this is the intended division of labour, not 
 
 ## Test Strategy
 
+Reviewed from the product lens only — whether the oracles still prove what REQ G-1 and C-5 promise a
+user, not how they are built (te-review owns that).
+
+**§7.3's shipped-default assertion.** The pre-erratum text described the 141-record fixture as "what
+a real dispatch gathers", which contradicted REQ G-1's scoping of a dispatch to the project set plus
+the one feature under review. That is now stated correctly: G-1's scope is named, `M-6b`'s 63 is
+given as the real figure, and the 141-record build is declared a deliberately over-sized basis chosen
+so a bound binds. This resolves my v5 finding at its root rather than by deletion — the assertion
+keeps its falsifying power (non-empty `omitted[]` under a reversed drop order) while no longer
+misdescribing user-facing behaviour.
+
+**Conjunct (2) follows the resolved default correctly.** `6,305 ≤ maxBytes − 1200`, instantiated at
+`6,305 ≤ 11,300`, with the transcribed 6,305 held fixed. That is exactly the discharge ERR-2
+predicted ("the threshold follows the resolved value and the transcribed 6,305 stays"), and it keeps
+the pin watching the corpus rather than the bound — the product property that matters, since
+`docs/_decisions/` grows by the mechanism this pipeline runs.
+
+**The surviving-line count.** §7.3's "roughly two dozen survive — `maxEntries` 70 less the 41
+project-level lines caps it at 29, and ~4,995 bytes of headroom trims a few more" is arithmetically
+sound at the new default and, correctly, is not asserted as a pin. The falsifier stays in the origin
+partition. Note this passage is the one that states `maxEntries` binds first — the passage §3.6's
+line 433 contradicts.
+
+**No coverage regressed.** AT-01's rationale changed but its configuration did not; AT-13/AT-15 and
+§7.5's property still carry the bounds across their range; §7.4's baseline guards are untouched. No
+acceptance criterion lost an oracle in this edit.
+
 ## Open Questions
 
 ## Positive Observations
