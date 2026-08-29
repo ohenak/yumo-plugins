@@ -116,3 +116,6 @@ cross) stand as recorded there and are untouched by this erratum. Nothing else i
 reopened.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
