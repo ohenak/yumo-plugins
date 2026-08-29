@@ -46,3 +46,57 @@ are by **section id**, which is why they survived the shift.
 
 Nothing in the document was falsified by the upstream move. The one thing it now mis-states is the
 version label it hangs those claims on, which is F-01 below.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Finding | Requirement ref |
+|----|----------|-----------|----------|---------------|---------|----------------|
+| F-01 | Medium | inherited | nonlocal | `## Context` (`:19`, `:81`), D-10/-12 re-evaluation trigger (`:360`) | The document pins its TSPEC-derived claims to **"at HEAD (TSPEC v0.7 …)"** in three places. TSPEC is **v0.9** at HEAD (`TSPEC-pdlc-decision-ledger.md:18`). Every *substantive* claim behind that label still holds (table above), so this is a stale provenance label, not a false derivation — but "at HEAD" is a self-dating phrase, and the one-pass re-measurement trigger at `:360` is precisely the row a future reader consults to decide whether a re-measurement is owed. Re-stamp the three literals to v0.9 (and the `UPSTREAM-STATE` TSPEC hash to `sha256:eef45ef3…0623c8`), or re-word "at HEAD" to "as measured at TSPEC v0.7". No decision changes | REQ-DECLEDGER-07; REQ C-5 |
+| F-02 | Medium | inherited | nonlocal | `## Decision` D-16 row; D-16's PROPERTIES row | Carried unresolved from v4 (F-01 there). D-16 states the prohibition over *"Every byte literal in TSPEC"*, while `POSTMORTEM-D:230-232` deliberately carves out prose that carries a derivation clearly labelled as an upper bound. TSPEC at HEAD relies on that carve-out and is conformant under it (`TSPEC:625` — *"deliberately not asserted as an equality"*), so the recorded rule is stricter than both its source and the spec it governs. Scope the prohibition to figures that are **asserted or pinned** (test-transcribable). Non-blocking, but the row nominates itself for promotion to `docs/_constraints/DOMAIN-CONSTRAINTS.md`, where the over-broad form would bind every future feature | REQ-DECLEDGER-07; REQ C-5 |
+
+FINDING: Medium | inherited | nonlocal | `## Context` and D-10/-12 trigger — "at HEAD (TSPEC v0.7)" | TSPEC is v0.9 at HEAD; the three version literals and the UPSTREAM-STATE TSPEC hash are stale, though every substantive claim they carry re-verifies
+FINDING: Medium | inherited | nonlocal | `## Decision` D-16 row and its PROPERTIES row | D-16's "every byte literal" prohibition is broader than POSTMORTEM-D's carve-out for prose-labelled upper bounds and than the TSPEC it governs; scope it to asserted/pinned figures
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | v0.9 dropped `decisionLedger` from the census token set and made the report field's whole proof §7.2's live composition-root arm (`TSPEC:947-952`). No standing decision in this ledger names that field, so nothing here is contradicted — but is the "one arm is the field's sole evidence" fact worth a D-entry, or is it correctly TSPEC-local? Non-blocking, and explicitly **not** a request to open a decision in a frozen round. |
+| Q-02 | Carried from v2/v3/v4, still open and still non-blocking: D-13's *"~154-byte mean line"* (`6,305 / 41 = 153.8`) against §3.6's reported project-level mean of **153**. Rounding only; no conclusion turns on it. |
+
+## Positive Observations
+
+- **The document held still while its upstream moved 237 lines, and lost nothing.** That is the
+  strongest evidence yet that D-16's provenance discipline and the section-id citation convention
+  (rather than line anchors) were the right calls: every one of the nine claims re-verified survived
+  a rewrite of §5.4, §7, §7.2 and §7.3, and survived a +150-line shift in every anchor, without a
+  single citation dangling.
+- **§7.3 was rewritten for satisfiability and the passage this ledger quotes came through
+  verbatim.** `TSPEC:1197-1200` still reads as D-03/-13 records it. The v0.9 author repaired the
+  census "the general way rather than by another exception" and left the drop-loop rationale
+  untouched — the ledger's quotation is not merely still true, it is still the same sentence.
+- **The discharge list is doing the job it was kept for.** v0.9 touched §7.3, one of the six
+  enumerated sites. Because the list exists, checking whether a re-measurement was owed took one
+  pass over six named locations instead of a hunt — which is exactly the reusable shape v3's finding
+  asked for, now exercised once for real.
+- **v0.9 tensed its two new mentions of 8,000 on introduction** (`TSPEC:109`, `:123`). The retirement
+  discipline this ledger recorded is being applied by a later author without being re-cited, which
+  is what a durable decision looks like from the outside.
+
+## Recommendation
+
+**Approved with minor changes**
+
+No High finding is open. The document is unchanged this round, and the frozen-round bar admits a
+blocking finding only for a defect the revision introduced (there was no revision) or a load-bearing
+claim falsified at HEAD (none — all nine re-verify against TSPEC v0.9). F-01 is a stale version
+label caused by upstream motion under a stationary document; F-02 is v4's Medium carried forward.
+Both are worth landing before consolidation, neither gates the phase.
+
+DEFERRED: re-stamp `## Context` and the D-10/-12 trigger from TSPEC v0.7 to v0.9, and refresh the UPSTREAM-STATE TSPEC hash, in the next non-frozen touch.
+DEFERRED: scope D-16's prohibition to asserted/pinned byte figures before the row is promoted to `docs/_constraints/DOMAIN-CONSTRAINTS.md`.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 0}
