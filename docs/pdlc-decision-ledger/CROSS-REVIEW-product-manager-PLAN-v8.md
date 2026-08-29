@@ -225,4 +225,35 @@ facts rather than reading:
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+The PLAN does not still hold against the TSPEC as it now stands. One High finding, delta and local:
+TSPEC v1.0 §7.3 homes the three census constants in the census test file and forbids a test-file
+constant from being a member of `DECISION_LEDGER_OWNED_DECLS`; PLAN v0.7 specifies the opposite at
+four sites and records the now-adopted resolution as rejected in its revision history. The disagreement
+is checkable arithmetic — six ∪ eight = fourteen upstream, six ∪ nine = fifteen downstream — and it
+would land as a batch-2 red test and a batch-8 production declaration the spec does not sanction.
+
+Exactly what to change, all within existing rows:
+
+1. **T-11 (`PLAN`:152)** — restate all three census constants as declarations of
+   `decisionLedgerCensus.test.js`; exempt list to TSPEC v1.0's eight members; partition to six ∪ eight
+   = fourteen; drop the quoted "token strings live inside its own declaration" rationale, which
+   upstream deleted; drop the "conjuncts satisfied at T-18's landing" gloss, which no longer follows.
+2. **T-18 (`PLAN`:158)** — delete the instruction to add the production
+   `DECISION_LEDGER_CENSUS_TOKENS` declaration to `orchestrate-dev.js`. The rest of the row stands.
+3. **Ownership manifest (`PLAN`:207, `PLAN`:219)** — T-11's test-file row owns all three constants;
+   T-18's `orchestrate-dev.js` row claims none of them.
+4. **Definition of Done (`PLAN`:485-500)** — restate the partition arithmetic and drop
+   "`DECISION_LEDGER_CENSUS_TOKENS` is **production**, declared by T-18".
+5. **Revision history (`PLAN`:19)** — record the reversal and its upstream cause, replacing the
+   paragraph that rejects it, so no reader is left with two accounts.
+6. **F-02 (Low), folded in** — re-pin the §7.3 citations from `TSPEC v0.9` to `TSPEC v1.0`.
+
+Nothing else in the document needs to move: no batch, dependency edge, task count, coverage table or
+scope boundary is affected, and I re-confirmed the requirement chains outside this clause are intact.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
