@@ -236,3 +236,42 @@ a reader arriving from that table lands here without guessing.
 | **DEC-DECLEDGER-15** | `maxEntries` / `maxBytes` are validated as **non-negative** integers, so `0` is a valid admits-nothing value | §4.1 / — | FSPEC E-7; `parseLearningsConfig`'s shipped `nonNegativeInt` | Easy — but reverting re-breaks E-7 |
 
 ## Consequences
+
+### What downstream documents now owe
+
+| Owed by | Obligation created here |
+|---|---|
+| PLAN | DEC-DECLEDGER-08 forces every implementation task to write the **same** physical file, so single-writer-per-batch serialisation is not advisory: the file cluster must be split by real `Deps` edges, one writer per batch (TSPEC §9.3 T-1 makes the same point for the baseline-capture ordering) |
+| PLAN | The task that drafts `DECISION_LEDGER_RULE_TEXT` inherits DEC-DECLEDGER-12's ≤1,200-byte budget as an acceptance condition, not a hope |
+| PLAN | DEC-DECLEDGER-09's destructured `=== true` read is a task-level requirement; a dotted read reddens PROP-DIS-06, a property this feature does not own |
+| PROPERTIES | DEC-DECLEDGER-02 has no HEAD witness, so its two conjuncts — cardinality **and** the positive statement/`sourcePath`/`origin` equality against the project-level record — must both be asserted over a constructed two-file fixture (FSPEC O-5). Cardinality alone passes under the rejected direction |
+| PROPERTIES | DEC-DECLEDGER-13's assertion is built over the **whole** fixture at shipped defaults, with 41 ids and 6,305 transcribed as expected values, never captured from the renderer |
+| PROPERTIES | DEC-DECLEDGER-11 means the bounds property's model must use its **own** formatter; deriving the model from the production renderer makes the no-truncation conjunct unfalsifiable |
+| IMPL | DEC-DECLEDGER-14 means no test writes to a fixture file; corpus variation is scripted at the `_readFile` seam |
+
+### Re-evaluation triggers
+
+| Decision | Revisit when |
+|---|---|
+| DEC-DECLEDGER-03, DEC-DECLEDGER-13 | The frozen fixture is re-captured, or `docs/_decisions/` passes ~44 promoted records — at which point the measured headroom is spent and the `maxBytes` default is re-decided, not the order |
+| DEC-DECLEDGER-04 | A harvest shows closed decisions being re-opened in *confirmation* rounds specifically; that is the only evidence that would justify paying the byte-identity cost of a wider surface |
+| DEC-DECLEDGER-06 | The first id recorded in two files at once appears at HEAD (`M-5a` currently records none) — precedence then acquires a live witness, and a uniqueness *report* becomes arguable, though a gate still is not |
+| DEC-DECLEDGER-08 | Any future feature earns an edit to `pdlc/engine/`, at which point `MODULE_NAMES` can grow and the one-file constraint — and the serial waves it costs — lifts for this code too |
+| DEC-DECLEDGER-10, DEC-DECLEDGER-12 | Either changes, and every byte figure in TSPEC §3.6 plus the erratum on the `maxBytes` default must be re-measured together, not one at a time |
+| DEC-DECLEDGER-15 | REQ C-5's type label is corrected upstream, closing the gap this decision currently spans |
+
+### Risks accepted
+
+- **The mechanism is measured over a proper subset of what REQ G-4 observes** (DEC-DECLEDGER-04).
+  Disclosed rather than designed around, because G-4 is explicitly non-binding and carries no
+  acceptance criterion. A later reader must not read a G-4 trend as this mechanism's effect.
+- **The whole feature turns on the recognition rule being right.** It is not a judgement call: TSPEC
+  §3.5 executes it against the standing corpus and reproduces `M-1d` and `M-2e` exactly, and this
+  author independently re-executed the project-level half at HEAD (41 distinct ids; 6,305 bytes
+  under the DEC-DECLEDGER-10 line format, 6,306 counting a trailing newline on the final line).
+- **Serial implementation waves** (DEC-DECLEDGER-08), taken knowingly, as `DEC-LOOPECON-08` did.
+- **Two errata are open against upstream documents** and are the TSPEC's to carry
+  (`ERR-1`…`ERR-4`, §9.2); DEC-DECLEDGER-14 and DEC-DECLEDGER-15 are the design-side halves of two
+  of them. If the `maxBytes` default moves, no PLAN task changes shape — one literal in C-5's row,
+  the same literal in the parser default, and DEC-DECLEDGER-13's threshold follows it while the
+  transcribed 6,305 does not move.
