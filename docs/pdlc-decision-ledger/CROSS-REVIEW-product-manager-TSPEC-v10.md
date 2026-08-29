@@ -85,3 +85,38 @@ five exist in `pdlc/workflows/orchestrate-dev.js` at HEAD — `MERGE_MAX_DECISIO
 `parseDecisionsWarranted` (:7044). The claim is measured, not remembered, and it is the right reason:
 a name-derived list would blind the census against unrelated shipped code, which is precisely the
 failure the census exists to prevent.
+
+## Interfaces
+
+The delta touches no public seam, no notice id, no config key and no rendered-output contract. The
+`decisionLedger` config block's three C-5 keys, the omission-reason catalogue, the `NTC-DECLEDGER-*`
+ids, §4.3's line format and §5.3's example-file disclosure are all byte-unchanged from the versions I
+approved at v0.7. §7.6's AT rows did not move, so no acceptance criterion's meaning drifted under this
+edit — I re-read AT-14's row (still all three of FSPEC v1.3's cases) and AT-01/AT-02/AT-18's notes.
+
+One interface-adjacent addition is worth pinning because it is new public-ish surface, even though it
+is test-facing: §7.3's owned-declaration list now includes `DECISION_LEDGER_CENSUS_TOKENS` on the
+grounds that "the token strings live inside its own declaration, so the census would otherwise red on
+its own literal". That is only coherent if the constant ships **inside** `orchestrate-dev.js` rather
+than test-side. It does: PLAN T-18's production edit list says "Add `DECISION_LEDGER_CENSUS_TOKENS`"
+against `pdlc/workflows/orchestrate-dev.js`. So design and plan agree on where the operand lives, and
+the self-exclusion clause is necessary rather than defensive. Worth noting it diverges from the
+precedent it cites — `loopEconomicsAnchorGuard.test.js` keeps its `FROZEN_CENSUS` in the test file —
+but that divergence predates this round and is deliberate, so it is not mine to re-open here.
+
+## Data structures
+
+§5.4 gains one paragraph and no type. It states that `report.decisionLedger` is written only when the
+injector is non-null (the shipped `learningsInjectionField` conditional-spread discipline), that it is
+deliberately not a census token, and that §7.2's live arm is its whole proof. This is the forward
+pointer Q-01 asked for, and it is placed at the *field's* definition rather than only in the test
+section — which is where a future editor deleting the arm would actually be reading. No state shape,
+no key, and no lifecycle changed; §5.5's "the one thing the driver never holds" is untouched.
+
+§7.3's scanned-source operand is the only real structural change, and its guard is stated in the
+positive: `DECISION_LEDGER_OWNED_DECLS` is frozen and "each member must resolve to **exactly one**
+top-level declaration at HEAD, so a rename or a deletion reddens rather than silently shrinking the
+exclusion", with the non-empty-slice assertion retained so the census cannot go vacuous. Both are
+positive assertions guarding an absence oracle, which is the right pairing: the census asserts zero
+occurrences, and these two assertions are what stop that zero from being achieved by an over-wide
+exclusion or an empty one.
