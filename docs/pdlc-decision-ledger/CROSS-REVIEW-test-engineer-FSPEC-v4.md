@@ -103,10 +103,58 @@ will either be written to skip `0`, which silently narrows the invariant, or wri
 
 ## What remains
 
+Two findings, neither gating, both inherited — they sit in bytes this erratum did not touch, and
+both were already on the record in v3. Nothing the delta introduced is defective, and nothing
+previously approved broke.
+
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Medium | inherited | nonlocal | `maxBytes` `0` is a valid operator value under REQ v1.8's non-negative retyping, and no edge case or AT states its outcome, while `maxEntries` `0` has both (E-7 + AT-14). Derivable from E-8 + BR-13 → E-6, but not stated. O-8's property is quantified over **any** resolved bounds, so PROPERTIES inherits an unspecified oracle at the boundary. Fix is one row: an E-* naming `maxBytes` `0` as E-6's outcome, or one clause in E-8 | §5 Size edges `:322`–`:325`; §7 O-8 `:526`; REQ C-5 `:173` |
+| F-02 | Low | inherited | nonlocal | The Baseline's `Cited by` propagation row (`baseline:6`) lists this FSPEC's citing sites as "header, §1, §3.3, §4 …, §5 …, §6 AT-01, §7 O-5" — it does not list **§7 Assumptions**, which after this edit cites `M-6b`/`M-6c`/`M-7b`/`M-7c` by id. That row is the mechanism by which a Baseline `Version` bump is routed to its consumers, so the site that went stale in the round just closed is the one site the router cannot see. Add `§7 Assumptions` to `baseline:6` | §7 Assumptions `:553`; `baseline:6` |
+
+F-02 is filed Low because no test depends on it and the pins are correct today. I am flagging it a
+second time only because it is the *same mechanism* that produced the v3 Highs: the propagation row
+missed §7, so the v1.1 → v1.2 bump did not route there, so §7's provenance claim went stale
+unnoticed. Closing the row closes the loop rather than the instance. Scope on it is
+`Cross-Feature` in the ordinary legend — it is a constraint about how Baseline-style pinned
+reference documents propagate, not about this feature.
+
 ## Positive Observations
+
+- **The erratum note is a model of blast-radius disclosure.** `:19`–`:26` states what moved upstream,
+  what cascades, what does *not* and why, and closes with "Nothing else moves." I was able to
+  falsify its scope claim mechanically (grep for `8000`, `v1.7`, `R-5`) in under a minute, which is
+  exactly what a delta-confirmation round should cost.
+- **The v3 Q-01 mis-scoping was silently corrected.** REQ's own erratum note had pointed at §3.3,
+  which carries no bound literal; the author walked the real anchors (§3.1 and §7) instead of the
+  cited one. That is the harder and correct behavior.
+- **All three Baseline pins moved in one edit.** §1, §6 and the header agree, so §6's frozen-fixture
+  instruction cannot cut a fixture at a different commit than §1 assumes — the failure mode that
+  would have produced an unreproducible corpus AT.
+- **The A-1 restatement is quotable against upstream.** It carries the id set rather than
+  re-deriving the numbers, which is what makes it stay true across the next Baseline bump.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves F-01, F-02 and F-04 from v3, and re-measurement against REQ v1.8 and Baseline
+v1.2 finds nothing previously approved broken — the AT-01 expected set, the corpus fixtures and the
+E-6/E-7/AT-14 cluster all still hold. No open High. The two remaining findings are inherited and
+non-gating; F-01 (Medium) is worth landing before PROPERTIES authoring, since O-8's property
+inherits the unspecified `maxBytes` `0` boundary.
+
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Description | Section anchor |
+|----|----------|-----------|----------|-------------|----------------|
+| F-01 | Medium | inherited | nonlocal | `maxBytes` `0` valid under REQ v1.8 non-negative retyping; no edge case or AT states its outcome, unlike `maxEntries` `0` (E-7 + AT-14). O-8's property is quantified over any resolved bounds and inherits an unspecified oracle | §5 Size edges `:322`–`:325`; §7 O-8 `:526` |
+| F-02 | Low | inherited | nonlocal | Baseline `Cited by` propagation row omits FSPEC §7 Assumptions, which cites four `M-*` ids — the bump-routing mechanism cannot see the site that went stale this round | §7 Assumptions `:553`; `baseline:6` |
+
+FINDING: Medium | inherited | nonlocal | §5 Size edges / §7 O-8 | `maxBytes` `0` is a valid operator value under REQ v1.8's non-negative retyping but no edge case or AT states its outcome, while `maxEntries` `0` has both E-7 and AT-14; O-8's bounds property is quantified over any resolved bounds and so inherits an unspecified oracle at the boundary
+FINDING: Low | inherited | nonlocal | §7 Assumptions / baseline:6 | The Baseline's `Cited by` propagation row does not list FSPEC §7 Assumptions, which now cites `M-6b`/`M-6c`/`M-7b`/`M-7c` by id, so a future Baseline `Version` bump will again fail to route to the site that went stale this round
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
