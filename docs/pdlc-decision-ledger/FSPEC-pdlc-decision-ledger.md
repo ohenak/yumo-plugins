@@ -207,8 +207,10 @@ rules cite it rather than restating it.
 ### Index content and currency
 
 **BR-1 — the index renders when, and only when, the flag resolves true.** A rendered index block
-appears in a review dispatch prompt exactly when resolved `decisionLedger.enabled` is `true` and at
-least one in-scope decision survives §3.3. In every other case no index block exists. *(-01, -02,
+appears in a review dispatch prompt exactly when three conjuncts hold: resolved
+`decisionLedger.enabled` is `true`, at least one in-scope decision survives §3.3, **and** at least
+one rendered line survives the bounds of §3.2 step 5. In every other case no index block exists —
+which is why E-6 and E-7 are instances of this rule rather than exceptions to it. *(-01, -02,
 -04)*
 
 **BR-2 — every in-scope decision renders exactly once.** Not at least once, not once per file it is
@@ -254,15 +256,19 @@ rendered faithfully, its line is omitted rather than rendered partially. Absence
 challenge the decision freely; a wrong line would suppress a legitimate challenge. *(-04)*
 
 **BR-8 — an empty source is an ordinary result, not a failure.** A source that exists, reads and
-parses but holds no decision record contributes nothing and takes neither fail-open leg. It does not
-trigger the total leg even when it is the only source read (`M-4e`). *(-04)*
+parses but holds no decision record contributes no line and is not counted as a failure, even when
+it is the only source read (`M-4e`). Because §3.3's legs are stated over the surviving subset, this
+rule constrains **construction, not dispatch bytes**: it forbids reporting emptiness as an error and
+forbids an empty-only corpus being recorded as a cause of the total leg. Its discriminating
+observable is driver-internal and owed by TSPEC (O-7). *(-04)*
 
 ### Configuration
 
 **BR-10 — per-key independent fallback.** One wrong-typed, malformed or absent key falls back to its
 own C-5 default; the block's other keys and every other config block are unaffected. The key set is
-exactly C-3's three, so this is set equality over that enumeration crossed with {wrong type,
-malformed, absent} — not containment. Follows the shipped `learningsInjection` /
+exactly C-3's three, so this is set equality over that enumeration crossed with §3.1's per-key
+condition space {valid, wrong-typed, absent} — not containment — with malformation of the whole
+block the one further, block-level case. Follows the shipped `learningsInjection` /
 `cascade.pinCheck` / `review.derivativeStop` precedent (REQ C-1). *(-05)*
 
 ### Driver invariance
@@ -308,23 +314,23 @@ as a defect here.
 
 | # | Case | Outcome |
 |---|---|---|
-| **E-4** | A source file exists, reads and parses, and holds **zero** decision records | Ordinary empty result. Contributes nothing; neither fail-open leg is taken (BR-8). Two standing-corpus files are in this position — `M-4a` (decisions carried as bullets with no id at all) and `M-4b` (headings whose ids carry no namespace segment) |
+| **E-4** | A source file exists, reads and parses, and holds **zero** decision records | Ordinary empty result. Contributes no line and is not counted as a failure (BR-8). Two standing-corpus files are in this position — `M-4a` (decisions carried as bullets with no id at all) and `M-4b` (headings whose ids carry no namespace segment). The dispatch bytes are the same as if the file had failed to read, so the classification is asserted at a driver-internal observable (O-7), not in the prompt |
 | **E-9** | A file mixes decision records with headings that contain a `DEC-` id but record nothing — question headings and back-references | The non-records contribute no line; the file's real records render normally. `M-4d` is the sole HEAD instance, carrying 4 records alongside 8 such headings. Which headings qualify is the recognition rule's (O-1); that a mixed file still renders its real records is this spec's |
 | **E-10** | One id is opened twice in one file, the first opening stating the question and the second stating the outcome | Exactly one line renders, and its statement says what was **decided** (BR-2, BR-3). `M-3c` is the sole HEAD witness |
-| **E-11** *(no HEAD instance)* | The same id is recorded in both a project-level and a feature-level file | One line renders. `M-5a` records zero such ids at HEAD, so no expected value can be transcribed; `M-5c` names the intent — the project-level record wins, a decision promoted to project level rendering in its promoted form — and the rule itself is TSPEC's (O-1). Owed a synthetic two-file fixture (O-5) |
+| **E-11** *(no HEAD instance)* | The same id is recorded in both a project-level and a feature-level file | One line renders. `M-5a` records zero such ids at HEAD, so no expected value can be transcribed; `M-5c` names the intent — the project-level record wins, a decision promoted to project level rendering in its promoted form — and the rule itself is TSPEC's (O-1). Owed a synthetic two-file fixture (O-5), over which AT-18 asserts the cardinality conjunct — exactly one line, never two, never zero — this spec does own |
 
 ### Failure edges
 
 | # | Case | Outcome |
 |---|---|---|
-| **E-2** *(no HEAD instance)* | **Every** decision-record source is missing, unreadable, or unparseable | Total leg: no index, no rule text — the disabled behavior of BR-4. Not a halt, not a new operator-facing failure class |
-| **E-3** *(no HEAD instance)* | One decision of several fails to render; the rest are fine | Partial leg: that line is omitted, every other line renders, index and rule text are present (BR-7) |
+| **E-2** *(no HEAD instance)* | Nothing survives — every source is missing, unreadable or unparseable, or every in-scope decision fails to render | Total leg: no index, no rule text — the disabled behavior of BR-4. Not a halt, not a new operator-facing failure class |
+| **E-3** *(no HEAD instance)* | A proper, non-empty subset fails to render — one decision, several decisions, or **one whole source unavailable while other sources survive** | Partial leg: those lines are omitted, every surviving line renders, index and rule text are present (BR-7). The three sub-cases have one outcome; nothing turns on which occurred |
 
 ### Size edges
 
 | # | Case | Outcome |
 |---|---|---|
-| **E-6** | The in-scope set is **empty** — zero decisions, whether because none exist or because all were omitted | **No index block at all.** Not an empty block, not a header with no rows. Rule text does not stand alone without an index |
+| **E-6** | The in-scope set is **empty** — zero decisions, whether because none exist or because all were omitted | **No index block at all.** Not an empty block, not a header with no rows, and rule text does not stand alone without an index. The dispatch is byte-identical to BR-4's disabled dispatch, which is the positive form AT-14 asserts |
 | **E-7** | `maxEntries` resolves to `0` | Treated as zero in-scope decisions — E-6's outcome. **Not an error**, not a fallback to the default, not a halt |
 | **E-8** | A **single line by itself** exceeds `maxBytes` | That line is omitted whole. It is never truncated mid-line, and its omission does not abort the rest: the remaining lines render if they fit (BR-13). Where it was the only line, E-6 follows |
 
