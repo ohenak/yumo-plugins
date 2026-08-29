@@ -234,6 +234,14 @@ ORC-02 resolution check are what keep the duplicate honest. It is the **seventh 
 table above** — counted in the BND family's **12**, discharged at `FSPEC` AT-13 alongside
 PROP-BND-01…03, and cited as part of O-8's discharge in §Coverage Matrix.
 
+**The three BND ranges quoted elsewhere, reconciled once here** (they differ because they name
+different things, not because they disagree): **PROP-BND-01…07** is the conjunct table — what
+ORC-05's model decides; **PROP-BND-01…12** is the whole family, generator conjuncts plus held
+boundary examples — what ORC-03 and the `decisionLedgerBounds.test.js` manifest row name; and
+**PROP-BND-01…04** is the subset each of whose members carries a named falsifying mutation that must
+be applied and observed red. Every one of the twelve is discharged by an `FSPEC` AT row: 01…04, 07
+and 12 at AT-13; 08 and 09 at AT-14; 05, 06, 10 and 11 at AT-15.
+
 **Boundary properties, held as examples alongside the property** (`FSPEC` AT-13/AT-15 regression
 anchors, `TSPEC` §7.6):
 
