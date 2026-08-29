@@ -1023,10 +1023,36 @@ black-box sub-process, and this feature adds no reason to deviate.
 | Pure unit | `parseDecisionLedgerConfig` over C-3's three keys × {valid, wrong-typed, absent} plus the block-level malformation case; `recogniseDecisionRecords` over §3.2's five conjuncts; `renderDecisionLedgerBlock`'s exact-`""` contract | literals |
 | Corpus oracle | §3.5's table — the rule's output over a **frozen fixture copy** of the corpus reproduces `M-1d`, `M-2e`, `M-3c`, `M-4a`–`M-4d`, and `M-4b`'s zero | frozen fixture, never the live repo |
 | Integration | `reviewLoop` driven end to end with a scripted `_injectDecisionLedger`, asserting the composed reviewer-prompt bytes on both iteration-1 and iteration-≥2 paths | composed strings |
+| Composition root (live) | `main()` driven end to end, flag on and flag off — the wiring of §4.5 and §5.4 actually executing, not merely present in the source | the running module |
 | Byte-identity baseline | §7.4 | committed merge-base fixture |
-| Property | §7.5 (O-8) | generated inputs |
+| Property | §7.5 — O-8's bounds invariant, §3.2/§3.3's recognition invariant, §4.3's one-physical-line-per-decision invariant | generated inputs |
 | Source census | §7.3 | module source text |
 | Engine disclosure | §5.3 | `.claude/pdlc.config.example.json` |
+
+**Why the composition root needs a live arm, and the census does not suffice (DC-07).** §4.5's seam
+installation and §5.4's closure are wiring: `main()` reads the config, builds the injector, installs
+it as `wrapperSeams._injectDecisionLedger`, and the loop `await`s it immediately before each
+`reviewerPrompt` call. Until this round the only obligation covering that composition root was
+§5.5's source census (§7.3), and a census proves a **string is present**, never that a **line runs**.
+A transposed argument, a seam installed under the wrong key, an un-`await`ed injector, or a wiring
+block placed after the last `reviewerPrompt` call all leave the census green and the feature dead on
+a real dispatch. The design therefore owes one live arm that drives the module's default-exported
+`main()` — the shape ~20 shipped suites already use (`advisoryDisabled.test.js`,
+`advisoryWaveGateMain.test.js`, `anchorCascade.test.js`, `branchGuard.test.js`) — with three
+conjuncts:
+
+1. **Flag on, seam reached:** a call-count spy on the scripted `_git` seam asserts
+   `gatherDecisionCorpus`'s listing call fires **≥ 1** on the served reviewer flow. A fake satisfying
+   only the outer interface cannot meet this conjunct.
+2. **Flag on, positive presence:** the reviewer prompt actually handed to the reviewer dispatch
+   **ends with** the rendered ledger block — not merely "differs from the baseline".
+3. **Flag off, three positive conjuncts:** the reviewer prompt is byte-identical to §7.4's committed
+   merge-base recording (an independent referent, never a string computed by subtracting the block
+   from the flag-on prompt), the `report` key set is **set-equal** to the flag-off recording, and the
+   emitted `NTC-DECLEDGER-*` notice set is **set-equal** to empty.
+
+This arm is also the second delta-coverage risk site named above: it is what executes §6.1's
+per-path `try/catch` arms inside the wiring block. PLAN T-10a owns it.
 
 ### 7.3 The frozen fixture copy, and why it is not the live repository
 
