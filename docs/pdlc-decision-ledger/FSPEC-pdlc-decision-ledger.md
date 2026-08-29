@@ -52,15 +52,20 @@ demand, which are routed rather than decided here:
 
 An FSPEC is warranted here despite that routing, because the parts this spec does own are genuinely
 branching and an engineer should not decide them alone: a three-way gate (enabled / disabled /
-malformed), a fail-open path with **two distinct legs** that degrade differently (every source
-unavailable versus one decision of several failing), a boundary case where an empty file must take
+malformed), a fail-open path with **two distinct legs** that degrade differently (nothing survives
+versus a proper subset surviving), a boundary case where an empty file must take
 the *ordinary* leg rather than the failure leg, and two size bounds whose interaction at the
 single-oversized-line case has a stated outcome. §5 is the substance of this document.
 
-**Precedent.** The shipped `learningsInjection` channel is the behavioral model throughout: derived
-at dispatch-construction time, per-key independent fallback, degrading to silence rather than to a
-halt, and disclosed in `.claude/pdlc.config.example.json`. Where this spec says "as
-`learningsInjection` does," it names a shipped behavior, not a code path.
+**Precedent — two axes, two different shipped channels.** For **per-key independent config
+fallback** and **fail-open-to-silence**, the model is `learningsInjection`, and only there: its
+injected block is computed once per episode and reused across that episode's dispatches, and it is
+added to **authoring** dispatches only — so it is the model for neither this spec's injection site
+nor BR-9's per-dispatch freshness, which it would contradict. For the **injection site** — a
+config-gated clause appended to a **review** dispatch prompt, contributing zero bytes when the flag
+is off — the shipped model is `cascade.pinCheck`'s freeze clause and `review.derivativeStop`'s
+finding-grammar clause. All three blocks are disclosed in `.claude/pdlc.config.example.json` (Q-3).
+Every "as X does" below names a shipped behavior, not a code path.
 
 ## 2. Linked Requirements
 
@@ -70,14 +75,14 @@ without a row here.
 
 | Requirement | What it fixes | Specified in |
 |---|---|---|
-| **REQ-DECLEDGER-01** | Index rendered when enabled, one line per in-scope decision, sourced fresh at dispatch-construction time | BR-1, BR-2, BR-3, BR-9; flow §3.2 steps 2–5; AT-01, AT-02, AT-03 |
+| **REQ-DECLEDGER-01** | Index rendered when enabled, one line per in-scope decision, sourced fresh at dispatch-construction time | BR-1, BR-2, BR-3, BR-9; flow §3.2 steps 2–5; E-9, E-10, E-11; AT-01, AT-02, AT-03, AT-18 |
 | **REQ-DECLEDGER-02** | Disabled path byte-identical to the pre-feature baseline | BR-4; flow §3.2 step 1; E-1; AT-04, AT-05 |
 | **REQ-DECLEDGER-03** | Rule text requires High severity **and** new evidence to re-open | BR-5, BR-6; flow §3.2 step 6; AT-06, AT-07 |
 | **REQ-DECLEDGER-04** | Index construction fails open, two legs, never silently stale | BR-7, BR-8; flow §3.3; E-2, E-3, E-4; AT-08, AT-09, AT-10 |
 | **REQ-DECLEDGER-05** | Three config keys fail open independently | BR-10; flow §3.1; E-5; AT-11 |
 | **REQ-DECLEDGER-06** | Decision id is the reviewer's reopening dedupe key; driver identity unchanged | BR-6, BR-11; AT-12 |
-| **REQ-DECLEDGER-07** | Rendered index stays within both declared bounds | BR-12, BR-13; E-6, E-7, E-8; AT-13, AT-14, AT-15 |
-| **REQ-DECLEDGER-08** | Driver-side scoring identical whether the flag is on or off | BR-11, BR-14; AT-16, AT-17 |
+| **REQ-DECLEDGER-07** | Rendered index stays within both declared bounds | BR-12, BR-13; E-6, E-7, E-8, N-1; AT-13, AT-14, AT-15 |
+| **REQ-DECLEDGER-08** | Driver-side scoring identical whether the flag is on or off | BR-11, BR-14, N-2; AT-16, AT-17 |
 
 **User stories** (REQ §8, unchanged here): US-01 reviewer re-litigation — REQ-DECLEDGER-01/-03/-06;
 US-02 operator currency and bounded size — REQ-DECLEDGER-04/-07; US-03 operator safe-to-enable —
