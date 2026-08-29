@@ -60,7 +60,31 @@ records at 12,059 against 12,500, 441 margin) somewhere §7.3 does not reach.
 
 ## Interfaces
 
-_(pending)_
+Upstream citation surfaces re-read at HEAD (DEC-ERR-03 obligation — the item list is necessary,
+not sufficient):
+
+| TSPEC site | What it now says | Upstream at HEAD | Faithful? |
+|---|---|---|---|
+| Header pins | REQ v1.9 / FSPEC v1.3 / Baseline v1.2 | REQ `Version 1.9`, FSPEC `Version 1.3`, Baseline `1.2 · 2026-08-28` | ✓ |
+| §3.5, §7.3 Baseline pin | v1.2's `Verified at` `8c673a09f` | Baseline v1.2 `Verified HEAD 8c673a09f on feat-pdlc-decision-ledger` | ✓ |
+| §3.6 / §7.3 "REQ G-1 scopes a real dispatch to the project set plus one feature" | over-sized-fixture framing | REQ G-1: "the project's closed decisions, plus those of the feature whose document is under review", unit is the decision not the file | ✓ — this is the se-author item, correctly landed |
+| §4.1 type row + §9.2 ERR-1 | "agrees with REQ C-5, non-negative as of v1.8" | REQ C-5 rows: both thresholds `non-negative integer` | ✓ |
+| §4.1 / §5.3 / §7.3 default literal | 12500 | REQ C-5 `maxBytes` default `12500` | ✓ |
+| §3.6 "63-record worst standing case" | `M-6b` | Baseline `M-6b`: `41 + 22 = 63`, governing figure for directory-glob file scope | ✓ |
+| §9.2 ERR-2 resolution derivation | "derived by id from Baseline v1.2's `M-7b`/`M-7c`" | `M-7b` 9,296 substance bytes / 63 records; `M-7c` 12,500 clears `M-7b` by 3,204 = 50 B/record framing allowance | ✓ — and TSPEC's own rendered 10,859 implies ≈24.8 B/record, inside the allowance |
+| §9.4 A-1 restatement | "both thresholds now measured … at one commit rather than against a growth model (REQ R-5)" | REQ R-5 verbatim: "measured … but against one commit rather than a growth model (`M-6d`, `M-7d`)" | ✓ |
+| §9.4 provenance | "Carried from FSPEC §7 (v1.2 corrected A-1 to REQ HEAD)" | FSPEC v1.2 erratum note records exactly that correction | ✓ |
+
+Two citation surfaces do **not** survive the re-read cleanly, both minor and both recorded below
+as F-03 and F-04: §9.4's unqualified "still operator-vetoable" against REQ A-1's and FSPEC A-1's
+*windowed* vetoability, and ERR-2's retained pre-resolution paragraph still arguing in the present
+tense from that same window.
+
+I also checked the two upstream ids the delta newly leans on that were **not** on the routed list —
+REQ R-5 and REQ AT (§5, "Given … the in-scope set is within C-5's bounds"). Both are consistent
+with the new arithmetic: under 12,500 a G-1-scoped set is within bounds, so the REQ's happy-path
+Given is satisfiable at the Baseline commit, which it arguably was not under the retired 8,000.
+That is a genuine improvement the erratum earns and does not claim.
 
 ## Data Model
 
