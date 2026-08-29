@@ -200,7 +200,45 @@ second conjunct is meaningful.
 
 ## Delta-Confirmation Findings
 
-_pending_
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | High | delta | local | Routed item unlanded: T-00a and T-12a are byte-identical to the approved v3 bytes. T-00a's second acceptance conjunct ("filtered count still `102` after this PLAN's twelve new modules exist") is still unevaluable at batch 1, T-00a still hands the terminal obligation to T-12a, and T-12a still disclaims it ("it is a set, not a count"). No task id owns the terminal `102` assertion. | Batches — T-00a, T-12a |
+| F-02 | Medium | delta | local | The `decisionLedger` census-token exemption is cited as "TSPEC v0.8 §5.5" in both the T-11 row and the Definition of Done. The authority is TSPEC §7.3 (lines 1248–1258, which itself cites §5.4); §5.5 is "The one thing the driver never holds" and says nothing about the census. | Batches — T-11; Definition of Done |
+| F-03 | Medium | delta | local | Header upstream pin for DECISIONS reads `sha256:13aba061…4bb89f`; the digest at HEAD is `13aba061…4fb89a`. Transposed tail — the staleness anchor does not identify the artifact it names. REQ, FSPEC and TSPEC pins are correct. | Header — Upstream pins |
+
+**On F-01's locality.** The erratum edit did not itself change T-00a or T-12a — those rows are
+exactly where the round was dispatched to edit and did not. I tag it `local` because it sits inside
+the erratum's declared scope, which is the reading that earns one bounded follow-up round (re-apply
+the missing edit) rather than halting the phase. The landed work is sound; it is simply not the work
+that was routed, and the proportionate remedy is to make the edit.
+
+FINDING: High | delta | local | Batches — T-00a / T-12a | Routed item unlanded — T-00a and T-12a are byte-identical to the approved v3 bytes; T-00a's second acceptance conjunct is still unevaluable at batch 1, and T-12a still disclaims being a count, so no task id owns the terminal `102` assertion
+FINDING: Medium | delta | local | Batches — T-11 and Definition of Done | The `decisionLedger` census-token exemption cites "TSPEC v0.8 §5.5"; the authority is TSPEC §7.3 (which itself cites §5.4), while §5.5 is "The one thing the driver never holds" and says nothing about the census
+FINDING: Medium | delta | local | Header — Upstream pins | DECISIONS pin reads `sha256:13aba061…4bb89f` but the digest at HEAD is `13aba061…4fb89a` — transposed tail, so the staleness anchor does not identify the artifact it names
+
+## Positive Observations
+
+- The TSPEC v0.8 re-grounding that *did* land is accurate. T-05 and T-06 reproduce `P-REC`'s four
+  and `P-LINE`'s three falsifying mutations name-for-name from §7.5, in order, and both carry O-8's
+  "independent model, never the production function, observed red transcribed" discipline. This is
+  the mutation bar stated properly.
+- T-11's six-token census set-equals TSPEC's operand table exactly, and the `decisionLedger` drop is
+  compressed faithfully from §7.3 including its rejected alternative. Only the section id is wrong.
+- Three of the four new header digest pins are transcribed correctly, and adding digests to the
+  upstream pin row at all is a real improvement in traceability over v0.3's bare version numbers.
+- The delta disturbed no batch column, dependency edge, owned test file, or red/green pairing, so
+  the structural approvals from v3 carry forward cleanly.
+
+## Recommendation
+
+**Needs revision**
+
+One High finding is open. To close it, name the single task id that carries the terminal `102`
+assertion and make its batch consistent with its evaluability — the smaller edit is to add the count
+conjunct to T-12a (already un-skipped at batch 9, the first point at which all twelve modules
+exist), delete T-00a's unevaluable second conjunct, and narrow T-12a's "it is a set, not a count"
+sentence so it disclaims only the namespace census. Fix F-02's section id at both sites and F-03's
+digest tail in the same pass.
 
 ## Verdict
 
