@@ -98,6 +98,70 @@ disagree, and the row is what an implementer will run.
 
 ## Verification
 
+Everything below was measured against `feat-pdlc-decision-ledger` at HEAD, not read off the document.
+
+**v1 F-01 — the census (resolved).** `documentOracles.test.js` filters on exactly the four prefixes
+`learnings`, `waveResume`, `loop`, `escalationView` (the four `!name.startsWith(...)` clauses) and
+asserts `expect(count).toBe(102)`. Live measurement: `ls __tests__/*.test.js | wc -l` → **154**; the
+same list minus those four prefixes → **102**. The literal is saturated, exactly as T-00a states, and
+T-00a's twelve `decisionLedger*` modules would take it to 114 without the exclusion. T-00a is batch 1
+with no deps, and the wave gate's own `implementation.testCommand`
+(`.claude/pdlc.config.json`) runs `cd pdlc/workflows && npm test`, which collects that file — so the
+exclusion does land in the same wave as the three modules that would otherwise red it. Resolved.
+
+**v1 F-02 — the coverage gate (resolved).** `pdlc/workflows/package.json`'s `test:coverage` is the
+four-clause command the PLAN now quotes verbatim, clause 3 included. In
+`scripts/check-wave-resume-delta-coverage.mjs` I confirmed each mechanical claim: `SUBJECT` is
+hard-coded to `pdlc/workflows/orchestrate-dev.js`; `resolveBase()` prefers the live
+`merge-base HEAD <ref>` with a pinned fallback; the tail returns 1 when any uncovered line falls in
+the introduced ranges; and it warns rather than fails on an uncommitted `SUBJECT`, which is why the
+PLAN's "commit, then run" caveat is correct. `.github/workflows/pr-tests.yml` runs `test:coverage`,
+so the gate is live on the required check. One timing claim in the rewritten section is wrong — see
+F-02.
+
+**v1 F-03 / F-05 — the wiring arm (resolved).** T-10a drives the default export `main()`, and the
+precedent it cites is real: `advisoryWaveGateMain.test.js` and `advisoryDisabled.test.js` both exist
+in `pdlc/workflows/__tests__/`. Its three arms are the right shape — a `_git` call-count spy
+asserting ≥ 1 invocation on the served reviewer flow (a conjunct an outer-interface fake structurally
+cannot satisfy, per DC-07), a positive block-presence conjunct (`ends with` the rendered block, not
+"differs from baseline"), and a flag-off arm whose two absences are each paired with a positive on
+the same path — report key set **set-equal** to the flag-off key set, `notices` **set-equal** to the
+baseline array. That is exactly the absence-only oracle my v1 F-05 objected to, closed.
+
+**v1 F-04 — the documentation oracle (resolved).** T-12a's cited precedent is real: the advisory
+disclosure family in `documentOracles.test.js` derives its count words from `ADVISORY_SEAMS` /
+`ADVISORY_DEFAULTS` and carries a confinement test asserting `CLAUDE.md` and `README.md` hold no
+seam-count prose. T-12a clones that shape and states its assertions as **set equality over the
+production constants** (`DECISION_LEDGER_OMIT_REASONS`, `_NOTICES`, `_DEFAULTS`), so a deleted
+omission reason or notice id fails. Derived, not transcribed; set-equal, not containment.
+
+**v1 F-06 / F-07 / F-08 (resolved).** The DoD now carries an explicit re-pin bullet for
+`documentOracles.test.js`, `docs-uniqueness.test.js` and `ci-arrangement.test.js` after T-19's
+insertions; T-05 and T-06 each carry a named `fast-check` property, with the
+one-physical-line-per-decision law called out as the invariant T-07's and T-09's byte literals
+silently assume; and the engine suite figure is now **64 `*.test.js` modules** of **73 entries** —
+I measured 64 and 73.
+
+**Coverage-table completeness, by set equality not containment.** TSPEC §6.1's failure rows are
+exactly `F-1…F-14`; the PLAN's failure-row table has exactly those fourteen. FSPEC's acceptance
+tests are exactly `AT-01…AT-18`; the PLAN's AT table names exactly those eighteen. Both tables are
+set-equal to their sources, so a deleted row fails.
+
+**Landing facts.** `pdlc/.claude-plugin/plugin.json` is at `0.23.6` and
+`pdlc/engine/package.json` declares `"pdlcPluginCompat": "^0.23.0"`, so T-20's `0.23.7` bump is the
+right target. `.claude/pdlc.config.example.json` holds exactly eight top-level blocks (`dispatch`,
+`advisory`, `implementation`, `learningsInjection`, `cascade`, `review`, `loop`, `merge`), so
+T-19's ninth is correctly counted.
+
+**The corpus enumeration — the one measurement that does not reconcile.** `8c673a09f` exists.
+Running T-03's transcribed three-alternative grep over `git ls-tree -r --name-only 8c673a09f` gives
+**24**, and over `git ls-files` gives **25** — one short of the row's own "25 / 26" at both ends.
+Adding the fourth pathspec that `DECISION_CORPUS_ARGV` carries and the row omits
+(`docs/discarded/*/DECISIONS-*.md`) gives **25** and **26**, matching. The single file the row's
+grep drops is
+`docs/discarded/pdlc-rcv-budget-stop/DECISIONS-pdlc-rcv-budget-stop.md`; the Baseline's `M-2b`
+attributes four ids to `pdlc-rcv-budget-stop`. Details in F-01.
+
 ## Findings
 
 ## Questions
