@@ -82,6 +82,28 @@ holds on the bytes.
 
 ## Interfaces
 
+**§5.3's config recital against REQ C-3/C-5.** The `.claude/pdlc.config.example.json` recital now
+reads `"decisionLedger": { "enabled": false, "maxEntries": 70, "maxBytes": 12500 }`. Diffed key by
+key against REQ C-5's table at HEAD: `enabled` `false`, `maxEntries` `70`, `maxBytes` `12500` — three
+keys, no fourth, matching C-3's exhaustive enumeration. The example-file test described alongside it
+is unchanged and still asserts the file parses and the defaults are the recited ones, so the recital
+stays falsifiable rather than becoming prose.
+
+**§4.3's citation format and framing budget.** Untouched by this erratum except for the consequence
+sentence, which now charges the ≤1,200-byte budget against **~4,995** bytes of headroom *and* against
+the 441-byte margin by which `M-6b`'s worst standing case clears the bound. Naming both is the right
+call under the product lens: the 441 is the binding one, so a future author who raises
+`DECISION_LEDGER_RULE_TEXT`'s budget is told the real cost rather than a comfortable one. The
+"re-opens §3.6's arithmetic deliberately rather than quietly raising the literal" clause replaces a
+now-stale pointer at ERR-2, correctly, since ERR-2 is closed.
+
+**§7.6's AT-01 note.** The old justification ("the 45/48-line sets would be unproducible at the
+default") expired with the default. The replacement does not paper over that — it says plainly that
+the sets *are* producible at 12,500 and re-grounds the explicit bounds on AT-01's subject being the
+recognition rule, with the 441-byte margin as the reason the expected sets must not depend on the
+bound. That is a stronger argument than the one it replaces and it preserves FSPEC AT-01's intent
+unchanged.
+
 ## Data Model
 
 ## Test Strategy
