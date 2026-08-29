@@ -482,11 +482,18 @@ required not to:
       `P-REC`'s four (T-05) and `P-LINE`'s three (T-06).
 - [ ] `DECISION_LEDGER_RULE_TEXT` + preamble + header + trailer render to ≤ 1,200 bytes, asserted
       against that literal (`DEC-DECLEDGER-12`).
-- [ ] The census (T-11) is green with every slice asserted non-empty, and
-      `DECISION_LEDGER_CENSUS_TOKENS` — its **six** members — set-equal to the module's exported
-      decision-ledger symbols. `decisionLedger` is **not** among them (TSPEC v0.8 §7.3: the report
-      field is threaded through `buildFinalReport` outside `main()`, so the token is unsatisfiable);
-      its obligation is discharged behaviourally by T-10a's live arm, not by the census.
+- [ ] The census (T-11) is green with every slice asserted non-empty; its scanned source is
+      `orchestrate-dev.js` minus the body of **every** member of `DECISION_LEDGER_OWNED_DECLS` plus
+      the sentinel-bounded wiring run, and its companion assertion is the partition
+      `DECISION_LEDGER_CENSUS_TOKENS` (**six** members) ∪ `DECISION_LEDGER_CENSUS_EXEMPT` (**nine**)
+      = `DECISION_LEDGER_OWNED_DECLS` (**fifteen**), the two sub-sets disjoint, with each owned member
+      resolving to exactly one top-level declaration at HEAD (TSPEC v0.9 §7.3). Set equality against
+      all of the module's decision-ledger exports is the rejected form — §7.3 names it red by
+      construction. `decisionLedger` is **not** a token (TSPEC v0.9 §7.3: the report field is
+      threaded through `buildFinalReport` outside `main()`, so the token is unsatisfiable, and being
+      a field rather than a declaration it is absent from `DECISION_LEDGER_OWNED_DECLS` too, leaving
+      the partition unaffected); its obligation is discharged behaviourally by T-10a's live arm, not
+      by the census.
 - [ ] The enablement flag is read by **destructuring**; PROP-DIS-06 in `advisoryDisabled.test.js` is
       still green.
 - [ ] `.claude/pdlc.config.example.json` carries the `decisionLedger` block; `pdlc/OPERATIONS.md`,
