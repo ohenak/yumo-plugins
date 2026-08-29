@@ -39,3 +39,60 @@ DEC-DECLEDGER-14 with the wrong erratum id.
 |----|---------|
 | Q-01 | DEC-DECLEDGER-03 now concludes the order is **inert at the Baseline commit** (L96) while TSPEC §3.6 concludes it is **live under shipped defaults** (`TSPEC:441-443`). I read the difference as entirely attributable to `maxBytes` 8,000 → 12,500 and therefore as a TSPEC staleness (F-02), not a disagreement — but §3.6's live-order conclusion is what motivates its feature-level-first ordering prose. When §3.6 is re-measured, does the *motivation* for the order change with it, or does DEC-DECLEDGER-03's operator-lowers-a-threshold argument become the sole live justification? The answer belongs in whichever document survives the re-measurement, and I would rather it be recorded than inferred |
 | Q-02 | Carried from v1 Q-03, still open: DEC-DECLEDGER-13 pins 41 ids / 6,305 bytes "at the Baseline's commit", and the Baseline's `Verified at` is `8c673a09f`. Is the frozen fixture of TSPEC §7.3 captured at that same commit? If it is captured at another, the transcribed expected values are pinned to one artifact and justified by another, and the pin's provenance conjunct is weaker than it reads |
+
+## Positive Observations
+
+- **The default raise was chased into the one place it could have gone vacuous, and the answer is
+  right.** DEC-DECLEDGER-13's revision states that over the whole 141-record fixture "`maxEntries` 70
+  alone forces at least 71 omissions" (L224–225), so the `omitted[]` conjunct still does work at
+  12,500. I re-checked this independently rather than taking it: the entry bound is corpus-wide and
+  the fixture is 141 records, so the conjunct reddens under a reversed drop order at either default.
+  The raise widened the project-level margin — which is exactly why building the pin over the
+  project-level-only slice stays rejected — and the document now says both halves in one place.
+- **DEC-DECLEDGER-03's new inertness argument is falsifiable rather than reassuring.** It does not
+  claim the order never fires; it says inertness is "a measurement at one commit, not a property of
+  the mechanism" and names the operator action that fires it on the next dispatch (L96–101). That is
+  the same distinction DEC-DECLEDGER-13 draws for the promoted set, applied consistently, and it is
+  the shape that survives a corpus change instead of expiring green.
+- **Which bound binds first is now stated per-corpus instead of globally.** L101–104 separates the
+  G-1-scoped 63 records (entry cap has slack, a lowered `maxBytes` fires first) from §7.3's 141-record
+  fixture (`maxEntries` fires first). The v1 draft's single global "`maxBytes` binds first in every
+  case" was the claim the raise falsified; replacing it with a two-case statement removes the standing
+  hazard rather than re-tuning it.
+- **DEC-DECLEDGER-08's refusal is now honest about its own authority.** The rewrite concedes that
+  `prepack.mjs` is a pack-time build script and that NG-6's literal text forbids runtime changes only,
+  then rests the refusal on the frozen list itself (L149–158). I verified the list: `MODULE_NAMES` at
+  `pdlc/engine/scripts/prepack.mjs:20-25` is exactly four entries. An argument that names the weakness
+  in its own premise is one a future reader can re-open deliberately instead of by accident.
+- **The v1.8 propagation is recorded as a worked example, not just absorbed.** The trigger row at L298
+  keeps the cost of a single-literal move visible ("one literal in C-5's row and the same literal in
+  the parser default … what it did move is every headroom figure"), which is the durable half of this
+  round's lesson and the part a successor feature will need.
+
+## Recommendation
+
+**Needs revision**
+
+One High finding, and it is a two-token fix: DEC-DECLEDGER-14's erratum id is `ERR-4`, not `ERR-3`,
+at both L272 and L312 (F-01). Everything else this round changed re-derives correctly against HEAD —
+the Baseline v1.2 re-pin, the 12,500 arithmetic in DEC-DECLEDGER-03/-12/-13, the re-derived trigger
+rows, the DEC-DECLEDGER-09 PROPERTIES obligation and the sentinel citation are all verified and
+accepted. F-02 is Medium and non-gating: the derived 11,300/441/4,995 figures have no upstream home
+yet because TSPEC §3.6 still carries the 8,000-based arithmetic, which is routed as a TSPEC erratum
+rather than fixed here; naming that outstanding re-measurement in DEC-DECLEDGER-10/-12's trigger row
+would make the obligation checkable.
+
+## Delta-Confirmation Findings
+
+| ID | Severity | Provenance | Locality | Section anchor | Description |
+|----|----------|-----------|----------|----------------|-------------|
+| F-01 | High | delta | local | § Decision DEC-DECLEDGER-14 row (L272); § Risks accepted (L311–313) | DEC-DECLEDGER-14 is the design-side half of `ERR-4` (AT-03 / fixture mutation, `TSPEC:1341`, D-11 at `:1286`), not `ERR-3` (AT-02 citation format, `TSPEC:1332`); both new mentions carry the wrong id |
+| F-02 | Medium | delta | local | § Options DEC-DECLEDGER-12/-13; § Re-evaluation triggers | The derived 11,300-byte allowance, 441 bytes of slack and 4,995 bytes of headroom are attributed to TSPEC §3.6, which still computes `8000 − 1200 = 6,800`, still reports ~495 bytes of headroom and still concludes the order is live under shipped defaults (`TSPEC:435-443`, D-10 at `:1285`) |
+
+FINDING: High | delta | local | § Decision DEC-DECLEDGER-14 row (L272) and § Risks accepted (L311-313) | DEC-DECLEDGER-14 is routed to ERR-3, but TSPEC §9.2 makes it the design-side half of ERR-4 (AT-03 fixture mutation, TSPEC:1341; TSPEC's own D-11 at :1286 says "Raised at the FSPEC as ERR-4"); ERR-3 is AT-02's retired citation format (TSPEC:1332)
+FINDING: Medium | delta | local | § Options DEC-DECLEDGER-12/-13 and § Re-evaluation triggers | The new 11,300 / 441 / 4,995 byte figures cite TSPEC §3.6, which still carries the 8,000-based arithmetic they replace (6,800 allowance, ~495 headroom, "the order is live under shipped defaults") — routed as a TSPEC erratum, and the trigger row should name it as the outstanding re-measurement
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 0}
