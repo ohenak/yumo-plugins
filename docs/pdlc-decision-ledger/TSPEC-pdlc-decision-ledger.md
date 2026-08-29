@@ -570,8 +570,10 @@ the project-level set). What AT-02 requires is that each citation *resolve back 
 and a path plus the record's id does that exactly as well as a path plus its heading: the id is
 unique within its file (`M-1a`, and §3.3's last-wins key makes it so by construction even where it is
 not), so `{sourcePath} § {id}` locates one record. `DecisionRecord.heading` is retained on the type
-because it is the verbatim on-disk text the fixture's expected values are transcribed from (§7.3) and
-because AT-02's resolution check reads it; it is simply not *rendered*.
+because it is the verbatim on-disk text the fixture's expected values are transcribed from (§7.3); it
+is simply not *rendered*. It is **not** what AT-02's resolution check reads — that check re-parses the
+citation out of the rendered line and re-opens the file, touching no field of `DecisionRecord`
+(§7.6), because a check reading the parsed record would compare the recogniser against itself.
 
 The framing — header, `DECISION_LEDGER_PREAMBLE`, `DECISION_LEDGER_RULE_TEXT`, trailer and the blank
 lines between them — is charged to `maxBytes` (D-5), so its size is part of the bound's arithmetic and
@@ -1063,7 +1065,7 @@ check are what keep the duplicate honest.
 | AT | Level | Notes |
 |---|---|---|
 | AT-01 | corpus oracle, §7.3 | whole-line equality; two dispatches, `pdlc-advisory-wave-gate` (45 lines) and `pdlc-engineering-loop` (48). **Run with `maxBytes` non-binding** — see the note below |
-| AT-02 | corpus oracle | each citation resolved back in the fixture |
+| AT-02 | corpus oracle | each citation resolved back in the fixture **from the rendered line, never from the parsed record** — see the note below |
 | AT-03 | integration | a record mutated **in the scripted `_readFile` double's returned text**, not on the fixture files — see the note below |
 | AT-04 | baseline guard, §7.4 | byte-identity against the merge-base recording, seam absent |
 | AT-05 | config-gate case, §7.4 | four not-enabled spellings supplied as four config texts, each resolving to a `null` injector |
@@ -1077,7 +1079,24 @@ check are what keep the duplicate honest.
 | AT-17 | integration | a filed High reopening mints its erratum item and satisfies the confirmation-presence check |
 | AT-18 | corpus oracle over O-5's synthetic two-file fixture | cardinality **and** §3.4's positive conjunct: the single line's `statement`/`sourcePath` equal the project-level record's (transcribed from the fixture) and `origin === "project"`, with the feature-level statement asserted absent |
 
-**Two notes the rows above are too narrow to carry.**
+**Four notes the rows above are too narrow to carry.**
+
+**AT-02's resolution chain starts at the rendered line.** FSPEC AT-02 reads "the cited record file
+exists and carries the cited heading", written against the long citation form D-7 retired; under
+`[{sourcePath} § {id}]` the line cites an id, not a heading, so the criterion has to be discharged on
+its intent rather than its literal words (the format is Q-1's choice, delegated here — the FSPEC's
+wording is raised as an erratum at its owner, §9.2 ERR-3, rather than reinterpreted). The intent is
+that every citation resolve at its own source and say what was decided. **The chain, stated so it is
+not written the other way round:** parse `sourcePath` and `id` **out of the rendered line's citation
+field**; open that path in the frozen fixture through the `_readFile` double; find the heading
+matching `DECISION_HEADING_RE` whose captured id equals the parsed id (exactly one, by `M-1a` and
+§3.3); assert that heading's captured statement equals the rendered line's statement field. No field
+is read from `DecisionRecord` anywhere in the chain. Reading `record.heading` instead — which §4.3
+names as one of the reasons the field is retained — would compare the recogniser's output against the
+file the recogniser read, leaving the rendered line outside the loop entirely: a renderer emitting a
+wrong statement, or citing the wrong `sourcePath`, would pass. That is the same implementation echo
+§7.5 rejects for the property's formatter. `DecisionRecord.heading` remains on the type for §7.3's
+transcription of expected values; AT-02 does not consume it.
 
 **AT-01 runs with the byte bound non-binding, and this is deliberate.** §3.6's measurement shows the
 45- and 48-line sets render to 7,042 and 7,650 bytes of index lines, which with §4.3's framing budget
@@ -1098,6 +1117,20 @@ dispatches" scenario is produced by the scripted `_readFile` double returning on
 call for a path and a mutated text on its second. This tests exactly what AT-03 is for — that the
 injector re-gathers per dispatch and holds no snapshot (§2.6, BR-9) — without any test writing to the
 working tree, which is the discipline §7.3 exists to enforce.
+
+**And this is a stated divergence from AT-03's literal Given, not a level choice.** FSPEC AT-03 says
+"a record **in the frozen fixture copy** changes between two dispatch constructions". §7.3's per-file
+digest guard makes that copy immutable, so the two clauses cannot both be satisfied as written. The
+substitution is recorded as a decision with its rejected alternative (D-11, §9.1) and raised at the
+FSPEC as ERR-4, so a later reader does not read the divergence as an oversight: the double's returned
+text preserves AT-03's subject (re-gathering per dispatch, holding no snapshot) and its "the live
+repository is never mutated" constraint, while the literal mechanism would violate the second.
+
+**What exercises the shipped default configuration (TE Q-01).** Nothing in this table does: AT-01
+supplies non-binding bounds by construction, AT-13/AT-15 are chosen examples, and §7.5's property
+quantifies over generated bounds rather than C-5's. The one place the shipped defaults are exercised
+over a realistic corpus is §7.3's shipped-default assertion (D-10), which is why it is specified
+there rather than left to fall out of an example.
 
 ### 7.7 What is not tested, and why
 
