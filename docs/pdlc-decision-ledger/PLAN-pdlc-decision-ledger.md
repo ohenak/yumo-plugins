@@ -14,9 +14,16 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.2 | 2026-08-28 |
+| Draft | se-author | 0.3 | 2026-08-29 |
 
-Revision history: **v0.2** addresses `CROSS-REVIEW-test-engineer-PLAN-v1.md` F-01…F-08 and
+Revision history: **v0.3** addresses `CROSS-REVIEW-test-engineer-PLAN-v2.md` F-01…F-05 and
+`CROSS-REVIEW-product-manager-PLAN-v2.md` F-01 (the same defect, filed by both): T-03's transcribed
+historical enumeration now carries all **four** of `DECISION_CORPUS_ARGV`'s pathspecs and its
+integrity guard is stated as set equality against a hand-transcribed 25-path literal; the
+delta-coverage gate's *timing* corrected (it is a CI/DoD gate, not a wave gate) with a per-wave
+manual run given to T-18; T-00a's positive-control claim corrected to what it proves, with the
+namespace count moved to a terminal conjunct in T-12a; blast-radius path count and one GFM-unsafe
+pipe fixed. **v0.2** addresses `CROSS-REVIEW-test-engineer-PLAN-v1.md` F-01…F-08 and
 `CROSS-REVIEW-product-manager-PLAN-v1.md` F-01…F-05. Three tasks added (`T-00a` census exclusion,
 `T-10a` `main()`-driven wiring arm, `T-12a` documentation disclosure oracle); the coverage-gate
 claim corrected; the file-ownership manifest re-shaped to one bare task id per row so the
@@ -44,7 +51,10 @@ REQ NG-6) and a new `pdlc/engine/__tests__/decision-ledger-config-example.test.j
 three documentation files (`pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` — T-19), two
 generated/manifest files (`pdlc/workflows/dist/pdlc-cli.mjs`, `pdlc/.claude-plugin/plugin.json` —
 T-20), the **existing** `pdlc/workflows/__tests__/documentOracles.test.js` (T-00a's census
-exclusion, T-12a's disclosure oracle, un-skipped by T-19), and fourteen new test/fixture paths. The
+exclusion, T-12a's disclosure oracle, un-skipped by T-19), and **fifteen** new test/fixture paths under
+`pdlc/workflows/__tests__/` (TE F-04: twelve `decisionLedger*.test.js` modules,
+`helpers/decisionLedgerDoubles.js`, and the two fixture trees `fixtures/decision-ledger-baseline/**`
+and `fixtures/decision-corpus/**`; the engine module above is the sixteenth new path overall). The
 file-ownership manifest below is the complete list; this paragraph is its prose summary and must
 agree with it.
 
