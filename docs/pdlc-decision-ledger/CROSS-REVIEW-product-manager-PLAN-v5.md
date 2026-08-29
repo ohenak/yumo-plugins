@@ -38,6 +38,58 @@ right; the PLAN is stale). No `ERRATUM:` lines this round.
 
 ## Batches
 
+**F-01 (High, v4) is resolved — the terminal `102` control now has exactly one named owner.** My
+v4 High was that T-00a paired a batch-1 acceptance with a conjunct only evaluable at batch 9, and
+pointed at T-12a, which explicitly disclaimed it — so the terminal count was homeless, and had
+already misdirected PROPERTIES (PROP-DISC-07). The v0.5 edit closes it at **four** consistent
+sites, and I checked all four on disk:
+
+1. **T-00a (`PLAN`:117)** now reads "Acceptance is **one-sided and evaluable at batch 1**: the
+   exclusion lands and the pre-existing suite is green at `102`", followed by a forward pointer —
+   "the **terminal** re-check … is **owned by T-19** (batch 9, the first point at which it is
+   evaluable)". The unevaluable conjunct is gone from the batch-1 obligation; the pointer names a
+   task, not a vacancy.
+2. **T-12a (`PLAN`:131)** replaces its bare disclaimer with an attributed one: "It is a set, not a
+   count — the terminal `102` *count* assertion is **T-19's obligation**, not this task's". The v4
+   contradiction (two rows disclaiming the same obligation) is gone.
+3. **T-19 (`PLAN`:139)** carries the obligation as its own acceptance text: "**Terminal `102`
+   positive control (T-00a's deferred conjunct, owned here):** with all twelve `decisionLedger*`
+   modules on disk, `documentOracles.test.js`'s `*.test.js` census still counts `102`".
+4. **§Per-phase file-ownership manifest (`PLAN`:205)** — the `documentOracles.test.js` row for
+   T-19 now reads "9 (un-skip; also the terminal `102` positive control)", so the manifest and the
+   task table agree, and **§Definition of Done (`PLAN`:450–454)** splits the checkbox into the two
+   owners it always had: exclusion "landed by T-00a at batch 1", count "with all twelve modules on
+   disk (the terminal positive control, owned by T-19)".
+
+No double-counting and no orphan: exactly one task asserts the count, exactly one asserts the
+exclusion, and T-12a's twelve-name **set** census is preserved as the distinct obligation it is.
+
+**The underlying facts check out in code.** `pdlc/workflows/__tests__/documentOracles.test.js`:415–418
+carries exactly the four exclusions T-00a names (`learnings`, `waveResume`, `loop`,
+`escalationView`) and `:420` pins `expect(count).toBe(102)` — so both the literal and the
+exclusion shape the tasks describe are real, not aspirational. The "twelve modules" the terminal
+control and T-12a's set census both quantify over is exact: §Per-phase file-ownership manifest
+(`PLAN`:162–226) names twelve distinct `decisionLedger*.test.js` modules and no more
+(`decisionLedgerBaselineGuard`, `Bounds`, `Census`, `Config`, `Corpus`, `FixtureGuard`,
+`Injector`, `Loop`, `Main`, `Preflight`, `Recognise`, `Render`). Every file the changed rows name
+either exists at HEAD (`documentOracles.test.js`, `orchestrate-dev.js`,
+`.claude/pdlc.config.example.json`, `pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md`) or is
+tagged `[new]`.
+
+**F-03 (Low, v4) is resolved.** T-11's second census operand is a full sentence again — "The
+census's second operand: `orchestrate-dev.js`'s source **minus** four owned regions …" — no longer
+a lowercase-`and` fragment stranded behind a full stop.
+
+**Nothing I previously approved is broken.** T-00a keeps its saturation arithmetic (154 files, 102
+after exclusions), its TE F-03 "what the positive control does and does not prove" paragraph and
+its "not a re-pin of the literal" rationale; T-12a keeps every derived-not-transcribed and
+set-equality conjunct and the ~:625 confinement discipline; T-19 keeps the whole re-pinning budget
+paragraph, and its new sentence is strictly additive. The batch and dependency columns of all four
+changed rows are untouched.
+
+**What the changed T-11 row no longer matches is upstream** — see §Dependencies. That is the one
+open item.
+
 ## Dependencies
 
 ## Verification
