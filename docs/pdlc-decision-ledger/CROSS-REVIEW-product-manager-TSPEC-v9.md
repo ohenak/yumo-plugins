@@ -155,6 +155,25 @@ standing between a wave-3 mistake and a batch-8 discovery.
 
 ## Delta-Confirmation Findings
 
+| ID | Severity | Provenance | Locality | Finding | Section anchor |
+|----|----------|-----------|----------|---------|----------------|
+| F-01 | Medium | delta | local | §7.3's closing paragraph re-homes the dropped `decisionLedger` token's obligation onto "§7.2's live composition-root arm asserts the flag-off `report` key set is set-equal to §7.4's committed recording", and §7.2 conjunct 3 says the same. §7.4's recording contains no `report` keys: it is deliberately narrow — one case, `REVIEW-LOOP-REVIEWER-PROMPTS`, driving exported `reviewLoop` and recording **reviewer-prompt streams** — and §7.4 explicitly rejects a whole-`main()` recording *because* it would red on "the new report field". As written the referent cannot supply the flag-off key set. PLAN T-10a states the workable form ("`report`'s key set is set-equal to the flag-off key set"), so the obligation is owned; fix is to name the flag-off `main()` run's own report as the referent in both places and keep §7.4 cited only for the prompt-stream conjunct. | §7.3 (report-field paragraph), §7.2 conjunct 3 |
+| F-02 | Low | delta | local | §7.3's same paragraph says "§7.6's AT rows assert its presence and shape on the flag-on path". No §7.6 AT row mentions `report.decisionLedger` — AT-01…AT-18's Notes column is silent on the field, and PLAN T-10a itself records that T-18's `report.decisionLedger` assertion "had none". The flag-on presence/shape obligation is real and owned by T-10a, but §7.6 is not where it lives; cite §7.2's arm, or add the conjunct to §7.6's AT-16 row. | §7.3 (report-field paragraph) |
+
+FINDING: Medium | delta | local | §7.3 report-field paragraph and §7.2 conjunct 3 | The flag-off `report` key set is cited against §7.4's committed recording, but §7.4 records only the narrow `reviewLoop` reviewer-prompt stream and expressly excludes the report field; name the flag-off `main()` run's own report as the referent (the form PLAN T-10a already uses).
+FINDING: Low | delta | local | §7.3 report-field paragraph | "§7.6's AT rows assert its presence and shape on the flag-on path" does not resolve — no §7.6 AT row mentions `report.decisionLedger`; cite §7.2's live arm, or add the conjunct to AT-16's row.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+The five routed items all landed, and none of them broke anything I approved at v0.7: no section
+outside §7 moved, no corpus literal moved, no AT row's meaning drifted, and upstream is byte-unmoved
+at the pins v0.8 states. The two findings are both mis-citations inside one new paragraph — the
+obligations they point at are real and are already owned correctly by PLAN T-10a, so no requirement
+is left unproved and neither finding gates the phase. Fix them the next time §7 is opened.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 1}
