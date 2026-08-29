@@ -1320,7 +1320,7 @@ what remains genuinely open.
 | **D-7** | The rendered citation is `[{sourcePath} § {id}]` (§4.3) | `[{sourcePath} § {heading}]`, which an earlier draft specified. The heading *is* the id plus the statement, so that form rendered every statement twice — 9,371 bytes against 6,305 for the project-level set, ~33% of the block spent on a duplicate. Path-plus-id resolves the record at its own source, which is all BR-3 and AT-02 require. `DecisionRecord.heading` is retained as the verbatim value expected results are transcribed from, but is not rendered |
 | **D-8** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` (§4.2) | Letting `selectDecisions` compute the size from its own concatenation. Two implementations of one format drift, and the drift is invisible in the worst direction — BR-12's bound enforced against a size the prompt does not have, with both functions individually looking right and every test green |
 | **D-9** | The framing constants are pinned to a ≤1,200-byte budget by a unit test (§4.3) | Leaving framing unmeasured. D-5 charges framing to `maxBytes`, so an unpinned framing size is an unmeasured quantity inside a measured budget, and §3.6's headroom arithmetic would be unfalsifiable prose |
-| **D-10** | §3.6's "the promoted corpus is admitted whole" is stated as a **measured, pinned** fact at the Baseline's commit, with an assertion at C-5's shipped defaults in §7.3's corpus oracle | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is ~495 bytes of headroom — about three more promoted decisions, in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision. **Building the assertion over the project-level-only slice is also rejected** (round 3): at 41 records against `maxEntries` 70 and 6,305 bytes against a 6,800-byte allowance nothing is omitted under *any* drop order, so the `omitted[]` conjunct would be vacuously true and could not falsify the re-ordering it exists to catch. The whole-fixture build costs the byte pin nothing — it is stated over the rendered project-level lines within that block — and buys a bound that actually binds |
+| **D-10** | §3.6's "the promoted corpus is admitted whole" is stated as a **measured, pinned** fact at the Baseline's commit, with an assertion at C-5's shipped defaults in §7.3's corpus oracle | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is measured headroom — ~4,995 bytes at C-5's resolved default, with `M-6b`'s worst standing case clearing the bound by 441 — in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision. **Building the assertion over the project-level-only slice is also rejected** (round 3): at 41 records against `maxEntries` 70 and 6,305 bytes against an 11,300-byte allowance nothing is omitted under *any* drop order, so the `omitted[]` conjunct would be vacuously true and could not falsify the re-ordering it exists to catch. The whole-fixture build costs the byte pin nothing — it is stated over the rendered project-level lines within that block — and buys a bound that actually binds |
 | **D-11** | AT-03's mutation is applied to the scripted `_readFile` double's returned text, not to the fixture copy FSPEC AT-03's Given names (§7.6) | Mutating the fixture file, as AT-03 literally says. §7.3's per-file digest guard makes the copy immutable and AT-01 requires it, so the two clauses are contradictory as written; mutating on disk also writes to the working tree, which §7.3 exists to prevent. The double's return preserves what AT-03 is *for* — re-gathering per dispatch, holding no snapshot (§2.6, BR-9) — and is a stronger falsifier, since it varies only the bytes the injector reads. Raised at the FSPEC as ERR-4 rather than left as an unexplained divergence |
 
 These are load-bearing and a future reader will otherwise reconsider them confidently:
@@ -1328,17 +1328,18 @@ These are load-bearing and a future reader will otherwise reconsider them confid
 
 ### 9.2 Erratum raised
 
-**ERR-1 — REQ C-5 types `maxEntries` and `maxBytes` as "positive integer", but FSPEC E-7 requires
+**ERR-1 (RESOLVED upstream — REQ v1.8) — REQ C-5 typed `maxEntries` and `maxBytes` as "positive integer", but FSPEC E-7 requires
 `maxEntries: 0` to be a valid admits-nothing value** treated as zero in-scope decisions and
 explicitly "not an error, not a fallback to the default, not a halt". A positive-integer validator
 rejects `0` and falls it back to `70`, which is the opposite outcome. The shipped precedent resolves
 the same tension in FSPEC's favour: `parseLearningsConfig` validates its thresholds as
 **non-negative** integers precisely so that `0` is a valid admits-nothing value, and says so in its
-own comment. This spec implements non-negative (§4.1) and raises the type label upstream rather than
-editing the REQ.
+own comment. This spec implements non-negative (§4.1) and raised the type label upstream rather than
+editing the REQ. **Resolved in REQ v1.8**, which retypes both thresholds as **non-negative**
+integers; §4.1 now agrees with C-5 rather than diverging from it, and nothing downstream changes.
 
-**ERR-2 — REQ C-5's `maxBytes` default of 8000 is now measured, and admits about three
-feature-level lines.** A-1 records 8000 as an unmeasured analogy from `learningsInjection`. The measurement is now
+**ERR-2 (RESOLVED upstream — REQ v1.8) — REQ C-5's `maxBytes` default of 8000 was measured, and
+admitted about three feature-level lines.** A-1 records 8000 as an unmeasured analogy from `learningsInjection`. The measurement is now
 taken (§3.6): at the Baseline's `Verified at` commit, under §4.3's shipped line format, the
 project-level set alone renders 41 lines / **6,305** bytes, and with §4.3's ≤1,200-byte framing
 budget charged (D-5) the 8,000-byte bound leaves roughly **495** bytes — about **three**
@@ -1360,12 +1361,19 @@ supplied so the choice can be made on numbers; A-1 already makes the default ope
 without a REQ revision, so this may equally be resolved by leaving C-5 alone and letting operators
 raise it.
 
-*No PLAN task turns on which way ERR-2 resolves* (PM Q-02). If the default moves, the change is one
+**Resolution.** REQ **v1.8** took the raise: C-5's `maxBytes` default is **12,500**, derived by id
+from Baseline **v1.2**'s `M-7b`/`M-7c`, and A-1's "unmeasured `learningsInjection` analogy" claim is
+retired with it. This document absorbed the resolution in v0.5 rather than restating the case for it:
+§3.6 re-measures the allowance at `12500 − 1200 = 11,300` and records that a G-1-scoped dispatch now
+renders whole at the Baseline commit, §4.1 and §5.3 carry the new default literal, and §7.3's
+threshold follows it while the transcribed 6,305 does not move — which is exactly the discharge
+predicted below.
+
+*No PLAN task turned on which way ERR-2 resolved* (PM Q-02), and none is owed now. The change is one
 literal in C-5's row and the same literal in the config parser's default, both inside tasks the PLAN
-already owes; the only test that reads the value is §7.3's shipped-default assertion, whose threshold
-follows the resolved default while its transcribed 6,305 does not move. If the default stands, nothing
-is written at all. What ERR-2 must not do is resolve *after* those tasks are written, which is why it
-is raised now rather than at implementation.
+already owes; the only test that reads the value is §7.3's shipped-default assertion. ERR-2 was
+raised at the TSPEC rather than at implementation precisely so it would resolve **before** those
+tasks are written, and it did.
 
 **ERR-3 — FSPEC AT-02's Then clause is written against a citation format this spec retired.** It
 reads "the cited record file exists and **carries the cited heading**"; under D-7 the rendered line
@@ -1395,8 +1403,10 @@ rather than the file, so the two criteria stop contradicting each other.
 
 ### 9.4 Assumptions
 
-Carried from FSPEC §7 unchanged and still operator-vetoable: **A-1** `maxEntries` 70 is measured
-against `M-6b`/`M-6c`, `maxBytes` 8000 is not measured; **A-2** rollout is config-gated, default off;
+Carried from FSPEC §7 (v1.2 corrected A-1 to REQ HEAD) and still operator-vetoable: **A-1** both
+thresholds are now measured against the Baseline — `maxEntries` 70 against `M-6b`/`M-6c`, `maxBytes`
+12,500 against `M-7b`/`M-7c` — at one commit rather than against a growth model (REQ R-5);
+**A-2** rollout is config-gated, default off;
 **A-3** enforcement is reviewer-side, not a mechanical gate.
 
 This spec adds one assumption of its own: **A-4** the corpus is enumerated through `git ls-files`
