@@ -326,7 +326,182 @@ is never aborted (BR-13, N-1).
 
 ## 4. Interfaces
 
-*(pending)*
+Every boundary is a TypeScript-style interface below; the implementation is ES-module JavaScript
+with JSDoc, matching `orchestrate-dev.js`'s shipped style. Every function marked *pure* never reads
+the filesystem, never throws, and is total over its declared input type — the same contract
+`parseLearningsConfig` and `selectLearnings` carry.
+
+### 4.1 Config
+
+```ts
+interface DecisionLedgerConfig {
+  readonly enabled: boolean;    // default false
+  readonly maxEntries: number;  // non-negative integer, default 70
+  readonly maxBytes: number;    // non-negative integer, default 8000
+}
+
+/** Frozen. The three keys of REQ C-3 and no others. */
+export const DECISION_LEDGER_DEFAULTS: DecisionLedgerConfig;
+
+/** Pure, total. Never throws, never reads. Each key falls back INDEPENDENTLY. */
+export function parseDecisionLedgerConfig(text: string | null): {
+  config: DecisionLedgerConfig;
+  sectionMalformed: boolean;   // block present but not a plain object
+  invalidKeys: string[];       // wrong-typed keys, each already defaulted
+};
+```
+
+Validation mirrors `parseLearningsConfig` exactly: `boolField` for `enabled`, `nonNegativeInt`
+for the two thresholds. `nonNegativeInt` — not positive-int — is deliberate, because
+`maxEntries: 0` is a **valid** admits-nothing value that FSPEC E-7 requires to be treated as zero
+in-scope decisions rather than as an error or a fallback to the default. This diverges from REQ
+C-5's "positive integer" type label; see §9 E-1.
+
+Divergence from `parseLearningsConfig` in one respect only: `enabled` defaults to **`false`**
+(REQ C-5, A-2), where learnings injection ships on. Both `parsePinCheckConfig` and
+`parseDerivativeStopConfig` already default off, so this is the majority precedent.
+
+### 4.2 Recognition and selection (pure)
+
+```ts
+interface DecisionRecord {
+  readonly id: string;          // e.g. "DEC-TERM-01"
+  readonly statement: string;   // heading remainder, verbatim
+  readonly sourcePath: string;  // e.g. "docs/_decisions/DECISIONS-loop-termination.md"
+  readonly heading: string;     // full heading line text, verbatim (the citation)
+  readonly origin: "project" | "feature";
+}
+
+/** Pure, total. Applies §3.2's DECISION_HEADING_RE line by line and §3.3's last-wins
+ *  in-file resolution. Returns [] for text that is null, empty, or holds no record —
+ *  which is an ordinary empty result, never a failure (BR-8). */
+export function recogniseDecisionRecords(text: string | null, sourcePath: string): DecisionRecord[];
+
+interface CorpusEntry {
+  readonly path: string;
+  readonly text: string | null;
+  readonly readOk: boolean;
+}
+
+/** Pure, total. Partitions entries by origin (§3.1), applies §3.4 cross-file precedence,
+ *  then §3.6's omission order under both bounds. `failedSources` counts entries with
+ *  readOk === false; `emptySources` counts entries that read but yielded zero records —
+ *  the two are separate fields, which is what discharges O-7 (§6.3). */
+export function selectDecisions(args: {
+  entries: CorpusEntry[];
+  feature: string;
+  thresholds: { maxEntries: number; maxBytes: number };
+}): {
+  selected: DecisionRecord[];
+  omitted: Array<{ id: string; reason: "RSN-ENTRIES" | "RSN-BYTES" }>;
+  failedSources: string[];
+  emptySources: string[];
+  renderedBytes: number;
+};
+```
+
+`selectDecisions` measures `renderedBytes` by rendering candidate lines and measuring the index
+block's own bytes — **not** the records', and not the dispatch's (BR-12). Framing (header, preamble,
+rule text, trailer) is charged to the bound as well, because BR-12 bounds "the bytes of the index
+block as it appears in the prompt"; this differs from `renderLearningsBlock`, whose framing is
+explicitly *not* charged, and the divergence is stated here so it is a decision rather than a slip.
+
+### 4.3 Rendering (pure)
+
+```ts
+/** Pure, total. Returns EXACTLY "" when `selected` is empty — no header, no preamble,
+ *  no rule text, no trailer, no whitespace (BR-1, E-6). Otherwise returns the block,
+ *  prefixed "\n\n", closed by the trailer with no trailing newline. */
+export function renderDecisionLedgerBlock(args: { selected: DecisionRecord[] }): string;
+```
+
+Rendered form — the concrete format FSPEC Q-1 assigns to this spec:
+
+```
+--- CLOSED DECISIONS (do not re-open without new evidence) ---
+{DECISION_LEDGER_PREAMBLE}
+
+{id} — {statement}  [{sourcePath} § {heading}]
+… one line per decision, project-level first, then feature-level …
+
+{DECISION_LEDGER_RULE_TEXT}
+--- END CLOSED DECISIONS ---
+```
+
+One decision occupies exactly one physical line: the id, ` — `, the statement, then the citation in
+square brackets as `{sourcePath} § {heading}`. Statements are transcribed verbatim and are
+single-line by construction (§3.2 matches to end of line), so no line can wrap into a second and
+"whole lines are omitted" is well-defined byte-wise. Field order and separators are fixed here so
+PROPERTIES can transcribe expected values from the fixture (Q-1); the values themselves come from
+the fixture, never from the renderer.
+
+`DECISION_LEDGER_RULE_TEXT` is a frozen module constant carrying, in this order: BR-5's two
+conjuncts stated as a conjunction ("High severity **and** cites evidence that is not part of that
+decision's own record"); BR-6's two exemplars, each explicitly labelled with the side it falls on —
+*in scope for re-opening*: a shipped behaviour that changed after the decision was recorded, cited
+at the changed source; *not in scope*: a source the decision already cites, re-cited at a different
+line or a later commit with no behavioural change; the instruction to decide against the **cited
+record**, not the index line, which need not carry the decision's own citations (AT-07); and
+BR-6/REQ-DECLEDGER-06's direction to key a repeat on the decision id, recording it as a repeat
+naming that id rather than as a fresh finding.
+
+### 4.4 IO shell and injector
+
+```ts
+/** One `_git` call, then one `_readFile` per path inside its OWN try/catch.
+ *  Never throws: a thrown enumeration yields { unlistable: true }. */
+export function gatherDecisionCorpus(args: {
+  feature: string;
+  _git: (argv: string[]) => Promise<{ ok: boolean; stdout: string }>;
+  _readFile: (path: string) => Promise<string | null>;
+}): Promise<{ unlistable: true } | { unlistable: false; entries: CorpusEntry[] }>;
+
+/** Returns null iff the flag is not true (the gate). Otherwise an async closure that,
+ *  on EACH call, re-gathers, selects, renders, and pushes one record onto `sink`. */
+export function buildDecisionLedgerInjector(args: {
+  config: DecisionLedgerConfig;
+  sink: DecisionLedgerSink | DecisionLedgerDispatchRecord[];
+  _git: Function;
+  _readFile: Function;
+  _log?: (info: object) => void;
+}): null | ((args: { feature: string }) => Promise<string>);
+```
+
+The per-path `try/catch` is the shipped `gatherLearningsCorpus` discipline and it is what makes
+FSPEC E-3's partial leg structural: the runtime `rtReadFile` throws where the test double
+`defaultReadFile` returns `null`, and both degrade that one path to `readOk: false` rather than the
+whole corpus.
+
+### 4.5 Loop and prompt seams
+
+```ts
+// reviewLoop gains one optional seam, defaulting to the shipped state.
+_injectDecisionLedger: null | ((args: { feature: string }) => Promise<string>) = null;
+
+// reviewerPrompt gains one trailing parameter, defaulting to the shipped state.
+function reviewerPrompt(
+  doc, phase, feature, iteration, reviewer, docType,
+  frozen = false, findingGrammar = false,
+  ledgerBlock = ""      // NEW
+): string;
+```
+
+Both defaults are chosen so that every existing call site and every existing test keeps HEAD's
+behaviour byte-for-byte without edit — the same reason `reviewLoop`'s shipped `derivativeStop`
+parameter defaults to `DERIVATIVE_STOP_DEFAULTS` and says so at its declaration.
+
+Inside `reviewLoop`, per round:
+
+```js
+const ledgerBlock =
+  typeof _injectDecisionLedger === "function"
+    ? await _injectDecisionLedger({ feature })
+    : "";
+```
+
+`await`ed, per this repo's injected-IO rule — the adapter's implementations are async, the test
+doubles are sync. The single `await` per round is placed immediately before the two
+`reviewerPrompt` calls, so both reviewers of a round receive the identical block.
 
 ## 5. Data Model
 
