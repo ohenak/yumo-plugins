@@ -8,9 +8,8 @@
 
 ## Scope
 
-The erratum edit is three commits — `c75837…`/`c75577…`/`f450e8` (`c75637f`, `5778f68`, `f450e8d` by
-short id: lineage pins and changelog, the `maxBytes` default in §3.1 and §7 A-1, and the AT-01
-fixture pin) — 18 insertions and 9 deletions over `docs/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md`.
+The erratum edit is three commits — `c75797636` (lineage pins and changelog), `577cf6860` (the
+`maxBytes` default in §3.1 and §7 A-1) and `f450e8de4` (the AT-01 fixture pin) — 18 insertions and 9 deletions over `docs/pdlc-decision-ledger/FSPEC-pdlc-decision-ledger.md`.
 My round-3 verdict was **Needs revision** on four findings: F-01 (`§3.1` recited `maxBytes` `8000`),
 F-02 (`§7` A-1 carried the retired "unmeasured `learningsInjection` analogy" rationale while claiming
 to carry REQ §7 unchanged), F-03 (stale `Upstream`/`Baseline` version pins), F-04 (routed upstream —
