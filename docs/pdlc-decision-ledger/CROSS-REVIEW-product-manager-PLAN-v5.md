@@ -92,6 +92,65 @@ open item.
 
 ## Dependencies
 
+**Upstream re-derivation at HEAD.** The v0.5 revision history claims the `DECISIONS` pin "is
+re-derived mechanically from `shasum -a 256`". I re-measured all four upstream pins the header
+carries (`shasum -a 256`, first-8 + last-6, the abbreviation convention the header itself uses):
+
+| Upstream | Header pin (`PLAN`:9) | Measured at HEAD | |
+|---|---|---|---|
+| `REQ` v1.9 | `ce6b133f…3c7b7c` | `ce6b133f…3c7b7c` | ✓ |
+| `FSPEC` v1.3 | `2bd5c3ef…5aed39` | `2bd5c3ef…5aed39` | ✓ |
+| `DECISIONS` | `13aba061…4fb89a` | `13aba061…4fb89a` | ✓ |
+| `TSPEC` **v0.8** | `28d25518…32cb49` | `eef45ef3…0623c8` (**v0.9**) | ✗ |
+
+**F-02 (Medium, v4) is resolved.** The `DECISIONS` pin's transposed suffix (`4bb89f`) is corrected
+to the measured `4fb89a` and now verifies exactly. That was the whole of my Medium.
+
+**But the `TSPEC` pin is now stale, and it is stale in a way that matters (F-01).**
+`TSPEC-pdlc-decision-ledger.md`:17 reads **v0.9**; its changelog at :19–26 names the sections
+touched — "§5.4, §7, §7.2, §7.3, and this changelog". The v0.9 commits landed at 08:37–08:38
+(`588f4323e`, `4b28af44a`, `5189b73fb`) — **after** the PLAN v0.5 operator pass at 08:10, and
+`TSPEC` v0.9 was approved with anchors recorded at 08:44 (`6b328e16a`, `sha256:eef45ef3…0623c8`).
+The PLAN's own last commit is 08:51, and the sibling `DECISIONS` reviews of 08:47–08:50 already
+record the move ("TSPEC moved v0.7 to v0.9", `6f1cb1415`). So the PLAN is the only document in the
+phase still asserting a `TSPEC` v0.8 grounding.
+
+This is not a citation hygiene point. **`TSPEC` v0.9's §7.3 rewrote precisely the census contract
+T-11 compresses, and T-11 now contradicts it in two load-bearing ways:**
+
+1. **The token set-equality operand.** T-11 (`PLAN`:135) says `DECISION_LEDGER_CENSUS_TOKENS`'s six
+   members are "held to **set equality** against the module's exported decision-ledger symbol
+   names". `TSPEC` §7.3 now names that exact comparison as the wrong one: *"Not set equality
+   against all of the module's decision-ledger exports — that comparison is red by construction,
+   since §3.1/§4.1/§4.2/§4.4/§5.2 declare roughly a dozen and only six are data-carrying."* The
+   contract v0.9 specifies instead is a **partition**: `DECISION_LEDGER_CENSUS_TOKENS` ∪
+   `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`, with the two sub-sets
+   **disjoint**. As written, an implementer following T-11 writes a set-equality that cannot go
+   green.
+2. **The scanned-source operand.** T-11 says the second operand is the source "**minus** four owned
+   regions — three sliced by brace-matching from their declarations … and the `main()` wiring run".
+   `TSPEC` v0.9 §7.3 requires the source minus the body of **every** member of
+   `DECISION_LEDGER_OWNED_DECLS` (§4.1/§4.2/§4.4's top-level functions plus §3.1's
+   `DECISION_CORPUS_ARGV`, §3.2's `DECISION_HEADING_RE`, §4.1's `DECISION_LEDGER_DEFAULTS`, §4.3's
+   `DECISION_LEDGER_PREAMBLE` / `DECISION_LEDGER_RULE_TEXT`, §5.2's frozen catalogues), plus the
+   sentinel-bounded wiring run — and says in terms that slicing "every owned declaration, not a
+   hand-picked three, is what makes the census satisfiable". The hand-picked-three form T-11 still
+   specifies is the form v0.9 diagnosed as unsatisfiable.
+
+`TSPEC` v0.9 also introduces two frozen catalogues T-11 and the file-ownership manifest never
+mention — `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` — so no task in this
+PLAN owns creating them, and no manifest row assigns them a batch. That is the completeness half
+of the same gap: BR-11 / REQ NG-4's falsifiable proof is the census, and the PLAN currently plans a
+census the approved design says cannot pass.
+
+**The one thing the edit did land here is a partial re-point in the right direction.** T-11 and the
+§Definition of Done census bullet (`PLAN`:471) both move their citation from `TSPEC` §5.5 to §7.3,
+and that is substantively correct — v0.9's §5.4 (`TSPEC`:948–953) does say `report.decisionLedger`
+"is deliberately **not** a census token — §7.3 records why", and points the field's whole proof at
+§7.2's live composition-root arm, which is T-10a. The behavioural-discharge argument in T-11 and
+the DoD bullet is faithful to v0.9. Only the *version label* on the citation ("TSPEC v0.8 §7.3")
+and the surrounding census contract are stale.
+
 ## Verification
 
 ## Positive Observations
