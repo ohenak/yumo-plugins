@@ -832,8 +832,8 @@ every id named in this document is one of `PLAN`'s 24, and every one of `PLAN`'s
 
 | AT | Subject | Discharged by | Fixture |
 |---|---|---|---|
-| AT-01 | index renders the Baseline enumeration, whole lines | ORC-01; PROP-REC-01…11, PROP-REND-01…09 | FX-CORPUS |
-| AT-02 | every citation resolves at its own source | ORC-02; PROP-REND-06 | FX-CORPUS |
+| AT-01 | index renders the Baseline enumeration, whole lines | ORC-01 (which decides **PROP-REC-01…08** and PROP-REND-01…09 against the frozen corpus); PROP-REC-09…11 discharge the same AC at the cheaper levels ORC-01 cannot reach — the `fast-check` generator (-09) and pure-unit null/CRLF cases (-10, -11) — and are **not** decided by the corpus oracle | FX-CORPUS |
+| AT-02 | every citation resolves at its own source | ORC-02; PROP-REND-03, PROP-FAIL-05 (ORC-02's own `Decides` line) | FX-CORPUS |
 | AT-03 | derived fresh, not carried forward | PROP-WIRE-06, -07, -08 | live `main()` |
 | AT-18 | id in two files renders exactly one line | PROP-PRE-01…05 | **FX-PRECEDENCE** |
 | AT-04 | disabled dispatch byte-identical to baseline | PROP-OFF-01, -04, -06 | FX-BASELINE |
@@ -845,11 +845,11 @@ every id named in this document is one of `PLAN`'s 24, and every one of `PLAN`'s
 | AT-09 | surviving proper subset → partial leg | PROP-FAIL-03, -04, -10 | FX-FAILOPEN |
 | AT-10 | empty file contributes nothing, costs nothing | PROP-FAIL-06, -07, -08 | FX-FAILOPEN |
 | AT-11 | per-key fallback over the full enumeration | PROP-CFG-05…10 | none (pure) |
-| AT-13 | both bounds hold on index text alone | PROP-BND-01…04 (O-8 property) | generated |
-| AT-14 | empty and zero cases collapse to the baseline bytes | PROP-BND-08, -09, -10; PROP-FAIL-06 | generated + FX-BASELINE |
-| AT-15 | a single oversized line is omitted whole | PROP-BND-05, -06, -11 | generated |
-| AT-16 | replay agrees on every driver-side outcome | PROP-INV-03, -04 | FX-REPLAY |
-| AT-17 | a filed reopening scores as any other High finding | PROP-INV-05…10 | FX-REPLAY |
+| AT-13 | both bounds hold on index text alone | PROP-BND-01…04 (O-8 property), PROP-BND-07 (the model discipline that makes -03 falsifiable), PROP-BND-12 ("index block alone" is what `maxBytes` bounds) | generated |
+| AT-14 | empty and zero cases collapse to the baseline bytes | PROP-BND-08, -09; **PROP-OFF-06** (the property that states the criterion: all three zero cases produce the disabled bytes); PROP-FAIL-06 is on this row **deliberately** — a corpus that reads to zero records shares E-6's byte outcome with the zero-bound cases, and PROP-FAIL-06 is the only conjunct that distinguishes it from a *failed* read behind identical bytes | generated + FX-BASELINE |
+| AT-15 | a single oversized line is omitted whole | **PROP-BND-10** (states the criterion: absent in full, no fragment, remaining lines render); PROP-BND-05, -06, -11 (the one-loop disjunction, determinism and no-abort guarantees the drop relies on) | generated |
+| AT-16 | replay agrees on every driver-side outcome | PROP-INV-01, -02, -03 | FX-REPLAY |
+| AT-17 | a filed reopening scores as any other High finding | **PROP-INV-04** (states the criterion verbatim); PROP-INV-05…10 (the no-suppressed-state and census guarantees that make it unevadable) | FX-REPLAY |
 
 **Every one of AT-01…AT-18 is claimed**, and each row's fixture column is satisfied by `## Fixtures`.
 The three ATs whose fixture is `none` are the ones asserting properties of a **frozen string
@@ -865,7 +865,7 @@ constant**, where a fixture would only restate the constant.
 | **O-7** — empty-vs-failed needs a driver-internal observable | se-author (`TSPEC` §6.3) | **consumed**, not owed: PROP-FAIL-06 is the oracle that makes §6.3's fields load-bearing |
 | **O-4** — baseline identity and re-capture pinning | se-author (`TSPEC`) | **consumed**: ORC-04 pins `mergeBaseSha`; PROP-OFF-06 |
 | **DC-07** — composition-root wiring | `DECISIONS` | PROP-WIRE-01…11 via T-10a's live `main()` arm |
-| **BR-11 / NG-4** — no second source of decision text | `FSPEC`/`REQ` | PROP-DISC-07 census, cloning `loopEconomicsAnchorGuard.test.js` |
+| **BR-11 / NG-4** — no second source of decision text | `FSPEC`/`REQ` | **PROP-INV-06** — the source census, cloning `loopEconomicsAnchorGuard.test.js` — with PROP-INV-07 (token-set equality) and PROP-INV-08 (every slice non-empty) as its non-vacuity guards, and PROP-INV-01…04's behavioural residue as the compensating control (`TSPEC` §7.7). PROP-DISC-07 is a repo-hygiene count and discharges nothing here |
 
 The three obligations `FSPEC` §7 assigns to **te-author** — O-5, O-6, O-8 — are each discharged by a
 named fixture and a named property family above. That is this document's completion condition.
