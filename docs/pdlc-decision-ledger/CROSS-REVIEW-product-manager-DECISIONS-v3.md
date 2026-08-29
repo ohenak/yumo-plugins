@@ -36,8 +36,55 @@ pairs with it — which is what stops the next reader re-deriving the same mis-p
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The Context exception says the derived figures "have no upstream home until §3.6 is re-measured", which is accurate for the 11,300 allowance and its two slacks. But §3.6 already carries the raise's *conclusion* in one place — *"a default of **12,500** admits the worst standing case (10,859 + 1,200 …)"* (`TSPEC-pdlc-decision-ledger.md:472`) — so §3.6 is half-migrated rather than wholly pre-raise. No change wanted here; flagging only in case the discharge list should record that `:472` is the one §3.6 line that already agrees with REQ v1.8 and must *not* be rewritten in the pass. |
+| Q-02 | Carried from v2 and still open, non-blocking: DEC-DECLEDGER-13's *"~154-byte mean line"* (`6,305 / 41 = 153.8`) versus §3.6's reported project-level mean of **153** (`TSPEC-pdlc-decision-ledger.md:437`). Both round the same measurement and no conclusion turns on the difference. |
+
 ## Positive Observations
+
+- **The fix went to the reader's arrival points, not to the finding's wording.** I asked for a note
+  that §3.6's derived figures were pre-raise. The revision put it in `## Context`'s citation rule —
+  where a reader learns the "measurements are cited, never restated" convention and would otherwise
+  trust §3.6 wholesale — *and* in the re-evaluation trigger, where the person who eventually
+  discharges `ERR-2` will be standing. Same defect, two audiences, and the fix is placed for each.
+- **The quoted/derived distinction is a better answer than the one I asked for.** My finding asked
+  for a warning clause. What landed is a rule: figures *quoted* from §3.6 are corpus measurements
+  and are bound-independent (10,859, 6,305), figures *derived* here are bound-dependent and move
+  when the bound moves (11,300, 441, 4,995). I verified both halves at `TSPEC:419` and `:422` — the
+  quoted rows genuinely have no `maxBytes` term in them. That rule tells a future reader which
+  numbers a re-measurement touches without re-doing the analysis, which the warning clause I asked
+  for would not have.
+- **The outstanding work is stated as checkable rather than as a caveat.** "One such re-measurement
+  is outstanding now, and it is checkable rather than general" followed by named, quoted sites is
+  the difference between a disclaimer and a work item. Four of the five quotes I spot-checked are
+  verbatim at HEAD. F-01 is that this good instinct stopped one site short of the set-equality it
+  claimed — not that the instinct is wrong.
+- **The `ERR-3` → `ERR-4` correction was made in terms, not by substitution.** The Risks bullet now
+  says *why* `ERR-4` is the right pairing (AT-03's fixture mutation, TSPEC's D-11) and what `ERR-3`
+  separately is (AT-02's citation-format correction, no decision pairs with it). A one-character
+  id fix would have been re-derivable-wrong next round; this is not.
+- **The header bumped to v1.2 and the cross-review pointer generalised to `v{N}`.** Small, but it is
+  the third round of this document and the pointer had been pinned at `v1` since the first — it now
+  names the series rather than one round of it.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+My one prior finding is resolved, and resolved at the right altitude — the exception is stated as a
+rule about which figures move with the bound, not as a caveat about one paragraph. The
+test-engineer's v2 High inside the same changed surface (`ERR-3` → `ERR-4`) is also resolved, and I
+independently confirmed the routing against TSPEC §9.2 and D-11 rather than against the document's
+own prose. No High finding is open, delta or inherited.
+
+The single Medium is the completeness claim on the new discharge list: the five named sites are all
+genuine, but §4.3's derived `~495` (`TSPEC-pdlc-decision-ledger.md:630`) sits outside the
+enumeration the row calls "the discharge list". That is a one-line fix in this document and does not
+gate the phase; the underlying §3.6 re-measurement is TSPEC's to land under `ERR-2` and is correctly
+not taken here.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 1, "low": 0}
