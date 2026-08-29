@@ -43,3 +43,55 @@ and a tautology, and it was not something I had asked for.
 | Q-01 | T-10a arm 3 now compares the `main()`-driven flag-off reviewer prompt against **T-02's committed merge-base recording**. That is the right referent — `FSPEC-pdlc-decision-ledger.md`'s AT-04 says "byte-identical to the committed fixture baseline — not a same-branch before/after comparison", and TSPEC §7.4 §1160-1163 gives the reason (a regression corrupting both arms identically passes every same-branch comparison). One implementation question the row leaves open: T-02 captures that recording by driving **exported `reviewLoop`** through `runCaptureScript`'s scenario matrix, while T-10a drives **`main()`**. For the byte comparison to be meaningful rather than vacuously red, T-10a must reproduce the scenario inputs `scenarios.mjs` fixes. Worth one clause naming `fixtures/decision-ledger-baseline/scenarios.mjs` as the shared input source, so the batch-2 implementer does not discover the coupling by failing. Not blocking; the referent choice is correct. |
 | Q-02 | Carried from v1 and v2, still open and still not blocking: `decisionLedger.enabled` ships **false**, so nothing in this feature is operator-visible until someone edits config. Is default-off the intended end state, or is a follow-up enabling it after a bake period expected? A product-roadmap question for the REQ, not a defect in the PLAN. |
 | Q-03 | Carried from v1 and v2: the completeness gate applied to reviewer dispatches names `## Overview / ## Batches / ## Dependencies / ## Verification` — the **PLAN's** section contract, not a cross-review's. This file follows the `pm-review` SKILL's mandated cross-review format. Gate configuration for reviewer dispatches still looks mis-wired. |
+
+## Verification performed
+
+Every factual claim the v0.3 edit newly introduced, executed against the working tree on
+`feat-pdlc-decision-ledger`. Only changed regions were checked.
+
+**The corpus arithmetic is now right in all three places, and each figure is falsifiable.** Measured:
+4-alternative filter at `8c673a09f` = 25; 3-alternative = 24; 4-alternative over live `git ls-files`
+= 26. `TSPEC-pdlc-decision-ledger.md:307-317` lists the four `:(glob)` pathspecs the alternation
+mirrors, in order. The row's `git ls-tree` rejects `:(glob)` note remains true. The remaining defect
+is the copy-paste form (F-01), not the content.
+
+**The coverage-gate correction is sound and is the more valuable of the two TE F-02 halves.**
+`pdlc/workflows/package.json:9` chains `check-wave-resume-delta-coverage.mjs` third inside
+`test:coverage`; the wave gate's `implementation.testCommand` (verified in both
+`.claude/pdlc.config.json` and `.claude/pdlc.config.example.json`) is plain `npm test` with
+`--testPathIgnorePatterns`, no coverage clause; `.github/workflows/pr-tests.yml:28,92` is the
+`Unit tests (ubuntu-latest, node 20)` check that runs `test:coverage`. The PLAN's "exactly two
+places" claim is exactly right, and it retracts v0.2's opposite claim in the open rather than
+quietly rewriting it. Declining to widen `testCommand` is also the right product call — widening it
+applies clause 3 to unrelated work landing in the same wave, which is this project's recorded T17
+gate-widening hazard. My F-02 is about where the remediation is written, not whether it is right.
+
+**T-00a's positive-control claim is now honest about its own reach.** The new sentence says the
+`102` complement pin falsifies a mistyped prefix or an exclusion swallowing a neighbouring namespace,
+and **cannot** detect a dropped `decisionLedger*` module, since deleting one leaves the complement at
+`102`. That is correct and it is the claim v0.2 overstated. Moving the namespace's own census to
+T-12a as a **terminal** obligation is the right placement: it is only satisfiable once batch 2's nine
+modules exist, and un-skipping at batch 9 keeps it from reddening the wave gate mid-feature — the
+same reasoning `documentOracles.test.js`'s own comment block gives for not re-pinning the literal.
+
+**T-12a's new census conjunct is a set, and the set is the right size.** It asserts the
+`decisionLedger*.test.js` module-name set is set-equal to twelve names transcribed from the
+file-ownership manifest. The manifest (PLAN:151-176) does list exactly twelve distinct
+`decisionLedger*.test.js` paths — Preflight, BaselineGuard, FixtureGuard, Config, Recognise, Render,
+Bounds, Injector, Corpus, Loop, Main, Census — matching T-00a's "three in batch 1, nine in batch 2".
+Set equality rather than a count means a dropped or renamed module names itself in the failure,
+which is what the DC-07-shaped risk here actually needs.
+
+**The blast-radius re-count agrees with the manifest it summarises.** Fifteen new paths under
+`pdlc/workflows/__tests__/` = twelve modules + `helpers/decisionLedgerDoubles.js` + the two fixture
+trees; the engine module is the sixteenth overall. The manifest carries all sixteen, and the
+paragraph's own standing promise ("this paragraph is its prose summary and must agree with it") now
+holds.
+
+**T-10a's flag-off referent change is a product-fidelity fix, not a test-style preference.** v0.2
+would have defined the flag-off prompt by subtracting the rendered block from the flag-on prompt —
+the expected value derived from the code under test, which is precisely the implementation echo
+`FSPEC` AT-04 forbids when it says "not a same-branch before/after comparison" and REQ-DECLEDGER-02
+means when it says byte-identical to *today*. The committed recording is the independent referent.
+AT-14 and AT-16 both cite "AT-04's committed baseline" as their own anchor, so this change also
+keeps three acceptance criteria pointing at one artefact instead of two.
