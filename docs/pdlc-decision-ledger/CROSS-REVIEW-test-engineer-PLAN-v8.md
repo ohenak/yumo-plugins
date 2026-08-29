@@ -62,7 +62,39 @@ restating rather than deleting.
 
 ## Dependencies
 
-_pending_
+**Upstream pins.** The PLAN header pins `TSPEC-pdlc-decision-ledger.md` **v0.9**
+`sha256:eef45ef3…0623c8`. HEAD is v1.0 `sha256:b1b603a8…d31a0` (re-derived with `shasum -a 256`).
+The other three pins are unchanged and correct at HEAD, re-measured in this round:
+
+| Upstream | PLAN pin | HEAD | Status |
+|---|---|---|---|
+| REQ v1.9 | `ce6b133f…3c7b7c` | `ce6b133f…3c7b7c` | ✅ |
+| FSPEC v1.3 | `2bd5c3ef…5aed39` | `2bd5c3ef…5aed39` | ✅ |
+| TSPEC | **v0.9 `eef45ef3…0623c8`** | **v1.0 `b1b603a8…d31a0`** | ❌ stale |
+| DECISIONS | `13aba061…4fb89a` | `13aba061…4fb89a` | ✅ |
+| Baseline v1.2 | v1.2 | v1.2 | ✅ |
+
+Five in-body citations additionally name the superseded version explicitly — "TSPEC **v0.9** §7.3"
+at T-11 (twice: the `decisionLedger`-is-not-a-token clause and the scanned-source operand) and at
+the §Definition of Done bullet (twice), plus "v0.9 §7.3 rewrote the census contract T-11
+compresses" in the v0.6 revision history. A version-qualified citation that names a version whose
+text no longer says what is being cited is the failure mode DEC-ERR-03 is written against; these
+must move to v1.0 **together with** the substance, never the pin alone.
+
+**Task-graph dependencies are unaffected.** I re-derived the batch column for every task touching
+the census: T-11 (batch 2, deps T-00, T-01), T-18 (batch 8, deps include T-11), T-00a (batch 1),
+T-10a, T-12a, T-19. `batch == max(dep batch) + 1` holds throughout, ids are unique, the graph is
+acyclic, and no dependency edge changes under TSPEC v1.0 — the constant simply moves from T-18's
+file to T-11's own file, and T-11 already owns that file. No same-batch same-new-file collision is
+introduced or removed. **No batch, dependency or ownership edge needs to move**; the fix is
+textual, confined to the five sites in §Batches above plus the header pin. That is worth stating
+plainly so the revision does not over-reach into the settled task graph.
+
+**One prior finding is resolved by upstream, not by the author.** My v7 F-01 (Medium) flagged
+`DECISION_LEDGER_CENSUS_TOKENS` as a production declaration with **no production consumer** — a
+dead-config export a DoD sweep could delete, re-opening the closed homeless-member defect. TSPEC
+v1.0 removes the production declaration entirely, so that finding is moot at HEAD and must not be
+carried forward into the revision. I raise no successor to it.
 
 ## Verification
 
