@@ -14,7 +14,13 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.1 | 2026-08-28 |
+| Draft | se-author | 0.2 | 2026-08-28 |
+
+Revision history: **v0.2** addresses `CROSS-REVIEW-test-engineer-PLAN-v1.md` F-01…F-08 and
+`CROSS-REVIEW-product-manager-PLAN-v1.md` F-01…F-05. Three tasks added (`T-00a` census exclusion,
+`T-10a` `main()`-driven wiring arm, `T-12a` documentation disclosure oracle); the coverage-gate
+claim corrected; the file-ownership manifest re-shaped to one bare task id per row so the
+mechanical PLAN lint parses it.
 
 ## Overview
 
@@ -30,9 +36,17 @@ forbids editing `pdlc/engine/` runtime, so no new `pdlc/workflows/lib/` module i
 though `lib/` exists and already holds `document-oracles.mjs`, `escalation-view.mjs`,
 `loop-session.mjs`). **That one-file constraint is the dominant shape of this PLAN:** every green
 task writes the same physical file, so under batch-safety rule 2 the six green tasks are
-serialised one-per-batch by real `Deps` edges. Two files outside it change: the tracked
-`.claude/pdlc.config.example.json` disclosure (FSPEC Q-3, explicitly preserved by REQ NG-6) and a
-new `pdlc/engine/__tests__/decision-ledger-config-example.test.js`.
+serialised one-per-batch by real `Deps` edges.
+
+**Blast radius outside `orchestrate-dev.js` (PM F-04).** Two *production-adjacent config/test*
+files: the tracked `.claude/pdlc.config.example.json` disclosure (FSPEC Q-3, explicitly preserved by
+REQ NG-6) and a new `pdlc/engine/__tests__/decision-ledger-config-example.test.js`. Beyond those:
+three documentation files (`pdlc/OPERATIONS.md`, `pdlc/README.md`, `CLAUDE.md` — T-19), two
+generated/manifest files (`pdlc/workflows/dist/pdlc-cli.mjs`, `pdlc/.claude-plugin/plugin.json` —
+T-20), the **existing** `pdlc/workflows/__tests__/documentOracles.test.js` (T-00a's census
+exclusion, T-12a's disclosure oracle, un-skipped by T-19), and fourteen new test/fixture paths. The
+file-ownership manifest below is the complete list; this paragraph is its prose summary and must
+agree with it.
 
 **Shipped code this extends, verified at HEAD.**
 
@@ -52,8 +66,10 @@ new `pdlc/engine/__tests__/decision-ledger-config-example.test.js`.
 `pdlc/.claude-plugin/plugin.json` at version `0.23.6`, `pdlc/workflows/dist/pdlc-cli.mjs`) or is
 declared `[new]` in its task row.** No task names a file that exists under a different path.
 
-**Two RED-terminal batches.** Batches 1–2 create fixtures and failing tests only; the greens land
-in batches 3–8. Per the wave-gate contract already followed by
+**Two RED-terminal batches.** Batches 1–2 create fixtures and failing tests only; the **six
+production-file greens** (T-13…T-18, the tasks writing `orchestrate-dev.js`) land in batches 3–8,
+and the two remaining greens — T-19 (documentation and config disclosure) and T-20 (landing) — sit
+in batches 9 and 10 (PM F-05). Per the wave-gate contract already followed by
 `pdlc/engine/__tests__/loop-config-example.test.js`, every `[red]` block is committed **skipped**,
 titled with the id of the `[green]` task that un-skips it, and each block is run un-skipped once
 first and observed to fail for the stated reason before being skipped. Gate wording for batches
