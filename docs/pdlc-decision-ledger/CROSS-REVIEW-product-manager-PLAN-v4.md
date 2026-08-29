@@ -207,4 +207,5 @@ FINDING: Low | delta | local | §Batches row T-11 (PLAN:128) | Inserting the `de
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
