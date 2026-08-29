@@ -212,15 +212,45 @@ count as 29 and redden.
 
 ## Open Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | For F-01's added assertion: is the `M-6b` slice (41 project + `pdlc-headless-engine`'s 22) constructible from the frozen fixture by directory selection alone, or would it need a second transcribed id list? If the former, the assertion costs one build and one transcribed byte count; if the latter, say so in §7.3 so the PLAN task is sized correctly. |
+| Q-02 | §3.6 concludes "neither bound fires on **any** real dispatch at that commit". That is `M-6b`'s worst *standing* case, which is the largest feature directory. Is `M-6b` the correct universal bound for a dispatch on a feature whose directory is being written **during** this pipeline run (this branch is the witness §7.3 itself cites)? If an in-flight feature directory can exceed 22 records, the word "any" is stronger than the measurement supports and should read "any dispatch over the standing corpus". |
+| Q-03 | Sibling-document note, not a finding against this TSPEC: `DECISIONS-pdlc-decision-ledger.md`'s re-evaluation trigger for DEC-DECLEDGER-03/13 still records the discharge list as outstanding — "TSPEC is still pinned at REQ v1.7 / Baseline v1.1 and §3.6 still computes `8000 − 1200 = 6,800`". That row is now stale in this document's favour and will need its own erratum; flagging so it is not lost. |
 
 ## Positive Observations
 
-_(pending)_
+- **The re-measurement was done in one pass, not one figure at a time.** Every site the routed list
+  named moved together — §3.6, §4.1's type row and default, §4.2's comment, §4.3's framing-pin
+  consequence, §5.3's recital, §7.3's conjunct (2), §7.6's AT-01 rationale, D-10, ERR-2, and the
+  header pins. I grepped for the retired literals: `6,800` is gone entirely, and every surviving
+  `8000` / `495` is in explicit past tense inside the erratum note or ERR-2's historical record.
+  That is the discipline `DEC-DECLEDGER-10`'s trigger row asks for.
+- **The inertness conclusion is reconciled with `DEC-DECLEDGER-03` on the right ground.** §3.6 does
+  not claim the mechanism is safe; it says inertness is a measurement at one commit, keeps the order
+  specified and tested as load-bearing, and names what expires it. An earlier draft's "the order is
+  inert" reasoning is what both TSPEC reviewers falsified in round 3 — the new text reaches a
+  superficially similar conclusion while explicitly refusing the reasoning that was wrong.
+- **The 6,305 transcription was correctly left alone.** The erratum note explains why (Baseline v1.2
+  records `M-1`…`M-6` at the same `Verified at` commit), and §7.3 states the discharge it predicted
+  in round 3 — "the threshold follows the resolved value and the transcribed 6,305 did not move" —
+  actually happened that way. A prediction made in one round and verified in the next is exactly
+  what makes these pins worth writing.
+- **ERR-2's resolution paragraph is honest about its own history**, including "ERR-2 was raised at
+  the TSPEC rather than at implementation precisely so it would resolve before those tasks are
+  written, and it did." That is a reusable process observation, not self-congratulation.
 
 ## Recommendation
 
-_(pending)_
+**Needs revision** — one High finding (F-01), tagged `delta`/`local`.
+
+Every routed item landed and the arithmetic is correct throughout; this is not a rejection of the
+erratum's substance. The single blocking issue is that the edit relocated the load-bearing measured
+margin (from ~495 project-level bytes, which §7.3 conjunct (2) pinned, to 441 bytes on the `M-6b`
+slice, which nothing pins) without relocating the oracle. Add the `M-6b`-slice assertion described
+in §Test Strategy — empty `omitted[]`, transcribed 12,059, and `12,059 ≤ 12,500` as arithmetic —
+and this document is again what D-10 says it is. F-02 (mis-stated bind order), F-03 and F-04
+(vetoability window / tense) are recorded, not gating.
 
 ## Delta-Confirmation Findings
 
