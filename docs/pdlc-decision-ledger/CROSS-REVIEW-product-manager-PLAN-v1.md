@@ -90,8 +90,54 @@ the document defines 01–16).
 
 ## Positive Observations
 
-_(pending)_
+- **Complete, mechanical coverage tables.** Fourteen of fourteen TSPEC §6.1 failure rows and
+  eighteen of eighteen FSPEC ATs carry a named owning task, with the red→green pair spelled out
+  (`T-08 → T-17`, `T-04 → T-13`). This is the traceability artefact a PM needs and it is correct on
+  re-derivation. Keep this table shape.
+- **The coverage gate is disowned honestly.** §Verification states plainly that c8's
+  `--per-file --branches 85` over an ~817 KB `orchestrate-dev.js` is *not* evidence for this
+  feature, and discharges the obligation with the row-to-task map instead. Refusing a green number
+  that would not move if fourteen failure rows were uncovered is exactly right.
+- **Anti-echo commitments are named as commitments, with the failure mode attached.** "If T-09
+  reddens, the correct response is **never** to trim the expected set to whatever the renderer
+  emitted" pre-empts the specific way a corpus oracle gets false-greened. T-07's model carrying its
+  **own** formatter transcribed from TSPEC §4.3, and T-02 asserting `mergeBaseSha` against a
+  hand-transcribed literal rather than the manifest it checks, are the same discipline applied
+  twice more.
+- **Set-equality over enumerations, not containment, wherever a deletion could hide.** T-04 over
+  C-3's three keys, T-12 over the `decisionLedger` key map, T-11 over
+  `DECISION_LEDGER_CENSUS_TOKENS`, T-02 over the baseline case ids, T-09(d) over the 41 and 63 id
+  sets. T-12's deliberate exception — containment at the example file's top level, set equality
+  inside the block — is the right split and is justified in place.
+- **Negative assertions are paired with positive ones.** T-09(c) does not stop at "exactly one line
+  carries that id"; it asserts the surviving statement, `sourcePath` and `origin` are the
+  project-level record's *and* that the feature-level statement is absent from the whole block,
+  noting that cardinality alone passes under the rejected rule. AT-14's "no rule text standing
+  alone above a missing index" is likewise pinned as byte-identity to the baseline, not as a
+  bare absence.
+- **T-11's non-empty-slice precondition.** Requiring every sliced region to be asserted non-empty
+  before counting is the difference between a census and a vacuous green — a failure class this
+  repo has actually hit.
+- **The T-06 → T-15 budget edge is stated as a one-way ratchet.** "If the drafted text does not
+  fit, the correct response is to shorten the text or re-open §3.6's arithmetic deliberately —
+  **never** to raise the literal", with the 441-byte margin named as what a raise consumes. A
+  budget an implementer cannot quietly widen is a budget.
+- **Frozen fixture over live tree, with the reason.** The 25-vs-26 drift is not hypothetical — this
+  feature's own `DECISIONS-*.md` caused it — and the PLAN ties it to the `coveredViolations`
+  whole-tree-walk failure class already recorded in `CLAUDE.md`.
+- **Scope discipline.** "What this PLAN deliberately does not touch" names `MAX_REVIEW_ROUNDS` and
+  siblings (NG-5), all `SKILL.md` files (NG-6), the delta-confirmation prompt builders and
+  `DEC-LOOPECON-06`'s identity triple — and BR-11 is not merely promised but pinned by T-11's
+  census and T-10's replay. I found **no out-of-scope behaviour** in the task list.
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+Three Medium and two Low findings, no High. The product substance is right: every P0 and P1
+acceptance criterion has an owning task, the coverage tables are complete and re-derive correctly,
+and nothing out of scope is being built. F-01 through F-03 are accuracy and coverage repairs that
+should land before implementation starts — F-02 in particular because it would surface as a
+batch-10 wave-gate halt after all six serialised production batches have already landed. F-04 and
+F-05 are Overview wording that should agree with the (correct) task table.
+
