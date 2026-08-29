@@ -42,3 +42,39 @@ No High findings. The blocking gap from round 6 is closed and nothing in the del
 | ID | Question |
 |----|---------|
 | Q-01 | On F-01: is the intended oracle (i) membership pinned by `M-1d`/`M-2e` plus statement/citation transcribed literally from the frozen fixture, or (ii) a fully transcribed 63-line expected block in PROPERTIES? Both are sound; (i) is cheaper and keeps the REQ at altitude, but only (ii) is what "equality of the rendered line set" reads as today. |
+
+## Positive Observations
+
+- **The fix landed where the round-6 finding said it could, and it survives independent replay.**
+  I re-derived `M-1d` and `M-2e` from the tree at `8c673a09f` before reading them, including the
+  awkward parts: the interleaved five-namespace ordering inside `DECISIONS-review-severity-bars.md`,
+  the two files whose records only ever appear as `## N. DEC-…` numbered headings, and the two
+  directories that contribute zero. Every one matches. That is the difference between a measured
+  fact and an argued predicate, and it is the whole point of the post-mortem's Recommendation 1.
+- **F-03 was decided rather than deferred.** The frozen fixture copy is the answer that stops the
+  shipped acceptance test from being hostage to unrelated future decisions — including the ones
+  this branch may itself author — and O-6 carries the fixture obligation to te-author instead of
+  leaving it implicit. Deciding it in one clause and routing the coverage cost is exactly the
+  split that was missing in rounds 2–5.
+- **O-1's new membership sentence selects between two measured numbers without minting a rule.**
+  "Where `M-2c`'s two feature file-scope readings differ (14 ids against 22), the directory
+  reading governs, matching the floor C-5 already took from `M-6b`" (`REQ:336-338`) is
+  self-consistent with the shipped default: 41 + 22 = 63, and `maxEntries` 70 clears it by 7.
+  The alternative reading would have silently made the declared default wrong. Naming the choice
+  here closes the one place where TSPEC could have picked the other branch in good faith.
+
+## Recommendation
+
+**Approved with minor changes** — no High findings.
+
+Round 6's High is closed by construction, not by rewording: the Baseline now carries the
+enumeration AC-01 needs, and I could reproduce all of it. The two Medium findings are both
+one-clause edits that do not reopen anything — F-01 says where the non-id expected fields come
+from, F-02 adds two entries to a list. Neither needs another full round; folding them into the
+FSPEC-opening edit is proportionate. I want to be explicit that nothing here asks for the
+recognition predicate to return to §2, and nothing here contests the split.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
