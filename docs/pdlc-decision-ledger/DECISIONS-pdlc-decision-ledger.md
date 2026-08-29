@@ -283,6 +283,7 @@ a reader arriving from that table lands here without guessing.
 | PLAN | DEC-DECLEDGER-09's destructured `=== true` read is a task-level requirement; a dotted read reddens PROP-DIS-06, a property this feature does not own |
 | PROPERTIES | DEC-DECLEDGER-02 has no HEAD witness, so its two conjuncts — cardinality **and** the positive statement/`sourcePath`/`origin` equality against the project-level record — must both be asserted over a constructed two-file fixture (FSPEC O-5). Cardinality alone passes under the rejected direction |
 | PROPERTIES | DEC-DECLEDGER-13's assertion is built over the **whole** fixture at shipped defaults, with 41 ids and 6,305 transcribed as expected values, never captured from the renderer |
+| PROPERTIES | DEC-DECLEDGER-09 needs a **feature-owned** falsifier, not only the borrowed one. PROP-DIS-06's `toHaveLength(3)` count belongs to `pdlc-advisory-wave-gate`/`pdlc-learnings-injection`: if a later feature re-baselines that literal, a regression to a dotted read here stops reddening anything and the loss is silent. PROPERTIES must therefore carry a positive assertion over **this feature's own** source region (the `// === DECISION LEDGER WIRING START/END ===` run and the new function bodies, TSPEC §7.x's census slices) that the enablement flag is read destructured and compared `=== true`. PROP-DIS-06's count stays as a useful second line, never the primary one |
 | PROPERTIES | DEC-DECLEDGER-11 means the bounds property's model must use its **own** formatter; deriving the model from the production renderer makes the no-truncation conjunct unfalsifiable |
 | IMPL | DEC-DECLEDGER-14 means no test writes to a fixture file; corpus variation is scripted at the `_readFile` seam |
 
@@ -290,12 +291,12 @@ a reader arriving from that table lands here without guessing.
 
 | Decision | Revisit when |
 |---|---|
-| DEC-DECLEDGER-03, DEC-DECLEDGER-13 | The frozen fixture is re-captured, or `docs/_decisions/` passes ~44 promoted records — at which point the measured headroom is spent and the `maxBytes` default is re-decided, not the order |
+| DEC-DECLEDGER-03, DEC-DECLEDGER-13 | The frozen fixture is re-captured; or `docs/_decisions/` passes **70** promoted records, which is where `maxEntries` stops admitting the promoted set whole (the 11,300-byte allowance would reach roughly 73 records, so the entry cap fires first under C-5's shipped 12,500); or an operator lowers either threshold, which fires the omission order immediately. At those points the bound is re-decided, not the order |
 | DEC-DECLEDGER-04 | A harvest shows closed decisions being re-opened in *confirmation* rounds specifically; that is the only evidence that would justify paying the byte-identity cost of a wider surface |
 | DEC-DECLEDGER-06 | The first id recorded in two files at once appears at HEAD (`M-5a` currently records none) — precedence then acquires a live witness, and a uniqueness *report* becomes arguable, though a gate still is not |
 | DEC-DECLEDGER-08 | Any future feature earns an edit to `pdlc/engine/`, at which point `MODULE_NAMES` can grow and the one-file constraint — and the serial waves it costs — lifts for this code too |
 | DEC-DECLEDGER-10, DEC-DECLEDGER-12 | Either changes, and every byte figure in TSPEC §3.6 plus the erratum on the `maxBytes` default must be re-measured together, not one at a time |
-| DEC-DECLEDGER-15 | REQ C-5's type label is corrected upstream, closing the gap this decision currently spans |
+| DEC-DECLEDGER-15 | **Fired and closed:** REQ v1.8 retyped both C-5 thresholds as non-negative, so REQ C-5 and FSPEC E-7 now agree and this decision spans no gap. Revisit only if a future REQ re-narrows either threshold to positive integers, which would re-break E-7 |
 
 ### Risks accepted
 
