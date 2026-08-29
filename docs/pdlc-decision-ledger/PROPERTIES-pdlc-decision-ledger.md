@@ -818,22 +818,22 @@ Every task id is one of `PLAN`'s **24**.
 | BND | 12 | unit + `fast-check` property | T-07 | T-16 | `decisionLedgerBounds.test.js` |
 | FAIL | 11 | integration (seam-doubled) | T-08 | T-17 | `decisionLedgerInjector.test.js` |
 | PRE | 5 | integration (fixture corpus) | T-09 | T-17 | `decisionLedgerCorpus.test.js` |
-| INV | 10 | integration (recorded replay) + source census | T-10 (replay), T-11 (census) | T-18 | `decisionLedgerLoop.test.js` (PROP-INV-01…05), `decisionLedgerCensus.test.js` (PROP-INV-06…10) |
-| WIRE | 11 | integration (`main()` live) | T-10a | T-18 | `decisionLedgerMain.test.js` |
+| INV | 11 | integration (recorded replay) + source census | T-10 (replay), T-11 (census) | T-18 | `decisionLedgerLoop.test.js` (PROP-INV-01…05), `decisionLedgerCensus.test.js` (PROP-INV-06…11) |
+| WIRE | 12 | integration (`main()` live) | T-10a | T-18 | `decisionLedgerMain.test.js` |
 | OFF | 6 | recorded byte-identity | — (T-02 has **no** red predecessor: it captures the recording and guards it, `PLAN` §Red-before-green edges) | T-02 (batch 1, capture + guard); the byte comparisons consuming it are T-10 → T-18 and T-10a → T-18 | `decisionLedgerBaselineGuard.test.js` (ORC-04), `decisionLedgerLoop.test.js` (PROP-OFF-02…06), `decisionLedgerMain.test.js` (PROP-OFF-01) |
 | DISC | 10 | repo/document oracle + two batch-1 repo guards | T-12, T-12a; **no red predecessor** for T-00, T-00a, T-03, T-20 | T-19 (T-12, T-12a); **T-00a** batch 1 (PROP-DISC-07's exclusion half); **T-20** batch 10 (PROP-DISC-08); **T-00** batch 1 (PROP-DISC-09); **T-03** batch 1 (PROP-DISC-10) | `pdlc/engine/__tests__/decision-ledger-config-example.test.js`, `documentOracles.test.js`, `decisionLedgerPreflight.test.js`, `decisionLedgerFixtureGuard.test.js` |
 
 **Every module is claimed, and the claim is checkable in one place** — the manifest below, not
-assembled from prose. The count reconciles as a **partition**: 101 properties over 11 families,
-`10 + 11 + 9 + 6 + 12 + 11 + 5 + 10 + 11 + 6 + 10 = 101`, with no property counted twice and none
+assembled from prose. The count reconciles as a **partition**: 103 properties over 11 families,
+`10 + 11 + 9 + 6 + 12 + 11 + 5 + 11 + 12 + 6 + 10 = 103`, with no property counted twice and none
 outside a family.
 
 **Pyramid shape, restated as that same partition** (the `## Overview` sketch is the shape; this is
 the arithmetic): **36** pure-unit properties needing no seam (CFG 10 + REC 11 + REND 9 + TEXT 6) +
-**12** under the `fast-check` generator and its held examples (BND) + **37** integration properties
+**12** under the `fast-check` generator and its held examples (BND) + **39** integration properties
 across **three** seam boundaries — `_git`/`_readFile`, the recorded reviewer envelope, the live
-`main()` composition root — (FAIL 11 + PRE 5 + INV 10 + WIRE 11) + **6** recorded byte-identity
-(OFF) + **10** repo/document oracle (DISC) = **101**. **Zero** end-to-end; nothing here drives a
+`main()` composition root — (FAIL 11 + PRE 5 + INV 11 + WIRE 12) + **6** recorded byte-identity
+(OFF) + **10** repo/document oracle (DISC) = **103**. **Zero** end-to-end; nothing here drives a
 real model or a real network. The earlier "47 / 11 / 37" reading double-counted BND across the
 pure-unit and generator buckets and left OFF and DISC outside the level breakdown altogether.
 
@@ -856,10 +856,28 @@ claim rather than an assertion.
 | `decisionLedgerInjector.test.js` | T-08 (2) → T-17 (7) | PROP-FAIL-01…11 |
 | `decisionLedgerCorpus.test.js` | T-09 (2) → T-17 (7) | PROP-PRE-01…05; ORC-01, ORC-02, ORC-03 |
 | `decisionLedgerLoop.test.js` | T-10 (2) → T-18 (8) | PROP-INV-01…05, PROP-OFF-02…06; ORC-06 |
-| `decisionLedgerMain.test.js` | T-10a (2) → T-18 (8) | PROP-WIRE-01…11, PROP-OFF-01 |
-| `decisionLedgerCensus.test.js` | T-11 (2) → T-18 (8) | PROP-INV-06…10 |
+| `decisionLedgerMain.test.js` | T-10a (2) → T-18 (8) | PROP-WIRE-01…12, PROP-OFF-01 |
+| `decisionLedgerCensus.test.js` | T-11 (2) → T-18 (8) | PROP-INV-06…11 |
 | `documentOracles.test.js` (existing, shared) | T-00a (1, census exclusion) and T-12a (2) → T-19 (9) | PROP-DISC-05, PROP-DISC-07 |
 | `pdlc/engine/__tests__/decision-ledger-config-example.test.js` | T-12 (1) → T-19 (9) | PROP-DISC-01…04, PROP-DISC-06 |
+
+**`decisionLedgerCensus.test.js` also declares all three census operands.**
+`DECISION_LEDGER_CENSUS_TOKENS`, `DECISION_LEDGER_CENSUS_EXEMPT` and
+`DECISION_LEDGER_OWNED_DECLS` are top-level constants of that **test file**, not of
+`orchestrate-dev.js` (`TSPEC` §7.3, *Where the three census constants live*) — exactly as the
+precedent's `ANCHOR_TOKENS` is a constant of `loopEconomicsAnchorGuard.test.js` rather than of the
+module it scans. Two consequences are load-bearing for this manifest. First, PROP-INV-07's partition
+is **coherent only under that home**: none of the three is a module declaration, so none is a member
+of `DECISION_LEDGER_OWNED_DECLS`, and the union of the two sub-sets can equal the owned list exactly.
+Second, the module's **T-11 (2) → T-18 (8)** red→green pair no longer rests on T-18 writing a census
+constant into `orchestrate-dev.js` — at `TSPEC` v1.0 no census constant is production code. The pair
+rests on what T-18 does write: the sentinel-bounded `main()` wiring run and the owned declarations
+the earlier batches have not yet landed. T-11 is committed skipped in batch 2 and un-skipped by
+T-18 in batch 8 because PROP-INV-11's resolves-to-exactly-one and PROP-INV-08's non-empty-slice
+conjuncts read the owned list against HEAD and cannot be satisfied until every owned declaration
+exists — the ordinary red-before-green edge, not red-by-construction. `PLAN` v0.7 at HEAD states the
+opposite home in five places and a fifteen-member owned list; that divergence is upstream-vs-upstream
+and is routed as `ERRATUM: PLAN` in §Gaps, Risks and Routed Items, not resolved here.
 
 **T-20 owns no test module by design** (batch 10): it re-runs the two suites, regenerates
 `pdlc/workflows/dist/` and bumps `pdlc/.claude-plugin/plugin.json`, and is claimed by PROP-DISC-08.
@@ -902,8 +920,8 @@ constant**, where a fixture would only restate the constant.
 | **O-8** — bounds invariant is universally quantified | te-author | PROP-BND-01…04 under `fast-check`, with PROP-BND-07 forbidding renderer reuse |
 | **O-7** — empty-vs-failed needs a driver-internal observable | se-author (`TSPEC` §6.3) | **consumed**, not owed: PROP-FAIL-06 is the oracle that makes §6.3's fields load-bearing |
 | **O-4** — baseline identity and re-capture pinning | se-author (`TSPEC`) | **consumed**: ORC-04 pins `mergeBaseSha`; PROP-OFF-06 |
-| **DC-07** — composition-root wiring | `DECISIONS` | PROP-WIRE-01…11 via T-10a's live `main()` arm |
-| **BR-11 / NG-4** — no second source of decision text | `FSPEC`/`REQ` | **PROP-INV-06** — the source census, cloning `loopEconomicsAnchorGuard.test.js` — with PROP-INV-07 (token-set equality) and PROP-INV-08 (every slice non-empty) as its non-vacuity guards, and PROP-INV-01…04's behavioural residue as the compensating control (`TSPEC` §7.7). PROP-DISC-07 is a repo-hygiene count and discharges nothing here |
+| **DC-07** — composition-root wiring | `DECISIONS` | PROP-WIRE-01…12 via T-10a's live `main()` arm, whose conjunct-3 paired-run key-set delta is PROP-WIRE-12 |
+| **BR-11 / NG-4** — no second source of decision text | `FSPEC`/`REQ` | **PROP-INV-06** — the source census, cloning `loopEconomicsAnchorGuard.test.js` — with PROP-INV-07 (the partition `CENSUS_TOKENS` ∪ `CENSUS_EXEMPT` = `OWNED_DECLS`, disjoint), PROP-INV-11 (each owned member resolves to exactly one top-level declaration) and PROP-INV-08 (every slice non-empty) as its non-vacuity guards, and PROP-INV-01…04's behavioural residue as the compensating control (`TSPEC` §7.7). PROP-DISC-07 is a repo-hygiene count and discharges nothing here |
 
 The three obligations `FSPEC` §7 assigns to **te-author** — O-5, O-6, O-8 — are each discharged by a
 named fixture and a named property family above. That is this document's completion condition.
