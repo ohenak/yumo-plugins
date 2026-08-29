@@ -308,8 +308,12 @@ a reader arriving from that table lands here without guessing.
   author independently re-executed the project-level half at HEAD (41 distinct ids; 6,305 bytes
   under the DEC-DECLEDGER-10 line format, 6,306 counting a trailing newline on the final line).
 - **Serial implementation waves** (DEC-DECLEDGER-08), taken knowingly, as `DEC-LOOPECON-08` did.
-- **Two errata are open against upstream documents** and are the TSPEC's to carry
-  (`ERR-1`…`ERR-4`, §9.2); DEC-DECLEDGER-14 and DEC-DECLEDGER-15 are the design-side halves of two
-  of them. If the `maxBytes` default moves, no PLAN task changes shape — one literal in C-5's row,
-  the same literal in the parser default, and DEC-DECLEDGER-13's threshold follows it while the
-  transcribed 6,305 does not move.
+- **Two of the four errata TSPEC §9.2 carries are still open: `ERR-3` and `ERR-4`, both
+  FSPEC-owned.** DEC-DECLEDGER-14 is the design-side half of `ERR-3`. The other two are **closed**:
+  `ERR-1` (C-5's thresholds retyped positive → non-negative) and `ERR-2` (the `maxBytes` default
+  raised from an analogised 8,000 to a measured 12,500, Baseline `M-7c`) both landed in REQ v1.8, so
+  DEC-DECLEDGER-15 records a settled alignment rather than an open divergence. That raise has already
+  happened and cost no PLAN task its shape: it moved one literal in C-5's row and the same literal in
+  the parser default, DEC-DECLEDGER-13's threshold followed it, and the transcribed 6,305 did not
+  move. What it did move is every headroom figure in this document and in TSPEC §3.6, which is why
+  DEC-DECLEDGER-10/-12's trigger row insists those be re-measured together.
