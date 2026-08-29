@@ -285,7 +285,13 @@ Two suites carry this feature's tests, and both are already required checks:
 | Suite | Command | Gate check |
 |---|---|---|
 | `pdlc/workflows/__tests__/` (jest) | `cd pdlc/workflows && npm test`; coverage via `npm run test:coverage` | `Unit tests (ubuntu-latest, node 20)` |
-| `pdlc/engine/__tests__/` (`node:test`, 73 files at HEAD) | `cd pdlc/engine && npm ci && npm test` | `Engine tests (ubuntu-latest)` |
+| `pdlc/engine/__tests__/` (`node:test`, **64 `*.test.js` modules** at HEAD) | `cd pdlc/engine && npm ci && npm test` | `Engine tests (ubuntu-latest)` |
+
+The directory holds 73 *entries* — 64 test modules, 7 `_`-prefixed helper modules (`_run-suite.mjs`,
+`_bootstrap.mjs`, `_assert-suite-wide.mjs`, `_corpus.mjs`, `_doubles.mjs`, `_replay-double.mjs`,
+`_tspec-packed-set.mjs`) and 2 directories (`fixtures/`, `live/`). v0.1 said "73 files", which in a
+sentence about a test suite reads as a module count and is off by nine (TE F-08). No assertion in
+this PLAN transcribes the figure.
 
 Verified layout facts this PLAN relies on: `pdlc/workflows/package.json`'s jest
 `testPathIgnorePatterns` is `["/node_modules/", "/__tests__/helpers/", "/__tests__/fixtures/"]`, so
@@ -293,12 +299,44 @@ T-01's helper and T-02/T-03's fixtures — including `scenarios.mjs` — are nev
 and `pdlc/workflows/__tests__/fixtures/` already holds sibling fixture directories
 (`learnings-baseline/`, `loop-economics-baseline/`), so T-02 and T-03 add two more of a shipped kind.
 
-**The coverage gate is not evidence for this feature, and this PLAN does not lean on it.** The c8
-`include` list names `**/pdlc/workflows/orchestrate-dev.js` as a single file and the gate is
-`--check-coverage --per-file --branches 85`. Every symbol this feature adds lands in that ~817 KB
-file, so the new branches average into a ratio dominated by shipped code: TSPEC §6.1's fourteen
-failure rows could be entirely uncovered and the number would not move. The obligation is discharged
-by the explicit row-to-task mapping below instead.
+### The coverage gate — corrected (TE F-02)
+
+v0.1 said flatly *"the coverage gate is not evidence for this feature, and this PLAN does not lean on
+it."* The premise was right and the conclusion was wrong, because it was drawn from reading two of
+the gate's clauses. `pdlc/workflows/package.json`'s `test:coverage` has **four**:
+
+```
+c8 npm test -- --runInBand
+  && c8 report --reporter=json
+  && node scripts/check-wave-resume-delta-coverage.mjs
+  && c8 report --check-coverage --per-file --branches 85 --lines 0 --functions 0 --statements 0
+```
+
+**Clause 4 is genuinely not evidence here**, for the stated reason: the c8 `include` list names
+`**/pdlc/workflows/orchestrate-dev.js` as a single file, every symbol this feature adds lands in that
+~817 KB file, and the new branches average into a ratio dominated by shipped code — TSPEC §6.1's
+fourteen failure rows could be entirely uncovered and the per-file number would not move. That is
+why the row-to-task mapping below exists.
+
+**Clause 3 is the strictest evidence in the repository, and it already applies to this feature with
+no wiring required.** `pdlc/workflows/scripts/check-wave-resume-delta-coverage.mjs` is not
+wave-resume-specific despite its name; its own header calls itself the compensating control for
+exactly the largeness clause 4 cannot see through. Mechanically: `SUBJECT` is hard-coded to
+`pdlc/workflows/orchestrate-dev.js` — this feature's only production file; `resolveBase()` prefers
+the **live** `merge-base HEAD origin/main`, which on `feat-pdlc-decision-ledger` is this feature's own
+merge base; `introducedRanges()` takes the post-image hunk ranges of `git diff -U0 <base> HEAD --
+SUBJECT`, i.e. **the lines T-13…T-18 add**; and it exits 1 if **any** uncovered line falls inside
+them. It runs at every wave gate from batch 3 onward and inside the Definition of Done's own
+`npm run test:coverage` bullet.
+
+Two consequences, both absorbed: an uncovered-branch failure at batch 3 or batch 8 is a **designed
+check firing**, not a surprise; and **T-18 owns the outcome** (its row names the script, and the DoD
+carries an explicit bullet). T-18's `main()` wiring is the structurally-at-risk site — nothing
+executed it in v0.1, so its lines were uncovered by construction and this gate would have reddened
+them at batch 8; T-10a's live arm is what closes both that and TE F-03. T-17's per-path `try/catch`
+arms are the second risk site. Caveat carried into T-18's row: the script *warns* rather than fails
+when `orchestrate-dev.js` has uncommitted changes, since its ranges are HEAD line numbers while c8
+measured the working tree — **commit, then run**.
 
 ### Failure-row coverage — every row of TSPEC §6.1 has a named owner
 
