@@ -14,7 +14,23 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.3 | 2026-08-28 |
+| Draft | se-author | 0.4 | 2026-08-28 |
+
+**v0.4 — addresses TSPEC cross-review round 3** (`CROSS-REVIEW-product-manager-TSPEC-v3.md`,
+`CROSS-REVIEW-test-engineer-TSPEC-v3.md`). TE F-01 (High): §7.5 still carried the superseded
+sentence telling the implementer to build the property's model from the production line renderer,
+four lines above the paragraph proving that makes the no-truncation conjunct unfalsifiable; the
+clause is deleted and the own-formatter half kept. TE F-02 / PM F-01 (Medium, same proposition):
+D-10's shipped-default assertion ran over the project-level-only slice, where nothing is omitted
+under any drop order, so its `omitted[]` conjunct was vacuously true; §7.3 now builds over the
+**whole** fixture, where the byte bound binds, and asserts set equality of the 41 project-level ids
+plus a non-empty, origin-partitioned `omitted[]`. Lows: ERR-2 and §3.6 say **three** feature-level
+lines at the re-measured mean rather than two, and 12,059 is re-attributed to `M-6b`'s 63-line
+in-scope set rather than to `pdlc-headless-engine` alone (22 lines / 4,553 bytes); a blank line that
+split §9.1's decisions table before D-10 is removed. TE Q-01 is answered in §2.3 — the learnings and
+decision-ledger sentinel regions are matched by their own exact literals, so neither slicer sees the
+other. No section approved in an earlier round is otherwise touched, and ERR-1…ERR-4 stand
+unchanged.
 
 **v0.3 — addresses TSPEC cross-review round 2** (`CROSS-REVIEW-product-manager-TSPEC-v2.md`,
 `CROSS-REVIEW-test-engineer-TSPEC-v2.md`). TE F-01 (High): §7.4's clause (b) still specified the
@@ -1266,7 +1282,7 @@ what remains genuinely open.
 | **D-7** | The rendered citation is `[{sourcePath} § {id}]` (§4.3) | `[{sourcePath} § {heading}]`, which an earlier draft specified. The heading *is* the id plus the statement, so that form rendered every statement twice — 9,371 bytes against 6,305 for the project-level set, ~33% of the block spent on a duplicate. Path-plus-id resolves the record at its own source, which is all BR-3 and AT-02 require. `DecisionRecord.heading` is retained as the verbatim value expected results are transcribed from, but is not rendered |
 | **D-8** | `renderDecisionLedgerBlock` is the single producer of ledger bytes; `selectDecisions` calls it to obtain `renderedBytes` (§4.2) | Letting `selectDecisions` compute the size from its own concatenation. Two implementations of one format drift, and the drift is invisible in the worst direction — BR-12's bound enforced against a size the prompt does not have, with both functions individually looking right and every test green |
 | **D-9** | The framing constants are pinned to a ≤1,200-byte budget by a unit test (§4.3) | Leaving framing unmeasured. D-5 charges framing to `maxBytes`, so an unpinned framing size is an unmeasured quantity inside a measured budget, and §3.6's headroom arithmetic would be unfalsifiable prose |
-| **D-10** | §3.6's "the promoted corpus is admitted whole" is stated as a **measured, pinned** fact at the Baseline's commit, with an assertion at C-5's shipped defaults in §7.3's corpus oracle | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is ~495 bytes of headroom — about three more promoted decisions, in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision |
+| **D-10** | §3.6's "the promoted corpus is admitted whole" is stated as a **measured, pinned** fact at the Baseline's commit, with an assertion at C-5's shipped defaults in §7.3's corpus oracle | Stating it as a property of the mechanism. It is not one: the order *prioritises* project-level records but drops them once feature-level lines are exhausted, so what admits the promoted set whole is ~495 bytes of headroom — about three more promoted decisions, in a directory this pipeline itself grows. An unpinned "always" would expire silently with every test green, which is exactly the shape of claim §3.6 retired in the previous revision. **Building the assertion over the project-level-only slice is also rejected** (round 3): at 41 records against `maxEntries` 70 and 6,305 bytes against a 6,800-byte allowance nothing is omitted under *any* drop order, so the `omitted[]` conjunct would be vacuously true and could not falsify the re-ordering it exists to catch. The whole-fixture build costs the byte pin nothing — it is stated over the rendered project-level lines within that block — and buys a bound that actually binds |
 | **D-11** | AT-03's mutation is applied to the scripted `_readFile` double's returned text, not to the fixture copy FSPEC AT-03's Given names (§7.6) | Mutating the fixture file, as AT-03 literally says. §7.3's per-file digest guard makes the copy immutable and AT-01 requires it, so the two clauses are contradictory as written; mutating on disk also writes to the working tree, which §7.3 exists to prevent. The double's return preserves what AT-03 is *for* — re-gathering per dispatch, holding no snapshot (§2.6, BR-9) — and is a stronger falsifier, since it varies only the bytes the injector reads. Raised at the FSPEC as ERR-4 rather than left as an unexplained divergence |
 
 These are load-bearing and a future reader will otherwise reconsider them confidently:
