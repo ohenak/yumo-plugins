@@ -6,7 +6,7 @@ feature: pdlc-decision-ledger
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` (`REQ-pdlc-decision-ledger.md` v1.9 `sha256:ce6b133f…3c7b7c`, `FSPEC-pdlc-decision-ledger.md` v1.3 `sha256:2bd5c3ef…5aed39`, `TSPEC-pdlc-decision-ledger.md` **v0.8** `sha256:28d25518…32cb49`, `DECISIONS-pdlc-decision-ledger.md` `sha256:13aba061…4fb89a`) |
+| Upstream | `REQ → FSPEC → TSPEC → DECISIONS → **PLAN**` (`REQ-pdlc-decision-ledger.md` v1.9 `sha256:ce6b133f…3c7b7c`, `FSPEC-pdlc-decision-ledger.md` v1.3 `sha256:2bd5c3ef…5aed39`, `TSPEC-pdlc-decision-ledger.md` **v0.9** `sha256:eef45ef3…0623c8`, `DECISIONS-pdlc-decision-ledger.md` `sha256:13aba061…4fb89a`) |
 | Downstream | PROPERTIES, IMPL |
 | Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2**, cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-PLAN-v{N}.md` |
@@ -14,9 +14,25 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.5 | 2026-08-29 |
+| Draft | se-author | 0.6 | 2026-08-29 |
 
-Revision history: **v0.5** (operator pass) lands the erratum items the v0.4 delta confirmation
+Revision history: **v0.6** is a re-grounding pass on upstream movement, not a response to a new
+defect in v0.5's bytes: `TSPEC` advanced **v0.8 → v0.9** (approved, `sha256:eef45ef3…0623c8`) after
+the v0.5 pass, and v0.9 §7.3 rewrote the census contract T-11 compresses. Three consequences are
+landed here. (1) The header `TSPEC` pin is re-derived mechanically (`shasum -a 256`) to v0.9; the
+other three pins were re-measured in the same pass and are unchanged. (2) T-11's **scanned-source**
+operand moves from "source minus three brace-matched declarations plus the wiring run" — the
+hand-picked-three form v0.9 §7.3 diagnoses as red by construction, because `gatherDecisionCorpus`
+and §5.2's catalogues then occur in the remainder on conforming code — to the source minus the body
+of **every** member of the frozen `DECISION_LEDGER_OWNED_DECLS`, sliced the precedent's way, plus
+the sentinel-bounded wiring run. (3) T-11's **companion** assertion moves from set equality against
+the module's decision-ledger exports (also red by construction under §7.3) to the partition
+`DECISION_LEDGER_CENSUS_TOKENS` ∪ `DECISION_LEDGER_CENSUS_EXEMPT` = `DECISION_LEDGER_OWNED_DECLS`,
+the two sub-sets disjoint. Ownership of the two new frozen lists is stated explicitly (they are
+test-file constants of T-11's own `decisionLedgerCensus.test.js`, exactly as the precedent's
+`ANCHOR_TOKENS` is), and the §Definition of Done census bullet is corrected to the same contract.
+The six token members, the `decisionLedger`-is-not-a-token rationale and every batch, dependency
+and ownership assignment are unchanged by v0.9. **v0.5** (operator pass) lands the erratum items the v0.4 delta confirmation
 found unlanded, per POSTMORTEM-PR: the terminal `102` positive control is now explicitly owned by
 T-19 (T-00a's acceptance is one-sided and batch-1-evaluable, with a forward pointer; T-12a's
 disclaimer and the §Definition of Done bullet both name T-19); the `DECISIONS` upstream pin is
