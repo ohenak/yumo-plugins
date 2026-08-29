@@ -29,6 +29,48 @@ every batch matching the column, every ownership row resolving to a real task id
 
 ## Batches
 
+**The three new tasks parse, and they parse into the batches the prose claims.** I did not re-derive
+the batch column by hand this round — I ran the production parser over the document:
+
+```
+node -e "import {lintPlanArtifact, parsePlanTasks, parsePlanOwnership} from
+         'pdlc/workflows/orchestrate-dev.js' ..."
+  → lintPlanArtifact: ok=true, diagnostics=[]
+  → 24 tasks; T-00/b1 T-00a/b1 T-01/b1 T-02/b1 T-03/b1 T-12/b1
+    T-12a/b2[T-00 T-00a] T-04/b2 T-05/b2 T-06/b2 T-07/b2 T-08/b2 T-09/b2
+    T-10/b2 T-10a/b2[T-01 T-02 T-03] T-11/b2
+    T-13/b3 T-14/b4 T-15/b5 T-16/b6 T-17/b7 T-18/b8[T-10 T-10a T-11 T-17]
+    T-19/b9[T-12 T-12a T-18] T-20/b10
+  → parsePlanOwnership: 24 rows, 0 owner ids absent from the task table,
+    0 task ids absent from the manifest
+```
+
+Every declared `Batch` equals `max(dep batch) + 1`; the graph is acyclic; ids are unique; every
+dependency resolves. `T-00a` (batch 1) and `T-12a`/`T-10a` (batch 2) shift no other row, exactly as
+§Batch column re-derivation states.
+
+**Same-batch same-file check, re-run over the new shape.** `documentOracles.test.js` now has three
+owners — T-00a (1), T-12a (2), T-19 (9) — in three distinct batches, serialised by the real edges
+T-00a → T-12a → T-19. No batch contains two writers of any file. Batch 1's other five tasks write
+pairwise-disjoint new paths.
+
+**PM F-01's manifest reshape is genuinely fixed, not just described.** v0.1's owner cells carried
+parentheticals and comma lists that `parsePlanOwnership` would have read as unknown task ids; v0.2's
+every row carries one bare id with the batch in its own column, and the parser confirms it. The two
+`ownership-near-miss` entries the parser reports are the two coverage tables (`| Row | Scenario |
+Owning task |` and `| AT | Owning task | Level |`); they are inert, because
+`orchestrate-dev.js:6323-6326` only converts near-misses into diagnostics when the ownership
+manifest itself failed to parse, and it did not. `lintPlanArtifact` returning `ok: true` is the
+proof.
+
+**Red-before-green, re-checked over the changed rows.** T-10a and T-12a are both `[red]`, both
+committed skipped with blocks titled by the id of the green that un-skips them (T-18, T-19), and
+both appear in the red-before-green table. T-19's `documentOracles.test.js` entry — the orphan that
+was my v1 F-04 — now has T-12a as its red half. T-00a is the one green-at-both-ends row, and it is
+labelled as such rather than smuggled in as a green with no red: its own positive control (count
+still `102`) is the falsifier, and a mistyped prefix would push the count to 105 and red it. That is
+an honest treatment.
+
 ## Dependencies
 
 ## Verification
