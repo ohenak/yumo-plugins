@@ -430,7 +430,12 @@ pathspec order, then `git ls-files`' own ordering within a pathspec, then file o
 order was *inert* under shipped defaults, because `maxEntries` 70 clears `M-6b`'s floor of 63. Both
 TSPEC reviewers falsified that claim by executing the rule and measuring the bytes, and I have
 re-executed it and reproduce their figures exactly. The `maxEntries` half of the argument is sound;
-the claim was wrong because **`maxBytes` binds first in every case**, and D-5 charges framing to it.
+the claim was wrong because, **at the `8000` default then current**, `maxBytes` bound first in
+every case — D-5 charges framing to it, and 8,000 less ≤1,200 of framing left under 6,800 bytes for
+lines, below the project-level set alone. That conclusion is retired with the default it was
+computed against: at REQ C-5's resolved **`12500`** neither bound fires on a G-1-scoped dispatch at
+the Baseline commit (below), and over §7.3's deliberately over-sized 141-record fixture both bounds
+are exceeded from the outset, with the byte bound setting the terminal survivor count.
 
 Measured over the corpus at the Baseline's `Verified at` commit `8c673a09f`, index lines only
 (framing excluded), under the two candidate line formats — the long form an earlier draft of §4.3
@@ -485,7 +490,17 @@ carries an assertion over the **whole** frozen fixture — 141 records, delibera
 G-1-scoped dispatch, so that a bound binds and the drop loop runs — at C-5's *shipped* defaults:
 that the rendered project-level ids are the fixture's 41 entire, that their
 6,305 bytes fit within `maxBytes − 1200`, and that the non-empty `omitted[]` names no project-level
-id, with both the 41 ids and 6,305 transcribed as the expected values. It reddens when the promise stops being true — at the
+id, with both the 41 ids and 6,305 transcribed as the expected values.
+
+It carries a **second** assertion, and that one is what pins this section's own sentence. The
+whole-fixture assertion above watches the ~4,995-byte project-level headroom; the claim *no line is
+omitted on any real dispatch at the Baseline commit* rests on a different and much smaller quantity —
+`M-6b`'s **441** bytes (12,059 against 12,500) — which no assertion over the 141-record fixture can
+reach. So §7.3 also builds over the **`M-6b` slice** — the project-level set plus
+`pdlc-headless-engine`, the 63-record worst standing G-1-scoped case — at the same shipped defaults,
+and pins `omitted[]` **empty**, the block's total size at the transcribed **12,059** bytes, and
+`12,059 ≤ 12,500`. Without it the margin this paragraph is about could be consumed by corpus growth
+with every test still green. Both assertions redden at the
 deliberate moment the fixture is re-captured, which is the right moment to re-decide ERR-2's
 default — instead of expiring silently. This is the same discipline §4.3 applies to the framing half
 of the identical arithmetic (D-9), applied to the corpus half (D-10). The order itself is load-bearing
