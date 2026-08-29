@@ -10,7 +10,24 @@
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | te-author | 1.0 | 2026-08-29 |
+| Draft | te-author | 1.1 | 2026-08-29 |
+
+**v1.1 — cross-review round 1** (`CROSS-REVIEW-product-manager-PROPERTIES-v1.md`,
+`CROSS-REVIEW-software-engineer-PROPERTIES-v1.md`). Traceability and falsifiability repairs only; no
+property was re-derived, no fixture or byte literal moved, and no acceptance criterion narrowed.
+(1) §Coverage Matrix's AT map re-attributed so each row names the property that **states** its
+criterion — PROP-BND-10 → AT-15, PROP-INV-04 → AT-17, PROP-REND-03/PROP-FAIL-05 → AT-02,
+PROP-OFF-06 → AT-14, PROP-REC-09…11's level split spelled out on AT-01 (PM F-01, PM F-06, PM Q-01).
+(2) `BR-11`/`NG-4` re-pointed from PROP-DISC-07 to PROP-INV-06…08 (PM F-02). (3) `PLAN` T-00a and
+T-20 traced: PROP-DISC-07's batch-1 exclusion half is T-00a's, its terminal count T-12a → T-19, and
+PROP-DISC-08 is T-20's (PM F-03, SE F-01, SE F-02). (4) The pyramid restated as a partition
+`36 + 12 + 37 + 6 + 10 = 101` (PM F-04, SE F-04). (5) A module manifest table added, and the two
+modules that carried no property id given PROP-DISC-09 and PROP-DISC-10; INV's census module and
+OFF's red/green columns reconciled with `PLAN` (SE F-03, PM Q-03). (6) PROP-BND-07 promoted from
+prose to a numbered conjunct row, BND re-counted at 12, and the three BND ranges reconciled on one
+surface (SE F-05, SE F-08). (7) PROP-CFG-06 given its positive return conjunct (SE F-06). (8) `TSPEC`
+§6.1 F-14 cited on FAIL's `Traces` (PM F-05); PROP-DIS-06's provenance stated (SE F-07); ORC-04 (b)
+now requires a resolved sha (PM Q-02).
 
 ## Overview
 
