@@ -17,7 +17,16 @@ depends-on:
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.8 | 2026-08-28 |
+| Draft | pm-author | 1.9 | 2026-08-28 |
+
+**v1.9 erratum — the two stale Baseline pins in the body, and nothing else.** The header pinned
+Baseline **v1.2** at v1.8, but §1 and §5 REQ-DECLEDGER-01 still read `v1.1`, so the REQ
+disagreed with its own pin and the `M-7b`/`M-7c` ids C-5's default rests on did not resolve at
+the cited version. Both now read `v1.2`. No measured value moves: v1.2 records `M-1`…`M-6` at
+the same `Verified at` commit as v1.1 (`M-7e`), so `M-1d`/`M-2e` and the enumeration
+REQ-DECLEDGER-01 transcribes are unchanged. Items raised against TSPEC §3.6/§7.3 and DECISIONS
+D-10 (the retired 8,000-based arithmetic and their own Baseline pins) are se-author's documents
+and are routed there, not restated here.
 
 **v1.8 erratum — C-5's two thresholds, and nothing else.** Both are retyped **non-negative**:
 *positive* rejected `0`, which FSPEC E-7 requires as a valid admits-nothing `maxEntries`, and fell
@@ -81,7 +90,7 @@ what was decided rather than what was asked. The **measured extent** of the set 
 contribute records and how many, which contribute none and why, the one id block opened twice and
 which of its two openings decides, and the fact that no id is recorded in two files — is taken
 once against a named commit and recorded as `M-1`…`M-6` in the Baseline
-(`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.1), cited here by id and not restated.
+(`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.2), cited here by id and not restated.
 The **recognition rule** that produces that set on any other corpus — carrier markup, id grammar,
 the dedupe key, cross-file precedence — is TSPEC's (O-1). This division is deliberate: a
 recognition rule over a live, growing corpus is not requirements material (pm-author altitude
@@ -193,7 +202,7 @@ and no other required field. The check is **equality of the rendered line
 set — not containment, and not equality over ids alone**: the runs agree only where each line's
 id, statement and citation all agree. Ids alone are blind to `M-3c`'s twice-opened
 block, where both openings carry one id and only the second states what was decided. The expected value is the Baseline's
-**enumeration**, cited by id — `M-1d` project-level, `M-2e` per feature directory, at v1.1's
+**enumeration**, cited by id — `M-1d` project-level, `M-2e` per feature directory, at v1.2's
 `Verified at` commit — transcribed, not re-derived from a predicate here. It is asserted against
 a **frozen fixture copy** of that corpus, never the live repository, which grows — on this
 branch included — and would otherwise drift the test on unrelated decisions (O-6). Membership on any other corpus follows
