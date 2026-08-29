@@ -129,6 +129,43 @@ of them. (b) preserves more of BR-11's falsifying power and is the smaller edit 
 
 ## Test Strategy
 
+### Item-by-item
+
+| Routed item | Landed | Evidence and verdict on the form |
+|---|---|---|
+| 1 & 3 — §7's coverage-gate claim omitted the delta-coverage clause (te-review, se-author) | **Yes, and in the better form** | TSPEC:989–1017. The old sentence is not softened, it is *bounded*: the percentage clause is still declared not-evidence, and the reason is stated numerically (one file, ~817 KB, fourteen rows could be uncovered without moving the ratio). Then the third clause is introduced as the evidence that *is* live, with `SUBJECT`, `resolveBase()`, the JSON-report read and the exit-1 condition each stated as the script implements them. The closing sentence is the one that matters — "the percentage clause is insensitive to this feature, and the delta clause is sensitive to nothing else in it" — because it converts two facts that look contradictory into a single coherent coverage story. Every claim in the paragraph checks out against the script (see **Interfaces**) |
+| 1 & 3, consequences | **Yes** | The three bullets at TSPEC:1010–1017 are the operationally load-bearing half: fail-closed set enumerated (and correctly limited to the two genuinely broken readings), non-membership in `implementation.testCommand` with PLAN T-18 named as the owner of the per-wave manual run, and the commit-before-running rule with the reason (HEAD line numbers vs working-tree measurement). I checked the third against the script's `dirty` branch: it warns and continues, exactly as described. A spec that had only said "the delta gate covers us" would have left all three to discovery at batch 8 |
+| 2 — no live composition-root arm (se-author, DC-07) | **Yes, in the exact form DC-07 requires** | TSPEC:1060 adds the category row; TSPEC:1066–1090 states the obligation. The rationale is the correct one and is stated as a falsifier list, not an assertion: a transposed argument, a seam under the wrong key, an un-`await`ed injector, or a wiring block placed after the last `reviewerPrompt` call each leave the census green and the feature dead. The three conjuncts are the shape my lens asks for — (1) a **call-count spy** on the scripted `_git` seam asserting `gatherDecisionCorpus`'s listing call fires **≥ 1** on the served flow, with the note that a fake of the outer interface cannot satisfy it (this is DC-07's runtime oracle, not a restatement of it); (2) **positive presence** — the prompt actually handed to a dispatch *ends with* the rendered block, explicitly not "differs from baseline"; (3) flag-off proved by **three positive conjuncts** against §7.4's committed recording as an independent referent, with `report` key set and notice set both asserted by **set equality** rather than by absence. There is no absence-only oracle anywhere in the arm. PLAN T-10a is named as owner and exists in PLAN v0.3 (:112) in the same shape |
+| 4 — §7.5 owed two more properties (se-author) | **Yes** | TSPEC:1388–1425. `P-REC` quantifies §3.2's five conjuncts, the verbatim-substring claim and §3.3's last-wins resolution over arbitrary text, with a generator description that actually reaches the near-misses (wrong ATX depth, missing separator, empty statement, duplicate ids at varying distance, carrier markup mid-line) and **one falsifying mutation per conjunct**. `P-LINE` quantifies §4.3's one-physical-line-per-decision claim and — this is the part that makes it worth having — states *why* it is load-bearing: §7.3's "63 index lines joined by `\n` = 10,859 bytes" silently assumes 63 *physical* lines, so a statement carrying a newline moves both the count and the byte total with every test green. That is a real false-green channel closed. Both properties inherit O-8's independent-model discipline and cost no new seam or double |
+| 5 — `decisionLedger` census token unsatisfiable (se-author) | **Yes for the token; the reasoning was not swept across its siblings** | TSPEC:1245–1260 drops the token and, better, writes down *why* — the `learningsInjectionField` analogue's six `buildFinalReport` sites sit outside the wiring sentinels, so conforming code would red the census. It also rejects the tempting alternative (carving out `buildFinalReport`) with the right reason: that carve-out blinds a far larger surface than the field name is worth. And it re-homes the field's obligation behaviourally onto §7.2's live arm and §7.6's AT rows rather than dropping it. My only objection is scope of application — see **Data Model**, F-01/F-02 |
+
+### The obligation table, checked rather than skimmed
+
+§7's `F-1…F-14` mapping (TSPEC:1023–1029) is the substitute the spec offers for a percentage floor,
+so I checked it is total rather than illustrative: §6.1 carries fourteen rows, `F-14` is the
+no-directory / zero-record row at :935, and the mapping names a test for each. It is checkable by
+inspection and each named home exists in PLAN v0.3. The new closing sentence — the delta clause is
+the *mechanical backstop* for this table, since a missing row's test leaves an uncovered line inside
+the introduced ranges — is the honest statement of how the two evidences compose, and it is the
+first time this spec has had a mechanical enforcer for a mapping it previously enforced by review.
+
+### One measured figure is stale
+
+The same paragraph says the per-file ratio is "dominated by ~17k lines of shipped code".
+`orchestrate-dev.js` is **18,509** lines at HEAD. The argument is unaffected — at 18.5k the
+denominator is larger and the blindness worse — but this spec's discipline elsewhere is that
+measured figures are transcribed, not remembered, and the sibling figure in the same sentence
+(~817 KB) is exact (836,091 bytes). Low, F-04.
+
+### One downstream consequence of the fix
+
+Dropping `decisionLedger` from the token set makes TSPEC §7.3 and **PLAN v0.3 T-11** disagree:
+T-11 (PLAN:113) still transcribes the seven-member set including `decisionLedger`. The PLAN is
+downstream of this document and the literal is hand-transcribed there, so unless it is re-pinned the
+implementer writes the set the TSPEC just proved unsatisfiable. Filed Medium (F-03) as a delta
+consequence rather than a PLAN review finding, because the erratum edit is what orphaned it.
+Whoever fixes F-01/F-02 should re-pin T-11 in the same pass, since the token set will move again.
+
 ## Open Questions
 
 ## Positive Observations
