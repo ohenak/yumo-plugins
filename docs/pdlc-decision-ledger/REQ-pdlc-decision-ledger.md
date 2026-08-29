@@ -10,24 +10,25 @@ depends-on:
 |---|---|
 | Upstream | **REQ** (root) — proposal source: `docs/design/PROPOSAL-pdlc-pipeline-optimization-2026-08-27.html` §0 Move M4, §3 R3-2 |
 | Downstream | FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5}.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5,6}.md` |
 | Post-Mortem | `POSTMORTEM-R-pdlc-decision-ledger.md` (Phase R round budget exhausted; this version applies its Recommendation) |
-| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.0** — the measured extent of the closed-decision corpus, cited by `M-*` id |
+| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.1** — the measured extent of the closed-decision corpus, cited by `M-*` id |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.6 | 2026-08-28 |
+| Draft | pm-author | 1.7 | 2026-08-28 |
 
-**v1.6 disposition — corpus facts routed, not re-argued.** Per the post-mortem's Recommendation 1
-form (a) and the 5g split trigger, the corpus-recognition rule is removed from §2 G-1 and the
-measurements it carried are relocated — not deleted — to the Baseline above. The five findings
-open at round 5 are dispositioned as **routed** there, not as five further in-place clauses:
-TE F-23 (last-record-wins on the twice-opened block) → M-3a–M-3d; TE F-24 and its Q-02
-(cross-file tie-break) → M-5a–M-5c; TE F-25 (feature-leg directory unpinned) → M-2a; SE F-01
-(second `DECISIONS-*.md` in a feature directory, and the floor that follows) → M-2c and M-6b.
-SE F-02 (the cross-file leg has no HEAD instance) is not a REQ defect and is carried forward as a
-PROPERTIES obligation, O-5. Findings are not restated here; see the cross-review files.
+**v1.7 disposition — the Baseline gained the enumeration §5 needed.** Round 6's one High (SE
+F-01, with TE F-26) was that AC-01 asserted set equality against ids the Baseline *counted* but
+never *listed*. It is fixed in the substrate this REQ owns rather than by another clause here:
+Baseline v1.1 adds `M-1d` (the 41 project-level ids) and `M-2e` (the 100 feature-level ids per
+directory), and AC-01 transcribes them. SE F-02 (id-only equality is blind to `M-3c`) widens the
+check to the whole rendered line; SE F-03 (the pinned corpus is live and moves on this branch) is
+decided — a frozen fixture copy, not the live repository; TE F-27 names the directory-glob reading
+as governing membership (O-1); TE F-28 adds O-6. SE F-04 and TE F-29 were Baseline-side and landed
+in v1.1. No recognition rule returns to §2. Findings are not restated here; see the cross-review
+files.
 
 ## 1. Problem / Context
 
@@ -77,7 +78,7 @@ what was decided rather than what was asked. The **measured extent** of the set 
 contribute records and how many, which contribute none and why, the one id block opened twice and
 which of its two openings decides, and the fact that no id is recorded in two files — is taken
 once against a named commit and recorded as `M-1`…`M-6` in the Baseline
-(`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.0), cited here by id and not restated.
+(`docs/_constraints/pdlc-decision-corpus-baseline.md` v1.1), cited here by id and not restated.
 The **recognition rule** that produces that set on any other corpus — carrier markup, id grammar,
 the dedupe key, cross-file precedence — is TSPEC's (O-1). This division is deliberate: a
 recognition rule over a live, growing corpus is not requirements material (pm-author altitude
