@@ -14,7 +14,9 @@ feature: pdlc-decision-ledger
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | se-author | 0.6 | 2026-08-29 |
+| Draft | se-author | 0.7 | 2026-08-29 |
+
+Revision history: **v0.7** closes the one item the v6 round left open, raised by both reviewers about the same clause — PM F-01 (Medium) and TE F-01 (High): v0.6 never said **where** `DECISION_LEDGER_CENSUS_TOKENS` is declared, and the surrounding cues pointed opposite ways (the row opens by cloning the precedent's *test-file* `ANCHOR_TOKENS`, while the partition places `CENSUS_TOKENS` inside `DECISION_LEDGER_OWNED_DECLS`, which §7.3 requires to resolve to a top-level declaration of `orchestrate-dev.js`). The design's intent is production, and the PLAN already carried it — T-18's three-word fragment “Add `DECISION_LEDGER_CENSUS_TOKENS`.” in the row whose source file is `orchestrate-dev.js` — but it named no home and completed no sentence, so TE read the member as homeless and the partition as red by construction. Four sites now say it once and identically: T-11 (the constant is production, written by T-18; the resolves-to-one and non-empty-slice conjuncts are satisfied at T-18's landing, the ordinary red-before-green edge on a `[red]` row T-18 un-skips), T-18 (the fragment completed to a full instruction with its §7.3 rationale), the file-ownership manifest (T-11's row disclaims the third operand; T-18's `orchestrate-dev.js` row claims it) and the §Definition of Done census bullet. **No count moved**: six ∪ nine = fifteen stands, the six token members stand, and no batch, dependency or ownership assignment changed. TE's proposed alternative — dropping the member and restating the partition as six ∪ eight = fourteen — is the **rejected** resolution: it would put the PLAN out of contract with the upstream it just re-pinned, and it would void §7.3's reason for the exclusion, since a production `CENSUS_TOKENS` whose declaration were *not* sliced out would red the census on its own six literals. The residual upstream gap — TSPEC specifies the constant in §7.3 only, in no module-surface section (§3/§4/§5) — is routed as `ERRATUM: TSPEC` rather than decided here.
 
 Revision history: **v0.6** is a re-grounding pass on upstream movement, not a response to a new
 defect in v0.5's bytes: `TSPEC` advanced **v0.8 → v0.9** (approved, `sha256:eef45ef3…0623c8`) after
@@ -487,7 +489,11 @@ required not to:
       the sentinel-bounded wiring run, and its companion assertion is the partition
       `DECISION_LEDGER_CENSUS_TOKENS` (**six** members) ∪ `DECISION_LEDGER_CENSUS_EXEMPT` (**nine**)
       = `DECISION_LEDGER_OWNED_DECLS` (**fifteen**), the two sub-sets disjoint, with each owned member
-      resolving to exactly one top-level declaration at HEAD (TSPEC v0.9 §7.3). Set equality against
+      resolving to exactly one top-level declaration at HEAD (TSPEC v0.9 §7.3). All fifteen owned
+      members are declarations in `orchestrate-dev.js` written by a `[green]` task of batches 3–8;
+      `DECISION_LEDGER_CENSUS_EXEMPT` and `DECISION_LEDGER_OWNED_DECLS` are test-file constants of
+      `decisionLedgerCensus.test.js`, but `DECISION_LEDGER_CENSUS_TOKENS` is **production**, declared
+      by T-18 — which is what makes its slice non-empty and its resolves-to-one conjunct satisfiable. Set equality against
       all of the module's decision-ledger exports is the rejected form — §7.3 names it red by
       construction. `decisionLedger` is **not** a token (TSPEC v0.9 §7.3: the report field is
       threaded through `buildFinalReport` outside `main()`, so the token is unsatisfiable, and being
