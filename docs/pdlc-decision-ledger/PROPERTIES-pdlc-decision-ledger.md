@@ -577,6 +577,180 @@ a claim this document cannot support and would break on unrelated driver work.
 
 ## Fixtures
 
+Five fixtures. Two are copies of real data (FX-CORPUS, FX-BASELINE); three are **constructed**,
+because the behaviour they cover has **no instance at HEAD** and therefore cannot be covered by
+transcribing anything that exists. That is precisely what `REQ` O-5 and O-6 record, and building
+them is this document's principal deliverable.
+
+**One rule governs all five:** no test may read the live `docs/` tree, and no test may write to the
+working tree or to a fixture file. Every fixture is addressed through the `_git` and `_readFile`
+doubles (`PLAN` T-01, `helpers/decisionLedgerDoubles.js`), never by a real filesystem path.
+
+### FX-CORPUS — the frozen corpus copy
+
+**Owner:** T-03 (build + guard), consumed by T-09 → T-17.
+**Path:** `pdlc/workflows/__tests__/fixtures/decision-corpus/`.
+**Discharges:** O-6's frozen-copy leg. **Feeds:** ORC-01, ORC-02, ORC-03, PROP-REC-*, PROP-PRE-*.
+
+A **path-preserving** copy of the **25** in-scope `DECISIONS-*.md` files at Baseline v1.2's
+`Verified at` commit **`8c673a09f`**, holding **141** records (41 project-level, 100 feature-level).
+
+**Why frozen and not live, with this branch as the witness.** `docs/pdlc-decision-ledger/` is
+growing while the feature is built, and this feature's own DECISIONS document has already been added
+to it: the same four pathspecs that yield **25** files at `8c673a09f` yield **26** at HEAD today,
+the addition being `docs/pdlc-decision-ledger/DECISIONS-pdlc-decision-ledger.md`. A test reading the
+live tree reddens the moment any feature records a decision. It is the same class of failure as the
+`coveredViolations` whole-tree walk `CLAUDE.md` records — a live filesystem read turns an unrelated
+file into a test failure.
+
+**Integrity guard** (T-03), two conjuncts:
+
+1. A **per-file digest literal hand-transcribed into the test**, never recomputed and never read
+   from a manifest — a re-capture rewrites a manifest in lockstep with the thing it would be
+   checking.
+2. The fixture's path set asserted by **set equality** against a hand-transcribed **25**-path
+   literal, so both a missing and a spuriously-added file fail.
+
+**The path literal must carry all four of `DECISION_CORPUS_ARGV`'s pathspecs.** A three-alternative
+transcription that omits `docs/discarded/*/DECISIONS-*.md` yields **24**, not 25 — the missing file
+being `docs/discarded/pdlc-rcv-budget-stop/DECISIONS-pdlc-rcv-budget-stop.md`, which contributes 4
+`DEC-BUD-*` records. This is verified by enumeration, not assumed.
+
+**Pinned cases inside FX-CORPUS**, each named so a later reader knows what the copy is *for*:
+
+| Case | Instance | Property it discriminates |
+|---|---|---|
+| Twice-opened id | `M-3a`/`M-3c` — `DECISIONS-pdlc-engineering-loop.md`, 13 records over 7 distinct ids, `DEC-LOOP-01`…`06` each opening twice | PROP-REC-08 (last-wins; the verbatim second-opening heading is the pinned literal) |
+| Mixed file | `M-4d` — `DECISIONS-pdlc-advisory-wave-gate.md`, 4 records alongside 8 non-record headings | PROP-REC-05, PROP-REC-06 (E-9) |
+| Namespace-less ids | `M-4b` — `DECISIONS-pdlc-plugin-retirement.md`, twelve `DEC-01`…`DEC-10` headings, contributing **0** | PROP-REC-04, PROP-FAIL-11 |
+| Ordinal-prefixed records | `DECISIONS-pdlc-engine-distribution.md` (`## 2. DEC-EDIST-01: …`), `DECISIONS-pdlc-consolidation-agent.md` (`## 3. DEC-CONS-01: …`) | PROP-REC-03 — without it the feature-level total is 82, not 100 |
+| Two-file feature directory | `pdlc-headless-engine` — `DECISIONS-pdlc-headless-engine.md` (14) + `DECISIONS-headless-engine-obligations.md` (8) = 22 | the directory-glob reading, and ORC-03 Part B's `M-6b` slice |
+| Empty-result files | `M-4a` (bullets with no id), `M-4b` (namespace-less headings) | PROP-FAIL-08, PROP-REC-10 — two standing files take the ordinary-empty path |
+
+### FX-PRECEDENCE — the synthetic two-file corpus (O-5)
+
+**Owner:** T-09 → T-17. **Constructed — no HEAD instance.**
+**Discharges:** `REQ` O-5 / `FSPEC` O-5 in full. **Feeds:** PROP-PRE-01…05, `FSPEC` AT-18.
+
+`M-5a` records **zero** ids held as records in two files anywhere at HEAD, and `M-5b` draws the
+consequence: cross-file precedence is exercisable **only** over a constructed corpus. `M-5c` names
+the intent — a decision promoted to project level renders in its promoted form.
+
+**Shape.** Two files, both in scope for one dispatch:
+
+| File | Role | Content |
+|---|---|---|
+| `docs/_decisions/DECISIONS-fx-precedence.md` | project-level | `## DEC-FXP-01: {project statement}` — the record that must win |
+| `docs/fx-precedence-feature/DECISIONS-fx-precedence-feature.md` | feature-level | `### DEC-FXP-01: {feature statement}` — the record that must lose, **plus at least two non-colliding records** |
+
+**Three construction constraints, each earning its place:**
+
+1. **The two statements must be textually distinct and neither a substring of the other**, so
+   PROP-PRE-03's absence check discriminates. Two statements sharing a prefix would let a
+   substring assertion pass on the wrong record.
+2. **The feature file must carry non-colliding records too**, so PROP-PRE-04's "every other line is
+   unchanged" is asserted over a **non-empty** remainder rather than vacuously over one line.
+3. **The fixture must be renderable under both file enumeration orders**, so PROP-PRE-05 can assert
+   byte-identity across a reversed enumeration — the conjunct proving precedence keys on `origin`
+   and not on path order. `M-5c` warns that a path-ordering tie-break is not well-defined without
+   naming a collation, and `_` (`0x5F`) inverts under case-folded collation.
+
+**Expected values are transcribed from the fixture's own text**, hand-written into the test, never
+captured from the renderer — the same anti-echo rule ORC-01 carries.
+
+### FX-FAILOPEN — the constructed degradation corpora (O-6)
+
+**Owner:** T-08 → T-17. **Constructed — no HEAD instance for E-2, E-3 or E-4.**
+**Discharges:** `REQ` O-6's fail-open leg. **Feeds:** PROP-FAIL-01…11.
+
+`M-4e` records that an empty file and a failure to read are **separable only by construction**, so
+each leg below is a scripted seam configuration rather than a data file:
+
+| Corpus | Scripted seams | Expected leg | Property |
+|---|---|---|---|
+| `FX-FO-UNLISTABLE-A` | `_git` returns `{ok: false}` | total; `corpusOutcome: "RSN-UNLISTABLE"` | PROP-FAIL-02, -09 |
+| `FX-FO-UNLISTABLE-B` | `_git` **throws** | total; same outcome | PROP-FAIL-02, -09 |
+| `FX-FO-ZEROPATHS` | `_git` returns `{ok: true}`, zero paths | total; `corpusOutcome: "RSN-EMPTY"` | PROP-FAIL-09 |
+| `FX-FO-ALLFAIL` | every path's `_readFile` fails | total | PROP-FAIL-01, -02 |
+| `FX-FO-NORECOGNISE` | every path reads fine, **no** line qualifies | total, reached by a **different cause** | PROP-FAIL-01 |
+| `FX-FO-ONE-NULL` | one path's `_readFile` returns **`null`**, others survive | partial; that path in `failedSources` | PROP-FAIL-04, -10 |
+| `FX-FO-ONE-THROWS` | one path's `_readFile` **throws**, others survive | partial; identical outcome to the `null` arm | PROP-FAIL-04, -10 |
+| `FX-FO-WHOLE-SOURCE` | one whole source unavailable, others survive | partial — **one** outcome with the two above, not three | PROP-FAIL-04 |
+| `FX-FO-EMPTY-PLUS` | one source reads to **zero records**, others survive | ordinary render of the survivors | PROP-FAIL-06, -08 |
+| `FX-FO-EMPTY-ONLY` | the **only** source reads to zero records | bytes are E-6's; `failedSources: []`, `emptySources: [that path]` | PROP-FAIL-06 |
+| `FX-FO-NO-FEATURE-DIR` | feature has no directory among the three globs | project-level set alone | PROP-FAIL-11 |
+| `FX-FO-ZERO-FEATURE` | feature directory yields zero records (`pdlc-plugin-retirement`) | project-level set alone | PROP-FAIL-11 |
+
+**The two corpora that matter most are `FX-FO-EMPTY-ONLY` and `FX-FO-ALLFAIL`.** Their **dispatch
+bytes are identical**, so no prompt-level assertion can tell them apart; PROP-FAIL-06's
+`failedSources`/`emptySources` split is the only oracle that can, and it is the whole reason
+`TSPEC` §6.3 exposes those fields. Reverse the classification in the implementation and the bytes do
+not move while PROP-FAIL-06 fails — which is exactly the falsifiability O-7 asked for.
+
+**Both read-failure shapes must be scripted, not one.** The runtime read **throws** where the test
+double returns **`null`**; a suite exercising only one arm proves nothing about the other, and the
+two produce the same `readOk: false` envelope.
+
+### FX-REPLAY — the recorded round of reviewer outputs (O-6)
+
+**Owner:** T-10 → T-18. **Constructed.** **Discharges:** `REQ` O-6's replay leg. **Feeds:**
+PROP-INV-01…05, `FSPEC` AT-16, AT-17.
+
+**One fixed recording** of a round's reviewer outputs — verdict lines, counts and `FINDING:` lines —
+replayed under **both** flag settings. It must be a **recorded envelope**, not a hand-built synthetic
+shape: a contract-boundary fixture built by hand encodes the author's belief about the format rather
+than the format.
+
+**Required content, each item earning its place:**
+
+| Item | Why |
+|---|---|
+| ≥ 2 findings sharing a `DEC-LOOPECON-06` identity triple (severity, section anchor, normalised text) | anchors PROP-INV-01's dedupe leg and PROP-INV-02's open-finding ledger to a value that is **not** the input count |
+| ≥ 1 **High** finding that re-opens an id present in the rendered index | PROP-INV-04 — it must mint its erratum item and satisfy the confirmation-presence check |
+| ≥ 1 round pair that is **flat** and ≥ 1 that is **not** | PROP-INV-01's `review.derivativeStop` classification leg needs both to be non-vacuous |
+| ≥ 1 non-approving confirmation carrying **no** parseable `FINDING:` line | PROP-INV-01's fail-closed read leg |
+| A transcribed expected **open-finding ledger** | PROP-INV-02's anchor — without it, identical brokenness in both arms passes |
+
+### FX-BASELINE — the committed merge-base recording (O-4, O-6)
+
+**Owner:** T-02. **Path:** `pdlc/workflows/__tests__/fixtures/decision-ledger-baseline/`
+(`scenarios.mjs`, `MANIFEST.json`, `REVIEW-LOOP-REVIEWER-PROMPTS/**`).
+**Feeds:** PROP-OFF-01…06, PROP-WIRE-09, PROP-INV-03, ORC-04.
+
+**Captured by** `scripts/capture-learnings-baseline.mjs`'s `runCaptureScript`, reused unchanged —
+verified present at that path at HEAD. It materialises the merge-base worktree with
+`git worktree add`, imports **that tree's** `orchestrate-dev.js`, drives a scenario matrix, writes
+`{caseId}/{n}.txt` plus `MANIFEST.json`, and removes the worktree in a `finally`.
+
+**Baseline identity:** `git merge-base origin/main HEAD` on `feat-pdlc-decision-ledger`, recorded as
+`mergeBaseSha` and pinned per ORC-04 clause (b).
+
+**Two cases, with different entry points, because one cannot carry both acceptance tests:**
+
+| Case | Entry point | What it falsifies |
+|---|---|---|
+| `REVIEW-LOOP-REVIEWER-PROMPTS` | exported `reviewLoop` directly; a first-pass round and a delta re-review round | PROP-OFF-01: byte-identity of the reviewer-prompt stream with the seam absent |
+| `CONFIG-GATE-SPELLINGS` | through the **config gate** — four `learningsConfigText` values run through `parseDecisionLedgerConfig` → `buildDecisionLedgerInjector` | PROP-OFF-02/03: each of four **distinct** config inputs resolves `enabled` to `false` and yields a `null` injector |
+
+**Why the split is mandatory and not a preference.** `reviewLoop`'s parameter list takes seams and
+settings, never config text — the enablement gate lives in `main()`. A case driving `reviewLoop`
+directly reaches all four of `AT-05`'s not-enabled spellings as the **same** input,
+`_injectDecisionLedger: null`, so every arm passes by construction of the harness and the oracle
+asserts that four identical inputs produce identical bytes. **Stated as a rule for the implementer:
+the recorded arm must consume the config text it is varying.**
+
+**Recorded stream deliberately narrow.** A whole-`main()` recording would red on this feature's own
+intended additions — the new notices, the new report field — and would have to be re-transcribed
+mid-feature, proving nothing. That narrowness is why PROP-WIRE-04/05 exist as a **separate** live
+composition-root arm (`PLAN` T-10a) rather than being folded in here; the two are different
+obligations.
+
+**Capture validity window.** The capture must be taken **before any production change lands**, at a
+point where `pdlc/workflows/orchestrate-dev.js` is byte-identical between merge base and branch
+HEAD. `PLAN` makes this a real `Deps` edge on every production task (`TSPEC` T-1), not a prose note
+— which is correct in `PLAN` v0.3: T-02 sits in batch 1 and every green task from T-13 onward
+reaches it transitively through T-10's `Deps`.
+
 ## Coverage Matrix
 
 ## Gaps, Risks and Routed Items
