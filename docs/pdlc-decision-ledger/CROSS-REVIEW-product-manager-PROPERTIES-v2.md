@@ -85,4 +85,40 @@ property is re-derived, no fixture or byte literal moves, and no acceptance crit
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All six round-1 findings are resolved, including the sole High (F-01's AT-map misattribution), and
+the two questions were answered — one of them by strengthening ORC-04 rather than by explaining the
+concern away. Nothing the revision touched broke a section that was approved in round 1: the AT map,
+the BND ranges and the count reconciliation all now agree with the family tables and with ORC-01…06's
+`Decides` lines, with the two exceptions recorded above.
+
+The three remaining findings are Medium, Medium and Low, and none blocks. For the next revision:
+
+1. **F-01** — give T-12a's twelve-name set-equality census its own DISC row, and return PROP-DISC-07's
+   terminal `102` conjunct to T-00a's acceptance as `PLAN`:99 states it. This is the only one of the
+   three with substance behind it rather than a pointer: as written, the assertion that catches a
+   dropped or renamed `decisionLedger*` module is specified in `PLAN` and in no property.
+2. **F-02** — restate §Overview's O-8 row (`:61`) as `PROP-BND-01…04` plus `-07`, matching `:873` and
+   `:889`, and fold that fourth range into the reconciliation paragraph so its "three ranges" claim
+   becomes true.
+3. **F-03** — on AT-01, list `PROP-REND-01…09` as discharging the AC at the pure-unit level alongside
+   ORC-01 rather than as decided by it, mirroring the construction the row already uses for
+   `PROP-REC-09…11`.
+
+No scope finding: the document still adds no behaviour `REQ` does not ask for and narrows no
+acceptance criterion. Every fix above is an edit to a citation or a new row in an existing table;
+none requires re-deriving a property, a fixture, or a byte literal.
+
+One item is routed upstream rather than folded into this verdict. `PLAN`'s T-00a carries a two-sided
+acceptance whose second conjunct — the filtered count is still `102` after all twelve modules exist —
+cannot be evaluated in batch 1, where T-00a lands and where only three of the twelve modules are
+present; the same row then says the terminal obligation "lives in T-12a", while T-12a's own text
+defines a set census and explicitly disclaims being a count. That ambiguity is upstream of this
+document and is the likely cause of F-01, so it is raised as a `PLAN` erratum rather than as a
+PROPERTIES finding.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 1}
