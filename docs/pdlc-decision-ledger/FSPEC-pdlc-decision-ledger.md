@@ -6,15 +6,24 @@ feature: pdlc-decision-ledger
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` **v1.7** |
+| Upstream | `docs/pdlc-decision-ledger/REQ-pdlc-decision-ledger.md` **v1.8** |
 | Downstream | TSPEC, DECISIONS, PLAN, PROPERTIES |
-| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.1** — cited by `M-*` id, never restated |
+| Baseline | `docs/_constraints/pdlc-decision-corpus-baseline.md` **v1.2** — cited by `M-*` id, never restated |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v{N}.md` |
 | LEARNINGS | `docs/pdlc-decision-ledger/LEARNINGS-pdlc-decision-ledger.md` |
 
 | Status | Author | Version | Date |
 |---|---|---|---|
-| Draft | pm-author | 1.1 | 2026-08-28 |
+| Draft | pm-author | 1.2 | 2026-08-28 |
+
+**v1.2 erratum — the `maxBytes` default recital, and nothing else.** REQ moved to **v1.8**, which
+retypes C-5's `maxEntries`/`maxBytes` as **non-negative** integers and replaces the `maxBytes`
+default `8000` with the measured **`12500`**, derived from Baseline **v1.2**'s `M-7b`/`M-7c`. The
+retyping needs no edit here: this spec never states either key's type, and E-7's `maxEntries` `0`
+is now right-typed upstream rather than in conflict with it. What does cascade is §3.1's recital of
+the defaults and §7's A-1, which carried the retired "`learningsInjection` analogy, not measured"
+claim; both are corrected to REQ HEAD, and the Baseline pin moves to v1.2 so the cited ids resolve.
+Nothing else moves.
 
 ## 1. Overview
 
@@ -40,7 +49,7 @@ the **recognition rule** (what markup makes a heading a record, the id grammar, 
 id opened twice in a file, cross-file precedence); the rendered line's **concrete format** (the REQ
 fixes its field content, not its byte shape); and **which lines are omitted** at a bound
 (REQ-DECLEDGER-07 fixes the outcome, not the selection). This spec states the in-scope set's extent
-only by citing `M-1d` / `M-2e` at Baseline v1.1's `Verified at` commit.
+only by citing `M-1d` / `M-2e` at Baseline v1.2's `Verified at` commit.
 
 An FSPEC is warranted despite that routing because what remains is genuinely branching: a three-way
 gate, a fail-open path with **two legs** that degrade differently, an empty source that must take
